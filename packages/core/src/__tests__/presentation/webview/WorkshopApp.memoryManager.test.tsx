@@ -146,4 +146,77 @@ describe('WorkshopApp · the Memory tab and the manager (Slice 4b)', () => {
     fireEvent.click(within(still).getByRole('button', { name: 'Apply to next turn' }));
     expect(posted(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS).map((entry) => entry.payload.projectMemory)).toEqual(['auto']);
   });
+
+  const reply = (proposal: Record<string, unknown>): WorkshopTurn => ({
+    id: 'turn-4-assistant-1008', role: 'assistant', kind: 'message', participant: 'host', artifact: 'persona_message',
+    personaId: 'jill', personaLabel: 'Jill', excerptVersion: 1, content: 'Good. It earns its place.', timestamp: 1,
+    memoryProposal: { title: 'The Rabbit’s watch runs backward', kind: 'canon', summary: 'From chapter 3 on.', body: '', ...proposal }
+  } as unknown as WorkshopTurn);
+  const managerResult = (requestId: unknown, ok: boolean, error?: string) => deliver({
+    type: MessageType.WORKSHOP_MEMORY_MANAGER_RESULT,
+    source: 'extension.workshop',
+    payload: { requestId, ok, ...(error ? { error } : {}) },
+    timestamp: 0
+  });
+  const openMemoryTab = () => {
+    fireEvent.click(screen.getByRole('button', { name: /^Conversation settings:/ }));
+    answerListing();
+    const settings = screen.getByRole('dialog', { name: 'Conversation settings' });
+    fireEvent.click(within(settings).getByRole('tab', { name: 'Memory' }));
+    return settings;
+  };
+
+  it.each([
+    ['folder creation', 'The memory folder couldn’t be made.'],
+    ['the shell', 'The memory folder couldn’t be opened.']
+  ])('Open memory folder refused by %s says why in the Memory tab, and a retry clears it (PR #202 F04)', (_where, error) => {
+    render(<WorkshopApp />);
+    deliver(session());
+    const settings = openMemoryTab();
+    fireEvent.click(within(settings).getByRole('button', { name: 'Open memory folder' }));
+    const [press] = posted(MessageType.WORKSHOP_MEMORY_MANAGER_ACTION);
+    expect(press.payload.action).toBe('open-folder');
+    expect(within(settings).getByRole('button', { name: 'Open memory folder' }).getAttribute('aria-busy')).toBe('true');
+    managerResult(press.payload.requestId, false, error);
+    answerListing();
+
+    const alert = within(settings).getByRole('alert');
+    expect(alert.textContent).toContain('The memory folder didn’t open.');
+    expect(alert.textContent).toContain(error);
+    expect(within(settings).getByRole('button', { name: 'Open memory folder' }).getAttribute('aria-describedby')).toBeTruthy();
+
+    fireEvent.click(within(settings).getByRole('button', { name: 'Open memory folder' }));
+    expect(within(settings).queryByRole('alert')).toBeNull();
+    managerResult(posted(MessageType.WORKSHOP_MEMORY_MANAGER_ACTION)[1].payload.requestId, true);
+    expect(within(settings).queryByRole('alert')).toBeNull();
+  });
+
+  it('a card saved while the Memory tab shows asks for the listing again (PR #202 N01)', () => {
+    render(<WorkshopApp />);
+    deliver(session({ turns: [reply({ state: 'pending' })], totalTurns: 1 }));
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/ }));
+    const [save] = posted(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION);
+    openMemoryTab();
+    const before = posted(MessageType.WORKSHOP_MEMORY_LIST).length;
+    deliver({
+      type: MessageType.WORKSHOP_MEMORY_WRITE_RESULT,
+      source: 'extension.workshop',
+      payload: { requestId: save.payload.requestId, ok: true, memoryId: 'mem-7f3c21' },
+      timestamp: 0
+    });
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(before + 1);
+  });
+
+  it('a saved card’s Open in manager opens the manager on its memory (PR #202 N02)', () => {
+    render(<WorkshopApp />);
+    deliver(session({ turns: [reply({ state: 'saved', memoryId: 'mem-7f3c21' })], totalTurns: 1 }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open in manager' }));
+    act(() => { jest.runOnlyPendingTimers(); });
+    answerListing();
+    const manager = screen.getByRole('dialog', { name: 'Project memories' });
+    const marked = manager.querySelector('[aria-current="true"]');
+    expect(marked?.textContent).toContain('The Rabbit’s watch runs backward');
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
 });
+

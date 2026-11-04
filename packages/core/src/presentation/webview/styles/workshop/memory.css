@@ -298,6 +298,10 @@
 [data-pm-surface="workshop"] .pm-ws-memory-row-past .pm-ws-memory-glyph {
   color: var(--pm-dim);
 }
+/* The memory a card's Open in manager named (PR #202 N02). */
+[data-pm-surface="workshop"] .pm-ws-memory-row-focus .pm-ws-session-browser-row {
+  box-shadow: inset 3px 0 0 var(--pm-accent);
+}
 
 /* Narrow widths (Slice 0d open question 3): the well and the meter row stack. */
 @media (max-width: 760px) {

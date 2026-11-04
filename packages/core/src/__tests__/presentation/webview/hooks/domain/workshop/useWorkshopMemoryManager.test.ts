@@ -148,4 +148,42 @@ describe('useWorkshopMemoryManager', () => {
     expect(result.current.actionError).toBe('That memory is no longer in the folder.');
     expect(result.current.actionPending).toBe(false);
   });
+
+  it('Open memory folder: only the newest press says how it went, and closing the settings clears its error (PR #202 F04)', () => {
+    const { result } = renderHook(() => useWorkshopMemoryManager());
+    act(() => result.current.setSettingsVisible(true));
+    act(() => result.current.openFolder());
+    const first = lastId(MessageType.WORKSHOP_MEMORY_MANAGER_ACTION);
+    act(() => result.current.openFolder());
+    const second = lastId(MessageType.WORKSHOP_MEMORY_MANAGER_ACTION);
+    act(() => result.current.handleManagerResult(envelope(MessageType.WORKSHOP_MEMORY_MANAGER_RESULT, { requestId: first, ok: false, error: 'Old.' })));
+    expect(result.current.folder).toEqual({ pending: true });
+    act(() => result.current.handleManagerResult(envelope(MessageType.WORKSHOP_MEMORY_MANAGER_RESULT, { requestId: second, ok: false, error: 'The memory folder couldn’t be opened.' })));
+    expect(result.current.folder).toEqual({ pending: false, error: 'The memory folder couldn’t be opened.' });
+    // Pressed from the settings, the manager closed: its own alert stays empty.
+    expect(result.current.actionError).toBeUndefined();
+    act(() => result.current.setSettingsVisible(false));
+    expect(result.current.folder).toEqual({ pending: false });
+  });
+
+  it('another hook’s write refreshes the listing only while the manager or the settings show it (PR #202 N01)', () => {
+    const { result } = renderHook(() => useWorkshopMemoryManager());
+    const write = () => act(() => result.current.noteWriteResult(envelope(MessageType.WORKSHOP_MEMORY_WRITE_RESULT, { requestId: 'sheet-1', ok: true })));
+    write();
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(0);
+    act(() => result.current.setSettingsVisible(true));
+    write();
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(1);
+    act(() => result.current.setSettingsVisible(false));
+    write();
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(1);
+  });
+
+  it('openManager with a memory marks it until the manager closes (PR #202 N02)', () => {
+    const { result } = renderHook(() => useWorkshopMemoryManager());
+    act(() => result.current.openManager('mem-7f3c21'));
+    expect(result.current.focusMemoryId).toBe('mem-7f3c21');
+    act(() => result.current.closeManager());
+    expect(result.current.focusMemoryId).toBeUndefined();
+  });
 });

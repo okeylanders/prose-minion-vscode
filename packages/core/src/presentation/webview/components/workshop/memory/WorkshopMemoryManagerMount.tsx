@@ -30,6 +30,7 @@ export const WorkshopMemoryManagerMount: React.FC<WorkshopMemoryManagerMountProp
     query={manager.query}
     actionPending={manager.actionPending}
     {...(manager.actionError ? { actionError: manager.actionError } : {})}
+    {...(manager.focusMemoryId ? { focusMemoryId: manager.focusMemoryId } : {})}
     onQueryChange={manager.setQuery}
     onRename={manager.rename}
     onDelete={manager.remove}

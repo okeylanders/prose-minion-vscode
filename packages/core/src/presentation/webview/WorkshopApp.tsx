@@ -540,11 +540,12 @@ export const WorkshopApp: React.FC = () => {
     onSaveTurn: projectMemory.saveTurn,
     onEditMemory: projectMemory.editMemory,
     onForget: projectMemory.forget,
-    onRestore: projectMemory.restore
+    onRestore: projectMemory.restore,
+    onOpenManager: memoryManager.openManager
   }), [
     roomMutationLocked, projectMemory.busyTurnIds, projectMemory.cardErrors, projectMemory.saveCard,
     projectMemory.editCard, projectMemory.dismissCard, projectMemory.reopenCard, projectMemory.saveTurn,
-    projectMemory.editMemory, projectMemory.forget, projectMemory.restore
+    projectMemory.editMemory, projectMemory.forget, projectMemory.restore, memoryManager.openManager
   ]);
 
   // Recomputing a full word split per streamed token was O(excerpt) work on
@@ -642,12 +643,17 @@ export const WorkshopApp: React.FC = () => {
     () => startupNotice.dismissStartupNotice(false),
     [startupNotice.dismissStartupNotice]
   );
-  const requestMemoryListing = memoryManager.requestListing;
+  const { requestListing: requestMemoryListing, setSettingsVisible: setMemorySettingsVisible } = memoryManager;
   const openBehaviorModal = React.useCallback(() => {
     setBehaviorModalOpen(true);
+    setMemorySettingsVisible(true);
     requestMemoryListing();
-  }, [requestMemoryListing]);
-  const closeBehaviorModal = React.useCallback(() => setBehaviorModalOpen(false), []);
+  }, [requestMemoryListing, setMemorySettingsVisible]);
+  const openMemoryManagerFromSettings = React.useCallback(() => memoryManager.openManager(), [memoryManager.openManager]);
+  const closeBehaviorModal = React.useCallback(() => {
+    setBehaviorModalOpen(false);
+    setMemorySettingsVisible(false);
+  }, [setMemorySettingsVisible]);
   const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
     workshop.requestContextCatalog();
     setContextSelectorMode(mode);
@@ -1674,10 +1680,11 @@ export const WorkshopApp: React.FC = () => {
         webResearch={workshop.webResearch}
         projectMemoryMode={workshop.projectMemoryMode}
         memory={workshopMemoryTabInputOf(memoryManager.listing)}
+        memoryFolder={memoryManager.folder}
         isRunning={roomMutationLocked}
         errorMessage={workshop.errorMessage}
         onApply={workshop.setConversationSettings}
-        onOpenMemoryManager={memoryManager.openManager}
+        onOpenMemoryManager={openMemoryManagerFromSettings}
         onOpenMemoryFolder={memoryManager.openFolder}
         onClose={closeBehaviorModal}
       />

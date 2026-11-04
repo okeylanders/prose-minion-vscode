@@ -27,6 +27,7 @@ import { WorkshopAboutYouSettingsPanel } from './settings/WorkshopAboutYouSettin
 import { WorkshopAdvancedSettingsPanel } from './settings/WorkshopAdvancedSettingsPanel';
 import { WorkshopMemorySettingsPanel } from './settings/WorkshopMemorySettingsPanel';
 import type { WorkshopMemoryTabInput } from '@hooks/domain/workshop/memory/workshopMemoryTabView';
+import type { WorkshopMemoryFolderStatus } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 
 interface PendingApply {
   submittedBehavior: WorkshopConversationBehavior;
@@ -46,6 +47,8 @@ interface WorkshopConversationBehaviorModalProps {
   projectMemoryMode: WorkshopProjectMemoryMode;
   /** What the Memory tab draws from the host's listing; the mode is the modal's draft. */
   memory: Omit<WorkshopMemoryTabInput, 'mode'>;
+  /** Open memory folder's status, shown in the Memory tab (PR #202 F04). */
+  memoryFolder?: WorkshopMemoryFolderStatus;
   isRunning: boolean;
   errorMessage?: string;
   onApply: (
@@ -69,6 +72,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   webResearch,
   projectMemoryMode,
   memory,
+  memoryFolder,
   isRunning,
   errorMessage,
   onApply,
@@ -179,6 +183,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         {...memory}
         mode={memoryDraft}
         disabled={editingLocked}
+        {...(memoryFolder ? { folderStatus: memoryFolder } : {})}
         onSelectMode={setMemoryDraft}
         onOpenManager={onOpenMemoryManager}
         onOpenFolder={onOpenMemoryFolder}

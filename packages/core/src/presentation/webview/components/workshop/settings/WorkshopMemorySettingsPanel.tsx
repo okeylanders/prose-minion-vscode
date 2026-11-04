@@ -20,6 +20,7 @@ import {
   type WorkshopMemoryTabInput
 } from '@hooks/domain/workshop/memory/workshopMemoryTabView';
 import type { WorkshopProjectMemoryMode } from '@hooks/domain/workshop/memory/workshopMemoryViewInputs';
+import type { WorkshopMemoryFolderStatus } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import { OptionCard, SettingsRule } from './WorkshopConversationSettingsControls';
 
 const MODE_ICONS: Record<WorkshopProjectMemoryMode, IconName> = {
@@ -31,6 +32,8 @@ const MODE_ICONS: Record<WorkshopProjectMemoryMode, IconName> = {
 export interface WorkshopMemorySettingsPanelProps extends WorkshopMemoryTabInput {
   /** The modal's apply is pending: the draft can't change. */
   disabled: boolean;
+  /** Open memory folder, pressed here or in the manager: waiting, or why it didn't open (PR #202 F04). */
+  folderStatus?: WorkshopMemoryFolderStatus;
   onSelectMode: (mode: WorkshopProjectMemoryMode) => void;
   onOpenManager: () => void;
   onOpenFolder: () => void;
@@ -39,6 +42,7 @@ export interface WorkshopMemorySettingsPanelProps extends WorkshopMemoryTabInput
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelProps> = ({
   disabled,
+  folderStatus,
   onSelectMode,
   onOpenManager,
   onOpenFolder,
@@ -46,6 +50,7 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
 }) => {
   const view = workshopMemoryTabView(input);
   const noticeId = React.useId();
+  const folderErrorId = React.useId();
   return (
     <>
       {view.notice && (
@@ -129,8 +134,13 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
             className="pm-ws-action-btn"
             type="button"
             disabled={view.folder.locked}
-            aria-describedby={view.folder.locked && view.notice ? noticeId : undefined}
-            onClick={onOpenFolder}
+            aria-describedby={view.folder.locked && view.notice ? noticeId : folderStatus?.error ? folderErrorId : undefined}
+            aria-busy={folderStatus?.pending || undefined}
+            onClick={() => {
+              if (!folderStatus?.pending) {
+                onOpenFolder();
+              }
+            }}
           >
             Open memory folder
           </button>
@@ -145,6 +155,12 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
           </button>
         </div>
       </div>
+      {folderStatus?.error && (
+        <div className="pm-ws-memory-notice" role="alert">
+          <Icon name="alert" size={14} />
+          <span id={folderErrorId}><b>The memory folder didn’t open.</b> {folderStatus.error}</span>
+        </div>
+      )}
       {view.attention && (
         <div className="pm-ws-behavior-row pm-ws-memory-attention">
           <Icon name="doc" size={14} />

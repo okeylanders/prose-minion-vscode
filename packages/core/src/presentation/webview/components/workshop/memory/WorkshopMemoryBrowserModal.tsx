@@ -39,6 +39,8 @@ export interface WorkshopMemoryBrowserModalProps extends WorkshopMemoryManagerIn
   actionPending: boolean;
   /** The latest refused action, in the host's words. */
   actionError?: string;
+  /** The memory a card's Open in manager named: its row is marked and scrolled to (PR #202 N02). */
+  focusMemoryId?: string;
   /** The clock the date groups read; now by default. */
   now?: Date;
   onQueryChange: (query: string) => void;
@@ -61,6 +63,7 @@ export const WorkshopMemoryBrowserModal: React.FC<WorkshopMemoryBrowserModalProp
   query,
   actionPending,
   actionError,
+  focusMemoryId,
   now,
   onQueryChange,
   onRename,
@@ -179,6 +182,7 @@ export const WorkshopMemoryBrowserModal: React.FC<WorkshopMemoryBrowserModalProp
           controls={controls}
           disabled={writesLocked || row.entry.busy}
           openDisabled={!available}
+          focused={row.entry.id === focusMemoryId}
           {...actions}
         />
       )}
