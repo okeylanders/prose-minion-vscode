@@ -90,8 +90,9 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     // WORKSHOP_STAGE_LIGHTBOX_TILE and WORKSHOP_ACCEPT_LIGHTBOX_TILE; Wayfinding Slice 2
     // added WORKSHOP_REQUEST_READ_IN_RESOURCE and WORKSHOP_OPEN_READ_IN_RESOURCE;
     // Wayfinding Slice 4 added WORKSHOP_SET_TURN_BOOKMARK and WORKSHOP_RENAME_BOOKMARK;
-    // Slice 5 added WORKSHOP_REQUEST_TURN_PREVIEW.
-    expect(router.handlerCount).toBe(64);
+    // Slice 5 added WORKSHOP_REQUEST_TURN_PREVIEW. Project Memory Slice 3
+    // added its seven write and sheet routes.
+    expect(router.handlerCount).toBe(71);
   });
 
   it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {

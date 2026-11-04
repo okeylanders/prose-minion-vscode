@@ -17,6 +17,7 @@ import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/Workshop
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
 import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookmarkHandler';
+import { WorkshopProjectMemoryHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import {
@@ -67,6 +68,7 @@ export class WorkshopSliceComposition {
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
   private readonly todoHandler: WorkshopTodoHandler;
   private readonly bookmarkHandler: WorkshopBookmarkHandler;
+  private readonly projectMemoryHandler: WorkshopProjectMemoryHandler;
   private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
   private readonly contextHandler: WorkshopContextHandler;
   private readonly excerptScopeHandler: WorkshopExcerptScopeHandler;
@@ -84,6 +86,7 @@ export class WorkshopSliceComposition {
       sessionPersistence,
       transcriptExport,
       widgetRuntime,
+      projectMemory,
       outputChannel
     } = dependencies;
     const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
@@ -242,6 +245,28 @@ export class WorkshopSliceComposition {
       postMessage,
       sessionPersistence
     );
+    // Project memory's write routes (ADR 2026-11-04 D13; Slice 3).
+    this.projectMemoryHandler = new WorkshopProjectMemoryHandler(
+      session,
+      projectMemory,
+      {
+        isRoomRunActive: host.isRoomRunActive,
+        isSessionOperationPending: () => sessionPersistence.isSessionOperationPending(),
+        waitForSessionOperations: () => sessionPersistence.waitForSessionOperations(),
+        liveSessionId: () => {
+          const scope = sessionPersistence.recallScope();
+          return scope.available ? scope.liveSessionId : undefined;
+        }
+      },
+      {
+        postSessionState: host.postSessionState,
+        markDirty,
+        reportError: (message, details) =>
+          host.reportRouteError('workshop', message, details, 'WorkshopProjectMemoryHandler')
+      },
+      postMessage,
+      outputChannel
+    );
   }
 
   registerRoutes(
@@ -291,6 +316,10 @@ export class WorkshopSliceComposition {
     this.lightboxTileHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopLightboxTileHandler')
+    );
+    this.projectMemoryHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopProjectMemoryHandler')
     );
   }
 

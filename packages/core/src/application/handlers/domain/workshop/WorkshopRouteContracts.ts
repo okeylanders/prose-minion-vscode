@@ -33,6 +33,7 @@ import type {
 } from '@/application/services/workshop/export/WorkshopTranscriptExportService';
 import type { LogSink, ShellService } from '@/platform';
 import type { WorkshopReadInRecordLookup } from '@handlers/domain/workshop/WorkshopReadInRoutes';
+import type { WorkshopProjectMemoryWritePort } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import type {
   ErrorSource,
   MessageType,
@@ -59,6 +60,7 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopStandingDirectiveHandler'
   | 'WorkshopTodoHandler'
   | 'WorkshopBookmarkHandler'
+  | 'WorkshopProjectMemoryHandler'
   | 'WorkshopWidgetHostHandler';
 
 /**
@@ -113,6 +115,8 @@ export interface WorkshopSliceCompositionDependencies {
   sessionPersistence: WorkshopSessionPersistenceCoordinator;
   transcriptExport: WorkshopTranscriptExportPort;
   widgetRuntime: WorkshopWidgetRuntime;
+  /** Project memory's writes (ADR 2026-11-04 D13): the one library, built in extension.ts. */
+  projectMemory: WorkshopProjectMemoryWritePort;
   outputChannel: LogSink;
 }
 

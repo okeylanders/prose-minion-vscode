@@ -17,6 +17,7 @@
  * in-flight one, reset aborts, and zombie completions are refused + logged.
  */
 
+import type { WorkshopProjectMemoryWritePort } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import {
   hasWorkshopMemoryProposalText
 } from '@/utils/workshopReplyControls';
@@ -236,7 +237,8 @@ export class WorkshopRoomHandler {
     private readonly sessionPersistence: WorkshopSessionPersistenceCoordinator,
     transcriptExport: WorkshopTranscriptExportPort,
     widgetRuntime: WorkshopWidgetRuntime,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    projectMemory: WorkshopProjectMemoryWritePort
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -268,6 +270,7 @@ export class WorkshopRoomHandler {
         sessionPersistence: this.sessionPersistence,
         transcriptExport,
         widgetRuntime,
+        projectMemory,
         outputChannel: this.outputChannel
       },
       {
