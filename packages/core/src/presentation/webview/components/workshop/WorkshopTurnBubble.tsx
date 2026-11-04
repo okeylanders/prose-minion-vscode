@@ -35,7 +35,8 @@ import {
   workshopWidgetSelectionUnitLabel
 } from '@shared/constants/workshopWidgets';
 import { workshopRewindUnavailableReason } from '@shared/constants/workshopRewind';
-import { workshopRawModelId, workshopServedByNote, workshopTurnModelTitle } from '@utils/workshop/workshopTurnModelNote';
+import { workshopRawModelId, workshopTurnModelTitle } from '@utils/workshop/workshopTurnModelNote';
+import { workshopTurnModelLabel } from '@shared/workshop/workshopTurnModelLabel';
 import { workshopCapabilityArtifactLabel } from '@shared/constants/workshopCapabilityLabels';
 import {
   workshopCapabilityFamily,
@@ -369,7 +370,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onToggleBookmark,
   modelLabel = workshopRawModelId
 }) => {
-  const servedByNote = workshopServedByNote(turn.model, modelLabel);
+  const modelText = workshopTurnModelLabel(turn.model, modelLabel);
   const bookmarkAction = onToggleBookmark && isWorkshopBookmarkableTurn(turn)
     ? (
         <WorkshopBookmarkToggle
@@ -579,6 +580,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           <span className="pm-ws-eyebrow" title={workshopTurnModelTitle(turn.model)}>
             <Icon name={turn.personaId ? 'person' : 'sparkle'} size={12} />{' '}
             {turn.personaLabel ?? turn.toolLabel ?? 'Follow-up'}
+            {modelText && <>{' '}<span className="pm-ws-turn-model">· {modelText}</span></>}
           </span>
           {isPrivateInstrumentTurn && (
             <span className="pm-ws-private-thread-label">
@@ -736,11 +738,6 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
                 </a>
               ))}
             </div>
-          </div>
-        )}
-        {servedByNote && (
-          <div className="pm-ws-turn-usage pm-ws-turn-served-by">
-            <Icon name="branch" size={11} /> {servedByNote}
           </div>
         )}
         <div className="pm-ws-turn-actions">
