@@ -348,14 +348,18 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     const service = build(managerFor(() => engine));
     await flush();
 
-    await service.continueConversation('conv-1', 'Check the current guidance.', {
+    const without = await service.continueConversation('conv-1', 'Check the current guidance.', {
       webResearch: false
     });
     expect(engine.continueConversation.mock.calls[0]![0].options?.tools).toBeUndefined();
+    // The run reports whether search tools were attached, never whether it searched (ADR 2026-11-04 D8).
+    expect(without.webResearchAttached).toBeUndefined();
 
-    await service.continueConversation('conv-1', 'Check the current guidance.', {
+    const attached = await service.continueConversation('conv-1', 'Check the current guidance.', {
       webResearch: true
     });
+    expect(attached.webResearchAttached).toBe(true);
+    expect(attached.citations ?? []).toEqual([]);
     expect(engine.continueConversation.mock.calls[1]![0].options?.tools).toEqual([{
       type: 'openrouter:web_search',
       parameters: { engine: 'auto', max_uses: 2, max_total_results: 10 }

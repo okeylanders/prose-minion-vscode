@@ -14,7 +14,8 @@ import {
   PROJECT_MEMORY_KINDS,
   PROJECT_MEMORY_LIST_ENTRIES
 } from '@shared/types/projectMemory';
-import type { WorkshopMemoryDraft, WorkshopMemoryPinnedEstimate } from '@messages';
+import type { WorkshopMemoryDraft, WorkshopMemoryHold, WorkshopMemoryPinnedEstimate, WorkshopMemoryProposal } from '@messages';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 export type WorkshopMemoryDraftFault =
   | 'not-a-draft'
@@ -113,6 +114,51 @@ export function workshopMemoryPinnedHelp(estimate: WorkshopMemoryPinnedEstimate 
   }
   return `${lead} This one adds about ${roundTokens(estimate.thisTokens)} tokens; ` +
     `memories loaded in full would come to about ${roundTokens(estimate.totalTokens)} of ${estimate.budgetTokens.toLocaleString('en-US')}.`;
+}
+
+/** A card's own draft: what Save writes when the writer didn't edit it. */
+export function workshopMemoryProposalDraft(proposal: WorkshopMemoryProposal): WorkshopMemoryDraft {
+  return {
+    title: proposal.title,
+    kind: proposal.kind,
+    summary: proposal.summary,
+    body: proposal.body,
+    supersedes: (proposal.supersedes ?? []).map((item) => item.id),
+    pinned: false
+  };
+}
+
+/** Whether two drafts say the same thing and load the same way (an edited Save that changed nothing). */
+export function workshopMemoryDraftsEqual(a: WorkshopMemoryDraft, b: WorkshopMemoryDraft): boolean {
+  return a.title.trim() === b.title.trim()
+    && a.kind === b.kind
+    && a.summary.trim() === b.summary.trim()
+    && a.body.trim() === b.body.trim()
+    && a.pinned === b.pinned
+    && a.supersedes.length === b.supersedes.length
+    && a.supersedes.every((id, index) => b.supersedes[index] === id);
+}
+
+/**
+ * Why a held card waits (Slice 0d, "In the thread", item 4; D8). Neither
+ * line claims a search ran (the hold reads whether search tools were
+ * attached: PR #196 F-01), and the cap is room-wide, so neither names a
+ * persona (F-02).
+ */
+export function workshopMemoryHeldReason(held: WorkshopMemoryHold): string {
+  switch (held) {
+    case 'web-research':
+      return 'Live web research was available for this reply, so this memory waits for you to save it.';
+    case 'room-cap':
+      return `This conversation has reached its limit of ${PROMPT_BUDGETS.workshopProjectMemory.autoSavesPerRoom} ` +
+        'automatic memory saves. This one waits for you.';
+    default:
+      return assertNeverHold(held);
+  }
+}
+
+function assertNeverHold(value: never): never {
+  throw new Error(`Unhandled memory hold: ${JSON.stringify(value)}`);
 }
 
 /** Tokens as the tab and the sheet say them: "about 60", "about 4,360". */

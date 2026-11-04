@@ -395,6 +395,8 @@ export class WorkshopRoomHandler {
         this.sendError('workshop.run_tool', errorMessage, details),
       widgetRecommendationRejected: (errorMessage, details) =>
         this.sendError('workshop.widget_recommendation', errorMessage, details),
+      memoryAutoSave: (turn) => this.sliceComposition.autoSaveMemoryProposal(turn, controller.signal),
+      memoryAutoSavesInRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
       settled: (requestId) => this.settleActiveRun(requestId)
     });
   }
@@ -642,8 +644,11 @@ export class WorkshopRoomHandler {
         });
         const pendingMemory = this.replyMemory(result.content, controller.signal);
         const replyMemory = pendingMemory && await pendingMemory;
+        const memoryAutoSave = this.memoryAutoSaveFor(controller.signal);
         const assistantTurn = completeWorkshopRun({
           memory: replyMemory,
+          memoryAutoSave: memoryAutoSave.hand,
+          memoryAutoSavesInRoom: memoryAutoSave.inRoom,
           session: this.session,
           requestId,
           label: workshopPersonaLabel(personaId),
@@ -678,6 +683,7 @@ export class WorkshopRoomHandler {
           this.sessionPersistence.markDirty('guest invitation completed');
         }
         this.postSessionState();
+        await memoryAutoSave.settled();
       } catch (error) {
         const details = error instanceof Error ? error.message : String(error);
         this.session.abandonRun(requestId);
@@ -1173,8 +1179,11 @@ export class WorkshopRoomHandler {
 
       const pendingMemory = this.replyMemory(result.content, controller.signal);
       const replyMemory = pendingMemory && await pendingMemory;
+      const memoryAutoSave = this.memoryAutoSaveFor(controller.signal);
       const assistantTurn = completeWorkshopRun({
         memory: replyMemory,
+        memoryAutoSave: memoryAutoSave.hand,
+        memoryAutoSavesInRoom: memoryAutoSave.inRoom,
         session: this.session,
         requestId,
         label,
@@ -1265,6 +1274,7 @@ export class WorkshopRoomHandler {
         this.sessionPersistence.markDirty(targetPlan.completionReason);
       }
       this.postSessionState();
+      await memoryAutoSave.settled();
       return { committed: assistantTurn !== undefined };
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
@@ -1362,6 +1372,28 @@ export class WorkshopRoomHandler {
       return 'room';
     }
     return this.sliceComposition?.isContextRunActive() ? 'wizard' : undefined;
+  }
+
+  /**
+   * Save and tell me (Slice 5; PR #201 F-03): completion hands the recorded
+   * reply's card to `hand`, and the run awaits `settled()` as its tail,
+   * under its own controller, before it settles. So no later request ever
+   * waits on a save, and New, Open, a preempting run and disposal stop it
+   * as they stop any running run (its permission is withdrawn).
+   */
+  private memoryAutoSaveFor(signal: AbortSignal): {
+    hand: (turn: WorkshopTurn) => void;
+    inRoom: () => number;
+    settled: () => Promise<void> | undefined;
+  } {
+    let saving: Promise<void> | undefined;
+    return {
+      inRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
+      hand: (turn) => {
+        saving = this.sliceComposition.autoSaveMemoryProposal(turn, signal);
+      },
+      settled: () => saving
+    };
   }
 
   /**

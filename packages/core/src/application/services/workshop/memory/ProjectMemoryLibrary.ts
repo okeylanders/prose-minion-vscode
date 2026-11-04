@@ -143,8 +143,12 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
    * The writer's writes (Slice 3; `ProjectMemoryWrites`): never a model's.
    * Each is owed until it settles; `shutDown` drains them at deactivation.
    */
-  save(draft: WorkshopMemoryDraft, provenance: ProjectMemorySaveProvenance): Promise<ProjectMemoryWriteResult> {
-    return this.writes.save(draft, provenance);
+  save(
+    draft: WorkshopMemoryDraft,
+    provenance: ProjectMemorySaveProvenance,
+    options?: { readonly permit?: () => boolean }
+  ): Promise<ProjectMemoryWriteResult> {
+    return this.writes.save(draft, provenance, options);
   }
 
   /** Edit a saved memory (the sheet's Save changes). `update` is the update note's (D14). */
@@ -276,21 +280,23 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
    * counted; it never fails the reply.
    */
   async replyMemoryContext(reply: string, signal?: AbortSignal): Promise<WorkshopReplyMemoryContext> {
-    if (!this.access().open) {
+    const access = this.access();
+    if (!access.open) {
       return { open: false };
     }
+    const { mode } = access;
     if (!hasWorkshopMemoryProposalText(reply)) {
-      return { open: true };
+      return { open: true, mode };
     }
     try {
       const set = await this.personaSet(signal);
       if (set.kind !== 'set') {
-        return { open: set.kind !== 'closed' };
+        return set.kind === 'closed' ? { open: false } : { open: true, mode };
       }
-      return { open: true, listed: new Map(set.memories.map(({ memory }) => [memory.id, memory.title])) };
+      return { open: true, mode, listed: new Map(set.memories.map(({ memory }) => [memory.id, memory.title])) };
     } catch {
       this.log('reply context listing cancelled');
-      return { open: true };
+      return { open: true, mode };
     }
   }
 

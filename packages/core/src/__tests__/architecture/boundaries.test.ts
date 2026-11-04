@@ -1037,6 +1037,7 @@ const WORKSHOP_MEMORY_MODULES = [
   'ProjectMemoryUpdateNote.ts',
   'ProjectMemoryVersion.ts',
   'ProjectMemoryWrites.ts',
+  'WorkshopMemoryAutoSave.ts',
   'WorkshopMemoryProposalPhrasing.ts',
   'WorkshopProjectMemoryCapability.ts',
   'WorkshopProjectMemoryCopy.ts',

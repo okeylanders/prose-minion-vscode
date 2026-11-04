@@ -48,6 +48,7 @@ import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
 import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
+import { workshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
 import { WorkshopMemorySheet } from '@components/workshop/memory/WorkshopMemorySheet';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
@@ -524,8 +525,10 @@ export const WorkshopApp: React.FC = () => {
   const toolsEnabled = hasExcerpt && !roomMutationLocked && workshop.sessionReady;
   const composerToolsEnabled = !roomMutationLocked && workshop.sessionReady;
   // Project memory in the thread (ADR 2026-11-04 D6, D7); the host's snapshot is the truth.
+  const autoSavedMemories = React.useMemo(() => workshopAutoSavedMemories(workshop.turns), [workshop.turns]);
   const memoryControls = React.useMemo<WorkshopTurnMemoryControls>(() => ({
     disabled: roomMutationLocked,
+    autoSaved: autoSavedMemories,
     busyTurnIds: projectMemory.busyTurnIds,
     cardErrors: projectMemory.cardErrors,
     onSaveCard: projectMemory.saveCard,
@@ -537,7 +540,7 @@ export const WorkshopApp: React.FC = () => {
     onForget: projectMemory.forget,
     onRestore: projectMemory.restore
   }), [
-    roomMutationLocked, projectMemory.busyTurnIds, projectMemory.cardErrors, projectMemory.saveCard,
+    roomMutationLocked, autoSavedMemories, projectMemory.busyTurnIds, projectMemory.cardErrors, projectMemory.saveCard,
     projectMemory.editCard, projectMemory.dismissCard, projectMemory.reopenCard, projectMemory.saveTurn,
     projectMemory.editMemory, projectMemory.forget, projectMemory.restore
   ]);
