@@ -35,8 +35,10 @@
  * - **Owed writes.** Every write is owed until it settles; `shutDown`
  *   waits for every owed write, and for any started while it waits, as the
  *   Lightbox library's does (PR #183 F-03).
- * - **Logs** carry memory ids, counts and reasons, never a title, a
- *   summary, a body or a file name (a file name's slug is the title's).
+ * - **Logs** carry memory ids, counts, reasons and error categories
+ *   (`fileSystemErrorCategory`: a code, never a message, which can carry a
+ *   path), never a title, a summary, a body or a file name (a file name's
+ *   slug is the title's).
  */
 
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -45,7 +47,8 @@ import type { FileSystem, LogSink, Workspace } from '@/platform';
 import type { ProjectMemory } from '@shared/types/projectMemory';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { decodeProjectMemory, encodeProjectMemory } from '@/infrastructure/storage/ProjectMemoryCodec';
-import { StoredFileClaims, deleteStoredFileQuietly, storedFileErrorMessage, storedFileExists } from '@/infrastructure/storage/StoredFileClaims';
+import { StoredFileClaims, deleteStoredFileQuietly, storedFileExists } from '@/infrastructure/storage/StoredFileClaims';
+import { fileSystemErrorCategory } from '@/infrastructure/storage/fileSystemErrors';
 import { commitStoredFileRewrite, type StoredFileRewritePorts } from '@/infrastructure/storage/StoredFileRewrite';
 import {
   PROJECT_MEMORY_CLAIM,
@@ -105,7 +108,8 @@ export class ProjectMemoryStore {
     this.claims = new StoredFileClaims(fileSystem, log, options.claimNow ?? this.now, {
       claimPattern: PROJECT_MEMORY_CLAIM,
       logPrefix: LOG,
-      logName: projectMemoryLogName
+      logName: projectMemoryLogName,
+      formatError: fileSystemErrorCategory
     });
     this.rewritePorts = { fileSystem, claims: this.claims, log, logPrefix: LOG, noun: 'memory', mintStagingId: this.mintStagingId };
   }
@@ -348,7 +352,7 @@ export class ProjectMemoryStore {
       await this.fileSystem.createDirectory(directory);
       await this.fileSystem.writeFile(temporaryPath, bytes);
     } catch (error) {
-      this.log.appendLine(`${LOG} Could not stage a new memory: ${storedFileErrorMessage(error)}`);
+      this.log.appendLine(`${LOG} Could not stage a new memory: ${fileSystemErrorCategory(error)}`);
       await deleteStoredFileQuietly(this.fileSystem, temporaryPath);
       return 'failed';
     }
@@ -366,7 +370,7 @@ export class ProjectMemoryStore {
       if (taken) {
         return 'taken';
       }
-      this.log.appendLine(`${LOG} Could not save a new memory: ${storedFileErrorMessage(error)}`);
+      this.log.appendLine(`${LOG} Could not save a new memory: ${fileSystemErrorCategory(error)}`);
       return 'failed';
     }
   }

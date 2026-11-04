@@ -192,7 +192,7 @@ describe('a new memory', () => {
     jest.spyOn(fileSystem, 'writeFile').mockRejectedValueOnce(new Error('ENOSPC: no space left'));
     expect(await store.create(DRAFT)).toEqual({ kind: 'failed' });
     expect(fileSystem.files.size).toBe(0);
-    expect(lines).toEqual(['[ProjectMemoryStore] Could not stage a new memory: ENOSPC: no space left']);
+    expect(lines).toEqual(['[ProjectMemoryStore] Could not stage a new memory: ENOSPC']);
   });
 });
 
@@ -346,5 +346,54 @@ describe('claims on files named with any Markdown casing (PR #194 F-03)', () => 
     fileSystem.files.set(claimOf(fileName, clock.at - 1, 'old1'), new TextEncoder().encode('an earlier version'));
     expect(await store.delete(entry.memory.id)).toEqual({ kind: 'deleted' });
     expect(everyFile(fileSystem)).toEqual([]);
+  });
+});
+
+describe('failure logs carry an error category, never a path or provider text (PR #194 F-04)', () => {
+  const pathError = (code: string, filePath: string) => Object.assign(new Error(`${code}: operation failed, open '${filePath}'`), { code });
+  const leaks = (lines: readonly string[]) => lines.filter((line) => /\/workspace|alice|private|plot|twist|operation failed/i.test(line));
+
+  it('create: a staging write and a commit that fail', async () => {
+    const { fileSystem, store, lines } = host();
+    jest.spyOn(fileSystem, 'writeFile').mockImplementationOnce(async (filePath) => { throw pathError('ENOSPC', filePath); });
+    expect(await store.create({ ...DRAFT, title: 'Alice private plot twist' })).toEqual({ kind: 'failed' });
+    jest.spyOn(fileSystem, 'rename').mockImplementationOnce(async (_from, toPath) => { throw pathError('EACCES', toPath); });
+    expect(await store.create({ ...DRAFT, title: 'Alice private plot twist' })).toEqual({ kind: 'failed' });
+    expect(leaks(lines)).toEqual([]);
+    expect(lines).toEqual(expect.arrayContaining([expect.stringContaining('ENOSPC'), expect.stringContaining('EACCES')]));
+  });
+
+  it('rewrite: a staging write and a commit that fail', async () => {
+    const { fileSystem, store, lines } = host();
+    const entry = await createdEntry(store, { title: 'Alice private plot twist' });
+    jest.spyOn(fileSystem, 'writeFile').mockImplementationOnce(async (filePath) => { throw pathError('ENOSPC', filePath); });
+    expect(await store.replace(entry.memory.id, (memory) => ({ ...memory, pinned: true }))).toEqual({ kind: 'failed' });
+    const rename = fileSystem.rename.bind(fileSystem);
+    jest.spyOn(fileSystem, 'rename').mockImplementation(async (fromPath, toPath, options) => {
+      if (fromPath.includes('.tmp-')) {
+        throw pathError('EIO', toPath);
+      }
+      return rename(fromPath, toPath, options);
+    });
+    expect(await store.replace(entry.memory.id, (memory) => ({ ...memory, pinned: true }))).toEqual({ kind: 'failed' });
+    expect(leaks(lines)).toEqual([]);
+    expect(lines).toEqual(expect.arrayContaining([expect.stringContaining('ENOSPC'), expect.stringContaining('EIO')]));
+  });
+
+  it('delete: a removal that fails', async () => {
+    const { fileSystem, store, lines } = host();
+    const entry = await createdEntry(store, { title: 'Alice private plot twist' });
+    jest.spyOn(fileSystem, 'delete').mockImplementation(async (filePath) => { throw pathError('EBUSY', filePath); });
+    expect(await store.delete(entry.memory.id)).toEqual({ kind: 'failed' });
+    expect(leaks(lines)).toEqual([]);
+    expect(lines).toEqual(expect.arrayContaining([expect.stringContaining('EBUSY')]));
+  });
+
+  it('an error with no code is a bounded category, not its message', async () => {
+    const { fileSystem, store, lines } = host();
+    jest.spyOn(fileSystem, 'writeFile').mockRejectedValueOnce(new Error('Alice private plot twist could not be written to /workspace/x'));
+    expect(await store.create(DRAFT)).toEqual({ kind: 'failed' });
+    expect(leaks(lines)).toEqual([]);
+    expect(lines).toEqual(['[ProjectMemoryStore] Could not stage a new memory: no error code']);
   });
 });

@@ -21,14 +21,14 @@
  *   to its saved name, or, should a new file have taken that name
  *   meanwhile, to the caller's fallback name.
  * - **Logs** carry the caller's label for the file (its id) and reasons,
- *   never the writer's text.
+ *   with errors as the claims' `formatError` gives them, never the
+ *   writer's text.
  */
 
 import * as path from 'node:path';
 import type { FileSystem, LogSink } from '@/platform';
 import {
   deleteStoredFileQuietly,
-  storedFileErrorMessage,
   storedFileExists,
   type StoredFileClaimState,
   type StoredFileClaims
@@ -81,7 +81,7 @@ export async function commitStoredFileRewrite(
   try {
     await fileSystem.writeFile(temporaryPath, commit.written);
   } catch (error) {
-    log.appendLine(`${logPrefix} Could not stage a rewrite of ${label}: ${storedFileErrorMessage(error)}`);
+    log.appendLine(`${logPrefix} Could not stage a rewrite of ${label}: ${claims.formatError(error)}`);
     await deleteStoredFileQuietly(fileSystem, temporaryPath);
     return { kind: 'failed' };
   }
@@ -116,7 +116,7 @@ export async function commitStoredFileRewrite(
   try {
     await fileSystem.rename(temporaryPath, filePath, { overwrite: false });
   } catch (error) {
-    log.appendLine(`${logPrefix} Could not rewrite ${label}; it is left as it was: ${storedFileErrorMessage(error)}`);
+    log.appendLine(`${logPrefix} Could not rewrite ${label}; it is left as it was: ${claims.formatError(error)}`);
     await release(ports, claimPath, commit, temporaryPath);
     return { kind: 'failed' };
   }

@@ -77,6 +77,12 @@ export interface StoredFileClaimsConfig {
    * leaves it out.
    */
   readonly logName?: (name: string) => string;
+  /**
+   * How a log line gives a file system error; its message by default. A
+   * store whose paths carry writer text gives one that keeps a bounded
+   * category and drops the message (PR #194 F-04).
+   */
+  readonly formatError?: (error: unknown) => string;
 }
 
 interface Claim {
@@ -136,6 +142,11 @@ export class StoredFileClaims {
     return this.config.logName ? this.config.logName(name) : name;
   }
 
+  /** A file system error, as a log line gives it. */
+  formatError(error: unknown): string {
+    return this.config.formatError ? this.config.formatError(error) : storedFileErrorMessage(error);
+  }
+
   /** Whether `name` is one of this store's claims. */
   isClaim(name: string): boolean {
     return this.config.claimPattern.test(name);
@@ -191,7 +202,7 @@ export class StoredFileClaims {
     try {
       await this.fileSystem.delete(claimPath);
     } catch (error) {
-      this.log.appendLine(`${this.config.logPrefix} Could not delete ${label}: ${storedFileErrorMessage(error)}`);
+      this.log.appendLine(`${this.config.logPrefix} Could not delete ${label}: ${this.formatError(error)}`);
       // Back under its saved name at once, rather than hidden under the claim until the lease runs out.
       await this.fileSystem.rename(claimPath, filePath, { overwrite: false }).catch(() => undefined);
       return 'failed';
