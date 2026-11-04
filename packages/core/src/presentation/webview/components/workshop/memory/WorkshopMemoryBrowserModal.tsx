@@ -54,6 +54,7 @@ const UNAVAILABLE: Record<'no-workspace' | 'multi-root', string> = {
   'multi-root': 'Project memory isn’t available here: this workspace has several folders. Open a single folder to use project memory.'
 };
 
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopMemoryBrowserModal: React.FC<WorkshopMemoryBrowserModalProps> = ({
   open,
   workspace,

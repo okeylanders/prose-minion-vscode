@@ -18,6 +18,7 @@ interface WorkshopMemoryManagerMountProps {
   onNewMemory: () => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopMemoryManagerMount: React.FC<WorkshopMemoryManagerMountProps> = ({ manager, mode, onEdit, onNewMemory }) => (
   <WorkshopMemoryBrowserModal
     open={manager.managerOpen}

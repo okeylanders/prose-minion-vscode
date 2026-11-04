@@ -36,6 +36,7 @@ export interface WorkshopMemorySettingsPanelProps extends WorkshopMemoryTabInput
   onOpenFolder: () => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelProps> = ({
   disabled,
   onSelectMode,
@@ -166,6 +167,7 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
 };
 
 /** A budget meter: a `meter` role with the budget's figures, and its caption. */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 const MemoryMeter: React.FC<{ meter: WorkshopMemoryMeterView }> = ({ meter }) => (
   <>
     <div

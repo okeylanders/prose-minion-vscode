@@ -44,6 +44,7 @@ interface WorkshopMemoryRowProps extends WorkshopMemoryRowActions {
   openDisabled: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopMemoryRow: React.FC<WorkshopMemoryRowProps> = ({
   row,
   controls,
@@ -158,6 +159,7 @@ export const WorkshopMemoryRow: React.FC<WorkshopMemoryRowProps> = ({
 };
 
 /** A conflicting or unreadable file: the row classes, its reason, and Open file only (none for a set-aside copy). */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopMemoryAttentionRow: React.FC<{
   row: AttentionRowView;
   disabled: boolean;
