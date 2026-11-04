@@ -428,8 +428,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
     }
   }
 
-  /** The reply as a log may show it: every project-memory proposal replaced (ADR 2026-11-04 D9; PR #192 F-01). */
-  redactForLog(content: string): string {
+  /**
+   * An intermediate reply as the engine may replay, retain or log it: every
+   * project-memory proposal replaced (ADR 2026-11-04 D6, D9; PR #200 F-01).
+   * Capability calls are left exactly as written.
+   */
+  redactPrivateControls(content: string): string {
     return extractWorkshopReplyControls(content, { memoryOpen: false }).redacted;
   }
 

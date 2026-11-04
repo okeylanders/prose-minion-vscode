@@ -134,11 +134,14 @@ export interface AgentCapability<
   /** Stable per-turn identifiers added to accept/reject logs when available. */
   inspectionLogContext?(): string;
   /**
-   * A reply as diagnostics may show it: the owning domain removes what no log
-   * may hold (a Workshop project-memory proposal, ADR 2026-11-04 D9). The
-   * opt-in rejected-response dump logs this, never the raw reply.
+   * An assistant response with what the owning domain keeps private removed
+   * (a Workshop project-memory proposal, ADR 2026-11-04 D6, D9). The engine
+   * applies it to every intermediate response before it is replayed to the
+   * provider (a correction, a capability round), retained in history, or
+   * dumped in a diagnostic; the final response goes through the run's
+   * `retainedAssistantContentSanitizer`. Never changes a capability call.
    */
-  redactForLog?(content: string): string;
+  redactPrivateControls?(content: string): string;
   /** Optional visible provenance for structurally rejected requests. */
   handleInvalidRequest?(rejection: Rejection): readonly CapabilityArtifact[];
   /** Optional visible provenance when a valid request exceeds the round cap. */

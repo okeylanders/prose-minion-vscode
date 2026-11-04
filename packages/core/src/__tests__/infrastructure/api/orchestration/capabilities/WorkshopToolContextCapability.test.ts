@@ -45,6 +45,15 @@ describe('WorkshopToolContextCapability (Sprint 12 Phase 6)', () => {
     };
   });
 
+  it('redacts a project-memory proposal from an intermediate reply and leaves its call as written (PR #200 F-01)', () => {
+    const call = '<prose-minion-tool-call name="resource.read"><paths><path>guide:craft/dialogue.md</path></paths></prose-minion-tool-call>';
+    const proposal = '<prose-minion-memory-proposal><title>MEMORY-SENTINEL</title></prose-minion-memory-proposal>';
+    const redacted = build({ includeGuides: true }).redactPrivateControls(`${call}\n\n${proposal}`);
+    expect(redacted).toContain(call);
+    expect(redacted).toContain('[project memory proposal removed]');
+    expect(redacted).not.toContain('MEMORY-SENTINEL');
+  });
+
   it('catalogs the source first, bounded nearest same-group neighbors next, guides last', async () => {
     const adapter = build({ source: { group: 'chapters', path: 'chapters/ch-04.md' }, includeGuides: true });
 

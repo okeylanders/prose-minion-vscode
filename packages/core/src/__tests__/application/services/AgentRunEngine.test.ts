@@ -854,7 +854,7 @@ describe('AgentRunEngine', () => {
   });
 
   it('dumps a rejected response through the capability\'s redaction, so no memory proposal reaches the log (ADR 2026-11-04 D9)', async () => {
-    const guides = { ...capability(), redactForLog: (content: string) => extractWorkshopReplyControls(content, { memoryOpen: false }).redacted };
+    const guides = { ...capability(), redactPrivateControls: (content: string) => extractWorkshopReplyControls(content, { memoryOpen: false }).redacted };
     const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
     const debugSettings = { get: jest.fn().mockReturnValue(true) };
     const diagnosticEngine = new AgentRunEngine(client as never, conversations, undefined, output, undefined, debugSettings as never);
@@ -878,6 +878,47 @@ describe('AgentRunEngine', () => {
     expect(logs).toContain('BEGIN REJECTED CAPABILITY RESPONSE');
     expect(logs).toContain('[project memory proposal removed]');
     expect(logs).not.toContain('MEMORY-SENTINEL');
+  });
+
+  it('never replays, retains or logs a memory proposal from an intermediate response (PR #200 F-01)', async () => {
+    const redact = (content: string) => extractWorkshopReplyControls(content, { memoryOpen: false }).redacted;
+    // A trailing proposal beside a call is accepted here, so both paths that
+    // replay an intermediate response (correction and capability round) run.
+    const guides = {
+      ...capability(),
+      catalog: 'workshopToolContext' as const,
+      inspectRequest: jest.fn((candidate: string) => guideGate.inspect(extractWorkshopReplyControls(candidate, { memoryOpen: false }).rest)),
+      redactPrivateControls: redact
+    };
+    const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    const debugSettings = { get: jest.fn().mockReturnValue(true) };
+    const retaining = new AgentRunEngine(client as never, conversations, undefined, output, undefined, debugSettings as never);
+    const invalid = '<prose-minion-tool-call name="resource.read"><paths><path>outside-catalog.md</path></paths></prose-minion-tool-call>';
+    const trailer = (n: number) => `<prose-minion-memory-proposal><title>MEMORY-SENTINEL-${n}</title></prose-minion-memory-proposal>`;
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce(stream([`${invalid}\n\n${trailer(1)}`]))
+      .mockReturnValueOnce(stream([`${GUIDE_REQUEST}\n\n${trailer(2)}`]))
+      .mockReturnValueOnce(stream(['Final prose.']));
+
+    let result;
+    try {
+      result = await retaining.runInitial({
+        toolName: 'workshop-tool', systemMessage: 'System', userMessage: 'Analyze this.',
+        policy: AGENT_RUN_POLICIES.workshopTool, capability: guides,
+        options: { onToken: jest.fn() }
+      });
+    } finally {
+      retaining.dispose();
+    }
+
+    expect(guides.fulfill).toHaveBeenCalledTimes(1);
+    const replayed = JSON.stringify(client.createStreamingChatCompletion.mock.calls.slice(1));
+    expect(replayed).toContain('[project memory proposal removed]');
+    expect(replayed).toContain('outside-catalog.md');
+    expect(replayed).toContain('dialogue.md');
+    expect(replayed).not.toContain('MEMORY-SENTINEL');
+    expect(JSON.stringify(conversations.getMessages(result.conversationId!))).not.toContain('MEMORY-SENTINEL');
+    expect(output.appendLine.mock.calls.flat().join('\n')).not.toContain('MEMORY-SENTINEL');
   });
 
   it('withholds the full rejected-response dump by default and says how to enable it', async () => {

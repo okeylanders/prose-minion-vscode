@@ -226,7 +226,7 @@ describe('the persona capability\'s log redaction (ADR 2026-11-04 D9)', () => {
       signal: new AbortController().signal,
       events: { status: jest.fn(), turnCompleted: jest.fn(), sessionChanged: jest.fn() }
     });
-    const logged = capability.redactForLog(`Good.\n\n${sentinelFrame()}`);
+    const logged = capability.redactPrivateControls(`Good.\n\n${sentinelFrame()}`);
     expect(logged).toBe('Good.\n\n[project memory proposal removed]');
     expect(logged).not.toContain(SENTINEL);
   });
