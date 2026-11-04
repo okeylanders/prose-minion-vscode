@@ -6,6 +6,28 @@
 - **Comparison base:** `2b4aaba90013a88f3f183214b244021c7661abb6` (PR #197)
 - **Verdict:** **Changes requested: F-01 through F-05.** This is a written review verdict, not a formal GitHub approval, merge, or changes-requested review submission.
 
+## Re-review at `edc5a6cb69cecb410e80861bbe1db4998eec99aa` (2026-11-04 19:08 UTC)
+
+**Current verdict: changes requested, F-01 through F-06.** The original review below remains a record of `5dcc8d02`.
+
+- The deferred receipt/D14 fold is now implemented. Receipts use the shared `ProjectMemoryVersion`; the fold is bounded by the participant's prepared/committed room-delivery point; the new tests cover the host, separate guest offsets, re-invitation, Rewind/Branch and digest records.
+- **F-01 is partly corrected:** `AgentCapability.redactForLog` now removes a well-formed proposal from rejected-capability diagnostics. The actual engine still sends that proposal in the correction request and commits it in intermediate assistant history. F-01 remains open for replay/retention. Nested malformed frames still leak through the new log hook because of F-03.
+- **F-02 and F-03 are unchanged and reproduced again.** Their production files are byte-identical to the original review. **F-04 and F-05 are reproduced again** against the new real library/routes/hook/sheet.
+- **New verification:** core, webview and extension typechecks pass; **17 production suites / 294 tests pass**. The original three adversarial Jest witnesses still confirm the open faults, and two new digest-reversal witnesses confirm F-06. Real engine and renderer probes independently reconfirm the privacy cases. No full-suite, lint or live-provider result is claimed for this re-review.
+- GitHub reported this exact head as conflicting with the unchanged PR #197 base (`2b4aaba9`). Recheck the final base/merge result after the stack is reconciled.
+
+### F-06 · P2 · Digest equality ignores a newer receipt and hides a restore or revert
+
+**Location:** [ProjectMemoryUpdateNote.ts:59–64](https://github.com/okeylanders/prose-minion-vscode/blob/edc5a6cb69cecb410e80861bbe1db4998eec99aa/packages/core/src/application/services/workshop/memory/ProjectMemoryUpdateNote.ts#L59-L64), in the receipt-fold integration.
+
+Above 4,096 memories, the delivered view has a digest plus later `receipted` overrides. The renderer returns “current” as soon as the folder matches the old digest, without checking whether those later receipts told this participant a different state.
+
+**Executed reproduction:** start with a 4,100-memory snapshot/digest containing memory A at version V1. Fold a delivered Forget receipt for A (`receipted[A] = null`). Restore A outside this room before the next turn, returning the folder to the original digest. The renderer returns no note and `changed: 0`, even though this participant's latest information says A is forgotten. The same failure occurs after an in-room edit receipt at V2 and an external revert to V1. Both cases were independently run through the production renderer.
+
+The next turn can receive the Forget receipt in its catch-up and no correcting restore note, or continue believing a previously delivered Forget. This is specific to the new receipt-aware digest view; the ordinary map path would recognize the mismatch.
+
+**Requested correction:** only accept digest equality when every later receipt is consistent with the current snapshot, or otherwise account for those overrides before concluding that nothing changed. Keep the bounded fallback: a contradictory or unverifiable receipt can produce one count-line update and record a fresh snapshot. Regress Forget→external Restore and Edit→external revert, for receipts already delivered and receipts arriving in the current catch-up.
+
 ## Scope and assessment
 
 Reviewed the 93-file stacked diff, the memory ADR and Slice 3 acceptance criteria, the trailer/retention integration, writer routes, library/store boundaries, session codecs, receipt flow, webview hook/card/sheet, and shutdown. Production TypeScript and relevant tests/configuration were materialized and checked against this head's Git blob hashes; no live provider was called.
