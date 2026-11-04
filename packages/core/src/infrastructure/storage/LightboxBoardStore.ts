@@ -339,25 +339,10 @@ export class LightboxBoardStore {
       if (read.kind !== 'board') {
         return { kind: 'unreadable' };
       }
-      // Held under a claim of its own, so no other writer rewrites it meanwhile.
-      const claimPath = await this.claims.take(filePath, this.mintStagingId());
-      if (!claimPath) {
-        const state = await this.claims.settle(filePath);
-        return { kind: state === 'busy' ? 'busy' : state === 'absent' ? 'missing' : 'failed' };
-      }
-      // Every earlier version a rewrite left beside it goes first, so none can come back after the delete.
-      if (!(await this.claims.retire(filePath, claimPath))) {
-        await this.fileSystem.rename(claimPath, filePath, { overwrite: false })
-          .catch(() => this.log.appendLine(`${LOG} ${fileId} could not be put back at once; it comes back once its claim is older than the lease.`));
-        return { kind: 'failed' };
-      }
-      try {
-        await this.fileSystem.delete(claimPath);
-      } catch (error) {
-        this.log.appendLine(`${LOG} Could not delete ${fileId}: ${errorMessage(error)}`);
-        // Back under its saved name at once, rather than hidden under the claim until the lease runs out.
-        await this.fileSystem.rename(claimPath, filePath, { overwrite: false }).catch(() => undefined);
-        return { kind: 'failed' };
+      // Held under a claim of its own, so no other writer rewrites it meanwhile; every earlier version goes first.
+      const deleted = await this.claims.deleteClaimed(filePath, fileId, this.mintStagingId());
+      if (deleted !== 'deleted') {
+        return { kind: deleted };
       }
       this.files.forget(fileId);
       if (this.lastOnScreen() === fileId) {

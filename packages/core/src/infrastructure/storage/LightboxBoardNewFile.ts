@@ -16,7 +16,8 @@ import * as path from 'node:path';
 import type { FileSystem, LogSink } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { LIGHTBOX_BOARDS_DISPLAY_PATH } from '@/infrastructure/storage/LightboxBoardFiles';
-import { boardFileExists, deleteBoardFileQuietly, freeBoardFileName } from '@/infrastructure/storage/LightboxBoardClaims';
+import { freeBoardFileName } from '@/infrastructure/storage/LightboxBoardClaims';
+import { deleteStoredFileQuietly, storedFileExists } from '@/infrastructure/storage/StoredFileClaims';
 
 const LOG = '[LightboxBoardStore]';
 /** A commit that finds its final name taken tries the next free one, this many times at most. */
@@ -58,7 +59,7 @@ export async function writeNewLightboxBoardFile(
     return { kind: 'refused' };
   }
   const fail = async (error: unknown): Promise<LightboxBoardNewFileResult> => {
-    await deleteBoardFileQuietly(fileSystem, temporaryPath);
+    await deleteStoredFileQuietly(fileSystem, temporaryPath);
     return { kind: 'failed', error };
   };
   try {
@@ -72,14 +73,14 @@ export async function writeNewLightboxBoardFile(
     const finalPath = path.join(folder, name);
     // The commit point: nothing is awaited between it and the rename that commits.
     if (write.beforeCommit && !write.beforeCommit()) {
-      await deleteBoardFileQuietly(fileSystem, temporaryPath);
+      await deleteStoredFileQuietly(fileSystem, temporaryPath);
       return { kind: 'withdrawn' };
     }
     try {
       await fileSystem.rename(temporaryPath, finalPath, { overwrite: false });
     } catch (error) {
       // Another writer took the name between the look and the rename: take the next one; this save's bytes are still staged.
-      if (attempt < COMMIT_ATTEMPTS && await boardFileExists(fileSystem, finalPath) && await boardFileExists(fileSystem, temporaryPath)) {
+      if (attempt < COMMIT_ATTEMPTS && await storedFileExists(fileSystem, finalPath) && await storedFileExists(fileSystem, temporaryPath)) {
         continue;
       }
       return fail(error);
