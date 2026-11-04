@@ -7,7 +7,7 @@ amended (`774e283`) to the spec thread's early format and storage decisions,
 relayed by the coordinator on 2026-11-04. Where the two differ, the relay
 wins.
 **Branch:** `epic/workshop-project-memory-slice-1-store`
-**Status:** Built and pushed; waiting on the ADR and the coordinator's PR.
+**Status:** Built, verified and pushed; waiting on the ADR and the coordinator's PR.
 
 ## Outcome
 
@@ -217,6 +217,10 @@ Free Markdown.
   - deletes, with a leftover retired;
   - claims: an abandoned one put back, logged without the file's name; a
     live one busy everywhere.
+- `boundaries.test.ts`: the shared primitive imports no `Lightbox*` or
+  `ProjectMemory*` module, and only `ProjectMemoryStore` builds
+  `StoredFileClaims` directly. A mutation (a Lightbox import added to
+  `StoredFileRewrite`) fails it.
 - `ProjectMemoryStoreRaces.test.ts` (9), two stores on one file system:
   - **Two windows saving at once lose nothing,** including when both mint
     the same id.
@@ -248,19 +252,25 @@ Free Markdown.
   - `supersedes` as a list of up to 8, not one id;
   - turns needing a session;
   - an empty body allowed;
-  - `pinned` always written, since it is a boolean on the type;
-  - key lines tolerating space before the colon and no space after it, for
-    hand edits. Values still split at the first colon.
+  - `pinned` always written (`pinned: false`), and read as `false` when
+    absent (the coordinator accepted this);
+  - key lines read leniently (space before the colon, or `key:value` with no
+    space), always written `key: value`, values literal after the first
+    colon (accepted).
 - **`updated` is not stamped by the store on `replace`.** A pin need not
   reorder the catalog's "most recently updated"; the application service
   decides.
-- **Shared, not copied** (the brief asked for this, and for a separate
-  commit). The relay's item 11 asks for memory-owned claim siblings and no
-  Lightbox refactor in this epic, though it accepts parameterizing the
-  Lightbox pattern with its tests unchanged. The refactor had already
-  landed when the relay arrived, so this is raised with the coordinator:
-  keep it, or revert `768b41f`, write `ProjectMemoryClaims` and add the
-  tech-debt note. As built:
+- **`768b41f`: a deliberate, behavior-preserving Lightbox refactor.** The
+  brief asked for reuse, with any refactor in its own commit. The relay's
+  item 11 then asked for memory-owned claim siblings instead. The
+  coordinator kept the refactor (one shared primitive for PR #164's rules,
+  not two copies), so there is no tech-debt note, and the ADR's D10 names
+  the primitive. `768b41f` touches no test file. Its targeted run
+  (`npx jest Lightbox boundaries webviewHtml extensionShutdown`) passed
+  184 suites / 2,306 tests unchanged, and the full suite passed after it
+  (639 suites / 9,063 tests at `0afa58d`).
+  `boundaries.test.ts` now holds `StoredFileClaims` and `StoredFileRewrite`
+  neutral: they import no `Lightbox*` or `ProjectMemory*` module. As built:
   - `LightboxBoardClaims` is now `StoredFileClaims` over the Lightbox's claim
     pattern and log prefix.
   - The stage/claim/compare/commit/release half of
@@ -295,9 +305,9 @@ Free Markdown.
 
 | | Before (`8fb016f`) | After |
 |---|---|---|
-| `npm run typecheck` | clean | AFTER_TC |
-| `npm run lint` | 0 errors | AFTER_LINT |
-| `npx jest` | 636 suites / 8,977 tests / 59 snapshots | AFTER_JEST |
+| `npm run typecheck` | clean | clean |
+| `npm run lint` | 0 errors | 0 errors, 1,153 warnings; none in a new or changed file (the one warning in the storage folder is `pathContainment.ts`'s, untouched) |
+| `npx jest` | 636 suites / 8,977 tests / 59 snapshots | 639 suites / 9,071 tests / 59 snapshots (+3 suites, +94 tests: codec 61, store 23, races 9, the boundaries guard 1) |
 | `from 'vscode'` in `packages/core/src` | none | none |
 
 **File sizes (lines).**
@@ -306,16 +316,17 @@ Free Markdown.
 |---|---|
 | `infrastructure/storage/StoredFileClaims.ts` (new) | 282 |
 | `infrastructure/storage/StoredFileRewrite.ts` (new) | 159 |
-| `infrastructure/storage/ProjectMemoryCodec.ts` (new) | 342 |
-| `infrastructure/storage/ProjectMemoryFiles.ts` (new) | 204 |
-| `infrastructure/storage/ProjectMemoryStore.ts` (new) | 421 |
-| `infrastructure/storage/ProjectMemoryStoreContracts.ts` (new) | 99 |
-| `shared/types/projectMemory.ts` (new) | 80 |
+| `infrastructure/storage/ProjectMemoryCodec.ts` (new) | 343 |
+| `infrastructure/storage/ProjectMemoryFiles.ts` (new) | 209 |
+| `infrastructure/storage/ProjectMemoryStore.ts` (new) | 424 |
+| `infrastructure/storage/ProjectMemoryStoreContracts.ts` (new) | 103 |
+| `shared/types/projectMemory.ts` (new) | 108 |
 | `infrastructure/storage/LightboxBoardClaims.ts` | 229 → 82 |
 | `infrastructure/storage/LightboxBoardRewrite.ts` | 263 → 216 |
 | `infrastructure/storage/LightboxBoardStore.ts` | 429 → 414 |
 | `infrastructure/storage/LightboxBoardNewFile.ts` | 91 → 92 |
-| `__tests__/infrastructure/storage/ProjectMemoryCodec.test.ts` | 212 |
-| `__tests__/infrastructure/storage/ProjectMemoryStore.test.ts` | 297 |
+| `__tests__/infrastructure/storage/ProjectMemoryCodec.test.ts` | 242 |
+| `__tests__/infrastructure/storage/ProjectMemoryStore.test.ts` | 327 |
 | `__tests__/infrastructure/storage/ProjectMemoryStoreRaces.test.ts` | 220 |
-| `__tests__/infrastructure/storage/projectMemoryStoreHost.ts` | 72 |
+| `__tests__/infrastructure/storage/projectMemoryStoreHost.ts` | 73 |
+| `__tests__/architecture/boundaries.test.ts` | 2,418 → 2,436 (already past 500 before this slice; the guard adds 18) |
