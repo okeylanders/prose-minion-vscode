@@ -2,17 +2,56 @@
 
 - **Reviewed:** 2026-11-04
 - **PR:** https://github.com/okeylanders/prose-minion-vscode/pull/201
-- **Implementation head:** `4c13ce5884a74ac65fa74bd540b2389417938417`
+- **Latest reviewed head:** `0da80c5b1b81e6f40cc9bb93ae5548901138f8be`
 - **Comparison base:** `685e6b4c07dd24cf63f24f9b60edc1ace0f6d8a4` (`epic/workshop-project-memory`)
-- **Verdict:** **Changes requested: F-01 through F-03.** This is a written review verdict, not a formal GitHub review submission or merge.
+- **Verdict:** **Changes requested: F-04. F-01 through F-03 closed.** This is a written review verdict, not a formal GitHub review submission or merge.
 
-## Scope
+## Re-review at `0da80c5b1b81e6f40cc9bb93ae5548901138f8be` (2026-11-04 21:18 UTC)
+
+**Current verdict: changes requested for F-04. F-01 through F-03 are closed.** The corrections address the original failures, but allowing the next run to proceed before an already-committed save records its receipt exposes the cap race below.
+
+Verified corrections:
+- **F-01:** the automatic save passes a live permission callback into the library queue and the store's final commit check. It checks mode, run cancellation, room revision and pending-card state. Ask/Off withdrawal before the queue or commit now leaves the card pending; writer saves with memory Off still work.
+- **F-02:** a changed edited draft no longer receives an unchanged-save success. During the owning run's tail it receives an explicit refusal, retaining the sheet draft; a retry after settlement updates the saved memory and records an updated receipt. Unedited or equivalent duplicate Saves still coalesce.
+- **F-03:** the automatic save is now the original run's tail, owned by its controller. The waits at the start of Send/tool/invite are removed. Independent replacement-room, target-change and disposal witnesses now pass their corrected-behavior assertions: no stale request resumes in a new room, the clicked recipient is retained, and disposal starts no provider request.
+- **Accessibility:** interactive saved/forgotten receipts are now labelled groups; noninteractive receipts retain separator semantics. UI tests pass and the existing refusal correlation preserves the edited draft.
+
+### F-04 · P2 · Account for committed saves whose receipts have not landed when enforcing the room cap
+
+**Location:** [WorkshopMemoryAutoSaves.ts:88–95](https://github.com/okeylanders/prose-minion-vscode/blob/0da80c5b1b81e6f40cc9bb93ae5548901138f8be/packages/core/src/application/handlers/domain/workshop/WorkshopMemoryAutoSaves.ts#L88-L95). The completion-time decision counts only existing receipts at [WorkshopMemoryAutoSave.ts:48–49](https://github.com/okeylanders/prose-minion-vscode/blob/0da80c5b1b81e6f40cc9bb93ae5548901138f8be/packages/core/src/application/services/workshop/memory/WorkshopMemoryAutoSave.ts#L48-L49), while the file commits before the awaited [receipt-version read](https://github.com/okeylanders/prose-minion-vscode/blob/0da80c5b1b81e6f40cc9bb93ae5548901138f8be/packages/core/src/application/services/workshop/memory/ProjectMemoryWrites.ts#L338-L344).
+
+The revised run flow correctly avoids delaying future sends. However, the next reply can now be admitted for automatic saving while an earlier memory is already on disk but its receipt is still pending. Its decision sees the old receipt count. The queued write's new live permit does not recheck or reserve room capacity.
+
+**Executed witness, using the real router/session/completion/library/store:**
+1. Save four automatic memories normally.
+2. Let the fifth file commit, then delay its `store.list()` call used to compute the receipt version. Five files exist, but the room has four automatic receipts.
+3. Send another message and complete a sixth proposal while that version read is held. Its route is `auto`, because it still sees four receipts.
+4. Release the read and let both saves settle.
+
+**Observed:** **six files, six `by: 'auto'` saved receipts, and six saved cards without a hold**, although `autoSavesPerRoom` is five. The fifth write was already committed, so aborting its original run does not remove it. Serialization of the file writes does not repair the stale admission decision.
+
+This is distinct from the documented choice to record an already-committed save's receipt after a preempting writer message. That can be visible and accounted for; exceeding the explicit automatic-save cap cannot.
+
+**Requested correction:** make automatic-save capacity coherent across admission, queued writes and receipts. Account for in-flight/reserved or committed-but-unreceipted saves and recheck the bounded capacity before an additional file commits. Release reservations correctly for refused/withdrawn writes and room replacement, without breaking the defined Rewind behavior. The over-cap proposal must wait with the `room-cap` reason, not save a sixth file. Add this delayed post-commit version-read regression.
+
+### Verification at this head
+
+- Full source/blob verification completed for the correction head.
+- Core/webview/extension typechecks pass; lint remains **0 errors / 1,170 warnings**.
+- **Four focused production suites / 44 tests pass**, including the new permission/edit/lifecycle race regressions.
+- **Three independent corrected-behavior run-ownership witnesses pass.**
+- **Two UI suites / 16 tests pass** for disclosure/group semantics and draft-preserving refusal/retry.
+- The additional independent post-commit cap witness confirms F-04.
+- The full suite and [CI run 41914004062](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41914004062) are still running. No aggregate pass is claimed for this new head yet.
+- No formal GitHub approval or merge performed. Earlier findings below remain the historical record of `4c13ce58`.
+
+## Original scope at `4c13ce58`
 
 Reviewed the 28-file diff, Slice 5's acceptance criteria and deviations, automatic-save decision and persistence, manual/automatic save coalescing, mode changes, room caps and Rewind, queued message/tool/invite entry points, attached-web provenance, failure fallback, held-card persistence, receipt expansion and accessibility.
 
 The full tracked tree (3,802 blobs, including repository symlinks) was materialized and checked against the implementation head. Independent witnesses use the production router, room/session handlers, completion, library and store; provider calls and host filesystem seams are mocked. No live provider or manual VS Code pass was performed.
 
-## Findings
+## Original findings (closed at the re-review above)
 
 ### F-01 · P2 · Recheck automatic-save permission when the queued write commits
 
@@ -71,6 +110,6 @@ This differs from the documented choice to keep an already-written memory when i
 - **CI:** [implementation run 41909466377](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41909466377) passed. The report-only head's run remained in progress at 20:57 UTC.
 - GitHub reported this head mergeable. No formal GitHub approval or merge performed.
 
-## Re-review gates
+## Original re-review gates
 
 Fix F-01 through F-03 and add the interrupted/racing flow regressions. Rerun the exact new head's focused and aggregate checks, preserving full failure output for any intermittent test failure. Verify unchanged-scope behavior: explicit writer saves with memory Off, unchanged duplicate Save coalescing, next-turn receipt delivery, and the attached-web hold.
