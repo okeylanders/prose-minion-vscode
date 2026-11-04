@@ -18,6 +18,8 @@ export interface ProjectMemoryDeliveredView {
   readonly memories: ReadonlyMap<string, string>;
   /** Whether any frame or note was ever recorded for this conversation. */
   readonly recorded: boolean;
+  /** A set too large to list was recorded as this digest instead (PR #198 F-03). */
+  readonly digest?: { readonly count: number; readonly hash: string };
 }
 
 export function projectMemoryDeliveredView(
@@ -25,13 +27,17 @@ export function projectMemoryDeliveredView(
   participant: WorkshopCapabilityPrincipal
 ): ProjectMemoryDeliveredView {
   const key = workshopProjectMemoryParticipantKey(participant);
-  let latest: ReadonlyMap<string, string> | undefined;
+  let latest: ProjectMemoryDeliveredView | undefined;
   for (const turn of turns) {
     for (const delivery of turn.projectMemoryDelivery ?? []) {
       if (workshopProjectMemoryParticipantKey(delivery.participant) === key) {
-        latest = new Map(delivery.memories.map(({ id, version }) => [id, version]));
+        latest = {
+          memories: new Map(delivery.memories.map(({ id, version }) => [id, version])),
+          recorded: true,
+          ...(delivery.digest ? { digest: { ...delivery.digest } } : {})
+        };
       }
     }
   }
-  return { memories: latest ?? new Map(), recorded: latest !== undefined };
+  return latest ?? { memories: new Map(), recorded: false };
 }

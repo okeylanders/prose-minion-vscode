@@ -13,6 +13,7 @@
  * history that received it (PR #198 F-01).
  */
 
+import { createHash } from 'crypto';
 import type { WorkshopProjectMemoryDelivery } from '@messages';
 import type { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
 import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
@@ -29,6 +30,7 @@ import {
 export const WORKSHOP_PROJECT_MEMORY_DELIVERY_LIMITS = Object.freeze({ memories: 4_096 });
 
 const VERSION = /^[0-9a-f]{12}$/;
+const DIGEST_HASH = /^[0-9a-f]{16}$/;
 
 /** Strict structure of a turn's `projectMemoryDelivery`; refused on any turn but a persona reply, or for another participant. */
 export function assertWorkshopProjectMemoryDeliveryShape(
@@ -41,7 +43,7 @@ export function assertWorkshopProjectMemoryDeliveryShape(
   }
   const participants = new Set<string>();
   arrayOf(value, path, (item, itemPath) => {
-    const delivery = exactObject(item, itemPath, ['participant', 'kind', 'memories']);
+    const delivery = exactObject(item, itemPath, ['participant', 'kind', 'memories'], ['digest']);
     const participant = exactObject(delivery.participant, `${itemPath}.participant`, ['kind'], ['personaId']);
     enumAt(participant.kind, `${itemPath}.participant.kind`, ['host', 'personaGuest']);
     if (participant.kind === 'personaGuest' ? !isWorkshopPersonaId(participant.personaId) : participant.personaId !== undefined) {
@@ -58,6 +60,18 @@ export function assertWorkshopProjectMemoryDeliveryShape(
     }
     enumAt(delivery.kind, `${itemPath}.kind`, ['frame', 'note']);
     boundedArrayAt(delivery.memories, `${itemPath}.memories`, 0, WORKSHOP_PROJECT_MEMORY_DELIVERY_LIMITS.memories, 'delivered memories');
+    if (delivery.digest !== undefined) {
+      const digest = exactObject(delivery.digest, `${itemPath}.digest`, ['count', 'hash']);
+      if (!Number.isSafeInteger(digest.count) || (digest.count as number) <= WORKSHOP_PROJECT_MEMORY_DELIVERY_LIMITS.memories) {
+        shapeError(`${itemPath}.digest.count`, `an integer above ${WORKSHOP_PROJECT_MEMORY_DELIVERY_LIMITS.memories}`);
+      }
+      if (typeof digest.hash !== 'string' || !DIGEST_HASH.test(digest.hash)) {
+        shapeError(`${itemPath}.digest.hash`, 'a set hash (16 hex digits)');
+      }
+      if (delivery.memories.length > 0) {
+        shapeError(`${itemPath}.memories`, 'empty beside a digest');
+      }
+    }
     const ids = new Set<string>();
     arrayOf(delivery.memories, `${itemPath}.memories`, (memory, memoryPath) => {
       const delivered = exactObject(memory, memoryPath, ['id', 'version']);
@@ -70,6 +84,29 @@ export function assertWorkshopProjectMemoryDeliveryShape(
       }
     });
   });
+}
+
+/**
+ * The record of a delivered snapshot: the list, or, past the codec's bound,
+ * a digest of it (PR #198 F-03), so a committed record always validates.
+ */
+export function workshopProjectMemoryDeliveryOf(
+  participant: WorkshopCapabilityPrincipal,
+  kind: 'frame' | 'note',
+  snapshot: ReadonlyArray<{ readonly id: string; readonly version: string }>
+): WorkshopProjectMemoryDelivery {
+  const memories = snapshot.map(({ id, version }) => ({ id, version }));
+  return memories.length > WORKSHOP_PROJECT_MEMORY_DELIVERY_LIMITS.memories
+    ? { participant: { ...participant }, kind, memories: [], digest: workshopProjectMemorySetDigest(memories) }
+    : { participant: { ...participant }, kind, memories };
+}
+
+/** How many memories, and a hash over their sorted ids and versions. */
+export function workshopProjectMemorySetDigest(
+  snapshot: ReadonlyArray<{ readonly id: string; readonly version: string }>
+): { count: number; hash: string } {
+  const lines = snapshot.map(({ id, version }) => `${id}:${version}`).sort();
+  return { count: lines.length, hash: createHash('sha256').update(lines.join('\n'), 'utf8').digest('hex').slice(0, 16) };
 }
 
 /** One key per conversation: the host's, or a guest's. */
@@ -88,7 +125,8 @@ export function withWorkshopProjectMemoryDelivery(
     {
       participant: { ...delivery.participant },
       kind: delivery.kind,
-      memories: delivery.memories.map(({ id, version }) => ({ id, version }))
+      memories: delivery.memories.map(({ id, version }) => ({ id, version })),
+      ...(delivery.digest ? { digest: { ...delivery.digest } } : {})
     }
   ];
 }

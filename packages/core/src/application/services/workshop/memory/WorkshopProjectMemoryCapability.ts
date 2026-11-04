@@ -26,6 +26,7 @@ import type {
 } from '@shared/types/workshopCapabilities';
 import type { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { projectMemoryDeliveredView } from '@/application/services/workshop/memory/ProjectMemoryDeliveredView';
+import { workshopProjectMemoryDeliveryOf } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import type { ProjectMemoryLibrary, ProjectMemorySnapshot } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
 import type { ProjectMemoryRefusal } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
 import {
@@ -134,11 +135,10 @@ export class WorkshopProjectMemoryCapability {
       if (refused) {
         this.log(`${kind} none reason=${refused}`);
       }
-      if (snapshot && !this.session.stageProjectMemoryDelivery(this.turn.requestId, {
-        participant: { ...this.turn.owner },
-        kind,
-        memories: snapshot.map(({ id, version }) => ({ id, version }))
-      })) {
+      if (snapshot && !this.session.stageProjectMemoryDelivery(
+        this.turn.requestId,
+        workshopProjectMemoryDeliveryOf(this.turn.owner, kind, snapshot)
+      )) {
         this.log(`${kind} none reason=run-not-active`);
         return undefined;
       }

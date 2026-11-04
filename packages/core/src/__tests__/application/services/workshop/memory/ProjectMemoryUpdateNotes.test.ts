@@ -62,6 +62,22 @@ function room(host: ReturnType<typeof libraryHost>) {
   return { session, say, dismiss };
 }
 
+/** The room saved through the strict persisted-session codec, and read back. */
+function saveAndReopen(session: WorkshopSessionService, participants: string[] = ['jill']) {
+  const workshop = session.exportCommittedState();
+  return parseWorkshopPersistedSession(JSON.parse(JSON.stringify({
+    schemaVersion: 2,
+    sessionId: 'tea-party',
+    title: 'Tea party',
+    createdAt: '2026-11-04T10:00:00.000Z',
+    updatedAt: '2026-11-04T10:00:00.000Z',
+    temporal: new WorkshopSessionTimeService({ now: () => new Date('2026-11-04T10:00:00.000Z') }).exportState(),
+    summary: { hostPersonaId: 'jill', participantPersonaIds: participants, turnCount: workshop.turns.length, excerptWordCount: 0 },
+    workshop,
+    conversations: []
+  })));
+}
+
 const noteOf = (message: string): string | undefined => /<project-memory-update[\s\S]*<\/project-memory-update>/.exec(message)?.[0];
 const items = (note: string | undefined) => [...(note ?? '').matchAll(/<(entry|pinned|gone) id="(mem-[0-9a-f]{6})"[^>]*>([^<]*)/g)]
   .map((match) => `${match[1]}:${match[2]}${match[1] === 'gone' ? `:${match[3]}` : ''}`);
@@ -232,21 +248,54 @@ describe('a re-invited guest is a new conversation (PR #198 F-02)', () => {
     const { say, session } = room(host);
     await say('Hello.');
     await say('Join us.', 'cliff');
-    const workshop = session.exportCommittedState();
-    const reopened = parseWorkshopPersistedSession(JSON.parse(JSON.stringify({
-      schemaVersion: 2,
-      sessionId: 'tea-party',
-      title: 'Tea party',
-      createdAt: '2026-11-04T10:00:00.000Z',
-      updatedAt: '2026-11-04T10:00:00.000Z',
-      temporal: new WorkshopSessionTimeService({ now: () => new Date('2026-11-04T10:00:00.000Z') }).exportState(),
-      summary: { hostPersonaId: 'jill', participantPersonaIds: ['jill', 'cliff'], turnCount: workshop.turns.length, excerptWordCount: 0 },
-      workshop,
-      conversations: []
-    })));
+    const reopened = saveAndReopen(session, ['jill', 'cliff']);
     const view = projectMemoryDeliveredView(reopened.workshop.turns, { kind: 'personaGuest', personaId: 'cliff' });
     expect(view).toEqual({ memories: new Map(), recorded: true });
   });
+});
+
+describe('a set past the record\'s bound (PR #198 F-03)', () => {
+  const many = (host: ReturnType<typeof libraryHost>, count: number, from = 0) => {
+    for (let index = from; index < from + count; index += 1) {
+      host.put(writerMemory({ id: `mem-${index.toString(16).padStart(6, '0')}`, title: `Note ${index}`, summary: 'A small note.' }));
+    }
+  };
+
+  it('records 4,096 memories as a list and 4,097 as a digest, each saving and reopening, never announcing twice and never losing a change', async () => {
+    const host = libraryHost();
+    many(host, 4_096);
+    const { say, session } = room(host);
+    expect(await say('Hello.')).toContain('<more count=');
+    const atBound = saveAndReopen(session).workshop.turns.flatMap((turn) => turn.projectMemoryDelivery ?? []);
+    expect(atBound[0].memories).toHaveLength(4_096);
+    expect(atBound[0].digest).toBeUndefined();
+
+    many(host, 1, 4_096);
+    // The change itself is known from the listed record, so the note names it; the record becomes a digest.
+    expect(items(noteOf(await say('One more?')))).toEqual(['entry:mem-001000']);
+    const reopened = saveAndReopen(session).workshop.turns.flatMap((turn) => turn.projectMemoryDelivery ?? []);
+    expect(reopened[1]).toMatchObject({ kind: 'note', memories: [], digest: { count: 4_097, hash: expect.stringMatching(/^[0-9a-f]{16}$/) } });
+
+    expect(noteOf(await say('Anything new?'))).toBeUndefined();
+    host.put(writerMemory({ id: 'mem-000000', title: 'Note 0, edited', summary: 'A small note.' }));
+    expect(noteOf(await say('And now?'))).toBe(
+      '<project-memory-update note="Changes to this project\'s notes since this conversation last saw them. A later entry replaces an earlier entry ' +
+      'with the same id, and a gone note is no longer in effect; the same framing as project-memory applies.">This project\'s notes changed since ' +
+      'this conversation last saw them; call memory.catalog.</project-memory-update>'
+    );
+    expect(noteOf(await say('Again?'))).toBeUndefined();
+    expect(() => saveAndReopen(session)).not.toThrow();
+  }, 60_000);
+
+  it('a conversation that starts past the bound records its frame as a digest that saves', async () => {
+    const host = libraryHost();
+    many(host, 4_097);
+    const { say, session } = room(host);
+    expect(await say('Hello.')).toContain('<project-memory ');
+    const [frame] = saveAndReopen(session).workshop.turns.flatMap((turn) => turn.projectMemoryDelivery ?? []);
+    expect(frame).toMatchObject({ kind: 'frame', memories: [], digest: { count: 4_097 } });
+    expect(noteOf(await say('Anything new?'))).toBeUndefined();
+  }, 60_000);
 });
 
 describe('mid-room switches (ADR 2026-11-04 D8)', () => {

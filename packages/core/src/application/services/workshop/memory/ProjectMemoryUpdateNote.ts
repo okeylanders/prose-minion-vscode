@@ -31,6 +31,7 @@ import {
 } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
 import type { ProjectMemoryDeliveredView } from '@/application/services/workshop/memory/ProjectMemoryDeliveredView';
 import { escapeProjectMemoryXml } from '@/application/services/workshop/memory/WorkshopProjectMemoryCopy';
+import { workshopProjectMemorySetDigest } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 
 export const PROJECT_MEMORY_UPDATE_NOTE =
   'Changes to this project\'s notes since this conversation last saw them. A later entry replaces an earlier entry ' +
@@ -52,6 +53,21 @@ export function renderProjectMemoryUpdateNote(
   budgets: ProjectMemoryFrameBudgets = PROJECT_MEMORY_FRAME_BUDGETS
 ): ProjectMemoryUpdate {
   const snapshot = projectMemorySnapshot(set);
+  if (view.digest) {
+    // A set too large to list was recorded whole as a digest (PR #198 F-03):
+    // the same set sends nothing; any change is the count line, from the catalog.
+    const current = workshopProjectMemorySetDigest(snapshot);
+    if (current.count === view.digest.count && current.hash === view.digest.hash) {
+      return { snapshot, changed: 0, overBudget: false };
+    }
+    return {
+      text: `<project-memory-update note="${escapeProjectMemoryXml(PROJECT_MEMORY_UPDATE_NOTE)}">This project's notes changed ` +
+        'since this conversation last saw them; call memory.catalog.</project-memory-update>',
+      snapshot,
+      changed: Math.abs(current.count - view.digest.count) || 1,
+      overBudget: true
+    };
+  }
   const changed = set.memories.filter((listed) => isProjectMemoryInEffect(listed) && view.memories.get(listed.memory.id) !== listed.version);
   const inEffect = new Set(snapshot.map(({ id }) => id));
   const gone = [...view.memories.keys()].filter((id) => !inEffect.has(id)).sort();

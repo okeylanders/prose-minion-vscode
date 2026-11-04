@@ -157,5 +157,16 @@ describe('the delivery record across whole-room operations (ADR 2026-11-04 D14)'
     const another = JSON.parse(raw);
     reply(another).projectMemoryDelivery = [{ ...frame('aaaaaaaaaaaa'), participant: { kind: 'personaGuest', personaId: 'cliff' } }];
     expect(() => parseWorkshopPersistedSession(another)).toThrow(/participant must be the reply's own participant/);
+
+    // A digest stands in only for a set past the bound, and only beside an empty list (PR #198 F-03).
+    const digest = (memories: unknown[], count: number, hash = '0123456789abcdef') => {
+      const state = JSON.parse(raw);
+      reply(state).projectMemoryDelivery = [{ participant: HOST, kind: 'note', memories, digest: { count, hash } }];
+      return state;
+    };
+    expect(() => parseWorkshopPersistedSession(digest([], 4_097))).not.toThrow();
+    expect(() => parseWorkshopPersistedSession(digest([], 4_096))).toThrow(/digest\.count must be an integer above 4096/);
+    expect(() => parseWorkshopPersistedSession(digest([{ id: 'mem-7f3c2a', version: 'aaaaaaaaaaaa' }], 4_097))).toThrow(/memories must be empty beside a digest/);
+    expect(() => parseWorkshopPersistedSession(digest([], 4_097, 'xyz'))).toThrow(/digest\.hash must be a set hash/);
   });
 });

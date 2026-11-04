@@ -466,7 +466,19 @@ export interface WorkshopProjectMemoryDelivered {
 export interface WorkshopProjectMemoryDelivery {
   participant: WorkshopCapabilityPrincipal;
   kind: 'frame' | 'note';
+  /** Every memory in effect, by id; empty when `digest` stands in for a set past the record's bound. */
   memories: WorkshopProjectMemoryDelivered[];
+  /**
+   * A set too large to list (PR #198 F-03): how many memories, and a hash of
+   * their ids and versions. The fold compares it whole: the same set sends
+   * nothing, any change sends the count line.
+   */
+  digest?: WorkshopProjectMemoryDeliveryDigest;
+}
+
+export interface WorkshopProjectMemoryDeliveryDigest {
+  count: number;
+  hash: string;
 }
 
 /**
