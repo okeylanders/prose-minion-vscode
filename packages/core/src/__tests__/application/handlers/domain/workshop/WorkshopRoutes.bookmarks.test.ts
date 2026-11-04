@@ -204,4 +204,108 @@ describe('Workshop bookmark routes', () => {
     // New clears them.
     expect(snapshots.at(-1).bookmarks).toEqual([]);
   });
+
+  describe('turn preview (ADR 2026-11-03 D6)', () => {
+    const requestPreview = (harness: Harness, payload: unknown) =>
+      harness.router.route(message(MessageType.WORKSHOP_REQUEST_TURN_PREVIEW, payload) as never);
+    const previews = (harness: Harness) => harness.posted(MessageType.WORKSHOP_TURN_PREVIEW).map((entry) => entry.payload);
+
+    it('registers the read directly, outside the mutation gate', async () => {
+      const harness = await roomWithReply();
+
+      expect(harness.router.hasHandler(MessageType.WORKSHOP_REQUEST_TURN_PREVIEW)).toBe(true);
+    });
+
+    it('answers with the projected turn under the echoed id and touches no session state', async () => {
+      const harness = await roomWithReply();
+      await setBookmark(harness, harness.reply.id);
+      const before = harness.session.exportCommittedState();
+      harness.postMessage.mockClear();
+      harness.persistence.markDirty.mockClear();
+
+      await requestPreview(harness, { requestId: 'ws-preview-a-1', turnId: harness.reply.id });
+
+      expect(previews(harness)).toEqual([{
+        requestId: 'ws-preview-a-1',
+        turnId: harness.reply.id,
+        turn: {
+          kind: 'reply',
+          speaker: 'Jill',
+          content: harness.reply.content,
+          timestamp: harness.reply.timestamp
+        }
+      }]);
+      expect(harness.session.exportCommittedState()).toEqual(before);
+      expect(harness.persistence.markDirty).not.toHaveBeenCalled();
+      expect(harness.posted(MessageType.WORKSHOP_SESSION_STATE)).toEqual([]);
+      expect(logLines(harness)).toContain(`Turn preview sent (turnId=${harness.reply.id})`);
+      expect(logLines(harness)).not.toContain(harness.reply.content);
+    });
+
+    it('answers a writer message as the thread names it', async () => {
+      const harness = await roomWithReply();
+
+      await requestPreview(harness, { requestId: 'r-1', turnId: harness.writer.id });
+
+      expect(previews(harness)[0].turn).toEqual({
+        kind: 'writer',
+        speaker: 'You',
+        content: 'Look at the lantern beat.',
+        timestamp: harness.writer.timestamp
+      });
+    });
+
+    it('refuses an unknown turn with a reason that names no content', async () => {
+      const harness = await roomWithReply();
+
+      await requestPreview(harness, { requestId: 'r-2', turnId: 'turn-404-assistant-1' });
+
+      expect(previews(harness)).toEqual([{
+        requestId: 'r-2',
+        turnId: 'turn-404-assistant-1',
+        error: 'That message is no longer in this session.'
+      }]);
+      expect(logLines(harness)).toContain('Turn preview refused (turnId=turn-404-assistant-1, reason=unknown-turn)');
+    });
+
+    it('answers a malformed turn id under its request id, and reports a request with no id', async () => {
+      const harness = await roomWithReply();
+
+      await requestPreview(harness, { requestId: 'r-3', turnId: 7 });
+      await requestPreview(harness, { turnId: harness.reply.id });
+      await requestPreview(harness, { requestId: 'x'.repeat(129), turnId: harness.reply.id });
+
+      expect(previews(harness)).toEqual([{ requestId: 'r-3', turnId: '', error: 'That message is no longer in this session.' }]);
+      expect(errors(harness)).toEqual([
+        expect.objectContaining({ source: 'workshop.bookmark', message: 'A turn preview must carry its request id' }),
+        expect.objectContaining({ source: 'workshop.bookmark', message: 'A turn preview must carry its request id' })
+      ]);
+    });
+
+    it('waits out a room replacement before reading, and never joins it', async () => {
+      const harness = await roomWithReply();
+      let release: () => void = () => undefined;
+      harness.persistence.isSessionOperationPending.mockReturnValue(true);
+      harness.persistence.waitForSessionOperations.mockReturnValue(new Promise<void>((resolve) => { release = resolve; }));
+
+      const pending = requestPreview(harness, { requestId: 'r-4', turnId: harness.reply.id });
+      await Promise.resolve();
+      expect(previews(harness)).toEqual([]);
+      expect(errors(harness)).toEqual([]);
+
+      release();
+      await pending;
+      expect(previews(harness)).toEqual([expect.objectContaining({ requestId: 'r-4', turn: expect.any(Object) })]);
+    });
+
+    it('reads the turn from the full ledger, not the snapshot window', async () => {
+      const harness = await roomWithReply();
+      const ledgerSpy = jest.spyOn(harness.session, 'readRoomLedger');
+
+      await requestPreview(harness, { requestId: 'r-5', turnId: harness.writer.id });
+
+      expect(ledgerSpy).toHaveBeenCalled();
+      expect(previews(harness)[0].turn).toBeDefined();
+    });
+  });
 });

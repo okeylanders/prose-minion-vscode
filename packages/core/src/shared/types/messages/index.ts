@@ -176,6 +176,8 @@ import {
   WorkshopTodoActionMessage,
   WorkshopSetTurnBookmarkMessage,
   WorkshopRenameBookmarkMessage,
+  WorkshopRequestTurnPreviewMessage,
+  WorkshopTurnPreviewMessage,
   WorkshopPickExcerptFileMessage,
   WorkshopRereadExcerptMessage,
   WorkshopSetSessionScopeMessage,
@@ -321,6 +323,7 @@ export type WebviewToExtensionMessage =
   | WorkshopTodoActionMessage
   | WorkshopSetTurnBookmarkMessage
   | WorkshopRenameBookmarkMessage
+  | WorkshopRequestTurnPreviewMessage
   | WorkshopPickExcerptFileMessage
   | WorkshopRereadExcerptMessage
   | WorkshopSetSessionScopeMessage
@@ -405,6 +408,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextSearchResultsMessage
   | WorkshopContextAttachmentContentMessage
   | WorkshopReadInResourceContentMessage
+  | WorkshopTurnPreviewMessage
   | WorkshopGesturePlaygroundGenerationProgressMessage
   | WorkshopGesturePlaygroundMenuResultMessage
   | WorkshopCreativeVariationsGenerationProgressMessage

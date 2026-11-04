@@ -180,6 +180,11 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: ['WORKSHOP_SET_TURN_BOOKMARK', 'WORKSHOP_RENAME_BOOKMARK']
   },
   {
+    owner: WORKSHOP_BOOKMARK_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_REQUEST_TURN_PREVIEW']
+  },
+  {
     owner: WORKSHOP_SESSION_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: [
@@ -1727,11 +1732,12 @@ describe('architectural boundaries', () => {
     // Lightbox Slice 4 added one of each: the tile offer (direct) and its staging (mutation).
     // Wayfinding Slice 2 added the Read in reader's two reads (direct).
     // Wayfinding Slice 4 added the bookmark set and rename (mutation).
-    expect(expectedOwnerPairs).toHaveLength(63);
+    // Wayfinding Slice 5 added the read-only turn preview (direct).
+    expect(expectedOwnerPairs).toHaveLength(64);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(40);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(23);
+      .toHaveLength(24);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
