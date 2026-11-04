@@ -458,3 +458,17 @@ conflict.
 - **Verification:** typecheck clean; lint 1,170 warnings, the epic's own
   count (measured on the epic alone), so none new; **676 suites / 9,551
   tests / 59 snapshots**, all passing.
+
+**An unreproduced test failure, for CI and review to watch.** One full jest
+run failed a single test, once:
+- **When:** after the F-03 recheck fix and before the epic merge (with
+  #197's merge in).
+- **Result:** 667 of 668 suites and 9,460 of 9,461 tests passed.
+- **Which test:** not captured. The run's output was filtered to its
+  summary lines, and jest keeps no log of failures.
+- **Since then:** five later full runs passed, each with no failure (two
+  before the epic merge, three after).
+- **Where to look:** likely a timing-sensitive test. The fake-timer and
+  concurrency tests added in this slice are candidates:
+  `WorkshopApp.memoryStreaming.test.tsx`, the F-04 concurrent-write tests,
+  and the F-05 overlapping-route tests.
