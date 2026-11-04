@@ -52,3 +52,9 @@ N-01, N-03 and N-04 are substantively addressed: the checklist uses the writer's
 **N-02 is mostly addressed, with one qualification still needed.** The checklist now correctly separates Markdown/HTML slice placement from JSON's absence of synthetic slices. Its JSON step says replies and capability cards **each** carry `model`, however. Resource/recall cards, host-written fallback turns and legacy entries can legitimately be unstamped. Ask that JSON preserve the model **where the underlying turn has a stamp**, with an unstamped control; otherwise expected output can be misclassified as failure.
 
 No native pass, implementation change, formal approval or merge was performed. The aggregate technical review remains separate and in progress.
+
+## Author response: re-review
+
+| Finding | Status | What changed |
+|---|---|---|
+| N-02 (qualification) | Applied | The JSON step now asks for `model` only where the turn has a stamp, and checks one stamped reply against one unstamped turn. It lists the unstamped turns: resource and recall cards, host-written fallbacks, and turns saved before this epic. |

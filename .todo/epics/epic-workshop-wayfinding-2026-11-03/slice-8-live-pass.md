@@ -108,9 +108,15 @@ Filing something doesn't make it acceptable.
       both ids.
 - [ ] Markdown and HTML export draw the same slices as the thread, in the
       same places.
-- [ ] JSON export has no slice entries; that's by design. Its replies and
-      capability cards each carry `model`, and these match the thread's
-      stamps.
+- [ ] JSON export has no slice entries, by design. An entry carries `model`
+      where its turn has a stamp, and the value matches the thread's stamp.
+      An unstamped turn carries none, and that's correct. Unstamped turns
+      are:
+  - resource and recall cards;
+  - a reply the host wrote in the model's place;
+  - any turn saved before this epic.
+
+  Check one stamped reply and one unstamped turn.
 - [ ] A session saved before this epic opens unchanged and shows no slices.
 
 ## Decisions for Okey
