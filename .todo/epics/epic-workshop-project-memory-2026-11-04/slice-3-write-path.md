@@ -444,3 +444,5 @@ could sit inside an opening tag's own bytes (`<tag data-x="</tag>">`).
   retention sanitizer, every streaming prefix, and the engine's correction
   replay, history and logs, with memory on and off and debug on and off.
   All failed on the earlier scanner.
+
+**Verification after the recheck fix and the epic merge** (#197 merged; `git merge --no-ff origin/epic/workshop-project-memory`): typecheck clean, lint 1,158, **668 suites / 9,461 tests / 59 snapshots**, all passing on two consecutive full runs. One earlier full run had a single failing test that did not reproduce; its name was not captured.
