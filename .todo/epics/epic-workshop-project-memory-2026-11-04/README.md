@@ -38,13 +38,14 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 | # | Slice | Outcome | Branch | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR, slice docs 2–6, open questions put to Okey | `…-slice-0-spec` | Done: PR #192, merged at `912ad58` (Astra: findings closed on re-review) |
-| 0d | Settings design | The Memory tab, the memory manager and the suggestion card, designed for Okey's review, then snapshotted under `docs/design/` | `…-slice-0-design` | Approved by Okey (one change: an expandable receipt in Save and tell me); snapshot in progress |
+| 0d | Settings design | The Memory tab, the memory manager and the suggestion card, designed for Okey's review, then snapshotted under `docs/design/` | `…-slice-0-design` | Done: PR #196, merged at `913e715` (Astra: F-01–F-05 closed, approved) |
 | 1 | Store and codec | Format 1 codec (pure), `ProjectMemoryStore` on the shared `StoredFileClaims` primitive, fixtures. No model, no UI | `…-slice-1-store` | In review: PR #194, findings F-01–F-05, N-01 and N-02 fixed at `b8846c4`; waiting on Astra's re-review |
-| 2a | Read path | Library, the catalog frame, `memory.*` (catalog, search, read), every D12 list widened, budgets | `…-slice-2a-read-path` | In progress (on Slice 1's fixed branch; PR after #194 merges) |
-| 2b | Update notes | D14: memory versions, the per-participant delivery record, the appended update note, mid-room Off→On | `…-slice-2b-update-notes` | In progress after 2a (same thread) |
-| 3 | Write path | Proposal trailer, card on the bubble, receipt turns, supersession, "Save to memory…" | — | Waits on Slice 2 |
+| 2a | Read path | Library, the catalog frame (first user message via `appendContract`), `memory.*` (catalog, search, read), every D12 list widened, budgets | `…-slice-2a-read-path` | Built and green at `7ec50ba` (652 / 9,228 / 59); PR opens after #194 merges |
+| 2b | Update notes | D14: memory versions, the per-participant delivery record, the appended update note, mid-room Off→On | `…-slice-2b-update-notes` | In progress (same thread as 2a) |
+| 3 | Write path | Tail extractor and redaction, proposal trailer, card, receipts, supersession, the memory sheet, "Save to memory…", library writes and shutdown drain | `…-slice-3-write-path` | In progress from 2a's head; joins receipts to 2b's fold last |
 | 4a | Settings panels | `WorkshopConversationBehaviorModal` split into one component per tab, behavior and markup unchanged | `…-slice-4a-settings-panels` | Done: PR #193, merged at `efc2788` |
-| 4b | Memory tab and manager | The approved design built on 4a, wired to the host | — | Waits on 0d, Slice 2 and Slice 3 (Slice 3 owns the Save/Edit/New sheet and the write handler; #192 F-03) |
+| 4b-ui | Memory tab and manager, presentation | Tab panel, the "Memory isn't context" well, meters, the manager modal and every design state, as tested components and pure view models; no host wiring | `…-slice-4b-ui` | In progress from 2a's head |
+| 4b-wire | Memory tab and manager, wiring | Manager routes on Slice 3's handler, the hook, mounting the tab, the mode draft in apply-together, Slice 3's sheet for Edit and New | — | Waits on Slice 3 and 4b-ui |
 | 5 | Save and tell me | Automatic saves, caps, the web-research hold, derived `INDEX.md` | — | Waits on Slice 3 |
 | 6 | Verify live | Extension Development Host pass; ADR → Accepted; feature note archived; memory bank | — | Needs a human with VS Code |
 
@@ -176,4 +177,16 @@ The feature note's six open questions, plus the design scope:
 
   2a starts on the epic with Slice 1's fixed branch merged in, so it isn't
   blocked on Astra's re-review of #194. Its PR opens after #194 merges.
+- **2026-11-04. Wayfinding 7b merged in, and 3 and 4b-ui started.**
+  - The epic took `epic/workshop-wayfinding` through Slice 7b (#195) at
+    `0ad996c`. It merged cleanly; typecheck clean, lint 0 errors, 642 / 9,016
+    / 59 passing.
+  - Slice 2a is green at `7ec50ba`. Its frame rides the first user message
+    through the persona capability's `appendContract`, which the engine calls
+    once, at `runInitial` (checked: it builds the first user message, not the
+    system prompt).
+  - Slice 3 starts from 2a's head and adds receipts to 2b's fold last.
+  - 4b is split by the actual dependency: its manager routes live on Slice 3's
+    handler. **4b-ui** (presentation only) runs now; **4b-wire** follows
+    Slice 3.
 

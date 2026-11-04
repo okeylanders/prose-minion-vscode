@@ -111,9 +111,12 @@ under `auto` a proposal behaves as under `ask` until Slice 5.
   `update` stamps `updated` only for a change to what the memory says.
 - **Pinned budget on edit** (ADR D5, PR #192 F-04): `update` of a pinned memory
   re-checks the pinned bodies against `pinnedTokens` with the frame's renderer
-  and estimator, and refuses a save that would pass it, with the reason
-  ("pinned notes would load about 5,600 of 5,000 tokens"). Nothing is
-  unpinned automatically.
+  and estimator, and refuses a save that would pass it, with the reason. The
+  UI copy is Slice 0d's: "Can't save this edit: this memory loads in full, and
+  the longer note would bring memories loaded in full to about 5,300 of 5,000
+  tokens. …" The UI says "Always load in full" and "Loaded in full", never
+  "pin" (Slice 0d decision 16); code keeps `pinned`. Nothing is turned off
+  automatically.
 - Every write is owed. Logs carry ids and reasons only.
 
 ### Prompt

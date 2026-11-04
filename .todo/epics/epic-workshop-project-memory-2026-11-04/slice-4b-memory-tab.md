@@ -46,8 +46,9 @@ delete, and it has **New memory**.
 - It's a panel component under the shared conversation-settings folder from 4a,
   and a presentational one: it takes state and callbacks and posts nothing
   itself.
-- It shows the mode cards, the estimate ("N memories · M pinned · about T tokens
-  at the start of each conversation"), and the unavailable reason (no folder,
+- It shows the mode cards, the "Memory isn't context" well (Slice 0d decision
+  15), the estimate (labels `N memories`, `M in full`, `≈ T tokens`, and a
+  meter each for "Loaded in full" and "Titles and summaries"), and the unavailable reason (no folder,
   several folders) when this workspace can't hold memory.
 - **Unavailable never disables the mode cards** (ADR D8): the switch is global
   and still applies to every other project. Unavailable disables only this
@@ -80,8 +81,13 @@ delete, and it has **New memory**.
 - **Rows that can't be addressed by id.** Conflict rows (the id isn't unique)
   and unreadable rows (maybe no id) offer *Open file* only. No pin, archive,
   edit or delete action can reach them.
-- **Pinned, not loaded** (ADR D5, F-04): rows whose pinned body didn't fit
-  show that state. Nothing is unpinned automatically.
+- **Doesn't fit in full** (ADR D5, F-04; the frame's "pinned, not loaded"):
+  rows whose body didn't fit the loaded-in-full budget show that badge.
+  Nothing is turned off automatically.
+- **UI words** (Slice 0d decision 16): the manager's pin action is **Always
+  load in full** (a toggle, the `eye` glyph), its badge **Loaded in full**.
+  Routes, fields and tests may keep `pin`/`pinned`; no visible string says
+  "pin".
 - A presentation hook, `useWorkshopProjectMemory`, follows the tripartite
   interface, and its persistence is empty: the host owns the truth.
 
@@ -98,8 +104,11 @@ delete, and it has **New memory**.
   - each action through the real handler and library, on a temporary folder;
   - unreadable and conflict rows never offer pin, archive or edit;
   - the pin refusal past budget;
-  - over-budget state from hand edits: the meter reads over, and the right rows
-    show "pinned, not loaded", matching what the frame loaded for the same
+  - over-budget state from hand edits: the meter reads requested over budget
+    ("Set to load in full · 4 · 1 doesn't fit", "about 5,600 requested ·
+    4,400 of 5,000 loaded"), the labels separate set from loaded ("4 set to load in full ·
+    3 loaded"; Slice 0d decision 17, PR #196 F-05), and the right rows
+    show "Doesn't fit in full", matching what the frame loaded for the same
     folder;
   - entry handles (F-02): two files sharing one id each open their own file; a
     malformed file with no id opens; stale, forged and out-of-folder keys are
@@ -119,6 +128,6 @@ delete, and it has **New memory**.
       unreadable files without touching them.
 - [ ] Every row opens by its entry handle; mutations go only by a unique
       `mem-` id.
-- [ ] The meter and the "pinned, not loaded" rows agree with the frame.
+- [ ] The meter and the "Doesn't fit in full" rows agree with the frame.
 - [ ] The modal stays under 500 lines, and the new files do too.
 - [ ] The epic's per-slice verification passes, with counts recorded here.
