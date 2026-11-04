@@ -16,6 +16,7 @@
  * point; Sprint 02 rewinds to each one and compares (the equivalence oracle).
  */
 
+import type { WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import {
   completeWorkshopRun,
   workshopMessageCompletionCopy,
@@ -113,6 +114,9 @@ export class ScriptedWorkshopRoom {
   private clock = 1_000;
   private runCounter = 0;
   private readonly sidePass: WorkshopAnalysisSidePass;
+
+  /** The project-memory context completion reads (ADR 2026-11-04 D6); closed unless a test opens it. */
+  memoryContext?: WorkshopReplyMemoryContext;
 
   constructor() {
     this.session = new WorkshopSessionService(() => ++this.clock);
@@ -522,6 +526,7 @@ export class ScriptedWorkshopRoom {
       discardConversation: (id) => this.conversations.deleteConversation(id),
       readRetainedHistory: (id) => this.conversations.getCommittedHistoryCounts(id),
       settleCommittedRun: settle,
+      memory: this.memoryContext,
       log: (line) => this.log.push(line),
       events: silentEvents()
     });

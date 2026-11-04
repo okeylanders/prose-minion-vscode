@@ -68,3 +68,30 @@ export function cloneWorkshopMemoryReceipt(receipt: WorkshopProjectMemoryReceipt
     ...(receipt.proposedBy !== undefined ? { proposedBy: receipt.proposedBy } : {})
   };
 }
+
+/**
+ * The receipt's line as room history: what every participant receives, and
+ * what the transcript, export and recall show (D7). It names the memory by
+ * title and id, never by its summary or body.
+ */
+export function workshopMemoryReceiptContent(receipt: WorkshopProjectMemoryReceipt, proposerLabel?: string): string {
+  const named = `${receipt.title} (${receipt.memoryId})`;
+  switch (receipt.action) {
+    case 'saved':
+      return receipt.by === 'auto' && proposerLabel
+        ? `${proposerLabel} saved to project memory: ${named}.`
+        : `Saved to project memory: ${named}.`;
+    case 'updated':
+      return `Updated in project memory: ${named}.`;
+    case 'forgotten':
+      return `Forgotten from project memory: ${named}. It's archived, not deleted.`;
+    case 'restored':
+      return `Restored to project memory: ${named}.`;
+    default:
+      return assertNever(receipt.action);
+  }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled memory receipt action: ${JSON.stringify(value)}`);
+}
