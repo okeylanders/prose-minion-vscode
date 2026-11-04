@@ -19,7 +19,9 @@ export const CONTEXT_SOURCE_KINDS = [
   'tool-evidence',
   'dictionary',
   /** A saved Workshop session read through session recall (ADR 2026-10-05 §7). */
-  'transcript'
+  'transcript',
+  /** A saved project note read through project memory (ADR 2026-11-04 D12): "Project note". */
+  'memory'
 ] as const;
 
 export type ContextSourceKind = typeof CONTEXT_SOURCE_KINDS[number];

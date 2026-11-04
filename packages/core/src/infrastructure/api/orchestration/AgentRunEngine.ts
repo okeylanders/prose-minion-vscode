@@ -222,6 +222,15 @@ class ToolCallStreamVisibilityGuard {
  * bounded capability/correction rounds, output visibility, token accounting,
  * and atomic history commits. Capability adapters own protocol and I/O.
  */
+/**
+ * A manifest row as the log names it. A project note's label is its title,
+ * which no log may carry (ADR 2026-11-04 D9; PR #197 F-03): the manifest the
+ * writer sees keeps it, and the log names the row by its kind alone.
+ */
+function contextSourceLogLabel(entry: { readonly kind: string; readonly label: string }): string {
+  return entry.kind === 'memory' ? '(a project note)' : entry.label;
+}
+
 export class AgentRunEngine {
   private readonly conversationCleanupInterval: NodeJS.Timeout;
   private openRouterClient?: OpenRouterClient;
@@ -574,7 +583,7 @@ export class AgentRunEngine {
           this.outputChannel?.appendLine(
             `[AgentRunEngine] Context sources committed for ${conversationId}: ` +
             collectedSources.map((entry) =>
-              `${entry.kind}:${entry.label}${entry.promptTokensDelta !== undefined ? ` (+${entry.promptTokensDelta} prompt tokens)` : ' (size estimate)'}`
+              `${entry.kind}:${contextSourceLogLabel(entry)}${entry.promptTokensDelta !== undefined ? ` (+${entry.promptTokensDelta} prompt tokens)` : ' (size estimate)'}`
             ).join(', ')
           );
         }

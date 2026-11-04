@@ -10,6 +10,8 @@
  * `format` (ADR 2026-07-30's release rule).
  */
 
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+
 /** The one format this build reads and writes. */
 export const PROJECT_MEMORY_FORMAT = 1;
 
@@ -44,13 +46,15 @@ export type ProjectMemoryOrigin = typeof PROJECT_MEMORY_ORIGINS[number];
 
 /**
  * Field bounds, in UTF-16 code units (as a text field's `maxLength` counts):
- * title and summary are one line each; the body is free Markdown.
+ * title and summary are one line each; the body is free Markdown. The
+ * prompts state them, so they are PROMPT_BUDGETS.workshopProjectMemory's
+ * (ADR 2026-11-04 D4, D11): the codec and the prompts read one number.
  */
-export const PROJECT_MEMORY_FIELD_CHARACTERS = {
-  title: 120,
-  summary: 280,
-  body: 8_000
-} as const;
+export const PROJECT_MEMORY_FIELD_CHARACTERS = Object.freeze({
+  title: PROMPT_BUDGETS.workshopProjectMemory.titleCharacters,
+  summary: PROMPT_BUDGETS.workshopProjectMemory.summaryCharacters,
+  body: PROMPT_BUDGETS.workshopProjectMemory.bodyCharacters
+});
 
 /** At most this many source turns, and this many superseded memories, per memory. */
 export const PROJECT_MEMORY_LIST_ENTRIES = {
@@ -107,14 +111,15 @@ export function projectMemoryBody(markdown: string): string {
 }
 
 /**
- * The ids superseded among the given readable memories: derived, never
- * stored (ADR 2026-11-04 D4). A memory is superseded when another names it
- * in `supersedes`, unless the two are on a cycle (it names, directly or
- * through others, the memory that names it): in a cycle, neither is
- * superseded (PR #194 N-01). An id no given memory holds may be superseded
- * too.
+ * The supersession links that count among the given readable memories
+ * (ADR 2026-11-04 D4): `newer` names `older` in `supersedes`, unless the two
+ * are on a cycle (`older` names, directly or through others, the memory that
+ * names it), in which case neither link counts (PR #194 N-01). Standing and
+ * attribution both read these, so they never disagree (PR #197 N-02).
  */
-export function supersededProjectMemoryIds(memories: readonly Pick<ProjectMemory, 'id' | 'supersedes'>[]): Set<string> {
+export function acceptedProjectMemorySupersessions(
+  memories: readonly Pick<ProjectMemory, 'id' | 'supersedes'>[]
+): Array<{ newer: string; older: string }> {
   const names = new Map<string, readonly string[]>();
   for (const memory of memories) {
     names.set(memory.id, [...(names.get(memory.id) ?? []), ...memory.supersedes]);
@@ -136,13 +141,23 @@ export function supersededProjectMemoryIds(memories: readonly Pick<ProjectMemory
     }
     return false;
   };
-  const superseded = new Set<string>();
+  const accepted: Array<{ newer: string; older: string }> = [];
   for (const [newer, older] of names) {
     for (const id of older) {
       if (id !== newer && !reaches(id, newer)) {
-        superseded.add(id);
+        accepted.push({ newer, older: id });
       }
     }
   }
-  return superseded;
+  return accepted;
+}
+
+/**
+ * The ids superseded among the given readable memories: derived, never
+ * stored (ADR 2026-11-04 D4), from the links that count
+ * (`acceptedProjectMemorySupersessions`). An id no given memory holds may be
+ * superseded too.
+ */
+export function supersededProjectMemoryIds(memories: readonly Pick<ProjectMemory, 'id' | 'supersedes'>[]): Set<string> {
+  return new Set(acceptedProjectMemorySupersessions(memories).map(({ older }) => older));
 }

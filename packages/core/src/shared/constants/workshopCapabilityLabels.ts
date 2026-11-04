@@ -37,6 +37,8 @@ export function workshopCapabilityFamilyLabel(
       return 'Project Resources';
     case 'transcript':
       return 'Session Recall';
+    case 'memory':
+      return 'Project Memory';
     case 'analysis':
       return toolLabel ?? 'Analysis';
   }

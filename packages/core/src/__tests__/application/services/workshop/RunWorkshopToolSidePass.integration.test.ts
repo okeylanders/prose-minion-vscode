@@ -26,6 +26,9 @@ import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import type { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 import { MessageType } from '@messages';
+import type { DictionaryService } from '@services/dictionary/DictionaryService';
+import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
+import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import type { LogSink } from '@/platform';
 import {
   createFakeFileSystem,
@@ -36,8 +39,17 @@ import {
 
 describe('RunWorkshopToolSidePass — handler to agent engine', () => {
   it('uses isolated retained tool and host policies without crossing conversation identities', async () => {
+    // What each run's first user message became, after its capability's
+    // contract, as the real engine builds it (AgentRunEngine.runInitial).
+    const firstMessages: Array<{ toolName: string; systemMessage: string; userMessage: string }> = [];
     const engine = {
-      runInitial: jest.fn().mockImplementation(async ({ toolName }) => ({
+      runInitial: jest.fn().mockImplementation(async ({ toolName, systemMessage, userMessage, capability }) => {
+        firstMessages.push({
+          toolName,
+          systemMessage,
+          userMessage: capability?.appendContract ? await capability.appendContract(userMessage) : userMessage
+        });
+        return {
         content: toolName === 'prose-assistant' ? 'verbatim engine report' : 'engine host synthesis',
         usedGuides: [],
         requestedResources: [],
@@ -45,7 +57,8 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
         usage: { promptTokens: 5, completionTokens: 7, totalTokens: 12 },
         finishReason: 'stop',
         conversationId: toolName === 'prose-assistant' ? 'engine-tool-conv' : 'engine-host-conv'
-      })),
+        };
+      }),
       continueConversation: jest.fn().mockResolvedValue({
         content: 'continued host', usedGuides: [], requestedResources: [], artifacts: [],
         finishReason: 'stop', conversationId: 'engine-host-conv'
@@ -85,9 +98,29 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
     const postMessage = jest.fn().mockResolvedValue(undefined);
     const output = { appendLine: jest.fn() } as unknown as LogSink;
     const analysisSidePass = new WorkshopAnalysisSidePass(assistantService, session, output);
-    const capabilityFactory = {
-      create: jest.fn(() => ({ catalog: 'workshopPersona' }))
-    } as unknown as WorkshopPersonaCapabilityFactory;
+    // A real factory, with project memory on and a catalog to show.
+    const projectMemory = {
+      ...offProjectMemory,
+      frame: jest.fn(async () => ({
+        kind: 'frame' as const,
+        frame: {
+          text: '<project-memory note="n" built="2026-07-23">\n  <entry id="mem-7f3c2a" kind="canon" updated="2026-07-22">Watch: backward</entry>\n</project-memory>',
+          pinnedLoaded: [],
+          entries: ['mem-7f3c2a'],
+          more: 0,
+          estimate: { memories: 1, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 20, frameTokens: 30 }
+        }
+      }))
+    };
+    const capabilityFactory = new WorkshopPersonaCapabilityFactory(
+      {} as DictionaryService,
+      analysisSidePass,
+      { createProvider: jest.fn(async () => ({ listResources: () => [], loadResources: async () => [] })) } as never,
+      session,
+      output,
+      {} as WorkshopTranscriptRecallPort,
+      projectMemory
+    );
     const settings = createFakeSettings();
     const fileSystem = createFakeFileSystem();
     const workspace = createFakeWorkspace();
@@ -210,6 +243,17 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
     expect(promptLoader.loadPrompts.mock.calls[1][0]).toContain(
       'workshop-personas/interaction-modes/balanced.md'
     );
+    // Tools never receive conversation behavior or project memory (ADR 2026-11-04 D5, Context 8):
+    // not the tool run, not its retained sidecar, not the analysis side pass that ran it.
+    const [toolRun, hostRun] = firstMessages;
+    expect(toolRun.toolName).toBe('prose-assistant');
+    for (const text of [toolRun.systemMessage, toolRun.userMessage]) {
+      expect(text).not.toContain('<project-memory');
+      expect(text).not.toContain('<workshop-interaction');
+      expect(text).not.toContain('memory.catalog');
+    }
+    expect(hostRun.userMessage).toContain('<project-memory note="n" built="2026-07-23">');
+    expect(projectMemory.frame).toHaveBeenCalledTimes(1);
     expect(session.getToolSidecarConversationId('prose')).toBe('engine-tool-conv');
     expect(session.getHostConversationId()).toBe('engine-host-conv');
     expect(session.getSnapshot().turns.map((turn) => turn.artifact)).toEqual([
@@ -240,5 +284,8 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
     }));
     expect(engine.continueConversation.mock.calls.at(-1)![0].userMessage).not.toContain(manuscript.trim());
     expect(session.collectPendingHostUpdates()).toBeUndefined();
+    // A follow-up turn never reads project memory again: the frame was the first message's.
+    expect(projectMemory.frame).toHaveBeenCalledTimes(1);
+    expect(engine.continueConversation.mock.calls.at(-1)![0].userMessage).not.toContain('<project-memory');
   });
 });

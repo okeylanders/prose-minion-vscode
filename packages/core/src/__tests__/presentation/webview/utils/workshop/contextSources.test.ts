@@ -97,7 +97,8 @@ describe('readInOpenAction', () => {
     // eslint-disable-next-line @typescript-eslint/naming-convention -- ContextSourceKind ids are kebab-case protocol literals.
     'tool-evidence': { kind: 'none' },
     dictionary: { kind: 'none' },
-    transcript: { kind: 'none' }
+    transcript: { kind: 'none' },
+    memory: { kind: 'none' }
   };
 
   it.each(CONTEXT_SOURCE_KINDS.map((kind) => [kind]))('gives %s exactly one action', (kind) => {
@@ -115,7 +116,9 @@ describe('readInOpenAction', () => {
       // eslint-disable-next-line @typescript-eslint/naming-convention -- ContextSourceKind ids are kebab-case protocol literals.
       'tool-evidence': { kind: 'jump', turnId: CARD },
       dictionary: { kind: 'jump', turnId: CARD },
-      transcript: { kind: 'jump', turnId: CARD }
+      transcript: { kind: 'jump', turnId: CARD },
+      // A Project note opens its card (ADR 2026-11-04 D12).
+      memory: { kind: 'jump', turnId: CARD }
     };
 
     it.each(CONTEXT_SOURCE_KINDS.map((kind) => [kind]))('gives %s exactly one action', (kind) => {
@@ -133,8 +136,8 @@ describe('readInOpenAction', () => {
   });
 
   it('refuses a kind outside the list rather than guessing an action', () => {
-    expect(() => readInOpenAction(entry('memory' as ContextSourceKind, 'host', 'x')))
-      .toThrow('Unhandled context source kind: memory');
+    expect(() => readInOpenAction(entry('index' as ContextSourceKind, 'host', 'x')))
+      .toThrow('Unhandled context source kind: index');
   });
 
   it('is exhaustive at the type level', () => {

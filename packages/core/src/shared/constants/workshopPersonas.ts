@@ -101,6 +101,14 @@ export const WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH =
 export const WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH =
   'workshop-personas/transcript-recall-capability.md';
 
+/**
+ * The `memory.*` grammar (ADR 2026-11-04 D1, D8): in the system prompt
+ * only while project memory is open (the mode on and the workspace
+ * holding), so a mode change, which rebuilds the prompt, adds or drops it.
+ */
+export const WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH =
+  'workshop-personas/project-memory-capability.md';
+
 export const WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS: Readonly<
   Record<WorkshopRelationalDepth, string>
 > = Object.freeze({
@@ -125,8 +133,11 @@ export function workshopPersonaSystemPromptPaths(
   behavior: Pick<
     WorkshopConversationBehavior,
     'interactionMode' | 'expressionLevel' | 'relationalDepth'
-  >
+  >,
+  options: { readonly projectMemory?: boolean } = {}
 ): string[] {
+  const participant = basePromptPath === WORKSHOP_HOST_BASE_PROMPT_PATH
+    || basePromptPath === WORKSHOP_GUEST_BASE_PROMPT_PATH;
   return [
     basePromptPath,
     persona.promptPath,
@@ -135,10 +146,10 @@ export function workshopPersonaSystemPromptPaths(
     // session-recall capability resources — the injected protocol points at
     // them, and a charter that denies capabilities while the run policy
     // grants them ships two contradictory instructions.
-    ...(basePromptPath === WORKSHOP_HOST_BASE_PROMPT_PATH
-      || basePromptPath === WORKSHOP_GUEST_BASE_PROMPT_PATH
+    ...(participant
       ? [WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH, WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH]
       : []),
+    ...(participant && options.projectMemory ? [WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH] : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],
     WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,

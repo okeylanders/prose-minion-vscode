@@ -101,6 +101,8 @@ export {
 export {
   WorkshopTranscriptRecallService
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+export { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
+export { ProjectMemoryStore } from '@/infrastructure/storage/ProjectMemoryStore';
 export {
   RejectedModelResponseRecoveryStore,
   RejectedModelResponseRecoveryShellPresenter,

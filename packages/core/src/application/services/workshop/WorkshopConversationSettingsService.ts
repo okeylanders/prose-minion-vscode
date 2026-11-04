@@ -10,6 +10,8 @@ import {
   workshopWriterProfilesEqual,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WORKSHOP_WEB_RESEARCH_SETTING,
+  WORKSHOP_PROJECT_MEMORY_SETTING,
+  coerceWorkshopProjectMemoryMode,
   WorkshopConversationBehavior,
   WorkshopPersonaId,
   WorkshopWriterProfile,
@@ -62,6 +64,12 @@ export class WorkshopConversationSettingsService {
   private pendingProfilePersistence?: PendingPersistence<WorkshopWriterProfile>;
   private pendingWebResearchPersistence?: PendingPersistence<WorkshopWebResearchSettings>;
   private webResearch: WorkshopWebResearchSettings;
+  /**
+   * Whether the persona prompts were last built with project memory on
+   * (ADR 2026-11-04 D8): the grammar file rides only while it is, so a mode
+   * change between off and on rebuilds them, as every settings change does.
+   */
+  private projectMemoryPrompted: boolean;
 
   constructor(
     private readonly session: WorkshopSessionService,
@@ -71,6 +79,7 @@ export class WorkshopConversationSettingsService {
     private readonly writerProfileService: WorkshopWriterProfileService
   ) {
     this.webResearch = this.readWebResearchSetting();
+    this.projectMemoryPrompted = this.projectMemoryOn();
   }
 
   /** Apply and persist the modal's complete Behavior, About You, and Advanced submission. */
@@ -230,7 +239,9 @@ export class WorkshopConversationSettingsService {
     const previousProfile = this.writerProfileService.getProfile();
     const behaviorChanged = !workshopConversationBehaviorsEqual(previousBehavior, nextBehavior);
     const profileChanged = !workshopWriterProfilesEqual(previousProfile, nextProfile);
-    if (!behaviorChanged && !profileChanged) {
+    const projectMemoryOn = this.projectMemoryOn();
+    const projectMemoryChanged = projectMemoryOn !== this.projectMemoryPrompted;
+    if (!behaviorChanged && !profileChanged && !projectMemoryChanged) {
       return {
         changed: false,
         deferred: false,
@@ -244,6 +255,7 @@ export class WorkshopConversationSettingsService {
       || previousBehavior.interactionMode !== nextBehavior.interactionMode
       || previousBehavior.expressionLevel !== nextBehavior.expressionLevel
       || previousBehavior.relationalDepth !== nextBehavior.relationalDepth
+      || projectMemoryChanged
     ) {
       await this.assistantToolService.replaceWorkshopConversationSettings(
         this.replacementTargets(),
@@ -255,6 +267,12 @@ export class WorkshopConversationSettingsService {
 
     this.session.setConversationBehavior(nextBehavior);
     this.writerProfileService.commit(nextProfile);
+    if (projectMemoryChanged) {
+      this.projectMemoryPrompted = projectMemoryOn;
+      this.outputChannel.appendLine(
+        `[WorkshopConversationSettingsService] Project memory ${projectMemoryOn ? 'on' : 'off'}; persona prompts rebuilt`
+      );
+    }
     return { changed: true, deferred: false, behaviorChanged, profileChanged };
   }
 
@@ -280,6 +298,12 @@ export class WorkshopConversationSettingsService {
 
   getWebResearch(): WorkshopWebResearchSettings {
     return { ...this.webResearch };
+  }
+
+  private projectMemoryOn(): boolean {
+    return coerceWorkshopProjectMemoryMode(
+      this.settings.get<unknown>(WORKSHOP_PROJECT_MEMORY_SETTING.section, WORKSHOP_PROJECT_MEMORY_SETTING.key)
+    ) !== 'off';
   }
 
   private readWebResearchSetting(): WorkshopWebResearchSettings {

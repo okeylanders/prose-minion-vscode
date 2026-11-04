@@ -98,6 +98,24 @@ export const WORKSHOP_WEB_RESEARCH_SETTING = Object.freeze({
   key: 'workshop.webResearch'
 });
 
+/**
+ * Workshop Project Memory's one global mode (ADR 2026-11-04 D8; question 1):
+ * `off` (the default) gives personas no memory; `ask` holds each proposal for
+ * the writer; `auto` saves and tells. Memories stay per project.
+ */
+export const WORKSHOP_PROJECT_MEMORY_MODES = ['off', 'ask', 'auto'] as const;
+export type WorkshopProjectMemoryMode = (typeof WORKSHOP_PROJECT_MEMORY_MODES)[number];
+
+export const WORKSHOP_PROJECT_MEMORY_SETTING = Object.freeze({
+  section: 'proseMinion',
+  key: 'workshop.projectMemory'
+});
+
+/** Fail closed: anything but a known mode reads as `off`. */
+export function coerceWorkshopProjectMemoryMode(raw: unknown): WorkshopProjectMemoryMode {
+  return WORKSHOP_PROJECT_MEMORY_MODES.find((mode) => mode === raw) ?? 'off';
+}
+
 /** Fail closed: only the complete one-field setting shape may enable research. */
 export function isValidWorkshopWebResearchSettings(raw: unknown): raw is WorkshopWebResearchSettings {
   return typeof raw === 'object' && raw !== null && !Array.isArray(raw)

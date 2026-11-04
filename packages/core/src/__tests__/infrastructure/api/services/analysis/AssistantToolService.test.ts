@@ -403,6 +403,35 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     ]);
   });
 
+  it('teaches the memory.* grammar to host and guest prompts only while project memory is open (ADR 2026-11-04 D8)', async () => {
+    const engine = makeEngine('memory-grammar');
+    const loadPrompts = jest.fn().mockResolvedValue('prompt');
+    const service = build(managerFor(() => engine), loadPrompts);
+    await flush();
+    const behavior = {
+      interactionMode: 'conversational' as const,
+      expressionLevel: 'subtle' as const,
+      relationalDepth: 'attuned' as const,
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
+    };
+    const targets = [
+      { conversationId: 'host-conv', personaId: 'jill' as const, role: 'host' as const },
+      { conversationId: 'guest-conv', personaId: 'margot' as const, role: 'guest' as const }
+    ];
+    const taught = () => loadPrompts.mock.calls.map(([paths]: [string[]]) =>
+      paths.includes('workshop-personas/project-memory-capability.md'));
+
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    let open = true;
+    service.setWorkshopProjectMemoryGrammar(() => open);
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    open = false;
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+
+    expect(taught()).toEqual([false, false, true, true, false, false]);
+  });
+
   it('does not touch the engine when any replacement prompt fails to assemble', async () => {
     const engine = makeEngine('replacement-failure');
     const loadPrompts = jest.fn()

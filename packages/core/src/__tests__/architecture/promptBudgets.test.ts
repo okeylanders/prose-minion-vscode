@@ -233,6 +233,13 @@ describe('prompt budgets', () => {
       .toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
   });
 
+  it('pins the Project Memory starting budgets (ADR 2026-11-04 D11)', () => {
+    expect(PROMPT_BUDGETS.workshopProjectMemory).toEqual({ titleCharacters: 120, summaryCharacters: 280, bodyCharacters: 8_000,
+      catalogEntries: 40, catalogTokens: 2_000, pinnedTokens: 5_000, queryCharacters: 200, memoryIdCharacters: 16, searchHits: 20,
+      snippetCharacters: 280, readMemories: 5, readCharacters: 40_000, readsPerTurn: 2, autoSavesPerRoom: 5 });
+    expect(PROMPT_BUDGETS.workshopProjectMemory.readsPerTurn).toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
+  });
+
   it('gives every session of the largest read a share that clears the per-session minimum (D9)', () => {
     const { readCharacters, readSessions, readCharactersPerTurn, readsPerTurn } = PROMPT_BUDGETS.workshopTranscriptRecall;
 
