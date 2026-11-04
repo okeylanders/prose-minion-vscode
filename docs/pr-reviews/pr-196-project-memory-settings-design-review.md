@@ -3,6 +3,7 @@
 ## Latest review status
 
 **Changes requested at `8737686b`: one new overflow-count copy issue (F-05).**
+F-05 is marked fixed in `c8191018` (see its resolution below); awaiting re-review.
 The requested “Always load in full” rename is retained. F-01 through F-04
 remain resolved. See the latest re-review below; the earlier approval
 applied to the head before this rename.
@@ -332,6 +333,20 @@ overflow meter. Do not relabel selected demand as actual delivered tokens.
 the summary must not claim four loaded in full. Its requested/actual token
 meaning is explicit, and the builder, summary, and badges agree. The normal
 in-budget state may retain the shorter “N in full” wording.
+
+**Resolution: Fixed in `c8191018`** (Slice 0d decision 17).
+- **Manager:** the over-budget label now reads "4 set to load in full · 3
+  loaded · ≈ 5,600 requested of 5,000 tokens", matching the rows (3 "Loaded
+  in full", 1 "Doesn't fit in full").
+- **Tab:** a new state (`OverFull.dc.html`, `viewState: "fullover"`) reads
+  "Set to load in full · 4 · 1 doesn't fit", "about 5,600 requested of 5,000
+  tokens", with the labels "3 of 4 in full" and "≈ 5,200 tokens loaded".
+- **In budget:** the short "N in full" / "Loaded in full · N" form stays.
+- **Docs:** `slice-0d` (decision 17, the tab-state table and the manager
+  section), the quoted copy in `slice-4b`, and the design README are updated.
+  The canvas and snapshot are updated too.
+- **Rule for 4b:** requested tokens are never shown as delivered, and the
+  loaded count, the badges and the frame come from one builder result.
 
 ### Other checks
 
