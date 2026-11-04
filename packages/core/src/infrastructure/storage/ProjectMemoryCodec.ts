@@ -134,7 +134,80 @@ export function decodeProjectMemory(text: string): ProjectMemoryDecodeResult {
   }
 }
 
-/** Write one memory file's text, canonically. The caller checks it reads back (`decodeProjectMemory`) before writing it. */
+/** Why a memory cannot be written: a format fault at a key, or a file that would not read back as the memory meant. */
+export type ProjectMemoryWriteFault = ProjectMemoryInvalidReason | 'not-as-written';
+
+export type ProjectMemoryPrepared =
+  | { kind: 'file'; text: string; memory: ProjectMemory }
+  | { kind: 'invalid'; reason: ProjectMemoryWriteFault; key?: ProjectMemoryKey };
+
+/**
+ * A memory checked and encoded for writing (PR #194 F-01). Each field is
+ * checked before it is put on a line: a scalar that is not a string, or
+ * holds a line break or another control character (or a comma, in a list
+ * entry), is refused at its key, so no field can write frontmatter of its
+ * own. Then the text is decoded, and must be exactly the memory meant,
+ * field by field (`not-as-written` otherwise): decoding alone does not show
+ * a file holds what the caller asked for.
+ */
+export function prepareProjectMemoryFile(memory: ProjectMemory): ProjectMemoryPrepared {
+  const fault = fieldFault(memory);
+  if (fault) {
+    return { kind: 'invalid', reason: 'invalid-value', key: fault };
+  }
+  const text = encodeProjectMemory(memory);
+  const decoded = decodeProjectMemory(text);
+  if (decoded.kind === 'invalid') {
+    return decoded;
+  }
+  if (!sameProjectMemory(decoded.memory, memory)) {
+    return { kind: 'invalid', reason: 'not-as-written' };
+  }
+  return { kind: 'file', text, memory: decoded.memory };
+}
+
+/** Whether two memories hold the same fields, optional ones present alike (a stray field on either is not compared). */
+export function sameProjectMemory(left: ProjectMemory, right: ProjectMemory): boolean {
+  const scalars: Array<keyof ProjectMemory> = ['id', 'title', 'kind', 'summary', 'status', 'pinned', 'created', 'updated', 'origin', 'proposedBy', 'sourceSession', 'body'];
+  const lists = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((item, index) => item === b[index]);
+  return scalars.every((field) => left[field] === right[field])
+    && ('proposedBy' in left) === ('proposedBy' in right)
+    && ('sourceSession' in left) === ('sourceSession' in right)
+    && lists(left.sourceTurns, right.sourceTurns)
+    && lists(left.supersedes, right.supersedes);
+}
+
+/** The key of the first field that could not be written on its line as it stands. */
+function fieldFault(memory: ProjectMemory): ProjectMemoryKey | undefined {
+  /* eslint-disable @typescript-eslint/naming-convention -- keyed by format 1's kebab-case keys. */
+  const scalars: Array<[ProjectMemoryKey, unknown, boolean]> = [
+    ['id', memory.id, true], ['title', memory.title, true], ['kind', memory.kind, true],
+    ['summary', memory.summary, true], ['status', memory.status, true],
+    ['created', memory.created, true], ['updated', memory.updated, true], ['origin', memory.origin, true],
+    ['proposed-by', memory.proposedBy, false], ['source-session', memory.sourceSession, false]
+  ];
+  /* eslint-enable @typescript-eslint/naming-convention */
+  for (const [key, value, required] of scalars) {
+    if ((value === undefined && !required) || (typeof value === 'string' && !CONTROL.test(value))) {
+      continue;
+    }
+    return key;
+  }
+  if (typeof memory.pinned !== 'boolean') {
+    return 'pinned';
+  }
+  const listFault = (items: unknown) => !Array.isArray(items)
+    || items.some((item) => typeof item !== 'string' || CONTROL.test(item) || item.includes(','));
+  if (listFault(memory.sourceTurns)) {
+    return 'source-turns';
+  }
+  if (listFault(memory.supersedes)) {
+    return 'supersedes';
+  }
+  return undefined;
+}
+
+/** Write one memory file's text, canonically. A writer goes through `prepareProjectMemoryFile`, which checks it first. */
 export function encodeProjectMemory(memory: ProjectMemory): string {
   /* eslint-disable @typescript-eslint/naming-convention -- keyed by format 1's kebab-case keys. */
   const values: Record<ProjectMemoryKey, string | undefined> = {

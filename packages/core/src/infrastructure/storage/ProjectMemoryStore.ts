@@ -46,7 +46,7 @@ import * as path from 'node:path';
 import type { FileSystem, LogSink, Workspace } from '@/platform';
 import type { ProjectMemory } from '@shared/types/projectMemory';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
-import { decodeProjectMemory, encodeProjectMemory } from '@/infrastructure/storage/ProjectMemoryCodec';
+import { encodeProjectMemory, prepareProjectMemoryFile } from '@/infrastructure/storage/ProjectMemoryCodec';
 import { StoredFileClaims, deleteStoredFileQuietly, storedFileExists } from '@/infrastructure/storage/StoredFileClaims';
 import { fileSystemErrorCategory } from '@/infrastructure/storage/fileSystemErrors';
 import { commitStoredFileRewrite, type StoredFileRewritePorts } from '@/infrastructure/storage/StoredFileRewrite';
@@ -183,14 +183,13 @@ export class ProjectMemoryStore {
         taken.add(id);
         const stamp = this.now().toISOString().replace(/\.\d{3}Z$/, 'Z');
         const memory = fromDraft(draft, id, stamp);
-        const text = encodeProjectMemory(memory);
-        const check = decodeProjectMemory(text);
+        const check = prepareProjectMemoryFile(memory);
         if (check.kind === 'invalid') {
-          this.log.appendLine(`${LOG} A new memory would not read back (${check.reason}${check.key ? ` at ${check.key}` : ''}); it was not saved.`);
+          this.log.appendLine(`${LOG} A new memory would not read back as written (${check.reason}${check.key ? ` at ${check.key}` : ''}); it was not saved.`);
           return check.key ? { kind: 'invalid', reason: check.reason, key: check.key } : { kind: 'invalid', reason: check.reason };
         }
         const fileName = projectMemoryFileName(memory.title, id);
-        const outcome = await this.writeNew(where.directory, fileName, encoder.encode(text), options);
+        const outcome = await this.writeNew(where.directory, fileName, encoder.encode(check.text), options);
         if (outcome === 'taken') {
           continue;
         }
@@ -231,12 +230,12 @@ export class ProjectMemoryStore {
         if (next.id !== file.memory.id || next.created !== file.memory.created) {
           return { kind: 'invalid', reason: 'identity-changed' };
         }
-        const text = encodeProjectMemory(next);
-        const check = decodeProjectMemory(text);
+        const check = prepareProjectMemoryFile(next);
         if (check.kind === 'invalid') {
-          this.log.appendLine(`${LOG} A rewrite of ${id} would not read back (${check.reason}${check.key ? ` at ${check.key}` : ''}); it was not written.`);
+          this.log.appendLine(`${LOG} A rewrite of ${id} would not read back as written (${check.reason}${check.key ? ` at ${check.key}` : ''}); it was not written.`);
           return check.key ? { kind: 'invalid', reason: check.reason, key: check.key } : { kind: 'invalid', reason: check.reason };
         }
+        const text = check.text;
         if (text === encodeProjectMemory(file.memory)) {
           return { kind: 'unchanged', entry };
         }

@@ -5,7 +5,7 @@
  */
 
 import type { ProjectMemory } from '@shared/types/projectMemory';
-import type { ProjectMemoryInvalidReason, ProjectMemoryKey } from '@/infrastructure/storage/ProjectMemoryCodec';
+import type { ProjectMemoryKey, ProjectMemoryWriteFault } from '@/infrastructure/storage/ProjectMemoryCodec';
 import type { ProjectMemoryConflict, ProjectMemoryHeldFile, ProjectMemoryUnreadableFile } from '@/infrastructure/storage/ProjectMemoryFiles';
 
 export type ProjectMemoryUnavailableReason = 'no-workspace' | 'multi-root';
@@ -55,7 +55,7 @@ export type ProjectMemoryDraft = Omit<ProjectMemory, 'id' | 'created' | 'updated
 export type ProjectMemoryCreateResult =
   | { kind: 'created'; entry: ProjectMemoryEntry }
   /** The draft would not read back as format 1; nothing was written. */
-  | { kind: 'invalid'; reason: ProjectMemoryInvalidReason; key?: ProjectMemoryKey }
+  | { kind: 'invalid'; reason: ProjectMemoryWriteFault; key?: ProjectMemoryKey }
   /** The commit point declined it; nothing was written. */
   | { kind: 'withdrawn' }
   | { kind: 'unavailable'; reason: ProjectMemoryUnavailableReason }
@@ -70,7 +70,7 @@ export type ProjectMemoryReplaceResult =
   /** More than one file holds the id: left as they are. */
   | { kind: 'conflict' }
   /** The update changed the memory's id or creation time, or would not read back; nothing was written. */
-  | { kind: 'invalid'; reason: ProjectMemoryInvalidReason | 'identity-changed'; key?: ProjectMemoryKey }
+  | { kind: 'invalid'; reason: ProjectMemoryWriteFault | 'identity-changed'; key?: ProjectMemoryKey }
   | { kind: 'withdrawn' }
   | { kind: 'unavailable'; reason: ProjectMemoryUnavailableReason }
   | { kind: 'failed' };

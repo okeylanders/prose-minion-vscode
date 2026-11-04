@@ -13,6 +13,7 @@ import {
   PROJECT_MEMORY_KEYS,
   decodeProjectMemory,
   encodeProjectMemory,
+  prepareProjectMemoryFile,
   type ProjectMemoryInvalidReason
 } from '@/infrastructure/storage/ProjectMemoryCodec';
 
@@ -238,5 +239,23 @@ describe('fails closed, by name', () => {
 
   it('a value written with a line break does not read back: the store refuses to write it', () => {
     expect(decodeProjectMemory(encodeProjectMemory({ ...RABBIT, title: 'Two\nlines' })).kind).toBe('invalid');
+  });
+});
+
+describe('prepareProjectMemoryFile: what is written is what was meant (PR #194 F-01)', () => {
+  it('encodes a memory that reads back field for field', () => {
+    expect(prepareProjectMemoryFile(RABBIT)).toEqual({ kind: 'file', text: fixture('the-rabbits-watch-runs-backward-7f3c2a.md'), memory: RABBIT });
+  });
+
+  it('refuses a field with a line break before it is put on a line', () => {
+    expect(prepareProjectMemoryFile({ ...RABBIT, title: 'Hello\ncreated: 2000-01-01T00:00:00Z' })).toEqual({ kind: 'invalid', reason: 'invalid-value', key: 'title' });
+    expect(prepareProjectMemoryFile({ ...RABBIT, created: '2026-11-03T14:22:05Z\r' })).toEqual({ kind: 'invalid', reason: 'invalid-value', key: 'created' });
+    expect(prepareProjectMemoryFile({ ...RABBIT, pinned: 'true' as unknown as boolean })).toEqual({ kind: 'invalid', reason: 'invalid-value', key: 'pinned' });
+  });
+
+  it('refuses a memory whose file would decode as another one', () => {
+    // Surrounding space is not kept on a line, so this title would come back changed.
+    expect(prepareProjectMemoryFile({ ...RABBIT, title: ' The Rabbit ' })).toEqual({ kind: 'invalid', reason: 'not-as-written' });
+    expect(prepareProjectMemoryFile({ ...RABBIT, sourceTurns: [' turn-12-assistant-1730643725000'] })).toEqual({ kind: 'invalid', reason: 'not-as-written' });
   });
 });
