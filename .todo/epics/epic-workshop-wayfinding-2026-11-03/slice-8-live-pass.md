@@ -176,6 +176,12 @@ Once the checklist is done:
    - An unchanged legacy session still round-trips without those fields.
    - A reply the host wrote in the model's place stays unstamped.
 
+## Follow-up features from this epic
+
+- [Bookmarks personas can read, and a Bookmarks screen](../../features/feature-workshop-bookmark-recall/README.md)
+  (Okey, 2026-11-04). It changes D5 and D10, so it needs its own ADR
+  amendment. It pairs with project memory.
+
 ## Open tech debt from this epic
 
 - [Session codec downgrade tolerance](../../tech-debt/2026-11-03-workshop-session-codec-downgrade-tolerance.md) (D9)
