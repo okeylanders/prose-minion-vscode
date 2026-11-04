@@ -43,11 +43,13 @@ export class WorkshopBookmarkRefusedError extends Error {
   }
 }
 
+/* eslint-disable @typescript-eslint/naming-convention -- keyed by the reasons' kebab-case words. */
 const REFUSAL_MESSAGES: Readonly<Record<WorkshopBookmarkRefusalReason, string>> = {
   'unknown-turn': 'That message is no longer in this session.',
   'ineligible-turn': 'Only replies, your messages, reports and capability cards can be bookmarked.',
   'unknown-bookmark': 'That bookmark is no longer in this session.'
 };
+/* eslint-enable @typescript-eslint/naming-convention */
 
 const refused = (reason: WorkshopBookmarkRefusalReason): WorkshopBookmarkRefusedError =>
   new WorkshopBookmarkRefusedError(reason, REFUSAL_MESSAGES[reason]);

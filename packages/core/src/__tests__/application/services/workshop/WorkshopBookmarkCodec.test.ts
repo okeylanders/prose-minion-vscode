@@ -129,7 +129,7 @@ describe('bookmarks in the session codec', () => {
     const entry = (fields: RawBookmark): RawBookmark[] => [{ ...SAVED[0], ...fields }];
 
     it.each<[string, unknown, RegExp]>([
-      ['a list that is not an array', { 0: SAVED[0] }, /bookmarks must be array/],
+      ['a list that is not an array', { only: SAVED[0] }, /bookmarks must be array/],
       ['an unknown field', entry({ note: 'x' }), /unknown field note/],
       ['a missing createdAt', [{ id: 'bookmark-1-2000', turnId: WRITER }], /missing required field createdAt/],
       ['an id the ledger never mints', entry({ id: 'b-1' }), /\.id must be a bookmark id/],
