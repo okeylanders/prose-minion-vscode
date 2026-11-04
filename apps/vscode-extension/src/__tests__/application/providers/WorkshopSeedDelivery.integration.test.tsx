@@ -66,6 +66,7 @@ jest.mock('@/presentation/webview/styles/workshop/tokens.css', () => ({}));
 jest.mock('@/presentation/webview/styles/workshop/shell.css', () => ({}));
 jest.mock('@/presentation/webview/styles/workshop/context.css', () => ({}));
 jest.mock('@/presentation/webview/styles/workshop/session.css', () => ({}));
+jest.mock('@/presentation/webview/styles/workshop/memory.css', () => ({}));
 jest.mock('@/presentation/webview/components/workshop/widgets/gesturePlayground/gesturePlayground.css', () => ({}));
 jest.mock('@/presentation/webview/components/workshop/widgets/lexicalGravity/lexicalGravity.css', () => ({}));
 jest.mock('@/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariations.css', () => ({}));

@@ -1,7 +1,8 @@
 /**
  * The project-memory library (ADR 2026-11-04 D1, D3, D5, D8, D10, D13):
- * what the frame builder, the persona capability and, later, the handlers
- * read memory through. It answers data, never prose, and it never writes.
+ * what the frame builder, the persona capability and the handlers read
+ * memory through. It answers data, never prose. Its writes (Slice 3) are the
+ * writer's alone, in `ProjectMemoryWrites`.
  *
  * - **Access is read live, on every call.** The global mode
  *   (`proseMinion.workshop.projectMemory`, through `SettingsStore`), the
@@ -58,9 +59,26 @@ import {
   searchProjectMemories,
   type ProjectMemorySearchOutcome
 } from '@/application/services/workshop/memory/WorkshopProjectMemorySearch';
+import {
+  ProjectMemoryWrites,
+  type ProjectMemoryEditDataResult,
+  type ProjectMemoryEstimateResult,
+  type ProjectMemorySaveProvenance,
+  type ProjectMemoryWriteResult,
+  type ProjectMemoryWriteStorePort
+} from '@/application/services/workshop/memory/ProjectMemoryWrites';
+import type { WorkshopMemoryDraft } from '@messages';
+import type {
+  WorkshopReplyMemoryContext,
+  WorkshopReplyMemoryPort
+} from '@/application/services/workshop/memory/WorkshopReplyMemory';
+import { hasWorkshopMemoryProposalText } from '@/utils/workshopReplyControls';
 
 /** The store's read-only methods; satisfied by ProjectMemoryStore. */
 export type ProjectMemoryReadPort = Pick<ProjectMemoryStore, 'availability' | 'list' | 'read'>;
+
+/** The store's methods the library uses, writes included (Slice 3); satisfied by ProjectMemoryStore. */
+export type ProjectMemoryStorePort = ProjectMemoryReadPort & ProjectMemoryWriteStorePort;
 
 /** Session recall's one question for memory (D3); satisfied by WorkshopTranscriptRecallService. */
 export interface ProjectMemoryPositionsPort {
@@ -105,11 +123,12 @@ export interface ProjectMemoryGrammarPort {
   teachesGrammar(): boolean;
 }
 
-export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemoryGrammarPort {
+export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemoryGrammarPort, WorkshopReplyMemoryPort {
   private readonly now: () => Date;
+  private readonly writes: ProjectMemoryWrites;
 
   constructor(
-    private readonly store: ProjectMemoryReadPort,
+    private readonly store: ProjectMemoryStorePort,
     private readonly scope: WorkshopRecallScopePort,
     private readonly recall: ProjectMemoryPositionsPort,
     private readonly settings: SettingsStore,
@@ -117,6 +136,41 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
     options: ProjectMemoryLibraryOptions = {}
   ) {
     this.now = options.now ?? (() => new Date());
+    this.writes = new ProjectMemoryWrites(store, () => this.workspaceReason(), this.now, outputChannel);
+  }
+
+  /**
+   * The writer's writes (Slice 3; `ProjectMemoryWrites`): never a model's.
+   * Each is owed until it settles; `shutDown` drains them at deactivation.
+   */
+  save(draft: WorkshopMemoryDraft, provenance: ProjectMemorySaveProvenance): Promise<ProjectMemoryWriteResult> {
+    return this.writes.save(draft, provenance);
+  }
+
+  /** Edit a saved memory (the sheet's Save changes). `update` is the update note's (D14). */
+  edit(id: string, patch: WorkshopMemoryDraft): Promise<ProjectMemoryWriteResult> {
+    return this.writes.update(id, patch);
+  }
+
+  forget(id: string): Promise<ProjectMemoryWriteResult> {
+    return this.writes.forget(id);
+  }
+
+  restore(id: string): Promise<ProjectMemoryWriteResult> {
+    return this.writes.restore(id);
+  }
+
+  editData(id: string): Promise<ProjectMemoryEditDataResult> {
+    return this.writes.editData(id);
+  }
+
+  estimatePinned(id: string | undefined, draft: WorkshopMemoryDraft): Promise<ProjectMemoryEstimateResult> {
+    return this.writes.estimate(id, draft);
+  }
+
+  /** Wait for every owed write (D10; joined to `shutDownExtension`). */
+  shutDown(): Promise<void> {
+    return this.writes.shutDown();
   }
 
   /** The global mode, read now; anything unknown reads as off. */
@@ -212,6 +266,32 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
     this.log(`read named=${ids.length} read=${items.filter((item) => item.kind === 'memory').length} ` +
       `unknown=${items.filter((item) => item.kind === 'unknown').length} busy=${items.filter((item) => item.kind === 'busy').length}`);
     return { kind: 'read', items };
+  }
+
+  /**
+   * What run completion needs to settle a reply's proposal (D6): whether
+   * personas may propose now, and, only when the reply holds a frame, the
+   * listed memories' titles, for `supersedes`. A listing that fails or is
+   * cancelled leaves `listed` out, so every `supersedes` is dropped and
+   * counted; it never fails the reply.
+   */
+  async replyMemoryContext(reply: string, signal?: AbortSignal): Promise<WorkshopReplyMemoryContext> {
+    if (!this.access().open) {
+      return { open: false };
+    }
+    if (!hasWorkshopMemoryProposalText(reply)) {
+      return { open: true };
+    }
+    try {
+      const set = await this.personaSet(signal);
+      if (set.kind !== 'set') {
+        return { open: set.kind !== 'closed' };
+      }
+      return { open: true, listed: new Map(set.memories.map(({ memory }) => [memory.id, memory.title])) };
+    } catch {
+      this.log('reply context listing cancelled');
+      return { open: true };
+    }
   }
 
   /** The `<project-memory>` frame for a conversation's first user message (D5), or why there is none. */

@@ -40,6 +40,9 @@ import {
   WorkshopTurnWidgetCommit,
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetRecommendation,
+  WorkshopMemoryProposal,
+  WorkshopMemoryProposalState,
+  WorkshopProjectMemoryReceipt,
   WorkshopProjectMemoryDelivery
 } from '@messages';
 import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
@@ -50,6 +53,7 @@ import {
   WorkshopCapabilityPrincipal
 } from '@shared/types/workshopCapabilities';
 import {
+  isWorkshopPersonaId,
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
@@ -137,6 +141,11 @@ import {
   workshopRewindTurnFacts
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import { cloneTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
+import { cloneWorkshopMemoryProposal } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
+import {
+  cloneWorkshopMemoryReceipt,
+  workshopMemoryReceiptContent
+} from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
 import { workshopModelsBeforeWindow } from '@shared/workshop/workshopModelSlices';
 import {
   attachmentSnapshot,
@@ -1674,7 +1683,8 @@ export class WorkshopSessionService {
     actionableFindings: WorkshopActionableFinding[] = [],
     citations?: UrlCitation[],
     widgetRecommendation?: WorkshopWidgetRecommendation,
-    model?: WorkshopTurnModel
+    model?: WorkshopTurnModel,
+    memoryProposal?: WorkshopMemoryProposal
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1722,6 +1732,10 @@ export class WorkshopSessionService {
       // Persona-only decoration: tool reports never carry recommendation chips.
       widgetRecommendation: (isHost || isGuest) && widgetRecommendation
         ? cloneWidgetRecommendation(widgetRecommendation)
+        : undefined,
+      // A memory card belongs to a persona's reply (ADR 2026-11-04 D6).
+      memoryProposal: (isHost || isGuest) && memoryProposal
+        ? cloneWorkshopMemoryProposal(memoryProposal)
         : undefined
     };
 
@@ -1834,6 +1848,45 @@ export class WorkshopSessionService {
 
   collectOpenTodosForHost(): WorkshopTodoItem[] {
     return this.todoLedger.collectOpen(this.getExcerptVersion());
+  }
+
+  /**
+   * Settle a persona's memory card (ADR 2026-11-04 D6): saved (naming the
+   * memory it became), dismissed, or shown again. Refuses a turn that holds
+   * no card.
+   */
+  setMemoryProposalState(turnId: string, state: WorkshopMemoryProposalState, memoryId?: string): WorkshopTurn {
+    const turn = this.turnLedger.update(turnId, (current) => {
+      if (!current.memoryProposal) {
+        return;
+      }
+      const { memoryId: _previous, ...proposal } = current.memoryProposal;
+      current.memoryProposal = state === 'saved' && memoryId ? { ...proposal, state, memoryId } : { ...proposal, state };
+    });
+    if (!turn?.memoryProposal) {
+      throw Object.assign(new Error('That message no longer holds a memory suggestion.'), { reason: 'no-proposal' });
+    }
+    return cloneTurn(turn);
+  }
+
+  /** Record a memory receipt as a session divider every participant receives (D7). */
+  appendMemoryReceipt(receipt: WorkshopProjectMemoryReceipt): WorkshopTurn {
+    const turn: WorkshopTurn = {
+      id: this.nextTurnId('system'),
+      role: 'system',
+      kind: 'divider',
+      participant: 'session',
+      artifact: 'memory_receipt',
+      excerptVersion: this.getExcerptVersion(),
+      content: workshopMemoryReceiptContent(
+        receipt,
+        receipt.proposedBy && isWorkshopPersonaId(receipt.proposedBy) ? workshopPersonaLabel(receipt.proposedBy) : undefined
+      ),
+      timestamp: this.now(),
+      projectMemoryReceipt: cloneWorkshopMemoryReceipt(receipt)
+    };
+    this.turnLedger.append(turn);
+    return cloneTurn(turn);
   }
 
   setTurnBookmark(turnId: string, bookmarked: boolean): WorkshopBookmarkChange {

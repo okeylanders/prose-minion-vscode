@@ -1,4 +1,6 @@
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
+import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
+import type { WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import {
   resolveWorkshopPersonaAnalysisInputs,
   WorkshopPersonaAnalysisRunInputs
@@ -99,6 +101,12 @@ export interface WorkshopPersonaCapabilityTurn {
   /** The retained provider conversation this turn continues, when one exists. */
   conversationId?: string;
   /**
+   * The last room turn this conversation has been, or is now being, handed
+   * (`workshopRoomDeliveredThrough`): how far memory receipts have reached it
+   * (ADR 2026-11-04 D7, D14).
+   */
+  roomDeliveredThrough?: string;
+  /**
    * The pinned passage — ABSENT in an open conversation (Sprint 13A §1).
    * `analysis.run` may inherit it when present or use persona-selected local
    * material when absent; the room itself is never changed by that choice.
@@ -138,6 +146,15 @@ export class WorkshopPersonaCapabilityFactory {
       this.recall,
       this.memory
     );
+  }
+
+  /**
+   * A reply's project-memory context, resolved before its run completes
+   * (ADR 2026-11-04 D6): every completion site asks here, so host, guest
+   * and synthesis replies are settled alike.
+   */
+  replyMemoryContext(reply: string, signal?: AbortSignal): Promise<WorkshopReplyMemoryContext> {
+    return this.memory.replyMemoryContext(reply, signal);
   }
 }
 
@@ -409,6 +426,15 @@ export class WorkshopPersonaCapability implements AgentCapability<
       default:
         return this.assertNever(request);
     }
+  }
+
+  /**
+   * An intermediate reply as the engine may replay, retain or log it: every
+   * project-memory proposal replaced (ADR 2026-11-04 D6, D9; PR #200 F-01).
+   * Capability calls are left exactly as written.
+   */
+  redactPrivateControls(content: string): string {
+    return extractWorkshopReplyControls(content, { memoryOpen: false }).redacted;
   }
 
   inspectionLogContext(): string {

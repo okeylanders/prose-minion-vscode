@@ -11,5 +11,6 @@ export const offProjectMemory: WorkshopProjectMemoryPort = {
   search: async () => ({ kind: 'closed', reason: 'off' }),
   read: async () => ({ kind: 'closed', reason: 'off' }),
   frame: async () => ({ kind: 'closed', reason: 'off' }),
+  replyMemoryContext: async () => ({ open: false }),
   update: async () => ({ kind: 'closed', reason: 'off' })
 };

@@ -17,6 +17,11 @@
  * in-flight one, reset aborts, and zombie completions are refused + logged.
  */
 
+import type { WorkshopProjectMemoryWritePort } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
+import {
+  hasWorkshopMemoryProposalText
+} from '@/utils/workshopReplyControls';
+import { resolveWorkshopReplyMemory, type WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import { LogSink, ShellService } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
@@ -25,7 +30,8 @@ import { ContextAssistantService } from '@services/analysis/ContextAssistantServ
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import {
-  WorkshopRoomDeliveryService
+  WorkshopRoomDeliveryService,
+  workshopRoomDeliveredThrough
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
@@ -232,7 +238,8 @@ export class WorkshopRoomHandler {
     private readonly sessionPersistence: WorkshopSessionPersistenceCoordinator,
     transcriptExport: WorkshopTranscriptExportPort,
     widgetRuntime: WorkshopWidgetRuntime,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    projectMemory: WorkshopProjectMemoryWritePort
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -264,6 +271,7 @@ export class WorkshopRoomHandler {
         sessionPersistence: this.sessionPersistence,
         transcriptExport,
         widgetRuntime,
+        projectMemory,
         outputChannel: this.outputChannel
       },
       {
@@ -632,7 +640,10 @@ export class WorkshopRoomHandler {
           capability: guestCapability,
           webResearch: this.conversationSettingsService.getWebResearch().enabled
         });
+        const pendingMemory = this.replyMemory(result.content, controller.signal);
+        const replyMemory = pendingMemory && await pendingMemory;
         const assistantTurn = completeWorkshopRun({
+          memory: replyMemory,
           session: this.session,
           requestId,
           label: workshopPersonaLabel(personaId),
@@ -1099,6 +1110,7 @@ export class WorkshopRoomHandler {
             : personaId,
           owner: participantOwner,
           conversationId,
+          roomDeliveredThrough: workshopRoomDeliveredThrough(roomDelivery),
           excerpt,
           excerptVersion: this.session.getExcerptVersion(),
           signal: controller.signal,
@@ -1159,7 +1171,10 @@ export class WorkshopRoomHandler {
             webResearch: this.conversationSettingsService.getWebResearch().enabled
           });
 
+      const pendingMemory = this.replyMemory(result.content, controller.signal);
+      const replyMemory = pendingMemory && await pendingMemory;
       const assistantTurn = completeWorkshopRun({
+        memory: replyMemory,
         session: this.session,
         requestId,
         label,
@@ -1347,6 +1362,18 @@ export class WorkshopRoomHandler {
       return 'room';
     }
     return this.sliceComposition?.isContextRunActive() ? 'wizard' : undefined;
+  }
+
+  /**
+   * A reply's project-memory context, settled at completion (ADR 2026-11-04
+   * D6). Only a reply holding a frame reads the listing; any other gets
+   * none, so its completion costs no await.
+   */
+  private replyMemory(reply: string, signal: AbortSignal): Promise<WorkshopReplyMemoryContext> | undefined {
+    return hasWorkshopMemoryProposalText(reply)
+      ? resolveWorkshopReplyMemory(this.capabilityFactory, reply, signal,
+        workshopWriterPreferredAddress(this.conversationSettingsService.getWriterProfile()))
+      : undefined;
   }
 
   private excerptMutationBlockedReason(): string | undefined {

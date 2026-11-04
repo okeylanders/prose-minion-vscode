@@ -74,9 +74,7 @@ import {
 } from '@/utils/workshopPromptFrames';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { buildWorkshopWriterProfileFrame } from '@/utils/workshopWriterProfile';
-import {
-  sanitizeWorkshopWidgetRecommendationForRetention
-} from '@/utils/workshopWidgetRecommendationProtocol';
+import { sanitizeWorkshopReplyForRetention } from '@/utils/workshopReplyControls';
 import type { OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
 
 /**
@@ -617,7 +615,7 @@ export class AssistantToolService {
         signal: streamingOptions?.signal,
         onToken: streamingOptions?.onToken,
         tools: this.workshopWebSearchTools(streamingOptions?.webResearch),
-        retainedAssistantContentSanitizer: sanitizeWorkshopWidgetRecommendationForRetention
+        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
       }
     });
 
@@ -684,7 +682,7 @@ export class AssistantToolService {
         signal: streamingOptions.signal,
         onToken: streamingOptions.onToken,
         tools: this.workshopWebSearchTools(streamingOptions.webResearch),
-        retainedAssistantContentSanitizer: sanitizeWorkshopWidgetRecommendationForRetention
+        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
       }
     });
 
@@ -742,7 +740,7 @@ export class AssistantToolService {
         signal: streamingOptions?.signal,
         onToken: streamingOptions?.onToken,
         tools: this.workshopWebSearchTools(streamingOptions?.webResearch),
-        retainedAssistantContentSanitizer: sanitizeWorkshopWidgetRecommendationForRetention
+        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
       }
     });
 

@@ -35,6 +35,15 @@ export interface WorkshopPreparedRoomDelivery {
 }
 
 /**
+ * The last room turn a reader has been, or is now being, handed: this
+ * delivery's last turn, or the offset it started from when it hands none.
+ * Project memory's receipts count only up to it (ADR 2026-11-04 D7, D14).
+ */
+export function workshopRoomDeliveredThrough(prepared: WorkshopPreparedRoomDelivery | undefined): string | undefined {
+  return prepared ? prepared.deliveredTurnIds.at(-1) ?? prepared.startingOffset : undefined;
+}
+
+/**
  * Session lifecycle markers are durable room history, but delivering only
  * those markers is not conversational catch-up worth announcing to the user.
  */

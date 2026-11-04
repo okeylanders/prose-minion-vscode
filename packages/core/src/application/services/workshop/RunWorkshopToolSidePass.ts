@@ -1,8 +1,13 @@
 /** Focused Sprint 06B use case: isolated tool report, then host synthesis. */
 
+import {
+  hasWorkshopMemoryProposalText
+} from '@/utils/workshopReplyControls';
+import { resolveWorkshopReplyMemory } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
-  WorkshopRoomDeliveryService
+  WorkshopRoomDeliveryService,
+  workshopRoomDeliveredThrough
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -220,6 +225,7 @@ export class RunWorkshopToolSidePass {
         personaId,
         owner: { kind: 'host' },
         conversationId: hostConversationId,
+        roomDeliveredThrough: workshopRoomDeliveredThrough(pendingRoomDelivery),
         excerpt,
         excerptVersion: excerpt.version,
         signal: controller.signal,
@@ -255,7 +261,18 @@ export class RunWorkshopToolSidePass {
             capability: hostCapability,
             webResearch: this.webResearchEnabled()
           });
+      // A reply's memory proposal is settled at completion (ADR 2026-11-04 D6);
+      // only a reply holding a frame reads the listing.
+      const replyMemory = hasWorkshopMemoryProposalText(synthesis.content)
+        ? await resolveWorkshopReplyMemory(
+          this.capabilityFactory,
+          synthesis.content,
+          controller.signal,
+          workshopWriterPreferredAddress(this.writerProfileService.getProfile())
+        )
+        : undefined;
       const synthesisTurn = completeWorkshopRun({
+        memory: replyMemory,
         session: this.session,
         requestId: synthesisRequestId,
         label: `${personaLabel} synthesis`,

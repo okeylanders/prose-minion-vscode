@@ -1,5 +1,6 @@
 /** Workshop session, excerpt, turn, todo, and persistence-facing contracts. */
 
+import type { WorkshopMemoryProposal, WorkshopProjectMemoryReceipt } from './projectMemory';
 import { MessageEnvelope, MessageType } from '../base';
 import { TokenUsage } from '../tokenUsage';
 import { UrlCitation } from '../citations';
@@ -159,6 +160,8 @@ export const WORKSHOP_TURN_ARTIFACTS = [
   'excerpt_revision',
   'context_change',
   'standing_directive_change',
+  // A project-memory receipt (ADR 2026-11-04 D7): room history, never the memory's body.
+  'memory_receipt',
   'session_start',
   'session_resume',
   /*
@@ -442,6 +445,10 @@ export interface WorkshopTurn {
    * wholesale host-side and never reach this field.
    */
   widgetRecommendation?: WorkshopWidgetRecommendation;
+  /** A persona's project-memory proposal, its trailer stripped (ADR 2026-11-04 D6). Host and guest replies only. */
+  memoryProposal?: WorkshopMemoryProposal;
+  /** A save, edit, Forget or Restore of a project memory, on its divider (D7). Never the body. */
+  projectMemoryReceipt?: WorkshopProjectMemoryReceipt;
   /**
    * What project memory the message this persona reply answers delivered
    * (ADR 2026-11-04 D14): a frame's or an update note's snapshot of the

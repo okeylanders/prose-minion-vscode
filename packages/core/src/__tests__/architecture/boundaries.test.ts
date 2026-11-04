@@ -83,6 +83,8 @@ const WORKSHOP_TODO_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopTodoHandler.ts';
 const WORKSHOP_BOOKMARK_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopBookmarkHandler.ts';
+const WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopProjectMemoryHandler.ts';
 const WORKSHOP_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopContextHandler.ts';
 const WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER =
@@ -183,6 +185,24 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_BOOKMARK_HANDLER_OWNER,
     registration: 'direct',
     messageTypes: ['WORKSHOP_REQUEST_TURN_PREVIEW']
+  },
+  // Project memory's writes (ADR 2026-11-04 D13; Slice 3): room changes behind
+  // the gate, the sheet's reads direct.
+  {
+    owner: WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: [
+      'WORKSHOP_MEMORY_PROPOSAL_ACTION',
+      'WORKSHOP_SAVE_TURN_TO_MEMORY',
+      'WORKSHOP_MEMORY_CREATE',
+      'WORKSHOP_MEMORY_UPDATE',
+      'WORKSHOP_MEMORY_FORGET'
+    ]
+  },
+  {
+    owner: WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_MEMORY_REQUEST_EDIT', 'WORKSHOP_MEMORY_ESTIMATE']
   },
   {
     owner: WORKSHOP_SESSION_HANDLER_OWNER,
@@ -326,6 +346,10 @@ const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
     reference: /WorkshopBookmarkHandler/
   },
   {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopProjectMemoryHandler.ts'),
+    reference: /WorkshopProjectMemoryHandler/
+  },
+  {
     file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopSessionExportHandler.ts'),
     reference: /WorkshopSessionExportHandler/
   }
@@ -338,6 +362,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
+  'WorkshopProjectMemoryHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
   'WorkshopShowVsTellHandler',
@@ -1011,12 +1036,15 @@ const WORKSHOP_MEMORY_MODULES = [
   'ProjectMemoryLibraryContracts.ts',
   'ProjectMemoryUpdateNote.ts',
   'ProjectMemoryVersion.ts',
+  'ProjectMemoryWrites.ts',
+  'WorkshopMemoryProposalPhrasing.ts',
   'WorkshopProjectMemoryCapability.ts',
   'WorkshopProjectMemoryCopy.ts',
   'WorkshopProjectMemoryRenderer.ts',
   'WorkshopProjectMemoryRequestCopy.ts',
   'WorkshopProjectMemorySearch.ts',
-  'WorkshopProjectMemoryXmlCodec.ts'
+  'WorkshopProjectMemoryXmlCodec.ts',
+  'WorkshopReplyMemory.ts'
 ];
 const MEMORY_TYPE_ONLY_MODULE = /(?:^|\/)(?:ProjectMemoryStore|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService)$/;
 
@@ -1788,11 +1816,12 @@ describe('architectural boundaries', () => {
     // Wayfinding Slice 2 added the Read in reader's two reads (direct).
     // Wayfinding Slice 4 added the bookmark set and rename (mutation).
     // Wayfinding Slice 5 added the read-only turn preview (direct).
-    expect(expectedOwnerPairs).toHaveLength(64);
+    // Project Memory Slice 3 added five writes (mutation) and the sheet's two reads (direct).
+    expect(expectedOwnerPairs).toHaveLength(71);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(40);
+      .toHaveLength(45);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(24);
+      .toHaveLength(26);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -1889,7 +1918,7 @@ describe('architectural boundaries', () => {
         );
     });
 
-    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(6);
+    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(7);
     expect(offenders).toEqual([]);
   });
 
@@ -2411,6 +2440,7 @@ describe('architectural boundaries', () => {
       'lexicalGravity.ts',
       'lightboxTiles.ts',
       'participants.ts',
+      'projectMemory.ts',
       'seedDelivery.ts',
       'session.ts',
       'settings.ts',

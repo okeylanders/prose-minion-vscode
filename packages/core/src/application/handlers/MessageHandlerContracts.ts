@@ -13,6 +13,7 @@ import type {
   TokenUsageUpdateMessage,
   WorkshopSessionStateMessage
 } from '@messages';
+import type { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
 import type { AIResourceRefresh } from '@orchestration/AIResourceRefresh';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
@@ -172,4 +173,10 @@ export interface CoreServices {
   lightboxBoardStore: LightboxBoardStore;
   /** When boards are saved, opened and restored, over the service, the store and the runner (Slice 5A). */
   lightboxBoardLibrary: LightboxBoardLibrary;
+  /**
+   * Project memory (ADR 2026-11-04 D13): the one library, whose writes are
+   * the writer's (Slice 3's `WorkshopProjectMemoryHandler`) and owed until
+   * they settle.
+   */
+  projectMemory: ProjectMemoryLibrary;
 }

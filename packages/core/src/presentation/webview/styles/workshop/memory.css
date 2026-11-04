@@ -1,11 +1,18 @@
 /*
- * Workshop Project Memory (Slice 4b-ui): the Memory tab in Conversation
- * settings and the memory manager. Slice 0d's design, on the full tabs'
- * tokens; no new color. The tab's rows, cards and notes are the settings
- * panels' (shell.css); the manager's rows are the shared browser's
- * (styles/fulltab/savedBrowser.css). Only what is memory's own is here.
+ * Workshop Project Memory styles, on the full tabs' tokens; no new color.
  * Plain CSS on the Chromium 114 floor (webviewCssFloor.test.ts).
+ *
+ * 1. The Memory tab and the memory manager (Slice 4b-ui). The tab's rows,
+ *    cards and notes are the settings panels' (shell.css); the manager's
+ *    rows are the shared browser's (styles/fulltab/savedBrowser.css). Only
+ *    what is memory's own is here.
+ * 2. Project memory in the thread and its sheet (Slice 3; ADR 2026-11-04
+ *    D6, D7; Slice 0d's Thread and EditSheet boards).
+ *
+ * The two sections share no class names.
  */
+
+/* Memory tab and manager (Slice 4b-ui) */
 
 /* ── The Memory tab ─────────────────────────────────────────────── */
 
@@ -310,5 +317,337 @@
   [data-pm-surface="workshop"] .pm-ws-memory-readout {
     justify-content: flex-start;
     max-width: none;
+  }
+}
+
+/* Thread: card, receipts, sheet (Slice 3) */
+
+/* The card, under a persona's reply, styled like the Next steps box with an accent border. */
+[data-pm-surface="workshop"] .pm-ws-memory-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px 13px;
+  border: 1px solid rgba(224, 103, 58, 0.42);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-inset);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-held {
+  border-color: rgba(226, 178, 74, 0.5);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-saved {
+  border-color: var(--pm-border);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--pm-muted);
+  font: 600 10px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-title svg {
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-held .pm-ws-memory-card-title svg {
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-kind {
+  padding: 2px 7px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-pill);
+  color: var(--pm-muted);
+  font: 600 9.5px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-name {
+  color: var(--pm-text);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-summary {
+  color: var(--pm-text-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-replaces {
+  color: var(--pm-dim);
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-replaces b {
+  color: var(--pm-muted);
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-note summary {
+  cursor: pointer;
+  color: var(--pm-muted);
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-note p {
+  margin: 6px 0 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--pm-border-2);
+  color: var(--pm-text-2);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--pm-accent-lo);
+  border-radius: var(--pm-r-button);
+  background: var(--pm-accent);
+  color: #fff;
+  font: 600 11.5px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-ghost {
+  padding: 5px 10px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-button);
+  background: var(--pm-surface-2);
+  color: var(--pm-muted);
+  font: 11.5px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-why {
+  flex: 1;
+  min-width: 220px;
+  color: var(--pm-dim);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: right;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-why-held {
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-error,
+[data-pm-surface="workshop"] .pm-ws-memory-refusal {
+  display: flex;
+  gap: 7px;
+  color: var(--pm-amber);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* Settled card states, in place. */
+[data-pm-surface="workshop"] .pm-ws-memory-settled {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-inset);
+  color: var(--pm-muted);
+  font-size: 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-settled svg {
+  flex: none;
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-settled-off svg {
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-settled b,
+[data-pm-surface="workshop"] .pm-ws-memory-receipt b {
+  color: var(--pm-text-2);
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-link {
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--pm-accent-hi);
+  font: inherit;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-link:hover:not(:disabled) {
+  background: var(--pm-accent-soft);
+}
+
+/* Receipts: centered divider lines every participant receives. */
+[data-pm-surface="workshop"] .pm-ws-memory-receipt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--pm-dim);
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-receipt::before,
+[data-pm-surface="workshop"] .pm-ws-memory-receipt::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--pm-border-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-receipt-in {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 720px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-receipt-in svg {
+  flex: none;
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-receipt-gone svg {
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-save-to-memory {
+  border-color: rgba(224, 103, 58, 0.5);
+  color: var(--pm-text-2);
+}
+
+/* The sheet. */
+[data-pm-surface="workshop"] .pm-ws-memory-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--pm-muted);
+  font-size: 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-field input,
+[data-pm-surface="workshop"] .pm-ws-memory-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-input);
+  background: var(--pm-inset);
+  color: var(--pm-text);
+  font: 13px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-field textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-field small {
+  align-self: flex-end;
+  color: var(--pm-dim);
+  font: 10.5px var(--pm-mono);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-hint {
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-kinds {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-kind-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 9px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-surface-2);
+  color: var(--pm-muted);
+  font: 11px var(--pm-sans);
+  text-align: left;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-kind-card b {
+  color: var(--pm-text);
+  font-size: 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-kind-card-on {
+  border-color: var(--pm-accent);
+  background: var(--pm-accent-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-replaced {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-replaced button {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--pm-accent-hi);
+  font: 11.5px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch-name {
+  color: var(--pm-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch-help {
+  color: var(--pm-dim);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid var(--pm-border-2);
+  border-radius: 999px;
+  background: var(--pm-surface-3);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch-on {
+  border-color: var(--pm-accent-lo);
+  background: var(--pm-accent);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch-on span {
+  left: 16px;
+  background: #fff;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-source {
+  display: flex;
+  gap: 8px;
+  color: var(--pm-dim);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+@media (max-width: 760px) {
+  [data-pm-surface="workshop"] .pm-ws-memory-kinds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -62,6 +62,7 @@ import type {
   UseWorkshopLightboxTilesReturn
 } from '@hooks/domain/workshop/useWorkshopLightboxTiles';
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
+import type { UseWorkshopProjectMemoryReturn } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 
 export interface WorkshopAppMessageRouterDeps {
   workshopRoom: UseWorkshopRoomReturn;
@@ -70,6 +71,8 @@ export interface WorkshopAppMessageRouterDeps {
   readIn: UseWorkshopReadInReturn;
   /** Bookmarks and the turn preview (Wayfinding Slice 5). */
   bookmarks: UseWorkshopBookmarksReturn;
+  /** Project memory's write answers and the sheet's reads (Project Memory Slice 3). */
+  projectMemory: Pick<UseWorkshopProjectMemoryReturn, 'handleWriteResult' | 'handleEditData' | 'handleEstimateResult'>;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -98,6 +101,7 @@ export function buildWorkshopAppMessageRoutes(
     workshopSessions,
     readIn,
     bookmarks,
+    projectMemory,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -146,6 +150,9 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT]: readIn.handleReadInResourceContent,
     [MessageType.WORKSHOP_TURN_PREVIEW]: bookmarks.handleTurnPreview,
     [MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT]: bookmarks.handleRenameResult,
+    [MessageType.WORKSHOP_MEMORY_WRITE_RESULT]: projectMemory.handleWriteResult,
+    [MessageType.WORKSHOP_MEMORY_EDIT_DATA]: projectMemory.handleEditData,
+    [MessageType.WORKSHOP_MEMORY_ESTIMATE_RESULT]: projectMemory.handleEstimateResult,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshopRoom.handleContextSearchResults,
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT]:
       gesturePlayground.handleWidgetMenuResult,

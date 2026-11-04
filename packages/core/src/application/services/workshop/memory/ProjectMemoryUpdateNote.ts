@@ -56,8 +56,16 @@ export function renderProjectMemoryUpdateNote(
   if (view.digest) {
     // A set too large to list was recorded whole as a digest (PR #198 F-03):
     // the same set sends nothing; any change is the count line, from the catalog.
+    // Receipts folded after the digest are what this conversation was told
+    // since; when one disagrees with the folder (a Forget restored, an edit
+    // reverted outside this room), digest equality proves nothing
+    // (PR #200 F-06), so the count line goes out.
     const current = workshopProjectMemorySetDigest(snapshot);
-    if (current.count === view.digest.count && current.hash === view.digest.hash) {
+    const consistent = receiptsAgreeWith(view, snapshot);
+    if (consistent && current.count === view.digest.count && current.hash === view.digest.hash) {
+      return { snapshot, changed: 0, overBudget: false };
+    }
+    if (consistent && receiptsExplainDigest(view, snapshot)) {
       return { snapshot, changed: 0, overBudget: false };
     }
     return {
@@ -89,6 +97,44 @@ export function renderProjectMemoryUpdateNote(
       'call memory.catalog.</project-memory-update>'
     : [`${open}>`, ...[...pinnedLines, ...entryLines, ...goneLines].map((line) => `  ${line}`), '</project-memory-update>'].join('\n');
   return { text, snapshot, changed: count, overBudget };
+}
+
+/**
+ * Receipts after a digest snapshot (Slice 3): a digest can't take a receipt
+ * in, since it doesn't keep the set it hashed. The one case it can check is
+ * the common one, a save in this room: when the set without the memories the
+ * receipts told of, at the versions they told, hashes to the digest, the
+ * receipts explain every change, and there is no note. Any other change (an
+ * edit or a Forget past the digest's bound, or a change the receipts don't
+ * cover) is 2b's count line, once; its snapshot records a fresh digest.
+ */
+function receiptsExplainDigest(
+  view: ProjectMemoryDeliveredView,
+  snapshot: ReadonlyArray<{ id: string; version: string }>
+): boolean {
+  if (!view.digest || !view.receipted || view.receipted.size === 0) {
+    return false;
+  }
+  const told = new Set([...view.receipted]
+    .filter(([id, version]) => version !== null && snapshot.some((entry) => entry.id === id && entry.version === version))
+    .map(([id]) => id));
+  if (told.size === 0) {
+    return false;
+  }
+  const rest = workshopProjectMemorySetDigest(snapshot.filter(({ id }) => !told.has(id)));
+  return rest.count === view.digest.count && rest.hash === view.digest.hash;
+}
+
+/** Whether every receipt folded after the digest names the state the folder holds now (PR #200 F-06). */
+function receiptsAgreeWith(
+  view: ProjectMemoryDeliveredView,
+  snapshot: ReadonlyArray<{ id: string; version: string }>
+): boolean {
+  if (!view.receipted || view.receipted.size === 0) {
+    return true;
+  }
+  const now = new Map(snapshot.map(({ id, version }) => [id, version]));
+  return [...view.receipted].every(([id, version]) => (version === null ? !now.has(id) : now.get(id) === version));
 }
 
 function goneReason(listed: ProjectMemorySet['memories'][number] | undefined): string {

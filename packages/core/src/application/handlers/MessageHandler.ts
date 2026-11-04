@@ -207,7 +207,8 @@ export class MessageHandler {
       lightboxService,
       lightboxReadingRunner,
       lightboxContextShelf,
-      lightboxBoardLibrary
+      lightboxBoardLibrary,
+      projectMemory
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -352,7 +353,8 @@ export class MessageHandler {
           repository: lexicalGravityLensRepository
         }
       },
-      outputChannel
+      outputChannel,
+      projectMemory
     );
     // Lightbox editor tab (ADR 2026-10-19 D10) — the 13th domain, composed
     // like the others. The shell owns the file picker; the service owns boards.

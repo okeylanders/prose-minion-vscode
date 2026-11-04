@@ -53,10 +53,12 @@ export interface LibraryHostOptions {
   scope?: WorkshopRecallScope;
   positions?: (sessionId: string, turnIds: readonly string[]) => WorkshopRecallPositions;
   now?: string;
+  /** Another window's file system, to share its folder (Slice 3's two-window test). */
+  fileSystem?: MemoryFileSystem;
 }
 
 export function libraryHost(options: LibraryHostOptions = {}) {
-  const fileSystem = new MemoryFileSystem();
+  const fileSystem = options.fileSystem ?? new MemoryFileSystem();
   const lines: string[] = [];
   const log = { appendLine: (line: string) => { lines.push(line); }, show: jest.fn(), clear: jest.fn() } as unknown as LogSink;
   const state = {

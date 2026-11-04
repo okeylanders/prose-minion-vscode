@@ -43,7 +43,7 @@ import { workshopProjectMemoryRequestSummary } from '@/application/services/work
 import { recallLabel, recallLabelList } from '@/application/services/workshop/recall/WorkshopRecallText';
 
 /** The library's questions a persona may ask; satisfied by ProjectMemoryLibrary. */
-export type WorkshopProjectMemoryPort = Pick<ProjectMemoryLibrary, 'catalog' | 'search' | 'read' | 'frame' | 'update'>;
+export type WorkshopProjectMemoryPort = Pick<ProjectMemoryLibrary, 'catalog' | 'search' | 'read' | 'frame' | 'update' | 'replyMemoryContext'>;
 
 /** The session's part in delivery records (D14); satisfied by WorkshopSessionService. */
 export type WorkshopProjectMemorySessionPort = Pick<WorkshopSessionService, 'stageProjectMemoryDelivery' | 'readRoomLedger'>;
@@ -53,6 +53,12 @@ export interface WorkshopProjectMemoryTurnContext {
   readonly personaId: WorkshopPersonaId;
   /** The conversation this turn belongs to, whose record a delivery joins. */
   readonly owner: WorkshopCapabilityPrincipal;
+  /**
+   * The last room turn this conversation has been, or is now being, handed:
+   * this run's prepared catch-up, or the reader's committed offset. Receipts
+   * after it haven't reached the conversation (D7, D14).
+   */
+  readonly roomDeliveredThrough?: string;
   readonly signal: AbortSignal;
 }
 
@@ -117,7 +123,9 @@ export class WorkshopProjectMemoryCapability {
    */
   async updateNote(): Promise<string | undefined> {
     return this.deliver('note', async () => {
-      const view = projectMemoryDeliveredView(this.session.readRoomLedger(), this.turn.owner);
+      const view = projectMemoryDeliveredView(this.session.readRoomLedger(), this.turn.owner, {
+        deliveredThroughTurnId: this.turn.roomDeliveredThrough
+      });
       const result = await this.library.update(view, this.turn.signal);
       if (result.kind === 'note') {
         return { snapshot: result.snapshot, text: result.text };

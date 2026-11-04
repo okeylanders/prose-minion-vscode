@@ -424,7 +424,7 @@ export class AgentRunEngine {
       instruction: string
     ): Promise<TurnResult> => {
       pendingMessages.push(
-        { role: 'assistant', content: previous.content },
+        { role: 'assistant', content: this.privateSafe(capability, previous.content) },
         { role: 'user', content: instruction }
       );
       const next = await this.executeTurn(currentMessages(), runOptions, capability, provider, retainedConversationId);
@@ -484,7 +484,7 @@ export class AgentRunEngine {
           capability,
           request,
           provider,
-          [...currentMessages(), { role: 'assistant', content: last.content }],
+          [...currentMessages(), { role: 'assistant', content: this.privateSafe(capability, last.content) }],
           policy.retention === 'retain',
           runOptions
         );
@@ -1053,6 +1053,11 @@ export class AgentRunEngine {
     return Boolean(!last.cancelled && last.exactRequest);
   }
 
+  /** An intermediate response as it may be replayed, retained or logged (ADR 2026-11-04 D6, D9). */
+  private privateSafe(capability: AnyAgentCapability | undefined, content: string): string {
+    return capability?.redactPrivateControls ? capability.redactPrivateControls(content) : content;
+  }
+
   private logCapabilityInspection(
     capability: AnyAgentCapability | undefined,
     inspection: ReturnType<AnyAgentCapability['inspectRequest']> | undefined,
@@ -1092,7 +1097,7 @@ export class AgentRunEngine {
     this.outputChannel?.appendLine(
       `[AgentRunEngine] BEGIN REJECTED CAPABILITY RESPONSE (${content.length} chars; may contain quoted user text)`
     );
-    this.outputChannel?.appendLine(content);
+    this.outputChannel?.appendLine(this.privateSafe(capability, content));
     this.outputChannel?.appendLine('[AgentRunEngine] END REJECTED CAPABILITY RESPONSE');
   }
 

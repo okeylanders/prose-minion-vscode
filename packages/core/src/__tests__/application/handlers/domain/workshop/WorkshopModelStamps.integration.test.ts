@@ -1,6 +1,7 @@
 import {
   WorkshopRoomHandler
 } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
+import { libraryHost } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import type {
   WorkshopWidgetRuntime
 } from '@/application/handlers/domain/workshop/WorkshopRouteContracts';
@@ -193,7 +194,8 @@ Add a key.`, conversationId, 'vendor/never');
         gesturePlayground: { generateMenu: jest.fn() },
         lexicalGravity: { model: {}, repository: {}, directives: {} }
       } as unknown as WorkshopWidgetRuntime,
-      output
+      output,
+      libraryHost().library
     );
     const router = new MessageRouter();
     handler.registerRoutes(router);
