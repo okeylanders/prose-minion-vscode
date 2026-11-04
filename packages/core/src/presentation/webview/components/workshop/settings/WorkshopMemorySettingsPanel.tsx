@@ -53,7 +53,6 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
   ...input
 }) => {
   const view = workshopMemoryTabView(input);
-  const loadDescriptionId = React.useId();
   const noticeId = React.useId();
   return (
     <>
@@ -108,7 +107,7 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
         <div className="pm-ws-behavior-row-text">
           <div className="pm-ws-behavior-row-name">{view.load.name}</div>
           {view.load.description && (
-            <div className="pm-ws-behavior-row-desc" id={loadDescriptionId}>{view.load.description}</div>
+            <div className="pm-ws-behavior-row-desc">{view.load.description}</div>
           )}
           {view.load.meters.map((meter) => <MemoryMeter key={meter.key} meter={meter} />)}
         </div>

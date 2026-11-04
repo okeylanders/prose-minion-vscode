@@ -93,6 +93,7 @@ jest.mock('@/presentation/webview/components/workshop/widgets/creativeVariations
 jest.mock('@/presentation/webview/components/workshop/widgets/showVsTell/showVsTell.css', () => ({}));
 jest.mock('@/presentation/webview/components/workshop/standingDirectiveRail.css', () => ({}));
 jest.mock('@/presentation/webview/components/workshop/schematic/schematic.css', () => ({}));
+jest.mock('@/presentation/webview/styles/workshop/memory.css', () => ({}));
 jest.mock('@/presentation/webview/components/shared/PmLogo', () => ({ PmLogo: () => null }));
 /* eslint-enable @typescript-eslint/naming-convention */
 
