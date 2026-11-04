@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Project Memory](README.md)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D1, D2, D3, D5, D8 (mode switches), D10 (workspace rule, library), D11, D12, D13
-**Branch:** `epic/workshop-project-memory-slice-2a-read-path`, from `epic/workshop-project-memory` with Slice 1's branch (`b8846c46`, PR #194) merged first
+**Branch:** `epic/workshop-project-memory-slice-2a-read-path`, from `epic/workshop-project-memory` with Slice 1's branch (`b8846c46`, PR #194) merged first, then the epic at `0ad996c` (Wayfinding 7b)
 **Status:** Built, verified and pushed. Waiting on PR #194 to merge into the epic; then the epic merges into this branch and the coordinator opens the PR.
 **Split:** Slice 2 is two PRs. This one is the read path. D14 (versions, the delivery record and update notes) is [Slice 2b](slice-2b-update-notes.md).
 
@@ -86,11 +86,15 @@ each get one, and no follow-up does.
 ## Verification
 
 - `npm ci`, then `npm run typecheck`: clean.
-- `npm run lint`: 0 errors. Warnings against the base (`a91bcab2`): no new
-  ones (1,158 before; compared file by file).
+- `npm run lint`: 0 errors. Warnings: 1,158 before and after; the new ones
+  the first draft added were fixed, compared file by file against the base.
+- One timing-bound Lightbox test (`LightboxPassages`, "in linear time")
+  failed once under a loaded full run and passes alone and in the final run.
 - `npx jest`: before (base `a91bcab2`, clean worktree) **640 suites / 9,105
-  tests / 59 snapshots**, all passing. After: see the counts recorded at the
-  head of this branch below.
+  tests / 59 snapshots**, all passing. After, on the branch with the epic's
+  Wayfinding Slice 7b merge (`0ad996c`) merged in (`4fbff336`): **652 suites /
+  9,228 tests / 59 snapshots**, all passing. This slice adds 7 suites; the
+  rest come from 7b.
 - No `from 'vscode'` in `packages/core/src`.
 - No new file over 500 lines. Touched files already past 500 grew a little:
   `WorkshopPersonaCapability.ts` 872 → 922 (each new case delegates to the
@@ -100,8 +104,6 @@ each get one, and no follow-up does.
   `session.ts` 954 → 957, `WorkshopTurnBubble.tsx` 792 → 794. No file under
   500 grew past it (`promptBudgets.test.ts` stays at 500).
 - Fixtures use *Alice* and made-up ids. No live provider calls.
-
-**Counts after:** 649 suites / see the push note.
 
 ## Deviations from the ADR and the slice plan
 
