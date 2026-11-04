@@ -385,6 +385,10 @@ export class WorkshopSessionMessageHandler {
           : 'Session opened with conversation memory restored.'
       );
     } catch (error) {
+      // A failed Open restores the room it left, under a new revision: the
+      // webview must hear that room, as New, Rewind and Branch's failures
+      // already make it (PR #189 F-04).
+      this.options.postSessionState();
       this.postActionFailure('open', error);
     } finally {
       this.postRecoveryNotices();
