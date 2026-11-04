@@ -150,7 +150,10 @@ describe('Save and tell me\'s receipt', () => {
     expect(region).toBeTruthy();
     expect(region.hidden).toBe(true);
     expect(screen.queryByRole('group', { name: 'Saved memory' })).toBeNull();
-    expect(screen.getByRole('separator').textContent).toContain('Jill saved to project memory: The Cheshire Cat is never seen arriving');
+    const receipt = screen.getByRole('group', { name: 'Jill saved to project memory: The Cheshire Cat is never seen arriving (mem-7f3c2a).' });
+    expect(receipt.contains(expand)).toBe(true);
+    expect(receipt.textContent).toContain('Jill saved to project memory: The Cheshire Cat is never seen arriving');
+    expect(screen.queryByRole('separator')).toBeNull();
 
     fireEvent.click(expand);
     const opened = screen.getByRole('button', { name: 'Hide the saved memory' });

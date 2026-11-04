@@ -150,10 +150,13 @@ export const WorkshopMemoryReceiptLine: React.FC<{ turn: WorkshopTurn; controls?
       line = <>Restored to project memory: {title}</>;
       break;
   }
+  // A receipt with controls is a labelled group, its rules drawn by CSS and
+  // decorative; one with none stays a separator (PR #201, accessibility).
+  const interactive = actions !== null || saved !== undefined;
   const divider = (
     <div
       className={`pm-ws-memory-receipt${receipt.action === 'forgotten' ? ' pm-ws-memory-receipt-gone' : ''}`}
-      role="separator"
+      role={interactive ? 'group' : 'separator'}
       aria-label={turn.content}
     >
       <span className="pm-ws-memory-receipt-in">

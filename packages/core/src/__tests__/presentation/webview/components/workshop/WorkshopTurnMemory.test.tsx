@@ -151,7 +151,9 @@ describe('receipts', () => {
   it('Save and tell me\'s receipt names the persona and carries Edit · Forget', () => {
     const memory = controls();
     bubble(receiptTurn({ action: 'saved', memoryId: 'mem-7f3c2a', title: 'The watch', version: '0123456789ab', by: 'auto', proposedBy: 'jill' }), memory);
-    expect(screen.getByRole('separator').textContent).toContain('Jill saved to project memory: The watch');
+    const receipt = screen.getByRole('group', { name: 'Saved to project memory: The watch (mem-7f3c2a).' });
+    expect(receipt.textContent).toContain('Jill saved to project memory: The watch');
+    expect(screen.queryByRole('separator')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Forget' }));
     expect(memory.onEditMemory).toHaveBeenCalledWith('mem-7f3c2a');
@@ -161,7 +163,8 @@ describe('receipts', () => {
   it('Forget\'s receipt says it is archived, not deleted, and offers Restore', () => {
     const memory = controls();
     bubble(receiptTurn({ action: 'forgotten', memoryId: 'mem-7f3c2a', title: 'The watch', version: '0123456789ab', by: 'writer' }), memory);
-    expect(screen.getByRole('separator').textContent).toContain('Forgotten from project memory: The watch. It\'s archived, not deleted.');
+    expect(screen.getByRole('group').textContent).toContain('Forgotten from project memory: The watch. It\'s archived, not deleted.');
+    expect(screen.queryByRole('separator')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
     expect(memory.onRestore).toHaveBeenCalledWith('mem-7f3c2a');
   });
