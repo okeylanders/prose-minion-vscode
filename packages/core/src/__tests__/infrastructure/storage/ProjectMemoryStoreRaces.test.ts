@@ -18,6 +18,7 @@
  */
 import * as path from 'node:path';
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
+import type { ProjectMemoryStore } from '@/infrastructure/storage/ProjectMemoryStore';
 import { deferred } from '@/__tests__/application/handlers/domain/lightboxHandlerHarness';
 import {
   MEMORY,
@@ -267,6 +268,75 @@ describe('a refused delete never loses the bytes it claimed, even when its saved
       unreadable: [{ reason: 'no-frontmatter' }]
     });
     expect([...fileSystem.files.values()].map((bytes) => text(bytes))).toContain('A note the writer half-typed.');
+  });
+});
+
+describe('refused bytes a release could not move are never purged as a leftover (PR #194 F-02, second re-review)', () => {
+  /**
+   * The review's steps: `mem-abcdef` put at the path before the claim, `mem-fedcba` at it after,
+   * and every move out of a claim failing with EPERM while `lock.held` (a file briefly locked).
+   */
+  async function refusedWhileLocked(lock: { held: boolean }) {
+    const fileSystem = new MemoryFileSystem();
+    const clock = { at: Date.parse('2026-11-04T09:30:00Z') };
+    const mine = host({ fileSystem, prefix: 'a', clock });
+    const entry = await createdEntry(mine.store);
+    const filePath = path.join(MEMORY, entry.fileName);
+    const original = fileSystem.files.get(filePath);
+    const withId = (id: string) => new TextEncoder().encode(text(original).replace(/^id: .*$/m, `id: ${id}`));
+    const rename = fileSystem.rename.bind(fileSystem);
+    let substituted = false;
+    jest.spyOn(fileSystem, 'rename').mockImplementation(async (fromPath, toPath, options) => {
+      if (lock.held && fromPath.includes('.claim-')) {
+        throw Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' });
+      }
+      // Only the delete under test finds its file swapped.
+      const claiming = !substituted && fromPath === filePath && toPath.includes('.claim-');
+      substituted ||= claiming;
+      if (claiming) {
+        fileSystem.files.set(filePath, withId('mem-abcdef'));
+      }
+      await rename(fromPath, toPath, options);
+      if (claiming) {
+        fileSystem.files.set(filePath, withId('mem-fedcba'));
+      }
+    });
+    expect(await mine.store.delete(entry.memory.id)).toEqual({ kind: 'changed' });
+    return { fileSystem, clock, mine };
+  }
+  const ids = async (store: ProjectMemoryStore) => {
+    const listing = await store.list();
+    return listing.kind === 'listed' ? listing.memories.map((memory) => memory.memory.id).sort() : listing;
+  };
+
+  it('the lock clears, and a listing 31 seconds on keeps both memories', async () => {
+    const lock = { held: true };
+    const { clock, mine } = await refusedWhileLocked(lock);
+    lock.held = false;
+    clock.at += 31_000;
+    expect(await ids(mine.store)).toEqual(['mem-abcdef', 'mem-fedcba']);
+  });
+
+  it('the lock clears, and another window\'s store recovers it, keeping both', async () => {
+    const lock = { held: true };
+    const { fileSystem, clock } = await refusedWhileLocked(lock);
+    lock.held = false;
+    clock.at += 31_000;
+    const theirs = host({ fileSystem, prefix: 'b', clock });
+    expect(await ids(theirs.store)).toEqual(['mem-abcdef', 'mem-fedcba']);
+    expect(everyFile(fileSystem).filter((name) => name.includes('.claim-'))).toEqual([]);
+  });
+
+  it('the lock never clears: the bytes are never purged, and the listing shows them to the writer', async () => {
+    const lock = { held: true };
+    const { fileSystem, clock, mine } = await refusedWhileLocked(lock);
+    clock.at += 31_000;
+    const listing = await mine.store.list();
+    expect(listing).toMatchObject({ kind: 'listed', memories: [{ memory: { id: 'mem-fedcba' } }], unreadable: [{ reason: 'set-aside' }] });
+    expect([...fileSystem.files.values()].filter((bytes) => /^id: mem-abcdef$/m.test(text(bytes)))).toHaveLength(1);
+    // A delete of the occupant never takes the set-aside bytes with it.
+    expect(await mine.store.delete('mem-fedcba')).toEqual({ kind: 'failed' });
+    expect([...fileSystem.files.values()].filter((bytes) => /^id: mem-abcdef$/m.test(text(bytes)))).toHaveLength(1);
   });
 });
 

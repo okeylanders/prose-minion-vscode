@@ -97,6 +97,23 @@ export interface StoredFileClaimsConfig {
    * category and drops the message (PR #194 F-04).
    */
   readonly formatError?: (error: unknown) => string;
+  /**
+   * How a claim beside a standing file is told from a rewrite's leftover
+   * (PR #194 F-02, second re-review). Without it, any abandoned claim beside
+   * a standing file is a leftover and is removed, as the Lightbox's always
+   * were. With it, a claim is removed only when its bytes are an earlier
+   * version of the standing file; any other bytes (a delete's refused
+   * claim its release could not move) are restored under a free ordinary
+   * name, or, failing that, kept: never removed, whatever their age.
+   */
+  readonly leftovers?: StoredFileLeftoverCheck;
+}
+
+export interface StoredFileLeftoverCheck {
+  /** Whether a claim's bytes are an earlier version of the file standing at its saved name. */
+  readonly isEarlierVersion: (claimed: Uint8Array, standing: Uint8Array) => boolean;
+  /** A free ordinary name in `folder` for claimed bytes that are not an earlier version of `saved`. */
+  readonly freeName: (folder: string, saved: string) => Promise<string>;
 }
 
 interface Claim {
@@ -181,8 +198,18 @@ export class StoredFileClaims {
       this.log.appendLine(`${this.config.logPrefix} Could not look for earlier versions of ${this.logName(saved)}; it was not deleted.`);
       return false;
     }
+    // With a leftover check, only an earlier version of the file being deleted goes with it; other bytes are set apart first.
+    const ownBytes = this.config.leftovers ? await this.bytesOf(own) : undefined;
+    if (this.config.leftovers && !ownBytes) {
+      return false;
+    }
     for (const claim of others(entries)) {
-      if (await deleteStoredFileQuietly(this.fileSystem, path.join(folder, claim.name))) {
+      const claimPath = path.join(folder, claim.name);
+      if (ownBytes && !(await this.isLeftover(claimPath, ownBytes))) {
+        await this.restoreSetAside(folder, saved, claimPath);
+        continue;
+      }
+      if (await deleteStoredFileQuietly(this.fileSystem, claimPath)) {
         this.log.appendLine(`${this.config.logPrefix} Removed an earlier version of ${this.logName(saved)}, left by a rewrite, with it.`);
       }
     }
@@ -304,13 +331,50 @@ export class StoredFileClaims {
   /** Abandoned claims beside a standing file: the bytes it held before a committed rewrite. Removed, never put back. */
   private async removeLeftovers(folder: string, saved: string, leftovers: readonly Claim[]): Promise<boolean> {
     let removed = false;
+    const standing = this.config.leftovers ? await this.bytesOf(path.join(folder, saved)) : undefined;
+    if (this.config.leftovers && !standing) {
+      // The standing file could not be read, so no claim beside it can be shown to be its earlier version: all are kept.
+      return false;
+    }
     for (const claim of leftovers) {
-      if (await deleteStoredFileQuietly(this.fileSystem, path.join(folder, claim.name))) {
+      const claimPath = path.join(folder, claim.name);
+      if (standing && !(await this.isLeftover(claimPath, standing))) {
+        removed = (await this.restoreSetAside(folder, saved, claimPath)) || removed;
+        continue;
+      }
+      if (await deleteStoredFileQuietly(this.fileSystem, claimPath)) {
         removed = true;
         this.log.appendLine(`${this.config.logPrefix} Removed an earlier version of ${this.logName(saved)}, left by a rewrite.`);
       }
     }
     return removed;
+  }
+
+  /** Whether the claim at `claimPath` holds an earlier version of the `standing` bytes: unreadable bytes never are. */
+  private async isLeftover(claimPath: string, standing: Uint8Array): Promise<boolean> {
+    const claimed = await this.bytesOf(claimPath);
+    return claimed !== undefined && this.config.leftovers !== undefined && this.config.leftovers.isEarlierVersion(claimed, standing);
+  }
+
+  /** Bytes beside `saved` that are not its earlier version, moved to a free ordinary name; kept under their claim when they cannot be. */
+  private async restoreSetAside(folder: string, saved: string, claimPath: string): Promise<boolean> {
+    try {
+      const name = await (this.config.leftovers as StoredFileLeftoverCheck).freeName(folder, saved);
+      await this.fileSystem.rename(claimPath, path.join(folder, name), { overwrite: false });
+      this.log.appendLine(`${this.config.logPrefix} Restored bytes set aside beside ${this.logName(saved)} as a file of their own.`);
+      return true;
+    } catch (error) {
+      this.log.appendLine(`${this.config.logPrefix} Bytes set aside beside ${this.logName(saved)} could not be restored yet (${this.formatError(error)}); they are kept.`);
+      return false;
+    }
+  }
+
+  private async bytesOf(filePath: string): Promise<Uint8Array | undefined> {
+    try {
+      return await this.fileSystem.readFile(filePath);
+    } catch {
+      return undefined;
+    }
   }
 
   /** The folder's entries; none when the folder is not there; undefined when it could not be read. */

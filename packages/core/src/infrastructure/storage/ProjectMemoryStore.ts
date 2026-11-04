@@ -110,7 +110,15 @@ export class ProjectMemoryStore {
       claimPattern: PROJECT_MEMORY_CLAIM,
       logPrefix: LOG,
       logName: projectMemoryLogName,
-      formatError: fileSystemErrorCategory
+      formatError: fileSystemErrorCategory,
+      // A claim beside a standing memory is a leftover only if it holds the same memory; otherwise it is restored, never removed.
+      leftovers: {
+        isEarlierVersion: (claimed, standing) => {
+          const [older, newer] = [decodeProjectMemoryBytes(claimed), decodeProjectMemoryBytes(standing)];
+          return older.kind === 'memory' && newer.kind === 'memory' && older.memory.id === newer.memory.id;
+        },
+        freeName: (folder, saved) => freeProjectMemoryFileName(fileSystem, folder, saved)
+      }
     });
     this.rewritePorts = { fileSystem, claims: this.claims, log, logPrefix: LOG, noun: 'memory', mintStagingId: this.mintStagingId };
   }
