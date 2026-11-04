@@ -337,6 +337,9 @@ const capabilityMetadataRows = (turn: WorkshopTurn): string[] => {
   return rows;
 };
 
+/** Who heard a private exchange, as the bubble and the turn preview both say it. */
+export const workshopPrivateThreadLabel = (instrument: string): string => `Private · you + ${instrument}`;
+
 export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(({
   turn,
   quickActionToolId,
@@ -414,7 +417,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   const turnIdentity = { [WORKSHOP_TURN_ID_ATTRIBUTE]: turn.id };
   const isPrivateInstrumentTurn =
     turn.artifact === 'direct_tool_message' || turn.artifact === 'direct_tool_response';
-  const privateInstrumentLabel = `Private · you + ${turn.toolLabel ?? 'instrument'}`;
+  const privateInstrumentLabel = workshopPrivateThreadLabel(turn.toolLabel ?? 'instrument');
   const analysisInputs = turn.capability?.metadata?.analysisInputs;
   const analysisExcerpt = analysisInputs && typeof analysisInputs === 'object'
     ? (analysisInputs as Record<string, unknown>).excerpt

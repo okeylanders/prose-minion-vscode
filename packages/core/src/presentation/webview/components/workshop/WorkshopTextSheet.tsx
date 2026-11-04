@@ -29,6 +29,7 @@ import { WorkshopReadInLines } from './WorkshopReadInLines';
 import { countWords } from '@/utils/textUtils';
 import { formatReadInTime } from '@utils/workshop/contextSources';
 import type { WorkshopTurnPreview } from '@messages';
+import { workshopPrivateThreadLabel } from './WorkshopTurnBubble';
 import type {
   WorkshopTextSheetMode
 } from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
@@ -316,6 +317,11 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
           <div className="pm-ws-eyebrow">{copy.kicker}</div>
           <h2 id={TITLE_ID}>{copy.title}</h2>
           <p>{copy.sub}</p>
+          {mode.kind === 'turn-preview' && turnPreview?.privateWith ? (
+            <p className="pm-ws-private-thread-label">
+              <Icon name="info" size={11} /> {workshopPrivateThreadLabel(turnPreview.privateWith)}
+            </p>
+          ) : null}
           {readIn && lineRange ? (
             <p className="pm-ws-readin-sheet-range">
               Read at {formatReadInTime(readIn.deliveredAt)} · lines {lineRange.start}–{lineRange.end}
