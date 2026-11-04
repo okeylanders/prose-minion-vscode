@@ -39,7 +39,7 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 |---|---|---|---|---|
 | 0 | Spec | ADR, slice docs 2–6, open questions put to Okey | `…-slice-0-spec` | Done: PR #192, merged at `912ad58` (Astra: findings closed on re-review) |
 | 0d | Settings design | The Memory tab, the memory manager and the suggestion card, designed for Okey's review, then snapshotted under `docs/design/` | `…-slice-0-design` | Done: PR #196, merged at `913e715` (Astra: F-01–F-05 closed, approved) |
-| 1 | Store and codec | Format 1 codec (pure), `ProjectMemoryStore` on the shared `StoredFileClaims` primitive, fixtures. No model, no UI | `…-slice-1-store` | In review: PR #194, findings F-01–F-05, N-01 and N-02 fixed at `b8846c4`; waiting on Astra's re-review |
+| 1 | Store and codec | Format 1 codec (pure), `ProjectMemoryStore` on the shared `StoredFileClaims` primitive, fixtures. No model, no UI | `…-slice-1-store` | Done: PR #194, merged at `c7f738b` (Astra: F-01–F-06, N-01, N-02 closed over three rounds) |
 | 2a | Read path | Library, the catalog frame (first user message via `appendContract`), `memory.*` (catalog, search, read), every D12 list widened, budgets | `…-slice-2a-read-path` | Built and green at `7ec50ba` (652 / 9,228 / 59); PR opens after #194 merges |
 | 2b | Update notes | D14: memory versions, the per-participant delivery record, the appended update note, mid-room Off→On | `…-slice-2b-update-notes` | In progress (same thread as 2a) |
 | 3 | Write path | Tail extractor and redaction, proposal trailer, card, receipts, supersession, the memory sheet, "Save to memory…", library writes and shutdown drain | `…-slice-3-write-path` | In progress from 2a's head; joins receipts to 2b's fold last |
@@ -189,4 +189,16 @@ The feature note's six open questions, plus the design scope:
   - 4b is split by the actual dependency: its manager routes live on Slice 3's
     handler. **4b-ui** (presentation only) runs now; **4b-wire** follows
     Slice 3.
+- **2026-11-04. Slices 1 and 0d merged; 2b and 4b-ui green.**
+  - **#196 (0d)** merged at `913e715` after five copy findings. The design
+    gained the "Memory isn't context" well, "Always load in full" in place
+    of "pin" (so it can't be confused with the planned Pinned context
+    feature), and set-versus-loaded wording for overflow.
+  - **#194 (1)** merged at `c7f738b` after three review rounds. The last
+    one ensured refused or unprovable claim bytes are never purged: a
+    leftover is removed only when it is the same memory's earlier version.
+  - **2b** is green at `6a0a8e1`, stacked on 2a. **4b-ui** is green at
+    `7c574a2`; the design thread reviewed the copy for its four undrawn
+    states, and six strings were replaced.
+  - **PR order:** 2a now, then 2b and 4b-ui once 2a merges.
 

@@ -59,6 +59,16 @@ export const STORED_FILE_CLAIM_LEASE_MS = 30_000;
  */
 export type StoredFileClaimState = 'present' | 'absent' | 'busy' | 'unknown';
 
+/** A delete's check of the bytes it claimed, and where refused bytes go when their saved name is taken (`deleteClaimed`). */
+export interface StoredFileDeleteCheck {
+  readonly verify: (claimed: Uint8Array) => boolean;
+  /** A free name in the saved file's folder, looked up when it is needed. */
+  readonly fallbackPath: () => Promise<string>;
+}
+
+/** Free names a refused delete tries, after its saved name, before it keeps its bytes under the claim. */
+const REFUSED_RELEASE_FALLBACKS = 3;
+
 /**
  * What a delete under a claim did (`StoredFileClaims.deleteClaimed`):
  * `changed` when the claimed bytes were not the file the caller meant, so
@@ -87,6 +97,23 @@ export interface StoredFileClaimsConfig {
    * category and drops the message (PR #194 F-04).
    */
   readonly formatError?: (error: unknown) => string;
+  /**
+   * How a claim beside a standing file is told from a rewrite's leftover
+   * (PR #194 F-02, second re-review). Without it, any abandoned claim beside
+   * a standing file is a leftover and is removed, as the Lightbox's always
+   * were. With it, a claim is removed only when its bytes are an earlier
+   * version of the standing file; any other bytes (a delete's refused
+   * claim its release could not move) are restored under a free ordinary
+   * name, or, failing that, kept: never removed, whatever their age.
+   */
+  readonly leftovers?: StoredFileLeftoverCheck;
+}
+
+export interface StoredFileLeftoverCheck {
+  /** Whether a claim's bytes are an earlier version of the file standing at its saved name. */
+  readonly isEarlierVersion: (claimed: Uint8Array, standing: Uint8Array) => boolean;
+  /** A free ordinary name in `folder` for claimed bytes that are not an earlier version of `saved`. */
+  readonly freeName: (folder: string, saved: string) => Promise<string>;
 }
 
 interface Claim {
@@ -171,8 +198,18 @@ export class StoredFileClaims {
       this.log.appendLine(`${this.config.logPrefix} Could not look for earlier versions of ${this.logName(saved)}; it was not deleted.`);
       return false;
     }
+    // With a leftover check, only an earlier version of the file being deleted goes with it; other bytes are set apart first.
+    const ownBytes = this.config.leftovers ? await this.bytesOf(own) : undefined;
+    if (this.config.leftovers && !ownBytes) {
+      return false;
+    }
     for (const claim of others(entries)) {
-      if (await deleteStoredFileQuietly(this.fileSystem, path.join(folder, claim.name))) {
+      const claimPath = path.join(folder, claim.name);
+      if (ownBytes && !(await this.isLeftover(claimPath, ownBytes))) {
+        await this.restoreSetAside(folder, saved, claimPath);
+        continue;
+      }
+      if (await deleteStoredFileQuietly(this.fileSystem, claimPath)) {
         this.log.appendLine(`${this.config.logPrefix} Removed an earlier version of ${this.logName(saved)}, left by a rewrite, with it.`);
       }
     }
@@ -192,34 +229,37 @@ export class StoredFileClaims {
    * or a folder that could not be read again, puts the file back as it was
    * and says the delete `failed`. `label` names the file in logs.
    *
-   * With `verify`, the claimed bytes are checked before anything goes
+   * With `check`, the claimed bytes are checked before anything goes
    * (PR #194 F-02): the path a listing named may hold another file by the
-   * time it is claimed. Bytes `verify` refuses are put back, never
-   * deleted, and the delete says `changed`.
+   * time it is claimed. Bytes `check.verify` refuses are never deleted, and
+   * the delete says `changed`. They go back under the saved name, or,
+   * should another file stand there by then, under a free name
+   * (`check.fallbackPath`), as an ordinary file: never left under a claim,
+   * where a later settling would remove them as a rewrite's leftover (the
+   * re-review).
    */
   deleteClaimed(filePath: string, label: string, id: string): Promise<Exclude<StoredFileClaimedDelete, 'changed'>>;
-  deleteClaimed(filePath: string, label: string, id: string, verify: (claimed: Uint8Array) => boolean): Promise<StoredFileClaimedDelete>;
+  deleteClaimed(filePath: string, label: string, id: string, check: StoredFileDeleteCheck): Promise<StoredFileClaimedDelete>;
   async deleteClaimed(
     filePath: string,
     label: string,
     id: string,
-    verify?: (claimed: Uint8Array) => boolean
+    check?: StoredFileDeleteCheck
   ): Promise<StoredFileClaimedDelete> {
     const claimPath = await this.take(filePath, id);
     if (!claimPath) {
       const state = await this.settle(filePath);
       return state === 'busy' ? 'busy' : state === 'absent' ? 'missing' : 'failed';
     }
-    if (verify) {
+    if (check) {
       let claimed: Uint8Array | undefined;
       try {
         claimed = await this.fileSystem.readFile(claimPath);
       } catch {
         claimed = undefined;
       }
-      if (!claimed || !verify(claimed)) {
-        await this.fileSystem.rename(claimPath, filePath, { overwrite: false })
-          .catch(() => this.log.appendLine(`${this.config.logPrefix} ${label} could not be put back at once; it comes back once its claim is older than the lease.`));
+      if (!claimed || !check.verify(claimed)) {
+        await this.releaseRefused(claimPath, filePath, label, check);
         this.log.appendLine(`${this.config.logPrefix} ${label} was not deleted: its file changed before it was claimed.`);
         return 'changed';
       }
@@ -238,6 +278,25 @@ export class StoredFileClaims {
       return 'failed';
     }
     return 'deleted';
+  }
+
+  /**
+   * Refused bytes back as an ordinary file: under the saved name, else the
+   * first free fallback name, never over anything. Only when every name is
+   * taken in turn (another writer naming files at each step) do they stay
+   * under the claim, and the log says so.
+   */
+  private async releaseRefused(claimPath: string, filePath: string, label: string, check: StoredFileDeleteCheck): Promise<void> {
+    const destinations = [async () => filePath, ...Array.from({ length: REFUSED_RELEASE_FALLBACKS }, () => check.fallbackPath)];
+    for (const destination of destinations) {
+      try {
+        await this.fileSystem.rename(claimPath, await destination(), { overwrite: false });
+        return;
+      } catch {
+        // Taken: try the next.
+      }
+    }
+    this.log.appendLine(`${this.config.logPrefix} The file claimed for ${label} could not be put back under any free name; it is kept under its claim.`);
   }
 
   private async settleName(folder: string, saved: string, entries: readonly string[]): Promise<{ state: StoredFileClaimState; changed: boolean }> {
@@ -272,13 +331,50 @@ export class StoredFileClaims {
   /** Abandoned claims beside a standing file: the bytes it held before a committed rewrite. Removed, never put back. */
   private async removeLeftovers(folder: string, saved: string, leftovers: readonly Claim[]): Promise<boolean> {
     let removed = false;
+    const standing = this.config.leftovers ? await this.bytesOf(path.join(folder, saved)) : undefined;
+    if (this.config.leftovers && !standing) {
+      // The standing file could not be read, so no claim beside it can be shown to be its earlier version: all are kept.
+      return false;
+    }
     for (const claim of leftovers) {
-      if (await deleteStoredFileQuietly(this.fileSystem, path.join(folder, claim.name))) {
+      const claimPath = path.join(folder, claim.name);
+      if (standing && !(await this.isLeftover(claimPath, standing))) {
+        removed = (await this.restoreSetAside(folder, saved, claimPath)) || removed;
+        continue;
+      }
+      if (await deleteStoredFileQuietly(this.fileSystem, claimPath)) {
         removed = true;
         this.log.appendLine(`${this.config.logPrefix} Removed an earlier version of ${this.logName(saved)}, left by a rewrite.`);
       }
     }
     return removed;
+  }
+
+  /** Whether the claim at `claimPath` holds an earlier version of the `standing` bytes: unreadable bytes never are. */
+  private async isLeftover(claimPath: string, standing: Uint8Array): Promise<boolean> {
+    const claimed = await this.bytesOf(claimPath);
+    return claimed !== undefined && this.config.leftovers !== undefined && this.config.leftovers.isEarlierVersion(claimed, standing);
+  }
+
+  /** Bytes beside `saved` that are not its earlier version, moved to a free ordinary name; kept under their claim when they cannot be. */
+  private async restoreSetAside(folder: string, saved: string, claimPath: string): Promise<boolean> {
+    try {
+      const name = await (this.config.leftovers as StoredFileLeftoverCheck).freeName(folder, saved);
+      await this.fileSystem.rename(claimPath, path.join(folder, name), { overwrite: false });
+      this.log.appendLine(`${this.config.logPrefix} Restored bytes set aside beside ${this.logName(saved)} as a file of their own.`);
+      return true;
+    } catch (error) {
+      this.log.appendLine(`${this.config.logPrefix} Bytes set aside beside ${this.logName(saved)} could not be restored yet (${this.formatError(error)}); they are kept.`);
+      return false;
+    }
+  }
+
+  private async bytesOf(filePath: string): Promise<Uint8Array | undefined> {
+    try {
+      return await this.fileSystem.readFile(filePath);
+    } catch {
+      return undefined;
+    }
   }
 
   /** The folder's entries; none when the folder is not there; undefined when it could not be read. */

@@ -288,7 +288,9 @@ describe('a delete', () => {
   it('retires a rewrite\'s leftover beside the file, so no earlier version comes back', async () => {
     const { fileSystem, store, clock } = host();
     const entry = await createdEntry(store);
-    fileSystem.files.set(claimOf(entry.fileName, clock.at - 1, 'old1'), new TextEncoder().encode('an earlier version'));
+    // An earlier version of the same memory (its summary before an edit), left by a rewrite whose clean-up failed.
+    const earlier = text(fileSystem.files.get(path.join(MEMORY, entry.fileName))).replace(/^summary: .*$/m, 'summary: An earlier summary.');
+    fileSystem.files.set(claimOf(entry.fileName, clock.at - 1, 'old1'), new TextEncoder().encode(earlier));
     expect(await store.delete(entry.memory.id)).toEqual({ kind: 'deleted' });
     expect(everyFile(fileSystem)).toEqual([]);
   });
@@ -342,7 +344,8 @@ describe('claims on files named with any Markdown casing (PR #194 F-03)', () => 
     expect(everyFile(fileSystem)).toEqual([fileName]);
 
     // A leftover beside it goes with a delete; nothing comes back.
-    fileSystem.files.set(claimOf(fileName, clock.at - 1, 'old1'), new TextEncoder().encode('an earlier version'));
+    const earlier = text(fileSystem.files.get(saved)).replace(/^summary: .*$/m, 'summary: An earlier summary.');
+    fileSystem.files.set(claimOf(fileName, clock.at - 1, 'old1'), new TextEncoder().encode(earlier));
     expect(await store.delete(entry.memory.id)).toEqual({ kind: 'deleted' });
     expect(everyFile(fileSystem)).toEqual([]);
   });
