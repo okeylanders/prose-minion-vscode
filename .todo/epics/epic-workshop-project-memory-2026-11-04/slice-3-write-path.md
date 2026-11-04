@@ -19,6 +19,10 @@ under `auto` a proposal behaves as under `ask` until Slice 5.
   `shutDownExtension` (`apps/vscode-extension/src/application/extensionShutdown.ts`)
   beside the Lightbox's drain.
 - The catalog frame is untouched: a save mid-room never rewrites it (D5).
+- Slice 2's delivery record folds snapshots. This slice adds receipts to the
+  fold. A receipt carries the memory's `version` (D7), and counts as delivered
+  to each conversation room delivery has handed it to, so a save in this room
+  never comes back as an update note.
 
 ## Build
 
@@ -105,7 +109,9 @@ production codec.
 - **Card flow through real routes:** save, edit-then-save, dismiss, each behind
   the gate, each posting a snapshot. A save writes a file and a receipt.
 - **Receipt:** delivered to other participants as room history, shown in
-  export, and its body is never the memory's body.
+  export, and its body is never the memory's body. A save in this room
+  never comes back as an update note: a participant the receipt hasn't reached
+  yet gets the receipt and no note in the same delivery.
 - **Persistence:** round-trip, the pre-memory fixture, refusal on the wrong turn
   kind, Rewind and Branch carry, New clears.
 - **Supersession:** the new file names the old one, the old one reads as

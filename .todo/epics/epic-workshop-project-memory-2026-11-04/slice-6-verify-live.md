@@ -19,8 +19,8 @@ anything screenshotted or recorded.
 
 - [ ] Memory off by default: no folder created, no frame, and `memory.*`
       rejected.
-- [ ] Turn on Ask first (in the scope question 1 chose); the setting lands where
-      expected.
+- [ ] Turn on Ask first. The setting lands in the user settings (global), and
+      a second project shows memory on with its own, empty folder.
 - [ ] No workspace folder, then two folders: the tab says memory is unavailable.
 
 ### Read path
@@ -35,6 +35,16 @@ anything screenshotted or recorded.
 - [ ] Prompt cache: two turns in, change a Conversation setting, take another
       turn. Cache reads continue on the provider's report (ADR 2026-10-03's live
       check), and the frame is byte-identical.
+
+### Update notes (D14)
+
+- [ ] Reopen a saved room after adding a memory in the manager. The writer's next
+      message carries one note with only that memory, and the message after it
+      carries none.
+- [ ] Two windows on one project: save in one, then send a message in the
+      other. Its next message carries the note.
+- [ ] Turn memory on mid-room. The next message carries the whole catalog as a
+      note, and cache reads continue on the provider's report.
 
 ### Write path
 
@@ -65,6 +75,10 @@ anything screenshotted or recorded.
 
 ### Budgets
 
+- [ ] Measure a full frame at the decided ceiling (`pinnedTokens` 5,000 +
+      `catalogTokens` 2,000, about 7,000 tokens) on a real model: what it adds to
+      the first request's cost and latency, and whether the writer accepts
+      it. Record the numbers here.
 - [ ] Record the frame's size for 10, 40 and 80 memories, and compare the tab's
       estimate with the provider's prompt tokens.
 - [ ] Tune `catalogEntries`, `catalogTokens`, `pinnedTokens`,
@@ -77,7 +91,7 @@ anything screenshotted or recorded.
       questions and any amendment the live pass needs.
 - [ ] The feature note is archived under `.todo/archive/features/` with an archive
       note linking the epic and PRs. Follow-ups are split into `.todo` first
-      (INDEX.md or the delta frame, if deferred).
+      (anything the live pass defers).
 - [ ] A memory-bank entry: `.memory-bank/YYYYMMDD-HHMM-workshop-project-memory.md`.
 - [ ] The coordinator updates `AGENTS.md` (tree, inventory, a Project Memory
       section) and `docs/ARCHITECTURE.md`.

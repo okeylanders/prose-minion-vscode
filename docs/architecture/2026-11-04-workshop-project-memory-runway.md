@@ -20,7 +20,7 @@ ADR decision that answers it. Paths starting `core/` are under
 | 4 | `source-turns: t-0412, t-0415` | Turn ids are `turn-<n>-<role>-<ms>` (`session/WorkshopTurnLedger.ts:25`). `transcript.read` takes positions, not ids; ids appear only as `firstTurnId` / `lastTurnId` (`recall/WorkshopTranscriptRecallCapability.ts:357-363`) | D3, D4: real ids; positions computed per read through the recall service |
 | 5 | A turn "used web research" is knowable | Only `WorkshopTurn.citations` records it (`session.ts:410`); the tool is attached when the setting is on (`AssistantToolService.ts:753-761`), and no counter says a search ran without citing | D8: hold when attached, not when cited |
 | 6 | Reuse `LightboxBoardRewrite` and `LightboxBoardClaims` | The claim regex hard-codes the board file name (`LightboxBoardClaims.ts:47`); folder naming and listing are board-specific (`LightboxBoardFiles.ts`) | D10: Slice 1 extracted the mechanics into `StoredFileClaims` / `StoredFileRewrite` (`768b41f`), configured per store; Lightbox tests unchanged |
-| 7 | A workspace-scoped setting needs "a target parameter" | True, and nothing is workspace-scoped yet: `SettingsStore.update` has no target (`platform/SettingsStore.ts:21`), the adapter writes Global (`VsCodeSettingsStore.ts:26`), and the only declared scope is `writerProfile`'s `application` (`apps/vscode-extension/package.json:642`) | Open question 1 |
+| 7 | A workspace-scoped setting needs "a target parameter" | True, and nothing is workspace-scoped yet: `SettingsStore.update` has no target (`platform/SettingsStore.ts:21`), the adapter writes Global (`VsCodeSettingsStore.ts:26`), and the only declared scope is `writerProfile`'s `application` (`apps/vscode-extension/package.json:642`) | Decided: global mode (question 1), so no port change |
 | 8 | Tool runs never receive conversation behavior | True by construction (`RunWorkshopToolSidePass.ts:103`, `AssistantToolService.ts:927`); no negative test pins it | D5: Slice 2 adds one for behavior and memory |
 | 9 | Three tests reserve `memory.read` | Confirmed (`workshopCapabilityFamily.test.ts:28-36`, `WorkshopPersistedTurnGuards.test.ts:183-200`, `WorkshopTranscriptRecallWiring.test.ts:220-224`). Also: `WorkshopCapabilityXmlCodec.inspect` (`:165-185`) has no `never` guard; a new family is added there by hand | D12 |
 | 10 | Memories are superseded by status | Storing `superseded` makes supersession a two-file write (new file + claimed rewrite of the old) | D4: supersession derived from `supersedes` |
@@ -51,7 +51,7 @@ ADR decision that answers it. Paths starting `core/` are under
   format.
 - **Prompts:** one new system-prompt file, taught only when memory is on; the
   first user message and the join message gain a frame.
-- **Platform:** `SettingsStore` only if open question 1 goes per project.
+- **Platform:** none. The mode is one global setting (question 1, decided).
 - **Refactored, behavior unchanged:** the Lightbox's claim and rewrite modules,
   now configurations of the shared primitive (Slice 1).
 - **Untouched:** recall's grammar, tool runs.

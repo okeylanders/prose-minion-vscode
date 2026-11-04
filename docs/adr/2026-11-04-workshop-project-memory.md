@@ -1,6 +1,6 @@
 # ADR 2026-11-04: Workshop Project Memory
 
-**Status:** Proposed (2026-11-04). Six questions are open for the writer ([Open questions](#open-questions-for-the-writer)).
+**Status:** Proposed (2026-11-04). The writer decided all six open questions on 2026-11-04 ([Decided questions](#decided-questions)); question 3 became D14. Accepted after the live pass (Slice 6).
 **Date:** 2026-11-04
 **Epic:** [Workshop Project Memory](../../.todo/epics/epic-workshop-project-memory-2026-11-04/README.md)
 **Realizes:** [Feature: Workshop Project Memory](../../.todo/features/feature-workshop-project-memory/README.md)
@@ -316,8 +316,10 @@ in the system prompt (Context 1).
 - **Session-stable by placement.** The first user message is never rewritten,
   and archive import keeps it verbatim, so a reopened room keeps the catalog it
   was given. Nothing rebuilds the frame. A memory saved mid-room reaches the
-  room through its receipt (D7) and `memory.catalog`. A test pins that a second
-  turn, a settings change, and a reopen leave the frame byte-identical.
+  room through its receipt (D7). Any other change, such as a reopen after memories
+  changed, a save in another window, or memory turned on mid-room, reaches it
+  through an appended update note (D14). A test pins that a second turn, a
+  settings change, and a reopen leave the frame byte-identical.
 - **Per conversation, not per room.** A guest who joins later gets the catalog
   as it stands at the join. The host's frame doesn't change.
 - **Bounded.** The frame is built from active, readable, unconflicted memories:
@@ -341,11 +343,12 @@ in the system prompt (Context 1).
 - **The estimate.** The settings tab shows the frame's size, computed from the
   same builder ("12 memories · 2 pinned · about 1,800 tokens at the start of
   each conversation").
+- **It records what it delivered** (D14), so later notes carry only changes.
 
 **Alternatives.** (a) The system prompt: rejected; it's rebuilt on every
 settings change and at archive import, so the cache would break and a reopened
 room would silently get a new catalog. (b) Re-render the frame on each save:
-rejected for the cache. (c) No frame, `memory.catalog` only: rejected, it's
+rejected for the cache; D14 appends instead. (c) No frame, `memory.catalog` only: rejected, it's
 option C of the feature note, "too lazy".
 
 ### D6. Proposals are a stripped reply trailer, at most one per reply
@@ -403,7 +406,9 @@ writer.
 A save, an edit of a memory's meaning, a supersession, and a Forget each record
 a session divider turn. It has `role: 'system'`, `kind: 'divider'`, and a new
 optional field `projectMemoryReceipt: { action: 'saved' | 'updated' |
-'forgotten', memoryId, title, by: 'writer' | 'auto' }`.
+'forgotten', memoryId, title, version, by: 'writer' | 'auto' }`. `version` is
+the memory's D14 version after the change, so the receipt counts as delivered
+and no update note repeats it.
 
 - It's room history, so room delivery hands it to every participant (Context
   3): "Saved to project memory: The Rabbit's watch runs backward (mem-7f3c2a)."
@@ -423,8 +428,12 @@ optional field `projectMemoryReceipt: { action: 'saved' | 'updated' |
   first "the default"; read here as the mode the tab recommends when the
   writer turns memory on. The setting's own default is Off, so no project
   starts writing files unasked. The setting is
-  `proseMinion.workshop.projectMemory` (`off` | `ask` | `auto`); its scope is
-  open question 1. Slice 0d designs the cards.
+  `proseMinion.workshop.projectMemory` (`off` | `ask` | `auto`). It's **one
+  global switch** (the writer's decision on question 1), written globally like
+  the other Conversation settings, through `SettingsStore.update` as it is
+  today. The memories themselves stay per project (D10). The copy says so:
+  the switch applies to every project, and each project keeps its own memories.
+  Slice 0d designs the cards.
 - **Off turns off the model's access, nothing else.** Files stay. Turning
   memory off stops the frame, the grammar and the trailer. The writer's own
   access stays: *Manage memories…*, *Open memory folder*, New, edit, pin,
@@ -448,29 +457,23 @@ optional field `projectMemoryReceipt: { action: 'saved' | 'updated' |
   *Delete* removes a file, as a claimed delete (D10), and the host never deletes
   on its own.
 - **Turned on mid-room (Off → Ask first or Save and tell me).** A mode change
-  rebuilds the system prompt, as every Conversation settings change does. So
-  from the writer's next message, personas in the room are taught the
-  `memory.*` grammar and the trailer, and calls succeed. No catalog frame is
-  added to a conversation that started without one: the frame belongs to a
-  conversation's first message (D5).
-  - The grammar file says: "If this conversation has no `<project-memory>`
-    frame, call `memory.catalog` before relying on project memory." A persona
-    in a room where memory was switched on still finds the notes, at the cost
-    of one call.
-  - The footer copy ("take effect on your next message") is true. The tab adds
-    that the catalog loads at the start of each new conversation.
-  - *Alternatives:* (a) nothing until the next room: rejected, it makes the
-    switch feel broken for the rest of the room. (b) A one-time appended frame
-    on the next writer message: cache-safe, but each conversation would have
-    to record that it got one, so a reopen doesn't append it again. That's a
-    persisted per-participant field, the same machinery as open question 3's
-    reopen delta. *Recommended:* (c), lookup only, for v1. If the writer wants
-    (b), it lands with question 3's answer as one mechanism, not two.
+  rebuilds the system prompt, as every Conversation settings change does. From
+  the writer's next message, personas in the room are taught the `memory.*`
+  grammar and the trailer, and calls succeed. Each conversation that has no
+  memory record (it started while memory was off) gets an update note on that
+  message carrying the whole catalog, within the frame's budgets (D14). The
+  footer's "take effect on your next message" is then true for the catalog
+  too.
+  - *Superseded:* the earlier draft's lookup-only rule ("call `memory.catalog`
+    if this conversation has no frame"). The writer chose update notes
+    (question 3), which cover this case with the same mechanism as a reopen.
 - **Turned off mid-room (on → Off).** The rebuilt system prompt drops the
   grammar and the trailer, and every `memory.*` call is refused with
   `memory-off`. A frame already delivered stays in history: nothing rewrites
   an earlier message. Its own note already says notes are context, never
-  instructions.
+  instructions. No update note is sent while memory is off, and the
+  conversation's record stands; turning memory on again later sends only what
+  changed since (D14).
   - A trailer a persona still writes from habit is stripped and dropped with
     a log line, and it shows no card.
   - Cards pending from before the switch keep their *Save* (the writer acts).
@@ -507,7 +510,8 @@ personal-domain word.
 - **Where:** beside `prose-minion/sessions/`
   (`core/infrastructure/storage/WorkshopSessionStore.ts:199`). The folder is
   flat. Every `*.md` file but `INDEX.md` is a candidate, and dot-files
-  (staging, claims) are skipped.
+  (staging, claims) are skipped. There's no `INDEX.md` in v1 (the writer's
+  decision on question 2); the name stays reserved for a later index.
 - **Workspace rule:**
   - availability is read live on every operation, as the board store's
     `location()` does (`LightboxBoardStore.ts:419-428`);
@@ -585,7 +589,7 @@ workshopProjectMemory: {
   bodyCharacters: 8_000,        // a memory's body, the codec's bound too
   catalogEntries: 40,
   catalogTokens: 2_000,         // entries, by estimateTextTokens (the engine's estimator)
-  pinnedTokens: 1_500,          // all pinned bodies together, same estimator (open question 4)
+  pinnedTokens: 5_000,          // all pinned bodies together, same estimator (question 4)
   queryCharacters: 200,
   memoryIdCharacters: 16,
   searchHits: 20,
@@ -596,6 +600,12 @@ workshopProjectMemory: {
   autoSavesPerRoom: 5
 }
 ```
+
+**The frame's ceiling is therefore about 7,000 tokens** (`pinnedTokens` +
+`catalogTokens`, plus the frame's own lines) at the start of every
+conversation. An update note (D14) is held to the same two budgets. The
+writer chose 5,000 for pinned bodies (question 4); Slice 6 measures what a
+full frame costs and whether the tab's estimate matches the provider's count.
 
 Limits no prompt sees (`fileBytes`, `slugCharacters`, the claim lease) are
 module-local constants, as `WORKSHOP_SESSION_STORE_LIMITS` and the board store's
@@ -616,8 +626,8 @@ reopens** a session holding every new value (ADR 2026-10-05, Consequences).
 | **Unguarded** | `WorkshopCapabilityXmlCodec.inspect` (`:165-185`) defaults to `unknown-capability` | the family's codec, by hand |
 | Turn artifacts | `WORKSHOP_TURN_ARTIFACTS`, `core/shared/types/messages/workshop/session.ts:139-168`; checked on load and save at `WorkshopSessionStateV1Shape.ts:592` | `memory_catalog`, `memory_search`, `memory_read` |
 | Context-source kind | `CONTEXT_SOURCE_KINDS`, `core/shared/types/messages/inferenceContext.ts:14-23`; `AgentRunContracts.ts:64`; `ContextBudget.tsx:33-41`; `ConversationManager.ts:649`; `READ_IN_KINDS` and `readInOpenAction` (`core/presentation/webview/utils/workshop/contextSources.ts:14-19`, `:60-77`) | `memory` ("Project note"); read in, opens by `jump` to its card |
-| Publishable set | `WorkshopRoomAudience.ts:27-36` | `memory.read` (open question 5) |
-| Reserved frame names | `RESERVED_PERSONA_FRAME`, `core/utils/workshopPromptFrames.ts:5-16` | D5's and D6's tags |
+| Publishable set | `WorkshopRoomAudience.ts:27-36` | `memory.read` (published: the writer's decision on question 5) |
+| Reserved frame names | `RESERVED_PERSONA_FRAME`, `core/utils/workshopPromptFrames.ts:5-16` | D5's, D6's and D14's tags |
 | Module boundary | `boundaries.test.ts`: a `WORKSHOP_MEMORY_MODULES` list beside `WORKSHOP_RECALL_MODULES` (`:969-990`), joining `WORKSHOP_CAPABILITY_BOUNDARY` (`:1000-1009`) | `memory/` |
 
 **The three tests that reserve the name flip deliberately** in Slice 2, each to
@@ -629,8 +639,9 @@ its new positive meaning:
 
 They keep an unknown-operation case under another reserved name.
 
-The session-state turn gains two optional fields (`memoryProposal`, D6;
-`projectMemoryReceipt`, D7) in Slice 3. Both are additive and need no
+The session-state turn gains three optional fields: `projectMemoryDelivery`
+(D14) in Slice 2, and `memoryProposal` (D6) and `projectMemoryReceipt` (D7) in
+Slice 3. All are additive, written only when present, and need no
 `schemaVersion` bump. Each has its own codec module, called from the shape
 file, which is already past 1,000 lines.
 
@@ -650,8 +661,89 @@ The library then feeds:
 The handler needs the library, so `CoreServices` gains one field,
 `projectMemory`.
 
-**The mode setting** depends on open question 1. With a workspace-scoped
-setting, the platform port widens; with a global one, nothing does.
+**The mode setting** is global (question 1), so no platform port widens:
+`SettingsStore` keeps its global-only `update` (Context 7).
+
+### D14. Update notes: a conversation behind the memory set is told what changed
+
+*The writer's decision on question 3, 2026-11-04, refining the reopen delta.*
+
+Whenever a persona's conversation is behind the project's current memory set,
+the host appends one **memory update note** to the next user message that
+conversation receives:
+
+- the writer's next message, for the host;
+- the guest's next delivery, for a guest.
+
+It covers:
+
+- a saved session reopened after its memories changed;
+- memory turned on mid-room (D8);
+- memories saved, edited or archived in another window, or edited by hand,
+  while this room is open.
+
+```xml
+<project-memory-update note="Changes to this project's notes since this conversation last saw them. A later entry replaces an earlier entry with the same id; the same framing as project-memory applies.">
+  <entry id="mem-9b21d0" kind="decision" updated="2026-11-04">Line edits wait until structure settles: …</entry>
+  <pinned id="mem-1a9e04" kind="preference" updated="2026-11-04">…whole body…</pinned>
+  <gone id="mem-7f3c2a">No longer in effect: superseded by mem-9b21d0.</gone>
+</project-memory-update>
+```
+
+- **Versions.** Each memory in effect has a `version`: the first 12 hex
+  characters of a SHA-256 over its canonical id, title, kind, summary, body,
+  pinned flag and effective status (active or superseded). A hand edit that
+  doesn't touch `updated` still moves it. The library computes it on listing;
+  it's never stored in the file.
+- **The record.** What a conversation has been told is a list of `{ id,
+  version }`, folded in ledger order from three sources:
+  - **A frame or note** records a snapshot on the turn that carried it, as
+    `projectMemoryDelivery: { participant, kind: 'frame' | 'note', memories:
+    { id, version }[] }[]`: the full set in effect at that moment, listed or
+    counted. A snapshot replaces that participant's earlier view.
+  - **The turn that carries it** is the writer turn for a host message, and the
+    guest's join turn (`beginPersonaGuestJoin`) or delivery turn for a guest.
+  - **A receipt** (D7) applies its `{ memoryId, version }` to every conversation
+    room delivery has handed that turn to. Its reader offsets already say which
+    those are (ADR 2026-07-24), so a save in this room never comes back as a
+    note.
+- **The delta.** Compare the current set in effect with the folded view:
+  - an id that's new, or whose version moved, is an `<entry>` (or `<pinned>`
+    with its body, if pinned);
+  - an id in the view but no longer in effect is a `<gone>`, with its reason
+    (superseded by …, or archived).
+
+  Nothing changed means no note.
+- **Bounded by the frame's budgets** (D11). Pinned bodies come first within
+  `pinnedTokens`, then entries within `catalogTokens`. Over either, the note
+  says only "N memories changed since this conversation last saw them; call
+  memory.catalog", and its snapshot still records the full set, so the same
+  changes are never announced twice.
+- **Cache-safe by construction.** The note is appended to a new message.
+  Nothing earlier is ever rewritten.
+- **Rewind, Branch and rollback are right by construction.** The record lives
+  on the turn that delivered it, so cutting a turn cuts its record, along with
+  the provider history the note rode in. A failed message run that rolls back
+  its writer turn takes the record with it.
+- **When it doesn't send:**
+  - memory is off: the record stands, and turning memory on later sends only
+    what changed since;
+  - the workspace isn't the accepted one, or the folder can't be listed: no note
+    and no record. Listing is retried at the next message, and the failure is
+    logged by reason.
+- **Persisted:** `projectMemoryDelivery` is an optional turn field, written only
+  when present, with its own codec module, refused on a turn that can't carry
+  it, and no `schemaVersion` bump (ADR 2026-07-30; ADR 2026-11-03 D9). A
+  pre-memory session reads and saves byte for byte.
+- **Neutralized** like the frame. `project-memory-update` and `gone` join
+  `RESERVED_PERSONA_FRAME`.
+- **Slice 2** builds the record, the frame's snapshot and the note. Slice 3 adds
+  receipts to the fold.
+
+**Alternatives.** (a) Nothing until the next room: rejected by the writer.
+(b) Lookup only (`memory.catalog`): the draft's mid-room rule, superseded
+because a persona doesn't know to look. (c) A record keyed by session rather
+than by turn: rejected, because Rewind and Branch would have to repair it.
 
 ## Consequences
 
@@ -665,6 +757,8 @@ setting, the platform port widens; with a global one, nothing does.
   again whenever the writer changes the mode.
 - **New tests:**
   - the frame's byte stability across turns, settings changes and reopen;
+  - update notes: deltas, budgets, the fold over frames, notes and receipts,
+    and Rewind/Branch/rollback keeping the record right;
   - frame budgets and ordering;
   - the negative test that tools get neither behavior nor memory;
   - trailer codec cases and stripping, in the bubble and in retained history;
@@ -686,52 +780,33 @@ setting, the platform port widens; with a global one, nothing does.
 ## Out of scope
 
 - Semantic search; a persisted search index (the folder is small).
-- Anything outside the Workshop reading memory (open question 6).
+- Anything outside the Workshop reading memory (question 6: Workshop only in
+  v1).
+- `INDEX.md` (question 2).
 - "Promote to story bible" on a `canon` memory: decided in the story bible's ADR.
 - Cross-workspace memory.
 
-## Open questions for the writer
+## Decided questions
 
-Each has a recommendation; none is decided here.
+The six questions this ADR opened, decided by the writer on 2026-11-04.
 
-1. **Is memory's mode set per project or globally?**
-   - **Per project** needs a workspace-scoped setting. That means widening
-     `SettingsStore.update` with a target (`'global' | 'workspace'`), its VS Code
-     adapter, and the manifest's scope. The value lands in
-     `.vscode/settings.json`, where the writer can see and commit it.
-   - **Global mode, per-project storage** needs no port change, but turning
-     memory on for one novel turns it on for all of them.
-   - A third way is a workspace memento, like the Lightbox's reload pointer. It's
-     invisible to the writer and absent from Settings Sync.
-   - *Recommended:* per project, through a widened `SettingsStore.update`, as
-     the feature note proposes.
-2. **Does `INDEX.md` exist?** It's a derived page for browsing outside VS Code,
-   but it changes on every save and adds Git noise when the folder is committed.
-   *Recommended:* not in v1. The manager and the files themselves are enough. If
-   it's wanted later, the manager can write it on request ("Write an index"),
-   not after every save. Slice 5 keeps it only if the writer says so.
-3. **Do reopened rooms get a delta?** A room reopened later keeps its frame.
-   An *appended* message ("since this room was last open: 3 notes saved") is
-   cache-safe, but the room has to record which catalog it was given, which is
-   a new persisted session field. *Recommended:* not in v1. Receipts and
-   `memory.catalog` cover it, and the live pass (Slice 6) says whether it's
-   missed.
-4. **How is pinning bounded: a count or a budget?** *Recommended:* a token
-   budget, `pinnedTokens: 1_500`, measured by the engine's own estimator
-   (`estimateTextTokens`,
-   `core/infrastructure/api/orchestration/RequestContextPreflight.ts:7`) over
-   the rendered `<pinned>` elements. The tab's meter shows exactly that ratio
-   ("about 1,100 of 1,500 tokens"), so the meter and the budget can't disagree.
-   The manager refuses a pin that would pass it, with the reason, so "pinned"
-   always means "always loaded" and never silently means "sometimes". The
-   catalog's entries get their own budget (`catalogTokens: 2_000`), shown as
-   the frame's total beside it.
-5. **Are `memory.read` results private to the persona who read them, or
-   published to the room?** *Recommended:* published when the reader's reply
-   commits, as `transcript.read` and `resource.read` are
-   (`WorkshopRoomAudience.ts:27-36`, `:53-59`). Guests then reason from the same
-   note the host read. Memory bodies are short, so the catch-up cost is small.
-6. **Does anything outside the Workshop read memory?** The Lightbox's Opinion or
-   Craft Flags could read `decision` and `canon` memories. *Recommended:* no,
-   not in v1. Both are checked readings with their own fences, and a loose
-   notebook shouldn't steer them until the story bible decides what's exact.
+1. **Mode per project or global? Global** (against the recommendation). One
+   `proseMinion.workshop.projectMemory` switch for every project, written
+   globally like the other Conversation settings. Memories are still stored per
+   project. There's no `SettingsStore` target and no port change. The copy makes
+   the split clear: the switch applies to every project, and each project keeps
+   its own memories. (D8, D13)
+   - *The draft recommended* a per-project workspace setting through a widened
+     `SettingsStore.update`.
+2. **`INDEX.md`? Not in v1**, as recommended. (D10)
+3. **Reopened rooms? An update note** (the writer's refinement, replacing both
+   "not in v1" and the draft's lookup-only rule for memory turned on mid-room).
+   Whenever a conversation is behind the project's memory set, the host appends
+   one note listing only what changed. (D14)
+4. **Pinned budget? Tokens, with the meter and the refusal, at
+   `pinnedTokens: 5_000`.** `catalogTokens` stays 2,000, so the frame is at most
+   about 7,000 tokens; Slice 6 checks that cost. (D11)
+   - *The draft recommended* 1,500.
+5. **`memory.read` private or published? Published** to the room when the
+   reader's reply commits, as recommended. (D12)
+6. **Anything outside the Workshop? No; Workshop only in v1**, as recommended.

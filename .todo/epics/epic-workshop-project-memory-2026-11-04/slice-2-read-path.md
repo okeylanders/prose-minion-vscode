@@ -1,14 +1,16 @@
 # Slice 2: Read Path
 
 **Epic:** [Workshop Project Memory](README.md)
-**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D1, D2, D3, D5, D10 (workspace rule, library), D11, D12, D13
+**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D1, D2, D3, D5, D8 (mode switches), D10 (workspace rule, library), D11, D12, D13, D14 (update notes)
 **Status:** Waiting on Slice 0 (ADR) and Slice 1 (store and codec).
 
 ## Outcome
 
 With memory on, every new conversation starts with a bounded `<project-memory>`
-catalog frame, and any persona can call `memory.catalog`, `memory.search` and
-`memory.read`. Memories exist only as files made by hand or as fixtures. No
+catalog frame. A conversation that falls behind the memory set (reopened,
+memory turned on mid-room, a change from another window or a hand edit) gets
+an appended update note with only what changed. Any persona can call
+`memory.catalog`, `memory.search` and `memory.read`. Memories exist only as files made by hand or as fixtures. No
 model writes one yet, and the writer has no UI for them yet. Every list that
 widens with the family widens here, together.
 
@@ -40,10 +42,11 @@ widens with the family widens here, together.
   capability factory, which gains the library as a constructor port.
   `boundaries.test.ts` forbids `new ProjectMemoryLibrary` /
   `new ProjectMemoryStore` elsewhere.
-- **Mode (provisional).** The library reads `proseMinion.workshop.projectMemory`
-  (`off` | `ask` | `auto`, default `off`) through `SettingsStore`. Its scope
-  waits on open question 1. Read it through one function so Slice 4b can change
-  the scope without touching readers.
+- **Mode.** The library reads `proseMinion.workshop.projectMemory`
+  (`off` | `ask` | `auto`, default `off`) through `SettingsStore`. It's one
+  global setting (question 1, decided), so the port is unchanged. Slice 4b adds
+  the manifest entry and the tab; this slice may add the manifest entry first,
+  so the setting is readable.
 
 ### The catalog frame (D5)
 
@@ -59,13 +62,49 @@ widens with the family widens here, together.
     same, rendered at join;
   - the run that starts a conversation awaits the library before building the
     message. Follow-up turns never call it.
-- Add the D5 and D6 tag names to `RESERVED_PERSONA_FRAME`
+- Add the D5, D6 and D14 tag names to `RESERVED_PERSONA_FRAME`
   (`utils/workshopPromptFrames.ts:5-16`).
 - Budgets are in tokens, measured with the engine's `estimateTextTokens`
   (`RequestContextPreflight.ts:7`) over the rendered elements, so the tab's
   meter and the frame's cut agree.
 - `estimateProjectMemoryFrame()` on the library returns counts and the pinned
   and catalog token figures from the same renderer, for Slice 4b's tab.
+  `pinnedTokens` is 5,000 and `catalogTokens` 2,000 (question 4, decided), so a
+  full frame is about 7,000 tokens.
+
+### Update notes and the delivery record (D14)
+
+- **Versions.** `memory/ProjectMemoryVersion.ts` (pure): the first 12 hex
+  characters of a SHA-256 over the canonical id, title, kind, summary, body,
+  pinned flag and effective status. The library attaches it on listing; it is
+  never stored in the file.
+- **The record.**
+  - `WorkshopTurn.projectMemoryDelivery?: { participant, kind: 'frame' | 'note',
+    memories: { id, version }[] }[]`: its own codec module
+    (`session/WorkshopProjectMemoryDeliveryRecords.ts`), called from the shape
+    file.
+  - Optional, written only when present, and refused on a turn that can't carry
+    it. No `schemaVersion` bump.
+  - Covered by a pre-memory fixture that reads and saves byte for byte.
+  - A frame records its snapshot on the writer turn (host) or the join turn
+    (guest); a note records its snapshot on the turn that carried it.
+- **The fold.** `memory/ProjectMemoryDeliveredView.ts` (pure) gives a
+  participant's view from the turns in ledger order: the latest snapshot, then
+  receipts (Slice 3 adds them) up to that reader's delivery offset.
+- **The note.** `memory/ProjectMemoryUpdateNote.ts` (pure): the delta from the
+  view to the current set, with entries, pinned bodies and `<gone>` with
+  reasons. It's held to `pinnedTokens` and `catalogTokens`, and past either it
+  is the count line pointing at `memory.catalog`. Nothing changed means
+  `undefined`.
+- **Where it's appended.** At the end of the next user message each
+  conversation receives: the host's message builder
+  (`buildWorkshopHostMessage`, `WorkshopPromptBuilder.ts:610`) and the guest's
+  (`buildWorkshopGuestMessage`, `:147`), when memory is on. A conversation with
+  no record (it started while memory was off) gets the whole catalog as its
+  note.
+- **When it doesn't send:** memory off, an unaccepted workspace, or a folder
+  that can't be listed. No record is written then, and the failure is logged
+  by reason.
 
 ### The capability (D1, D2, D3)
 
@@ -87,9 +126,9 @@ widens with the family widens here, together.
 - Prompt: `resources/system-prompts/workshop-personas/project-memory-capability.md`
   holds the grammar, when to use it, and the limits.
   `workshopPersonaSystemPromptPaths` includes it only when the mode isn't `off`.
-  `base.md` and `guest-base.md` name the family. The grammar file says that a
-  conversation with no `<project-memory>` frame calls `memory.catalog` before
-  relying on project memory (ADR D8, memory turned on mid-room). The interaction contract says a
+  `base.md` and `guest-base.md` name the family. The grammar file explains the
+  update note: a later entry replaces an earlier one with the same id, and a
+  `<gone>` memory is no longer in effect. The interaction contract says a
   memory is a saved note the persona looked up, never something it remembers.
 
 ### Every list that widens (D12)
@@ -104,8 +143,7 @@ Widen every row of D12's table in this slice:
 - `CONTEXT_SOURCE_KINDS` and its consumers (`AgentRunContracts`,
   `ContextBudget`, `ConversationManager`'s archive validator, `READ_IN_KINDS`,
   `readInOpenAction` → `jump`);
-- the publishable set (per open question 5's answer; until it's answered,
-  `memory.read` is published, the ADR's recommendation);
+- the publishable set: `memory.read` is published (question 5, decided);
 - `WORKSHOP_MEMORY_MODULES` in `boundaries.test.ts`.
 
 Flip the three reservation tests to their positive meaning, and keep an
@@ -134,9 +172,23 @@ in `promptBudgets.test.ts` (including `readsPerTurn < callsPerTurn`), and add
     sentinel text).
 - **Provenance:** recallable source → hint with positions; the live room, an
   unnamed room or a missing session → the host's reason.
-- **Mid-room switches (D8):** Off → on adds no frame to a running
-  conversation, and the rebuilt system prompt teaches the grammar; on → Off
-  leaves the delivered frame in history and refuses every call.
+- **Mid-room switches (D8):** Off → on sends each conversation the whole
+  catalog as an update note on the writer's next message, and the rebuilt
+  system prompt teaches the grammar. On → Off sends no note, leaves the
+  delivered frame in history, and refuses every call; on again sends only
+  what changed since.
+- **Update notes (D14):**
+  - reopen after a change, a change from another window, and a hand edit that
+    leaves `updated` alone each give exactly one note with only the change;
+  - nothing changed gives no note;
+  - over budget gives the count line, and the next message gives no repeat;
+  - every earlier message is byte-identical after a note.
+- **The record through whole-room operations:**
+  - Rewind before a note sends it again;
+  - Branch keeps the records up to the cut;
+  - a rolled-back writer turn takes its record;
+  - New starts with none;
+  - a session without the field is unchanged on read and write.
 - **Accepted workspace:** a changed root yields no frame and rejects every
   call.
 - **Widened lists:** one test saves **and reopens** a session holding every
@@ -151,5 +203,7 @@ in `promptBudgets.test.ts` (including `readsPerTurn < callsPerTurn`), and add
       message carries the frame, and personas can catalog, search and read.
 - [ ] With memory off, no frame, no grammar, and every call is rejected.
 - [ ] The frame never changes within a conversation (pinned by test).
+- [ ] A conversation behind the memory set gets one update note with only the
+      changes, and never the same change twice.
 - [ ] Every D12 list is widened, and the save-and-reopen test passes.
 - [ ] The epic's per-slice verification passes, with counts recorded here.

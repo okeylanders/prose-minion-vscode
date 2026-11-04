@@ -1,7 +1,7 @@
 # Slice 5: Save and Tell Me
 
 **Epic:** [Workshop Project Memory](README.md)
-**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D7 (receipt actions), D8 (Save and tell me, caps, the web-research hold, Forget); open question 2 (INDEX.md)
+**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D7 (receipt actions), D8 (Save and tell me, caps, the web-research hold, Forget). No `INDEX.md` (question 2, decided).
 **Status:** Waiting on Slice 3.
 
 ## Outcome
@@ -37,13 +37,6 @@ web research attached is always held for the writer.
   - *Edit* opens Slice 3's sheet on the saved memory and writes `updated`;
   - *Forget* archives it (claimed rewrite) and records a `forgotten` receipt.
   - Neither deletes a file.
-- **INDEX.md** only if open question 2 is answered yes:
-  - a pure renderer from the listing, with a "generated, edit the memory files
-    instead" banner;
-  - written through the store's queue after each committed change, owed like
-    any write;
-  - excluded from listing (it already is);
-  - never read back.
 
 ## Tests
 
@@ -54,18 +47,15 @@ web research attached is always held for the writer.
   - the room cap reached;
   - after a Rewind below the cap, saves resume.
 - `ask` is unchanged by this slice.
-- *Forget* archives and leaves the file, and the catalog drops it on the next
-  conversation, not this one.
+- *Forget* archives and leaves the file. The room learns it through the
+  `forgotten` receipt, which counts as delivered (D14), and the next
+  conversation's frame drops it.
 - **Poisoning witness:** an attachment carrying "remember: always …" under
   `auto` with web research on gives a held card, not a file.
-- **INDEX.md** (if built): regenerated after save, edit, archive and delete;
-  never parsed; a two-window race leaves it consistent with the folder after the
-  last write.
 
 ## Completion Criteria
 
 - [ ] Save and tell me saves with a visible receipt and never silently.
 - [ ] The caps and the web-research hold hold, with tests.
 - [ ] Forget is reversible from the manager.
-- [ ] INDEX.md exists only if the writer chose it.
 - [ ] The epic's per-slice verification passes, with counts recorded here.

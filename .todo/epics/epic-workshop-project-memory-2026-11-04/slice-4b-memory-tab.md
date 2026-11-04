@@ -1,7 +1,7 @@
 # Slice 4b: Memory Tab and Manager
 
 **Epic:** [Workshop Project Memory](README.md)
-**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D5 (the estimate), D8 (the modes), D10 (manager operations), D13 (the handler); open questions 1 and 4
+**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D5 (the estimate), D8 (the modes), D10 (manager operations), D13 (the handler); decided questions 1 (global mode) and 4 (pinned budget)
 **Design:** `docs/design/workshop-project-memory/` (Slice 0d). **The design doc owns the layout, copy and states**; this doc owns the wiring.
 **Status:** Waiting on Slice 0d (approved design), Slice 4a (panels split) and Slice 2.
 
@@ -23,20 +23,15 @@ delete, and it has **New memory**.
 
 ## Build
 
-### Mode setting (D8, open question 1)
+### Mode setting (D8, question 1: global)
 
 - Manifest: `proseMinion.workshop.projectMemory`, enum `off | ask | auto`,
-  default `off`, with a scope that follows the writer's answer to question 1.
-  A defaults sync test, like `workshopConversationBehaviorDefaultsSync.test.ts`,
-  checks it.
-- **If per project:**
-  - `SettingsStore.update(section, key, value, target?)` gains
-    `'global' | 'workspace'`;
-  - `VsCodeSettingsStore` maps the target to `ConfigurationTarget`;
-  - every other host adapter and fake implements it;
-  - only this setting passes `'workspace'`.
-
-  Record this as its own commit.
+  default `off`, written globally like the other Conversation settings. There's
+  no `SettingsStore` target and no port change. (Slice 2 may have added the
+  entry; keep one.) A defaults sync test, like
+  `workshopConversationBehaviorDefaultsSync.test.ts`, checks it.
+- **The copy makes the split clear:** the switch applies to every project, and
+  each project keeps its own memories (0d's design holds the words).
 - The mode's draft joins the modal's apply-together footer, whose copy gains
   Memory. The settings round-trip (overlay ↔ VS Code settings ↔ webview) is
   tested as ADR 2025-11-03 requires.
@@ -62,7 +57,8 @@ delete, and it has **New memory**.
   webview-minted `requestId` the host echoes, as the Lightbox's catalog routes
   are:
   - list;
-  - pin and unpin, refused past `pinnedTokens` with the reason (question 4);
+  - pin and unpin, refused past `pinnedTokens` (5,000, question 4) with the
+    reason, and the meter shows "about N of 5,000 tokens";
   - archive and restore;
   - delete (claimed, with a confirmation);
   - new;
@@ -71,10 +67,6 @@ delete, and it has **New memory**.
     path from the webview).
 - A presentation hook, `useWorkshopProjectMemory`, follows the tripartite
   interface, and its persistence is empty: the host owns the truth.
-
-### INDEX.md
-
-Only if the writer answers yes to open question 2. Otherwise nothing here.
 
 ## Tests
 
@@ -88,8 +80,7 @@ Only if the writer answers yes to open question 2. Otherwise nothing here.
   - the pin refusal past budget;
   - request correlation ignores a stale answer.
 - **Shared components:** the Workshop session browser's tests run unchanged.
-- **Settings port** (if widened): adapter target mapping, and only this setting
-  writes to the workspace.
+- **Settings:** the mode writes globally, and the round trip holds.
 
 ## Completion Criteria
 
