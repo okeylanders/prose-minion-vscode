@@ -1100,6 +1100,13 @@ export const WorkshopApp: React.FC = () => {
         onAction: workshop.todoAction,
         onShowSource: jumpToTurn
       }}
+      bookmarks={{
+        bookmarks: bookmarks.bookmarks,
+        disabled: roomMutationLocked,
+        onOpen: (bookmark) => jumpToTurn(bookmark.turnId),
+        onRename: bookmarks.renameBookmark,
+        onRemove: (turnId) => bookmarks.setTurnBookmark(turnId, false)
+      }}
     />
   );
 

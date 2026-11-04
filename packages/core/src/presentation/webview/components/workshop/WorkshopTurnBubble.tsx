@@ -499,6 +499,8 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           className={`pm-ws-turn pm-ws-turn-user${
             isPrivateInstrumentTurn ? ' pm-ws-turn-private' : ''
           }`}
+          {...turnIdentity}
+          tabIndex={-1}
         >
           {turn.messageAttachments && turn.messageAttachments.length > 0 && (
             <div className="pm-ws-turn-attachments" aria-label="Message attachments">

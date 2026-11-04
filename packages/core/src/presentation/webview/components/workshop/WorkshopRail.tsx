@@ -2,10 +2,11 @@
  * The Workshop's rail content: two file-style tabs, Material and Notes
  * (ADR 2026-11-03 D1). Presentational only; tab state lives in
  * `useWorkshopRailTabs`. Both panels stay mounted and the inactive one is
- * hidden, so a draft a panel holds (an unsaved to-do edit) survives a tab
- * switch (PR #184 F-01), and each tab's `aria-controls` names a panel that
- * exists (N-01). A new room remounts the to-do list, so its draft is
- * dropped on purpose, never carried into another room.
+ * hidden, so a draft a panel holds (an unsaved to-do edit, an open bookmark
+ * rename) survives a tab switch (PR #184 F-01), and each tab's
+ * `aria-controls` names a panel that exists (N-01). A new room remounts the
+ * to-do and bookmark lists, so their drafts are dropped on purpose, never
+ * carried into another room.
  *
  * The tabs sit inside the rail's content: `FullTabRail` and `FullTabShell`
  * are unchanged, and the Lightbox rail is unaffected.
@@ -18,6 +19,7 @@ import { ExcerptPanel } from '@components/workshop/ExcerptPanel';
 import { ContextPanel } from '@components/workshop/ContextPanel';
 import { WorkshopReadInPanel } from '@components/workshop/WorkshopReadInPanel';
 import { WorkshopTodoList } from '@components/workshop/WorkshopTodoList';
+import { WorkshopBookmarkList } from '@components/workshop/WorkshopBookmarkList';
 import {
   WORKSHOP_RAIL_TABS,
   WorkshopRailTab,
@@ -32,6 +34,8 @@ export interface WorkshopRailProps {
   /** The chat target's read-in rows (ADR 2026-11-03 D2). */
   readIn: React.ComponentProps<typeof WorkshopReadInPanel>;
   todos: React.ComponentProps<typeof WorkshopTodoList>;
+  /** The writer's bookmarks, under the to-dos (ADR 2026-11-03 D5). */
+  bookmarks: React.ComponentProps<typeof WorkshopBookmarkList>;
   /** Identity of the room generation; a change resets panel-local drafts. */
   roomKey: string;
 }
@@ -64,12 +68,17 @@ function summarizeTabs({
   context,
   readIn,
   todos,
+  bookmarks,
   unseenNotesCount,
   unseenMaterialCount
 }: Omit<WorkshopRailProps, 'tabs' | 'roomKey'> &
   Pick<WorkshopRailTabsState, 'unseenNotesCount' | 'unseenMaterialCount'>): Record<WorkshopRailTab, TabSummary> {
   const materialCount = (excerpt.excerpt ? 1 : 0) + context.attachments.length + readIn.entries.length;
   const openTodos = todos.todos.filter((todo) => todo.status === 'open' && !todo.stale).length;
+  const bookmarkCount = bookmarks.bookmarks.length;
+  const bookmarkPart = bookmarkCount > 0
+    ? `, ${bookmarkCount} ${bookmarkCount === 1 ? 'bookmark' : 'bookmarks'}`
+    : '';
   const materialBadge = newBadge(unseenMaterialCount);
   const notesBadge = newBadge(unseenNotesCount);
   return {
@@ -79,8 +88,8 @@ function summarizeTabs({
       badge: materialBadge
     },
     notes: {
-      count: openTodos,
-      name: `Notes, ${openTodos} open${notesBadge ? `, ${notesBadge}` : ''}`,
+      count: openTodos + bookmarkCount,
+      name: `Notes, ${openTodos} open${bookmarkPart}${notesBadge ? `, ${notesBadge}` : ''}`,
       badge: notesBadge
     }
   };
@@ -110,6 +119,7 @@ export const WorkshopRail: React.FC<WorkshopRailProps> = ({
   context,
   readIn,
   todos,
+  bookmarks,
   roomKey
 }) => {
   const { activeTab, unseenNotesCount, unseenMaterialCount, selectTab } = tabs;
@@ -119,6 +129,7 @@ export const WorkshopRail: React.FC<WorkshopRailProps> = ({
     context,
     readIn,
     todos,
+    bookmarks,
     unseenNotesCount,
     unseenMaterialCount
   });
@@ -190,7 +201,8 @@ export const WorkshopRail: React.FC<WorkshopRailProps> = ({
         tabIndex={0}
         hidden={activeTab !== 'notes'}
       >
-        <WorkshopTodoList key={roomKey} {...todos} />
+        <WorkshopTodoList key={`todos:${roomKey}`} {...todos} />
+        <WorkshopBookmarkList key={`bookmarks:${roomKey}`} {...bookmarks} />
       </div>
     </>
   );
