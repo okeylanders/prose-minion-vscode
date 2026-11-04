@@ -58,3 +58,8 @@ No native pass, implementation change, formal approval or merge was performed. T
 | Finding | Status | What changed |
 |---|---|---|
 | N-02 (qualification) | Applied | The JSON step now asks for `model` only where the turn has a stamp, and checks one stamped reply against one unstamped turn. It lists the unstamped turns: resource and recall cards, host-written fallbacks, and turns saved before this epic. |
+
+
+## Re-review of `0f1d442` (2026-11-04)
+
+N-02 is resolved: JSON is checked against the underlying turn's actual stamp, with both a stamped reply and an unstamped control. N-01 through N-04 are now addressed; no further actionable checklist finding remains at this head. The five writer decisions remain open, and no human VS Code live pass or acceptance is implied. The separate [aggregate technical integration review](workshop-wayfinding-aggregate-integration-review.md) records the automated checks and remaining final-PR verification.
