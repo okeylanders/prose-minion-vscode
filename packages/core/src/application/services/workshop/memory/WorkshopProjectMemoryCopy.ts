@@ -71,7 +71,10 @@ export function projectMemoryProvenanceLine(provenance: ProjectMemoryProvenance)
         return `source: "${recallLabel(provenance.title)}" (session ${provenance.sessionId}); its cited turns are no longer in that record.`;
       }
       const turns = positionRanges(provenance.positions);
-      return `source: "${recallLabel(provenance.title)}", turns ${turns}${missing}. ` +
+      // A read takes at most so many ranges; the rest are named, never dropped (PR #197 N-01).
+      const rest = positionRangeList(provenance.positions).slice(PROMPT_BUDGETS.workshopTranscriptRecall.turnRanges);
+      const more = rest.length > 0 ? `, and ${rest.length} more ${rest.length === 1 ? 'range' : 'ranges'} (${rest.join(', ')})` : '';
+      return `source: "${recallLabel(provenance.title)}", turns ${turns}${more}${missing}. ` +
         `Check it with transcript.read: <session turns="${turns}">${provenance.sessionId}</session>`;
     }
     case 'live-room':
@@ -94,6 +97,11 @@ export function projectMemoryProvenanceLine(provenance: ProjectMemoryProvenance)
  * `transcript.read` accepts, so the hint decodes exactly as written.
  */
 export function positionRanges(positions: readonly number[]): string {
+  return positionRangeList(positions).slice(0, PROMPT_BUDGETS.workshopTranscriptRecall.turnRanges).join(', ');
+}
+
+/** Every range of ascending positions, unbounded. */
+function positionRangeList(positions: readonly number[]): string[] {
   const sorted = [...new Set(positions)].sort((left, right) => left - right);
   const ranges: string[] = [];
   for (let index = 0; index < sorted.length; index += 1) {
@@ -103,7 +111,7 @@ export function positionRanges(positions: readonly number[]): string {
     }
     ranges.push(from === sorted[index] ? `${from}` : `${from}-${sorted[index]}`);
   }
-  return ranges.slice(0, PROMPT_BUDGETS.workshopTranscriptRecall.turnRanges).join(', ');
+  return ranges;
 }
 
 /** Text and attribute escaping: no memory can open or close a frame (D5). */

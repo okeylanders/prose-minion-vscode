@@ -111,14 +111,15 @@ export function projectMemoryBody(markdown: string): string {
 }
 
 /**
- * The ids superseded among the given readable memories: derived, never
- * stored (ADR 2026-11-04 D4). A memory is superseded when another names it
- * in `supersedes`, unless the two are on a cycle (it names, directly or
- * through others, the memory that names it): in a cycle, neither is
- * superseded (PR #194 N-01). An id no given memory holds may be superseded
- * too.
+ * The supersession links that count among the given readable memories
+ * (ADR 2026-11-04 D4): `newer` names `older` in `supersedes`, unless the two
+ * are on a cycle (`older` names, directly or through others, the memory that
+ * names it), in which case neither link counts (PR #194 N-01). Standing and
+ * attribution both read these, so they never disagree (PR #197 N-02).
  */
-export function supersededProjectMemoryIds(memories: readonly Pick<ProjectMemory, 'id' | 'supersedes'>[]): Set<string> {
+export function acceptedProjectMemorySupersessions(
+  memories: readonly Pick<ProjectMemory, 'id' | 'supersedes'>[]
+): Array<{ newer: string; older: string }> {
   const names = new Map<string, readonly string[]>();
   for (const memory of memories) {
     names.set(memory.id, [...(names.get(memory.id) ?? []), ...memory.supersedes]);
@@ -140,13 +141,23 @@ export function supersededProjectMemoryIds(memories: readonly Pick<ProjectMemory
     }
     return false;
   };
-  const superseded = new Set<string>();
+  const accepted: Array<{ newer: string; older: string }> = [];
   for (const [newer, older] of names) {
     for (const id of older) {
       if (id !== newer && !reaches(id, newer)) {
-        superseded.add(id);
+        accepted.push({ newer, older: id });
       }
     }
   }
-  return superseded;
+  return accepted;
+}
+
+/**
+ * The ids superseded among the given readable memories: derived, never
+ * stored (ADR 2026-11-04 D4), from the links that count
+ * (`acceptedProjectMemorySupersessions`). An id no given memory holds may be
+ * superseded too.
+ */
+export function supersededProjectMemoryIds(memories: readonly Pick<ProjectMemory, 'id' | 'supersedes'>[]): Set<string> {
+  return new Set(acceptedProjectMemorySupersessions(memories).map(({ older }) => older));
 }

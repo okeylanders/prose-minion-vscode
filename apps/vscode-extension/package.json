@@ -668,6 +668,7 @@
         },
         "proseMinion.workshop.projectMemory": {
           "type": "string",
+          "scope": "application",
           "enum": [
             "off",
             "ask",
