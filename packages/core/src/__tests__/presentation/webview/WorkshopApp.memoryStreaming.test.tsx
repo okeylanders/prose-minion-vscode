@@ -160,14 +160,18 @@ describe('WorkshopApp streaming a memory proposal (PR #200 F-02)', () => {
     expectNoFrame();
   });
 
-  it('never shows the frame when the host rejects the proposal and keeps the prose', () => {
+  it('never shows the frame when the host rejects the proposal, and keeps the prose (PR #200 N-01)', () => {
+    // A rejected proposal persists no card: the reply lands as its prose alone.
+    const errors = jest.spyOn(console, 'error');
     streamReply();
     stream(MessageType.STREAM_COMPLETE, { content: REPLY, cancelled: false });
-    deliver(session({
-      turns: [writerTurn, { ...hostTurn, content: PROSE, memoryProposal: { state: 'rejected', reason: 'memory-off' } as never }],
-      totalTurns: 2
-    }));
+    deliver(session({ turns: [writerTurn, { ...hostTurn, content: PROSE }], totalTurns: 2 }));
     expectNoFrame();
+    expect(threadText()).toContain(PROSE);
+    expect(screen.queryByRole('button', { name: /^Save$/ })).toBeNull();
+    const renderErrors = errors.mock.calls.filter(([first]) => !String(first).includes('not wrapped in act'));
+    expect(renderErrors).toEqual([]);
+    errors.mockRestore();
   });
 
   it('never shows a frame left open when the stream ends', () => {
