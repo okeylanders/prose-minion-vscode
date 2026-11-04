@@ -49,7 +49,9 @@ export function workshopConversationSettingsTabForKey<Tab extends string>(
   current: Tab,
   key: string
 ): Tab | undefined {
-  if (tabs.length === 0) return undefined;
+  if (tabs.length === 0) {
+    return undefined;
+  }
   const currentIndex = tabs.findIndex((entry) => entry.id === current);
   switch (key) {
     case 'Home':
