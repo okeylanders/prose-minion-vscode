@@ -412,3 +412,36 @@ describe('WorkshopTextSheet — the reader\'s provenance (Wayfinding Slice 3)', 
     expect(screen.queryByRole('button', { name: 'Show where it was read' })).toBeNull();
   });
 });
+
+describe('WorkshopTextSheet — turn preview (ADR 2026-11-03 D6)', () => {
+  const mode = { kind: 'turn-preview' as const, turnId: 'turn-0', requestId: 'ws-preview-1' };
+  const turn = { kind: 'reply' as const, speaker: 'Jill', content: 'An older reply.', timestamp: 0 };
+
+  it('is titled by the label it was opened with, else the speaker once the host answers', () => {
+    const { rerender } = render(
+      <WorkshopTextSheet open mode={{ ...mode, label: 'Jill · An older reply' }} loading onApply={jest.fn()} onClose={jest.fn()} />
+    );
+    expect(screen.getByRole('heading', { name: 'Jill · An older reply' })).toBeTruthy();
+    expect(screen.getByText('Loading the message…')).toBeTruthy();
+
+    rerender(<WorkshopTextSheet open mode={mode} value="An older reply." turnPreview={turn} onApply={jest.fn()} onClose={jest.fn()} />);
+    expect(screen.getByRole('heading', { name: 'Jill' })).toBeTruthy();
+    expect(screen.getByText(`Jill · ${formatReadInTime(0)}`)).toBeTruthy();
+    expect(screen.getByText('Outside the loaded window')).toBeTruthy();
+  });
+
+  it('is read-only, and says when the reply stopped at the token limit', () => {
+    render(
+      <WorkshopTextSheet
+        open
+        mode={mode}
+        value="An older reply."
+        turnPreview={{ ...turn, truncated: true }}
+        onApply={jest.fn()}
+        onClose={jest.fn()}
+      />
+    );
+    expect(screen.queryByRole('button', { name: /Apply|Save/ })).toBeNull();
+    expect(screen.getByText(/stopped at the max-token limit/)).toBeTruthy();
+  });
+});

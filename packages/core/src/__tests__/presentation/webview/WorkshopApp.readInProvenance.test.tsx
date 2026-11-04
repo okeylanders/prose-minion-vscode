@@ -265,7 +265,7 @@ describe('WorkshopApp Read in provenance', () => {
     expect(document.activeElement).toBe(row);
   });
 
-  it('returns focus to the Read in row, and says so, when the card is outside the window', async () => {
+  it('opens a card outside the window in the turn preview in place of the reader, then returns focus to the row', async () => {
     render(<WorkshopApp />);
     // The row names a card the snapshot's window no longer holds.
     deliver(session([{ ...resourceRow('characters/rabbit.md', 1_000), turnId: 'turn-0' }]));
@@ -275,11 +275,19 @@ describe('WorkshopApp Read in provenance', () => {
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Show where it was read' }));
     await settle();
 
+    const previews = vscode.postMessage.mock.calls
+      .map(([entry]: [{ type: MessageType; payload: Record<string, unknown> }]) => entry)
+      .filter((entry) => entry.type === MessageType.WORKSHOP_REQUEST_TURN_PREVIEW);
+    expect(previews.map((entry) => entry.payload.turnId)).toEqual(['turn-0']);
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).getByText('Outside the loaded window')).toBeTruthy();
+    expect(screen.queryByText('That source turn is outside the current reload window.')).toBeNull();
+    expect(sheet.contains(document.activeElement)).toBe(true);
+
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
+    await settle();
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.getByText('That source turn is outside the current reload window.')).toBeTruthy();
     expect(document.activeElement).toBe(row);
-    // Let the notice's own timer run inside act.
-    act(() => { jest.runOnlyPendingTimers(); });
   });
 
   it('scrolls to the first line read once the async reply has put the Source pane on screen (PR #187 N-01)', async () => {
