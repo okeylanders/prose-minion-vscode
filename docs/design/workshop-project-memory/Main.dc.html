@@ -25,7 +25,7 @@ a{color:#ee7d49}a:hover{color:#e0673a}
   --accent:#c8552c;--accentHi:#b44a22;--accentLo:#a8431e;--accentSoft:rgba(200,85,44,.10);
   --amber:#8a6210;--backdrop:rgba(60,40,20,.18);--shadow:0 22px 60px rgba(80,50,20,.18);
 }
-.root{width:940px;min-height:920px;box-sizing:border-box;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--text);}
+.root{width:940px;min-height:1040px;box-sizing:border-box;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--text);}
 .modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;}
 .eyebrow{font-family:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:0;}
 .rule{display:flex;align-items:center;gap:12px;margin:22px 0 9px;}
@@ -62,6 +62,14 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 .notice{display:flex;gap:8px;align-items:flex-start;margin-top:16px;padding:10px 12px;border-radius:9px;border:1px solid color-mix(in srgb,var(--amber) 45%,var(--border));background:color-mix(in srgb,var(--amber) 8%,transparent);font-size:12px;line-height:1.5;color:var(--muted);}
 .notice svg{flex:none;margin-top:2px;color:var(--amber);}
 .notice b{color:var(--text);font-weight:600;}
+.vs{margin-top:16px;padding:10px 12px 11px;border-radius:9px;background:color-mix(in srgb,var(--accent) 6%,transparent);border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);}
+.vs-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--dim);}
+.vs-head svg{flex:none;color:var(--accentHi);}
+.vs-head b{color:var(--text);font-weight:600;}
+.vs-grid{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr);column-gap:14px;row-gap:5px;margin:9px 0 0 22px;font-size:11px;line-height:1.45;}
+.vs-grid dt{margin:0;color:var(--faint);font:10px ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;padding-top:1px;}
+.vs-grid dd{margin:0;color:var(--muted);}
+.vs-grid .vs-col{color:var(--text2);font-weight:600;}
 .path{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;font-weight:500;color:var(--text);}
 .btns{display:flex;gap:8px;flex:none;align-items:center;}
 .btn{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;font-family:inherit;color:var(--text2);background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:6px 11px;cursor:pointer;}
@@ -105,6 +113,16 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 <span><b>{{noticeTitle}}</b> {{noticeText}}</span>
 </div>
 </sc-if>
+
+<section class="vs" aria-labelledby="pm-mem-vs-title">
+<div class="vs-head"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><b id="pm-mem-vs-title">Memory isn’t context.</b><span>They reach personas differently.</span></div>
+<dl class="vs-grid">
+<dt class="vs-corner"></dt><dd class="vs-col">Project memory</dd><dd class="vs-col">Context</dd>
+<dt>Reaches</dt><dd>Every conversation in this project</dd><dd>The conversation it’s attached to</dd>
+<dt>Holds</dt><dd>A one-line summary of each memory, plus the few you pin. Personas open a full note only when they need it</dd><dd>Whole files and passages, sent in full</dd>
+<dt>Size</dt><dd>Kept small: about 7,000 tokens in all</dd><dd>Much larger: up to 100,000 words</dd>
+</dl>
+</section>
 
 <div class="rule"><span class="eyebrow">Project memory</span><hr></div>
 <div class="cards">
@@ -182,7 +200,7 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"viewState":{"editor":"enum","options":["memories","off","empty","over","unreadable","nofolder","multiroot"],"default":"memories"},"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":940,"height":920}}'>
+<script type="text/x-dc" data-dc-script data-props='{"viewState":{"editor":"enum","options":["memories","off","empty","over","unreadable","nofolder","multiroot"],"default":"memories"},"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":940,"height":1040}}'>
 class Component extends DCLogic {
   renderVals() {
     const view = this.props.viewState ?? 'memories';

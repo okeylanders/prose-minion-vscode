@@ -14,7 +14,7 @@
       "x": 0,
       "y": 0,
       "w": 940,
-      "h": 920,
+      "h": 1040,
       "title": "On, with memories · Ask first (click the cards)",
       "is_interactive": true
     },
@@ -22,56 +22,56 @@
       "x": 1020,
       "y": 0,
       "w": 940,
-      "h": 920,
+      "h": 1040,
       "title": "Off"
     },
     "Empty.dc.html": {
       "x": 2040,
       "y": 0,
       "w": 940,
-      "h": 920,
+      "h": 1040,
       "title": "On, no memories yet"
     },
     "OverBudget.dc.html": {
       "x": 0,
       "y": 1340,
       "w": 940,
-      "h": 920,
+      "h": 1040,
       "title": "Over budget: pinned first, the rest searchable"
     },
     "Unreadable.dc.html": {
       "x": 1020,
       "y": 1340,
       "w": 940,
-      "h": 920,
+      "h": 1040,
       "title": "Unreadable memory files"
     },
     "NoFolder.dc.html": {
       "x": 0,
       "y": 2680,
       "w": 940,
-      "h": 920,
+      "h": 1040,
       "title": "Unavailable · no folder (the mode still applies elsewhere)"
     },
     "MultiRoot.dc.html": {
       "x": 1020,
       "y": 2680,
       "w": 940,
-      "h": 920,
+      "h": 1040,
       "title": "Unavailable · several folders"
     },
     "LightMemories.dc.html": {
       "x": 0,
       "y": 4020,
       "w": 940,
-      "h": 920,
+      "h": 1040,
       "title": "Light · on, with memories (proposal)"
     },
     "LightOver.dc.html": {
       "x": 1020,
       "y": 4020,
       "w": 940,
-      "h": 920,
+      "h": 1040,
       "title": "Light · over budget (proposal)"
     },
     "Manager.dc.html": {
@@ -138,28 +138,28 @@
     },
     "row2": {
       "x": 0,
-      "y": 1040,
+      "y": 1100,
       "text": "When the catalog needs attention",
       "kind": "title1",
       "maxW": 1960
     },
     "row3": {
       "x": 0,
-      "y": 2380,
+      "y": 2440,
       "text": "When memory can't belong to a project",
       "kind": "title1",
       "maxW": 1960
     },
     "row4": {
       "x": 0,
-      "y": 3720,
+      "y": 3780,
       "text": "Light theme (full tabs are dark-only today)",
       "kind": "title1",
       "maxW": 1960
     },
     "row5": {
       "x": 0,
-      "y": 5060,
+      "y": 5120,
       "text": "Manager, thread and the save sheet",
       "kind": "title1",
       "maxW": 3040
@@ -168,7 +168,7 @@
       "x": 2120,
       "y": 1340,
       "w": 420,
-      "text": "Approved by Okey, 2026-11-04.\n\n· Mode is global; memories stay per project.\n· Pinned 5,000 tokens, list 2,000.\n· Limits: title 120, summary 280, note 8,000.\n· Unavailable: no memory in this workspace, with the reason; the mode cards stay choosable.\n· Off keeps the manager.\n· An update note replaces 'loads at the start'.\n· No INDEX.md.\n· A Save-and-tell-me receipt expands to the saved memory, read-only.",
+      "text": "Approved by Okey, 2026-11-04.\n\n· Mode is global; memories stay per project.\n· Pinned 5,000 tokens, list 2,000.\n· Limits: title 120, summary 280, note 8,000.\n· Unavailable: no memory in this workspace, with the reason; the mode cards stay choosable.\n· Off keeps the manager.\n· An update note replaces 'loads at the start'.\n· No INDEX.md.\n· A Save-and-tell-me receipt expands to the saved memory, read-only.\n· 'Memory isn't context' well near the top of the tab, in every state (Okey, after approval).",
       "fill": "orange",
       "size": "m"
     }

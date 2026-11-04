@@ -25,7 +25,7 @@ production code changed.
 
 | Surface | Slice |
 |---|---|
-| Memory tab (every state below) | 4b, on 4a's per-tab panels |
+| Memory tab (every state below), including the "Memory isn't context" well | 4b, on 4a's per-tab panels |
 | Memory manager, including conflict, unreadable and over-pinned rows | 4b |
 | Suggestion card, its settled states, writer-save receipts | 3 |
 | Update note divider | 3 draws it; 2b builds the note itself (ADR D14) |
@@ -86,6 +86,20 @@ read-only: no Save, Edit… or Dismiss. Slices 3 and 5 build it once.
     (`styles/fulltab/tokens.css`). The two light artboards show what the tab
     would look like if full tabs follow VS Code's theme later. Nothing builds
     them now.
+15. **"Memory isn't context."** Okey added this after approval. A well near
+    the top of the tab keeps writers from confusing project memory with the
+    context they attach to a conversation.
+    - It shows in every state, off and unavailable included, because that is
+      when a writer decides whether to turn memory on.
+    - It sits below any unavailable notice and above the mode cards, compact
+      enough not to push them out of view.
+    - Its treatment is the frame's existing accent well, the one About you's
+      notice uses (`pm-ws-profile-notice`: accent at 6% with the accent
+      `info` glyph), plus a faint accent border. No new color.
+    - Its context column defines context as what is *attached* to a
+      conversation ("The conversation it's attached to"). A future settings
+      tab that attaches files automatically can then be referenced without
+      rewording. The design names no such tab.
 
 ## The Memory tab
 
@@ -94,6 +108,21 @@ The tab order is Behavior · About you · **Memory** · Advanced.
 - **Header copy** gains memory: "Choose how Workshop personas respond, what
   they may proactively offer, what you explicitly share, what they remember
   about this project, and whether they may research the live web."
+- **The "Memory isn't context" well** (decision 15), in every state, after
+  the unavailable notice when there is one and before the cards. Its head is
+  the `info` glyph, **Memory isn't context.** and "They reach personas
+  differently." Under it is a three-row comparison (a `dl`):
+
+  | | Project memory | Context |
+  |---|---|---|
+  | **Reaches** | Every conversation in this project | The conversation it's attached to |
+  | **Holds** | A one-line summary of each memory, plus the few you pin. Personas open a full note only when they need it | Whole files and passages, sent in full |
+  | **Size** | Kept small: about 7,000 tokens in all | Much larger: up to 100,000 words |
+
+  The 7,000 is `pinnedTokens` plus `catalogTokens`, and the 100,000 words is
+  the context limit (`CONTEXT_ATTACHMENTS.words` in `promptBudgets.ts`). Slice 4b reads both from their budgets, so the well
+  never states a number the build doesn't enforce. Below 760px the grid
+  stacks to one column per side.
 - **Section "Project memory".** Three cards in the existing
   `pm-ws-behavior-card` style:
   - **Off** (a slashed circle, a new glyph): "Personas start each
@@ -300,3 +329,6 @@ docs:
     limits (120/280/8,000) and the over-pinned states (#192 F-04).
   - Okey approved, with the receipt expand, which is drawn.
   - Snapshotted, with this doc. No production code; no tests run (docs only).
+  - After approval, Okey added the "Memory isn't context" well (decision 15).
+    It is drawn in every tab state, the tab artboards grew to 1,040px, and
+    the canvas and snapshot were updated.
