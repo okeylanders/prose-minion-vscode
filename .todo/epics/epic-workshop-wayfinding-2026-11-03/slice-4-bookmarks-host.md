@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D5, D6, D9, and D10 (bookmarks)
-**Status:** In progress, on `epic/workshop-wayfinding-slice-4-bookmarks-host`, cut from the epic at `89d6f26` (Slice 3 merged).
+**Status:** Built, on `epic/workshop-wayfinding-slice-4-bookmarks-host` (cut from the epic at `89d6f26`), verified at `87c089a`; in review on PR #188.
 
 ## Outcome
 
@@ -158,10 +158,132 @@ Workshop subdomain barrel and `@messages`:
 
 ## Completion Criteria
 
-- [ ] Bookmarks can be set, cleared, and renamed through messages, and persist
-      with the session.
-- [ ] New, Open, Rewind, and Branch each handle bookmarks as D6 says, with
-      tests.
-- [ ] Sessions without bookmarks are unchanged on read and write.
-- [ ] Export marks bookmarked turns; recall and prompts don't carry them.
-- [ ] The epic's per-slice verification passes. Counts are recorded.
+- [x] Bookmarks can be set, cleared, and renamed through messages, and persist
+      with the session. *(`WorkshopRoutes.bookmarks.test.ts`,
+      `WorkshopSessionBookmarks.test.ts`, `WorkshopBookmarkCodec.test.ts`)*
+- [x] New, Open, Rewind, and Branch each handle bookmarks as D6 says, with
+      tests. *(`WorkshopBookmarkWholeRoom.test.ts`, real coordinator and store)*
+- [x] Sessions without bookmarks are unchanged on read and write.
+      *(`WorkshopBookmarkCodec.test.ts`, "a session saved before Slice 4",
+      over `workshop-session-v2-before-bookmarks.json`)*
+- [x] Export marks bookmarked turns; recall and prompts don't carry them.
+      *(`WorkshopTranscriptBookmarks.test.ts`,
+      `WorkshopTranscriptRecallBookmarks.test.ts`)*
+- [x] The epic's per-slice verification passes. Counts are recorded. *(At
+      `87c089a`: 620 suites / 8,796 tests / 59 snapshots; see the epic
+      README's progress note.)*
+
+## Built
+
+Commits on `epic/workshop-wayfinding-slice-4-bookmarks-host`, after `dc5ed54`:
+
+| Commit | What |
+|---|---|
+| `1ed59f5` | Contracts (`workshop/bookmarks.ts`), the shared label rule (`shared/constants/workshopBookmarks.ts`), `session/WorkshopBookmarkLedger.ts` |
+| `9f3b261` | The aggregate seam, session state's optional `bookmarks`, its codec (`session/WorkshopBookmarkRecords.ts`), the dangling-bookmark normalization, the pre-bookmark fixture |
+| `b476e99` | `WorkshopBookmarkHandler` and its two routes behind the mutation gate |
+| `c72906d` | Rewind's prune in `rewindWorkshopSession`; whole-room tests through the real coordinator |
+| `c813fb4` | Export marks bookmarked turns; recall and prompt isolation witnesses |
+| `852e023` | Lint: the slice's avoidable warnings removed |
+| `87c089a` | The room handler's seam witness counts the two new routes |
+
+### Where each piece lives
+
+- **Contracts.** `shared/types/messages/workshop/bookmarks.ts`:
+  `WorkshopTurnBookmark` (stored), `WorkshopBookmarkSummary` (projected),
+  `WORKSHOP_SET_TURN_BOOKMARK`, `WORKSHOP_RENAME_BOOKMARK`,
+  `WORKSHOP_BOOKMARK_LABEL_CHARACTERS` (80). `WorkshopSessionSnapshot.bookmarks`
+  in `session.ts`. Error source `workshop.bookmark`.
+- **Label rule.** `shared/constants/workshopBookmarks.ts`
+  (`checkWorkshopBookmarkLabel`, `isStoredWorkshopBookmarkLabel`), shaped like
+  `lightboxBoardName.ts`, so Slice 5's field can use the same rule.
+- **Ledger.** `session/WorkshopBookmarkLedger.ts`: `set`, `rename`, `pruneTo`,
+  `summaries`, prepared hydration; `isWorkshopBookmarkableTurn`;
+  `workshopBookmarkDefaultLabel`.
+- **Codec.** `session/WorkshopBookmarkRecords.ts`: the shape
+  (`assertWorkshopBookmarksShape`), referential integrity
+  (`assertWorkshopBookmarkIntegrity`), and `workshopBookmarksWithin` (used by
+  the normalization and the rewind transform). The shape, integrity and
+  normalization modules only call it.
+- **Aggregate.** `WorkshopSessionService`: `setTurnBookmark`,
+  `renameBookmark`, `readBookmarkedTurnIds`; the projection in `getSnapshot()`;
+  reset; export/hydrate; pruning after `rollbackMessageRun` and
+  `rollbackToolRun`.
+- **Routes.** `handlers/domain/workshop/WorkshopBookmarkHandler.ts`, composed
+  in `WorkshopSliceComposition` beside the task list's owner.
+- **Whole-room.** New: `reset()`. Open: hydration. Rewind and Branch:
+  `rewindWorkshopSession`. All through the coordinator's existing
+  transaction; nothing hand-rolled.
+- **Export.** `projectWorkshopTranscript` takes `bookmarkedTurnIds` in its
+  meta; the export ledger port gains `readBookmarkedTurnIds()`. JSON,
+  Markdown, HTML renderers; HTML page rules in
+  `export/WorkshopTranscriptHtmlBookmarkStyles.ts`; `bookmark` icon.
+
+### Tests
+
+| Area | File |
+|---|---|
+| Ledger | `session/WorkshopBookmarkLedger.test.ts` |
+| Aggregate | `WorkshopSessionBookmarks.test.ts` |
+| Codec | `WorkshopBookmarkCodec.test.ts` (fixture `workshop-session-v2-before-bookmarks.json`) |
+| Routes, gate, snapshot privacy | `handlers/domain/workshop/WorkshopRoutes.bookmarks.test.ts` |
+| Whole-room | `session/WorkshopBookmarkWholeRoom.test.ts` |
+| Export | `export/WorkshopTranscriptBookmarks.test.ts` |
+| Recall and prompt isolation | `recall/WorkshopTranscriptRecallBookmarks.test.ts` |
+
+### Deviations
+
+- **Ids carry their number** (`bookmark-<n>-<ms>`), and the codec requires
+  that grammar. There's no persisted counter: hydration resumes numbering past
+  every loaded id, and the counter never goes back within an aggregate's
+  lifetime. This avoids a new `counters.bookmark` key.
+- **The label limit's name** is `WORKSHOP_BOOKMARK_LABEL_CHARACTERS`, not
+  `…_MAX_LENGTH`. The prompt-budget guard reads `*_MAX_*` names as prompt
+  limits; the Lightbox names its board-name limit the same way.
+- **The default label.**
+  - It's read through `projectWorkshopTranscriptTurn`, so no host-private
+    body can reach it. A capability card is named by its family and request
+    summary ("Project Resources · notes/lantern.md"), never its evidence.
+  - "First line" is the first line with words on it, with leading Markdown
+    block marks (`#`, `>`, list markers) dropped, so a report reads
+    "Prose · Summary" rather than "Prose · ## Summary".
+  - The writer is "You", as the thread and the canvas say. Export's "Writer"
+    is for a shared page.
+  - The cut counts code points, ellipsis included, and never splits a
+    surrogate pair. With no line, the label is the participant alone.
+- **Eligibility.** The writer's direct tool-run request (`tool_request`, "Run
+  Prose on the pinned excerpt") is refused. The ADR doesn't list it among the
+  eligible turns, and the transcript treats it as an event.
+- **What else the codec refuses:** a bookmark on a turn that can't carry one,
+  two bookmarks on one turn, and a label not in its stored form. An empty list
+  reads as none, and the aggregate writes no key.
+- **The dangling-turn drop** is the normalization `dropped-dangling-bookmarks`.
+  The raw preflight takes `allowDanglingBookmarks` (beside
+  `skipRetainedHistoryMarkIntegrity`). The strict save path refuses a dangling
+  bookmark.
+- **Live rollback.** A writer turn or tool request that rolls back takes its
+  bookmark with it. The slice doc didn't name this path, but without it the
+  next save would hold a dangling bookmark and fail strict validation.
+- **An unchanged set or rename** posts the snapshot but doesn't mark the room
+  dirty.
+- **Checkpoint and recovery equality** needed no code change. Both compare the
+  whole decoded checkpoint, so a bookmark is writer work in both. The codec
+  test pins that a changed, added or removed bookmark is a different
+  checkpoint and different recovery content.
+- **Export copy.** Markdown ends a heading with "· Bookmarked", and an event
+  reads "_Bookmarked · …_". HTML adds a "Bookmarked" span with the icon. The
+  thread has no mark to mirror yet, so its rules are export-only page rules in
+  their own file. Slice 5 should move the look to the mirrored layer once the
+  bubble has one.
+- **Recall** is untouched. It reads turns through
+  `projectWorkshopTranscriptTurn`, which never carries the mark. Only
+  `projectWorkshopTranscript` applies it, and only when its caller names the
+  bookmarks.
+
+### Follow-ups
+
+- Slice 5: the bubble toggle, the Notes list, rename, jump, and the
+  out-of-window preview. `inWindow` is computed against exactly the snapshot's
+  `turns`.
+- Rewind's result summary counts removed to-dos but not removed bookmarks.
+  Whether the Rewind message should say so is a Slice 5 copy question.
