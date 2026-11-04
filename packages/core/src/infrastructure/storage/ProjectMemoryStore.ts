@@ -294,9 +294,12 @@ export class ProjectMemoryStore {
   /**
    * Delete the memory `id` names, under a claim; a file that does not read,
    * or conflicts, is never deleted, and neither is one that, once claimed,
-   * no longer reads as this memory (`changed`: put back).
+   * no longer reads as this memory (`changed`: put back). Before anything
+   * is removed, the folder must still be the one it read and
+   * `beforeCommit` must allow it, else the file is put back (`withdrawn`,
+   * PR #202 F01).
    */
-  delete(id: string): Promise<ProjectMemoryDeleteResult> {
+  delete(id: string, options: ProjectMemoryWriteOptions = {}): Promise<ProjectMemoryDeleteResult> {
     return this.owe(this.enqueue(async () => {
       const where = this.availability();
       if (!where.available) {
@@ -314,7 +317,11 @@ export class ProjectMemoryStore {
           return decoded.kind === 'memory' && decoded.memory.id === id;
         },
         // Refused bytes whose saved name another file took go under a free name, never left under the claim (the re-review).
-        fallbackPath: async () => path.join(folder, await freeProjectMemoryFileName(this.fileSystem, folder, found.file.fileName))
+        fallbackPath: async () => path.join(folder, await freeProjectMemoryFileName(this.fileSystem, folder, found.file.fileName)),
+        stillPermitted: () => {
+          const now = this.availability();
+          return now.available && now.directory === where.directory && (options.beforeCommit?.() ?? true);
+        }
       });
       if (deleted === 'deleted') {
         this.log.appendLine(`${LOG} Deleted ${id}.`);

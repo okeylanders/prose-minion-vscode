@@ -87,6 +87,8 @@ export type ProjectMemoryDeleteResult =
   | { kind: 'changed' }
   /** More than one file holds the id: left as they are. */
   | { kind: 'conflict' }
+  /** The workspace moved, or `beforeCommit` said no, before anything was removed: put back (PR #202 F01). */
+  | { kind: 'withdrawn' }
   | { kind: 'unavailable'; reason: ProjectMemoryUnavailableReason }
   | { kind: 'failed' };
 

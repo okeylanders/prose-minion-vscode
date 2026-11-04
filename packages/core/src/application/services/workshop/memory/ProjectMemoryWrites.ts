@@ -243,12 +243,13 @@ export class ProjectMemoryWrites {
         this.refused('delete', closed, id);
         return { kind: 'refused' as const, reason: closed };
       }
-      const deleted = await this.store.delete(id);
+      const deleted = await this.store.delete(id, { beforeCommit: () => this.workspaceReason() === undefined });
       if (deleted.kind === 'deleted') {
         this.log(`delete deleted id=${id}`);
         return { kind: 'deleted' as const };
       }
-      const reason: ProjectMemoryDeleteRefusalReason = deleted.kind === 'unavailable' ? deleted.reason : deleted.kind;
+      const reason: ProjectMemoryDeleteRefusalReason = deleted.kind === 'unavailable' ? deleted.reason
+        : deleted.kind === 'withdrawn' ? this.workspaceReason() ?? 'workspace-changed' : deleted.kind;
       this.log(`delete refused id=${id} reason=${reason}`);
       return { kind: 'refused' as const, reason };
     });
