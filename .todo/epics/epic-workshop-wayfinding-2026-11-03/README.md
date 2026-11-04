@@ -646,3 +646,41 @@ the ADR:
   `4a180ab`. This is the last build slice; Slice 8 is the live pass. The
   slice doc's [Since Slices 5 and 6](slice-7-model-slices.md#since-slices-5-and-6)
   section lists what the earlier slices settled for it.
+  - **Built.** The commits, in order:
+    - `1fdcabb`: the shared derivation and the window seed.
+    - `b6b6b70`: `modelsBeforeWindow` on the snapshot.
+    - `6712111`: the thread divider.
+    - `0d2bc51`: the bubble's served-by note and the label's title.
+    - `b564a4b`: export slices in Markdown and HTML, `model` in JSON, and the
+      mirror. Includes the thread/export DOM parity test.
+    - `9c17bd4`: the recall pin.
+    - `a78afa6`: a test's lint cleanup.
+
+    Deviations, each with its reason, are in the slice doc's
+    [Built](slice-7-model-slices.md#built) section. In short: the search
+    for the prompting writer turn passes a run's capability cards; a
+    dictionary slice says "Dictionary model"; the separator is named by its
+    visible text; JSON prints no slice entries.
+  - **Counts.**
+    - Before, at `4a180ab`: 629 suites / 8,924 tests / 59 snapshots.
+    - After, at `a78afa6` on a clean tree: 636 / 8,977 / 59, all passing.
+    - `npm run typecheck` is clean.
+    - `npm run lint` has 0 errors. Warnings went 1,150 → 1,153, all
+      `naming-convention`: `WorkshopModelSliceDivider` and two new App tests'
+      `PmLogo` mocks.
+    - `packages/core/src` has no `from 'vscode'`.
+  - **Files over 500 lines that grew.** Each grew only by calls into the new
+    modules, or by props and state:
+    - `WorkshopSessionService.ts` 2,600 → 2,607
+    - `WorkshopApp.tsx` 1,738 → 1,740
+    - `WorkshopTurnBubble.tsx` 782 → 792
+    - `useWorkshopRoom.ts` 899 → 909
+    - `shell.css` 2,797 → 2,802, with `WorkshopTranscriptHtmlStyles.ts`
+      640 → 645 for the one mirrored rule
+    - `session.ts` (messages) 948 → 954
+    - `OpenRouterModels.ts` 1,358 → 1,368
+    - `extension.ts` 895 → 899
+
+    New files are all under 500 lines.
+  - **Filed:** [divider accessible names](../../tech-debt/2026-11-04-workshop-thread-divider-accessible-names.md).
+

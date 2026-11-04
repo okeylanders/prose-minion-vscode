@@ -3,7 +3,7 @@
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D8 and D10 (models)
 **Design:** `Main.dc.html` and `Slices.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** In progress, on `epic/workshop-wayfinding-slice-7-model-slices`, cut from the epic at `4a180ab` (Slices 5 and 6 merged).
+**Status:** Built and verified on `epic/workshop-wayfinding-slice-7-model-slices` (cut from the epic at `4a180ab`), in review as PR #190. See [Built](#built).
 
 ## Outcome
 
@@ -212,7 +212,115 @@ stamped `requestedModelId` before the window. The host computes it in
 
 ## Completion Criteria
 
-- [ ] The thread and export show identical slices from one function.
-- [ ] Unstamped sessions show no slices.
-- [ ] Served-by notes appear only on a mismatch.
-- [ ] The epic's per-slice verification passes. Counts are recorded.
+- [x] The thread and export show identical slices from one function.
+      (`WorkshopModelSliceParity.test.tsx`, real App against the real HTML
+      export, whole room and every window start; `WorkshopSessionModelsBeforeWindow.test.ts`;
+      `workshopModelSlices.test.ts`, the window at every start)
+- [x] Unstamped sessions show no slices.
+      (`workshopModelSlices.test.ts`; `WorkshopApp.modelSlices.test.tsx`
+      "draws nothing for a session without stamps";
+      `WorkshopTranscriptModelSlices.test.ts` "leaves a transcript without
+      stamps exactly as it was")
+- [x] Served-by notes appear only on a mismatch.
+      (`workshopTurnModelNote.test.ts`; `WorkshopApp.modelSlices.test.tsx`
+      "notes a served model that differs from the request, and only then").
+      Their look in the live thread is for the Slice 8 pass.
+- [x] The epic's per-slice verification passes. Counts are recorded in the
+      epic's progress notes.
+
+## Built
+
+**Commits.** `1fdcabb` derivation and seed; `b6b6b70` snapshot; `6712111`
+thread divider; `0d2bc51` bubble note and title; `b564a4b` export and mirror;
+`9c17bd4` recall pin; `a78afa6` a test's lint cleanup.
+
+**Where each piece lives.**
+
+| Piece | Where |
+|---|---|
+| Derivation, window seed, the window's share of the full slices, the copy | `shared/workshop/workshopModelSlices.ts` (`deriveWorkshopModelSlices`, `workshopModelsBeforeWindow`, `workshopModelSlicesInWindow`, `workshopModelSliceText`) |
+| Snapshot seed | `WorkshopSessionSnapshot.modelsBeforeWindow`, set in `WorkshopSessionService.getSnapshot()` by one call into the shared seed |
+| Webview state | `useWorkshopRoom` keeps `modelsBeforeWindow` beside `turns`, and the replacement snapshot carries it |
+| Thread divider | `WorkshopModelSliceDivider.tsx`; `WorkshopThread` derives and places the slices |
+| Display names (webview) | `utils/modelOptionLabel.ts`, which `ContextBudget` now uses too |
+| Served-by note and label title | `utils/workshop/workshopTurnModelNote.ts`; the bubble only calls it |
+| Display names (host) | `OpenRouterModels.getDisplayName`, passed to `WorkshopTranscriptExportService` in `extension.ts` as its model-label port |
+| Export | `projectWorkshopTranscript` adds `model-slice` lines and each stamped entry's `model`; Markdown and HTML draw the slices, JSON carries `model` |
+| Mirror | One new thread rule, `.pm-ws-model-slice span` (the chip's gap), in `shell.css` and mirrored verbatim |
+| Icon | `chip`, added to `ICON_PATHS` (shared by the thread and the HTML export) |
+
+**Tests.**
+
+- Derivation: `__tests__/shared/workshop/workshopModelSlices.test.ts`. Covers no
+  stamps, one model, one switch, a switch back, an unstamped history, an
+  unstamped turn between two stamped ones, interleaved scopes (persona
+  analysis, dictionary, reply), a switch past the run's capability cards, two
+  scopes changing at one turn, a reply no writer turn prompted, a forged
+  writer-turn stamp, seeding, every rewind cut, and the window at every start.
+- Snapshot: `WorkshopSessionModelsBeforeWindow.test.ts`, through the real
+  aggregate.
+- Thread, through the real App: `WorkshopApp.modelSlices.test.tsx`. Covers
+  placement, display names, the raw-id fallback (before and after
+  `MODEL_DATA`), no slices without stamps, the dictionary scope, seeding, a
+  live append and a rewinding snapshot, the served-by note only on a
+  mismatch, and the label's title.
+- Note and title: `workshopTurnModelNote.test.ts`.
+- Export: `WorkshopTranscriptModelSlices.test.ts`. Covers placement through
+  omitted turns and a private exchange, a trailing slice, raw-id names,
+  placement independent of names, `model` on replies and capability cards
+  only, unchanged unstamped transcripts, counts, JSON `model` with
+  `formatVersion` 1, Markdown, the HTML markup and name, the mirror, the
+  service's port, the host names, and the real export route.
+- Parity: `WorkshopModelSliceParity.test.tsx` renders the real App and parses
+  the real HTML export. They place the same slices for the whole room, when
+  the two sides name models differently, and at every window start. A
+  mutation (the thread unseeded) fails it.
+- Recall: `WorkshopTranscriptRecallModels.test.ts`. No model id, slice or
+  served-by note reaches recall's data or text, or the turn preview.
+- The mirror test (`workshopTranscriptHtmlStyles.test.ts`) passes with the
+  new rule.
+
+**Deviations.**
+
+- **The search for the prompting writer turn passes capability cards.** The
+  doc's rule ("no assistant reply between them") would put a switch between
+  a persona's dictionary card and its reply, after the writer's message. The
+  derivation also reads `capability`, beyond the doc's listed fields, so a
+  card doesn't end the search. It doesn't read `kind` or `participant`.
+- **The slice names its scope.** An `assistant` slice says "Model · …", as
+  designed. A `dictionary` slice says "Dictionary model · …", so a lookup's
+  model change never reads as the room's. The copy for that case is my
+  call. It's one table entry if the writer wants it different.
+- **The separator is named by its visible text (`aria-label`).** The doc
+  asked to match the session divider's announcement. That divider carries no
+  name, and a separator's children are presentational, so matching it would
+  make the slice silent. The slice uses the same classes and markup, plus
+  the name. The existing dividers are filed as
+  [tech debt](../../tech-debt/2026-11-04-workshop-thread-divider-accessible-names.md).
+- **The window rule, stated.** When a slice's writer turn falls before the
+  window and its reply is inside it, the thread draws the slice before the
+  reply, the first place it can. `workshopModelSlicesInWindow` states that
+  rule, and the parity tests hold both sides to it.
+- **JSON prints no slice entries.** It carries each entry's `model`, which is
+  what the slices are derived from. A new entry kind would change what a
+  script reading `entries` sees.
+- **Names can differ between the two sides; placement can't.** The thread
+  names from `MODEL_DATA`: curated names, plus the live name of an
+  uncurated model only while some scope selects it. The host names from the
+  curated list, then the live catalog it has cached. So an uncurated id can
+  read as its live name in one place and as its raw id in the other.
+  Placement uses ids only, and a test pins it across differing names.
+- **The served-by note sits under the reply's body,** as in `Slices.dc.html`.
+  It uses the meta line's `pm-ws-turn-usage` style, so it needs no new rule.
+  It is the thread's only; Markdown and HTML export don't print it (JSON
+  carries the ids).
+- **The turn preview** shows no served-by note (out of scope), and the recall
+  test pins that it carries no model.
+
+**Follow-ups.**
+
+- The thread's other dividers have no accessible name (tech debt above).
+- Whether Markdown and HTML export should print the served-by note. That's
+  the writer's call; Slice 8's live pass is a natural place to decide.
+- Visual checks for Slice 8's live pass: the chip's alignment in the 10px
+  divider, and the note under the body.
