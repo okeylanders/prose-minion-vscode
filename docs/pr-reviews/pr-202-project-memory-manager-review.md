@@ -90,8 +90,9 @@ At the reviewed implementation:
 - Focused production selection `(ProjectMemory|Workshop.*Memory|useWorkshopAppMessageRouter)`: **38 suites / 513 tests passed**.
 - Independent UI/settings production selection: **4 suites / 20 tests passed**, overlapping the focused count above rather than additional coverage.
 - Independent manager/handler selection: **2 suites / 26 tests passed**, also overlapping.
-- Full production Jest run: **in progress when this report was published**; independent expected-failing reviewer probes excluded. Its result will be appended.
+- Full production Jest run: **682 suites / 9,598 tests / 59 snapshots passed**, 492.824 seconds; independent reviewer probes excluded with `--testPathIgnorePatterns=Review202`.
 - GitHub CI for `87e14f6`: **success**, run [41912863863](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41912863863).
+- Report-only head `0ef399eb`: **CI success**, run [41914692257](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41914692257). No implementation corrections were present as of 21:23 UTC; the findings remain open.
 
 Reviewer-only witnesses, not production changes:
 - `Review202DeleteScope.test.ts`: 2 passing reproduction tests assert the observed stale deletions.
