@@ -179,7 +179,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       turn
     );
     this.recallCapability = new WorkshopTranscriptRecallCapability(recall, outputChannel, turn);
-    this.memoryCapability = new WorkshopProjectMemoryCapability(memory, outputChannel, turn);
+    this.memoryCapability = new WorkshopProjectMemoryCapability(memory, session, outputChannel, turn);
   }
 
   async appendContract(userMessage: string): Promise<string> {
@@ -203,10 +203,13 @@ export class WorkshopPersonaCapability implements AgentCapability<
   }
 
   async appendTurnContract(userMessage: string): Promise<string> {
+    // Whatever changed in project memory since this conversation last saw it (ADR 2026-11-04 D14).
+    const memoryNote = await this.memoryCapability.updateNote();
     return [
       userMessage,
       this.analysisScopeFrame(),
-      createWorkshopCapabilityTurnReminder()
+      createWorkshopCapabilityTurnReminder(),
+      ...(memoryNote ? [memoryNote] : [])
     ].join('\n\n');
   }
 

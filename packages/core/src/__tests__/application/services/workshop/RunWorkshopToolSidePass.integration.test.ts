@@ -110,8 +110,10 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
           entries: ['mem-7f3c2a'],
           more: 0,
           estimate: { memories: 1, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 20, frameTokens: 30 }
-        }
-      }))
+        },
+        snapshot: [{ id: 'mem-7f3c2a', version: '0123456789ab' }]
+      })),
+      update: jest.fn(async () => ({ kind: 'current' as const }))
     };
     const capabilityFactory = new WorkshopPersonaCapabilityFactory(
       {} as DictionaryService,

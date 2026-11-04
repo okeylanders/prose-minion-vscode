@@ -237,10 +237,10 @@ describe('the frame, in the first user message only (ADR 2026-11-04 D5)', () => 
     expect(frame).toContain('<more count="2">');
     expect(first.indexOf('## Workshop Capability Protocol')).toBeLessThan(first.indexOf('<project-memory '));
 
-    const listings = jest.spyOn(host.store, 'list');
+    // Once the reply commits, the frame's record stands, so an unchanged folder sends nothing on a follow-up.
+    wired.session.completeRun('host-request', 'The watch runs backward.', undefined, false, 'host-conv');
     const followUp = await wired.capability.appendTurnContract('<writer-message>Again</writer-message>');
     expect(followUp).not.toContain('<project-memory');
-    expect(listings).not.toHaveBeenCalled();
   });
 
   it('gives a guest who joins later the catalog as it stands at the join; the host keeps its own', async () => {

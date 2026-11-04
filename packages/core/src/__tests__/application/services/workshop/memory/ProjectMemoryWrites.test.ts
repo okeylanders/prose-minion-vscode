@@ -91,7 +91,7 @@ describe('ProjectMemoryLibrary writes', () => {
       const host = libraryHost();
       host.put(writerMemory({ id: 'mem-7f3c2a', updated: '2026-11-02T00:00:00Z', body: '\nSettled at the tea party.\n' }));
 
-      const toggled = await host.library.update('mem-7f3c2a', draft({
+      const toggled = await host.library.edit('mem-7f3c2a', draft({
         title: 'The Rabbit\'s watch runs backward',
         summary: 'From chapter 3 on, the White Rabbit\'s watch runs backward.',
         body: 'Settled at the tea party.',
@@ -99,7 +99,7 @@ describe('ProjectMemoryLibrary writes', () => {
       }));
       expect(toggled).toMatchObject({ kind: 'written', changedMeaning: false, memory: { pinned: true, updated: '2026-11-02T00:00:00Z' } });
 
-      const edited = await host.library.update('mem-7f3c2a', draft({ title: 'The watch runs backward', summary: 'From chapter 3 on.', body: 'Settled at the tea party.', pinned: true }));
+      const edited = await host.library.edit('mem-7f3c2a', draft({ title: 'The watch runs backward', summary: 'From chapter 3 on.', body: 'Settled at the tea party.', pinned: true }));
       expect(edited).toMatchObject({ kind: 'written', changedMeaning: true, memory: { title: 'The watch runs backward', updated: '2026-11-04T09:30:00Z' } });
 
       const forgotten = await host.library.forget('mem-7f3c2a');
@@ -110,13 +110,13 @@ describe('ProjectMemoryLibrary writes', () => {
     it('keeps an unchanged body byte for byte', async () => {
       const host = libraryHost();
       const file = host.put(writerMemory({ id: 'mem-7f3c2a', body: '\r\nKept   as   written.\r\n\r\n' }));
-      await host.library.update('mem-7f3c2a', draft({ title: 'Renamed', summary: 'S', body: 'Kept   as   written.' }));
+      await host.library.edit('mem-7f3c2a', draft({ title: 'Renamed', summary: 'S', body: 'Kept   as   written.' }));
       expect(bytesOf(host.fileSystem, file)).toContain('\r\nKept   as   written.\r\n\r\n');
     });
 
     it('refuses an unknown id', async () => {
       const host = libraryHost();
-      expect(await host.library.update('mem-abcdef', draft())).toEqual({ kind: 'refused', reason: 'missing' });
+      expect(await host.library.edit('mem-abcdef', draft())).toEqual({ kind: 'refused', reason: 'missing' });
     });
   });
 
@@ -132,7 +132,7 @@ describe('ProjectMemoryLibrary writes', () => {
       const file = host.put(writerMemory({ id: 'mem-7f3c2a', pinned: true, title: 'Small', body: '\nShort.\n' }));
       const before = bytesOf(host.fileSystem, file);
 
-      const refused = await host.library.update('mem-7f3c2a', draft({ title: 'Small', body: big.slice(0, 4_000), pinned: true }));
+      const refused = await host.library.edit('mem-7f3c2a', draft({ title: 'Small', body: big.slice(0, 4_000), pinned: true }));
 
       expect(refused).toMatchObject({ kind: 'refused', reason: 'pinned-budget', budget: { budgetTokens: budget, refused: true } });
       expect(refused.kind === 'refused' && refused.budget!.totalTokens).toBeGreaterThan(budget);
@@ -144,9 +144,9 @@ describe('ProjectMemoryLibrary writes', () => {
       host.put(writerMemory({ id: 'mem-1a9e04', pinned: true, body: `\n${big}\n` }));
       host.put(writerMemory({ id: 'mem-7f3c2a', pinned: false, title: 'Other', body: `\n${big.slice(0, 1_200)}\n` }));
 
-      expect(await host.library.update('mem-7f3c2a', draft({ title: 'Other', body: big.slice(0, 1_200), pinned: true })))
+      expect(await host.library.edit('mem-7f3c2a', draft({ title: 'Other', body: big.slice(0, 1_200), pinned: true })))
         .toMatchObject({ kind: 'refused', reason: 'pinned-budget' });
-      expect(await host.library.update('mem-7f3c2a', draft({ title: 'Other', body: 'Short now.', pinned: true })))
+      expect(await host.library.edit('mem-7f3c2a', draft({ title: 'Other', body: 'Short now.', pinned: true })))
         .toMatchObject({ kind: 'written' });
       expect((await host.library.estimatePinned('mem-1a9e04', draft({ body: big, pinned: false }))))
         .toMatchObject({ kind: 'estimate', estimate: { refused: false } });
@@ -156,7 +156,7 @@ describe('ProjectMemoryLibrary writes', () => {
       const host = libraryHost();
       host.put(writerMemory({ id: 'mem-1a9e04', pinned: true, body: `\n${big}\n` }));
       host.put(writerMemory({ id: 'mem-7f3c2a', pinned: true, title: 'Also big', body: `\n${big}\n` }));
-      expect(await host.library.update('mem-7f3c2a', draft({ title: 'Also big', body: big.slice(0, 2_000), pinned: true })))
+      expect(await host.library.edit('mem-7f3c2a', draft({ title: 'Also big', body: big.slice(0, 2_000), pinned: true })))
         .toMatchObject({ kind: 'written' });
     });
 
@@ -175,7 +175,7 @@ describe('ProjectMemoryLibrary writes', () => {
     host.putText('watch-7f3c2a.md', '---\nformat: 1\nid: mem-7f3c2a\nkind: secret\n---\nAlice.\n');
     const before = bytesOf(host.fileSystem, file);
 
-    expect(await host.library.update('mem-7f3c2a', draft())).toEqual({ kind: 'refused', reason: 'missing' });
+    expect(await host.library.edit('mem-7f3c2a', draft())).toEqual({ kind: 'refused', reason: 'missing' });
     expect(await host.library.forget('mem-7f3c2a')).toMatchObject({ kind: 'refused' });
     expect(await host.library.save(draft({ supersedes: ['mem-7f3c2a'] }), WRITER)).toMatchObject({ kind: 'written', memory: { supersedes: [] } });
     expect(bytesOf(host.fileSystem, file)).toBe(before);
@@ -200,7 +200,7 @@ describe('ProjectMemoryLibrary writes', () => {
       title: `T ${SENTINEL}`, summary: `S ${SENTINEL}`, body: `B ${SENTINEL}`, supersedes: ['mem-1a9e04', 'mem-ffffff']
     }), PROPOSED);
     const id = saved.kind === 'written' ? saved.memory.id : '';
-    await host.library.update(id, draft({ title: `T2 ${SENTINEL}`, body: `B2 ${SENTINEL}` }));
+    await host.library.edit(id, draft({ title: `T2 ${SENTINEL}`, body: `B2 ${SENTINEL}` }));
     await host.library.forget(id);
     await host.library.estimatePinned(id, draft({ body: SENTINEL }));
     await host.library.save(draft({ title: `${SENTINEL}\nbad` }), WRITER);

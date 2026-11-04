@@ -70,13 +70,13 @@ export function renderProjectMemoryFrame(
 ): ProjectMemoryRenderedFrame | undefined {
   const budgets = options.budgets ?? PROJECT_MEMORY_FRAME_BUDGETS;
   const inEffect = set.memories.filter(isProjectMemoryInEffect);
-  const pinned = inEffect.filter(({ memory }) => memory.pinned).sort(compareOldestCreated);
+  const pinned = inEffect.filter(({ memory }) => memory.pinned).sort(compareProjectMemoryOldestCreated);
   const loaded: Array<{ listed: ProjectMemoryListed; line: string }> = [];
   const notLoaded: ProjectMemoryListed[] = [];
   let pinnedSpent = 0;
   let pinnedTotal = 0;
   for (const listed of pinned) {
-    const line = pinnedLine(listed);
+    const line = projectMemoryPinnedLine(listed);
     const tokens = estimateTextTokens(line);
     pinnedTotal += tokens;
     if (notLoaded.length === 0 && pinnedSpent + tokens <= budgets.pinnedTokens) {
@@ -88,11 +88,11 @@ export function renderProjectMemoryFrame(
   }
 
   const candidates = [
-    ...notLoaded.map((listed) => ({ listed, line: entryLine(listed, true) })),
+    ...notLoaded.map((listed) => ({ listed, line: projectMemoryEntryLine(listed, true) })),
     ...inEffect
       .filter(({ memory }) => !memory.pinned)
       .sort(compareProjectMemoryNewestFirst)
-      .map((listed) => ({ listed, line: entryLine(listed, false) }))
+      .map((listed) => ({ listed, line: projectMemoryEntryLine(listed, false) }))
   ];
   const entries: typeof candidates = [];
   let catalogSpent = 0;
@@ -134,6 +134,14 @@ export function renderProjectMemoryFrame(
   };
 }
 
+/** The memories in effect, with their versions, by id: what a frame or a note records as delivered (D14). */
+export function projectMemorySnapshot(set: ProjectMemorySet): Array<{ id: string; version: string }> {
+  return set.memories
+    .filter(isProjectMemoryInEffect)
+    .map(({ memory, version }) => ({ id: memory.id, version }))
+    .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
+}
+
 /** What a folder's frame would cost, from this renderer; an empty frame costs nothing. */
 export function estimateProjectMemoryFrameOf(set: ProjectMemorySet, options: ProjectMemoryFrameOptions): ProjectMemoryFrameEstimate {
   return renderProjectMemoryFrame(set, options)?.estimate ?? {
@@ -153,22 +161,24 @@ export function estimateProjectMemoryFrameOf(set: ProjectMemorySet, options: Pro
  * agree (D5, PR #192 F-04).
  */
 export function projectMemoryPinnedTokens(listed: ProjectMemoryListed): number {
-  return estimateTextTokens(pinnedLine(listed));
+  return estimateTextTokens(projectMemoryPinnedLine(listed));
 }
 
-function pinnedLine({ memory }: ProjectMemoryListed): string {
+/** A pinned memory's element, its whole body escaped: the frame's and the update note's. */
+export function projectMemoryPinnedLine({ memory }: ProjectMemoryListed): string {
   return `<pinned id="${memory.id}" kind="${memory.kind}" updated="${projectMemoryDay(memory.updated)}" ` +
     `title="${escapeProjectMemoryXml(memory.title)}">${escapeProjectMemoryXml(memory.body.trim())}</pinned>`;
 }
 
-function entryLine({ memory }: ProjectMemoryListed, pinnedNotLoaded: boolean): string {
+/** A memory's entry element: the frame's and the update note's. */
+export function projectMemoryEntryLine({ memory }: ProjectMemoryListed, pinnedNotLoaded: boolean): string {
   const text = `${memory.title}: ${memory.summary}${pinnedNotLoaded ? ` (${WORKSHOP_PROJECT_MEMORY_PINNED_NOT_LOADED})` : ''}`;
   return `<entry id="${memory.id}" kind="${memory.kind}" updated="${projectMemoryDay(memory.updated)}"` +
     `${pinnedNotLoaded ? ' pinned="not-loaded"' : ''}>${escapeProjectMemoryXml(text)}</entry>`;
 }
 
 /** Oldest `created` first, ties by id: the pinned order (D5; format 1 records no pin time). */
-function compareOldestCreated(left: ProjectMemoryListed, right: ProjectMemoryListed): number {
+export function compareProjectMemoryOldestCreated(left: ProjectMemoryListed, right: ProjectMemoryListed): number {
   const created = Date.parse(left.memory.created) - Date.parse(right.memory.created);
   if (created !== 0 && Number.isFinite(created)) {
     return created;

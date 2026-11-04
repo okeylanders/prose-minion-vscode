@@ -38,7 +38,7 @@ import {
   type ProjectMemoryListed
 } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
 import { projectMemoryPinnedTokens } from '@/application/services/workshop/memory/ProjectMemoryCatalogFrame';
-import { projectMemoryReceiptVersion } from '@/application/services/workshop/memory/ProjectMemoryReceiptVersion';
+import { projectMemoryVersion } from '@/application/services/workshop/memory/ProjectMemoryVersion';
 
 /** The store's methods the writes use; satisfied by ProjectMemoryStore. */
 export type ProjectMemoryWriteStorePort = Pick<ProjectMemoryStore, 'list' | 'read' | 'create' | 'replace' | 'shutDown'>;
@@ -319,7 +319,8 @@ export class ProjectMemoryWrites {
     const listed = listing.kind === 'listed'
       ? listProjectMemories(listing.memories).find((entry) => entry.memory.id === memory.id)
       : undefined;
-    return projectMemoryReceiptVersion(listed ?? { memory, superseded: false, supersededBy: [], busy: false });
+    // The receipt carries exactly D14's version (Slice 2b's), with the memory's standing as listed.
+    return listed?.version ?? projectMemoryVersion(memory, false);
   }
 
   private owe<T>(action: string, write: () => Promise<T>): Promise<T> {
@@ -375,7 +376,8 @@ export function pinnedBudget(
   const others = memories.filter(({ memory }) => memory.id !== id).map(({ memory, busy }) => ({ memory, ...(busy ? { busy: true as const } : {}) }));
   const after = listProjectMemories([...others, { memory: candidate }]);
   const totalTokens = total(after);
-  const self = after.find(({ memory }) => memory === candidate) ?? { memory: candidate, superseded: false, supersededBy: [], busy: false };
+  const self = after.find(({ memory }) => memory === candidate)
+    ?? { memory: candidate, superseded: false, supersededBy: [], busy: false, version: projectMemoryVersion(candidate, false) };
   return {
     thisTokens: projectMemoryPinnedTokens(self),
     totalTokens,

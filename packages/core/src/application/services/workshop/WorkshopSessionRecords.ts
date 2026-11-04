@@ -15,6 +15,7 @@
 import type { WorkshopContextDeliveryBaseline } from '@/application/services/workshop/WorkshopContextDelivery';
 import type {
   ContextSourceEntry,
+  WorkshopProjectMemoryDelivery,
   WorkshopActionableFinding,
   WorkshopConversationBehavior,
   WorkshopConversationBehaviorTransition,
@@ -79,6 +80,11 @@ export interface WorkshopActiveRun {
   writerTurnId?: string;
   /** Writer-origin rows captured from the exact fresh-guest join envelope. */
   guestJoinWriterSources?: ContextSourceEntry[];
+  /**
+   * Project memory this run's message delivered (ADR 2026-11-04 D14): staged
+   * here, and written onto its writer turn only when the reply commits.
+   */
+  projectMemoryDelivery?: WorkshopProjectMemoryDelivery;
 }
 
 export interface WorkshopExcerptInput {

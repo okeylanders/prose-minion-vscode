@@ -68,7 +68,7 @@ import { PROJECT_MEMORY_SOURCE_TURN } from '@shared/types/projectMemory';
 /** The library's write half, as the handler reaches it; satisfied by ProjectMemoryLibrary. */
 export type WorkshopProjectMemoryWritePort = Pick<
   ProjectMemoryLibrary,
-  'save' | 'update' | 'forget' | 'restore' | 'editData' | 'estimatePinned'
+  'save' | 'edit' | 'forget' | 'restore' | 'editData' | 'estimatePinned'
 >;
 
 /** The room facts a write needs: is a reply running, and which room is this. */
@@ -208,7 +208,7 @@ export class WorkshopProjectMemoryHandler {
       return;
     }
     await this.write(requestId, `update memoryId=${payload.memoryId}`, payload.patch, true, async () => ({
-      result: await this.library.update(payload.memoryId, payload.patch),
+      result: await this.library.edit(payload.memoryId, payload.patch),
       action: 'updated'
     }));
   }

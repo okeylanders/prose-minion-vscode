@@ -9,7 +9,8 @@ import type { ModelScope } from '../configuration';
 import type { WorkshopBookmarkSummary } from './bookmarks';
 import type {
   WorkshopAnalysisInputProvenance,
-  WorkshopCapabilityArtifactDetails
+  WorkshopCapabilityArtifactDetails,
+  WorkshopCapabilityPrincipal
 } from '../../workshopCapabilities';
 import { ContextPathGroup, isContextPathGroup } from '../../context';
 import type { ConfiguredResourceRef } from '../configuredResources';
@@ -448,6 +449,43 @@ export interface WorkshopTurn {
   memoryProposal?: WorkshopMemoryProposal;
   /** A save, edit, Forget or Restore of a project memory, on its divider (D7). Never the body. */
   projectMemoryReceipt?: WorkshopProjectMemoryReceipt;
+  /**
+   * What project memory the message this persona reply answers delivered
+   * (ADR 2026-11-04 D14): a frame's or an update note's snapshot of the
+   * memories in effect. Written on the reply when it commits, so a cut, a
+   * rollback or a cancellation that removes the delivery removes its record
+   * too (PR #198 F-01).
+   */
+  projectMemoryDelivery?: WorkshopProjectMemoryDelivery[];
+}
+
+/** One memory as a conversation was told of it: its id and its D14 version. */
+export interface WorkshopProjectMemoryDelivered {
+  id: string;
+  version: string;
+}
+
+/**
+ * A snapshot of the memories in effect, delivered to one participant's
+ * conversation as its first-message frame or an update note. It replaces
+ * that participant's earlier view (ADR 2026-11-04 D14).
+ */
+export interface WorkshopProjectMemoryDelivery {
+  participant: WorkshopCapabilityPrincipal;
+  kind: 'frame' | 'note';
+  /** Every memory in effect, by id; empty when `digest` stands in for a set past the record's bound. */
+  memories: WorkshopProjectMemoryDelivered[];
+  /**
+   * A set too large to list (PR #198 F-03): how many memories, and a hash of
+   * their ids and versions. The fold compares it whole: the same set sends
+   * nothing, any change sends the count line.
+   */
+  digest?: WorkshopProjectMemoryDeliveryDigest;
+}
+
+export interface WorkshopProjectMemoryDeliveryDigest {
+  count: number;
+  hash: string;
 }
 
 /**
