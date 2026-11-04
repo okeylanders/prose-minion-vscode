@@ -32,7 +32,7 @@ import {
 import { describeWorkshopTranscript } from './WorkshopTranscriptDescription';
 import { WORKSHOP_TRANSCRIPT_HTML_CSS } from './WorkshopTranscriptHtmlStyles';
 import {
-  workshopTranscriptReplyModel,
+  workshopTranscriptEntryModel,
   type WorkshopTranscriptRenderOptions
 } from './WorkshopTranscriptModelHeader';
 
@@ -124,7 +124,7 @@ function renderEntry(entry: WorkshopTranscriptLine, options: WorkshopTranscriptR
     case 'event':
       return `<div class="pm-ws-revision-divider" role="separator"><span>${
         escapeHtml(entry.text)
-      }${bookmarkMark(entry)}</span></div>`;
+      }${modelSpan(workshopTranscriptEntryModel(entry, options))}${bookmarkMark(entry)}</span></div>`;
     case 'writer':
       return renderWriter(entry);
     case 'reply':
@@ -176,12 +176,12 @@ function renderWriter(entry: WorkshopTranscriptWriterEntry): string {
 function renderReply(entry: WorkshopTranscriptReplyEntry, options: WorkshopTranscriptRenderOptions): string {
   // The thread's header markup (WorkshopTurnBubble): the model's span is the
   // part a narrow column cuts short, by mirrored thread rules (D10).
-  const model = workshopTranscriptReplyModel(entry, options);
+  const model = workshopTranscriptEntryModel(entry, options);
   const head =
     '<div class="pm-ws-turn-head">' +
     `<span class="pm-ws-eyebrow">${icon(entry.participant === 'tool' ? 'sparkle' : 'person', 12)} ${
       escapeHtml(entry.speaker)
-    }${model ? ` <span class="pm-ws-turn-model">· ${escapeHtml(model)}</span>` : ''}</span>` +
+    }${modelSpan(model)}</span>` +
     (entry.privateWith ? privateLabel(entry.privateWith) : '') +
     bookmarkMark(entry) +
     '</div>';
@@ -216,6 +216,11 @@ function renderSources(entry: WorkshopTranscriptReplyEntry): string {
     '<div class="pm-ws-eyebrow">Web sources</div>' +
     `<div class="pm-ws-turn-citation-pills">${pills.join('')}</div>` +
     '</div>';
+}
+
+/** The thread's model span (WorkshopTurnBubble), after a speaker or a card's line. */
+function modelSpan(model: string | undefined): string {
+  return model ? ` <span class="pm-ws-turn-model">· ${escapeHtml(model)}</span>` : '';
 }
 
 /** The writer's bookmark on a turn (ADR 2026-11-03 D10); its rules are export-only. */

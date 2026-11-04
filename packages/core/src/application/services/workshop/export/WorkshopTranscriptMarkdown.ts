@@ -18,7 +18,7 @@ import {
 } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { describeWorkshopTranscript } from './WorkshopTranscriptDescription';
 import {
-  workshopTranscriptReplyModel,
+  workshopTranscriptEntryModel,
   type WorkshopTranscriptRenderOptions
 } from './WorkshopTranscriptModelHeader';
 
@@ -39,8 +39,13 @@ function renderEntry(entry: WorkshopTranscriptLine, options: WorkshopTranscriptR
     // A model slice (ADR 2026-11-03 D8) reads like the thread's other dividers.
     case 'model-slice':
       return `_${escapeInline(entry.text)}_`;
-    case 'event':
-      return `_${entry.bookmarked ? `${BOOKMARKED} · ` : ''}${escapeInline(entry.text)}_`;
+    case 'event': {
+      // A stamped capability card's line ends with its model, as its thread header does (D10).
+      const model = workshopTranscriptEntryModel(entry, options);
+      return `_${entry.bookmarked ? `${BOOKMARKED} · ` : ''}${escapeInline(entry.text)}${
+        model ? ` · ${escapeInline(model)}` : ''
+      }_`;
+    }
     case 'writer': {
       const lines = [
         `### ${WORKSHOP_TRANSCRIPT_WRITER_LABEL}${
@@ -62,7 +67,7 @@ function renderEntry(entry: WorkshopTranscriptLine, options: WorkshopTranscriptR
     }
     case 'reply': {
       // The reply's model follows its speaker, as in the thread's header (D10).
-      const model = workshopTranscriptReplyModel(entry, options);
+      const model = workshopTranscriptEntryModel(entry, options);
       const lines = [
         `### ${escapeInline(entry.speaker)}${
           model ? ` · ${escapeInline(model)}` : ''

@@ -4,12 +4,11 @@
  * Thread/export parity for the model in the bubble header (ADR 2026-11-03 D8
  * and D10, amended 2026-11-04). The real App draws the thread from a
  * snapshot; the real export service writes the HTML transcript of the full
- * ledger. Read back as DOM, every reply both print names the same model text
- * after its speaker, given the same label lookup, and the same raw ids when
- * neither side names a model. A turn is identified by a marker in its text.
- *
- * A capability card is a header in the thread and a one-line event in the
- * export, which has no header to name a model in; its JSON carries `model`.
+ * ledger. Read back as DOM, every reply and capability card both print
+ * names the same model text, given the same label lookup, and the same raw
+ * ids when neither side names a model. A reply names it after its speaker in
+ * both; a card names it in its thread header and at the end of its one-line
+ * export event. A turn is identified by a marker in its text.
  */
 
 import * as React from 'react';
@@ -129,7 +128,27 @@ const ROOM: WorkshopTurn[] = [
   writer('u-11'), reply('a-11', 'a', served('a', 'a', 'b', 'c')),
   writer('u-12'), reply('a-12', 'b', served('b')),
   writer('u-13'), reply('a-13', 'x', served('x', 'unlisted')),
-  writer('u-14'), reply('a-14', 'a', { model: undefined })
+  writer('u-14'), reply('a-14', 'a', { model: undefined }),
+  // A persona-run analysis card, routed.
+  writer('u-15'), base('r-15', {
+    kind: 'tool_run',
+    participant: 'tool',
+    artifact: 'tool_report',
+    personaId: undefined,
+    personaLabel: undefined,
+    toolId: 'stock-and-signature',
+    toolLabel: 'Stock & Signature',
+    capability: {
+      operation: 'analysis.run',
+      status: 'success',
+      requestSummary: '⟦r-15⟧ excerpt replace',
+      requestedByPersonaId: 'jill',
+      invokedBy: { kind: 'host' }
+    } as WorkshopTurn['capability'],
+    content: '⟦r-15⟧ Analysis report.',
+    ...served('x', 'b')
+  }),
+  reply('a-15', 'a')
 ];
 
 const MARKER = /⟦([^⟧]+)⟧/;
@@ -200,16 +219,21 @@ function snapshot(turns: WorkshopTurn[], start: number): WorkshopSessionStateMes
   };
 }
 
-/** Each printed reply's header model text, by turn, or null when it names none. */
+/**
+ * Each printed reply's and card's model text, by turn, or null when it names
+ * none: a turn's from its header, an export event's from its own line.
+ */
 function headerModels(root: ParentNode): Map<string, string | null> {
   const models = new Map<string, string | null>();
-  for (const turn of root.querySelectorAll('.pm-ws-turn-assistant')) {
-    const turnId = turn.textContent?.match(MARKER)?.[1];
-    const head = turn.querySelector('.pm-ws-turn-head > .pm-ws-eyebrow');
-    if (!turnId || !head || turn.querySelector('.pm-ws-capability-artifact, .pm-ws-capability-status')) {
+  for (const element of root.querySelectorAll('.pm-ws-turn-assistant, .pm-ws-revision-divider')) {
+    const turnId = element.textContent?.match(MARKER)?.[1];
+    const named = element.classList.contains('pm-ws-turn-assistant')
+      ? element.querySelector('.pm-ws-turn-head > .pm-ws-eyebrow')
+      : element;
+    if (!turnId || !named || models.has(turnId)) {
       continue;
     }
-    models.set(turnId, head.querySelector('.pm-ws-turn-model')?.textContent ?? null);
+    models.set(turnId, named.querySelector('.pm-ws-turn-model')?.textContent ?? null);
   }
   return models;
 }
@@ -249,7 +273,11 @@ describe('the model in the header: thread and export', () => {
       ['a-11', '· Model A, Model B, Model C'],
       ['a-12', '· Model B'],
       ['a-13', `· ${model('unlisted')} via Model X`],
-      ['a-14', null]
+      ['a-14', null],
+      ['d-2', '· Model X'],
+      ['d-6', '· Model Y'],
+      ['r-15', '· Model B via Model X'],
+      ['s-1', null]
     ] as const) {
       expect({ turnId, text: fromExport.get(turnId) }).toEqual({ turnId, text });
     }
@@ -257,7 +285,7 @@ describe('the model in the header: thread and export', () => {
     for (const [turnId, text] of fromExport) {
       expect({ turnId, text: fromThread.get(turnId) }).toEqual({ turnId, text });
     }
-    expect(fromExport.size).toBeGreaterThanOrEqual(10);
+    expect(fromExport.size).toBeGreaterThanOrEqual(15);
   });
 
   it('names the same raw ids when neither side names a model', async () => {
@@ -265,6 +293,7 @@ describe('the model in the header: thread and export', () => {
     const fromThread = threadHeaders(ROOM, false);
 
     expect(fromExport.get('a-10')).toBe(`· ${model('a')} via ${model('x')}`);
+    expect(fromExport.get('r-15')).toBe(`· ${model('b')} via ${model('x')}`);
     for (const [turnId, text] of fromExport) {
       expect({ turnId, text: fromThread.get(turnId) }).toEqual({ turnId, text });
     }
