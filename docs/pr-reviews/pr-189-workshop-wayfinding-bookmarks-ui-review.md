@@ -99,3 +99,16 @@ An independent full-App test uses the real coordinator, store and production Ope
 Publish the restored room's authoritative snapshot after rollback, or otherwise reconcile the webview revision before further reads, without allowing the original cross-room preview. Add the real post-hydration failed-Open path, repeated preview attempts, recovery after reconciliation and successful/failed replacement controls. Preserve the F-02 successful-Open room binding.
 
 The original successful-Open F-02 witness and N-01 private labels now pass independently; F-03 above and this rollback case remain open. No formal approval or merge was made.
+
+## Author response: re-review
+
+| Finding | Status | Fix | Regression |
+|---|---|---|---|
+| F-03 (P2): another rename can take ownership of an in-flight response | Fixed in `0659956` | The pending rename records its owner `{ requestId, bookmarkId, draft }`. An answer applies only while that owner's field is the open one: accepted closes it, refused gives back that draft with the reason. One rename runs at a time: while one waits, every other row's Rename is disabled, titled "Wait for the rename in progress to finish", and `beginRename` refuses too. **Escape or Cancel while pending** closes the field and abandons the request; the late answer is dropped and touches no row. The host may still have kept the name, and the list shows whatever the next snapshot holds. | `WorkshopApp.bookmarkHost.test.tsx`, the App bridged to the real host routes. Cases: A accepted after trying to open B (B stays shut, A closes, focus to A's Rename); A refused after trying to open B (A's draft and reason come back to A); Escape while pending, then B opens clean with no inherited saving state or alert; a room replacement while pending; two renames in turn. With the guard and the disabled state removed, both A/B cases fail. |
+| F-04 (P2): a failed Open leaves the preview bound to an obsolete room revision | Fixed in `905f43b` | `WorkshopSessionMessageHandler.handleOpenSession`'s failure path posts the restored room's snapshot before its failure result, as New, Rewind and Branch's failure paths already did. Open was the only whole-room operation with the gap. The coordinator posts nothing itself (its handlers do), so the fix sits beside its siblings rather than in `replaceLiveRoom`. The revision is not wound back: the restored room keeps the new one, and the webview hears it. F-02's binding is unchanged. | `WorkshopTurnPreviewAfterFailedReplacement.test.ts`, the production session and bookmark handlers on one router over the real coordinator, store and aggregate. Cases: a failed Open after hydration (the room is the one left, its revision moved forward, the webview's revision matches, and three previews in a row answer); controls for a successful Open (the old revision is still refused) and an Open that fails before replacing anything; a failed Rewind (named write) and a failed New, both publishing. Without the fix, the failed-Open case fails. |
+
+- **Counts at `905f43b`, clean tree.**
+  - 629 suites / 8,924 tests / 59 snapshots, all passing.
+  - Typecheck clean.
+  - Lint: 0 errors, 1,150 warnings, unchanged.
+  - No `from 'vscode'` in core.

@@ -623,3 +623,18 @@ the ADR:
     - *Sizes.* `WorkshopSessionService` 2,595 → 2,600 (`readRoomRevision`);
       `WorkshopApp.tsx` 1,737 → 1,738; `shell.css` 2,792 → 2,797. New and
       touched files otherwise stay under 500.
+  - **PR #189 re-review (Astra, 2026-11-04).** F-01's gate refusal, F-02's
+    successful-Open binding and N-01 confirmed. Two new P2s, both from those
+    fixes, both fixed.
+    - **`0659956`, F-03.** A second row's rename could take over the first
+      one's pending answer. The pending rename now records its owner, one
+      rename runs at a time (other rows' Rename is disabled), and Escape
+      while pending abandons the request.
+    - **`905f43b`, F-04.** A failed Open restored the room under a new
+      revision but posted no snapshot, so every later preview was refused.
+      Its failure path now posts the restored room, as New, Rewind and
+      Branch's did.
+    - *Counts.* At `905f43b`: 629 suites / 8,924 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,150 warnings, unchanged.
+    - *Sizes.* `WorkshopSessionMessageHandler` grew by 4 lines (the post and
+      its comment). New and touched files otherwise stay under 500.

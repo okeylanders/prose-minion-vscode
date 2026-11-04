@@ -262,6 +262,17 @@ See `docs/pr-reviews/` for PRs #186, #187 and #188.
   - `WorkshopApp.turnPreview.test.tsx`: the observed message order.
   - The ledger is in [the review](../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md#author-response).
 
+### PR #189 re-review fixes (`0659956`, `905f43b`)
+
+- **F-03: one rename at a time, bound to its row.** The pending rename records `{ requestId, bookmarkId, draft }`, and its answer applies only to that row's open field. While it waits, other rows' Rename buttons are disabled, with the title "Wait for the rename in progress to finish".
+  - **Escape while a rename is pending** closes the field and abandons the request. The late answer is dropped and touches no row; the next snapshot shows whatever the host kept. The writer's choice to leave wins over waiting.
+- **F-04: a failed Open publishes the restored room.** Rollback re-hydrates the room it left under a new revision, which only moves forward, so the Open failure path now posts the snapshot as New, Rewind and Branch's already did. Without it, every preview after a failed Open was refused as "the room changed".
+  - *Deviation from the coordinator's suggestion.* The coordinator's `replaceLiveRoom` posts nothing, so the fix sits in the handler beside its three siblings rather than in the shared failure path.
+- **Tests.**
+  - F-03: `WorkshopApp.bookmarkHost.test.tsx`.
+  - F-04: `WorkshopTurnPreviewAfterFailedReplacement.test.ts`.
+  - The ledger is in [the review](../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md#author-response-re-review).
+
 ### Follow-ups
 
 - None filed. Slice 8's live pass should check the preview's focus in a real webview (open, Escape, and "Show where it was read" on an out-of-window card), and the toggle's pressed look in both themes.
