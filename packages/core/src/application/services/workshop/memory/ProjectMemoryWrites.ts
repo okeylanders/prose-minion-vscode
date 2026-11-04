@@ -94,6 +94,8 @@ const PINNED_BUDGET = PROMPT_BUDGETS.workshopProjectMemory.pinnedTokens;
 
 export class ProjectMemoryWrites {
   private readonly owed = new Set<Promise<unknown>>();
+  /** The last write's settlement: each write's list, check and commit wait for it (PR #200 F-04). */
+  private queue: Promise<unknown> = Promise.resolve();
 
   constructor(
     private readonly store: ProjectMemoryWriteStorePort,
@@ -323,11 +325,18 @@ export class ProjectMemoryWrites {
     return listed?.version ?? projectMemoryVersion(memory, false);
   }
 
+  /**
+   * One write at a time in this window: a write lists, checks (the pinned
+   * budget, a superseded id) and commits before the next one lists, so two
+   * writes never both pass a check that only one of them can keep
+   * (PR #200 F-04). Another window's writes are the store's to order.
+   */
   private owe<T>(action: string, write: () => Promise<T>): Promise<T> {
-    const running = write().catch((error: unknown) => {
+    const running = this.queue.then(write).catch((error: unknown) => {
       this.log(`${action} failed (${error instanceof Error ? error.name : 'error'})`);
       return { kind: 'refused', reason: 'failed' } as unknown as T;
     });
+    this.queue = running;
     this.owed.add(running);
     void running.finally(() => this.owed.delete(running));
     return running;

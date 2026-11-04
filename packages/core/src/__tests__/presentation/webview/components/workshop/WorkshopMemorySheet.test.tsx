@@ -10,7 +10,7 @@
  */
 
 import * as React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { WorkshopMemoryDraft } from '@messages';
 import { WorkshopMemorySheet } from '@components/workshop/memory/WorkshopMemorySheet';
 import type { WorkshopMemorySheetState } from '@hooks/domain/workshop/useWorkshopProjectMemory';
@@ -108,6 +108,16 @@ describe('WorkshopMemorySheet', () => {
     expect(screen.getByText('Another window is editing that memory. Try again in a moment.')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Saving…' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('Escape closes the sheet, but not while it saves (PR #200 F-05)', () => {
+    const saving = renderSheet(sheet({ saving: true }));
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    expect(saving.onClose).not.toHaveBeenCalled();
+    cleanup();
+    const idle = renderSheet(sheet());
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    expect(idle.onClose).toHaveBeenCalledTimes(1);
   });
 
   it('never says pin', () => {

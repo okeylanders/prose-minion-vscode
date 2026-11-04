@@ -116,6 +116,13 @@ export class WorkshopProjectMemoryHandler {
     private readonly outputChannel: LogSink
   ) {}
 
+  /**
+   * A proposal's save in flight, by turn id, taken before the first await
+   * (PR #200 F-05): a second Save of the same card joins it (one file, one
+   * receipt, the same answer), and Dismiss or Reopen waits it out.
+   */
+  private readonly proposalSaves = new Map<string, Promise<WorkshopMemoryWriteResultPayload>>();
+
   registerRoutes(router: MessageRouter, registerMutation: WorkshopMutationRouteRegistrar): void {
     const refuseUnderGate = (reason: string, message: { payload?: { requestId?: unknown } }) =>
       this.answerRefusal(message.payload, reason, 'session-operation');
@@ -135,6 +142,14 @@ export class WorkshopProjectMemoryHandler {
     if (!requestId || typeof payload.turnId !== 'string' || !['save', 'dismiss', 'reopen'].includes(payload.action)) {
       this.effects.reportError('A memory suggestion action must name its request, a turn and an action');
       return;
+    }
+    const inFlight = this.proposalSaves.get(payload.turnId);
+    if (inFlight) {
+      const first = await inFlight;
+      if (payload.action === 'save' && first.ok) {
+        this.answer({ ...first, requestId }, `proposal save joined turnId=${payload.turnId}`);
+        return;
+      }
     }
     const turn = this.session.readRoomLedger().find((candidate) => candidate.id === payload.turnId);
     if (!turn?.memoryProposal) {
@@ -164,10 +179,18 @@ export class WorkshopProjectMemoryHandler {
       supersedes: (proposal.supersedes ?? []).map((item) => item.id),
       pinned: false
     };
-    await this.write(requestId, `proposal save turnId=${turn.id}`, draft, false, async () => {
+    const saving = this.write(requestId, `proposal save turnId=${turn.id}`, draft, false, async () => {
       const result = await this.library.save(draft, this.proposalProvenance(turn));
       return { result, onRecorded: (memoryId) => this.session.setMemoryProposalState(turn.id, 'saved', memoryId), action: 'saved', proposedBy: turn.personaId };
     }, () => this.session.readRoomLedger().some((candidate) => candidate.id === turn.id && candidate.memoryProposal?.state !== 'saved'));
+    this.proposalSaves.set(turn.id, saving);
+    try {
+      await saving;
+    } finally {
+      if (this.proposalSaves.get(turn.id) === saving) {
+        this.proposalSaves.delete(turn.id);
+      }
+    }
   }
 
   async handleSaveTurn(message: WorkshopSaveTurnToMemoryMessage): Promise<void> {
@@ -296,17 +319,15 @@ export class WorkshopProjectMemoryHandler {
       proposedBy?: string;
     }>,
     stillApplies: () => boolean = () => true
-  ): Promise<void> {
+  ): Promise<WorkshopMemoryWriteResultPayload> {
     if (draft !== undefined) {
       const fault = checkWorkshopMemoryDraft(draft);
       if (fault) {
-        this.answer({ requestId, ok: false, error: WORKSHOP_MEMORY_DRAFT_FAULTS[fault] }, `${target} refused reason=${fault}`);
-        return;
+        return this.answer({ requestId, ok: false, error: WORKSHOP_MEMORY_DRAFT_FAULTS[fault] }, `${target} refused reason=${fault}`);
       }
     }
     if (this.room.isRoomRunActive()) {
-      this.answer({ requestId, ok: false, error: RUN_ACTIVE }, `${target} refused reason=run-active`);
-      return;
+      return this.answer({ requestId, ok: false, error: RUN_ACTIVE }, `${target} refused reason=run-active`);
     }
     const revision = this.session.readRoomRevision();
     const { result, action, onRecorded, proposedBy } = await run();
@@ -314,16 +335,14 @@ export class WorkshopProjectMemoryHandler {
       const error = result.reason === 'pinned-budget' && result.budget
         ? workshopMemoryPinnedRefusal(result.budget, editing)
         : REFUSALS[result.reason as keyof typeof REFUSALS] ?? REFUSALS.failed;
-      this.answer({ requestId, ok: false, error, ...(result.budget ? { budget: result.budget } : {}) }, `${target} refused reason=${result.reason}`);
-      return;
+      return this.answer({ requestId, ok: false, error, ...(result.budget ? { budget: result.budget } : {}) }, `${target} refused reason=${result.reason}`);
     }
     while (this.room.isSessionOperationPending()) {
       await this.room.waitForSessionOperations();
     }
     if (this.session.readRoomRevision() !== revision || !stillApplies()) {
-      this.answer({ requestId, ok: true, memoryId: result.memory.id, error: ROOM_CHANGED },
+      return this.answer({ requestId, ok: true, memoryId: result.memory.id, error: ROOM_CHANGED },
         `${target} written memoryId=${result.memory.id}; receipt not recorded reason=room-changed`);
-      return;
     }
     onRecorded?.(result.memory.id);
     const leavesReceipt = !result.unchanged && (action !== 'updated' || result.changedMeaning);
@@ -340,7 +359,7 @@ export class WorkshopProjectMemoryHandler {
     if (leavesReceipt || onRecorded) {
       this.settleRoom('project memory receipt');
     }
-    this.answer({ requestId, ok: true, memoryId: result.memory.id },
+    return this.answer({ requestId, ok: true, memoryId: result.memory.id },
       `${target} ${action} memoryId=${result.memory.id}${leavesReceipt ? ' receipt' : ''}`);
   }
 
@@ -383,7 +402,7 @@ export class WorkshopProjectMemoryHandler {
     this.answer({ requestId, ok: false, error: reason }, `write refused reason=${logged}`);
   }
 
-  private answer(payload: WorkshopMemoryWriteResultPayload, line: string): void {
+  private answer(payload: WorkshopMemoryWriteResultPayload, line: string): WorkshopMemoryWriteResultPayload {
     this.log(line);
     const reply: WorkshopMemoryWriteResultMessage = {
       type: MessageType.WORKSHOP_MEMORY_WRITE_RESULT,
@@ -392,6 +411,7 @@ export class WorkshopProjectMemoryHandler {
       timestamp: Date.now()
     };
     void this.postMessage(reply);
+    return payload;
   }
 
   private log(line: string): void {

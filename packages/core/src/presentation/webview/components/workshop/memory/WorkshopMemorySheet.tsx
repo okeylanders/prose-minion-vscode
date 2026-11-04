@@ -91,7 +91,8 @@ export const WorkshopMemorySheet: React.FC<WorkshopMemorySheetProps> = ({ sheet,
       closeLabel="Close the memory sheet"
       className="pm-ws-memory-sheet"
       variant="sheet"
-      onClose={onClose}
+      // Escape and the backdrop wait out a save, so its answer is never lost (PR #200 F-05).
+      onClose={() => { if (!sheet.saving) { onClose(); } }}
     >
       <div className="pm-ws-session-sheet-head">
         <div>

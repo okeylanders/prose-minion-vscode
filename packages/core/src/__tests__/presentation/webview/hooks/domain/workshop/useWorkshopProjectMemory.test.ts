@@ -97,6 +97,26 @@ describe('useWorkshopProjectMemory', () => {
     expect(hook.current.sheet).toBeNull();
   });
 
+  it('a sheet\'s Save of a card marks the card busy, and Escape cannot close the sheet until its answer lands (PR #200 F-05)', () => {
+    const { result: hook } = renderHook(() => useWorkshopProjectMemory());
+    act(() => hook.current.editCard(reply));
+    act(() => hook.current.submitSheet());
+    const [save] = posted(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION);
+    expect(hook.current.busyTurnIds.has(reply.id)).toBe(true);
+
+    act(() => hook.current.closeSheet());
+    expect(hook.current.sheet).toMatchObject({ saving: true });
+    act(() => hook.current.editCard(reply));
+    expect(hook.current.sheet).toMatchObject({ saving: true });
+
+    act(() => hook.current.handleWriteResult(result({ requestId: save.payload.requestId, ok: false, error: 'Over budget.' })));
+    expect(hook.current.busyTurnIds.has(reply.id)).toBe(false);
+    expect(hook.current.sheet).toMatchObject({ saving: false, error: 'Over budget.' });
+    act(() => hook.current.closeSheet());
+    expect(hook.current.sheet).toBeNull();
+    expect(posted(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION)).toHaveLength(1);
+  });
+
   it('a refusal keeps the draft and shows why, with the budget\'s numbers', () => {
     const { result: hook } = renderHook(() => useWorkshopProjectMemory());
     act(() => hook.current.newMemory());
@@ -115,6 +135,8 @@ describe('useWorkshopProjectMemory', () => {
     act(() => hook.current.updateDraft({ title: 'First', summary: 'S' }));
     act(() => hook.current.submitSheet());
     const [first] = posted(MessageType.WORKSHOP_MEMORY_CREATE);
+    // The sheet waits out its save (PR #200 F-05); answered, it can close.
+    act(() => hook.current.handleWriteResult(result({ requestId: first.payload.requestId, ok: false, error: 'Try again.' })));
     act(() => hook.current.closeSheet());
     act(() => hook.current.saveTurn(reply));
     act(() => hook.current.handleWriteResult(result({ requestId: first.payload.requestId, ok: true, memoryId: 'mem-7f3c2a' })));

@@ -321,7 +321,8 @@ again (`a1ca49b3`).
 - **One more redaction** (PR #192 F-01, "any rejected-response record").
   With `debugLogging` on, the engine dumps a whole rejected capability
   response; a persona reply holding a proposal would have put its text in
-  the log. `AgentCapability.redactForLog` (optional) lets the owning domain
+  the log. `AgentCapability.redactPrivateControls` (optional; named
+  `redactForLog` until PR #200 F-01) lets the owning domain
   redact it, and the Workshop persona capability returns the extractor's
   redacted copy. (2a's #197 F-03, titles in the engine's manifest log, is a
   different line and 2a's to fix.)
@@ -342,3 +343,69 @@ capability's redaction: `WorkshopRunCompletionMemory.test.ts`.
 **Verification after the fold:** typecheck clean, lint 1,158 warnings, **664
 suites / 9,415 tests / 59 snapshots**, all passing. No `vscode` in core; no
 new file over 500 lines.
+
+## PR #200 review fixes (Astra, `docs/pr-reviews/pr-200-project-memory-write-path-review.md`)
+
+Each fix has a regression test that fails with the fix taken out (checked
+by reverting the fix and running its test).
+
+- **F-01: intermediate responses.** The engine replayed a rejected or
+  capability-calling response to the provider, kept it in retained history,
+  and dumped it raw. `redactForLog` is now `redactPrivateControls`. The
+  engine applies it to every intermediate response before it is replayed:
+  the correction turn, a capability round, the forced-final turn. It applies
+  the same hook to the debug dump. The final response still goes through
+  `retainedAssistantContentSanitizer`. `WorkshopToolContextCapability`
+  implements it beside the persona capability, because tool replies can
+  carry a proposal too.
+  - Tests: `AgentRunEngine.test.ts`, with sentinels through a correction
+    and a capability round, checking provider messages, retained history
+    and logs with debug on; the tool-context capability's own test.
+- **F-02: the live bubble.** `stripWorkshopMemoryProposalForStreaming`
+  removes frames as `rest` does: an unclosed one to the end of the reply. It
+  also holds back a trailing fragment that could still become an opening
+  or closing tag, until the next token settles it. `WorkshopApp` applies it
+  before the widget strip.
+  - Tests: every prefix of four replies (a whole frame, attributes, nested,
+    after the widget section); and `WorkshopApp.memoryStreaming.test.tsx`
+    through the real App and StreamingContent, one character at a time, then
+    completion, cancellation, a rejected proposal, and a frame left open.
+- **F-03: nested frames.** `findFrames` now pairs tags by depth. A frame ends
+  only where its own depth closes, or at the end of the reply when it never
+  does, so nothing inside a nested frame reads as text after it. A closed
+  nested frame is rejected as `malformed:nested` (a new reason).
+  - Tests: one-level, two-level, outer-unclosed and nothing-closed nesting,
+    each with memory on and off, and prose after a nested frame.
+- **F-04: concurrent writes.** `ProjectMemoryWrites` runs one write at a
+  time in a window: each write lists, checks and commits before the next
+  one lists. Another window's writes are still the store's to order (its
+  claims), as before.
+  - Tests: create/create, create/update and update/update, each pair fitting
+    the pinned budget alone but not together; exactly one is written.
+- **F-05: overlapping saves of one card.**
+  - Host: the handler holds a proposal's save in flight by turn id, taken
+    before the first await. A second Save joins it and gets the same answer
+    under its own request id. A Dismiss or Reopen waits it out, and is then
+    refused if the card was saved. `write()` returns the answer it sent.
+  - Webview: a sheet save of a card marks the card busy. `closeSheet`, and
+    the sheet's `onClose` (Escape, backdrop), do nothing while a save is
+    out. The hook's own close after a successful answer still works. Opening
+    another sheet while one saves does nothing either. An answer to a sheet
+    no longer on screen sets its card's error, so the outcome is kept.
+  - Tests: Edit → Save plus a card Save at once through the routes (one
+    file, one receipt, both answered with the same id); a Dismiss sent while
+    a save is out; the hook (busy card, Escape refused, reopen refused, then
+    the answer); the sheet (Escape ignored while saving). One older hook
+    test, which closed a sheet mid-save, now answers first.
+
+**Files over 500 lines** that these fixes touched were all already over
+before them, and grew by a few lines each: `AgentRunEngine.ts` (+5),
+`WorkshopPersonaCapability.ts` (+4), `WorkshopApp.tsx` (+2), and the
+engine's test (+41).
+
+**Verification after the fixes:**
+- Typecheck is clean.
+- Lint shows 1,158 warnings, the baseline.
+- Jest: **665 suites / 9,439 tests / 59 snapshots**, all passing (before:
+  664 / 9,415 / 59).
+- No `vscode` import in core.

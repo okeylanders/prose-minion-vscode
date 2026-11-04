@@ -98,7 +98,8 @@ export type UseWorkshopProjectMemoryReturn = WorkshopProjectMemoryState &
 
 type Pending =
   | { readonly kind: 'card'; readonly turnId: string }
-  | { readonly kind: 'sheet' }
+  /** A sheet's save; a card's names its turn, which stays busy until answered (PR #200 F-05). */
+  | { readonly kind: 'sheet'; readonly turnId?: string }
   | { readonly kind: 'receipt' };
 
 const SOURCE = 'webview.workshop.memory';
@@ -186,6 +187,9 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
   }, [mint, post]);
 
   const openSheet = React.useCallback((state: WorkshopMemorySheetState) => {
+    if (sheetRef.current?.saving) {
+      return;
+    }
     sheetRequest.current = undefined;
     setSheet(state);
     if (!state.loading) {
@@ -277,7 +281,12 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     }
     const requestId = mint();
     sheetRequest.current = requestId;
-    pending.current.set(requestId, { kind: 'sheet' });
+    const cardTurnId = current.mode === 'card' ? current.turnId : undefined;
+    pending.current.set(requestId, { kind: 'sheet', ...(cardTurnId ? { turnId: cardTurnId } : {}) });
+    if (cardTurnId) {
+      setTurnBusy(cardTurnId, true);
+      setCardError(cardTurnId, undefined);
+    }
     switch (current.mode) {
       case 'card':
         post(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId, turnId: current.turnId, action: 'save', edited: current.draft });
@@ -293,15 +302,22 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
         break;
     }
     setSheet({ ...current, saving: true, error: undefined });
-  }, [mint, post, setSheet]);
+  }, [mint, post, setCardError, setSheet, setTurnBusy]);
 
-  const closeSheet = React.useCallback(() => {
+  const dismissSheet = React.useCallback(() => {
     window.clearTimeout(estimateTimer.current);
     sheetRequest.current = undefined;
     editRequest.current = undefined;
     estimateRequest.current = undefined;
     setSheet(null);
   }, [setSheet]);
+
+  /** Close, Escape or the backdrop: not while a save is out, so its answer is never lost (PR #200 F-05). */
+  const closeSheet = React.useCallback(() => {
+    if (!sheetRef.current?.saving) {
+      dismissSheet();
+    }
+  }, [dismissSheet]);
 
   React.useEffect(() => () => window.clearTimeout(estimateTimer.current), []);
 
@@ -321,19 +337,25 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
       setReceiptError(ok ? undefined : error);
       return;
     }
+    if (owner.turnId) {
+      setTurnBusy(owner.turnId, false);
+    }
     if (sheetRequest.current !== requestId) {
+      if (owner.turnId) {
+        setCardError(owner.turnId, ok ? undefined : error);
+      }
       return;
     }
     sheetRequest.current = undefined;
     if (ok) {
-      closeSheet();
+      dismissSheet();
       return;
     }
     const current = sheetRef.current;
     if (current) {
       setSheet({ ...current, saving: false, error, ...(budget ? { estimate: budget } : {}) });
     }
-  }, [closeSheet, setCardError, setSheet, setTurnBusy]);
+  }, [dismissSheet, setCardError, setSheet, setTurnBusy]);
 
   const handleEditData = React.useCallback((message: WorkshopMemoryEditDataMessage) => {
     const { requestId, draft, replaces, error } = message.payload;

@@ -106,6 +106,35 @@ describe('Workshop routes — project memory writes', () => {
     expect(receipts()[0].projectMemoryReceipt?.title).toBe('The watch runs backward, always');
   });
 
+  it('two Saves of one card at once (Edit → Save, Escape, Save) write one file and one receipt, and both are answered (PR #200 F-05)', async () => {
+    const reply = await cardedReply();
+    await Promise.all([
+      route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, {
+        requestId: 'r-edit', turnId: reply.id, action: 'save', edited: draft({ title: 'The watch runs backward, always' })
+      }),
+      route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r-card', turnId: reply.id, action: 'save' })
+    ]);
+
+    expect(memoryFiles()).toHaveLength(1);
+    expect(receipts()).toHaveLength(1);
+    const byId = Object.fromEntries(results().map((result) => [result.requestId, result]));
+    expect(byId['r-edit']).toMatchObject({ ok: true });
+    expect(byId['r-card']).toMatchObject({ ok: true, memoryId: byId['r-edit'].memoryId });
+    expect(ledger().find((turn) => turn.id === reply.id)?.memoryProposal).toMatchObject({ state: 'saved', memoryId: byId['r-edit'].memoryId });
+  });
+
+  it('a Dismiss sent while the card saves waits it out, and is refused once it is saved (PR #200 F-05)', async () => {
+    const reply = await cardedReply();
+    await Promise.all([
+      route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r-save', turnId: reply.id, action: 'save' }),
+      route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r-dismiss', turnId: reply.id, action: 'dismiss' })
+    ]);
+    const byId = Object.fromEntries(results().map((result) => [result.requestId, result]));
+    expect(byId['r-save'].ok).toBe(true);
+    expect(byId['r-dismiss'].ok).toBe(false);
+    expect(ledger().find((turn) => turn.id === reply.id)?.memoryProposal?.state).toBe('saved');
+  });
+
   it('Dismiss writes nothing, and Show it again brings the card back', async () => {
     const reply = await cardedReply();
     await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r3', turnId: reply.id, action: 'dismiss' });

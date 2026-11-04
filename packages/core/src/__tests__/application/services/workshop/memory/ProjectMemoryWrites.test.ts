@@ -160,6 +160,46 @@ describe('ProjectMemoryLibrary writes', () => {
         .toMatchObject({ kind: 'written' });
     });
 
+    describe('two writes at once in one window (PR #200 F-04)', () => {
+      // Each fits the budget alone (about 2,700 tokens); together they do not.
+      const half = big.slice(0, 3_600);
+      const kinds = (results: Array<{ kind: string; reason?: string }>) => results.map((result) => result.reason ?? result.kind).sort();
+
+      it('create and create: one is written, the other refused, one file', async () => {
+        const host = libraryHost();
+        const results = await Promise.all([
+          host.library.save(draft({ title: 'One', body: half, pinned: true }), WRITER),
+          host.library.save(draft({ title: 'Two', body: half, pinned: true }), WRITER)
+        ]);
+        expect(kinds(results)).toEqual(['pinned-budget', 'written']);
+        expect(memoryFiles(host.fileSystem)).toHaveLength(1);
+      });
+
+      it('create and update: only one may load in full', async () => {
+        const host = libraryHost();
+        host.put(writerMemory({ id: 'mem-7f3c2a', pinned: false, title: 'Other', body: `\n${half}\n` }));
+        const results = await Promise.all([
+          host.library.save(draft({ title: 'One', body: half, pinned: true }), WRITER),
+          host.library.edit('mem-7f3c2a', draft({ title: 'Other', body: half, pinned: true }))
+        ]);
+        expect(kinds(results)).toEqual(['pinned-budget', 'written']);
+      });
+
+      it('update and update: only one may load in full', async () => {
+        const host = libraryHost();
+        host.put(writerMemory({ id: 'mem-1a9e04', pinned: false, title: 'First', body: `\n${half}\n` }));
+        host.put(writerMemory({ id: 'mem-7f3c2a', pinned: false, title: 'Second', body: `\n${half}\n` }));
+        const results = await Promise.all([
+          host.library.edit('mem-1a9e04', draft({ title: 'First', body: half, pinned: true })),
+          host.library.edit('mem-7f3c2a', draft({ title: 'Second', body: half, pinned: true }))
+        ]);
+        expect(kinds(results)).toEqual(['pinned-budget', 'written']);
+        const catalog = await host.library.catalog();
+        const pinned = catalog.kind === 'catalog' ? catalog.set.memories.filter((listed) => listed.memory.pinned) : [];
+        expect(pinned).toHaveLength(1);
+      });
+    });
+
     it('checks a new memory set to load in full too', async () => {
       const host = libraryHost();
       host.put(writerMemory({ id: 'mem-1a9e04', pinned: true, body: `\n${big}\n` }));
