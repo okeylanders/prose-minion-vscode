@@ -2,12 +2,32 @@
 
 - **Reviewed:** 2026-11-04
 - **PR:** https://github.com/okeylanders/prose-minion-vscode/pull/199
-- **Implementation head:** `dbd57243703d370e5636f60be17b93b804332ca2`
+- **Original implementation head:** `dbd57243703d370e5636f60be17b93b804332ca2`
 - **Comparison base:** `27da6fee5d7ca97119b563f1b6d121eef524bf9f` (`epic/workshop-project-memory-slice-2a-read-path`, PR #197)
 - **Intended landing:** the current #197 stack; after #197 lands, retarget and recheck against `epic/workshop-project-memory`.
-- **Verdict:** **Changes requested: F-01 and F-02.** This is a written review verdict, not a GitHub approval, merge, or changes-requested review submission.
+- **Current verdict:** **APPROVED at `3a2db4a` for the presentation-only slice on the current #197 stack.** F-01, F-02 and N-01 are closed. See the independent re-review below; no formal GitHub approval or merge was performed.
 
-## Scope and overall assessment
+## Independent re-review · 2026-11-04
+
+**Reviewed correction head:** `3a2db4a73d5a2eab7850b4238f290a3957626524`, against the unchanged #197 base `27da6fee5d7ca97119b563f1b6d121eef524bf9f`.
+
+**Current verdict: APPROVED for this presentation-only slice on its current stack. F-01, F-02 and N-01 are independently closed.** This records a code-review opinion only. No formal GitHub approval or merge was performed, and it does not approve the deferred 4b-wire implementation or future stack-retarget changes.
+
+- **F-01 closed:** the callback map contains only currently writable rows, and a memory row cancels an open rename when it locks. The three original reviewer probes now pass. The author's matrix covers Enter and blur, busy/pending/unavailable, and Active/Past rows; a busy row still opens its file. The shared `SavedItemRow` remains untouched.
+- **F-02 closed:** manager wording now distinguishes actual `listed` and `searchable` residency. Without residency it makes no catalog-inclusion promise. The tab's arithmetic is valid for the renderer's explicit ordering: overflowed pinned candidates lead the list, so `min(notLoaded, catalogEntries)` is their listed count. Search-only pinned notes are no longer double-counted by the additional searchable line. Real-renderer tests cover the original 45-note count limit and a token-limit case.
+- **N-01 closed:** archived-and-superseded rows show both badges and the superseding titles, and explain that Restore unarchives without undoing supersession.
+- No new actionable defect found in the correction diff.
+
+**Re-review verification:**
+- All **1,544 core source/test files** matched the correction head's Git blob hashes.
+- **16 suites / 219 tests passed**, including the three independent reviewer transitions, new residency regressions, existing Workshop/Lightbox/shared-browser regressions and architecture/style guards.
+- Core-host and webview typechecks both passed.
+- Targeted correction-area lint: **0 errors, 9 naming warnings**.
+- The exact correction-head [CI run 41891384955](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41891384955) completed **successfully**. This is the remote aggregate check; the local full-suite/build limitations below still apply.
+
+**Remaining acceptance boundary:** 4b-wire must derive residency and the two extra estimate fields from the actual renderer, distinguish set-aside entries from same-path standing files, preserve settings drafts while opening the manager, and supply the host's write/identity/workspace guards. After #197 lands, recheck the retargeted diff and exact-head CI before landing. The initial findings and author ledger below are retained as history.
+
+## Original review: scope and overall assessment
 
 Reviewed the isolated 45-file UI diff, the approved Slice 0d design and its documented copy amendments, the memory ADR, the shared saved-item browser integration, the existing renderer's actual frame rules, and the tests. This PR deliberately delivers components and pure presentation models only. Missing routes, mounting, hook, apply-together mode draft, and Edit/New sheet are **not findings**: 4b-wire correctly waits for Slice 3.
 
