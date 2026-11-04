@@ -75,3 +75,14 @@ F-01 and F-02 are fixed in `e944375`, and N-01 in `c97d947`, on top of the revie
   - Lint: 0 errors, 1,150 warnings, up from 1,146. All four new ones are `naming-convention`: `WORKSHOP_RENAME_BOOKMARK_RESULT`, the bridge test's `PmLogo` mock, and the jsdom `TextEncoder`/`TextDecoder` shim.
   - No `from 'vscode'` in core.
 - **Note.** The bridge test imports `__tests__/presentation/webview/support/jsdomTextEncoding.ts` first, because the session store creates a `TextEncoder` at load and jsdom has none.
+
+
+## F-03: P2: another rename can take ownership of an in-flight response
+
+**Locations:** [`useWorkshopBookmarkRename.ts:102–120`](https://github.com/okeylanders/prose-minion-vscode/blob/13af9ddc9e7a0c856208116af3378fbb9590b97c/packages/core/src/presentation/webview/hooks/domain/workshop/controllers/useWorkshopBookmarkRename.ts#L102-L120), [`WorkshopBookmarkList.tsx:160–166`](https://github.com/okeylanders/prose-minion-vscode/blob/13af9ddc9e7a0c856208116af3378fbb9590b97c/packages/core/src/presentation/webview/components/workshop/WorkshopBookmarkList.tsx#L160-L166).
+
+The original F-01 refusal witness now preserves its draft when left on that row. The correction introduces a cross-row lifetime problem, however: while rename A is awaiting its correlated result, other rows' Rename buttons remain enabled. `beginRename(B)` replaces `editingId` and the draft but leaves A's `submittedRequestId` in place. B inherits A's Saving/read-only state. In independent App probes, an accepted result for A closes B's editor and moves focus to B's Rename; a refusal for A puts A's error beside B and A's submitted draft is no longer recoverable. The response is matched to A's request ID, but not to the editor/bookmark that owns it.
+
+Prevent another row from replacing a pending editor, or separate each request's owner and draft from the currently edited row. Cover both accepted and refused A results after attempting to open B, as well as cancellation, room replacement and normal sequential renames. This re-review's cross-row witness is new; the original F-01 gate-refusal fix itself passes its direct reproduction. The subsequent `c78ca0e` changes tests/docs only, so production source remains the same.
+
+F-02 and N-01 are still being independently rechecked on the corrected source. No formal approval or merge was made.
