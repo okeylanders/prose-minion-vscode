@@ -38,7 +38,7 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 | # | Slice | Outcome | Branch | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR, slice docs 2–6, open questions put to Okey | `…-slice-0-spec` | Done: PR #192, merged at `912ad58` (Astra: findings closed on re-review) |
-| 0d | Settings design | The Memory tab, the memory manager and the suggestion card, designed for Okey's review, then snapshotted under `docs/design/` | `…-slice-0-design` | Approved by Okey (one change: an expandable receipt in Save and tell me); snapshot in progress |
+| 0d | Settings design | The Memory tab, the memory manager and the suggestion card, designed for Okey's review, then snapshotted under `docs/design/` | `…-slice-0-design` | Done: PR #196, merged at `913e715` (Astra: F-01–F-05 closed, approved) |
 | 1 | Store and codec | Format 1 codec (pure), `ProjectMemoryStore` on the shared `StoredFileClaims` primitive, fixtures. No model, no UI | `…-slice-1-store` | In review: PR #194, findings F-01–F-05, N-01 and N-02 fixed at `b8846c4`; waiting on Astra's re-review |
 | 2a | Read path | Library, the catalog frame (first user message via `appendContract`), `memory.*` (catalog, search, read), every D12 list widened, budgets | `…-slice-2a-read-path` | Built and green at `7ec50ba` (652 / 9,228 / 59); PR opens after #194 merges |
 | 2b | Update notes | D14: memory versions, the per-participant delivery record, the appended update note, mid-room Off→On | `…-slice-2b-update-notes` | In progress (same thread as 2a) |
