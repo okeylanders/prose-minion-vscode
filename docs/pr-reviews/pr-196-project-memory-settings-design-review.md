@@ -1,6 +1,12 @@
 # PR #196 review: Project Memory settings design
 
-## Target and verdict
+## Latest review status
+
+**APPROVE for the documentation/design scope at `8a1828ef`.** The four initial
+findings are resolved; see the re-review below. No formal GitHub approval or
+merge was performed.
+
+## Initial target and verdict
 
 - PR: https://github.com/okeylanders/prose-minion-vscode/pull/196
 - Reviewed head: `1c992c13e9097c47b2a570c201f38c561e04b7fc`.
@@ -215,3 +221,68 @@ boards under the documented sync policy, and update the matching prose/build
 instructions. No change to the approved layout or core policy is needed.
 Re-review the resulting exact head before treating this design specification
 as ready for the implementation slices.
+
+## Re-review at 8a1828ef
+
+- Exact target: `8a1828efea5a4ee069ceb8f4579e756fb257e3e7`.
+- Base remains `9ba38154e883c2b29dce3d5455fef45b8271f80e`.
+- **Current verdict: APPROVE for this documentation/design scope.** All four
+  factual-copy findings above are resolved. This is a written review verdict,
+  not a formal GitHub approval, and no merge was performed.
+- This section supersedes the initial changes-requested verdict while
+  preserving the original findings and acceptance witnesses.
+
+### Resolution verification
+
+- **F-01 closed:** the Thread board and both slice documents now say research
+  was available. The conservative attached-tools hold remains explicit; no
+  search execution is invented.
+- **F-02 closed:** the same surfaces now describe the conversation's automatic
+  save limit. No persona is credited with the entire shared count.
+- **F-03 closed:** the specification uses oldest-created order, ID tie-breaks,
+  and the shared builder's loaded/not-loaded result. The row simply says
+  the body does not fit. The fixture flag changed from `newestPin` to
+  `notFitting`, so the drawing no longer implies a nonexistent pin-time field.
+- **F-04 closed:** archived rows state only that the memory is archived and
+  can be made active. The specification explicitly disclaims unknown dates/
+  causes and acknowledges that supersession/budgets still govern loading.
+
+The source-availability caveat now points to D3 for current, unnamed, deleted,
+or absent sessions. The six implementation watchpoints are carried forward
+explicitly in Slice 0d; they are implementation gates, not unresolved defects
+in this docs-only PR.
+
+### Additional design change
+
+The new “Memory isn't context” well is present in the shared Main component,
+after the unavailable notice and before the mode cards, so every tab state
+inherits it. The nine tab artboards and canvas dimensions agree at 1,040px.
+Its 100,000-word upper bound matches the exact-head
+`CONTEXT_ATTACHMENTS.words` constant in `promptBudgets.ts:453`; its approximate
+7,000-token figure matches the ADR's two initial frame budgets. The
+specification requires Slice 4b to read those values from the actual budgets,
+not perpetuate sample constants. The claimed narrow-width stacking remains
+a production implementation requirement; the fixed-width snapshot is not
+evidence of responsive behavior.
+
+### Re-review verification
+
+- Read the full 14-file delta from report commit `f284238d` to this head,
+  including both the new comparison well and the four corrections.
+- Downloaded the 14 changed file contents at this exact SHA and verified their
+  Git blob SHA-1s against the connector results.
+- Re-ran the actual prototype state harness and added corrected-copy,
+  overflow-badge, archived-state, comparison-well placement, and artboard
+  checks: **296 assertions passed** (the original 250 plus 46).
+- No remaining occurrences of the four incorrect statements or
+  `newestPin` were found in the affected current specification/build
+  instructions and boards.
+- These remain state/callback and source-structure checks, not a browser,
+  screen-reader, live VS Code, or production integration test.
+- CI for this exact head was still in progress when this re-review was
+  written: https://github.com/okeylanders/prose-minion-vscode/actions/runs/41872758307.
+  Its final result will be checked separately.
+
+The PR description still quotes the original hold string and lists 14
+decisions; it can be refreshed to match the corrected files and new decision
+15. This is stale summary text, not a remaining implementation-spec blocker.
