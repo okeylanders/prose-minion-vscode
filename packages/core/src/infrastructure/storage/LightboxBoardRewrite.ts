@@ -39,6 +39,10 @@
  *   as it is; the store then saves the board to a new file, so neither
  *   window's work is lost. Every rewrite reports the revision it read and
  *   the one it wrote, at its commit (`onCommitted`).
+ * - **The commit is shared.** Staging, the claim and the commit are
+ *   `commitStoredFileRewrite`'s (`StoredFileRewrite`), which the Workshop's
+ *   project memory store uses too; this module reads and checks the board
+ *   and builds what replaces it.
  * - **Logs** carry file ids and reasons, never the writer's text or a name.
  */
 
@@ -49,14 +53,13 @@ import {
   writeLightboxBoardFile,
   type LightboxBoardFile
 } from '@/infrastructure/storage/LightboxBoardCodec';
-import { errorMessage, lightboxBoardRevision, type LightboxBoardFiles } from '@/infrastructure/storage/LightboxBoardFiles';
+import { lightboxBoardRevision, type LightboxBoardFiles } from '@/infrastructure/storage/LightboxBoardFiles';
 import {
-  boardFileExists,
-  deleteBoardFileQuietly,
   freeBoardFileName,
   type LightboxBoardClaimState,
   type LightboxBoardClaims
 } from '@/infrastructure/storage/LightboxBoardClaims';
+import { commitStoredFileRewrite, type StoredFileRewritePorts } from '@/infrastructure/storage/StoredFileRewrite';
 
 const encoder = new TextEncoder();
 const LOG = '[LightboxBoardStore]';
@@ -107,13 +110,17 @@ export interface LightboxBoardReplaceOptions {
 export type LightboxBoardUpdate = (file: LightboxBoardFile) => LightboxBoardFile | undefined;
 
 export class LightboxBoardRewrites {
+  private readonly ports: StoredFileRewritePorts;
+
   constructor(
     private readonly fileSystem: FileSystem,
     private readonly files: LightboxBoardFiles,
     private readonly claims: LightboxBoardClaims,
     private readonly log: LogSink,
-    private readonly mintStagingId: () => string
-  ) {}
+    mintStagingId: () => string
+  ) {
+    this.ports = { fileSystem, claims, log, logPrefix: LOG, noun: 'board', mintStagingId };
+  }
 
   /** Rewrite `filePath`, the file `target` names, by `update`. Run inside the store's queue. */
   async rewrite(
@@ -166,80 +173,30 @@ export class LightboxBoardRewrites {
       return { kind: 'failed' };
     }
     const folder = path.dirname(filePath);
-    const name = path.basename(filePath);
-    const temporaryPath = path.join(folder, `.${name}.tmp-${this.mintStagingId()}`);
-    const written = encoder.encode(json);
-    try {
-      await this.fileSystem.writeFile(temporaryPath, written);
-    } catch (error) {
-      this.log.appendLine(`${LOG} Could not stage a rewrite of ${fileId}: ${errorMessage(error)}`);
-      await deleteBoardFileQuietly(this.fileSystem, temporaryPath);
-      return { kind: 'failed' };
-    }
-    // The claim: atomic, and never over anything. A file deleted since the read cannot be claimed, so it stays deleted.
-    const claimPath = await this.claims.take(filePath, this.mintStagingId());
-    if (!claimPath) {
-      await deleteBoardFileQuietly(this.fileSystem, temporaryPath);
-      return gone(await this.claims.settle(filePath));
-    }
-    let claimed: Uint8Array | undefined;
-    try {
-      claimed = await this.fileSystem.readFile(claimPath);
-    } catch {
-      claimed = undefined;
-    }
-    // Another writer rewrote it between the read and the claim: put it back, and read it again.
-    if (!claimed || !sameBytes(claimed, bytes)) {
-      await this.release(claimPath, filePath, temporaryPath);
-      return 'again';
-    }
-    // Still this write's claim: one held past the lease may have been put back by another window, and is not written over.
-    if (!(await boardFileExists(this.fileSystem, claimPath))) {
-      await deleteBoardFileQuietly(this.fileSystem, temporaryPath);
-      this.log.appendLine(`${LOG} ${fileId} was not rewritten: its claim was taken back while the rewrite waited.`);
-      return { kind: 'failed' };
-    }
-    // The commit point: nothing is awaited between it and the rename that commits.
-    if (options.beforeCommit && !options.beforeCommit()) {
-      await this.release(claimPath, filePath, temporaryPath);
-      return { kind: 'withdrawn' };
-    }
-    try {
-      await this.fileSystem.rename(temporaryPath, filePath, { overwrite: false });
-    } catch (error) {
-      this.log.appendLine(`${LOG} Could not rewrite ${fileId}; it is left as it was: ${errorMessage(error)}`);
-      await this.release(claimPath, filePath, temporaryPath);
-      return { kind: 'failed' };
-    }
-    this.files.forget(fileId);
-    const committed = { fileId, from: read.revision, revision: lightboxBoardRevision(written) };
-    options.onCommitted?.(committed);
-    // Should this fail, the claim is a leftover beside the rewritten file: removed once abandoned, or by a delete, never put back.
-    await deleteBoardFileQuietly(this.fileSystem, claimPath);
-    this.log.appendLine(`${LOG} Rewrote ${fileId} in place.`);
-    return { kind: 'replaced', fileId };
-  }
-
-  /**
-   * Give the claim back without committing: the claimed file returns to its
-   * saved name (or, should a new save have taken that name meanwhile, the
-   * next free one), and the staged bytes are dropped.
-   */
-  private async release(claimPath: string, filePath: string, temporaryPath: string): Promise<void> {
-    await deleteBoardFileQuietly(this.fileSystem, temporaryPath);
-    const folder = path.dirname(filePath);
     const stamp = path.basename(filePath).replace(/(?:-\d+)?\.board\.json$/, '');
-    for (const destination of [() => filePath, async () => path.join(folder, await freeBoardFileName(this.fileSystem, folder, stamp))]) {
-      try {
-        await this.fileSystem.rename(claimPath, await destination(), { overwrite: false });
-        return;
-      } catch {
-        // Taken, or the claim is gone: try the next.
-      }
-    }
-    // A claim another window already put back (held past the lease) is not this write's to report.
-    if (await boardFileExists(this.fileSystem, claimPath)) {
-      this.log.appendLine(`${LOG} A claimed board could not be put back; it is kept as ${path.basename(claimPath)}.`);
+    const written = encoder.encode(json);
+    const outcome = await commitStoredFileRewrite(this.ports, {
+      filePath,
+      label: fileId,
+      read: bytes,
+      written,
+      beforeCommit: options.beforeCommit,
+      onCommitted: () => {
+        this.files.forget(fileId);
+        options.onCommitted?.({ fileId, from: read.revision, revision: lightboxBoardRevision(written) });
+      },
+      fallbackPath: async () => path.join(folder, await freeBoardFileName(this.fileSystem, folder, stamp))
+    });
+    switch (outcome.kind) {
+      case 'committed':
+        return { kind: 'replaced', fileId };
+      case 'again':
+        return 'again';
+      case 'gone':
+        return gone(outcome.state);
+      case 'withdrawn':
+      case 'failed':
+        return { kind: outcome.kind };
     }
   }
 }
@@ -256,8 +213,4 @@ function gone(state: LightboxBoardClaimState): LightboxBoardReplaceResult | 'aga
     case 'unknown':
       return { kind: 'failed' };
   }
-}
-
-function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
-  return left.byteLength === right.byteLength && left.every((byte, index) => byte === right[index]);
 }
