@@ -6,7 +6,7 @@
  */
 
 import type { ProjectMemory } from '@shared/types/projectMemory';
-import { supersededProjectMemoryIds } from '@shared/types/projectMemory';
+import { acceptedProjectMemorySupersessions } from '@shared/types/projectMemory';
 import type { WorkshopProjectMemoryMode } from '@messages';
 
 /**
@@ -81,14 +81,14 @@ export function listProjectMemories(
   entries: ReadonlyArray<{ readonly memory: ProjectMemory; readonly busy?: true }>
 ): ProjectMemoryListed[] {
   const memories = entries.map((entry) => entry.memory);
-  const superseded = supersededProjectMemoryIds(memories);
+  const links = acceptedProjectMemorySupersessions(memories);
+  const superseded = new Set(links.map(({ older }) => older));
   return entries
     .map(({ memory, busy }) => ({
       memory,
       superseded: superseded.has(memory.id),
-      supersededBy: superseded.has(memory.id)
-        ? memories.filter((other) => other.id !== memory.id && other.supersedes.includes(memory.id)).map((other) => other.id).sort()
-        : [],
+      // The same links as standing, so a cycle's ignored edge is never named (PR #197 N-02).
+      supersededBy: [...new Set(links.filter(({ older }) => older === memory.id).map(({ newer }) => newer))].sort(),
       busy: busy === true
     }))
     .sort((left, right) => (left.memory.id < right.memory.id ? -1 : left.memory.id > right.memory.id ? 1 : 0));

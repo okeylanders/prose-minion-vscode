@@ -8,6 +8,7 @@
  */
 import { libraryHost, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import { renderWorkshopProjectMemoryRead } from '@/application/services/workshop/memory/WorkshopProjectMemoryRenderer';
+import { listProjectMemories } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
 
 async function readOf(host: ReturnType<typeof libraryHost>, id: string): Promise<string> {
   const result = await host.library.read([id]);
@@ -43,5 +44,17 @@ describe('a superseded note, read', () => {
     const text = await readOf(host, 'mem-00000a');
     expect(text).toContain('superseded by: mem-00000b; mem-00000c is the note in effect now.');
     expect(text).not.toContain('mem-00000b is the note in effect');
+  });
+
+  it('names only the edges standing counts: a cycle\'s edge is ignored (N-02)', () => {
+    const listed = listProjectMemories([
+      { memory: writerMemory({ id: 'mem-00000a', supersedes: ['mem-00000b'] }) },
+      { memory: writerMemory({ id: 'mem-00000b', supersedes: ['mem-00000a'] }) },
+      { memory: writerMemory({ id: 'mem-00000c', supersedes: ['mem-00000a'] }) }
+    ]);
+    const a = listed.find(({ memory }) => memory.id === 'mem-00000a')!;
+    expect(a.superseded).toBe(true);
+    expect(a.supersededBy).toEqual(['mem-00000c']);
+    expect(listed.find(({ memory }) => memory.id === 'mem-00000b')!.superseded).toBe(false);
   });
 });
