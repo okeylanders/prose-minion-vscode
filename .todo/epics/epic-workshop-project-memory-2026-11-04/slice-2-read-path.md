@@ -172,6 +172,16 @@ in `promptBudgets.test.ts` (including `readsPerTurn < callsPerTurn`), and add
     sentinel text).
 - **Provenance:** recallable source → hint with positions; the live room, an
   unnamed room or a missing session → the host's reason.
+- **Pinned overflow (ADR D5, PR #192 F-04):** hand-made pinned files over
+  `pinnedTokens` load whole bodies in `created` order (ties by id). The rest
+  appear as entries marked "pinned, not loaded: over the pinned budget", no body
+  is cut, and no file is touched. `estimateProjectMemoryFrame()` reports the
+  pinned total over budget (`pinnedOver: true`) from the same renderer and
+  estimator.
+- **Live claim (ADR D10, PR #194 N-02):** a memory whose file is under another
+  window's live claim stays in the frame, the catalog and the D14 view, so no
+  update note calls it gone. `memory.read` answers it "being edited; try
+  again".
 - **Mid-room switches (D8):** Off → on sends each conversation the whole
   catalog as an update note on the writer's next message, and the rebuilt
   system prompt teaches the grammar. On → Off sends no note, leaves the

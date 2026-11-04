@@ -1,7 +1,7 @@
 # Slice 3: Write Path
 
 **Epic:** [Workshop Project Memory](README.md)
-**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D4 (writes, supersession), D6, D7, D8 (Ask first and the writer's own paths), D9, D10 (owed writes)
+**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D4 (writes, supersession), D5 (the pinned budget on edit), D6, D7, D8 (Ask first and the writer's own paths), D9, D10 (owed writes)
 **Status:** Waiting on Slice 2.
 
 ## Outcome
@@ -28,28 +28,38 @@ under `auto` a proposal behaves as under `ask` until Slice 5.
 
 ### Trailer codec and stripping (D6)
 
-- `utils/workshopMemoryProposalProtocol.ts` (pure), modeled on
-  `workshopWidgetRecommendationProtocol.ts`:
-  - `inspectWorkshopMemoryProposal(reply)` → `{ kind: 'none' }`,
-    `{ kind: 'proposal'; proposal }`, or `{ kind: 'rejected'; reason }`;
-  - `stripWorkshopMemoryProposal(reply)` for the bubble;
-  - `sanitizeWorkshopMemoryProposalForRetention(reply)` for retained history,
-    composed with the widget sanitizer as `retainedAssistantContentSanitizer`
-    (`AssistantToolService.ts:609`, `:676`, `:734`).
-- Rules:
-  - closed element names;
-  - D4 and D11 bounds;
-  - one trailer, and a second is dropped and logged;
-  - provenance elements are refused;
-  - `supersedes` must name a listed memory, or it's dropped with a card note.
+- **The tail extractor** (ADR D6, PR #192 F-01):
+  `utils/workshopReplyControls.ts` (pure),
+  `extractWorkshopReplyControls(reply)` → `{ rest, memory, redacted }`.
+  - It removes every `<prose-minion-memory-proposal>` frame (to its close, or
+    to the end when unclosed).
+  - `memory` is `none`, `proposal`, or `rejected` with
+    `misplaced | duplicate | malformed:<reason> | memory-off`.
+  - `rest` is the reply without memory frames: what the widget inspector,
+    `inspectWorkshopActionableFindings`, display and retention read.
+  - `redacted` is the reply with each frame replaced by
+    `[project memory proposal removed]`: what every log and diagnostic reads.
+  - Completion (`WorkshopRunCompletion.ts:253-315`) calls it first, and passes
+    `rest` and `redacted` on. Retention composes it ahead of the widget
+    sanitizer in `retainedAssistantContentSanitizer` (`AssistantToolService.ts:609`,
+    `:676`, `:734`).
+  - The widget instruction (`WorkshopWidgetRecommendationOperations.ts:103-115`)
+    allows a project-memory proposal after the widget frame. Its prompt test
+    moves with it.
+- `utils/workshopMemoryProposalProtocol.ts` (pure): decodes the one eligible
+  frame against closed element names, the D4 and D11 bounds, and refuses
+  provenance elements. `supersedes` repeats up to 8; each must name a listed
+  memory, or it's dropped with a card note.
+- **Control-only replies:** with no prose left, the host writes the display
+  line ("Proposed a project memory.", or today's widget-only note). The turn
+  isn't attributed to a model, and retained history holds that host line.
 - The phrasing fence (D9): `WorkshopMemoryProposalPhrasing` reads only
   sentences about the writer, and withholds with a logged reason (never text).
   Its stated limits go in its header.
 - With memory Off, a trailer is still stripped from the bubble and history,
   then dropped with a log line and no card (ADR D8). A card pending from
   before the switch keeps its *Save*.
-- Wire it where completion strips the widget block (`WorkshopRunCompletion.ts:253-315`)
-  for host and guest replies.
+- This covers host and guest replies alike.
 
 ### Persisted proposal and receipt (D6, D7)
 
@@ -77,8 +87,19 @@ under `auto` a proposal behaves as under `ask` until Slice 5.
   mutation gate, record the receipt turn, and post the snapshot.
 - The snapshot projects a proposal card's display fields. The card renders
   under the bubble (`WorkshopTurnBubble`): title, kind, summary, the body
-  expandable, and *Save*, *Edit*, *Dismiss*. The sheet for *Edit* and for
-  *Save to memory…* is one component, bounded by the same rules as the codec.
+  expandable, and *Save*, *Edit*, *Dismiss*.
+- **This slice owns the memory sheet and the write routes** (PR #192 F-03). One
+  sheet component, `WorkshopMemorySheet`, has three modes: *Edit* (a card or a
+  saved memory), *Save to memory…* (a bubble as source), and *New* (no source).
+  It's bounded by the same rules as the codec. `WorkshopProjectMemoryHandler`
+  owns the write routes:
+  - `WORKSHOP_MEMORY_PROPOSAL_ACTION`;
+  - `WORKSHOP_SAVE_TURN_TO_MEMORY`;
+  - `WORKSHOP_MEMORY_CREATE { draft }`;
+  - `WORKSHOP_MEMORY_UPDATE { memoryId, patch }`.
+
+  Slice 4b reuses the sheet and these routes; it adds no write route of its
+  own beyond pin, archive and delete.
 - **Save to memory…** appears on the bubbles bookmarks allow (ADR 2026-11-03
   D5's eligibility). The source is that turn, and `origin` is `writer`.
 
@@ -87,6 +108,12 @@ under `auto` a proposal behaves as under `ask` until Slice 5.
 - `save(draft, provenance)` mints an id inside the store's queue and writes
   `origin` `proposed` or `writer`. Superseding writes one new file only.
 - `archive(id)` and `update(id, patch)` are claimed rewrites in place.
+  `update` stamps `updated` only for a change to what the memory says.
+- **Pinned budget on edit** (ADR D5, PR #192 F-04): `update` of a pinned memory
+  re-checks the pinned bodies against `pinnedTokens` with the frame's renderer
+  and estimator, and refuses a save that would pass it, with the reason
+  ("pinned notes would load about 5,600 of 5,000 tokens"). Nothing is
+  unpinned automatically.
 - Every write is owed. Logs carry ids and reasons only.
 
 ### Prompt
@@ -100,8 +127,20 @@ production codec.
 
 ## Tests
 
+- **Extractor and codec (F-01):** every row of ADR D6's outcome table:
+  - both valid (card and widget);
+  - memory before the widget (memory `misplaced`, widget stands);
+  - duplicates;
+  - malformed and unclosed frames;
+  - memory off;
+  - control-only replies with no prose;
+  - every decode rejection, provenance refused.
+- **No memory text in any diagnostic (F-01):** a sentinel in a proposal's
+  title, summary, body and `supersedes` never appears in any log line across
+  every outcome above. That covers the widget-rejection dump
+  (`boundedLogText`), the actionable-findings log, the phrasing fence's log,
+  and the library's and store's logs.
 - **Codec:**
-  - every rejection reason, one per reply, provenance refused;
   - stripping in both the bubble and retained history (the persona's next turn
     never sees its own trailer).
 - **Phrasing:** writer-directed personal inference withheld; a character's
@@ -116,6 +155,10 @@ production codec.
   kind, Rewind and Branch carry, New clears.
 - **Supersession:** the new file names the old one, the old one reads as
   superseded and leaves the catalog, and the old file is untouched on disk.
+  Forgetting (archiving) the newer memory keeps the old one superseded (N-01).
+  Slice 4b tests Delete separately.
+- **Pinned edit refused past budget (F-04):** enlarging a pinned body past
+  `pinnedTokens` is refused with the reason, and the file is unchanged.
 - **Two windows:** two libraries on one folder save at once and both files
   stand.
 - **Deactivation:** a save in flight is awaited by `shutDownExtension`.

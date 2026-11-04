@@ -245,9 +245,11 @@ set: `active` or `archived`. This departs from the feature note, which stores
 
 - Superseding then writes one new file, never a new file plus a claimed rewrite
   of the old one, so a crash cannot leave the pair half done.
-- Deleting or archiving the newer memory doesn't revive the old one, because
-  the link still stands. Deleting the newer file does revive it, which is right:
-  the link that superseded it is gone.
+- **Forget** (which archives, D8) or **archiving** the newer memory doesn't
+  revive the old one: the newer file still stands, and its link still counts.
+  **Delete** (the manager's file removal) of the newer memory does revive it,
+  which is right: the link that superseded it is gone. Tests cover the two
+  separately (PR #192 N-01).
 - A `supersedes` that names no readable memory is kept and ignored. A cycle is
   read as no supersession for either memory, and the manager lists it.
 
@@ -269,7 +271,8 @@ set: `active` or `archived`. This departs from the feature note, which stores
   fails), and both become a conflict. Nothing is lost, and neither reaches a
   model. The odds are about 1 in 16.7 million per pair of simultaneous saves.
 - **How the manager shows a conflict.** Each conflicting file gets its own row,
-  marked "Same id as *other file*", with *Open file*. It offers no pin,
+  marked "Same id as *other file*", with *Open file* (by its entry handle, D10,
+  never by the shared id). It offers no pin,
   archive or edit. The writer resolves it by hand, by changing one file's
   `id` or deleting one. Slice 4b may add *Give this one a new id*: a writer
   action, done as a claimed rewrite of that file alone, that mints a fresh id
@@ -323,13 +326,35 @@ in the system prompt (Context 1).
 - **Per conversation, not per room.** A guest who joins later gets the catalog
   as it stands at the join. The host's frame doesn't change.
 - **Bounded.** The frame is built from active, readable, unconflicted memories:
-  - pinned bodies first, up to `pinnedTokens`;
+  - pinned bodies first, in a stated deterministic order (oldest `created`
+    first, ties by id), as many whole bodies as fit in `pinnedTokens`. A
+    pinned memory whose body doesn't fit is never cut. It stays in the catalog
+    as an entry marked `pinned="not-loaded"`, with the line "pinned, not
+    loaded: over the pinned budget" (see *Pinned overflow* below);
   - then entries by `updated`, newest first (ties by id), up to
     `catalogEntries` and `catalogTokens`;
   - then one `<more count>` line for whatever didn't fit, plus superseded and
     archived memories.
 
   Ordering is deterministic, so the same folder gives the same bytes.
+- **Pinned overflow** (PR #192 F-04). The manager refuses a pin, or a save of
+  an edit to a pinned memory, that would take the pinned bodies past
+  `pinnedTokens`, and says why. Two cases can't be stopped by a check: a hand
+  edit (`pinned: true` typed in, or a pinned body enlarged), and two windows
+  each passing their own check at once. For those:
+  - the frame loads pinned bodies in the order above, and the rest are
+    entries marked "pinned, not loaded: over the pinned budget";
+  - the manager shows that state on those rows, and the meter reads over
+    budget ("about 5,600 of 5,000 tokens");
+  - the frame, update notes (D14) and the meter share one renderer and one
+    estimator (`estimateTextTokens`), so what the tab says is what loaded;
+  - nothing is unpinned or rewritten automatically. The writer resolves it by
+    unpinning or shortening.
+  - **Stated limit:** there's no cross-window lock on the pinned budget. The
+    refusal is per window, and the order above decides what loads.
+  - *Why `created`, not pin time:* format 1 records no pin time (`pinned` is a
+    flag), and adding a key for it would reopen Slice 1's format. `created`
+    is stable and deterministic.
 - **Neutralized.** Titles, summaries and bodies are escaped, and
   `project-memory`, `pinned`, `entry`, `more` and `prose-minion-memory-proposal`
   join `RESERVED_PERSONA_FRAME` (`core/utils/workshopPromptFrames.ts:5-16`), so a
@@ -367,16 +392,50 @@ A persona proposes a memory with a trailer at the end of its reply:
 
 - **Its codec** is a pure module (`WorkshopMemoryProposalProtocol`), modeled on
   the widget recommendation protocol (Context 2), not on Next steps:
-  - it reads the trailer after the reply's last prose;
   - it validates the elements against closed names and the D4 bounds;
   - it rejects the whole proposal on any fault, logged by reason, never with
     text.
+- **One owner of the reply's tail** (PR #192 F-01). The memory frame comes
+  **last**, after any widget recommendation (`### Try a widget` and its frame).
+  Both prompts say so: the widget instruction
+  (`WorkshopWidgetRecommendationOperations.ts:103-115`) changes from "final
+  content" to "final content, except a project-memory proposal after it".
+  - A single tail extractor, `extractWorkshopReplyControls(reply)`
+    (`utils/workshopReplyControls.ts`, pure), runs first on every reply. It
+    removes **every** `<prose-minion-memory-proposal>` frame from the reply:
+    from its opening tag to its closing tag, or to the end of the reply when
+    unclosed.
+  - A proposal is eligible only when exactly one frame was found, it was
+    closed, and nothing but whitespace followed it.
+  - It hands the rest (prose, plus any widget control) to every other reader:
+    the widget inspector, `inspectWorkshopActionableFindings`, display and
+    retention. The widget inspector therefore never sees memory text as
+    trailing content.
+- **Outcomes:**
+
+  | Reply | Memory | Widget |
+  |---|---|---|
+  | Prose, widget, memory last, both valid | Card | Recommended |
+  | Memory frame before the widget (anywhere but last) | Rejected `misplaced` | Judged without the memory frame; stands if valid |
+  | Two or more memory frames | All removed, rejected `duplicate` | Judged without them |
+  | Malformed memory frame (bad element, bound, provenance named, unclosed) | Removed, rejected with its reason | Judged without it. An unclosed frame takes everything after it, including a widget written after it, which was already out of order |
+  | Memory Off | Removed, rejected `memory-off`, no card | Judged without it |
+  | Only controls, no prose | As above | As above. If no prose is left, the host writes the display line ("Proposed a project memory.", or the widget-only note that exists today), the turn isn't attributed to a model, and retained history holds that host line, never an empty message |
+
+- **Memory payload never reaches a diagnostic** (PR #192 F-01). Any log or
+  diagnostic that receives a reply gets the extractor's redacted reply, with
+  each memory frame replaced by `[project memory proposal removed]`. That
+  includes the widget-rejection dump of `boundedLogText(result.content)`
+  (`WorkshopRunCompletion.ts:259-293`), the actionable-findings log, and any
+  rejected-response record. D9 states the same rule for withheld proposals.
+  Slice 3 pins it with sentinel text across every outcome above.
 - **Stripped twice.** The bubble shows the reply without the trailer, and
   retained history keeps it without the trailer too. Retention goes through
   `retainedAssistantContentSanitizer`, composed with the widget sanitizer. The
   proposing persona learns the outcome from the receipt (D7), never from its own
   stale trailer.
-- **One per reply.** A second trailer is dropped and logged.
+- **One per reply.** Two or more frames reject every one (`duplicate`). The
+  host never guesses which was meant.
 - **The host fills provenance:** `source-session` (the live session id),
   `source-turns` (the reply's turn id and the writer turn that prompted it),
   `proposed-by`, `created` and `updated`. A trailer that names any of them is
@@ -511,6 +570,11 @@ personal-domain word.
 - Its limit is stated: it can't catch every inference, and it never reads
   characters' feelings, which are legitimate `canon`.
 - A withheld proposal shows no card and logs its reason, never its text.
+- **No memory payload in any log.** A title, summary, body or `supersedes`
+  list from a proposal or a file never enters a log line, a diagnostic dump or
+  a rejected-response record. Every path that logs a reply logs the
+  extractor's redacted copy (D6). The same holds for the store's and library's
+  logs (D10).
 
 ### D10. Storage: `<workspace>/prose-minion/memory/`, the board store's discipline
 
@@ -552,9 +616,12 @@ personal-domain word.
     kind, summary, body, supersedes). It leaves `updated` alone for a pin
     toggle or an archive, so pinning never reorders the catalog, which sorts
     by `updated`;
-  - **a live claim is `busy`.** A listing reads a claimed file's bytes, so the
-    memory stays listed and in the catalog, but `read` answers `busy` while
-    another window rewrites it. `memory.read` says so per id (D1).
+  - **a memory under a live claim stays in effect** (PR #194 N-02). A listing
+    decodes it from the claim's bytes, so it stays in the listing, the
+    catalog, the frame and every D14 view as the memory it was. Only `read`
+    answers `busy` while another window rewrites it, and `memory.read` says so
+    per id (D1). Otherwise D14 would announce a memory as "no longer in
+    effect" in the middle of another window's rewrite.
 - **One shared claim primitive, configured per store.** The board modules
   were board-shaped (Context 6). Slice 1 extracted their mechanics into
   neutral modules in `infrastructure/storage/` (`768b41f`):
@@ -579,7 +646,22 @@ personal-domain word.
   `projectMemory: { shutDown(): Promise<void> }`, awaited alongside the
   Lightbox's drain, as `LightboxBoardLibrary.shutDown` is
   (`core/application/services/lightbox/LightboxBoardLibrary.ts:182-186`).
-- **Logs** carry ids, counts and reasons, never a title, summary or body.
+- **Manager rows carry an entry handle, not the memory id** (PR #192 F-02).
+  Every row the manager lists has an opaque, host-issued `entryKey`: a
+  session-keyed HMAC of the file's contained path, as the Lightbox's
+  `LightboxFileKey` is (`core/application/handlers/domain/LightboxProjectFiles.ts`,
+  `core/infrastructure/lightbox/LightboxContextShelf.ts`). This covers
+  readable, conflicting and unreadable rows alike.
+  - *Open file* resolves the key against the current, contained listing. It
+    refuses a key that is stale (the file is gone or renamed), forged, or from
+    another workspace, and says why.
+  - Model operations and every memory mutation (pin, archive, edit, Forget,
+    Delete) stay addressed by the unique `mem-` id. So a conflict row (its id
+    isn't unique) or an unreadable row (it may have no id) can be opened, but
+    never rewritten or deleted through the manager. The writer fixes those by
+    hand.
+  - The webview never sends a path.
+- **Logs** carry ids, counts and reasons, never a title, summary or body (D9).
 
 **Alternatives.** The extension-private global directory (ADR 2026-07-18): rejected,
 because memory belongs to the project, and the writer reads and edits it there.
@@ -664,7 +746,9 @@ The library then feeds:
 - the first-turn and join frame builders, through a port that returns a
   rendered frame;
 - a Workshop route owner, `WorkshopProjectMemoryHandler`, composed in
-  `WorkshopSliceComposition`, for the manager's routes (Slice 4b).
+  `WorkshopSliceComposition`. Slice 3 gives it the write routes (proposal
+  actions, Save to memory…, create, update) and the memory sheet; Slice 4b adds
+  the manager's routes (list, pin, archive, delete, open by entry handle).
 
 The handler needs the library, so `CoreServices` gains one field,
 `projectMemory`.

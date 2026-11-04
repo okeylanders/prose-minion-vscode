@@ -3,7 +3,7 @@
 **Epic:** [Workshop Project Memory](README.md)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D5 (the estimate), D8 (the modes), D10 (manager operations), D13 (the handler); decided questions 1 (global mode) and 4 (pinned budget)
 **Design:** `docs/design/workshop-project-memory/` (Slice 0d). **The design doc owns the layout, copy and states**; this doc owns the wiring.
-**Status:** Waiting on Slice 0d (approved design), Slice 4a (panels split) and Slice 2.
+**Status:** Waiting on Slice 0d (approved design), Slice 4a (panels split), Slice 2 (library reads, estimate) and **Slice 3** (the memory sheet and the write routes; PR #192 F-03).
 
 ## Outcome
 
@@ -13,13 +13,18 @@ cards, what loads at the start of each conversation, **Manage memories…**, and
 conflicting files included. It can search, group, open a file, pin, archive and
 delete, and it has **New memory**.
 
-## Since 4a and Slice 2
+## Since 4a, Slice 2 and Slice 3
 
 - 4a leaves one component per tab, with behavior and markup unchanged. The
   Memory tab is a new panel component beside them. The modal's shell gains one
   tab entry and its arrow-key order.
 - Slice 2's library provides `catalog`, `estimateProjectMemoryFrame` and the
-  mode read. Slice 3's provides the writes.
+  mode read.
+- **Slice 3 owns** the memory sheet (`WorkshopMemorySheet`, with Edit, Save to
+  memory… and New modes), the library's writes, and the write routes on
+  `WorkshopProjectMemoryHandler` (create, update, the proposal actions). This
+  slice reuses them. It adds only the manager's routes (list, pin, unpin,
+  archive, restore, delete, open file, open folder), on the same handler.
 
 ## Build
 
@@ -59,15 +64,24 @@ delete, and it has **New memory**.
 - Actions are routes on `WorkshopProjectMemoryHandler`, correlated by a
   webview-minted `requestId` the host echoes, as the Lightbox's catalog routes
   are:
-  - list;
-  - pin and unpin, refused past `pinnedTokens` (5,000, question 4) with the
-    reason, and the meter shows "about N of 5,000 tokens";
-  - archive and restore;
-  - delete (claimed, with a confirmation);
-  - new;
-  - edit (the Slice 3 sheet);
-  - open the file and open the folder (through `ShellService`, by id, never a
-    path from the webview).
+  - list: every row carries an opaque `entryKey` (ADR D10, PR #192 F-02), a
+    session-keyed HMAC of the file's contained path, like `LightboxFileKey`.
+    Readable rows also carry their `mem-` id;
+  - pin and unpin, by `mem-` id, refused past `pinnedTokens` (5,000, question 4)
+    with the reason. The meter shows "about N of 5,000 tokens", and reads over
+    budget ("about 5,600 of 5,000 tokens") when hand edits or another window
+    have pushed it there;
+  - archive and restore, by `mem-` id;
+  - delete, by `mem-` id (claimed, with a confirmation);
+  - new and edit: Slice 3's sheet and routes;
+  - open the file, by `entryKey` only: resolved against the current contained
+    listing, and refused when stale, forged or outside the folder. Open the
+    folder through `ShellService`. The webview never sends a path.
+- **Rows that can't be addressed by id.** Conflict rows (the id isn't unique)
+  and unreadable rows (maybe no id) offer *Open file* only. No pin, archive,
+  edit or delete action can reach them.
+- **Pinned, not loaded** (ADR D5, F-04): rows whose pinned body didn't fit
+  show that state. Nothing is unpinned automatically.
 - A presentation hook, `useWorkshopProjectMemory`, follows the tripartite
   interface, and its persistence is empty: the host owns the truth.
 
@@ -84,6 +98,15 @@ delete, and it has **New memory**.
   - each action through the real handler and library, on a temporary folder;
   - unreadable and conflict rows never offer pin, archive or edit;
   - the pin refusal past budget;
+  - over-budget state from hand edits: the meter reads over, and the right rows
+    show "pinned, not loaded", matching what the frame loaded for the same
+    folder;
+  - entry handles (F-02): two files sharing one id each open their own file; a
+    malformed file with no id opens; stale, forged and out-of-folder keys are
+    refused; conflict and unreadable rows can't be pinned, archived, edited or
+    deleted through any route;
+  - Delete of a newer memory revives the one it superseded, while Forget and
+    archive don't (N-01);
   - request correlation ignores a stale answer.
 - **Shared components:** the Workshop session browser's tests run unchanged.
 - **Settings:** the mode writes globally, and the round trip holds.
@@ -94,5 +117,8 @@ delete, and it has **New memory**.
 - [ ] The writer can turn memory on and off, and sees the cost before it loads.
 - [ ] The manager does every listed action, through claimed writes, and shows
       unreadable files without touching them.
+- [ ] Every row opens by its entry handle; mutations go only by a unique
+      `mem-` id.
+- [ ] The meter and the "pinned, not loaded" rows agree with the frame.
 - [ ] The modal stays under 500 lines, and the new files do too.
 - [ ] The epic's per-slice verification passes, with counts recorded here.
