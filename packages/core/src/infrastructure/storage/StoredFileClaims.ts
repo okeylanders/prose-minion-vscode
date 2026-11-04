@@ -59,8 +59,12 @@ export const STORED_FILE_CLAIM_LEASE_MS = 30_000;
  */
 export type StoredFileClaimState = 'present' | 'absent' | 'busy' | 'unknown';
 
-/** What a delete under a claim did (`StoredFileClaims.deleteClaimed`). */
-export type StoredFileClaimedDelete = 'deleted' | 'missing' | 'busy' | 'failed';
+/**
+ * What a delete under a claim did (`StoredFileClaims.deleteClaimed`):
+ * `changed` when the claimed bytes were not the file the caller meant, so
+ * they were put back and nothing was deleted.
+ */
+export type StoredFileClaimedDelete = 'deleted' | 'missing' | 'busy' | 'changed' | 'failed';
 
 export interface StoredFileClaimsConfig {
   /**
@@ -187,12 +191,38 @@ export class StoredFileClaims {
    * come back; and only then is it deleted. A leftover that would not go,
    * or a folder that could not be read again, puts the file back as it was
    * and says the delete `failed`. `label` names the file in logs.
+   *
+   * With `verify`, the claimed bytes are checked before anything goes
+   * (PR #194 F-02): the path a listing named may hold another file by the
+   * time it is claimed. Bytes `verify` refuses are put back, never
+   * deleted, and the delete says `changed`.
    */
-  async deleteClaimed(filePath: string, label: string, id: string): Promise<StoredFileClaimedDelete> {
+  deleteClaimed(filePath: string, label: string, id: string): Promise<Exclude<StoredFileClaimedDelete, 'changed'>>;
+  deleteClaimed(filePath: string, label: string, id: string, verify: (claimed: Uint8Array) => boolean): Promise<StoredFileClaimedDelete>;
+  async deleteClaimed(
+    filePath: string,
+    label: string,
+    id: string,
+    verify?: (claimed: Uint8Array) => boolean
+  ): Promise<StoredFileClaimedDelete> {
     const claimPath = await this.take(filePath, id);
     if (!claimPath) {
       const state = await this.settle(filePath);
       return state === 'busy' ? 'busy' : state === 'absent' ? 'missing' : 'failed';
+    }
+    if (verify) {
+      let claimed: Uint8Array | undefined;
+      try {
+        claimed = await this.fileSystem.readFile(claimPath);
+      } catch {
+        claimed = undefined;
+      }
+      if (!claimed || !verify(claimed)) {
+        await this.fileSystem.rename(claimPath, filePath, { overwrite: false })
+          .catch(() => this.log.appendLine(`${this.config.logPrefix} ${label} could not be put back at once; it comes back once its claim is older than the lease.`));
+        this.log.appendLine(`${this.config.logPrefix} ${label} was not deleted: its file changed before it was claimed.`);
+        return 'changed';
+      }
     }
     if (!(await this.retire(filePath, claimPath))) {
       await this.fileSystem.rename(claimPath, filePath, { overwrite: false })

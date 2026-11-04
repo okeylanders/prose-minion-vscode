@@ -53,6 +53,7 @@ import { commitStoredFileRewrite, type StoredFileRewritePorts } from '@/infrastr
 import {
   PROJECT_MEMORY_CLAIM,
   PROJECT_MEMORY_DISPLAY_PATH,
+  decodeProjectMemoryBytes,
   freeProjectMemoryFileName,
   projectMemoryFileName,
   projectMemoryLogName,
@@ -271,7 +272,11 @@ export class ProjectMemoryStore {
     }));
   }
 
-  /** Delete the memory `id` names, under a claim; a file that does not read, or conflicts, is never deleted. */
+  /**
+   * Delete the memory `id` names, under a claim; a file that does not read,
+   * or conflicts, is never deleted, and neither is one that, once claimed,
+   * no longer reads as this memory (`changed`: put back).
+   */
   delete(id: string): Promise<ProjectMemoryDeleteResult> {
     return this.owe(this.enqueue(async () => {
       const where = this.availability();
@@ -282,7 +287,11 @@ export class ProjectMemoryStore {
       if (found.kind !== 'found') {
         return notFound(found.kind);
       }
-      const deleted = await this.claims.deleteClaimed(found.filePath, id, this.mintStagingId());
+      // The claimed bytes must still be this memory, readable (PR #194 F-02): never another file put at its path.
+      const deleted = await this.claims.deleteClaimed(found.filePath, id, this.mintStagingId(), (claimed) => {
+        const decoded = decodeProjectMemoryBytes(claimed);
+        return decoded.kind === 'memory' && decoded.memory.id === id;
+      });
       if (deleted === 'deleted') {
         this.log.appendLine(`${LOG} Deleted ${id}.`);
       }

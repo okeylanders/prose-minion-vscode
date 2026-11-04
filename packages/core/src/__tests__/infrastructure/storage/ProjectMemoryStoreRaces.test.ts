@@ -173,6 +173,52 @@ describe('a delete racing a rewrite', () => {
   });
 });
 
+describe('a delete deletes only the memory it was asked to (PR #194 F-02)', () => {
+  /** Just before the delete claims the file, put `bytes` at its path, as another window's edit or a hand edit would. */
+  function substituteBeforeClaim(fileSystem: MemoryFileSystem, filePath: string, bytes: Uint8Array) {
+    const rename = fileSystem.rename.bind(fileSystem);
+    jest.spyOn(fileSystem, 'rename').mockImplementation(async (fromPath, toPath, options) => {
+      if (fromPath === filePath && toPath.includes('.claim-')) {
+        fileSystem.files.set(filePath, bytes);
+      }
+      return rename(fromPath, toPath, options);
+    });
+  }
+
+  it('a different memory put at the path is put back, never deleted', async () => {
+    const { fileSystem, store } = host();
+    const entry = await createdEntry(store);
+    const filePath = path.join(MEMORY, entry.fileName);
+    const other = new TextEncoder().encode(text(fileSystem.files.get(filePath)).replace(/^id: .*$/m, 'id: mem-abcdef'));
+    substituteBeforeClaim(fileSystem, filePath, other);
+
+    expect(await store.delete(entry.memory.id)).toEqual({ kind: 'changed' });
+    expect(everyFile(fileSystem)).toEqual([entry.fileName]);
+    expect(text(fileSystem.files.get(filePath))).toMatch(/^id: mem-abcdef$/m);
+  });
+
+  it('bytes that no longer read are put back, never deleted', async () => {
+    const { fileSystem, store } = host();
+    const entry = await createdEntry(store);
+    const filePath = path.join(MEMORY, entry.fileName);
+    substituteBeforeClaim(fileSystem, filePath, new TextEncoder().encode('A note the writer half-typed.'));
+
+    expect(await store.delete(entry.memory.id)).toEqual({ kind: 'changed' });
+    expect(everyFile(fileSystem)).toEqual([entry.fileName]);
+    expect(text(fileSystem.files.get(filePath))).toBe('A note the writer half-typed.');
+  });
+
+  it('a newer version of the same memory is still the memory asked for, and is deleted', async () => {
+    const { fileSystem, store } = host();
+    const entry = await createdEntry(store);
+    const filePath = path.join(MEMORY, entry.fileName);
+    substituteBeforeClaim(fileSystem, filePath, new TextEncoder().encode(text(fileSystem.files.get(filePath)).replace('pinned: false', 'pinned: true')));
+
+    expect(await store.delete(entry.memory.id)).toEqual({ kind: 'deleted' });
+    expect(everyFile(fileSystem)).toEqual([]);
+  });
+});
+
 describe('shutdown drains owed writes', () => {
   it('waits for a write in flight, and for one started while it waits', async () => {
     const { fileSystem, store } = host();

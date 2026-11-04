@@ -197,18 +197,29 @@ async function readOne(fileSystem: FileSystem, filePath: string, fileName: strin
   } catch (error) {
     return isMissingFileSystemPathError(error) ? { fileName, reason: 'read-failed', vanished: true } : { fileName, reason: 'read-failed' };
   }
+  const decoded = decodeProjectMemoryBytes(bytes);
+  if (decoded.kind === 'unreadable') {
+    return decoded.key ? { fileName, reason: decoded.reason, key: decoded.key } : { fileName, reason: decoded.reason };
+  }
+  return { fileName, memory: decoded.memory, bytes };
+}
+
+/** A memory file's bytes, read as a listing reads them: within the byte bound, UTF-8, format 1. */
+export function decodeProjectMemoryBytes(bytes: Uint8Array):
+  | { kind: 'memory'; memory: ProjectMemory }
+  | { kind: 'unreadable'; reason: Exclude<ProjectMemoryUnreadableReason, 'read-failed'>; key?: ProjectMemoryKey } {
   if (bytes.byteLength > PROJECT_MEMORY_FILE_BYTES) {
-    return { fileName, reason: 'too-large' };
+    return { kind: 'unreadable', reason: 'too-large' };
   }
   let text: string;
   try {
     text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch {
-    return { fileName, reason: 'not-text' };
+    return { kind: 'unreadable', reason: 'not-text' };
   }
   const decoded = decodeProjectMemory(text);
   if (decoded.kind === 'invalid') {
-    return decoded.key ? { fileName, reason: decoded.reason, key: decoded.key } : { fileName, reason: decoded.reason };
+    return decoded.key ? { kind: 'unreadable', reason: decoded.reason, key: decoded.key } : { kind: 'unreadable', reason: decoded.reason };
   }
-  return { fileName, memory: decoded.memory, bytes };
+  return { kind: 'memory', memory: decoded.memory };
 }

@@ -79,6 +79,8 @@ export type ProjectMemoryDeleteResult =
   | { kind: 'deleted' }
   | { kind: 'missing' }
   | { kind: 'busy' }
+  /** Once claimed, its file no longer read as this memory (another id, or unreadable): put back, nothing deleted. */
+  | { kind: 'changed' }
   /** More than one file holds the id: left as they are. */
   | { kind: 'conflict' }
   | { kind: 'unavailable'; reason: ProjectMemoryUnavailableReason }
