@@ -449,12 +449,12 @@ could sit inside an opening tag's own bytes (`<tag data-x="</tag>">`).
 
 **Epic merged after #198 and #199 landed.** `memory.css` was the only
 conflict.
-- **Resolution:** both stylesheets combined under section comments: 1, the
-  Memory tab and manager (4b-ui); 2, the thread card, receipts and sheet
-  (Slice 3). One shared header; the file was not renamed.
+- **Resolution:** both stylesheets kept whole under section comments: "Memory
+  tab and manager (Slice 4b-ui)", then "Thread: card, receipts, sheet
+  (Slice 3)". One shared header; the file was not renamed.
 - **Class names:** the two sections share none (checked).
-- **Size:** the combined file is 653 lines, over the 500-line guide for one
-  file. Splitting it per surface is a follow-up for the coordinator.
+- **Size:** the combined file is 653 lines. No guard limits stylesheet size, and
+  shell.css, session.css and index.css are larger, so it stays one file.
 - **Verification:** typecheck clean; lint 1,170 warnings, the epic's own
   count (measured on the epic alone), so none new; **676 suites / 9,551
   tests / 59 snapshots**, all passing.

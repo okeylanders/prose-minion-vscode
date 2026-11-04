@@ -12,7 +12,7 @@
  * The two sections share no class names.
  */
 
-/* ════ 1. The Memory tab and the memory manager (Slice 4b-ui) ════════ */
+/* Memory tab and manager (Slice 4b-ui) */
 
 /* ── The Memory tab ─────────────────────────────────────────────── */
 
@@ -320,7 +320,7 @@
   }
 }
 
-/* ════ 2. Project memory in the thread and its sheet (Slice 3) ══════ */
+/* Thread: card, receipts, sheet (Slice 3) */
 
 /* The card, under a persona's reply, styled like the Next steps box with an accent border. */
 [data-pm-surface="workshop"] .pm-ws-memory-card {
