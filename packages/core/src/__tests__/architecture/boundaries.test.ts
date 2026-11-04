@@ -1006,8 +1006,11 @@ const RECALL_FORBIDDEN_MODULE = /(?:^|\/)(?:WorkshopRoomFrameRenderer|WorkshopTh
 const WORKSHOP_MEMORY_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'memory');
 const WORKSHOP_MEMORY_MODULES = [
   'ProjectMemoryCatalogFrame.ts',
+  'ProjectMemoryDeliveredView.ts',
   'ProjectMemoryLibrary.ts',
   'ProjectMemoryLibraryContracts.ts',
+  'ProjectMemoryUpdateNote.ts',
+  'ProjectMemoryVersion.ts',
   'WorkshopProjectMemoryCapability.ts',
   'WorkshopProjectMemoryCopy.ts',
   'WorkshopProjectMemoryRenderer.ts',

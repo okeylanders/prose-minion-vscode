@@ -7,6 +7,7 @@
 
 import type { ProjectMemory } from '@shared/types/projectMemory';
 import { acceptedProjectMemorySupersessions } from '@shared/types/projectMemory';
+import { projectMemoryVersion } from '@/application/services/workshop/memory/ProjectMemoryVersion';
 import type { WorkshopProjectMemoryMode } from '@messages';
 
 /**
@@ -34,6 +35,8 @@ export interface ProjectMemoryListed {
   readonly supersededBy: readonly string[];
   /** Another window rewrites it now; a read answers "being edited" (D10, PR #194 N-02). */
   readonly busy: boolean;
+  /** Its D14 version, computed here, never stored. */
+  readonly version: string;
 }
 
 /** The folder as personas may see it: every readable memory, by id. */
@@ -89,7 +92,8 @@ export function listProjectMemories(
       superseded: superseded.has(memory.id),
       // The same links as standing, so a cycle's ignored edge is never named (PR #197 N-02).
       supersededBy: [...new Set(links.filter(({ older }) => older === memory.id).map(({ newer }) => newer))].sort(),
-      busy: busy === true
+      busy: busy === true,
+      version: projectMemoryVersion(memory, superseded.has(memory.id))
     }))
     .sort((left, right) => (left.memory.id < right.memory.id ? -1 : left.memory.id > right.memory.id ? 1 : 0));
 }

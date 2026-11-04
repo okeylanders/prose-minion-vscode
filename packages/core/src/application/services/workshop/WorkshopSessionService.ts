@@ -39,8 +39,10 @@ import {
   WorkshopTurnArtifact,
   WorkshopTurnWidgetCommit,
   WorkshopWidgetConfigSnapshot,
-  WorkshopWidgetRecommendation
+  WorkshopWidgetRecommendation,
+  WorkshopProjectMemoryDelivery
 } from '@messages';
+import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
 import {
@@ -1762,6 +1764,12 @@ export class WorkshopSessionService {
         );
       }
     }
+    // What project memory the run's message delivered rides the reply that
+    // received it, so any cut that removes the delivery removes its record,
+    // a synthesis's included (ADR 2026-11-04 D14; PR #198 F-01).
+    if ((isHost || isGuest) && active.projectMemoryDelivery) {
+      turn.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, active.projectMemoryDelivery);
+    }
     this.turnLedger.append(turn);
     for (const capabilityTurnId of new Set(active.capabilityTurnIds ?? [])) {
       this.turnLedger.update(capabilityTurnId, (capabilityTurn) => {
@@ -1782,6 +1790,29 @@ export class WorkshopSessionService {
       };
     }
     return cloneTurn(turn);
+  }
+
+  /**
+   * Stage what project memory this run's message delivered (ADR 2026-11-04
+   * D14). It is written onto the reply only if the reply commits, so a
+   * cancelled, abandoned or rolled-back run leaves no record. False when the
+   * run is no longer the active one.
+   */
+  stageProjectMemoryDelivery(requestId: string, delivery: WorkshopProjectMemoryDelivery): boolean {
+    const active = this.activeRun;
+    if (active?.requestId !== requestId) {
+      return false;
+    }
+    // A record belongs to the conversation this run's reply answers for.
+    const own = active.target === 'host'
+      ? delivery.participant.kind === 'host'
+      : active.target === 'personaGuest' && delivery.participant.kind === 'personaGuest'
+        && delivery.participant.personaId === active.guestPersonaId;
+    if (!own) {
+      return false;
+    }
+    this.activeRun!.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, delivery)[0];
+    return true;
   }
 
   addTodoFromFinding(sourceTurnId: string, findingKey: string): WorkshopTodoItem {
