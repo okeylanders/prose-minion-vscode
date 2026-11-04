@@ -2,13 +2,36 @@
 
 - **Reviewed:** 2026-11-04
 - **PR:** https://github.com/okeylanders/prose-minion-vscode/pull/200
-- **Implementation head:** `5dcc8d02adfc3db64d33dc1cb5f915df7b021ed8`
-- **Comparison base:** `2b4aaba90013a88f3f183214b244021c7661abb6` (PR #197)
-- **Verdict:** **Changes requested: F-01 through F-05.** This is a written review verdict, not a formal GitHub approval, merge, or changes-requested review submission.
+- **Latest reviewed head:** `cbb1446ce3eb0f6200e11ed0c65087795f109b3c`
+- **Latest comparison base:** `a11c813eaaa12058b3101b2143a395d34ebe238e` (`epic/workshop-project-memory`)
+- **Verdict:** **Written approval; F-01 through F-06 and N-01 closed.** No formal GitHub approval or merge performed.
+
+## Final re-review at `cbb1446ce3eb0f6200e11ed0c65087795f109b3c` (2026-11-04 20:11 UTC)
+
+**Current verdict: written approval. F-01 through F-06 and N-01 are closed.** No remaining actionable defect was found in this review. This is a committed written verdict, not a formal GitHub approval or merge. Earlier sections preserve the findings and exact heads at which they were observed.
+
+- **F-03:** the scanner now consumes markers in one left-to-right pass and conservatively removes the affected remainder for malformed tags. The exact opening-attribute/closing-marker regression no longer leaks to a correction request, retained history, debug log or the real streaming renderer. Debug on/off and memory on/off are covered. Independent probes pass **54 forms, 7,969 streaming prefixes and 354 assertions**, including quotes, overlapping markers, partial attributes, whitespace, malformed closes, case variants and nested/unclosed frames. Valid trailers remain accepted; unrelated longer tag names remain ordinary text.
+- **N-01:** the rejected-proposal test now uses the real no-card shape, verifies that prose remains visible, and fails on unexpected render errors.
+- The F-04/F-05/F-06 independent write-race, duplicate-save, Escape and receipt-reversal witnesses still pass: **three suites / five tests**.
+- The deferred #198 receipt/D14 integration is present. The #199 stylesheet conflict is resolved with both sections retained: **41 manager/tab classes and 37 thread/sheet classes, no overlap**. The combined file is 653 lines; stylesheet decomposition remains a maintainability consideration, not a demonstrated correctness defect.
+- The PR has been retargeted to `epic/workshop-project-memory`; GitHub reports it mergeable against `a11c813eaaa12058b3101b2143a395d34ebe238e`.
+
+### Independent verification
+
+The complete `5bcb7f5e6605fe2a382247d08e16dd1bd2b673fc` source tree was materialized and Git-blob verified. Subsequent `cbb1446c` changes are documentation and two CSS section comments only, with no executable or styling change.
+
+- **Full Jest:** **676 suites / 9,551 tests / 59 snapshots passed**, in 346 seconds. Reviewer-only probe files were excluded and run separately.
+- **Focused merged UI/privacy checks:** **10 suites / 233 tests passed**.
+- **Typecheck:** core, webview and extension passed.
+- **Lint:** **0 errors / 1,170 warnings**, the integrated epic baseline.
+- **CI:** [implementation run 41902908658](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41902908658) passed. Later report/comment-only heads remain under watch.
+- No live provider or VS Code manual pass was performed.
+
+**Watch note, not a reproduced finding:** the author disclosed one pre-integration full run with a single unidentified failure because its output retained only the summary. Five subsequent author runs and this independent complete-log full run passed. The test identity and cause are unknown; do not present a timing explanation as established. Keep full failure output if it recurs.
 
 ## Re-review at `f87b38c85566590736b6696be83bf95d74db5826` (2026-11-04 19:39 UTC)
 
-**Current verdict: changes requested for F-03 only.** F-01, F-02, F-04, F-05 and F-06 are independently verified as fixed. The ordinary nested-frame case of F-03 is also fixed, but its new tag scanner introduces the overlapping-token regression below. Earlier verdicts and the author's resolution ledger remain historical records.
+**Verdict at this historical head: changes requested for F-03 only.** F-01, F-02, F-04, F-05 and F-06 are independently verified as fixed. The ordinary nested-frame case of F-03 is also fixed, but its new tag scanner introduces the overlapping-token regression below. Earlier verdicts and the author's resolution ledger remain historical records.
 
 Verified corrections:
 - Intermediate persona/tool capability responses are sanitized before replay, retention and diagnostic output. Original well-formed and nested real-engine witnesses now contain no private sentinel in correction requests, retained history or logs.
@@ -54,7 +77,7 @@ This is a regression introduced by the new independent token collection. Ordinar
 
 ## Re-review at `edc5a6cb69cecb410e80861bbe1db4998eec99aa` (2026-11-04 19:08 UTC)
 
-**Current verdict: changes requested, F-01 through F-06.** The original review below remains a record of `5dcc8d02`.
+**Verdict at this historical head: changes requested, F-01 through F-06.** The original review below remains a record of `5dcc8d02`.
 
 - The deferred receipt/D14 fold is now implemented. Receipts use the shared `ProjectMemoryVersion`; the fold is bounded by the participant's prepared/committed room-delivery point; the new tests cover the host, separate guest offsets, re-invitation, Rewind/Branch and digest records.
 - **F-01 is partly corrected:** `AgentCapability.redactForLog` now removes a well-formed proposal from rejected-capability diagnostics. The actual engine still sends that proposal in the correction request and commits it in intermediate assistant history. F-01 remains open for replay/retention. Nested malformed frames still leak through the new log hook because of F-03.
@@ -93,7 +116,7 @@ Each fix's test was confirmed to fail with that fix reverted. Head after the fix
 - Typecheck is clean; lint is at the 1,158-warning baseline.
 - Jest: **668 suites / 9,452 tests / 59 snapshots**, all passing.
 
-## Scope and assessment
+## Original scope and assessment at `5dcc8d02`
 
 Reviewed the 93-file stacked diff, the memory ADR and Slice 3 acceptance criteria, the trailer/retention integration, writer routes, library/store boundaries, session codecs, receipt flow, webview hook/card/sheet, and shutdown. Production TypeScript and relevant tests/configuration were materialized and checked against this head's Git blob hashes; no live provider was called.
 
@@ -184,6 +207,6 @@ Independently executed against the reviewed implementation:
 - No direct `from 'vscode'` imports found in production core.
 - The author reports 661 suites / 9,375 tests / 59 snapshots and lint with 0 errors / 1,158 warnings. This review did **not** independently rerun the entire suite or lint, and did not run a live VS Code/provider pass.
 
-## Re-review gates
+## Original re-review gates (satisfied by the final re-review)
 
 Fix and regress F-01 through F-05 on the new exact head. Complete the explicitly deferred #198 receipt fold with the shared version implementation and real delivery tests. Then rerun focused and aggregate checks, recheck the final stacked/base diff after retargeting, and inspect the combined stylesheet when #199 lands. No merge or formal GitHub approval was performed.
