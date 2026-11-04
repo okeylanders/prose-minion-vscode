@@ -339,8 +339,11 @@ in-budget state may retain the shorter “N in full” wording.
   loaded · ≈ 5,600 requested of 5,000 tokens", matching the rows (3 "Loaded
   in full", 1 "Doesn't fit in full").
 - **Tab:** a new state (`OverFull.dc.html`, `viewState: "fullover"`) reads
-  "Set to load in full · 4 · 1 doesn't fit", "about 5,600 requested of 5,000
-  tokens", with the labels "3 of 4 in full" and "≈ 5,200 tokens loaded".
+  "Set to load in full · 4 · 1 doesn't fit", "about 5,600 requested · 4,400
+  of 5,000 loaded", with the labels "3 of 4 in full" and "≈ 5,200 tokens at
+  the start". The 5,200 is the whole frame (4,400 loaded in full plus 800 for
+  the list); the loaded figure never passes 5,000. The coordinator's check on
+  this was done in a follow-up commit.
 - **In budget:** the short "N in full" / "Loaded in full · N" form stays.
 - **Docs:** `slice-0d` (decision 17, the tab-state table and the manager
   section), the quoted copy in `slice-4b`, and the design README are updated.

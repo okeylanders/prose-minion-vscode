@@ -105,8 +105,8 @@ delete, and it has **New memory**.
   - unreadable and conflict rows never offer pin, archive or edit;
   - the pin refusal past budget;
   - over-budget state from hand edits: the meter reads requested over budget
-    ("Set to load in full · 4 · 1 doesn't fit", "about 5,600 requested of
-    5,000 tokens"), the labels separate set from loaded ("4 set to load in full ·
+    ("Set to load in full · 4 · 1 doesn't fit", "about 5,600 requested ·
+    4,400 of 5,000 loaded"), the labels separate set from loaded ("4 set to load in full ·
     3 loaded"; Slice 0d decision 17, PR #196 F-05), and the right rows
     show "Doesn't fit in full", matching what the frame loaded for the same
     folder;

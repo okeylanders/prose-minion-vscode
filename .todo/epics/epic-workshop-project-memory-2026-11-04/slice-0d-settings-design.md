@@ -122,8 +122,11 @@ read-only: no Save, Edit… or Dismiss. Slices 3 and 5 build it once.
     - The manager's label reads "4 set to load in full · 3 loaded · ≈ 5,600
       requested of 5,000 tokens".
     - The tab's meter reads "Set to load in full · 4 · 1 doesn't fit",
-      "about 5,600 requested of 5,000 tokens", and its labels say "3 of 4 in
-      full" and "≈ 5,200 tokens loaded".
+      "about 5,600 requested · 4,400 of 5,000 loaded", and its labels say
+      "3 of 4 in full" and "≈ 5,200 tokens at the start".
+    - The loaded figure never passes 5,000 (D5 loads whole bodies only while
+      they fit). The start total is the whole frame (loaded in full plus the
+      list), as in every other state.
     - The requested figure is never shown as delivered tokens. The loaded
       count, the badges and the frame all come from one builder result.
     - In budget, set and loaded are equal, so the short form stays: "N in
@@ -185,7 +188,7 @@ The tab order is Behavior · About you · **Memory** · Advanced.
 | **Off** | Row "Nothing loads while memory is off": "Memory is off in every project. This project's memories stay in its folder, and you can still manage them." Label `12 saved`. No meters |
 | **On, no memories yet** | Row "No memories yet". Under Ask first: "When a persona suggests a memory, it appears under its reply for you to save. You can also say "remember that…", or choose Save to memory… on any message." Under Save and tell me: "Personas save what's worth keeping as you work. …". Folder help line: "The folder is made when the first memory is saved, or when you open it." |
 | **List over its budget** | Row "Memories loaded in full first, then the most recent". The list meter turns amber and full: "Titles and summaries · 25 of 37 fit", "about 2,000 of 2,000 tokens". An amber line: "12 more are searchable. Personas find them with memory search when the conversation needs them." |
-| **Set to load in full, over its budget** (decision 17) | Row "Memories set to load in full first, then the rest": "Each persona sees the 3 of them that fit in full, and the title and summary of every other memory." Labels `12 memories`, `3 of 4 in full`, `≈ 5,200 tokens loaded`. The first meter turns amber and full: "Set to load in full · 4 · 1 doesn't fit", "about 5,600 requested of 5,000 tokens". An amber line: "1 memory set to load in full doesn't fit, so it loads as a list entry. Turn off Always load in full on one in Manage memories… to make room." (`OverFull.dc.html`) |
+| **Set to load in full, over its budget** (decision 17) | Row "Memories set to load in full first, then the rest": "Each persona sees the 3 of them that fit in full, and the title and summary of every other memory." Labels `12 memories`, `3 of 4 in full`, `≈ 5,200 tokens at the start` (the whole frame: about 4,400 loaded in full plus 800 for the list, the same total the in-budget states show). The first meter turns amber and full: "Set to load in full · 4 · 1 doesn't fit", "about 5,600 requested · 4,400 of 5,000 loaded". An amber line: "1 memory set to load in full doesn't fit, so it loads as a list entry. Turn off Always load in full on one in Manage memories… to make room." (`OverFull.dc.html`) |
 | **Unreadable files** | An amber row under "Your memories": "2 files can't be read". "They aren't loaded, and personas can't find them. Fix the frontmatter in the editor, or move the file out of the folder. Nothing else is affected." Each file is listed with its reason, plus **Show in manager** |
 | **Unavailable: no folder** | An amber notice at the top: "**Project memory isn't available here.** No folder is open, so there's no project to keep memories in. Open a single folder to use project memory. The mode above still applies to your other projects." Row "Nothing loads": "Personas in this workspace get no project memory, whatever the mode above says." Both buttons are disabled |
 | **Unavailable: several folders** | The same, with "This workspace has several folders, so memory can't tell which project it belongs to." |
