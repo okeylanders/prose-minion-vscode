@@ -104,7 +104,10 @@ delete, and it has **New memory**.
   - each action through the real handler and library, on a temporary folder;
   - unreadable and conflict rows never offer pin, archive or edit;
   - the pin refusal past budget;
-  - over-budget state from hand edits: the meter reads over, and the right rows
+  - over-budget state from hand edits: the meter reads requested over budget
+    ("Set to load in full · 4 · 1 doesn't fit", "about 5,600 requested of
+    5,000 tokens"), the labels separate set from loaded ("4 set to load in full ·
+    3 loaded"; Slice 0d decision 17, PR #196 F-05), and the right rows
     show "Doesn't fit in full", matching what the frame loaded for the same
     folder;
   - entry handles (F-02): two files sharing one id each open their own file; a

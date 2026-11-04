@@ -110,6 +110,13 @@
       "w": 760,
       "h": 1040,
       "title": "Edit refused: an always-load-in-full memory's edit would pass the budget"
+    },
+    "OverFull.dc.html": {
+      "x": 2040,
+      "y": 1340,
+      "w": 940,
+      "h": 1040,
+      "title": "Set to load in full, over budget: 4 set, 3 loaded"
     }
   },
   "order": [
@@ -118,6 +125,7 @@
     "Empty.dc.html",
     "OverBudget.dc.html",
     "Unreadable.dc.html",
+    "OverFull.dc.html",
     "NoFolder.dc.html",
     "MultiRoot.dc.html",
     "LightMemories.dc.html",
@@ -165,7 +173,7 @@
       "maxW": 3040
     },
     "calls": {
-      "x": 2120,
+      "x": 3060,
       "y": 1340,
       "w": 420,
       "text": "Approved by Okey, 2026-11-04.\n\n· Mode is global; memories stay per project.\n· Loaded in full 5,000 tokens, list 2,000.\n· Limits: title 120, summary 280, note 8,000.\n· Unavailable: no memory in this workspace, with the reason; the mode cards stay choosable.\n· Off keeps the manager.\n· An update note replaces 'loads at the start'.\n· No INDEX.md.\n· A Save-and-tell-me receipt expands to the saved memory, read-only.\n· 'Memory isn't context' well near the top of the tab, in every state (Okey, after approval).\n· 'Pin' is 'Always load in full' / 'Loaded in full' in the UI; the file keeps pinned: (Okey).",

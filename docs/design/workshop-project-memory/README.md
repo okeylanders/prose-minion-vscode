@@ -33,6 +33,7 @@ decisions, states and copy are written out in
 | `Off.dc.html` | 4b | Memory off: nothing loads, and the manager still works |
 | `Empty.dc.html` | 4b | On, with no memories yet |
 | `OverBudget.dc.html` | 4b | The list over its 2,000 tokens: "25 of 37 fit", "12 more are searchable" |
+| `OverFull.dc.html` | 4b | Set to load in full, over its 5,000 tokens: "4 set · 1 doesn't fit", "3 of 4 in full", requested separated from loaded |
 | `Unreadable.dc.html` | 4b | Two unreadable files listed with their reasons, and Show in manager |
 | `NoFolder.dc.html`, `MultiRoot.dc.html` | 4b | Memory unavailable in this workspace, with the reason. The mode cards stay choosable |
 | `LightMemories.dc.html`, `LightOver.dc.html` | — | Light-theme proposal, not built |

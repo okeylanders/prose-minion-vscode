@@ -116,6 +116,18 @@ read-only: no Save, Edit… or Dismiss. Slices 3 and 5 build it once.
     - Only the words change. The file keeps `pinned:`, and code keeps
       `pinned` and `pinnedTokens` (ADR D5's note). Elsewhere in this doc,
       "pinned" names the key, and quoted copy uses the UI words.
+17. **Set is not loaded** (PR #196 F-05). Over the budget, the copy
+    separates what the writer *set* to load in full (a count, and the tokens
+    it requests) from what the builder actually *loaded*.
+    - The manager's label reads "4 set to load in full · 3 loaded · ≈ 5,600
+      requested of 5,000 tokens".
+    - The tab's meter reads "Set to load in full · 4 · 1 doesn't fit",
+      "about 5,600 requested of 5,000 tokens", and its labels say "3 of 4 in
+      full" and "≈ 5,200 tokens loaded".
+    - The requested figure is never shown as delivered tokens. The loaded
+      count, the badges and the frame all come from one builder result.
+    - In budget, set and loaded are equal, so the short form stays: "N in
+      full", and "Loaded in full · N", "about N of 5,000 tokens".
 
 ## The Memory tab
 
@@ -173,7 +185,7 @@ The tab order is Behavior · About you · **Memory** · Advanced.
 | **Off** | Row "Nothing loads while memory is off": "Memory is off in every project. This project's memories stay in its folder, and you can still manage them." Label `12 saved`. No meters |
 | **On, no memories yet** | Row "No memories yet". Under Ask first: "When a persona suggests a memory, it appears under its reply for you to save. You can also say "remember that…", or choose Save to memory… on any message." Under Save and tell me: "Personas save what's worth keeping as you work. …". Folder help line: "The folder is made when the first memory is saved, or when you open it." |
 | **List over its budget** | Row "Memories loaded in full first, then the most recent". The list meter turns amber and full: "Titles and summaries · 25 of 37 fit", "about 2,000 of 2,000 tokens". An amber line: "12 more are searchable. Personas find them with memory search when the conversation needs them." |
-| **Loaded in full, over its budget** | Not drawn on the tab. The loaded-in-full meter takes the same amber, full treatment, "about 5,600 of 5,000 tokens", and the row's help line points to the manager. The manager state is drawn |
+| **Set to load in full, over its budget** (decision 17) | Row "Memories set to load in full first, then the rest": "Each persona sees the 3 of them that fit in full, and the title and summary of every other memory." Labels `12 memories`, `3 of 4 in full`, `≈ 5,200 tokens loaded`. The first meter turns amber and full: "Set to load in full · 4 · 1 doesn't fit", "about 5,600 requested of 5,000 tokens". An amber line: "1 memory set to load in full doesn't fit, so it loads as a list entry. Turn off Always load in full on one in Manage memories… to make room." (`OverFull.dc.html`) |
 | **Unreadable files** | An amber row under "Your memories": "2 files can't be read". "They aren't loaded, and personas can't find them. Fix the frontmatter in the editor, or move the file out of the folder. Nothing else is affected." Each file is listed with its reason, plus **Show in manager** |
 | **Unavailable: no folder** | An amber notice at the top: "**Project memory isn't available here.** No folder is open, so there's no project to keep memories in. Open a single folder to use project memory. The mode above still applies to your other projects." Row "Nothing loads": "Personas in this workspace get no project memory, whatever the mode above says." Both buttons are disabled |
 | **Unavailable: several folders** | The same, with "This workspace has several folders, so memory can't tell which project it belongs to." |
@@ -218,7 +230,9 @@ Lightbox's markup stay unchanged.
   one in full: memories loaded in full would come to about 5,100 of 5,000
   tokens. Turn it off on another, or shorten this note."
 - **Loaded in full, over budget** (hand edits, two windows; #192 F-04):
-  - The label turns amber: `4 in full · ≈ 5,600 of 5,000 tokens`.
+  - The label turns amber and separates what was asked for from what loaded
+    (decision 17): `4 set to load in full · 3 loaded · ≈ 5,600 requested of
+    5,000 tokens`.
   - An amber status line: "Memories set to load in full are over their
     5,000-token budget, probably from an edit outside the manager. They're
     considered oldest-created first, and 'The Cheshire Cat is never seen
