@@ -86,7 +86,7 @@ const WORKSHOP_BOOKMARK_HANDLER_OWNER =
 const WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER =
-  'application/handlers/domain/workshop/WorkshopProjectMemoryManagerRoutes.ts';
+  'application/handlers/domain/workshop/WorkshopProjectMemoryManagerHandler.ts';
 const WORKSHOP_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopContextHandler.ts';
 const WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER =
@@ -358,8 +358,8 @@ const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
     reference: /WorkshopProjectMemoryHandler/
   },
   {
-    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopProjectMemoryManagerRoutes.ts'),
-    reference: /WorkshopProjectMemoryManagerRoutes/
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopProjectMemoryManagerHandler.ts'),
+    reference: /WorkshopProjectMemoryManagerHandler/
   },
   {
     file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopSessionExportHandler.ts'),
@@ -375,6 +375,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
   'WorkshopProjectMemoryHandler',
+  'WorkshopProjectMemoryManagerHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
   'WorkshopShowVsTellHandler',

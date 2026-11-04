@@ -43,7 +43,7 @@ export type WorkshopProjectMemoryManagerPort = Pick<
   'managerListing' | 'managerFile' | 'memoryFolder' | 'setLoadInFull' | 'remove'
 >;
 
-const LOG = '[WorkshopProjectMemoryManagerRoutes]';
+const LOG = '[WorkshopProjectMemoryManagerHandler]';
 const REQUEST_ID_CHARACTERS = 128;
 const QUERY_CHARACTERS = PROMPT_BUDGETS.workshopProjectMemory.queryCharacters;
 const MEMORY_ID = /^mem-[0-9a-f]{6}$/;
@@ -73,7 +73,7 @@ const FILE_REFUSALS: Readonly<Record<Extract<ProjectMemoryManagerFile, { kind: '
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
-export class WorkshopProjectMemoryManagerRoutes {
+export class WorkshopProjectMemoryManagerHandler {
   constructor(
     private readonly library: WorkshopProjectMemoryManagerPort,
     private readonly shell: Pick<ShellService, 'openFileInEditor' | 'revealFileInOS'>,
