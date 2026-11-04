@@ -1,9 +1,11 @@
 # Slice 1: Store and Codec
 
 **Epic:** [Workshop Project Memory](README.md)
-**Decision:** ADR 2026-11-04 (Slice 0, being written in parallel). Built from
-the feature note's "The memory file (format 1)" and "Storage and
-concurrency"; adjusted to the ADR before the PR merges.
+**Decision:** ADR 2026-11-04 (Slice 0, Proposed). Built from the feature
+note's "The memory file (format 1)" and "Storage and concurrency", then
+amended (`774e283`) to the spec thread's early format and storage decisions,
+relayed by the coordinator on 2026-11-04. Where the two differ, the relay
+wins.
 **Branch:** `epic/workshop-project-memory-slice-1-store`
 **Status:** Built and pushed; waiting on the ADR and the coordinator's PR.
 
@@ -38,6 +40,7 @@ the proposal trailer (Slice 3), the manager (Slice 4b), `INDEX.md` (Slice 5).
 | `768b41f` | Refactor: the Lightbox board store's claims and claimed rewrite, shared (`StoredFileClaims`, `StoredFileRewrite`). Behavior-preserving; no Lightbox test changed |
 | `b26a789` | Format 1: the domain type, the codec, fixtures, codec tests |
 | `0afa58d` | `ProjectMemoryStore`, its folder reader and contracts, store and race tests; `StoredFileClaims` gains a per-store `logName` |
+| `774e283` | Format and store amended to the ADR relay: status `active \| archived` (superseded derived), origin `writer \| proposed \| auto`, real turn ids, only present optionals written, the body byte for byte, conflicts for a shared id, no file names in logs |
 
 **Where each piece lives.**
 
@@ -49,7 +52,7 @@ the proposal trailer (Slice 3), the manager (Slice 4b), `INDEX.md` (Slice 5).
 | Store and its contracts | `infrastructure/storage/ProjectMemoryStore.ts`, `ProjectMemoryStoreContracts.ts` |
 | Shared claims (take, settle, retire, a delete under a claim) | `infrastructure/storage/StoredFileClaims.ts` (from `LightboxBoardClaims`) |
 | Shared rewrite commit (stage, claim, check bytes, commit, release) | `infrastructure/storage/StoredFileRewrite.ts` (from `LightboxBoardRewrite`) |
-| Fixtures | `__tests__/fixtures/project-memory-v1/` (three memories: proposed canon, a writer's pinned preference with milliseconds, a superseded open thread with an empty body) |
+| Fixtures | `__tests__/fixtures/project-memory-v1/` (four memories: proposed canon; a writer's pinned preference with milliseconds and no optional keys; a writer's archived open thread with provenance and an empty body; an automatic decision that supersedes the canon) |
 
 ### The format, as built
 
@@ -68,7 +71,6 @@ origin: proposed
 proposed-by: cliff
 source-session: 6b0f3c9e-2c1d-4e8a-9a51-0d6f2b7c9e11
 source-turns: turn-12-assistant-1730643725000, turn-15-assistant-1730643925000
-supersedes:
 ---
 
 Free Markdown.
@@ -77,34 +79,55 @@ Free Markdown.
 - **Keys** (closed, written in this order): `format`, `id`, `title`, `kind`,
   `summary`, `status`, `pinned`, `created`, `updated`, `origin`,
   `proposed-by`, `source-session`, `source-turns`, `supersedes`.
-- **Required:** `format` through `updated`, but `pinned`; and `origin`.
-  **Optional** (absent, or empty as `key:`): `pinned` (reads `false`),
-  `proposed-by`, `source-session`, `source-turns`, `supersedes`.
+- **Required:** `format`, `id`, `title`, `kind`, `summary`, `status`,
+  `created`, `updated`, `origin`.
+- **Optional:** `pinned` (absent reads `false`), `proposed-by`,
+  `source-session`, `source-turns`, `supersedes`. Absent and empty (`key:`)
+  both mean none. Only the ones present are written; `pinned` always is.
+- **Vocabularies:**
+  - `kind`: `decision | canon | preference | open-thread`.
+  - `status`: `active | archived`. **Superseded is derived, never stored**:
+    a memory is superseded while a readable memory names it in
+    `supersedes` (`supersededProjectMemoryIds`), so a supersession is one
+    new file and never a rewrite of the old one. `status: superseded` is
+    refused as an invalid value.
+  - `origin`: `writer | proposed | auto`.
 - **Values:**
-  - `id` is `mem-` and six lower-case hex digits.
+  - `id` is `mem-` and six lower-case hex digits. It is the memory's
+    identity, never read from the file's name.
   - Times are UTC ISO 8601, with optional milliseconds, and name a real day.
+  - `source-turns` are Workshop turn ids, `turn-<n>-<user|assistant|system>-<ms>`
+    (`WorkshopTurnLedger.nextId`).
   - Lists are comma-separated: no empty entry, none twice.
   - A value is literal: no quoting, escapes or nesting, so a quoted title
     keeps its quotation marks.
-  - No value holds a control character, U+2028 or U+2029.
+  - No value holds a control character, U+2028 or U+2029. `title` and
+    `summary` are one line.
 - **Rules:**
-  - A proposed memory names its persona, session and at least one turn.
-  - A writer's memory names no persona.
+  - A `proposed` or `auto` memory names its persona, session and at least
+    one turn. A `writer` memory may name any of them.
   - Turns need a session.
   - `updated` is not before `created`.
   - A memory never supersedes itself.
 - **Bounds:** title 120, summary 280, body 8,000 characters; 32 source
-  turns, 8 superseded ids; files over 256 KiB are not read.
+  turns, 8 superseded ids; files over 256 KiB are not read. The constants
+  are `PROJECT_MEMORY_FIELD_CHARACTERS`, `PROJECT_MEMORY_LIST_ENTRIES` and
+  `PROJECT_MEMORY_FILE_BYTES`; they move to
+  `PROMPT_BUDGETS.workshopProjectMemory` in Slice 2.
 - **Hand edits read:** a BOM, CRLF or CR, space around keys, colons, values
-  and list entries, blank lines in the frontmatter, missing optional keys.
-  The body keeps everything but its leading blank lines and trailing space.
+  and list entries, blank lines in the frontmatter, and missing optional
+  keys. The frontmatter is always written LF.
+- **The body is kept byte for byte:** everything after the closing `---`
+  line, line endings included, so a rewrite never changes it.
+  `projectMemoryBody` gives a new memory's Markdown its blank separating
+  line.
 - **Refusals** (`PROJECT_MEMORY_INVALID_REASONS`, each with the known key
   where there is one; never the file's text):
   - shape: `no-frontmatter`, `unclosed-frontmatter`, `malformed-line`,
     `unknown-key`, `duplicate-key`, `missing-key`;
   - values: `unsupported-format`, `invalid-value`, `too-long`;
-  - rules: `proposal-without-provenance`, `proposer-without-proposal`,
-    `turns-without-session`, `updated-before-created`, `supersedes-itself`.
+  - rules: `proposal-without-provenance`, `turns-without-session`,
+    `updated-before-created`, `supersedes-itself`.
 
 ### The store, as built
 
@@ -114,17 +137,18 @@ Free Markdown.
   `WorkshopSessionStore.availability()`.
 - **`list()`** returns one of:
   - `listed`, with `memories` (decoded, sorted by file name), `unreadable`
-    (file name and reason) and `busy` (files a live claim holds, with the id
-    the claimed bytes hold);
-  - `unavailable`;
+    (file name and reason), `conflicts` (ids two or more readable files
+    hold, with their file names; none of them is a memory here) and `busy`
+    (files a live claim holds, with the id the claimed bytes hold);
+  - `unavailable`: memory is off (no session-only mode);
   - `unknown`, for a folder that cannot be read. A missing folder is an
     empty `listed`.
 
-  Every `*.md` is read but `INDEX.md` (any case) and hidden files. Claims
-  are settled first, as the board store settles them. Unreadable reasons are
-  the codec's, plus `too-large`, `not-text` (invalid UTF-8), `duplicate-id`
-  (every file holding a shared id) and `read-failed`.
-- **`read(id)`** answers `memory | missing | busy | unreadable | unavailable
+  Every `*.md` is read but `INDEX.md` (any case) and hidden files; not
+  recursive. Claims are settled first, as the board store settles them.
+  Unreadable reasons are the codec's, plus `too-large`, `not-text` (invalid
+  UTF-8) and `read-failed`.
+- **`read(id)`** answers `memory | missing | busy | conflict | unavailable
   | unknown`. It is resolved through the listing; an id is never a path.
 - **`create(draft, { beforeCommit })`**
   - It mints the id, and sets `created` and `updated` to now, to the second.
@@ -132,12 +156,12 @@ Free Markdown.
     reads back.
   - It stages `.<name>.tmp-<uuid>`, runs the commit point, then renames
     without overwriting.
-  - The file is `<slug>-<shortid>.md`: the title's ASCII slug, at most 48
-    characters, or `memory`.
+  - The file is `<slug>-<shortid>.md`: the title's ASCII slug at creation,
+    at most 48 characters, or `memory`. A file is never renamed.
   - A final name taken meanwhile mints a new id, up to three times. A new id
-    is never one the folder holds, a live claim holds, or a duplicate holds.
-- **`replace(id, update, { beforeCommit })`** covers edit, pin, archive and
-  supersede.
+    is never one the folder holds, a live claim holds, or a conflict holds.
+- **`replace(id, update, { beforeCommit })`** covers edit (a title edit
+  too: the file keeps its name), pin and archive.
   - It reads through the listing, and refuses a change to `id` or `created`
     (`identity-changed`).
   - It checks the new file reads back, then commits through
@@ -147,41 +171,52 @@ Free Markdown.
     deleted under it is `missing`; one held is `busy`.
   - `updated` is the caller's to set.
 - **`delete(id)`** goes through `StoredFileClaims.deleteClaimed`: claim,
-  retire every leftover claim, delete. A file that does not read is never
-  rewritten or deleted (a duplicate id answers `unreadable`).
+  retire every leftover claim, delete. A file that does not read, or
+  conflicts, is never rewritten or deleted (`conflict`).
 - **Queue and drain.** One queue. Every write is owed until it settles, and
   `shutDown()` waits for every owed write and any started meanwhile, the
   Lightbox library's loop.
-- **Logs** name a memory by id (`mem-7f3c2a's file` in the claims' lines),
-  never by title, summary, body or file name.
+- **Logs** name a memory by id in the store's own lines; the shared claims'
+  lines say "a memory file". Never a title, summary, body or file name.
 
 ### Tests
 
-- `ProjectMemoryCodec.test.ts` (56):
+- `ProjectMemoryCodec.test.ts` (61):
   - the fixtures read as written and write back byte for byte;
-  - every fixture is canonical;
-  - every kind, status and origin round-trips;
-  - a body holding `---` lines and indented code keeps them;
-  - hand edits (CRLF, CR, BOM, extra space, blank lines, missing optional
-    keys, quoted values);
-  - one case per refusal, with a guard that every reason has one;
+  - every fixture is canonical: the keys present, in order, and no empty
+    optional;
+  - superseded derived from the fixtures, the superseded one still stored
+    `active`;
+  - `projectMemoryBody`;
+  - every kind, status and origin round-trips, and a writer's memory
+    without provenance writes no optional key;
+  - the body byte for byte (leading blank lines, `---` lines, indentation,
+    trailing space, CRLF);
+  - hand edits: CRLF, CR, a BOM, extra space, blank lines, missing or empty
+    optional keys, quoted values;
+  - one case per refusal (including `status: superseded`, the feature
+    note's `t-0412` and a turn with an unknown role), with a guard that
+    every reason has one;
   - no refusal carries the file's text;
   - the body's bound, exact and one past;
   - a value with a line break does not read back.
-- `ProjectMemoryStore.test.ts` (21):
+- `ProjectMemoryStore.test.ts` (23):
   - availability, live;
   - a missing folder against an unreadable one;
   - what is listed;
-  - every unreadable reason, with no file rewritten or deleted;
+  - every unreadable reason, and a copied file's conflict, with no file
+    rewritten or deleted;
   - ids that are not paths;
   - creation: naming, staging and the rename's `overwrite: false`, id
     collisions, invalid drafts, stray fields, withdrawal, a failed staging
     write;
-  - rewrites: claim and commit, archive and supersede, unchanged, identity,
+  - rewrites: claim and commit, archive, a title edit that keeps the file's
+    name, a hand-edited CRLF body kept byte for byte, unchanged, identity,
     invalid, withdrawn;
+  - a supersession as one new file, with the old file untouched;
   - deletes, with a leftover retired;
-  - claims: an abandoned one put back, logged by id; a live one busy
-    everywhere.
+  - claims: an abandoned one put back, logged without the file's name; a
+    live one busy everywhere.
 - `ProjectMemoryStoreRaces.test.ts` (9), two stores on one file system:
   - **Two windows saving at once lose nothing,** including when both mint
     the same id.
@@ -208,20 +243,24 @@ Free Markdown.
   would flag. The ADR may move them into `PROMPT_BUDGETS.workshopProjectMemory`
   once the trailer's prompt teaches them. The values (120, 280, 8,000, 32,
   8, 256 KiB) are this slice's guesses.
-- **Format details the feature note left open,** chosen here:
-  - the id's shape (six hex digits);
+- **Format details neither the note nor the relay settles,** chosen here:
   - milliseconds allowed in times;
   - `supersedes` as a list of up to 8, not one id;
-  - `proposed-by` forbidden on a writer's memory;
   - turns needing a session;
-  - values literal, with no YAML quoting;
-  - an empty optional value read as absent;
-  - an empty body allowed.
+  - an empty body allowed;
+  - `pinned` always written, since it is a boolean on the type;
+  - key lines tolerating space before the colon and no space after it, for
+    hand edits. Values still split at the first colon.
 - **`updated` is not stamped by the store on `replace`.** A pin need not
   reorder the catalog's "most recently updated"; the application service
   decides.
 - **Shared, not copied** (the brief asked for this, and for a separate
-  commit):
+  commit). The relay's item 11 asks for memory-owned claim siblings and no
+  Lightbox refactor in this epic, though it accepts parameterizing the
+  Lightbox pattern with its tests unchanged. The refactor had already
+  landed when the relay arrived, so this is raised with the coordinator:
+  keep it, or revert `768b41f`, write `ProjectMemoryClaims` and add the
+  tech-debt note. As built:
   - `LightboxBoardClaims` is now `StoredFileClaims` over the Lightbox's claim
     pattern and log prefix.
   - The stage/claim/compare/commit/release half of
@@ -232,16 +271,17 @@ Free Markdown.
     changed. The board store's new-file write stays its own: its timestamp
     names and numbered retries differ from memory's minted-id names.
 - **`logName`.** A memory file's name carries its title's slug, which is
-  writer text. `StoredFileClaims` therefore takes a per-store `logName`
-  (identity for the Lightbox), and memory's names a file by its id.
+  writer text, and identity is never read from a name. `StoredFileClaims`
+  therefore takes a per-store `logName` (identity for the Lightbox), and
+  memory's says "a memory file".
 - **Busy files are named.** A listing reads a live claim's bytes, read-only,
   so `read(id)` can answer `busy` rather than `missing`.
 
 ## Known Limits
 
 - **Two windows minting one id for different titles.** The file names
-  differ, so both commits succeed and both files become `duplicate-id`. They
-  are unreadable, never lost, and never rewritten. The odds are 1 in 16.7
+  differ, so both commits succeed and the two files become a conflict. They
+  are listed, never lost, and never rewritten. The odds are 1 in 16.7
   million per pair of simultaneous saves. A longer id would shrink them; the
   ADR may prefer one.
 - **Every operation reads the folder whole.** Memories are small and few,
