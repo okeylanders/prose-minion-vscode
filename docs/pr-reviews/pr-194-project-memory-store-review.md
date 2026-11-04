@@ -68,13 +68,13 @@ A separate reproduction using a failed old-claim cleanup produces the same resul
 | ID | Priority | Independent status at b8846c46 |
 |---|---|---|
 | F-01 | P2 | Verified fixed by pre-serialization validation and decoded-memory equality. |
-| F-02 | P2 | Partially addressed; remains open for restoration collision and subsequent claim purge. |
+| F-02 | P2 | Fixed in `0909c1c`: refused claimed bytes go back under the saved name, else a free fallback name (`StoredFileDeleteCheck.fallbackPath`), as an ordinary file, never left under a claim to be purged; the re-review's steps (another id, and unreadable bytes, with the saved name occupied, then a listing 31 seconds on) are regressions. Lightbox passes no check. |
 | F-03 | P2 | Verified fixed for uppercase/mixed-case Markdown claim detection and recovery. |
 | F-04 | P2 | Verified fixed by memory-safe error categories throughout create, rewrite and delete. |
 | F-05 | P2 | Verified fixed by write byte limit and bounded source-turn fields. |
-| F-06 | P2 | Open: first-claim selection exposes stale busy metadata during overlapping rewrites. |
+| F-06 | P2 | Fixed in `daf4668`: of several claims of one saved name, the newest by its time is read, ties broken as recovery breaks them (the greater claim name); the re-review's overlapping rewrites through three stores, and both directory orders at different and equal times, are regressions. |
 | N-01 | P3 | Verified addressed for cyclic supersession links. |
-| N-02 | Spec/API | Metadata shape addressed; busy-version accuracy remains blocked by F-06. |
+| N-02 | Spec/API | Fixed with F-06 in `daf4668`: the busy row is the newest claim's version. |
 
 ## Initial review and author correction history
 

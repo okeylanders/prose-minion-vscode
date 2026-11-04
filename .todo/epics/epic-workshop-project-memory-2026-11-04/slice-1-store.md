@@ -7,7 +7,7 @@ amended (`774e283`) to the spec thread's early format and storage decisions,
 relayed by the coordinator on 2026-11-04. Where the two differ, the relay
 wins.
 **Branch:** `epic/workshop-project-memory-slice-1-store`
-**Status:** Built, verified and pushed. PR #194's review findings (F-01–F-05, N-01, N-02) are fixed; waiting on re-review and the ADR (#192).
+**Status:** Built, verified and pushed. PR #194's findings are fixed through the re-review (F-02 continued, F-06); waiting on Astra's next pass and the ADR (#192).
 
 ## Outcome
 
@@ -303,10 +303,19 @@ with a regression test that failed first.
 | N-01 | `7824c22` | `supersededProjectMemoryIds` takes `{ id, supersedes }` and supersedes nothing on a cycle (ADR D4) |
 | N-02 | `5f92624` | The coordinator's decision: a memory under a live claim stays in `memories`, read from the claim's bytes, `busy: true`; `read` answers busy; an unreadable claim is an unreadable row. The listing's `busy` array is gone |
 
+Astra's re-review (`3e608da6`) verified F-01, F-03, F-04, F-05 and N-01
+fixed, and found two more P2s, fixed the same way:
+
+| ID | Commit | Fix |
+|---|---|---|
+| F-02 (re-review) | `0909c1c` | A refused delete's bytes go back under the saved name, else a free fallback name (`StoredFileDeleteCheck.fallbackPath`), as an ordinary file. Before, with the saved name taken, they stayed under the claim, and a lease-settling listing purged them as a rewrite's leftover |
+| F-06 | `daf4668` | A busy memory is read from the newest of its claims (by time, ties broken as recovery does), not the first directory entry, so overlapping rewrites never list a stale version. This also settles N-02's accuracy |
+
 What changed in the contracts:
 - the store's `invalid` reason widens to `ProjectMemoryWriteFault`
   (`not-as-written`, `file-too-large`);
-- a delete may answer `changed`;
+- a delete may answer `changed`, and `deleteClaimed`'s check is
+  `{ verify, fallbackPath }`;
 - `ProjectMemoryEntry.busy` replaces `ProjectMemoryListing.busy`.
 
 ## Known Limits
@@ -329,18 +338,18 @@ What changed in the contracts:
 |---|---|---|
 | `npm run typecheck` | clean | clean |
 | `npm run lint` | 0 errors | 0 errors, 1,153 warnings; none in a new or changed file (the one warning in the storage folder is `pathContainment.ts`'s, untouched) |
-| `npx jest` | 636 suites / 8,977 tests / 59 snapshots | 639 suites / 9,100 tests / 59 snapshots after the review fixes (+3 suites, +123 tests; 9,071 before them) |
+| `npx jest` | 636 suites / 8,977 tests / 59 snapshots | 639 suites / 9,107 tests / 59 snapshots after the re-review fixes (+3 suites, +130 tests; 9,071 before the review, 9,100 after its first round) |
 | `from 'vscode'` in `packages/core/src` | none | none |
 
 **File sizes (lines).**
 
 | File | Lines |
 |---|---|
-| `infrastructure/storage/StoredFileClaims.ts` (new) | 323 |
+| `infrastructure/storage/StoredFileClaims.ts` (new) | 355 |
 | `infrastructure/storage/StoredFileRewrite.ts` (new) | 159 |
 | `infrastructure/storage/ProjectMemoryCodec.ts` (new) | 423 |
-| `infrastructure/storage/ProjectMemoryFiles.ts` (new) | 220 |
-| `infrastructure/storage/ProjectMemoryStore.ts` (new) | 438 |
+| `infrastructure/storage/ProjectMemoryFiles.ts` (new) | 222 |
+| `infrastructure/storage/ProjectMemoryStore.ts` (new) | 443 |
 | `infrastructure/storage/ProjectMemoryStoreContracts.ts` (new) | 109 |
 | `shared/types/projectMemory.ts` (new) | 148 |
 | `infrastructure/storage/fileSystemErrors.ts` | 5 → 20 |
@@ -350,6 +359,6 @@ What changed in the contracts:
 | `infrastructure/storage/LightboxBoardNewFile.ts` | 91 → 92 |
 | `__tests__/infrastructure/storage/ProjectMemoryCodec.test.ts` | 302 |
 | `__tests__/infrastructure/storage/ProjectMemoryStore.test.ts` | 484 |
-| `__tests__/infrastructure/storage/ProjectMemoryStoreRaces.test.ts` | 266 |
+| `__tests__/infrastructure/storage/ProjectMemoryStoreRaces.test.ts` | 373 |
 | `__tests__/infrastructure/storage/projectMemoryStoreHost.ts` | 73 |
 | `__tests__/architecture/boundaries.test.ts` | 2,418 → 2,436 (already past 500 before this slice; the guard adds 18) |
