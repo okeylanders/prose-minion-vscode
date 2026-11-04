@@ -154,6 +154,19 @@ memory only call back (Slice 3 owns the sheet).
    - The tab's short form is "a copy set aside, not yet put back", and the
      tab's row then reads "needing attention".
 
+## PR #199 review
+
+Astra's report is [docs/pr-reviews/pr-199-project-memory-ui-review.md](../../../docs/pr-reviews/pr-199-project-memory-ui-review.md).
+Its ledger records the corrections:
+- **F-01** (`e6d62fb8`): an open rename is cancelled when its row locks,
+  and the manager checks the row as it sends.
+- **F-02** (`b88728fe`): per-row `residency`; the lines split listed from
+  searchable-only, and a regression runs the real renderer.
+- **N-01** (`a4819837`): an archived and superseded row keeps its "Superseded
+  by" line.
+
+The new strings are in Slice 0d's doc, under "added after review".
+
 ## For 4b-wire
 
 - Register the tab: add `'memory'` to `WorkshopConversationSettingsTab` and
@@ -165,6 +178,11 @@ memory only call back (Slice 3 owns the sheet).
   message."). The header copy gains "what they remember about this project".
 - Map the library's listing and estimate into the view inputs. `fullLoad`
   comes from the frame's `pinnedLoaded` ids, never from dates.
+- **Per-id residency (PR #199 F-02).** The estimate, or the renderer's
+  result the library hands on, must say for each memory in effect whether
+  its body loaded (`pinnedLoaded`), it was listed (`entries`), or neither.
+  Map that to each row's `residency`, which is never inferred; without it
+  the rows promise nothing about the list.
 - A set-aside row and the standing file's own row share a file name. Give
   them distinct `entryKey`s, since the view keys rows by them.
 - Open the manager over the settings modal (0d open question 2). Opening it
@@ -178,6 +196,7 @@ Node 22, on this branch:
 |---|---|---|---|
 | Before (`7ec50ba`) | 652 | 9,228 | 59 |
 | After (with 2a at `27da6fee` merged) | 658 | 9,307 | 59 |
+| After the PR #199 fixes | 659 | 9,326 | 59 |
 
 - `npm ci`, then `npm run typecheck`: clean.
 - `npm run lint`: 0 errors. 12 new warnings, all `naming-convention`:

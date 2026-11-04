@@ -267,6 +267,28 @@ Lightbox's markup stay unchanged.
     window holds under a live claim (D10). Its writes are off, and its note
     reads "Another VS Code window is changing this memory. Edit, archive and
     delete come back when it's done." Open file still works.
+- **Where a memory that doesn't fit lands** (added after review, PR #199
+  F-02). A memory set to load in full that doesn't fit is only a list
+  candidate, so the words follow the builder's result for each one:
+  - **Listed:** as drawn ("…so it loads as a list entry").
+  - **Searchable only:** the row reads "Doesn't fit at the start: not in
+    full, and the list is full too. Personas can still find it with memory
+    search. Turn off Always load in full on another to make room." The
+    status line reads "…and 'X' doesn't fit, and the list is full too, so
+    it's searchable only."
+  - **Both:** "…and 43 of them don't fit: 40 load as list entries, and 3
+    are searchable only."
+  - **Not known:** "Doesn't fit in the 5,000 tokens loaded in full, so it
+    doesn't load whole. …"
+  - **The tab's amber line** splits the same way: "43 memories set to load
+    in full don't fit: 40 load as list entries, and 3 are searchable only.
+    Turn off Always load in full on one in Manage memories… to make room."
+    When none is listed it reads "…don't fit, and the list is full too, so
+    they're searchable only." Its "N more are searchable" line counts only
+    the other memories past the list.
+- **Archived and superseded** (added after review, PR #199 N-01). A row that
+  is both keeps both badges and its "Superseded by '…'." line, followed by
+  "Restore un-archives it, but the newer memory still replaces it."
 - **Section "Superseded and archived"** ("Never loaded. Personas find them
   only by searching."), in muted rows:
   - superseded rows read "Superseded by '…'.", with **Edit**;

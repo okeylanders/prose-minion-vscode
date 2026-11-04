@@ -13,6 +13,17 @@ Reviewed the isolated 45-file UI diff, the approved Slice 0d design and its docu
 
 The structure is sound. Memory-specific copy and derivation stay out of the shared browser. `afterSection` is opt-in, and the existing Workshop and Lightbox browser tests pass unchanged. Mode remains choosable in unavailable workspaces; conflict/unreadable rows cannot mutate by ambiguous identity; set-aside claims correctly have no misleading Open file action; full-load selection and actual full-load outcome are separate. The explicit distinct-entry-key warning is important and should remain a wiring acceptance criterion.
 
+## Author correction ledger
+
+Each correction landed with a test that failed first. "Fixed" describes the
+submitted correction, not independent closure; a re-review closes it.
+
+| ID | Priority | Finding | Status |
+|---|---|---|---|
+| F-01 | P2 | An open rename still writes after its row becomes locked | Fixed in `e6d62fb8`. When a memory goes busy, an action starts or the workspace goes, the row cancels its open rename, so neither Enter nor the blur that follows sends it. The manager also checks, as it sends, that the row may still be written (listed, not busy, nothing pending, the workspace there). 12 transition tests (Enter and blur × three locks × Active and Past rows) and a busy row's Open file. Kept in the memory modal: the shared `SavedItemRow` is unchanged |
+| F-02 | P2 | Full-load overflow is incorrectly promised a place in the catalog | Fixed in `b88728fe`. Rows take an optional `residency` (`full`, `listed` or `searchable`), the renderer's own result, which 4b-wire supplies. Without it a row promises nothing ("so it doesn't load whole"). The tab's and the manager's lines split listed from searchable-only ("43 memories set to load in full don't fit: 40 load as list entries, and 3 are searchable only"), and the tab's "N more are searchable" line no longer counts them twice. The tab derives its split from the estimate, since not-loaded bodies lead the list (D5). The regression runs the real renderer on the review's 45-note case (count-bound: 2 / 40 / 3) and on a token-bound case |
+| N-01 | Nonblocking | Archived and superseded are independent | Fixed in `a4819837`. A row both archived and superseded keeps "Superseded by …" and both badges, and says "Restore un-archives it, but the newer memory still replaces it." |
+
 ## Findings
 
 ### F-01 · P2 · An open rename still writes after its row becomes locked
