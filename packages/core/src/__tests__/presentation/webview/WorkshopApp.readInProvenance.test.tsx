@@ -281,6 +281,26 @@ describe('WorkshopApp Read in provenance', () => {
     act(() => { jest.runOnlyPendingTimers(); });
   });
 
+  it('scrolls to the first line read once the async reply has put the Source pane on screen (PR #187 N-01)', async () => {
+    const calls: Array<{ line?: string; hidden: boolean }> = [];
+    Element.prototype.scrollIntoView = jest.fn(function (this: HTMLElement) {
+      calls.push({ line: this.dataset.line, hidden: this.closest('[hidden]') !== null });
+    });
+    render(<WorkshopApp />);
+    deliver(withCard([{ ...resourceRow('characters/rabbit.md', 1_000), turnId: 'turn-2', lineRange: { start: 3, end: 4 } }]));
+
+    fireEvent.click(within(rail()).getByRole('button', { name: 'Open characters/rabbit.md in the reader' }));
+    await settle();
+    const [request] = readInRequests();
+    // The reply lands after the sheet opened on its loading state.
+    deliver(readInContent(String(request.requestId), 'One\nTwo\nThree\nFour\nFive', { lineRange: { start: 3, end: 4 } }));
+    await settle();
+
+    const rangeScrolls = calls.filter((call) => call.line !== undefined);
+    expect(rangeScrolls).toEqual([{ line: '3', hidden: false }]);
+    expect(within(screen.getByRole('dialog')).getByRole('tab', { name: 'Source' }).getAttribute('aria-selected')).toBe('true');
+  });
+
   it('offers no "Show where it was read" for a row that recorded no card', () => {
     render(<WorkshopApp />);
     deliver(withCard([resourceRow('characters/rabbit.md', 1_000)]));

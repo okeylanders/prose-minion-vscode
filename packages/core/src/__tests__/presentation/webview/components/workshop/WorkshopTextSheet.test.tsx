@@ -346,6 +346,20 @@ describe('WorkshopTextSheet — the reader\'s provenance (Wayfinding Slice 3)', 
     expect((scrollIntoView.mock.contexts[0] as HTMLElement).dataset.line).toBe('3');
   });
 
+  it('scrolls once the lines are on screen, not while the body is still loading, and only once', () => {
+    const { rerender, props } = renderSheet({ mode: readInMode, value: undefined, loading: true });
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    rerender(<WorkshopTextSheet {...props} value={RABBIT} loading={false} lineRange={{ start: 3, end: 4 }} />);
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect((scrollIntoView.mock.contexts[0] as HTMLElement).closest('[hidden]')).toBeNull();
+
+    // Back and forth between tabs keeps the writer's own scroll position.
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }));
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
   it('leaves the marker out when the text no longer reaches the last line read', () => {
     renderSheet({ mode: readInMode, value: 'One line now.', lineRange: { start: 1, end: 64 } });
 

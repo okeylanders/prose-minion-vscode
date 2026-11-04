@@ -364,6 +364,7 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
           {linesView && readIn && lineRange && value !== undefined ? (
             <WorkshopReadInLines
               ref={linesRef}
+              visible={tab === 'edit'}
               text={value}
               lineRange={lineRange}
               participantLabel={readIn.participantLabel}

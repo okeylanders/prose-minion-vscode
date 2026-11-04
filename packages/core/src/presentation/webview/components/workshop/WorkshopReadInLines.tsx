@@ -3,8 +3,10 @@
  * `docs/design/workshop-wayfinding/Reader.dc.html`).
  *
  * The lines a participant read carry a left accent bar, and a marker follows
- * the last of them: "End of Jill's read · line 64". It opens scrolled to the
- * first line read. The text is the file as it is now: when the file has
+ * the last of them: "End of Jill's read · line 64". It scrolls to the first
+ * line read the first time its pane is visible: an element in a `hidden`
+ * pane has no scroll position, and the host's reply can land before the
+ * sheet switches to the Source tab (PR #187 N-01). The text is the file as it is now: when the file has
  * changed, the band marks line numbers, which is all the record holds, and
  * the sheet's banner says so. A marker for a line the text no longer reaches
  * (the file shrank, or the view stopped at its byte ceiling) is left out
@@ -21,6 +23,8 @@ export interface WorkshopReadInLinesProps {
   participantLabel: string;
   /** Names the region: the file's path. */
   label: string;
+  /** True while the pane holding the lines is shown. */
+  visible: boolean;
 }
 
 /** The ref is the scrolling region, so a tab switch can move focus to it. */
@@ -28,18 +32,26 @@ export const WorkshopReadInLines = React.forwardRef<HTMLDivElement, WorkshopRead
   text,
   lineRange,
   participantLabel,
-  label
+  label,
+  visible
 }, ref) => {
   const lines = React.useMemo(() => text.split(/\r?\n/), [text]);
   const startRef = React.useRef<HTMLLIElement>(null);
+  // The range start already scrolled to, so returning to the tab keeps the
+  // writer's own scroll position.
+  const scrolledTo = React.useRef<number | null>(null);
 
-  const scrollToRangeStart = React.useCallback(() => {
+  const scrollToRangeStartWhenVisible = React.useCallback(() => {
+    if (!visible || scrolledTo.current === lineRange.start) {
+      return;
+    }
+    scrolledTo.current = lineRange.start;
     startRef.current?.scrollIntoView?.({ block: 'start' });
-  }, []);
+  }, [lineRange.start, visible]);
 
   React.useEffect(() => {
-    scrollToRangeStart();
-  }, [scrollToRangeStart]);
+    scrollToRangeStartWhenVisible();
+  }, [scrollToRangeStartWhenVisible]);
 
   const marker = `End of ${participantLabel}'s read · line ${lineRange.end}`;
   return (
