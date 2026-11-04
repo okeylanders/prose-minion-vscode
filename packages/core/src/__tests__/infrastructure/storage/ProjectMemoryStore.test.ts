@@ -56,7 +56,7 @@ describe('where memory is kept', () => {
 describe('the folder, read whole', () => {
   it('a folder that is not there holds nothing; one that cannot be read is unknown, never empty', async () => {
     const { fileSystem, store, lines } = host();
-    expect(await store.list()).toEqual({ kind: 'listed', memories: [], unreadable: [], conflicts: [], busy: [] });
+    expect(await store.list()).toEqual({ kind: 'listed', memories: [], unreadable: [], conflicts: [] });
     fileSystem.files.set(path.join(MEMORY, 'x.md'), new Uint8Array());
     jest.spyOn(fileSystem, 'readDirectory').mockRejectedValue(new Error('EACCES: permission denied'));
     expect(await store.list()).toEqual({ kind: 'unknown' });
@@ -78,7 +78,7 @@ describe('the folder, read whole', () => {
     ]);
 
     const listing = await store.list();
-    expect(listing).toEqual({ kind: 'listed', memories: [entry], unreadable: [], conflicts: [], busy: [] });
+    expect(listing).toEqual({ kind: 'listed', memories: [entry], unreadable: [], conflicts: [] });
   });
 
   it('names every file that does not read, with its reason, and never fails the folder over one', async () => {
@@ -104,8 +104,7 @@ describe('the folder, read whole', () => {
         { fileName: 'd-not-text.md', reason: 'not-text' }
       ],
       // A copied file: both copies listed together, neither a memory.
-      conflicts: [{ id: 'mem-0d0d0d', fileNames: ['e-copy.md', 'f-copy-again.md'] }],
-      busy: []
+      conflicts: [{ id: 'mem-0d0d0d', fileNames: ['e-copy.md', 'f-copy-again.md'] }]
     });
     // Neither copy is read, rewritten or deleted, and no new memory takes the id.
     expect(await store.read('mem-0d0d0d')).toEqual({ kind: 'conflict' });
@@ -301,7 +300,7 @@ describe('claims another window left', () => {
     const entry = await createdEntry(store);
     await fileSystem.rename(path.join(MEMORY, entry.fileName), claimOf(entry.fileName, clock.at - STORED_FILE_CLAIM_LEASE_MS - 1, 'gone1'));
 
-    expect(await store.list()).toEqual({ kind: 'listed', memories: [entry], unreadable: [], conflicts: [], busy: [] });
+    expect(await store.list()).toEqual({ kind: 'listed', memories: [entry], unreadable: [], conflicts: [] });
     expect(everyFile(fileSystem)).toEqual([entry.fileName]);
     // Never named by its file name, whose slug is the title's.
     expect(lines).toContain('[ProjectMemoryStore] Put back a memory file, left mid-rewrite.');
@@ -314,7 +313,7 @@ describe('claims another window left', () => {
     const claim = claimOf(entry.fileName, clock.at, 'live1');
     await fileSystem.rename(path.join(MEMORY, entry.fileName), claim);
 
-    expect(await store.list()).toEqual({ kind: 'listed', memories: [], unreadable: [], conflicts: [], busy: [{ fileName: entry.fileName, id: entry.memory.id }] });
+    expect(await store.list()).toEqual({ kind: 'listed', memories: [{ ...entry, busy: true }], unreadable: [], conflicts: [] });
     expect(await store.read(entry.memory.id)).toEqual({ kind: 'busy' });
     expect(await store.replace(entry.memory.id, (memory) => ({ ...memory, pinned: true }))).toEqual({ kind: 'busy' });
     expect(await store.delete(entry.memory.id)).toEqual({ kind: 'busy' });
@@ -459,7 +458,27 @@ describe('a saved memory is always one the folder reads (PR #194 F-05)', () => {
       supersedes: Array.from({ length: 8 }, (_, index) => `mem-00000${index}`)
     };
     const entry = await createdEntry(store, draft);
-    expect(await store.list()).toEqual({ kind: 'listed', memories: [entry], unreadable: [], conflicts: [], busy: [] });
+    expect(await store.list()).toEqual({ kind: 'listed', memories: [entry], unreadable: [], conflicts: [] });
     expect(entry.memory).toMatchObject({ title: draft.title, body: draft.body, sourceTurns: draft.sourceTurns });
+  });
+});
+
+describe('a memory another window holds stays listed (PR #194 N-02)', () => {
+  it('is listed from its claim\'s bytes, marked busy, while a read of it is busy', async () => {
+    const { fileSystem, store, clock } = host();
+    const entry = await createdEntry(store);
+    await fileSystem.rename(path.join(MEMORY, entry.fileName), claimOf(entry.fileName, clock.at, 'live1'));
+
+    const listing = await store.list();
+    expect(listing).toEqual({ kind: 'listed', memories: [{ ...entry, busy: true }], unreadable: [], conflicts: [] });
+    expect(await store.read(entry.memory.id)).toEqual({ kind: 'busy' });
+  });
+
+  it('a claim whose bytes do not read is an unreadable row under its saved name', async () => {
+    const { fileSystem, store, clock } = host();
+    fileSystem.files.set(claimOf('half-typed.md', clock.at, 'live1'), new TextEncoder().encode('Not a memory yet.'));
+    expect(await store.list()).toEqual({
+      kind: 'listed', memories: [], unreadable: [{ fileName: 'half-typed.md', reason: 'no-frontmatter' }], conflicts: []
+    });
   });
 });

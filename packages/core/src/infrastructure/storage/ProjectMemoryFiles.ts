@@ -19,8 +19,10 @@
  *   together, neither is read as a memory. Unreadable and conflicting files
  *   are never rewritten or deleted. Not recursive.
  * - **Held files.** A file a live claim holds (another window rewriting or
- *   deleting it) is not standing; its claim is read, so the listing can say
- *   which memory is busy.
+ *   deleting it) is not standing; its claim's bytes are read, so the memory
+ *   stays listed, marked busy (PR #194 N-02: a memory never seems to vanish
+ *   during another window's few-millisecond rewrite). A claim whose bytes
+ *   do not read is an unreadable row under its saved name.
  * - **Logs** never name a file (`projectMemoryLogName`): its slug is the
  *   writer's text, and identity is never read from a name. The store's own
  *   lines name memories by id.
@@ -76,19 +78,13 @@ export interface ProjectMemoryConflict {
   readonly fileNames: readonly string[];
 }
 
-/** A memory another window holds under a live claim now. */
-export interface ProjectMemoryHeldFile {
-  readonly fileName: string;
-  /** The id the claimed file holds, when it reads. */
-  readonly id?: string;
-}
-
 export type ProjectMemoryFolderRead =
   | {
     kind: 'read';
     files: ProjectMemoryFile[];
     unreadable: ProjectMemoryUnreadableFile[];
-    held: ProjectMemoryHeldFile[];
+    /** Memories another window holds under a live claim now, read from the claim's bytes, by their saved names. */
+    held: ProjectMemoryFile[];
     /** Whether the folder holds claims at all, so the store settles them and reads again. */
     claimed: boolean;
     /** Whether a listed file was gone when it was read (another window moved it): the store reads again. */
@@ -98,7 +94,7 @@ export type ProjectMemoryFolderRead =
   }
   | { kind: 'unknown' };
 
-/** Read every memory file of `folder`, each decoded; files sorted by name. */
+/** Read every memory file of `folder`, and every claim standing in for one, each decoded; sorted by name. */
 export async function readProjectMemoryFolder(fileSystem: FileSystem, folder: string): Promise<ProjectMemoryFolderRead> {
   let entries: Array<[string, FileType]>;
   try {
@@ -111,40 +107,39 @@ export async function readProjectMemoryFolder(fileSystem: FileSystem, folder: st
   const names = entries.map(([name]) => name);
   const memoryNames = entries
     .filter(([name, type]) => type === FileType.File && isMemoryFileName(name))
-    .map(([name]) => name)
-    .sort();
-  const read = await Promise.all(memoryNames.map((fileName) => readOne(fileSystem, path.join(folder, fileName), fileName)));
-  const counts = new Map<string, number>();
-  for (const result of read) {
-    if ('memory' in result) {
-      counts.set(result.memory.id, (counts.get(result.memory.id) ?? 0) + 1);
-    }
-  }
-  const moved = read.some((result) => 'vanished' in result);
-  const files: ProjectMemoryFile[] = [];
-  const unreadable: ProjectMemoryUnreadableFile[] = [];
-  for (const result of read) {
-    if (!('memory' in result)) {
-      unreadable.push('key' in result && result.key ? { fileName: result.fileName, reason: result.reason, key: result.key } : { fileName: result.fileName, reason: result.reason });
-    } else if ((counts.get(result.memory.id) ?? 0) <= 1) {
-      files.push(result);
-    }
-  }
+    .map(([name]) => name);
   const claims = names.flatMap((name) => {
     const saved = PROJECT_MEMORY_CLAIM.exec(name)?.[1];
     return saved ? [{ claim: name, saved }] : [];
   });
-  const held: ProjectMemoryHeldFile[] = [];
-  for (const { claim, saved } of claims) {
-    if (names.includes(saved) || held.some((entry) => entry.fileName === saved)) {
-      continue;
+  // A claim whose saved name stands empty holds the memory now (another window's rewrite or delete): read its bytes.
+  const heldClaims = claims.filter(({ saved }, index) => !names.includes(saved) && claims.findIndex((other) => other.saved === saved) === index);
+  const standing = await Promise.all(memoryNames.map((fileName) => readOne(fileSystem, path.join(folder, fileName), fileName)));
+  const claimed = await Promise.all(heldClaims.map(({ claim, saved }) => readOne(fileSystem, path.join(folder, claim), saved)));
+  const read = [...standing.map((result) => ({ result, busy: false })), ...claimed.map((result) => ({ result, busy: true }))]
+    .sort((left, right) => (left.result.fileName < right.result.fileName ? -1 : left.result.fileName > right.result.fileName ? 1 : 0));
+  const counts = new Map<string, number>();
+  for (const { result } of read) {
+    if ('memory' in result) {
+      counts.set(result.memory.id, (counts.get(result.memory.id) ?? 0) + 1);
     }
-    const claimed = await readOne(fileSystem, path.join(folder, claim), saved);
-    held.push('memory' in claimed ? { fileName: saved, id: claimed.memory.id } : { fileName: saved });
+  }
+  const moved = read.some(({ result }) => 'vanished' in result);
+  const files: ProjectMemoryFile[] = [];
+  const held: ProjectMemoryFile[] = [];
+  const unreadable: ProjectMemoryUnreadableFile[] = [];
+  for (const { result, busy } of read) {
+    if (!('memory' in result)) {
+      if (!('vanished' in result) || !busy) {
+        unreadable.push('key' in result && result.key ? { fileName: result.fileName, reason: result.reason, key: result.key } : { fileName: result.fileName, reason: result.reason });
+      }
+    } else if ((counts.get(result.memory.id) ?? 0) <= 1) {
+      (busy ? held : files).push(result);
+    }
   }
   const conflicts = [...counts].filter(([, count]) => count > 1).map(([id]) => id).sort().map((id) => ({
     id,
-    fileNames: read.flatMap((result) => ('memory' in result && result.memory.id === id ? [result.fileName] : []))
+    fileNames: read.flatMap(({ result }) => ('memory' in result && result.memory.id === id ? [result.fileName] : []))
   }));
   return { kind: 'read', files, unreadable, held, claimed: claims.length > 0, moved, conflicts };
 }

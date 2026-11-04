@@ -158,7 +158,7 @@ describe('a delete racing a rewrite', () => {
 
     expect(await pinning).toEqual({ kind: 'missing' });
     expect(everyFile(fileSystem)).toEqual([]);
-    expect(await mine.store.list()).toEqual({ kind: 'listed', memories: [], unreadable: [], conflicts: [], busy: [] });
+    expect(await mine.store.list()).toEqual({ kind: 'listed', memories: [], unreadable: [], conflicts: [] });
   });
 
   it('a rewrite queued after a delete in the same window finds the memory missing', async () => {

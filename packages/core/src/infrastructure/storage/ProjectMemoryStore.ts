@@ -141,10 +141,12 @@ export class ProjectMemoryStore {
       }
       return {
         kind: 'listed',
-        memories: read.files.map(({ fileName, memory }) => ({ fileName, memory })),
+        memories: [
+          ...read.files.map(({ fileName, memory }) => ({ fileName, memory })),
+          ...read.held.map(({ fileName, memory }) => ({ fileName, memory, busy: true as const }))
+        ].sort((left, right) => (left.fileName < right.fileName ? -1 : left.fileName > right.fileName ? 1 : 0)),
         unreadable: read.unreadable,
-        conflicts: read.conflicts,
-        busy: read.held
+        conflicts: read.conflicts
       };
     });
   }
@@ -175,7 +177,7 @@ export class ProjectMemoryStore {
         this.log.appendLine(`${LOG} The memory folder could not be read; nothing was saved.`);
         return { kind: 'failed' };
       }
-      const taken = new Set([...read.files.map((file) => file.memory.id), ...read.held.flatMap((held) => (held.id ? [held.id] : [])), ...read.conflicts.map((conflict) => conflict.id)]);
+      const taken = new Set([...read.files.map((file) => file.memory.id), ...read.held.map((held) => held.memory.id), ...read.conflicts.map((conflict) => conflict.id)]);
       for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
         const id = this.freshId(taken);
         if (!id) {
@@ -320,7 +322,7 @@ export class ProjectMemoryStore {
     if (read.conflicts.some((conflict) => conflict.id === id)) {
       return { kind: 'conflict' };
     }
-    return { kind: read.held.some((held) => held.id === id) ? 'busy' : 'missing' };
+    return { kind: read.held.some((held) => held.memory.id === id) ? 'busy' : 'missing' };
   }
 
   /**

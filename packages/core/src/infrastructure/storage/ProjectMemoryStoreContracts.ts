@@ -6,7 +6,7 @@
 
 import type { ProjectMemory } from '@shared/types/projectMemory';
 import type { ProjectMemoryKey, ProjectMemoryWriteFault } from '@/infrastructure/storage/ProjectMemoryCodec';
-import type { ProjectMemoryConflict, ProjectMemoryHeldFile, ProjectMemoryUnreadableFile } from '@/infrastructure/storage/ProjectMemoryFiles';
+import type { ProjectMemoryConflict, ProjectMemoryUnreadableFile } from '@/infrastructure/storage/ProjectMemoryFiles';
 
 export type ProjectMemoryUnavailableReason = 'no-workspace' | 'multi-root';
 
@@ -19,19 +19,23 @@ export type ProjectMemoryAvailability =
 export interface ProjectMemoryEntry {
   readonly fileName: string;
   readonly memory: ProjectMemory;
+  /**
+   * Another window holds its file under a live claim now (PR #194 N-02):
+   * listed from the claim's bytes, so it never seems to vanish, while a
+   * read, a rewrite or a delete of it answers busy.
+   */
+  readonly busy?: true;
 }
 
 export type ProjectMemoryListing =
   | {
     kind: 'listed';
-    /** Every memory that reads, sorted by file name. */
+    /** Every memory that reads, sorted by file name; one another window holds now is marked `busy`. */
     memories: ProjectMemoryEntry[];
     /** Every file that does not, with its reason; never rewritten or deleted. */
     unreadable: ProjectMemoryUnreadableFile[];
     /** Ids more than one readable file holds; none of those files is a memory here, and none is rewritten or deleted. */
     conflicts: ProjectMemoryConflict[];
-    /** Files another window holds under a live claim now. */
-    busy: ProjectMemoryHeldFile[];
   }
   /** Memory is off: no folder, or several (memory has no session-only mode). */
   | { kind: 'unavailable'; reason: ProjectMemoryUnavailableReason }
