@@ -1,5 +1,16 @@
 # PR #195 review: Workshop Wayfinding Slice 7b
 
+## Latest implementation verdict (2026-11-04)
+
+**APPROVE from code review; no blocking implementation finding.** This written
+recommendation applies to `3e0b172eca60dffda028d0e6ffb770c911838702` against
+`6c12df5bece661912504ae5125928cf9afc904d0`. It is not a GitHub approval submission
+or merge authorization. CI is still running, and the in-editor visual and
+accessibility pass remains Slice 8 work.
+
+The implementation review and its verification limits are recorded below.
+The earlier plan review and author response are retained as history.
+
 ## Review target and verdict
 
 - PR: https://github.com/okeylanders/prose-minion-vscode/pull/195
@@ -195,3 +206,115 @@ are in the slice doc's Built section.
   It also caught the icon shrinking to 0px, now fixed with
   `flex-shrink: 0` and pinned. The real check in the editor's webview remains
   in Slice 8's live pass.
+
+## Implementation review at 3e0b172e
+
+### Target and result
+
+- Reviewed head: `3e0b172eca60dffda028d0e6ffb770c911838702`.
+- Base: `6c12df5bece661912504ae5125928cf9afc904d0`.
+- Initial implementation/probe target:
+  `b53b6a3c301d9a6d3f15cdc3767be01cd57bd234`.
+- Verified the complete delta from the probe target to the reviewed head:
+  documentation plus two metadata-preservation tests only, with **no production
+  code change**.
+- **Result: approve from code review.** No actionable implementation defect was
+  found. No formal GitHub approval was submitted and nothing was merged.
+
+### Findings and watchpoint disposition
+
+- **N-01 resolved.** The ADR now states the nonempty-served-list condition and
+  excludes a served list containing the requested model from `via`. The
+  mixed-served wording agrees with the slice table.
+- **W-01 resolved.** Both export event branches format stamped dictionary and
+  persona-analysis cards. Their projected event text stays unchanged; capability
+  evidence remains absent from Markdown and HTML. The new parity fixture
+  includes both card families.
+- **W-02 resolved.** The real export service forwards its existing label port
+  as renderer options. Only rendering computes the per-turn label. The JSON
+  renderer ignores these options, and no new model field is introduced into
+  the single-turn projection.
+- **W-03 resolved within the tested paths.** React retains model strings as
+  text. HTML escapes the new text, Markdown escapes inline syntax, and the
+  shared helper collapses whitespace. Private labels, bookmarks, truncation
+  copy, usage markup, speaker text, and raw-ID tooltips are retained. The old
+  served-by block and helper are removed.
+- **W-04 resolved.** The rule keeps first occurrence order, deduplicates served
+  IDs, handles requested-first and requested-last mixtures without `via`, and
+  adds `via` only when no served ID matches the request. Blank/missing lookup
+  results fall back to the ID.
+- **W-05 remains the stated live gate, not a hidden pass.** The name remains
+  anonymous text in the no-wrap flex eyebrow; the model span alone receives
+  shrink/ellipsis styling, and the icon has `flex-shrink: 0`. All three new
+  rules are mirrored exactly. The author's 260px Chromium measurement is
+  documented as interim evidence, not as VS Code or screen-reader validation.
+  The reviewer could not independently execute browser layout in this
+  environment; see limits below.
+
+### Independent verification performed
+
+**Source identity.** Materialized the complete PR diff over the existing
+checkout at the exact base. Compared the Git blob SHA-1 of **all 21 changed
+files** with SHA-pinned GitHub file reads at `b53b6a3c`: all matched. Compared
+the subsequent two commits through `3e0b172e` and read their changed tests and
+documentation. No production code changed after the executable probes' target.
+
+**Production-source Node probe: 104 assertions passed, 89 actual source
+modules loaded.** TypeScript was transpiled without rewriting its behavior;
+React 18.3.1 and marked 16.4.1 were loaded from an existing bundle and match
+the repository lockfile. The probe exercised:
+
+- The production HTML renderer for all five rule rows, both mixed-served
+  orders, multiple different served models, duplicate IDs, and missing names.
+- Dictionary and analysis event labels, while withholding both capability
+  bodies.
+- The production export service's HTML, Markdown, and JSON writes through a
+  controlled file port, equal to each corresponding direct renderer.
+- Private-exchange text, bookmark and truncation markers, unchanged input
+  projection after rendering, JSON equality with and without display names,
+  and model exclusion from single-turn projection and turn previews.
+- The actual memoized React bubble function's returned header element tree:
+  the same model phrases, one model span per stamped bubble, no retired
+  under-body note, and raw requested IDs retained in tooltips. Its `useMemo`
+  callback was evaluated by a small probe dispatcher; this is **not** a
+  browser DOM, React lifecycle, or real-App integration test.
+- Hostile HTML/Markdown strings and line separators through the production
+  renderers; no executable HTML was introduced and a model could not create
+  another Markdown heading.
+- Exact equality of each newly mirrored CSS rule with its thread source.
+
+**Independent provenance probe: 26 assertions passed, 69 actual source
+modules loaded.** A separate review pass exercised the helper decision table,
+mixed-order/dedup/blank-label/whitespace cases, real projection and Markdown
+reply/card output, recall exclusion, JSON stability, input immutability, and
+hostile IDs. It found no additional issue.
+
+**Static checks.** Read every changed production module and the new/updated
+test paths, including real-App headers, real-App/export parity, formatter
+readers, output safety, and the later ancillary-metadata tests. The unchanged
+recall pin and model-slice derivation were preserved. A source scan found no
+runtime `vscode` imports in core. The helper (55 lines) and export adapter
+(36 lines) preserve the shared/presentation/application boundaries. The large
+bubble shrinks overall; the existing oversized HTML CSS mirror grows only by
+the new rules.
+
+### Verification limits and outstanding gates
+
+- **No independent full Jest, TypeScript, or ESLint run is claimed.** This
+  executor's dependency links target an unavailable shared checkout. The
+  source-level and focused executable probes above are not a replacement for
+  the aggregate checks.
+- The author records **641 suites / 9,011 tests / 59 snapshots**, clean
+  typecheck, and zero lint errors at the later head. These are author-reported
+  results, not counts produced by this review. The PR description still
+  records the earlier 9,009-test run at `b53b6a3c`; the two added tests explain
+  the difference.
+- The independent Chromium attempt failed **before page execution** because
+  the executor disallows `socket()`; an escalation did not change that.
+  Therefore no independent browser/layout/accessibility pass is claimed.
+- CI for reviewed head `3e0b172e` was **in progress**, not green, when checked:
+  https://github.com/okeylanders/prose-minion-vscode/actions/runs/41867666324.
+  Check the final current branch head's CI before merging.
+- Keep Slice 8's actual VS Code webview check for narrow-column truncation,
+  full participant name, model hierarchy/contrast, tooltip, and accessible
+  reading. This recommendation does not mark the epic's live pass complete.
