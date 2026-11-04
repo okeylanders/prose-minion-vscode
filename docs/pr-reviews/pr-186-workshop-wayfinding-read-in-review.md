@@ -238,3 +238,18 @@ Nothing above this section was edited.
 - `npm run typecheck`: clean.
 - `npm run lint`: 0 errors, 1,136 warnings, unchanged.
 - `git diff --check`: clean. The architecture tests pass, including the Chromium 114 CSS floor.
+
+
+## Independent re-review of `d6630b3` (2026-11-04)
+
+**Disposition: N-03's manual-traversal defects are removed; no new actionable defect found in this correction.** F-01 and F-02 remain resolved. This is a branch report, not a formal GitHub approval or authorization to merge.
+
+The correction removes the scripted Tab enumeration and instead makes the Workshop header, split and banners inert while a text sheet is open; the sheet is outside those inert regions. This leaves native navigation to handle summary, inherited disabled state and other native controls rather than reproducing that algorithm. The shared `FullTabShell` behavior is opt-in, so Lightbox's default markup remains unchanged. Inert removes the background from interaction but this review does not claim it enforces a strict wrap or prevents access to browser chrome.
+
+**Independent checks:**
+
+- **6 production suites / 68 tests** and **12 separate App controls** pass for reader lifetime, summary/fieldset DOM, inert boundaries, source/preview, authoring drafts, room replacement and Escape/focus bookkeeping. Webview typecheck and whitespace check pass.
+- A second access/overlay pass ran **9 suites / 103 tests**, including Lightbox, shell and correlation checks. Two additional App probes confirmed the inert regions and the existing delayed-startup-notice overlap: Escape closes the notice, returns to the reader while the frame stays inert, and closing the reader removes inert and restores the opener in the tested DOM. These groups overlap and should not be added together.
+- Native Chromium could not start in the review environment because its process-singleton socket was denied. jsdom does not enforce inert or perform native Tab traversal; real browser focus restoration, summary/fieldset traversal, VS Code editor-column behavior and screen-reader acceptance remain unverified. The existing Slice 8 live pass remains necessary.
+
+[CI run 41749526198](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41749526198) passed on synthetic merge `a23d36a2` of `d6630b3` into `07d24e7`: **606 suites / 8,610 tests / 59 snapshots**, typecheck, lint and both builds. The full local suite was not rerun independently. No implementation change, formal approval, merge or paid provider call was made during this re-review.
