@@ -181,3 +181,16 @@ Nothing above this section was edited.
 - `npm run typecheck`: clean.
 - `npm run lint`: 0 errors, 1,136 warnings, unchanged.
 - `git diff --check`: clean.
+
+
+## Re-review of `28b873c` (2026-11-04)
+
+The original N-01 witness is fixed: the previously uncancelled Shift+Tab is now prevented. The updated witness and **10 independent controls** pass, including positive-index ordering/ties, hidden and disabled exclusions, ordinary reader controls and authoring Preview/Apply. **4 production suites / 54 tests** and webview typecheck pass. F-01/F-02's reader correctness fixes are unchanged. Native Chromium Tab traversal was not exercised; the following residual note is grounded in the production App's DOM and key-event behavior.
+
+### N-02: Background positive tabindex can interleave with the modal's local order (P3)
+
+The trap sorts its own controls but intercepts only the local first/last boundary. A positive-tabindex control outside the modal can fall between two of its controls in the browser's document-wide order. In an independent full-App probe, a rendered transcript link outside the reader has `tabindex="2"`; the reader Preview contains a link with `tabindex="1"`. Both survive sanitization, the outside link has no inert ancestor and can be focused, and Tab on the focused reader link is **not prevented** because it is not the local last stop. Native sequential order places the outside positive-2 link after the reader positive-1 link and before the reader's ordinary zero-index controls. Thus local sorting alone does not fully establish focus containment. Actual native transition remains unverified due the review environment's Chromium socket restriction.
+
+Consider preventing and directing every Tab step within the computed local order, making the background inert while the sheet is open, or another solution that accounts for document-wide positive indices. A regression should cover an outside positive-index control interleaved with a reader control. This is a nonblocking focus-hardening note; it does not reopen the resolved stale-body findings.
+
+[CI run 41745159699](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41745159699) was in progress at report time. No implementation change, formal approval or merge was made during this re-review.
