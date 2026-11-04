@@ -25,6 +25,7 @@ import {
 } from '@messages';
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { WorkshopBookmarkToggle } from './WorkshopBookmarkToggle';
+import { WorkshopMemoryReceiptLine, WorkshopTurnMemoryCard, workshopSaveToMemoryAction, type WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
 import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks';
 import { workshopToolIcon } from './workshopToolIcons';
 import { WORKSHOP_WIDGET_ICONS } from './workshopWidgetIcons';
@@ -97,6 +98,8 @@ interface WorkshopTurnBubbleProps {
   onToggleBookmark?: (turnId: string, bookmarked: boolean) => void;
   /** A model's display name for the served-by note (ADR 2026-11-03 D8); the raw id when absent. */
   modelLabel?: (modelId: string) => string;
+  /** Project memory's card, receipts and Save to memory… (ADR 2026-11-04 D6, D7). */
+  memory?: WorkshopTurnMemoryControls;
 }
 
 /**
@@ -370,8 +373,10 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   bookmarked = false,
   bookmarkDisabled = false,
   onToggleBookmark,
-  modelLabel = workshopRawModelId
+  modelLabel = workshopRawModelId,
+  memory
 }) => {
+  const memoryAction = workshopSaveToMemoryAction(turn, memory);
   const modelText = workshopTurnModelLabel(turn.model, modelLabel);
   const bookmarkAction = onToggleBookmark && isWorkshopBookmarkableTurn(turn)
     ? (
@@ -480,6 +485,10 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
     );
   }
 
+  if (turn.projectMemoryReceipt) {
+    return <WorkshopMemoryReceiptLine turn={turn} controls={memory} />;
+  }
+
   if (
     turn.participant === 'session' ||
     turn.artifact === 'session_start' ||
@@ -545,9 +554,10 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
               </div>
             );
           })()}
-          {(bookmarkAction || rewindAction || branchAction) && (
+          {(bookmarkAction || memoryAction || rewindAction || branchAction) && (
             <div className="pm-ws-turn-actions pm-ws-turn-actions-writer">
               {bookmarkAction}
+              {memoryAction}
               {rewindAction}
               {branchAction}
             </div>
@@ -742,6 +752,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </div>
           </div>
         )}
+        {memory && <WorkshopTurnMemoryCard turn={turn} controls={memory} />}
         <div className="pm-ws-turn-actions">
           <button type="button" onClick={() => onCopy(turn.content, turn)}>
             <Icon name="copy" size={13} /> Copy
@@ -750,6 +761,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             <Icon name="save" size={13} /> Save to notes
           </button>
           {bookmarkAction}
+          {memoryAction}
           {canTalkDirectly && turn.toolId && (
             <button type="button" onClick={() => onTalkDirectly(turn.toolId!)}>
               <Icon name="dialogue" size={13} /> Talk directly to {turn.toolLabel}

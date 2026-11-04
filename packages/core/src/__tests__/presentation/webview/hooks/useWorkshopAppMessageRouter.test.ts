@@ -31,6 +31,11 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleSessionState: jest.fn(),
     handleTurnPreview: jest.fn()
   } as never,
+  projectMemory: {
+    handleWriteResult: jest.fn(),
+    handleEditData: jest.fn(),
+    handleEstimateResult: jest.fn()
+  },
   widgetHost: {
     handleWidgetConfigData: jest.fn(),
     handleWidgetConfigRestored: jest.fn(),
