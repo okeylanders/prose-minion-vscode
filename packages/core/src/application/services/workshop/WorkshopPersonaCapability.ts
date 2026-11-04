@@ -1,4 +1,5 @@
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
+import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
 import type { WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import {
   resolveWorkshopPersonaAnalysisInputs,
@@ -425,6 +426,11 @@ export class WorkshopPersonaCapability implements AgentCapability<
       default:
         return this.assertNever(request);
     }
+  }
+
+  /** The reply as a log may show it: every project-memory proposal replaced (ADR 2026-11-04 D9; PR #192 F-01). */
+  redactForLog(content: string): string {
+    return extractWorkshopReplyControls(content, { memoryOpen: false }).redacted;
   }
 
   inspectionLogContext(): string {

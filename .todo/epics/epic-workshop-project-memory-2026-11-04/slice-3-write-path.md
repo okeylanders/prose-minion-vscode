@@ -3,7 +3,7 @@
 **Epic:** [Workshop Project Memory](README.md)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D4 (writes, supersession), D5 (the pinned budget on edit), D6, D7, D8 (Ask first and the writer's own paths), D9, D10 (owed writes)
 **Branch:** `epic/workshop-project-memory-slice-3-write-path`, from Slice 2a's head (`7ec50ba4`)
-**Status:** Built, verified and pushed, except receipts in 2b's delivered-view fold (D7/D14), which waits on Slice 2b's branch. This doc is PR #196's version, with the progress below.
+**Status:** Built, verified and pushed, the fold with 2b's delivered view included (PR #200). This doc is PR #196's version, with the progress below.
 
 ## Outcome
 
@@ -177,8 +177,8 @@ production codec.
 - [x] Sessions without the new fields are unchanged on read and write.
 - [x] Owed writes drain at deactivation.
 - [x] The epic's per-slice verification passes, with counts recorded here.
-- [ ] Receipts join 2b's delivered-view fold, so a save in this room never
-      comes back as an update note: after Slice 2b merges in.
+- [x] Receipts join 2b's delivered-view fold, so a save in this room never
+      comes back as an update note.
 
 ## Built
 
@@ -284,11 +284,61 @@ production codec.
    list the new `projectMemory.ts` message module, which `boundaries.test.ts`
    requires. `AGENTS.md` is untouched.
 
-## Still to do (the fold, after 2b)
+## The fold (after 2b, PR #198 fixed and approved)
 
-Merge 2b's branch, add receipts to `ProjectMemoryDeliveredView`'s fold
-(each receipt's `{ memoryId, version }` applied to every conversation room
-delivery has handed its turn to), switch the receipt version to 2b's, and
-add the test that a participant the receipt hasn't reached yet gets the
-receipt and no note in the same delivery.
+Merged 2b's branch (`54297bd6`, implementation `29b41de1`) and 2a's head
+again (`a1ca49b3`).
 
+- **Where a receipt counts.** `projectMemoryDeliveredView(turns, participant,
+  { deliveredThroughTurnId })` counts a receipt only at or before the last
+  room turn this conversation has been, or is now being, handed:
+  `workshopRoomDeliveredThrough(prepared)` (this run's prepared catch-up, or
+  the reader's committed offset), carried on the persona capability's turn
+  context (`roomDeliveredThrough`) from the room handler and the tool
+  side-pass. So a receipt riding this message's catch-up is counted for this
+  message's note, and one guest's reading it never counts for another.
+- **What it does to the view.** Counted after the conversation's latest
+  snapshot, a receipt leaves the view at its memory's version; a Forget
+  removes the memory (the conversation was told it's gone). A snapshot
+  replaces the view and clears earlier receipts, and every new membership
+  records its own frame (PR #198 F-02), so a re-invited guest never inherits
+  receipts its earlier membership read. A receipt is its own turn, so a cut
+  that removes it removes its effect.
+- **Beside a digest** (PR #198 F-03, past 4,096 memories). A digest keeps
+  no versions, so a receipt can't update it; the view carries the receipts
+  beside it (`receipted`). When the current set, without the memories the
+  receipts told of at the versions they told, hashes to the digest, the
+  receipts explain every change and there is no note (a save in this room).
+  Anything else (an edit or a Forget past the bound, a change the receipts
+  don't cover, a memory that moved past its receipt) is 2b's count line
+  once, and its snapshot records a fresh digest. Nothing is hidden.
+- **The version** is 2b's `ProjectMemoryVersion`, read from the listing;
+  `ProjectMemoryReceiptVersion` is gone, and a test pins the receipt's
+  version to the listing's.
+- **Merge resolutions.** The library's write `update(id, patch)` is renamed
+  `edit`, since 2b's `update(view)` renders the update note.
+  `projectMemoryPinnedTokens` reads 2b's `projectMemoryPinnedLine`.
+- **One more redaction** (PR #192 F-01, "any rejected-response record").
+  With `debugLogging` on, the engine dumps a whole rejected capability
+  response; a persona reply holding a proposal would have put its text in
+  the log. `AgentCapability.redactForLog` (optional) lets the owning domain
+  redact it, and the Workshop persona capability returns the extractor's
+  redacted copy. (2a's #197 F-03, titles in the engine's manifest log, is a
+  different line and 2a's to fix.)
+
+**Fold tests** (`memory/ProjectMemoryReceiptFold.test.ts`, through the real
+capability, library, store, session and room delivery): a save in this room
+never comes back as a note; a receipt one guest has read is still owed to
+another, and reaches each once; it counts only once delivery reaches it; a
+Forget's receipt isn't repeated as `<gone>`; a re-invited guest starts from
+its own frame; Rewind and Branch (through the real coordinator) that cut a
+receipt cut its effect; the version equals the listing's; and a receipt
+beside a digest: a save explained, a save plus an edit, a memory moved past
+its receipt, an edit and a Forget, and the fold carrying receipts beside the
+digest. Removing the delivery point makes the three no-repeat tests fail.
+The engine's redacted dump: `AgentRunEngine.test.ts`; the persona
+capability's redaction: `WorkshopRunCompletionMemory.test.ts`.
+
+**Verification after the fold:** typecheck clean, lint 1,158 warnings, **664
+suites / 9,415 tests / 59 snapshots**, all passing. No `vscode` in core; no
+new file over 500 lines.

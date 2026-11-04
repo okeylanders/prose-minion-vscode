@@ -2,6 +2,7 @@ import {
   AgentRunEngine,
   AgentRunUnavailableError
 } from '@orchestration/AgentRunEngine';
+import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
 import { AgentCapability, CapabilityContextWindow } from '@orchestration/AgentRunContracts';
 import { measureContextWindow } from '@orchestration/RequestContextPreflight';
 import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
@@ -850,6 +851,33 @@ describe('AgentRunEngine', () => {
     expect(logs).toContain(invalid);
     expect(logs).toContain('END REJECTED CAPABILITY RESPONSE');
     expect(logs).not.toContain('PRIVATE PASSAGE');
+  });
+
+  it('dumps a rejected response through the capability\'s redaction, so no memory proposal reaches the log (ADR 2026-11-04 D9)', async () => {
+    const guides = { ...capability(), redactForLog: (content: string) => extractWorkshopReplyControls(content, { memoryOpen: false }).redacted };
+    const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    const debugSettings = { get: jest.fn().mockReturnValue(true) };
+    const diagnosticEngine = new AgentRunEngine(client as never, conversations, undefined, output, undefined, debugSettings as never);
+    const invalid = '<prose-minion-tool-call name="resource.read"><paths><path>outside-catalog.md</path></paths></prose-minion-tool-call>';
+    const trailer = '<prose-minion-memory-proposal><title>MEMORY-SENTINEL</title></prose-minion-memory-proposal>';
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce(stream([`${invalid}\n\n${trailer}`]))
+      .mockReturnValueOnce(stream(['Safe final prose.']));
+
+    try {
+      await diagnosticEngine.runInitial({
+        toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze this.',
+        policy: AGENT_RUN_POLICIES.assistant, capability: guides,
+        options: { onToken: jest.fn() }
+      });
+    } finally {
+      diagnosticEngine.dispose();
+    }
+
+    const logs = output.appendLine.mock.calls.flat().join('\n');
+    expect(logs).toContain('BEGIN REJECTED CAPABILITY RESPONSE');
+    expect(logs).toContain('[project memory proposal removed]');
+    expect(logs).not.toContain('MEMORY-SENTINEL');
   });
 
   it('withholds the full rejected-response dump by default and says how to enable it', async () => {

@@ -1083,7 +1083,7 @@ export class AgentRunEngine {
     this.outputChannel?.appendLine(
       `[AgentRunEngine] BEGIN REJECTED CAPABILITY RESPONSE (${content.length} chars; may contain quoted user text)`
     );
-    this.outputChannel?.appendLine(content);
+    this.outputChannel?.appendLine(capability.redactForLog ? capability.redactForLog(content) : content);
     this.outputChannel?.appendLine('[AgentRunEngine] END REJECTED CAPABILITY RESPONSE');
   }
 

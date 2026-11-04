@@ -9,6 +9,12 @@ import { workshopMemoryProposalPhrasingFault } from '@/application/services/work
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { sanitizeWorkshopReplyForRetention, WORKSHOP_MEMORY_ONLY_REPLY_LINE } from '@/utils/workshopReplyControls';
 import { memoryFrame, WIDGET } from '@/__tests__/application/services/workshop/memory/memoryProposalFixtures';
+import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
+import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
+import type { DictionaryService } from '@services/dictionary/DictionaryService';
+import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 
 /**
  * Run completion owns the reply's tail (ADR 2026-11-04 D6, D8, D9; PR #192
@@ -203,3 +209,26 @@ describe('completeWorkshopRun with a project-memory trailer', () => {
     });
   });
 });
+
+describe('the persona capability\'s log redaction (ADR 2026-11-04 D9)', () => {
+  it('replaces every proposal in what the engine\'s rejected-response dump logs', () => {
+    const session = new WorkshopSessionService(() => 1);
+    const capability = new WorkshopPersonaCapabilityFactory(
+      {} as DictionaryService,
+      {} as WorkshopAnalysisSidePass,
+      { createProvider: jest.fn() } as unknown as ContextResourceProviderFactory,
+      session,
+      { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
+      {} as WorkshopTranscriptRecallPort,
+      offProjectMemory
+    ).create({
+      requestId: 'r', excerptVersion: 0, personaId: 'jill', owner: { kind: 'host' },
+      signal: new AbortController().signal,
+      events: { status: jest.fn(), turnCompleted: jest.fn(), sessionChanged: jest.fn() }
+    });
+    const logged = capability.redactForLog(`Good.\n\n${sentinelFrame()}`);
+    expect(logged).toBe('Good.\n\n[project memory proposal removed]');
+    expect(logged).not.toContain(SENTINEL);
+  });
+});
+

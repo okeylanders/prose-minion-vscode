@@ -133,6 +133,12 @@ export interface AgentCapability<
   requestLogSummary(request: Request): string;
   /** Stable per-turn identifiers added to accept/reject logs when available. */
   inspectionLogContext?(): string;
+  /**
+   * A reply as diagnostics may show it: the owning domain removes what no log
+   * may hold (a Workshop project-memory proposal, ADR 2026-11-04 D9). The
+   * opt-in rejected-response dump logs this, never the raw reply.
+   */
+  redactForLog?(content: string): string;
   /** Optional visible provenance for structurally rejected requests. */
   handleInvalidRequest?(rejection: Rejection): readonly CapabilityArtifact[];
   /** Optional visible provenance when a valid request exceeds the round cap. */
