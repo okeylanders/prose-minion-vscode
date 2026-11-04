@@ -51,6 +51,13 @@ The same harness without the transient failure preserves both memories. An indep
 - Full local Jest and native/live-provider testing remain unavailable and are not claimed. CI totals are observed from the job logs.
 - This report's publication is report-only; the ensuing head has its own required CI.
 
+## Current resolution ledger
+
+| ID | Priority | Status |
+|---|---|---|
+| F-02 | P2 | Fixed in `3fc18e9`: a claim beside a standing memory is removed only when its bytes are that memory's earlier version (same id, both readable), by settling and by a delete's retirement alike (`StoredFileClaims` `leftovers` check, which only memory sets). Any other bytes are restored under a free ordinary name, or kept when they cannot be, whatever their age, and the listing shows them as a `set-aside` row until then. The review's EPERM steps are regressions: recovered by the same store, by another store, and never recovered (bytes survive and are shown, and a delete of the occupant fails rather than take them). Lightbox unchanged, its tests unedited. |
+| F-01, F-03, F-04, F-05, F-06, N-01, N-02 | | Closed at `eba4fc8b` (above). |
+
 ## Prior re-review at b8846c46 (history)
 
 The following section records the preceding review and the subsequent author's correction ledger. The current status above supersedes its open/closed wording.

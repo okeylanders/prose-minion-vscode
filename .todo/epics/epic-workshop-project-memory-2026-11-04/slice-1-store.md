@@ -7,7 +7,7 @@ amended (`774e283`) to the spec thread's early format and storage decisions,
 relayed by the coordinator on 2026-11-04. Where the two differ, the relay
 wins.
 **Branch:** `epic/workshop-project-memory-slice-1-store`
-**Status:** Built, verified and pushed. PR #194's findings are fixed through the re-review (F-02 continued, F-06); waiting on Astra's next pass and the ADR (#192).
+**Status:** Built, verified and pushed. PR #194's findings are fixed through the second re-review (F-02, transient release); waiting on Astra's next pass.
 
 ## Outcome
 
@@ -311,11 +311,20 @@ fixed, and found two more P2s, fixed the same way:
 | F-02 (re-review) | `0909c1c` | A refused delete's bytes go back under the saved name, else a free fallback name (`StoredFileDeleteCheck.fallbackPath`), as an ordinary file. Before, with the saved name taken, they stayed under the claim, and a lease-settling listing purged them as a rewrite's leftover |
 | F-06 | `daf4668` | A busy memory is read from the newest of its claims (by time, ties broken as recovery does), not the first directory entry, so overlapping rewrites never list a stale version. This also settles N-02's accuracy |
 
+The second re-review (`3b8f12be`) closed F-06 and narrowed F-02 to a
+release that fails transiently (EPERM from a locked file): the refused
+bytes stayed under a claim and a later settling purged them.
+
+| ID | Commit | Fix |
+|---|---|---|
+| F-02 (second re-review) | `3fc18e9` | `StoredFileClaims` takes an optional `leftovers` check, which memory sets and the Lightbox does not. A claim beside a standing file is removed, by settling or by a delete's retirement, only when its bytes are an earlier version of that file (same id, both readable). Other bytes are restored under a free ordinary name, or kept: never removed, whatever their age. Until then the listing shows a `set-aside` row. A distinct refused-claim name was not needed: the byte check closes the hole however the release failed |
+
 What changed in the contracts:
 - the store's `invalid` reason widens to `ProjectMemoryWriteFault`
   (`not-as-written`, `file-too-large`);
 - a delete may answer `changed`, and `deleteClaimed`'s check is
   `{ verify, fallbackPath }`;
+- a listing's unreadable rows may be `set-aside`;
 - `ProjectMemoryEntry.busy` replaces `ProjectMemoryListing.busy`.
 
 ## Known Limits
@@ -338,18 +347,18 @@ What changed in the contracts:
 |---|---|---|
 | `npm run typecheck` | clean | clean |
 | `npm run lint` | 0 errors | 0 errors, 1,153 warnings; none in a new or changed file (the one warning in the storage folder is `pathContainment.ts`'s, untouched) |
-| `npx jest` | 636 suites / 8,977 tests / 59 snapshots | 639 suites / 9,107 tests / 59 snapshots after the re-review fixes (+3 suites, +130 tests; 9,071 before the review, 9,100 after its first round) |
+| `npx jest` | 636 suites / 8,977 tests / 59 snapshots | 639 suites / 9,110 tests / 59 snapshots after the second re-review's fix (+3 suites, +133 tests; 9,071 before the review, 9,100 and 9,107 after its first two rounds) |
 | `from 'vscode'` in `packages/core/src` | none | none |
 
 **File sizes (lines).**
 
 | File | Lines |
 |---|---|
-| `infrastructure/storage/StoredFileClaims.ts` (new) | 355 |
+| `infrastructure/storage/StoredFileClaims.ts` (new) | 419 |
 | `infrastructure/storage/StoredFileRewrite.ts` (new) | 159 |
 | `infrastructure/storage/ProjectMemoryCodec.ts` (new) | 423 |
-| `infrastructure/storage/ProjectMemoryFiles.ts` (new) | 222 |
-| `infrastructure/storage/ProjectMemoryStore.ts` (new) | 443 |
+| `infrastructure/storage/ProjectMemoryFiles.ts` (new) | 239 |
+| `infrastructure/storage/ProjectMemoryStore.ts` (new) | 451 |
 | `infrastructure/storage/ProjectMemoryStoreContracts.ts` (new) | 109 |
 | `shared/types/projectMemory.ts` (new) | 148 |
 | `infrastructure/storage/fileSystemErrors.ts` | 5 → 20 |
@@ -358,7 +367,7 @@ What changed in the contracts:
 | `infrastructure/storage/LightboxBoardStore.ts` | 429 → 414 |
 | `infrastructure/storage/LightboxBoardNewFile.ts` | 91 → 92 |
 | `__tests__/infrastructure/storage/ProjectMemoryCodec.test.ts` | 302 |
-| `__tests__/infrastructure/storage/ProjectMemoryStore.test.ts` | 484 |
-| `__tests__/infrastructure/storage/ProjectMemoryStoreRaces.test.ts` | 373 |
+| `__tests__/infrastructure/storage/ProjectMemoryStore.test.ts` | 487 |
+| `__tests__/infrastructure/storage/ProjectMemoryStoreRaces.test.ts` | 443 |
 | `__tests__/infrastructure/storage/projectMemoryStoreHost.ts` | 73 |
 | `__tests__/architecture/boundaries.test.ts` | 2,418 → 2,436 (already past 500 before this slice; the guard adds 18) |
