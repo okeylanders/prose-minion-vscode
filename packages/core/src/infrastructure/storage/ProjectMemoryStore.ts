@@ -72,7 +72,7 @@ import type {
   ProjectMemoryStoreOptions,
   ProjectMemoryUpdate,
   ProjectMemoryWriteOptions,
-  ProjectMemoryDeleteOptions
+  ProjectMemoryTargetOptions
 } from '@/infrastructure/storage/ProjectMemoryStoreContracts';
 
 export * from '@/infrastructure/storage/ProjectMemoryStoreContracts';
@@ -231,11 +231,22 @@ export class ProjectMemoryStore {
    * changed, or undefined to leave it. Its id and creation time cannot
    * change; its `updated` time is the caller's to set.
    */
-  replace(id: string, update: ProjectMemoryUpdate, options: ProjectMemoryWriteOptions = {}): Promise<ProjectMemoryReplaceResult> {
+  replace(id: string, update: ProjectMemoryUpdate, options: ProjectMemoryTargetOptions = {}): Promise<ProjectMemoryReplaceResult> {
+    // The folder asked about is the one at the request, before the queue can wait (PR #202 F01).
+    const requested = this.availability();
+    const target = options.directory ?? (requested.available ? requested.directory : undefined);
+    const permitted = () => {
+      const now = this.availability();
+      return now.available && now.directory === target && (options.beforeCommit?.() ?? true);
+    };
     return this.owe(this.enqueue(async () => {
       const where = this.availability();
       if (!where.available) {
         return { kind: 'unavailable', reason: where.reason };
+      }
+      if (!permitted()) {
+        this.log.appendLine(`${LOG} ${id} was not rewritten: the workspace changed before its turn.`);
+        return { kind: 'withdrawn' };
       }
       for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
         const found = await this.find(where.directory, id);
@@ -266,7 +277,7 @@ export class ProjectMemoryStore {
           label: id,
           read: file.bytes,
           written: encoder.encode(text),
-          beforeCommit: options.beforeCommit,
+          beforeCommit: permitted,
           onCommitted: () => undefined,
           fallbackPath: async () => path.join(folder, await freeProjectMemoryFileName(this.fileSystem, folder, file.fileName))
         });
@@ -300,7 +311,7 @@ export class ProjectMemoryStore {
    * `beforeCommit` must allow it, else the file is put back (`withdrawn`,
    * PR #202 F01).
    */
-  delete(id: string, options: ProjectMemoryDeleteOptions = {}): Promise<ProjectMemoryDeleteResult> {
+  delete(id: string, options: ProjectMemoryTargetOptions = {}): Promise<ProjectMemoryDeleteResult> {
     // The folder asked about is the one at the request, before the queue can wait (PR #202 F01).
     const requested = this.availability();
     const target = options.directory ?? (requested.available ? requested.directory : undefined);

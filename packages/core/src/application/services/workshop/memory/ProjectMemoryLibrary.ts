@@ -66,9 +66,9 @@ import {
   type ProjectMemoryEstimateResult,
   type ProjectMemorySaveProvenance,
   type ProjectMemoryWriteResult,
-  type ProjectMemoryWorkspaceIdentity,
   type ProjectMemoryWriteStorePort
 } from '@/application/services/workshop/memory/ProjectMemoryWrites';
+import type { ProjectMemoryWorkspaceIdentity } from '@/application/services/workshop/memory/ProjectMemoryWorkspaceIdentity';
 import type { WorkshopMemoryDraft } from '@messages';
 import {
   ProjectMemoryManager,

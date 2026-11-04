@@ -100,11 +100,13 @@ export interface ProjectMemoryWriteOptions {
   beforeCommit?: () => boolean;
 }
 
-export interface ProjectMemoryDeleteOptions extends ProjectMemoryWriteOptions {
+/** A rewrite's or a delete's options: the commit point, and the folder it was asked for. */
+export interface ProjectMemoryTargetOptions extends ProjectMemoryWriteOptions {
   /**
    * The memory folder the writer asked about, captured at the request
-   * (PR #202 F01). Absent, the folder at the call. A delete whose turn comes
-   * under another folder is withdrawn, even if that folder holds the same id.
+   * (PR #202 F01). Absent, the folder at the call. A rewrite or delete whose
+   * turn comes under another folder is withdrawn, even if that folder holds
+   * the same id.
    */
   directory?: string;
 }

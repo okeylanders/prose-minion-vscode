@@ -39,6 +39,7 @@ import {
 } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
 import { projectMemoryPinnedTokens } from '@/application/services/workshop/memory/ProjectMemoryCatalogFrame';
 import { projectMemoryVersion } from '@/application/services/workshop/memory/ProjectMemoryVersion';
+import { askedProjectMemoryWorkspace, type ProjectMemoryWorkspaceIdentity } from '@/application/services/workshop/memory/ProjectMemoryWorkspaceIdentity';
 
 /** The store's methods the writes use; satisfied by ProjectMemoryStore. */
 export type ProjectMemoryWriteStorePort = Pick<ProjectMemoryStore, 'list' | 'read' | 'create' | 'replace' | 'delete' | 'shutDown'>;
@@ -103,16 +104,6 @@ export type ProjectMemoryEstimateResult =
   | { readonly kind: 'refused'; readonly reason: ProjectMemoryWriteRefusalReason };
 
 type Listed = { readonly kind: 'listed'; readonly memories: ProjectMemoryListed[] } | { readonly kind: 'refused'; readonly reason: ProjectMemoryWriteRefusalReason };
-
-/** Which accepted workspace a write was asked for: its live room and its memory folder. */
-export interface ProjectMemoryWorkspaceIdentity {
-  readonly room: string;
-  readonly directory: string;
-}
-
-function sameWorkspace(now: ProjectMemoryWorkspaceIdentity | undefined, asked: ProjectMemoryWorkspaceIdentity): boolean {
-  return now !== undefined && now.room === asked.room && now.directory === asked.directory;
-}
 
 const PINNED_BUDGET = PROMPT_BUDGETS.workshopProjectMemory.pinnedTokens;
 
@@ -242,10 +233,18 @@ export class ProjectMemoryWrites {
    * off is always allowed. `updated` doesn't move (D10).
    */
   setPinned(id: string, pinned: boolean): Promise<ProjectMemoryWriteResult> {
+    // Bound to the workspace it was asked in, before this queue or the store's can wait (PR #202 F01).
+    const { asked, still } = askedProjectMemoryWorkspace(this.workspaceIdentity);
     return this.owe('load-in-full', async () => {
+      if (!asked || !still()) {
+        return this.refused('load-in-full', this.workspaceReason() ?? 'workspace-changed', id);
+      }
       const listed = await this.listed();
       if (listed.kind === 'refused') {
         return listed;
+      }
+      if (!still()) {
+        return this.refused('load-in-full', this.workspaceReason() ?? 'workspace-changed', id);
       }
       const current = listed.memories.find(({ memory }) => memory.id === id);
       if (!current) {
@@ -257,7 +256,10 @@ export class ProjectMemoryWrites {
         return { kind: 'refused', reason: 'pinned-budget', budget };
       }
       const replaced = await this.store.replace(id, (memory) => memory.pinned === pinned ? undefined : { ...memory, pinned },
-        { beforeCommit: () => this.workspaceReason() === undefined });
+        { directory: asked.directory, beforeCommit: () => this.workspaceReason() === undefined && still() });
+      if (replaced.kind === 'withdrawn' && !still()) {
+        return this.refused('load-in-full', this.workspaceReason() ?? 'workspace-changed', id);
+      }
       return this.settled('load-in-full', id, replaced, false);
     });
   }
@@ -269,8 +271,7 @@ export class ProjectMemoryWrites {
    */
   remove(id: string): Promise<ProjectMemoryDeleteResult> {
     // The workspace the writer asked about, captured before this queue or the store's can wait (PR #202 F01).
-    const asked = this.workspaceIdentity();
-    const still = () => asked !== undefined && sameWorkspace(this.workspaceIdentity(), asked);
+    const { asked, still } = askedProjectMemoryWorkspace(this.workspaceIdentity);
     return this.owe('delete', async () => {
       const closed = this.workspaceReason() ?? (still() ? undefined : 'workspace-changed');
       if (closed || !asked) {

@@ -114,5 +114,56 @@ describe('Delete and the workspace at its commit point (PR #202 F01)', () => {
       expect(host.fileSystem.files.has(fileB)).toBe(true);
     });
   });
+
+  describe('Always load in full keeps the project it was asked for while it waits (PR #202 F01, third round)', () => {
+    const B_MEMORY = path.join('/project-b', 'prose-minion', 'memory');
+    function copied() {
+      const host = libraryHost();
+      const fileA = host.put(writerMemory({ id: 'mem-000001', title: 'Alice keeps the key' }), 'key-note.md');
+      const fileB = path.join(B_MEMORY, 'key-note.md');
+      const bytesA = host.fileSystem.files.get(fileA) as Uint8Array;
+      host.fileSystem.files.set(fileB, new TextEncoder().encode(new TextDecoder().decode(bytesA).replace('Alice keeps the key', 'The Hatter keeps the key')));
+      const bytesB = host.fileSystem.files.get(fileB) as Uint8Array;
+      const toB = () => { host.state.folders = [{ path: '/project-b', name: 'project-b' }]; };
+      const untouched = () => {
+        expect(host.fileSystem.files.get(fileA)).toEqual(bytesA);
+        expect(host.fileSystem.files.get(fileB)).toEqual(bytesB);
+      };
+      return { host, toB, untouched };
+    }
+
+    it('behind a held store list, a switch to B pins neither project’s note', async () => {
+      const { host, toB, untouched } = copied();
+      const hold = holdOnce(host.fileSystem as never, 'readDirectory', () => true);
+      const listing = host.store.list();
+      await hold.arrived;
+      const pinning = host.library.setLoadInFull('mem-000001', true);
+      toB();
+      hold.release();
+      await listing;
+
+      expect(await pinning).toEqual(expect.objectContaining({ kind: 'refused', reason: 'workspace-changed' }));
+      untouched();
+    });
+
+    it('behind another library write, a switch to B pins neither project’s note', async () => {
+      const { host, toB, untouched } = copied();
+      const hold = holdOnce(host.fileSystem as never, 'readDirectory', () => true);
+      const earlier = host.library.remove('mem-0000ff');
+      await hold.arrived;
+      const pinning = host.library.setLoadInFull('mem-000001', true);
+      toB();
+      hold.release();
+      await earlier;
+
+      expect(await pinning).toEqual(expect.objectContaining({ kind: 'refused', reason: 'workspace-changed' }));
+      untouched();
+    });
+
+    it('with no switch, it still pins A’s note', async () => {
+      const { host } = copied();
+      expect(await host.library.setLoadInFull('mem-000001', true)).toEqual(expect.objectContaining({ kind: 'written' }));
+    });
+  });
 });
 
