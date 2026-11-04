@@ -600,7 +600,7 @@ the ADR:
     No export rule moved to the mirrored layer, because the thread's mark is
     an action-row control that export never renders.
   - **PR #189 review (Astra, 2026-11-04).** Two P2s, both fixed in
-    `10e4f4b`. The ledger is in
+    `e944375`, and one P3, N-01, fixed in `c97d947`. The ledger is in
     [the review](../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md#author-response).
     - **F-01.** A rename refused under the session-operation gate lost the
       writer's draft, because the field closed as soon as it posted. A
@@ -611,8 +611,12 @@ the ADR:
       now names its `roomRevision`. The host waits out every pending
       replacement and refuses once the room is another, and the webview
       drops a reply from another room.
-    - *Counts.* At `10e4f4b`: 628 suites / 8,910 tests / 59 snapshots, all
-      passing. Typecheck clean. Lint 0 errors, 1,146 → 1,150 warnings, all
+    - **N-01 (P3).** The preview now names who heard a private exchange,
+      in the bubble's wording.
+    - *Counts.* At `e944375`: 628 suites / 8,910 tests / 59 snapshots, all
+      passing. At `c97d947`: 628 / 8,913 / 59; one Lightbox passages
+      wall-clock test failed under load in the full run and passed alone
+      ([tech debt](../../tech-debt/2026-11-03-lightbox-passages-wall-clock-test.md)). Typecheck clean. Lint 0 errors, 1,146 → 1,150 warnings, all
       `naming-convention`: one enum member, one `PmLogo` mock, and the jsdom
       text-encoding shim's two names.
     - *Sizes.* `WorkshopSessionService` 2,595 → 2,600 (`readRoomRevision`);
