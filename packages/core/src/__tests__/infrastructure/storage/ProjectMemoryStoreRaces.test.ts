@@ -18,9 +18,11 @@
  */
 import * as path from 'node:path';
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
+import type { ProjectMemoryStore } from '@/infrastructure/storage/ProjectMemoryStore';
 import { deferred } from '@/__tests__/application/handlers/domain/lightboxHandlerHarness';
 import {
   MEMORY,
+  claimOf,
   createdEntry,
   everyFile,
   memoryHost as host,
@@ -28,7 +30,7 @@ import {
 } from '@/__tests__/infrastructure/storage/projectMemoryStoreHost';
 
 /** Hold the first file operation `matches` picks until the gate opens; `reached` says it was reached. */
-function holdOnce<K extends 'rename' | 'writeFile' | 'readFile' | 'readDirectory'>(
+function holdOnce<K extends 'rename' | 'writeFile' | 'readFile' | 'readDirectory' | 'delete'>(
   fileSystem: MemoryFileSystem,
   method: K,
   matches: (firstPath: string) => boolean
@@ -216,6 +218,181 @@ describe('a delete deletes only the memory it was asked to (PR #194 F-02)', () =
 
     expect(await store.delete(entry.memory.id)).toEqual({ kind: 'deleted' });
     expect(everyFile(fileSystem)).toEqual([]);
+  });
+});
+
+describe('a refused delete never loses the bytes it claimed, even when its saved name is taken (PR #194 F-02, re-review)', () => {
+  /** The review's steps: `claimed` put at the path just before the claim, then `occupant` at the path just after it. */
+  function claimThenOccupy(fileSystem: MemoryFileSystem, filePath: string, claimed: Uint8Array, occupant: Uint8Array) {
+    const rename = fileSystem.rename.bind(fileSystem);
+    jest.spyOn(fileSystem, 'rename').mockImplementation(async (fromPath, toPath, options) => {
+      const claiming = fromPath === filePath && toPath.includes('.claim-');
+      if (claiming) {
+        fileSystem.files.set(filePath, claimed);
+      }
+      await rename(fromPath, toPath, options);
+      if (claiming) {
+        fileSystem.files.set(filePath, occupant);
+      }
+    });
+  }
+  const withId = (bytes: Uint8Array | undefined, id: string) => new TextEncoder().encode(text(bytes).replace(/^id: .*$/m, `id: ${id}`));
+
+  it('another memory it claimed lands under a free name, and a lease-settling listing 31 seconds on keeps both', async () => {
+    const { fileSystem, store, clock } = host();
+    const entry = await createdEntry(store);
+    const filePath = path.join(MEMORY, entry.fileName);
+    const original = fileSystem.files.get(filePath);
+    claimThenOccupy(fileSystem, filePath, withId(original, 'mem-abcdef'), withId(original, 'mem-fedcba'));
+
+    expect(await store.delete(entry.memory.id)).toEqual({ kind: 'changed' });
+    clock.at += 31_000;
+    const listing = await store.list();
+    expect(listing.kind === 'listed' && listing.memories.map((memory) => memory.memory.id).sort()).toEqual(['mem-abcdef', 'mem-fedcba']);
+    expect(everyFile(fileSystem).filter((name) => name.includes('.claim-'))).toEqual([]);
+  });
+
+  it('unreadable bytes it claimed land under a free name, and survive a lease-settling listing beside the occupant', async () => {
+    const { fileSystem, store, clock } = host();
+    const entry = await createdEntry(store);
+    const filePath = path.join(MEMORY, entry.fileName);
+    const original = fileSystem.files.get(filePath);
+    claimThenOccupy(fileSystem, filePath, new TextEncoder().encode('A note the writer half-typed.'), withId(original, 'mem-fedcba'));
+
+    expect(await store.delete(entry.memory.id)).toEqual({ kind: 'changed' });
+    clock.at += 31_000;
+    const listing = await store.list();
+    expect(listing).toMatchObject({
+      kind: 'listed',
+      memories: [{ memory: { id: 'mem-fedcba' } }],
+      unreadable: [{ reason: 'no-frontmatter' }]
+    });
+    expect([...fileSystem.files.values()].map((bytes) => text(bytes))).toContain('A note the writer half-typed.');
+  });
+});
+
+describe('refused bytes a release could not move are never purged as a leftover (PR #194 F-02, second re-review)', () => {
+  /**
+   * The review's steps: `mem-abcdef` put at the path before the claim, `mem-fedcba` at it after,
+   * and every move out of a claim failing with EPERM while `lock.held` (a file briefly locked).
+   */
+  async function refusedWhileLocked(lock: { held: boolean }) {
+    const fileSystem = new MemoryFileSystem();
+    const clock = { at: Date.parse('2026-11-04T09:30:00Z') };
+    const mine = host({ fileSystem, prefix: 'a', clock });
+    const entry = await createdEntry(mine.store);
+    const filePath = path.join(MEMORY, entry.fileName);
+    const original = fileSystem.files.get(filePath);
+    const withId = (id: string) => new TextEncoder().encode(text(original).replace(/^id: .*$/m, `id: ${id}`));
+    const rename = fileSystem.rename.bind(fileSystem);
+    let substituted = false;
+    jest.spyOn(fileSystem, 'rename').mockImplementation(async (fromPath, toPath, options) => {
+      if (lock.held && fromPath.includes('.claim-')) {
+        throw Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' });
+      }
+      // Only the delete under test finds its file swapped.
+      const claiming = !substituted && fromPath === filePath && toPath.includes('.claim-');
+      substituted ||= claiming;
+      if (claiming) {
+        fileSystem.files.set(filePath, withId('mem-abcdef'));
+      }
+      await rename(fromPath, toPath, options);
+      if (claiming) {
+        fileSystem.files.set(filePath, withId('mem-fedcba'));
+      }
+    });
+    expect(await mine.store.delete(entry.memory.id)).toEqual({ kind: 'changed' });
+    return { fileSystem, clock, mine };
+  }
+  const ids = async (store: ProjectMemoryStore) => {
+    const listing = await store.list();
+    return listing.kind === 'listed' ? listing.memories.map((memory) => memory.memory.id).sort() : listing;
+  };
+
+  it('the lock clears, and a listing 31 seconds on keeps both memories', async () => {
+    const lock = { held: true };
+    const { clock, mine } = await refusedWhileLocked(lock);
+    lock.held = false;
+    clock.at += 31_000;
+    expect(await ids(mine.store)).toEqual(['mem-abcdef', 'mem-fedcba']);
+  });
+
+  it('the lock clears, and another window\'s store recovers it, keeping both', async () => {
+    const lock = { held: true };
+    const { fileSystem, clock } = await refusedWhileLocked(lock);
+    lock.held = false;
+    clock.at += 31_000;
+    const theirs = host({ fileSystem, prefix: 'b', clock });
+    expect(await ids(theirs.store)).toEqual(['mem-abcdef', 'mem-fedcba']);
+    expect(everyFile(fileSystem).filter((name) => name.includes('.claim-'))).toEqual([]);
+  });
+
+  it('the lock never clears: the bytes are never purged, and the listing shows them to the writer', async () => {
+    const lock = { held: true };
+    const { fileSystem, clock, mine } = await refusedWhileLocked(lock);
+    clock.at += 31_000;
+    const listing = await mine.store.list();
+    expect(listing).toMatchObject({ kind: 'listed', memories: [{ memory: { id: 'mem-fedcba' } }], unreadable: [{ reason: 'set-aside' }] });
+    expect([...fileSystem.files.values()].filter((bytes) => /^id: mem-abcdef$/m.test(text(bytes)))).toHaveLength(1);
+    // A delete of the occupant never takes the set-aside bytes with it.
+    expect(await mine.store.delete('mem-fedcba')).toEqual({ kind: 'failed' });
+    expect([...fileSystem.files.values()].filter((bytes) => /^id: mem-abcdef$/m.test(text(bytes)))).toHaveLength(1);
+  });
+});
+
+describe('a busy memory is listed as its newest claim holds it (PR #194 F-06)', () => {
+  it('overlapping successful rewrites, the first one\'s clean-up still pending: the listing shows the latest committed version', async () => {
+    const fileSystem = new MemoryFileSystem();
+    const clock = { at: Date.parse('2026-11-04T09:30:00Z') };
+    const a = host({ fileSystem, prefix: 'a', clock });
+    const b = host({ fileSystem, prefix: 'b', clock });
+    const observer = host({ fileSystem, prefix: 'c', clock });
+    const entry = await createdEntry(a.store, { summary: 'A summary' });
+    // A's rewrite commits, but the deletion of its old claim is held.
+    const cleanUp = holdOnce(fileSystem, 'delete', (filePath) => filePath.includes('.claim-') && /-a\d+$/.test(filePath));
+    const pinning = a.store.replace(entry.memory.id, (memory) => ({ ...memory, summary: 'Latest committed summary', pinned: true }));
+    await cleanUp.reached;
+    // A millisecond on, B claims the current file for its own rewrite, and is held before it commits.
+    clock.at += 1;
+    const commit = holdOnce(fileSystem, 'rename', (fromPath) => fromPath.includes('.tmp-b'));
+    const archiving = b.store.replace(entry.memory.id, (memory) => ({ ...memory, status: 'archived' }));
+    await commit.reached;
+
+    expect(await observer.store.list()).toMatchObject({
+      kind: 'listed',
+      memories: [{ busy: true, memory: { summary: 'Latest committed summary', pinned: true, status: 'active' } }]
+    });
+    cleanUp.open();
+    commit.open();
+    expect(await pinning).toMatchObject({ kind: 'replaced' });
+    expect(await archiving).toMatchObject({ kind: 'replaced', entry: { memory: { summary: 'Latest committed summary', pinned: true, status: 'archived' } } });
+  });
+
+  /** Two claims of one saved name, standing in for it, put in the folder in `order`. */
+  async function twoClaims(order: 'older first' | 'newer first', newerAt: (olderAt: number) => number, newerId = 'b1') {
+    const { fileSystem, store, clock } = host();
+    const entry = await createdEntry(store, { summary: 'Older summary' });
+    const filePath = path.join(MEMORY, entry.fileName);
+    const older = fileSystem.files.get(filePath) as Uint8Array;
+    const newer = new TextEncoder().encode(text(older).replace('summary: Older summary', 'summary: Newer summary'));
+    fileSystem.files.delete(filePath);
+    const claims: Array<[string, Uint8Array]> = [
+      [claimOf(entry.fileName, clock.at, 'a1'), older],
+      [claimOf(entry.fileName, newerAt(clock.at), newerId), newer]
+    ];
+    for (const [claimPath, bytes] of order === 'older first' ? claims : [...claims].reverse()) {
+      fileSystem.files.set(claimPath, bytes);
+    }
+    const listing = await store.list();
+    return listing.kind === 'listed' ? listing.memories.map((memory) => [memory.memory.summary, memory.busy]) : listing;
+  }
+
+  it.each(['older first', 'newer first'] as const)('chooses the claim with the latest time, whatever the directory\'s order (%s)', async (order) => {
+    expect(await twoClaims(order, (at) => at + 1)).toEqual([['Newer summary', true]]);
+  });
+
+  it.each(['older first', 'newer first'] as const)('at one time, breaks the tie as recovery does: the greater claim name (%s)', async (order) => {
+    expect(await twoClaims(order, (at) => at)).toEqual([['Newer summary', true]]);
   });
 });
 

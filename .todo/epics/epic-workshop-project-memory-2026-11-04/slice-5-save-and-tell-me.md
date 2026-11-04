@@ -22,9 +22,12 @@ web research attached is always held for the writer.
   - `ask`: the card waits;
   - `auto`, not held, under the caps: save now with `origin: auto` and record a
     receipt with `by: 'auto'`;
-  - otherwise the card waits, with a hold reason the card shows: "Held because
-    this reply used web research", or "Held: this conversation's automatic saves
-    reached N".
+  - otherwise the card waits, held, with the reason the approved design gives
+    (Slice 0d, "In the thread", item 4): "Live web research was available for
+    this reply, so this memory waits for you to save it.", or "This
+    conversation has reached its limit of N automatic memory saves. This one
+    waits for you." (N is `autoSavesPerRoom`, counted room-wide). Neither
+    claims a search ran or names a persona (PR #196 F-01, F-02).
 - **The web-research hold** reads whether the run had web search tools attached
   (`AssistantToolService.ts:753-761`), never whether it cited. The run reports
   that fact on its completion. It isn't stored on the turn unless the card needs
