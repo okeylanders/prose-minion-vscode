@@ -1,6 +1,6 @@
 # PR #197 review: Project Memory Slice 2a read path
 
-**Verdict: changes requested before merge into `epic/workshop-project-memory`. Two reproduced P2 findings remain open.**
+**Verdict: changes requested before merge into `epic/workshop-project-memory`. Three reproduced P2 findings remain open.**
 
 **PR:** [#197](https://github.com/okeylanders/prose-minion-vscode/pull/197)  
 **Reviewed:** 2026-11-04  
@@ -17,6 +17,7 @@ This report covers Slice 2a against the parent epic, ADR D1–D5/D8/D10–D13, r
 |---|---|---|---|
 | F-01 | P2 | Workspace configuration can override the intended global memory Off switch | Open |
 | F-02 | P2 | Read output endorses archived or already-superseded replacements as in effect | Open |
+| F-03 | P2 | Successful memory reads leak their titles through the engine's context-source log | Open |
 | N-01 | P3 | Provenance silently truncates more than ten nonconsecutive source ranges | Open, nonblocking |
 | N-02 | P3 | `supersededBy` can include an edge excluded by cycle-aware standing | Open, nonblocking |
 
@@ -57,6 +58,25 @@ Both cases were reproduced through the exact `listProjectMemories` and read rend
 
 **Required correction:** retain a neutral statement of direct supersession without asserting current effectiveness, or resolve successors and verify their standing before making that assertion. Add archived-successor and multi-hop-chain regressions. Do not reactivate the old note when its superseder is archived; the existing D4 standing rule is intentional.
 
+## F-03: P2: keep memory titles out of the engine's manifest log
+
+**New caller:** [WorkshopProjectMemoryCapability.ts:174–178](https://github.com/okeylanders/prose-minion-vscode/blob/27da6fee5d7ca97119b563f1b6d121eef524bf9f/packages/core/src/application/services/workshop/memory/WorkshopProjectMemoryCapability.ts#L174-L178).  
+**Logging sink:** [AgentRunEngine.ts:574–578](https://github.com/okeylanders/prose-minion-vscode/blob/27da6fee5d7ca97119b563f1b6d121eef524bf9f/packages/core/src/infrastructure/api/orchestration/AgentRunEngine.ts#L574-L578).
+
+The new capability correctly keeps its own logs to IDs/counts, but supplies the memory's title as the display label of its delivered-source row. On a successful committed turn, the existing engine logs every row as `kind:label`. Consequently, a routine successful `memory.read` writes the memory title to the output log, contrary to ADR D9's explicit no-title/summary/body logging rule. This logging is not guarded by the debug setting.
+
+**Exact-head real-engine reproduction:**
+
+1. Store a readable memory `mem-abcdef` with title `PRIVATE_MEMORY_TITLE_SENTINEL`.
+2. Run the actual `AgentRunEngine`, persona capability, library and store. The fake provider first requests `memory.read` for that ID, then returns a clean final reply.
+3. Supply an output sink but no debug settings at all.
+4. The successful turn logs:
+   `[AgentRunEngine] Context sources committed for <conversation>: memory:PRIVATE_MEMORY_TITLE_SENTINEL (size estimate)`.
+
+The capability-only sentinel tests pass because they do not exercise this shared engine sink. The new memory integration makes the existing generic label logging violate memory's stricter data contract.
+
+**Required correction:** preserve the title in the user-facing manifest, but redact or omit memory labels in diagnostic logs (or provide a separate safe logging identity). Add a full engine-to-capability regression that commits a memory read and asserts that title, summary and body sentinels never reach any sink under default or debug logging.
+
 ## Nonblocking notes
 
 ### N-01: disclose truncated provenance ranges
@@ -92,9 +112,9 @@ Dependencies were installed from the exact head's lockfile in an isolated review
 - **15 focused Jest suites / 336 tests passed**, using the repository's actual Jest/ts-jest configuration. Coverage includes memory frame/library/capability, frame stability, mode changes, source positions, persisted turn guards, tool-sidepass integration, AgentRunEngine, persona capability, XML codec, recall wiring, conversation archive, prompt synchronization and context-source utilities.
 - `npm run typecheck:core`: passed.
 - `npm run typecheck:webview`: passed.
-- Independent production-code probes reproduced F-01/F-02 and N-01/N-02, with controls for the global-mode case.
+- Independent production-code probes reproduced F-01/F-02/F-03 and N-01/N-02, with controls for the global-mode case.
 - Additional direct validator/capability probes covered malformed IDs, traversal/Unicode/NUL input, per-read bounds, per-turn reads, mixed read outcomes, log sentinels and delivered-source rows.
-- The real-engine placement probe described above passed.
+- The real-engine placement probe described above passed. An additional real-engine successful-read probe reproduced F-03 without debug logging.
 - The full local suite, local extension typecheck, local lint/build, native VS Code and live-provider testing were not run. Their CI results are separate below.
 
 ### GitHub CI
@@ -105,5 +125,7 @@ Dependencies were installed from the exact head's lockfile in an isolated review
 - Core, webview and extension typechecks
 - Lint: **0 errors / 1,158 warnings**
 - Both builds and bundle verification
+
+[The first report-head CI run](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41887939967) also passed at `2b4aaba90013a88f3f183214b244021c7661abb6` before the F-03 report addition.
 
 This publication changes only the report. Its later branch head needs its own required CI. Re-review fixes on their exact heads before closing findings.
