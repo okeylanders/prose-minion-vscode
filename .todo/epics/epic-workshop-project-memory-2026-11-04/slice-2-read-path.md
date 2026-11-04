@@ -191,6 +191,9 @@ in `promptBudgets.test.ts` (including `readsPerTurn < callsPerTurn`), and add
   - a session without the field is unchanged on read and write.
 - **Accepted workspace:** a changed root yields no frame and rejects every
   call.
+- **Unavailable workspace (D8):** with memory on but no folder, or several, no
+  frame, note or grammar is sent, and every call is refused with
+  `memory-unavailable`.
 - **Widened lists:** one test saves **and reopens** a session holding every
   new operation, artifact and context-source kind.
 - **Prompt sync and budgets.**

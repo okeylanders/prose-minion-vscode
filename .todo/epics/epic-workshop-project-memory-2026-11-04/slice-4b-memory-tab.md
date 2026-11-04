@@ -43,7 +43,10 @@ delete, and it has **New memory**.
   itself.
 - It shows the mode cards, the estimate ("N memories · M pinned · about T tokens
   at the start of each conversation"), and the unavailable reason (no folder,
-  several folders) when memory can't save.
+  several folders) when this workspace can't hold memory.
+- **Unavailable never disables the mode cards** (ADR D8): the switch is global
+  and still applies to every other project. Unavailable disables only this
+  workspace's memory and the manager, with the reason.
 
 ### Manager
 
@@ -73,7 +76,10 @@ delete, and it has **New memory**.
 - **Tab:**
   - modes render and post through the modal's apply;
   - the estimate matches the frame builder's output for a fixture folder;
-  - the unavailable states.
+  - the unavailable states: with no folder, and with several, the mode cards
+    stay enabled and a change still writes the global setting, while the
+    estimate, *Manage memories…* and *Open memory folder* are disabled with
+    the reason.
 - **Manager:**
   - each action through the real handler and library, on a temporary folder;
   - unreadable and conflict rows never offer pin, archive or edit;

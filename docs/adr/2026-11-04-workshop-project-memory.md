@@ -439,8 +439,15 @@ and no update note repeats it.
   access stays: *Manage memories…*, *Open memory folder*, New, edit, pin,
   archive and delete all work with memory off, because they're writer actions,
   not model ones. A card already pending in a room keeps its *Save*, since the
-  writer is the one acting. Only "unavailable" (no folder, or several) disables
-  the manager, and it says why.
+  writer is the one acting.
+- **An unavailable workspace (no folder, or several) disables this
+  workspace's memory, never the mode.** Because the mode is global, its cards
+  stay enabled: the switch still applies to every other project. In an
+  unavailable workspace:
+  - no frame, update note, grammar or trailer is sent;
+  - every `memory.*` call is refused with the reason (`memory-unavailable`:
+    "this workspace has no folder" or "has several folders");
+  - the manager and *Open memory folder* are disabled, with the same reason.
 
 - **Saves under Save and tell me are capped:** one per reply (D6), and
   `autoSavesPerRoom` per room. Past the cap a proposal waits as under Ask first,
@@ -516,8 +523,9 @@ personal-domain word.
   - availability is read live on every operation, as the board store's
     `location()` does (`LightboxBoardStore.ts:419-428`);
   - one folder saves; none, or several, is unavailable;
-  - memory has no session-only mode: unavailable reads as off, and the tab says
-    why;
+  - memory has no session-only mode: an unavailable workspace gets none of
+    memory's model access or its manager, and says why. The global mode is
+    untouched (D8);
   - persona-facing reads also check the accepted workspace (D5).
 - **One store, one library, built only in `extension.ts`.**
   - `ProjectMemoryStore` (in `infrastructure/storage/`) holds the pure codec

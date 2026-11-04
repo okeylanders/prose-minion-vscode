@@ -21,7 +21,8 @@ anything screenshotted or recorded.
       rejected.
 - [ ] Turn on Ask first. The setting lands in the user settings (global), and
       a second project shows memory on with its own, empty folder.
-- [ ] No workspace folder, then two folders: the tab says memory is unavailable.
+- [ ] No workspace folder, then two folders: the tab says memory is unavailable
+      here, the manager is disabled, and the mode cards still work.
 
 ### Read path
 
