@@ -16,6 +16,17 @@ Commit `9cca6059` now records the writer's six decisions. They are no longer
 reported as unanswered gates. The findings below concern conflicts or missing
 mechanisms in the chosen design; this review does not change those choices.
 
+## Resolution ledger
+
+| Finding | Status | How |
+|---|---|---|
+| F-01 · joint trailer contract, redacted logs | Fixed in `29254bea` | ADR D6: the memory frame comes last, after any widget control. A single tail extractor (`extractWorkshopReplyControls`) removes every memory frame before the widget inspector, the findings parser, display and retention see the reply. An outcome table covers both valid, misplaced, duplicate, malformed or unclosed, memory off, and control-only replies. D6 and D9 add the rule that every diagnostic, including the widget-rejection `boundedLogText` dump, gets the redacted copy. Slice 3 pins it with sentinel-text tests |
+| F-02 · file handle vs memory identity | Fixed in `29254bea` | ADR D10: every manager row carries an opaque, session-keyed HMAC `entryKey` of its contained path (the `LightboxFileKey` precedent). *Open file* resolves it against the current listing and refuses stale, forged or out-of-folder keys. Model operations and mutations stay on the unique `mem-` id, so conflict and unreadable rows can't be rewritten or deleted. Slice 4b has the tests |
+| F-03 · 4b depends on Slice 3 | Fixed in `29254bea` | Slice 4b's status, build and criteria now wait on Slice 3. Slice 3 owns `WorkshopMemorySheet` (Edit, Save to memory…, New) and the write routes, and 4b adds only the manager's routes (ADR D13). The coordinator updates the epic README's table |
+| F-04 · pinned overflow | Fixed in `29254bea` | ADR D5: the budget is re-checked on every edit of a pinned memory, not only on pin, and refused with the reason (Slice 3). For hand edits and two-window races, whole pinned bodies load in `created` order (ties by id), and the rest stay as entries marked "pinned, not loaded: over the pinned budget". The meter reads over budget, the frame and the meter share one renderer and estimator, and nothing is unpinned or rewritten. The absence of a cross-window lock is a stated limit |
+| N-01 · Forget vs Delete | Fixed in `29254bea` | ADR D4 names the actions exactly. Forget (archive) or archiving the newer memory doesn't revive the old one; Delete of the newer file does. Slice 3 tests Forget and Slice 4b tests Delete, separately |
+| #194 N-02 · live claim and D14 | Fixed in `29254bea` | ADR D10: a memory under a live claim stays in the listing, catalog, frame and D14 view, decoded from the claim's bytes, and only `read` answers busy. Slice 2 has the test |
+
 ## Scope and evidence
 
 The review covered all seven changed files at the reviewed head:
