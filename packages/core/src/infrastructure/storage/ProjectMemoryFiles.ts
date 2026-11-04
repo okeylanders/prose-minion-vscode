@@ -109,11 +109,13 @@ export async function readProjectMemoryFolder(fileSystem: FileSystem, folder: st
     .filter(([name, type]) => type === FileType.File && isMemoryFileName(name))
     .map(([name]) => name);
   const claims = names.flatMap((name) => {
-    const saved = PROJECT_MEMORY_CLAIM.exec(name)?.[1];
-    return saved ? [{ claim: name, saved }] : [];
+    const match = PROJECT_MEMORY_CLAIM.exec(name);
+    return match ? [{ claim: name, saved: match[1], at: Number(match[2]) }] : [];
   });
   // A claim whose saved name stands empty holds the memory now (another window's rewrite or delete): read its bytes.
-  const heldClaims = claims.filter(({ saved }, index) => !names.includes(saved) && claims.findIndex((other) => other.saved === saved) === index);
+  // Of several, the newest holds the latest version (PR #194 F-06): by its time, then, as recovery breaks a tie, the greater name.
+  const newestFirst = [...claims].sort((left, right) => right.at - left.at || (left.claim < right.claim ? 1 : left.claim > right.claim ? -1 : 0));
+  const heldClaims = newestFirst.filter(({ saved }, index) => !names.includes(saved) && newestFirst.findIndex((other) => other.saved === saved) === index);
   const standing = await Promise.all(memoryNames.map((fileName) => readOne(fileSystem, path.join(folder, fileName), fileName)));
   const claimed = await Promise.all(heldClaims.map(({ claim, saved }) => readOne(fileSystem, path.join(folder, claim), saved)));
   const read = [...standing.map((result) => ({ result, busy: false })), ...claimed.map((result) => ({ result, busy: true }))]

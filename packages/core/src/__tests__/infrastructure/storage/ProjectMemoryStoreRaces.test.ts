@@ -21,6 +21,7 @@ import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import { deferred } from '@/__tests__/application/handlers/domain/lightboxHandlerHarness';
 import {
   MEMORY,
+  claimOf,
   createdEntry,
   everyFile,
   memoryHost as host,
@@ -28,7 +29,7 @@ import {
 } from '@/__tests__/infrastructure/storage/projectMemoryStoreHost';
 
 /** Hold the first file operation `matches` picks until the gate opens; `reached` says it was reached. */
-function holdOnce<K extends 'rename' | 'writeFile' | 'readFile' | 'readDirectory'>(
+function holdOnce<K extends 'rename' | 'writeFile' | 'readFile' | 'readDirectory' | 'delete'>(
   fileSystem: MemoryFileSystem,
   method: K,
   matches: (firstPath: string) => boolean
@@ -266,6 +267,62 @@ describe('a refused delete never loses the bytes it claimed, even when its saved
       unreadable: [{ reason: 'no-frontmatter' }]
     });
     expect([...fileSystem.files.values()].map((bytes) => text(bytes))).toContain('A note the writer half-typed.');
+  });
+});
+
+describe('a busy memory is listed as its newest claim holds it (PR #194 F-06)', () => {
+  it('overlapping successful rewrites, the first one\'s clean-up still pending: the listing shows the latest committed version', async () => {
+    const fileSystem = new MemoryFileSystem();
+    const clock = { at: Date.parse('2026-11-04T09:30:00Z') };
+    const a = host({ fileSystem, prefix: 'a', clock });
+    const b = host({ fileSystem, prefix: 'b', clock });
+    const observer = host({ fileSystem, prefix: 'c', clock });
+    const entry = await createdEntry(a.store, { summary: 'A summary' });
+    // A's rewrite commits, but the deletion of its old claim is held.
+    const cleanUp = holdOnce(fileSystem, 'delete', (filePath) => filePath.includes('.claim-') && /-a\d+$/.test(filePath));
+    const pinning = a.store.replace(entry.memory.id, (memory) => ({ ...memory, summary: 'Latest committed summary', pinned: true }));
+    await cleanUp.reached;
+    // A millisecond on, B claims the current file for its own rewrite, and is held before it commits.
+    clock.at += 1;
+    const commit = holdOnce(fileSystem, 'rename', (fromPath) => fromPath.includes('.tmp-b'));
+    const archiving = b.store.replace(entry.memory.id, (memory) => ({ ...memory, status: 'archived' }));
+    await commit.reached;
+
+    expect(await observer.store.list()).toMatchObject({
+      kind: 'listed',
+      memories: [{ busy: true, memory: { summary: 'Latest committed summary', pinned: true, status: 'active' } }]
+    });
+    cleanUp.open();
+    commit.open();
+    expect(await pinning).toMatchObject({ kind: 'replaced' });
+    expect(await archiving).toMatchObject({ kind: 'replaced', entry: { memory: { summary: 'Latest committed summary', pinned: true, status: 'archived' } } });
+  });
+
+  /** Two claims of one saved name, standing in for it, put in the folder in `order`. */
+  async function twoClaims(order: 'older first' | 'newer first', newerAt: (olderAt: number) => number, newerId = 'b1') {
+    const { fileSystem, store, clock } = host();
+    const entry = await createdEntry(store, { summary: 'Older summary' });
+    const filePath = path.join(MEMORY, entry.fileName);
+    const older = fileSystem.files.get(filePath) as Uint8Array;
+    const newer = new TextEncoder().encode(text(older).replace('summary: Older summary', 'summary: Newer summary'));
+    fileSystem.files.delete(filePath);
+    const claims: Array<[string, Uint8Array]> = [
+      [claimOf(entry.fileName, clock.at, 'a1'), older],
+      [claimOf(entry.fileName, newerAt(clock.at), newerId), newer]
+    ];
+    for (const [claimPath, bytes] of order === 'older first' ? claims : [...claims].reverse()) {
+      fileSystem.files.set(claimPath, bytes);
+    }
+    const listing = await store.list();
+    return listing.kind === 'listed' ? listing.memories.map((memory) => [memory.memory.summary, memory.busy]) : listing;
+  }
+
+  it.each(['older first', 'newer first'] as const)('chooses the claim with the latest time, whatever the directory\'s order (%s)', async (order) => {
+    expect(await twoClaims(order, (at) => at + 1)).toEqual([['Newer summary', true]]);
+  });
+
+  it.each(['older first', 'newer first'] as const)('at one time, breaks the tie as recovery does: the greater claim name (%s)', async (order) => {
+    expect(await twoClaims(order, (at) => at)).toEqual([['Newer summary', true]]);
   });
 });
 
