@@ -103,11 +103,18 @@ Filing something doesn't make it acceptable.
   - [ ] Check that a screen reader names the divider.
 - [ ] A dictionary lookup between replies never draws a false slice. A
       dictionary model change reads "Dictionary model · A → B".
-- [ ] With an auto-router model, a reply served by another model shows
-      "served by …" under its body. The participant label's tooltip names
-      both ids.
+- [ ] Every stamped reply's header reads "{participant} · {model}", for
+      example "Jill · Opus 5.5" (Slice 7b). Writer turns and turns saved
+      before this epic show no model.
+  - [ ] With an auto-router model, the header reads
+        "Jill · Claude Sonnet 5 via Auto router". No note appears under the
+        body.
+  - [ ] In a narrow column, the model name is cut short before the
+        participant's name is. The label's tooltip names both ids.
+  - [ ] Look at the label's muted style in both themes.
 - [ ] Markdown and HTML export draw the same slices as the thread, in the
-      same places.
+      same places. Their turn headers name the model the way the thread's
+      headers do.
 - [ ] JSON export has no slice entries, by design. An entry carries `model`
       where its turn has a stamp, and the value matches the thread's stamp.
       An unstamped turn carries none, and that's correct. Unstamped turns
@@ -126,12 +133,12 @@ Each one has a default already built, and each is a small change.
 - [x] **The dictionary slice's wording.** *Okey, 2026-11-04: keep "Dictionary model · …".* It reads "Dictionary model · …"
       (Slice 7), so a lookup's model change doesn't read as the room's. Keep
       it, or use the plain "Model · …"?
-- [ ] **The served-by note in export.** *Okey, 2026-11-04: yes, Markdown and HTML export show it too. He also proposed showing the model after the assistant's name in every bubble ("Jill | Opus 5.5"), keeping the slices. The design is being settled before it's built.* It is thread-only today; Markdown and
+- [x] **The served-by note in export.** *Okey, 2026-11-04: yes. Every stamped reply's header names its model after the participant ("Jill · Opus 5.5"), with "via {requested}" when another model served it. The under-body note folds into the header. Markdown and HTML export headers use the same rule. The slices stay. Built in [Slice 7b](slice-7b-model-in-header.md).* It is thread-only today; Markdown and
       HTML don't print it, and JSON carries the ids (Slice 7). Should Markdown
       and HTML print it too?
 - [x] **Tool-run requests aren't bookmarkable.** *Okey, 2026-11-04: keep.* The tool report that answers
       one is (Slice 4). Keep that, or allow the request too?
-- [ ] **Escape on a pending rename.** *Okey asked for the trade-offs, 2026-11-04. Open.* It cancels the field and drops the late
+- [x] **Escape on a pending rename.** *Okey, 2026-11-04: keep A. Escape closes the field and drops the late answer.* It cancels the field and drops the late
       answer; the host may still have kept the name (Slice 5). Keep that, or
       have Escape do nothing until the answer comes back?
 - [x] **Bring `main` into the epic.** *Okey, 2026-11-04: wait for the epic's final PR.* Do it before this pass (one merge PR), or
