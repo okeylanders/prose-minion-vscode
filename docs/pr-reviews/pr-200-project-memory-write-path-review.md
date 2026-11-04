@@ -6,6 +6,50 @@
 - **Comparison base:** `2b4aaba90013a88f3f183214b244021c7661abb6` (PR #197)
 - **Verdict:** **Changes requested: F-01 through F-05.** This is a written review verdict, not a formal GitHub approval, merge, or changes-requested review submission.
 
+## Re-review at `f87b38c85566590736b6696be83bf95d74db5826` (2026-11-04 19:39 UTC)
+
+**Current verdict: changes requested for F-03 only.** F-01, F-02, F-04, F-05 and F-06 are independently verified as fixed. The ordinary nested-frame case of F-03 is also fixed, but its new tag scanner introduces the overlapping-token regression below. Earlier verdicts and the author's resolution ledger remain historical records.
+
+Verified corrections:
+- Intermediate persona/tool capability responses are sanitized before replay, retention and diagnostic output. Original well-formed and nested real-engine witnesses now contain no private sentinel in correction requests, retained history or logs.
+- The actual streaming renderer hides the original trailer; 3,287 streamed prefixes across 15 case/whitespace/attribute/nesting variants passed the additional privacy probe.
+- Concurrent saves in one library now yield one write and one budget refusal, with 3,306 tokens loaded and no overflow.
+- Overlapping proposal saves return the same memory id and produce one file/receipt; a saving sheet marks the card busy and ignores Escape.
+- Both digest-reversal witnesses now emit the bounded update note, and the new regressions cover receipt agreement.
+
+### F-03 remains open: overlapping marker inside an opening tag ends redaction early
+
+**Location:** [workshopReplyControls.ts:200–208](https://github.com/okeylanders/prose-minion-vscode/blob/f87b38c85566590736b6696be83bf95d74db5826/packages/core/src/utils/workshopReplyControls.ts#L200-L208), consumed at lines 178–185.
+
+The nesting fix collects opening and closing regex matches independently and sorts them. It permits a closing-token match to overlap the opening-token match that already consumed those bytes. The fold therefore closes a frame before its `innerStart`, then exposes the suffix as prose.
+
+**Executed malformed-trailer witness:**
+
+```text
+<prose-minion-memory-proposal data-x="</prose-minion-memory-proposal>">PRIVATE_MEMORY_SENTINEL_71bb</prose-minion-memory-proposal>
+```
+
+The opening tag is malformed; this is a redaction test, not a request to accept it as a valid proposal. The shared extractor nonetheless recognizes its opening marker and must keep its payload out of the sinks covered by D6/D9.
+
+With this trailer after a `memory.catalog` capability call, the real engine/capability probe at this head reports:
+- inspection: invalid/mixed-content;
+- correction request contains private payload: **true**;
+- retained history contains private payload: **true**;
+- debug log contains private payload: **true**;
+- final reply: clean.
+
+This is a regression introduced by the new independent token collection. Ordinary depth tracking does not fix it because the token spans themselves overlap. Ensure that recognized tag tokens do not overlap before depth pairing, and conservatively redact the whole affected frame. Regress this exact case through extractor, streaming, correction replay, retained history and logs, with memory on/off.
+
+### Verification at this head
+
+- Core/webview/extension typechecks pass.
+- **21 focused production suites / 339 tests pass.**
+- **Three independent Jest suites / five fixed-behavior witnesses pass**, covering F-04/F-05/F-06.
+- **Lint: 0 errors / 1,158 warnings**, matching the baseline.
+- The entire tracked tree was materialized with source/blob verification (the three repository instruction links preserved as symlinks). An independent full-suite run is in progress; it is not yet a pass claim.
+- GitHub reports the new base `94fcabb7` mergeable. [CI run 41898362354](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41898362354) was still running at this check.
+- No formal approval, merge or deployment performed.
+
 ## Re-review at `edc5a6cb69cecb410e80861bbe1db4998eec99aa` (2026-11-04 19:08 UTC)
 
 **Current verdict: changes requested, F-01 through F-06.** The original review below remains a record of `5dcc8d02`.
