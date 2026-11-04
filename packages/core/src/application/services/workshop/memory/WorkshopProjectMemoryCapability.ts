@@ -19,8 +19,14 @@ import type { LogSink } from '@/platform';
 import type { WorkshopPersonaId } from '@messages';
 import type { CapabilityDeliveredSource } from '@orchestration/AgentRunContracts';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import type { WorkshopCapabilityResult, WorkshopProjectMemoryRequest } from '@shared/types/workshopCapabilities';
-import type { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
+import type {
+  WorkshopCapabilityPrincipal,
+  WorkshopCapabilityResult,
+  WorkshopProjectMemoryRequest
+} from '@shared/types/workshopCapabilities';
+import type { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { projectMemoryDeliveredView } from '@/application/services/workshop/memory/ProjectMemoryDeliveredView';
+import type { ProjectMemoryLibrary, ProjectMemorySnapshot } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
 import type { ProjectMemoryRefusal } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
 import {
   memoryBody,
@@ -36,11 +42,16 @@ import { workshopProjectMemoryRequestSummary } from '@/application/services/work
 import { recallLabel, recallLabelList } from '@/application/services/workshop/recall/WorkshopRecallText';
 
 /** The library's questions a persona may ask; satisfied by ProjectMemoryLibrary. */
-export type WorkshopProjectMemoryPort = Pick<ProjectMemoryLibrary, 'catalog' | 'search' | 'read' | 'frame'>;
+export type WorkshopProjectMemoryPort = Pick<ProjectMemoryLibrary, 'catalog' | 'search' | 'read' | 'frame' | 'update'>;
+
+/** The session's part in delivery records (D14); satisfied by WorkshopSessionService. */
+export type WorkshopProjectMemorySessionPort = Pick<WorkshopSessionService, 'stageProjectMemoryDelivery' | 'readRoomLedger'>;
 
 export interface WorkshopProjectMemoryTurnContext {
   readonly requestId: string;
   readonly personaId: WorkshopPersonaId;
+  /** The conversation this turn belongs to, whose record a delivery joins. */
+  readonly owner: WorkshopCapabilityPrincipal;
   readonly signal: AbortSignal;
 }
 
@@ -55,6 +66,7 @@ export class WorkshopProjectMemoryCapability {
 
   constructor(
     private readonly library: WorkshopProjectMemoryPort,
+    private readonly session: WorkshopProjectMemorySessionPort,
     private readonly outputChannel: LogSink,
     private readonly turn: WorkshopProjectMemoryTurnContext
   ) {}
@@ -77,23 +89,62 @@ export class WorkshopProjectMemoryCapability {
    * The `<project-memory>` frame for this conversation's first user message
    * (D5), or none: memory off, an unaccepted or unavailable workspace, a
    * folder that could not be listed, or nothing in it. Only the run that
-   * starts a conversation asks, so a follow-up never reads the library, and
-   * a retained conversation keeps the frame it was given. A failure sends
-   * no frame and is logged by reason; a cancellation propagates.
+   * starts a conversation asks, so a retained conversation keeps the frame
+   * it was given. What it delivered (the whole set in effect, an empty one
+   * included) is staged for the writer turn's record (D14). A failure sends
+   * no frame and records nothing, logged by reason; a cancellation
+   * propagates.
    */
   async frame(): Promise<string | undefined> {
-    try {
+    return this.deliver('frame', async () => {
       const result = await this.library.frame(this.turn.signal);
-      if (result.kind === 'frame') {
-        return result.frame.text;
+      if (result.kind === 'frame' || result.kind === 'empty') {
+        return { snapshot: result.snapshot, text: result.kind === 'frame' ? result.frame.text : undefined };
       }
-      this.log(`frame none reason=${result.kind === 'closed' ? result.reason : result.kind}`);
-      return undefined;
+      return { refused: result.kind === 'closed' ? result.reason : result.kind };
+    });
+  }
+
+  /**
+   * The update note for a follow-up turn (D14): what changed since this
+   * conversation's last frame or note, from the room's ledger. Nothing
+   * changed, memory off, or a folder that cannot be listed: no note, and the
+   * record stands, so the next message tries again.
+   */
+  async updateNote(): Promise<string | undefined> {
+    return this.deliver('note', async () => {
+      const view = projectMemoryDeliveredView(this.session.readRoomLedger(), this.turn.owner);
+      const result = await this.library.update(view, this.turn.signal);
+      if (result.kind === 'note') {
+        return { snapshot: result.snapshot, text: result.text };
+      }
+      return result.kind === 'current' ? {} : { refused: result.kind === 'closed' ? result.reason : result.kind };
+    });
+  }
+
+  private async deliver(
+    kind: 'frame' | 'note',
+    read: () => Promise<{ snapshot?: ProjectMemorySnapshot; text?: string; refused?: string }>
+  ): Promise<string | undefined> {
+    try {
+      const { snapshot, text, refused } = await read();
+      if (refused) {
+        this.log(`${kind} none reason=${refused}`);
+      }
+      if (snapshot && !this.session.stageProjectMemoryDelivery(this.turn.requestId, {
+        participant: { ...this.turn.owner },
+        kind,
+        memories: snapshot.map(({ id, version }) => ({ id, version }))
+      })) {
+        this.log(`${kind} none reason=run-not-active`);
+        return undefined;
+      }
+      return text;
     } catch (error) {
       if (this.turn.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
         throw error;
       }
-      this.log(`frame none reason=failed (${error instanceof Error ? error.name : 'unknown'})`);
+      this.log(`${kind} none reason=failed (${error instanceof Error ? error.name : 'unknown'})`);
       return undefined;
     }
   }

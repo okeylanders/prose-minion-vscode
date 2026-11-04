@@ -14,10 +14,11 @@ import type { ContextResourceProviderFactory } from '@/domain/models/ContextGene
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import { libraryHost, memory, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 
-function capabilityOver(host: ReturnType<typeof libraryHost>) {
-  const session = new WorkshopSessionService(() => Date.parse('2026-11-04T10:00:00.000Z'));
-  session.setSessionScope('open');
-  session.beginPersonaMessage('host-request', 'What did we settle?');
+function capabilityOver(host: ReturnType<typeof libraryHost>, session = new WorkshopSessionService(() => Date.parse('2026-11-04T10:00:00.000Z')), requestId = 'host-request') {
+  if (requestId === 'host-request') {
+    session.setSessionScope('open');
+    session.beginPersonaMessage(requestId, 'What did we settle?');
+  }
   return new WorkshopPersonaCapabilityFactory(
     {} as DictionaryService,
     {} as WorkshopAnalysisSidePass,
@@ -27,7 +28,7 @@ function capabilityOver(host: ReturnType<typeof libraryHost>) {
     {} as WorkshopTranscriptRecallPort,
     host.library
   ).create({
-    requestId: 'host-request',
+    requestId,
     excerptVersion: 0,
     personaId: 'jill',
     owner: { kind: 'host' },
@@ -41,8 +42,10 @@ describe('the frame stays as it was delivered', () => {
     const host = libraryHost();
     host.put(memory());
     host.put(writerMemory({ id: 'mem-1a9e04', pinned: true, title: 'Structure first' }));
-    const capability = capabilityOver(host);
+    const session = new WorkshopSessionService(() => Date.parse('2026-11-04T10:00:00.000Z'));
+    const capability = capabilityOver(host, session);
     const first = await capability.appendContract('<writer-message>What did we settle?</writer-message>');
+    session.completeRun('host-request', 'The watch runs backward.', undefined, false, 'host-conv');
     expect(first).toContain('<project-memory ');
 
     const manager = new ConversationManager();
@@ -52,9 +55,15 @@ describe('the frame stays as it was delivered', () => {
 
     // The folder changes; nothing rebuilds the frame.
     host.put(writerMemory({ id: 'mem-0d0d0d', title: 'Alice grows twice', updated: '2026-11-04T08:00:00Z' }));
-    const second = await capability.appendTurnContract('<writer-message>And the Hatter?</writer-message>');
+    session.beginPersonaMessage('host-second', 'And the Hatter?');
+    const second = await capabilityOver(host, session, 'host-second').appendTurnContract('<writer-message>And the Hatter?</writer-message>');
+    session.completeRun('host-second', 'Always six.', undefined, false, 'host-conv');
     manager.addMessages(id, [{ role: 'user', content: second }, { role: 'assistant', content: 'Always six.' }]);
-    expect(second).not.toContain('<project-memory');
+    // The frame is never sent again; what changed arrives as an appended note (D14).
+    expect(second).not.toContain('<project-memory ');
+    expect(second).toContain('<project-memory-update');
+    expect(second.match(/<(?:entry|pinned|gone) id="(mem-[0-9a-f]{6})"/g)).toEqual(['<entry id="mem-0d0d0d"']);
+    expect(manager.getMessages(id)[1].content).toBe(first);
 
     manager.replaceSystemMessages([{ conversationId: id, systemMessage: 'System prompt, memory on, grammar taught' }]);
     expect(manager.getMessages(id)[1].content).toBe(first);

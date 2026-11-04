@@ -33,8 +33,12 @@ import type { WorkshopMemorySearchStatus } from '@shared/types/workshopCapabilit
 import type { ProjectMemoryStore } from '@/infrastructure/storage/ProjectMemoryStore';
 import type { WorkshopRecallScopePort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
 import type { WorkshopRecallPositions } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
+import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
+import type { ProjectMemoryDeliveredView } from '@/application/services/workshop/memory/ProjectMemoryDeliveredView';
+import { renderProjectMemoryUpdateNote } from '@/application/services/workshop/memory/ProjectMemoryUpdateNote';
 import {
   estimateProjectMemoryFrameOf,
+  projectMemorySnapshot,
   renderProjectMemoryFrame,
   type ProjectMemoryRenderedFrame
 } from '@/application/services/workshop/memory/ProjectMemoryCatalogFrame';
@@ -75,10 +79,19 @@ export type ProjectMemorySearchResult =
   | { readonly kind: 'searched'; readonly status: WorkshopMemorySearchStatus; readonly outcome: ProjectMemorySearchOutcome }
   | ProjectMemoryRefusal;
 
+/** What a frame or note told a conversation: every memory in effect, by id (D14). */
+export type ProjectMemorySnapshot = ReadonlyArray<{ readonly id: string; readonly version: string }>;
+
 export type ProjectMemoryFrameResult =
-  | { readonly kind: 'frame'; readonly frame: ProjectMemoryRenderedFrame }
+  | { readonly kind: 'frame'; readonly frame: ProjectMemoryRenderedFrame; readonly snapshot: ProjectMemorySnapshot }
   /** Nothing to show: the folder holds no readable memory. */
-  | { readonly kind: 'empty' }
+  | { readonly kind: 'empty'; readonly snapshot: ProjectMemorySnapshot }
+  | ProjectMemoryRefusal;
+
+export type ProjectMemoryUpdateResult =
+  | { readonly kind: 'note'; readonly text: string; readonly snapshot: ProjectMemorySnapshot }
+  /** The conversation is not behind: no note, and its record stands. */
+  | { readonly kind: 'current' }
   | ProjectMemoryRefusal;
 
 /** The port the first-turn and join frame builders read (D13): a rendered frame, or none. */
@@ -203,12 +216,34 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
       return set;
     }
     const frame = renderProjectMemoryFrame(set, { builtOn: this.now().toISOString().slice(0, 10) });
+    const snapshot = projectMemorySnapshot(set);
     if (!frame) {
-      return { kind: 'empty' };
+      return { kind: 'empty', snapshot };
     }
     this.log(`frame pinned=${frame.pinnedLoaded.length} entries=${frame.entries.length} more=${frame.more} ` +
       `tokens=${frame.estimate.frameTokens} pinnedOver=${frame.estimate.pinnedOver}`);
-    return { kind: 'frame', frame };
+    return { kind: 'frame', frame, snapshot };
+  }
+
+  /**
+   * The update note for a conversation that was told `view` (D14), or
+   * `current` when it is not behind. Refused, with no note and no record,
+   * while memory is off, the workspace is not the accepted one, or the
+   * folder cannot be listed: the next message tries again.
+   */
+  async update(view: ProjectMemoryDeliveredView, signal?: AbortSignal): Promise<ProjectMemoryUpdateResult> {
+    const set = await this.personaSet(signal);
+    if (set.kind !== 'set') {
+      this.log(`note not sent reason=${set.kind === 'closed' ? set.reason : 'unknown'}`);
+      return set;
+    }
+    const update = renderProjectMemoryUpdateNote(view, set);
+    if (update.text === undefined) {
+      return { kind: 'current' };
+    }
+    this.log(`note changed=${update.changed} overBudget=${update.overBudget} recorded=${view.recorded} ` +
+      `tokens=${estimateTextTokens(update.text)}`);
+    return { kind: 'note', text: update.text, snapshot: update.snapshot };
   }
 
   /**

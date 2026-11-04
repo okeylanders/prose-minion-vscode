@@ -52,6 +52,7 @@ import {
   shapeError,
   stringAt
 } from '@/application/services/workshop/persistedValidation';
+import { assertWorkshopProjectMemoryDeliveryShape } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -582,7 +583,9 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       // Conversation Widgets (ADR 2026-07-22).
       'widgetCommit',
       'widgetRecommendation',
-      'standingDirectiveChange'
+      'standingDirectiveChange',
+      // Project memory's delivery record (ADR 2026-11-04 D14; additive).
+      'projectMemoryDelivery'
     ]
   );
   stringAt(turn.id, `${path}.id`);
@@ -651,6 +654,9 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       shapeError(`${path}.widgetRecommendation`, 'a host or guest persona recommendation');
     }
     assertTurnWidgetRecommendation(turn.widgetRecommendation, `${path}.widgetRecommendation`);
+  }
+  if (turn.projectMemoryDelivery !== undefined) {
+    assertWorkshopProjectMemoryDeliveryShape(turn.projectMemoryDelivery, `${path}.projectMemoryDelivery`, turn.role);
   }
   if (turn.standingDirectiveChange !== undefined) {
     assertStandingDirectiveChange(

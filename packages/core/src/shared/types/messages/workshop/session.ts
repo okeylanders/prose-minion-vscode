@@ -8,7 +8,8 @@ import type { ModelScope } from '../configuration';
 import type { WorkshopBookmarkSummary } from './bookmarks';
 import type {
   WorkshopAnalysisInputProvenance,
-  WorkshopCapabilityArtifactDetails
+  WorkshopCapabilityArtifactDetails,
+  WorkshopCapabilityPrincipal
 } from '../../workshopCapabilities';
 import { ContextPathGroup, isContextPathGroup } from '../../context';
 import type { ConfiguredResourceRef } from '../configuredResources';
@@ -441,6 +442,30 @@ export interface WorkshopTurn {
    * wholesale host-side and never reach this field.
    */
   widgetRecommendation?: WorkshopWidgetRecommendation;
+  /**
+   * What project memory this writer turn delivered (ADR 2026-11-04 D14): a
+   * frame's or an update note's snapshot of the memories in effect, per
+   * participant. Written when the reply that received it commits, so a
+   * rolled-back, cancelled or cut turn takes its record with it.
+   */
+  projectMemoryDelivery?: WorkshopProjectMemoryDelivery[];
+}
+
+/** One memory as a conversation was told of it: its id and its D14 version. */
+export interface WorkshopProjectMemoryDelivered {
+  id: string;
+  version: string;
+}
+
+/**
+ * A snapshot of the memories in effect, delivered to one participant's
+ * conversation as its first-message frame or an update note. It replaces
+ * that participant's earlier view (ADR 2026-11-04 D14).
+ */
+export interface WorkshopProjectMemoryDelivery {
+  participant: WorkshopCapabilityPrincipal;
+  kind: 'frame' | 'note';
+  memories: WorkshopProjectMemoryDelivered[];
 }
 
 /**
