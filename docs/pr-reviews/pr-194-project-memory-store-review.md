@@ -16,13 +16,13 @@ This is a branch review report, not a formal GitHub review submission or authori
 
 | ID | Priority | Finding | Status |
 |---|---|---|---|
-| F-01 | P2 | Frontmatter interpolation bypasses field and immutable-metadata checks | Open |
-| F-02 | P2 | Delete can remove a different or unreadable file substituted after ID lookup | Open |
-| F-03 | P2 | Uppercase Markdown claims are invisible to busy detection and recovery | Open |
-| F-04 | P2 | Filesystem error messages leak title-derived paths into logs | Open |
-| F-05 | P2 | A successful write can immediately be unreadable under the byte limit | Open |
-| N-01 | P3, before Slice 2 | Supersession helper does not honor the ADR's cycle rule | Open contract gap |
-| N-02 | Spec/API reconciliation | Busy listing omits metadata that D10 says the catalog retains | Open question |
+| F-01 | P2 | Frontmatter interpolation bypasses field and immutable-metadata checks | Fixed in `ae95975`: `prepareProjectMemoryFile` refuses a non-string, a line break or a control character in any field (a comma in a list entry) before interpolation, then requires the decoded file to be the very memory meant; the review's string is a create and replace regression with no file change |
+| F-02 | P2 | Delete can remove a different or unreadable file substituted after ID lookup | Fixed in `4d836d9`: `deleteClaimed` takes a `verify` that reads the claimed bytes before anything goes; memory's requires them to read with the same id, else they are put back and the delete answers `changed`; race tests for another id and unreadable bytes |
+| F-03 | P2 | Uppercase Markdown claims are invisible to busy detection and recovery | Fixed in `2728e6c`: `PROJECT_MEMORY_CLAIM` matches the extension in any case, as `isMemoryFileName` does; busy, put-back and retirement tested for `note.MD` and `Mixed.Md` |
+| F-04 | P2 | Filesystem error messages leak title-derived paths into logs | Fixed in `6f320b6`: a `formatError` hook on `StoredFileClaims` (used by the shared rewrite); memory logs `fileSystemErrorCategory` (a code, never a message) in its own lines too; the Lightbox keeps its messages; path-bearing errors tested in create, rewrite and delete |
+| F-05 | P2 | A successful write can immediately be unreadable under the byte limit | Fixed in `c898333`: the encoded bytes are held to `PROJECT_MEMORY_FILE_BYTES` before create or replace stages anything (`file-too-large`), and turn ids' digit runs are bounded (9 and 16); the review's turn is refused with no write, and a memory at every bound round-trips |
+| N-01 | P3, before Slice 2 | Supersession helper does not honor the ADR's cycle rule | Fixed in `7824c22`: `supersededProjectMemoryIds` takes each memory's id and supersedes nothing on a cycle; A↔B and A→B→C→A tested |
+| N-02 | Spec/API reconciliation | Busy listing omits metadata that D10 says the catalog retains | Fixed in `5f92624` (coordinator's decision, keep the metadata): a memory under a live claim stays in `memories`, read from the claim's bytes, `busy: true`; `read` still answers busy; an unreadable claim is an unreadable row |
 
 ## F-01: P2: validate scalar fields before serializing frontmatter
 

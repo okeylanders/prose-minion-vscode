@@ -7,7 +7,7 @@ amended (`774e283`) to the spec thread's early format and storage decisions,
 relayed by the coordinator on 2026-11-04. Where the two differ, the relay
 wins.
 **Branch:** `epic/workshop-project-memory-slice-1-store`
-**Status:** Built, verified and pushed; waiting on the ADR and the coordinator's PR.
+**Status:** Built, verified and pushed. PR #194's review findings (F-01–F-05, N-01, N-02) are fixed; waiting on re-review and the ADR (#192).
 
 ## Outcome
 
@@ -287,6 +287,28 @@ Free Markdown.
 - **Busy files are named.** A listing reads a live claim's bytes, read-only,
   so `read(id)` can answer `busy` rather than `missing`.
 
+## Review Fixes (PR #194)
+
+Astra's review (`docs/pr-reviews/pr-194-project-memory-store-review.md`,
+`09a6955c`) asked for changes. Each finding was fixed in its own commit,
+with a regression test that failed first.
+
+| ID | Commit | Fix |
+|---|---|---|
+| F-01 | `ae95975` | `prepareProjectMemoryFile`: every field checked before it is put on a line (no line break or control character; no comma in a list entry), then the decoded file required to be the very memory meant (`not-as-written`). Create and replace both go through it |
+| F-02 | `4d836d9` | `deleteClaimed(…, verify)`: the claimed bytes are checked before anything goes. Memory's requires them to read with the same id, else they are put back (`changed`). An overload keeps `changed` out of the Lightbox's result |
+| F-03 | `2728e6c` | `PROJECT_MEMORY_CLAIM` matches `.md` in any case, as `isMemoryFileName` lists it |
+| F-04 | `6f320b6` | `StoredFileClaims` `formatError` hook (the shared rewrite uses it); memory logs `fileSystemErrorCategory`: a code, never a message. The Lightbox's lines are unchanged |
+| F-05 | `c898333` | The encoded bytes are held to `PROJECT_MEMORY_FILE_BYTES` before anything is staged (`file-too-large`); turn ids' counter and time are bounded to 9 and 16 digits |
+| N-01 | `7824c22` | `supersededProjectMemoryIds` takes `{ id, supersedes }` and supersedes nothing on a cycle (ADR D4) |
+| N-02 | `5f92624` | The coordinator's decision: a memory under a live claim stays in `memories`, read from the claim's bytes, `busy: true`; `read` answers busy; an unreadable claim is an unreadable row. The listing's `busy` array is gone |
+
+What changed in the contracts:
+- the store's `invalid` reason widens to `ProjectMemoryWriteFault`
+  (`not-as-written`, `file-too-large`);
+- a delete may answer `changed`;
+- `ProjectMemoryEntry.busy` replaces `ProjectMemoryListing.busy`.
+
 ## Known Limits
 
 - **Two windows minting one id for different titles.** The file names
@@ -307,26 +329,27 @@ Free Markdown.
 |---|---|---|
 | `npm run typecheck` | clean | clean |
 | `npm run lint` | 0 errors | 0 errors, 1,153 warnings; none in a new or changed file (the one warning in the storage folder is `pathContainment.ts`'s, untouched) |
-| `npx jest` | 636 suites / 8,977 tests / 59 snapshots | 639 suites / 9,071 tests / 59 snapshots (+3 suites, +94 tests: codec 61, store 23, races 9, the boundaries guard 1) |
+| `npx jest` | 636 suites / 8,977 tests / 59 snapshots | 639 suites / 9,100 tests / 59 snapshots after the review fixes (+3 suites, +123 tests; 9,071 before them) |
 | `from 'vscode'` in `packages/core/src` | none | none |
 
 **File sizes (lines).**
 
 | File | Lines |
 |---|---|
-| `infrastructure/storage/StoredFileClaims.ts` (new) | 282 |
+| `infrastructure/storage/StoredFileClaims.ts` (new) | 323 |
 | `infrastructure/storage/StoredFileRewrite.ts` (new) | 159 |
-| `infrastructure/storage/ProjectMemoryCodec.ts` (new) | 343 |
-| `infrastructure/storage/ProjectMemoryFiles.ts` (new) | 209 |
-| `infrastructure/storage/ProjectMemoryStore.ts` (new) | 424 |
-| `infrastructure/storage/ProjectMemoryStoreContracts.ts` (new) | 103 |
-| `shared/types/projectMemory.ts` (new) | 108 |
+| `infrastructure/storage/ProjectMemoryCodec.ts` (new) | 423 |
+| `infrastructure/storage/ProjectMemoryFiles.ts` (new) | 220 |
+| `infrastructure/storage/ProjectMemoryStore.ts` (new) | 438 |
+| `infrastructure/storage/ProjectMemoryStoreContracts.ts` (new) | 109 |
+| `shared/types/projectMemory.ts` (new) | 148 |
+| `infrastructure/storage/fileSystemErrors.ts` | 5 → 20 |
 | `infrastructure/storage/LightboxBoardClaims.ts` | 229 → 82 |
 | `infrastructure/storage/LightboxBoardRewrite.ts` | 263 → 216 |
 | `infrastructure/storage/LightboxBoardStore.ts` | 429 → 414 |
 | `infrastructure/storage/LightboxBoardNewFile.ts` | 91 → 92 |
-| `__tests__/infrastructure/storage/ProjectMemoryCodec.test.ts` | 242 |
-| `__tests__/infrastructure/storage/ProjectMemoryStore.test.ts` | 327 |
-| `__tests__/infrastructure/storage/ProjectMemoryStoreRaces.test.ts` | 220 |
+| `__tests__/infrastructure/storage/ProjectMemoryCodec.test.ts` | 302 |
+| `__tests__/infrastructure/storage/ProjectMemoryStore.test.ts` | 484 |
+| `__tests__/infrastructure/storage/ProjectMemoryStoreRaces.test.ts` | 266 |
 | `__tests__/infrastructure/storage/projectMemoryStoreHost.ts` | 73 |
 | `__tests__/architecture/boundaries.test.ts` | 2,418 → 2,436 (already past 500 before this slice; the guard adds 18) |
