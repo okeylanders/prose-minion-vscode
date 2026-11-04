@@ -135,7 +135,8 @@ describe('useWorkshopContextSheet', () => {
 
       act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
 
-      expect(props.requestReadInResource).toHaveBeenCalledWith(rabbit);
+      // The delivery time names the row, so the host answers from its reading.
+      expect(props.requestReadInResource).toHaveBeenCalledWith({ ...rabbit, deliveredAt: 5_000 });
       expect(result.current.textSheet?.mode).toEqual({
         kind: 'read-in',
         label: 'characters/rabbit.md',
@@ -149,7 +150,9 @@ describe('useWorkshopContextSheet', () => {
         loading: true,
         error: undefined,
         truncated: undefined,
-        canOpenInEditor: false
+        canOpenInEditor: false,
+        lineRange: undefined,
+        changedSinceRead: undefined
       });
     });
 
@@ -171,6 +174,7 @@ describe('useWorkshopContextSheet', () => {
         requestId: 'readin-2',
         group: 'characters',
         path: 'characters/hatter.md',
+        deliveredAt: 5_000,
         content: 'The wrong file.',
         canOpenInEditor: true
       };
@@ -178,17 +182,23 @@ describe('useWorkshopContextSheet', () => {
       expect(result.current.sheetBody?.loading).toBe(true);
       expect(result.current.sheetBody?.value).toBeUndefined();
 
-      props.readInContent = { requestId: 'readin-1', ...rabbit, content: 'Down the hole.', truncated: true, canOpenInEditor: true };
+      props.readInContent = {
+        requestId: 'readin-1', ...rabbit, deliveredAt: 5_000, content: 'Down the hole.', truncated: true, canOpenInEditor: true
+      };
       rerender();
       expect(result.current.sheetBody).toEqual({
         value: 'Down the hole.',
         loading: false,
         error: undefined,
         truncated: true,
-        canOpenInEditor: true
+        canOpenInEditor: true,
+        lineRange: undefined,
+        changedSinceRead: undefined
       });
 
-      props.readInContent = { requestId: 'readin-1', ...rabbit, error: 'That file could not be read.', canOpenInEditor: false };
+      props.readInContent = {
+        requestId: 'readin-1', ...rabbit, deliveredAt: 5_000, error: 'That file could not be read.', canOpenInEditor: false
+      };
       rerender();
       expect(result.current.sheetBody).toMatchObject({ loading: false, error: 'That file could not be read.' });
     });
@@ -254,7 +264,7 @@ describe('useWorkshopContextSheet', () => {
       expect(result.current.sheetKey).toBe('sheet');
 
       act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
-      props.readInContent = { requestId: 'readin-1', ...rabbit, canOpenInEditor: false };
+      props.readInContent = { requestId: 'readin-1', ...rabbit, deliveredAt: 5_000, canOpenInEditor: false };
       rerender();
       const first = result.current.sheetKey;
       expect(first).toBe('read-in:readin-1');
@@ -265,9 +275,53 @@ describe('useWorkshopContextSheet', () => {
       }), 'Jill'));
       // Before the hook's state for B lands, B still keys apart from A.
       expect(result.current.sheetKey).not.toBe(first);
-      props.readInContent = { requestId: 'readin-2', group: 'characters', path: 'characters/hatter.md', canOpenInEditor: false };
+      props.readInContent = {
+        requestId: 'readin-2', group: 'characters', path: 'characters/hatter.md', deliveredAt: 5_000, canOpenInEditor: false
+      };
       rerender();
       expect(result.current.sheetKey).toBe('read-in:readin-2');
+    });
+
+    it('carries the row\'s card and the reply\'s line range and "changed since" (Wayfinding Slice 3)', () => {
+      const props = options();
+      const { result, rerender } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openReadInSheet(readInRow({ turnId: 'turn-7-assistant-1' }), 'Jill'));
+      expect(result.current.textSheet?.mode).toMatchObject({ kind: 'read-in', turnId: 'turn-7-assistant-1' });
+
+      props.readInContent = {
+        requestId: 'readin-1',
+        ...rabbit,
+        deliveredAt: 5_000,
+        content: 'Down the hole.',
+        lineRange: { start: 1, end: 64 },
+        changedSinceRead: true,
+        canOpenInEditor: true
+      };
+      rerender();
+      expect(result.current.sheetBody).toMatchObject({
+        value: 'Down the hole.',
+        lineRange: { start: 1, end: 64 },
+        changedSinceRead: true
+      });
+    });
+
+    it('never takes another reading\'s reply for the same file', () => {
+      const props = options();
+      const { result, rerender } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
+      // The same file, read at another time: its range and change state
+      // belong to that row, not this one.
+      props.readInContent = {
+        requestId: 'readin-1',
+        ...rabbit,
+        deliveredAt: 9_000,
+        content: 'Down the hole.',
+        lineRange: { start: 40, end: 60 },
+        changedSinceRead: false,
+        canOpenInEditor: true
+      };
+      rerender();
+      expect(result.current.sheetBody).toMatchObject({ loading: true, value: undefined, lineRange: undefined });
     });
   });
 });

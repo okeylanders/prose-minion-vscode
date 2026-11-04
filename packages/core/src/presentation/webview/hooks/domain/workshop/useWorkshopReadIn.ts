@@ -24,11 +24,22 @@ export interface WorkshopReadInContentState {
   requestId: string;
   group: string;
   path: string;
+  /** The row the request named, by delivery time, when it named one. */
+  deliveredAt?: number;
   /** Undefined until the host answers, or when it refused. */
   content?: string;
   truncated?: boolean;
+  /** The lines the participant read, from the row the request named. */
+  lineRange?: { start: number; end: number };
+  /** Whether the file has changed since that read; absent when unknown. */
+  changedSinceRead?: boolean;
   error?: string;
   canOpenInEditor: boolean;
+}
+
+/** A read-in file, and the row that names its reading (by delivery time). */
+export interface WorkshopReadInRequest extends ConfiguredResourceRef {
+  deliveredAt?: number;
 }
 
 export interface WorkshopReadInState {
@@ -36,7 +47,7 @@ export interface WorkshopReadInState {
 }
 
 export interface WorkshopReadInActions {
-  requestReadInResource: (ref: ConfiguredResourceRef) => void;
+  requestReadInResource: (request: WorkshopReadInRequest) => void;
   openReadInResource: (ref: ConfiguredResourceRef) => void;
   clearReadInContent: () => void;
   handleReadInResourceContent: (message: WorkshopReadInResourceContentMessage) => void;
@@ -61,17 +72,28 @@ export function useWorkshopReadIn(): UseWorkshopReadInReturn {
   const ids = React.useRef({ prefix: `ws-readin-${Math.random().toString(36).slice(2, 10)}`, count: 0 });
 
   const post = React.useCallback(
-    (type: MessageType, payload: ConfiguredResourceRef & { requestId?: string }) => {
+    (type: MessageType, payload: WorkshopReadInRequest & { requestId?: string }) => {
       vscode.postMessage({ type, source: SOURCE, payload, timestamp: Date.now() });
     },
     [vscode]
   );
 
-  const requestReadInResource = React.useCallback((ref: ConfiguredResourceRef) => {
+  const requestReadInResource = React.useCallback((request: WorkshopReadInRequest) => {
     ids.current.count += 1;
     const requestId = `${ids.current.prefix}-${ids.current.count}`;
-    setReadInContent({ requestId, group: ref.group, path: ref.path, canOpenInEditor: false });
-    post(MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE, { requestId, group: ref.group, path: ref.path });
+    setReadInContent({
+      requestId,
+      group: request.group,
+      path: request.path,
+      ...(request.deliveredAt !== undefined ? { deliveredAt: request.deliveredAt } : {}),
+      canOpenInEditor: false
+    });
+    post(MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE, {
+      requestId,
+      group: request.group,
+      path: request.path,
+      ...(request.deliveredAt !== undefined ? { deliveredAt: request.deliveredAt } : {})
+    });
   }, [post]);
 
   const openReadInResource = React.useCallback((ref: ConfiguredResourceRef) => {
@@ -82,7 +104,9 @@ export function useWorkshopReadIn(): UseWorkshopReadInReturn {
 
   const handleReadInResourceContent = React.useCallback(
     (message: WorkshopReadInResourceContentMessage) => {
-      const { requestId, group, path, content, truncated, error, canOpenInEditor } = message.payload;
+      const {
+        requestId, group, path, content, truncated, lineRange, changedSinceRead, error, canOpenInEditor
+      } = message.payload;
       setReadInContent((current) =>
         current !== null
           && current.requestId === requestId
@@ -90,7 +114,7 @@ export function useWorkshopReadIn(): UseWorkshopReadInReturn {
           && current.path === path
           && current.content === undefined
           && current.error === undefined
-          ? { requestId, group, path, content, truncated, error, canOpenInEditor }
+          ? { ...current, content, truncated, lineRange, changedSinceRead, error, canOpenInEditor }
           : current
       );
     },

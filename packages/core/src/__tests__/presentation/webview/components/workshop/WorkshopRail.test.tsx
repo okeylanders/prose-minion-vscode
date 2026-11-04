@@ -89,7 +89,8 @@ const panelProps = (
     entries: readIn,
     participantIdentity: 'jill',
     participantLabel: 'Jill',
-    onOpenReader: jest.fn()
+    onOpenReader: jest.fn(),
+    onJump: jest.fn()
   },
   todos: { todos, onAction: jest.fn(), onShowSource: jest.fn() }
 });

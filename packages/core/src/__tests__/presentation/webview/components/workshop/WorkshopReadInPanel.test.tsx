@@ -33,6 +33,7 @@ const renderPanel = (entries: ContextSourceEntry[], overrides: Partial<WorkshopR
     participantIdentity: 'jill',
     participantLabel: 'Jill',
     onOpenReader: jest.fn(),
+    onJump: jest.fn(),
     ...overrides
   };
   render(<WorkshopReadInPanel {...props} />);
@@ -83,6 +84,24 @@ describe('WorkshopReadInPanel', () => {
     expect(meta?.textContent).toBe(`resource · ${formatReadInTime(rabbit.deliveredAt)}`);
     fireEvent.click(button);
     expect(props.onOpenReader).toHaveBeenCalledWith(rabbit);
+  });
+
+  it('makes a card-backed row a button that jumps to its card (Wayfinding Slice 3)', () => {
+    const report = row({
+      kind: 'tool-evidence', label: 'Dialogue & Beats', configuredResource: undefined, turnId: 'turn-4-assistant-1'
+    });
+    const props = renderPanel([report]);
+    const button = screen.getByRole('button', { name: 'Show the card for Dialogue & Beats in the thread' });
+    const meta = document.getElementById(button.getAttribute('aria-describedby')!);
+    expect(meta?.textContent).toBe(`tool report · ${formatReadInTime(report.deliveredAt)}`);
+    fireEvent.click(button);
+    expect(props.onJump).toHaveBeenCalledWith('turn-4-assistant-1');
+    expect(props.onOpenReader).not.toHaveBeenCalled();
+  });
+
+  it('says a superseded card-backed row is an earlier read', () => {
+    renderPanel([row({ kind: 'dictionary', label: 'tardy', configuredResource: undefined, turnId: 't-1', stale: true })]);
+    expect(screen.getByRole('button', { name: 'Show the card for tardy in the thread, an earlier read' })).toBeTruthy();
   });
 
   it('leaves rows without an action as plain list items', () => {

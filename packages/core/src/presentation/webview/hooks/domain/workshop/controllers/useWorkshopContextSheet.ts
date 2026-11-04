@@ -12,7 +12,10 @@ import type {
   WorkshopAttachmentContentState
 } from '@hooks/domain/workshop/useWorkshopRoom';
 import type { WorkshopVerifiedExcerpt } from '@hooks/domain/useWorkshopExcerptVerify';
-import type { WorkshopReadInContentState } from '@hooks/domain/workshop/useWorkshopReadIn';
+import type {
+  WorkshopReadInContentState,
+  WorkshopReadInRequest
+} from '@hooks/domain/workshop/useWorkshopReadIn';
 import type { ContextSourceEntry } from '@shared/types';
 
 /** What the sheet is being used for; drives kicker, copy, and affordances. */
@@ -33,6 +36,8 @@ export type WorkshopTextSheetMode =
       path: string;
       participantLabel: string;
       deliveredAt: number;
+      /** The card that recorded the read, when the row names one (Wayfinding D4). */
+      turnId?: string;
     };
 
 export interface WorkshopTextSheetState {
@@ -57,7 +62,7 @@ export interface UseWorkshopContextSheetOptions {
   requestShelfReplacement: (resume: 'paste' | 'choose') => void;
   /** The Read in reader's transport (`useWorkshopReadIn`). */
   readInContent: WorkshopReadInContentState | null;
-  requestReadInResource: (ref: ConfiguredResourceRef) => void;
+  requestReadInResource: (request: WorkshopReadInRequest) => void;
   openReadInResource: (ref: ConfiguredResourceRef) => void;
   clearReadInContent: () => void;
   /**
@@ -78,6 +83,9 @@ export interface WorkshopTextSheetBody {
   /** True when the host stopped the text at its read ceiling. */
   truncated?: boolean;
   canOpenInEditor: boolean;
+  /** The reader's provenance, from the host's correlated reply (Wayfinding D4). */
+  lineRange?: { start: number; end: number };
+  changedSinceRead?: boolean;
 }
 
 export interface WorkshopContextSheetState {
@@ -117,6 +125,21 @@ export type UseWorkshopContextSheetReturn = WorkshopContextSheetState &
   WorkshopContextSheetActions & {
     persistedState: WorkshopContextSheetPersistence;
   };
+
+/**
+ * The reader's content when it answers the row on screen: the same file, and
+ * the same reading (delivery time), so provenance never comes from another row.
+ */
+const readInReplyFor = (
+  content: WorkshopReadInContentState | null,
+  mode: Extract<WorkshopTextSheetMode, { kind: 'read-in' }>
+): WorkshopReadInContentState | undefined =>
+  content !== null
+    && content.group === mode.group
+    && content.path === mode.path
+    && content.deliveredAt === mode.deliveredAt
+    ? content
+    : undefined;
 
 export function useWorkshopContextSheet({
   hasHostConversation,
@@ -221,10 +244,12 @@ export function useWorkshopContextSheet({
           group: resource.group,
           path: resource.path,
           participantLabel,
-          deliveredAt: entry.deliveredAt
+          deliveredAt: entry.deliveredAt,
+          ...(entry.turnId ? { turnId: entry.turnId } : {})
         }
       });
-      requestReadInResource(resource);
+      // The delivery time names the row, so the host answers from its reading.
+      requestReadInResource({ ...resource, deliveredAt: entry.deliveredAt });
     },
     [requestReadInResource]
   );
@@ -289,9 +314,7 @@ export function useWorkshopContextSheet({
       return 'sheet';
     }
     const { group, path } = textSheet.mode;
-    const current = readInContent?.group === group && readInContent.path === path
-      ? readInContent.requestId
-      : `${group}\u0000${path}`;
+    const current = readInReplyFor(readInContent, textSheet.mode)?.requestId ?? `${group}\u0000${path}`;
     return `read-in:${current}`;
   })();
 
@@ -300,17 +323,16 @@ export function useWorkshopContextSheet({
       return undefined;
     }
     if (textSheet.mode.kind === 'read-in') {
-      const { group, path } = textSheet.mode;
       // Matched to the row on screen, as attachments are by id.
-      const reply = readInContent?.group === group && readInContent.path === path
-        ? readInContent
-        : undefined;
+      const reply = readInReplyFor(readInContent, textSheet.mode);
       return {
         value: reply?.content,
         loading: reply?.content === undefined && reply?.error === undefined,
         error: reply?.error,
         truncated: reply?.truncated,
-        canOpenInEditor: reply?.canOpenInEditor ?? false
+        canOpenInEditor: reply?.canOpenInEditor ?? false,
+        lineRange: reply?.lineRange,
+        changedSinceRead: reply?.changedSinceRead
       };
     }
     return {

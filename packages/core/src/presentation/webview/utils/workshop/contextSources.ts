@@ -52,8 +52,10 @@ const unhandledKind = (kind: never): never => {
 
 /**
  * One case per `ContextSourceKind`, so a new kind does not compile until
- * someone decides what opening it means. `jump` arrives once rows record
- * their card (Slice 3); until then those kinds open nothing.
+ * someone decides what opening it means. A resource opens in the reader (and
+ * the reader offers its card); a card-backed row jumps to the card that
+ * fetched it. A row stored before cards were recorded has no `turnId`, and
+ * opens nothing.
  */
 export function readInOpenAction(entry: ContextSourceEntry): ReadInOpenAction {
   switch (entry.kind) {
@@ -62,7 +64,7 @@ export function readInOpenAction(entry: ContextSourceEntry): ReadInOpenAction {
     case 'tool-evidence':
     case 'dictionary':
     case 'transcript':
-      return { kind: 'none' };
+      return entry.turnId ? { kind: 'jump', turnId: entry.turnId } : { kind: 'none' };
     case 'pin':
     case 'attachment':
     case 'message-attachment':

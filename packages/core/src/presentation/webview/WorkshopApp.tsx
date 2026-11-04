@@ -48,7 +48,7 @@ import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
-import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBubble';
+import { useWorkshopTurnJump } from '@hooks/domain/workshop/controllers/useWorkshopTurnJump';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
 import { WorkshopWidgetsModal } from './components/workshop/WorkshopWidgetsModal';
 import {
@@ -894,17 +894,18 @@ export const WorkshopApp: React.FC = () => {
     });
   }, [vscode, workshop.excerpt]);
 
-  const showTodoSource = React.useCallback((sourceTurnId: string) => {
-    const sourceTurn = document.querySelector<HTMLElement>(
-      `[${WORKSHOP_TURN_ID_ATTRIBUTE}="${sourceTurnId}"]`
-    );
-    if (sourceTurn) {
-      sourceTurn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      sourceTurn.focus({ preventScroll: true });
-    } else {
-      showToast({ message: 'That source turn is outside the current reload window.', icon: 'doc' });
-    }
-  }, [showToast]);
+  // To-do "show source", Read in's card rows, and the reader's "Show where it
+  // was read" share one scroll-and-focus path (Wayfinding D3, D4).
+  const readInCardTurnId = textSheet?.mode.kind === 'read-in' ? textSheet.mode.turnId : undefined;
+  const showTurnOutsideWindow = React.useCallback(
+    () => showToast({ message: 'That source turn is outside the current reload window.', icon: 'doc' }),
+    [showToast]
+  );
+  const { jumpToTurn, jumpAfterClosing } = useWorkshopTurnJump({
+    overlayOpen: textSheet !== null,
+    closeOverlay: closeTextSheet,
+    onOutsideWindow: showTurnOutsideWindow
+  });
 
   const excerptSessionLabel = (() => {
     const sourcePath = workshop.excerpt
@@ -1088,12 +1089,13 @@ export const WorkshopApp: React.FC = () => {
         entries: readInSources,
         participantIdentity: chatTargetIdentity,
         participantLabel: chatTargetLabel,
-        onOpenReader: openReadInChatTargetSheet
+        onOpenReader: openReadInChatTargetSheet,
+        onJump: jumpToTurn
       }}
       todos={{
         todos: workshop.todos,
         onAction: workshop.todoAction,
-        onShowSource: showTodoSource
+        onShowSource: jumpToTurn
       }}
     />
   );
@@ -1393,6 +1395,9 @@ export const WorkshopApp: React.FC = () => {
           error={sheetBody?.error}
           truncated={sheetBody?.truncated}
           canOpenInEditor={sheetBody?.canOpenInEditor ?? false}
+          lineRange={sheetBody?.lineRange}
+          changedSinceRead={sheetBody?.changedSinceRead}
+          onShowWhereRead={readInCardTurnId ? () => jumpAfterClosing(readInCardTurnId) : undefined}
           applyDisabled={roomMutationLocked}
           onApply={applyTextSheet}
           onPasteText={

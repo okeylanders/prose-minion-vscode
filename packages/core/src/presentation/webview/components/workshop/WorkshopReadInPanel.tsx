@@ -23,6 +23,8 @@ export interface WorkshopReadInPanelProps {
   participantLabel: string;
   /** Opens a row whose action is `reader`. */
   onOpenReader: (entry: ContextSourceEntry) => void;
+  /** Shows the card turn a `jump` row names. */
+  onJump: (turnId: string) => void;
 }
 
 const KIND_ICONS: Record<ContextSourceKind, IconName> = {
@@ -76,7 +78,8 @@ export const WorkshopReadInPanel: React.FC<WorkshopReadInPanelProps> = ({
   entries,
   participantIdentity,
   participantLabel,
-  onOpenReader
+  onOpenReader,
+  onJump
 }) => {
   const idPrefix = React.useId();
   return (
@@ -100,7 +103,6 @@ export const WorkshopReadInPanel: React.FC<WorkshopReadInPanelProps> = ({
     ) : (
       <ul className="pm-ws-readin-list">
         {entries.map((entry, index) => {
-          // `jump` has no producer until rows record their card (Slice 3).
           const action = readInOpenAction(entry);
           const rowClass = `pm-ws-readin-row${entry.stale ? ' pm-ws-readin-row-stale' : ''}`;
           // The button's label names the action; its kind and time stay
@@ -119,6 +121,19 @@ export const WorkshopReadInPanel: React.FC<WorkshopReadInPanelProps> = ({
                   <RowBody entry={entry} metaId={metaId} />
                   <span className="pm-ws-readin-trail" aria-hidden="true">
                     <Icon name="chevRight" size={13} />
+                  </span>
+                </button>
+              ) : action.kind === 'jump' ? (
+                <button
+                  type="button"
+                  className={`${rowClass} pm-ws-readin-row-action`}
+                  aria-label={`Show the card for ${entry.label} in the thread${entry.stale ? ', an earlier read' : ''}`}
+                  aria-describedby={metaId}
+                  onClick={() => onJump(action.turnId)}
+                >
+                  <RowBody entry={entry} metaId={metaId} />
+                  <span className="pm-ws-readin-trail" aria-hidden="true">
+                    <Icon name="link" size={13} />
                   </span>
                 </button>
               ) : (
