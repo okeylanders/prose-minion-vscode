@@ -67,8 +67,8 @@ This differs from the documented choice to keep an already-written memory when i
 - **Independent UI/web attachment probes:** 2 suites / 11 tests passed.
 - **Independent queued-run witnesses:** 1 suite / 3 tests confirmed F-03.
 - **Independent persistence/coalescing witnesses:** both mode-withdrawal variants and the ignored-edited-draft case confirmed F-01/F-02.
-- **Full suite:** running against this exact head, with complete output retained; no aggregate pass claimed yet.
-- **CI:** [implementation run 41909466377](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41909466377) was still running at publication.
+- **Full suite:** **680 suites / 9,586 tests / 59 snapshots passed** independently against this exact head, in 453 seconds. Reviewer-only probes were excluded and run separately; full output was retained.
+- **CI:** [implementation run 41909466377](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41909466377) passed. The report-only head's run remained in progress at 20:57 UTC.
 - GitHub reported this head mergeable. No formal GitHub approval or merge performed.
 
 ## Re-review gates
