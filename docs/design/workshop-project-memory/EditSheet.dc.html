@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Save to project memory · sheet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.es{
+  --bg:#15110d;--surface:#221a13;--s2:#2b2017;--s3:#36281b;--inset:#1b150f;
+  --border:#3a2c1f;--border2:#4d3a28;--soft:#2e231a;
+  --text:#f3ece1;--text2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
+  --accent:#e0673a;--accentHi:#ee7d49;--accentLo:#c8552c;--accentSoft:rgba(224,103,58,.14);
+  width:760px;min-height:980px;box-sizing:border-box;padding-top:40px;background:var(--bg);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--text);
+}
+.box{background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 28px 90px rgba(0,0,0,.55);}
+.eyebrow{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
+.close{width:34px;height:34px;flex-shrink:0;display:grid;place-items:center;border:1px solid var(--border2);border-radius:8px;background:var(--s2);color:var(--muted);cursor:pointer;}
+.field{display:flex;flex-direction:column;gap:7px;margin-top:16px;color:var(--text2);font-size:12px;font-weight:600;}
+.field input,.field textarea{width:100%;box-sizing:border-box;border:1px solid var(--border2);border-radius:9px;background:var(--inset);color:var(--text);font:12px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:9px 10px;resize:vertical;}
+.field small{align-self:flex-end;color:var(--faint);font:10px ui-monospace,Menlo,monospace;font-weight:400;}
+.field .hint{font-weight:400;color:var(--dim);font-size:11px;}
+.kinds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+.kc{display:flex;flex-direction:column;gap:3px;text-align:left;border:1px solid var(--border);border-radius:9px;background:var(--s2);padding:9px 10px;font-family:inherit;cursor:pointer;}
+.kc b{font-size:12.5px;color:var(--text2);}
+.kc span{font-size:10.5px;line-height:1.4;color:var(--dim);font-weight:400;}
+.kc.sel{background:var(--accentSoft);border-color:color-mix(in srgb,var(--accent) 50%,transparent);}
+.kc.sel b{color:var(--text);}
+.kc.sel span{color:var(--muted);}
+.row{display:flex;align-items:flex-start;gap:12px;margin-top:16px;padding:11px 12px;background:var(--s2);border:1px solid var(--border);border-radius:9px;}
+.row-text{flex:1;}
+.row-name{font-size:13px;font-weight:600;color:var(--text);}
+.row-desc{margin-top:3px;font-size:11.5px;line-height:1.5;color:var(--dim);}
+.toggle{position:relative;flex-shrink:0;width:36px;height:21px;margin-top:2px;border-radius:999px;background:var(--s3);border:1px solid var(--border2);cursor:pointer;}
+.toggle span{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:var(--muted);}
+.toggle.on{background:var(--accent);border-color:var(--accentLo);}
+.toggle.on span{left:17px;background:#fff;}
+.rep{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--inset);font-size:12px;color:var(--text2);font-weight:400;}
+.rep button{margin-left:auto;border:0;background:transparent;color:var(--dim);cursor:pointer;font-size:11px;}
+.refusal{display:flex;gap:7px;align-items:flex-start;margin-top:8px;padding:8px 10px;border-radius:9px;border:1px solid color-mix(in srgb,#e2b24a 50%,var(--border));background:color-mix(in srgb,#e2b24a 8%,transparent);color:#e2b24a;font-size:11.5px;line-height:1.45;}
+.refusal svg{flex:none;margin-top:1px;}
+.source{display:flex;gap:8px;align-items:flex-start;margin-top:16px;padding:10px 12px;border-radius:9px;background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--dim);font-size:11px;line-height:1.55;}
+.source svg{flex:none;margin-top:1px;color:var(--accentHi);}
+.btn{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;font-family:inherit;color:var(--text2);background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:6px 11px;cursor:pointer;}
+.primary{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:600;font-family:inherit;color:#fff;background:linear-gradient(180deg,var(--accentHi),var(--accentLo));cursor:pointer;}
+</style>
+</helmet>
+<div class="es">
+<div class="box" role="dialog" aria-labelledby="pm-mem-sheet-title" style="width: 760px">
+<div style="display: flex; justify-content: space-between; gap: 20px; padding: 20px 20px 4px">
+<div>
+<div class="eyebrow">Workshop · Project memory</div>
+<h2 id="pm-mem-sheet-title" style="font-size: 20px; line-height: 1.2; margin: 7px 0 4px">{{sheetTitle}}</h2>
+<p style="color: var(--muted); font-size: 13px; line-height: 1.45; margin: 0">Personas in later conversations start with the title and summary, and read the note when they need it. You can change any of it later.</p>
+</div>
+<button class="close" type="button" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</div>
+
+<div style="padding: 0 20px 16px">
+<label class="field"><span>Title</span><input type="text" value="The Rabbit’s watch runs backward"><small>32 / 120</small></label>
+
+<div class="field"><span>Kind</span>
+<div class="kinds" role="radiogroup" aria-label="Kind">
+<button class="kc" type="button" role="radio" aria-checked="false"><b>Decision</b><span>A choice the project made.</span></button>
+<button class="kc sel" type="button" role="radio" aria-checked="true"><b>Canon</b><span>A fact of the story.</span></button>
+<button class="kc" type="button" role="radio" aria-checked="false"><b>Preference</b><span>How you like to work.</span></button>
+<button class="kc" type="button" role="radio" aria-checked="false"><b>Open thread</b><span>A question to come back to.</span></button>
+</div>
+</div>
+
+<label class="field"><span>Summary <span class="hint">· what every conversation sees</span></span><input type="text" value="From chapter 3 on, the White Rabbit’s watch runs backward; nobody in Wonderland remarks on it."><small>95 / 280</small></label>
+
+<label class="field"><span>Note <span class="hint">· read in full only when a persona needs it</span></span><textarea rows="6">We settled this while working chapter 3’s tea-party scene. The watch running backward is the first sign that time in Wonderland is wrong. Nobody comments on it; the reader notices before Alice does.</textarea><small>214 / 8,000</small></label>
+<sc-if value="{{refused}}" hint-placeholder-val="{{ false }}">
+<div class="refusal" role="alert"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><span>Can’t save this edit: this memory loads in full, and the longer note would bring memories loaded in full to about 5,300 of 5,000 tokens. Shorten the note, or turn off Always load in full here or on another memory.</span></div>
+</sc-if>
+
+<div class="field"><span>Replaces</span>
+<div class="rep">The Rabbit’s watch stops at six <span style="color: var(--dim)">· stays searchable</span><button type="button" aria-label="Don’t replace The Rabbit’s watch stops at six">Don’t replace</button></div>
+</div>
+
+<div class="row">
+<div class="row-text">
+<div class="row-name">Always load in full</div>
+<div class="row-desc">{{pinDesc}}</div>
+</div>
+<button class="toggle {{pinClass}}" type="button" role="switch" aria-checked="{{pinChecked}}" aria-label="Always load in full"><span></span></button>
+</div>
+
+<div class="source"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"></path><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"></path></svg><span>From Jill’s reply in “Tea-party pacing”, Nov 3. Personas can check the note against that conversation. Saved as a Markdown file in prose-minion/memory/.</span></div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px 20px; border-top: 1px solid var(--soft)">
+<span style="flex: 1; font-size: 11px; line-height: 1.5; color: var(--faint)">Saving tells the room: “Saved to project memory: The Rabbit’s watch runs backward”.</span>
+<button class="btn" type="button">Cancel</button>
+<button class="primary" type="button" disabled="{{refused}}" style="opacity: {{saveOpacity}}">{{saveLabel}}</button>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"refused":{"editor":"boolean","default":false},"$preview":{"width":760,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const refused = Boolean(this.props.refused);
+    return {
+      refused,
+      sheetTitle: refused ? 'Edit memory' : 'Save to project memory',
+      pinClass: refused ? 'on' : '',
+      pinChecked: refused ? 'true' : 'false',
+      pinDesc: refused
+        ? 'Every conversation starts with this memory’s whole note, not just its summary. With this edit, memories loaded in full would come to about 5,300 of 5,000 tokens.'
+        : 'Every conversation starts with this memory’s whole note, not just its summary. This one adds about 60 tokens; memories loaded in full would come to about 4,360 of 5,000.',
+      saveLabel: refused ? 'Save changes' : 'Save to memory',
+      saveOpacity: refused ? '0.5' : '1'
+    };
+  }
+}
+</script>
+</body>
+</html>
