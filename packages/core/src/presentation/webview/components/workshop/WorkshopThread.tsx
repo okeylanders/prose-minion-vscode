@@ -161,6 +161,7 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
               bookmarked={bookmarkedTurnIds.has(turn.id)}
               bookmarkDisabled={bookmarkDisabled}
               onToggleBookmark={onToggleBookmark}
+              modelLabel={modelLabel}
             />
           </React.Fragment>
         );

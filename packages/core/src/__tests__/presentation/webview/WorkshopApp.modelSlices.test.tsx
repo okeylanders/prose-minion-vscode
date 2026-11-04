@@ -5,11 +5,13 @@
  * slice is drawn before the writer turn that prompted a reply whose requested
  * model changed in its scope, named from the model options `MODEL_DATA`
  * carries with the raw id as the fallback, and seeded across the snapshot's
- * window by `modelsBeforeWindow`. A turn with no stamp never draws one.
+ * window by `modelsBeforeWindow`. A turn with no stamp never draws one. A
+ * bubble whose provider served another model than the one requested says so
+ * in its served-by note, and its participant label's title names the ids.
  */
 
 import * as React from 'react';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   DEFAULT_WORKSHOP_WRITER_PROFILE,
@@ -239,5 +241,44 @@ describe('WorkshopApp model slices', () => {
 
     deliver(session(before));
     expect(slices()).toEqual([]);
+  });
+
+  describe('the bubble', () => {
+    const bubble = (turnId: string) =>
+      document.querySelector<HTMLElement>(`[${WORKSHOP_TURN_ID_ATTRIBUTE}="${turnId}"]`)!;
+    const note = (turnId: string) => bubble(turnId).querySelector('.pm-ws-turn-served-by');
+
+    it('notes a served model that differs from the request, and only then', () => {
+      render(<WorkshopApp />);
+      deliver(modelData);
+      deliver(session([
+        writer('u-1'), reply('a-1', A),
+        writer('u-2'), reply('a-2', A, { model: stamp(A, 'assistant', [B]) }),
+        writer('u-3'), reply('a-3', A, { model: stamp(A, 'assistant', []) }),
+        writer('u-4'), reply('a-4')
+      ]));
+
+      expect(note('a-2')?.textContent?.trim()).toBe('Model A · served by Model B');
+      expect(note('a-1')).toBeNull();
+      expect(note('a-3')).toBeNull();
+      expect(note('a-4')).toBeNull();
+      // A served-by difference is not a change of request: no slice.
+      expect(slices()).toEqual([]);
+    });
+
+    it('titles the participant label with the requested and served ids', () => {
+      render(<WorkshopApp />);
+      deliver(modelData);
+      deliver(session([
+        writer('u-1'), reply('a-1', A),
+        writer('u-2'), reply('a-2', A, { model: stamp(A, 'assistant', [B]) }),
+        writer('u-3'), reply('a-3')
+      ]));
+
+      const label = (turnId: string) => within(bubble(turnId)).getByText('Jill').closest('.pm-ws-eyebrow')!;
+      expect(label('a-1').getAttribute('title')).toBe(`${A} · requested and served`);
+      expect(label('a-2').getAttribute('title')).toBe(`Requested ${A} · served by ${B}`);
+      expect(label('a-3').hasAttribute('title')).toBe(false);
+    });
   });
 });
