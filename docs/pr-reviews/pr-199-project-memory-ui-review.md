@@ -7,6 +7,14 @@
 - **Landing target:** `epic/workshop-project-memory` at `f8b2359187762cc93b97f1ec3bf4aa25299c7108`; the retargeted integration was re-reviewed at `119cd49a4fe25e6850519a091493a77969534484`.
 - **Current verdict:** **APPROVED at `119cd49a` for the presentation-only slice against epic target `f8b2359`.** F-01, F-02 and N-01 are closed, integration checks pass, and exact-head CI is green. No formal GitHub approval or merge was performed.
 
+## Landed-tree check · 2026-11-04
+
+PR #199 merged from reviewed head `119cd49a` as `09945578f40e9cee2e0345c00ad58213a997225b` at 19:57:49 UTC. The actual merge also contains #198's update-note/delivery work, which landed after the earlier `f8b2359` comparison.
+
+A final read-only check reconstructed and Git-blob-verified all **1,554 core files** at that merge. **23 focused suites / 260 tests passed**, including the Memory UI, real-renderer residency and supersession checks, frame stability, update notes, whole-room memory delivery, and shared browser/architecture regressions. Core-host and webview typechecks also passed. No new actionable interaction defect was found. This is a focused landed-tree check, not a new full-repository or native-host verification claim.
+
+**Publication timing:** GitHub's PR metadata lagged the merge. The epic-target approval update was therefore committed to the PR branch after merge (`9621ee99`), and this landed-tree note is also branch-only documentation. Neither post-merge report update is part of `09945578`. No production change or merge was performed by this review.
+
 ## Epic-target integration re-review · 2026-11-04
 
 **Reviewed head:** `119cd49a4fe25e6850519a091493a77969534484`. **Target and merge base:** `f8b2359187762cc93b97f1ec3bf4aa25299c7108` on `epic/workshop-project-memory`, containing the reviewed #197 corrections.
