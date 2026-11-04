@@ -3,7 +3,8 @@
 ## Review identity and verdict
 
 - **PR:** [#192, Workshop Project Memory Slice 0: ADR, runway and slice docs](https://github.com/okeylanders/prose-minion-vscode/pull/192)
-- **Reviewed head:** `9cca60598e813a2dde53648dcd02a958f8a46b42`
+- **Reviewed specification head:** `c1fb84d12e6d2580caa4d511ffc05de6d64f9522`
+- **Primary finding line-link snapshot:** `9cca60598e813a2dde53648dcd02a958f8a46b42` (findings unchanged by the later availability clarification)
 - **Compared base:** `8fb016fa3e767964fe8c53c778d6453f8507667d`
 - **PR source branch / report destination:** `epic/workshop-project-memory-slice-0-spec`
 - **PR target branch:** `epic/workshop-project-memory`
@@ -33,15 +34,26 @@ base. Repository `AGENTS.md` was read. The initial review was against
 `3d5042e871572a2c5f8c9ec13991d9151f47f5fe`. A pre-publication check caught
 `9cca6059`, so publication was paused while all seven changed-file deltas were
 reviewed, including the new D14 delivery-record/update-note design. The findings,
-line links and decision status below refer to the new reviewed head.
+line links and decision status below refer to that decision-bearing head.
+
+Remote publication verification then found that
+[`c1fb84d1`](https://github.com/okeylanders/prose-minion-vscode/commit/c1fb84d12e6d2580caa4d511ffc05de6d64f9522)
+landed between the final head check and the report's creation. Its complete
+delta was reviewed: it clarifies that an unavailable workspace disables that
+workspace's memory access/manager but leaves the global mode cards usable,
+and adds corresponding slice tests. It changes none of F-01 through F-04 or
+N-01. The immutable finding links retain the decision-bearing snapshot so their
+line references remain exact. The latest reviewed specification head is now
+`c1fb84d12e6d2580caa4d511ffc05de6d64f9522`.
 
 This is a specification and integration review, not a test run of the planned
 feature. No production implementation was changed, no full test suite, typecheck,
 lint, build, or Extension Development Host session was run for this review, and
 no live model call was made. At the pre-publication check, CI for the reviewed
-head was queued ([run 41864505940](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41864505940)).
+decision-bearing head was queued ([run 41864505940](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41864505940)).
 The earlier head's green CI is not a pass for this new commit. CI and
-mergeability are transient and are not established by this report.
+mergeability are transient and are not established by this report. Publication
+triggered another CI run; no passing result for the report commit is asserted.
 
 ## Findings
 
