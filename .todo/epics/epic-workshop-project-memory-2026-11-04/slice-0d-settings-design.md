@@ -63,9 +63,12 @@ read-only: no Save, Edit… or Dismiss. Slices 3 and 5 build it once.
    marks it once with a quiet divider. So the footer's "Memory … takes effect
    on your next message" is simply true.
 8. **No `INDEX.md` in v1**, so nothing offers to open one.
-9. **Nothing is ever unpinned for the writer.** Over the pinned budget, the
-   oldest pins load in full and the rest load as list entries. The manager
-   says which, and the writer unpins.
+9. **Nothing is ever unpinned for the writer.** Over the pinned budget,
+   pinned memories are considered oldest-created first, ties by id (ADR D5;
+   format 1 stores no pin time). Bodies that fit load in full; the rest load
+   as list entries. The manager shows the shared builder's actual
+   loaded/not-loaded result, never a guess from dates, and the writer
+   unpins.
 10. **Forget archives; only Delete removes a file** (D8). Forget's receipt
     says "It's archived, not deleted" and offers Restore.
 11. **Superseded is derived** (D4): the manager shows "Superseded by '…'" from
@@ -202,17 +205,22 @@ Lightbox's markup stay unchanged.
 - **Pinned over budget** (hand edits, two windows; #192 F-04):
   - The pinned label turns amber: `4 pinned · ≈ 5,600 of 5,000 tokens`.
   - An amber status line: "Pinned memories are over their budget, probably
-    from an edit outside the manager. The oldest pins load in full; 'The
-    Cheshire Cat is never seen arriving' loads as a list entry instead. Unpin
-    one to make room. Nothing is unpinned for you."
-  - The memory that doesn't load has the badge **Pinned, not loaded** and the
-    reason: "Over the pinned budget, so it loads as a list entry, not in full.
-    It's the newest pin; unpin it or another to make room."
+    from an edit outside the manager. Pinned memories are considered
+    oldest-created first, and 'The Cheshire Cat is never seen arriving'
+    doesn't fit, so it loads as a list entry instead. Unpin one to make room.
+    Nothing is unpinned for you."
+  - Each memory the builder didn't load in full has the badge **Pinned, not
+    loaded** and the reason: "Doesn't fit the pinned budget, so it loads as a
+    list entry, not in full. Unpin it or another to make room." The row never
+    infers why from a date (PR #196 F-03).
 - **Section "Superseded and archived"** ("Never loaded. Personas find them
   only by searching."), in muted rows:
   - superseded rows read "Superseded by '…'.", with **Edit**;
-  - archived rows read "Forgotten from the thread on Oct 24. Restore it to
-    load it again.", with **Restore**.
+  - archived rows read "Archived. Restore to make this memory active
+    again.", with **Restore**. Format 1 records no archive date or cause, so
+    the row states neither (PR #196 F-04). Restoring makes the memory active;
+    whether it then loads in full still depends on supersession and the
+    budgets.
 - **Footer:** "Changes save to the memory's file right away. Archive keeps a
   memory searchable; Delete removes its file." Buttons: **Open memory
   folder** and **New memory** (primary).
@@ -240,9 +248,12 @@ Lightbox's markup stay unchanged.
      deleted. · Restore".
 4. **The held card** (Save and tell me), with an amber border. Its header is
    "Held for you to decide" and it has the same buttons. The reason is
-   "This reply used live web research, so it isn't saved on its own." The cap
-   variant: "Jill has saved 5 memories in this conversation, the most it
-   saves on its own. This one waits for you."
+   "Live web research was available for this reply, so this memory waits for
+   you to save it." The hold reads whether search tools were attached, not
+   whether a search ran (ADR D8), so the copy claims no search (PR #196 F-01).
+   The cap variant: "This conversation has reached its limit of 5 automatic
+   memory saves. This one waits for you." The cap is room-wide, so the copy
+   names no persona (F-02).
 5. **The update note:** a quiet divider, "Project memory updated · 1 new, 1
    changed", and under it "Sent to the personas with your next message." with
    **Show what changed**. It sits just before the writer message that carries
@@ -269,7 +280,9 @@ Lightbox's markup stay unchanged.
   - **Pin this memory** switch: "Pinned memories load in full at the start
     of every conversation. This one adds about 60 tokens; pinned memories
     would come to about 4,360 of 5,000."
-- **Source line:** "From Jill's reply in 'Tea-party pacing', Nov 3. Personas
+- **Source line** (when the memory has a recallable source; a writer's new
+  memory may have none, and a current, unnamed or deleted session shows ADR
+  D3's reason instead): "From Jill's reply in 'Tea-party pacing', Nov 3. Personas
   can check the note against that conversation. Saved as a Markdown file in
   prose-minion/memory/."
 - **Footer:** "Saving tells the room: 'Saved to project memory: …'". Buttons:
@@ -293,9 +306,10 @@ docs:
   memories, and the count line past the budget. Slice 2b builds it. The design
   gives only its visible divider, which Slice 3 draws.
 - **The held card's copy:** the design's wording, which Okey approved, is now
-  Slice 5's: "This reply used live web research, so it isn't saved on its
-  own." The cap variant is aligned too. ADR D8 quotes no copy for the hold
-  ("the card says why"), so it needed no change.
+  Slice 5's: "Live web research was available for this reply, so this
+  memory waits for you to save it." The cap variant is aligned too. Both were
+  corrected in PR #196's review (F-01, F-02). ADR D8 quotes no copy for the
+  hold ("the card says why"), so it needed no change.
 
 ## Open questions for Slice 4b and Slice 3
 
@@ -332,3 +346,24 @@ docs:
   - After approval, Okey added the "Memory isn't context" well (decision 15).
     It is drawn in every tab state, the tab artboards grew to 1,040px, and
     the canvas and snapshot were updated.
+
+## PR #196 review
+
+[docs/pr-reviews/pr-196-project-memory-settings-design-review.md](../../../docs/pr-reviews/pr-196-project-memory-settings-design-review.md)
+asked for four factual-copy fixes. All four are fixed in the canvas, the
+snapshot and the docs above:
+
+- **F-01:** the hold copy claims no search.
+- **F-02:** the cap copy is room-wide.
+- **F-03:** the pinned overflow follows D5's creation order and the builder's
+  result.
+- **F-04:** archived rows state no date or cause.
+
+Its six implementation watchpoints carry to 4b and 3 as written there:
+
+1. no memory body in the receipt's model-facing payload;
+2. drafts survive the nested manager;
+3. summaries from the host's live state;
+4. the divider is not the delivery record;
+5. source fallbacks;
+6. the existing tab and row interaction contracts.

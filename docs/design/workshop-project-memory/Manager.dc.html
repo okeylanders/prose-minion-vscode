@@ -100,7 +100,7 @@ body{margin:0}
 <div class="offnote"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><span>Memory is off, so personas don’t read these. You can still edit, pin, archive and delete them. Turn memory on in Conversation settings.</span></div>
 </sc-if>
 <sc-if value="{{overPinned}}" hint-placeholder-val="{{ false }}">
-<div class="offnote" style="background: color-mix(in srgb, var(--amber) 8%, transparent); border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--border))"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--amber)"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg><span>Pinned memories are over their budget, probably from an edit outside the manager. The oldest pins load in full; “The Cheshire Cat is never seen arriving” loads as a list entry instead. Unpin one to make room. Nothing is unpinned for you.</span></div>
+<div class="offnote" style="background: color-mix(in srgb, var(--amber) 8%, transparent); border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--border))"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--amber)"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg><span>Pinned memories are over their budget, probably from an edit outside the manager. Pinned memories are considered oldest-created first, and “The Cheshire Cat is never seen arriving” doesn’t fit, so it loads as a list entry instead. Unpin one to make room. Nothing is unpinned for you.</span></div>
 </sc-if>
 <sc-for list="{{chips}}" as="ch" hint-placeholder-count="4"><span class="chip {{ch.cls}}">{{ch.text}}</span></sc-for>
 </div>
@@ -145,7 +145,7 @@ body{margin:0}
 <div class="refuse" role="status"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><span>Can’t pin this one: pinned memories would come to about 5,100 of 5,000 tokens. Unpin another, or shorten this note.</span></div>
 </sc-if>
 <sc-if value="{{m.notLoaded}}" hint-placeholder-val="{{ false }}">
-<div class="refuse" role="status"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><span>Over the pinned budget, so it loads as a list entry, not in full. It’s the newest pin; unpin it or another to make room.</span></div>
+<div class="refuse" role="status"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><span>Doesn’t fit the pinned budget, so it loads as a list entry, not in full. Unpin it or another to make room.</span></div>
 </sc-if>
 </div>
 <sc-if value="{{m.showUtil}}" hint-placeholder-val="{{ false }}">
@@ -205,9 +205,9 @@ class Component extends DCLogic {
       pinClass: m.pinned ? 'on' : '',
       pinLabel: m.pinned ? 'Unpin ' + m.title : 'Pin ' + m.title,
       pinPressed: m.pinned ? 'true' : 'false',
-      badges: m.pinned ? (over && m.newestPin ? [{ text: 'Pinned, not loaded', cls: 'amber' }] : [{ text: 'Pinned', cls: '' }]) : [],
+      badges: m.pinned ? (over && m.notFitting ? [{ text: 'Pinned, not loaded', cls: 'amber' }] : [{ text: 'Pinned', cls: '' }]) : [],
       refused: Boolean(m.refused) && !over,
-      notLoaded: over && Boolean(m.newestPin),
+      notLoaded: over && Boolean(m.notFitting),
       ...m
     });
     const all = [
@@ -215,7 +215,7 @@ class Component extends DCLogic {
       { title: 'Keep the Duchess’s kitchen offstage', kind: 'decision', pinned: true, who: 'suggested by Cliff · saved by you', when: 'Nov 2', date: 'This week', source: 'from “Chapter 6 pass”', summary: 'We only hear the kitchen through the door; the pepper and the noise do the work.' },
       { title: 'We cut the Mock Turtle’s second song', kind: 'decision', pinned: true, who: 'suggested by Jill · saved by you', when: 'Nov 1', date: 'This week', source: 'from “Chapter 9 trims”', summary: 'One song is enough; the second slowed the beach scene and repeated its joke.' },
       { title: 'The Rabbit’s watch runs backward', kind: 'canon', pinned: false, focus: true, refused: true, who: 'suggested by Jill · saved by you', when: 'Nov 3', date: 'Today', source: 'from “Tea-party pacing”', summary: 'From chapter 3 on, the White Rabbit’s watch runs backward; nobody in Wonderland remarks on it.' },
-      { title: 'The Cheshire Cat is never seen arriving', kind: 'canon', pinned: true, newestPin: true, who: 'saved by Jill', when: 'Nov 3', date: 'Today', source: 'from “Tea-party pacing”', summary: 'It is always already there. Every scene with the Cat starts after it has appeared.' },
+      { title: 'The Cheshire Cat is never seen arriving', kind: 'canon', pinned: true, notFitting: true, who: 'saved by Jill', when: 'Nov 3', date: 'Today', source: 'from “Tea-party pacing”', summary: 'It is always already there. Every scene with the Cat starts after it has appeared.' },
       { title: 'Does the Queen know the tarts were moved?', kind: 'open thread', pinned: false, who: 'suggested by Cliff · saved by you', when: 'Oct 30', date: 'Earlier', source: 'from “Trial outline”', summary: 'Undecided. It changes whether the trial is a farce or a trap.' }
     ];
     const order = groupBy === 'kind'
@@ -243,7 +243,7 @@ class Component extends DCLogic {
       ],
       past: [
         { title: 'The Rabbit’s watch stops at six', badge: 'Superseded', kind: 'canon', who: 'suggested by Jill · saved by you', when: 'Oct 22', line: 'Superseded by “The Rabbit’s watch runs backward”.', action: 'Edit' },
-        { title: 'Alice narrates in present tense', badge: 'Archived', kind: 'decision', who: 'saved by Cliff', when: 'Oct 19', line: 'Forgotten from the thread on Oct 24. Restore it to load it again.', action: 'Restore' }
+        { title: 'Alice narrates in present tense', badge: 'Archived', kind: 'decision', who: 'saved by Cliff', when: 'Oct 19', line: 'Archived. Restore to make this memory active again.', action: 'Restore' }
       ]
     };
   }
