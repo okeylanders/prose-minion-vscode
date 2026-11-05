@@ -41,6 +41,8 @@ const renderMenu = (
     onOpenChange: jest.fn(),
     onNewSession: jest.fn(),
     onFullResetSession: jest.fn(),
+    onEmptyResetSession: jest.fn(),
+    pinnedFileCount: 0,
     hasWorkingSet: true,
     onSaveSession: jest.fn(),
     exportDisabled: false,
@@ -123,5 +125,53 @@ describe('WorkshopSessionsMenu', () => {
 
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
     expect(props.onOpenChange).toHaveBeenCalledTimes(2);
+  });
+
+  describe('pinned context (ADR 2026-11-04 D7)', () => {
+    it('is today\'s menu with nothing pinned: one full reset, its copy and tooltip', () => {
+      renderMenu({ pinnedFileCount: 0 });
+
+      const fullReset = screen.getByRole('menuitem', { name: /full reset/ }) as HTMLButtonElement;
+      expect(screen.getAllByRole('menuitem', { name: /full reset/ })).toHaveLength(1);
+      expect(fullReset.textContent).toBe('New session: full resetalso clears the excerpt and context');
+      expect(fullReset.title).toBe('Start over with no excerpt and no context attachments');
+      expect(screen.queryByRole('menuitem', { name: /empty context/ })).toBeNull();
+    });
+
+    it('adds the empty-context item directly under the full reset while anything is pinned', () => {
+      renderMenu({ pinnedFileCount: 10 });
+
+      const items = screen.getAllByRole('menuitem').map((item) => item.textContent ?? '');
+      const fullReset = items.findIndex((text) => text.startsWith('New session: full reset'));
+      expect(items[fullReset]).toBe(
+        'New session: full resetclears the excerpt and context, then attaches pinned context'
+      );
+      expect(items[fullReset + 1]).toBe(
+        'New session: full reset, empty contextclears the excerpt and context, and leaves pinned context out'
+      );
+      const empty = screen.getByRole('menuitem', { name: /empty context/ }) as HTMLButtonElement;
+      expect(empty.className).toContain('danger');
+      expect(empty.title).toBe('Start over with no excerpt, no context attachments and no pinned context');
+      expect((screen.getByRole('menuitem', { name: /full reset(?!,)/ }) as HTMLButtonElement).title)
+        .toBe('Start over with no excerpt and no context attachments, then attach your 10 pinned files');
+    });
+
+    it('sends each start through its own item', () => {
+      const { props } = renderMenu({ pinnedFileCount: 1 });
+
+      fireEvent.click(screen.getByRole('menuitem', { name: /^New session ⌘⇧N$/ }));
+      fireEvent.click(screen.getByRole('menuitem', { name: /empty context/ }));
+
+      expect(props.onNewSession).toHaveBeenCalledTimes(1);
+      expect(props.onEmptyResetSession).toHaveBeenCalledTimes(1);
+      expect(props.onFullResetSession).not.toHaveBeenCalled();
+    });
+
+    it('disables the empty-context item with the others while a new session cannot start', () => {
+      renderMenu({ pinnedFileCount: 2, newSessionDisabled: true });
+
+      expect((screen.getByRole('menuitem', { name: /empty context/ }) as HTMLButtonElement).disabled)
+        .toBe(true);
+    });
   });
 });

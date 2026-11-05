@@ -628,6 +628,7 @@ export const WorkshopApp: React.FC = () => {
     closeSessionBrowser,
     startNewSession,
     startFullReset,
+    startEmptyReset,
     openStoredSession,
     cancelSessionConfirm
   } = sessionSurfaces;
@@ -1040,6 +1041,9 @@ export const WorkshopApp: React.FC = () => {
         onOpenChange={setSessionsMenuVisibility}
         onNewSession={startNewSession}
         onFullResetSession={startFullReset}
+        onEmptyResetSession={startEmptyReset}
+        // Slice 3's pinned-context hook supplies the count; until then the menu is today's.
+        pinnedFileCount={0}
         hasWorkingSet={hasWorkingSet}
         onSaveSession={openSaveSessionModal}
         exportDisabled={!workshop.sessionReady || sessionLoading || !hasExportableTurns}
