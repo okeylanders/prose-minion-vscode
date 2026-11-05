@@ -16,9 +16,18 @@
  * - `redacted` is the reply with each frame replaced by
  *   `[project memory proposal removed]`: what every log and diagnostic reads
  *   (D9: no memory payload in any log).
- * - `memory` is `none`, an eligible `proposal`, or `rejected` with its
- *   reason. A proposal is eligible only when memory is open, exactly one
- *   frame was found, it was closed, and nothing but whitespace followed it.
+ * - `memory` is `none` when the reply held no frame. Otherwise it lists
+ *   the eligible proposals, in the order written, and one rejection per
+ *   frame it dropped (Slice 6b). Each frame is judged on its own, so one
+ *   malformed frame drops only itself:
+ *   - memory must be open, the frame closed, not nested, and exactly
+ *     tagged; a stray closing tag is a frame of its own, `unopened`;
+ *   - the frame stands at the reply's tail: nothing but whitespace and
+ *     other frames after it (`misplaced` otherwise);
+ *   - its inside decodes (`malformed:<fault>` otherwise);
+ *   - its title is no earlier proposal's (`duplicate`);
+ *   - at most `proposalsPerReply` proposals are kept: a well-formed one past
+ *     them is `over-cap`, dropped whole and counted, never cut.
  */
 
 import {
@@ -28,6 +37,7 @@ import {
   type WorkshopMemoryProposalFault
 } from '@/utils/workshopMemoryProposalProtocol';
 import { sanitizeWorkshopWidgetRecommendationForRetention } from '@/utils/workshopWidgetRecommendationProtocol';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 export const WORKSHOP_MEMORY_PROPOSAL_REDACTION = '[project memory proposal removed]';
 
@@ -37,13 +47,22 @@ export const WORKSHOP_MEMORY_ONLY_REPLY_LINE = 'Proposed a project memory.';
 export type WorkshopReplyMemoryRejection =
   | 'misplaced'
   | 'duplicate'
+  | 'over-cap'
   | 'memory-off'
   | `malformed:${'unclosed' | 'unopened' | 'nested' | 'tag' | WorkshopMemoryProposalFault}`;
 
 export type WorkshopReplyMemoryControl =
   | { readonly kind: 'none' }
-  | { readonly kind: 'proposal'; readonly proposal: WorkshopMemoryProposalDraft }
-  | { readonly kind: 'rejected'; readonly reason: WorkshopReplyMemoryRejection };
+  | {
+    readonly kind: 'frames';
+    /** The eligible proposals, in the order written, at most `proposalsPerReply`. */
+    readonly proposals: readonly WorkshopMemoryProposalDraft[];
+    /** One reason per frame dropped, in the order written. */
+    readonly rejections: readonly WorkshopReplyMemoryRejection[];
+  };
+
+/** How many suggestions one reply may carry (Slice 6b). */
+export const WORKSHOP_MEMORY_PROPOSALS_PER_REPLY = PROMPT_BUDGETS.workshopProjectMemory.proposalsPerReply;
 
 export interface WorkshopReplyControls {
   readonly rest: string;
@@ -127,36 +146,72 @@ export function stripWorkshopMemoryProposalForStreaming(partial: string): string
 }
 
 function judge(reply: string, frames: readonly Frame[], options: WorkshopReplyControlsOptions): WorkshopReplyMemoryControl {
+  const proposals: WorkshopMemoryProposalDraft[] = [];
+  const rejections: WorkshopReplyMemoryRejection[] = [];
+  const titles = new Set<string>();
+  const atTail = framesAtTail(reply, frames);
+  frames.forEach((frame, index) => {
+    const verdict = judgeFrame(frame, atTail[index], options);
+    if (typeof verdict === 'string') {
+      rejections.push(verdict);
+      return;
+    }
+    const title = verdict.title.toLowerCase();
+    if (titles.has(title)) {
+      rejections.push('duplicate');
+    } else if (proposals.length >= WORKSHOP_MEMORY_PROPOSALS_PER_REPLY) {
+      rejections.push('over-cap');
+    } else {
+      titles.add(title);
+      proposals.push(verdict);
+    }
+  });
+  return { kind: 'frames', proposals, rejections };
+}
+
+/**
+ * Whether each frame stands at the reply's tail: only whitespace in every
+ * gap after it, up to the end. One pass from the end, so the check is
+ * linear however many frames a reply holds.
+ */
+function framesAtTail(reply: string, frames: readonly Frame[]): boolean[] {
+  const atTail = new Array<boolean>(frames.length);
+  let clean = true;
+  let gapEnd = reply.length;
+  for (let index = frames.length - 1; index >= 0; index -= 1) {
+    clean = clean && reply.slice(frames[index].end, gapEnd).trim().length === 0;
+    atTail[index] = clean;
+    gapEnd = frames[index].start;
+  }
+  return atTail;
+}
+
+/** One frame's verdict: its proposal, or why it is dropped. */
+function judgeFrame(
+  frame: Frame,
+  atTail: boolean,
+  options: WorkshopReplyControlsOptions
+): WorkshopMemoryProposalDraft | WorkshopReplyMemoryRejection {
   if (!options.memoryOpen) {
-    return rejected('memory-off');
+    return 'memory-off';
   }
-  const opened = frames.filter((frame) => frame.inner !== undefined);
-  if (opened.length === 0) {
-    return rejected('malformed:unopened');
+  if (frame.inner === undefined) {
+    return 'malformed:unopened';
   }
-  if (opened.length > 1) {
-    return rejected('duplicate');
-  }
-  const frame = opened[0];
   if (frame.malformedTag) {
-    return rejected('malformed:tag');
+    return 'malformed:tag';
   }
   if (!frame.closed) {
-    return rejected('malformed:unclosed');
+    return 'malformed:unclosed';
   }
   if (frame.nested) {
-    return rejected('malformed:nested');
+    return 'malformed:nested';
   }
-  const after = removeFrames(reply.slice(frame.end), frames
-    .filter((other) => other.start >= frame.end)
-    .map((other) => ({ ...other, start: other.start - frame.end, end: other.end - frame.end })), '');
-  if (after.trim().length > 0) {
-    return rejected('misplaced');
+  if (!atTail) {
+    return 'misplaced';
   }
-  const decoded = decodeWorkshopMemoryProposal(frame.inner as string);
-  return decoded.kind === 'proposal'
-    ? { kind: 'proposal', proposal: decoded.proposal }
-    : rejected(`malformed:${decoded.fault}`);
+  const decoded = decodeWorkshopMemoryProposal(frame.inner);
+  return decoded.kind === 'proposal' ? decoded.proposal : `malformed:${decoded.fault}`;
 }
 
 function findFrames(reply: string): Frame[] {
@@ -240,7 +295,11 @@ function removeFrames(reply: string, frames: readonly Frame[], replacement: stri
   let out = '';
   let at = 0;
   for (const frame of frames) {
-    out = join(out + reply.slice(at, frame.start), replacement);
+    // Text after a removed frame starts at its first line that holds something, as the tail does.
+    const stretch = reply.slice(at, frame.start);
+    out = at > 0
+      ? join(join(out, stretch.trim().length > 0 ? stretch.replace(/^[ \t]*\r?\n(?:[ \t]*\r?\n)*/, '') : ''), replacement)
+      : join(stretch, replacement);
     at = frame.end;
   }
   const tail = reply.slice(at);
@@ -256,10 +315,6 @@ function join(before: string, after: string): string {
     return head;
   }
   return head ? `${head}\n\n${after}` : after;
-}
-
-function rejected(reason: WorkshopReplyMemoryRejection): WorkshopReplyMemoryControl {
-  return { kind: 'rejected', reason };
 }
 
 /**

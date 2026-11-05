@@ -56,6 +56,14 @@ anything screenshotted or recorded.
 - [ ] Save to memory… on a writer bubble.
 - [ ] Supersede a memory. The old one shows superseded in the manager and leaves
       the next room's frame.
+- [ ] Ask a persona for several notes at once (Slice 6b). Each shows as its
+      own card under a small count. Save, edit and dismiss them in any order,
+      and each saved one leaves its own receipt.
+- [ ] Under Save and tell me, a reply with several notes saves each with its
+      own receipt, and a note that replaces a saved one is held ("It replaces
+      a saved memory…") and writes nothing until you save it.
+- [ ] Reopen a session saved before Slice 6b that holds a card: it still
+      shows, and its Save still works.
 - [ ] Propose and save a Theme and an Idea (Slice 6a). Ask a persona about the
       idea and check it treats it as unsettled: never as canon or a decision.
       Choose it, and the proposed decision or canon memory supersedes it.

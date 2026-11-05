@@ -1,9 +1,10 @@
 /**
- * A reply's project-memory proposal, settled at completion (ADR 2026-11-04
- * D6, D8, D9; epic Slice 3). Pure: the completion path resolves the context
- * (is memory open, which memories are listed) before it runs, and this turns
- * the extractor's verdict into the turn's `memoryProposal`, or into nothing,
- * with one log line of ids, counts and reasons, never text.
+ * A reply's project-memory proposals, settled at completion (ADR 2026-11-04
+ * D6, D8, D9; epic Slices 3 and 6b). Pure: the completion path resolves the
+ * context (is memory open, which memories are listed) before it runs, and
+ * this turns the extractor's verdict into the turn's `memoryProposals`, or
+ * into nothing, with one log line per frame of ids, counts and reasons,
+ * never text. Each proposal is settled on its own, in the order written.
  *
  * - **Off or unavailable:** the trailer was already stripped; it's dropped
  *   with a log line and no card (D8).
@@ -13,13 +14,16 @@
  *   had, and drops the rest, counted for the card's note (D6). When the
  *   listing could not be read, every one is dropped and counted.
  * - **Save and tell me** (Slice 5, `WorkshopMemoryAutoSave`): with the run's
- *   facts, a proposal under `auto` is held (web research attached, or the
- *   room's cap reached) with its reason on the card, or marked to be saved
- *   at once. Without them (a caller that can't save), it waits as under `ask`.
+ *   facts, each proposal under `auto` is held (web research attached, a
+ *   memory it replaces, or the room's cap reached, counting the reply's
+ *   earlier proposals admitted) with its reason on its card, or marked to be
+ *   saved at once. Without them (a caller that can't save), it waits as
+ *   under `ask`.
  */
 
 import type { WorkshopMemoryProposal, WorkshopProjectMemoryMode } from '@messages';
 import type { WorkshopReplyMemoryControl } from '@/utils/workshopReplyControls';
+import type { WorkshopMemoryProposalDraft } from '@/utils/workshopMemoryProposalProtocol';
 import { workshopMemoryProposalPhrasingFault } from '@/application/services/workshop/memory/WorkshopMemoryProposalPhrasing';
 import {
   routeWorkshopMemoryProposal,
@@ -45,58 +49,79 @@ export interface WorkshopReplyMemoryPort {
   replyMemoryContext(reply: string, signal?: AbortSignal): Promise<WorkshopReplyMemoryContext>;
 }
 
-export interface WorkshopSettledMemoryProposal {
-  /** The pending card, or none. */
-  readonly proposal?: WorkshopMemoryProposal;
-  /** One log line (ids, counts, reasons), or none when the reply held no frame. */
-  readonly log?: string;
-  /** Save and tell me: save the card at once, once its turn is recorded (Slice 5). */
-  readonly autoSave?: true;
+export interface WorkshopSettledMemoryProposals {
+  /** The cards, in the order written; empty when none survived. */
+  readonly proposals: readonly WorkshopMemoryProposal[];
+  /** One log line per frame (ids, counts, reasons); empty when the reply held no frame. */
+  readonly logs: readonly string[];
+  /** Save and tell me: indexes in `proposals` to save at once, in order, once the turn is recorded (Slice 5). */
+  readonly autoSave: readonly number[];
 }
 
-export function settleWorkshopMemoryProposal(
+const NOTHING: WorkshopSettledMemoryProposals = Object.freeze({ proposals: [], logs: [], autoSave: [] });
+
+export function settleWorkshopMemoryProposals(
   control: WorkshopReplyMemoryControl,
   context: WorkshopReplyMemoryContext,
   run?: WorkshopMemoryRunFacts
-): WorkshopSettledMemoryProposal {
+): WorkshopSettledMemoryProposals {
   switch (control.kind) {
     case 'none':
-      return {};
-    case 'rejected':
-      return { log: `Memory proposal dropped (reason=${control.reason})` };
-    case 'proposal': {
-      const draft = control.proposal;
-      const fault = workshopMemoryProposalPhrasingFault(draft, context.writerName);
-      if (fault) {
-        return { log: `Memory proposal withheld (reason=${fault})` };
+      return NOTHING;
+    case 'frames': {
+      const proposals: WorkshopMemoryProposal[] = [];
+      const autoSave: number[] = [];
+      const logs = control.rejections.map((reason) => `Memory proposal dropped (reason=${reason})`);
+      for (const draft of control.proposals) {
+        const fault = workshopMemoryProposalPhrasingFault(draft, context.writerName);
+        if (fault) {
+          logs.push(`Memory proposal withheld (reason=${fault})`);
+          continue;
+        }
+        const settled = settleOne(draft, context, run, autoSave.length);
+        if (settled.auto) {
+          autoSave.push(proposals.length);
+        }
+        proposals.push(settled.proposal);
+        logs.push(settled.log);
       }
-      const supersedes = draft.supersedes.flatMap((id) => {
-        const title = context.listed?.get(id);
-        return title === undefined ? [] : [{ id, title }];
-      });
-      const dropped = draft.supersedes.length - supersedes.length;
-      const route = run ? routeWorkshopMemoryProposal(context.mode, run) : { kind: 'wait' as const };
-      const proposal: WorkshopMemoryProposal = {
-        title: draft.title,
-        kind: draft.kind,
-        summary: draft.summary,
-        body: draft.body,
-        ...(supersedes.length > 0 ? { supersedes } : {}),
-        ...(dropped > 0 ? { droppedSupersedes: dropped } : {}),
-        state: 'pending',
-        ...(route.kind === 'held' ? { held: route.held } : {})
-      };
-      const outcome = route.kind === 'held' ? `held (reason=${route.held}; ` : route.kind === 'auto' ? 'saving (mode=auto; ' : 'pending (';
-      return {
-        proposal,
-        ...(route.kind === 'auto' ? { autoSave: true as const } : {}),
-        log: `Memory proposal ${outcome}kind=${draft.kind}; supersedes=${supersedes.map((item) => item.id).join(',') || 'none'}; ` +
-          `dropped=${dropped}${context.listed ? '' : '; listing=unread'})`
-      };
+      return { proposals, logs, autoSave };
     }
     default:
       return assertNever(control);
   }
+}
+
+function settleOne(
+  draft: WorkshopMemoryProposalDraft,
+  context: WorkshopReplyMemoryContext,
+  run: WorkshopMemoryRunFacts | undefined,
+  admitted: number
+): { proposal: WorkshopMemoryProposal; auto: boolean; log: string } {
+  const supersedes = draft.supersedes.flatMap((id) => {
+    const title = context.listed?.get(id);
+    return title === undefined ? [] : [{ id, title }];
+  });
+  const dropped = draft.supersedes.length - supersedes.length;
+  const route = run ? routeWorkshopMemoryProposal(context.mode, run, draft, admitted) : { kind: 'wait' as const };
+  const proposal: WorkshopMemoryProposal = {
+    proposes: 'new',
+    title: draft.title,
+    kind: draft.kind,
+    summary: draft.summary,
+    body: draft.body,
+    ...(supersedes.length > 0 ? { supersedes } : {}),
+    ...(dropped > 0 ? { droppedSupersedes: dropped } : {}),
+    state: 'pending',
+    ...(route.kind === 'held' ? { held: route.held } : {})
+  };
+  const outcome = route.kind === 'held' ? `held (reason=${route.held}; ` : route.kind === 'auto' ? 'saving (mode=auto; ' : 'pending (';
+  return {
+    proposal,
+    auto: route.kind === 'auto',
+    log: `Memory proposal ${outcome}kind=${draft.kind}; supersedes=${supersedes.map((item) => item.id).join(',') || 'none'}; ` +
+      `dropped=${dropped}${context.listed ? '' : '; listing=unread'})`
+  };
 }
 
 function assertNever(value: never): never {

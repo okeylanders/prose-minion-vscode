@@ -28,7 +28,7 @@ describe('Workshop routes — Save and tell me races', () => {
   const memoryFiles = () => [...harness.memory.fileSystem.files.keys()].filter((file) => file.startsWith(MEMORY) && file.endsWith('.md'));
   const ledger = () => harness.session.readRoomLedger();
   const receipts = () => ledger().filter((turn) => turn.projectMemoryReceipt);
-  const card = () => ledger().find((turn) => turn.memoryProposal);
+  const card = () => ledger().find((turn) => turn.memoryProposals);
   const results = () => harness.posted(MessageType.WORKSHOP_MEMORY_WRITE_RESULT).map((entry) => entry.payload);
   const tick = async (rounds = 8) => {
     for (let round = 0; round < rounds; round += 1) {
@@ -73,10 +73,10 @@ describe('Workshop routes — Save and tell me races', () => {
     sends += 1;
     const call = harness.session.getHostConversationId() ? harness.service.continueConversation : harness.service.startWorkshopPersonaConversation;
     call.mockResolvedValueOnce(analysisResult(`Good.\n\n${memoryFrame({ title })}`, { conversationId: 'host-conv' }) as never);
-    const before = ledger().filter((candidate) => candidate.memoryProposal).length;
+    const before = ledger().filter((candidate) => candidate.memoryProposals).length;
     const sending = route(MessageType.WORKSHOP_SEND_MESSAGE, { text: `What did we settle? (${sends})` });
-    await until(() => ledger().filter((candidate) => candidate.memoryProposal).length > before);
-    return { sending, turn: ledger().filter((candidate) => candidate.memoryProposal).at(-1)! };
+    await until(() => ledger().filter((candidate) => candidate.memoryProposals).length > before);
+    return { sending, turn: ledger().filter((candidate) => candidate.memoryProposals).at(-1)! };
   }
 
   beforeEach(async () => {
@@ -103,7 +103,7 @@ describe('Workshop routes — Save and tell me races', () => {
       expect(results().find((result) => result.requestId === 'w1')).toMatchObject({ ok: true });
       expect(memoryFiles()).toHaveLength(1);
       expect(receipts().map((receipt) => receipt.projectMemoryReceipt?.by)).toEqual(['writer']);
-      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposal).toMatchObject({ state: 'pending' });
+      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposals?.[0]).toMatchObject({ state: 'pending' });
       expect(harness.memory.lines.join('\n')).toContain('save refused reason=withdrawn');
     });
 
@@ -118,7 +118,7 @@ describe('Workshop routes — Save and tell me races', () => {
 
       expect(memoryFiles()).toEqual([]);
       expect(receipts()).toEqual([]);
-      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposal).toMatchObject({ state: 'pending' });
+      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposals?.[0]).toMatchObject({ state: 'pending' });
     });
 
     it('a writer\'s Save of the card still works with memory Off afterwards', async () => {
@@ -129,7 +129,7 @@ describe('Workshop routes — Save and tell me races', () => {
       held.release();
       await sending;
 
-      await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'm1', turnId: turn.id, action: 'save' });
+      await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'm1', turnId: turn.id, index: 0, action: 'save' });
       expect(results().at(-1)).toMatchObject({ requestId: 'm1', ok: true });
       expect(memoryFiles()).toHaveLength(1);
       expect(receipts().map((receipt) => receipt.projectMemoryReceipt?.by)).toEqual(['writer']);
@@ -143,14 +143,14 @@ describe('Workshop routes — Save and tell me races', () => {
       await until(held.reached);
 
       const edited = { title: 'Corrected by writer', kind: 'canon', summary: 'The watch runs backward from chapter 3.', body: '', supersedes: [], pinned: false };
-      const editing = route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'e1', turnId: turn.id, action: 'save', edited });
+      const editing = route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'e1', turnId: turn.id, index: 0, action: 'save', edited });
       held.release();
       await Promise.all([sending, editing]);
 
       // The reply's run is still settling its save, so the edit is refused in words, and the sheet keeps its draft.
       expect(results().find((result) => result.requestId === 'e1'))
         .toEqual({ requestId: 'e1', ok: false, error: 'Wait for the reply to finish, then save to memory.' });
-      const memoryId = ledger().find((candidate) => candidate.id === turn.id)!.memoryProposal!.memoryId!;
+      const memoryId = ledger().find((candidate) => candidate.id === turn.id)!.memoryProposals![0].memoryId!;
       const saved = await harness.memory.store.read(memoryId);
       expect(saved.kind === 'memory' && saved.entry.memory.title).toBe('The Rabbit\'s watch runs backward');
       expect(receipts().map((receipt) => receipt.projectMemoryReceipt?.action)).toEqual(['saved']);
@@ -161,9 +161,9 @@ describe('Workshop routes — Save and tell me races', () => {
       const { sending, turn } = await sendCarded();
       await sending;
       const edited = { title: 'Corrected by writer', kind: 'canon', summary: 'The watch runs backward from chapter 3.', body: '', supersedes: [], pinned: false };
-      await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'e2', turnId: turn.id, action: 'save', edited });
+      await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'e2', turnId: turn.id, index: 0, action: 'save', edited });
 
-      const memoryId = ledger().find((candidate) => candidate.id === turn.id)!.memoryProposal!.memoryId!;
+      const memoryId = ledger().find((candidate) => candidate.id === turn.id)!.memoryProposals![0].memoryId!;
       expect(results().at(-1)).toEqual({ requestId: 'e2', ok: true, memoryId });
       const saved = await harness.memory.store.read(memoryId);
       expect(saved.kind === 'memory' && saved.entry.memory.title).toBe('Corrected by writer');
@@ -178,13 +178,13 @@ describe('Workshop routes — Save and tell me races', () => {
       const same = { title: 'The Rabbit\'s watch runs backward', kind: 'canon', summary: 'From chapter 3 on, the White Rabbit\'s watch runs backward.',
         body: 'We settled this while working the tea-party scene.', supersedes: [], pinned: false };
       const saves = [
-        route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'u1', turnId: turn.id, action: 'save' }),
-        route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'u2', turnId: turn.id, action: 'save', edited: same })
+        route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'u1', turnId: turn.id, index: 0, action: 'save' }),
+        route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'u2', turnId: turn.id, index: 0, action: 'save', edited: same })
       ];
       held.release();
       await Promise.all([sending, ...saves]);
 
-      const memoryId = ledger().find((candidate) => candidate.id === turn.id)!.memoryProposal!.memoryId;
+      const memoryId = ledger().find((candidate) => candidate.id === turn.id)!.memoryProposals![0].memoryId;
       expect(results()).toEqual([{ requestId: 'u1', ok: true, memoryId }, { requestId: 'u2', ok: true, memoryId }]);
       expect(memoryFiles()).toHaveLength(1);
       expect(receipts()).toHaveLength(1);
@@ -221,14 +221,14 @@ describe('Workshop routes — Save and tell me races', () => {
 
       const sixth = await sendCardedAgain('Tea is served at six, take 6');
       await sixth.sending;
-      expect(sixth.turn.memoryProposal).toBeDefined();
-      expect(ledger().find((candidate) => candidate.id === sixth.turn.id)?.memoryProposal).toMatchObject({ state: 'pending', held: 'room-cap' });
+      expect(sixth.turn.memoryProposals?.[0]).toBeDefined();
+      expect(ledger().find((candidate) => candidate.id === sixth.turn.id)?.memoryProposals?.[0]).toMatchObject({ state: 'pending', held: 'room-cap' });
 
       releaseList();
       await fifth.sending;
       expect(memoryFiles()).toHaveLength(5);
       expect(receipts().map((receipt) => receipt.projectMemoryReceipt?.by)).toEqual(['auto', 'auto', 'auto', 'auto', 'auto']);
-      expect(ledger().find((candidate) => candidate.id === fifth.turn.id)?.memoryProposal).toMatchObject({ state: 'saved' });
+      expect(ledger().find((candidate) => candidate.id === fifth.turn.id)?.memoryProposals?.[0]).toMatchObject({ state: 'saved' });
     });
 
     it('the cap is checked again at the commit: a room at the cap by then holds the card with room-cap, and writes nothing', async () => {
@@ -244,7 +244,7 @@ describe('Workshop routes — Save and tell me races', () => {
       await sending;
 
       expect(memoryFiles()).toEqual([]);
-      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposal).toMatchObject({ state: 'pending', held: 'room-cap' });
+      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposals?.[0]).toMatchObject({ state: 'pending', held: 'room-cap' });
       expect(harness.memory.lines.join('\n') + (harness.log.appendLine as jest.Mock).mock.calls.join('\n')).toContain('reason=withdrawn:room-cap');
     });
 
@@ -255,7 +255,7 @@ describe('Workshop routes — Save and tell me races', () => {
       harness.memory.state.mode = 'ask';
       held.release();
       await sending;
-      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposal?.held).toBeUndefined();
+      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposals?.[0]?.held).toBeUndefined();
 
       harness.memory.state.mode = 'auto';
       jest.spyOn(harness.memory.library, 'save').mockResolvedValueOnce({ kind: 'refused', reason: 'busy' });
@@ -263,11 +263,11 @@ describe('Workshop routes — Save and tell me races', () => {
       for (let n = 1; n <= 5; n += 1) {
         const next = await sendCardedAgain(`Tea is served at six, take ${n}`);
         await next.sending;
-        expect(ledger().find((candidate) => candidate.id === next.turn.id)?.memoryProposal?.state).toBe('saved');
+        expect(ledger().find((candidate) => candidate.id === next.turn.id)?.memoryProposals?.[0]?.state).toBe('saved');
       }
       const over = await sendCardedAgain('Tea is served at six, over');
       await over.sending;
-      expect(ledger().find((candidate) => candidate.id === over.turn.id)?.memoryProposal).toMatchObject({ state: 'pending', held: 'room-cap' });
+      expect(ledger().find((candidate) => candidate.id === over.turn.id)?.memoryProposals?.[0]).toMatchObject({ state: 'pending', held: 'room-cap' });
       expect(memoryFiles()).toHaveLength(5);
     });
   });
@@ -287,7 +287,7 @@ describe('Workshop routes — Save and tell me races', () => {
       await sending;
       expect(memoryFiles()).toEqual([]);
       expect(receipts()).toEqual([]);
-      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposal).toMatchObject({ state: 'pending' });
+      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposals?.[0]).toMatchObject({ state: 'pending' });
       expect(harness.memory.lines.join('\n') + (harness.log.appendLine as jest.Mock).mock.calls.join('\n')).toContain('reason=withdrawn:run-stopped');
     });
 

@@ -437,7 +437,9 @@ A persona proposes a memory with a trailer at the end of its reply:
   proposing persona learns the outcome from the receipt (D7), never from its own
   stale trailer.
 - **One per reply.** Two or more frames reject every one (`duplicate`). The
-  host never guesses which was meant.
+  host never guesses which was meant. *(Widened to `proposalsPerReply`, each
+  frame judged on its own, by the
+  [addendum of 2026-11-05: several suggestions](#addendum-2026-11-05-several-suggestions-and-supersessions-wait).)*
 - **The host fills provenance:** `source-session` (the live session id),
   `source-turns` (the reply's turn id and the writer turn that prompted it),
   `proposed-by`, `created` and `updated`. A trailer that names any of them is
@@ -511,7 +513,9 @@ and no update note repeats it.
   - the manager and *Open memory folder* are disabled, with the same reason.
 
 - **Saves under Save and tell me are capped:** one per reply (D6), and
-  `autoSavesPerRoom` per room. Past the cap a proposal waits as under Ask first,
+  `autoSavesPerRoom` per room. *(Per reply, now each card in order; and a
+  supersession always waits: see the
+  [addendum of 2026-11-05](#addendum-2026-11-05-several-suggestions-and-supersessions-wait).)* Past the cap a proposal waits as under Ask first,
   and the card says why.
 - **The web-research hold.** A proposal from a reply whose run had web research
   attached is always held for the writer, even under Save and tell me. The test
@@ -932,3 +936,50 @@ boundaries, and their sync tests hold the kinds they name to
 constant. The sheet shows the six kind cards six across when they fit, otherwise
 three by two, never a row with an orphan (a container query, not `auto-fit`);
 under the 760px stack rule, two by three.
+
+## Addendum 2026-11-05: several suggestions, and supersessions wait
+
+*Okey's live-pass decisions (epic Slice 6b,
+[slice doc](../../.todo/epics/epic-workshop-project-memory-2026-11-04/slice-6b-multi.md)).
+D6 and D8 stand as written above; this changes what follows from them.*
+
+- **Up to `proposalsPerReply` (10) suggestions per reply.** D6's "one per
+  reply, two frames reject every one" gives way to: every
+  `<prose-minion-memory-proposal>` frame is still stripped from the bubble,
+  retained history, logs and streaming exactly as before (PR #200's
+  guarantees hold for every frame), and the extractor keeps the well-formed
+  frames at the reply's tail, in order, up to the cap. The cap is a budget
+  in `PROMPT_BUDGETS.workshopProjectMemory`, pinned to the prompt by its
+  sync test.
+- **Each frame is judged on its own.** One malformed, misplaced, nested or
+  unclosed frame drops only itself, with its reason logged; a frame whose
+  title repeats an earlier one's is dropped as `duplicate`; a well-formed
+  frame past the cap is dropped whole as `over-cap` and counted, never
+  truncated. A malformed frame takes no place under the cap. The tail rule
+  is D6's: nothing but whitespace and other frames after a frame. An
+  unclosed frame still takes everything after it, so the frames it swallows
+  are never read.
+- **The list shape.** A turn's `memoryProposal` becomes `memoryProposals`:
+  one to ten items, never empty, each naming what it proposes
+  (`proposes: 'new'`, the only kind built), so a later slice can add an edit
+  of a saved memory as another item kind. Each card is acted on by its turn
+  and index (`WORKSHOP_MEMORY_PROPOSAL_ACTION` carries `index`), and has its
+  own Save, Edit, Dismiss, in-flight save, held reason and settled state.
+  Receipts and D14's delivery stay one per saved memory. The session format
+  has not shipped, so there is no `schemaVersion` bump; a development
+  checkpoint's single `memoryProposal` is repaired into a one-item list by
+  the logged normalization `listed-single-memory-proposal`, and the current
+  shape refuses the single field.
+- **Save and tell me, per card.** D8's routing runs for each card in order:
+  the web-research hold applies to every card; the room's cap counts the
+  reply's earlier cards admitted, so a batch fills the cap and the rest are
+  held `room-cap`. The cards marked for saving are saved one after another
+  as the run's tail (PR #201 F-03), each with its own reservation and its
+  own live permit (F-01, F-04).
+- **Supersessions always wait.** Under Save and tell me, a suggestion that
+  names any `<supersedes>` id is never saved automatically: it is held
+  `supersedes` ("It replaces a saved memory, so it waits for you to save
+  it."), after the web-research hold and before the cap, so it takes no
+  place under the cap. Replacing what a saved memory says is the writer's
+  decision.
+

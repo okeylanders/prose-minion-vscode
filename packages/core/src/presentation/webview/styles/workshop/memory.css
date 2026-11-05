@@ -365,6 +365,26 @@
   border-radius: var(--pm-r-tile);
   background: var(--pm-inset);
 }
+/* Several suggestions on one reply (Slice 6b): a small count, then the cards closer together. */
+[data-pm-surface="workshop"] .pm-ws-memory-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-stack-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pm-dim);
+  font: 600 10px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-stack > .pm-ws-memory-card,
+[data-pm-surface="workshop"] .pm-ws-memory-stack > .pm-ws-memory-settled {
+  margin-top: 0;
+}
 [data-pm-surface="workshop"] .pm-ws-memory-card-held {
   border-color: rgba(226, 178, 74, 0.5);
 }

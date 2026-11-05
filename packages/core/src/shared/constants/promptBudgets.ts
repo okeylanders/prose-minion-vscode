@@ -103,6 +103,8 @@ export interface PromptBudgets {
     readCharacters: number;
     readsPerTurn: number;
     autoSavesPerRoom: number;
+    /** Suggestions one reply may carry (Slice 6b): frames past it are dropped and counted. */
+    proposalsPerReply: number;
   }>;
   /**
    * Workshop Pinned Context (ADR 2026-11-04 D6): how many files the list
@@ -550,7 +552,8 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readMemories: 5,
     readCharacters: 40_000,
     readsPerTurn: 2,
-    autoSavesPerRoom: 5
+    autoSavesPerRoom: 5,
+    proposalsPerReply: 10
   },
   workshopPinnedContext: {
     files: 20,

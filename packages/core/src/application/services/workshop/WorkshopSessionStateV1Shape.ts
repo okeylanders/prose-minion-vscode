@@ -587,6 +587,8 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       'widgetRecommendation',
       'standingDirectiveChange',
       // Project memory (ADR 2026-11-04 D6, D7; additive, no version bump).
+      'memoryProposals',
+      // A development checkpoint's single card (Slice 6b): checked, then normalized; refused in the current shape.
       'memoryProposal',
       'projectMemoryReceipt',
       // Project memory's delivery record (ADR 2026-11-04 D14; additive).
