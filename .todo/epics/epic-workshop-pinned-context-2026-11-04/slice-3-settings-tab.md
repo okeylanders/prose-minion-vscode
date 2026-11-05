@@ -180,7 +180,7 @@ it back only as a key into the list it just read (ADR D8).
   room. A file's `configuredResource.path`, or else its `relativePath`,
   becomes the entry; anything else is refused before any read. A `\` is
   read as a separator only on Windows; on POSIX it stays a filename
-  character, which the path rule refuses (the coordinator's call, after
+  character, which the path rule refuses in its own words (the coordinator's call, after
   #208 F02). The library
   checks the path rule and reads the file through the intake doors. A
   `refused` read (outside the folder, or through a link) says "Only files
@@ -349,6 +349,10 @@ Slice 1's #204 re-review fixes), as the coordinator asked. That merge brings
   then try again.", "The workspace changed, so pinned context wasn't
   changed.", and "There's no pinned-context.json yet. The file is made when
   you pin the first file.";
+- a file inside the project whose name holds a backslash (POSIX): "Can't
+  pin *alice\notes.md*: pinned context can't store a file name with a
+  backslash in it." ("Only files inside this project can be pinned." stays
+  for files that really are outside it);
 - 0d's file bound line gains "Unpin a file to make room.";
 - several files at once over budget: "Can't pin these *N* files: … or pin
   fewer of these.";

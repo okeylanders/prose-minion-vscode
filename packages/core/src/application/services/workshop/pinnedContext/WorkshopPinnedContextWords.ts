@@ -102,3 +102,8 @@ export function workshopPinnedOverBudgetWords(labels: readonly string[], words: 
   return `Can’t pin ${which}: pinned context would come to ${aboutWords(words)} of ${BUDGET_WORDS} words. ` +
     `Unpin another file, or ${shorten}.`;
 }
+
+/** A file inside the project whose name holds a backslash (POSIX): format 1's paths can't name it. */
+export function workshopPinnedBackslashWords(label: string): string {
+  return `Can’t pin ${label}: pinned context can’t store a file name with a backslash in it.`;
+}

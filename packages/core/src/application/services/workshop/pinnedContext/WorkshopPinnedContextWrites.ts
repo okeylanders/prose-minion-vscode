@@ -52,6 +52,7 @@ import {
   WORKSHOP_PINNED_WORDS,
   workshopPinnedFileFaultWords,
   workshopPinnedListRefusalWords,
+  workshopPinnedBackslashWords,
   workshopPinnedListUnavailableWords,
   workshopPinnedOverBudgetWords
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextWords';
@@ -105,8 +106,15 @@ export class WorkshopPinnedContextWrites {
   }
 
   async pinPaths(ask: WorkshopPinnedContextAsk, revision: string, entries: readonly WorkshopPinnedContextEntry[]): Promise<WorkshopPinnedContextWriteResult> {
-    if (entries.some((entry) => workshopPinnedContextPathFault(entry.path) !== undefined)) {
-      return this.refuse(WORKSHOP_PINNED_WORDS.outsideProject, 'outside');
+    for (const entry of entries) {
+      const fault = workshopPinnedContextPathFault(entry.path);
+      if (fault === 'backslash') {
+        // A file inside the project whose name holds `\` (POSIX): format 1 can't name it.
+        return this.refuse(workshopPinnedBackslashWords(workshopPinnedFileLabel(entry.path)), 'backslash');
+      }
+      if (fault !== undefined) {
+        return this.refuse(WORKSHOP_PINNED_WORDS.outsideProject, 'outside');
+      }
     }
     const list = await this.atRevision(ask, revision);
     return isList(list) ? this.pin(ask, revision, list, entries) : list;

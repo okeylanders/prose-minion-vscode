@@ -229,7 +229,7 @@ describe('WorkshopPinnedContextHandler: pinning', () => {
     h.write('Characters/alice.md', 'Alice is seven.');
     const id = h.attachFile('Characters\\alice.md', false);
     await expect(h.send(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS, { revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION, attachmentIds: [id] }))
-      .resolves.toMatchObject({ ok: false, notice: { kind: 'refused', text: 'Only files inside this project can be pinned.' } });
+      .resolves.toMatchObject({ ok: false, notice: { kind: 'refused', text: 'Can’t pin Characters\\alice.md: pinned context can’t store a file name with a backslash in it.' } });
     expect(h.listOnDisk()).toBeUndefined();
   });
 
