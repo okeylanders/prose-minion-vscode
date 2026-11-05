@@ -6,6 +6,7 @@
  */
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { PROJECT_MEMORY_FIELD_CHARACTERS, PROJECT_MEMORY_KINDS } from '@shared/types/projectMemory';
+import { checkWorkshopMemoryDraft } from '@shared/constants/workshopProjectMemoryWrites';
 import { readHelperReply } from '@services/helper/HelperReply';
 import {
   MEMORY_DRAFT_POLICY,
@@ -53,6 +54,41 @@ describe('memory-draft codec', () => {
     expect(decodeMemoryDraft({ ...DRAFT, title: '   ' })).toEqual({ ok: false, fault: 'empty-field' });
     expect(decodeMemoryDraft({ ...DRAFT, summary: 'Alice falls.\nShe lands.' })).toEqual({ ok: false, fault: 'multi-line' });
     expect(decodeMemoryDraft({ ...DRAFT, title: ['Alice'] })).toEqual({ ok: false, fault: 'wrong-type' });
+  });
+
+  it.each([
+    ['a tab', 'Alice\tfalls'],
+    ['a carriage return', 'Alice\rfalls'],
+    ['a bell', 'Alice\u0007falls'],
+    ['a C1 control', 'Alice\u0085falls'],
+    ['a line separator', 'Alice\u2028falls'],
+    ['a paragraph separator', 'Alice\u2029falls']
+  ])('drops a title or summary holding %s (A-04)', (_name, text) => {
+    expect(decodeMemoryDraft({ ...DRAFT, title: text })).toEqual({ ok: false, fault: 'multi-line' });
+    expect(decodeMemoryDraft({ ...DRAFT, summary: text })).toEqual({ ok: false, fault: 'multi-line' });
+  });
+
+  it('agrees with the sheet\'s own check: a draft it reads is one the memory codec accepts, and one it drops is one the codec refuses (A-04)', () => {
+    const title = PROJECT_MEMORY_FIELD_CHARACTERS.title;
+    const summary = PROJECT_MEMORY_FIELD_CHARACTERS.summary;
+    const candidates = [
+      DRAFT,
+      { ...DRAFT, title: 'A'.repeat(title) },
+      { ...DRAFT, title: 'A'.repeat(title + 1) },
+      { ...DRAFT, summary: 'A'.repeat(summary) },
+      { ...DRAFT, summary: 'A'.repeat(summary + 1) },
+      { ...DRAFT, title: ' ' },
+      { ...DRAFT, summary: '' },
+      { ...DRAFT, title: 'Alice\tfalls' },
+      { ...DRAFT, summary: 'Alice\u2028falls' },
+      { ...DRAFT, title: '  The Queen  ' },
+      { ...DRAFT, title: '🐇'.repeat(title / 2) },
+      { ...DRAFT, title: '🐇'.repeat(title / 2) + 'A' }
+    ];
+    for (const candidate of candidates) {
+      const sheet = { ...candidate, body: '', supersedes: [], pinned: false };
+      expect([candidate.title, decodeMemoryDraft(candidate).ok]).toEqual([candidate.title, checkWorkshopMemoryDraft(sheet) === undefined]);
+    }
   });
 
   it('reads through the shared parser: structure-only repairs kept and named, malformed JSON dropped', () => {

@@ -13,6 +13,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   PROJECT_MEMORY_FIELD_CHARACTERS,
   PROJECT_MEMORY_KINDS,
+  PROJECT_MEMORY_NOT_ONE_LINE,
   type ProjectMemoryKind
 } from '@shared/types/projectMemory';
 import {
@@ -50,11 +51,11 @@ export function decodeMemoryDraft(root: Readonly<Record<string, unknown>>): Help
   if (shape) {
     return { ok: false, fault: shape };
   }
-  const title = helperLine(root.title, PROJECT_MEMORY_FIELD_CHARACTERS.title);
+  const title = helperLine(root.title, PROJECT_MEMORY_FIELD_CHARACTERS.title, PROJECT_MEMORY_NOT_ONE_LINE);
   if (!title.ok) {
     return title;
   }
-  const summary = helperLine(root.summary, PROJECT_MEMORY_FIELD_CHARACTERS.summary);
+  const summary = helperLine(root.summary, PROJECT_MEMORY_FIELD_CHARACTERS.summary, PROJECT_MEMORY_NOT_ONE_LINE);
   if (!summary.ok) {
     return summary;
   }

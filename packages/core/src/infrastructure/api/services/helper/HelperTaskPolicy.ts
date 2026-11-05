@@ -31,7 +31,7 @@ export type HelperReplyFault =
   | 'wrong-type'
   /** A text field was empty. */
   | 'empty-field'
-  /** A one-line field held a line break. */
+  /** A one-line field held a control character, a line break or a line/paragraph separator. */
   | 'multi-line'
   /** A field was longer than its bound. */
   | 'over-bound'
@@ -95,10 +95,12 @@ export function helperExactFields(
 
 /**
  * One line of text within `maxCharacters` (UTF-16 code units, as a text
- * field's `maxLength` counts), trimmed of surrounding space. A fault, never
- * a clip: a clipped answer would be one the model did not give.
+ * field's `maxLength` counts), trimmed of surrounding space; `notOneLine`
+ * is the data's own rule for what breaks a line, so the helper keeps no
+ * second copy of it. A fault, never a clip: a clipped answer would be one
+ * the model did not give.
  */
-export function helperLine(value: unknown, maxCharacters: number): HelperDecoded<string> {
+export function helperLine(value: unknown, maxCharacters: number, notOneLine: RegExp): HelperDecoded<string> {
   if (typeof value !== 'string') {
     return { ok: false, fault: 'wrong-type' };
   }
@@ -106,7 +108,7 @@ export function helperLine(value: unknown, maxCharacters: number): HelperDecoded
   if (text === '') {
     return { ok: false, fault: 'empty-field' };
   }
-  if (/[\r\n\u2028\u2029]/u.test(text)) {
+  if (notOneLine.test(text)) {
     return { ok: false, fault: 'multi-line' };
   }
   if (text.length > maxCharacters) {

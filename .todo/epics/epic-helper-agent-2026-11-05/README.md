@@ -6,7 +6,7 @@
 **Integration branch:** `epic/helper-agent`, cut from `epic/workshop-bookmark-recall` at `b4ca7b86` (the feature tip: Bookmark Recall Slices 0–3, #222, and `main` with Project Memory and Pinned Context). Each slice is built on `epic/helper-agent-slice-<N>-<slug>` and merges into the epic through a reviewed PR.
 **Decision:** [ADR 2026-11-05: A Helper Agent for Small Tasks](../../../docs/adr/2026-11-05-helper-agent.md) (Proposed; defaults taken for Q1–Q3)
 **Downstream of:** Bookmark Recall. Its live-pass fixes are merged in as they land. The epic goes to `main` after Bookmark Recall does.
-**Sibling:** [Workshop Persona File Edits](../epic-workshop-persona-file-edits-2026-11-05/README.md) runs in parallel. Whichever reaches `main` second merges the other first.
+**Sibling:** Workshop Persona File Edits runs in parallel on its own epic branch, `epic/workshop-persona-file-edits` (spec: [PR #226](https://github.com/okeylanders/prose-minion-vscode/pull/226)); its README joins this tree when the two epics meet (PR #225 N-02). Whichever reaches `main` second merges the other first.
 
 ## Goal
 
@@ -73,6 +73,16 @@ This is the same flow as Project Memory and Bookmark Recall.
 
 ## Progress Notes
 
+- **2026-11-05. PR #225 review (Astra).** Approved at specification level, with no blocking finding.
+  - **A-01–A-05 are acceptance checks** for Slices 1 and 2, relayed to the implementation thread:
+    - A-01: the safe source, eligibility and input bound;
+    - A-02: sheet and room ownership;
+    - A-03: touched fields as history, and the Save rules;
+    - A-04: the whole output contract;
+    - A-05: timeout, cancellation, usage and following.
+  - **N-01 and N-02** (the cost wording and the sibling link) are fixed in the spec.
+  - Ledger: [the review](../../../docs/pr-reviews/pr-225-helper-agent-spec-review.md).
+
 - **2026-11-05. Slice 0.**
   - Okey asked for a general assist agent with a generic prompt. Its first job is titling and summarizing a memory on Save to memory…, and a later job is configuring project locations from a workspace scan.
   - He chose automatic drafting, then handed the implementation to the coordinator.
@@ -82,6 +92,7 @@ This is the same flow as Project Memory and Bookmark Recall.
   - `helper` is a following scope (`MODEL_SCOPE_FOLLOWS.helper = 'proofread'`). Following was already keyed by that map; only comments and one header chip assumed the assistant model.
   - `HelperAgentService` with `HELPER_TASK_POLICIES` (`memory-draft`), the generic prompt, the task's section and worked example, its codec and budgets. Built in `extension.ts`, in `CoreServices`; no routes or UI yet.
   - Verification: typecheck clean; lint 0 errors and no new warnings; jest 757 suites / 10,520 tests / 59 snapshots, all passing; no `from 'vscode'` in `packages/core/src`.
+  - A-01–A-05 (PR #225 review): the one-line rule is shared (`PROJECT_MEMORY_NOT_ONE_LINE`), the timeout test is deterministic, and the helper's retirement is pinned; the checks are tabled in the slice doc. Jest 757 suites / 10,530 tests / 59 snapshots; lint 0 errors, 1,165 warnings.
 - **2026-11-05. Slice 2 (Drafting in the memory sheet).** See [slice-2-memory-draft.md](slice-2-memory-draft.md).
   - `WORKSHOP_MEMORY_DRAFT_REQUEST` / `_RESULT`; `WorkshopMemoryDraftHandler` reads the turn host-side (ledger, or recall's `savedTurn`) and asks the helper; the sheet takes only its own request's answer, fills untouched fields, shows "Drafting…" placeholders and one quiet line on failure.
   - `proseMinion.workshop.memory.helperDrafts` (default on), read by the host per request; the Memory tab doesn't show it (see the slice doc).

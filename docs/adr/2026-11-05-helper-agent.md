@@ -109,12 +109,22 @@ The helper has no tools, no capabilities and no file access of its own:
      values);
    - Save stays available;
    - a writer who types first simply keeps their words.
-6. **Failure is quiet.** With no key, an error, a timeout, a malformed answer,
-   or the setting off, the sheet stays as it is today. One muted line says
-   "Couldn't draft a title and summary." Nothing blocks.
+6. **Failure is quiet.** With no key, an error, a timeout or a malformed
+   answer, the sheet stays as it is today. One muted line says "Couldn't
+   draft a title and summary." Nothing blocks.
 7. **The setting.** `proseMinion.workshop.memory.helperDrafts` (default
-   `true`) turns it off. The call costs a few hundred tokens and isn't
-   confirmed first: Okey chose automatic.
+   `true`) turns it off.
+   - **Off is silence, not failure.** The webview knows the setting, posts
+     no request, and shows no "Drafting…" and no line.
+   - **The host gates it too.** A request that arrives while it is off is
+     answered `off` with no model call, and the webview treats `off` as
+     silence.
+
+   The call isn't confirmed first: Okey chose
+   automatic. It is bounded (its input is the sheet's body, at most
+   `bodyCharacters`, plus the prompt; its output is the three fields), and
+   its cost depends on the source's length and the helper's model (PR #225
+   N-01).
 
 A proposal card's **Edit…** already has a persona's title and summary, so it
 asks for nothing.
