@@ -45,7 +45,7 @@ const page = (requestId: string, body: Partial<WorkshopBookmarkPage> | undefined
   payload: {
     requestId,
     roomRevision: 1,
-    ...(body ? { page: { sessions: [], read: 0, unreadable: 0, unreadableSessions: [], remaining: 0, ...body } } : {}),
+    ...(body ? { page: { sessions: [], read: 0, unreadable: 0, unreadableSessions: [], ambiguous: 0, ambiguousSessionIds: [], remaining: 0, ...body } } : {}),
     ...(error ? { error } : {})
   },
   timestamp: 1
@@ -92,7 +92,7 @@ describe('useWorkshopBookmarkBrowser', () => {
       sessions: [{ sessionId: 's2', title: 'Tea party', savedAt: '', bookmarks: [row('b1')] }],
       read: 25, unreadable: 1, unreadableSessions: [{ sessionId: 'sx', title: 'Broken' }], remaining: 30, next: 'cursor-1'
     })));
-    expect(result.current.saved).toMatchObject({ next: 'cursor-1', loading: false, coverage: { read: 25, unreadable: 1, remaining: 30, started: true } });
+    expect(result.current.saved).toMatchObject({ next: 'cursor-1', loading: false, coverage: { read: 25, unreadable: 1, ambiguous: 0, remaining: 30, started: true } });
 
     act(() => result.current.loadMore());
     const second = lastPayload(MessageType.WORKSHOP_REQUEST_BOOKMARK_PAGE);
@@ -104,9 +104,10 @@ describe('useWorkshopBookmarkBrowser', () => {
       sessions: [{ sessionId: 's1', title: 'Garden', savedAt: '', bookmarks: [row('b1')] }], read: 30, remaining: 0
     })));
     expect(result.current.saved.sessions.map((session) => session.sessionId)).toEqual(['s2', 's1']);
-    expect(result.current.saved.coverage).toEqual({ read: 55, unreadable: 1, remaining: 0, started: true });
+    expect(result.current.saved.coverage).toEqual({ read: 55, unreadable: 1, ambiguous: 0, remaining: 0, started: true });
     expect(result.current.saved.next).toBeUndefined();
     expect(result.current.saved.unreadableSessions).toEqual([{ sessionId: 'sx', title: 'Broken' }]);
+    expect(result.current.saved.ambiguousSessionIds.size).toBe(0);
   });
 
   it('takes only the pending request\'s first answer', () => {
@@ -173,5 +174,18 @@ describe('useWorkshopBookmarkBrowser', () => {
     expect(result.current.savedTurnPreview?.turn?.content).toBe('turn-4');
     act(() => result.current.clearSavedTurnPreview());
     expect(result.current.savedTurnPreview).toBeNull();
+  });
+
+  it('accumulates ambiguous session ids across pages, so an earlier page\'s rows are marked too (PR #216 F-03)', () => {
+    const { result } = opened();
+    const first = lastPayload(MessageType.WORKSHOP_REQUEST_BOOKMARK_PAGE).requestId;
+    act(() => result.current.handleBookmarkPage(page(first, {
+      sessions: [{ sessionId: 's2', title: 'Tea party', savedAt: '', bookmarks: [row('b1')] }], read: 1, remaining: 1, next: 'c1'
+    })));
+    act(() => result.current.loadMore());
+    const second = lastPayload(MessageType.WORKSHOP_REQUEST_BOOKMARK_PAGE).requestId;
+    act(() => result.current.handleBookmarkPage(page(second, { ambiguous: 1, ambiguousSessionIds: ['s2'], remaining: 0 })));
+    expect([...result.current.saved.ambiguousSessionIds]).toEqual(['s2']);
+    expect(result.current.saved.coverage).toMatchObject({ read: 1, ambiguous: 1 });
   });
 });

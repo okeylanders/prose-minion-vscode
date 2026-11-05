@@ -77,8 +77,12 @@ export interface WorkshopBookmarkPage {
   read: number;
   /** Session files this page could not read. */
   unreadable: number;
-  /** Those of them it can name. */
+  /** Those of them it can name. Some could not even show their session id, so a duplicate among them is unknown. */
   unreadableSessions: Array<{ sessionId: string; title: string }>;
+  /** Session files this page did not read because another file of the walk claims the same id (PR #216 F-01). */
+  ambiguous: number;
+  /** Those ids: every row of each, on this page or an earlier one, is one the screen won't open. */
+  ambiguousSessionIds: string[];
   /** Session files not read yet. */
   remaining: number;
   /** Pass as `after` for the next page; absent once every session was read. */

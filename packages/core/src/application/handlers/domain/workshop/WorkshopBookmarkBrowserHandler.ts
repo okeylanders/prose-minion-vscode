@@ -75,6 +75,8 @@ const UNKNOWN_SESSION = 'That saved session is no longer there.';
 const UNREADABLE_SESSION = 'That saved session couldn’t be read.';
 const UNKNOWN_TURN = 'That message is no longer in its saved session.';
 const LIVE_SESSION = 'That session is the one open now: its messages are in the thread.';
+const AMBIGUOUS_SESSION = 'More than one saved session file uses this session’s id, so it can’t be shown or opened from here. Keep one of the files in prose-minion/sessions.';
+const WALK_EXPIRED = 'The list of saved sessions was reset. Close Bookmarks and open it again.';
 
 /* eslint-disable @typescript-eslint/naming-convention -- keyed by the reasons' kebab-case words. */
 const UNAVAILABLE: Readonly<Record<WorkshopRecallUnavailableReason, string>> = {
@@ -144,6 +146,10 @@ export class WorkshopBookmarkBrowserHandler {
       }
       if (!result.available) {
         this.postPage({ requestId, roomRevision, error: UNAVAILABLE[result.reason] }, 'refused', result.reason);
+        return;
+      }
+      if (result.outcome === 'walk-expired') {
+        this.postPage({ requestId, roomRevision, error: WALK_EXPIRED }, 'refused', 'walk-expired');
         return;
       }
       this.postPage({ requestId, roomRevision, page: workshopBookmarkBrowserPage(result) }, 'sent');
@@ -227,6 +233,9 @@ export class WorkshopBookmarkBrowserHandler {
       case 'unreadable':
         this.postSavedTurn({ ...answer, error: UNREADABLE_SESSION }, 'refused', result.kind);
         return;
+      case 'ambiguous-session':
+        this.postSavedTurn({ ...answer, error: AMBIGUOUS_SESSION }, 'refused', result.kind);
+        return;
       case 'unknown-turn':
         this.postSavedTurn({ ...answer, error: UNKNOWN_TURN }, 'refused', result.kind);
         return;
@@ -247,7 +256,7 @@ export class WorkshopBookmarkBrowserHandler {
 
   private postPage(payload: WorkshopBookmarkPagePayload, outcome: 'sent' | 'refused', reason?: string): void {
     const counts = payload.page
-      ? `, read=${payload.page.read}, unreadable=${payload.page.unreadable}, remaining=${payload.page.remaining}`
+      ? `, read=${payload.page.read}, unreadable=${payload.page.unreadable}, ambiguous=${payload.page.ambiguous}, remaining=${payload.page.remaining}`
       : '';
     this.log(`Bookmarks page ${outcome} (requestId=${payload.requestId}${counts}${reason ? `, reason=${reason}` : ''})`);
     const reply: WorkshopBookmarkPageMessage = {

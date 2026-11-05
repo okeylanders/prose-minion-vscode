@@ -12,6 +12,11 @@
  * - **Groupings:** by the bookmark's date (the shared buckets), or by session.
  * - **Coverage:** how many saved sessions the loaded pages read, of all of
  *   them, and how many could not be read.
+ * - **Duplicate ids** (PR #216 F-01, F-03, F-04): a row whose session id
+ *   another file claims is `ambiguous`, and is never offered to open. The
+ *   check covers only the sessions read so far: one that couldn't be read
+ *   has an unknown id, never a unique one, and the screen says so
+ *   (`duplicateCheckNote`); an exact Preview or Open always checks again.
  */
 
 import type {
@@ -29,12 +34,16 @@ export interface WorkshopBookmarkBrowserItem {
   key: string;
   source: WorkshopBookmarkBrowserSource;
   row: WorkshopBookmarkBrowserRow;
+  /** Another saved file claims this session's id: the row previews but never opens. */
+  ambiguous?: true;
 }
 
 /** What the loaded pages cover, as the hook accumulates it. */
 export interface WorkshopBookmarkBrowserCoverage {
   read: number;
   unreadable: number;
+  /** Files not read because another file claims the same id. */
+  ambiguous: number;
   /** Not yet read, as the latest page said. */
   remaining: number;
   /** A first page has landed. */
@@ -50,11 +59,15 @@ export function liveBookmarkItems(rows: readonly WorkshopBookmarkBrowserRow[]): 
   return rows.map((row) => ({ key: `live/${row.bookmarkId}`, source: { kind: 'live' }, row }));
 }
 
-export function savedBookmarkItems(sessions: readonly WorkshopBookmarkBrowserSession[]): WorkshopBookmarkBrowserItem[] {
+export function savedBookmarkItems(
+  sessions: readonly WorkshopBookmarkBrowserSession[],
+  ambiguousSessionIds: ReadonlySet<string> = new Set()
+): WorkshopBookmarkBrowserItem[] {
   return sessions.flatMap((session) => session.bookmarks.map((row): WorkshopBookmarkBrowserItem => ({
     key: `${session.sessionId}/${row.bookmarkId}`,
     source: { kind: 'saved', sessionId: session.sessionId, sessionTitle: session.title, savedAt: session.savedAt },
-    row
+    row,
+    ...(ambiguousSessionIds.has(session.sessionId) ? { ambiguous: true as const } : {})
   })));
 }
 
@@ -114,18 +127,37 @@ export function bookmarkCoverageLine(coverage: WorkshopBookmarkBrowserCoverage):
   if (!coverage.started) {
     return undefined;
   }
-  const total = coverage.read + coverage.unreadable + coverage.remaining;
+  const total = coverage.read + coverage.unreadable + coverage.ambiguous + coverage.remaining;
   if (total === 0) {
     return 'No saved sessions yet.';
   }
   const sessions = total === 1 ? 'saved session' : 'saved sessions';
-  const head = coverage.remaining === 0 && coverage.unreadable === 0
+  const head = coverage.remaining === 0 && coverage.unreadable === 0 && coverage.ambiguous === 0
     ? `Bookmarks from all ${total} ${sessions}`
     : `Bookmarks from ${coverage.read} of ${total} ${sessions}`;
   const unreadable = coverage.unreadable > 0
     ? ` · ${coverage.unreadable} couldn’t be read`
     : '';
   return `${head}${unreadable}.`;
+}
+
+/**
+ * What the duplicate check covers, said only when it matters: some sessions
+ * share an id, or some couldn't be read, so their ids are unknown. Never a
+ * claim that the rows shown are unique.
+ */
+export function duplicateCheckNote(coverage: WorkshopBookmarkBrowserCoverage): string | undefined {
+  if (!coverage.started || (coverage.ambiguous === 0 && coverage.unreadable === 0)) {
+    return undefined;
+  }
+  const parts: string[] = [];
+  if (coverage.ambiguous > 0) {
+    parts.push(`${coverage.ambiguous} saved ${coverage.ambiguous === 1 ? 'file shares its' : 'files share their'} session id with another, so those bookmarks can’t be opened from here.`);
+  }
+  if (coverage.unreadable > 0) {
+    parts.push(`Shared session ids are checked across the ${coverage.read} sessions read; ${coverage.unreadable} couldn’t be read, so Preview and Open check again.`);
+  }
+  return parts.join(' ');
 }
 
 /** What a search can say while saved sessions remain unread; nothing once every page is in. */

@@ -40,6 +40,8 @@ import {
   bookmarkedRoom
 } from '@/__tests__/application/services/workshop/recall/workshopBookmarkBrowserFixtures';
 import { recallLog } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import type { WorkshopRecallCorpusPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+import { WorkshopNamedSessionIdentityConflictError } from '@/infrastructure/storage/WorkshopSessionStore';
 import { __resetOverlayFocusStateForTests } from '@hooks/useOverlayDismiss';
 
 jest.mock('../../../presentation/webview/hooks/useVSCodeApi');
@@ -106,6 +108,44 @@ function corpusOf(sessions: WorkshopPersistedSessionV2[]) {
   };
 }
 
+/**
+ * Two files claiming Tea party's id, one per page (PR #216 F-01, F-03): the
+ * first page reads the newer; the second meets the id again and reports it
+ * ambiguous. The exact read refuses the conflict, as the store's does.
+ */
+function splitDuplicateCorpus(saved: WorkshopPersistedSessionV2[]): WorkshopRecallCorpusPort {
+  const files = [
+    { cursor: '2026-02-tea.json', session: saved[0] },
+    { cursor: '2026-01-tea-copy.json', session: { ...saved[0], title: 'Tea party copy' } }
+  ];
+  const summary = (session: WorkshopPersistedSessionV2) => ({
+    sessionId: session.sessionId,
+    title: session.title,
+    updatedAt: session.updatedAt,
+    timezone: session.temporal.timezone,
+    hostPersonaId: session.summary.hostPersonaId,
+    participantPersonaIds: session.summary.participantPersonaIds,
+    turnCount: session.summary.turnCount
+  });
+  return {
+    availability: () => ({ available: true as const }),
+    list: jest.fn(async () => ({ sessions: [], truncated: false })),
+    readNamed: jest.fn(async (sessionId: string) => {
+      throw new WorkshopNamedSessionIdentityConflictError(sessionId);
+    }),
+    readPagedSession: jest.fn(async (cursor: string) => files.find((file) => file.cursor === cursor)?.session),
+    listPage: jest.fn(async (request: { after?: string; limit: number }) => {
+      const left = files.filter((file) => request.after === undefined || file.cursor < request.after);
+      const [first] = left;
+      return {
+        entries: first ? [{ cursor: first.cursor, summary: summary(first.session) }] : [],
+        ...(left.length > 1 ? { next: first.cursor } : {}),
+        remaining: Math.max(0, left.length - 1)
+      };
+    })
+  };
+}
+
 describe('WorkshopApp Bookmarks screen against the real host (ADR 2026-11-05 D8)', () => {
   let vscode: ReturnType<typeof createMockVSCode>;
 
@@ -123,13 +163,13 @@ describe('WorkshopApp Bookmarks screen against the real host (ADR 2026-11-05 D8)
     jest.clearAllMocks();
   });
 
-  const bridged = async () => {
+  const bridged = async (makeCorpus: (saved: WorkshopPersistedSessionV2[]) => WorkshopRecallCorpusPort = corpusOf) => {
     let clock = 10_000;
     const saved = [bookmarkedCheckpoint('alice-1', 'Tea party'), bookmarkedCheckpoint('alice-2', 'The garden')];
     const harness = createWorkshopRouteTestHarness({
       sessionNow: () => (clock += 1_000),
       bookmarkBrowser: (session) => new WorkshopTranscriptRecallService(
-        corpusOf(saved),
+        makeCorpus(saved),
         { recallScope: () => harness.persistence.recallScope() },
         recallLog(),
         { liveRoom: new WorkshopLiveRoomBookmarkReader(session, () => 'UTC') }
@@ -374,4 +414,41 @@ describe('WorkshopApp Bookmarks screen against the real host (ADR 2026-11-05 D8)
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
 
+
+  it('marks an earlier page\'s row once a later page finds its session id shared, and offers it no Open (PR #216 F-03)', async () => {
+    const { pump } = await bridged(splitDuplicateCorpus);
+    await openFromMenu(pump);
+    const row = () => within(screenDialog()).getByText('Tea party', { selector: '.pm-ws-session-row-meta span' }).closest('article') as HTMLElement;
+    expect((within(row()).getByRole('button', { name: `Open at bookmark ${BOOKMARK_LABEL}` }) as HTMLButtonElement).disabled).toBe(false);
+    expect(within(row()).queryByText('Shared session id')).toBeNull();
+
+    fireEvent.click(within(screenDialog()).getByRole('button', { name: 'Load more' }));
+    await pump();
+    expect(within(row()).getByText('Shared session id')).toBeTruthy();
+    expect((within(row()).getByRole('button', { name: `Open at bookmark ${BOOKMARK_LABEL}` }) as HTMLButtonElement).disabled).toBe(true);
+    expect((within(row()).getByRole('button', { name: 'Open session Tea party' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(within(screenDialog()).getByText(/1 saved file shares its session id with another/)).toBeTruthy();
+  });
+
+  it('says why when Preview meets a session id two files claim (PR #216 F-04)', async () => {
+    const { pump } = await bridged(splitDuplicateCorpus);
+    await openFromMenu(pump);
+    fireEvent.click(within(screenDialog()).getByRole('button', { name: `Preview ${BOOKMARK_LABEL}` }));
+    await pump();
+    const sheet = screen.getAllByRole('dialog').at(-1)!;
+    expect(within(sheet).getByText(/More than one saved session file uses this session’s id/)).toBeTruthy();
+  });
+
+  it('shows the host\'s reason when Open refuses a session id two files claim (PR #216 F-04)', async () => {
+    const { harness, pump } = await bridged();
+    harness.persistence.openNamed.mockRejectedValue(new WorkshopNamedSessionIdentityConflictError('alice-1'));
+    // The toast is short-lived: record what the page shows while the Open settles.
+    const shown: string[] = [];
+    const observer = new MutationObserver(() => shown.push(document.body.textContent ?? ''));
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    await openAtBookmark(pump, 'Tea party');
+    observer.disconnect();
+    expect(shown.some((text) => text.includes('A named Workshop session already uses id alice-1.'))).toBe(true);
+    expect(document.activeElement?.getAttribute(WORKSHOP_TURN_ID_ATTRIBUTE) ?? null).toBeNull();
+  });
 });

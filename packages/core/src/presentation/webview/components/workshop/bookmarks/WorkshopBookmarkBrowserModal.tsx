@@ -32,6 +32,7 @@ import {
   bookmarkCoverageLine,
   bookmarkFirstLines,
   bookmarkSessionLabel,
+  duplicateCheckNote,
   filterBookmarks,
   groupBookmarksByDate,
   groupBookmarksBySession,
@@ -63,6 +64,9 @@ export interface WorkshopBookmarkBrowserModalProps extends WorkshopBookmarkBrows
   onLoadMore: () => void;
   onClose: () => void;
 }
+
+/** Why a row whose session id another file claims doesn't open (PR #216 F-01). */
+const AMBIGUOUS_ROW = 'Another saved session file uses this session’s id, so it can’t be opened from here. Keep one of the files in prose-minion/sessions.';
 
 /** A read-only row has nothing to rename or delete. */
 const NO_CONTROLS: SavedItemRowControls = {
@@ -99,7 +103,11 @@ export const WorkshopBookmarkBrowserModal: React.FC<WorkshopBookmarkBrowserModal
   ...actions
 }) => {
   const liveItems = React.useMemo(() => filterBookmarks(liveBookmarkItems(live.rows), query), [live.rows, query]);
-  const savedItems = React.useMemo(() => filterBookmarks(savedBookmarkItems(saved.sessions), query), [saved.sessions, query]);
+  const savedItems = React.useMemo(
+    () => filterBookmarks(savedBookmarkItems(saved.sessions, saved.ambiguousSessionIds), query),
+    [saved.ambiguousSessionIds, saved.sessions, query]
+  );
+  const duplicateNote = duplicateCheckNote(saved.coverage);
   const groupings = React.useMemo<ReadonlyArray<SavedItemGrouping<WorkshopBookmarkBrowserItem>>>(() => [
     { key: 'date', label: 'Date', group: (items) => groupBookmarksByDate(items, now) },
     { key: 'session', label: 'Session', group: (items) => groupBookmarksBySession(items) }
@@ -139,6 +147,7 @@ export const WorkshopBookmarkBrowserModal: React.FC<WorkshopBookmarkBrowserModal
               <Icon name="x" size={14} /> {saved.error}
             </div>
           )}
+          {duplicateNote && <div className="pm-ws-sessions-truncated" role="status">{duplicateNote}</div>}
           {saved.unreadableSessions.length > 0 && (
             <div className="pm-ws-sessions-truncated" role="status">
               Couldn’t read: {saved.unreadableSessions.map((session) => session.title).join(', ')}.
@@ -225,6 +234,7 @@ const BookmarkBrowserRow: React.FC<BookmarkBrowserRowProps> = ({
           <Icon name="bookmark" size={16} />
         </span>
       }
+      badges={item.ambiguous ? <span className="pm-ws-session-badge" title={AMBIGUOUS_ROW}>Shared session id</span> : undefined}
       metaTitle={[row.speaker, sessionLabel, new Date(row.createdAt).toLocaleString()].join(' · ')}
       meta={
         <>
@@ -254,7 +264,8 @@ const BookmarkBrowserRow: React.FC<BookmarkBrowserRowProps> = ({
                 className="pm-ws-session-secondary"
                 type="button"
                 aria-label={`Open session ${item.source.sessionTitle}`}
-                disabled={openDisabled}
+                disabled={openDisabled || item.ambiguous === true}
+                title={item.ambiguous ? AMBIGUOUS_ROW : undefined}
                 onClick={() => onOpenSession(item)}
               >
                 Open session
@@ -263,7 +274,8 @@ const BookmarkBrowserRow: React.FC<BookmarkBrowserRowProps> = ({
                 className="pm-ws-session-primary"
                 type="button"
                 aria-label={`Open at bookmark ${row.label}`}
-                disabled={openDisabled}
+                disabled={openDisabled || item.ambiguous === true}
+                title={item.ambiguous ? AMBIGUOUS_ROW : undefined}
                 onClick={() => onOpenAtBookmark(item)}
               >
                 Open at bookmark

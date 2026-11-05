@@ -144,7 +144,9 @@ describe('saved pages (PR #214 F-02)', () => {
     const revision = room.session.readRoomRevision();
     await route(room, MessageType.WORKSHOP_REQUEST_BOOKMARK_PAGE, { requestId: 'p-1', roomRevision: revision });
     const [first] = answers(room, MessageType.WORKSHOP_BOOKMARK_PAGE);
-    expect(first.page).toMatchObject({ read: 2, unreadable: 0, unreadableSessions: [], remaining: 1, next: 'alice-2' });
+    expect(first.page).toMatchObject({ read: 2, unreadable: 0, unreadableSessions: [], ambiguous: 0, ambiguousSessionIds: [], remaining: 1 });
+    // The cursor is the host's, opaque: the walk's and the store's together.
+    expect(first.page.next).toMatch(/\|alice-2$/);
     expect(first.page.sessions.map((session: { sessionId: string }) => session.sessionId)).toEqual(['alice-3', 'alice-2']);
     expect(first.page.sessions[0]).toMatchObject({
       title: 'Tea party alice-3',

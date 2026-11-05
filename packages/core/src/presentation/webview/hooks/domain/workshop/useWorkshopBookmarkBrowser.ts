@@ -41,6 +41,8 @@ export interface WorkshopBookmarkBrowserLive {
 export interface WorkshopBookmarkBrowserSaved {
   sessions: readonly WorkshopBookmarkBrowserSession[];
   unreadableSessions: ReadonlyArray<{ sessionId: string; title: string }>;
+  /** Ids more than one file of the walk claims, from any page so far: none of their rows opens (PR #216 F-01, F-03). */
+  ambiguousSessionIds: ReadonlySet<string>;
   coverage: WorkshopBookmarkBrowserCoverage;
   /** The cursor for the next page; undefined once every session was read. */
   next?: string;
@@ -96,7 +98,8 @@ const IDLE_LIVE: WorkshopBookmarkBrowserLive = { status: 'idle', rows: NO_ROWS }
 const EMPTY_SAVED: WorkshopBookmarkBrowserSaved = {
   sessions: [],
   unreadableSessions: [],
-  coverage: { read: 0, unreadable: 0, remaining: 0, started: false },
+  ambiguousSessionIds: new Set(),
+  coverage: { read: 0, unreadable: 0, ambiguous: 0, remaining: 0, started: false },
   loading: false
 };
 
@@ -212,9 +215,11 @@ export function useWorkshopBookmarkBrowser(): UseWorkshopBookmarkBrowserReturn {
     setSaved((current) => ({
       sessions: [...current.sessions, ...page.sessions],
       unreadableSessions: [...current.unreadableSessions, ...page.unreadableSessions],
+      ambiguousSessionIds: new Set([...current.ambiguousSessionIds, ...page.ambiguousSessionIds]),
       coverage: {
         read: current.coverage.read + page.read,
         unreadable: current.coverage.unreadable + page.unreadable,
+        ambiguous: current.coverage.ambiguous + page.ambiguous,
         remaining: page.remaining,
         started: true
       },

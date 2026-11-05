@@ -45,6 +45,8 @@ export function workshopBookmarkBrowserPage(page: WorkshopRecallBookmarkPage): W
     read: page.read,
     unreadable: page.unreadable,
     unreadableSessions: page.unreadableSessions.map(({ sessionId, title }) => ({ sessionId, title })),
+    ambiguous: page.ambiguous,
+    ambiguousSessionIds: [...page.ambiguousSessionIds],
     remaining: page.remaining,
     ...(page.next !== undefined ? { next: page.next } : {})
   };

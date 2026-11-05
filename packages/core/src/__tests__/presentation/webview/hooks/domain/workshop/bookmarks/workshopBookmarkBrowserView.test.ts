@@ -8,6 +8,7 @@ import type { WorkshopBookmarkBrowserRow, WorkshopBookmarkBrowserSession } from 
 import {
   bookmarkCoverageLine,
   bookmarkFirstLines,
+  duplicateCheckNote,
   filterBookmarks,
   groupBookmarksByDate,
   groupBookmarksBySession,
@@ -69,19 +70,39 @@ describe('what a row and the status say', () => {
   });
 
   it('says how much of the saved sessions the loaded pages cover', () => {
-    expect(bookmarkCoverageLine({ read: 0, unreadable: 0, remaining: 0, started: false })).toBeUndefined();
-    expect(bookmarkCoverageLine({ read: 120, unreadable: 0, remaining: 220, started: true }))
+    expect(bookmarkCoverageLine({ read: 0, unreadable: 0, ambiguous: 0, remaining: 0, started: false })).toBeUndefined();
+    expect(bookmarkCoverageLine({ read: 120, unreadable: 0, ambiguous: 0, remaining: 220, started: true }))
       .toBe('Bookmarks from 120 of 340 saved sessions.');
-    expect(bookmarkCoverageLine({ read: 118, unreadable: 2, remaining: 0, started: true }))
+    expect(bookmarkCoverageLine({ read: 118, unreadable: 2, ambiguous: 0, remaining: 0, started: true }))
       .toBe('Bookmarks from 118 of 120 saved sessions · 2 couldn’t be read.');
-    expect(bookmarkCoverageLine({ read: 3, unreadable: 0, remaining: 0, started: true })).toBe('Bookmarks from all 3 saved sessions.');
-    expect(bookmarkCoverageLine({ read: 0, unreadable: 0, remaining: 0, started: true })).toBe('No saved sessions yet.');
+    expect(bookmarkCoverageLine({ read: 3, unreadable: 0, ambiguous: 0, remaining: 0, started: true })).toBe('Bookmarks from all 3 saved sessions.');
+    expect(bookmarkCoverageLine({ read: 0, unreadable: 0, ambiguous: 0, remaining: 0, started: true })).toBe('No saved sessions yet.');
   });
 
   it('says a search covers only what has loaded, while sessions remain', () => {
-    const partial = { read: 25, unreadable: 0, remaining: 40, started: true };
+    const partial = { read: 25, unreadable: 0, ambiguous: 0, remaining: 40, started: true };
     expect(searchCoverageNote('alice', partial)).toBe('Searching the sessions loaded so far. 40 more sessions haven’t been read.');
     expect(searchCoverageNote('', partial)).toBeUndefined();
     expect(searchCoverageNote('alice', { ...partial, remaining: 0 })).toBeUndefined();
+  });
+});
+
+describe('shared session ids (PR #216 F-01, F-03, F-04)', () => {
+  it('marks every row of an ambiguous session, whichever page it came from', () => {
+    const items = savedBookmarkItems([
+      session('s2', 'Tea party', [row('b1', 'The hatter', 'Tea.', 1), row('b2', 'The cups', 'Cups.', 2)]),
+      session('s1', 'The garden', [row('b1', 'Roses', 'Red.', 3)])
+    ], new Set(['s2']));
+    expect(items.map((item) => [item.key, item.ambiguous ?? false])).toEqual([['s2/b1', true], ['s2/b2', true], ['s1/b1', false]]);
+  });
+
+  it('says what the duplicate check covers only when it matters, and never claims uniqueness', () => {
+    expect(duplicateCheckNote({ read: 25, unreadable: 0, ambiguous: 0, remaining: 10, started: true })).toBeUndefined();
+    expect(duplicateCheckNote({ read: 25, unreadable: 1, ambiguous: 0, remaining: 0, started: true }))
+      .toBe('Shared session ids are checked across the 25 sessions read; 1 couldn’t be read, so Preview and Open check again.');
+    expect(duplicateCheckNote({ read: 24, unreadable: 0, ambiguous: 2, remaining: 0, started: true }))
+      .toBe('2 saved files share their session id with another, so those bookmarks can’t be opened from here.');
+    expect(bookmarkCoverageLine({ read: 24, unreadable: 0, ambiguous: 2, remaining: 0, started: true }))
+      .toBe('Bookmarks from 24 of 26 saved sessions.');
   });
 });

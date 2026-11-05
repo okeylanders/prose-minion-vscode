@@ -1051,6 +1051,8 @@ const WORKSHOP_RECALL_MODULES = [
   'WorkshopLiveRoomBookmarks.ts',
   'WorkshopRecallBookmarkList.ts',
   'WorkshopRecallBookmarkPage.ts',
+  'WorkshopRecallBookmarkPager.ts',
+  'WorkshopRecallBookmarkWalks.ts',
   'WorkshopRecallBookmarkQuery.ts',
   'WorkshopRecallBookmarkRef.ts',
   'WorkshopRecallBookmarkResults.ts',

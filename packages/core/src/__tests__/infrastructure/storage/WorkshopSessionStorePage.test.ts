@@ -14,11 +14,7 @@ import { WORKSHOP_BOOKMARK_BROWSER_LIMITS } from '@shared/constants/workshopBook
 import { RECALL_WORKSPACE, recallLog } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
 import { saveBookmarkedSessions } from '@/__tests__/application/services/workshop/recall/workshopBookmarkBrowserFixtures';
 
-/** A reader whose files all have `bytes` and claim ids by their names. */
-const sized = (bytes: number) => readerOf(async (): Promise<WorkshopSessionPageRead> => ({ kind: 'read', bytes }));
-function readerOf(read: (fileName: string) => Promise<WorkshopSessionPageRead>) {
-  return { read, identityOf: async (fileName: string) => fileName };
-}
+const sized = (bytes: number) => async (): Promise<WorkshopSessionPageRead> => ({ kind: 'read', bytes });
 
 /** Walk every page from the start, returning each page's cursors. */
 async function walk(page: (after?: string) => Promise<{ entries: readonly { cursor: string }[]; next?: string }>) {
@@ -63,7 +59,7 @@ describe('readWorkshopSessionPage', () => {
       ['2026-05-e.json', 60], ['2026-04-d.json', 60], ['2026-03-c.json', 250], ['2026-02-b.json', 10], ['2026-01-a.json', 10]
     ]);
     const read = async (name: string): Promise<WorkshopSessionPageRead> => ({ kind: 'read', bytes: sizes.get(name)! });
-    const pages = await walk((after) => readWorkshopSessionPage(names, { ...(after ? { after } : {}), limit: 25 }, readerOf(read), undefined, limits));
+    const pages = await walk((after) => readWorkshopSessionPage(names, { ...(after ? { after } : {}), limit: 25 }, read, undefined, limits));
     // 60 + 60 reaches the budget; a file over it is read alone; the rest fit together.
     expect(pages).toEqual([
       ['2026-05-e.json', '2026-04-d.json'],
@@ -76,7 +72,7 @@ describe('readWorkshopSessionPage', () => {
   it('passes over a file gone since the listing, and keeps one it could not summarize', async () => {
     const read = async (name: string): Promise<WorkshopSessionPageRead> =>
       name === '2026-04-d.json' ? { kind: 'gone' } : { kind: 'read', bytes: 1 };
-    const page = await readWorkshopSessionPage(names, { limit: 2 }, readerOf(read));
+    const page = await readWorkshopSessionPage(names, { limit: 2 }, read);
     expect(page.entries.map((entry) => entry.cursor)).toEqual(['2026-05-e.json', '2026-03-c.json']);
     expect(page.entries.every((entry) => entry.summary === undefined)).toBe(true);
     expect(page).toMatchObject({ next: '2026-03-c.json', remaining: 2 });
@@ -88,7 +84,7 @@ describe('readWorkshopSessionPage', () => {
       controller.abort();
       return { kind: 'read', bytes: 1 };
     };
-    await expect(readWorkshopSessionPage(names, { limit: 5 }, readerOf(read), controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(readWorkshopSessionPage(names, { limit: 5 }, read, controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
   });
 });
 

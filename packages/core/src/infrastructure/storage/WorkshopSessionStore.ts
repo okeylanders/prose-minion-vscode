@@ -349,10 +349,9 @@ export class WorkshopSessionStore {
   /**
    * One page of every named session file, read-only and uncapped by the
    * browser's 200 (ADR 2026-11-05 D8): the walk is WorkshopSessionStorePage's.
-   * It never writes the exact-read path cache (PR #216 F-01): a page's
-   * summaries are page-local, and each id is counted across the whole folder,
-   * so an id two files claim is marked ambiguous on every page, never
-   * resolved to one of them.
+   * It never writes the exact-read path cache (PR #216 F-01), and reads only
+   * the page's own files within its budget (F-03): recall checks ids across
+   * the walk.
    */
   async listPage(request: WorkshopSessionPageRequest, signal?: AbortSignal): Promise<WorkshopSessionPage> {
     const paths = this.requireAvailability();
@@ -368,10 +367,7 @@ export class WorkshopSessionStore {
     const names = directoryEntries
       .filter(([name, type]) => type === FileType.File && isNamedSessionFileName(name))
       .map(([name]) => name);
-    return readWorkshopSessionPage(names, request, {
-      read: (fileName) => this.readPageEntry(paths, fileName, signal),
-      identityOf: (fileName) => this.readFileIdentity(paths, fileName, signal)
-    }, signal, this.pageLimits);
+    return readWorkshopSessionPage(names, request, (fileName) => this.readPageEntry(paths, fileName, signal), signal, this.pageLimits);
   }
 
   /**
@@ -646,7 +642,12 @@ export class WorkshopSessionStore {
     };
   }
 
-  /** One file of a page: its size and its browser summary. Never remembered for exact reads (PR #216 F-01). */
+  /**
+   * One file of a page: its browser summary, and what it costs the page (its
+   * size once with a search index, twice without, since the summary then
+   * takes a full read; nothing when too large to summarize). Never remembered
+   * for exact reads (PR #216 F-01, F-03).
+   */
   private async readPageEntry(
     paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
     fileName: string,
@@ -666,22 +667,8 @@ export class WorkshopSessionStore {
     const indexFileName = workshopSessionSearchIndexFileName(fileName);
     const searchIndex = await this.readSearchIndexForBrowser(this.namedPath(paths, indexFileName), indexFileName, fileName);
     const { summary } = await this.browserSummaryForFile(filePath, fileName, searchIndex, undefined, signal);
-    return { kind: 'read', bytes, ...(summary ? { summary } : {}) };
-  }
-
-  /** The session id a file claims, by the same reading as its summary; undefined when it can't be read. */
-  private async readFileIdentity(
-    paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
-    fileName: string,
-    signal?: AbortSignal
-  ): Promise<string | undefined> {
-    const indexFileName = workshopSessionSearchIndexFileName(fileName);
-    const searchIndex = await this.readSearchIndexForBrowser(this.namedPath(paths, indexFileName), indexFileName, fileName);
-    if (searchIndex) {
-      return searchIndex.sessionId;
-    }
-    const { summary } = await this.browserSummaryForFile(this.namedPath(paths, fileName), fileName, undefined, undefined, signal);
-    return summary?.sessionId;
+    const cost = searchIndex ? bytes : bytes <= this.limits.maximumFileBytes ? 2 * bytes : 0;
+    return { kind: 'read', bytes: cost, ...(summary ? { summary } : {}) };
   }
 
   private async readCurrentForBrowser(

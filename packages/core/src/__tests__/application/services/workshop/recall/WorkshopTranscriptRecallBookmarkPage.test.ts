@@ -41,7 +41,7 @@ async function workspace(pageLimits?: { bookmarkBrowserSessions: number; bookmar
 }
 
 const paged = (result: Awaited<ReturnType<WorkshopTranscriptRecallService['bookmarkPage']>>): Page => {
-  if (!result.available) {
+  if (!result.available || result.outcome !== 'bookmark-page') {
     throw new Error(`expected a page, got ${JSON.stringify(result)}`);
   }
   return result;

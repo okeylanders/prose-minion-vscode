@@ -48,8 +48,12 @@ export interface WorkshopRecallLoadedDocuments {
 
 export type WorkshopRecallLoadedDocument =
   | { readonly document: WorkshopRecallDocument; readonly parsedBytes: number }
-  /** `missing`: the store found no such session; `unreadable`: it could not read one. */
-  | { readonly document?: undefined; readonly reason: 'missing' | 'unreadable' };
+  /**
+   * `missing`: the store found no such session; `conflict`: more than one
+   * file claims its id, so the store refused to choose (PR #216 F-04);
+   * `unreadable`: it could not read one.
+   */
+  | { readonly document?: undefined; readonly reason: 'missing' | 'conflict' | 'unreadable' };
 
 export class WorkshopRecallDocumentLoader {
   constructor(
@@ -130,7 +134,8 @@ export class WorkshopRecallDocumentLoader {
       // A read that failed because the call was cancelled is a cancellation.
       throwIfRecallAborted(signal);
       this.log(`Skipped unreadable session ${sessionId}: ${errorMessage(error)}`);
-      return { reason: 'unreadable' };
+      // Matched by name: recall knows the store only as a type.
+      return { reason: error instanceof Error && error.name === IDENTITY_CONFLICT ? 'conflict' : 'unreadable' };
     }
     throwIfRecallAborted(signal);
     scope.assertHolds();
@@ -143,6 +148,9 @@ export class WorkshopRecallDocumentLoader {
     return { document, parsedBytes: estimatedSourceBytes(session) };
   }
 }
+
+/** The store's refusal when more than one file claims a session id. */
+const IDENTITY_CONFLICT = 'WorkshopNamedSessionIdentityConflictError';
 
 export function throwIfRecallAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) {

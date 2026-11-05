@@ -31,10 +31,10 @@ import {
 } from '@/application/services/workshop/recall/WorkshopRecallDocumentCache';
 import { WorkshopRecallDocumentLoader } from '@/application/services/workshop/recall/WorkshopRecallDocumentLoader';
 import { WorkshopRecallOpenScope, WorkshopRecallScopeGate } from '@/application/services/workshop/recall/WorkshopRecallScopeGate';
-import {
+import { WorkshopRecallBookmarkPager } from '@/application/services/workshop/recall/WorkshopRecallBookmarkPager';
+import type {
   WorkshopRecallBookmarkPage,
-  workshopRecallBookmarkPage,
-  workshopRecallBookmarkPageLogLine,
+  WorkshopRecallBookmarkWalkExpired,
   WorkshopRecallSessionPage
 } from '@/application/services/workshop/recall/WorkshopRecallBookmarkPage';
 import { WorkshopRecallSavedTurn, workshopRecallSavedTurn } from '@/application/services/workshop/recall/WorkshopRecallSavedTurn';
@@ -165,6 +165,7 @@ export class WorkshopTranscriptRecallService {
   private readonly cache: WorkshopRecallDocumentCache;
   private readonly loader: WorkshopRecallDocumentLoader;
   private readonly gate: WorkshopRecallScopeGate;
+  private readonly pager: WorkshopRecallBookmarkPager;
   private readonly liveRoom?: WorkshopLiveRoomBookmarks;
 
   constructor(
@@ -176,6 +177,7 @@ export class WorkshopTranscriptRecallService {
     this.now = options.now ?? Date.now;
     this.limits = { ...WORKSHOP_TRANSCRIPT_RECALL_LIMITS, ...options.limits };
     this.cache = new WorkshopRecallDocumentCache(this.limits);
+    this.pager = new WorkshopRecallBookmarkPager(corpus, this.limits, this.limits.unreadableSessionBytes, (line) => this.log(line));
     this.liveRoom = options.liveRoom;
     this.gate = new WorkshopRecallScopeGate(corpus, scope, this.cache, (line) => this.log(line));
     this.loader = new WorkshopRecallDocumentLoader(
@@ -418,22 +420,21 @@ export class WorkshopTranscriptRecallService {
    * through the store's paged walk, never the 200-file listing, and never
    * initializes or flushes. The store bounds the page by files and bytes.
    */
-  bookmarkPage(request: { after?: string }, signal?: AbortSignal): Promise<WorkshopRecallBookmarkPage | WorkshopRecallUnavailable> {
+  async bookmarkPage(
+    request: { after?: string },
+    signal?: AbortSignal
+  ): Promise<WorkshopRecallBookmarkPage | WorkshopRecallBookmarkWalkExpired | WorkshopRecallUnavailable> {
     const limit = WORKSHOP_BOOKMARK_BROWSER_LIMITS.bookmarkBrowserSessions;
+    // The walk remembers the ids earlier pages met, so a page checks duplicates within its own budget (PR #216 F-03).
+    const opened = this.pager.open(request.after);
+    if (opened.kind === 'expired') {
+      return { available: true, outcome: 'walk-expired' };
+    }
+    const { walk } = opened;
     return this.gate.open(
       signal,
-      (listSignal) => this.corpus.listPage({ ...(request.after !== undefined ? { after: request.after } : {}), limit }, listSignal),
-      async (scope, page) => {
-        // Each session is read from the file its own entry names (PR #216 F-01).
-        const files = new Map(page.entries.flatMap((entry) => (entry.summary ? [[entry.summary.sessionId, entry.cursor] as const] : [])));
-        const pageLoader = new WorkshopRecallDocumentLoader(
-          { readNamed: (sessionId) => this.corpus.readPagedSession(files.get(sessionId) ?? '', sessionId) },
-          this.cache, this.limits.unreadableSessionBytes, (line) => this.log(line));
-        const result = await workshopRecallBookmarkPage(page, scope.liveSessionId, (sessions) =>
-          pageLoader.loadAll(sessions, Number.POSITIVE_INFINITY, scope, signal));
-        this.log(workshopRecallBookmarkPageLogLine(result));
-        return result;
-      }
+      (listSignal) => this.corpus.listPage({ ...(walk.storeCursor !== undefined ? { after: walk.storeCursor } : {}), limit }, listSignal),
+      (scope, page) => this.pager.read(walk, page, scope, signal)
     );
   }
 

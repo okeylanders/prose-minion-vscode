@@ -16,11 +16,17 @@
  * - **Nothing skipped silently.** A file whose summary cannot be read is an
  *   entry without one, so the caller counts it as unreadable; a file gone
  *   between the listing and its read is passed over and the cursor moves on.
- * - **Identity is the whole folder's** (PR #216 F-01). Every page counts the
- *   id each file claims, across every file, and marks an entry whose id
- *   another file claims too `ambiguous`, on whichever page either lands. The
- *   caller never resolves such an id to one file. Pages never touch the
- *   store's exact-read path cache.
+ * - **Within its budget, and nothing else** (PR #216 F-03). A page reads
+ *   only its own files: no folder-wide scan, and nothing a later page reads
+ *   again. A file's cost is what the page and recall's exact read will read
+ *   of it: its size once when its search index gives its summary, twice when
+ *   its summary takes a full read (an index-less file), nothing when it is
+ *   too large to summarize.
+ * - **Identity is the caller's to check across the walk** (PR #216 F-01,
+ *   F-03). Pages never touch the store's exact-read path cache; recall
+ *   remembers the ids a walk has met and reports a repeat as ambiguous. A
+ *   file whose summary can't be read has an unknown id, never a unique one
+ *   (F-04).
  */
 
 import { WORKSHOP_BOOKMARK_BROWSER_LIMITS, WorkshopBookmarkBrowserLimits } from '@shared/constants/workshopBookmarkBrowser';
@@ -36,10 +42,8 @@ export interface WorkshopSessionPageRequest {
 export interface WorkshopSessionPageEntry {
   /** Where this file stands in the walk: a page that ends here continues after it. */
   readonly cursor: string;
-  /** Absent when the file's summary could not be read. */
+  /** Absent when the file's summary could not be read: its session id is unknown. */
   readonly summary?: WorkshopStoredSessionSummary;
-  /** Another file in the folder claims the same session id. */
-  readonly ambiguous?: true;
 }
 
 export interface WorkshopSessionPage {
@@ -53,14 +57,8 @@ export interface WorkshopSessionPage {
 /** One file as the walk reads it: gone, or its size and summary (if readable). */
 export type WorkshopSessionPageRead =
   | { readonly kind: 'gone' }
+  /** `bytes`: what this file costs the page, its reads here and recall's exact read together. */
   | { readonly kind: 'read'; readonly bytes: number; readonly summary?: WorkshopStoredSessionSummary };
-
-/** How the walk reads the store: one file's page entry, and the id any file claims. */
-export interface WorkshopSessionPageReader {
-  read(fileName: string): Promise<WorkshopSessionPageRead>;
-  /** The session id `fileName` claims; undefined when it can't be read. */
-  identityOf(fileName: string): Promise<string | undefined>;
-}
 
 /** Newest first, by code unit: the one order every page and cursor share. */
 export function workshopSessionPageOrder(names: readonly string[]): string[] {
@@ -74,7 +72,7 @@ export function workshopSessionPageOrder(names: readonly string[]): string[] {
 export async function readWorkshopSessionPage(
   names: readonly string[],
   request: WorkshopSessionPageRequest,
-  reader: WorkshopSessionPageReader,
+  read: (fileName: string) => Promise<WorkshopSessionPageRead>,
   signal?: AbortSignal,
   limits: WorkshopBookmarkBrowserLimits = WORKSHOP_BOOKMARK_BROWSER_LIMITS
 ): Promise<WorkshopSessionPage> {
@@ -89,7 +87,7 @@ export async function readWorkshopSessionPage(
       break;
     }
     throwIfPageAborted(signal);
-    const file = await reader.read(fileName);
+    const file = await read(fileName);
     throwIfPageAborted(signal);
     taken += 1;
     if (file.kind === 'gone') {
@@ -99,39 +97,11 @@ export async function readWorkshopSessionPage(
     entries.push({ cursor: fileName, ...(file.summary ? { summary: file.summary } : {}) });
   }
   const remaining = walk.length - taken;
-  const claimed = await claimsById(names, entries, reader, signal);
   return {
-    entries: entries.map((entry) => entry.summary && (claimed.get(entry.summary.sessionId) ?? 0) > 1
-      ? { ...entry, ambiguous: true as const }
-      : entry),
+    entries,
     ...(remaining > 0 && taken > 0 ? { next: walk[taken - 1] } : {}),
     remaining
   };
-}
-
-/**
- * How many files claim each id a page's entries hold, counted over every file
- * in the folder: the same reading `findNamedSession`'s scan trusts.
- */
-async function claimsById(
-  names: readonly string[],
-  entries: readonly WorkshopSessionPageEntry[],
-  reader: WorkshopSessionPageReader,
-  signal: AbortSignal | undefined
-): Promise<Map<string, number>> {
-  const wanted = new Set(entries.flatMap((entry) => (entry.summary ? [entry.summary.sessionId] : [])));
-  const claims = new Map<string, number>();
-  if (wanted.size === 0) {
-    return claims;
-  }
-  for (const fileName of names) {
-    throwIfPageAborted(signal);
-    const id = await reader.identityOf(fileName);
-    if (id !== undefined && wanted.has(id)) {
-      claims.set(id, (claims.get(id) ?? 0) + 1);
-    }
-  }
-  return claims;
 }
 
 function throwIfPageAborted(signal: AbortSignal | undefined): void {

@@ -23,7 +23,8 @@ export type WorkshopRecallSavedTurn =
       readonly position: number;
       readonly entry: WorkshopTranscriptEntry;
     }
-  | { readonly kind: 'live-session' | 'unknown-session' | 'unreadable' | 'unknown-turn' };
+  /** `ambiguous-session`: more than one file claims the id, so the store refused to choose (PR #216 F-04). */
+  | { readonly kind: 'live-session' | 'unknown-session' | 'ambiguous-session' | 'unreadable' | 'unknown-turn' };
 
 /**
  * `turnId` of `sessionId`, read by `read` (the loader's cold read). A
@@ -42,7 +43,9 @@ export async function workshopRecallSavedTurn(
   }
   const loaded = await read(sessionId);
   if (!loaded.document) {
-    return { kind: loaded.reason === 'missing' ? 'unknown-session' : 'unreadable' };
+    return {
+      kind: loaded.reason === 'missing' ? 'unknown-session' : loaded.reason === 'conflict' ? 'ambiguous-session' : 'unreadable'
+    };
   }
   const found = loaded.document.entries.find((entry) => entry.turnId === turnId);
   if (!found) {
