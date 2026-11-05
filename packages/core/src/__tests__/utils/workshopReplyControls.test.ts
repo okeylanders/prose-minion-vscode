@@ -14,12 +14,20 @@ import { memoryFrame, WIDGET } from '@/__tests__/application/services/workshop/m
 
 /**
  * The reply tail's one owner (ADR 2026-11-04 D6; PR #192 F-01): every row of
- * D6's outcome table, and every decode rejection.
+ * D6's outcome table, every decode rejection, and several frames judged one
+ * by one (Slice 6b).
  */
 
 const OPEN = { memoryOpen: true } as const;
 
+/** One dropped frame, and no proposal. */
+const dropped = (...rejections: string[]) => ({ kind: 'frames', proposals: [], rejections });
+
 const PROSE = 'Good. It earns its place: the first sign that time here is wrong.';
+
+function titles(controls: ReturnType<typeof extractWorkshopReplyControls>): string[] {
+  return controls.memory.kind === 'frames' ? controls.memory.proposals.map((proposal) => proposal.title) : [];
+}
 
 function widgetOutcome(rest: string): string {
   return inspectWorkshopWidgetRecommendation(rest, WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY).outcome;
@@ -35,14 +43,15 @@ describe('extractWorkshopReplyControls', () => {
   it('prose, widget, memory last, both valid: a proposal, and the widget stands', () => {
     const controls = extractWorkshopReplyControls(`${PROSE}\n\n${WIDGET}\n\n${memoryFrame({ supersedes: ['mem-1a9e04'] })}\n`, OPEN);
     expect(controls.memory).toEqual({
-      kind: 'proposal',
-      proposal: {
+      kind: 'frames',
+      proposals: [{
         title: 'The Rabbit\'s watch runs backward',
         kind: 'canon',
         summary: 'From chapter 3 on, the White Rabbit\'s watch runs backward.',
         body: 'We settled this while working the tea-party scene.',
         supersedes: ['mem-1a9e04']
-      }
+      }],
+      rejections: []
     });
     expect(controls.rest).toBe(`${PROSE}\n\n${WIDGET}`);
     expect(widgetOutcome(controls.rest)).toBe('accepted');
@@ -51,27 +60,34 @@ describe('extractWorkshopReplyControls', () => {
 
   it('memory before the widget: rejected misplaced, and the widget is judged without it', () => {
     const controls = extractWorkshopReplyControls(`${PROSE}\n\n${memoryFrame()}\n\n${WIDGET}`, OPEN);
-    expect(controls.memory).toEqual({ kind: 'rejected', reason: 'misplaced' });
+    expect(controls.memory).toEqual(dropped('misplaced'));
     expect(controls.rest).toBe(`${PROSE}\n\n${WIDGET}`);
     expect(widgetOutcome(controls.rest)).toBe('accepted');
   });
 
   it('memory before prose is misplaced too', () => {
     const controls = extractWorkshopReplyControls(`${memoryFrame()}\n${PROSE}`, OPEN);
-    expect(controls.memory).toEqual({ kind: 'rejected', reason: 'misplaced' });
+    expect(controls.memory).toEqual(dropped('misplaced'));
     expect(controls.rest).toBe(PROSE);
   });
 
-  it('two frames: every one removed, rejected duplicate', () => {
+  it('two frames: both proposals, in order, and both removed (Slice 6b)', () => {
     const controls = extractWorkshopReplyControls(`${PROSE}\n\n${memoryFrame()}\n${memoryFrame({ title: 'Another' })}`, OPEN);
-    expect(controls.memory).toEqual({ kind: 'rejected', reason: 'duplicate' });
+    expect(controls.memory).toMatchObject({ kind: 'frames', rejections: [] });
+    expect(titles(controls)).toEqual(['The Rabbit\'s watch runs backward', 'Another']);
     expect(controls.rest).toBe(PROSE);
     expect(controls.redacted.split(WORKSHOP_MEMORY_PROPOSAL_REDACTION)).toHaveLength(3);
   });
 
+  it('a second frame with the same title is dropped as a duplicate, in any case', () => {
+    const controls = extractWorkshopReplyControls(`${PROSE}\n\n${memoryFrame()}\n${memoryFrame({ title: 'THE RABBIT\'S WATCH RUNS BACKWARD' })}`, OPEN);
+    expect(titles(controls)).toEqual(['The Rabbit\'s watch runs backward']);
+    expect(controls.memory).toMatchObject({ rejections: ['duplicate'] });
+  });
+
   it('an unclosed frame takes everything after it, a widget written after it included', () => {
     const controls = extractWorkshopReplyControls(`${PROSE}\n\n<prose-minion-memory-proposal>\n<title>Half</title>\n\n${WIDGET}`, OPEN);
-    expect(controls.memory).toEqual({ kind: 'rejected', reason: 'malformed:unclosed' });
+    expect(controls.memory).toEqual(dropped('malformed:unclosed'));
     expect(controls.rest).toBe(PROSE);
     expect(widgetOutcome(controls.rest)).toBe('absent');
     expect(controls.redacted).toBe(`${PROSE}\n\n${WORKSHOP_MEMORY_PROPOSAL_REDACTION}`);
@@ -79,16 +95,15 @@ describe('extractWorkshopReplyControls', () => {
 
   it('a stray closing tag is removed and rejected as unopened', () => {
     const controls = extractWorkshopReplyControls(`${PROSE}\n</prose-minion-memory-proposal>`, OPEN);
-    expect(controls.memory).toEqual({ kind: 'rejected', reason: 'malformed:unopened' });
+    expect(controls.memory).toEqual(dropped('malformed:unopened'));
     expect(controls.rest).toBe(PROSE);
   });
 
-  it('memory off: removed, rejected memory-off, whatever the frame holds', () => {
-    for (const reply of [`${PROSE}\n\n${memoryFrame()}`, `${memoryFrame()}\n${memoryFrame()}`]) {
-      const controls = extractWorkshopReplyControls(reply, { memoryOpen: false });
-      expect(controls.memory).toEqual({ kind: 'rejected', reason: 'memory-off' });
-      expect(controls.rest).not.toContain('prose-minion-memory-proposal');
-    }
+  it('memory off: every frame removed, each dropped memory-off, whatever it holds', () => {
+    expect(extractWorkshopReplyControls(`${PROSE}\n\n${memoryFrame()}`, { memoryOpen: false }).memory).toEqual(dropped('memory-off'));
+    const two = extractWorkshopReplyControls(`${memoryFrame()}\n${memoryFrame()}`, { memoryOpen: false });
+    expect(two.memory).toEqual(dropped('memory-off', 'memory-off'));
+    expect(two.rest).not.toContain('prose-minion-memory-proposal');
   });
 
   it('a control-only reply leaves no prose', () => {
@@ -104,10 +119,10 @@ describe('extractWorkshopReplyControls', () => {
   it('reads the tags in any case, but only exactly as the grammar writes them (PR #200 F-03 recheck)', () => {
     const upper = memoryFrame().replace('<prose-minion-memory-proposal>', '<PROSE-MINION-MEMORY-PROPOSAL>')
       .replace('</prose-minion-memory-proposal>', '</Prose-Minion-Memory-Proposal>');
-    expect(extractWorkshopReplyControls(`${PROSE}\n${upper}`, OPEN).memory.kind).toBe('proposal');
+    expect(titles(extractWorkshopReplyControls(`${PROSE}\n${upper}`, OPEN))).toHaveLength(1);
     const spaced = memoryFrame().replace('</prose-minion-memory-proposal>', '</prose-minion-memory-proposal >');
     const controls = extractWorkshopReplyControls(`${PROSE}\n${spaced}\nAfter.`, OPEN);
-    expect(controls.memory).toEqual({ kind: 'rejected', reason: 'malformed:tag' });
+    expect(controls.memory).toEqual(dropped('malformed:tag'));
     expect(controls.rest).toBe(PROSE);
   });
 });
@@ -140,7 +155,7 @@ describe('decodeWorkshopMemoryProposal: every rejection', () => {
     ['too-many-supersedes', memoryFrame({ supersedes: Array.from({ length: 9 }, (_, i) => `mem-00000${i}`) })]
   ])('%s', (fault, frame) => {
     expect(decodeWorkshopMemoryProposal(inner(frame))).toEqual({ kind: 'rejected', fault });
-    expect(extractWorkshopReplyControls(frame, OPEN).memory).toEqual({ kind: 'rejected', reason: `malformed:${fault}` });
+    expect(extractWorkshopReplyControls(frame, OPEN).memory).toEqual(dropped(`malformed:${fault}`));
   });
 
   it('accepts the bounds exactly, an empty body, and repeated supersedes once each', () => {
@@ -188,14 +203,14 @@ describe('nested frames consume the whole outer region (PR #200 F-03)', () => {
       const controls = extractWorkshopReplyControls(reply, { memoryOpen });
       expect(controls.rest).toBe(PROSE);
       expect(controls.redacted).toBe(`${PROSE}\n\n[project memory proposal removed]`);
-      expect(controls.memory.kind).toBe('rejected');
+      expect(controls.memory).toMatchObject({ kind: 'frames', proposals: [] });
       expect(sanitizeWorkshopReplyForRetention(reply)).not.toContain('SENTINEL');
     }
   });
 
   it('names a closed nested frame as nested', () => {
     expect(extractWorkshopReplyControls(`${O}${memoryFrame({})}${C}`, OPEN).memory)
-      .toEqual({ kind: 'rejected', reason: 'malformed:nested' });
+      .toEqual(dropped('malformed:nested'));
   });
 
   it('keeps prose after a closed nested frame, and still reads it as misplaced', () => {
@@ -251,7 +266,7 @@ describe('a marker that is not exactly the grammar\'s tag hides everything after
       const controls = extractWorkshopReplyControls(reply, { memoryOpen });
       expect(controls.rest).toBe(PROSE);
       expect(controls.redacted).toBe(`${PROSE}\n\n${WORKSHOP_MEMORY_PROPOSAL_REDACTION}`);
-      expect(controls.memory).toEqual({ kind: 'rejected', reason: memoryOpen ? 'malformed:tag' : 'memory-off' });
+      expect(controls.memory).toEqual(dropped(memoryOpen ? 'malformed:tag' : 'memory-off'));
       expect(sanitizeWorkshopReplyForRetention(reply)).toBe(PROSE);
     }
     for (let length = 0; length <= reply.length; length += 1) {
@@ -262,5 +277,94 @@ describe('a marker that is not exactly the grammar\'s tag hides everything after
   it('leaves a longer tag name alone: it is not a marker', () => {
     const reply = `${PROSE} <prose-minion-memory-proposals> stays.`;
     expect(extractWorkshopReplyControls(reply, OPEN)).toEqual({ rest: reply, redacted: reply, memory: { kind: 'none' } });
+  });
+});
+
+describe('several frames, each judged on its own (Slice 6b)', () => {
+  const C = '</prose-minion-memory-proposal>';
+  const frames = (count: number, from = 1) => Array.from({ length: count }, (_, i) => memoryFrame({ title: `Note ${from + i}` }));
+  const CAP = PROMPT_BUDGETS.workshopProjectMemory.proposalsPerReply;
+
+  it('keeps every well-formed frame at the tail, in order, up to the cap', () => {
+    const controls = extractWorkshopReplyControls(`${PROSE}\n\n${frames(CAP).join('\n')}`, OPEN);
+    expect(titles(controls)).toEqual(Array.from({ length: CAP }, (_, i) => `Note ${i + 1}`));
+    expect(controls.memory).toMatchObject({ rejections: [] });
+    expect(controls.rest).toBe(PROSE);
+  });
+
+  it('drops a frame past the cap whole, and counts it', () => {
+    const controls = extractWorkshopReplyControls(`${PROSE}\n\n${frames(CAP + 2).join('\n')}`, OPEN);
+    expect(titles(controls)).toHaveLength(CAP);
+    expect(controls.memory).toMatchObject({ rejections: ['over-cap', 'over-cap'] });
+    expect(controls.rest).toBe(PROSE);
+    expect(controls.redacted.split(WORKSHOP_MEMORY_PROPOSAL_REDACTION)).toHaveLength(CAP + 3);
+  });
+
+  it('a malformed frame between good ones drops only itself, and does not use a place under the cap', () => {
+    const bad = memoryFrame({ title: 'PRIVATE_MEMORY_SENTINEL', kind: 'secret' });
+    const reply = `${PROSE}\n\n${frames(1).join('')}\n${bad}\n${frames(CAP, 2).join('\n')}`;
+    const controls = extractWorkshopReplyControls(reply, OPEN);
+    expect(titles(controls)).toEqual(Array.from({ length: CAP }, (_, i) => `Note ${i + 1}`));
+    expect(controls.memory).toMatchObject({ rejections: ['malformed:invalid-kind', 'over-cap'] });
+    expect(controls.rest).toBe(PROSE);
+    expect(controls.redacted).not.toContain('PRIVATE_MEMORY_SENTINEL');
+    expect(sanitizeWorkshopReplyForRetention(reply)).toBe(PROSE);
+  });
+
+  it('a frame before prose is misplaced; the frames at the tail still stand', () => {
+    const controls = extractWorkshopReplyControls(`${frames(1)[0]}\n${PROSE}\n\n${frames(2, 2).join('\n')}`, OPEN);
+    expect(titles(controls)).toEqual(['Note 2', 'Note 3']);
+    expect(controls.memory).toMatchObject({ rejections: ['misplaced'] });
+    expect(controls.rest).toBe(PROSE);
+  });
+
+  it('a nested frame after good ones drops only itself, and hides what it holds', () => {
+    const O = '<prose-minion-memory-proposal>';
+    const reply = `${PROSE}\n\n${frames(2).join('\n')}\n${O}${O}PRIVATE_MEMORY_SENTINEL${C}PRIVATE_MEMORY_SENTINEL${C}`;
+    const controls = extractWorkshopReplyControls(reply, OPEN);
+    expect(titles(controls)).toEqual(['Note 1', 'Note 2']);
+    expect(controls.memory).toMatchObject({ rejections: ['malformed:nested'] });
+    expect(`${controls.rest}${controls.redacted}${sanitizeWorkshopReplyForRetention(reply)}`).not.toContain('PRIVATE_MEMORY_SENTINEL');
+  });
+
+  it('an unclosed frame after good ones takes everything after it, and drops only itself', () => {
+    const reply = `${PROSE}\n\n${frames(2).join('\n')}\n<prose-minion-memory-proposal><title>PRIVATE_MEMORY_SENTINEL`;
+    const controls = extractWorkshopReplyControls(reply, OPEN);
+    expect(titles(controls)).toEqual(['Note 1', 'Note 2']);
+    expect(controls.memory).toMatchObject({ rejections: ['malformed:unclosed'] });
+    expect(controls.rest).toBe(PROSE);
+    expect(controls.redacted).toBe(`${PROSE}\n\n${Array(3).fill(WORKSHOP_MEMORY_PROPOSAL_REDACTION).join('\n\n')}`);
+  });
+
+  it('an unclosed frame before good ones takes them with it: nothing after it is read', () => {
+    const reply = `${PROSE}\n\n<prose-minion-memory-proposal><title>Half</title>\n${frames(2).join('\n')}`;
+    const controls = extractWorkshopReplyControls(reply, OPEN);
+    expect(titles(controls)).toEqual([]);
+    expect(controls.rest).toBe(PROSE);
+  });
+
+  it('never shows any of several frames while streaming, at any prefix', () => {
+    const reply = `${PROSE}\n\n${memoryFrame({ title: 'SENTINEL one' })}\n${memoryFrame({ title: 'SENTINEL two', body: 'SENTINEL' })}`;
+    for (let length = 0; length <= reply.length; length += 1) {
+      expect(stripWorkshopMemoryProposalForStreaming(reply.slice(0, length))).not.toMatch(/SENTINEL|<\/?prose-minion-mem/i);
+    }
+  });
+
+  it('keeps the text between removed frames apart, in rest and in the redacted copy', () => {
+    const controls = extractWorkshopReplyControls(`First.\n\n${memoryFrame()}\n\nMiddle.\n\n${memoryFrame({ title: 'B' })}\n\nLast.`, OPEN);
+    expect(controls.rest).toBe('First.\n\nMiddle.\n\nLast.');
+    expect(controls.redacted).toBe(`First.\n\n${WORKSHOP_MEMORY_PROPOSAL_REDACTION}\n\nMiddle.\n\n${WORKSHOP_MEMORY_PROPOSAL_REDACTION}\n\nLast.`);
+  });
+
+  it('stores the host line for a reply that held only frames', () => {
+    expect(sanitizeWorkshopReplyForRetention(frames(3).join('\n'))).toBe(WORKSHOP_MEMORY_ONLY_REPLY_LINE);
+  });
+
+  it('reads many frames in time that grows with the reply, not its square', () => {
+    const many = Array.from({ length: 4_000 }, (_, i) => memoryFrame({ title: `Note ${i}` })).join('\n');
+    const started = Date.now();
+    const controls = extractWorkshopReplyControls(`${PROSE}\n\n${many}`, OPEN);
+    expect(titles(controls)).toHaveLength(CAP);
+    expect(Date.now() - started).toBeLessThan(2_000);
   });
 });

@@ -55,7 +55,9 @@ import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks'
 import {
   checkWorkshopMemoryDraft,
   WORKSHOP_MEMORY_DRAFT_FAULTS,
+  workshopMemoryCardKey,
   workshopMemoryDraftsEqual,
+  workshopMemoryProposalAt,
   workshopMemoryProposalDraft,
   workshopMemoryPinnedRefusal
 } from '@shared/constants/workshopProjectMemoryWrites';
@@ -128,9 +130,10 @@ export class WorkshopProjectMemoryHandler {
   ) {}
 
   /**
-   * A proposal's save in flight, by turn id, taken before the first await
-   * (PR #200 F-05): a second Save of the same card joins it (one file, one
-   * receipt, the same answer), and Dismiss or Reopen waits it out.
+   * A proposal's save in flight, by card (`workshopMemoryCardKey`: its turn
+   * and index), taken before the first await (PR #200 F-05): a second Save
+   * of the same card joins it (one file, one receipt, the same answer), and
+   * Dismiss or Reopen waits it out. Each card on a reply has its own.
    */
   private readonly proposalSaves = new Map<string, Promise<WorkshopMemoryWriteResultPayload>>();
   private readonly autoSaves = new WorkshopMemoryAutoSaves(
@@ -161,63 +164,71 @@ export class WorkshopProjectMemoryHandler {
   async handleProposalAction(message: WorkshopMemoryProposalActionMessage): Promise<void> {
     const payload = message.payload;
     const requestId = requestIdOf(payload);
-    if (!requestId || typeof payload.turnId !== 'string' || !['save', 'dismiss', 'reopen'].includes(payload.action)) {
-      this.effects.reportError('A memory suggestion action must name its request, a turn and an action');
+    if (!requestId || typeof payload.turnId !== 'string' || !Number.isSafeInteger(payload.index) || payload.index < 0
+      || !['save', 'dismiss', 'reopen'].includes(payload.action)) {
+      this.effects.reportError('A memory suggestion action must name its request, a turn, a card and an action');
       return;
     }
+    const { turnId, index } = payload;
+    const card = `turnId=${turnId} index=${index}`;
+    const key = workshopMemoryCardKey(turnId, index);
+    const proposalOf = (candidate: WorkshopTurn | undefined) => workshopMemoryProposalAt(candidate, index);
     // An edited Save that says something other than the card (PR #201 F-02) never joins a save of
     // the card's own draft: once that one lands, the edit applies to the saved memory below.
-    const edits = (candidate: WorkshopTurn | undefined): boolean => payload.edited !== undefined
-      && candidate?.memoryProposal !== undefined
-      && !workshopMemoryDraftsEqual(payload.edited, workshopMemoryProposalDraft(candidate.memoryProposal));
-    const inFlight = this.proposalSaves.get(payload.turnId);
+    const edits = (candidate: WorkshopTurn | undefined): boolean => {
+      const proposal = proposalOf(candidate);
+      return payload.edited !== undefined && proposal !== undefined
+        && !workshopMemoryDraftsEqual(payload.edited, workshopMemoryProposalDraft(proposal));
+    };
+    const inFlight = this.proposalSaves.get(key);
     if (inFlight) {
       const first = await inFlight;
-      const current = this.session.readRoomLedger().find((candidate) => candidate.id === payload.turnId);
+      const current = this.session.readRoomLedger().find((candidate) => candidate.id === turnId);
       if (payload.action === 'save' && first.ok && !edits(current)) {
-        this.answer({ ...first, requestId }, `proposal save joined turnId=${payload.turnId}`);
+        this.answer({ ...first, requestId }, `proposal save joined ${card}`);
         return;
       }
     }
-    const turn = this.session.readRoomLedger().find((candidate) => candidate.id === payload.turnId);
-    if (!turn?.memoryProposal) {
-      this.answer({ requestId, ok: false, error: NO_CARD }, `proposal ${payload.action} refused turnId=${payload.turnId} reason=no-proposal`);
+    const turn = this.session.readRoomLedger().find((candidate) => candidate.id === turnId);
+    const proposal = proposalOf(turn);
+    if (!turn || !proposal) {
+      this.answer({ requestId, ok: false, error: NO_CARD }, `proposal ${payload.action} refused ${card} reason=no-proposal`);
       return;
     }
     if (payload.action !== 'save') {
-      if (turn.memoryProposal.state === 'saved') {
-        this.answer({ requestId, ok: false, error: NO_CARD }, `proposal ${payload.action} refused turnId=${turn.id} reason=saved`);
+      if (proposal.state === 'saved') {
+        this.answer({ requestId, ok: false, error: NO_CARD }, `proposal ${payload.action} refused ${card} reason=saved`);
         return;
       }
-      this.session.setMemoryProposalState(turn.id, payload.action === 'dismiss' ? 'dismissed' : 'pending');
+      this.session.setMemoryProposalState(turn.id, index, payload.action === 'dismiss' ? 'dismissed' : 'pending');
       this.settleRoom('memory suggestion settled');
-      this.answer({ requestId, ok: true }, `proposal ${payload.action} turnId=${turn.id}`);
+      this.answer({ requestId, ok: true }, `proposal ${payload.action} ${card}`);
       return;
     }
-    const savedId = turn.memoryProposal.state === 'saved' ? turn.memoryProposal.memoryId : undefined;
+    const savedId = proposal.state === 'saved' ? proposal.memoryId : undefined;
     if (savedId && payload.edited && edits(turn)) {
       const edited = payload.edited;
-      await this.write(requestId, `proposal edit of saved memoryId=${savedId} turnId=${turn.id}`, edited, true, async () => ({
+      await this.write(requestId, `proposal edit of saved memoryId=${savedId} ${card}`, edited, true, async () => ({
         result: await this.library.edit(savedId, edited),
         action: 'updated'
       }));
       return;
     }
     if (savedId) {
-      this.answer({ requestId, ok: true, memoryId: savedId }, `proposal save unchanged turnId=${turn.id}`);
+      this.answer({ requestId, ok: true, memoryId: savedId }, `proposal save unchanged ${card}`);
       return;
     }
-    const draft: WorkshopMemoryDraft = payload.edited ?? workshopMemoryProposalDraft(turn.memoryProposal);
-    const saving = this.write(requestId, `proposal save turnId=${turn.id}`, draft, false, async () => {
+    const draft: WorkshopMemoryDraft = payload.edited ?? workshopMemoryProposalDraft(proposal);
+    const saving = this.write(requestId, `proposal save ${card}`, draft, false, async () => {
       const result = await this.library.save(draft, this.proposalProvenance(turn, 'proposed'));
-      return { result, onRecorded: (memoryId) => this.session.setMemoryProposalState(turn.id, 'saved', memoryId), action: 'saved', proposedBy: turn.personaId };
-    }, () => this.session.readRoomLedger().some((candidate) => candidate.id === turn.id && candidate.memoryProposal?.state !== 'saved'));
-    this.proposalSaves.set(turn.id, saving);
+      return { result, onRecorded: (memoryId) => this.session.setMemoryProposalState(turn.id, index, 'saved', memoryId), action: 'saved', proposedBy: turn.personaId };
+    }, () => this.session.readRoomLedger().some((candidate) => candidate.id === turn.id && proposalOf(candidate)?.state !== 'saved'));
+    this.proposalSaves.set(key, saving);
     try {
       await saving;
     } finally {
-      if (this.proposalSaves.get(turn.id) === saving) {
-        this.proposalSaves.delete(turn.id);
+      if (this.proposalSaves.get(key) === saving) {
+        this.proposalSaves.delete(key);
       }
     }
   }
@@ -279,14 +290,15 @@ export class WorkshopProjectMemoryHandler {
   }
 
   /**
-   * Save and tell me (Slice 5; D8): the card on `turnId`, which completion
-   * marked for saving, saved now (`WorkshopMemoryAutoSaves`). It holds the
-   * card's in-flight save, so an unedited Save joins it and a Dismiss waits
-   * it out. Not a route: the run that produced the reply awaits it as its
+   * Save and tell me (Slice 5; D8): the cards on `turnId` at `indexes`,
+   * which completion marked for saving, saved now, one after another in
+   * order (`WorkshopMemoryAutoSaves`; Slice 6b). Each holds its card's
+   * in-flight save, so an unedited Save joins it and a Dismiss waits it
+   * out. Not a route: the run that produced the reply awaits it as its
    * tail, under its own controller (`signal`), before it settles (PR #201 F-03).
    */
-  autoSaveProposal(turnId: string, signal: AbortSignal): Promise<void> {
-    return this.autoSaves.save(turnId, signal);
+  autoSaveProposals(turnId: string, indexes: readonly number[], signal: AbortSignal): Promise<void> {
+    return this.autoSaves.save(turnId, indexes, signal);
   }
 
   /** The room's automatic saves: its receipts, and the saves admitted but not yet recorded (PR #201 F-04). */

@@ -11,7 +11,7 @@
  */
 
 import * as React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 
 jest.mock('marked', () => {
   const marked = Object.assign(jest.fn((content: string) => content), { setOptions: jest.fn() });
@@ -24,6 +24,7 @@ import { WorkshopMemoryCard } from '@components/workshop/memory/WorkshopMemoryCa
 import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
 
 const PROPOSAL: WorkshopMemoryProposal = {
+  proposes: 'new',
   title: 'The Rabbit\'s watch runs backward',
   kind: 'canon',
   summary: 'From chapter 3 on, the White Rabbit\'s watch runs backward.',
@@ -43,7 +44,7 @@ const reply = (proposal?: WorkshopMemoryProposal): WorkshopTurn => ({
   excerptVersion: 1,
   content: 'Good. It earns its place.',
   timestamp: 1,
-  ...(proposal ? { memoryProposal: proposal } : {})
+  ...(proposal ? { memoryProposals: [proposal] } : {})
 });
 
 const receiptTurn = (receipt: WorkshopProjectMemoryReceipt): WorkshopTurn => ({
@@ -60,7 +61,7 @@ const receiptTurn = (receipt: WorkshopProjectMemoryReceipt): WorkshopTurn => ({
 
 const controls = (overrides: Partial<WorkshopTurnMemoryControls> = {}): WorkshopTurnMemoryControls => ({
   disabled: false,
-  busyTurnIds: new Set(),
+  busyCards: new Set(),
   cardErrors: new Map(),
   onSaveCard: jest.fn(),
   onEditCard: jest.fn(),
@@ -100,14 +101,14 @@ describe('the memory card', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Save$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Edit…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
-    expect(memory.onSaveCard).toHaveBeenCalledWith('turn-4-assistant-1008');
-    expect(memory.onEditCard).toHaveBeenCalledWith(expect.objectContaining({ id: 'turn-4-assistant-1008' }));
-    expect(memory.onDismissCard).toHaveBeenCalledWith('turn-4-assistant-1008');
+    expect(memory.onSaveCard).toHaveBeenCalledWith('turn-4-assistant-1008', 0);
+    expect(memory.onEditCard).toHaveBeenCalledWith(expect.objectContaining({ id: 'turn-4-assistant-1008' }), 0);
+    expect(memory.onDismissCard).toHaveBeenCalledWith('turn-4-assistant-1008', 0);
   });
 
   it('says how many replaced memories were left out, and the card\'s refusal', () => {
     bubble(reply({ ...PROPOSAL, supersedes: undefined, droppedSupersedes: 2 }), controls({
-      cardErrors: new Map([['turn-4-assistant-1008', 'Project memory isn\'t available here: no folder is open.']])
+      cardErrors: new Map([['turn-4-assistant-1008#0', 'Project memory isn\'t available here: no folder is open.']])
     }));
     expect(screen.getByText(/It named 2 memories to replace that aren't saved here/)).toBeTruthy();
     expect(screen.getByRole('alert').textContent).toBe('Project memory isn\'t available here: no folder is open.');
@@ -123,7 +124,56 @@ describe('the memory card', () => {
     bubble(reply({ ...PROPOSAL, state: 'dismissed' }), memory);
     expect(screen.getByText(/wasn't saved/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Show it again' }));
-    expect(memory.onReopenCard).toHaveBeenCalledWith('turn-4-assistant-1008');
+    expect(memory.onReopenCard).toHaveBeenCalledWith('turn-4-assistant-1008', 0);
+  });
+
+  it('several suggestions: each its own card under a small count, acted on by its index (Slice 6b)', () => {
+    const memory = controls();
+    const turn = { ...reply(PROPOSAL), memoryProposals: [
+      PROPOSAL,
+      { ...PROPOSAL, title: 'The Hatter might know the Rabbit', kind: 'idea' as const, supersedes: undefined },
+      { ...PROPOSAL, title: 'Tea is at six', state: 'saved' as const, memoryId: 'mem-7f3c2a', supersedes: undefined }
+    ] };
+    bubble(turn, memory);
+    const stack = screen.getByRole('group', { name: '3 memory suggestions' });
+    expect(stack.textContent).toContain('3 suggestions');
+    const pending = within(stack).getAllByRole('group', { name: 'Suggested memory' });
+    expect(pending).toHaveLength(2);
+    expect(pending[1].textContent).toContain('The Hatter might know the Rabbit');
+    expect(stack.textContent).toContain('Saved to project memory: Tea is at six');
+
+    fireEvent.click(within(pending[1]).getByRole('button', { name: /^Save$/ }));
+    fireEvent.click(within(pending[0]).getByRole('button', { name: 'Dismiss' }));
+    fireEvent.click(within(pending[1]).getByRole('button', { name: 'Edit…' }));
+    expect(memory.onSaveCard).toHaveBeenCalledWith('turn-4-assistant-1008', 1);
+    expect(memory.onDismissCard).toHaveBeenCalledWith('turn-4-assistant-1008', 0);
+    expect(memory.onEditCard).toHaveBeenCalledWith(expect.objectContaining({ id: 'turn-4-assistant-1008' }), 1);
+  });
+
+  it('busy and refused one card at a time: the others stay free', () => {
+    const turn = { ...reply(PROPOSAL), memoryProposals: [PROPOSAL, { ...PROPOSAL, title: 'Tea is at six', supersedes: undefined }] };
+    bubble(turn, controls({
+      busyCards: new Set(['turn-4-assistant-1008#0']),
+      cardErrors: new Map([['turn-4-assistant-1008#1', 'Try again.']])
+    }));
+    const [first, second] = screen.getAllByRole('group', { name: 'Suggested memory' });
+    expect((within(first).getByRole('button', { name: 'Saving…' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((within(second).getByRole('button', { name: /^Save$/ }) as HTMLButtonElement).disabled).toBe(false);
+    expect(within(second).getByRole('alert').textContent).toBe('Try again.');
+    expect(within(first).queryByRole('alert')).toBeNull();
+  });
+
+  it('one suggestion shows no count', () => {
+    bubble(reply(PROPOSAL));
+    expect(screen.queryByText(/suggestions$/)).toBeNull();
+    expect(screen.queryByRole('group', { name: /memory suggestions/ })).toBeNull();
+  });
+
+  it('a supersession held under Save and tell me says it waits for the writer (Slice 6b)', () => {
+    bubble(reply({ ...PROPOSAL, held: 'supersedes' }));
+    const card = screen.getByRole('group', { name: 'Suggested memory, held for you' });
+    expect(card.textContent).toContain('Held for you to decide');
+    expect(card.textContent).toContain('It replaces a saved memory, so it waits for you to save it.');
   });
 
   it('is read-only with no actions (the expanded receipt, Slice 5)', () => {

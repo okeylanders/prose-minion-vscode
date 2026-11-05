@@ -119,7 +119,7 @@ export class ScriptedWorkshopRoom {
   /** The project-memory context completion reads (ADR 2026-11-04 D6); closed unless a test opens it. */
   memoryContext?: WorkshopReplyMemoryContext;
   /** Save and tell me's saver (Slice 5); absent, a card waits as under Ask first. */
-  memoryAutoSave?: (turn: WorkshopTurn) => void;
+  memoryAutoSave?: (turn: WorkshopTurn, indexes: readonly number[]) => void;
   /** Whether each reply's run had web search tools attached (Slice 5's hold). */
   webResearchAttached = false;
 

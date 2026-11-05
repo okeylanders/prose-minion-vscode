@@ -87,7 +87,8 @@ describe('completeWorkshopRun with a project-memory trailer', () => {
   it('a valid trailer becomes a pending card; the bubble shows only the prose', () => {
     const turn = settle(`Good.\n\n${memoryFrame({ supersedes: ['mem-1a9e04', 'mem-ffffff'] })}`, OPEN)!;
     expect(turn.content).toBe('Good.');
-    expect(turn.memoryProposal).toEqual({
+    expect(turn.memoryProposals).toEqual([{
+      proposes: 'new',
       title: 'The Rabbit\'s watch runs backward',
       kind: 'canon',
       summary: 'From chapter 3 on, the White Rabbit\'s watch runs backward.',
@@ -95,14 +96,14 @@ describe('completeWorkshopRun with a project-memory trailer', () => {
       supersedes: [{ id: 'mem-1a9e04', title: 'The Rabbit\'s watch stops at six' }],
       droppedSupersedes: 1,
       state: 'pending'
-    });
+    }]);
     expect(events.streamCompleted).toHaveBeenCalledWith('req-1', 'Good.', false, expect.anything(), false);
     expect(turn.model).toBeDefined();
   });
 
   it('a card and a widget recommendation stand together when the memory frame is last', () => {
     const turn = settle(`Good.\n\n${WIDGET}\n\n${memoryFrame()}`, OPEN)!;
-    expect(turn.memoryProposal?.state).toBe('pending');
+    expect(turn.memoryProposals?.[0]?.state).toBe('pending');
     expect(turn.widgetRecommendation?.widgetId).toBe('gesture-playground');
     expect(turn.content).toBe('Good.');
   });
@@ -111,25 +112,25 @@ describe('completeWorkshopRun with a project-memory trailer', () => {
     const turn = settle(memoryFrame(), OPEN)!;
     expect(turn.content).toBe(WORKSHOP_MEMORY_ONLY_REPLY_LINE);
     expect(turn.model).toBeUndefined();
-    expect(turn.memoryProposal?.state).toBe('pending');
+    expect(turn.memoryProposals?.[0]?.state).toBe('pending');
     expect(sanitizeWorkshopReplyForRetention(memoryFrame())).toBe(WORKSHOP_MEMORY_ONLY_REPLY_LINE);
   });
 
   it('memory off: the trailer is stripped and dropped with a log line and no card', () => {
     const turn = settle(`Good.\n\n${memoryFrame()}`, { open: false })!;
     expect(turn.content).toBe('Good.');
-    expect(turn.memoryProposal).toBeUndefined();
+    expect(turn.memoryProposals).toBeUndefined();
     expect(logged()).toContain('Memory proposal dropped (reason=memory-off) (Jill)');
   });
 
   it('no context at all reads as off', () => {
-    expect(settle(`Good.\n\n${memoryFrame()}`)!.memoryProposal).toBeUndefined();
+    expect(settle(`Good.\n\n${memoryFrame()}`)!.memoryProposals).toBeUndefined();
   });
 
   it('a listing that could not be read drops every supersedes, counted', () => {
     const turn = settle(`Good.\n\n${memoryFrame({ supersedes: ['mem-1a9e04'] })}`, { open: true })!;
-    expect(turn.memoryProposal).toMatchObject({ droppedSupersedes: 1 });
-    expect(turn.memoryProposal?.supersedes).toBeUndefined();
+    expect(turn.memoryProposals?.[0]).toMatchObject({ droppedSupersedes: 1 });
+    expect(turn.memoryProposals?.[0]?.supersedes).toBeUndefined();
   });
 
   it('a guest persona\'s reply carries the card too', () => {
@@ -150,19 +151,41 @@ describe('completeWorkshopRun with a project-memory trailer', () => {
       events
     })!;
     expect(turn.participant).toBe('guest');
-    expect(turn.memoryProposal?.state).toBe('pending');
+    expect(turn.memoryProposals?.[0]?.state).toBe('pending');
+  });
+
+  it('several trailers become several cards, in order; a malformed one drops only itself, logged by reason (Slice 6b)', () => {
+    const turn = settle(`Good.\n\n${memoryFrame({ title: 'One' })}\n${memoryFrame({ title: 'Bad', kind: 'secret' })}\n${memoryFrame({ title: 'Two', kind: 'idea' })}`, OPEN)!;
+    expect(turn.content).toBe('Good.');
+    expect(turn.memoryProposals?.map((proposal) => [proposal.proposes, proposal.title, proposal.kind, proposal.state])).toEqual([
+      ['new', 'One', 'canon', 'pending'],
+      ['new', 'Two', 'idea', 'pending']
+    ]);
+    expect(logged()).toContain('Memory proposal dropped (reason=malformed:invalid-kind) (Jill)');
+    expect(log.mock.calls.filter(([line]) => String(line).startsWith('Memory proposal pending'))).toHaveLength(2);
+  });
+
+  it('the phrasing fence withholds one card of several, and keeps the rest', () => {
+    const turn = settle(`Good.\n\n${memoryFrame({ title: 'One' })}\n${memoryFrame({ title: 'Two', body: 'You seem anxious about the ending lately.' })}`, OPEN)!;
+    expect(turn.memoryProposals?.map((proposal) => proposal.title)).toEqual(['One']);
+    expect(logged()).toContain('Memory proposal withheld (reason=personal-inference)');
+  });
+
+  it('a reply whose every trailer was dropped carries no list, never an empty one', () => {
+    const turn = settle(`Good.\n\n${memoryFrame({ kind: 'secret' })}\n${memoryFrame({ title: 'Two', kind: 'secret' })}`, OPEN)!;
+    expect(turn.memoryProposals).toBeUndefined();
   });
 
   describe('the phrasing fence (D9)', () => {
     it('withholds a writer-directed personal inference, logged by reason', () => {
       const turn = settle(`Good.\n\n${memoryFrame({ body: 'You seem anxious about the ending lately.' })}`, OPEN)!;
-      expect(turn.memoryProposal).toBeUndefined();
+      expect(turn.memoryProposals).toBeUndefined();
       expect(logged()).toContain('Memory proposal withheld (reason=personal-inference)');
     });
 
     it('keeps a character\'s feelings, which are canon', () => {
       const turn = settle(`Good.\n\n${memoryFrame({ body: 'Alice is anxious at the trial; her grief for Dinah shows.' })}`, OPEN)!;
-      expect(turn.memoryProposal?.state).toBe('pending');
+      expect(turn.memoryProposals?.[0]?.state).toBe('pending');
     });
 
     it('reads "the writer", the second person and the About-you name', () => {
@@ -179,6 +202,7 @@ describe('completeWorkshopRun with a project-memory trailer', () => {
       ['both valid', `Good.\n\n${WIDGET}\n\n${sentinelFrame({ supersedes: ['mem-1a9e04'] })}`, OPEN],
       ['misplaced', `Good.\n\n${sentinelFrame()}\n\n${WIDGET}`, OPEN],
       ['duplicate', `Good.\n\n${sentinelFrame()}\n${sentinelFrame()}`, OPEN],
+      ['several, one malformed', `Good.\n\n${sentinelFrame()}\n${sentinelFrame({ kind: 'secret', title: `Other ${SENTINEL}` })}\n${sentinelFrame({ title: `Third ${SENTINEL}` })}`, OPEN],
       ['malformed', `Good.\n\n${sentinelFrame({ kind: 'secret' })}`, OPEN],
       ['unclosed', `Good.\n\n<prose-minion-memory-proposal><title>${SENTINEL}</title>`, OPEN],
       ['memory off', `Good.\n\n${sentinelFrame()}`, { open: false }],

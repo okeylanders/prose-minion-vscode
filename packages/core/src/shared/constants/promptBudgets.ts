@@ -103,6 +103,8 @@ export interface PromptBudgets {
     readCharacters: number;
     readsPerTurn: number;
     autoSavesPerRoom: number;
+    /** Suggestions one reply may carry (Slice 6b): frames past it are dropped and counted. */
+    proposalsPerReply: number;
   }>;
   readonly workshopTodos: Readonly<{
     items: number;
@@ -540,7 +542,8 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readMemories: 5,
     readCharacters: 40_000,
     readsPerTurn: 2,
-    autoSavesPerRoom: 5
+    autoSavesPerRoom: 5,
+    proposalsPerReply: 10
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {

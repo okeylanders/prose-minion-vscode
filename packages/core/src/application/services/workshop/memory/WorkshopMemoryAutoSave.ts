@@ -1,7 +1,8 @@
 /**
  * Save and tell me's decision point (ADR 2026-11-04 D8; epic Slice 5). Pure:
- * where Slice 3 records a reply's proposal, this says whether it waits, is
- * held for the writer with a reason, or is saved at once.
+ * where Slice 3 records a reply's proposals, this says, for each in the
+ * order written, whether it waits, is held for the writer with a reason, or
+ * is saved at once.
  *
  * - **Ask first** (or a mode no longer read as on): the card waits, exactly
  *   as Slice 3 built it. No hold is recorded.
@@ -9,11 +10,14 @@
  *   - **the web-research hold** comes first: a reply whose run had web
  *     search tools attached is always held, whatever it cited. Citations
  *     can't prove no search ran (D8, Context 5), so the test is "attached";
+ *   - **a supersession always waits** (Slice 6b): a proposal naming any
+ *     memory it replaces is held `supersedes`, whatever else holds;
  *   - **the room's cap**, `autoSavesPerRoom`: counted from the room's own
  *     `by: 'auto'` save receipts, so a Rewind that cuts them lowers the
- *     count with them, and a Branch carries the count it keeps;
+ *     count with them, and a Branch carries the count it keeps. A reply's
+ *     earlier proposals admitted for saving count too (`admitted`), so a
+ *     batch fills the cap and the rest are held `room-cap`;
  *   - otherwise saved at once (`origin: auto`, a receipt `by: 'auto'`).
- *   One per reply is the codec's: two frames reject every one (D6).
  */
 
 import type { WorkshopMemoryHold, WorkshopProjectMemoryMode, WorkshopTurn } from '@messages';
@@ -35,9 +39,15 @@ export interface WorkshopMemoryRunFacts {
 
 export const WORKSHOP_MEMORY_AUTO_SAVES_PER_ROOM = PROMPT_BUDGETS.workshopProjectMemory.autoSavesPerRoom;
 
+/**
+ * One proposal's route. `supersedes` is every id its trailer named, kept or
+ * dropped; `admitted` counts the reply's earlier proposals routed `auto`.
+ */
 export function routeWorkshopMemoryProposal(
   mode: WorkshopProjectMemoryMode | undefined,
-  facts: WorkshopMemoryRunFacts
+  facts: WorkshopMemoryRunFacts,
+  proposal: { readonly supersedes: readonly string[] },
+  admitted = 0
 ): WorkshopMemoryProposalRoute {
   if (mode !== 'auto') {
     return { kind: 'wait' };
@@ -45,7 +55,10 @@ export function routeWorkshopMemoryProposal(
   if (facts.webResearchAttached) {
     return { kind: 'held', held: 'web-research' };
   }
-  if (facts.autoSavesInRoom() >= WORKSHOP_MEMORY_AUTO_SAVES_PER_ROOM) {
+  if (proposal.supersedes.length > 0) {
+    return { kind: 'held', held: 'supersedes' };
+  }
+  if (facts.autoSavesInRoom() + admitted >= WORKSHOP_MEMORY_AUTO_SAVES_PER_ROOM) {
     return { kind: 'held', held: 'room-cap' };
   }
   return { kind: 'auto' };

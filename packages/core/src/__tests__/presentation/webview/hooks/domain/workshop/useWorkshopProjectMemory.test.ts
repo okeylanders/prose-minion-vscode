@@ -28,14 +28,15 @@ const reply: WorkshopTurn = {
   excerptVersion: 1,
   content: 'Good.',
   timestamp: 1,
-  memoryProposal: {
+  memoryProposals: [{
+    proposes: 'new',
     title: 'The Rabbit\'s watch runs backward',
     kind: 'canon',
     summary: 'From chapter 3 on.',
     body: 'Settled at the tea party.',
     supersedes: [{ id: 'mem-1a9e04', title: 'The watch stops at six' }],
     state: 'pending'
-  }
+  }]
 };
 
 const result = (payload: Record<string, unknown>) => ({
@@ -61,19 +62,44 @@ describe('useWorkshopProjectMemory', () => {
 
   it('a card\'s Save posts its action, marks the turn busy, and takes its answer', () => {
     const { result: hook } = renderHook(() => useWorkshopProjectMemory());
-    act(() => hook.current.saveCard(reply.id));
+    act(() => hook.current.saveCard(reply.id, 0));
     const [sent] = posted(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION);
-    expect(sent.payload).toMatchObject({ turnId: reply.id, action: 'save', requestId: expect.any(String) });
-    expect(hook.current.busyTurnIds.has(reply.id)).toBe(true);
+    expect(sent.payload).toMatchObject({ turnId: reply.id, index: 0, action: 'save', requestId: expect.any(String) });
+    expect(hook.current.busyCards.has(`${reply.id}#0`)).toBe(true);
 
     act(() => hook.current.handleWriteResult(result({ requestId: sent.payload.requestId, ok: false, error: 'No folder.' })));
-    expect(hook.current.busyTurnIds.has(reply.id)).toBe(false);
-    expect(hook.current.cardErrors.get(reply.id)).toBe('No folder.');
+    expect(hook.current.busyCards.has(`${reply.id}#0`)).toBe(false);
+    expect(hook.current.cardErrors.get(`${reply.id}#0`)).toBe('No folder.');
+  });
+
+  it('each of a reply\'s cards is busy and answered on its own (Slice 6b)', () => {
+    const { result: hook } = renderHook(() => useWorkshopProjectMemory());
+    act(() => hook.current.saveCard(reply.id, 1));
+    act(() => hook.current.dismissCard(reply.id, 0));
+    const [save, dismiss] = posted(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION);
+    expect(save.payload).toMatchObject({ turnId: reply.id, index: 1, action: 'save' });
+    expect(dismiss.payload).toMatchObject({ turnId: reply.id, index: 0, action: 'dismiss' });
+    expect([...hook.current.busyCards].sort()).toEqual([`${reply.id}#0`, `${reply.id}#1`]);
+
+    act(() => hook.current.handleWriteResult(result({ requestId: dismiss.payload.requestId, ok: true })));
+    expect([...hook.current.busyCards]).toEqual([`${reply.id}#1`]);
+  });
+
+  it('the sheet edits the card it was opened from, by its index', () => {
+    const two = { ...reply, memoryProposals: [reply.memoryProposals![0], { ...reply.memoryProposals![0], title: 'Tea is at six', supersedes: undefined }] };
+    const { result: hook } = renderHook(() => useWorkshopProjectMemory());
+    act(() => hook.current.editCard(two, 1));
+    expect(hook.current.sheet).toMatchObject({ mode: 'card', turnId: reply.id, proposalIndex: 1, draft: { title: 'Tea is at six', supersedes: [] } });
+    act(() => hook.current.submitSheet());
+    const [save] = posted(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION);
+    expect(save.payload).toMatchObject({ turnId: reply.id, index: 1, action: 'save', edited: { title: 'Tea is at six' } });
+    expect(hook.current.busyCards.has(`${reply.id}#1`)).toBe(true);
+    expect(hook.current.busyCards.has(`${reply.id}#0`)).toBe(false);
   });
 
   it('Edit… opens the sheet from the proposal, asks the host\'s estimate, and saves the edited version', () => {
     const { result: hook } = renderHook(() => useWorkshopProjectMemory());
-    act(() => hook.current.editCard(reply));
+    act(() => hook.current.editCard(reply, 0));
     expect(hook.current.sheet).toMatchObject({ mode: 'card', draft: { title: 'The Rabbit\'s watch runs backward', supersedes: ['mem-1a9e04'], pinned: false } });
     act(() => {
       jest.runOnlyPendingTimers();
@@ -90,7 +116,7 @@ describe('useWorkshopProjectMemory', () => {
     act(() => hook.current.updateDraft({ title: 'The watch runs backward' }));
     act(() => hook.current.submitSheet());
     const [save] = posted(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION);
-    expect(save.payload).toMatchObject({ action: 'save', turnId: reply.id, edited: { title: 'The watch runs backward' } });
+    expect(save.payload).toMatchObject({ action: 'save', turnId: reply.id, index: 0, edited: { title: 'The watch runs backward' } });
     expect(hook.current.sheet?.saving).toBe(true);
 
     act(() => hook.current.handleWriteResult(result({ requestId: save.payload.requestId, ok: true, memoryId: 'mem-7f3c2a' })));
@@ -99,18 +125,18 @@ describe('useWorkshopProjectMemory', () => {
 
   it('a sheet\'s Save of a card marks the card busy, and Escape cannot close the sheet until its answer lands (PR #200 F-05)', () => {
     const { result: hook } = renderHook(() => useWorkshopProjectMemory());
-    act(() => hook.current.editCard(reply));
+    act(() => hook.current.editCard(reply, 0));
     act(() => hook.current.submitSheet());
     const [save] = posted(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION);
-    expect(hook.current.busyTurnIds.has(reply.id)).toBe(true);
+    expect(hook.current.busyCards.has(`${reply.id}#0`)).toBe(true);
 
     act(() => hook.current.closeSheet());
     expect(hook.current.sheet).toMatchObject({ saving: true });
-    act(() => hook.current.editCard(reply));
+    act(() => hook.current.editCard(reply, 0));
     expect(hook.current.sheet).toMatchObject({ saving: true });
 
     act(() => hook.current.handleWriteResult(result({ requestId: save.payload.requestId, ok: false, error: 'Over budget.' })));
-    expect(hook.current.busyTurnIds.has(reply.id)).toBe(false);
+    expect(hook.current.busyCards.has(`${reply.id}#0`)).toBe(false);
     expect(hook.current.sheet).toMatchObject({ saving: false, error: 'Over budget.' });
     act(() => hook.current.closeSheet());
     expect(hook.current.sheet).toBeNull();
