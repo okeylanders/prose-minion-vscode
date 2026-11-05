@@ -2,8 +2,9 @@
 
 **Status:** Coding. The spec is done, with all six questions decided, and
 Okey approved the design on 2026-11-05. Project Memory was merged in at
-`17d52cf`, and Slices 1 and 2a are building in parallel (see
-[Threads](#threads)).
+`17d52cf`, and again at `25c9443`. Slices 2a and 1 have merged; 2b is clear
+in review and syncing with the epic, 3 is built on 2b, and 4 is built on 3
+(see [Threads](#threads)).
 **Priority:** Medium
 **Created:** 2026-11-04
 **Integration branch:** `epic-pinned-context`, cut from `main` at `24d9d6e`.
@@ -67,7 +68,11 @@ Wayfinding and `main`. It was merged into this epic as `17d52cf` on
 - Wayfinding's context sheet.
 
 Fixes from memory's live pass land on `epic/workshop-project-memory`. The
-coordinator merges them in as they come. Because memory merged in before it
+coordinator merges them in as they come. The second merge, `25c9443`
+(2026-11-05), brought memory at `4d74ac04`: #206 (the "Memory isn't
+context" note folds away) and #207 (Theme and Idea kinds). It merged with no
+conflicts. Slices 3 and 4 meet it in four files, where both sides add props
+to the settings modal and `WorkshopApp`; each keeps both. Because memory merged in before it
 reached `main`, this epic's final PR waits for memory's.
 
 **Order of the code slices:**
@@ -93,11 +98,11 @@ branch.
 
 | Slice | Session | Branch | Started | State |
 |---|---|---|---|---|
-| 1 | [`session_01UrwcevSE9xCeoMqBXf9P73`](https://claude.ai/code/session_01UrwcevSE9xCeoMqBXf9P73) | `epic-pinned-context-slice-1-format-store` | 2026-11-05, from `b94fc67` | PR #204: Astra's findings F-01–F-04 and N-01 fixed (`52da65e`, then the fenced lock at `92acb22`); final re-review **clean** at `92acb22`, CI green at `fea75aa`; merge waits on Astra's readiness or Okey |
+| 1 | [`session_01UrwcevSE9xCeoMqBXf9P73`](https://claude.ai/code/session_01UrwcevSE9xCeoMqBXf9P73) | `epic-pinned-context-slice-1-format-store` | 2026-11-05, from `b94fc67` | Merged: PR #204 at `deeac5d` (2026-11-05). Astra's findings F-01–F-04 and N-01 were fixed (`52da65e`, then the fenced lock at `92acb22`); final re-review clean at `92acb22`, CI green at `fea75aa` |
 | 2a | [`session_01UrwcerFSuu47ewLKUezS45`](https://claude.ai/code/session_01UrwcerFSuu47ewLKUezS45) | `epic-pinned-context-slice-2a-starts-seed-port` | 2026-11-05, from `b94fc67` | Merged: PR #203 at `d356d38`. Astra found F01 (no workspace check after the seed's `prepare`), fixed at `db93354`, cleared at `d9c536e` |
-| 2b | [`session_01UrwcetPHzVLFpo6ZCkjf1A`](https://claude.ai/code/session_01UrwcetPHzVLFpo6ZCkjf1A) | `epic-pinned-context-slice-2b-room-seed` | 2026-11-05, from `c35c281` (the epic at `94a33df` with Slices 1 and 2a merged in; 696 suites / 9,820 tests green) | PR #208: Astra found F01 (seed reads not bound to the captured workspace; A→B→A could install B's text in A), F02–F04 at `b042908`; fixes in progress |
-| 3 | [`session_01Urwcevx3JATnaqRCJbE4Yb`](https://claude.ai/code/session_01Urwcevx3JATnaqRCJbE4Yb) | `epic-pinned-context-slice-3-settings-tab` | 2026-11-05, from `51b4988` (2b at `e36526b` with the epic merged in) | Built at `fa5aef6` (705 / 9,966 green); reviewed; three follow-ups requested (Windows-only `\` conversion, Explore project folders… restored as a host-picker route, an end-to-end menu-count test); its PR follows #204 and #208 |
-| 4 | [`session_01UrwceuHxZCNJyH9v5vdWHT`](https://claude.ai/code/session_01UrwceuHxZCNJyH9v5vdWHT) | `epic-pinned-context-slice-4-sheet-marks` | 2026-11-05, from `fa5aef6` (Slice 3's head) | Building |
+| 2b | [`session_01UrwcetPHzVLFpo6ZCkjf1A`](https://claude.ai/code/session_01UrwcetPHzVLFpo6ZCkjf1A) | `epic-pinned-context-slice-2b-room-seed` | 2026-11-05, from `c35c281` (the epic at `94a33df` with Slices 1 and 2a merged in; 696 suites / 9,820 tests green) | PR #208: Astra found F01 (seed reads not bound to the captured workspace; A→B→A could install B's text in A), F02–F04 at `b042908`; fixed at `d8b8d2a` (703 / 9,930 green); epic `25c9443` merged as `0ee4d66` (705 / 9,951). Astra's correction re-review (`77ddf82`): F02–F04 closed; **F01 still open** for a live root nested in the captured one, as the coordinator had also found; the fix binds each read to the captured root's own path (identity, not containment) |
+| 3 | [`session_01Urwcevx3JATnaqRCJbE4Yb`](https://claude.ai/code/session_01Urwcevx3JATnaqRCJbE4Yb) | `epic-pinned-context-slice-3-settings-tab` | 2026-11-05, from `51b4988` (2b at `e36526b` with the epic merged in) | Follow-ups done at `b4ad7a0` (707 / 9,974 green): Windows-only `\` conversion with its own refusal, Explore project folders… as `WORKSHOP_PIN_CONTEXT_PICK_FILE`, the end-to-end menu test. Next: merge 2b's branch (it carries the epic at `25c9443`; keep both sides in four prop conflicts), and bind every write's reads to the captured root; its PR follows #204 and #208 |
+| 4 | [`session_01UrwceuHxZCNJyH9v5vdWHT`](https://claude.ai/code/session_01UrwceuHxZCNJyH9v5vdWHT) | `epic-pinned-context-slice-4-sheet-marks` | 2026-11-05, from `fa5aef6` (Slice 3's head) | Built at `812ce9a` (707 / 9,991 green), with the approved board's "· N pinned" in the context count; takes the epic at `25c9443` through Slice 3's branch; its PR follows Slice 3's |
 
 ## How the Slices Are Built
 
@@ -137,6 +142,11 @@ Project Memory's process, unchanged:
 - **Baseline after the merge** (`17d52cf`, 2026-11-05, Node 22):
   - `npm run typecheck` passes;
   - `npx jest`: 691 suites / 9,696 tests / 59 snapshots, all passing;
+  - `npm run lint`: 0 errors / 1,165 warnings.
+- **Baseline after memory's second merge** (`25c9443`, 2026-11-05, Node 22;
+  Slice 2a merged, Slice 1 not yet):
+  - `npm run typecheck` passes;
+  - `npx jest`: 696 suites / 9,758 tests / 59 snapshots, all passing;
   - `npm run lint`: 0 errors / 1,165 warnings.
 - No `from 'vscode'` in `packages/core/src`.
 - No new file over 500 lines, and a touched file doesn't grow past 500.
@@ -239,5 +249,26 @@ the repo:
     as the hook's one UI preference (ADR D8, D9).
 
   Drawn as 0d's third pass, with a Collapsed board (13 in all), and
-  snapshotted. Slice 3's doc gains the preference and its tests. Waiting on
-  Okey's approval.
+  snapshotted. Slice 3's doc gains the preference and its tests.
+- **2026-11-05. Design approved; coding began** (Okey). Project Memory
+  merged in at `17d52cf`, and the slice threads started (see
+  [Threads](#threads)). Reviews are Astra's, and the coordinator merges each
+  PR only after Astra approves it.
+  - Slice 2a merged as PR #203 (`d356d38`) after its F01 was fixed.
+  - Slice 1's PR #204 passed its final re-review, clean, at `92acb22`.
+  - Slice 2b's PR #208 is fixing F01–F04.
+  - Slice 3 is built on 2b's branch; Slice 4 is built on Slice 3's.
+- **2026-11-05. Memory merged in again** at `25c9443` (memory at
+  `4d74ac04`, with #206 and #207), with no conflicts. The baseline is
+  recorded under [Verification](#verification-every-code-slice). Slice 2b
+  merges it after its fixes. Slice 3 merges it and keeps both sides in the
+  four prop conflicts. Slice 4 takes it through Slice 3's branch.
+- **2026-11-05. Slice 1 merged** as PR #204 (`deeac5d`). Astra's final
+  re-review was clean, and Astra's #208 re-review named the merge order
+  (#204, then #208); the coordinator took the two together as readiness.
+  Astra's comments come from the account that opens these PRs, so GitHub's
+  formal approval isn't available to them.
+- **2026-11-05. Slice 2b's re-review clear** (#208, `a817f56`): F01–F04
+  closed, F01 after a second correction binding every seed read to the
+  captured root's own files, nested roots included. It merges once its
+  branch is synced with the epic and that exact head passes CI.

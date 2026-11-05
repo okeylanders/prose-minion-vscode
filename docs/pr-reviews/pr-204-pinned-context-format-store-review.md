@@ -3,10 +3,38 @@
 - Review date: 2026-11-05.
 - PR: https://github.com/okeylanders/prose-minion-vscode/pull/204
 - Initial reviewed implementation: `182fcd1b4eb2175ee47f9912941546e3c2d2b75f`.
-- Latest re-reviewed implementation: `52da65ea1194a1f3620b82e9143f142c682af0c1`.
+- Latest re-reviewed implementation: `92acb2207b5008ea318859b95fd870831e5e9417`.
 - Target: `epic-pinned-context`, observed at `94a33df5bb139a679dcd0f7a66bdded9c195f4c4`.
 - Contract: Pinned Context ADR D5/D6 and `slice-1-format-and-store.md`.
-- **Verdict: changes required.** See the latest re-review below: the original claim-preservation and codec findings are fixed; a narrowed stale-owner race and a recovery size-bound regression remain. This is a review report, not a formal GitHub approval, merge, or production-code change.
+- **Verdict: clean code review.** All recorded findings are closed at the latest reviewed implementation; see verification below. This is a review report, not a formal GitHub approval, merge, or production-code change.
+
+## Final re-review at `92acb220` (2026-11-05)
+
+**Current verdict: clean code review; all recorded findings closed.** This is a review verdict only, not a formal GitHub approval or authorization to merge. The earlier findings and their evidence remain below as history.
+
+### What was verified
+
+- **F-01 closed:** every create and rewrite now stages its bytes inside the held lock directory. Takeover moves that directory, so the stale rename's unique source no longer exists. The unchanged post-token-check/lease-expiry probe returns `busy` for the stale owner, and the successor rewrite succeeds with Alice and Hatter preserved. The ordinary within-lease conflict is covered by the supplied store race suite. The new optional staging path preserves the prior behavior for other shared-primitive callers.
+- **F-02 closed:** refused differing claim bytes survive release failure, lease expiry and later recovery; only identical leftover bytes are discarded.
+- **F-03 / N-01 closed:** the original Windows sigma-equivalence and C1-control probes pass. The documented native Windows volume check remains part of the live verification plan.
+- **F-04 closed:** the configured claims byte bound runs before standing-file and claim reads in recovery and before claimed-byte verification. The owner record has its own 4 KiB preflight bound. The unchanged oversized-standing-file probe now confirms that its bytes are never read; supplied tests also cover oversized claims and owners.
+- Release/takeover and late-staging paths were independently inspected. The fencing guarantee rests on the port's atomic no-overwrite rename contract. A disrupted successor can retry; no remaining active-list displacement schedule was found.
+
+### Independent verification
+
+- **Exact source:** 1,937 source/configuration blobs in `packages/`, `apps/` and the relevant root configs matched Git blob hashes for `92acb2207b5008ea318859b95fd870831e5e9417`.
+- **Typecheck:** all three targets pass.
+- **Focused supplied suites:** **13 suites / 319 tests pass**, including Pinned Context, Project Memory storage, Lightbox storage, architecture boundaries and prompt budgets.
+- **Independent regression checks:** **5 pass** across the corrected lease schedule, oversized recovery read, refused-claim retention, Windows sigma keys and C1 controls.
+- **Real Linux filesystem check:** **1 pass**. Replayed the stale-create/successor-rewrite schedule in a fresh temporary directory using native `renameat2(RENAME_NOREPLACE)` for the port's atomic no-overwrite operation. The stale writer returned `busy`, the successor committed, and only the intended `pinned-context.json` remained. This tests real Linux filesystem operations, not the VS Code adapter or a native Windows volume.
+- **Local lint:** **0 errors / 1,165 warnings**, matching baseline; review-only probes excluded.
+- **PR CI associated with reviewed head:** **pass**, [run 41951501856](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41951501856): **697 suites / 9,861 tests / 59 snapshots**, typecheck, lint (0 errors / 1,165 warnings), and both webpack bundles. The checkout log verifies merge commit `e11fd37e672ca51c4003abc4f74dd057bdc28464`, merging reviewed head `92acb220` into epic commit `24540718158940249511e960b0b5599029dd3ecf`; this is PR integration CI, not a standalone-head full-suite claim. The standalone-head checks above ran against the hash-verified source snapshot..
+
+The real-filesystem probe is retained as `docs/pr-reviews/probes/pr-204-pinned-context-linux-fence.test.ts.txt`; it requires Linux, Python and libc `renameat2`, and remains outside the normal test suite. The original and first re-review probe files are unchanged. No production code was changed by the review.
+
+### Scope and remaining verification limits
+
+This is Slice 1's codec/store review. No UI or composition-root wiring is included here. Native Windows filename-table validation and the epic's VS Code live pass remain planned checks. Preflight `stat` bounds have the existing port limitation that a file can grow after the stat; this review did not claim a bounded-read API that the port does not provide.
 
 ## Re-review at `52da65ea` (2026-11-05)
 
