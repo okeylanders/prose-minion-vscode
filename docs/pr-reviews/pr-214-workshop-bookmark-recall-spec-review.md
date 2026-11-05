@@ -174,3 +174,9 @@ Bookmark IDs are session-local: [the ledger mints them from its counter and time
 | F-06: session-qualified citations and usable references | Closed at spec level; cross-session proposal citations explicitly deferred |
 | F-07: current-room full-message hint | Partly addressed; source-qualified continuation still needed |
 | Dates and Q1–Q6 recording | Addressed |
+
+## Author response (F-07 continuation identity)
+
+| Finding | Resolution | Where |
+|---|---|---|
+| F-07 (remaining) | Every row now shows a **qualified ref**, and `<bookmark>` takes only that ref, never a bare id.<ul><li>A saved bookmark's ref is `{sessionId}/{bookmarkId}`.</li><li>An open-room bookmark's ref is `current@{liveSessionId}/{bookmarkId}`, with the room's identity taken from `recallScope()`.</li></ul>The host checks the source on every read. A saved source is checked through recall. An open-room ref must name the room that is open now; after New, Open, Rewind into a new session, or Branch, it is refused as `stale-bookmark-ref` and never retargeted. `<bookmark>` accepts only `<from>` beside it, because the ref already names its source. Every hint emits the qualified ref. Tests cover:<ul><li>duplicate ids across two saved sessions, both branched and same-clock;</li><li>a duplicate id across the open room and a saved session;</li><li>stale open-room refs after New, Open and Branch.</li></ul> | ADR D2; Slice 1 codec and tests |

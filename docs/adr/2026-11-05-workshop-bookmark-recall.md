@@ -69,7 +69,7 @@ The code this builds on is already on this branch:
   <speaker>…</speaker>              filters bookmarks: who said the turn (persona, tool, or writer)
   <since>2026-10-01</since>         filters bookmarks by createdAt (a calendar day; zone below)
   <until>2026-11-04</until>         inclusive: the whole day
-  <bookmark>…</bookmark>            one bookmark by id: its whole message, in windows (F-07)
+  <bookmark>…</bookmark>            one bookmark by its qualified ref: its whole message, in windows (F-07)
   <from>4000</from>                 with <bookmark>: continue the message from this character
 </prose-minion-tool-call>
 ```
@@ -85,9 +85,13 @@ The code this builds on is already on this branch:
   - `<until>` includes the whole day.
   - An impossible date (`2026-02-30`), a malformed one, or `since` later than `until` is refused as `invalid-date`.
   - Slice 1 tests a UTC/local-day boundary and a DST change.
-- **One bookmark in full (PR #214 F-07).** `<bookmark>{id}</bookmark>` reads one bookmark's whole message in windows of `bookmarkMessageCharacters`. `<from>` continues from a character offset.
-  - It works the same in every scope, under the same audience rule and window clamp: a persona can read an open-room bookmark only if it could see the turn.
-  - `<bookmark>` is exclusive with the list filters.
+- **One bookmark in full (PR #214 F-07).** `<bookmark>{ref}</bookmark>` reads one bookmark's whole message in windows of `bookmarkMessageCharacters`. `<from>` continues from a character offset.
+  - **The ref says which session the bookmark is from.** Bookmark ids are only unique within one session: the ledger mints them from its own counter and the clock, and Branch keeps a room's bookmarks. So every row shows a **qualified ref**, and `<bookmark>` takes that ref, never a bare id.
+    - **Saved session:** `{sessionId}/{bookmarkId}`.
+    - **Open room:** `current@{liveSessionId}/{bookmarkId}`. `liveSessionId` is the room's identity, from `recallScope()`.
+  - **Checking the ref.** The host parses the ref and confirms its source exists. A saved session is checked through recall. An open-room ref must name the room that is open now. If the room has been replaced (by New, Open, Rewind into a new session, or Branch), the ref is refused as `stale-bookmark-ref`. It never silently targets another room.
+  - **Same rules as a list.** It works the same in every scope, under the same audience rule and window clamp: a persona can read an open-room bookmark only if it could see the turn.
+  - **What it can be combined with.** `<bookmark>` takes only `<from>`. Every other field is refused beside it, `<scope>` and `<session>` included, because the ref already names its source.
   - It is the continuation every cut message points to, in both the open room and saved sessions. It works even when the caller no longer holds the original message in its history.
 - **The family's meanings stand.** `<match>` and `<persona>` choose sessions everywhere in `transcript.*` (2026-10-06 D8), and they keep that meaning here.
   - The filters that pick bookmarks are new and named for what they do: `<query>`, `<speaker>`, `<since>` and `<until>`.
@@ -100,11 +104,11 @@ The code this builds on is already on this branch:
 - **What each bookmark shows:**
   - its label, then who said the turn and when the bookmark was made;
   - for a saved session: the session's id and title, the turn's id and its position; for the open room: "this conversation", the turn's id and its position;
-  - the bookmark's id, for `<bookmark>`;
+  - the bookmark's qualified ref, for `<bookmark>`;
   - the message.
 - **The message** is the turn as `projectWorkshopTranscriptTurn` shows it, the same rule as reads and export. A capability card shows its request summary, never its evidence, and no host-private body ever appears.
 - **The message is whole when it fits.**
-  - Each message is capped at `bookmarkMessageCharacters`. A longer one is cut at a stated point, with a hint that decodes exactly as written and fetches the rest: `transcript.bookmarks` with that `<bookmark>` and `<from>`.
+  - Each message is capped at `bookmarkMessageCharacters`. A longer one is cut at a stated point, with a hint that decodes exactly as written and fetches the rest: `transcript.bookmarks` with that row's qualified `<bookmark>` ref and `<from>`.
   - A saved-session row also names its session and turn, so `transcript.read` can show the bookmark in context. That's a second way in, not the continuation.
   - The whole body is packed into `bookmarkCharacters`, and is subject to the context-window clamp reads use, because it carries turn text.
 - **Results** come grouped by session, with the open room first, then saved sessions newest first. Within a session they are in thread order.
