@@ -1030,6 +1030,13 @@ const WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS:
 /** Session recall (ADR 2026-10-05): everything under it is capability code. */
 const WORKSHOP_RECALL_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'recall');
 const WORKSHOP_RECALL_MODULES = [
+  'WorkshopLiveRoomBookmarks.ts',
+  'WorkshopRecallBookmarkList.ts',
+  'WorkshopRecallBookmarkQuery.ts',
+  'WorkshopRecallBookmarkRef.ts',
+  'WorkshopRecallBookmarkResults.ts',
+  'WorkshopRecallBookmarks.ts',
+  'WorkshopRecallBookmarksOperation.ts',
   'WorkshopRecallCatalogOperation.ts',
   'WorkshopRecallCopy.ts',
   'WorkshopRecallCorpusSelection.ts',
@@ -1062,6 +1069,12 @@ const WORKSHOP_RECALL_MODULES = [
 const RECALL_TYPE_ONLY_MODULE = /(?:^|\/)(?:WorkshopSessionStore|WorkshopSessionPersistenceCoordinator)$/;
 /** These render thread-artifact bodies, which recall must never emit (runway F11). */
 const RECALL_FORBIDDEN_MODULE = /(?:^|\/)(?:WorkshopRoomFrameRenderer|WorkshopThreadArtifactFrame)$/;
+/**
+ * The open room reaches recall only through its read-only port (ADR
+ * 2026-11-05 D1): recall never imports the session aggregate, or the host's
+ * side of the port, even as a type.
+ */
+const RECALL_LIVE_ROOM_MODULE = /(?:^|\/)(?:WorkshopSessionService|WorkshopLiveRoomBookmarkReader)$/;
 
 /**
  * Project memory's read path (ADR 2026-11-04 D10, D12, D13): capability
@@ -1696,6 +1709,16 @@ describe('architectural boundaries', () => {
     expect(imports
       .filter(({ module }) => RECALL_FORBIDDEN_MODULE.test(module))
       .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    expect(imports
+      .filter(({ module }) => RECALL_LIVE_ROOM_MODULE.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // The port itself is types only: it can carry no behavior into recall.
+    expect(imports
+      .filter(({ file, typeOnly }) => file.endsWith('WorkshopLiveRoomBookmarks.ts') && !typeOnly)
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // Each module stays under 500 lines.
+    expect(recallFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
+      .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
   });
 
   it('keeps project memory on its read-only ports and off the room-frame renderers (ADR 2026-11-04 D10, D12)', () => {

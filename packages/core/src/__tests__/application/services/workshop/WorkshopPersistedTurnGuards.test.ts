@@ -140,7 +140,9 @@ describe('persisted Workshop turn guards', () => {
       ['transcript.catalog', 'transcript_catalog'],
       ['transcript.search', 'transcript_search'],
       ['transcript.read', 'transcript_read'],
-      ['transcript.todos', 'transcript_todos']
+      ['transcript.todos', 'transcript_todos'],
+      // ADR 2026-11-05 D6: a bookmarks card persists like every recall card.
+      ['transcript.bookmarks', 'transcript_bookmarks']
     ] as const;
     const raw = JSON.parse(JSON.stringify(savedRoom(recall.map(([operation]) => operation)))) as {
       workshop: { turns: MutableTurn[] };
@@ -170,7 +172,7 @@ describe('persisted Workshop turn guards', () => {
     const saved = parseWorkshopPersistedSession(raw);
     const reopened = decodeWorkshopPersistedSessionCheckpoint(JSON.parse(JSON.stringify(saved))).session;
     expect(reopened.workshop.turns.map((turn) => turn.artifact)).toEqual(expect.arrayContaining(recall.map(([, artifact]) => artifact)));
-    expect(reopened.workshop.turns.filter((turn) => turn.toolLabel === 'Session Recall')).toHaveLength(4);
+    expect(reopened.workshop.turns.filter((turn) => turn.toolLabel === 'Session Recall')).toHaveLength(5);
     expect(reopened.workshop.turns.map((turn) => turn.capability?.operation))
       .toEqual(expect.arrayContaining(recall.map(([operation]) => operation)));
     const imported = new ConversationManager().importConversations(
