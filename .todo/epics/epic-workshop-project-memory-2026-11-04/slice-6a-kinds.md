@@ -111,13 +111,16 @@ brief put Preference fourth; Okey moved it last on 2026-11-05.)
 
 ## Verification
 
-See the coordinator message for the head and counts.
+Under Node, on this branch:
 
-- `npm run typecheck`: clean.
-- ESLint on the changed files: 0 errors. The 2 warnings are the existing
-  `open-thread` keys (`WorkshopMemoryRow`, `MEMORY_KIND_WORDS`); the new label
-  map's key has the same disable comment as the card and the sheet.
-- Full jest: see below.
+- `npm run typecheck`: clean (core, webview, extension).
+- `npm run lint`: 0 errors and 1,165 warnings, the same as the base
+  (`0a0f1a5b`). The new label map's `open-thread` key has the same disable
+  comment as the card and the sheet.
+- Full jest: 692 suites, 9,707 tests and 59 snapshots, all passing.
+  `webviewCssFloor` is among them.
 - No `from 'vscode'` in `packages/core/src`. No changed TS/TSX module is over
-  500 lines (largest: 303, a test).
-- Nothing new is logged. The fixtures use *Alice* names.
+  500 lines; the largest is a 303-line test.
+- Nothing new is logged. Fixtures use *Alice* names.
+- `WorkshopMemoryBrowserModal.test.tsx` pinned the old group order. It now
+  expects Open threads before Preferences.
