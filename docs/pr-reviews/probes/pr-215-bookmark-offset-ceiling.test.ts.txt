@@ -1,0 +1,59 @@
+/**
+ * PR #215 review F-01 witness at 1b2c2580fcf9fbc2256e9ff8f4c1f32614eca2be.
+ * Copy to packages/core/src/__tests__/review/PR215BookmarkWindow.test.ts
+ * and run npm test -- --runInBand --runTestsByPath <that path>.
+ * These assertions record the defect at the reviewed head. A regression test
+ * for the correction should instead require the honest truncation notice.
+ */
+import { buildWorkshopRecallDocument } from '@/application/services/workshop/recall/WorkshopRecallDocument';
+import { decodeWorkshopPersistedSessionCheckpoint } from '@/application/services/workshop/WorkshopPersistedSession';
+import { renderWorkshopRecallBookmarkMessage } from '@/application/services/workshop/recall/WorkshopRecallBookmarkList';
+import { WorkshopCapabilityXmlCodec } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
+import { setupCoordinator } from '@/__tests__/application/services/workshop/session/WorkshopCoordinatorHarness';
+import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+
+const NOW = Date.parse('2026-11-05T12:00:00.000Z');
+const ref = {
+  source: 'saved' as const,
+  sessionId: 'wayfinding-bookmarks',
+  bookmarkId: 'bookmark-1-2000'
+};
+function longCheckpoint() {
+  const raw = JSON.parse(JSON.stringify(require('../fixtures/workshop-session-v2-wayfinding-bookmarks.json')));
+  raw.workshop.turns[3].content = 'x'.repeat(1_010_000);
+  return raw;
+}
+
+test('a valid saved long bookmark incorrectly reports end at the offset ceiling', () => {
+  const document = buildWorkshopRecallDocument(decodeWorkshopPersistedSessionCheckpoint(longCheckpoint()).session);
+  const bookmark = document.bookmarks.find((candidate) => candidate.id === ref.bookmarkId)!;
+  const rendered = renderWorkshopRecallBookmarkMessage({
+    available: true,
+    outcome: 'bookmark',
+    source: { kind: 'saved', header: document.header },
+    bookmark: { ...bookmark, ref },
+    from: 996_000
+  }, { now: NOW });
+  expect(rendered.window).toEqual({ from: 996_000, to: 1_000_000, total: 1_010_000 });
+  expect(rendered.content).toContain('This is the end of the message.');
+  expect(rendered.content).not.toContain('Continue with');
+  expect(new WorkshopCapabilityXmlCodec().inspect(
+    '<prose-minion-tool-call name="transcript.bookmarks">' +
+    '<bookmark>wayfinding-bookmarks/bookmark-1-2000</bookmark><from>1000000</from>' +
+    '</prose-minion-tool-call>'
+  )).toMatchObject({ kind: 'invalid', reason: 'invalid-from' });
+});
+
+test('normal persistence and service paths admit the long bookmarked message', async () => {
+  const room = setupCoordinator();
+  await room.store.saveNamed(longCheckpoint());
+  await room.coordinator.initialize();
+  const service = new WorkshopTranscriptRecallService(room.store, room.coordinator, room.log);
+  const result = await service.bookmarks({ bookmark: ref, from: 996_000 });
+  expect(result).toMatchObject({ available: true, outcome: 'bookmark' });
+  if (result.available && result.outcome === 'bookmark') {
+    const rendered = renderWorkshopRecallBookmarkMessage(result, { now: NOW });
+    expect(rendered.window).toEqual({ from: 996_000, to: 1_000_000, total: 1_010_000 });
+    expect(rendered.content).toContain('This is the end of the message.');
+  }
+});
