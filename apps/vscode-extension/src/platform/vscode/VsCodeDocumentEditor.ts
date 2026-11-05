@@ -38,12 +38,18 @@
  * during review still writes, the limit the writer accepted and the ADR
  * states; the answer is then `closed`, the run shows nothing, and the end of
  * the lifetime is logged.
+ *
+ * `open` (persona file edits, ADR 2026-11-05 D6) is
+ * `workspace.openTextDocument`: it loads the buffer without showing it, or
+ * returns the open one. `reveal` shows a document in a preview tab without
+ * taking focus, unless a visible editor already shows it.
  */
 import * as vscode from 'vscode';
 import type {
   DocumentApplyOutcome,
   DocumentEditor,
   DocumentEditReview,
+  DocumentSnapshot,
   DocumentTextChange,
   DocumentTextEdit,
   DocumentWatch,
@@ -75,6 +81,35 @@ export class VsCodeDocumentEditor implements DocumentEditor, vscode.Disposable {
       vscode.workspace.onDidChangeTextDocument((event) => this.record(event)),
       vscode.workspace.onDidCloseTextDocument((document) => this.close(document))
     ];
+  }
+
+  async open(uri: string): Promise<DocumentSnapshot | undefined> {
+    let document: vscode.TextDocument;
+    try {
+      document = await vscode.workspace.openTextDocument(vscode.Uri.parse(uri, true));
+    } catch {
+      return undefined;
+    }
+    if (document.isClosed) {
+      return undefined;
+    }
+    return { uri: document.uri.toString(), version: document.version, text: document.getText(), languageId: document.languageId };
+  }
+
+  async reveal(uri: string): Promise<boolean> {
+    const document = vscode.workspace.textDocuments.find((each) => each.uri.toString() === uri);
+    if (!document || document.isClosed) {
+      return false;
+    }
+    if (vscode.window.visibleTextEditors.some((editor) => editor.document.uri.toString() === uri)) {
+      return false;
+    }
+    try {
+      await vscode.window.showTextDocument(document, { preview: true, preserveFocus: true });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   watch(uri: string, version: number): DocumentWatch | undefined {

@@ -58,7 +58,10 @@ export interface DraftEditApplyRequest {
   readonly document: DocumentSnapshot;
   readonly edits: readonly DraftEditEdit[];
   readonly review: DocumentEditReview;
-  readonly policy: Pick<DraftEditPassPolicy, 'allowsNewlineChanges' | 'preservesMarkdownStructure'>;
+  readonly policy: Pick<DraftEditPassPolicy, 'allowsNewlineChanges' | 'preservesMarkdownStructure'> & {
+    /** With structure preserved, top-level paragraphs may still merge, split or be added (persona edits to prose, ADR 2026-11-05 D5). */
+    readonly paragraphsMayMergeOrSplit?: boolean;
+  };
 }
 
 export type DraftEditRefusal = 'changed' | 'protected' | 'line-break' | 'overlapping' | 'markup';
@@ -100,7 +103,7 @@ interface EditGroup extends TextRange {
 }
 
 export class DraftEditApplier {
-  constructor(private readonly documents: DocumentEditor) {}
+  constructor(private readonly documents: Pick<DocumentEditor, 'watch' | 'applyEdits'>) {}
 
   async apply(request: DraftEditApplyRequest): Promise<DraftEditApplyResult> {
     const refused: Array<{ id: string; reason: DraftEditRefusal }> = [];
@@ -183,7 +186,9 @@ function check(
     return accepted;
   }
   // Together, as they would land: two edits can make structure neither makes alone.
-  const unsafe = editsChangingStructure(document.text, document.languageId, accepted);
+  const unsafe = editsChangingStructure(document.text, document.languageId, accepted, {
+    paragraphsMayMergeOrSplit: policy.paragraphsMayMergeOrSplit === true
+  });
   accepted.filter((_, index) => unsafe.has(index)).forEach((edit) => refused.push({ id: edit.id, reason: 'markup' }));
   return accepted.filter((_, index) => !unsafe.has(index));
 }

@@ -1658,7 +1658,9 @@ describe('architectural boundaries', () => {
       'platform/index.ts',
       'application/services/draftEdit/DraftEditUseCase.ts',
       'application/services/draftEdit/CraftFlagsUseCase.ts',
-      'application/services/draftEdit/DraftEditApplier.ts'
+      'application/services/draftEdit/DraftEditApplier.ts',
+      // Persona file edits (ADR 2026-11-05 D4, D6): it opens, and reveals, the file it edits through the applier.
+      'application/services/fileEdits/ProjectFileEditGateway.ts'
     ]);
     const offenders = collectSourceFiles(SRC_ROOT)
       .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
@@ -1677,6 +1679,42 @@ describe('architectural boundaries', () => {
       .filter((file) => writes.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')));
 
     expect(offenders).toEqual([]);
+  });
+
+  it('reaches the applier only from Draft Edit\'s runs and the file-edit gateway (ADR 2026-11-05 D4)', () => {
+    const applierModule = /from\s+['"]@\/application\/services\/draftEdit\/DraftEditApplier['"]/;
+    const importers = collectSourceFiles(SRC_ROOT)
+      .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
+      .filter((file) => !file.startsWith('__tests__/'))
+      .filter((file) => applierModule.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')))
+      .sort();
+
+    expect(importers).toEqual([
+      'application/services/draftEdit/DraftEditUseCase.ts',
+      // Types only: the edit shape a run's issues are turned into.
+      'application/services/draftEdit/draftEditIssues.ts',
+      'application/services/draftEdit/draftEditRunFixes.ts',
+      'application/services/fileEdits/ProjectFileEditGateway.ts',
+      // The barrel, for the composition root.
+      'index.ts'
+    ]);
+  });
+
+  it('keeps every Workshop module off the document ports: persona edits go through the gateway (ADR 2026-11-05 D4)', () => {
+    const documentPorts = /\b(?:DocumentEditor|DraftEditApplier|ProjectFileEditGateway)\b|\.documents\.(?:open|reveal|watch|applyEdits)\(/;
+    const workshop = collectSourceFiles(SRC_ROOT)
+      .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
+      .filter((file) => !file.startsWith('__tests__/'))
+      .filter((file) => /(?:^|\/)workshop\/|(?:^|\/)Workshop[\w]*\.tsx?$/.test(file));
+
+    expect(workshop.length).toBeGreaterThan(100);
+    expect(workshop.filter((file) => documentPorts.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')))).toEqual([]);
+  });
+
+  it('never saves a document: the gateway holds no file system and asks no save (ADR 2026-11-05 D6)', () => {
+    const root = path.join(SRC_ROOT, 'application', 'services', 'fileEdits');
+    const saves = /\b(?:FileSystem|writeFile|save)\b|\.save\(/;
+    expect(collectSourceFiles(root).filter((file) => saves.test(fs.readFileSync(file, 'utf8'))).map((file) => path.basename(file))).toEqual([]);
   });
 
   it('keeps Craft Flags write-free: no Craft Flags module names the applier or asks for an edit (ADR 2026-10-21, Slice 3c)', () => {

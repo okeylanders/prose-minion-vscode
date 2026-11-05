@@ -146,6 +146,8 @@ export function createFakeEditorContext(overrides: Partial<EditorContext> = {}):
 /** A DocumentEditor with no open documents by default; override `watch` to follow one, `applyEdits` to write. */
 export function createFakeDocumentEditor(overrides: Partial<DocumentEditor> = {}): DocumentEditor {
   return {
+    open: async () => undefined,
+    reveal: async () => false,
     watch: () => undefined,
     applyEdits: async () => ({ kind: 'closed' }),
     ...overrides,

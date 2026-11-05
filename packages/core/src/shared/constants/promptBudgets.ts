@@ -134,6 +134,12 @@ export interface PromptBudgets {
     fileBytes: number;
     pathCharacters: number;
   }>;
+  /** Persona file edits (ADR 2026-11-05 D5, D11): the gateway's bounds. */
+  readonly workshopFileEdits: Readonly<{
+    appendWords: number;
+    rewriteCeilingShare: number;
+    fileBytes: number;
+  }>;
   readonly workshopTodos: Readonly<{
     items: number;
     characters: number;
@@ -592,6 +598,14 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     // The longest entry path, in UTF-16 code units: the codec's path rule, every
     // pin route and the tab's entry keys all hold this one bound (PR #210 F07).
     pathCharacters: 4096
+  },
+  workshopFileEdits: {
+    // Q2: a prose append or prepend adds at most about 400 words.
+    appendWords: 400,
+    // Q2: replaces on prose change at most 60% of the touched paragraphs' characters.
+    rewriteCeilingShare: 0.6,
+    // resource.read's source ceiling: a file a persona cannot read whole is never edited.
+    fileBytes: 2 * 1024 * 1024
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {

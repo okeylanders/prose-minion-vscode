@@ -94,6 +94,28 @@ export interface MarkdownBlockReading {
   readonly headings: TextRange[];
 }
 
+/** The line that closes front matter opened on the first line, or -1. */
+function frontMatterCloseLine(lines: readonly SourceLine[]): number {
+  if (lines[0].content !== '---') {
+    return -1;
+  }
+  return lines.findIndex((line, index) => index > 0 && (line.content === '---' || line.content === '...'));
+}
+
+/**
+ * Where a Markdown text's front matter ends: the offset just past its
+ * closing line's line break (or the text's end), or 0 when it has none.
+ * The rule `readMarkdownBlocks` protects it by.
+ */
+export function markdownFrontMatterEnd(text: string): number {
+  const lines = splitSourceLines(text);
+  const close = frontMatterCloseLine(lines);
+  if (close <= 0) {
+    return 0;
+  }
+  return close + 1 < lines.length ? lines[close + 1].start : text.length;
+}
+
 /** Front matter, then the protected blocks and inline scopes `marked` finds. */
 export function readMarkdownBlocks(text: string): MarkdownBlockReading {
   const lines = splitSourceLines(text);
@@ -109,12 +131,10 @@ export function readMarkdownBlocks(text: string): MarkdownBlockReading {
   };
 
   let bodyLine = 0;
-  if (lines[0].content === '---') {
-    const close = lines.findIndex((line, index) => index > 0 && (line.content === '---' || line.content === '...'));
-    if (close > 0) {
-      protect(0, close);
-      bodyLine = close + 1;
-    }
+  const close = frontMatterCloseLine(lines);
+  if (close > 0) {
+    protect(0, close);
+    bodyLine = close + 1;
   }
 
   const body = lines.slice(bodyLine).map((line) => line.content).join('\n');

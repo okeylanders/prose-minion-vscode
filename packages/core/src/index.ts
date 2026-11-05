@@ -242,6 +242,10 @@ export {
   type DraftEditRunPlan
 } from '@/application/services/draftEdit/DraftEditUseCase';
 export { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
+export { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
+export type { FileEditOutcome, FileEditOperationLanding } from '@/application/services/fileEdits/ProjectFileEditGateway';
+export * from '@/domain/models/FileEdit';
+export { workshopExcerptFileEditSource } from '@/application/services/workshop/WorkshopExcerptFileEditSource';
 export { describeDraftEditOutcome, describeQuickFixOutcome, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
 export {
   DRAFT_EDIT_LANGUAGE_IDS,

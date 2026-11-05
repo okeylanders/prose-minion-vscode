@@ -23,6 +23,12 @@
  * - A block too long to lex quickly is not verified, and its edits are
  *   refused: unsure is never "unchanged".
  * - Plain text has no structure, so nothing is refused there.
+ * - **Paragraphs that may merge or split** (persona edits to prose, ADR
+ *   2026-11-05 D5): with `paragraphsMayMergeOrSplit`, a run of top-level
+ *   paragraphs, blank lines between, reads as one paragraph whose inline
+ *   shape is theirs in order, so joining, splitting or adding plain
+ *   paragraphs keeps the shape, and a heading, list, fence or new inline
+ *   markup still moves it. Proofread never sets it.
  */
 
 import { Lexer, getDefaults, type Links, type Token, type Tokens } from 'marked';
@@ -38,7 +44,16 @@ export interface StructureEdit {
 export const MAX_VERIFIED_BLOCK_LENGTH = 50_000;
 
 /** The indices of `edits` that would change the document's Markdown structure. */
-export function editsChangingStructure(text: string, languageId: string, edits: readonly StructureEdit[]): Set<number> {
+export interface StructureOptions {
+  readonly paragraphsMayMergeOrSplit?: boolean;
+}
+
+export function editsChangingStructure(
+  text: string,
+  languageId: string,
+  edits: readonly StructureEdit[],
+  options: StructureOptions = {}
+): Set<number> {
   const refused = new Set<number>();
   if (languageId !== 'markdown' || edits.length === 0) {
     return refused;
@@ -50,8 +65,9 @@ export function editsChangingStructure(text: string, languageId: string, edits: 
       members.forEach((index) => refused.add(index));
       continue;
     }
-    const before = shapeOf(text.slice(span.start, span.end), document.links);
-    const keeps = (indices: readonly number[]) => shapeOf(applyWithin(text, span, indices.map((index) => edits[index])), document.links) === before;
+    const before = shapeOf(text.slice(span.start, span.end), document.links, options);
+    const keeps = (indices: readonly number[]) =>
+      shapeOf(applyWithin(text, span, indices.map((index) => edits[index])), document.links, options) === before;
     if (keeps(members)) {
       continue;
     }
@@ -128,11 +144,34 @@ function applyWithin(text: string, span: Span, edits: readonly StructureEdit[]):
 }
 
 /** A stretch of Markdown's shape: its tokens' types and structure, never their text. */
-function shapeOf(source: string, links: Links): string {
+function shapeOf(source: string, links: Links, options: StructureOptions): string {
   const lexer = new Lexer(getDefaults());
   // A fresh lexer per read (tokens accumulate on one), sharing the document's definitions.
   lexer.tokens.links = { ...links };
-  return describe(lexer.lex(source));
+  const tokens = lexer.lex(source);
+  return describe(options.paragraphsMayMergeOrSplit ? joinParagraphRuns(tokens) : tokens);
+}
+
+/** Top-level runs of paragraphs, blank lines between, as one paragraph holding their inline tokens in order. */
+function joinParagraphRuns(tokens: readonly Token[]): Token[] {
+  const joined: Token[] = [];
+  let run: Token[] | undefined;
+  for (const token of tokens) {
+    if (token.type === 'space') {
+      continue;
+    }
+    if (token.type === 'paragraph') {
+      if (!run) {
+        run = [];
+        joined.push({ type: 'paragraph', raw: '', text: '', tokens: run } as Tokens.Paragraph);
+      }
+      run.push(...((token as Tokens.Paragraph).tokens ?? []));
+      continue;
+    }
+    run = undefined;
+    joined.push(token);
+  }
+  return joined;
 }
 
 function describe(tokens: readonly Token[]): string {

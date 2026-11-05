@@ -29,6 +29,13 @@
  * its adapter lets the writer's Apply stand (PR #172 F-02, F-06). Whatever
  * the host does, the applier's watch reads the lifetime as ended, so
  * nothing more is shown.
+ *
+ * Persona file edits (ADR 2026-11-05 D6) add two methods for the one
+ * gateway that writes a project file: `open` loads a document's buffer
+ * without showing it, so an edit can be placed against its live text; and
+ * `reveal` shows a document the writer cannot see after an edit lands in
+ * it, since the applier never saves and a hidden dirty buffer would be a
+ * change the writer never sees.
  */
 
 export interface DocumentSnapshot {
@@ -104,6 +111,19 @@ export type DocumentApplyOutcome =
   | { readonly kind: 'failed'; readonly message: string };
 
 export interface DocumentEditor {
+  /**
+   * Load the document at `uri` (a host locator: a `file:` URL in VS Code)
+   * without showing it, or find it already open, and read it as it stands:
+   * the live buffer, unsaved edits included. The snapshot's `uri` is the
+   * host's own id for it, the one `watch` and `applyEdits` take. Undefined
+   * when it cannot be loaded as text.
+   */
+  open(uri: string): Promise<DocumentSnapshot | undefined>;
+  /**
+   * Show the open document without taking focus (a preview tab in VS Code),
+   * unless an editor already shows it. Whether it was shown now.
+   */
+  reveal(uri: string): Promise<boolean>;
   /** Follow an open document from `version`; undefined when it is not open at that version. */
   watch(uri: string, version: number): DocumentWatch | undefined;
   /**

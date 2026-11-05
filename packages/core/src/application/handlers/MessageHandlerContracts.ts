@@ -1,3 +1,4 @@
+import type { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
 import type {
   AnalysisResultMessage,
   CategorySearchResultMessage,
@@ -194,4 +195,9 @@ export interface CoreServices {
    * only through the capability factory; no handler constructs it.
    */
   workshopTranscriptRecallService: WorkshopTranscriptRecallService;
+  /**
+   * Persona file edits (ADR 2026-11-05 D4): the one gateway from a request
+   * to a project file, through Draft Edit's applier. No handler constructs it.
+   */
+  projectFileEditGateway: ProjectFileEditGateway;
 }

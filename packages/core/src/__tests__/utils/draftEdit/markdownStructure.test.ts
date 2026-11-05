@@ -120,3 +120,27 @@ describe('editsChangingStructure', () => {
     expect(refused(text, [edit(text, '< Rabbit >', '<Rabbit>')], 'plaintext')).toEqual([]);
   });
 });
+
+describe('editsChangingStructure: paragraphs that may merge or split (ADR 2026-11-05 D5)', () => {
+  const TEXT = 'Alice sat by her sister.\n\nThe White Rabbit ran by.\n';
+  const at = (find: string, replacement: string): StructureEdit => {
+    const start = TEXT.indexOf(find);
+    return { start, end: start + find.length, replacement };
+  };
+  const loose = { paragraphsMayMergeOrSplit: true };
+
+  it('lets plain paragraphs split, merge or be added only when asked', () => {
+    const split = [at('sat by', 'sat\n\nby')];
+    expect(editsChangingStructure(TEXT, 'markdown', split)).toEqual(new Set([0]));
+    expect(editsChangingStructure(TEXT, 'markdown', split, loose)).toEqual(new Set());
+    expect(editsChangingStructure(TEXT, 'markdown', [at('sister.\n\nThe', 'sister. The')], loose)).toEqual(new Set());
+    expect(editsChangingStructure(TEXT, 'markdown', [{ start: TEXT.length - 1, end: TEXT.length - 1, replacement: '\n\nAlice followed.' }], loose))
+      .toEqual(new Set());
+  });
+
+  it('still refuses a heading, a list or new inline markup', () => {
+    expect(editsChangingStructure(TEXT, 'markdown', [at('The White', '# The White')], loose)).toEqual(new Set([0]));
+    expect(editsChangingStructure(TEXT, 'markdown', [at('sat by', 'sat\n\n- by')], loose)).toEqual(new Set([0]));
+    expect(editsChangingStructure(TEXT, 'markdown', [at('sat by', 'sat *by*')], loose)).toEqual(new Set([0]));
+  });
+});

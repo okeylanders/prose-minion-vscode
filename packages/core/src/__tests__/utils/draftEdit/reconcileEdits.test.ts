@@ -153,4 +153,14 @@ describe('reconcileEdits: one change spanning many edits', () => {
     expect(read.landings.every((landing) => landing.landing === 'unknown')).toBe(true);
     expect(read.events).toEqual([[tampered]]);
   });
+
+  it('reads a pure insertion that landed as applied, where its text stands (ADR 2026-11-05 D4)', () => {
+    const end = TEXT.length;
+    const insertion: ReconcilableEdit = { start: end, end, original: '', replacement: ' Alice followed.' };
+    expect(landingsOf([insertion], [[{ offset: end, length: 0, text: ' Alice followed.' }]])).toEqual(['applied " Alice followed."']);
+    expect(landingsOf([insertion], [])).toEqual(['not-applied ""']);
+    const atStart: ReconcilableEdit = { start: 0, end: 0, original: '', replacement: 'Then ' };
+    expect(landingsOf([atStart, SECOND], [[{ offset: 0, length: 0, text: 'Then ' }, { offset: SECOND.start, length: 3, text: 'the' }]]))
+      .toEqual(['applied "Then "', 'applied "the"']);
+  });
 });

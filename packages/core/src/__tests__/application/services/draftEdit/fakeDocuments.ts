@@ -27,7 +27,7 @@ export type HostBehavior = (
 
 export class FakeDocuments implements DocumentEditor {
   version: number;
-  open = true;
+  isOpen = true;
   readonly applyCalls: Array<{ edits: readonly DocumentTextEdit[]; expectedVersion: number; review: DocumentEditReview }> = [];
   private readonly watches = new Set<{ edits: DocumentTextChange[][]; closed: boolean }>();
   private readonly listeners: Array<(changes: readonly DocumentTextChange[]) => void> = [];
@@ -58,7 +58,7 @@ export class FakeDocuments implements DocumentEditor {
   }
 
   close(): void {
-    this.open = false;
+    this.isOpen = false;
     this.watches.forEach((watch) => {
       watch.closed = true;
     });
@@ -68,17 +68,37 @@ export class FakeDocuments implements DocumentEditor {
     return { uri: this.uri, version: this.version, text: this.text, languageId: this.languageId };
   }
 
+  /** Uris `open` and `reveal` were asked for, in order. */
+  readonly opened: string[] = [];
+  readonly revealed: string[] = [];
+  /** Whether an editor shows it; `reveal` shows it when not. */
+  visible = false;
+
+  async open(uri: string) {
+    this.opened.push(uri);
+    return uri === this.uri && this.isOpen ? this.snapshot() : undefined;
+  }
+
+  async reveal(uri: string): Promise<boolean> {
+    if (uri !== this.uri || this.visible) {
+      return false;
+    }
+    this.revealed.push(uri);
+    this.visible = true;
+    return true;
+  }
+
   watch(uri: string, version: number): DocumentWatch | undefined {
-    if (uri !== this.uri || !this.open || version !== this.version) {
+    if (uri !== this.uri || !this.isOpen || version !== this.version) {
       return undefined;
     }
     const state = { edits: [] as DocumentTextChange[][], closed: false };
     this.watches.add(state);
     return {
-      ended: () => state.closed || !this.open,
+      ended: () => state.closed || !this.isOpen,
       settle: (): DocumentWatchResult => {
         this.watches.delete(state);
-        return state.closed || !this.open
+        return state.closed || !this.isOpen
           ? { kind: 'closed' }
           : { kind: 'open', snapshot: this.snapshot(), edits: state.edits };
       },
@@ -94,7 +114,7 @@ export class FakeDocuments implements DocumentEditor {
     options: { readonly expectedVersion: number; readonly review: DocumentEditReview }
   ): Promise<DocumentApplyOutcome> {
     this.applyCalls.push({ edits, expectedVersion: options.expectedVersion, review: options.review });
-    if (uri !== this.uri || !this.open) {
+    if (uri !== this.uri || !this.isOpen) {
       return { kind: 'closed' };
     }
     if (this.version !== options.expectedVersion) {
@@ -172,7 +192,7 @@ export class FakeAnnotations implements IssueAnnotator {
   }
 
   show(uri: string, version: number, annotations: readonly DocumentAnnotation[]): boolean {
-    if (uri !== this.document.uri || !this.document.open || version !== this.document.version) {
+    if (uri !== this.document.uri || !this.document.isOpen || version !== this.document.version) {
       return false;
     }
     this.shown = [...annotations];
@@ -192,7 +212,7 @@ export class FakeAnnotations implements IssueAnnotator {
 
   current(uri: string): ShownAnnotations | undefined {
     // As the adapter does: a cleared document shows nothing, so it has nothing to report.
-    return uri === this.document.uri && this.document.open && !this.cleared
+    return uri === this.document.uri && this.document.isOpen && !this.cleared
       ? { version: this.document.version, annotations: [...this.shown] }
       : undefined;
   }

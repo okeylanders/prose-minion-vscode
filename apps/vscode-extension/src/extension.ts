@@ -74,6 +74,8 @@ import {
   ProofreadService,
   DraftEditUseCase,
   DraftEditApplier,
+  ProjectFileEditGateway,
+  workshopExcerptFileEditSource,
   CraftFlagsService,
   CraftFlagsUseCase,
   liveCatalogPrices,
@@ -547,13 +549,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     rejectedModelResponseRecoveryPresenter,
     outputChannel
   );
+  const draftEditApplier = new DraftEditApplier(platform.documents);
   const draftEdit = new DraftEditUseCase(
     proofreadService,
     platform.documents,
     platform.annotations,
-    new DraftEditApplier(platform.documents),
+    draftEditApplier,
     outputChannel
   );
+  // Persona file edits (ADR 2026-11-05 D4): the one gateway, over the same applier and a fresh catalog per edit.
+  const projectFileEditGateway = new ProjectFileEditGateway({
+    catalog: contextResourceResolver,
+    excerpt: workshopExcerptFileEditSource(workshopSessionService, workshopContextIntakeService),
+    workspace: platform.workspace,
+    documents: platform.documents,
+    applier: draftEditApplier,
+    log: outputChannel
+  });
   // Craft Flags (Slice 3c): one call per category on the manager-owned `craft` scope, priced from the live
   // catalog before a run; its run takes no applier, so it only ever flags.
   const craftFlags = new CraftFlagsUseCase(
@@ -588,6 +600,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     categorySearchService,
     accountBalanceService,
     workshopSessionService,
+    projectFileEditGateway,
     workshopRoomDeliveryService,
     workshopPersonaCapabilityFactory,
     workshopToolSidePass,
