@@ -77,7 +77,7 @@ describe('useWorkshopSessionSurfaces', () => {
     act(() => result.current.startNewSession());
     expect(result.current.sessionConfirm).toEqual({ kind: 'new' });
     act(() => result.current.acceptSessionConfirm());
-    expect(props.resetSession).toHaveBeenCalledWith();
+    expect(props.resetSession).toHaveBeenCalledWith('carry');
 
     act(() => result.current.openStoredSession(savedSession));
     expect(result.current.sessionConfirm).toMatchObject({ kind: 'open', sessionId: 'saved-1' });
@@ -89,6 +89,34 @@ describe('useWorkshopSessionSurfaces', () => {
     act(() => { resumption = result.current.acceptSessionConfirm(); });
     expect(resumption).toEqual({ resume: 'paste' });
     expect(result.current.sessionConfirm).toBeNull();
+  });
+
+  it.each([
+    ['startNewSession', 'new', 'carry'],
+    ['startFullReset', 'new-full', 'full-reset'],
+    ['startEmptyReset', 'new-empty', 'empty']
+  ] as const)('%s confirms %s, then sends %s', (action, kind, start) => {
+    const props = options({ hasReplaceableSessionState: true, hasWorkingSet: true });
+    const { result } = renderHook(() => useWorkshopSessionSurfaces(props));
+
+    act(() => result.current[action]());
+    expect(result.current.sessionConfirm).toEqual({ kind });
+    expect(props.resetSession).not.toHaveBeenCalled();
+    act(() => result.current.acceptSessionConfirm());
+    expect(props.resetSession).toHaveBeenCalledWith(start);
+  });
+
+  it.each([
+    ['startNewSession', 'carry'],
+    ['startFullReset', 'full-reset'],
+    ['startEmptyReset', 'empty']
+  ] as const)('%s in an empty room sends %s without asking', (action, start) => {
+    const props = options({ hasReplaceableSessionState: false, hasWorkingSet: false });
+    const { result } = renderHook(() => useWorkshopSessionSurfaces(props));
+
+    act(() => result.current[action]());
+    expect(result.current.sessionConfirm).toBeNull();
+    expect(props.resetSession).toHaveBeenCalledWith(start);
   });
 
   it('confirms a rewind before posting it, and forgets it on cancel', () => {

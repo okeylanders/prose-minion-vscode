@@ -17,6 +17,13 @@ describe('workshopSessionConfirmCopy', () => {
     ).body).toContain('“Cold sill” was typed or pasted');
   });
 
+  it('says the empty-context start leaves pinned context out (ADR 2026-11-04 D2)', () => {
+    const copy = workshopSessionConfirmCopy({ kind: 'new-empty' }, {});
+    expect(copy.title).toBe('Clear the excerpt and context?');
+    expect(copy.body).toContain('pinned context left out');
+    expect(copy.confirmLabel).toBe('Clear everything');
+  });
+
   it('says what a rewind removes and what stays (ADR 2026-09-30, D4)', () => {
     expect(workshopSessionConfirmCopy(
       { kind: 'rewind', turnId: 't', removedCount: 1 },

@@ -1,4 +1,5 @@
 import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/WorkshopSessionCheckpointEquality';
+import { WORKSHOP_NO_ROOM_SEED } from '@/application/services/workshop/pinnedContext/WorkshopRoomSeed';
 import { WorkshopNamedSessionChangedError } from '@/infrastructure/storage/WorkshopSessionStore';
 import {
   WorkshopSessionPersistenceCoordinator
@@ -75,6 +76,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
       settings,
       time,
       store,
+      WORKSHOP_NO_ROOM_SEED,
       log,
       {
         now: () => now,
@@ -1125,7 +1127,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     session.completeRun('old-run', 'Kept.', undefined, false, 'old-host');
     store.writeCurrent.mockRejectedValueOnce(new Error('new promotion failed'));
 
-    await expect(coordinator.resetSession()).rejects.toThrow('new promotion failed');
+    await expect(coordinator.resetSession({ start: 'carry' })).rejects.toThrow('new promotion failed');
 
     expect(session.getExcerpt()?.text).toBe('Keep this workspace.');
     expect(session.getHostConversationId()).toBe('old-host');
@@ -1147,7 +1149,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
       throw new Error('clock reset failed');
     });
 
-    await expect(coordinator.resetSession()).rejects.toThrow('clock reset failed');
+    await expect(coordinator.resetSession({ start: 'carry' })).rejects.toThrow('clock reset failed');
 
     expect(session.readRoomLedger().map((turn) => turn.id)).toEqual(turnsBefore);
     expect(session.getHostConversationId()).toBe('old-host');
@@ -1167,7 +1169,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     session.completeRun('old-run', 'Kept.', undefined, false, 'old-host');
     store.writeCurrent.mockRejectedValueOnce(new Error('full reset promotion failed'));
 
-    await expect(coordinator.resetSession({ clearWorkingSet: true }))
+    await expect(coordinator.resetSession({ start: 'full-reset' }))
       .rejects.toThrow('full reset promotion failed');
 
     // A failed destructive reset must not have destroyed anything.
@@ -1187,7 +1189,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
       kind: 'text', origin: 'writer', label: 'Kayla', words: 3, content: 'She lies here.'
     });
 
-    await coordinator.resetSession({ clearWorkingSet: true });
+    await coordinator.resetSession({ start: 'full-reset' });
 
     const promoted = store.writeCurrent.mock.calls.at(-1)![0];
     expect(promoted.workshop.excerpt).toBeUndefined();

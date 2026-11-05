@@ -1698,6 +1698,53 @@ describe('architectural boundaries', () => {
     expect(extension.match(/\bnew\s+ProjectMemoryLibrary\s*\(/g)).toHaveLength(1);
   });
 
+  it('keeps the room seed port at its call sites: the coordinator\'s two room starts (ADR 2026-11-04 D9; Pinned Context Slice 2a)', () => {
+    const coordinatorFile = path.join(
+      SRC_ROOT, 'application/services/workshop/WorkshopSessionPersistenceCoordinator.ts'
+    );
+    const coordinator = fs.readFileSync(coordinatorFile, 'utf8');
+    const seedImports = moduleImports(coordinatorFile, coordinator)
+      .filter(({ module }) => module.endsWith('/pinnedContext/WorkshopRoomSeed'));
+    expect(seedImports).toEqual([{ module: expect.any(String), typeOnly: true }]);
+
+    // Only initializeOnce (the first room) and resetSession (carry, full reset) call it.
+    const callers: string[] = [];
+    const visit = (node: ts.Node): void => {
+      if (ts.isMethodDeclaration(node) && node.body && /\bthis\.roomSeed\./.test(node.body.getText())) {
+        callers.push(node.name.getText());
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(ts.createSourceFile(coordinatorFile, coordinator, ts.ScriptTarget.Latest, true));
+    expect(callers.sort()).toEqual(['initializeOnce', 'resetSession']);
+    expect(coordinator.match(/\bthis\.roomSeed\.prepare\(/g)).toHaveLength(2);
+    expect(coordinator.match(/\bthis\.roomSeed\.install\(/g)).toHaveLength(2);
+    expect(coordinator).toContain("this.roomSeed.prepare('first')");
+    expect(coordinator).toContain("this.roomSeed.prepare(options.start === 'carry' ? 'new' : 'full-reset')");
+
+    // No other core module reaches a seed.
+    const reachers = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /\broomSeed\b|\.prepare\('first'\)/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(reachers).toEqual(['application/services/workshop/WorkshopSessionPersistenceCoordinator.ts']);
+  });
+
+  it('chooses a room seed only at the composition root (ADR 2026-11-04 D9)', () => {
+    const SEED_PORT = 'application/services/workshop/pinnedContext/WorkshopRoomSeed.ts';
+    const choosers = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /\bWORKSHOP_NO_ROOM_SEED\b|\bimplements\s+WorkshopRoomSeed\b/
+        .test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file))
+      .sort();
+    // The port defines the no-op seed; the barrel only re-exports it.
+    expect(choosers).toEqual([SEED_PORT, 'index.ts']);
+    const extension = fs.readFileSync(path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src/extension.ts'), 'utf8');
+    expect(extension.match(/\bWORKSHOP_NO_ROOM_SEED\b/g)).toHaveLength(2);
+    expect(extension).toMatch(/workshopSessionStore,\s*(?:\/\/[^\n]*\n\s*)?WORKSHOP_NO_ROOM_SEED,\s*outputChannel/);
+  });
+
   it('tells a value import of a module from a type-only one', () => {
     const source = [
       "import type { A } from '@/x/WorkshopSessionStore';",

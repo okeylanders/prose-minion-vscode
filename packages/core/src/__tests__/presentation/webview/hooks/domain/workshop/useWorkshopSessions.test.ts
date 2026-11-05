@@ -150,7 +150,7 @@ describe('useWorkshopSessions', () => {
     };
     const { result } = renderHook(() => useWorkshopSessions(replacement));
 
-    act(() => result.current.resetSession());
+    act(() => result.current.resetSession('carry'));
     expect(replacement.beginReplacement).toHaveBeenCalledTimes(1);
     expect(result.current.sessionActionPending).toBe('new');
 

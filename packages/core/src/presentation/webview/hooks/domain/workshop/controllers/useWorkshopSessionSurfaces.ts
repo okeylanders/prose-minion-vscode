@@ -3,6 +3,7 @@
 import * as React from 'react';
 import {
   WorkshopSessionActionResultMessage,
+  WorkshopSessionStart,
   WorkshopSessionSummary
 } from '@messages';
 
@@ -15,6 +16,8 @@ export type WorkshopRewindEdit = 'composer' | 'widget';
 export type WorkshopSessionConfirm =
   | { kind: 'new' }
   | { kind: 'new-full' }
+  /** New session: full reset, empty context (ADR 2026-11-04 D2). */
+  | { kind: 'new-empty' }
   | { kind: 'open'; sessionId: string; title: string }
   | { kind: 'replace-shelf'; resume: 'paste' | 'choose' }
   /**
@@ -43,7 +46,7 @@ export interface UseWorkshopSessionSurfacesOptions {
   sessionActionResult?: WorkshopSessionActionResultMessage['payload'];
   requestSessions: (query?: string) => void;
   setSessionSearchQuery: (query: string) => void;
-  resetSession: (options?: { clearWorkingSet?: boolean }) => void;
+  resetSession: (start: WorkshopSessionStart) => void;
   openSession: (sessionId: string) => void;
   rewindTo: (turnId: string) => void;
   branchFrom: (turnId: string) => void;
@@ -69,6 +72,7 @@ export interface WorkshopSessionSurfacesActions {
   closeSessionBrowser: () => void;
   startNewSession: () => void;
   startFullReset: () => void;
+  startEmptyReset: () => void;
   openStoredSession: (session: WorkshopSessionSummary) => void;
   requestShelfReplacement: (resume: 'paste' | 'choose') => void;
   requestRewind: (turnId: string, removedCount: number, edit?: WorkshopRewindEdit) => void;
@@ -214,7 +218,7 @@ export function useWorkshopSessionSurfaces({
       setSessionConfirm({ kind: 'new' });
       return;
     }
-    resetSession();
+    resetSession('carry');
   }, [hasReplaceableSessionState, resetSession]);
 
   const startFullReset = React.useCallback(() => {
@@ -222,7 +226,15 @@ export function useWorkshopSessionSurfaces({
       setSessionConfirm({ kind: 'new-full' });
       return;
     }
-    resetSession({ clearWorkingSet: true });
+    resetSession('full-reset');
+  }, [hasReplaceableSessionState, hasWorkingSet, resetSession]);
+
+  const startEmptyReset = React.useCallback(() => {
+    if (hasReplaceableSessionState || hasWorkingSet) {
+      setSessionConfirm({ kind: 'new-empty' });
+      return;
+    }
+    resetSession('empty');
   }, [hasReplaceableSessionState, hasWorkingSet, resetSession]);
 
   const openStoredSession = React.useCallback((session: WorkshopSessionSummary) => {
@@ -264,9 +276,11 @@ export function useWorkshopSessionSurfaces({
     }
     setSessionConfirm(null);
     if (sessionConfirm.kind === 'new') {
-      resetSession();
+      resetSession('carry');
     } else if (sessionConfirm.kind === 'new-full') {
-      resetSession({ clearWorkingSet: true });
+      resetSession('full-reset');
+    } else if (sessionConfirm.kind === 'new-empty') {
+      resetSession('empty');
     } else if (sessionConfirm.kind === 'open') {
       openSession(sessionConfirm.sessionId);
     } else if (sessionConfirm.kind === 'rewind') {
@@ -332,6 +346,7 @@ export function useWorkshopSessionSurfaces({
     closeSessionBrowser,
     startNewSession,
     startFullReset,
+    startEmptyReset,
     openStoredSession,
     requestShelfReplacement,
     requestRewind,

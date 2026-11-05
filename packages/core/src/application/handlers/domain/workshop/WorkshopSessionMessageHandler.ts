@@ -49,6 +49,12 @@ import {
   workshopBranchUnavailableReason,
   workshopRewindUnavailableReason
 } from '@shared/constants/workshopRewind';
+import {
+  WORKSHOP_SESSION_START_REFUSAL,
+  workshopSessionStartLog,
+  workshopSessionStartOf,
+  workshopSessionStartResult
+} from '@handlers/domain/workshop/WorkshopSessionStartResult';
 
 let sessionRequestCounter = 0;
 const generateSessionRequestId = (): string =>
@@ -121,27 +127,18 @@ export class WorkshopSessionMessageHandler {
     if (this.rejectWhileRunning('start a new session', 'new')) {
       return;
     }
-    const clearWorkingSet = message.payload?.clearWorkingSet === true;
+    const start = workshopSessionStartOf(message.payload);
+    if (!start) {
+      this.outputChannel.appendLine('[WorkshopSessionMessageHandler] New session refused: no known start');
+      this.postActionResult('new', false, WORKSHOP_SESSION_START_REFUSAL);
+      return;
+    }
     try {
-      const cleared = await this.persistence.resetSession({ clearWorkingSet });
+      const summary = await this.persistence.resetSession({ start });
       await this.options.flushDeferredConversationSettings();
-      this.outputChannel.appendLine(
-        '[WorkshopSessionMessageHandler] Session reset and current checkpoint replaced' +
-        (clearWorkingSet
-          ? ` (full reset — excerpt: ${cleared.excerptLabel ?? 'none'};` +
-            ` context cleared: ${cleared.attachmentLabels.length > 0
-              ? cleared.attachmentLabels.join(', ')
-              : 'none'})`
-          : '')
-      );
+      this.outputChannel.appendLine(workshopSessionStartLog(start, summary));
       this.options.postSessionState();
-      this.postActionResult(
-        'new',
-        true,
-        clearWorkingSet
-          ? 'Started an empty Workshop session — excerpt and context cleared.'
-          : 'Started a new Workshop session.'
-      );
+      this.postActionResult('new', true, workshopSessionStartResult(start, summary.seed));
     } catch (error) {
       this.options.postSessionState();
       this.postActionFailure('new', error);

@@ -163,7 +163,7 @@ describe('previews after a whole-room operation fails (PR #189 F-04)', () => {
     const { route, preview, webviewRevision, failNextCurrentWrite, session, lantern, actionResults } = await setup();
     failNextCurrentWrite();
 
-    await route(MessageType.WORKSHOP_RESET_SESSION, {});
+    await route(MessageType.WORKSHOP_RESET_SESSION, { start: 'carry' });
 
     expect(actionResults().at(-1)).toMatchObject({ action: 'new', ok: false });
     expect(webviewRevision()).toBe(session.readRoomRevision());
