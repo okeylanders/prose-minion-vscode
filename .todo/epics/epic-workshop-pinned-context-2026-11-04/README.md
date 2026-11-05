@@ -148,6 +148,11 @@ Project Memory's process, unchanged:
   - `npm run typecheck` passes;
   - `npx jest`: 696 suites / 9,758 tests / 59 snapshots, all passing;
   - `npm run lint`: 0 errors / 1,165 warnings.
+- **Baseline after memory's third merge** (`29fe3fc`, 2026-11-05, Node 22;
+  Slices 1, 2a, 2b and 3 merged):
+  - `npm run typecheck` passes;
+  - `npx jest -w 3`: 721 suites / 10,110 tests / 59 snapshots, all passing;
+  - `npm run lint`: 0 errors / 1,165 warnings.
 - No `from 'vscode'` in `packages/core/src`.
 - No new file over 500 lines, and a touched file doesn't grow past 500.
   `WorkshopSessionPersistenceCoordinator.ts` (1,797) and
