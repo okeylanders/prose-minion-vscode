@@ -33,7 +33,7 @@ brief put Preference fourth; Okey moved it last on 2026-11-05.)
   - `MEMORY_KIND_GROUPS` is now built from `PROJECT_MEMORY_KINDS` over a label
     map, adding "Themes" and "Ideas", so the manager's order can't drift.
   - The unreadable `kind` reason builds its list from the constant: "decision,
-    canon, theme, preference, idea or open-thread".
+    canon, theme, idea, open-thread or preference".
 - `WorkshopMemorySheet` adds Theme ("What the story is about.") and Idea ("A
   possibility, not chosen yet.").
 - The kind cards show six across or 3×2, and nothing in between (Okey's rule):
@@ -55,6 +55,7 @@ brief put Preference fourth; Okey moved it last on 2026-11-05.)
     two lines. The row stretches the cards to one height. By 988px every
     description fits on one line.
   - Field widths checked: 988 → 6, 940 → 6, 939 → 3, 688 → 3.
+  - Okey kept 940px (2026-11-05).
 - `WorkshopMemoryCard` labels gain the two kinds. In `WorkshopMemoryRow`'s
   icons, theme is `orbit` (a motif the story circles) and idea is `sparkle`.
 - `project-memory-capability.md` gains "What each kind means", which says how

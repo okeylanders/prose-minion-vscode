@@ -930,4 +930,5 @@ release rule applies from the first release). Both persona prompts teach the
 boundaries, and their sync tests hold the kinds they name to
 `PROJECT_MEMORY_KINDS`. The unreadable-file reason derives its list from the
 constant. The sheet shows the six kind cards six across when they fit, otherwise
-three by two, never a row with an orphan (a container query, not `auto-fit`).
+three by two, never a row with an orphan (a container query, not `auto-fit`);
+under the 760px stack rule, two by three.
