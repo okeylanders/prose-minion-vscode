@@ -62,6 +62,14 @@ export function workshopPinnedListRefusalWords(
   return `pinned-context.json can’t be read. ${reason} Nothing is attached from it until it’s fixed. Fix it in the editor.`;
 }
 
+/**
+ * A pin past the list's file bound, with the count it would make, so a pin
+ * of more files than the bound at once reads true when nothing is pinned yet.
+ */
+export function workshopPinnedTooManyFilesWords(total: number): string {
+  return `Pinned context holds at most ${WORKSHOP_PINNED_CONTEXT_FILES} files, and this would make ${total.toLocaleString('en-US')}. Pin fewer, or unpin some first.`;
+}
+
 /** The unavailable notice, as the Memory tab's. */
 export function workshopPinnedListUnavailableWords(reason: WorkshopPinnedContextUnavailableReason | 'workspace-changed'): string {
   if (reason === 'workspace-changed') {
@@ -89,7 +97,6 @@ function aboutWords(words: number): string {
 export const WORKSHOP_PINNED_WORDS = {
   busy: 'Pinned context is being changed in another window. Try again in a moment.',
   io: 'pinned-context.json couldn’t be read. Try again, or check the project folder.',
-  tooManyFiles: `Pinned context holds at most ${WORKSHOP_PINNED_CONTEXT_FILES} files. Unpin a file to make room.`,
   outsideProject: 'Only files inside this project can be pinned.',
   notInCatalog: 'That file isn’t in your project’s context folders any more. Nothing was pinned.',
   catalogUnreadable: 'Your project’s context folders couldn’t be read just now. Nothing was pinned.',

@@ -119,9 +119,9 @@ describe('format 1: every refusal, whole', () => {
     expect(new Set(cases.map(([, , reason]) => reason))).toEqual(new Set(WORKSHOP_PINNED_CONTEXT_REFUSALS));
   });
 
-  it('reads exactly the bound, which is PROMPT_BUDGETS.workshopPinnedContext.files (20)', () => {
+  it('reads exactly the bound, which is PROMPT_BUDGETS.workshopPinnedContext.files (50)', () => {
     expect(WORKSHOP_PINNED_CONTEXT_FILES).toBe(PROMPT_BUDGETS.workshopPinnedContext.files);
-    expect(WORKSHOP_PINNED_CONTEXT_FILES).toBe(20);
+    expect(WORKSHOP_PINNED_CONTEXT_FILES).toBe(50);
     const full = Array.from({ length: WORKSHOP_PINNED_CONTEXT_FILES }, (_, index) => ({ path: `Notes/${index}.md` }));
     expect(refusal(json({ format: 1, files: full }))).toBe('read');
   });
@@ -132,9 +132,9 @@ describe('format 1: every refusal, whole', () => {
 });
 
 describe('format 1: the byte bound', () => {
-  it('is PROMPT_BUDGETS.workshopPinnedContext.fileBytes, 128 KiB', () => {
+  it('is PROMPT_BUDGETS.workshopPinnedContext.fileBytes, 256 KiB', () => {
     expect(WORKSHOP_PINNED_CONTEXT_FILE_BYTES).toBe(PROMPT_BUDGETS.workshopPinnedContext.fileBytes);
-    expect(WORKSHOP_PINNED_CONTEXT_FILE_BYTES).toBe(128 * 1024);
+    expect(WORKSHOP_PINNED_CONTEXT_FILE_BYTES).toBe(256 * 1024);
   });
 
   it('reads a file exactly at the bound, and refuses one byte over, as text or as bytes', () => {
@@ -147,7 +147,7 @@ describe('format 1: the byte bound', () => {
     expect(refusal(new Uint8Array(WORKSHOP_PINNED_CONTEXT_FILE_BYTES + 1).fill(0xff))).toEqual({ reason: 'too-large' });
   });
 
-  it('never refuses a full list of long paths: twenty 4,096-character paths fit under the bound', () => {
+  it('never refuses a full list of long paths: fifty 4,096-character paths fit under the bound', () => {
     const long = (index: number) => `Notes/${String(index).padStart(2, '0')}-${'a'.repeat(4_096 - 9)}`;
     const full = { files: Array.from({ length: WORKSHOP_PINNED_CONTEXT_FILES }, (_, index) => ({ path: long(index) })) };
     expect(full.files.every((entry) => entry.path.length === 4_096)).toBe(true);

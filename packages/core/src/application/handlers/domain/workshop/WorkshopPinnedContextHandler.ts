@@ -52,7 +52,6 @@ import {
   type WorkshopUnpinContextMessage
 } from '@messages';
 import { isContextPathGroup } from '@shared/types/context';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { workshopPinnedContextMatches } from '@shared/constants/workshopPinnedContext';
 import {
   workshopPinnedAttachResultWords,
@@ -64,7 +63,14 @@ import { WORKSHOP_PINNED_CONTEXT_PATH_CHARACTERS, type WorkshopPinnedContextEntr
 const LOG = '[WorkshopPinnedContextHandler]';
 const REQUEST_ID_CHARACTERS = 128;
 const REVISION_CHARACTERS = 128;
-const PIN_REQUEST_ITEMS = PROMPT_BUDGETS.workshopPinnedContext.files;
+/**
+ * How many items one pin request may name, as a message-shape check only. It is
+ * not the list's 20-file bound: a room can hold more attachments than that, and
+ * the writes refuse a pin past the list's bound with words that name it. Using
+ * the list's bound here refused Pin what's attached now, with 22 attachments,
+ * as an unreadable request (Slice 5 live pass).
+ */
+const PIN_REQUEST_ITEMS = 1_000;
 const ATTACHMENT_ID = /^ctx-\d{1,9}$/;
 
 /** The tab's own words for what only the handler knows. */

@@ -77,3 +77,27 @@ Use a test project with *Alice*-style files, never a manuscript in progress.
 ## Progress
 
 - **2026-11-04.** Checklist written with the spec.
+- **2026-11-05. Live pass, finding 1.** Pin what's attached now, with 22
+  file attachments in the room, said "That request couldn't be read. Nothing
+  was changed." The host log read `pin refused (malformed ids)`.
+  - **Cause:** the handler used the list's 20-file bound as its message-shape
+    check, so any request naming more than 20 items was refused as unreadable
+    before the list's own bound could say why. The catalog-key route (Add from
+    project…) had the same check.
+  - **Fix** (`epic-pinned-context-slice-5-live-fixes`):
+    - the message shape caps a request at 1,000 items, a size no room reaches;
+    - the writes' bound refuses in words that name the count: "Pinned context
+      holds at most 20 files, and this would make 22. Pin fewer, or unpin some
+      first.";
+    - regressions in `WorkshopPinnedContextLivePass.test.ts`. The two bug
+      cases fail on the old code; the exact-bound and malformed controls pass.
+  - **Item 15, tuned (Okey, 2026-11-05):** the room Okey tested holds 22
+    files to pin. The bound is now **50**
+    (`PROMPT_BUDGETS.workshopPinnedContext.files`), and the list file's
+    byte bound rises from 128 KiB to 256 KiB, so 50 maximum-length paths
+    still fit (the codec test checks it). The 22-attachment pin is a test of
+    its own.
+  - **Merged** as PR #217 (`fa10e8d`), after Astra's review came back clear
+    at `dfa108d` (729 suites / 10,244 tests; CI green). Astra's N-01 (the
+    byte bound's fit is proved only for ASCII paths) is deferred, low
+    priority, to `.todo/tech-debt/2026-11-05-pinned-context-utf8-byte-bound.md`.
