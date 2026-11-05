@@ -900,6 +900,8 @@ export class WorkshopSessionPersistenceCoordinator {
       const plan = options.start === 'empty'
         ? undefined
         : await this.roomSeed.prepare(options.start === 'carry' ? 'new' : 'full-reset');
+      // The seed awaited: the room must still belong to this workspace (PR #203 F01).
+      this.assertAcceptedWorkspace();
       const reset = await this.replaceLiveRoom(async () => {
         // Read the working set BEFORE the aggregate drops it. A destructive
         // reset is the one action here that can be disputed later, and "it
@@ -923,7 +925,7 @@ export class WorkshopSessionPersistenceCoordinator {
         this.degradedConversations = [];
         this.recordStartMarker();
         const promoted = await this.capture(this.identity);
-        await this.store.writeCurrent(promoted);
+        await this.store.writeCurrent(promoted, { beforeCommit: async () => this.assertAcceptedWorkspace() });
         this.currentCheckpointError = undefined;
         this.pendingRollingMirror = undefined;
         this.localWorkPending = false;

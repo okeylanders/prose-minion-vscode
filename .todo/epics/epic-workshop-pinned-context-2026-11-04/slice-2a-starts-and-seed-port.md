@@ -184,12 +184,38 @@ today's, and a full reset is empty, as it is today.
   - Only the port and the barrel name `WORKSHOP_NO_ROOM_SEED` or implement a
     seed, and `extension.ts` passes it to the coordinator once.
 
+**PR #203 F01 (high, fixed).** The seed's `await` let a workspace switch slip
+between the operation queue's check and the promotion: `carry` and
+`full-reset` would overwrite the new workspace's `current.json`, and `carry`
+would copy the old excerpt into it. The coordinator now owns two guards,
+both ones it already had (1,812 → 1,814 lines):
+
+- `assertAcceptedWorkspace()` right after `prepare` and before
+  `replaceLiveRoom`. A refusal never replaces the room, so the plan is never
+  installed.
+- `writeCurrent(promoted, { beforeCommit: assertAcceptedWorkspace })`, as
+  `mirrorNamedCheckpoint` does. A switch during capture or the write throws
+  inside the replacement, and its rollback restores the prior room.
+
+`initializeOnce`'s first-room branch is unchanged: its room belongs to the
+workspace accepted at load, and autosave already asserts before writing.
+`pinnedContext/WorkshopRoomSeedWorkspace.test.ts` (5 tests) covers all three
+cases:
+
+- a switch while the seed reads, for both `carry` and `full-reset`;
+- a switch with the promotion write held, for both starts;
+- a switch while the first room is seeded.
+
+Each start case checks that the reset rejects, that both checkpoints and the
+live room are unchanged, and, for the seed-read case, that `install` never
+runs. Each guard was removed in turn, and its own two tests then failed.
+
 ## Verification
 
 | Check | Before (`b94fc674`) | After (`4ed47742`, after `npm ci`, Node 22) |
 |---|---|---|
 | `npm run typecheck` | pass | pass |
-| `npx jest` | 691 suites / 9,696 tests / 59 snapshots | 693 suites / 9,732 tests / 59 snapshots, all passing |
+| `npx jest` | 691 suites / 9,696 tests / 59 snapshots | 693 suites / 9,732 tests / 59 snapshots, all passing; after F01, 694 / 9,737 / 59 (`-w 2`) |
 | `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (no new ones) |
 | `from 'vscode'` in `packages/core/src` | none | none |
 | New files over 500 lines | — | none (largest new one: the coordinator seed test, 184) |
