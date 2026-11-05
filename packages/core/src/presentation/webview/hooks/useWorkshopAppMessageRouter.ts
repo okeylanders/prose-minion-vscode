@@ -80,7 +80,7 @@ export interface WorkshopAppMessageRouterDeps {
     'handleSessionState' | 'handleBookmarkPage' | 'handleLiveBookmarks' | 'handleSavedTurnPreview'
   >;
   /** Project memory's write answers and the sheet's reads (Project Memory Slice 3). */
-  projectMemory: Pick<UseWorkshopProjectMemoryReturn, 'handleWriteResult' | 'handleEditData' | 'handleEstimateResult'>;
+  projectMemory: Pick<UseWorkshopProjectMemoryReturn, 'handleWriteResult' | 'handleEditData' | 'handleEstimateResult' | 'handleTurnPreview'>;
   /** The Memory tab's listing and the manager's answers (Project Memory Slice 4b). */
   memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData' | 'noteSessionState'>;
   /** The Pinned context tab's list (Pinned Context Slice 3). */
@@ -165,7 +165,11 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshopRoom.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshopRoom.handleContextAttachmentContent,
     [MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT]: readIn.handleReadInResourceContent,
-    [MessageType.WORKSHOP_TURN_PREVIEW]: bookmarks.handleTurnPreview,
+    // The reader's preview, and a memory sheet prefilled from a bookmark outside the window; each takes only its own requests.
+    [MessageType.WORKSHOP_TURN_PREVIEW]: (message) => {
+      bookmarks.handleTurnPreview(message);
+      projectMemory.handleTurnPreview(message);
+    },
     [MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT]: bookmarks.handleRenameResult,
     [MessageType.WORKSHOP_BOOKMARK_PAGE]: bookmarkBrowser.handleBookmarkPage,
     [MessageType.WORKSHOP_LIVE_BOOKMARKS]: bookmarkBrowser.handleLiveBookmarks,

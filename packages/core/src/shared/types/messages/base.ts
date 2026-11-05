@@ -169,6 +169,7 @@ export enum MessageType {
   WORKSHOP_SAVED_TURN_PREVIEW = 'workshop_saved_turn_preview',
   WORKSHOP_MEMORY_PROPOSAL_ACTION = 'workshop_memory_proposal_action',
   WORKSHOP_SAVE_TURN_TO_MEMORY = 'workshop_save_turn_to_memory',
+  WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY = 'workshop_save_saved_turn_to_memory',
   WORKSHOP_MEMORY_CREATE = 'workshop_memory_create',
   WORKSHOP_MEMORY_UPDATE = 'workshop_memory_update',
   WORKSHOP_MEMORY_FORGET = 'workshop_memory_forget',

@@ -74,6 +74,12 @@ export interface WorkshopMemoryNewProposal extends WorkshopMemoryProposalCommon 
   supersedes?: WorkshopMemoryProposalReplaces[];
   /** `supersedes` ids the trailer named that no listed memory held: dropped, and said on the card. */
   droppedSupersedes?: number;
+  /**
+   * Open-room turns the trailer cited (ADR 2026-11-05 D10), as written. The
+   * host keeps each only at save, when the room holds it and the persona
+   * could see it; it never shows them on the card.
+   */
+  cites?: string[];
 }
 
 /** What a memory says: the fields an edit can change. */
@@ -166,16 +172,41 @@ export interface WorkshopMemoryProposalActionMessage
   type: MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION;
 }
 
-/** "Save to memory…" on an eligible bubble: the writer's own memory, with the turn as its source. */
+/**
+ * "Save to memory…" on an eligible bubble: the writer's own memory, with the
+ * turn as its source. The host finds the turn in the room's full ledger, so
+ * a bookmark outside the window saves too; such a request names the room it
+ * was made in (`roomRevision`), and the host refuses it for another room
+ * (ADR 2026-11-05 D9; PR #214 F-03).
+ */
 export interface WorkshopSaveTurnToMemoryPayload {
   requestId: string;
   turnId: string;
   draft: WorkshopMemoryDraft;
+  roomRevision?: number;
 }
 
 export interface WorkshopSaveTurnToMemoryMessage
   extends MessageEnvelope<WorkshopSaveTurnToMemoryPayload> {
   type: MessageType.WORKSHOP_SAVE_TURN_TO_MEMORY;
+}
+
+/**
+ * "Remember this" on a saved session's bookmark (ADR 2026-11-05 D9): the
+ * writer's own memory, whose one source is that session and turn. The host
+ * checks the turn through the recall service and refuses one that is
+ * unknown, gone, not a message, or in a session two files claim.
+ */
+export interface WorkshopSaveSavedTurnToMemoryPayload {
+  requestId: string;
+  sessionId: string;
+  turnId: string;
+  draft: WorkshopMemoryDraft;
+}
+
+export interface WorkshopSaveSavedTurnToMemoryMessage
+  extends MessageEnvelope<WorkshopSaveSavedTurnToMemoryPayload> {
+  type: MessageType.WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY;
 }
 
 /** New memory, with no source. */

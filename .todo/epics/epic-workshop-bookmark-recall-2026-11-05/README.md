@@ -1,6 +1,6 @@
 # Epic: Workshop Bookmark Recall
 
-**Status:** Slice 2 built (PR #216, in review). Slice 1 merged at `ddf8356` (PR #215). Slice 0 (spec) merged at `8e9b612` (PR #214). The branch `epic/workshop-bookmark-recall` was cut from `epic-pinned-context` at `f298098` on 2026-11-05, after Pinned Context finished its code (Project Memory 6a–6c merged in at `b668782`). `main` was merged in for the Wayfinding close-out docs.
+**Status:** Slice 3 built (PR #219), in review. Slice 2 merged at `78fe28d` (PR #216). Slice 1 merged at `ddf8356` (PR #215). Slice 0 (spec) merged at `8e9b612` (PR #214). The branch `epic/workshop-bookmark-recall` was cut from `epic-pinned-context` at `f298098` on 2026-11-05, after Pinned Context finished its code (Project Memory 6a–6c merged in at `b668782`). `main` was merged in for the Wayfinding close-out docs.
 **Priority:** Medium
 **Created:** 2026-11-05
 **Integration branch:** `epic/workshop-bookmark-recall`. Each slice is built on its own branch, `epic/workshop-bookmark-recall-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -23,8 +23,8 @@ Every bookmark saved since Wayfinding reads unchanged.
 |---|---|---|---|---|
 | 0 | Spec | ADR, this epic, slice docs, open questions | All | Done (PR #214, `8e9b612`) |
 | 1 | [Recall reads bookmarks](slice-1-recall-operation.md) | `transcript.bookmarks` end to end, the open room through a read-only live port, read marks, and the Wayfinding D10 pin rewritten | D1–D7 | Done (PR #215, `ddf8356`) |
-| 2 | [The Bookmarks screen](slice-2-bookmarks-screen.md) | Read-only browser across sessions: preview, Open, Open at bookmark | D8 | Done (PR #216, in review) |
-| 3 | [Remember this, and proposals that cite bookmarks](slice-3-remember-this.md) | A saved bookmark becomes a memory citing its session and turn, and a persona's proposal cites the bookmarked turns | D9, D10 | Planned |
+| 2 | [The Bookmarks screen](slice-2-bookmarks-screen.md) | Read-only browser across sessions: preview, Open, Open at bookmark | D8 | Done (PR #216, `78fe28d`) |
+| 3 | [Remember this, and proposals that cite bookmarks](slice-3-remember-this.md) | A saved bookmark becomes a memory citing its session and turn, and a persona's proposal cites the bookmarked turns | D9, D10 | Built (PR #219), in review |
 | 4 | [Verify live](slice-4-live-pass.md) | Extension Development Host pass; ADR → Accepted; memory bank | — | Pending (needs a human with VS Code) |
 
 **Order:** 1 → 2 → 3.
@@ -139,3 +139,27 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
   - **F-01.** Paging no longer primes the store's exact-read path cache. It counts ids folder-wide, and never resolves a duplicate. The shared cache path is fixed upstream in Pinned Context.
   - **F-02.** Open at bookmark follows its own Open and drops the jump when that Open is superseded.
   - **Verification:** jest **744 suites / 10,399 tests / 59 snapshots**, all passing; lint at the 1,165 baseline; typecheck clean.
+- **2026-11-05. PR #216 re-reviews (Astra)** raised three more findings against the fixes. All are fixed, and the ledger is in [the review](../../../docs/pr-reviews/pr-216-workshop-bookmark-browser-review.md).
+  - **F-03 (P2), `99ddf80a`.** The folder-wide id scan ran outside the page budget. It is gone. Each page reads only its own files, and shared ids are detected across the walk in page-local walk state (`WorkshopRecallBookmarkWalks`). Earlier rows are marked "Shared session id" and their Opens are disabled.
+  - **F-04 (P3), `99ddf80a`.** An id the browser couldn't read is never taken as unique. The coverage note says so, and an exact read's conflict is its own outcome (`ambiguous-session`).
+  - **F-05 (P2), `6cb9ace6`.** The pager's document cache is keyed by source file, and an ambiguous id is evicted.
+  - **Verification:** jest **744 suites / 10,410 tests / 59 snapshots**, all passing.
+  - **Limit, stated on the screen:** a row loaded before its duplicate's page looks normal until "Load more" reaches that page. Preview and Open still refuse the conflict.
+- **2026-11-05. Slice 2 merged** into the epic at `78fe28d` (PR #216), after Astra approved and CI passed on `2072c64c`.
+- **2026-11-05. Pinned Context sync.** `epic-pinned-context` moved to `b9d8498f` with its Slice 5 live-pass fixes (#217). The sync PR is #218 (`f8f3d166`), and it merged cleanly. Okey's session-store identity fix for the shared exact-read cache path has not landed upstream yet; it comes in with a later sync.
+- **Since Slice 2** (for the Slice 3 thread):
+  - **The recall service** gained writer-facing seams: `bookmarkPage`, `liveRoomBookmarks` (every live bookmark, writer only) and `savedTurn` (a saved turn through `projectWorkshopTranscriptTurn`). Saved-session "Remember this" can check its turn through them.
+  - **The Bookmarks screen's rows** carry source and turn ids. Live rows come from the full ledger, matched by `roomRevision`. An ambiguous row is never actionable.
+  - **The upstream store code** (`findNamedSession`, `list()`, `rememberNamedSessionPath`) is Okey's to change in Pinned Context. Don't touch it here.
+  - **The branch.** Slice 3 starts on `epic/workshop-bookmark-recall-slice-3-remember-this`, cut from the epic at `78fe28d`. The #218 sync merges in when it lands.
+- **2026-11-05. Slice 3 built** on `epic/workshop-bookmark-recall-slice-3-remember-this` (PR #219), in two commits: host `5e60b21c`, webview `20ce3f66`. The [slice doc's implementation note](slice-3-remember-this.md#implementation-note) lists the files, the tests by criterion, and eleven readings the ADR left open.
+  - **"Remember this," host side.** A saved session's bookmark saves through a new sibling route owner, `WorkshopSavedTurnMemoryHandler` (`WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY`). It checks the turn with recall's `savedTurn` and refuses `ambiguous-session`, never resolving it. It writes through Project Memory's own write path, by a new seam (`saveWriterMemory`), so `WorkshopProjectMemoryHandler` stays at 497 lines.
+  - **The live route** takes `roomRevision` and refuses another room.
+  - **"Remember this," webview side.** It is on the Bookmarks screen's rows and on the Notes list. An in-window turn goes through `saveTurn`, unchanged. A turn outside the window prefills from the host's message. A saved turn opens the sheet's new `saved-turn` mode: "From “Title”, …".
+  - **Cited turns (D10).** The trailer gains `<cites-turn>`, at most 30. At save, the host keeps a cited turn only when the open room holds it and the proposer could see it (`isWorkshopTurnVisibleToParticipant`). It drops the rest, saved-session and `current@…` refs included, and logs them by id. Kept turns join `sourceTurns` after the writer's message and the reply, each once, within 32. The prompt teaches the field with a worked example.
+  - **Verification:** typecheck clean; lint 0 errors / 1,165 warnings (baseline); jest **749 suites / 10,453 tests / 59 snapshots**, all passing (full run, `--maxWorkers=4`); no `vscode` import in core.
+- **2026-11-05. PR #219 review (Astra)** raised two P2s, both fixed; the ledger is in [the review](../../../docs/pr-reviews/pr-219-remember-this-review.md).
+  - **F-01.** A saved capability-card bookmark couldn't be remembered: the route judged the projection's kind. Eligibility is now the original turn's (`bookmarkable`, through recall), and the screen offers only what the host saves.
+  - **F-02.** A saved-turn save read the room after the source read, so a same-id reopen or a Rewind could take its receipt. The route now takes the room when its message arrives, and the write refuses, writing nothing, if it moved.
+  - **Verification:** jest **751 suites / 10,465 tests / 59 snapshots**, all passing; lint at the 1,165 baseline; typecheck clean.
+

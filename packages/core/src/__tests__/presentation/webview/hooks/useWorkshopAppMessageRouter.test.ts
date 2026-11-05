@@ -40,7 +40,8 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
   projectMemory: {
     handleWriteResult: jest.fn(),
     handleEditData: jest.fn(),
-    handleEstimateResult: jest.fn()
+    handleEstimateResult: jest.fn(),
+    handleTurnPreview: jest.fn()
   },
   memoryManager: {
     handleListing: jest.fn(),
@@ -155,13 +156,14 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.memoryManager.noteSessionState).toHaveBeenCalledWith(message);
   });
 
-  it('routes a turn preview to the bookmarks transport', () => {
+  it('routes a turn preview to the bookmarks transport, and to the memory sheet a bookmark outside the window opened (Bookmark Recall Slice 3)', () => {
     const deps = makeDeps();
     const message = { type: MessageType.WORKSHOP_TURN_PREVIEW, payload: {} } as never;
 
     buildWorkshopAppMessageRoutes(deps)[MessageType.WORKSHOP_TURN_PREVIEW]!(message);
 
     expect(deps.bookmarks.handleTurnPreview).toHaveBeenCalledWith(message);
+    expect(deps.projectMemory.handleTurnPreview).toHaveBeenCalledWith(message);
   });
 
   it('routes the Bookmarks screen\'s three answers to its transport (Bookmark Recall Slice 2)', () => {

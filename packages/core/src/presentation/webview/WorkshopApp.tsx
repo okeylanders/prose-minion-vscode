@@ -1202,7 +1202,13 @@ export const WorkshopApp: React.FC = () => {
         onRename: bookmarks.renameBookmark,
         renameOutcome: bookmarks.renameOutcome,
         onRemove: (turnId) => bookmarks.setTurnBookmark(turnId, false),
-        onBrowseAll: bookmarkBrowser.openBrowser
+        onBrowseAll: bookmarkBrowser.openBrowser,
+        // Remember this (Bookmark Recall D9): the host's `inWindow` decides whether the snapshot's turn is the source.
+        onRemember: workshop.sessionReady ? (bookmark) => projectMemory.rememberRoomBookmark({
+          turnId: bookmark.turnId,
+          roomRevision: workshop.roomRevision,
+          ...(bookmark.inWindow ? { turn: workshop.turns.find((turn) => turn.id === bookmark.turnId) } : {})
+        }) : undefined
       }}
     />
   );
@@ -1503,6 +1509,8 @@ export const WorkshopApp: React.FC = () => {
         openAtBookmark={bookmarkOpenAt.openAtBookmark}
         openSavedTurnPreviewSheet={openSavedTurnPreviewSheet}
         openGivenTurnPreviewSheet={openGivenTurnPreviewSheet}
+        rememberRoomBookmark={projectMemory.rememberRoomBookmark}
+        rememberSavedBookmark={projectMemory.rememberSavedBookmark}
       />
       {/* The ONE Edit/Preview sheet for excerpt paste, Add text, editing a
           text note, editing a wizard-generated brief, and reading a project file

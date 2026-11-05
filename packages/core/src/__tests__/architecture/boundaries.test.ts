@@ -87,6 +87,8 @@ const WORKSHOP_BOOKMARK_BROWSER_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopBookmarkBrowserHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryHandler.ts';
+const WORKSHOP_SAVED_TURN_MEMORY_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopSavedTurnMemoryHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryManagerHandler.ts';
 const WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER =
@@ -220,6 +222,12 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER,
     registration: 'direct',
     messageTypes: ['WORKSHOP_MEMORY_REQUEST_EDIT', 'WORKSHOP_MEMORY_ESTIMATE']
+  },
+  // "Remember this" on a saved session's bookmark (Bookmark Recall Slice 3): a write, behind the gate.
+  {
+    owner: WORKSHOP_SAVED_TURN_MEMORY_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY']
   },
   // Slice 4b's manager routes change no room state (no receipt, no snapshot), so none waits on the gate.
   {
@@ -417,6 +425,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopPinnedContextHandler',
   'WorkshopProjectMemoryHandler',
   'WorkshopProjectMemoryManagerHandler',
+  'WorkshopSavedTurnMemoryHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
   'WorkshopShowVsTellHandler',
@@ -1962,9 +1971,10 @@ describe('architectural boundaries', () => {
     // Project Memory Slice 4b added the manager's listing and actions (direct).
     // Pinned Context Slice 3 added the tab's seven list routes (direct) and Attach missing (mutation).
     // Bookmark Recall Slice 2 added the Bookmarks screen's page, cancel, live rows and saved turn (direct).
-    expect(expectedOwnerPairs).toHaveLength(85);
+    // Bookmark Recall Slice 3 added "Remember this" from a saved session (mutation).
+    expect(expectedOwnerPairs).toHaveLength(86);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(46);
+      .toHaveLength(47);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
       .toHaveLength(39);
     expect(duplicateLedgerEntries).toEqual([]);

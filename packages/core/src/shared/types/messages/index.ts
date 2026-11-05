@@ -177,6 +177,7 @@ import {
   WorkshopSetTurnBookmarkMessage,
   WorkshopMemoryProposalActionMessage,
   WorkshopSaveTurnToMemoryMessage,
+  WorkshopSaveSavedTurnToMemoryMessage,
   WorkshopMemoryCreateMessage,
   WorkshopMemoryUpdateMessage,
   WorkshopMemoryForgetMessage,
@@ -355,6 +356,7 @@ export type WebviewToExtensionMessage =
   | WorkshopSetTurnBookmarkMessage
   | WorkshopMemoryProposalActionMessage
   | WorkshopSaveTurnToMemoryMessage
+  | WorkshopSaveSavedTurnToMemoryMessage
   | WorkshopMemoryCreateMessage
   | WorkshopMemoryUpdateMessage
   | WorkshopMemoryForgetMessage

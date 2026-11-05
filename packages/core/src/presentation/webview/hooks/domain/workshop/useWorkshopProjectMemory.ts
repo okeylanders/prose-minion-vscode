@@ -14,6 +14,11 @@
  * - **The host's numbers.** The "Always load in full" line and its refusal
  *   read the host's estimate (`WORKSHOP_MEMORY_ESTIMATE`), asked again as the
  *   draft changes, never a webview guess.
+ * - **From a bookmark** (Bookmark Recall Slice 3, ADR 2026-11-05 D9): a
+ *   turn of this room outside the window prefills from the host's message
+ *   (the browser's live row, or a turn preview asked for here) and names its
+ *   room (`roomRevision`); a saved session's turn (`saved-turn`) prefills
+ *   from the row the host sent and saves by session and turn.
  * - **Nothing persisted.** Memory files and the session own everything.
  */
 
@@ -26,14 +31,26 @@ import {
   type WorkshopMemoryListedTitle,
   type WorkshopMemoryPinnedEstimate,
   type WorkshopMemoryWriteResultMessage,
-  type WorkshopTurn
+  type WorkshopTurn,
+  type WorkshopTurnPreviewMessage
 } from '@messages';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { workshopMemoryCardKey, workshopMemoryProposalAt, workshopMemoryProposalDraft } from '@shared/constants/workshopProjectMemoryWrites';
+import {
+  WORKSHOP_MEMORY_EMPTY_DRAFT as EMPTY_DRAFT,
+  workshopMemoryNoteFromTurn,
+  workshopMemoryRoomBookmarkSheet,
+  workshopMemorySavedBookmarkSheet,
+  workshopMemorySheetWithPreview,
+  type WorkshopMemoryRoomBookmark,
+  type WorkshopMemorySavedBookmark
+} from '@hooks/domain/workshop/memory/workshopMemoryBookmarkSheets';
 
-/** What the sheet is for: a card's edit, a saved memory's edit, a bubble as source, or nothing. */
-export type WorkshopMemorySheetMode = 'card' | 'memory' | 'turn' | 'new';
+export { workshopMemoryNoteFromTurn, type WorkshopMemoryRoomBookmark, type WorkshopMemorySavedBookmark };
+
+/** What the sheet is for: a card's edit, a saved memory's edit, a turn of this room or of a saved session as source, or nothing. */
+export type WorkshopMemorySheetMode = 'card' | 'memory' | 'turn' | 'saved-turn' | 'new';
+
 
 export interface WorkshopMemorySheetState {
   readonly mode: WorkshopMemorySheetMode;
@@ -54,6 +71,11 @@ export interface WorkshopMemorySheetState {
   readonly error?: string;
   /** Who the source is, for the source line ("Jill's reply"). */
   readonly sourceLabel?: string;
+  /** A bookmark's turn outside the window: the room it was asked in. */
+  readonly roomRevision?: number;
+  /** A saved session's turn: its session and title. */
+  readonly sessionId?: string;
+  readonly sessionTitle?: string;
 }
 
 export interface WorkshopProjectMemoryState {
@@ -74,6 +96,10 @@ export interface WorkshopProjectMemoryActions {
   editCard: (turn: WorkshopTurn, index: number) => void;
   /** Save to memory… on an eligible bubble. */
   saveTurn: (turn: WorkshopTurn) => void;
+  /** Remember this on a bookmark of this room: Save to memory… when its turn is in the window, else from the host's message. */
+  rememberRoomBookmark: (bookmark: WorkshopMemoryRoomBookmark) => void;
+  /** Remember this on a saved session's bookmark. */
+  rememberSavedBookmark: (bookmark: WorkshopMemorySavedBookmark) => void;
   /** Edit on a receipt (and Slice 4b's manager). */
   editMemory: (memoryId: string) => void;
   /** New memory (Slice 4b's manager). */
@@ -88,6 +114,8 @@ export interface WorkshopProjectMemoryActions {
   handleWriteResult: (message: WorkshopMemoryWriteResultMessage) => void;
   handleEditData: (message: WorkshopMemoryEditDataMessage) => void;
   handleEstimateResult: (message: WorkshopMemoryEstimateResultMessage) => void;
+  /** A turn preview this hook asked for, to prefill a bookmark outside the window. */
+  handleTurnPreview: (message: WorkshopTurnPreviewMessage) => void;
 }
 
 export interface WorkshopProjectMemoryPersistence {
@@ -107,14 +135,6 @@ type Pending =
 
 const SOURCE = 'webview.workshop.memory';
 const ESTIMATE_DELAY_MS = 250;
-const EMPTY_DRAFT: WorkshopMemoryDraft = { title: '', kind: 'decision', summary: '', body: '', supersedes: [], pinned: false };
-
-/** A bubble's text as a new memory's note: whole when it fits, else cut at the bound, for the writer to shape. */
-export function workshopMemoryNoteFromTurn(content: string): string {
-  const text = content.trim();
-  const bound = PROMPT_BUDGETS.workshopProjectMemory.bodyCharacters;
-  return text.length <= bound ? text : text.slice(0, bound).trimEnd();
-}
 
 export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
   const vscode = useVSCodeApi();
@@ -131,6 +151,7 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
   const pending = React.useRef(new Map<string, Pending>());
   const sheetRequest = React.useRef<string | undefined>(undefined);
   const editRequest = React.useRef<string | undefined>(undefined);
+  const previewRequest = React.useRef<string | undefined>(undefined);
   const estimateRequest = React.useRef<string | undefined>(undefined);
   const estimateTimer = React.useRef<number | undefined>(undefined);
   const ids = React.useRef({ prefix: `ws-memory-${Math.random().toString(36).slice(2, 10)}`, count: 0 });
@@ -234,6 +255,27 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     });
   }, [openSheet]);
 
+  const rememberRoomBookmark = React.useCallback((bookmark: WorkshopMemoryRoomBookmark) => {
+    if (bookmark.turn) {
+      saveTurn(bookmark.turn);
+      return;
+    }
+    const { turnId, roomRevision, message } = bookmark;
+    const sheetState = workshopMemoryRoomBookmarkSheet({ turnId, roomRevision, ...(message ? { message } : {}) });
+    openSheet(sheetState);
+    // Without the row's message, the host's turn preview fills the note.
+    if (!message && sheetRef.current === sheetState) {
+      const requestId = mint();
+      previewRequest.current = requestId;
+      post(MessageType.WORKSHOP_REQUEST_TURN_PREVIEW, { requestId, turnId, roomRevision });
+    }
+  }, [mint, openSheet, post, saveTurn]);
+
+  const rememberSavedBookmark = React.useCallback(
+    (bookmark: WorkshopMemorySavedBookmark) => openSheet(workshopMemorySavedBookmarkSheet(bookmark)),
+    [openSheet]
+  );
+
   const editMemory = React.useCallback((memoryId: string) => {
     const requestId = mint();
     editRequest.current = requestId;
@@ -298,7 +340,15 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
         });
         break;
       case 'turn':
-        post(MessageType.WORKSHOP_SAVE_TURN_TO_MEMORY, { requestId, turnId: current.turnId, draft: current.draft });
+        post(MessageType.WORKSHOP_SAVE_TURN_TO_MEMORY, {
+          requestId, turnId: current.turnId, draft: current.draft,
+          ...(current.roomRevision !== undefined ? { roomRevision: current.roomRevision } : {})
+        });
+        break;
+      case 'saved-turn':
+        post(MessageType.WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY, {
+          requestId, sessionId: current.sessionId, turnId: current.turnId, draft: current.draft
+        });
         break;
       case 'memory':
         post(MessageType.WORKSHOP_MEMORY_UPDATE, { requestId, memoryId: current.memoryId, patch: current.draft });
@@ -314,6 +364,7 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     window.clearTimeout(estimateTimer.current);
     sheetRequest.current = undefined;
     editRequest.current = undefined;
+    previewRequest.current = undefined;
     estimateRequest.current = undefined;
     setSheet(null);
   }, [setSheet]);
@@ -382,6 +433,20 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     }
   }, [requestEstimate, setSheet]);
 
+  const handleTurnPreview = React.useCallback((message: WorkshopTurnPreviewMessage) => {
+    const next = previewRequest.current === message.payload.requestId
+      ? workshopMemorySheetWithPreview(sheetRef.current, message.payload)
+      : undefined;
+    if (!next) {
+      return;
+    }
+    previewRequest.current = undefined;
+    setSheet(next);
+    if (message.payload.turn) {
+      requestEstimate(next);
+    }
+  }, [requestEstimate, setSheet]);
+
   const handleEstimateResult = React.useCallback((message: WorkshopMemoryEstimateResultMessage) => {
     const { requestId, estimate } = message.payload;
     const current = sheetRef.current;
@@ -401,6 +466,8 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     reopenCard: React.useCallback((turnId: string, index: number) => cardAction(turnId, index, 'reopen'), [cardAction]),
     editCard,
     saveTurn,
+    rememberRoomBookmark,
+    rememberSavedBookmark,
     editMemory,
     newMemory,
     forget: React.useCallback((memoryId: string) => receiptAction(memoryId, 'forget'), [receiptAction]),
@@ -412,6 +479,7 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     handleWriteResult,
     handleEditData,
     handleEstimateResult,
+    handleTurnPreview,
     persistedState: {}
   };
 }

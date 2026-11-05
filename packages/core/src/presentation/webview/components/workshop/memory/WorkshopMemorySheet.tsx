@@ -1,7 +1,8 @@
 /**
  * The one memory sheet (Slice 0d, "The sheet"; ADR 2026-11-04 D4, D5, D8;
  * PR #192 F-03), in three modes: Edit (a card, or a saved memory), Save to
- * memory… (a bubble as source), and New (no source). Slice 4b's manager
+ * memory… (a bubble, or a bookmark of this room or a saved session, as
+ * source: Bookmark Recall D9), and New (no source). Slice 4b's manager
  * opens the same sheet for New and Edit.
  *
  * - **Bounded by the codec's rules** (`checkWorkshopMemoryDraft`): the
@@ -57,6 +58,9 @@ function sourceLine(sheet: WorkshopMemorySheetState): string | undefined {
         : `From ${sheet.sourceLabel ?? 'a persona'}'s reply in this conversation. Saved as a Markdown file in prose-minion/memory/.`;
     case 'turn':
       return `From ${sheet.sourceLabel === 'your message' ? 'your message' : `${sheet.sourceLabel ?? 'a'} reply`} in this conversation. Saved as a Markdown file in prose-minion/memory/.`;
+    case 'saved-turn':
+      // A saved session's bookmark (Bookmark Recall D9): the session the host checked, by its title.
+      return `From “${sheet.sessionTitle ?? 'a saved session'}”, ${sheet.sourceLabel === 'your message' ? 'your message' : `${sheet.sourceLabel ?? 'a'}’s reply`}. Saved as a Markdown file in prose-minion/memory/.`;
     case 'new':
       return 'Saved as a Markdown file in prose-minion/memory/.';
     default:

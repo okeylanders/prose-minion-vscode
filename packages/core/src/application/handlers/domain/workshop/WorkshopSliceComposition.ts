@@ -20,6 +20,7 @@ import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookm
 import { WorkshopBookmarkBrowserHandler } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import { WorkshopProjectMemoryHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import { WorkshopProjectMemoryManagerHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
+import { WorkshopSavedTurnMemoryHandler } from '@handlers/domain/workshop/WorkshopSavedTurnMemoryHandler';
 import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
 import { WorkshopPinnedContextHandler } from '@handlers/domain/workshop/WorkshopPinnedContextHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
@@ -74,6 +75,7 @@ export class WorkshopSliceComposition {
   private readonly bookmarkBrowserHandler: WorkshopBookmarkBrowserHandler;
   private readonly projectMemoryHandler: WorkshopProjectMemoryHandler;
   private readonly projectMemoryManagerHandler: WorkshopProjectMemoryManagerHandler;
+  private readonly savedTurnMemoryHandler: WorkshopSavedTurnMemoryHandler;
   private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
   private readonly pinnedContextHandler: WorkshopPinnedContextHandler;
   private readonly contextHandler: WorkshopContextHandler;
@@ -284,6 +286,15 @@ export class WorkshopSliceComposition {
       postMessage,
       outputChannel
     );
+    // "Remember this" on a saved session's bookmark (ADR 2026-11-05 D9): checked through recall, written through the route above.
+    this.savedTurnMemoryHandler = new WorkshopSavedTurnMemoryHandler(
+      bookmarkBrowser,
+      this.projectMemoryHandler,
+      session,
+      postMessage,
+      outputChannel,
+      (message) => host.reportRouteError('workshop', message, undefined, 'WorkshopSavedTurnMemoryHandler')
+    );
     // The memory manager's own routes beside them (Slice 4b): listing, Always load in full, Delete, Open file and folder.
     this.projectMemoryManagerHandler = new WorkshopProjectMemoryManagerHandler(
       projectMemory,
@@ -363,6 +374,9 @@ export class WorkshopSliceComposition {
     this.projectMemoryHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopProjectMemoryHandler')
+    );
+    this.savedTurnMemoryHandler.registerRoutes(
+      this.createMutationRegistrar(router, 'WorkshopSavedTurnMemoryHandler')
     );
     this.projectMemoryManagerHandler.registerRoutes(router);
     this.pinnedContextHandler.registerRoutes(

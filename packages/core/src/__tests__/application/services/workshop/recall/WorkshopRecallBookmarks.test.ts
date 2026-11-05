@@ -48,7 +48,9 @@ describe('a session saved by the Wayfinding release, with labelled and unlabelle
         createdAt: 3000,
         position: 2,
         displayLabel: workshopBookmarkDefaultLabel(writerTurn),
-        speaker: { id: 'writer', label: 'Writer' }
+        speaker: { id: 'writer', label: 'Writer' },
+        // Both turns are ones a bookmark may mark, by the bubbles' rule (PR #219 F-01).
+        bookmarkable: true
       },
       {
         id: 'bookmark-1-2000',
@@ -57,7 +59,8 @@ describe('a session saved by the Wayfinding release, with labelled and unlabelle
         createdAt: 2000,
         position: 4,
         displayLabel: 'Alice\'s reply',
-        speaker: expect.objectContaining({ label: expect.any(String) })
+        speaker: expect.objectContaining({ label: expect.any(String) }),
+        bookmarkable: true
       }
     ]);
     expect(document.bookmarks[0].displayLabel).toBe('You · Why does the jar matter?');
