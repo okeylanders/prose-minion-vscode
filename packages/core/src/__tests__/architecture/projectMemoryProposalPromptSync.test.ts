@@ -52,6 +52,13 @@ describe('project-memory proposal prompt ↔ PROMPT_BUDGETS', () => {
     expect(named).toEqual([...PROJECT_MEMORY_KINDS]);
   });
 
+  it('teaches the boundaries of theme and idea (Slice 6a)', () => {
+    expect(prose).toContain('Canon is what happens in the story; a theme is what it means.');
+    expect(prose).toContain('An idea is unsettled: never propose one as `canon` or `decision` because it was discussed.');
+    expect(prose).toContain('an idea is a candidate answer or direction');
+    expect(prose).toContain('When the writer chooses an idea, propose the `decision` or `canon` note that records the choice, and name the idea in `<supersedes>`.');
+  });
+
   it('carries the never-list (D9)', () => {
     expect(prose).toContain('It never records anything about the writer\'s feelings, health, relationships or private life');
     expect(prose).toContain('never say a note was saved, and never promise to remember anything');

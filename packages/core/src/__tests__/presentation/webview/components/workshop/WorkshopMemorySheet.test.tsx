@@ -66,6 +66,26 @@ describe('WorkshopMemorySheet', () => {
     expect(props.onSubmit).toHaveBeenCalled();
   });
 
+  it('offers six kind cards, in the writer\'s order, each with its description (Slice 6a)', () => {
+    renderSheet(sheet());
+    expect(screen.getAllByRole('radio').map((card) => card.textContent)).toEqual([
+      'DecisionA choice the project made.',
+      'CanonA fact of the story.',
+      'ThemeWhat the story is about.',
+      'IdeaA possibility, not chosen yet.',
+      'Open threadA question to come back to.',
+      'PreferenceHow you like to work.'
+    ]);
+  });
+
+  it('picks Theme and Idea like any other kind', () => {
+    const props = renderSheet(sheet());
+    fireEvent.click(screen.getByRole('radio', { name: /^Theme/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Idea/ }));
+    expect(props.onChange).toHaveBeenCalledWith({ kind: 'theme' });
+    expect(props.onChange).toHaveBeenCalledWith({ kind: 'idea' });
+  });
+
   it('"Always load in full" reads the host\'s numbers', () => {
     renderSheet(sheet({ estimate: { thisTokens: 60, totalTokens: 4_360, budgetTokens: 5_000, refused: false } }));
     expect(screen.getByText(

@@ -56,6 +56,9 @@ anything screenshotted or recorded.
 - [ ] Save to memory… on a writer bubble.
 - [ ] Supersede a memory. The old one shows superseded in the manager and leaves
       the next room's frame.
+- [ ] Propose and save a Theme and an Idea (Slice 6a). Ask a persona about the
+      idea and check it treats it as unsettled: never as canon or a decision.
+      Choose it, and the proposed decision or canon memory supersedes it.
 - [ ] Two windows on one workspace each save a memory at the same moment, and
       both files stand.
 - [ ] Close the window during a save, then reopen. The file is whole or absent,
@@ -67,6 +70,8 @@ anything screenshotted or recorded.
 - [ ] The Memory tab sits between About you and Advanced. It shows the
       "Memory isn't context" well, and its meter shows each memory's
       residency (Loaded in full, Listed or Searchable).
+- [ ] The well folds from its title line and opens again from it. Once
+      folded, it stays folded after a reload (Okey's live-pass ask).
 - [ ] Change the mode and Apply: the global setting changes. Edit
       `proseMinion.workshop.projectMemory` in VS Code Settings while the tab
       is open: the tab follows.

@@ -216,7 +216,7 @@ We settled this while working chapter 3's tea-party scene. …
 | `format` | yes | `1` |
 | `id` | yes | `mem-` + 6 lowercase hex |
 | `title` | yes | one line, at most `titleCharacters` (120) |
-| `kind` | yes | `decision` \| `canon` \| `preference` \| `open-thread` |
+| `kind` | yes | `decision` \| `canon` \| `preference` \| `open-thread` (widened by the [addendum of 2026-11-05](#addendum-2026-11-05-theme-and-idea)) |
 | `summary` | yes | one line, at most `summaryCharacters` (280) |
 | `status` | yes | `active` \| `archived` |
 | `created`, `updated` | yes | ISO 8601 UTC, second precision |
@@ -904,3 +904,31 @@ The six questions this ADR opened, decided by the writer on 2026-11-04.
 5. **`memory.read` private or published? Published** to the room when the
    reader's reply commits, as recommended. (D12)
 6. **Anything outside the Workshop? No; Workshop only in v1**, as recommended.
+
+## Addendum 2026-11-05: Theme and Idea
+
+*Okey's ask during the live pass (epic Slice 6a,
+[slice doc](../../.todo/epics/epic-workshop-project-memory-2026-11-04/slice-6a-kinds.md)).*
+
+Format 1's closed `kind` list gains two kinds, so it reads, in this order
+everywhere (`PROJECT_MEMORY_KINDS`, the sheet's cards, the manager's groups):
+`decision` · `canon` · `theme` · `idea` · `open-thread` · `preference`. That is
+settled, then unsettled, then how the writer works.
+
+- **`theme`:** what the story is about, a meaning or motif it keeps returning
+  to. Feedback should serve it. Canon is what *happens* in the story; a theme is
+  what it *means*.
+- **`idea`:** a possibility the writer floated and has not chosen. A persona
+  never treats one as canon or as a decision. It is not an open thread either:
+  an open thread is a question the story still owes an answer to; an idea is a
+  candidate answer or direction. When an idea is chosen, the new `decision` or
+  `canon` memory supersedes it through the existing `supersedes`.
+
+Format 1 has not shipped, so the list widens in format 1: no new format and no
+migration (AGENTS.md: never migrate a development shape; ADR 2026-07-30's
+release rule applies from the first release). Both persona prompts teach the
+boundaries, and their sync tests hold the kinds they name to
+`PROJECT_MEMORY_KINDS`. The unreadable-file reason derives its list from the
+constant. The sheet shows the six kind cards six across when they fit, otherwise
+three by two, never a row with an orphan (a container query, not `auto-fit`);
+under the 760px stack rule, two by three.

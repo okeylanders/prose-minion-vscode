@@ -7,7 +7,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { projectMemoryBody, supersededProjectMemoryIds, type ProjectMemory } from '@shared/types/projectMemory';
+import { PROJECT_MEMORY_KINDS, projectMemoryBody, supersededProjectMemoryIds, type ProjectMemory } from '@shared/types/projectMemory';
 import {
   PROJECT_MEMORY_INVALID_REASONS,
   PROJECT_MEMORY_KEYS,
@@ -106,7 +106,8 @@ describe('format 1: a round trip, and the fixtures as written', () => {
   });
 
   it('round-trips every kind, status and origin', () => {
-    for (const kind of ['decision', 'canon', 'preference', 'open-thread'] as const) {
+    expect(PROJECT_MEMORY_KINDS).toEqual(['decision', 'canon', 'theme', 'idea', 'open-thread', 'preference']);
+    for (const kind of PROJECT_MEMORY_KINDS) {
       for (const status of ['active', 'archived'] as const) {
         const memory: ProjectMemory = { ...RABBIT, kind, status, pinned: status === 'active' };
         expect(decoded(encodeProjectMemory(memory))).toEqual(memory);
