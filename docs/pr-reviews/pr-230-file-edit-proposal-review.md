@@ -50,7 +50,9 @@ At code head `16718261`:
 - Focused proposal/protocol/settings/session/route suite: **9 suites / 239 tests passed**.
 - Independent persistence witnesses: **2/2 reproduced F-01**. These assert the observed bad behavior, not a corrected implementation.
 - Exact-head GitHub [CI run 42128504349](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42128504349): completed successfully. Its `verify` job independently reports successful typecheck, tests, lint and both webpack bundles.
-- A separate full local Jest run was started; its final outcome is recorded below when available. No result is inferred from partial progress.
+- Full local `npm test -- --runInBand`: **762 suites / 10,670 tests / 59 snapshots passed** (515.963 seconds).
+- The report-only commit does not change runtime code; its own current-head CI result is recorded separately in the PR conversation after completion.
 - No native VS Code acceptance, live model call, combined integration test run, Apply flow or deployment was performed.
 
 Only this report and its reproduction artifact are published by the review. They do not change runtime behavior.
+
