@@ -126,7 +126,7 @@ Resolve F-01–F-06 in the ADR and slice acceptance criteria first. Slice 1's pu
 | F-03 | **Settled in ADR D5.** The class is decided by every membership through every root, plus excerpt documents, and recomputed at Apply; the trailer's group only locates the file. |
 | F-04 | **Settled in ADR D8.** A host claim keyed by `(liveSessionId, turnId, index)` is taken before any await; duplicates join; Decline and terminal states replay; `applying` is flushed before dispatch and read as `unknown` on reopen; `partial` and `unknown` states; no blind retry; no preview command; shutdown does not await claims. |
 | F-05 | **Settled in ADR D5.** The applier gains `structure: 'strict' \| 'prose-paragraphs' \| 'free'` in place of `preservesMarkdownStructure`. `strict` is unchanged for Proofread and Craft Flags. Built and tested in Slice 2, against this review's four paragraph witnesses. |
-| F-06 | **Settled in ADR D5 and D7.** The ceiling is defined exactly (replaced characters over touched blank-line paragraphs, a 300-character floor, insertions excluded and bounded by words), and the applier runs `revalidate` on every attempt, its retry included. Acceptance: this review's shrink-the-paragraph witness writes nothing. |
+| F-06 | **Settled in ADR D5 and D7.** The ceiling is defined exactly (replaced characters over touched blank-line paragraphs, a 300-character floor, insertions excluded and bounded by words), and the applier runs its per-attempt check on every attempt, its retry included. Acceptance (corrected per the re-review): the shrink-the-paragraph witness uses a quote over the 300-character floor and writes nothing; a below-floor control is allowed. |
 | N-01 | **Settled in ADR D10 and D12.** Bounded `landed` records (before, after, 80-character context, `versionAfter`); oversized operations record hashes only and are not revertible; Revert's refusals are stated. |
 | N-02 | **Settled in ADR D5.** A notes rewrite over protected syntax is refused with a reason asking for replace edits; minimal-edit conversion is deferred. |
 | N-03 | **Settled in ADR D3, Consequences and the epic Goal.** The vocabulary is shared; memory persistence is separate; the document write path is shared by Draft Edit and persona file edits only. |
@@ -175,3 +175,13 @@ The in-flight claim, joined duplicates, terminal replay, partial/unknown states 
 - CI for `494a17d3` was still in progress when this re-review was prepared: [run 42122262687](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42122262687). Its eventual result is separate from the specification disposition.
 
 **Concurrent amendment checked:** `34d14985` clarifies that emphasis may change and counts changed characters after a common-prefix/suffix trim for the ceiling. It does not change the remaining F-04 lifecycle issue. CI for `494a17d3` subsequently completed successfully (run 42122262687).
+
+### Resolution of the re-review (coordinator, 2026-11-05)
+
+| Item | Disposition |
+|---|---|
+| F-04.1 durable `applying` | **Settled in ADR D8.** The handler calls `checkpointFileEdit(generation, turnId, index)`, which writes every recoverable checkpoint (`current.json` always; the named file when named) and returns `{ ok: true }` only when each holds that exact state. A failed write, an unavailable store, a mirror failure, a moved generation, or an active run (autosave defers) answers `{ ok: false }`, and no document write happens. A resolved `flush()` is never taken as success. |
+| F-04.2 room generation | **Settled in ADR D8.** The claim is keyed by `(roomGeneration, turnId, index)`, with the generation captured by `readRoomRevision()` at the action. The predicate checks it, and outcomes for an earlier generation are dropped. |
+| F-04.3 authority before every attempt | **Settled in ADR D7.6.** The applier's `beforeAttempt` runs synchronously immediately before every `applyEdits`, its retry included. It holds the authority predicate (claim, generation, setting, a `FileEditAuthorityEpoch` bumped on workspace-folder and context-path changes) and the text checks. A refusal makes no further attempt. |
+| F-06 witness | **Corrected.** The acceptance uses a quote over the 300-character floor; the 18-character case becomes the allowed control. |
+| Acceptance cases | Added to the epic's completion criteria: a failed or deferred checkpoint writes nothing; the same session reopened while an old action is paused writes nothing; the setting turned off or the room replaced before the retry makes no second attempt; plus successful controls. |

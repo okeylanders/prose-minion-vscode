@@ -261,16 +261,31 @@ already held when it runs.
    equal the identity.
 4. **Plan** with D3's planner, then check freshness (D6) and the policy
    (D5).
-5. **The last dispatch boundary** (D8): the handler's `stillCurrent()` and
-   the identity checks, with nothing awaited between them and the applier's
-   call.
+5. **The last dispatch boundary** (D8): the durable `applying` checkpoint is
+   acknowledged, then the authority predicate holds, with nothing awaited
+   between them and the applier's call.
 6. **Apply through `DraftEditApplier`**, with the class's `allowsNewlineChanges`
-   and `structure`, and a `revalidate(snapshot, edits)` callback.
-   - The applier runs `revalidate` on **every attempt**, its internal retry
-     included.
-   - `revalidate` re-checks freshness, the ceiling, the insertion bounds and
-     the structure mode on the live text and the moved edits.
-   - A refusal on a retry writes nothing (F-06).
+   and `structure`, and a `beforeAttempt(snapshot, edits)` callback.
+   - The applier runs `beforeAttempt` synchronously, **immediately before
+     every `applyEdits` call**, its internal direct retry included. A
+     refusal writes nothing and makes no further attempt (F-06, F-04 re-review).
+   - `beforeAttempt` checks two things, both synchronously:
+     - **the authority predicate:**
+       - the handler's claim is held;
+       - the room generation captured at the action (`readRoomRevision()`)
+         is unchanged;
+       - the setting is still `ask`;
+       - the **authority epoch** captured at re-authorization is unchanged.
+         The epoch is a counter the host bumps on any workspace-folder
+         change or context-path setting change (a `FileEditAuthorityEpoch`
+         port), so a membership or root change between attempts refuses
+         without an await.
+     - **the text:** freshness, the ceiling, the insertion bounds and the
+       structure mode, on the live text and the moved edits.
+   - An attempt refused after an earlier one wrote nothing reports nothing
+     landed. One refused after a partial landing reports what landed.
+   - This changes nothing for an existing Refactor Preview: no command is
+     sent to it (ADR 2026-10-21's accepted limit).
 7. **Report what landed, by operation**, from the applier's result:
    - applied ids landed;
    - `notApplied` didn't;
@@ -287,8 +302,14 @@ only the applier calls `applyEdits`. No Workshop module reaches
 ### D8. The claim, duplicates and outcomes
 
 - **The claim.** On an Apply, Review in editor… or Decline message, before
-  anything is awaited, the handler takes a claim keyed by
-  `(liveSessionId, turnId, index)` in a host map it owns.
+  anything is awaited, the handler captures the room generation
+  (`readRoomRevision()`) and takes a claim keyed by
+  `(roomGeneration, turnId, index)` in a host map it owns.
+  - A session reopened or imported mints a new generation, so an action from
+    the old one can never continue into it, even with matching ids
+    (F-04 re-review).
+  - Outcomes are owned by that generation too: an outcome for an earlier
+    generation is logged (counts) and dropped.
 - **Duplicates join.** A second Apply or Review while claimed, with the same
   or a different request id, joins the claim, and each request gets the one
   outcome.
@@ -296,18 +317,34 @@ only the applier calls `applyEdits`. No Workshop module reaches
 - **A terminal card replays its state.** Apply or Decline on one writes
   nothing. Operations always come from the host's stored proposal, never
   from the request.
-- **`applying` is persisted before the write.**
-  1. At the last dispatch boundary, the card's state becomes `applying`, and
-     the session is flushed (awaited).
-  2. The boundary checks then run again, with nothing awaited before the
-     applier's call. A failed check here returns the card to `pending`, with
-     nothing written.
-  3. The checks: the claim is held; the live room is the same session and
-     its ledger still holds the turn; the setting is still `ask`; the
-     identity checks pass.
+- **`applying` is durable before the write** (F-04 re-review).
+  1. **A checkpoint with a result.** The card's state becomes `applying`.
+     The handler then calls the session service's
+     `checkpointFileEdit(generation, turnId, index)`, which writes the room's
+     recoverable checkpoints now and returns `{ ok: true }` only when every
+     one of them holds that exact `applying` state:
+     - `current.json`, always;
+     - the named session file too, when the room is named, since Open
+       restores it.
+  2. **Anything else is a refusal.** The checkpoint answers
+     `{ ok: false, reason }`, and no document write happens, when any of
+     these holds:
+     - a write fails;
+     - the store is unavailable;
+     - a mirror fails;
+     - the room generation moved;
+     - a persona run is active, during which autosave defers capture. The
+       card says "Apply after the current reply finishes".
+
+     A `flush()` that merely resolves is never taken as success. The card
+     returns to `pending`. Its revert is best effort, and a stale `applying`
+     reads as `unknown` on reopen, which is safe.
+  3. **Then the boundary.** The authority predicate (D7.6) runs, with nothing
+     awaited before the applier's call. A failure here returns the card to
+     `pending`, with nothing written.
 - **A room replaced after dispatch.** Its outcome is logged (counts) and
-  dropped. The saved session holds `applying`, which reads as `unknown` when
-  reopened.
+  dropped. The durable checkpoint holds `applying`, which reads as `unknown`
+  when reopened.
 - **States.**
   - `pending`: may be applied or declined.
   - `applying`: transient; persisted only around a dispatched write.
@@ -326,8 +363,8 @@ only the applier calls `applyEdits`. No Workshop module reaches
   (`declined` from the host) wrote nothing, so the card returns to `pending`.
 - **Preview.** No command is ever sent to Refactor Preview: no discard.
 - **Shutdown.** Claims are not awaited at deactivation, since a preview may
-  wait on the writer indefinitely. The flushed `applying` reads as `unknown`
-  after a reload.
+  wait on the writer indefinitely. The acknowledged `applying` reads as
+  `unknown` after a reload.
 
 ### D9. Cards in the thread
 
@@ -428,9 +465,9 @@ frames, for staging refusals, and for apply failures.
 | F-01 (P1) Rewrite baseline | D6. A hash of the content is staged and checked on every attempt; the rewrite's before/after comes from the host while the baseline holds; append and prepend are fresh by rule, guarded by D8's claim. |
 | F-02 (P1) Target identity | D4. Every candidate is resolved; ambiguity is refused; the identity is a host-written `documentUri`, re-authorized at Apply (D7.1, D7.5); an excerpt is bound to the document it was staged from. |
 | F-03 (P1) Prose by identity | D5. The class comes from every membership through every root, plus excerpt documents; it is recomputed at Apply. |
-| F-04 (P2) Claim and outcomes | D8. The claim is taken before any await; duplicates join; Decline and terminal states replay; `applying` is flushed before dispatch; `partial` and `unknown` exist, with no blind retry. |
+| F-04 (P2) Claim and outcomes | D8. The claim is keyed by the room generation and taken before any await; duplicates join; Decline and terminal states replay; `partial` and `unknown` exist, with no blind retry. After the re-review: `applying` must be acknowledged durable in every recoverable checkpoint (`checkpointFileEdit`) before dispatch; and the authority predicate (claim, generation, setting, authority epoch) runs before every `applyEdits` attempt (D7.6). |
 | F-05 (P2) Markdown structure | D5's structure modes. `strict` is unchanged for Proofread and Craft Flags; `prose-paragraphs` frees plain-paragraph boundaries only. Built and tested in Slice 2. |
-| F-06 (P2) Ceiling on retry | D5's exact ceiling, and D7.6's `revalidate` on every attempt. |
+| F-06 (P2) Ceiling on retry | D5's exact ceiling, and D7.6's `beforeAttempt` on every attempt. The refusal witness uses a quote over the 300-character floor, with a below-floor control. |
 | N-01 Revert record | D10's `landed` records, and D12's narrowed Revert. |
 | N-02 Rewrite and protected syntax | D5. A notes rewrite over protected syntax is refused, with a reason; protection is never weakened. |
 | N-03 Shared write path wording | D3 and Consequences: shared vocabulary, memory's persistence separate. |
