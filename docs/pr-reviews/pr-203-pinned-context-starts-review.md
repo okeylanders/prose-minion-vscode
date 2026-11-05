@@ -3,12 +3,33 @@
 - Reviewed implementation: `3feab7588ff8aab6902205eae33d3f7482acb4c2`.
 - Base at review: `6fe9bf1c7afd5295884190abf84d7de145a14356` (`epic-pinned-context`).
 - Date: 2026-11-05.
-- Verdict: **Changes required.** One high-priority correctness finding. No formal GitHub approval or merge performed.
+- Current verdict: **Review clear at `db93354f95fb8875441550ae76936f87c1ea3500`. F01 is closed.** No remaining actionable findings in this slice. No formal GitHub approval or merge performed.
+- Initial verdict at `3feab758`: changes required for F01; preserved below as the audit trail.
 - Scope: all 39 changed files, epic README, ADR D2/D5/D7/D9, Slice 2a and its Slice 2b handoff, real coordinator/store probes, UI/contract/result tests.
 
-## F01 · High · Revalidate the accepted workspace after asynchronous seed preparation
+## Re-review of `db93354f` · 2026-11-05 01:28 UTC
 
-**Location:** `packages/core/src/application/services/workshop/WorkshopSessionPersistenceCoordinator.ts:899–903` (new `await this.roomSeed.prepare(...)`), then the promotion at lines 923–925.
+**F01 closed.** The correction adds the accepted-workspace check immediately after preparation, before the replacement can alter the live room. The `writeCurrent` call also supplies the store's `beforeCommit` guard, so a workspace change during capture/promotion rejects the write and the existing room-replacement transaction restores the prior room.
+
+The two original expected-behavior probes now pass **unchanged**. The correction's five regression cases also pass: both starts during preparation, both starts before promotion, and first-room initialization during a workspace switch. The existing seed-call tests, coordinator persistence/integration tests, start-result tests and architecture guards also pass.
+
+Verification at this exact correction:
+
+- Changed production/test contents match their Git blob hashes.
+- `npm run typecheck`: **pass** (all three projects).
+- `npm run lint`: **pass**, 0 errors / 1,165 warnings.
+- Seed-call, workspace-regression and original independent probes: **3 suites / 15 tests passed**.
+- Coordinator persistence/integration, start-result and architecture regression checks: **4 suites / 147 tests passed**.
+- Total local re-review checks: **7 suites / 162 tests passed**, including the original two reproductions.
+- Exact correction-head CI `verify`: **success**, [run 41948063018](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41948063018). This includes typecheck, the full suite, lint and both-bundle build.
+- No full local correction-head suite or local bundle pass is claimed. The old-head memory-bounded full retry was still running when this re-review was recorded; it is supplementary and cannot replace the exact correction-head checks.
+- No Extension Development Host/manual pass was performed. That remains the epic's Slice 5 gate.
+
+Only the review report is changed by the re-review commit. The report-head CI run will be watched separately; implementation verification is tied to `db93354f`.
+
+## Initial F01 · High · Revalidate the accepted workspace after asynchronous seed preparation
+
+**Location:** `packages/core/src/application/services/workshop/WorkshopSessionPersistenceCoordinator.ts:899–903` (new `await this.roomSeed.prepare(...)`), then the promotion at lines 925–926.
 
 `serializeSessionOperation` checks `assertAcceptedWorkspace()` before invoking the operation. The new seed read then awaits. On resumption, `resetSession` immediately resets the room and eventually calls `store.writeCurrent(promoted)`, which resolves its destination from the workspace that is current *then*. Nothing rechecks that this is the workspace accepted by the live room.
 
