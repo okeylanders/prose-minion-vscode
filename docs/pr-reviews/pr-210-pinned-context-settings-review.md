@@ -1,5 +1,60 @@
 # PR #210 review: Pinned Context settings tab
 
+## Correction re-review — 2026-11-05
+
+- **Reviewed correction head:** `c6b24c13585f846a5bcebe03362a37f5d43c8adc`.
+- Implementation corrections: `5f777852fcb5a976293571363503c7bf3b648d5b`; author verification note: `368ed4047fdef135f04992b8043443657f89038f`. Both are ancestors of the reviewed head. The later `c6b24c13` review-document commit preserved those fixes.
+- Target: `epic-pinned-context`, observed at `7b9fd0b4331f6551aae73a3b547466441831b740`.
+- **Verdict: Changes still required. F03 remains open for overlapping mutation answers.** F01, F02, F04, F05, F06, F07 and N01 are closed at this correction head.
+- No implementation changes, formal approval or merge performed.
+
+### F03 remains open: an earlier picker answer can restore a subsequently unpinned row
+
+**Priority:** Medium / P2. **Location:** `packages/core/src/presentation/webview/hooks/domain/workshop/useWorkshopPinnedContext.ts:157–160`.
+
+The read-versus-mutation correction works for the original repros. However, the hook now assumes every mutation answer holds the newest list and applies it unconditionally. A mutation's answer describes the list through asynchronous file/catalog reads outside the store queue, so answers from overlapping mutations can complete in the opposite order from their list snapshots.
+
+Confirmed through the real handler/library/store and a failing hook expected-behavior test:
+
+1. A is pinned. Start the nonblocking native picker and select that same file; the write is a successful no-op.
+2. Its answer's `describe()` reads the old list containing A, then pauses in `openCatalog()`.
+3. With the native picker closed and its answer still loading, Unpin A remains available. It commits and answers with the empty list and newer revision.
+4. Release the earlier description. The picker answers successfully with A and the old revision.
+5. The hook applies that older mutation answer at lines 157–160, restoring A and count 1 onscreen, although the persisted list is empty.
+
+This is reachable with the intended nonblocking-picker UX; it does not require bypassing the host route gate. The host probe verifies replies `req-1, req-3, req-2` and the final empty disk list. The hook expected-behavior probe expects revision `after` and count 0; it fails with revision `before`.
+
+**Required correction:** reconcile overlapping mutation completions against authoritative current state, or bind returned snapshots to ordering that actually establishes freshness. Do not infer freshness from request issuance or reply completion alone. A post-settlement read may be a valid approach if it handles all outstanding operations, cancellation and subsequent reads without reintroducing the original F03 failures. Preserve the nonblocking picker behavior and the fixed read-versus-write cases.
+
+Evidence:
+- [Real host mutation-answer ordering control](probes/pr-210-mutation-order-host.test.ts.txt), passes by observing the stale answer and final empty persisted list.
+- [Expected hook reconciliation](probes/pr-210-mutation-order-ui.test.tsx.txt), fails at the reviewed correction head.
+- Copy host probe beside `workshopPinnedContextHandlerHost.ts`; copy hook probe into the settings UI test directory; remove `.txt` and run Jest with `--runInBand --runTestsByPath`.
+
+### Closed findings and correction checks
+
+- **F01:** existing exact filesystem source takes precedence over a normalized catalog neighbour. The original selected-source witness now passes.
+- **F02:** Attach missing uses the coordinator's room-operation queue. The real failed-Open rollback probe now passes. Its only API adaptation is wiring the newly required `runRoomOperation: work => coordinator.runContextRefresh(work)`; all safety assertions are unchanged.
+- **F04:** current-room presence and readable missing count are independent of future seed eligibility. Both original UI cases pass.
+- **F05:** Open uses the reader's shared source resolution. The original single-NFD-source Open case passes.
+- **F06:** missing/unreadable sources are reported in the left-out results rather than called already present. Both original cases pass.
+- **F07:** shared 4,096-character path limit replaces the inconsistent 1,024-character action limit. All three original 1,138-character path actions pass.
+- **N01:** picker uses host-platform canonical identity. The original Windows-case disabled-row test passes.
+- All **1,978 apps/packages blobs** matched the exact correction head, independently verified before and after host probing.
+- `npm run typecheck`: **pass**, all three projects.
+- `npm run lint`: **pass**, 0 errors / 1,165 warnings; temporary review probes excluded.
+- Independent host replays and supplied fix regressions: **4 suites / 17 tests passed** (original identity 4, original root/room/symlink boundaries 3, rollback 1, supplied fixes 9).
+- Original expected UI probes: **5 passed unchanged**. Original long-path probes: **3 passed unchanged**.
+- New mutation-order investigation: real-host control and observed-hook control pass; **one expected hook regression test fails** as described above.
+- The corrected full suite is running and is **not yet claimed as passed**. The historical 711-suite result below applies only to original implementation `9e1fd707`.
+- No native VS Code visual pass, native Windows-host run or live provider call was performed.
+
+---
+
+## Initial review (historical, original implementation)
+
+The findings and checks below describe `9e1fd707`; their current status is superseded by the correction re-review above.
+
 - Reviewed head: `9e1fd707e12c0075a33e6045aa6ca2a0b8a9282c`.
 - Target: `epic-pinned-context`, observed at `7b9fd0b4331f6551aae73a3b547466441831b740`.
 - Date: 2026-11-05.
