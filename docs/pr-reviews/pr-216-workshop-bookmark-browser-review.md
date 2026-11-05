@@ -2,7 +2,7 @@
 
 ## Verdict
 
-**Current verdict: changes requested at `db4e6ef01e36ba6238a8f8d33d0d3be40aca05f3` (product fix `99ddf80a`).** F-01 through F-04 are independently verified resolved within their stated scope. One new P2 finding, F-05, remains: a known ambiguous page document survives in the browser cache, so resolving the duplicate files and reopening can display the removed file's title and bookmark content. See the second independent correction review below. This is a report disposition, not a formal GitHub review-state change or authorization to merge. Earlier findings and author responses remain as history.
+**Current verdict: approved at `e95620911ea096fb79508d20544b7c9a352066e5` (product fix `6cb9ace6`).** F-01 through F-05 are independently verified resolved within their stated scope. No remaining actionable finding was found in the final correction review. This is an approval in the report and PR conversation, not a formal GitHub APPROVED review state or authorization to merge: the connected account is also the PR author. The final report-only publication head will receive its own CI verification. Earlier findings and author responses remain as history.
 
 - **PR:** [#216](https://github.com/okeylanders/prose-minion-vscode/pull/216)
 - **Original implementation head reviewed:** `13df46bf9ff777ee767a5c304260c7fbf9035945`
@@ -88,7 +88,7 @@ Native VS Code layout/keyboard acceptance remains the planned Slice 4 live pass.
 | F-02: superseded bookmark Open reuses its jump on another Open | Independently resolved at `f02a835a` |
 | F-03: every page fully scans the legacy corpus outside its budget | Independently resolved at `db4e6ef0` / product `99ddf80a` |
 | F-04: a larger legacy duplicate leaves a false actionable row | Independently resolved at `db4e6ef0` through explicit incomplete coverage and exact-action refusal |
-| F-05: resolving a known duplicate still displays the removed file from cache | Fixed in `6cb9ace6` |
+| F-05: resolving a known duplicate still displays the removed file from cache | Independently resolved at `e9562091` / product `6cb9ace6` |
 
 ## Author response (`72f92970`)
 
@@ -217,3 +217,34 @@ The expected-behavior regression fails on **expected “Older duplicate”, rece
 - typecheck: all three projects clean;
 - lint: 0 errors / 1,165 warnings (baseline);
 - jest: full suite with `--maxWorkers=4`, **744 suites / 10,410 tests / 59 snapshots**, all passing.
+
+
+## Final independent correction review — `e9562091` (2026-11-05)
+
+**Disposition: approved; all five findings resolved.** Reviewed the four-file product change `6cb9ace6`, plus report/slice-only response `e9562091`, from the preceding review publication `b2e29c45`. The original full-PR review and every correction review remain above. The preceding report's [CI run 42068045447](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42068045447) independently passed 744 suites / 10,407 tests / 59 snapshots, types, lint and builds at merge candidate `1b36108`.
+
+### F-05 resolved
+
+The browser loader now passes its source cursor through both cache lookup and cold-read insertion. A different source misses even when durable ID and embedded `updatedAt` match. When a page discovers an ambiguous ID, the pager explicitly forgets that document and its source metadata. The browser cache remains separate from persona recall; source-less callers retain their previous behavior.
+
+Independently verified with the real store and recall service:
+
+- The committed F-05 expected-behavior probe, unchanged, now passes: the fresh row's title and actual bookmark content match the surviving file and exact read.
+- Retaining either the older or newer duplicate works after the conflicting page has been loaded. Both take a cold survivor read (24 filler hits), then a stable reopen hits all 25 cached documents.
+- Retaining either file also works before a walk reaches the duplicate page. A changed source forces a cold read; an unchanged source still hits the cache.
+- Separate cache controls cover count/character eviction, explicit forgetting, source metadata cleanup and rejection of old-generation writes. Shared source-less recall behavior remains covered by its unchanged service tests.
+
+F-01's exact-action cache isolation, F-02's interrupted Open handling, F-03's bounded page I/O and F-04's partial-coverage/refusal behavior remain covered by the final regression runs. No further actionable defect was found in the correction delta.
+
+### Final correction verification
+
+- Local typecheck: all three projects passed.
+- Local lint: **0 errors / 1,165 warnings**, the established baseline, with temporary probes removed.
+- **30 distinct local production suites / 395 tests passed**: all 27 recall suites, both storage page suites and the real-App bookmark browser suite. Runs were isolated in three-suite batches; no overlapping reruns were added to these counts.
+- The unchanged committed F-05 probe passes independently. Five additional survivor/source/accounting controls also pass; these are separate from the product count.
+- [Product-head PR CI 42068835369](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42068835369) passed all types, **744 suites / 10,410 tests / 59 snapshots**, lint **0 errors / 1,165 warnings**, both webpack bundles and bundle verification, on merge candidate `10255c7`. The later `e9562091` commit changes only the author response and slice ledger. Its own [PR CI 42069390277](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42069390277) also passed all the same checks and counts on merge candidate `3f46a63`, combining the exact reviewed head with base `ddf83567`.
+- The final report-only publication head's CI is checked separately and recorded in the PR conversation; the product-head result does not substitute for that check.
+
+### Remaining accepted limits
+
+This review does not claim that a bounded page proves whole-folder identity uniqueness before the rest of the corpus is read, or that the browser repairs pre-existing exact-read cache behavior outside the paging path. The separate upstream Pinned Context fix remains outside this slice's review disposition. Native VS Code layout and keyboard acceptance remains the documented Slice 4 live pass. No product changes, live provider calls or merge were performed by the reviewer.
