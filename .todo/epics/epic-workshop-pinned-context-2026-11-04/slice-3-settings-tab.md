@@ -143,6 +143,9 @@ it back only as a key into the list it just read (ADR D8).
 - This doc.
 - `fa5b7997`: merge of Slice 2b's branch at `b0429082` (no conflicts).
 - `7af567db`: merge of `epic-pinned-context` at `25c9443c` (four keep-both conflicts).
+- `3f4a5d5e`: merge of Slice 2b with #208's F01–F04, plus the binding below.
+  2b's new shapes (the captured `where`, the `workspace-changed` states)
+  joined the ports module.
 - The coordinator's three follow-ups: `0b4e6bd7` (`\` only on Windows in pin
   by id), the host-picker route for Explore project folders…, and an
   end-to-end test of the menu's count.
@@ -169,6 +172,18 @@ it back only as a key into the list it just read (ADR D8).
 
 **How it works.**
 
+- **Every write is bound to the root it was asked in** (PR #208 F01). Each
+  write uses `ask.where`, the root and list file captured with the ask, and
+  never reads `availability()` a second time:
+  - the list is read pinned to that file, and pinned files are read under
+    that root;
+  - a catalog row not listed under that root is refused as
+    `workspace-changed`, by the reader's own rule
+    (`workshopPinnedListedUnderRoot`);
+  - the pick opens in that root, and is contained and made relative
+    against it;
+  - Attach missing reads through `readForRoom()`, bound the same way, and
+    attaches only while the ask still holds.
 - **Every write passes 2b's live-room check.** Each library write calls
   `askLiveRoom()` synchronously, before anything awaits, and hands its
   `still` to `store.update` as `beforeCommit`. It reads the list first: a
@@ -262,7 +277,7 @@ it back only as a key into the list it just read (ADR D8).
 | Check | Before (`51b4988b`, after `npm ci`) | After |
 |---|---|---|
 | `npm run typecheck` | pass | pass |
-| `npx jest -w 2` | 702 suites / 9,902 tests / 59 snapshots, all passing | 709 suites / 9,995 tests / 59 snapshots, all passing |
+| `npx jest -w 2` | 702 suites / 9,902 tests / 59 snapshots, all passing | 710 suites / 10,019 tests / 59 snapshots, all passing |
 | `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (none new) |
 | `from 'vscode'` in `packages/core/src` | none | none |
 | New files over 500 lines | — | none (largest: `WorkshopPinnedContextWrites.ts`, 364 lines; the handler's tests are split across a shared host and two files) |
@@ -277,8 +292,9 @@ counts (702 / 9,902 / 59; 0 / 1,165) hold. "After" is measured at `fa5b7997`,
 after merging Slice 2b's branch at `b0429082` (its kept fix `54e7db78` and
 Slice 1's #204 re-review fixes), as the coordinator asked, and again after
 the follow-ups (the counts above are the latter). The merge brings 11 of
-the new tests (2b measured 9,913); the other 61 are this slice's. The final
-counts are at `7af567db`, after merging `epic-pinned-context` at `25c9443c`
+the new tests (2b measured 9,913); the other 61 are this slice's. The counts in the table are at `3f4a5d5e`, after Slice 2b's #208 fixes
+(+1 suite, +24 tests with this slice's three binding tests). Before that,
+the counts were at `7af567db`, after merging `epic-pinned-context` at `25c9443c`
 (Project Memory's #206 and #207), which adds 2 suites and 21 tests. Its four
 conflicts were the modal's props, `WorkshopApp`'s wiring, and the modal's two
 test prop builders. Each kept both sides: Pinned context's props beside
@@ -342,6 +358,11 @@ and `workshopMemoryExplainerOpen`).
    `emptyPinnedContextServices()` (a test helper) to `WorkshopRoomHandler`.
 
 **Copy added to the approved design** (in its voice):
+
+- a project folder that changed under a read or a write: 2b's "The project
+  folder changed while pinned context was read. Try again.", and Attach
+  missing's "The project folder changed, so nothing was attached. Try
+  again.";
 
 - the list `busy` or `io`: Slice 2b's words as the notice ("Pinned context
   is being changed in another window. Try again in a moment." / "pinned-
