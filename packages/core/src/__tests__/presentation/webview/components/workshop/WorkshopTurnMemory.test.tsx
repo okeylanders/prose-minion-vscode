@@ -262,7 +262,7 @@ describe('receipts', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Forget' }));
     expect(memory.onEditMemory).toHaveBeenCalledWith('mem-7f3c2a');
-    expect(memory.onForget).toHaveBeenCalledWith('mem-7f3c2a');
+    expect(memory.onForget).toHaveBeenCalledWith('mem-7f3c2a', 'turn-5-system-1010');
   });
 
   it('Forget\'s receipt says it is archived, not deleted, and offers Restore', () => {
@@ -271,7 +271,7 @@ describe('receipts', () => {
     expect(screen.getByRole('group').textContent).toContain('Forgotten from project memory: The watch. It\'s archived, not deleted.');
     expect(screen.queryByRole('separator')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
-    expect(memory.onRestore).toHaveBeenCalledWith('mem-7f3c2a');
+    expect(memory.onRestore).toHaveBeenCalledWith('mem-7f3c2a', 'turn-5-system-1010');
   });
 });
 

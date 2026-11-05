@@ -62,8 +62,28 @@ export interface WorkshopProjectMemoryState {
   busyCards: ReadonlySet<string>;
   /** A card's refusal, by `workshopMemoryCardKey`, until its next action. */
   cardErrors: ReadonlyMap<string, string>;
-  /** The latest refusal from a receipt's Forget or Restore. */
-  receiptError?: string;
+  /** Receipts whose Forget or Restore waits for the host, by the receipt's turn id. */
+  busyReceipts: ReadonlySet<string>;
+  /**
+   * A receipt's refused Forget or Restore, by the receipt's turn id, until
+   * its next try, its success, or a new room (PR #221 F-01).
+   */
+  receiptErrors: ReadonlyMap<string, WorkshopMemoryReceiptError>;
+}
+
+/** What a receipt's refused action says beside it. */
+export interface WorkshopMemoryReceiptError {
+  readonly action: 'forget' | 'restore';
+  readonly error: string;
+}
+
+export interface UseWorkshopProjectMemoryOptions {
+  /**
+   * The room's identity (`room:<revision>`); a new one (New, Open, Rewind,
+   * Branch) drops receipt feedback and ignores answers still owed to the
+   * room before (PR #221 F-01).
+   */
+  roomKey?: string;
 }
 
 export interface WorkshopProjectMemoryActions {
@@ -78,8 +98,10 @@ export interface WorkshopProjectMemoryActions {
   editMemory: (memoryId: string) => void;
   /** New memory (Slice 4b's manager). */
   newMemory: () => void;
-  forget: (memoryId: string) => void;
-  restore: (memoryId: string) => void;
+  /** Forget on a receipt; its feedback shows beside that receipt. */
+  forget: (memoryId: string, receiptTurnId: string) => void;
+  /** Restore on a forgotten receipt; its feedback shows beside that receipt. */
+  restore: (memoryId: string, receiptTurnId: string) => void;
   updateDraft: (change: Partial<WorkshopMemoryDraft>) => void;
   /** "Don't replace" one memory. */
   dropReplaced: (memoryId: string) => void;
@@ -103,7 +125,7 @@ type Pending =
   | { readonly kind: 'card'; readonly card: string }
   /** A sheet's save; a card's names its card key, which stays busy until answered (PR #200 F-05). */
   | { readonly kind: 'sheet'; readonly card?: string }
-  | { readonly kind: 'receipt' };
+  | { readonly kind: 'receipt'; readonly receipt: string; readonly action: 'forget' | 'restore'; readonly roomKey: string | undefined };
 
 const SOURCE = 'webview.workshop.memory';
 const ESTIMATE_DELAY_MS = 250;
@@ -116,7 +138,7 @@ export function workshopMemoryNoteFromTurn(content: string): string {
   return text.length <= bound ? text : text.slice(0, bound).trimEnd();
 }
 
-export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
+export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOptions = {}): UseWorkshopProjectMemoryReturn {
   const vscode = useVSCodeApi();
   const [sheet, setSheetState] = React.useState<WorkshopMemorySheetState | null>(null);
   // The sheet as last set, so actions read it without side effects in an updater.
@@ -127,7 +149,9 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
   }, []);
   const [busyCards, setBusyCards] = React.useState<ReadonlySet<string>>(new Set());
   const [cardErrors, setCardErrors] = React.useState<ReadonlyMap<string, string>>(new Map());
-  const [receiptError, setReceiptError] = React.useState<string | undefined>(undefined);
+  const [busyReceipts, setBusyReceipts] = React.useState<ReadonlySet<string>>(new Set());
+  const [receiptErrors, setReceiptErrors] = React.useState<ReadonlyMap<string, WorkshopMemoryReceiptError>>(new Map());
+  const roomKeyRef = React.useRef(roomKey);
   const pending = React.useRef(new Map<string, Pending>());
   const sheetRequest = React.useRef<string | undefined>(undefined);
   const editRequest = React.useRef<string | undefined>(undefined);
@@ -245,12 +269,62 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     openSheet({ mode: 'new', draft: EMPTY_DRAFT, replaces: [], loading: false, saving: false });
   }, [openSheet]);
 
-  const receiptAction = React.useCallback((memoryId: string, action: 'forget' | 'restore') => {
+  const setReceiptBusy = React.useCallback((receipt: string, busy: boolean) => {
+    setBusyReceipts((current) => {
+      if (current.has(receipt) === busy) {
+        return current;
+      }
+      const next = new Set(current);
+      if (busy) {
+        next.add(receipt);
+      } else {
+        next.delete(receipt);
+      }
+      return next;
+    });
+  }, []);
+
+  const setReceiptError = React.useCallback((receipt: string, error: WorkshopMemoryReceiptError | undefined) => {
+    setReceiptErrors((current) => {
+      if (!error && !current.has(receipt)) {
+        return current;
+      }
+      const next = new Map(current);
+      if (error) {
+        next.set(receipt, error);
+      } else {
+        next.delete(receipt);
+      }
+      return next;
+    });
+  }, []);
+
+  const receiptAction = React.useCallback((memoryId: string, receipt: string, action: 'forget' | 'restore') => {
     const requestId = mint();
-    pending.current.set(requestId, { kind: 'receipt' });
-    setReceiptError(undefined);
+    pending.current.set(requestId, { kind: 'receipt', receipt, action, roomKey: roomKeyRef.current });
+    setReceiptBusy(receipt, true);
+    setReceiptError(receipt, undefined);
     post(MessageType.WORKSHOP_MEMORY_FORGET, { requestId, memoryId, action });
-  }, [mint, post]);
+  }, [mint, post, setReceiptBusy, setReceiptError]);
+
+  // A new room drops what the old one's receipts were waiting on or said:
+  // its answers are ignored when they come, and nothing is shown for it.
+  const clearReceiptsWhenRoomChanges = React.useCallback((next: string | undefined) => {
+    if (roomKeyRef.current === next) {
+      return;
+    }
+    roomKeyRef.current = next;
+    for (const [requestId, owner] of pending.current) {
+      if (owner.kind === 'receipt') {
+        pending.current.delete(requestId);
+      }
+    }
+    setBusyReceipts((current) => (current.size === 0 ? current : new Set()));
+    setReceiptErrors((current) => (current.size === 0 ? current : new Map()));
+  }, []);
+  React.useEffect(() => {
+    clearReceiptsWhenRoomChanges(roomKey);
+  }, [clearReceiptsWhenRoomChanges, roomKey]);
 
   const updateDraft = React.useCallback((change: Partial<WorkshopMemoryDraft>) => {
     const current = sheetRef.current;
@@ -340,7 +414,11 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
       return;
     }
     if (owner.kind === 'receipt') {
-      setReceiptError(ok ? undefined : error);
+      if (owner.roomKey !== roomKeyRef.current) {
+        return;
+      }
+      setReceiptBusy(owner.receipt, false);
+      setReceiptError(owner.receipt, ok ? undefined : { action: owner.action, error: error ?? 'That didn\'t go through. Try again.' });
       return;
     }
     if (owner.card) {
@@ -361,7 +439,7 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     if (current) {
       setSheet({ ...current, saving: false, error, ...(budget ? { estimate: budget } : {}) });
     }
-  }, [dismissSheet, setCardBusy, setCardError, setSheet]);
+  }, [dismissSheet, setCardBusy, setCardError, setReceiptBusy, setReceiptError, setSheet]);
 
   const handleEditData = React.useCallback((message: WorkshopMemoryEditDataMessage) => {
     const { requestId, draft, replaces, error } = message.payload;
@@ -395,7 +473,8 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     sheet,
     busyCards,
     cardErrors,
-    receiptError,
+    busyReceipts,
+    receiptErrors,
     saveCard: React.useCallback((turnId: string, index: number) => cardAction(turnId, index, 'save'), [cardAction]),
     dismissCard: React.useCallback((turnId: string, index: number) => cardAction(turnId, index, 'dismiss'), [cardAction]),
     reopenCard: React.useCallback((turnId: string, index: number) => cardAction(turnId, index, 'reopen'), [cardAction]),
@@ -403,8 +482,8 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     saveTurn,
     editMemory,
     newMemory,
-    forget: React.useCallback((memoryId: string) => receiptAction(memoryId, 'forget'), [receiptAction]),
-    restore: React.useCallback((memoryId: string) => receiptAction(memoryId, 'restore'), [receiptAction]),
+    forget: React.useCallback((memoryId: string, receipt: string) => receiptAction(memoryId, receipt, 'forget'), [receiptAction]),
+    restore: React.useCallback((memoryId: string, receipt: string) => receiptAction(memoryId, receipt, 'restore'), [receiptAction]),
     updateDraft,
     dropReplaced,
     submitSheet,
