@@ -1,5 +1,17 @@
 # PR #206: Memory explainer disclosure review
 
+## Correction re-review: N-01 resolved
+
+- Correction implementation: `4ee49756db863bd478776154f3442035de451e8c`.
+- Comparison from report commit `87a57f18ba70a481131ef6ced168a3f98c453bbd`: exactly one production line changed, `.pm-ws-memory-vs-head svg` becomes `.pm-ws-memory-vs-head > svg`.
+- An independent selector probe confirms that the accent rule still matches the direct information icon and no longer matches the nested chevron. Its wrapper's faint/hover colors can now inherit normally.
+- Re-ran the actual panel and CSS-floor suites: **2 suites / 20 tests pass**.
+- **Updated verdict: no open findings.** The original N-01 and review below are retained as history.
+- Correction-head [CI run 41950161677](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41950161677) is in progress at this addendum's publication: installation and all typechecks passed; tests running. The earlier green run below applies to the earlier implementation and is not being substituted for this correction's CI.
+- This addendum contains no production edit, formal approval, or merge.
+
+## Original implementation review
+
 - Review date: 2026-11-05.
 - PR: https://github.com/okeylanders/prose-minion-vscode/pull/206
 - Reviewed implementation: `ae6025613b139b4c09f2e36f08a138f3c6ce5feb`.
