@@ -1,11 +1,45 @@
 # PR #208 review: Pinned Context room seed
 
-- Reviewed head: `b04290829a44e8e2fd34530bc371110dd3262bb0`.
+- Original reviewed head: `b04290829a44e8e2fd34530bc371110dd3262bb0`.
 - Target: `epic-pinned-context`, observed at `24540718158940249511e960b0b5599029dd3ecf`.
 - Date: 2026-11-05.
-- Current verdict: **Changes required.** F01 remains open for nested roots at `d8b8d2a4`; F02–F04 are closed. The initial review found four reproducible defects, preserved below.
+- Current verdict: **Review clear at `d8de4ebc`. F01–F04 closed.** Original findings and both correction rounds are preserved below.
 - Scope: Slice 2b's seed, library, file reader, matching, budget/refresh handling, reports, delivery, wiring/shutdown, and integration with the corrected Slice 1 store.
 - No production fixes, formal GitHub approval, merge, provider calls or deployment performed.
+
+## Final correction re-review at `d8de4ebc55c52de6bfeee8a30f887801462354c4`
+
+**Verdict: Review clear. F01–F04 are closed; no remaining confirmed blocker in Slice 2b.** No formal GitHub approval or merge is performed by this review.
+
+### F01 closed, including nested workspaces
+
+The second correction, production commit `0ead5d0e`, binds the actual source rather than checking containment alone:
+
+- A catalog row is eligible only when its absolute path, made relative to the captured root, equals that row's own catalog path. A row from another project, including a nested project, cannot masquerade as A's same-relative-path file.
+- Workspace reauthorization must return the exact normalized source path built from the captured root. Live-workspace recovery cannot redirect the seed into B.
+- The queued list read remains bound to the captured list file. A mismatched file read withdraws the plan, and `describe()` uses the same coherent-root behavior.
+- Exact Unicode catalog selection, unambiguous normalized fallback, POSIX literal-backslash identity, kept-body failure reporting, and the existing intake defenses remain intact.
+
+The original seven expected-behavior witnesses pass unchanged, including both nested-workspace intake paths. The author also promoted the two nested witnesses into the normal suite, changing only formatting for lint. Additional boundary probes reject nested/outside/mislabeled/dot-segment/POSIX-backslash catalog identities before load and confirm exact NFC selection through the real resolver. No further blocker was found.
+
+F02–F04 remain closed as recorded in the earlier correction review below.
+
+### Final verification and limits
+
+- All **1,952** source/test/resource files under `apps/` and `packages/` match this exact head's Git blob hashes.
+- `npm run typecheck`: **pass**, core/webview/extension.
+- `npm run lint -- --ignore-pattern '**/*.review-probe.test.ts'`: **pass**, 0 errors / 1,165 repository warnings. Temporary independent review probes are excluded from lint.
+- Final focused run on this head: **19 suites / 239 tests passed**, including 14 repository boundary/seed/store/shutdown suites plus five independent probe suites.
+- Independent second-fix replay: original seven witnesses plus 17 supplied regressions, **24 tests passed**; another **27 path/intake/resolver checks passed**.
+- Full local suite on production-identical `74b83e40`: **702 suites / 9,788 tests / 59 snapshots passed** in the main invocation. Three suites were terminated by the environment during the initial concurrent startup, before their assertions ran. An isolated retry passed all three suites and **167 tests**, accounting for all **705 suites / 9,955 tests**. This is not claimed as a single uninterrupted green full run.
+- The only later source-tree delta is the promoted nested witness suite (two tests), both verified in the final focused run. Thus the latest repository's **706 suites / 9,957 tests** are covered across the full run, retry and new-suite check.
+- Earlier parallel typecheck/lint/probe attempts were also environment-killed; the final sequential typecheck/lint and bounded focused runs above completed successfully.
+- [Corrected implementation CI at `74b83e40`](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41958238445/job/127018164702) passed. Newer test/report-only heads must retain green exact-head CI before merge; that status is followed on the PR.
+- No native Windows-host run, Extension Development Host/manual visual pass, live provider call or deployment was performed. The epic's remaining live acceptance checklist is unchanged.
+
+The target remains `epic-pinned-context`. #208 carries #204's corrected production dependency; #204 was still open at final review, so retain the epic's declared #204-before-#208 merge order. A review-clear verdict is not a formal approval, merge or waiver of the final-head CI gate.
+
+All earlier sections are preserved below as review history, not current open findings.
 
 ## Correction re-review at `d8b8d2a4ee1f75b22f7dfc9c6092621f3af1e059`
 
