@@ -16,6 +16,9 @@ import { WorkshopSessionMessageHandler } from '@handlers/domain/workshop/Worksho
 import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/WorkshopSessionExportHandler';
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
+import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookmarkHandler';
+import { WorkshopProjectMemoryHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
+import { WorkshopProjectMemoryManagerHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
 import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import {
@@ -52,7 +55,7 @@ import type {
   WorkshopSliceCompositionDependencies,
   WorkshopSliceHostEffects
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
-import type { WorkshopSessionAction } from '@messages';
+import type { WorkshopSessionAction, WorkshopTurn } from '@messages';
 import { MessageType } from '@messages';
 
 export class WorkshopSliceComposition {
@@ -65,6 +68,9 @@ export class WorkshopSliceComposition {
   private readonly standingDirectiveHandler: WorkshopStandingDirectiveHandler;
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
   private readonly todoHandler: WorkshopTodoHandler;
+  private readonly bookmarkHandler: WorkshopBookmarkHandler;
+  private readonly projectMemoryHandler: WorkshopProjectMemoryHandler;
+  private readonly projectMemoryManagerHandler: WorkshopProjectMemoryManagerHandler;
   private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
   private readonly contextHandler: WorkshopContextHandler;
   private readonly excerptScopeHandler: WorkshopExcerptScopeHandler;
@@ -82,6 +88,7 @@ export class WorkshopSliceComposition {
       sessionPersistence,
       transcriptExport,
       widgetRuntime,
+      projectMemory,
       outputChannel
     } = dependencies;
     const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
@@ -99,7 +106,8 @@ export class WorkshopSliceComposition {
         markDirty,
         reportError: (message, details) =>
           host.reportRouteError('workshop', message, details, 'WorkshopContextHandler'),
-        sendStatus: host.sendStatus
+        sendStatus: host.sendStatus,
+        findReadInRecord: host.findReadInRecord
       }
     );
     this.excerptScopeHandler = new WorkshopExcerptScopeHandler(
@@ -227,6 +235,48 @@ export class WorkshopSliceComposition {
           host.reportRouteError('workshop.todo', message, details, 'WorkshopTodoHandler')
       }
     );
+    this.bookmarkHandler = new WorkshopBookmarkHandler(
+      session,
+      outputChannel,
+      {
+        postSessionState: host.postSessionState,
+        markDirty,
+        reportError: (message, details) =>
+          host.reportRouteError('workshop.bookmark', message, details, 'WorkshopBookmarkHandler')
+      },
+      postMessage,
+      sessionPersistence
+    );
+    // Project memory's write routes (ADR 2026-11-04 D13; Slice 3).
+    this.projectMemoryHandler = new WorkshopProjectMemoryHandler(
+      session,
+      projectMemory,
+      {
+        isRoomRunActive: host.isRoomRunActive,
+        isSessionOperationPending: () => sessionPersistence.isSessionOperationPending(),
+        waitForSessionOperations: () => sessionPersistence.waitForSessionOperations(),
+        liveSessionId: () => {
+          const scope = sessionPersistence.recallScope();
+          return scope.available ? scope.liveSessionId : undefined;
+        }
+      },
+      {
+        postSessionState: host.postSessionState,
+        markDirty,
+        reportError: (message, details) =>
+          host.reportRouteError('workshop', message, details, 'WorkshopProjectMemoryHandler')
+      },
+      postMessage,
+      outputChannel
+    );
+    // The memory manager's own routes beside them (Slice 4b): listing, Always load in full, Delete, Open file and folder.
+    this.projectMemoryManagerHandler = new WorkshopProjectMemoryManagerHandler(
+      projectMemory,
+      shell,
+      postMessage,
+      outputChannel,
+      (message) => host.reportRouteError('workshop', message, undefined, 'WorkshopProjectMemoryManagerHandler')
+    );
   }
 
   registerRoutes(
@@ -269,10 +319,29 @@ export class WorkshopSliceComposition {
       router,
       this.createMutationRegistrar(router, 'WorkshopTodoHandler')
     );
+    this.bookmarkHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopBookmarkHandler')
+    );
     this.lightboxTileHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopLightboxTileHandler')
     );
+    this.projectMemoryHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopProjectMemoryHandler')
+    );
+    this.projectMemoryManagerHandler.registerRoutes(router);
+  }
+
+  /** Save and tell me (Slice 5): a recorded reply's card, saved now, as the tail of the run `signal` belongs to. */
+  autoSaveMemoryProposal(turn: WorkshopTurn, signal: AbortSignal): Promise<void> {
+    return this.projectMemoryHandler.autoSaveProposal(turn.id, signal);
+  }
+
+  /** The room's automatic saves, landed and in flight, for Save and tell me's cap (PR #201 F-04). */
+  memoryAutoSavesInRoom(): number {
+    return this.projectMemoryHandler.autoSavesInRoom();
   }
 
   isContextRunActive(): boolean {

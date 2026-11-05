@@ -179,9 +179,7 @@ export class WorkshopContextIntakeCatalog {
 
     let content: string | undefined;
     try {
-      content = (await this.provider.loadResources([summary.path]))
-        .find((entry) => entry.group === summary.group && entry.path === summary.path)
-        ?.content;
+      content = await this.readText(summary);
     } catch (error) {
       return {
         kind: 'unreadable',
@@ -211,6 +209,13 @@ export class WorkshopContextIntakeCatalog {
         truncation: bounded.truncation
       }
     };
+  }
+
+  /** A listed resource's current text through the provider; undefined once it is gone. */
+  async readText(summary: ContextResourceSummary): Promise<string | undefined> {
+    return (await this.provider.loadResources([summary.path]))
+      .find((entry) => entry.group === summary.group && entry.path === summary.path)
+      ?.content;
   }
 
   private key(ref: ConfiguredResourceRef): string {

@@ -5,8 +5,13 @@
  * This is a transcript projection, NOT the session codec: it cannot be opened
  * as a session and carries no host-private state. `formatVersion` versions
  * this shape only; bump it when a field changes meaning or disappears.
+ * `bookmarked` and `model` (ADR 2026-11-03 D10) are additive, so the version
+ * stands. Model slices are not entries here: a script derives them from each
+ * entry's `model`, which is exactly what the thread and the other formats
+ * draw them from.
  */
 
+import type { WorkshopTurnModel } from '@messages';
 import {
   WorkshopTranscript,
   WorkshopTranscriptEntry,
@@ -35,6 +40,7 @@ export type WorkshopTranscriptJsonEntry =
       privateWith?: string;
       attachments: string[];
       widget?: { label: string; detail: string };
+      bookmarked?: true;
     }
   | {
       kind: 'reply';
@@ -45,11 +51,16 @@ export type WorkshopTranscriptJsonEntry =
       privateWith?: string;
       truncated: boolean;
       sources: Array<{ url: string; label: string }>;
+      bookmarked?: true;
+      model?: WorkshopTurnModel;
     }
   | {
       kind: 'event';
       timestamp: string;
       text: string;
+      bookmarked?: true;
+      /** A capability card's model, as a reply's. */
+      model?: WorkshopTurnModel;
     };
 
 export function buildWorkshopTranscriptJsonDocument(
@@ -62,7 +73,7 @@ export function buildWorkshopTranscriptJsonDocument(
     exportedAt: new Date(transcript.exportedAt).toISOString(),
     participants: [...transcript.participants],
     messageCount: countWorkshopTranscriptMessages(transcript),
-    entries: transcript.entries.map(toJsonEntry)
+    entries: transcript.entries.flatMap((entry) => (entry.kind === 'model-slice' ? [] : [toJsonEntry(entry)]))
   };
 }
 
@@ -74,7 +85,7 @@ function toJsonEntry(entry: WorkshopTranscriptEntry): WorkshopTranscriptJsonEntr
   const timestamp = new Date(entry.timestamp).toISOString();
   switch (entry.kind) {
     case 'event':
-      return { kind: 'event', timestamp, text: entry.text };
+      return { kind: 'event', timestamp, text: entry.text, ...bookmarked(entry), ...model(entry) };
     case 'writer':
       return {
         kind: 'writer',
@@ -82,7 +93,8 @@ function toJsonEntry(entry: WorkshopTranscriptEntry): WorkshopTranscriptJsonEntr
         content: entry.content,
         ...(entry.privateWith ? { privateWith: entry.privateWith } : {}),
         attachments: [...entry.attachmentLabels],
-        ...(entry.widget ? { widget: { ...entry.widget } } : {})
+        ...(entry.widget ? { widget: { ...entry.widget } } : {}),
+        ...bookmarked(entry)
       };
     case 'reply':
       return {
@@ -93,7 +105,19 @@ function toJsonEntry(entry: WorkshopTranscriptEntry): WorkshopTranscriptJsonEntr
         content: entry.content,
         ...(entry.privateWith ? { privateWith: entry.privateWith } : {}),
         truncated: entry.truncated,
-        sources: entry.sources.map((source) => ({ ...source }))
+        sources: entry.sources.map((source) => ({ ...source })),
+        ...bookmarked(entry),
+        ...model(entry)
       };
   }
+}
+
+function bookmarked(entry: WorkshopTranscriptEntry): { bookmarked?: true } {
+  return entry.bookmarked ? { bookmarked: true } : {};
+}
+
+function model(entry: WorkshopTranscriptEntry): { model?: WorkshopTurnModel } {
+  return entry.kind !== 'writer' && entry.model
+    ? { model: { ...entry.model, servedModelIds: [...entry.model.servedModelIds] } }
+    : {};
 }

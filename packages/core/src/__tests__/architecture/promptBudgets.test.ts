@@ -28,6 +28,8 @@ const NON_PROMPT_LIMITS = new Set([
   'application/handlers/domain/workshop/WorkshopLightboxTileHandler.ts:MAX_DELIVERY_ID',
   // A Lightbox project picker request's id is a webview-minted correlation id the host echoes (PR #154 F-01).
   'application/handlers/domain/LightboxProjectFiles.ts:MAX_REQUEST_ID_LENGTH',
+  // A Read in reader request's id is a webview-minted correlation id the host echoes (PR #186 F-01).
+  'application/handlers/domain/workshop/WorkshopReadInRoutes.ts:MAX_REQUEST_ID_LENGTH',
   'infrastructure/api/orchestration/ResourceReadXmlCodec.ts:MAX_TOLERATED_PREAMBLE_CHARS',
   'infrastructure/api/services/dictionary/DictionaryService.ts:CONCURRENCY_LIMIT',
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_WORDS_PER_BATCH',
@@ -231,6 +233,13 @@ describe('prompt budgets', () => {
       .toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
   });
 
+  it('pins the Project Memory starting budgets (ADR 2026-11-04 D11)', () => {
+    expect(PROMPT_BUDGETS.workshopProjectMemory).toEqual({ titleCharacters: 120, summaryCharacters: 280, bodyCharacters: 8_000,
+      catalogEntries: 40, catalogTokens: 2_000, pinnedTokens: 5_000, queryCharacters: 200, memoryIdCharacters: 16, searchHits: 20,
+      snippetCharacters: 280, readMemories: 5, readCharacters: 40_000, readsPerTurn: 2, autoSavesPerRoom: 5 });
+    expect(PROMPT_BUDGETS.workshopProjectMemory.readsPerTurn).toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
+  });
+
   it('gives every session of the largest read a share that clears the per-session minimum (D9)', () => {
     const { readCharacters, readSessions, readCharactersPerTurn, readsPerTurn } = PROMPT_BUDGETS.workshopTranscriptRecall;
 
@@ -361,9 +370,9 @@ describe('prompt budgets', () => {
   });
 
   it('pins the assembled recommendation instruction so prompt growth is reviewed explicitly', () => {
-    // 12,523 → 13,098 at Slice 7: the optional surrounding-context field, the
-    // multi-reference rule, and the optional must-survive wording.
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(13_098);
+    // 12,523 → 13,098 at Slice 7 (surrounding context, multi-reference, must-survive);
+    // 13,098 → 13,173 at Project Memory Slice 3 (a memory proposal may follow the frame).
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(13_173);
   });
 
   it('keeps Lexical Gravity Preview as two explicit application gears', () => {

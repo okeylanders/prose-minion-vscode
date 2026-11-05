@@ -15,6 +15,7 @@
 import type { WorkshopContextDeliveryBaseline } from '@/application/services/workshop/WorkshopContextDelivery';
 import type {
   ContextSourceEntry,
+  WorkshopProjectMemoryDelivery,
   WorkshopActionableFinding,
   WorkshopConversationBehavior,
   WorkshopConversationBehaviorTransition,
@@ -30,10 +31,12 @@ import type {
   WorkshopSessionScope,
   WorkshopToolId,
   WorkshopTurn,
+  WorkshopTurnModel,
   WorkshopTurnArtifact,
   WorkshopTurnKind,
   WorkshopWidgetRecommendation
 } from '@messages';
+import { cloneStoredContextSource } from '@orchestration/ContextSourceRecord';
 import type {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
@@ -77,6 +80,11 @@ export interface WorkshopActiveRun {
   writerTurnId?: string;
   /** Writer-origin rows captured from the exact fresh-guest join envelope. */
   guestJoinWriterSources?: ContextSourceEntry[];
+  /**
+   * Project memory this run's message delivered (ADR 2026-11-04 D14): staged
+   * here, and written onto its writer turn only when the reply commits.
+   */
+  projectMemoryDelivery?: WorkshopProjectMemoryDelivery;
 }
 
 export interface WorkshopExcerptInput {
@@ -192,6 +200,8 @@ export interface WorkshopCapabilityArtifactInput {
   toolId?: WorkshopToolId;
   truncated?: boolean;
   actionableFindings?: WorkshopActionableFinding[];
+  /** Present only when the capability was a provider run (a persona-run analysis). */
+  model?: WorkshopTurnModel;
 }
 
 export interface WorkshopExcerptReplacement {
@@ -278,10 +288,7 @@ export function cloneWidgetRecommendation(
 }
 
 export function cloneSourceEntry(entry: ContextSourceEntry): ContextSourceEntry {
-  return {
-    ...entry,
-    configuredResource: entry.configuredResource ? { ...entry.configuredResource } : undefined
-  };
+  return cloneStoredContextSource(entry);
 }
 
 export function cloneMessageAttachmentSnapshot(

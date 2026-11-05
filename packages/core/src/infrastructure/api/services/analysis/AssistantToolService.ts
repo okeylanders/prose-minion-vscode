@@ -20,9 +20,13 @@ import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssi
 import { ProseAssistant } from '@/tools/assist/proseAssistant';
 import { WritingToolsAssistant } from '@/tools/assist/writingToolsAssistant';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
+import type {
+  ContextSourceReadIdentity,
+  StoredContextSourceEntry
+} from '@orchestration/ContextSourceRecord';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
-import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
+import { AnalysisResult, AnalysisResultFactory, AnalysisRunModel } from '@/domain/models/AnalysisResult';
 import {
   API_KEY_NOT_CONFIGURED_HEADING,
   ContextBudgetSnapshot,
@@ -38,6 +42,7 @@ import {
 } from '@orchestration/AgentRunEngine';
 import {
   AnyAgentCapability,
+  ExecutionResult,
   StreamingTokenCallback
 } from '@orchestration/AgentRunContracts';
 import { AGENT_RUN_POLICIES, resolveWorkshopParticipantPolicy } from '@orchestration/AgentRunPolicies';
@@ -69,9 +74,7 @@ import {
 } from '@/utils/workshopPromptFrames';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { buildWorkshopWriterProfileFrame } from '@/utils/workshopWriterProfile';
-import {
-  sanitizeWorkshopWidgetRecommendationForRetention
-} from '@/utils/workshopWidgetRecommendationProtocol';
+import { sanitizeWorkshopReplyForRetention } from '@/utils/workshopReplyControls';
 import type { OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
 
 /**
@@ -193,6 +196,21 @@ export interface WorkshopGuestConversationInput {
 }
 
 /**
+ * Every run this service makes goes to the assistant-scope engine
+ * (`currentAssistantEngine`, and the assistants bound to it), so its models
+ * are the assistant scope's (Workshop Wayfinding D7).
+ */
+function assistantRunModel(result: ExecutionResult): AnalysisRunModel | undefined {
+  return result.models
+    ? {
+        scope: 'assistant',
+        requestedModelId: result.models.requestedModelId,
+        servedModelIds: [...result.models.servedModelIds]
+      }
+    : undefined;
+}
+
+/**
  * Service wrapper for AI-powered assistant analysis
  *
  * Provides dialogue and prose analysis capabilities:
@@ -209,6 +227,12 @@ export class AssistantToolService {
   /** The stable assistant engine; provider availability may change beneath it. */
   private assistantEngine?: AgentRunEngine;
   private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
+  /**
+   * Whether persona prompts teach the `memory.*` grammar now (ADR 2026-11-04
+   * D8): the project-memory library's answer, bound at the composition root,
+   * which builds that library after this service. Off until it is bound.
+   */
+  private workshopProjectMemoryGrammar: () => boolean = () => false;
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
@@ -239,6 +263,11 @@ export class AssistantToolService {
    * handlers own their registration and MUST release it on dispose, so one
    * webview's teardown can never blind another's.
    */
+  /** Bind the project-memory grammar check; called once, in `extension.ts`. */
+  setWorkshopProjectMemoryGrammar(teachesGrammar: () => boolean): void {
+    this.workshopProjectMemoryGrammar = teachesGrammar;
+  }
+
   addStatusListener(listener: StatusEmitter): () => void {
     return this.statusListeners.add(listener);
   }
@@ -372,6 +401,8 @@ export class AssistantToolService {
           usage: executionResult.usage,
           finishReason: executionResult.finishReason,
           conversationId: executionResult.conversationId,
+          model: assistantRunModel(executionResult),
+          replySource: executionResult.replySource,
           requestedResources: executionResult.requestedResources
         }
       );
@@ -447,6 +478,8 @@ export class AssistantToolService {
           usage: executionResult.usage,
           finishReason: executionResult.finishReason,
           conversationId: executionResult.conversationId,
+          model: assistantRunModel(executionResult),
+          replySource: executionResult.replySource,
           requestedResources: executionResult.requestedResources
         }
       );
@@ -519,6 +552,8 @@ export class AssistantToolService {
           usage: executionResult.usage,
           finishReason: executionResult.finishReason,
           conversationId: executionResult.conversationId,
+          model: assistantRunModel(executionResult),
+          replySource: executionResult.replySource,
           requestedResources: executionResult.requestedResources
         }
       );
@@ -568,6 +603,7 @@ export class AssistantToolService {
       `[AssistantToolService] Starting Workshop host ${persona.id} | Streaming: ${!!streamingOptions?.onToken}`
     );
 
+    const webTools = this.workshopWebSearchTools(streamingOptions?.webResearch);
     const executionResult = await engine.runInitial({
       toolName: `workshop_persona_${persona.id}`,
       systemMessage: systemPrompt,
@@ -579,8 +615,8 @@ export class AssistantToolService {
         maxTokens: options.maxTokens,
         signal: streamingOptions?.signal,
         onToken: streamingOptions?.onToken,
-        tools: this.workshopWebSearchTools(streamingOptions?.webResearch),
-        retainedAssistantContentSanitizer: sanitizeWorkshopWidgetRecommendationForRetention
+        tools: webTools,
+        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
       }
     });
 
@@ -592,7 +628,10 @@ export class AssistantToolService {
         usage: executionResult.usage,
         finishReason: executionResult.finishReason,
         conversationId: executionResult.conversationId,
-        citations: executionResult.citations
+        model: assistantRunModel(executionResult),
+        replySource: executionResult.replySource,
+        citations: executionResult.citations,
+        ...(webTools ? { webResearchAttached: true as const } : {})
       }
     );
   }
@@ -633,6 +672,7 @@ export class AssistantToolService {
       `[AssistantToolService] Starting Workshop guest ${persona.id} | Streaming: ${!!streamingOptions.onToken}`
     );
 
+    const webTools = this.workshopWebSearchTools(streamingOptions.webResearch);
     const executionResult = await engine.runInitial({
       toolName: `workshop_guest_${persona.id}`,
       systemMessage: systemPrompt,
@@ -644,8 +684,8 @@ export class AssistantToolService {
         maxTokens: options.maxTokens,
         signal: streamingOptions.signal,
         onToken: streamingOptions.onToken,
-        tools: this.workshopWebSearchTools(streamingOptions.webResearch),
-        retainedAssistantContentSanitizer: sanitizeWorkshopWidgetRecommendationForRetention
+        tools: webTools,
+        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
       }
     });
 
@@ -657,7 +697,10 @@ export class AssistantToolService {
         usage: executionResult.usage,
         finishReason: executionResult.finishReason,
         conversationId: executionResult.conversationId,
-        citations: executionResult.citations
+        model: assistantRunModel(executionResult),
+        replySource: executionResult.replySource,
+        citations: executionResult.citations,
+        ...(webTools ? { webResearchAttached: true as const } : {})
       }
     );
   }
@@ -690,6 +733,7 @@ export class AssistantToolService {
     );
 
     const capability = streamingOptions?.capability;
+    const webTools = this.workshopWebSearchTools(streamingOptions?.webResearch);
     const executionResult = await engine.continueConversation({
       conversationId,
       userMessage,
@@ -700,8 +744,8 @@ export class AssistantToolService {
         maxTokens: options.maxTokens,
         signal: streamingOptions?.signal,
         onToken: streamingOptions?.onToken,
-        tools: this.workshopWebSearchTools(streamingOptions?.webResearch),
-        retainedAssistantContentSanitizer: sanitizeWorkshopWidgetRecommendationForRetention
+        tools: webTools,
+        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
       }
     });
 
@@ -713,7 +757,10 @@ export class AssistantToolService {
         usage: executionResult.usage,
         finishReason: executionResult.finishReason,
         conversationId: executionResult.conversationId,
-        citations: executionResult.citations
+        model: assistantRunModel(executionResult),
+        replySource: executionResult.replySource,
+        citations: executionResult.citations,
+        ...(webTools ? { webResearchAttached: true as const } : {})
       }
     );
   }
@@ -873,7 +920,8 @@ export class AssistantToolService {
           ? WORKSHOP_HOST_BASE_PROMPT_PATH
           : WORKSHOP_GUEST_BASE_PROMPT_PATH,
         persona,
-        behavior
+        behavior,
+        { projectMemory: this.workshopProjectMemoryGrammar() }
       )
     ), behavior, writerProfile);
     const directives = standingDirectiveFrames
@@ -948,6 +996,14 @@ export class AssistantToolService {
   /** Agent-fetched manifest rows for a retained conversation (Phase 7). */
   getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
     return this.currentAssistantEngine()?.getConversationContextSources(conversationId) ?? [];
+  }
+
+  /** Host-side only: the line range and fingerprint recorded for one read-in row (Wayfinding D4). */
+  findConversationContextSourceRead(
+    conversationId: string | undefined,
+    identity: ContextSourceReadIdentity
+  ): Pick<StoredContextSourceEntry, 'lineRange' | 'sourceFingerprint'> | undefined {
+    return this.currentAssistantEngine()?.findConversationContextSourceRead(conversationId, identity);
   }
 
   /**

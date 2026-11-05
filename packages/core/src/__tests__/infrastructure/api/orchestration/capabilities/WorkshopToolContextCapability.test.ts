@@ -45,6 +45,15 @@ describe('WorkshopToolContextCapability (Sprint 12 Phase 6)', () => {
     };
   });
 
+  it('redacts a project-memory proposal from an intermediate reply and leaves its call as written (PR #200 F-01)', () => {
+    const call = '<prose-minion-tool-call name="resource.read"><paths><path>guide:craft/dialogue.md</path></paths></prose-minion-tool-call>';
+    const proposal = '<prose-minion-memory-proposal><title>MEMORY-SENTINEL</title></prose-minion-memory-proposal>';
+    const redacted = build({ includeGuides: true }).redactPrivateControls(`${call}\n\n${proposal}`);
+    expect(redacted).toContain(call);
+    expect(redacted).toContain('[project memory proposal removed]');
+    expect(redacted).not.toContain('MEMORY-SENTINEL');
+  });
+
   it('catalogs the source first, bounded nearest same-group neighbors next, guides last', async () => {
     const adapter = build({ source: { group: 'chapters', path: 'chapters/ch-04.md' }, includeGuides: true });
 
@@ -169,6 +178,23 @@ describe('WorkshopToolContextCapability (Sprint 12 Phase 6)', () => {
 
     expect(fulfillment.deliveredItems).toEqual(['project:chapters/ch-04.md']);
     expect(fulfillment.evidence).toContain('unavailable: guide:craft/dialogue.md');
+  });
+
+  it('records no card, line range or fingerprint on its rows: a tool side-pass mints no card (Wayfinding D4)', async () => {
+    const adapter = build({ source: { group: 'chapters', path: 'chapters/ch-04.md' }, includeGuides: true });
+    await adapter.appendContract('Analyze.');
+
+    const fulfillment = await adapter.fulfill({
+      operation: 'resource.read',
+      paths: ['project:chapters/ch-04.md', 'guide:craft/dialogue.md']
+    });
+
+    expect(fulfillment.deliveredSources).toHaveLength(2);
+    for (const row of fulfillment.deliveredSources ?? []) {
+      expect(row).not.toHaveProperty('turnId');
+      expect(row).not.toHaveProperty('lineRange');
+      expect(row).not.toHaveProperty('sourceFingerprint');
+    }
   });
 
   it('contributes manifest rows per delivered item — canonical keys for project files (Phase 7)', async () => {

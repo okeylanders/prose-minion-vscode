@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 2,
+  "sessionId": "read-in-before-provenance",
+  "title": "The rabbit hole",
+  "createdAt": "2026-11-02T15:00:00.000Z",
+  "updatedAt": "2026-11-02T15:20:00.000Z",
+  "temporal": {
+    "schemaVersion": 1,
+    "startedAt": "2026-11-02T15:00:00.000Z",
+    "timezone": "America/Chicago",
+    "lastActivityAt": "2026-11-02T15:00:00.000Z",
+    "personaNotices": []
+  },
+  "summary": {
+    "hostPersonaId": "jill",
+    "participantPersonaIds": [
+      "jill"
+    ],
+    "turnCount": 0,
+    "excerptWordCount": 8
+  },
+  "workshop": {
+    "excerpt": {
+      "text": "Alice followed the White Rabbit down the hole.",
+      "version": 1,
+      "source": {
+        "kind": "manual"
+      },
+      "pinnedAt": 1793631600000
+    },
+    "scope": "excerpt",
+    "contextAttachments": [],
+    "pendingMessageAttachments": [],
+    "threadArtifacts": [],
+    "revisions": {
+      "excerpt": 1,
+      "replacementCount": 0,
+      "context": 0
+    },
+    "counters": {
+      "attachment": 0,
+      "threadArtifact": 0,
+      "turn": 0,
+      "todo": 0,
+      "widgetConfig": 0,
+      "standingDirective": 0
+    },
+    "widgetConfigs": [],
+    "standingDirectives": [],
+    "writerSources": {
+      "host": [],
+      "tools": {},
+      "guests": []
+    },
+    "turns": [],
+    "participants": {
+      "host": {
+        "personaId": "jill"
+      },
+      "toolSidecars": [],
+      "personaGuests": [],
+      "chatTarget": {
+        "kind": "host"
+      }
+    },
+    "todos": [],
+    "retainedHistoryMarks": []
+  },
+  "conversations": [
+    {
+      "key": "host",
+      "toolName": "workshop_persona_jill",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What does the Rabbit want?"
+        },
+        {
+          "role": "assistant",
+          "content": "To not be late."
+        }
+      ],
+      "lastActivity": 1793632800000,
+      "contextSources": [
+        {
+          "kind": "resource",
+          "origin": "host",
+          "label": "characters/rabbit.md",
+          "configuredResource": {
+            "group": "characters",
+            "path": "characters/rabbit.md"
+          },
+          "sizeChars": 412,
+          "promptTokensDelta": 118,
+          "isEstimate": false,
+          "artifactId": "art-1",
+          "deliveredAt": 1793632440000,
+          "stale": true
+        },
+        {
+          "kind": "tool-evidence",
+          "origin": "host",
+          "label": "Dialogue & Beats",
+          "sizeChars": 2048,
+          "isEstimate": true,
+          "artifactId": "art-2",
+          "deliveredAt": 1793632500000
+        },
+        {
+          "kind": "dictionary",
+          "origin": "host",
+          "label": "tardy",
+          "sizeChars": 640,
+          "promptTokensDelta": 190,
+          "isEstimate": false,
+          "artifactId": "art-3",
+          "deliveredAt": 1793632560000
+        },
+        {
+          "kind": "transcript",
+          "origin": "host",
+          "label": "“Tea party” · turns 1-4",
+          "sizeChars": 980,
+          "isEstimate": true,
+          "artifactId": "art-4",
+          "deliveredAt": 1793632620000
+        },
+        {
+          "kind": "resource",
+          "origin": "host",
+          "label": "characters/rabbit.md",
+          "configuredResource": {
+            "group": "characters",
+            "path": "characters/rabbit.md"
+          },
+          "sizeChars": 412,
+          "isEstimate": true,
+          "artifactId": "art-5",
+          "deliveredAt": 1793632680000
+        }
+      ],
+      "nextArtifactNumber": 6
+    }
+  ]
+}

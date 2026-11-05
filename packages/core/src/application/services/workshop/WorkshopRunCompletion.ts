@@ -21,6 +21,7 @@ import {
   WorkshopWidgetSourceReference
 } from '@messages';
 import { inspectWorkshopActionableFindings } from './WorkshopActionableFindings';
+import { workshopTurnModelOf } from '@/application/services/workshop/WorkshopTurnModel';
 import {
   inspectWorkshopWidgetRecommendation,
   WorkshopWidgetRecommendationInspection
@@ -32,6 +33,16 @@ import {
   stripWorkshopWidgetRecommendationControl
 } from '@/utils/workshopWidgetRecommendationProtocol';
 import { boundedLogText } from '@/utils/boundedLogText';
+import {
+  extractWorkshopReplyControls,
+  WORKSHOP_MEMORY_ONLY_REPLY_LINE
+} from '@/utils/workshopReplyControls';
+import {
+  settleWorkshopMemoryProposal,
+  WORKSHOP_REPLY_MEMORY_CLOSED,
+  type WorkshopReplyMemoryContext
+} from '@/application/services/workshop/memory/WorkshopReplyMemory';
+import { countWorkshopRoomAutoSaves } from '@/application/services/workshop/memory/WorkshopMemoryAutoSave';
 import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import {
@@ -110,6 +121,16 @@ export interface WorkshopRunCompletionInput {
    * offset — rather than the instant of adoption.
    */
   settleCommittedRun?: (turn: WorkshopTurn) => void;
+  /**
+   * Whether personas may propose a project memory now, and what is listed
+   * (ADR 2026-11-04 D6), resolved before completion. Absent reads as closed:
+   * a trailer is still stripped, and dropped.
+   */
+  memory?: WorkshopReplyMemoryContext;
+  /** Save and tell me (Slice 5): the recorded reply whose card is saved at once; absent, the card waits. */
+  memoryAutoSave?: (turn: WorkshopTurn) => void;
+  /** The room's automatic saves, landed and in flight (PR #201 F-04); absent, its landed receipts. */
+  memoryAutoSavesInRoom?: () => number;
   log: (line: string) => void;
   events: WorkshopRunCompletionEvents;
 }
@@ -249,14 +270,28 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // preempted after dispatch) must not stream its full content to the webview
   // as if it landed, and it always leaves a log trail before the API-billed
   // turn evaporates.
-  const actionableFindings = inspectWorkshopActionableFindings(result.content);
+  //
+  // The reply's tail has one owner (ADR 2026-11-04 D6, PR #192 F-01): the
+  // project-memory frame is split off first, and every other reader takes
+  // the rest; every log takes the redacted copy, never the memory's text.
+  const memoryContext = input.memory ?? WORKSHOP_REPLY_MEMORY_CLOSED;
+  const controls = extractWorkshopReplyControls(result.content, { memoryOpen: memoryContext.open });
+  const memory = settleWorkshopMemoryProposal(controls.memory, memoryContext, input.memoryAutoSave && {
+    webResearchAttached: result.webResearchAttached === true,
+    autoSavesInRoom: input.memoryAutoSavesInRoom ?? (() => countWorkshopRoomAutoSaves(session.readRoomLedger()))
+  });
+  if (memory.log) {
+    input.log(`${memory.log} (${label})`);
+  }
+  const reply = controls.rest;
+  const actionableFindings = inspectWorkshopActionableFindings(reply);
   if (actionableFindings.outcome !== 'absent') {
     input.log(
       `Actionable findings ${actionableFindings.outcome}: ${actionableFindings.findings.length} items (${label}${actionableFindings.outcome === 'rejected' ? `; reason=${actionableFindings.rejection}` : ''})`
     );
   }
   const widgetRecommendation = inspectWorkshopWidgetRecommendation(
-    result.content,
+    reply,
     WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
   );
   const unavailableWidgetSource = widgetRecommendation.outcome === 'accepted'
@@ -284,18 +319,25 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     input.log(
       `Rejected widget recommendation response (${label}`
       + `${recommendationWidgetId ? `; widget=${recommendationWidgetId}` : ''}; `
-      + `${result.content.length} characters):\n${boundedLogText(result.content)}`
+      + `${result.content.length} characters):\n${boundedLogText(controls.redacted)}`
     );
   }
   const strippedDisplayContent = widgetRecommendation.outcome !== 'absent'
-    ? stripWorkshopWidgetRecommendationControl(result.content)
-    : result.content;
-  const displayContent = widgetRecommendation.outcome !== 'absent'
-    && strippedDisplayContent.trim().length === 0
-    ? recommendationRejected
-      ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
-      : `${label} returned a widget setup without an accompanying note.`
-    : strippedDisplayContent;
+    ? stripWorkshopWidgetRecommendationControl(reply)
+    : reply;
+  // A control-only reply (a widget, a memory proposal, or both) leaves no
+  // provider prose to show, so completion writes the displayed note itself,
+  // and the turn must not be attributed to a model (Astra F-02,
+  // completion-stage note; ADR 2026-11-04 D6).
+  const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || controls.memory.kind !== 'none')
+    && strippedDisplayContent.trim().length === 0;
+  const displayContent = !hostWritesDisplay
+    ? strippedDisplayContent
+    : widgetRecommendation.outcome === 'absent'
+      ? WORKSHOP_MEMORY_ONLY_REPLY_LINE
+      : recommendationRejected
+        ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
+        : `${label} returned a widget setup without an accompanying note.`;
   const turn = session.completeRun(
     requestId,
     displayContent,
@@ -306,7 +348,9 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     result.citations,
     widgetRecommendation.outcome === 'accepted' && !unavailableWidgetSource
       ? widgetRecommendation.recommendation
-      : undefined
+      : undefined,
+    hostWritesDisplay ? undefined : workshopTurnModelOf(result),
+    memory.proposal
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {
@@ -337,6 +381,9 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       readRetainedHistory: input.readRetainedHistory,
       log: input.log
     });
+  }
+  if (memory.autoSave && turn.memoryProposal) {
+    input.memoryAutoSave?.(turn);
   }
   return turn;
 }

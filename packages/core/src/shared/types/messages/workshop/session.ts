@@ -1,12 +1,16 @@
 /** Workshop session, excerpt, turn, todo, and persistence-facing contracts. */
 
+import type { WorkshopMemoryProposal, WorkshopProjectMemoryReceipt } from './projectMemory';
 import { MessageEnvelope, MessageType } from '../base';
 import { TokenUsage } from '../tokenUsage';
 import { UrlCitation } from '../citations';
 import type { LabeledContextBudgetSnapshot } from '../inferenceContext';
+import type { ModelScope } from '../configuration';
+import type { WorkshopBookmarkSummary } from './bookmarks';
 import type {
   WorkshopAnalysisInputProvenance,
-  WorkshopCapabilityArtifactDetails
+  WorkshopCapabilityArtifactDetails,
+  WorkshopCapabilityPrincipal
 } from '../../workshopCapabilities';
 import { ContextPathGroup, isContextPathGroup } from '../../context';
 import type { ConfiguredResourceRef } from '../configuredResources';
@@ -23,6 +27,7 @@ import {
   WorkshopConversationBehavior,
   WorkshopConversationBehaviorTransition,
   WorkshopWebResearchSettings,
+  WorkshopProjectMemoryMode,
   WorkshopWriterProfile
 } from './settings';
 import {
@@ -150,9 +155,14 @@ export const WORKSHOP_TURN_ARTIFACTS = [
   'transcript_search',
   'transcript_read',
   'transcript_todos',
+  'memory_catalog',
+  'memory_search',
+  'memory_read',
   'excerpt_revision',
   'context_change',
   'standing_directive_change',
+  // A project-memory receipt (ADR 2026-11-04 D7): room history, never the memory's body.
+  'memory_receipt',
   'session_start',
   'session_resume',
   /*
@@ -348,6 +358,20 @@ export type WorkshopExcerptSnapshot = Omit<WorkshopExcerpt, 'source' | 'sourceFi
 export type WorkshopTurnKind = 'tool_run' | 'message' | 'divider';
 
 /**
+ * The model that answered an assistant turn (Workshop Wayfinding ADR D7).
+ * Stamped only on turns a provider call produced; never rendered into a
+ * prompt, a room frame, or provider history.
+ */
+export interface WorkshopTurnModel {
+  /** The model scope that served the turn; 'assistant' for room replies today. */
+  scope: ModelScope;
+  /** The scope's selection, captured when the request started. */
+  requestedModelId: string;
+  /** Distinct provider-reported models across the turn's requests, in order. */
+  servedModelIds: string[];
+}
+
+/**
  * One completed entry in the session thread. Tool-run user turns record the
  * request ("Run Dialogue & Beats"); message user turns carry the follow-up
  * text; assistant turns carry the streamed analysis or reply. Content is
@@ -395,6 +419,8 @@ export interface WorkshopTurn {
   citations?: UrlCitation[];
   /** True when the response stopped at the max-token limit (assistant turns). */
   truncated?: boolean;
+  /** Requested and served models, on provider-produced assistant turns (ADR 2026-11-03 D7). */
+  model?: WorkshopTurnModel;
   /**
    * Effective conversation behavior stamped on persona-directed writer turns
    * and their persona replies (ADR 2026-07-20 §3) — keeps a restored
@@ -420,6 +446,47 @@ export interface WorkshopTurn {
    * wholesale host-side and never reach this field.
    */
   widgetRecommendation?: WorkshopWidgetRecommendation;
+  /** A persona's project-memory proposal, its trailer stripped (ADR 2026-11-04 D6). Host and guest replies only. */
+  memoryProposal?: WorkshopMemoryProposal;
+  /** A save, edit, Forget or Restore of a project memory, on its divider (D7). Never the body. */
+  projectMemoryReceipt?: WorkshopProjectMemoryReceipt;
+  /**
+   * What project memory the message this persona reply answers delivered
+   * (ADR 2026-11-04 D14): a frame's or an update note's snapshot of the
+   * memories in effect. Written on the reply when it commits, so a cut, a
+   * rollback or a cancellation that removes the delivery removes its record
+   * too (PR #198 F-01).
+   */
+  projectMemoryDelivery?: WorkshopProjectMemoryDelivery[];
+}
+
+/** One memory as a conversation was told of it: its id and its D14 version. */
+export interface WorkshopProjectMemoryDelivered {
+  id: string;
+  version: string;
+}
+
+/**
+ * A snapshot of the memories in effect, delivered to one participant's
+ * conversation as its first-message frame or an update note. It replaces
+ * that participant's earlier view (ADR 2026-11-04 D14).
+ */
+export interface WorkshopProjectMemoryDelivery {
+  participant: WorkshopCapabilityPrincipal;
+  kind: 'frame' | 'note';
+  /** Every memory in effect, by id; empty when `digest` stands in for a set past the record's bound. */
+  memories: WorkshopProjectMemoryDelivered[];
+  /**
+   * A set too large to list (PR #198 F-03): how many memories, and a hash of
+   * their ids and versions. The fold compares it whole: the same set sends
+   * nothing, any change sends the count line.
+   */
+  digest?: WorkshopProjectMemoryDeliveryDigest;
+}
+
+export interface WorkshopProjectMemoryDeliveryDigest {
+  count: number;
+  hash: string;
 }
 
 /**
@@ -503,6 +570,11 @@ export interface WorkshopSessionSnapshot {
   };
   /** Host-owned, defensively copied writer task list in explicit order. */
   todos: WorkshopTodoItem[];
+  /**
+   * The writer's bookmarks in thread order, with resolved labels, including
+   * those whose bubble is outside `turns` (ADR 2026-11-03 D5).
+   */
+  bookmarks: WorkshopBookmarkSummary[];
   /** Bounded widget identities for chips in the visible turn window. */
   widgetConfigs: WorkshopWidgetConfigSummary[];
   /** Active passage-scoped prose directives; one entry per closed family. */
@@ -520,6 +592,12 @@ export interface WorkshopSessionSnapshot {
   totalTurns: number;
   /** Older turns omitted from this snapshot's window. */
   truncatedTurns: number;
+  /**
+   * The last stamped requested model per scope among the omitted turns (ADR
+   * 2026-11-03 D8), so the window's first reply can still draw a model slice.
+   * Present only when the window truncates and an omitted turn is stamped.
+   */
+  modelsBeforeWindow?: Partial<Record<ModelScope, string>>;
   /**
    * True when any participant holds a conversation — host, tool sidecar, or
    * persona guest. This is ALSO the scope lock (ADR 2026-07-25): every surface
@@ -800,6 +878,12 @@ export interface WorkshopSessionStatePayload {
   writerProfile: WorkshopWriterProfile;
   /** Global web-research preference; deliberately outside the session aggregate. */
   webResearch: WorkshopWebResearchSettings;
+  /**
+   * The global project-memory mode (ADR 2026-11-04 D8), outside the session
+   * aggregate like web research. The host always sends it; absent, the
+   * webview reads Off (fail closed).
+   */
+  projectMemory?: WorkshopProjectMemoryMode;
   persistence: {
     available: boolean;
     unavailableReason?: 'no-workspace' | 'multi-root';

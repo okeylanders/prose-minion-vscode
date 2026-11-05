@@ -160,6 +160,9 @@ import {
   WorkshopRequestContextAttachmentMessage,
   WorkshopContextAttachmentContentMessage,
   WorkshopOpenContextAttachmentFileMessage,
+  WorkshopRequestReadInResourceMessage,
+  WorkshopReadInResourceContentMessage,
+  WorkshopOpenReadInResourceMessage,
   WorkshopRequestContextCatalogMessage,
   WorkshopContextCatalogMessage,
   WorkshopSearchContextResourcesMessage,
@@ -171,6 +174,25 @@ import {
   WorkshopSetExcerptResourceMessage,
   WorkshopRunContextWizardMessage,
   WorkshopTodoActionMessage,
+  WorkshopSetTurnBookmarkMessage,
+  WorkshopMemoryProposalActionMessage,
+  WorkshopSaveTurnToMemoryMessage,
+  WorkshopMemoryCreateMessage,
+  WorkshopMemoryUpdateMessage,
+  WorkshopMemoryForgetMessage,
+  WorkshopMemoryRequestEditMessage,
+  WorkshopMemoryEstimateMessage,
+  WorkshopMemoryWriteResultMessage,
+  WorkshopMemoryEditDataMessage,
+  WorkshopMemoryEstimateResultMessage,
+  WorkshopMemoryListMessage,
+  WorkshopMemoryListingMessage,
+  WorkshopMemoryManagerActionMessage,
+  WorkshopMemoryManagerResultMessage,
+  WorkshopRenameBookmarkMessage,
+  WorkshopRenameBookmarkResultMessage,
+  WorkshopRequestTurnPreviewMessage,
+  WorkshopTurnPreviewMessage,
   WorkshopPickExcerptFileMessage,
   WorkshopRereadExcerptMessage,
   WorkshopSetSessionScopeMessage,
@@ -301,6 +323,8 @@ export type WebviewToExtensionMessage =
   | WorkshopUpdateContextTextMessage
   | WorkshopRequestContextAttachmentMessage
   | WorkshopOpenContextAttachmentFileMessage
+  | WorkshopRequestReadInResourceMessage
+  | WorkshopOpenReadInResourceMessage
   | WorkshopRequestContextCatalogMessage
   | WorkshopContextCatalogMessage
   | WorkshopSearchContextResourcesMessage
@@ -312,6 +336,18 @@ export type WebviewToExtensionMessage =
   | WorkshopSetExcerptResourceMessage
   | WorkshopRunContextWizardMessage
   | WorkshopTodoActionMessage
+  | WorkshopSetTurnBookmarkMessage
+  | WorkshopMemoryProposalActionMessage
+  | WorkshopSaveTurnToMemoryMessage
+  | WorkshopMemoryCreateMessage
+  | WorkshopMemoryUpdateMessage
+  | WorkshopMemoryForgetMessage
+  | WorkshopMemoryRequestEditMessage
+  | WorkshopMemoryEstimateMessage
+  | WorkshopMemoryListMessage
+  | WorkshopMemoryManagerActionMessage
+  | WorkshopRenameBookmarkMessage
+  | WorkshopRequestTurnPreviewMessage
   | WorkshopPickExcerptFileMessage
   | WorkshopRereadExcerptMessage
   | WorkshopSetSessionScopeMessage
@@ -395,6 +431,14 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage
   | WorkshopContextAttachmentContentMessage
+  | WorkshopReadInResourceContentMessage
+  | WorkshopTurnPreviewMessage
+  | WorkshopRenameBookmarkResultMessage
+  | WorkshopMemoryWriteResultMessage
+  | WorkshopMemoryEditDataMessage
+  | WorkshopMemoryEstimateResultMessage
+  | WorkshopMemoryListingMessage
+  | WorkshopMemoryManagerResultMessage
   | WorkshopGesturePlaygroundGenerationProgressMessage
   | WorkshopGesturePlaygroundMenuResultMessage
   | WorkshopCreativeVariationsGenerationProgressMessage

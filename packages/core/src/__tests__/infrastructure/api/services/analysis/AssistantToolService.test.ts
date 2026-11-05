@@ -348,14 +348,18 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     const service = build(managerFor(() => engine));
     await flush();
 
-    await service.continueConversation('conv-1', 'Check the current guidance.', {
+    const without = await service.continueConversation('conv-1', 'Check the current guidance.', {
       webResearch: false
     });
     expect(engine.continueConversation.mock.calls[0]![0].options?.tools).toBeUndefined();
+    // The run reports whether search tools were attached, never whether it searched (ADR 2026-11-04 D8).
+    expect(without.webResearchAttached).toBeUndefined();
 
-    await service.continueConversation('conv-1', 'Check the current guidance.', {
+    const attached = await service.continueConversation('conv-1', 'Check the current guidance.', {
       webResearch: true
     });
+    expect(attached.webResearchAttached).toBe(true);
+    expect(attached.citations ?? []).toEqual([]);
     expect(engine.continueConversation.mock.calls[1]![0].options?.tools).toEqual([{
       type: 'openrouter:web_search',
       parameters: { engine: 'auto', max_uses: 2, max_total_results: 10 }
@@ -401,6 +405,35 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         systemMessage: expect.stringContaining('workshop-personas/guest-base.md')
       })
     ]);
+  });
+
+  it('teaches the memory.* grammar to host and guest prompts only while project memory is open (ADR 2026-11-04 D8)', async () => {
+    const engine = makeEngine('memory-grammar');
+    const loadPrompts = jest.fn().mockResolvedValue('prompt');
+    const service = build(managerFor(() => engine), loadPrompts);
+    await flush();
+    const behavior = {
+      interactionMode: 'conversational' as const,
+      expressionLevel: 'subtle' as const,
+      relationalDepth: 'attuned' as const,
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
+    };
+    const targets = [
+      { conversationId: 'host-conv', personaId: 'jill' as const, role: 'host' as const },
+      { conversationId: 'guest-conv', personaId: 'margot' as const, role: 'guest' as const }
+    ];
+    const taught = () => loadPrompts.mock.calls.map(([paths]: [string[]]) =>
+      paths.includes('workshop-personas/project-memory-capability.md'));
+
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    let open = true;
+    service.setWorkshopProjectMemoryGrammar(() => open);
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    open = false;
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+
+    expect(taught()).toEqual([false, false, true, true, false, false]);
   });
 
   it('does not touch the engine when any replacement prompt fails to assemble', async () => {

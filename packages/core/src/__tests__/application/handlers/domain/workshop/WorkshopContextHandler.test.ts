@@ -29,6 +29,8 @@ const MUTATION_ROUTES = [
 const READ_ROUTES = [
   MessageType.WORKSHOP_REQUEST_CONTEXT_ATTACHMENT,
   MessageType.WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE,
+  MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE,
+  MessageType.WORKSHOP_OPEN_READ_IN_RESOURCE,
   MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG,
   MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES
 ] as const;
@@ -124,7 +126,7 @@ describe('WorkshopContextHandler', () => {
       intake,
       postMessage,
       log,
-      effects
+      { ...effects, findReadInRecord: jest.fn() }
     );
     registerMutation = jest.fn((type, route) => {
       router.register(type, route as never);
@@ -132,8 +134,8 @@ describe('WorkshopContextHandler', () => {
     handler.registerRoutes(router, registerMutation);
   });
 
-  it('owns exactly thirteen routes and keeps reads outside the mutation registrar', () => {
-    expect(router.handlerCount).toBe(13);
+  it('owns exactly fifteen routes and keeps reads outside the mutation registrar', () => {
+    expect(router.handlerCount).toBe(15);
     expect(new Set(router.getRegisteredTypes())).toEqual(new Set(ALL_ROUTES));
 
     const mutationRegistrations = registerMutation.mock.calls.map(([type]) => type);

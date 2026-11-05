@@ -8,6 +8,7 @@ import {
   dividerTurn,
   fixtureTurn,
   representativeRoom,
+  turnEntries,
   writerTurn
 } from './workshopTranscriptFixtures';
 
@@ -18,7 +19,7 @@ describe('projectWorkshopTranscript', () => {
   it('keeps the thread order of writer messages, replies, and dividers', () => {
     const transcript = project();
 
-    expect(transcript.entries.map((entry) => `${entry.kind}:${entry.turnId}`)).toEqual([
+    expect(turnEntries(transcript).map((entry) => `${entry.kind}:${entry.turnId}`)).toEqual([
       'event:s-1',
       'writer:u-1',
       'reply:a-1',
@@ -37,13 +38,13 @@ describe('projectWorkshopTranscript', () => {
   it('leaves context-change dividers out entirely', () => {
     const transcript = project();
 
-    expect(transcript.entries.some((entry) => entry.turnId === 'c-1')).toBe(false);
+    expect(turnEntries(transcript).some((entry) => entry.turnId === 'c-1')).toBe(false);
     expect(JSON.stringify(transcript)).not.toContain('secret-notes.md');
   });
 
   it('exports attachment and widget commits as labels, never their bodies', () => {
     const transcript = project();
-    const [withAttachment, withWidget] = transcript.entries.filter(
+    const [withAttachment, withWidget] = turnEntries(transcript).filter(
       (entry) => entry.kind === 'writer'
     );
 
@@ -86,7 +87,7 @@ describe('projectWorkshopTranscript', () => {
 
   it('collapses persona-requested capability artifacts to a one-line request', () => {
     const transcript = project();
-    const capability = transcript.entries.find((entry) => entry.turnId === 'cap-1');
+    const capability = turnEntries(transcript).find((entry) => entry.turnId === 'cap-1');
 
     expect(capability).toEqual({
       kind: 'event',
@@ -99,7 +100,7 @@ describe('projectWorkshopTranscript', () => {
 
   it('attributes replies and keeps truncation and de-duplicated sources', () => {
     const transcript = project();
-    const replies = transcript.entries.filter((entry) => entry.kind === 'reply');
+    const replies = turnEntries(transcript).filter((entry) => entry.kind === 'reply');
 
     expect(replies.map((reply) => reply.kind === 'reply' && [reply.speaker, reply.participant]))
       .toEqual([
@@ -122,18 +123,18 @@ describe('projectWorkshopTranscript', () => {
   it('marks private instrument exchanges on both sides', () => {
     const transcript = project();
 
-    expect(transcript.entries.find((entry) => entry.turnId === 'u-4'))
+    expect(turnEntries(transcript).find((entry) => entry.turnId === 'u-4'))
       .toMatchObject({ privateWith: 'Prose Assistant' });
-    expect(transcript.entries.find((entry) => entry.turnId === 'a-4'))
+    expect(turnEntries(transcript).find((entry) => entry.turnId === 'a-4'))
       .toMatchObject({ privateWith: 'Prose Assistant' });
-    expect(transcript.entries.find((entry) => entry.turnId === 'a-3'))
+    expect(turnEntries(transcript).find((entry) => entry.turnId === 'a-3'))
       .not.toHaveProperty('privateWith');
   });
 
   it('names a direct tool run as the thread divider does', () => {
     const transcript = project();
 
-    expect(transcript.entries.find((entry) => entry.turnId === 'u-3')).toMatchObject({
+    expect(turnEntries(transcript).find((entry) => entry.turnId === 'u-3')).toMatchObject({
       kind: 'event',
       text: 'Prose Assistant · direct run · excerpt v2'
     });
@@ -150,7 +151,7 @@ describe('projectWorkshopTranscript', () => {
       fixtureTurn('a-1', { content: '' })
     ]);
 
-    expect(transcript.entries).toEqual([]);
+    expect(turnEntries(transcript)).toEqual([]);
   });
 
   it('keeps legacy scope dividers and standing-directive markers as history', () => {
@@ -159,7 +160,7 @@ describe('projectWorkshopTranscript', () => {
       dividerTurn('sd-1', 'standing_directive_change', 'Lexical Gravity installed')
     ]);
 
-    expect(transcript.entries.map((entry) => entry.kind === 'event' && entry.text)).toEqual([
+    expect(turnEntries(transcript).map((entry) => entry.kind === 'event' && entry.text)).toEqual([
       'Switched to open conversation',
       'Lexical Gravity installed'
     ]);
@@ -172,7 +173,7 @@ describe('projectWorkshopTranscript', () => {
       return entry ? [entry] : [];
     });
 
-    expect(byTurn).toEqual(project(turns).entries);
+    expect(byTurn).toEqual(turnEntries(project(turns)));
     expect(projectWorkshopTranscriptTurn(turns.find((turn) => turn.id === 'c-1')!)).toBeUndefined();
   });
 });

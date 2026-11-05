@@ -212,6 +212,23 @@ export function matchWorkshopRecallSessions<T extends WorkshopRecallMatchLabels>
   };
 }
 
+/**
+ * Search's term rules over one free text, for another family's lexical
+ * search (project memory, ADR 2026-11-04 D1): how many query terms it
+ * matches, whether it holds the phrase, and how many terms matched whole
+ * words. Pure.
+ */
+export function rankWorkshopRecallText(text: string, query: WorkshopRecallQuery): WorkshopRecallTextRank {
+  return new QueryMatcher(query).rank(normalized(text));
+}
+
+export type WorkshopRecallTextRank = Readonly<Rank>;
+
+/** At most `limit` characters of `text` around its first matching word, by search's own snippet rule. */
+export function workshopRecallSnippet(text: string, query: WorkshopRecallQuery, limit: number): string {
+  return snippet(text, new QueryMatcher(query), limit);
+}
+
 interface Rank extends WorkshopRecallHitRank {
   readonly wholeWords: number;
 }

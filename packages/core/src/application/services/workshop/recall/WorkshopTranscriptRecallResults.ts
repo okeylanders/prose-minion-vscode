@@ -265,3 +265,18 @@ export type WorkshopRecallTodosResult =
       readonly sessions: readonly WorkshopRecallTodoSession[];
       readonly bounds: WorkshopRecallTodosBounds;
     };
+
+/**
+ * Where a saved session's turns stand now, by id (ADR 2026-11-04 D3): project
+ * memory's provenance question. Positions are per-read addresses, ascending;
+ * an id the record no longer projects is left out, never guessed.
+ */
+export type WorkshopRecallPositions =
+  | { readonly kind: 'positions'; readonly sessionId: string; readonly title: string; readonly positions: readonly number[] }
+  /** The id names the live room, which recall never reads. */
+  | { readonly kind: 'live-session' }
+  /** No saved session holds the id. */
+  | { readonly kind: 'unknown-session' }
+  /** Saved, but its file could not be read now. */
+  | { readonly kind: 'unreadable' }
+  | ({ readonly kind: 'unavailable' } & WorkshopRecallUnavailable);

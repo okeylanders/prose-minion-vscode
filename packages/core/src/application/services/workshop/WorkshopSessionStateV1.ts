@@ -17,6 +17,7 @@ import {
   WorkshopStandingDirectiveSnapshot,
   WorkshopToolId,
   WorkshopTurn,
+  WorkshopTurnBookmark,
   WorkshopTodoItem,
   WorkshopWidgetConfigSnapshot
 } from '@messages';
@@ -181,6 +182,11 @@ export interface WorkshopSessionStateV1 {
   selectedToolId?: WorkshopToolId;
   todos: WorkshopStoredTodoItemV1[];
   /**
+   * The writer's bookmarks (ADR 2026-11-03 D5, D9). OPTIONAL and additive:
+   * absent means none, and a session writes the key only when it holds one.
+   */
+  bookmarks?: WorkshopTurnBookmark[];
+  /**
    * Retained-history marks in ledger order (ADR 2026-09-30 §3). OPTIONAL in
    * the persisted grammar, like `widgetConfigs` before it (ADR 2026-07-30: an
    * optional field invalidates no prior shape, so no schema bump). Absent
@@ -211,7 +217,8 @@ export function parseWorkshopSessionStateV1(value: unknown): WorkshopSessionStat
     skipWidgetDraftIntegrity: true,
     // An inconsistent mark degrades rewindability, never a session open:
     // checkpoint normalization drops such keys before strict validation.
-    skipRetainedHistoryMarkIntegrity: true
+    skipRetainedHistoryMarkIntegrity: true,
+    allowDanglingBookmarks: true
   });
   return decoded;
 }

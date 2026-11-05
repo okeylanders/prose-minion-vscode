@@ -26,6 +26,8 @@
  * layers (Lightbox Slice 1) come before the Workshop's, as in the webview.
  */
 
+import { WORKSHOP_TRANSCRIPT_BOOKMARK_CSS } from './WorkshopTranscriptHtmlBookmarkStyles';
+
 export interface WorkshopTranscriptMirroredStyles {
   /** Source stylesheet, relative to packages/core/src/presentation/webview/. */
   source: string;
@@ -351,6 +353,11 @@ export const WORKSHOP_TRANSCRIPT_MIRRORED_STYLES: readonly WorkshopTranscriptMir
   height: 1px;
   background: var(--pm-border-soft);
 }
+[data-pm-surface="workshop"] .pm-ws-model-slice span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
 [data-pm-surface="workshop"] .pm-ws-turn {
   display: flex;
   flex-direction: column;
@@ -376,6 +383,21 @@ export const WORKSHOP_TRANSCRIPT_MIRRORED_STYLES: readonly WorkshopTranscriptMir
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-head > .pm-ws-eyebrow {
+  min-width: 0;
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-head > .pm-ws-eyebrow > svg {
+  flex-shrink: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-model {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: none;
 }
 [data-pm-surface="workshop"] .pm-ws-private-thread-label {
   display: inline-flex;
@@ -633,5 +655,6 @@ body {
 export const WORKSHOP_TRANSCRIPT_HTML_CSS = [
   WORKSHOP_TRANSCRIPT_PREFLIGHT_CSS,
   ...WORKSHOP_TRANSCRIPT_MIRRORED_STYLES.map(({ css }) => css),
-  WORKSHOP_TRANSCRIPT_PAGE_CSS
+  WORKSHOP_TRANSCRIPT_PAGE_CSS,
+  WORKSHOP_TRANSCRIPT_BOOKMARK_CSS
 ].map((layer) => layer.trim()).join('\n');

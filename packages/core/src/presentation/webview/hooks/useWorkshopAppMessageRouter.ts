@@ -20,6 +20,8 @@ import {
 } from '@hooks/fulltab/useFullTabChrome';
 import type { UseWorkshopRoomReturn } from '@hooks/domain/workshop/useWorkshopRoom';
 import type { UseWorkshopSessionsReturn } from '@hooks/domain/workshop/useWorkshopSessions';
+import type { UseWorkshopReadInReturn } from '@hooks/domain/workshop/useWorkshopReadIn';
+import type { UseWorkshopBookmarksReturn } from '@hooks/domain/workshop/useWorkshopBookmarks';
 import type {
   UseWorkshopExcerptVerifyReturn
 } from '@hooks/domain/useWorkshopExcerptVerify';
@@ -60,10 +62,20 @@ import type {
   UseWorkshopLightboxTilesReturn
 } from '@hooks/domain/workshop/useWorkshopLightboxTiles';
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
+import type { UseWorkshopProjectMemoryReturn } from '@hooks/domain/workshop/useWorkshopProjectMemory';
+import type { UseWorkshopMemoryManagerReturn } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 
 export interface WorkshopAppMessageRouterDeps {
   workshopRoom: UseWorkshopRoomReturn;
   workshopSessions: UseWorkshopSessionsReturn;
+  /** The Read in reader's file content (Wayfinding Slice 2). */
+  readIn: UseWorkshopReadInReturn;
+  /** Bookmarks and the turn preview (Wayfinding Slice 5). */
+  bookmarks: UseWorkshopBookmarksReturn;
+  /** Project memory's write answers and the sheet's reads (Project Memory Slice 3). */
+  projectMemory: Pick<UseWorkshopProjectMemoryReturn, 'handleWriteResult' | 'handleEditData' | 'handleEstimateResult'>;
+  /** The Memory tab's listing and the manager's answers (Project Memory Slice 4b). */
+  memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData' | 'noteSessionState'>;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -90,6 +102,10 @@ export function buildWorkshopAppMessageRoutes(
   const {
     workshopRoom,
     workshopSessions,
+    readIn,
+    bookmarks,
+    projectMemory,
+    memoryManager,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -112,7 +128,9 @@ export function buildWorkshopAppMessageRoutes(
     ...buildFullTabChromeRoutes(chrome),
     [MessageType.WORKSHOP_SESSION_STATE]: (message) => {
       workshopRoom.handleSessionState(message);
+      bookmarks.handleSessionState(message);
       widgetHost.handleSessionState(message);
+      memoryManager.noteSessionState(message);
     },
     [MessageType.WORKSHOP_TURN]: workshopRoom.handleTurn,
     [MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED]:
@@ -134,6 +152,21 @@ export function buildWorkshopAppMessageRoutes(
     },
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshopRoom.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshopRoom.handleContextAttachmentContent,
+    [MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT]: readIn.handleReadInResourceContent,
+    [MessageType.WORKSHOP_TURN_PREVIEW]: bookmarks.handleTurnPreview,
+    [MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT]: bookmarks.handleRenameResult,
+    // Slice 3's answers reach both hooks; each takes only its own requests.
+    [MessageType.WORKSHOP_MEMORY_WRITE_RESULT]: (message) => {
+      projectMemory.handleWriteResult(message);
+      memoryManager.noteWriteResult(message);
+    },
+    [MessageType.WORKSHOP_MEMORY_EDIT_DATA]: (message) => {
+      projectMemory.handleEditData(message);
+      memoryManager.noteEditData(message);
+    },
+    [MessageType.WORKSHOP_MEMORY_LISTING]: memoryManager.handleListing,
+    [MessageType.WORKSHOP_MEMORY_MANAGER_RESULT]: memoryManager.handleManagerResult,
+    [MessageType.WORKSHOP_MEMORY_ESTIMATE_RESULT]: projectMemory.handleEstimateResult,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshopRoom.handleContextSearchResults,
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT]:
       gesturePlayground.handleWidgetMenuResult,

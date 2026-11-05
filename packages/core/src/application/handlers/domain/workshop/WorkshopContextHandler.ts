@@ -15,6 +15,10 @@ import {
 import { searchConfiguredResourceContent } from '@/application/services/ConfiguredResourceContentSearch';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
+import {
+  WorkshopReadInRecordLookup,
+  WorkshopReadInRoutes
+} from '@handlers/domain/workshop/WorkshopReadInRoutes';
 import type {
   WorkshopMutationRouteRegistrar,
   WorkshopRoomEffects
@@ -75,7 +79,7 @@ const WORKSHOP_CONTEXT_EDIT_REFUSALS: Readonly<
 type WorkshopContextEffects = Pick<
   WorkshopRoomEffects,
   'postSessionState' | 'postTurn' | 'markDirty' | 'reportError' | 'sendStatus'
->;
+> & { findReadInRecord: WorkshopReadInRecordLookup };
 
 /**
  * Owns Workshop's context/resource routes and the independent Context wizard
@@ -97,7 +101,13 @@ export class WorkshopContextHandler {
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
     private readonly effects: WorkshopContextEffects
-  ) {}
+  ) {
+    this.readIn = new WorkshopReadInRoutes(
+      contextIntakeService, shell, postMessage, outputChannel, effects.reportError, effects.findReadInRecord
+    );
+  }
+
+  private readonly readIn: WorkshopReadInRoutes;
 
   registerRoutes(
     router: MessageRouter,
@@ -123,6 +133,15 @@ export class WorkshopContextHandler {
     router.register(
       MessageType.WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE,
       this.handleOpenContextAttachmentFile.bind(this)
+    );
+    // Read in (ADR 2026-11-03 D4): a file a persona read, by `{ group, path }`.
+    router.register(
+      MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE,
+      this.readIn.serveContent.bind(this.readIn)
+    );
+    router.register(
+      MessageType.WORKSHOP_OPEN_READ_IN_RESOURCE,
+      this.readIn.openBeside.bind(this.readIn)
     );
     router.register(
       MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG,

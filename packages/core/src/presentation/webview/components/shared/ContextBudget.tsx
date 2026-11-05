@@ -11,6 +11,8 @@ import {
   formatCompactTokens,
   participantIdentityColorIndex
 } from '@utils/contextBudget';
+import { partitionContextSources } from '@utils/workshop/contextSources';
+import { modelOptionLabel } from '@utils/modelOptionLabel';
 
 interface ContextBudgetProps {
   /** Canonical persona id or a namespaced non-persona participant key. */
@@ -35,7 +37,8 @@ const kindLabel = (kind: ContextSourceKind): string => ({
   resource: 'project resource',
   'tool-evidence': 'tool report',
   dictionary: 'dictionary',
-  transcript: 'past session'
+  transcript: 'past session',
+  memory: 'project note'
 })[kind];
 
 const originLabel = (origin: ContextSourceOrigin, requesterLabel?: string): string => ({
@@ -53,6 +56,15 @@ const sourceCost = (entry: ContextSourceEntry): string =>
     ? `${formatCompactTokens(entry.promptTokensDelta)} tokens${entry.isEstimate ? ' est.' : ''}`
     : `~${formatSizeChars(entry.sizeChars)}`;
 
+/**
+ * Writer material, then read-in material: the same partition the rail's Read
+ * in block reads (ADR 2026-11-03 D2), so the two never disagree about a row.
+ */
+const orderedSources = (sources: readonly ContextSourceEntry[]): ContextSourceEntry[] => {
+  const { writerMaterial, readIn } = partitionContextSources(sources);
+  return [...writerMaterial, ...readIn];
+};
+
 const InContextSources: React.FC<{
   sources: readonly ContextSourceEntry[];
   requesterLabel?: string;
@@ -60,7 +72,7 @@ const InContextSources: React.FC<{
   <div className="pm-context-sources">
     <div className="pm-context-sources-head">In context</div>
     <ul className="pm-context-sources-list" aria-label="Material in this participant's context">
-      {sources.map((entry, index) => (
+      {orderedSources(sources).map((entry, index) => (
         <li
           key={`${entry.kind}-${entry.label}-${entry.excerptVersion ?? index}`}
           className={`pm-context-source${entry.stale ? ' pm-context-source-stale' : ''}`}
@@ -190,7 +202,7 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
         <Chevron />
       </summary>
       <dl className="pm-context-budget-details">
-        <div><dt>Measured model</dt><dd>{model?.label ?? snapshot.modelId}</dd></div>
+        <div><dt>Measured model</dt><dd>{modelOptionLabel(modelOptions, snapshot.modelId)}</dd></div>
         <div>
           <dt>Model window</dt>
           <dd>{view.usableInputTokens === undefined ? 'Unavailable' : model?.contextLength?.toLocaleString()}</dd>

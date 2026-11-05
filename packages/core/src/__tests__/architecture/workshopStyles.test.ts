@@ -23,6 +23,7 @@ const WORKSHOP_STYLE_IMPORTS = [
   './styles/workshop/shell.css',
   './styles/workshop/context.css',
   './styles/workshop/session.css',
+  './styles/workshop/memory.css',
   './components/workshop/widgets/gesturePlayground/gesturePlayground.css',
   './components/workshop/widgets/lexicalGravity/lexicalGravity.css',
   './components/workshop/widgets/creativeVariations/creativeVariations.css',
@@ -79,7 +80,8 @@ describe('Workshop stylesheet assembly', () => {
 
     expect(actualOrder).toEqual([
       ...WORKSHOP_STYLE_IMPORTS,
-      './components/workshop/schematic/schematic.css'
+      './components/workshop/schematic/schematic.css',
+      './styles/workshop/memory.css'
     ]);
 
     const selfImportOffenders = collectTypeScriptFiles(WEBVIEW_ROOT)

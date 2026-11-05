@@ -51,8 +51,11 @@ import {
   WorkshopSessionStore,
   WorkshopSessionPersistenceCoordinator,
   WorkshopTranscriptRecallService,
+  ProjectMemoryStore,
+  ProjectMemoryLibrary,
   WorkshopTranscriptExportService,
   WorkshopTranscriptExportStore,
+  OpenRouterModels,
   GesturePlaygroundService,
   CreativeVariationsService,
   ShowVsTellService,
@@ -122,6 +125,7 @@ let workshopPanelProvider: WorkshopPanelProvider | undefined;
 let lightboxPanelProvider: LightboxPanelProvider | undefined;
 let workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator | undefined;
 let lightboxBoardLibrary: LightboxBoardLibrary | undefined;
+let projectMemoryLibraryForShutdown: ProjectMemoryLibrary | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // Create output channel for logging
@@ -336,15 +340,37 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopSessionPersistenceCoordinator,
     outputChannel
   );
+  // Project memory (ADR 2026-11-04 D10, D13): one store, then the one
+  // library, from the coordinator's accepted workspace and recall's
+  // provenance. Slice 2 only reads: the library feeds the persona
+  // capabilities (the catalog frame and `memory.*`) and the persona prompts'
+  // grammar check; Slice 3 gives the Workshop's memory handler its writes,
+  // through CoreServices.
+  const projectMemoryStore = new ProjectMemoryStore(
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel
+  );
+  const projectMemoryLibrary = new ProjectMemoryLibrary(
+    projectMemoryStore,
+    workshopSessionPersistenceCoordinator,
+    workshopTranscriptRecallService,
+    platform.settings,
+    outputChannel
+  );
+  assistantToolService.setWorkshopProjectMemoryGrammar(() => projectMemoryLibrary.teachesGrammar());
+  // Its writes (Slice 3) are owed until they settle; deactivation drains them.
+  projectMemoryLibraryForShutdown = projectMemoryLibrary;
   // Persona capabilities are minted per turn by this factory, after the
-  // store, the coordinator, and the recall service built from them.
+  // store, the coordinator, and the recall and memory services built from them.
   const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
     dictionaryService,
     workshopAnalysisSidePass,
     contextResourceResolver,
     workshopSessionService,
     outputChannel,
-    workshopTranscriptRecallService
+    workshopTranscriptRecallService,
+    projectMemoryLibrary
   );
   const workshopToolSidePass = new RunWorkshopToolSidePass(
     assistantToolService,
@@ -364,7 +390,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // documents under prose-minion/exports.
   const workshopTranscriptExportService = new WorkshopTranscriptExportService(
     workshopSessionService,
-    new WorkshopTranscriptExportStore(platform.fileSystem, platform.workspace)
+    new WorkshopTranscriptExportStore(platform.fileSystem, platform.workspace),
+    Date.now,
+    // Model slices name models from the host's catalog (ADR 2026-11-03 D8).
+    (modelId) => OpenRouterModels.getDisplayName(modelId)
   );
 
   // Conversation Widgets (ADR 2026-07-22): Gesture Playground's one
@@ -535,7 +564,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     lightboxReadingRunner,
     lightboxContextShelf,
     lightboxBoardStore,
-    lightboxBoardLibrary
+    lightboxBoardLibrary,
+    projectMemory: projectMemoryLibrary
   };
 
   // Migrate API key from settings to SecretStorage if needed
@@ -841,12 +871,14 @@ export async function deactivate(): Promise<void> {
     workshopPanel: workshopPanelProvider,
     lightboxPanel: lightboxPanelProvider,
     workshopSessions: workshopSessionPersistenceCoordinator,
-    lightboxBoards: lightboxBoardLibrary
+    lightboxBoards: lightboxBoardLibrary,
+    projectMemory: projectMemoryLibraryForShutdown
   };
   workshopPanelProvider = undefined;
   lightboxPanelProvider = undefined;
   workshopSessionPersistenceCoordinator = undefined;
   lightboxBoardLibrary = undefined;
+  projectMemoryLibraryForShutdown = undefined;
   await shutDownExtension(parts);
   console.log('Prose Minion extension is now deactivated');
 }

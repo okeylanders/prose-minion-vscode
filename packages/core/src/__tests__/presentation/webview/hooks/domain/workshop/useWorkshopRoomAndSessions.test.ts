@@ -66,6 +66,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         widgetConfigs: [],
         standingDirectives: [],
         todos: [],
+        bookmarks: [],
         turns,
         turnRewindability: {},
         totalTurns: turns.length,
@@ -458,7 +459,9 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
       .toEqual({
         behavior: selected,
         writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
-        ,webResearch: { enabled: false }
+        ,webResearch: { enabled: false },
+        // No Memory draft given: the mode the host last sent (Off by default), so Apply never changes it.
+        projectMemory: 'off'
       });
     expect(result.current.conversationBehavior).toEqual(
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR

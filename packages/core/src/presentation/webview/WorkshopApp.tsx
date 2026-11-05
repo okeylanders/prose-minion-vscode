@@ -2,8 +2,8 @@
  * WorkshopApp — the Workshop editor-tab React root (ADR 2026-07-03;
  * Sprint 2 session spine, Sprint 3 multi-turn).
  *
- * Session spine: the left rail pins an excerpt (host-side, via
- * WORKSHOP_SET_EXCERPT), the tool palette fires WORKSHOP_RUN_TOOL, and the
+ * Session spine: the left rail's Material tab pins an excerpt (host-side, via
+ * WORKSHOP_SET_EXCERPT), the tools modal fires WORKSHOP_RUN_TOOL, and the
  * thread streams the run under `domain: 'workshop'` before the completed
  * turn pair lands via WORKSHOP_TURN. All session truth lives in
  * WorkshopSessionService on the host — this component renders snapshots, so
@@ -24,7 +24,7 @@ import { Icon, IconName } from './components/shared/Icon';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { TabErrorFallback } from './components/shared/TabErrorFallback';
 import { StreamingContent } from './components/shared/StreamingContent';
-import { MessageType } from '@shared/types';
+import { ContextSourceEntry, MessageType } from '@shared/types';
 import {
   CopyResultSuccessMessage,
   ErrorMessage,
@@ -32,6 +32,7 @@ import {
   StatusMessage,
   WorkshopToolId,
   WorkshopPersonaId,
+  WorkshopBookmarkSummary,
   WorkshopTurn,
   WorkshopWidgetId,
   isWorkshopWriterProfileActive,
@@ -41,13 +42,22 @@ import {
 import { FullTabShell } from '@components/fulltab/FullTabShell';
 import { FullTabHeaderStatus } from '@components/fulltab/FullTabHeaderStatus';
 import { ProviderPausedBanner } from '@components/fulltab/ProviderPausedBanner';
-import { ExcerptPanel } from './components/workshop/ExcerptPanel';
-import { ContextPanel } from './components/workshop/ContextPanel';
+import { WorkshopRail } from './components/workshop/WorkshopRail';
+import { partitionContextSources } from '@utils/workshop/contextSources';
+import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
+import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
+import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
+import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
+import { workshopMemoryTabInputOf } from '@hooks/domain/workshop/memory/workshopMemoryListingInputs';
+import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
+import { workshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
+import { WorkshopMemorySheet } from '@components/workshop/memory/WorkshopMemorySheet';
+import { WorkshopMemoryManagerMount } from '@components/workshop/memory/WorkshopMemoryManagerMount';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
-import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBubble';
+import { useWorkshopTurnJump } from '@hooks/domain/workshop/controllers/useWorkshopTurnJump';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
 import { WorkshopWidgetsModal } from './components/workshop/WorkshopWidgetsModal';
 import {
@@ -66,6 +76,7 @@ import { WorkshopStandingDirectiveRail } from './components/workshop/WorkshopSta
 import {
   stripWorkshopWidgetRecommendationControl
 } from '@/utils/workshopWidgetRecommendationProtocol';
+import { stripWorkshopMemoryProposalForStreaming } from '@/utils/workshopReplyControls';
 import { WorkshopNoticeModal } from './components/workshop/WorkshopNoticeModal';
 import { useStartupNotice } from './hooks/domain/useStartupNotice';
 import { WorkshopChooseHostModal } from './components/workshop/WorkshopChooseHostModal';
@@ -91,10 +102,8 @@ import {
 import {
   WorkshopTextSheet
 } from './components/workshop/WorkshopTextSheet';
-import { WORKSHOP_TOOLS_GATED_REASON } from './components/workshop/WorkshopComposer';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
-import { WorkshopTodoList } from './components/workshop/WorkshopTodoList';
 import { WORKSHOP_TOOL_ICONS } from './components/workshop/workshopToolIcons';
 import { WORKSHOP_PERSONA_FOCUS_ICONS } from './components/workshop/workshopPersonaIcons';
 import {
@@ -115,7 +124,11 @@ import {
 import { buildWorkshopToolAskPrefill } from '@utils/workshopToolAskPrefill';
 import { buildWorkshopWidgetAskPrefill } from '@utils/workshopWidgetAskPrefill';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
-import { usePersistence } from './hooks/usePersistence';
+import { usePersistedState, usePersistence } from './hooks/usePersistence';
+import {
+  useWorkshopRailTabs,
+  WorkshopRailTabsPersistence
+} from './hooks/domain/workshop/controllers/useWorkshopRailTabs';
 import { useWorkshopAppMessageRouter } from '@hooks/useWorkshopAppMessageRouter';
 import { useWorkshopRoom } from '@hooks/domain/workshop/useWorkshopRoom';
 import { useWorkshopSessions } from '@hooks/domain/workshop/useWorkshopSessions';
@@ -160,12 +173,14 @@ import './styles/workshop/tokens.css';
 import './styles/workshop/shell.css';
 import './styles/workshop/context.css';
 import './styles/workshop/session.css';
+import './styles/workshop/memory.css';
 import './components/workshop/widgets/gesturePlayground/gesturePlayground.css';
 import './components/workshop/widgets/lexicalGravity/lexicalGravity.css';
 import './components/workshop/widgets/creativeVariations/creativeVariations.css';
 import './components/workshop/widgets/showVsTell/showVsTell.css';
 import './components/workshop/standingDirectiveRail.css';
 import './components/workshop/schematic/schematic.css';
+import './styles/workshop/memory.css';
 
 interface WorkshopTool extends WorkshopToolDescriptor {
   icon: IconName;
@@ -182,29 +197,9 @@ export const WORKSHOP_TOOLS: readonly WorkshopTool[] = WORKSHOP_TOOL_CATALOG.map
 );
 
 /**
- * The rail's six tools per the APPROVED Direction B prototype — which
- * deliberately overrides the catalog order (pm-direction-b.js `railTools`:
- * dialogue, prose, gestures, choreography, cliche, showtell), NOT a naive
- * first-six slice of the reference comp (PR #66 review, Bria). The remaining
- * eight arrive with the Sprint 4 tools modal.
- */
-const RAIL_TOOL_IDS: readonly WorkshopToolId[] = [
-  'dialogue',
-  'prose',
-  'gestures',
-  'choreography',
-  'cliche',
-  'show-and-tell',
-];
-
-const RAIL_TOOLS: readonly WorkshopTool[] = RAIL_TOOL_IDS.flatMap((id) => {
-  const tool = WORKSHOP_TOOLS.find((entry) => entry.id === id);
-  return tool ? [tool] : [];
-});
-
-/**
- * Matches the approved Direction B welcome quick starts. Kept named beside the
- * rail override so prototype provenance is visible at both repeated lists.
+ * The empty thread's quick starts, per the approved Direction B welcome
+ * (pm-direction-b.js). Every tool stays reachable from the composer's tool
+ * button; the rail no longer lists tools (ADR 2026-11-03 D1).
  */
 const EMPTY_STATE_TOOL_IDS: readonly WorkshopToolId[] = [
   'dialogue',
@@ -225,6 +220,47 @@ export const WorkshopApp: React.FC = () => {
   // reinvention). Balance/models/tokens arrive through this webview's own
   // MessageHandler, owned by the shared full-tab chrome (Lightbox Slice 1).
   const workshop = useWorkshopRoom();
+  const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
+    ?? getWorkshopPersona(DEFAULT_WORKSHOP_PERSONA_ID)!;
+  const guestTargetPersonaId = workshop.chatTarget.kind === 'personaGuest'
+    ? workshop.chatTarget.personaId
+    : undefined;
+  const chatTargetLabel = workshop.chatTarget.kind === 'tool'
+    ? workshopToolLabel(workshop.chatTarget.toolId)
+    : workshop.chatTarget.kind === 'personaGuest'
+      ? workshop.personaGuests.find((guest) => guest.personaId === guestTargetPersonaId)?.personaLabel
+        ?? guestTargetPersonaId
+        ?? 'Guest'
+      : activePersona.label;
+  const chatTargetIdentity = workshop.chatTarget.kind === 'tool'
+    ? `tool:${workshop.chatTarget.toolId}`
+    : workshop.chatTarget.kind === 'personaGuest'
+      ? guestTargetPersonaId ?? 'guest:unknown'
+      : activePersona.id;
+  // What the chat target read on its own (ADR 2026-11-03 D2): one partition,
+  // shared with the context gauge's popover.
+  const contextSources = workshop.contextBudget?.sources;
+  const readInSources = React.useMemo(
+    () => partitionContextSources(contextSources ?? []).readIn,
+    [contextSources]
+  );
+  const readIn = useWorkshopReadIn();
+  const bookmarks = useWorkshopBookmarks({ onBeforeChange: workshop.clearError });
+  const projectMemory = useWorkshopProjectMemory();
+  const memoryManager = useWorkshopMemoryManager();
+  // The rail's tab is this viewer's preference (webview state, never the
+  // session file); the controller re-baselines its badges on each new room,
+  // and Material's on each new chat target.
+  const persistedRailTab = usePersistedState<Partial<WorkshopRailTabsPersistence>>();
+  const railRoomKey = workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending';
+  const railTabs = useWorkshopRailTabs({
+    todos: workshop.todos,
+    roomKey: railRoomKey,
+    readIn: readInSources,
+    readInKey: chatTargetIdentity,
+    bookmarks: bookmarks.bookmarks,
+    initialTab: persistedRailTab?.workshopRailTab
+  });
   const workshopSessions = useWorkshopSessions(workshop.replacementPort);
   const widgetHost = useWorkshopWidgetHost();
   const gesturePlayground = useGesturePlayground();
@@ -393,6 +429,10 @@ export const WorkshopApp: React.FC = () => {
   );
 
   useWorkshopAppMessageRouter({
+    readIn,
+    bookmarks,
+    projectMemory,
+    memoryManager,
     workshopRoom: workshop,
     workshopSessions,
     widgetHost,
@@ -426,6 +466,7 @@ export const WorkshopApp: React.FC = () => {
     ...standingDirectives.persistedState,
     ...excerptVerify.persistedState,
     ...chrome.persistedState,
+    ...railTabs.persistedState,
   });
 
   // Initial data requests: the session is requested inside useWorkshopRoom,
@@ -462,7 +503,8 @@ export const WorkshopApp: React.FC = () => {
   const threadRef = React.useRef<HTMLDivElement>(null);
   const latestTurnId = workshop.turns.at(-1)?.id;
   const visibleStreamingContent = React.useMemo(
-    () => stripWorkshopWidgetRecommendationControl(workshop.streamingContent),
+    // A memory proposal never shows while it streams (PR #200 F-02).
+    () => stripWorkshopWidgetRecommendationControl(stripWorkshopMemoryProposalForStreaming(workshop.streamingContent)),
     [workshop.streamingContent]
   );
   useWorkshopThreadAutoscroll({
@@ -481,30 +523,33 @@ export const WorkshopApp: React.FC = () => {
   const roomMutationLocked =
     sessionLoading || workshop.isRunning || workshop.wizardRunning ||
     workshopSessions.sessionActionPending !== undefined;
-  // Sprint 13A §9: gating has two independent reasons, and the UI must say
-  // WHICH one applies. No excerpt → a permanent, explained gate with a badge.
-  // Busy room → a temporary `disabled`, exactly as before.
+  // Sprint 13A §9: the empty thread's quick starts run against the excerpt,
+  // so they need one. The composer's tool button never does: without an
+  // excerpt it asks the host to run the tool. A busy room disables both.
   const hasExcerpt = !!workshop.excerpt;
-  const toolsGatedByExcerpt = !hasExcerpt;
   const toolsEnabled = hasExcerpt && !roomMutationLocked && workshop.sessionReady;
   const composerToolsEnabled = !roomMutationLocked && workshop.sessionReady;
-  const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
-    ?? getWorkshopPersona(DEFAULT_WORKSHOP_PERSONA_ID)!;
-  const guestTargetPersonaId = workshop.chatTarget.kind === 'personaGuest'
-    ? workshop.chatTarget.personaId
-    : undefined;
-  const chatTargetLabel = workshop.chatTarget.kind === 'tool'
-    ? workshopToolLabel(workshop.chatTarget.toolId)
-    : workshop.chatTarget.kind === 'personaGuest'
-      ? workshop.personaGuests.find((guest) => guest.personaId === guestTargetPersonaId)?.personaLabel
-        ?? guestTargetPersonaId
-        ?? 'Guest'
-      : activePersona.label;
-  const chatTargetIdentity = workshop.chatTarget.kind === 'tool'
-    ? `tool:${workshop.chatTarget.toolId}`
-    : workshop.chatTarget.kind === 'personaGuest'
-      ? guestTargetPersonaId ?? 'guest:unknown'
-      : activePersona.id;
+  // Project memory in the thread (ADR 2026-11-04 D6, D7); the host's snapshot is the truth.
+  const autoSavedMemories = React.useMemo(() => workshopAutoSavedMemories(workshop.turns), [workshop.turns]);
+  const memoryControls = React.useMemo<WorkshopTurnMemoryControls>(() => ({
+    disabled: roomMutationLocked,
+    autoSaved: autoSavedMemories,
+    busyTurnIds: projectMemory.busyTurnIds,
+    cardErrors: projectMemory.cardErrors,
+    onSaveCard: projectMemory.saveCard,
+    onEditCard: projectMemory.editCard,
+    onDismissCard: projectMemory.dismissCard,
+    onReopenCard: projectMemory.reopenCard,
+    onSaveTurn: projectMemory.saveTurn,
+    onEditMemory: projectMemory.editMemory,
+    onForget: projectMemory.forget,
+    onRestore: projectMemory.restore,
+    onOpenManager: memoryManager.openManager
+  }), [
+    roomMutationLocked, autoSavedMemories, projectMemory.busyTurnIds, projectMemory.cardErrors, projectMemory.saveCard,
+    projectMemory.editCard, projectMemory.dismissCard, projectMemory.reopenCard, projectMemory.saveTurn,
+    projectMemory.editMemory, projectMemory.forget, projectMemory.restore, memoryManager.openManager
+  ]);
 
   // Recomputing a full word split per streamed token was O(excerpt) work on
   // the token clock (PR #67 review #11) — the excerpt only changes on re-pin.
@@ -601,8 +646,17 @@ export const WorkshopApp: React.FC = () => {
     () => startupNotice.dismissStartupNotice(false),
     [startupNotice.dismissStartupNotice]
   );
-  const openBehaviorModal = React.useCallback(() => setBehaviorModalOpen(true), []);
-  const closeBehaviorModal = React.useCallback(() => setBehaviorModalOpen(false), []);
+  const { requestListing: requestMemoryListing, setSettingsVisible: setMemorySettingsVisible } = memoryManager;
+  const openBehaviorModal = React.useCallback(() => {
+    setBehaviorModalOpen(true);
+    setMemorySettingsVisible(true);
+    requestMemoryListing();
+  }, [requestMemoryListing, setMemorySettingsVisible]);
+  const openMemoryManagerFromSettings = React.useCallback(() => memoryManager.openManager(), [memoryManager.openManager]);
+  const closeBehaviorModal = React.useCallback(() => {
+    setBehaviorModalOpen(false);
+    setMemorySettingsVisible(false);
+  }, [setMemorySettingsVisible]);
   const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
     workshop.requestContextCatalog();
     setContextSelectorMode(mode);
@@ -645,15 +699,26 @@ export const WorkshopApp: React.FC = () => {
     addContextText: workshop.addContextText,
     updateContextText: workshop.updateContextText,
     openExcerptSelector,
-    requestShelfReplacement: sessionSurfaces.requestShelfReplacement
+    requestShelfReplacement: sessionSurfaces.requestShelfReplacement,
+    readInContent: readIn.readInContent,
+    requestReadInResource: readIn.requestReadInResource,
+    openReadInResource: readIn.openReadInResource,
+    clearReadInContent: readIn.clearReadInContent,
+    readInScopeKey: `${railRoomKey}\u0000${chatTargetIdentity}`,
+    turnPreview: bookmarks.turnPreview,
+    requestTurnPreview: bookmarks.requestTurnPreview,
+    clearTurnPreview: bookmarks.clearTurnPreview
   });
   const {
     textSheet,
-    sheetAttachment,
+    sheetBody,
+    sheetKey,
     verifiedDisplay: verifiedExcerpt,
     openPasteSheet,
     openAddTextSheet,
     openAttachmentSheet,
+    openReadInSheet,
+    openTurnPreviewSheet,
     addExcerptByPaste,
     addExcerptFromProject,
     applyTextSheet,
@@ -661,6 +726,11 @@ export const WorkshopApp: React.FC = () => {
     chooseExcerptFromSheet,
     closeTextSheet
   } = contextSheet;
+
+  const openReadInChatTargetSheet = React.useCallback(
+    (entry: ContextSourceEntry) => openReadInSheet(entry, chatTargetLabel),
+    [chatTargetLabel, openReadInSheet]
+  );
 
   const acceptSessionConfirm = React.useCallback(() => {
     const resumption = sessionSurfaces.acceptSessionConfirm();
@@ -683,15 +753,6 @@ export const WorkshopApp: React.FC = () => {
   const continueWithExcerpt = React.useCallback(
     () => workshop.setSessionScope('excerpt'),
     [workshop.setSessionScope]
-  );
-
-  const announceGate = React.useCallback(
-    (reason: string) => showToast({ message: reason, icon: 'doc' }),
-    [showToast]
-  );
-  const announceToolGate = React.useCallback(
-    () => announceGate(WORKSHOP_TOOLS_GATED_REASON),
-    [announceGate]
   );
 
   // Open-chat starters and rolled-back transient sends use the room hook's
@@ -887,17 +948,21 @@ export const WorkshopApp: React.FC = () => {
     });
   }, [vscode, workshop.excerpt]);
 
-  const showTodoSource = React.useCallback((sourceTurnId: string) => {
-    const sourceTurn = document.querySelector<HTMLElement>(
-      `[${WORKSHOP_TURN_ID_ATTRIBUTE}="${sourceTurnId}"]`
-    );
-    if (sourceTurn) {
-      sourceTurn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      sourceTurn.focus({ preventScroll: true });
-    } else {
-      showToast({ message: 'That source turn is outside the current reload window.', icon: 'doc' });
-    }
-  }, [showToast]);
+  // To-do "show source", Read in's card rows, the reader's "Show where it
+  // was read" and bookmarks share one scroll-and-focus path (Wayfinding D3,
+  // D4); a turn outside the window opens in the read-only preview (D6).
+  const readInCardTurnId = textSheet?.mode.kind === 'read-in' ? textSheet.mode.turnId : undefined;
+  const { jumpToTurn, jumpAfterClosing } = useWorkshopTurnJump({
+    closeOverlay: closeTextSheet,
+    onOutsideWindow: openTurnPreviewSheet
+  });
+  const openBookmark = React.useCallback(
+    // The host's `inWindow` decides; the thread is never searched to re-derive it.
+    (bookmark: WorkshopBookmarkSummary) => bookmark.inWindow
+      ? jumpToTurn(bookmark.turnId, bookmark.label)
+      : openTurnPreviewSheet(bookmark.turnId, bookmark.label),
+    [jumpToTurn, openTurnPreviewSheet]
+  );
 
   const excerptSessionLabel = (() => {
     const sourcePath = workshop.excerpt
@@ -990,8 +1055,14 @@ export const WorkshopApp: React.FC = () => {
     </>
   );
 
+  // The reader and every text sheet are modal: while one is open, the
+  // whole frame behind it is inert (PR #186 N-03), so the browser keeps the
+  // keyboard and pointer in the sheet. The banner wrapper is always there,
+  // laid out with `display: contents`, so opening a sheet never remounts a
+  // banner.
+  const behindTextSheet = textSheet ? { inert: '' } : {};
   const banners = (
-    <>
+    <div className="pm-ws-banners" {...behindTextSheet}>
       {chrome.providerPaused && (
         <ProviderPausedBanner
           availabilityNote="Your Workshop sessions and local context remain available."
@@ -1036,98 +1107,62 @@ export const WorkshopApp: React.FC = () => {
             : ' Check the Prose Minion output for details.'}
         </div>
       )}
-    </>
+    </div>
   );
 
   const railContent = (
-    <>
-      <ExcerptPanel
-        excerpt={workshop.excerpt}
-        shelvedExcerpt={workshop.shelvedExcerpt}
-        scope={workshop.scope}
-        hostLabel={activePersona.label}
-        isRunning={roomMutationLocked}
-        roomHasMemory={workshop.roomHasMemory}
-        onOpenPasteSheet={openPasteSheet}
-        onChooseFile={openExcerptSelector}
-        onRereadFile={workshop.rereadExcerpt}
-        onContinueWithExcerpt={continueWithExcerpt}
-        onRepinExcerpt={workshop.repinExcerpt}
-        onSetAside={startOpenConversation}
-        onStartOpenConversation={startOpenConversation}
-      />
-
-      <ContextPanel
-        attachments={workshop.contextAttachments}
-        pendingDelivery={workshop.contextPending}
-        isRunning={roomMutationLocked}
-        onAddText={openAddTextSheet}
-        onAddFile={openAttachSelector}
-        onRefreshFiles={workshop.refreshContextFiles}
-        onOpenAttachment={openAttachmentSheet}
-        onRemove={workshop.removeContextAttachment}
-        wizardRunning={workshop.wizardRunning}
-        onRunWizard={workshop.runContextWizard}
-        onCancelWizard={workshop.cancelContextWizard}
-      />
-
-      {/* §9: gating only — no tool is redesigned. While no excerpt
-          exists, each row keeps its place and gains a NEEDS EXCERPT
-          badge, `aria-disabled` (focusable, so the reason is reachable),
-          a tooltip, and a toast on activation. */}
-      <div className="pm-ws-block pm-ws-block-grow">
-        <div className="pm-ws-block-head">
-          <div className="pm-ws-eyebrow">Tools</div>
-          {toolsGatedByExcerpt ? (
-            <span className="pm-ws-ctx-count">unavailable</span>
-          ) : null}
-        </div>
-        <div className="pm-ws-tools" role="list">
-          {RAIL_TOOLS.map((tool) => (
-            <button
-              key={tool.id}
-              className={`pm-ws-tool ${
-                workshop.selectedToolId === tool.id ? 'pm-ws-tool-active' : ''
-              }${toolsGatedByExcerpt ? ' pm-ws-tool-locked' : ''}`}
-              type="button"
-              role="listitem"
-              disabled={toolsGatedByExcerpt ? false : !toolsEnabled}
-              aria-disabled={toolsGatedByExcerpt ? true : undefined}
-              onClick={toolsGatedByExcerpt
-                ? announceToolGate
-                : () => workshop.runTool(tool.id)}
-              title={toolsGatedByExcerpt
-                ? WORKSHOP_TOOLS_GATED_REASON
-                : `Have ${activePersona.label} ask ${tool.label} to inspect the pinned excerpt`}
-            >
-              <Icon name={tool.icon} size={15} /> {tool.label}
-              {toolsGatedByExcerpt ? (
-                <span className="pm-ws-tool-lock">needs excerpt</span>
-              ) : null}
-            </button>
-          ))}
-          <button
-            className={`pm-ws-tool pm-ws-tool-ghost${
-              toolsGatedByExcerpt ? ' pm-ws-tool-locked' : ''
-            }`}
-            type="button"
-            role="listitem"
-            disabled={toolsGatedByExcerpt ? false : !toolsEnabled}
-            aria-disabled={toolsGatedByExcerpt ? true : undefined}
-            onClick={toolsGatedByExcerpt ? announceToolGate : openToolsModal}
-            title={toolsGatedByExcerpt ? WORKSHOP_TOOLS_GATED_REASON : 'All writing tools'}
-          >
-            <Icon name="grid" size={15} /> All {WORKSHOP_TOOLS.length} tools…
-          </button>
-        </div>
-      </div>
-
-      <WorkshopTodoList
-        todos={workshop.todos}
-        onAction={workshop.todoAction}
-        onShowSource={showTodoSource}
-      />
-    </>
+    <WorkshopRail
+      tabs={railTabs}
+      roomKey={railRoomKey}
+      excerpt={{
+        excerpt: workshop.excerpt,
+        shelvedExcerpt: workshop.shelvedExcerpt,
+        scope: workshop.scope,
+        hostLabel: activePersona.label,
+        isRunning: roomMutationLocked,
+        roomHasMemory: workshop.roomHasMemory,
+        onOpenPasteSheet: openPasteSheet,
+        onChooseFile: openExcerptSelector,
+        onRereadFile: workshop.rereadExcerpt,
+        onContinueWithExcerpt: continueWithExcerpt,
+        onRepinExcerpt: workshop.repinExcerpt,
+        onSetAside: startOpenConversation,
+        onStartOpenConversation: startOpenConversation
+      }}
+      context={{
+        attachments: workshop.contextAttachments,
+        pendingDelivery: workshop.contextPending,
+        isRunning: roomMutationLocked,
+        onAddText: openAddTextSheet,
+        onAddFile: openAttachSelector,
+        onRefreshFiles: workshop.refreshContextFiles,
+        onOpenAttachment: openAttachmentSheet,
+        onRemove: workshop.removeContextAttachment,
+        wizardRunning: workshop.wizardRunning,
+        onRunWizard: workshop.runContextWizard,
+        onCancelWizard: workshop.cancelContextWizard
+      }}
+      readIn={{
+        entries: readInSources,
+        participantIdentity: chatTargetIdentity,
+        participantLabel: chatTargetLabel,
+        onOpenReader: openReadInChatTargetSheet,
+        onJump: jumpToTurn
+      }}
+      todos={{
+        todos: workshop.todos,
+        onAction: workshop.todoAction,
+        onShowSource: jumpToTurn
+      }}
+      bookmarks={{
+        bookmarks: bookmarks.bookmarks,
+        disabled: roomMutationLocked,
+        onOpen: openBookmark,
+        onRename: bookmarks.renameBookmark,
+        renameOutcome: bookmarks.renameOutcome,
+        onRemove: (turnId) => bookmarks.setTurnBookmark(turnId, false)
+      }}
+    />
   );
 
   const mainContent = (
@@ -1206,7 +1241,7 @@ export const WorkshopApp: React.FC = () => {
               <Icon name="sparkle" size={22} />
               <p className="pm-ws-thread-empty-title">Ready when you are.</p>
               <p className="pm-ws-thread-empty-sub">
-                Ask {activePersona.label} about the excerpt, or run a tool from the left. The
+                Ask {activePersona.label} about the excerpt, or run a tool below. The
                 excerpt stays pinned while the conversation grows here.
               </p>
               <div className="pm-ws-empty-actions">
@@ -1257,6 +1292,12 @@ export const WorkshopApp: React.FC = () => {
             turnBranchability={workshop.turnRewindability}
             branchPausedReason={branchPausedReason}
             onBranch={requestBranch}
+            bookmarkedTurnIds={bookmarks.bookmarkedTurnIds}
+            bookmarkDisabled={roomMutationLocked}
+            onToggleBookmark={bookmarks.setTurnBookmark}
+            memory={memoryControls}
+            modelOptions={modelsSettings.modelOptions}
+            modelsBeforeWindow={workshop.modelsBeforeWindow}
           />
 
           {showLiveTurn && (
@@ -1410,23 +1451,25 @@ export const WorkshopApp: React.FC = () => {
       rail={{ label: 'Session rail', boundaryName: 'Workshop rail', content: railContent }}
       main={{ label: 'Session thread', content: mainContent }}
       onBoundaryError={handleBoundaryError}
+      inertBehindOverlay={textSheet !== null}
     >
       {/* The ONE Edit/Preview sheet for excerpt paste, Add text, editing a
           text note, editing a wizard-generated brief, and reading a project file
           (Sprint 13A §5–§7). */}
       {textSheet && (
         <WorkshopTextSheet
+          key={sheetKey}
           open
           mode={textSheet.mode}
-          value={textSheet.seed ?? sheetAttachment?.content}
-          loading={
-            textSheet.seed === undefined
-            && sheetAttachment !== undefined
-            && sheetAttachment.content === undefined
-            && sheetAttachment.error === undefined
-          }
-          error={sheetAttachment?.error}
-          canOpenInEditor={sheetAttachment?.canOpenInEditor ?? false}
+          value={sheetBody?.value}
+          loading={sheetBody?.loading}
+          error={sheetBody?.error}
+          truncated={sheetBody?.truncated}
+          canOpenInEditor={sheetBody?.canOpenInEditor ?? false}
+          lineRange={sheetBody?.lineRange}
+          changedSinceRead={sheetBody?.changedSinceRead}
+          onShowWhereRead={readInCardTurnId ? () => jumpAfterClosing(readInCardTurnId) : undefined}
+          turnPreview={sheetBody?.turnPreview}
           applyDisabled={roomMutationLocked}
           onApply={applyTextSheet}
           onPasteText={
@@ -1638,10 +1681,21 @@ export const WorkshopApp: React.FC = () => {
         behavior={workshop.conversationBehavior}
         writerProfile={workshop.writerProfile}
         webResearch={workshop.webResearch}
+        projectMemoryMode={workshop.projectMemoryMode}
+        memory={workshopMemoryTabInputOf(memoryManager.listing)}
+        memoryFolder={memoryManager.folder}
         isRunning={roomMutationLocked}
         errorMessage={workshop.errorMessage}
         onApply={workshop.setConversationSettings}
+        onOpenMemoryManager={openMemoryManagerFromSettings}
+        onOpenMemoryFolder={memoryManager.openFolder}
         onClose={closeBehaviorModal}
+      />
+      <WorkshopMemoryManagerMount
+        manager={memoryManager}
+        mode={workshop.projectMemoryMode}
+        onEdit={projectMemory.editMemory}
+        onNewMemory={projectMemory.newMemory}
       />
         <WorkshopContextSelectorModal
           open={contextSelectorOpen}
@@ -1686,6 +1740,13 @@ export const WorkshopApp: React.FC = () => {
         onMoreInfo={openSchematic}
       />
       <WorkshopPersonaSchematicModal personaId={schematicPersonaId} onBack={backToPersonas} />
+      <WorkshopMemorySheet
+        sheet={projectMemory.sheet}
+        onChange={projectMemory.updateDraft}
+        onDropReplaced={projectMemory.dropReplaced}
+        onSubmit={projectMemory.submitSheet}
+        onClose={projectMemory.closeSheet}
+      />
       <WorkshopSaveSessionModal
         open={saveSessionModalOpen}
         available={workshop.persistenceAvailable}

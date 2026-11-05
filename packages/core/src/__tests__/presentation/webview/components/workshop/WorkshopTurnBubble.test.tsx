@@ -1214,3 +1214,124 @@ describe('WorkshopTurnBubble Rewind action (ADR 2026-09-30 §4)', () => {
     });
   });
 });
+
+describe('WorkshopTurnBubble Bookmark toggle (ADR 2026-11-03 D5)', () => {
+  const noop = () => undefined;
+  const base: WorkshopTurn = {
+    id: 'turn-4-assistant-1',
+    role: 'assistant',
+    kind: 'message',
+    participant: 'host',
+    artifact: 'persona_message',
+    personaId: 'jill',
+    personaLabel: 'Jill',
+    content: 'A host reply.',
+    timestamp: 0,
+    excerptVersion: 1
+  };
+  const writer: WorkshopTurn = {
+    ...base,
+    id: 'turn-3-user-1',
+    role: 'user',
+    participant: 'writer',
+    personaId: undefined,
+    personaLabel: undefined,
+    content: 'What does the cup mean?'
+  };
+  const renderBubble = (
+    turn: WorkshopTurn,
+    props: Partial<React.ComponentProps<typeof WorkshopTurnBubble>> = {}
+  ) => render(
+    <WorkshopTurnBubble
+      turn={turn}
+      quickActionToolId={null}
+      onQuickAction={noop}
+      onTalkDirectly={noop}
+      onCopy={noop}
+      onSave={noop}
+      onToggleBookmark={jest.fn()}
+      {...props}
+    />
+  );
+
+  it.each<[string, WorkshopTurn]>([
+    ['a host reply', base],
+    ['a guest reply', { ...base, participant: 'guest', personaId: 'margot', personaLabel: 'Margot' }],
+    ['a tool report', { ...base, kind: 'tool_run', participant: 'tool', artifact: 'tool_report', toolId: 'prose', toolLabel: 'Prose', personaId: undefined }],
+    ['a capability card', {
+      ...base,
+      kind: 'tool_run',
+      participant: 'tool',
+      artifact: 'resource_read',
+      personaId: undefined,
+      toolLabel: 'Project resources',
+      capability: {
+        operation: 'resource.read',
+        status: 'success',
+        requestSummary: 'notes/lantern.md',
+        requestedByPersonaId: 'jill',
+        invokedBy: { kind: 'host' }
+      }
+    }],
+    ['a writer message', writer]
+  ])('offers the toggle on %s', (_label, turn) => {
+    renderBubble(turn);
+    expect(screen.getByRole('button', { name: 'Bookmark' })).toBeTruthy();
+  });
+
+  it.each<[string, WorkshopTurn]>([
+    ['a session divider', { ...base, role: 'system', kind: 'divider', participant: 'session', artifact: 'session_resume' }],
+    ['an excerpt revision', { ...base, role: 'system', kind: 'divider', participant: 'session', artifact: 'excerpt_revision' }],
+    ['a direct tool-run request', { ...writer, kind: 'tool_run', artifact: 'tool_request', toolId: 'prose', toolLabel: 'Prose' }]
+  ])('offers nothing on %s', (_label, turn) => {
+    renderBubble(turn);
+    expect(screen.queryByRole('button', { name: /^Bookmark/ })).toBeNull();
+  });
+
+  it('offers nothing without a handler', () => {
+    renderBubble(base, { onToggleBookmark: undefined });
+    expect(screen.queryByRole('button', { name: /^Bookmark/ })).toBeNull();
+  });
+
+  it('posts the change it shows, and reflects the host\'s answer in aria-pressed and its label', () => {
+    const onToggleBookmark = jest.fn();
+    const { rerender } = renderBubble(base, { onToggleBookmark });
+
+    const toggle = screen.getByRole('button', { name: 'Bookmark' });
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(toggle);
+    expect(onToggleBookmark).toHaveBeenCalledWith('turn-4-assistant-1', true);
+
+    rerender(
+      <WorkshopTurnBubble
+        turn={base}
+        quickActionToolId={null}
+        onQuickAction={noop}
+        onTalkDirectly={noop}
+        onCopy={noop}
+        onSave={noop}
+        bookmarked
+        onToggleBookmark={onToggleBookmark}
+      />
+    );
+    const pressed = screen.getByRole('button', { name: 'Bookmarked' });
+    expect(pressed.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(pressed);
+    expect(onToggleBookmark).toHaveBeenLastCalledWith('turn-4-assistant-1', false);
+  });
+
+  it('sits in the writer message\'s footer when nothing else does', () => {
+    const { container } = renderBubble(writer);
+    expect(container.querySelector('.pm-ws-turn-actions-writer .pm-ws-bookmark-toggle')).not.toBeNull();
+  });
+
+  it('is disabled while the room is locked, and sends nothing', () => {
+    const onToggleBookmark = jest.fn();
+    renderBubble(base, { bookmarkDisabled: true, onToggleBookmark });
+
+    const toggle = screen.getByRole('button', { name: 'Bookmark' }) as HTMLButtonElement;
+    expect(toggle.disabled).toBe(true);
+    fireEvent.click(toggle);
+    expect(onToggleBookmark).not.toHaveBeenCalled();
+  });
+});

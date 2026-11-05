@@ -82,6 +82,28 @@ export interface PromptBudgets {
     todoCharacters: number;
     todoMatchCharacters: number;
   }>;
+  /**
+   * Workshop Project Memory (ADR 2026-11-04 D11): the memory fields' bounds
+   * (the codec's too), the catalog frame's budgets in tokens by the engine's
+   * estimator, and what one `memory.*` call may ask and return. Starting
+   * values for the live pass (Slice 6).
+   */
+  readonly workshopProjectMemory: Readonly<{
+    titleCharacters: number;
+    summaryCharacters: number;
+    bodyCharacters: number;
+    catalogEntries: number;
+    catalogTokens: number;
+    pinnedTokens: number;
+    queryCharacters: number;
+    memoryIdCharacters: number;
+    searchHits: number;
+    snippetCharacters: number;
+    readMemories: number;
+    readCharacters: number;
+    readsPerTurn: number;
+    autoSavesPerRoom: number;
+  }>;
   readonly workshopTodos: Readonly<{
     items: number;
     characters: number;
@@ -503,6 +525,22 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     todoItems: 60,
     todoCharacters: 16_000,
     todoMatchCharacters: 200
+  },
+  workshopProjectMemory: {
+    titleCharacters: 120,
+    summaryCharacters: 280,
+    bodyCharacters: 8_000,
+    catalogEntries: 40,
+    catalogTokens: 2_000,
+    pinnedTokens: 5_000,
+    queryCharacters: 200,
+    memoryIdCharacters: 16,
+    searchHits: 20,
+    snippetCharacters: 280,
+    readMemories: 5,
+    readCharacters: 40_000,
+    readsPerTurn: 2,
+    autoSavesPerRoom: 5
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {

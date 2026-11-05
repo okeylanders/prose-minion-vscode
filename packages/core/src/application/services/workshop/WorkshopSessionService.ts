@@ -35,11 +35,18 @@ import {
   WorkshopToolId,
   WorkshopTodoItem,
   WorkshopTurn,
+  WorkshopTurnModel,
   WorkshopTurnArtifact,
   WorkshopTurnWidgetCommit,
   WorkshopWidgetConfigSnapshot,
-  WorkshopWidgetRecommendation
+  WorkshopWidgetRecommendation,
+  WorkshopMemoryProposal,
+  WorkshopMemoryHold,
+  WorkshopMemoryProposalState,
+  WorkshopProjectMemoryReceipt,
+  WorkshopProjectMemoryDelivery
 } from '@messages';
+import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
 import {
@@ -47,6 +54,7 @@ import {
   WorkshopCapabilityPrincipal
 } from '@shared/types/workshopCapabilities';
 import {
+  isWorkshopPersonaId,
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
@@ -99,6 +107,10 @@ import {
   WorkshopTodoLedger
 } from '@/application/services/workshop/session/WorkshopTodoLedger';
 import {
+  WorkshopBookmarkChange,
+  WorkshopBookmarkLedger
+} from '@/application/services/workshop/session/WorkshopBookmarkLedger';
+import {
   WorkshopTurnLedger
 } from '@/application/services/workshop/session/WorkshopTurnLedger';
 import {
@@ -129,6 +141,13 @@ import {
   workshopBubbleCut,
   workshopRewindTurnFacts
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
+import { cloneTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
+import { cloneWorkshopMemoryProposal } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
+import {
+  cloneWorkshopMemoryReceipt,
+  workshopMemoryReceiptContent
+} from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
+import { workshopModelsBeforeWindow } from '@shared/workshop/workshopModelSlices';
 import {
   attachmentSnapshot,
   cloneAnalysisInputs,
@@ -267,6 +286,8 @@ export class WorkshopSessionService {
   private readonly participantRoster: WorkshopParticipantRoster;
   /** Writer-promoted tasks; staleness is derived from passage version at read time. */
   private readonly todoLedger: WorkshopTodoLedger;
+  /** The writer's bookmarks; presentation only, never in a prompt (ADR 2026-11-03 D5). */
+  private readonly bookmarkLedger: WorkshopBookmarkLedger;
   /** Where each retained history stood at each commit (ADR 2026-09-30 §3). */
   private readonly retainedHistory: WorkshopRetainedHistoryLedger;
   private behavior: WorkshopConversationBehavior;
@@ -287,6 +308,7 @@ export class WorkshopSessionService {
     );
     this.standingDirectiveLedger = new WorkshopStandingDirectiveLedger(this.now);
     this.todoLedger = new WorkshopTodoLedger(this.now);
+    this.bookmarkLedger = new WorkshopBookmarkLedger(this.now);
     this.turnLedger = new WorkshopTurnLedger(this.now);
     this.retainedHistory = new WorkshopRetainedHistoryLedger(
       (turnId) => this.turnLedger.position(turnId)
@@ -1265,6 +1287,11 @@ export class WorkshopSessionService {
     return this.turnLedger.all();
   }
 
+  /** This room generation's identity, as the snapshot's `roomRevision` gives it. */
+  readRoomRevision(): number {
+    return this.roomRevision;
+  }
+
   /**
    * Compare-and-set the durable room offset after the delivery collaborator
    * has proved an exact contiguous receipt.
@@ -1386,7 +1413,8 @@ export class WorkshopSessionService {
     analysisInputs?: {
       excerpt: WorkshopAnalysisInputProvenance;
       context: WorkshopAnalysisInputProvenance;
-    }
+    },
+    model?: WorkshopTurnModel
   ): WorkshopToolReportCompletion | undefined {
     const active = this.activeRun;
     if (
@@ -1413,6 +1441,7 @@ export class WorkshopSessionService {
       timestamp: this.now(),
       usage: usage ? { ...usage } : undefined,
       truncated: truncated || undefined,
+      model: model ? cloneTurnModel(model) : undefined,
       analysisInputs: analysisInputs ? cloneAnalysisInputs(analysisInputs) : undefined,
       excerptVersion: active.excerptVersion,
       actionableFindings: actionableFindings.length > 0
@@ -1469,6 +1498,9 @@ export class WorkshopSessionService {
         case 'transcript.search': return 'transcript_search';
         case 'transcript.read': return 'transcript_read';
         case 'transcript.todos': return 'transcript_todos';
+        case 'memory.catalog': return 'memory_catalog';
+        case 'memory.search': return 'memory_search';
+        case 'memory.read': return 'memory_read';
         default: return assertNever(input.details.operation);
       }
     })();
@@ -1488,6 +1520,7 @@ export class WorkshopSessionService {
       timestamp: this.now(),
       usage: input.result.usage ? { ...input.result.usage } : undefined,
       truncated: input.truncated || undefined,
+      model: input.model ? cloneTurnModel(input.model) : undefined,
       excerptVersion: input.excerptVersion,
       actionableFindings: input.actionableFindings && input.actionableFindings.length > 0
         ? cloneFindings(input.actionableFindings)
@@ -1650,7 +1683,9 @@ export class WorkshopSessionService {
     conversationId?: string,
     actionableFindings: WorkshopActionableFinding[] = [],
     citations?: UrlCitation[],
-    widgetRecommendation?: WorkshopWidgetRecommendation
+    widgetRecommendation?: WorkshopWidgetRecommendation,
+    model?: WorkshopTurnModel,
+    memoryProposal?: WorkshopMemoryProposal
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1687,6 +1722,7 @@ export class WorkshopSessionService {
       usage: usage ? { ...usage } : undefined,
       citations: citations?.map((citation) => ({ ...citation })),
       truncated: truncated || undefined,
+      model: model ? cloneTurnModel(model) : undefined,
       excerptVersion: active.excerptVersion,
       actionableFindings: (isHost || isGuest) && actionableFindings.length > 0
         ? cloneFindings(actionableFindings)
@@ -1697,6 +1733,10 @@ export class WorkshopSessionService {
       // Persona-only decoration: tool reports never carry recommendation chips.
       widgetRecommendation: (isHost || isGuest) && widgetRecommendation
         ? cloneWidgetRecommendation(widgetRecommendation)
+        : undefined,
+      // A memory card belongs to a persona's reply (ADR 2026-11-04 D6).
+      memoryProposal: (isHost || isGuest) && memoryProposal
+        ? cloneWorkshopMemoryProposal(memoryProposal)
         : undefined
     };
 
@@ -1739,6 +1779,12 @@ export class WorkshopSessionService {
         );
       }
     }
+    // What project memory the run's message delivered rides the reply that
+    // received it, so any cut that removes the delivery removes its record,
+    // a synthesis's included (ADR 2026-11-04 D14; PR #198 F-01).
+    if ((isHost || isGuest) && active.projectMemoryDelivery) {
+      turn.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, active.projectMemoryDelivery);
+    }
     this.turnLedger.append(turn);
     for (const capabilityTurnId of new Set(active.capabilityTurnIds ?? [])) {
       this.turnLedger.update(capabilityTurnId, (capabilityTurn) => {
@@ -1761,6 +1807,29 @@ export class WorkshopSessionService {
     return cloneTurn(turn);
   }
 
+  /**
+   * Stage what project memory this run's message delivered (ADR 2026-11-04
+   * D14). It is written onto the reply only if the reply commits, so a
+   * cancelled, abandoned or rolled-back run leaves no record. False when the
+   * run is no longer the active one.
+   */
+  stageProjectMemoryDelivery(requestId: string, delivery: WorkshopProjectMemoryDelivery): boolean {
+    const active = this.activeRun;
+    if (active?.requestId !== requestId) {
+      return false;
+    }
+    // A record belongs to the conversation this run's reply answers for.
+    const own = active.target === 'host'
+      ? delivery.participant.kind === 'host'
+      : active.target === 'personaGuest' && delivery.participant.kind === 'personaGuest'
+        && delivery.participant.personaId === active.guestPersonaId;
+    if (!own) {
+      return false;
+    }
+    this.activeRun!.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, delivery)[0];
+    return true;
+  }
+
   addTodoFromFinding(sourceTurnId: string, findingKey: string): WorkshopTodoItem {
     const sourceTurn = this.turnLedger.find(sourceTurnId);
     return this.todoLedger.addFromFinding(sourceTurn, findingKey, this.getExcerptVersion());
@@ -1780,6 +1849,67 @@ export class WorkshopSessionService {
 
   collectOpenTodosForHost(): WorkshopTodoItem[] {
     return this.todoLedger.collectOpen(this.getExcerptVersion());
+  }
+
+  /**
+   * Settle a persona's memory card (ADR 2026-11-04 D6): saved (naming the
+   * memory it became), dismissed, or shown again. Refuses a turn that holds
+   * no card.
+   */
+  setMemoryProposalState(turnId: string, state: WorkshopMemoryProposalState, memoryId?: string): WorkshopTurn {
+    const turn = this.turnLedger.update(turnId, (current) => {
+      if (!current.memoryProposal) {
+        return;
+      }
+      const { memoryId: _previous, ...proposal } = current.memoryProposal;
+      current.memoryProposal = state === 'saved' && memoryId ? { ...proposal, state, memoryId } : { ...proposal, state };
+    });
+    if (!turn?.memoryProposal) {
+      throw Object.assign(new Error('That message no longer holds a memory suggestion.'), { reason: 'no-proposal' });
+    }
+    return cloneTurn(turn);
+  }
+
+  /** Hold a pending card for the writer, with why (Save and tell me's cap reached at its commit: PR #201 F-04). */
+  holdMemoryProposal(turnId: string, held: WorkshopMemoryHold): void {
+    this.turnLedger.update(turnId, (current) => {
+      if (current.memoryProposal?.state === 'pending') {
+        current.memoryProposal = { ...current.memoryProposal, held };
+      }
+    });
+  }
+
+  /** Record a memory receipt as a session divider every participant receives (D7). */
+  appendMemoryReceipt(receipt: WorkshopProjectMemoryReceipt): WorkshopTurn {
+    const turn: WorkshopTurn = {
+      id: this.nextTurnId('system'),
+      role: 'system',
+      kind: 'divider',
+      participant: 'session',
+      artifact: 'memory_receipt',
+      excerptVersion: this.getExcerptVersion(),
+      content: workshopMemoryReceiptContent(
+        receipt,
+        receipt.proposedBy && isWorkshopPersonaId(receipt.proposedBy) ? workshopPersonaLabel(receipt.proposedBy) : undefined
+      ),
+      timestamp: this.now(),
+      projectMemoryReceipt: cloneWorkshopMemoryReceipt(receipt)
+    };
+    this.turnLedger.append(turn);
+    return cloneTurn(turn);
+  }
+
+  setTurnBookmark(turnId: string, bookmarked: boolean): WorkshopBookmarkChange {
+    return this.bookmarkLedger.set(turnId, this.turnLedger.find(turnId), bookmarked);
+  }
+
+  renameBookmark(bookmarkId: string, label: string | null): WorkshopBookmarkChange {
+    return this.bookmarkLedger.rename(bookmarkId, label);
+  }
+
+  /** The bookmarked turns, for transcript export (ADR 2026-11-03 D10). */
+  readBookmarkedTurnIds(): ReadonlySet<string> {
+    return new Set(this.bookmarkLedger.list().map((bookmark) => bookmark.turnId));
   }
 
   /**
@@ -1843,6 +1973,7 @@ export class WorkshopSessionService {
 
     const rollbackTurnIds = new Set([writerTurn.id]);
     this.turnLedger.removeByIds(rollbackTurnIds);
+    this.bookmarkLedger.pruneTo(new Set(this.turnLedger.project((turn) => turn.id)));
     this.threadArtifacts = this.threadArtifacts.filter(
       (artifact) => !rollbackTurnIds.has(artifact.turnId)
     );
@@ -1861,6 +1992,7 @@ export class WorkshopSessionService {
       throw new Error(`Cannot roll back missing Workshop tool request ${active.writerTurnId}`);
     }
     this.turnLedger.removeByIds(new Set([turn.id]));
+    this.bookmarkLedger.pruneTo(new Set(this.turnLedger.project((candidate) => candidate.id)));
     this.activeRun = undefined;
     return turn;
   }
@@ -1912,6 +2044,7 @@ export class WorkshopSessionService {
     this.standingDirectiveLedger.reset();
     this.pendingContextRevision = undefined;
     this.todoLedger.reset();
+    this.bookmarkLedger.reset();
     this.retainedHistory.reset();
     this.lastCommittedPersonaBehavior = undefined;
     this.participantRoster.reset();
@@ -1935,6 +2068,7 @@ export class WorkshopSessionService {
     const widgetConfigState = this.widgetConfigLedger.exportState();
     const standingDirectiveState = this.standingDirectiveLedger.exportState();
     const todoState = this.todoLedger.exportState();
+    const bookmarkState = this.bookmarkLedger.exportState();
     const turnState = this.turnLedger.exportState();
     const passageState = this.passageScope.exportState();
     const rosterState = this.participantRoster.exportState();
@@ -2005,6 +2139,8 @@ export class WorkshopSessionService {
       },
       selectedToolId: rosterState.selectedToolId,
       todos: todoState.todos,
+      // Written only when the room holds one (ADR 2026-11-03 D9).
+      bookmarks: bookmarkState.bookmarks.length > 0 ? bookmarkState.bookmarks : undefined,
       retainedHistoryMarks: retainedHistoryState.marks,
       lastCommittedPersonaBehavior: this.lastCommittedPersonaBehavior
         ? { ...this.lastCommittedPersonaBehavior }
@@ -2041,7 +2177,8 @@ export class WorkshopSessionService {
     validateWorkshopSessionStateV1(state, {
       allowLegacyOpenSessionWithExcerpt: true,
       skipWidgetDraftIntegrity: true,
-      skipRetainedHistoryMarkIntegrity: true
+      skipRetainedHistoryMarkIntegrity: true,
+      allowDanglingBookmarks: true
     });
     const normalization = normalizeWorkshopSessionCheckpointForHydration(state);
     const normalized = normalization.state;
@@ -2070,6 +2207,7 @@ export class WorkshopSessionService {
       todos: normalized.todos,
       counter: normalized.counters.todo
     });
+    const bookmarkState = this.bookmarkLedger.prepareState(normalized.bookmarks ?? []);
     const widgetConfigState = this.widgetConfigLedger.prepareState({
       configs: normalized.widgetConfigs ?? [],
       counter: normalized.counters.widgetConfig ?? 0
@@ -2219,6 +2357,7 @@ export class WorkshopSessionService {
     this.widgetConfigLedger.installPreparedState(widgetConfigState);
     this.standingDirectiveLedger.installPreparedState(standingDirectiveState);
     this.todoLedger.installPreparedState(todoState);
+    this.bookmarkLedger.installPreparedState(bookmarkState);
     this.turnLedger.installPreparedState(turnState);
     this.retainedHistory.installPreparedState(retainedHistoryState);
     this.passageScope.installPreparedState(passageState);
@@ -2323,6 +2462,11 @@ export class WorkshopSessionService {
 
   getSnapshot(): WorkshopSessionSnapshot {
     const windowed = this.turnLedger.window(WORKSHOP_SNAPSHOT_TURN_WINDOW);
+    // The model-slice seed (ADR 2026-11-03 D8): undefined unless the window truncates.
+    const modelsBeforeWindow = workshopModelsBeforeWindow(
+      this.turnLedger.project((turn) => turn),
+      this.turnLedger.count() - windowed.length
+    );
     const passageState = this.passageScope.exportState();
     const visibleWidgetConfigIds = new Set(
       [
@@ -2351,6 +2495,10 @@ export class WorkshopSessionService {
           }
         : undefined,
       todos: this.todoLedger.list(passageState.excerptVersion),
+      bookmarks: this.bookmarkLedger.summaries(
+        this.turnLedger.project((turn) => turn),
+        new Set(windowed.map((turn) => turn.id))
+      ),
       widgetConfigs: this.widgetConfigLedger.summariesFor(visibleWidgetConfigIds),
       standingDirectives: this.standingDirectiveSummaries(),
       turns: windowed,
@@ -2359,6 +2507,7 @@ export class WorkshopSessionService {
       ),
       totalTurns: this.turnLedger.count(),
       truncatedTurns: this.turnLedger.count() - windowed.length,
+      ...(modelsBeforeWindow ? { modelsBeforeWindow } : {}),
       roomHasMemory: this.hasRoomMemory(),
       participants: this.participantRoster.snapshot(),
       conversationBehavior: { ...this.behavior },

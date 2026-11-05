@@ -15,6 +15,11 @@ import {
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
 import { WorkshopResourceGroupAvailability } from './WorkshopCapabilityXmlCodec';
+import {
+  configuredResourceFingerprint,
+  findConfiguredResource,
+  sliceUtf8
+} from './WorkshopConfiguredResourceLookup';
 
 type ResourceRequest = Extract<WorkshopCapabilityRequest, {
   capability: 'resource.catalog' | 'resource.search' | 'resource.read';
@@ -40,6 +45,23 @@ export interface WorkshopResourceTurnContext {
   readonly requestId: string;
   readonly personaId: WorkshopPersonaId;
   readonly signal: AbortSignal;
+}
+
+/**
+ * The lines a successful `resource.read` returned, from the metadata `read`
+ * writes below (Wayfinding D4). Undefined when no line was returned (a read
+ * whose byte ceiling fell inside its first line) or the metadata is not a
+ * read's.
+ */
+export function resourceReadLineRange(
+  metadata: Record<string, unknown> | undefined
+): { start: number; end: number } | undefined {
+  const start = metadata?.startLine;
+  const end = metadata?.endLine;
+  return Number.isInteger(start) && Number.isInteger(end)
+    && (start as number) >= 1 && (end as number) >= (start as number)
+    ? { start: start as number, end: end as number }
+    : undefined;
 }
 
 export class WorkshopResourceCapability {
@@ -166,7 +188,7 @@ export class WorkshopResourceCapability {
           continue;
         }
 
-        const sliced = this.sliceUtf8(resource.content, fileByteLimit);
+        const sliced = sliceUtf8(resource.content, fileByteLimit);
         bytesScanned += sliced.bytes;
         filesScanned += 1;
         inputTruncated ||= sliced.truncated;
@@ -227,27 +249,20 @@ export class WorkshopResourceCapability {
   private async read(
     request: Extract<ResourceRequest, { capability: 'resource.read' }>
   ): Promise<WorkshopCapabilityResult> {
-    const catalog = await this.resources();
-    const exactResource = catalog.find(item =>
-      item.group === request.group && item.path === request.path
-    );
-    const caseFoldedResources = exactResource ? [] : catalog.filter(item =>
-      item.group === request.group &&
-      this.normalizeResourcePath(item.path) === this.normalizeResourcePath(request.path)
-    );
-    if (caseFoldedResources.length > 1) {
+    const lookup = findConfiguredResource(await this.resources(), request.group, request.path);
+    if (lookup.kind === 'ambiguous') {
       return this.rejected(
         request,
         'The requested path matches more than one configured resource when letter case is ignored.'
       );
     }
-    const resource = exactResource ?? caseFoldedResources[0];
-    if (!resource) {
+    if (lookup.kind === 'missing') {
       return this.rejected(
         request,
         'The requested path is not one of the configured project resources in that group.'
       );
     }
+    const resource = lookup.resource;
 
     const budgets = PROMPT_BUDGETS.workshopResource;
     if (resource.sizeBytes > budgets.readSourceBytes) {
@@ -320,7 +335,7 @@ export class WorkshopResourceCapability {
     const requestedEndLine = request.endLine ?? defaultEndLine;
     const selectedEndLine = Math.min(requestedEndLine, totalLines);
     const selectedContent = lines.slice(startLine - 1, selectedEndLine).join('\n');
-    const sliced = this.sliceUtf8(selectedContent, budgets.readBytes);
+    const sliced = sliceUtf8(selectedContent, budgets.readBytes);
     const returnedLineCount = sliced.truncated
       ? this.returnedLineCount(sliced.content)
       : selectedEndLine - startLine + 1;
@@ -361,7 +376,9 @@ export class WorkshopResourceCapability {
         totalBytes,
         windowBytes: sliced.totalBytes,
         truncated: sliced.truncated
-      }
+      },
+      // The whole file at read time, so the reader can say when it changed.
+      sourceFingerprint: configuredResourceFingerprint(loaded.content)
     };
   }
 
@@ -420,24 +437,6 @@ export class WorkshopResourceCapability {
 
   private normalizeResourcePath(resourcePath: string): string {
     return resourcePath.toLowerCase();
-  }
-
-  private sliceUtf8(
-    content: string,
-    maxBytes: number
-  ): { content: string; bytes: number; totalBytes: number; truncated: boolean } {
-    const totalBytes = Buffer.byteLength(content, 'utf8');
-    if (totalBytes <= maxBytes) {
-      return { content, bytes: totalBytes, totalBytes, truncated: false };
-    }
-    const encoded = Buffer.from(content, 'utf8');
-    const sliced = encoded.subarray(0, maxBytes).toString('utf8').replace(/\uFFFD$/, '');
-    return {
-      content: sliced,
-      bytes: Buffer.byteLength(sliced, 'utf8'),
-      totalBytes,
-      truncated: true
-    };
   }
 
   private returnedLineCount(content: string): number {

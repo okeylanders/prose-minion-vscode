@@ -27,12 +27,14 @@ jest.mock('../../../presentation/webview/styles/workshop/tokens.css', () => ({})
 jest.mock('../../../presentation/webview/styles/workshop/shell.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/workshop/context.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/workshop/session.css', () => ({}));
+jest.mock('../../../presentation/webview/styles/workshop/memory.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/widgets/gesturePlayground/gesturePlayground.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/widgets/lexicalGravity/lexicalGravity.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/widgets/creativeVariations/creativeVariations.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/widgets/showVsTell/showVsTell.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/standingDirectiveRail.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/schematic/schematic.css', () => ({}));
+jest.mock('../../../presentation/webview/styles/workshop/memory.css', () => ({}));
 // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked component's export name.
 jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmLogo: () => null }));
 
@@ -58,6 +60,7 @@ const readySession = (): WorkshopSessionStateMessage => ({
       widgetConfigs: [],
       standingDirectives: [],
       todos: [],
+      bookmarks: [],
       turns: [],
       turnRewindability: {},
       totalTurns: 0,

@@ -1,0 +1,125 @@
+# PR #189 review: Workshop Wayfinding Slice 5, bookmark UI
+
+**Disposition: changes requested. Two independently reproduced P2 lifecycle issues. Review continues.**
+
+**Reviewed implementation:** `9b2a60585a443dd19cc622d441f84e19faccd8d0`  
+**Base:** `356c7519b9ed5355cb86027bb55f6eae389a43af`  
+**PR:** [#189](https://github.com/okeylanders/prose-minion-vscode/pull/189) · **Reviewed:** 2026-11-04
+
+The PR is marked draft and its slice remains in progress. This early report shares confirmed issues while the remaining implementation and review continue; it is not a formal GitHub review, approval or authorization to merge.
+
+## F-01: P2: a refused rename can discard the writer's draft
+
+**Location:** [`useWorkshopBookmarkRename.ts:103–114`](https://github.com/okeylanders/prose-minion-vscode/blob/9b2a60585a443dd19cc622d441f84e19faccd8d0/packages/core/src/presentation/webview/hooks/domain/workshop/controllers/useWorkshopBookmarkRename.ts#L103-L114).
+
+The controller posts a valid rename and immediately closes the field and clears its draft, before the host has accepted the mutation. A real App → refresh/bookmark route probe demonstrates a reachable refusal:
+
+1. Begin renaming a bookmark and type a valid new label.
+2. Switch to Material and invoke **Refresh changed files** while prior persistence I/O is held. The host has acquired its session-operation gate, but the later scanning snapshot has not yet been posted.
+3. Switch back to Notes and choose Save; it is still enabled.
+4. The host refuses the rename under the gate. The stored label remains original, but the field has closed; reopening shows the original label and the typed draft is lost.
+
+This is not a synthetic submit through a disabled control. Keep a submitted draft until the host confirms the change, or restore it on refusal, while preserving ordinary save, Escape and room-replacement behavior. Add a production App/host regression for a gate refusal and a successful-rename control. The probe uses the real routes and holds the persistence wait at its documented gate seam.
+
+## F-02: P2: a preview requested in one room can briefly show another room's turn
+
+**Location:** [`WorkshopBookmarkHandler.ts:88–110`](https://github.com/okeylanders/prose-minion-vscode/blob/9b2a60585a443dd19cc622d441f84e19faccd8d0/packages/core/src/application/handlers/domain/workshop/WorkshopBookmarkHandler.ts#L88-L110).
+
+The preview route waits for a pending session operation, then reads whichever room is current. A request is correlated by request ID and turn ID, but not by the room generation in which it was made. If Open is pending and the old and new checkpoints share a turn ID, a request from the old room can be answered with the new room's content before the new-room snapshot invalidates the old sheet.
+
+An independent test using both production message handlers, real router, coordinator, store and aggregate holds Open during its context scan. It observes the actual post order `WORKSHOP_TURN_PREVIEW` with the new room's content, then `WORKSHOP_SESSION_STATE`. A full-App probe delivers those messages in that order: the old bookmark's dialog accepts the other room's content, then closes once the new room-revision snapshot arrives. The mismatch is transient in this witness, not a claim of a lasting cross-room state or an external disclosure.
+
+Bind the read to the originating room generation and refuse or discard it if replacement changes that generation, including while waiting. Test a shared turn ID across rooms and both successful and failed replacement, as well as the normal current-room control. Recheck queued replacements rather than relying solely on a single captured queue promise.
+
+## Verification so far
+
+Independent production coverage so far includes **12 suites / 219 tests** for bookmark UI/state and **9 suites / 180 tests** for preview/access boundaries; these may overlap. The separate lifecycle probes reproduce F-01 and F-02 and are not part of those passing totals. More privacy, preview completeness and room-operation review remains. Exact-head CI is still in progress. No implementation change, formal approval or merge was made.
+
+
+## N-01: P3: the preview drops the private-audience label
+
+**Locations:** [`WorkshopTurnPreview.ts:24–45`](https://github.com/okeylanders/prose-minion-vscode/blob/d76180c2510a905da98645ef856cc5e382b83eaa/packages/core/src/application/services/workshop/transcript/WorkshopTurnPreview.ts#L24-L45), [`WorkshopTextSheet.tsx:206–216`](https://github.com/okeylanders/prose-minion-vscode/blob/d76180c2510a905da98645ef856cc5e382b83eaa/packages/core/src/presentation/webview/components/workshop/WorkshopTextSheet.tsx#L206-L216).
+
+The preview payload preserves `privateWith`, but the sheet does not display it. A real-route/App witness pins an excerpt, runs Prose, selects that target, sends a private message and bookmarks both writer and assistant turns. In-window, both bubbles say “Private · you + Prose.” After the ledger advances beyond the 200-turn window, the actual preview route returns `privateWith: 'Prose'` for both, yet neither preview displays the private label. The writer's preview does not name Prose at all; the assistant preview names its speaker but is indistinguishable from a room-visible tool report.
+
+This does not transmit private data to a new recipient, but it omits useful context about who heard the exchange. Render the safe private-audience label in the read-only preview and test both writer and assistant turns against their in-window labels. This is nonblocking.
+
+## Further verification
+
+The F-01 reproduction has now been strengthened through the real App, production routes, persistence coordinator and store; only a disk write was deferred to model slow I/O. The latest `d76180c` delta after `9b2a605` splits App tests and updates documentation only; production behavior is unchanged. Independent verification includes **12 suites / 219 tests** on the implementation, the latest split suites and real-coordinator lifecycle probes, plus **9 suites / 180 tests** for preview/access boundaries. The App and route witnesses for F-01 and F-02 remain separate from passing production totals.
+
+[CI run 41772202938](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41772202938) passed on synthetic merge `6a30822` of `9b2a605` into `356c751`: **625 suites / 8,891 tests / 59 snapshots**, typecheck, lint and both builds. Current-head CI is being checked. F-01 and F-02 remain open despite green CI; the broader review is continuing.
+
+
+## Completed review
+
+The initial review is complete. F-01 and F-02 require correction; N-01 is a separate nonblocking loss of private-audience context. No additional actionable defect was established in snapshot-only toggles, bookmark badge identity/order, writer jump targets, supported overlay focus paths, route eligibility, or host-private preview projection. The preview's intentionally narrow subset also omits safe widget/attachment/citation metadata; a blank widget-only history is supported by transcript fixtures, but no current ordinary UI producer of such a blank turn was established, so no separate production-flow finding is asserted.
+
+The real coordinator/store F-01 witness and the real handlers/router plus full-App F-02 witness both reproduce the reported outcomes. Five independent lifecycle probes also cover rename survival through tab and unrelated snapshot changes, room-generation reset, visible-lock preservation, badge behavior and failed New rollback. Five independent preview App probes include the normal-route private-turn witness. These are separate from the production suite totals above.
+
+The latest implementation-bearing head `d76180c` differs from `9b2a605` only in documentation and test organization. [Its CI run 41773308472](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41773308472) was still running at review completion; the earlier implementation run passed. Native VS Code focus and live writer acceptance remain unverified. Correct F-01/F-02 and re-review the exact new head. No formal approval or merge was made.
+
+## Author response
+
+F-01 and F-02 are fixed in `e944375`, and N-01 in `c97d947`, on top of the reviewed `9b2a605` and the docs commit `d76180c`.
+
+| Finding | Status | Fix | Regression |
+|---|---|---|---|
+| F-01 (P2): a refused rename discards the draft | Fixed in `e944375` | `WORKSHOP_RENAME_BOOKMARK` carries a webview-minted `requestId`. The host answers it with `WORKSHOP_RENAME_BOOKMARK_RESULT` (`accepted`, or refused with the host's reason), including the session-operation gate's refusal, through the route's `onBlocked`. `useWorkshopBookmarkRename` keeps the submitted draft, read-only and marked "Saving…", with Save disabled, until that request is answered. Accepted closes the field. Refused gives the draft back with the reason (`role="alert"`, `aria-invalid`). A later snapshot's label is never read as the answer. Escape and room replacement still close the field. | `WorkshopApp.bookmarkHost.test.tsx`: the real App bridged to the real router, slice composition and session. Cases: a gate refusal keeps the draft and shows the reason, and the label is unchanged, then the same draft saves; an accepted rename closes onto the new label; a reset to the default closes, though its snapshot alone is ambiguous; Escape; room replacement. Also `WorkshopRoutes.bookmarks.test.ts` (results for gate, ledger and label refusals; accepted after the snapshot; a rename without a request id is malformed), `WorkshopBookmarkList.test.tsx` and `useWorkshopBookmarks.test.ts` (only the pending request's answer is taken). |
+| F-02 (P2): a preview requested in one room can show another room's turn | Fixed in `e944375` | `WORKSHOP_REQUEST_TURN_PREVIEW` carries the snapshot's `roomRevision`, which the host echoes. The host waits while any session operation is pending, re-checking after each one, so it never relies on one captured queue promise. It then refuses with "The room changed before this message could be shown." and no turn when the current room is another. That covers a request that arrives after the room was already replaced. As a second guard, the webview drops a reply that names another room, or that arrives once its room is no longer on screen. | `WorkshopTurnPreviewRoomBinding.test.ts`: the real handler and router over the real coordinator, store and aggregate, with two saved rooms sharing a turn id. Cases: Open landing while the request waits; Open already landed; a second Open queued after the request began waiting; a failed Open (answered from the unchanged room); the current-room control. Against the old logic, the revision check fails three of these and the single wait fails the queued case. `WorkshopApp.turnPreview.test.tsx` covers the observed order, preview first and then the new room's snapshot: the refusal shows, then the sheet closes, and a reply naming another room is never shown. |
+| N-01 (P3): the preview drops the private-audience label | Fixed in `c97d947` | The sheet shows `privateWith`, which the preview payload already carried, with the bubble's own wording. Both now call `workshopPrivateThreadLabel` ("Private · you + Prose"). | `WorkshopApp.bookmarkHost.test.tsx`, through the real route and App: a real private exchange with Prose, both turns bookmarked. The bubbles' labels are read in the window. The room then passes `WORKSHOP_SNAPSHOT_TURN_WINDOW`, and each bookmark, now outside the window, opens through the real preview route showing exactly its bubble's label. With the sheet's label removed, this test fails. Also `WorkshopTextSheet.test.tsx`: the same check through the projection, and a room-visible turn shows none. |
+
+- **Counts at `c97d947` (the last code commit), clean tree.**
+  - 628 suites / 8,913 tests / 59 snapshots. In the full run, one Lightbox passages wall-clock test failed under load and passed alone (12/12); it is [tracked](../../.todo/tech-debt/2026-11-03-lightbox-passages-wall-clock-test.md). At `e944375` the full run passed outright: 628 / 8,910 / 59. With the N-01 App witness added after it, the full run passed outright: 628 / 8,914 / 59.
+  - Typecheck clean.
+  - Lint: 0 errors, 1,150 warnings, up from 1,146. All four new ones are `naming-convention`: `WORKSHOP_RENAME_BOOKMARK_RESULT`, the bridge test's `PmLogo` mock, and the jsdom `TextEncoder`/`TextDecoder` shim.
+  - No `from 'vscode'` in core.
+- **Note.** The bridge test imports `__tests__/presentation/webview/support/jsdomTextEncoding.ts` first, because the session store creates a `TextEncoder` at load and jsdom has none.
+
+
+## F-03: P2: another rename can take ownership of an in-flight response
+
+**Locations:** [`useWorkshopBookmarkRename.ts:102–120`](https://github.com/okeylanders/prose-minion-vscode/blob/13af9ddc9e7a0c856208116af3378fbb9590b97c/packages/core/src/presentation/webview/hooks/domain/workshop/controllers/useWorkshopBookmarkRename.ts#L102-L120), [`WorkshopBookmarkList.tsx:160–166`](https://github.com/okeylanders/prose-minion-vscode/blob/13af9ddc9e7a0c856208116af3378fbb9590b97c/packages/core/src/presentation/webview/components/workshop/WorkshopBookmarkList.tsx#L160-L166).
+
+The original F-01 refusal witness now preserves its draft when left on that row. The correction introduces a cross-row lifetime problem, however: while rename A is awaiting its correlated result, other rows' Rename buttons remain enabled. `beginRename(B)` replaces `editingId` and the draft but leaves A's `submittedRequestId` in place. B inherits A's Saving/read-only state. In independent App probes, an accepted result for A closes B's editor and moves focus to B's Rename; a refusal for A puts A's error beside B and A's submitted draft is no longer recoverable. The response is matched to A's request ID, but not to the editor/bookmark that owns it.
+
+Prevent another row from replacing a pending editor, or separate each request's owner and draft from the currently edited row. Cover both accepted and refused A results after attempting to open B, as well as cancellation, room replacement and normal sequential renames. This re-review's cross-row witness is new; the original F-01 gate-refusal fix itself passes its direct reproduction. The subsequent `c78ca0e` changes tests/docs only, so production source remains the same.
+
+F-02 and N-01 are still being independently rechecked on the corrected source. No formal approval or merge was made.
+
+
+## F-04: P2: a failed Open leaves the preview bound to an obsolete room revision
+
+**Locations:** [`WorkshopBookmarkHandler.ts:95–110`](https://github.com/okeylanders/prose-minion-vscode/blob/13af9ddc9e7a0c856208116af3378fbb9590b97c/packages/core/src/application/handlers/domain/workshop/WorkshopBookmarkHandler.ts#L95-L110), [`WorkshopSessionMessageHandler.ts:371–376`](https://github.com/okeylanders/prose-minion-vscode/blob/13af9ddc9e7a0c856208116af3378fbb9590b97c/packages/core/src/application/handlers/domain/workshop/WorkshopSessionMessageHandler.ts#L371-L376).
+
+The F-02 correction binds preview requests to the webview's room revision and correctly refuses an old-room request after a successful Open. A different failure path leaves that revision stale: if Open hydrates the replacement room and a later `writeCurrent` fails, rollback restores the original ledger and bookmarks but advances the host room revision. The Open error path posts the failure without a `WORKSHOP_SESSION_STATE` snapshot, so the webview keeps its prior revision.
+
+An independent full-App test uses the real coordinator, store and production Open/preview handlers, forcing that durable write to fail. After the failure settles, closing and reopening an old bookmark twice sends the old revision both times; both previews say “The room changed before this message could be shown,” and no turn is returned. The App makes no refresh request. Delivering one later authoritative snapshot immediately repairs the revision and the next preview succeeds. Thus the preview remains broken until another snapshot happens; this is not the transient cross-room display from the original F-02.
+
+Publish the restored room's authoritative snapshot after rollback, or otherwise reconcile the webview revision before further reads, without allowing the original cross-room preview. Add the real post-hydration failed-Open path, repeated preview attempts, recovery after reconciliation and successful/failed replacement controls. Preserve the F-02 successful-Open room binding.
+
+The original successful-Open F-02 witness and N-01 private labels now pass independently; F-03 above and this rollback case remain open. No formal approval or merge was made.
+
+## Author response: re-review
+
+| Finding | Status | Fix | Regression |
+|---|---|---|---|
+| F-03 (P2): another rename can take ownership of an in-flight response | Fixed in `0659956` | The pending rename records its owner `{ requestId, bookmarkId, draft }`. An answer applies only while that owner's field is the open one: accepted closes it, refused gives back that draft with the reason. One rename runs at a time: while one waits, every other row's Rename is disabled, titled "Wait for the rename in progress to finish", and `beginRename` refuses too. **Escape or Cancel while pending** closes the field and abandons the request; the late answer is dropped and touches no row. The host may still have kept the name, and the list shows whatever the next snapshot holds. | `WorkshopApp.bookmarkHost.test.tsx`, the App bridged to the real host routes. Cases: A accepted after trying to open B (B stays shut, A closes, focus to A's Rename); A refused after trying to open B (A's draft and reason come back to A); Escape while pending, then B opens clean with no inherited saving state or alert; a room replacement while pending; two renames in turn. With the guard and the disabled state removed, both A/B cases fail. |
+| F-04 (P2): a failed Open leaves the preview bound to an obsolete room revision | Fixed in `905f43b` | `WorkshopSessionMessageHandler.handleOpenSession`'s failure path posts the restored room's snapshot before its failure result, as New, Rewind and Branch's failure paths already did. Open was the only whole-room operation with the gap. The coordinator posts nothing itself (its handlers do), so the fix sits beside its siblings rather than in `replaceLiveRoom`. The revision is not wound back: the restored room keeps the new one, and the webview hears it. F-02's binding is unchanged. | `WorkshopTurnPreviewAfterFailedReplacement.test.ts`, the production session and bookmark handlers on one router over the real coordinator, store and aggregate. Cases: a failed Open after hydration (the room is the one left, its revision moved forward, the webview's revision matches, and three previews in a row answer); controls for a successful Open (the old revision is still refused) and an Open that fails before replacing anything; a failed Rewind (named write) and a failed New, both publishing. Without the fix, the failed-Open case fails. |
+
+- **Counts at `905f43b`, clean tree.**
+  - 629 suites / 8,924 tests / 59 snapshots, all passing.
+  - Typecheck clean.
+  - Lint: 0 errors, 1,150 warnings, unchanged.
+  - No `from 'vscode'` in core.
+
+
+## Independent re-review of `e452a45` (2026-11-04)
+
+**Disposition: F-01 through F-04 and N-01 are resolved; no new actionable defect found in the corrective delta.** This report is not a formal GitHub approval or authorization to merge. Exact-head CI was still running at report time.
+
+- **F-01/F-03:** The original real-coordinator refusal/retry witness passes and the submitted draft stays with its request owner. In the cross-row real-host tests, B cannot replace A while A is pending; accepted A closes/focuses A, refused A restores A's draft/error, and B remains unchanged and available afterward. Cancel, room replacement, sequential renames, visible locks and failed-New controls pass.
+- **F-02/F-04:** Successful Open still cannot show the replacement room's content under an old request. In the original real-App/coordinator/store disk-full rollback witness, failed Open now publishes the restored room revision before its failure result; three subsequent App-generated previews succeed without a manual repair snapshot. An in-flight old preview is refused and closed, and reopening works. Queued replacement, malformed revision and correlation controls pass.
+- **N-01:** Normal private Prose writer/reply previews now display the same private-audience label as their in-window bubbles.
+
+**Independent verification on `e452a45`:** rename verification ran **8 suites / 130 tests**, including nine independent probes; preview/rollback verification ran **13 production suites / 212 tests** plus **2 independent suites / 23 tests**. These groups may overlap. [CI run 41779907412](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41779907412) was still running when checked. The full local suite and native VS Code live pass were not rerun independently. No implementation change, formal approval or merge was made during this re-review.

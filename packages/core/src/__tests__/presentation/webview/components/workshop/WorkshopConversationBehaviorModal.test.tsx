@@ -20,8 +20,12 @@ describe('WorkshopConversationBehaviorModal', () => {
       behavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR },
       writerProfile: { ...DEFAULT_WORKSHOP_WRITER_PROFILE },
       webResearch: { ...DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS },
+      projectMemoryMode: 'off',
+      memory: { workspace: { kind: 'available' }, saved: 0, unreadable: [], conflicts: [] },
       isRunning: false,
       onApply: jest.fn(),
+      onOpenMemoryManager: jest.fn(),
+      onOpenMemoryFolder: jest.fn(),
       onClose: jest.fn(),
       ...overrides
     };
@@ -54,7 +58,8 @@ describe('WorkshopConversationBehaviorModal', () => {
     expect(props.onApply).toHaveBeenCalledWith(
       { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR, proactiveAssistance: false },
       DEFAULT_WORKSHOP_WRITER_PROFILE,
-      DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS
+      DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
+      'off'
     );
   });
 
@@ -70,6 +75,12 @@ describe('WorkshopConversationBehaviorModal', () => {
     expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('pm-ws-profile-tab');
 
     fireEvent.keyDown(profileTab, { key: 'ArrowRight' });
+    const memoryTab = screen.getByRole('tab', { name: 'Memory' });
+    expect(memoryTab.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(memoryTab);
+    expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('pm-ws-memory-tab');
+
+    fireEvent.keyDown(memoryTab, { key: 'ArrowRight' });
     const advancedTab = screen.getByRole('tab', { name: 'Advanced' });
     expect(advancedTab.getAttribute('aria-selected')).toBe('true');
     expect(document.activeElement).toBe(advancedTab);
@@ -94,7 +105,8 @@ describe('WorkshopConversationBehaviorModal', () => {
     expect(props.onApply).toHaveBeenCalledWith(
       expect.objectContaining({ interactionMode: 'analysis' }),
       { enabled: true, preferredAddress: 'Okey', bio: 'I write fiction.' },
-      DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS
+      DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
+      'off'
     );
     expect(screen.getByText('Conversation settings are updating…')).not.toBeNull();
   });
@@ -115,7 +127,8 @@ describe('WorkshopConversationBehaviorModal', () => {
     expect(props.onApply).toHaveBeenCalledWith(
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
       DEFAULT_WORKSHOP_WRITER_PROFILE,
-      DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS
+      DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
+      'off'
     );
   });
 
@@ -205,7 +218,8 @@ describe('WorkshopConversationBehaviorModal', () => {
     expect(props.onApply).toHaveBeenCalledWith(
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
       DEFAULT_WORKSHOP_WRITER_PROFILE,
-      { enabled: true }
+      { enabled: true },
+      'off'
     );
   });
 

@@ -63,12 +63,15 @@ import {
   WorkshopTurnMessage,
   WorkshopWriterProfile,
   WorkshopWebResearchSettings,
+  WorkshopProjectMemoryMode,
+  coerceWorkshopProjectMemoryMode,
   WorkshopStandingDirectiveSummary,
   coerceWorkshopConversationBehavior,
   coerceWorkshopWriterProfile,
   coerceWorkshopWebResearchSettings
 } from '@messages';
 import { LabeledContextBudgetSnapshot } from '@messages';
+import type { WorkshopModelsBeforeWindow } from '@shared/workshop/workshopModelSlices';
 
 /**
  * One attachment body, fetched on demand for the Edit/Preview sheet (Sprint 13A
@@ -140,6 +143,8 @@ export interface WorkshopRoomState {
    * 2026-09-30 §4). Rendered, never re-derived: the host re-checks anyway.
    */
   turnRewindability: Readonly<Record<string, WorkshopTurnRewindability>>;
+  /** The snapshot's model-slice seed (ADR 2026-11-03 D8); undefined when nothing was cut. */
+  modelsBeforeWindow?: WorkshopModelsBeforeWindow;
   /**
    * Turns held host-side but not present in this webview (a bounded snapshot
    * window bit on reload of a marathon thread). 0 in normal operation.
@@ -161,6 +166,8 @@ export interface WorkshopRoomState {
   /** Global profile mirrored beside, never inside, the host session snapshot. */
   writerProfile: WorkshopWriterProfile;
   webResearch: WorkshopWebResearchSettings;
+  /** The global project-memory mode (ADR 2026-11-04 D8): the Memory tab's draft starts from it. */
+  projectMemoryMode: WorkshopProjectMemoryMode;
   /** Public metadata for the latest retained sidecar per tool. */
   toolSidecars: WorkshopToolSidecarSnapshot[];
   /** Explicitly invited persona guests, including disposed history markers. */
@@ -231,7 +238,8 @@ export interface WorkshopRoomActions {
   setConversationSettings: (
     behavior: WorkshopConversationBehavior,
     writerProfile: WorkshopWriterProfile,
-    webResearch?: WorkshopWebResearchSettings
+    webResearch?: WorkshopWebResearchSettings,
+    projectMemoryMode?: WorkshopProjectMemoryMode
   ) => void;
   todoAction: (action: WorkshopTodoAction) => void;
   cancelRun: () => void;
@@ -257,6 +265,7 @@ export type WorkshopRoomPersistence = Record<string, never>;
 
 export interface WorkshopRoomThreadSnapshot {
   turns: WorkshopTurn[];
+  modelsBeforeWindow?: WorkshopModelsBeforeWindow;
   totalTurns: number;
   errorMessage: string;
 }
@@ -308,6 +317,8 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   const [turnRewindability, setTurnRewindability] =
     React.useState<Readonly<Record<string, WorkshopTurnRewindability>>>({});
   const [totalTurns, setTotalTurns] = React.useState(0);
+  const [modelsBeforeWindow, setModelsBeforeWindow] =
+    React.useState<WorkshopModelsBeforeWindow | undefined>(undefined);
   const [hasHostConversation, setHasHostConversation] = React.useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = React.useState<WorkshopPersonaId>('jill');
   const [chatTarget, setChatTargetState] = React.useState<WorkshopChatTarget>({ kind: 'host' });
@@ -317,6 +328,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     React.useState<WorkshopWriterProfile>({ ...DEFAULT_WORKSHOP_WRITER_PROFILE });
   const [webResearch, setWebResearch] =
     React.useState<WorkshopWebResearchSettings>({ ...DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS });
+  const [projectMemoryMode, setProjectMemoryMode] = React.useState<WorkshopProjectMemoryMode>('off');
   const [toolSidecars, setToolSidecars] = React.useState<WorkshopToolSidecarSnapshot[]>([]);
   const [personaGuests, setPersonaGuests] = React.useState<WorkshopPersonaGuestSnapshot[]>([]);
   const [contextBudget, setContextBudget] = React.useState<LabeledContextBudgetSnapshot | undefined>();
@@ -550,15 +562,21 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   // the system-message replacement batch the old mode stays visible. The new
   // object arrives with the next WORKSHOP_SESSION_STATE.
   const setConversationSettings = React.useCallback(
-    (behavior: WorkshopConversationBehavior, profile: WorkshopWriterProfile, research = DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS) => {
+    (
+      behavior: WorkshopConversationBehavior,
+      profile: WorkshopWriterProfile,
+      research = DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
+      memoryMode: WorkshopProjectMemoryMode = projectMemoryMode
+    ) => {
       setErrorMessage('');
       post(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS, {
         behavior,
         writerProfile: profile,
-        webResearch: research
+        webResearch: research,
+        projectMemory: memoryMode
       });
     },
-    [post]
+    [post, projectMemoryMode]
   );
 
   const todoAction = React.useCallback(
@@ -583,16 +601,18 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   }, []);
 
   const beginReplacement = React.useCallback((): WorkshopRoomThreadSnapshot => {
-    const snapshot = { turns: [...turns], totalTurns, errorMessage };
+    const snapshot = { turns: [...turns], modelsBeforeWindow, totalTurns, errorMessage };
     clearStatus();
     setErrorMessage('');
     setTurns([]);
+    setModelsBeforeWindow(undefined);
     setTotalTurns(0);
     return snapshot;
-  }, [clearStatus, errorMessage, totalTurns, turns]);
+  }, [clearStatus, errorMessage, modelsBeforeWindow, totalTurns, turns]);
 
   const restoreReplacement = React.useCallback((snapshot: WorkshopRoomThreadSnapshot) => {
     setTurns(snapshot.turns);
+    setModelsBeforeWindow(snapshot.modelsBeforeWindow);
     setTotalTurns(snapshot.totalTurns);
     setErrorMessage(snapshot.errorMessage);
   }, []);
@@ -654,6 +674,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       setConversationBehaviorState(coerceWorkshopConversationBehavior(session.conversationBehavior));
       setWriterProfile(coerceWorkshopWriterProfile(message.payload.writerProfile));
       setWebResearch(coerceWorkshopWebResearchSettings(message.payload.webResearch));
+      setProjectMemoryMode(coerceWorkshopProjectMemoryMode(message.payload.projectMemory));
       setToolSidecars(session.participants.toolSidecars);
       setPersonaGuests(session.participants.personaGuests);
       setContextBudget(session.contextBudget);
@@ -665,6 +686,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       // persisted session retain the complete ledger for future pagination.
       // A rewind arrives the same way: a shorter snapshot replaces the thread.
       setTurns(session.turns);
+      setModelsBeforeWindow(session.modelsBeforeWindow);
       setTurnRewindability(session.turnRewindability ?? {});
 
       const activeRequestId = session.activeRequestId ?? null;
@@ -814,6 +836,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     wizardRunning: wizardRun !== null,
     turns,
     turnRewindability,
+    modelsBeforeWindow,
     hiddenTurns,
     hasHostConversation,
     selectedPersonaId,
@@ -821,6 +844,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     conversationBehavior,
     writerProfile,
     webResearch,
+    projectMemoryMode,
     toolSidecars,
     personaGuests,
     contextBudget,

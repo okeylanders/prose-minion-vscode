@@ -24,6 +24,25 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleSessionContextScan: jest.fn(),
     handleSessionRecoveryNotice: jest.fn()
   } as never,
+  readIn: {
+    handleReadInResourceContent: jest.fn()
+  } as never,
+  bookmarks: {
+    handleSessionState: jest.fn(),
+    handleTurnPreview: jest.fn()
+  } as never,
+  projectMemory: {
+    handleWriteResult: jest.fn(),
+    handleEditData: jest.fn(),
+    handleEstimateResult: jest.fn()
+  },
+  memoryManager: {
+    handleListing: jest.fn(),
+    handleManagerResult: jest.fn(),
+    noteWriteResult: jest.fn(),
+    noteEditData: jest.fn(),
+    noteSessionState: jest.fn()
+  },
   widgetHost: {
     handleWidgetConfigData: jest.fn(),
     handleWidgetConfigRestored: jest.fn(),
@@ -115,7 +134,7 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.standingDirectives.handleActionResult).toHaveBeenCalledWith(actionMessage);
   });
 
-  it('mirrors each session snapshot to the room and to the generic widget host', () => {
+  it('mirrors each session snapshot to the room, the bookmarks, the generic widget host and the memory manager', () => {
     const deps = makeDeps();
     const routes = buildWorkshopAppMessageRoutes(deps);
     const message = { type: MessageType.WORKSHOP_SESSION_STATE, payload: {} } as never;
@@ -123,7 +142,18 @@ describe('buildWorkshopAppMessageRoutes', () => {
     routes[MessageType.WORKSHOP_SESSION_STATE]!(message);
 
     expect(deps.workshopRoom.handleSessionState).toHaveBeenCalledWith(message);
+    expect(deps.bookmarks.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.widgetHost.handleSessionState).toHaveBeenCalledWith(message);
+    expect(deps.memoryManager.noteSessionState).toHaveBeenCalledWith(message);
+  });
+
+  it('routes a turn preview to the bookmarks transport', () => {
+    const deps = makeDeps();
+    const message = { type: MessageType.WORKSHOP_TURN_PREVIEW, payload: {} } as never;
+
+    buildWorkshopAppMessageRoutes(deps)[MessageType.WORKSHOP_TURN_PREVIEW]!(message);
+
+    expect(deps.bookmarks.handleTurnPreview).toHaveBeenCalledWith(message);
   });
 
   it('routes Show vs. Tell progress and result to its transport and beat intake to its controller', () => {
@@ -309,5 +339,20 @@ describe('buildWorkshopAppMessageRoutes', () => {
 
     expect(routes[MessageType.WORKSHOP_LIGHTBOX_TILE_OFFERED]).toBe(deps.lightboxTiles.handleTileOffered);
     expect(routes[MessageType.WORKSHOP_LIGHTBOX_TILE_STAGED]).toBe(deps.lightboxTiles.handleTileStaged);
+  });
+
+  it('hands Slice 3\'s write answers and edit data to both memory hooks, and the manager its own answers (Slice 4b)', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const write = { type: MessageType.WORKSHOP_MEMORY_WRITE_RESULT, payload: { requestId: 'r', ok: true } } as never;
+    const edit = { type: MessageType.WORKSHOP_MEMORY_EDIT_DATA, payload: { requestId: 'e', memoryId: 'mem-7f3c21' } } as never;
+    routes[MessageType.WORKSHOP_MEMORY_WRITE_RESULT]?.(write);
+    routes[MessageType.WORKSHOP_MEMORY_EDIT_DATA]?.(edit);
+    expect(deps.projectMemory.handleWriteResult).toHaveBeenCalledWith(write);
+    expect(deps.memoryManager.noteWriteResult).toHaveBeenCalledWith(write);
+    expect(deps.projectMemory.handleEditData).toHaveBeenCalledWith(edit);
+    expect(deps.memoryManager.noteEditData).toHaveBeenCalledWith(edit);
+    expect(routes[MessageType.WORKSHOP_MEMORY_LISTING]).toBe(deps.memoryManager.handleListing);
+    expect(routes[MessageType.WORKSHOP_MEMORY_MANAGER_RESULT]).toBe(deps.memoryManager.handleManagerResult);
   });
 });

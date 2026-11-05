@@ -32,6 +32,12 @@ import type {
   WorkshopTranscriptExportResult
 } from '@/application/services/workshop/export/WorkshopTranscriptExportService';
 import type { LogSink, ShellService } from '@/platform';
+import type { WorkshopReadInRecordLookup } from '@handlers/domain/workshop/WorkshopReadInRoutes';
+import type { WorkshopProjectMemoryWritePort } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
+import type { WorkshopProjectMemoryManagerPort } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
+
+/** The one project-memory library as the Workshop's route owners reach it: Slice 3's writes and Slice 4b's manager. */
+export type WorkshopProjectMemoryPort = WorkshopProjectMemoryWritePort & WorkshopProjectMemoryManagerPort;
 import type {
   ErrorSource,
   MessageType,
@@ -57,6 +63,9 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopSessionMessageHandler'
   | 'WorkshopStandingDirectiveHandler'
   | 'WorkshopTodoHandler'
+  | 'WorkshopBookmarkHandler'
+  | 'WorkshopProjectMemoryHandler'
+  | 'WorkshopProjectMemoryManagerHandler'
   | 'WorkshopWidgetHostHandler';
 
 /**
@@ -111,6 +120,8 @@ export interface WorkshopSliceCompositionDependencies {
   sessionPersistence: WorkshopSessionPersistenceCoordinator;
   transcriptExport: WorkshopTranscriptExportPort;
   widgetRuntime: WorkshopWidgetRuntime;
+  /** Project memory's writes and manager (ADR 2026-11-04 D13): the one library, built in extension.ts. */
+  projectMemory: WorkshopProjectMemoryPort;
   outputChannel: LogSink;
 }
 
@@ -137,6 +148,11 @@ export interface WorkshopSliceHostEffects {
   activeRunLabel: () => 'Context wizard' | 'response' | undefined;
   sendRoomMessage: WorkshopOneShotWidgetRoomSend;
   isRoomRunActive: () => boolean;
+  /**
+   * Host-side only (Wayfinding D4): what the chat target's manifest recorded
+   * when a read-in file was read, for the reader's "changed since".
+   */
+  findReadInRecord: WorkshopReadInRecordLookup;
   disposeRoomSubscriptions: () => void;
   disposeActiveRoomRun: () => void;
 }

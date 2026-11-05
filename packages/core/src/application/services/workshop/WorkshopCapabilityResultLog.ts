@@ -20,6 +20,8 @@ export function workshopCapabilityResultLogSummary(result: WorkshopCapabilityRes
       return resourceMetrics(result.metadata);
     case 'transcript':
       return recallMetrics(result);
+    case 'memory':
+      return memoryMetrics(result);
     case 'dictionary':
       // The dictionary's metadata is its own log's business; the line keeps its old shape.
       return 'resourceMetrics=none';
@@ -72,6 +74,28 @@ function recallMetrics(result: WorkshopCapabilityResult): string {
       : result.status === 'rejected' ? 'unspecified' : 'none'}`
   ];
   return `recallMetrics=${values.join(';')}`;
+}
+
+/**
+ * Counts only: a memory's title, summary or body never reaches the log
+ * (ADR 2026-11-04 D9). The keys are the ones WorkshopProjectMemoryCapability writes.
+ */
+function memoryMetrics(result: WorkshopCapabilityResult): string {
+  const metadata = result.metadata;
+  const count = (key: string): number | 'n/a' =>
+    typeof metadata?.[key] === 'number' ? metadata[key] as number : 'n/a';
+  const word = (key: string): string =>
+    typeof metadata?.[key] === 'string' ? metadata[key] as string : 'n/a';
+  const values = [
+    `outcome=${word('outcome')}`,
+    `memories=${count('memoryCount')}`,
+    `characters=${count('characters')}`,
+    `truncated=${metadata?.truncated === true}`,
+    `rejection=${typeof metadata?.rejectionReason === 'string'
+      ? metadata.rejectionReason
+      : result.status === 'rejected' ? 'unspecified' : 'none'}`
+  ];
+  return `memoryMetrics=${values.join(';')}`;
 }
 
 function resourceMetrics(metadata: WorkshopCapabilityResult['metadata']): string {

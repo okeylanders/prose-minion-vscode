@@ -8,6 +8,7 @@ import {
 import { GuideMetadata, GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
+import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
 import { ConfiguredResourceRef } from '@messages';
 import {
   AgentCapability,
@@ -189,6 +190,14 @@ export class WorkshopToolContextCapability implements AgentCapability<
       artifacts,
       deliveredSources
     };
+  }
+
+  /**
+   * An intermediate reply as the engine may replay, retain or log it: every
+   * project-memory proposal replaced (ADR 2026-11-04 D6, D9; PR #200 F-01).
+   */
+  redactPrivateControls(content: string): string {
+    return extractWorkshopReplyControls(content, { memoryOpen: false }).redacted;
   }
 
   stripToolCalls(content: string): string {

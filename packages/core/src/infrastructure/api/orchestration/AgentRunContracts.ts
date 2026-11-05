@@ -3,7 +3,7 @@ import type {
   OpenRouterReasoningOptions,
   OpenRouterWebSearchTool
 } from '@providers/OpenRouterClient';
-import type { UrlCitation } from '@messages';
+import type { InferenceReplySource, InferenceRunModels, UrlCitation } from '@messages';
 
 /** The caller-selected capability surface available to one agent turn. */
 export type CapabilityCatalog =
@@ -61,10 +61,19 @@ export type AgentCapabilityInspection<Request, Rejection extends AgentCapability
  * Display-safe only — never an absolute path.
  */
 export interface CapabilityDeliveredSource {
-  readonly kind: Extract<ContextSourceKind, 'resource' | 'tool-evidence' | 'dictionary' | 'transcript'>;
+  readonly kind: Extract<ContextSourceKind, 'resource' | 'tool-evidence' | 'dictionary' | 'transcript' | 'memory'>;
   readonly label: string;
   readonly configuredResource?: { readonly group: ContextPathGroup; readonly path: string };
   readonly sizeChars: number;
+  /**
+   * The capability card turn that recorded this call (Workshop Wayfinding
+   * D4). Only a capability that mints a card sets it.
+   */
+  readonly turnId?: string;
+  /** The lines a range read returned, 1-based and inclusive. */
+  readonly lineRange?: { readonly start: number; readonly end: number };
+  /** SHA-256 (hex) of the whole file's text at read time. Host-private. */
+  readonly sourceFingerprint?: string;
 }
 
 /**
@@ -124,6 +133,15 @@ export interface AgentCapability<
   requestLogSummary(request: Request): string;
   /** Stable per-turn identifiers added to accept/reject logs when available. */
   inspectionLogContext?(): string;
+  /**
+   * An assistant response with what the owning domain keeps private removed
+   * (a Workshop project-memory proposal, ADR 2026-11-04 D6, D9). The engine
+   * applies it to every intermediate response before it is replayed to the
+   * provider (a correction, a capability round), retained in history, or
+   * dumped in a diagnostic; the final response goes through the run's
+   * `retainedAssistantContentSanitizer`. Never changes a capability call.
+   */
+  redactPrivateControls?(content: string): string;
   /** Optional visible provenance for structurally rejected requests. */
   handleInvalidRequest?(rejection: Rejection): readonly CapabilityArtifact[];
   /** Optional visible provenance when a valid request exceeds the round cap. */
@@ -187,6 +205,8 @@ export interface ContinuationRunRequest {
   readonly capability?: AnyAgentCapability;
 }
 
+export type AgentRunReplySource = InferenceReplySource;
+
 export interface ExecutionResult {
   /**
    * Provider content before presentation cleanup or the human truncation
@@ -210,6 +230,18 @@ export interface ExecutionResult {
   readonly providerResponseId?: string;
   /** Actual provider-reported model id for the final inference call. */
   readonly modelId?: string;
+  /**
+   * The run's requested model, captured before its first request, and the
+   * distinct provider-reported models across its requests, in order (Workshop
+   * Wayfinding D7). Absent only when the engine had no model to request.
+   */
+  readonly models?: InferenceRunModels;
+  /**
+   * Who wrote `content`: the provider, or the engine in its place (an empty
+   * reply, exhausted correction turns, an exhausted capability limit). Only
+   * a provider reply may be attributed to a model (Workshop Wayfinding D7).
+   */
+  readonly replySource?: AgentRunReplySource;
   readonly cancelled?: boolean;
   readonly conversationId?: string;
   readonly citations?: UrlCitation[];

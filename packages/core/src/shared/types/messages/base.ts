@@ -137,6 +137,12 @@ export enum MessageType {
   WORKSHOP_REQUEST_CONTEXT_ATTACHMENT = 'workshop_request_context_attachment',
   WORKSHOP_CONTEXT_ATTACHMENT_CONTENT = 'workshop_context_attachment_content',
   WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE = 'workshop_open_context_attachment_file',
+  // Read in reader: a file a persona read, by { group, path } (ADR 2026-11-03 D4)
+  /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
+  WORKSHOP_REQUEST_READ_IN_RESOURCE = 'workshop_request_read_in_resource',
+  WORKSHOP_READ_IN_RESOURCE_CONTENT = 'workshop_read_in_resource_content',
+  WORKSHOP_OPEN_READ_IN_RESOURCE = 'workshop_open_read_in_resource',
+  /* eslint-enable @typescript-eslint/naming-convention */
   WORKSHOP_REQUEST_CONTEXT_CATALOG = 'workshop_request_context_catalog',
   WORKSHOP_CONTEXT_CATALOG = 'workshop_context_catalog',
   WORKSHOP_SEARCH_CONTEXT_RESOURCES = 'workshop_search_context_resources',
@@ -148,6 +154,28 @@ export enum MessageType {
   WORKSHOP_SET_EXCERPT_RESOURCE = 'workshop_set_excerpt_resource',
   WORKSHOP_RUN_CONTEXT_WIZARD = 'workshop_run_context_wizard',
   WORKSHOP_TODO_ACTION = 'workshop_todo_action',
+  WORKSHOP_SET_TURN_BOOKMARK = 'workshop_set_turn_bookmark',
+  WORKSHOP_RENAME_BOOKMARK = 'workshop_rename_bookmark',
+  WORKSHOP_RENAME_BOOKMARK_RESULT = 'workshop_rename_bookmark_result',
+  WORKSHOP_REQUEST_TURN_PREVIEW = 'workshop_request_turn_preview',
+  WORKSHOP_TURN_PREVIEW = 'workshop_turn_preview',
+  /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
+  WORKSHOP_MEMORY_PROPOSAL_ACTION = 'workshop_memory_proposal_action',
+  WORKSHOP_SAVE_TURN_TO_MEMORY = 'workshop_save_turn_to_memory',
+  WORKSHOP_MEMORY_CREATE = 'workshop_memory_create',
+  WORKSHOP_MEMORY_UPDATE = 'workshop_memory_update',
+  WORKSHOP_MEMORY_FORGET = 'workshop_memory_forget',
+  WORKSHOP_MEMORY_WRITE_RESULT = 'workshop_memory_write_result',
+  WORKSHOP_MEMORY_REQUEST_EDIT = 'workshop_memory_request_edit',
+  WORKSHOP_MEMORY_EDIT_DATA = 'workshop_memory_edit_data',
+  WORKSHOP_MEMORY_ESTIMATE = 'workshop_memory_estimate',
+  WORKSHOP_MEMORY_ESTIMATE_RESULT = 'workshop_memory_estimate_result',
+  // Workshop Project Memory: the manager (epic Slice 4b)
+  WORKSHOP_MEMORY_LIST = 'workshop_memory_list',
+  WORKSHOP_MEMORY_LISTING = 'workshop_memory_listing',
+  WORKSHOP_MEMORY_MANAGER_ACTION = 'workshop_memory_manager_action',
+  WORKSHOP_MEMORY_MANAGER_RESULT = 'workshop_memory_manager_result',
+  /* eslint-enable @typescript-eslint/naming-convention */
   WORKSHOP_PICK_EXCERPT_FILE = 'workshop_pick_excerpt_file',
   WORKSHOP_REREAD_EXCERPT = 'workshop_reread_excerpt',
   WORKSHOP_SET_SESSION_SCOPE = 'workshop_set_session_scope',

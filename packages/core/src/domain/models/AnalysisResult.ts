@@ -3,7 +3,7 @@
  * Represents the output from prose analysis tools ( Prose Excerpt Assistant )
  */
 
-import type { UrlCitation } from '@messages';
+import type { InferenceReplySource, InferenceRunModels, ModelScope, UrlCitation } from '@messages';
 
 export interface AnalysisResult {
   readonly toolName: string;
@@ -17,6 +17,20 @@ export interface AnalysisResult {
   /** Retained conversation id, when the run asked for continuation (Workshop multi-turn). */
   readonly conversationId?: string;
   readonly citations?: UrlCitation[];
+  /** The scope the run used, its requested model and the models that served it. */
+  readonly model?: AnalysisRunModel;
+  /** Who wrote `content`; only a `provider` reply may carry a model stamp. */
+  readonly replySource?: InferenceReplySource;
+  /**
+   * The run had web search tools attached, whether or not it searched or
+   * cited (ADR 2026-11-04 D8, the web-research hold). Absent means none.
+   */
+  readonly webResearchAttached?: true;
+}
+
+/** A run's models (`ExecutionResult.models`) with the scope whose selection was requested. */
+export interface AnalysisRunModel extends InferenceRunModels {
+  readonly scope: ModelScope;
 }
 
 export interface MetricsResult {
@@ -32,6 +46,9 @@ export interface AnalysisResultOptions {
   finishReason?: string;
   conversationId?: string;
   citations?: UrlCitation[];
+  model?: AnalysisRunModel;
+  replySource?: InferenceReplySource;
+  webResearchAttached?: true;
 }
 
 export class AnalysisResultFactory {

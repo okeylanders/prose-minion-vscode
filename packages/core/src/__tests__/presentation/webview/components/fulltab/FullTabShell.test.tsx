@@ -147,4 +147,36 @@ describe('FullTabRail', () => {
     );
     expect(screen.getByLabelText('Inspector').className).toBe('pm-ws-aside');
   });
+
+  describe('inertBehindOverlay (PR #186 N-03)', () => {
+    const frame = (inertBehindOverlay?: boolean) => (
+      <FullTabShell
+        brand={brand}
+        headerActions={<button type="button">Header action</button>}
+        banners={<div role="status">A banner</div>}
+        rail={{ label: 'Board rail', boundaryName: 'Lightbox rail', content: <button type="button">Rail row</button> }}
+        main={{ label: 'Board', content: <p>Main content</p> }}
+        {...(inertBehindOverlay === undefined ? {} : { inertBehindOverlay })}
+      >
+        <div role="dialog" aria-label="Overlay"><button type="button">Inside</button></div>
+      </FullTabShell>
+    );
+
+    it('leaves the markup exactly as before when it is off', () => {
+      const omitted = render(frame()).container.innerHTML;
+      const off = render(frame(false)).container.innerHTML;
+      expect(off).toBe(omitted);
+      expect(omitted).not.toContain('inert');
+    });
+
+    it('marks the header and the split inert, and never the overlay', () => {
+      const { container } = render(frame(true));
+      expect(container.querySelector('.pm-ws-header')?.hasAttribute('inert')).toBe(true);
+      expect(container.querySelector('.pm-ws-split')?.hasAttribute('inert')).toBe(true);
+      const dialog = screen.getByRole('dialog', { name: 'Overlay' });
+      expect(dialog.closest('[inert]')).toBeNull();
+      // Banners are the tab's to inert: the shell adds no wrapper around them.
+      expect(screen.getByRole('status').parentElement?.className).toBe('pm-ws');
+    });
+  });
 });

@@ -7,6 +7,7 @@
  * arrives escaped.
  */
 
+import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   WorkshopPersonaCapability,
@@ -63,7 +64,8 @@ function wire(room: Pick<SavedRecallRoom, 'store' | 'coordinator' | 'log'>): Wir
     { createProvider: jest.fn() } as unknown as ContextResourceProviderFactory,
     session,
     log,
-    recall
+    recall,
+    offProjectMemory
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),
@@ -108,7 +110,13 @@ describe('transcript.* through the persona capability', () => {
     });
     expect(fulfillment.artifacts).toEqual([expect.objectContaining({ id: turn.id, label: 'Session Recall', category: 'transcript.read' })]);
     expect(fulfillment.deliveredSources).toEqual([
-      { kind: 'transcript', label: expect.stringMatching(/^“Chapter 6\.7 endings” · turns 1-\d+$/), sizeChars: expect.any(Number) }
+      {
+        kind: 'transcript',
+        label: expect.stringMatching(/^“Chapter 6\.7 endings” · turns 1-\d+$/),
+        sizeChars: expect.any(Number),
+        // The Session Recall card that recorded the read (Wayfinding D4).
+        turnId: turn.id
+      }
     ]);
     expect(wired.log.appendLine.mock.calls.map(([line]) => String(line)).join('\n'))
       .toMatch(new RegExp(
@@ -214,7 +222,10 @@ describe('transcript.* through the persona capability', () => {
   it('still refuses an operation outside the closed list', () => {
     const codec = new WorkshopCapabilityXmlCodec();
     expect(codec.inspect(call('transcript.delete', '<session>a</session>'))).toEqual({ kind: 'invalid', reason: 'unknown-capability' });
-    expect(codec.inspect(call('memory.read', '<session>a</session>'))).toEqual({ kind: 'invalid', reason: 'unknown-capability' });
+    // `memory.*` is a family now (ADR 2026-11-04 D12), with its own fields; a write operation is still unknown.
+    expect(codec.inspect(call('memory.read', '<session>a</session>')))
+      .toEqual({ kind: 'invalid', reason: 'unexpected-field', field: 'session', operation: 'memory.read' });
+    expect(codec.inspect(call('memory.save', '<title>a</title>'))).toEqual({ kind: 'invalid', reason: 'unknown-capability' });
   });
 });
 

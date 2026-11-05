@@ -1,0 +1,20 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-27T16:40:00Z" },
+  "title": "Workshop Rail Planning",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Today.dc.html": { "x": 0, "y": 0, "w": 372, "h": 1060, "title": "Today · current rail" },
+    "Main.dc.html": { "x": 452, "y": 0, "w": 1280, "h": 1000, "title": "Proposed · two-tab rail (click the tabs and Bookmark)", "is_interactive": true, "expand": "fill" },
+    "Reader.dc.html": { "x": 0, "y": 1440, "w": 1280, "h": 860, "title": "Reader · a read-in file opened from the rail", "expand": "fill" },
+    "Slices.dc.html": { "x": 1360, "y": 1440, "w": 880, "h": 640, "title": "Thread · time slice, model slice, served-by note" }
+  },
+  "order": ["Today.dc.html", "Main.dc.html", "Reader.dc.html", "Slices.dc.html"],
+  "notes": {
+    "row1": { "x": 0, "y": -300, "text": "Workshop rail: today vs. proposed", "kind": "title1", "maxW": 1732 },
+    "row2": { "x": 0, "y": 1140, "text": "Reader and thread slices", "kind": "title1", "maxW": 2240 },
+    "calls": { "x": 1812, "y": 0, "w": 340, "text": "Open calls for Okey:\n\n1. Bookmarks vs. pins (pin already means the excerpt)\n2. Tab labels: Material / Notes, or something else?\n3. Codec: accept forward-only (A) or add a tolerant extension slot (B)?\n4. Reader: sheet + Open beside first, docked pane later?", "fill": "orange", "size": "m" }
+  },
+  "designSystems": []
+}
