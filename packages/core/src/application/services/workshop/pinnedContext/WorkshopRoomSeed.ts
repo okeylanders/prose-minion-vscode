@@ -36,13 +36,23 @@ export interface WorkshopRoomSeedPlan {
   readonly kind: WorkshopRoomSeedKind;
 }
 
-/** Why a pinned file was not attached to the room. */
-export type WorkshopRoomSeedLeftOutReason = 'missing' | 'unreadable' | 'over-budget';
+/**
+ * Why a pinned file was not attached to the room. `workspace-changed`
+ * (Slice 2b, PR #208 F01): the project folder changed while the seed read,
+ * so nothing it read is installed.
+ */
+export type WorkshopRoomSeedLeftOutReason = 'missing' | 'unreadable' | 'over-budget' | 'workspace-changed';
 
 export interface WorkshopRoomSeedLeftOut {
   /** The file's label, for the writer's result line. Never logged. */
   readonly label: string;
   readonly reason: WorkshopRoomSeedLeftOutReason;
+  /**
+   * The room still holds this file, carried from the room before with the
+   * body it had: its re-read was left out, but the file was not. Set only
+   * then (Slice 2b), so the result line never calls it "not attached".
+   */
+  readonly kept?: true;
 }
 
 /** What `install` did to the room, for the result line and the log's counts. */

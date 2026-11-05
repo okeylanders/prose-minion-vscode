@@ -61,9 +61,9 @@ export function scriptedCheckpoint(
 }
 
 export function setupCoordinator(
-  options: { workspace?: 'single' | 'none'; roomSeed?: WorkshopRoomSeed } = {}
+  options: { workspace?: 'single' | 'none'; roomSeed?: WorkshopRoomSeed; fileSystem?: MemoryFileSystem } = {}
 ) {
-  const fs = new MemoryFileSystem();
+  const fs = options.fileSystem ?? new MemoryFileSystem();
   const log: LogSink = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
   const workspace = workspaceWith(
     options.workspace === 'none' ? [] : [{ name: 'novel', path: HARNESS_ROOT }]

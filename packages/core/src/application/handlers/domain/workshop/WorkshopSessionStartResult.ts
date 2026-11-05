@@ -36,6 +36,22 @@ function leftOutReason(reason: WorkshopRoomSeedLeftOutReason): string {
       return 'couldn’t be read';
     case 'over-budget':
       return `doesn’t fit in the ${PROMPT_BUDGETS.contextAttachments.words.toLocaleString('en-US')}-word context limit`;
+    case 'workspace-changed':
+      return 'the project folder changed while it was read';
+  }
+}
+
+/** Why a carried file's re-read was left out: what is true of the file now. */
+function keptReason(reason: WorkshopRoomSeedLeftOutReason): string {
+  switch (reason) {
+    case 'missing':
+      return 'not found now';
+    case 'unreadable':
+      return 'couldn’t be read now';
+    case 'over-budget':
+      return `its current version doesn’t fit in the ${PROMPT_BUDGETS.contextAttachments.words.toLocaleString('en-US')}-word context limit`;
+    case 'workspace-changed':
+      return 'the project folder changed while it was read';
   }
 }
 
@@ -49,17 +65,36 @@ function aboutWords(words: number): string {
 
 const filesLabel = (count: number): string => `${count} ${count === 1 ? 'file' : 'files'}`;
 
-/** The sentence after the opening, for a seed that meant to attach something. */
+/**
+ * Whether the report has anything to say: files it meant to attach, or the
+ * list itself left out (an unreadable `pinned-context.json` plans no file,
+ * so its `pinnedCount` is 0, but the writer is told why nothing came).
+ */
+function seedSays(seed: WorkshopRoomSeedReport | undefined): seed is WorkshopRoomSeedReport {
+  return seed !== undefined && (!isEmptyWorkshopRoomSeedReport(seed) || seed.leftOut.length > 0);
+}
+
+/** The sentence after the opening, for a seed that has something to say. */
 function seedSentence(opening: string, joined: string, seed: WorkshopRoomSeedReport): string {
+  if (seed.pinnedCount === 0) {
+    const listed = seed.leftOut.map((entry) => `${entry.label} (${leftOutReason(entry.reason)})`).join(', ');
+    return `${opening}. No pinned context attached: ${listed}.`;
+  }
   if (seed.leftOut.length === 0) {
     return `${opening}${joined} your pinned context: ` +
       `${filesLabel(seed.attachedCount)}, ${aboutWords(seed.attachedWords)}.`;
   }
-  const notAttached = seed.leftOut
-    .map((entry) => `${entry.label} (${leftOutReason(entry.reason)})`)
-    .join(', ');
+  // A kept file is still in the room, with its earlier body: never "not attached".
+  const clauses = [
+    ['not attached', seed.leftOut.filter((entry) => !entry.kept).map((entry) => `${entry.label} (${leftOutReason(entry.reason)})`)],
+    ['kept as it was', seed.leftOut.filter((entry) => entry.kept).map((entry) => `${entry.label} (${keptReason(entry.reason)})`)]
+  ] as const;
+  const said = clauses
+    .filter(([, entries]) => entries.length > 0)
+    .map(([lead, entries]) => `${lead}: ${entries.join(', ')}`)
+    .join('; ');
   return `${opening}. ${seed.attachedCount} of ${seed.pinnedCount} pinned ` +
-    `${seed.pinnedCount === 1 ? 'file' : 'files'} attached; not attached: ${notAttached}.`;
+    `${seed.pinnedCount === 1 ? 'file' : 'files'} attached; ${said}.`;
 }
 
 /** The writer's result line for a room that started. */
@@ -71,7 +106,7 @@ export function workshopSessionStartResult(
     case 'empty':
       return 'Started an empty Workshop session: excerpt and context cleared, and pinned context left out.';
     case 'full-reset':
-      return seed && !isEmptyWorkshopRoomSeedReport(seed)
+      return seedSays(seed)
         ? seedSentence(
             'Started a new Workshop session with the excerpt and context cleared',
             ' and',
@@ -79,7 +114,7 @@ export function workshopSessionStartResult(
           )
         : 'Started an empty Workshop session — excerpt and context cleared.';
     case 'carry':
-      return seed && !isEmptyWorkshopRoomSeedReport(seed)
+      return seedSays(seed)
         ? seedSentence('Started a new Workshop session', ' with', seed)
         : 'Started a new Workshop session.';
   }
@@ -87,16 +122,17 @@ export function workshopSessionStartResult(
 
 /** The seed's counts for the log: never a label. */
 function seedLogPart(seed: WorkshopRoomSeedReport | undefined): string {
-  if (!seed || isEmptyWorkshopRoomSeedReport(seed)) {
+  if (!seedSays(seed)) {
     return '';
   }
-  const reasons = (['missing', 'unreadable', 'over-budget'] as const)
-    .map((reason) => [reason, seed.leftOut.filter((entry) => entry.reason === reason).length] as const)
+  const reasons = (['missing', 'unreadable', 'over-budget', 'workspace-changed'] as const)
+    .map((reason) => [reason, seed.leftOut.filter((entry) => !entry.kept && entry.reason === reason).length] as const)
     .filter(([, count]) => count > 0)
     .map(([reason, count]) => `${reason}:${count}`)
     .join(',');
+  const kept = seed.leftOut.filter((entry) => entry.kept).length;
   return `; pinned: attached=${seed.attachedCount}/${seed.pinnedCount}, ` +
-    `words=${seed.attachedWords}, leftOut=${reasons || 'none'}`;
+    `words=${seed.attachedWords}, leftOut=${reasons || 'none'}, kept=${kept}`;
 }
 
 /**

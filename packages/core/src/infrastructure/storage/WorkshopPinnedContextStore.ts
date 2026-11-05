@@ -92,6 +92,7 @@ import {
   type WorkshopPinnedContextAvailability,
   type WorkshopPinnedContextChange,
   type WorkshopPinnedContextRead,
+  type WorkshopPinnedContextReadOptions,
   type WorkshopPinnedContextStoreOptions,
   type WorkshopPinnedContextUpdateOptions,
   type WorkshopPinnedContextUpdateResult
@@ -166,10 +167,16 @@ export class WorkshopPinnedContextStore {
   }
 
   /** The list as it reads now, with its revision. */
-  read(): Promise<WorkshopPinnedContextRead> {
+  read(options: WorkshopPinnedContextReadOptions = {}): Promise<WorkshopPinnedContextRead> {
     return this.enqueue(async () => {
       const where = this.availability();
-      return where.available ? publicRead(await this.readState(where.filePath)) : { state: 'unavailable', reason: where.reason };
+      if (!where.available) {
+        return { state: 'unavailable', reason: where.reason };
+      }
+      if (options.filePath !== undefined && where.filePath !== options.filePath) {
+        return { state: 'unavailable', reason: 'workspace-changed' };
+      }
+      return publicRead(await this.readState(where.filePath));
     });
   }
 
