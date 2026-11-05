@@ -111,6 +111,18 @@ Project Memory's process, unchanged:
   Context** rules section, written from the ADR, when Slice 3 merges.
 - **The coordinating thread opens each PR** into `epic-pinned-context` and
   watches it. Findings are fixed on the slice branch as follow-up commits.
+- **Astra reviews; the coordinator merges after Astra approves** (Okey,
+  2026-11-05).
+  - Astra's review arrives as a report committed to the PR branch,
+    `docs/pr-reviews/pr-<N>-<slug>-review.md`, as on the Project Memory
+    PRs. It isn't a GitHub review.
+  - Findings (F01, N01, …) go to the slice's thread to fix on its branch.
+    The coordinator answers each one on the PR and keeps a resolution
+    ledger in the report's PR.
+  - The coordinator merges only when the report's current verdict is a
+    **written approval** that names the PR's head, or a head whose later
+    commits touch docs only. A merge is a merge commit, "Merge Workshop
+    Pinned Context Slice *N*: … (#PR)", as the memory epic's are.
 
 ## Verification (every code slice)
 
