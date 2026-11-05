@@ -9,9 +9,11 @@
  *   `authorizeExcerptReread` (contained in the folder, no symbolic link) and
  *   read through `loadFile`, as a context refresh does.
  *
- * **Only from the captured root** (PR #208 F01). Every read is of a path
- * under the root the caller captured, checked before anything is read; a
- * file that would come from elsewhere is `workspace-changed`, never read.
+ * **Only the captured root's own files** (PR #208 F01). Every read is of a
+ * file the root the caller captured names itself: a catalog row listed under
+ * that root, or the exact path built from it. That is checked before
+ * anything is read. A file that would come from elsewhere, including from a
+ * root nested inside it, is `workspace-changed`, never read.
  *
  * Both use `CONTEXT_ATTACHMENTS`' bounds: `fileBytes`, and the head slice at
  * the context budget's words. The only other thing it asks the host is a
@@ -40,7 +42,6 @@ import {
   type WorkshopPinnedContextPathPlatform
 } from '@shared/types/workshopPinnedContext';
 import { isMissingFileSystemPathError } from '@/infrastructure/storage/fileSystemErrors';
-import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 
 /** The intake service's doors the reader uses, and no others. */
 export type WorkshopPinnedContextIntakePort = Pick<
@@ -121,6 +122,17 @@ function intakeFault(reason: WorkshopIntakeRefusal['reason']): WorkshopPinnedFil
   }
 }
 
+/**
+ * Whether a catalog row was listed under `rootPath` itself: its `path` is
+ * relative to the workspace folder it was listed under, so it is this root's
+ * row only when the root and that path give its absolute path back. A row
+ * listed under another root fails, even one nested inside this root, whose
+ * absolute path lies under it (PR #208 F01, the coordinator's review).
+ */
+function listedUnderRoot(rootPath: string, row: ContextResourceSummary): boolean {
+  return path.relative(rootPath, row.absolutePath).split(path.sep).join('/') === row.path;
+}
+
 /** A catalog row the entry names: exactly, or alone by its normalized key; or why none is chosen. */
 type CatalogMatch =
   | { kind: 'row'; summary: ContextResourceSummary }
@@ -180,7 +192,7 @@ export class WorkshopPinnedContextFileReader {
     match: CatalogMatch
   ): Promise<WorkshopPinnedFileRead> {
     const named = path.join(rootPath, ...entry.path.split('/'));
-    const listed = match.kind === 'row' && isPathWithinRoot(rootPath, match.summary.absolutePath) ? match.summary : undefined;
+    const listed = match.kind === 'row' && listedUnderRoot(rootPath, match.summary) ? match.summary : undefined;
     const identity: WorkshopPinnedFileIdentity = {
       entry,
       label: workshopPinnedFileLabel(entry.path),
@@ -190,7 +202,7 @@ export class WorkshopPinnedContextFileReader {
       return { ...identity, state: 'unreadable', source: { kind: 'workspace' }, fault: 'ambiguous' };
     }
     if (match.kind === 'row' && !listed) {
-      // The catalog listed another root's file: the workspace moved under the read.
+      // The catalog was listed under another root, nested or not: the workspace moved under the read.
       return { ...identity, state: 'unreadable', source: { kind: 'catalog', group: match.summary.group }, fault: 'workspace-changed' };
     }
     try {
@@ -209,8 +221,8 @@ export class WorkshopPinnedContextFileReader {
 
   /**
    * Through the catalog's own door. The provider reads the absolute path it
-   * listed when the catalog opened, which `readOne` checked is under the
-   * captured root before anything is read.
+   * listed when the catalog opened, which `readOne` checked was listed under
+   * the captured root itself before anything is read.
    */
   private async readListed(
     identity: WorkshopPinnedFileIdentity,
@@ -251,7 +263,7 @@ export class WorkshopPinnedContextFileReader {
   /**
    * Through the workspace door, at the path the entry names under the
    * captured root. Authorization may recover a path against the live root;
-   * a path it hands back outside the captured one is never read.
+   * any path it hands back other than the one asked for is never read.
    */
   private async readWorkspaceFile(
     rootPath: string,
@@ -274,7 +286,10 @@ export class WorkshopPinnedContextFileReader {
     if (authorization.kind === 'refused') {
       return { ...identity, state: 'unreadable', source, fault: 'refused' };
     }
-    if (!isPathWithinRoot(rootPath, authorization.fsPath)) {
+    // Only the path the seed built from its own root (PR #208 F01, the coordinator's review).
+    // Authorization's first two branches return it as given; only its recovery of a stale
+    // URI returns another, under the live root, which may even sit inside the captured one.
+    if (path.normalize(authorization.fsPath) !== path.normalize(fsPath)) {
       return { ...identity, state: 'unreadable', source, fault: 'workspace-changed' };
     }
     const loaded = await this.intake.loadFile(authorization.fsPath, identity.entry.path, BOUNDS, 'attach');
