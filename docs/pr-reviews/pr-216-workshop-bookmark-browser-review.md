@@ -2,7 +2,7 @@
 
 ## Verdict
 
-**Current verdict: changes requested at `f02a835a1cc6b41345964e48268847314573c826`.** Original F-01 and F-02 are independently verified resolved. The correction introduces F-03 (P2), an unbounded whole-corpus identity scan on every page; F-04 (P3) records a remaining false actionable row for a large legacy duplicate. See the independent re-review below. This is a report disposition, not a formal GitHub review-state change or authorization to merge. The original-head findings and author response remain as history.
+**Current verdict: changes requested at `db4e6ef01e36ba6238a8f8d33d0d3be40aca05f3` (product fix `99ddf80a`).** F-01 through F-04 are independently verified resolved within their stated scope. One new P2 finding, F-05, remains: a known ambiguous page document survives in the browser cache, so resolving the duplicate files and reopening can display the removed file's title and bookmark content. See the second independent correction review below. This is a report disposition, not a formal GitHub review-state change or authorization to merge. Earlier findings and author responses remain as history.
 
 - **PR:** [#216](https://github.com/okeylanders/prose-minion-vscode/pull/216)
 - **Original implementation head reviewed:** `13df46bf9ff777ee767a5c304260c7fbf9035945`
@@ -86,8 +86,9 @@ Native VS Code layout/keyboard acceptance remains the planned Slice 4 live pass.
 |---|---|
 | F-01: ambiguous page summaries alter exact identity resolution | Independently resolved at `f02a835a` for the paging path; shared pre-existing exact-cache behavior is outside this correction |
 | F-02: superseded bookmark Open reuses its jump on another Open | Independently resolved at `f02a835a` |
-| F-03: every page fully scans the legacy corpus outside its budget | Fixed in `99ddf80a` |
-| F-04: a larger legacy duplicate leaves a false actionable row | Fixed in `99ddf80a` |
+| F-03: every page fully scans the legacy corpus outside its budget | Independently resolved at `db4e6ef0` / product `99ddf80a` |
+| F-04: a larger legacy duplicate leaves a false actionable row | Independently resolved at `db4e6ef0` through explicit incomplete coverage and exact-action refusal |
+| F-05: resolving a known duplicate still displays the removed file from cache | Open, P2 at `db4e6ef0` |
 
 ## Author response (`72f92970`)
 
@@ -166,3 +167,40 @@ This is lower impact than original F-01: paging no longer changes exact resoluti
 - typecheck: all three projects clean;
 - lint: 0 errors / 1,165 warnings (baseline);
 - jest: full suite with `--maxWorkers=4`, **744 suites / 10,407 tests / 59 snapshots**, all passing.
+
+
+## Second independent correction review — `db4e6ef0` (2026-11-05)
+
+Reviewed product correction `99ddf80a` and the report/ledger-only follow-up `db4e6ef0`, against the preceding report head `34020322`. The earlier report head's [CI run 42063295329](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42063295329) also passed: 744 suites / 10,399 tests / 59 snapshots and the remaining verification steps.
+
+**F-03 resolved.** The whole-folder identity scan is gone. A walk keeps only the IDs its own pages encountered and reports later duplicates back to the client. Legacy summary reads and later cold document reads are both charged to the page. An independent real-store/recall run over 80 valid index-less sessions containing real 1 MiB replies completes in five disjoint pages of 16 sessions. Each full page performs 32 reads / 33,646,368 bytes (40 fewer bytes on the last page), within the accepted final-file crossing of 32 MiB. No page rereads a previous page's files. The store-listing portion alone performs 16 reads / 16,823,184 bytes per full page.
+
+**F-04 resolved by honest partial coverage and explicit refusal.** The accepted 6 MiB duplicate remains unreadable to the browser and contributes to its unreadable coverage, while exact saved preview now returns `ambiguous-session`. The UI explicitly says those identities could not be checked and Preview/Open check again. Real-App tests pass for marking an earlier row after a later duplicate is found, disabling both Opens, Preview's conflict explanation and Open's refusal reason. This does not claim a bounded page proves whole-folder uniqueness; that accepted limitation is now visible. F-01's exact-cache isolation and F-02's superseded-Open regression remain intact.
+
+### F-05 — P2: a known ambiguous document remains cached after the duplicate is resolved
+
+**Anchor:** [`WorkshopRecallBookmarkPager.ts:78–80`](https://github.com/okeylanders/prose-minion-vscode/blob/db4e6ef01e36ba6238a8f8d33d0d3be40aca05f3/packages/core/src/application/services/workshop/recall/WorkshopRecallBookmarkPager.ts#L78-L80), with the reused document cache at lines 71–73.
+
+The new incremental walk provisionally caches a document before a later page discovers another file with the same ID. The resulting `ambiguousSessionIds` updates the UI, but neither evicts that document nor binds it to its source cursor. The pager's cache persists across walks in the same recall scope and accepts a hit by session ID plus embedded `updatedAt` alone.
+
+**Independently reproduced with the real store and recall service:**
+
+1. Put 24 newer unique checkpoints before two small valid checkpoints with one shared ID and matching embedded `updatedAt`, as copied files can have. Give the pair different titles and actual bookmarked reply content.
+2. Page 1 shows and caches “Newer duplicate” / “Removed file content”. Page 2 discovers the second file and reports that ID ambiguous.
+3. Follow the new Preview message's remediation: keep only the other file, then reopen Bookmarks without changing rooms.
+4. Exact resolution now correctly returns “Older duplicate” and “Surviving file content”. The fresh bookmark walk nevertheless returns “Newer duplicate” and the removed file's reply content as a normal, no-longer-ambiguous row, with 25 cache hits.
+
+The expected-behavior regression fails on **expected “Older duplicate”, received “Newer duplicate”**. A companion defect-recording run independently confirmed that the bookmark message text is stale too, not just the title. Search therefore indexes removed content, and Preview/Open can show a different surviving session than the row describes. No shared persona-cache leak, destructive selection, or renewed F-01 exact-action corruption was observed. This is specific to the new browser cache's trust in a document whose identity it has already learned is ambiguous; the previous whole-folder scan excluded that document before caching it.
+
+**Requested correction:** discard provisional documents when their IDs become ambiguous, or validate page-cache hits against the actual source-file identity (not only ID/time). Ensure a new walk after retaining either duplicate reads the surviving file's title and bookmarks. Keep the page budget and persona/exact-cache separation intact.
+
+**Expected-behavior regression:** [pr-216-resolved-duplicate-cache.test.ts.txt](probes/pr-216-resolved-duplicate-cache.test.ts.txt). Copy it to `packages/core/src/__tests__/infrastructure/storage/review216ResolvedDuplicateCache.test.ts` in a disposable checkout, then run `npx jest --runInBand --runTestsByPath packages/core/src/__tests__/infrastructure/storage/review216ResolvedDuplicateCache.test.ts`. It fails on this reviewed head; it is a review artifact, not an added passing production test.
+
+### Second correction verification
+
+- All three local typechecks passed.
+- Local lint passed on the clean tracked source: **0 errors / 1,165 warnings**.
+- **12 local production suites / 206 tests passed**, including all eight changed test files, the Open-at-bookmark controller, recall regressions and adapter composition boundaries.
+- Independent actual-content probes confirm bounded I/O and the 6 MiB exact-preview refusal. The separate F-05 expected-behavior regression fails as described above and is not counted as green product coverage.
+- [Product-head PR CI 42065883630](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42065883630) passed all types, **744 suites / 10,407 tests / 59 snapshots**, lint **0 errors / 1,165 warnings**, both bundles and bundle verification. It checked merge candidate `b87c10f`, combining source `99ddf80a` with base `ddf83567`.
+- `db4e6ef0` changes only the author response and slice ledger after that product head. Publication of this report has its own CI to verify separately. No product edits, native VS Code acceptance, live provider calls or merge were performed by the reviewer.
