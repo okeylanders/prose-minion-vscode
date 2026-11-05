@@ -172,3 +172,13 @@
 - **F-02. A superseded Open at bookmark must never jump.** `useWorkshopBookmarkOpenAt` follows its own Open through the session surfaces' state: `sessionConfirm`, `sessionActionPending` and `sessionActionResult`. The phases are starting, confirming, opening and opened (`nextPhase`, pure). The jump is dropped the moment anything else takes its place: a declined or replaced confirmation, a refused Open, or another action settling. Regressions:
   - the rewritten `useWorkshopBookmarkOpenAt.test.ts`;
   - Astra's real-App witness, kept in `WorkshopApp.bookmarkBrowser.test.tsx`.
+
+### PR #216 re-review: F-03 and F-04, fixed in `99ddf80a`
+
+- **F-03. Each page stays within its own budget.**
+  - The folder-wide id scan is gone; a page reads only its own files.
+  - Recall remembers each walk's ids, carried in the opaque cursor (`WorkshopRecallBookmarkWalks`). It reports a repeated id as ambiguous, and the screen then marks every row with that id.
+  - `WorkshopRecallBookmarkPager` holds the walks, the page-local loader, and its own document cache.
+- **F-04. An unknown id is never unique.** A file whose summary couldn't be read counts as unreadable, and the screen says the shared-id check covers only what it read. An exact read's identity conflict is now its own outcome (`ambiguous-session`), with a clear Preview message, and Open shows the host's reason.
+- **A limit.** A row loaded before its duplicate's page looks normal until Load more reaches that page. The exact read still refuses the conflict at Preview or Open.
+- **Verification:** jest **744 suites / 10,407 tests / 59 snapshots**, all passing; lint at the 1,165 baseline; typecheck clean.
