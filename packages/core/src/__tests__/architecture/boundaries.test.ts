@@ -1708,6 +1708,22 @@ describe('architectural boundaries', () => {
     expect(draftEdit.filter((file) => lightbox.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')))).toEqual([]);
   });
 
+  it('keeps the shared edit planner feature-free: utils/textEdits imports only itself (ADR 2026-11-05 D3)', () => {
+    const root = path.join(SRC_ROOT, 'utils', 'textEdits');
+    const files = collectSourceFiles(root).map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'));
+    expect(files).toEqual(expect.arrayContaining([
+      'utils/textEdits/findExactlyOnce.ts',
+      'utils/textEdits/planTextEdits.ts',
+      'utils/textEdits/textEditOperations.ts'
+    ]));
+    const specifier = /(?:from\s+|import\s*\(\s*|require\s*\(\s*)['"]([^'"]+)['"]/g;
+    const offenders = files.flatMap((file) => [...fs.readFileSync(path.join(SRC_ROOT, file), 'utf8').matchAll(specifier)]
+      .map((match) => match[1])
+      .filter((imported) => !imported.startsWith('@/utils/textEdits/'))
+      .map((imported) => `${file} -> ${imported}`));
+    expect(offenders).toEqual([]);
+  });
+
   it('application handlers do not construct infrastructure services', () => {
     const offenders = collectSourceFiles(HANDLERS_ROOT)
       .filter((file) => FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION.test(fs.readFileSync(file, 'utf8')))

@@ -1,6 +1,6 @@
 # Epic: Workshop Persona File Edits
 
-**Status:** Slice 0 (spec) in review. Slice 1 starts in parallel.
+**Status:** Slice 0 (spec) merged (PR #226, `b14c46b`). Slice 1 in review (PR #227). Slices 2 and 3 in progress.
 **Priority:** Medium
 **Created:** 2026-11-05
 **Integration branch:** `epic/workshop-persona-file-edits`, cut from `epic/workshop-bookmark-recall` at `b4ca7b86` (the feature tip: Bookmark Recall Slices 0–3, #222, and `main` with Project Memory and Pinned Context). Each slice is built on `epic/workshop-persona-file-edits-slice-<N>-<slug>` and merges into the epic through a reviewed PR.
@@ -25,8 +25,8 @@
 
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
-| 0 | Spec | ADR and this epic | All | In review |
-| 1 | Shared planner | `utils/textEdits/`: the operations and exactly-once anchoring, pure. Memory edits move onto it with no behavior change; their tests run unchanged. | D3 | Not started |
+| 0 | Spec | ADR and this epic | All | Done (PR #226, `b14c46b`) |
+| 1 | Shared planner | `utils/textEdits/`: the operations and exactly-once anchoring, pure. Memory edits move onto it with no behavior change; their tests run unchanged. | D3 | Built, PR #227 ([slice doc](slice-1-shared-planner.md)) |
 | 2 | Staging and the gateway | The resolver's every-candidate read; `FileEditStaging` implemented (identity, ambiguity refusal, class by identity, baseline); `DocumentEditor.open` (port and VS Code adapter); the applier's `structure` mode (`strict` / `prose-paragraphs` / `free`) and `beforeAttempt` immediately before every `applyEdits` (authority predicate and text checks); the `FileEditAuthorityEpoch` port; `ProjectFileEditGateway` (re-authorize, recompute class, plan, freshness, ceiling, the last-boundary predicate, apply, report by operation, show the document); boundary pins. Host-only, no persona, no routes. | D4–D7, D13 | In progress |
 | 3 | The proposal | The `<prose-minion-file-edit>` codec and D2's bounds; the persona prompt section and worked example, with a sync test; reading frames out of a reply and staging each through the `FileEditStaging` port (a fake in tests); `fileEditProposals` (D10's shape) on the turn, with the session codec, checkpoint normalization and transcript projection; the `fileEdits` setting | D2, D10, D11 | In progress |
 | 4 | Cards and Apply | The handler's claim keyed by room generation, and outcomes (D8: join, replay, `checkpointFileEdit` acknowledged durable in every recoverable checkpoint before dispatch, `partial`, `unknown`); Apply, Review in editor…, Decline and Preview routes with request ids; the real staging joined; thread cards with diffs; `landed` records; refusals in the writer's words | D8, D9, D10 | Not started |
@@ -129,3 +129,7 @@ This is the same flow as Project Memory and Bookmark Recall.
   - Okey asked for persona file editing. He chose option B, notes and chapters, and asked whether autonomous editing could follow without rework (yes: ADR D10).
   - He handed the implementation to the coordinator.
   - ADR drafted, defaults taken, epic cut from the Bookmark Recall tip at `b4ca7b86`.
+- **2026-11-05. Slice 1 (shared planner).**
+  - Baseline on `0ed3ba75`: typecheck clean; lint 0 errors, 1,165 warnings; jest 753 suites, 10,481 tests, 59 snapshots.
+  - `utils/textEdits/` built; memory edits plan through it. No memory-edit test changed.
+  - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 754 suites, 10,499 tests, 59 snapshots. See [the slice doc](slice-1-shared-planner.md).
