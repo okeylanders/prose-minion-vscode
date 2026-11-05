@@ -342,10 +342,37 @@ After the fixes: the store is 489 lines, the reader 300 and the library 305.
 Typecheck passes, lint has 0 errors and 1,165 warnings (none new), and the
 full `npx jest -w 2` on `5853bb03` (the code head) runs 703 suites / 9,930 tests / 59 snapshots, all passing.
 
+**F01, tightened on the coordinator's review of `d8b8d2a4`.** The first fix
+checked containment, which let a live root nested inside the captured one
+through (A `/workspace/novel`, B `/workspace/novel/book-two`): B's catalog
+row, and authorization's recovery under B, both lie under A. A read must now
+be the captured root's own file (`0ead5d0e`):
+
+- **a catalog row** is accepted only when `path.relative(root,
+  row.absolutePath)`, with `/` separators, equals `row.path`, so the row was
+  listed under the captured root itself. F03's normalized fallback still
+  works, since that row's own path is relative to the root. `sourceUris`
+  takes a row only when it passes the same check;
+- **the workspace door** is accepted only when authorization returns the
+  exact path the seed built from its root (`path.normalize` on both). Its
+  first two branches return that path; only recovery of a stale URI returns
+  another, and it is never read.
+
+Anything else is `workspace-changed`, and nothing is read. Regressions
+(`2cf658f8`), each failing on the containment-only reader: A→B→A with B
+nested in A, with the catalog opened while B is live; with the workspace door
+authorized while B is live (the file outside the catalog, so recovery runs);
+and `describe()` once. A control, B a parent of A with the catalog opened in
+A, still reads A's own file. The reader is now 315 lines.
+
 Then `epic-pinned-context` at `25c9443c` (Project Memory's #206 and #207)
 was merged in, as `0ee4d66b`, with no conflicts. On that head, typecheck
 passes and `npx jest -w 2` runs 705 suites / 9,951 tests / 59 snapshots, all
 passing.
+
+**After the nested-root fix** (`2cf658f8`): typecheck passes; lint 0 errors /
+1,165 warnings (none new); `npx jest -w 2` 705 suites / 9,955 tests / 59
+snapshots, all passing.
 
 ## Progress
 
