@@ -38,12 +38,16 @@ export interface WorkshopPinnedContextRow {
   readonly stateWords?: string;
 }
 
-/** The list as the tab draws it. */
-export type WorkshopPinnedContextDescription =
+/**
+ * The list as the tab draws it. `observation` numbers the store read it was
+ * drawn from, in the store's queue (PR #210 F03): a higher one is a later
+ * snapshot. Absent when no list was read (no single folder).
+ */
+export type WorkshopPinnedContextDescription = { readonly observation?: number } & (
   | { readonly state: 'listed'; readonly revision: string; readonly rows: readonly WorkshopPinnedContextRow[]; readonly words: number; readonly absent: boolean }
   | { readonly state: 'unreadable'; readonly revision: string; readonly reason: WorkshopPinnedContextRefusal; readonly entry?: number; readonly words: string }
   | { readonly state: 'unavailable'; readonly reason: WorkshopPinnedContextUnavailableReason | 'workspace-changed'; readonly words: string }
-  | { readonly state: 'busy' | 'io'; readonly words: string };
+  | { readonly state: 'busy' | 'io'; readonly words: string });
 
 /** What a seed attaches: every pinned file, in pinned order, or why the list gave none. */
 export type WorkshopPinnedContextSeedRead =

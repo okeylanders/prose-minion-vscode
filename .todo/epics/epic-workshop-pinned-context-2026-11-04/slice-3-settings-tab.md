@@ -437,6 +437,40 @@ pinned-context.json."; "Can't pin *x*: its path is longer than pinned
 context can store (4,096 characters)."; Attach missing's "Not attached:
 *x* (not found / couldn't be read / doesn't fit …)".
 
+### Re-review: F03 by observation
+
+Astra's re-review (`aa71009a`, merged) closed F01, F02, F04–F07 and N01. It
+left F03 open with a new case. A native pick of A, which is already pinned,
+is a no-op, and its describe reads the old list. Unpin A then commits and
+answers. The pick's older answer, arriving last, would put A back on screen.
+
+The fix orders answers by when the list was read, not by request or reply
+order:
+
+- **The store numbers each read.** `WorkshopPinnedContextStore.readObserved`
+  takes a monotonic `observation` inside the store's queue.
+- **Every answer carries it.** `describe()` carries it (`WorkshopPinnedContextDescription.observation`)
+  into every list answer's payload (`observation?`). A mutation's answer
+  carries the observation of the list it describes. The revision is not
+  used.
+- **The hook keeps the highest it has applied.**
+  - A lower answer still settles its own pending state and shows its own
+    notice and outcome, but never replaces the list.
+  - An equal or higher one applies.
+  - The earlier read rules remain only as the fallback when an answer has
+    no observation (no list read).
+- **The host still sends older lists.** It does not skip them (the optional
+  step), and the promoted host probe pins that behavior as written.
+
+Tests:
+
+- Astra's `WorkshopPinnedContextMutationOrderHostProbe` and
+  `…MutationOrderUiProbe`, promoted unchanged apart from a header.
+- The hook's overlapping-change case, in each answer order.
+- An older refusal that settles over a newer list.
+- The host's observations rising across a read and an unpin.
+- Every earlier F03 probe passes unchanged.
+
 ## Progress
 
 - **2026-11-04.** Slice doc written with the spec.
@@ -444,3 +478,5 @@ context can store (4,096 characters)."; Attach missing's "Not attached:
   Built, Verification and Deviations above.
 - **2026-11-05.** The coordinator's follow-ups, Slice 2b's #208 fixes and
   the epic merged; verified at `1e06c642` and handed over for the PR.
+- **2026-11-05.** Re-review F03 fixed by store observation; verified (720
+  suites / 10,054 tests, typecheck clean, lint 0 errors / 1,165 warnings).

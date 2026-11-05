@@ -157,3 +157,15 @@ describe('F02: Attach missing and a successful Open, serialized in the room\'s o
     expect(events.indexOf('attached')).toBeLessThan(events.indexOf('open imported'));
   });
 });
+
+describe('F03: every list answer names the store read it was drawn from', () => {
+  it('numbers answers in the store\'s queue order, so a list read later reads higher', async () => {
+    const h = harness();
+    h.write('Characters/alice.md', 'Alice.');
+    h.pin('Characters/alice.md');
+    const first = await h.send(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT, {});
+    const unpinned = await h.send(MessageType.WORKSHOP_UNPIN_CONTEXT, { revision: first.revision, entryPath: 'Characters/alice.md' });
+    expect(first.observation).toEqual(expect.any(Number));
+    expect(unpinned.observation!).toBeGreaterThan(first.observation!);
+  });
+});

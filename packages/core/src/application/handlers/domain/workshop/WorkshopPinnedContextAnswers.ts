@@ -29,7 +29,15 @@ export function workshopPinnedContextPayloadOf(
     files,
     maxFiles: PROMPT_BUDGETS.workshopPinnedContext.files
   });
-  const base = { requestId, platform, entries: [], totals: totals(0, 0), revision: null };
+  const base = {
+    requestId,
+    platform,
+    // The store read this was drawn from, in the store's queue order (PR #210 F03).
+    ...(description.observation !== undefined ? { observation: description.observation } : {}),
+    entries: [],
+    totals: totals(0, 0),
+    revision: null
+  };
   switch (description.state) {
     case 'listed':
       return {

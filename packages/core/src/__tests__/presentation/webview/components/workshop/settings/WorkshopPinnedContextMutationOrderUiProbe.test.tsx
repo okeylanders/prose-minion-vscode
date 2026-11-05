@@ -1,0 +1,35 @@
+/** @jest-environment jsdom */
+
+/**
+ * Astra's PR #210 re-review probe (`docs/pr-reviews/probes/pr-210-mutation-order-ui.test.tsx.txt`),
+ * promoted as a regression for F03. It is unchanged apart from this header.
+ */
+import * as React from 'react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
+import { WorkshopPinnedContextPicker } from '@components/workshop/settings/WorkshopPinnedContextPicker';
+import { workshopPinnedContextTabView } from '@hooks/domain/workshop/pinnedContext/workshopPinnedContextTabView';
+import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinnedContext';
+import { MessageType, type WorkshopPinnedContextPayload, type WorkshopContextAttachmentSnapshot } from '@messages';
+import { createMockVSCode } from '@/__tests__/mocks/vscode';
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+jest.mock('@hooks/useVSCodeApi');
+const answer = (requestId: string | null, overrides: Partial<WorkshopPinnedContextPayload> = {}): WorkshopPinnedContextPayload => ({requestId, platform:'posix', availability:{available:true}, file:{state:'ok'}, revision:'before',entries:[],totals:{words:0,budgetWords:100000,files:0,maxFiles:20}, ...overrides});
+const message = (payload: WorkshopPinnedContextPayload) => ({type:MessageType.WORKSHOP_PINNED_CONTEXT, source:'extension.workshop', timestamp:1, payload}) as const;
+
+it('EXPECTED: stale native-pick mutation response cannot restore a subsequently unpinned row', () => {
+ const vscode = createMockVSCode();
+ (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+ const {result} = renderHook(() => useWorkshopPinnedContext({attachments:[],running:false}));
+ const lastId = () => vscode.postMessage.mock.calls.at(-1)![0].payload.requestId as string;
+ const entries = [{path:'Characters/alice.md',label:'alice.md',words:42,state:'ready' as const}];
+ act(() => result.current.handlePinnedContext(message(answer(lastId(),{entries}))));
+ let pickId = '';
+ act(() => {pickId = result.current.pinPickedFile()!;});
+ expect(result.current.pending).toBe(false); // Native picker intentionally does not lock the tab.
+ let unpinId = '';
+ act(() => {unpinId = result.current.unpin('Characters/alice.md')!;});
+ act(() => result.current.handlePinnedContext(message(answer(unpinId,{revision:'after',action:'unpin',ok:true,entries:[]}))));
+ act(() => result.current.handlePinnedContext(message(answer(pickId,{revision:'before',action:'pin-file',ok:true,entries}))));
+ expect(result.current.answer?.revision).toBe('after');
+ expect(result.current.pinnedFileCount).toBe(0);
+});

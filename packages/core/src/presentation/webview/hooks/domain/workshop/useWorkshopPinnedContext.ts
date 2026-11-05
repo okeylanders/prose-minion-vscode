@@ -95,14 +95,17 @@ export function useWorkshopPinnedContext({ attachments, running }: UseWorkshopPi
   /** The list read waited on, and how many changes had settled when it was asked. */
   const read = React.useRef<{ id: string; epoch: number } | undefined>(undefined);
   /** Changes waiting for their answers (a pick held apart: a dismissed picker never answers). */
-  const changes = React.useRef(new Map<string, 'change' | 'pick'>());
+  const changes = React.useRef(new Map<string, { kind: 'change' | 'pick'; seq: number }>());
+  /** The newest store observation applied (PR #210 F03), and the latest-asked change that has settled. */
+  const observed = React.useRef<number | undefined>(undefined);
+  const settledSeq = React.useRef(0);
   /** How many changes have settled: a read asked before one settled describes an older list (PR #210 F03). */
   const epoch = React.useRef(0);
   const revision = React.useRef<string | null>(null);
   const ids = React.useRef({ prefix: `ws-pinned-${Math.random().toString(36).slice(2, 10)}`, count: 0 });
 
   const syncPending = React.useCallback(() => {
-    setListPending(read.current !== undefined || [...changes.current.values()].includes('change'));
+    setListPending(read.current !== undefined || [...changes.current.values()].some((entry) => entry.kind === 'change'));
     setPendingRequestIds([...changes.current.keys()]);
   }, []);
 
@@ -112,7 +115,7 @@ export function useWorkshopPinnedContext({ attachments, running }: UseWorkshopPi
     if (kind === 'read') {
       read.current = { id: requestId, epoch: epoch.current };
     } else {
-      changes.current.set(requestId, kind);
+      changes.current.set(requestId, { kind, seq: ids.current.count });
     }
     syncPending();
     vscode.postMessage({ type, source: SOURCE, payload: { requestId, ...payload }, timestamp: Date.now() });
@@ -141,37 +144,59 @@ export function useWorkshopPinnedContext({ attachments, running }: UseWorkshopPi
   );
 
   /**
-   * Mutations and reads are tracked apart (PR #210 F03). A change's answer is
-   * the list after it settled, so it is always taken. A read is taken only
-   * while it is the newest read and no change has settled since it was asked;
-   * otherwise its list may predate a committed change, and the change's own
-   * answer already holds the newer list. A push is taken only while nothing
-   * waits.
+   * Which answer may replace the list on screen (PR #210 F03), by the store
+   * observation it was drawn from, never by request or reply order: an
+   * answer with a lower observation than one already applied still settles
+   * its request and shows its own notice, but keeps the list as it is.
+   *
+   * An answer without an observation (none in the host's own answers) falls
+   * back to the order rules: a change's list stands unless a change asked
+   * after it has already settled; a read is taken only while it is the newest
+   * read and no change has settled since it was asked; a push only while no
+   * change waits.
    */
   const handlePinnedContext = React.useCallback((message: WorkshopPinnedContextMessage) => {
     const payload = message.payload;
-    const apply = () => {
-      revision.current = payload.revision;
-      setAnswer(payload);
+    const newer = (fallback: boolean): boolean =>
+      payload.observation !== undefined && observed.current !== undefined
+        ? payload.observation >= observed.current
+        : fallback;
+    const take = (replaceList: boolean) => {
+      if (replaceList) {
+        revision.current = payload.revision;
+        if (payload.observation !== undefined) {
+          observed.current = Math.max(observed.current ?? payload.observation, payload.observation);
+        }
+        setAnswer(payload);
+        return;
+      }
+      // Its outcome, over the list already shown.
+      setAnswer((shown) => shown
+        ? { ...shown, requestId: payload.requestId, action: payload.action, ok: payload.ok, notice: payload.notice }
+        : payload);
     };
-    if (payload.requestId !== null && changes.current.has(payload.requestId)) {
+    const change = payload.requestId === null ? undefined : changes.current.get(payload.requestId);
+    if (payload.requestId !== null && change) {
       changes.current.delete(payload.requestId);
+      const fresh = newer(change.seq > settledSeq.current);
+      settledSeq.current = Math.max(settledSeq.current, change.seq);
       epoch.current += 1;
-      apply();
+      take(fresh);
       syncPending();
       return;
     }
     if (payload.requestId !== null && payload.requestId === read.current?.id) {
-      const current = read.current.epoch === epoch.current;
+      const fresh = newer(read.current.epoch === epoch.current);
       read.current = undefined;
-      if (current) {
-        apply();
+      if (fresh) {
+        take(true);
       }
       syncPending();
       return;
     }
-    if (payload.requestId === null && read.current === undefined && ![...changes.current.values()].includes('change')) {
-      apply();
+    if (payload.requestId === null
+      && newer(read.current === undefined && ![...changes.current.values()].some((entry) => entry.kind === 'change'))) {
+      take(true);
     }
   }, [syncPending]);
 
