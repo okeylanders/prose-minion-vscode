@@ -13,6 +13,9 @@
  * - **F-04.** A file too large to summarize has an unknown id, never a
  *   unique one: it is counted unreadable, and an exact read of the id that
  *   might be its refuses the conflict, which the preview names.
+ * - **F-05.** A page's cached document is the file's it was read from: an id
+ *   found ambiguous is forgotten at once, and a page reading an id from
+ *   another file never takes the cached one.
  */
 
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
@@ -23,6 +26,8 @@ import {
 import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
 import type { WorkshopRecallBookmarkPage } from '@/application/services/workshop/recall/WorkshopRecallBookmarkPage';
 import { WORKSHOP_BOOKMARK_BROWSER_LIMITS } from '@shared/constants/workshopBookmarkBrowser';
+import { WorkshopRecallDocumentCache } from '@/application/services/workshop/recall/WorkshopRecallDocumentCache';
+import { buildWorkshopRecallDocument } from '@/application/services/workshop/recall/WorkshopRecallDocument';
 import { RECALL_WORKSPACE, recallLog } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
 import { bookmarkedCheckpoint, bookmarkedRoom } from '@/__tests__/application/services/workshop/recall/workshopBookmarkBrowserFixtures';
 
@@ -182,5 +187,70 @@ describe('an unknown id is never a unique one (PR #216 F-04)', () => {
     // Preview of the small row goes through the exact read, which refuses and says why.
     expect(await recall.savedTurn('duplicate', bookmarkedRoom().replyId)).toEqual({ kind: 'ambiguous-session' });
     await expect(store.readNamed('duplicate')).rejects.toBeInstanceOf(WorkshopNamedSessionIdentityConflictError);
+  });
+});
+
+describe('a page\'s cached document belongs to its own file (PR #216 F-05)', () => {
+  /** A checkpoint under `name` claiming `sessionId`, its bookmarked reply saying `content`. */
+  function putWith(fs: MemoryFileSystem, name: string, sessionId: string, title: string, content: string): void {
+    const checkpoint = JSON.parse(JSON.stringify(bookmarkedCheckpoint(sessionId)));
+    checkpoint.title = title;
+    checkpoint.workshop.turns.find((turn: { id: string }) => turn.id === bookmarkedRoom().replyId).content = content;
+    fs.files.set(`${SESSIONS}/${name}.json`, new TextEncoder().encode(JSON.stringify(checkpoint)));
+  }
+
+  it('refreshes a known ambiguous cached document after only the other file survives (Astra\'s witness)', async () => {
+    const { fs, store, recall } = folder();
+    for (let index = 0; index < 24; index += 1) {
+      putWith(fs, `20260101-${String(index).padStart(4, '0')}`, `id-${index}`, `Session ${index}`, 'Filler');
+    }
+    // Copied checkpoints can keep the same durable id and embedded updatedAt.
+    putWith(fs, '20200101-000001-newer', 'duplicate', 'Newer duplicate', 'Removed file content');
+    putWith(fs, '20200101-000000-older', 'duplicate', 'Older duplicate', 'Surviving file content');
+
+    const first = await page(recall);
+    expect(first.sessions.find((session) => session.sessionId === 'duplicate')?.title).toBe('Newer duplicate');
+    const second = await page(recall, first.next);
+    expect(second.ambiguousSessionIds).toEqual(['duplicate']);
+
+    // The writer follows the advice: keeps one file, and reopens Bookmarks.
+    fs.files.delete(`${SESSIONS}/20200101-000001-newer.json`);
+    const reopened = await page(recall);
+    const exact = await store.readNamed('duplicate');
+    const row = reopened.sessions.find((session) => session.sessionId === 'duplicate');
+    expect(exact?.title).toBe('Older duplicate');
+    expect(reopened.ambiguousSessionIds).toEqual([]);
+    expect(row?.title).toBe('Older duplicate');
+    expect(JSON.stringify(row?.bookmarks)).toContain('Surviving file content');
+    expect(JSON.stringify(row?.bookmarks)).not.toContain('Removed file content');
+  });
+
+  it('never serves a cached document to a page that reads the id from another file', async () => {
+    const { fs, recall } = folder();
+    putWith(fs, '20200101-first', 'copied', 'First file', 'First file content');
+    expect(JSON.stringify((await page(recall)).sessions[0].bookmarks)).toContain('First file content');
+
+    // The file is replaced by another holding the same id and updatedAt: no walk ever saw both.
+    fs.files.delete(`${SESSIONS}/20200101-first.json`);
+    putWith(fs, '20200101-second', 'copied', 'Second file', 'Second file content');
+    const reread = await page(recall);
+    expect(reread.cacheHits).toBe(0);
+    expect(reread.sessions[0].title).toBe('Second file');
+    expect(JSON.stringify(reread.sessions[0].bookmarks)).toContain('Second file content');
+  });
+
+  it('misses at the cache itself when the file differs, and hits only for the file it was read from', () => {
+    const cache = new WorkshopRecallDocumentCache({ maximumCachedDocuments: 4, maximumCachedCharacters: 10_000_000 });
+    const document = buildWorkshopRecallDocument(bookmarkedCheckpoint('alice-1', 'Tea party'));
+    cache.remember(document, cache.generation, 'a.json');
+    expect(cache.get('alice-1', document.updatedAt, 'b.json')).toBeUndefined();
+    // The miss dropped it: not even its own file finds it now.
+    expect(cache.get('alice-1', document.updatedAt, 'a.json')).toBeUndefined();
+    cache.remember(document, cache.generation, 'a.json');
+    expect(cache.get('alice-1', document.updatedAt, 'a.json')).toBe(document);
+    expect(cache.get('alice-1', document.updatedAt)).toBeUndefined();
+    cache.remember(document, cache.generation, 'a.json');
+    cache.forgetSession('alice-1');
+    expect(cache.get('alice-1', document.updatedAt, 'a.json')).toBeUndefined();
   });
 });

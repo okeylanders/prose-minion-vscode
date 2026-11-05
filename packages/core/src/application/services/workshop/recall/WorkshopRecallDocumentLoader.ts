@@ -61,7 +61,9 @@ export class WorkshopRecallDocumentLoader {
     private readonly cache: WorkshopRecallDocumentCache,
     /** What a cold read that produced no document is charged against the byte budget. */
     private readonly unreadableSessionBytes: number,
-    private readonly log: (line: string) => void
+    private readonly log: (line: string) => void,
+    /** The file a session is read from, when the cache must match it too (the Bookmarks screen's pages, PR #216 F-05). */
+    private readonly sourceOf: (sessionId: string) => string | undefined = () => undefined
   ) {}
 
   /**
@@ -83,7 +85,7 @@ export class WorkshopRecallDocumentLoader {
     let cacheHits = 0;
     for (const summary of sessions) {
       throwIfRecallAborted(signal);
-      const cached = this.cache.get(summary.sessionId, summary.updatedAt);
+      const cached = this.cache.get(summary.sessionId, summary.updatedAt, this.sourceOf(summary.sessionId));
       if (cached) {
         outcomes.push({ kind: 'loaded', document: cached, cacheHit: true });
         documents.push(cached);
@@ -144,7 +146,7 @@ export class WorkshopRecallDocumentLoader {
       return { reason: 'missing' };
     }
     const document = buildWorkshopRecallDocument(session);
-    this.cache.remember(document, scope.generation);
+    this.cache.remember(document, scope.generation, this.sourceOf(sessionId));
     return { document, parsedBytes: estimatedSourceBytes(session) };
   }
 }

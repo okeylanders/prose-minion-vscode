@@ -8,8 +8,11 @@
  *   path cache.
  * - **Its own documents.** It keeps them in a cache of its own, never the
  *   shared one a persona's recall reads, so a document read from one of two
- *   files claiming an id can never answer anyone else. That cache is
- *   forgotten whenever the recall scope moves on.
+ *   files claiming an id can never answer anyone else. Each entry names the
+ *   file it was read from, and a page reading the id from another file
+ *   misses (PR #216 F-05); an id a page reports ambiguous is forgotten at
+ *   once, whatever file it came from. The cache is forgotten whenever the
+ *   recall scope moves on.
  * - **Its walks.** WorkshopRecallBookmarkWalks remembers each walk's ids; the
  *   cursor the screen echoes names the walk, and a forgotten walk is refused.
  *
@@ -72,12 +75,16 @@ export class WorkshopRecallBookmarkPager {
       { readNamed: (sessionId) => this.corpus.readPagedSession(files.get(sessionId) ?? '', sessionId) },
       this.documents,
       this.unreadableSessionBytes,
-      this.log
+      this.log,
+      (sessionId) => files.get(sessionId)
     );
     const pageScope = { ...scope, generation: this.documents.generation };
     const read = await workshopRecallBookmarkPage(page, scope.liveSessionId, walk.seen, (sessions) =>
       loader.loadAll(sessions, Number.POSITIVE_INFINITY, pageScope, signal));
     this.walks.remember(walk.walkId, read.metSessionIds);
+    for (const sessionId of read.ambiguousSessionIds) {
+      this.documents.forgetSession(sessionId);
+    }
     this.log(workshopRecallBookmarkPageLogLine(read));
     return read.next === undefined ? read : { ...read, next: WorkshopRecallBookmarkWalks.cursor(walk.walkId, read.next) };
   }
