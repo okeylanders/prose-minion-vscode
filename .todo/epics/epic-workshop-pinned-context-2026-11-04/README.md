@@ -48,8 +48,8 @@ every conversation through Choose from project, and wants to stop.
 | 0d | Tab design | The Pinned context tab in every state, drawn on the real theme beside the Memory tab, then snapshotted | `epic-pinned-context` | Done: approved by Okey on 2026-11-05 (13 artboards; [doc](slice-0d-tab-design.md)) |
 | 1 | Format and store | Shared types and bound, `WorkshopPinnedContextCodec` (format 1, pure) and `WorkshopPinnedContextStore` (claimed writes, workspace identity), with fixtures. No UI, no seeding | `epic-pinned-context-slice-1-format-store` | Built; PR #204 in Astra's review ([doc](slice-1-format-and-store.md)) |
 | 2a | Starts and seed port | `start: 'carry' \| 'full-reset' \| 'empty'`, the `WorkshopRoomSeed` port and its calls, `WORKSHOP_NO_ROOM_SEED`, the menu's empty-context item behind `pinnedFileCount` | `epic-pinned-context-slice-2a-starts-seed-port` | **Merged** (#203, `d356d38`) after Astra's review (F01 fixed and cleared) ([doc](slice-2a-starts-and-seed-port.md)) |
-| 2b | Room seed | The match rule, `WorkshopPinnedContextLibrary`, the real seed, the result lines' report | `epic-pinned-context-slice-2b-room-seed` | Building, on a branch carrying 1 and 2a; its PR follows theirs ([doc](slice-2b-room-seed.md)) |
-| 3 | Settings tab | `WorkshopPinnedContextHandler`, its messages, `useWorkshopPinnedContext`, and the panel: add from project, pin what's attached, attach missing, move, unpin, open; the menu's count | `epic-pinned-context-slice-3-settings-tab` | Waits on 2b ([doc](slice-3-settings-tab.md)) |
+| 2b | Room seed | The match rule, `WorkshopPinnedContextLibrary`, the real seed, the result lines' report | `epic-pinned-context-slice-2b-room-seed` | Built; reviewed; its PR follows #204 ([doc](slice-2b-room-seed.md)) |
+| 3 | Settings tab | `WorkshopPinnedContextHandler`, its messages, `useWorkshopPinnedContext`, and the panel: add from project, pin what's attached, attach missing, move, unpin, open; the menu's count | `epic-pinned-context-slice-3-settings-tab` | Building, on a branch carrying 2b ([doc](slice-3-settings-tab.md)) |
 | 4 | Context sheet marks | The derived pin mark and tooltip on pills, and Pin from a pill | `epic-pinned-context-slice-4-sheet-marks` | Waits on 3 ([doc](slice-4-context-sheet-marks.md)) |
 | 5 | Verify live | Extension Development Host pass; ADR to Accepted; memory bank | — | Needs a human with VS Code ([doc](slice-5-verify-live.md)) |
 
@@ -95,7 +95,8 @@ branch.
 |---|---|---|---|---|
 | 1 | [`session_01UrwcevSE9xCeoMqBXf9P73`](https://claude.ai/code/session_01UrwcevSE9xCeoMqBXf9P73) | `epic-pinned-context-slice-1-format-store` | 2026-11-05, from `b94fc67` | PR #204: Astra found F-01–F-03 and N-01 at `182fcd1`; fixed at `52da65e` (per-list lock, preserving leftovers, NTFS-style key, C1 controls); waits on re-review |
 | 2a | [`session_01UrwcerFSuu47ewLKUezS45`](https://claude.ai/code/session_01UrwcerFSuu47ewLKUezS45) | `epic-pinned-context-slice-2a-starts-seed-port` | 2026-11-05, from `b94fc67` | Merged: PR #203 at `d356d38`. Astra found F01 (no workspace check after the seed's `prepare`), fixed at `db93354`, cleared at `d9c536e` |
-| 2b | [`session_01UrwcetPHzVLFpo6ZCkjf1A`](https://claude.ai/code/session_01UrwcetPHzVLFpo6ZCkjf1A) | `epic-pinned-context-slice-2b-room-seed` | 2026-11-05, from `c35c281` (the epic at `94a33df` with Slices 1 and 2a merged in; 696 suites / 9,820 tests green) | Building |
+| 2b | [`session_01UrwcetPHzVLFpo6ZCkjf1A`](https://claude.ai/code/session_01UrwcetPHzVLFpo6ZCkjf1A) | `epic-pinned-context-slice-2b-room-seed` | 2026-11-05, from `c35c281` (the epic at `94a33df` with Slices 1 and 2a merged in; 696 suites / 9,820 tests green) | Built at `e36526b` (702 / 9,902 green); reviewed; one fix requested (a kept re-read must not read as "not attached"); its PR follows #204 |
+| 3 | [`session_01Urwcevx3JATnaqRCJbE4Yb`](https://claude.ai/code/session_01Urwcevx3JATnaqRCJbE4Yb) | `epic-pinned-context-slice-3-settings-tab` | 2026-11-05, from `51b4988` (2b at `e36526b` with the epic merged in) | Building |
 
 ## How the Slices Are Built
 
