@@ -132,14 +132,161 @@ reloading a room never touch it. Empty context stays empty.
 
 ## Completion criteria
 
-- [ ] Every room start in ADR D2's table seeds, or doesn't, as the table
+- [x] Every room start in ADR D2's table seeds, or doesn't, as the table
       says.
-- [ ] A missing, unreadable or oversized pinned file never fails a room.
-- [ ] The coordinator and session service don't grow in this slice.
-- [ ] The epic's verification passes, with counts recorded here.
+- [x] A missing, unreadable or oversized pinned file never fails a room.
+- [x] The coordinator and session service don't grow in this slice.
+- [x] The epic's verification passes, with counts recorded here.
+
+## Built
+
+**Commits** (on `c35c2818`).
+
+- `563bf89e`: the match rule, the file reader, the library, its words and
+  the room seed.
+- `2d968194`: the composition root: the store, the library and the seed
+  built in `extension.ts`, the seed passed in place of `WORKSHOP_NO_ROOM_SEED`,
+  the library in `CoreServices`, the store's `shutDown` handed to
+  `shutDownExtension`; the result line for an unreadable list.
+- `93f0e59a`: the tests and the boundary guards.
+- This doc.
+
+**Where each piece lives.**
+
+| Piece | Where |
+|---|---|
+| The match rule | `shared/constants/workshopPinnedContext.ts` (`workshopPinnedContextMatches(entry, attachment, platform)`) |
+| Reading pinned files through the intake doors | `application/services/workshop/pinnedContext/WorkshopPinnedContextFileReader.ts` (250 lines) |
+| The library: `describe()`, `readForSeed()`, `askLiveRoom()`, `askSeedWorkspace()` | `pinnedContext/WorkshopPinnedContextLibrary.ts` (265) |
+| The states in D8's and 0d's words | `pinnedContext/WorkshopPinnedContextWords.ts` (67) |
+| The seed | `pinnedContext/WorkshopPinnedContextRoomSeed.ts` (234), `implements WorkshopRoomSeed` |
+| The result line for an unreadable list | `WorkshopSessionStartResult.ts` (`seedSays`; 130 lines) |
+| Wiring | `extension.ts`; `extensionShutdown.ts` (`pinnedContext` part); `CoreServices.workshopPinnedContext` (`MessageHandlerContracts.ts`, a type import); the barrel exports the store, library, seed and `workshopPinnedContextPlatformOf` |
+
+**How it reads a file** (ADR D3). The reader opens one fresh catalog per
+read. A pinned path whose key (Slice 1's `workshopPinnedContextPathKey`)
+equals a catalog entry's path goes through `WorkshopContextIntakeCatalog.load`
+and keeps its catalog key. Any other path is `stat`ed (only to tell
+*missing* from *unreadable*), re-authorized through `authorizeExcerptReread`
+(contained, no symbolic link) and read through `loadFile`, as a refresh does.
+Both use `CONTEXT_ATTACHMENTS`' `fileBytes` and the head slice at the budget's
+words. A catalog that can't be opened reads every entry as a workspace file,
+and is logged. Nothing in the reader throws: a failure is `unreadable` with a
+category (`not-a-file`, `too-large`, `empty`, `refused`, `read-failed`).
+
+**How the seed installs** (ADR D3, D6). In pinned order, for every kind: a
+file the room already carries (the match rule, or the aggregate's own
+duplicate key: the same `sourceUri` or catalog key) is re-read in its slot
+through `refreshContextFileAttachments`, checked against the budget less its
+own words; any other file goes through `addContextAttachment`. A file that
+doesn't fit is left out as `over-budget` and the next is tried. Carried
+attachments that aren't pinned are never touched. After a reset the room has
+no host conversation, so neither call mints a divider turn (tested).
+
+**Tests.**
+
+- `pinnedContext/WorkshopPinnedContextRoomSeed.test.ts` (21): order; catalog
+  key kept; re-read in its slot, missing appended, unpinned carried left
+  alone; over budget skips and continues; a carried file that grew keeps its
+  body; one file under another path is re-read, never duplicated; missing and
+  unreadable named; no list and an empty list report nothing; an unreadable
+  list reports `pinned-context.json`; another workspace, another live room, a
+  foreign plan and a second install each install nothing; the first room's
+  report kept once. **`prepare` never rejects**: a store whose `read` or
+  `availability` throws, a scope that throws, a catalog, `authorizeExcerptReread`
+  or `loadFile` that throws, a `stat` that fails for another reason, a
+  `readForSeed` that throws. Logs are checked for no path or name.
+- `pinnedContext/WorkshopPinnedContextLibrary.test.ts` (8): `describe()`'s
+  rows (group chip, workspace, head-sliced, Not found, Can't read), an absent
+  list, an unreadable one with its entry, both unavailable notices; the
+  accepted-room check fails when the room or folder moves, refuses before a
+  room settles (a seed accepts the first room), and withdraws a real store
+  write as `beforeCommit`.
+- `pinnedContext/WorkshopPinnedContextRoomSeedCoordinator.test.ts` (7), the
+  real coordinator, session store and pinned store on one folder: the first
+  room, New and full reset each write a first checkpoint holding the pinned
+  files; empty reads nothing and holds nothing; no divider turn, over a room
+  that had a conversation; a failed replacement keeps the prior room; reload,
+  Open, Duplicate, Rewind and Branch never read the list; a list that throws
+  at the first room starts the room with autosave on.
+- `pinnedContext/WorkshopPinnedContextDelivery.integration.test.ts` (1): the
+  first host turn through the real room handler, assistant service and
+  persona capability. One `<context-attachments count="2">` frame in pinned
+  order and no update frame; the system message equals an unseeded room's;
+  memory's catalog frame comes after the context and ends the message.
+- `shared/constants/workshopPinnedContext.test.ts` (5): catalog key, relative
+  path, different paths, text notes, Windows case-folding, `\` and NFD.
+- `extensionShutdown.integration.test.ts`: the order test drains pinned
+  context too; a held list write keeps deactivation pending until it lands.
+- `boundaries.test.ts`: the seed is the port's third chooser and
+  `extension.ts` passes it, not the no-op; only `extension.ts` constructs the
+  store, library and seed (once each) and hands the store to shutdown; no
+  handler imports the library, seed or reader, and `CoreServices` names the
+  library as a type only; `pinnedContext/` stays under 500 lines.
+- `WorkshopCoordinatorHarness.setupCoordinator` takes an optional
+  `fileSystem`, so the coordinator and the pinned store share one folder.
+
+## Verification
+
+| Check | Before (`c35c2818`, coordinator's baseline) | After (`93f0e59a`, after `npm ci`) |
+|---|---|---|
+| `npm run typecheck` | pass | pass |
+| `npx jest` | 696 suites / 9,820 tests / 59 snapshots | 701 suites / 9,867 tests / 59 snapshots, all passing |
+| `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (no new warnings) |
+| `from 'vscode'` in `packages/core/src` | none | none |
+| New files over 500 lines | — | none (largest: the seed test, 315) |
+| Coordinator and session service | — | unchanged (no diff) |
+| Fixtures and tests | — | *Alice*-style made-up paths and text only |
+| Logs | — | counts and categories only; tests check no path or name |
+
+## Deviations and open questions
+
+1. **The match rule takes the platform**:
+   `workshopPinnedContextMatches(entry, attachment, platform)`. The spec's
+   two-argument form can't case-fold on Windows "as Slice 1 defines it",
+   which needs the platform. Slice 3 will have to send the host's platform
+   to the webview (or the hook asks the host) for the pill's mark and the
+   "N missing" count.
+2. **An unreadable list in the report.** 2a's report has no field for the
+   list itself, and I didn't change the port. A list that can't be read
+   (`unreadable`, `busy`, `io`, or a thrown read) reports `pinnedCount: 0`
+   with one left-out entry, `{ label: 'pinned-context.json', reason:
+   'unreadable' }`. The result line says "… No pinned context attached:
+   pinned-context.json (couldn't be read)." An absent list, an empty one and
+   an unavailable workspace report nothing (D2). If the coordinator would
+   rather have a list-level field on the report, that's a port change for
+   2a's owner.
+3. **A carried pinned file whose re-read is left out keeps its old body**
+   (missing, unreadable or now over budget), and is named in `leftOut`. The
+   result line therefore says "not attached: alice.md (not found)" for a
+   file the writer still sees as a pill, with its earlier text. Nothing is
+   removed for the writer (D6), but the wording may want "not re-read" for
+   that case. Open for Slice 3's copy pass.
+4. **The first room's report isn't on the ticker yet.** The coordinator
+   discards `install`'s return at the first room, and must not grow here, so
+   the seed keeps that one report (`takeFirstRoomReport()`, once). Posting it
+   needs a handler, which is Slice 3's: it can call
+   `workshopSessionStartResult('carry', report)` when a Workshop webview is
+   first ready.
+5. **`CoreServices` gains the library only**, as `workshopPinnedContext`.
+   ADR D9 says "the store and the library", but Slice 1's guard forbids any
+   module under `application/handlers/` importing the store, and
+   `MessageHandlerContracts.ts` lives there. Everything reaches the store
+   through the library.
+6. **The library's constructor** is `(store, intake, fileSystem, scope, log,
+   { platform })`: `fileSystem` for the `stat` that tells missing from
+   unreadable, and `scope` a thunk over the coordinator's `recallScope()`,
+   because the seed is built before the coordinator it is passed to.
+7. **`describe()` also answers `busy` and `io`** with their own lines, and its
+   rows carry `stateWords`. 0d names neither state; the words are mine:
+   "Pinned context is being changed in another window. Try again in a
+   moment." and "pinned-context.json couldn't be read. Try again, or check
+   the project folder."
 
 ## Progress
 
 - **2026-11-04.** Slice doc written with the spec (as Slice 2).
 - **2026-11-05.** Split by the coordinator: the starts, the port and the menu
   moved to Slice 2a.
+- **2026-11-05.** Built on `epic-pinned-context-slice-2b-room-seed`; see Built,
+  Verification and Deviations above.
