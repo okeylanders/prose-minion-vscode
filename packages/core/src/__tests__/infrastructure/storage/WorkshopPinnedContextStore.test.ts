@@ -245,12 +245,58 @@ describe('claims settle by the shared primitive\'s rules', () => {
     expect(everyFile(window.fileSystem)).toEqual([`.pinned-context.json.claim-${NOW - 1_000}-live`]);
   });
 
-  it('removes a rewrite\'s abandoned leftover beside the standing list', async () => {
+  it('removes an abandoned claim beside the standing list only when it holds the very bytes that stand', async () => {
+    const window = host();
+    window.fileSystem.files.set(FILE, bytesOf(list('Characters/alice.md')));
+    window.fileSystem.files.set(claimOf(NOW - STORED_FILE_CLAIM_LEASE_MS - 1, 'left'), bytesOf(list('Characters/alice.md')));
+    expect(await window.store.read()).toMatchObject({ state: 'ok', list: list('Characters/alice.md') });
+    expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
+  });
+
+  it('sets aside any other abandoned claim beside the standing list, never deleting it (PR #204 F-02)', async () => {
     const window = host();
     window.fileSystem.files.set(FILE, bytesOf(list('Characters/alice.md', 'Characters/the-hatter.md')));
     window.fileSystem.files.set(claimOf(NOW - STORED_FILE_CLAIM_LEASE_MS - 1, 'left'), bytesOf(list('Characters/alice.md')));
     expect(await window.store.read()).toMatchObject({ state: 'ok', list: list('Characters/alice.md', 'Characters/the-hatter.md') });
-    expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
+    expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json', 'pinned-context.json.set-aside-s1']);
+    expect(text(window.fileSystem.files.get(path.join(FOLDER, 'pinned-context.json.set-aside-s1')))).toBe(text(bytesOf(list('Characters/alice.md'))));
+  });
+
+  it('keeps a refused rewrite\'s claimed bytes through a failed release, and sets them aside once the fault clears and the lease passes (PR #204 F-02)', async () => {
+    const window = host();
+    const { fileSystem } = window;
+    const original = bytesOf(list('Characters/alice.md'));
+    const edited = bytesOf(list('Characters/the-hatter.md'));
+    const competing = bytesOf(list('Characters/the-queen.md'));
+    fileSystem.files.set(FILE, original);
+    const rename = fileSystem.rename.bind(fileSystem);
+    let claimed = false;
+    let releaseFails = true;
+    jest.spyOn(fileSystem, 'rename').mockImplementation(async (from, to, options) => {
+      if (from === FILE && /\.claim-/.test(to) && !claimed) {
+        // A hand edit lands just before the claim, which takes it; another list then takes the saved name.
+        claimed = true;
+        fileSystem.files.set(FILE, edited);
+        await rename(from, to, options);
+        fileSystem.files.set(FILE, competing);
+        return;
+      }
+      if (/\.claim-/.test(from) && releaseFails) {
+        throw Object.assign(new Error('EACCES: claim'), { code: 'EACCES' });
+      }
+      return rename(from, to, options);
+    });
+
+    expect(await window.store.update(workshopPinnedContextRevisionOf(original), pin('Characters/the-rabbit.md'))).toMatchObject({ ok: false, reason: 'changed' });
+    const holding = () => [...fileSystem.files.entries()].filter(([, bytes]) => text(bytes) === text(edited)).map(([file]) => path.basename(file));
+    expect(holding()).toHaveLength(1);
+    expect(holding()[0]).toMatch(/^\.pinned-context\.json\.claim-/);
+
+    releaseFails = false;
+    window.clock.at = NOW + STORED_FILE_CLAIM_LEASE_MS + 1;
+    expect(await window.store.read()).toMatchObject({ state: 'ok', list: list('Characters/the-queen.md') });
+    expect(holding()).toHaveLength(1);
+    expect(holding()[0]).toMatch(/^pinned-context\.json\.set-aside-/);
   });
 
   it('leaves the folder\'s other files alone', async () => {

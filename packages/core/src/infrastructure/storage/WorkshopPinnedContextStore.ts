@@ -27,7 +27,13 @@
  *     (`commitStoredFileRewrite`): the bytes read are the bytes claimed, or
  *     the write is refused as `changed`;
  *   - claims follow `StoredFileClaims`' lease rules: a read settles them
- *     first, so a list left mid-rewrite goes back and a leftover goes;
+ *     first, so a list left mid-rewrite goes back;
+ *   - **an abandoned claim beside a standing list is removed only when it
+ *     holds exactly the standing bytes** (PR #204 F-02). The format records
+ *     no ancestry, so no other claim can be shown to be an earlier version a
+ *     committed write replaced: it may be bytes a refused rewrite could not
+ *     put back. Those are set aside under a free ordinary name
+ *     (`pinned-context.json.set-aside-<id>`), never deleted;
  *   - a file that does not read is never written (`unreadable`).
  * - **A write belongs to the workspace it was asked in** (D5; Project
  *   Memory's PR #202 F01). `update` captures the list's file when it is
@@ -148,7 +154,12 @@ export class WorkshopPinnedContextStore {
     this.claims = new StoredFileClaims(fileSystem, log, options.claimNow ?? (() => new Date()), {
       claimPattern: CLAIM,
       logPrefix: LOG,
-      formatError: fileSystemErrorCategory
+      formatError: fileSystemErrorCategory,
+      // Preserve whenever unsure (PR #204 F-02): only a claim of the very bytes that stand is shown to lose nothing.
+      leftovers: {
+        isEarlierVersion: (claimed, standing) => sameBytes(claimed, standing),
+        freeName: async () => this.setAsideName()
+      }
     });
     this.rewritePorts = { fileSystem, claims: this.claims, log, logPrefix: LOG, noun: 'pinned-context list', mintStagingId: this.mintStagingId };
   }
@@ -394,7 +405,7 @@ export class WorkshopPinnedContextStore {
       beforeCommit: permitted,
       onCommitted: () => undefined,
       // A claim given back when a new list took the saved name meanwhile: kept beside it, never over it.
-      fallbackPath: async () => path.join(folder, `${FILE_NAME}.set-aside-${this.mintStagingId()}`)
+      fallbackPath: async () => path.join(folder, this.setAsideName())
     });
     switch (outcome.kind) {
       case 'committed':
@@ -409,6 +420,11 @@ export class WorkshopPinnedContextStore {
       case 'failed':
         return 'io';
     }
+  }
+
+  /** A free ordinary name in the list's folder for bytes set aside: never a claim, so never settled again. */
+  private setAsideName(): string {
+    return `${FILE_NAME}.set-aside-${this.mintStagingId()}`;
   }
 
   private owe<T>(write: Promise<T>): Promise<T> {
@@ -433,6 +449,10 @@ export function workshopPinnedContextRevisionOf(bytes: Uint8Array): string {
 }
 
 const revisionOf = workshopPinnedContextRevisionOf;
+
+function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
+  return left.byteLength === right.byteLength && left.every((byte, index) => byte === right[index]);
+}
 
 /** A store read as a caller sees it: without the bytes. */
 function publicRead(read: StoreRead): WorkshopPinnedContextRead {
