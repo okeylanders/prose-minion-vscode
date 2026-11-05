@@ -1,6 +1,6 @@
 # Epic: Workshop Bookmark Recall
 
-**Status:** Slice 3 built (PR #219), in review. Slice 2 merged at `78fe28d` (PR #216). Slice 1 merged at `ddf8356` (PR #215). Slice 0 (spec) merged at `8e9b612` (PR #214). The branch `epic/workshop-bookmark-recall` was cut from `epic-pinned-context` at `f298098` on 2026-11-05, after Pinned Context finished its code (Project Memory 6a–6c merged in at `b668782`). `main` was merged in for the Wayfinding close-out docs.
+**Status:** Slices 0–3 merged. Slice 3 merged at `298c17d` (PR #219). Slice 4, the live pass, is ready for Okey. Slice 2 merged at `78fe28d` (PR #216). Slice 1 merged at `ddf8356` (PR #215). Slice 0 (spec) merged at `8e9b612` (PR #214). The branch `epic/workshop-bookmark-recall` was cut from `epic-pinned-context` at `f298098` on 2026-11-05, after Pinned Context finished its code (Project Memory 6a–6c merged in at `b668782`). `main` was merged in for the Wayfinding close-out docs.
 **Priority:** Medium
 **Created:** 2026-11-05
 **Integration branch:** `epic/workshop-bookmark-recall`. Each slice is built on its own branch, `epic/workshop-bookmark-recall-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -24,8 +24,8 @@ Every bookmark saved since Wayfinding reads unchanged.
 | 0 | Spec | ADR, this epic, slice docs, open questions | All | Done (PR #214, `8e9b612`) |
 | 1 | [Recall reads bookmarks](slice-1-recall-operation.md) | `transcript.bookmarks` end to end, the open room through a read-only live port, read marks, and the Wayfinding D10 pin rewritten | D1–D7 | Done (PR #215, `ddf8356`) |
 | 2 | [The Bookmarks screen](slice-2-bookmarks-screen.md) | Read-only browser across sessions: preview, Open, Open at bookmark | D8 | Done (PR #216, `78fe28d`) |
-| 3 | [Remember this, and proposals that cite bookmarks](slice-3-remember-this.md) | A saved bookmark becomes a memory citing its session and turn, and a persona's proposal cites the bookmarked turns | D9, D10 | Built (PR #219), in review |
-| 4 | [Verify live](slice-4-live-pass.md) | Extension Development Host pass; ADR → Accepted; memory bank | — | Pending (needs a human with VS Code) |
+| 3 | [Remember this, and proposals that cite bookmarks](slice-3-remember-this.md) | A saved bookmark becomes a memory citing its session and turn, and a persona's proposal cites the bookmarked turns | D9, D10 | Done (PR #219, `298c17d`) |
+| 4 | [Verify live](slice-4-live-pass.md) | Extension Development Host pass; ADR → Accepted; memory bank | — | Ready for Okey (checklist consolidated) |
 
 **Order:** 1 → 2 → 3.
 - Slice 2 needs the recall document's bookmarks from Slice 1.
@@ -162,4 +162,14 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
   - **F-01.** A saved capability-card bookmark couldn't be remembered: the route judged the projection's kind. Eligibility is now the original turn's (`bookmarkable`, through recall), and the screen offers only what the host saves.
   - **F-02.** A saved-turn save read the room after the source read, so a same-id reopen or a Rewind could take its receipt. The route now takes the room when its message arrives, and the write refuses, writing nothing, if it moved.
   - **Verification:** jest **751 suites / 10,465 tests / 59 snapshots**, all passing; lint at the 1,165 baseline; typecheck clean.
+- **2026-11-05. Slice 3 merged** into the epic at `298c17d` (PR #219), after Astra approved `b93c27ee` and CI passed on `9d0568a0`.
+  - **Wording, still open.** Her re-review noted that a capability card's "Remember this" sheet labels the safe summary "Session's reply". The persisted provenance is correct. The note is non-blocking and is now a live-pass item.
+  - **Size.** `WorkshopProjectMemoryHandler.ts` is now exactly 500 lines. Its next change splits it, never grows it.
+- **2026-11-05. Slice 4 prepared.** The [live-pass checklist](slice-4-live-pass.md) now folds in what Slices 2 and 3 added, all of it pinned by their reviews:
+  - shared-id rows and their refusals;
+  - "Load more" coverage;
+  - superseded Open at bookmark;
+  - every "Remember this" path;
+  - cited-turn drops and `edit-cites`.
 
+  It needs Okey in VS Code. After it come the close-out steps, including the #205 reminder.
