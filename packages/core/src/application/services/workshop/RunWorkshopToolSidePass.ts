@@ -72,6 +72,8 @@ export interface WorkshopToolSidePassEvents {
   memoryAutoSave?: (turn: WorkshopTurn, indexes: readonly number[]) => Promise<void>;
   /** The room's automatic saves, landed and in flight, for the cap (PR #201 F-04). */
   memoryAutoSavesInRoom?: () => number;
+  /** Whether personas may propose file edits, read when the synthesis is read (ADR 2026-11-05 D9); absent, off. */
+  fileEditsOpen?: () => boolean;
   settled: (requestId: string) => void;
 }
 
@@ -279,6 +281,7 @@ export class RunWorkshopToolSidePass {
       const synthesisTurn = completeWorkshopRun({
         memory: replyMemory,
         memoryAutoSavesInRoom: events.memoryAutoSavesInRoom,
+        fileEditsOpen: events.fileEditsOpen?.() === true,
         memoryAutoSave: events.memoryAutoSave && ((turn, indexes) => {
           memorySave = events.memoryAutoSave!(turn, indexes);
         }),

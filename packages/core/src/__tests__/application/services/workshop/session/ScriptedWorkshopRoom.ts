@@ -120,6 +120,8 @@ export class ScriptedWorkshopRoom {
   memoryContext?: WorkshopReplyMemoryContext;
   /** Save and tell me's saver (Slice 5); absent, a card waits as under Ask first. */
   memoryAutoSave?: (turn: WorkshopTurn, indexes: readonly number[]) => void;
+  /** Whether a reply's file-edit frames are read (ADR 2026-11-05 D9); off unless a test opens it. */
+  fileEditsOpen = false;
   /** Whether each reply's run had web search tools attached (Slice 5's hold). */
   webResearchAttached = false;
 
@@ -543,6 +545,7 @@ export class ScriptedWorkshopRoom {
       readRetainedHistory: (id) => this.conversations.getCommittedHistoryCounts(id),
       settleCommittedRun: settle,
       memory: this.memoryContext,
+      fileEditsOpen: this.fileEditsOpen,
       ...(this.memoryAutoSave ? { memoryAutoSave: this.memoryAutoSave } : {}),
       log: (line) => this.log.push(line),
       events: silentEvents()

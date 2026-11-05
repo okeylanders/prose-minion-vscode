@@ -134,6 +134,29 @@ export interface PromptBudgets {
     fileBytes: number;
     pathCharacters: number;
   }>;
+  /**
+   * Workshop persona file edits (ADR 2026-11-05 D2, D5). The proposal's
+   * bounds (Slice 3) are the codec's; `appendWords` is the gateway's prose
+   * bound (Slice 2), quoted by the prompt.
+   */
+  readonly workshopFileEdits: Readonly<{
+    /** Frames one reply may carry: past it, dropped and counted (Q4). */
+    proposalsPerReply: number;
+    /** `<find>` / `<replace-with>` pairs one frame may carry. */
+    editReplaces: number;
+    /** The one-line `<why>`. */
+    whyCharacters: number;
+    /** A `<rewrite>`'s new text. */
+    rewriteCharacters: number;
+    /** A `<find>`'s quote. */
+    findCharacters: number;
+    /** A `<replace-with>`'s text. */
+    replaceWithCharacters: number;
+    /** An `<append>` or `<prepend>` passage. */
+    passageCharacters: number;
+    /** Prose's appended or prepended passage, about this many words (Q2; the gateway's). */
+    appendWords: number;
+  }>;
   readonly workshopTodos: Readonly<{
     items: number;
     characters: number;
@@ -592,6 +615,17 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     // The longest entry path, in UTF-16 code units: the codec's path rule, every
     // pin route and the tab's entry keys all hold this one bound (PR #210 F07).
     pathCharacters: 4096
+  },
+  workshopFileEdits: {
+    proposalsPerReply: 5,
+    editReplaces: 5,
+    whyCharacters: 200,
+    rewriteCharacters: 40_000,
+    findCharacters: 2_000,
+    replaceWithCharacters: 8_000,
+    passageCharacters: 8_000,
+    // Slice 2's key, the same value: the prompt quotes it.
+    appendWords: 400
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {

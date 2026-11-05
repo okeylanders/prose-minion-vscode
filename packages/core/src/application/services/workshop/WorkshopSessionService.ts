@@ -41,6 +41,7 @@ import {
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetRecommendation,
   WorkshopMemoryProposal,
+  WorkshopFileEditProposal,
   WorkshopMemoryHold,
   WorkshopMemoryProposalState,
   WorkshopProjectMemoryReceipt,
@@ -144,6 +145,7 @@ import {
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import { cloneTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
 import { cloneWorkshopMemoryProposal } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
+import { cloneWorkshopFileEditProposal } from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
 import { workshopMemoryProposalAt } from '@shared/constants/workshopProjectMemoryWrites';
 import {
   cloneWorkshopMemoryReceipt,
@@ -1688,7 +1690,8 @@ export class WorkshopSessionService {
     citations?: UrlCitation[],
     widgetRecommendation?: WorkshopWidgetRecommendation,
     model?: WorkshopTurnModel,
-    memoryProposals: readonly WorkshopMemoryProposal[] = []
+    memoryProposals: readonly WorkshopMemoryProposal[] = [],
+    fileEditProposals: readonly WorkshopFileEditProposal[] = []
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1740,6 +1743,10 @@ export class WorkshopSessionService {
       // Memory cards belong to a persona's reply (ADR 2026-11-04 D6; never an empty list).
       memoryProposals: (isHost || isGuest) && memoryProposals.length > 0
         ? memoryProposals.map(cloneWorkshopMemoryProposal)
+        : undefined,
+      // File-edit cards too (ADR 2026-11-05 D8; never an empty list).
+      fileEditProposals: (isHost || isGuest) && fileEditProposals.length > 0
+        ? fileEditProposals.map(cloneWorkshopFileEditProposal)
         : undefined
     };
 

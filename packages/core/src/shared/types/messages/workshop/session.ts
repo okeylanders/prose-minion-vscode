@@ -1,6 +1,7 @@
 /** Workshop session, excerpt, turn, todo, and persistence-facing contracts. */
 
 import type { WorkshopMemoryProposal, WorkshopProjectMemoryReceipt } from './projectMemory';
+import type { WorkshopFileEditProposal } from './fileEdits';
 import { MessageEnvelope, MessageType } from '../base';
 import { TokenUsage } from '../tokenUsage';
 import { UrlCitation } from '../citations';
@@ -454,6 +455,8 @@ export interface WorkshopTurn {
    * written, never empty. Host and guest replies only.
    */
   memoryProposals?: WorkshopMemoryProposal[];
+  /** A persona's file-edit proposals (ADR 2026-11-05 D8): one to `proposalsPerReply`, in the order written, never empty. */
+  fileEditProposals?: WorkshopFileEditProposal[];
   /** A save, edit, Forget or Restore of a project memory, on its divider (D7). Never the body. */
   projectMemoryReceipt?: WorkshopProjectMemoryReceipt;
   /**

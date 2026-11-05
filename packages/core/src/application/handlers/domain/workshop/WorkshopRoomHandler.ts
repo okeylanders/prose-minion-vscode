@@ -408,6 +408,7 @@ export class WorkshopRoomHandler {
         this.sendError('workshop.widget_recommendation', errorMessage, details),
       memoryAutoSave: (turn, indexes) => this.sliceComposition.autoSaveMemoryProposals(turn, indexes, controller.signal),
       memoryAutoSavesInRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
+      fileEditsOpen: () => this.conversationSettingsService.fileEditsOpen(),
       settled: (requestId) => this.settleActiveRun(requestId)
     });
   }
@@ -664,6 +665,8 @@ export class WorkshopRoomHandler {
           memory: replyMemory,
           memoryAutoSave: memoryAutoSave.hand,
           memoryAutoSavesInRoom: memoryAutoSave.inRoom,
+          // Read when the reply is read (ADR 2026-11-05 D9).
+          fileEditsOpen: this.conversationSettingsService.fileEditsOpen(),
           session: this.session,
           requestId,
           label: workshopPersonaLabel(personaId),
@@ -1199,6 +1202,8 @@ export class WorkshopRoomHandler {
         memory: replyMemory,
         memoryAutoSave: memoryAutoSave.hand,
         memoryAutoSavesInRoom: memoryAutoSave.inRoom,
+        // Read when the reply is read (ADR 2026-11-05 D9).
+        fileEditsOpen: this.conversationSettingsService.fileEditsOpen(),
         session: this.session,
         requestId,
         label,

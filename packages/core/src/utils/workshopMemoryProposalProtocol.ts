@@ -44,6 +44,7 @@ import {
   type WorkshopMemoryEditFault
 } from '@/utils/workshopMemoryEditProtocol';
 import { workshopMemoryFieldFault, type WorkshopMemoryFieldFault } from '@/utils/workshopMemoryProposalFields';
+import { readWorkshopTrailerElements, type WorkshopTrailerElement } from '@/utils/workshopTrailerElements';
 
 export const WORKSHOP_MEMORY_PROPOSAL_TAG = 'prose-minion-memory-proposal';
 
@@ -101,18 +102,13 @@ type Field = typeof FIELDS[number];
 const ELEMENTS: readonly string[] = [...FIELDS, ...WORKSHOP_MEMORY_EDIT_ELEMENTS];
 
 /** One element of a frame, in the order written: its name and what it holds, untrimmed. */
-export interface WorkshopMemoryProposalElement {
-  readonly name: string;
-  readonly content: string;
-}
+export type WorkshopMemoryProposalElement = WorkshopTrailerElement;
 
 /** Frontmatter keys the host fills; a trailer naming one is refused (D6). */
 const PROVENANCE = new Set([
   'id', 'created', 'updated', 'origin', 'status', 'pinned', 'format',
   'proposed-by', 'source-session', 'source-turns'
 ]);
-
-const OPENING = /<([a-z][a-z0-9-]*)\s*>/iy;
 
 /** Decode a frame's inside (between its opening and closing tags). */
 export function decodeWorkshopMemoryProposal(inner: string): WorkshopMemoryProposalDecode {
@@ -136,37 +132,13 @@ export function decodeWorkshopMemoryProposal(inner: string): WorkshopMemoryPropo
   return check(values);
 }
 
-/** A frame's elements in order, or the fault that stops reading it. */
-function readElements(inner: string): WorkshopMemoryProposalElement[] | WorkshopMemoryProposalDecode {
-  const elements: WorkshopMemoryProposalElement[] = [];
-  let at = 0;
-  while (true) {
-    while (at < inner.length && /\s/.test(inner[at])) {
-      at += 1;
-    }
-    if (at >= inner.length) {
-      return elements;
-    }
-    OPENING.lastIndex = at;
-    const opening = OPENING.exec(inner);
-    if (!opening) {
-      return reject('stray-text');
-    }
-    const name = opening[1].toLowerCase();
-    if (PROVENANCE.has(name)) {
-      return reject('provenance');
-    }
-    if (!ELEMENTS.includes(name)) {
-      return reject('unknown-element');
-    }
-    const contentStart = at + opening[0].length;
-    const close = closingTag(name).exec(inner.slice(contentStart));
-    if (!close) {
-      return reject('unclosed-element');
-    }
-    elements.push({ name, content: inner.slice(contentStart, contentStart + close.index) });
-    at = contentStart + close.index + close[0].length;
-  }
+/** A frame's elements in order, or the fault that stops reading it (the shared trailer reader). */
+function readElements(inner: string): WorkshopTrailerElement[] | WorkshopMemoryProposalDecode {
+  const read = readWorkshopTrailerElements<'provenance'>(inner, {
+    elements: ELEMENTS,
+    refuse: (name) => PROVENANCE.has(name) ? 'provenance' : undefined
+  });
+  return read.kind === 'elements' ? [...read.elements] : reject(read.fault);
 }
 
 function check(values: ReadonlyMap<Field, string[]>): WorkshopMemoryProposalDecode {
@@ -222,10 +194,6 @@ function check(values: ReadonlyMap<Field, string[]>): WorkshopMemoryProposalDeco
 
 function isField(name: string): name is Field {
   return (FIELDS as readonly string[]).includes(name);
-}
-
-function closingTag(name: string): RegExp {
-  return new RegExp(`</${name}\\s*>`, 'i');
 }
 
 function reject(fault: WorkshopMemoryProposalFault): Extract<WorkshopMemoryProposalDecode, { kind: 'rejected' }> {

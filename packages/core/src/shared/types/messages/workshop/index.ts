@@ -20,6 +20,7 @@ export * from './bookmarks';
 export * from './bookmarkBrowser';
 export * from './projectMemory';
 export * from './projectMemoryManager';
+export * from './fileEdits';
 export * from './pinnedContext';
 export * from './settings';
 export * from './context';

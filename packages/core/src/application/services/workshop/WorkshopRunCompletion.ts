@@ -35,8 +35,9 @@ import {
 import { boundedLogText } from '@/utils/boundedLogText';
 import {
   extractWorkshopReplyControls,
-  WORKSHOP_MEMORY_ONLY_REPLY_LINE
+  workshopTrailersOnlyReplyLine
 } from '@/utils/workshopReplyControls';
+import { settleWorkshopFileEditProposals } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
 import {
   settleWorkshopMemoryProposals,
   WORKSHOP_REPLY_MEMORY_CLOSED,
@@ -134,6 +135,12 @@ export interface WorkshopRunCompletionInput {
   memoryAutoSave?: (turn: WorkshopTurn, indexes: readonly number[]) => void;
   /** The room's automatic saves, landed and in flight (PR #201 F-04); absent, its landed receipts. */
   memoryAutoSavesInRoom?: () => number;
+  /**
+   * Whether personas may propose file edits (`fileEdits: ask`), read when
+   * the reply is read (ADR 2026-11-05 D9). Absent reads as off: a frame is
+   * still stripped, and dropped and counted.
+   */
+  fileEditsOpen?: boolean;
   log: (line: string) => void;
   events: WorkshopRunCompletionEvents;
 }
@@ -278,12 +285,16 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // project-memory frame is split off first, and every other reader takes
   // the rest; every log takes the redacted copy, never the memory's text.
   const memoryContext = input.memory ?? WORKSHOP_REPLY_MEMORY_CLOSED;
-  const controls = extractWorkshopReplyControls(result.content, { memoryOpen: memoryContext.open });
+  const controls = extractWorkshopReplyControls(result.content, {
+    memoryOpen: memoryContext.open,
+    fileEditsOpen: input.fileEditsOpen === true
+  });
   const memory = settleWorkshopMemoryProposals(controls.memory, memoryContext, input.memoryAutoSave && {
     webResearchAttached: result.webResearchAttached === true,
     autoSavesInRoom: input.memoryAutoSavesInRoom ?? (() => countWorkshopRoomAutoSaves(session.readRoomLedger()))
   });
-  for (const line of memory.logs) {
+  const fileEdits = settleWorkshopFileEditProposals(controls.fileEdits);
+  for (const line of [...memory.logs, ...fileEdits.logs]) {
     input.log(`${line} (${label})`);
   }
   const reply = controls.rest;
@@ -328,16 +339,17 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   const strippedDisplayContent = widgetRecommendation.outcome !== 'absent'
     ? stripWorkshopWidgetRecommendationControl(reply)
     : reply;
-  // A control-only reply (a widget, a memory proposal, or both) leaves no
-  // provider prose to show, so completion writes the displayed note itself,
-  // and the turn must not be attributed to a model (Astra F-02,
-  // completion-stage note; ADR 2026-11-04 D6).
-  const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || controls.memory.kind !== 'none')
+  // A control-only reply (a widget, a memory proposal, a file edit, or any
+  // of them together) leaves no provider prose to show, so completion
+  // writes the displayed note itself, and the turn must not be attributed
+  // to a model (Astra F-02, completion-stage note; ADR 2026-11-04 D6).
+  const trailers = { memory: controls.memory.kind !== 'none', fileEdits: controls.fileEdits !== undefined };
+  const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || trailers.memory || trailers.fileEdits)
     && strippedDisplayContent.trim().length === 0;
   const displayContent = !hostWritesDisplay
     ? strippedDisplayContent
     : widgetRecommendation.outcome === 'absent'
-      ? WORKSHOP_MEMORY_ONLY_REPLY_LINE
+      ? workshopTrailersOnlyReplyLine(trailers)
       : recommendationRejected
         ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
         : `${label} returned a widget setup without an accompanying note.`;
@@ -353,7 +365,8 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       ? widgetRecommendation.recommendation
       : undefined,
     hostWritesDisplay ? undefined : workshopTurnModelOf(result),
-    memory.proposals
+    memory.proposals,
+    fileEdits.proposals
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {

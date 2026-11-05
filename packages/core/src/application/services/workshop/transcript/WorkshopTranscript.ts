@@ -29,14 +29,25 @@
  *   before the first entry at or after the turn it belongs before, so a turn
  *   the transcript omits never drops one. A stamped reply or capability
  *   card carries its `model` (D10).
- * - Neither slices nor `model` come from `projectWorkshopTranscriptTurn`, so
- *   session recall and the turn preview, which read turns only through it,
- *   never see them.
+ * - A persona reply's file-edit cards (ADR 2026-11-05 D8) carry each card's
+ *   file (its group and path, or the excerpt), its `why` and its state:
+ *   never an operation's text (a quote, a replacement, a passage), which is
+ *   the writer's file and the persona's draft of it.
+ * - Neither slices, `model` nor `fileEdits` come from
+ *   `projectWorkshopTranscriptTurn`, so session recall and the turn
+ *   preview, which read turns only through it, never see them.
  *
  * Pure and deterministic: the caller supplies the turns and the clock.
  */
 
-import { citationDisplayLabel, type ModelScope, type WorkshopTurn, type WorkshopTurnModel } from '@messages';
+import {
+  citationDisplayLabel,
+  type ModelScope,
+  type WorkshopFileEditState,
+  type WorkshopFileEditTarget,
+  type WorkshopTurn,
+  type WorkshopTurnModel
+} from '@messages';
 import {
   deriveWorkshopModelSlices,
   workshopModelSliceText,
@@ -80,6 +91,20 @@ export interface WorkshopTranscriptReplyEntry {
   bookmarked?: true;
   /** The model stamp, set by `projectWorkshopTranscript` only (ADR 2026-11-03 D10). */
   model?: WorkshopTurnModel;
+  /** The reply's file-edit cards, set by `projectWorkshopTranscript` only (ADR 2026-11-05 D8). */
+  fileEdits?: WorkshopTranscriptFileEdit[];
+}
+
+/** One file-edit card as a transcript shows it: which file, why, and what became of it. Never its text. */
+export interface WorkshopTranscriptFileEdit {
+  target: WorkshopFileEditTarget;
+  why: string;
+  state: WorkshopFileEditState;
+}
+
+/** A card's file in words: its path and group, or the excerpt's document. */
+export function workshopTranscriptFileEditLabel(target: WorkshopFileEditTarget): string {
+  return target.kind === 'excerpt' ? 'the excerpt\'s document' : `${target.path} (${target.group})`;
 }
 
 export interface WorkshopTranscriptSource {
@@ -150,7 +175,7 @@ export function projectWorkshopTranscript(
       return [];
     }
     const marked = meta.bookmarkedTurnIds?.has(turn.id) ? { ...entry, bookmarked: true as const } : entry;
-    return [...pending.splice(0), withModel(marked, turn)];
+    return [...pending.splice(0), withFileEdits(withModel(marked, turn), turn)];
   });
   // A slice whose turns all print nothing still closes the transcript.
   entries.push(...pending);
@@ -203,6 +228,23 @@ function withModel(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): Workshop
       requestedModelId: turn.model.requestedModelId,
       servedModelIds: [...turn.model.servedModelIds]
     }
+  };
+}
+
+/** A reply's file-edit cards: file, why and state, never the operations (D8). */
+function withFileEdits(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): WorkshopTranscriptEntry {
+  if (entry.kind !== 'reply' || !turn.fileEditProposals?.length) {
+    return entry;
+  }
+  return {
+    ...entry,
+    fileEdits: turn.fileEditProposals.map((proposal) => ({
+      target: proposal.target.kind === 'excerpt'
+        ? { kind: 'excerpt' }
+        : { kind: 'resource', group: proposal.target.group, path: proposal.target.path },
+      why: proposal.why,
+      state: proposal.state
+    }))
   };
 }
 
