@@ -3,7 +3,7 @@
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D8 and D10 (models)
 **Design:** `Main.dc.html` and `Slices.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** Built and verified on `epic/workshop-wayfinding-slice-7-model-slices` (cut from the epic at `4a180ab`), in review as PR #190. See [Built](#built).
+**Status:** Done. Merged into the epic through PR #190 (`6c12df5`). Astra's review found no actionable issues ([review](../../../docs/pr-reviews/pr-190-workshop-wayfinding-model-slices-review.md)). Built in `1fdcabb`, `b6b6b70`, `6712111`, `0d2bc51`, `b564a4b`, `9c17bd4`, `a78afa6`.
 
 ## Outcome
 
