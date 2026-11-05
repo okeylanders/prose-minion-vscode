@@ -1,6 +1,8 @@
 # PR #230 review: File-edit proposals and session state
 
-**Disposition: request changes for one P2 staging-to-persistence integration defect (F-01).** The defect is latent on this slice alone, whose real staging port is not bound, and becomes reachable with the #229 staging implementation. It should be closed before integrating the slices. No merge performed.
+**Latest disposition: F-01 closed after independent re-review of `6200733a`; no remaining Slice 3 code blocker found.** Current-head CI and combined-stack acceptance are separate gates, recorded in the PR conversation. No merge performed.
+
+**Original disposition at `16718261`: changes required for one P2 staging-to-persistence integration defect.** The finding and reproduction below remain as history.
 
 - PR: [#230](https://github.com/okeylanders/prose-minion-vscode/pull/230)
 - Reviewed code head: `16718261307b57e99f8d78ddf578e8610108c6fb`
@@ -56,3 +58,22 @@ At code head `16718261`:
 
 Only this report and its reproduction artifact are published by the review. They do not change runtime behavior.
 
+
+
+## Independent correction re-review: `6200733a`
+
+**F-01 is closed.** `workshopFileEditIdentityHoldable` now defines one host-identity contract shared by pre-adoption staging and the persisted codec: nonempty, single-line URI and display path, each bounded at 8,192 characters. The display path is no longer mistaken for the model's configured-resource lookup input. Metadata outside that contract becomes an `identity-unpersistable` refusal before completion, without retaining the unpersistable target; the valid reply can still be saved. The model's original lookup-path validation remains unchanged.
+
+Independently converted the original witness to assert the corrected result and added an ordinary chapter control: [correction probe](probes/pr-230-excerpt-persistence-correction.test.ts.txt). All **3 cases passed**, preserving the pending identity through completion and strict full-checkpoint parsing. The correction's new regression tests additionally exercise save/reopen/hydration, oversize URI/display and multiline refusal, and invalid model-path controls.
+
+Verification repeated on `6200733a`:
+
+- Typecheck: all three targets passed.
+- Lint: 0 errors / 1,165 warnings.
+- Focused proposal/protocol/session/settings/route suite: **10 suites / 251 tests passed**.
+- Independent corrected-output probe: **3/3 passed**.
+- The original-head full suite and report-head `527f26ae` CI passed, but neither is represented as verification of this newer correction. No PR-triggered CI run was returned for `6200733a` at the time of re-review; the new report-only head's CI is checked separately and recorded in the PR conversation.
+
+This closes the specific producer/codec mismatch, not the combined-stack integration gate above, #229's findings, or Slice 4 acceptance. No runtime code was changed by the reviewer.
+
+Before publishing this re-review, the PR advanced to `150d5899` by merging the epic's now-landed planner/report history. The `6200733a..150d5899` diff changes only the epic README and #227 review artifacts; `packages/` and `apps/` have no diff. The correction verification therefore covers its unchanged runtime tree.
