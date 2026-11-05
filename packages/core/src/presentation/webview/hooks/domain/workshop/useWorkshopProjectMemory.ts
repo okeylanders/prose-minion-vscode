@@ -45,6 +45,8 @@ import {
   type WorkshopMemoryRoomBookmark,
   type WorkshopMemorySavedBookmark
 } from '@hooks/domain/workshop/memory/workshopMemoryBookmarkSheets';
+import { withWorkshopMemoryEntry, withWorkshopMemoryKey } from '@hooks/domain/workshop/memory/workshopMemoryKeyedState';
+import { workshopMemorySheetSubmission } from '@hooks/domain/workshop/memory/workshopMemorySheetSubmission';
 
 export { workshopMemoryNoteFromTurn, type WorkshopMemoryRoomBookmark, type WorkshopMemorySavedBookmark };
 
@@ -189,29 +191,10 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     vscode.postMessage({ type, source: SOURCE, payload, timestamp: Date.now() });
   }, [vscode]);
 
-  const setCardBusy = React.useCallback((card: string, busy: boolean) => {
-    setBusyCards((current) => {
-      const next = new Set(current);
-      if (busy) {
-        next.add(card);
-      } else {
-        next.delete(card);
-      }
-      return next;
-    });
-  }, []);
-
-  const setCardError = React.useCallback((card: string, error: string | undefined) => {
-    setCardErrors((current) => {
-      const next = new Map(current);
-      if (error) {
-        next.set(card, error);
-      } else {
-        next.delete(card);
-      }
-      return next;
-    });
-  }, []);
+  // Keyed feedback, by card and by receipt (pure updates: memory/workshopMemoryKeyedState).
+  const setCardBusy = React.useCallback((card: string, busy: boolean) => setBusyCards((current) => withWorkshopMemoryKey(current, card, busy)), []);
+  const setCardError = React.useCallback((card: string, error: string | undefined) =>
+    setCardErrors((current) => withWorkshopMemoryEntry(current, card, error || undefined)), []);
 
   const cardAction = React.useCallback((turnId: string, index: number, action: 'save' | 'dismiss' | 'reopen') => {
     const requestId = mint();
@@ -295,10 +278,8 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     }
   }, [mint, openSheet, post, saveTurn]);
 
-  const rememberSavedBookmark = React.useCallback(
-    (bookmark: WorkshopMemorySavedBookmark) => openSheet(workshopMemorySavedBookmarkSheet(bookmark)),
-    [openSheet]
-  );
+  const rememberSavedBookmark = React.useCallback((bookmark: WorkshopMemorySavedBookmark) =>
+    openSheet(workshopMemorySavedBookmarkSheet(bookmark)), [openSheet]);
 
   const editMemory = React.useCallback((memoryId: string) => {
     const requestId = mint();
@@ -311,35 +292,10 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     openSheet({ mode: 'new', draft: EMPTY_DRAFT, replaces: [], loading: false, saving: false });
   }, [openSheet]);
 
-  const setReceiptBusy = React.useCallback((receipt: string, busy: boolean) => {
-    setBusyReceipts((current) => {
-      if (current.has(receipt) === busy) {
-        return current;
-      }
-      const next = new Set(current);
-      if (busy) {
-        next.add(receipt);
-      } else {
-        next.delete(receipt);
-      }
-      return next;
-    });
-  }, []);
-
-  const setReceiptError = React.useCallback((receipt: string, error: WorkshopMemoryReceiptError | undefined) => {
-    setReceiptErrors((current) => {
-      if (!error && !current.has(receipt)) {
-        return current;
-      }
-      const next = new Map(current);
-      if (error) {
-        next.set(receipt, error);
-      } else {
-        next.delete(receipt);
-      }
-      return next;
-    });
-  }, []);
+  const setReceiptBusy = React.useCallback((receipt: string, busy: boolean) =>
+    setBusyReceipts((current) => withWorkshopMemoryKey(current, receipt, busy)), []);
+  const setReceiptError = React.useCallback((receipt: string, error: WorkshopMemoryReceiptError | undefined) =>
+    setReceiptErrors((current) => withWorkshopMemoryEntry(current, receipt, error)), []);
 
   const receiptAction = React.useCallback((memoryId: string, receipt: string, action: 'forget' | 'restore') => {
     const requestId = mint();
@@ -407,30 +363,8 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
       setCardBusy(card, true);
       setCardError(card, undefined);
     }
-    switch (current.mode) {
-      case 'card':
-        post(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, {
-          requestId, turnId: current.turnId, index: current.proposalIndex, action: 'save', edited: current.draft
-        });
-        break;
-      case 'turn':
-        post(MessageType.WORKSHOP_SAVE_TURN_TO_MEMORY, {
-          requestId, turnId: current.turnId, draft: current.draft,
-          ...(current.roomRevision !== undefined ? { roomRevision: current.roomRevision } : {})
-        });
-        break;
-      case 'saved-turn':
-        post(MessageType.WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY, {
-          requestId, sessionId: current.sessionId, turnId: current.turnId, draft: current.draft
-        });
-        break;
-      case 'memory':
-        post(MessageType.WORKSHOP_MEMORY_UPDATE, { requestId, memoryId: current.memoryId, patch: current.draft });
-        break;
-      case 'new':
-        post(MessageType.WORKSHOP_MEMORY_CREATE, { requestId, draft: current.draft });
-        break;
-    }
+    const submission = workshopMemorySheetSubmission(current, requestId);
+    post(submission.type, submission.payload);
     setSheet({ ...current, saving: true, error: undefined });
   }, [mint, post, setCardBusy, setCardError, setSheet]);
 
