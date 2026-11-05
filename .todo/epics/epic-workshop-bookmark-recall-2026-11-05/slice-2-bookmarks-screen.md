@@ -164,3 +164,11 @@
 
 - **The open room is counted, not shown.** If it is saved under a name, its file is excluded from pages but still counts in the walk's `remaining` until a page reaches it. So "N of M" can be one higher for a moment. This is harmless, and keeps the store unaware of the live room.
 - **No live pass.** Visual layout at narrow widths, and real keyboard behavior in VS Code, belong to Slice 4's live pass.
+
+### PR #216 review (Astra): two P2s, fixed in `72f92970`
+
+- **F-01. Paging must never resolve a duplicate session id.** `listPage` no longer seeds the store's exact-read path cache. Each page counts, over every file in the folder, the id each file claims. An entry whose id another file also claims is marked `ambiguous`, and recall names it unreadable on whichever page it lands. A page reads its sessions page-locally (`readPagedSession(cursor, sessionId)`), from the file its own entry names. Regressions: `WorkshopSessionStorePage.identity.test.ts`.
+  - **The cost.** A page now reads every file's id: its search index, or a bounded read for an index-less legacy file. That is the same reading the exact-read scan uses, done once per page instead of once per session read.
+- **F-02. A superseded Open at bookmark must never jump.** `useWorkshopBookmarkOpenAt` follows its own Open through the session surfaces' state: `sessionConfirm`, `sessionActionPending` and `sessionActionResult`. The phases are starting, confirming, opening and opened (`nextPhase`, pure). The jump is dropped the moment anything else takes its place: a declined or replaced confirmation, a refused Open, or another action settling. Regressions:
+  - the rewritten `useWorkshopBookmarkOpenAt.test.ts`;
+  - Astra's real-App witness, kept in `WorkshopApp.bookmarkBrowser.test.tsx`.
