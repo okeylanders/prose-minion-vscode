@@ -1,6 +1,28 @@
 # PR #228 review: Helper Agent Slice 1 engine
 
-## Verdict
+## Current verdict: correction re-review
+
+**Written approval of correction head `d1b861df8f745740dca830eeab757f3474c06103`. F-01 and F-02 are independently resolved; no new blocking finding.** This supersedes the original changes-requested verdict below. It is not a formal self-approval or permission to merge.
+
+### What changed and what was checked again
+
+- **F-01 resolved.** `prepareHelperRun` checks cancellation before work, after resource initialization and after the prompt read. The service also checks immediately before dispatch, after attaching the listener, covering its additional asynchronous return boundaries. The original two deferred-preparation probes now return `failed/cancelled` with zero engine calls.
+- **F-02 resolved.** Both preparation awaits are caught and converted to the tagged failure result. An already-aborted caller remains cancelled when a pending preparation operation rejects. The original two rejection probes pass unchanged; a new delayed prompt-rejection probe verifies cancellation takes precedence and error text is not logged.
+- **Ownership survives the correction.** A 12-position microtask sweep covers before-dispatch and after-dispatch cancellation: no call starts after the abort, and an already-started call receives it. Additional probes verify no timer/listener remains after successful, rejected-output or failed calls, and a cancelled prompt read never reaches the real engine's mocked transport.
+- **Other contracts remain intact.** The unchanged original controls still prove selected-model pinning, capability-free execution, discarded conversation, single usage emission and source-free logs. No model/codec/prompt/budget/composition change is hidden in this fix; the executable delta is the service and its regression tests.
+
+### Correction-head verification
+
+- All **six original probes pass unchanged**. All **four additional independent correction probes pass**: [new probe artifact](probes/pr-228-helper-engine-rereview.test.ts.txt).
+- Focused run: **14 suites / 210 tests pass**, comprising 13 production suites / 204 tests plus the original six-probe suite. The new four-probe suite also passes separately. Temporary executable copies were removed; both probe artifacts remain text outside ordinary test discovery.
+- `git diff --check ae80d4d d1b861d`: passed. All three local correction-head typechecks pass; full lint reports **0 errors / 1,165 existing warnings**.
+- Exact-correction-head [CI run 42131541776](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42131541776), verify job `127609110595`, **passed**. Its checkout explicitly merges `d1b861d` into `c040cb6` (`0c93ab9`). All typechecks, **757 suites / 10,536 tests / 59 snapshots**, lint, both production bundles and sentinel verification passed; the same three webview size/performance warnings remain.
+- [Correction verification record](probes/pr-228-helper-engine-verification.txt). The new report-only publication head receives a separate CI check recorded in the PR conversation.
+- Full local suite and local build were not rerun for this narrow correction; exact-head CI supplies both. The original review's local build results apply to its original head, not this correction.
+- Safe source projection, room/sheet lifetime, touched-field preservation and other Slice 2 checks remain future acceptance work. No live provider call or native VS Code visual pass was made.
+- Only review documentation and the additional probe artifact are published by this re-review. No production edit, merge, auto-merge or deployment was performed; #205 remains deferred.
+
+## Original verdict (superseded by the correction re-review)
 
 **Changes requested at code head `5e49fc81ba6467ba695f6d7e5bb0c264d75c2861`: two P2 lifecycle findings.** The task-policy architecture, memory codec and model-following integration review cleanly, but A-05 is not complete: cancellation during preparation is lost, and preparation failures escape the declared result contract.
 
@@ -86,8 +108,8 @@ The reviewed version yields four failing and two passing tests. Remove the tempo
 
 | Item | Priority | Status |
 |---|---|---|
-| F-01: abort during preparation is lost | P2 | Fixed by the implementation thread: the signal is read after each preparation await and immediately before dispatch; probes pass and are ported as tests. Awaiting re-review |
-| F-02: preparation errors escape result union | P2 | Fixed by the implementation thread: preparation is inside the error boundary and returns `failed: error`; probes pass and are ported as tests. Awaiting re-review |
+| F-01: abort during preparation is lost | P2 | Resolved and independently verified at `d1b861d`; original probes and new boundary/transport probes pass |
+| F-02: preparation errors escape result union | P2 | Resolved and independently verified at `d1b861d`; original probes and delayed cancellation/error probe pass |
 | A-04: memory output contract | Acceptance | Passed at reviewed code head |
-| A-05: full service cancellation/failure lifecycle | Acceptance | Incomplete until F-01/F-02 are fixed |
+| A-05: service cancellation/failure lifecycle | Acceptance | Engine/service checks pass at `d1b861d`; caller/UI lifetime remains Slice 2 work |
 | A-01–A-03 and UI lifecycle | Acceptance | Carry into Slice 2 |
