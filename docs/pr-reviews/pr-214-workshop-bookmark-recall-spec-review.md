@@ -1,6 +1,8 @@
 # PR #214 review: Workshop Bookmark Recall specification
 
-**Disposition: four P2 planning corrections requested before implementation.** This is a review of the proposed architecture and slice contracts, not a claim that the unimplemented feature currently fails, a formal GitHub approval, or authorization to merge.
+**Latest disposition: see the re-review below. F-01–F-07 are open (one P1 and six P2 contract corrections).**
+
+**Initial disposition at `ca3a6b88`: four P2 planning corrections requested before implementation.** This is a review of the proposed architecture and slice contracts, not a claim that the unimplemented feature currently fails, a formal GitHub approval, or authorization to merge.
 
 - **PR:** [#214](https://github.com/okeylanders/prose-minion-vscode/pull/214)
 - **Reviewed head:** `ca3a6b88a4e9e2aba7f30ec71c3ab814ed836abe` (`epic/workshop-bookmark-recall-slice-0-spec`)
@@ -71,3 +73,59 @@ The instruction to add the mark to `renderEntry` misses an existing renderer bra
 | F-02: complete browser enumeration | Open |
 | F-03: live bookmark data and memory prefill | Open |
 | F-04: collapsed read marks | Open |
+
+
+## Re-review: current-room access and cited proposals (`9bc6a489` / `581731df`)
+
+**Latest disposition: F-01–F-04 remain open, with three further contract corrections below.** The author changed the design in `9bc6a4890c3a4226fe7cb1e0ebe89aad21dfd5dc` while the initial review was being prepared; `581731df` adds the initial report on top without altering the author's changes. This section reviews that exact combined head against the unchanged target `f2980986`. All intervening changes are documentation only.
+
+The ADR now records the writer's answers, permits current-room bookmark recall, and adds memory proposals with cited turns. The earlier nonblocking request to record Q1–Q6 is therefore **addressed**. The initial review's references to the live-room exclusion describe the former design; that exclusion is no longer the requested product behavior. F-01's evidence-retention contradiction still applies, and F-02–F-04 remain unchanged in the new plan. The new live port could help address F-03, but the writer-browser slice still explicitly relies on the old snapshot and unchanged `saveTurn`.
+
+### F-05 (P1): Caller-side filtering does not preserve a private row's publication audience
+
+**Anchor:** [updated D7](https://github.com/okeylanders/prose-minion-vscode/blob/581731dffb1f7751bf8b11d694b28b960d6b2563/docs/adr/2026-11-05-workshop-bookmark-recall.md#L140-L144).
+
+D7 now asserts that filtering the rows for the asking persona, then using normal capability publication, guarantees that private rows never reach another persona. That guarantee does not follow from the existing policy. `workshopTurnAudience` assigns **one audience to the whole result** from its operation/status/publication stamp. It never intersects that audience with source turns or re-filters rows for each recipient. Once the new operation joins the publishable set and the reply commits, the entire result is room-visible.
+
+For example, a guest may legitimately see its own unpublished capability card and a writer's bookmark label on it. The proposed live port admits that row for the guest. Publishing its successful bookmark-list result then exposes that row's quoted request/label to the host and other guests under the current whole-result policy, despite the original card being private. Projection hides capability evidence bodies; it does not make the remaining private label/request public.
+
+**Correction:** decide and specify an enforceable publication design. Options include refusing to publish a result containing private rows, constructing a separate room-safe published body, or adding explicit audience-intersection metadata and corresponding delivery rules. Do not rely solely on filtering for the original caller. Pin a mixed public/private result, reply commitment, host/other-guest catch-up and save/reopen; demonstrate that the private sentinel never crosses that boundary. This is a privacy-related specification blocker, not a claim that the new operation already exists.
+
+### F-06 (P2): Preserve session-qualified provenance, and provide the identifiers proposals require
+
+**Anchor:** [updated D10](https://github.com/okeylanders/prose-minion-vscode/blob/581731dffb1f7751bf8b11d694b28b960d6b2563/docs/adr/2026-11-05-workshop-bookmark-recall.md#L184-L191) and [Slice 3 cited-turn contract](https://github.com/okeylanders/prose-minion-vscode/blob/581731dffb1f7751bf8b11d694b28b960d6b2563/.todo/epics/epic-workshop-bookmark-recall-2026-11-05/slice-3-remember-this.md#L23-L28).
+
+The new trailer accepts citations from the live room and saved sessions, but the plan then appends the accepted bare IDs to `sourceTurns` and says provenance reads remain unchanged. [A memory has only one `sourceSession`](https://github.com/okeylanders/prose-minion-vscode/blob/581731dffb1f7751bf8b11d694b28b960d6b2563/packages/core/src/shared/types/projectMemory.ts#L104-L107). [Proposal provenance sets it to the live proposal room](https://github.com/okeylanders/prose-minion-vscode/blob/581731dffb1f7751bf8b11d694b28b960d6b2563/packages/core/src/application/handlers/domain/workshop/WorkshopProjectMemoryProvenance.ts#L14-L28), and [the manager resolves every source turn against that single session](https://github.com/okeylanders/prose-minion-vscode/blob/581731dffb1f7751bf8b11d694b28b960d6b2563/packages/core/src/application/services/workshop/memory/ProjectMemoryLibrary.ts#L387-L400).
+
+A proposal in A citing bookmark B/t therefore loses B when written: after A stops being live, t is looked up in A. It either appears missing or resolves to an inherited/shared turn in the wrong session. Checking B before saving does not preserve B in the saved record. Keeping the original proposal/writer provenance also means simply replacing `sourceSession` with B cannot represent the mixed sources.
+
+**Correction:** choose session-qualified multi-source provenance with the necessary storage/codec/read/UI/compatibility work, or explicitly restrict cited sources to one compatible session. Specify which proposal and source references remain, deduplication and the 32-turn bound. Test live plus saved sources, two saved sessions, overlapping turn IDs and reopen.
+
+The output contract also needs to expose a usable durable reference. Current-room rows currently promise only “this conversation” and a **position** ([D1](https://github.com/okeylanders/prose-minion-vscode/blob/581731dffb1f7751bf8b11d694b28b960d6b2563/docs/adr/2026-11-05-workshop-bookmark-recall.md#L47)), while the trailer requires **turn IDs taken from the result**. Add rendered durable IDs or a host-resolved reference scheme; a ledger position is not that identifier.
+
+### F-07 (P2): Give a truncated current-room bookmark a usable full-message path
+
+**Anchor:** [updated D2's truncation promise](https://github.com/okeylanders/prose-minion-vscode/blob/581731dffb1f7751bf8b11d694b28b960d6b2563/docs/adr/2026-11-05-workshop-bookmark-recall.md#L81-L88) versus [Slice 1's unchanged recall exclusions](https://github.com/okeylanders/prose-minion-vscode/blob/581731dffb1f7751bf8b11d694b28b960d6b2563/.todo/epics/epic-workshop-bookmark-recall-2026-11-05/slice-1-recall-operation.md#L35-L37).
+
+A current-room bookmarked message longer than `bookmarkMessageCharacters` is cut, but the only promised recovery hint is a `transcript.read` of that session/turn. Current rows deliberately contain no session ID, and the same plan explicitly keeps the live room excluded from `transcript.read`. Passing the live session ID would be refused anyway. Repeating `transcript.bookmarks` produces the same capped head, not the missing text.
+
+**Correction:** define a supported current-room full-read/continuation contract under the same audience and window guards, or explicitly change the full-message promise and the current-row truncation copy. A hint must be executable and actually retrieve the missing source, not merely parse. Test a current bookmarked message exceeding 4,000 characters through the real codec/service, including a caller who lacks the complete original message in retained history.
+
+### Re-review verification
+
+- The author delta and report commit change documentation only; the previously verified executable/test baseline and 37-suite local results still apply. No future-feature implementation was tested.
+- Exact-head CI for `581731df`, [run 42019846616](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42019846616), was still running when this update was written. It is not reported as passed.
+- No formal approval, implementation change or merge was performed.
+
+### Current resolution ledger
+
+| Finding | Status |
+|---|---|
+| F-01: evidence propagation versus isolation | Open |
+| F-02: complete browser enumeration | Open |
+| F-03: live bookmark data and memory prefill | Open |
+| F-04: collapsed read marks | Open |
+| F-05: private-row publication | Open |
+| F-06: session-qualified citations and usable references | Open |
+| F-07: current-room full-message hint | Open |
+| Q1–Q6 recording clarification | Addressed in `9bc6a489` |
