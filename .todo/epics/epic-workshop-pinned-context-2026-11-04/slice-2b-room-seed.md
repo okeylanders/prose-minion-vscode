@@ -374,6 +374,16 @@ passing.
 1,165 warnings (none new); `npx jest -w 2` 705 suites / 9,955 tests / 59
 snapshots, all passing.
 
+**Astra's nested-workspace probes promoted.** I copied
+`docs/pr-reviews/probes/pr-208-nested-workspace-binding.test.ts.txt`
+unchanged into
+`pinnedContext/WorkshopPinnedContextNestedWorkspaceProbe.test.ts`. Both of
+its cases fail on `c70695f5`'s reader and pass after the fix. Kept
+unchanged, they add 4 lint warnings (`curly` on one-line `if`s, lines
+19–20 and 55–56), the only new ones. After that: typecheck passes; lint 0
+errors / 1,169 warnings; `npx jest -w 2` 706 suites / 9,957 tests / 59
+snapshots, all passing.
+
 ## Progress
 
 - **2026-11-04.** Slice doc written with the spec (as Slice 2).
