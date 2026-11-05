@@ -21,9 +21,10 @@ can absorb roughly 100K characters of recall results, decide what is
 relevant to the persona's question, and return only that shortlist, with its
 ids, to the persona.
 
-Later, subagents could also edit files on the persona's behalf. That shares
-the write-back concerns already parked in
-[Workshop Apply to Draft](../feature-workshop-apply-to-draft/README.md).
+Later, subagents could also edit files on the persona's behalf. Persona file
+edits go through one gateway ([ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md)),
+whose D10 keeps autonomous edits, from a mid-turn `file.edit` capability, a
+later addition: a subagent would build the same request.
 
 ## What is already in place
 

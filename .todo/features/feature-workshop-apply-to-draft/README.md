@@ -2,7 +2,12 @@
 
 **Date Identified**: 2026-07-07
 **Source**: Workshop editor-tab Sprint 04 parked item; expanded 2026-10-21 (Okey)
-**Status**: Parked. Builds on the Draft Edit foundation planned in
+**Status**: Superseded in part (2026-11-05) by [ADR 2026-11-05: Personas
+Propose Edits to Project Files](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md):
+its target rules are that ADR's prose policy (D5), Apply Recommendations is
+dropped (personas propose edits directly; Q5), and Apply Variation is a later
+use of its gateway (D4). Settle this note at that epic's live pass.
+Previously: Parked. Builds on the Draft Edit foundation planned in
 [Feature: Proofread](../feature-proofread/README.md). Its passes' shape is
 fixed by [ADR 2026-10-21 D11](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md#d11-reserved-passes-constraints-fixed-now-built-later).
 **Priority**: Medium
