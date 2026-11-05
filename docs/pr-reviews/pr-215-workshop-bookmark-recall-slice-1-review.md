@@ -1,6 +1,6 @@
 # PR #215 review: Workshop Bookmark Recall, Slice 1
 
-**Disposition: one P2 correction requested.** The audience boundary, qualified refs, persistence, operation wiring, read marks, and bounded-list behavior reviewed cleanly. The one-bookmark renderer can falsely tell a persona that a long message is complete when its continuation reaches the offset ceiling.
+**Current implementation review: approved for Slice 1 at `ac43aa58e6d1fdf02e21558a527747371405fd1b`, with no remaining blocking findings.** F-01 below is the historical finding and is independently verified resolved. Exact fix-head CI was still running at this re-review publication; the original-head and report-head CI passes do not substitute for it. See the independent re-review below. This is a review disposition, not a formal GitHub approval or authorization to merge.
 
 - **PR:** [#215](https://github.com/okeylanders/prose-minion-vscode/pull/215)
 - **Reviewed implementation head:** `1b2c2580fcf9fbc2256e9ff8f4c1f32614eca2be`
@@ -59,7 +59,7 @@ The six-digit ceiling itself is an explicit Slice 1 implementation choice. Its i
 
 | Finding | Status |
 |---|---|
-| F-01: false completion at bookmark offset ceiling | Fixed (author response below) |
+| F-01: false completion at bookmark offset ceiling | Resolved by independent re-review at `ac43aa58` |
 
 ## Author response (2026-11-05)
 
@@ -84,3 +84,23 @@ The 999,999 ceiling stays where it is. The prompt now teaches the notice: "when 
 - The ceiling test fails on the reviewed head and passes with the fix.
 - Typecheck and lint are clean.
 - The recall suites (27 suites, 393 tests), the prompt sync test, the persona suites that read this prompt, and `boundaries.test.ts` all pass.
+
+
+## Independent re-review (2026-11-05)
+
+**Reviewed correction:** `ac43aa58e6d1fdf02e21558a527747371405fd1b`, the six-file delta from the review commit `a86f13057b28452e603f70fd9bfe6b0aa0eff319`.
+
+**F-01 is resolved.** `windowEnd` now tests the actual message boundary before choosing a continuation or a truncation notice. An exhausted starting-offset ceiling no longer means end-of-message. The two independent witnesses were adapted to assert the correction and rerun through production persisted decoding and normal store/service reads. Both now show the honest 10,000-character remainder at `from=996000`, with no false completion line.
+
+The new production tests cover a continuation to the last legal starting offset, both ceiling-crossing windows, codec refusal of the next illegal offset, and a genuine end-of-message control. The prompt and sync test agree with the accepted ceiling. The truncation notice fits its existing reserve, and result metadata still marks the window truncated whenever `to < total`. No new blocking defect was found in the correction.
+
+This resolves the false completeness claim; it does not expand whole-message reachability past the accepted 999,999 maximum starting offset.
+
+**Re-review verification:**
+
+- Five local suites / **72 tests passed**: the adapted independent witnesses, bookmark list rendering, operation adapter, real-service bookmark flow and prompt sync.
+- All three local typechecks passed.
+- Local lint passed: **0 errors / 1,165 warnings**.
+- Review commit `a86f1305` also completed both [PR CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42038769908) and [push CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42038759011): 735 suites / 10,328 tests / 59 snapshots, types, lint and bundles passed.
+- Exact correction-head [CI run 42039512518](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42039512518) was **in progress at publication**. Its terminal result belongs to that exact head and is reported separately in the PR discussion.
+- Native VS Code/live-provider validation remains outside this code re-review. No implementation changes or merge were performed by the reviewer.
