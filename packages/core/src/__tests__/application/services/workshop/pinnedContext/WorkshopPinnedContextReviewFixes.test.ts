@@ -203,6 +203,136 @@ describe('F01: every seed read is bound to the workspace prepare captured', () =
   });
 });
 
+describe('F01, the coordinator\'s review: a read is the captured root\'s own file, not merely a file under it', () => {
+  // B nested inside A: every file of B's also lies under A's root.
+  const NESTED = `${ROOT}/book-two`;
+
+  /** A with Alice pinned; B, nested in A, with an Alice of its own at the same relative path. */
+  function nestedProjects(catalog: Array<{ group: 'characters'; path: string }> = []) {
+    const host = seedHost({ catalog });
+    host.pin('Characters/alice.md');
+    host.write('Characters/alice.md', 'Alice belongs to project A.');
+    host.pinIn(NESTED, 'Characters/alice.md');
+    host.write('Characters/alice.md', 'Project B’s private Alice.', NESTED);
+    return host;
+  }
+
+  const fromNested = (session: WorkshopSessionService) => session.getContextAttachments()
+    .filter((attachment) => attachment.sourceUri?.startsWith(`file://${NESTED}/`) || /project B/i.test(attachment.content));
+
+  /** Prepare in A, let the list read land in A, move to B for `during`, then come back to A. */
+  async function aThenNestedThenA(host: ReturnType<typeof nestedProjects>, hold: () => { reached: Promise<void>; release: () => void }) {
+    const held = hold();
+    const preparing = host.seed.prepare('new');
+    await held.reached;
+    host.moveTo(NESTED);
+    held.release();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    host.moveTo(ROOT);
+    return preparing;
+  }
+
+  it('a catalog opened while B is live lists B\'s Alice under A\'s relative path: never read, nothing installed', async () => {
+    const host = nestedProjects([{ group: 'characters', path: 'Characters/alice.md' }]);
+    const plan = await aThenNestedThenA(host, () => {
+      const reached = deferred<void>();
+      const opening = deferred<void>();
+      const create = host.providerFactory.createProvider.getMockImplementation()!;
+      host.providerFactory.createProvider.mockImplementationOnce(async () => {
+        reached.resolve();
+        await opening.promise;
+        return create();
+      });
+      return { reached: reached.promise, release: () => opening.resolve() };
+    });
+    const session = room();
+
+    const report = host.seed.install(plan, session);
+
+    expect(fromNested(session)).toEqual([]);
+    expect(report).toEqual(MOVED);
+    expect(host.fileSystem.readFileCalls).not.toContain(`${NESTED}/Characters/alice.md`);
+  });
+
+  it('the workspace door authorized while B is live: recovery\'s path under B is never read, nothing installed', async () => {
+    const host = nestedProjects();
+    const plan = await aThenNestedThenA(host, () => {
+      const reached = deferred<void>();
+      const statting = deferred<void>();
+      const stat = host.fileSystem.stat.bind(host.fileSystem);
+      jest.spyOn(host.fileSystem, 'stat').mockImplementation(async (filePath) => {
+        if (filePath === `${ROOT}/Characters/alice.md`) {
+          reached.resolve();
+          await statting.promise;
+        }
+        return stat(filePath);
+      });
+      return { reached: reached.promise, release: () => statting.resolve() };
+    });
+    const session = room();
+
+    const report = host.seed.install(plan, session);
+
+    expect(fromNested(session)).toEqual([]);
+    expect(report).toEqual(MOVED);
+    expect(host.fileSystem.readFileCalls).not.toContain(`${NESTED}/Characters/alice.md`);
+  });
+
+  it('describe() withdraws, and describes nothing of B', async () => {
+    const host = nestedProjects([{ group: 'characters', path: 'Characters/alice.md' }]);
+    const reached = deferred<void>();
+    const opening = deferred<void>();
+    const create = host.providerFactory.createProvider.getMockImplementation()!;
+    host.providerFactory.createProvider.mockImplementationOnce(async () => {
+      reached.resolve();
+      await opening.promise;
+      return create();
+    });
+
+    const describing = host.library.describe();
+    await reached.promise;
+    host.moveTo(NESTED);
+    opening.resolve();
+    const description = await describing;
+    host.moveTo(ROOT);
+
+    expect(description).toMatchObject({ state: 'unavailable', reason: 'workspace-changed' });
+    expect(host.fileSystem.readFileCalls).not.toContain(`${NESTED}/Characters/alice.md`);
+  });
+
+  it('control: B a parent of A, the catalog opened in A, still reads A\'s own file', async () => {
+    const parent = '/workspace';
+    const host = seedHost({ catalog: [{ group: 'characters', path: 'Characters/alice.md' }] });
+    host.pin('Characters/alice.md');
+    host.write('Characters/alice.md', 'Alice belongs to project A.');
+    host.write('Characters/alice.md', 'The parent folder’s Alice.', parent);
+    const loading = deferred<void>();
+    const catalogOf = host.intake.openCatalog.bind(host.intake);
+    jest.spyOn(host.intake, 'openCatalog').mockImplementation(async () => {
+      const catalog = await catalogOf();
+      const load = catalog.load.bind(catalog);
+      jest.spyOn(catalog, 'load').mockImplementation(async (ref, bounds) => {
+        await loading.promise;
+        return load(ref, bounds);
+      });
+      return catalog;
+    });
+
+    const preparing = host.seed.prepare('new');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    host.moveTo(parent);
+    loading.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    host.moveTo(ROOT);
+    const session = room();
+    const report = host.seed.install(await preparing, session);
+
+    expect(session.getContextAttachments().map((attachment) => [attachment.content, attachment.sourceUri]))
+      .toEqual([['Alice belongs to project A.', `file://${ROOT}/Characters/alice.md`]]);
+    expect(report).toMatchObject({ pinnedCount: 1, attachedCount: 1, leftOut: [] });
+  });
+});
+
 describe('F02: on POSIX a backslash is a file-name character', () => {
   it('Astra\'s probe: an unpinned Characters\\alice.md is never overwritten by a pinned Characters/alice.md', async () => {
     const host = seedHost({ platform: 'posix' });
