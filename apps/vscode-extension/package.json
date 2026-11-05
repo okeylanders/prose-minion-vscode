@@ -666,6 +666,22 @@
           "description": "Optional global writer profile shared only with Workshop personas. It is not session memory and is not copied into project data.",
           "order": 51
         },
+        "proseMinion.workshop.projectMemory": {
+          "type": "string",
+          "scope": "application",
+          "enum": [
+            "off",
+            "ask",
+            "auto"
+          ],
+          "enumDescriptions": [
+            "Workshop personas get no project memory.",
+            "Personas read the project's saved notes; a proposed note waits for you to save it.",
+            "Personas read the project's saved notes, and a proposed note is saved and you are told."
+          ],
+          "default": "off",
+          "markdownDescription": "Workshop Project Memory. One switch for every project; each project keeps its own notes in `prose-minion/memory/`. Personas see the notes only while this is on."
+        },
         "proseMinion.workshop.webResearch": {
           "type": "object",
           "default": {

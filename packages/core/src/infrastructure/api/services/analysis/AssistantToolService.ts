@@ -74,9 +74,7 @@ import {
 } from '@/utils/workshopPromptFrames';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { buildWorkshopWriterProfileFrame } from '@/utils/workshopWriterProfile';
-import {
-  sanitizeWorkshopWidgetRecommendationForRetention
-} from '@/utils/workshopWidgetRecommendationProtocol';
+import { sanitizeWorkshopReplyForRetention } from '@/utils/workshopReplyControls';
 import type { OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
 
 /**
@@ -229,6 +227,12 @@ export class AssistantToolService {
   /** The stable assistant engine; provider availability may change beneath it. */
   private assistantEngine?: AgentRunEngine;
   private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
+  /**
+   * Whether persona prompts teach the `memory.*` grammar now (ADR 2026-11-04
+   * D8): the project-memory library's answer, bound at the composition root,
+   * which builds that library after this service. Off until it is bound.
+   */
+  private workshopProjectMemoryGrammar: () => boolean = () => false;
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
@@ -259,6 +263,11 @@ export class AssistantToolService {
    * handlers own their registration and MUST release it on dispose, so one
    * webview's teardown can never blind another's.
    */
+  /** Bind the project-memory grammar check; called once, in `extension.ts`. */
+  setWorkshopProjectMemoryGrammar(teachesGrammar: () => boolean): void {
+    this.workshopProjectMemoryGrammar = teachesGrammar;
+  }
+
   addStatusListener(listener: StatusEmitter): () => void {
     return this.statusListeners.add(listener);
   }
@@ -594,6 +603,7 @@ export class AssistantToolService {
       `[AssistantToolService] Starting Workshop host ${persona.id} | Streaming: ${!!streamingOptions?.onToken}`
     );
 
+    const webTools = this.workshopWebSearchTools(streamingOptions?.webResearch);
     const executionResult = await engine.runInitial({
       toolName: `workshop_persona_${persona.id}`,
       systemMessage: systemPrompt,
@@ -605,8 +615,8 @@ export class AssistantToolService {
         maxTokens: options.maxTokens,
         signal: streamingOptions?.signal,
         onToken: streamingOptions?.onToken,
-        tools: this.workshopWebSearchTools(streamingOptions?.webResearch),
-        retainedAssistantContentSanitizer: sanitizeWorkshopWidgetRecommendationForRetention
+        tools: webTools,
+        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
       }
     });
 
@@ -620,7 +630,8 @@ export class AssistantToolService {
         conversationId: executionResult.conversationId,
         model: assistantRunModel(executionResult),
         replySource: executionResult.replySource,
-        citations: executionResult.citations
+        citations: executionResult.citations,
+        ...(webTools ? { webResearchAttached: true as const } : {})
       }
     );
   }
@@ -661,6 +672,7 @@ export class AssistantToolService {
       `[AssistantToolService] Starting Workshop guest ${persona.id} | Streaming: ${!!streamingOptions.onToken}`
     );
 
+    const webTools = this.workshopWebSearchTools(streamingOptions.webResearch);
     const executionResult = await engine.runInitial({
       toolName: `workshop_guest_${persona.id}`,
       systemMessage: systemPrompt,
@@ -672,8 +684,8 @@ export class AssistantToolService {
         maxTokens: options.maxTokens,
         signal: streamingOptions.signal,
         onToken: streamingOptions.onToken,
-        tools: this.workshopWebSearchTools(streamingOptions.webResearch),
-        retainedAssistantContentSanitizer: sanitizeWorkshopWidgetRecommendationForRetention
+        tools: webTools,
+        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
       }
     });
 
@@ -687,7 +699,8 @@ export class AssistantToolService {
         conversationId: executionResult.conversationId,
         model: assistantRunModel(executionResult),
         replySource: executionResult.replySource,
-        citations: executionResult.citations
+        citations: executionResult.citations,
+        ...(webTools ? { webResearchAttached: true as const } : {})
       }
     );
   }
@@ -720,6 +733,7 @@ export class AssistantToolService {
     );
 
     const capability = streamingOptions?.capability;
+    const webTools = this.workshopWebSearchTools(streamingOptions?.webResearch);
     const executionResult = await engine.continueConversation({
       conversationId,
       userMessage,
@@ -730,8 +744,8 @@ export class AssistantToolService {
         maxTokens: options.maxTokens,
         signal: streamingOptions?.signal,
         onToken: streamingOptions?.onToken,
-        tools: this.workshopWebSearchTools(streamingOptions?.webResearch),
-        retainedAssistantContentSanitizer: sanitizeWorkshopWidgetRecommendationForRetention
+        tools: webTools,
+        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
       }
     });
 
@@ -745,7 +759,8 @@ export class AssistantToolService {
         conversationId: executionResult.conversationId,
         model: assistantRunModel(executionResult),
         replySource: executionResult.replySource,
-        citations: executionResult.citations
+        citations: executionResult.citations,
+        ...(webTools ? { webResearchAttached: true as const } : {})
       }
     );
   }
@@ -905,7 +920,8 @@ export class AssistantToolService {
           ? WORKSHOP_HOST_BASE_PROMPT_PATH
           : WORKSHOP_GUEST_BASE_PROMPT_PATH,
         persona,
-        behavior
+        behavior,
+        { projectMemory: this.workshopProjectMemoryGrammar() }
       )
     ), behavior, writerProfile);
     const directives = standingDirectiveFrames

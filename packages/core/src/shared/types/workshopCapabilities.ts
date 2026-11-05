@@ -5,6 +5,7 @@ import type {
   WorkshopToolId
 } from '@messages';
 import type { ContextPathGroup } from './context';
+import type { ProjectMemoryKind } from './projectMemory';
 
 /**
  * The closed operation list. The union, the persisted codec's allowlist, and
@@ -22,7 +23,10 @@ export const WORKSHOP_CAPABILITY_OPERATIONS = [
   'transcript.catalog',
   'transcript.search',
   'transcript.read',
-  'transcript.todos'
+  'transcript.todos',
+  'memory.catalog',
+  'memory.search',
+  'memory.read'
 ] as const;
 
 export type WorkshopCapabilityOperation = typeof WORKSHOP_CAPABILITY_OPERATIONS[number];
@@ -37,7 +41,7 @@ export const isWorkshopCapabilityOperation = (value: unknown): value is Workshop
  * family exhaustively, so an operation without one fails to compile instead
  * of borrowing another family's name through an implicit "otherwise".
  */
-export type WorkshopCapabilityFamily = 'dictionary' | 'analysis' | 'resource' | 'transcript';
+export type WorkshopCapabilityFamily = 'dictionary' | 'analysis' | 'resource' | 'transcript' | 'memory';
 
 export function workshopCapabilityFamily(
   operation: WorkshopCapabilityOperation
@@ -57,6 +61,10 @@ export function workshopCapabilityFamily(
     case 'transcript.read':
     case 'transcript.todos':
       return 'transcript';
+    case 'memory.catalog':
+    case 'memory.search':
+    case 'memory.read':
+      return 'memory';
     default: {
       const unhandled: never = operation;
       throw new Error(`Unhandled Workshop capability operation: ${String(unhandled)}`);
@@ -130,7 +138,30 @@ export type WorkshopCapabilityRequest =
       startLine?: number;
       endLine?: number;
     }
-  | WorkshopTranscriptRecallRequest;
+  | WorkshopTranscriptRecallRequest
+  | WorkshopProjectMemoryRequest;
+
+/**
+ * `<status>` on `memory.search` (ADR 2026-11-04 D1): `active` by default;
+ * superseded is derived (D4), never stored.
+ */
+export const WORKSHOP_MEMORY_SEARCH_STATUSES = ['active', 'superseded', 'archived', 'all'] as const;
+export type WorkshopMemorySearchStatus = (typeof WORKSHOP_MEMORY_SEARCH_STATUSES)[number];
+
+/**
+ * Project memory's read-only requests (ADR 2026-11-04 D1), as the codec
+ * validated them: every id has the `mem-` shape and every bound holds.
+ * Whether an id names a memory is the library's question, asked of its
+ * listing, never of a path.
+ */
+export type WorkshopProjectMemoryRequest =
+  | { capability: 'memory.catalog'; kind?: ProjectMemoryKind }
+  | { capability: 'memory.search'; query: string; status?: WorkshopMemorySearchStatus }
+  | {
+      capability: 'memory.read';
+      /** One to `readMemories`, distinct, in the order asked. */
+      memories: string[];
+    };
 
 /** Inclusive, 1-based positions in a saved session's turn ledger: "turn N". */
 export interface WorkshopTranscriptTurnRange {

@@ -28,6 +28,7 @@ import type { ExecutionResult, InitialRunRequest } from '@orchestration/AgentRun
 import { deferred } from '@/__tests__/application/handlers/domain/lightboxHandlerHarness';
 import { groupOf, ok, opinionReplyFor } from '@/__tests__/application/handlers/domain/lightboxReadingHarness';
 import { CHAPTER, CHAPTER_PATH, WORKSPACE, createLightboxBoardsHost, quiet } from '@/__tests__/application/handlers/domain/lightboxBoardsHarness';
+import { libraryHost, MEMORY } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 
 /** The board's one file: its first save, measured, rewritten in place by each later save. */
 const OWN = 'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json';
@@ -68,7 +69,8 @@ const partsOf = (host: ReturnType<typeof createLightboxBoardsHost>, tab: { dispo
   workshopPanel: undefined,
   lightboxPanel: { dispose: () => tab.dispose() },
   workshopSessions: { flush: async () => undefined },
-  lightboxBoards: host.library
+  lightboxBoards: host.library,
+  projectMemory: undefined
 });
 
 describe('deactivation and the Lightbox\'s owed saves (PR #183 F-03)', () => {
@@ -200,6 +202,7 @@ describe('shutDownExtension\'s order', () => {
   it('stops both tabs before it waits, and waits for the Lightbox even when the Workshop\'s flush fails', async () => {
     const calls: string[] = [];
     const drained = deferred<void>();
+    const memoryDrained = deferred<void>();
     const shutdown = shutDownExtension({
       workshopPanel: { dispose: () => calls.push('workshop panel disposed') },
       lightboxPanel: { dispose: () => calls.push('lightbox panel disposed') },
@@ -216,13 +219,57 @@ describe('shutDownExtension\'s order', () => {
             calls.push('lightbox drained');
           });
         }
+      },
+      projectMemory: {
+        shutDown: () => {
+          calls.push('memory drain');
+          return memoryDrained.promise.then(() => {
+            calls.push('memory drained');
+          });
+        }
       }
     });
     await quiet();
-    expect(calls).toEqual(['workshop panel disposed', 'lightbox panel disposed', 'lightbox drain', 'workshop flush']);
+    expect(calls).toEqual(['workshop panel disposed', 'lightbox panel disposed', 'lightbox drain', 'memory drain', 'workshop flush']);
 
     drained.resolve();
+    await quiet();
+    expect(calls).not.toContain('memory drained');
+    memoryDrained.resolve();
     await expect(shutdown).rejects.toThrow('disk full');
-    expect(calls[calls.length - 1]).toBe('lightbox drained');
+    expect(calls.slice(-2).sort()).toEqual(['lightbox drained', 'memory drained']);
+  });
+});
+
+describe('deactivation and project memory\'s owed writes (ADR 2026-11-04 D10)', () => {
+  it('stays pending until a save in flight is on disk', async () => {
+    const memory = libraryHost();
+    const gate = deferred<void>();
+    const writeFile = memory.fileSystem.writeFile.bind(memory.fileSystem);
+    jest.spyOn(memory.fileSystem, 'writeFile').mockImplementation(async (filePath, data) => {
+      await gate.promise;
+      return writeFile(filePath, data);
+    });
+    const saving = memory.library.save(
+      { title: 'The Rabbit\'s watch runs backward', kind: 'canon', summary: 'From chapter 3 on.', body: 'Settled at the tea party.', supersedes: [], pinned: false },
+      { origin: 'writer', sourceTurns: [] }
+    );
+    let finished = false;
+    const shutdown = shutDownExtension({
+      workshopPanel: undefined,
+      lightboxPanel: undefined,
+      workshopSessions: undefined,
+      lightboxBoards: undefined,
+      projectMemory: memory.library
+    }).then(() => {
+      finished = true;
+    });
+    await quiet();
+    expect(finished).toBe(false);
+
+    gate.resolve();
+    await shutdown;
+    expect((await saving).kind).toBe('written');
+    expect([...memory.fileSystem.files.keys()].some((file) => file.startsWith(MEMORY) && file.endsWith('.md'))).toBe(true);
   });
 });

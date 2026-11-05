@@ -1,4 +1,5 @@
 import { WorkshopRoomHandler } from '@handlers/domain/workshop/WorkshopRoomHandler';
+import { libraryHost } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import type {
   WorkshopWidgetRuntime
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
@@ -126,6 +127,8 @@ export interface WorkshopRouteTestHarness {
   runProse: () => Promise<void>;
   creativeVariationsGenerate: jest.Mock;
   showVsTellGenerate: jest.Mock;
+  /** The project-memory library the memory routes write through, on its own folder. */
+  memory: ReturnType<typeof libraryHost>;
 }
 
 export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
@@ -198,8 +201,12 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     ...createFakeSettings(),
     update: jest.fn().mockResolvedValue(undefined)
   };
+  // A real project-memory library on its own memory file system (Slice 3):
+  // completion reads its reply context, and the memory routes write through it.
+  const memory = libraryHost();
   const capabilityFactory = {
-    create: jest.fn(() => ({ catalog: 'workshopPersona' }))
+    create: jest.fn(() => ({ catalog: 'workshopPersona' })),
+    replyMemoryContext: jest.fn((reply: string) => memory.library.replyMemoryContext(reply))
   } as unknown as WorkshopPersonaCapabilityFactory;
   const resourceFiles = [
     {
@@ -229,6 +236,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
   const analysisSidePass = new WorkshopAnalysisSidePass(service, session, log);
   const writerProfileService = new WorkshopWriterProfileService(settings, log);
   const persistence = {
+    recallScope: jest.fn().mockReturnValue({ available: true, liveSessionId: 'live-room-0001' }),
     availability: jest.fn().mockReturnValue({
       available: true,
       rootPath: '/workspace',
@@ -344,7 +352,8 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
       creativeVariationsGenerate,
       showVsTellGenerate
     ),
-    log
+    log,
+    memory.library
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);
@@ -408,6 +417,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     pin,
     runProse,
     creativeVariationsGenerate,
-    showVsTellGenerate
+    showVsTellGenerate,
+    memory
   };
 };

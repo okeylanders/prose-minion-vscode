@@ -5,6 +5,7 @@
  * also records the lines it returned and the whole file's fingerprint, which
  * stays out of the card's metadata and the evidence the persona reads.
  */
+import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { createHash } from 'crypto';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
@@ -104,7 +105,8 @@ describe('persona capability read-in provenance', () => {
       resourceProviderFactory,
       session,
       log,
-      unusedRecall
+      unusedRecall,
+      offProjectMemory
     ).create({
       requestId,
       excerptVersion: session.getExcerptVersion(),

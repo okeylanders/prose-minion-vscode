@@ -175,6 +175,20 @@ import {
   WorkshopRunContextWizardMessage,
   WorkshopTodoActionMessage,
   WorkshopSetTurnBookmarkMessage,
+  WorkshopMemoryProposalActionMessage,
+  WorkshopSaveTurnToMemoryMessage,
+  WorkshopMemoryCreateMessage,
+  WorkshopMemoryUpdateMessage,
+  WorkshopMemoryForgetMessage,
+  WorkshopMemoryRequestEditMessage,
+  WorkshopMemoryEstimateMessage,
+  WorkshopMemoryWriteResultMessage,
+  WorkshopMemoryEditDataMessage,
+  WorkshopMemoryEstimateResultMessage,
+  WorkshopMemoryListMessage,
+  WorkshopMemoryListingMessage,
+  WorkshopMemoryManagerActionMessage,
+  WorkshopMemoryManagerResultMessage,
   WorkshopRenameBookmarkMessage,
   WorkshopRenameBookmarkResultMessage,
   WorkshopRequestTurnPreviewMessage,
@@ -323,6 +337,15 @@ export type WebviewToExtensionMessage =
   | WorkshopRunContextWizardMessage
   | WorkshopTodoActionMessage
   | WorkshopSetTurnBookmarkMessage
+  | WorkshopMemoryProposalActionMessage
+  | WorkshopSaveTurnToMemoryMessage
+  | WorkshopMemoryCreateMessage
+  | WorkshopMemoryUpdateMessage
+  | WorkshopMemoryForgetMessage
+  | WorkshopMemoryRequestEditMessage
+  | WorkshopMemoryEstimateMessage
+  | WorkshopMemoryListMessage
+  | WorkshopMemoryManagerActionMessage
   | WorkshopRenameBookmarkMessage
   | WorkshopRequestTurnPreviewMessage
   | WorkshopPickExcerptFileMessage
@@ -411,6 +434,11 @@ export type ExtensionToWebviewMessage =
   | WorkshopReadInResourceContentMessage
   | WorkshopTurnPreviewMessage
   | WorkshopRenameBookmarkResultMessage
+  | WorkshopMemoryWriteResultMessage
+  | WorkshopMemoryEditDataMessage
+  | WorkshopMemoryEstimateResultMessage
+  | WorkshopMemoryListingMessage
+  | WorkshopMemoryManagerResultMessage
   | WorkshopGesturePlaygroundGenerationProgressMessage
   | WorkshopGesturePlaygroundMenuResultMessage
   | WorkshopCreativeVariationsGenerationProgressMessage

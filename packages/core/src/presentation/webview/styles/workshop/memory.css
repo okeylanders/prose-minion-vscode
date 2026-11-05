@@ -1,0 +1,790 @@
+/*
+ * Workshop Project Memory styles, on the full tabs' tokens; no new color.
+ * Plain CSS on the Chromium 114 floor (webviewCssFloor.test.ts).
+ *
+ * 1. The Memory tab and the memory manager (Slice 4b-ui). The tab's rows,
+ *    cards and notes are the settings panels' (shell.css); the manager's
+ *    rows are the shared browser's (styles/fulltab/savedBrowser.css). Only
+ *    what is memory's own is here.
+ * 2. Project memory in the thread and its sheet (Slice 3; ADR 2026-11-04
+ *    D6, D7; Slice 0d's Thread and EditSheet boards).
+ *
+ * The two sections share no class names.
+ */
+
+/* Memory tab and manager (Slice 4b-ui) */
+
+/* ── The Memory tab ─────────────────────────────────────────────── */
+
+/* "Memory isn't context" (decision 15): the About-you notice's accent well, with a faint accent border. */
+[data-pm-surface="workshop"] .pm-ws-memory-vs {
+  margin-top: 16px;
+  padding: 10px 12px 11px;
+  border: 1px solid color-mix(in srgb, var(--pm-accent) 22%, transparent);
+  border-radius: var(--pm-r-tile);
+  background: color-mix(in srgb, var(--pm-accent) 6%, transparent);
+}
+/* The head is the well's disclosure button (Slice 6 live pass): it reads as
+   the well's title line, and its chevron turns when the table shows. */
+[data-pm-surface="workshop"] .pm-ws-memory-vs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--pm-dim);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-chev {
+  display: inline-flex;
+  margin-left: auto;
+  color: var(--pm-faint);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-head:hover .pm-ws-memory-vs-chev {
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-chev svg {
+  transition: transform 120ms ease;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-head[aria-expanded="true"] .pm-ws-memory-vs-chev svg {
+  transform: rotate(90deg);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-head > svg {
+  flex: none;
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-head b {
+  color: var(--pm-text);
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-grid {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 14px;
+  row-gap: 5px;
+  margin: 9px 0 0 22px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+/* `display: grid` above would otherwise outrank the hidden attribute. */
+[data-pm-surface="workshop"] .pm-ws-memory-vs-grid[hidden] {
+  display: none;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-grid dt {
+  margin: 0;
+  padding-top: 1px;
+  color: var(--pm-faint);
+  font: 10px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-grid dd {
+  margin: 0;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-grid .pm-ws-memory-vs-col {
+  color: var(--pm-text-2);
+  font-weight: 600;
+}
+
+/* The unavailable notice, the amber "more" lines and the attention row. */
+[data-pm-surface="workshop"] .pm-ws-memory-notice,
+[data-pm-surface="workshop"] .pm-ws-memory-more {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  border-radius: var(--pm-r-tile);
+  background: color-mix(in srgb, var(--pm-amber) 8%, transparent);
+  color: var(--pm-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-notice {
+  margin-top: 16px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-more {
+  margin-top: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-notice svg,
+[data-pm-surface="workshop"] .pm-ws-memory-more svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-notice b {
+  color: var(--pm-text);
+  font-weight: 600;
+}
+
+/* "Recommended" on the Ask first card. */
+[data-pm-surface="workshop"] .pm-ws-behavior-card-tag {
+  margin-left: auto;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-pill);
+  padding: 1px 6px;
+  color: var(--pm-dim);
+  font: 9px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-card-selected .pm-ws-behavior-card-tag {
+  border-color: color-mix(in srgb, var(--pm-accent) 45%, transparent);
+  color: var(--pm-accent-hi);
+}
+
+/* The start-of-conversation row: chips and two meters. */
+[data-pm-surface="workshop"] .pm-ws-memory-readout {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 330px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-chip {
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-pill);
+  padding: 3px 9px;
+  background: var(--pm-inset);
+  color: var(--pm-text-2);
+  font: 11px var(--pm-mono);
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-chip-quiet {
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-chip-warn {
+  border-color: color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-meter {
+  height: 5px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: var(--pm-r-pill);
+  background: var(--pm-surface-3);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-meter-fill {
+  height: 100%;
+  border-radius: var(--pm-r-pill);
+  background: var(--pm-accent);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-meter-full {
+  background: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-meter-cap {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 5px;
+  color: var(--pm-faint);
+  font: 10px var(--pm-mono);
+}
+
+/* Your memories: the folder row and its buttons. */
+[data-pm-surface="workshop"] .pm-ws-memory-folder {
+  align-items: center;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-path,
+[data-pm-surface="workshop"] .pm-ws-memory-files li {
+  color: var(--pm-text);
+  font: 500 12px var(--pm-mono);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-buttons {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-attention {
+  border-color: color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  background: color-mix(in srgb, var(--pm-amber) 7%, var(--pm-surface-2));
+}
+[data-pm-surface="workshop"] .pm-ws-memory-attention > svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-files {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-files li {
+  color: var(--pm-text-2);
+  font-size: 11px;
+  font-weight: 400;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-files span {
+  color: var(--pm-dim);
+  font-family: var(--pm-sans);
+}
+
+/* ── The memory manager ─────────────────────────────────────────── */
+
+[data-pm-surface="workshop"] .pm-ws-memory-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-status-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: var(--pm-r-tile);
+  background: color-mix(in srgb, var(--pm-accent) 6%, transparent);
+  color: var(--pm-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-status-note svg {
+  flex: none;
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-status-warn {
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  background: color-mix(in srgb, var(--pm-amber) 8%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-status-warn svg {
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-row .pm-ws-session-browser-row {
+  cursor: default;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-glyph {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-surface-3);
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-who {
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-badge-amber {
+  border-color: color-mix(in srgb, var(--pm-amber) 55%, transparent);
+  background: color-mix(in srgb, var(--pm-amber) 10%, transparent);
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-badge-muted {
+  border-color: var(--pm-border-2);
+  background: transparent;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-row-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--pm-amber);
+  font-size: 11px;
+  line-height: 1.45;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-row-note svg {
+  flex: none;
+  margin-top: 1px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-toggle-on {
+  border-color: var(--pm-accent-lo);
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-row-attention .pm-ws-session-browser-row {
+  border-color: color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  background: color-mix(in srgb, var(--pm-amber) 6%, var(--pm-surface-2));
+}
+[data-pm-surface="workshop"] .pm-ws-memory-row-attention .pm-ws-memory-glyph {
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-file {
+  font: 12.5px var(--pm-mono);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-row-past .pm-ws-session-browser-row {
+  background: color-mix(in srgb, var(--pm-surface-2) 70%, var(--pm-surface));
+}
+[data-pm-surface="workshop"] .pm-ws-memory-row-past .pm-ws-session-row-title strong {
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-row-past .pm-ws-memory-glyph {
+  color: var(--pm-dim);
+}
+/* The memory a card's Open in manager named (PR #202 N02). */
+[data-pm-surface="workshop"] .pm-ws-memory-row-focus .pm-ws-session-browser-row {
+  box-shadow: inset 3px 0 0 var(--pm-accent);
+}
+
+/* Narrow widths (Slice 0d open question 3): the well and the meter row stack. */
+@media (max-width: 760px) {
+  [data-pm-surface="workshop"] .pm-ws-memory-vs-grid {
+    grid-template-columns: minmax(0, 1fr);
+    margin-left: 0;
+  }
+  [data-pm-surface="workshop"] .pm-ws-memory-vs-grid .pm-ws-memory-vs-corner {
+    display: none;
+  }
+  [data-pm-surface="workshop"] .pm-ws-memory-load,
+  [data-pm-surface="workshop"] .pm-ws-memory-folder,
+  [data-pm-surface="workshop"] .pm-ws-memory-attention {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  [data-pm-surface="workshop"] .pm-ws-memory-readout {
+    justify-content: flex-start;
+    max-width: none;
+  }
+}
+
+/* Thread: card, receipts, sheet (Slice 3) */
+
+/* The card, under a persona's reply, styled like the Next steps box with an accent border. */
+[data-pm-surface="workshop"] .pm-ws-memory-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px 13px;
+  border: 1px solid rgba(224, 103, 58, 0.42);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-inset);
+}
+/* Several suggestions on one reply (Slice 6b): a small count, then the cards closer together. */
+[data-pm-surface="workshop"] .pm-ws-memory-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-stack-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pm-dim);
+  font: 600 10px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-stack > .pm-ws-memory-card,
+[data-pm-surface="workshop"] .pm-ws-memory-stack > .pm-ws-memory-settled {
+  margin-top: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-held {
+  border-color: rgba(226, 178, 74, 0.5);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-saved {
+  border-color: var(--pm-border);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--pm-muted);
+  font: 600 10px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-title svg {
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-held .pm-ws-memory-card-title svg {
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-kind {
+  padding: 2px 7px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-pill);
+  color: var(--pm-muted);
+  font: 600 9.5px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-name {
+  color: var(--pm-text);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-summary {
+  color: var(--pm-text-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+/* An edit card's changes (Slice 6c): each field as before → after, the note's changed region in context. */
+[data-pm-surface="workshop"] .pm-ws-memory-change {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-change-label {
+  color: var(--pm-dim);
+  font: 600 10px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-change-body {
+  margin: 0;
+  color: var(--pm-text-2);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-change-body del {
+  color: var(--pm-red);
+  text-decoration-color: var(--pm-red);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-change-body ins {
+  color: var(--pm-green);
+  text-decoration: none;
+  background: rgba(111, 201, 138, 0.1);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-change-body del + ins {
+  margin-left: 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-change-context {
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-replaces {
+  color: var(--pm-dim);
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-replaces b {
+  color: var(--pm-muted);
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-note summary {
+  cursor: pointer;
+  color: var(--pm-muted);
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-note p {
+  margin: 6px 0 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--pm-border-2);
+  color: var(--pm-text-2);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--pm-accent-lo);
+  border-radius: var(--pm-r-button);
+  background: var(--pm-accent);
+  color: #fff;
+  font: 600 11.5px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-ghost {
+  padding: 5px 10px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-button);
+  background: var(--pm-surface-2);
+  color: var(--pm-muted);
+  font: 11.5px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-why {
+  flex: 1;
+  min-width: 220px;
+  color: var(--pm-dim);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: right;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-why-held {
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-error,
+[data-pm-surface="workshop"] .pm-ws-memory-refusal {
+  display: flex;
+  gap: 7px;
+  color: var(--pm-amber);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* Settled card states, in place. */
+[data-pm-surface="workshop"] .pm-ws-memory-settled {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-inset);
+  color: var(--pm-muted);
+  font-size: 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-settled svg {
+  flex: none;
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-settled-off svg {
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-settled b,
+[data-pm-surface="workshop"] .pm-ws-memory-receipt b {
+  color: var(--pm-text-2);
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-link {
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--pm-accent-hi);
+  font: inherit;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-link:hover:not(:disabled) {
+  background: var(--pm-accent-soft);
+}
+
+/* Receipts: centered divider lines every participant receives. */
+/* A receipt's refused Forget or Restore, said under it (PR #221 F-01). */
+[data-pm-surface="workshop"] .pm-ws-memory-receipt-error {
+  margin: 4px auto 0;
+  max-width: 560px;
+  color: var(--pm-amber);
+  font-size: 11.5px;
+  line-height: 1.45;
+  text-align: center;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-receipt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--pm-dim);
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-receipt::before,
+[data-pm-surface="workshop"] .pm-ws-memory-receipt::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--pm-border-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-receipt-in {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 720px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-receipt-in svg {
+  flex: none;
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-receipt-gone svg {
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-save-to-memory {
+  border-color: rgba(224, 103, 58, 0.5);
+  color: var(--pm-text-2);
+}
+
+/* The sheet. */
+[data-pm-surface="workshop"] .pm-ws-memory-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--pm-muted);
+  font-size: 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-field input,
+[data-pm-surface="workshop"] .pm-ws-memory-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-input);
+  background: var(--pm-inset);
+  color: var(--pm-text);
+  font: 13px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-field textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-field small {
+  align-self: flex-end;
+  color: var(--pm-dim);
+  font: 10.5px var(--pm-mono);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-hint {
+  color: var(--pm-dim);
+}
+/*
+ * The six kinds (Slice 6a): six across when they fit, otherwise three by
+ * two, and nothing in between (never 5+1 or 4+2, so never auto-fit or
+ * auto-fill). Six across starts where each card is 150px: 6 x 150 plus five
+ * 8px gaps. Names never wrap there; the longest descriptions may take two
+ * lines in some editor fonts, and the row stretches the cards to one height.
+ * Under the 760px stack rule below, two by three.
+ */
+[data-pm-surface="workshop"] .pm-ws-memory-kind-field {
+  container: pm-ws-memory-kinds / inline-size;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-kinds {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+@container pm-ws-memory-kinds (min-width: 940px) {
+  [data-pm-surface="workshop"] .pm-ws-memory-kinds {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+[data-pm-surface="workshop"] .pm-ws-memory-kind-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 9px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-surface-2);
+  color: var(--pm-muted);
+  font: 11px var(--pm-sans);
+  text-align: left;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-kind-card b {
+  color: var(--pm-text);
+  font-size: 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-kind-card-on {
+  border-color: var(--pm-accent);
+  background: var(--pm-accent-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-replaced {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-replaced button {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--pm-accent-hi);
+  font: 11.5px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch-name {
+  color: var(--pm-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch-help {
+  color: var(--pm-dim);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid var(--pm-border-2);
+  border-radius: 999px;
+  background: var(--pm-surface-3);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch-on {
+  border-color: var(--pm-accent-lo);
+  background: var(--pm-accent);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-switch-on span {
+  left: 16px;
+  background: #fff;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-source {
+  display: flex;
+  gap: 8px;
+  color: var(--pm-dim);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+@media (max-width: 760px) {
+  [data-pm-surface="workshop"] .pm-ws-memory-kinds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Save and tell me's receipt (Slice 5): the chevron that expands the saved card. */
+[data-pm-surface="workshop"] .pm-ws-memory-expand {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-expand:hover {
+  background: var(--pm-accent-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-expand svg {
+  transition: transform 120ms ease;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-expand-open svg {
+  transform: rotate(90deg);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-receipt-expandable .pm-ws-memory-card {
+  max-width: 720px;
+  margin: 10px auto 0;
+}

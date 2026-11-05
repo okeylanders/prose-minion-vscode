@@ -17,6 +17,11 @@
  * in-flight one, reset aborts, and zombie completions are refused + logged.
  */
 
+import type { WorkshopProjectMemoryPort } from '@handlers/domain/workshop/WorkshopRouteContracts';
+import {
+  hasWorkshopMemoryProposalText
+} from '@/utils/workshopReplyControls';
+import { resolveWorkshopReplyMemory, type WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import { LogSink, ShellService } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
@@ -25,7 +30,8 @@ import { ContextAssistantService } from '@services/analysis/ContextAssistantServ
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import {
-  WorkshopRoomDeliveryService
+  WorkshopRoomDeliveryService,
+  workshopRoomDeliveredThrough
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
@@ -110,6 +116,11 @@ import type {
   WorkshopWidgetRuntime
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSliceComposition } from '@handlers/domain/workshop/WorkshopSliceComposition';
+import type { WorkshopProjectMemoryMode } from '@messages';
+import { WorkshopConversationSettingsPartialApplyError } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
+
+/** The mode's names as the Memory tab's cards give them. */
+const PROJECT_MEMORY_MODE_WORDS: Record<WorkshopProjectMemoryMode, string> = { off: 'Off', ask: 'Ask first', auto: 'Save and tell me' };
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
 let requestIdCounter = 0;
@@ -232,7 +243,8 @@ export class WorkshopRoomHandler {
     private readonly sessionPersistence: WorkshopSessionPersistenceCoordinator,
     transcriptExport: WorkshopTranscriptExportPort,
     widgetRuntime: WorkshopWidgetRuntime,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    projectMemory: WorkshopProjectMemoryPort
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -264,6 +276,7 @@ export class WorkshopRoomHandler {
         sessionPersistence: this.sessionPersistence,
         transcriptExport,
         widgetRuntime,
+        projectMemory,
         outputChannel: this.outputChannel
       },
       {
@@ -387,6 +400,8 @@ export class WorkshopRoomHandler {
         this.sendError('workshop.run_tool', errorMessage, details),
       widgetRecommendationRejected: (errorMessage, details) =>
         this.sendError('workshop.widget_recommendation', errorMessage, details),
+      memoryAutoSave: (turn, indexes) => this.sliceComposition.autoSaveMemoryProposals(turn, indexes, controller.signal),
+      memoryAutoSavesInRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
       settled: (requestId) => this.settleActiveRun(requestId)
     });
   }
@@ -407,7 +422,8 @@ export class WorkshopRoomHandler {
       const result = await this.conversationSettingsService.applyFromWebview(
         message.payload?.behavior,
         message.payload?.writerProfile,
-        message.payload?.webResearch
+        message.payload?.webResearch,
+        message.payload?.projectMemory
       );
       if (result.persistenceErrors) {
         const persistenceDetails = [
@@ -419,7 +435,8 @@ export class WorkshopRoomHandler {
             : undefined,
           result.persistenceErrors.webResearch
             ? `web research: ${result.persistenceErrors.webResearch}`
-            : undefined
+            : undefined,
+          result.persistenceErrors.projectMemory ? `project memory: ${result.persistenceErrors.projectMemory}` : undefined
         ].filter(Boolean).join('; ');
         this.outputChannel.appendLine(
           `[WorkshopRoomHandler] Conversation settings are active but could not be persisted: ${persistenceDetails}`
@@ -441,7 +458,9 @@ export class WorkshopRoomHandler {
       );
       this.sendError(
         'workshop',
-        'Could not change conversation settings. The previous settings are still active.',
+        error instanceof WorkshopConversationSettingsPartialApplyError
+          ? `Could not change conversation settings. Project memory is now ${PROJECT_MEMORY_MODE_WORDS[error.projectMemory]}: it couldn't be set back. Your other previous settings are still active.`
+          : 'Could not change conversation settings. The previous settings are still active.',
         details
       );
       this.postSessionState();
@@ -632,7 +651,13 @@ export class WorkshopRoomHandler {
           capability: guestCapability,
           webResearch: this.conversationSettingsService.getWebResearch().enabled
         });
+        const pendingMemory = this.replyMemory(result.content, controller.signal);
+        const replyMemory = pendingMemory && await pendingMemory;
+        const memoryAutoSave = this.memoryAutoSaveFor(controller.signal);
         const assistantTurn = completeWorkshopRun({
+          memory: replyMemory,
+          memoryAutoSave: memoryAutoSave.hand,
+          memoryAutoSavesInRoom: memoryAutoSave.inRoom,
           session: this.session,
           requestId,
           label: workshopPersonaLabel(personaId),
@@ -667,6 +692,7 @@ export class WorkshopRoomHandler {
           this.sessionPersistence.markDirty('guest invitation completed');
         }
         this.postSessionState();
+        await memoryAutoSave.settled();
       } catch (error) {
         const details = error instanceof Error ? error.message : String(error);
         this.session.abandonRun(requestId);
@@ -1099,6 +1125,7 @@ export class WorkshopRoomHandler {
             : personaId,
           owner: participantOwner,
           conversationId,
+          roomDeliveredThrough: workshopRoomDeliveredThrough(roomDelivery),
           excerpt,
           excerptVersion: this.session.getExcerptVersion(),
           signal: controller.signal,
@@ -1159,7 +1186,13 @@ export class WorkshopRoomHandler {
             webResearch: this.conversationSettingsService.getWebResearch().enabled
           });
 
+      const pendingMemory = this.replyMemory(result.content, controller.signal);
+      const replyMemory = pendingMemory && await pendingMemory;
+      const memoryAutoSave = this.memoryAutoSaveFor(controller.signal);
       const assistantTurn = completeWorkshopRun({
+        memory: replyMemory,
+        memoryAutoSave: memoryAutoSave.hand,
+        memoryAutoSavesInRoom: memoryAutoSave.inRoom,
         session: this.session,
         requestId,
         label,
@@ -1250,6 +1283,7 @@ export class WorkshopRoomHandler {
         this.sessionPersistence.markDirty(targetPlan.completionReason);
       }
       this.postSessionState();
+      await memoryAutoSave.settled();
       return { committed: assistantTurn !== undefined };
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
@@ -1347,6 +1381,40 @@ export class WorkshopRoomHandler {
       return 'room';
     }
     return this.sliceComposition?.isContextRunActive() ? 'wizard' : undefined;
+  }
+
+  /**
+   * Save and tell me (Slice 5; PR #201 F-03): completion hands the recorded
+   * reply's card to `hand`, and the run awaits `settled()` as its tail,
+   * under its own controller, before it settles. So no later request ever
+   * waits on a save, and New, Open, a preempting run and disposal stop it
+   * as they stop any running run (its permission is withdrawn).
+   */
+  private memoryAutoSaveFor(signal: AbortSignal): {
+    hand: (turn: WorkshopTurn, indexes: readonly number[]) => void;
+    inRoom: () => number;
+    settled: () => Promise<void> | undefined;
+  } {
+    let saving: Promise<void> | undefined;
+    return {
+      inRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
+      hand: (turn, indexes) => {
+        saving = this.sliceComposition.autoSaveMemoryProposals(turn, indexes, signal);
+      },
+      settled: () => saving
+    };
+  }
+
+  /**
+   * A reply's project-memory context, settled at completion (ADR 2026-11-04
+   * D6). Only a reply holding a frame reads the listing; any other gets
+   * none, so its completion costs no await.
+   */
+  private replyMemory(reply: string, signal: AbortSignal): Promise<WorkshopReplyMemoryContext> | undefined {
+    return hasWorkshopMemoryProposalText(reply)
+      ? resolveWorkshopReplyMemory(this.capabilityFactory, reply, signal,
+        workshopWriterPreferredAddress(this.conversationSettingsService.getWriterProfile()))
+      : undefined;
   }
 
   private excerptMutationBlockedReason(): string | undefined {
@@ -1468,6 +1536,7 @@ export class WorkshopRoomHandler {
         session,
         writerProfile: this.conversationSettingsService.getWriterProfile(),
         webResearch: this.conversationSettingsService.getWebResearch(),
+        projectMemory: this.conversationSettingsService.getProjectMemoryMode(),
         persistence: {
           available: availability.available,
           unavailableReason: availability.available ? undefined : availability.reason,

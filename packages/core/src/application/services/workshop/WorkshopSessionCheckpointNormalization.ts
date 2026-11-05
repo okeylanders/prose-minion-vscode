@@ -20,6 +20,7 @@ import {
   findInconsistentRetainedHistoryMarkKeys,
   withoutRetainedHistoryMarkKeys
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
+import { listLegacyWorkshopMemoryProposal } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
 import { repairPendingLightboxTiles } from '@/application/services/workshop/WorkshopMessageAttachmentIdentity';
 import {
   danglingWorkshopBookmarks,
@@ -48,7 +49,10 @@ export type WorkshopSessionCheckpointNormalization =
   | 'dropped-unverifiable-retained-history-marks'
   // Workshop Wayfinding Slice 4 (ADR 2026-11-03 D9): a bookmark whose turn is
   // gone marks nothing, so it goes rather than refusing the session.
-  | 'dropped-dangling-bookmarks';
+  | 'dropped-dangling-bookmarks'
+  // Project Memory Slice 6b: a development checkpoint's single memory card
+  // (`memoryProposal`) becomes the only item of `memoryProposals`.
+  | 'listed-single-memory-proposal';
 
 export interface WorkshopSessionCheckpointNormalizationResult {
   state: WorkshopSessionStateV1;
@@ -92,7 +96,10 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   let defaultedPrincipal = false;
   let defaultedProactiveAssistance = false;
   let discardedNonpersonaWidgetRecommendation = false;
-  const turns = state.turns.map((turn) => {
+  let listedSingleMemoryProposal = false;
+  const turns = state.turns.map((checkpointTurn) => {
+    const turn = listLegacyWorkshopMemoryProposal(checkpointTurn);
+    listedSingleMemoryProposal ||= turn !== checkpointTurn;
     let normalizedTurn = turn;
     if (
       turn.widgetRecommendation !== undefined
@@ -134,6 +141,9 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   }
   if (discardedNonpersonaWidgetRecommendation) {
     normalizations.push('discarded-nonpersona-widget-recommendation');
+  }
+  if (listedSingleMemoryProposal) {
+    normalizations.push('listed-single-memory-proposal');
   }
 
   const widgetConfigs = state.widgetConfigs?.map((config) => {

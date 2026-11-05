@@ -46,6 +46,13 @@ import { WorkshopRail } from './components/workshop/WorkshopRail';
 import { partitionContextSources } from '@utils/workshop/contextSources';
 import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
+import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
+import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
+import { workshopMemoryTabInputOf } from '@hooks/domain/workshop/memory/workshopMemoryListingInputs';
+import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
+import { workshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
+import { WorkshopMemorySheet } from '@components/workshop/memory/WorkshopMemorySheet';
+import { WorkshopMemoryManagerMount } from '@components/workshop/memory/WorkshopMemoryManagerMount';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
@@ -69,6 +76,7 @@ import { WorkshopStandingDirectiveRail } from './components/workshop/WorkshopSta
 import {
   stripWorkshopWidgetRecommendationControl
 } from '@/utils/workshopWidgetRecommendationProtocol';
+import { stripWorkshopMemoryProposalForStreaming } from '@/utils/workshopReplyControls';
 import { WorkshopNoticeModal } from './components/workshop/WorkshopNoticeModal';
 import { useStartupNotice } from './hooks/domain/useStartupNotice';
 import { WorkshopChooseHostModal } from './components/workshop/WorkshopChooseHostModal';
@@ -121,6 +129,10 @@ import {
   useWorkshopRailTabs,
   WorkshopRailTabsPersistence
 } from './hooks/domain/workshop/controllers/useWorkshopRailTabs';
+import {
+  useWorkshopMemoryExplainer,
+  type WorkshopMemoryExplainerPersistence
+} from '@hooks/domain/workshop/controllers/useWorkshopMemoryExplainer';
 import { useWorkshopAppMessageRouter } from '@hooks/useWorkshopAppMessageRouter';
 import { useWorkshopRoom } from '@hooks/domain/workshop/useWorkshopRoom';
 import { useWorkshopSessions } from '@hooks/domain/workshop/useWorkshopSessions';
@@ -165,6 +177,7 @@ import './styles/workshop/tokens.css';
 import './styles/workshop/shell.css';
 import './styles/workshop/context.css';
 import './styles/workshop/session.css';
+import './styles/workshop/memory.css';
 import './components/workshop/widgets/gesturePlayground/gesturePlayground.css';
 import './components/workshop/widgets/lexicalGravity/lexicalGravity.css';
 import './components/workshop/widgets/creativeVariations/creativeVariations.css';
@@ -236,14 +249,23 @@ export const WorkshopApp: React.FC = () => {
   );
   const readIn = useWorkshopReadIn();
   const bookmarks = useWorkshopBookmarks({ onBeforeChange: workshop.clearError });
+  // The room's generation (first load, New, Open, Rewind, Branch): the rail's
+  // badges and the memory receipts' feedback both start over with a new one.
+  const roomKey = workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending';
+  const projectMemory = useWorkshopProjectMemory({ roomKey });
+  const memoryManager = useWorkshopMemoryManager();
+  // Whether the Memory tab's explainer shows is this viewer's choice too.
+  const persistedMemoryExplainer = usePersistedState<Partial<WorkshopMemoryExplainerPersistence>>();
+  const memoryExplainer = useWorkshopMemoryExplainer({
+    initialOpen: persistedMemoryExplainer?.workshopMemoryExplainerOpen
+  });
   // The rail's tab is this viewer's preference (webview state, never the
   // session file); the controller re-baselines its badges on each new room,
   // and Material's on each new chat target.
   const persistedRailTab = usePersistedState<Partial<WorkshopRailTabsPersistence>>();
-  const railRoomKey = workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending';
   const railTabs = useWorkshopRailTabs({
     todos: workshop.todos,
-    roomKey: railRoomKey,
+    roomKey,
     readIn: readInSources,
     readInKey: chatTargetIdentity,
     bookmarks: bookmarks.bookmarks,
@@ -419,6 +441,8 @@ export const WorkshopApp: React.FC = () => {
   useWorkshopAppMessageRouter({
     readIn,
     bookmarks,
+    projectMemory,
+    memoryManager,
     workshopRoom: workshop,
     workshopSessions,
     widgetHost,
@@ -453,6 +477,7 @@ export const WorkshopApp: React.FC = () => {
     ...excerptVerify.persistedState,
     ...chrome.persistedState,
     ...railTabs.persistedState,
+    ...memoryExplainer.persistedState,
   });
 
   // Initial data requests: the session is requested inside useWorkshopRoom,
@@ -489,7 +514,8 @@ export const WorkshopApp: React.FC = () => {
   const threadRef = React.useRef<HTMLDivElement>(null);
   const latestTurnId = workshop.turns.at(-1)?.id;
   const visibleStreamingContent = React.useMemo(
-    () => stripWorkshopWidgetRecommendationControl(workshop.streamingContent),
+    // A memory proposal never shows while it streams (PR #200 F-02).
+    () => stripWorkshopWidgetRecommendationControl(stripWorkshopMemoryProposalForStreaming(workshop.streamingContent)),
     [workshop.streamingContent]
   );
   useWorkshopThreadAutoscroll({
@@ -514,6 +540,30 @@ export const WorkshopApp: React.FC = () => {
   const hasExcerpt = !!workshop.excerpt;
   const toolsEnabled = hasExcerpt && !roomMutationLocked && workshop.sessionReady;
   const composerToolsEnabled = !roomMutationLocked && workshop.sessionReady;
+  // Project memory in the thread (ADR 2026-11-04 D6, D7); the host's snapshot is the truth.
+  const autoSavedMemories = React.useMemo(() => workshopAutoSavedMemories(workshop.turns), [workshop.turns]);
+  const memoryControls = React.useMemo<WorkshopTurnMemoryControls>(() => ({
+    disabled: roomMutationLocked,
+    autoSaved: autoSavedMemories,
+    busyCards: projectMemory.busyCards,
+    cardErrors: projectMemory.cardErrors,
+    busyReceipts: projectMemory.busyReceipts,
+    receiptErrors: projectMemory.receiptErrors,
+    onSaveCard: projectMemory.saveCard,
+    onEditCard: projectMemory.editCard,
+    onDismissCard: projectMemory.dismissCard,
+    onReopenCard: projectMemory.reopenCard,
+    onSaveTurn: projectMemory.saveTurn,
+    onEditMemory: projectMemory.editMemory,
+    onForget: projectMemory.forget,
+    onRestore: projectMemory.restore,
+    onOpenManager: memoryManager.openManager
+  }), [
+    roomMutationLocked, autoSavedMemories, projectMemory.busyCards, projectMemory.cardErrors,
+    projectMemory.busyReceipts, projectMemory.receiptErrors, projectMemory.saveCard,
+    projectMemory.editCard, projectMemory.dismissCard, projectMemory.reopenCard, projectMemory.saveTurn,
+    projectMemory.editMemory, projectMemory.forget, projectMemory.restore, memoryManager.openManager
+  ]);
 
   // Recomputing a full word split per streamed token was O(excerpt) work on
   // the token clock (PR #67 review #11) — the excerpt only changes on re-pin.
@@ -610,8 +660,17 @@ export const WorkshopApp: React.FC = () => {
     () => startupNotice.dismissStartupNotice(false),
     [startupNotice.dismissStartupNotice]
   );
-  const openBehaviorModal = React.useCallback(() => setBehaviorModalOpen(true), []);
-  const closeBehaviorModal = React.useCallback(() => setBehaviorModalOpen(false), []);
+  const { requestListing: requestMemoryListing, setSettingsVisible: setMemorySettingsVisible } = memoryManager;
+  const openBehaviorModal = React.useCallback(() => {
+    setBehaviorModalOpen(true);
+    setMemorySettingsVisible(true);
+    requestMemoryListing();
+  }, [requestMemoryListing, setMemorySettingsVisible]);
+  const openMemoryManagerFromSettings = React.useCallback(() => memoryManager.openManager(), [memoryManager.openManager]);
+  const closeBehaviorModal = React.useCallback(() => {
+    setBehaviorModalOpen(false);
+    setMemorySettingsVisible(false);
+  }, [setMemorySettingsVisible]);
   const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
     workshop.requestContextCatalog();
     setContextSelectorMode(mode);
@@ -659,7 +718,7 @@ export const WorkshopApp: React.FC = () => {
     requestReadInResource: readIn.requestReadInResource,
     openReadInResource: readIn.openReadInResource,
     clearReadInContent: readIn.clearReadInContent,
-    readInScopeKey: `${railRoomKey}\u0000${chatTargetIdentity}`,
+    readInScopeKey: `${roomKey}\u0000${chatTargetIdentity}`,
     turnPreview: bookmarks.turnPreview,
     requestTurnPreview: bookmarks.requestTurnPreview,
     clearTurnPreview: bookmarks.clearTurnPreview
@@ -1068,7 +1127,7 @@ export const WorkshopApp: React.FC = () => {
   const railContent = (
     <WorkshopRail
       tabs={railTabs}
-      roomKey={railRoomKey}
+      roomKey={roomKey}
       excerpt={{
         excerpt: workshop.excerpt,
         shelvedExcerpt: workshop.shelvedExcerpt,
@@ -1250,6 +1309,7 @@ export const WorkshopApp: React.FC = () => {
             bookmarkedTurnIds={bookmarks.bookmarkedTurnIds}
             bookmarkDisabled={roomMutationLocked}
             onToggleBookmark={bookmarks.setTurnBookmark}
+            memory={memoryControls}
             modelOptions={modelsSettings.modelOptions}
             modelsBeforeWindow={workshop.modelsBeforeWindow}
           />
@@ -1635,10 +1695,23 @@ export const WorkshopApp: React.FC = () => {
         behavior={workshop.conversationBehavior}
         writerProfile={workshop.writerProfile}
         webResearch={workshop.webResearch}
+        projectMemoryMode={workshop.projectMemoryMode}
+        memory={workshopMemoryTabInputOf(memoryManager.listing)}
+        memoryFolder={memoryManager.folder}
+        memoryExplainerOpen={memoryExplainer.explainerOpen}
+        onToggleMemoryExplainer={memoryExplainer.toggleExplainer}
         isRunning={roomMutationLocked}
         errorMessage={workshop.errorMessage}
         onApply={workshop.setConversationSettings}
+        onOpenMemoryManager={openMemoryManagerFromSettings}
+        onOpenMemoryFolder={memoryManager.openFolder}
         onClose={closeBehaviorModal}
+      />
+      <WorkshopMemoryManagerMount
+        manager={memoryManager}
+        mode={workshop.projectMemoryMode}
+        onEdit={projectMemory.editMemory}
+        onNewMemory={projectMemory.newMemory}
       />
         <WorkshopContextSelectorModal
           open={contextSelectorOpen}
@@ -1683,6 +1756,13 @@ export const WorkshopApp: React.FC = () => {
         onMoreInfo={openSchematic}
       />
       <WorkshopPersonaSchematicModal personaId={schematicPersonaId} onBack={backToPersonas} />
+      <WorkshopMemorySheet
+        sheet={projectMemory.sheet}
+        onChange={projectMemory.updateDraft}
+        onDropReplaced={projectMemory.dropReplaced}
+        onSubmit={projectMemory.submitSheet}
+        onClose={projectMemory.closeSheet}
+      />
       <WorkshopSaveSessionModal
         open={saveSessionModalOpen}
         available={workshop.persistenceAvailable}

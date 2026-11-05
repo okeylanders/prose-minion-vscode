@@ -25,6 +25,8 @@ import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import { assertWorkshopTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
 import { contextSourceProvenanceFault } from '@orchestration/ContextSourceRecord';
 import { assertWorkshopBookmarksShape } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
+import { assertWorkshopMemoryProposalShape } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
+import { assertWorkshopMemoryReceiptShape } from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
 import {
   isLiveWorkshopWidgetId,
   isWorkshopWidgetId
@@ -52,6 +54,7 @@ import {
   shapeError,
   stringAt
 } from '@/application/services/workshop/persistedValidation';
+import { assertWorkshopProjectMemoryDeliveryShape } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -582,7 +585,14 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       // Conversation Widgets (ADR 2026-07-22).
       'widgetCommit',
       'widgetRecommendation',
-      'standingDirectiveChange'
+      'standingDirectiveChange',
+      // Project memory (ADR 2026-11-04 D6, D7; additive, no version bump).
+      'memoryProposals',
+      // A development checkpoint's single card (Slice 6b): checked, then normalized; refused in the current shape.
+      'memoryProposal',
+      'projectMemoryReceipt',
+      // Project memory's delivery record (ADR 2026-11-04 D14; additive).
+      'projectMemoryDelivery'
     ]
   );
   stringAt(turn.id, `${path}.id`);
@@ -652,12 +662,17 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
     }
     assertTurnWidgetRecommendation(turn.widgetRecommendation, `${path}.widgetRecommendation`);
   }
+  if (turn.projectMemoryDelivery !== undefined) {
+    assertWorkshopProjectMemoryDeliveryShape(turn.projectMemoryDelivery, `${path}.projectMemoryDelivery`, turn);
+  }
   if (turn.standingDirectiveChange !== undefined) {
     assertStandingDirectiveChange(
       turn.standingDirectiveChange,
       `${path}.standingDirectiveChange`
     );
   }
+  assertWorkshopMemoryProposalShape(turn, path, checkpoint);
+  assertWorkshopMemoryReceiptShape(turn, path);
 }
 
 function assertTurnWidgetCommit(value: unknown, path: string): void {

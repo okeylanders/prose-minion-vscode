@@ -37,7 +37,8 @@ const kindLabel = (kind: ContextSourceKind): string => ({
   resource: 'project resource',
   'tool-evidence': 'tool report',
   dictionary: 'dictionary',
-  transcript: 'past session'
+  transcript: 'past session',
+  memory: 'project note'
 })[kind];
 
 const originLabel = (origin: ContextSourceOrigin, requesterLabel?: string): string => ({

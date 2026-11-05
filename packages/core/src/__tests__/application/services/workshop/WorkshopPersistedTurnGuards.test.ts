@@ -180,10 +180,53 @@ describe('persisted Workshop turn guards', () => {
     expect(imported.map((outcome) => [outcome.key, outcome.status])).toEqual([['host', 'imported'], ['guest:cliff', 'imported']]);
   });
 
+  it('saves and reopens every project-memory operation, artifact, and Project note row (ADR 2026-11-04 D12)', () => {
+    const memory = [
+      ['memory.catalog', 'memory_catalog'],
+      ['memory.search', 'memory_search'],
+      ['memory.read', 'memory_read']
+    ] as const;
+    const raw = JSON.parse(JSON.stringify(savedRoom(memory.map(([operation]) => operation)))) as {
+      workshop: { turns: MutableTurn[] };
+      conversations: ConversationArchiveEntryV1<WorkshopConversationLogicalKey>[];
+    };
+    const row = (deliveredAt: number) => ({
+      kind: 'memory' as const,
+      origin: 'host' as const,
+      label: 'The Rabbit\'s watch runs backward',
+      sizeChars: 400,
+      isEstimate: true,
+      deliveredAt
+    });
+    raw.conversations = (['host', 'guest:cliff'] as const).map((key, index) => ({
+      key,
+      toolName: key === 'host' ? 'workshop-persona' : 'workshop-guest',
+      messages: [
+        { role: 'user', content: 'What did we settle about the watch?' },
+        { role: 'assistant', content: 'The saved note says it runs backward.' }
+      ],
+      lastActivity: 10 + index,
+      contextSources: [row(20 + index)],
+      nextArtifactNumber: 2
+    }));
+
+    const saved = parseWorkshopPersistedSession(raw);
+    const reopened = decodeWorkshopPersistedSessionCheckpoint(JSON.parse(JSON.stringify(saved))).session;
+    expect(reopened.workshop.turns.map((turn) => turn.artifact)).toEqual(expect.arrayContaining(memory.map(([, artifact]) => artifact)));
+    expect(reopened.workshop.turns.filter((turn) => turn.toolLabel === 'Project Memory')).toHaveLength(3);
+    expect(reopened.workshop.turns.map((turn) => turn.capability?.operation))
+      .toEqual(expect.arrayContaining(memory.map(([operation]) => operation)));
+    const imported = new ConversationManager().importConversations(
+      (reopened.conversations as ConversationArchiveEntryV1<WorkshopConversationLogicalKey>[])
+        .map((entry) => ({ entry, systemMessage: `${entry.toolName} system` }))
+    );
+    expect(imported.map((outcome) => [outcome.key, outcome.status])).toEqual([['host', 'imported'], ['guest:cliff', 'imported']]);
+  });
+
   it('rejects a capability operation outside the closed list on load and save', () => {
     const raw = editedRoom((turns) => {
-      // 'memory.read' is reserved for derived material (ADR 2026-10-05) and listed nowhere.
-      capabilityTurn(turns).capability!.operation = 'memory.read';
+      // `memory.*` is read-only (ADR 2026-11-04 D1): no write operation is listed.
+      capabilityTurn(turns).capability!.operation = 'memory.save';
     });
 
     expect(() => decodeWorkshopPersistedSessionCheckpoint(raw)).toThrow(/capability\.operation must be/);
@@ -192,8 +235,8 @@ describe('persisted Workshop turn guards', () => {
 
   it('rejects a turn artifact outside the closed list on load and save', () => {
     const raw = editedRoom((turns) => {
-      // 'memory_read' is reserved for derived material (ADR 2026-10-05) and listed nowhere.
-      capabilityTurn(turns).artifact = 'memory_read';
+      // `memory.*` is read-only (ADR 2026-11-04 D1): no write artifact is listed.
+      capabilityTurn(turns).artifact = 'memory_save';
     });
 
     expect(() => decodeWorkshopPersistedSessionCheckpoint(raw)).toThrow(/artifact must be/);

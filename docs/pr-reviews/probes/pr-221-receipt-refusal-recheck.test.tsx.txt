@@ -1,0 +1,200 @@
+/** @jest-environment jsdom */
+
+/** PR221 independent regression evidence: correlated Forget/Restore refusals
+ * must reach the real WorkshopApp UI. Host-valid receipts, production refusal
+ * text and shape validator. Correction recheck: original UI cases plus correlation and room controls. */
+
+import * as React from 'react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
+import {
+  DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  DEFAULT_WORKSHOP_WRITER_PROFILE,
+  MessageType,
+  WorkshopSessionSnapshot,
+  WorkshopSessionStateMessage,
+  WorkshopTurn
+} from '@messages';
+import { createMockVSCode } from '@/__tests__/mocks/vscode';
+
+jest.mock('@/presentation/webview/hooks/useVSCodeApi');
+jest.mock('@/presentation/webview/styles/workshop/tokens.css', () => ({}));
+jest.mock('@/presentation/webview/styles/workshop/shell.css', () => ({}));
+jest.mock('@/presentation/webview/styles/workshop/context.css', () => ({}));
+jest.mock('@/presentation/webview/styles/workshop/session.css', () => ({}));
+jest.mock('@/presentation/webview/styles/workshop/memory.css', () => ({}));
+jest.mock('@/presentation/webview/components/workshop/widgets/gesturePlayground/gesturePlayground.css', () => ({}));
+jest.mock('@/presentation/webview/components/workshop/widgets/lexicalGravity/lexicalGravity.css', () => ({}));
+jest.mock('@/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariations.css', () => ({}));
+jest.mock('@/presentation/webview/components/workshop/widgets/showVsTell/showVsTell.css', () => ({}));
+jest.mock('@/presentation/webview/components/workshop/standingDirectiveRail.css', () => ({}));
+jest.mock('@/presentation/webview/components/workshop/schematic/schematic.css', () => ({}));
+// eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked module's export is a component name
+jest.mock('@/presentation/webview/components/shared/PmLogo', () => ({ PmLogo: () => null }));
+
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+import { WorkshopApp } from '@/presentation/webview/WorkshopApp';
+
+const session = (overrides: Partial<WorkshopSessionSnapshot> = {}): WorkshopSessionStateMessage => ({
+  type: MessageType.WORKSHOP_SESSION_STATE,
+  source: 'extension.workshop',
+  payload: {
+    session: {
+      scope: 'open',
+      participantSubjectReady: true,
+      excerptVersion: 0,
+      replacementCount: 0,
+      roomRevision: 1,
+      contextRevision: 0,
+      contextAttachments: [],
+      pendingMessageAttachments: [],
+      widgetConfigs: [],
+      standingDirectives: [],
+      todos: [],
+      bookmarks: [],
+      turns: [],
+      turnRewindability: {},
+      totalTurns: 0,
+      truncatedTurns: 0,
+      roomHasMemory: true,
+      participants: {
+        host: { personaId: 'jill', hasConversation: true },
+        toolSidecars: [],
+        personaGuests: [],
+        chatTarget: { kind: 'host' }
+      },
+      conversationBehavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR },
+      ...overrides
+    },
+    writerProfile: { ...DEFAULT_WORKSHOP_WRITER_PROFILE },
+    webResearch: { enabled: false },
+    projectMemory: 'ask',
+    persistence: { available: true, degradedConversationKeys: [] }
+  },
+  timestamp: 0
+});
+
+
+const deliver = (message: unknown) =>
+  act(() => window.dispatchEvent(new MessageEvent('message', { data: message })));
+
+
+
+import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
+import { WORKSHOP_PROJECT_MEMORY_REFUSALS } from '@/application/handlers/domain/workshop/WorkshopProjectMemoryRefusals';
+import { assertWorkshopMemoryReceiptShape, workshopMemoryReceiptContent } from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
+
+const answer = (requestId: string, ok: boolean, error?: string) => ({
+ type: MessageType.WORKSHOP_MEMORY_WRITE_RESULT, source: 'extension.workshop', timestamp: 2,
+ payload: { requestId, ok, ...(error ? { error } : {}) }
+} as const);
+
+it.each(['Forget', 'Restore'] as const)('PR221: displays a correlated %s refusal', (action) => {
+ const vscode = createMockVSCode();
+ (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+ Element.prototype.scrollIntoView = jest.fn();
+ render(<WorkshopApp />);
+ const receipt: WorkshopTurn = {
+   id: 'memory-receipt-1', role: 'system', kind: 'divider', participant: 'session', artifact: 'memory_receipt',
+   content: '', timestamp: 1, excerptVersion: 0,
+   projectMemoryReceipt: { action: action === 'Forget' ? 'saved' : 'forgotten', by: action === 'Forget' ? 'auto' : 'writer',
+     memoryId: 'mem-7f3c21', title: 'Tea', version: '123456abcdef', ...(action === 'Forget' ? { proposedBy: 'jill' as const } : {}) }
+ };
+ receipt.content = workshopMemoryReceiptContent(receipt.projectMemoryReceipt!, 'Jill');
+ assertWorkshopMemoryReceiptShape(receipt as unknown as Record<string, unknown>, 'receipt');
+ deliver(session({ turns: [receipt], totalTurns: 1 }));
+ fireEvent.click(screen.getByRole('button', { name: action }));
+ const request = vscode.postMessage.mock.calls.map(([message]) => message).find(message => message.type === MessageType.WORKSHOP_MEMORY_FORGET);
+ expect(request.payload).toMatchObject({ memoryId: 'mem-7f3c21', action: action.toLowerCase() });
+ const error = action === 'Forget' ? WORKSHOP_PROJECT_MEMORY_REFUSALS.busy : WORKSHOP_PROJECT_MEMORY_REFUSALS.missing;
+ deliver(answer('unrelated', false, error));
+ expect(screen.queryByText(error)).toBeNull();
+ deliver(answer(request.payload.requestId, false, error));
+ expect(screen.queryByText(error)).not.toBeNull();
+});
+
+it('PR221 control: hook correlates refusal and clears it on retry/success', () => {
+ const vscode = createMockVSCode();
+ (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+ const {result} = renderHook(() => useWorkshopProjectMemory());
+ const request = () => vscode.postMessage.mock.calls.map(([message]) => message).filter(message => message.type === MessageType.WORKSHOP_MEMORY_FORGET).slice(-1)[0].payload.requestId;
+ act(() => result.current.forget('mem-7f3c21', 'receipt-a'));
+ const first = request();
+ act(() => result.current.handleWriteResult(answer('other', false, WORKSHOP_PROJECT_MEMORY_REFUSALS.busy)));
+ expect(result.current.receiptErrors.get('receipt-a')?.error).toBeUndefined();
+ act(() => result.current.handleWriteResult(answer(first, false, WORKSHOP_PROJECT_MEMORY_REFUSALS.busy)));
+ expect(result.current.receiptErrors.get('receipt-a')?.error).toBe(WORKSHOP_PROJECT_MEMORY_REFUSALS.busy);
+ act(() => result.current.forget('mem-7f3c21', 'receipt-a'));
+ expect(result.current.receiptErrors.get('receipt-a')?.error).toBeUndefined();
+ act(() => result.current.handleWriteResult(answer(request(), true)));
+ expect(result.current.receiptErrors.get('receipt-a')?.error).toBeUndefined();
+ act(() => result.current.handleWriteResult(answer(first, false, WORKSHOP_PROJECT_MEMORY_REFUSALS.busy)));
+ expect(result.current.receiptErrors.get('receipt-a')?.error).toBeUndefined();
+});
+
+it('PR221 recheck: independent receipts, reversed responses, replaced rooms, reused receipt ids', () => {
+ const vscode = createMockVSCode();
+ (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+ const {result, rerender} = renderHook(({roomKey}) => useWorkshopProjectMemory({roomKey}), {initialProps:{roomKey:'room:1'}});
+ const requests = () => vscode.postMessage.mock.calls.map(([message]) => message).filter(message => message.type === MessageType.WORKSHOP_MEMORY_FORGET).map(message => message.payload.requestId);
+ act(() => result.current.forget('mem-7f3c21', 'receipt-a'));
+ act(() => result.current.restore('mem-7f3c21', 'receipt-b'));
+ const [a,b] = requests();
+ expect([...result.current.busyReceipts].sort()).toEqual(['receipt-a','receipt-b']);
+ act(() => result.current.handleWriteResult(answer(b, false, WORKSHOP_PROJECT_MEMORY_REFUSALS.missing)));
+ expect(result.current.receiptErrors.get('receipt-b')).toEqual({action:'restore',error:WORKSHOP_PROJECT_MEMORY_REFUSALS.missing});
+ expect([...result.current.busyReceipts]).toEqual(['receipt-a']);
+ act(() => result.current.handleWriteResult(answer(a, false, WORKSHOP_PROJECT_MEMORY_REFUSALS.busy)));
+ expect(result.current.receiptErrors.size).toBe(2);
+ act(() => result.current.restore('mem-7f3c21', 'receipt-b'));
+ expect(result.current.receiptErrors.has('receipt-b')).toBe(false);
+ expect(result.current.receiptErrors.has('receipt-a')).toBe(true);
+ const retry = requests().slice(-1)[0];
+ act(() => result.current.handleWriteResult(answer(b, false, WORKSHOP_PROJECT_MEMORY_REFUSALS.missing)));
+ expect(result.current.busyReceipts.has('receipt-b')).toBe(true);
+ expect(result.current.receiptErrors.has('receipt-b')).toBe(false);
+ rerender({roomKey:'room:2'});
+ expect(result.current.receiptErrors.size).toBe(0);
+ expect(result.current.busyReceipts.size).toBe(0);
+ act(() => result.current.restore('mem-7f3c21', 'receipt-b'));
+ const replacement = requests().slice(-1)[0];
+ act(() => result.current.handleWriteResult(answer(retry, false, WORKSHOP_PROJECT_MEMORY_REFUSALS.busy)));
+ expect(result.current.busyReceipts.has('receipt-b')).toBe(true);
+ expect(result.current.receiptErrors.size).toBe(0);
+ act(() => result.current.handleWriteResult(answer(replacement, true)));
+ expect(result.current.busyReceipts.size).toBe(0);
+ expect(result.current.receiptErrors.size).toBe(0);
+});
+
+it('PR221 recheck: real App disables a pending receipt, retries cleanly, clears on replacement and ignores its late answer', () => {
+ const vscode = createMockVSCode();
+ (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+ Element.prototype.scrollIntoView = jest.fn();
+ render(<WorkshopApp />);
+ const receipt: WorkshopTurn = {id:'receipt-a',role:'system',kind:'divider',participant:'session',artifact:'memory_receipt',content:'Saved to project memory: Tea (mem-7f3c21).',timestamp:1,excerptVersion:0,
+ projectMemoryReceipt:{action:'saved',by:'auto',memoryId:'mem-7f3c21',title:'Tea',version:'123456abcdef',proposedBy:'jill'}};
+ const request = () => vscode.postMessage.mock.calls.map(([message]) => message).filter(message => message.type === MessageType.WORKSHOP_MEMORY_FORGET).slice(-1)[0].payload.requestId;
+ deliver(session({turns:[receipt],totalTurns:1}));
+ const button = () => screen.getByRole('button',{name:'Forget'}) as HTMLButtonElement;
+ fireEvent.click(button());
+ expect(button().disabled).toBe(true);
+ const first = request();
+ fireEvent.click(button());
+ expect(request()).toBe(first);
+ deliver(answer(first,false,WORKSHOP_PROJECT_MEMORY_REFUSALS.busy));
+ expect(button().disabled).toBe(false);
+ expect(screen.getByRole('alert').textContent).toContain(WORKSHOP_PROJECT_MEMORY_REFUSALS.busy);
+ fireEvent.click(button());
+ const retry = request();
+ expect(screen.queryByRole('alert')).toBeNull();
+ deliver(answer(first,false,WORKSHOP_PROJECT_MEMORY_REFUSALS.missing));
+ expect(screen.queryByRole('alert')).toBeNull();
+ expect(button().disabled).toBe(true);
+ deliver(session({roomRevision:2,turns:[receipt],totalTurns:1}));
+ expect(button().disabled).toBe(false);
+ deliver(answer(retry,false,WORKSHOP_PROJECT_MEMORY_REFUSALS.busy));
+ expect(screen.queryByRole('alert')).toBeNull();
+ fireEvent.click(button());
+ deliver(answer(request(),true));
+ expect(button().disabled).toBe(false);
+ expect(screen.queryByRole('alert')).toBeNull();
+});

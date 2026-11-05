@@ -2,6 +2,7 @@ import {
   AgentRunEngine,
   AgentRunUnavailableError
 } from '@orchestration/AgentRunEngine';
+import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
 import { AgentCapability, CapabilityContextWindow } from '@orchestration/AgentRunContracts';
 import { measureContextWindow } from '@orchestration/RequestContextPreflight';
 import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
@@ -850,6 +851,109 @@ describe('AgentRunEngine', () => {
     expect(logs).toContain(invalid);
     expect(logs).toContain('END REJECTED CAPABILITY RESPONSE');
     expect(logs).not.toContain('PRIVATE PASSAGE');
+  });
+
+  it('dumps a rejected response through the capability\'s redaction, so no memory proposal reaches the log (ADR 2026-11-04 D9)', async () => {
+    const guides = { ...capability(), redactPrivateControls: (content: string) => extractWorkshopReplyControls(content, { memoryOpen: false }).redacted };
+    const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    const debugSettings = { get: jest.fn().mockReturnValue(true) };
+    const diagnosticEngine = new AgentRunEngine(client as never, conversations, undefined, output, undefined, debugSettings as never);
+    const invalid = '<prose-minion-tool-call name="resource.read"><paths><path>outside-catalog.md</path></paths></prose-minion-tool-call>';
+    const trailer = '<prose-minion-memory-proposal><title>MEMORY-SENTINEL</title></prose-minion-memory-proposal>';
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce(stream([`${invalid}\n\n${trailer}`]))
+      .mockReturnValueOnce(stream(['Safe final prose.']));
+
+    try {
+      await diagnosticEngine.runInitial({
+        toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze this.',
+        policy: AGENT_RUN_POLICIES.assistant, capability: guides,
+        options: { onToken: jest.fn() }
+      });
+    } finally {
+      diagnosticEngine.dispose();
+    }
+
+    const logs = output.appendLine.mock.calls.flat().join('\n');
+    expect(logs).toContain('BEGIN REJECTED CAPABILITY RESPONSE');
+    expect(logs).toContain('[project memory proposal removed]');
+    expect(logs).not.toContain('MEMORY-SENTINEL');
+  });
+
+  it('never replays, retains or logs a memory proposal from an intermediate response (PR #200 F-01)', async () => {
+    const redact = (content: string) => extractWorkshopReplyControls(content, { memoryOpen: false }).redacted;
+    // A trailing proposal beside a call is accepted here, so both paths that
+    // replay an intermediate response (correction and capability round) run.
+    const guides = {
+      ...capability(),
+      catalog: 'workshopToolContext' as const,
+      inspectRequest: jest.fn((candidate: string) => guideGate.inspect(extractWorkshopReplyControls(candidate, { memoryOpen: false }).rest)),
+      redactPrivateControls: redact
+    };
+    const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    const debugSettings = { get: jest.fn().mockReturnValue(true) };
+    const retaining = new AgentRunEngine(client as never, conversations, undefined, output, undefined, debugSettings as never);
+    const invalid = '<prose-minion-tool-call name="resource.read"><paths><path>outside-catalog.md</path></paths></prose-minion-tool-call>';
+    const trailer = (n: number) => `<prose-minion-memory-proposal><title>MEMORY-SENTINEL-${n}</title></prose-minion-memory-proposal>`;
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce(stream([`${invalid}\n\n${trailer(1)}`]))
+      .mockReturnValueOnce(stream([`${GUIDE_REQUEST}\n\n${trailer(2)}`]))
+      .mockReturnValueOnce(stream(['Final prose.']));
+
+    let result;
+    try {
+      result = await retaining.runInitial({
+        toolName: 'workshop-tool', systemMessage: 'System', userMessage: 'Analyze this.',
+        policy: AGENT_RUN_POLICIES.workshopTool, capability: guides,
+        options: { onToken: jest.fn() }
+      });
+    } finally {
+      retaining.dispose();
+    }
+
+    expect(guides.fulfill).toHaveBeenCalledTimes(1);
+    const replayed = JSON.stringify(client.createStreamingChatCompletion.mock.calls.slice(1));
+    expect(replayed).toContain('[project memory proposal removed]');
+    expect(replayed).toContain('outside-catalog.md');
+    expect(replayed).toContain('dialogue.md');
+    expect(replayed).not.toContain('MEMORY-SENTINEL');
+    expect(JSON.stringify(conversations.getMessages(result.conversationId!))).not.toContain('MEMORY-SENTINEL');
+    expect(output.appendLine.mock.calls.flat().join('\n')).not.toContain('MEMORY-SENTINEL');
+  });
+
+  it.each([true, false])('never replays, retains or logs an overlapping-tag proposal (PR #200 F-03 recheck; debug %s)', async (debug) => {
+    const redact = (content: string) => extractWorkshopReplyControls(content, { memoryOpen: false }).redacted;
+    const guides = {
+      ...capability(),
+      catalog: 'workshopToolContext' as const,
+      inspectRequest: jest.fn((candidate: string) => guideGate.inspect(extractWorkshopReplyControls(candidate, { memoryOpen: false }).rest)),
+      redactPrivateControls: redact
+    };
+    const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    const debugSettings = { get: jest.fn().mockReturnValue(debug) };
+    const retaining = new AgentRunEngine(client as never, conversations, undefined, output, undefined, debugSettings as never);
+    const invalid = '<prose-minion-tool-call name="resource.read"><paths><path>outside-catalog.md</path></paths></prose-minion-tool-call>';
+    const witness = '<prose-minion-memory-proposal data-x="</prose-minion-memory-proposal>">PRIVATE_MEMORY_SENTINEL_71bb</prose-minion-memory-proposal>';
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce(stream([`${invalid}\n\n${witness}`]))
+      .mockReturnValueOnce(stream([`${GUIDE_REQUEST}\n\n${witness}`]))
+      .mockReturnValueOnce(stream(['Final prose.']));
+
+    let result;
+    try {
+      result = await retaining.runInitial({
+        toolName: 'workshop-tool', systemMessage: 'System', userMessage: 'Analyze this.',
+        policy: AGENT_RUN_POLICIES.workshopTool, capability: guides,
+        options: { onToken: jest.fn() }
+      });
+    } finally {
+      retaining.dispose();
+    }
+
+    expect(guides.fulfill).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(client.createStreamingChatCompletion.mock.calls.slice(1))).not.toContain('PRIVATE_MEMORY_SENTINEL');
+    expect(JSON.stringify(conversations.getMessages(result.conversationId!))).not.toContain('PRIVATE_MEMORY_SENTINEL');
+    expect(output.appendLine.mock.calls.flat().join('\n')).not.toContain('PRIVATE_MEMORY_SENTINEL');
   });
 
   it('withholds the full rejected-response dump by default and says how to enable it', async () => {

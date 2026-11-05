@@ -16,6 +16,7 @@
  * point; Sprint 02 rewinds to each one and compares (the equivalence oracle).
  */
 
+import type { WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import {
   completeWorkshopRun,
   workshopMessageCompletionCopy,
@@ -51,6 +52,7 @@ import type {
   WorkshopChatTarget,
   WorkshopGesturePlaygroundDraft,
   WorkshopPersonaId,
+  WorkshopProjectMemoryDelivery,
   WorkshopToolId,
   WorkshopTurn
 } from '@messages';
@@ -114,6 +116,13 @@ export class ScriptedWorkshopRoom {
   private runCounter = 0;
   private readonly sidePass: WorkshopAnalysisSidePass;
 
+  /** The project-memory context completion reads (ADR 2026-11-04 D6); closed unless a test opens it. */
+  memoryContext?: WorkshopReplyMemoryContext;
+  /** Save and tell me's saver (Slice 5); absent, a card waits as under Ask first. */
+  memoryAutoSave?: (turn: WorkshopTurn, indexes: readonly number[]) => void;
+  /** Whether each reply's run had web search tools attached (Slice 5's hold). */
+  webResearchAttached = false;
+
   constructor() {
     this.session = new WorkshopSessionService(() => ++this.clock);
     this.delivery = new WorkshopRoomDeliveryService(this.session);
@@ -151,6 +160,8 @@ export class ScriptedWorkshopRoom {
       attachment?: ScriptedAttachment;
       resources?: string[];
       reply?: string;
+      /** Project memory this message delivered, staged as the persona capability stages it (D14). */
+      projectMemory?: WorkshopProjectMemoryDelivery;
     } = {}
   ): WorkshopTurn {
     this.session.setChatTarget({ kind: 'host' });
@@ -161,6 +172,9 @@ export class ScriptedWorkshopRoom {
       ? this.session.collectPendingHostUpdates()
       : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
     const writerTurn = this.session.beginPersonaMessage(requestId, text, this.refs(staged));
+    if (options.projectMemory) {
+      this.session.stageProjectMemoryDelivery(requestId, options.projectMemory);
+    }
     const evidence = this.recordCapabilityEvidence(requestId, options.capabilityRounds ?? 0);
     const replyContent = options.reply ?? `Host reply to "${text}".`;
     const conversationId = this.commitHistory(
@@ -279,7 +293,10 @@ export class ScriptedWorkshopRoom {
   }
 
   /** Writer-requested tool run: report (sidecar commit) then host synthesis. */
-  toolRun(toolId: WorkshopToolId): { report: WorkshopTurn; synthesis: WorkshopTurn } {
+  toolRun(
+    toolId: WorkshopToolId,
+    options: { projectMemory?: WorkshopProjectMemoryDelivery } = {}
+  ): { report: WorkshopTurn; synthesis: WorkshopTurn } {
     const toolRequestId = this.requestId(`tool-${toolId}`);
     this.session.beginToolRun(toolId, toolRequestId);
     const toolConversationId = this.commitHistory(
@@ -306,6 +323,9 @@ export class ScriptedWorkshopRoom {
       : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
     const synthesisRequestId = this.requestId(`synthesis-${toolId}`);
     this.session.beginPersonaSynthesis(synthesisRequestId, completion.turn.id);
+    if (options.projectMemory) {
+      this.session.stageProjectMemoryDelivery(synthesisRequestId, options.projectMemory);
+    }
     const hostConversationId = this.commitHistory(
       this.session.getHostConversationId(),
       `workshop_persona_${this.session.getSelectedPersonaId()}`,
@@ -522,6 +542,8 @@ export class ScriptedWorkshopRoom {
       discardConversation: (id) => this.conversations.deleteConversation(id),
       readRetainedHistory: (id) => this.conversations.getCommittedHistoryCounts(id),
       settleCommittedRun: settle,
+      memory: this.memoryContext,
+      ...(this.memoryAutoSave ? { memoryAutoSave: this.memoryAutoSave } : {}),
       log: (line) => this.log.push(line),
       events: silentEvents()
     });
@@ -651,7 +673,9 @@ export class ScriptedWorkshopRoom {
   }
 
   private result(content: string, conversationId: string | undefined): AnalysisResult {
-    return { toolName: 'scripted', content, conversationId } as AnalysisResult;
+    return {
+      toolName: 'scripted', content, conversationId, ...(this.webResearchAttached ? { webResearchAttached: true } : {})
+    } as AnalysisResult;
   }
 
   private requestId(kind: string): string {

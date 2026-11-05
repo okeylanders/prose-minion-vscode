@@ -21,6 +21,11 @@ export interface AnalysisResult {
   readonly model?: AnalysisRunModel;
   /** Who wrote `content`; only a `provider` reply may carry a model stamp. */
   readonly replySource?: InferenceReplySource;
+  /**
+   * The run had web search tools attached, whether or not it searched or
+   * cited (ADR 2026-11-04 D8, the web-research hold). Absent means none.
+   */
+  readonly webResearchAttached?: true;
 }
 
 /** A run's models (`ExecutionResult.models`) with the scope whose selection was requested. */
@@ -43,6 +48,7 @@ export interface AnalysisResultOptions {
   citations?: UrlCitation[];
   model?: AnalysisRunModel;
   replySource?: InferenceReplySource;
+  webResearchAttached?: true;
 }
 
 export class AnalysisResultFactory {

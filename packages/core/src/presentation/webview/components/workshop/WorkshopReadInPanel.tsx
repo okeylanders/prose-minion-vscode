@@ -36,7 +36,8 @@ const KIND_ICONS: Record<ContextSourceKind, IconName> = {
   // eslint-disable-next-line @typescript-eslint/naming-convention -- ContextSourceKind ids are kebab-case protocol literals.
   'tool-evidence': 'clipboard',
   dictionary: 'book',
-  transcript: 'history'
+  transcript: 'history',
+  memory: 'stamp'
 };
 
 const KIND_LABELS: Record<ContextSourceKind, string> = {
@@ -48,7 +49,8 @@ const KIND_LABELS: Record<ContextSourceKind, string> = {
   // eslint-disable-next-line @typescript-eslint/naming-convention -- ContextSourceKind ids are kebab-case protocol literals.
   'tool-evidence': 'tool report',
   dictionary: 'dictionary entry',
-  transcript: 'saved session'
+  transcript: 'saved session',
+  memory: 'project note'
 };
 
 const rowKey = (entry: ContextSourceEntry, index: number): string =>

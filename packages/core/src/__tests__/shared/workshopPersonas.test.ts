@@ -231,10 +231,14 @@ describe('Workshop persona catalog and packaged prompts', () => {
           return 'saved-session reads';
         case 'transcript.todos':
           return 'to-do lists';
+        case 'memory.read':
+          return 'project-note reads';
         case 'resource.catalog':
         case 'resource.search':
         case 'transcript.catalog':
         case 'transcript.search':
+        case 'memory.catalog':
+        case 'memory.search':
           return false;
       }
     };

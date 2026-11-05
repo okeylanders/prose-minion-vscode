@@ -32,7 +32,10 @@ const PUBLISHABLE_CAPABILITY_OPERATIONS: ReadonlySet<WorkshopCapabilityOperation
   // Reads and to-do lists of saved sessions are evidence the room may share
   // (ADR 2026-10-05 §7, D6); the catalog and search stay private discovery.
   'transcript.read',
-  'transcript.todos'
+  'transcript.todos',
+  // A memory read is published with the reply that used it (ADR 2026-11-04,
+  // question 5); the catalog and search stay private discovery.
+  'memory.read'
 ]);
 
 /**

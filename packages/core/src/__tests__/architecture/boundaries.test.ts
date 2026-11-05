@@ -83,6 +83,10 @@ const WORKSHOP_TODO_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopTodoHandler.ts';
 const WORKSHOP_BOOKMARK_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopBookmarkHandler.ts';
+const WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopProjectMemoryHandler.ts';
+const WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER =
+  'application/handlers/domain/workshop/WorkshopProjectMemoryManagerHandler.ts';
 const WORKSHOP_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopContextHandler.ts';
 const WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER =
@@ -183,6 +187,30 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_BOOKMARK_HANDLER_OWNER,
     registration: 'direct',
     messageTypes: ['WORKSHOP_REQUEST_TURN_PREVIEW']
+  },
+  // Project memory's writes (ADR 2026-11-04 D13; Slice 3): room changes behind
+  // the gate, the sheet's reads direct.
+  {
+    owner: WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: [
+      'WORKSHOP_MEMORY_PROPOSAL_ACTION',
+      'WORKSHOP_SAVE_TURN_TO_MEMORY',
+      'WORKSHOP_MEMORY_CREATE',
+      'WORKSHOP_MEMORY_UPDATE',
+      'WORKSHOP_MEMORY_FORGET'
+    ]
+  },
+  {
+    owner: WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_MEMORY_REQUEST_EDIT', 'WORKSHOP_MEMORY_ESTIMATE']
+  },
+  // Slice 4b's manager routes change no room state (no receipt, no snapshot), so none waits on the gate.
+  {
+    owner: WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_MEMORY_LIST', 'WORKSHOP_MEMORY_MANAGER_ACTION']
   },
   {
     owner: WORKSHOP_SESSION_HANDLER_OWNER,
@@ -326,6 +354,14 @@ const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
     reference: /WorkshopBookmarkHandler/
   },
   {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopProjectMemoryHandler.ts'),
+    reference: /WorkshopProjectMemoryHandler/
+  },
+  {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopProjectMemoryManagerHandler.ts'),
+    reference: /WorkshopProjectMemoryManagerHandler/
+  },
+  {
     file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopSessionExportHandler.ts'),
     reference: /WorkshopSessionExportHandler/
   }
@@ -338,6 +374,8 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
+  'WorkshopProjectMemoryHandler',
+  'WorkshopProjectMemoryManagerHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
   'WorkshopShowVsTellHandler',
@@ -997,6 +1035,38 @@ const RECALL_TYPE_ONLY_MODULE = /(?:^|\/)(?:WorkshopSessionStore|WorkshopSession
 /** These render thread-artifact bodies, which recall must never emit (runway F11). */
 const RECALL_FORBIDDEN_MODULE = /(?:^|\/)(?:WorkshopRoomFrameRenderer|WorkshopThreadArtifactFrame)$/;
 
+/**
+ * Project memory's read path (ADR 2026-11-04 D10, D12, D13): capability
+ * code, like recall. It may know the store and the coordinator only as
+ * types, so the library's read-only ports stay its only path to memory
+ * files and the accepted workspace.
+ */
+const WORKSHOP_MEMORY_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'memory');
+const WORKSHOP_MEMORY_MODULES = [
+  'ProjectMemoryCatalogFrame.ts',
+  'ProjectMemoryDeliveredView.ts',
+  'ProjectMemoryLibrary.ts',
+  'ProjectMemoryLibraryContracts.ts',
+  'ProjectMemoryManager.ts',
+  'ProjectMemoryPinnedBudget.ts',
+  'ProjectMemoryUpdateNote.ts',
+  'ProjectMemoryVersion.ts',
+  'ProjectMemoryWorkspaceIdentity.ts',
+  'ProjectMemoryWrites.ts',
+  'WorkshopMemoryAutoSave.ts',
+  'WorkshopMemoryEditAnchor.ts',
+  'WorkshopMemoryProposalPhrasing.ts',
+  'WorkshopProjectMemoryCapability.ts',
+  'WorkshopProjectMemoryCopy.ts',
+  'WorkshopProjectMemoryRenderer.ts',
+  'WorkshopProjectMemoryRequestCopy.ts',
+  'WorkshopProjectMemorySearch.ts',
+  'WorkshopProjectMemoryXmlCodec.ts',
+  'WorkshopReplyMemory.ts',
+  'WorkshopReplyMemoryEdit.ts'
+];
+const MEMORY_TYPE_ONLY_MODULE = /(?:^|\/)(?:ProjectMemoryStore|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService)$/;
+
 const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'shared', 'types', 'workshopCapabilities.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopAnalysisSidePass.ts'),
@@ -1005,7 +1075,8 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityResultLog.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopTranscriptRecallXmlCodec.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopPersonaCapability.ts'),
-  ...collectSourceFiles(WORKSHOP_RECALL_ROOT)
+  ...collectSourceFiles(WORKSHOP_RECALL_ROOT),
+  ...collectSourceFiles(WORKSHOP_MEMORY_ROOT)
 ];
 const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)|import\s+.*['"](?:vscode|react|@providers\/))/;
 
@@ -1015,7 +1086,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|ProjectMemoryLibrary|ProjectMemoryStore|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
 );
 
 /**
@@ -1599,6 +1670,37 @@ describe('architectural boundaries', () => {
       .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
   });
 
+  it('keeps project memory on its read-only ports and off the room-frame renderers (ADR 2026-11-04 D10, D12)', () => {
+    const memoryFiles = collectSourceFiles(WORKSHOP_MEMORY_ROOT);
+    const imports = memoryFiles.flatMap((file) =>
+      moduleImports(file, fs.readFileSync(file, 'utf8'))
+        .map((entry) => ({ file: path.relative(SRC_ROOT, file), ...entry }))
+    );
+
+    expect(memoryFiles.map((file) => path.basename(file)).sort()).toEqual(WORKSHOP_MEMORY_MODULES);
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(memoryFiles));
+    expect(imports
+      .filter(({ module, typeOnly }) => MEMORY_TYPE_ONLY_MODULE.test(module) && !typeOnly)
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    expect(imports
+      .filter(({ module }) => RECALL_FORBIDDEN_MODULE.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // Each module stays under 500 lines.
+    expect(memoryFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
+      .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
+  });
+
+  it('builds the project-memory store and library only at the composition root (ADR 2026-11-04 D10, D13)', () => {
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /\bnew\s+ProjectMemory(?:Library|Store)\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(constructions).toEqual([]);
+    const extension = fs.readFileSync(path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src/extension.ts'), 'utf8');
+    expect(extension.match(/\bnew\s+ProjectMemoryStore\s*\(/g)).toHaveLength(1);
+    expect(extension.match(/\bnew\s+ProjectMemoryLibrary\s*\(/g)).toHaveLength(1);
+  });
+
   it('tells a value import of a module from a type-only one', () => {
     const source = [
       "import type { A } from '@/x/WorkshopSessionStore';",
@@ -1733,11 +1835,13 @@ describe('architectural boundaries', () => {
     // Wayfinding Slice 2 added the Read in reader's two reads (direct).
     // Wayfinding Slice 4 added the bookmark set and rename (mutation).
     // Wayfinding Slice 5 added the read-only turn preview (direct).
-    expect(expectedOwnerPairs).toHaveLength(64);
+    // Project Memory Slice 3 added five writes (mutation) and the sheet's two reads (direct).
+    // Project Memory Slice 4b added the manager's listing and actions (direct).
+    expect(expectedOwnerPairs).toHaveLength(73);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(40);
+      .toHaveLength(45);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(24);
+      .toHaveLength(28);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -1834,7 +1938,7 @@ describe('architectural boundaries', () => {
         );
     });
 
-    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(6);
+    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(8);
     expect(offenders).toEqual([]);
   });
 
@@ -2356,6 +2460,8 @@ describe('architectural boundaries', () => {
       'lexicalGravity.ts',
       'lightboxTiles.ts',
       'participants.ts',
+      'projectMemory.ts',
+      'projectMemoryManager.ts',
       'seedDelivery.ts',
       'session.ts',
       'settings.ts',
@@ -2414,5 +2520,23 @@ describe('architectural boundaries', () => {
       .map(({ phase, file }) => `P${phase}:${file}`);
 
     expect(observed).toEqual([]);
+  });
+});
+
+describe('the shared claimed-file primitive (Workshop Project Memory, Slice 1)', () => {
+  it('keeps StoredFileClaims and StoredFileRewrite neutral: they import no Lightbox or project memory module', () => {
+    const modules = ['infrastructure/storage/StoredFileClaims.ts', 'infrastructure/storage/StoredFileRewrite.ts'];
+    const imports = (file: string) => [...fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')
+      .matchAll(/^\s*import\s[^;]*?from\s+['"]([^'"]+)['"]/gms)].map((match) => match[1]);
+    const feature = /(?:^|\/)(?:Lightbox|lightbox|ProjectMemory|projectMemory)[^/]*$|\/lightbox\//;
+    expect(modules.flatMap((file) => imports(file).filter((specifier) => feature.test(specifier)).map((specifier) => `${file} → ${specifier}`)))
+      .toEqual([]);
+    // Each still imports something, so the scan reads what it means to.
+    expect(modules.every((file) => imports(file).length > 0)).toBe(true);
+    // Both stores reach the primitive; no other module builds its claims.
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => /\bnew\s+StoredFileClaims\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(constructions).toEqual(['infrastructure/storage/ProjectMemoryStore.ts']);
   });
 });

@@ -39,8 +39,14 @@ import {
   WorkshopTurnArtifact,
   WorkshopTurnWidgetCommit,
   WorkshopWidgetConfigSnapshot,
-  WorkshopWidgetRecommendation
+  WorkshopWidgetRecommendation,
+  WorkshopMemoryProposal,
+  WorkshopMemoryHold,
+  WorkshopMemoryProposalState,
+  WorkshopProjectMemoryReceipt,
+  WorkshopProjectMemoryDelivery
 } from '@messages';
+import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
 import {
@@ -48,6 +54,7 @@ import {
   WorkshopCapabilityPrincipal
 } from '@shared/types/workshopCapabilities';
 import {
+  isWorkshopPersonaId,
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
@@ -135,6 +142,12 @@ import {
   workshopRewindTurnFacts
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import { cloneTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
+import { cloneWorkshopMemoryProposal } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
+import { workshopMemoryProposalAt } from '@shared/constants/workshopProjectMemoryWrites';
+import {
+  cloneWorkshopMemoryReceipt,
+  workshopMemoryReceiptContent
+} from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
 import { workshopModelsBeforeWindow } from '@shared/workshop/workshopModelSlices';
 import {
   attachmentSnapshot,
@@ -1486,6 +1499,9 @@ export class WorkshopSessionService {
         case 'transcript.search': return 'transcript_search';
         case 'transcript.read': return 'transcript_read';
         case 'transcript.todos': return 'transcript_todos';
+        case 'memory.catalog': return 'memory_catalog';
+        case 'memory.search': return 'memory_search';
+        case 'memory.read': return 'memory_read';
         default: return assertNever(input.details.operation);
       }
     })();
@@ -1669,7 +1685,8 @@ export class WorkshopSessionService {
     actionableFindings: WorkshopActionableFinding[] = [],
     citations?: UrlCitation[],
     widgetRecommendation?: WorkshopWidgetRecommendation,
-    model?: WorkshopTurnModel
+    model?: WorkshopTurnModel,
+    memoryProposals: readonly WorkshopMemoryProposal[] = []
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1717,6 +1734,10 @@ export class WorkshopSessionService {
       // Persona-only decoration: tool reports never carry recommendation chips.
       widgetRecommendation: (isHost || isGuest) && widgetRecommendation
         ? cloneWidgetRecommendation(widgetRecommendation)
+        : undefined,
+      // Memory cards belong to a persona's reply (ADR 2026-11-04 D6; never an empty list).
+      memoryProposals: (isHost || isGuest) && memoryProposals.length > 0
+        ? memoryProposals.map(cloneWorkshopMemoryProposal)
         : undefined
     };
 
@@ -1759,6 +1780,12 @@ export class WorkshopSessionService {
         );
       }
     }
+    // What project memory the run's message delivered rides the reply that
+    // received it, so any cut that removes the delivery removes its record,
+    // a synthesis's included (ADR 2026-11-04 D14; PR #198 F-01).
+    if ((isHost || isGuest) && active.projectMemoryDelivery) {
+      turn.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, active.projectMemoryDelivery);
+    }
     this.turnLedger.append(turn);
     for (const capabilityTurnId of new Set(active.capabilityTurnIds ?? [])) {
       this.turnLedger.update(capabilityTurnId, (capabilityTurn) => {
@@ -1781,6 +1808,29 @@ export class WorkshopSessionService {
     return cloneTurn(turn);
   }
 
+  /**
+   * Stage what project memory this run's message delivered (ADR 2026-11-04
+   * D14). It is written onto the reply only if the reply commits, so a
+   * cancelled, abandoned or rolled-back run leaves no record. False when the
+   * run is no longer the active one.
+   */
+  stageProjectMemoryDelivery(requestId: string, delivery: WorkshopProjectMemoryDelivery): boolean {
+    const active = this.activeRun;
+    if (active?.requestId !== requestId) {
+      return false;
+    }
+    // A record belongs to the conversation this run's reply answers for.
+    const own = active.target === 'host'
+      ? delivery.participant.kind === 'host'
+      : active.target === 'personaGuest' && delivery.participant.kind === 'personaGuest'
+        && delivery.participant.personaId === active.guestPersonaId;
+    if (!own) {
+      return false;
+    }
+    this.activeRun!.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, delivery)[0];
+    return true;
+  }
+
   addTodoFromFinding(sourceTurnId: string, findingKey: string): WorkshopTodoItem {
     const sourceTurn = this.turnLedger.find(sourceTurnId);
     return this.todoLedger.addFromFinding(sourceTurn, findingKey, this.getExcerptVersion());
@@ -1800,6 +1850,66 @@ export class WorkshopSessionService {
 
   collectOpenTodosForHost(): WorkshopTodoItem[] {
     return this.todoLedger.collectOpen(this.getExcerptVersion());
+  }
+
+  /**
+   * Settle one of a persona's memory cards (ADR 2026-11-04 D6; Slice 6b):
+   * saved (naming the memory it became), dismissed, or shown again. Refuses
+   * a turn that holds no card at `index`.
+   */
+  setMemoryProposalState(turnId: string, index: number, state: WorkshopMemoryProposalState, memoryId?: string): WorkshopTurn {
+    const turn = this.turnLedger.update(turnId, (current) => {
+      const proposal = workshopMemoryProposalAt(current, index);
+      if (!proposal || !current.memoryProposals) {
+        return;
+      }
+      const { memoryId: _previous, ...rest } = proposal;
+      current.memoryProposals = current.memoryProposals.map((item, at) => at !== index
+        ? item
+        : state === 'saved' && memoryId ? { ...rest, state, memoryId } : { ...rest, state });
+    });
+    if (!workshopMemoryProposalAt(turn, index)) {
+      throw Object.assign(new Error('That message no longer holds a memory suggestion.'), { reason: 'no-proposal' });
+    }
+    return cloneTurn(turn!);
+  }
+
+  /** An edit card whose Save found its note changed since it was suggested (Slice 6c): only Dismiss is offered now. */
+  markMemoryEditStale(turnId: string, index: number): void {
+    this.turnLedger.update(turnId, (current) => {
+      if (current.memoryProposals && workshopMemoryProposalAt(current, index)?.proposes === 'edit') {
+        current.memoryProposals = current.memoryProposals.map((item, at) => at === index && item.proposes === 'edit' ? { ...item, stale: true } : item);
+      }
+    });
+  }
+
+  /** Hold one pending card for the writer, with why (Save and tell me's cap reached at its commit: PR #201 F-04). */
+  holdMemoryProposal(turnId: string, index: number, held: WorkshopMemoryHold): void {
+    this.turnLedger.update(turnId, (current) => {
+      if (current.memoryProposals && workshopMemoryProposalAt(current, index)?.state === 'pending') {
+        current.memoryProposals = current.memoryProposals.map((item, at) => at === index ? { ...item, held } : item);
+      }
+    });
+  }
+
+  /** Record a memory receipt as a session divider every participant receives (D7). */
+  appendMemoryReceipt(receipt: WorkshopProjectMemoryReceipt): WorkshopTurn {
+    const turn: WorkshopTurn = {
+      id: this.nextTurnId('system'),
+      role: 'system',
+      kind: 'divider',
+      participant: 'session',
+      artifact: 'memory_receipt',
+      excerptVersion: this.getExcerptVersion(),
+      content: workshopMemoryReceiptContent(
+        receipt,
+        receipt.proposedBy && isWorkshopPersonaId(receipt.proposedBy) ? workshopPersonaLabel(receipt.proposedBy) : undefined
+      ),
+      timestamp: this.now(),
+      projectMemoryReceipt: cloneWorkshopMemoryReceipt(receipt)
+    };
+    this.turnLedger.append(turn);
+    return cloneTurn(turn);
   }
 
   setTurnBookmark(turnId: string, bookmarked: boolean): WorkshopBookmarkChange {

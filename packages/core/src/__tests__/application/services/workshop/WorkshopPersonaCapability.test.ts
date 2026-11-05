@@ -1,4 +1,5 @@
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
@@ -97,7 +98,8 @@ describe('WorkshopPersonaCapability', () => {
     resourceProviderFactory,
     session,
     log,
-    unusedRecall
+    unusedRecall,
+    offProjectMemory
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),
@@ -123,7 +125,8 @@ describe('WorkshopPersonaCapability', () => {
       resourceProviderFactory,
       openSession,
       log,
-      unusedRecall
+      unusedRecall,
+      offProjectMemory
     ).create({
       requestId: 'open-request',
       excerptVersion: openSession.getExcerptVersion(),
