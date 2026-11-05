@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "files": [
+    {
+      "path": "Project/brief.md"
+    },
+    {
+      "path": "Characters/alice.md"
+    },
+    {
+      "path": "Characters/the-hatter.md"
+    },
+    {
+      "path": "Places/Wonderland/the tea party.md"
+    }
+  ]
+}
