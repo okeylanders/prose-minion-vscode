@@ -34,6 +34,9 @@ export interface WorkshopMemorySettingsPanelProps extends WorkshopMemoryTabInput
   disabled: boolean;
   /** Open memory folder, pressed here or in the manager: waiting, or why it didn't open (PR #202 F04). */
   folderStatus?: WorkshopMemoryFolderStatus;
+  /** Whether "Memory isn't context" shows its table; the writer folds it away (`useWorkshopMemoryExplainer`). */
+  explainerOpen: boolean;
+  onToggleExplainer: () => void;
   onSelectMode: (mode: WorkshopProjectMemoryMode) => void;
   onOpenManager: () => void;
   onOpenFolder: () => void;
@@ -43,6 +46,8 @@ export interface WorkshopMemorySettingsPanelProps extends WorkshopMemoryTabInput
 export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelProps> = ({
   disabled,
   folderStatus,
+  explainerOpen,
+  onToggleExplainer,
   onSelectMode,
   onOpenManager,
   onOpenFolder,
@@ -51,6 +56,7 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
   const view = workshopMemoryTabView(input);
   const noticeId = React.useId();
   const folderErrorId = React.useId();
+  const explainerId = React.useId();
   return (
     <>
       {view.notice && (
@@ -61,12 +67,21 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
       )}
 
       <section className="pm-ws-memory-vs" aria-labelledby="pm-ws-memory-vs-title">
-        <div className="pm-ws-memory-vs-head">
+        <button
+          type="button"
+          className="pm-ws-memory-vs-head"
+          aria-expanded={explainerOpen}
+          aria-controls={explainerId}
+          onClick={onToggleExplainer}
+        >
           <Icon name="info" size={14} />
           <b id="pm-ws-memory-vs-title">Memory isn’t context.</b>
           <span>They reach personas differently.</span>
-        </div>
-        <dl className="pm-ws-memory-vs-grid">
+          <span className="pm-ws-memory-vs-chev" aria-hidden="true">
+            <Icon name="chevRight" size={12} />
+          </span>
+        </button>
+        <dl id={explainerId} className="pm-ws-memory-vs-grid" hidden={!explainerOpen}>
           <dt className="pm-ws-memory-vs-corner" aria-hidden="true" />
           <dd className="pm-ws-memory-vs-col">Project memory</dd>
           <dd className="pm-ws-memory-vs-col">Context</dd>
