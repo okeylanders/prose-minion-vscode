@@ -83,6 +83,8 @@ const WORKSHOP_TODO_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopTodoHandler.ts';
 const WORKSHOP_BOOKMARK_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopBookmarkHandler.ts';
+const WORKSHOP_BOOKMARK_BROWSER_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopBookmarkBrowserHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER =
@@ -189,6 +191,17 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_BOOKMARK_HANDLER_OWNER,
     registration: 'direct',
     messageTypes: ['WORKSHOP_REQUEST_TURN_PREVIEW']
+  },
+  // The Bookmarks screen's reads (ADR 2026-11-05 D8): through recall, never behind the gate.
+  {
+    owner: WORKSHOP_BOOKMARK_BROWSER_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: [
+      'WORKSHOP_REQUEST_BOOKMARK_PAGE',
+      'WORKSHOP_CANCEL_BOOKMARK_PAGE',
+      'WORKSHOP_REQUEST_LIVE_BOOKMARKS',
+      'WORKSHOP_REQUEST_SAVED_TURN_PREVIEW'
+    ]
   },
   // Project memory's writes (ADR 2026-11-04 D13; Slice 3): room changes behind
   // the gate, the sheet's reads direct.
@@ -376,6 +389,10 @@ const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
     reference: /WorkshopBookmarkHandler/
   },
   {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopBookmarkBrowserHandler.ts'),
+    reference: /WorkshopBookmarkBrowserHandler/
+  },
+  {
     file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopProjectMemoryHandler.ts'),
     reference: /WorkshopProjectMemoryHandler/
   },
@@ -389,6 +406,7 @@ const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
   }
 ] as const;
 const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
+  'WorkshopBookmarkBrowserHandler',
   'WorkshopBookmarkHandler',
   'WorkshopContextHandler',
   'WorkshopExcerptScopeHandler',
@@ -1032,6 +1050,9 @@ const WORKSHOP_RECALL_ROOT = path.join(SRC_ROOT, 'application', 'services', 'wor
 const WORKSHOP_RECALL_MODULES = [
   'WorkshopLiveRoomBookmarks.ts',
   'WorkshopRecallBookmarkList.ts',
+  'WorkshopRecallBookmarkPage.ts',
+  'WorkshopRecallBookmarkPager.ts',
+  'WorkshopRecallBookmarkWalks.ts',
   'WorkshopRecallBookmarkQuery.ts',
   'WorkshopRecallBookmarkRef.ts',
   'WorkshopRecallBookmarkResults.ts',
@@ -1048,6 +1069,8 @@ const WORKSHOP_RECALL_MODULES = [
   'WorkshopRecallReadOperation.ts',
   'WorkshopRecallReadSection.ts',
   'WorkshopRecallReadWindow.ts',
+  'WorkshopRecallSavedTurn.ts',
+  'WorkshopRecallScopeGate.ts',
   'WorkshopRecallSearchOperation.ts',
   'WorkshopRecallText.ts',
   'WorkshopRecallTime.ts',
@@ -1938,11 +1961,12 @@ describe('architectural boundaries', () => {
     // Project Memory Slice 3 added five writes (mutation) and the sheet's two reads (direct).
     // Project Memory Slice 4b added the manager's listing and actions (direct).
     // Pinned Context Slice 3 added the tab's seven list routes (direct) and Attach missing (mutation).
-    expect(expectedOwnerPairs).toHaveLength(81);
+    // Bookmark Recall Slice 2 added the Bookmarks screen's page, cancel, live rows and saved turn (direct).
+    expect(expectedOwnerPairs).toHaveLength(85);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(46);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(35);
+      .toHaveLength(39);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -2039,7 +2063,7 @@ describe('architectural boundaries', () => {
         );
     });
 
-    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(8);
+    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(9);
     expect(offenders).toEqual([]);
   });
 
@@ -2553,6 +2577,7 @@ describe('architectural boundaries', () => {
     ];
 
     expect(messageModules).toEqual([
+      'bookmarkBrowser.ts',
       'bookmarks.ts',
       'context.ts',
       'creativeVariations.ts',

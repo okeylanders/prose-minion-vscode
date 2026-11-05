@@ -661,8 +661,11 @@ describe('app-shell provider assembly', () => {
     expect(at('new WorkshopSessionPersistenceCoordinator(')).toBeLessThan(at('new WorkshopTranscriptRecallService('));
     expect(at('new WorkshopTranscriptRecallService(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
     expect(at('new WorkshopPersonaCapabilityFactory(')).toBeLessThan(at('new RunWorkshopToolSidePass('));
-    // Two consumers, the factory and project memory's provenance: no CoreServices field carries it.
-    expect(source.match(/workshopTranscriptRecallService/g)).toHaveLength(3);
+    // Three consumers: the factory, project memory's provenance, and the Bookmarks screen's routes
+    // through its one CoreServices field (ADR 2026-11-05 D8). Built once, here.
+    expect(source.match(/workshopTranscriptRecallService/g)).toHaveLength(4);
+    expect(source.match(/new WorkshopTranscriptRecallService\(/g)).toHaveLength(1);
+    expect(source).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\bworkshopTranscriptRecallService\n\s*\};/);
   });
 
   it('builds project memory\'s store, then its library, before the factory and the grammar check that read it (ADR 2026-11-04 D13)', () => {

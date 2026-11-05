@@ -73,7 +73,8 @@ export interface WorkshopSessionSurfacesActions {
   startNewSession: () => void;
   startFullReset: () => void;
   startEmptyReset: () => void;
-  openStoredSession: (session: WorkshopSessionSummary) => void;
+  /** Only the id and title are read, so the Bookmarks screen can open a session it knows by those. */
+  openStoredSession: (session: Pick<WorkshopSessionSummary, 'sessionId' | 'title'>) => void;
   requestShelfReplacement: (resume: 'paste' | 'choose') => void;
   requestRewind: (turnId: string, removedCount: number, edit?: WorkshopRewindEdit) => void;
   requestBranch: (turnId: string) => void;
@@ -237,7 +238,7 @@ export function useWorkshopSessionSurfaces({
     resetSession('empty');
   }, [hasReplaceableSessionState, hasWorkingSet, resetSession]);
 
-  const openStoredSession = React.useCallback((session: WorkshopSessionSummary) => {
+  const openStoredSession = React.useCallback((session: Pick<WorkshopSessionSummary, 'sessionId' | 'title'>) => {
     if (hasReplaceableSessionState) {
       setSessionConfirm({
         kind: 'open',

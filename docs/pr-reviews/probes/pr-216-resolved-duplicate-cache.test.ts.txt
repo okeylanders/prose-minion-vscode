@@ -1,0 +1,49 @@
+import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
+import { WorkshopSessionStore } from '@/infrastructure/storage/WorkshopSessionStore';
+import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+import { RECALL_WORKSPACE, recallLog } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import { bookmarkedCheckpoint, bookmarkedRoom } from '@/__tests__/application/services/workshop/recall/workshopBookmarkBrowserFixtures';
+
+const DIRECTORY = '/workspace/novel/prose-minion/sessions';
+
+function put(fs: MemoryFileSystem, name: string, sessionId: string, title: string, content: string): void {
+  const checkpoint = JSON.parse(JSON.stringify(bookmarkedCheckpoint(sessionId)));
+  checkpoint.title = title;
+  checkpoint.workshop.turns.find((turn: { id: string }) => turn.id === bookmarkedRoom().replyId).content = content;
+  fs.files.set(`${DIRECTORY}/${name}.json`, new TextEncoder().encode(JSON.stringify(checkpoint)));
+}
+
+it('refreshes a known ambiguous cached document after only the other file survives (PR #216 F-05)', async () => {
+  const fs = new MemoryFileSystem();
+  for (let index = 0; index < 24; index += 1) {
+    put(fs, `20260101-${String(index).padStart(4, '0')}`, `id-${index}`, `Session ${index}`, 'Filler');
+  }
+  // Copied checkpoints can retain the same durable ID and embedded updatedAt.
+  put(fs, '20200101-000001-newer', 'duplicate', 'Newer duplicate', 'Removed file content');
+  put(fs, '20200101-000000-older', 'duplicate', 'Older duplicate', 'Surviving file content');
+  const store = new WorkshopSessionStore(fs, RECALL_WORKSPACE, recallLog());
+  const recall = new WorkshopTranscriptRecallService(store, {
+    recallScope: () => ({ available: true, liveSessionId: 'live' })
+  }, recallLog());
+
+  const first = await recall.bookmarkPage({});
+  if (!first.available || first.outcome !== 'bookmark-page') throw new Error('Expected a page');
+  expect(first.sessions.find((session) => session.sessionId === 'duplicate')?.title).toBe('Newer duplicate');
+  expect(first.next).toBeDefined();
+  const second = await recall.bookmarkPage({ after: first.next });
+  if (!second.available || second.outcome !== 'bookmark-page') throw new Error('Expected a page');
+  expect(second.ambiguousSessionIds).toEqual(['duplicate']);
+
+  // Follow the host's advice: keep only one file, then reopen Bookmarks.
+  fs.files.delete(`${DIRECTORY}/20200101-000001-newer.json`);
+  const reopened = await recall.bookmarkPage({});
+  if (!reopened.available || reopened.outcome !== 'bookmark-page') throw new Error('Expected a page');
+  const exact = await store.readNamed('duplicate');
+  const row = reopened.sessions.find((session) => session.sessionId === 'duplicate');
+  expect(exact?.title).toBe('Older duplicate');
+  expect(JSON.stringify(exact?.workshop.turns)).toContain('Surviving file content');
+  expect(reopened.ambiguousSessionIds).toEqual([]);
+  expect(row?.title).toBe('Older duplicate');
+  expect(JSON.stringify(row?.bookmarks)).toContain('Surviving file content');
+  expect(JSON.stringify(row?.bookmarks)).not.toContain('Removed file content');
+});

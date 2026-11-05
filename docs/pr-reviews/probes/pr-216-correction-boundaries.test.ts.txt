@@ -1,0 +1,96 @@
+/**
+ * PR #216 F-03/F-04 witnesses at f02a835a.
+ * These passing assertions record defects, not corrected behavior.
+ * All file sizes are actual accepted reply content, with default store limits.
+ *
+ * In a disposable checkout of the reviewed code, copy this file to:
+ * packages/core/src/__tests__/infrastructure/storage/review216Boundaries.test.ts
+ * Then run:
+ * npx jest --runInBand --runTestsByPath \
+ *   packages/core/src/__tests__/infrastructure/storage/review216Boundaries.test.ts
+ */
+
+import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
+import {
+  WorkshopNamedSessionIdentityConflictError,
+  WorkshopSessionStore
+} from '@/infrastructure/storage/WorkshopSessionStore';
+import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+import { RECALL_WORKSPACE, recallLog } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import { bookmarkedCheckpoint, bookmarkedRoom } from '@/__tests__/application/services/workshop/recall/workshopBookmarkBrowserFixtures';
+
+const DIRECTORY = '/workspace/novel/prose-minion/sessions';
+const MIB = 1024 * 1024;
+
+/** Clone the fixture before replacing its bookmarked reply's real content. */
+function checkpointText(sessionId: string, characters: number): string {
+  const checkpoint = JSON.parse(JSON.stringify(bookmarkedCheckpoint(sessionId)));
+  const turn = checkpoint.workshop.turns.find((candidate: { id: string }) => candidate.id === bookmarkedRoom().replyId);
+  turn.content = 'A'.repeat(characters);
+  return JSON.stringify(checkpoint);
+}
+
+function put(fs: MemoryFileSystem, name: string, text: string): void {
+  fs.files.set(`${DIRECTORY}/${name}.json`, new TextEncoder().encode(text));
+}
+
+it('shows an ambiguous bookmark when another valid same-ID checkpoint exceeds the browser size bound', async () => {
+  const fs = new MemoryFileSystem();
+  put(fs, '20200101-small', checkpointText('duplicate', 100));
+  put(fs, '20200101-large', checkpointText('duplicate', 6 * MIB));
+  const store = new WorkshopSessionStore(fs, RECALL_WORKSPACE, recallLog());
+
+  // The normal exact decoder accepts this real 6 MiB reply. The two files
+  // nevertheless cannot be resolved by their shared durable identity.
+  const large = await store.readPagedSession('20200101-large.json', 'duplicate');
+  const reply = large?.workshop.turns.find((turn) => turn.id === bookmarkedRoom().replyId);
+  expect(reply?.content.length).toBe(6 * MIB);
+  await expect(store.readNamed('duplicate')).rejects.toBeInstanceOf(WorkshopNamedSessionIdentityConflictError);
+
+  const recall = new WorkshopTranscriptRecallService(store, {
+    recallScope: () => ({ available: true, liveSessionId: 'live' })
+  }, recallLog());
+  const page = await recall.bookmarkPage({});
+  if (!page.available) throw new Error('Expected available bookmark page');
+
+  console.log('Large duplicate result', {
+    read: page.read,
+    unreadable: page.unreadable,
+    readableSessionIds: page.sessions.map((session) => session.sessionId)
+  });
+  expect(page.read).toBe(1);
+  expect(page.unreadable).toBe(1);
+  expect(page.sessions.map((session) => session.sessionId)).toEqual(['duplicate']);
+  await expect(store.readNamed('duplicate')).rejects.toBeInstanceOf(WorkshopNamedSessionIdentityConflictError);
+});
+
+it('reads the entire legacy corpus on each bounded page', async () => {
+  const fs = new MemoryFileSystem();
+  for (let index = 0; index < 80; index += 1) {
+    put(fs, `20260101-${String(index).padStart(4, '0')}`, checkpointText(`id-${index}`, MIB));
+  }
+  const store = new WorkshopSessionStore(fs, RECALL_WORKSPACE, recallLog());
+  const originalRead = fs.readFile.bind(fs);
+  let bytes = 0;
+  let files = 0;
+  jest.spyOn(fs, 'readFile').mockImplementation(async (filePath) => {
+    const data = await originalRead(filePath);
+    bytes += data.byteLength;
+    files += 1;
+    return data;
+  });
+
+  const first = await store.listPage({ limit: 25 });
+  console.log('First page cost', { entries: first.entries.length, remaining: first.remaining, files, bytes });
+  expect(first.entries).toHaveLength(25);
+  expect(files).toBe(105);
+  expect(bytes).toBeGreaterThan(100 * MIB);
+
+  bytes = 0;
+  files = 0;
+  const second = await store.listPage({ limit: 25, after: first.next });
+  console.log('Second page cost', { entries: second.entries.length, remaining: second.remaining, files, bytes });
+  expect(second.entries).toHaveLength(25);
+  expect(files).toBe(105);
+  expect(bytes).toBeGreaterThan(100 * MIB);
+});

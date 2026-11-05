@@ -31,6 +31,8 @@ export interface WorkshopBookmarkListProps {
   /** The host's answer to the latest rename. */
   renameOutcome?: WorkshopRenameBookmarkResultPayload | null;
   onRemove: (turnId: string) => void;
+  /** Opens the Bookmarks screen (ADR 2026-11-05 D8): every bookmark, saved sessions' too. */
+  onBrowseAll?: () => void;
 }
 
 /** Why another row's Rename waits (PR #189 F-03). */
@@ -63,7 +65,8 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
   onOpen,
   onRename,
   renameOutcome = null,
-  onRemove
+  onRemove,
+  onBrowseAll
 }) => {
   const rename = useWorkshopBookmarkRename({ bookmarks, onRename, outcome: renameOutcome });
   const idPrefix = React.useId();
@@ -88,7 +91,16 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
         <div className="pm-ws-eyebrow" id={`${idPrefix}-title`}>
           <Icon name="bookmark" size={12} /> Bookmarks
         </div>
-        <span aria-live="polite">{count} · thread order</span>
+        {onBrowseAll ? (
+          <div className="pm-ws-bookmark-head-actions">
+            <span aria-live="polite">{count} · thread order</span>
+            <button type="button" className="pm-ws-bookmark-browse-all" onClick={onBrowseAll}>
+              All bookmarks…
+            </button>
+          </div>
+        ) : (
+          <span aria-live="polite">{count} · thread order</span>
+        )}
       </div>
       {count === 0 ? (
         <p className="pm-ws-todos-empty">Bookmark a reply to find it here.</p>

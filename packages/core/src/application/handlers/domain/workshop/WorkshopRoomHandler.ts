@@ -17,6 +17,7 @@
  * in-flight one, reset aborts, and zombie completions are refused + logged.
  */
 
+import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type { WorkshopProjectMemoryPort } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import type { WorkshopPinnedContextServices } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 import {
@@ -246,7 +247,8 @@ export class WorkshopRoomHandler {
     widgetRuntime: WorkshopWidgetRuntime,
     private readonly outputChannel: LogSink,
     projectMemory: WorkshopProjectMemoryPort,
-    pinnedContext: WorkshopPinnedContextServices
+    pinnedContext: WorkshopPinnedContextServices,
+    bookmarkBrowser: WorkshopBookmarkBrowserPort
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -280,6 +282,7 @@ export class WorkshopRoomHandler {
         widgetRuntime,
         projectMemory,
         pinnedContext,
+        bookmarkBrowser,
         outputChannel: this.outputChannel
       },
       {

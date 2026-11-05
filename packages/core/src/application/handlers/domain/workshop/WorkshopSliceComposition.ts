@@ -17,6 +17,7 @@ import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/Workshop
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
 import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookmarkHandler';
+import { WorkshopBookmarkBrowserHandler } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import { WorkshopProjectMemoryHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import { WorkshopProjectMemoryManagerHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
 import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
@@ -70,6 +71,7 @@ export class WorkshopSliceComposition {
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
   private readonly todoHandler: WorkshopTodoHandler;
   private readonly bookmarkHandler: WorkshopBookmarkHandler;
+  private readonly bookmarkBrowserHandler: WorkshopBookmarkBrowserHandler;
   private readonly projectMemoryHandler: WorkshopProjectMemoryHandler;
   private readonly projectMemoryManagerHandler: WorkshopProjectMemoryManagerHandler;
   private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
@@ -92,6 +94,7 @@ export class WorkshopSliceComposition {
       widgetRuntime,
       projectMemory,
       pinnedContext,
+      bookmarkBrowser,
       outputChannel
     } = dependencies;
     const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
@@ -250,6 +253,15 @@ export class WorkshopSliceComposition {
       postMessage,
       sessionPersistence
     );
+    // The Bookmarks screen's reads beside them (ADR 2026-11-05 D8): through recall, never the gate.
+    this.bookmarkBrowserHandler = new WorkshopBookmarkBrowserHandler(
+      bookmarkBrowser,
+      session,
+      sessionPersistence,
+      postMessage,
+      outputChannel,
+      (message) => host.reportRouteError('workshop.bookmark', message, undefined, 'WorkshopBookmarkBrowserHandler')
+    );
     // Project memory's write routes (ADR 2026-11-04 D13; Slice 3).
     this.projectMemoryHandler = new WorkshopProjectMemoryHandler(
       session,
@@ -343,6 +355,7 @@ export class WorkshopSliceComposition {
       router,
       this.createMutationRegistrar(router, 'WorkshopBookmarkHandler')
     );
+    this.bookmarkBrowserHandler.registerRoutes(router);
     this.lightboxTileHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopLightboxTileHandler')
@@ -384,6 +397,7 @@ export class WorkshopSliceComposition {
     this.showVsTellHandler.dispose();
     this.lexicalGravityHandler.dispose();
     this.lightboxTileHandler.dispose();
+    this.bookmarkBrowserHandler.dispose();
     this.host.disposeRoomSubscriptions();
     this.sessionMessageHandler.dispose();
     this.host.disposeActiveRoomRun();

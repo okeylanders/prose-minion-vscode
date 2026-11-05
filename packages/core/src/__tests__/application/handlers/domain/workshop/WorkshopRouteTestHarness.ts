@@ -1,5 +1,7 @@
 import { WorkshopRoomHandler } from '@handlers/domain/workshop/WorkshopRoomHandler';
 import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
+import { unusedBookmarkBrowser } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
+import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import { libraryHost } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import type {
   WorkshopWidgetRuntime
@@ -132,9 +134,16 @@ export interface WorkshopRouteTestHarness {
   memory: ReturnType<typeof libraryHost>;
 }
 
-export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
+export interface WorkshopRouteTestHarnessOptions {
+  /** The Bookmarks screen's recall port over the harness's session; by default every read throws. */
+  bookmarkBrowser?: (session: WorkshopSessionService) => WorkshopBookmarkBrowserPort;
+  /** The session's clock (turn and bookmark times); 1 by default. */
+  sessionNow?: () => number;
+}
+
+export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarnessOptions = {}): WorkshopRouteTestHarness => {
   let timeNow = new Date('2026-07-23T14:00:00.000Z');
-  const session = new WorkshopSessionService(() => 1);
+  const session = new WorkshopSessionService(options.sessionNow ?? (() => 1));
   const contextBudgets = new Map<string, ContextBudgetSnapshot>();
   const contextSources = new Map<string, import('@messages').ContextSourceEntry[]>();
   // Committed history grows by one exchange per completed run; the completion
@@ -356,7 +365,8 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     ),
     log,
     memory.library,
-    emptyPinnedContextServices()
+    emptyPinnedContextServices(),
+    options.bookmarkBrowser?.(session) ?? unusedBookmarkBrowser()
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);

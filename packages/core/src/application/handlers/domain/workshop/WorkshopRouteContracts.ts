@@ -35,6 +35,7 @@ import type { LogSink, ShellService } from '@/platform';
 import type { WorkshopReadInRecordLookup } from '@handlers/domain/workshop/WorkshopReadInRoutes';
 import type { WorkshopProjectMemoryWritePort } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import type { WorkshopProjectMemoryManagerPort } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
+import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type {
   WorkshopPinnedContextServices
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
@@ -67,6 +68,7 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopStandingDirectiveHandler'
   | 'WorkshopTodoHandler'
   | 'WorkshopBookmarkHandler'
+  | 'WorkshopBookmarkBrowserHandler'
   | 'WorkshopProjectMemoryHandler'
   | 'WorkshopProjectMemoryManagerHandler'
   | 'WorkshopPinnedContextHandler'
@@ -128,6 +130,8 @@ export interface WorkshopSliceCompositionDependencies {
   projectMemory: WorkshopProjectMemoryPort;
   /** Pinned context (ADR 2026-11-04 D9): the one library and the seed's first-room report, built in extension.ts. */
   pinnedContext: WorkshopPinnedContextServices;
+  /** The Bookmarks screen's reads (ADR 2026-11-05 D8): the recall service, built in extension.ts. */
+  bookmarkBrowser: WorkshopBookmarkBrowserPort;
   outputChannel: LogSink;
 }
 

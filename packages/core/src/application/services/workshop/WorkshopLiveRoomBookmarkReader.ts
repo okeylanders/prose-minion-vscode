@@ -32,6 +32,15 @@ export class WorkshopLiveRoomBookmarkReader implements WorkshopLiveRoomBookmarks
   ) {}
 
   readLiveRoomBookmarks(reader: WorkshopCapabilityPrincipal | undefined): WorkshopLiveRoomBookmarkRead {
+    return this.read((turn, roomVisible) => (reader ? isWorkshopTurnVisibleToParticipant(turn, reader) : roomVisible));
+  }
+
+  /** The writer sees the whole room (ADR 2026-11-05 D8): every bookmark, for the Bookmarks screen. */
+  readWriterBookmarks(): WorkshopLiveRoomBookmarkRead {
+    return this.read(() => true);
+  }
+
+  private read(visible: (turn: WorkshopTurn, roomVisible: boolean) => boolean): WorkshopLiveRoomBookmarkRead {
     const turns = this.room.readRoomLedger();
     const byTurn = new Map(this.room.readRoomBookmarks().map((bookmark) => [bookmark.turnId, bookmark]));
     const bookmarks = byTurn.size === 0 ? [] : turns.flatMap((turn, index): WorkshopLiveRoomBookmarkRow[] => {
@@ -40,8 +49,7 @@ export class WorkshopLiveRoomBookmarkReader implements WorkshopLiveRoomBookmarks
         return [];
       }
       const roomVisible = workshopTurnAudience(turn).kind === 'room';
-      const visible = reader ? isWorkshopTurnVisibleToParticipant(turn, reader) : roomVisible;
-      return visible ? [{ ...workshopRecallBookmark(bookmark, turn, index + 1), roomVisible }] : [];
+      return visible(turn, roomVisible) ? [{ ...workshopRecallBookmark(bookmark, turn, index + 1), roomVisible }] : [];
     });
     return { timezone: this.timezone(), turnCount: turns.length, bookmarks };
   }

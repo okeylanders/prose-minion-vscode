@@ -140,6 +140,7 @@ packages/core/src/
                 ├── context.ts
                 ├── participants.ts
                 ├── bookmarks.ts
+                ├── bookmarkBrowser.ts
                 ├── projectMemory.ts
                 ├── projectMemoryManager.ts
                 ├── pinnedContext.ts
@@ -1083,6 +1084,16 @@ sessions:
   `current@{liveSessionId}/{bookmarkId}`); a replaced room's ref is
   `stale-bookmark-ref`, never retargeted. A read's `bookmarked: "…"` mark is
   the read window's, never the shared projection's.
+- **The Bookmarks screen** ([ADR 2026-11-05](docs/adr/2026-11-05-workshop-bookmark-recall.md) D8)
+  reads only through the recall service's writer-facing seams
+  (`bookmarkPage`, `liveRoomBookmarks`, `savedTurn`), which
+  `WorkshopBookmarkBrowserHandler` reaches through `CoreServices`; no
+  handler constructs the service. Saved sessions come a page at a time
+  through the store's read-only `listPage` (uncapped by the browser's 200,
+  bounded by `WORKSHOP_BOOKMARK_BROWSER_LIMITS`), never
+  `WORKSHOP_LIST_SESSIONS`. The live port's `readWriterBookmarks` (every
+  bookmark, for the writer) serves only the screen; a persona reads the
+  open room only through `readLiveRoomBookmarks`.
 
 ### Lightbox Source Ownership
 

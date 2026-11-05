@@ -29,11 +29,16 @@ import {
   WorkshopRecallDocumentCache,
   WorkshopRecallDocumentCacheLimits
 } from '@/application/services/workshop/recall/WorkshopRecallDocumentCache';
-import {
-  throwIfRecallAborted,
-  WorkshopRecallDocumentLoader,
-  WorkshopRecallReadScope
-} from '@/application/services/workshop/recall/WorkshopRecallDocumentLoader';
+import { WorkshopRecallDocumentLoader } from '@/application/services/workshop/recall/WorkshopRecallDocumentLoader';
+import { WorkshopRecallOpenScope, WorkshopRecallScopeGate } from '@/application/services/workshop/recall/WorkshopRecallScopeGate';
+import { WorkshopRecallBookmarkPager } from '@/application/services/workshop/recall/WorkshopRecallBookmarkPager';
+import type {
+  WorkshopRecallBookmarkPage,
+  WorkshopRecallBookmarkWalkExpired,
+  WorkshopRecallSessionPage
+} from '@/application/services/workshop/recall/WorkshopRecallBookmarkPage';
+import { WorkshopRecallSavedTurn, workshopRecallSavedTurn } from '@/application/services/workshop/recall/WorkshopRecallSavedTurn';
+import { WORKSHOP_BOOKMARK_BROWSER_LIMITS } from '@shared/constants/workshopBookmarkBrowser';
 import {
   parseWorkshopRecallQuery,
   searchWorkshopRecallDocuments
@@ -49,7 +54,10 @@ import {
   todoCandidates,
   withParticipant
 } from '@/application/services/workshop/recall/WorkshopRecallCorpusSelection';
-import type { WorkshopLiveRoomBookmarks } from '@/application/services/workshop/recall/WorkshopLiveRoomBookmarks';
+import type {
+  WorkshopLiveRoomBookmarkRead,
+  WorkshopLiveRoomBookmarks
+} from '@/application/services/workshop/recall/WorkshopLiveRoomBookmarks';
 import {
   listWorkshopRecallBookmarks,
   readWorkshopRecallBookmark,
@@ -117,7 +125,7 @@ export interface WorkshopRecallSessionSummary {
   readonly excerptLabel?: string;
 }
 
-/** Satisfied by WorkshopSessionStore: three read methods and nothing else. */
+/** Satisfied by WorkshopSessionStore: four read methods and nothing else. */
 export interface WorkshopRecallCorpusPort {
   availability():
     | { available: true }
@@ -128,6 +136,10 @@ export interface WorkshopRecallCorpusPort {
     signal?: AbortSignal
   ): Promise<{ sessions: readonly WorkshopRecallSessionSummary[]; truncated: boolean }>;
   readNamed(sessionId: string): Promise<WorkshopPersistedSessionV2 | undefined>;
+  /** Every session file, a bounded page at a time, uncapped by `list`'s 200 (ADR 2026-11-05 D8). */
+  listPage(request: { after?: string; limit: number }, signal?: AbortSignal): Promise<WorkshopRecallSessionPage>;
+  /** A page's session from the file its entry names, if that file holds it; page-local (PR #216 F-01). */
+  readPagedSession(cursor: string, sessionId: string): Promise<WorkshopPersistedSessionV2 | undefined>;
 }
 
 export interface WorkshopTranscriptRecallServiceOptions {
@@ -141,23 +153,10 @@ export interface WorkshopTranscriptRecallServiceOptions {
   liveRoom?: WorkshopLiveRoomBookmarks;
 }
 
-/** The scope a call opened: who the live room was, and the cache generation then. */
-interface OpenScope extends WorkshopRecallReadScope {
-  readonly liveSessionId: string;
-}
-
 interface RecallCorpus {
-  readonly scope: OpenScope;
+  readonly scope: WorkshopRecallOpenScope;
   readonly sessions: readonly WorkshopRecallSessionSummary[];
   readonly listingTruncated: boolean;
-}
-
-/** The scope a call opened stopped holding before the call finished. */
-class RecallScopeChangedError extends Error {
-  constructor(readonly unavailable: WorkshopRecallUnavailable) {
-    super(`Session recall scope changed (${unavailable.reason}).`);
-    this.name = 'RecallScopeChangedError';
-  }
 }
 
 export class WorkshopTranscriptRecallService {
@@ -165,6 +164,8 @@ export class WorkshopTranscriptRecallService {
   private readonly limits: WorkshopTranscriptRecallLimits;
   private readonly cache: WorkshopRecallDocumentCache;
   private readonly loader: WorkshopRecallDocumentLoader;
+  private readonly gate: WorkshopRecallScopeGate;
+  private readonly pager: WorkshopRecallBookmarkPager;
   private readonly liveRoom?: WorkshopLiveRoomBookmarks;
 
   constructor(
@@ -176,7 +177,9 @@ export class WorkshopTranscriptRecallService {
     this.now = options.now ?? Date.now;
     this.limits = { ...WORKSHOP_TRANSCRIPT_RECALL_LIMITS, ...options.limits };
     this.cache = new WorkshopRecallDocumentCache(this.limits);
+    this.pager = new WorkshopRecallBookmarkPager(corpus, this.limits, this.limits.unreadableSessionBytes, (line) => this.log(line));
     this.liveRoom = options.liveRoom;
+    this.gate = new WorkshopRecallScopeGate(corpus, scope, this.cache, (line) => this.log(line));
     this.loader = new WorkshopRecallDocumentLoader(
       corpus,
       this.cache,
@@ -412,69 +415,53 @@ export class WorkshopTranscriptRecallService {
   }
 
   /**
-   * Open the scope, list the corpus, and run `work` over it. The scope is
-   * checked again after the listing, around every cold read, and before the
-   * result is returned: the store resolves the workspace on every call, so
-   * a check at the entry alone would not bound what a call reads (PR 126
-   * review F-04). A call whose scope changed returns only the refusal.
+   * The Bookmarks screen (ADR 2026-11-05 D8): one page of saved sessions'
+   * bookmarks, after `after`. The writer's read, never a persona's; it reads
+   * through the store's paged walk, never the 200-file listing, and never
+   * initializes or flushes. The store bounds the page by files and bytes.
    */
-  private async withCorpus<T>(
+  async bookmarkPage(
+    request: { after?: string },
+    signal?: AbortSignal
+  ): Promise<WorkshopRecallBookmarkPage | WorkshopRecallBookmarkWalkExpired | WorkshopRecallUnavailable> {
+    const limit = WORKSHOP_BOOKMARK_BROWSER_LIMITS.bookmarkBrowserSessions;
+    // The walk remembers the ids earlier pages met, so a page checks duplicates within its own budget (PR #216 F-03).
+    const opened = this.pager.open(request.after);
+    if (opened.kind === 'expired') {
+      return { available: true, outcome: 'walk-expired' };
+    }
+    const { walk } = opened;
+    return this.gate.open(
+      signal,
+      (listSignal) => this.corpus.listPage({ ...(walk.storeCursor !== undefined ? { after: walk.storeCursor } : {}), limit }, listSignal),
+      (scope, page) => this.pager.read(walk, page, scope, signal)
+    );
+  }
+
+  /** Every bookmark in the open room, for the writer's screen (D8); undefined without the live port. */
+  liveRoomBookmarks(): WorkshopLiveRoomBookmarkRead | undefined {
+    return this.liveRoom?.readWriterBookmarks();
+  }
+
+  /** One saved turn as the transcript projects it, for the screen's preview (D8). */
+  savedTurn(sessionId: string, turnId: string, signal?: AbortSignal): Promise<WorkshopRecallSavedTurn | WorkshopRecallUnavailable> {
+    return this.gate.open(signal, async () => undefined, async (scope) => {
+      const result = await workshopRecallSavedTurn(sessionId, turnId, scope.liveSessionId, (id) => this.loader.readDocument(id, scope, signal));
+      this.log(`saved-turn outcome=${result.kind}`);
+      return result;
+    });
+  }
+
+  /** Open the scope, list the corpus, and run `work` over it (WorkshopRecallScopeGate's rule). */
+  private withCorpus<T>(
     signal: AbortSignal | undefined,
     work: (corpus: RecallCorpus) => Promise<T>
   ): Promise<T | WorkshopRecallUnavailable> {
-    throwIfRecallAborted(signal);
-    const current = this.currentScope();
-    if ('reason' in current) {
-      return current;
-    }
-    const opened = { liveSessionId: current.liveSessionId, generation: this.cache.generation };
-    const scope: OpenScope = { ...opened, assertHolds: () => this.assertScope(opened) };
-    try {
-      const listing = await this.corpus.list(undefined, signal);
-      throwIfRecallAborted(signal);
-      this.assertScope(scope);
-      const result = await work({
-        scope,
-        sessions: recallableSessions(listing.sessions, scope.liveSessionId),
-        listingTruncated: listing.truncated
-      });
-      this.assertScope(scope);
-      return result;
-    } catch (error) {
-      if (error instanceof RecallScopeChangedError) {
-        return error.unavailable;
-      }
-      throw error;
-    }
-  }
-
-  /** The coordinator's scope, confirmed by the store's own availability. */
-  private currentScope(): { liveSessionId: string } | WorkshopRecallUnavailable {
-    const scope = this.scope.recallScope();
-    if (!scope.available) {
-      return { available: false, reason: scope.reason };
-    }
-    const availability = this.corpus.availability();
-    if (!availability.available) {
-      return { available: false, reason: availability.reason };
-    }
-    return { liveSessionId: scope.liveSessionId };
-  }
-
-  /**
-   * Throw when the scope a call opened no longer holds. Whatever the call
-   * already read is suspect, so the cache is emptied and its generation
-   * advanced: reads still in flight cannot repopulate it.
-   */
-  private assertScope(scope: { readonly liveSessionId: string }): void {
-    const current = this.currentScope();
-    if (!('reason' in current) && current.liveSessionId === scope.liveSessionId) {
-      return;
-    }
-    this.cache.invalidate();
-    this.log('Recall scope changed during a call; its results and the document cache were discarded');
-    // A different live room under the same workspace: the room is changing.
-    throw new RecallScopeChangedError('reason' in current ? current : { available: false, reason: 'not-ready' });
+    return this.gate.open(signal, (listSignal) => this.corpus.list(undefined, listSignal), (scope, listing) => work({
+      scope,
+      sessions: recallableSessions(listing.sessions, scope.liveSessionId),
+      listingTruncated: listing.truncated
+    }));
   }
 
   private log(line: string): void {

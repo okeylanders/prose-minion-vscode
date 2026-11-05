@@ -35,6 +35,16 @@ import {
   isMissingFileSystemPathError
 } from '@/infrastructure/storage/fileSystemErrors';
 import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/WorkshopSessionCheckpointEquality';
+import {
+  readWorkshopSessionPage,
+  WorkshopSessionPage,
+  WorkshopSessionPageRead,
+  WorkshopSessionPageRequest
+} from '@/infrastructure/storage/WorkshopSessionStorePage';
+import {
+  WORKSHOP_BOOKMARK_BROWSER_LIMITS,
+  WorkshopBookmarkBrowserLimits
+} from '@shared/constants/workshopBookmarkBrowser';
 
 export type {
   WorkshopStoredSessionSummary
@@ -184,7 +194,9 @@ export class WorkshopSessionStore {
     private readonly workspace: Workspace,
     private readonly log: LogSink,
     private readonly now: () => Date = () => new Date(),
-    private readonly limits: WorkshopSessionStoreLimits = WORKSHOP_SESSION_STORE_LIMITS
+    private readonly limits: WorkshopSessionStoreLimits = WORKSHOP_SESSION_STORE_LIMITS,
+    /** The Bookmarks screen's page bounds (ADR 2026-11-05 D8). */
+    private readonly pageLimits: WorkshopBookmarkBrowserLimits = WORKSHOP_BOOKMARK_BROWSER_LIMITS
   ) {}
 
   availability(): WorkshopSessionStoreAvailability {
@@ -332,6 +344,44 @@ export class WorkshopSessionStore {
       truncated: entries.truncated,
       searchTruncated: entries.searchTruncated || current.searchTruncated
     };
+  }
+
+  /**
+   * One page of every named session file, read-only and uncapped by the
+   * browser's 200 (ADR 2026-11-05 D8): the walk is WorkshopSessionStorePage's.
+   * It never writes the exact-read path cache (PR #216 F-01), and reads only
+   * the page's own files within its budget (F-03): recall checks ids across
+   * the walk.
+   */
+  async listPage(request: WorkshopSessionPageRequest, signal?: AbortSignal): Promise<WorkshopSessionPage> {
+    const paths = this.requireAvailability();
+    let directoryEntries: Array<[string, FileType]>;
+    try {
+      directoryEntries = await this.fileSystem.readDirectory(paths.sessionsDirectory);
+    } catch (error) {
+      if (isMissingFileError(error)) {
+        return { entries: [], remaining: 0 };
+      }
+      throw error;
+    }
+    const names = directoryEntries
+      .filter(([name, type]) => type === FileType.File && isNamedSessionFileName(name))
+      .map(([name]) => name);
+    return readWorkshopSessionPage(names, request, (fileName) => this.readPageEntry(paths, fileName, signal), signal, this.pageLimits);
+  }
+
+  /**
+   * A page's session, read from the file the page named (its cursor), by the
+   * exact read's bounds, and only if that file holds `sessionId`. Page-local:
+   * it neither reads nor writes the exact-read path cache (PR #216 F-01).
+   */
+  async readPagedSession(cursor: string, sessionId: string): Promise<WorkshopPersistedSessionV2 | undefined> {
+    const paths = this.requireAvailability();
+    if (!isNamedSessionFileName(cursor) || cursor !== path.basename(cursor) || cursor.includes('..')) {
+      return undefined;
+    }
+    const decoded = await this.readSessionFileExact(this.namedPath(paths, cursor), cursor);
+    return decoded?.session.sessionId === sessionId ? decoded.session : undefined;
   }
 
   async renameNamed(sessionId: string, title: string): Promise<WorkshopStoredSessionSummary> {
@@ -590,6 +640,35 @@ export class WorkshopSessionStore {
       truncated: names.length > boundedNames.length,
       searchTruncated
     };
+  }
+
+  /**
+   * One file of a page: its browser summary, and what it costs the page (its
+   * size once with a search index, twice without, since the summary then
+   * takes a full read; nothing when too large to summarize). Never remembered
+   * for exact reads (PR #216 F-01, F-03).
+   */
+  private async readPageEntry(
+    paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
+    fileName: string,
+    signal?: AbortSignal
+  ): Promise<WorkshopSessionPageRead> {
+    const filePath = this.namedPath(paths, fileName);
+    let bytes: number;
+    try {
+      bytes = (await this.fileSystem.stat(filePath)).size;
+    } catch (error) {
+      if (isMissingFileError(error)) {
+        return { kind: 'gone' };
+      }
+      this.skip(fileName, errorMessage(error));
+      return { kind: 'read', bytes: 0 };
+    }
+    const indexFileName = workshopSessionSearchIndexFileName(fileName);
+    const searchIndex = await this.readSearchIndexForBrowser(this.namedPath(paths, indexFileName), indexFileName, fileName);
+    const { summary } = await this.browserSummaryForFile(filePath, fileName, searchIndex, undefined, signal);
+    const cost = searchIndex ? bytes : bytes <= this.limits.maximumFileBytes ? 2 * bytes : 0;
+    return { kind: 'read', bytes: cost, ...(summary ? { summary } : {}) };
   }
 
   private async readCurrentForBrowser(

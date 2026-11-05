@@ -1,4 +1,5 @@
 import { emptyPinnedContextServices } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextTestServices';
+import { unusedBookmarkBrowser } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
 import {
   WorkshopRoomHandler
 } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
@@ -199,7 +200,8 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
       } as unknown as WorkshopWidgetRuntime,
       output,
       libraryHost().library,
-      emptyPinnedContextServices()
+      emptyPinnedContextServices(),
+      unusedBookmarkBrowser()
     );
     const router = new MessageRouter();
     handler.registerRoutes(router);
