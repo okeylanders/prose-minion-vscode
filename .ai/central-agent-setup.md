@@ -1068,6 +1068,21 @@ sessions:
 - **Boundary lists.** A new `recall/` module joins `WORKSHOP_RECALL_MODULES`
   and the capability boundary in `boundaries.test.ts`, and stays under 500
   lines. No handler constructs the recall service; one instance owns the cache.
+- **Bookmarks and the open room** ([ADR 2026-11-05](docs/adr/2026-11-05-workshop-bookmark-recall.md)).
+  `transcript.bookmarks` is the one operation that reads the open room, and
+  only its bookmarks, through `WorkshopLiveRoomBookmarks`: a types-only port
+  in `recall/`, implemented by `WorkshopLiveRoomBookmarkReader` over the full
+  ledger and built only in `extension.ts`. Recall never imports the session
+  service or the reader. The port returns only bookmarks on turns the reader
+  could see (`isWorkshopTurnVisibleToParticipant`, the room's own rule).
+  Nothing about bookmarks enters a frame, catch-up or per-turn prompt of its
+  own accord; a requested result is ordinary evidence, and one holding an
+  open-room row the room could not see is stamped
+  `WORKSHOP_CAPABILITY_PUBLICATION_WITHHELD`, which the audience policy reads
+  and never publishes. Refs name their source (`{sessionId}/{bookmarkId}`,
+  `current@{liveSessionId}/{bookmarkId}`); a replaced room's ref is
+  `stale-bookmark-ref`, never retargeted. A read's `bookmarked: "…"` mark is
+  the read window's, never the shared projection's.
 
 ### Lightbox Source Ownership
 
