@@ -1,6 +1,6 @@
 # ADR 2026-11-03: Workshop Wayfinding
 
-**Status:** Proposed (2026-11-03). The writer amended D1 and confirmed D9 on 2026-11-03 ([amendment](#amendment-2026-11-03-one-badge-rule-and-d9-confirmed)), and amended D8 and D10 on 2026-11-04 ([amendment](#amendment-2026-11-04-the-model-in-the-bubble-header)).
+**Status:** Accepted (2026-11-05), when Okey approved merging the epic to `main`. It was proposed on 2026-11-03. The writer amended D1 and confirmed D9 on 2026-11-03 ([amendment](#amendment-2026-11-03-one-badge-rule-and-d9-confirmed)), and amended D8 and D10 on 2026-11-04 ([amendment](#amendment-2026-11-04-the-model-in-the-bubble-header)).
 **Date:** 2026-11-03
 **Epic:** [Workshop Wayfinding](../../.todo/epics/epic-workshop-wayfinding-2026-11-03/README.md)
 **Design:** [`docs/design/workshop-wayfinding/`](../design/workshop-wayfinding/README.md), a snapshot of the planning canvas
