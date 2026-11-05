@@ -7,7 +7,7 @@
 import type { WorkshopPinnedContextUnavailableReason } from '@/infrastructure/storage/WorkshopPinnedContextStore';
 import type { WorkshopPinnedFileFault } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextFileReader';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { WORKSHOP_PINNED_CONTEXT_FILES, type WorkshopPinnedContextRefusal } from '@shared/types/workshopPinnedContext';
+import { WORKSHOP_PINNED_CONTEXT_FILES, WORKSHOP_PINNED_CONTEXT_PATH_CHARACTERS, type WorkshopPinnedContextRefusal } from '@shared/types/workshopPinnedContext';
 
 function sizeWords(bytes: number): string {
   const mib = bytes / (1024 * 1024);
@@ -99,7 +99,9 @@ export const WORKSHOP_PINNED_WORDS = {
   readFailed: 'The pinned files couldn’t be read just now. Nothing was changed.',
   invalid: 'That change can’t be saved as a pinned-context list. Nothing was changed.',
   listUnreadable: 'pinned-context.json can’t be read, so this tab can’t change it. Fix it in the editor.',
-  workspaceChanged: 'The workspace changed, so pinned context wasn’t changed.'
+  workspaceChanged: 'The workspace changed, so pinned context wasn’t changed.',
+  openMissing: 'That file isn’t there any more, so it can’t be opened. Unpin it, or put the file back.',
+  openAmbiguous: 'More than one file in your context folders matches this entry, so none was opened. Fix the entry in pinned-context.json.'
 } as const;
 
 /** "Can't pin manuscript.md: pinned context would come to about 104,000 of 100,000 words. …" */
@@ -113,4 +115,10 @@ export function workshopPinnedOverBudgetWords(labels: readonly string[], words: 
 /** A file inside the project whose name holds a backslash (POSIX): format 1's paths can't name it. */
 export function workshopPinnedBackslashWords(label: string): string {
   return `Can’t pin ${label}: pinned context can’t store a file name with a backslash in it.`;
+}
+
+/** A path longer than format 1 stores (PR #210 F07). */
+export function workshopPinnedTooLongWords(label: string): string {
+  return `Can’t pin ${label}: its path is longer than pinned context can store `
+    + `(${WORKSHOP_PINNED_CONTEXT_PATH_CHARACTERS.toLocaleString('en-US')} characters).`;
 }

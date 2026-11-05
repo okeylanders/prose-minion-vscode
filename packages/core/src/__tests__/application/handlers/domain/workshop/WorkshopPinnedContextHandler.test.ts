@@ -313,7 +313,7 @@ describe('WorkshopPinnedContextHandler: attach missing', () => {
 
     const answer = await h.send(MessageType.WORKSHOP_ATTACH_PINNED_CONTEXT, {});
 
-    expect(answer).toMatchObject({ action: 'attach-missing', ok: true, notice: { kind: 'done', text: 'Attached 2 pinned files to this conversation.' } });
+    expect(answer).toMatchObject({ action: 'attach-missing', ok: true, notice: { kind: 'done', text: 'Attached 2 pinned files to this conversation. Not attached: the-cheshire-cat.md (not found).' } });
     expect(h.session.getContextAttachments().map((attachment) => attachment.relativePath))
       .toEqual(['Project/brief.md', 'Characters/alice.md', 'Notes/garden.md']);
     expect(h.session.getContextAttachments()[1].configuredResource).toEqual({ group: 'characters', path: 'Characters/alice.md' });

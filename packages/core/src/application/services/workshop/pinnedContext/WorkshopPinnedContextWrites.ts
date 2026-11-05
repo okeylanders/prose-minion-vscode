@@ -54,6 +54,7 @@ import {
   workshopPinnedFileFaultWords,
   workshopPinnedListRefusalWords,
   workshopPinnedBackslashWords,
+  workshopPinnedTooLongWords,
   workshopPinnedListUnavailableWords,
   workshopPinnedOverBudgetWords
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextWords';
@@ -101,24 +102,18 @@ export class WorkshopPinnedContextWrites {
         return this.refuse(WORKSHOP_PINNED_WORDS.outsideProject, 'outside');
       }
       // The reader's rule (PR #208 F01): a row is this root's only when the root and its path give it back.
-      if (!workshopPinnedListedUnderRoot(list.rootPath, summary) || workshopPinnedContextPathFault(summary.path) !== undefined) {
+      if (!workshopPinnedListedUnderRoot(list.rootPath, summary)) {
         return this.refuse(WORKSHOP_PINNED_WORDS.workspaceChanged, 'workspace-changed');
       }
       entries.push({ path: summary.path });
     }
-    return this.pin(ask, revision, list, entries);
+    return this.pathRefusal(entries) ?? this.pin(ask, revision, list, entries);
   }
 
   async pinPaths(ask: WorkshopPinnedContextAsk, revision: string, entries: readonly WorkshopPinnedContextEntry[]): Promise<WorkshopPinnedContextWriteResult> {
-    for (const entry of entries) {
-      const fault = workshopPinnedContextPathFault(entry.path);
-      if (fault === 'backslash') {
-        // A file inside the project whose name holds `\` (POSIX): format 1 can't name it.
-        return this.refuse(workshopPinnedBackslashWords(workshopPinnedFileLabel(entry.path)), 'backslash');
-      }
-      if (fault !== undefined) {
-        return this.refuse(WORKSHOP_PINNED_WORDS.outsideProject, 'outside');
-      }
+    const refusal = this.pathRefusal(entries);
+    if (refusal) {
+      return refusal;
     }
     const list = await this.atRevision(ask, revision);
     return isList(list) ? this.pin(ask, revision, list, entries) : list;
@@ -214,8 +209,27 @@ export class WorkshopPinnedContextWrites {
     if (!entry) {
       return { kind: 'refused', words: WORKSHOP_PINNED_WORDS.notListed, category: 'not-listed' };
     }
-    const fsPath = path.join(where.rootPath, ...entry.path.split('/'));
-    return isPathWithinRoot(where.rootPath, fsPath)
+    // The source the reader resolves for this entry, as describe and attach read it (PR #210 F05):
+    // a file that can't be read still opens, for repair; never another file, never a spelling that isn't there.
+    const resolution = await this.reader.resolve(where.rootPath, entry);
+    switch (resolution.kind) {
+      case 'missing':
+        return { kind: 'refused', words: WORKSHOP_PINNED_WORDS.openMissing, category: 'missing' };
+      case 'unreadable':
+        if (resolution.fsPath === undefined) {
+          return {
+            kind: 'refused',
+            words: resolution.fault === 'ambiguous' ? WORKSHOP_PINNED_WORDS.openAmbiguous : WORKSHOP_PINNED_WORDS.workspaceChanged,
+            category: resolution.fault
+          };
+        }
+        break;
+      case 'catalog':
+      case 'workspace':
+        break;
+    }
+    const fsPath = resolution.fsPath;
+    return fsPath !== undefined && isPathWithinRoot(where.rootPath, fsPath)
       ? { kind: 'file', fsPath }
       : { kind: 'refused', words: WORKSHOP_PINNED_WORDS.outsideProject, category: 'outside' };
   }
@@ -339,6 +353,26 @@ export class WorkshopPinnedContextWrites {
       case 'io':
         return this.refuse(WORKSHOP_PINNED_WORDS.io, 'io');
     }
+  }
+
+  /** Why an entry's path can't be stored, by the path rule every route shares (format 1's), or undefined. */
+  private pathRefusal(entries: readonly WorkshopPinnedContextEntry[]): WorkshopPinnedContextWriteResult | undefined {
+    for (const entry of entries) {
+      const label = workshopPinnedFileLabel(entry.path);
+      switch (workshopPinnedContextPathFault(entry.path)) {
+        case undefined:
+          continue;
+        case 'backslash':
+          // A file inside the project whose name holds `\` (POSIX): format 1 can't name it.
+          return this.refuse(workshopPinnedBackslashWords(label), 'backslash');
+        case 'too-long':
+          // The one bound the codec, every route and the tab's keys share (PR #210 F07).
+          return this.refuse(workshopPinnedTooLongWords(label), 'too-long');
+        default:
+          return this.refuse(WORKSHOP_PINNED_WORDS.outsideProject, 'outside');
+      }
+    }
+    return undefined;
   }
 
   /** A change asked with no accepted room: no single folder, or the room not settled yet. */

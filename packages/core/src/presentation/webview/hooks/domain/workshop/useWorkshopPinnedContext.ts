@@ -37,8 +37,8 @@ export interface WorkshopPinnedContextState {
   answer?: WorkshopPinnedContextPayload;
   /** A request is waiting for its answer. */
   pending: boolean;
-  /** The id of the request waiting, so a caller can tell its own answer. */
-  pendingRequestId?: string;
+  /** The changes still waiting for their answers, so a caller can tell its own. */
+  pendingRequestIds: readonly string[];
   /** The tab as drawn, derived from the answer and the room. */
   view: WorkshopPinnedContextTabView;
   /** Pinned entries, for the sessions menu: 0 until the host answers. */
@@ -90,85 +90,103 @@ export function useWorkshopPinnedContext({ attachments, running }: UseWorkshopPi
   const persisted = usePersistedState<Partial<WorkshopPinnedContextPersistence>>();
   const [noteOpen, setNoteOpen] = React.useState(persisted?.pinnedContextNoteOpen ?? true);
   const [answer, setAnswer] = React.useState<WorkshopPinnedContextPayload | undefined>(undefined);
-  const [pendingRequestId, setPendingRequestId] = React.useState<string | undefined>(undefined);
-  const waiting = React.useRef<string | undefined>(undefined);
-  const picking = React.useRef<string | undefined>(undefined);
+  const [pendingRequestIds, setPendingRequestIds] = React.useState<readonly string[]>([]);
+  const [listPending, setListPending] = React.useState(false);
+  /** The list read waited on, and how many changes had settled when it was asked. */
+  const read = React.useRef<{ id: string; epoch: number } | undefined>(undefined);
+  /** Changes waiting for their answers (a pick held apart: a dismissed picker never answers). */
+  const changes = React.useRef(new Map<string, 'change' | 'pick'>());
+  /** How many changes have settled: a read asked before one settled describes an older list (PR #210 F03). */
+  const epoch = React.useRef(0);
   const revision = React.useRef<string | null>(null);
   const ids = React.useRef({ prefix: `ws-pinned-${Math.random().toString(36).slice(2, 10)}`, count: 0 });
 
-  const post = React.useCallback((type: MessageType, payload: Record<string, unknown>): string => {
+  const syncPending = React.useCallback(() => {
+    setListPending(read.current !== undefined || [...changes.current.values()].includes('change'));
+    setPendingRequestIds([...changes.current.keys()]);
+  }, []);
+
+  const send = React.useCallback((type: MessageType, payload: Record<string, unknown>, kind: 'read' | 'change' | 'pick'): string => {
     ids.current.count += 1;
     const requestId = `${ids.current.prefix}-${ids.current.count}`;
-    waiting.current = requestId;
-    setPendingRequestId(requestId);
+    if (kind === 'read') {
+      read.current = { id: requestId, epoch: epoch.current };
+    } else {
+      changes.current.set(requestId, kind);
+    }
+    syncPending();
     vscode.postMessage({ type, source: SOURCE, payload: { requestId, ...payload }, timestamp: Date.now() });
     return requestId;
-  }, [vscode]);
+  }, [syncPending, vscode]);
 
   /** A change to the list, against the revision the tab shows. */
-  const change = React.useCallback((type: MessageType, payload: Record<string, unknown>): string | undefined => {
+  const change = React.useCallback((type: MessageType, payload: Record<string, unknown>, kind: 'change' | 'pick' = 'change'): string | undefined => {
     if (revision.current === null) {
       return undefined;
     }
-    return post(type, { revision: revision.current, ...payload });
-  }, [post]);
+    return send(type, { revision: revision.current, ...payload }, kind);
+  }, [send]);
 
   const requestList = React.useCallback(() => {
-    post(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT, {});
-  }, [post]);
+    send(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT, {}, 'read');
+  }, [send]);
 
   React.useEffect(() => {
     requestList();
   }, [requestList]);
 
-  const pinPickedFile = React.useCallback((): string | undefined => {
-    if (revision.current === null) {
-      return undefined;
-    }
-    ids.current.count += 1;
-    const requestId = `${ids.current.prefix}-${ids.current.count}`;
-    picking.current = requestId;
-    vscode.postMessage({
-      type: MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE,
-      source: SOURCE,
-      payload: { requestId, revision: revision.current },
-      timestamp: Date.now()
-    });
-    return requestId;
-  }, [vscode]);
+  const pinPickedFile = React.useCallback(
+    (): string | undefined => change(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE, {}, 'pick'),
+    [change]
+  );
 
+  /**
+   * Mutations and reads are tracked apart (PR #210 F03). A change's answer is
+   * the list after it settled, so it is always taken. A read is taken only
+   * while it is the newest read and no change has settled since it was asked;
+   * otherwise its list may predate a committed change, and the change's own
+   * answer already holds the newer list. A push is taken only while nothing
+   * waits.
+   */
   const handlePinnedContext = React.useCallback((message: WorkshopPinnedContextMessage) => {
     const payload = message.payload;
-    if (payload.requestId !== null && payload.requestId === picking.current) {
-      // The pick's answer: taken unless a newer request waits, whose answer will be newer.
-      picking.current = undefined;
-      if (waiting.current === undefined) {
-        revision.current = payload.revision;
-        setAnswer(payload);
+    const apply = () => {
+      revision.current = payload.revision;
+      setAnswer(payload);
+    };
+    if (payload.requestId !== null && changes.current.has(payload.requestId)) {
+      changes.current.delete(payload.requestId);
+      epoch.current += 1;
+      apply();
+      syncPending();
+      return;
+    }
+    if (payload.requestId !== null && payload.requestId === read.current?.id) {
+      const current = read.current.epoch === epoch.current;
+      read.current = undefined;
+      if (current) {
+        apply();
       }
+      syncPending();
       return;
     }
-    if (payload.requestId === null ? waiting.current !== undefined : payload.requestId !== waiting.current) {
-      return;
+    if (payload.requestId === null && read.current === undefined && ![...changes.current.values()].includes('change')) {
+      apply();
     }
-    waiting.current = undefined;
-    revision.current = payload.revision;
-    setPendingRequestId(undefined);
-    setAnswer(payload);
-  }, []);
+  }, [syncPending]);
 
   const actions: Omit<WorkshopPinnedContextActions, 'requestList' | 'handlePinnedContext' | 'toggleNote' | 'pinPickedFile'> = React.useMemo(() => ({
     pinResources: (items) => change(MessageType.WORKSHOP_PIN_CONTEXT_RESOURCES, { items: items.map(({ group, path }) => ({ group, path })) }),
     pinAttachments: (attachmentIds) => change(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS, { attachmentIds: [...attachmentIds] }),
     unpin: (entryPath) => change(MessageType.WORKSHOP_UNPIN_CONTEXT, { entryPath }),
     move: (entryPath, direction) => change(MessageType.WORKSHOP_MOVE_PINNED_CONTEXT, { entryPath, direction }),
-    attachMissing: () => post(MessageType.WORKSHOP_ATTACH_PINNED_CONTEXT, {}),
-    openFile: (entryPath) => post(MessageType.WORKSHOP_OPEN_PINNED_CONTEXT_FILE, entryPath === undefined ? {} : { entryPath })
-  }), [change, post]);
+    attachMissing: () => send(MessageType.WORKSHOP_ATTACH_PINNED_CONTEXT, {}, 'change'),
+    openFile: (entryPath) => send(MessageType.WORKSHOP_OPEN_PINNED_CONTEXT_FILE, entryPath === undefined ? {} : { entryPath }, 'change')
+  }), [change, send]);
 
   const toggleNote = React.useCallback(() => setNoteOpen((open) => !open), []);
 
-  const pending = pendingRequestId !== undefined;
+  const pending = listPending;
   const view = React.useMemo(
     () => workshopPinnedContextTabView({ ...(answer ? { answer } : {}), attachments, running, pending }),
     [answer, attachments, pending, running]
@@ -178,7 +196,7 @@ export function useWorkshopPinnedContext({ attachments, running }: UseWorkshopPi
   return {
     ...(answer ? { answer } : {}),
     pending,
-    ...(pendingRequestId ? { pendingRequestId } : {}),
+    pendingRequestIds,
     view,
     pinnedFileCount: answer?.availability.available && answer.file.state === 'ok' ? answer.entries.length : 0,
     noteOpen,

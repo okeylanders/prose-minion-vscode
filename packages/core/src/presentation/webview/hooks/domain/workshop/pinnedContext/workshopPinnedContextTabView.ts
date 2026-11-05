@@ -130,7 +130,6 @@ export function workshopPinnedContextTabView({ answer, attachments, running, pen
   const rows = entries.map((entry, index): WorkshopPinnedContextRowView => {
     const words = entry.words ?? 0;
     let issue: string | undefined;
-    let attaches = false;
     if (entry.state === 'missing') {
       issue = 'Not found. New conversations start without it. Unpin it, or put the file back.';
       problems.push('missing');
@@ -144,13 +143,14 @@ export function workshopPinnedContextTabView({ answer, attachments, running, pen
         problems.push('over');
       } else {
         used += words;
-        attaches = true;
       }
     }
-    const inRoom = attachments.some((attachment) => workshopPinnedContextMatches(entry, attachment, answer!.platform));
-    const here = attaches && inRoom;
+    // The current room, from its own attachments: what it holds is its own copy, whatever the source's
+    // health now or how a future room's template fits (PR #210 F04). The warnings above are the template's.
+    const here = attachments.some((attachment) => workshopPinnedContextMatches(entry, attachment, answer!.platform));
     hereCount += here ? 1 : 0;
-    missingCount += attaches && !inRoom ? 1 : 0;
+    // Readable files the room lacks; the room's own budget guard decides each at attach time.
+    missingCount += !here && (entry.state === 'ready' || entry.state === 'head-sliced') ? 1 : 0;
     return {
       path: entry.path,
       position: index + 1,

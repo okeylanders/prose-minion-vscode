@@ -293,7 +293,8 @@ export class WorkshopSliceComposition {
         markDirty,
         sendStatus: host.sendStatus,
         activeRunLabel: host.activeRunLabel,
-        roomReady: () => sessionPersistence.initialize()
+        roomReady: () => sessionPersistence.initialize(),
+        runRoomOperation: (work) => sessionPersistence.runContextRefresh(work)
       }
     );
   }

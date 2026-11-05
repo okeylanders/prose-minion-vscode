@@ -61,8 +61,9 @@ export type WorkshopPinnedFileSource =
  * - `empty`: nothing but whitespace;
  * - `refused`: outside the project, or reached through a symbolic link;
  * - `read-failed`: the read itself failed;
- * - `ambiguous`: no catalog row names the path exactly, and several distinct
- *   rows name it by its normalized key, so none is chosen (PR #208 F03);
+ * - `ambiguous`: no catalog row names the path exactly, no file is there by
+ *   its exact spelling, and several distinct rows name it by its normalized
+ *   key, so none is chosen (PR #208 F03, PR #210 F01);
  * - `workspace-changed`: the file would have come from outside the root the
  *   read was asked for, so it was not read (PR #208 F01). A caller installs
  *   nothing from a read that holds one.
@@ -133,11 +134,32 @@ export function workshopPinnedListedUnderRoot(rootPath: string, row: ContextReso
   return path.relative(rootPath, row.absolutePath).split(path.sep).join('/') === row.path;
 }
 
-/** A catalog row the entry names: exactly, or alone by its normalized key; or why none is chosen. */
-type CatalogMatch =
-  | { kind: 'row'; summary: ContextResourceSummary }
-  | { kind: 'ambiguous' }
-  | { kind: 'none' };
+/**
+ * The one source an entry names under a captured root (PR #210 F01, F05),
+ * decided by one rule, in this order:
+ *
+ * 1. the catalog row whose path is the entry's exactly;
+ * 2. else the exact file the entry spells under the root, when it exists
+ *    (read through the workspace door), so a file chosen by its own path is
+ *    never traded for a neighbour spelled the same way after normalization;
+ * 3. only when that exact file is absent, the catalog row the entry names by
+ *    its normalized key, when exactly one distinct row does (PR #208 F03).
+ *
+ * A catalog row is the root's only when it was listed under that root itself
+ * (`workshopPinnedListedUnderRoot`; PR #208 F01). Describe, seed, Attach
+ * missing, pin validation and Open all resolve through this.
+ */
+export type WorkshopPinnedSourceResolution =
+  | { readonly kind: 'catalog'; readonly summary: ContextResourceSummary; readonly fsPath: string }
+  | { readonly kind: 'workspace'; readonly fsPath: string }
+  | { readonly kind: 'missing' }
+  /** No file is chosen, or the one there could not even be looked at; `fsPath` is set when a file exists there to open for repair. */
+  | {
+      readonly kind: 'unreadable';
+      readonly fault: 'ambiguous' | 'workspace-changed' | 'read-failed';
+      readonly group?: ContextPathGroup;
+      readonly fsPath?: string;
+    };
 
 export class WorkshopPinnedContextFileReader {
   constructor(
@@ -156,64 +178,100 @@ export class WorkshopPinnedContextFileReader {
     rootPath: string,
     entries: readonly WorkshopPinnedContextEntry[]
   ): Promise<{ reads: WorkshopPinnedFileRead[]; catalogUnreadable: boolean }> {
-    let catalog: WorkshopContextIntakeCatalog | undefined;
-    try {
-      catalog = await this.intake.openCatalog();
-    } catch {
-      catalog = undefined;
-    }
+    const catalog = await this.openCatalog();
     const rows = catalog?.entries() ?? [];
     const reads: WorkshopPinnedFileRead[] = [];
     for (const entry of entries) {
-      reads.push(await this.readOne(rootPath, entry, catalog, this.match(entry, rows)));
+      reads.push(await this.readResolved(rootPath, entry, catalog, await this.resolveAmong(rootPath, entry, rows)));
     }
     return { reads, catalogUnreadable: catalog === undefined };
   }
 
-  /** The exact stored path first; a normalized match only when one distinct row has it (PR #208 F03). */
-  private match(entry: WorkshopPinnedContextEntry, rows: readonly ContextResourceSummary[]): CatalogMatch {
-    const exact = rows.find((row) => row.path === entry.path);
-    if (exact) {
-      return { kind: 'row', summary: exact };
-    }
-    const wanted = workshopPinnedContextPathKey(entry.path, this.platform);
-    const keyed = rows.filter((row) => workshopPinnedContextPathKey(row.path, this.platform) === wanted);
-    const distinct = new Set(keyed.map((row) => row.path));
-    if (distinct.size > 1) {
-      return { kind: 'ambiguous' };
-    }
-    return keyed.length > 0 ? { kind: 'row', summary: keyed[0] } : { kind: 'none' };
+  /** The source one entry names under `rootPath`, against a fresh catalog: what Open opens (PR #210 F05). */
+  async resolve(rootPath: string, entry: WorkshopPinnedContextEntry): Promise<WorkshopPinnedSourceResolution> {
+    const catalog = await this.openCatalog();
+    return this.resolveAmong(rootPath, entry, catalog?.entries() ?? []);
   }
 
-  private async readOne(
+  private async openCatalog(): Promise<WorkshopContextIntakeCatalog | undefined> {
+    try {
+      return await this.intake.openCatalog();
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async resolveAmong(
+    rootPath: string,
+    entry: WorkshopPinnedContextEntry,
+    rows: readonly ContextResourceSummary[]
+  ): Promise<WorkshopPinnedSourceResolution> {
+    const exact = rows.find((row) => row.path === entry.path);
+    if (exact) {
+      return this.listedRow(rootPath, exact);
+    }
+    const named = path.join(rootPath, ...entry.path.split('/'));
+    try {
+      await this.fileSystem.stat(named);
+      return { kind: 'workspace', fsPath: named };
+    } catch (error) {
+      if (!isMissingFileSystemPathError(error)) {
+        return { kind: 'unreadable', fault: 'read-failed', fsPath: named };
+      }
+    }
+    // The exact file is absent: a normalized catalog spelling, only when it is the one.
+    const wanted = workshopPinnedContextPathKey(entry.path, this.platform);
+    const keyed = rows.filter((row) => workshopPinnedContextPathKey(row.path, this.platform) === wanted);
+    if (new Set(keyed.map((row) => row.path)).size > 1) {
+      return { kind: 'unreadable', fault: 'ambiguous' };
+    }
+    return keyed.length > 0 ? this.listedRow(rootPath, keyed[0]) : { kind: 'missing' };
+  }
+
+  /** A catalog row, when it was listed under the captured root itself (PR #208 F01). */
+  private listedRow(rootPath: string, row: ContextResourceSummary): WorkshopPinnedSourceResolution {
+    return workshopPinnedListedUnderRoot(rootPath, row)
+      ? { kind: 'catalog', summary: row, fsPath: row.absolutePath }
+      // The catalog was listed under another root, nested or not: the workspace moved under the read.
+      : { kind: 'unreadable', fault: 'workspace-changed', group: row.group };
+  }
+
+  private async readResolved(
     rootPath: string,
     entry: WorkshopPinnedContextEntry,
     catalog: WorkshopContextIntakeCatalog | undefined,
-    match: CatalogMatch
+    resolution: WorkshopPinnedSourceResolution
   ): Promise<WorkshopPinnedFileRead> {
     const named = path.join(rootPath, ...entry.path.split('/'));
-    const listed = match.kind === 'row' && workshopPinnedListedUnderRoot(rootPath, match.summary) ? match.summary : undefined;
+    const resolved = resolution.kind === 'catalog' ? [resolution.fsPath] : [];
     const identity: WorkshopPinnedFileIdentity = {
       entry,
       label: workshopPinnedFileLabel(entry.path),
-      sourceUris: [...new Set([named, ...(listed ? [listed.absolutePath] : [])].map((file) => pathToFileURL(file).toString()))]
+      sourceUris: [...new Set([named, ...resolved].map((file) => pathToFileURL(file).toString()))]
     };
-    if (match.kind === 'ambiguous') {
-      return { ...identity, state: 'unreadable', source: { kind: 'workspace' }, fault: 'ambiguous' };
-    }
-    if (match.kind === 'row' && !listed) {
-      // The catalog was listed under another root, nested or not: the workspace moved under the read.
-      return { ...identity, state: 'unreadable', source: { kind: 'catalog', group: match.summary.group }, fault: 'workspace-changed' };
+    switch (resolution.kind) {
+      case 'missing':
+        return { ...identity, state: 'missing' };
+      case 'unreadable':
+        return {
+          ...identity,
+          state: 'unreadable',
+          source: resolution.group ? { kind: 'catalog', group: resolution.group } : { kind: 'workspace' },
+          fault: resolution.fault
+        };
+      case 'catalog':
+      case 'workspace':
+        break;
     }
     try {
-      return catalog && listed
-        ? await this.readListed(identity, catalog, listed)
+      return resolution.kind === 'catalog' && catalog
+        ? await this.readListed(identity, catalog, resolution.summary)
         : await this.readWorkspaceFile(rootPath, identity, named);
     } catch {
       return {
         ...identity,
         state: 'unreadable',
-        source: listed ? { kind: 'catalog', group: listed.group } : { kind: 'workspace' },
+        source: resolution.kind === 'catalog' ? { kind: 'catalog', group: resolution.summary.group } : { kind: 'workspace' },
         fault: 'read-failed'
       };
     }

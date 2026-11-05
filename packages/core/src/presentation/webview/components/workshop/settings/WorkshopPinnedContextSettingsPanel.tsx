@@ -36,7 +36,7 @@ export interface WorkshopPinnedContextSettingsPanelProps {
   view: WorkshopPinnedContextTabView;
   /** The host's last answer: its notice says what the latest change came to. */
   answer?: WorkshopPinnedContextPayload;
-  pendingRequestId?: string;
+  pendingRequestIds?: readonly string[];
   noteOpen: boolean;
   /** The picker's catalog and search, as Choose from project has them. */
   catalog: ConfiguredResourceEntry[] | null;
@@ -62,7 +62,7 @@ const ATTACH_WHY_ID = 'pm-ws-pin-attach-why';
 export const WorkshopPinnedContextSettingsPanel: React.FC<WorkshopPinnedContextSettingsPanelProps> = ({
   view,
   answer,
-  pendingRequestId,
+  pendingRequestIds,
   noteOpen,
   catalog,
   searchResults,
@@ -308,7 +308,7 @@ export const WorkshopPinnedContextSettingsPanel: React.FC<WorkshopPinnedContextS
         pinnedPaths={view.pinnedPaths}
         remainingWords={view.remainingWords}
         {...(answer ? { answer } : {})}
-        {...(pendingRequestId ? { pendingRequestId } : {})}
+        {...(pendingRequestIds ? { pendingRequestIds } : {})}
         onSearch={onSearch}
         onClearSearch={onClearSearch}
         onPin={onPinResources}
@@ -327,7 +327,7 @@ export function workshopPinnedContextPanelProps(
   return {
     view: pinned.view,
     ...(pinned.answer ? { answer: pinned.answer } : {}),
-    ...(pinned.pendingRequestId ? { pendingRequestId: pinned.pendingRequestId } : {}),
+    pendingRequestIds: pinned.pendingRequestIds,
     noteOpen: pinned.noteOpen,
     catalog: room.contextCatalog,
     searchResults: room.contextSearch,

@@ -35,7 +35,8 @@ export function harness(options: Parameters<typeof seedHost>[0] & { report?: Wor
     markDirty: jest.fn(),
     sendStatus: jest.fn(),
     activeRunLabel: jest.fn((): string | undefined => undefined),
-    roomReady: jest.fn(async () => undefined)
+    roomReady: jest.fn(async () => undefined),
+    runRoomOperation: jest.fn(async (work: () => Promise<void>) => { await work(); })
   };
   let report = options.report;
   const takeFirstRoomReport = jest.fn(() => {
