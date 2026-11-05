@@ -352,6 +352,35 @@ describe('WorkshopPinnedContextHandler: attach missing', () => {
     expect(h.session.getContextAttachments()).toEqual([]);
   });
 
+  it('attaches nothing when the project folder changes while the pinned files are read (PR #208 F01)', async () => {
+    const h = harness();
+    h.write('Characters/alice.md', 'Alice.');
+    h.pin('Characters/alice.md');
+    const read = h.store.read.bind(h.store);
+    jest.spyOn(h.store, 'read').mockImplementationOnce(async (options) => {
+      const result = await read(options);
+      h.folders.splice(0, 1, { path: '/workspace/other', name: 'other' });
+      return result;
+    });
+    await expect(h.send(MessageType.WORKSHOP_ATTACH_PINNED_CONTEXT, {})).resolves.toMatchObject({
+      ok: false, notice: { kind: 'refused', text: 'The project folder changed, so nothing was attached. Try again.' }
+    });
+    expect(h.session.getContextAttachments()).toEqual([]);
+  });
+
+  it('refuses a pin by key when the folder changed after the tab was asked: nothing written in either project', async () => {
+    const h = harness({ catalog: [{ group: 'characters', path: 'Characters/alice.md' }] });
+    h.write('Characters/alice.md', 'Alice.');
+    const pinning = h.send(MessageType.WORKSHOP_PIN_CONTEXT_RESOURCES, {
+      revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION,
+      items: [{ group: 'characters', path: 'Characters/alice.md' }]
+    });
+    h.folders.splice(0, 1, { path: '/workspace/other', name: 'other' });
+    await expect(pinning).resolves.toMatchObject({ ok: false, notice: { kind: 'refused' } });
+    expect(h.listOnDisk()).toBeUndefined();
+    expect([...h.fileSystem.files.keys()].some((file) => file.startsWith('/workspace/other'))).toBe(false);
+  });
+
   it('says so when every pinned file is already here', async () => {
     const h = harness();
     h.write('Characters/alice.md', 'Alice.');

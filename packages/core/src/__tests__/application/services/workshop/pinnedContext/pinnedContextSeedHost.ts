@@ -20,6 +20,8 @@ import type { WorkshopPinnedContextPathPlatform } from '@shared/types/workshopPi
 
 export const ROOT = '/workspace/novel';
 export const LIST_FILE = path.join(ROOT, 'prose-minion', 'pinned-context.json');
+/** Another project's folder, for the workspace-change tests. */
+export const OTHER_ROOT = '/workspace/other';
 
 /** Words of made-up prose, `count` of them. */
 export const words = (count: number, word = 'rabbit'): string => Array.from({ length: count }, () => word).join(' ');
@@ -62,23 +64,28 @@ export function seedHost(options: SeedHostOptions = {}) {
     asRelativePath: (value: string) => value.startsWith(`${ROOT}/`) ? value.slice(ROOT.length + 1) : value,
     findFiles: async () => []
   };
-  const summaries = (): ContextResourceSummary[] => catalog
-    .filter((entry) => fileSystem.files.has(path.join(ROOT, entry.path)))
+  // As the real provider does, a catalog lists the live folder's files when it
+  // opens, and reads the absolute paths it listed then.
+  const summariesUnder = (root: string): ContextResourceSummary[] => catalog
+    .filter((entry) => fileSystem.files.has(path.join(root, entry.path)))
     .map((entry) => ({
       group: entry.group,
       path: entry.path,
       label: path.posix.basename(entry.path),
-      sizeBytes: fileSystem.files.get(path.join(ROOT, entry.path))!.byteLength,
-      absolutePath: path.join(ROOT, entry.path),
-      workspaceFolder: ROOT
+      sizeBytes: fileSystem.files.get(path.join(root, entry.path))!.byteLength,
+      absolutePath: path.join(root, entry.path),
+      workspaceFolder: root
     }));
   const providerFactory = {
-    createProvider: jest.fn(async () => ({
-      listResources: () => summaries(),
-      loadResources: async (paths: string[]) => summaries()
-        .filter((summary) => paths.includes(summary.path))
-        .map((summary) => ({ ...summary, content: new TextDecoder().decode(fileSystem.files.get(summary.absolutePath)) }))
-    }))
+    createProvider: jest.fn(async () => {
+      const listed = summariesUnder(folders[0]?.path ?? ROOT);
+      return {
+        listResources: () => [...listed],
+        loadResources: async (paths: string[]) => listed
+          .filter((summary) => paths.includes(summary.path))
+          .map((summary) => ({ ...summary, content: new TextDecoder().decode(fileSystem.files.get(summary.absolutePath)) }))
+      };
+    })
   };
   const intake = new WorkshopContextIntakeService(providerFactory as never, fileSystem, workspace);
   const store = new WorkshopPinnedContextStore(fileSystem, workspace, log, { platform });
@@ -86,11 +93,19 @@ export function seedHost(options: SeedHostOptions = {}) {
   const library = new WorkshopPinnedContextLibrary(store, intake, fileSystem, () => scope.current(), log, { platform });
   const seed = new WorkshopPinnedContextRoomSeed(library, log, platform);
 
-  const write = (relativePath: string, text: string) => {
-    fileSystem.files.set(path.join(ROOT, relativePath), new TextEncoder().encode(text));
+  const write = (relativePath: string, text: string, root = ROOT) => {
+    fileSystem.files.set(path.join(root, relativePath), new TextEncoder().encode(text));
   };
-  const pin = (...paths: string[]) => {
-    fileSystem.files.set(LIST_FILE, new TextEncoder().encode(encodeWorkshopPinnedContext({ files: paths.map((entryPath) => ({ path: entryPath })) })));
+  /** Put the window in another folder, or back. */
+  const moveTo = (root: string) => {
+    folders.splice(0, folders.length, { path: root, name: path.basename(root) });
   };
-  return { fileSystem, folders, catalog, providerFactory, intake, store, library, seed, scope, lines, log, write, pin };
+  const pinIn = (root: string, ...paths: string[]) => {
+    fileSystem.files.set(
+      path.join(root, 'prose-minion', 'pinned-context.json'),
+      new TextEncoder().encode(encodeWorkshopPinnedContext({ files: paths.map((entryPath) => ({ path: entryPath })) }))
+    );
+  };
+  const pin = (...paths: string[]) => pinIn(ROOT, ...paths);
+  return { fileSystem, folders, catalog, providerFactory, intake, store, library, seed, scope, lines, log, write, pin, pinIn, moveTo };
 }

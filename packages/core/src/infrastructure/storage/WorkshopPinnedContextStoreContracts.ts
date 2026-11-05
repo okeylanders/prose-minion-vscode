@@ -26,7 +26,11 @@ export type WorkshopPinnedContextRead =
   | { state: 'ok'; list: WorkshopPinnedContextList; revision: string }
   /** The file does not read as format 1; it is never written. */
   | { state: 'unreadable'; reason: WorkshopPinnedContextRefusal; entry?: number; revision: string }
-  | { state: 'unavailable'; reason: WorkshopPinnedContextUnavailableReason }
+  /**
+   * No single folder, or (a read pinned to a file; Slice 2b, PR #208 F01)
+   * the workspace's list is another file at the read's turn.
+   */
+  | { state: 'unavailable'; reason: WorkshopPinnedContextUnavailableReason | 'workspace-changed' }
   /** Another window holds the file under a live claim now. */
   | { state: 'busy' }
   /** The folder or the file could not be read; never taken for absent. */
@@ -50,6 +54,16 @@ export interface WorkshopPinnedContextUpdateOptions {
    * rename that commits. `false` withdraws the write as `unavailable`.
    */
   beforeCommit?: () => boolean;
+}
+
+export interface WorkshopPinnedContextReadOptions {
+  /**
+   * The list's file the caller captured (Slice 2b, PR #208 F01). At the
+   * read's turn, a workspace whose list is another file answers
+   * `unavailable` / `workspace-changed`, and nothing is read: a queued read
+   * never reads another project's list for its caller.
+   */
+  filePath?: string;
 }
 
 export interface WorkshopPinnedContextStoreOptions {

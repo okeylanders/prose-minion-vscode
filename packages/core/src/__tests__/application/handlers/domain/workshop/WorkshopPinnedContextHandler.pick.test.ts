@@ -54,5 +54,17 @@ describe('WorkshopPinnedContextHandler: Explore project folders… (the host\'s 
     expect(answer.entries.map((entry) => entry.path)).toEqual(['Project/brief.md']);
     expect(h.listOnDisk()).toEqual(['Project/brief.md']);
   });
-});
 
+  it('binds the pick to the folder the room was asked in: a folder switch during the pick writes nothing (PR #208 F01)', async () => {
+    const h = harness();
+    h.write('Notes/garden.md', 'The garden.');
+    h.shell.pickFile.mockImplementationOnce(async () => {
+      h.folders.splice(0, 1, { path: '/workspace/other', name: 'other' });
+      return { fsPath: path.join(ROOT, 'Notes', 'garden.md'), uri: 'file:///picked' };
+    });
+    await expect(h.send(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE, { revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION }))
+      .resolves.toMatchObject({ ok: false, notice: { kind: 'refused' } });
+    expect(h.shell.pickFile).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: ROOT }));
+    expect(h.listOnDisk()).toBeUndefined();
+  });
+});

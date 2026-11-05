@@ -42,7 +42,7 @@ export interface WorkshopPinnedContextRow {
 export type WorkshopPinnedContextDescription =
   | { readonly state: 'listed'; readonly revision: string; readonly rows: readonly WorkshopPinnedContextRow[]; readonly words: number; readonly absent: boolean }
   | { readonly state: 'unreadable'; readonly revision: string; readonly reason: WorkshopPinnedContextRefusal; readonly entry?: number; readonly words: string }
-  | { readonly state: 'unavailable'; readonly reason: WorkshopPinnedContextUnavailableReason; readonly words: string }
+  | { readonly state: 'unavailable'; readonly reason: WorkshopPinnedContextUnavailableReason | 'workspace-changed'; readonly words: string }
   | { readonly state: 'busy' | 'io'; readonly words: string };
 
 /** What a seed attaches: every pinned file, in pinned order, or why the list gave none. */
@@ -51,9 +51,22 @@ export type WorkshopPinnedContextSeedRead =
   /** Nothing is pinned, or there is no single folder (ADR D2: never seed then). */
   | { readonly state: 'nothing' }
   /** The list file is there and cannot be read now, as a category for the log. */
-  | { readonly state: 'list-unreadable'; readonly category: 'unreadable' | 'busy' | 'io' | 'failed' };
+  | { readonly state: 'list-unreadable'; readonly category: 'unreadable' | 'busy' | 'io' | 'failed' }
+  /**
+   * The project folder changed while the seed read (PR #208 F01): the list or
+   * a file would have come from another root. Nothing it read is installed.
+   */
+  | { readonly state: 'workspace-changed' };
+
+/** The workspace's one folder and its list's file, captured together. */
+export interface WorkshopPinnedContextWhere {
+  readonly rootPath: string;
+  readonly filePath: string;
+}
 
 export interface WorkshopPinnedContextAsk {
+  /** Where the ask was made, when there was an accepted workspace to ask in. */
+  readonly where: WorkshopPinnedContextWhere | undefined;
   /** False when there was no accepted workspace to ask in. */
   readonly accepted: boolean;
   /** Whether that workspace is still the accepted one: a write's `beforeCommit`, a seed's install check. */
@@ -82,7 +95,12 @@ export interface WorkshopPinnedContextTabPort {
   /** How paths compare on this host; the webview's match rule needs it. */
   readonly platform: WorkshopPinnedContextPathPlatform;
   describe(): Promise<WorkshopPinnedContextDescription>;
-  readForSeed(): Promise<WorkshopPinnedContextSeedRead>;
+  /**
+   * Every pinned file read for the live room (Attach missing), bound to the
+   * root that room was asked in; `still` says whether it is still the
+   * accepted room, to check before anything is attached (PR #208 F01).
+   */
+  readForRoom(): Promise<{ readonly read: WorkshopPinnedContextSeedRead; readonly still: () => boolean }>;
   /** Pin catalog files, by key, checked against a fresh catalog. */
   pinResources(revision: string, items: readonly ConfiguredResourceRef[]): Promise<WorkshopPinnedContextWriteResult>;
   /** Pin files a room holds, by the workspace-relative path the handler resolved from the live room. */

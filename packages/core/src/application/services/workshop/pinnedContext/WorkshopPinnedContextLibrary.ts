@@ -54,6 +54,7 @@ import type {
   WorkshopPinnedContextRow,
   WorkshopPinnedContextSeedRead,
   WorkshopPinnedContextTabPort,
+  WorkshopPinnedContextWhere,
   WorkshopPinnedContextWriteResult
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 import type { ConfiguredResourceRef } from '@messages';
@@ -73,7 +74,8 @@ export type {
   WorkshopPinnedContextAsk,
   WorkshopPinnedContextDescription,
   WorkshopPinnedContextRow,
-  WorkshopPinnedContextSeedRead
+  WorkshopPinnedContextSeedRead,
+  WorkshopPinnedContextWhere
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 
 export interface WorkshopPinnedContextLibraryOptions {
@@ -126,6 +128,14 @@ export class WorkshopPinnedContextLibrary implements WorkshopPinnedContextTabPor
     return this.writes.move(this.askLiveRoom(), revision, entryPath, direction);
   }
 
+  async readForRoom(): Promise<{ read: WorkshopPinnedContextSeedRead; still: () => boolean }> {
+    const ask = this.askLiveRoom();
+    if (!ask.where) {
+      return { read: { state: 'workspace-changed' }, still: ask.still };
+    }
+    return { read: await this.readForSeed(ask.where), still: ask.still };
+  }
+
   openTarget(entryPath?: string): Promise<WorkshopPinnedContextOpenTarget> {
     return this.writes.openTarget(entryPath);
   }
@@ -137,7 +147,7 @@ export class WorkshopPinnedContextLibrary implements WorkshopPinnedContextTabPor
   askLiveRoom(): WorkshopPinnedContextAsk {
     return this.ask(() => {
       const scope = this.scope();
-      return scope.available ? this.identity(scope.liveSessionId) : undefined;
+      return scope.available ? scope.liveSessionId : undefined;
     });
   }
 
@@ -149,25 +159,27 @@ export class WorkshopPinnedContextLibrary implements WorkshopPinnedContextTabPor
   askSeedWorkspace(): WorkshopPinnedContextAsk {
     return this.ask(() => {
       const scope = this.scope();
-      if (scope.available) {
-        return this.identity(scope.liveSessionId);
-      }
-      return scope.reason === 'not-ready' ? this.identity(FIRST_ROOM) : undefined;
+      return scope.available ? scope.liveSessionId : scope.reason === 'not-ready' ? FIRST_ROOM : undefined;
     });
   }
 
   /** The list, every entry resolved now, in the tab's words (ADR D8; Slice 0d). */
   async describe(): Promise<WorkshopPinnedContextDescription> {
-    const read = await this.store.read();
+    // One root for the whole description: the list and every file under it (PR #208 F01).
+    const where = this.store.availability();
+    if (!where.available) {
+      return { state: 'unavailable', reason: where.reason, words: workshopPinnedListUnavailableWords(where.reason) };
+    }
+    const read = await this.store.read({ filePath: where.filePath });
     switch (read.state) {
       case 'absent':
         return { state: 'listed', revision: read.revision, rows: [], words: 0, absent: true };
       case 'ok': {
-        const where = this.store.availability();
-        if (!where.available) {
-          return { state: 'unavailable', reason: where.reason, words: workshopPinnedListUnavailableWords(where.reason) };
-        }
         const { reads } = await this.reader.readAll(where.rootPath, read.list.files);
+        if (reads.some(movedUnderTheRead)) {
+          this.log('Description withdrawn: the workspace changed while pinned files were read');
+          return { state: 'unavailable', reason: 'workspace-changed', words: workshopPinnedListUnavailableWords('workspace-changed') };
+        }
         const rows = reads.map(rowOf);
         return { state: 'listed', revision: read.revision, rows, words: rows.reduce((total, row) => total + row.words, 0), absent: false };
       }
@@ -188,18 +200,27 @@ export class WorkshopPinnedContextLibrary implements WorkshopPinnedContextTabPor
     }
   }
 
-  /** Every pinned file read for a seed, through the intake doors, in pinned order. Never rejects. */
-  async readForSeed(): Promise<WorkshopPinnedContextSeedRead> {
+  /**
+   * Every pinned file read for a seed, through the intake doors, in pinned
+   * order, from `where` only: the root and list file `askSeedWorkspace`
+   * captured (PR #208 F01). Never rejects.
+   */
+  async readForSeed(where: WorkshopPinnedContextWhere): Promise<WorkshopPinnedContextSeedRead> {
     let read: WorkshopPinnedContextRead;
     try {
-      read = await this.store.read();
+      read = await this.store.read({ filePath: where.filePath });
     } catch (error) {
       this.log(`List read failed for a seed (${fileSystemErrorCategory(error)})`);
       return { state: 'list-unreadable', category: 'failed' };
     }
     switch (read.state) {
       case 'absent':
+        return { state: 'nothing' };
       case 'unavailable':
+        if (read.reason === 'workspace-changed') {
+          this.log('Seed read withdrawn: the workspace changed before the list was read');
+          return { state: 'workspace-changed' };
+        }
         return { state: 'nothing' };
       case 'unreadable':
         this.log(`List unreadable for a seed (${read.reason})`);
@@ -214,14 +235,15 @@ export class WorkshopPinnedContextLibrary implements WorkshopPinnedContextTabPor
     if (read.list.files.length === 0) {
       return { state: 'nothing' };
     }
-    const where = this.store.availability();
-    if (!where.available) {
-      return { state: 'nothing' };
-    }
     try {
       const { reads, catalogUnreadable } = await this.reader.readAll(where.rootPath, read.list.files);
       if (catalogUnreadable) {
         this.log('Catalog unreadable for a seed; pinned files read as workspace files');
+      }
+      const moved = reads.filter(movedUnderTheRead).length;
+      if (moved > 0) {
+        this.log(`Seed read withdrawn: the workspace changed while pinned files were read (files=${moved})`);
+        return { state: 'workspace-changed' };
       }
       return { state: 'listed', files: reads };
     } catch (error) {
@@ -230,12 +252,22 @@ export class WorkshopPinnedContextLibrary implements WorkshopPinnedContextTabPor
     }
   }
 
-  private ask(current: () => ProjectMemoryWorkspaceIdentity | undefined): WorkshopPinnedContextAsk {
-    const { asked, still } = askedProjectMemoryWorkspace(current);
-    return { accepted: asked !== undefined, still };
+  /**
+   * The workspace now, captured once: its root and list file, and the room's
+   * identity from them. `still` reads the room and the folder live each time.
+   */
+  private ask(roomNow: () => string | undefined): WorkshopPinnedContextAsk {
+    const availability = this.store.availability();
+    const where = availability.available ? { rootPath: availability.rootPath, filePath: availability.filePath } : undefined;
+    const { asked, still } = askedProjectMemoryWorkspace(() => this.identity(roomNow()));
+    const accepted = where !== undefined && asked !== undefined && asked.directory === where.filePath;
+    return { where: accepted ? where : undefined, accepted, still };
   }
 
-  private identity(room: string): ProjectMemoryWorkspaceIdentity | undefined {
+  private identity(room: string | undefined): ProjectMemoryWorkspaceIdentity | undefined {
+    if (room === undefined) {
+      return undefined;
+    }
     const where = this.store.availability();
     return where.available ? { room, directory: where.filePath } : undefined;
   }
@@ -243,6 +275,11 @@ export class WorkshopPinnedContextLibrary implements WorkshopPinnedContextTabPor
   private log(line: string): void {
     this.outputChannel.appendLine(`${LOG} ${line}`);
   }
+}
+
+/** A read that would have come from another root than the one it was asked for. */
+function movedUnderTheRead(read: WorkshopPinnedFileRead): boolean {
+  return read.state === 'unreadable' && read.fault === 'workspace-changed';
 }
 
 function rowOf(read: WorkshopPinnedFileRead): WorkshopPinnedContextRow {

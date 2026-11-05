@@ -1,0 +1,22 @@
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { seedHost } from './pinnedContextSeedHost';
+
+it('loads the exact pinned POSIX path when distinct catalog names share an NFC key', async () => {
+  const nfd = 'Characters/cafe\u0301.md';
+  const nfc = 'Characters/caf\u00e9.md';
+  const host = seedHost({
+    platform: 'posix',
+    catalog: [{ group: 'characters', path: nfd }, { group: 'characters', path: nfc }]
+  });
+  host.write(nfd, 'The decomposed filename has different content.');
+  host.write(nfc, 'The exact pinned filename is this one.');
+  host.pin(nfc);
+  const room = new WorkshopSessionService();
+
+  host.seed.install(await host.seed.prepare('new'), room);
+
+  expect(room.getContextAttachments()[0]).toMatchObject({
+    content: 'The exact pinned filename is this one.',
+    relativePath: nfc
+  });
+});

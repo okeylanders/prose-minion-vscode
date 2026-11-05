@@ -19,11 +19,14 @@ export type WorkshopPinnedContextAttachmentPaths = Pick<
 >;
 
 /**
- * An attachment's path as an entry's is written: `/`-separated (a Windows
- * host may have handed back `\`), then compared by Slice 1's key.
+ * An attachment's path as an entry's is written, then compared by Slice 1's
+ * key. On Windows `\` is a separator, so it reads as `/`; on POSIX it is a
+ * legal file-name character and stays as written, so `Characters\alice.md`
+ * is never `Characters/alice.md` there (PR #208 F02).
  */
 function attachmentPathKey(attachmentPath: string, platform: WorkshopPinnedContextPathPlatform): string {
-  return workshopPinnedContextPathKey(attachmentPath.replace(/\\/g, '/'), platform);
+  const separated = platform === 'windows' ? attachmentPath.replace(/\\/g, '/') : attachmentPath;
+  return workshopPinnedContextPathKey(separated, platform);
 }
 
 /**

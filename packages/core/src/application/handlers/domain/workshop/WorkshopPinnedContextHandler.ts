@@ -72,6 +72,7 @@ const WORDS = {
   running: 'Wait for the reply to finish to attach files to this conversation. Pinning and unpinning still work, and apply to new conversations.',
   nothingMissing: 'Every pinned file is already in this conversation.',
   listUnavailable: 'Pinned context couldn’t be read just now, so nothing was attached.',
+  workspaceChanged: 'The project folder changed, so nothing was attached. Try again.',
   openFailed: 'That file couldn’t be opened.'
 } as const;
 
@@ -263,9 +264,13 @@ export class WorkshopPinnedContextHandler {
     if (this.effects.activeRunLabel()) {
       return this.refuse(requestId, 'attach-missing', WORDS.running, 'attach refused (running)');
     }
-    const read = await this.pinnedContext.library.readForSeed();
+    const { read, still } = await this.pinnedContext.library.readForRoom();
     if (read.state === 'list-unreadable') {
       return this.refuse(requestId, 'attach-missing', WORDS.listUnavailable, `attach refused (list ${read.category})`);
+    }
+    // Read from the root this room was asked in, and attached only while it is still the room (PR #208 F01).
+    if (read.state === 'workspace-changed' || !still()) {
+      return this.refuse(requestId, 'attach-missing', WORDS.workspaceChanged, 'attach refused (workspace changed)');
     }
     if (this.effects.activeRunLabel()) {
       return this.refuse(requestId, 'attach-missing', WORDS.running, 'attach refused (running)');
@@ -395,7 +400,10 @@ export function workshopPinnedContextPayloadOf(
     case 'unreadable':
       return { ...base, availability: { available: true }, file: { state: 'unreadable', words: description.words } };
     case 'unavailable':
-      return { ...base, availability: { available: false, reason: description.reason, words: description.words }, file: { state: 'absent' } };
+      // The folder changed under the read (PR #208 F01): the list is there, just not readable this moment.
+      return description.reason === 'workspace-changed'
+        ? { ...base, availability: { available: true }, file: { state: 'io', words: description.words } }
+        : { ...base, availability: { available: false, reason: description.reason, words: description.words }, file: { state: 'absent' } };
     case 'busy':
     case 'io':
       return { ...base, availability: { available: true }, file: { state: description.state, words: description.words } };
