@@ -56,8 +56,14 @@ Unpinning stays in the tab.
 - `e6e8da5`: the pills (mark, tooltip, Pin, refusal), styles, the wiring in
   `WorkshopApp.tsx`, the integration test and a boundary guard.
 - `1312ece`: this doc.
-- The context head's "· *N* pinned" (the coordinator's ruling on deviation
-  6: the approved board draws it), its tests, and this doc's update.
+- `812ce9a`: the context head's "· *N* pinned" (the coordinator's ruling
+  on deviation 6: the approved board draws it), its tests, and this doc's
+  update.
+- `4b74ee6`: merge of Slice 3's branch at `9e1fd70` (PR #210), with `--no-ff`
+  as the coordinator asked. It brings 2b's fixes and the epic with #204 and
+  #208 merged. One conflict, in `WorkshopApp.tsx`: this slice's
+  `useWorkshopPinnedPills` call and Project Memory's (#206)
+  `memoryExplainer` lines both follow `useWorkshopPinnedContext`. Both kept.
 
 **Where each piece lives.**
 
@@ -142,10 +148,23 @@ Unpinning stays in the tab.
 | `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (none new) |
 | `from 'vscode'` in `packages/core/src` | none | none |
 | New files over 500 lines | — | none (largest: the integration test, 217) |
-| Files already over 500 | — | wiring only: `WorkshopApp.tsx` 1,814 → 1,817 |
+| Files already over 500 | — | wiring only: `WorkshopApp.tsx` +3 |
 | Fixtures and tests | — | *Alice*-style made-up names and paths only |
 
-The baseline equals Slice 3's measurement on the same commit. Its jest run
+**After merging Slice 3's branch** (the PR's verification):
+
+| Check | Before (`9e1fd70`, Slice 3's head, a clean worktree after `npm ci`) | After (`4b74ee6`, after `npm ci`) |
+|---|---|---|
+| `npm run typecheck` | pass | pass |
+| `npx jest -w 2` | 711 suites / 10,021 tests / 59 snapshots, all passing | 713 suites / 10,046 tests / 59 snapshots, all passing |
+| `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (none new) |
+| `from 'vscode'` in `packages/core/src` | none | none |
+| `WorkshopApp.tsx` | 1,826 lines | 1,829 lines (+3, wiring only) |
+
+The +2 suites and +25 tests are this slice's: 16 pure, 8 integration and 1
+boundary guard.
+
+The first baseline equals Slice 3's measurement on the same commit. Its jest run
 overlapped this slice's first, additive edits (new files, an optional prop);
 its counts match Slice 3's exactly.
 
