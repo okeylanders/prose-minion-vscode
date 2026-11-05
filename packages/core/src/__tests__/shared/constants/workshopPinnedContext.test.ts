@@ -45,6 +45,13 @@ describe('workshopPinnedContextMatches', () => {
     expect(workshopPinnedContextMatches(entry('Places/\u03bf\u03b4\u03bf\u03c3.md'), final, 'posix')).toBe(false);
   });
 
+  it('on POSIX a backslash is a file-name character, never a separator (PR #208 F02)', () => {
+    const literal = { kind: 'file' as const, relativePath: 'Characters\\alice.md' };
+    expect(workshopPinnedContextMatches(entry('Characters/alice.md'), literal, 'posix')).toBe(false);
+    expect(workshopPinnedContextMatches(entry('Characters/alice.md'), { kind: 'file', configuredResource: { group: 'characters', path: 'Characters\\alice.md' } }, 'posix')).toBe(false);
+    expect(workshopPinnedContextMatches(entry('Characters/alice.md'), literal, 'windows')).toBe(true);
+  });
+
   it('reads a Windows separator in the attachment\'s path, and NFD as NFC', () => {
     expect(workshopPinnedContextMatches(entry('Characters/alice.md'), { kind: 'file', relativePath: 'Characters\\alice.md' }, 'windows')).toBe(true);
     expect(workshopPinnedContextMatches(entry('Places/café.md'), { kind: 'file', relativePath: 'Places/café.md' }, 'posix')).toBe(true);
