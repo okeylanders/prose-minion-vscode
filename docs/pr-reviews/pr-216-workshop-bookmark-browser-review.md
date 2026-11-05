@@ -2,10 +2,10 @@
 
 ## Verdict
 
-**Changes requested: two P2 findings at `13df46bf9ff777ee767a5c304260c7fbf9035945`.** The normal-flow tests and CI pass, but independent real-store and real-App witnesses reproduce the defects below. This is a report disposition, not a formal GitHub review-state change or authorization to merge.
+**Current verdict: changes requested at `f02a835a1cc6b41345964e48268847314573c826`.** Original F-01 and F-02 are independently verified resolved. The correction introduces F-03 (P2), an unbounded whole-corpus identity scan on every page; F-04 (P3) records a remaining false actionable row for a large legacy duplicate. See the independent re-review below. This is a report disposition, not a formal GitHub review-state change or authorization to merge. The original-head findings and author response remain as history.
 
 - **PR:** [#216](https://github.com/okeylanders/prose-minion-vscode/pull/216)
-- **Implementation head reviewed:** `13df46bf9ff777ee767a5c304260c7fbf9035945`
+- **Original implementation head reviewed:** `13df46bf9ff777ee767a5c304260c7fbf9035945`
 - **Base:** `epic/workshop-bookmark-recall` at `ddf83567fbf3901ae216a2c1de8ede6e72aa83fd`
 - **Head branch:** `epic/workshop-bookmark-recall-slice-2-bookmarks-screen`
 - **Reviewed:** 2026-11-05
@@ -84,8 +84,10 @@ Native VS Code layout/keyboard acceptance remains the planned Slice 4 live pass.
 
 | Finding | Status |
 |---|---|
-| F-01: ambiguous page summaries alter exact identity resolution | Fixed in `72f92970` (this slice's paging only; the shared cache path is fixed upstream in Pinned Context) |
-| F-02: superseded bookmark Open reuses its jump on another Open | Fixed in `72f92970` |
+| F-01: ambiguous page summaries alter exact identity resolution | Independently resolved at `f02a835a` for the paging path; shared pre-existing exact-cache behavior is outside this correction |
+| F-02: superseded bookmark Open reuses its jump on another Open | Independently resolved at `f02a835a` |
+| F-03: every page fully scans the legacy corpus outside its budget | Open, P2 |
+| F-04: a larger legacy duplicate leaves a false actionable row | Open, P3 |
 
 ## Author response (`72f92970`)
 
@@ -101,3 +103,50 @@ Native VS Code layout/keyboard acceptance remains the planned Slice 4 live pass.
 - lint: 0 errors / 1,165 warnings (baseline);
 - jest: full suite with `--maxWorkers=4`, **744 suites / 10,399 tests / 59 snapshots**, all passing;
 - no `vscode` import in core.
+
+
+## Independent correction review — `f02a835a` (2026-11-05)
+
+Reviewed the 16-file correction delta from `99172e5b`, including product fix `72f92970` and its author response. The original report-only head's CI also passed independently: [run 42059432450](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42059432450).
+
+**F-01 resolved for exact-action safety.** The page now reads its own cursor through `readPagedSession`, which neither consults nor seeds `namedSessionPaths`. The original real-store 200/224-file witnesses, adapted to require the correction, pass: normal duplicates are excluded and exact reads reject the identity conflict both before and after paging. Cursor traversal, `current.json` and mismatched IDs are refused. The original cache corruption is closed; the two new issues below concern the replacement identity scan.
+
+**F-02 resolved.** The original Tea party → New → ordinary The garden Open witness now passes through the real App/router/host bridge. The controller clears a target when its confirmation is replaced or cancelled and follows the matching confirmation into the pending Open. Independent real-App controls also pass for an Open from an empty room with no confirmation and Cancel followed by a fresh bookmark Open. No stale jump was reproduced in these flows.
+
+### F-03 — P2: the identity scan bypasses page bounds and repeats on every Load More
+
+**Anchor:** [`WorkshopSessionStorePage.ts:127–129`](https://github.com/okeylanders/prose-minion-vscode/blob/f02a835a1cc6b41345964e48268847314573c826/packages/core/src/infrastructure/storage/WorkshopSessionStorePage.ts#L127-L129), calling [`WorkshopSessionStore.ts:683`](https://github.com/okeylanders/prose-minion-vscode/blob/f02a835a1cc6b41345964e48268847314573c826/packages/core/src/infrastructure/storage/WorkshopSessionStore.ts#L683).
+
+After filling a bounded page, `claimsById` iterates the entire folder. An index-less legacy file's identity requires reading and parsing its full session through `browserSummaryForFile`. Those reads do not consume the page's file or byte budget, and no identity result is retained for the next page.
+
+**Measured with the real store and unchanged 25-file/32 MiB limits:** 80 valid sessions each contain a real 1 MiB bookmarked reply, with no search-index sidecars. The first page returns 25 entries but performs **105 successful full-file reads / 110,402,125 bytes**. The second page again performs **105 reads / 110,402,125 bytes**. Both measurements exclude recall's subsequent document reads. These are accepted checkpoint bodies, not malformed files or whitespace padding.
+
+Consequently the first screen load scans the full legacy corpus before showing a page, and a complete walk reparses the corpus for each 25-file page, making aggregate full-file work quadratic in corpus size. Per-file size checks and cancellation do not impose a total per-page bound.
+
+The author response openly records the scan cost, but the retained [ADR D8](../adr/2026-11-05-workshop-bookmark-recall.md#d8-the-bookmarks-screen-read-only-through-the-recall-service) still requires host resource limits per page. This is not the accepted last-file crossing of the byte limit: it reads every remaining file, however many there are. Nor is an exact Open's full scan the same interaction as a deliberately paged read-only browser.
+
+**Requested correction:** keep identity discovery within a bounded, cancellable, resumable read plan, and do not repeat full legacy JSON parsing on each Load More. If identity completeness requires a separate preparation stage, expose its coverage and limits honestly rather than performing unbounded work behind a bounded-page claim. Preserve duplicate-ID safety while restoring the page resource contract. Add an I/O-count/byte regression using index-less valid sessions.
+
+### F-04 — P3: an unreadable identity is treated as proof of no duplicate
+
+**Anchor:** [`WorkshopSessionStore.ts:678–684`](https://github.com/okeylanders/prose-minion-vscode/blob/f02a835a1cc6b41345964e48268847314573c826/packages/core/src/infrastructure/storage/WorkshopSessionStore.ts#L678-L684).
+
+`readFileIdentity` uses the 5 MiB browser bound for an index-less file and returns `undefined` when it cannot summarize it. `claimsById` ignores that outcome. Exact session decoding accepts up to 25 MiB, so a valid duplicate can be invisible to the new uniqueness check.
+
+**Reproduced:** a small checkpoint and a checkpoint containing a real 6 MiB reply share an ID. The normal exact decoder accepts the larger file; exact ID resolution correctly rejects the conflict both before and after paging. Yet the bookmark page reports `read=1`, `unreadable=1` and emits the smaller session's bookmark as a normal actionable row. Its cold saved preview and Open then fail their exact identity check.
+
+This is lower impact than original F-01: paging no longer changes exact resolution and no arbitrary destructive action is enabled. It is a false readable/actionable row and an incomplete claim that all duplicate IDs are marked ambiguous.
+
+**Requested correction:** distinguish an identity that could not be established from a known nonmatching ID. Do not mark a row confidently readable when uniqueness has not been verified; account for the unresolved identity explicitly without solving it by adding another unbounded parse. Cover a valid checkpoint between the browser and exact-read limits.
+
+**Both new witnesses:** [pr-216-correction-boundaries.test.ts.txt](probes/pr-216-correction-boundaries.test.ts.txt). They pass while recording current defects; corrected regressions should require bounded work and truthful identity/readability status.
+
+### Correction verification
+
+- All three local typechecks passed.
+- Local lint on the clean tracked correction passed: **0 errors / 1,165 warnings**. An earlier run included four warnings from a temporary review probe; those are excluded from this result.
+- **10 local production suites / 192 tests passed**, covering every changed test, composition/boundary guards and session-surface behavior.
+- The original two identity witnesses pass with corrected expectations. The real-App run passes all ten shipped cases plus two independent repeated/interrupted-flow controls; those overlapping runs are not added to the production count.
+- The two stronger boundary witnesses above pass with size in actual accepted reply content.
+- [Correction-head PR CI 42061446542](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42061446542) passed: all types, **744 suites / 10,399 tests / 59 snapshots**, lint **0 errors / 1,165 warnings**, both bundles and bundle verification. Its merge candidate `1d99b19` combines this source head with base `ddf83567`.
+- This report update will have a separate publication-head CI run. No implementation edits, native VS Code acceptance, live provider calls or merge were performed by the reviewer.
