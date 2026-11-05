@@ -4,7 +4,11 @@
 - **PR:** https://github.com/okeylanders/prose-minion-vscode/pull/207
 - **Implementation head:** `6aedc5539071799894f64f7cc6208b5e0130f8f8`
 - **Base:** `0a0f1a5b3533c08ce187602148673ad3fa60c67e` (`epic/workshop-project-memory`)
-- **Verdict:** **Approved with one documentation nit, within the tested review scope. No blocking implementation finding.** This is a written review verdict, not a formal GitHub approval or a merge. The live persona and Extension Development Host checks remain open.
+- **Verdict:** **Approved within the tested review scope. N-01 is closed; no open implementation or documentation finding.** This is a written review verdict, not a formal GitHub approval or a merge. The live persona and Extension Development Host checks remain open.
+
+## Re-review at `1ab8fb27238f1ffa7172d77036276b1ffa7c4087` (2026-11-05)
+
+**N-01 closed.** Read the complete two-file correction commit and both current files. The slice now quotes the unreadable-kind list in the correct order, and the ADR includes the 760px two-by-three exception. The additional slice note records the retained 940px threshold. No source, test, dependency or build configuration changed; the implementation evidence below still applies. The correction head's CI run [41952687161](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41952687161) was still running at re-review and is being watched. Actual rendered-layout and live-persona acceptance checks remain as disclosed below.
 
 ## Scope and source integrity
 
@@ -46,7 +50,7 @@ The narrow two-column exception and possible description wrapping are disclosed 
 
 **Verification limit:** a real React/CSS review bundle compiled successfully, but local Chromium could not start because this execution sandbox disallows the required Unix socket. A reviewed escalation produced the same failure. Therefore this review does **not** independently confirm the author's browser measurements, actual font wrapping, keyboard interactions in Chromium, or the Extension Development Host layout. JSDOM component tests cover the six labels and new-kind selection. Keep the existing live pass for actual widths, editor fonts and zoom.
 
-## N-01 · P3 · Align two current documentation details with the implementation
+## N-01 · P3 · Closed at `1ab8fb27`: align two current documentation details with the implementation
 
 This is nonblocking and does not require a product change.
 
