@@ -221,6 +221,26 @@ describe('WorkshopPinnedContextHandler: pinning', () => {
     expect(h.listOnDisk()).toBeUndefined();
   });
 
+  it('on POSIX, keeps a backslash in an attachment\'s path as a filename character, which can\'t be pinned', async () => {
+    const h = harness();
+    h.write('Characters/alice.md', 'Alice is seven.');
+    const id = h.attachFile('Characters\\alice.md', false);
+    await expect(h.send(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS, { revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION, attachmentIds: [id] }))
+      .resolves.toMatchObject({ ok: false, notice: { kind: 'refused', text: 'Only files inside this project can be pinned.' } });
+    expect(h.listOnDisk()).toBeUndefined();
+  });
+
+  it('on Windows, reads a backslash in an attachment\'s path as a separator', async () => {
+    const h = harness({ platform: 'windows' });
+    h.write('Characters/alice.md', 'Alice is seven.');
+    const id = h.attachFile('Characters\\alice.md', false);
+    await expect(h.send(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS, { revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION, attachmentIds: [id] }))
+      .resolves.toMatchObject({ ok: true });
+    const bytes = h.fileSystem.files.get(LIST_FILE)!;
+    const decoded = decodeWorkshopPinnedContext(bytes, 'windows');
+    expect(decoded.ok && decoded.list.files.map((entry) => entry.path)).toEqual(['Characters/alice.md']);
+  });
+
   it('refuses a pin past the word budget, naming the file and the bound', async () => {
     const h = harness({ catalog: [{ group: 'manuscript', path: 'Manuscript/manuscript.md' }] });
     h.write('Characters/alice.md', words(30_000));

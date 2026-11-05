@@ -142,6 +142,8 @@ it back only as a key into the list it just read (ADR D8).
   reset's confirmation, styles, and their tests.
 - This doc.
 - `fa5b7997`: merge of Slice 2b's branch at `b0429082` (no conflicts).
+- A follow-up: pin by id converts `\` only on Windows, with a test per
+  platform (25 handler tests).
 
 **Where each piece lives.**
 
@@ -173,7 +175,10 @@ it back only as a key into the list it just read (ADR D8).
   stored path is its path relative to the folder.
 - **Pin by attachment id:** the handler resolves each `ctx-N` in the live
   room. A file's `configuredResource.path`, or else its `relativePath`,
-  becomes the entry; anything else is refused before any read. The library
+  becomes the entry; anything else is refused before any read. A `\` is
+  read as a separator only on Windows; on POSIX it stays a filename
+  character, which the path rule refuses (the coordinator's call, after
+  #208 F02). The library
   checks the path rule and reads the file through the intake doors. A
   `refused` read (outside the folder, or through a link) says "Only files
   inside this project can be pinned."

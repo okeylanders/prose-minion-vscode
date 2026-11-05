@@ -160,9 +160,9 @@ export class WorkshopPinnedContextHandler {
       if (!attachment) {
         return this.refuse(requestId, 'pin-attachments', WORDS.notInRoom, 'pin refused (not in room)');
       }
-      const entryPath = attachment.kind === 'file'
-        ? (attachment.configuredResource?.path ?? attachment.relativePath)?.replace(/\\/g, '/')
-        : undefined;
+      const written = attachment.kind === 'file' ? attachment.configuredResource?.path ?? attachment.relativePath : undefined;
+      // Windows may hand back `\`; on POSIX it is a filename character, which the path rule refuses (PR #208 F02).
+      const entryPath = written !== undefined && this.pinnedContext.library.platform === 'windows' ? written.replace(/\\/g, '/') : written;
       if (!entryPath) {
         return this.refuse(requestId, 'pin-attachments', WORDS.outsideProject, `pin refused (${attachment.kind} without a project path)`);
       }
