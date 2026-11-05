@@ -112,7 +112,9 @@ list yet, and nothing in the UI changes.
 - `1516f318`: the byte bound (the coordinator's review of `e6ba3cdb`).
 - `b8527f22`, `182fcd1b`: this doc.
 - `021b860b`, `f15a81a6`, `18b7b03a`: the PR #204 review's fixes (below).
-- This doc's PR #204 section.
+- `42bbcd69`, `52da65ea`: this doc's PR #204 section.
+- `6af772da`: the PR #204 re-review's fixes (below).
+- This doc's re-review section.
 
 **Where each piece lives.**
 
@@ -123,7 +125,7 @@ list yet, and nothing in the UI changes.
 | Codec | `infrastructure/storage/WorkshopPinnedContextCodec.ts` (`decodeWorkshopPinnedContext`, `encodeWorkshopPinnedContext`, `prepareWorkshopPinnedContext`) |
 | Fixture | `__tests__/fixtures/pinned-context-v1.json` |
 | Store | `infrastructure/storage/WorkshopPinnedContextStore.ts` (`WorkshopPinnedContextStore`: `availability()`, `read()`, `update(revision, change, options?)`, `shutDown()`); its contracts in `WorkshopPinnedContextStoreContracts.ts`, which the store re-exports |
-| Lock | `infrastructure/storage/WorkshopPinnedContextLock.ts` (PR #204 F-01), built only by the store |
+| Lock | `infrastructure/storage/WorkshopPinnedContextLock.ts` (PR #204 F-01; a directory since the re-review), built only by the store |
 | Tests | `__tests__/infrastructure/storage/WorkshopPinnedContextCodec.test.ts`, `WorkshopPinnedContextStore.test.ts`, `WorkshopPinnedContextStoreRaces.test.ts`, with `workshopPinnedContextStoreHost.ts` |
 | Guards | `boundaries.test.ts`: "Workshop Pinned Context storage" (both modules in `infrastructure/storage/`, the codec's only import, no handler imports the store); the store joins `FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION` and the claims primitive's construction list |
 
@@ -303,17 +305,106 @@ Fixed in `f15a81a6`.
 - **Tests:** the review's probe (`Notes/\u0085.md`) and the range's ends,
   both as `path` refusals.
 
-**Re-verified** after `18b7b03a`; counts are in the table below.
+**Re-verified** after `18b7b03a`: 694 suites / 9,813 tests / 59 snapshots.
+
+## PR #204 re-review
+
+Astra re-reviewed `52da65ea` (the report's "Re-review at `52da65ea`"
+section). F-02, F-03 and N-01 are closed by their probes. F-01 remained, now
+P2, and F-04 was new. Both are fixed in `6af772da`, to the coordinator's
+design. Before building, I walked the interleavings and found no hole in that
+design. Two points needed care, and both are built in:
+
+- A stale writer's staged write can land in a successor's lock directory,
+  because the path resolves at write time. Its token check comes after that
+  write, so it fails there: the check is load-bearing, not only cheap.
+- Release had to stop deleting the lock after merely reading its owner. A
+  successor could take the lock in between, and that delete would remove its
+  lock. Release now uses the takeover's pattern: rename aside, check the
+  owner, then delete or put back.
+
+**F-01: a stale owner's commit landed after a takeover.** A create passed its
+token check, then stalled *inside* its final rename past the lease. The
+successor created the list and claimed it for a rewrite, and the stale rename
+landed in the emptied name. My earlier argument, that this residual was only
+a spurious busy, was wrong.
+
+- **The lock is a directory,** `.pinned-context.lock/`. It is taken by a
+  no-overwrite rename of a staged directory holding `owner.json`
+  (`{ token, at }`), and is live for the 30-second lease.
+- **The fence.** Every write stages its new list inside its lock directory
+  (`HeldLock.stagingPath`), and both commits rename from there:
+  - a create renames it onto `pinned-context.json`, never over anything;
+  - a rewrite goes through `StoredFileRewrite`'s new optional `stagingPath`,
+    the smallest additive change. Lightbox and Project Memory don't pass it.
+- **A takeover** renames the whole abandoned directory aside
+  (`.pinned-context.lock.stale-<id>`, never over anything). It checks that
+  the moved `owner.json` is the owner it judged abandoned; if not, it puts
+  the directory back and answers `busy`. Then it deletes the directory with
+  everything in it, including a stale writer's staged list, which was never
+  acknowledged. A commit rename resolves its source when it runs, so a
+  stalled owner's late rename finds no source and fails.
+- **A stale writer never reports `ok`.** A commit that fails while its lock
+  is gone answers `busy`.
+- **The `confirm` token check stays,** as an early withdrawal.
+- **The race argument** is rewritten in the store's doc comment, step by step
+  for a holder stalled past the lease:
+  - before or while reading: its staged write misses the lock, its token
+    check fails, and it is `busy`;
+  - between staging and the check: the takeover took its staged list, and
+    the check fails;
+  - inside the commit rename: if the rename ran before the takeover, it
+    committed as the only owner and the successor reads its list; if after,
+    there is no source and it is `busy`. A rewrite's claim goes back by the
+    claims' rules;
+  - after committing, before releasing: its list stands, and the release
+    never removes the successor's lock;
+  - within the lease, the lock alone serializes every pair;
+  - a hand edit is handled at each step, as before.
+- **Tests** (`WorkshopPinnedContextStoreRaces.test.ts`, "the fence…"):
+  - the re-review's probe as written (only braces added, for lint);
+  - the same stall with its outcomes asserted (stale `busy`, successor `ok`);
+  - "fences a stale claimed rewrite the same way";
+  - every earlier race test, updated to the lock directory.
+- **The fence matters.** With staging moved back outside the lock, the
+  probe and its outcome test fail.
+
+**F-04: recovery read past the size bound.**
+
+- `StoredFileClaims` takes an optional `maxBytes`, and its new `readBytes`
+  `stat`s first. Every recovery read (the standing list and each claim) and
+  a rewrite's read of its claimed bytes stay within it. A file over the bound
+  is never read, so it is never shown to be a leftover: it is kept, and set
+  aside beside a standing list. The store passes the 128 KiB file bound;
+  Lightbox and Project Memory pass none.
+- The lock's `owner.json` is bounded at 4 KiB
+  (`WORKSHOP_PINNED_CONTEXT_LOCK_OWNER_BYTES`). Over it, it is never read: the
+  lock counts as unparseable, abandoned by its file's age.
+- **Tests:**
+  - the re-review's probe as written (the standing file never in
+    `readFileCalls`);
+  - "keeps an abandoned claim beside an oversized list, unread and
+    untouched";
+  - "never reads an oversized abandoned claim…, and sets it aside";
+  - in the races suite, "an owner over its bound is never read…".
+- **Mutation-checked.** Without `maxBytes`, the three claim tests fail.
+  Without the owner bound, the lock test fails.
+
+**Test double.** `MemoryFileSystem` gained directory rename (whole, and never
+over anything) and recursive delete. These are additive: no other suite
+changed.
+
+**Re-verified** after `6af772da`; counts are in the table below.
 
 ## Verification
 
-| Check | Before (`b94fc674`) | After (`18b7b03a`) |
+| Check | Before (`b94fc674`) | After (`6af772da`) |
 |---|---|---|
 | `npm run typecheck` | pass | pass |
-| jest | 691 suites / 9,696 tests / 59 snapshots | 694 suites / 9,813 tests / 59 snapshots, all passing (`npx jest -w 2`) |
+| jest | 691 suites / 9,696 tests / 59 snapshots | (full run in progress) |
 | `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (no new warnings) |
 | `from 'vscode'` in `packages/core/src` (outside test strings) | none | none |
-| New files over 500 lines | — | none (the store is 484, the lock 174, the contracts 62) |
+| New files over 500 lines | — | none (the store is 482, the lock 211, the contracts 62) |
 | Fixtures and tests | — | *Alice*-style made-up paths only |
 | Logs | — | outcomes and error categories only; a test fails on a path or a listed name |
 
