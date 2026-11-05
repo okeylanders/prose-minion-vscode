@@ -52,8 +52,41 @@ reloading a room never touch it. Empty context stays empty.
     guards. Over budget, the next file is tried; nothing is truncated to fit
     (ADR D6);
   - it returns 2a's `WorkshopRoomSeedReport`.
-- **`extension.ts`** swaps `WORKSHOP_NO_ROOM_SEED` for this seed. That is
-  the only change outside the new modules and the result-line function.
+- **`prepare` never rejects** (Slice 2a's port contract). Every failure
+  inside it becomes a plan whose report names what was left out and why.
+  The reason matters most at the first room: there a rejection would land
+  in `initializeOnce`'s restore `catch` and pause rolling autosave. Test it
+  with a store and an intake service that throw.
+- **`extension.ts`:**
+  - builds `WorkshopPinnedContextStore` and the library, and swaps
+    `WORKSHOP_NO_ROOM_SEED` for this seed;
+  - hands the store's `shutDown()` to `shutDownExtension`, so owed writes
+    drain before deactivation resolves (AGENTS.md, "Owed writes drain";
+    PR #183 F-03).
+
+  These, the new modules and the result-line function are the only changes.
+
+### From the Slice 1 and 2a reviews (coordinator, 2026-11-05)
+
+- **The store's API, as built:**
+  - `read()` also answers `unavailable`, `busy` and `io`;
+  - `update`'s `changed` carries `current`;
+  - `invalid` covers a change that wouldn't read back;
+  - `update(revision, change, { beforeCommit })` takes the caller's commit
+    check;
+  - there is a `too-large` refusal, with a 128 KiB bound (Slice 1's
+    follow-up).
+
+  The library maps every state to the words ADR D8 and 0d's boards use.
+- **The live-room check belongs to the library.** The store withdraws a
+  write when its folder changes. The library adds the accepted room: build
+  its check with `askedProjectMemoryWorkspace` (or a sibling of it) and pass
+  it as `beforeCommit` on every write. The library's writes are Slice 3's,
+  but the check is built here.
+- **2a's report** is `{ pinnedCount, attachedCount, attachedWords,
+  leftOut: { label, reason }[] }`. Reword the result lines in
+  `WorkshopSessionStartResult.ts` here if 2b needs to; their tests move
+  with them.
 
 ### What the writer sees
 

@@ -75,6 +75,12 @@ it back only as a key into the list it just read (ADR D8).
 - It requests the list when the Workshop mounts, not only when the tab
   opens. `WorkshopApp` passes its entry count to `WorkshopSessionsMenu`'s
   `pinnedFileCount`, replacing Slice 2a's `0` and its comment.
+- **The full reset's confirmation** (`workshopSessionConfirmCopy.ts`) still
+  says it "starts an empty room". Once the count is real and above 0, it
+  says the room starts with the pinned files. Slice 2a added the
+  empty-context start's own confirmation (`new-empty`), which stays as it
+  is. A test at each count.
+- **Every write passes 2b's live-room check** as the store's `beforeCommit`.
 
 ### Panel (`components/workshop/settings/WorkshopPinnedContextSettingsPanel.tsx`)
 
