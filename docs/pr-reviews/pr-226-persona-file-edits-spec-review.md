@@ -1,6 +1,8 @@
 # PR #226 review: Persona File Edits specification
 
-**Disposition: changes requested at specification level. Six blocking contracts need to be settled before the dependent implementation slices.** This reviews a documentation-only design, not an implemented feature or permission to merge.
+**Latest disposition: five of six blocking contracts are closed at specification level. F-04 remains open after independent re-review of `494a17d3`; see the final section below.**
+
+**Initial disposition at `0ed3ba75`: six blocking contracts required correction.** This reviews a documentation-only design, not an implemented feature or permission to merge.
 
 - PR: [#226](https://github.com/okeylanders/prose-minion-vscode/pull/226)
 - Reviewed head: `0ed3ba75ec9feea84c491e73a3510619556890c7` (`epic/workshop-persona-file-edits-slice-0-spec`)
@@ -129,3 +131,47 @@ Resolve F-01–F-06 in the ADR and slice acceptance criteria first. Slice 1's pu
 | N-02 | **Settled in ADR D5.** A notes rewrite over protected syntax is refused with a reason asking for replace edits; minimal-edit conversion is deferred. |
 | N-03 | **Settled in ADR D3, Consequences and the epic Goal.** The vocabulary is shared; memory persistence is separate; the document write path is shared by Draft Edit and persona file edits only. |
 | Preview, `auto`, bounds and logs | **Settled in ADR D8, D11, D12, D2 and D13.** |
+
+## Independent re-review at `494a17d3` (2026-11-05)
+
+**Disposition: five of six blocking findings are closed at specification level. F-04 remains open with a narrower lifecycle correction.** The coordinator's ledger above describes the intended repair; this section records the independent review of that repair.
+
+### Closed contracts
+
+- **F-01 closed:** D6 establishes a host baseline, a stale rewrite refusal and a host-served before/after review. Append/prepend freshness is now an explicit product rule, with duplicate prevention delegated to the claim.
+- **F-02 closed:** D4 retains every resolver candidate, rejects ambiguity, binds the host-owned document identity and excerpt source, and D7 reauthorizes that same identity. Persisted target identity no longer depends on a new display-key lookup.
+- **F-03 closed:** D5 derives prose rules from all memberships and excerpt identity, then recomputes at Apply. The selected trailer group no longer grants the permission.
+- **F-05 closed:** D5 adds explicit strict/prose-paragraphs/free modes, preserving Proofread's strict behavior and assigning the new validator to Slice 2.
+- **F-06 closed at contract level:** D7 requires the live policy callback on every attempt. D5 now defines the numerator, denominator and insertion bounds. **Update the acceptance fixture:** the newly chosen 300-character floor means the original 18-character witness should now be allowed. Use a quote over 300 characters for the shrink-the-paragraph refusal test, and retain a below-floor control. The coordinator ledger's claim that the original witness must write nothing contradicts the new floor.
+- **N-01–N-03 closed:** bounded before/after/context receipts and narrow Revert scope are specified; notes rewrite explicitly refuses protected syntax; memory's persistence remains separate.
+
+These close design contracts, not implementation verification. No claim is made that the new services, validators or durable receipt logic exist yet.
+
+### F-04 remains open: a claim needs a verified durable checkpoint and a complete per-attempt authority fence
+
+**ADR anchors:** [D7 dispatch and retry](https://github.com/okeylanders/prose-minion-vscode/blob/494a17d380976a5796b64e395d420bb7eddf22d6/docs/adr/2026-11-05-workshop-persona-file-edits.md#L260-L271), [D8 applying flush and checks](https://github.com/okeylanders/prose-minion-vscode/blob/494a17d380976a5796b64e395d420bb7eddf22d6/docs/adr/2026-11-05-workshop-persona-file-edits.md#L297-L308).
+
+The in-flight claim, joined duplicates, terminal replay, partial/unknown states and no-preview-discard rule address the original core concerns. Three precise details still matter at the existing seams:
+
+1. **Awaited `flush()` does not prove that `applying` was saved.** [`WorkshopSessionPersistenceCoordinator.flush`](https://github.com/okeylanders/prose-minion-vscode/blob/494a17d380976a5796b64e395d420bb7eddf22d6/packages/core/src/application/services/workshop/WorkshopSessionPersistenceCoordinator.ts#L607-L619) returns `Promise<void>`. Its queued autosave can [skip an unavailable store, defer at an active run, or catch a write failure and resolve](https://github.com/okeylanders/prose-minion-vscode/blob/494a17d380976a5796b64e395d420bb7eddf22d6/packages/core/src/application/services/workshop/WorkshopSessionPersistenceCoordinator.ts#L558-L602). With those behaviors, the proposed handler can await flush, dispatch an append, then reload an older `pending` checkpoint and offer Apply again. The durable `applying` marker that is supposed to prevent this never existed.
+
+   **Correction:** give the pre-dispatch checkpoint an explicit success result bound to this session, room generation, proposal and required revision. Refuse dispatch unless that exact `applying` state is known durable. A caught error, unavailable store, deferred capture or unresolved revision must not count as success. Specify which recoverable checkpoint carries the marker, including named/current mirror failures.
+
+2. **A session id and matching turn are not the room's lifetime.** Reopening or importing the same saved session preserves those ids. The repository already has [`readRoomRevision()`](https://github.com/okeylanders/prose-minion-vscode/blob/494a17d380976a5796b64e395d420bb7eddf22d6/packages/core/src/application/services/workshop/WorkshopSessionService.ts#L1292-L1295); [reset](https://github.com/okeylanders/prose-minion-vscode/blob/494a17d380976a5796b64e395d420bb7eddf22d6/packages/core/src/application/services/workshop/WorkshopSessionService.ts#L2049-L2052) and [import](https://github.com/okeylanders/prose-minion-vscode/blob/494a17d380976a5796b64e395d420bb7eddf22d6/packages/core/src/application/services/workshop/WorkshopSessionService.ts#L2363-L2366) mint a new generation. D8's enumerated checks only require the same session id and a turn still in the ledger, so an old action waiting on catalog/open/flush can continue into a newly opened copy of that session.
+
+   **Correction:** capture the room generation at the action, use it in `stillCurrent` and claim/outcome ownership, and reject after any replacement even when session/turn/card ids happen to match.
+
+3. **The authority check must cover the applier's second dispatch.** D7.5 checks the handler's `stillCurrent` before calling the applier. D7.6's `revalidate` enumerates only text freshness, ceiling, insertion bounds and structure. The first `applyEdits` awaits the host; the room, setting or authorization can change before the [applier's internal direct retry](https://github.com/okeylanders/prose-minion-vscode/blob/494a17d380976a5796b64e395d420bb7eddf22d6/packages/core/src/application/services/draftEdit/DraftEditApplier.ts#L122-L147). Revalidating text alone can still dispatch another write after the user turned the feature off or replaced the room.
+
+   **Correction:** repeat the synchronous current-authority predicate immediately before every actual `applyEdits` attempt, including the retry, alongside the live-text checks. It should cover the claim, captured room generation, current setting and the authorized identity/class epoch. Preserve the already documented limit for an existing Refactor Preview; this does not authorize cancelling someone else's preview.
+
+**Acceptance cases to add to Slices 2 and 4:** fail/defer the `applying` checkpoint and assert zero document writes; reopen the same session while catalog/open/flush is paused and assert zero old-action writes; return `stale` from the first document attempt after switching the setting off or replacing the room and assert no second attempt. Include successful checkpoint/current-room controls.
+
+### Re-review verification
+
+- Read the complete revised ADR, epic acceptance criteria and coordinator resolution ledger at `494a17d380976a5796b64e395d420bb7eddf22d6`.
+- Inspected the exact-head persistence implementation, room-generation mechanism and unchanged applier retry path to verify the remaining lifecycle contract.
+- This revision is documentation-only. No product edits, implementation tests or live-host acceptance were performed.
+- CI for `494a17d3` was still in progress when this re-review was prepared: [run 42122262687](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42122262687). Its eventual result is separate from the specification disposition.
+
+**Concurrent amendment checked:** `34d14985` clarifies that emphasis may change and counts changed characters after a common-prefix/suffix trim for the ceiling. It does not change the remaining F-04 lifecycle issue. CI for `494a17d3` subsequently completed successfully (run 42122262687).
