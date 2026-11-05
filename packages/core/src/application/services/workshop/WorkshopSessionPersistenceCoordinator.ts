@@ -74,6 +74,11 @@ import type {
 import type {
   WorkshopRewindCut
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
+import type {
+  WorkshopRoomSeed,
+  WorkshopRoomSeedReport
+} from '@/application/services/workshop/pinnedContext/WorkshopRoomSeed';
+import type { WorkshopSessionStart } from '@messages';
 import {
   WorkshopBranchNotOpenedError,
   WorkshopBranchRefusedError,
@@ -209,6 +214,8 @@ export type WorkshopSessionRecallScope =
 export interface WorkshopResetSummary {
   excerptLabel?: string;
   attachmentLabels: string[];
+  /** What the room seed installed; absent for an `empty` start. */
+  seed?: WorkshopRoomSeedReport;
 }
 
 export interface WorkshopSessionPersistenceCoordinatorOptions {
@@ -285,6 +292,7 @@ export class WorkshopSessionPersistenceCoordinator {
     private readonly conversationSettingsService: WorkshopConversationSettingsService,
     private readonly time: WorkshopSessionTimeService,
     private readonly store: WorkshopSessionStore,
+    private readonly roomSeed: WorkshopRoomSeed,
     private readonly outputChannel: LogSink,
     options: WorkshopSessionPersistenceCoordinatorOptions = {}
   ) {
@@ -433,6 +441,8 @@ export class WorkshopSessionPersistenceCoordinator {
             this.localWorkPending = !cleanRolling;
           }
         } else {
+          const plan = await this.roomSeed.prepare('first');
+          this.roomSeed.install(plan, this.session);
           this.recordStartMarker();
           this.markDirty('initial session');
         }
@@ -874,27 +884,32 @@ export class WorkshopSessionPersistenceCoordinator {
     return this.store.resolveRevealPath(sessionId);
   }
 
-  /** Start a fresh thread while preserving the aggregate's working set. */
   /**
    * Replace the live room with a fresh one and promote it to `current.json`.
    *
-   * `clearWorkingSet` additionally drops the excerpt, the shelf, and every
-   * context attachment. Named sessions on disk are never touched by either
-   * form; a write failure rolls the whole thing back.
+   * `carry` keeps the excerpt, the shelf and the context attachments; the
+   * other starts drop them. `carry` and `full-reset` are seeded (ADR
+   * 2026-11-04 D9): the plan is read before the replacement and installed
+   * inside it, before the first checkpoint. `empty` is never seeded. Named
+   * sessions on disk are never touched; a write failure rolls the whole thing
+   * back, and the plan goes with it.
    */
-  async resetSession(
-    options: { clearWorkingSet?: boolean } = {}
-  ): Promise<WorkshopResetSummary> {
+  async resetSession(options: { start: WorkshopSessionStart }): Promise<WorkshopResetSummary> {
+    const clearWorkingSet = options.start !== 'carry';
     return this.serializeSessionOperation(async () => {
+      const plan = options.start === 'empty'
+        ? undefined
+        : await this.roomSeed.prepare(options.start === 'carry' ? 'new' : 'full-reset');
       const reset = await this.replaceLiveRoom(async () => {
         // Read the working set BEFORE the aggregate drops it. A destructive
         // reset is the one action here that can be disputed later, and "it
         // deleted my context" is unanswerable against a log that only says a
         // wipe happened.
-        const cleared: WorkshopResetSummary = options.clearWorkingSet
+        const cleared: WorkshopResetSummary = clearWorkingSet
           ? this.describeClearedWorkingSet()
           : { attachmentLabels: [] };
-        const discardedConversationIds = this.session.reset(options);
+        const discardedConversationIds = this.session.reset({ clearWorkingSet });
+        const seed = plan ? this.roomSeed.install(plan, this.session) : undefined;
         this.time.reset();
         const createdAt = normalizedIso(this.now());
         this.identity = {
@@ -914,7 +929,7 @@ export class WorkshopSessionPersistenceCoordinator {
         this.localWorkPending = false;
         this.writtenRevision = this.dirtyRevision;
         this.emitSessionSaveStatus({ sessionId: this.identity.sessionId, status: 'saved' });
-        return { discardedConversationIds, cleared };
+        return { discardedConversationIds, cleared: seed ? { ...cleared, seed } : cleared };
       });
       return reset.cleared;
     });

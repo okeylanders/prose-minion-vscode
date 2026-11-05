@@ -4,6 +4,10 @@
  * ConversationManager behind the assistant seam, and the real time service.
  */
 
+import {
+  WORKSHOP_NO_ROOM_SEED,
+  type WorkshopRoomSeed
+} from '@/application/services/workshop/pinnedContext/WorkshopRoomSeed';
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import { WorkshopSessionStore } from '@/infrastructure/storage/WorkshopSessionStore';
 import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
@@ -56,7 +60,9 @@ export function scriptedCheckpoint(
   })) as WorkshopPersistedSessionV2;
 }
 
-export function setupCoordinator(options: { workspace?: 'single' | 'none' } = {}) {
+export function setupCoordinator(
+  options: { workspace?: 'single' | 'none'; roomSeed?: WorkshopRoomSeed } = {}
+) {
   const fs = new MemoryFileSystem();
   const log: LogSink = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
   const workspace = workspaceWith(
@@ -90,6 +96,7 @@ export function setupCoordinator(options: { workspace?: 'single' | 'none' } = {}
     settings,
     time,
     store,
+    options.roomSeed ?? WORKSHOP_NO_ROOM_SEED,
     log,
     { now: harnessNow, idFactory: () => `room-${++nextId}`, ensureAssistantReady: async () => undefined }
   );

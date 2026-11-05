@@ -623,7 +623,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
       ) as any);
       await router.route(message(
         MessageType.WORKSHOP_RESET_SESSION,
-        {}
+        { start: 'carry' }
       ) as any);
       await router.route(message(
         MessageType.WORKSHOP_RENAME_SESSION,
@@ -875,7 +875,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
 
       const run = runWizard();
       await Promise.resolve();
-      await router.route(message(MessageType.WORKSHOP_RESET_SESSION, {}) as any);
+      await router.route(message(MessageType.WORKSHOP_RESET_SESSION, { start: 'carry' }) as any);
       expect(signal.aborted).toBe(false);
       expect(persistence.resetSession).not.toHaveBeenCalled();
       reject(Object.assign(new Error('cancelled'), { name: 'AbortError' }));
@@ -885,7 +885,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
 
   it('refuses a message until the writer chooses a path for the new room', async () => {
     await pin();
-    await router.route(message(MessageType.WORKSHOP_RESET_SESSION, {}) as any);
+    await router.route(message(MessageType.WORKSHOP_RESET_SESSION, { start: 'carry' }) as any);
     service.startWorkshopPersonaConversation.mockClear();
 
     await router.route(message(

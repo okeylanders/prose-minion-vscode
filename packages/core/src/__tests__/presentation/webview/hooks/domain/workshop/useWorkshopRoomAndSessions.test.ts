@@ -742,7 +742,7 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
         if (action === 'open') {
           result.current.openSession('fresh-analysis');
         } else if (action === 'new') {
-          result.current.resetSession();
+          result.current.resetSession('carry');
         } else {
           scan(true);
         }
@@ -814,7 +814,7 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
       });
       result.current.runTool('gestures');
       result.current.quickAction('gestures', 'report-gestures', '3 variations');
-      result.current.resetSession();
+      result.current.resetSession('carry');
       result.current.sendMessage('Now tighten variation two.');
       result.current.pinFromFile();
       result.current.rereadExcerpt();
@@ -874,7 +874,7 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
     ];
     act(() => result.current.handleSessionState(sessionState({ turns: priorTurns })));
 
-    act(() => result.current.resetSession());
+    act(() => result.current.resetSession('carry'));
 
     expect(result.current.turns).toEqual([]);
     expect(result.current.sessionActionPending).toBe('new');
@@ -1136,16 +1136,14 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
     });
   });
 
-  describe('full reset', () => {
-    it('asks for the working set to be cleared only when told to', () => {
+  describe('room starts', () => {
+    it('posts each start as written, and nothing else', () => {
       const { result } = renderHook(() => useWorkshop());
 
-      act(() => result.current.resetSession());
-      expect(posted(MessageType.WORKSHOP_RESET_SESSION).at(-1)?.payload).toEqual({});
-
-      act(() => result.current.resetSession({ clearWorkingSet: true }));
-      expect(posted(MessageType.WORKSHOP_RESET_SESSION).at(-1)?.payload)
-        .toEqual({ clearWorkingSet: true });
+      for (const start of ['carry', 'full-reset', 'empty'] as const) {
+        act(() => result.current.resetSession(start));
+        expect(posted(MessageType.WORKSHOP_RESET_SESSION).at(-1)?.payload).toEqual({ start });
+      }
     });
   });
 

@@ -702,22 +702,18 @@ export interface WorkshopRereadExcerptMessage extends MessageEnvelope<Record<str
 }
 
 /**
- * Zero-payload messages use the house `Record<string, never>` idiom directly
- * (9 prior siblings; PR #67 review #9) — unlike an empty interface, it
- * actually rejects smuggled fields.
+ * How a new Workshop room starts (ADR 2026-11-04 D2): `carry` keeps the
+ * excerpt, the shelf and the context attachments; `full-reset` clears them,
+ * then attaches pinned context; `empty` clears them and attaches nothing.
+ * One field, so no request can ask for a combination no menu item means.
+ * Saved sessions on disk are untouched by every start.
  */
+export type WorkshopSessionStart = 'carry' | 'full-reset' | 'empty';
+
+export const WORKSHOP_SESSION_STARTS: readonly WorkshopSessionStart[] = ['carry', 'full-reset', 'empty'];
+
 export interface WorkshopResetSessionPayload {
-  /**
-   * Clear the WORKING SET too — the pinned excerpt, the shelf, and every
-   * context attachment (Sprint 13A follow-up).
-   *
-   * The ordinary new-session boundary deliberately carries those across so the
-   * writer can keep workshopping the same passage in a fresh room. This asks
-   * for the other thing: an empty room. Saved sessions on disk are untouched
-   * either way — this replaces the live room and its rolling checkpoint, and
-   * never deletes a named session.
-   */
-  clearWorkingSet?: boolean;
+  start: WorkshopSessionStart;
 }
 
 export interface WorkshopResetSessionMessage

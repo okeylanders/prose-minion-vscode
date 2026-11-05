@@ -83,6 +83,7 @@ import {
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
   coerceWorkshopConversationBehavior,
   toInclusiveLineRange,
+  WORKSHOP_NO_ROOM_SEED,
 } from '@prose-minion/core';
 // VS Code adapters (app-local; the composition root wires them into the ports)
 import { VsCodeSettingsStore } from './platform/vscode/VsCodeSettingsStore';
@@ -325,6 +326,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopConversationSettingsService,
     workshopSessionTimeService,
     workshopSessionStore,
+    // Slice 2b swaps in the pinned-context seed; until then a room starts as it always has.
+    WORKSHOP_NO_ROOM_SEED,
     outputChannel,
     {
       ensureAssistantReady: () => aiResourceManager.ensureInitialized()

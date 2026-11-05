@@ -196,7 +196,7 @@ describe('WorkshopSessionService committed persistence', () => {
     expect((await store.readCurrent())?.workshop.todos[0].source.kind).toBe('guest_turn');
 
     const saved = await coordinator.saveNamed('Guest tasks');
-    await coordinator.resetSession();
+    await coordinator.resetSession({ start: 'carry' });
     await coordinator.openNamed(saved.sessionId);
 
     expect(session.getSnapshot().todos).toEqual([
