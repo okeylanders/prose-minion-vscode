@@ -292,3 +292,16 @@ The feature note's six open questions, plus the design scope:
     - A saved card opens the manager at its row.
   - **What's left is Slice 6:** Okey's live pass in an Extension
     Development Host, then the ADR moves to Accepted and the epic closes out.
+- **2026-11-05. The live pass (Slice 6) begins; first fixes.**
+  - Okey is running the build. Fixes land as small PRs into the epic.
+  - **#206** merged at `7110bff`. The "Memory isn't context" well now folds
+    away from its title line. It starts open, and the writer's choice is
+    kept per viewer in webview state (`useWorkshopMemoryExplainer`). Astra
+    raised only an optional CSS note (N-01), now closed.
+  - **#207** (Slice 6a) adds two kinds, Theme and Idea. The order is now
+    decision · canon · theme · idea · open-thread · preference. The save
+    sheet's six kind cards show six across or 3×2, never 5+1 or 4+2. The
+    switch is a container query at 940px; Okey decides whether that
+    threshold stands. In review.
+  - The pinned-context epic (`epic-pinned-context`) is to build on this
+    epic. Its planning thread has the integration notes.
