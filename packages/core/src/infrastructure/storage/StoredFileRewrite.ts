@@ -52,6 +52,12 @@ export interface StoredFileRewriteCommit {
   readonly read: Uint8Array;
   /** The bytes that replace them. */
   readonly written: Uint8Array;
+  /**
+   * Asked once the claim is confirmed, before the commit point: a check that
+   * needs a read (a store's lock still being its own). `false` releases the
+   * claim and withdraws, as `beforeCommit` does.
+   */
+  readonly confirm?: () => Promise<boolean>;
   /** The commit point: synchronous, immediately before the staged file takes the saved name. `false` withdraws. */
   readonly beforeCommit?: () => boolean;
   /** Called synchronously once the rewrite stands, before the claim is dropped. */
@@ -107,6 +113,10 @@ export async function commitStoredFileRewrite(
     await deleteStoredFileQuietly(fileSystem, temporaryPath);
     log.appendLine(`${logPrefix} ${label} was not rewritten: its claim was taken back while the rewrite waited.`);
     return { kind: 'failed' };
+  }
+  if (commit.confirm && !(await commit.confirm())) {
+    await release(ports, claimPath, commit, temporaryPath);
+    return { kind: 'withdrawn' };
   }
   // The commit point: nothing is awaited between it and the rename that commits.
   if (commit.beforeCommit && !commit.beforeCommit()) {

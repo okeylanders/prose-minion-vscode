@@ -4,10 +4,15 @@
  * VS Code windows, each with its own queue; one is held mid-write at a
  * file operation while the other acts.
  *
- * - **A stale revision is refused, and the first write stands,** whether
- *   the second window's write starts after the first commits or races it
- *   to the new file's name.
- * - **A rewrite's live claim** makes the other window's write busy.
+ * - **A stale revision is refused, and the first write stands.**
+ * - **One writer at a time** (PR #204 F-01): a window that cannot take the
+ *   list's lock is busy, for create vs create, create vs a claimed rewrite
+ *   (the review's probe) and rewrite vs rewrite; one that waited reads the
+ *   list at its turn.
+ * - **A lease that expires mid-write:** the lock is taken over, and the
+ *   stalled holder withdraws before it commits.
+ * - **A hand edit,** which takes no lock, at each step: it stands, and the
+ *   write is refused or its claimed bytes are set aside.
  * - **A write belongs to the workspace it was asked in:** one whose turn,
  *   or commit, comes under another folder is withdrawn as `unavailable`,
  *   and neither folder's file changes, even though the new folder has a
@@ -21,9 +26,11 @@ import {
   WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION as ABSENT,
   workshopPinnedContextRevisionOf
 } from '@/infrastructure/storage/WorkshopPinnedContextStore';
+import { STORED_FILE_CLAIM_LEASE_MS } from '@/infrastructure/storage/StoredFileClaims';
 import {
   FILE,
   FOLDER,
+  NOW,
   OTHER_FILE,
   OTHER_ROOT,
   bytesOf,
@@ -34,6 +41,9 @@ import {
   pinnedHost as host,
   text
 } from '@/__tests__/infrastructure/storage/workshopPinnedContextStoreHost';
+
+const LOCK = path.join(FOLDER, '.pinned-context.json.lock');
+const lockBytes = (token: string, at: number) => new TextEncoder().encode(JSON.stringify({ token, at }));
 
 describe('two windows on one list', () => {
   it('refuses the second window\'s stale revision, and the first write stands', async () => {
@@ -48,53 +58,88 @@ describe('two windows on one list', () => {
 
     expect(answer).toMatchObject({ ok: false, reason: 'changed', current: { state: 'ok', list: list('Characters/alice.md') } });
     expect(text(fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Characters/alice.md'))));
+    expect(fileSystem.files.has(LOCK)).toBe(false);
   });
 
-  it('refuses the window that loses the race to the new file\'s name, never writing over the winner', async () => {
+  it('create vs create: the window without the lock is busy, and the holder\'s create stands', async () => {
     const fileSystem = new MemoryFileSystem();
     const mine = host({ fileSystem, prefix: 'a' });
     const theirs = host({ fileSystem, prefix: 'b' });
-    // Mine has read the folder (no file) and staged; hold it at the rename that would commit.
-    const held = holdOnce(fileSystem, 'rename', (from) => from.includes('.tmp-a'));
-
+    // Mine holds the lock, and is held staging its list.
+    const held = holdOnce(fileSystem, 'writeFile', (file) => file.includes('.pinned-context.json.tmp-a'));
     const saving = mine.store.update(ABSENT, pin('Characters/alice.md'));
     await held.reached;
-    expect(await theirs.store.update(ABSENT, pin('Characters/the-hatter.md'))).toMatchObject({ ok: true });
+    expect(await theirs.store.update(ABSENT, pin('Characters/the-hatter.md'))).toEqual({ ok: false, reason: 'busy' });
     held.open();
 
-    expect(await saving).toMatchObject({ ok: false, reason: 'changed', current: { state: 'ok', list: list('Characters/the-hatter.md') } });
-    expect(text(fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Characters/the-hatter.md'))));
+    expect(await saving).toMatchObject({ ok: true, list: list('Characters/alice.md') });
     expect(everyFile(fileSystem)).toEqual(['pinned-context.json']);
   });
 
-  it('refuses a rewrite whose file another window rewrote after it was read', async () => {
+  it('create vs create: a create that waited for the lock reads the list at its turn, and is refused as changed', async () => {
     const fileSystem = new MemoryFileSystem();
-    fileSystem.files.set(FILE, bytesOf(list('Characters/alice.md')));
-    const revision = workshopPinnedContextRevisionOf(bytesOf(list('Characters/alice.md')));
     const mine = host({ fileSystem, prefix: 'a' });
     const theirs = host({ fileSystem, prefix: 'b' });
-    // Mine has read the list at `revision` and staged its rewrite; hold it before it claims the file.
-    const held = holdOnce(fileSystem, 'rename', (from) => from === FILE);
-
-    const saving = mine.store.update(revision, pin('Characters/the-hatter.md'));
+    // Theirs is held staging its lock, before it holds anything; mine creates meanwhile.
+    const held = holdOnce(fileSystem, 'writeFile', (file) => file.includes('.lock.staged-b'));
+    const late = theirs.store.update(ABSENT, pin('Characters/the-hatter.md'));
     await held.reached;
-    // Theirs claims first (the held rename is mine; theirs passes through), and commits.
-    expect(await theirs.store.update(revision, pin('Places/the tea party.md'))).toMatchObject({ ok: true });
+    expect(await mine.store.update(ABSENT, pin('Characters/alice.md'))).toMatchObject({ ok: true });
     held.open();
 
-    expect(await saving).toMatchObject({ ok: false, reason: 'changed', current: { state: 'ok', list: list('Characters/alice.md', 'Places/the tea party.md') } });
-    expect(text(fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Characters/alice.md', 'Places/the tea party.md'))));
+    expect(await late).toMatchObject({ ok: false, reason: 'changed', current: { state: 'ok', list: list('Characters/alice.md') } });
+    expect(text(fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Characters/alice.md'))));
+  });
+
+  // PR #204 F-01, the review's probe: a create holding an absent revision must never take the saved name while a rewrite holds the list under its claim.
+  it('create vs claimed rewrite: a stale create never takes the saved name a rewrite\'s claim emptied', async () => {
+    const fileSystem = new MemoryFileSystem();
+    const late = host({ fileSystem, prefix: 'late' });
+    const current = host({ fileSystem, prefix: 'current' });
+    const lateHeld = holdOnce(fileSystem, 'writeFile', (file) => file.includes('-late'));
+    const lateSave = late.store.update(ABSENT, pin('Characters/late.md'));
+    await lateHeld.reached;
+    const first = await current.store.update(ABSENT, pin('Characters/alice.md'));
+    if (!first.ok) {
+      throw new Error(first.reason);
+    }
+    // The rewrite holds the list under its claim (the saved name stands empty) when the late create resumes.
+    const claimHeld = holdOnce(fileSystem, 'readFile', (file) => file.includes('.claim-'));
+    const rewrite = current.store.update(first.revision, pin('Characters/the-hatter.md'));
+    await claimHeld.reached;
+    expect(fileSystem.files.has(FILE)).toBe(false);
+    lateHeld.open();
+    const lateResult = await lateSave;
+    claimHeld.open();
+
+    expect(lateResult).toEqual({ ok: false, reason: 'busy' });
+    expect(await rewrite).toMatchObject({ ok: true, list: list('Characters/alice.md', 'Characters/the-hatter.md') });
+    expect(text(fileSystem.files.get(FILE))).not.toContain('late.md');
     expect(everyFile(fileSystem)).toEqual(['pinned-context.json']);
   });
 
-  it('answers busy while the other window holds the file under its claim, then that write commits', async () => {
+  it('create vs claimed rewrite: a create holding the lock makes the other window\'s create and rewrite busy', async () => {
+    const fileSystem = new MemoryFileSystem();
+    const late = host({ fileSystem, prefix: 'late' });
+    const current = host({ fileSystem, prefix: 'current' });
+    const lateHeld = holdOnce(fileSystem, 'writeFile', (file) => file.includes('.pinned-context.json.tmp-late'));
+    const lateSave = late.store.update(ABSENT, pin('Characters/late.md'));
+    await lateHeld.reached;
+    expect(await current.store.update(ABSENT, pin('Characters/alice.md'))).toEqual({ ok: false, reason: 'busy' });
+    lateHeld.open();
+
+    expect(await lateSave).toMatchObject({ ok: true, list: list('Characters/late.md') });
+    expect(text(fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Characters/late.md'))));
+  });
+
+  it('rewrite vs rewrite: busy while the other window holds the lock and its claim, then that write commits', async () => {
     const fileSystem = new MemoryFileSystem();
     fileSystem.files.set(FILE, bytesOf(list('Characters/alice.md')));
     const revision = workshopPinnedContextRevisionOf(bytesOf(list('Characters/alice.md')));
     const mine = host({ fileSystem, prefix: 'a' });
     const theirs = host({ fileSystem, prefix: 'b' });
     // Mine has claimed the file and staged its rewrite; hold it at the rename that commits.
-    const held = holdOnce(fileSystem, 'rename', (from) => from.includes('.tmp-a'));
+    const held = holdOnce(fileSystem, 'rename', (from) => from.includes('.pinned-context.json.tmp-a'));
 
     const saving = mine.store.update(revision, pin('Characters/the-hatter.md'));
     await held.reached;
@@ -104,6 +149,133 @@ describe('two windows on one list', () => {
 
     expect(await saving).toMatchObject({ ok: true, list: list('Characters/alice.md', 'Characters/the-hatter.md') });
     expect(everyFile(fileSystem)).toEqual(['pinned-context.json']);
+  });
+});
+
+describe('a lease that expires mid-write', () => {
+  it('lets another window take the abandoned lock; the stalled holder withdraws as busy before it commits', async () => {
+    const fileSystem = new MemoryFileSystem();
+    const clock = { at: NOW };
+    const mine = host({ fileSystem, prefix: 'a', clock });
+    const theirs = host({ fileSystem, prefix: 'b', clock });
+    // Mine holds the lock and stalls staging its list, past the lease.
+    const mineHeld = holdOnce(fileSystem, 'writeFile', (file) => file.includes('.pinned-context.json.tmp-a'));
+    const stalled = mine.store.update(ABSENT, pin('Characters/alice.md'));
+    await mineHeld.reached;
+    clock.at = NOW + STORED_FILE_CLAIM_LEASE_MS + 1;
+    // Theirs takes the lock over, and is held at its commit rename while it holds it (another method than mine's hold).
+    const theirsHeld = holdOnce(fileSystem, 'rename', (from) => from.includes('.pinned-context.json.tmp-b'));
+    const taking = theirs.store.update(ABSENT, pin('Characters/the-hatter.md'));
+    await theirsHeld.reached;
+    expect(theirs.lines).toEqual(expect.arrayContaining([expect.stringContaining('Took over an abandoned lock')]));
+    mineHeld.open();
+
+    expect(await stalled).toEqual({ ok: false, reason: 'busy' });
+    expect(fileSystem.files.has(FILE)).toBe(false);
+    theirsHeld.open();
+    expect(await taking).toMatchObject({ ok: true, list: list('Characters/the-hatter.md') });
+    expect(everyFile(fileSystem)).toEqual(['pinned-context.json']);
+  });
+
+  it('a stalled rewrite whose lock was taken over and whose list was rewritten meanwhile writes nothing', async () => {
+    const fileSystem = new MemoryFileSystem();
+    fileSystem.files.set(FILE, bytesOf(list('Characters/alice.md')));
+    const revision = workshopPinnedContextRevisionOf(bytesOf(list('Characters/alice.md')));
+    const clock = { at: NOW };
+    const mine = host({ fileSystem, prefix: 'a', clock });
+    const theirs = host({ fileSystem, prefix: 'b', clock });
+    // Mine stalls staging its rewrite, before it claims the file.
+    const held = holdOnce(fileSystem, 'writeFile', (file) => file.includes('.pinned-context.json.tmp-a'));
+    const stalled = mine.store.update(revision, pin('Characters/the-hatter.md'));
+    await held.reached;
+    clock.at = NOW + STORED_FILE_CLAIM_LEASE_MS + 1;
+    expect(await theirs.store.update(revision, pin('Places/the tea party.md'))).toMatchObject({ ok: true });
+    held.open();
+
+    expect(await stalled).toMatchObject({ ok: false });
+    expect(text(fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Characters/alice.md', 'Places/the tea party.md'))));
+    expect(everyFile(fileSystem)).toEqual(['pinned-context.json']);
+  });
+});
+
+describe('the lock file', () => {
+  it('a live lock makes a write busy and is left as it is', async () => {
+    const window = host();
+    window.fileSystem.files.set(LOCK, lockBytes('other', NOW - 1_000));
+    expect(await window.store.update(ABSENT, pin('Characters/alice.md'))).toEqual({ ok: false, reason: 'busy' });
+    expect(everyFile(window.fileSystem)).toEqual(['.pinned-context.json.lock']);
+  });
+
+  it('an abandoned lock, or one that does not read as a lock, is taken over, and nothing of it is left', async () => {
+    for (const abandoned of [lockBytes('other', NOW - STORED_FILE_CLAIM_LEASE_MS - 1), new TextEncoder().encode('not a lock')]) {
+      const window = host();
+      window.fileSystem.files.set(LOCK, abandoned);
+      expect(await window.store.update(ABSENT, pin('Characters/alice.md'))).toMatchObject({ ok: true });
+      expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
+    }
+  });
+
+  it('a takeover that finds a new, live lock where the abandoned one stood puts it back, and is busy', async () => {
+    const window = host();
+    window.fileSystem.files.set(LOCK, lockBytes('gone', NOW - STORED_FILE_CLAIM_LEASE_MS - 1));
+    // Between judging the lock abandoned and moving it, another window takes the lock anew.
+    const held = holdOnce(window.fileSystem, 'rename', (from) => from === LOCK);
+    const writing = window.store.update(ABSENT, pin('Characters/alice.md'));
+    await held.reached;
+    window.fileSystem.files.set(LOCK, lockBytes('fresh', NOW));
+    held.open();
+
+    expect(await writing).toEqual({ ok: false, reason: 'busy' });
+    expect(text(window.fileSystem.files.get(LOCK))).toBe(text(lockBytes('fresh', NOW)));
+    expect(everyFile(window.fileSystem)).toEqual(['.pinned-context.json.lock']);
+  });
+});
+
+describe('a hand edit, which takes no lock, at each step of a write', () => {
+  it('a file saved before a create commits stands, and the create is refused as changed', async () => {
+    const window = host();
+    const held = holdOnce(window.fileSystem, 'rename', (from) => from.includes('.pinned-context.json.tmp-'));
+    const saving = window.store.update(ABSENT, pin('Characters/alice.md'));
+    await held.reached;
+    window.fileSystem.files.set(FILE, bytesOf(list('Characters/the-hatter.md')));
+    held.open();
+
+    expect(await saving).toMatchObject({ ok: false, reason: 'changed', current: { state: 'ok', list: list('Characters/the-hatter.md') } });
+    expect(text(window.fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Characters/the-hatter.md'))));
+    expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
+  });
+
+  it('an edit between the read and the claim is claimed, found changed, put back, and the write refused', async () => {
+    const window = host();
+    window.fileSystem.files.set(FILE, bytesOf(list('Characters/alice.md')));
+    const revision = workshopPinnedContextRevisionOf(bytesOf(list('Characters/alice.md')));
+    const held = holdOnce(window.fileSystem, 'rename', (from) => from === FILE);
+    const saving = window.store.update(revision, pin('Characters/the-hatter.md'));
+    await held.reached;
+    window.fileSystem.files.set(FILE, bytesOf(list('Places/the tea party.md')));
+    held.open();
+
+    expect(await saving).toMatchObject({ ok: false, reason: 'changed', current: { state: 'ok', list: list('Places/the tea party.md') } });
+    expect(text(window.fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Places/the tea party.md'))));
+    expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
+  });
+
+  it('a file saved while the claim holds the list stands; the claimed bytes are set aside, never lost', async () => {
+    const window = host();
+    window.fileSystem.files.set(FILE, bytesOf(list('Characters/alice.md')));
+    const revision = workshopPinnedContextRevisionOf(bytesOf(list('Characters/alice.md')));
+    const held = holdOnce(window.fileSystem, 'readFile', (file) => file.includes('.claim-'));
+    const saving = window.store.update(revision, pin('Characters/the-hatter.md'));
+    await held.reached;
+    window.fileSystem.files.set(FILE, bytesOf(list('Places/the tea party.md')));
+    held.open();
+
+    expect(await saving).toMatchObject({ ok: false });
+    expect(text(window.fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Places/the tea party.md'))));
+    const files = everyFile(window.fileSystem);
+    expect(files.filter((file) => file.startsWith('pinned-context.json.set-aside-'))).toHaveLength(1);
+    const aside = files.find((file) => file.startsWith('pinned-context.json.set-aside-')) as string;
+    expect(text(window.fileSystem.files.get(path.join(FOLDER, aside)))).toBe(text(bytesOf(list('Characters/alice.md'))));
   });
 });
 

@@ -17,7 +17,7 @@ import {
   workshopPinnedContextRevisionOf
 } from '@/infrastructure/storage/WorkshopPinnedContextStore';
 import { WORKSHOP_PINNED_CONTEXT_FILE_BYTES, WORKSHOP_PINNED_CONTEXT_FILES } from '@shared/types/workshopPinnedContext';
-import { FILE, FOLDER, NOW, ROOT, bytesOf, everyFile, list, pin, pinnedHost as host, text } from '@/__tests__/infrastructure/storage/workshopPinnedContextStoreHost';
+import { FILE, FOLDER, NOW, ROOT, bytesOf, everyFile, list, listRenames, pin, pinnedHost as host, text } from '@/__tests__/infrastructure/storage/workshopPinnedContextStoreHost';
 
 const claimOf = (at: number, id: string) => path.join(FOLDER, `.pinned-context.json.claim-${at}-${id}`);
 
@@ -91,7 +91,7 @@ describe('writes, by revision', () => {
     const saved = await window.store.update(ABSENT, pin('Characters/alice.md'));
     expect(saved).toEqual({ ok: true, list: list('Characters/alice.md'), revision: workshopPinnedContextRevisionOf(bytesOf(list('Characters/alice.md'))) });
     expect(text(window.fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Characters/alice.md'))));
-    expect(window.fileSystem.renameCalls).toEqual([{ fromPath: path.join(FOLDER, '.pinned-context.json.tmp-s1'), toPath: FILE, overwrite: false }]);
+    expect(listRenames(window.fileSystem)).toEqual([{ fromPath: path.join(FOLDER, '.pinned-context.json.tmp-s2'), toPath: FILE, overwrite: false }]);
     expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
   });
 
@@ -105,9 +105,9 @@ describe('writes, by revision', () => {
     expect(updated).toMatchObject({ ok: true, list: list('Characters/alice.md', 'Characters/the-hatter.md') });
     expect(await window.store.read()).toMatchObject({ state: 'ok', list: list('Characters/alice.md', 'Characters/the-hatter.md') });
     // The file was claimed (renamed aside, never over anything) before the staged list took its name.
-    const claims = window.fileSystem.renameCalls.filter((call) => /\.claim-\d{13}-/.test(call.toPath));
+    const claims = listRenames(window.fileSystem).filter((call) => /\.claim-\d{13}-/.test(call.toPath));
     expect(claims).toHaveLength(1);
-    expect(window.fileSystem.renameCalls.every((call) => !call.overwrite)).toBe(true);
+    expect(listRenames(window.fileSystem).every((call) => !call.overwrite)).toBe(true);
     expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
   });
 
@@ -122,7 +122,7 @@ describe('writes, by revision', () => {
       current: { state: 'ok', list: list('Characters/alice.md'), revision: workshopPinnedContextRevisionOf(bytesOf(list('Characters/alice.md'))) }
     });
     expect(text(window.fileSystem.files.get(FILE))).toBe(before);
-    expect(window.fileSystem.renameCalls).toEqual([]);
+    expect(listRenames(window.fileSystem)).toEqual([]);
   });
 
   it('refuses a create when a file stands, and a change when the file is gone', async () => {
@@ -142,7 +142,7 @@ describe('writes, by revision', () => {
     window.fileSystem.files.set(FILE, bytesOf(list('Characters/alice.md')));
     const revision = workshopPinnedContextRevisionOf(bytesOf(list('Characters/alice.md')));
     expect(await window.store.update(revision, (current) => ({ files: [...current.files] }))).toEqual({ ok: true, list: list('Characters/alice.md'), revision });
-    expect(window.fileSystem.renameCalls).toEqual([]);
+    expect(listRenames(window.fileSystem)).toEqual([]);
   });
 
   it('writes an emptied list as an empty list, never by deleting the file', async () => {
@@ -162,7 +162,7 @@ describe('writes, by revision', () => {
     const full = () => list(...Array.from({ length: WORKSHOP_PINNED_CONTEXT_FILES + 1 }, (_, index) => `Notes/${index}.md`));
     expect(await window.store.update(revision, full)).toEqual({ ok: false, reason: 'invalid', refusal: 'too-many' });
     expect(text(window.fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Characters/alice.md'))));
-    expect(window.fileSystem.renameCalls).toEqual([]);
+    expect(listRenames(window.fileSystem)).toEqual([]);
   });
 
   it('compares paths case-folded on Windows', async () => {
@@ -190,7 +190,7 @@ describe('a file that does not read is never written', () => {
     expect(await window.store.update(revision, () => list())).toEqual({ ok: false, reason: 'unreadable' });
     expect(await window.store.update(ABSENT, () => list())).toEqual({ ok: false, reason: 'unreadable' });
     expect(window.fileSystem.files.get(FILE)).toEqual(bad);
-    expect(window.fileSystem.renameCalls).toEqual([]);
+    expect(listRenames(window.fileSystem)).toEqual([]);
     expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
   });
 });
@@ -216,7 +216,7 @@ describe('a file over the byte bound', () => {
     expect(await window.store.update(revision, () => list())).toEqual({ ok: false, reason: 'unreadable' });
     expect(window.fileSystem.files.get(FILE)).toEqual(bytes);
     expect(window.fileSystem.readFileCalls).not.toContain(FILE);
-    expect(window.fileSystem.renameCalls).toEqual([]);
+    expect(listRenames(window.fileSystem)).toEqual([]);
     expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
   });
 
