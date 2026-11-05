@@ -1,0 +1,3 @@
+PASS: 123640 decoder-valid memory edit cases exactly match the pre-extraction anchor.
+PASS: 4833 successful planner cases have valid separated ranges, exact operation coverage, matching joined text and matching application.
+PASS: front matter, full-content deletion, both insertions and CRLF separator compose correctly.
