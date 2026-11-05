@@ -1,7 +1,7 @@
 # Slice 4: Context Sheet Marks
 
 **Epic:** [Workshop Pinned Context](README.md)
-**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-pinned-context.md), D4 (derived), D7 (the mark)
+**Decision:** [ADR 2026-11-04](../../../../docs/adr/2026-11-04-workshop-pinned-context.md), D4 (derived), D7 (the mark)
 **Branch:** `epic-pinned-context-slice-4-sheet-marks`
 **Status:** Waits on Slice 3 (the hook). Wayfinding's context sheet is in the
 epic since the merge at `17d52cf`. Question 6 is decided: Pin from a pill, as

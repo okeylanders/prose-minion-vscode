@@ -1,0 +1,21 @@
+Run from exact-head checkout. No product edits required:
+
+mkdir -p /tmp/pr221-ui-probe
+cp docs/pr-reviews/probes/pr-221-receipt-refusal.test.tsx.txt /tmp/pr221-ui-probe/receipt.test.tsx
+ln -s "$PWD/node_modules" /tmp/pr221-ui-probe/node_modules
+node - <<'JS'
+const fs = require('fs');
+const c = require('./jest.config');
+c.rootDir = process.cwd();
+c.roots = ['/tmp/pr221-ui-probe'];
+c.testMatch = ['**/receipt.test.tsx'];
+c.modulePaths = [process.cwd() + '/node_modules'];
+fs.writeFileSync('/tmp/pr221-ui-jest.json', JSON.stringify(c));
+JS
+npx jest --config /tmp/pr221-ui-jest.json --runInBand --silent
+
+Observed exact head 0f72e83d8ba6e9a36af0149c41b45ac33625c379:
+2 UI expectations fail (correlated Forget/Restore refusal absent from DOM).
+1 hook control passes (correlation, refusal state, retry/success clearing).
+Production receipt validator accepts both fixtures before any action.
+Production focused 28 suites / 415 tests pass; this probe is separate.

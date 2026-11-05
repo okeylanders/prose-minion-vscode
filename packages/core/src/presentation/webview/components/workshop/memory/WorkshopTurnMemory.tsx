@@ -44,8 +44,14 @@ export interface WorkshopTurnMemoryControls {
   onReopenCard: (turnId: string, index: number) => void;
   onSaveTurn: (turn: WorkshopTurn) => void;
   onEditMemory: (memoryId: string) => void;
-  onForget: (memoryId: string) => void;
-  onRestore: (memoryId: string) => void;
+  /** Forget on a receipt, named by its memory and the receipt's turn id. */
+  onForget: (memoryId: string, receiptTurnId: string) => void;
+  /** Restore on a forgotten receipt, named the same way. */
+  onRestore: (memoryId: string, receiptTurnId: string) => void;
+  /** Receipts whose Forget or Restore waits for the host, by turn id; absent reads as none. */
+  busyReceipts?: ReadonlySet<string>;
+  /** A receipt's refused Forget or Restore, by turn id, shown beside it (PR #221 F-01); absent reads as none. */
+  receiptErrors?: ReadonlyMap<string, { readonly action: 'forget' | 'restore'; readonly error: string }>;
   /** Save and tell me's saved cards, from the snapshot's turns (Slice 5); absent reads as none. */
   autoSaved?: WorkshopAutoSavedMemories;
   /** Slice 4b's manager; the settled card offers "Open in manager" only when it exists. */
@@ -162,7 +168,9 @@ export const WorkshopMemoryReceiptLine: React.FC<{ turn: WorkshopTurn; controls?
   if (!receipt) {
     return null;
   }
-  const disabled = controls?.disabled ?? true;
+  const busy = controls?.busyReceipts?.has(turn.id) ?? false;
+  const disabled = (controls?.disabled ?? true) || busy;
+  const refused = controls?.receiptErrors?.get(turn.id);
   const title = <b>{receipt.title}</b>;
   const saved = receipt.action === 'saved' && receipt.by === 'auto' ? controls?.autoSaved?.cards.get(turn.id) : undefined;
   const cardId = `pm-ws-memory-receipt-${turn.id}`;
@@ -178,7 +186,7 @@ export const WorkshopMemoryReceiptLine: React.FC<{ turn: WorkshopTurn; controls?
           <>
             <button type="button" className="pm-ws-memory-link" disabled={disabled} onClick={() => controls.onEditMemory(receipt.memoryId)}>Edit</button>
             <span aria-hidden="true">·</span>
-            <button type="button" className="pm-ws-memory-link" disabled={disabled} onClick={() => controls.onForget(receipt.memoryId)}>Forget</button>
+            <button type="button" className="pm-ws-memory-link" disabled={disabled} aria-busy={busy || undefined} onClick={() => controls.onForget(receipt.memoryId, turn.id)}>Forget</button>
           </>
         );
       }
@@ -190,7 +198,7 @@ export const WorkshopMemoryReceiptLine: React.FC<{ turn: WorkshopTurn; controls?
       line = <>Forgotten from project memory: {title}. It&apos;s archived, not deleted.</>;
       if (controls) {
         actions = (
-          <button type="button" className="pm-ws-memory-link" disabled={disabled} onClick={() => controls.onRestore(receipt.memoryId)}>
+          <button type="button" className="pm-ws-memory-link" disabled={disabled} aria-busy={busy || undefined} onClick={() => controls.onRestore(receipt.memoryId, turn.id)}>
             Restore
           </button>
         );
@@ -228,12 +236,20 @@ export const WorkshopMemoryReceiptLine: React.FC<{ turn: WorkshopTurn; controls?
       </span>
     </div>
   );
+  // A refused Forget or Restore is said under its own receipt, as an alert,
+  // until the next try, a success, or a new room (PR #221 F-01).
+  const refusal = refused && (
+    <div className="pm-ws-memory-receipt-error" role="alert">
+      <b>{refused.action === 'forget' ? 'Couldn\u2019t forget it.' : 'Couldn\u2019t restore it.'}</b> {refused.error}
+    </div>
+  );
   if (!saved) {
-    return divider;
+    return refusal ? <>{divider}{refusal}</> : divider;
   }
   return (
     <div className="pm-ws-memory-receipt-expandable">
       {divider}
+      {refusal}
       <div id={cardId} hidden={!open}>
         {open && (
           <WorkshopMemoryCard

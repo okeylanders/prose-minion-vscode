@@ -1,7 +1,7 @@
 # Slice 0d: Tab Design
 
 **Epic:** [Workshop Pinned Context](README.md)
-**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-pinned-context.md), D6 (budget), D7 (what the writer sees), D8 (the tab)
+**Decision:** [ADR 2026-11-04](../../../../docs/adr/2026-11-04-workshop-pinned-context.md), D6 (budget), D7 (what the writer sees), D8 (the tab)
 **Design precedent:** Project Memory's approved settings design (PR #196):
 `docs/design/workshop-project-memory/` and
 `.todo/epics/epic-workshop-project-memory-2026-11-04/slice-0d-settings-design.md`
@@ -119,7 +119,7 @@ message."
 ## First pass (2026-11-04)
 
 The boards, and what they settle, are listed in the
-[design README](../../../docs/design/workshop-pinned-context/README.md).
+[design README](../../../../docs/design/workshop-pinned-context/README.md).
 Choices the brief left open, made here for Okey to accept or change:
 
 - **The list is numbered,** with the order spelled out in the heading

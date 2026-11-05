@@ -1,8 +1,8 @@
 # ADR 2026-11-04: Workshop Pinned Context
 
-**Status:** Proposed (2026-11-04). All six questions are decided ([Decided questions](#decided-questions)): question 5 by Okey on 2026-11-04, and the rest with his approval of the design on 2026-11-05. Accepted after the live pass (Slice 5).
+**Status:** Accepted (2026-11-05), after Okey's live pass (Slice 5); see the [live-pass amendment](#amendment-the-slice-5-live-pass-2026-11-05). Proposed 2026-11-04. All six questions are decided ([Decided questions](#decided-questions)): question 5 by Okey on 2026-11-04, and the rest with his approval of the design on 2026-11-05.
 **Date:** 2026-11-04
-**Epic:** [Workshop Pinned Context](../../.todo/epics/epic-workshop-pinned-context-2026-11-04/README.md)
+**Epic:** [Workshop Pinned Context](../../.todo/archive/epics/epic-workshop-pinned-context-2026-11-04/README.md)
 **Design:** `docs/design/workshop-pinned-context/` (Slice 0d, **approved by Okey on 2026-11-05**). It follows Project Memory's approved settings design (`docs/design/workshop-project-memory/`).
 **Extends:** [ADR 2026-07-30: Workshop Session Codec Evolution](2026-07-30-workshop-session-codec-evolution.md) (no codec change, D4); [ADR 2026-10-19: Lightbox](2026-10-19-lightbox-inspiration-board.md) (D12: the saved-board write discipline, through Project Memory's shared `StoredFileClaims` / `StoredFileRewrite`)
 **Related:** [ADR 2026-11-04: Workshop Project Memory](2026-11-04-workshop-project-memory.md) (on `epic/workshop-project-memory`: D8 unavailable workspaces, D10 storage, and the "Memory isn't context" well of its Slice 0d design); [ADR 2025-11-03: Unified Settings Architecture](2025-11-03-unified-settings-architecture.md); [ADR 2026-10-03: Acknowledged Workshop Context Deltas](2026-10-03-workshop-context-delta-delivery.md); [ADR 2026-10-03: Provider Conversation Prompt Caching](2026-10-03-provider-conversation-prompt-caching.md)
@@ -497,3 +497,30 @@ coding to begin. Each answer is the recommendation:
 6. **Pin from a pill: yes, as drawn.** A hovered, unpinned file pill offers
    **Pin**. Unpinning stays in the tab, and a pinned pill shows only its
    mark and tooltip (Slice 4).
+
+## Amendment: the Slice 5 live pass (2026-11-05)
+
+Okey ran the feature against a real project and reported it working. The
+pass forced two changes, merged as PR #217, and recorded one limitation.
+
+1. **The list's bound is the writes', not the message's.** Pin what's
+   attached now, with 22 file attachments, was refused as an unreadable
+   request: the handler had used the list's file bound as its message-shape
+   check. A request's shape now caps it at 1,000 items, and a pin past the
+   list's bound is refused in words that name the bound and the count it
+   would make (D6).
+2. **The bound is 50 files** (decided question 4), tuned from the 20 it
+   started at, because the first real project had 22 files to pin. The list
+   file's byte bound rises to 256 KiB with it.
+3. **The byte bound's fit is proved only for ASCII paths** (PR #217 N-01).
+   Long non-ASCII paths can meet its safe `too-large` refusal before 50
+   files. The store refuses before writing, and the earlier 20-file /
+   128 KiB pairing had the same gap. Reconciling the two bounds is
+   low-priority tech debt
+   (`.todo/tech-debt/2026-11-05-pinned-context-utf8-byte-bound.md`).
+
+Two of the pass's checks were not reported item by item: the New-session
+timing (item 14) and the native Windows file-name checks (item 16). They
+stay open as a follow-up
+(`.todo/tech-debt/2026-11-05-pinned-context-live-checks-to-record.md`).
+

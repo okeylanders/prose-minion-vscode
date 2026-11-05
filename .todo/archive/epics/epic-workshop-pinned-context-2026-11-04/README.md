@@ -1,11 +1,9 @@
 # Epic: Workshop Pinned Context
 
-**Status:** Coding. The spec is done, with all six questions decided, and
-Okey approved the design on 2026-11-05. Project Memory was merged in at
-`17d52cf`, and again at `25c9443`, and again at `2a014cb` (#209).
-**Code complete.** Every code slice has merged (2a, 1, 2b, 3 and 4), and
-Project Memory's final round merged in at `b668782`. Slice 5, Okey's live
-pass, is next (see [Threads](#threads)).
+**Status:** **Complete; archived 2026-11-05** (see [ARCHIVE.md](ARCHIVE.md)).
+Every code slice merged after Astra's clear verdict, and Okey's live pass
+reported the feature working. It merges to `main` after Project Memory's
+epic.
 **Priority:** Medium
 **Created:** 2026-11-04
 **Integration branch:** `epic-pinned-context`, cut from `main` at `24d9d6e`.
@@ -18,8 +16,8 @@ pass, is next (see [Threads](#threads)).
   reached it; otherwise `epic/workshop-project-memory` does.
 - **The epic merges to `main`** through one PR at the end.
 
-**Decision:** [ADR 2026-11-04: Workshop Pinned Context](../../../docs/adr/2026-11-04-workshop-pinned-context.md) (Proposed; all questions decided; Accepted after Slice 5)
-**Design:** [`docs/design/workshop-pinned-context/`](../../../docs/design/workshop-pinned-context/README.md)
+**Decision:** [ADR 2026-11-04: Workshop Pinned Context](../../../../docs/adr/2026-11-04-workshop-pinned-context.md) (Proposed; all questions decided; Accepted after Slice 5)
+**Design:** [`docs/design/workshop-pinned-context/`](../../../../docs/design/workshop-pinned-context/README.md)
 (canvas https://claude.ai/artifact/2dZHup6uEFKQML17dJeZqz). **Approved by
 Okey on 2026-11-05.** It follows Project Memory's approved settings design.
 
@@ -194,7 +192,7 @@ it from the design.
 **The design, and the other five questions (Okey, 2026-11-05).** Okey
 approved the third pass and asked for coding to begin. The approved design
 draws the recommended answer to each remaining question, so the ADR records
-them as [decided](../../../docs/adr/2026-11-04-workshop-pinned-context.md#decided-questions):
+them as [decided](../../../../docs/adr/2026-11-04-workshop-pinned-context.md#decided-questions):
 
 1. the tab sits after About you;
 2. an ordinary New session tops up;
@@ -327,3 +325,8 @@ the repo:
     KiB.
   - Astra's N-01 (the byte bound's fit is proved only for ASCII paths) is
     low-priority tech debt.
+- **2026-11-05. Closed.** Okey reported the live pass working and asked for
+  the epic to merge to `main` after Project Memory's. The ADR is Accepted, with
+  a live-pass amendment. `AGENTS.md` gains its **Workshop Pinned Context**
+  section. The memory bank records the epic, and this folder is archived, with
+  its follow-ups split into `.todo/tech-debt/`.

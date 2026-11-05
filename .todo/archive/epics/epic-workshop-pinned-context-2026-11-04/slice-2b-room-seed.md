@@ -1,7 +1,7 @@
 # Slice 2b: Room Seed
 
 **Epic:** [Workshop Pinned Context](README.md)
-**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-pinned-context.md), D2 (when), D3 (how), D4 (the match rule), D5 (workspace identity), D6 (budget), D7 (the report), D9 (the port)
+**Decision:** [ADR 2026-11-04](../../../../docs/adr/2026-11-04-workshop-pinned-context.md), D2 (when), D3 (how), D4 (the match rule), D5 (workspace identity), D6 (budget), D7 (the report), D9 (the port)
 **Branch:** `epic-pinned-context-slice-2b-room-seed`
 **Status:** Waits on Slice 1 (the store) and Slice 2a (the starts and the port), both merged into the epic.
 

@@ -1,0 +1,45 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+ts-jest[ts-jest-transformer] (WARN) Define `ts-jest` config under `globals` is deprecated. Please do
+transform: {
+    <transform_regex>: ['ts-jest', { /* ts-jest config goes here in Jest */ }],
+},
+See more at https://kulshekhar.github.io/ts-jest/docs/getting-started/presets#advanced
+PASS packages/core/src/__tests__/presentation/webview/WorkshopApp.memoryStreaming.test.tsx (9.855 s)
+PASS packages/core/src/__tests__/presentation/webview/WorkshopApp.readIn.test.tsx
+PASS packages/core/src/__tests__/utils/workshopReplyControls.test.ts
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/memory/WorkshopMemoryBrowserModal.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/WorkshopApp.memoryManager.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/WorkshopApp.turnPreview.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/WorkshopConversationBehaviorModal.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/WorkshopApp.bookmarks.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/WorkshopApp.railTabs.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/WorkshopConversationBehaviorModal.memory.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/WorkshopApp.readInProvenance.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/settings/WorkshopMemorySettingsPanel.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/WorkshopMemorySheet.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/WorkshopTurnMemory.test.tsx
+PASS packages/core/src/__tests__/application/services/workshop/session/WorkshopMemoryTurns.test.ts
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/WorkshopSaveAndTellMe.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/WorkshopMemoryEditCard.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/memory/workshopMemoryTabView.test.ts
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/useWorkshopMemoryManager.test.ts
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/useWorkshopProjectMemory.test.ts
+PASS packages/core/src/__tests__/application/services/workshop/session/WorkshopMemoryHeldCard.test.ts
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/controllers/useWorkshopMemoryExplainer.test.ts
+PASS packages/core/src/__tests__/application/services/workshop/memory/WorkshopMemoryEdit.test.ts
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/memory/workshopMemoryResidency.test.ts
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/memory/workshopMemoryManagerView.test.ts
+PASS packages/core/src/__tests__/application/services/workshop/memory/WorkshopMemoryAutoSave.test.ts
+PASS packages/core/src/__tests__/architecture/workshopMemoryKindGrid.test.ts
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/memory/workshopMemorySupersession.test.ts
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/memory/workshopMemoryWords.test.ts
+
+Test Suites: 29 passed, 29 total
+Tests:       425 passed, 425 total
+Snapshots:   0 total
+Time:        28.339 s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

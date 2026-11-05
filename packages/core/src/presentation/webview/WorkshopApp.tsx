@@ -258,7 +258,10 @@ export const WorkshopApp: React.FC = () => {
   const bookmarks = useWorkshopBookmarks({ onBeforeChange: workshop.clearError });
   // The Bookmarks screen (Bookmark Recall Slice 2, ADR 2026-11-05 D8).
   const bookmarkBrowser = useWorkshopBookmarkBrowser();
-  const projectMemory = useWorkshopProjectMemory();
+  // The room's generation (first load, New, Open, Rewind, Branch): the rail's
+  // badges and the memory receipts' feedback both start over with a new one.
+  const roomKey = workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending';
+  const projectMemory = useWorkshopProjectMemory({ roomKey });
   const memoryManager = useWorkshopMemoryManager();
   const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
   const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, room: workshop.roomRevision, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });
@@ -271,10 +274,9 @@ export const WorkshopApp: React.FC = () => {
   // session file); the controller re-baselines its badges on each new room,
   // and Material's on each new chat target.
   const persistedRailTab = usePersistedState<Partial<WorkshopRailTabsPersistence>>();
-  const railRoomKey = workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending';
   const railTabs = useWorkshopRailTabs({
     todos: workshop.todos,
-    roomKey: railRoomKey,
+    roomKey,
     readIn: readInSources,
     readInKey: chatTargetIdentity,
     bookmarks: bookmarks.bookmarks,
@@ -559,6 +561,8 @@ export const WorkshopApp: React.FC = () => {
     autoSaved: autoSavedMemories,
     busyCards: projectMemory.busyCards,
     cardErrors: projectMemory.cardErrors,
+    busyReceipts: projectMemory.busyReceipts,
+    receiptErrors: projectMemory.receiptErrors,
     onSaveCard: projectMemory.saveCard,
     onEditCard: projectMemory.editCard,
     onDismissCard: projectMemory.dismissCard,
@@ -569,7 +573,8 @@ export const WorkshopApp: React.FC = () => {
     onRestore: projectMemory.restore,
     onOpenManager: memoryManager.openManager
   }), [
-    roomMutationLocked, autoSavedMemories, projectMemory.busyCards, projectMemory.cardErrors, projectMemory.saveCard,
+    roomMutationLocked, autoSavedMemories, projectMemory.busyCards, projectMemory.cardErrors,
+    projectMemory.busyReceipts, projectMemory.receiptErrors, projectMemory.saveCard,
     projectMemory.editCard, projectMemory.dismissCard, projectMemory.reopenCard, projectMemory.saveTurn,
     projectMemory.editMemory, projectMemory.forget, projectMemory.restore, memoryManager.openManager
   ]);
@@ -728,7 +733,7 @@ export const WorkshopApp: React.FC = () => {
     requestReadInResource: readIn.requestReadInResource,
     openReadInResource: readIn.openReadInResource,
     clearReadInContent: readIn.clearReadInContent,
-    readInScopeKey: `${railRoomKey}\u0000${chatTargetIdentity}`,
+    readInScopeKey: `${roomKey}\u0000${chatTargetIdentity}`,
     turnPreview: bookmarks.turnPreview,
     requestTurnPreview: bookmarks.requestTurnPreview,
     clearTurnPreview: bookmarks.clearTurnPreview,
@@ -1153,7 +1158,7 @@ export const WorkshopApp: React.FC = () => {
   const railContent = (
     <WorkshopRail
       tabs={railTabs}
-      roomKey={railRoomKey}
+      roomKey={roomKey}
       excerpt={{
         excerpt: workshop.excerpt,
         shelvedExcerpt: workshop.shelvedExcerpt,
