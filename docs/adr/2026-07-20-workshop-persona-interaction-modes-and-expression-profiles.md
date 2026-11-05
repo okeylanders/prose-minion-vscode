@@ -7,7 +7,8 @@
   validated on its feature branch 2026-07-22, with live qualitative scoring
   pending; the Writer Profile amendment was implemented and automatically
   validated on its feature branch 2026-07-22; broader qualitative evaluation
-  remains in progress
+  remains in progress; Section 17 made the writer-owned settings user-only
+  2026-11-05
 - **Date:** 2026-07-20
 - **Deciders:** Okey Landers, Ada Forge
 - **Related:**
@@ -20,6 +21,8 @@
   - [Workshop persona authoring guide](../../packages/core/resources/system-prompts/workshop-personas/README.md)
   - [Workshop Relational Depth feature](../../.todo/features/feature-workshop-relational-depth/README.md)
   - [Workshop Writer Profile feature](../../.todo/archive/features/feature-workshop-writer-profile/README.md)
+  - [PR #93 review](../pr-reviews/pr-93-workshop-web-research-review.md)
+    — Section 17 supersedes finding 8's window scope for web research
 
 ## Context
 
@@ -1742,3 +1745,60 @@ Attuned, and Reflective across multiple personas. Success means personas use
 the preferred address naturally, gain relevant context without performing
 memory, and make only the kinds of personal connection the selected relational
 ceiling permits.
+
+## 17. Accepted amendment: writer-owned settings are user settings (2026-11-05)
+
+### Why the boundary changes
+
+`SettingsStore.update` writes the global level only, while `get` reads VS
+Code's merged value. A setting without a declared `scope` is window-scoped,
+so a project's `.vscode/settings.json` overrides it. For
+`proseMinion.workshop.webResearch` that means a cloned repository can ship
+`{ "enabled": true }` and switch live web research on over the writer's own
+choice. Search queries can draw on the room, the excerpt, attachments and the
+shared profile, and go to OpenRouter and its search providers. The Conversation
+settings toggle cannot undo it: its Apply writes the global value, and the
+next settings sync or reload reads the workspace value again.
+
+### Decision
+
+The Workshop's writer-owned settings declare `"scope": "application"`:
+
+| Setting | What it holds |
+|---|---|
+| `proseMinion.workshop.conversationBehavior` | Durable behavior defaults the Behavior tab writes |
+| `proseMinion.workshop.writerProfile` | The About You profile (application since Section 16) |
+| `proseMinion.workshop.webResearch` | The live-web research switch |
+
+VS Code reads an application-scoped value from user settings alone. It ignores
+workspace, folder and remote values, including those a dev container's
+`customizations.vscode.settings` seeds; `machine` scope would not. What the
+modal writes is therefore what every turn reads.
+
+`workshopSettingsScope.test.ts` pins each scope and fails when a
+`proseMinion.workshop.*` setting appears without a recorded decision. A new
+Workshop setting joins its table, and the writer-owned ones join this table.
+
+### What this supersedes
+
+The PR #93 review (finding 8) moved `webResearch` from application to window
+scope, so that a writer could turn research off for one project while it was on
+elsewhere. That opt-out only ever worked by editing a project's settings file by
+hand, and the same file could equally turn research on. A repository silently
+enabling research outweighs the lost hand-edited opt-out.
+
+### Costs
+
+- The switch applies in every project the writer opens, and Settings Sync
+  carries it to their other machines. The modal and the manifest say so
+  beside the switch.
+- A behavior default can no longer differ per project. The modal already
+  wrote only the global value, so a per-project value existed only by hand,
+  and in that project the modal's own changes gave way to it on the next
+  settings sync or reload.
+- Values a writer had put in a workspace settings file are now ignored, and VS
+  Code marks them there.
+
+If per-project control returns, it should be asymmetric: a workspace may
+turn research off, never on. That needs the settings port to read the user
+level apart from the merged value. It is a design change, not a scope flag.

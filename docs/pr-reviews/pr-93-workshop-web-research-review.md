@@ -20,7 +20,7 @@ findings are addressed so this file stays a living record. Legend: **Open** = ac
 | 5 | 🟠 High | `citations: last.citations` drops every source found before the final turn of a multi-turn run | Blake | — | **Addressed** |
 | 6 | 🟠 High | `RunWorkshopToolSidePass` host tool-synthesis turn never receives `webResearch` | Bria | — | **Addressed** |
 | 7 | 🟠 High | No session-level cap on web-search spend or latency; attached to every persona turn | Tim | — | **Deferred** |
-| 8 | 🟠 High | `scope: "application"` on a network capability — no per-workspace opt-out, syncs across machines | Patricia | — | **Addressed** |
+| 8 | 🟠 High | `scope: "application"` on a network capability — no per-workspace opt-out, syncs across machines | Patricia | — | **Addressed**, then superseded 2026-11-05: a workspace could also turn research on ([ADR 2026-07-20 §17](../adr/2026-07-20-workshop-persona-interaction-modes-and-expression-profiles.md)) |
 | 9 | 🟠 High | Disclosure names latency and provider charges, never the second data recipient | Patricia | — | **Addressed** |
 | 10 | 🟠 High | First-wins citation merge silently discards a richer duplicate's title | Sam | — | **Addressed** |
 | 11 | 🟠 High | Pill numbers can disagree with the model's own inline `[n]` markers | Sam | — | **Deferred** |

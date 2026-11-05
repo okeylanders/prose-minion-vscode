@@ -486,7 +486,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
             <div>
               <div className="pm-ws-behavior-row-name">Allow live web research</div>
               <div className="pm-ws-behavior-row-desc">
-                Persona conversations may search current web information when it helps. Search queries can draw on the active room, excerpt, attachments, and shared profile, then run through OpenRouter and its search providers. Enable it only for material you are comfortable sharing. It can add latency and provider charges; Grok can also search X when supported.
+                Persona conversations may search current web information when it helps. Search queries can draw on the active room, excerpt, attachments, and shared profile, then run through OpenRouter and its search providers. Enable it only for material you are comfortable sharing. The switch is stored globally, so it applies in every project you open; a project's own settings cannot turn it on. It can add latency and provider charges; Grok can also search X when supported.
               </div>
             </div>
             <Switch
