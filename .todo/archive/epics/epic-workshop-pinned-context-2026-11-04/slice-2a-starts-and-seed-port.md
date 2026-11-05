@@ -1,7 +1,7 @@
 # Slice 2a: Three Starts and the Seed Port
 
 **Epic:** [Workshop Pinned Context](README.md)
-**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-pinned-context.md), D2 (the three starts), D7 (the menu and the result lines), D9 (the port)
+**Decision:** [ADR 2026-11-04](../../../../docs/adr/2026-11-04-workshop-pinned-context.md), D2 (the three starts), D7 (the menu and the result lines), D9 (the port)
 **Design:** `docs/design/workshop-pinned-context/` (approved 2026-11-05): `Workshop.dc.html`'s sessions menu and result lines
 **Branch:** `epic-pinned-context-slice-2a-starts-seed-port`
 **Status:** Built 2026-11-05, waiting for its PR into `epic-pinned-context`. It runs beside Slice 1: neither touches the other's files.

@@ -1,7 +1,7 @@
 # Slice 3: Settings Tab
 
 **Epic:** [Workshop Pinned Context](README.md)
-**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-pinned-context.md), D6 (refusals), D8 (the tab), D9 (composition)
+**Decision:** [ADR 2026-11-04](../../../../docs/adr/2026-11-04-workshop-pinned-context.md), D6 (refusals), D8 (the tab), D9 (composition)
 **Design:** `docs/design/workshop-pinned-context/` (Slice 0d). **The design owns the layout, copy and states;** this doc owns the wiring.
 **Branch:** `epic-pinned-context-slice-3-settings-tab`
 **Status:** Waits on Slice 2b (the library). The design was approved on
