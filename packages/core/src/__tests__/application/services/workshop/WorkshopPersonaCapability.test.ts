@@ -16,7 +16,8 @@ const unusedRecall: WorkshopTranscriptRecallPort = {
   catalog: () => Promise.reject(new Error('recall is not under test here')),
   search: () => Promise.reject(new Error('recall is not under test here')),
   read: () => Promise.reject(new Error('recall is not under test here')),
-  todos: () => Promise.reject(new Error('recall is not under test here'))
+  todos: () => Promise.reject(new Error('recall is not under test here')),
+  bookmarks: () => Promise.reject(new Error('recall is not under test here'))
 };
 
 const usage = { promptTokens: 4, completionTokens: 6, totalTokens: 10, costUsd: 0.001 };

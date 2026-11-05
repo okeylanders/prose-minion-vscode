@@ -22,7 +22,8 @@ const unusedRecall: WorkshopTranscriptRecallPort = {
   catalog: () => Promise.reject(new Error('recall is not under test here')),
   search: () => Promise.reject(new Error('recall is not under test here')),
   read: () => Promise.reject(new Error('recall is not under test here')),
-  todos: () => Promise.reject(new Error('recall is not under test here'))
+  todos: () => Promise.reject(new Error('recall is not under test here')),
+  bookmarks: () => Promise.reject(new Error('recall is not under test here'))
 };
 
 const RABBIT = [

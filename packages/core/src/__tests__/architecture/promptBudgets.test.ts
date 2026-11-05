@@ -207,7 +207,7 @@ describe('prompt budgets', () => {
     });
   });
 
-  it('pins the Session Recall starting budgets (ADR 2026-10-05 §5; to-dos and reads, D11)', () => {
+  it('pins the Session Recall starting budgets (ADR 2026-10-05 §5; to-dos and reads, D11; bookmarks, ADR 2026-11-05 D3)', () => {
     expect(PROMPT_BUDGETS.workshopTranscriptRecall).toEqual({
       queryCharacters: 200,
       sessionIdCharacters: 100,
@@ -226,8 +226,18 @@ describe('prompt budgets', () => {
       todoSessions: 50,
       todoItems: 60,
       todoCharacters: 16_000,
-      todoMatchCharacters: 200
+      todoMatchCharacters: 200,
+      bookmarkSessions: 50,
+      bookmarkSessionsNamed: 10,
+      bookmarkItems: 60,
+      bookmarkCharacters: 24_000,
+      bookmarkMessageCharacters: 4_000,
+      bookmarkQueryCharacters: 200,
+      bookmarkFromMax: 999_999
     });
+    // A bookmarked message is read in windows no larger than the list it came from.
+    expect(PROMPT_BUDGETS.workshopTranscriptRecall.bookmarkMessageCharacters)
+      .toBeLessThan(PROMPT_BUDGETS.workshopTranscriptRecall.bookmarkCharacters);
     // Recall shares the per-turn call ceiling; its reads stay inside it.
     expect(PROMPT_BUDGETS.workshopTranscriptRecall.readsPerTurn)
       .toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);

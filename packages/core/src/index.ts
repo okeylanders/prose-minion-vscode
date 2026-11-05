@@ -107,6 +107,7 @@ export {
 export {
   WorkshopTranscriptRecallService
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+export { WorkshopLiveRoomBookmarkReader } from '@/application/services/workshop/WorkshopLiveRoomBookmarkReader';
 export { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
 export { ProjectMemoryStore } from '@/infrastructure/storage/ProjectMemoryStore';
 export { WorkshopPinnedContextStore } from '@/infrastructure/storage/WorkshopPinnedContextStore';

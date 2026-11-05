@@ -1,6 +1,8 @@
 /**
  * Session recall's engine (ADR 2026-10-05 §2, §4–§5, D6): catalog, search,
- * read, and to-dos over the writer's other saved Workshop sessions. It returns data,
+ * read, to-dos and bookmarks over the writer's other saved Workshop
+ * sessions. Bookmarks alone also read the open room, through its read-only
+ * port (ADR 2026-11-05 D1). It returns data,
  * never prose; the renderer writes the model-facing text, and a persona
  * capability is one consumer among several to come.
  *
@@ -47,6 +49,16 @@ import {
   todoCandidates,
   withParticipant
 } from '@/application/services/workshop/recall/WorkshopRecallCorpusSelection';
+import type { WorkshopLiveRoomBookmarks } from '@/application/services/workshop/recall/WorkshopLiveRoomBookmarks';
+import {
+  listWorkshopRecallBookmarks,
+  readWorkshopRecallBookmark,
+  workshopRecallBookmarksLogLine
+} from '@/application/services/workshop/recall/WorkshopRecallBookmarkQuery';
+import type {
+  WorkshopRecallBookmarksRequest,
+  WorkshopRecallBookmarksResult
+} from '@/application/services/workshop/recall/WorkshopRecallBookmarkResults';
 import type {
   WorkshopRecallCatalogResult,
   WorkshopRecallReadRequest,
@@ -121,6 +133,12 @@ export interface WorkshopRecallCorpusPort {
 export interface WorkshopTranscriptRecallServiceOptions {
   now?: () => number;
   limits?: Partial<WorkshopTranscriptRecallLimits>;
+  /**
+   * The open room's bookmarks (ADR 2026-11-05 D1): read only by
+   * `bookmarks()`, never by the other operations. Without it, the open
+   * room's bookmarks are reported unavailable.
+   */
+  liveRoom?: WorkshopLiveRoomBookmarks;
 }
 
 /** The scope a call opened: who the live room was, and the cache generation then. */
@@ -147,6 +165,7 @@ export class WorkshopTranscriptRecallService {
   private readonly limits: WorkshopTranscriptRecallLimits;
   private readonly cache: WorkshopRecallDocumentCache;
   private readonly loader: WorkshopRecallDocumentLoader;
+  private readonly liveRoom?: WorkshopLiveRoomBookmarks;
 
   constructor(
     private readonly corpus: WorkshopRecallCorpusPort,
@@ -157,6 +176,7 @@ export class WorkshopTranscriptRecallService {
     this.now = options.now ?? Date.now;
     this.limits = { ...WORKSHOP_TRANSCRIPT_RECALL_LIMITS, ...options.limits };
     this.cache = new WorkshopRecallDocumentCache(this.limits);
+    this.liveRoom = options.liveRoom;
     this.loader = new WorkshopRecallDocumentLoader(
       corpus,
       this.cache,
@@ -362,6 +382,32 @@ export class WorkshopTranscriptRecallService {
         sessions: selected.sessions,
         bounds
       };
+    });
+  }
+
+  /**
+   * The writer's bookmarks (ADR 2026-11-05 D2): a list from the open room
+   * and saved sessions, or one bookmark's message by its qualified ref. Only
+   * this operation reads the open room, through its port and filtered by
+   * what `reader` could see; the rules are WorkshopRecallBookmarkQuery's.
+   */
+  bookmarks(request: WorkshopRecallBookmarksRequest, signal?: AbortSignal): Promise<WorkshopRecallBookmarksResult> {
+    const started = this.now();
+    return this.withCorpus(signal, async (corpus): Promise<WorkshopRecallBookmarksResult> => {
+      const opened = {
+        liveSessionId: corpus.scope.liveSessionId,
+        sessions: corpus.sessions,
+        listingTruncated: corpus.listingTruncated,
+        load: (sessions: readonly WorkshopRecallSessionSummary[]) =>
+          this.loader.loadAll(sessions, PROMPT_BUDGETS.workshopTranscriptRecall.searchSourceBytes, corpus.scope, signal),
+        ...(this.liveRoom ? { liveRoom: this.liveRoom } : {}),
+        ...(request.reader ? { reader: request.reader } : {})
+      };
+      const result = request.bookmark !== undefined
+        ? await readWorkshopRecallBookmark(opened, request)
+        : await listWorkshopRecallBookmarks(opened, request);
+      this.log(`${workshopRecallBookmarksLogLine(result)} durationMs=${this.now() - started}`);
+      return result;
     });
   }
 

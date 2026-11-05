@@ -637,7 +637,7 @@ describe('app-shell provider assembly', () => {
     }
   });
 
-  it('builds session recall from the store and coordinator, before the factory that alone consumes it (ADR 2026-10-05 §9)', () => {
+  it('builds session recall from the store, coordinator and live-room port, before the factory that alone consumes it (ADR 2026-10-05 §9)', () => {
     const source = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
     const at = (needle: string): number => {
       const index = source.indexOf(needle);
@@ -649,7 +649,13 @@ describe('app-shell provider assembly', () => {
     const factory = source.slice(at('new WorkshopPersonaCapabilityFactory('));
     const factoryArgs = factory.slice(0, factory.indexOf(');'));
 
-    expect(recallArgs).toMatch(/\(\s*workshopSessionStore,\s*workshopSessionPersistenceCoordinator,\s*outputChannel\s*$/);
+    expect(recallArgs).toMatch(/\(\s*workshopSessionStore,\s*workshopSessionPersistenceCoordinator,\s*outputChannel,\s*\{/);
+    // The open room's bookmarks reach recall only through its read-only port, built here over the
+    // session's ledger and the room's own timezone (ADR 2026-11-05 D1).
+    expect(recallArgs).toMatch(
+      /liveRoom: new WorkshopLiveRoomBookmarkReader\(\s*workshopSessionService,\s*\(\) => workshopSessionTimeService\.exportState\(\)\.timezone\s*\)\s*\}\s*$/
+    );
+    expect(source.match(/new WorkshopLiveRoomBookmarkReader\(/g)).toHaveLength(1);
     expect(factoryArgs).toMatch(/workshopTranscriptRecallService,\s*projectMemoryLibrary\s*$/);
     expect(at('new WorkshopSessionStore(')).toBeLessThan(at('new WorkshopSessionPersistenceCoordinator('));
     expect(at('new WorkshopSessionPersistenceCoordinator(')).toBeLessThan(at('new WorkshopTranscriptRecallService('));

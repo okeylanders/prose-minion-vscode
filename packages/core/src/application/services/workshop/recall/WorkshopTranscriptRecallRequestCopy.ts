@@ -7,7 +7,10 @@
  */
 
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
-import type { WorkshopTranscriptRecallRequest } from '@shared/types/workshopCapabilities';
+import {
+  formatWorkshopRecallBookmarkRef,
+  type WorkshopTranscriptRecallRequest
+} from '@shared/types/workshopCapabilities';
 import { formatWorkshopRecallTurnRanges } from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
 import { recallCount, recallQuoted } from '@/application/services/workshop/recall/WorkshopRecallCopy';
 
@@ -22,6 +25,10 @@ export function workshopTranscriptRecallStatusMessage(request: WorkshopTranscrip
       return `${speaker} is reading ${request.sessions.length === 1 ? 'a saved session' : recallCount(request.sessions.length, 'saved session')}…`;
     case 'transcript.todos':
       return `${speaker} is checking to-dos in saved Workshop sessions…`;
+    case 'transcript.bookmarks':
+      return request.bookmark
+        ? `${speaker} is reading a bookmarked message…`
+        : `${speaker} is checking the writer's bookmarks…`;
     default:
       return assertNever(request);
   }
@@ -37,6 +44,8 @@ export function workshopTranscriptRecallStatusTicker(request: WorkshopTranscript
       return `Recall · ${recallCount(request.sessions.length, 'session')}`;
     case 'transcript.todos':
       return `Recall · ${request.status ?? 'open'} to-dos`;
+    case 'transcript.bookmarks':
+      return request.bookmark ? 'Recall · one bookmark' : `Recall · bookmarks (${request.scope ?? 'all'})`;
     default:
       return assertNever(request);
   }
@@ -58,6 +67,14 @@ export function workshopTranscriptRecallRequestLogSummary(request: WorkshopTrans
       return `status=${request.status ?? 'open'}; recent=${request.recent ?? 'default'}; ` +
         `session=${request.sessionId ?? 'any'}; source=${request.source ?? 'any'}; ` +
         `persona=${request.personaId ?? 'any'}; matchChars=${request.match?.length ?? 0}`;
+    case 'transcript.bookmarks':
+      // A ref is ids only; a query is counted, never quoted: it may echo the writer's words.
+      return request.bookmark
+        ? `bookmark=${formatWorkshopRecallBookmarkRef(request.bookmark)}; from=${request.from ?? 0}`
+        : `scope=${request.scope ?? 'all'}; recent=${request.recent ?? 'default'}; ` +
+          `sessions=${request.sessionIds?.length ?? 0}; persona=${request.personaId ?? 'any'}; ` +
+          `matchChars=${request.match?.length ?? 0}; queryChars=${request.query?.length ?? 0}; ` +
+          `speaker=${request.speaker ?? 'any'}; since=${request.since ?? 'any'}; until=${request.until ?? 'any'}`;
     default:
       return assertNever(request);
   }
@@ -88,6 +105,18 @@ export function workshopTranscriptRecallRequestSummary(request: WorkshopTranscri
         ...(request.match ? [`in sessions matching ${recallQuoted(request.match)}`] : []),
         ...(request.recent !== undefined ? [`from the ${recallCount(request.recent, 'latest session')}`] : []),
         ...(request.sessionId ? ['from one session'] : [])
+      ].join(' ');
+    case 'transcript.bookmarks':
+      if (request.bookmark) {
+        return `a bookmarked message${request.bookmark.source === 'current' ? ' in this conversation' : ''}` +
+          `${request.from ? ` · from character ${request.from.toLocaleString('en-US')}` : ''}`;
+      }
+      return [
+        request.scope === 'current' ? 'bookmarks in this conversation' : request.scope === 'saved' ? 'bookmarks in saved sessions' : 'bookmarks',
+        ...(request.query !== undefined ? [`matching ${recallQuoted(request.query)}`] : []),
+        ...(request.match ? [`in sessions matching ${recallQuoted(request.match)}`] : []),
+        ...(request.recent !== undefined ? [`from the ${recallCount(request.recent, 'latest session')}`] : []),
+        ...(request.sessionIds ? [`from ${recallCount(request.sessionIds.length, 'named session')}`] : [])
       ].join(' ');
     default:
       return assertNever(request);

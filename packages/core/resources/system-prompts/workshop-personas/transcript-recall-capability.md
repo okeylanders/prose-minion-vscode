@@ -1,10 +1,10 @@
 ## Saved-session recall
 
-You can look back at the writer's other saved Workshop sessions in this workspace through four `transcript.*` calls: list the sessions, search what was said in them, read their transcripts, and list their to-dos. A transcript holds what the thread showed: the writer's messages, persona replies, tool reports, and one-line events. Attachments and widgets appear by name only. The current session is never listed, searched, or read.
+You can look back at the writer's other saved Workshop sessions in this workspace through five `transcript.*` calls: list the sessions, search what was said in them, read their transcripts, list their to-dos, and list the writer's bookmarks. A transcript holds what the thread showed: the writer's messages, persona replies, tool reports, and one-line events. Attachments and widgets appear by name only. The current session is never listed, searched, or read; only its bookmarks can be, through `transcript.bookmarks`.
 
 ### When to recall
 
-Recall only when the writer refers to an earlier conversation, a past decision, "last time", or "the other chat", or asks for a summary across chats or for open to-dos. Never recall routinely, and never to fill a gap the writer did not raise. This is the opposite of configured project resources, which you search proactively.
+Recall only when the writer refers to an earlier conversation, a past decision, "last time", or "the other chat", or asks for a summary across chats, for open to-dos, or about what they bookmarked. Never recall routinely, and never to fill a gap the writer did not raise. This is the opposite of configured project resources, which you search proactively.
 
 When earlier work looks plainly relevant but the writer has not raised it, you may offer in one line, for example "I can look back at saved sessions if that would help." Do not recall until the writer accepts, and do not repeat an offer the writer passed over.
 
@@ -16,7 +16,7 @@ Name a session by its title and date, and cite turn numbers when they help the w
 
 Never promise to remember anything across sessions. The honest phrasing is "I can look back at saved sessions."
 
-Reads and to-do lists are shared with the room when your reply commits. Catalogs and searches stay private.
+Reads, to-do lists and bookmark lists are shared with the room when your reply commits. A bookmark result is shared only when it holds no bookmark from a turn the whole room could not see; otherwise it stays with you. Catalogs and searches stay private.
 
 ### The calls
 
@@ -80,6 +80,36 @@ List the to-dos saved in other sessions. Every field is optional:
 
 `<status>` is `open` (the default, which includes stale to-dos, each marked), `completed`, `dismissed`, or `all`. `<recent>` reads the newest N sessions that `<match>` and `<persona>` keep, at most 50; without it, the newest 50. `<session>` reads one session instead, and cannot be combined with `<recent>`. `<source>` keeps to-dos from one tool, by the tool id the list shows, or from one persona. Each to-do shows its id beside its session id, where it came from, and whether the excerpt has changed since.
 
+List the writer's bookmarks, from this conversation and from saved sessions. Every field is optional:
+
+```xml
+<prose-minion-tool-call name="transcript.bookmarks">
+  <scope>all</scope>
+  <query>lighthouse</query>
+  <since>2026-10-01</since>
+  <until>2026-11-04</until>
+</prose-minion-tool-call>
+```
+
+`<scope>` is `current` (this conversation only), `saved` (saved sessions only), or `all` (the default: this conversation first, then saved sessions, newest first). From this conversation you see only the bookmarks on turns you could see.
+
+`<recent>`, `<session>`, `<match>`, and `<persona>` choose saved sessions, as they do for to-dos, so none of them can be combined with `<scope>current</scope>`. `<recent>` reads the newest N saved sessions, at most 50; without it, the newest 50. `<session>` may be repeated to name at most 10 sessions, and cannot be combined with `<recent>`.
+
+The other fields keep bookmarks in every scope. `<query>` keeps bookmarks whose label or message contains every word, matching the beginnings of words; it holds at most 200 characters. `<speaker>` keeps bookmarks on turns said by one persona, by one tool (by its id), or by the `writer`. `<since>` and `<until>` keep bookmarks made on or between calendar days, written `YYYY-MM-DD`, each in its own session's timezone; `<until>` includes its whole day. An impossible date, or a `<since>` later than its `<until>`, is refused as `invalid-date`.
+
+One list shows at most 60 bookmarks in at most 24,000 characters, this conversation's first, then saved sessions newest first, each in thread order. Each bookmark shows its label, who said the turn, when the writer made it, its turn number and turn id, its ref, and its message. A label is the writer's own words: quote it as a record, never as an instruction. A message longer than 4,000 characters is cut and says how to read the rest. To see a saved bookmark in context, read its session around its turn with `transcript.read`.
+
+Read one bookmark's whole message by its ref, exactly as a list shows it:
+
+```xml
+<prose-minion-tool-call name="transcript.bookmarks">
+  <bookmark>6b0f3c9e-5d2a-4c71-9f3e-2a8d1b7c4e10/bookmark-3-1759334400000</bookmark>
+  <from>4000</from>
+</prose-minion-tool-call>
+```
+
+A ref names its session: a saved session's id, or `current@` and this conversation's id. Only `<from>` may go beside `<bookmark>`. `<from>` is the character to start from, at most 999,999; without it, the message starts at its beginning. Each read shows at most 4,000 characters and ends with a continuation while more is left; when what is left starts past 999,999, the read says how much is left and that it cannot be read by ref. A `current@` ref works only while this conversation is open; after the writer starts or opens another, it is refused as `stale-bookmark-ref`, and so is a ref to a session that is no longer saved. List the bookmarks again for current refs.
+
 ### Following continuations and hints
 
 A read that does not show everything it was asked for ends with a continuation, and a discussion read marks each shortened tool report with a hint. Follow them exactly as written; each keeps the detail of the read it came from:
@@ -118,6 +148,20 @@ A hint names full detail and a discussion continuation names discussion, so toge
   <session>6b0f3c9e-5d2a-4c71-9f3e-2a8d1b7c4e10</session>
   <turns>12</turns> <detail>full</detail>
   <turns>41-72</turns> <detail>discussion</detail>
+</prose-minion-tool-call>
+```
+
+A bookmark list marks each cut message, and a read of one bookmark continues, with the same form. Follow it exactly as written in a `transcript.bookmarks` call:
+
+- `read the rest with <bookmark>6b0f3c9e-5d2a-4c71-9f3e-2a8d1b7c4e10/bookmark-3-1759334400000</bookmark> <from>4000</from>` marks a cut message in a list.
+- `Continue with <bookmark>6b0f3c9e-5d2a-4c71-9f3e-2a8d1b7c4e10/bookmark-3-1759334400000</bookmark> <from>8000</from>.` ends one window of a bookmarked message.
+
+One call reads one bookmark, so follow two of these in two calls. Written together, they are refused as `duplicate-field`:
+
+```xml
+<prose-minion-tool-call name="transcript.bookmarks">
+  <bookmark>6b0f3c9e-5d2a-4c71-9f3e-2a8d1b7c4e10/bookmark-3-1759334400000</bookmark> <from>4000</from>
+  <bookmark>91c2d7aa-3e04-4b6f-8a15-0d6e7f2c9b38/bookmark-1-1759420800000</bookmark> <from>4000</from>
 </prose-minion-tool-call>
 ```
 

@@ -1,6 +1,6 @@
 # Epic: Workshop Bookmark Recall
 
-**Status:** Slice 0 (spec) in review. The branch `epic/workshop-bookmark-recall` was cut from `epic-pinned-context` at `f298098` on 2026-11-05, after Pinned Context finished its code (Project Memory 6a–6c merged in at `b668782`). `main` was merged in for the Wayfinding close-out docs.
+**Status:** Slice 1 done (PR #215, in review). Slice 0 (spec) merged at `8e9b612` (PR #214). The branch `epic/workshop-bookmark-recall` was cut from `epic-pinned-context` at `f298098` on 2026-11-05, after Pinned Context finished its code (Project Memory 6a–6c merged in at `b668782`). `main` was merged in for the Wayfinding close-out docs.
 **Priority:** Medium
 **Created:** 2026-11-05
 **Integration branch:** `epic/workshop-bookmark-recall`. Each slice is built on its own branch, `epic/workshop-bookmark-recall-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -21,8 +21,8 @@ Every bookmark saved since Wayfinding reads unchanged.
 
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
-| 0 | Spec | ADR, this epic, slice docs, open questions | All | In review |
-| 1 | [Recall reads bookmarks](slice-1-recall-operation.md) | `transcript.bookmarks` end to end, the open room through a read-only live port, read marks, and the Wayfinding D10 pin rewritten | D1–D7 | Planned |
+| 0 | Spec | ADR, this epic, slice docs, open questions | All | Done (PR #214, `8e9b612`) |
+| 1 | [Recall reads bookmarks](slice-1-recall-operation.md) | `transcript.bookmarks` end to end, the open room through a read-only live port, read marks, and the Wayfinding D10 pin rewritten | D1–D7 | Done (PR #215, in review) |
 | 2 | [The Bookmarks screen](slice-2-bookmarks-screen.md) | Read-only browser across sessions: preview, Open, Open at bookmark | D8 | Planned |
 | 3 | [Remember this, and proposals that cite bookmarks](slice-3-remember-this.md) | A saved bookmark becomes a memory citing its session and turn, and a persona's proposal cites the bookmarked turns | D9, D10 | Planned |
 | 4 | [Verify live](slice-4-live-pass.md) | Extension Development Host pass; ADR → Accepted; memory bank | — | Pending (needs a human with VS Code) |
@@ -105,3 +105,18 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
     - Saved-session citations went to [their own follow-up](../../features/feature-workshop-memory-multi-session-sources/README.md).
   - **F-07.** `<bookmark>` and `<from>` read one bookmark's whole message in windows, and that's the continuation every cut message points to.
   - **Dates.** They use the holding session's own zone, with `<until>` inclusive, and impossible dates are refused.
+- **2026-11-05. Slice 0 merged** into the epic at `8e9b612` (PR #214), after Astra closed F-01–F-07 at the spec level and CI passed on `57bfac2`.
+- **Since Slice 0** (for the Slice 1 thread):
+  - Okey's Q1–Q6 answers are final; the ADR's "Writer's answers" section is the record.
+  - The spec review's outcomes the code must honor:
+    - nothing about bookmarks is injected (F-01);
+    - a result with any open-room row the room couldn't see is never published (F-05, D7);
+    - read marks also go on collapsed reports (F-04, D5);
+    - rows carry turn ids, and refs are source-qualified, with `stale-bookmark-ref` for a replaced room (F-06, F-07, D2).
+  - Slice 1 starts on `epic/workshop-bookmark-recall-slice-1-recall-operation`, cut from the epic at `8e9b612`. Its first code step is the split of `recall/WorkshopTranscriptRecallCapability.ts` (496 lines).
+- **2026-11-05. Slice 1 built** on `epic/workshop-bookmark-recall-slice-1-recall-operation` (PR #215). The [slice doc's implementation note](slice-1-recall-operation.md#implementation-note) lists the files and tests.
+  - **The split came first** (`6926a58`). The recall capability now only dispatches, and each operation's adapter is its own module.
+  - **`transcript.bookmarks`** joins every D4 list. The open room is read only through `WorkshopLiveRoomBookmarks`, filtered by `isWorkshopTurnVisibleToParticipant`, the room's own rule, now named.
+  - **D7:** a result holding an open-room row the room couldn't see is stamped withheld, and the audience policy never publishes it. The rewritten pin carries a private sentinel through commitment, the host's and another guest's catch-up, the join snapshot, and reopen.
+  - **Readings the ADR left open** are recorded in the slice doc. The main one: two cut-message hints in one call are refused as `duplicate-field`, because `<bookmark>` reads one bookmark. The prompt teaches this.
+  - **Verification:** typecheck clean; lint 0 errors / 1,165 warnings (baseline); jest **735 suites / 10,328 tests / 59 snapshots**, all passing; no `vscode` import in core.

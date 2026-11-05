@@ -330,6 +330,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'transcript.search':
       case 'transcript.read':
       case 'transcript.todos':
+      case 'transcript.bookmarks':
         return [...this.recallCapability.deliveredSources(result)];
       case 'memory.catalog':
       case 'memory.search':
@@ -362,6 +363,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'transcript.search':
       case 'transcript.read':
       case 'transcript.todos':
+      case 'transcript.bookmarks':
         return workshopTranscriptRecallStatusMessage(request, persona);
       case 'memory.catalog':
       case 'memory.search':
@@ -389,6 +391,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'transcript.search':
       case 'transcript.read':
       case 'transcript.todos':
+      case 'transcript.bookmarks':
         return workshopTranscriptRecallStatusTicker(request);
       case 'memory.catalog':
       case 'memory.search':
@@ -418,6 +421,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'transcript.search':
       case 'transcript.read':
       case 'transcript.todos':
+      case 'transcript.bookmarks':
         return workshopTranscriptRecallRequestLogSummary(request);
       case 'memory.catalog':
       case 'memory.search':
@@ -634,6 +638,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'transcript.search':
       case 'transcript.read':
       case 'transcript.todos':
+      case 'transcript.bookmarks':
         return this.recallCapability.fulfill(request, window);
       case 'memory.catalog':
       case 'memory.search':
@@ -839,6 +844,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'transcript.search':
       case 'transcript.read':
       case 'transcript.todos':
+      case 'transcript.bookmarks':
         return workshopTranscriptRecallRequestSummary(request);
       case 'memory.catalog':
       case 'memory.search':
