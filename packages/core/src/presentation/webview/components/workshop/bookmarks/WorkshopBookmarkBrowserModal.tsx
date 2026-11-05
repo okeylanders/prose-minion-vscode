@@ -181,7 +181,7 @@ export const WorkshopBookmarkBrowserModal: React.FC<WorkshopBookmarkBrowserModal
       renderRow={(item) => renderRow(item)}
       footer={
         <>
-          <span>{coverage ?? 'Bookmarks are read from your saved sessions, a page at a time.'}</span>
+          <span>Saved sessions are read a page at a time; open one to change its bookmarks.</span>
           <button className="pm-ws-session-secondary" type="button" disabled={!canLoadMore} onClick={onLoadMore}>
             {saved.loading ? 'Loading…' : 'Load more'}
           </button>
