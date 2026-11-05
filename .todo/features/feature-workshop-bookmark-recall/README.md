@@ -1,7 +1,7 @@
 # Feature: Bookmarks Personas Can Read, and a Bookmarks Screen
 
 **Date Identified:** 2026-11-04
-**Status:** Idea. It needs an ADR change before any code: Wayfinding D5 and D10 say bookmarks never reach a persona.
+**Status:** Planned in [Epic: Workshop Bookmark Recall](../../epics/epic-workshop-bookmark-recall-2026-11-05/README.md). Decisions are in [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-bookmark-recall.md), which supersedes Wayfinding D5 and D10 in part and corrects this note's grammar sketch (`<match>` and `<persona>` choose sessions; bookmark filters are `<query>`, `<speaker>`, `<since>` and `<until>`).
 **Priority:** Medium
 **Origin:** Okey, at the Workshop Wayfinding Slice 8 review
 **Related:**
