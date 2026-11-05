@@ -1,0 +1,68 @@
+PR #228 Helper Agent engine verification, 2026-11-05
+Reviewed code head: 5e49fc81ba6467ba695f6d7e5bb0c264d75c2861
+Base: c040cb6a9fbd2b4ae247bb26416bb2e8dc2b2c18
+Local Node: v24.22.1. npm: 11.9.0. CI Node: 18.
+Dependencies reused from an installed checkout with byte-identical package-lock.json:
+SHA-256 789f027f0f2de703a409a028848b5c94b4c2368e5c1fbdbebb725f34a18ecc33
+
+1. git diff --check c040cb6 HEAD
+   PASS.
+
+2. npm run typecheck
+   PASS: core host, core webview, extension adapter.
+
+3. npm test -- --runInBand --testPathPattern='(helper/|helperPromptSync|AIResourceManagerHelperScope|ModelScopeSelections|AgentRunPolicies|SettingsOverlay|LightboxModelSelection|LightboxModelSetting|useModelsSettings|boundaries)'
+   PASS: 13 suites, 198 tests, no snapshots.
+
+4. Independent review probes
+   Temporarily copy pr-228-helper-engine-review.test.ts.txt to:
+   packages/core/src/__tests__/infrastructure/api/services/helper/HelperAgentService.review228.test.ts
+   npm test -- --runInBand --runTestsByPath packages/core/src/__tests__/infrastructure/api/services/helper/HelperAgentService.review228.test.ts
+   Result: 4 failing, 2 passing, 6 total. The temporary test file was removed before publication.
+
+   F-01: cancellation while ensureInitialized is pending
+   Expected: zero engine calls; failed/cancelled.
+   Actual: one engine call; drafted, with the parsed answer and usage.
+
+   F-01: cancellation while loadPrompts is pending
+   Expected: zero engine calls; failed/cancelled.
+   Actual: one engine call; drafted, with the parsed answer and usage.
+
+   F-02: ensureInitialized rejects
+   Expected: promise resolves with failed/error.
+   Actual: promise rejects with Error: secret store unavailable.
+
+   F-02: loadPrompts rejects
+   Expected: promise resolves with failed/error.
+   Actual: promise rejects with Error: Failed to load prompt.
+
+   PASS: selected model stays pinned while the prompt load awaits and the selection changes.
+   PASS: real AgentRunEngine, fake transport: temperature 0, output limit 400,
+   original pinned model, no tools or reasoning, no retained conversation,
+   usage callback exactly once, no source text in the log sink.
+
+5. npm run lint
+   PASS: 0 errors, 1,165 existing warnings.
+
+6. npm run build
+   The normal local build was killed during webpack (exit 137), after clean:dist
+   and copy:resources succeeded. No webpack diagnostic identified a source error.
+   The same exact-head CI production build succeeded.
+
+   Bounded local retry, from apps/vscode-extension after that resource copy:
+   NODE_OPTIONS=--max-old-space-size=2048 ../../node_modules/.bin/webpack --mode production --parallelism 1
+   Then npm run verify:bundle.
+   PASS: both production bundles, the same three size/performance warnings,
+   and all three Tailwind bundle sentinels.
+
+7. Exact reviewed head CI
+   Run: https://github.com/okeylanders/prose-minion-vscode/actions/runs/42127331285
+   Job: 127594739136 (verify), conclusion success.
+   Checkout: b794500df6bf7a271835560743e8853b7cf8f45c
+   Message: Merge 5e49fc81ba6467ba695f6d7e5bb0c264d75c2861 into c040cb6a9fbd2b4ae247bb26416bb2e8dc2b2c18
+   PASS: all three typechecks; 757 suites / 10,530 tests / 59 snapshots;
+   lint 0 errors / 1,165 warnings; both production bundles and sentinel check.
+
+No live model call, native VS Code GUI/accessibility pass, full duplicate local
+suite, production source edit, merge, auto-merge or deployment was performed.
+The report publication commit's CI is checked separately in the PR conversation.

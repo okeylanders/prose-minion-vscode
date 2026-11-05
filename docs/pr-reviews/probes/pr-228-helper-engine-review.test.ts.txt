@@ -1,0 +1,97 @@
+import { HelperAgentService } from '@services/helper/HelperAgentService';
+import { HELPER_TASK_POLICIES } from '@services/helper/HelperTaskPolicies';
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { ConversationManager } from '@orchestration/ConversationManager';
+
+const ANSWER = '{"title":"Alice falls","summary":"Alice falls down the rabbit hole.","kind":"canon"}';
+const INPUT = { text: 'Alice falls down the rabbit hole.', source: 'writer' as const };
+const USAGE = { promptTokens: 30, completionTokens: 20, totalTokens: 50 };
+function gate() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+function harness() {
+  const runInitial = jest.fn(async () => ({ content: ANSWER, usage: USAGE }));
+  const engine = { getModel: jest.fn(() => 'placeholder/original'), runInitial };
+  const resources = { ensureInitialized: jest.fn(async (): Promise<void> => undefined), getEngine: jest.fn(() => engine) };
+  const prompts = { loadPrompts: jest.fn(async () => 'SYSTEM') };
+  const service = new HelperAgentService(resources as never, prompts, HELPER_TASK_POLICIES, { appendLine: jest.fn() });
+  return { service, resources, prompts, engine, runInitial };
+}
+
+describe('PR 228 independent lifecycle probes', () => {
+  it('F-01: sends nothing when cancelled while resource initialization is pending', async () => {
+    const h = harness();
+    const ready = gate();
+    h.resources.ensureInitialized.mockImplementationOnce(async () => ready.promise);
+    const stop = new AbortController();
+    const run = h.service.run('memory-draft', INPUT, { signal: stop.signal });
+    stop.abort();
+    ready.resolve();
+    const result = await run;
+    expect({ result, calls: h.runInitial.mock.calls.length }).toEqual({ result: { kind: 'failed', reason: 'cancelled' }, calls: 0 });
+  });
+
+  it('F-01: sends nothing when cancelled while prompt loading is pending', async () => {
+    const h = harness();
+    const loaded = gate();
+    h.prompts.loadPrompts.mockImplementationOnce(async () => { await loaded.promise; return 'SYSTEM'; });
+    const stop = new AbortController();
+    const run = h.service.run('memory-draft', INPUT, { signal: stop.signal });
+    await Promise.resolve();
+    expect(h.prompts.loadPrompts).toHaveBeenCalledTimes(1);
+    stop.abort();
+    loaded.resolve();
+    const result = await run;
+    expect({ result, calls: h.runInitial.mock.calls.length }).toEqual({ result: { kind: 'failed', reason: 'cancelled' }, calls: 0 });
+  });
+
+  it('F-02: returns the documented failed result when resources fail to initialize', async () => {
+    const h = harness();
+    h.resources.ensureInitialized.mockRejectedValueOnce(new Error('secret store unavailable'));
+    await expect(h.service.run('memory-draft', INPUT)).resolves.toEqual({ kind: 'failed', reason: 'error' });
+    expect(h.runInitial).not.toHaveBeenCalled();
+  });
+
+  it('F-02: returns the documented failed result when a bundled prompt cannot be loaded', async () => {
+    const h = harness();
+    h.prompts.loadPrompts.mockRejectedValueOnce(new Error('Failed to load prompt'));
+    await expect(h.service.run('memory-draft', INPUT)).resolves.toEqual({ kind: 'failed', reason: 'error' });
+    expect(h.runInitial).not.toHaveBeenCalled();
+  });
+
+  it('pins the selected model across an awaited prompt load', async () => {
+    const h = harness();
+    const loaded = gate();
+    h.prompts.loadPrompts.mockImplementationOnce(async () => { await loaded.promise; return 'SYSTEM'; });
+    const run = h.service.run('memory-draft', INPUT);
+    await Promise.resolve();
+    h.engine.getModel.mockReturnValue('placeholder/replacement');
+    loaded.resolve();
+    await run;
+    expect(h.runInitial).toHaveBeenCalledWith(expect.objectContaining({ options: expect.objectContaining({ model: 'placeholder/original' }) }));
+  });
+
+  it('uses the real engine without tools or retained conversation and emits usage once', async () => {
+    const createChatCompletion = jest.fn(async () => ({ content: ANSWER, usage: USAGE, finishReason: 'stop' }));
+    const provider = { createChatCompletion, getModel: () => 'placeholder/original' };
+    const conversations = new ConversationManager();
+    const usage = jest.fn();
+    const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    const engine = new AgentRunEngine(provider as never, conversations, undefined, log, usage);
+    try {
+      const service = new HelperAgentService({ ensureInitialized: async () => undefined, getEngine: () => engine }, { loadPrompts: async () => 'SYSTEM' }, HELPER_TASK_POLICIES, log);
+      const result = await service.run('memory-draft', INPUT);
+      expect(result.kind).toBe('drafted');
+      expect(usage).toHaveBeenCalledTimes(1);
+      expect(usage).toHaveBeenCalledWith(USAGE);
+      expect(conversations.getActiveConversationCount()).toBe(0);
+      const sent = createChatCompletion.mock.calls[0] as unknown as [unknown[], Record<string, unknown>];
+      expect(sent[1]).toMatchObject({ temperature: 0, maxTokens: 400, model: 'placeholder/original' });
+      expect(sent[1].tools).toBeUndefined();
+      expect(sent[1].reasoning).toBeUndefined();
+      expect(log.appendLine.mock.calls.flat().join('\n')).not.toContain(INPUT.text);
+    } finally { engine.dispose(); }
+  });
+});
