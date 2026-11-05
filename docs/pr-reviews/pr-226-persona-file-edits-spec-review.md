@@ -114,3 +114,18 @@ Exact-head probe: an 18-character quoted sentence is 18% of a 100-character para
 ## Implementation handoff
 
 Resolve F-01–F-06 in the ADR and slice acceptance criteria first. Slice 1's pure planner extraction can preserve existing memory behavior independently, but Slices 2–4 must not invent different answers to identity, approval, freshness or retry rules. The repair should be re-reviewed as a spec change; implementation and live acceptance remain separate gates.
+
+## Resolution ledger (coordinator, 2026-11-05)
+
+| Item | Disposition |
+|---|---|
+| F-01 | **Settled in ADR D6.** A content SHA-256 baseline is taken at staging and checked on every attempt; the rewrite's before/after is served by the host only while the baseline holds; append and prepend are fresh by rule and land once under D8's claim. Acceptance: Slice 2 (gateway) and Slice 4 (session reopen). |
+| F-02 | **Settled in ADR D4 and D7.** The resolver gains an every-candidate read; ambiguity is refused as `ambiguous-target`; the identity is a host-written `documentUri` (the excerpt-source precedent), re-authorized at Apply and checked at the last dispatch boundary; an excerpt is bound to the document it was staged from. |
+| F-03 | **Settled in ADR D5.** The class is decided by every membership through every root, plus excerpt documents, and recomputed at Apply; the trailer's group only locates the file. |
+| F-04 | **Settled in ADR D8.** A host claim keyed by `(liveSessionId, turnId, index)` is taken before any await; duplicates join; Decline and terminal states replay; `applying` is flushed before dispatch and read as `unknown` on reopen; `partial` and `unknown` states; no blind retry; no preview command; shutdown does not await claims. |
+| F-05 | **Settled in ADR D5.** The applier gains `structure: 'strict' \| 'prose-paragraphs' \| 'free'` in place of `preservesMarkdownStructure`. `strict` is unchanged for Proofread and Craft Flags. Built and tested in Slice 2, against this review's four paragraph witnesses. |
+| F-06 | **Settled in ADR D5 and D7.** The ceiling is defined exactly (replaced characters over touched blank-line paragraphs, a 300-character floor, insertions excluded and bounded by words), and the applier runs `revalidate` on every attempt, its retry included. Acceptance: this review's shrink-the-paragraph witness writes nothing. |
+| N-01 | **Settled in ADR D10 and D12.** Bounded `landed` records (before, after, 80-character context, `versionAfter`); oversized operations record hashes only and are not revertible; Revert's refusals are stated. |
+| N-02 | **Settled in ADR D5.** A notes rewrite over protected syntax is refused with a reason asking for replace edits; minimal-edit conversion is deferred. |
+| N-03 | **Settled in ADR D3, Consequences and the epic Goal.** The vocabulary is shared; memory persistence is separate; the document write path is shared by Draft Edit and persona file edits only. |
+| Preview, `auto`, bounds and logs | **Settled in ADR D8, D11, D12, D2 and D13.** |
