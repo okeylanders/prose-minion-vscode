@@ -93,8 +93,9 @@ branch.
 
 | Slice | Session | Branch | Started | State |
 |---|---|---|---|---|
-| 1 | [`session_01UrwcevSE9xCeoMqBXf9P73`](https://claude.ai/code/session_01UrwcevSE9xCeoMqBXf9P73) | `epic-pinned-context-slice-1-format-store` | 2026-11-05, from `b94fc67` | Built at `e6ba3cd`; reviewed; a 128 KiB byte bound requested before its PR |
-| 2a | [`session_01UrwcerFSuu47ewLKUezS45`](https://claude.ai/code/session_01UrwcerFSuu47ewLKUezS45) | `epic-pinned-context-slice-2a-starts-seed-port` | 2026-11-05, from `b94fc67` | Built at `0e32ca0`; reviewed; PR #203 open (one comment nit to follow) |
+| 1 | [`session_01UrwcevSE9xCeoMqBXf9P73`](https://claude.ai/code/session_01UrwcevSE9xCeoMqBXf9P73) | `epic-pinned-context-slice-1-format-store` | 2026-11-05, from `b94fc67` | Built and reviewed at `182fcd1` (with the 128 KiB byte bound); PR #204 waits on Astra |
+| 2a | [`session_01UrwcerFSuu47ewLKUezS45`](https://claude.ai/code/session_01UrwcerFSuu47ewLKUezS45) | `epic-pinned-context-slice-2a-starts-seed-port` | 2026-11-05, from `b94fc67` | Built and reviewed at `3feab75`; PR #203 green, waits on Astra |
+| 2b | [`session_01UrwcetPHzVLFpo6ZCkjf1A`](https://claude.ai/code/session_01UrwcetPHzVLFpo6ZCkjf1A) | `epic-pinned-context-slice-2b-room-seed` | 2026-11-05, from `c35c281` (the epic at `94a33df` with Slices 1 and 2a merged in; 696 suites / 9,820 tests green) | Building |
 
 ## How the Slices Are Built
 
