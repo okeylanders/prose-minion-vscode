@@ -12,6 +12,9 @@
  * - Each row says whether the whole room could see its turn: what decides
  *   whether a result may be published (D7, PR #214 F-05).
  * - Reading never writes, flushes, or changes what any persona is sent.
+ * - The writer's own Bookmarks screen reads every bookmark
+ *   (`readWriterBookmarks`, ADR 2026-11-05 D8): the writer sees the whole
+ *   room. That read serves only the screen, never a persona's request.
  */
 
 import type { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
@@ -33,4 +36,6 @@ export interface WorkshopLiveRoomBookmarkRead {
 
 export interface WorkshopLiveRoomBookmarks {
   readLiveRoomBookmarks(reader: WorkshopCapabilityPrincipal | undefined): WorkshopLiveRoomBookmarkRead;
+  /** Every bookmark in the open room, for the writer's own screen alone. */
+  readWriterBookmarks(): WorkshopLiveRoomBookmarkRead;
 }

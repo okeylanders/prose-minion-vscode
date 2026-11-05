@@ -99,7 +99,11 @@ describe('the open room, and only for bookmarks', () => {
     await liveRoom();
     await saveScripted('saved-a', 'Tea party', ['Where is the cup?'], 'Alice\'s cup');
     const reader = new WorkshopLiveRoomBookmarkReader(room.session, () => 'UTC');
-    const port = { readLiveRoomBookmarks: jest.fn((asker: Parameters<typeof reader.readLiveRoomBookmarks>[0]) => reader.readLiveRoomBookmarks(asker)) };
+    const port = {
+      readLiveRoomBookmarks: jest.fn((asker: Parameters<typeof reader.readLiveRoomBookmarks>[0]) => reader.readLiveRoomBookmarks(asker)),
+      // The writer's own screen read (ADR 2026-11-05 D8): no persona operation ever reaches it.
+      readWriterBookmarks: jest.fn(() => reader.readWriterBookmarks())
+    };
     const recall = new WorkshopTranscriptRecallService(room.store, room.coordinator, room.log, { liveRoom: port });
     await recall.catalog({});
     await recall.search({ query: 'cup' });
@@ -110,6 +114,7 @@ describe('the open room, and only for bookmarks', () => {
     expect(port.readLiveRoomBookmarks).not.toHaveBeenCalled();
     await recall.bookmarks({});
     expect(port.readLiveRoomBookmarks).toHaveBeenCalledTimes(1);
+    expect(port.readWriterBookmarks).not.toHaveBeenCalled();
   });
 
   it('refuses a guest a bookmark on a turn it could not see, and shows the host its own', async () => {

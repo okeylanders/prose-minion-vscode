@@ -11,7 +11,10 @@
  */
 
 import type { WorkshopTurn, WorkshopTurnPreview } from '@messages';
-import { projectWorkshopTranscriptTurn } from '@/application/services/workshop/transcript/WorkshopTranscript';
+import {
+  projectWorkshopTranscriptTurn,
+  WorkshopTranscriptEntry
+} from '@/application/services/workshop/transcript/WorkshopTranscript';
 
 /** What the thread calls the writer; the transcript's export label is for a shared page. */
 const WRITER_SPEAKER = 'You';
@@ -21,9 +24,15 @@ const EVENT_SPEAKER = 'Session';
 /** The preview of `turn`, or undefined when the transcript omits it (a context change). */
 export function workshopTurnPreview(turn: WorkshopTurn): WorkshopTurnPreview | undefined {
   const entry = projectWorkshopTranscriptTurn(turn);
-  if (!entry) {
-    return undefined;
-  }
+  return entry ? workshopTurnPreviewOfEntry(entry) : undefined;
+}
+
+/**
+ * The preview of an entry the transcript projection already made: a saved
+ * session's turn as recall holds it (ADR 2026-11-05 D8), copied by the same
+ * named fields.
+ */
+export function workshopTurnPreviewOfEntry(entry: WorkshopTranscriptEntry): WorkshopTurnPreview {
   switch (entry.kind) {
     case 'writer':
       return {

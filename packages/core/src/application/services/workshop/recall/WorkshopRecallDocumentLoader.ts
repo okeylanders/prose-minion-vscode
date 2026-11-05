@@ -46,9 +46,10 @@ export interface WorkshopRecallLoadedDocuments {
   readonly cost: Omit<WorkshopRecallScanBounds, 'listingTruncated'>;
 }
 
-type LoadedDocument =
+export type WorkshopRecallLoadedDocument =
   | { readonly document: WorkshopRecallDocument; readonly parsedBytes: number }
-  | { readonly document?: undefined };
+  /** `missing`: the store found no such session; `unreadable`: it could not read one. */
+  | { readonly document?: undefined; readonly reason: 'missing' | 'unreadable' };
 
 export class WorkshopRecallDocumentLoader {
   constructor(
@@ -90,7 +91,7 @@ export class WorkshopRecallDocumentLoader {
         notReadByByteBudget += 1;
         continue;
       }
-      const loaded = await this.load(summary, scope, signal);
+      const loaded = await this.readDocument(summary.sessionId, scope, signal);
       if (!loaded.document) {
         outcomes.push({ kind: 'unreadable' });
         unreadableSessions += 1;
@@ -109,28 +110,33 @@ export class WorkshopRecallDocumentLoader {
     };
   }
 
-  /** A cold read: `loadAll` has already looked in the cache, with nothing awaited since. */
-  private async load(
-    summary: WorkshopRecallSessionSummary,
+  /**
+   * A cold read of one named session, by id: what `loadAll` does when the
+   * cache misses, and what a saved turn's preview reads directly (its
+   * session may lie past the listing). The document is cached under the
+   * call's generation.
+   */
+  async readDocument(
+    sessionId: string,
     scope: WorkshopRecallReadScope,
     signal?: AbortSignal
-  ): Promise<LoadedDocument> {
+  ): Promise<WorkshopRecallLoadedDocument> {
     // Never read under a scope that no longer holds, nor keep what such a read returned.
     scope.assertHolds();
     let session: WorkshopPersistedSessionV2 | undefined;
     try {
-      session = await this.corpus.readNamed(summary.sessionId);
+      session = await this.corpus.readNamed(sessionId);
     } catch (error) {
       // A read that failed because the call was cancelled is a cancellation.
       throwIfRecallAborted(signal);
-      this.log(`Skipped unreadable session ${summary.sessionId}: ${errorMessage(error)}`);
-      return {};
+      this.log(`Skipped unreadable session ${sessionId}: ${errorMessage(error)}`);
+      return { reason: 'unreadable' };
     }
     throwIfRecallAborted(signal);
     scope.assertHolds();
-    if (!session || session.sessionId !== summary.sessionId) {
-      this.log(`Skipped session ${summary.sessionId}: it was not found where the listing put it`);
-      return {};
+    if (!session || session.sessionId !== sessionId) {
+      this.log(`Skipped session ${sessionId}: it was not found where the listing put it`);
+      return { reason: 'missing' };
     }
     const document = buildWorkshopRecallDocument(session);
     this.cache.remember(document, scope.generation);
