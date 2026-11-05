@@ -2,7 +2,7 @@
 
 ## Verdict
 
-**Changes requested at `d49e94dea706a0c1b6cebcad8b02dcfba7bdc6ca`: one P2 documentation finding.** The new saved-turn race step gives an incorrect expected result after the write has been admitted. Narrow that step to the source-read phase and record the later-write outcome separately. This does not reopen the resolved product findings in #219 or request changing its accepted write semantics.
+**Current verdict: approved at `f3fb5c7407a1d1a01608074958dda60c67a04593` (correction `47fa5488`).** F-01 is independently resolved and N-01's fixture/state guidance is incorporated. No blocking documentation finding remains. The correction and final report-publication CI still require their own terminal verification. The original findings and author response remain below as history.
 
 - PR: [#220](https://github.com/okeylanders/prose-minion-vscode/pull/220)
 - Base: `epic/workshop-bookmark-recall`, `298c17dc63e0a609da4d73e93ed0bdd28ea24fd4`
@@ -10,7 +10,7 @@
 - Reviewed: 2026-11-05
 - Scope: both changed documentation files, all newly added acceptance steps, ADR D1–D10, the #216 and #219 findings/corrections, corresponding host/UI code and regression tests, and CI. No production code changes are in this PR.
 
-This is the review's disposition, not a formal self-review `REQUEST_CHANGES` state or permission to merge. The actual VS Code live pass remains pending.
+This is approval of the checklist in the report/conversation, not a formal self-`APPROVED` GitHub review or permission to merge. The actual VS Code live pass remains pending.
 
 ## F-01 — P2: distinguish a source-read interruption from an admitted write
 
@@ -87,3 +87,16 @@ The step points to the real-coordinator probes for the phase that is hard to hit
 - checking the survivor in the same extension session, with no reload.
 
 Docs only. No product code changed.
+
+## Independent correction review — `f3fb5c74` (2026-11-05)
+
+**Disposition: approved; no blocking finding remains.** Reviewed the complete `3bdc02b6..f3fb5c74` correction, including the changed PR description, against the current writer and pager implementations, rather than accepting the author response alone.
+
+- **F-01 resolved.** The checklist and PR description now explicitly distinguish the source-read phase's no-write refusal from an admitted same-ID write's retained memory, room-changed warning and suppressed replacement-room receipt. The checklist points to the deterministic regression/probe evidence and asks the tester to record when the timing cannot be reproduced manually, rather than claiming a successful live race test.
+- **N-01 addressed.** The duplicate case now uses a disposable workspace, distinct title/text under the same ID and timestamp, separate pages, Open refusal before the badge, retroactive disabling after discovery, Preview refusal after discovery, and survivor recovery without resetting the extension's cache. The ordinary coverage line and conditional unreadable warning are separated. For the oversized example, use the cited identity test's **index-less** 6 MiB fixture: a valid search index can supply a summary above the 5 MiB full-summary-read bound, so file size alone is not proof that the browser cannot read it.
+- The correction changes only the checklist and its review response. A tree comparison confirms no change to production code, tests, package manifests or CI configuration since the original head.
+- Independently reran **4 production suites / 38 tests**, plus the unchanged **10 write-boundary probes**, all passing (**5 suites / 48 tests total**). These cover the real-App duplicate states, store identity/survivor fixtures, coverage wording and both sides of the saved-memory timing boundary. Counts overlap the original review runs and are not additive.
+- `git diff --check` and local link-target checks pass. Temporary probe copies were removed.
+- [Correction-head CI 42088866758](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42088866758) was still running at this update. Its result and the subsequent report-only head's own verification will be recorded in the PR conversation. The original-head full CI result remains evidence for the unchanged product tree, not a substitute for those later checks.
+
+The native VS Code/live-provider pass, accessibility observations and ADR acceptance remain open. Approval here is of the corrected runbook, not a declaration that those acceptance steps have happened. No production changes or merge were performed.
