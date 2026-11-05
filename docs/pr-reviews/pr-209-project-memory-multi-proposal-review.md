@@ -4,9 +4,15 @@
 - **PR:** https://github.com/okeylanders/prose-minion-vscode/pull/209
 - **Implementation head:** `0081503c3eb99af7728f1150f9e76faf352400fa`
 - **Base:** `4d74ac0454a118feb99eb38f3d59e98a0db8ea05` (`epic/workshop-project-memory`)
-- **Verdict:** **Approved with a nonblocking P3 UI finding (F-01). No blocking privacy, persistence or save-correctness finding.** This is a written review verdict, not a formal GitHub approval or merge.
+- **Verdict:** **Approved. F-01 is closed; no open review finding.** This is a written review verdict, not a formal GitHub approval or merge.
 
-## F-01 · P3 · Count visible cards after removing automatic saves from the source reply
+## Re-review at `b9d6408eaf6c983d84ea98bae6a17fcb81aabc53` (2026-11-05)
+
+**F-01 closed.** Read the complete three-file correction and verified the exact updated tree. The parent now filters automatic saves before choosing the zero/one/many presentation, carrying each original index through the filter. All-auto produces nothing; a single remaining card has no plural wrapper; multiple remaining cards have the right count. The original independent failing assertions now pass, along with the receipt-body and three-card request-correlation controls (**two independent suites / four tests**). The production card suite passes **19 tests**, including nonzero-index Save/Edit/Dismiss and a writer-saved settled-line control. All three typechecks pass again. No further product change was introduced.
+
+Implementation-head CI [41961001529](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41961001529) completed successfully: verified logs show **694 suites / 9,768 tests / 59 snapshots**, 0 lint errors / 1,165 warnings, and successful typechecks/build. The correction head's [CI 41962610670](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41962610670) was running at re-review; it and the resulting report head are being watched. No manual Extension Development Host or live provider pass is claimed.
+
+## F-01 · P3 · Closed at `b9d6408e`: count visible cards after removing automatic saves from the source reply
 
 **Location:** [WorkshopTurnMemory.tsx:61–71](https://github.com/okeylanders/prose-minion-vscode/blob/0081503c3eb99af7728f1150f9e76faf352400fa/packages/core/src/presentation/webview/components/workshop/memory/WorkshopTurnMemory.tsx#L61-L71). The child hides each automatically saved card at [88–90](https://github.com/okeylanders/prose-minion-vscode/blob/0081503c3eb99af7728f1150f9e76faf352400fa/packages/core/src/presentation/webview/components/workshop/memory/WorkshopTurnMemory.tsx#L88-L90).
 
