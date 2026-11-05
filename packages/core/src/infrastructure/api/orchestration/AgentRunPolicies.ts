@@ -57,6 +57,12 @@ export const AGENT_RUN_POLICIES = {
     id: 'craft-flags', capabilityCatalog: 'none', retention: 'discard',
     maxCapabilityRounds: 0, maxCorrectionTurns: 0,
     onCapabilityLimit: 'returnLastResponse', visibleArtifact: 'final-response', cleanupOwner: 'engine'
+  }),
+  /** The helper agent's small tasks (ADR 2026-11-05 D1, D2): one capability-free call each, nothing retained. */
+  helper: policy({
+    id: 'helper', capabilityCatalog: 'none', retention: 'discard',
+    maxCapabilityRounds: 0, maxCorrectionTurns: 0,
+    onCapabilityLimit: 'returnLastResponse', visibleArtifact: 'final-response', cleanupOwner: 'engine'
   })
 } as const;
 
@@ -89,5 +95,6 @@ export const AGENT_RUN_ROUTE_MATRIX = [
   { caller: 'CategorySearchService batches', policy: AGENT_RUN_POLICIES.categorySearch },
   { caller: 'ContextAssistantService', policy: AGENT_RUN_POLICIES.context },
   { caller: 'ProofreadService chunks', policy: AGENT_RUN_POLICIES.proofread },
-  { caller: 'CraftFlagsService categories', policy: AGENT_RUN_POLICIES.craftFlags }
+  { caller: 'CraftFlagsService categories', policy: AGENT_RUN_POLICIES.craftFlags },
+  { caller: 'HelperAgentService tasks', policy: AGENT_RUN_POLICIES.helper }
 ] as const;

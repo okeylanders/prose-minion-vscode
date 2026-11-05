@@ -2291,6 +2291,39 @@ describe('architectural boundaries', () => {
       .toMatch(/from '@parsers\/ModelJsonRepair'/);
   });
 
+  it('keeps the helper agent apart: it imports no Workshop, Lightbox or Draft Edit module, and only the composition root builds it (ADR 2026-11-05 D2, D4)', () => {
+    const helper = path.join(SRC_ROOT, 'infrastructure', 'api', 'services', 'helper');
+    const files = collectSourceFiles(helper);
+    expect(files.map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))).toEqual(expect.arrayContaining([
+      'infrastructure/api/services/helper/HelperAgentService.ts',
+      'infrastructure/api/services/helper/HelperTaskPolicies.ts',
+      'infrastructure/api/services/helper/tasks/MemoryDraftTask.ts'
+    ]));
+    expect(files.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)).toEqual([]);
+    const imports = files.flatMap((file) => moduleImports(file, fs.readFileSync(file, 'utf8'))
+      .map(({ module }) => ({ file: path.relative(SRC_ROOT, file), module })));
+    // The helper writes nothing and knows no feature: tasks receive plain data.
+    const feature = /workshop|lightbox|draftEdit|craftFlags|proofread|presentation|application\//i;
+    expect(imports.filter(({ module }) => feature.test(module)).map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // What it may read: its own modules, the shared parser, the run engine's contracts, prompts, budgets and shared types.
+    const allowed = [
+      '@services/helper/', '@parsers/', '@orchestration/AIResourceManager', '@orchestration/AgentRunPolicies',
+      '@orchestration/AgentRunContracts', '@/tools/shared/prompts', '@/platform', '@messages',
+      '@shared/constants/promptBudgets', '@shared/types/projectMemory'
+    ];
+    expect(imports.filter(({ module }) => !allowed.some((prefix) => module.startsWith(prefix)))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => /\bnew\s+HelperAgentService\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file))
+      .filter((file) => !file.startsWith('__tests__'));
+    expect(constructions).toEqual([]);
+    // Its engine is the manager's own `helper` scope's.
+    expect(fs.readFileSync(path.join(SRC_ROOT, 'infrastructure/api/orchestration/AIResourceManager.ts'), 'utf8'))
+      .toMatch(/this\.createResourceBundle\(apiKey!, 'helper', helperModel\)/);
+    expect(fs.readFileSync(path.join(helper, 'HelperAgentService.ts'), 'utf8')).toMatch(/getEngine\('helper'\)/);
+  });
+
   it('keeps the tolerant reader to model replies: saved boards and the Workshop keep their strict readers (Lightbox Slice 4K)', () => {
     const files = collectSourceFiles(SRC_ROOT);
     const importersOf = (module: string) => files
