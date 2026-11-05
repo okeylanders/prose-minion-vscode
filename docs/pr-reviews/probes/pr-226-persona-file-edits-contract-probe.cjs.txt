@@ -1,0 +1,99 @@
+/**
+ * PR #226 specification contract witnesses, reviewed at
+ * 0ed3ba75ec9feea84c491e73a3510619556890c7.
+ *
+ * Run from the repository root with its existing npm dependencies:
+ *   node docs/pr-reviews/probes/pr-226-persona-file-edits-contract-probe.cjs.txt
+ *
+ * These assert the CURRENT behavior discussed in the review. They are not
+ * acceptance tests for the unimplemented persona file-edit feature.
+ */
+const fs = require('fs');
+const Module = require('module');
+const path = require('path');
+const assert = require('node:assert/strict');
+const ts = require('typescript');
+const root = process.env.PROSE_MINION_CORE || path.join(process.cwd(), 'packages/core/src');
+const resolve = Module._resolveFilename;
+Module._resolveFilename = function(request, parent, ...rest) {
+  if (request.startsWith('@/')) request = path.join(root, request.slice(2)) + '.ts';
+  return resolve.call(this, request, parent, ...rest);
+};
+require.extensions['.ts'] = function(module, filename) {
+  const result = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
+  });
+  module._compile(result.outputText, filename);
+};
+const { editsChangingStructure } = require(path.join(root, 'utils/draftEdit/markdownStructure.ts'));
+const { DraftEditApplier } = require(path.join(root, 'application/services/draftEdit/DraftEditApplier.ts'));
+const { FakeDocuments, applyAll, firstThen, writerTypes } = require(path.join(root, '__tests__/application/services/draftEdit/fakeDocuments.ts'));
+
+async function main() {
+  const cases = [
+    ['split paragraph', 'Alice ran. She stopped.', { start: 10, end: 11, replacement: '\n\n' }, [0]],
+    ['append new paragraph', 'Alice ran.', { start: 10, end: 10, replacement: '\n\nShe stopped.' }, [0]],
+    ['prepend new paragraph', 'Alice ran.', { start: 0, end: 0, replacement: 'She looked.\n\n' }, [0]],
+    ['merge paragraphs', 'Alice ran.\n\nShe stopped.', { start: 10, end: 12, replacement: ' ' }, [0]],
+    ['line within paragraph', 'Alice ran. She stopped.', { start: 10, end: 11, replacement: '\n' }, []]
+  ];
+  for (const [name, text, edit, expected] of cases) {
+    const refused = [...editsChangingStructure(text, 'markdown', [edit])];
+    assert.deepEqual(refused, expected);
+    console.log(JSON.stringify({ name, refused }));
+  }
+
+  // Before the first attempt the quote is 18% of the paragraph. Unrelated
+  // text in that paragraph disappears during the attempt, leaving the quote.
+  const quote = 'Alice walked away.';
+  const tail = ' The Hatter quietly remained at the table and waited for the next guest to arrive.';
+  const text = quote + tail;
+  const replacement = 'Nobody came home.';
+  const documents = new FakeDocuments(text, undefined, 'markdown', 3,
+    firstThen(writerTypes([{ offset: quote.length, length: tail.length, text: '' }]), applyAll));
+  const result = await new DraftEditApplier(documents).apply({
+    document: documents.snapshot(),
+    edits: [{ id: 'a', start: 0, end: quote.length, original: quote, replacement, label: 'Persona file edit' }],
+    review: 'direct', policy: { allowsNewlineChanges: true, preservesMarkdownStructure: true }
+  });
+  assert.ok(quote.length / text.length < 0.6);
+  assert.deepEqual(documents.applyCalls.map(c => c.expectedVersion), [3, 4]);
+  assert.deepEqual(result.applied, ['a']);
+  assert.equal(documents.text, replacement);
+  console.log(JSON.stringify({
+    name: 'retry after same paragraph shrinks', initialQuotedShare: quote.length / text.length,
+    shareAtRetry: 1, versions: documents.applyCalls.map(c => c.expectedVersion),
+    applied: result.applied, finalText: documents.text
+  }));
+
+  // The applier has no proposal-time original: if a gateway supplies only
+  // the current live body, the later rewrite is a valid request to it.
+  const live = 'Alice now lives in London.';
+  const rewrite = new FakeDocuments(live, undefined, 'markdown', 10, applyAll);
+  const rewritten = await new DraftEditApplier(rewrite).apply({
+    document: rewrite.snapshot(),
+    edits: [{ id: 'rewrite', start: 0, end: live.length, original: live,
+      replacement: 'Alice lives in Paris.', label: 'Persona rewrite' }],
+    review: 'direct', policy: { allowsNewlineChanges: true, preservesMarkdownStructure: false }
+  });
+  assert.deepEqual(rewritten.applied, ['rewrite']);
+  assert.equal(rewrite.text, 'Alice lives in Paris.');
+  console.log(JSON.stringify({ name: 'no proposal baseline', applied: rewritten.applied, finalText: rewrite.text }));
+
+  const tick = String.fromCharCode(96);
+  const protectedText = 'Alice carries ' + tick + 'tea' + tick + ' every morning.';
+  const notes = new FakeDocuments(protectedText, undefined, 'markdown', 1, applyAll);
+  const guarded = await new DraftEditApplier(notes).apply({
+    document: notes.snapshot(),
+    edits: [{ id: 'rewrite', start: 0, end: protectedText.length, original: protectedText,
+      replacement: 'Alice carries ' + tick + 'tea' + tick + ' each evening.', label: 'Persona rewrite' }],
+    review: 'direct', policy: { allowsNewlineChanges: true, preservesMarkdownStructure: false }
+  });
+  assert.deepEqual(guarded.refused, [{ id: 'rewrite', reason: 'protected' }]);
+  assert.equal(notes.applyCalls.length, 0);
+  console.log(JSON.stringify({
+    name: 'rewrite retains code but spans protected text', refused: guarded.refused, calls: notes.applyCalls.length
+  }));
+  console.log('PASS: 8 exact-head contract witnesses; no product implementation tested.');
+}
+main().catch(error => { console.error(error); process.exitCode = 1; });

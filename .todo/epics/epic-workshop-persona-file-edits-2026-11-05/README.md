@@ -7,17 +7,18 @@
 **Decision:** [ADR 2026-11-05: Personas Propose Edits to Project Files](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) (Proposed; defaults taken for Q1–Q5)
 **Supersedes in part:** [Workshop Apply to Draft](../../features/feature-workshop-apply-to-draft/README.md). Its target rules are D5's prose policy.
 **Downstream of:** Bookmark Recall. Its live-pass fixes are merged in as they land. The epic goes to `main` after Bookmark Recall does.
-**Sibling:** [Helper Agent](../epic-helper-agent-2026-11-05/README.md) runs in parallel. Whichever reaches `main` second merges the other first.
+**Sibling:** Helper Agent runs in parallel on its own epic branch, `epic/helper-agent` (spec: [PR #225](https://github.com/okeylanders/prose-minion-vscode/pull/225)); its README joins this tree when the two epics meet. Whichever reaches `main` second merges the other first.
 
 ## Goal
 
 - **A persona can propose an edit to any text file in the project, and the writer applies it or not.** That covers notes (character, location, theme, thing, brief and general files) and prose (chapters, the manuscript, and the room's excerpt). Each edit is a card under its bubble, with a diff, Apply, Review in editor…, and Decline.
-- **One gateway.** Memory edits, persona file edits and Draft Edit share one anchoring vocabulary (a pure planner) and one write path (`DraftEditApplier`):
+- **One vocabulary, one document write path.** Memory edits and persona file edits share one operation vocabulary and planner. Memory keeps its own persistence. Persona file edits and Draft Edit share one document write path (`DraftEditApplier`):
   - one undo step;
   - a version guard;
   - protected regions;
   - read-back;
   - never saved.
+- **Edits never drift.** A card is staged to a host-owned identity, a class (prose or notes) decided by every membership the file has, and a baseline. One host claim lets it land at most once (ADR D4–D8, from the PR #226 review).
 - **Autonomous editing stays additive** (ADR D10). It isn't built here, but nothing here forecloses it.
 
 ## Slices
@@ -26,21 +27,22 @@
 |---|---|---|---|---|
 | 0 | Spec | ADR and this epic | All | In review |
 | 1 | Shared planner | `utils/textEdits/`: the operations and exactly-once anchoring, pure. Memory edits move onto it with no behavior change; their tests run unchanged. | D3 | Built ([slice doc](slice-1-shared-planner.md)) |
-| 2 | The gateway | `DocumentEditor.open` (port and VS Code adapter); `ProjectFileEditGateway`: fresh target resolution by catalog key or excerpt, `FILE_EDIT_TARGET_POLICIES`, planning on the live text, apply through `DraftEditApplier`, showing an edited file that isn't visible; boundary pins. Host-only, no persona. | D4–D6, D11 | Built ([slice doc](slice-2-gateway.md)) |
-| 3 | The proposal | The `<prose-minion-file-edit>` codec and budgets; the persona prompt section and worked example, with a sync test; reading the trailer out of a reply; `fileEditProposals` on the turn, with the session codec, checkpoint normalization and transcript projection; the `fileEdits` setting | D2, D8, D9 | Not started |
-| 4 | Cards and Apply | Thread cards with diffs; Apply, Review in editor… and Decline routes with request ids; re-anchoring at Apply (stale); what landed recorded; refusals in the writer's words | D7, D8 | Not started |
+| 2 | Staging and the gateway | The resolver's every-candidate read; `FileEditStaging` implemented (identity, ambiguity refusal, class by identity, baseline); `DocumentEditor.open` (port and VS Code adapter); the applier's `structure` mode (`strict` / `prose-paragraphs` / `free`) and `revalidate` on every attempt; `ProjectFileEditGateway` (re-authorize, recompute class, plan, freshness, ceiling, a last-boundary callback, apply, report by operation, show the document); boundary pins. Host-only, no persona, no routes. | D4–D7, D13 | In progress |
+| 3 | The proposal | The `<prose-minion-file-edit>` codec and D2's bounds; the persona prompt section and worked example, with a sync test; reading frames out of a reply and staging each through the `FileEditStaging` port (a fake in tests); `fileEditProposals` (D10's shape) on the turn, with the session codec, checkpoint normalization and transcript projection; the `fileEdits` setting | D2, D10, D11 | In progress |
+| 4 | Cards and Apply | The handler's claim and outcomes (D8: join, replay, `applying` flushed before dispatch, `partial`, `unknown`); Apply, Review in editor…, Decline and Preview routes with request ids; the real staging joined; thread cards with diffs; `landed` records; refusals in the writer's words | D8, D9, D10 | Not started |
 | 5 | Verify live | Extension Development Host pass on notes and a chapter; ADR → Accepted; memory bank; `AGENTS.md`; Apply to Draft's note settled | — | Not started |
 
 **Order:** 1 → (2 ∥ 3) → 4 → 5.
 - Slices 2 and 3 both use Slice 1's operation types.
-- Slice 4 joins the gateway (2) to the proposals (3).
+- Slice 3 defines the `FileEditStaging` port's interface. Slice 2 implements it.
+- Slice 4 joins the gateway and staging (2) to the proposals (3).
 
 ## Defaults taken (Okey delegated; he may override)
 
 - **Q1, the default:** `proseMinion.workshop.fileEdits` is `ask` (on). Nothing changes without Apply.
 - **Q2, new prose in a chapter:**
-  - append and prepend are allowed, up to about 400 words each;
-  - the rewrite ceiling is 60% of the touched paragraphs' characters;
+  - append and prepend are allowed, up to 400 words each;
+  - the rewrite ceiling is 60% of the touched paragraphs' characters, and applies only above 300 replaced characters (added after the review, ADR D5);
   - `rewrite` is refused on prose.
 - **Q3, Apply:** Apply is direct everywhere, since the card shows the diff. **Review in editor…** sits beside it.
 - **Q4:** at most 5 file edits per reply.
@@ -79,18 +81,34 @@ This is the same flow as Project Memory and Bookmark Recall.
 ## Completion Criteria
 
 - **Proposals.** A persona's reply can carry up to five file-edit frames. Each becomes a card naming its file, with its why and a diff, and nothing changes until the writer presses Apply.
-- **Targets** are catalog keys, looked up in a fresh catalog, or the excerpt's own document. A path or URI from a model or the webview is never trusted, and only text files under the size bound are accepted.
-- **Notes** take rewrite, replace, append and prepend. **Prose** takes replace, plus bounded append and prepend. Both keep:
-  - protected regions;
-  - prose's Markdown structure;
-  - prose's rewrite ceiling.
+- **Targets** are staged to a host-owned identity (ADR D4):
+  - an ambiguous target is refused;
+  - an excerpt is bound to the document it was staged from;
+  - the identity is re-authorized at Apply (containment, symlinks, catalog membership);
+  - a path or URI from a model or the webview is never trusted, and only text files under the size bound are accepted.
+- **The class comes from identity.** A file with any chapters or manuscript membership, through any root, or an excerpt document, gets prose rules whichever group the trailer named.
+- **A rewrite needs its baseline.** A note changed since staging makes the card stale, and nothing is overwritten.
+- **Apply lands at most once.** Double Apply, Apply racing Decline, a room replaced mid-apply, a preview with entries unticked, and a reopened `applying` card each produce one truthful receipt and no duplicate edit.
+- **Every attempt is checked again.** The applier's internal retry re-runs freshness, the ceiling and the structure mode.
+- **Notes** take rewrite, replace, append and prepend. A rewrite over protected syntax is refused, with a reason.
+- **Prose** takes replace, plus bounded append and prepend. Plain paragraphs may split, merge or be added; every other structure is kept, and the ceiling holds.
+- **Both** keep protected regions. Proofread's strict structure check is unchanged.
 - **Apply plans against the live text.** A quote that isn't there exactly once makes the card stale, with nothing applied.
 - **Every apply** is one undo step, checked against its version, read back, and never saved. A file that wasn't visible is shown after it changes.
 - **Memory edits run on the shared planner** with no behavior change.
 - **The setting** turns proposals off. With it off, the prompt doesn't teach them and a stray frame is dropped and counted.
-- **Session state** keeps each card's state and what landed. Export shows a card's file, why and state, never its text.
+- **Session state** keeps each card's identity, class, baseline, state and what landed (bounded for a future Revert). Export shows a card's display path, why and state, never its text or URI.
 
 ## Progress Notes
+
+- **2026-11-05. PR #226 review (Astra): changes requested at spec level.**
+  - **Findings:**
+    - P1: F-01 (rewrite baseline), F-02 (target identity), F-03 (prose by identity);
+    - P2: F-04 (claim and outcomes), F-05 (paragraph structure), F-06 (ceiling on retry);
+    - N-01 to N-03.
+  - **The revision.** The ADR is revised: D4 staging, D5 classes, structure modes and the exact ceiling, D6 baseline, D7 the gateway with `revalidate`, D8 the claim, D10 the session shape, D13 guards. Its ledger maps each finding.
+  - **Slices re-scoped.** Slice 2 now includes staging, the resolver's every-candidate read, and the applier's structure mode and `revalidate`. Slice 3 stages through a port. Slice 4 owns the claim.
+  - **Threads informed.** The Slice 2 and 3 threads hold their contract-dependent parts until this revision lands.
 
 - **2026-11-05. Slice 0.**
   - Okey asked for persona file editing. He chose option B, notes and chapters, and asked whether autonomous editing could follow without rework (yes: ADR D10).
