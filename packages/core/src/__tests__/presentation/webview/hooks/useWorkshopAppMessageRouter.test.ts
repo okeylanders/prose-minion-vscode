@@ -31,6 +31,12 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleSessionState: jest.fn(),
     handleTurnPreview: jest.fn()
   } as never,
+  bookmarkBrowser: {
+    handleSessionState: jest.fn(),
+    handleBookmarkPage: jest.fn(),
+    handleLiveBookmarks: jest.fn(),
+    handleSavedTurnPreview: jest.fn()
+  },
   projectMemory: {
     handleWriteResult: jest.fn(),
     handleEditData: jest.fn(),
@@ -144,6 +150,7 @@ describe('buildWorkshopAppMessageRoutes', () => {
 
     expect(deps.workshopRoom.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.bookmarks.handleSessionState).toHaveBeenCalledWith(message);
+    expect(deps.bookmarkBrowser.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.widgetHost.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.memoryManager.noteSessionState).toHaveBeenCalledWith(message);
   });
@@ -155,6 +162,22 @@ describe('buildWorkshopAppMessageRoutes', () => {
     buildWorkshopAppMessageRoutes(deps)[MessageType.WORKSHOP_TURN_PREVIEW]!(message);
 
     expect(deps.bookmarks.handleTurnPreview).toHaveBeenCalledWith(message);
+  });
+
+  it('routes the Bookmarks screen\'s three answers to its transport (Bookmark Recall Slice 2)', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const page = { type: MessageType.WORKSHOP_BOOKMARK_PAGE, payload: {} } as never;
+    const live = { type: MessageType.WORKSHOP_LIVE_BOOKMARKS, payload: {} } as never;
+    const preview = { type: MessageType.WORKSHOP_SAVED_TURN_PREVIEW, payload: {} } as never;
+
+    routes[MessageType.WORKSHOP_BOOKMARK_PAGE]!(page);
+    routes[MessageType.WORKSHOP_LIVE_BOOKMARKS]!(live);
+    routes[MessageType.WORKSHOP_SAVED_TURN_PREVIEW]!(preview);
+
+    expect(deps.bookmarkBrowser.handleBookmarkPage).toHaveBeenCalledWith(page);
+    expect(deps.bookmarkBrowser.handleLiveBookmarks).toHaveBeenCalledWith(live);
+    expect(deps.bookmarkBrowser.handleSavedTurnPreview).toHaveBeenCalledWith(preview);
   });
 
   it('routes Show vs. Tell progress and result to its transport and beat intake to its controller', () => {

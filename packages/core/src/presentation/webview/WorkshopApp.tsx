@@ -56,6 +56,9 @@ import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/Wor
 import { workshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
 import { WorkshopMemorySheet } from '@components/workshop/memory/WorkshopMemorySheet';
 import { WorkshopMemoryManagerMount } from '@components/workshop/memory/WorkshopMemoryManagerMount';
+import { WorkshopBookmarkBrowserMount } from '@components/workshop/bookmarks/WorkshopBookmarkBrowserMount';
+import { useWorkshopBookmarkBrowser } from '@hooks/domain/workshop/useWorkshopBookmarkBrowser';
+import { useWorkshopBookmarkOpenAt } from '@hooks/domain/workshop/controllers/useWorkshopBookmarkOpenAt';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
@@ -253,6 +256,8 @@ export const WorkshopApp: React.FC = () => {
   );
   const readIn = useWorkshopReadIn();
   const bookmarks = useWorkshopBookmarks({ onBeforeChange: workshop.clearError });
+  // The Bookmarks screen (Bookmark Recall Slice 2, ADR 2026-11-05 D8).
+  const bookmarkBrowser = useWorkshopBookmarkBrowser();
   const projectMemory = useWorkshopProjectMemory();
   const memoryManager = useWorkshopMemoryManager();
   const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
@@ -445,6 +450,7 @@ export const WorkshopApp: React.FC = () => {
   useWorkshopAppMessageRouter({
     readIn,
     bookmarks,
+    bookmarkBrowser,
     projectMemory,
     memoryManager,
     pinnedContext,
@@ -725,7 +731,10 @@ export const WorkshopApp: React.FC = () => {
     readInScopeKey: `${railRoomKey}\u0000${chatTargetIdentity}`,
     turnPreview: bookmarks.turnPreview,
     requestTurnPreview: bookmarks.requestTurnPreview,
-    clearTurnPreview: bookmarks.clearTurnPreview
+    clearTurnPreview: bookmarks.clearTurnPreview,
+    savedTurnPreview: bookmarkBrowser.savedTurnPreview,
+    requestSavedTurnPreview: bookmarkBrowser.requestSavedTurnPreview,
+    clearSavedTurnPreview: bookmarkBrowser.clearSavedTurnPreview
   });
   const {
     textSheet,
@@ -737,6 +746,8 @@ export const WorkshopApp: React.FC = () => {
     openAttachmentSheet,
     openReadInSheet,
     openTurnPreviewSheet,
+    openSavedTurnPreviewSheet,
+    openGivenTurnPreviewSheet,
     addExcerptByPaste,
     addExcerptFromProject,
     applyTextSheet,
@@ -974,6 +985,16 @@ export const WorkshopApp: React.FC = () => {
     closeOverlay: closeTextSheet,
     onOutsideWindow: openTurnPreviewSheet
   });
+  const bookmarkOpenAt = useWorkshopBookmarkOpenAt({
+    roomRevision: workshop.sessionReady ? workshop.roomRevision : undefined,
+    sessionActionResult: workshopSessions.sessionActionResult,
+    openStoredSession,
+    jumpToTurn
+  });
+  const cancelSessionConfirmAndJump = React.useCallback(() => {
+    bookmarkOpenAt.dropPendingJump();
+    cancelSessionConfirm();
+  }, [bookmarkOpenAt.dropPendingJump, cancelSessionConfirm]);
   const openBookmark = React.useCallback(
     // The host's `inWindow` decides; the thread is never searched to re-derive it.
     (bookmark: WorkshopBookmarkSummary) => bookmark.inWindow
@@ -1065,6 +1086,7 @@ export const WorkshopApp: React.FC = () => {
         exportDisabled={!workshop.sessionReady || sessionLoading || !hasExportableTurns}
         onExportSession={openExportSessionModal}
         onBrowseSessions={openSessionBrowser}
+        onBrowseBookmarks={bookmarkBrowser.openBrowser}
         onOpenSession={openStoredSession}
       />
       <FullTabHeaderStatus
@@ -1181,7 +1203,8 @@ export const WorkshopApp: React.FC = () => {
         onOpen: openBookmark,
         onRename: bookmarks.renameBookmark,
         renameOutcome: bookmarks.renameOutcome,
-        onRemove: (turnId) => bookmarks.setTurnBookmark(turnId, false)
+        onRemove: (turnId) => bookmarks.setTurnBookmark(turnId, false),
+        onBrowseAll: bookmarkBrowser.openBrowser
       }}
     />
   );
@@ -1474,6 +1497,15 @@ export const WorkshopApp: React.FC = () => {
       onBoundaryError={handleBoundaryError}
       inertBehindOverlay={textSheet !== null}
     >
+      {/* Before the text sheet, so a bookmark's preview stacks above the screen. */}
+      <WorkshopBookmarkBrowserMount
+        browser={bookmarkBrowser}
+        openDisabled={!workshop.sessionReady || sessionMutationsDisabled || !workshop.persistenceAvailable}
+        openStoredSession={openStoredSession}
+        openAtBookmark={bookmarkOpenAt.openAtBookmark}
+        openSavedTurnPreviewSheet={openSavedTurnPreviewSheet}
+        openGivenTurnPreviewSheet={openGivenTurnPreviewSheet}
+      />
       {/* The ONE Edit/Preview sheet for excerpt paste, Add text, editing a
           text note, editing a wizard-generated brief, and reading a project file
           (Sprint 13A §5–§7). */}
@@ -1820,7 +1852,7 @@ export const WorkshopApp: React.FC = () => {
         open={sessionConfirm !== null}
         {...workshopSessionConfirmCopy(sessionConfirm, { shelvedExcerptTitle, pinnedFileCount: pinnedContext.pinnedFileCount })}
         onConfirm={acceptSessionConfirm}
-        onCancel={cancelSessionConfirm}
+        onCancel={cancelSessionConfirmAndJump}
       />
       <WorkshopToast toast={toast} />
     </FullTabShell>

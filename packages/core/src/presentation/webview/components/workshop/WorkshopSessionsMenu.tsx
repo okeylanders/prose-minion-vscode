@@ -46,6 +46,8 @@ interface WorkshopSessionsMenuProps {
   exportDisabled: boolean;
   onExportSession: () => void;
   onBrowseSessions: () => void;
+  /** Opens the Bookmarks screen (ADR 2026-11-05 D8), beside Browse all sessions. */
+  onBrowseBookmarks?: () => void;
   onOpenSession: (session: WorkshopSessionSummary) => void;
 }
 
@@ -82,6 +84,7 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
   exportDisabled,
   onExportSession,
   onBrowseSessions,
+  onBrowseBookmarks,
   onOpenSession
 }) => {
   const recent = sessions.slice(0, 3);
@@ -165,6 +168,11 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
       <SavedItemsMenu.Item icon="search" onSelect={onBrowseSessions}>
         Browse all sessions…
       </SavedItemsMenu.Item>
+      {onBrowseBookmarks && (
+        <SavedItemsMenu.Item icon="bookmark" onSelect={onBrowseBookmarks}>
+          Bookmarks…
+        </SavedItemsMenu.Item>
+      )}
     </SavedItemsMenu>
   );
 };

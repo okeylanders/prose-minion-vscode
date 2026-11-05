@@ -9,6 +9,10 @@
  *
  * The row's rename and delete state belong to the browser
  * (`SavedItemBrowserModal`), which hands them in as `controls`.
+ *
+ * `readOnly` (the Workshop's Bookmarks screen, ADR 2026-11-05 D8): no
+ * Rename, Delete or utility actions at all; the row still opens and keeps
+ * its primary action. Without it, the markup is as it was.
  */
 
 import * as React from 'react';
@@ -58,6 +62,8 @@ export interface SavedItemRowProps {
   controls: SavedItemRowControls;
   /** A click on the row opens it; none for a row that does not open. */
   onOpen?: () => void;
+  /** No Rename, Delete or utility actions: a row the writer can open but not change. */
+  readOnly?: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
@@ -76,7 +82,8 @@ export const SavedItemRow: React.FC<SavedItemRowProps> = ({
   utilities,
   primary,
   controls,
-  onOpen
+  onOpen,
+  readOnly = false
 }) => {
   const openFromRow = (event: React.MouseEvent<HTMLElement>) => {
     if (
@@ -149,7 +156,7 @@ export const SavedItemRow: React.FC<SavedItemRowProps> = ({
         </div>
         {extra}
       </div>
-      {!current && (
+      {!current && !readOnly && (
         <div
           className={`pm-ws-session-utility-actions${
             confirmingDelete || editing ? ' pm-ws-session-utility-actions-live' : ''
