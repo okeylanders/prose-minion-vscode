@@ -84,5 +84,20 @@ Native VS Code layout/keyboard acceptance remains the planned Slice 4 live pass.
 
 | Finding | Status |
 |---|---|
-| F-01: ambiguous page summaries alter exact identity resolution | Open |
-| F-02: superseded bookmark Open reuses its jump on another Open | Open |
+| F-01: ambiguous page summaries alter exact identity resolution | Fixed in `72f92970` (this slice's paging only; the shared cache path is fixed upstream in Pinned Context) |
+| F-02: superseded bookmark Open reuses its jump on another Open | Fixed in `72f92970` |
+
+## Author response (`72f92970`)
+
+| Finding | Resolution | Regression tests |
+|---|---|---|
+| F-01 | **Scope.** The fix stays inside this slice's paging code: `WorkshopSessionStorePage.ts`, the `listPage` seam, and the page read in `WorkshopSessionStore.ts`. The shared exact-read path cache is being fixed upstream in Pinned Context, and will reach this epic through an epic merge. `findNamedSession`, `list()`, `rememberNamedSessionPath`, the cache key and the identity-conflict handling are untouched.<br><br>**What changed.**<ul><li>**No cache writes.** `listPage` and its page reads no longer write `namedSessionPaths`, so paging can't prime the cache.</li><li>**Ids counted folder-wide.** Each page counts, over every file in the folder, the id each file claims (its search index, or the browser's bounded read). It marks an entry `ambiguous` when another file claims the same id.</li><li>**Ambiguous entries are never read.** Recall names them unreadable on whichever page they land, and never loads them. A duplicate is therefore never resolved to one file, and never counted as both read and unreadable, on one page or across two.</li><li>**Page-local reads.** A page reads its sessions with a new port method, `readPagedSession(cursor, sessionId)`. It reads the file the page's own entry names, and doesn't touch the cache.</li></ul> | `WorkshopSessionStorePage.identity.test.ts`, which turns your witnesses into regressions with the real store and recall service under the normal 25-file pages.<ul><li>"leaves an id two files claim unresolved after 200 newer files (on one page)" and "…after 224 newer files (split across two pages)": the exact read throws `WorkshopNamedSessionIdentityConflictError` before paging and again after a full walk; both files are named unreadable, and neither is counted as read.</li><li>"marks both claiming entries ambiguous at the store, on every page they land".</li><li>"reads a page's session only from the file its entry names" (rejects a path, `current.json`, or another file's id).</li></ul>`WorkshopTranscriptRecallBookmarkPage.test.ts` also now asserts that paging never calls `readNamed`. |
+| F-02 | **What changed.** `useWorkshopBookmarkOpenAt` binds its pending jump to its own Open of its own session. It follows that Open through the session surfaces' `sessionConfirm`, `sessionActionPending` and `sessionActionResult`, in four phases (starting → confirming → opening → opened; `nextPhase`, pure).<br><br>It drops the jump as soon as anything else takes its place:<ul><li>a declined confirmation;</li><li>a confirmation replaced by New, Rewind or another session's Open;</li><li>a refused Open;</li><li>another action finishing in place of its Open;</li><li>an Open that never started.</li></ul>It jumps only after its own Open succeeded and a new room is on screen. `WorkshopApp` no longer needs to wrap Cancel. | Your real-App witness is kept in `WorkshopApp.bookmarkBrowser.test.tsx`, as "drops a bookmark Open the New shortcut supersedes, so a later ordinary Open does not jump (PR #216 F-02)". It fails on `13df46bf` (checked by restoring that revision's code) and passes now; the nine earlier App cases pass too.<br><br>`useWorkshopBookmarkOpenAt.test.ts` is rewritten. It covers confirmed and unconfirmed Opens, refusal, a declined confirmation, and New, another Open or Rewind replacing the confirmation followed by a later ordinary Open (no jump). It also covers another action finishing first, and an Open that never started. |
+
+**The cost of F-01's fix.** A page now reads every file's id: its search index, or a bounded parse for an index-less legacy file. That is the same reading the exact-read scan already trusts, done once per page.
+
+**Verification at `72f92970`:**
+- typecheck: all three projects clean;
+- lint: 0 errors / 1,165 warnings (baseline);
+- jest: full suite with `--maxWorkers=4`, **744 suites / 10,399 tests / 59 snapshots**, all passing;
+- no `vscode` import in core.
