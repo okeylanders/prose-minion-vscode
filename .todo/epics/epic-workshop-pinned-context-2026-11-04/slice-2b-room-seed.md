@@ -149,7 +149,12 @@ reloading a room never touch it. Empty context stays empty.
   the library in `CoreServices`, the store's `shutDown` handed to
   `shutDownExtension`; the result line for an unreadable list.
 - `93f0e59a`: the tests and the boundary guards.
-- This doc.
+- `944c9268`: this doc's first Built section.
+- `4152a127`, `aa1ef04b`: merges of Slice 1's PR #204 fixes (`52da65ea`) and
+  Slice 2a's PR #203 F01 fix (`db93354f`), as the coordinator asked. No
+  conflicts; nothing in 2b's modules changed.
+- A follow-up: the match rule's σ/ς case under `'windows'` (Slice 1's
+  NTFS-style key), and this doc's update.
 
 **Where each piece lives.**
 
@@ -238,6 +243,10 @@ no host conversation, so neither call mints a divider turn (tested).
 | Coordinator and session service | — | unchanged (no diff) |
 | Fixtures and tests | — | *Alice*-style made-up paths and text only |
 | Logs | — | counts and categories only; tests check no path or name |
+
+After merging Slice 1's and 2a's fixes (and adding the σ/ς test), after
+`npm ci` on `93f0e59a`: typecheck passes; jest 702 suites / 9,902 tests / 59
+snapshots, all passing; lint 0 errors / 1,165 warnings (none new).
 
 ## Deviations and open questions
 

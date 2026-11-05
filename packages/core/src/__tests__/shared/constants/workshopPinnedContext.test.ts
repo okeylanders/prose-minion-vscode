@@ -37,6 +37,14 @@ describe('workshopPinnedContextMatches', () => {
     expect(workshopPinnedContextMatches(entry('Characters/alice.md'), attachment, 'posix')).toBe(false);
   });
 
+  it('on Windows, compares as Slice 1\'s NTFS-style key does: final and medial sigma name one file', () => {
+    // σ (medial) and ς (final) both upper-case to Σ, one code unit to one.
+    const final = { kind: 'file' as const, relativePath: 'Places/\u03bf\u03b4\u03bf\u03c2.md' };
+    expect(workshopPinnedContextMatches(entry('Places/\u03bf\u03b4\u03bf\u03c3.md'), final, 'windows')).toBe(true);
+    expect(workshopPinnedContextMatches(entry('Places/\u039f\u0394\u039f\u03a3.md'), final, 'windows')).toBe(true);
+    expect(workshopPinnedContextMatches(entry('Places/\u03bf\u03b4\u03bf\u03c3.md'), final, 'posix')).toBe(false);
+  });
+
   it('reads a Windows separator in the attachment\'s path, and NFD as NFC', () => {
     expect(workshopPinnedContextMatches(entry('Characters/alice.md'), { kind: 'file', relativePath: 'Characters\\alice.md' }, 'windows')).toBe(true);
     expect(workshopPinnedContextMatches(entry('Places/café.md'), { kind: 'file', relativePath: 'Places/café.md' }, 'posix')).toBe(true);
