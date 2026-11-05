@@ -3,8 +3,9 @@
 **Status:** Coding. The spec is done, with all six questions decided, and
 Okey approved the design on 2026-11-05. Project Memory was merged in at
 `17d52cf`, and again at `25c9443`, and again at `2a014cb` (#209).
-Every code slice has merged (2a, 1, 2b, 3 and 4). Project Memory's final
-merge is next, then Slice 5, Okey's live pass (see [Threads](#threads)).
+**Code complete.** Every code slice has merged (2a, 1, 2b, 3 and 4), and
+Project Memory's final round merged in at `b668782`. Slice 5, Okey's live
+pass, is next (see [Threads](#threads)).
 **Priority:** Medium
 **Created:** 2026-11-04
 **Integration branch:** `epic-pinned-context`, cut from `main` at `24d9d6e`.
@@ -153,6 +154,13 @@ Project Memory's process, unchanged:
   - `npm run typecheck` passes;
   - `npx jest -w 3`: 721 suites / 10,110 tests / 59 snapshots, all passing;
   - `npm run lint`: 0 errors / 1,165 warnings.
+- **Final baseline, code complete** (`b668782`, 2026-11-05, Node 22; every
+  code slice merged, and Project Memory's final round, Slices 6a–6c):
+  - `npm run typecheck` passes;
+  - `npx jest -w 3`: 728 suites / 10,239 tests / 59 snapshots, all passing;
+  - `npm run lint`: 0 errors / 1,165 warnings.
+
+  Memory's coordinator ran it, and this coordinator ran it again.
 - No `from 'vscode'` in `packages/core/src`.
 - No new file over 500 lines, and a touched file doesn't grow past 500.
   `WorkshopSessionPersistenceCoordinator.ts` (1,797) and
@@ -304,3 +312,8 @@ the repo:
   Project Memory's coordinator merges its final round (Slice 6c, #212, at
   `0050eb8`) next, on this coordinator's go. It trial-merged cleanly onto
   Slice 4's head. Then Slice 5, Okey's live pass.
+- **2026-11-05. Project Memory's final round merged** as `b668782`, by
+  memory's coordinator on this coordinator's go: `0050eb8` onto `e2f1a93`,
+  with no conflicts and no pinned-context code touched. The duplicate
+  `memory.css` import is gone. Verified twice at 728 suites / 10,239 tests.
+  **The epic is code complete;** Slice 5, Okey's live pass, is next.

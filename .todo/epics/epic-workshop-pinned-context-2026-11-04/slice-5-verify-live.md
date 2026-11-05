@@ -2,8 +2,15 @@
 
 **Epic:** [Workshop Pinned Context](README.md)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-pinned-context.md)
-**Status:** Waits on Slices 1–4. Needs a human with VS Code (Extension
-Development Host).
+**Status:** Ready. Slices 1–4 are merged, and the epic is code complete at
+`b668782` (728 suites / 10,239 tests green). It needs a human with VS Code
+(Extension Development Host).
+
+**Most worth a careful look.** No reviewer could check these here:
+- item 16, the native Windows file-name checks;
+- native focus and visuals in the Extension Development Host. Astra's
+  reviews ran in jsdom, and native Chromium was blocked in the review
+  environment.
 
 ## Outcome
 
