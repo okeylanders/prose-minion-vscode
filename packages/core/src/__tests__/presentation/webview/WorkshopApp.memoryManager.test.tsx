@@ -244,5 +244,20 @@ describe('WorkshopApp · the Memory tab and the manager (Slice 4b)', () => {
     expect(head().getAttribute('aria-expanded')).toBe('true');
     expect(vscode.setState).toHaveBeenLastCalledWith(expect.objectContaining({ workshopMemoryExplainerOpen: true }));
   });
+
+  it('the sessions menu’s Memory… opens the manager without Conversation settings', () => {
+    render(<WorkshopApp />);
+    deliver(session());
+    const before = posted(MessageType.WORKSHOP_MEMORY_LIST).length;
+    fireEvent.click(screen.getByRole('button', { name: /^Sessions/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Memory…' }));
+    act(() => { jest.runOnlyPendingTimers(); });
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(before + 1);
+    answerListing();
+
+    const manager = screen.getByRole('dialog', { name: 'Project memories' });
+    expect(manager.textContent).toContain('The Rabbit’s watch runs backward');
+    expect(screen.queryByRole('dialog', { name: 'Conversation settings' })).toBeNull();
+  });
 });
 
