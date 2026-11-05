@@ -1,0 +1,71 @@
+import { harness } from './workshopPinnedContextHandlerHost';
+import { MessageType } from '@messages';
+import { WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION } from '@/infrastructure/storage/WorkshopPinnedContextStore';
+import { encodeWorkshopPinnedContext, prepareWorkshopPinnedContext } from '@/infrastructure/storage/WorkshopPinnedContextCodec';
+import { workshopPinnedContextPathFault } from '@shared/types/workshopPinnedContext';
+
+const revision = WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION;
+const note = (i: number) => `Notes/note-${i}.md`;
+
+describe('PR 217 independent boundary controls', () => {
+  it('accepts 1,000 repeated ids as one pinned file; rejects 1,001 as malformed without writing', async () => {
+    const h = harness();
+    h.write(note(1), 'Alice.');
+    const id = h.attachFile(note(1), false);
+    const over = await h.send(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS, { revision, attachmentIds: Array(1001).fill(id) });
+    expect(over.notice).toMatchObject({ kind: 'refused', text: 'That request couldn’t be read. Nothing was changed.' });
+    expect(h.listOnDisk()).toBeUndefined();
+    const accepted = await h.send(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS, { revision, attachmentIds: Array(1000).fill(id) });
+    expect(accepted).toMatchObject({ ok: true, totals: { files: 1, maxFiles: 50 } });
+    expect(h.listOnDisk()).toEqual([note(1)]);
+  });
+
+  it('accepts 1,000 repeated catalog keys as one file; rejects 1,001 as malformed', async () => {
+    const item = { group: 'characters' as const, path: note(1) };
+    const h = harness({ catalog: [item] });
+    h.write(note(1), 'Alice.');
+    const over = await h.send(MessageType.WORKSHOP_PIN_CONTEXT_RESOURCES, { revision, items: Array(1001).fill(item) });
+    expect(over.notice).toMatchObject({ kind: 'refused', text: 'That request couldn’t be read. Nothing was changed.' });
+    expect(h.listOnDisk()).toBeUndefined();
+    const accepted = await h.send(MessageType.WORKSHOP_PIN_CONTEXT_RESOURCES, { revision, items: Array(1000).fill(item) });
+    expect(accepted).toMatchObject({ ok: true, totals: { files: 1, maxFiles: 50 } });
+    expect(h.listOnDisk()).toEqual([note(1)]);
+  });
+
+  it('reports unique final total, preserving an existing list when a mixed duplicate request overflows', async () => {
+    const all = Array.from({ length: 51 }, (_, i) => note(i));
+    const h = harness();
+    h.pin(...all.slice(0, 49));
+    const ids = all.map(path => { h.write(path, 'Alice.'); return h.attachFile(path, false); });
+    const current = await h.send(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT, {});
+    const over = await h.send(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS, { revision: current.revision, attachmentIds: [...ids, ...ids] });
+    expect(over.notice).toEqual({ kind: 'refused', text: 'Pinned context holds at most 50 files, and this would make 51. Pin fewer, or unpin some first.' });
+    expect(h.listOnDisk()).toEqual(all.slice(0, 49));
+    const accepted = await h.send(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS, { revision: current.revision, attachmentIds: [...ids.slice(0, 50), ...ids.slice(0, 50)] });
+    expect(accepted).toMatchObject({ ok: true, totals: { files: 50, maxFiles: 50 } });
+    expect(h.listOnDisk()).toEqual(all.slice(0, 50));
+  });
+
+  it('pins exactly fifty through the catalog route', async () => {
+    const items = Array.from({ length: 50 }, (_, i) => ({ group: 'characters' as const, path: note(i) }));
+    const h = harness({ catalog: items });
+    items.forEach(({ path }) => h.write(path, 'Alice.'));
+    const answer = await h.send(MessageType.WORKSHOP_PIN_CONTEXT_RESOURCES, { revision, items });
+    expect(answer).toMatchObject({ ok: true, totals: { files: 50, maxFiles: 50 } });
+    expect(h.listOnDisk()).toEqual(items.map(item => item.path));
+  });
+
+  it('records the pre-existing UTF-8 accounting limitation at the new bound', () => {
+    const files = Array.from({ length: 50 }, (_, i) => ({ path: `Notes/${String(i).padStart(2, '0')}/${Array(18).fill('章'.repeat(100)).join('/')}.md` }));
+    expect(files.every(({ path }) => workshopPinnedContextPathFault(path) === undefined)).toBe(true);
+    expect(Math.max(...files.map(({ path }) => path.length))).toBeLessThan(4096);
+    const bytes = Buffer.byteLength(encodeWorkshopPinnedContext({ files }));
+    expect(files[0].path.length).toBe(1829);
+    expect(bytes).toBe(272985);
+    expect(Buffer.byteLength(encodeWorkshopPinnedContext({ files: files.slice(0, 20) }))).toBe(109215);
+    expect(prepareWorkshopPinnedContext({ files }, 'windows')).toEqual({ ok: false, reason: 'too-large' });
+    const oldFull = files.slice(0, 20).map(({ path }) => ({ path: path.replace('Notes/', `Notes/${Array(18).fill('章'.repeat(100)).join('/')}/`) }));
+    expect(oldFull.every(({ path }) => workshopPinnedContextPathFault(path) === undefined)).toBe(true);
+    expect(Buffer.byteLength(encodeWorkshopPinnedContext({ files: oldFull }))).toBeGreaterThan(128 * 1024);
+  });
+});

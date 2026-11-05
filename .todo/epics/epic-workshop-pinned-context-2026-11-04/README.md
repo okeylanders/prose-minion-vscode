@@ -199,7 +199,8 @@ them as [decided](../../../docs/adr/2026-11-04-workshop-pinned-context.md#decide
 1. the tab sits after About you;
 2. an ordinary New session tops up;
 3. over budget, each file that fits attaches, in order;
-4. the bound is 20 files, tuned in Slice 5;
+4. the bound is 20 files, tuned in Slice 5 (**tuned to 50** in the live
+   pass, Okey, 2026-11-05);
 6. Pin from a pill, as drawn; unpinning stays in the tab.
 
 **Merge, then code (Okey, 2026-11-05).** Project Memory merged in (see

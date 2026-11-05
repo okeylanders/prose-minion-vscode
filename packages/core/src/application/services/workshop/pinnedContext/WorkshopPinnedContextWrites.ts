@@ -56,7 +56,8 @@ import {
   workshopPinnedBackslashWords,
   workshopPinnedTooLongWords,
   workshopPinnedListUnavailableWords,
-  workshopPinnedOverBudgetWords
+  workshopPinnedOverBudgetWords,
+  workshopPinnedTooManyFilesWords
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextWords';
 
 const LOG = '[WorkshopPinnedContext]';
@@ -254,7 +255,7 @@ export class WorkshopPinnedContextWrites {
       return { kind: 'ok', written: false };
     }
     if (list.files.length + added.length > WORKSHOP_PINNED_CONTEXT_FILES) {
-      return this.refuse(WORKSHOP_PINNED_WORDS.tooManyFiles, 'too-many');
+      return this.refuse(workshopPinnedTooManyFilesWords(list.files.length + added.length), 'too-many');
     }
     let reads;
     try {
