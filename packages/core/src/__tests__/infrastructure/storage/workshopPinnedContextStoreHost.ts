@@ -54,9 +54,9 @@ export function pinnedHost(options: HostOptions = {}) {
   return { fileSystem, store, log, lines, folders, clock };
 }
 
-/** The renames a write made of the list and its claims: the lock's own renames left out. */
+/** The renames a write made of the list and its claims: the lock directory's own renames left out. */
 export const listRenames = (fileSystem: MemoryFileSystem) => fileSystem.renameCalls
-  .filter((call) => ![call.fromPath, call.toPath].some((file) => /^\.pinned-context\.json\.lock(?:$|\.)/.test(path.basename(file))));
+  .filter((call) => ![call.fromPath, call.toPath].some((file) => /^\.pinned-context\.lock(?:$|\.)/.test(path.basename(file))));
 
 /** Every file under `folder`, relative to it, sorted. */
 export const everyFile = (fileSystem: MemoryFileSystem, folder = FOLDER) => [...fileSystem.files.keys()]
