@@ -159,6 +159,7 @@ export enum MessageType {
   WORKSHOP_RENAME_BOOKMARK_RESULT = 'workshop_rename_bookmark_result',
   WORKSHOP_REQUEST_TURN_PREVIEW = 'workshop_request_turn_preview',
   WORKSHOP_TURN_PREVIEW = 'workshop_turn_preview',
+  /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
   WORKSHOP_REQUEST_BOOKMARK_PAGE = 'workshop_request_bookmark_page',
   WORKSHOP_CANCEL_BOOKMARK_PAGE = 'workshop_cancel_bookmark_page',
   WORKSHOP_BOOKMARK_PAGE = 'workshop_bookmark_page',
@@ -166,7 +167,6 @@ export enum MessageType {
   WORKSHOP_LIVE_BOOKMARKS = 'workshop_live_bookmarks',
   WORKSHOP_REQUEST_SAVED_TURN_PREVIEW = 'workshop_request_saved_turn_preview',
   WORKSHOP_SAVED_TURN_PREVIEW = 'workshop_saved_turn_preview',
-  /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
   WORKSHOP_MEMORY_PROPOSAL_ACTION = 'workshop_memory_proposal_action',
   WORKSHOP_SAVE_TURN_TO_MEMORY = 'workshop_save_turn_to_memory',
   WORKSHOP_MEMORY_CREATE = 'workshop_memory_create',

@@ -199,6 +199,7 @@ interface BookmarkBrowserRowProps extends WorkshopBookmarkBrowserActions {
 }
 
 /** One bookmark: its label, who said it, where and when, its first lines, and its actions. */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 const BookmarkBrowserRow: React.FC<BookmarkBrowserRowProps> = ({
   item,
   openDisabled,

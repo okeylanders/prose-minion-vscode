@@ -55,10 +55,10 @@ describe('readWorkshopSessionPage', () => {
 
   it('stops at the byte budget without omitting a session: the next page starts at the first one left', async () => {
     const limits = { bookmarkBrowserSessions: 25, bookmarkBrowserBytes: 100 };
-    const sizes: Record<string, number> = {
-      '2026-05-e.json': 60, '2026-04-d.json': 60, '2026-03-c.json': 250, '2026-02-b.json': 10, '2026-01-a.json': 10
-    };
-    const read = async (name: string): Promise<WorkshopSessionPageRead> => ({ kind: 'read', bytes: sizes[name] });
+    const sizes = new Map([
+      ['2026-05-e.json', 60], ['2026-04-d.json', 60], ['2026-03-c.json', 250], ['2026-02-b.json', 10], ['2026-01-a.json', 10]
+    ]);
+    const read = async (name: string): Promise<WorkshopSessionPageRead> => ({ kind: 'read', bytes: sizes.get(name)! });
     const pages = await walk((after) => readWorkshopSessionPage(names, { ...(after ? { after } : {}), limit: 25 }, read, undefined, limits));
     // 60 + 60 reaches the budget; a file over it is read alone; the rest fit together.
     expect(pages).toEqual([
