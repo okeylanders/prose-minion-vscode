@@ -248,6 +248,10 @@ After merging Slice 1's and 2a's fixes (and adding the σ/ς test), after
 `npm ci` on `93f0e59a`: typecheck passes; jest 702 suites / 9,902 tests / 59
 snapshots, all passing; lint 0 errors / 1,165 warnings (none new).
 
+**Final pre-PR run**, on `511bf2a1` (the deviation-3 fix `54e7db78`, then
+Slice 1's PR #204 re-review fixes `92acb220` merged in): typecheck passes;
+`npx jest -w 2` 702 suites / 9,913 tests / 59 snapshots, all passing.
+
 ## Deviations and open questions
 
 1. **The match rule takes the platform**:
