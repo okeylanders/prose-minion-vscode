@@ -49,6 +49,13 @@ Use a test project with *Alice*-style files, never a manuscript in progress.
     both. If the difference is more than about half a second on a local
     disk, raise it with Okey.
 15. **Tune the bound** (`files: 20`) from what Okey actually pins.
+16. **On Windows, if one is to hand** (PR #204 F-03; no reviewer had one).
+    - Pin `Notes/σ.md`, then try `Notes/ς.md`. It's refused as already
+      pinned: one name on NTFS.
+    - Pin a file whose name holds `ß`. It stays itself, and isn't matched to
+      an `SS` name.
+    - Rename a pinned file's case in Explorer. The tab still finds it, and a
+      New session attaches it once.
 
 ## Close-out
 
