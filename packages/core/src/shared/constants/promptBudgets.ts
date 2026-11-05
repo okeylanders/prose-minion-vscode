@@ -104,6 +104,14 @@ export interface PromptBudgets {
     readsPerTurn: number;
     autoSavesPerRoom: number;
   }>;
+  /**
+   * Workshop Pinned Context (ADR 2026-11-04 D6): how many files the list
+   * may hold. The codec refuses a longer list whole; the tab refuses a pin
+   * past it.
+   */
+  readonly workshopPinnedContext: Readonly<{
+    files: number;
+  }>;
   readonly workshopTodos: Readonly<{
     items: number;
     characters: number;
@@ -542,6 +550,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readsPerTurn: 2,
     autoSavesPerRoom: 5
   },
+  workshopPinnedContext: { files: 20 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {
     turns: 100,
