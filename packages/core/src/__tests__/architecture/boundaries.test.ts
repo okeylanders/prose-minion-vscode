@@ -1083,7 +1083,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|ProjectMemoryLibrary|ProjectMemoryStore|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|ProjectMemoryLibrary|ProjectMemoryStore|WorkshopPinnedContextStore|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
 );
 
 /**
@@ -2525,7 +2525,7 @@ describe('the shared claimed-file primitive (Workshop Project Memory, Slice 1)',
     const modules = ['infrastructure/storage/StoredFileClaims.ts', 'infrastructure/storage/StoredFileRewrite.ts'];
     const imports = (file: string) => [...fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')
       .matchAll(/^\s*import\s[^;]*?from\s+['"]([^'"]+)['"]/gms)].map((match) => match[1]);
-    const feature = /(?:^|\/)(?:Lightbox|lightbox|ProjectMemory|projectMemory)[^/]*$|\/lightbox\//;
+    const feature = /(?:^|\/)(?:Lightbox|lightbox|ProjectMemory|projectMemory|WorkshopPinnedContext|workshopPinnedContext)[^/]*$|\/lightbox\//;
     expect(modules.flatMap((file) => imports(file).filter((specifier) => feature.test(specifier)).map((specifier) => `${file} → ${specifier}`)))
       .toEqual([]);
     // Each still imports something, so the scan reads what it means to.
@@ -2534,6 +2534,31 @@ describe('the shared claimed-file primitive (Workshop Project Memory, Slice 1)',
     const constructions = collectSourceFiles(SRC_ROOT)
       .filter((file) => /\bnew\s+StoredFileClaims\s*\(/.test(fs.readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC_ROOT, file));
-    expect(constructions).toEqual(['infrastructure/storage/ProjectMemoryStore.ts']);
+    expect(constructions).toEqual(['infrastructure/storage/ProjectMemoryStore.ts', 'infrastructure/storage/WorkshopPinnedContextStore.ts']);
+  });
+});
+
+describe('Workshop Pinned Context storage (Slice 1; ADR 2026-11-04 D5)', () => {
+  const STORAGE = 'infrastructure/storage';
+
+  it('keeps the store and its codec in infrastructure/storage, the only modules of their names', () => {
+    const named = collectSourceFiles(SRC_ROOT)
+      .map((file) => path.relative(SRC_ROOT, file))
+      .filter((file) => !file.startsWith('__tests__/') && /(?:^|\/)WorkshopPinnedContext(?:Store|Codec)\.ts$/.test(file))
+      .sort();
+    expect(named).toEqual([`${STORAGE}/WorkshopPinnedContextCodec.ts`, `${STORAGE}/WorkshopPinnedContextStore.ts`]);
+  });
+
+  it('keeps the codec pure: it imports only the shared list shapes', () => {
+    const source = fs.readFileSync(path.join(SRC_ROOT, STORAGE, 'WorkshopPinnedContextCodec.ts'), 'utf8');
+    const specifiers = [...source.matchAll(/^\s*import\s[^;]*?from\s+['"]([^'"]+)['"]/gms)].map((match) => match[1]);
+    expect(specifiers).toEqual(['@shared/types/workshopPinnedContext']);
+  });
+
+  it('lets no handler import the store', () => {
+    const offenders = collectSourceFiles(HANDLERS_ROOT)
+      .filter((file) => /['"][^'"]*\/WorkshopPinnedContextStore['"]/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(offenders).toEqual([]);
   });
 });
