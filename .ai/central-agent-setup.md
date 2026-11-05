@@ -140,6 +140,7 @@ packages/core/src/
                 ├── context.ts
                 ├── participants.ts
                 ├── bookmarks.ts
+                ├── bookmarkBrowser.ts
                 ├── projectMemory.ts
                 ├── projectMemoryManager.ts
                 ├── pinnedContext.ts

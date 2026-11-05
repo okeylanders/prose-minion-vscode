@@ -30,6 +30,7 @@ import type { WorkshopWriterProfileService } from '@/application/services/worksh
 import type { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import type { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import type { WorkshopTranscriptExportService } from '@/application/services/workshop/export/WorkshopTranscriptExportService';
+import type { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
 import type { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { ProseStatsService } from '@services/measurement/ProseStatsService';
@@ -187,4 +188,10 @@ export interface CoreServices {
    * room seed reads it at room starts.
    */
   workshopPinnedContext: WorkshopPinnedContextServices;
+  /**
+   * Session recall (ADR 2026-10-05; ADR 2026-11-05 D8): the one service,
+   * whose writer-facing reads serve the Bookmarks screen. Personas reach it
+   * only through the capability factory; no handler constructs it.
+   */
+  workshopTranscriptRecallService: WorkshopTranscriptRecallService;
 }

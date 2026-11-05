@@ -93,7 +93,8 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     // Slice 5 added WORKSHOP_REQUEST_TURN_PREVIEW. Project Memory Slice 3
     // added its seven write and sheet routes; Slice 4b the manager's listing and actions.
     // Pinned Context Slice 3 added the tab's eight routes.
-    expect(router.handlerCount).toBe(81);
+    // Bookmark Recall Slice 2 added the Bookmarks screen's four reads.
+    expect(router.handlerCount).toBe(85);
   });
 
   it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {

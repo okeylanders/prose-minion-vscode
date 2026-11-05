@@ -365,11 +365,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   // Session recall reads the writer's other saved sessions through the
   // store's read-only methods; the coordinator tells it which room is live
-  // and whether the workspace still holds (ADR 2026-10-05 §2, §9). Only the
-  // persona capability factory consumes it, so it needs no CoreServices
-  // field and no route. Its bookmarks operation alone also reads the open
-  // room's bookmarks, through a read-only port over the session's full
-  // ledger, in the room's own timezone (ADR 2026-11-05 D1).
+  // and whether the workspace still holds (ADR 2026-10-05 §2, §9). Three
+  // consumers: the persona capability factory, project memory's provenance,
+  // and, through its CoreServices field, the Bookmarks screen's read-only
+  // routes (ADR 2026-11-05 D8); no handler constructs it. Its bookmarks
+  // operation alone also reads the open room's bookmarks, through a
+  // read-only port over the session's full ledger, in the room's own
+  // timezone (ADR 2026-11-05 D1).
   const workshopTranscriptRecallService = new WorkshopTranscriptRecallService(
     workshopSessionStore,
     workshopSessionPersistenceCoordinator,
@@ -610,7 +612,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopPinnedContext: {
       library: workshopPinnedContextLibrary,
       takeFirstRoomReport: () => workshopPinnedContextRoomSeed.takeFirstRoomReport()
-    }
+    },
+    workshopTranscriptRecallService
   };
 
   // Migrate API key from settings to SecretStorage if needed

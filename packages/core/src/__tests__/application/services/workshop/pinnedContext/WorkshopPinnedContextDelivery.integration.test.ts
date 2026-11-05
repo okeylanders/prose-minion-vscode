@@ -15,6 +15,7 @@
  */
 import { WorkshopRoomHandler } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
 import { emptyPinnedContextServices } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextTestServices';
+import { unusedBookmarkBrowser } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
 import type { WorkshopWidgetRuntime } from '@/application/handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopRoomDeliveryService } from '@/application/services/workshop/WorkshopRoomDeliveryService';
@@ -134,7 +135,8 @@ async function firstHostRun(seed: (session: WorkshopSessionService) => Promise<v
     { gesturePlayground: { generateMenu: jest.fn() }, lexicalGravity: { model: {}, repository: {}, directives: {} } } as unknown as WorkshopWidgetRuntime,
     output,
     libraryHost().library,
-    emptyPinnedContextServices()
+    emptyPinnedContextServices(),
+    unusedBookmarkBrowser()
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);
