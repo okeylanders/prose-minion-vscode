@@ -1,4 +1,5 @@
 import { WorkshopRoomHandler } from '@handlers/domain/workshop/WorkshopRoomHandler';
+import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
 import { libraryHost } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import type {
   WorkshopWidgetRuntime
@@ -264,6 +265,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     }),
     resetSession: jest.fn(async () => {
       session.reset().forEach((conversationId) => service.discardConversation(conversationId));
+      return { attachmentLabels: [] };
     }),
     rewindTo: jest.fn(),
     branchFrom: jest.fn(),
@@ -353,7 +355,8 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
       showVsTellGenerate
     ),
     log,
-    memory.library
+    memory.library,
+    emptyPinnedContextServices()
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);

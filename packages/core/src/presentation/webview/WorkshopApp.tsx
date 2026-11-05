@@ -48,6 +48,9 @@ import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
 import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
+import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinnedContext';
+import { useWorkshopPinnedPills } from '@hooks/domain/workshop/controllers/useWorkshopPinnedPills';
+import { workshopPinnedContextPanelProps } from '@components/workshop/settings/WorkshopPinnedContextSettingsPanel';
 import { workshopMemoryTabInputOf } from '@hooks/domain/workshop/memory/workshopMemoryListingInputs';
 import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
 import { workshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
@@ -178,6 +181,7 @@ import './styles/workshop/shell.css';
 import './styles/workshop/context.css';
 import './styles/workshop/session.css';
 import './styles/workshop/memory.css';
+import './styles/workshop/pinnedContext.css';
 import './components/workshop/widgets/gesturePlayground/gesturePlayground.css';
 import './components/workshop/widgets/lexicalGravity/lexicalGravity.css';
 import './components/workshop/widgets/creativeVariations/creativeVariations.css';
@@ -254,6 +258,8 @@ export const WorkshopApp: React.FC = () => {
   const roomKey = workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending';
   const projectMemory = useWorkshopProjectMemory({ roomKey });
   const memoryManager = useWorkshopMemoryManager();
+  const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
+  const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, room: workshop.roomRevision, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });
   // Whether the Memory tab's explainer shows is this viewer's choice too.
   const persistedMemoryExplainer = usePersistedState<Partial<WorkshopMemoryExplainerPersistence>>();
   const memoryExplainer = useWorkshopMemoryExplainer({
@@ -443,6 +449,7 @@ export const WorkshopApp: React.FC = () => {
     bookmarks,
     projectMemory,
     memoryManager,
+    pinnedContext,
     workshopRoom: workshop,
     workshopSessions,
     widgetHost,
@@ -465,6 +472,7 @@ export const WorkshopApp: React.FC = () => {
 
   usePersistence({
     ...workshop.persistedState,
+    ...pinnedContext.persistedState,
     ...workshopSessions.persistedState,
     ...widgetHost.persistedState,
     ...gesturePlayground.persistedState,
@@ -642,6 +650,7 @@ export const WorkshopApp: React.FC = () => {
     closeSessionBrowser,
     startNewSession,
     startFullReset,
+    startEmptyReset,
     openStoredSession,
     cancelSessionConfirm
   } = sessionSurfaces;
@@ -1054,6 +1063,8 @@ export const WorkshopApp: React.FC = () => {
         onOpenChange={setSessionsMenuVisibility}
         onNewSession={startNewSession}
         onFullResetSession={startFullReset}
+        onEmptyResetSession={startEmptyReset}
+        pinnedFileCount={pinnedContext.pinnedFileCount}
         hasWorkingSet={hasWorkingSet}
         onSaveSession={openSaveSessionModal}
         exportDisabled={!workshop.sessionReady || sessionLoading || !hasExportableTurns}
@@ -1154,7 +1165,8 @@ export const WorkshopApp: React.FC = () => {
         onRemove: workshop.removeContextAttachment,
         wizardRunning: workshop.wizardRunning,
         onRunWizard: workshop.runContextWizard,
-        onCancelWizard: workshop.cancelContextWizard
+        onCancelWizard: workshop.cancelContextWizard,
+        pinned: { pills: pinnedPills.pills, onPin: pinnedPills.pin }
       }}
       readIn={{
         entries: readInSources,
@@ -1698,6 +1710,7 @@ export const WorkshopApp: React.FC = () => {
         projectMemoryMode={workshop.projectMemoryMode}
         memory={workshopMemoryTabInputOf(memoryManager.listing)}
         memoryFolder={memoryManager.folder}
+        pinnedContext={workshopPinnedContextPanelProps(pinnedContext, workshop)}
         memoryExplainerOpen={memoryExplainer.explainerOpen}
         onToggleMemoryExplainer={memoryExplainer.toggleExplainer}
         isRunning={roomMutationLocked}
@@ -1810,7 +1823,7 @@ export const WorkshopApp: React.FC = () => {
       />
       <WorkshopConfirmDialog
         open={sessionConfirm !== null}
-        {...workshopSessionConfirmCopy(sessionConfirm, { shelvedExcerptTitle })}
+        {...workshopSessionConfirmCopy(sessionConfirm, { shelvedExcerptTitle, pinnedFileCount: pinnedContext.pinnedFileCount })}
         onConfirm={acceptSessionConfirm}
         onCancel={cancelSessionConfirm}
       />

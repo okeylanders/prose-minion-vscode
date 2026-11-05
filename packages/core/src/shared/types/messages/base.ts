@@ -175,6 +175,16 @@ export enum MessageType {
   WORKSHOP_MEMORY_LISTING = 'workshop_memory_listing',
   WORKSHOP_MEMORY_MANAGER_ACTION = 'workshop_memory_manager_action',
   WORKSHOP_MEMORY_MANAGER_RESULT = 'workshop_memory_manager_result',
+  // Workshop Pinned Context: the settings tab (epic Slice 3)
+  WORKSHOP_REQUEST_PINNED_CONTEXT = 'workshop_request_pinned_context',
+  WORKSHOP_PINNED_CONTEXT = 'workshop_pinned_context',
+  WORKSHOP_PIN_CONTEXT_RESOURCES = 'workshop_pin_context_resources',
+  WORKSHOP_PIN_CONTEXT_ATTACHMENTS = 'workshop_pin_context_attachments',
+  WORKSHOP_PIN_CONTEXT_PICK_FILE = 'workshop_pin_context_pick_file',
+  WORKSHOP_UNPIN_CONTEXT = 'workshop_unpin_context',
+  WORKSHOP_MOVE_PINNED_CONTEXT = 'workshop_move_pinned_context',
+  WORKSHOP_ATTACH_PINNED_CONTEXT = 'workshop_attach_pinned_context',
+  WORKSHOP_OPEN_PINNED_CONTEXT_FILE = 'workshop_open_pinned_context_file',
   /* eslint-enable @typescript-eslint/naming-convention */
   WORKSHOP_PICK_EXCERPT_FILE = 'workshop_pick_excerpt_file',
   WORKSHOP_REREAD_EXCERPT = 'workshop_reread_excerpt',

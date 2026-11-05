@@ -1,0 +1,46 @@
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { encodeWorkshopPinnedContext } from '@/infrastructure/storage/WorkshopPinnedContextCodec';
+import { ROOT, seedHost } from './pinnedContextSeedHost';
+
+it('does not install another project after A to B to A during preparation', async () => {
+  const folders = [{ path: ROOT, name: 'novel' }];
+  const other = '/workspace/other';
+  const host = seedHost({
+    folders,
+    scope: () => folders[0].path === ROOT
+      ? { available: true, liveSessionId: 'room-A' }
+      : { available: false, reason: 'workspace-changed' }
+  });
+  host.pin('Characters/alice.md');
+  host.write('Characters/alice.md', 'Alice belongs to project A.');
+  host.fileSystem.files.set(
+    `${other}/prose-minion/pinned-context.json`,
+    new TextEncoder().encode(encodeWorkshopPinnedContext({
+      files: [{ path: 'Private/queen.md' }]
+    }))
+  );
+  host.fileSystem.files.set(
+    `${other}/Private/queen.md`,
+    new TextEncoder().encode('Private facts from project B.')
+  );
+
+  const read = host.fileSystem.readFile.bind(host.fileSystem);
+  jest.spyOn(host.fileSystem, 'readFile').mockImplementation(async (filePath) => {
+    const bytes = await read(filePath);
+    if (filePath === `${other}/Private/queen.md`) {
+      folders.splice(0, 1, { path: ROOT, name: 'novel' });
+    }
+    return bytes;
+  });
+
+  const preparing = host.seed.prepare('new');
+  // prepare captured A synchronously; store.read chooses its path at its queued turn.
+  folders.splice(0, 1, { path: other, name: 'other' });
+  const plan = await preparing;
+  const room = new WorkshopSessionService();
+  host.seed.install(plan, room);
+
+  expect(room.getContextAttachments().some((attachment) =>
+    attachment.sourceUri?.startsWith(`file://${other}/`)
+  )).toBe(false);
+});

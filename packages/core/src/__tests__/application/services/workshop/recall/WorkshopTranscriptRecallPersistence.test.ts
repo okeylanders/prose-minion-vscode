@@ -123,7 +123,7 @@ describe('a room that used session recall', () => {
     ]);
     session.addTodoFromFinding(pastReply.id, pastReply.actionableFindings![0].key);
     const past = await coordinator.saveNamed('Lighthouse past');
-    await coordinator.resetSession({ clearWorkingSet: true });
+    await coordinator.resetSession({ start: 'full-reset' });
 
     // The host recalls with every operation in one turn.
     session.setSessionScope('open');
@@ -149,7 +149,7 @@ describe('a room that used session recall', () => {
     expect(guestBefore.map((source) => source.kind)).toEqual(['transcript']);
 
     const saved = await coordinator.saveNamed('Recall room');
-    await coordinator.resetSession({ clearWorkingSet: true });
+    await coordinator.resetSession({ start: 'full-reset' });
     harness.assistant.importWorkshopConversationArchive.mockClear();
     await coordinator.openNamed(saved.sessionId);
 

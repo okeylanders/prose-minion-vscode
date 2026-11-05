@@ -132,7 +132,7 @@ describe('bookmark id bounds (PR #188 F-01)', () => {
     await expect(harness.coordinator.openNamed('bad')).rejects.toThrow();
     expect(harness.session.getSnapshot().bookmarks).toEqual([]);
 
-    await harness.coordinator.resetSession();
+    await harness.coordinator.resetSession({ start: 'carry' });
     harness.session.setExcerpt({ text: 'The first cup waits on the sill.', source: { kind: 'manual' } });
     const conversationId = harness.manager.startConversation('workshop_persona_jill', 'You are Jill.');
     harness.manager.addMessages(conversationId, [

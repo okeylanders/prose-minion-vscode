@@ -1,3 +1,4 @@
+import { emptyPinnedContextServices } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextTestServices';
 import {
   WorkshopRoomHandler
 } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
@@ -197,7 +198,8 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
         lexicalGravity: { model: {}, repository: {}, directives: {} }
       } as unknown as WorkshopWidgetRuntime,
       output,
-      libraryHost().library
+      libraryHost().library,
+      emptyPinnedContextServices()
     );
     const router = new MessageRouter();
     handler.registerRoutes(router);

@@ -14,6 +14,7 @@ import type {
   WorkshopSessionStateMessage
 } from '@messages';
 import type { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
+import type { WorkshopPinnedContextServices } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
 import type { AIResourceRefresh } from '@orchestration/AIResourceRefresh';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
@@ -179,4 +180,11 @@ export interface CoreServices {
    * they settle.
    */
   projectMemory: ProjectMemoryLibrary;
+  /**
+   * Workshop pinned context (ADR 2026-11-04 D9): the one library over the
+   * list's store, and the room seed's first-room report. Slice 3's handler
+   * reads and changes the list through the library, behind its port; the
+   * room seed reads it at room starts.
+   */
+  workshopPinnedContext: WorkshopPinnedContextServices;
 }

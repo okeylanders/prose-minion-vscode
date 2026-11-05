@@ -36,7 +36,8 @@ import type {
 } from '@messages';
 import { CONTEXT_PATH_GROUPS, ContextPathGroup } from '@shared/types/context';
 
-const GROUP_LABELS: Record<ContextPathGroup, string> = {
+/** Each catalog group in the writer's words; the Pinned context tab's chips use them too. */
+export const PROJECT_RESOURCE_GROUP_LABELS: Record<ContextPathGroup, string> = {
   characters: 'Characters',
   locations: 'Locations & Settings',
   themes: 'Themes',
@@ -90,8 +91,12 @@ interface ProjectResourcePickerCommonProps {
   onSearch: (query: string) => void;
   /** The query emptied: forget the last content-search answer. */
   onClearSearch: () => void;
-  /** The host's own file picker. The picker closes after calling it. */
-  onExplore: () => void;
+  /**
+   * The host's own file picker. The picker closes after calling it. Without
+   * it there is no "Explore project folders…" (Pinned context's pin mode:
+   * the webview names catalog files only).
+   */
+  onExplore?: () => void;
   onClose: () => void;
 }
 
@@ -107,6 +112,8 @@ interface ProjectResourcePickerMultipleProps {
   selection: 'multiple';
   /** Rows to show as already attached, disabled. */
   isAttached?: (entry: ConfiguredResourceEntry) => boolean;
+  /** What an attached row says in place of its size ("attached" by default; Pinned context says "Pinned"). */
+  attachedLabel?: string;
   /** The selected resources, by key, in the writer's order. */
   onConfirm: (items: ConfiguredResourceRef[]) => void;
   renderFooter: (state: ProjectResourcePickerFooterState) => React.ReactNode;
@@ -244,9 +251,9 @@ export const ProjectResourcePickerModal: React.FC<ProjectResourcePickerModalProp
         )}
         <span className="pm-ws-ctxsel-path">{entry.path}</span>
         {showGroupTag ? (
-          <span className="pm-ws-ctxsel-tag">{GROUP_LABELS[entry.group]}</span>
+          <span className="pm-ws-ctxsel-tag">{PROJECT_RESOURCE_GROUP_LABELS[entry.group]}</span>
         ) : null}
-        <span className="pm-ws-ctxsel-size">{attached ? 'attached' : formatSize(entry.sizeBytes)}</span>
+        <span className="pm-ws-ctxsel-size">{attached ? (props.selection === 'multiple' ? props.attachedLabel ?? 'attached' : 'attached') : formatSize(entry.sizeBytes)}</span>
       </button>
     );
   };
@@ -345,7 +352,7 @@ export const ProjectResourcePickerModal: React.FC<ProjectResourcePickerModalProp
                   aria-pressed={groupFilter === group}
                   onClick={() => setGroupFilter(group)}
                 >
-                  {GROUP_LABELS[group]} · {searchRows.filter((row) => row.group === group).length}
+                  {PROJECT_RESOURCE_GROUP_LABELS[group]} · {searchRows.filter((row) => row.group === group).length}
                 </button>
               ))}
             </div>
@@ -370,7 +377,7 @@ export const ProjectResourcePickerModal: React.FC<ProjectResourcePickerModalProp
               <button className="pm-ws-action-btn" type="button" onClick={() => setActiveGroup(null)}>
                 ← Back
               </button>
-              <span className="pm-ws-ctxsel-crumb">{GROUP_LABELS[activeGroup]}</span>
+              <span className="pm-ws-ctxsel-crumb">{PROJECT_RESOURCE_GROUP_LABELS[activeGroup]}</span>
             </div>
             {(catalog ?? [])
               .filter((entry) => entry.group === activeGroup)
@@ -398,7 +405,7 @@ export const ProjectResourcePickerModal: React.FC<ProjectResourcePickerModalProp
                   type="button"
                   onClick={() => setActiveGroup(group)}
                 >
-                  <span className="pm-ws-ctxsel-cat-name">{GROUP_LABELS[group]}</span>
+                  <span className="pm-ws-ctxsel-cat-name">{PROJECT_RESOURCE_GROUP_LABELS[group]}</span>
                   <span className="pm-ws-ctxsel-cat-meta">
                     {entries.length} file{entries.length === 1 ? '' : 's'} ·{' '}
                     {formatSize(entries.reduce((total, entry) => total + entry.sizeBytes, 0))}
@@ -412,12 +419,14 @@ export const ProjectResourcePickerModal: React.FC<ProjectResourcePickerModalProp
           </div>
         )}
 
+        {onExplore ? (
         <button className="pm-ws-ctxsel-explore" type="button" onClick={() => { onExplore(); onClose(); }}>
           <Icon name="doc" size={14} />
           <span>
             Explore project folders… <small>{copy.exploreNote}</small>
           </span>
         </button>
+        ) : null}
       </div>
 
       {footer}

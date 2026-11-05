@@ -74,7 +74,7 @@ describe('the delivery record across whole-room operations (ADR 2026-11-04 D14)'
 
   it('New starts with none', async () => {
     const { coordinator, session, store } = await openDeliveredRoom();
-    await coordinator.resetSession();
+    await coordinator.resetSession({ start: 'carry' });
     expect(projectMemoryDeliveredView(session.readRoomLedger(), HOST).recorded).toBe(false);
     expect(JSON.stringify(await store.readCurrent())).not.toContain('projectMemoryDelivery');
   });

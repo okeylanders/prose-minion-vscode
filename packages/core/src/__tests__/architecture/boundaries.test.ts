@@ -87,6 +87,8 @@ const WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryManagerHandler.ts';
+const WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopPinnedContextHandler.ts';
 const WORKSHOP_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopContextHandler.ts';
 const WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER =
@@ -211,6 +213,26 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER,
     registration: 'direct',
     messageTypes: ['WORKSHOP_MEMORY_LIST', 'WORKSHOP_MEMORY_MANAGER_ACTION']
+  },
+  // Pinned context's tab (Pinned Context Slice 3): the list's changes touch no
+  // room, so they are direct; Attach missing changes the room, behind the gate.
+  {
+    owner: WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: [
+      'WORKSHOP_REQUEST_PINNED_CONTEXT',
+      'WORKSHOP_PIN_CONTEXT_RESOURCES',
+      'WORKSHOP_PIN_CONTEXT_ATTACHMENTS',
+      'WORKSHOP_PIN_CONTEXT_PICK_FILE',
+      'WORKSHOP_UNPIN_CONTEXT',
+      'WORKSHOP_MOVE_PINNED_CONTEXT',
+      'WORKSHOP_OPEN_PINNED_CONTEXT_FILE'
+    ]
+  },
+  {
+    owner: WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_ATTACH_PINNED_CONTEXT']
   },
   {
     owner: WORKSHOP_SESSION_HANDLER_OWNER,
@@ -374,6 +396,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
+  'WorkshopPinnedContextHandler',
   'WorkshopProjectMemoryHandler',
   'WorkshopProjectMemoryManagerHandler',
   'WorkshopSessionExportHandler',
@@ -1086,7 +1109,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|ProjectMemoryLibrary|ProjectMemoryStore|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|ProjectMemoryLibrary|ProjectMemoryStore|WorkshopPinnedContextStore|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
 );
 
 /**
@@ -1701,6 +1724,55 @@ describe('architectural boundaries', () => {
     expect(extension.match(/\bnew\s+ProjectMemoryLibrary\s*\(/g)).toHaveLength(1);
   });
 
+  it('keeps the room seed port at its call sites: the coordinator\'s two room starts (ADR 2026-11-04 D9; Pinned Context Slice 2a)', () => {
+    const coordinatorFile = path.join(
+      SRC_ROOT, 'application/services/workshop/WorkshopSessionPersistenceCoordinator.ts'
+    );
+    const coordinator = fs.readFileSync(coordinatorFile, 'utf8');
+    const seedImports = moduleImports(coordinatorFile, coordinator)
+      .filter(({ module }) => module.endsWith('/pinnedContext/WorkshopRoomSeed'));
+    expect(seedImports).toEqual([{ module: expect.any(String), typeOnly: true }]);
+
+    // Only initializeOnce (the first room) and resetSession (carry, full reset) call it.
+    const callers: string[] = [];
+    const visit = (node: ts.Node): void => {
+      if (ts.isMethodDeclaration(node) && node.body && /\bthis\.roomSeed\./.test(node.body.getText())) {
+        callers.push(node.name.getText());
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(ts.createSourceFile(coordinatorFile, coordinator, ts.ScriptTarget.Latest, true));
+    expect(callers.sort()).toEqual(['initializeOnce', 'resetSession']);
+    expect(coordinator.match(/\bthis\.roomSeed\.prepare\(/g)).toHaveLength(2);
+    expect(coordinator.match(/\bthis\.roomSeed\.install\(/g)).toHaveLength(2);
+    expect(coordinator).toContain("this.roomSeed.prepare('first')");
+    expect(coordinator).toContain("this.roomSeed.prepare(options.start === 'carry' ? 'new' : 'full-reset')");
+
+    // No other core module reaches a seed.
+    const reachers = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /\broomSeed\b|\.prepare\('first'\)/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(reachers).toEqual(['application/services/workshop/WorkshopSessionPersistenceCoordinator.ts']);
+  });
+
+  it('chooses a room seed only at the composition root (ADR 2026-11-04 D9; Slice 2b)', () => {
+    const SEED_PORT = 'application/services/workshop/pinnedContext/WorkshopRoomSeed.ts';
+    const PINNED_SEED = 'application/services/workshop/pinnedContext/WorkshopPinnedContextRoomSeed.ts';
+    const choosers = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /\bWORKSHOP_NO_ROOM_SEED\b|\bimplements\s+WorkshopRoomSeed\b/
+        .test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file))
+      .sort();
+    // The port defines the no-op seed, the pinned-context seed implements it, and the barrel only re-exports the no-op.
+    expect(choosers).toEqual([PINNED_SEED, SEED_PORT, 'index.ts'].sort());
+    const extension = fs.readFileSync(path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src/extension.ts'), 'utf8');
+    // Slice 2b passes the pinned-context seed; the no-op is no longer the extension's.
+    expect(extension).not.toMatch(/\bWORKSHOP_NO_ROOM_SEED\b/);
+    expect(extension).toMatch(/workshopSessionStore,\s*workshopPinnedContextRoomSeed,\s*outputChannel/);
+  });
+
   it('tells a value import of a module from a type-only one', () => {
     const source = [
       "import type { A } from '@/x/WorkshopSessionStore';",
@@ -1837,11 +1909,12 @@ describe('architectural boundaries', () => {
     // Wayfinding Slice 5 added the read-only turn preview (direct).
     // Project Memory Slice 3 added five writes (mutation) and the sheet's two reads (direct).
     // Project Memory Slice 4b added the manager's listing and actions (direct).
-    expect(expectedOwnerPairs).toHaveLength(73);
+    // Pinned Context Slice 3 added the tab's seven list routes (direct) and Attach missing (mutation).
+    expect(expectedOwnerPairs).toHaveLength(81);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(45);
+      .toHaveLength(46);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(28);
+      .toHaveLength(35);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -2460,6 +2533,7 @@ describe('architectural boundaries', () => {
       'lexicalGravity.ts',
       'lightboxTiles.ts',
       'participants.ts',
+      'pinnedContext.ts',
       'projectMemory.ts',
       'projectMemoryManager.ts',
       'seedDelivery.ts',
@@ -2528,7 +2602,7 @@ describe('the shared claimed-file primitive (Workshop Project Memory, Slice 1)',
     const modules = ['infrastructure/storage/StoredFileClaims.ts', 'infrastructure/storage/StoredFileRewrite.ts'];
     const imports = (file: string) => [...fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')
       .matchAll(/^\s*import\s[^;]*?from\s+['"]([^'"]+)['"]/gms)].map((match) => match[1]);
-    const feature = /(?:^|\/)(?:Lightbox|lightbox|ProjectMemory|projectMemory)[^/]*$|\/lightbox\//;
+    const feature = /(?:^|\/)(?:Lightbox|lightbox|ProjectMemory|projectMemory|WorkshopPinnedContext|workshopPinnedContext)[^/]*$|\/lightbox\//;
     expect(modules.flatMap((file) => imports(file).filter((specifier) => feature.test(specifier)).map((specifier) => `${file} → ${specifier}`)))
       .toEqual([]);
     // Each still imports something, so the scan reads what it means to.
@@ -2537,6 +2611,99 @@ describe('the shared claimed-file primitive (Workshop Project Memory, Slice 1)',
     const constructions = collectSourceFiles(SRC_ROOT)
       .filter((file) => /\bnew\s+StoredFileClaims\s*\(/.test(fs.readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC_ROOT, file));
-    expect(constructions).toEqual(['infrastructure/storage/ProjectMemoryStore.ts']);
+    expect(constructions).toEqual(['infrastructure/storage/ProjectMemoryStore.ts', 'infrastructure/storage/WorkshopPinnedContextStore.ts']);
+  });
+});
+
+describe('Workshop Pinned Context storage (Slice 1; ADR 2026-11-04 D5)', () => {
+  const STORAGE = 'infrastructure/storage';
+
+  it('keeps the store, its contracts, its lock and its codec in infrastructure/storage, the only modules of their names', () => {
+    const named = collectSourceFiles(SRC_ROOT)
+      .map((file) => path.relative(SRC_ROOT, file))
+      .filter((file) => !file.startsWith('__tests__/') && /(?:^|\/)WorkshopPinnedContext(?:Store|StoreContracts|Lock|Codec)\.ts$/.test(file))
+      .sort();
+    expect(named).toEqual([
+      `${STORAGE}/WorkshopPinnedContextCodec.ts`,
+      `${STORAGE}/WorkshopPinnedContextLock.ts`,
+      `${STORAGE}/WorkshopPinnedContextStore.ts`,
+      `${STORAGE}/WorkshopPinnedContextStoreContracts.ts`
+    ]);
+  });
+
+  it('builds the list\'s lock only inside the store (PR #204 F-01)', () => {
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => /\bnew\s+WorkshopPinnedContextLock\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(constructions).toEqual([`${STORAGE}/WorkshopPinnedContextStore.ts`]);
+  });
+
+  it('keeps the codec pure: it imports only the shared list shapes', () => {
+    const source = fs.readFileSync(path.join(SRC_ROOT, STORAGE, 'WorkshopPinnedContextCodec.ts'), 'utf8');
+    const specifiers = [...source.matchAll(/^\s*import\s[^;]*?from\s+['"]([^'"]+)['"]/gms)].map((match) => match[1]);
+    expect(specifiers).toEqual(['@shared/types/workshopPinnedContext']);
+  });
+
+  it('lets no handler import the store, its contracts or its lock', () => {
+    const offenders = collectSourceFiles(HANDLERS_ROOT)
+      .filter((file) => /['"][^'"]*\/WorkshopPinnedContext(?:Store|StoreContracts|Lock)['"]/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(offenders).toEqual([]);
+  });
+  it('builds the store, the library and the seed only at the composition root (Slice 2b; ADR 2026-11-04 D5, D9)', () => {
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /\bnew\s+WorkshopPinnedContext(?:Store|Library|RoomSeed)\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(constructions).toEqual([]);
+    const extension = fs.readFileSync(path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src/extension.ts'), 'utf8');
+    expect(extension.match(/\bnew\s+WorkshopPinnedContextStore\s*\(/g)).toHaveLength(1);
+    expect(extension.match(/\bnew\s+WorkshopPinnedContextLibrary\s*\(/g)).toHaveLength(1);
+    expect(extension.match(/\bnew\s+WorkshopPinnedContextRoomSeed\s*\(/g)).toHaveLength(1);
+    // Its owed writes drain before deactivation resolves (PR #183 F-03).
+    expect(extension).toMatch(/pinnedContext:\s*workshopPinnedContextStoreForShutdown/);
+  });
+
+  it('lets no handler import the library or the seed; CoreServices names pinned context through its ports, as a type only (Slices 2b, 3)', () => {
+    const CONTRACTS = path.join(HANDLERS_ROOT, 'MessageHandlerContracts.ts');
+    const offenders = collectSourceFiles(HANDLERS_ROOT)
+      .filter((file) => file !== CONTRACTS)
+      .filter((file) => /['"][^'"]*\/WorkshopPinnedContext(?:Library|RoomSeed|FileReader)['"]/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(offenders).toEqual([]);
+    const contracts = fs.readFileSync(CONTRACTS, 'utf8');
+    expect(moduleImports(CONTRACTS, contracts)
+      .filter(({ module }) => /\/pinnedContext\//.test(module))).toEqual([{ module: expect.stringMatching(/WorkshopPinnedContextPorts$/), typeOnly: true }]);
+  });
+
+  it('keeps the Pinned context tab presentational: its panel and pin picker post nothing (Slice 3; ADR 2026-11-04 D9)', () => {
+    const SETTINGS = path.join(SRC_ROOT, 'presentation/webview/components/workshop/settings');
+    const offenders = ['WorkshopPinnedContextSettingsPanel.tsx', 'WorkshopPinnedContextPicker.tsx']
+      .map((file) => path.join(SETTINGS, file))
+      .filter((file) => /\b(?:postMessage|useVSCodeApi|MessageType|acquireVsCodeApi)\b/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(offenders).toEqual([]);
+  });
+
+  it('keeps the context sheet\'s pin marks derived: the panel posts nothing, and the session shape names no pinned mark (Slice 4; ADR 2026-11-04 D4)', () => {
+    const panel = fs.readFileSync(path.join(SRC_ROOT, 'presentation/webview/components/workshop/ContextPanel.tsx'), 'utf8');
+    expect(panel).not.toMatch(/\b(?:postMessage|useVSCodeApi|MessageType|acquireVsCodeApi)\b/);
+    const sessionShape = fs.readFileSync(path.join(SRC_ROOT, 'application/services/workshop/WorkshopSessionStateV1.ts'), 'utf8');
+    expect(sessionShape).not.toMatch(/\bpinned\b|PinnedContext/);
+  });
+
+  it('routes the tab only through its one handler, composed once (Slice 3)', () => {
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /\bnew\s+WorkshopPinnedContextHandler\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(constructions).toEqual([WORKSHOP_SLICE_COMPOSITION_OWNER]);
+  });
+
+  it('keeps pinnedContext/ modules under 500 lines', () => {
+    const folder = path.join(SRC_ROOT, 'application/services/workshop/pinnedContext');
+    expect(collectSourceFiles(folder)
+      .filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
+      .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
   });
 });

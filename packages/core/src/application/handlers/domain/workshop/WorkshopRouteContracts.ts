@@ -35,6 +35,9 @@ import type { LogSink, ShellService } from '@/platform';
 import type { WorkshopReadInRecordLookup } from '@handlers/domain/workshop/WorkshopReadInRoutes';
 import type { WorkshopProjectMemoryWritePort } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import type { WorkshopProjectMemoryManagerPort } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
+import type {
+  WorkshopPinnedContextServices
+} from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 
 /** The one project-memory library as the Workshop's route owners reach it: Slice 3's writes and Slice 4b's manager. */
 export type WorkshopProjectMemoryPort = WorkshopProjectMemoryWritePort & WorkshopProjectMemoryManagerPort;
@@ -66,6 +69,7 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopBookmarkHandler'
   | 'WorkshopProjectMemoryHandler'
   | 'WorkshopProjectMemoryManagerHandler'
+  | 'WorkshopPinnedContextHandler'
   | 'WorkshopWidgetHostHandler';
 
 /**
@@ -122,6 +126,8 @@ export interface WorkshopSliceCompositionDependencies {
   widgetRuntime: WorkshopWidgetRuntime;
   /** Project memory's writes and manager (ADR 2026-11-04 D13): the one library, built in extension.ts. */
   projectMemory: WorkshopProjectMemoryPort;
+  /** Pinned context (ADR 2026-11-04 D9): the one library and the seed's first-room report, built in extension.ts. */
+  pinnedContext: WorkshopPinnedContextServices;
   outputChannel: LogSink;
 }
 

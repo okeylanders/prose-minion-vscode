@@ -64,6 +64,7 @@ import type {
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 import type { UseWorkshopProjectMemoryReturn } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import type { UseWorkshopMemoryManagerReturn } from '@hooks/domain/workshop/useWorkshopMemoryManager';
+import type { UseWorkshopPinnedContextReturn } from '@hooks/domain/workshop/useWorkshopPinnedContext';
 
 export interface WorkshopAppMessageRouterDeps {
   workshopRoom: UseWorkshopRoomReturn;
@@ -76,6 +77,8 @@ export interface WorkshopAppMessageRouterDeps {
   projectMemory: Pick<UseWorkshopProjectMemoryReturn, 'handleWriteResult' | 'handleEditData' | 'handleEstimateResult'>;
   /** The Memory tab's listing and the manager's answers (Project Memory Slice 4b). */
   memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData' | 'noteSessionState'>;
+  /** The Pinned context tab's list (Pinned Context Slice 3). */
+  pinnedContext: Pick<UseWorkshopPinnedContextReturn, 'handlePinnedContext'>;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -106,6 +109,7 @@ export function buildWorkshopAppMessageRoutes(
     bookmarks,
     projectMemory,
     memoryManager,
+    pinnedContext,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -166,6 +170,7 @@ export function buildWorkshopAppMessageRoutes(
     },
     [MessageType.WORKSHOP_MEMORY_LISTING]: memoryManager.handleListing,
     [MessageType.WORKSHOP_MEMORY_MANAGER_RESULT]: memoryManager.handleManagerResult,
+    [MessageType.WORKSHOP_PINNED_CONTEXT]: pinnedContext.handlePinnedContext,
     [MessageType.WORKSHOP_MEMORY_ESTIMATE_RESULT]: projectMemory.handleEstimateResult,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshopRoom.handleContextSearchResults,
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT]:

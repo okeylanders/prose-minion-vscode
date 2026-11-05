@@ -1,0 +1,34 @@
+import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
+import { STORED_FILE_CLAIM_LEASE_MS } from '@/infrastructure/storage/StoredFileClaims';
+import { WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION as ABSENT } from '@/infrastructure/storage/WorkshopPinnedContextStore';
+import { WORKSHOP_PINNED_CONTEXT_FILE_BYTES } from '@shared/types/workshopPinnedContext';
+import { FILE, FOLDER, NOW, bytesOf, list, pin, pinnedHost as host, holdOnce, text } from './workshopPinnedContextStoreHost';
+
+it('does not let a stale creator commit after its final token check and lease takeover', async () => {
+ const fs=new MemoryFileSystem(); const clock={at:NOW};
+ const stale=host({fileSystem:fs,prefix:'late',clock});
+ const current=host({fileSystem:fs,prefix:'current',clock});
+ // Hold the I/O primitive after the creator has passed its final ownership check.
+ const lateGate=holdOnce(fs,'rename',from=>from.includes('.tmp-late'));
+ const lateSave=stale.store.update(ABSENT,pin('Characters/late.md'));
+ await lateGate.reached;
+ clock.at+=STORED_FILE_CLAIM_LEASE_MS+1;
+ const first=await current.store.update(ABSENT,pin('Characters/alice.md'));
+ if(!first.ok)throw new Error(first.reason);
+ const claimedGate=holdOnce(fs,'readFile',from=>from.includes('.claim-'));
+ const rewrite=current.store.update(first.revision,pin('Characters/hatter.md'));
+ await claimedGate.reached;
+ lateGate.open(); const staleResult=await lateSave;
+ claimedGate.open(); const rewriteResult=await rewrite;
+ console.log({staleResult,rewriteResult,saved:text(fs.files.get(FILE))});
+ expect(staleResult.ok).toBe(false);
+ expect(text(fs.files.get(FILE))).not.toContain('late.md');
+});
+
+it('refuses an oversized standing file before reading bytes even when it has an abandoned claim', async () => {
+ const h=host();
+ h.fileSystem.files.set(FILE,new Uint8Array(WORKSHOP_PINNED_CONTEXT_FILE_BYTES+1).fill(32));
+ h.fileSystem.files.set(`${FOLDER}/.pinned-context.json.claim-${NOW-STORED_FILE_CLAIM_LEASE_MS-1}-old`,bytesOf(list('Characters/alice.md')));
+ expect(await h.store.read()).toMatchObject({state:'unreadable',reason:'too-large'});
+ expect(h.fileSystem.readFileCalls).not.toContain(FILE);
+});

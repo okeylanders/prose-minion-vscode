@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { WorkshopConversationBehaviorModal } from '@components/workshop/WorkshopConversationBehaviorModal';
+import { pinnedContextPanelPropsStub } from './settings/pinnedContextPanelPropsStub';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
@@ -26,6 +27,7 @@ describe('WorkshopConversationBehaviorModal', () => {
       onApply: jest.fn(),
       onOpenMemoryManager: jest.fn(),
       onOpenMemoryFolder: jest.fn(),
+      pinnedContext: pinnedContextPanelPropsStub(),
       memoryExplainerOpen: true,
       onToggleMemoryExplainer: jest.fn(),
       onClose: jest.fn(),
@@ -77,6 +79,12 @@ describe('WorkshopConversationBehaviorModal', () => {
     expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('pm-ws-profile-tab');
 
     fireEvent.keyDown(profileTab, { key: 'ArrowRight' });
+    const pinnedTab = screen.getByRole('tab', { name: 'Pinned context' });
+    expect(pinnedTab.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(pinnedTab);
+    expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('pm-ws-pinned-context-tab');
+
+    fireEvent.keyDown(pinnedTab, { key: 'ArrowRight' });
     const memoryTab = screen.getByRole('tab', { name: 'Memory' });
     expect(memoryTab.getAttribute('aria-selected')).toBe('true');
     expect(document.activeElement).toBe(memoryTab);
@@ -89,6 +97,14 @@ describe('WorkshopConversationBehaviorModal', () => {
 
     fireEvent.keyDown(advancedTab, { key: 'ArrowRight' });
     expect(behaviorTab.getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(behaviorTab, { key: 'ArrowLeft' });
+    expect(advancedTab.getAttribute('aria-selected')).toBe('true');
+    fireEvent.keyDown(advancedTab, { key: 'Home' });
+    expect(behaviorTab.getAttribute('aria-selected')).toBe('true');
+    fireEvent.keyDown(behaviorTab, { key: 'End' });
+    expect(advancedTab.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(advancedTab);
   });
 
   it('edits profile fields locally and submits both complete drafts together', () => {

@@ -1,0 +1,370 @@
+/*
+ * Workshop Pinned Context: the settings tab and its pin picker (Slice 3),
+ * and the context sheet's pin marks and Pin buttons (Slice 4); Slice 0d's
+ * approved boards. On the full tabs' tokens; no new color.
+ * Plain CSS on the Chromium 114 floor (webviewCssFloor.test.ts).
+ *
+ * The tab reuses the Memory tab's well, notice, chips and meter
+ * (memory.css) and the settings panels' rows and notes (shell.css). Only
+ * what is pinned context's own is here.
+ */
+
+/* ── The template well: a disclosure heading ────────────────────── */
+
+[data-pm-surface="workshop"] .pm-ws-pin-vs-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pm-dim);
+  font-family: var(--pm-sans);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-vs-toggle:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-vs-toggle > svg {
+  flex: none;
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-pin-vs-toggle b {
+  color: var(--pm-text);
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-vs-chevron {
+  display: inline-flex;
+  flex: none;
+  margin-left: auto;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-pin-vs-chevron-open {
+  transform: rotate(180deg);
+}
+[data-pm-surface="workshop"] .pm-ws-pin-vs-grid {
+  grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1fr);
+}
+[data-pm-surface="workshop"] .pm-ws-pin-vs-foot {
+  margin: 9px 0 0 22px;
+  color: var(--pm-dim);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* "Changed in another window", and Attach missing's result: the accent info line. */
+[data-pm-surface="workshop"] .pm-ws-pin-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--pm-accent) 22%, transparent);
+  border-radius: var(--pm-r-tile);
+  background: color-mix(in srgb, var(--pm-accent) 6%, transparent);
+  color: var(--pm-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-info svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-pin-info b {
+  color: var(--pm-text);
+  font-weight: 600;
+}
+
+/* ── The list: a scrollable well about six rows tall ────────────── */
+
+[data-pm-surface="workshop"] .pm-ws-pin-well {
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--pm-border);
+  border-radius: 10px;
+  background: var(--pm-inset);
+}
+[data-pm-surface="workshop"] .pm-ws-pin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 8px;
+  border: 1px solid var(--pm-border);
+  border-radius: 9px;
+  background: var(--pm-surface-2);
+}
+[data-pm-surface="workshop"] .pm-ws-pin-row-warn {
+  border-color: color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  background: color-mix(in srgb, var(--pm-amber) 6%, var(--pm-surface-2));
+}
+[data-pm-surface="workshop"] .pm-ws-pin-pos {
+  flex: none;
+  width: 18px;
+  color: var(--pm-faint);
+  font: 10px var(--pm-mono);
+  text-align: right;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-glyph {
+  display: inline-flex;
+  flex: none;
+  color: var(--pm-blue);
+}
+[data-pm-surface="workshop"] .pm-ws-pin-text {
+  flex: 1;
+  min-width: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--pm-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-tag {
+  padding: 1px 5px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: 4px;
+  color: var(--pm-muted);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-here {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--pm-accent-hi);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-path {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--pm-dim);
+  font: 11px var(--pm-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-issue {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--pm-amber);
+  font-size: 11px;
+  line-height: 1.45;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-issue svg {
+  flex: none;
+  margin-top: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-note {
+  margin-top: 4px;
+  color: var(--pm-dim);
+  font-size: 11px;
+  line-height: 1.45;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-words {
+  flex: none;
+  min-width: 86px;
+  color: var(--pm-muted);
+  font: 10.5px var(--pm-mono);
+  text-align: right;
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-utils {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-move {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--pm-border);
+  border-radius: 7px;
+  background: var(--pm-surface);
+  color: var(--pm-muted);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-move:not(:disabled):hover {
+  border-color: var(--pm-accent-hi);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-pin-move:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-up {
+  display: inline-flex;
+  transform: rotate(180deg);
+}
+
+/* ── Actions under the list ─────────────────────────────────────── */
+
+[data-pm-surface="workshop"] .pm-ws-pin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* A refused pin, in the picker above its footer (0d's PickerRefused). */
+[data-pm-surface="workshop"] .pm-ws-pin-refusal {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  border-radius: var(--pm-r-tile);
+  background: color-mix(in srgb, var(--pm-amber) 8%, transparent);
+  color: var(--pm-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-refusal svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--pm-amber);
+}
+
+/* Narrow widths: the meter row stacks, as the Memory tab's does; rows wrap their utilities. */
+@media (max-width: 760px) {
+  [data-pm-surface="workshop"] .pm-ws-pin-summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  [data-pm-surface="workshop"] .pm-ws-pin-vs-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-pm-surface="workshop"] .pm-ws-pin-row {
+    flex-wrap: wrap;
+  }
+}
+
+/* ── The context sheet's pills (Slice 4; Workshop.dc.html) ──────── */
+
+/* A pinned pill: the accent pin after the word count, and its tooltip. */
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pinned {
+  position: relative;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin-mark {
+  display: inline-flex;
+  flex: none;
+  color: var(--pm-accent-hi);
+}
+/* A file pill's glyphs are blue (context.css); the pin keeps its own color. */
+[data-pm-surface="workshop"] .pm-ws-ctx-pill .pm-ws-ctx-pill-pin-mark svg,
+[data-pm-surface="workshop"] .pm-ws-ctx-pill .pm-ws-ctx-pill-pin svg {
+  color: inherit;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin-tip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 2;
+  width: 280px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--pm-border-2);
+  background: var(--pm-surface-3);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--pm-text-2);
+  white-space: normal;
+  pointer-events: none;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin-tip b {
+  color: var(--pm-text);
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pinned:hover .pm-ws-ctx-pill-pin-tip,
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pinned:focus-within .pm-ws-ctx-pill-pin-tip {
+  display: block;
+}
+
+/*
+ * Pin, on an unpinned file pill: shown on hover and focus, as drawn. It
+ * stays in the tab order while hidden (no display: none), so focusing it
+ * shows it.
+ */
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  max-width: 0;
+  padding: 1px 0;
+  overflow: hidden;
+  opacity: 0;
+  border: 0 solid color-mix(in srgb, var(--pm-accent-hi) 45%, transparent);
+  border-radius: var(--pm-r-pill);
+  background: color-mix(in srgb, var(--pm-accent-hi) 12%, transparent);
+  color: var(--pm-text);
+  font: 500 10.5px var(--pm-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill:hover .pm-ws-ctx-pill-pin,
+[data-pm-surface="workshop"] .pm-ws-ctx-pill:focus-within .pm-ws-ctx-pill-pin {
+  max-width: 80px;
+  padding: 1px 7px;
+  border-width: 1px;
+  opacity: 1;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.55;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill:hover .pm-ws-ctx-pill-pin[aria-disabled="true"],
+[data-pm-surface="workshop"] .pm-ws-ctx-pill:focus-within .pm-ws-ctx-pill-pin[aria-disabled="true"] {
+  opacity: 0.55;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pinned:hover,
+[data-pm-surface="workshop"] .pm-ws-ctx-pill:hover:has(.pm-ws-ctx-pill-pin) {
+  border-color: var(--pm-accent-hi);
+}
+
+/* A refused pin, where the pill is: its own line under it. */
+[data-pm-surface="workshop"] .pm-ws-ctx-pin-refusal {
+  flex-basis: 100%;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  border-radius: var(--pm-r-input);
+  background: color-mix(in srgb, var(--pm-amber) 8%, transparent);
+  color: var(--pm-text-2);
+  font-size: 11.5px;
+  line-height: 1.45;
+}

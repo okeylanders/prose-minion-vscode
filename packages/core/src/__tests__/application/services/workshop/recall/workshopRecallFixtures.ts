@@ -4,6 +4,7 @@
  * rules (positions, ranking, rendering).
  */
 
+import { WORKSHOP_NO_ROOM_SEED } from '@/application/services/workshop/pinnedContext/WorkshopRoomSeed';
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import { WorkshopSessionStore } from '@/infrastructure/storage/WorkshopSessionStore';
 import {
@@ -132,6 +133,7 @@ export async function saveRecallRoom(
     settings,
     new WorkshopSessionTimeService({ now, timezone: 'America/Chicago' }),
     store,
+    WORKSHOP_NO_ROOM_SEED,
     log,
     {
       now,
@@ -145,7 +147,7 @@ export async function saveRecallRoom(
   }, { store, coordinator, log });
   const saved = await coordinator.saveNamed(title);
   clock += 60 * 60_000;
-  await coordinator.resetSession({ clearWorkingSet: true });
+  await coordinator.resetSession({ start: 'full-reset' });
   await coordinator.flush();
   return { fs, store, coordinator, log, savedSessionId: saved.sessionId };
 }

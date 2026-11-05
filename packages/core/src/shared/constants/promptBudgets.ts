@@ -108,6 +108,16 @@ export interface PromptBudgets {
     /** Find-and-replace pairs one edit suggestion may carry (Slice 6c). */
     editReplaces: number;
   }>;
+  /**
+   * Workshop Pinned Context (ADR 2026-11-04 D6): how many files the list
+   * may hold (the codec refuses a longer list whole; the tab refuses a pin
+   * past it), and the largest file read or written.
+   */
+  readonly workshopPinnedContext: Readonly<{
+    files: number;
+    fileBytes: number;
+    pathCharacters: number;
+  }>;
   readonly workshopTodos: Readonly<{
     items: number;
     characters: number;
@@ -547,6 +557,17 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     autoSavesPerRoom: 5,
     proposalsPerReply: 10,
     editReplaces: 5
+  },
+  workshopPinnedContext: {
+    // 50, tuned in the Slice 5 live pass (Okey, 2026-11-05): the first real
+    // project pinned 22, past the starting value of 20.
+    files: 50,
+    // 256 KiB, not less: 50 entries at a 4,096-character path encode to about
+    // 206 KB, and the bound must never refuse a list the codec otherwise reads.
+    fileBytes: 256 * 1024,
+    // The longest entry path, in UTF-16 code units: the codec's path rule, every
+    // pin route and the tab's entry keys all hold this one bound (PR #210 F07).
+    pathCharacters: 4096
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {

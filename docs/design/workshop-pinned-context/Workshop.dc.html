@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pinned context in the Workshop</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.ws{
+  --bg:#15110d;--surface:#221a13;--s2:#2b2017;--s3:#36281b;--inset:#1b150f;
+  --border:#3a2c1f;--border2:#4d3a28;--soft:#2e231a;
+  --text:#f3ece1;--text2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
+  --accent:#e0673a;--accentHi:#ee7d49;--accentLo:#c8552c;--amber:#e2b24a;--blue:#5aa2f0;--red:#ef7d66;--green:#7cc08a;
+  width:940px;height:1080px;box-sizing:border-box;padding:40px;background:var(--bg);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--text);
+}
+.eyebrow{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
+.block{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:16px 18px 18px;}
+.block-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+.block-meta{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--muted);}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;}
+.pill{position:relative;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border2);background:var(--s2);border-radius:999px;padding:4px 6px 4px 9px;font-size:11.5px;color:var(--text2);max-width:100%;}
+.pill.hover{border-color:var(--accentHi);}
+.pill-file svg.kind{color:var(--blue);}
+.pill-label{background:none;border:0;padding:0;font:inherit;color:var(--text2);cursor:pointer;white-space:nowrap;}
+.pill-size{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;color:var(--muted);white-space:nowrap;}
+.pin-mark{display:inline-flex;color:var(--accentHi);}
+.pin-btn{display:inline-flex;align-items:center;gap:4px;border:1px solid color-mix(in srgb,var(--accentHi) 45%,transparent);background:color-mix(in srgb,var(--accentHi) 12%,transparent);color:var(--text);border-radius:999px;padding:1px 7px;font:500 10.5px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;cursor:pointer;}
+.remove{width:16px;height:16px;border-radius:50%;border:0;background:none;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer;}
+.tip{position:absolute;top:calc(100% + 8px);left:0;z-index:2;width:280px;padding:8px 10px;border-radius:8px;background:var(--s3);border:1px solid var(--border2);box-shadow:0 12px 32px rgba(0,0,0,.5);font-size:11.5px;line-height:1.45;color:var(--text2);white-space:normal;}
+.tip b{color:var(--text);font-weight:600;}
+.menu{width:330px;box-sizing:border-box;padding:10px;border:1px solid var(--border2);border-radius:12px;background:var(--surface);box-shadow:0 22px 65px rgba(0,0,0,.58);}
+.menu-heading{padding:5px 9px 6px;color:var(--faint);font:10px ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.16em;text-transform:uppercase;}
+.item{width:100%;display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:9px;min-height:38px;padding:7px 9px;border:0;border-radius:8px;background:transparent;color:var(--text2);text-align:left;font:500 12.5px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;cursor:pointer;}
+.item kbd{color:var(--faint);font:10px ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+.item.danger{align-items:start;background:color-mix(in srgb,var(--red) 12%,transparent);}
+.item.danger > span{display:grid;gap:2px;min-width:0;}
+.item.danger small{color:var(--muted);font:10.5px ui-monospace,"SF Mono",Menlo,Consolas,monospace;line-height:1.4;}
+.item.danger svg{margin-top:2px;color:var(--red);}
+.rule{height:1px;margin:6px 8px;background:var(--border);}
+.status{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:9px;background:var(--surface);border:1px solid var(--border2);font-size:12px;line-height:1.5;color:var(--text2);}
+.status + .status{margin-top:10px;}
+.status svg{flex:none;margin-top:2px;}
+.status .ok{color:var(--green);}
+.status .warn{color:var(--amber);}
+.status b{color:var(--text);font-weight:600;}
+.status i{font-style:normal;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--text);}
+</style>
+</helmet>
+<div class="ws">
+
+<section class="block" aria-labelledby="pm-ws-ctx-head">
+<div class="block-head">
+<span class="eyebrow" id="pm-ws-ctx-head">Context</span>
+<span class="block-meta">10 attached · 8 pinned · about 21,250 of 100,000 words</span>
+</div>
+<div class="pills">
+
+<span class="pill pill-file" title="Brief/brief.md">
+<svg class="kind" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+<button class="pill-label" type="button">brief.md</button>
+<span class="pill-size">1,850 words</span>
+<span class="pin-mark"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Pinned"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"></path></svg></span>
+<button class="remove" type="button" aria-label="Remove brief.md"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</span>
+
+<span class="pill pill-file" title="Tone-And-Style/voice-and-tone.md">
+<svg class="kind" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+<button class="pill-label" type="button">voice-and-tone.md</button>
+<span class="pill-size">2,100 words</span>
+<span class="pin-mark"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Pinned"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"></path></svg></span>
+<button class="remove" type="button" aria-label="Remove voice-and-tone.md"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</span>
+
+<span class="pill pill-file hover" title="Characters/alice.md">
+<svg class="kind" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+<button class="pill-label" type="button">alice.md</button>
+<span class="pill-size">3,400 words</span>
+<span class="pin-mark"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Pinned"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"></path></svg></span>
+<button class="remove" type="button" aria-label="Remove alice.md"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+<span class="tip" role="tooltip"><b>Pinned:</b> attached to every new session. Removing it here removes it from this conversation only.</span>
+</span>
+
+<span class="pill pill-file" title="Characters/the-white-rabbit.md">
+<svg class="kind" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+<button class="pill-label" type="button">the-white-rabbit.md</button>
+<span class="pill-size">1,900 words</span>
+<span class="pin-mark"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Pinned"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"></path></svg></span>
+<button class="remove" type="button" aria-label="Remove the-white-rabbit.md"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</span>
+
+<span class="pill pill-file" title="Characters/the-hatter.md">
+<svg class="kind" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+<button class="pill-label" type="button">the-hatter.md</button>
+<span class="pill-size">2,600 words</span>
+<span class="pin-mark"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Pinned"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"></path></svg></span>
+<button class="remove" type="button" aria-label="Remove the-hatter.md"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</span>
+
+<span class="pill pill-file" title="Characters/the-queen-of-hearts.md">
+<svg class="kind" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+<button class="pill-label" type="button">the-queen-of-hearts.md</button>
+<span class="pill-size">2,200 words</span>
+<span class="pin-mark"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Pinned"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"></path></svg></span>
+<button class="remove" type="button" aria-label="Remove the-queen-of-hearts.md"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</span>
+
+<span class="pill pill-file" title="Characters/the-cheshire-cat.md">
+<svg class="kind" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+<button class="pill-label" type="button">the-cheshire-cat.md</button>
+<span class="pill-size">1,700 words</span>
+<span class="pin-mark"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Pinned"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"></path></svg></span>
+<button class="remove" type="button" aria-label="Remove the-cheshire-cat.md"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</span>
+
+<span class="pill pill-file" title="Locations/wonderland.md">
+<svg class="kind" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+<button class="pill-label" type="button">wonderland.md</button>
+<span class="pill-size">2,900 words</span>
+<span class="pin-mark"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Pinned"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"></path></svg></span>
+<button class="remove" type="button" aria-label="Remove wonderland.md"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</span>
+
+<span class="pill pill-file hover" title="Drafts/chapter-07.md">
+<svg class="kind" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+<button class="pill-label" type="button">chapter-07.md</button>
+<span class="pill-size">2,400 words</span>
+<button class="pin-btn" type="button" aria-label="Pin chapter-07.md for new sessions"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"></path></svg>Pin</button>
+<button class="remove" type="button" aria-label="Remove chapter-07.md"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</span>
+
+<span class="pill" title="The clock always reads six">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
+<button class="pill-label" type="button">The clock always reads six</button>
+<span class="pill-size">200 words</span>
+<button class="remove" type="button" aria-label="Remove The clock always reads six"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</span>
+
+</div>
+<div style="height: 70px"></div>
+</section>
+
+<div style="display: flex; gap: 40px; margin-top: 48px; align-items: flex-start">
+
+<div class="menu" role="menu" aria-label="Workshop session commands">
+<div class="menu-heading">Session</div>
+<button class="item" type="button" role="menuitem">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
+<span>New session</span><kbd>⌘⇧N</kbd>
+</button>
+<button class="item danger" type="button" role="menuitem" title="Start over with no excerpt and no context attachments, then attach your 10 pinned files">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+<span>New session: full reset<small>clears the excerpt and context, then attaches pinned context</small></span><kbd></kbd>
+</button>
+<button class="item danger" type="button" role="menuitem" title="Start over with no excerpt, no context attachments and no pinned context">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+<span>New session: full reset, empty context<small>clears the excerpt and context, and leaves pinned context out</small></span><kbd></kbd>
+</button>
+<button class="item" type="button" role="menuitem">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8M7 3v5h8"></path></svg>
+<span>Save session…</span><kbd>⌘S</kbd>
+</button>
+<div class="rule"></div>
+<button class="item" type="button" role="menuitem">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="14" height="16" rx="2"></rect><path d="M7 4V2h14v16h-2"></path></svg>
+<span>Open prior session…</span><kbd></kbd>
+</button>
+</div>
+
+<div style="flex: 1; min-width: 0">
+<div class="status" role="status">
+<svg class="ok" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+<span>Started a new Workshop session with your pinned context: <b>10 files, about 23,400 words.</b></span>
+</div>
+<div class="status" role="status">
+<svg class="warn" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+<span>Started a new Workshop session. <b>9 of 10 pinned files attached;</b> not attached: <i>the-cheshire-cat.md</i> (not found).</span>
+</div>
+<div class="status" role="status">
+<svg class="warn" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+<span>Started a new Workshop session. <b>10 of 11 pinned files attached;</b> not attached: <i>manuscript.md</i> (doesn’t fit in the 100,000-word context limit).</span>
+</div>
+<div class="status" role="status">
+<svg class="ok" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+<span>Started an empty Workshop session: <b>excerpt and context cleared,</b> and pinned context left out.</span>
+</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":940,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

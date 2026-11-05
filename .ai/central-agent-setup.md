@@ -69,7 +69,7 @@ packages/core/src/
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
 │           ├── LightboxBoardsHandler.ts   # The saved boards' routes: shelf, open, delete, rename (5A.1), open a board file through the host's picker (5A.2), and each committed save pushed (Slice 5A)
-│           └── workshop/                  # Room owner + 12 composed route owners
+│           └── workshop/                  # Room owner + 16 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
 │               ├── WorkshopRouteContracts.ts
@@ -80,6 +80,7 @@ packages/core/src/
 │               ├── WorkshopStandingDirectiveHandler.ts
 │               ├── WorkshopTodoHandler.ts
 │               ├── WorkshopLightboxTileHandler.ts # A Lightbox tile offered, then staged above the composer (seed kind `lightbox-tile`)
+│               ├── WorkshopPinnedContextHandler.ts # Pinned context: the settings tab's list, pins, unpin, move, Attach missing, Open (ADR 2026-11-04)
 │               └── widgets/
 │                   ├── WorkshopWidgetHostHandler.ts
 │                   ├── creativeVariations/WorkshopCreativeVariationsHandler.ts
@@ -142,6 +143,7 @@ packages/core/src/
                 ├── bookmarks.ts
                 ├── projectMemory.ts
                 ├── projectMemoryManager.ts
+                ├── pinnedContext.ts
                 ├── widgets.ts
                 ├── standingDirectives.ts
                 ├── creativeVariations.ts
@@ -850,7 +852,7 @@ npm run test:tier1
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's twelve route owners
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's sixteen composed route owners
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):
@@ -1067,6 +1069,82 @@ sessions:
 - **Boundary lists.** A new `recall/` module joins `WORKSHOP_RECALL_MODULES`
   and the capability boundary in `boundaries.test.ts`, and stays under 500
   lines. No handler constructs the recall service; one instance owns the cache.
+
+### Workshop Pinned Context
+
+Follow [ADR 2026-11-04](docs/adr/2026-11-04-workshop-pinned-context.md) when
+touching the list of files every new Workshop conversation starts with, its
+settings tab, or how a room start attaches it:
+
+- **The list is a project file.** `prose-minion/pinned-context.json`, read
+  and written only by `WorkshopPinnedContextCodec` (format 1, pure):
+  - keys are exact, and one bad entry refuses the whole file. Never drop an
+    entry and keep the rest: a silent drop unpins a file;
+  - paths are workspace-relative, `/`-separated, with no `..`, drive or
+    control character (C1 included), and at most `pathCharacters` long;
+  - entries are compared NFC, and on Windows by an NTFS-style per-code-unit
+    upcase;
+  - the bounds are `PROMPT_BUDGETS.workshopPinnedContext`: 50 files and
+    256 KiB. The byte bound's fit is proved only for ASCII paths (low-priority
+    tech debt, PR #217 N-01);
+  - a change that cannot read `__tests__/fixtures/pinned-context-v1.json` is
+    a new format.
+- **One store, one queue, one lock.** `WorkshopPinnedContextStore` is built
+  only in `extension.ts`. Its revision is the file's SHA-256.
+  - Every write holds the directory lock `.pinned-context.lock/` (owner
+    token, 30-second lease) and stages its file *inside* the lock. A takeover
+    moves the lock aside, so an owner stalled past its lease has nothing left
+    to commit (PR #204 F-01).
+  - Rewrites are claimed through `StoredFileRewrite` (`stagingPath`).
+    Recovery reads are bounded (`StoredFileClaims`' `maxBytes`), and a
+    leftover is set aside, never deleted.
+  - An unreadable list is never written. A folder read error is `io`, never
+    `absent`.
+  - `shutDown()` drains owed writes in `shutDownExtension`.
+- **A write belongs to the room it was asked in.** Capture `askLiveRoom()`
+  (or `askSeedWorkspace()`) before anything awaits. Pass its `still` as the
+  store's `beforeCommit`, and read only from its `where` (root and list
+  file), never from a second `availability()`.
+- **A read is the captured root's own file** (`WorkshopPinnedSourceResolution`,
+  in the shared reader). The order:
+  1. the exact catalog row;
+  2. else the exact file under the root, through the workspace door;
+  3. only when that file is absent, the one distinct normalized catalog
+     spelling.
+
+  A row counts only if it was listed under the captured root
+  (`workshopPinnedListedUnderRoot`), and an authorization only if it returns
+  the path asked for. Containment alone admits a nested root (PR #208 F01).
+  Describe, seed, Attach missing, pin validation and Open all resolve
+  through this one rule.
+- **"Pinned" is derived, never stored.** `workshopPinnedContextMatches`
+  decides it, with the host's platform; `\` is a separator only on Windows.
+  The session codec does not change for pinned context.
+- **Room starts** (`WorkshopSessionStart`: `carry`, `full-reset`, `empty`).
+  - The coordinator calls the `WorkshopRoomSeed` port's `prepare` before
+    replacing the room. It never rejects, and the coordinator checks the
+    accepted workspace again after it and at `writeCurrent`'s commit.
+  - The first room, New (a top-up: carried pinned files re-read in their
+    slot, missing ones appended) and a full reset seed. An empty start, Open,
+    Branch, Rewind and reload never do.
+  - Over budget, each file that fits attaches, in order; nothing is
+    truncated. A carried file whose re-read fails keeps its body and is
+    reported as kept.
+- **The tab never sends a path.** It names files by catalog key, attachment
+  id or an entry key into the list as read.
+  - A request's message-shape bound (1,000 items) is not the list's bound.
+    The writes refuse a pin past the list's bound, in words that name it
+    (PR #217).
+  - Attach missing runs as a room operation (`runContextRefresh`), so a room
+    replacement cannot roll back what it reported (PR #210 F02).
+  - Every list answer carries the store's `observation`. The hook never
+    replaces a list with an older one, but still shows that answer's own
+    outcome (PR #210 F03).
+- **A pill's Pin outcome belongs to its room and attachment**
+  (`roomRevision`, `workshopPillOwnerKey`). Focus returns only when the
+  removed Pin held it (PR #213).
+- **Logs carry counts and categories,** never paths, names or contents.
+  Tests use *Alice*-style made-up paths.
 
 ### Lightbox Source Ownership
 

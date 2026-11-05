@@ -1,0 +1,63 @@
+/** @jest-environment jsdom */
+import * as React from 'react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
+import { WorkshopPinnedContextPicker } from '@components/workshop/settings/WorkshopPinnedContextPicker';
+import { workshopPinnedContextTabView } from '@hooks/domain/workshop/pinnedContext/workshopPinnedContextTabView';
+import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinnedContext';
+import { MessageType, type WorkshopPinnedContextPayload, type WorkshopContextAttachmentSnapshot } from '@messages';
+import { createMockVSCode } from '@/__tests__/mocks/vscode';
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+jest.mock('@hooks/useVSCodeApi');
+const answer = (requestId: string | null, overrides: Partial<WorkshopPinnedContextPayload> = {}): WorkshopPinnedContextPayload => ({requestId, platform:'posix', availability:{available:true}, file:{state:'ok'}, revision:'before',entries:[],totals:{words:0,budgetWords:100000,files:0,maxFiles:20}, ...overrides});
+const message = (payload: WorkshopPinnedContextPayload) => ({type:MessageType.WORKSHOP_PINNED_CONTEXT, source:'extension.workshop', timestamp:1, payload}) as const;
+
+it('EXPECTED: existing snapshot retains its here mark when its source is missing', () => {
+ const view = workshopPinnedContextTabView({answer:answer(null,{entries:[{path:'Characters/alice.md',label:'alice.md',state:'missing'}]}), attachments:[{id:'ctx-1',kind:'file',origin:'writer',label:'alice.md',words:42,relativePath:'Characters/alice.md'} as WorkshopContextAttachmentSnapshot], running:false,pending:false});
+ expect(view.rows[0].here).toBe(true); // Expected: the room still has this snapshot.
+ expect(view.summary.chips.some(chip => chip.text === '1 in this conversation')).toBe(true);
+});
+
+it('EXPECTED: Windows case-equivalent pinned catalog row is disabled', () => {
+ render(<WorkshopPinnedContextPicker open catalog={[{group:'characters',path:'Characters/Alice.md',label:'Alice.md',sizeBytes:200}]} searchResults={null} pinnedPaths={['characters/alice.md']} remainingWords={100000} answer={answer(null,{platform:'windows'})} onSearch={jest.fn()} onClearSearch={jest.fn()} onPin={jest.fn()} onExplore={jest.fn()} onClose={jest.fn()} />);
+ fireEvent.click(screen.getByRole('button',{name:/Characters/}));
+ expect((screen.getByRole('checkbox',{name:/Characters\/Alice.md/}) as HTMLButtonElement).disabled).toBe(true); // Expected: host identity says already pinned.
+});
+
+it('EXPECTED: reopening the tab preserves an in-flight pin completion after its newer read answered', () => {
+ const vscode = createMockVSCode();
+ (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+ const {result} = renderHook(() => useWorkshopPinnedContext({attachments:[],running:false}));
+ const lastId = () => vscode.postMessage.mock.calls.at(-1)![0].payload.requestId as string;
+ act(() => result.current.handlePinnedContext(message(answer(lastId()))));
+ let pinId = '';
+ act(() => {pinId = result.current.pinResources([{group:'characters',path:'Characters/alice.md'}])!;});
+ // Closing/reopening the tab calls requestList even while the original write resolves files.
+ act(() => result.current.requestList());
+ act(() => result.current.handlePinnedContext(message(answer(lastId()))));
+ act(() => result.current.handlePinnedContext(message(answer(pinId,{revision:'after', action:'pin-resources',ok:true,entries:[{path:'Characters/alice.md',label:'alice.md',words:42,state:'ready'}]}))));
+ expect(result.current.answer?.revision).toBe('after'); // Expected: successful on-disk pin is visible.
+ expect(result.current.pinnedFileCount).toBe(1);
+ expect(result.current.pending).toBe(false);
+});
+
+it('EXPECTED: successful native picker commit survives an older-snapshot list reply', () => {
+ const vscode = createMockVSCode();
+ (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+ const {result} = renderHook(() => useWorkshopPinnedContext({attachments:[],running:false}));
+ const lastId = () => vscode.postMessage.mock.calls.at(-1)![0].payload.requestId as string;
+ act(() => result.current.handlePinnedContext(message(answer(lastId()))));
+ let pickId = '';
+ act(() => {pickId = result.current.pinPickedFile()!;});
+ act(() => result.current.requestList());
+ const readId = lastId();
+ act(() => result.current.handlePinnedContext(message(answer(pickId,{revision:'after',action:'pin-file',ok:true,entries:[{path:'Characters/alice.md',label:'alice.md',words:42,state:'ready'}]}))));
+ act(() => result.current.handlePinnedContext(message(answer(readId))));
+ expect(result.current.answer?.revision).toBe('after');
+ expect(result.current.pinnedFileCount).toBe(1);
+});
+
+it('EXPECTED: current room with a small A snapshot can attach B despite the future seed budget', () => {
+ const view = workshopPinnedContextTabView({answer:answer(null,{totals:{words:110000,budgetWords:100000,files:2,maxFiles:20},entries:[{path:'Characters/alice.md',label:'alice.md',words:70000,state:'ready'},{path:'Characters/the-hatter.md',label:'the-hatter.md',words:40000,state:'ready'}]}), attachments:[{id:'ctx-1',kind:'file',origin:'writer',label:'alice.md',words:10,relativePath:'Characters/alice.md'} as WorkshopContextAttachmentSnapshot], running:false,pending:false});
+ expect(view.attachMissing.count).toBe(1);
+ expect(view.attachMissing.disabled).toBe(false);
+});

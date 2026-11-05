@@ -92,7 +92,8 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     // Wayfinding Slice 4 added WORKSHOP_SET_TURN_BOOKMARK and WORKSHOP_RENAME_BOOKMARK;
     // Slice 5 added WORKSHOP_REQUEST_TURN_PREVIEW. Project Memory Slice 3
     // added its seven write and sheet routes; Slice 4b the manager's listing and actions.
-    expect(router.handlerCount).toBe(73);
+    // Pinned Context Slice 3 added the tab's eight routes.
+    expect(router.handlerCount).toBe(81);
   });
 
   it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {
@@ -623,7 +624,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
       ) as any);
       await router.route(message(
         MessageType.WORKSHOP_RESET_SESSION,
-        {}
+        { start: 'carry' }
       ) as any);
       await router.route(message(
         MessageType.WORKSHOP_RENAME_SESSION,
@@ -875,7 +876,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
 
       const run = runWizard();
       await Promise.resolve();
-      await router.route(message(MessageType.WORKSHOP_RESET_SESSION, {}) as any);
+      await router.route(message(MessageType.WORKSHOP_RESET_SESSION, { start: 'carry' }) as any);
       expect(signal.aborted).toBe(false);
       expect(persistence.resetSession).not.toHaveBeenCalled();
       reject(Object.assign(new Error('cancelled'), { name: 'AbortError' }));
@@ -885,7 +886,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
 
   it('refuses a message until the writer chooses a path for the new room', async () => {
     await pin();
-    await router.route(message(MessageType.WORKSHOP_RESET_SESSION, {}) as any);
+    await router.route(message(MessageType.WORKSHOP_RESET_SESSION, { start: 'carry' }) as any);
     service.startWorkshopPersonaConversation.mockClear();
 
     await router.route(message(

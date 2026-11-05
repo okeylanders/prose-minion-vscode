@@ -29,6 +29,7 @@ import { deferred } from '@/__tests__/application/handlers/domain/lightboxHandle
 import { groupOf, ok, opinionReplyFor } from '@/__tests__/application/handlers/domain/lightboxReadingHarness';
 import { CHAPTER, CHAPTER_PATH, WORKSPACE, createLightboxBoardsHost, quiet } from '@/__tests__/application/handlers/domain/lightboxBoardsHarness';
 import { libraryHost, MEMORY } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { FILE as PINNED_FILE, holdOnce, list, pin, pinnedHost } from '@/__tests__/infrastructure/storage/workshopPinnedContextStoreHost';
 
 /** The board's one file: its first save, measured, rewritten in place by each later save. */
 const OWN = 'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json';
@@ -70,7 +71,8 @@ const partsOf = (host: ReturnType<typeof createLightboxBoardsHost>, tab: { dispo
   lightboxPanel: { dispose: () => tab.dispose() },
   workshopSessions: { flush: async () => undefined },
   lightboxBoards: host.library,
-  projectMemory: undefined
+  projectMemory: undefined,
+  pinnedContext: undefined
 });
 
 describe('deactivation and the Lightbox\'s owed saves (PR #183 F-03)', () => {
@@ -203,6 +205,7 @@ describe('shutDownExtension\'s order', () => {
     const calls: string[] = [];
     const drained = deferred<void>();
     const memoryDrained = deferred<void>();
+    const pinnedDrained = deferred<void>();
     const shutdown = shutDownExtension({
       workshopPanel: { dispose: () => calls.push('workshop panel disposed') },
       lightboxPanel: { dispose: () => calls.push('lightbox panel disposed') },
@@ -227,17 +230,28 @@ describe('shutDownExtension\'s order', () => {
             calls.push('memory drained');
           });
         }
+      },
+      pinnedContext: {
+        shutDown: () => {
+          calls.push('pinned drain');
+          return pinnedDrained.promise.then(() => {
+            calls.push('pinned drained');
+          });
+        }
       }
     });
     await quiet();
-    expect(calls).toEqual(['workshop panel disposed', 'lightbox panel disposed', 'lightbox drain', 'memory drain', 'workshop flush']);
+    expect(calls).toEqual(['workshop panel disposed', 'lightbox panel disposed', 'lightbox drain', 'memory drain', 'pinned drain', 'workshop flush']);
 
     drained.resolve();
     await quiet();
     expect(calls).not.toContain('memory drained');
     memoryDrained.resolve();
+    await quiet();
+    expect(calls).not.toContain('pinned drained');
+    pinnedDrained.resolve();
     await expect(shutdown).rejects.toThrow('disk full');
-    expect(calls.slice(-2).sort()).toEqual(['lightbox drained', 'memory drained']);
+    expect(calls.slice(-3).sort()).toEqual(['lightbox drained', 'memory drained', 'pinned drained']);
   });
 });
 
@@ -260,7 +274,8 @@ describe('deactivation and project memory\'s owed writes (ADR 2026-11-04 D10)', 
       lightboxPanel: undefined,
       workshopSessions: undefined,
       lightboxBoards: undefined,
-      projectMemory: memory.library
+      projectMemory: memory.library,
+      pinnedContext: undefined
     }).then(() => {
       finished = true;
     });
@@ -271,5 +286,32 @@ describe('deactivation and project memory\'s owed writes (ADR 2026-11-04 D10)', 
     await shutdown;
     expect((await saving).kind).toBe('written');
     expect([...memory.fileSystem.files.keys()].some((file) => file.startsWith(MEMORY) && file.endsWith('.md'))).toBe(true);
+  });
+});
+
+describe('deactivation and pinned context\'s owed writes (ADR 2026-11-04 D5; Slice 2b)', () => {
+  it('stays pending until a list write in flight is on disk', async () => {
+    const pinned = pinnedHost();
+    const held = holdOnce(pinned.fileSystem, 'rename', () => true);
+    const writing = pinned.store.update('absent', pin('Characters/alice.md'));
+    await held.reached;
+    let finished = false;
+    const shutdown = shutDownExtension({
+      workshopPanel: undefined,
+      lightboxPanel: undefined,
+      workshopSessions: undefined,
+      lightboxBoards: undefined,
+      projectMemory: undefined,
+      pinnedContext: pinned.store
+    }).then(() => {
+      finished = true;
+    });
+    await quiet();
+    expect(finished).toBe(false);
+
+    held.open();
+    await shutdown;
+    expect(await writing).toMatchObject({ ok: true, list: list('Characters/alice.md') });
+    expect(pinned.fileSystem.files.has(PINNED_FILE)).toBe(true);
   });
 });

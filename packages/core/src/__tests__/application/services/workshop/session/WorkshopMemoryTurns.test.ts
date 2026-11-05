@@ -256,7 +256,7 @@ describe('memory cards and receipts in the session', () => {
       expect(branch.workshop.turns.filter((turn) => turn.memoryProposals)).toHaveLength(1);
       expect(branch.workshop.turns.filter((turn) => turn.projectMemoryReceipt)).toHaveLength(1);
 
-      await harness.coordinator.resetSession();
+      await harness.coordinator.resetSession({ start: 'carry' });
       const current = await harness.store.readCurrent();
       expect(JSON.stringify(current)).not.toContain('memoryProposal');
       expect(JSON.stringify(current)).not.toContain('projectMemoryReceipt');

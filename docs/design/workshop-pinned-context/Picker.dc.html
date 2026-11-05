@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pinned context · Choose from project, pin mode</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.pk{
+  --surface:#221a13;--s2:#2b2017;--inset:#1b150f;--border:#3a2c1f;--border2:#4d3a28;--soft:#2e231a;
+  --text:#f3ece1;--text2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
+  --accent:#e0673a;--accentHi:#ee7d49;--accentLo:#c8552c;--amber:#e2b24a;--blue:#5aa2f0;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--text);
+}
+.pk-modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 28px 90px rgba(0,0,0,.55);padding:18px 18px 16px;display:flex;flex-direction:column;}
+.pk-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:10px;}
+.pk-eyebrow{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
+.pk-head h2{margin:6px 0 4px;font-size:18px;line-height:1.2;color:var(--text);}
+.pk-head p{margin:0;font-size:12.5px;line-height:1.45;color:var(--muted);}
+.pk-close{width:32px;height:32px;flex:none;display:grid;place-items:center;border:1px solid var(--border2);border-radius:8px;background:var(--s2);color:var(--muted);cursor:pointer;}
+.pk-search{display:flex;align-items:center;gap:8px;margin:4px 0 10px;border:1px solid var(--border2);background:var(--s2);border-radius:8px;padding:7px 10px;color:var(--muted);}
+.pk-search input{flex:1;min-width:0;border:0;background:none;outline:none;color:var(--text);font-family:inherit;font-size:12.5px;}
+.pk-modes{display:inline-flex;border:1px solid var(--border2);border-radius:999px;overflow:hidden;flex:none;}
+.pk-mode{border:0;background:none;color:var(--muted);font-family:inherit;font-size:11px;font-weight:500;padding:4px 10px;cursor:pointer;}
+.pk-mode.on{background:var(--accentHi);color:#fff;}
+.pk-nav{display:flex;align-items:center;gap:9px;margin-bottom:8px;}
+.pk-back{width:26px;height:26px;display:grid;place-items:center;padding:0;border:1px solid var(--border2);border-radius:7px;background:var(--s2);color:var(--muted);cursor:pointer;}
+.pk-crumb{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--text2);}
+.pk-file{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:7px 8px;cursor:pointer;color:var(--text2);font-family:inherit;font-size:12.5px;}
+.pk-file:hover{background:rgba(255,255,255,.03);}
+.pk-file:disabled{opacity:.45;cursor:not-allowed;}
+.pk-check{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--border2);flex:none;display:inline-flex;align-items:center;justify-content:center;color:transparent;}
+.pk-file.sel{color:var(--text);}
+.pk-file.sel .pk-check{background:var(--accentHi);border-color:var(--accentHi);color:#fff;}
+.pk-path{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;}
+.pk-tag{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--border2);border-radius:4px;padding:1px 5px;flex:none;}
+.pk-size{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--muted);white-space:nowrap;}
+.pk-explore{display:flex;align-items:center;gap:9px;width:100%;margin-top:10px;border:1px dashed var(--border2);background:none;border-radius:8px;padding:9px 10px;color:var(--muted);font-family:inherit;font-size:12px;cursor:pointer;text-align:left;}
+.pk-explore small{color:var(--muted);font-size:10.5px;}
+.pk-refusal{display:flex;gap:8px;align-items:flex-start;margin-top:12px;padding:9px 12px;border-radius:9px;border:1px solid color-mix(in srgb,var(--amber) 45%,var(--border));background:color-mix(in srgb,var(--amber) 8%,transparent);font-size:11.5px;line-height:1.5;color:var(--muted);}
+.pk-refusal svg{flex:none;margin-top:2px;color:var(--amber);}
+.pk-refusal b{color:var(--text);font-weight:600;}
+.pk-foot{display:flex;align-items:center;gap:10px;border-top:1px solid var(--border2);margin-top:12px;padding-top:12px;}
+.pk-total{font-size:11.5px;color:var(--muted);}
+.pk-total.over{color:var(--amber);}
+.pk-overmsg{font-size:11px;color:var(--amber);}
+.pk-btn{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;font-family:inherit;color:var(--text2);background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:6px 11px;cursor:pointer;}
+.pk-primary{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:600;font-family:inherit;color:#fff;background:linear-gradient(180deg,var(--accentHi),var(--accentLo));cursor:pointer;}
+.pk-primary:disabled{opacity:.5;cursor:not-allowed;}
+</style>
+</helmet>
+<div style="position: relative; width: 940px; height: 1340px; overflow: hidden; background: #15110d">
+<dc-import name="Main" view-state="listed" min-h="1340" hint-size="940px,1340px"></dc-import>
+<div style="position: absolute; inset: 0; background: rgba(0, 0, 0, 0.48)"></div>
+<div class="pk" style="position: absolute; top: 150px; left: 140px; width: 660px">
+<div class="pk-modal" role="dialog" aria-labelledby="pm-pin-picker-title">
+
+<div class="pk-head">
+<div>
+<div class="pk-eyebrow">Pin context</div>
+<h2 id="pm-pin-picker-title">Choose from project</h2>
+<p>Files you pin are attached to every new conversation in this project, after the ones already pinned.</p>
+</div>
+<button class="pk-close" type="button" aria-label="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</div>
+
+<div class="pk-search">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+<input type="text" value="{{query}}" placeholder="Search configured resources…" aria-label="Search configured resources">
+<div class="pk-modes" role="group" aria-label="Search mode">
+<button class="pk-mode on" type="button" aria-pressed="true">Names</button>
+<button class="pk-mode" type="button" aria-pressed="false">Names + content</button>
+</div>
+</div>
+
+<sc-if value="{{browsing}}" hint-placeholder-val="{{ true }}">
+<div class="pk-nav">
+<button class="pk-back" type="button" aria-label="Back to categories"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate(90deg)"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+<span class="pk-crumb">Characters · 9 files</span>
+</div>
+</sc-if>
+
+<div role="list" aria-label="Files">
+<sc-for list="{{files}}" as="f" hint-placeholder-count="9">
+<div role="listitem">
+<button class="pk-file {{f.cls}}" type="button" aria-pressed="{{f.pressed}}" disabled="{{f.pinned}}" onClick="{{f.toggle}}">
+<span class="pk-check" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+<span class="pk-path">{{f.path}}</span>
+<sc-if value="{{f.pinned}}" hint-placeholder-val="{{ false }}"><span class="pk-tag">Pinned</span></sc-if>
+<sc-if value="{{f.showGroup}}" hint-placeholder-val="{{ false }}"><span class="pk-tag">{{f.group}}</span></sc-if>
+<span class="pk-size">{{f.size}}</span>
+</button>
+</div>
+</sc-for>
+</div>
+
+<button class="pk-explore" type="button">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+<span>Explore project folders… <small>opens the system picker; files in this project only</small></span>
+</button>
+
+<sc-if value="{{refused}}" hint-placeholder-val="{{ false }}">
+<div class="pk-refusal" role="alert">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+<span><b>Can’t pin manuscript.md:</b> pinned context would come to about 107,600 of 100,000 words. Unpin another file, or shorten this one.</span>
+</div>
+</sc-if>
+
+<div class="pk-foot">
+<span class="pk-total {{totalCls}}">{{totalText}}</span>
+<span style="flex: 1"></span>
+<sc-if value="{{over}}" hint-placeholder-val="{{ false }}"><span class="pk-overmsg">Likely over the 76,600 words pinned context has left</span></sc-if>
+<button class="pk-btn" type="button">Cancel</button>
+<button class="pk-primary" type="button" disabled="{{noneSelected}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>{{pinLabel}}</button>
+</div>
+
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["browse","refused"],"default":"browse"},"$preview":{"width":940,"height":1340}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const variant = this.props.variant ?? 'browse';
+    const refused = variant === 'refused';
+    const remaining = 76600;
+    const kb = (n) => n + ' KB';
+    const characters = [
+      { id: 'alice', path: 'Characters/alice.md', size: 20, pinned: true },
+      { id: 'rabbit', path: 'Characters/the-white-rabbit.md', size: 11, pinned: true },
+      { id: 'hatter', path: 'Characters/the-hatter.md', size: 15, pinned: true },
+      { id: 'queen', path: 'Characters/the-queen-of-hearts.md', size: 13, pinned: true },
+      { id: 'cat', path: 'Characters/the-cheshire-cat.md', size: 10, pinned: true },
+      { id: 'caterpillar', path: 'Characters/the-caterpillar.md', size: 9, pinned: false },
+      { id: 'duchess', path: 'Characters/the-duchess.md', size: 8, pinned: false },
+      { id: 'dormouse', path: 'Characters/the-dormouse.md', size: 7, pinned: false },
+      { id: 'turtle', path: 'Characters/the-mock-turtle.md', size: 12, pinned: false }
+    ];
+    const search = [
+      { id: 'ms', path: 'Manuscript/manuscript.md', size: 505, pinned: false, group: 'Manuscript' }
+    ];
+    const source = refused ? search : characters;
+    const st = this.state || {};
+    const initial = refused ? { ms: true } : { caterpillar: true, duchess: true, dormouse: true };
+    const selected = st.selected || initial;
+    const files = source.map((f) => {
+      const isSel = !f.pinned && selected[f.id] === true;
+      return {
+        path: f.path,
+        size: kb(f.size),
+        pinned: f.pinned,
+        showGroup: !!f.group,
+        group: f.group || '',
+        cls: isSel ? 'sel' : '',
+        pressed: isSel ? 'true' : 'false',
+        toggle: () => {
+          const next = Object.assign({}, selected);
+          next[f.id] = !isSel;
+          this.setState({ selected: next });
+        }
+      };
+    });
+    const chosen = source.filter((f) => !f.pinned && selected[f.id] === true);
+    const bytes = chosen.reduce((t, f) => t + f.size * 1024, 0);
+    const est = Math.round(bytes / 6 / 100) * 100;
+    const over = est > remaining;
+    const n = chosen.length;
+    return {
+      query: refused ? 'manuscript' : '',
+      browsing: !refused,
+      files: files,
+      refused: refused,
+      over: over,
+      totalCls: over ? 'over' : '',
+      totalText: n === 0 ? 'Nothing selected' : n + ' file' + (n === 1 ? '' : 's') + ' · ~' + est.toLocaleString('en-US') + ' words est.',
+      noneSelected: n === 0,
+      pinLabel: 'Pin ' + n + ' file' + (n === 1 ? '' : 's')
+    };
+  }
+}
+</script>
+</body>
+</html>

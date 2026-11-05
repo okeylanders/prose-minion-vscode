@@ -214,7 +214,7 @@ describe('Workshop bookmark routes', () => {
     await rename(harness, lastBookmarks(harness)[0].id, 'Named');
     await harness.router.route(message(MessageType.WORKSHOP_REQUEST_SESSION, {}) as never);
     await harness.router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Again.' }) as never);
-    await harness.router.route(message(MessageType.WORKSHOP_RESET_SESSION, {}) as never);
+    await harness.router.route(message(MessageType.WORKSHOP_RESET_SESSION, { start: 'carry' }) as never);
 
     const snapshots = harness.posted(MessageType.WORKSHOP_SESSION_STATE)
       .map((entry) => entry.payload.session);

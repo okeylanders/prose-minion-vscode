@@ -1,0 +1,39 @@
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { workshopSessionStartResult } from '@/application/handlers/domain/workshop/WorkshopSessionStartResult';
+import { workshopPinnedContextMatches } from '@shared/constants/workshopPinnedContext';
+import { ROOT, seedHost } from './pinnedContextSeedHost';
+
+describe('PR 208 independent seed identity probes', () => {
+  it.each(['missing', 'unreadable'] as const)('keeps the same-source carried alias identifiable when its read is %s', async (state) => {
+    const host = seedHost();
+    host.pin('Characters/alice.md');
+    if (state === 'unreadable') { host.write('Characters/alice.md', '   '); }
+    const session = new WorkshopSessionService();
+    session.addContextAttachment({ kind: 'file', origin: 'writer', label: 'alice.md', content: 'Alice is seven.', words: 3,
+      sourceUri: `file://${ROOT}/Characters/alice.md`, relativePath: 'External file: alice.md' });
+
+    const report = host.seed.install(await host.seed.prepare('new'), session);
+
+    expect(session.getContextAttachments()[0].content).toBe('Alice is seven.');
+    expect(report.leftOut).toEqual([{ label: 'alice.md', reason: state, kept: true }]);
+    expect(workshopSessionStartResult('carry', report)).not.toContain('not attached');
+  });
+
+  it('does not overwrite an unpinned POSIX file with a literal backslash in its name', async () => {
+    const host = seedHost({ platform: 'posix' });
+    host.pin('Characters/alice.md');
+    host.write('Characters/alice.md', 'Alice is nine.');
+    host.write('Characters\\alice.md', 'The unrelated Alice notes.');
+    const session = new WorkshopSessionService();
+    const carried = session.addContextAttachment({ kind: 'file', origin: 'writer', label: 'Characters\\alice.md',
+      content: 'The unrelated Alice notes.', words: 4, sourceUri: `file://${ROOT}/Characters%5Calice.md`, relativePath: 'Characters\\alice.md' });
+    if (!carried.ok) { throw new Error('fixture'); }
+
+    const report = host.seed.install(await host.seed.prepare('new'), session);
+
+    expect(workshopPinnedContextMatches({ path: 'Characters/alice.md' }, carried.attachment, 'posix')).toBe(false);
+    expect(session.getContextAttachments()).toHaveLength(2);
+    expect(session.getContextAttachment(carried.attachment.id)?.content).toBe('The unrelated Alice notes.');
+    expect(report.attachedCount).toBe(1);
+  });
+});

@@ -20,6 +20,7 @@ import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookm
 import { WorkshopProjectMemoryHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import { WorkshopProjectMemoryManagerHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
 import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
+import { WorkshopPinnedContextHandler } from '@handlers/domain/workshop/WorkshopPinnedContextHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import {
   WorkshopGesturePlaygroundHandler
@@ -72,6 +73,7 @@ export class WorkshopSliceComposition {
   private readonly projectMemoryHandler: WorkshopProjectMemoryHandler;
   private readonly projectMemoryManagerHandler: WorkshopProjectMemoryManagerHandler;
   private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
+  private readonly pinnedContextHandler: WorkshopPinnedContextHandler;
   private readonly contextHandler: WorkshopContextHandler;
   private readonly excerptScopeHandler: WorkshopExcerptScopeHandler;
 
@@ -89,6 +91,7 @@ export class WorkshopSliceComposition {
       transcriptExport,
       widgetRuntime,
       projectMemory,
+      pinnedContext,
       outputChannel
     } = dependencies;
     const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
@@ -277,6 +280,23 @@ export class WorkshopSliceComposition {
       outputChannel,
       (message) => host.reportRouteError('workshop', message, undefined, 'WorkshopProjectMemoryManagerHandler')
     );
+    // The Pinned context tab's routes (Pinned Context Slice 3): the list's changes direct, Attach missing behind the gate.
+    this.pinnedContextHandler = new WorkshopPinnedContextHandler(
+      pinnedContext,
+      session,
+      shell,
+      postMessage,
+      outputChannel,
+      {
+        postSessionState: host.postSessionState,
+        postTurn: host.postTurn,
+        markDirty,
+        sendStatus: host.sendStatus,
+        activeRunLabel: host.activeRunLabel,
+        roomReady: () => sessionPersistence.initialize(),
+        runRoomOperation: (work) => sessionPersistence.runContextRefresh(work)
+      }
+    );
   }
 
   registerRoutes(
@@ -332,6 +352,10 @@ export class WorkshopSliceComposition {
       this.createMutationRegistrar(router, 'WorkshopProjectMemoryHandler')
     );
     this.projectMemoryManagerHandler.registerRoutes(router);
+    this.pinnedContextHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopPinnedContextHandler')
+    );
   }
 
   /** Save and tell me (Slice 5): a recorded reply's cards at `indexes`, saved now in order, as the tail of the run `signal` belongs to. */

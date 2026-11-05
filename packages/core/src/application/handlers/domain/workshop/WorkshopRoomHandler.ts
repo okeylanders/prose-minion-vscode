@@ -18,6 +18,7 @@
  */
 
 import type { WorkshopProjectMemoryPort } from '@handlers/domain/workshop/WorkshopRouteContracts';
+import type { WorkshopPinnedContextServices } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 import {
   hasWorkshopMemoryProposalText
 } from '@/utils/workshopReplyControls';
@@ -244,7 +245,8 @@ export class WorkshopRoomHandler {
     transcriptExport: WorkshopTranscriptExportPort,
     widgetRuntime: WorkshopWidgetRuntime,
     private readonly outputChannel: LogSink,
-    projectMemory: WorkshopProjectMemoryPort
+    projectMemory: WorkshopProjectMemoryPort,
+    pinnedContext: WorkshopPinnedContextServices
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -277,6 +279,7 @@ export class WorkshopRoomHandler {
         transcriptExport,
         widgetRuntime,
         projectMemory,
+        pinnedContext,
         outputChannel: this.outputChannel
       },
       {

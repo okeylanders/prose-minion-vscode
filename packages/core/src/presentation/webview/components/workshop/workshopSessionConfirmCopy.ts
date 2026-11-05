@@ -15,9 +15,17 @@ const REWIND_KEEPS =
 
 const turnsLabel = (count: number): string => `${count} ${count === 1 ? 'turn' : 'turns'}`;
 
+/** "the 10 pinned files are" / "the pinned file is". */
+const pinnedFilesLabel = (count: number): string =>
+  count === 1 ? 'the pinned file is' : `the ${count} pinned files are`;
+
 export function workshopSessionConfirmCopy(
   confirm: WorkshopSessionConfirm | null,
-  context: { shelvedExcerptTitle?: string }
+  context: {
+    shelvedExcerptTitle?: string;
+    /** Pinned files (Pinned Context Slice 3): above 0, a full reset starts with them. */
+    pinnedFileCount?: number;
+  }
 ): WorkshopSessionConfirmCopy {
   switch (confirm?.kind) {
     case 'open':
@@ -27,11 +35,28 @@ export function workshopSessionConfirmCopy(
         confirmLabel: 'Open session'
       };
     case 'new-full':
+      return (context.pinnedFileCount ?? 0) > 0
+        ? {
+            title: 'Clear the excerpt and context?',
+            body: 'This starts a new room with your pinned context: the excerpt, anything on the shelf, ' +
+              'every context attachment, the thread, tasks, guests, and conversation memory are all ' +
+              `cleared, then ${pinnedFilesLabel(context.pinnedFileCount ?? 0)} attached. ` +
+              'Saved sessions on disk are not touched.',
+            confirmLabel: 'Clear everything'
+          }
+        : {
+            title: 'Clear the excerpt and context?',
+            body: 'This starts an empty room: the excerpt, anything on the shelf, every ' +
+              'context attachment, the thread, tasks, guests, and conversation memory ' +
+              'are all cleared. Saved sessions on disk are not touched.',
+            confirmLabel: 'Clear everything'
+          };
+    case 'new-empty':
       return {
         title: 'Clear the excerpt and context?',
-        body: 'This starts an empty room: the excerpt, anything on the shelf, every ' +
-          'context attachment, the thread, tasks, guests, and conversation memory ' +
-          'are all cleared. Saved sessions on disk are not touched.',
+        body: 'This starts an empty room, with pinned context left out: the excerpt, ' +
+          'anything on the shelf, every context attachment, the thread, tasks, guests, ' +
+          'and conversation memory are all cleared. Saved sessions on disk are not touched.',
         confirmLabel: 'Clear everything'
       };
     case 'replace-shelf':

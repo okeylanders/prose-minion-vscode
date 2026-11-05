@@ -12,6 +12,7 @@
 import * as React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { WorkshopConversationBehaviorModal } from '@components/workshop/WorkshopConversationBehaviorModal';
+import { pinnedContextPanelPropsStub } from './settings/pinnedContextPanelPropsStub';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
@@ -33,6 +34,7 @@ function renderModal(overrides: Partial<Props> = {}) {
     onApply: jest.fn(),
     onOpenMemoryManager: jest.fn(),
     onOpenMemoryFolder: jest.fn(),
+    pinnedContext: pinnedContextPanelPropsStub(),
     memoryExplainerOpen: true,
     onToggleMemoryExplainer: jest.fn(),
     onClose: jest.fn(),
@@ -45,11 +47,11 @@ function renderModal(overrides: Partial<Props> = {}) {
 const card = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) });
 
 describe('Conversation settings · Memory', () => {
-  it('sits between About you and Advanced, and the copy covers memory', () => {
+  it('sits between Pinned context and Advanced, and the copy covers memory', () => {
     renderModal();
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Behavior', 'About you', 'Memory', 'Advanced']);
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Behavior', 'About you', 'Pinned context', 'Memory', 'Advanced']);
     expect(screen.getByText(/what they remember about this project/)).not.toBeNull();
-    expect(screen.getByText('Applies the Behavior, About You, Memory, and Advanced drafts together. Memory and live web research take effect on your next message.')).not.toBeNull();
+    expect(screen.getByText('Applies the Behavior, About You, Memory, and Advanced drafts together. Pinned context saves as you change it and applies to new conversations. Memory and live web research take effect on your next message.')).not.toBeNull();
   });
 
   it('the mode is a draft until Apply, which sends it with the other three', () => {

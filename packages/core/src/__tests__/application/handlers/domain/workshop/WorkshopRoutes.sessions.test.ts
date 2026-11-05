@@ -237,7 +237,7 @@ describe('Workshop composed routing — session owner', () => {
     ['tool', MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }],
     ['guest', MessageType.WORKSHOP_INVITE_GUEST, { personaId: 'margot', openingMessage: 'Join us.' }],
     ['open', MessageType.WORKSHOP_OPEN_SESSION, { sessionId: 'another-room' }],
-    ['new', MessageType.WORKSHOP_RESET_SESSION, {}],
+    ['new', MessageType.WORKSHOP_RESET_SESSION, { start: 'carry' }],
     ['second refresh', MessageType.WORKSHOP_REFRESH_CONTEXT_FILES, {}]
   ] as const)('blocks %s until the routed manual context scan finishes', async (_label, type, payload) => {
     await pin();
@@ -455,7 +455,7 @@ describe('Workshop composed routing — session owner', () => {
       ) as any);
       await router.route(message(
         MessageType.WORKSHOP_RESET_SESSION,
-        {}
+        { start: 'carry' }
       ) as any);
 
       expect(persistence.saveNamed).toHaveBeenCalledWith('Saved Room', undefined);
@@ -499,7 +499,7 @@ describe('Workshop composed routing — session owner', () => {
 
       await router.route(message(
         MessageType.WORKSHOP_RESET_SESSION,
-        {}
+        { start: 'carry' }
       ) as any);
 
       expect(posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT).at(-1).payload)
@@ -574,7 +574,7 @@ describe('Workshop composed routing — session owner', () => {
     for (const key of ['host-conv', 'tool-conv']) {
       storeContext(key, 10);
     }
-    await router.route(message(MessageType.WORKSHOP_RESET_SESSION, {}) as any);
+    await router.route(message(MessageType.WORKSHOP_RESET_SESSION, { start: 'carry' }) as any);
 
     expect(service.discardConversation).toHaveBeenCalledWith('tool-conv');
     expect(service.discardConversation).toHaveBeenCalledWith('host-conv');

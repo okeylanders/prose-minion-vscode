@@ -193,7 +193,7 @@ describe('WorkshopApp bookmark rename against the real host (PR #189 F-01)', () 
     startRename(bookmark.label, 'Old room draft');
 
     await act(async () => {
-      await harness.router.route(message(MessageType.WORKSHOP_RESET_SESSION, {}) as never);
+      await harness.router.route(message(MessageType.WORKSHOP_RESET_SESSION, { start: 'carry' }) as never);
     });
     await pump();
 
@@ -270,7 +270,7 @@ describe('WorkshopApp bookmark rename against the real host (PR #189 F-01)', () 
       fireEvent.submit(field().form!);
 
       await act(async () => {
-        await harness.router.route(message(MessageType.WORKSHOP_RESET_SESSION, {}) as never);
+        await harness.router.route(message(MessageType.WORKSHOP_RESET_SESSION, { start: 'carry' }) as never);
       });
       await pump();
 
