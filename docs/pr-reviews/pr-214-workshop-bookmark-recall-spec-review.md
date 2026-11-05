@@ -1,6 +1,6 @@
 # PR #214 review: Workshop Bookmark Recall specification
 
-**Latest disposition: see the re-review below. F-01–F-07 are open (one P1 and six P2 contract corrections).**
+**Latest disposition: see the final re-review below. F-01–F-06 are closed at specification level; F-07 needs one P2 continuation-identity correction.**
 
 **Initial disposition at `ca3a6b88`: four P2 planning corrections requested before implementation.** This is a review of the proposed architecture and slice contracts, not a claim that the unimplemented feature currently fails, a formal GitHub approval, or authorization to merge.
 
@@ -145,3 +145,32 @@ Every finding is answered in the ADR (`docs/adr/2026-11-05-workshop-bookmark-rec
 | F-07 | **One bookmark in full:** `<bookmark>{id}</bookmark>` with an optional `<from>{offset}</from>` reads one bookmark's whole message in windows, in every scope, under the same audience rule and window clamp. It's exclusive with the list filters. Every cut message's hint is this form, so it fetches the rest even when the caller has lost the original from its history. A saved row also names its session and turn, for reading it in context. Tests cover an open-room message over 4,000 characters read to its end through the real codec and service, plus a guest refused a turn it couldn't see. | ADR D2, D3; Slice 1 |
 | Dates (nonblocking) | Dates are calendar days in the **holding session's own zone**, recall's existing rule; for the open room, its own zone. `<until>` includes the whole day. Impossible or malformed dates, and `since` later than `until`, are refused as `invalid-date`. Tests cover a UTC/local-day boundary and a DST change. | ADR D2; Slice 1 |
 | Acceptance (nonblocking) | Okey answered Q1–Q6 on 2026-11-05, and his answers are recorded in the ADR. Slice 4 still records the live pass's outcome before the ADR moves to Accepted. | ADR "The writer's answers"; Slice 4 |
+
+
+## Re-review of `1705f13f`: six findings closed; qualify the remaining continuation
+
+**Latest disposition: F-01–F-06 are closed at specification level. F-07 remains open with one P2 identity correction.** The proposed behavior and named tests now address automatic injection versus retained evidence, complete paging, live bookmark data, both read renderers, whole-result publication safety, and same-session memory citations. The date clarification is also addressed. These are accepted planning remedies, not verification that the future implementation works.
+
+F-07's new `<bookmark>`/`<from>` form fixes the lack of a current-room continuation operation, but [D2](https://github.com/okeylanders/prose-minion-vscode/blob/1705f13fd286566a9faae8027d742b91e2f56f16/docs/adr/2026-11-05-workshop-bookmark-recall.md#L88-L91) still identifies the target by a raw bookmark ID with no unambiguous owning source. [Slice 1](https://github.com/okeylanders/prose-minion-vscode/blob/1705f13fd286566a9faae8027d742b91e2f56f16/.todo/epics/epic-workshop-bookmark-recall-2026-11-05/slice-1-recall-operation.md#L47-L50) says this form is exclusive with list filters without defining a source-selector exception.
+
+Bookmark IDs are session-local: [the ledger mints them from its counter and timestamp](https://github.com/okeylanders/prose-minion-vscode/blob/1705f13fd286566a9faae8027d742b91e2f56f16/packages/core/src/application/services/workshop/session/WorkshopBookmarkLedger.ts#L189-L202). Branching retains existing bookmarks while creating a new session. Therefore two saved sessions can match the same `<bookmark>`, and `scope=saved` cannot choose between them. Under default `scope=all`, a current-room duplicate can also shadow the saved row the caller meant. This is not limited to identical copies: an independent probe built two real session aggregates with the same clock and obtained the same bookmark ID for different message bodies.
+
+**Remaining correction:** make each continuation source-qualified. For example, permit exactly one saved-session selector with `<bookmark>`, and use explicit current-room scope with a room-bound reference for live rows; alternatively return an opaque host-issued qualified reference. Define the needed exception to list-filter exclusivity. Emit the selector in every hint and test duplicate IDs across two saved sessions and across current/saved sources. A stale current-room reference must refuse rather than silently target a replacement room.
+
+### Verification for this re-review
+
+- The fix commit changes only planning/review documents; no executable/test baseline changed.
+- The existing whole-room bookmark suite plus the independent probes passed: **2 suites / 10 tests** (7 production tests and 3 contract probes), including the new duplicate-ID witness. Previous focused verification remains **37 production suites / 525 tests**.
+- CI for the preceding review commit `3bfed0ef` passed in [run 42020315700](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42020315700). CI for this author head `1705f13f` is still running in [run 42021484150](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42021484150).
+- No implementation, formal approval, merge or native acceptance was performed.
+
+| Finding | Current status |
+|---|---|
+| F-01: evidence propagation versus isolation | Closed at spec level |
+| F-02: complete browser enumeration | Closed at spec level |
+| F-03: live bookmark data and memory prefill | Closed at spec level |
+| F-04: collapsed read marks | Closed at spec level |
+| F-05: private-row publication | Closed at spec level |
+| F-06: session-qualified citations and usable references | Closed at spec level; cross-session proposal citations explicitly deferred |
+| F-07: current-room full-message hint | Partly addressed; source-qualified continuation still needed |
+| Dates and Q1–Q6 recording | Addressed |
