@@ -191,3 +191,51 @@ Host only: no persona, no routes, no claim (the claim is Slice 4's).
   edit between attempts; how much it changes does not.
 - **CRLF.** In a CRLF document, a model's `\n` becomes `\r\n`, and the
   separator is a CRLF blank line.
+
+## Review fixes (PR #229, Astra at `778a09a6`)
+
+- **F-01 (P1): an incomplete candidate read failed open.**
+  - `listCandidates` is now authoritative. A search that fails for any group,
+    root or pattern rejects the whole read, and so does a match whose
+    metadata cannot be read (`ContextCandidateReadIncomplete`). A linked or
+    outside match is still excluded, as before.
+  - Staging and Apply refuse on a rejected read as `catalog-unreadable`,
+    before anything is dispatched.
+  - The catalog's tolerant walk is unchanged, for browsing.
+  - Both walks share `forEachMatch` (modes `browse` and `authoritative`) and
+    one verdict function (`inspectWorkspaceResource`).
+- **F-02 (P2): paragraphs at structural boundaries.**
+  - In `prose-paragraphs`, a top-level plain paragraph is no block. Its
+    inline constructs (links, images, code spans, autolinks, inline HTML)
+    still count, in order among the blocks.
+  - So a paragraph may appear or go anywhere: in an empty chapter, beside a
+    heading or a break, or as the last one.
+  - Every other block keeps its kind, order and nesting. `strict` is
+    unchanged.
+- **F-03 (P2): a refused retry erased earlier outcomes.**
+  - A `before-attempt` refusal now applies only to the edits still waiting
+    for that attempt. Landed and `unknown` from earlier attempts stand.
+  - The card's state is derived from what stands: `partial` with a known
+    landing, else `unknown` with an unknown operation, else the refusal.
+- **N-01 (D13): the real resolver's logs.** The authoritative read logs only
+  counts ("Candidate read: N candidate(s), M excluded match(es).") and
+  throws errors that name no pattern, path or host message.
+- **Tests.** `fileEditReviewWitnesses.test.ts` ports Astra's reproductions,
+  now asserting the safe behavior.
+  - **F-01**, through the real resolver, staging, gateway and applier:
+    - a failed prose search;
+    - a failed second-root search;
+    - an unreadable match;
+    - controls: a complete notes-only rewrite, and overlapping memberships
+      reading as prose.
+  - **F-02**:
+    - append and prepend in an empty chapter, by a heading and by a break;
+    - deleting the only paragraph;
+    - refused controls: inserting a heading, list, quote, code or link, and
+      deleting a heading or a link's paragraph.
+  - **F-03**:
+    - unknown plus standing, then authority lost, the epoch moved, or a text
+      rule refused: the unknown stays, with one host call;
+    - landed plus unknown plus refused reads as partial.
+  - **N-01**: log sentinels for a private pattern, a host error naming a
+    path, and linked and outside matches.

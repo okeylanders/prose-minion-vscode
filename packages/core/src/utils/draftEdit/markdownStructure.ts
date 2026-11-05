@@ -24,13 +24,14 @@
  *   refused: unsure is never "unchanged".
  * - Plain text has no structure, so nothing is refused there.
  * - **`prose-paragraphs`** (persona edits to prose, ADR 2026-11-05 D5): a
- *   run of top-level paragraphs, blank lines between, reads as one paragraph
- *   whose inline shape is theirs in order, and emphasis and strong read as
- *   their text, so plain paragraphs may split, merge, appear or go and prose
- *   may take italics, while a heading, list, quote, fence, table, break,
- *   HTML block, or a link, image, code span, autolink or inline HTML (as
- *   `strict` reads them) still moves it. Proofread and Craft Flags read
- *   `strict`, the default.
+ *   top-level plain paragraph is no block at all. What it holds counts only
+ *   for its inline constructs (links, images, code spans, autolinks, inline
+ *   HTML, as `strict` reads them), in order among the other blocks, and
+ *   emphasis and strong read as their text. So plain paragraphs may split,
+ *   merge, appear or go anywhere, even beside a heading or a break, or as a
+ *   chapter's first or last (PR #229 F-02), while every other block keeps
+ *   its kind, order and nesting. Proofread and Craft Flags read `strict`,
+ *   the default.
  */
 
 import { Lexer, getDefaults, type Links, type Token, type Tokens } from 'marked';
@@ -151,29 +152,27 @@ function shapeOf(source: string, links: Links, options: StructureOptions): strin
   // A fresh lexer per read (tokens accumulate on one), sharing the document's definitions.
   lexer.tokens.links = { ...links };
   const tokens = lexer.lex(source);
-  return options.mode === 'prose-paragraphs' ? describe(joinParagraphRuns(tokens), true) : describe(tokens);
+  return options.mode === 'prose-paragraphs' ? describeProse(tokens) : describe(tokens);
 }
 
-/** Top-level runs of paragraphs, blank lines between, as one paragraph holding their inline tokens in order. */
-function joinParagraphRuns(tokens: readonly Token[]): Token[] {
-  const joined: Token[] = [];
-  let run: Token[] | undefined;
+/**
+ * The top level in `prose-paragraphs`: blank lines and plain paragraphs are
+ * not structure; a paragraph contributes only its inline constructs, its
+ * text (and escapes, emphasis and strong) dropped.
+ */
+function describeProse(tokens: readonly Token[]): string {
+  const parts: string[] = [];
   for (const token of tokens) {
     if (token.type === 'space') {
       continue;
     }
     if (token.type === 'paragraph') {
-      if (!run) {
-        run = [];
-        joined.push({ type: 'paragraph', raw: '', text: '', tokens: run } as Tokens.Paragraph);
-      }
-      run.push(...((token as Tokens.Paragraph).tokens ?? []));
+      parts.push(...describeParts((token as Tokens.Paragraph).tokens ?? [], true).filter((part) => part !== 'text' && part !== 'escape'));
       continue;
     }
-    run = undefined;
-    joined.push(token);
+    parts.push(describeToken(token, true));
   }
-  return joined;
+  return parts.join(',');
 }
 
 /** `prose`: emphasis and strong are their text (`prose-paragraphs`). */

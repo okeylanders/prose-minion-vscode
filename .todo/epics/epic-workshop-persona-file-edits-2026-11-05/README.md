@@ -138,3 +138,9 @@ This is the same flow as Project Memory and Bookmark Recall.
   - Built: the resolver's every-candidate read; `FileEditStagingService`; the applier's `structure` mode and `beforeAttempt`; the `FileEditAuthorityEpoch` port; `ProjectFileEditGateway` (D7); `DocumentEditor.open` / `peek` / `reveal`; budgets; boundary pins.
   - One Draft Edit read-back fix: a pure insertion now reads as applied.
   - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 761 suites, 10,560 tests, 59 snapshots. See [the slice doc](slice-2-gateway.md).
+- **2026-11-05. Slice 2 review fixes (PR #229).**
+  - F-01: the candidate read fails closed.
+  - F-02: plain paragraphs appear and go at structural boundaries.
+  - F-03: a refused retry keeps earlier `unknown` and landed outcomes.
+  - N-01: the write path's resolver logs counts only.
+  - Astra's reproductions are ported as regression tests. After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 762 suites, 10,585 tests, 59 snapshots.

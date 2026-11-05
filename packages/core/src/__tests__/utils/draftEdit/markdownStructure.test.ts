@@ -153,6 +153,17 @@ describe('editsChangingStructure: prose-paragraphs (ADR 2026-11-05 D5, PR #226 F
     expect(editsChangingStructure(list, 'markdown', [{ start: 2, end: 7, replacement: '_Alice_' }], PROSE)).toEqual(new Set());
   });
 
+  it('lets a plain paragraph appear or go at a structural boundary (PR #229 F-02)', () => {
+    const insert = (text: string, at: number, replacement: string): StructureEdit => ({ start: at, end: at, replacement });
+    expect(editsChangingStructure('', 'markdown', [insert('', 0, 'Alice entered.')], PROSE)).toEqual(new Set());
+    expect(editsChangingStructure('# One\n', 'markdown', [insert('# One\n', 5, '\n\nAlice entered.')], PROSE)).toEqual(new Set());
+    expect(editsChangingStructure('# One\n', 'markdown', [insert('# One\n', 0, 'Alice entered.\n\n')], PROSE)).toEqual(new Set());
+    expect(editsChangingStructure('Alice.\n\n---\n', 'markdown', [insert('Alice.\n\n---\n', 11, '\n\nAlice entered.')], PROSE)).toEqual(new Set());
+    expect(editsChangingStructure('Alice entered.', 'markdown', [{ start: 0, end: 14, replacement: '' }], PROSE)).toEqual(new Set());
+    // Strict still reads each of these as a change.
+    expect(editsChangingStructure('# One\n', 'markdown', [insert('# One\n', 5, '\n\nAlice entered.')])).toEqual(new Set([0]));
+  });
+
   it('lets a plain paragraph go', () => {
     const text = 'Alice ran.\n\nShe stopped.\n\nThe Rabbit waited.';
     expect(editsChangingStructure(text, 'markdown', [{ start: 10, end: 24, replacement: '' }], PROSE)).toEqual(new Set());

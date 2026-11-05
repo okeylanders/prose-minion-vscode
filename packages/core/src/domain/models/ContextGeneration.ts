@@ -57,7 +57,11 @@ export interface ContextResourceCandidate {
   readonly sizeBytes: number;
 }
 
-/** Every configured match across groups and roots, read fresh. */
+/**
+ * Every configured match across groups and roots, read fresh. Authoritative:
+ * it rejects when any search or metadata read fails, never returning part of
+ * the answer (PR #229 F-01).
+ */
 export interface ContextResourceCandidateReader {
   listCandidates(groups: ContextPathGroup[]): Promise<ContextResourceCandidate[]>;
 }

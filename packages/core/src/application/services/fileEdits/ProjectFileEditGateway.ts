@@ -300,14 +300,12 @@ function report(
     if (refusal) {
       return { index, outcome: 'refused', reason: refusal };
     }
-    if (result.outcome === 'before-attempt') {
-      // An attempt refused after one that wrote nothing: nothing of this landed.
-      const landedEarlier = byEdit.get(id) === 'landed';
-      return landedEarlier
-        ? { index, outcome: 'landed' }
-        : { index, outcome: STALE_FAULTS.has(result.beforeAttempt ?? '') ? 'stale' : 'refused', reason: result.beforeAttempt };
+    const established = byEdit.get(id);
+    if (result.outcome === 'before-attempt' && established === 'not-applied') {
+      // The refused attempt applies only to edits still waiting for it; what earlier attempts established stands (PR #229 F-03).
+      return { index, outcome: STALE_FAULTS.has(result.beforeAttempt ?? '') ? 'stale' : 'refused', reason: result.beforeAttempt };
     }
-    return { index, outcome: byEdit.get(id) ?? 'unknown' };
+    return { index, outcome: established ?? 'unknown' };
   });
   const landed = operations.filter(({ outcome }) => outcome === 'landed').length;
   if (landed === operations.length) {
@@ -316,11 +314,11 @@ function report(
   if (landed > 0) {
     return { state: 'partial', operations };
   }
-  if (result.outcome === 'before-attempt') {
-    return { state: STALE_FAULTS.has(result.beforeAttempt ?? '') ? 'stale' : 'refused', reason: result.beforeAttempt, operations };
-  }
   if (operations.some(({ outcome }) => outcome === 'unknown') || result.outcome === 'closed') {
     return { state: 'unknown', operations };
+  }
+  if (result.outcome === 'before-attempt') {
+    return { state: STALE_FAULTS.has(result.beforeAttempt ?? '') ? 'stale' : 'refused', reason: result.beforeAttempt, operations };
   }
   switch (result.outcome) {
     case 'declined':
