@@ -342,6 +342,11 @@ After the fixes: the store is 489 lines, the reader 300 and the library 305.
 Typecheck passes, lint has 0 errors and 1,165 warnings (none new), and the
 full `npx jest -w 2` on `5853bb03` (the code head) runs 703 suites / 9,930 tests / 59 snapshots, all passing.
 
+Then `epic-pinned-context` at `25c9443c` (Project Memory's #206 and #207)
+was merged in, as `0ee4d66b`, with no conflicts. On that head, typecheck
+passes and `npx jest -w 2` runs 705 suites / 9,951 tests / 59 snapshots, all
+passing.
+
 ## Progress
 
 - **2026-11-04.** Slice doc written with the spec (as Slice 2).
