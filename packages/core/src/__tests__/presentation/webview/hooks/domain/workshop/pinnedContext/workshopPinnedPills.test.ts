@@ -8,6 +8,7 @@
 import {
   WORKSHOP_PINNED_PILL_CHANGED,
   workshopPinnedPillViews,
+  workshopPinnedPillsCountText,
   type WorkshopPinnedPillsInput
 } from '@hooks/domain/workshop/pinnedContext/workshopPinnedPills';
 import type { WorkshopContextAttachmentSnapshot, WorkshopPinnedContextPayload } from '@messages';
@@ -147,6 +148,16 @@ describe('workshopPinnedPillViews', () => {
       expect(all['ctx-2']).toEqual({ pinned: true, landed: true });
       expect(all['ctx-3'].landed).toBeUndefined();
       expect(views({ answer: { ...landed, requestId: null }, attachments: [rabbit], pinnableIds: [], posted })['ctx-2'].landed).toBeUndefined();
+    });
+  });
+
+  describe('the head\'s count', () => {
+    it('counts the pills that show the mark, and says nothing at 0', () => {
+      const pills = (...marks: boolean[]) => Object.fromEntries(marks.map((pinned, index) => [`ctx-${index + 1}`, { pinned }]));
+      expect(workshopPinnedPillsCountText(undefined)).toBeUndefined();
+      expect(workshopPinnedPillsCountText(pills(false))).toBeUndefined();
+      expect(workshopPinnedPillsCountText(pills(true, false))).toBe('1 pinned');
+      expect(workshopPinnedPillsCountText(pills(true, true, false))).toBe('2 pinned');
     });
   });
 });

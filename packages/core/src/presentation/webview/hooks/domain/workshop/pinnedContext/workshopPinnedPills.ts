@@ -109,3 +109,13 @@ export function workshopPinnedPillViews({
   }
   return views;
 }
+
+/**
+ * The context head's count part (`Workshop.dc.html`'s "· 8 pinned"): the
+ * pills that show the mark, not the list's length. Absent at 0, so the head
+ * reads as it did.
+ */
+export function workshopPinnedPillsCountText(pills: Readonly<Record<string, WorkshopPinnedPillView>> | undefined): string | undefined {
+  const count = pills ? Object.values(pills).filter((pill) => pill.pinned).length : 0;
+  return count > 0 ? `${count} pinned` : undefined;
+}

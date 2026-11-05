@@ -33,6 +33,7 @@ import { countWords } from '@/utils/textUtils';
 import { WorkshopContextAttachmentSnapshot } from '@messages';
 import {
   WORKSHOP_PINNED_PILL_TIP,
+  workshopPinnedPillsCountText,
   type WorkshopPinnedPillView
 } from '@hooks/domain/workshop/pinnedContext/workshopPinnedPills';
 
@@ -106,6 +107,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   const budget = PROMPT_BUDGETS.contextAttachments.words;
   const used = attachments.reduce((total, attachment) => total + attachment.words, 0);
   const hasAttachments = attachments.length > 0;
+  const pinnedCount = workshopPinnedPillsCountText(pinned?.pills);
 
   return (
     <div className="pm-ws-block" id={WORKSHOP_CONTEXT_PANEL_ID}>
@@ -117,6 +119,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           {hasAttachments ? (
             <span className="pm-ws-ctx-count">
               {attachments.length} attachment{attachments.length === 1 ? '' : 's'}
+              {pinnedCount ? ` · ${pinnedCount}` : null}
             </span>
           ) : null}
         </div>

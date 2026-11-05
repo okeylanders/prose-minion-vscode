@@ -126,6 +126,21 @@ describe('ContextPanel: pinned context marks', () => {
     expect(screen.queryByRole('button', { name: 'alice.md, pinned' })).toBeNull();
   });
 
+  it('the head counts the pills that show the mark: as today at 0 and before the answer, then "· 1 pinned", "· 2 pinned"', () => {
+    const { container } = render(React.createElement(pinnedSheet));
+    const count = () => container.querySelector('.pm-ws-ctx-count')?.textContent;
+    expect(count()).toBe('4 attachments');
+
+    act(() => deliver(answer(lastId(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT), [])));
+    expect(count()).toBe('4 attachments');
+
+    act(() => deliver(answer(null, [ALICE])));
+    expect(count()).toBe('4 attachments · 1 pinned');
+
+    act(() => deliver(answer(null, [ALICE, RABBIT, { path: 'Places/wonderland.md', label: 'wonderland.md', words: 2900, state: 'ready' }])));
+    expect(count()).toBe('4 attachments · 2 pinned');
+  });
+
   it('names the pill ", pinned", draws the accent mark after the word count, and describes it with the tooltip', () => {
     const { container } = mount([ALICE]);
     const open = screen.getByRole('button', { name: 'alice.md, pinned' });

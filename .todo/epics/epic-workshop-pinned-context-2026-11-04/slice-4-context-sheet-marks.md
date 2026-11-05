@@ -55,15 +55,17 @@ Unpinning stays in the tab.
 - `51d0ab3`: the pure view and the presentation controller, with tests.
 - `e6e8da5`: the pills (mark, tooltip, Pin, refusal), styles, the wiring in
   `WorkshopApp.tsx`, the integration test and a boundary guard.
-- This doc.
+- `1312ece`: this doc.
+- The context head's "· *N* pinned" (the coordinator's ruling on deviation
+  6: the approved board draws it), its tests, and this doc's update.
 
 **Where each piece lives.**
 
 | Piece | Where |
 |---|---|
-| Each pill in words, pure: pinned (the match rule over the host's last list, with its platform), Pin and its name, its own refusal, a landed pin | `hooks/domain/workshop/pinnedContext/workshopPinnedPills.ts` (111 lines; `workshopPinnedPillViews`, `WORKSHOP_PINNED_PILL_TIP`, `WORKSHOP_PINNED_PILL_CHANGED`) |
+| Each pill in words, pure: pinned (the match rule over the host's last list, with its platform), Pin and its name, its own refusal, a landed pin; the head's count | `hooks/domain/workshop/pinnedContext/workshopPinnedPills.ts` (121 lines; `workshopPinnedPillViews`, `workshopPinnedPillsCountText`, `WORKSHOP_PINNED_PILL_TIP`, `WORKSHOP_PINNED_PILL_CHANGED`) |
 | The controller (tripartite, empty persistence): holds which pill last asked, takes Slice 3's `pinAttachments` as a port, posts nothing | `hooks/domain/workshop/controllers/useWorkshopPinnedPills.ts` (82) |
-| The pills, presentational: mark, tooltip, Pin, refusal line | `components/workshop/ContextPanel.tsx` (275 → 338); an optional `pinned` prop, absent draws neither |
+| The pills, presentational: mark, tooltip, Pin, refusal line, the head's count | `components/workshop/ContextPanel.tsx` (275 → 341); an optional `pinned` prop, absent draws none of it |
 | Wiring | `WorkshopApp.tsx` (+3: one import, one controller call, one prop) |
 | Styles | `styles/workshop/pinnedContext.css` (a "context sheet's pills" section) |
 
@@ -93,17 +95,26 @@ Unpinning stays in the tab.
   its Pin button): the host's words for `refused`, or this slice's line for
   `changed`. Any later answer to another request, or the next Pin, clears it.
 - A pinned pill offers no Unpin; Remove is unchanged on every pill.
+- **The head's count** (`Workshop.dc.html`'s `block-meta`, "10 attached ·
+  8 pinned · …", as today's panel draws it): `pm-ws-ctx-count` reads "10
+  attachments · 8 pinned". *N* is the pills that show the mark, from the same
+  `workshopPinnedPillViews` result, not the list's length: a file pinned but
+  not in the room isn't counted. At 0, and before the host's first answer,
+  it reads exactly as before ("10 attachments"). The words stay in the meter
+  under the pills, so the head leaves them out, and keeps today's word
+  "attachments".
 
 **Tests.**
 
-- `workshopPinnedPills.test.ts` (15): the match rules (a catalog key; a
+- `workshopPinnedPills.test.ts` (16): the match rules (a catalog key; a
   workspace file by relative path; two different paths never; case under
   Windows and not POSIX; `σ`/`ς` one file under Windows and two under
   POSIX; a text note never); nothing marked before an answer, unavailable or
   unreadable; Pin's name and pending; no Pin on a pinned pill, a text note,
   a wizard pill, or with no list to change; a refusal on its own pill only,
-  `changed`, cleared by another answer and never on a landed pin; `landed`.
-- `ContextPanel.pinned.test.tsx` (7), through the real
+  `changed`, cleared by another answer and never on a landed pin; `landed`;
+  the head's count at 0, 1 ("1 pinned") and 2.
+- `ContextPanel.pinned.test.tsx` (8), through the real
   `useWorkshopPinnedContext`, the controller and `ContextPanel`, the host
   played by hand: the mark follows the list in the same room (pinning shows
   it, unpinning clears it, the attachments unchanged); the accessible name,
@@ -111,7 +122,9 @@ Unpinning stays in the tab.
   revision, then the mark appears, the button goes and the focus returns; a
   refusal at the pill, cleared by the next Pin; only the writer's unpinned
   file pill offers Pin, and nothing offers Unpin; Remove unchanged; no list,
-  no mark and no Pin.
+  no mark and no Pin; the head reads "4 attachments" before the answer and
+  at 0, then "· 1 pinned", then "· 2 pinned" with three files pinned and two
+  of them in the room.
 - `boundaries.test.ts` (+1): `ContextPanel.tsx` posts nothing, and
   `WorkshopSessionStateV1.ts` names no pinned mark. The existing guard keeps
   the new controller off the transport.
@@ -122,13 +135,13 @@ Unpinning stays in the tab.
 
 ## Verification
 
-| Check | Before (`fa5aef63`, after `npm ci`) | After (`e6e8da5`) |
+| Check | Before (`fa5aef63`, after `npm ci`) | After (the head's count) |
 |---|---|---|
 | `npm run typecheck` | pass | pass |
-| `npx jest -w 2` | 705 suites / 9,966 tests / 59 snapshots, all passing | 707 suites / 9,989 tests / 59 snapshots, all passing |
+| `npx jest -w 2` | 705 suites / 9,966 tests / 59 snapshots, all passing | 707 suites / 9,991 tests / 59 snapshots, all passing (9,989 at `e6e8da5`) |
 | `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (none new) |
 | `from 'vscode'` in `packages/core/src` | none | none |
-| New files over 500 lines | — | none (largest: the integration test, 202) |
+| New files over 500 lines | — | none (largest: the integration test, 217) |
 | Files already over 500 | — | wiring only: `WorkshopApp.tsx` 1,814 → 1,817 |
 | Fixtures and tests | — | *Alice*-style made-up names and paths only |
 
@@ -157,9 +170,10 @@ hover, the hovered Pin with the accent border, and the refusal line.
    multi-root window, or while the list file can't be read.
 5. **Focus returns to the pill's label** when its own Pin lands and the
    focus went with the button. The design doesn't draw focus.
-6. **Not drawn:** the board's header meta ("10 attached · 8 pinned · …") is
-   not in this slice's spec, so the panel's count line is unchanged. A
-   follow-up if Okey wants it.
+6. **The head's count is built** from the approved board's `block-meta`
+   (the coordinator's ruling, 2026-11-05: the approved design owns the copy).
+   It appends "· *N* pinned" to today's count and keeps the word
+   "attachments"; the words stay in the meter. See How it works.
 7. **A file pill's glyphs are blue** (`context.css`), so the pin mark and the
    Pin button's glyph set `color: inherit` to keep the accent and text
    colors the board draws.
