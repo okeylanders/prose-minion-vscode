@@ -87,4 +87,3 @@ The step points to the real-coordinator probes for the phase that is hard to hit
 - checking the survivor in the same extension session, with no reload.
 
 Docs only. No product code changed.
-
