@@ -84,6 +84,18 @@ Line references in the ADR are to `main` at `24d9d6e`. Since the merge, some
 have moved; find the symbol rather than the line. For example, the reset
 payload is now at `session.ts:720`.
 
+## Threads
+
+The coordinator is `session_01UrwcesKuKZcn9d7YRCX5cY`. Each slice thread is
+a Claude Code session tagged `pinned-context`, titled
+"Pinned context · Slice *N* · *slug*", and it pushes only to its slice
+branch.
+
+| Slice | Session | Branch | Started | State |
+|---|---|---|---|---|
+| 1 | [`session_01UrwcevSE9xCeoMqBXf9P73`](https://claude.ai/code/session_01UrwcevSE9xCeoMqBXf9P73) | `epic-pinned-context-slice-1-format-store` | 2026-11-05, from `b94fc67` | Building |
+| 2a | [`session_01UrwcerFSuu47ewLKUezS45`](https://claude.ai/code/session_01UrwcerFSuu47ewLKUezS45) | `epic-pinned-context-slice-2a-starts-seed-port` | 2026-11-05, from `b94fc67` | Building |
+
 ## How the Slices Are Built
 
 Project Memory's process, unchanged:
