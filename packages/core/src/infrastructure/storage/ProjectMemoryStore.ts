@@ -72,8 +72,10 @@ import type {
   ProjectMemoryStoreOptions,
   ProjectMemoryUpdate,
   ProjectMemoryWriteOptions,
+  ProjectMemoryReplaceOptions,
   ProjectMemoryTargetOptions
 } from '@/infrastructure/storage/ProjectMemoryStoreContracts';
+import { projectMemoryFromDraft } from '@/infrastructure/storage/ProjectMemoryStoreContracts';
 
 export * from '@/infrastructure/storage/ProjectMemoryStoreContracts';
 
@@ -153,20 +155,25 @@ export class ProjectMemoryStore {
       if (!where.available) {
         return { kind: 'unavailable', reason: where.reason };
       }
-      const read = await this.settledRead(where.directory);
-      if (read.kind === 'unknown') {
-        return { kind: 'unknown' };
-      }
-      return {
-        kind: 'listed',
-        memories: [
-          ...read.files.map(({ fileName, memory }) => ({ fileName, memory })),
-          ...read.held.map(({ fileName, memory }) => ({ fileName, memory, busy: true as const }))
-        ].sort((left, right) => (left.fileName < right.fileName ? -1 : left.fileName > right.fileName ? 1 : 0)),
-        unreadable: read.unreadable,
-        conflicts: read.conflicts
-      };
+      return this.listNow(where.directory);
     });
+  }
+
+  /** The folder listed now, inside a queued task (a list, or a rewrite's `verify`: PR #212 F-03). */
+  private async listNow(directory: string): Promise<ProjectMemoryListing> {
+    const read = await this.settledRead(directory);
+    if (read.kind === 'unknown') {
+      return { kind: 'unknown' };
+    }
+    return {
+      kind: 'listed',
+      memories: [
+        ...read.files.map(({ fileName, memory }) => ({ fileName, memory })),
+        ...read.held.map(({ fileName, memory }) => ({ fileName, memory, busy: true as const }))
+      ].sort((left, right) => (left.fileName < right.fileName ? -1 : left.fileName > right.fileName ? 1 : 0)),
+      unreadable: read.unreadable,
+      conflicts: read.conflicts
+    };
   }
 
   /** The memory `id` names, resolved through the listing. */
@@ -207,7 +214,7 @@ export class ProjectMemoryStore {
         }
         taken.add(id);
         const stamp = this.now().toISOString().replace(/\.\d{3}Z$/, 'Z');
-        const memory = fromDraft(draft, id, stamp);
+        const memory = projectMemoryFromDraft(draft, id, stamp);
         const check = prepareProjectMemoryFile(memory);
         if (check.kind === 'invalid') {
           this.log.appendLine(`${LOG} A new memory would not read back as written (${check.reason}${check.key ? ` at ${check.key}` : ''}); it was not saved.`);
@@ -235,7 +242,7 @@ export class ProjectMemoryStore {
    * changed, or undefined to leave it. Its id and creation time cannot
    * change; its `updated` time is the caller's to set.
    */
-  replace(id: string, update: ProjectMemoryUpdate, options: ProjectMemoryTargetOptions = {}): Promise<ProjectMemoryReplaceResult> {
+  replace(id: string, update: ProjectMemoryUpdate, options: ProjectMemoryReplaceOptions = {}): Promise<ProjectMemoryReplaceResult> {
     const permitted = this.targeted(options);
     return this.owe(this.enqueue(async () => {
       const where = this.availability();
@@ -268,6 +275,11 @@ export class ProjectMemoryStore {
         const text = check.text;
         if (text === encodeProjectMemory(file.memory)) {
           return { kind: 'unchanged', entry };
+        }
+        const fresh = options.verify && await this.listNow(where.directory);
+        if (options.verify && !options.verify(fresh && fresh.kind === 'listed' ? fresh.memories : undefined)) {
+          this.log.appendLine(`${LOG} ${id} was not rewritten: the folder no longer held it as the rewrite expected.`);
+          return { kind: 'withdrawn' };
         }
         const folder = path.dirname(filePath);
         const outcome = await commitStoredFileRewrite(this.rewritePorts, {
@@ -473,21 +485,3 @@ function notFound(kind: Exclude<Found['kind'], 'found'>): { kind: 'missing' | 'b
 }
 
 /** The memory a draft makes, field by field, so nothing a caller added rides along. */
-function fromDraft(draft: ProjectMemoryDraft, id: string, stamp: string): ProjectMemory {
-  return {
-    id,
-    title: draft.title,
-    kind: draft.kind,
-    summary: draft.summary,
-    status: draft.status,
-    pinned: draft.pinned,
-    created: stamp,
-    updated: stamp,
-    origin: draft.origin,
-    ...(draft.proposedBy !== undefined ? { proposedBy: draft.proposedBy } : {}),
-    ...(draft.sourceSession !== undefined ? { sourceSession: draft.sourceSession } : {}),
-    sourceTurns: [...draft.sourceTurns],
-    supersedes: [...draft.supersedes],
-    body: draft.body
-  };
-}

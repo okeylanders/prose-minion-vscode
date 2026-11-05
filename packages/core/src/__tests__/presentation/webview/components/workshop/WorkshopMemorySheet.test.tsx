@@ -147,3 +147,36 @@ describe('WorkshopMemorySheet', () => {
     expect(baseElement.textContent?.toLowerCase()).not.toMatch(/\bpin/);
   });
 });
+
+describe('the sheet for a suggested change to a saved memory (PR #212 F-04)', () => {
+  const editSheet = (overrides: Partial<WorkshopMemorySheetState> = {}): WorkshopMemorySheetState => sheet({
+    memoryId: 'mem-7f3c2a', proposalIndex: 0, replaces: [], draft: { ...DRAFT, supersedes: [], pinned: true }, ...overrides
+  });
+
+  it('says it edits the memory, not that it saves a new one', () => {
+    renderSheet(editSheet());
+    expect(screen.getByRole('heading', { name: 'Edit memory' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Save to memory' })).toBeNull();
+    expect(screen.getByText('Saving tells the room the memory changed when what it says changes.')).toBeTruthy();
+    expect(screen.queryByText(/Saved to project memory/)).toBeNull();
+    expect(screen.getByText(/A change Jill suggested in this conversation, to a memory already saved\./)).toBeTruthy();
+  });
+
+  it('words the pinned budget\'s refusal as an edit', () => {
+    renderSheet(editSheet({ estimate: { thisTokens: 1_400, totalTokens: 5_302, budgetTokens: 5_000, refused: true } }));
+    expect(screen.getByText(/Can't save this edit: this memory loads in full/)).toBeTruthy();
+  });
+
+  it('still saves through the card it came from', () => {
+    const props = renderSheet(editSheet());
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(props.onSubmit).toHaveBeenCalled();
+  });
+
+  it('a new note\'s card keeps the words for saving a new memory', () => {
+    renderSheet(sheet());
+    expect(screen.getByRole('heading', { name: 'Save to project memory' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save to memory' })).toBeTruthy();
+  });
+});

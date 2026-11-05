@@ -1874,6 +1874,15 @@ export class WorkshopSessionService {
     return cloneTurn(turn!);
   }
 
+  /** An edit card whose Save found its note changed since it was suggested (Slice 6c): only Dismiss is offered now. */
+  markMemoryEditStale(turnId: string, index: number): void {
+    this.turnLedger.update(turnId, (current) => {
+      if (current.memoryProposals && workshopMemoryProposalAt(current, index)?.proposes === 'edit') {
+        current.memoryProposals = current.memoryProposals.map((item, at) => at === index && item.proposes === 'edit' ? { ...item, stale: true } : item);
+      }
+    });
+  }
+
   /** Hold one pending card for the writer, with why (Save and tell me's cap reached at its commit: PR #201 F-04). */
   holdMemoryProposal(turnId: string, index: number, held: WorkshopMemoryHold): void {
     this.turnLedger.update(turnId, (current) => {

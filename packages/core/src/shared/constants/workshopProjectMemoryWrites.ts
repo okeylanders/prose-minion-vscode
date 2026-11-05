@@ -129,15 +129,23 @@ export function workshopMemoryCardKey(turnId: string, index: number): string {
   return `${turnId}#${index}`;
 }
 
-/** A card's own draft: what Save writes when the writer didn't edit it. */
+/** What an edit card says when a Save found its note changed since it was suggested (Slice 6c). */
+export const WORKSHOP_MEMORY_EDIT_CHANGED = 'This note changed since it was suggested, so nothing was saved.';
+
+/**
+ * A card's own draft: what Save writes when the writer didn't edit it. An
+ * edit's is its result, keeping what the note replaces and whether it loads
+ * in full (Slice 6c), so it is also the sheet's prefill.
+ */
 export function workshopMemoryProposalDraft(proposal: WorkshopMemoryProposal): WorkshopMemoryDraft {
   return {
     title: proposal.title,
     kind: proposal.kind,
     summary: proposal.summary,
     body: proposal.body,
-    supersedes: (proposal.supersedes ?? []).map((item) => item.id),
-    pinned: false
+    // An edit keeps every id its note supersedes, listed or not (PR #212 F-01).
+    supersedes: proposal.proposes === 'edit' ? [...proposal.target.supersedes] : (proposal.supersedes ?? []).map((item) => item.id),
+    pinned: proposal.proposes === 'edit' ? proposal.target.pinned : false
   };
 }
 
@@ -162,6 +170,8 @@ export function workshopMemoryHeldReason(held: WorkshopMemoryHold): string {
   switch (held) {
     case 'web-research':
       return 'Live web research was available for this reply, so this memory waits for you to save it.';
+    case 'edit':
+      return 'It changes a saved memory, so it waits for you to save it.';
     case 'supersedes':
       return 'It replaces a saved memory, so it waits for you to save it.';
     case 'room-cap':

@@ -1071,11 +1071,13 @@ const WORKSHOP_MEMORY_MODULES = [
   'ProjectMemoryLibrary.ts',
   'ProjectMemoryLibraryContracts.ts',
   'ProjectMemoryManager.ts',
+  'ProjectMemoryPinnedBudget.ts',
   'ProjectMemoryUpdateNote.ts',
   'ProjectMemoryVersion.ts',
   'ProjectMemoryWorkspaceIdentity.ts',
   'ProjectMemoryWrites.ts',
   'WorkshopMemoryAutoSave.ts',
+  'WorkshopMemoryEditAnchor.ts',
   'WorkshopMemoryProposalPhrasing.ts',
   'WorkshopProjectMemoryCapability.ts',
   'WorkshopProjectMemoryCopy.ts',
@@ -1083,7 +1085,8 @@ const WORKSHOP_MEMORY_MODULES = [
   'WorkshopProjectMemoryRequestCopy.ts',
   'WorkshopProjectMemorySearch.ts',
   'WorkshopProjectMemoryXmlCodec.ts',
-  'WorkshopReplyMemory.ts'
+  'WorkshopReplyMemory.ts',
+  'WorkshopReplyMemoryEdit.ts'
 ];
 const MEMORY_TYPE_ONLY_MODULE = /(?:^|\/)(?:ProjectMemoryStore|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService)$/;
 

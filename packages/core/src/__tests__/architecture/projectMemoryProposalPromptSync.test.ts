@@ -14,6 +14,7 @@ import * as path from 'path';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { PROJECT_MEMORY_KINDS, PROJECT_MEMORY_LIST_ENTRIES } from '@shared/types/projectMemory';
 import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
+import { WORKSHOP_MEMORY_EDIT_ELEMENTS } from '@/utils/workshopMemoryEditProtocol';
 import {
   getWorkshopPersona,
   WORKSHOP_GUEST_BASE_PROMPT_PATH,
@@ -33,7 +34,8 @@ describe('project-memory proposal prompt ↔ PROMPT_BUDGETS', () => {
     [/`<summary>`: one line, at most ([\d,]+) characters/, [budgets.summaryCharacters]],
     [/`<body>`: optional, at most ([\d,]+) characters/, [budgets.bodyCharacters]],
     [/one per element, at most ([\d,]+)\./, [PROJECT_MEMORY_LIST_ENTRIES.supersedes]],
-    [/One reply suggests at most ([\d,]+) notes\./, [budgets.proposalsPerReply]]
+    [/One reply suggests at most ([\d,]+) notes\./, [budgets.proposalsPerReply]],
+    [/At most ([\d,]+) find-and-replace pairs in one change/, [budgets.editReplaces]]
   ];
 
   it.each(pinned)('quotes %s from its bound', (pattern, expected) => {
@@ -69,6 +71,21 @@ describe('project-memory proposal prompt ↔ PROMPT_BUDGETS', () => {
     expect(prose).not.toContain('at most one note');
   });
 
+  it('teaches changing a saved note: when to change, replace or suggest new, and how to quote (Slice 6c)', () => {
+    expect(prose).toContain('**Change it** when the same note needs refining');
+    expect(prose).toContain('**Replace it** with a new note that names it in `<supersedes>` when the decision or the fact itself changed');
+    expect(prose).toContain('**Suggest a new note** for anything else.');
+    expect(prose).toContain('Read the note with `memory.read` before you quote it, and quote exactly as written.');
+    expect(prose).toContain('A change you can\'t quote exactly is better written as a rewrite of that field.');
+    expect(prose).toContain('The quote must appear exactly once in the field');
+    expect(prose).toContain('it always waits for the writer to save it');
+    // Every element the edit grammar reads is taught, and nothing else.
+    const taught = [...prose.matchAll(/`<([a-z-]+)>`/g)].map((match) => match[1]);
+    for (const element of WORKSHOP_MEMORY_EDIT_ELEMENTS) {
+      expect(taught).toContain(element);
+    }
+  });
+
   it('carries the never-list (D9)', () => {
     expect(prose).toContain('It never records anything about the writer\'s feelings, health, relationships or private life');
     expect(prose).toContain('never say a note was saved, and never promise to remember anything');
@@ -78,8 +95,11 @@ describe('project-memory proposal prompt ↔ PROMPT_BUDGETS', () => {
 describe('the trailer example, through the production extractor and codec', () => {
   const examples = [...PROMPT.matchAll(/```xml\n([\s\S]*?)```/g)].map((match) => match[1].trim());
 
-  it('shows exactly one example: two trailers, which decode to the two proposals it shows', () => {
-    expect(examples).toHaveLength(1);
+  it('shows two examples: two new notes, then a change to a saved note (Slice 6c)', () => {
+    expect(examples).toHaveLength(2);
+  });
+
+  it('the first example is two trailers, which decode to the two proposals it shows', () => {
     const reply = `Good. It earns its place.\n\n${examples[0]}\n`;
     expect(extractWorkshopReplyControls(reply, { memoryOpen: true })).toEqual({
       rest: 'Good. It earns its place.',
@@ -102,6 +122,27 @@ describe('the trailer example, through the production extractor and codec', () =
         rejections: []
       }
     });
+  });
+
+  it('the second example decodes to the change it shows, in order', () => {
+    const reply = `Good.\n\n${examples[1]}\n`;
+    expect(extractWorkshopReplyControls(reply, { memoryOpen: true }).memory).toEqual({
+      kind: 'frames',
+      proposals: [{
+        proposes: 'edit',
+        target: 'mem-7f3c2a',
+        operations: [
+          { op: 'replace', field: 'body', find: 'the reader notices before Alice does', with: 'Alice notices first, and says nothing' },
+          { op: 'append', text: 'The Hatter\'s watch, by contrast, is always two days slow.' }
+        ]
+      }],
+      rejections: []
+    });
+  });
+
+  it('the change quotes the first example\'s note exactly once, so it anchors', () => {
+    const body = /<body>([\s\S]*?)<\/body>/.exec(examples[0])![1];
+    expect(body.split('the reader notices before Alice does')).toHaveLength(2);
   });
 
   it('is refused anywhere but last, as the prose says', () => {

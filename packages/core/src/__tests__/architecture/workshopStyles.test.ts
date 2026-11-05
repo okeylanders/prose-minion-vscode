@@ -81,8 +81,7 @@ describe('Workshop stylesheet assembly', () => {
 
     expect(actualOrder).toEqual([
       ...WORKSHOP_STYLE_IMPORTS,
-      './components/workshop/schematic/schematic.css',
-      './styles/workshop/memory.css'
+      './components/workshop/schematic/schematic.css'
     ]);
 
     const selfImportOffenders = collectTypeScriptFiles(WEBVIEW_ROOT)

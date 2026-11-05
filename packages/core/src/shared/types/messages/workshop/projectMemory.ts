@@ -28,12 +28,12 @@ export type WorkshopMemoryProposalState = typeof WORKSHOP_MEMORY_PROPOSAL_STATES
 
 /**
  * Why a proposal waits under Save and tell me (D8; Slice 5): its reply's run
- * had web research attached, it replaces a saved memory (Slice 6b: a
- * supersession always waits for the writer), or the room reached
- * `autoSavesPerRoom`. Absent under Ask first, and on a card Save and tell
- * me saved.
+ * had web research attached, it changes a saved memory (Slice 6c: an edit
+ * always waits for the writer), it replaces one (Slice 6b: so does a
+ * supersession), or the room reached `autoSavesPerRoom`. Absent under Ask
+ * first, and on a card Save and tell me saved.
  */
-export const WORKSHOP_MEMORY_HOLDS = ['web-research', 'supersedes', 'room-cap'] as const;
+export const WORKSHOP_MEMORY_HOLDS = ['web-research', 'edit', 'supersedes', 'room-cap'] as const;
 export type WorkshopMemoryHold = typeof WORKSHOP_MEMORY_HOLDS[number];
 
 /** A memory the proposal replaces, as the listing named it when the reply landed. */
@@ -43,34 +43,76 @@ export interface WorkshopMemoryProposalReplaces {
 }
 
 /**
- * What a suggestion proposes (Slice 6b). Only `new` exists: a new memory. A
- * later slice may add an edit of a saved memory as another kind of item.
+ * What a suggestion proposes (Slices 6b, 6c): `new`, a new memory, or
+ * `edit`, a change to one already saved.
  */
-export const WORKSHOP_MEMORY_PROPOSAL_KINDS = ['new'] as const;
+export const WORKSHOP_MEMORY_PROPOSAL_KINDS = ['new', 'edit'] as const;
 export type WorkshopMemoryProposalKind = typeof WORKSHOP_MEMORY_PROPOSAL_KINDS[number];
 
-/**
- * A persona's proposal, decoded, checked and persisted on its turn (D6).
- * The host fills provenance at save time; the trailer may name none of it.
- */
-export interface WorkshopMemoryProposal {
-  /** What it proposes; `kind` is the memory's own kind. */
-  proposes: WorkshopMemoryProposalKind;
+/** What a card shares, whatever it proposes. `title` to `body` are what the memory would say once saved. */
+interface WorkshopMemoryProposalCommon {
   title: string;
   kind: ProjectMemoryKind;
   summary: string;
-  /** The note, as the trailer wrote it (trimmed); may be empty. */
+  /** The note (trimmed); may be empty. */
   body: string;
-  /** Listed memories it replaces, with the title each had then. */
-  supersedes?: WorkshopMemoryProposalReplaces[];
-  /** `supersedes` ids the trailer named that no listed memory held: dropped, and said on the card. */
-  droppedSupersedes?: number;
   state: WorkshopMemoryProposalState;
-  /** The memory it became, once saved. */
+  /** The memory it became (a new note) or changed (an edit), once saved. */
   memoryId?: string;
   /** Held for the writer under Save and tell me, and why (Slice 5); kept once settled. */
   held?: WorkshopMemoryHold;
 }
+
+/**
+ * A persona's proposal of a new memory, decoded, checked and persisted on its
+ * turn (D6). The host fills provenance at save time; the trailer may name
+ * none of it.
+ */
+export interface WorkshopMemoryNewProposal extends WorkshopMemoryProposalCommon {
+  proposes: 'new';
+  /** Listed memories it replaces, with the title each had then. */
+  supersedes?: WorkshopMemoryProposalReplaces[];
+  /** `supersedes` ids the trailer named that no listed memory held: dropped, and said on the card. */
+  droppedSupersedes?: number;
+}
+
+/** What a memory says: the fields an edit can change. */
+export interface WorkshopMemoryEditFields {
+  title: string;
+  kind: ProjectMemoryKind;
+  summary: string;
+  body: string;
+}
+
+/**
+ * A persona's proposed change to a saved memory (Slice 6c), anchored by the
+ * host against the note as the listing had it when the reply landed. Its
+ * `title` to `body` are the result; `before` is what the note said. Saving
+ * applies the result only while the note's edit token is still
+ * `target.token` (PR #212 F-02).
+ */
+export interface WorkshopMemoryEditProposal extends WorkshopMemoryProposalCommon {
+  proposes: 'edit';
+  target: {
+    id: string;
+    /**
+     * The note's edit token when the edit was anchored (`projectMemoryEditToken`):
+     * every field a Save can overwrite, and its standing (PR #212 F-02).
+     */
+    token: string;
+    /** Whether it loads in full: kept by a Save, and the sheet's prefill. */
+    pinned: boolean;
+    /** Every id the note supersedes, listed or not: kept whole by a Save (PR #212 F-01). */
+    supersedes: string[];
+    /** Those the listing named, with their titles, for the sheet to show. */
+    replaces?: WorkshopMemoryProposalReplaces[];
+  };
+  before: WorkshopMemoryEditFields;
+  /** A Save found the note changed since it was suggested: nothing was written, and only Dismiss is offered. */
+  stale?: true;
+}
+
+export type WorkshopMemoryProposal = WorkshopMemoryNewProposal | WorkshopMemoryEditProposal;
 
 /**
  * What a receipt says happened (D7). `restored` is the Forget receipt's

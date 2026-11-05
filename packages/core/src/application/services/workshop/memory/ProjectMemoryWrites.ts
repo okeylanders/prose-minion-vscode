@@ -28,17 +28,15 @@
 
 import type { LogSink } from '@/platform';
 import type { WorkshopMemoryDraft, WorkshopMemoryPinnedEstimate } from '@messages';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { projectMemoryBody, type ProjectMemory, type ProjectMemoryOrigin } from '@shared/types/projectMemory';
 import type { ProjectMemoryStore } from '@/infrastructure/storage/ProjectMemoryStore';
 import {
-  isProjectMemoryInEffect,
   listProjectMemories,
   type ProjectMemoryClosedReason,
   type ProjectMemoryListed
 } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
-import { projectMemoryPinnedTokens } from '@/application/services/workshop/memory/ProjectMemoryCatalogFrame';
-import { projectMemoryVersion } from '@/application/services/workshop/memory/ProjectMemoryVersion';
+import { pinnedBudget, saysSomethingElse } from '@/application/services/workshop/memory/ProjectMemoryPinnedBudget';
+import { projectMemoryEditToken, projectMemoryVersion } from '@/application/services/workshop/memory/ProjectMemoryVersion';
 import { askedProjectMemoryWorkspace, type ProjectMemoryWorkspaceIdentity } from '@/application/services/workshop/memory/ProjectMemoryWorkspaceIdentity';
 
 /** The store's methods the writes use; satisfied by ProjectMemoryStore. */
@@ -64,7 +62,9 @@ export type ProjectMemoryWriteRefusalReason =
   | 'failed'
   | 'pinned-budget'
   /** A save's permission was withdrawn before it committed (Save and tell me: PR #201 F-01). */
-  | 'withdrawn';
+  | 'withdrawn'
+  /** An edit suggested against one version of the note found another (Slice 6c): nothing is written. */
+  | 'changed';
 
 /**
  * Why a delete did nothing: a write's reasons, or `changed`, when the file
@@ -114,8 +114,6 @@ interface BoundWorkspace {
   /** The store's commit point: the workspace is open and still the one asked. */
   readonly commit: () => boolean;
 }
-
-const PINNED_BUDGET = PROMPT_BUDGETS.workshopProjectMemory.pinnedTokens;
 
 export class ProjectMemoryWrites {
   private readonly owed = new Set<Promise<unknown>>();
@@ -196,8 +194,18 @@ export class ProjectMemoryWrites {
     });
   }
 
-  /** Edit a saved memory: the sheet's whole draft replaces what it says, and whether it loads in full. */
-  update(id: string, patch: WorkshopMemoryDraft): Promise<ProjectMemoryWriteResult> {
+  /**
+   * Edit a saved memory: the sheet's whole draft replaces what it says, and
+   * whether it loads in full. With `expectedToken` (a persona's edit
+   * suggestion, Slice 6c) the note's edit token (every field this can
+   * overwrite, and its standing: PR #212 F-02) must still be that one at the
+   * write's turn, on the bytes the store's rewrite reads, and on the folder
+   * the store reads afresh just before claiming them, so a note superseded
+   * meanwhile is seen (F-03). Otherwise nothing is written (`changed`).
+   * Stated limit: another window can still change the folder between that
+   * last read and the rename (no cross-file lock, as D5 says of the budget).
+   */
+  update(id: string, patch: WorkshopMemoryDraft, options: { readonly expectedToken?: string } = {}): Promise<ProjectMemoryWriteResult> {
     return this.owe('update', async (bound) => {
       const listed = await this.listed(bound);
       if (listed.kind === 'refused') {
@@ -207,6 +215,19 @@ export class ProjectMemoryWrites {
       if (!current) {
         return this.refused('update', 'missing', id);
       }
+      const expected = options.expectedToken;
+      if (expected !== undefined && projectMemoryEditToken(current.memory, current.superseded) !== expected) {
+        return this.refused('update', 'changed', id);
+      }
+      let moved = false;
+      let unread = false;
+      // The folder as the store reads it just before its claimed rewrite: the note's own standing, fresh (F-03).
+      const verify = (folder: ReadonlyArray<{ readonly memory: ProjectMemory; readonly busy?: true }> | undefined): boolean => {
+        const fresh = folder && listProjectMemories(folder).find((entry) => entry.memory.id === id);
+        unread = folder === undefined;
+        moved = !unread && (!fresh || projectMemoryEditToken(fresh.memory, fresh.superseded) !== expected);
+        return !unread && !moved;
+      };
       const known = new Set(listed.memories.map(({ memory }) => memory.id).filter((other) => other !== id));
       const revise = (memory: ProjectMemory): ProjectMemory => {
         const next = {
@@ -228,10 +249,17 @@ export class ProjectMemoryWrites {
       }
       let changedMeaning = false;
       const replaced = await this.store.replace(id, (memory) => {
+        if (expected !== undefined && projectMemoryEditToken(memory, current.superseded) !== expected) {
+          moved = true;
+          return undefined;
+        }
         const next = revise(memory);
         changedMeaning = saysSomethingElse(memory, next);
         return changedMeaning || next.pinned !== memory.pinned ? next : undefined;
-      }, { directory: bound.asked.directory, beforeCommit: bound.commit });
+      }, { directory: bound.asked.directory, beforeCommit: bound.commit, ...(expected !== undefined ? { verify } : {}) });
+      if (unread || moved) {
+        return this.refused('update', unread ? 'unknown' : 'changed', id);
+      }
       return this.settled('update', id, replaced, changedMeaning, bound);
     });
   }
@@ -456,42 +484,4 @@ export class ProjectMemoryWrites {
   private log(line: string): void {
     this.outputChannel.appendLine(`[ProjectMemoryLibrary] ${line}`);
   }
-}
-
-/** Whether the change touches what the memory says (D10): the fields `updated` follows. */
-function saysSomethingElse(before: ProjectMemory, after: ProjectMemory): boolean {
-  return before.title !== after.title
-    || before.kind !== after.kind
-    || before.summary !== after.summary
-    || before.body !== after.body
-    || before.supersedes.join(',') !== after.supersedes.join(',');
-}
-
-/**
- * Memories loaded in full, with `candidate` in place of the memory `id`
- * names (or added, for a new one), by the frame's renderer and estimator.
- * Refused when the candidate loads in full, the total passes the budget,
- * and the change grows it: shortening an over-budget memory, or turning one
- * off, is always allowed.
- */
-export function pinnedBudget(
-  memories: readonly ProjectMemoryListed[],
-  candidate: ProjectMemory,
-  id: string | undefined
-): WorkshopMemoryPinnedEstimate {
-  const total = (set: readonly ProjectMemoryListed[]): number => set
-    .filter((listed) => listed.memory.pinned && isProjectMemoryInEffect(listed))
-    .reduce((sum, listed) => sum + projectMemoryPinnedTokens(listed), 0);
-  const before = total(memories);
-  const others = memories.filter(({ memory }) => memory.id !== id).map(({ memory, busy }) => ({ memory, ...(busy ? { busy: true as const } : {}) }));
-  const after = listProjectMemories([...others, { memory: candidate }]);
-  const totalTokens = total(after);
-  const self = after.find(({ memory }) => memory === candidate)
-    ?? { memory: candidate, superseded: false, supersededBy: [], busy: false, version: projectMemoryVersion(candidate, false) };
-  return {
-    thisTokens: projectMemoryPinnedTokens(self),
-    totalTokens,
-    budgetTokens: PINNED_BUDGET,
-    refused: candidate.pinned && totalTokens > PINNED_BUDGET && totalTokens > before
-  };
 }

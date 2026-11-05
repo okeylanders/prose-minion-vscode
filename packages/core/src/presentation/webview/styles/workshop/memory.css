@@ -431,6 +431,42 @@
   font-size: 12px;
   line-height: 1.5;
 }
+/* An edit card's changes (Slice 6c): each field as before → after, the note's changed region in context. */
+[data-pm-surface="workshop"] .pm-ws-memory-change {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-change-label {
+  color: var(--pm-dim);
+  font: 600 10px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-change-body {
+  margin: 0;
+  color: var(--pm-text-2);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-change-body del {
+  color: var(--pm-red);
+  text-decoration-color: var(--pm-red);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-change-body ins {
+  color: var(--pm-green);
+  text-decoration: none;
+  background: rgba(111, 201, 138, 0.1);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-change-body del + ins {
+  margin-left: 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-change-context {
+  color: var(--pm-dim);
+}
 [data-pm-surface="workshop"] .pm-ws-memory-replaces {
   color: var(--pm-dim);
   font-size: 11.5px;

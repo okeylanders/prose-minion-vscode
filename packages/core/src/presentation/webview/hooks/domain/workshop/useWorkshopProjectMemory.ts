@@ -30,7 +30,7 @@ import {
 } from '@messages';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { workshopMemoryCardKey, workshopMemoryProposalAt } from '@shared/constants/workshopProjectMemoryWrites';
+import { workshopMemoryCardKey, workshopMemoryProposalAt, workshopMemoryProposalDraft } from '@shared/constants/workshopProjectMemoryWrites';
 
 /** What the sheet is for: a card's edit, a saved memory's edit, a bubble as source, or nothing. */
 export type WorkshopMemorySheetMode = 'card' | 'memory' | 'turn' | 'new';
@@ -41,7 +41,7 @@ export interface WorkshopMemorySheetState {
   readonly turnId?: string;
   /** The card's index on its turn (Slice 6b); a card's edit only. */
   readonly proposalIndex?: number;
-  /** The saved memory being edited. */
+  /** The saved memory being edited: a receipt's or the manager's, or the note an edit card changes (Slice 6c). */
   readonly memoryId?: string;
   readonly draft: WorkshopMemoryDraft;
   /** Titles of the memories `draft.supersedes` names. */
@@ -184,7 +184,7 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
       estimateRequest.current = requestId;
       post(MessageType.WORKSHOP_MEMORY_ESTIMATE, {
         requestId,
-        ...(state.mode === 'memory' && state.memoryId ? { memoryId: state.memoryId } : {}),
+        ...(state.memoryId ? { memoryId: state.memoryId } : {}),
         draft: state.draft
       });
     }, ESTIMATE_DELAY_MS);
@@ -203,22 +203,19 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
 
   const editCard = React.useCallback((turn: WorkshopTurn, index: number) => {
     const proposal = workshopMemoryProposalAt(turn, index);
-    if (!proposal) {
+    // A stale edit offers no Edit: its result was anchored against text the note no longer holds (Slice 6c).
+    if (!proposal || (proposal.proposes === 'edit' && proposal.stale)) {
       return;
     }
+    const replaces = proposal.proposes === 'edit' ? proposal.target.replaces : proposal.supersedes;
     openSheet({
       mode: 'card',
       turnId: turn.id,
       proposalIndex: index,
-      draft: {
-        title: proposal.title,
-        kind: proposal.kind,
-        summary: proposal.summary,
-        body: proposal.body,
-        supersedes: (proposal.supersedes ?? []).map((item) => item.id),
-        pinned: false
-      },
-      replaces: (proposal.supersedes ?? []).map((item) => ({ ...item })),
+      // An edit's sheet holds its result, and counts the pinned budget as an edit of its note.
+      ...(proposal.proposes === 'edit' ? { memoryId: proposal.target.id } : {}),
+      draft: workshopMemoryProposalDraft(proposal),
+      replaces: (replaces ?? []).map((item) => ({ ...item })),
       loading: false,
       saving: false,
       sourceLabel: turn.personaLabel
