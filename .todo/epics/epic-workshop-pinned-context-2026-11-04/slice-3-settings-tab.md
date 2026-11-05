@@ -123,12 +123,12 @@ it back only as a key into the list it just read (ADR D8).
 
 ## Completion criteria
 
-- [ ] The tab matches the approved design in every state.
-- [ ] The webview never introduces a path; every add goes by catalog key or
+- [x] The tab matches the approved design in every state.
+- [x] The webview never introduces a path; every add goes by catalog key or
       attachment id.
-- [ ] Every mutation goes through the store's revision check.
-- [ ] The dialog shell and the new files stay under 500 lines.
-- [ ] The epic's verification passes, with counts recorded here.
+- [x] Every mutation goes through the store's revision check.
+- [x] The dialog shell and the new files stay under 500 lines.
+- [x] The epic's verification passes, with counts recorded here.
 
 ## Built
 
@@ -141,6 +141,7 @@ it back only as a key into the list it just read (ADR D8).
   the picker in pin mode, the fifth tab, the menu's real count, the full
   reset's confirmation, styles, and their tests.
 - This doc.
+- `fa5b7997`: merge of Slice 2b's branch at `b0429082` (no conflicts).
 
 **Where each piece lives.**
 
@@ -242,9 +243,9 @@ it back only as a key into the list it just read (ADR D8).
 
 | Check | Before (`51b4988b`, after `npm ci`) | After |
 |---|---|---|
-| `npm run typecheck` | pass | AFTER_TC |
-| `npx jest -w 2` | 702 suites / 9,902 tests / 59 snapshots, all passing | AFTER_JEST |
-| `npm run lint` | 0 errors / 1,165 warnings | AFTER_LINT |
+| `npm run typecheck` | pass | pass |
+| `npx jest -w 2` | 702 suites / 9,902 tests / 59 snapshots, all passing | 705 suites / 9,966 tests / 59 snapshots, all passing |
+| `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (none new) |
 | `from 'vscode'` in `packages/core/src` | none | none |
 | New files over 500 lines | — | none (largest: the handler test, 433) |
 | Files already over 500 | — | wiring only: `WorkshopApp.tsx` +6, `WorkshopRoomHandler.ts` +3, `MessageHandler.ts` +2 |
@@ -254,7 +255,10 @@ it back only as a key into the list it just read (ADR D8).
 | Logs | — | actions, counts and categories; the handler test checks for no path or name |
 
 The baseline was measured in a clean worktree at `51b4988b`; Slice 2b's
-counts (702 / 9,902 / 59; 0 / 1,165) hold.
+counts (702 / 9,902 / 59; 0 / 1,165) hold. "After" is measured at `fa5b7997`,
+after merging Slice 2b's branch at `b0429082` (its kept fix `54e7db78` and
+Slice 1's #204 re-review fixes), as the coordinator asked. That merge brings
+11 of the new tests (2b measured 9,913); the rest of the 64 are this slice's.
 
 ## Deviations
 
