@@ -334,9 +334,9 @@ export class WorkshopSliceComposition {
     this.projectMemoryManagerHandler.registerRoutes(router);
   }
 
-  /** Save and tell me (Slice 5): a recorded reply's card, saved now, as the tail of the run `signal` belongs to. */
-  autoSaveMemoryProposal(turn: WorkshopTurn, signal: AbortSignal): Promise<void> {
-    return this.projectMemoryHandler.autoSaveProposal(turn.id, signal);
+  /** Save and tell me (Slice 5): a recorded reply's cards at `indexes`, saved now in order, as the tail of the run `signal` belongs to. */
+  autoSaveMemoryProposals(turn: WorkshopTurn, indexes: readonly number[], signal: AbortSignal): Promise<void> {
+    return this.projectMemoryHandler.autoSaveProposals(turn.id, indexes, signal);
   }
 
   /** The room's automatic saves, landed and in flight, for Save and tell me's cap (PR #201 F-04). */

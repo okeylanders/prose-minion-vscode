@@ -14,7 +14,7 @@ import {
   PROJECT_MEMORY_KINDS,
   PROJECT_MEMORY_LIST_ENTRIES
 } from '@shared/types/projectMemory';
-import type { WorkshopMemoryDraft, WorkshopMemoryHold, WorkshopMemoryPinnedEstimate, WorkshopMemoryProposal } from '@messages';
+import type { WorkshopMemoryDraft, WorkshopMemoryHold, WorkshopMemoryPinnedEstimate, WorkshopMemoryProposal, WorkshopTurn } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 export type WorkshopMemoryDraftFault =
@@ -116,6 +116,19 @@ export function workshopMemoryPinnedHelp(estimate: WorkshopMemoryPinnedEstimate 
     `memories loaded in full would come to about ${roundTokens(estimate.totalTokens)} of ${estimate.budgetTokens.toLocaleString('en-US')}.`;
 }
 
+/** One of a turn's suggestions, by its index in `memoryProposals` (Slice 6b); none when the turn holds no such card. */
+export function workshopMemoryProposalAt(
+  turn: Pick<WorkshopTurn, 'memoryProposals'> | undefined,
+  index: number
+): WorkshopMemoryProposal | undefined {
+  return Number.isSafeInteger(index) && index >= 0 ? turn?.memoryProposals?.[index] : undefined;
+}
+
+/** A card's key where the webview tracks it: its turn and its index on that turn. */
+export function workshopMemoryCardKey(turnId: string, index: number): string {
+  return `${turnId}#${index}`;
+}
+
 /** A card's own draft: what Save writes when the writer didn't edit it. */
 export function workshopMemoryProposalDraft(proposal: WorkshopMemoryProposal): WorkshopMemoryDraft {
   return {
@@ -149,6 +162,8 @@ export function workshopMemoryHeldReason(held: WorkshopMemoryHold): string {
   switch (held) {
     case 'web-research':
       return 'Live web research was available for this reply, so this memory waits for you to save it.';
+    case 'supersedes':
+      return 'It replaces a saved memory, so it waits for you to save it.';
     case 'room-cap':
       return `This conversation has reached its limit of ${PROMPT_BUDGETS.workshopProjectMemory.autoSavesPerRoom} ` +
         'automatic memory saves. This one waits for you.';

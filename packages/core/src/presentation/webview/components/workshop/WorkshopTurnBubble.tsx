@@ -25,7 +25,7 @@ import {
 } from '@messages';
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { WorkshopBookmarkToggle } from './WorkshopBookmarkToggle';
-import { WorkshopMemoryReceiptLine, WorkshopTurnMemoryCard, workshopSaveToMemoryAction, type WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
+import { WorkshopMemoryReceiptLine, WorkshopTurnMemoryCards, workshopSaveToMemoryAction, type WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
 import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks';
 import { workshopToolIcon } from './workshopToolIcons';
 import { WORKSHOP_WIDGET_ICONS } from './workshopWidgetIcons';
@@ -752,7 +752,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </div>
           </div>
         )}
-        {memory && <WorkshopTurnMemoryCard turn={turn} controls={memory} />}
+        {memory && <WorkshopTurnMemoryCards turn={turn} controls={memory} />}
         <div className="pm-ws-turn-actions">
           <button type="button" onClick={() => onCopy(turn.content, turn)}>
             <Icon name="copy" size={13} /> Copy

@@ -3,11 +3,12 @@
  * epic Slice 3): the proposal a persona's reply carries, the receipt a save
  * leaves in the room, and the writer's write routes.
  *
- * - **A proposal** is persisted on the assistant turn that carried it
- *   (`WorkshopTurn.memoryProposal`), after the host stripped its trailer
- *   from the bubble and from retained history. Nothing is saved without the
- *   writer's action in Ask first; Save and tell me saves one at once, or
- *   holds it with a reason (Slice 5).
+ * - **Proposals** are persisted on the assistant turn that carried them
+ *   (`WorkshopTurn.memoryProposals`, at most `proposalsPerReply`: Slice 6b),
+ *   after the host stripped their trailers from the bubble and from
+ *   retained history. Nothing is saved without the writer's action in Ask
+ *   first; Save and tell me saves each at once, or holds it with a reason
+ *   (Slice 5). Each is acted on by its turn and its index in that list.
  * - **A receipt** is a session divider turn (`WorkshopTurn.projectMemoryReceipt`)
  *   that every participant receives as room history. It never carries the
  *   memory's body (D7; PR #196 watchpoint 1).
@@ -27,10 +28,12 @@ export type WorkshopMemoryProposalState = typeof WORKSHOP_MEMORY_PROPOSAL_STATES
 
 /**
  * Why a proposal waits under Save and tell me (D8; Slice 5): its reply's run
- * had web research attached, or the room reached `autoSavesPerRoom`. Absent
- * under Ask first, and on a card Save and tell me saved.
+ * had web research attached, it replaces a saved memory (Slice 6b: a
+ * supersession always waits for the writer), or the room reached
+ * `autoSavesPerRoom`. Absent under Ask first, and on a card Save and tell
+ * me saved.
  */
-export const WORKSHOP_MEMORY_HOLDS = ['web-research', 'room-cap'] as const;
+export const WORKSHOP_MEMORY_HOLDS = ['web-research', 'supersedes', 'room-cap'] as const;
 export type WorkshopMemoryHold = typeof WORKSHOP_MEMORY_HOLDS[number];
 
 /** A memory the proposal replaces, as the listing named it when the reply landed. */
@@ -40,10 +43,19 @@ export interface WorkshopMemoryProposalReplaces {
 }
 
 /**
+ * What a suggestion proposes (Slice 6b). Only `new` exists: a new memory. A
+ * later slice may add an edit of a saved memory as another kind of item.
+ */
+export const WORKSHOP_MEMORY_PROPOSAL_KINDS = ['new'] as const;
+export type WorkshopMemoryProposalKind = typeof WORKSHOP_MEMORY_PROPOSAL_KINDS[number];
+
+/**
  * A persona's proposal, decoded, checked and persisted on its turn (D6).
  * The host fills provenance at save time; the trailer may name none of it.
  */
 export interface WorkshopMemoryProposal {
+  /** What it proposes; `kind` is the memory's own kind. */
+  proposes: WorkshopMemoryProposalKind;
   title: string;
   kind: ProjectMemoryKind;
   summary: string;
@@ -97,10 +109,12 @@ export interface WorkshopMemoryDraft {
   pinned: boolean;
 }
 
-/** Save, dismiss or show again a turn's proposal; `edited` saves the sheet's version instead. */
+/** Save, dismiss or show again one of a turn's proposals; `edited` saves the sheet's version instead. */
 export interface WorkshopMemoryProposalActionPayload {
   requestId: string;
   turnId: string;
+  /** Which of the turn's proposals: its index in `memoryProposals`. */
+  index: number;
   action: 'save' | 'dismiss' | 'reopen';
   edited?: WorkshopMemoryDraft;
 }

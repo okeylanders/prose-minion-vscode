@@ -150,7 +150,7 @@ describe('WorkshopApp · the Memory tab and the manager (Slice 4b)', () => {
   const reply = (proposal: Record<string, unknown>): WorkshopTurn => ({
     id: 'turn-4-assistant-1008', role: 'assistant', kind: 'message', participant: 'host', artifact: 'persona_message',
     personaId: 'jill', personaLabel: 'Jill', excerptVersion: 1, content: 'Good. It earns its place.', timestamp: 1,
-    memoryProposal: { title: 'The Rabbit’s watch runs backward', kind: 'canon', summary: 'From chapter 3 on.', body: '', ...proposal }
+    memoryProposals: [{ proposes: 'new', title: 'The Rabbit’s watch runs backward', kind: 'canon', summary: 'From chapter 3 on.', body: '', ...proposal }]
   } as unknown as WorkshopTurn);
   const managerResult = (requestId: unknown, ok: boolean, error?: string) => deliver({
     type: MessageType.WORKSHOP_MEMORY_MANAGER_RESULT,

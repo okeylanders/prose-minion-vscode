@@ -2,7 +2,9 @@
  * Project memory in the thread (ADR 2026-11-04 D6, D7; Slice 0d, "In the
  * thread"), rendered by `WorkshopTurnBubble`:
  *
- * - a persona reply's card, in its states: the suggestion (pending), the
+ * - a persona reply's cards (up to `proposalsPerReply`: Slice 6b), each
+ *   acted on alone, under a small count when there are several; each in its
+ *   states: the suggestion (pending), the
  *   held card under Save and tell me ("Held for you to decide", with the
  *   host's reason: Slice 5), "Saved to project memory: …", and "Dismissed.
  *   … wasn't saved. · Show it again". A card Save and tell me saved shows
@@ -19,10 +21,10 @@
  */
 
 import * as React from 'react';
-import type { WorkshopTurn } from '@messages';
+import type { WorkshopMemoryProposal, WorkshopTurn } from '@messages';
 import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks';
 import { isWorkshopPersonaId, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
-import { workshopMemoryHeldReason } from '@shared/constants/workshopProjectMemoryWrites';
+import { workshopMemoryCardKey, workshopMemoryHeldReason } from '@shared/constants/workshopProjectMemoryWrites';
 import { Icon } from '@components/shared/Icon';
 import type { WorkshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
 import { WorkshopMemoryCard } from './WorkshopMemoryCard';
@@ -31,12 +33,14 @@ import { WorkshopMemoryCard } from './WorkshopMemoryCard';
 export interface WorkshopTurnMemoryControls {
   /** True while the room's mutation lock is held. */
   disabled: boolean;
-  busyTurnIds: ReadonlySet<string>;
+  /** Cards whose action waits for the host, by `workshopMemoryCardKey`. */
+  busyCards: ReadonlySet<string>;
+  /** A card's refusal, by `workshopMemoryCardKey`. */
   cardErrors: ReadonlyMap<string, string>;
-  onSaveCard: (turnId: string) => void;
-  onEditCard: (turn: WorkshopTurn) => void;
-  onDismissCard: (turnId: string) => void;
-  onReopenCard: (turnId: string) => void;
+  onSaveCard: (turnId: string, index: number) => void;
+  onEditCard: (turn: WorkshopTurn, index: number) => void;
+  onDismissCard: (turnId: string, index: number) => void;
+  onReopenCard: (turnId: string, index: number) => void;
   onSaveTurn: (turn: WorkshopTurn) => void;
   onEditMemory: (memoryId: string) => void;
   onForget: (memoryId: string) => void;
@@ -47,18 +51,48 @@ export interface WorkshopTurnMemoryControls {
   onOpenManager?: (memoryId: string) => void;
 }
 
-/** A persona reply's card, in whichever state the host holds it. */
+/**
+ * A persona reply's cards: one, or several under a small count (Slice 6b).
+ * A card Save and tell me saved shows on its receipt, not here, so the
+ * visible cards are worked out first, each keeping its index on the turn
+ * (PR #209 F-01): none renders nothing, one is a plain card, and the count
+ * names only the cards shown.
+ */
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
-export const WorkshopTurnMemoryCard: React.FC<{ turn: WorkshopTurn; controls: WorkshopTurnMemoryControls }> = ({ turn, controls }) => {
-  const proposal = turn.memoryProposal;
-  if (!proposal) {
+export const WorkshopTurnMemoryCards: React.FC<{ turn: WorkshopTurn; controls: WorkshopTurnMemoryControls }> = ({ turn, controls }) => {
+  const visible = (turn.memoryProposals ?? [])
+    .map((proposal, index) => ({ proposal, index }))
+    .filter(({ proposal, index }) => !(proposal.state === 'saved' && controls.autoSaved?.cardKeys.has(workshopMemoryCardKey(turn.id, index))));
+  if (visible.length === 0) {
     return null;
   }
-  const busy = controls.disabled || controls.busyTurnIds.has(turn.id);
+  const cards = visible.map(({ proposal, index }) => (
+    <WorkshopTurnMemoryItem key={index} turn={turn} index={index} proposal={proposal} controls={controls} />
+  ));
+  if (visible.length === 1) {
+    return <>{cards}</>;
+  }
+  return (
+    <div className="pm-ws-memory-stack" role="group" aria-label={`${visible.length} memory suggestions`}>
+      <div className="pm-ws-memory-stack-head" aria-hidden="true">
+        <Icon name="bookmark" size={12} /> {visible.length} suggestions
+      </div>
+      {cards}
+    </div>
+  );
+};
+
+/** One card, in whichever state the host holds it. */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
+const WorkshopTurnMemoryItem: React.FC<{
+  turn: WorkshopTurn;
+  index: number;
+  proposal: WorkshopMemoryProposal;
+  controls: WorkshopTurnMemoryControls;
+}> = ({ turn, index, proposal, controls }) => {
+  const key = workshopMemoryCardKey(turn.id, index);
+  const busy = controls.disabled || controls.busyCards.has(key);
   if (proposal.state === 'saved') {
-    if (controls.autoSaved?.replyTurnIds.has(turn.id)) {
-      return null;
-    }
     return (
       <div className="pm-ws-memory-settled">
         <Icon name="check" size={13} />
@@ -76,7 +110,7 @@ export const WorkshopTurnMemoryCard: React.FC<{ turn: WorkshopTurn; controls: Wo
       <div className="pm-ws-memory-settled pm-ws-memory-settled-off">
         <Icon name="x" size={13} />
         <span>Dismissed. <b>{proposal.title}</b> wasn&apos;t saved.</span>
-        <button type="button" className="pm-ws-memory-link" disabled={busy} onClick={() => controls.onReopenCard(turn.id)}>
+        <button type="button" className="pm-ws-memory-link" disabled={busy} onClick={() => controls.onReopenCard(turn.id, index)}>
           Show it again
         </button>
       </div>
@@ -92,12 +126,12 @@ export const WorkshopTurnMemoryCard: React.FC<{ turn: WorkshopTurn; controls: Wo
       body={proposal.body}
       replaces={proposal.supersedes}
       droppedReplaces={proposal.droppedSupersedes}
-      error={controls.cardErrors.get(turn.id)}
+      error={controls.cardErrors.get(key)}
       actions={{
         busy,
-        onSave: () => controls.onSaveCard(turn.id),
-        onEdit: () => controls.onEditCard(turn),
-        onDismiss: () => controls.onDismissCard(turn.id)
+        onSave: () => controls.onSaveCard(turn.id, index),
+        onEdit: () => controls.onEditCard(turn, index),
+        onDismiss: () => controls.onDismissCard(turn.id, index)
       }}
     />
   );

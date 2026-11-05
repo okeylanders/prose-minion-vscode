@@ -446,8 +446,12 @@ export interface WorkshopTurn {
    * wholesale host-side and never reach this field.
    */
   widgetRecommendation?: WorkshopWidgetRecommendation;
-  /** A persona's project-memory proposal, its trailer stripped (ADR 2026-11-04 D6). Host and guest replies only. */
-  memoryProposal?: WorkshopMemoryProposal;
+  /**
+   * A persona's project-memory proposals, their trailers stripped (ADR
+   * 2026-11-04 D6; Slice 6b): one to `proposalsPerReply`, in the order
+   * written, never empty. Host and guest replies only.
+   */
+  memoryProposals?: WorkshopMemoryProposal[];
   /** A save, edit, Forget or Restore of a project memory, on its divider (D7). Never the body. */
   projectMemoryReceipt?: WorkshopProjectMemoryReceipt;
   /**

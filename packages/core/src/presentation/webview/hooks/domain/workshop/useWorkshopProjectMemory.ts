@@ -30,6 +30,7 @@ import {
 } from '@messages';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { workshopMemoryCardKey, workshopMemoryProposalAt } from '@shared/constants/workshopProjectMemoryWrites';
 
 /** What the sheet is for: a card's edit, a saved memory's edit, a bubble as source, or nothing. */
 export type WorkshopMemorySheetMode = 'card' | 'memory' | 'turn' | 'new';
@@ -38,6 +39,8 @@ export interface WorkshopMemorySheetState {
   readonly mode: WorkshopMemorySheetMode;
   /** The card's or bubble's turn. */
   readonly turnId?: string;
+  /** The card's index on its turn (Slice 6b); a card's edit only. */
+  readonly proposalIndex?: number;
   /** The saved memory being edited. */
   readonly memoryId?: string;
   readonly draft: WorkshopMemoryDraft;
@@ -55,20 +58,20 @@ export interface WorkshopMemorySheetState {
 
 export interface WorkshopProjectMemoryState {
   sheet: WorkshopMemorySheetState | null;
-  /** Turns whose card action is waiting for the host. */
-  busyTurnIds: ReadonlySet<string>;
-  /** A card's refusal, by turn, until its next action. */
+  /** Cards whose action is waiting for the host, by `workshopMemoryCardKey`. */
+  busyCards: ReadonlySet<string>;
+  /** A card's refusal, by `workshopMemoryCardKey`, until its next action. */
   cardErrors: ReadonlyMap<string, string>;
   /** The latest refusal from a receipt's Forget or Restore. */
   receiptError?: string;
 }
 
 export interface WorkshopProjectMemoryActions {
-  saveCard: (turnId: string) => void;
-  dismissCard: (turnId: string) => void;
-  reopenCard: (turnId: string) => void;
-  /** Edit… on a card: the sheet, filled from the proposal. */
-  editCard: (turn: WorkshopTurn) => void;
+  saveCard: (turnId: string, index: number) => void;
+  dismissCard: (turnId: string, index: number) => void;
+  reopenCard: (turnId: string, index: number) => void;
+  /** Edit… on a card: the sheet, filled from the proposal at `index`. */
+  editCard: (turn: WorkshopTurn, index: number) => void;
   /** Save to memory… on an eligible bubble. */
   saveTurn: (turn: WorkshopTurn) => void;
   /** Edit on a receipt (and Slice 4b's manager). */
@@ -97,9 +100,9 @@ export type UseWorkshopProjectMemoryReturn = WorkshopProjectMemoryState &
   };
 
 type Pending =
-  | { readonly kind: 'card'; readonly turnId: string }
-  /** A sheet's save; a card's names its turn, which stays busy until answered (PR #200 F-05). */
-  | { readonly kind: 'sheet'; readonly turnId?: string }
+  | { readonly kind: 'card'; readonly card: string }
+  /** A sheet's save; a card's names its card key, which stays busy until answered (PR #200 F-05). */
+  | { readonly kind: 'sheet'; readonly card?: string }
   | { readonly kind: 'receipt' };
 
 const SOURCE = 'webview.workshop.memory';
@@ -122,7 +125,7 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     sheetRef.current = next;
     setSheetState(next);
   }, []);
-  const [busyTurnIds, setBusyTurnIds] = React.useState<ReadonlySet<string>>(new Set());
+  const [busyCards, setBusyCards] = React.useState<ReadonlySet<string>>(new Set());
   const [cardErrors, setCardErrors] = React.useState<ReadonlyMap<string, string>>(new Map());
   const [receiptError, setReceiptError] = React.useState<string | undefined>(undefined);
   const pending = React.useRef(new Map<string, Pending>());
@@ -141,37 +144,38 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     vscode.postMessage({ type, source: SOURCE, payload, timestamp: Date.now() });
   }, [vscode]);
 
-  const setTurnBusy = React.useCallback((turnId: string, busy: boolean) => {
-    setBusyTurnIds((current) => {
+  const setCardBusy = React.useCallback((card: string, busy: boolean) => {
+    setBusyCards((current) => {
       const next = new Set(current);
       if (busy) {
-        next.add(turnId);
+        next.add(card);
       } else {
-        next.delete(turnId);
+        next.delete(card);
       }
       return next;
     });
   }, []);
 
-  const setCardError = React.useCallback((turnId: string, error: string | undefined) => {
+  const setCardError = React.useCallback((card: string, error: string | undefined) => {
     setCardErrors((current) => {
       const next = new Map(current);
       if (error) {
-        next.set(turnId, error);
+        next.set(card, error);
       } else {
-        next.delete(turnId);
+        next.delete(card);
       }
       return next;
     });
   }, []);
 
-  const cardAction = React.useCallback((turnId: string, action: 'save' | 'dismiss' | 'reopen') => {
+  const cardAction = React.useCallback((turnId: string, index: number, action: 'save' | 'dismiss' | 'reopen') => {
     const requestId = mint();
-    pending.current.set(requestId, { kind: 'card', turnId });
-    setTurnBusy(turnId, true);
-    setCardError(turnId, undefined);
-    post(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId, turnId, action });
-  }, [mint, post, setCardError, setTurnBusy]);
+    const card = workshopMemoryCardKey(turnId, index);
+    pending.current.set(requestId, { kind: 'card', card });
+    setCardBusy(card, true);
+    setCardError(card, undefined);
+    post(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId, turnId, index, action });
+  }, [mint, post, setCardBusy, setCardError]);
 
   const requestEstimate = React.useCallback((state: WorkshopMemorySheetState) => {
     window.clearTimeout(estimateTimer.current);
@@ -197,14 +201,15 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     }
   }, [requestEstimate, setSheet]);
 
-  const editCard = React.useCallback((turn: WorkshopTurn) => {
-    const proposal = turn.memoryProposal;
+  const editCard = React.useCallback((turn: WorkshopTurn, index: number) => {
+    const proposal = workshopMemoryProposalAt(turn, index);
     if (!proposal) {
       return;
     }
     openSheet({
       mode: 'card',
       turnId: turn.id,
+      proposalIndex: index,
       draft: {
         title: proposal.title,
         kind: proposal.kind,
@@ -281,15 +286,19 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     }
     const requestId = mint();
     sheetRequest.current = requestId;
-    const cardTurnId = current.mode === 'card' ? current.turnId : undefined;
-    pending.current.set(requestId, { kind: 'sheet', ...(cardTurnId ? { turnId: cardTurnId } : {}) });
-    if (cardTurnId) {
-      setTurnBusy(cardTurnId, true);
-      setCardError(cardTurnId, undefined);
+    const card = current.mode === 'card' && current.turnId !== undefined && current.proposalIndex !== undefined
+      ? workshopMemoryCardKey(current.turnId, current.proposalIndex)
+      : undefined;
+    pending.current.set(requestId, { kind: 'sheet', ...(card ? { card } : {}) });
+    if (card) {
+      setCardBusy(card, true);
+      setCardError(card, undefined);
     }
     switch (current.mode) {
       case 'card':
-        post(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId, turnId: current.turnId, action: 'save', edited: current.draft });
+        post(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, {
+          requestId, turnId: current.turnId, index: current.proposalIndex, action: 'save', edited: current.draft
+        });
         break;
       case 'turn':
         post(MessageType.WORKSHOP_SAVE_TURN_TO_MEMORY, { requestId, turnId: current.turnId, draft: current.draft });
@@ -302,7 +311,7 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
         break;
     }
     setSheet({ ...current, saving: true, error: undefined });
-  }, [mint, post, setCardError, setSheet, setTurnBusy]);
+  }, [mint, post, setCardBusy, setCardError, setSheet]);
 
   const dismissSheet = React.useCallback(() => {
     window.clearTimeout(estimateTimer.current);
@@ -329,20 +338,20 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     }
     pending.current.delete(requestId);
     if (owner.kind === 'card') {
-      setTurnBusy(owner.turnId, false);
-      setCardError(owner.turnId, ok ? undefined : error);
+      setCardBusy(owner.card, false);
+      setCardError(owner.card, ok ? undefined : error);
       return;
     }
     if (owner.kind === 'receipt') {
       setReceiptError(ok ? undefined : error);
       return;
     }
-    if (owner.turnId) {
-      setTurnBusy(owner.turnId, false);
+    if (owner.card) {
+      setCardBusy(owner.card, false);
     }
     if (sheetRequest.current !== requestId) {
-      if (owner.turnId) {
-        setCardError(owner.turnId, ok ? undefined : error);
+      if (owner.card) {
+        setCardError(owner.card, ok ? undefined : error);
       }
       return;
     }
@@ -355,7 +364,7 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     if (current) {
       setSheet({ ...current, saving: false, error, ...(budget ? { estimate: budget } : {}) });
     }
-  }, [dismissSheet, setCardError, setSheet, setTurnBusy]);
+  }, [dismissSheet, setCardBusy, setCardError, setSheet]);
 
   const handleEditData = React.useCallback((message: WorkshopMemoryEditDataMessage) => {
     const { requestId, draft, replaces, error } = message.payload;
@@ -387,12 +396,12 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
 
   return {
     sheet,
-    busyTurnIds,
+    busyCards,
     cardErrors,
     receiptError,
-    saveCard: React.useCallback((turnId: string) => cardAction(turnId, 'save'), [cardAction]),
-    dismissCard: React.useCallback((turnId: string) => cardAction(turnId, 'dismiss'), [cardAction]),
-    reopenCard: React.useCallback((turnId: string) => cardAction(turnId, 'reopen'), [cardAction]),
+    saveCard: React.useCallback((turnId: string, index: number) => cardAction(turnId, index, 'save'), [cardAction]),
+    dismissCard: React.useCallback((turnId: string, index: number) => cardAction(turnId, index, 'dismiss'), [cardAction]),
+    reopenCard: React.useCallback((turnId: string, index: number) => cardAction(turnId, index, 'reopen'), [cardAction]),
     editCard,
     saveTurn,
     editMemory,

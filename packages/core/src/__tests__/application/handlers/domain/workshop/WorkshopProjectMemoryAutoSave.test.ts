@@ -47,7 +47,7 @@ describe('Workshop routes — Save and tell me', () => {
     );
     await route(MessageType.WORKSHOP_SEND_MESSAGE, { text: `What did we settle? (${sent})` });
     await settle();
-    return [...ledger()].reverse().find((turn) => turn.memoryProposal)!;
+    return [...ledger()].reverse().find((turn) => turn.memoryProposals)!;
   }
 
   beforeEach(async () => {
@@ -61,9 +61,9 @@ describe('Workshop routes — Save and tell me', () => {
     const turn = await reply();
 
     expect(memoryFiles()).toHaveLength(1);
-    expect(turn.memoryProposal).toMatchObject({ state: 'saved', memoryId: expect.stringMatching(/^mem-[0-9a-f]{6}$/) });
-    expect(turn.memoryProposal?.held).toBeUndefined();
-    const memoryId = turn.memoryProposal!.memoryId!;
+    expect(turn.memoryProposals?.[0]).toMatchObject({ state: 'saved', memoryId: expect.stringMatching(/^mem-[0-9a-f]{6}$/) });
+    expect(turn.memoryProposals?.[0]?.held).toBeUndefined();
+    const memoryId = turn.memoryProposals![0].memoryId!;
     const index = ledger().findIndex((candidate) => candidate.id === turn.id);
     expect(ledger()[index + 1]).toMatchObject({
       artifact: 'memory_receipt',
@@ -85,7 +85,7 @@ describe('Workshop routes — Save and tell me', () => {
   it('holds a reply whose run had web research attached, though it cited nothing, and writes no file', async () => {
     const turn = await reply({ webResearchAttached: true });
 
-    expect(turn.memoryProposal).toMatchObject({ state: 'pending', held: 'web-research' });
+    expect(turn.memoryProposals?.[0]).toMatchObject({ state: 'pending', held: 'web-research' });
     expect(memoryFiles()).toEqual([]);
     expect(receipts()).toEqual([]);
     expect(turn.citations ?? []).toEqual([]);
@@ -106,7 +106,7 @@ describe('Workshop routes — Save and tell me', () => {
     });
     await settle();
 
-    const card = ledger().find((turn) => turn.memoryProposal)!.memoryProposal!;
+    const card = ledger().find((turn) => turn.memoryProposals)!.memoryProposals![0];
     expect(card).toMatchObject({ state: 'pending', held: 'web-research' });
     expect(memoryFiles()).toEqual([]);
     expect(receipts()).toEqual([]);
@@ -114,10 +114,10 @@ describe('Workshop routes — Save and tell me', () => {
 
   it('holds at the room\'s cap of automatic saves, and a Rewind below it lets saves resume', async () => {
     for (let n = 0; n < CAP; n += 1) {
-      expect((await reply()).memoryProposal?.state).toBe('saved');
+      expect((await reply()).memoryProposals?.[0]?.state).toBe('saved');
     }
     const held = await reply();
-    expect(held.memoryProposal).toMatchObject({ state: 'pending', held: 'room-cap' });
+    expect(held.memoryProposals?.[0]).toMatchObject({ state: 'pending', held: 'room-cap' });
     expect(memoryFiles()).toHaveLength(CAP);
     expect(countWorkshopRoomAutoSaves(ledger())).toBe(CAP);
     expect(workshopMemoryHeldReason('room-cap'))
@@ -135,7 +135,7 @@ describe('Workshop routes — Save and tell me', () => {
       cut: { kind: 'afterTurn', turnId: first.id }
     });
     expect(countWorkshopRoomAutoSaves(cut.workshop.turns)).toBe(0);
-    expect(routeWorkshopMemoryProposal('auto', { webResearchAttached: false, autoSavesInRoom: () => countWorkshopRoomAutoSaves(cut.workshop.turns) }))
+    expect(routeWorkshopMemoryProposal('auto', { webResearchAttached: false, autoSavesInRoom: () => countWorkshopRoomAutoSaves(cut.workshop.turns) }, { supersedes: [] }))
       .toEqual({ kind: 'auto' });
     // Rewind never un-saves a memory: the files stand.
     expect(memoryFiles()).toHaveLength(CAP);
@@ -144,25 +144,25 @@ describe('Workshop routes — Save and tell me', () => {
   it('Ask first is unchanged: the card waits, with no hold, and nothing is written', async () => {
     harness.memory.state.mode = 'ask';
     const turn = await reply({ webResearchAttached: true });
-    expect(turn.memoryProposal).toMatchObject({ state: 'pending' });
-    expect(turn.memoryProposal?.held).toBeUndefined();
+    expect(turn.memoryProposals?.[0]).toMatchObject({ state: 'pending' });
+    expect(turn.memoryProposals?.[0]?.held).toBeUndefined();
     expect(memoryFiles()).toEqual([]);
     expect(receipts()).toEqual([]);
   });
 
   it('a held card saves on the writer\'s Save, as the writer\'s', async () => {
     const turn = await reply({ webResearchAttached: true });
-    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'h1', turnId: turn.id, action: 'save' });
+    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'h1', turnId: turn.id, index: 0, action: 'save' });
     const receipt = receipts()[0].projectMemoryReceipt!;
     expect(receipt).toMatchObject({ action: 'saved', by: 'writer' });
     const saved = await harness.memory.store.read(receipt.memoryId);
     expect(saved.kind === 'memory' && saved.entry.memory.origin).toBe('proposed');
-    expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposal).toMatchObject({ state: 'saved', held: 'web-research' });
+    expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposals?.[0]).toMatchObject({ state: 'saved', held: 'web-research' });
   });
 
   it('Forget from the receipt archives the memory and keeps its file; the forgotten receipt counts as told, and the next frame drops it', async () => {
     const turn = await reply();
-    const memoryId = turn.memoryProposal!.memoryId!;
+    const memoryId = turn.memoryProposals![0].memoryId!;
     const files = memoryFiles();
 
     await route(MessageType.WORKSHOP_MEMORY_FORGET, { requestId: 'f1', memoryId, action: 'forget' });
@@ -182,7 +182,7 @@ describe('Workshop routes — Save and tell me', () => {
 
   it('Edit from the receipt rewrites the saved memory with an updated receipt', async () => {
     const turn = await reply();
-    const memoryId = turn.memoryProposal!.memoryId!;
+    const memoryId = turn.memoryProposals![0].memoryId!;
     await route(MessageType.WORKSHOP_MEMORY_UPDATE, {
       requestId: 'e1',
       memoryId,
@@ -197,8 +197,8 @@ describe('Workshop routes — Save and tell me', () => {
       analysisResult(`Good.\n\n${memoryFrame({ body: BODY_SENTINEL })}`, { conversationId: 'host-conv' }) as never
     );
     await route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'So the watch runs backward?' });
-    const turn = ledger().find((candidate) => candidate.memoryProposal)!;
-    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'j1', turnId: turn.id, action: 'save' });
+    const turn = ledger().find((candidate) => candidate.memoryProposals)!;
+    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'j1', turnId: turn.id, index: 0, action: 'save' });
     await settle();
 
     expect(memoryFiles()).toHaveLength(1);
@@ -244,8 +244,8 @@ describe('Workshop routes — Save and tell me', () => {
     const refused = await reply();
 
     for (const turn of [failed, refused]) {
-      expect(turn.memoryProposal).toMatchObject({ state: 'pending' });
-      expect(turn.memoryProposal?.held).toBeUndefined();
+      expect(turn.memoryProposals?.[0]).toMatchObject({ state: 'pending' });
+      expect(turn.memoryProposals?.[0]?.held).toBeUndefined();
     }
     expect(memoryFiles()).toEqual([]);
     expect(receipts()).toEqual([]);
@@ -253,8 +253,8 @@ describe('Workshop routes — Save and tell me', () => {
       + harness.memory.lines.join('\n');
     expect(lines).not.toContain(BODY_SENTINEL);
     expect(lines).not.toContain('Tea is served at six');
-    expect(lines).toMatch(/auto save failed turnId=\S+ reason=Error/);
-    expect(lines).toMatch(/auto save turnId=\S+ card waits reason=busy/);
+    expect(lines).toMatch(/auto save failed turnId=\S+ index=0 reason=Error/);
+    expect(lines).toMatch(/auto save turnId=\S+ index=0 card waits reason=busy/);
   });
 
   it('logs ids and reasons, never the memory\'s text', async () => {
@@ -265,6 +265,6 @@ describe('Workshop routes — Save and tell me', () => {
     expect(lines).not.toContain(BODY_SENTINEL);
     expect(lines).not.toContain('Tea is served at six');
     expect(lines).toContain('Memory proposal held (reason=web-research;');
-    expect(lines).toMatch(/auto save turnId=turn-\S+ saved memoryId=mem-[0-9a-f]{6} receipt/);
+    expect(lines).toMatch(/auto save turnId=turn-\S+ index=0 saved memoryId=mem-[0-9a-f]{6} receipt/);
   });
 });

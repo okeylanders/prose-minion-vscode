@@ -544,7 +544,7 @@ export const WorkshopApp: React.FC = () => {
   const memoryControls = React.useMemo<WorkshopTurnMemoryControls>(() => ({
     disabled: roomMutationLocked,
     autoSaved: autoSavedMemories,
-    busyTurnIds: projectMemory.busyTurnIds,
+    busyCards: projectMemory.busyCards,
     cardErrors: projectMemory.cardErrors,
     onSaveCard: projectMemory.saveCard,
     onEditCard: projectMemory.editCard,
@@ -556,7 +556,7 @@ export const WorkshopApp: React.FC = () => {
     onRestore: projectMemory.restore,
     onOpenManager: memoryManager.openManager
   }), [
-    roomMutationLocked, autoSavedMemories, projectMemory.busyTurnIds, projectMemory.cardErrors, projectMemory.saveCard,
+    roomMutationLocked, autoSavedMemories, projectMemory.busyCards, projectMemory.cardErrors, projectMemory.saveCard,
     projectMemory.editCard, projectMemory.dismissCard, projectMemory.reopenCard, projectMemory.saveTurn,
     projectMemory.editMemory, projectMemory.forget, projectMemory.restore, memoryManager.openManager
   ]);
