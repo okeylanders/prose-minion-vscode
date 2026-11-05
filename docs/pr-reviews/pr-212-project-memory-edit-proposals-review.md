@@ -2,13 +2,39 @@
 
 ## Verdict
 
-**Changes requested.** Three P2 save-safety findings are open (F-01–F-03), plus two P3 UI findings (F-04–F-05). The ordinary same-file stale check works, and the independent parser/privacy, exact-once anchoring, persistence and UI control probes are otherwise clean. No formal GitHub review or merge was submitted.
+**Approved with the documented cross-file concurrency limit below.** F-01–F-05 are closed at correction `dd525d8e64ef85813201973e62515d72995d095d`. No open actionable review finding remains. This is a report verdict, not a formal GitHub approval; no merge was submitted.
 
 - PR: https://github.com/okeylanders/prose-minion-vscode/pull/212
 - Implementation reviewed: `882321de6d670793dae1db4ce838c56c163b133c`
 - Base: `2a014cbb60d1ce6f4e9440f99eeb37ed7ecd9067`
 - Reviewed against the Project Memory epic, Slice 6c and the 2026-11-05 ADR addendum.
 - Every tracked source blob in the local materialization was verified against the implementation's Git tree. Review-only probes were kept outside production source.
+
+## Correction re-review — dd525d8e
+
+[Correction commit](https://github.com/okeylanders/prose-minion-vscode/commit/dd525d8e64ef85813201973e62515d72995d095d) addresses all five findings. Every tracked blob in a separate corrected materialization was verified against that commit's tree.
+
+- **F-01 closed:** target metadata now preserves all supersedes IDs separately from display titles. The original actual settlement → shared draft → library/store witness retains both readable and unresolved IDs. An independent hook/sheet probe preserves every ID through prefill, estimation and submission; removing a displayed predecessor leaves unrelated unlisted IDs intact.
+- **F-02 closed:** the edit has its own `projectMemoryEditToken`, separate from D14 delivery version, and includes the complete supersedes list. Original supersedes-only changes before the write and before its claimed rewrite both refuse as changed and preserve exact bytes. Six additional late mutations (title, kind, summary, body, pinned, status) refuse; an unchanged-token edit succeeds.
+- **F-03 closed within an explicitly narrower cross-file guarantee:** the store now reads a fresh folder listing in its own rewrite turn and runs the supplied verification before claiming the target. The original supersession-between-library-listing-and-store-rewrite witness now refuses, including a real second-library save. Unreadable verification declines rather than writing. Same-file body or supersedes changes even *after* this verification are still caught by the claimed-byte retry.
+- **F-04 closed:** real hook/sheet now renders Edit memory / Save changes and the updated receipt wording for the existing target, while keeping the checked proposal-action route.
+- **F-05 closed:** both exact leading/trailing surrogate-cut witnesses now pass; context cuts no longer leave half-pairs.
+
+### Important concurrency boundary
+
+This is **not an atomic multi-file freshness guarantee**. Another window can supersede the note after the fresh folder read but before the target rename. An independent delayed-staging witness confirmed that a real second-library superseding save in this later window can still coexist with the first edit. The correction now states this limit explicitly in the ADR, library and store contract; no cross-file lock exists. The target's *own* changed bytes continue to be protected at rewrite. F-03's original stale captured-listing defect is fixed; the remaining cross-file window is recorded as a deliberate architectural limitation, not claimed solved.
+
+### Correction verification
+
+- [Exact correction CI 41974749319](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41974749319): all three typechecks, **698 suites / 9,864 tests / 59 snapshots**, lint **0 errors / 1,165 warnings**, and both builds passed.
+- Local focused correction production run: **8 suites / 178 tests passed** with isolated transpilation. Separately, the focused shipped UI checks passed **54 tests**. These overlap and are not additive.
+- Independent corrected UI controls: **7/7 passed**, including all-ID prefill/removal/submission.
+- Independent real-library/store stale witnesses, original relationship preservation witness, mixed edit/new/stale persistence, nested token/ID clones, Branch/Rewind and seven malformed-shape rejections passed.
+- The original privacy and exact-once modules did not change in this correction. Their previously verified coverage is retained below.
+- One local correction attempt hit a full temporary filesystem before two suites could run. Disposable completed review materializations were removed and the entire focused run then passed. This was not a product failure.
+- Correction-wide typecheck/lint/full aggregate/build results above are from exact-head CI. No separate local full aggregate or live-provider/browser pass is claimed.
+
+The findings below are preserved as **historical evidence from the original implementation**, with their repros and requested fixes.
 
 ## F-01 — P2: a text-only edit silently removes unresolved supersession relationships
 
@@ -105,4 +131,4 @@ The first local concurrent test/typecheck attempt and the lint process were kill
 
 No independent Extension Development Host, real browser screenshot run or live provider call was performed. React checks are JSDOM, not visual browser QA. The full aggregate result is the exact-head GitHub CI run, not an independently completed local full suite.
 
-This report changes documentation only. Corrected heads will be re-reviewed, the concrete witnesses rerun, and CI checked again. No formal approval, merge, or product-code change is included.
+This report changes documentation only. The correction has been re-reviewed and its CI verified; the final report head and eventual merge will continue to be watched. No formal approval, merge, or product-code change is included.
