@@ -53,6 +53,8 @@
     - it stages every frame that decodes, at most 5, in parallel;
     - a rejected port reads as `unreadable`;
     - staged frames become `pending` cards, and refused frames become `refused` cards with the refusal kind as `reason`;
+    - a `<rewrite>` staged to prose becomes a `refused` card (`rewrite-on-prose`) that keeps its identity, class and baseline, because staging decides the class (the coordinator's answer to the old open question 1);
+    - two frames staged to one identity (`documentUri`) keep only the first card (`duplicate-identity`);
     - with the setting `off`, an aborted run or no port, nothing is staged;
     - a reply with no tag costs no await.
   - **Completion** uses the context only for the exact reply it was resolved from. A frame with no context is stripped and counted `not-staged`.
@@ -67,10 +69,10 @@
   - `landed?`: full records (`before`/`after` within `revertCharacters`, context within 80 characters each side, `versionAfter`) or hashed ones (`beforeSha256`, `afterSha256`).
 - **Session codec** (`session/WorkshopFileEditProposalRecords.ts`). Keys and bounds are exact:
   - A file identity matches a resource request, and an excerpt identity matches an excerpt request.
-  - Outcomes appear only on `applied`, `partial` and `unknown` cards: all landed when applied, some and not all when partial.
-  - There is one `landed` record per landed operation.
-  - `reason` never appears on a `pending`, `applying`, `applied` or `declined` card. A card refused at staging must have one.
-  - No two cards request one file.
+  - Outcomes appear only on `applied`, `partial` and `unknown` cards: all landed when applied, some and not all when partial, none landed when unknown.
+  - `landed` exists only on `applied` and `partial` cards, one record per landed operation.
+  - `reason` is allowed on `applied`, `partial`, `stale`, `refused` and `unknown` cards, never on `pending`, `applying` or `declined` ones. A card refused at staging must have one.
+  - No two cards request one file, and no two name one identity.
   - There is no schema version change.
 - **Reopen rule (D8).** `applying` round-trips in the file. Hydration reads it as `unknown`, with `reason: 'applying-on-reopen'` and every outcome `unknown` (`settleWorkshopFileEditProposalsOnReopen`). This is a **read rule, not a normalization**: `applying` is a legitimate persisted state, not a development shape. No development shape of this field ever existed, so no normalization exists.
 - **The webview's view** omits `documentUri`. `workshopTurnForWebview` runs on every turn the room handler posts (`WORKSHOP_TURN`, `WORKSHOP_SESSION_STATE`).
@@ -112,7 +114,7 @@
   - byte-for-byte round-trip and hydrate;
   - every state round-trips, with outcomes and landed records;
   - **the reopen rule**;
-  - 32 malformed shapes refused;
+  - 35 malformed shapes refused;
   - projection and Markdown, JSON and HTML exports never show text or the URI;
   - recall and preview unchanged.
 - `handlers/.../WorkshopFileEditProposalRoutes.test.ts`, through the real router and room handler:

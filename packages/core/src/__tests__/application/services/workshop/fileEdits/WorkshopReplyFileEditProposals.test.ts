@@ -66,6 +66,33 @@ describe('resolveWorkshopReplyFileEdits', () => {
     expectNoText(context!.logs);
   });
 
+  it('a rewrite staged to prose is refused here, keeping its identity, class and baseline', async () => {
+    const staging = fakeFileEditStaging();
+    const reply = `Yes.\n\n${fileEditFrame({ group: 'chapters', path: 'chapters/one.md', body: ['<rewrite>All new.</rewrite>'] })}\n${fileEditFrame({ path: 'characters/alice.md', body: ['<rewrite>Alice, ten.</rewrite>'] })}`;
+    const context = await resolveWorkshopReplyFileEdits({ reply, open: true, staging });
+    expect(context?.proposals.map((proposal) => [proposal.class, proposal.state, proposal.reason ?? null, proposal.target?.relativePath])).toEqual([
+      ['prose', 'refused', 'rewrite-on-prose', 'chapters/one.md'],
+      ['notes', 'pending', null, 'characters/alice.md']
+    ]);
+    expect(context?.logs[0]).toBe('File edit proposal refused at staging (reason=rewrite-on-prose; operations=rewrite)');
+  });
+
+  it('two frames staged to one document keep only the first card', async () => {
+    const staging = fakeFileEditStaging();
+    // Two requests that stage to one identity (as two groups listing one file would).
+    const sameFile: typeof staging = {
+      calls: staging.calls,
+      stage: async (target) => {
+        const result = await staging.stage(target);
+        return result.kind === 'staged' ? { ...result, target: { ...result.target, documentUri: 'file:///ws/one.md' } } : result;
+      }
+    };
+    const reply = `Yes.\n\n${fileEditFrame({ path: 'characters/alice.md' })}\n${fileEditFrame({ group: 'general', path: 'general/alice.md' })}`;
+    const context = await resolveWorkshopReplyFileEdits({ reply, open: true, staging: sameFile });
+    expect(context?.proposals).toHaveLength(1);
+    expect(context?.logs).toContain('File edit proposal dropped (reason=duplicate-identity)');
+  });
+
   it('a port that rejects reads as an unreadable refusal, and its message never reaches a log', async () => {
     const context = await resolveWorkshopReplyFileEdits({ reply: `Yes.\n\n${sentinelFileEditFrame()}`, open: true, staging: fakeFileEditStaging({ reject: true }) });
     expect(context?.proposals).toEqual([expect.objectContaining({ state: 'refused', reason: 'unreadable' })]);

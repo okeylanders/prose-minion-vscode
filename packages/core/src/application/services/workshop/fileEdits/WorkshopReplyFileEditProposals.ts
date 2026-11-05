@@ -9,7 +9,10 @@
  * staged becomes a `pending` card with the identity, class and baseline
  * staging took; a frame staging refused becomes a `refused` card with the
  * refusal's kind as its reason, so the writer sees what the persona tried and
- * nothing can be applied. With the setting `off`, nothing is staged. With no
+ * nothing can be applied. A rewrite staged to prose is refused here, since
+ * staging decided the class (`rewrite-on-prose`, D5), keeping its identity.
+ * Two frames staged to one identity (one `documentUri`) keep only the first
+ * (`duplicate-identity`): one card per file per reply. With the setting `off`, nothing is staged. With no
  * port bound, nothing is staged and no card is made (`staging-unavailable`).
  *
  * Completion (`WorkshopRunCompletion`) takes the context this returns and
@@ -21,6 +24,9 @@
  */
 
 import type { WorkshopFileEditProposal } from '@messages';
+
+/** The host's reason for a rewrite staged to prose (D5: prose is never rewritten whole). */
+export const WORKSHOP_FILE_EDIT_REWRITE_ON_PROSE = 'rewrite-on-prose';
 import type { FileEditStaging, FileEditStagingResult } from '@/domain/models/FileEditStaging';
 import type { WorkshopFileEditDraft } from '@/utils/workshopFileEditProtocol';
 import { extractWorkshopReplyControls, hasWorkshopFileEditText } from '@/utils/workshopReplyControls';
@@ -69,12 +75,22 @@ export async function resolveWorkshopReplyFileEdits(
     return { reply: input.reply, proposals: [], logs };
   }
   const results = await Promise.all(control.proposals.map((draft) => stageOne(staging, draft)));
-  const proposals = control.proposals.map((draft, index) => {
+  const proposals: WorkshopFileEditProposal[] = [];
+  const identities = new Set<string>();
+  control.proposals.forEach((draft, index) => {
     const result = results[index];
-    logs.push(result.kind === 'staged'
-      ? `File edit proposal pending (target=${result.target.kind}; class=${result.class}; operations=${operationKinds(draft)})`
-      : `File edit proposal refused at staging (reason=${result.reason}; operations=${operationKinds(draft)})`);
-    return settle(draft, result);
+    if (result.kind === 'staged') {
+      if (identities.has(result.target.documentUri)) {
+        logs.push('File edit proposal dropped (reason=duplicate-identity)');
+        return;
+      }
+      identities.add(result.target.documentUri);
+    }
+    const proposal = settle(draft, result);
+    logs.push(proposal.state === 'pending'
+      ? `File edit proposal pending (target=${result.kind === 'staged' ? result.target.kind : 'none'}; class=${proposal.class}; operations=${operationKinds(draft)})`
+      : `File edit proposal refused at staging (reason=${proposal.reason}; operations=${operationKinds(draft)})`);
+    proposals.push(proposal);
   });
   return { reply: input.reply, proposals, logs };
 }
@@ -96,12 +112,13 @@ function settle(draft: WorkshopFileEditDraft, result: FileEditStagingResult): Wo
   if (result.kind === 'refused') {
     return { ...common, state: 'refused', reason: result.reason };
   }
+  const rewritesProse = result.class === 'prose' && draft.operations.some((operation) => operation.op === 'rewrite');
   return {
     ...common,
     target: { kind: result.target.kind, documentUri: result.target.documentUri, relativePath: result.target.relativePath },
     class: result.class,
     baseline: { sha256: result.baseline.sha256, length: result.baseline.length },
-    state: 'pending'
+    ...(rewritesProse ? { state: 'refused' as const, reason: WORKSHOP_FILE_EDIT_REWRITE_ON_PROSE } : { state: 'pending' as const })
   };
 }
 

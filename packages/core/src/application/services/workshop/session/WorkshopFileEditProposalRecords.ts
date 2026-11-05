@@ -19,8 +19,11 @@
  * - one `landed` record per landed operation (N-01): its before and after
  *   within `revertCharacters` and its context within
  *   `landedContextCharacters`, or only their hashes;
- * - a `reason`, the host's one line, never on a pending, applying, applied or
- *   declined card.
+ * - a `reason`, the host's one line, never on a pending, applying or
+ *   declined card;
+ * - no two cards naming one identity (`documentUri`), nor requesting one file.
+ * `landed` records exist only on applied and partial cards; an unknown card
+ * records no landed operation.
  *
  * **Reopen** (D8): `applying` is a legitimate persisted state, written only
  * around a dispatched write. The codec reads it as written, so a file
@@ -64,7 +67,9 @@ const BUDGETS = PROMPT_BUDGETS.workshopFileEdits;
 const CARD_OPERATIONS = BUDGETS.editReplaces + 2;
 const SHA256 = /^[0-9a-f]{64}$/;
 const SETTLED: readonly string[] = ['applied', 'partial', 'unknown'];
-const NO_REASON: readonly string[] = ['pending', 'applying', 'applied', 'declined'];
+const NO_REASON: readonly string[] = ['pending', 'applying', 'declined'];
+/** Only these record what landed. */
+const LANDS: readonly string[] = ['applied', 'partial'];
 
 /** Strict structure of one turn's `fileEditProposals`, and that its turn may carry them. */
 export function assertWorkshopFileEditProposalShape(turn: Record<string, unknown>, path: string, checkpoint: boolean): void {
@@ -77,12 +82,21 @@ export function assertWorkshopFileEditProposalShape(turn: Record<string, unknown
   }
   boundedArrayAt(turn.fileEditProposals, at, 1, BUDGETS.proposalsPerReply, 'file edit suggestions');
   const requested: WorkshopFileEditRequestedTarget[] = [];
+  const identities = new Set<string>();
   turn.fileEditProposals.forEach((item, index) => {
     const target = assertProposal(item, `${at}[${index}]`);
     if (requested.some((earlier) => sameWorkshopFileEditTarget(earlier, target))) {
       shapeError(`${at}[${index}].requested`, 'a file no earlier card names');
     }
     requested.push(target);
+    // One card per file, by identity too (two requests may stage to one document).
+    const documentUri = (item as { target?: { documentUri?: string } }).target?.documentUri;
+    if (documentUri !== undefined) {
+      if (identities.has(documentUri)) {
+        shapeError(`${at}[${index}].target`, 'a document no earlier card names');
+      }
+      identities.add(documentUri);
+    }
   });
 }
 
@@ -100,7 +114,7 @@ function assertProposal(value: unknown, at: string): WorkshopFileEditRequestedTa
   assertStaging(proposal, requested, at);
   if (proposal.reason !== undefined) {
     if (NO_REASON.includes(proposal.state as string)) {
-      shapeError(`${at}.reason`, 'absent on a pending, applying, applied or declined card');
+      shapeError(`${at}.reason`, 'absent on a pending, applying or declined card');
     }
     oneLineAt(proposal.reason, `${at}.reason`, WORKSHOP_FILE_EDIT_RECORD_LIMITS.reasonCharacters);
   }
@@ -203,6 +217,9 @@ function assertOutcomes(
   const outcomes = proposal.outcomes as WorkshopFileEditOperationOutcome[];
   outcomes.forEach((outcome, index) => enumAt(outcome, `${at}.outcomes[${index}]`, WORKSHOP_FILE_EDIT_OPERATION_OUTCOMES));
   const landed = outcomes.filter((outcome) => outcome === 'landed').length;
+  if (!LANDS.includes(state) && landed > 0) {
+    shapeError(`${at}.outcomes`, 'no landed operation on an unknown card (only applied and partial cards record what landed)');
+  }
   if (state === 'applied' && landed !== operationCount) {
     shapeError(`${at}.outcomes`, 'every operation landed on an applied card');
   }

@@ -144,4 +144,4 @@ This is the same flow as Project Memory and Bookmark Recall.
     - D10's card shape, with the `applying` → `unknown` reopen rule;
     - `documentUri` kept out of the webview;
     - log sentinels.
-  - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 762 suites, 10,663 tests, 59 snapshots.
+  - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 762 suites, 10,670 tests, 59 snapshots.

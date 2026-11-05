@@ -144,6 +144,8 @@ describe('file-edit cards in the saved session', () => {
     ['stale', { state: 'stale', reason: 'quote-not-found' }],
     ['refused by policy', { state: 'refused', reason: 'rewrite-ceiling' }],
     ['applied, with what landed', { state: 'applied', outcomes: ['landed', 'landed'], landed: LANDED }],
+    ['applied, with a reason', { state: 'applied', reason: 'read-back-moved', outcomes: ['landed', 'landed'], landed: LANDED }],
+    ['refused by policy, its identity kept', { state: 'refused', reason: 'rewrite-on-prose' }],
     ['partial', { state: 'partial', reason: 'some-unticked', outcomes: ['landed', 'not-applied'], landed: [LANDED[0]] }],
     ['unknown, nothing known to have landed', { state: 'unknown', outcomes: ['unknown', 'unknown'] }],
     ['unknown, before any outcome', { state: 'unknown', reason: 'preview-closed' }],
@@ -195,7 +197,7 @@ describe('file-edit cards in the saved session', () => {
       ['a rewrite beside others', (turns) => { ops(turns).push({ op: 'rewrite', text: 'All new.' }); }, /conflicting-operations/],
       ['an append past its bound', (turns) => { ops(turns)[1].text = 'a'.repeat(B.insertCharacters + 1); }, /text must be a string of at most/],
       ['a why on two lines', (turns) => { first(turns).why = 'Alice\nis ten.'; }, /why must be one trimmed line/],
-      ['a pending card with a reason', (turns) => { first(turns).reason = 'Because.'; }, /reason must be absent on a pending, applying, applied or declined card/],
+      ['a pending card with a reason', (turns) => { first(turns).reason = 'Because.'; }, /reason must be absent on a pending, applying or declined card/],
       ['an applied card with no outcomes', (turns) => { first(turns).state = 'applied'; }, /outcomes must be one outcome per operation/],
       ['a pending card with outcomes', (turns) => { first(turns).outcomes = ['landed', 'landed']; }, /outcomes must be absent on a card that has not settled/],
       ['outcomes that do not match the operations', (turns) => { Object.assign(first(turns), { state: 'unknown', outcomes: ['unknown'] }); }, /outcomes must be an array containing exactly 2/],
@@ -209,6 +211,13 @@ describe('file-edit cards in the saved session', () => {
       ['a record\'s context past its bound', (turns) => {
         Object.assign(first(turns), { state: 'applied', outcomes: ['landed', 'landed'], landed: [{ ...LANDED[0], contextAfter: 'a'.repeat(B.landedContextCharacters + 1) }, LANDED[1]] });
       }, /contextAfter must be a string of at most/],
+      ['an unknown card recording a landed operation', (turns) => {
+        Object.assign(first(turns), { state: 'unknown', outcomes: ['landed', 'unknown'], landed: [LANDED[0]] });
+      }, /no landed operation on an unknown card/],
+      ['a declined card with a reason', (turns) => { Object.assign(first(turns), { state: 'declined', reason: 'Because.' }); }, /reason must be absent on a pending, applying or declined card/],
+      ['two cards staged to one document', (turns) => {
+        (cards(turns)[1].target as Record<string, unknown>).documentUri = target(turns).documentUri;
+      }, /\[1\]\.target must be a document no earlier card names/],
       ['a hashed record that is not a hash', (turns) => {
         Object.assign(first(turns), { state: 'applied', outcomes: ['landed', 'landed'], landed: [LANDED[0], { ...LANDED[1], afterSha256: 'nope' }] });
       }, /afterSha256 must be a SHA-256/]
