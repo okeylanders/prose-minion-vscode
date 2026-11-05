@@ -2672,6 +2672,23 @@ describe('Workshop Pinned Context storage (Slice 1; ADR 2026-11-04 D5)', () => {
       .filter(({ module }) => /\/pinnedContext\//.test(module))).toEqual([{ module: expect.stringMatching(/WorkshopPinnedContextPorts$/), typeOnly: true }]);
   });
 
+  it('keeps the Pinned context tab presentational: its panel and pin picker post nothing (Slice 3; ADR 2026-11-04 D9)', () => {
+    const SETTINGS = path.join(SRC_ROOT, 'presentation/webview/components/workshop/settings');
+    const offenders = ['WorkshopPinnedContextSettingsPanel.tsx', 'WorkshopPinnedContextPicker.tsx']
+      .map((file) => path.join(SETTINGS, file))
+      .filter((file) => /\b(?:postMessage|useVSCodeApi|MessageType|acquireVsCodeApi)\b/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(offenders).toEqual([]);
+  });
+
+  it('routes the tab only through its one handler, composed once (Slice 3)', () => {
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /\bnew\s+WorkshopPinnedContextHandler\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(constructions).toEqual([WORKSHOP_SLICE_COMPOSITION_OWNER]);
+  });
+
   it('keeps pinnedContext/ modules under 500 lines', () => {
     const folder = path.join(SRC_ROOT, 'application/services/workshop/pinnedContext');
     expect(collectSourceFiles(folder)

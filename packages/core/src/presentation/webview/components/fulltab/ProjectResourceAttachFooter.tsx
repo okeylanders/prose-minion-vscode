@@ -17,6 +17,11 @@ import type { ProjectResourcePickerFooterState } from '@components/fulltab/Proje
 /** Honest rough words-per-byte for the running selection estimate only. */
 const ESTIMATE_BYTES_PER_WORD = 6;
 
+/** The selection's ~word estimate from its byte sizes; Pinned context's pin footer reads it too. */
+export function estimateProjectResourceWords(selected: readonly { sizeBytes: number }[]): number {
+  return Math.round(selected.reduce((total, entry) => total + entry.sizeBytes, 0) / ESTIMATE_BYTES_PER_WORD);
+}
+
 export interface ProjectResourceAttachFooterProps extends ProjectResourcePickerFooterState {
   /** The words the caller can still take. */
   remainingWords: number;
@@ -29,9 +34,7 @@ export const ProjectResourceAttachFooter: React.FC<ProjectResourceAttachFooterPr
   close,
   remainingWords
 }) => {
-  const estimatedWords = Math.round(
-    selected.reduce((total, entry) => total + entry.sizeBytes, 0) / ESTIMATE_BYTES_PER_WORD
-  );
+  const estimatedWords = estimateProjectResourceWords(selected);
   const overEstimate = estimatedWords > remainingWords;
   return (
     <div className="pm-ws-ctxsel-foot">

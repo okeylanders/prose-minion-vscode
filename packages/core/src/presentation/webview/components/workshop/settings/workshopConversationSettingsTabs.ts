@@ -4,7 +4,7 @@
  * tab is one entry here plus its panel (Project Memory Slice 4a).
  */
 
-export type WorkshopConversationSettingsTab = 'behavior' | 'profile' | 'memory' | 'advanced';
+export type WorkshopConversationSettingsTab = 'behavior' | 'profile' | 'pinned-context' | 'memory' | 'advanced';
 
 export interface WorkshopConversationSettingsTabEntry {
   id: WorkshopConversationSettingsTab;
@@ -30,6 +30,14 @@ export const WORKSHOP_CONVERSATION_SETTINGS_TABS: readonly WorkshopConversationS
     tabElementId: 'pm-ws-profile-tab',
     panelElementId: 'pm-ws-profile-panel',
     panelClassName: 'pm-ws-behavior-body pm-ws-profile-body'
+  },
+  {
+    // Pinned Context Slice 3 (ADR 2026-11-04 D8, question 1): after About you, beside Memory.
+    id: 'pinned-context',
+    label: 'Pinned context',
+    tabElementId: 'pm-ws-pinned-context-tab',
+    panelElementId: 'pm-ws-pinned-context-panel',
+    panelClassName: 'pm-ws-behavior-body pm-ws-pinned-context-body'
   },
   {
     id: 'memory',

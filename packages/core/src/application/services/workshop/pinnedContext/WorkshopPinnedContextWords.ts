@@ -92,9 +92,7 @@ export const WORKSHOP_PINNED_WORDS = {
   readFailed: 'The pinned files couldn’t be read just now. Nothing was changed.',
   invalid: 'That change can’t be saved as a pinned-context list. Nothing was changed.',
   listUnreadable: 'pinned-context.json can’t be read, so this tab can’t change it. Fix it in the editor.',
-  workspaceChanged: 'The workspace changed, so pinned context wasn’t changed.',
-  running: 'Wait for the reply to finish to attach files to this conversation. Pinning and unpinning still work, and apply to new conversations.',
-  openFailed: 'That file couldn’t be opened.'
+  workspaceChanged: 'The workspace changed, so pinned context wasn’t changed.'
 } as const;
 
 /** "Can't pin manuscript.md: pinned context would come to about 104,000 of 100,000 words. …" */
