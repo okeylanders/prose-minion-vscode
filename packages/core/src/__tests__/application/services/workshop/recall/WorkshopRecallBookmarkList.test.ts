@@ -207,6 +207,55 @@ describe('renderWorkshopRecallBookmarkMessage', () => {
     expect(rendered.window!.to).toBe(budgets.bookmarkMessageCharacters - 1);
   });
 
+  describe('at the <from> ceiling (PR #215 F-01)', () => {
+    // A saved Wayfinding session whose bookmarked reply is longer than <from> can reach.
+    const long = (length: number) => {
+      const raw = JSON.parse(JSON.stringify(require('../../../../fixtures/workshop-session-v2-wayfinding-bookmarks.json')));
+      raw.workshop.turns[3].content = 'x'.repeat(length);
+      const saved = buildWorkshopRecallDocument(decodeWorkshopPersistedSessionCheckpoint(raw).session);
+      const bookmark = saved.bookmarks.find((candidate) => candidate.id === 'bookmark-1-2000')!;
+      return (from: number) => renderWorkshopRecallBookmarkMessage({
+        available: true,
+        outcome: 'bookmark',
+        source: { kind: 'saved', header: saved.header },
+        bookmark: { ...bookmark, ref: { source: 'saved', sessionId: saved.header.sessionId, bookmarkId: bookmark.id } },
+        from
+      }, { now: NOW });
+    };
+    const read = long(1_010_000);
+
+    it('continues to the last offset <from> takes, and the continuation decodes', () => {
+      const rendered = read(budgets.bookmarkFromMax - budgets.bookmarkMessageCharacters);
+      expect(rendered.window).toEqual({ from: 995_999, to: budgets.bookmarkFromMax, total: 1_010_000 });
+      const next = /Continue with (<bookmark>[^<]+<\/bookmark> <from>\d+<\/from>)\./.exec(rendered.content)?.[1];
+      expect(inspectBookmarks(next!)).toMatchObject({ kind: 'request', request: { from: budgets.bookmarkFromMax } });
+    });
+
+    it('past it, says how much is left and that it cannot be read by ref, never that the message ended', () => {
+      for (const from of [996_000, budgets.bookmarkFromMax]) {
+        const rendered = read(from);
+        expect(rendered.window!.to).toBeGreaterThan(budgets.bookmarkFromMax);
+        expect(rendered.window!.to).toBeLessThan(1_010_000);
+        expect(rendered.content).not.toContain('This is the end of the message.');
+        expect(rendered.content).not.toContain('Continue with');
+        expect(rendered.content).toContain(
+          `[message cut: the message continues for ${(1_010_000 - rendered.window!.to).toLocaleString('en-US')} more characters; ` +
+          'reading by ref stops at character 999,999, so the rest cannot be read by ref]'
+        );
+      }
+      // The offset it would need is one the codec refuses, which is why no continuation is written.
+      expect(inspectBookmarks('<bookmark>wayfinding-bookmarks/bookmark-1-2000</bookmark> <from>1000000</from>'))
+        .toMatchObject({ kind: 'invalid', reason: 'invalid-from' });
+    });
+
+    it('still says the message ended when its last window reaches its end', () => {
+      const rendered = long(1_000_000)(996_000);
+      expect(rendered.window).toEqual({ from: 996_000, to: 1_000_000, total: 1_000_000 });
+      expect(rendered.content).toContain('This is the end of the message.');
+      expect(rendered.content).not.toContain('[message cut');
+    });
+  });
+
   it('says where a message ends when <from> is past it', () => {
     expect(renderWorkshopRecallBookmarkMessage(one('Alice', 40), { now: NOW }).content)
       .toContain('The message has 5 characters; nothing starts at character 40.');

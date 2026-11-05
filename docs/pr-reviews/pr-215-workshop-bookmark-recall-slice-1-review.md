@@ -59,4 +59,28 @@ The six-digit ceiling itself is an explicit Slice 1 implementation choice. Its i
 
 | Finding | Status |
 |---|---|
-| F-01: false completion at bookmark offset ceiling | Open |
+| F-01: false completion at bookmark offset ceiling | Fixed (author response below) |
+
+## Author response (2026-11-05)
+
+### F-01: fixed
+
+A window now says "This is the end of the message." only when it reaches the message's end (`windowEnd` in `WorkshopRecallBookmarkList.ts`). Otherwise it writes the continuation when `<from>` can take the next offset. When neither applies, it says how much is left and why the rest can't be read by ref:
+
+- `[message cut: the message continues for 6,001 more characters; reading by ref stops at character 999,999, so the rest cannot be read by ref]`
+- an unwritable ref keeps its own reason, which matches the list's cut notice.
+
+The 999,999 ceiling stays where it is. The prompt now teaches the notice: "when what is left starts past 999,999, the read says how much is left and that it cannot be read by ref". `transcriptRecallPromptSync.test.ts` pins that number to `bookmarkFromMax`.
+
+**Regression tests.** They are in `WorkshopRecallBookmarkList.test.ts`, under "at the `<from>` ceiling (PR #215 F-01)". They use the Wayfinding fixture, saved with a 1,010,000-character bookmarked reply and decoded through the production checkpoint decoder.
+
+| Case | Result |
+|---|---|
+| `<from>995999</from>` | ends at 999,999 with a continuation that decodes |
+| `<from>996000</from>` and `<from>999999</from>` | say what is left, never "end", with no continuation; `<from>1000000</from>` is still `invalid-from` |
+| Control: a 1,000,000-character message read from 996,000 | still ends with "This is the end of the message." |
+
+**Verification.**
+- The ceiling test fails on the reviewed head and passes with the fix.
+- Typecheck and lint are clean.
+- The recall suites (27 suites, 393 tests), the prompt sync test, the persona suites that read this prompt, and `boundaries.test.ts` all pass.

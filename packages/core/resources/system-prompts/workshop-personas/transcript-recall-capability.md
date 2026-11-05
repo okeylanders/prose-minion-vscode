@@ -108,7 +108,7 @@ Read one bookmark's whole message by its ref, exactly as a list shows it:
 </prose-minion-tool-call>
 ```
 
-A ref names its session: a saved session's id, or `current@` and this conversation's id. Only `<from>` may go beside `<bookmark>`. `<from>` is the character to start from, at most 999,999; without it, the message starts at its beginning. Each read shows at most 4,000 characters and ends with a continuation while more is left. A `current@` ref works only while this conversation is open; after the writer starts or opens another, it is refused as `stale-bookmark-ref`, and so is a ref to a session that is no longer saved. List the bookmarks again for current refs.
+A ref names its session: a saved session's id, or `current@` and this conversation's id. Only `<from>` may go beside `<bookmark>`. `<from>` is the character to start from, at most 999,999; without it, the message starts at its beginning. Each read shows at most 4,000 characters and ends with a continuation while more is left; when what is left starts past 999,999, the read says how much is left and that it cannot be read by ref. A `current@` ref works only while this conversation is open; after the writer starts or opens another, it is refused as `stale-bookmark-ref`, and so is a ref to a session that is no longer saved. List the bookmarks again for current refs.
 
 ### Following continuations and hints
 

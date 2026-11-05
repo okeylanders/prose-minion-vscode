@@ -204,7 +204,7 @@ In each case I took the more conservative reading.
    A bookmark on a turn the reader couldn't see reads the same as a missing one (`unknown-bookmark`), so a private turn's bookmark is never confirmed to exist.
 3. **Saved-session rows never withhold a result.** That is recall's existing rule for saved turns. Only open-room rows on turns the room couldn't see stamp it. A one-bookmark read is stamped by the same rule.
 4. **The window clamp.** Both lists and one-bookmark windows are clamped to half the free window. Neither counts against `readsPerTurn` or the per-turn read total, which D3 doesn't ask for. The clamp bounds each call.
-5. **`bookmarkFromMax` is 999,999,** six digits like a turn number. Past it a cut message says it can't be read further by ref, rather than emit a hint the codec would refuse.
+5. **`bookmarkFromMax` is 999,999,** six digits like a turn number. Past it a cut message says it can't be read further by ref, rather than emit a hint the codec would refuse. A window that stops there says how much is left and never claims the message ended (PR #215 F-01).
 6. **Small filter rules.**
    - A `<query>` with no words admits nothing, never everything.
    - A bookmark whose time no Date can hold is left out when a date filter is set.

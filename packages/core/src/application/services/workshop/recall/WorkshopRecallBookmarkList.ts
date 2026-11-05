@@ -237,16 +237,35 @@ function messageWindow(
     (options.characters ?? WORKSHOP_RECALL_BOOKMARK_READ_CHARACTERS) - head.length - BOOKMARK_NOTICE_CHARACTERS
   );
   const to = cutAt(text, result.from, Math.max(1, room));
-  const next = to < text.length ? continuation(ref, to) : undefined;
   return {
     content: recallBody([
       head,
       `Characters ${count(result.from)}–${count(to)} of ${count(text.length)}:`,
       text.slice(result.from, to),
-      next ? `Continue with ${next}.` : 'This is the end of the message.'
+      windowEnd(text, to, ref)
     ]),
     window: { from: result.from, to, total: text.length }
   };
+}
+
+/**
+ * What follows a window: the end only when the text ends there, else the
+ * continuation, else why the rest cannot be read by ref (PR #215 F-01). A
+ * window that stops at `bookmarkFromMax` never claims the message is whole.
+ */
+function windowEnd(text: string, to: number, ref: string | undefined): string {
+  if (to >= text.length) {
+    return 'This is the end of the message.';
+  }
+  const next = continuation(ref, to);
+  if (next) {
+    return `Continue with ${next}.`;
+  }
+  const left = `the message continues for ${count(text.length - to)} more characters`;
+  return ref === undefined
+    ? `[message cut: ${left}; its ref cannot be written, so the rest cannot be read by ref]`
+    : `[message cut: ${left}; reading by ref stops at character ` +
+      `${count(PROMPT_BUDGETS.workshopTranscriptRecall.bookmarkFromMax)}, so the rest cannot be read by ref]`;
 }
 
 function headerLines(result: Listed): string[] {

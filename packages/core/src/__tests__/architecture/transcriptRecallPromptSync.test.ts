@@ -65,7 +65,9 @@ describe('session-recall prompt ↔ PROMPT_BUDGETS', () => {
     [/One list shows at most ([\d,]+) bookmarks in at most ([\d,]+) characters/, [budgets.bookmarkItems, budgets.bookmarkCharacters]],
     [/A message longer than ([\d,]+) characters is cut/, [budgets.bookmarkMessageCharacters]],
     [/`<from>` is the character to start from, at most ([\d,]+);/, [budgets.bookmarkFromMax]],
-    [/Each read shows at most ([\d,]+) characters and ends with a continuation/, [budgets.bookmarkMessageCharacters]]
+    [/Each read shows at most ([\d,]+) characters and ends with a continuation/, [budgets.bookmarkMessageCharacters]],
+    // Past the last offset `<from>` takes, a window says what is left instead of continuing (PR #215 F-01).
+    [/when what is left starts past ([\d,]+), the read says how much is left/, [budgets.bookmarkFromMax]]
   ];
 
   it.each(pinned)('quotes %s from PROMPT_BUDGETS', (pattern, expected) => {
