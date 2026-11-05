@@ -1,9 +1,9 @@
 # ADR 2026-11-04: Workshop Pinned Context
 
-**Status:** Proposed (2026-11-04). Okey decided question 5 on 2026-11-04; five questions are still open ([Open questions](#open-questions)). Accepted after the live pass (Slice 5).
+**Status:** Proposed (2026-11-04). All six questions are decided ([Decided questions](#decided-questions)): question 5 by Okey on 2026-11-04, and the rest with his approval of the design on 2026-11-05. Accepted after the live pass (Slice 5).
 **Date:** 2026-11-04
 **Epic:** [Workshop Pinned Context](../../.todo/epics/epic-workshop-pinned-context-2026-11-04/README.md)
-**Design:** `docs/design/workshop-pinned-context/` (Slice 0d, not yet drawn). It follows Project Memory's approved settings design (PR #196, `docs/design/workshop-project-memory/` on `epic/workshop-project-memory-slice-0-design`).
+**Design:** `docs/design/workshop-pinned-context/` (Slice 0d, **approved by Okey on 2026-11-05**). It follows Project Memory's approved settings design (`docs/design/workshop-project-memory/`).
 **Extends:** [ADR 2026-07-30: Workshop Session Codec Evolution](2026-07-30-workshop-session-codec-evolution.md) (no codec change, D4); [ADR 2026-10-19: Lightbox](2026-10-19-lightbox-inspiration-board.md) (D12: the saved-board write discipline, through Project Memory's shared `StoredFileClaims` / `StoredFileRewrite`)
 **Related:** [ADR 2026-11-04: Workshop Project Memory](2026-11-04-workshop-project-memory.md) (on `epic/workshop-project-memory`: D8 unavailable workspaces, D10 storage, and the "Memory isn't context" well of its Slice 0d design); [ADR 2025-11-03: Unified Settings Architecture](2025-11-03-unified-settings-architecture.md); [ADR 2026-10-03: Acknowledged Workshop Context Deltas](2026-10-03-workshop-context-delta-delivery.md); [ADR 2026-10-03: Provider Conversation Prompt Caching](2026-10-03-provider-conversation-prompt-caching.md)
 
@@ -78,7 +78,9 @@ The code shapes the answer in eight places:
    (`:435-437`). Pinned context must arrive as a new collaborator behind a
    narrow port, not as more lines in either file.
 
-Two more facts come from work that is not on `main` yet:
+Two more facts come from work that was not on `main` when this was written.
+It has since been merged into this epic, `epic/workshop-project-memory` at
+`0a0f1a5`, merged as `17d52cf` on 2026-11-05:
 
 - **The settings dialog is split per tab** on `epic/workshop-project-memory`
   (Slice 4a, PR #193). There, `WORKSHOP_CONVERSATION_SETTINGS_TABS` drives
@@ -178,6 +180,13 @@ Workshop room starts with, as ordinary context attachments.**
 - **Same delivery.** The room's first delivery sends attachments as a
   `replace` (fact 4). There is no new prompt frame. Personas are not told
   which files are pinned, and nothing in the system prompt changes.
+- **Memory's frame still ends the first message.** Project Memory's catalog
+  frame is appended to the conversation's first user message by
+  `WorkshopPersonaCapability.appendContract`, after the context the message
+  already carries. Pinned files are part of that context, so the order is
+  unchanged: context first, then memory's frame. Both stay byte-identical
+  across turns, which keeps the prompt cache reading. Slice 2b's delivery
+  test pins the order.
 
 ### D4. "Pinned" is derived, never stored in a session
 
@@ -260,6 +269,14 @@ the catalog key's path equals the entry's path. Otherwise it matches when
   `location()` does (`LightboxBoardStore.ts:419-428`). One folder means
   available. None, or several, means unavailable, with that reason. There is
   no session-only list.
+- **A write belongs to the workspace it was asked in.** This follows
+  Project Memory's PR #202 F01 (`ProjectMemoryWorkspaceIdentity.ts`).
+  - Each mutation captures the accepted workspace identity when the writer
+    asks, before the store's queue can wait.
+  - A write whose turn or commit comes under another identity is withdrawn,
+    even when the new workspace has a `pinned-context.json` too.
+  - A seed's `prepare` captures the identity the same way, and its
+    `install` drops a plan made for another workspace (D9).
 - **Logs carry counts and categories, never paths, names or text.** This
   follows Project Memory's PR #194 F-04.
 
@@ -315,7 +332,7 @@ The tab joins Conversation settings, through Slice 4a's ordered tab list.
 **Slice 0d's design owns the layout, the copy and the states.** This ADR
 fixes what the tab does:
 
-- **Position (proposed):** Behavior · About you · **Pinned context** ·
+- **Position (decided, question 1):** Behavior · About you · **Pinned context** ·
   Memory · Advanced. About you is "what you explicitly share", and pinned
   context is what you share with every conversation, so they sit together.
   The "Memory isn't context" well then points straight to the tab beside it.
@@ -453,19 +470,21 @@ fixes what the tab does:
   refresh is the writer's action.
 - Telling personas which files are pinned.
 
-## Open questions
+## Decided questions
 
-Recommendations are first in each list. Okey decides.
+Okey decided question 5 on 2026-11-04. On 2026-11-05 he approved the
+design, which draws the recommended answers to the others, and asked for
+coding to begin. Each answer is the recommendation:
 
-1. **Tab position.** After About you (recommended), or after Memory.
-2. **Does an ordinary New session top up?** Yes: it re-reads carried pinned
-   files and appends missing ones (recommended). The alternative is to seed
-   only first rooms and full resets.
-3. **Over budget.** Attach each file that fits, in order (recommended), or
-   stop at the first that doesn't fit.
-4. **The bound.** 20 files (recommended), or another number.
-5. **A third New item.** **Decided (Okey, 2026-11-04): yes.** It is
-   New session: full reset, empty context (D2, D7).
-6. **Pin from a pill.** Add Pin and Unpin to a context pill's menu in
-   Slice 4 (recommended), or keep the tab as the only place to change the
-   list.
+1. **Tab position: after About you.** The order is Behavior · About you ·
+   Pinned context · Memory · Advanced (D8).
+2. **An ordinary New session tops up.** It re-reads carried pinned files and
+   appends missing ones (D2, D3). The approved tab's start note says so.
+3. **Over budget: attach each file that fits, in order** (D6). This is the
+   approved Over budget board.
+4. **The bound: 20 files,** as a starting value that Slice 5 tunes (D6).
+5. **A third New item: yes,** New session: full reset, empty context (D2,
+   D7).
+6. **Pin from a pill: yes, as drawn.** A hovered, unpinned file pill offers
+   **Pin**. Unpinning stays in the tab, and a pinned pill shows only its
+   mark and tooltip (Slice 4).

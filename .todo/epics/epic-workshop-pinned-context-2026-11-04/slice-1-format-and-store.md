@@ -2,9 +2,10 @@
 
 **Epic:** [Workshop Pinned Context](README.md)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-pinned-context.md), D5 (storage), D6 (bounds)
-**Status:** Not started. The pure codec can start now from `epic-pinned-context`.
-The store waits on `StoredFileClaims` / `StoredFileRewrite` reaching `main`
-(Project Memory Slice 1, PR #194).
+**Branch:** `epic-pinned-context-slice-1-format-store`
+**Status:** Not started. Unblocked: Project Memory, with `StoredFileClaims`,
+`StoredFileRewrite` and `ProjectMemoryWorkspaceIdentity`, was merged into the
+epic at `17d52cf` (2026-11-05). It runs beside Slice 2a.
 
 ## Outcome
 
@@ -13,6 +14,14 @@ store with the board store's write discipline. Nothing reads files from the
 list yet, and nothing in the UI changes.
 
 ## Build
+
+### Shared types (`core/shared/types/workshopPinnedContext.ts`)
+
+- The list and entry shapes, `WorkshopPinnedContextList` and
+  `WorkshopPinnedContextEntry` (`{ path }`), beside
+  `shared/types/projectMemory.ts`. Slice 2b's library and match rule, and
+  Slice 3's messages, import them from here.
+- `PROMPT_BUDGETS.workshopPinnedContext = { files: 20 }` (ADR D6).
 
 ### Codec (`infrastructure/storage/WorkshopPinnedContextCodec.ts`)
 
@@ -25,8 +34,7 @@ list yet, and nothing in the UI changes.
   segment, no `.` or `..`, no leading `/`, no drive letter, no backslash, and
   no control character. Unique, compared case-folded on Windows (pass the
   platform in, so tests cover both).
-- At most `PROMPT_BUDGETS.workshopPinnedContext.files` (20) entries. Add the
-  bound to `PromptBudgets` and to `promptBudgets.ts`.
+- At most `PROMPT_BUDGETS.workshopPinnedContext.files` (20) entries.
 - The decoder fails whole. Never drop one bad entry and keep the rest: a
   silent drop would unpin a file for the writer.
 - A fixture, `__tests__/fixtures/pinned-context-v1.json`, with *Alice*
@@ -50,6 +58,16 @@ list yet, and nothing in the UI changes.
   - unreadable → refused. It is never written;
   - the outcome is `{ ok: true, list, revision } | { ok: false, reason:
     'changed' | 'unreadable' | 'unavailable' | 'busy' | 'io' }`.
+- **A write belongs to the workspace it was asked in** (ADR D5; Project
+  Memory's PR #202 F01).
+  - `update` captures the accepted workspace identity when it is called,
+    before the queue can wait, as `askedProjectMemoryWorkspace` does
+    (`application/services/workshop/memory/ProjectMemoryWorkspaceIdentity.ts`).
+  - A write whose turn or commit comes under another identity is withdrawn
+    as `unavailable`, even when the new workspace has its own
+    `pinned-context.json`.
+  - Reuse the helper if its shape fits. Don't rename or move memory's code
+    in this slice. If a neutral home would help, record it as tech debt.
 - Folder read errors are `io`, never `absent`.
 - Logs carry the outcome and its category only.
 
@@ -63,7 +81,9 @@ list yet, and nothing in the UI changes.
     stale revision is refused, and the first write stands;
   - an unreadable file is never written;
   - an abandoned claim is settled by the shared primitive's rules;
-  - unavailable with none or several folders.
+  - unavailable with none or several folders;
+  - a write asked in one workspace and reaching its turn in another is
+    withdrawn, and neither folder's file changes.
 - **Boundaries:** the store and codec live in `infrastructure/storage/`, and
   no handler imports the store.
 

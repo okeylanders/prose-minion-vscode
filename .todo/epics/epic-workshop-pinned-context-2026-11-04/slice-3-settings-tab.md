@@ -3,8 +3,10 @@
 **Epic:** [Workshop Pinned Context](README.md)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-pinned-context.md), D6 (refusals), D8 (the tab), D9 (composition)
 **Design:** `docs/design/workshop-pinned-context/` (Slice 0d). **The design owns the layout, copy and states;** this doc owns the wiring.
-**Status:** Waits on Slice 0d (approved design), Slice 2 (the library), and
-Project Memory Slice 4a's per-tab panels on `main`.
+**Branch:** `epic-pinned-context-slice-3-settings-tab`
+**Status:** Waits on Slice 2b (the library). The design was approved on
+2026-11-05, and Slice 4a's per-tab panels are in the epic since the merge at
+`17d52cf`.
 
 ## Outcome
 
@@ -70,6 +72,9 @@ it back only as a key into the list it just read (ADR D8).
 - It derives "in this conversation" and the missing count from the session
   snapshot's attachments with `workshopPinnedContextMatches`, so the tab
   updates when the room changes, with nothing posted.
+- It requests the list when the Workshop mounts, not only when the tab
+  opens. `WorkshopApp` passes its entry count to `WorkshopSessionsMenu`'s
+  `pinnedFileCount`, replacing Slice 2a's `0` and its comment.
 
 ### Panel (`components/workshop/settings/WorkshopPinnedContextSettingsPanel.tsx`)
 

@@ -7,7 +7,7 @@
 `.todo/epics/epic-workshop-project-memory-2026-11-04/slice-0d-settings-design.md`
 on `epic/workshop-project-memory-slice-0-design`
 **Canvas:** https://claude.ai/artifact/2dZHup6uEFKQML17dJeZqz (private to Okey), snapshotted in `docs/design/workshop-pinned-context/`
-**Status:** Third pass drawn and published (13 artboards). Okey said "this looks good" to the second pass and asked for two refinements, both drawn. Waiting on his approval.
+**Status:** Done. Okey approved the third pass on 2026-11-05 (13 artboards).
 
 ## Outcome
 
@@ -235,3 +235,7 @@ Okey: "This looks good." Two refinements:
   list in a scrollable well, and the template note as a disclosure that
   starts open, with a new Collapsed board (13 artboards in all).
   Snapshotted again. Waiting on his approval.
+- **2026-11-05. Approved.** Okey approved the third pass as it stands. The
+  snapshot in `docs/design/workshop-pinned-context/` is the approved design.
+  The design draws the recommended answers to ADR questions 1, 2, 3 and 6,
+  so the ADR records them as decided.

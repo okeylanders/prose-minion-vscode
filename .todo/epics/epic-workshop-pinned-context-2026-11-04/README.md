@@ -1,9 +1,9 @@
 # Epic: Workshop Pinned Context
 
-**Status:** Slice 0 (spec) written, with five questions waiting on Okey.
-Slice 0d (tab design): third pass drawn after Okey's notes, waiting on his
-approval. Code
-slices are gated on Project Memory reaching `main` (see [Order](#order)).
+**Status:** Coding. The spec is done, with all six questions decided, and
+Okey approved the design on 2026-11-05. Project Memory was merged in at
+`17d52cf`, and Slices 1 and 2a are building in parallel (see
+[Threads](#threads)).
 **Priority:** Medium
 **Created:** 2026-11-04
 **Integration branch:** `epic-pinned-context`, cut from `main` at `24d9d6e`.
@@ -16,11 +16,10 @@ slices are gated on Project Memory reaching `main` (see [Order](#order)).
   reached it; otherwise `epic/workshop-project-memory` does.
 - **The epic merges to `main`** through one PR at the end.
 
-**Decision:** [ADR 2026-11-04: Workshop Pinned Context](../../../docs/adr/2026-11-04-workshop-pinned-context.md) (Proposed)
+**Decision:** [ADR 2026-11-04: Workshop Pinned Context](../../../docs/adr/2026-11-04-workshop-pinned-context.md) (Proposed; all questions decided; Accepted after Slice 5)
 **Design:** [`docs/design/workshop-pinned-context/`](../../../docs/design/workshop-pinned-context/README.md)
-(canvas https://claude.ai/artifact/2dZHup6uEFKQML17dJeZqz). First pass,
-not yet approved. It follows Project Memory's approved settings design
-(PR #196).
+(canvas https://claude.ai/artifact/2dZHup6uEFKQML17dJeZqz). **Approved by
+Okey on 2026-11-05.** It follows Project Memory's approved settings design.
 
 ## Goal
 
@@ -32,6 +31,8 @@ that:
 - **New session** keeps what it carries today, re-reads the pinned files and
   adds any that are missing;
 - **New session: full reset** clears the room, then attaches them;
+- **New session: full reset, empty context** clears the room and attaches
+  nothing;
 - the context sheet marks which pills are pinned;
 - nothing about how context reaches personas changes. Pinned files are
   ordinary attachments, under the same 100,000-word budget.
@@ -43,43 +44,45 @@ every conversation through Choose from project, and wants to stop.
 
 | # | Slice | Outcome | Branch | Status |
 |---|---|---|---|---|
-| 0 | Spec | ADR, this epic, slice docs 0d–5 | `epic-pinned-context` | Written; five questions open for Okey |
-| 0d | Tab design | The Pinned context tab in every state, drawn on the real theme beside the Memory tab, for Okey's approval, then snapshotted | `epic-pinned-context` | Third pass drawn (13 artboards), waiting on Okey's approval ([doc](slice-0d-tab-design.md)) |
-| 1 | Format and store | `WorkshopPinnedContextCodec` (format 1, pure) and `WorkshopPinnedContextStore` (claimed writes), with fixtures. No UI, no seeding | `…-slice-1-format-store` | Codec can start now. The store waits on `StoredFileClaims` on `main` ([doc](slice-1-format-and-store.md)) |
-| 2 | Room seed | `WorkshopPinnedContextLibrary`, the `WorkshopRoomSeed` port, seeding on first room / New / full reset, the New result's report, the full reset's copy | `…-slice-2-room-seed` | Waits on 1 ([doc](slice-2-room-seed.md)) |
-| 3 | Settings tab | `WorkshopPinnedContextHandler`, its messages, `useWorkshopPinnedContext`, and the panel: add from project, pin what's attached, attach missing, move, unpin, open | `…-slice-3-settings-tab` | Waits on 0d, 2, and 4a on `main` ([doc](slice-3-settings-tab.md)) |
-| 4 | Context sheet marks | The derived pin mark and tooltip on pills. Pin and Unpin from a pill if question 6 says so | `…-slice-4-sheet-marks` | Waits on 3, and Wayfinding's context sheet on `main` ([doc](slice-4-context-sheet-marks.md)) |
+| 0 | Spec | ADR, this epic, slice docs 0d–5 | `epic-pinned-context` | Done; all six questions decided |
+| 0d | Tab design | The Pinned context tab in every state, drawn on the real theme beside the Memory tab, then snapshotted | `epic-pinned-context` | Done: approved by Okey on 2026-11-05 (13 artboards; [doc](slice-0d-tab-design.md)) |
+| 1 | Format and store | Shared types and bound, `WorkshopPinnedContextCodec` (format 1, pure) and `WorkshopPinnedContextStore` (claimed writes, workspace identity), with fixtures. No UI, no seeding | `epic-pinned-context-slice-1-format-store` | Building ([doc](slice-1-format-and-store.md)) |
+| 2a | Starts and seed port | `start: 'carry' \| 'full-reset' \| 'empty'`, the `WorkshopRoomSeed` port and its calls, `WORKSHOP_NO_ROOM_SEED`, the menu's empty-context item behind `pinnedFileCount` | `epic-pinned-context-slice-2a-starts-seed-port` | Building, beside 1 ([doc](slice-2a-starts-and-seed-port.md)) |
+| 2b | Room seed | The match rule, `WorkshopPinnedContextLibrary`, the real seed, the result lines' report | `epic-pinned-context-slice-2b-room-seed` | Waits on 1 and 2a ([doc](slice-2b-room-seed.md)) |
+| 3 | Settings tab | `WorkshopPinnedContextHandler`, its messages, `useWorkshopPinnedContext`, and the panel: add from project, pin what's attached, attach missing, move, unpin, open; the menu's count | `epic-pinned-context-slice-3-settings-tab` | Waits on 2b ([doc](slice-3-settings-tab.md)) |
+| 4 | Context sheet marks | The derived pin mark and tooltip on pills, and Pin from a pill | `epic-pinned-context-slice-4-sheet-marks` | Waits on 3 ([doc](slice-4-context-sheet-marks.md)) |
 | 5 | Verify live | Extension Development Host pass; ADR to Accepted; memory bank | — | Needs a human with VS Code ([doc](slice-5-verify-live.md)) |
 
 ## Order
 
-**The gate is Project Memory on `main`.** Three things the code slices need
-live on `epic/workshop-project-memory`, which is stacked on
-`epic/workshop-wayfinding`, and none of them is on `main` yet:
+**The gate is met.** Okey decided the base on 2026-11-04: merge Project
+Memory in before coding begins. `epic/workshop-project-memory` was
+code-complete at `0a0f1a5` (only its Slice 6 live pass remains) and carries
+Wayfinding and `main`. It was merged into this epic as `17d52cf` on
+2026-11-05, with no conflicts. That brought what the code slices need:
 
-- **Slice 4a's per-tab settings panels** (PR #193). On `main`,
-  `WorkshopConversationBehaviorModal` is still one 587-line component. Adding
-  a tab there would collide with the split.
-- **`StoredFileClaims` / `StoredFileRewrite`,** the shared claimed-file
-  primitive (memory Slice 1, PR #194). The store writes through it.
-- **Wayfinding's context sheet** (`useWorkshopContextSheet`,
-  `utils/workshop/contextSources.ts`). Slice 4 draws its mark there.
+- Slice 4a's per-tab settings panels (`WORKSHOP_CONVERSATION_SETTINGS_TABS`);
+- `StoredFileClaims` / `StoredFileRewrite`;
+- `ProjectMemoryWorkspaceIdentity`;
+- Wayfinding's context sheet.
 
-So:
+Fixes from memory's live pass land on `epic/workshop-project-memory`. The
+coordinator merges them in as they come. Because memory merged in before it
+reached `main`, this epic's final PR waits for memory's.
 
-1. **Now:** Slice 0 (this). Slice 0d, which is design work and touches no
-   code. Slice 1's pure codec and its tests, which are new files only.
-2. **Before coding begins** (Okey's decision, 2026-11-04): if Project Memory
-   has merged to `main`, `main` merges into `epic-pinned-context`.
-   Otherwise `epic/workshop-project-memory` merges in. The branch is not
-   re-cut. Then Slice 1's store, then 2, then 3, then 4.
-3. **If memory merges in before it reaches `main`,** this epic can't reach
-   `main` before memory does. Its final PR waits for memory's.
+**Order of the code slices:**
 
-Slices 2 and 3 don't overlap much: 2 is host-side (coordinator, session
-message handler, the menu's copy), and 3 is the handler, hook and panel. Once
-1 lands, 3's handler and hook can be built against 2's library interface in
-parallel.
+1. **Slices 1 and 2a, in parallel.** 1 writes `infrastructure/storage/`, the
+   shared types and the bound. 2a writes the reset contract, the
+   coordinator's port calls and the menu. Neither touches the other's files.
+2. **Slice 2b,** once both have merged. It needs 1's store and 2a's port.
+3. **Slice 3,** once 2b has merged. It needs 2b's library and match rule.
+4. **Slice 4,** once 3 has merged. It needs 3's hook and pin route.
+5. **Slice 5,** Okey's live pass.
+
+Line references in the ADR are to `main` at `24d9d6e`. Since the merge, some
+have moved; find the symbol rather than the line. For example, the reset
+payload is now at `session.ts:720`.
 
 ## How the Slices Are Built
 
@@ -104,11 +107,18 @@ Project Memory's process, unchanged:
   PascalCase `naming-convention` warnings).
 - `npx jest`: the full suite passes. Record suite and test counts before and
   after in the slice doc.
+- **Baseline after the merge** (`17d52cf`, 2026-11-05, Node 22):
+  - `npm run typecheck` passes;
+  - `npx jest`: 691 suites / 9,696 tests / 59 snapshots, all passing;
+  - `npm run lint`: 0 errors / 1,165 warnings.
 - No `from 'vscode'` in `packages/core/src`.
 - No new file over 500 lines, and a touched file doesn't grow past 500.
   `WorkshopSessionPersistenceCoordinator.ts` (1,797) and
-  `WorkshopSessionService.ts` (2,555) are already far past it. Slice 2 adds
-  only the seed port's calls to them; the work lives in new modules.
+  `WorkshopSessionService.ts` (2,704 since the merge) are already far past
+  it. Slice 2a adds only the seed port's calls to the coordinator; the work
+  lives in new modules. `WorkshopApp.tsx`, `useWorkshopRoom.ts`,
+  `WorkshopRoomHandler.ts` and `session.ts` are past it too: new code goes
+  in sibling modules, as the memory slices did.
 - Fixtures and tests use *Alice* or made-up names, never a writer's text.
 - Logs carry counts and categories, never file paths, names or contents.
 
@@ -123,7 +133,7 @@ landed there, otherwise the memory epic branch does (see
 menu gains **New session: full reset, empty context**. It starts a new
 conversation with the working set cleared and no pinned context. It shows
 only while something is pinned. The reset payload's `clearWorkingSet` flag
-becomes `start: 'carry' | 'full-reset' | 'empty'` (ADR D2). Slice 2 builds
+becomes `start: 'carry' | 'full-reset' | 'empty'` (ADR D2). Slice 2a builds
 it.
 
 **A template well heads the tab (Okey, 2026-11-04).** It explains that
@@ -131,14 +141,21 @@ pinned context is a starting template, and that each conversation's context
 stays its own and is changed in its Context panel (ADR D8). Slice 3 builds
 it from the design.
 
-Of the ADR's [open questions](../../../docs/adr/2026-11-04-workshop-pinned-context.md#open-questions),
-five are still for Okey:
+**The design, and the other five questions (Okey, 2026-11-05).** Okey
+approved the third pass and asked for coding to begin. The approved design
+draws the recommended answer to each remaining question, so the ADR records
+them as [decided](../../../docs/adr/2026-11-04-workshop-pinned-context.md#decided-questions):
 
-1. The tab's position (after About you, recommended).
-2. Whether an ordinary New session tops up (yes, recommended).
-3. Over budget: attach each file that fits, in order (recommended).
-4. The bound: 20 files (recommended).
-6. Pin and Unpin from a pill in Slice 4 (yes, recommended).
+1. the tab sits after About you;
+2. an ordinary New session tops up;
+3. over budget, each file that fits attaches, in order;
+4. the bound is 20 files, tuned in Slice 5;
+6. Pin from a pill, as drawn; unpinning stays in the tab.
+
+**Merge, then code (Okey, 2026-11-05).** Project Memory merged in (see
+[Order](#order)), with its two lessons folded into the ADR: a write belongs
+to the workspace it was asked in (D5), and memory's frame still ends the
+first message (D3).
 
 ### Direction relayed from the Project Memory thread (2026-11-04)
 

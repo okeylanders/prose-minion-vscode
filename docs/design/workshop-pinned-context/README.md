@@ -6,12 +6,11 @@ and [ADR 2026-11-04](../../adr/2026-11-04-workshop-pinned-context.md). The
 brief, states and open questions are in
 [Slice 0d's doc](../../../.todo/epics/epic-workshop-pinned-context-2026-11-04/slice-0d-tab-design.md).
 
-- **Status: third pass, waiting on Okey's approval.**
-  - Second pass: the template well, and the empty-context New.
-  - Third pass: the file list in a scrollable well, and the template well
-    collapsible, starting open.
-  - Nothing here is approved yet. Once it is, the canvas is copied here
-    again and this line says so.
+- **Status: approved by Okey on 2026-11-05** (the third pass). This is the
+  design Slices 2a, 3 and 4 build.
+  - The second pass added the template well and the empty-context New.
+  - The third pass put the file list in a scrollable well, and made the
+    template well collapsible, starting open.
 - **Source:** a Claude Design canvas artifact,
   https://claude.ai/artifact/2dZHup6uEFKQML17dJeZqz (private to its owner).
   Drawn on 2026-11-04 and copied here the same day.
@@ -49,7 +48,7 @@ brief, states and open questions are in
 | `NoFolder.dc.html`, `MultiRoot.dc.html` | 3 | Unavailable in this workspace, with the reason |
 | `Picker.dc.html` | 3 | Add from project… in pin mode, over the dialog. Interactive: click files. Already-pinned files are disabled and tagged "Pinned" |
 | `PickerRefused.dc.html` | 3 | The host refusing a pin past the 100,000-word limit |
-| `Workshop.dc.html` | 2, 4 | The context sheet's pin mark and tooltip; a Pin button on an unpinned pill (question 6); the sessions menu with the full reset's new subtitle and **New session: full reset, empty context**; the New result, full, partial and empty |
+| `Workshop.dc.html` | 2a, 2b, 4 | The context sheet's pin mark and tooltip; a Pin button on an unpinned pill (question 6); the sessions menu with the full reset's new subtitle and **New session: full reset, empty context**; the New result, full, partial and empty |
 
 ## Where the build may differ from the canvas
 
