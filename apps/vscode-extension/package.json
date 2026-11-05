@@ -594,6 +594,7 @@
         },
         "proseMinion.workshop.conversationBehavior": {
           "type": "object",
+          "scope": "application",
           "default": {
             "interactionMode": "balanced",
             "expressionLevel": "full",
@@ -634,7 +635,7 @@
             "proactiveAssistance"
           ],
           "additionalProperties": false,
-          "description": "Durable defaults for Workshop conversation behavior. These explicit choices survive restart; inferred conversation-cue memory remains session-scoped.",
+          "description": "Durable defaults for Workshop conversation behavior, set in user settings only. These explicit choices survive restart; inferred conversation-cue memory remains session-scoped.",
           "order": 50
         },
         "proseMinion.workshop.writerProfile": {
@@ -668,6 +669,7 @@
         },
         "proseMinion.workshop.webResearch": {
           "type": "object",
+          "scope": "application",
           "default": {
             "enabled": false
           },
@@ -679,7 +681,7 @@
           },
           "required": ["enabled"],
           "additionalProperties": false,
-          "description": "Optional per-window live-web research for Workshop persona conversations. Research may share active conversation context with OpenRouter and search providers. Workshop tools remain unchanged.",
+          "description": "Optional live-web research for Workshop persona conversations. Set in user settings only: it applies in every project you open, and a project's workspace settings cannot turn it on. Research may share active conversation context with OpenRouter and search providers. Workshop tools remain unchanged.",
           "order": 52
         },
         "proseMinion.publishingStandards.preset": {

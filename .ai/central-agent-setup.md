@@ -553,6 +553,8 @@ usePersistence({
 
 **Reference Implementation**: See `usePublishingSettings.ts` for clean example.
 
+**A Workshop setting declares its scope** ([ADR 2026-07-20](docs/adr/2026-07-20-workshop-persona-interaction-modes-and-expression-profiles.md) §17). `SettingsStore` writes the global level but reads VS Code's merged value, so an unscoped (window) setting lets a project's `.vscode/settings.json` override what the writer chose. A setting the writer owns (behavior, profile, web research) is `"scope": "application"`. `workshopSettingsScope.test.ts` fails on any `proseMinion.workshop.*` key it does not list, so a new one is added there with its scope.
+
 **A model setting** (a new scope, as the Lightbox's `lightboxModel` in Lightbox Slice 4L) follows the same steps through the model path: `ModelScope` (`shared/types/messages/configuration.ts`), its key in `MODEL_SCOPE_SETTING_KEYS` and its default or followed scope in `ModelScopeSelections`, its bundle in `AIResourceManager` (never a handler; retiring a bundle detaches its transport, so an engine a run still holds starts no new call after a key change: PR #169 F-01), `MODEL_KEYS` in `MessageHandler`'s watcher, and a row in the Settings overlay. Model ids reach the webview through `MODEL_DATA` (`selections`, and `following` for a scope that follows another until picked), not `SETTINGS_DATA`; `useModelsSettings` holds them.
 
 #### Modifying AI Behavior
