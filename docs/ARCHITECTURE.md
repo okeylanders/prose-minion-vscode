@@ -305,6 +305,7 @@ workshop/
 ├── bookmarks.ts             # The writer's bookmarks: stored entry, summary, set and rename
 ├── projectMemory.ts         # Project memory's proposal, receipt and write routes
 ├── projectMemoryManager.ts  # The memory manager: listing, estimate, residency, its own actions
+├── pinnedContext.ts         # The Pinned context tab: the list, pin, unpin, move, attach missing, open
 ├── widgets.ts               # Explicit family unions and generic widget IPC
 ├── standingDirectives.ts    # Standing family snapshot/summary/change
 ├── creativeVariations.ts    # Creative authoring, workup, overlap, and selection grammar

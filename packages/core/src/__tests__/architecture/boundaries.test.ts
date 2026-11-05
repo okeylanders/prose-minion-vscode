@@ -87,6 +87,8 @@ const WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryManagerHandler.ts';
+const WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopPinnedContextHandler.ts';
 const WORKSHOP_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopContextHandler.ts';
 const WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER =
@@ -211,6 +213,25 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER,
     registration: 'direct',
     messageTypes: ['WORKSHOP_MEMORY_LIST', 'WORKSHOP_MEMORY_MANAGER_ACTION']
+  },
+  // Pinned context's tab (Pinned Context Slice 3): the list's changes touch no
+  // room, so they are direct; Attach missing changes the room, behind the gate.
+  {
+    owner: WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: [
+      'WORKSHOP_REQUEST_PINNED_CONTEXT',
+      'WORKSHOP_PIN_CONTEXT_RESOURCES',
+      'WORKSHOP_PIN_CONTEXT_ATTACHMENTS',
+      'WORKSHOP_UNPIN_CONTEXT',
+      'WORKSHOP_MOVE_PINNED_CONTEXT',
+      'WORKSHOP_OPEN_PINNED_CONTEXT_FILE'
+    ]
+  },
+  {
+    owner: WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_ATTACH_PINNED_CONTEXT']
   },
   {
     owner: WORKSHOP_SESSION_HANDLER_OWNER,
@@ -374,6 +395,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
+  'WorkshopPinnedContextHandler',
   'WorkshopProjectMemoryHandler',
   'WorkshopProjectMemoryManagerHandler',
   'WorkshopSessionExportHandler',
@@ -1883,11 +1905,12 @@ describe('architectural boundaries', () => {
     // Wayfinding Slice 5 added the read-only turn preview (direct).
     // Project Memory Slice 3 added five writes (mutation) and the sheet's two reads (direct).
     // Project Memory Slice 4b added the manager's listing and actions (direct).
-    expect(expectedOwnerPairs).toHaveLength(73);
+    // Pinned Context Slice 3 added the tab's six list routes (direct) and Attach missing (mutation).
+    expect(expectedOwnerPairs).toHaveLength(80);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(45);
+      .toHaveLength(46);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(28);
+      .toHaveLength(34);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -2506,6 +2529,7 @@ describe('architectural boundaries', () => {
       'lexicalGravity.ts',
       'lightboxTiles.ts',
       'participants.ts',
+      'pinnedContext.ts',
       'projectMemory.ts',
       'projectMemoryManager.ts',
       'seedDelivery.ts',
@@ -2636,7 +2660,7 @@ describe('Workshop Pinned Context storage (Slice 1; ADR 2026-11-04 D5)', () => {
     expect(extension).toMatch(/pinnedContext:\s*workshopPinnedContextStoreForShutdown/);
   });
 
-  it('lets no handler import the library or the seed; CoreServices names the library as a type only (Slice 2b)', () => {
+  it('lets no handler import the library or the seed; CoreServices names pinned context through its ports, as a type only (Slices 2b, 3)', () => {
     const CONTRACTS = path.join(HANDLERS_ROOT, 'MessageHandlerContracts.ts');
     const offenders = collectSourceFiles(HANDLERS_ROOT)
       .filter((file) => file !== CONTRACTS)
@@ -2645,7 +2669,7 @@ describe('Workshop Pinned Context storage (Slice 1; ADR 2026-11-04 D5)', () => {
     expect(offenders).toEqual([]);
     const contracts = fs.readFileSync(CONTRACTS, 'utf8');
     expect(moduleImports(CONTRACTS, contracts)
-      .filter(({ module }) => /\/pinnedContext\//.test(module))).toEqual([{ module: expect.stringMatching(/WorkshopPinnedContextLibrary$/), typeOnly: true }]);
+      .filter(({ module }) => /\/pinnedContext\//.test(module))).toEqual([{ module: expect.stringMatching(/WorkshopPinnedContextPorts$/), typeOnly: true }]);
   });
 
   it('keeps pinnedContext/ modules under 500 lines', () => {

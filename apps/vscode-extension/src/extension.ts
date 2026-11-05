@@ -598,7 +598,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     lightboxBoardStore,
     lightboxBoardLibrary,
     projectMemory: projectMemoryLibrary,
-    workshopPinnedContext: workshopPinnedContextLibrary
+    workshopPinnedContext: {
+      library: workshopPinnedContextLibrary,
+      takeFirstRoomReport: () => workshopPinnedContextRoomSeed.takeFirstRoomReport()
+    }
   };
 
   // Migrate API key from settings to SecretStorage if needed

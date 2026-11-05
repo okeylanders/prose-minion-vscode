@@ -1,3 +1,4 @@
+import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
 import {
   WorkshopRoomHandler
 } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
@@ -195,7 +196,8 @@ Add a key.`, conversationId, 'vendor/never');
         lexicalGravity: { model: {}, repository: {}, directives: {} }
       } as unknown as WorkshopWidgetRuntime,
       output,
-      libraryHost().library
+      libraryHost().library,
+      emptyPinnedContextServices()
     );
     const router = new MessageRouter();
     handler.registerRoutes(router);

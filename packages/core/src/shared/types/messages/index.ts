@@ -189,6 +189,14 @@ import {
   WorkshopMemoryListingMessage,
   WorkshopMemoryManagerActionMessage,
   WorkshopMemoryManagerResultMessage,
+  WorkshopRequestPinnedContextMessage,
+  WorkshopPinnedContextMessage,
+  WorkshopPinContextResourcesMessage,
+  WorkshopPinContextAttachmentsMessage,
+  WorkshopUnpinContextMessage,
+  WorkshopMovePinnedContextMessage,
+  WorkshopAttachPinnedContextMessage,
+  WorkshopOpenPinnedContextFileMessage,
   WorkshopRenameBookmarkMessage,
   WorkshopRenameBookmarkResultMessage,
   WorkshopRequestTurnPreviewMessage,
@@ -346,6 +354,13 @@ export type WebviewToExtensionMessage =
   | WorkshopMemoryEstimateMessage
   | WorkshopMemoryListMessage
   | WorkshopMemoryManagerActionMessage
+  | WorkshopRequestPinnedContextMessage
+  | WorkshopPinContextResourcesMessage
+  | WorkshopPinContextAttachmentsMessage
+  | WorkshopUnpinContextMessage
+  | WorkshopMovePinnedContextMessage
+  | WorkshopAttachPinnedContextMessage
+  | WorkshopOpenPinnedContextFileMessage
   | WorkshopRenameBookmarkMessage
   | WorkshopRequestTurnPreviewMessage
   | WorkshopPickExcerptFileMessage
@@ -439,6 +454,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopMemoryEstimateResultMessage
   | WorkshopMemoryListingMessage
   | WorkshopMemoryManagerResultMessage
+  | WorkshopPinnedContextMessage
   | WorkshopGesturePlaygroundGenerationProgressMessage
   | WorkshopGesturePlaygroundMenuResultMessage
   | WorkshopCreativeVariationsGenerationProgressMessage

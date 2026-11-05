@@ -52,7 +52,7 @@ describe('describe(): the list as the tab draws it', () => {
 
   it('an absent list is listed and empty, at the absent revision', async () => {
     await expect(seedHost().library.describe()).resolves.toEqual({
-      state: 'listed', revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION, rows: [], words: 0
+      state: 'listed', revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION, rows: [], words: 0, absent: true
     });
   });
 

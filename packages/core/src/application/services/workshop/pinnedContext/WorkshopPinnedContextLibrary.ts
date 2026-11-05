@@ -27,32 +27,41 @@ import {
 } from '@/application/services/workshop/memory/ProjectMemoryWorkspaceIdentity';
 import type {
   WorkshopPinnedContextRead,
-  WorkshopPinnedContextStore,
-  WorkshopPinnedContextUnavailableReason
+  WorkshopPinnedContextStore
 } from '@/infrastructure/storage/WorkshopPinnedContextStore';
 import {
   WORKSHOP_PINNED_CONTEXT_FILE_BYTES,
-  type WorkshopPinnedContextPathPlatform,
-  type WorkshopPinnedContextRefusal
+  type WorkshopPinnedContextEntry,
+  type WorkshopPinnedContextPathPlatform
 } from '@shared/types/workshopPinnedContext';
 import { fileSystemErrorCategory } from '@/infrastructure/storage/fileSystemErrors';
 import {
   WorkshopPinnedContextFileReader,
   type WorkshopPinnedContextIntakePort,
-  type WorkshopPinnedFileFault,
-  type WorkshopPinnedFileRead,
-  type WorkshopPinnedFileSource
+  type WorkshopPinnedFileRead
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextFileReader';
 import {
+  WORKSHOP_PINNED_WORDS,
   workshopPinnedFileFaultWords,
   workshopPinnedListRefusalWords,
   workshopPinnedListUnavailableWords
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextWords';
+import { WorkshopPinnedContextWrites } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextWrites';
+import type {
+  WorkshopPinnedContextAsk,
+  WorkshopPinnedContextDescription,
+  WorkshopPinnedContextOpenTarget,
+  WorkshopPinnedContextRow,
+  WorkshopPinnedContextSeedRead,
+  WorkshopPinnedContextTabPort,
+  WorkshopPinnedContextWriteResult
+} from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
+import type { ConfiguredResourceRef } from '@messages';
 
 const LOG = '[WorkshopPinnedContext]';
 
-/** The store's reads and its live availability, nothing else. */
-export type WorkshopPinnedContextStorePort = Pick<WorkshopPinnedContextStore, 'availability' | 'read'>;
+/** The store's reads, its live availability, and the tab's writes (Slice 3). */
+export type WorkshopPinnedContextStorePort = Pick<WorkshopPinnedContextStore, 'availability' | 'read' | 'update'>;
 
 /** The accepted workspace, as the coordinator reads it now. */
 export type WorkshopPinnedContextScopePort = () => WorkshopSessionRecallScope;
@@ -60,50 +69,21 @@ export type WorkshopPinnedContextScopePort = () => WorkshopSessionRecallScope;
 /** The room the first start seeds: no live session is settled yet. */
 const FIRST_ROOM = 'first-room';
 
-/** One pinned entry, resolved now, as the tab draws its row. */
-export interface WorkshopPinnedContextRow {
-  readonly path: string;
-  readonly label: string;
-  /** Unknown for a file that is gone. */
-  readonly source?: WorkshopPinnedFileSource;
-  /** `ready`, or `head-sliced` (attached as its first `words` of `totalWords`), `missing`, `unreadable`. */
-  readonly state: 'ready' | 'head-sliced' | 'missing' | 'unreadable';
-  /** The words an attach would bring; 0 when it brings none. */
-  readonly words: number;
-  readonly totalWords?: number;
-  readonly fault?: WorkshopPinnedFileFault;
-  /** The state in the tab's words: "Not found", "Can't read: …", "Attached as its first …". */
-  readonly stateWords?: string;
-}
-
-/** The list as the tab draws it. */
-export type WorkshopPinnedContextDescription =
-  | { readonly state: 'listed'; readonly revision: string; readonly rows: readonly WorkshopPinnedContextRow[]; readonly words: number }
-  | { readonly state: 'unreadable'; readonly revision: string; readonly reason: WorkshopPinnedContextRefusal; readonly entry?: number; readonly words: string }
-  | { readonly state: 'unavailable'; readonly reason: WorkshopPinnedContextUnavailableReason; readonly words: string }
-  | { readonly state: 'busy' | 'io'; readonly words: string };
-
-/** What a seed attaches: every pinned file, in pinned order, or why the list gave none. */
-export type WorkshopPinnedContextSeedRead =
-  | { readonly state: 'listed'; readonly files: readonly WorkshopPinnedFileRead[] }
-  /** Nothing is pinned, or there is no single folder (ADR D2: never seed then). */
-  | { readonly state: 'nothing' }
-  /** The list file is there and cannot be read now, as a category for the log. */
-  | { readonly state: 'list-unreadable'; readonly category: 'unreadable' | 'busy' | 'io' | 'failed' };
-
-export interface WorkshopPinnedContextAsk {
-  /** False when there was no accepted workspace to ask in. */
-  readonly accepted: boolean;
-  /** Whether that workspace is still the accepted one: a write's `beforeCommit`, a seed's install check. */
-  readonly still: () => boolean;
-}
+export type {
+  WorkshopPinnedContextAsk,
+  WorkshopPinnedContextDescription,
+  WorkshopPinnedContextRow,
+  WorkshopPinnedContextSeedRead
+} from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 
 export interface WorkshopPinnedContextLibraryOptions {
   platform: WorkshopPinnedContextPathPlatform;
 }
 
-export class WorkshopPinnedContextLibrary {
+export class WorkshopPinnedContextLibrary implements WorkshopPinnedContextTabPort {
+  readonly platform: WorkshopPinnedContextPathPlatform;
   private readonly reader: WorkshopPinnedContextFileReader;
+  private readonly writes: WorkshopPinnedContextWrites;
 
   constructor(
     private readonly store: WorkshopPinnedContextStorePort,
@@ -113,7 +93,34 @@ export class WorkshopPinnedContextLibrary {
     private readonly outputChannel: LogSink,
     options: WorkshopPinnedContextLibraryOptions
   ) {
+    this.platform = options.platform;
     this.reader = new WorkshopPinnedContextFileReader(intake, fileSystem, options.platform);
+    this.writes = new WorkshopPinnedContextWrites(store, intake, this.reader, options.platform, outputChannel);
+  }
+
+  /*
+   * The tab's changes (Slice 3). Each asks for the live room first, before
+   * anything awaits, and passes its `still` to the store as `beforeCommit`.
+   */
+
+  pinResources(revision: string, items: readonly ConfiguredResourceRef[]): Promise<WorkshopPinnedContextWriteResult> {
+    return this.writes.pinResources(this.askLiveRoom(), revision, items);
+  }
+
+  pinPaths(revision: string, entries: readonly WorkshopPinnedContextEntry[]): Promise<WorkshopPinnedContextWriteResult> {
+    return this.writes.pinPaths(this.askLiveRoom(), revision, entries);
+  }
+
+  unpin(revision: string, entryPath: string): Promise<WorkshopPinnedContextWriteResult> {
+    return this.writes.unpin(this.askLiveRoom(), revision, entryPath);
+  }
+
+  move(revision: string, entryPath: string, direction: 'up' | 'down'): Promise<WorkshopPinnedContextWriteResult> {
+    return this.writes.move(this.askLiveRoom(), revision, entryPath, direction);
+  }
+
+  openTarget(entryPath?: string): Promise<WorkshopPinnedContextOpenTarget> {
+    return this.writes.openTarget(entryPath);
   }
 
   /**
@@ -147,7 +154,7 @@ export class WorkshopPinnedContextLibrary {
     const read = await this.store.read();
     switch (read.state) {
       case 'absent':
-        return { state: 'listed', revision: read.revision, rows: [], words: 0 };
+        return { state: 'listed', revision: read.revision, rows: [], words: 0, absent: true };
       case 'ok': {
         const where = this.store.availability();
         if (!where.available) {
@@ -155,7 +162,7 @@ export class WorkshopPinnedContextLibrary {
         }
         const { reads } = await this.reader.readAll(where.rootPath, read.list.files);
         const rows = reads.map(rowOf);
-        return { state: 'listed', revision: read.revision, rows, words: rows.reduce((total, row) => total + row.words, 0) };
+        return { state: 'listed', revision: read.revision, rows, words: rows.reduce((total, row) => total + row.words, 0), absent: false };
       }
       case 'unreadable':
         return {
@@ -168,9 +175,9 @@ export class WorkshopPinnedContextLibrary {
       case 'unavailable':
         return { state: 'unavailable', reason: read.reason, words: workshopPinnedListUnavailableWords(read.reason) };
       case 'busy':
-        return { state: 'busy', words: 'Pinned context is being changed in another window. Try again in a moment.' };
+        return { state: 'busy', words: WORKSHOP_PINNED_WORDS.busy };
       case 'io':
-        return { state: 'io', words: 'pinned-context.json couldn’t be read. Try again, or check the project folder.' };
+        return { state: 'io', words: WORKSHOP_PINNED_WORDS.io };
     }
   }
 
