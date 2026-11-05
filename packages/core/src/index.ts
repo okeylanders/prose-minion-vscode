@@ -109,6 +109,10 @@ export {
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
 export { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
 export { ProjectMemoryStore } from '@/infrastructure/storage/ProjectMemoryStore';
+export { WorkshopPinnedContextStore } from '@/infrastructure/storage/WorkshopPinnedContextStore';
+export { WorkshopPinnedContextLibrary } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextLibrary';
+export { WorkshopPinnedContextRoomSeed } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextRoomSeed';
+export { workshopPinnedContextPlatformOf } from '@shared/types/workshopPinnedContext';
 export {
   RejectedModelResponseRecoveryStore,
   RejectedModelResponseRecoveryShellPresenter,

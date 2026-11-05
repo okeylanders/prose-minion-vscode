@@ -83,7 +83,10 @@ import {
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
   coerceWorkshopConversationBehavior,
   toInclusiveLineRange,
-  WORKSHOP_NO_ROOM_SEED,
+  WorkshopPinnedContextStore,
+  WorkshopPinnedContextLibrary,
+  WorkshopPinnedContextRoomSeed,
+  workshopPinnedContextPlatformOf,
 } from '@prose-minion/core';
 // VS Code adapters (app-local; the composition root wires them into the ports)
 import { VsCodeSettingsStore } from './platform/vscode/VsCodeSettingsStore';
@@ -127,6 +130,7 @@ let lightboxPanelProvider: LightboxPanelProvider | undefined;
 let workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator | undefined;
 let lightboxBoardLibrary: LightboxBoardLibrary | undefined;
 let projectMemoryLibraryForShutdown: ProjectMemoryLibrary | undefined;
+let workshopPinnedContextStoreForShutdown: WorkshopPinnedContextStore | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // Create output channel for logging
@@ -315,6 +319,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     platform.workspace
   );
   const workshopSessionTimeService = new WorkshopSessionTimeService();
+  // Pinned context (ADR 2026-11-04 D5, D9): one store, then the one library
+  // over it and the intake service's doors, then the seed the coordinator
+  // calls at room starts. The library reads the coordinator's accepted
+  // workspace live, so it asks for it only once the coordinator exists.
+  const pinnedContextPlatform = workshopPinnedContextPlatformOf(process.platform);
+  const workshopPinnedContextStore = new WorkshopPinnedContextStore(
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel,
+    { platform: pinnedContextPlatform }
+  );
+  // Its writes (Slice 3) are owed until they settle; deactivation drains them.
+  workshopPinnedContextStoreForShutdown = workshopPinnedContextStore;
+  const workshopPinnedContextLibrary = new WorkshopPinnedContextLibrary(
+    workshopPinnedContextStore,
+    workshopContextIntakeService,
+    platform.fileSystem,
+    () => workshopSessionPersistenceCoordinator?.recallScope() ?? { available: false, reason: 'not-ready' },
+    outputChannel,
+    { platform: pinnedContextPlatform }
+  );
+  const workshopPinnedContextRoomSeed = new WorkshopPinnedContextRoomSeed(
+    workshopPinnedContextLibrary,
+    outputChannel,
+    pinnedContextPlatform
+  );
   const workshopSessionStore = new WorkshopSessionStore(
     platform.fileSystem,
     platform.workspace,
@@ -326,8 +356,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopConversationSettingsService,
     workshopSessionTimeService,
     workshopSessionStore,
-    // Slice 2b swaps in the pinned-context seed; until then a room starts as it always has.
-    WORKSHOP_NO_ROOM_SEED,
+    workshopPinnedContextRoomSeed,
     outputChannel,
     {
       ensureAssistantReady: () => aiResourceManager.ensureInitialized()
@@ -568,7 +597,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     lightboxContextShelf,
     lightboxBoardStore,
     lightboxBoardLibrary,
-    projectMemory: projectMemoryLibrary
+    projectMemory: projectMemoryLibrary,
+    workshopPinnedContext: workshopPinnedContextLibrary
   };
 
   // Migrate API key from settings to SecretStorage if needed
@@ -875,13 +905,15 @@ export async function deactivate(): Promise<void> {
     lightboxPanel: lightboxPanelProvider,
     workshopSessions: workshopSessionPersistenceCoordinator,
     lightboxBoards: lightboxBoardLibrary,
-    projectMemory: projectMemoryLibraryForShutdown
+    projectMemory: projectMemoryLibraryForShutdown,
+    pinnedContext: workshopPinnedContextStoreForShutdown
   };
   workshopPanelProvider = undefined;
   lightboxPanelProvider = undefined;
   workshopSessionPersistenceCoordinator = undefined;
   lightboxBoardLibrary = undefined;
   projectMemoryLibraryForShutdown = undefined;
+  workshopPinnedContextStoreForShutdown = undefined;
   await shutDownExtension(parts);
   console.log('Prose Minion extension is now deactivated');
 }

@@ -49,8 +49,21 @@ function aboutWords(words: number): string {
 
 const filesLabel = (count: number): string => `${count} ${count === 1 ? 'file' : 'files'}`;
 
-/** The sentence after the opening, for a seed that meant to attach something. */
+/**
+ * Whether the report has anything to say: files it meant to attach, or the
+ * list itself left out (an unreadable `pinned-context.json` plans no file,
+ * so its `pinnedCount` is 0, but the writer is told why nothing came).
+ */
+function seedSays(seed: WorkshopRoomSeedReport | undefined): seed is WorkshopRoomSeedReport {
+  return seed !== undefined && (!isEmptyWorkshopRoomSeedReport(seed) || seed.leftOut.length > 0);
+}
+
+/** The sentence after the opening, for a seed that has something to say. */
 function seedSentence(opening: string, joined: string, seed: WorkshopRoomSeedReport): string {
+  if (seed.pinnedCount === 0) {
+    const listed = seed.leftOut.map((entry) => `${entry.label} (${leftOutReason(entry.reason)})`).join(', ');
+    return `${opening}. No pinned context attached: ${listed}.`;
+  }
   if (seed.leftOut.length === 0) {
     return `${opening}${joined} your pinned context: ` +
       `${filesLabel(seed.attachedCount)}, ${aboutWords(seed.attachedWords)}.`;
@@ -71,7 +84,7 @@ export function workshopSessionStartResult(
     case 'empty':
       return 'Started an empty Workshop session: excerpt and context cleared, and pinned context left out.';
     case 'full-reset':
-      return seed && !isEmptyWorkshopRoomSeedReport(seed)
+      return seedSays(seed)
         ? seedSentence(
             'Started a new Workshop session with the excerpt and context cleared',
             ' and',
@@ -79,7 +92,7 @@ export function workshopSessionStartResult(
           )
         : 'Started an empty Workshop session — excerpt and context cleared.';
     case 'carry':
-      return seed && !isEmptyWorkshopRoomSeedReport(seed)
+      return seedSays(seed)
         ? seedSentence('Started a new Workshop session', ' with', seed)
         : 'Started a new Workshop session.';
   }
@@ -87,7 +100,7 @@ export function workshopSessionStartResult(
 
 /** The seed's counts for the log: never a label. */
 function seedLogPart(seed: WorkshopRoomSeedReport | undefined): string {
-  if (!seed || isEmptyWorkshopRoomSeedReport(seed)) {
+  if (!seedSays(seed)) {
     return '';
   }
   const reasons = (['missing', 'unreadable', 'over-budget'] as const)

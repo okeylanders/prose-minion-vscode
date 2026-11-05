@@ -18,7 +18,8 @@
  *    Lightbox's drain is awaited even when the Workshop's flush fails.
  *    Project memory's owed writes (a save, an edit, a Forget the writer
  *    started; ADR 2026-11-04 D10) are drained beside the Lightbox's, and
- *    awaited whatever the flush does.
+ *    awaited whatever the flush does. So are pinned context's (the list's
+ *    store; ADR 2026-11-04 D5), the same way.
  *
  * This module never imports `vscode`.
  */
@@ -29,6 +30,7 @@ export interface ExtensionShutdownParts {
   readonly workshopSessions: { flush(): Promise<void> } | undefined;
   readonly lightboxBoards: { shutDown(): Promise<void> } | undefined;
   readonly projectMemory: { shutDown(): Promise<void> } | undefined;
+  readonly pinnedContext: { shutDown(): Promise<void> } | undefined;
 }
 
 export async function shutDownExtension(parts: ExtensionShutdownParts): Promise<void> {
@@ -37,11 +39,12 @@ export async function shutDownExtension(parts: ExtensionShutdownParts): Promise<
   parts.lightboxPanel?.dispose();
   const lightboxDrained = parts.lightboxBoards?.shutDown();
   const memoryDrained = parts.projectMemory?.shutDown();
+  const pinnedDrained = parts.pinnedContext?.shutDown();
   try {
     await parts.workshopSessions?.flush();
   } finally {
-    // Both drains settle before either's failure is raised.
-    const drained = await Promise.allSettled([lightboxDrained, memoryDrained]);
+    // Every drain settles before any one's failure is raised.
+    const drained = await Promise.allSettled([lightboxDrained, memoryDrained, pinnedDrained]);
     for (const outcome of drained) {
       if (outcome.status === 'rejected') {
         throw outcome.reason;
