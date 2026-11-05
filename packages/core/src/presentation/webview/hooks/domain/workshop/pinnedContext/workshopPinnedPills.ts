@@ -12,6 +12,13 @@
  *   wizard pill. A pinned pill offers no Unpin; the tab owns unpinning.
  * - **A refusal shows where the pill is.** Only the answer to the pill's own
  *   request carries it, so another request's answer clears it.
+ * - **An outcome belongs to the pill that asked** (PR #213 F01). Attachment
+ *   ids are local to a room: a new room numbers its attachments from
+ *   `ctx-1` again. A posted pin records the room (`roomRevision`, which the
+ *   host mints anew whenever the room is replaced) and the attachment's own
+ *   identity, and its refusal or landing is drawn only while both still
+ *   hold. The list and its marks are untouched by this: they follow the
+ *   host's answers as Slice 3's hook takes them.
  */
 
 import type {
@@ -30,10 +37,28 @@ export const WORKSHOP_PINNED_PILL_TIP = {
 export const WORKSHOP_PINNED_PILL_CHANGED =
   'Pinned context changed in another window, so nothing was pinned. Try Pin again.';
 
-/** The pill pin this sheet posted, and the request that carries it. */
+/** The pill pin this sheet posted, the request that carries it, and whose it is. */
 export interface WorkshopPillPinPosted {
   readonly attachmentId: string;
   readonly requestId: string;
+  /** The room it was asked in: the snapshot's `roomRevision` at the press. */
+  readonly room: number;
+  /** The attachment it was asked for (`workshopPillOwnerKey`) at the press. */
+  readonly owner: string;
+}
+
+/**
+ * An attachment's own identity, beyond its room-local id: its kind, its
+ * paths and when it was added. Another file under a reused id differs.
+ */
+export function workshopPillOwnerKey(attachment: WorkshopContextAttachmentSnapshot): string {
+  return JSON.stringify([
+    attachment.id,
+    attachment.kind,
+    attachment.relativePath ?? null,
+    attachment.configuredResource ? [attachment.configuredResource.group, attachment.configuredResource.path] : null,
+    attachment.addedAt
+  ]);
 }
 
 export interface WorkshopPinnedPillView {
@@ -48,7 +73,11 @@ export interface WorkshopPinnedPillView {
   };
   /** The host's refusal of this pill's own pin. */
   readonly refusal?: string;
-  /** This pill's own Pin just landed: its button is gone, so focus comes back to the pill. */
+  /**
+   * This pill's own Pin just landed, in its room, for this attachment: its
+   * button is gone. The panel returns the focus to the pill only when that
+   * button held it as it was removed (PR #213 N01).
+   */
   readonly landed?: boolean;
 }
 
@@ -56,6 +85,8 @@ export interface WorkshopPinnedPillsInput {
   /** The host's last answer; absent until it answers. */
   answer?: WorkshopPinnedContextPayload;
   attachments: readonly WorkshopContextAttachmentSnapshot[];
+  /** The room on screen: the snapshot's `roomRevision`. */
+  room: number;
   /** The tab's own answer to "what could be pinned" (Slice 3's view). */
   pinnableIds: readonly string[];
   /** A change to the list is waiting for the host. */
@@ -82,6 +113,7 @@ function refusalOf(answer: WorkshopPinnedContextPayload | undefined, posted: Wor
 export function workshopPinnedPillViews({
   answer,
   attachments,
+  room,
   pinnableIds,
   pending,
   posted
@@ -97,7 +129,10 @@ export function workshopPinnedPillViews({
       && attachment.kind === 'file'
       && attachment.origin !== 'wizard'
       && pinnable.has(attachment.id);
-    const own = posted?.attachmentId === attachment.id;
+    const own = posted !== undefined
+      && posted.attachmentId === attachment.id
+      && posted.room === room
+      && posted.owner === workshopPillOwnerKey(attachment);
     const ownRefusal = !pinned && own ? refusal : undefined;
     const landed = pinned && own && answer?.requestId === posted?.requestId && answer?.ok === true;
     views[attachment.id] = {

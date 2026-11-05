@@ -65,6 +65,7 @@ function pinnedSheet(): React.ReactElement {
   const pinnedPills = useWorkshopPinnedPills({
     ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}),
     attachments,
+    room: 1,
     pinnableIds: pinnedContext.view.pinAttached.ids,
     pending: pinnedContext.pending,
     pinAttachments: pinnedContext.pinAttachments
@@ -164,7 +165,11 @@ describe('ContextPanel: pinned context marks', () => {
     const posted = posts(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS);
     expect(posted).toHaveLength(1);
     expect(posted[0].payload).toMatchObject({ attachmentIds: ['ctx-2'], revision: 'rev-1' });
-    expect((screen.getByRole('button', { name: 'Pin the-white-rabbit.md for new sessions' }) as HTMLButtonElement).disabled).toBe(true);
+    const waiting = screen.getByRole('button', { name: 'Pin the-white-rabbit.md for new sessions' });
+    expect(waiting.getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(waiting);
+    fireEvent.click(waiting);
+    expect(posts(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS)).toHaveLength(1);
 
     act(() => deliver(answer(lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS), [ALICE, RABBIT], { action: 'pin-attachments', ok: true })));
     expect(screen.getByRole('button', { name: 'the-white-rabbit.md, pinned' })).toBeTruthy();

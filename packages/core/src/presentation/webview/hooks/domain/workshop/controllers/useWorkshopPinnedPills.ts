@@ -8,6 +8,11 @@
  * Everything drawn is derived (`workshopPinnedPillViews`): the mark from the
  * list the host last sent, with its platform, through the shared match rule.
  * Nothing is persisted; the host owns the list.
+ *
+ * A press records the room and the attachment it was made for, so its
+ * outcome is never drawn on another room's pill under a reused id (PR #213
+ * F01). A press while another change waits does nothing: the button says so
+ * with `aria-disabled` and keeps the focus.
  */
 
 import * as React from 'react';
@@ -16,6 +21,7 @@ import type {
   WorkshopPinnedContextPayload
 } from '@messages';
 import {
+  workshopPillOwnerKey,
   workshopPinnedPillViews,
   type WorkshopPillPinPosted,
   type WorkshopPinnedPillView
@@ -25,6 +31,8 @@ export interface UseWorkshopPinnedPillsInput {
   /** The host's last answer, from `useWorkshopPinnedContext`. */
   answer?: WorkshopPinnedContextPayload;
   attachments: readonly WorkshopContextAttachmentSnapshot[];
+  /** The room on screen: the snapshot's `roomRevision`. */
+  room: number;
   /** The tab's view of the attachments that could be pinned. */
   pinnableIds: readonly string[];
   /** A change to the list is waiting for the host. */
@@ -56,6 +64,7 @@ const NOTHING_PERSISTED: WorkshopPinnedPillsPersistence = {};
 export function useWorkshopPinnedPills({
   answer,
   attachments,
+  room,
   pinnableIds,
   pending,
   pinAttachments
@@ -63,19 +72,26 @@ export function useWorkshopPinnedPills({
   const [posted, setPosted] = React.useState<WorkshopPillPinPosted | undefined>(undefined);
 
   const pin = React.useCallback((attachmentId: string) => {
+    const attachment = attachments.find((candidate) => candidate.id === attachmentId);
+    if (pending || !attachment) {
+      return;
+    }
     const requestId = pinAttachments([attachmentId]);
-    setPosted(requestId === undefined ? undefined : { attachmentId, requestId });
-  }, [pinAttachments]);
+    setPosted(requestId === undefined
+      ? undefined
+      : { attachmentId, requestId, room, owner: workshopPillOwnerKey(attachment) });
+  }, [attachments, pending, pinAttachments, room]);
 
   const pills = React.useMemo(
     () => workshopPinnedPillViews({
       ...(answer ? { answer } : {}),
       attachments,
+      room,
       pinnableIds,
       pending,
       ...(posted ? { posted } : {})
     }),
-    [answer, attachments, pending, pinnableIds, posted]
+    [answer, attachments, pending, pinnableIds, posted, room]
   );
 
   return { pills, pin, persistedState: NOTHING_PERSISTED };

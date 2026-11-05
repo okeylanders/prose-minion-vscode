@@ -344,12 +344,12 @@
   outline: 2px solid var(--pm-accent-hi);
   outline-offset: 2px;
 }
-[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin:disabled {
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin[aria-disabled="true"] {
   cursor: default;
   opacity: 0.55;
 }
-[data-pm-surface="workshop"] .pm-ws-ctx-pill:hover .pm-ws-ctx-pill-pin:disabled,
-[data-pm-surface="workshop"] .pm-ws-ctx-pill:focus-within .pm-ws-ctx-pill-pin:disabled {
+[data-pm-surface="workshop"] .pm-ws-ctx-pill:hover .pm-ws-ctx-pill-pin[aria-disabled="true"],
+[data-pm-surface="workshop"] .pm-ws-ctx-pill:focus-within .pm-ws-ctx-pill-pin[aria-disabled="true"] {
   opacity: 0.55;
 }
 [data-pm-surface="workshop"] .pm-ws-ctx-pill-pinned:hover,

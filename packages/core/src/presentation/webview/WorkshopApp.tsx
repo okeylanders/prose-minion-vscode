@@ -257,7 +257,7 @@ export const WorkshopApp: React.FC = () => {
   const projectMemory = useWorkshopProjectMemory();
   const memoryManager = useWorkshopMemoryManager();
   const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
-  const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });
+  const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, room: workshop.roomRevision, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });
   // Whether the Memory tab's explainer shows is this viewer's choice too.
   const persistedMemoryExplainer = usePersistedState<Partial<WorkshopMemoryExplainerPersistence>>();
   const memoryExplainer = useWorkshopMemoryExplainer({

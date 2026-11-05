@@ -72,16 +72,6 @@ const meterTone = (used: number, budget: number): string => {
   return ratio >= 0.7 ? ' pm-ws-meter-warn' : '';
 };
 
-/**
- * A pill whose own Pin just landed loses that button; when the focus went
- * with it, it comes back to the pill's label.
- */
-const takeLostFocus = (button: HTMLButtonElement | null): void => {
-  if (button && button.ownerDocument.activeElement === button.ownerDocument.body) {
-    button.focus();
-  }
-};
-
 /** What clicking this pill will do, said in its tooltip before the click. */
 const openHint = (attachment: WorkshopContextAttachmentSnapshot): string => {
   if (attachment.kind === 'file') {
@@ -108,6 +98,29 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   const used = attachments.reduce((total, attachment) => total + attachment.words, 0);
   const hasAttachments = attachments.length > 0;
   const pinnedCount = workshopPinnedPillsCountText(pinned?.pills);
+  // PR #213 N01: the focus returns to a pill only when its own Pin button
+  // held it as the button was removed. React detaches a removed node's ref
+  // (calls it with null) before the node leaves the document, so the ref
+  // can still see whether it held the focus. The mark lasts one commit: the
+  // landed pill's label reads it as its ref attaches, and it is cleared once
+  // the commit's refs are in. A waiting Pin is aria-disabled, never
+  // disabled: a disabled button can drop the focus before the answer comes.
+  const focusLostBy = React.useRef<string | null>(null);
+  const pinNodes = React.useRef(new Map<string, HTMLButtonElement>());
+  React.useLayoutEffect(() => {
+    focusLostBy.current = null;
+  });
+  const pinRef = (attachmentId: string) => (node: HTMLButtonElement | null) => {
+    if (node) {
+      pinNodes.current.set(attachmentId, node);
+      return;
+    }
+    const held = pinNodes.current.get(attachmentId);
+    pinNodes.current.delete(attachmentId);
+    if (held && held.ownerDocument.activeElement === held) {
+      focusLostBy.current = attachmentId;
+    }
+  };
 
   return (
     <div className="pm-ws-block" id={WORKSHOP_CONTEXT_PANEL_ID}>
@@ -160,7 +173,14 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                     className="pm-ws-ctx-pill-label pm-ws-ctx-pill-open"
                     type="button"
                     title={openHint(attachment)}
-                    ref={pill?.landed ? takeLostFocus : undefined}
+                    ref={pill?.landed
+                      ? (label: HTMLButtonElement | null) => {
+                          if (label && focusLostBy.current === attachment.id) {
+                            focusLostBy.current = null;
+                            label.focus();
+                          }
+                        }
+                      : undefined}
                     aria-label={pill?.pinned ? `${attachment.label}, pinned` : undefined}
                     aria-describedby={pill?.pinned ? tipId : undefined}
                     onClick={() => onOpenAttachment(attachment)}
@@ -182,12 +202,13 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                   ) : null}
                   {pill?.pin && pinned ? (
                     <button
+                      ref={pinRef(attachment.id)}
                       className="pm-ws-ctx-pill-pin"
                       type="button"
                       aria-label={pill.pin.name}
                       aria-describedby={pill.refusal ? refusalId : undefined}
-                      disabled={pill.pin.disabled}
-                      onClick={() => pinned.onPin(attachment.id)}
+                      aria-disabled={pill.pin.disabled || undefined}
+                      onClick={pill.pin.disabled ? undefined : () => pinned.onPin(attachment.id)}
                     >
                       <Icon name="pin" size={10} />
                       Pin

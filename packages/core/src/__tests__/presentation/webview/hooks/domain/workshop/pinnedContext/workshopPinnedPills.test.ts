@@ -7,6 +7,7 @@
 
 import {
   WORKSHOP_PINNED_PILL_CHANGED,
+  workshopPillOwnerKey,
   workshopPinnedPillViews,
   workshopPinnedPillsCountText,
   type WorkshopPinnedPillsInput
@@ -37,7 +38,7 @@ const file = (id: string, overrides: Partial<WorkshopContextAttachmentSnapshot> 
 });
 
 const views = (input: Partial<WorkshopPinnedPillsInput> & Pick<WorkshopPinnedPillsInput, 'attachments'>) =>
-  workshopPinnedPillViews({ pinnableIds: [], pending: false, ...input });
+  workshopPinnedPillViews({ room: 7, pinnableIds: [], pending: false, ...input });
 
 describe('workshopPinnedPillViews', () => {
   describe('the mark follows the match rule', () => {
@@ -119,7 +120,7 @@ describe('workshopPinnedPillViews', () => {
   describe('a refusal shows at the pill that asked', () => {
     const rabbit = file('ctx-2', { label: 'the-white-rabbit.md', relativePath: 'Characters/the-white-rabbit.md' });
     const hatter = file('ctx-3', { label: 'the-hatter.md', relativePath: 'Characters/the-hatter.md' });
-    const posted = { attachmentId: 'ctx-2', requestId: 'r-9' };
+    const posted = { attachmentId: 'ctx-2', requestId: 'r-9', room: 7, owner: workshopPillOwnerKey(rabbit) };
 
     it('in the host\'s words, on that pill only', () => {
       const refused = answer({ requestId: 'r-9', action: 'pin-attachments', ok: false, notice: { kind: 'refused', text: 'Can’t pin the-white-rabbit.md: only 20 files can be pinned.' } });
@@ -158,6 +159,47 @@ describe('workshopPinnedPillViews', () => {
       expect(workshopPinnedPillsCountText(pills(false))).toBeUndefined();
       expect(workshopPinnedPillsCountText(pills(true, false))).toBe('1 pinned');
       expect(workshopPinnedPillsCountText(pills(true, true, false))).toBe('2 pinned');
+    });
+  });
+
+  describe('an outcome belongs to the room and the attachment that asked (PR #213 F01)', () => {
+    const alice = file('ctx-1', { relativePath: 'Characters/alice.md', addedAt: 1 });
+    const bob = file('ctx-1', { label: 'bob.md', relativePath: 'Characters/bob.md', addedAt: 2 });
+    const posted = { attachmentId: 'ctx-1', requestId: 'r-9', room: 7, owner: workshopPillOwnerKey(alice) };
+    const refused = answer({ requestId: 'r-9', action: 'pin-attachments', ok: false, entries: [], notice: { kind: 'refused', text: 'The workspace changed, so pinned context wasn’t changed.' } });
+    const landed = answer({
+      requestId: 'r-9',
+      action: 'pin-attachments',
+      ok: true,
+      entries: [
+        { path: 'Characters/alice.md', label: 'alice.md', words: 3, state: 'ready' },
+        { path: 'Characters/bob.md', label: 'bob.md', words: 3, state: 'ready' }
+      ]
+    });
+
+    it('in its own room, on its own attachment, the refusal and the landing are drawn', () => {
+      expect(views({ answer: refused, attachments: [alice], pinnableIds: ['ctx-1'], posted })['ctx-1'].refusal).toBeDefined();
+      expect(views({ answer: landed, attachments: [alice], posted })['ctx-1'].landed).toBe(true);
+    });
+
+    it('another room\'s attachment under the reused id draws neither', () => {
+      expect(views({ answer: refused, attachments: [bob], pinnableIds: ['ctx-1'], posted, room: 8 })['ctx-1'].refusal).toBeUndefined();
+      expect(views({ answer: landed, attachments: [bob], posted, room: 8 })['ctx-1']).toEqual({ pinned: true });
+    });
+
+    it('nor does the same file attached again in a new room', () => {
+      expect(views({ answer: landed, attachments: [alice], posted, room: 8 })['ctx-1'].landed).toBeUndefined();
+    });
+
+    it('nor does another attachment under the id in the same room', () => {
+      expect(views({ answer: refused, attachments: [bob], pinnableIds: ['ctx-1'], posted })['ctx-1'].refusal).toBeUndefined();
+      expect(views({ answer: landed, attachments: [bob], posted })['ctx-1'].landed).toBeUndefined();
+    });
+
+    it('the owner key tells another file under the same id apart, and the same attachment alike', () => {
+      expect(workshopPillOwnerKey(alice)).not.toBe(workshopPillOwnerKey(bob));
+      expect(workshopPillOwnerKey(alice)).not.toBe(workshopPillOwnerKey({ ...alice, addedAt: 3 }));
+      expect(workshopPillOwnerKey(alice)).toBe(workshopPillOwnerKey({ ...alice, words: 9 }));
     });
   });
 });
