@@ -2,9 +2,8 @@
 
 **Status:** Coding. The spec is done, with all six questions decided, and
 Okey approved the design on 2026-11-05. Project Memory was merged in at
-`17d52cf`, and again at `25c9443`. Slices 2a and 1 have merged; 2b is clear
-in review and syncing with the epic, 3 is built on 2b, and 4 is built on 3
-(see [Threads](#threads)).
+`17d52cf`, and again at `25c9443`. Slices 2a, 1 and 2b have merged; 3 is
+built and its PR is next, and 4 is built on 3 (see [Threads](#threads)).
 **Priority:** Medium
 **Created:** 2026-11-04
 **Integration branch:** `epic-pinned-context`, cut from `main` at `24d9d6e`.
@@ -100,7 +99,7 @@ branch.
 |---|---|---|---|---|
 | 1 | [`session_01UrwcevSE9xCeoMqBXf9P73`](https://claude.ai/code/session_01UrwcevSE9xCeoMqBXf9P73) | `epic-pinned-context-slice-1-format-store` | 2026-11-05, from `b94fc67` | Merged: PR #204 at `deeac5d` (2026-11-05). Astra's findings F-01–F-04 and N-01 were fixed (`52da65e`, then the fenced lock at `92acb22`); final re-review clean at `92acb22`, CI green at `fea75aa` |
 | 2a | [`session_01UrwcerFSuu47ewLKUezS45`](https://claude.ai/code/session_01UrwcerFSuu47ewLKUezS45) | `epic-pinned-context-slice-2a-starts-seed-port` | 2026-11-05, from `b94fc67` | Merged: PR #203 at `d356d38`. Astra found F01 (no workspace check after the seed's `prepare`), fixed at `db93354`, cleared at `d9c536e` |
-| 2b | [`session_01UrwcetPHzVLFpo6ZCkjf1A`](https://claude.ai/code/session_01UrwcetPHzVLFpo6ZCkjf1A) | `epic-pinned-context-slice-2b-room-seed` | 2026-11-05, from `c35c281` (the epic at `94a33df` with Slices 1 and 2a merged in; 696 suites / 9,820 tests green) | PR #208: Astra found F01 (seed reads not bound to the captured workspace; A→B→A could install B's text in A), F02–F04 at `b042908`; fixed at `d8b8d2a` (703 / 9,930 green); epic `25c9443` merged as `0ee4d66` (705 / 9,951). Astra's correction re-review (`77ddf82`): F02–F04 closed; **F01 still open** for a live root nested in the captured one, as the coordinator had also found; the fix binds each read to the captured root's own path (identity, not containment) |
+| 2b | [`session_01UrwcetPHzVLFpo6ZCkjf1A`](https://claude.ai/code/session_01UrwcetPHzVLFpo6ZCkjf1A) | `epic-pinned-context-slice-2b-room-seed` | 2026-11-05, from `c35c281` (the epic at `94a33df` with Slices 1 and 2a merged in; 696 suites / 9,820 tests green) | Merged: PR #208 at `c52821b` (2026-11-05), at `abb5854` (706 / 9,957 green; CI green). Astra found F01–F04 at `b042908`; F02–F04 closed at `d8b8d2a`, F01 after a second fix binding every seed read to the captured root's own files, nested roots included (`0ead5d0`) |
 | 3 | [`session_01Urwcevx3JATnaqRCJbE4Yb`](https://claude.ai/code/session_01Urwcevx3JATnaqRCJbE4Yb) | `epic-pinned-context-slice-3-settings-tab` | 2026-11-05, from `51b4988` (2b at `e36526b` with the epic merged in) | Follow-ups done at `b4ad7a0` (707 / 9,974 green): Windows-only `\` conversion with its own refusal, Explore project folders… as `WORKSHOP_PIN_CONTEXT_PICK_FILE`, the end-to-end menu test. Next: merge 2b's branch (it carries the epic at `25c9443`; keep both sides in four prop conflicts), and bind every write's reads to the captured root; its PR follows #204 and #208 |
 | 4 | [`session_01UrwceuHxZCNJyH9v5vdWHT`](https://claude.ai/code/session_01UrwceuHxZCNJyH9v5vdWHT) | `epic-pinned-context-slice-4-sheet-marks` | 2026-11-05, from `fa5aef6` (Slice 3's head) | Built at `812ce9a` (707 / 9,991 green), with the approved board's "· N pinned" in the context count; takes the epic at `25c9443` through Slice 3's branch; its PR follows Slice 3's |
 
@@ -270,5 +269,8 @@ the repo:
   formal approval isn't available to them.
 - **2026-11-05. Slice 2b's re-review clear** (#208, `a817f56`): F01–F04
   closed, F01 after a second correction binding every seed read to the
-  captured root's own files, nested roots included. It merges once its
-  branch is synced with the epic and that exact head passes CI.
+  captured root's own files, nested roots included.
+- **2026-11-05. Slice 2b merged** as PR #208 (`c52821b`), at `abb5854`,
+  after Astra's final integration check: "ready for the owner to merge this
+  exact head". The merged tree equals the verified head (706 suites / 9,957
+  tests). Slice 3 merges the epic, and its PR is next.
