@@ -2,7 +2,7 @@
 
 ## Verdict
 
-**Changes requested at implementation head `ddebf2f5ec25741ddb859ab34c4f09f2a7bb1d7d`.** Two reproducible P2 findings remain in the saved-turn route. Citation provenance, the ordinary live/saved UI paths, and the existing automated verification otherwise checked cleanly. This report is a review, not permission to merge.
+**Current code-review verdict: approved at `b93c27ee89c712d0eb2af9d86205791912ec9e63`.** Both P2 findings are independently resolved, with no remaining blocking finding. Correction-head CI was still running when this report update was prepared; the final publication head requires its own green verification before this task is complete. Earlier findings and the author response remain below as history. This is an approval in the report/conversation, not a formal self-APPROVED GitHub review or permission to merge.
 
 - PR: [#219](https://github.com/okeylanders/prose-minion-vscode/pull/219)
 - Base: `epic/workshop-bookmark-recall`, `0c008dfe939347efac758ac8655df774202a7ef3`
@@ -104,6 +104,27 @@ Both findings are real and are in this slice's code. Both are fixed on the Slice
 
 | Finding | Status | Where |
 |---|---|---|
-| F-01 (P2) | Fixed, awaiting re-review | Commit after `68259911`; `WorkshopSavedTurnMemoryReview.test.ts` |
-| F-02 (P2) | Fixed, awaiting re-review | Commit after `68259911`; `WorkshopSavedTurnMemoryReview.test.ts` |
+| F-01 (P2) | Independently resolved | `b93c27ee`; original-turn eligibility, host controls and real-App success |
+| F-02 (P2) | Independently resolved | `b93c27ee`; same-ID recall races plus staged-write/after-commit controls |
 
+## Independent correction review — `b93c27ee` (2026-11-05)
+
+Both corrections were inspected independently against the original witnesses, not accepted solely from the author response.
+
+- **F-01 resolved.** The recall document and recall bookmark compute eligibility from the original turn using `isWorkshopBookmarkableTurn`; `savedTurn` carries that fact without exposing the source turn or private capability evidence. The host checks it, and browser button/mount guards agree with the host. The real-App witness now saves exactly one memory with the correct saved session and turn, and one receipt. The draft and saved note contain only the safe request summary. Non-bookmarkable session markers remain refused.
+- **F-02 resolved.** The saved route captures the room revision before the source read and passes it into the shared writer. A changed revision refuses before the library is called. The existing post-write comparison then retains the same origin revision, so a later replacement cannot adopt the receipt. Independent same-ID reopen and Rewind witnesses now write nothing; different-ID controls remain refused.
+- **No new blocking finding.** The added eligibility fields are computed in-memory/message fields, not a persisted session-format change. The fix keeps the existing single-writer queue and source/privacy boundaries.
+
+Nonblocking display note: capability sheets still say “Session’s reply” because their safe event preview uses that speaker label, while the bookmark row names the persona. This does not alter the saved source IDs or expose capability evidence.
+
+### Correction verification
+
+- All three local typechecks passed.
+- **105 suites / 1,470 tests passed** across Workshop memory, recall, bookmarks, sheet/hooks, route seams, prompt budgets/sync and architecture boundaries.
+- **11 independent recheck probes passed:** ten host/recall/library cases, plus the real-App capability save. Separate focused UI regressions passed **11 suites / 89 tests**; separate host regressions/probes passed **3 suites / 30 tests**. These runs overlap, so their counts are not additive.
+- Local lint passed at **0 errors / 1,165 warnings**. Both webpack bundles and the bundle-sentinel check passed, with the same three webview size/performance warnings.
+- Extra write controls verify receipt isolation before and after commit. An admitted same-ID write may finish, returning the existing room-changed warning, without a receipt in the replacement room; a different-ID change before commit withdraws the write.
+- F-01 and F-02 review threads were answered with independent results and resolved.
+- [Correction-head CI run 42083762842](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42083762842) was still running at publication. Its outcome and the subsequent report-head verification will be recorded in the PR conversation without creating an endless series of CI-only report commits.
+
+Updated independent probes: [host recheck](probes/pr-219-saved-memory-rereview.test.ts.txt), [real-App recheck](probes/pr-219-bookmark-ui-recheck.test.tsx.txt). The earlier probes remain historical defect witnesses for the original head. No production code was changed by the reviewer, and no merge was performed.
