@@ -142,6 +142,7 @@ it back only as a key into the list it just read (ADR D8).
   reset's confirmation, styles, and their tests.
 - This doc.
 - `fa5b7997`: merge of Slice 2b's branch at `b0429082` (no conflicts).
+- `7af567db`: merge of `epic-pinned-context` at `25c9443c` (four keep-both conflicts).
 - The coordinator's three follow-ups: `0b4e6bd7` (`\` only on Windows in pin
   by id), the host-picker route for Explore project folders…, and an
   end-to-end test of the menu's count.
@@ -261,7 +262,7 @@ it back only as a key into the list it just read (ADR D8).
 | Check | Before (`51b4988b`, after `npm ci`) | After |
 |---|---|---|
 | `npm run typecheck` | pass | pass |
-| `npx jest -w 2` | 702 suites / 9,902 tests / 59 snapshots, all passing | 707 suites / 9,974 tests / 59 snapshots, all passing |
+| `npx jest -w 2` | 702 suites / 9,902 tests / 59 snapshots, all passing | 709 suites / 9,995 tests / 59 snapshots, all passing |
 | `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (none new) |
 | `from 'vscode'` in `packages/core/src` | none | none |
 | New files over 500 lines | — | none (largest: `WorkshopPinnedContextWrites.ts`, 364 lines; the handler's tests are split across a shared host and two files) |
@@ -276,7 +277,13 @@ counts (702 / 9,902 / 59; 0 / 1,165) hold. "After" is measured at `fa5b7997`,
 after merging Slice 2b's branch at `b0429082` (its kept fix `54e7db78` and
 Slice 1's #204 re-review fixes), as the coordinator asked, and again after
 the follow-ups (the counts above are the latter). The merge brings 11 of
-the new tests (2b measured 9,913); the other 61 are this slice's.
+the new tests (2b measured 9,913); the other 61 are this slice's. The final
+counts are at `7af567db`, after merging `epic-pinned-context` at `25c9443c`
+(Project Memory's #206 and #207), which adds 2 suites and 21 tests. Its four
+conflicts were the modal's props, `WorkshopApp`'s wiring, and the modal's two
+test prop builders. Each kept both sides: Pinned context's props beside
+Memory's explainer props, and both persisted keys (`pinnedContextNoteOpen`
+and `workshopMemoryExplainerOpen`).
 
 ## Deviations
 
