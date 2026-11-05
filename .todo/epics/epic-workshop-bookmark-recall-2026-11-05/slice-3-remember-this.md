@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Bookmark Recall](README.md)
 **Decision:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-bookmark-recall.md), D9 and D10, with [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md) D3
-**Status:** Planned (after Slice 2)
+**Status:** In progress (branch `epic/workshop-bookmark-recall-slice-3-remember-this`, cut from the epic at `78fe28d`)
 
 ## Outcome
 
