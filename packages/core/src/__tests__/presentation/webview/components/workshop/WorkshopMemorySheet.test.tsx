@@ -179,4 +179,13 @@ describe('the sheet for a suggested change to a saved memory (PR #212 F-04)', ()
     expect(screen.getByRole('heading', { name: 'Save to project memory' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Save to memory' })).toBeTruthy();
   });
+
+  it('a saved session\'s bookmark names its session by title (Bookmark Recall D9)', () => {
+    renderSheet(sheet({ mode: 'saved-turn', sessionId: 'saved-0042', sessionTitle: 'The Duchess\'s kitchen', replaces: [], draft: { ...DRAFT, supersedes: [] } }));
+    expect(screen.getByText('From “The Duchess\'s kitchen”, Jill’s reply. Saved as a Markdown file in prose-minion/memory/.')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Save to project memory' })).toBeTruthy();
+    cleanup();
+    renderSheet(sheet({ mode: 'saved-turn', sessionTitle: 'Tea party', sourceLabel: 'your message', replaces: [], draft: { ...DRAFT, supersedes: [] } }));
+    expect(screen.getByText('From “Tea party”, your message. Saved as a Markdown file in prose-minion/memory/.')).toBeTruthy();
+  });
 });

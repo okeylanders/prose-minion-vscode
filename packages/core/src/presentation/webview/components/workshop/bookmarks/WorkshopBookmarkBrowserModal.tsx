@@ -14,7 +14,9 @@
  * - **Each row:** the label, the speaker in its identity color, the
  *   session, the date, and the message's first lines. Preview opens it
  *   read-only; a saved row also offers Open session and Open at bookmark,
- *   and a row of this conversation Show in thread.
+ *   and a row of this conversation Show in thread. "Remember this" opens
+ *   the memory sheet from the row's message (Bookmark Recall D9); a row
+ *   whose session id another file claims offers it no more than its Opens.
  *
  * Presentational: rows come from the host through `useWorkshopBookmarkBrowser`,
  * and every action is a callback. Labels and messages are writer text.
@@ -49,6 +51,8 @@ export interface WorkshopBookmarkBrowserActions {
   onOpenSession: (item: WorkshopBookmarkBrowserItem) => void;
   onOpenAtBookmark: (item: WorkshopBookmarkBrowserItem) => void;
   onShowInThread: (item: WorkshopBookmarkBrowserItem) => void;
+  /** "Remember this": the memory sheet, from the row's message (D9). Absent, no row offers it. */
+  onRemember?: (item: WorkshopBookmarkBrowserItem) => void;
 }
 
 export interface WorkshopBookmarkBrowserModalProps extends WorkshopBookmarkBrowserActions {
@@ -215,7 +219,8 @@ const BookmarkBrowserRow: React.FC<BookmarkBrowserRowProps> = ({
   onPreview,
   onOpenSession,
   onOpenAtBookmark,
-  onShowInThread
+  onShowInThread,
+  onRemember
 }) => {
   const { row } = item;
   const firstLines = bookmarkFirstLines(row.message?.content);
@@ -249,6 +254,19 @@ const BookmarkBrowserRow: React.FC<BookmarkBrowserRowProps> = ({
       renameLabel="Rename bookmark"
       primary={
         <div className="pm-ws-bookmark-browser-actions">
+          {onRemember ? (
+            <button
+              className="pm-ws-session-secondary"
+              type="button"
+              aria-label={`Remember this: ${row.label}`}
+              // The prefill is the host's message, so a row without one, or one whose session id two files claim, offers nothing.
+              disabled={!row.message || item.ambiguous === true}
+              title={item.ambiguous ? AMBIGUOUS_ROW : undefined}
+              onClick={() => onRemember(item)}
+            >
+              Remember this
+            </button>
+          ) : null}
           <button
             className="pm-ws-session-secondary"
             type="button"

@@ -17,6 +17,10 @@
  *   through the thread's one jump path; a turn outside the window opens in
  *   the preview instead, over the screen.
  *
+ * - **Remember this** (Bookmark Recall D9) closes the screen and opens the
+ *   memory sheet from the row's message: a turn of this conversation names
+ *   the room on screen, a saved one its session.
+ *
  * WorkshopApp renders this before the text sheet, so the sheet stacks above.
  */
 
@@ -26,6 +30,7 @@ import { WorkshopBookmarkBrowserModal } from './WorkshopBookmarkBrowserModal';
 import type { UseWorkshopBookmarkBrowserReturn } from '@hooks/domain/workshop/useWorkshopBookmarkBrowser';
 import type { WorkshopBookmarkBrowserItem } from '@hooks/domain/workshop/bookmarks/workshopBookmarkBrowserView';
 import type { WorkshopBookmarkOpenTarget } from '@hooks/domain/workshop/controllers/useWorkshopBookmarkOpenAt';
+import type { WorkshopMemoryRoomBookmark, WorkshopMemorySavedBookmark } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import { useWorkshopTurnJump } from '@hooks/domain/workshop/controllers/useWorkshopTurnJump';
 
 interface WorkshopBookmarkBrowserMountProps {
@@ -36,6 +41,8 @@ interface WorkshopBookmarkBrowserMountProps {
   openAtBookmark: (target: WorkshopBookmarkOpenTarget) => void;
   openSavedTurnPreviewSheet: (sessionId: string, turnId: string, label: string, sessionTitle: string) => void;
   openGivenTurnPreviewSheet: (turnId: string, turn: WorkshopTurnPreview, label: string) => void;
+  rememberRoomBookmark: (bookmark: WorkshopMemoryRoomBookmark) => void;
+  rememberSavedBookmark: (bookmark: WorkshopMemorySavedBookmark) => void;
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
@@ -45,7 +52,9 @@ export const WorkshopBookmarkBrowserMount: React.FC<WorkshopBookmarkBrowserMount
   openStoredSession,
   openAtBookmark,
   openSavedTurnPreviewSheet,
-  openGivenTurnPreviewSheet
+  openGivenTurnPreviewSheet,
+  rememberRoomBookmark,
+  rememberSavedBookmark
 }) => {
   const liveRows = browser.live.rows;
   const previewLive = React.useCallback((turnId: string) => {
@@ -86,6 +95,20 @@ export const WorkshopBookmarkBrowserMount: React.FC<WorkshopBookmarkBrowserMount
     });
   };
 
+  const onRemember = (item: WorkshopBookmarkBrowserItem) => {
+    const { row } = item;
+    if (!row.message || item.ambiguous) {
+      return;
+    }
+    if (item.source.kind === 'saved') {
+      browser.closeBrowser();
+      rememberSavedBookmark({ sessionId: item.source.sessionId, sessionTitle: item.source.sessionTitle, turnId: row.turnId, message: row.message });
+    } else if (browser.roomRevision !== undefined) {
+      browser.closeBrowser();
+      rememberRoomBookmark({ turnId: row.turnId, roomRevision: browser.roomRevision, message: row.message });
+    }
+  };
+
   return (
     <WorkshopBookmarkBrowserModal
       open={browser.browserOpen}
@@ -100,6 +123,7 @@ export const WorkshopBookmarkBrowserMount: React.FC<WorkshopBookmarkBrowserMount
       onOpenSession={onOpenSession}
       onOpenAtBookmark={onOpenAtBookmark}
       onShowInThread={(item) => jumpAfterClosing(item.row.turnId)}
+      onRemember={onRemember}
     />
   );
 };
