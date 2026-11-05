@@ -49,7 +49,7 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 | 5 | Save and tell me | Automatic saves, caps, the web-research hold, the expandable read-only receipt, Edit/Forget on auto receipts, the poisoning witness | `…-slice-5-save-and-tell-me` | Done: PR #201, merged at `d7fd159` (Astra: F-01–F-04 closed) |
 | 6a | Theme and Idea | Two more kinds in format 1 (Okey's live-pass ask): constant, codec, words, sheet (six across or 3×2), manager, prompts, ADR addendum ([slice doc](slice-6a-kinds.md)) | `…-slice-6a-kinds` | Done: PR #207, merged at `133914c` (Astra: N-01 docs closed) |
 | 6b | Several suggestions; supersessions wait | Up to 10 suggestions per reply, each frame judged on its own; `memoryProposals` list with a repair for development checkpoints; one card per suggestion; Save and tell me per card; a supersession always waits ([slice doc](slice-6b-multi.md)) | `…-slice-6a-kinds` (reused: the session may push only there) | Done: PR #209, merged at `224dae0` (Astra: F-01 visible-card count closed) |
-| 6c | Edits to a saved note | `proposes: 'edit'` items: flat trailer operations (rewrite, replace exactly once, append, prepend), host anchoring with the note's version, a version-checked Save through the queue, always held under Save and tell me, the before → after card ([slice doc](slice-6c-edits.md)) | `…-slice-6a-kinds` (reused: the session may push only there) | In review |
+| 6c | Edits to a saved note | `proposes: 'edit'` items: flat trailer operations (rewrite, replace exactly once, append, prepend), host anchoring with the note's version, a version-checked Save through the queue, always held under Save and tell me, the before → after card ([slice doc](slice-6c-edits.md)) | `…-slice-6a-kinds` (reused: the session may push only there) | Done: PR #212, merged at `7c2d875` (Astra: F-01–F-05 closed; the cross-file concurrency limit is recorded) |
 | 6 | Verify live | Extension Development Host pass; ADR → Accepted; feature note archived; memory bank | — | Next: Okey's live pass ([checklist](slice-6-verify-live.md)) |
 
 **Order.** Slices 0, 0d, 1 and 4a start together on 2026-11-04. They touch
@@ -313,7 +313,7 @@ The feature note's six open questions, plus the design scope:
     - up to 10 suggestions per reply, each on its own card;
     - a superseding suggestion always waits for the writer, even under
       Save and tell me.
-  - **Next, Slice 6c (proposed, waiting on Okey's OK of the defaults):**
+  - **Slice 6c merged as #212 at `7c2d875`** (originally proposed as below):
     personas propose edits to an existing note.
     - The edits: rewrite, replace a quoted passage, or append or prepend.
     - Quotes are anchored by host code, and a quote must match exactly once.
@@ -323,3 +323,17 @@ The feature note's six open questions, plus the design scope:
       which the pinned-context coordinator spotted.
   - The pinned-context epic (`epic-pinned-context`) is to build on this
     epic. Its planning thread has the integration notes.
+- **2026-11-05. Slice 6c merged; the memory epic goes to pinned context next.**
+  - **#212** merged at `7c2d875` after one review round.
+  - **Edit suggestions** use an edit token over every field an update can
+    overwrite. It is checked at the queue turn, and again at commit with a
+    fresh read of the folder.
+  - **Stated limit:** the fresh read is not a lock across files. Another
+    window that supersedes the target between that read and the rename is
+    not caught. A change to the target's own bytes always is.
+  - **Next (Okey's ask):** merge this epic into `epic-pinned-context` once
+    its Slice 4 lands and its coordinator gives the go.
+  - **Follow-up idea (not filed):** a neutral, pure edit planner shared by
+    Draft Edit and memory edits. It would hold the operations and the
+    anchoring, while each target keeps its own apply path. Raise it when
+    Workshop agents get file editing.
