@@ -1,6 +1,6 @@
 # Epic: Workshop Bookmark Recall
 
-**Status:** Slice 2 in progress. Slice 1 merged at `ddf8356` (PR #215). Slice 0 (spec) merged at `8e9b612` (PR #214). The branch `epic/workshop-bookmark-recall` was cut from `epic-pinned-context` at `f298098` on 2026-11-05, after Pinned Context finished its code (Project Memory 6a–6c merged in at `b668782`). `main` was merged in for the Wayfinding close-out docs.
+**Status:** Slice 2 built (PR #216, in review). Slice 1 merged at `ddf8356` (PR #215). Slice 0 (spec) merged at `8e9b612` (PR #214). The branch `epic/workshop-bookmark-recall` was cut from `epic-pinned-context` at `f298098` on 2026-11-05, after Pinned Context finished its code (Project Memory 6a–6c merged in at `b668782`). `main` was merged in for the Wayfinding close-out docs.
 **Priority:** Medium
 **Created:** 2026-11-05
 **Integration branch:** `epic/workshop-bookmark-recall`. Each slice is built on its own branch, `epic/workshop-bookmark-recall-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -23,7 +23,7 @@ Every bookmark saved since Wayfinding reads unchanged.
 |---|---|---|---|---|
 | 0 | Spec | ADR, this epic, slice docs, open questions | All | Done (PR #214, `8e9b612`) |
 | 1 | [Recall reads bookmarks](slice-1-recall-operation.md) | `transcript.bookmarks` end to end, the open room through a read-only live port, read marks, and the Wayfinding D10 pin rewritten | D1–D7 | Done (PR #215, `ddf8356`) |
-| 2 | [The Bookmarks screen](slice-2-bookmarks-screen.md) | Read-only browser across sessions: preview, Open, Open at bookmark | D8 | In progress |
+| 2 | [The Bookmarks screen](slice-2-bookmarks-screen.md) | Read-only browser across sessions: preview, Open, Open at bookmark | D8 | Done (PR #216, in review) |
 | 3 | [Remember this, and proposals that cite bookmarks](slice-3-remember-this.md) | A saved bookmark becomes a memory citing its session and turn, and a persona's proposal cites the bookmarked turns | D9, D10 | Planned |
 | 4 | [Verify live](slice-4-live-pass.md) | Extension Development Host pass; ADR → Accepted; memory bank | — | Pending (needs a human with VS Code) |
 
@@ -131,3 +131,7 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
   - **What stays as it is.** The audience rule is `isWorkshopTurnVisibleToParticipant`. The screen is the writer's own view, so it shows every live bookmark. Personas still read only through recall.
   - **Pinned Context:** no new commits since `f298098`, so nothing to merge in yet.
   - **The branch.** Slice 2 starts on `epic/workshop-bookmark-recall-slice-2-bookmarks-screen`, cut from the epic at `ddf8356`.
+- **2026-11-05. Slice 2 built** on `epic/workshop-bookmark-recall-slice-2-bookmarks-screen` (PR #216). The [slice doc's implementation note](slice-2-bookmarks-screen.md#implementation-note) lists the files, the tests by criterion, and the readings the ADR left open.
+  - **Host.** The store's read-only `listPage` walks every session file by cursor, uncapped by the 200, each page bounded by `WORKSHOP_BOOKMARK_BROWSER_LIMITS`. Recall's scope rule moved to `WorkshopRecallScopeGate`, so the service shrank to 466 lines and gained `bookmarkPage`, `liveRoomBookmarks` and `savedTurn`. The recall service joins `CoreServices`. `WorkshopBookmarkBrowserHandler` owns four direct routes; the fourth, `WORKSHOP_CANCEL_BOOKMARK_PAGE`, lets the host stop a page.
+  - **Webview.** `readOnly` on the shared browser and row. The screen is reached from "Bookmarks…" and "All bookmarks…". Preview uses the turn-preview sheet with saved and given sources. Open session goes through its confirmation, and Open at bookmark waits for Open's result and the new room before it jumps. `WorkshopApp.tsx` grew 1,828 → 1,860 lines, wiring only.
+  - **Verification:** typecheck clean; lint 0 errors / 1,165 warnings (baseline); jest **743 suites / 10,390 tests / 59 snapshots**, all passing (full run, `--maxWorkers=4`); no `vscode` import in core.
