@@ -9,7 +9,10 @@
  * staged becomes a `pending` card with the identity, class and baseline
  * staging took; a frame staging refused becomes a `refused` card with the
  * refusal's kind as its reason, so the writer sees what the persona tried and
- * nothing can be applied. A rewrite staged to prose is refused here, since
+ * nothing can be applied. A staged identity a session can't hold (the
+ * staging contract, `workshopFileEditIdentityHoldable`) is refused as
+ * `identity-unpersistable`, so no card makes the session unsaveable (PR #230
+ * F-01). A rewrite staged to prose is refused here, since
  * staging decided the class (`rewrite-on-prose`, D5), keeping its identity.
  * Two frames staged to one identity (one `documentUri`) keep only the first
  * (`duplicate-identity`): one card per file per reply. With the setting `off`, nothing is staged. With no
@@ -23,7 +26,11 @@
  * or any text an operation holds (D13).
  */
 
-import type { WorkshopFileEditProposal } from '@messages';
+import {
+  WORKSHOP_FILE_EDIT_UNPERSISTABLE_IDENTITY_REASON,
+  workshopFileEditIdentityHoldable,
+  type WorkshopFileEditProposal
+} from '@messages';
 
 /** The host's reason for a rewrite staged to prose (D5: prose is never rewritten whole). */
 export const WORKSHOP_FILE_EDIT_REWRITE_ON_PROSE = 'rewrite-on-prose';
@@ -95,15 +102,25 @@ export async function resolveWorkshopReplyFileEdits(
   return { reply: input.reply, proposals, logs };
 }
 
-async function stageOne(staging: FileEditStaging, draft: WorkshopFileEditDraft): Promise<FileEditStagingResult> {
+async function stageOne(staging: FileEditStaging, draft: WorkshopFileEditDraft): Promise<StagedOrRefused> {
+  let result: FileEditStagingResult;
   try {
-    return await staging.stage(draft.target);
+    result = await staging.stage(draft.target);
   } catch {
     return { kind: 'refused', reason: 'unreadable' };
   }
+  // The staging contract, before a card is adopted (PR #230 F-01): an
+  // identity a session can't hold becomes a persistable refusal, so no
+  // accepted card ever makes the session unsaveable.
+  return result.kind === 'staged' && !workshopFileEditIdentityHoldable(result.target)
+    ? { kind: 'refused', reason: WORKSHOP_FILE_EDIT_UNPERSISTABLE_IDENTITY_REASON }
+    : result;
 }
 
-function settle(draft: WorkshopFileEditDraft, result: FileEditStagingResult): WorkshopFileEditProposal {
+/** Staging's answer, or a refusal the host made of it. */
+type StagedOrRefused = FileEditStagingResult | { readonly kind: 'refused'; readonly reason: typeof WORKSHOP_FILE_EDIT_UNPERSISTABLE_IDENTITY_REASON };
+
+function settle(draft: WorkshopFileEditDraft, result: StagedOrRefused): WorkshopFileEditProposal {
   const common = {
     requested: { ...draft.target },
     operations: draft.operations.map((operation) => ({ ...operation })),

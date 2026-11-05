@@ -39,6 +39,7 @@ import {
   WORKSHOP_FILE_EDIT_RECORD_LIMITS,
   WORKSHOP_FILE_EDIT_REOPENED_APPLYING_REASON,
   WORKSHOP_FILE_EDIT_STATES,
+  workshopFileEditIdentityHoldable,
   type WorkshopFileEditOperation,
   type WorkshopFileEditOperationOutcome,
   type WorkshopFileEditProposal,
@@ -55,7 +56,6 @@ import {
   shapeError
 } from '@/application/services/workshop/persistedValidation';
 import { oneLineAt } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
-import { isSafeConfiguredResourcePath } from '@/utils/configuredResourcePath';
 import {
   sameWorkshopFileEditTarget,
   workshopFileEditOperationsFault,
@@ -154,10 +154,9 @@ function assertStaging(proposal: Record<string, unknown>, requested: WorkshopFil
   }
   const target = exactObject(proposal.target, `${at}.target`, ['kind', 'documentUri', 'relativePath']);
   enumAt(target.kind, `${at}.target.kind`, [requested.kind === 'excerpt' ? 'excerpt' : 'file']);
-  boundedStringAt(target.documentUri, `${at}.target.documentUri`, WORKSHOP_FILE_EDIT_RECORD_LIMITS.documentUriCharacters, false);
-  boundedStringAt(target.relativePath, `${at}.target.relativePath`, PROMPT_BUDGETS.workshopResource.pathCharacters, false);
-  if (!isSafeConfiguredResourcePath(target.relativePath as string)) {
-    shapeError(`${at}.target.relativePath`, 'a workspace-relative path');
+  // A host-written identity: held to the staging contract, never the model's lookup grammar (PR #230 F-01).
+  if (!workshopFileEditIdentityHoldable(target)) {
+    shapeError(`${at}.target`, 'a host identity: a one-line documentUri and display path, each within its bound');
   }
   enumAt(proposal.class, `${at}.class`, WORKSHOP_FILE_EDIT_CLASSES);
   const baseline = exactObject(proposal.baseline, `${at}.baseline`, ['sha256', 'length']);

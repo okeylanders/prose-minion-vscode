@@ -128,8 +128,39 @@ export interface WorkshopFileEditProposal {
 /** Bounds the host's own fields hold (the model's are `PROMPT_BUDGETS.workshopFileEdits`). */
 export const WORKSHOP_FILE_EDIT_RECORD_LIMITS = Object.freeze({
   reasonCharacters: 500,
-  documentUriCharacters: 8_192
+  documentUriCharacters: 8_192,
+  /** A staged identity's display path: the host's, so not the model's lookup bound (PR #230 F-01). */
+  displayPathCharacters: 8_192
 });
+
+/** The reason a card carries when staging returned an identity a session can't hold (PR #230 F-01). */
+export const WORKSHOP_FILE_EDIT_UNPERSISTABLE_IDENTITY_REASON = 'identity-unpersistable';
+
+const NOT_ONE_LINE = /[\p{Cc}\u2028\u2029]/u;
+
+/**
+ * Whether a host-staged identity can be persisted (PR #230 F-01): the one
+ * contract between staging's output and the session codec, checked before a
+ * card is adopted and again when a session is read.
+ *
+ * The display path is the host's (the excerpt's own `relativePath`, or a
+ * catalog row's), not a model lookup path: it is held only to be one line,
+ * non-empty and within `displayPathCharacters`, never to the configured-
+ * resource grammar (`draft:one.md` and a deep nested path are fine). The URI
+ * is non-empty, one line and within `documentUriCharacters`. Containment and
+ * authorization are staging's and the gateway's, not this rule's.
+ */
+export function workshopFileEditIdentityHoldable(target: {
+  readonly documentUri?: unknown;
+  readonly relativePath?: unknown;
+}): boolean {
+  return holdable(target.documentUri, WORKSHOP_FILE_EDIT_RECORD_LIMITS.documentUriCharacters)
+    && holdable(target.relativePath, WORKSHOP_FILE_EDIT_RECORD_LIMITS.displayPathCharacters);
+}
+
+function holdable(value: unknown, maximum: number): boolean {
+  return typeof value === 'string' && value.length > 0 && value.length <= maximum && !NOT_ONE_LINE.test(value);
+}
 
 /** The reason a card found `applying` on reopen carries (D8): its write's outcome can't be known. */
 export const WORKSHOP_FILE_EDIT_REOPENED_APPLYING_REASON = 'applying-on-reopen';

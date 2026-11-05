@@ -144,3 +144,24 @@
 2. **`insertWords`** is taught and recorded here but enforced by the gateway, for prose only. The codec enforces only `insertCharacters`.
 3. **A refused card's `reason`** is the refusal kind (`not-configured`, …), not writer-facing words. The words are Slice 4's (D9).
 4. **`AGENTS.md`'s message tree** doesn't list `fileEdits.ts`. That's for Slice 5.
+
+## PR #230 review: F-01 (P2), fixed
+
+- **The finding.** A staged identity's display path was checked with the model's lookup grammar (`isSafeConfiguredResourcePath` and its 1,200-character bound). That broke on two kinds of path:
+  - a valid excerpt such as `draft:one.md`, where the colon reads as a URI scheme;
+  - a nested path over 1,200 characters.
+
+  Either one staged into a pending card that made the whole checkpoint unsaveable.
+- **The fix.** One contract, `workshopFileEditIdentityHoldable` (`fileEdits.ts`), holds a host-written identity to three rules:
+  - a non-empty, one-line `documentUri` within `documentUriCharacters` (8,192);
+  - a non-empty, one-line display path within `displayPathCharacters` (8,192);
+  - never the model grammar.
+- **Where it's enforced:**
+  - by the reply resolver, before a card is adopted: an identity it fails becomes a persistable `refused` card (`identity-unpersistable`), and the reply is kept;
+  - by the session codec, when a session is read.
+
+  `requested`, the model's lookup path, keeps `resource.read`'s rule. URI containment and authorization stay staging's and the gateway's, unchanged.
+- **Tests.** `session/WorkshopFileEditStagedIdentityPersistence.test.ts` converts the review's probe. Its staging stub returns the room's excerpt identity verbatim, as #229 does. Each case completes the reply, then saves and reopens the full session:
+  - `draft:one.md`, a nested path past the lookup bound, and an ordinary chapter all round-trip their identity;
+  - an identity past the display or URI bound, or on two lines, becomes a persistable refusal;
+  - a model frame naming `draft:one.md`, `../`, an absolute path or an over-long path is still refused before staging.
