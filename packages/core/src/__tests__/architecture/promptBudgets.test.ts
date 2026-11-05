@@ -240,6 +240,10 @@ describe('prompt budgets', () => {
     expect(PROMPT_BUDGETS.workshopProjectMemory.readsPerTurn).toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
   });
 
+  it('pins the Pinned Context list bound (ADR 2026-11-04 D6)', () => {
+    expect(PROMPT_BUDGETS.workshopPinnedContext).toEqual({ files: 20, fileBytes: 128 * 1024 });
+  });
+
   it('gives every session of the largest read a share that clears the per-session minimum (D9)', () => {
     const { readCharacters, readSessions, readCharactersPerTurn, readsPerTurn } = PROMPT_BUDGETS.workshopTranscriptRecall;
 

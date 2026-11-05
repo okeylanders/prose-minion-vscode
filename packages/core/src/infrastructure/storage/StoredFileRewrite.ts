@@ -46,12 +46,24 @@ export interface StoredFileRewritePorts {
 
 export interface StoredFileRewriteCommit {
   readonly filePath: string;
+  /**
+   * Where the new bytes are staged; a hidden private name beside the file by
+   * default. A store that fences a stale writer stages inside its lock, so a
+   * takeover removes the source of the rename that commits (PR #204 F-01).
+   */
+  readonly stagingPath?: string;
   /** The file's id, for logs. */
   readonly label: string;
   /** The bytes the caller read and checked. */
   readonly read: Uint8Array;
   /** The bytes that replace them. */
   readonly written: Uint8Array;
+  /**
+   * Asked once the claim is confirmed, before the commit point: a check that
+   * needs a read (a store's lock still being its own). `false` releases the
+   * claim and withdraws, as `beforeCommit` does.
+   */
+  readonly confirm?: () => Promise<boolean>;
   /** The commit point: synchronous, immediately before the staged file takes the saved name. `false` withdraws. */
   readonly beforeCommit?: () => boolean;
   /** Called synchronously once the rewrite stands, before the claim is dropped. */
@@ -77,7 +89,7 @@ export async function commitStoredFileRewrite(
   const { fileSystem, claims, log, logPrefix } = ports;
   const { filePath, label } = commit;
   const folder = path.dirname(filePath);
-  const temporaryPath = path.join(folder, `.${path.basename(filePath)}.tmp-${ports.mintStagingId()}`);
+  const temporaryPath = commit.stagingPath ?? path.join(folder, `.${path.basename(filePath)}.tmp-${ports.mintStagingId()}`);
   try {
     await fileSystem.writeFile(temporaryPath, commit.written);
   } catch (error) {
@@ -91,12 +103,8 @@ export async function commitStoredFileRewrite(
     await deleteStoredFileQuietly(fileSystem, temporaryPath);
     return { kind: 'gone', state: await claims.settle(filePath) };
   }
-  let claimed: Uint8Array | undefined;
-  try {
-    claimed = await fileSystem.readFile(claimPath);
-  } catch {
-    claimed = undefined;
-  }
+  // Read within the claims' bound, when they set one (PR #204 F-04): bytes over it never match.
+  const claimed = await claims.readBytes(claimPath);
   // Another writer rewrote it between the read and the claim: put it back, and read it again.
   if (!claimed || !sameBytes(claimed, commit.read)) {
     await release(ports, claimPath, commit, temporaryPath);
@@ -107,6 +115,10 @@ export async function commitStoredFileRewrite(
     await deleteStoredFileQuietly(fileSystem, temporaryPath);
     log.appendLine(`${logPrefix} ${label} was not rewritten: its claim was taken back while the rewrite waited.`);
     return { kind: 'failed' };
+  }
+  if (commit.confirm && !(await commit.confirm())) {
+    await release(ports, claimPath, commit, temporaryPath);
+    return { kind: 'withdrawn' };
   }
   // The commit point: nothing is awaited between it and the rename that commits.
   if (commit.beforeCommit && !commit.beforeCommit()) {

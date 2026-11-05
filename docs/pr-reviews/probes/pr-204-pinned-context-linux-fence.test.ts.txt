@@ -1,0 +1,41 @@
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { FileType, type FileSystem } from '@/platform';
+import { createFakeWorkspace } from '@/__tests__/mocks/platform';
+import { WorkshopPinnedContextStore } from '@/infrastructure/storage/WorkshopPinnedContextStore';
+import { deferred } from '@/__tests__/application/handlers/domain/lightboxHandlerHarness';
+
+const RENAME = 'import ctypes,os,sys\nl=ctypes.CDLL(None,use_errno=True)\nr=l.renameat2(-100,os.fsencode(sys.argv[1]),-100,os.fsencode(sys.argv[2]),1)\nif r: raise OSError(ctypes.get_errno(),os.strerror(ctypes.get_errno()))';
+function realFs(): FileSystem {
+ return {
+  readFile: async p=>new Uint8Array(await fs.readFile(p)),
+  writeFile: async(p,b)=>{await fs.mkdir(path.dirname(p),{recursive:true});await fs.writeFile(p,b);},
+  rename: async(a,b,o)=>{if(o?.overwrite)await fs.rename(a,b);else try {execFileSync('python',['-c',RENAME,a,b],{stdio:'pipe'});} catch(e){const err=e as {stderr?:Buffer};throw new Error(err.stderr?.toString()??'rename failed');}},
+  delete: async(p,o)=>{await fs.rm(p,{recursive:o?.recursive??false});},
+  readDirectory: async p=>(await fs.readdir(p,{withFileTypes:true})).map(e=>[e.name,e.isDirectory()?FileType.Directory:FileType.File]),
+  stat: async p=>{const s=await fs.stat(p);return {size:s.size,ctime:s.ctimeMs,mtime:s.mtimeMs,type:s.isDirectory()?FileType.Directory:FileType.File};},
+  createDirectory: async p=>{await fs.mkdir(p,{recursive:true});}
+ };
+}
+const pin=(p:string)=>(current:{files:readonly {path:string}[]})=>({files:[...current.files,{path:p}]});
+it('fences a post-check stale create with real Linux directory renames',async()=>{
+ const root=await fs.mkdtemp('/tmp/pinned-204-real-');
+ const port=realFs();let now=Date.now();
+ const build=(prefix:string)=>{let n=0;return new WorkshopPinnedContextStore(port,createFakeWorkspace({workspaceFolders:()=>[{path:root,name:'test'}]}),{appendLine:()=>undefined,show:()=>undefined,clear:()=>undefined} as never,{claimNow:()=>new Date(now),mintStagingId:()=>prefix+(++n)});};
+ const late=build('late'),current=build('current');
+ const lateGate=deferred<void>(),lateReached=deferred<void>();let held=false;
+ const rename=port.rename.bind(port);
+ jest.spyOn(port,'rename').mockImplementation(async(a,b,o)=>{if(!held&&a.includes('.tmp-late')){held=true;lateReached.resolve();await lateGate.promise;}return rename(a,b,o);});
+ const stale=late.update('absent',pin('late.md'));
+ await lateReached.promise;now+=30_001;
+ const created=await current.update('absent',pin('alice.md'));
+ if(!created.ok)throw new Error(created.reason);
+ const claimGate=deferred<void>(),claimReached=deferred<void>();let heldClaim=false;const read=port.readFile.bind(port);
+ jest.spyOn(port,'readFile').mockImplementation(async p=>{if(!heldClaim&&p.includes('.claim-')){heldClaim=true;claimReached.resolve();await claimGate.promise;}return read(p);});
+ const rewrite=current.update(created.revision,pin('hatter.md'));await claimReached.promise;
+ lateGate.resolve();expect(await stale).toEqual({ok:false,reason:'busy'});claimGate.resolve();expect(await rewrite).toMatchObject({ok:true});
+ expect(await current.read()).toMatchObject({state:'ok',list:{files:[{path:'alice.md'},{path:'hatter.md'}]}});
+ expect(await fs.readdir(path.join(root,'prose-minion'))).toEqual(['pinned-context.json']);
+ await fs.rm(root,{recursive:true});
+},20_000);
