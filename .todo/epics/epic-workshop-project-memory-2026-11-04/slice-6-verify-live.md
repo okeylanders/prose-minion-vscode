@@ -67,6 +67,8 @@ anything screenshotted or recorded.
 - [ ] The Memory tab sits between About you and Advanced. It shows the
       "Memory isn't context" well, and its meter shows each memory's
       residency (Loaded in full, Listed or Searchable).
+- [ ] The well folds from its title line and opens again from it. Once
+      folded, it stays folded after a reload (Okey's live-pass ask).
 - [ ] Change the mode and Apply: the global setting changes. Edit
       `proseMinion.workshop.projectMemory` in VS Code Settings while the tab
       is open: the tab follows.

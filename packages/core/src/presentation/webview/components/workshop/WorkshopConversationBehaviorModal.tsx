@@ -49,6 +49,9 @@ interface WorkshopConversationBehaviorModalProps {
   memory: Omit<WorkshopMemoryTabInput, 'mode'>;
   /** Open memory folder's status, shown in the Memory tab (PR #202 F04). */
   memoryFolder?: WorkshopMemoryFolderStatus;
+  /** Whether the Memory tab's "Memory isn't context" table shows: this viewer's choice. */
+  memoryExplainerOpen: boolean;
+  onToggleMemoryExplainer: () => void;
   isRunning: boolean;
   errorMessage?: string;
   onApply: (
@@ -73,6 +76,8 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   projectMemoryMode,
   memory,
   memoryFolder,
+  memoryExplainerOpen,
+  onToggleMemoryExplainer,
   isRunning,
   errorMessage,
   onApply,
@@ -184,6 +189,8 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         mode={memoryDraft}
         disabled={editingLocked}
         {...(memoryFolder ? { folderStatus: memoryFolder } : {})}
+        explainerOpen={memoryExplainerOpen}
+        onToggleExplainer={onToggleMemoryExplainer}
         onSelectMode={setMemoryDraft}
         onOpenManager={onOpenMemoryManager}
         onOpenFolder={onOpenMemoryFolder}
