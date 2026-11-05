@@ -30,7 +30,8 @@ export function workshopBookmarkBrowserRow(bookmark: WorkshopRecallBookmark): Wo
     createdAt: bookmark.createdAt,
     speaker: id === 'writer' ? WRITER_SPEAKER : bookmark.speaker.label,
     ...(identity ? { identity } : {}),
-    ...(bookmark.entry ? { message: workshopTurnPreviewOfEntry(bookmark.entry) } : {})
+    ...(bookmark.entry ? { message: workshopTurnPreviewOfEntry(bookmark.entry) } : {}),
+    ...(bookmark.bookmarkable ? { rememberable: true as const } : {})
   };
 }
 

@@ -60,6 +60,7 @@ describe('Workshop routes — memories from bookmarks (Bookmark Recall Slice 3)'
     turnId: SAVED_TURN,
     position: 7,
     entry: { kind: 'reply', turnId: SAVED_TURN, timestamp: 1, speaker: 'Jill', content: 'The baby sneezes, then it is a pig.' } as never,
+    bookmarkable: true,
     ...overrides
   });
 
@@ -138,8 +139,8 @@ describe('Workshop routes — memories from bookmarks (Bookmark Recall Slice 3)'
       expect(logLines()).toContain(`[WorkshopSavedTurnMemoryHandler] saved turn sessionId=${SAVED_SESSION} turnId=${SAVED_TURN} refused reason=${kind}`);
     });
 
-    it('refuses an event line, an id the memory format can\'t hold, and recall being unavailable, with nothing written', async () => {
-      savedTurn.mockResolvedValueOnce(turnFound({ entry: { kind: 'event', turnId: SAVED_TURN, timestamp: 1, text: 'Session renamed' } as never }));
+    it('refuses a turn no bookmark may mark, an id the memory format can\'t hold, and recall being unavailable, with nothing written', async () => {
+      savedTurn.mockResolvedValueOnce(turnFound({ entry: { kind: 'event', turnId: SAVED_TURN, timestamp: 1, text: 'Session renamed' } as never, bookmarkable: false }));
       await route(MessageType.WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY, { requestId: 'e1', sessionId: SAVED_SESSION, turnId: SAVED_TURN, draft: draft() });
       await route(MessageType.WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY, { requestId: 'e2', sessionId: SAVED_SESSION, turnId: 'current@x/bookmark-1', draft: draft() });
       await route(MessageType.WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY, { requestId: 'e3', sessionId: '../escape', turnId: SAVED_TURN, draft: draft() });

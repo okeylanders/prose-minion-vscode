@@ -24,6 +24,7 @@
  * Pure: the caller supplies an already-decoded session.
  */
 
+import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks';
 import type {
   WorkshopPersonaId,
   WorkshopSessionScope,
@@ -74,6 +75,13 @@ export interface WorkshopRecallEntry {
   readonly position: number;
   readonly turnId: string;
   readonly entry: WorkshopTranscriptEntry;
+  /**
+   * Whether the original turn is one a bookmark may mark
+   * (`isWorkshopBookmarkableTurn`, the bubbles' rule), read from the turn,
+   * never the projection: a capability card projects as an event and is
+   * bookmarkable (PR #219 F-01).
+   */
+  readonly bookmarkable: boolean;
   /** Normalized words of the entry's visible text (and a tool reply's speaker), one space apart. */
   readonly searchText: string;
 }
@@ -149,7 +157,7 @@ export function buildWorkshopRecallDocument(
     const entry = projectWorkshopTranscriptTurn(turn);
     if (entry) {
       const searchText = normalizeWorkshopRecallText(searchableText(entry));
-      entries.push({ position: index + 1, turnId: turn.id, entry, searchText });
+      entries.push({ position: index + 1, turnId: turn.id, entry, bookmarkable: isWorkshopBookmarkableTurn(turn), searchText });
     }
   });
   const todos = session.workshop.todos.map((todo) => recallTodo(todo, positions, header.excerptVersion));

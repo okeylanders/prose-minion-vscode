@@ -267,8 +267,7 @@ export class WorkshopProjectMemoryHandler {
       this.effects.reportError('Save to memory must name its request and a turn');
       return;
     }
-    // A bookmark's row outside the window names its room (Bookmark Recall D9, PR #214 F-03).
-    if (payload.roomRevision !== undefined && payload.roomRevision !== this.session.readRoomRevision()) {
+    if (payload.roomRevision !== undefined /* a bookmark outside the window names its room: D9, PR #214 F-03 */ && payload.roomRevision !== this.session.readRoomRevision()) {
       this.answer({ requestId, ok: false, error: WORKSHOP_MEMORY_ROOM_CHANGED }, `save turn refused turnId=${payload.turnId} reason=room-changed`);
       return;
     }
@@ -283,9 +282,9 @@ export class WorkshopProjectMemoryHandler {
     }));
   }
 
-  /** A writer's save from a source another route checked (`WorkshopSavedTurnMemoryHandler`): this route's checks, queue, receipt and answer. */
-  saveWriterMemory(requestId: string, target: string, draft: WorkshopMemoryDraft, provenance: ProjectMemorySaveProvenance): Promise<WorkshopMemoryWriteResultPayload> {
-    return this.write(requestId, target, draft, false, async () => ({ result: await this.library.save(draft, provenance), action: 'saved' }));
+  /** A writer's save from a source another route checked, for the room it was asked in (`WorkshopSavedTurnMemoryHandler`; PR #219 F-02). */
+  saveWriterMemory(requestId: string, target: string, draft: WorkshopMemoryDraft, provenance: ProjectMemorySaveProvenance, roomRevision: number): Promise<WorkshopMemoryWriteResultPayload> {
+    return this.write(requestId, target, draft, false, async () => ({ result: await this.library.save(draft, provenance), action: 'saved' }), undefined, roomRevision);
   }
 
   async handleCreate(message: WorkshopMemoryCreateMessage): Promise<void> {
@@ -413,7 +412,8 @@ export class WorkshopProjectMemoryHandler {
       onRefused?: (reason: ProjectMemoryWriteRefusalReason) => void;
       proposedBy?: string;
     }>,
-    stillApplies: () => boolean = () => true
+    stillApplies: () => boolean = () => true,
+    askedIn?: number
   ): Promise<WorkshopMemoryWriteResultPayload> {
     if (draft !== undefined) {
       const fault = checkWorkshopMemoryDraft(draft);
@@ -425,6 +425,9 @@ export class WorkshopProjectMemoryHandler {
       return this.answer({ requestId, ok: false, error: WORKSHOP_MEMORY_RUN_ACTIVE }, `${target} refused reason=run-active`);
     }
     const revision = this.session.readRoomRevision();
+    if (askedIn !== undefined && askedIn !== revision) {
+      return this.answer({ requestId, ok: false, error: WORKSHOP_MEMORY_ROOM_CHANGED }, `${target} refused reason=room-changed`);
+    }
     const { result, action, onRecorded, onRefused, proposedBy } = await run();
     if (result.kind === 'refused') {
       onRefused?.(result.reason);

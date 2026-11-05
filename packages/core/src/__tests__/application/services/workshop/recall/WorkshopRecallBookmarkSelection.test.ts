@@ -36,6 +36,7 @@ const bookmark = (id: string, fields: Partial<WorkshopRecallBookmark> = {}): Wor
   position: 1,
   displayLabel: `Label ${id}`,
   speaker: { id: 'jill', label: 'Jill' },
+  bookmarkable: true,
   ...fields
 });
 

@@ -121,12 +121,19 @@ Built on `epic/workshop-bookmark-recall-slice-3-remember-this` (PR #219) in two 
 3. **A cited turn need not still be bookmarked.** D10 names two conditions, and the host checks only those: the ledger holds the turn, and the proposer could see it. A bookmark removed after the proposal doesn't unmake the memory's source.
 4. **Who proposed.** The proposer is the reply's participant: the host, or a guest by persona id. A reply from anyone else keeps no cited turns (`not-visible`).
 5. **An edit refuses `<cites-turn>`** (`edit-cites`). An edit changes a saved note and keeps its sources.
-6. **What a saved turn must be.** The saved-turn route refuses an event line (a bookmark marks only messages and replies), and any id the memory codec can't hold, before it reads anything. It doesn't require that the saved turn still be bookmarked: the row the writer pressed was, and recall reads the session as it is now.
+6. **What a saved turn must be.** It must be one a bookmark may mark, judged on the original turn by `isWorkshopBookmarkableTurn` and carried through recall as `bookmarkable`, never by its projection's kind. A capability card projects as an event and is eligible (PR #219 F-01). The route refuses any id the memory codec can't hold before it reads anything. It doesn't require that the saved turn still be bookmarked: the row the writer pressed was, and recall reads the session as it is now.
 7. **A saved-turn save leaves a receipt in the open room,** like every other writer save. It goes through the same write path.
 8. **The Bookmarks screen closes when "Remember this" opens the sheet,** so two modals never stack. Reopening the screen reads it again.
 9. **An out-of-window Notes row** has no message in the snapshot. Its prefill comes from the room's existing turn-preview route (`WORKSHOP_REQUEST_TURN_PREVIEW`, correlated by request id and `roomRevision`), not the browser's live-rows route.
 10. **An in-window save sends no `roomRevision`,** so Save to memory… on a bubble is byte-for-byte as before.
 11. **"Remember this" stays enabled on Notes rows while the room is locked.** It only opens the sheet; the write is refused mid-reply by the route, as every save is.
+
+### PR #219 review
+
+Astra raised two P2s; both are fixed, and the ledger is in [the review](../../../docs/pr-reviews/pr-219-remember-this-review.md).
+
+- **F-01.** Saved capability-card bookmarks can now be remembered. Eligibility is the original turn's (`bookmarkable` on recall entries and bookmarks), and the screen's row is `rememberable` only when the host would save it.
+- **F-02.** The saved-turn route takes the room revision when its message arrives. The shared write refuses, writing nothing, when the room was replaced during the source read (a same-id reopen or a Rewind included).
 
 ### Deferred
 

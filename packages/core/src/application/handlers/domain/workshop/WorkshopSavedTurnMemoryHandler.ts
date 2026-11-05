@@ -7,9 +7,14 @@
  * - **The turn is the host's to check,** through the recall service's
  *   read-only `savedTurn`: the session must be saved, readable and claimed
  *   by one file (an `ambiguous-session` is refused, never resolved: PR #216
- *   F-01), the turn must be in it, and it must be a message or a reply, as
- *   a bookmark is. The open room is refused: its turns save through
- *   `WORKSHOP_SAVE_TURN_TO_MEMORY`.
+ *   F-01), the turn must be in it, and it must be one a bookmark may mark,
+ *   by the original turn (`bookmarkable`, the bubbles' rule), never by its
+ *   projection's kind (PR #219 F-01). The open room is refused: its turns
+ *   save through `WORKSHOP_SAVE_TURN_TO_MEMORY`.
+ * - **The room it was asked in** (PR #219 F-02): the room revision is read
+ *   when the message arrives, before the source is read, and the write
+ *   refuses, writing nothing, if the room was replaced meanwhile (a same-id
+ *   reopen or a Rewind included). The receipt belongs to that room alone.
  * - **What it writes:** `{ origin: 'writer', sourceSession, sourceTurns:
  *   [turnId] }`, through Project Memory's write seam (`saveWriterMemory`):
  *   its draft check, single-writer queue, receipt and answer, the same as
@@ -49,8 +54,14 @@ export interface WorkshopSavedTurnMemoryWriter {
     requestId: string,
     target: string,
     draft: WorkshopMemoryDraft,
-    provenance: ProjectMemorySaveProvenance
+    provenance: ProjectMemorySaveProvenance,
+    roomRevision: number
   ): Promise<WorkshopMemoryWriteResultPayload>;
+}
+
+/** The one room fact this route reads: which room is open now. */
+export interface WorkshopSavedTurnMemoryRoom {
+  readRoomRevision(): number;
 }
 
 const LOG = '[WorkshopSavedTurnMemoryHandler]';
@@ -81,6 +92,7 @@ export class WorkshopSavedTurnMemoryHandler {
   constructor(
     private readonly recall: WorkshopSavedTurnMemoryRecall,
     private readonly writer: WorkshopSavedTurnMemoryWriter,
+    private readonly room: WorkshopSavedTurnMemoryRoom,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
     private readonly reportError: (message: string) => void
@@ -103,6 +115,8 @@ export class WorkshopSavedTurnMemoryHandler {
   }
 
   async handleSaveSavedTurn(message: WorkshopSaveSavedTurnToMemoryMessage): Promise<void> {
+    // Before anything is awaited: the room this gesture belongs to (PR #219 F-02).
+    const roomRevision = this.room.readRoomRevision();
     const payload = message.payload;
     const requestId = workshopMemoryRequestIdOf(payload);
     if (!requestId) {
@@ -135,12 +149,13 @@ export class WorkshopSavedTurnMemoryHandler {
     }
     switch (found.kind) {
       case 'turn':
-        // A bookmark marks a message or a reply; an event line is neither (isWorkshopBookmarkableTurn).
-        if (found.entry.kind === 'event') {
+        // The original turn's eligibility, by the bubbles' rule, never the projection's kind: a capability
+        // card projects as an event and may be remembered; a divider or marker may not (PR #219 F-01).
+        if (!found.bookmarkable) {
           this.refuse(requestId, WORKSHOP_SAVED_TURN_MEMORY_REFUSALS.notEligible, 'not-eligible', target);
           return;
         }
-        await this.writer.saveWriterMemory(requestId, target, payload.draft, workshopSavedTurnProvenance(sessionId, turnId));
+        await this.writer.saveWriterMemory(requestId, target, payload.draft, workshopSavedTurnProvenance(sessionId, turnId), roomRevision);
         return;
       case 'live-session':
         this.refuse(requestId, WORKSHOP_SAVED_TURN_MEMORY_REFUSALS.liveSession, found.kind, target);

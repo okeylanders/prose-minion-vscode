@@ -158,3 +158,8 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
   - **"Remember this," webview side.** It is on the Bookmarks screen's rows and on the Notes list. An in-window turn goes through `saveTurn`, unchanged. A turn outside the window prefills from the host's message. A saved turn opens the sheet's new `saved-turn` mode: "From “Title”, …".
   - **Cited turns (D10).** The trailer gains `<cites-turn>`, at most 30. At save, the host keeps a cited turn only when the open room holds it and the proposer could see it (`isWorkshopTurnVisibleToParticipant`). It drops the rest, saved-session and `current@…` refs included, and logs them by id. Kept turns join `sourceTurns` after the writer's message and the reply, each once, within 32. The prompt teaches the field with a worked example.
   - **Verification:** typecheck clean; lint 0 errors / 1,165 warnings (baseline); jest **749 suites / 10,453 tests / 59 snapshots**, all passing (full run, `--maxWorkers=4`); no `vscode` import in core.
+- **2026-11-05. PR #219 review (Astra)** raised two P2s, both fixed; the ledger is in [the review](../../../docs/pr-reviews/pr-219-remember-this-review.md).
+  - **F-01.** A saved capability-card bookmark couldn't be remembered: the route judged the projection's kind. Eligibility is now the original turn's (`bookmarkable`, through recall), and the screen offers only what the host saves.
+  - **F-02.** A saved-turn save read the room after the source read, so a same-id reopen or a Rewind could take its receipt. The route now takes the room when its message arrives, and the write refuses, writing nothing, if it moved.
+  - **Verification:** jest **751 suites / 10,465 tests / 59 snapshots**, all passing; lint at the 1,165 baseline; typecheck clean.
+

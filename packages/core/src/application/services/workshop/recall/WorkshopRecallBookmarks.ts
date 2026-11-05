@@ -20,6 +20,7 @@ import type { WorkshopTurn, WorkshopTurnBookmark } from '@messages';
 import { isWorkshopPersonaId, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
 import type { WorkshopRecallBookmarkSpeakerId } from '@shared/types/workshopCapabilities';
+import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks';
 import { workshopBookmarkDefaultLabel } from '@/application/services/workshop/session/WorkshopBookmarkLedger';
 import {
   projectWorkshopTranscriptTurn,
@@ -47,6 +48,8 @@ export interface WorkshopRecallBookmark {
   readonly speaker: WorkshopRecallBookmarkSpeaker;
   /** The turn as the thread shows it; absent when the thread shows nothing of it. */
   readonly entry?: WorkshopTranscriptEntry;
+  /** Its turn is one a bookmark may mark, by the bubbles' rule: what the screen's "Remember this" offers on (PR #219 F-01). */
+  readonly bookmarkable: boolean;
 }
 
 /**
@@ -82,7 +85,8 @@ export function workshopRecallBookmark(
     position,
     displayLabel: bookmark.label ?? workshopBookmarkDefaultLabel(turn),
     speaker: workshopRecallBookmarkSpeaker(turn),
-    ...(entry ? { entry } : {})
+    ...(entry ? { entry } : {}),
+    bookmarkable: isWorkshopBookmarkableTurn(turn)
   };
 }
 

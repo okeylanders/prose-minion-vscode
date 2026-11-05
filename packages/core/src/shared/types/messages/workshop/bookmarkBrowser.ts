@@ -34,6 +34,12 @@ export interface WorkshopBookmarkBrowserRow {
   identity?: string;
   /** The message as the turn preview shows it; absent when the thread shows nothing of it. */
   message?: WorkshopTurnPreview;
+  /**
+   * Its turn is one a bookmark may mark, by the host's rule
+   * (`isWorkshopBookmarkableTurn`): "Remember this" is offered only on such
+   * a row, so the screen offers what the host saves (PR #219 F-01).
+   */
+  rememberable?: true;
 }
 
 /** A saved session's bookmarks, as one page carries them. */

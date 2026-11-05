@@ -290,6 +290,7 @@ export class WorkshopSliceComposition {
     this.savedTurnMemoryHandler = new WorkshopSavedTurnMemoryHandler(
       bookmarkBrowser,
       this.projectMemoryHandler,
+      session,
       postMessage,
       outputChannel,
       (message) => host.reportRouteError('workshop', message, undefined, 'WorkshopSavedTurnMemoryHandler')

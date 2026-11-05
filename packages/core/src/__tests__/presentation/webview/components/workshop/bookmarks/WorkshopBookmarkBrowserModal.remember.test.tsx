@@ -15,14 +15,15 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { WorkshopBookmarkBrowserRow } from '@messages';
 import { WorkshopBookmarkBrowserModal } from '@components/workshop/bookmarks/WorkshopBookmarkBrowserModal';
 
-const row = (turnId: string, label: string, withMessage = true): WorkshopBookmarkBrowserRow => ({
+const row = (turnId: string, label: string, withMessage = true, rememberable = true): WorkshopBookmarkBrowserRow => ({
   bookmarkId: `bookmark-${turnId}`,
   turnId,
   label,
   createdAt: Date.UTC(2026, 10, 4),
   speaker: 'Jill',
   identity: 'jill',
-  ...(withMessage ? { message: { kind: 'reply', speaker: 'Jill', content: `${label}: the little door.`, timestamp: 1 } } : {})
+  ...(withMessage ? { message: { kind: 'reply', speaker: 'Jill', content: `${label}: the little door.`, timestamp: 1 } } : {}),
+  ...(rememberable ? { rememberable: true as const } : {})
 });
 
 const renderModal = (onRemember?: jest.Mock) => {
@@ -30,7 +31,11 @@ const renderModal = (onRemember?: jest.Mock) => {
   render(
     <WorkshopBookmarkBrowserModal
       open
-      live={{ status: 'ready', rows: [row('turn-2-assistant-1', 'Live door'), row('turn-4-assistant-1', 'Quiet notice', false)] }}
+      live={{ status: 'ready', rows: [
+        row('turn-2-assistant-1', 'Live door'),
+        row('turn-4-assistant-1', 'Quiet notice', false),
+        row('turn-5-system-1', 'Session marker', true, false)
+      ] }}
       saved={{
         sessions: [
           { sessionId: 'tea', title: 'Tea party', savedAt: '2026-11-04T00:00:00Z', bookmarks: [row('turn-6-assistant-1', 'Tea door')] },
@@ -78,6 +83,8 @@ describe('WorkshopBookmarkBrowserModal — Remember this', () => {
     expect(button('Remember this: Twin door').disabled).toBe(true);
     expect(button('Open at bookmark Twin door').disabled).toBe(true);
     expect(button('Remember this: Quiet notice').disabled).toBe(true);
+    // A turn the host would refuse to save (PR #219 F-01) is not offered either.
+    expect(button('Remember this: Session marker').disabled).toBe(true);
     fireEvent.click(button('Remember this: Twin door'));
     expect(onRemember).not.toHaveBeenCalled();
   });

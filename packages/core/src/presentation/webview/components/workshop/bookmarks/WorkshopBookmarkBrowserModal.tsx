@@ -259,8 +259,9 @@ const BookmarkBrowserRow: React.FC<BookmarkBrowserRowProps> = ({
               className="pm-ws-session-secondary"
               type="button"
               aria-label={`Remember this: ${row.label}`}
-              // The prefill is the host's message, so a row without one, or one whose session id two files claim, offers nothing.
-              disabled={!row.message || item.ambiguous === true}
+              // The prefill is the host's message, and the host saves only a turn a bookmark may mark (PR #219 F-01):
+              // a row without either, or one whose session id two files claim, offers nothing.
+              disabled={!row.message || !row.rememberable || item.ambiguous === true}
               title={item.ambiguous ? AMBIGUOUS_ROW : undefined}
               onClick={() => onRemember(item)}
             >

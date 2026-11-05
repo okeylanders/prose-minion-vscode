@@ -97,7 +97,7 @@ export const WorkshopBookmarkBrowserMount: React.FC<WorkshopBookmarkBrowserMount
 
   const onRemember = (item: WorkshopBookmarkBrowserItem) => {
     const { row } = item;
-    if (!row.message || item.ambiguous) {
+    if (!row.message || !row.rememberable || item.ambiguous) {
       return;
     }
     if (item.source.kind === 'saved') {

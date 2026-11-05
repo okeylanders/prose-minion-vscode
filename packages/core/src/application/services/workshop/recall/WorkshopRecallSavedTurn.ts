@@ -22,6 +22,8 @@ export type WorkshopRecallSavedTurn =
       /** The turn's 1-based ledger position in that session. */
       readonly position: number;
       readonly entry: WorkshopTranscriptEntry;
+      /** The original turn is one a bookmark may mark: what "Remember this" checks, never the entry's kind (PR #219 F-01). */
+      readonly bookmarkable: boolean;
     }
   /** `ambiguous-session`: more than one file claims the id, so the store refused to choose (PR #216 F-04). */
   | { readonly kind: 'live-session' | 'unknown-session' | 'ambiguous-session' | 'unreadable' | 'unknown-turn' };
@@ -57,6 +59,7 @@ export async function workshopRecallSavedTurn(
     title: loaded.document.header.title,
     turnId,
     position: found.position,
-    entry: found.entry
+    entry: found.entry,
+    bookmarkable: found.bookmarkable
   };
 }
