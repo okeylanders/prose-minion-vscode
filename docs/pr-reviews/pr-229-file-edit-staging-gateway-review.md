@@ -1,6 +1,6 @@
 # PR #229 review: File-edit staging and gateway
 
-**Latest disposition: F-01–F-03 are closed after independent re-review of `72c47b2e` and `288da6e9`. N-01 remains open through the real excerpt-authorization composition; D13 acceptance is not yet complete.**
+**Latest disposition: all F-01–F-03 and N-01 are closed after independent final re-review of `0fad8ddc`. No remaining code-review blocker in this slice. Exact-head CI remains a separate gate and is reported on the PR.**
 
 **Initial verdict at `778a09a6`: changes requested, with three blocking findings plus N-01.**
 
@@ -268,3 +268,18 @@ test('REPRO N-01: real excerpt adapter invokes browse logging during otherwise s
 });
 
 ```
+
+## Final re-review at `0fad8ddc`
+
+**Implementation reviewed:** `0fad8ddcf3f7d4ce84f01a76e49015bcbbece6de`. **Verdict: code review approved; all F-01–F-03 and N-01 closed.**
+
+N-01's remaining composition path is corrected, not merely hidden by a test fake:
+
+- `ContextResourceResolver.countsOnly()` exposes the same tolerant catalog with sanitized diagnostics for search failure, skipped matches and resource-read failure. Discovery and authorization semantics are unchanged.
+- `extension.ts` constructs the file-edit excerpt intake service from that provider factory, while the ordinary browsing intake keeps its existing diagnostics. The intake service holds no separate mutable session state that this composition would lose.
+- The real excerpt adapter → real intake service → real resolver chain is covered for staging with a failed search and for a successful Apply with a linked match. A composition-root test pins the production wiring.
+- The two independent re-review witnesses above were rerun with the production counts-only composition and inverted no-leak expectations; both pass. The old witnesses remain above as historical evidence of the issue before this correction.
+
+**Verification:** 14 focused suites / 186 tests passed, including the two independent no-leak witnesses, the real-composition regression tests, provider assembly, resolver behavior, staging/gateway checks, strict/prose Markdown modes, reconciliation and document adapters. The temporary independent test file was removed after the run; only review documentation is changed by this review. A final local aggregate typecheck/lint/Jest run and current-head CI are running separately and their outcomes will be recorded on the PR.
+
+The staging identity output did not change in either #229 fix. The colon/long-path persistence correction belongs to #230's shared pre-adoption/persisted identity guard and is independently reviewed there. This approval does not certify the later Slice 4 claim/routes or a live Extension Development Host pass. Nothing was merged.
