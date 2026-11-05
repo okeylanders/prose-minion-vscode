@@ -47,6 +47,7 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 | 4b-ui | Memory tab and manager, presentation | Tab panel, the "Memory isn't context" well, meters with residency, the manager modal and every design state, as tested components and pure view models; no host wiring | `…-slice-4b-ui` | Done: PR #199, merged at `0994557` (Astra: F-01, F-02, N-01 closed) |
 | 4b-wire | Memory tab and manager, wiring | Manager routes (sibling route owner), the hook, mounting the tab, the mode draft in apply-together, Slice 3's sheet for Edit and New, per-id residency, estimate fields, distinct set-aside `entryKey`s | `…-slice-4b-ui` (reused: the session may push only there) | Done: PR #202, merged at `4d57f52` (Astra: F01–F04, N01–N04 closed over three rounds) |
 | 5 | Save and tell me | Automatic saves, caps, the web-research hold, the expandable read-only receipt, Edit/Forget on auto receipts, the poisoning witness | `…-slice-5-save-and-tell-me` | Done: PR #201, merged at `d7fd159` (Astra: F-01–F-04 closed) |
+| 6a | Theme and Idea | Two more kinds in format 1 (Okey's live-pass ask): constant, codec, words, sheet (six across or 3×2), manager, prompts, ADR addendum ([slice doc](slice-6a-kinds.md)) | `…-slice-6a-kinds` | In review |
 | 6 | Verify live | Extension Development Host pass; ADR → Accepted; feature note archived; memory bank | — | Next: Okey's live pass ([checklist](slice-6-verify-live.md)) |
 
 **Order.** Slices 0, 0d, 1 and 4a start together on 2026-11-04. They touch
