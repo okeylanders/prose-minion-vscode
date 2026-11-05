@@ -1,0 +1,24 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> prose-minion-monorepo@2.12.0 test
+> jest --runInBand --runTestsByPath packages/core/src/__tests__/presentation/webview/pr222.independent.test.tsx
+
+ts-jest[ts-jest-transformer] (WARN) Define `ts-jest` config under `globals` is deprecated. Please do
+transform: {
+    <transform_regex>: ['ts-jest', { /* ts-jest config goes here in Jest */ }],
+},
+See more at https://kulshekhar.github.io/ts-jest/docs/getting-started/presets#advanced
+PASS packages/core/src/__tests__/presentation/webview/pr222.independent.test.tsx
+  PR 222 independent sessions-menu memory checks
+    ✓ opens while memory is Off and the room is running, without changing either; New opens above the manager and Escape closes only the sheet (381 ms)
+    ✓ drops prior card focus, closes back to the trigger, clears search and ignores an earlier opening’s late answer (513 ms)
+    ✓ keeps the new door available but shows the host’s unavailable or failure answer: {"kind":"unavailable","reason":"no-workspace"} (175 ms)
+    ✓ keeps the new door available but shows the host’s unavailable or failure answer: {"kind":"unavailable","reason":"multi-root"} (136 ms)
+    ✓ keeps the new door available but shows the host’s unavailable or failure answer: {"kind":"unknown"} (143 ms)
+    ✓ manager Archive from the new door uses the existing route and shows a correlated host refusal (236 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        5.227 s, estimated 6 s
+Ran all test suites within paths "packages/core/src/__tests__/presentation/webview/pr222.independent.test.tsx".
