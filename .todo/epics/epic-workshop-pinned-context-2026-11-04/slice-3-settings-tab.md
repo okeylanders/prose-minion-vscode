@@ -143,6 +143,9 @@ it back only as a key into the list it just read (ADR D8).
 - This doc.
 - `fa5b7997`: merge of Slice 2b's branch at `b0429082` (no conflicts).
 - `7af567db`: merge of `epic-pinned-context` at `25c9443c` (four keep-both conflicts).
+- `0f862cde`: merge of 2b's last head, `a817f561` (a probe test and docs).
+- `1e06c642`: merge of `epic-pinned-context` at `c52821b5`, after #204 and
+  #208 merged (docs only; no conflicts).
 - `3f4a5d5e`: merge of Slice 2b with #208's F01–F04, plus the binding below.
   2b's new shapes (the captured `where`, the `workspace-changed` states)
   joined the ports module.
@@ -277,7 +280,7 @@ it back only as a key into the list it just read (ADR D8).
 | Check | Before (`51b4988b`, after `npm ci`) | After |
 |---|---|---|
 | `npm run typecheck` | pass | pass |
-| `npx jest -w 2` | 702 suites / 9,902 tests / 59 snapshots, all passing | 710 suites / 10,019 tests / 59 snapshots, all passing |
+| `npx jest -w 2` | 702 suites / 9,902 tests / 59 snapshots, all passing | 711 suites / 10,021 tests / 59 snapshots, all passing |
 | `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (none new) |
 | `from 'vscode'` in `packages/core/src` | none | none |
 | New files over 500 lines | — | none (largest: `WorkshopPinnedContextWrites.ts`, 364 lines; the handler's tests are split across a shared host and two files) |
@@ -292,7 +295,10 @@ counts (702 / 9,902 / 59; 0 / 1,165) hold. "After" is measured at `fa5b7997`,
 after merging Slice 2b's branch at `b0429082` (its kept fix `54e7db78` and
 Slice 1's #204 re-review fixes), as the coordinator asked, and again after
 the follow-ups (the counts above are the latter). The merge brings 11 of
-the new tests (2b measured 9,913); the other 61 are this slice's. The counts in the table are at `3f4a5d5e`, after Slice 2b's #208 fixes
+the new tests (2b measured 9,913); the other 61 are this slice's. The counts in the table are at `1e06c642`, the PR head's code: the epic
+merged after #204 and #208 landed in it (docs only). Before it, `0f862cde`
+brought 2b's last head (Astra's nested-workspace probe, +1 suite, +2
+tests), and `3f4a5d5e` 2b's #208 fixes
 (+1 suite, +24 tests with this slice's three binding tests). Before that,
 the counts were at `7af567db`, after merging `epic-pinned-context` at `25c9443c`
 (Project Memory's #206 and #207), which adds 2 suites and 21 tests. Its four
@@ -407,3 +413,5 @@ file, not a VS Code setting); say so in the PR.
 - **2026-11-04.** Slice doc written with the spec.
 - **2026-11-05.** Built on `epic-pinned-context-slice-3-settings-tab`; see
   Built, Verification and Deviations above.
+- **2026-11-05.** The coordinator's follow-ups, Slice 2b's #208 fixes and
+  the epic merged; verified at `1e06c642` and handed over for the PR.
