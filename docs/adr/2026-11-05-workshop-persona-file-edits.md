@@ -196,13 +196,15 @@ a file that turned prose since staging gets prose rules.
   - inline links and images (destination and title), code spans, autolinks
     and inline HTML.
 
-  An added paragraph that is a heading, a list or any other non-paragraph
+  Emphasis and strong emphasis may change. An added paragraph that is a heading, a list or any other non-paragraph
   block is refused.
 - **`free`:** no structure comparison. Protected regions still hold.
 
 **The rewrite ceiling** (prose only; F-06). It is measured on the live text
 at every attempt:
-- `replaced` is the characters (UTF-16) that replace edits remove;
+- `replaced` is the characters (UTF-16) the replace edits change: for each
+  replace, its quote minus the start and end it shares with its replacement,
+  summed;
 - `touched` is the total characters of the distinct blank-line paragraphs
   (`splitBlankLineParagraphs`) that any replace range overlaps;
 - the apply is refused as `rewrite-ceiling` when
