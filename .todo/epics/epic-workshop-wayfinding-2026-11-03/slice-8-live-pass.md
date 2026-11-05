@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), all decisions
-**Status:** Waiting on Okey for the live pass. Slices 1–7 and 7b are merged into the epic (last merge `4578b71`), and his five decisions are settled. This slice needs a human with VS Code.
+**Status:** Closed (2026-11-05). Okey settled all five decisions and approved merging the epic to `main`. He didn't report checklist results item by item, so the boxes below stay unticked. Anything the pass turns up later is filed as a follow-up, the same way as a blocker or as accepted debt.
 
 ## Outcome
 

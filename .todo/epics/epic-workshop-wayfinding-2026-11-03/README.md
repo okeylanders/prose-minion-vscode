@@ -1,10 +1,10 @@
 # Epic: Workshop Wayfinding
 
-**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 merged (PR #187, `89d6f26`). Slice 4 merged (PR #188, `356c751`). Slice 5 merged (PR #189, `4a180ab`). Slice 7 merged (PR #190, `6c12df5`). Slice 7b merged (PR #195, `4578b71`). Slices 1–7b are done; Slice 8, the live pass, waits on Okey.
+**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 merged (PR #187, `89d6f26`). Slice 4 merged (PR #188, `356c751`). Slice 5 merged (PR #189, `4a180ab`). Slice 7 merged (PR #190, `6c12df5`). Slice 7b merged (PR #195, `4578b71`). Slices 1–7b are done. Slice 8 is closed: Okey settled its decisions and approved merging the epic to `main` on 2026-11-05.
 **Priority:** Medium
 **Created:** 2026-11-03
 **Integration branch:** `epic/workshop-wayfinding`. Each slice is built on its own branch, `epic/workshop-wayfinding-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
-**Decision:** [ADR 2026-11-03: Workshop Wayfinding](../../../docs/adr/2026-11-03-workshop-wayfinding.md) (Proposed)
+**Decision:** [ADR 2026-11-03: Workshop Wayfinding](../../../docs/adr/2026-11-03-workshop-wayfinding.md) (Accepted, 2026-11-05)
 **Design:** [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md), a snapshot of the planning canvas
 **Realizes:** [Two-Tab Rail](../../features/feature-workshop-rail-tabs/README.md), [Read-In Material](../../features/feature-workshop-rail-read-in/README.md), [Thread Bookmarks](../../features/feature-workshop-thread-bookmarks/README.md), [Model Slices](../../features/feature-workshop-model-slices/README.md)
 
@@ -56,7 +56,7 @@ the ADR:
 | 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Done: PR #185, merged at `07d24e7` |
 | 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | Done: PR #190, merged at `6c12df5` |
 | 7b | [The model in the bubble header](slice-7b-model-in-header.md) | "Jill · Opus 5.5" in the thread and export headers, "via" when another model served; the under-body note retired | D8, D10 (2026-11-04 amendment) | Done: PR #195, merged at `4578b71` |
-| 8 | [Verify live](slice-8-live-pass.md) | Extension Development Host pass; ADR → Accepted; feature notes archived; memory bank | — | Waiting on Okey: [checklist](slice-8-live-pass.md#checklist) and [decisions](slice-8-live-pass.md#decisions-for-okey) |
+| 8 | [Verify live](slice-8-live-pass.md) | Extension Development Host pass; ADR → Accepted; feature notes archived; memory bank | — | Done: decisions settled; Okey approved the merge to `main` on 2026-11-05 |
 
 **Order.** Two chains run side by side:
 
@@ -719,3 +719,15 @@ the ADR:
       mirrored rules only.
   - **Left for Slice 8.** Check the header in the editor's webview at a narrow
     width, and how the model text weighs beside the name.
+- **2026-11-05. Close-out.** Okey approved merging the epic to `main`.
+  - **ADR.** 2026-11-03 is Accepted.
+  - **Feature notes.** The four are marked Shipped.
+  - **Memory bank.** There's an entry,
+    [`20261105-1900-workshop-wayfinding-complete.md`](../../../.memory-bank/20261105-1900-workshop-wayfinding-complete.md).
+  - **Archiving is deferred.** This folder and the four feature notes stay
+    where they are for now. The Project Memory and Pinned Context epics were
+    cut from this epic's tip, and their docs, together with the ADR, the
+    design snapshot and the review reports, link here by path. The
+    [bookmark recall follow-up](../../features/feature-workshop-bookmark-recall/README.md)
+    will be cut from Pinned Context and builds on these notes. Archive this
+    epic once those three have merged, and fix the links in the same pass.
