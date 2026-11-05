@@ -145,7 +145,10 @@ import {
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import { cloneTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
 import { cloneWorkshopMemoryProposal } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
-import { cloneWorkshopFileEditProposal } from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
+import {
+  cloneWorkshopFileEditProposal,
+  settleWorkshopFileEditProposalsOnReopen
+} from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
 import { workshopMemoryProposalAt } from '@shared/constants/workshopProjectMemoryWrites';
 import {
   cloneWorkshopMemoryReceipt,
@@ -2227,7 +2230,8 @@ export class WorkshopSessionService {
       normalized.pendingMessageAttachments.map(cloneMessageAttachment);
     const threadArtifacts = (normalized.threadArtifacts ?? []).map(cloneThreadArtifact);
     const turnState = this.turnLedger.prepareState({
-      turns: normalized.turns,
+      // A card found `applying` reads as `unknown` (ADR 2026-11-05 D8's reopen rule).
+      turns: normalized.turns.map(settleWorkshopFileEditProposalsOnReopen),
       counter: normalized.counters.turn
     });
     const todoState = this.todoLedger.prepareState({

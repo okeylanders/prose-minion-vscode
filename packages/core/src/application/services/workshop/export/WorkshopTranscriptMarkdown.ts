@@ -94,7 +94,7 @@ function renderEntry(entry: WorkshopTranscriptLine, options: WorkshopTranscriptR
           '**Suggested file edits**',
           '',
           ...entry.fileEdits.map((edit) =>
-            `- ${escapeInline(workshopTranscriptFileEditLabel(edit.target))} · ${edit.state}: ${escapeInline(edit.why)}`
+            `- ${escapeInline(workshopTranscriptFileEditLabel(edit))} · ${edit.state}: ${escapeInline(edit.why)}`
           )
         ].join('\n'));
       }

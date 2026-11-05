@@ -137,4 +137,11 @@ This is the same flow as Project Memory and Bookmark Recall.
   - Baseline on `f4dcc641`: typecheck clean; lint 0 errors, 1,165 warnings; jest 754 suites, 10,499 tests, 59 snapshots.
   - Built: the `<prose-minion-file-edit>` codec, budgets, the prompt with its worked example and sync test, one-pass trailer reading beside memory, `fileEditProposals` with its session codec, the transcript projection and the `fileEdits` setting. No gateway, UI or apply.
   - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 761 suites, 10,636 tests, 59 snapshots.
-  - See [the slice doc](slice-3-proposal.md), which lists three questions for review.
+  - See [the slice doc](slice-3-proposal.md).
+  - **Revised to the settled contracts** (PR #226 review; ADR `494a17d3`, merged in):
+    - D2's bounds;
+    - staging through `FileEditStaging` (the interface agreed with Slice 2; a fake in tests);
+    - D10's card shape, with the `applying` → `unknown` reopen rule;
+    - `documentUri` kept out of the webview;
+    - log sentinels.
+  - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 762 suites, 10,663 tests, 59 snapshots.

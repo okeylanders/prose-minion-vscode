@@ -203,7 +203,7 @@ function renderFileEdits(entry: WorkshopTranscriptReplyEntry): string {
     return '';
   }
   const items = entry.fileEdits.map((edit) =>
-    `<li>${escapeHtml(workshopTranscriptFileEditLabel(edit.target))} · ${escapeHtml(edit.state)}: ${escapeHtml(edit.why)}</li>`);
+    `<li>${escapeHtml(workshopTranscriptFileEditLabel(edit))} · ${escapeHtml(edit.state)}: ${escapeHtml(edit.why)}</li>`);
   return '<div class="pm-ws-export-file-edits" aria-label="Suggested file edits">' +
     '<div class="pm-ws-eyebrow">Suggested file edits</div>' +
     `<ul>${items.join('')}</ul>` +

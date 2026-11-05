@@ -135,27 +135,34 @@ export interface PromptBudgets {
     pathCharacters: number;
   }>;
   /**
-   * Workshop persona file edits (ADR 2026-11-05 D2, D5). The proposal's
-   * bounds (Slice 3) are the codec's; `appendWords` is the gateway's prose
-   * bound (Slice 2), quoted by the prompt.
+   * Workshop persona file edits (ADR 2026-11-05 D2, D10). The proposal's
+   * bounds (Slice 3) are the codec's and the session's; Slice 2 adds the
+   * gateway's (`rewriteCeilingShare`, `rewriteFloorCharacters`, `fileBytes`,
+   * `rewriteFileBytes`) to this block.
    */
   readonly workshopFileEdits: Readonly<{
     /** Frames one reply may carry: past it, dropped and counted (Q4). */
     proposalsPerReply: number;
-    /** `<find>` / `<replace-with>` pairs one frame may carry. */
-    editReplaces: number;
+    /** One frame's inside: a longer frame is dropped whole, unread past it. */
+    frameCharacters: number;
     /** The one-line `<why>`. */
     whyCharacters: number;
-    /** A `<rewrite>`'s new text. */
-    rewriteCharacters: number;
+    /** `<find>` / `<replace-with>` pairs one frame may carry. */
+    editReplaces: number;
     /** A `<find>`'s quote. */
     findCharacters: number;
     /** A `<replace-with>`'s text. */
     replaceWithCharacters: number;
-    /** An `<append>` or `<prepend>` passage. */
-    passageCharacters: number;
-    /** Prose's appended or prepended passage, about this many words (Q2; the gateway's). */
-    appendWords: number;
+    /** An append or a prepend on prose, in words (`/\S+/gu`): the gateway's policy, taught by the prompt. */
+    insertWords: number;
+    /** Every append and prepend, in characters: the codec's. */
+    insertCharacters: number;
+    /** A `<rewrite>`'s new text. */
+    rewriteCharacters: number;
+    /** A landed record's `before` and `after` (D10); past it, only their hashes. */
+    revertCharacters: number;
+    /** A landed record's context on each side, which anchors a deletion (D10). */
+    landedContextCharacters: number;
   }>;
   readonly workshopTodos: Readonly<{
     items: number;
@@ -618,14 +625,16 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   },
   workshopFileEdits: {
     proposalsPerReply: 5,
-    editReplaces: 5,
+    frameCharacters: 24_000,
     whyCharacters: 200,
-    rewriteCharacters: 40_000,
+    editReplaces: 8,
     findCharacters: 2_000,
-    replaceWithCharacters: 8_000,
-    passageCharacters: 8_000,
-    // Slice 2's key, the same value: the prompt quotes it.
-    appendWords: 400
+    replaceWithCharacters: 4_000,
+    insertWords: 400,
+    insertCharacters: 4_000,
+    rewriteCharacters: 16_000,
+    revertCharacters: 4_000,
+    landedContextCharacters: 80
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {

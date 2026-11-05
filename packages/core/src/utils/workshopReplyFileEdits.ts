@@ -9,6 +9,8 @@
  *   with them off, every frame is `file-edits-off`, dropped and counted;
  * - the frame closed, not nested, exactly tagged, and at the tail, as a
  *   memory frame is (`workshopReplyTrailerStructureRejection`);
+ * - its inside within `frameCharacters` (`oversized` otherwise: dropped
+ *   whole, never read);
  * - its inside decodes (`malformed:<fault>` otherwise);
  * - its file is no earlier frame's (`duplicate`): one frame per file;
  * - at most `proposalsPerReply` are kept: a well-formed one past them is
@@ -35,6 +37,7 @@ export type WorkshopReplyFileEditRejection =
   | 'duplicate'
   | 'over-cap'
   | 'file-edits-off'
+  | 'oversized'
   | `malformed:${WorkshopFileEditFault}`;
 
 export interface WorkshopReplyFileEditControl {
@@ -74,6 +77,10 @@ function judgeFrame(frame: WorkshopReplyTrailerFrame, atTail: boolean, open: boo
   if (structural) {
     return structural;
   }
-  const decoded = decodeWorkshopFileEdit(frame.inner ?? '');
+  const inner = frame.inner ?? '';
+  if (inner.length > PROMPT_BUDGETS.workshopFileEdits.frameCharacters) {
+    return 'oversized';
+  }
+  const decoded = decodeWorkshopFileEdit(inner);
   return decoded.kind === 'edit' ? decoded.edit : `malformed:${decoded.fault}`;
 }

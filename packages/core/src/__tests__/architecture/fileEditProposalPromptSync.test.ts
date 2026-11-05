@@ -34,9 +34,13 @@ const prose = PROMPT.replace(/```[\s\S]*?```/g, '');
 describe('file-edit proposal prompt ↔ PROMPT_BUDGETS', () => {
   const pinned: ReadonlyArray<readonly [RegExp, number[]]> = [
     [/One reply suggests at most ([\d,]+) edits/, [budgets.proposalsPerReply]],
+    [/a trailer longer than ([\d,]+) characters is dropped whole/, [budgets.frameCharacters]],
     [/`<why>`: required, one line, at most ([\d,]+) characters/, [budgets.whyCharacters]],
+    [/quoted, at most ([\d,]+) characters, and what takes its place, at most ([\d,]+) characters/, [budgets.findCharacters, budgets.replaceWithCharacters]],
     [/At most ([\d,]+) find-and-replace pairs in one trailer/, [budgets.editReplaces]],
-    [/An append or a prepend adds at most about ([\d,]+) words/, [budgets.appendWords]]
+    [/each at most once and at most ([\d,]+) characters/, [budgets.insertCharacters]],
+    [/after any front matter, at most ([\d,]+) characters/, [budgets.rewriteCharacters]],
+    [/An append or a prepend adds at most ([\d,]+) words/, [budgets.insertWords]]
   ];
 
   it.each(pinned)('quotes %s from its bound', (pattern, expected) => {
@@ -67,6 +71,9 @@ describe('file-edit proposal prompt ↔ PROMPT_BUDGETS', () => {
     expect(prose).toContain('**Notes** take all four: a rewrite, find-and-replace, append and prepend.');
     expect(prose).toContain('is never rewritten whole');
     expect(prose).toContain('A rewrite takes no other change.');
+    expect(prose).toContain('Prefer find-and-replace: it changes only what it quotes.');
+    expect(prose).toContain('Rewrite only a short note with no links, images or code');
+    expect(prose).toContain('never write `<rewrite>` for a chapter');
     // The prose groups it names are real groups.
     for (const group of [...prose.matchAll(/\*\*Prose\*\* \(([^)]*)\)/g)][0][1].matchAll(/`([a-zA-Z]+)`/g)) {
       expect(CONTEXT_PATH_GROUPS as readonly string[]).toContain(group[1]);

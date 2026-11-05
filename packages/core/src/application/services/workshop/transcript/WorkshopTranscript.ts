@@ -29,10 +29,9 @@
  *   before the first entry at or after the turn it belongs before, so a turn
  *   the transcript omits never drops one. A stamped reply or capability
  *   card carries its `model` (D10).
- * - A persona reply's file-edit cards (ADR 2026-11-05 D8) carry each card's
- *   file (its group and path, or the excerpt), its `why` and its state:
- *   never an operation's text (a quote, a replacement, a passage), which is
- *   the writer's file and the persona's draft of it.
+ * - A persona reply's file-edit cards (ADR 2026-11-05 D10) carry each card's
+ *   display path, its `why` and its state: never an operation's text (a
+ *   quote, a replacement, a passage) and never the host's `documentUri`.
  * - Neither slices, `model` nor `fileEdits` come from
  *   `projectWorkshopTranscriptTurn`, so session recall and the turn
  *   preview, which read turns only through it, never see them.
@@ -44,7 +43,7 @@ import {
   citationDisplayLabel,
   type ModelScope,
   type WorkshopFileEditState,
-  type WorkshopFileEditTarget,
+  workshopFileEditDisplayPath,
   type WorkshopTurn,
   type WorkshopTurnModel
 } from '@messages';
@@ -95,16 +94,16 @@ export interface WorkshopTranscriptReplyEntry {
   fileEdits?: WorkshopTranscriptFileEdit[];
 }
 
-/** One file-edit card as a transcript shows it: which file, why, and what became of it. Never its text. */
+/** One file-edit card as a transcript shows it: its display path, why, and what became of it. Never its text or URI. */
 export interface WorkshopTranscriptFileEdit {
-  target: WorkshopFileEditTarget;
+  path: string;
   why: string;
   state: WorkshopFileEditState;
 }
 
-/** A card's file in words: its path and group, or the excerpt's document. */
-export function workshopTranscriptFileEditLabel(target: WorkshopFileEditTarget): string {
-  return target.kind === 'excerpt' ? 'the excerpt\'s document' : `${target.path} (${target.group})`;
+/** A card's file in words: its display path. */
+export function workshopTranscriptFileEditLabel(edit: Pick<WorkshopTranscriptFileEdit, 'path'>): string {
+  return edit.path;
 }
 
 export interface WorkshopTranscriptSource {
@@ -231,7 +230,7 @@ function withModel(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): Workshop
   };
 }
 
-/** A reply's file-edit cards: file, why and state, never the operations (D8). */
+/** A reply's file-edit cards: display path, why and state, never the operations or the URI (D10). */
 function withFileEdits(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): WorkshopTranscriptEntry {
   if (entry.kind !== 'reply' || !turn.fileEditProposals?.length) {
     return entry;
@@ -239,9 +238,7 @@ function withFileEdits(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): Work
   return {
     ...entry,
     fileEdits: turn.fileEditProposals.map((proposal) => ({
-      target: proposal.target.kind === 'excerpt'
-        ? { kind: 'excerpt' }
-        : { kind: 'resource', group: proposal.target.group, path: proposal.target.path },
+      path: workshopFileEditDisplayPath(proposal),
       why: proposal.why,
       state: proposal.state
     }))

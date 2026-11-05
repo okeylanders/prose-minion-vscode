@@ -37,7 +37,7 @@ import {
   extractWorkshopReplyControls,
   workshopTrailersOnlyReplyLine
 } from '@/utils/workshopReplyControls';
-import { settleWorkshopFileEditProposals } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
+import type { WorkshopReplyFileEditContext } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
 import {
   settleWorkshopMemoryProposals,
   WORKSHOP_REPLY_MEMORY_CLOSED,
@@ -136,11 +136,12 @@ export interface WorkshopRunCompletionInput {
   /** The room's automatic saves, landed and in flight (PR #201 F-04); absent, its landed receipts. */
   memoryAutoSavesInRoom?: () => number;
   /**
-   * Whether personas may propose file edits (`fileEdits: ask`), read when
-   * the reply is read (ADR 2026-11-05 D9). Absent reads as off: a frame is
-   * still stripped, and dropped and counted.
+   * The reply's file edits, staged before completion (ADR 2026-11-05 D4,
+   * D11; `resolveWorkshopReplyFileEdits`), with the setting read when the
+   * reply was read. Used only for the reply it was resolved from. Absent, a
+   * frame is still stripped, and dropped and counted (`not-staged`).
    */
-  fileEditsOpen?: boolean;
+  fileEdits?: WorkshopReplyFileEditContext;
   log: (line: string) => void;
   events: WorkshopRunCompletionEvents;
 }
@@ -285,15 +286,18 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // project-memory frame is split off first, and every other reader takes
   // the rest; every log takes the redacted copy, never the memory's text.
   const memoryContext = input.memory ?? WORKSHOP_REPLY_MEMORY_CLOSED;
-  const controls = extractWorkshopReplyControls(result.content, {
-    memoryOpen: memoryContext.open,
-    fileEditsOpen: input.fileEditsOpen === true
-  });
+  const controls = extractWorkshopReplyControls(result.content, { memoryOpen: memoryContext.open });
   const memory = settleWorkshopMemoryProposals(controls.memory, memoryContext, input.memoryAutoSave && {
     webResearchAttached: result.webResearchAttached === true,
     autoSavesInRoom: input.memoryAutoSavesInRoom ?? (() => countWorkshopRoomAutoSaves(session.readRoomLedger()))
   });
-  const fileEdits = settleWorkshopFileEditProposals(controls.fileEdits);
+  const fileEdits = input.fileEdits?.reply === result.content
+    ? input.fileEdits
+    : {
+      proposals: [],
+      logs: (controls.fileEdits ? [...controls.fileEdits.proposals, ...controls.fileEdits.rejections] : [])
+        .map(() => 'File edit proposal dropped (reason=not-staged)')
+    };
   for (const line of [...memory.logs, ...fileEdits.logs]) {
     input.log(`${line} (${label})`);
   }

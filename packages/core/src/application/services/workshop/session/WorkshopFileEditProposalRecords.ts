@@ -1,34 +1,46 @@
 /**
  * `WorkshopTurn.fileEditProposals` in the persisted session (ADR 2026-11-05
- * D8; epic Slice 3). Optional and additive: written only when present, no
+ * D10; epic Slice 3). Optional and additive: written only when present, no
  * `schemaVersion` change in this slice (the release decision is ADR
  * 2026-07-30's, at the epic's end). A session without it reads and writes
  * exactly as before.
  *
  * When present it is exact: one to `proposalsPerReply` cards, only on a
- * persona's reply (a host or guest assistant turn), no two naming one file.
- * Each card holds:
- * - its `target`: a catalog key by `resource.read`'s rule, or the excerpt;
- * - its `operations`, by the trailer codec's own rule
- *   (`workshopFileEditOperationsFault`);
- * - its one-line `why`, within `whyCharacters`;
- * - its `state`, and `landed` exactly when it is applied: the file as the
- *   gateway resolved it, the version after, and each applied range's text
- *   with the operations it carries (each operation in at most one range);
- * - a `reason`, the host's one line, on an applied, stale or refused card
- *   only.
+ * persona's reply, no two requesting one file. Each card holds:
+ * - `requested`: what the frame named, by `resource.read`'s rule, or the excerpt;
+ * - `target`, `class` and `baseline` together, staging's (D4–D6): a
+ *   `file` identity for a resource, an `excerpt` one for the excerpt, each a
+ *   host-written `documentUri` and a safe display path. Only a card refused
+ *   at staging lacks them, and it names its reason;
+ * - `operations`, by the trailer codec's own rule;
+ * - its one-line `why`;
+ * - its `state` and, once settled (applied, partial, unknown), one outcome
+ *   per operation: all landed when applied, some and not all when partial;
+ * - one `landed` record per landed operation (N-01): its before and after
+ *   within `revertCharacters` and its context within
+ *   `landedContextCharacters`, or only their hashes;
+ * - a `reason`, the host's one line, never on a pending, applying, applied or
+ *   declined card.
  *
- * No development checkpoint ever held another shape of this field, so no
- * normalization reads it.
+ * **Reopen** (D8): `applying` is a legitimate persisted state, written only
+ * around a dispatched write. The codec reads it as written, so a file
+ * round-trips; a session that is *reopened* reads it as `unknown`, by the read
+ * rule `settleWorkshopFileEditProposalsOnReopen`, which hydration applies.
+ * It is not a checkpoint normalization: no development shape is repaired.
+ * No development checkpoint ever held another shape of this field.
  */
 
 import {
+  WORKSHOP_FILE_EDIT_CLASSES,
+  WORKSHOP_FILE_EDIT_OPERATION_OUTCOMES,
   WORKSHOP_FILE_EDIT_RECORD_LIMITS,
+  WORKSHOP_FILE_EDIT_REOPENED_APPLYING_REASON,
   WORKSHOP_FILE_EDIT_STATES,
-  type WorkshopFileEditLanded,
   type WorkshopFileEditOperation,
+  type WorkshopFileEditOperationOutcome,
   type WorkshopFileEditProposal,
-  type WorkshopFileEditTarget
+  type WorkshopFileEditRequestedTarget,
+  type WorkshopTurn
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
@@ -40,6 +52,7 @@ import {
   shapeError
 } from '@/application/services/workshop/persistedValidation';
 import { oneLineAt } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
+import { isSafeConfiguredResourcePath } from '@/utils/configuredResourcePath';
 import {
   sameWorkshopFileEditTarget,
   workshopFileEditOperationsFault,
@@ -49,11 +62,9 @@ import {
 const BUDGETS = PROMPT_BUDGETS.workshopFileEdits;
 /** A rewrite stands alone, so a card holds at most its replaces, an append and a prepend. */
 const CARD_OPERATIONS = BUDGETS.editReplaces + 2;
-/** What one applied range may hold: every operation's text joined into it. */
-const RANGE_CHARACTERS = Math.max(
-  BUDGETS.rewriteCharacters,
-  BUDGETS.editReplaces * BUDGETS.replaceWithCharacters + 2 * BUDGETS.passageCharacters
-) + CARD_OPERATIONS * BUDGETS.findCharacters;
+const SHA256 = /^[0-9a-f]{64}$/;
+const SETTLED: readonly string[] = ['applied', 'partial', 'unknown'];
+const NO_REASON: readonly string[] = ['pending', 'applying', 'applied', 'declined'];
 
 /** Strict structure of one turn's `fileEditProposals`, and that its turn may carry them. */
 export function assertWorkshopFileEditProposalShape(turn: Record<string, unknown>, path: string, checkpoint: boolean): void {
@@ -65,37 +76,40 @@ export function assertWorkshopFileEditProposalShape(turn: Record<string, unknown
     shapeError(at, 'a host or guest persona reply');
   }
   boundedArrayAt(turn.fileEditProposals, at, 1, BUDGETS.proposalsPerReply, 'file edit suggestions');
-  const targets: WorkshopFileEditTarget[] = [];
-  (turn.fileEditProposals as unknown[]).forEach((item, index) => {
+  const requested: WorkshopFileEditRequestedTarget[] = [];
+  turn.fileEditProposals.forEach((item, index) => {
     const target = assertProposal(item, `${at}[${index}]`);
-    if (targets.some((earlier) => sameWorkshopFileEditTarget(earlier, target))) {
-      shapeError(`${at}[${index}].target`, 'a file no earlier card names');
+    if (requested.some((earlier) => sameWorkshopFileEditTarget(earlier, target))) {
+      shapeError(`${at}[${index}].requested`, 'a file no earlier card names');
     }
-    targets.push(target);
+    requested.push(target);
   });
 }
 
-function assertProposal(value: unknown, at: string): WorkshopFileEditTarget {
-  const proposal = exactObject(value, at, ['target', 'operations', 'why', 'state'], ['landed', 'reason']);
-  const target = assertTarget(proposal.target, `${at}.target`);
+function assertProposal(value: unknown, at: string): WorkshopFileEditRequestedTarget {
+  const proposal = exactObject(
+    value,
+    at,
+    ['requested', 'operations', 'why', 'state'],
+    ['target', 'class', 'baseline', 'reason', 'outcomes', 'landed']
+  );
+  const requested = assertRequested(proposal.requested, `${at}.requested`);
   const operations = assertOperations(proposal.operations, `${at}.operations`);
   oneLineAt(proposal.why, `${at}.why`, BUDGETS.whyCharacters);
   enumAt(proposal.state, `${at}.state`, WORKSHOP_FILE_EDIT_STATES);
-  if (proposal.state === 'applied') {
-    assertLanded(proposal.landed, `${at}.landed`, operations.length);
-  } else if (proposal.landed !== undefined) {
-    shapeError(`${at}.landed`, 'absent on a card that was not applied');
-  }
+  assertStaging(proposal, requested, at);
   if (proposal.reason !== undefined) {
-    if (proposal.state === 'pending' || proposal.state === 'declined') {
-      shapeError(`${at}.reason`, 'absent on a pending or declined card');
+    if (NO_REASON.includes(proposal.state as string)) {
+      shapeError(`${at}.reason`, 'absent on a pending, applying, applied or declined card');
     }
     oneLineAt(proposal.reason, `${at}.reason`, WORKSHOP_FILE_EDIT_RECORD_LIMITS.reasonCharacters);
   }
-  return target;
+  const outcomes = assertOutcomes(proposal, operations.length, at);
+  assertLanded(proposal.landed, `${at}.landed`, outcomes);
+  return requested;
 }
 
-function assertTarget(value: unknown, at: string): WorkshopFileEditTarget {
+function assertRequested(value: unknown, at: string): WorkshopFileEditRequestedTarget {
   const kind = objectAt(value, at).kind;
   if (kind === 'excerpt') {
     exactObject(value, at, ['kind']);
@@ -109,7 +123,32 @@ function assertTarget(value: unknown, at: string): WorkshopFileEditTarget {
     || workshopFileEditResourceFault(target.group, target.path) !== undefined) {
     shapeError(at, 'a configured resource: a known group and a workspace-relative path, within bounds');
   }
-  return value as WorkshopFileEditTarget;
+  return value as WorkshopFileEditRequestedTarget;
+}
+
+/** Staging's three fields together, matching what was requested; absent only on a card refused at staging. */
+function assertStaging(proposal: Record<string, unknown>, requested: WorkshopFileEditRequestedTarget, at: string): void {
+  const staged = [proposal.target, proposal.class, proposal.baseline].filter((field) => field !== undefined).length;
+  if (staged === 0) {
+    if (proposal.state !== 'refused' || proposal.reason === undefined) {
+      shapeError(`${at}.target`, 'present, or the card refused at staging with its reason');
+    }
+    return;
+  }
+  if (staged !== 3) {
+    shapeError(at, 'target, class and baseline together');
+  }
+  const target = exactObject(proposal.target, `${at}.target`, ['kind', 'documentUri', 'relativePath']);
+  enumAt(target.kind, `${at}.target.kind`, [requested.kind === 'excerpt' ? 'excerpt' : 'file']);
+  boundedStringAt(target.documentUri, `${at}.target.documentUri`, WORKSHOP_FILE_EDIT_RECORD_LIMITS.documentUriCharacters, false);
+  boundedStringAt(target.relativePath, `${at}.target.relativePath`, PROMPT_BUDGETS.workshopResource.pathCharacters, false);
+  if (!isSafeConfiguredResourcePath(target.relativePath as string)) {
+    shapeError(`${at}.target.relativePath`, 'a workspace-relative path');
+  }
+  enumAt(proposal.class, `${at}.class`, WORKSHOP_FILE_EDIT_CLASSES);
+  const baseline = exactObject(proposal.baseline, `${at}.baseline`, ['sha256', 'length']);
+  sha256At(baseline.sha256, `${at}.baseline.sha256`);
+  countAt(baseline.length, `${at}.baseline.length`);
 }
 
 function assertOperations(value: unknown, at: string): WorkshopFileEditOperation[] {
@@ -135,7 +174,7 @@ function assertOperation(value: unknown, at: string): WorkshopFileEditOperation 
     case 'append':
     case 'prepend': {
       const operation = exactObject(value, at, ['op', 'text']);
-      boundedStringAt(operation.text, `${at}.text`, op === 'rewrite' ? BUDGETS.rewriteCharacters : BUDGETS.passageCharacters);
+      boundedStringAt(operation.text, `${at}.text`, op === 'rewrite' ? BUDGETS.rewriteCharacters : BUDGETS.insertCharacters);
       break;
     }
     default:
@@ -144,47 +183,105 @@ function assertOperation(value: unknown, at: string): WorkshopFileEditOperation 
   return value as WorkshopFileEditOperation;
 }
 
-function assertLanded(value: unknown, at: string, operationCount: number): void {
-  const landed = exactObject(value, at, ['target', 'version', 'ranges']);
-  assertTarget(landed.target, `${at}.target`);
-  if (!Number.isSafeInteger(landed.version) || (landed.version as number) < 0) {
-    shapeError(`${at}.version`, 'a non-negative integer');
-  }
-  boundedArrayAt(landed.ranges, `${at}.ranges`, 1, operationCount, 'applied ranges');
-  const carried = new Set<number>();
-  landed.ranges.forEach((item, index) => {
-    const range = exactObject(item, `${at}.ranges[${index}]`, ['operations', 'text']);
-    boundedStringAt(range.text, `${at}.ranges[${index}].text`, RANGE_CHARACTERS);
-    boundedArrayAt(range.operations, `${at}.ranges[${index}].operations`, 1, operationCount, 'operations');
-    for (const operation of range.operations) {
-      if (!Number.isSafeInteger(operation) || (operation as number) < 0 || (operation as number) >= operationCount
-        || carried.has(operation as number)) {
-        shapeError(`${at}.ranges[${index}].operations`, 'indexes of the card\'s operations, each in one range');
-      }
-      carried.add(operation as number);
+/** One outcome per operation, exactly on a settled card; all landed when applied, some and not all when partial. */
+function assertOutcomes(
+  proposal: Record<string, unknown>,
+  operationCount: number,
+  at: string
+): readonly WorkshopFileEditOperationOutcome[] | undefined {
+  const state = proposal.state as string;
+  if (proposal.outcomes === undefined) {
+    if (state === 'applied' || state === 'partial') {
+      shapeError(`${at}.outcomes`, 'one outcome per operation on an applied or partial card');
     }
+    return undefined;
+  }
+  if (!SETTLED.includes(state)) {
+    shapeError(`${at}.outcomes`, 'absent on a card that has not settled');
+  }
+  boundedArrayAt(proposal.outcomes, `${at}.outcomes`, operationCount, operationCount, 'outcomes');
+  const outcomes = proposal.outcomes as WorkshopFileEditOperationOutcome[];
+  outcomes.forEach((outcome, index) => enumAt(outcome, `${at}.outcomes[${index}]`, WORKSHOP_FILE_EDIT_OPERATION_OUTCOMES));
+  const landed = outcomes.filter((outcome) => outcome === 'landed').length;
+  if (state === 'applied' && landed !== operationCount) {
+    shapeError(`${at}.outcomes`, 'every operation landed on an applied card');
+  }
+  if (state === 'partial' && (landed === 0 || landed === operationCount)) {
+    shapeError(`${at}.outcomes`, 'some operations, not all, landed on a partial card');
+  }
+  return outcomes;
+}
+
+/** One record per landed operation, and none otherwise. */
+function assertLanded(value: unknown, at: string, outcomes: readonly WorkshopFileEditOperationOutcome[] | undefined): void {
+  const landedOperations = (outcomes ?? []).flatMap((outcome, index) => outcome === 'landed' ? [index] : []);
+  if (value === undefined) {
+    if (landedOperations.length > 0) {
+      shapeError(at, 'one record per landed operation');
+    }
+    return;
+  }
+  if (landedOperations.length === 0) {
+    shapeError(at, 'absent when no operation landed');
+  }
+  boundedArrayAt(value, at, landedOperations.length, landedOperations.length, 'landed records');
+  const seen = new Set<number>();
+  value.forEach((item, index) => {
+    const itemAt = `${at}[${index}]`;
+    const operation = objectAt(item, itemAt).operation;
+    if (typeof operation !== 'number' || !landedOperations.includes(operation) || seen.has(operation)) {
+      shapeError(`${itemAt}.operation`, 'a landed operation no other record names');
+    }
+    seen.add(operation);
+    if ('beforeSha256' in (item as object)) {
+      const record = exactObject(item, itemAt, ['operation', 'beforeSha256', 'afterSha256']);
+      sha256At(record.beforeSha256, `${itemAt}.beforeSha256`);
+      sha256At(record.afterSha256, `${itemAt}.afterSha256`);
+      return;
+    }
+    const record = exactObject(item, itemAt, ['operation', 'before', 'after', 'contextBefore', 'contextAfter', 'versionAfter']);
+    boundedStringAt(record.before, `${itemAt}.before`, BUDGETS.revertCharacters);
+    boundedStringAt(record.after, `${itemAt}.after`, BUDGETS.revertCharacters);
+    boundedStringAt(record.contextBefore, `${itemAt}.contextBefore`, BUDGETS.landedContextCharacters);
+    boundedStringAt(record.contextAfter, `${itemAt}.contextAfter`, BUDGETS.landedContextCharacters);
+    countAt(record.versionAfter, `${itemAt}.versionAfter`);
   });
 }
 
+function sha256At(value: unknown, at: string): void {
+  if (typeof value !== 'string' || !SHA256.test(value)) {
+    shapeError(at, 'a SHA-256 (64 lower-case hex digits)');
+  }
+}
+
+function countAt(value: unknown, at: string): void {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) {
+    shapeError(at, 'a non-negative integer');
+  }
+}
+
+/**
+ * The reopen rule (D8): a card found `applying` in a session being reopened
+ * reads as `unknown`, its write's outcome unknowable, with every operation's
+ * outcome `unknown`. Returns the turn itself when it holds no such card.
+ */
+export function settleWorkshopFileEditProposalsOnReopen(turn: WorkshopTurn): WorkshopTurn {
+  if (!turn.fileEditProposals?.some((proposal) => proposal.state === 'applying')) {
+    return turn;
+  }
+  return {
+    ...turn,
+    fileEditProposals: turn.fileEditProposals.map((proposal): WorkshopFileEditProposal => proposal.state !== 'applying'
+      ? proposal
+      : {
+        ...proposal,
+        state: 'unknown',
+        reason: WORKSHOP_FILE_EDIT_REOPENED_APPLYING_REASON,
+        outcomes: proposal.operations.map(() => 'unknown' as const)
+      })
+  };
+}
+
 export function cloneWorkshopFileEditProposal(proposal: WorkshopFileEditProposal): WorkshopFileEditProposal {
-  return {
-    target: cloneTarget(proposal.target),
-    operations: proposal.operations.map((operation) => ({ ...operation })),
-    why: proposal.why,
-    state: proposal.state,
-    ...(proposal.landed ? { landed: cloneLanded(proposal.landed) } : {}),
-    ...(proposal.reason !== undefined ? { reason: proposal.reason } : {})
-  };
-}
-
-function cloneTarget(target: WorkshopFileEditTarget): WorkshopFileEditTarget {
-  return target.kind === 'excerpt' ? { kind: 'excerpt' } : { kind: 'resource', group: target.group, path: target.path };
-}
-
-function cloneLanded(landed: WorkshopFileEditLanded): WorkshopFileEditLanded {
-  return {
-    target: cloneTarget(landed.target),
-    version: landed.version,
-    ranges: landed.ranges.map((range) => ({ operations: [...range.operations], text: range.text }))
-  };
+  return JSON.parse(JSON.stringify(proposal)) as WorkshopFileEditProposal;
 }

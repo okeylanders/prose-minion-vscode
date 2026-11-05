@@ -78,6 +78,15 @@ describe('file-edit frames in a reply', () => {
     expect(extractWorkshopReplyControls(`Good.\n\n${fileEditFrame()}`, { memoryOpen: true }).fileEdits?.rejections).toEqual(['file-edits-off']);
   });
 
+  it('a frame past `frameCharacters` is dropped whole, unread, and never shows', () => {
+    const bound = PROMPT_BUDGETS.workshopFileEdits.frameCharacters;
+    const huge = fileEditFrame({ body: [`<append>${'a'.repeat(bound)}</append>`] });
+    const controls = extractWorkshopReplyControls(`Good.\n\n${huge}\n${fileEditFrame()}`, OPEN);
+    expect(controls.rest).toBe('Good.');
+    expect(controls.fileEdits?.rejections).toEqual(['oversized']);
+    expect(controls.fileEdits?.proposals).toHaveLength(1);
+  });
+
   describe('beside memory frames', () => {
     it('either kind may stand last: both are at the tail, in any order', () => {
       const reply = `Good.\n\n${fileEditFrame()}\n${memoryFrame()}\n${fileEditFrame({ excerpt: true })}`;

@@ -1,95 +1,144 @@
 # Slice 3: The proposal
 
-**Status:** Built, in review.
+**Status:** Built, in review. Revised to the settled contracts (ADR at `494a17d3`: D2, D4, D10, D11, D13; PR #226's ledger), merged in at `ed51137e`.
 **Branch:** `epic/workshop-persona-file-edits-slice-3-proposal`
-**Decision:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D2, D8, D9
-**Built on:** Slice 1 (`f4dcc641`). Parallel to Slice 2 (the gateway); no gateway, `DocumentEditor` or `DraftEditApplier` code is touched. No UI and no apply.
+**Decision:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D2, D4 (the port and its caller), D10, D11, D13
+**Built on:** Slice 1 (`f4dcc641`). It runs parallel to Slice 2, which implements `FileEditStaging`. This slice doesn't touch the gateway, `DocumentEditor` or `DraftEditApplier`. No UI and no apply.
 
 ## Scope
 
-- **The trailer** (`utils/workshopFileEditProtocol.ts`, pure). One `<prose-minion-file-edit>` frame per file:
-  - the target is `<group>` + `<path>` by `resource.read`'s rule (a known group; `isSafeConfiguredResourcePath`; within `workshopResource.pathCharacters`), or `<excerpt/>`;
-  - the operations, in the order written, are the shared planner's `TextEditOperation`: `<rewrite>` (alone), `<find>` + `<replace-with>` (at most `editReplaces` pairs), `<append>` and `<prepend>` (once each);
-  - a required one-line `<why>`;
-  - faults are values (`WORKSHOP_FILE_EDIT_FAULTS` plus the reader's), never thrown.
-- **Shared extractions, not copies.**
-  - `utils/workshopTrailerElements.ts`: the element reader, moved out of the memory codec (which now calls it). It adds one opt-in, a self-closed empty element (`<excerpt/>`), which memory doesn't use.
-  - `utils/configuredResourcePath.ts`: `isSafeConfiguredResourcePath`, moved out of `WorkshopConfiguredResourceLookup` (which re-exports it). It is now pure, with no Node `path` import, so the webview-reachable reply extractor can use it.
-  - `utils/workshopReplyTrailerFrames.ts`: the reply's frame scanner, moved out of `workshopReplyControls` and made multi-tag.
-- **Reading a reply.** `extractWorkshopReplyControls` finds memory and file-edit frames in one pass, so the two kinds stand at the tail together, in any order.
-  - `utils/workshopReplyFileEdits.ts` judges each file-edit frame on its own: off (`file-edits-off`), structure (as memory's), decode (`malformed:<fault>`), one frame per file (`duplicate`), and the cap (`over-cap`). Dropped frames are counted; the reply is never dropped.
-  - `rest` holds no frame; `redacted` shows `[file edit proposal removed]`. Streaming and retention strip both kinds (renamed `stripWorkshopReplyTrailersForStreaming` / `…ForRetention`).
-  - `fileEdits` is **absent** when the reply held no file-edit frame, so every memory-only result is exactly as before.
-  - The frame tag is reserved in `neutralizeReservedPersonaPromptDelimiters`.
-- **Budgets.** `PROMPT_BUDGETS.workshopFileEdits`: `proposalsPerReply` 5, `editReplaces` 5, `whyCharacters` 200, `rewriteCharacters` 40,000, `findCharacters` 2,000, `replaceWithCharacters` 8,000, `passageCharacters` 8,000. It also has `appendWords` 400, **Slice 2's key, at the same value**, because the prompt quotes it.
-- **The prompt.** `workshop-personas/file-edit-proposals.md` is taught to host and guest only while the setting is `ask` (`workshopPersonaSystemPromptPaths`' `fileEdits` option, bound in `extension.ts` through `AssistantToolService.setWorkshopFileEditsGrammar`). A setting change rebuilds the persona prompts, as the memory mode's does (`WorkshopConversationSettingsService`).
-- **Completion.** `WorkshopRunCompletion` reads `fileEditsOpen`, which the room handler and the tool side-pass read from the setting when the reply is read. `WorkshopReplyFileEditProposals` turns each kept frame into a `pending` card and logs one line per frame: the target's group or `excerpt`, the operation kinds, counts and reasons. A reply made only of trailers shows the host's line, without a model stamp.
-- **Session state (D8).**
-  - Types are in `shared/types/messages/workshop/fileEdits.ts`: `WorkshopFileEditProposal`, `WorkshopFileEditTarget`, `WorkshopFileEditOperation`, `WorkshopFileEditState`, `WorkshopFileEditLanded` (+ `…LandedRange`), the setting and its coerce. `session.ts` grows by the seam: `fileEditProposals?` on `WorkshopTurn`.
-  - The codec is `session/WorkshopFileEditProposalRecords.ts`: exact keys and bounds.
-    - The operations are checked by the trailer's own `workshopFileEditOperationsFault`.
-    - `landed` is present exactly when a card is `applied`, and each operation lands in at most one range.
-    - `reason` is allowed only on applied, stale or refused cards.
-    - No two cards may name one file.
-  - No schema version change. No development shape exists, so there's no normalization.
-- **Transcript projection.** `projectWorkshopTranscript` adds `fileEdits` (target, why, state) to a reply entry; Markdown, JSON and HTML render it. It never carries an operation's text. `projectWorkshopTranscriptTurn` doesn't add it, so recall and the turn preview don't change.
-- **The setting.** `proseMinion.workshop.fileEdits` (`off` | `ask`, default `ask`, `scope: application`, like the memory mode) is in the manifest and the config watcher. It isn't in `ConfigurationHandler`: no Workshop mode is (the memory mode isn't either), because the conversation-settings service reads them live.
+- **The trailer** (`utils/workshopFileEditProtocol.ts`, pure). One `<prose-minion-file-edit>` frame per file.
+  - **Target:** `<group>` + `<path>` by `resource.read`'s rule (a known group; `isSafeConfiguredResourcePath`; within `workshopResource.pathCharacters`), or `<excerpt/>`.
+  - **Operations,** in the order written, as the shared planner's `TextEditOperation`:
+    - `<rewrite>`, which stands alone;
+    - `<find>` + `<replace-with>`, at most `editReplaces` pairs;
+    - `<append>` and `<prepend>`, once each.
+  - **`<why>`:** required, one line.
+  - **Faults** are values, never thrown.
+- **D2's bounds** live in `PROMPT_BUDGETS.workshopFileEdits`:
+
+  | Bound | Value |
+  |---|---|
+  | `proposalsPerReply` | 5 |
+  | `frameCharacters` | 24,000 |
+  | `whyCharacters` | 200 |
+  | `editReplaces` | 8 |
+  | `findCharacters` | 2,000 |
+  | `replaceWithCharacters` | 4,000 |
+  | `insertWords` / `insertCharacters` | 400 / 4,000 |
+  | `rewriteCharacters` | 16,000 |
+  | `revertCharacters` | 4,000 (D10) |
+  | `landedContextCharacters` | 80 (D10) |
+
+  - The codec holds every append and prepend to `insertCharacters`. Prose's `insertWords` is the gateway's policy (D5); the prompt teaches it.
+  - Slice 2 adds its four keys to the same block.
+- **Shared extractions, not copies:**
+  - `utils/workshopTrailerElements.ts`, the element reader; the memory codec now calls it. It adds a self-closed empty element (`<excerpt/>`).
+  - `utils/configuredResourcePath.ts`, the path rule, now pure. `WorkshopConfiguredResourceLookup` re-exports it.
+  - `utils/workshopReplyTrailerFrames.ts`, the multi-tag frame scanner.
+- **Reading a reply.**
+  - `extractWorkshopReplyControls` finds memory and file-edit frames in one pass, so both kinds stand at the tail together.
+  - `utils/workshopReplyFileEdits.ts` judges each frame on its own:
+    - `file-edits-off`;
+    - structure, as memory's frames are judged;
+    - `oversized` past `frameCharacters`: dropped whole, never decoded;
+    - `malformed:<fault>`;
+    - `duplicate` (one frame per file);
+    - `over-cap`.
+  - Frames never show: not in `rest`, the streaming text or retained history. `redacted` shows a placeholder. `fileEdits` is absent when the reply held none.
+- **Staging (D4).**
+  - **The port.** `domain/models/FileEditStaging.ts` is the interface agreed with Slice 2, byte-identical on both branches: `stage(target)` → staged `{ target: identity, class, baseline }` or refused `{ reason }`.
+  - **The resolver.** `application/services/workshop/fileEdits/WorkshopReplyFileEditProposals.ts` runs before completion, like memory's context:
+    - it reads the setting when the reply is read;
+    - it stages every frame that decodes, at most 5, in parallel;
+    - a rejected port reads as `unreadable`;
+    - staged frames become `pending` cards, and refused frames become `refused` cards with the refusal kind as `reason`;
+    - with the setting `off`, an aborted run or no port, nothing is staged;
+    - a reply with no tag costs no await.
+  - **Completion** uses the context only for the exact reply it was resolved from. A frame with no context is stripped and counted `not-staged`.
+  - **Where staging comes from.** `CoreServices.fileEditStaging?` reaches `WorkshopRoomHandler`, and from there the side pass's `fileEdits` event. Slice 4 binds the real port. Until then, frames are stripped and counted `staging-unavailable`, and no card is made.
+- **Session state (D10)**, in `shared/types/messages/workshop/fileEdits.ts`. `WorkshopFileEditProposal` holds:
+  - `requested`, what the frame named; it is kept for display, and is all a card refused at staging has;
+  - `target` (`{ kind: 'file' | 'excerpt', documentUri, relativePath }`), `class` and `baseline`, staging's, always together;
+  - `operations` and `why`;
+  - `state`: `pending | applying | applied | partial | declined | stale | refused | unknown`;
+  - `reason?`;
+  - `outcomes?`, one per operation once settled;
+  - `landed?`: full records (`before`/`after` within `revertCharacters`, context within 80 characters each side, `versionAfter`) or hashed ones (`beforeSha256`, `afterSha256`).
+- **Session codec** (`session/WorkshopFileEditProposalRecords.ts`). Keys and bounds are exact:
+  - A file identity matches a resource request, and an excerpt identity matches an excerpt request.
+  - Outcomes appear only on `applied`, `partial` and `unknown` cards: all landed when applied, some and not all when partial.
+  - There is one `landed` record per landed operation.
+  - `reason` never appears on a `pending`, `applying`, `applied` or `declined` card. A card refused at staging must have one.
+  - No two cards request one file.
+  - There is no schema version change.
+- **Reopen rule (D8).** `applying` round-trips in the file. Hydration reads it as `unknown`, with `reason: 'applying-on-reopen'` and every outcome `unknown` (`settleWorkshopFileEditProposalsOnReopen`). This is a **read rule, not a normalization**: `applying` is a legitimate persisted state, not a development shape. No development shape of this field ever existed, so no normalization exists.
+- **The webview's view** omits `documentUri`. `workshopTurnForWebview` runs on every turn the room handler posts (`WORKSHOP_TURN`, `WORKSHOP_SESSION_STATE`).
+- **Transcript projection.** `projectWorkshopTranscript` adds `fileEdits: { path, why, state }`, where `path` is the display path. It never includes an operation's text or the URI. Markdown, JSON and HTML render it. Recall and the preview are unchanged.
+- **The setting (D11).** `proseMinion.workshop.fileEdits` is exactly `off | ask`, default `ask`, `scope: application`. The coerce reads unset as `ask` and anything else (`auto` included) as `off`.
+  - The manifest and the config watcher read it. A change rebuilds the persona prompts.
+  - The prompt is taught only while it's `ask`.
+  - There is no Conversation settings UI yet.
+- **The prompt** (`workshop-personas/file-edit-proposals.md`) teaches:
+  - D2's bounds;
+  - prefer find-and-replace;
+  - never rewrite a chapter;
+  - rewrite only a short note with no links, images or code;
+  - prose is decided by the project's lists, not the group named;
+  - the per-target rules;
+  - nothing changes until the writer applies.
 
 ## Tests
 
-- `__tests__/utils/workshopFileEditProtocol.test.ts`:
-  - every fault, by reason;
-  - every bound, at the bound and one past it;
+- `utils/workshopFileEditProtocol.test.ts`:
+  - every fault, at each bound and one past it;
   - `<excerpt/>` in five spellings;
-  - group and path rules (absolute, drive, scheme, traversal, `.`, empty segment, backslash, trailing slash, length);
-  - the order kept, and the pairs cap;
-  - the decoded operations plan through `planTextEdits`;
+  - path rules, the order kept, the pairs cap;
+  - decoded operations plan through `planTextEdits`;
   - never throws.
-- `__tests__/utils/workshopReplyFileEdits.test.ts`:
-  - several frames, and past the cap;
-  - duplicates (case-folded), and a malformed frame dropping only itself;
-  - the setting off, and absent;
-  - mixed with memory frames in any order, each kind's own cap, nesting across kinds, a mismatched closing tag;
-  - a frame never in `rest`, `redacted`, the streaming text or retained history;
-  - the tag neutralized in quotes.
-- `__tests__/architecture/fileEditProposalPromptSync.test.ts`:
-  - every number pinned, and no other number;
-  - every codec element taught;
-  - the targets, quoting and per-target rules, and that nothing changes until the writer applies;
-  - the worked example decodes through the production extractor and is refused anywhere but last;
-  - the prompt is taught only with `fileEdits`, host and guest.
-- `__tests__/application/services/workshop/session/WorkshopFileEditTurns.test.ts`:
-  - pending cards in order, with a bubble of prose only;
-  - logs with no quote, replacement, passage, why or path;
-  - a trailer-only reply; the setting off; the cap;
-  - a byte-for-byte round-trip and hydrate, every state, and applied with `landed`;
-  - 23 malformed shapes refused;
-  - the projection, and Markdown, JSON and HTML exports, with file, why and state, never text;
+- `utils/workshopReplyFileEdits.test.ts`:
+  - several frames and the cap; duplicates; off;
+  - `oversized`;
+  - mixed with memory frames, nesting across kinds, a mismatched closing tag;
+  - never in `rest`, `redacted`, the streaming text or retained history;
+  - the tag neutralized.
+- `fileEdits/WorkshopReplyFileEditProposals.test.ts` (fake staging):
+  - staged and refused cards;
+  - a rejecting port reads as `unreadable`;
+  - off and no port stage nothing; no tag means no await; the cap; an aborted run;
+  - **log sentinels** for malformed, oversized and disabled frames and for refusals: no path, URI, quote, why or passage.
+- `session/WorkshopFileEditTurns.test.ts`:
+  - cards on a reply; trailer-only; off; not staged; logs without text;
+  - byte-for-byte round-trip and hydrate;
+  - every state round-trips, with outcomes and landed records;
+  - **the reopen rule**;
+  - 32 malformed shapes refused;
+  - projection and Markdown, JSON and HTML exports never show text or the URI;
   - recall and preview unchanged.
-- `__tests__/application/handlers/domain/workshop/WorkshopFileEditProposalRoutes.test.ts`: through the real router and room handler, unset (`ask`) makes cards, and `off` at read time makes none.
-- `__tests__/application/services/workshop/WorkshopConversationSettingsFileEdits.test.ts`: read live, and a prompt rebuild on off ↔ ask but not on unset ↔ ask.
-- `__tests__/architecture/fileEditsSetting.test.ts`: the manifest entry is user-only, its modes and default are the code's, and the coerce fails closed.
-- `AssistantToolService.test.ts` (one case added): the trailer prompt follows the bound check.
-- `boundaries.test.ts`: `fileEdits.ts` joins the Workshop message modules (and `docs/ARCHITECTURE.md` and `.ai/central-agent-setup.md` list it).
-- Every existing memory reply-control test ran unchanged, apart from the mechanical rename of the two strip functions.
+- `handlers/.../WorkshopFileEditProposalRoutes.test.ts`, through the real router and room handler:
+  - staged into cards;
+  - **nothing posted to the webview holds `documentUri`**;
+  - `off`, no port, and `auto` all stage nothing.
+- `architecture/fileEditProposalPromptSync.test.ts`:
+  - all eight bounds pinned, and no other number;
+  - every element taught, and the replace/rewrite rules;
+  - the worked example decodes through the production extractor;
+  - the prompt is taught only with the setting on.
+- `architecture/fileEditsSetting.test.ts` and `WorkshopConversationSettingsFileEdits.test.ts`: manifest, coerce, live read, and the prompt rebuild.
+- `AssistantToolService.test.ts` (one case).
+- `boundaries.test.ts` (`fileEdits.ts` listed).
 
 ## Implementation note
 
-- **One pass for both trailers.** Memory's tail rule ("nothing but whitespace and other frames after it") would have made a memory frame followed by a file-edit frame `misplaced`. The scanner therefore reads both tags together.
-  - Depth counts every trailer tag, so a frame of one kind inside the other is `nested`.
-  - A closing tag of the other kind marks the frame `malformed:tag`.
-  - For a memory-only reply, nothing changes.
-- **`fileEdits` is optional on `WorkshopReplyControls`** so a reply with no file-edit frame keeps exactly its old result. This is why no memory expectation changed.
-- **One frame per file.** A second frame for a file that the case-folded group and path already name is `duplicate`, as the catalog admits a unique case-folded match. The session codec holds the same rule.
-- **Whitespace.** Each element's text is trimmed, as memory's are, so a pretty-printed `<rewrite>` keeps no indentation lines at its ends. A replacement may be empty (a deletion). A rewrite, an append or a prepend may not be.
-- **The codec doesn't apply D5.** It accepts a `<rewrite>` aimed at prose. The target policy is the gateway's (Slice 2), and the card's state is Slice 4's to set (see the open questions).
-- **The landed record** carries its own target (the gateway's canonical catalog key, which may differ in case from what the persona wrote) and, for each range, the indexes of the operations it carries, so a partial apply can say which landed.
-- **The host's lines.** "Proposed an edit to a project file." for a reply of file-edit frames only, and "Proposed a project memory and an edit to a project file." for both kinds.
-- **The Conversation settings modal doesn't show the setting yet.** The manifest is enough while there are no cards. Slice 4 or 5 can add a control beside the Memory tab's mode once cards exist.
-- **Not covered by a unit test:** the config watcher's new key (one line beside the memory key; MessageHandler's watcher has no unit harness for Workshop keys). The Slice 5 live pass covers it.
+- **One pass for both trailers.** Under memory's tail rule, a memory frame followed by a file-edit frame would be `misplaced`. Depth counts every trailer tag.
+- **`fileEdits` is optional on `WorkshopReplyControls`,** so memory-only results stay byte-identical. The only memory-test edit is the mechanical rename of the strip functions (`…ReplyTrailersFor…`).
+- **Staging runs once and outside completion.** Completion stays synchronous and pure. The resolver stages first, and the context carries the reply it was made from, so a context can't attach to another reply.
+- **A rejecting port** never throws through the run. It becomes an `unreadable` refusal, and its message isn't logged.
+- **Reopen versus rollback.** Hydration also serves a room replacement's rollback. A live `applying` card restored that way reads as `unknown` too, which is the safe reading (D8: an outcome for an earlier generation is dropped).
 
 ### Open for review
 
-1. **D5 at reply time?** Should a `<rewrite>` to `chapters`, `manuscript` or `<excerpt/>` be dropped at reply time (`malformed:not-allowed`), or become a card that Slice 4 marks `refused` at once? It is kept as a card now. Slice 4 can read `FILE_EDIT_TARGET_POLICIES` when it settles cards.
-2. **The `appendWords` merge.** Both slices define `appendWords` at 400 in `workshopFileEdits`. When Slice 2 lands, keep one copy and Slice 2's doc comment.
-3. **`AGENTS.md`'s message tree** doesn't list `fileEdits.ts`, since this slice doesn't edit `AGENTS.md`. Slice 5's update should add it, beside the other two docs.
+1. **The staging port's input** is Slice 2's: `stage(target)` alone. Staging reads the room's excerpt itself, so the reply reader passes neither the excerpt nor the live session id, unlike the coordinator's sketch.
+2. **`insertWords`** is taught and recorded here but enforced by the gateway, for prose only. The codec enforces only `insertCharacters`.
+3. **A refused card's `reason`** is the refusal kind (`not-configured`, …), not writer-facing words. The words are Slice 4's (D9).
+4. **`AGENTS.md`'s message tree** doesn't list `fileEdits.ts`. That's for Slice 5.

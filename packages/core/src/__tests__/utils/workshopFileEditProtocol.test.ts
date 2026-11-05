@@ -110,15 +110,15 @@ describe('decodeWorkshopFileEdit', () => {
       ['a rewrite past its bound', `${TARGET}${WHY}<rewrite>${'a'.repeat(B.rewriteCharacters + 1)}</rewrite>`, 'rewrite-too-long'],
       ['a find past its bound', `${TARGET}${WHY}<find>${'a'.repeat(B.findCharacters + 1)}</find><replace-with>b</replace-with>`, 'find-too-long'],
       ['a replace-with past its bound', `${TARGET}${WHY}<find>a</find><replace-with>${'b'.repeat(B.replaceWithCharacters + 1)}</replace-with>`, 'replace-with-too-long'],
-      ['an append past its bound', `${TARGET}${WHY}<append>${'a'.repeat(B.passageCharacters + 1)}</append>`, 'passage-too-long'],
-      ['a prepend past its bound', `${TARGET}${WHY}<prepend>${'a'.repeat(B.passageCharacters + 1)}</prepend>`, 'passage-too-long']
+      ['an append past its bound', `${TARGET}${WHY}<append>${'a'.repeat(B.insertCharacters + 1)}</append>`, 'insert-too-long'],
+      ['a prepend past its bound', `${TARGET}${WHY}<prepend>${'a'.repeat(B.insertCharacters + 1)}</prepend>`, 'insert-too-long']
     ])('%s', (_name, inner, expected) => {
       expect(fault(inner)).toBe(expected);
     });
 
     it('takes exactly the cap of pairs, and the bounds themselves', () => {
       expect(fault(`${TARGET}${WHY}${pairs(B.editReplaces)}`)).toBeUndefined();
-      expect(fault(`${TARGET}<why>${'a'.repeat(B.whyCharacters)}</why><append>${'a'.repeat(B.passageCharacters)}</append>`)).toBeUndefined();
+      expect(fault(`${TARGET}<why>${'a'.repeat(B.whyCharacters)}</why><append>${'a'.repeat(B.insertCharacters)}</append>`)).toBeUndefined();
     });
 
     it('never throws, whatever it reads', () => {

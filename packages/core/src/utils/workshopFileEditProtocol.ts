@@ -15,22 +15,26 @@
  *   - `<rewrite>`: the file's content replaced whole; it stands alone;
  *   - `<find>` followed at once by `<replace-with>`: at most `editReplaces`
  *     pairs; the replacement may be empty;
- *   - `<append>` and `<prepend>`: each at most once.
+ *   - `<append>` and `<prepend>`: each at most once, within `insertCharacters`
+ *     (prose's `insertWords` is the gateway's policy, D5).
  *   A frame with no operation is refused (`empty-edit`).
  * - **`<why>`:** required, one line within `whyCharacters`.
- * - **Each element's text** is trimmed, and held to its own bound.
+ * - **Each element's text** is trimmed, and held to its own bound. A frame
+ *   longer than `frameCharacters` never reaches this: the reply reader drops
+ *   it whole, unread.
  *
- * Whether the target allows an operation (prose takes no rewrite; D5), and
- * whether each quote stands exactly once, is the gateway's, against the live
- * text (Slice 2). Reasons, never text: no caller logs what a field held.
+ * The target is only what the frame named: the host stages it to an
+ * identity (D4). Whether the class allows an operation (prose takes no
+ * rewrite; D5), and whether each quote stands exactly once, is the
+ * gateway's, against the live text. Reasons, never text: no caller logs
+ * what a field held.
  */
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { isContextPathGroup } from '@shared/types/context';
 import type {
   WorkshopFileEditOperation,
-  WorkshopFileEditProposal,
-  WorkshopFileEditTarget
+  WorkshopFileEditRequestedTarget
 } from '@shared/types/messages/workshop/fileEdits';
 import type { TextEditOperation } from '@/utils/textEdits/textEditOperations';
 import { isSafeConfiguredResourcePath } from '@/utils/configuredResourcePath';
@@ -70,12 +74,16 @@ export const WORKSHOP_FILE_EDIT_FAULTS = [
   'rewrite-too-long',
   'find-too-long',
   'replace-with-too-long',
-  'passage-too-long'
+  'insert-too-long'
 ] as const;
 export type WorkshopFileEditFault = typeof WORKSHOP_FILE_EDIT_FAULTS[number] | WorkshopTrailerReadFault;
 
-/** What a valid frame carries; the host adds its state. */
-export type WorkshopFileEditDraft = Pick<WorkshopFileEditProposal, 'target' | 'operations' | 'why'>;
+/** What a valid frame carries; staging adds the identity, class and baseline, and the host its state. */
+export interface WorkshopFileEditDraft {
+  readonly target: WorkshopFileEditRequestedTarget;
+  readonly operations: readonly WorkshopFileEditOperation[];
+  readonly why: string;
+}
 
 export type WorkshopFileEditDecode =
   | { readonly kind: 'edit'; readonly edit: WorkshopFileEditDraft }
@@ -116,7 +124,7 @@ export function decodeWorkshopFileEdit(inner: string): WorkshopFileEditDecode {
   return { kind: 'edit', edit: { target, operations, why } };
 }
 
-function decodeTarget(elements: readonly WorkshopTrailerElement[]): WorkshopFileEditTarget | WorkshopFileEditFault {
+function decodeTarget(elements: readonly WorkshopTrailerElement[]): WorkshopFileEditRequestedTarget | WorkshopFileEditFault {
   const group = elements.find((element) => element.name === 'group')?.content.trim();
   const path = elements.find((element) => element.name === 'path')?.content.trim();
   const excerpt = elements.find((element) => element.name === 'excerpt');
@@ -218,7 +226,7 @@ function operationFault(operation: WorkshopFileEditOperation, replaces: number):
       return !operation.text ? 'empty-edit' : operation.text.length > BUDGETS.rewriteCharacters ? 'rewrite-too-long' : undefined;
     case 'append':
     case 'prepend':
-      return !operation.text ? 'empty-edit' : operation.text.length > BUDGETS.passageCharacters ? 'passage-too-long' : undefined;
+      return !operation.text ? 'empty-edit' : operation.text.length > BUDGETS.insertCharacters ? 'insert-too-long' : undefined;
     case 'replace':
       if (replaces > BUDGETS.editReplaces) {
         return 'too-many-replaces';
@@ -243,7 +251,7 @@ export function workshopFileEditTextOperations(operations: readonly WorkshopFile
  * ignoring letter case (the catalog lookup admits a unique case-folded
  * match), or both the excerpt. One reply edits a file at most once (D2).
  */
-export function sameWorkshopFileEditTarget(left: WorkshopFileEditTarget, right: WorkshopFileEditTarget): boolean {
+export function sameWorkshopFileEditTarget(left: WorkshopFileEditRequestedTarget, right: WorkshopFileEditRequestedTarget): boolean {
   return left.kind === 'excerpt' || right.kind === 'excerpt'
     ? left.kind === right.kind
     : left.group === right.group && left.path.toLowerCase() === right.path.toLowerCase();

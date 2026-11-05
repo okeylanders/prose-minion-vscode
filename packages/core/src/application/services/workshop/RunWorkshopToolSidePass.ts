@@ -4,6 +4,7 @@ import {
   hasWorkshopMemoryProposalText
 } from '@/utils/workshopReplyControls';
 import { resolveWorkshopReplyMemory } from '@/application/services/workshop/memory/WorkshopReplyMemory';
+import type { WorkshopReplyFileEditContext } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   WorkshopRoomDeliveryService,
@@ -72,8 +73,8 @@ export interface WorkshopToolSidePassEvents {
   memoryAutoSave?: (turn: WorkshopTurn, indexes: readonly number[]) => Promise<void>;
   /** The room's automatic saves, landed and in flight, for the cap (PR #201 F-04). */
   memoryAutoSavesInRoom?: () => number;
-  /** Whether personas may propose file edits, read when the synthesis is read (ADR 2026-11-05 D9); absent, off. */
-  fileEditsOpen?: () => boolean;
+  /** The synthesis's file edits, staged with the setting read now (ADR 2026-11-05 D4, D11); absent, none are staged. */
+  fileEdits?: (reply: string, signal: AbortSignal) => Promise<WorkshopReplyFileEditContext | undefined>;
   settled: (requestId: string) => void;
 }
 
@@ -277,11 +278,12 @@ export class RunWorkshopToolSidePass {
           workshopWriterPreferredAddress(this.writerProfileService.getProfile())
         )
         : undefined;
+      const replyFileEdits = events.fileEdits && await events.fileEdits(synthesis.content, controller.signal);
       let memorySave: Promise<void> | undefined;
       const synthesisTurn = completeWorkshopRun({
         memory: replyMemory,
         memoryAutoSavesInRoom: events.memoryAutoSavesInRoom,
-        fileEditsOpen: events.fileEditsOpen?.() === true,
+        fileEdits: replyFileEdits,
         memoryAutoSave: events.memoryAutoSave && ((turn, indexes) => {
           memorySave = events.memoryAutoSave!(turn, indexes);
         }),

@@ -53,8 +53,8 @@ export type WorkshopTranscriptJsonEntry =
       sources: Array<{ url: string; label: string }>;
       bookmarked?: true;
       model?: WorkshopTurnModel;
-      /** File-edit cards: the file, why and state, never the edit's text (ADR 2026-11-05 D8). */
-      fileEdits?: Array<{ file: { group: string; path: string } | 'excerpt'; why: string; state: string }>;
+      /** File-edit cards: the file, why and state, never the edit's text (ADR 2026-11-05 D10). */
+      fileEdits?: Array<{ path: string; why: string; state: string }>;
     }
   | {
       kind: 'event';
@@ -111,11 +111,7 @@ function toJsonEntry(entry: WorkshopTranscriptEntry): WorkshopTranscriptJsonEntr
         ...bookmarked(entry),
         ...model(entry),
         ...(entry.fileEdits ? {
-          fileEdits: entry.fileEdits.map((edit) => ({
-            file: edit.target.kind === 'excerpt' ? 'excerpt' as const : { group: edit.target.group, path: edit.target.path },
-            why: edit.why,
-            state: edit.state
-          }))
+          fileEdits: entry.fileEdits.map((edit) => ({ path: edit.path, why: edit.why, state: edit.state }))
         } : {})
       };
   }

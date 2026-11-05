@@ -1,3 +1,4 @@
+import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import type {
   AnalysisResultMessage,
   CategorySearchResultMessage,
@@ -188,6 +189,12 @@ export interface CoreServices {
    * room seed reads it at room starts.
    */
   workshopPinnedContext: WorkshopPinnedContextServices;
+  /**
+   * Persona file edits' staging (ADR 2026-11-05 D4): the gateway's target
+   * module, bound by Slice 4. Absent, a reply's frames are stripped and
+   * dropped, and no card is made.
+   */
+  fileEditStaging?: FileEditStaging;
   /**
    * Session recall (ADR 2026-10-05; ADR 2026-11-05 D8): the one service,
    * whose writer-facing reads serve the Bookmarks screen. Personas reach it

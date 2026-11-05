@@ -143,6 +143,11 @@ export function extractWorkshopReplyControls(
   };
 }
 
+/** Whether a reply holds a file-edit tag (a cheap check before anything is staged; ADR 2026-11-05 D4). */
+export function hasWorkshopFileEditText(reply: string): boolean {
+  return reply.toLowerCase().includes(WORKSHOP_FILE_EDIT_TAG);
+}
+
 /** Whether a reply holds anything the extractor would remove (a cheap check before a listing is read). */
 export function hasWorkshopMemoryProposalText(reply: string): boolean {
   return reply.toLowerCase().includes(WORKSHOP_MEMORY_PROPOSAL_TAG);
