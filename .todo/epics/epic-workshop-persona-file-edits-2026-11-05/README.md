@@ -25,7 +25,7 @@
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR and this epic | All | In review |
-| 1 | Shared planner | `utils/textEdits/`: the operations and exactly-once anchoring, pure. Memory edits move onto it with no behavior change; their tests run unchanged. | D3 | Not started |
+| 1 | Shared planner | `utils/textEdits/`: the operations and exactly-once anchoring, pure. Memory edits move onto it with no behavior change; their tests run unchanged. | D3 | Built ([slice doc](slice-1-shared-planner.md)) |
 | 2 | The gateway | `DocumentEditor.open` (port and VS Code adapter); `ProjectFileEditGateway`: fresh target resolution by catalog key or excerpt, `FILE_EDIT_TARGET_POLICIES`, planning on the live text, apply through `DraftEditApplier`, showing an edited file that isn't visible; boundary pins. Host-only, no persona. | D4–D6, D11 | Not started |
 | 3 | The proposal | The `<prose-minion-file-edit>` codec and budgets; the persona prompt section and worked example, with a sync test; reading the trailer out of a reply; `fileEditProposals` on the turn, with the session codec, checkpoint normalization and transcript projection; the `fileEdits` setting | D2, D8, D9 | Not started |
 | 4 | Cards and Apply | Thread cards with diffs; Apply, Review in editor… and Decline routes with request ids; re-anchoring at Apply (stale); what landed recorded; refusals in the writer's words | D7, D8 | Not started |
@@ -96,3 +96,7 @@ This is the same flow as Project Memory and Bookmark Recall.
   - Okey asked for persona file editing. He chose option B, notes and chapters, and asked whether autonomous editing could follow without rework (yes: ADR D10).
   - He handed the implementation to the coordinator.
   - ADR drafted, defaults taken, epic cut from the Bookmark Recall tip at `b4ca7b86`.
+- **2026-11-05. Slice 1 (shared planner).**
+  - Baseline on `0ed3ba75`: typecheck clean; lint 0 errors, 1,165 warnings; jest 753 suites, 10,481 tests, 59 snapshots.
+  - `utils/textEdits/` built; memory edits plan through it. No memory-edit test changed.
+  - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 754 suites, 10,499 tests, 59 snapshots. See [the slice doc](slice-1-shared-planner.md).
