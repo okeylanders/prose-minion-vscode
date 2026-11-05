@@ -64,6 +64,16 @@ Unpinning stays in the tab.
   #208 merged. One conflict, in `WorkshopApp.tsx`: this slice's
   `useWorkshopPinnedPills` call and Project Memory's (#206)
   `memoryExplainer` lines both follow `useWorkshopPinnedContext`. Both kept.
+- `f16c6c0`: merge of the epic at `fe30330` (Slice 3 merged as #210 with
+  Astra's fixes, and Project Memory's #209), with `--no-ff`. No conflicts.
+  Slice 3's F03 has `useWorkshopPinnedContext` apply list answers by store
+  `observation`. An older answer settles its request and shows its notice
+  over the list on screen, and `answer` still carries that request's
+  `requestId`, `ok` and `notice`. So the pills' rules, which tie the
+  refusal and the landed pin to the pill's own request, are unchanged. The
+  pills read no pending ids, so the `pendingRequestIds` rename touches
+  nothing here.
+- The test for the observation rule (below), and this doc's update.
 
 **Where each piece lives.**
 
@@ -120,7 +130,7 @@ Unpinning stays in the tab.
   a wizard pill, or with no list to change; a refusal on its own pill only,
   `changed`, cleared by another answer and never on a landed pin; `landed`;
   the head's count at 0, 1 ("1 pinned") and 2.
-- `ContextPanel.pinned.test.tsx` (8), through the real
+- `ContextPanel.pinned.test.tsx` (9), through the real
   `useWorkshopPinnedContext`, the controller and `ContextPanel`, the host
   played by hand: the mark follows the list in the same room (pinning shows
   it, unpinning clears it, the attachments unchanged); the accessible name,
@@ -130,7 +140,9 @@ Unpinning stays in the tab.
   file pill offers Pin, and nothing offers Unpin; Remove unchanged; no list,
   no mark and no Pin; the head reads "4 attachments" before the answer and
   at 0, then "· 1 pinned", then "· 2 pinned" with three files pinned and two
-  of them in the room.
+  of them in the room; by store observation (PR #210 F03), a refusal whose
+  list is older than the one shown shows at its pill while the newer list
+  stays, and a later landed pin marks its pill and moves the count.
 - `boundaries.test.ts` (+1): `ContextPanel.tsx` posts nothing, and
   `WorkshopSessionStateV1.ts` names no pinned mark. The existing guard keeps
   the new controller off the transport.
@@ -162,6 +174,20 @@ Unpinning stays in the tab.
 | `WorkshopApp.tsx` | 1,826 lines | 1,829 lines (+3, wiring only) |
 
 The +2 suites and +25 tests are this slice's: 16 pure, 8 integration and 1
+boundary guard.
+
+**After merging the epic** (`fe30330`: Slice 3 with Astra's fixes, and
+Project Memory's #209). This is the PR's verification:
+
+| Check | Before (the epic at `fe30330`, the coordinator's measure) | After (this branch, after `npm ci`) |
+|---|---|---|
+| `npm run typecheck` | pass | pass |
+| `npx jest -w 3` | 721 suites / 10,110 tests / 59 snapshots | 723 suites / 10,136 tests / 59 snapshots, all passing |
+| `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (none new) |
+| `from 'vscode'` in `packages/core/src` | none | none |
+| `WorkshopApp.tsx` | 1,826 lines | 1,829 lines (+3, wiring only) |
+
+The +2 suites and +26 tests are this slice's: 16 pure, 9 integration and 1
 boundary guard.
 
 The first baseline equals Slice 3's measurement on the same commit. Its jest run

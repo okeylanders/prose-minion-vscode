@@ -191,6 +191,26 @@ describe('ContextPanel: pinned context marks', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('by store observation (PR #210 F03): a refusal drawn from an older list shows at its pill over the newer list, and a landed pin marks its pill', () => {
+    const view = render(React.createElement(pinnedSheet));
+    act(() => deliver(answer(lastId(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT), [ALICE], { observation: 5 })));
+    fireEvent.click(screen.getByRole('button', { name: 'Pin the-white-rabbit.md for new sessions' }));
+    const refusedId = lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS);
+
+    // The refusal's list is older (4) than the one shown (5): its notice shows, its list doesn't.
+    act(() => deliver(answer(refusedId, [], { observation: 4, action: 'pin-attachments', ok: false, notice: { kind: 'refused', text: 'Can’t pin the-white-rabbit.md: only 20 files can be pinned.' } })));
+    expect(screen.getByRole('alert').textContent).toBe('Can’t pin the-white-rabbit.md: only 20 files can be pinned.');
+    expect(screen.getByRole('button', { name: 'alice.md, pinned' })).toBeTruthy();
+
+    // The landed list also holds the hatter, pinned in another window; its wizard pill shows the mark too.
+    const HATTER: WorkshopPinnedContextEntryView = { path: 'Characters/the-hatter.md', label: 'the-hatter.md', words: 2600, state: 'ready' };
+    fireEvent.click(screen.getByRole('button', { name: 'Pin the-white-rabbit.md for new sessions' }));
+    act(() => deliver(answer(lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS), [ALICE, HATTER, RABBIT], { observation: 6, action: 'pin-attachments', ok: true })));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('button', { name: 'the-white-rabbit.md, pinned' })).toBeTruthy();
+    expect(view.container.querySelector('.pm-ws-ctx-count')?.textContent).toBe('4 attachments · 3 pinned');
+  });
+
   it('text notes, wizard pills and pinned pills offer no Pin, and a pinned pill no Unpin', () => {
     mount([ALICE]);
     const pins = screen.getAllByRole('button', { name: /^Pin .* for new sessions$/ });
