@@ -236,7 +236,7 @@ describe('prompt budgets', () => {
   it('pins the Project Memory starting budgets (ADR 2026-11-04 D11)', () => {
     expect(PROMPT_BUDGETS.workshopProjectMemory).toEqual({ titleCharacters: 120, summaryCharacters: 280, bodyCharacters: 8_000,
       catalogEntries: 40, catalogTokens: 2_000, pinnedTokens: 5_000, queryCharacters: 200, memoryIdCharacters: 16, searchHits: 20,
-      snippetCharacters: 280, readMemories: 5, readCharacters: 40_000, readsPerTurn: 2, autoSavesPerRoom: 5, proposalsPerReply: 10 });
+      snippetCharacters: 280, readMemories: 5, readCharacters: 40_000, readsPerTurn: 2, autoSavesPerRoom: 5, proposalsPerReply: 10, editReplaces: 5 });
     expect(PROMPT_BUDGETS.workshopProjectMemory.readsPerTurn).toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
   });
 

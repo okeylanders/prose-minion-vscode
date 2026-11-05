@@ -62,6 +62,12 @@ anything screenshotted or recorded.
 - [ ] Under Save and tell me, a reply with several notes saves each with its
       own receipt, and a note that replaces a saved one is held ("It replaces
       a saved memory…") and writes nothing until you save it.
+- [ ] Ask a persona to fix a detail in a saved note (Slice 6c). The card shows
+      the change as before → after. Save it, and the note says it with an
+      "Updated in project memory" receipt. Under Save and tell me it waits.
+- [ ] Edit that note by hand, then press Save on an older change card. It
+      says the note changed since it was suggested, writes nothing, and offers
+      only Dismiss.
 - [ ] Reopen a session saved before Slice 6b that holds a card: it still
       shows, and its Save still works.
 - [ ] Propose and save a Theme and an Idea (Slice 6a). Ask a persona about the

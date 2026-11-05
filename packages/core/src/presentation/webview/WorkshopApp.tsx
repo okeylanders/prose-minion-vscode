@@ -184,7 +184,6 @@ import './components/workshop/widgets/creativeVariations/creativeVariations.css'
 import './components/workshop/widgets/showVsTell/showVsTell.css';
 import './components/workshop/standingDirectiveRail.css';
 import './components/workshop/schematic/schematic.css';
-import './styles/workshop/memory.css';
 
 interface WorkshopTool extends WorkshopToolDescriptor {
   icon: IconName;

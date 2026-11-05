@@ -10,6 +10,8 @@
  *   - **the web-research hold** comes first: a reply whose run had web
  *     search tools attached is always held, whatever it cited. Citations
  *     can't prove no search ran (D8, Context 5), so the test is "attached";
+ *   - **an edit always waits** (Slice 6c): a change to a saved memory is
+ *     held `edit`, and takes no place under the cap;
  *   - **a supersession always waits** (Slice 6b): a proposal naming any
  *     memory it replaces is held `supersedes`, whatever else holds;
  *   - **the room's cap**, `autoSavesPerRoom`: counted from the room's own
@@ -41,12 +43,13 @@ export const WORKSHOP_MEMORY_AUTO_SAVES_PER_ROOM = PROMPT_BUDGETS.workshopProjec
 
 /**
  * One proposal's route. `supersedes` is every id its trailer named, kept or
- * dropped; `admitted` counts the reply's earlier proposals routed `auto`.
+ * dropped; `edit` marks a change to a saved memory (Slice 6c); `admitted`
+ * counts the reply's earlier proposals routed `auto`.
  */
 export function routeWorkshopMemoryProposal(
   mode: WorkshopProjectMemoryMode | undefined,
   facts: WorkshopMemoryRunFacts,
-  proposal: { readonly supersedes: readonly string[] },
+  proposal: { readonly supersedes: readonly string[]; readonly edit?: boolean },
   admitted = 0
 ): WorkshopMemoryProposalRoute {
   if (mode !== 'auto') {
@@ -54,6 +57,9 @@ export function routeWorkshopMemoryProposal(
   }
   if (facts.webResearchAttached) {
     return { kind: 'held', held: 'web-research' };
+  }
+  if (proposal.edit) {
+    return { kind: 'held', held: 'edit' };
   }
   if (proposal.supersedes.length > 0) {
     return { kind: 'held', held: 'supersedes' };

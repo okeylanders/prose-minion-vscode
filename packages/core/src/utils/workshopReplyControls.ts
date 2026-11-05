@@ -25,7 +25,8 @@
  *   - the frame stands at the reply's tail: nothing but whitespace and
  *     other frames after it (`misplaced` otherwise);
  *   - its inside decodes (`malformed:<fault>` otherwise);
- *   - its title is no earlier proposal's (`duplicate`);
+ *   - its title is no earlier proposal's, or, for an edit (Slice 6c), its
+ *     target no earlier edit's (`duplicate`);
  *   - at most `proposalsPerReply` proposals are kept: a well-formed one past
  *     them is `over-cap`, dropped whole and counted, never cut.
  */
@@ -36,6 +37,7 @@ import {
   type WorkshopMemoryProposalDraft,
   type WorkshopMemoryProposalFault
 } from '@/utils/workshopMemoryProposalProtocol';
+import { isWorkshopMemoryEditDraft, type WorkshopMemoryEditDraft } from '@/utils/workshopMemoryEditProtocol';
 import { sanitizeWorkshopWidgetRecommendationForRetention } from '@/utils/workshopWidgetRecommendationProtocol';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
@@ -55,8 +57,8 @@ export type WorkshopReplyMemoryControl =
   | { readonly kind: 'none' }
   | {
     readonly kind: 'frames';
-    /** The eligible proposals, in the order written, at most `proposalsPerReply`. */
-    readonly proposals: readonly WorkshopMemoryProposalDraft[];
+    /** The eligible proposals, new notes and edits, in the order written, at most `proposalsPerReply`. */
+    readonly proposals: ReadonlyArray<WorkshopMemoryProposalDraft | WorkshopMemoryEditDraft>;
     /** One reason per frame dropped, in the order written. */
     readonly rejections: readonly WorkshopReplyMemoryRejection[];
   };
@@ -146,7 +148,7 @@ export function stripWorkshopMemoryProposalForStreaming(partial: string): string
 }
 
 function judge(reply: string, frames: readonly Frame[], options: WorkshopReplyControlsOptions): WorkshopReplyMemoryControl {
-  const proposals: WorkshopMemoryProposalDraft[] = [];
+  const proposals: Array<WorkshopMemoryProposalDraft | WorkshopMemoryEditDraft> = [];
   const rejections: WorkshopReplyMemoryRejection[] = [];
   const titles = new Set<string>();
   const atTail = framesAtTail(reply, frames);
@@ -156,7 +158,7 @@ function judge(reply: string, frames: readonly Frame[], options: WorkshopReplyCo
       rejections.push(verdict);
       return;
     }
-    const title = verdict.title.toLowerCase();
+    const title = isWorkshopMemoryEditDraft(verdict) ? `edit ${verdict.target}` : `new ${verdict.title.toLowerCase()}`;
     if (titles.has(title)) {
       rejections.push('duplicate');
     } else if (proposals.length >= WORKSHOP_MEMORY_PROPOSALS_PER_REPLY) {
@@ -191,7 +193,7 @@ function judgeFrame(
   frame: Frame,
   atTail: boolean,
   options: WorkshopReplyControlsOptions
-): WorkshopMemoryProposalDraft | WorkshopReplyMemoryRejection {
+): WorkshopMemoryProposalDraft | WorkshopMemoryEditDraft | WorkshopReplyMemoryRejection {
   if (!options.memoryOpen) {
     return 'memory-off';
   }
@@ -211,7 +213,14 @@ function judgeFrame(
     return 'misplaced';
   }
   const decoded = decodeWorkshopMemoryProposal(frame.inner);
-  return decoded.kind === 'proposal' ? decoded.proposal : `malformed:${decoded.fault}`;
+  switch (decoded.kind) {
+    case 'proposal':
+      return decoded.proposal;
+    case 'edit':
+      return decoded.edit;
+    default:
+      return `malformed:${decoded.fault}`;
+  }
 }
 
 function findFrames(reply: string): Frame[] {

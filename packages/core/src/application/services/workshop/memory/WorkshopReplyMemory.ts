@@ -13,6 +13,8 @@
  * - **`supersedes`** keeps each id a listed memory holds, with the title it
  *   had, and drops the rest, counted for the card's note (D6). When the
  *   listing could not be read, every one is dropped and counted.
+ * - **An edit** (Slice 6c) is settled by `WorkshopReplyMemoryEdit`, against
+ *   the listing whole (`memories`), and always waits for the writer.
  * - **Save and tell me** (Slice 5, `WorkshopMemoryAutoSave`): with the run's
  *   facts, each proposal under `auto` is held (web research attached, a
  *   memory it replaces, or the room's cap reached, counting the reply's
@@ -23,6 +25,9 @@
 
 import type { WorkshopMemoryProposal, WorkshopProjectMemoryMode } from '@messages';
 import type { WorkshopReplyMemoryControl } from '@/utils/workshopReplyControls';
+import { isWorkshopMemoryEditDraft } from '@/utils/workshopMemoryEditProtocol';
+import type { ProjectMemoryListed } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
+import { settleWorkshopMemoryEdit } from '@/application/services/workshop/memory/WorkshopReplyMemoryEdit';
 import type { WorkshopMemoryProposalDraft } from '@/utils/workshopMemoryProposalProtocol';
 import { workshopMemoryProposalPhrasingFault } from '@/application/services/workshop/memory/WorkshopMemoryProposalPhrasing';
 import {
@@ -38,6 +43,8 @@ export interface WorkshopReplyMemoryContext {
   readonly mode?: Exclude<WorkshopProjectMemoryMode, 'off'>;
   /** Readable memories by id, with their titles; absent when the reply held no frame, or the listing failed. */
   readonly listed?: ReadonlyMap<string, string>;
+  /** The same listing whole, with each note's standing and version: what an edit is anchored against (Slice 6c). */
+  readonly memories?: readonly ProjectMemoryListed[];
   /** The About-you name, for the phrasing fence. */
   readonly writerName?: string;
 }
@@ -73,6 +80,16 @@ export function settleWorkshopMemoryProposals(
       const autoSave: number[] = [];
       const logs = control.rejections.map((reason) => `Memory proposal dropped (reason=${reason})`);
       for (const draft of control.proposals) {
+        if (isWorkshopMemoryEditDraft(draft)) {
+          // An edit always waits for the writer; under Save and tell me it says why (Slice 6c).
+          const route = run ? routeWorkshopMemoryProposal(context.mode, run, { supersedes: [], edit: true }) : { kind: 'wait' as const };
+          const edit = settleWorkshopMemoryEdit(draft, context.memories, context.writerName, route.kind === 'held' ? route.held : undefined);
+          if (edit.proposal) {
+            proposals.push(edit.proposal);
+          }
+          logs.push(edit.log);
+          continue;
+        }
         const fault = workshopMemoryProposalPhrasingFault(draft, context.writerName);
         if (fault) {
           logs.push(`Memory proposal withheld (reason=${fault})`);
