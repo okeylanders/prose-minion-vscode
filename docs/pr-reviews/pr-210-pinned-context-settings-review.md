@@ -86,7 +86,7 @@ Probe: [host identity, first two cases](probes/pr-210-host-identity.test.ts.txt)
 
 ## F07 · Medium · Allow row actions on every path the picker can successfully pin
 
-**Locations:** `WorkshopPinnedContextHandler.ts:62–65,433–435,450`; native pin path in `WorkshopPinnedContextWrites.ts:154–156`.
+**Locations:** `WorkshopPinnedContextHandler.ts:62–65,436–437,450`; native pin path in `WorkshopPinnedContextWrites.ts:154–156`.
 
 The handler caps row/catalog keys at 1,024 characters, but the codec and host-picker route accept valid longer relative paths. The same UI can create a pin it cannot subsequently manage.
 
@@ -116,7 +116,7 @@ Probe: [expected picker behavior](probes/pr-210-settings-ui.test.tsx.txt).
 - Supporting observed host/UI probes: **7 pass**, including the real out-of-order replies and current-room budget control. Additional safety controls: **3 pass** (room changed during picker; symlink ancestor not read; nested-root A→B→A catalog source not read or written).
 - Bound write revisions, captured roots, commit checks, count/word budget checks, file-order mutations, malformed-message refusals, run-time attach rejection, one-shot first-room reporting and picker cancellation were inspected. The original #208 source-binding correction is preserved.
 - [Exact-head verify CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41963532681/job/127035178486) passed; GitHub reported mergeable/clean. Green CI does not resolve the reproduced findings.
-- The complete local suite is running with review probes excluded; no full local pass is claimed yet.
+- Complete local suite at the reviewed implementation, with review probes excluded: **711 suites / 10,021 tests / 59 snapshots passed in one uninterrupted run** (1,435 seconds). The report-only head `bdab66e6` also passed [verify CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41965048184/job/127040020048). Findings remain open.
 - UI probes use React/jsdom and real host/coordinator tests. No native VS Code visual pass, native Windows-host run or live model/provider call was performed.
 
 ## Reproduction artifacts
