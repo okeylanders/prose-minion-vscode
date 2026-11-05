@@ -7,8 +7,9 @@
  * When present it is exact: one to `proposalsPerReply` items, each within
  * the format's bounds, and only on a persona's reply (a host or guest
  * assistant turn). Each item names what it proposes (`proposes`): `new`, or
- * `edit` (Slice 6c), which names its target (id, version, load in full,
- * what it replaces), what the note said (`before`), and `stale` once a Save
+ * `edit` (Slice 6c), which names its target (id, edit token, load in full,
+ * every id it supersedes and the titles of those listed), what the note
+ * said (`before`), and `stale` once a Save
  * found the note changed. A saved card names the memory it became or
  * changed (an edit's is its target); a pending or dismissed one names none.
  * A card Save and tell me held names why in `held`.
@@ -128,16 +129,25 @@ function assertFields(fields: Record<string, unknown>, at: string): void {
 }
 
 function assertEdit(proposal: Record<string, unknown>, at: string): void {
-  const target = exactObject(proposal.target, `${at}.target`, ['id', 'version', 'pinned'], ['supersedes']);
+  const target = exactObject(proposal.target, `${at}.target`, ['id', 'token', 'pinned', 'supersedes'], ['replaces']);
   memoryIdAt(target.id, `${at}.target.id`);
-  if (typeof target.version !== 'string' || !/^[0-9a-f]{12}$/.test(target.version)) {
-    shapeError(`${at}.target.version`, 'a memory version (twelve lower-case hex digits)');
+  if (typeof target.token !== 'string' || !/^[0-9a-f]{12}$/.test(target.token)) {
+    shapeError(`${at}.target.token`, 'an edit token (twelve lower-case hex digits)');
   }
   if (typeof target.pinned !== 'boolean') {
     shapeError(`${at}.target.pinned`, 'true or false');
   }
-  if (target.supersedes !== undefined) {
-    assertReplaces(target.supersedes, `${at}.target.supersedes`);
+  boundedArrayAt(target.supersedes, `${at}.target.supersedes`, 0, PROJECT_MEMORY_LIST_ENTRIES.supersedes, 'superseded memories');
+  const ids = target.supersedes as unknown[];
+  ids.forEach((id, index) => memoryIdAt(id, `${at}.target.supersedes[${index}]`));
+  if (new Set(ids).size !== ids.length) {
+    shapeError(`${at}.target.supersedes`, 'each memory once');
+  }
+  if (target.replaces !== undefined) {
+    assertReplaces(target.replaces, `${at}.target.replaces`);
+    if ((target.replaces as Array<{ id: string }>).some((item) => !ids.includes(item.id))) {
+      shapeError(`${at}.target.replaces`, 'only memories the note supersedes');
+    }
   }
   // The before fields are the note's own, so its whole body (not a trimmed copy) may differ in space.
   assertFields(exactObject(proposal.before, `${at}.before`, ['title', 'kind', 'summary', 'body']), `${at}.before`);
@@ -189,9 +199,10 @@ export function cloneWorkshopMemoryProposal(proposal: WorkshopMemoryProposal): W
       ...common,
       target: {
         id: proposal.target.id,
-        version: proposal.target.version,
+        token: proposal.target.token,
         pinned: proposal.target.pinned,
-        ...(proposal.target.supersedes ? { supersedes: cloneReplaces(proposal.target.supersedes) } : {})
+        supersedes: [...proposal.target.supersedes],
+        ...(proposal.target.replaces ? { replaces: cloneReplaces(proposal.target.replaces) } : {})
       },
       before: { ...proposal.before },
       ...(proposal.stale ? { stale: true as const } : {})

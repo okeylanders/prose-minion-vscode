@@ -207,7 +207,7 @@ export function useWorkshopProjectMemory(): UseWorkshopProjectMemoryReturn {
     if (!proposal || (proposal.proposes === 'edit' && proposal.stale)) {
       return;
     }
-    const replaces = proposal.proposes === 'edit' ? proposal.target.supersedes : proposal.supersedes;
+    const replaces = proposal.proposes === 'edit' ? proposal.target.replaces : proposal.supersedes;
     openSheet({
       mode: 'card',
       turnId: turn.id,

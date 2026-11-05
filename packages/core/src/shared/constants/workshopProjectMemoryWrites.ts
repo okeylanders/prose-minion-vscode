@@ -138,13 +138,13 @@ export const WORKSHOP_MEMORY_EDIT_CHANGED = 'This note changed since it was sugg
  * in full (Slice 6c), so it is also the sheet's prefill.
  */
 export function workshopMemoryProposalDraft(proposal: WorkshopMemoryProposal): WorkshopMemoryDraft {
-  const replaces = proposal.proposes === 'edit' ? proposal.target.supersedes : proposal.supersedes;
   return {
     title: proposal.title,
     kind: proposal.kind,
     summary: proposal.summary,
     body: proposal.body,
-    supersedes: (replaces ?? []).map((item) => item.id),
+    // An edit keeps every id its note supersedes, listed or not (PR #212 F-01).
+    supersedes: proposal.proposes === 'edit' ? [...proposal.target.supersedes] : (proposal.supersedes ?? []).map((item) => item.id),
     pinned: proposal.proposes === 'edit' ? proposal.target.pinned : false
   };
 }

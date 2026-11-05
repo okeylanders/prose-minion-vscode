@@ -102,7 +102,9 @@ function leadOf(shared: string): string {
   if (shared.length <= CONTEXT_CHARACTERS) {
     return shared;
   }
-  const cut = shared.slice(-CONTEXT_CHARACTERS);
+  // Code-point safe: a cut that starts on the second half of a pair starts after it (PR #212 F-05).
+  const raw = shared.slice(-CONTEXT_CHARACTERS);
+  const cut = isLowSurrogate(raw.charCodeAt(0)) ? raw.slice(1) : raw;
   const space = cut.indexOf(' ');
   return `…${space >= 0 && space < cut.length - 1 ? cut.slice(space + 1) : cut}`;
 }
@@ -111,7 +113,9 @@ function trailOf(shared: string): string {
   if (shared.length <= CONTEXT_CHARACTERS) {
     return shared;
   }
-  const cut = shared.slice(0, CONTEXT_CHARACTERS);
+  // Code-point safe: a cut that ends on the first half of a pair ends before it (PR #212 F-05).
+  const raw = shared.slice(0, CONTEXT_CHARACTERS);
+  const cut = isHighSurrogate(raw.charCodeAt(raw.length - 1)) ? raw.slice(0, -1) : raw;
   const space = cut.lastIndexOf(' ');
   return `${space > 0 ? cut.slice(0, space) : cut}…`;
 }

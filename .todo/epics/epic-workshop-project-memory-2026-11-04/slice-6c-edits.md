@@ -11,9 +11,9 @@ there.
 A persona can suggest a change to a note already saved: a new
 `memoryProposals` item kind, `proposes: 'edit'`.
 
-- Host code anchors the change against the note, records its version, and
+- Host code anchors the change against the note, records its edit token, and
   shows it to the writer as before → after.
-- A Save applies it only while the note is still that version.
+- A Save applies it only while the note's token is still that one.
 - An edit always waits for the writer, in every mode.
 
 ## The trailer
@@ -86,7 +86,7 @@ Refused by name:
   - `listing-unread`.
 - Then the anchor; the phrasing fence on the result; and the pinned budget
   when the note loads in full.
-- The item records the target's id, version, load-in-full flag and what it
+- The item records the target's id, edit token, load-in-full flag and what it
   replaces, plus `before` and the result.
 - Logs carry the target id, the changed field names and operation names.
 
@@ -104,7 +104,7 @@ Refused by name:
 - `WorkshopMemoryProposal` is the union `WorkshopMemoryNewProposal |
   WorkshopMemoryEditProposal`.
 - Validation is strict per kind:
-  - the target's id and its 12-hex version;
+  - the target's id and its 12-hex edit token;
   - `before` within the field bounds;
   - `stale` only `true`;
   - a saved edit's `memoryId` must be its target.
@@ -123,7 +123,7 @@ Refused by name:
 ### Handler
 
 - `saveEdit` saves the result, or the sheet's version of it, with the
-  recorded version, through `write()`:
+  recorded edit token, through `write()`:
   - the existing `updated` receipt names the persona;
   - D14 counts the receipt's version as told;
   - on `changed`, `onRefused` marks the card stale;
@@ -170,6 +170,54 @@ Refused by name:
 The ADR addendum, the epic README row, and two lines in
 `slice-6-verify-live.md`.
 
+## Review fixes (PR #212)
+
+All five of Astra's findings are fixed. Each has a regression that fails
+without its fix:
+
+- **F-01 (P2): unresolved `supersedes` ids were dropped by a text-only
+  edit.**
+  - The edit target now carries the complete id list (`target.supersedes`),
+    apart from the display titles (`target.replaces`).
+  - The card's Save and the sheet's prefill use the whole list, so a
+    relationship to a note the folder can't read survives. Only the writer
+    removes one.
+  - Persistence checks that `replaces` is a subset of `supersedes`.
+- **F-02 (P2): the D14 version doesn't cover `supersedes`.**
+  - The edit's concurrency check is now `projectMemoryEditToken`. It covers
+    every field a whole-draft update can overwrite (`supersedes` included)
+    and the note's standing.
+  - D14's version stays the delivery fingerprint only.
+  - The persisted field is `target.token`, and the library option is
+    `expectedToken`.
+  - Supersedes-only changes before the turn and before the claimed rewrite
+    both refuse as `changed`, with the newer bytes left exactly as they
+    were.
+- **F-03 (P2): the commit check reused the listing's standing.**
+  - `ProjectMemoryStore.replace` takes a `verify` hook
+    (`ProjectMemoryReplaceOptions`). Inside the rewrite's own queued turn,
+    after the target is read and just before the claimed rewrite, it reads
+    the folder afresh (the same read `list` uses, `listNow`) and passes it
+    to the hook.
+  - The library recomputes the token from that fresh listing, standing
+    included, so a supersession added meanwhile refuses as `changed`. An
+    unreadable folder refuses as `unknown`.
+  - Stated limit: another window can still change the folder between that
+    read and the rename, since nothing locks across files. This is
+    documented in the store contract, the library and the ADR.
+  - To stay under 500 lines, `fromDraft` moved to the store contracts as
+    `projectMemoryFromDraft`, and `list` shares `listNow`. The store is 487
+    lines.
+- **F-04 (P3): the sheet used create wording for an edit.**
+  - "Editing" now follows the target memory id, not the routing mode. The
+    heading reads "Edit memory", the button "Save changes", the footer gives
+    the update wording, the pinned refusal is worded as an edit, and the
+    source line reads "A change … suggested…".
+  - It still submits through the checked card route.
+- **F-05 (P3): the context cuts could split a surrogate pair.**
+  - Both cuts drop an orphaned half-pair at the cut. Astra's two inputs are
+    kept as regressions.
+
 ## Deviations and choices
 
 - **A rewritten field takes no other operation.** Mixing a rewrite with a
@@ -187,7 +235,7 @@ The ADR addendum, the epic README row, and two lines in
   F-05), so settling doesn't encode the file. The store's
   `prepareProjectMemoryFile` checks it again at commit.
 - **The sheet's Save** from an edit card goes through the same
-  version-checked path, not the unchecked `WORKSHOP_MEMORY_UPDATE`. A stale
+  token-checked path, not the unchecked `WORKSHOP_MEMORY_UPDATE`. A stale
   note is never overwritten from a stale sheet.
 - **Save is hidden on a stale card**, as well as Edit: it could only fail
   again.
@@ -213,13 +261,13 @@ The ADR addendum, the epic README row, and two lines in
   - the `edit` hold beside an auto-saved new note;
   - logs without text.
 - `ProjectMemoryEditSave.test.ts` (real store):
-  - a matching version writes;
+  - a matching token writes;
   - changed before the turn writes nothing;
   - changed between the turn and the commit writes nothing. With the check
     under the claim disabled, this test fails;
   - newly superseded;
   - workspace binding;
-  - an unversioned update unchanged.
+  - an update without a token unchanged.
 - `WorkshopProjectMemoryEditRoutes.test.ts` (real router):
   - the card, then Save, with the `updated` receipt naming the persona, its
     version equal to the listing's, and D14 counting it as told;

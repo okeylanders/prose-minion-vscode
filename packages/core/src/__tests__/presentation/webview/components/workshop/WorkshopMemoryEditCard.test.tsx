@@ -34,7 +34,13 @@ const EDIT: WorkshopMemoryEditProposal = {
   summary: 'From chapter 2 on, the White Rabbit\'s watch runs backward.',
   body: 'Settled at the tea party. Alice notices first. Nobody remarks on it.',
   state: 'pending',
-  target: { id: 'mem-7f3c2a', version: '0123456789ab', pinned: true, supersedes: [{ id: 'mem-1a9e04', title: 'The watch stops at six' }] },
+  target: {
+    id: 'mem-7f3c2a',
+    token: '0123456789ab',
+    pinned: true,
+    supersedes: ['mem-1a9e04', 'mem-0e0e0e'],
+    replaces: [{ id: 'mem-1a9e04', title: 'The watch stops at six' }]
+  },
   before: BEFORE
 };
 
@@ -74,6 +80,18 @@ describe('what an edit card shows', () => {
     expect(change.trail.endsWith('…')).toBe(true);
     expect(change.removed).toBe('Old');
     expect(bodyChange('a', `a${'b'.repeat(LONG_CHARACTERS + 1)}`).long).toBe(true);
+  });
+
+  it('cuts its context on whole characters too (PR #212 F-05)', () => {
+    const lone = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+    const leading = '\u{1F600}'.repeat(41) + 'x';
+    const lead = bodyChange(`${leading}A`, `${leading}B`).lead;
+    expect(lead).not.toMatch(lone);
+    const trailing = 'x' + '\u{1F600}'.repeat(41);
+    const trail = bodyChange(`A${trailing}`, `B${trailing}`).trail;
+    expect(trail).not.toMatch(lone);
+    expect(lead.length).toBeGreaterThan(70);
+    expect(trail.length).toBeGreaterThan(70);
   });
 
   it('never splits a character in two', () => {
@@ -149,7 +167,8 @@ describe('the sheet from an edit card', () => {
       mode: 'card',
       memoryId: 'mem-7f3c2a',
       proposalIndex: 0,
-      draft: { title: EDIT.title, kind: 'canon', summary: EDIT.summary, body: EDIT.body, supersedes: ['mem-1a9e04'], pinned: true },
+      // Every id the note supersedes, the unlisted one too (PR #212 F-01); titles only for those listed.
+      draft: { title: EDIT.title, kind: 'canon', summary: EDIT.summary, body: EDIT.body, supersedes: ['mem-1a9e04', 'mem-0e0e0e'], pinned: true },
       replaces: [{ id: 'mem-1a9e04', title: 'The watch stops at six' }]
     });
     act(() => {

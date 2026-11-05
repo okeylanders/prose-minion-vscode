@@ -51,7 +51,10 @@ const count = (value: string, limit: number): string =>
 function sourceLine(sheet: WorkshopMemorySheetState): string | undefined {
   switch (sheet.mode) {
     case 'card':
-      return `From ${sheet.sourceLabel ?? 'a persona'}'s reply in this conversation. Saved as a Markdown file in prose-minion/memory/.`;
+      // A suggested change edits a saved note; a suggestion of a new one makes a file (PR #212 F-04).
+      return sheet.memoryId
+        ? `A change ${sheet.sourceLabel ?? 'a persona'} suggested in this conversation, to a memory already saved.`
+        : `From ${sheet.sourceLabel ?? 'a persona'}'s reply in this conversation. Saved as a Markdown file in prose-minion/memory/.`;
     case 'turn':
       return `From ${sheet.sourceLabel === 'your message' ? 'your message' : `${sheet.sourceLabel ?? 'a'} reply`} in this conversation. Saved as a Markdown file in prose-minion/memory/.`;
     case 'new':
@@ -77,7 +80,8 @@ export const WorkshopMemorySheet: React.FC<WorkshopMemorySheetProps> = ({ sheet,
     return null;
   }
   const { draft } = sheet;
-  const editing = sheet.mode === 'memory';
+  // Editing a saved memory: a receipt's or the manager's Edit, or a suggested change's (PR #212 F-04). Its route stays the mode's.
+  const editing = sheet.mode === 'memory' || sheet.memoryId !== undefined;
   const fault = checkWorkshopMemoryDraft(draft);
   // Show a field fault only once the writer has typed something there.
   const visibleFault = fault && fault !== 'title-empty' && fault !== 'summary-empty' ? WORKSHOP_MEMORY_DRAFT_FAULTS[fault] : undefined;

@@ -1010,8 +1010,9 @@ D4, D6 and D8 stand; this adds a second kind of suggestion.*
   (`WorkshopMemoryEditAnchor`, a small exact-once finder) finds every quote
   in the note as the listing has it then, never in text an earlier replace
   wrote. A model never gives an offset.
-  - The item records the note's D14 version, what the note said
-    (`before`), and the result.
+  - The item records the note's edit token (below), every id it
+    supersedes, listed or not, what the note said (`before`), and the
+    result.
   - An unknown, archived, superseded, busy or unreadable target drops the
     edit, as does a quote found zero or several times, overlapping quotes, a
     result past a field bound, a change that changes nothing, or a result
@@ -1021,15 +1022,29 @@ D4, D6 and D8 stand; this adds a second kind of suggestion.*
     file again at commit.
   - The phrasing fence (D9) reads the result, as it does a new note.
 - **The list shape.** `memoryProposals` items are now `proposes: 'new'` or
-  `proposes: 'edit'`. An edit carries `target` (id, version, load in full,
-  what it replaces), `before`, the result as its fields, and `stale` once a
-  Save found the note changed. No `schemaVersion` bump: the field has not
+  `proposes: 'edit'`. An edit carries `target` (id, edit token, load in
+  full, the complete `supersedes` id list, and `replaces`, the titles of
+  those the listing named), `before`, the result as its fields, and `stale`
+  once a Save found the note changed. A Save keeps every superseded id,
+  listed or not; only the writer removes one (PR #212 F-01). No `schemaVersion` bump: the field has not
   shipped.
-- **The version check.** A Save is an ordinary update through the library's
-  queue, bound to its workspace (PR #202 F01), carrying the recorded version.
-  - The note's version must equal it at the write's turn, and again inside
-    the store's claimed rewrite, which reruns its check whenever the bytes
-    it read are not the bytes it claims. That is the commit point.
+- **The token check.** A Save is an ordinary update through the library's
+  queue, bound to its workspace (PR #202 F01), carrying the recorded edit
+  token (`projectMemoryEditToken`).
+  - The token covers every field the whole-draft update can overwrite
+    (title, kind, summary, body, `supersedes`, load in full) and the note's
+    effective standing. D14's version leaves `supersedes` out and stays the
+    delivery fingerprint only, never this check (PR #212 F-02).
+  - It must match three times:
+    1. at the write's turn;
+    2. inside the store's claimed rewrite, on the bytes it claims (the store
+       reruns its check whenever those differ from what it read);
+    3. against the folder the store reads afresh in the rewrite's own turn,
+       just before claiming, so a note another file supersedes meanwhile is
+       seen (F-03).
+  - Stated limit: another window can still change the folder between that
+    last read and the rename; nothing locks across files, as D5 says of the
+    pinned budget.
   - Otherwise the write is refused as `changed`, nothing is written, the
     card says "This note changed since it was suggested", and the card offers
     only Dismiss. It is never re-anchored.

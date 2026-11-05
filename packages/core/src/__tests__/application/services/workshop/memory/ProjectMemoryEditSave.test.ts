@@ -9,11 +9,11 @@
 import * as path from 'node:path';
 import type { WorkshopMemoryDraft } from '@messages';
 import { decodeProjectMemory } from '@/infrastructure/storage/ProjectMemoryCodec';
-import { projectMemoryVersion } from '@/application/services/workshop/memory/ProjectMemoryVersion';
+import { projectMemoryEditToken } from '@/application/services/workshop/memory/ProjectMemoryVersion';
 import { allLines, holdOnce, libraryHost, MEMORY, memory } from './projectMemoryLibraryHost';
 
 const NOTE = memory();
-const VERSION = projectMemoryVersion(NOTE, false);
+const TOKEN = projectMemoryEditToken(NOTE, false);
 const RESULT: WorkshopMemoryDraft = {
   title: NOTE.title,
   kind: NOTE.kind,
@@ -30,11 +30,19 @@ const bodyOf = (host: ReturnType<typeof libraryHost>): string => {
   return decoded.kind === 'memory' ? decoded.memory.body.trim() : 'unreadable';
 };
 
-describe('ProjectMemoryLibrary.edit with the version an edit was anchored against', () => {
+const noteOf = (host: ReturnType<typeof libraryHost>) => {
+  const decoded = decodeProjectMemory(fileText(host));
+  if (decoded.kind !== 'memory') {
+    throw new Error('unreadable');
+  }
+  return decoded.memory;
+};
+
+describe('ProjectMemoryLibrary.edit with the token an edit was anchored against', () => {
   it('writes the result while the note is the version it was suggested against', async () => {
     const host = libraryHost();
     host.put(NOTE);
-    const result = await host.library.edit(NOTE.id, RESULT, { expectedVersion: VERSION });
+    const result = await host.library.edit(NOTE.id, RESULT, { expectedToken: TOKEN });
     expect(result).toMatchObject({ kind: 'written', changedMeaning: true, memory: { id: NOTE.id } });
     expect(bodyOf(host)).toBe(RESULT.body);
   });
@@ -43,7 +51,7 @@ describe('ProjectMemoryLibrary.edit with the version an edit was anchored agains
     const host = libraryHost();
     host.put({ ...NOTE, summary: 'Alice changed this by hand.' });
     const before = fileText(host);
-    const result = await host.library.edit(NOTE.id, RESULT, { expectedVersion: VERSION });
+    const result = await host.library.edit(NOTE.id, RESULT, { expectedToken: TOKEN });
     expect(result).toEqual({ kind: 'refused', reason: 'changed' });
     expect(fileText(host)).toBe(before);
     expect(allLines(host.lines)).toContain(`update refused id=${NOTE.id} reason=changed`);
@@ -54,7 +62,7 @@ describe('ProjectMemoryLibrary.edit with the version an edit was anchored agains
     host.put(NOTE);
     // The turn's listing sees the version; the store's claimed read finds another window's change.
     const hold = holdOnce(host.store as never, 'replace', () => true);
-    const saving = host.library.edit(NOTE.id, RESULT, { expectedVersion: VERSION });
+    const saving = host.library.edit(NOTE.id, RESULT, { expectedToken: TOKEN });
     await hold.arrived;
     host.put({ ...NOTE, body: 'Another window wrote this.' });
     const otherWindow = fileText(host);
@@ -68,7 +76,7 @@ describe('ProjectMemoryLibrary.edit with the version an edit was anchored agains
     host.put(NOTE);
     host.put(memory({ id: 'mem-000002', title: 'The watch is broken', supersedes: [NOTE.id] }), '000002-note.md');
     const before = fileText(host);
-    expect(await host.library.edit(NOTE.id, RESULT, { expectedVersion: VERSION })).toEqual({ kind: 'refused', reason: 'changed' });
+    expect(await host.library.edit(NOTE.id, RESULT, { expectedToken: TOKEN })).toEqual({ kind: 'refused', reason: 'changed' });
     expect(fileText(host)).toBe(before);
   });
 
@@ -77,7 +85,7 @@ describe('ProjectMemoryLibrary.edit with the version an edit was anchored agains
     host.put(NOTE);
     const before = fileText(host);
     const hold = holdOnce(host.store as never, 'list', () => true);
-    const saving = host.library.edit(NOTE.id, RESULT, { expectedVersion: VERSION });
+    const saving = host.library.edit(NOTE.id, RESULT, { expectedToken: TOKEN });
     await hold.arrived;
     host.state.folders = [{ path: '/elsewhere', name: 'elsewhere' }];
     hold.release();
@@ -90,5 +98,51 @@ describe('ProjectMemoryLibrary.edit with the version an edit was anchored agains
     host.put({ ...NOTE, summary: 'Alice changed this by hand.' });
     expect(await host.library.edit(NOTE.id, RESULT)).toMatchObject({ kind: 'written' });
     expect(bodyOf(host)).toBe(RESULT.body);
+  });
+
+  it('a supersedes-only change before the write\'s turn refuses, and leaves the newer bytes exactly (PR #212 F-02)', async () => {
+    const host = libraryHost();
+    host.put(memory({ id: 'mem-000001', title: 'The watch stops at six' }), '000001-note.md');
+    host.put({ ...NOTE, supersedes: ['mem-000001'] });
+    const newer = fileText(host);
+    expect(await host.library.edit(NOTE.id, RESULT, { expectedToken: TOKEN })).toEqual({ kind: 'refused', reason: 'changed' });
+    expect(fileText(host)).toBe(newer);
+  });
+
+  it('a supersedes-only change between the turn and the claimed rewrite refuses, and leaves the newer bytes exactly (PR #212 F-02)', async () => {
+    const host = libraryHost();
+    host.put(memory({ id: 'mem-000001', title: 'The watch stops at six' }), '000001-note.md');
+    host.put(NOTE);
+    const hold = holdOnce(host.store as never, 'replace', () => true);
+    const saving = host.library.edit(NOTE.id, RESULT, { expectedToken: TOKEN });
+    await hold.arrived;
+    host.put({ ...NOTE, supersedes: ['mem-000001'] });
+    const newer = fileText(host);
+    hold.release();
+    expect(await saving).toEqual({ kind: 'refused', reason: 'changed' });
+    expect(fileText(host)).toBe(newer);
+  });
+
+  it('a note superseded by another between the turn and the claimed rewrite refuses: its own bytes never changed (PR #212 F-03)', async () => {
+    const host = libraryHost();
+    host.put(NOTE);
+    const before = fileText(host);
+    const hold = holdOnce(host.store as never, 'replace', () => true);
+    const saving = host.library.edit(NOTE.id, RESULT, { expectedToken: TOKEN });
+    await hold.arrived;
+    host.put(memory({ id: 'mem-000002', title: 'The watch is broken', supersedes: [NOTE.id] }), '000002-note.md');
+    hold.release();
+    expect(await saving).toEqual({ kind: 'refused', reason: 'changed' });
+    expect(fileText(host)).toBe(before);
+  });
+
+  it('keeps every id the note supersedes, a note the folder can\'t read included (PR #212 F-01)', async () => {
+    const host = libraryHost();
+    host.put(memory({ id: 'mem-000001', title: 'The watch stops at six' }), '000001-note.md');
+    const related = { ...NOTE, supersedes: ['mem-000001', 'mem-000002'] };
+    host.put(related);
+    const draft = { ...RESULT, supersedes: ['mem-000001', 'mem-000002'] };
+    expect(await host.library.edit(NOTE.id, draft, { expectedToken: projectMemoryEditToken(related, false) })).toMatchObject({ kind: 'written' });
+    expect(noteOf(host).supersedes).toEqual(['mem-000001', 'mem-000002']);
   });
 });

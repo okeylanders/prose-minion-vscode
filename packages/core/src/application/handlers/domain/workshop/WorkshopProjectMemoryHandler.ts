@@ -227,9 +227,10 @@ export class WorkshopProjectMemoryHandler {
 
   /**
    * An edit card's Save (Slice 6c): its result, or the sheet's version of
-   * it, applied as an ordinary update only while the note's version is the
-   * one it was anchored against, at the write's turn and under the store's
-   * claim. A changed note writes nothing, and the card keeps only Dismiss.
+   * it, applied as an ordinary update only while the note's edit token is
+   * the one it was anchored against (PR #212 F-02, F-03): at the write's
+   * turn, on the bytes the rewrite claims, and on the folder read afresh
+   * just before it. A changed note writes nothing, and the card keeps only Dismiss.
    */
   private saveEdit(
     requestId: string,
@@ -246,7 +247,7 @@ export class WorkshopProjectMemoryHandler {
     }
     const target = proposal.target.id;
     return this.write(requestId, `proposal edit ${card} memoryId=${target}`, draft, true, async () => ({
-      result: await this.library.edit(target, draft, { expectedVersion: proposal.target.version }),
+      result: await this.library.edit(target, draft, { expectedToken: proposal.target.token }),
       action: 'updated',
       onRecorded: recorded,
       onRefused: (reason) => {

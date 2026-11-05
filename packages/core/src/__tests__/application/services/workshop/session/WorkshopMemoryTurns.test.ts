@@ -175,7 +175,13 @@ describe('memory cards and receipts in the session', () => {
       body: 'Settled at the tea party. Alice notices first.',
       state: 'pending',
       held: 'edit',
-      target: { id: 'mem-7f3c2a', version: '0123456789ab', pinned: true, supersedes: [{ id: 'mem-1a9e04', title: 'The watch stops at six' }] },
+      target: {
+        id: 'mem-7f3c2a',
+        token: '0123456789ab',
+        pinned: true,
+        supersedes: ['mem-1a9e04', 'mem-0e0e0e'],
+        replaces: [{ id: 'mem-1a9e04', title: 'The watch stops at six' }]
+      },
       before: { title: 'The Rabbit\'s watch runs backward', kind: 'canon', summary: 'From chapter 3 on, the White Rabbit\'s watch runs backward.', body: BODY }
     };
     const withEdit = (changes: Record<string, unknown> = {}): string => {
@@ -196,7 +202,11 @@ describe('memory cards and receipts in the session', () => {
     });
 
     it.each<[string, Record<string, unknown>, RegExp]>([
-      ['a version that is not one', { target: { ...EDIT.target, version: 'v1' } }, /target\.version must be a memory version/],
+      ['a token that is not one', { target: { ...EDIT.target, token: 'v1' } }, /target\.token must be an edit token/],
+      ['no complete list of what the note supersedes', { target: { id: 'mem-7f3c2a', token: '0123456789ab', pinned: true } }, /missing required field supersedes/],
+      ['a title for a memory the note does not supersede', {
+        target: { ...EDIT.target, replaces: [{ id: 'mem-000009', title: 'Elsewhere' }] }
+      }, /target\.replaces must be only memories the note supersedes/],
       ['a target that is not a memory id', { target: { ...EDIT.target, id: 'the watch' } }, /target\.id must be a memory id/],
       ['no before', { before: undefined }, /missing required field before/],
       ['a new note\'s field', { supersedes: [{ id: 'mem-1a9e04', title: 'x' }] }, /unknown field supersedes/],

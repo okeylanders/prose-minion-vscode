@@ -185,7 +185,7 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
   }
 
   /** Edit a saved memory (the sheet's Save changes). `update` is the update note's (D14). */
-  edit(id: string, patch: WorkshopMemoryDraft, options?: { readonly expectedVersion?: string }): Promise<ProjectMemoryWriteResult> {
+  edit(id: string, patch: WorkshopMemoryDraft, options?: { readonly expectedToken?: string }): Promise<ProjectMemoryWriteResult> {
     return this.writes.update(id, patch, options);
   }
 

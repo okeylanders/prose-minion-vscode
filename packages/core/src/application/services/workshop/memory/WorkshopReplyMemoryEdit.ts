@@ -9,7 +9,9 @@
  *   superseded or busy one is refused by its standing. A listing that
  *   couldn't be read drops the edit (`listing-unread`).
  * - **Anchoring** is `WorkshopMemoryEditAnchor`'s, against that note; the
- *   item records the note's D14 version, which a Save must still find.
+ *   item records the note's edit token (every field a Save can overwrite,
+ *   and its standing: PR #212 F-02), which a Save must still find, and
+ *   every id it supersedes, listed or not (F-01).
  * - **The result** passes the phrasing fence (D9) exactly as a new note
  *   does, and the pinned budget when the note loads in full (D5). The
  *   field bounds imply the file's byte bound (PR #194 F-05); the store
@@ -23,6 +25,7 @@ import type { WorkshopMemoryEditProposal, WorkshopMemoryHold } from '@messages';
 import { projectMemoryBody } from '@shared/types/projectMemory';
 import type { ProjectMemoryListed } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
 import { pinnedBudget } from '@/application/services/workshop/memory/ProjectMemoryPinnedBudget';
+import { projectMemoryEditToken } from '@/application/services/workshop/memory/ProjectMemoryVersion';
 import { anchorWorkshopMemoryEdit } from '@/application/services/workshop/memory/WorkshopMemoryEditAnchor';
 import { workshopMemoryProposalPhrasingFault } from '@/application/services/workshop/memory/WorkshopMemoryProposalPhrasing';
 import type { WorkshopMemoryEditDraft } from '@/utils/workshopMemoryEditProtocol';
@@ -80,7 +83,14 @@ export function settleWorkshopMemoryEdit(
       ...after,
       state: 'pending',
       ...(held ? { held } : {}),
-      target: { id: memory.id, version: listed.version, pinned: memory.pinned, ...(replaces.length > 0 ? { supersedes: replaces } : {}) },
+      target: {
+        id: memory.id,
+        token: projectMemoryEditToken(memory, listed.superseded),
+        pinned: memory.pinned,
+        // Every id, listed or not, so a Save never drops one (PR #212 F-01); titles only for those listed.
+        supersedes: [...memory.supersedes],
+        ...(replaces.length > 0 ? { replaces } : {})
+      },
       before
     },
     log: `Memory edit ${held ? `held (reason=${held}; ` : 'pending ('}target=${memory.id}; changes=${changed.join(',')}; ` +

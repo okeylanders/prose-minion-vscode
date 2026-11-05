@@ -111,6 +111,19 @@ export interface ProjectMemoryTargetOptions extends ProjectMemoryWriteOptions {
   directory?: string;
 }
 
+/**
+ * A rewrite's options (epic Slice 6c, PR #212 F-03): `verify`, when given,
+ * reads the folder afresh inside the rewrite's own turn, after the target
+ * was read and just before its claimed rewrite, and declines the rewrite
+ * (`withdrawn`) when it returns false. It is handed every readable memory
+ * as a listing would give it, or `undefined` when the folder can't be read.
+ * Stated limit: another window can still change the folder between that
+ * read and the rename; nothing in the store locks across files.
+ */
+export interface ProjectMemoryReplaceOptions extends ProjectMemoryTargetOptions {
+  verify?: (folder: ReadonlyArray<{ readonly memory: ProjectMemory; readonly busy?: true }> | undefined) => boolean;
+}
+
 export interface ProjectMemoryStoreOptions {
   now?: () => Date;
   /** The private part of a staged file's or a claim's name; a random UUID by default. */
@@ -119,4 +132,24 @@ export interface ProjectMemoryStoreOptions {
   mintMemoryId?: () => string;
   /** The clock claims are timed by; `now` by default. */
   claimNow?: () => Date;
+}
+
+/** A new memory from its draft, with the id and the creation stamp the store gives it. */
+export function projectMemoryFromDraft(draft: ProjectMemoryDraft, id: string, stamp: string): ProjectMemory {
+  return {
+    id,
+    title: draft.title,
+    kind: draft.kind,
+    summary: draft.summary,
+    status: draft.status,
+    pinned: draft.pinned,
+    created: stamp,
+    updated: stamp,
+    origin: draft.origin,
+    ...(draft.proposedBy !== undefined ? { proposedBy: draft.proposedBy } : {}),
+    ...(draft.sourceSession !== undefined ? { sourceSession: draft.sourceSession } : {}),
+    sourceTurns: [...draft.sourceTurns],
+    supersedes: [...draft.supersedes],
+    body: draft.body
+  };
 }

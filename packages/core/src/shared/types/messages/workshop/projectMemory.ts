@@ -88,17 +88,24 @@ export interface WorkshopMemoryEditFields {
  * A persona's proposed change to a saved memory (Slice 6c), anchored by the
  * host against the note as the listing had it when the reply landed. Its
  * `title` to `body` are the result; `before` is what the note said. Saving
- * applies the result only while the note's version is still `target.version`.
+ * applies the result only while the note's edit token is still
+ * `target.token` (PR #212 F-02).
  */
 export interface WorkshopMemoryEditProposal extends WorkshopMemoryProposalCommon {
   proposes: 'edit';
   target: {
     id: string;
-    /** The note's D14 version the edit was anchored against. */
-    version: string;
-    /** Whether it loads in full, and what it replaces: kept by a Save, and the sheet's prefill. */
+    /**
+     * The note's edit token when the edit was anchored (`projectMemoryEditToken`):
+     * every field a Save can overwrite, and its standing (PR #212 F-02).
+     */
+    token: string;
+    /** Whether it loads in full: kept by a Save, and the sheet's prefill. */
     pinned: boolean;
-    supersedes?: WorkshopMemoryProposalReplaces[];
+    /** Every id the note supersedes, listed or not: kept whole by a Save (PR #212 F-01). */
+    supersedes: string[];
+    /** Those the listing named, with their titles, for the sheet to show. */
+    replaces?: WorkshopMemoryProposalReplaces[];
   };
   before: WorkshopMemoryEditFields;
   /** A Save found the note changed since it was suggested: nothing was written, and only Dismiss is offered. */

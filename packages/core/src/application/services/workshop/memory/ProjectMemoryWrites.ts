@@ -36,7 +36,7 @@ import {
   type ProjectMemoryListed
 } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
 import { pinnedBudget, saysSomethingElse } from '@/application/services/workshop/memory/ProjectMemoryPinnedBudget';
-import { projectMemoryVersion } from '@/application/services/workshop/memory/ProjectMemoryVersion';
+import { projectMemoryEditToken, projectMemoryVersion } from '@/application/services/workshop/memory/ProjectMemoryVersion';
 import { askedProjectMemoryWorkspace, type ProjectMemoryWorkspaceIdentity } from '@/application/services/workshop/memory/ProjectMemoryWorkspaceIdentity';
 
 /** The store's methods the writes use; satisfied by ProjectMemoryStore. */
@@ -196,12 +196,16 @@ export class ProjectMemoryWrites {
 
   /**
    * Edit a saved memory: the sheet's whole draft replaces what it says, and
-   * whether it loads in full. With `expectedVersion` (a persona's edit
-   * suggestion, Slice 6c) the note's D14 version must still be that one at
-   * the write's turn in the queue and again under the store's claim, where
-   * the bytes it rewrites are read: otherwise nothing is written (`changed`).
+   * whether it loads in full. With `expectedToken` (a persona's edit
+   * suggestion, Slice 6c) the note's edit token (every field this can
+   * overwrite, and its standing: PR #212 F-02) must still be that one at the
+   * write's turn, on the bytes the store's rewrite reads, and on the folder
+   * the store reads afresh just before claiming them, so a note superseded
+   * meanwhile is seen (F-03). Otherwise nothing is written (`changed`).
+   * Stated limit: another window can still change the folder between that
+   * last read and the rename (no cross-file lock, as D5 says of the budget).
    */
-  update(id: string, patch: WorkshopMemoryDraft, options: { readonly expectedVersion?: string } = {}): Promise<ProjectMemoryWriteResult> {
+  update(id: string, patch: WorkshopMemoryDraft, options: { readonly expectedToken?: string } = {}): Promise<ProjectMemoryWriteResult> {
     return this.owe('update', async (bound) => {
       const listed = await this.listed(bound);
       if (listed.kind === 'refused') {
@@ -211,11 +215,19 @@ export class ProjectMemoryWrites {
       if (!current) {
         return this.refused('update', 'missing', id);
       }
-      const expected = options.expectedVersion;
-      if (expected !== undefined && current.version !== expected) {
+      const expected = options.expectedToken;
+      if (expected !== undefined && projectMemoryEditToken(current.memory, current.superseded) !== expected) {
         return this.refused('update', 'changed', id);
       }
       let moved = false;
+      let unread = false;
+      // The folder as the store reads it just before its claimed rewrite: the note's own standing, fresh (F-03).
+      const verify = (folder: ReadonlyArray<{ readonly memory: ProjectMemory; readonly busy?: true }> | undefined): boolean => {
+        const fresh = folder && listProjectMemories(folder).find((entry) => entry.memory.id === id);
+        unread = folder === undefined;
+        moved = !unread && (!fresh || projectMemoryEditToken(fresh.memory, fresh.superseded) !== expected);
+        return !unread && !moved;
+      };
       const known = new Set(listed.memories.map(({ memory }) => memory.id).filter((other) => other !== id));
       const revise = (memory: ProjectMemory): ProjectMemory => {
         const next = {
@@ -237,15 +249,18 @@ export class ProjectMemoryWrites {
       }
       let changedMeaning = false;
       const replaced = await this.store.replace(id, (memory) => {
-        if (expected !== undefined && projectMemoryVersion(memory, current.superseded) !== expected) {
+        if (expected !== undefined && projectMemoryEditToken(memory, current.superseded) !== expected) {
           moved = true;
           return undefined;
         }
         const next = revise(memory);
         changedMeaning = saysSomethingElse(memory, next);
         return changedMeaning || next.pinned !== memory.pinned ? next : undefined;
-      }, { directory: bound.asked.directory, beforeCommit: bound.commit });
-      return moved ? this.refused('update', 'changed', id) : this.settled('update', id, replaced, changedMeaning, bound);
+      }, { directory: bound.asked.directory, beforeCommit: bound.commit, ...(expected !== undefined ? { verify } : {}) });
+      if (unread || moved) {
+        return this.refused('update', unread ? 'unknown' : 'changed', id);
+      }
+      return this.settled('update', id, replaced, changedMeaning, bound);
     });
   }
 

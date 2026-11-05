@@ -11,7 +11,8 @@ import { decodeWorkshopMemoryProposal } from '@/utils/workshopMemoryProposalProt
 import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
 import { anchorWorkshopMemoryEdit, findExactlyOnce } from '@/application/services/workshop/memory/WorkshopMemoryEditAnchor';
 import { listProjectMemories } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
-import { projectMemoryVersion } from '@/application/services/workshop/memory/ProjectMemoryVersion';
+import { projectMemoryEditToken } from '@/application/services/workshop/memory/ProjectMemoryVersion';
+import { workshopMemoryProposalDraft } from '@shared/constants/workshopProjectMemoryWrites';
 import { settleWorkshopMemoryProposals } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import type { WorkshopMemoryEditDraft } from '@/utils/workshopMemoryEditProtocol';
 import { memoryFrame } from './memoryProposalFixtures';
@@ -178,7 +179,7 @@ describe('settling an edit against the listing', () => {
       summary: NOTE.summary,
       body: 'Settled at the tea party. Alice notices before Alice does.',
       state: 'pending',
-      target: { id: NOTE.id, version: projectMemoryVersion(NOTE, false), pinned: false },
+      target: { id: NOTE.id, token: projectMemoryEditToken(NOTE, false), pinned: false, supersedes: [] },
       before: { title: NOTE.title, kind: NOTE.kind, summary: NOTE.summary, body: 'Settled at the tea party. The reader notices before Alice does.' }
     }]);
     expect(settled.autoSave).toEqual([]);
@@ -219,6 +220,18 @@ describe('settling an edit against the listing', () => {
       { open: true, mode: 'auto', memories: listProjectMemories([{ memory: NOTE }]) }, run);
     expect(settled.proposals.map((proposal) => [proposal.proposes, proposal.held])).toEqual([['new', undefined], ['edit', 'edit']]);
     expect(settled.autoSave).toEqual([0]);
+  });
+
+  it('keeps every id the note supersedes, listed or not, through the card\'s draft (PR #212 F-01)', () => {
+    const related = { ...NOTE, supersedes: ['mem-000001', 'mem-000002'] };
+    const listing = listProjectMemories([{ memory: related }, { memory: memory({ id: 'mem-000001', title: 'The watch stops at six' }) }]);
+    const settled = settle(`Good.\n\n${frame('<append>Also at six.</append>')}`, listing);
+    const [card] = settled.proposals;
+    expect(card).toMatchObject({
+      proposes: 'edit',
+      target: { supersedes: ['mem-000001', 'mem-000002'], replaces: [{ id: 'mem-000001', title: 'The watch stops at six' }] }
+    });
+    expect(workshopMemoryProposalDraft(card).supersedes).toEqual(['mem-000001', 'mem-000002']);
   });
 
   it('logs ids and reasons, never the note\'s or the edit\'s text', () => {
