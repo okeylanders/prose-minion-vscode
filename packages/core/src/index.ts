@@ -80,6 +80,12 @@ export type {
   WorkshopSessionListData
 } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 export {
+  WORKSHOP_NO_ROOM_SEED
+} from '@/application/services/workshop/pinnedContext/WorkshopRoomSeed';
+export type {
+  WorkshopRoomSeed
+} from '@/application/services/workshop/pinnedContext/WorkshopRoomSeed';
+export {
   parseWorkshopPersistedSession
 } from '@/application/services/workshop/WorkshopPersistedSession';
 export type {

@@ -31,6 +31,14 @@ interface WorkshopSessionsMenuProps {
    * confirms upstream.
    */
   onFullResetSession: () => void;
+  /**
+   * New session: full reset, empty context (ADR 2026-11-04 D2): clears the
+   * working set and leaves pinned context out. Shown only while anything is
+   * pinned; with nothing pinned, the full reset is already empty.
+   */
+  onEmptyResetSession: () => void;
+  /** How many files are pinned. At 0 the menu and its copy are today's. */
+  pinnedFileCount: number;
   /** True when there is actually an excerpt or attachment to clear. */
   hasWorkingSet: boolean;
   onSaveSession: () => void;
@@ -47,6 +55,16 @@ const SAVE_STATUS_TEXT: Readonly<Record<'saving' | 'saved' | 'error', string>> =
   error: 'Save failed'
 };
 
+function fullResetTitle(hasWorkingSet: boolean, pinnedFileCount: number): string {
+  if (pinnedFileCount > 0) {
+    return 'Start over with no excerpt and no context attachments, then attach your ' +
+      `${pinnedFileCount} pinned ${pinnedFileCount === 1 ? 'file' : 'files'}`;
+  }
+  return hasWorkingSet
+    ? 'Start over with no excerpt and no context attachments'
+    : 'Nothing is attached — this behaves like a new session';
+}
+
 export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
   open,
   activeSessionTitle,
@@ -57,6 +75,8 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
   onOpenChange,
   onNewSession,
   onFullResetSession,
+  onEmptyResetSession,
+  pinnedFileCount,
   hasWorkingSet,
   onSaveSession,
   exportDisabled,
@@ -65,6 +85,7 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
   onOpenSession
 }) => {
   const recent = sessions.slice(0, 3);
+  const pinned = pinnedFileCount > 0;
   const state = saveStatus ?? 'saved';
 
   return (
@@ -89,14 +110,26 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
         icon="x"
         danger
         disabled={newSessionDisabled}
-        title={hasWorkingSet
-          ? 'Start over with no excerpt and no context attachments'
-          : 'Nothing is attached — this behaves like a new session'}
+        title={fullResetTitle(hasWorkingSet, pinnedFileCount)}
         onSelect={onFullResetSession}
       >
         New session: full reset
-        <small>also clears the excerpt and context</small>
+        <small>{pinned
+          ? 'clears the excerpt and context, then attaches pinned context'
+          : 'also clears the excerpt and context'}</small>
       </SavedItemsMenu.Item>
+      {pinned && (
+        <SavedItemsMenu.Item
+          icon="x"
+          danger
+          disabled={newSessionDisabled}
+          title="Start over with no excerpt, no context attachments and no pinned context"
+          onSelect={onEmptyResetSession}
+        >
+          New session: full reset, empty context
+          <small>clears the excerpt and context, and leaves pinned context out</small>
+        </SavedItemsMenu.Item>
+      )}
       <SavedItemsMenu.Item icon="save" disabled={disabled} kbd="⌘S" onSelect={onSaveSession}>
         Save session…
       </SavedItemsMenu.Item>

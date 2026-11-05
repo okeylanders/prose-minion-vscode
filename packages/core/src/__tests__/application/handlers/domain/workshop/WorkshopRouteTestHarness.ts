@@ -264,6 +264,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     }),
     resetSession: jest.fn(async () => {
       session.reset().forEach((conversationId) => service.discardConversation(conversationId));
+      return { attachmentLabels: [] };
     }),
     rewindTo: jest.fn(),
     branchFrom: jest.fn(),

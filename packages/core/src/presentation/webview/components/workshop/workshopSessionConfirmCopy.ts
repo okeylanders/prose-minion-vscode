@@ -34,6 +34,14 @@ export function workshopSessionConfirmCopy(
           'are all cleared. Saved sessions on disk are not touched.',
         confirmLabel: 'Clear everything'
       };
+    case 'new-empty':
+      return {
+        title: 'Clear the excerpt and context?',
+        body: 'This starts an empty room, with pinned context left out: the excerpt, ' +
+          'anything on the shelf, every context attachment, the thread, tasks, guests, ' +
+          'and conversation memory are all cleared. Saved sessions on disk are not touched.',
+        confirmLabel: 'Clear everything'
+      };
     case 'replace-shelf':
       return {
         title: 'Replace the passage you set aside?',

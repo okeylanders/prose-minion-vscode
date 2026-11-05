@@ -4,11 +4,13 @@ import * as React from 'react';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import {
   MessageType,
+  WorkshopResetSessionPayload,
   WorkshopSessionAction,
   WorkshopSessionActionResultMessage,
   WorkshopSessionContextScanMessage,
   WorkshopSessionRecoveryNoticeMessage,
   WorkshopSessionSaveStatusMessage,
+  WorkshopSessionStart,
   WorkshopSessionSummary,
   WorkshopSessionsDataMessage,
   WorkshopTranscriptExportFormat
@@ -38,7 +40,7 @@ export interface WorkshopSessionsState {
 }
 
 export interface WorkshopSessionsActions {
-  resetSession: (options?: { clearWorkingSet?: boolean }) => void;
+  resetSession: (start: WorkshopSessionStart) => void;
   /**
    * Rewind the room to one bubble (ADR 2026-09-30 §6). Nothing resets
    * optimistically: the host's next snapshot replaces the thread wholesale.
@@ -122,12 +124,11 @@ export function useWorkshopSessions(
     });
   }, [vscode]);
 
-  const resetSession = React.useCallback((options: { clearWorkingSet?: boolean } = {}) => {
+  const resetSession = React.useCallback((start: WorkshopSessionStart) => {
     setSessionActionPending('new');
     pendingResetRollbackRef.current = roomReplacement.beginReplacement();
-    post(MessageType.WORKSHOP_RESET_SESSION, {
-      ...(options.clearWorkingSet ? { clearWorkingSet: true } : {})
-    });
+    const payload: WorkshopResetSessionPayload = { start };
+    post(MessageType.WORKSHOP_RESET_SESSION, payload);
   }, [post, roomReplacement]);
 
   const rewindTo = React.useCallback((turnId: string) => {

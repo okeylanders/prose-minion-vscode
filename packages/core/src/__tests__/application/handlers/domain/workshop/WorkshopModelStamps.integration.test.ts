@@ -187,7 +187,7 @@ Add a key.`, conversationId, 'vendor/never');
           restored: false,
           degradedConversationKeys: []
         }),
-        resetSession: jest.fn().mockResolvedValue(undefined)
+        resetSession: jest.fn().mockResolvedValue({ attachmentLabels: [] })
       } as unknown as WorkshopSessionPersistenceCoordinator,
       { export: jest.fn() },
       {

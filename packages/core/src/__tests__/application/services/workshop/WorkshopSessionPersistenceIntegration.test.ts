@@ -1,4 +1,5 @@
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
+import { WORKSHOP_NO_ROOM_SEED } from '@/application/services/workshop/pinnedContext/WorkshopRoomSeed';
 import { WorkshopSessionStore } from '@/infrastructure/storage/WorkshopSessionStore';
 import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
@@ -48,7 +49,7 @@ function setup(fs = new MemoryFileSystem()) {
   } as unknown as AssistantToolService;
   const settings = { getWriterProfile: () => DEFAULT_WORKSHOP_WRITER_PROFILE } as WorkshopConversationSettingsService;
   const coordinator = new WorkshopSessionPersistenceCoordinator(
-    session, assistant, settings, new WorkshopSessionTimeService({ now }), store, log,
+    session, assistant, settings, new WorkshopSessionTimeService({ now }), store, WORKSHOP_NO_ROOM_SEED, log,
     { now, idFactory: () => `room-${++nextId}`, ensureAssistantReady: ready }
   );
   return { fs, store, session, coordinator, log, ready };
@@ -77,7 +78,7 @@ describe('Workshop persistence with the real store', () => {
       content: 'B body', words: 2, sourceUri: 'file:///workspace/b.md', relativePath: 'b.md' });
     const savedB = await coordinator.saveNamed('Session B');
     const bytesB = fs.files.get(`${directory}/${savedB.fileName}`);
-    await coordinator.resetSession({ clearWorkingSet: true });
+    await coordinator.resetSession({ start: 'full-reset' });
     session.setExcerpt({ text: 'Session A', source: { kind: 'manual' } });
     session.addContextAttachment({ kind: 'file', origin: 'wizard', label: 'a.md',
       content: 'Old A', words: 2, sourceUri: 'file:///workspace/a.md', relativePath: 'a.md' });
@@ -99,7 +100,7 @@ describe('Workshop persistence with the real store', () => {
     await startedRead;
     const replacement = action === 'open'
       ? coordinator.openNamed(savedB.sessionId)
-      : coordinator.resetSession({ clearWorkingSet: true });
+      : coordinator.resetSession({ start: 'full-reset' });
     expect(session.getExcerpt()?.text).toBe('Session A');
     finishRead();
     await refresh;

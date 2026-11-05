@@ -213,7 +213,7 @@ describe('the live room and positions', () => {
       harness.session.getHostConversationId(), extractWorkshopActionableFindings(reply))!;
     const added = harness.session.addTodoFromFinding(third.id, 'finding-1');
     await harness.coordinator.saveNamed('Scripted room', 'scripted');
-    await harness.coordinator.resetSession({ clearWorkingSet: true });
+    await harness.coordinator.resetSession({ start: 'full-reset' });
     await harness.coordinator.flush();
 
     const result = listed(await new WorkshopTranscriptRecallService(harness.store, harness.coordinator, harness.log)

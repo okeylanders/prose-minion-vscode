@@ -65,7 +65,7 @@ describe('bookmarks across whole-room operations (ADR 2026-11-03 D6)', () => {
   it('New clears them, and the fresh current.json holds none', async () => {
     const { coordinator, session, store } = await openBookmarkedRoom();
 
-    await coordinator.resetSession();
+    await coordinator.resetSession({ start: 'carry' });
 
     expect(session.getSnapshot().bookmarks).toEqual([]);
     const current = await store.readCurrent();
