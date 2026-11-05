@@ -1,6 +1,6 @@
 # PR #226 review: Persona File Edits specification
 
-**Latest disposition: five of six blocking contracts are closed at specification level. F-04 remains open after independent re-review of `494a17d3`; see the final section below.**
+**Latest disposition: all F-01–F-06 and N-01–N-03 are closed at specification level after independent final re-review of `25755a27`. No remaining spec blocker. Implementation and live acceptance remain separate gates.**
 
 **Initial disposition at `0ed3ba75`: six blocking contracts required correction.** This reviews a documentation-only design, not an implemented feature or permission to merge.
 
@@ -185,3 +185,22 @@ The in-flight claim, joined duplicates, terminal replay, partial/unknown states 
 | F-04.3 authority before every attempt | **Settled in ADR D7.6.** The applier's `beforeAttempt` runs synchronously immediately before every `applyEdits`, its retry included. It holds the authority predicate (claim, generation, setting, a `FileEditAuthorityEpoch` bumped on workspace-folder and context-path changes) and the text checks. A refusal makes no further attempt. |
 | F-06 witness | **Corrected.** The acceptance uses a quote over the 300-character floor; the 18-character case becomes the allowed control. |
 | Acceptance cases | Added to the epic's completion criteria: a failed or deferred checkpoint writes nothing; the same session reopened while an old action is paused writes nothing; the setting turned off or the room replaced before the retry makes no second attempt; plus successful controls. |
+
+## Final specification re-review at `25755a27` (2026-11-05)
+
+**Verdict: approved at specification level. All review findings are closed.** This is a review verdict, not a formal GitHub approval or authorization to merge.
+
+The final focused revision settles F-04's three remaining contracts:
+
+1. **Verified persistence:** [D8](https://github.com/okeylanders/prose-minion-vscode/blob/25755a27bc62e961cc5599cff89184d40787c34e/docs/adr/2026-11-05-workshop-persona-file-edits.md#L320-L344) specifies `checkpointFileEdit(generation, turnId, index)` with an explicit result, requiring the exact `applying` state in current.json and the named checkpoint when applicable. Failed/deferred/unavailable writes, mirror failures and a moved generation refuse document dispatch. An awaited void `flush()` is explicitly insufficient.
+2. **Room lifetime:** [D8](https://github.com/okeylanders/prose-minion-vscode/blob/25755a27bc62e961cc5599cff89184d40787c34e/docs/adr/2026-11-05-workshop-persona-file-edits.md#L304-L312) captures `readRoomRevision()`, keys the claim by generation, and assigns outcomes to that generation. Reopening the same session cannot inherit an old in-flight action.
+3. **Every actual write attempt:** [D7.6](https://github.com/okeylanders/prose-minion-vscode/blob/25755a27bc62e961cc5599cff89184d40787c34e/docs/adr/2026-11-05-workshop-persona-file-edits.md#L267-L288) invokes `beforeAttempt` synchronously immediately before every `applyEdits`, including the internal retry. It combines claim/generation/setting/authority-epoch checks with live-text policy checks. Refusal makes no further attempt, while any earlier partial landing is reported truthfully.
+
+The epic now names failed/deferred-checkpoint, same-session-reopen and retry-authority acceptance cases. Its ceiling refusal witness is correctly above the new 300-character floor, with a below-floor allowed control. The amendment allowing emphasis changes and counting changed characters after common-prefix/suffix trimming is explicit; it does not weaken the protected-region or strict Proofread contracts.
+
+**Verification**
+- Independently reviewed the substantive revisions at `494a17d3`, `34d14985` and `25755a27`, preserving the initial review and coordinator ledgers.
+- Exact reviewed-head CI at `25755a27bc62e961cc5599cff89184d40787c34e` completed successfully: [run 42123531649](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42123531649).
+- All changes in this final revision are documentation. The new behavior remains unimplemented in this PR; acceptance tests and live-host verification belong to the stated implementation slices.
+- The earlier eight production-contract witnesses remain evidence of the original seams, not acceptance tests for the new design. No product code or tests were modified by this review.
+- This closeout adds only the review disposition. No merge was performed; #205 remains deferred.
