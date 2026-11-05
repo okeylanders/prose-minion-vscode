@@ -3,9 +3,50 @@
 - Reviewed head: `b04290829a44e8e2fd34530bc371110dd3262bb0`.
 - Target: `epic-pinned-context`, observed at `24540718158940249511e960b0b5599029dd3ecf`.
 - Date: 2026-11-05.
-- Verdict: **Changes required.** Four reproducible findings: one high-priority cross-project data leak and three medium-priority identity/reporting defects.
+- Current verdict: **Changes required.** F01 remains open for nested roots at `d8b8d2a4`; F02–F04 are closed. The initial review found four reproducible defects, preserved below.
 - Scope: Slice 2b's seed, library, file reader, matching, budget/refresh handling, reports, delivery, wiring/shutdown, and integration with the corrected Slice 1 store.
 - No production fixes, formal GitHub approval, merge, provider calls or deployment performed.
+
+## Correction re-review at `d8b8d2a4ee1f75b22f7dfc9c6092621f3af1e059`
+
+**Verdict: Changes required. F02, F03 and F04 are closed; F01 remains open for nested workspace roots.** The original five probes pass unchanged, but containment is not the same as source identity.
+
+### F01 remains open · High · A nested workspace still supplies the wrong project's bytes
+
+**Locations:** `WorkshopPinnedContextFileReader.ts:182–194,269–280`.
+
+Both new guards check only `isPathWithinRoot(capturedRoot, returnedPath)`. If project B is a folder inside project A, a path from B passes that guard even though it is not the file A's pinned relative path names.
+
+Two independent, repeated probes use A=`/workspace/novel`, B=`/workspace/novel/other-project`, and A's pinned `Characters/alice.md`. Immediately after A's list is read, the workspace switches to B. One probe opens B's catalog; the other uses an empty catalog and the real intake service's workspace-relative recovery. In both cases the reader loads `/workspace/novel/other-project/Characters/alice.md`, then the fixture returns the workspace to A as the file read settles. Installation attaches:
+
+- body: `Private facts from project B.`;
+- URI: `file:///workspace/novel/other-project/Characters/alice.md`;
+- relative path: `Characters/alice.md`;
+- result: one file attached, no left-out entry.
+
+The scope reports `workspace-changed` throughout the B interval. A's own `Characters/alice.md` exists with different text. This is not a legitimate A pin to `other-project/Characters/alice.md`: the source has been reinterpreted against B. The tests assert that B's file is not even read, and both fail.
+
+**Required correction:** bind catalog provenance and authorized source identity to the captured root plus the resolved relative path. A catalog row's absolute path must identify that row under A, not merely fall somewhere below A. The workspace reauthorization result must identify A's requested source rather than a recovered same-relative-path file under B. Keep exact spelling and unambiguous normalized-catalog fallback behavior, and retain the existing containment/symlink defenses.
+
+Probe: [nested workspace, both intake doors](probes/pr-208-nested-workspace-binding.test.ts.txt). These two cases must pass alongside the original disjoint-root and held-read cases before closing F01.
+
+### Closed findings and verification
+
+- **F02 closed:** separator conversion is now Windows-only. The unchanged POSIX literal-backslash probe passes.
+- **F03 closed:** exact catalog paths win; multiple distinct normalized fallback paths are refused. The unchanged NFC/NFD probe and new ambiguity/control cases pass.
+- **F04 closed:** all read outcomes retain root-derived source URIs. Missing and unreadable older-display-path aliases correctly report their retained body as kept.
+- The additive `store.read({ filePath })` guard correctly refuses a different list at its queued turn. The remaining issue is the later source resolution, not that queue guard.
+- All 1,948 `apps/` and `packages/` files were checked against this head's Git blob hashes before probing.
+- Typecheck passes across all three projects. Lint passes: 0 errors / 1,165 warnings with temporary review probes excluded (the initial inclusive invocation added five probe-only warnings).
+- Focused repository verification: **13 suites / 221 tests passed**.
+- Original independent probes plus the 13 supplied correction regressions: **4 suites / 18 tests passed**, independently replayed.
+- New nested-root probes: **2 failed**, repeated independently with the real intake authorization paths.
+- This exact correction head's [verify CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41956757879/job/127013403803) passed. The earlier complete local baseline run is recorded below; no new full local run is claimed for the correction.
+- No production edits, formal approval or merge performed.
+
+After this re-review, `c70695f5` merged the already reviewed Project Memory #206/#207 changes. The compare contains no change to the affected pinned-context source, so the remaining F01 finding still applies. Exact integrated-head checks remain a gate.
+
+The original review and integration record follow for audit history.
 
 ## Integration and full-suite update
 
