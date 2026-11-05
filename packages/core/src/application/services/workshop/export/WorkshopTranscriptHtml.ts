@@ -23,12 +23,18 @@ import {
   WORKSHOP_TRANSCRIPT_WRITER_LABEL,
   WorkshopTranscript,
   WorkshopTranscriptEntry,
+  WorkshopTranscriptLine,
+  WorkshopTranscriptModelSliceEntry,
   WorkshopTranscriptReplyEntry,
   WorkshopTranscriptWriterEntry,
   countWorkshopTranscriptMessages
 } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { describeWorkshopTranscript } from './WorkshopTranscriptDescription';
 import { WORKSHOP_TRANSCRIPT_HTML_CSS } from './WorkshopTranscriptHtmlStyles';
+import {
+  workshopTranscriptEntryModel,
+  type WorkshopTranscriptRenderOptions
+} from './WorkshopTranscriptModelHeader';
 
 const CONTENT_SECURITY_POLICY = "default-src 'none'; style-src 'unsafe-inline'";
 const SAFE_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
@@ -74,7 +80,10 @@ export function safeLinkDestination(href: string): string | undefined {
   }
 }
 
-export function renderWorkshopTranscriptHtml(transcript: WorkshopTranscript): string {
+export function renderWorkshopTranscriptHtml(
+  transcript: WorkshopTranscript,
+  options: WorkshopTranscriptRenderOptions = {}
+): string {
   const title = escapeHtml(transcript.title);
   const description = escapeHtml(
     describeWorkshopTranscript(transcript, countWorkshopTranscriptMessages(transcript))
@@ -98,7 +107,7 @@ export function renderWorkshopTranscriptHtml(transcript: WorkshopTranscript): st
     `<p class="pm-ws-export-meta">${description}</p>`,
     '</header>',
     '<main class="pm-ws-thread">',
-    ...transcript.entries.map(renderEntry),
+    ...transcript.entries.map((entry) => renderEntry(entry, options)),
     '</main>',
     '<footer class="pm-ws-export-footer">Exported from Prose Minion</footer>',
     '</div>',
@@ -108,19 +117,34 @@ export function renderWorkshopTranscriptHtml(transcript: WorkshopTranscript): st
   ].join('\n');
 }
 
-function renderEntry(entry: WorkshopTranscriptEntry): string {
+function renderEntry(entry: WorkshopTranscriptLine, options: WorkshopTranscriptRenderOptions): string {
   switch (entry.kind) {
+    case 'model-slice':
+      return renderModelSlice(entry);
     case 'event':
-      return `<div class="pm-ws-revision-divider" role="separator"><span>${escapeHtml(entry.text)}</span></div>`;
+      return `<div class="pm-ws-revision-divider" role="separator"><span>${
+        escapeHtml(entry.text)
+      }${modelSpan(workshopTranscriptEntryModel(entry, options))}${bookmarkMark(entry)}</span></div>`;
     case 'writer':
       return renderWriter(entry);
     case 'reply':
-      return renderReply(entry);
+      return renderReply(entry, options);
   }
 }
 
+/**
+ * The thread's slice divider (WorkshopModelSliceDivider), markup for markup:
+ * its rules are mirrored thread CSS, and it is named by its visible text.
+ */
+function renderModelSlice(entry: WorkshopTranscriptModelSliceEntry): string {
+  const text = escapeHtml(entry.text);
+  return '<div class="pm-ws-revision-divider pm-ws-session-divider pm-ws-model-slice" role="separator" ' +
+    `aria-label="${text}" title="${escapeHtml(`${entry.fromModelId} → ${entry.toModelId}`)}">` +
+    `<span>${icon('chip', 12)}${text}</span></div>`;
+}
+
 function renderWriter(entry: WorkshopTranscriptWriterEntry): string {
-  const parts: string[] = [];
+  const parts: string[] = [bookmarkMark(entry)];
   if (entry.attachmentLabels.length > 0) {
     parts.push(
       '<div class="pm-ws-turn-attachments" aria-label="Message attachments">' +
@@ -149,13 +173,17 @@ function renderWriter(entry: WorkshopTranscriptWriterEntry): string {
   }" aria-label="${WORKSHOP_TRANSCRIPT_WRITER_LABEL}">${parts.join('')}</article>`;
 }
 
-function renderReply(entry: WorkshopTranscriptReplyEntry): string {
+function renderReply(entry: WorkshopTranscriptReplyEntry, options: WorkshopTranscriptRenderOptions): string {
+  // The thread's header markup (WorkshopTurnBubble): the model's span is the
+  // part a narrow column cuts short, by mirrored thread rules (D10).
+  const model = workshopTranscriptEntryModel(entry, options);
   const head =
     '<div class="pm-ws-turn-head">' +
     `<span class="pm-ws-eyebrow">${icon(entry.participant === 'tool' ? 'sparkle' : 'person', 12)} ${
       escapeHtml(entry.speaker)
-    }</span>` +
+    }${modelSpan(model)}</span>` +
     (entry.privateWith ? privateLabel(entry.privateWith) : '') +
+    bookmarkMark(entry) +
     '</div>';
   const truncated = entry.truncated
     ? '<p class="pm-ws-turn-truncated">Response hit the max-token limit and was truncated.</p>'
@@ -188,6 +216,18 @@ function renderSources(entry: WorkshopTranscriptReplyEntry): string {
     '<div class="pm-ws-eyebrow">Web sources</div>' +
     `<div class="pm-ws-turn-citation-pills">${pills.join('')}</div>` +
     '</div>';
+}
+
+/** The thread's model span (WorkshopTurnBubble), after a speaker or a card's line. */
+function modelSpan(model: string | undefined): string {
+  return model ? ` <span class="pm-ws-turn-model">· ${escapeHtml(model)}</span>` : '';
+}
+
+/** The writer's bookmark on a turn (ADR 2026-11-03 D10); its rules are export-only. */
+function bookmarkMark(entry: WorkshopTranscriptEntry): string {
+  return entry.bookmarked
+    ? `<span class="pm-ws-export-bookmark">${icon('bookmark', 11)} Bookmarked</span>`
+    : '';
 }
 
 function privateLabel(instrument: string): string {

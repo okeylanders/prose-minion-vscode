@@ -179,6 +179,7 @@ export { SecretStorageService } from '@/infrastructure/secrets/SecretStorageServ
 // --- Infrastructure: AI resource orchestration ---
 export { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 export { AIResourceManager } from '@orchestration/AIResourceManager';
+export { OpenRouterModels } from '@providers/OpenRouterModels';
 export { AIResourceRefresh } from '@orchestration/AIResourceRefresh';
 
 // --- Infrastructure: services (measurement / analysis / dictionary / search / resources / shared) ---

@@ -28,6 +28,10 @@ import {
   InitialRunRequest,
   RunPolicy
 } from './AgentRunContracts';
+import {
+  ContextSourceReadIdentity,
+  StoredContextSourceEntry
+} from '@orchestration/ContextSourceRecord';
 import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
 import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
 import { coerceClaudeCacheTtl } from '@messages';
@@ -107,6 +111,10 @@ interface TurnResult {
   /** Completion tokens the provider reported as reasoning; absent when unreported. */
   readonly reasoningTokens?: number;
   readonly observation?: InferenceRequestObservation;
+  /** The model the provider's response named; absent when it named none (D7). */
+  readonly servedModelId?: string;
+  /** The engine wrote this turn's content in place of an unusable reply. */
+  readonly hostFallback?: true;
   readonly cancelled: boolean;
   /** Candidate XML tool calls are withheld from visible streaming until validated. */
   readonly exactRequest?: unknown;
@@ -370,13 +378,25 @@ export class AgentRunEngine {
     const artifacts: CapabilityArtifact[] = [];
     const usedGuides: string[] = [];
     const requestedResources: string[] = [];
-    const collectedSources: ContextSourceEntry[] = [];
+    const collectedSources: StoredContextSourceEntry[] = [];
     let totalUsage: TokenUsage | undefined;
     let runCitations: UrlCitation[] | undefined;
     let latestObservation: InferenceRequestObservation | undefined;
     let peakPromptTokens = 0;
     let correctionTurns = 0;
+    // Captured before the first request, with nothing awaited between: a
+    // selection change during the run must not relabel it (D7; PR #144 F-03).
+    const requestedModelId = this.requestModel(runOptions, provider);
+    const servedModelIds: string[] = [];
 
+    // Only a model the provider named counts as served (Astra F-01): the
+    // observation's modelId falls back to the requested model, and it exists
+    // only when usage was reported.
+    const recordServedModel = (turn: TurnResult): void => {
+      if (turn.servedModelId && !servedModelIds.includes(turn.servedModelId)) {
+        servedModelIds.push(turn.servedModelId);
+      }
+    };
     const recordObservation = (observation?: InferenceRequestObservation): void => {
       if (!observation) {
         // Missing final-call telemetry cannot renew an earlier call's cache.
@@ -399,6 +419,7 @@ export class AgentRunEngine {
         { role: 'user', content: instruction }
       );
       const next = await this.executeTurn(currentMessages(), runOptions, capability, provider, retainedConversationId);
+      recordServedModel(next);
       recordObservation(next.observation);
       totalUsage = this.addUsage(totalUsage, next.usage);
       runCitations = this.mergeUrlCitations(runCitations, next.citations);
@@ -417,7 +438,7 @@ export class AgentRunEngine {
           `[AgentRunEngine] ${policy.id} exhausted ${policy.maxCorrectionTurns} correction turn(s).`
         );
         runOptions.onToken?.(fallback);
-        return { ...last, content: fallback, visibleContent: fallback, invalidRequest: undefined };
+        return { ...last, content: fallback, visibleContent: fallback, invalidRequest: undefined, hostFallback: true };
       }
       correctionTurns += 1;
       this.outputChannel?.appendLine(
@@ -432,6 +453,7 @@ export class AgentRunEngine {
 
     try {
       let last = await this.executeTurn(currentMessages(), runOptions, capability, provider, retainedConversationId);
+      recordServedModel(last);
       recordObservation(last.observation);
       totalUsage = this.addUsage(totalUsage, last.usage);
       runCitations = this.mergeUrlCitations(runCitations, last.citations);
@@ -520,7 +542,8 @@ export class AgentRunEngine {
             content: fallback,
             visibleContent: fallback,
             exactRequest: undefined,
-            invalidRequest: undefined
+            invalidRequest: undefined,
+            hostFallback: true
           };
         }
       }
@@ -534,6 +557,7 @@ export class AgentRunEngine {
       const cancelled = last.cancelled || this.isAborted(runOptions.signal);
       if (!visibleContent && !cancelled) {
         visibleContent = 'The assistant returned no usable final response. Please try again.';
+        last = { ...last, hostFallback: true };
         runOptions.onToken?.(visibleContent);
         this.outputChannel?.appendLine(`[AgentRunEngine] ${policy.id} completed with no visible final prose.`);
       }
@@ -580,6 +604,10 @@ export class AgentRunEngine {
         ...(last.reasoningTokens !== undefined ? { reasoningTokens: last.reasoningTokens } : {}),
         providerResponseId: last.providerResponseId,
         modelId: latestObservation?.modelId,
+        ...(requestedModelId ? { models: { requestedModelId, servedModelIds: [...servedModelIds] } } : {}),
+        // Who wrote the final reply (Astra F-02): only a provider reply may
+        // carry a model stamp, decided here rather than from its text.
+        replySource: last.hostFallback ? 'host-fallback' : 'provider',
         citations: runCitations,
         cancelled
       };
@@ -656,6 +684,14 @@ export class AgentRunEngine {
     return this.conversationManager.getContextSources(conversationId);
   }
 
+  /** Host-side only: what was recorded when a file was read (Workshop Wayfinding D4). */
+  findConversationContextSourceRead(
+    conversationId: string | undefined,
+    identity: ContextSourceReadIdentity
+  ): Pick<StoredContextSourceEntry, 'lineRange' | 'sourceFingerprint'> | undefined {
+    return this.conversationManager.findContextSourceRead(conversationId, identity);
+  }
+
   /** Committed history lengths, measured in archive units, for one retained conversation. */
   getConversationHistoryCounts(conversationId: string): ConversationHistoryCounts | undefined {
     return this.conversationManager.getCommittedHistoryCounts(conversationId);
@@ -673,7 +709,7 @@ export class AgentRunEngine {
     promptTokensBefore: number | undefined,
     promptTokensAfter: number | undefined,
     artifactId: string | undefined
-  ): ContextSourceEntry[] {
+  ): StoredContextSourceEntry[] {
     const roundDelta = promptTokensBefore !== undefined &&
       promptTokensAfter !== undefined &&
       promptTokensAfter > promptTokensBefore
@@ -694,7 +730,11 @@ export class AgentRunEngine {
         promptTokensDelta: exact ? roundDelta : apportioned,
         isEstimate: !exact,
         artifactId,
-        deliveredAt: Date.now()
+        deliveredAt: Date.now(),
+        // Provenance is written only when the capability observed it (D9).
+        ...(source.turnId ? { turnId: source.turnId } : {}),
+        ...(source.lineRange ? { lineRange: { ...source.lineRange } } : {}),
+        ...(source.sourceFingerprint ? { sourceFingerprint: source.sourceFingerprint } : {})
       };
     });
   }
@@ -741,7 +781,7 @@ export class AgentRunEngine {
     retained: boolean,
     options: AgentRunOptions
   ): Promise<CapabilityFulfillment> {
-    const contextLength = OpenRouterModels.getCachedContextLength(options.model ?? provider.getModel?.() ?? this.model);
+    const contextLength = OpenRouterModels.getCachedContextLength(this.requestModel(options, provider));
     if (contextLength === undefined) {
       return capability.fulfill(request);
     }
@@ -755,6 +795,11 @@ export class AgentRunEngine {
     return capability.fulfill(request, window);
   }
 
+  /** The model the next request goes to: the run's pinned model, else the provider's now. */
+  private requestModel(options: AgentRunOptions, provider: OpenRouterClient): string {
+    return options.model ?? provider.getModel?.() ?? this.model;
+  }
+
   private async executeTurn(
     messages: OpenRouterMessage[],
     options: AgentRunOptions,
@@ -762,7 +807,7 @@ export class AgentRunEngine {
     provider: OpenRouterClient,
     conversationId?: string
   ): Promise<TurnResult> {
-    const model = options.model ?? provider.getModel?.() ?? this.model;
+    const model = this.requestModel(options, provider);
     const contextLength = OpenRouterModels.getCachedContextLength(model);
     if (contextLength !== undefined) {
       this.contextPreflightUnavailableModel = undefined;
@@ -804,6 +849,7 @@ export class AgentRunEngine {
           usage: response.usage,
           ...(response.reasoningTokens !== undefined ? { reasoningTokens: response.reasoningTokens } : {}),
           observation: response.observation,
+          ...(response.servedModelId ? { servedModelId: response.servedModelId } : {}),
           citations: response.citations,
           cancelled: this.isAborted(options.signal),
           exactRequest: inspection?.kind === 'request' ? inspection.request : undefined,
@@ -822,6 +868,7 @@ export class AgentRunEngine {
     let reasoningTokens: number | undefined;
     let finishReason: string | undefined;
     let observation: InferenceRequestObservation | undefined;
+    let servedModelId: string | undefined;
     let providerResponseId: string | undefined;
     let citations: UrlCitation[] | undefined;
     let cancelled = false;
@@ -830,6 +877,7 @@ export class AgentRunEngine {
 
     try {
       for await (const chunk of provider.createStreamingChatCompletion(messages, completionOptions)) {
+        servedModelId = chunk.servedModelId ?? servedModelId;
         if (chunk.done) {
           providerResponseId = chunk.id ?? providerResponseId;
           usage = chunk.usage ?? usage;
@@ -913,6 +961,7 @@ export class AgentRunEngine {
       usage,
       ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
       observation,
+      ...(servedModelId ? { servedModelId } : {}),
       citations,
       cancelled,
       exactRequest,

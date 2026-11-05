@@ -21,11 +21,27 @@
  * - Context-change dividers are context details and stay out entirely, as do
  *   token usage, action buttons, actionable-finding chips, and widget
  *   recommendation chips.
+ * - A turn the writer bookmarked carries `bookmarked: true` when the caller
+ *   names its bookmarks (export does; ADR 2026-11-03 D10). The mark is the
+ *   only bookmark fact a transcript holds: never an id or a label.
+ * - Model slices (ADR 2026-11-03 D8) come from `deriveWorkshopModelSlices`,
+ *   the thread's own derivation, run over every turn. A slice is printed
+ *   before the first entry at or after the turn it belongs before, so a turn
+ *   the transcript omits never drops one. A stamped reply or capability
+ *   card carries its `model` (D10).
+ * - Neither slices nor `model` come from `projectWorkshopTranscriptTurn`, so
+ *   session recall and the turn preview, which read turns only through it,
+ *   never see them.
  *
  * Pure and deterministic: the caller supplies the turns and the clock.
  */
 
-import { citationDisplayLabel, type WorkshopTurn } from '@messages';
+import { citationDisplayLabel, type ModelScope, type WorkshopTurn, type WorkshopTurnModel } from '@messages';
+import {
+  deriveWorkshopModelSlices,
+  workshopModelSliceText,
+  type WorkshopModelSlice
+} from '@shared/workshop/workshopModelSlices';
 import { workshopCapabilityArtifactLabel } from '@shared/constants/workshopCapabilityLabels';
 import {
   workshopWidgetLabel,
@@ -44,6 +60,7 @@ export interface WorkshopTranscriptWriterEntry {
   attachmentLabels: string[];
   /** The widget that composed this message. Its committed payload is never exported. */
   widget?: { label: string; detail: string };
+  bookmarked?: true;
 }
 
 /** One participant reply: host persona, guest persona, or analysis tool. */
@@ -60,6 +77,9 @@ export interface WorkshopTranscriptReplyEntry {
   truncated: boolean;
   /** Provider-returned web sources, de-duplicated by URL. */
   sources: WorkshopTranscriptSource[];
+  bookmarked?: true;
+  /** The model stamp, set by `projectWorkshopTranscript` only (ADR 2026-11-03 D10). */
+  model?: WorkshopTurnModel;
 }
 
 export interface WorkshopTranscriptSource {
@@ -74,24 +94,45 @@ export interface WorkshopTranscriptEventEntry {
   turnId: string;
   timestamp: number;
   text: string;
+  bookmarked?: true;
+  /** A capability card's model stamp, set by `projectWorkshopTranscript` only. */
+  model?: WorkshopTurnModel;
 }
 
+/** One turn's entry: what `projectWorkshopTranscriptTurn` returns. */
 export type WorkshopTranscriptEntry =
   | WorkshopTranscriptWriterEntry
   | WorkshopTranscriptReplyEntry
   | WorkshopTranscriptEventEntry;
+
+/** Where the room's model changed (ADR 2026-11-03 D8). It belongs to no turn. */
+export interface WorkshopTranscriptModelSliceEntry {
+  kind: 'model-slice';
+  scope: ModelScope;
+  fromModelId: string;
+  toModelId: string;
+  /** The divider's copy, with display names resolved at projection. */
+  text: string;
+}
+
+/** A line of the whole transcript: a turn's entry or a model slice. */
+export type WorkshopTranscriptLine = WorkshopTranscriptEntry | WorkshopTranscriptModelSliceEntry;
 
 export interface WorkshopTranscript {
   title: string;
   exportedAt: number;
   /** Reply speakers in order of first appearance. */
   participants: string[];
-  entries: WorkshopTranscriptEntry[];
+  entries: WorkshopTranscriptLine[];
 }
 
 export interface WorkshopTranscriptMeta {
   title: string;
   exportedAt: number;
+  /** The writer's bookmarked turns; their entries carry `bookmarked: true`. */
+  bookmarkedTurnIds?: ReadonlySet<string>;
+  /** A model's display name for slices; the raw id when it names none. */
+  modelLabel?: (modelId: string) => string | undefined;
 }
 
 export const WORKSHOP_TRANSCRIPT_WRITER_LABEL = 'Writer';
@@ -100,10 +141,19 @@ export function projectWorkshopTranscript(
   turns: readonly WorkshopTurn[],
   meta: WorkshopTranscriptMeta
 ): WorkshopTranscript {
-  const entries = turns.flatMap((turn) => {
+  const slices = slicesByTurn(deriveWorkshopModelSlices(turns), meta);
+  const pending: WorkshopTranscriptModelSliceEntry[] = [];
+  const entries = turns.flatMap((turn): WorkshopTranscriptLine[] => {
+    pending.push(...(slices.get(turn.id) ?? []));
     const entry = projectWorkshopTranscriptTurn(turn);
-    return entry ? [entry] : [];
+    if (!entry) {
+      return [];
+    }
+    const marked = meta.bookmarkedTurnIds?.has(turn.id) ? { ...entry, bookmarked: true as const } : entry;
+    return [...pending.splice(0), withModel(marked, turn)];
   });
+  // A slice whose turns all print nothing still closes the transcript.
+  entries.push(...pending);
   const participants: string[] = [];
   for (const entry of entries) {
     if (entry.kind === 'reply' && !participants.includes(entry.speaker)) {
@@ -120,7 +170,40 @@ export function projectWorkshopTranscript(
 
 /** Writer messages and replies: the count a reader would call "messages". */
 export function countWorkshopTranscriptMessages(transcript: WorkshopTranscript): number {
-  return transcript.entries.filter((entry) => entry.kind !== 'event').length;
+  return transcript.entries.filter((entry) => entry.kind === 'writer' || entry.kind === 'reply').length;
+}
+
+function slicesByTurn(
+  slices: readonly WorkshopModelSlice[],
+  meta: WorkshopTranscriptMeta
+): ReadonlyMap<string, WorkshopTranscriptModelSliceEntry[]> {
+  const label = (modelId: string) => meta.modelLabel?.(modelId) ?? modelId;
+  const byTurn = new Map<string, WorkshopTranscriptModelSliceEntry[]>();
+  for (const slice of slices) {
+    byTurn.set(slice.beforeTurnId, [...(byTurn.get(slice.beforeTurnId) ?? []), {
+      kind: 'model-slice',
+      scope: slice.scope,
+      fromModelId: slice.fromModelId,
+      toModelId: slice.toModelId,
+      text: workshopModelSliceText(slice.scope, label(slice.fromModelId), label(slice.toModelId))
+    }]);
+  }
+  return byTurn;
+}
+
+/** A stamped reply's or capability card's entry, carrying its model (D10). */
+function withModel(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): WorkshopTranscriptEntry {
+  if (entry.kind === 'writer' || turn.role !== 'assistant' || !turn.model) {
+    return entry;
+  }
+  return {
+    ...entry,
+    model: {
+      scope: turn.model.scope,
+      requestedModelId: turn.model.requestedModelId,
+      servedModelIds: [...turn.model.servedModelIds]
+    }
+  };
 }
 
 /**

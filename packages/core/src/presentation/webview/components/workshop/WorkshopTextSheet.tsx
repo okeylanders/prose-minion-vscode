@@ -5,9 +5,12 @@
  *
  * Four cases, one component, because they are one interaction: pasting an
  * excerpt, adding a text note, editing an existing note, and editing a
- * wizard suggestion. A fifth, read-only case serves project files — the
- * prettified in-webview markdown read, with an explicit escape hatch to the
- * real document in an editor tab.
+ * wizard suggestion. Two read-only cases serve files: an attached project
+ * file, and a file a participant read on its own (Read in, ADR 2026-11-03
+ * D4) — the prettified in-webview markdown read, with an explicit escape
+ * hatch to the real document in an editor tab. One more read-only case shows
+ * a turn outside the thread's loaded window (D6), as the transcript
+ * projects it.
  *
  * Preview reuses the shared sanitized MarkdownRenderer rather than a local
  * regex renderer: the comp's preview promises "markdown rendered as the room
@@ -22,7 +25,11 @@ import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { WorkshopModalShell } from './WorkshopModalShell';
+import { WorkshopReadInLines } from './WorkshopReadInLines';
 import { countWords } from '@/utils/textUtils';
+import { formatReadInTime } from '@utils/workshop/contextSources';
+import type { WorkshopTurnPreview } from '@messages';
+import { workshopPrivateThreadLabel } from './WorkshopTurnBubble';
 import type {
   WorkshopTextSheetMode
 } from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
@@ -38,6 +45,16 @@ export interface WorkshopTextSheetProps {
   error?: string;
   /** True when this attachment has a file the host can open in an editor tab. */
   canOpenInEditor?: boolean;
+  /** True when the host stopped the text at its read ceiling (the reader). */
+  truncated?: boolean;
+  /** The reader: the lines the participant read (Wayfinding D4). */
+  lineRange?: { start: number; end: number };
+  /** The reader: true when the file no longer matches what was read. */
+  changedSinceRead?: boolean;
+  /** The reader: shows the card that recorded the read, closing the sheet first. */
+  onShowWhereRead?: () => void;
+  /** The turn preview's projected turn, once the host has answered (D6). */
+  turnPreview?: WorkshopTurnPreview;
   /** Disables Apply while a run/session operation holds the room. */
   applyDisabled?: boolean;
   onApply: (text: string) => void;
@@ -72,11 +89,16 @@ interface SheetCopy {
   applyLabel: string;
   /** File attachments are a READ: the sheet opens on Preview and never edits. */
   readOnly: boolean;
+  /** The escape hatch to the real file, when the sheet offers one. */
+  openLabel: string;
+  loadingLabel: string;
 }
+
+const ATTACHED_TEXT_LOADING = 'Loading the attached text…';
 
 const sheetCopy = (
   mode: WorkshopTextSheetMode,
-  handlers: Pick<WorkshopTextSheetProps, 'onChooseFromProject'>
+  handlers: Pick<WorkshopTextSheetProps, 'onChooseFromProject' | 'turnPreview'>
 ): SheetCopy => {
   switch (mode.kind) {
     case 'excerpt':
@@ -106,7 +128,9 @@ const sheetCopy = (
           </>
         ) : null,
         applyLabel: 'Apply excerpt',
-        readOnly: false
+        readOnly: false,
+        openLabel: 'Open in editor tab',
+        loadingLabel: ATTACHED_TEXT_LOADING
       };
     case 'context-new':
       return {
@@ -118,7 +142,9 @@ const sheetCopy = (
         meta: 'Counts against the shared context budget',
         foot: null,
         applyLabel: 'Add to context',
-        readOnly: false
+        readOnly: false,
+        openLabel: 'Open in editor tab',
+        loadingLabel: ATTACHED_TEXT_LOADING
       };
     case 'context-text':
       return {
@@ -130,7 +156,9 @@ const sheetCopy = (
         meta: 'Counts against the shared context budget',
         foot: 'The first line becomes this note’s name.',
         applyLabel: 'Save changes',
-        readOnly: false
+        readOnly: false,
+        openLabel: 'Open in editor tab',
+        loadingLabel: ATTACHED_TEXT_LOADING
       };
     case 'context-wizard':
       return {
@@ -142,7 +170,9 @@ const sheetCopy = (
         meta: 'Counts against the shared context budget',
         foot: 'Edits apply to this session only — the source file is untouched.',
         applyLabel: 'Save changes',
-        readOnly: false
+        readOnly: false,
+        openLabel: 'Open in editor tab',
+        loadingLabel: ATTACHED_TEXT_LOADING
       };
     case 'context-file':
       return {
@@ -154,8 +184,42 @@ const sheetCopy = (
         meta: mode.relativePath ?? 'Attached project file',
         foot: 'To change what the room sees, edit the file itself, then refresh changed files.',
         applyLabel: 'Save changes',
-        readOnly: true
+        readOnly: true,
+        openLabel: 'Open in editor tab',
+        loadingLabel: ATTACHED_TEXT_LOADING
       };
+    case 'read-in':
+      return {
+        kicker: `Read in by ${mode.participantLabel}`,
+        title: mode.label,
+        // D4's honesty rule: the reader shows the file now, never claims the
+        // participant's copy.
+        sub: `The file as it is now. ${mode.participantLabel} read it at ${formatReadInTime(mode.deliveredAt)}; it may have changed since.`,
+        placeholder: '',
+        editLabel: 'Source',
+        meta: mode.path,
+        foot: `Read in at ${formatReadInTime(mode.deliveredAt)} · read-only`,
+        applyLabel: '',
+        readOnly: true,
+        openLabel: 'Open beside',
+        loadingLabel: 'Loading the file…'
+      };
+    case 'turn-preview': {
+      const turn = handlers.turnPreview;
+      return {
+        kicker: turn ? `${turn.speaker} · ${formatReadInTime(turn.timestamp)}` : 'From this session',
+        title: mode.label ?? turn?.speaker ?? 'A message from this session',
+        sub: 'This message is outside the thread’s loaded window, so it opens here, read-only.',
+        placeholder: '',
+        editLabel: 'Source',
+        meta: 'Outside the loaded window',
+        foot: turn?.truncated ? 'The reply stopped at the max-token limit · read-only' : 'Read-only',
+        applyLabel: '',
+        readOnly: true,
+        openLabel: '',
+        loadingLabel: 'Loading the message…'
+      };
+    }
   }
 };
 
@@ -166,6 +230,11 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
   loading = false,
   error,
   canOpenInEditor = false,
+  truncated = false,
+  lineRange,
+  changedSinceRead = false,
+  onShowWhereRead,
+  turnPreview,
   applyDisabled = false,
   onApply,
   onOpenInEditor,
@@ -178,8 +247,12 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
   const [tab, setTab] = React.useState<'edit' | 'preview'>('edit');
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const previewRef = React.useRef<HTMLDivElement>(null);
+  const linesRef = React.useRef<HTMLDivElement>(null);
 
-  const copy = sheetCopy(mode, { onChooseFromProject });
+  const copy = sheetCopy(mode, { onChooseFromProject, turnPreview });
+  // A ranged read opens on its numbered lines, where the band and marker are.
+  const readIn = mode.kind === 'read-in' ? mode : undefined;
+  const linesView = readIn !== undefined && lineRange !== undefined;
 
   // Seed from the incoming body exactly once per opening: re-seeding on every
   // `value` render would overwrite the writer mid-sentence when an unrelated
@@ -199,11 +272,11 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
 
   React.useEffect(() => {
     if (open) {
-      // A read-only file opens on the rendered read; everything else opens
-      // where the writer's hands are.
-      setTab(copy.readOnly ? 'preview' : 'edit');
+      // A read-only file opens on the rendered read, and a ranged read on its
+      // lines; everything else opens where the writer's hands are.
+      setTab(copy.readOnly && !linesView ? 'preview' : 'edit');
     }
-  }, [copy.readOnly, open]);
+  }, [copy.readOnly, linesView, open]);
 
   React.useEffect(() => {
     if (open && !copy.readOnly && !loading) {
@@ -224,7 +297,7 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
     // so a keyboard reader is not left behind on the tab strip.
     window.setTimeout(() => {
       if (next === 'edit') {
-        textareaRef.current?.focus();
+        (linesRef.current ?? textareaRef.current)?.focus();
       } else {
         previewRef.current?.focus();
       }
@@ -244,6 +317,16 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
           <div className="pm-ws-eyebrow">{copy.kicker}</div>
           <h2 id={TITLE_ID}>{copy.title}</h2>
           <p>{copy.sub}</p>
+          {mode.kind === 'turn-preview' && turnPreview?.privateWith ? (
+            <p className="pm-ws-private-thread-label">
+              <Icon name="info" size={11} /> {workshopPrivateThreadLabel(turnPreview.privateWith)}
+            </p>
+          ) : null}
+          {readIn && lineRange ? (
+            <p className="pm-ws-readin-sheet-range">
+              Read at {formatReadInTime(readIn.deliveredAt)} · lines {lineRange.start}–{lineRange.end}
+            </p>
+          ) : null}
         </div>
         <WorkshopModalShell.CloseButton />
       </div>
@@ -275,6 +358,12 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
       </div>
 
       <div className="pm-ws-text-sheet-body">
+        {readIn && changedSinceRead && !loading && !error ? (
+          <div className="pm-ws-text-sheet-notice pm-ws-readin-changed" role="note">
+            <Icon name="alert" size={14} /> This file has changed since {readIn.participantLabel} read
+            it. You&rsquo;re seeing it as it is now.
+          </div>
+        ) : null}
         {error ? (
           <div className="pm-ws-text-sheet-notice" role="alert">
             <Icon name="x" size={14} /> {error}
@@ -282,7 +371,12 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
         ) : null}
         {loading ? (
           <div className="pm-ws-text-sheet-notice" role="status">
-            <Icon name="refresh" size={14} /> Loading the attached text…
+            <Icon name="refresh" size={14} /> {copy.loadingLabel}
+          </div>
+        ) : null}
+        {truncated && !loading ? (
+          <div className="pm-ws-text-sheet-notice" role="note">
+            <Icon name="info" size={14} /> Showing the start of the file only. Open beside to read the rest.
           </div>
         ) : null}
 
@@ -295,7 +389,18 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
           role="tabpanel"
           hidden={tab !== 'edit'}
         >
+          {linesView && readIn && lineRange && value !== undefined ? (
+            <WorkshopReadInLines
+              ref={linesRef}
+              visible={tab === 'edit'}
+              text={value}
+              lineRange={lineRange}
+              participantLabel={readIn.participantLabel}
+              label={readIn.path}
+            />
+          ) : null}
           <textarea
+            hidden={linesView}
             ref={textareaRef}
             className="pm-ws-text-sheet-input"
             value={draft}
@@ -357,10 +462,20 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
       </div>
 
       <footer className="pm-ws-session-sheet-foot">
-        <span>{copy.foot}</span>
+        <span>
+          {copy.foot}
+          {readIn && onShowWhereRead ? (
+            <>
+              {' · '}
+              <button className="pm-ws-text-sheet-link" type="button" onClick={onShowWhereRead}>
+                Show where it was read
+              </button>
+            </>
+          ) : null}
+        </span>
         {canOpenInEditor && onOpenInEditor ? (
           <button className="pm-ws-session-secondary" type="button" onClick={onOpenInEditor}>
-            <Icon name="doc" size={13} /> Open in editor tab
+            <Icon name="doc" size={13} /> {copy.openLabel}
           </button>
         ) : null}
         <button className="pm-ws-session-secondary" type="button" onClick={onClose}>

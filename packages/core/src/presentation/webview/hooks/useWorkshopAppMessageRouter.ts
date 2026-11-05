@@ -20,6 +20,8 @@ import {
 } from '@hooks/fulltab/useFullTabChrome';
 import type { UseWorkshopRoomReturn } from '@hooks/domain/workshop/useWorkshopRoom';
 import type { UseWorkshopSessionsReturn } from '@hooks/domain/workshop/useWorkshopSessions';
+import type { UseWorkshopReadInReturn } from '@hooks/domain/workshop/useWorkshopReadIn';
+import type { UseWorkshopBookmarksReturn } from '@hooks/domain/workshop/useWorkshopBookmarks';
 import type {
   UseWorkshopExcerptVerifyReturn
 } from '@hooks/domain/useWorkshopExcerptVerify';
@@ -64,6 +66,10 @@ import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 export interface WorkshopAppMessageRouterDeps {
   workshopRoom: UseWorkshopRoomReturn;
   workshopSessions: UseWorkshopSessionsReturn;
+  /** The Read in reader's file content (Wayfinding Slice 2). */
+  readIn: UseWorkshopReadInReturn;
+  /** Bookmarks and the turn preview (Wayfinding Slice 5). */
+  bookmarks: UseWorkshopBookmarksReturn;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -90,6 +96,8 @@ export function buildWorkshopAppMessageRoutes(
   const {
     workshopRoom,
     workshopSessions,
+    readIn,
+    bookmarks,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -112,6 +120,7 @@ export function buildWorkshopAppMessageRoutes(
     ...buildFullTabChromeRoutes(chrome),
     [MessageType.WORKSHOP_SESSION_STATE]: (message) => {
       workshopRoom.handleSessionState(message);
+      bookmarks.handleSessionState(message);
       widgetHost.handleSessionState(message);
     },
     [MessageType.WORKSHOP_TURN]: workshopRoom.handleTurn,
@@ -134,6 +143,9 @@ export function buildWorkshopAppMessageRoutes(
     },
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshopRoom.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshopRoom.handleContextAttachmentContent,
+    [MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT]: readIn.handleReadInResourceContent,
+    [MessageType.WORKSHOP_TURN_PREVIEW]: bookmarks.handleTurnPreview,
+    [MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT]: bookmarks.handleRenameResult,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshopRoom.handleContextSearchResults,
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT]:
       gesturePlayground.handleWidgetMenuResult,

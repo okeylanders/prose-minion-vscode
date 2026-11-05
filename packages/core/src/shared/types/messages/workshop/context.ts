@@ -196,6 +196,67 @@ export interface WorkshopOpenContextAttachmentFileMessage
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Read in (ADR 2026-11-03 D4): a file a persona read on its own, named by the
+// manifest row's `{ group, path }`. The host resolves the pair only through
+// the configured-resource lookup `resource.read` uses and refuses anything
+// else; no absolute path crosses this contract in either direction.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Ask for a read-in file's current text, for the reader sheet. `requestId`
+ * is minted by the webview per request and echoed in the reply: the pair
+ * names a file, not a request, so reopening the same file must not take an
+ * earlier request's answer (PR #186 F-01).
+ */
+export interface WorkshopRequestReadInResourcePayload extends ConfiguredResourceRef {
+  requestId: string;
+  /**
+   * The row the reader opened, by its delivery time (Wayfinding D4). With it
+   * the host answers `lineRange` and `changedSinceRead` from that row.
+   */
+  deliveredAt?: number;
+}
+
+export interface WorkshopRequestReadInResourceMessage
+  extends MessageEnvelope<WorkshopRequestReadInResourcePayload> {
+  type: MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE;
+}
+
+export interface WorkshopReadInResourceContentPayload {
+  /** The request this answers; the webview takes only the one it is waiting on. */
+  requestId: string;
+  /** The request's group and path, echoed as sent. */
+  group: string;
+  path: string;
+  /** The file as it is now, up to `resource.read`'s byte ceiling. */
+  content?: string;
+  /** True when `content` stopped at that ceiling. */
+  truncated?: boolean;
+  /** The lines the participant read, from the row the request named. */
+  lineRange?: { start: number; end: number };
+  /**
+   * True when the file no longer matches what was read, false when it does;
+   * absent when the row recorded no fingerprint. The fingerprint stays host-side.
+   */
+  changedSinceRead?: boolean;
+  /** Display-safe reason the file could not be read; never its content. */
+  error?: string;
+  /** True when the host can open the file beside the Workshop. */
+  canOpenInEditor: boolean;
+}
+
+export interface WorkshopReadInResourceContentMessage
+  extends MessageEnvelope<WorkshopReadInResourceContentPayload> {
+  type: MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT;
+}
+
+/** Open a read-in file in the editor column beside the Workshop. */
+export interface WorkshopOpenReadInResourceMessage
+  extends MessageEnvelope<ConfiguredResourceRef> {
+  type: MessageType.WORKSHOP_OPEN_READ_IN_RESOURCE;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Context Selector modal (Sprint 12 Phase 4) — browse/search the configured
 // resource catalog and attach by canonical { group, path }. Display-safe
 // resolver paths only; no absolute path ever crosses this contract.

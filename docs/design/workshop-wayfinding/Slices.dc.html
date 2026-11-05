@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time and model slices in the thread</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#15110d;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+a{color:#ee7d49}a:hover{color:#f3ece1}
+</style>
+</helmet>
+<section aria-label="Session thread" style="width: 880px; height: 640px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px; padding: 28px 32px; background: #15110d; color: #f3ece1; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Inter, system-ui, sans-serif">
+
+  <div role="separator" style="display: flex; align-items: center; gap: 12px; color: #a4937f; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em">
+    <span style="flex: 1; height: 1px; background: #3a2c1f"></span>
+    <span style="display: inline-flex; align-items: center; gap: 7px">
+      <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0"></path><path d="M12 7v5l3 2"></path></svg>
+      Session resumed Tuesday, October 27, 2026 at 3:12 PM CDT after 49h 6m
+    </span>
+    <span style="flex: 1; height: 1px; background: #3a2c1f"></span>
+  </div>
+
+  <article style="position: relative; max-width: 700px; background: #221a13; border: 1px solid #2e231a; border-radius: 12px; padding: 14px 16px">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px">
+      <span style="width: 8px; height: 8px; border-radius: 999px; background: #ee7d49"></span>
+      <strong style="font-size: 13px; text-decoration: underline dotted #a4937f; text-underline-offset: 3px">Jill</strong>
+      <span style="font-size: 12px; color: #a4937f">Creative writing partner</span>
+    </div>
+    <p style="margin: 0; font-size: 13.5px; line-height: 1.65; color: #c9bbab">Two days away usually means the scene reads colder. Before we touch the father, read the last paragraph aloud and tell me where you stumble.</p>
+    <div role="tooltip" style="position: absolute; top: -14px; left: 74px; display: flex; flex-direction: column; gap: 2px; padding: 7px 10px; border: 1px solid #4d3a28; border-radius: 8px; background: #2b2017; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45)">
+      <span style="font-size: 12px; color: #f3ece1">GPT-5</span>
+      <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">openai/gpt-5 · requested and served</span>
+    </div>
+  </article>
+
+  <div role="separator" style="display: flex; align-items: center; gap: 12px; color: #c9bbab; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em">
+    <span style="flex: 1; height: 1px; background: #3a2c1f"></span>
+    <span style="display: inline-flex; align-items: center; gap: 7px">
+      <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M7 7h10v10H7z"></path><path d="M9 3v4M15 3v4M9 17v4M15 17v4M3 9h4M3 15h4M17 9h4M17 15h4"></path></svg>
+      Model · GPT-5 → Auto router
+    </span>
+    <span style="flex: 1; height: 1px; background: #3a2c1f"></span>
+  </div>
+
+  <div style="align-self: flex-end; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; max-width: 520px">
+    <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">You</span>
+    <div style="background: #2b2017; border: 1px solid #3a2c1f; border-radius: 12px 12px 4px 12px; padding: 11px 14px; font-size: 13.5px; line-height: 1.55; color: #f3ece1">I stumble on “the way he did when he didn't want to say a thing out loud.” It's one clause too long.</div>
+  </div>
+
+  <article style="max-width: 700px; background: #221a13; border: 1px solid #2e231a; border-radius: 12px; padding: 14px 16px">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px">
+      <span style="width: 8px; height: 8px; border-radius: 999px; background: #ee7d49"></span>
+      <strong style="font-size: 13px">Jill</strong>
+      <span style="font-size: 12px; color: #a4937f">Creative writing partner</span>
+    </div>
+    <p style="margin: 0; font-size: 13.5px; line-height: 1.65; color: #c9bbab">Agreed. Stop at “counting the eggs again.” The reader already knows why he counts; the explanation just lets him off the hook.</p>
+    <div style="display: flex; align-items: center; gap: 6px; margin-top: 10px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">
+      <svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 3v12"></path><path d="M18 3a3 3 0 1 0 0 6a3 3 0 1 0 0-6"></path><path d="M6 15a3 3 0 1 0 0 6a3 3 0 1 0 0-6"></path><path d="M18 9c0 5-12 3-12 6"></path></svg>
+      Auto router · served by Claude Sonnet 5
+    </div>
+  </article>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":880,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

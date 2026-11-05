@@ -30,10 +30,12 @@ import type {
   WorkshopSessionScope,
   WorkshopToolId,
   WorkshopTurn,
+  WorkshopTurnModel,
   WorkshopTurnArtifact,
   WorkshopTurnKind,
   WorkshopWidgetRecommendation
 } from '@messages';
+import { cloneStoredContextSource } from '@orchestration/ContextSourceRecord';
 import type {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
@@ -192,6 +194,8 @@ export interface WorkshopCapabilityArtifactInput {
   toolId?: WorkshopToolId;
   truncated?: boolean;
   actionableFindings?: WorkshopActionableFinding[];
+  /** Present only when the capability was a provider run (a persona-run analysis). */
+  model?: WorkshopTurnModel;
 }
 
 export interface WorkshopExcerptReplacement {
@@ -278,10 +282,7 @@ export function cloneWidgetRecommendation(
 }
 
 export function cloneSourceEntry(entry: ContextSourceEntry): ContextSourceEntry {
-  return {
-    ...entry,
-    configuredResource: entry.configuredResource ? { ...entry.configuredResource } : undefined
-  };
+  return cloneStoredContextSource(entry);
 }
 
 export function cloneMessageAttachmentSnapshot(

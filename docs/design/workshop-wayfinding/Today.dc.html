@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Current Workshop rail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#15110d;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+a{color:#ee7d49}a:hover{color:#f3ece1}
+</style>
+</helmet>
+<aside aria-label="Session rail" style="width: 372px; height: 1060px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 16px 16px 14px; background: #221a13; border-right: 1px solid #2e231a; color: #f3ece1; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Inter, system-ui, sans-serif">
+
+  <section aria-label="Excerpt" style="display: flex; flex-direction: column; border: 1px solid #2e231a; background: #1b150f; border-radius: 10px; padding: 12px">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+      <h2 style="display: flex; align-items: center; gap: 6px; margin: 0; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #a4937f">
+        <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+        Excerpt
+      </h2>
+      <div style="display: flex; gap: 6px">
+        <span style="padding: 3px 8px; border-radius: 999px; border: 1px solid #4d3a28; color: #a4937f; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase">Excerpt · v3</span>
+        <span style="padding: 3px 8px; border-radius: 999px; border: 1px solid rgba(238, 125, 73, 0.45); color: #ee7d49; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase">Session live</span>
+      </div>
+    </div>
+    <p style="display: flex; align-items: center; justify-content: center; gap: 7px; margin: 12px 0 0; font-size: 11.5px; color: #c9bbab">From <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace">manuscript/ch-06.md</span> · lines 40–118</p>
+    <div style="margin-top: 10px; max-height: 104px; overflow: hidden; background: #2b2017; border: 1px solid #3a2c1f; border-radius: 10px; padding: 12px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; line-height: 1.6; color: #c9bbab">The lantern hissed when Mara lifted it, and for a moment the whole barn leaned toward the light. Her father did not look up. He was counting the eggs again, the way he did when he didn't want to say a thing out loud.</div>
+    <div style="display: flex; justify-content: flex-end; margin-top: 10px">
+      <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid #4d3a28; border-radius: 8px; background: #2b2017; color: #c9bbab; font-size: 11.5px">
+        <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 4v7h-7"></path></svg>
+        Re-read from file
+      </button>
+    </div>
+  </section>
+
+  <section aria-label="Context" style="display: flex; flex-direction: column; border: 1px solid #2e231a; background: #1b150f; border-radius: 10px; padding: 12px">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+      <h2 style="display: flex; align-items: center; gap: 6px; margin: 0; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #a4937f">
+        <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 8h12v12H4z"></path><path d="M8 4h12v12"></path></svg>
+        Context
+      </h2>
+      <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">3 attachments</span>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 10px">
+      <sc-for list="{{attachments}}" as="att" hint-placeholder-count="3">
+        <span style="display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 6px 4px 9px; border: 1px solid #4d3a28; border-radius: 999px; background: #2b2017; font-size: 11.5px; color: #c9bbab">
+          <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0"><path d="{{att.icon}}"></path></svg>
+          <button type="button" style="padding: 0; border: 0; background: transparent; color: #f3ece1; font-size: 11.5px; white-space: nowrap">{{att.label}}</button>
+          <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; color: #a4937f; white-space: nowrap">{{att.words}}</span>
+          <button type="button" aria-label="Remove {{att.label}}" style="display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 999px; background: #36281b; color: #a4937f">
+            <svg viewBox="0 0 24 24" width="9" height="9" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+          </button>
+        </span>
+      </sc-for>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 6px">
+      <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid #4d3a28; border-radius: 8px; background: #2b2017; color: #c9bbab; font-size: 11.5px">Add text</button>
+      <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid #4d3a28; border-radius: 8px; background: #2b2017; color: #c9bbab; font-size: 11.5px">Add from project…</button>
+    </div>
+  </section>
+
+  <section aria-label="Tools" style="flex: 1; display: flex; flex-direction: column; border: 1px dashed #e0673a; background: #1b150f; border-radius: 10px; padding: 12px">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+      <h2 style="display: flex; align-items: center; gap: 6px; margin: 0; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #a4937f">Tools</h2>
+      <span style="padding: 2px 8px; border-radius: 999px; background: rgba(224, 103, 58, 0.16); color: #ee7d49; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase">Proposed: retire</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 7px; margin-top: 10px">
+      <sc-for list="{{tools}}" as="tool" hint-placeholder-count="6">
+        <button type="button" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; text-align: left; font-size: 13px; color: #c9bbab; background: #2b2017; border: 1px solid #3a2c1f; border-radius: 9px">
+          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>
+          {{tool}}
+        </button>
+      </sc-for>
+      <button type="button" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; text-align: left; font-size: 13px; color: #a4937f; background: transparent; border: 1px dashed #4d3a28; border-radius: 9px">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 4h7v7H4z"></path><path d="M13 4h7v7h-7z"></path><path d="M4 13h7v7H4z"></path><path d="M13 13h7v7h-7z"></path></svg>
+        All 15 tools…
+      </button>
+    </div>
+  </section>
+
+  <section aria-label="To-dos" style="display: flex; flex-direction: column; gap: 9px; border: 1px solid #2e231a; background: #1b150f; border-radius: 10px; padding: 12px">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+      <h2 style="margin: 0; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #a4937f">To-dos</h2>
+      <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">3 open</span>
+    </div>
+    <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px">
+      <sc-for list="{{todos}}" as="todo" hint-placeholder-count="3">
+        <li style="display: flex; align-items: flex-start; gap: 8px; padding: 9px; background: #2b2017; border: 1px solid #3a2c1f; border-radius: 9px">
+          <button type="button" aria-label="Mark done: {{todo.text}}" style="width: 17px; height: 17px; flex: 0 0 17px; margin-top: 1px; padding: 0; border: 1px solid #4d3a28; border-radius: 5px; background: #1b150f"></button>
+          <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+            <span style="font-size: 12px; line-height: 1.4; color: #c9bbab">{{todo.text}}</span>
+            <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; color: #a4937f">{{todo.source}}</span>
+          </div>
+        </li>
+      </sc-for>
+    </ul>
+  </section>
+</aside>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":372,"height":1060}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      attachments: [
+        { label: 'Mara · character sheet', words: '820 words', icon: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5' },
+        { label: 'Series bible', words: '2,410 words', icon: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5' },
+        { label: 'Tone brief', words: '310 words', icon: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z' }
+      ],
+      tools: ['Dialogue & Beats', 'Prose', 'Gestures', 'Choreography', 'Cliché', 'Show & Tell'],
+      todos: [
+        { text: "Move the father's silence ahead of Mara's line", source: 'from Jill · turn 14' },
+        { text: 'Cut the second lantern simile in paragraph 4', source: 'from Cliché report · turn 12' },
+        { text: "Check the father's age against the series bible", source: 'yours · turn 9' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -12,6 +12,14 @@ import {
   isContextPathGroup
 } from '@shared/types';
 import { randomUUID } from 'node:crypto';
+import {
+  cloneStoredContextSource,
+  ContextSourceReadIdentity,
+  contextSourceProvenanceFault,
+  findContextSourceRead,
+  projectContextSource,
+  StoredContextSourceEntry
+} from '@orchestration/ContextSourceRecord';
 
 /**
  * Thrown when a caller references a conversation id this manager no longer
@@ -38,9 +46,10 @@ export interface ConversationContext {
   /**
    * Agent-fetched manifest rows committed beside contextBudget (Sprint 12
    * Phase 7): what this conversation is carrying. Same lifecycle — written
-   * only after an atomic turn commit, cleared with reset/delete.
+   * only after an atomic turn commit, cleared with reset/delete. Stored with
+   * the host-private fingerprint; `getContextSources` projects it away.
    */
-  contextSources?: ContextSourceEntry[];
+  contextSources?: StoredContextSourceEntry[];
   /**
    * Monotonic mint for agent-fetched artifact ids (`art-N`, ADR 2026-07-18).
    * Never reused within a conversation — cancelled turns may skip numbers,
@@ -75,7 +84,8 @@ export interface ConversationArchiveEntryV1<K extends string = string> {
   toolName: string;
   messages: ArchivedConversationMessage[];
   lastActivity: number;
-  contextSources: ContextSourceEntry[];
+  /** Host rows, fingerprint included: the archive is host-side storage. */
+  contextSources: StoredContextSourceEntry[];
   nextArtifactNumber: number;
 }
 
@@ -122,12 +132,12 @@ const contextSourceKey = (entry: ContextSourceEntry): string =>
  * after the cut must become live again.
  */
 export function withContextSourceSupersedeChain(
-  sources: readonly ContextSourceEntry[]
-): ContextSourceEntry[] {
+  sources: readonly StoredContextSourceEntry[]
+): StoredContextSourceEntry[] {
   const latestIndexByKey = new Map<string, number>();
   sources.forEach((entry, index) => latestIndexByKey.set(contextSourceKey(entry), index));
   return sources.map((entry, index) => {
-    const { stale: _stale, ...row } = cloneContextSource(entry);
+    const { stale: _stale, ...row } = cloneStoredContextSource(entry);
     return latestIndexByKey.get(contextSourceKey(entry)) === index
       ? row
       : { ...row, stale: true };
@@ -411,7 +421,7 @@ export class ConversationManager {
    * 2026-09-30). Callers commit only after history commits — a cancelled
    * turn never reaches this, so the prior manifest survives it.
    */
-  appendContextSources(conversationId: string, entries: readonly ContextSourceEntry[]): void {
+  appendContextSources(conversationId: string, entries: readonly StoredContextSourceEntry[]): void {
     const conversation = this.conversations.get(conversationId);
     if (!conversation) {
       throw new ConversationNotFoundError(conversationId);
@@ -425,7 +435,7 @@ export class ConversationManager {
         }
       }
       // A delivery is live when it lands; only a later delivery supersedes it.
-      const { stale: _stale, ...stored } = cloneContextSource(entry);
+      const { stale: _stale, ...stored } = cloneStoredContextSource(entry);
       conversation.contextSources.push(stored);
     }
   }
@@ -446,12 +456,32 @@ export class ConversationManager {
     };
   }
 
+  /** The display-safe manifest: every row without its host-private fingerprint. */
   getContextSources(conversationId: string | undefined): ContextSourceEntry[] {
     if (!conversationId) return [];
-    return (this.conversations.get(conversationId)?.contextSources ?? []).map((entry) => ({
-      ...entry,
-      configuredResource: entry.configuredResource ? { ...entry.configuredResource } : undefined
-    }));
+    return (this.conversations.get(conversationId)?.contextSources ?? []).map(projectContextSource);
+  }
+
+  /**
+   * What the host recorded when a file was read (Workshop Wayfinding D4): the
+   * newest `resource` row naming it at that delivery time. Host-side only —
+   * the fingerprint it carries is compared here, never sent.
+   */
+  findContextSourceRead(
+    conversationId: string | undefined,
+    identity: ContextSourceReadIdentity
+  ): Pick<StoredContextSourceEntry, 'lineRange' | 'sourceFingerprint'> | undefined {
+    if (!conversationId) {
+      return undefined;
+    }
+    const row = findContextSourceRead(this.conversations.get(conversationId)?.contextSources ?? [], identity);
+    if (!row) {
+      return undefined;
+    }
+    return {
+      ...(row.lineRange ? { lineRange: { ...row.lineRange } } : {}),
+      ...(row.sourceFingerprint ? { sourceFingerprint: row.sourceFingerprint } : {})
+    };
   }
 
   /**
@@ -610,7 +640,7 @@ export class ConversationManager {
   }
 
   private validateContextSources<K extends string>(
-    sources: readonly ContextSourceEntry[],
+    sources: readonly StoredContextSourceEntry[],
     key: K
   ): void {
     if (!Array.isArray(sources)) {
@@ -634,7 +664,8 @@ export class ConversationManager {
         (source.promptTokensDelta !== undefined &&
           (!Number.isInteger(source.promptTokensDelta) || source.promptTokensDelta < 0)) ||
         (source.excerptVersion !== undefined &&
-          (!Number.isInteger(source.excerptVersion) || source.excerptVersion < 0))
+          (!Number.isInteger(source.excerptVersion) || source.excerptVersion < 0)) ||
+        contextSourceProvenanceFault(source) !== undefined
       ) {
         throw new Error(`Conversation ${key} has invalid context source ${index}`);
       }
@@ -649,14 +680,9 @@ export class ConversationManager {
   }
 }
 
-const cloneContextSource = (entry: ContextSourceEntry): ContextSourceEntry => ({
-  ...entry,
-  configuredResource: entry.configuredResource ? { ...entry.configuredResource } : undefined
-});
-
 const cloneContextSources = (
-  sources: readonly ContextSourceEntry[]
-): ContextSourceEntry[] => sources.map(cloneContextSource);
+  sources: readonly StoredContextSourceEntry[]
+): StoredContextSourceEntry[] => sources.map((entry) => cloneStoredContextSource(entry));
 
 const duplicateValues = <T>(values: readonly T[]): Set<T> => {
   const seen = new Set<T>();

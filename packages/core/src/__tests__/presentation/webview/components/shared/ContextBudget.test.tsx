@@ -1,9 +1,10 @@
 /** @jest-environment jsdom */
 
 import * as React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { ContextBudget } from '@components/shared/ContextBudget';
-import { ContextBudgetSnapshot } from '@shared/types';
+import { ContextBudgetSnapshot, ContextSourceEntry } from '@shared/types';
+import { partitionContextSources } from '@utils/workshop/contextSources';
 
 const snapshot: ContextBudgetSnapshot = {
   modelId: 'model/a',
@@ -141,5 +142,36 @@ describe('ContextBudget', () => {
     // Measured cost renders as tokens; unmeasured rows show honest char estimates.
     expect(rows[4].textContent).toContain('120 tokens');
     expect(rows[3].textContent).toContain('~900 chars');
+  });
+
+  it('lists the popover through the rail\'s partition: writer material, then read-in (Wayfinding Slice 2)', () => {
+    const row = (
+      label: string,
+      kind: ContextSourceEntry['kind'],
+      origin: ContextSourceEntry['origin']
+    ): ContextSourceEntry => ({ kind, origin, label, sizeChars: 100, isEstimate: true, deliveredAt: 1 });
+    // An interleaved manifest: the only shape where the partition reorders.
+    const sources = [
+      row('characters/rabbit.md', 'resource', 'host'),
+      row('Series bible', 'attachment', 'writer'),
+      row('Continuity report', 'tool-evidence', 'tool'),
+      row('Excerpt', 'pin', 'writer')
+    ];
+    render(<ContextBudget
+      participantIdentity="jill"
+      participantLabel="Jill"
+      snapshot={snapshot}
+      modelOptions={[]}
+      cumulativeProcessedTokens={0}
+      sources={sources}
+      requesterLabel="Jill"
+    />);
+
+    const list = screen.getByRole('list', { name: "Material in this participant's context" });
+    const labels = within(list).getAllByRole('listitem')
+      .map((item) => item.querySelector('.pm-context-source-label')?.firstChild?.textContent);
+    const { writerMaterial, readIn } = partitionContextSources(sources);
+    expect(labels).toEqual([...writerMaterial, ...readIn].map((entry) => entry.label));
+    expect(labels).toEqual(['Series bible', 'Excerpt', 'characters/rabbit.md', 'Continuity report']);
   });
 });

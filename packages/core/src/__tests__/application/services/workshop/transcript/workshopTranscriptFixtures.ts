@@ -1,4 +1,12 @@
 import { WorkshopTurn } from '@messages';
+import type {
+  WorkshopTranscript,
+  WorkshopTranscriptEntry
+} from '@/application/services/workshop/transcript/WorkshopTranscript';
+
+/** A transcript's turn entries, without its model slices (ADR 2026-11-03 D8). */
+export const turnEntries = (transcript: WorkshopTranscript): WorkshopTranscriptEntry[] =>
+  transcript.entries.flatMap((entry) => (entry.kind === 'model-slice' ? [] : [entry]));
 
 /** Epoch for every fixture turn: 2026-10-05T14:30:00Z. */
 export const FIXTURE_EPOCH = Date.UTC(2026, 9, 5, 14, 30, 0);

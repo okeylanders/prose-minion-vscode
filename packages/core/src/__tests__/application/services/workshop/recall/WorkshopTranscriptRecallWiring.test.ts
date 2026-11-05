@@ -108,7 +108,13 @@ describe('transcript.* through the persona capability', () => {
     });
     expect(fulfillment.artifacts).toEqual([expect.objectContaining({ id: turn.id, label: 'Session Recall', category: 'transcript.read' })]);
     expect(fulfillment.deliveredSources).toEqual([
-      { kind: 'transcript', label: expect.stringMatching(/^“Chapter 6\.7 endings” · turns 1-\d+$/), sizeChars: expect.any(Number) }
+      {
+        kind: 'transcript',
+        label: expect.stringMatching(/^“Chapter 6\.7 endings” · turns 1-\d+$/),
+        sizeChars: expect.any(Number),
+        // The Session Recall card that recorded the read (Wayfinding D4).
+        turnId: turn.id
+      }
     ]);
     expect(wired.log.appendLine.mock.calls.map(([line]) => String(line)).join('\n'))
       .toMatch(new RegExp(

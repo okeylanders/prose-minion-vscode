@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reader sheet for a read-in file</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#15110d;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+a{color:#ee7d49}a:hover{color:#f3ece1}
+</style>
+</helmet>
+<div style="position: relative; min-height: 860px; display: flex; flex-wrap: wrap; background: #15110d; color: #f3ece1; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Inter, system-ui, sans-serif">
+
+  <aside aria-hidden="true" style="flex: 0 1 372px; min-width: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px; background: #221a13; border-right: 1px solid #2e231a">
+    <div style="display: flex; gap: 2px; margin: 0 -16px; padding: 10px 10px 0; background: #18120d; border-bottom: 1px solid #3a2c1f">
+      <span style="padding: 10px 14px 11px; margin-bottom: -1px; border-radius: 8px 8px 0 0; border: 1px solid #3a2c1f; border-bottom-color: #221a13; border-top: 2px solid #e0673a; background: #221a13; font-size: 12.5px; font-weight: 600">Material</span>
+      <span style="padding: 10px 14px 11px; font-size: 12.5px; color: #a4937f">Notes</span>
+    </div>
+    <div style="height: 210px; border: 1px solid #2e231a; background: #1b150f; border-radius: 10px"></div>
+    <div style="height: 120px; border: 1px solid #2e231a; background: #1b150f; border-radius: 10px"></div>
+    <div style="display: flex; flex-direction: column; gap: 6px; border: 1px solid #2e231a; background: #1b150f; border-radius: 10px; padding: 12px">
+      <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #a4937f">Read in</span>
+      <span style="padding: 9px 10px; border-radius: 9px; border: 1px solid #ee7d49; background: #2b2017; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11.5px">notes/lantern-symbolism.md</span>
+      <span style="height: 34px; border-radius: 9px; border: 1px solid #3a2c1f; background: #2b2017"></span>
+      <span style="height: 34px; border-radius: 9px; border: 1px solid #3a2c1f; background: #2b2017"></span>
+      <span style="height: 34px; border-radius: 9px; border: 1px solid #3a2c1f; background: #2b2017"></span>
+    </div>
+  </aside>
+  <div aria-hidden="true" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 20px; padding: 70px 32px">
+    <div style="align-self: flex-end; width: 46%; height: 52px; border-radius: 12px; background: #2b2017"></div>
+    <div style="width: 70%; height: 140px; border-radius: 12px; background: #221a13; border: 1px solid #2e231a"></div>
+    <div style="align-self: flex-end; width: 34%; height: 44px; border-radius: 12px; background: #2b2017"></div>
+    <div style="width: 66%; height: 120px; border-radius: 12px; background: #221a13; border: 1px solid #2e231a"></div>
+  </div>
+
+  <div style="position: absolute; inset: 0; background: rgba(10, 8, 6, 0.66); display: flex; align-items: flex-start; justify-content: center; padding: 56px 16px; box-sizing: border-box">
+    <div role="dialog" aria-modal="true" aria-labelledby="reader-title" style="width: 100%; max-width: 760px; display: flex; flex-direction: column; background: #221a13; border: 1px solid #4d3a28; border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); overflow: hidden">
+
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px 14px; border-bottom: 1px solid #3a2c1f">
+        <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
+          <span style="display: inline-flex; align-items: center; gap: 7px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #a4937f"><span style="width: 7px; height: 7px; border-radius: 999px; background: #ee7d49"></span>Read in by Jill</span>
+          <h2 id="reader-title" style="margin: 0; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 15px; font-weight: 600; color: #f3ece1; overflow-wrap: anywhere">notes/lantern-symbolism.md</h2>
+          <span style="font-size: 12px; color: #c9bbab">Read at 3:14 PM · lines 1–64 of 71 · notes resource group</span>
+        </div>
+        <button type="button" aria-label="Close reader" style="width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; padding: 0; border: 1px solid #3a2c1f; border-radius: 8px; background: transparent; color: #a4937f">
+          <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </button>
+      </div>
+
+      <div role="note" style="display: flex; align-items: flex-start; gap: 10px; margin: 14px 20px 0; padding: 10px 12px; border: 1px solid rgba(226, 178, 74, 0.45); border-radius: 9px; background: rgba(226, 178, 74, 0.08); font-size: 12.5px; line-height: 1.45; color: #f3ece1">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px; fill: none; stroke: #e2b24a; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M12 3l10 18H2z"></path><path d="M12 10v4M12 17h.01"></path></svg>
+        <span>This file has changed since Jill read it. You're seeing it as it is now, not the 3:14 PM copy Jill has in context.</span>
+      </div>
+
+      <div style="margin: 14px 20px 0; border: 1px solid #3a2c1f; border-radius: 10px; background: #1b150f; padding: 10px 0; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; line-height: 1.7">
+        <sc-for list="{{lines}}" as="line" hint-placeholder-count="18">
+          <sc-if value="{{line.isMarker}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; align-items: center; gap: 10px; margin: 6px 0; padding: 0 14px; color: #ee7d49; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em">
+              <span style="flex: 1; height: 1px; background: rgba(238, 125, 73, 0.5)"></span>
+              End of Jill's read · line 64
+              <span style="flex: 1; height: 1px; background: rgba(238, 125, 73, 0.5)"></span>
+            </div>
+          </sc-if>
+          <sc-if value="{{line.isText}}" hint-placeholder-val="{{ true }}">
+            <div style="{{line.rowStyle}}">
+              <span style="width: 28px; flex: 0 0 28px; text-align: right; color: #a4937f">{{line.n}}</span>
+              <span style="{{line.textStyle}}">{{line.text}}</span>
+            </div>
+          </sc-if>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 20px 18px">
+        <span style="font-size: 12px; color: #a4937f">Read-only here. Jill's copy can't be edited or removed.</span>
+        <div style="display: flex; gap: 8px">
+          <button type="button" style="display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border: 1px solid #4d3a28; border-radius: 8px; background: transparent; color: #c9bbab; font-size: 12.5px">Close</button>
+          <button type="button" style="display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border: 0; border-radius: 8px; background: #e0673a; color: #15110d; font-size: 12.5px; font-weight: 600">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="M3 4h18v16H3z"></path><path d="M12 4v16"></path></svg>
+            Open beside
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const inside = 'display: flex; gap: 14px; padding: 0 14px 0 10px; border-left: 3px solid rgba(238, 125, 73, 0.55);';
+    const outside = 'display: flex; gap: 14px; padding: 0 14px 0 10px; border-left: 3px solid transparent;';
+    const source = [
+      [52, '## The lantern as the father\'s voice'],
+      [53, ''],
+      [54, 'He never says he\'s afraid of losing the farm. The lantern'],
+      [55, 'says it for him: he refills it every night, even when the'],
+      [56, 'oil money is short.'],
+      [57, ''],
+      [58, '- Ch 2: first lantern. Mara is too young to carry it.'],
+      [59, '- Ch 4: she carries it for the first time; he walks behind.'],
+      [60, '- Ch 6: she lights it without asking. (This is the turn.)'],
+      [61, ''],
+      [62, 'Don\'t let anyone name it. If a character says "the lantern'],
+      [63, 'means," cut the line.'],
+      [64, ''],
+      [65, '## Open questions'],
+      [66, ''],
+      [67, '- Does the lantern survive the fire in ch 11?'],
+      [68, '- Who carries it at the funeral?']
+    ];
+    const lines = [];
+    source.forEach(([n, text]) => {
+      if (n === 65) {
+        lines.push({ isMarker: true, isText: false });
+      }
+      const read = n <= 64;
+      lines.push({
+        isMarker: false,
+        isText: true,
+        n,
+        text: text || ' ',
+        rowStyle: read ? inside : outside,
+        textStyle: 'white-space: pre-wrap; color: ' + (read ? '#f3ece1' : '#a4937f') + ';'
+      });
+    });
+    return { lines };
+  }
+}
+</script>
+</body>
+</html>

@@ -110,6 +110,12 @@ elsewhere.
 | Low | [Offer to repair and read a Lightbox reply already in the recovery folder](2026-10-23-lightbox-repair-from-recovery.md) (Lightbox Slice 4H) | Identified |
 | Medium | [Workshop widgets should read their JSON through the shared model-JSON parser](2026-10-23-widget-model-json-repair-adoption.md) (Lightbox Slice 4H; four call sites) | Identified |
 | Low | [Offer the misnested-member repair to the Workshop widgets](2026-10-24-widget-misnested-member-repair.md) (Lightbox Slice 4K; after each adopts the shared parser) | Identified |
+| Low | [The session codec refuses sessions saved by newer builds](2026-11-03-workshop-session-codec-downgrade-tolerance.md) (Workshop Wayfinding ADR D9; a tolerant extension slot for later releases) | Identified |
+| Medium | [WorkshopApp.tsx is over three times the 500-line limit](2026-11-03-workshop-app-root-size.md) (Workshop Wayfinding Slice 1; extract the thread region before Slice 5) | Identified |
+| Low | [A dictionary block that normalization empties still counts as a success](2026-11-03-dictionary-normalized-block-success.md) (Workshop Wayfinding Slice 6, PR #185 F-04's scope note; history's `modelIds` too) | Identified |
+| Medium | [Workshop modals don't contain focus](2026-11-03-workshop-modal-focus-containment.md) (Workshop Wayfinding Slice 2, PR #186 F-02/N-03; the text sheet makes the frame behind it `inert`, the rest don't) | Identified |
+| Low | [Rendered Markdown keeps positive `tabindex`](2026-11-04-markdown-positive-tabindex.md) (Workshop Wayfinding Slice 2, PR #186 N-01; the sheet's trap orders stops as the browser does) | Identified |
+| Low | [The Lightbox passage linear-time tests are bounded by a wall clock](2026-11-03-lightbox-passages-wall-clock-test.md) (failed CI on PR #186's report commit under runner load; count the work instead) | Identified |
 
 ## Review Guidance
 

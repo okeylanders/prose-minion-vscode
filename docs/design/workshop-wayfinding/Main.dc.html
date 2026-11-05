@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workshop with two-tab rail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#15110d;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+textarea{font:inherit}
+a{color:#ee7d49}a:hover{color:#f3ece1}
+</style>
+</helmet>
+<div style="min-height: 1000px; display: flex; flex-direction: column; background: #15110d; background-image: linear-gradient(180deg, #211910 0%, #15110d 220px); color: #f3ece1; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Inter, system-ui, sans-serif">
+
+  <header style="position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 28px 20px; border-bottom: 2px solid #d2592f">
+    <div style="display: flex; align-items: center; gap: 13px; min-width: 0">
+      <div style="width: 42px; height: 42px; border-radius: 11px; background: #ffffff; display: grid; place-items: center; flex-shrink: 0">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" style="fill: none; stroke: #15110d; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M12 20l-7-7 3-9h8l3 9z"></path><path d="M12 20v-9"></path><path d="M10 11h4"></path></svg>
+      </div>
+      <div style="min-width: 0">
+        <h1 style="margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1">Workshop</h1>
+        <p style="margin: 3px 0 0; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; color: #a4937f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Lantern scene · manuscript/ch-06.md · v3</p>
+      </div>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+      <button type="button" style="display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 6px 11px; border: 1px solid #4d3a28; border-radius: 8px; background: #221a13; color: #f3ece1; font-size: 12.5px">
+        <span style="width: 8px; height: 8px; border-radius: 999px; background: #ee7d49"></span> Jill <span style="color: #a4937f">· host</span>
+        <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: #a4937f; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
+      <button type="button" aria-label="Assistant model: GPT-5" style="display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 6px 11px; border: 1px solid #4d3a28; border-radius: 8px; background: #221a13; color: #f3ece1; font-size: 12.5px">
+        <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" style="fill: none; stroke: #c9bbab; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M7 7h10v10H7z"></path><path d="M9 3v4M15 3v4M9 17v4M15 17v4M3 9h4M3 15h4M17 9h4M17 15h4"></path></svg>
+        GPT-5
+        <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: #a4937f; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
+      <button type="button" style="display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 6px 11px; border: 1px solid #4d3a28; border-radius: 8px; background: transparent; color: #c9bbab; font-size: 12.5px">Sessions</button>
+    </div>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; align-items: stretch">
+
+    <aside aria-label="Session rail" style="flex: 0 1 372px; min-width: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px; background: #221a13; border-right: 1px solid #2e231a">
+
+      <div role="tablist" aria-label="Rail sections" style="display: flex; gap: 2px; margin: 0 -16px; padding: 10px 10px 0; background: #18120d; border-bottom: 1px solid #3a2c1f">
+        <button type="button" role="tab" id="tab-material" aria-controls="panel-material" aria-selected="{{materialSelected}}" onClick="{{pickMaterial}}" style="{{materialTabStyle}}">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+          Material
+          <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">10</span>
+        </button>
+        <button type="button" role="tab" id="tab-notes" aria-controls="panel-notes" aria-selected="{{notesSelected}}" aria-label="{{notesTabLabel}}" onClick="{{pickNotes}}" style="{{notesTabStyle}}">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>
+          Notes
+          <sc-if value="{{showBadge}}" hint-placeholder-val="{{ true }}">
+            <span style="display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: rgba(224, 103, 58, 0.18); border: 1px solid rgba(238, 125, 73, 0.45); color: #ee7d49; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; font-weight: 600">{{badgeText}}</span>
+          </sc-if>
+        </button>
+      </div>
+
+      <sc-if value="{{isMaterial}}" hint-placeholder-val="{{ true }}">
+        <div role="tabpanel" id="panel-material" aria-labelledby="tab-material" style="display: flex; flex-direction: column; gap: 12px">
+
+          <section aria-label="Excerpt" style="display: flex; flex-direction: column; border: 1px solid #2e231a; background: #1b150f; border-radius: 10px; padding: 12px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+              <h2 style="display: flex; align-items: center; gap: 6px; margin: 0; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #a4937f">
+                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+                Excerpt
+              </h2>
+              <div style="display: flex; gap: 6px">
+                <span style="padding: 3px 8px; border-radius: 999px; border: 1px solid #4d3a28; color: #a4937f; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase">Excerpt · v3</span>
+                <span style="padding: 3px 8px; border-radius: 999px; border: 1px solid rgba(238, 125, 73, 0.45); color: #ee7d49; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase">Session live</span>
+              </div>
+            </div>
+            <p style="display: flex; align-items: center; justify-content: center; gap: 7px; margin: 12px 0 0; font-size: 11.5px; color: #c9bbab">From <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace">manuscript/ch-06.md</span> · lines 40–118</p>
+            <div style="margin-top: 10px; max-height: 104px; overflow: hidden; background: #2b2017; border: 1px solid #3a2c1f; border-radius: 10px; padding: 12px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; line-height: 1.6; color: #c9bbab">The lantern hissed when Mara lifted it, and for a moment the whole barn leaned toward the light. Her father did not look up. He was counting the eggs again, the way he did when he didn't want to say a thing out loud.</div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 10px">
+              <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid #4d3a28; border-radius: 8px; background: #2b2017; color: #c9bbab; font-size: 11.5px">
+                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 4v7h-7"></path></svg>
+                Re-read from file
+              </button>
+            </div>
+          </section>
+
+          <section aria-label="Context" style="display: flex; flex-direction: column; border: 1px solid #2e231a; background: #1b150f; border-radius: 10px; padding: 12px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+              <h2 style="display: flex; align-items: center; gap: 6px; margin: 0; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #a4937f">
+                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 8h12v12H4z"></path><path d="M8 4h12v12"></path></svg>
+                Context
+              </h2>
+              <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">3 attachments</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 10px">
+              <sc-for list="{{attachments}}" as="att" hint-placeholder-count="3">
+                <span style="display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 6px 4px 9px; border: 1px solid #4d3a28; border-radius: 999px; background: #2b2017; font-size: 11.5px; color: #c9bbab">
+                  <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0"><path d="{{att.icon}}"></path></svg>
+                  <button type="button" style="padding: 0; border: 0; background: transparent; color: #f3ece1; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{att.label}}</button>
+                  <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; color: #a4937f; white-space: nowrap">{{att.words}}</span>
+                  <button type="button" aria-label="Remove {{att.label}}" style="display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 999px; background: #36281b; color: #a4937f">
+                    <svg viewBox="0 0 24 24" width="9" height="9" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+                  </button>
+                </span>
+              </sc-for>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px">
+              <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid #4d3a28; border-radius: 8px; background: #2b2017; color: #c9bbab; font-size: 11.5px">
+                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 20l4-1 11-11-3-3L5 16z"></path></svg>
+                Add text
+              </button>
+              <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid #4d3a28; border-radius: 8px; background: #2b2017; color: #c9bbab; font-size: 11.5px">
+                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+                Add from project…
+              </button>
+            </div>
+          </section>
+
+          <section aria-label="Read in by Jill" style="display: flex; flex-direction: column; border: 1px solid #2e231a; background: #1b150f; border-radius: 10px; padding: 12px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+              <h2 style="display: flex; align-items: center; gap: 6px; margin: 0; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #a4937f">
+                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"></path><path d="M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6"></path></svg>
+                Read in
+              </h2>
+              <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: #c9bbab"><span style="width: 7px; height: 7px; border-radius: 999px; background: #ee7d49"></span> by Jill</span>
+            </div>
+            <ul style="list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px">
+              <sc-for list="{{readIn}}" as="row" hint-placeholder-count="6">
+                <li>
+                  <button type="button" aria-label="{{row.action}}" style="{{row.rowStyle}}">
+                    <span style="{{row.iconBoxStyle}}">
+                      <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="{{row.icon}}"></path></svg>
+                    </span>
+                    <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+                      <span style="{{row.labelStyle}}">{{row.label}}</span>
+                      <span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">
+                        {{row.meta}}
+                        <sc-if value="{{row.changed}}" hint-placeholder-val="{{ false }}">
+                          <span style="padding: 1px 6px; border-radius: 999px; border: 1px solid rgba(226, 178, 74, 0.5); color: #e2b24a; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em">changed since</span>
+                        </sc-if>
+                        <sc-if value="{{row.stale}}" hint-placeholder-val="{{ false }}">
+                          <span style="padding: 1px 6px; border-radius: 999px; border: 1px dashed #4d3a28; color: #a4937f; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em">superseded</span>
+                        </sc-if>
+                      </span>
+                    </span>
+                    <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" style="flex-shrink: 0; margin-top: 4px; fill: none; stroke: #a4937f; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="{{row.trail}}"></path></svg>
+                  </button>
+                </li>
+              </sc-for>
+            </ul>
+          </section>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isNotes}}" hint-placeholder-val="{{ false }}">
+        <div role="tabpanel" id="panel-notes" aria-labelledby="tab-notes" style="display: flex; flex-direction: column; gap: 12px">
+
+          <section aria-label="To-dos" style="display: flex; flex-direction: column; gap: 9px; border: 1px solid #2e231a; background: #1b150f; border-radius: 10px; padding: 12px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+              <h2 style="display: flex; align-items: center; gap: 6px; margin: 0; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #a4937f">
+                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M9 6h11M9 12h11M9 18h11"></path><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"></path></svg>
+                To-dos
+              </h2>
+              <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">3 open · 1 done</span>
+            </div>
+            <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px">
+              <sc-for list="{{todos}}" as="todo" hint-placeholder-count="4">
+                <li style="{{todo.rowStyle}}">
+                  <div style="display: flex; align-items: flex-start; gap: 8px; min-width: 0">
+                    <button type="button" aria-label="{{todo.toggleLabel}}" style="width: 17px; height: 17px; flex: 0 0 17px; display: grid; place-items: center; margin-top: 1px; padding: 0; border: 1px solid #4d3a28; border-radius: 5px; background: #1b150f; color: #ee7d49">
+                      <sc-if value="{{todo.done}}" hint-placeholder-val="{{ false }}">
+                        <svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12l5 5 9-10"></path></svg>
+                      </sc-if>
+                    </button>
+                    <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                      <span style="{{todo.textStyle}}">{{todo.text}}</span>
+                      <span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px">
+                        <button type="button" style="padding: 0; border: 0; background: transparent; color: #a4937f; text-align: left; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px">{{todo.source}}</button>
+                        <sc-if value="{{todo.isNew}}" hint-placeholder-val="{{ false }}">
+                          <span style="display: inline-flex; align-items: center; gap: 4px; color: #ee7d49; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em"><span style="width: 6px; height: 6px; border-radius: 999px; background: #ee7d49"></span>new</span>
+                        </sc-if>
+                      </span>
+                    </div>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 3px">
+                    <button type="button" aria-label="Move up" style="width: 22px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #a4937f">
+                      <svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round"><path d="M6 15l6-6 6 6"></path></svg>
+                    </button>
+                    <button type="button" aria-label="Dismiss" style="width: 22px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #a4937f">
+                      <svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+                    </button>
+                  </div>
+                </li>
+              </sc-for>
+            </ul>
+          </section>
+
+          <section aria-label="Bookmarks" style="display: flex; flex-direction: column; gap: 9px; border: 1px solid #2e231a; background: #1b150f; border-radius: 10px; padding: 12px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+              <h2 style="display: flex; align-items: center; gap: 6px; margin: 0; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #a4937f">
+                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>
+                Bookmarks
+              </h2>
+              <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">{{bookmarkCount}} · thread order</span>
+            </div>
+            <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px">
+              <sc-for list="{{bookmarks}}" as="bm" hint-placeholder-count="5">
+                <li style="display: flex; align-items: stretch; gap: 4px">
+                  <button type="button" aria-label="{{bm.action}}" style="flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 9px; padding: 9px 10px; text-align: left; background: #2b2017; border: 1px solid #3a2c1f; border-radius: 9px; color: #c9bbab">
+                    <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" style="{{bm.iconStyle}}"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>
+                    <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+                      <span style="font-size: 12.5px; line-height: 1.35; color: #f3ece1; overflow-wrap: anywhere">{{bm.label}}</span>
+                      <span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">
+                        {{bm.meta}}
+                        <sc-if value="{{bm.outside}}" hint-placeholder-val="{{ false }}">
+                          <span style="padding: 1px 6px; border-radius: 999px; border: 1px solid #4d3a28; color: #c9bbab; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em">opens in reader</span>
+                        </sc-if>
+                        <sc-if value="{{bm.isNew}}" hint-placeholder-val="{{ false }}">
+                          <span style="display: inline-flex; align-items: center; gap: 4px; color: #ee7d49; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em"><span style="width: 6px; height: 6px; border-radius: 999px; background: #ee7d49"></span>new</span>
+                        </sc-if>
+                      </span>
+                    </span>
+                  </button>
+                  <button type="button" aria-label="Rename bookmark" style="width: 28px; flex: 0 0 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #a4937f">
+                    <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 20l4-1 11-11-3-3L5 16z"></path></svg>
+                  </button>
+                </li>
+              </sc-for>
+            </ul>
+          </section>
+        </div>
+      </sc-if>
+    </aside>
+
+    <section aria-label="Session thread" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 20px; padding: 26px 32px 18px">
+
+        <div role="separator" style="display: flex; align-items: center; gap: 12px; color: #a4937f; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em">
+          <span style="flex: 1; height: 1px; background: #3a2c1f"></span>
+          <span style="text-align: center">Session resumed Tuesday, October 27, 2026 at 3:12 PM CDT after 49h 6m</span>
+          <span style="flex: 1; height: 1px; background: #3a2c1f"></span>
+        </div>
+
+        <div style="align-self: flex-end; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; max-width: 560px">
+          <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">You</span>
+          <div style="background: #2b2017; border: 1px solid #3a2c1f; border-radius: 12px 12px 4px 12px; padding: 11px 14px; font-size: 13.5px; line-height: 1.55; color: #f3ece1">Can you look at the lantern beat again? Mara reacts before we feel what it costs her.</div>
+        </div>
+
+        <article style="max-width: 760px; background: #221a13; border: 1px solid #2e231a; border-radius: 12px; padding: 14px 16px">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px">
+            <span style="width: 8px; height: 8px; border-radius: 999px; background: #ee7d49"></span>
+            <strong style="font-size: 13px">Jill</strong>
+            <span style="font-size: 12px; color: #a4937f">Creative writing partner</span>
+          </div>
+          <p style="margin: 0; font-size: 13.5px; line-height: 1.65; color: #c9bbab">Right now her reaction lands in the same sentence the lantern lights. Give the reader one beat of the father not looking up before Mara speaks. That silence is the cost. Move “Her father did not look up” ahead of her line and let the eggs carry the weight.</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px">
+            <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid #3a2c1f; border-radius: 7px; background: transparent; color: #a4937f; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M8 8h12v12H8z"></path><path d="M4 16V4h12"></path></svg>Copy
+            </button>
+            <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid #3a2c1f; border-radius: 7px; background: transparent; color: #a4937f; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M5 3h11l3 3v15H5z"></path><path d="M8 3v6h8M8 21v-7h8v7"></path></svg>Save
+            </button>
+            <button type="button" aria-pressed="true" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid rgba(238, 125, 73, 0.5); border-radius: 7px; background: rgba(224, 103, 58, 0.14); color: #ee7d49; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: currentColor; stroke: currentColor; stroke-width: 2; stroke-linejoin: round"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>Bookmarked
+            </button>
+            <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid #3a2c1f; border-radius: 7px; background: transparent; color: #a4937f; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M11 7l-6 5 6 5z"></path><path d="M19 7l-6 5 6 5z"></path></svg>Rewind
+            </button>
+            <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid #3a2c1f; border-radius: 7px; background: transparent; color: #a4937f; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 3v12"></path><path d="M18 3a3 3 0 1 0 0 6a3 3 0 1 0 0-6"></path><path d="M6 15a3 3 0 1 0 0 6a3 3 0 1 0 0-6"></path><path d="M18 9c0 5-12 3-12 6"></path></svg>Branch
+            </button>
+          </div>
+        </article>
+
+        <div role="separator" style="display: flex; align-items: center; gap: 12px; color: #c9bbab; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em">
+          <span style="flex: 1; height: 1px; background: #3a2c1f"></span>
+          <span style="display: inline-flex; align-items: center; gap: 7px">
+            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M7 7h10v10H7z"></path><path d="M9 3v4M15 3v4M9 17v4M15 17v4M3 9h4M3 15h4M17 9h4M17 15h4"></path></svg>
+            Model · Claude Sonnet 5 → GPT-5
+          </span>
+          <span style="flex: 1; height: 1px; background: #3a2c1f"></span>
+        </div>
+
+        <div style="align-self: flex-end; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; max-width: 560px">
+          <span style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">You</span>
+          <div style="background: #2b2017; border: 1px solid #3a2c1f; border-radius: 12px 12px 4px 12px; padding: 11px 14px; font-size: 13.5px; line-height: 1.55; color: #f3ece1">Try the beat from her father's side instead.</div>
+        </div>
+
+        <article style="max-width: 760px; background: #221a13; border: 1px solid #2e231a; border-radius: 12px; padding: 14px 16px">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px">
+            <span style="width: 8px; height: 8px; border-radius: 999px; background: #ee7d49"></span>
+            <strong style="font-size: 13px">Jill</strong>
+            <span style="font-size: 12px; color: #a4937f">Creative writing partner</span>
+          </div>
+          <p style="margin: 0; font-size: 13.5px; line-height: 1.65; color: #c9bbab">From his side the lantern is an interruption. He's mid-count and the light makes him lose his place. If he starts the count over, out loud, the reader hears everything he isn't saying, and Mara doesn't need a reaction line at all.</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px">
+            <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid #3a2c1f; border-radius: 7px; background: transparent; color: #a4937f; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M8 8h12v12H8z"></path><path d="M4 16V4h12"></path></svg>Copy
+            </button>
+            <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid #3a2c1f; border-radius: 7px; background: transparent; color: #a4937f; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M5 3h11l3 3v15H5z"></path><path d="M8 3v6h8M8 21v-7h8v7"></path></svg>Save
+            </button>
+            <button type="button" aria-pressed="{{bookmarkPressed}}" onClick="{{toggleBookmark}}" style="{{bookmarkBtnStyle}}">
+              <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="{{bookmarkIconStyle}}"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>{{bookmarkLabel}}
+            </button>
+            <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid #3a2c1f; border-radius: 7px; background: transparent; color: #a4937f; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M11 7l-6 5 6 5z"></path><path d="M19 7l-6 5 6 5z"></path></svg>Rewind
+            </button>
+            <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid #3a2c1f; border-radius: 7px; background: transparent; color: #a4937f; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 3v12"></path><path d="M18 3a3 3 0 1 0 0 6a3 3 0 1 0 0-6"></path><path d="M6 15a3 3 0 1 0 0 6a3 3 0 1 0 0-6"></path><path d="M18 9c0 5-12 3-12 6"></path></svg>Branch
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 0 32px 22px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid #3a2c1f">
+          <button type="button" style="display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; border: 1px solid rgba(238, 125, 73, 0.55); border-radius: 999px; background: rgba(224, 103, 58, 0.12); color: #f3ece1; font-size: 12px"><span style="width: 7px; height: 7px; border-radius: 999px; background: #ee7d49"></span>Jill · host</button>
+          <button type="button" style="display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; border: 1px solid #4d3a28; border-radius: 999px; background: transparent; color: #c9bbab; font-size: 12px"><span style="width: 7px; height: 7px; border-radius: 999px; background: #5aa2f0"></span>Dev · guest</button>
+          <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px dashed #4d3a28; border-radius: 999px; background: transparent; color: #a4937f; font-size: 12px">+ Invite guest</button>
+          <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: #a4937f">
+            Jill · 18.4k / 400k
+            <span style="width: 90px; height: 5px; border-radius: 999px; background: #2b2017; overflow: hidden; display: inline-block"><span style="display: block; width: 6%; height: 100%; background: #ee7d49"></span></span>
+          </span>
+        </div>
+        <div style="border: 1px solid #4d3a28; border-radius: 12px; background: #1b150f; padding: 12px">
+          <textarea aria-label="Message Jill" rows="2" placeholder="Message Jill…" style="width: 100%; box-sizing: border-box; resize: none; border: 0; background: transparent; color: #f3ece1; font-size: 13.5px; line-height: 1.5; outline: none"></textarea>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px">
+            <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #3a2c1f; border-radius: 8px; background: #221a13; color: #c9bbab; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"></path></svg>Context
+            </button>
+            <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid rgba(238, 125, 73, 0.55); border-radius: 8px; background: #221a13; color: #f3ece1; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" style="fill: none; stroke: #ee7d49; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>Tools
+            </button>
+            <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #3a2c1f; border-radius: 8px; background: #221a13; color: #c9bbab; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M12 3l9 5-9 5-9-5z"></path><path d="M3 13l9 5 9-5"></path></svg>Widgets
+            </button>
+            <button type="button" aria-label="Conversation settings" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #3a2c1f; border-radius: 8px; background: #221a13; color: #c9bbab; font-size: 11.5px">
+              <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M18 18h2"></path></svg>Collaborative
+            </button>
+            <button type="button" style="margin-left: auto; display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border: 0; border-radius: 8px; background: #e0673a; color: #15110d; font-size: 12.5px; font-weight: 600">
+              <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 12l16-8-6 16-3-6z"></path></svg>Send
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const tab = s.tab || 'material';
+    const unseen = s.unseen === undefined ? 2 : s.unseen;
+    const extra = !!s.extraBookmark;
+    const isMaterial = tab === 'material';
+
+    const tabBase = 'display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px 11px; margin-bottom: -1px; border-radius: 8px 8px 0 0; font-size: 12.5px; ';
+    const activeTab = tabBase + 'border: 1px solid #3a2c1f; border-bottom-color: #221a13; border-top: 2px solid #e0673a; background: #221a13; color: #f3ece1; font-weight: 600;';
+    const idleTab = tabBase + 'border: 1px solid transparent; border-top: 2px solid transparent; background: transparent; color: #a4937f; font-weight: 500;';
+
+    const icons = {
+      doc: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5',
+      pen: 'M4 20l4-1 11-11-3-3L5 16z',
+      sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z',
+      report: 'M5 20V11 M12 20V5 M19 20v-6',
+      book: 'M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z',
+      clock: 'M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0 M12 7v5l3 2',
+      open: 'M7 17L17 7 M9 7h8v8',
+      jump: 'M12 5v14 M6 13l6 6 6-6'
+    };
+    const mono = "font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11.5px; color: #f3ece1; overflow-wrap: anywhere;";
+    const sans = 'font-size: 12.5px; color: #f3ece1; overflow-wrap: anywhere;';
+    const rowBase = 'width: 100%; display: flex; align-items: flex-start; gap: 9px; padding: 9px 10px; text-align: left; border-radius: 9px; color: #c9bbab; ';
+    const box = (color) => 'width: 24px; height: 24px; flex: 0 0 24px; display: grid; place-items: center; border-radius: 6px; background: #36281b; color: ' + color + ';';
+
+    const readIn = [
+      { label: 'notes/lantern-symbolism.md', meta: 'resource · lines 1–64 · 3:14 PM', changed: true, icon: icons.doc, trail: icons.open, iconBoxStyle: box('#5aa2f0'), labelStyle: mono, rowStyle: rowBase + 'background: #2b2017; border: 1px solid #3a2c1f;', action: 'Open notes/lantern-symbolism.md in the reader; it changed after Jill read it' },
+      { label: 'manuscript/ch-05.md', meta: 'resource · whole file · 3:20 PM', icon: icons.doc, trail: icons.open, iconBoxStyle: box('#5aa2f0'), labelStyle: mono, rowStyle: rowBase + 'background: #2b2017; border: 1px solid #3a2c1f;', action: 'Open manuscript/ch-05.md in the reader' },
+      { label: 'Dialogue & Beats report', meta: 'analysis · 3:22 PM', icon: icons.report, trail: icons.jump, iconBoxStyle: box('#6fc98a'), labelStyle: sans, rowStyle: rowBase + 'background: #2b2017; border: 1px solid #3a2c1f;', action: 'Jump to the Dialogue and Beats report in the thread' },
+      { label: '“gloaming”', meta: 'dictionary entry · 3:25 PM', icon: icons.book, trail: icons.open, iconBoxStyle: box('#e2b24a'), labelStyle: sans, rowStyle: rowBase + 'background: #2b2017; border: 1px solid #3a2c1f;', action: 'Open the dictionary entry for gloaming' },
+      { label: 'Ch 6 pacing pass · Oct 20', meta: 'saved session · read-only', icon: icons.clock, trail: icons.open, iconBoxStyle: box('#a78bfa'), labelStyle: sans, rowStyle: rowBase + 'background: #2b2017; border: 1px solid #3a2c1f;', action: 'Preview the saved session Ch 6 pacing pass, read-only' },
+      { label: 'notes/lantern-symbolism.md', meta: 'lines 1–30 · 3:02 PM', stale: true, icon: icons.doc, trail: icons.open, iconBoxStyle: box('#a4937f'), labelStyle: mono.replace('#f3ece1', '#a4937f'), rowStyle: rowBase + 'background: transparent; border: 1px dashed #4d3a28;', action: 'Open the earlier read of notes/lantern-symbolism.md' }
+    ];
+
+    const todoBase = 'display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 9px; background: #2b2017; border-radius: 9px; ';
+    const todos = [
+      { text: "Move the father's silence ahead of Mara's line", source: 'from Jill · turn 14', isNew: true },
+      { text: 'Cut the second lantern simile in paragraph 4', source: 'from Cliché report · turn 12', isNew: true },
+      { text: "Check the father's age against the series bible", source: 'yours · turn 9' },
+      { text: 'Name the barn cat or cut it', source: 'from Jill · turn 6', done: true }
+    ].map((t) => ({
+      ...t,
+      toggleLabel: t.done ? 'Mark open: ' + t.text : 'Mark done: ' + t.text,
+      rowStyle: todoBase + 'border: 1px solid #3a2c1f;' + (t.done ? ' opacity: 0.75;' : ''),
+      textStyle: 'font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; ' + (t.done ? 'color: #a4937f; text-decoration: line-through;' : 'color: #c9bbab;')
+    }));
+
+    const iconStyle = (color, filled) => 'flex-shrink: 0; margin-top: 2px; stroke: ' + color + '; stroke-width: 2; stroke-linejoin: round; fill: ' + (filled ? color : 'none') + ';';
+    const bookmarks = [
+      { label: 'Jill · The barn opens on the eggs, not the lantern', meta: 'turn 3', outside: true, iconStyle: iconStyle('#ee7d49', true), action: 'Open bookmark from turn 3 in the reader' },
+      { label: 'Dialogue & Beats · report', meta: 'turn 12', iconStyle: iconStyle('#6fc98a', true), action: 'Jump to bookmark at turn 12' },
+      { label: 'You · What if the lantern never lights?', meta: 'turn 18', iconStyle: iconStyle('#c9bbab', true), action: 'Jump to bookmark at turn 18' },
+      { label: 'Dev · Let the father answer a question nobody asked', meta: 'turn 24', iconStyle: iconStyle('#5aa2f0', true), action: 'Jump to bookmark at turn 24' },
+      { label: 'Jill · Her reaction lands in the same sentence the lantern lights', meta: 'turn 29', iconStyle: iconStyle('#ee7d49', true), action: 'Jump to bookmark at turn 29' }
+    ];
+    if (extra) {
+      bookmarks.push({ label: "Jill · From his side the lantern is an interruption", meta: 'turn 31', isNew: true, iconStyle: iconStyle('#ee7d49', true), action: 'Jump to bookmark at turn 31' });
+    }
+
+    const pressedBtn = 'display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid rgba(238, 125, 73, 0.5); border-radius: 7px; background: rgba(224, 103, 58, 0.14); color: #ee7d49; font-size: 11.5px;';
+    const idleBtn = 'display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid #3a2c1f; border-radius: 7px; background: transparent; color: #a4937f; font-size: 11.5px;';
+
+    return {
+      isMaterial,
+      isNotes: !isMaterial,
+      materialSelected: isMaterial,
+      notesSelected: !isMaterial,
+      materialTabStyle: isMaterial ? activeTab : idleTab,
+      notesTabStyle: isMaterial ? idleTab : activeTab,
+      showBadge: unseen > 0,
+      badgeText: unseen + ' new',
+      notesTabLabel: unseen > 0 ? 'Notes, ' + unseen + ' new' : 'Notes',
+      pickMaterial: () => this.setState({ tab: 'material' }),
+      pickNotes: () => this.setState({ tab: 'notes', unseen: 0 }),
+      toggleBookmark: () => {
+        const next = !extra;
+        const bump = next && isMaterial ? 1 : 0;
+        const drop = !next && isMaterial && unseen > 0 ? 1 : 0;
+        this.setState({ extraBookmark: next, unseen: unseen + bump - drop });
+      },
+      bookmarkPressed: extra,
+      bookmarkLabel: extra ? 'Bookmarked' : 'Bookmark',
+      bookmarkBtnStyle: extra ? pressedBtn : idleBtn,
+      bookmarkIconStyle: 'stroke: currentColor; stroke-width: 2; stroke-linejoin: round; fill: ' + (extra ? 'currentColor' : 'none') + ';',
+      bookmarkCount: bookmarks.length,
+      attachments: [
+        { label: 'Mara · character sheet', words: '820 words', icon: icons.doc },
+        { label: 'Series bible', words: '2,410 words', icon: icons.doc },
+        { label: 'Tone brief', words: '310 words', icon: icons.sparkle }
+      ],
+      readIn,
+      todos,
+      bookmarks
+    };
+  }
+}
+</script>
+</body>
+</html>

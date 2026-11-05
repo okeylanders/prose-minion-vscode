@@ -43,6 +43,15 @@ const openOverlays: OpenOverlay[] = [];
  */
 let focusBeforeFirstOverlay: HTMLElement | null = null;
 
+/**
+ * Where focus goes when the last overlay closes, instead of the opener, when
+ * an action that closes the overlay promised a destination ("Show where it
+ * was read" jumps to a card; PR #187 F-01). It runs in the restore's own
+ * microtask, after the closing commit, so the frame is no longer inert.
+ * Returning false (the destination wasn't there) restores the opener as usual.
+ */
+let destinationAfterLastClose: (() => boolean) | null = null;
+
 /** Escape goes to the overlay on top, and to no other. */
 function dismissTopOverlay(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
@@ -72,11 +81,26 @@ export function isAnyOverlayOpen(): boolean {
   return openOverlays.length > 0;
 }
 
+/**
+ * Sends focus to a destination once the last open overlay has closed, in
+ * place of the opener restore. Call it before closing the overlay. With no
+ * overlay open it runs at once. `destination` reports whether it took focus;
+ * when it didn't, the opener gets focus back as on any Close.
+ */
+export function focusAfterOverlaysClose(destination: () => boolean): void {
+  if (openOverlays.length === 0) {
+    destination();
+    return;
+  }
+  destinationAfterLastClose = destination;
+}
+
 /** Test seam: overlay focus bookkeeping is module state, so it needs a reset. */
 export function __resetOverlayFocusStateForTests(): void {
   openOverlays.splice(0);
   window.removeEventListener('keydown', dismissTopOverlay);
   focusBeforeFirstOverlay = null;
+  destinationAfterLastClose = null;
 }
 
 interface UseOverlayDismissOptions {
@@ -134,7 +158,11 @@ export function useOverlayDismiss({
       queueMicrotask(() => {
         if (openOverlays.length === 0) {
           focusBeforeFirstOverlay = null;
-          target?.focus();
+          const destination = destinationAfterLastClose;
+          destinationAfterLastClose = null;
+          if (!destination?.()) {
+            target?.focus();
+          }
           return;
         }
         /* Another overlay is still open. Hand focus back to this one's opener

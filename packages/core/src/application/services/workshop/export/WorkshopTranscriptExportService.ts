@@ -23,11 +23,22 @@ import {
 import { renderWorkshopTranscriptHtml } from './WorkshopTranscriptHtml';
 import { renderWorkshopTranscriptJson } from './WorkshopTranscriptJson';
 import { renderWorkshopTranscriptMarkdown } from './WorkshopTranscriptMarkdown';
+import type { WorkshopTranscriptRenderOptions } from './WorkshopTranscriptModelHeader';
 
-/** The one aggregate read export needs: a defensive copy of every turn. */
+/** The aggregate reads export needs: a defensive copy of every turn, and which the writer bookmarked. */
 export interface WorkshopTranscriptLedgerPort {
   readRoomLedger(): WorkshopTurn[];
+  readBookmarkedTurnIds(): ReadonlySet<string>;
 }
+
+/**
+ * A model's display name for the export's model slices (ADR 2026-11-03 D8)
+ * and its reply headers (D10, amended 2026-11-04), or undefined for the raw
+ * id. The host's names come from its model catalog; the thread's from
+ * `MODEL_DATA`, so the two can name an id differently, but never place a
+ * slice differently or apply the header rule differently.
+ */
+export type WorkshopTranscriptModelLabelPort = (modelId: string) => string | undefined;
 
 export interface WorkshopTranscriptFilePort {
   writeNew(
@@ -59,7 +70,10 @@ export class WorkshopTranscriptExportRefusedError extends Error {
 }
 
 const RENDERERS: Readonly<
-  Record<WorkshopTranscriptExportFormat, (transcript: WorkshopTranscript) => string>
+  Record<
+    WorkshopTranscriptExportFormat,
+    (transcript: WorkshopTranscript, options: WorkshopTranscriptRenderOptions) => string
+  >
 > = {
   markdown: renderWorkshopTranscriptMarkdown,
   json: renderWorkshopTranscriptJson,
@@ -70,7 +84,8 @@ export class WorkshopTranscriptExportService {
   constructor(
     private readonly ledger: WorkshopTranscriptLedgerPort,
     private readonly files: WorkshopTranscriptFilePort,
-    private readonly now: () => number = Date.now
+    private readonly now: () => number = Date.now,
+    private readonly modelLabel: WorkshopTranscriptModelLabelPort = () => undefined
   ) {}
 
   async export(request: WorkshopTranscriptExportRequest): Promise<WorkshopTranscriptExportResult> {
@@ -85,7 +100,9 @@ export class WorkshopTranscriptExportService {
     }
     const transcript = projectWorkshopTranscript(this.ledger.readRoomLedger(), {
       title,
-      exportedAt: this.now()
+      exportedAt: this.now(),
+      bookmarkedTurnIds: this.ledger.readBookmarkedTurnIds(),
+      modelLabel: this.modelLabel
     });
     const messageCount = countWorkshopTranscriptMessages(transcript);
     if (messageCount === 0) {
@@ -96,7 +113,7 @@ export class WorkshopTranscriptExportService {
     const file = await this.files.writeNew(
       workshopTranscriptExportStem(title),
       WORKSHOP_TRANSCRIPT_EXPORT_EXTENSIONS[request.format],
-      RENDERERS[request.format](transcript)
+      RENDERERS[request.format](transcript, { modelLabel: this.modelLabel })
     );
     return { format: request.format, title, ...file, messageCount };
   }

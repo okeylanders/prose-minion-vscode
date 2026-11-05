@@ -171,6 +171,23 @@ describe('WorkshopToolContextCapability (Sprint 12 Phase 6)', () => {
     expect(fulfillment.evidence).toContain('unavailable: guide:craft/dialogue.md');
   });
 
+  it('records no card, line range or fingerprint on its rows: a tool side-pass mints no card (Wayfinding D4)', async () => {
+    const adapter = build({ source: { group: 'chapters', path: 'chapters/ch-04.md' }, includeGuides: true });
+    await adapter.appendContract('Analyze.');
+
+    const fulfillment = await adapter.fulfill({
+      operation: 'resource.read',
+      paths: ['project:chapters/ch-04.md', 'guide:craft/dialogue.md']
+    });
+
+    expect(fulfillment.deliveredSources).toHaveLength(2);
+    for (const row of fulfillment.deliveredSources ?? []) {
+      expect(row).not.toHaveProperty('turnId');
+      expect(row).not.toHaveProperty('lineRange');
+      expect(row).not.toHaveProperty('sourceFingerprint');
+    }
+  });
+
   it('contributes manifest rows per delivered item — canonical keys for project files (Phase 7)', async () => {
     const adapter = build({ source: { group: 'chapters', path: 'chapters/ch-04.md' }, includeGuides: true });
     await adapter.appendContract('Analyze.');

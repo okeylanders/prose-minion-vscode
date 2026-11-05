@@ -27,6 +27,12 @@ export type ContextSourceKind = typeof CONTEXT_SOURCE_KINDS[number];
 /** Who put the material into this participant's context. */
 export type ContextSourceOrigin = 'writer' | 'host' | 'tool';
 
+/** Lines `start`–`end` of a file, 1-based and inclusive (`resource.read`'s numbering). */
+export interface ContextSourceLineRange {
+  start: number;
+  end: number;
+}
+
 /**
  * One row of the "In context" manifest (Sprint 12 Phase 7): what a retained
  * participant is actually carrying, regardless of who put it there. Closed
@@ -55,6 +61,13 @@ export interface ContextSourceEntry {
   artifactId?: string;
   /** Epoch ms when the material entered this participant's context. */
   deliveredAt: number;
+  /**
+   * The capability card turn that delivered this row (Workshop Wayfinding
+   * D4). Absent when the call minted no card, and on rows stored earlier.
+   */
+  turnId?: string;
+  /** The lines a `resource.read` returned, when the row is one (D4). */
+  lineRange?: ContextSourceLineRange;
 }
 
 /** Facts reported for one completed provider request. */
@@ -72,6 +85,24 @@ export interface InferenceRequestObservation {
   finishReason?: string;
   contextCompression: ContextCompressionState;
   measuredAt: number;
+}
+
+/**
+ * Who wrote a run's final reply: the provider, or the host in its place
+ * when the provider's reply was unusable. Only a provider reply may be
+ * attributed to a model (Workshop Wayfinding D7).
+ */
+export type InferenceReplySource = 'provider' | 'host-fallback';
+
+/**
+ * Which models answered one run (Workshop Wayfinding D7). `requestedModelId`
+ * is the model the run's first request was sent to, captured when the run
+ * started; `servedModelIds` are the distinct provider-reported models across
+ * the run's requests, in first-use order, and empty when none were reported.
+ */
+export interface InferenceRunModels {
+  requestedModelId: string;
+  servedModelIds: string[];
 }
 
 /** Backward-looking context and processed-traffic telemetry for one logical turn. */

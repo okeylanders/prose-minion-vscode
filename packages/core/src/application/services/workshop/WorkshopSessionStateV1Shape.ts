@@ -22,6 +22,9 @@ import {
   WORKSHOP_GUEST_CAPACITY
 } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
+import { assertWorkshopTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
+import { contextSourceProvenanceFault } from '@orchestration/ContextSourceRecord';
+import { assertWorkshopBookmarksShape } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
 import {
   isLiveWorkshopWidgetId,
   isWorkshopWidgetId
@@ -113,7 +116,9 @@ function assertWorkshopSessionShape(
       'threadArtifacts',
       // Optional since ADR 2026-09-30: pre-rewind checkpoints carry no marks.
       'retainedHistoryMarks',
-      'hostContextDelivery'
+      'hostContextDelivery',
+      // Optional since ADR 2026-11-03 D9: written only when one exists.
+      'bookmarks'
     ]
   );
   if (state.excerpt !== undefined) {
@@ -156,6 +161,9 @@ function assertWorkshopSessionShape(
     shapeError('Workshop session state.selectedToolId', 'known Workshop tool id');
   }
   arrayOf(state.todos, 'Workshop session state.todos', assertStoredTodo);
+  if (state.bookmarks !== undefined) {
+    assertWorkshopBookmarksShape(state.bookmarks);
+  }
   if (state.widgetConfigs !== undefined) {
     arrayOf(
       state.widgetConfigs,
@@ -516,7 +524,13 @@ function assertContextSource(value: unknown, path: string): void {
       'promptTokensDelta',
       'excerptVersion',
       'stale',
-      'artifactId'
+      'artifactId',
+      // Read-in provenance (ADR 2026-11-03 D4; additive, D9). A writer row
+      // never carries the host-private `sourceFingerprint`: only a fetched
+      // row in a conversation archive does, so the key is unknown here and
+      // refused (PR #187 F-02).
+      'turnId',
+      'lineRange'
     ]
   );
   enumAt(source.kind, `${path}.kind`, CONTEXT_SOURCE_KINDS);
@@ -530,7 +544,18 @@ function assertContextSource(value: unknown, path: string): void {
   optionalNumberAt(source.excerptVersion, `${path}.excerptVersion`);
   optionalBooleanAt(source.stale, `${path}.stale`);
   optionalStringAt(source.artifactId, `${path}.artifactId`);
+  const fault = contextSourceProvenanceFault(source);
+  if (fault) {
+    shapeError(`${path}.${fault}`, CONTEXT_SOURCE_PROVENANCE_EXPECTED[fault]);
+  }
 }
+
+const CONTEXT_SOURCE_PROVENANCE_EXPECTED = {
+  turnId: 'a non-empty string',
+  lineRange: 'positive integer lines { start, end } with start <= end',
+  // Unreachable while the key is refused above; kept so the record stays total.
+  sourceFingerprint: 'absent on a writer-source row'
+} as const;
 
 function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   const turn = exactObject(
@@ -550,6 +575,8 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       'usage',
       'citations',
       'truncated',
+      // Model stamps (ADR 2026-11-03 D7; additive, D9).
+      'model',
       'behavior',
       'behaviorTransition',
       // Conversation Widgets (ADR 2026-07-22).
@@ -604,6 +631,12 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
     arrayOf(turn.citations, `${path}.citations`, assertCitation);
   }
   optionalBooleanAt(turn.truncated, `${path}.truncated`);
+  if (turn.model !== undefined) {
+    if (turn.role !== 'assistant') {
+      shapeError(`${path}.model`, 'a stamp on an assistant turn');
+    }
+    assertWorkshopTurnModel(turn.model, `${path}.model`);
+  }
   if (turn.behavior !== undefined) {
     assertBehavior(turn.behavior, `${path}.behavior`);
   }

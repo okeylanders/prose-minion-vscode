@@ -24,6 +24,13 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleSessionContextScan: jest.fn(),
     handleSessionRecoveryNotice: jest.fn()
   } as never,
+  readIn: {
+    handleReadInResourceContent: jest.fn()
+  } as never,
+  bookmarks: {
+    handleSessionState: jest.fn(),
+    handleTurnPreview: jest.fn()
+  } as never,
   widgetHost: {
     handleWidgetConfigData: jest.fn(),
     handleWidgetConfigRestored: jest.fn(),
@@ -115,7 +122,7 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.standingDirectives.handleActionResult).toHaveBeenCalledWith(actionMessage);
   });
 
-  it('mirrors each session snapshot to the room and to the generic widget host', () => {
+  it('mirrors each session snapshot to the room, the bookmarks and the generic widget host', () => {
     const deps = makeDeps();
     const routes = buildWorkshopAppMessageRoutes(deps);
     const message = { type: MessageType.WORKSHOP_SESSION_STATE, payload: {} } as never;
@@ -123,7 +130,17 @@ describe('buildWorkshopAppMessageRoutes', () => {
     routes[MessageType.WORKSHOP_SESSION_STATE]!(message);
 
     expect(deps.workshopRoom.handleSessionState).toHaveBeenCalledWith(message);
+    expect(deps.bookmarks.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.widgetHost.handleSessionState).toHaveBeenCalledWith(message);
+  });
+
+  it('routes a turn preview to the bookmarks transport', () => {
+    const deps = makeDeps();
+    const message = { type: MessageType.WORKSHOP_TURN_PREVIEW, payload: {} } as never;
+
+    buildWorkshopAppMessageRoutes(deps)[MessageType.WORKSHOP_TURN_PREVIEW]!(message);
+
+    expect(deps.bookmarks.handleTurnPreview).toHaveBeenCalledWith(message);
   });
 
   it('routes Show vs. Tell progress and result to its transport and beat intake to its controller', () => {

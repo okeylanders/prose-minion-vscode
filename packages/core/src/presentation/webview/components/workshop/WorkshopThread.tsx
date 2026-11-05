@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import {
+  ModelOption,
   WorkshopToolId,
   WorkshopToolSidecarSnapshot,
   WorkshopTodoItem,
@@ -11,6 +12,13 @@ import {
   WorkshopWidgetConfigSummary
 } from '@messages';
 import { WorkshopTurnBubble } from './WorkshopTurnBubble';
+import { WorkshopModelSliceDivider } from './WorkshopModelSliceDivider';
+import { modelOptionLabel } from '@utils/modelOptionLabel';
+import {
+  deriveWorkshopModelSlices,
+  type WorkshopModelSlice,
+  type WorkshopModelsBeforeWindow
+} from '@shared/workshop/workshopModelSlices';
 
 interface WorkshopThreadProps {
   turns: readonly WorkshopTurn[];
@@ -42,6 +50,27 @@ interface WorkshopThreadProps {
   /** Why branching is paused for the whole room right now, if it is. */
   branchPausedReason?: string;
   onBranch?: (turn: WorkshopTurn) => void;
+  /** Turns that carry a bookmark (ADR 2026-11-03 D5). */
+  bookmarkedTurnIds?: ReadonlySet<string>;
+  /** True while the room's mutation lock is held. */
+  bookmarkDisabled?: boolean;
+  onToggleBookmark?: (turnId: string, bookmarked: boolean) => void;
+  /** The options (`MODEL_DATA`) that name a slice's models; a raw id when absent. */
+  modelOptions?: readonly ModelOption[];
+  /** The snapshot's model-slice seed (ADR 2026-11-03 D8). */
+  modelsBeforeWindow?: WorkshopModelsBeforeWindow;
+}
+
+const NO_BOOKMARKS: ReadonlySet<string> = new Set();
+const NO_MODEL_OPTIONS: readonly ModelOption[] = [];
+
+/** The derived slices, keyed by the turn each is drawn before. */
+function slicesByTurn(slices: readonly WorkshopModelSlice[]): ReadonlyMap<string, WorkshopModelSlice[]> {
+  const byTurn = new Map<string, WorkshopModelSlice[]>();
+  for (const slice of slices) {
+    byTurn.set(slice.beforeTurnId, [...(byTurn.get(slice.beforeTurnId) ?? []), slice]);
+  }
+  return byTurn;
 }
 
 export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
@@ -63,57 +92,82 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   onRewind,
   turnBranchability = {},
   branchPausedReason,
-  onBranch
-}) => (
-  <>
-    {turns.map((turn) => {
-      const sidecar = turn.toolId
-        ? toolSidecars.find((candidate) => candidate.toolId === turn.toolId)
-        : undefined;
-      const ownsLiveSidecar = !!(
-        sidecar?.availableForDirectFollowUp &&
-        turn.reportTurnId &&
-        sidecar.latestReportTurnId === turn.reportTurnId
-      );
-      // Gate on the precise artifact, not the coarse participant: a
-      // direct_tool_response is also participant 'tool' but must never grow a
-      // report-only quick-action bar (PR #72 review #8).
-      const quickActionToolId =
-        turn.artifact === 'tool_report' && turn.toolId ? turn.toolId : null;
+  onBranch,
+  bookmarkedTurnIds = NO_BOOKMARKS,
+  bookmarkDisabled = false,
+  onToggleBookmark,
+  modelOptions = NO_MODEL_OPTIONS,
+  modelsBeforeWindow
+}) => {
+  // Every turn the thread holds, seeded from the window: the same derivation
+  // the transcript export runs over the full ledger.
+  const slices = React.useMemo(
+    () => slicesByTurn(deriveWorkshopModelSlices(turns, { modelsBeforeWindow })),
+    [turns, modelsBeforeWindow]
+  );
+  const modelLabel = React.useCallback(
+    (modelId: string) => modelOptionLabel(modelOptions, modelId),
+    [modelOptions]
+  );
+  return (
+    <>
+      {turns.map((turn) => {
+        const sidecar = turn.toolId
+          ? toolSidecars.find((candidate) => candidate.toolId === turn.toolId)
+          : undefined;
+        const ownsLiveSidecar = !!(
+          sidecar?.availableForDirectFollowUp &&
+          turn.reportTurnId &&
+          sidecar.latestReportTurnId === turn.reportTurnId
+        );
+        // Gate on the precise artifact, not the coarse participant: a
+        // direct_tool_response is also participant 'tool' but must never grow a
+        // report-only quick-action bar (PR #72 review #8).
+        const quickActionToolId =
+          turn.artifact === 'tool_report' && turn.toolId ? turn.toolId : null;
 
-      return (
-        <WorkshopTurnBubble
-          key={turn.id}
-          turn={turn}
-          quickActionToolId={quickActionToolId}
-          quickActionsDisabled={quickActionsDisabled || !ownsLiveSidecar}
-          canTalkDirectly={turn.artifact === 'tool_report' && ownsLiveSidecar}
-          promotedFindingKeys={new Set(
-            todos
-              .filter((todo) => todo.source.turnId === turn.id)
-              .map((todo) => todo.source.findingKey)
-          )}
-          findingsStale={turn.excerptVersion !== currentExcerptVersion}
-          onQuickAction={onQuickAction}
-          onTalkDirectly={onTalkDirectly}
-          onAddTodo={onAddTodo}
-          onCopy={onCopy}
-          onSave={onSave}
-          onOpenWidgetConfig={onOpenWidgetConfig}
-          widgetConfigSummary={turn.widgetCommit
-            ? widgetConfigSummaries[turn.widgetCommit.widgetConfigId]
-            : undefined}
-          onOpenWidgetRecommendation={onOpenWidgetRecommendation}
-          rewindability={turnRewindability[turn.id]}
-          rewindPausedReason={rewindPausedReason}
-          onRewind={onRewind}
-          branchability={turnBranchability[turn.id]}
-          branchPausedReason={branchPausedReason}
-          onBranch={onBranch}
-        />
-      );
-    })}
-  </>
-));
+        return (
+          <React.Fragment key={turn.id}>
+            {slices.get(turn.id)?.map((slice) => (
+              <WorkshopModelSliceDivider key={`${slice.scope}-${slice.replyTurnId}`} slice={slice} modelLabel={modelLabel} />
+            ))}
+            <WorkshopTurnBubble
+              turn={turn}
+              quickActionToolId={quickActionToolId}
+              quickActionsDisabled={quickActionsDisabled || !ownsLiveSidecar}
+              canTalkDirectly={turn.artifact === 'tool_report' && ownsLiveSidecar}
+              promotedFindingKeys={new Set(
+                todos
+                  .filter((todo) => todo.source.turnId === turn.id)
+                  .map((todo) => todo.source.findingKey)
+              )}
+              findingsStale={turn.excerptVersion !== currentExcerptVersion}
+              onQuickAction={onQuickAction}
+              onTalkDirectly={onTalkDirectly}
+              onAddTodo={onAddTodo}
+              onCopy={onCopy}
+              onSave={onSave}
+              onOpenWidgetConfig={onOpenWidgetConfig}
+              widgetConfigSummary={turn.widgetCommit
+                ? widgetConfigSummaries[turn.widgetCommit.widgetConfigId]
+                : undefined}
+              onOpenWidgetRecommendation={onOpenWidgetRecommendation}
+              rewindability={turnRewindability[turn.id]}
+              rewindPausedReason={rewindPausedReason}
+              onRewind={onRewind}
+              branchability={turnBranchability[turn.id]}
+              branchPausedReason={branchPausedReason}
+              onBranch={onBranch}
+              bookmarked={bookmarkedTurnIds.has(turn.id)}
+              bookmarkDisabled={bookmarkDisabled}
+              onToggleBookmark={onToggleBookmark}
+              modelLabel={modelLabel}
+            />
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+});
 
 WorkshopThread.displayName = 'WorkshopThread';

@@ -20,9 +20,13 @@ import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssi
 import { ProseAssistant } from '@/tools/assist/proseAssistant';
 import { WritingToolsAssistant } from '@/tools/assist/writingToolsAssistant';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
+import type {
+  ContextSourceReadIdentity,
+  StoredContextSourceEntry
+} from '@orchestration/ContextSourceRecord';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
-import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
+import { AnalysisResult, AnalysisResultFactory, AnalysisRunModel } from '@/domain/models/AnalysisResult';
 import {
   API_KEY_NOT_CONFIGURED_HEADING,
   ContextBudgetSnapshot,
@@ -38,6 +42,7 @@ import {
 } from '@orchestration/AgentRunEngine';
 import {
   AnyAgentCapability,
+  ExecutionResult,
   StreamingTokenCallback
 } from '@orchestration/AgentRunContracts';
 import { AGENT_RUN_POLICIES, resolveWorkshopParticipantPolicy } from '@orchestration/AgentRunPolicies';
@@ -190,6 +195,21 @@ export interface WorkshopGuestConversationInput {
   writerProfile: WorkshopWriterProfile;
   /** Current session-owned prose directives for the fresh retained guest. */
   standingDirectiveFrames?: readonly string[];
+}
+
+/**
+ * Every run this service makes goes to the assistant-scope engine
+ * (`currentAssistantEngine`, and the assistants bound to it), so its models
+ * are the assistant scope's (Workshop Wayfinding D7).
+ */
+function assistantRunModel(result: ExecutionResult): AnalysisRunModel | undefined {
+  return result.models
+    ? {
+        scope: 'assistant',
+        requestedModelId: result.models.requestedModelId,
+        servedModelIds: [...result.models.servedModelIds]
+      }
+    : undefined;
 }
 
 /**
@@ -372,6 +392,8 @@ export class AssistantToolService {
           usage: executionResult.usage,
           finishReason: executionResult.finishReason,
           conversationId: executionResult.conversationId,
+          model: assistantRunModel(executionResult),
+          replySource: executionResult.replySource,
           requestedResources: executionResult.requestedResources
         }
       );
@@ -447,6 +469,8 @@ export class AssistantToolService {
           usage: executionResult.usage,
           finishReason: executionResult.finishReason,
           conversationId: executionResult.conversationId,
+          model: assistantRunModel(executionResult),
+          replySource: executionResult.replySource,
           requestedResources: executionResult.requestedResources
         }
       );
@@ -519,6 +543,8 @@ export class AssistantToolService {
           usage: executionResult.usage,
           finishReason: executionResult.finishReason,
           conversationId: executionResult.conversationId,
+          model: assistantRunModel(executionResult),
+          replySource: executionResult.replySource,
           requestedResources: executionResult.requestedResources
         }
       );
@@ -592,6 +618,8 @@ export class AssistantToolService {
         usage: executionResult.usage,
         finishReason: executionResult.finishReason,
         conversationId: executionResult.conversationId,
+        model: assistantRunModel(executionResult),
+        replySource: executionResult.replySource,
         citations: executionResult.citations
       }
     );
@@ -657,6 +685,8 @@ export class AssistantToolService {
         usage: executionResult.usage,
         finishReason: executionResult.finishReason,
         conversationId: executionResult.conversationId,
+        model: assistantRunModel(executionResult),
+        replySource: executionResult.replySource,
         citations: executionResult.citations
       }
     );
@@ -713,6 +743,8 @@ export class AssistantToolService {
         usage: executionResult.usage,
         finishReason: executionResult.finishReason,
         conversationId: executionResult.conversationId,
+        model: assistantRunModel(executionResult),
+        replySource: executionResult.replySource,
         citations: executionResult.citations
       }
     );
@@ -948,6 +980,14 @@ export class AssistantToolService {
   /** Agent-fetched manifest rows for a retained conversation (Phase 7). */
   getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
     return this.currentAssistantEngine()?.getConversationContextSources(conversationId) ?? [];
+  }
+
+  /** Host-side only: the line range and fingerprint recorded for one read-in row (Wayfinding D4). */
+  findConversationContextSourceRead(
+    conversationId: string | undefined,
+    identity: ContextSourceReadIdentity
+  ): Pick<StoredContextSourceEntry, 'lineRange' | 'sourceFingerprint'> | undefined {
+    return this.currentAssistantEngine()?.findConversationContextSourceRead(conversationId, identity);
   }
 
   /**
