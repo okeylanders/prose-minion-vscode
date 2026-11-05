@@ -274,3 +274,7 @@ the repo:
   after Astra's final integration check: "ready for the owner to merge this
   exact head". The merged tree equals the verified head (706 suites / 9,957
   tests). Slice 3 merges the epic, and its PR is next.
+- **2026-11-05. Slice 3's PR opened** as #210, at `9e1fd70` (711 suites /
+  10,021 tests). Project Memory's #209 (Slice 6b, at `2a014cb`) merges into
+  this epic after #210 lands, so that review covers exactly the tree that
+  merges. It trial-merges cleanly; Slice 4 takes it before its own PR.
