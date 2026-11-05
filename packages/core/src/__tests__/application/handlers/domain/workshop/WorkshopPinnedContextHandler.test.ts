@@ -179,7 +179,7 @@ describe('WorkshopPinnedContextHandler: pinning', () => {
 
     const answer = await h.send(MessageType.WORKSHOP_PIN_CONTEXT_RESOURCES, { revision, items: [{ group: 'characters', path: 'Characters/alice.md' }] });
 
-    expect(answer.notice).toEqual({ kind: 'refused', text: 'Pinned context holds at most 20 files, and this would make 21. Pin fewer, or unpin some first.' });
+    expect(answer.notice).toEqual({ kind: 'refused', text: 'Pinned context holds at most 50 files, and this would make 51. Pin fewer, or unpin some first.' });
   });
 
   it('refuses an unreadable file and an unavailable workspace', async () => {

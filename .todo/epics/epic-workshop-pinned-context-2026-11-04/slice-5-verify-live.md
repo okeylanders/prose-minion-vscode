@@ -91,5 +91,9 @@ Use a test project with *Alice*-style files, never a manuscript in progress.
       first.";
     - regressions in `WorkshopPinnedContextLivePass.test.ts`. The two bug
       cases fail on the old code; the exact-bound and malformed controls pass.
-  - **For item 15:** the room Okey tested holds 22 files to pin, past the
-    20-file bound.
+  - **Item 15, tuned (Okey, 2026-11-05):** the room Okey tested holds 22
+    files to pin. The bound is now **50**
+    (`PROMPT_BUDGETS.workshopPinnedContext.files`), and the list file's
+    byte bound rises from 128 KiB to 256 KiB, so 50 maximum-length paths
+    still fit (the codec test checks it). The 22-attachment pin is a test of
+    its own.

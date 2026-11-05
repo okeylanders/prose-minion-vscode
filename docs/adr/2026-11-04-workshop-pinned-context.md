@@ -290,9 +290,12 @@ the catalog key's path equals the entry's path. Otherwise it matches when
   or shorten this one." Words come from reading the file at pin time, with
   the same bounds as an attach.
 - **Pinning is refused past `files`.** The bound lives in
-  `PROMPT_BUDGETS.workshopPinnedContext = { files: 20 }`. That is a starting
-  value, twice Okey's current set, and the live pass tunes it. It also caps
-  the reads a New session makes (20 × 5 MiB at worst).
+  `PROMPT_BUDGETS.workshopPinnedContext.files`. It started at 20, and the
+  live pass tuned it to **50** (Okey, 2026-11-05): the first real project
+  had 22 files to pin. It also caps the reads a New session makes (50 × 5
+  MiB at worst), and the list file's byte bound rises with it to 256 KiB,
+  so 50 maximum-length paths always fit. A refusal names the bound and the
+  count the pin would make.
 - **Over budget anyway** (a file grew, a hand edit, or the carried working
   set is large): seeding goes in pinned order and attaches **each file that
   fits in what remains**. A large file that doesn't fit doesn't block the
@@ -447,7 +450,7 @@ fixes what the tab does:
   project, a full reset, and a file removed from one room.
 - **No session-format change, no prompt change, no settings port change.**
   The feature adds one small project file, a host-side seed, and a tab.
-- **A New session does more I/O.** It reads up to 20 files before the room
+- **A New session does more I/O.** It reads up to 50 files before the room
   replaces. That is bounded, and a slow disk shows as a slower New. The live
   pass measures it.
 - **The full reset attaches pinned context now.** The empty room keeps its
@@ -483,6 +486,7 @@ coding to begin. Each answer is the recommendation:
 3. **Over budget: attach each file that fits, in order** (D6). This is the
    approved Over budget board.
 4. **The bound: 20 files,** as a starting value that Slice 5 tunes (D6).
+   **Tuned to 50** in the live pass (Okey, 2026-11-05).
 5. **A third New item: yes,** New session: full reset, empty context (D2,
    D7).
 6. **Pin from a pill: yes, as drawn.** A hovered, unpinned file pill offers
