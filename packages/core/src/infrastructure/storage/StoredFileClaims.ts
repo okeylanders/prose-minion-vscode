@@ -115,6 +115,13 @@ export interface StoredFileClaimsConfig {
    * name, or, failing that, kept: never removed, whatever their age.
    */
   readonly leftovers?: StoredFileLeftoverCheck;
+  /**
+   * The most bytes any read of a saved file or a claim may take (PR #204
+   * F-04). Each is `stat`ed first; one over it is not read, so it is never
+   * shown to be a leftover, and is kept. Without it, reads are unbounded, as
+   * the Lightbox's and Project Memory's always were.
+   */
+  readonly maxBytes?: number;
 }
 
 export interface StoredFileLeftoverCheck {
@@ -389,8 +396,16 @@ export class StoredFileClaims {
     }
   }
 
-  private async bytesOf(filePath: string): Promise<Uint8Array | undefined> {
+  private bytesOf(filePath: string): Promise<Uint8Array | undefined> {
+    return this.readBytes(filePath);
+  }
+
+  /** A saved file's or a claim's bytes, within `maxBytes` when one is set; undefined when it is missing, unreadable or over the bound. */
+  async readBytes(filePath: string): Promise<Uint8Array | undefined> {
     try {
+      if (this.config.maxBytes !== undefined && (await this.fileSystem.stat(filePath)).size > this.config.maxBytes) {
+        return undefined;
+      }
       return await this.fileSystem.readFile(filePath);
     } catch {
       return undefined;

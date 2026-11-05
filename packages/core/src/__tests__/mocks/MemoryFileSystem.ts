@@ -33,6 +33,9 @@ export class MemoryFileSystem implements FileSystem {
       throw new Error(`EIO: ${toPath}`);
     }
     const source = this.files.get(fromPath);
+    if (!source && this.childrenOf(fromPath).length > 0) {
+      return this.renameDirectory(fromPath, toPath, options?.overwrite ?? false);
+    }
     if (!source) {
       throw new Error(`ENOENT: ${fromPath}`);
     }
@@ -45,10 +48,38 @@ export class MemoryFileSystem implements FileSystem {
     this.files.delete(fromPath);
   }
 
-  async delete(filePath: string): Promise<void> {
-    if (!this.files.delete(filePath)) {
-      throw new Error(`ENOENT: ${filePath}`);
+  async delete(filePath: string, options?: { recursive?: boolean }): Promise<void> {
+    if (this.files.delete(filePath)) {
+      return;
     }
+    const children = this.childrenOf(filePath);
+    if (options?.recursive && children.length > 0) {
+      children.forEach((child) => this.files.delete(child));
+      return;
+    }
+    throw new Error(`ENOENT: ${filePath}`);
+  }
+
+  /**
+   * Directories are implied by the files under them (`createDirectory` is a
+   * no-op), so a directory with no file does not exist. A directory renames
+   * whole and atomically, never over a file or a directory holding files,
+   * as a real file system's does (the Pinned Context lock, PR #204 F-01).
+   */
+  private async renameDirectory(fromPath: string, toPath: string, overwrite: boolean): Promise<void> {
+    if (!overwrite && (this.files.has(toPath) || this.childrenOf(toPath).length > 0)) {
+      throw new Error(`EEXIST: ${toPath}`);
+    }
+    this.renameCalls.push({ fromPath, toPath, overwrite });
+    for (const child of this.childrenOf(fromPath)) {
+      const bytes = this.files.get(child) as Uint8Array;
+      this.files.delete(child);
+      this.files.set(path.join(toPath, path.relative(fromPath, child)), bytes);
+    }
+  }
+
+  private childrenOf(directoryPath: string): string[] {
+    return [...this.files.keys()].filter((filePath) => filePath.startsWith(`${directoryPath}${path.sep}`));
   }
 
   async readDirectory(directoryPath: string): Promise<Array<[string, FileType]>> {

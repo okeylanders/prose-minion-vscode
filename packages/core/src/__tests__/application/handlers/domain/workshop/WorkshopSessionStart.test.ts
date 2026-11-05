@@ -149,7 +149,23 @@ describe('workshopSessionStartLog', () => {
 
     expect(line).toBe('[WorkshopSessionMessageHandler] Session reset and current checkpoint replaced ' +
       '(start=full-reset — excerpt: none; context cleared: none; pinned: attached=1/3, words=400, ' +
-      'leftOut=missing:1,over-budget:1)');
+      'leftOut=missing:1,over-budget:1, kept=0)');
+    expect(line).not.toContain('secret');
+  });
+
+  it('logs a kept file as kept, never as left out, and never by its label (Slice 2b)', () => {
+    const line = workshopSessionStartLog('carry', {
+      attachmentLabels: [],
+      seed: seeded({
+        pinnedCount: 2,
+        attachedCount: 1,
+        attachedWords: 400,
+        leftOut: [{ label: 'secret-alice.md', reason: 'missing', kept: true }]
+      })
+    });
+
+    expect(line).toBe('[WorkshopSessionMessageHandler] Session reset and current checkpoint replaced ' +
+      '(start=carry; pinned: attached=1/2, words=400, leftOut=none, kept=1)');
     expect(line).not.toContain('secret');
   });
 });

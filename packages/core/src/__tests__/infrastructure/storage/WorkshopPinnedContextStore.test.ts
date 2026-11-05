@@ -86,12 +86,12 @@ describe('reads', () => {
 });
 
 describe('writes, by revision', () => {
-  it('creates the file: staged privately, then renamed into place, never over anything', async () => {
+  it('creates the file: staged inside its lock, then renamed into place, never over anything', async () => {
     const window = host();
     const saved = await window.store.update(ABSENT, pin('Characters/alice.md'));
     expect(saved).toEqual({ ok: true, list: list('Characters/alice.md'), revision: workshopPinnedContextRevisionOf(bytesOf(list('Characters/alice.md'))) });
     expect(text(window.fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Characters/alice.md'))));
-    expect(listRenames(window.fileSystem)).toEqual([{ fromPath: path.join(FOLDER, '.pinned-context.json.tmp-s2'), toPath: FILE, overwrite: false }]);
+    expect(listRenames(window.fileSystem)).toEqual([{ fromPath: path.join(FOLDER, '.pinned-context.lock', '.pinned-context.json.tmp-s2'), toPath: FILE, overwrite: false }]);
     expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
   });
 
@@ -218,6 +218,38 @@ describe('a file over the byte bound', () => {
     expect(window.fileSystem.readFileCalls).not.toContain(FILE);
     expect(listRenames(window.fileSystem)).toEqual([]);
     expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
+  });
+
+  // The re-review's F-04 probe, as written.
+  it('refuses an oversized standing file before reading bytes even when it has an abandoned claim', async () => {
+    const h = host();
+    h.fileSystem.files.set(FILE, new Uint8Array(WORKSHOP_PINNED_CONTEXT_FILE_BYTES + 1).fill(32));
+    h.fileSystem.files.set(`${FOLDER}/.pinned-context.json.claim-${NOW - STORED_FILE_CLAIM_LEASE_MS - 1}-old`, bytesOf(list('Characters/alice.md')));
+    expect(await h.store.read()).toMatchObject({ state: 'unreadable', reason: 'too-large' });
+    expect(h.fileSystem.readFileCalls).not.toContain(FILE);
+  });
+
+  it('keeps an abandoned claim beside an oversized list, unread and untouched', async () => {
+    const window = host();
+    const claim = claimOf(NOW - STORED_FILE_CLAIM_LEASE_MS - 1, 'old');
+    window.fileSystem.files.set(FILE, new Uint8Array(WORKSHOP_PINNED_CONTEXT_FILE_BYTES + 1).fill(32));
+    window.fileSystem.files.set(claim, bytesOf(list('Characters/alice.md')));
+    await window.store.read();
+    expect(window.fileSystem.readFileCalls).not.toContain(claim);
+    expect(text(window.fileSystem.files.get(claim))).toBe(text(bytesOf(list('Characters/alice.md'))));
+  });
+
+  it('never reads an oversized abandoned claim beside a standing list, and sets it aside rather than deleting it', async () => {
+    const window = host();
+    const claim = claimOf(NOW - STORED_FILE_CLAIM_LEASE_MS - 1, 'big');
+    const big = new Uint8Array(WORKSHOP_PINNED_CONTEXT_FILE_BYTES + 1).fill(32);
+    window.fileSystem.files.set(FILE, bytesOf(list('Characters/alice.md')));
+    window.fileSystem.files.set(claim, big);
+    expect(await window.store.read()).toMatchObject({ state: 'ok', list: list('Characters/alice.md') });
+    expect(window.fileSystem.readFileCalls).not.toContain(claim);
+    const aside = everyFile(window.fileSystem).filter((file) => file.startsWith('pinned-context.json.set-aside-'));
+    expect(aside).toHaveLength(1);
+    expect(window.fileSystem.files.get(path.join(FOLDER, aside[0]))?.byteLength).toBe(big.byteLength);
   });
 
   it('refuses a change whose list would pass the bound, and writes nothing', async () => {

@@ -19,6 +19,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { LIST_FILE, ROOT, seedHost, words } from './pinnedContextSeedHost';
 
 const BUDGET = PROMPT_BUDGETS.contextAttachments.words;
+type Host = ReturnType<typeof seedHost>;
 const room = () => new WorkshopSessionService(() => Date.parse('2026-11-05T10:00:00.000Z'));
 const labels = (session: WorkshopSessionService) => session.getContextAttachments().map((attachment) => attachment.label);
 
@@ -57,7 +58,7 @@ describe('the pinned-context room seed: planning and install (Slice 2b)', () => 
     expect(brief.configuredResource).toBeUndefined();
     expect(alice).toMatchObject({ relativePath: 'Characters/alice.md', configuredResource: { group: 'characters', path: 'Characters/alice.md' } });
     expect(report).toEqual({ pinnedCount: 3, attachedCount: 3, attachedWords: 7 + 5 + 7, leftOut: [] });
-    expect(host.lines).toContain('[WorkshopPinnedContext] Seeded first room (attached=3, missing=0, unreadable=0, over-budget=0)');
+    expect(host.lines).toContain('[WorkshopPinnedContext] Seeded first room (attached=3, missing=0, unreadable=0, over-budget=0, kept=0)');
   });
 
   it('New re-reads a carried pinned file in its slot, appends the missing ones in pinned order, and leaves the rest alone', async () => {
@@ -103,18 +104,54 @@ describe('the pinned-context room seed: planning and install (Slice 2b)', () => 
     );
   });
 
-  it('a carried pinned file that grew past the room keeps the body it had, and says so', async () => {
-    const host = seedHost();
-    host.write('Drafts/manuscript.md', words(30_000));
-    host.pin('Drafts/manuscript.md');
-    const session = room();
-    const kept = carry(session, 'Drafts/manuscript.md', 'Chapter one.');
-    carry(session, 'Research/notes.md', words(BUDGET - 20_000, 'notes'));
+  describe('a carried pinned file whose re-read is left out is kept as it was, and said so (Slice 2b, deviation 3)', () => {
+    it.each([
+      ['missing', (host: Host): void => void host, 'alice.md (not found now)'],
+      ['unreadable', (host: Host): void => host.write('Characters/alice.md', '   '), 'alice.md (couldn’t be read now)'],
+      [
+        'over-budget',
+        (host: Host): void => host.write('Characters/alice.md', words(30_000)),
+        'alice.md (its current version doesn’t fit in the 100,000-word context limit)'
+      ]
+    ] as const)('%s', async (reason, arrange, clause) => {
+      const host = seedHost();
+      arrange(host);
+      host.write('Characters/the-hatter.md', 'The Hatter keeps six o’clock.');
+      host.pin('Characters/alice.md', 'Characters/the-hatter.md');
+      const session = room();
+      const kept = carry(session, 'Characters/alice.md', 'Alice is seven.');
+      carry(session, 'Research/notes.md', words(BUDGET - 20_000, 'notes'));
 
-    const report = host.seed.install(await host.seed.prepare('new'), session);
+      const report = host.seed.install(await host.seed.prepare('new'), session);
 
-    expect(session.getContextAttachments()[0]).toMatchObject({ id: kept.id, content: 'Chapter one.' });
-    expect(report.leftOut).toEqual([{ label: 'manuscript.md', reason: 'over-budget' }]);
+      // Still in the room, with the body it had.
+      expect(session.getContextAttachments()[0]).toMatchObject({ id: kept.id, content: 'Alice is seven.' });
+      expect(report).toMatchObject({ pinnedCount: 2, attachedCount: 1, leftOut: [{ label: 'alice.md', reason, kept: true }] });
+      const line = workshopSessionStartResult('carry', report);
+      expect(line).toBe(`Started a new Workshop session. 1 of 2 pinned files attached; kept as it was: ${clause}.`);
+      expect(line).not.toContain('not attached');
+      expect(host.lines).toContain(
+        `[WorkshopPinnedContext] Seeded new room (attached=1, missing=0, unreadable=0, over-budget=0, kept=1)`
+      );
+    });
+
+    it('a file that was not carried keeps today\'s wording, beside a kept one', async () => {
+      const host = seedHost();
+      host.pin('Characters/alice.md', 'Characters/the-cheshire-cat.md');
+      const session = room();
+      carry(session, 'Characters/alice.md', 'Alice is seven.');
+
+      const report = host.seed.install(await host.seed.prepare('new'), session);
+
+      expect(report.leftOut).toEqual([
+        { label: 'alice.md', reason: 'missing', kept: true },
+        { label: 'the-cheshire-cat.md', reason: 'missing' }
+      ]);
+      expect(workshopSessionStartResult('carry', report)).toBe(
+        'Started a new Workshop session. 0 of 2 pinned files attached; not attached: the-cheshire-cat.md (not found); ' +
+        'kept as it was: alice.md (not found now).'
+      );
+    });
   });
 
   it('never attaches one file twice: a carried copy under another path is re-read in its slot', async () => {
@@ -149,7 +186,7 @@ describe('the pinned-context room seed: planning and install (Slice 2b)', () => 
       { label: 'the-cheshire-cat.md', reason: 'missing' },
       { label: 'blank.md', reason: 'unreadable' }
     ]);
-    expect(host.lines).toContain('[WorkshopPinnedContext] Seeded full-reset room (attached=1, missing=1, unreadable=1, over-budget=0)');
+    expect(host.lines).toContain('[WorkshopPinnedContext] Seeded full-reset room (attached=1, missing=1, unreadable=1, over-budget=0, kept=0)');
   });
 
   it.each([
