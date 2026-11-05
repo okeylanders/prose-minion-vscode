@@ -1,0 +1,44 @@
+PR #231 review verification
+Code head: 5ae99bd85acfc7ff6cc90dc20555b2b7ba598a9e
+Base: c040cb6a9fbd2b4ae247bb26416bb2e8dc2b2c18
+Corrected Slice 1 ancestor: d1b861df8f745740dca830eeab757f3474c06103
+Node 24.22.1; npm 11.9.0
+
+Commands/results:
+1. cmp package-lock.json ../review-helper-228/package-lock.json
+   Pass. Installed dependencies copied without lockfile/dependency edits.
+2. git diff --check c040cb6 HEAD
+   Pass.
+3. git diff d1b861d HEAD -- packages/core/src/infrastructure/api/services/helper/HelperAgentService.ts packages/core/src/__tests__/infrastructure/api/services/helper/HelperAgentService.test.ts
+   Empty. Corrected engine and its production regressions unchanged.
+4. npm run typecheck
+   Core host, core webview and extension shell all pass.
+5. npm run lint
+   Exit 0; 0 errors, 1,165 existing warnings.
+6. npm test -- --runInBand --testPathPattern='(WorkshopMemory|WorkshopSavedTurnMemory|useWorkshopProjectMemory|useWorkshopAppMessageRouter|WorkshopRoomHandler.seams|HelperAgentService|MemoryDraftTask|helperPromptSync|boundaries)'
+   33 suites passed, 519 tests passed, 0 snapshots; 27.735 s.
+7. Source probe artifact temporarily copied to packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/review231Source.test.ts
+   npm test -- --runInBand --runTestsByPath [that path]
+   2 failed, 3 passed (5 total); 3.621 s.
+   Both failures: capability-card helper source differs from actual sheet body.
+   Expected sheet body: Continuity check 1: the cup changes hands twice.
+   Received helper text: Continuity · Continuity check 1 · requested by Jill · success
+   Passing controls: out-of-window capability bookmark, normal writer/reply, all eight touched-field subsets.
+8. Integration probe artifact temporarily copied to packages/core/src/__tests__/application/handlers/domain/workshop/review231Integration.test.ts
+   npm test -- --runInBand --runTestsByPath [that path]
+   8 tests passed; 3.422 s.
+   Cancel during resource initialization and prompt loading; failed initialization and prompt load;
+   cancel/disposal during saved read; old read cannot clear new owner;
+   real AgentRunEngine with mocked transport confirms bound/options/no tools/no retention/usage once.
+9. Temporary executable probes removed; archived .txt files remain outside Jest discovery.
+
+Exact-code-head CI:
+Run https://github.com/okeylanders/prose-minion-vscode/actions/runs/42132303550
+head_sha 5ae99bd85acfc7ff6cc90dc20555b2b7ba598a9e, verify job 127611667004.
+Completed successfully. Checkout log identifies f06a74c, merging 5ae99bd into c040cb6.
+All three typechecks passed. 760 suites, 10,598 tests, 59 snapshots passed.
+Lint: 0 errors, 1,165 warnings. Both webpack bundles and sentinel check passed;
+three existing webview size/performance warnings remain.
+Report-publication-head CI recorded separately in the PR conversation.
+
+No local full-suite or local production-build run. No native VS Code visual pass. No live provider call.
