@@ -15,8 +15,11 @@
  *   `WORKSHOP_PINNED_CONTEXT_FILE_BYTES` is unreadable (`too-large`) without
  *   its bytes being read, and never written. The codec checks the bound
  *   again, since a file can grow between the `stat` and the read.
- * - **One queue, the board store's write discipline,** through the shared
- *   claimed-file primitive:
+ * - **One queue, one lock, the board store's write discipline,** through
+ *   the shared claimed-file primitive:
+ *   - every `update` holds the list's lock (`WorkshopPinnedContextLock`,
+ *     PR #204 F-01) from before it reads at its turn until after it
+ *     commits; a window that cannot take it is `busy`;
  *   - every `update` names the revision its caller read. At its turn the
  *     file is read again; another revision refuses the write (`changed`,
  *     with the list as it reads now), and nothing is written;
@@ -27,8 +30,42 @@
  *     (`commitStoredFileRewrite`): the bytes read are the bytes claimed, or
  *     the write is refused as `changed`;
  *   - claims follow `StoredFileClaims`' lease rules: a read settles them
- *     first, so a list left mid-rewrite goes back and a leftover goes;
+ *     first, so a list left mid-rewrite goes back;
+ *   - **an abandoned claim beside a standing list is removed only when it
+ *     holds exactly the standing bytes** (PR #204 F-02). The format records
+ *     no ancestry, so no other claim can be shown to be an earlier version a
+ *     committed write replaced: it may be bytes a refused rewrite could not
+ *     put back. Those are set aside under a free ordinary name
+ *     (`pinned-context.json.set-aside-<id>`), never deleted;
  *   - a file that does not read is never written (`unreadable`).
+ * - **Why no write is lost (the race argument).** Writers are this store's
+ *   windows, which take the lock, and the writer's editor, which does not.
+ *   - *Create vs create:* only the lock's holder reads and writes; a window
+ *     that waited for it reads the list at its turn, finds a revision other
+ *     than absent, and is `changed`. Should two ever overlap (below), the
+ *     create's no-overwrite rename lets one win and reads the other as
+ *     `changed`.
+ *   - *Create vs claimed rewrite* (F-01): the saved name stands empty only
+ *     under a rewrite's claim, which only the lock's holder takes; a create
+ *     cannot hold the lock then, so it is `busy` and never renames into it.
+ *   - *Rewrite vs rewrite:* the lock serializes them; underneath, a claim is
+ *     taken by a no-overwrite rename and its bytes must be the bytes read,
+ *     so a rewrite that overlapped anyway claims nothing, or finds the file
+ *     changed and puts it back.
+ *   - *A lease that expires mid-write:* a holder stalled past the lease
+ *     loses its lock to a takeover. It reads its token again immediately
+ *     before its commit rename (a create's, and a rewrite's, after its claim
+ *     is confirmed) and withdraws as `busy`. The one window left is a stall
+ *     past the lease that falls between that check and the rename; then the
+ *     claim and no-overwrite rules above still keep either write from
+ *     landing over the other's file.
+ *   - *A hand edit, at each step:* before the read, it is what is read;
+ *     between the read and a create's commit, the no-overwrite rename fails
+ *     and the create is `changed`; between the read and a claim, the claimed
+ *     bytes differ, go back, and the write is `changed`; while the claim
+ *     holds the list, the commit's no-overwrite rename fails, the edit
+ *     stands, and the claimed bytes go to a set-aside name (`io`); after the
+ *     commit, it simply wins. No step writes over a file it did not read.
  * - **A write belongs to the workspace it was asked in** (D5; Project
  *   Memory's PR #202 F01). `update` captures the list's file when it is
  *   called, before the queue can wait. A write whose turn or commit comes
@@ -57,7 +94,19 @@ import { decodeWorkshopPinnedContext, prepareWorkshopPinnedContext } from '@/inf
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { StoredFileClaims, deleteStoredFileQuietly, storedFileExists } from '@/infrastructure/storage/StoredFileClaims';
 import { commitStoredFileRewrite, type StoredFileRewritePorts } from '@/infrastructure/storage/StoredFileRewrite';
+import { WorkshopPinnedContextLock } from '@/infrastructure/storage/WorkshopPinnedContextLock';
 import { fileSystemErrorCategory, isMissingFileSystemPathError } from '@/infrastructure/storage/fileSystemErrors';
+import {
+  WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION,
+  type WorkshopPinnedContextAvailability,
+  type WorkshopPinnedContextChange,
+  type WorkshopPinnedContextRead,
+  type WorkshopPinnedContextStoreOptions,
+  type WorkshopPinnedContextUpdateOptions,
+  type WorkshopPinnedContextUpdateResult
+} from '@/infrastructure/storage/WorkshopPinnedContextStoreContracts';
+
+export * from '@/infrastructure/storage/WorkshopPinnedContextStoreContracts';
 
 const LOG = '[WorkshopPinnedContextStore]';
 const FILE_NAME = 'pinned-context.json';
@@ -66,56 +115,6 @@ const CLAIM = /^\.(pinned-context\.json)\.claim-(\d{13})-[A-Za-z0-9-]+$/;
 /** A read that finds the file moving under it (put back, or claimed and committed) looks again, this many times at most. */
 const ATTEMPTS = 3;
 
-/** The revision of a list with no file yet. Never a SHA-256's hex, so never a file's. */
-export const WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION = 'absent';
-
-export type WorkshopPinnedContextUnavailableReason = 'no-workspace' | 'multi-root';
-
-/** Where the list is kept now, read live: the workspace's one folder, or nowhere. */
-export type WorkshopPinnedContextAvailability =
-  | { available: true; rootPath: string; filePath: string; displayPath: string }
-  | { available: false; reason: WorkshopPinnedContextUnavailableReason };
-
-export type WorkshopPinnedContextRead =
-  /** No file yet: the list is empty, at the fixed absent revision. */
-  | { state: 'absent'; revision: string }
-  | { state: 'ok'; list: WorkshopPinnedContextList; revision: string }
-  /** The file does not read as format 1; it is never written. */
-  | { state: 'unreadable'; reason: WorkshopPinnedContextRefusal; entry?: number; revision: string }
-  | { state: 'unavailable'; reason: WorkshopPinnedContextUnavailableReason }
-  /** Another window holds the file under a live claim now. */
-  | { state: 'busy' }
-  /** The folder or the file could not be read; never taken for absent. */
-  | { state: 'io' };
-
-/** The list as it reads at the write's turn, changed; the store checks it reads back before writing. */
-export type WorkshopPinnedContextChange = (list: WorkshopPinnedContextList) => WorkshopPinnedContextList;
-
-export type WorkshopPinnedContextUpdateResult =
-  | { ok: true; list: WorkshopPinnedContextList; revision: string }
-  /** The file is not at the revision the caller read; nothing was written. `current` is how it reads now. */
-  | { ok: false; reason: 'changed'; current: WorkshopPinnedContextRead }
-  /** The changed list would not read back as format 1; nothing was written. */
-  | { ok: false; reason: 'invalid'; refusal: WorkshopPinnedContextRefusal; entry?: number }
-  | { ok: false; reason: 'unreadable' | 'unavailable' | 'busy' | 'io' };
-
-export interface WorkshopPinnedContextUpdateOptions {
-  /**
-   * The caller's commit point (the library's accepted-workspace check):
-   * asked at the write's turn and synchronously immediately before the
-   * rename that commits. `false` withdraws the write as `unavailable`.
-   */
-  beforeCommit?: () => boolean;
-}
-
-export interface WorkshopPinnedContextStoreOptions {
-  /** How paths compare: the host's platform by default. */
-  platform?: WorkshopPinnedContextPathPlatform;
-  /** The private part of a staged file's or a claim's name; a random UUID by default. */
-  mintStagingId?: () => string;
-  /** The clock claims are timed by. */
-  claimNow?: () => Date;
-}
 
 /** A read as the store keeps it: a readable list with the bytes a rewrite must claim. */
 type StoreRead =
@@ -136,6 +135,7 @@ export class WorkshopPinnedContextStore {
   private readonly mintStagingId: () => string;
   private readonly claims: StoredFileClaims;
   private readonly rewritePorts: StoredFileRewritePorts;
+  private readonly lock: WorkshopPinnedContextLock;
 
   constructor(
     private readonly fileSystem: FileSystem,
@@ -148,9 +148,15 @@ export class WorkshopPinnedContextStore {
     this.claims = new StoredFileClaims(fileSystem, log, options.claimNow ?? (() => new Date()), {
       claimPattern: CLAIM,
       logPrefix: LOG,
-      formatError: fileSystemErrorCategory
+      formatError: fileSystemErrorCategory,
+      // Preserve whenever unsure (PR #204 F-02): only a claim of the very bytes that stand is shown to lose nothing.
+      leftovers: {
+        isEarlierVersion: (claimed, standing) => sameBytes(claimed, standing),
+        freeName: async () => this.setAsideName()
+      }
     });
     this.rewritePorts = { fileSystem, claims: this.claims, log, logPrefix: LOG, noun: 'pinned-context list', mintStagingId: this.mintStagingId };
+    this.lock = new WorkshopPinnedContextLock(fileSystem, log, options.claimNow ?? (() => new Date()), this.mintStagingId);
   }
 
   /** Where the list is kept now, read live. */
@@ -191,14 +197,24 @@ export class WorkshopPinnedContextStore {
         this.log.appendLine(`${LOG} Not written: the workspace changed before its turn.`);
         return { ok: false, reason: 'unavailable' };
       }
-      for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
-        const result = await this.attemptUpdate(asked, revision, change, permitted);
-        if (result !== 'again') {
-          return result;
-        }
+      // Held from before the read at this turn until after the commit (PR #204 F-01).
+      const lock = await this.lock.acquire(asked);
+      if (lock === 'busy' || lock === 'io') {
+        this.log.appendLine(`${LOG} Not written: the list's lock is ${lock === 'busy' ? 'held by another window' : 'not readable'}.`);
+        return { ok: false, reason: lock };
       }
-      this.log.appendLine(`${LOG} Not written: the file kept moving under the write.`);
-      return { ok: false, reason: 'busy' };
+      try {
+        for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+          const result = await this.attemptUpdate(asked, revision, change, permitted, () => lock.stillHeld());
+          if (result !== 'again') {
+            return result;
+          }
+        }
+        this.log.appendLine(`${LOG} Not written: the file kept moving under the write.`);
+        return { ok: false, reason: 'busy' };
+      } finally {
+        await lock.release();
+      }
     }));
   }
 
@@ -211,7 +227,8 @@ export class WorkshopPinnedContextStore {
     filePath: string,
     revision: string,
     change: WorkshopPinnedContextChange,
-    permitted: () => boolean
+    permitted: () => boolean,
+    held: () => Promise<boolean>
   ): Promise<WorkshopPinnedContextUpdateResult | 'again'> {
     const read = await this.readState(filePath);
     if (!permitted()) {
@@ -246,8 +263,8 @@ export class WorkshopPinnedContextStore {
       return { ok: true, list: before, revision: read.revision };
     }
     const outcome = read.state === 'absent'
-      ? await this.writeNew(filePath, prepared.bytes, permitted)
-      : await this.rewrite(filePath, read.bytes, prepared.bytes, permitted);
+      ? await this.writeNew(filePath, prepared.bytes, permitted, held)
+      : await this.rewrite(filePath, read.bytes, prepared.bytes, permitted, held);
     switch (outcome) {
       case 'committed':
         this.log.appendLine(`${LOG} Saved the list (${prepared.list.files.length} files).`);
@@ -257,6 +274,9 @@ export class WorkshopPinnedContextStore {
       case 'withdrawn':
         this.log.appendLine(`${LOG} Not written: the workspace changed before the write committed.`);
         return { ok: false, reason: 'unavailable' };
+      case 'lost':
+        this.log.appendLine(`${LOG} Not written: the lock was taken over before the write committed.`);
+        return { ok: false, reason: 'busy' };
       case 'busy':
       case 'io':
         return { ok: false, reason: outcome };
@@ -347,7 +367,12 @@ export class WorkshopPinnedContextStore {
   }
 
   /** The first write: staged privately, then renamed into place, never over anything. */
-  private async writeNew(filePath: string, bytes: Uint8Array, permitted: () => boolean): Promise<'committed' | 'again' | 'withdrawn' | 'io'> {
+  private async writeNew(
+    filePath: string,
+    bytes: Uint8Array,
+    permitted: () => boolean,
+    held: () => Promise<boolean>
+  ): Promise<'committed' | 'again' | 'withdrawn' | 'lost' | 'io'> {
     const folder = path.dirname(filePath);
     const temporaryPath = path.join(folder, `.${FILE_NAME}.tmp-${this.mintStagingId()}`);
     try {
@@ -357,6 +382,10 @@ export class WorkshopPinnedContextStore {
       this.log.appendLine(`${LOG} Could not stage the list: ${fileSystemErrorCategory(error)}`);
       await deleteStoredFileQuietly(this.fileSystem, temporaryPath);
       return 'io';
+    }
+    if (!(await held())) {
+      await deleteStoredFileQuietly(this.fileSystem, temporaryPath);
+      return 'lost';
     }
     // The commit point: nothing is awaited between it and the rename that commits.
     if (!permitted()) {
@@ -383,18 +412,24 @@ export class WorkshopPinnedContextStore {
     filePath: string,
     read: Uint8Array,
     written: Uint8Array,
-    permitted: () => boolean
-  ): Promise<'committed' | 'again' | 'withdrawn' | 'busy' | 'io'> {
+    permitted: () => boolean,
+    held: () => Promise<boolean>
+  ): Promise<'committed' | 'again' | 'withdrawn' | 'lost' | 'busy' | 'io'> {
     const folder = path.dirname(filePath);
+    let lost = false;
     const outcome = await commitStoredFileRewrite(this.rewritePorts, {
       filePath,
       label: 'the list',
       read,
       written,
+      confirm: async () => {
+        lost = !(await held());
+        return !lost;
+      },
       beforeCommit: permitted,
       onCommitted: () => undefined,
       // A claim given back when a new list took the saved name meanwhile: kept beside it, never over it.
-      fallbackPath: async () => path.join(folder, `${FILE_NAME}.set-aside-${this.mintStagingId()}`)
+      fallbackPath: async () => path.join(folder, this.setAsideName())
     });
     switch (outcome.kind) {
       case 'committed':
@@ -405,10 +440,15 @@ export class WorkshopPinnedContextStore {
         // Claimed, deleted or put back by another window meanwhile: read it again, and let its revision decide.
         return outcome.state === 'busy' ? 'busy' : outcome.state === 'unknown' ? 'io' : 'again';
       case 'withdrawn':
-        return 'withdrawn';
+        return lost ? 'lost' : 'withdrawn';
       case 'failed':
         return 'io';
     }
+  }
+
+  /** A free ordinary name in the list's folder for bytes set aside: never a claim, so never settled again. */
+  private setAsideName(): string {
+    return `${FILE_NAME}.set-aside-${this.mintStagingId()}`;
   }
 
   private owe<T>(write: Promise<T>): Promise<T> {
@@ -433,6 +473,10 @@ export function workshopPinnedContextRevisionOf(bytes: Uint8Array): string {
 }
 
 const revisionOf = workshopPinnedContextRevisionOf;
+
+function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
+  return left.byteLength === right.byteLength && left.every((byte, index) => byte === right[index]);
+}
 
 /** A store read as a caller sees it: without the bytes. */
 function publicRead(read: StoreRead): WorkshopPinnedContextRead {

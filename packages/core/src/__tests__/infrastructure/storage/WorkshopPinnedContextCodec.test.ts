@@ -101,6 +101,8 @@ describe('format 1: every refusal, whole', () => {
     ['an empty segment', json({ format: 1, files: files('Characters//alice.md') }), 'path', 0],
     ['a trailing slash', json({ format: 1, files: files('Characters/') }), 'path', 0],
     ['a control character', json({ format: 1, files: files('Characters/alice\u0007.md') }), 'path', 0],
+    ['a C1 control (NEL)', json({ format: 1, files: files('Notes/\u0085.md') }), 'path', 0],
+    ['a C1 control at the range\'s ends', json({ format: 1, files: files('Notes/\u0080\u009f.md') }), 'path', 0],
     ['a newline', json({ format: 1, files: files('Characters/alice\n.md') }), 'path', 0],
     ['a bad second entry', json({ format: 1, files: files('Characters/alice.md', '../the-hatter.md') }), 'path', 1],
     ['a duplicate', json({ format: 1, files: files('Characters/alice.md', 'Project/brief.md', 'Characters/alice.md') }), 'duplicate', 2],
@@ -167,8 +169,38 @@ describe('format 1: duplicates by platform', () => {
   it('names the host platform, and keys paths by it', () => {
     expect(workshopPinnedContextPlatformOf('win32')).toBe('windows');
     expect(workshopPinnedContextPlatformOf('darwin')).toBe('posix');
-    expect(workshopPinnedContextPathKey('Characters/Alice.md', 'windows')).toBe('characters/alice.md');
+    expect(workshopPinnedContextPathKey('Characters/Alice.md', 'windows')).toBe('CHARACTERS/ALICE.MD');
     expect(workshopPinnedContextPathKey('Characters/Alice.md', 'posix')).toBe('Characters/Alice.md');
+  });
+
+  // NTFS's rule (PR #204 F-03): each UTF-16 code unit through a one-to-one upper-case table.
+  const same = (left: string, right: string) =>
+    workshopPinnedContextPathKey(`Notes/${left}.md`, 'windows') === workshopPinnedContextPathKey(`Notes/${right}.md`, 'windows');
+  it.each([
+    ['σ', 'ς', true],
+    ['σ', 'Σ', true],
+    ['ς', 'Σ', true],
+    ['ß', 'SS', false],
+    ['ß', 'ss', false],
+    ['ı', 'I', true],
+    ['ı', 'i', true],
+    ['İ', 'I', false],
+    ['İ', 'i', false],
+    ['𝐀', '𝐚', false],
+    ['the-hatter', 'The-Hatter', true],
+    ['alice', 'alicf', false]
+  ])('on Windows, %s and %s are one name: %s', (left, right, expected) => {
+    expect(same(left, right)).toBe(expected);
+  });
+
+  it('keeps an astral character\'s surrogates as written, and ß as ß', () => {
+    expect(workshopPinnedContextPathKey('Notes/𝐚ß.md', 'windows')).toBe('NOTES/𝐚ß.MD');
+  });
+
+  it('refuses the sigma forms as one file on Windows, and reads them as two elsewhere', () => {
+    const sigmas = json({ format: 1, files: files('Notes/σ.md', 'Notes/ς.md') });
+    expect(refusal(sigmas, 'windows')).toEqual({ reason: 'duplicate', entry: 1 });
+    expect(refusal(sigmas, 'posix')).toBe('read');
   });
 });
 

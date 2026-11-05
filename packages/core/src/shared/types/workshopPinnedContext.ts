@@ -65,26 +65,53 @@ export function workshopPinnedContextPlatformOf(platform: string): WorkshopPinne
 }
 
 /**
- * The one key two paths are compared by: Unicode NFC (a hand edit on macOS
- * may write NFD), then case-folded on Windows. Two entries with one key are
- * a duplicate; Slice 2b matches a room's files by it too.
+ * The one key two paths are compared by. Two entries with one key are a
+ * duplicate; Slice 2b matches a room's files by it too.
+ *
+ * - **NFC first, on every platform.** Deliberately conservative: NTFS (and
+ *   most Linux file systems) treat NFC and NFD spellings as different names,
+ *   but a list naming one file in both forms is refused, which loses
+ *   nothing (a hand edit on macOS may write NFD).
+ * - **On Windows, NTFS's own case rule** (PR #204 F-03), not Unicode case
+ *   folding: each UTF-16 code unit is upper-cased through a simple
+ *   one-to-one table. A code unit whose upper case is a single code unit
+ *   takes it; any other (`ß` → `SS`, `ŉ` → `ʼN`) is kept as written, and
+ *   so is each half of a surrogate pair, so an astral character is never
+ *   folded. So `σ`, `ς` and `Σ` are one name; `ß` and `SS` are two; `ı`
+ *   and `I` are one; `İ` and `I` are two.
+ * - **Known limit.** The table a volume uses is written when it is
+ *   formatted, and differs slightly by Windows version; this is the table
+ *   JavaScript's simple upper case gives, which agrees on every letter a
+ *   writer is likely to type.
  */
 export function workshopPinnedContextPathKey(entryPath: string, platform: WorkshopPinnedContextPathPlatform): string {
   const composed = entryPath.normalize('NFC');
-  return platform === 'windows' ? composed.toLowerCase() : composed;
+  return platform === 'windows' ? ntfsUpcase(composed) : composed;
+}
+
+/** Each UTF-16 code unit through a one-to-one upper-case table, as NTFS compares names. */
+function ntfsUpcase(text: string): string {
+  let result = '';
+  for (let index = 0; index < text.length; index++) {
+    const unit = text.charAt(index);
+    const upper = unit.toUpperCase();
+    result += upper.length === 1 ? upper : unit;
+  }
+  return result;
 }
 
 /**
  * What is wrong with a path, or undefined when it keeps the rule: not
  * empty; `/`-separated with no backslash; no leading `/` and no drive
  * letter; no empty, `.` or `..` segment (so no trailing `/` either); and no
- * control character.
+ * control character, C0 (U+0000–U+001F), DEL or C1 (U+0080–U+009F; PR #204
+ * N-01).
  */
 export function workshopPinnedContextPathFault(entryPath: string): 'empty' | 'backslash' | 'absolute' | 'drive' | 'segment' | 'control' | undefined {
   if (entryPath.length === 0) {
     return 'empty';
   }
-  if (/[\u0000-\u001f\u007f]/.test(entryPath)) {
+  if (/[\u0000-\u001f\u007f-\u009f]/.test(entryPath)) {
     return 'control';
   }
   if (entryPath.includes('\\')) {

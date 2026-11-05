@@ -110,7 +110,9 @@ list yet, and nothing in the UI changes.
 - `33b68dc1`: the boundary guards.
 - `e6ba3cdb`: this doc's first Built section.
 - `1516f318`: the byte bound (the coordinator's review of `e6ba3cdb`).
-- This doc's update.
+- `b8527f22`, `182fcd1b`: this doc.
+- `021b860b`, `f15a81a6`, `18b7b03a`: the PR #204 review's fixes (below).
+- This doc's PR #204 section.
 
 **Where each piece lives.**
 
@@ -120,7 +122,8 @@ list yet, and nothing in the UI changes.
 | The bounds | `PROMPT_BUDGETS.workshopPinnedContext = { files: 20, fileBytes: 128 * 1024 }` (`shared/constants/promptBudgets.ts`), pinned in `promptBudgets.test.ts` |
 | Codec | `infrastructure/storage/WorkshopPinnedContextCodec.ts` (`decodeWorkshopPinnedContext`, `encodeWorkshopPinnedContext`, `prepareWorkshopPinnedContext`) |
 | Fixture | `__tests__/fixtures/pinned-context-v1.json` |
-| Store | `infrastructure/storage/WorkshopPinnedContextStore.ts` (`WorkshopPinnedContextStore`: `availability()`, `read()`, `update(revision, change, options?)`, `shutDown()`) |
+| Store | `infrastructure/storage/WorkshopPinnedContextStore.ts` (`WorkshopPinnedContextStore`: `availability()`, `read()`, `update(revision, change, options?)`, `shutDown()`); its contracts in `WorkshopPinnedContextStoreContracts.ts`, which the store re-exports |
+| Lock | `infrastructure/storage/WorkshopPinnedContextLock.ts` (PR #204 F-01), built only by the store |
 | Tests | `__tests__/infrastructure/storage/WorkshopPinnedContextCodec.test.ts`, `WorkshopPinnedContextStore.test.ts`, `WorkshopPinnedContextStoreRaces.test.ts`, with `workshopPinnedContextStoreHost.ts` |
 | Guards | `boundaries.test.ts`: "Workshop Pinned Context storage" (both modules in `infrastructure/storage/`, the codec's only import, no handler imports the store); the store joins `FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION` and the claims primitive's construction list |
 
@@ -198,15 +201,119 @@ These are additions, or a spec union made complete:
      written. The decoder's check stays, because a file can grow between the
      `stat` and the read.
 
+## PR #204 review
+
+Astra's review of `182fcd1b`
+([report](../../../docs/pr-reviews/pr-204-pinned-context-format-store-review.md)):
+changes required. The coordinator checked each finding and directed each fix.
+The review's probes are promoted into the permanent suites. The `.txt` probe
+file stays as evidence and is not run.
+
+**F-01 (P1): a stale create took the saved name during another window's
+claimed rewrite.** Fixed in `18b7b03a`.
+
+- **A per-list lock.** Every `update` holds `WorkshopPinnedContextLock`
+  (`.pinned-context.json.lock`) from before it reads at its turn until after
+  it commits.
+  - It is taken by a no-overwrite rename of a staged `{ token, at }`, and is
+    live for the claims' 30-second lease.
+  - An abandoned lock, or one that doesn't read as a lock, is renamed to a
+    unique name and checked to be the very lock judged abandoned. If it isn't
+    (a window took the lock anew in between), it is put back and the write is
+    `busy`. Otherwise it is deleted and the lock is taken anew.
+  - The holder reads its token again immediately before its commit rename,
+    and withdraws as `busy` if the lock is no longer its own.
+  - A window that can't take the lock answers `busy`.
+- **A shared-primitive addition.** For a rewrite, the token check is
+  `StoredFileRewrite`'s new optional `confirm` (async). It is asked after the
+  claim is confirmed and before the synchronous `beforeCommit`. Project
+  Memory doesn't pass it, so it is unchanged.
+- **Hand edits still answer `changed`.** Under the lock, a create still
+  commits by a no-overwrite rename, so a hand edit made meanwhile is never
+  overwritten.
+- **The race argument,** case by case, is in the store's doc comment:
+  - **create vs create:** the window that waited reads the list at its turn
+    and is `changed`; underneath, the no-overwrite rename lets only one win;
+  - **create vs claimed rewrite:** only the lock holder takes a claim, so a
+    create can't be renaming then; it is `busy`;
+  - **rewrite vs rewrite:** serialized by the lock; underneath, the claim
+    rules hold;
+  - **a lease that expires mid-write:** the stalled holder fails its token
+    check and withdraws. The one window left is a stall past the lease
+    between that check and the rename, and there the claim and no-overwrite
+    rules still keep either write off the other's file;
+  - **a hand edit at each step:** before the read, between the read and a
+    create's commit, between the read and a claim, while the claim holds the
+    list, and after the commit. None is ever overwritten.
+- **Tests** (`WorkshopPinnedContextStoreRaces.test.ts`):
+  - the review's probe ("create vs claimed rewrite: a stale create never
+    takes the saved name a rewrite's claim emptied");
+  - create vs create, both orders;
+  - a create holding the lock makes the other window's create busy;
+  - rewrite vs rewrite;
+  - two lease-expiry cases ("lets another window take the abandoned lock; the
+    stalled holder withdraws…", and a stalled rewrite);
+  - the lock file: live is busy; abandoned or unreadable is taken over; a
+    mistaken takeover is put back;
+  - a hand edit at three steps.
+- **Mutation-checked.** With the lock stubbed out, eight of these fail. With
+  only the token check removed, the lease-expiry test fails.
+- **Contracts moved.** The store's contracts moved to
+  `WorkshopPinnedContextStoreContracts.ts` (re-exported, so no import changes)
+  to keep the store under 500 lines (484).
+
+**F-02 (P2): an uncommitted changed claim was later deleted as a leftover.**
+Fixed in `f15a81a6`.
+
+- The store gives `StoredFileClaims` a preserving `leftovers` policy, as
+  Project Memory's does. An abandoned claim beside the standing list is
+  removed only when it holds exactly the standing bytes.
+- Any other claim is set aside under `pinned-context.json.set-aside-<id>`,
+  never deleted. The format records no ancestry, so it preserves whenever
+  unsure.
+- **Tests** (`WorkshopPinnedContextStore.test.ts`):
+  - the review's probe, extended through recovery: "keeps a refused rewrite's
+    claimed bytes through a failed release, and sets them aside once the
+    fault clears and the lease passes";
+  - "sets aside any other abandoned claim…";
+  - "removes an abandoned claim… only when it holds the very bytes that
+    stand".
+- **Mutation-checked.** With the old delete-everything policy, the first two
+  fail.
+
+**F-03 (P2): lowercasing wasn't Windows' comparison.** Fixed in `021b860b`.
+
+- `workshopPinnedContextPathKey` keeps its name and signature. On Windows it
+  now upper-cases each UTF-16 code unit through a one-to-one table, as NTFS
+  does. A unit takes `toUpperCase()` only when that is a single unit;
+  otherwise it is kept, so surrogates are kept too.
+- `σ`/`ς`/`Σ` are one name, `ß` stays `ß` (not `SS`), `ı` matches `I`, `İ`
+  doesn't, and an astral character isn't folded.
+- NFC is kept, documented as deliberately conservative. The doc states the
+  known limit: a volume's upcase table differs slightly by Windows version.
+- **Tests** (`WorkshopPinnedContextCodec.test.ts`):
+  - the table "on Windows, %s and %s are one name";
+  - the astral and `ß` key;
+  - the review's sigma probe as a decoder case (a duplicate on Windows, two
+    files elsewhere).
+
+**N-01 (P3): C1 controls.** Fixed in `021b860b`.
+
+- `workshopPinnedContextPathFault` refuses U+0080–U+009F, with the doc.
+- **Tests:** the review's probe (`Notes/\u0085.md`) and the range's ends,
+  both as `path` refusals.
+
+**Re-verified** after `18b7b03a`; counts are in the table below.
+
 ## Verification
 
-| Check | Before (`b94fc674`) | After (`1516f318`) |
+| Check | Before (`b94fc674`) | After (`18b7b03a`) |
 |---|---|---|
 | `npm run typecheck` | pass | pass |
-| jest | 691 suites / 9,696 tests / 59 snapshots | 694 suites / 9,784 tests / 59 snapshots, all passing |
+| jest | 691 suites / 9,696 tests / 59 snapshots | 694 suites / 9,813 tests / 59 snapshots, all passing (`npx jest -w 2`) |
 | `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (no new warnings) |
 | `from 'vscode'` in `packages/core/src` (outside test strings) | none | none |
-| New files over 500 lines | — | none (the store is 440) |
+| New files over 500 lines | — | none (the store is 484, the lock 174, the contracts 62) |
 | Fixtures and tests | — | *Alice*-style made-up paths only |
 | Logs | — | outcomes and error categories only; a test fails on a path or a listed name |
 

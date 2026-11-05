@@ -2590,12 +2590,24 @@ describe('the shared claimed-file primitive (Workshop Project Memory, Slice 1)',
 describe('Workshop Pinned Context storage (Slice 1; ADR 2026-11-04 D5)', () => {
   const STORAGE = 'infrastructure/storage';
 
-  it('keeps the store and its codec in infrastructure/storage, the only modules of their names', () => {
+  it('keeps the store, its contracts, its lock and its codec in infrastructure/storage, the only modules of their names', () => {
     const named = collectSourceFiles(SRC_ROOT)
       .map((file) => path.relative(SRC_ROOT, file))
-      .filter((file) => !file.startsWith('__tests__/') && /(?:^|\/)WorkshopPinnedContext(?:Store|Codec)\.ts$/.test(file))
+      .filter((file) => !file.startsWith('__tests__/') && /(?:^|\/)WorkshopPinnedContext(?:Store|StoreContracts|Lock|Codec)\.ts$/.test(file))
       .sort();
-    expect(named).toEqual([`${STORAGE}/WorkshopPinnedContextCodec.ts`, `${STORAGE}/WorkshopPinnedContextStore.ts`]);
+    expect(named).toEqual([
+      `${STORAGE}/WorkshopPinnedContextCodec.ts`,
+      `${STORAGE}/WorkshopPinnedContextLock.ts`,
+      `${STORAGE}/WorkshopPinnedContextStore.ts`,
+      `${STORAGE}/WorkshopPinnedContextStoreContracts.ts`
+    ]);
+  });
+
+  it('builds the list\'s lock only inside the store (PR #204 F-01)', () => {
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => /\bnew\s+WorkshopPinnedContextLock\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(constructions).toEqual([`${STORAGE}/WorkshopPinnedContextStore.ts`]);
   });
 
   it('keeps the codec pure: it imports only the shared list shapes', () => {
@@ -2604,9 +2616,9 @@ describe('Workshop Pinned Context storage (Slice 1; ADR 2026-11-04 D5)', () => {
     expect(specifiers).toEqual(['@shared/types/workshopPinnedContext']);
   });
 
-  it('lets no handler import the store', () => {
+  it('lets no handler import the store, its contracts or its lock', () => {
     const offenders = collectSourceFiles(HANDLERS_ROOT)
-      .filter((file) => /['"][^'"]*\/WorkshopPinnedContextStore['"]/.test(fs.readFileSync(file, 'utf8')))
+      .filter((file) => /['"][^'"]*\/WorkshopPinnedContext(?:Store|StoreContracts|Lock)['"]/.test(fs.readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC_ROOT, file));
     expect(offenders).toEqual([]);
   });

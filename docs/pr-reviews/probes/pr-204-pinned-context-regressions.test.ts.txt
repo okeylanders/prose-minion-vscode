@@ -1,0 +1,60 @@
+import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
+import { STORED_FILE_CLAIM_LEASE_MS } from '@/infrastructure/storage/StoredFileClaims';
+import { WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION as ABSENT, workshopPinnedContextRevisionOf } from '@/infrastructure/storage/WorkshopPinnedContextStore';
+import { FILE, NOW, bytesOf, list, pin, pinnedHost as host, holdOnce, text } from './workshopPinnedContextStoreHost';
+
+it('does not let an absent-revision create take the saved name during another windows rewrite', async () => {
+ const fs = new MemoryFileSystem();
+ const late = host({fileSystem:fs,prefix:'late'});
+ const current = host({fileSystem:fs,prefix:'current'});
+ const gate = holdOnce(fs,'writeFile',p=>p.includes('.tmp-late'));
+ const lateSave=late.store.update(ABSENT,pin('Characters/late.md'));
+ await gate.reached;
+ const first=await current.store.update(ABSENT,pin('Characters/alice.md'));
+ if (!first.ok) throw new Error(first.reason);
+ const rewriteGate = holdOnce(fs,'readFile',p=>p.includes('.claim-'));
+ const rewrite=current.store.update(first.revision,pin('Characters/hatter.md'));
+ await rewriteGate.reached;
+ gate.open();
+ const lateResult=await lateSave;
+ rewriteGate.open();
+ const rewriteResult=await rewrite;
+ console.log('race outcomes',lateResult,rewriteResult,text(fs.files.get(FILE)));
+ expect(lateResult.ok).toBe(false);
+ expect(text(fs.files.get(FILE))).not.toContain('late.md');
+});
+
+it('keeps a refused changed claim when restoration had transient IO failure', async () => {
+ const h=host(); const fs=h.fileSystem;
+ const original=bytesOf(list('Characters/alice.md'));
+ const changed=bytesOf(list('Characters/hatter.md'));
+ const competing=bytesOf(list('Characters/queen.md'));
+ fs.files.set(FILE,original);
+ const rename=fs.rename.bind(fs); let took=false; let failRelease=true;
+ jest.spyOn(fs,'rename').mockImplementation(async (from,to,options)=>{
+  if(from===FILE && to.includes('.claim-') && !took){
+   took=true; fs.files.set(FILE,changed); await rename(from,to,options); fs.files.set(FILE,competing); return;
+  }
+  if(from.includes('.claim-') && failRelease) throw Object.assign(new Error('temporary access failure'),{code:'EACCES'});
+  return rename(from,to,options);
+ });
+ const result=await h.store.update(workshopPinnedContextRevisionOf(original),pin('Characters/rabbit.md'));
+ expect(result).toMatchObject({ok:false,reason:'changed'});
+ expect([...fs.files.values()].some(b=>text(b)===text(changed))).toBe(true);
+ failRelease=false;h.clock.at=NOW+STORED_FILE_CLAIM_LEASE_MS+1;
+ await h.store.read();
+ expect([...fs.files.values()].some(b=>text(b)===text(changed))).toBe(true);
+});
+import { decodeWorkshopPinnedContext } from '@/infrastructure/storage/WorkshopPinnedContextCodec';
+const file = (...paths: string[]) => JSON.stringify({format: 1, files: paths.map(path => ({path}))});
+describe('independent review PR 204 codec probes', () => {
+  it('keeps Windows sigma variants under the same case-insensitive key', () => {
+    expect('σ'.toUpperCase()).toBe('ς'.toUpperCase());
+    expect(decodeWorkshopPinnedContext(file('Notes/σ.md', 'Notes/ς.md'), 'windows'))
+      .toEqual({ok:false, reason:'duplicate', entry:1});
+  });
+  it('rejects C1 control characters as promised by the format', () => {
+    expect(decodeWorkshopPinnedContext(file('Notes/\u0085.md'), 'posix'))
+      .toEqual({ok:false, reason:'path', entry:0});
+  });
+});
