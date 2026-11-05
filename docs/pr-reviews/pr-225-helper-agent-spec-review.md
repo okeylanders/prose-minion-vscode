@@ -96,7 +96,7 @@ The [epic's sibling link](https://github.com/okeylanders/prose-minion-vscode/blo
 | Item | Severity | Disposition |
 |---|---|---|
 | Blocking findings | — | None at specification level |
-| A-01–A-05 | Implementation acceptance | Carry into Slices 1 and 2 verification |
-| N-01 | Low | Nonblocking wording correction |
-| N-02 | Low | Nonblocking link correction |
+| A-01–A-05 | Implementation acceptance | Carry into Slices 1 and 2 verification. Relayed to the implementation thread on 2026-11-05 |
+| N-01 | Low | Nonblocking wording correction. **Fixed**: D5.7 now calls the call bounded, with its cost depending on the source's length and the model |
+| N-02 | Low | Nonblocking link correction. **Fixed**: the sibling is named by its branch and spec PR until its README joins this tree |
 

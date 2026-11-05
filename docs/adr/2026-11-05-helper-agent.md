@@ -113,8 +113,11 @@ The helper has no tools, no capabilities and no file access of its own:
    or the setting off, the sheet stays as it is today. One muted line says
    "Couldn't draft a title and summary." Nothing blocks.
 7. **The setting.** `proseMinion.workshop.memory.helperDrafts` (default
-   `true`) turns it off. The call costs a few hundred tokens and isn't
-   confirmed first: Okey chose automatic.
+   `true`) turns it off. The call isn't confirmed first: Okey chose
+   automatic. It is bounded (its input is the sheet's body, at most
+   `bodyCharacters`, plus the prompt; its output is the three fields), and
+   its cost depends on the source's length and the helper's model (PR #225
+   N-01).
 
 A proposal card's **Edit…** already has a persona's title and summary, so it
 asks for nothing.
