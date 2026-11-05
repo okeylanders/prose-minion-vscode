@@ -1730,19 +1730,21 @@ describe('architectural boundaries', () => {
     expect(reachers).toEqual(['application/services/workshop/WorkshopSessionPersistenceCoordinator.ts']);
   });
 
-  it('chooses a room seed only at the composition root (ADR 2026-11-04 D9)', () => {
+  it('chooses a room seed only at the composition root (ADR 2026-11-04 D9; Slice 2b)', () => {
     const SEED_PORT = 'application/services/workshop/pinnedContext/WorkshopRoomSeed.ts';
+    const PINNED_SEED = 'application/services/workshop/pinnedContext/WorkshopPinnedContextRoomSeed.ts';
     const choosers = collectSourceFiles(SRC_ROOT)
       .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
       .filter((file) => /\bWORKSHOP_NO_ROOM_SEED\b|\bimplements\s+WorkshopRoomSeed\b/
         .test(fs.readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC_ROOT, file))
       .sort();
-    // The port defines the no-op seed; the barrel only re-exports it.
-    expect(choosers).toEqual([SEED_PORT, 'index.ts']);
+    // The port defines the no-op seed, the pinned-context seed implements it, and the barrel only re-exports the no-op.
+    expect(choosers).toEqual([PINNED_SEED, SEED_PORT, 'index.ts'].sort());
     const extension = fs.readFileSync(path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src/extension.ts'), 'utf8');
-    expect(extension.match(/\bWORKSHOP_NO_ROOM_SEED\b/g)).toHaveLength(2);
-    expect(extension).toMatch(/workshopSessionStore,\s*(?:\/\/[^\n]*\n\s*)?WORKSHOP_NO_ROOM_SEED,\s*outputChannel/);
+    // Slice 2b passes the pinned-context seed; the no-op is no longer the extension's.
+    expect(extension).not.toMatch(/\bWORKSHOP_NO_ROOM_SEED\b/);
+    expect(extension).toMatch(/workshopSessionStore,\s*workshopPinnedContextRoomSeed,\s*outputChannel/);
   });
 
   it('tells a value import of a module from a type-only one', () => {
@@ -2607,5 +2609,37 @@ describe('Workshop Pinned Context storage (Slice 1; ADR 2026-11-04 D5)', () => {
       .filter((file) => /['"][^'"]*\/WorkshopPinnedContextStore['"]/.test(fs.readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC_ROOT, file));
     expect(offenders).toEqual([]);
+  });
+  it('builds the store, the library and the seed only at the composition root (Slice 2b; ADR 2026-11-04 D5, D9)', () => {
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /\bnew\s+WorkshopPinnedContext(?:Store|Library|RoomSeed)\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(constructions).toEqual([]);
+    const extension = fs.readFileSync(path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src/extension.ts'), 'utf8');
+    expect(extension.match(/\bnew\s+WorkshopPinnedContextStore\s*\(/g)).toHaveLength(1);
+    expect(extension.match(/\bnew\s+WorkshopPinnedContextLibrary\s*\(/g)).toHaveLength(1);
+    expect(extension.match(/\bnew\s+WorkshopPinnedContextRoomSeed\s*\(/g)).toHaveLength(1);
+    // Its owed writes drain before deactivation resolves (PR #183 F-03).
+    expect(extension).toMatch(/pinnedContext:\s*workshopPinnedContextStoreForShutdown/);
+  });
+
+  it('lets no handler import the library or the seed; CoreServices names the library as a type only (Slice 2b)', () => {
+    const CONTRACTS = path.join(HANDLERS_ROOT, 'MessageHandlerContracts.ts');
+    const offenders = collectSourceFiles(HANDLERS_ROOT)
+      .filter((file) => file !== CONTRACTS)
+      .filter((file) => /['"][^'"]*\/WorkshopPinnedContext(?:Library|RoomSeed|FileReader)['"]/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(offenders).toEqual([]);
+    const contracts = fs.readFileSync(CONTRACTS, 'utf8');
+    expect(moduleImports(CONTRACTS, contracts)
+      .filter(({ module }) => /\/pinnedContext\//.test(module))).toEqual([{ module: expect.stringMatching(/WorkshopPinnedContextLibrary$/), typeOnly: true }]);
+  });
+
+  it('keeps pinnedContext/ modules under 500 lines', () => {
+    const folder = path.join(SRC_ROOT, 'application/services/workshop/pinnedContext');
+    expect(collectSourceFiles(folder)
+      .filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
+      .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
   });
 });
