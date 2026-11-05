@@ -301,7 +301,8 @@ The feature note's six open questions, plus the design scope:
   - **#207** (Slice 6a) adds two kinds, Theme and Idea. The order is now
     decision · canon · theme · idea · open-thread · preference. The save
     sheet's six kind cards show six across or 3×2, never 5+1 or 4+2. The
-    switch is a container query at 940px; Okey decides whether that
-    threshold stands. In review.
+    switch is a container query at 940px. Okey kept 940px: between 940
+    and about 988px, two descriptions wrap to two lines in equal-height
+    cards. In review.
   - The pinned-context epic (`epic-pinned-context`) is to build on this
     epic. Its planning thread has the integration notes.
