@@ -36,8 +36,9 @@ export interface WorkshopMemoryHelperDraft {
 
 /**
  * How the request ended. Every outcome but `drafted` leaves the sheet as
- * it is, with one quiet line:
- * - `off`: `proseMinion.workshop.memory.helperDrafts` is off; nothing was sent;
+ * it is; every one but `off` says so in one quiet line:
+ * - `off`: `proseMinion.workshop.memory.helperDrafts` is off; nothing was
+ *   sent, and the sheet says nothing (D5.7: off is silence);
  * - `unconfigured`: no API key; nothing was sent;
  * - `refused`: the host would not read the turn (gone, not a message, another room);
  * - `failed`: the call errored, timed out or was stopped;
@@ -55,3 +56,37 @@ export interface WorkshopMemoryDraftResultPayload {
 export interface WorkshopMemoryDraftResultMessage extends MessageEnvelope<WorkshopMemoryDraftResultPayload> {
   type: MessageType.WORKSHOP_MEMORY_DRAFT_RESULT;
 }
+
+/** Close, Save, a new opening or another mode: the sheet no longer waits, so the host stops its call (A-05). */
+export interface WorkshopMemoryDraftCancelPayload {
+  requestId: string;
+}
+
+export interface WorkshopMemoryDraftCancelMessage extends MessageEnvelope<WorkshopMemoryDraftCancelPayload> {
+  type: MessageType.WORKSHOP_MEMORY_DRAFT_CANCEL;
+}
+
+/** The webview asks, once mounted, whether drafting is on. */
+export interface WorkshopRequestMemoryDraftsSettingMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_REQUEST_MEMORY_DRAFTS_SETTING;
+}
+
+/**
+ * Whether drafting is on (D5.7), the host's answer and its push when the
+ * setting changes. Off, the sheet asks for nothing and shows nothing.
+ */
+export interface WorkshopMemoryDraftsSettingPayload {
+  enabled: boolean;
+}
+
+export interface WorkshopMemoryDraftsSettingMessage extends MessageEnvelope<WorkshopMemoryDraftsSettingPayload> {
+  type: MessageType.WORKSHOP_MEMORY_DRAFTS_SETTING;
+}
+
+/** The draft domain's part of each routing union, so the messages barrel names it once each way. */
+export type WorkshopMemoryDraftWebviewMessage =
+  | WorkshopMemoryDraftRequestMessage
+  | WorkshopMemoryDraftCancelMessage
+  | WorkshopRequestMemoryDraftsSettingMessage;
+
+export type WorkshopMemoryDraftHostMessage = WorkshopMemoryDraftResultMessage | WorkshopMemoryDraftsSettingMessage;

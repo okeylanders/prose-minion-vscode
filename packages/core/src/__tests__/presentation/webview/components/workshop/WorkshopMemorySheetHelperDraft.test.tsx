@@ -47,6 +47,18 @@ describe('WorkshopMemorySheet: the helper\'s draft', () => {
     expect((screen.getByRole('button', { name: /Save/ }) as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it('keeps Save\'s own rules while it drafts: empty required fields still disable it, and drafting adds no lock (A-03)', () => {
+    renderSheet(sheet({ helper: { requestId: 'r1', status: 'drafting', touched: [] } }));
+    expect((screen.getByRole('button', { name: /Save/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('is silent when off, or stopped: no placeholder and no line (D5.7)', () => {
+    renderSheet(sheet({ helper: { requestId: 'r1', status: 'stopped', touched: [] } }));
+    expect(field(/^Title/).placeholder).toBe('');
+    expect(field(/^Summary/).placeholder).toBe('');
+    expect(screen.queryByText('Couldn’t draft a title and summary.')).toBeNull();
+  });
+
   it('says once, quietly, that it couldn\'t draft, and drops the placeholders', () => {
     renderSheet(sheet({ helper: { requestId: 'r1', status: 'failed', touched: [] } }));
     const line = screen.getByText('Couldn’t draft a title and summary.');

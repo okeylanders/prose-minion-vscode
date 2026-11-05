@@ -235,7 +235,7 @@ const WORKSHOP_ROUTE_OWNERS = [
   {
     owner: WORKSHOP_MEMORY_DRAFT_HANDLER_OWNER,
     registration: 'direct',
-    messageTypes: ['WORKSHOP_MEMORY_DRAFT_REQUEST']
+    messageTypes: ['WORKSHOP_MEMORY_DRAFT_REQUEST', 'WORKSHOP_MEMORY_DRAFT_CANCEL', 'WORKSHOP_REQUEST_MEMORY_DRAFTS_SETTING']
   },
   // Slice 4b's manager routes change no room state (no receipt, no snapshot), so none waits on the gate.
   {
@@ -1981,12 +1981,12 @@ describe('architectural boundaries', () => {
     // Pinned Context Slice 3 added the tab's seven list routes (direct) and Attach missing (mutation).
     // Bookmark Recall Slice 2 added the Bookmarks screen's page, cancel, live rows and saved turn (direct).
     // Bookmark Recall Slice 3 added "Remember this" from a saved session (mutation).
-    // Helper Agent Slice 2 added the memory sheet's draft request (direct).
-    expect(expectedOwnerPairs).toHaveLength(87);
+    // Helper Agent Slice 2 added the memory sheet's draft request, its cancel and the setting's read (direct).
+    expect(expectedOwnerPairs).toHaveLength(89);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(47);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(40);
+      .toHaveLength(42);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });

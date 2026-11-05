@@ -94,6 +94,7 @@ This is the same flow as Project Memory and Bookmark Recall.
   - Verification: typecheck clean; lint 0 errors and no new warnings; jest 757 suites / 10,520 tests / 59 snapshots, all passing; no `from 'vscode'` in `packages/core/src`.
   - A-01–A-05 (PR #225 review): the one-line rule is shared (`PROJECT_MEMORY_NOT_ONE_LINE`), the timeout test is deterministic, and the helper's retirement is pinned; the checks are tabled in the slice doc. Jest 757 suites / 10,530 tests / 59 snapshots; lint 0 errors, 1,165 warnings.
 - **2026-11-05. Slice 2 (Drafting in the memory sheet).** See [slice-2-memory-draft.md](slice-2-memory-draft.md).
-  - `WORKSHOP_MEMORY_DRAFT_REQUEST` / `_RESULT`; `WorkshopMemoryDraftHandler` reads the turn host-side (ledger, or recall's `savedTurn`) and asks the helper; the sheet takes only its own request's answer, fills untouched fields, shows "Drafting…" placeholders and one quiet line on failure.
-  - `proseMinion.workshop.memory.helperDrafts` (default on), read by the host per request; the Memory tab doesn't show it (see the slice doc).
-  - Verification: typecheck clean; lint 0 errors, 1,165 warnings (the baseline); jest 760 suites / 10,556 tests / 59 snapshots, all passing; no `from 'vscode'` in `packages/core/src`; no new file over 500 lines.
+  - `WORKSHOP_MEMORY_DRAFT_REQUEST` / `_RESULT` / `_CANCEL`, and the setting's request and push. `WorkshopMemoryDraftHandler` reads the turn host-side (the ledger, or recall's `savedTurn`), bound to its room, and asks the helper. The sheet takes only its own request's answer, fills untouched fields, shows "Drafting…" placeholders and one quiet line on failure, and stops its draft on Close, Save, another opening and unmount.
+  - `proseMinion.workshop.memory.helperDrafts` (default on): the webview knows it, and off is silence (D5.7 as amended); the host still answers a stray request `off` with no model call.
+  - A-01–A-05 are tabled in the slice doc with their tests.
+  - Verification: typecheck clean; lint 0 errors, 1,165 warnings (the baseline); jest 760 suites / 10,592 tests / 59 snapshots, all passing; no `from 'vscode'` in `packages/core/src`; no new file over 500 lines.

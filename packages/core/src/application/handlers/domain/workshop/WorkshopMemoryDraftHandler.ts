@@ -12,10 +12,19 @@
  *   `workshopTurnPreviewOfEntry`), cut as the sheet's note is
  *   (`workshopMemoryNoteFromTurn`). A turn a bookmark may not mark is
  *   refused, by the bubbles' rule.
+ * - **The room it was asked in.** Its revision is read when the request
+ *   arrives, before anything is awaited, and read again after a saved
+ *   turn's read: a room replaced meanwhile (a reopen with the same id, a
+ *   Rewind) refuses the request before anything is sent (A-02).
  * - **The setting** (`proseMinion.workshop.memory.helperDrafts`) is read
- *   when the request arrives; off, nothing is read or sent.
- * - **One draft at a time.** A newer request stops the one before it: the
- *   sheet only ever waits for its newest. Disposal stops the one in flight.
+ *   when the request arrives; off, it answers `off` and nothing is read or
+ *   sent. The webview learns the setting from `WORKSHOP_MEMORY_DRAFTS_SETTING`
+ *   (asked once mounted, pushed by the config watcher) and, off, asks for
+ *   nothing at all (D5.7).
+ * - **One draft at a time, stopped when not wanted** (A-05). A newer
+ *   request, the sheet's cancel (`WORKSHOP_MEMORY_DRAFT_CANCEL`: Close,
+ *   Save, another opening) and disposal abort the call in flight, so its
+ *   paid request stops; a call the host stopped answers nothing.
  * - **Logs** carry ids and outcomes, never the turn's text or the draft.
  */
 
@@ -33,8 +42,10 @@ import {
   MessageType,
   WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING,
   coerceWorkshopMemoryHelperDrafts,
+  type WorkshopMemoryDraftCancelMessage,
   type WorkshopMemoryDraftOutcome,
   type WorkshopMemoryDraftRequestMessage,
+  type WorkshopMemoryDraftsSettingMessage,
   type WorkshopMemoryDraftResultMessage,
   type WorkshopMemoryDraftResultPayload,
   type WorkshopTurn,
@@ -63,10 +74,27 @@ export interface WorkshopMemoryDraftRoom {
 export type WorkshopMemoryDraftRecall = Pick<WorkshopTranscriptRecallService, 'savedTurn'>;
 
 const LOG = '[WorkshopMemoryDraftHandler]';
+const REFUSED_ROOM_CHANGED = 'room-changed';
+
+/** Whether drafting is on, as the webview hears it: the route's answer and the config watcher's push read this one rule. */
+export function workshopMemoryDraftsSettingMessage(settings: Pick<SettingsStore, 'get'>): WorkshopMemoryDraftsSettingMessage {
+  return {
+    type: MessageType.WORKSHOP_MEMORY_DRAFTS_SETTING,
+    source: 'extension.workshop',
+    payload: { enabled: helperDraftsEnabled(settings) },
+    timestamp: Date.now()
+  };
+}
+
+function helperDraftsEnabled(settings: Pick<SettingsStore, 'get'>): boolean {
+  return coerceWorkshopMemoryHelperDrafts(
+    settings.get<unknown>(WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING.section, WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING.key)
+  );
+}
 const ID_CHARACTERS = 256;
 
 export class WorkshopMemoryDraftHandler {
-  private inFlight?: AbortController;
+  private inFlight?: { readonly requestId: string; readonly controller: AbortController };
 
   constructor(
     private readonly ports: WorkshopMemoryDraftPorts,
@@ -78,11 +106,27 @@ export class WorkshopMemoryDraftHandler {
 
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST, this.handleDraftRequest.bind(this));
+    router.register(MessageType.WORKSHOP_MEMORY_DRAFT_CANCEL, this.handleCancel.bind(this));
+    router.register(MessageType.WORKSHOP_REQUEST_MEMORY_DRAFTS_SETTING, this.handleRequestSetting.bind(this));
   }
 
+  /** The composition ends: stop the call in flight, so its request ends too. */
   dispose(): void {
-    this.inFlight?.abort();
+    this.inFlight?.controller.abort();
     this.inFlight = undefined;
+  }
+
+  async handleCancel(message: WorkshopMemoryDraftCancelMessage): Promise<void> {
+    const requestId = idOf(message.payload?.requestId);
+    if (requestId !== undefined && this.inFlight?.requestId === requestId) {
+      this.log(`request ${requestId} cancelled`);
+      this.inFlight.controller.abort();
+      this.inFlight = undefined;
+    }
+  }
+
+  async handleRequestSetting(): Promise<void> {
+    void this.postMessage(workshopMemoryDraftsSettingMessage(this.ports.settings));
   }
 
   async handleDraftRequest(message: WorkshopMemoryDraftRequestMessage): Promise<void> {
@@ -101,20 +145,22 @@ export class WorkshopMemoryDraftHandler {
       this.answer(requestId, 'refused', 'malformed');
       return;
     }
-    const enabled = coerceWorkshopMemoryHelperDrafts(
-      this.ports.settings.get<unknown>(WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING.section, WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING.key)
-    );
-    if (!enabled) {
+    if (!helperDraftsEnabled(this.ports.settings)) {
       this.answer(requestId, 'off');
       return;
     }
-    this.inFlight?.abort();
+    this.inFlight?.controller.abort();
     const controller = new AbortController();
-    this.inFlight = controller;
+    const owner = { requestId, controller };
+    this.inFlight = owner;
     try {
       const turn = sessionId === undefined
         ? this.liveTurn(turnId, payload.roomRevision, roomRevision)
-        : await this.savedTurn(sessionId, turnId);
+        : await this.savedTurn(sessionId, turnId, roomRevision);
+      if (controller.signal.aborted) {
+        this.log(`request ${requestId} stopped before it was sent`);
+        return;
+      }
       if (typeof turn === 'string') {
         this.answer(requestId, 'refused', turn);
         return;
@@ -123,12 +169,19 @@ export class WorkshopMemoryDraftHandler {
         text: workshopMemoryNoteFromTurn(turn.content),
         source: turn.kind === 'writer' ? 'writer' : 'persona'
       }, { signal: controller.signal });
+      // Stopped by the host (cancel, a newer request, disposal): the sheet no longer waits.
+      if (controller.signal.aborted) {
+        this.log(`request ${requestId} stopped`);
+        return;
+      }
       this.answerResult(requestId, result);
     } catch (error) {
       this.log(`request ${requestId} failed: ${error instanceof Error ? error.name : 'error'}`);
-      this.answer(requestId, 'failed');
+      if (!controller.signal.aborted) {
+        this.answer(requestId, 'failed');
+      }
     } finally {
-      if (this.inFlight === controller) {
+      if (this.inFlight === owner) {
         this.inFlight = undefined;
       }
     }
@@ -137,7 +190,7 @@ export class WorkshopMemoryDraftHandler {
   /** A turn of the open room, by the room it was asked in; a reason when it can't be read. */
   private liveTurn(turnId: string, askedIn: number | undefined, current: number): WorkshopTurnPreview | string {
     if (askedIn !== undefined && askedIn !== current) {
-      return 'room-changed';
+      return REFUSED_ROOM_CHANGED;
     }
     const turn = this.room.readRoomLedger().find((candidate) => candidate.id === turnId);
     if (!turn || !isWorkshopBookmarkableTurn(turn)) {
@@ -146,9 +199,16 @@ export class WorkshopMemoryDraftHandler {
     return workshopTurnPreview(turn) ?? 'not-eligible';
   }
 
-  /** A saved session's turn, through recall alone; a reason when it can't be read. */
-  private async savedTurn(sessionId: string, turnId: string): Promise<WorkshopTurnPreview | string> {
+  /**
+   * A saved session's turn, through recall alone; a reason when it can't be
+   * read, or when the room changed while it was read (the session may be
+   * the open one now).
+   */
+  private async savedTurn(sessionId: string, turnId: string, askedIn: number): Promise<WorkshopTurnPreview | string> {
     const found = await this.recall.savedTurn(sessionId, turnId);
+    if (this.room.readRoomRevision() !== askedIn) {
+      return REFUSED_ROOM_CHANGED;
+    }
     if ('available' in found) {
       return found.reason;
     }

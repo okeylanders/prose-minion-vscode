@@ -10,7 +10,9 @@
  *   another sheet's, or one for a sheet closed or reopened since is not;
  * - fields the writer touched are kept, and the body never changes;
  * - any outcome but a draft leaves the fields as they were, with the quiet
- *   line. *Alice*.
+ *   line; `off`, and the setting off, are silence (D5.7);
+ * - Close, Save, another opening and unmount stop a draft still out
+ *   (A-05), and a live request names its room (A-02). *Alice*.
  */
 
 import { act, renderHook } from '@testing-library/react';
@@ -50,10 +52,15 @@ const answer = (requestId: unknown, outcome: WorkshopMemoryDraftOutcome = 'draft
 
 describe('useWorkshopProjectMemory — the helper\'s draft', () => {
   let vscode: ReturnType<typeof createMockVSCode>;
-  const requests = () => vscode.postMessage.mock.calls
+  const postedOf = (type: MessageType) => vscode.postMessage.mock.calls
     .map(([message]: [{ type: MessageType; payload: Record<string, unknown> }]) => message)
-    .filter((message) => message.type === MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST)
+    .filter((message) => message.type === type)
     .map((message) => message.payload);
+  const requests = () => postedOf(MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST);
+  const cancels = () => postedOf(MessageType.WORKSHOP_MEMORY_DRAFT_CANCEL);
+  const setting = (enabled: boolean) => ({
+    type: MessageType.WORKSHOP_MEMORY_DRAFTS_SETTING, source: 'extension.workshop', payload: { enabled }, timestamp: 8
+  }) as never;
 
   beforeEach(() => {
     jest.useFakeTimers();
@@ -135,7 +142,7 @@ describe('useWorkshopProjectMemory — the helper\'s draft', () => {
     expect(hook.current.sheet?.draft.title).toBe('Alice decides');
   });
 
-  it.each(['off', 'unconfigured', 'refused', 'failed', 'malformed'] as const)(
+  it.each(['unconfigured', 'refused', 'failed', 'malformed'] as const)(
     'leaves the sheet as it was on %s, with the quiet line',
     (outcome) => {
       const { result: hook } = renderHook(() => useWorkshopProjectMemory());
@@ -148,14 +155,119 @@ describe('useWorkshopProjectMemory — the helper\'s draft', () => {
     }
   );
 
-  it('keeps Save available while it drafts, and fills nothing into a sheet already saving', () => {
+  it('reads an `off` answer (the setting changed meanwhile) as silence: no line', () => {
     const { result: hook } = renderHook(() => useWorkshopProjectMemory());
     act(() => hook.current.saveTurn(turn));
+    act(() => hook.current.handleMemoryDraftResult(answer(requests()[0].requestId, 'off')));
+    expect(hook.current.sheet?.helper?.status).toBe('stopped');
+    expect(hook.current.sheet?.draft).toMatchObject({ title: '', summary: '' });
+  });
+
+  it('Save freezes the fields: it stops the draft, tells the host, and a late answer changes nothing (A-02)', () => {
+    const { result: hook } = renderHook(() => useWorkshopProjectMemory());
+    act(() => hook.current.saveTurn(turn));
+    const asked = requests()[0].requestId;
     act(() => hook.current.updateDraft({ title: 'Alice saves first', summary: 'Before the draft.' }));
     act(() => hook.current.submitSheet());
     expect(hook.current.sheet?.saving).toBe(true);
+    expect(hook.current.sheet?.helper?.status).toBe('stopped');
+    expect(cancels()).toEqual([{ requestId: asked }]);
+    const submitted = postedOf(MessageType.WORKSHOP_SAVE_TURN_TO_MEMORY)[0].draft;
+    act(() => hook.current.handleMemoryDraftResult(answer(asked)));
+    expect(hook.current.sheet?.draft).toEqual(submitted);
+  });
+
+  it('a successful Save closes the sheet; its late answer changes nothing', () => {
+    const { result: hook } = renderHook(() => useWorkshopProjectMemory());
+    act(() => hook.current.saveTurn(turn));
+    const asked = requests()[0].requestId;
+    act(() => hook.current.updateDraft({ title: 'Alice saves', summary: 'Saved.' }));
+    act(() => hook.current.submitSheet());
+    const saveId = postedOf(MessageType.WORKSHOP_SAVE_TURN_TO_MEMORY)[0].requestId;
+    act(() => hook.current.handleWriteResult({
+      type: MessageType.WORKSHOP_MEMORY_WRITE_RESULT, source: 'extension.workshop', payload: { requestId: saveId, ok: true }, timestamp: 3
+    } as never));
+    expect(hook.current.sheet).toBeNull();
+    act(() => hook.current.handleMemoryDraftResult(answer(asked)));
+    expect(hook.current.sheet).toBeNull();
+  });
+
+  it('stops a draft still out on Close, on another opening, on a switch to New, and on unmount (A-05)', () => {
+    const { result: hook, unmount } = renderHook(() => useWorkshopProjectMemory());
+    act(() => hook.current.saveTurn(turn));
+    act(() => hook.current.closeSheet());
+    act(() => hook.current.saveTurn(turn));
+    act(() => hook.current.saveTurn(other));
+    act(() => hook.current.newMemory());
+    act(() => hook.current.saveTurn(turn));
+    unmount();
+    const asked = requests().map((request) => request.requestId);
+    expect(asked).toHaveLength(4);
+    expect(new Set(asked).size).toBe(4);
+    expect(cancels().map((cancel) => cancel.requestId)).toEqual(asked);
+  });
+
+  it('stops nothing that already answered', () => {
+    const { result: hook } = renderHook(() => useWorkshopProjectMemory());
+    act(() => hook.current.saveTurn(turn));
     act(() => hook.current.handleMemoryDraftResult(answer(requests()[0].requestId)));
-    expect(hook.current.sheet?.draft).toMatchObject({ title: 'Alice saves first', summary: 'Before the draft.' });
+    act(() => hook.current.closeSheet());
+    expect(cancels()).toEqual([]);
+  });
+
+  it('asks the host whether drafting is on once mounted; off, a sheet asks for nothing and shows nothing (D5.7)', () => {
+    const { result: hook } = renderHook(() => useWorkshopProjectMemory());
+    expect(postedOf(MessageType.WORKSHOP_REQUEST_MEMORY_DRAFTS_SETTING)).toHaveLength(1);
+    act(() => hook.current.handleMemoryDraftsSetting(setting(false)));
+    act(() => hook.current.saveTurn(turn));
+    act(() => hook.current.closeSheet());
+    act(() => hook.current.rememberSavedBookmark({ sessionId: 'saved-alice', sessionTitle: 'Down the hole', turnId: turn.id, message: saved }));
+    expect(requests()).toEqual([]);
+    expect(cancels()).toEqual([]);
+    expect(hook.current.sheet?.helper).toBeUndefined();
+
+    // Turned back on, the next opening asks again.
+    act(() => hook.current.closeSheet());
+    act(() => hook.current.handleMemoryDraftsSetting(setting(true)));
+    act(() => hook.current.saveTurn(turn));
+    expect(requests()).toHaveLength(1);
+  });
+
+  it('names the open room on a live turn\'s request, and the bookmark\'s own room outside the window (A-02)', () => {
+    const { result: hook, rerender } = renderHook(({ roomRevision }) => useWorkshopProjectMemory({ roomRevision }), { initialProps: { roomRevision: 3 } });
+    act(() => hook.current.saveTurn(turn));
+    expect(requests()[0]).toEqual({ requestId: expect.any(String), turnId: turn.id, roomRevision: 3 });
+    act(() => hook.current.closeSheet());
+    rerender({ roomRevision: 4 });
+    act(() => hook.current.saveTurn(turn));
+    expect(requests()[1].roomRevision).toBe(4);
+    act(() => hook.current.closeSheet());
+    act(() => hook.current.rememberRoomBookmark({ turnId: turn.id, roomRevision: 2, message: saved }));
+    expect(requests()[2].roomRevision).toBe(2);
+  });
+
+  it('applies the answer to the sheet as it is when it lands: typing in the same moment wins (A-03)', () => {
+    const { result: hook } = renderHook(() => useWorkshopProjectMemory());
+    act(() => hook.current.saveTurn(turn));
+    act(() => {
+      hook.current.updateDraft({ title: 'Alice types' });
+      hook.current.handleMemoryDraftResult(answer(requests()[0].requestId));
+    });
+    expect(hook.current.sheet?.draft).toMatchObject({ title: 'Alice types', summary: DRAFT.summary, kind: DRAFT.kind });
+  });
+
+  it('counts a kind set back to its default as touched, and changes no supersession, pin or source (A-03)', () => {
+    const { result: hook } = renderHook(() => useWorkshopProjectMemory());
+    act(() => hook.current.saveTurn(turn));
+    const before = hook.current.sheet!;
+    act(() => hook.current.updateDraft({ kind: 'idea' }));
+    act(() => hook.current.updateDraft({ kind: before.draft.kind }));
+    act(() => hook.current.handleMemoryDraftResult(answer(requests()[0].requestId)));
+    const after = hook.current.sheet!;
+    expect(after.draft.kind).toBe(before.draft.kind);
+    expect(after.helper?.touched).toEqual(['kind']);
+    expect({ supersedes: after.draft.supersedes, pinned: after.draft.pinned, turnId: after.turnId, mode: after.mode, sourceLabel: after.sourceLabel })
+      .toEqual({ supersedes: before.draft.supersedes, pinned: before.draft.pinned, turnId: before.turnId, mode: before.mode, sourceLabel: before.sourceLabel });
   });
 
   it('a card\'s Edit…, a saved memory\'s edit and New ask for nothing', () => {

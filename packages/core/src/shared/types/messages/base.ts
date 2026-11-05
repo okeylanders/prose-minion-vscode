@@ -181,6 +181,9 @@ export enum MessageType {
   // The helper's draft of a memory's title, summary and kind (Helper Agent Slice 2)
   WORKSHOP_MEMORY_DRAFT_REQUEST = 'workshop_memory_draft_request',
   WORKSHOP_MEMORY_DRAFT_RESULT = 'workshop_memory_draft_result',
+  WORKSHOP_MEMORY_DRAFT_CANCEL = 'workshop_memory_draft_cancel',
+  WORKSHOP_REQUEST_MEMORY_DRAFTS_SETTING = 'workshop_request_memory_drafts_setting',
+  WORKSHOP_MEMORY_DRAFTS_SETTING = 'workshop_memory_drafts_setting',
   // Workshop Project Memory: the manager (epic Slice 4b)
   WORKSHOP_MEMORY_LIST = 'workshop_memory_list',
   WORKSHOP_MEMORY_LISTING = 'workshop_memory_listing',
