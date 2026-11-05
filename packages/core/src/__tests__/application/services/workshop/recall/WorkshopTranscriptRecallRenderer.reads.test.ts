@@ -63,6 +63,7 @@ const read = (document: WorkshopRecallDocument, ranges?: WorkshopRecallTurnRange
       ...(entries.length > 0 ? { firstTurnId: entries[0].turnId, lastTurnId: entries.at(-1)!.turnId } : {})
     };
   }),
+  bookmarks: document.bookmarks,
   cacheHit: false
 });
 

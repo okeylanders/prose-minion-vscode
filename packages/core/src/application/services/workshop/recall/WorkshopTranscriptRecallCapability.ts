@@ -20,6 +20,7 @@ import { runWorkshopRecallCatalog } from '@/application/services/workshop/recall
 import { runWorkshopRecallSearch } from '@/application/services/workshop/recall/WorkshopRecallSearchOperation';
 import { WorkshopRecallReadOperation } from '@/application/services/workshop/recall/WorkshopRecallReadOperation';
 import { runWorkshopRecallTodos } from '@/application/services/workshop/recall/WorkshopRecallTodosOperation';
+import { runWorkshopRecallBookmarks } from '@/application/services/workshop/recall/WorkshopRecallBookmarksOperation';
 import {
   assertNeverRecallValue,
   throwIfRecallTurnAborted,
@@ -30,8 +31,8 @@ import {
 
 export type { WorkshopTranscriptRecallTurnContext } from '@/application/services/workshop/recall/WorkshopRecallOperationResults';
 
-/** The service's four questions; satisfied by WorkshopTranscriptRecallService. */
-export type WorkshopTranscriptRecallPort = Pick<WorkshopTranscriptRecallService, 'catalog' | 'search' | 'read' | 'todos'>;
+/** The service's five questions; satisfied by WorkshopTranscriptRecallService. */
+export type WorkshopTranscriptRecallPort = Pick<WorkshopTranscriptRecallService, 'catalog' | 'search' | 'read' | 'todos' | 'bookmarks'>;
 
 export class WorkshopTranscriptRecallCapability {
   private readonly sources = new WeakMap<WorkshopCapabilityResult, readonly CapabilityDeliveredSource[]>();
@@ -59,6 +60,8 @@ export class WorkshopTranscriptRecallCapability {
         return this.recorded(await this.reads.run(request, window));
       case 'transcript.todos':
         return this.recorded(await runWorkshopRecallTodos(this.recall, this.context, request));
+      case 'transcript.bookmarks':
+        return this.recorded(await runWorkshopRecallBookmarks(this.recall, this.context, request, window));
       default:
         return assertNeverRecallValue(request);
     }

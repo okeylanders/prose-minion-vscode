@@ -51,6 +51,7 @@ import {
   WorkshopSessionStore,
   WorkshopSessionPersistenceCoordinator,
   WorkshopTranscriptRecallService,
+  WorkshopLiveRoomBookmarkReader,
   ProjectMemoryStore,
   ProjectMemoryLibrary,
   WorkshopTranscriptExportService,
@@ -366,11 +367,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // store's read-only methods; the coordinator tells it which room is live
   // and whether the workspace still holds (ADR 2026-10-05 §2, §9). Only the
   // persona capability factory consumes it, so it needs no CoreServices
-  // field and no route.
+  // field and no route. Its bookmarks operation alone also reads the open
+  // room's bookmarks, through a read-only port over the session's full
+  // ledger, in the room's own timezone (ADR 2026-11-05 D1).
   const workshopTranscriptRecallService = new WorkshopTranscriptRecallService(
     workshopSessionStore,
     workshopSessionPersistenceCoordinator,
-    outputChannel
+    outputChannel,
+    {
+      liveRoom: new WorkshopLiveRoomBookmarkReader(
+        workshopSessionService,
+        () => workshopSessionTimeService.exportState().timezone
+      )
+    }
   );
   // Project memory (ADR 2026-11-04 D10, D13): one store, then the one
   // library, from the coordinator's accepted workspace and recall's

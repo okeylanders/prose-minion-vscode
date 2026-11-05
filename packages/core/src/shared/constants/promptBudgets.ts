@@ -81,6 +81,20 @@ export interface PromptBudgets {
     /** The rendered list's hard cap; the renderer takes it as an overridable option. */
     todoCharacters: number;
     todoMatchCharacters: number;
+    /**
+     * `transcript.bookmarks` (ADR 2026-11-05 D3): the largest `<recent>`,
+     * the most `<session>` fields, the bookmarks one list shows, the list's
+     * hard cap (the context-window clamp may lower it), one message's cap and
+     * the window `<bookmark>` reads it in, the query's length, and the
+     * largest `<from>`; the message's own length bounds it again.
+     */
+    bookmarkSessions: number;
+    bookmarkSessionsNamed: number;
+    bookmarkItems: number;
+    bookmarkCharacters: number;
+    bookmarkMessageCharacters: number;
+    bookmarkQueryCharacters: number;
+    bookmarkFromMax: number;
   }>;
   /**
    * Workshop Project Memory (ADR 2026-11-04 D11): the memory fields' bounds
@@ -538,7 +552,14 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     todoSessions: 50,
     todoItems: 60,
     todoCharacters: 16_000,
-    todoMatchCharacters: 200
+    todoMatchCharacters: 200,
+    bookmarkSessions: 50,
+    bookmarkSessionsNamed: 10,
+    bookmarkItems: 60,
+    bookmarkCharacters: 24_000,
+    bookmarkMessageCharacters: 4_000,
+    bookmarkQueryCharacters: 200,
+    bookmarkFromMax: 999_999
   },
   workshopProjectMemory: {
     titleCharacters: 120,

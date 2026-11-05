@@ -218,7 +218,8 @@ describe('each transcript.* operation, request to result', () => {
       catalog: async () => unavailable,
       search: async () => unavailable,
       read: async () => unavailable,
-      todos: async () => unavailable
+      todos: async () => unavailable,
+      bookmarks: async () => unavailable
     };
     const capability = capabilityOver(recall);
 
@@ -226,7 +227,8 @@ describe('each transcript.* operation, request to result', () => {
       { capability: 'transcript.catalog' },
       { capability: 'transcript.search', query: 'tide' },
       read('any'),
-      { capability: 'transcript.todos' }
+      { capability: 'transcript.todos' },
+      { capability: 'transcript.bookmarks' }
     ] as WorkshopTranscriptRecallRequest[]) {
       const result = await capability.fulfill(request);
       expect(result).toMatchObject({ status: 'failed', metadata: { outcome: 'unavailable', unavailableReason: 'workspace-changed' } });
@@ -525,6 +527,7 @@ describe('cancellation', () => {
       catalog: service.catalog.bind(service),
       search: service.search.bind(service),
       todos: service.todos.bind(service),
+      bookmarks: service.bookmarks.bind(service),
       read: async (request, signal) => {
         const result = await service.read(request, signal);
         during.abort();
@@ -541,6 +544,7 @@ describe('cancellation', () => {
       catalog: service.catalog.bind(service),
       search: service.search.bind(service),
       read: service.read.bind(service),
+      bookmarks: service.bookmarks.bind(service),
       todos: async (request, signal) => {
         controller.abort();
         return service.todos(request, signal);

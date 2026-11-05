@@ -9,7 +9,8 @@
  *   prose names;
  * - the continuation and hint forms it teaches are exactly the forms the
  *   renderers emit over real saved sessions, both ways, and each followed as
- *   the prompt says decodes to the read it promises.
+ *   the prompt says decodes to the read it promises; bookmark forms too
+ *   (ADR 2026-11-05 D2), over a real bookmarked message.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -24,6 +25,10 @@ import type { WorkshopCapabilityInspection } from '@/application/services/worksh
 import type { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WORKSHOP_RECALL_READ_DETAILS, type WorkshopRecallReadDetail } from '@shared/types/workshopCapabilities';
 import { RECALL_ROOT, saveRecallRoom } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import {
+  renderWorkshopRecallBookmarkMessage,
+  renderWorkshopRecallBookmarks
+} from '@/application/services/workshop/recall/WorkshopRecallBookmarkList';
 
 const PROMPT = fs.readFileSync(path.resolve(__dirname,
   '../../../resources/system-prompts/workshop-personas/transcript-recall-capability.md'), 'utf8');
@@ -51,7 +56,16 @@ describe('session-recall prompt ↔ PROMPT_BUDGETS', () => {
     [/One read may name at most ([\d,]+) sessions/, [budgets.readSessions]],
     [/It takes at most ([\d,]+) ranges/, [budgets.turnRanges]],
     [/`<recent>` reads the newest N sessions that `<match>` and `<persona>` keep, at most ([\d,]+); without it, the newest ([\d,]+)\./,
-      [budgets.todoSessions, budgets.todoSessions]]
+      [budgets.todoSessions, budgets.todoSessions]],
+    // transcript.bookmarks (ADR 2026-11-05 D3).
+    [/`<recent>` reads the newest N saved sessions, at most ([\d,]+); without it, the newest ([\d,]+)\./,
+      [budgets.bookmarkSessions, budgets.bookmarkSessions]],
+    [/`<session>` may be repeated to name at most ([\d,]+) sessions/, [budgets.bookmarkSessionsNamed]],
+    [/it holds at most ([\d,]+) characters\./, [budgets.bookmarkQueryCharacters]],
+    [/One list shows at most ([\d,]+) bookmarks in at most ([\d,]+) characters/, [budgets.bookmarkItems, budgets.bookmarkCharacters]],
+    [/A message longer than ([\d,]+) characters is cut/, [budgets.bookmarkMessageCharacters]],
+    [/`<from>` is the character to start from, at most ([\d,]+);/, [budgets.bookmarkFromMax]],
+    [/Each read shows at most ([\d,]+) characters and ends with a continuation/, [budgets.bookmarkMessageCharacters]]
   ];
 
   it.each(pinned)('quotes %s from PROMPT_BUDGETS', (pattern, expected) => {
@@ -89,12 +103,26 @@ describe('session-recall prompt examples, through the real codec', () => {
       request: { capability: 'transcript.read', sessions: [{ sessionId: A, turns: [{ from: 1, to: 30 }] }, { sessionId: B }] }
     },
     { kind: 'request', request: { capability: 'transcript.todos', status: 'open', recent: 5, match: '6.7' } },
+    {
+      kind: 'request',
+      request: { capability: 'transcript.bookmarks', scope: 'all', query: 'lighthouse', since: '2026-10-01', until: '2026-11-04' }
+    },
+    {
+      kind: 'request',
+      request: {
+        capability: 'transcript.bookmarks',
+        bookmark: { source: 'saved', sessionId: A, bookmarkId: 'bookmark-3-1759334400000' },
+        from: 4000
+      }
+    },
     { kind: 'invalid', reason: 'duplicate-session', field: 'session', operation: 'transcript.read' },
     {
       kind: 'request',
       request: { capability: 'transcript.read', sessions: [{ sessionId: A, turns: [{ from: 12, to: 12 }, { from: 15, to: 15 }] }], detail: 'full' }
     },
-    { kind: 'invalid', reason: 'conflicting-detail', field: 'detail', operation: 'transcript.read' }
+    { kind: 'invalid', reason: 'conflicting-detail', field: 'detail', operation: 'transcript.read' },
+    // One call reads one bookmark, so two hints written together are refused.
+    { kind: 'invalid', reason: 'duplicate-field', field: 'bookmark', operation: 'transcript.bookmarks' }
   ];
 
   it('shows exactly the examples this test decodes', () => {
@@ -143,7 +171,9 @@ describe('session-recall prompt hints, against the renderers', () => {
    * the prompt quotes them, without a closing period.
    */
   const taught = [...PROMPT.matchAll(/^- `((?:Continue with|read it in full with|Read around a hit)[^`]*?)\.?`/gm)]
-    .map(([, form]) => form);
+    .map(([, form]) => form)
+    // A bookmark's forms are held to the bookmark renderer below.
+    .filter((form) => !form.includes('<bookmark>'));
 
   /** A taught form as a whole-line pattern: any session id, any turn numbers. */
   const pattern = (form: string): RegExp => new RegExp(`^${
@@ -260,4 +290,80 @@ describe('session-recall prompt hints, against the renderers', () => {
         .toMatchObject({ kind: 'request', request: { sessions: [expect.anything(), expect.anything()], detail } });
     }
   );
+});
+
+describe('session-recall prompt bookmark forms, against the bookmark renderer (ADR 2026-11-05 D2)', () => {
+  /** The bookmark forms the prompt quotes, without a closing period. */
+  const taught = [...PROMPT.matchAll(/^- `((?:Continue with|read the rest with) <bookmark>[^`]*?)\.?`/gm)].map(([, form]) => form);
+  const pattern = (form: string): RegExp => new RegExp(`^${
+    form
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/<bookmark>[^<]+<\/bookmark>/, '<bookmark>(?:current@)?[A-Za-z0-9._:-]+/bookmark-\\d+-\\d+</bookmark>')
+      .replace(/<from>\d+<\/from>/, '<from>\\d+</from>')
+  }$`);
+
+  let emitted: string[];
+  let refs: string[];
+
+  beforeAll(async () => {
+    const saved = await saveRecallRoom('Long bookmark', (session) => {
+      session.setSessionScope('open');
+      session.beginPersonaMessage('long-1', 'Tell me everything about the lighthouse.');
+      session.completeRun('long-1', `Alice rows out. ${'The keeper climbs the stair. '.repeat(400)}`, undefined, false, 'host-conversation');
+      const reply = session.readRoomLedger().at(-1)!;
+      session.setTurnBookmark(reply.id, true);
+    });
+    const recall = new WorkshopTranscriptRecallService(saved.store, saved.coordinator, saved.log);
+    const now = Date.parse('2026-10-06T12:00:00.000Z');
+    const list = await recall.bookmarks({ scope: 'saved' });
+    const listed = renderWorkshopRecallBookmarks(list, { now }).content;
+    const ref = list.available && list.outcome === 'bookmarks' ? list.groups[0].bookmarks[0].ref : undefined;
+    const one = await recall.bookmarks({ bookmark: ref!, from: 0 });
+    const window = one.available && one.outcome === 'bookmark' ? renderWorkshopRecallBookmarkMessage(one, { now }).content : '';
+    emitted = [listed, window].flatMap((output) => [
+      ...output.matchAll(/read the rest with <bookmark>[^<]*<\/bookmark> <from>\d+<\/from>/g),
+      ...output.matchAll(/Continue with <bookmark>[^<]*<\/bookmark> <from>\d+<\/from>/g)
+    ].map(([form]) => form));
+    refs = emitted.map((form) => /<bookmark>([^<]+)<\/bookmark>/.exec(form)![1]);
+  });
+
+  it('teaches two forms, and the renderers emit both', () => {
+    expect(taught).toHaveLength(2);
+    expect(emitted).toHaveLength(2);
+  });
+
+  it('teaches exactly the forms the renderers emit, both ways', () => {
+    for (const form of taught) {
+      expect(emitted.some((line) => pattern(form).test(line))).toBe(true);
+    }
+    for (const line of emitted) {
+      expect(taught.some((form) => pattern(form).test(line))).toBe(true);
+    }
+  });
+
+  it('decodes each taught and each emitted form, as written, to the one-bookmark read it promises', () => {
+    const fragment = (form: string): string => form.replace(/^(Continue with|read the rest with) /, '');
+    const bookmarks = (body: string) => codec.inspect(`<prose-minion-tool-call name="transcript.bookmarks">${body}</prose-minion-tool-call>`);
+    expect(taught.map((form) => bookmarks(fragment(form)))).toEqual([
+      {
+        kind: 'request',
+        request: { capability: 'transcript.bookmarks', bookmark: { source: 'saved', sessionId: A, bookmarkId: 'bookmark-3-1759334400000' }, from: 4000 }
+      },
+      {
+        kind: 'request',
+        request: { capability: 'transcript.bookmarks', bookmark: { source: 'saved', sessionId: A, bookmarkId: 'bookmark-3-1759334400000' }, from: 8000 }
+      }
+    ]);
+    for (const [index, line] of emitted.entries()) {
+      expect(bookmarks(fragment(line))).toMatchObject({
+        kind: 'request',
+        request: { capability: 'transcript.bookmarks', bookmark: { source: 'saved' }, from: budgets.bookmarkMessageCharacters }
+      });
+      expect(refs[index]).toBe(refs[0]);
+    }
+    // Followed together, two hints are one call reading two bookmarks: refused, as the prompt says.
+    expect(bookmarks(emitted.map(fragment).join(' '))).toEqual({
+      kind: 'invalid', reason: 'duplicate-field', field: 'bookmark', operation: 'transcript.bookmarks'
+    });
+  });
 });

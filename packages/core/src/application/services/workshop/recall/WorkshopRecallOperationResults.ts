@@ -8,6 +8,7 @@
 import type { WorkshopPersonaId } from '@messages';
 import type { CapabilityDeliveredSource } from '@orchestration/AgentRunContracts';
 import type {
+  WorkshopCapabilityPrincipal,
   WorkshopCapabilityResult,
   WorkshopTranscriptRecallRequest
 } from '@shared/types/workshopCapabilities';
@@ -17,6 +18,11 @@ import { formatWorkshopRecallTurnRanges } from '@/application/services/workshop/
 export interface WorkshopTranscriptRecallTurnContext {
   readonly requestId: string;
   readonly personaId: WorkshopPersonaId;
+  /**
+   * Whose conversation the turn is: what the open room's bookmarks are
+   * filtered by (ADR 2026-11-05 D1). Absent, only what the whole room sees.
+   */
+  readonly owner?: WorkshopCapabilityPrincipal;
   readonly signal: AbortSignal;
 }
 

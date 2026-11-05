@@ -16,6 +16,11 @@
  * excerpt version. A finding's key and original text, and a writer edit's
  * original wording, are never copied in.
  *
+ * Bookmarks are the writer's (ADR 2026-11-05 D5), copied field by field
+ * with their turn's position, their label as the thread shows it, and who
+ * said the turn (WorkshopRecallBookmarks). A read marks the turns they
+ * name; `transcript.bookmarks` lists them.
+ *
  * Pure: the caller supplies an already-decoded session.
  */
 
@@ -33,6 +38,10 @@ import {
   WorkshopTranscriptEntry
 } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
+import {
+  WorkshopRecallBookmark,
+  workshopRecallBookmarks
+} from '@/application/services/workshop/recall/WorkshopRecallBookmarks';
 
 export interface WorkshopRecallHeader {
   readonly sessionId: string;
@@ -112,6 +121,8 @@ export interface WorkshopRecallDocument {
   readonly entries: readonly WorkshopRecallEntry[];
   /** The writer's to-do list, in the session's own order. */
   readonly todos: readonly WorkshopRecallTodo[];
+  /** The writer's bookmarks, in thread order. */
+  readonly bookmarks: readonly WorkshopRecallBookmark[];
   /**
    * An upper bound on the text this document retains, in UTF-16 code units
    * (cache bounding): every string it holds, citation URLs and labels
@@ -142,10 +153,11 @@ export function buildWorkshopRecallDocument(
     }
   });
   const todos = session.workshop.todos.map((todo) => recallTodo(todo, positions, header.excerptVersion));
+  const bookmarks = workshopRecallBookmarks(session.workshop.turns, session.workshop.bookmarks ?? []);
   // Serializing counts every retained string, including fields added later;
   // its quotes and keys only make the bound more conservative.
-  const characters = JSON.stringify({ header, entries, todos }).length;
-  return { header, updatedAt: session.updatedAt, entries, todos, characters };
+  const characters = JSON.stringify({ header, entries, todos, bookmarks }).length;
+  return { header, updatedAt: session.updatedAt, entries, todos, bookmarks, characters };
 }
 
 /** Copies only what the writer sees in the sidebar, field by field (D5). */

@@ -155,6 +155,8 @@ export const WORKSHOP_TURN_ARTIFACTS = [
   'transcript_search',
   'transcript_read',
   'transcript_todos',
+  // ADR 2026-11-05 D6: forward-only, as Wayfinding D9 was.
+  'transcript_bookmarks',
   'memory_catalog',
   'memory_search',
   'memory_read',

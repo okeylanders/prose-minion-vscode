@@ -61,6 +61,13 @@ export type WorkshopCapabilityRejectionReason =
   | 'invalid-status'
   | 'invalid-recent'
   | 'conflicting-session-selection'
+  // Bookmark recall (ADR 2026-11-05 D2).
+  | 'invalid-scope'
+  | 'conflicting-scope'
+  | 'unknown-speaker'
+  | 'invalid-date'
+  | 'invalid-bookmark-ref'
+  | 'invalid-from'
   // Project memory (WorkshopProjectMemoryXmlCodec).
   | 'invalid-kind'
   | 'invalid-memory-id'
@@ -196,6 +203,8 @@ export class WorkshopCapabilityXmlCodec {
       case 'transcript.search':
       case 'transcript.read':
       case 'transcript.todos':
+      // By hand too: without this case, the operation falls to `unknown-capability`.
+      case 'transcript.bookmarks':
         return inspectWorkshopTranscriptRecallCall(operation, document);
       // The family's codec, by hand: this switch has no `never` guard (ADR 2026-11-04 D12).
       case 'memory.catalog':

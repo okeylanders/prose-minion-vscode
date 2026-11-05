@@ -24,6 +24,7 @@ export const WORKSHOP_CAPABILITY_OPERATIONS = [
   'transcript.search',
   'transcript.read',
   'transcript.todos',
+  'transcript.bookmarks',
   'memory.catalog',
   'memory.search',
   'memory.read'
@@ -60,6 +61,7 @@ export function workshopCapabilityFamily(
     case 'transcript.search':
     case 'transcript.read':
     case 'transcript.todos':
+    case 'transcript.bookmarks':
       return 'transcript';
     case 'memory.catalog':
     case 'memory.search':
@@ -87,6 +89,43 @@ export const WORKSHOP_RECALL_TODO_STATUS_FILTERS =
 
 /** `<source>` on `transcript.todos`: a tool id or a persona id. The two closed lists share no id. */
 export type WorkshopRecallTodoSourceId = WorkshopToolId | WorkshopPersonaId;
+
+/**
+ * `<scope>` on `transcript.bookmarks` (ADR 2026-11-05 D2): the open room
+ * only, saved sessions only, or both, the open room first.
+ */
+export const WORKSHOP_RECALL_BOOKMARK_SCOPES = ['current', 'saved', 'all'] as const;
+export type WorkshopRecallBookmarkScope = (typeof WORKSHOP_RECALL_BOOKMARK_SCOPES)[number];
+
+/**
+ * `<speaker>` on `transcript.bookmarks`: who said the bookmarked turn. Tool
+ * ids, persona ids and `writer` share no word.
+ */
+export type WorkshopRecallBookmarkSpeakerId = WorkshopToolId | WorkshopPersonaId | 'writer';
+
+/**
+ * A bookmark named with the session that holds it (ADR 2026-11-05 D2, PR
+ * #214 F-07): bookmark ids are unique only within one session.
+ * `current@{liveSessionId}/{bookmarkId}` names the open room, and only
+ * while that room is open; `{sessionId}/{bookmarkId}` names a saved one.
+ */
+export type WorkshopRecallBookmarkRef =
+  | { source: 'current'; liveSessionId: string; bookmarkId: string }
+  | { source: 'saved'; sessionId: string; bookmarkId: string };
+
+/** The ref as rows show it and `<bookmark>` takes it. */
+export function formatWorkshopRecallBookmarkRef(ref: WorkshopRecallBookmarkRef): string {
+  return ref.source === 'current'
+    ? `current@${ref.liveSessionId}/${ref.bookmarkId}`
+    : `${ref.sessionId}/${ref.bookmarkId}`;
+}
+
+/**
+ * The metadata key a capability result carries when its body must never
+ * be published to the room (ADR 2026-11-05 D7, PR #214 F-05). Its value is
+ * the reason, by id; the room's audience policy reads it.
+ */
+export const WORKSHOP_CAPABILITY_PUBLICATION_WITHHELD = 'publicationWithheld';
 
 export type WorkshopAnalysisInputMode = 'inherit' | 'prepend' | 'replace' | 'omit';
 
@@ -191,6 +230,35 @@ export type WorkshopTranscriptTodosRequest = {
 );
 
 /**
+ * `transcript.bookmarks` (ADR 2026-11-05 D2): a list, or one bookmark's
+ * message in windows. `<recent>` and `<session>` are exclusive, and with
+ * `current` scope neither, nor `<match>` or `<persona>`, is allowed; the
+ * codec refuses each, and the type holds what is left. Dates are
+ * `YYYY-MM-DD` calendar days, `since` at most `until`.
+ */
+export type WorkshopTranscriptBookmarksRequest =
+  | {
+      capability: 'transcript.bookmarks';
+      bookmark: WorkshopRecallBookmarkRef;
+      /** A character offset in the bookmarked message. */
+      from?: number;
+    }
+  | ({
+      capability: 'transcript.bookmarks';
+      bookmark?: undefined;
+      scope?: WorkshopRecallBookmarkScope;
+      match?: string;
+      personaId?: WorkshopPersonaId;
+      query?: string;
+      speaker?: WorkshopRecallBookmarkSpeakerId;
+      since?: string;
+      until?: string;
+    } & (
+      | { recent?: number; sessionIds?: undefined }
+      | { sessionIds: string[]; recent?: undefined }
+    ));
+
+/**
  * Session recall's requests (ADR 2026-10-05 §1, D6, D8–D10), as the codec
  * validated them: every id has a safe shape, every persona is an id, and
  * every bound the prompt budgets set holds.
@@ -213,7 +281,8 @@ export type WorkshopTranscriptRecallRequest =
       sessions: WorkshopTranscriptReadSession[];
       detail?: WorkshopRecallReadDetail;
     }
-  | WorkshopTranscriptTodosRequest;
+  | WorkshopTranscriptTodosRequest
+  | WorkshopTranscriptBookmarksRequest;
 
 export type WorkshopCapabilityStatus =
   | 'success'

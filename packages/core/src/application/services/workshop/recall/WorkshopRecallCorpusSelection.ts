@@ -1,16 +1,22 @@
 /**
  * What one session-recall call selects: the recallable sessions in a
  * listing, the catalog rows, a read's sessions and their turn ranges
- * resolved against each document, and the to-dos a filter admits. Pure; the
- * service owns scope, reads, and the cache.
+ * resolved against each document, the to-dos a filter admits, and the
+ * bookmarks a `transcript.bookmarks` call reads and admits (ADR 2026-11-05
+ * D2). Pure; the service owns scope, reads, and the cache.
  */
 
 import type { WorkshopPersonaId } from '@messages';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
-import type {
+import {
+  normalizeWorkshopRecallText,
+  workshopRecallEntryText,
   WorkshopRecallDocument,
   WorkshopRecallTodo
 } from '@/application/services/workshop/recall/WorkshopRecallDocument';
+import type { WorkshopRecallBookmark } from '@/application/services/workshop/recall/WorkshopRecallBookmarks';
+import type { WorkshopRecallBookmarkFilters } from '@/application/services/workshop/recall/WorkshopRecallBookmarkResults';
+import { WorkshopRecallClock } from '@/application/services/workshop/recall/WorkshopRecallTime';
 import {
   matchWorkshopRecallSessions,
   parseWorkshopRecallQuery
@@ -178,6 +184,7 @@ export function readOfDocument(
     header: document.header,
     fromStart: planned.ranges === undefined,
     ranges: ranges.map((range) => resolveRange(document, range)),
+    bookmarks: document.bookmarks,
     cacheHit
   };
 }
@@ -294,6 +301,128 @@ export function selectWorkshopRecallTodos(
     kept,
     omitted: { omittedByItemLimit, notShownByStatus, notShownBySource, sessionsWithoutMatchingTodos }
   };
+}
+
+/** The saved sessions a `transcript.bookmarks` list reads, chosen from the listing alone. */
+export type WorkshopRecallBookmarkCandidates = WorkshopRecallTodoCandidates;
+
+/**
+ * Choose a bookmark list's saved sessions (ADR 2026-11-05 D2): the ones
+ * `<session>` names, else every recallable one, kept by `<persona>` and
+ * `<match>`, newest first, at most `<recent>` (else `bookmarkSessions`) of
+ * them read. An id outside the corpus is refused, as everywhere in recall.
+ * Throws on what the codec refuses first: a `<recent>` outside
+ * 1–`bookmarkSessions`, or both `<recent>` and `<session>`.
+ */
+export function bookmarkCandidates(
+  sessions: readonly WorkshopRecallSessionSummary[],
+  request: {
+    readonly sessionIds?: readonly string[];
+    readonly recent?: number;
+    readonly personaId?: WorkshopPersonaId;
+    readonly match?: string;
+  },
+  liveSessionId: string,
+  bookmarkSessions: number
+): WorkshopRecallBookmarkCandidates | { readonly unknown: WorkshopRecallUnknownSession } {
+  const { recent, sessionIds } = request;
+  if (recent !== undefined && (sessionIds !== undefined || !Number.isSafeInteger(recent) || recent < 1 || recent > bookmarkSessions)) {
+    throw new Error(`Invalid session-recall recent count ${recent}; it must be 1-${bookmarkSessions}, without a session.`);
+  }
+  let named = sessions;
+  if (sessionIds !== undefined) {
+    const unknown = sessionIds.find((sessionId) => !sessions.some((session) => session.sessionId === sessionId));
+    if (unknown !== undefined) {
+      return { unknown: unknownSession(unknown, liveSessionId) };
+    }
+    named = sessions.filter((session) => sessionIds.includes(session.sessionId));
+  }
+  const { sessions: candidates, match } = matchedSessions(withParticipant(named, request.personaId), request.match);
+  const sessionLimit = recent ?? bookmarkSessions;
+  return { candidates, scanned: candidates.slice(0, sessionLimit), sessionLimit, ...(match ? { match } : {}) };
+}
+
+/** One source's bookmarks, as a list call reads them: where they are, and the zone their days are in. */
+export interface WorkshopRecallBookmarkPool<T extends WorkshopRecallBookmark, S> {
+  readonly source: S;
+  readonly timezone: string;
+  readonly bookmarks: readonly T[];
+}
+
+export interface WorkshopRecallBookmarkSelection<T extends WorkshopRecallBookmark, S> {
+  /** Only pools with a bookmark to show, in the order given. */
+  readonly groups: Array<{ readonly source: S; readonly bookmarks: T[] }>;
+  readonly kept: number;
+  readonly seen: number;
+  readonly notShownByFilters: number;
+  readonly omittedByItemLimit: number;
+}
+
+/**
+ * Each pool's bookmarks the filters admit, in the order given, until
+ * `itemLimit` are kept: filtered, then bounded, so every one left out is
+ * counted by the rule that left it out.
+ */
+export function selectWorkshopRecallBookmarks<T extends WorkshopRecallBookmark, S>(
+  pools: ReadonlyArray<WorkshopRecallBookmarkPool<T, S>>,
+  filters: WorkshopRecallBookmarkFilters,
+  itemLimit: number
+): WorkshopRecallBookmarkSelection<T, S> {
+  const terms = filters.query === undefined ? undefined : normalizeWorkshopRecallText(filters.query).split(' ').filter(Boolean);
+  const groups: Array<{ source: S; bookmarks: T[] }> = [];
+  let kept = 0;
+  let seen = 0;
+  let notShownByFilters = 0;
+  let omittedByItemLimit = 0;
+  for (const pool of pools) {
+    const clock = new WorkshopRecallClock(pool.timezone);
+    const shown: T[] = [];
+    for (const bookmark of pool.bookmarks) {
+      seen += 1;
+      if (!bookmarkAdmitted(bookmark, filters, terms, clock)) {
+        notShownByFilters += 1;
+      } else if (kept >= itemLimit) {
+        omittedByItemLimit += 1;
+      } else {
+        shown.push(bookmark);
+        kept += 1;
+      }
+    }
+    if (shown.length > 0) {
+      groups.push({ source: pool.source, bookmarks: shown });
+    }
+  }
+  return { groups, kept, seen, notShownByFilters, omittedByItemLimit };
+}
+
+/**
+ * `<speaker>` by id; `<since>` and `<until>` by the calendar day the
+ * bookmark was made in its session's zone, `<until>` whole; `<query>`'s
+ * every word at the start of a word of the label or the message, as search
+ * matches. A query with no words admits nothing.
+ */
+function bookmarkAdmitted(
+  bookmark: WorkshopRecallBookmark,
+  filters: WorkshopRecallBookmarkFilters,
+  terms: readonly string[] | undefined,
+  clock: WorkshopRecallClock
+): boolean {
+  if (filters.speaker !== undefined && bookmark.speaker.id !== filters.speaker) {
+    return false;
+  }
+  if (filters.since !== undefined || filters.until !== undefined) {
+    const day = clock.day(bookmark.createdAt);
+    if (day === 'unknown' || (filters.since !== undefined && day < filters.since) || (filters.until !== undefined && day > filters.until)) {
+      return false;
+    }
+  }
+  if (terms !== undefined) {
+    const text = normalizeWorkshopRecallText(
+      [bookmark.displayLabel, bookmark.entry ? workshopRecallEntryText(bookmark.entry) : ''].join('\n')
+    ).split(' ');
+    return terms.length > 0 && terms.every((term) => text.some((word) => word.startsWith(term)));
+  }
+  return true;
 }
 
 /** The tool or persona a to-do came from. */

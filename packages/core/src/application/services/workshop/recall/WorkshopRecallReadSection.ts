@@ -138,7 +138,9 @@ export function prepareWorkshopRecallReadSection(
     };
   };
   const named = options.ordinal ? read.header.sessionId : undefined;
-  const pack = (room: number) => packWorkshopRecallReadWindow(read.ranges, read.header.timezone, room, options.detail, named);
+  // Each bookmarked turn's label, for its mark (ADR 2026-11-05 D5).
+  const marks = new Map(read.bookmarks.map((bookmark) => [bookmark.turnId, bookmark.displayLabel]));
+  const pack = (room: number) => packWorkshopRecallReadWindow(read.ranges, read.header.timezone, room, options.detail, named, marks);
   // Text that fits the read's budget packs whole within one character more,
   // and packing is greedy, so a window that holds every entry there is the
   // complete text. Otherwise the need is "more than the budget", and nothing

@@ -122,6 +122,7 @@ describe('a room that used session recall', () => {
       'PAST-REPLY: the keeper rows out at dawn.\n\n### Next steps\n- Draft the dawn crossing.'
     ]);
     session.addTodoFromFinding(pastReply.id, pastReply.actionableFindings![0].key);
+    session.setTurnBookmark(pastReply.id, true);
     const past = await coordinator.saveNamed('Lighthouse past');
     await coordinator.resetSession({ start: 'full-reset' });
 
@@ -132,6 +133,7 @@ describe('a room that used session recall', () => {
       call('transcript.search', '<query>keeper</query>'),
       call('transcript.read', `<session>${past.sessionId}</session>`),
       call('transcript.todos', '<status>all</status>'),
+      call('transcript.bookmarks', '<scope>saved</scope>'),
       'HOST-FINAL: the keeper rows out at dawn, as we decided.'
     ]);
     // A guest joins and reads the same session in its own conversation.
@@ -145,7 +147,7 @@ describe('a room that used session recall', () => {
 
     const hostBefore = manager.getContextSources(session.getHostConversationId());
     const guestBefore = manager.getContextSources(session.getPersonaGuestConversationId('cliff'));
-    expect(hostBefore.map((source) => source.kind)).toEqual(['transcript', 'transcript']);
+    expect(hostBefore.map((source) => source.kind)).toEqual(['transcript', 'transcript', 'transcript']);
     expect(guestBefore.map((source) => source.kind)).toEqual(['transcript']);
 
     const saved = await coordinator.saveNamed('Recall room');
@@ -166,6 +168,7 @@ describe('a room that used session recall', () => {
     expect(guestAfter.map(({ kind, label }) => ({ kind, label }))).toEqual(guestBefore.map(({ kind, label }) => ({ kind, label })));
     expect(hostAfter[0].label).toMatch(/^“Lighthouse past” · turns 1-\d+$/);
     expect(hostAfter[1].label).toBe('To-dos · “Lighthouse past”');
+    expect(hostAfter[2].label).toBe('Bookmarks · “Lighthouse past”');
 
     const artifacts = session.readRoomLedger().map((turn) => turn.artifact);
     for (const artifact of WORKSHOP_TURN_ARTIFACTS.filter((name) => name.startsWith('transcript_'))) {
@@ -174,5 +177,9 @@ describe('a room that used session recall', () => {
     const reads = session.readRoomLedger().filter((turn) => turn.artifact === 'transcript_read');
     expect(reads.map((turn) => [turn.capability!.invokedBy.kind, turn.capability!.publishedWithTurnId !== undefined]))
       .toEqual([['host', true], ['personaGuest', true]]);
+    // A saved session's bookmarks are room evidence, published with the reply (ADR 2026-11-05 D7).
+    const bookmarks = session.readRoomLedger().filter((turn) => turn.artifact === 'transcript_bookmarks');
+    expect(bookmarks.map((turn) => [turn.capability!.status, turn.capability!.publishedWithTurnId !== undefined]))
+      .toEqual([['success', true]]);
   });
 });

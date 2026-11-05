@@ -44,7 +44,8 @@ import {
   WorkshopMemoryHold,
   WorkshopMemoryProposalState,
   WorkshopProjectMemoryReceipt,
-  WorkshopProjectMemoryDelivery
+  WorkshopProjectMemoryDelivery,
+  WorkshopTurnBookmark
 } from '@messages';
 import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
@@ -1499,6 +1500,7 @@ export class WorkshopSessionService {
         case 'transcript.search': return 'transcript_search';
         case 'transcript.read': return 'transcript_read';
         case 'transcript.todos': return 'transcript_todos';
+        case 'transcript.bookmarks': return 'transcript_bookmarks';
         case 'memory.catalog': return 'memory_catalog';
         case 'memory.search': return 'memory_search';
         case 'memory.read': return 'memory_read';
@@ -1918,6 +1920,11 @@ export class WorkshopSessionService {
 
   renameBookmark(bookmarkId: string, label: string | null): WorkshopBookmarkChange {
     return this.bookmarkLedger.rename(bookmarkId, label);
+  }
+
+  /** The bookmarks themselves, for recall's live-room port (ADR 2026-11-05 D1). */
+  readRoomBookmarks(): WorkshopTurnBookmark[] {
+    return this.bookmarkLedger.list();
   }
 
   /** The bookmarked turns, for transcript export (ADR 2026-11-03 D10). */

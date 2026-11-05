@@ -190,7 +190,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
       .not.toContain(WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH);
 
     const grammar = fs.readFileSync(path.resolve(PROMPTS_ROOT, WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH), 'utf8');
-    for (const operation of ['transcript.catalog', 'transcript.search', 'transcript.read', 'transcript.todos']) {
+    for (const operation of ['transcript.catalog', 'transcript.search', 'transcript.read', 'transcript.todos', 'transcript.bookmarks']) {
       expect(grammar).toContain(`<prose-minion-tool-call name="${operation}">`);
     }
     expect(grammar).toContain('you do not remember it');
@@ -212,7 +212,8 @@ describe('Workshop persona catalog and packaged prompts', () => {
     const sharedList = /When your reply commits, the evidence it drew on is shared with the room along with it: ([^.]+)\./
       .exec(guestBase)?.[1];
     expect(sharedList).toBeDefined();
-    expect(guestBase).toContain('Catalogs and searches stay private.');
+    expect(guestBase).toContain('Catalogs and searches stay private, and so does a bookmark list that ' +
+      'holds a bookmark on a turn the whole room could not see.');
     expect(guestBase).toContain('saved-session recall');
     // The old charter said every result stayed out of the room, which was never true of published evidence.
     expect(guestBase).not.toContain('not to the room');
@@ -231,6 +232,9 @@ describe('Workshop persona catalog and packaged prompts', () => {
           return 'saved-session reads';
         case 'transcript.todos':
           return 'to-do lists';
+        // Published unless the host withheld it (ADR 2026-11-05 D7); the charter says when.
+        case 'transcript.bookmarks':
+          return 'bookmark lists';
         case 'memory.read':
           return 'project-note reads';
         case 'resource.catalog':
