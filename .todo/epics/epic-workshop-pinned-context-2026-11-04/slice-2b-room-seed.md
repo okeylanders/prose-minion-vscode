@@ -378,11 +378,12 @@ snapshots, all passing.
 `docs/pr-reviews/probes/pr-208-nested-workspace-binding.test.ts.txt`
 unchanged into
 `pinnedContext/WorkshopPinnedContextNestedWorkspaceProbe.test.ts`. Both of
-its cases fail on `c70695f5`'s reader and pass after the fix. Kept
-unchanged, they add 4 lint warnings (`curly` on one-line `if`s, lines
-19–20 and 55–56), the only new ones. After that: typecheck passes; lint 0
-errors / 1,169 warnings; `npx jest -w 2` 706 suites / 9,957 tests / 59
-snapshots, all passing.
+its cases fail on `c70695f5`'s reader and pass after the fix. As copied,
+it added 4 lint warnings (`curly` on one-line `if`s), so its four `if`s are
+now braced, the only change from Astra's probe; the file's header says so.
+After that: typecheck passes; lint 0 errors / 1,165 warnings (none new);
+`npx jest -w 2` 706 suites / 9,957 tests / 59 snapshots, all passing (run
+before the braces; the probe passes 2 of 2 after them).
 
 ## Progress
 

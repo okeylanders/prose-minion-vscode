@@ -1,3 +1,10 @@
+/**
+ * Astra's PR #208 nested-workspace probe
+ * (`docs/pr-reviews/probes/pr-208-nested-workspace-binding.test.ts.txt`),
+ * promoted as a regression. The only change from the probe is braces on its
+ * four one-line `if`s, for the lint rule `curly`; its behavior and
+ * assertions are as Astra wrote them.
+ */
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { ROOT, LIST_FILE, seedHost } from './pinnedContextSeedHost';
 
@@ -16,8 +23,12 @@ it('does not install a nested workspace catalog after A to nested B to A during 
   jest.spyOn(host.fileSystem, 'readFile').mockImplementation(async file => {
     reads.push(file);
     const bytes = await read(file);
-    if (file === LIST_FILE) folders.splice(0, 1, { path: nested, name: 'other' });
-    if (file === otherFile) folders.splice(0, 1, { path: ROOT, name: 'novel' });
+    if (file === LIST_FILE) {
+      folders.splice(0, 1, { path: nested, name: 'other' });
+    }
+    if (file === otherFile) {
+      folders.splice(0, 1, { path: ROOT, name: 'novel' });
+    }
     return bytes;
   });
   host.providerFactory.createProvider.mockImplementation(async () => {
@@ -52,8 +63,12 @@ it('does not follow workspace recovery into a nested project after A to nested B
   jest.spyOn(host.fileSystem, 'readFile').mockImplementation(async file => {
     reads.push(file);
     const bytes = await read(file);
-    if (file === LIST_FILE) folders.splice(0, 1, { path: nested, name: 'other' });
-    if (file === otherFile) folders.splice(0, 1, { path: ROOT, name: 'novel' });
+    if (file === LIST_FILE) {
+      folders.splice(0, 1, { path: nested, name: 'other' });
+    }
+    if (file === otherFile) {
+      folders.splice(0, 1, { path: ROOT, name: 'novel' });
+    }
     return bytes;
   });
   const plan = await host.seed.prepare('new');
