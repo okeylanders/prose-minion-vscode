@@ -130,7 +130,7 @@ describe('completeWorkshopRun with a project-memory trailer', () => {
   it('a listing that could not be read drops every supersedes, counted', () => {
     const turn = settle(`Good.\n\n${memoryFrame({ supersedes: ['mem-1a9e04'] })}`, { open: true })!;
     expect(turn.memoryProposals?.[0]).toMatchObject({ droppedSupersedes: 1 });
-    expect(turn.memoryProposals?.[0]?.supersedes).toBeUndefined();
+    expect(turn.memoryProposals?.[0]).not.toHaveProperty('supersedes');
   });
 
   it('a guest persona\'s reply carries the card too', () => {

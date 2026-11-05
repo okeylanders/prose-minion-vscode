@@ -115,7 +115,7 @@ describe('memory cards and receipts in the session', () => {
       ['a pending card naming a memory', (turns) => { first(turns).state = 'pending'; }, /memoryProposals\[0\]\.memoryId must be absent/],
       ['a card with an unknown field', (turns) => { first(turns).origin = 'proposed'; }, /unknown field origin/],
       ['a card of an unknown kind', (turns) => { first(turns).kind = 'secret'; }, /memoryProposals\[0\]\.kind/],
-      ['a card proposing something unknown', (turns) => { first(turns).proposes = 'edit'; }, /memoryProposals\[0\]\.proposes/],
+      ['a card proposing something unknown', (turns) => { first(turns).proposes = 'rename'; }, /memoryProposals\[0\]\.proposes/],
       ['a card that names what it proposes nowhere', (turns) => { delete first(turns).proposes; }, /memoryProposals\[0\]/],
       ['an empty list of cards', (turns) => { card(turns).memoryProposals = []; }, /memoryProposals/],
       ['more cards than a reply may carry', (turns) => {
@@ -163,6 +163,54 @@ describe('memory cards and receipts in the session', () => {
         card(turns).memoryProposal = single;
       });
       expect(() => decodeWorkshopPersistedSessionCheckpoint(JSON.parse(JSON.stringify(session)))).toThrow(/memoryProposal must be absent beside memoryProposals/);
+    });
+  });
+
+  describe('an edit card (Slice 6c)', () => {
+    const EDIT = {
+      proposes: 'edit',
+      title: 'The Rabbit\'s watch runs backward',
+      kind: 'canon',
+      summary: 'From chapter 2 on, the White Rabbit\'s watch runs backward.',
+      body: 'Settled at the tea party. Alice notices first.',
+      state: 'pending',
+      held: 'edit',
+      target: { id: 'mem-7f3c2a', version: '0123456789ab', pinned: true, supersedes: [{ id: 'mem-1a9e04', title: 'The watch stops at six' }] },
+      before: { title: 'The Rabbit\'s watch runs backward', kind: 'canon', summary: 'From chapter 3 on, the White Rabbit\'s watch runs backward.', body: BODY }
+    };
+    const withEdit = (changes: Record<string, unknown> = {}): string => {
+      const checkpoint = scriptedCheckpoint('memory', roomWithCardAndReceipt().room) as unknown as { workshop: { turns: Array<Record<string, unknown>> } };
+      checkpoint.workshop.turns.find((turn) => turn.memoryProposals)!.memoryProposals = [{ ...EDIT, ...changes }];
+      return JSON.stringify(checkpoint);
+    };
+
+    it('round-trips through save and reopen, byte for byte, and hydrates as it was', () => {
+      const text = withEdit({ stale: true });
+      expect(JSON.stringify(parseWorkshopPersistedSession(JSON.parse(text)))).toBe(text);
+      const reopened = decodeWorkshopPersistedSessionCheckpoint(JSON.parse(text));
+      expect(JSON.stringify(reopened.session)).toBe(text);
+      expect(reopened.normalizations).toEqual([]);
+      const session = new WorkshopSessionService(() => 9_000);
+      session.hydrateCommittedState(reopened.session.workshop, { host: 'host-conversation' }, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR);
+      expect(session.readRoomLedger().find((turn) => turn.memoryProposals)?.memoryProposals).toEqual([{ ...EDIT, stale: true }]);
+    });
+
+    it.each<[string, Record<string, unknown>, RegExp]>([
+      ['a version that is not one', { target: { ...EDIT.target, version: 'v1' } }, /target\.version must be a memory version/],
+      ['a target that is not a memory id', { target: { ...EDIT.target, id: 'the watch' } }, /target\.id must be a memory id/],
+      ['no before', { before: undefined }, /missing required field before/],
+      ['a new note\'s field', { supersedes: [{ id: 'mem-1a9e04', title: 'x' }] }, /unknown field supersedes/],
+      ['a saved edit naming another memory', { state: 'saved', memoryId: 'mem-000001' }, /memoryId must be the memory the edit changed/],
+      ['stale that is not true', { stale: false }, /stale must be true or absent/],
+      ['a result past its bound', { summary: 'x'.repeat(281) }, /summary/]
+    ])('refuses %s', (_name, changes, message) => {
+      const text = withEdit(changes);
+      expect(() => parseWorkshopPersistedSession(JSON.parse(text))).toThrow(message);
+    });
+
+    it('a saved edit names its target as the memory it changed', () => {
+      const text = withEdit({ state: 'saved', memoryId: 'mem-7f3c2a', held: undefined });
+      expect(() => parseWorkshopPersistedSession(JSON.parse(text))).not.toThrow();
     });
   });
 

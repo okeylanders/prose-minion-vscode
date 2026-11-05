@@ -18,15 +18,25 @@
  *   closed list, each `supersedes` a memory id.
  * - **Reasons, never text.** A rejection names its reason and, at most, an
  *   element name; no caller logs what a field held (D9).
+ * - **An edit** (Slice 6c): a frame holding `<edit>` proposes a change to
+ *   the memory it names, decoded by `workshopMemoryEditProtocol` from the
+ *   same elements, in the order written. Its operations' elements in a frame
+ *   without `<edit>` reject it as `edit-element`.
  */
 
 import {
-  PROJECT_MEMORY_FIELD_CHARACTERS,
   PROJECT_MEMORY_ID,
-  PROJECT_MEMORY_KINDS,
   PROJECT_MEMORY_LIST_ENTRIES,
   type ProjectMemoryKind
 } from '@shared/types/projectMemory';
+
+import {
+  decodeWorkshopMemoryEdit,
+  WORKSHOP_MEMORY_EDIT_ELEMENTS,
+  type WorkshopMemoryEditDraft,
+  type WorkshopMemoryEditFault
+} from '@/utils/workshopMemoryEditProtocol';
+import { workshopMemoryFieldFault, type WorkshopMemoryFieldFault } from '@/utils/workshopMemoryProposalFields';
 
 export const WORKSHOP_MEMORY_PROPOSAL_TAG = 'prose-minion-memory-proposal';
 
@@ -49,23 +59,31 @@ export const WORKSHOP_MEMORY_PROPOSAL_FAULTS = [
   'missing-title',
   'missing-kind',
   'missing-summary',
-  'invalid-kind',
-  'title-not-one-line',
-  'summary-not-one-line',
-  'title-too-long',
-  'summary-too-long',
-  'body-too-long',
   'invalid-supersedes',
-  'too-many-supersedes'
+  'too-many-supersedes',
+  // An edit's element in a frame without `<edit>` (Slice 6c).
+  'edit-element'
 ] as const;
-export type WorkshopMemoryProposalFault = typeof WORKSHOP_MEMORY_PROPOSAL_FAULTS[number];
+/** Every reason a frame's inside is refused: its own, a field's, or an edit's (Slice 6c). */
+export type WorkshopMemoryProposalFault =
+  | typeof WORKSHOP_MEMORY_PROPOSAL_FAULTS[number]
+  | WorkshopMemoryFieldFault
+  | WorkshopMemoryEditFault;
 
 export type WorkshopMemoryProposalDecode =
   | { readonly kind: 'proposal'; readonly proposal: WorkshopMemoryProposalDraft }
+  | { readonly kind: 'edit'; readonly edit: WorkshopMemoryEditDraft }
   | { readonly kind: 'rejected'; readonly fault: WorkshopMemoryProposalFault };
 
 const FIELDS = ['title', 'kind', 'summary', 'body', 'supersedes'] as const;
 type Field = typeof FIELDS[number];
+const ELEMENTS: readonly string[] = [...FIELDS, ...WORKSHOP_MEMORY_EDIT_ELEMENTS];
+
+/** One element of a frame, in the order written: its name and what it holds, untrimmed. */
+export interface WorkshopMemoryProposalElement {
+  readonly name: string;
+  readonly content: string;
+}
 
 /** Frontmatter keys the host fills; a trailer naming one is refused (D6). */
 const PROVENANCE = new Set([
@@ -74,18 +92,39 @@ const PROVENANCE = new Set([
 ]);
 
 const OPENING = /<([a-z][a-z0-9-]*)\s*>/iy;
-const NOT_ONE_LINE = /[\p{Cc}\u2028\u2029]/u;
 
 /** Decode a frame's inside (between its opening and closing tags). */
 export function decodeWorkshopMemoryProposal(inner: string): WorkshopMemoryProposalDecode {
+  const elements = readElements(inner);
+  if (!Array.isArray(elements)) {
+    return elements;
+  }
+  if (elements.some((element) => element.name === 'edit')) {
+    return decodeWorkshopMemoryEdit(elements);
+  }
   const values = new Map<Field, string[]>();
+  for (const { name, content } of elements) {
+    if (!isField(name)) {
+      return reject('edit-element');
+    }
+    if (name !== 'supersedes' && values.has(name)) {
+      return reject('repeated-element');
+    }
+    values.set(name, [...(values.get(name) ?? []), content]);
+  }
+  return check(values);
+}
+
+/** A frame's elements in order, or the fault that stops reading it. */
+function readElements(inner: string): WorkshopMemoryProposalElement[] | WorkshopMemoryProposalDecode {
+  const elements: WorkshopMemoryProposalElement[] = [];
   let at = 0;
   while (true) {
     while (at < inner.length && /\s/.test(inner[at])) {
       at += 1;
     }
     if (at >= inner.length) {
-      break;
+      return elements;
     }
     OPENING.lastIndex = at;
     const opening = OPENING.exec(inner);
@@ -96,7 +135,7 @@ export function decodeWorkshopMemoryProposal(inner: string): WorkshopMemoryPropo
     if (PROVENANCE.has(name)) {
       return reject('provenance');
     }
-    if (!isField(name)) {
+    if (!ELEMENTS.includes(name)) {
       return reject('unknown-element');
     }
     const contentStart = at + opening[0].length;
@@ -104,14 +143,9 @@ export function decodeWorkshopMemoryProposal(inner: string): WorkshopMemoryPropo
     if (!close) {
       return reject('unclosed-element');
     }
-    const content = inner.slice(contentStart, contentStart + close.index);
-    if (name !== 'supersedes' && values.has(name)) {
-      return reject('repeated-element');
-    }
-    values.set(name, [...(values.get(name) ?? []), content]);
+    elements.push({ name, content: inner.slice(contentStart, contentStart + close.index) });
     at = contentStart + close.index + close[0].length;
   }
-  return check(values);
 }
 
 function check(values: ReadonlyMap<Field, string[]>): WorkshopMemoryProposalDecode {
@@ -128,23 +162,10 @@ function check(values: ReadonlyMap<Field, string[]>): WorkshopMemoryProposalDeco
   if (!summary) {
     return reject('missing-summary');
   }
-  if (!(PROJECT_MEMORY_KINDS as readonly string[]).includes(kind)) {
-    return reject('invalid-kind');
-  }
-  if (NOT_ONE_LINE.test(title)) {
-    return reject('title-not-one-line');
-  }
-  if (NOT_ONE_LINE.test(summary)) {
-    return reject('summary-not-one-line');
-  }
-  if (title.length > PROJECT_MEMORY_FIELD_CHARACTERS.title) {
-    return reject('title-too-long');
-  }
-  if (summary.length > PROJECT_MEMORY_FIELD_CHARACTERS.summary) {
-    return reject('summary-too-long');
-  }
-  if (body.length > PROJECT_MEMORY_FIELD_CHARACTERS.body) {
-    return reject('body-too-long');
+  const fault = workshopMemoryFieldFault('kind', kind) ?? workshopMemoryFieldFault('title', title)
+    ?? workshopMemoryFieldFault('summary', summary) ?? workshopMemoryFieldFault('body', body);
+  if (fault) {
+    return reject(fault);
   }
   const supersedes: string[] = [];
   for (const raw of values.get('supersedes') ?? []) {
@@ -170,6 +191,6 @@ function closingTag(name: string): RegExp {
   return new RegExp(`</${name}\\s*>`, 'i');
 }
 
-function reject(fault: WorkshopMemoryProposalFault): WorkshopMemoryProposalDecode {
+function reject(fault: WorkshopMemoryProposalFault): Extract<WorkshopMemoryProposalDecode, { kind: 'rejected' }> {
   return { kind: 'rejected', fault };
 }

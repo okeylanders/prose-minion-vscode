@@ -27,7 +27,7 @@ const dropped = (...rejections: string[]) => ({ kind: 'frames', proposals: [], r
 const PROSE = 'Good. It earns its place: the first sign that time here is wrong.';
 
 function titles(controls: ReturnType<typeof extractWorkshopReplyControls>): string[] {
-  return controls.memory.kind === 'frames' ? controls.memory.proposals.map((proposal) => proposal.title) : [];
+  return controls.memory.kind === 'frames' ? controls.memory.proposals.map((proposal) => ('title' in proposal ? proposal.title : `edit ${proposal.target}`)) : [];
 }
 
 function widgetOutcome(rest: string): string {
@@ -369,5 +369,42 @@ describe('several frames, each judged on its own (Slice 6b)', () => {
     expect(controls.memory).toMatchObject({ rejections: Array<string>(4_000 - CAP).fill('over-cap') });
     expect(decode).toHaveBeenCalledTimes(4_000);
     decode.mockRestore();
+  });
+});
+
+describe('an edit frame is stripped like any other (Slice 6c)', () => {
+  const edit = [
+    '<prose-minion-memory-proposal>',
+    '<edit>mem-7f3c2a</edit>',
+    '<find-in-body>PRIVATE_EDIT_SENTINEL quote</find-in-body>',
+    '<replace-with>PRIVATE_EDIT_SENTINEL words</replace-with>',
+    '<append>PRIVATE_EDIT_SENTINEL passage</append>',
+    '</prose-minion-memory-proposal>'
+  ].join('\n');
+
+  it('from the bubble, the redacted copy and retained history, beside a new note', () => {
+    const reply = `${PROSE}\n\n${memoryFrame()}\n${edit}`;
+    const controls = extractWorkshopReplyControls(reply, OPEN);
+    expect(controls.rest).toBe(PROSE);
+    expect(controls.redacted).toBe(`${PROSE}\n\n${WORKSHOP_MEMORY_PROPOSAL_REDACTION}\n\n${WORKSHOP_MEMORY_PROPOSAL_REDACTION}`);
+    expect(sanitizeWorkshopReplyForRetention(reply)).toBe(PROSE);
+    expect(sanitizeWorkshopReplyForRetention(edit)).toBe(WORKSHOP_MEMORY_ONLY_REPLY_LINE);
+    expect(controls.memory).toMatchObject({ kind: 'frames', rejections: [], proposals: [{ title: expect.any(String) }, { proposes: 'edit', target: 'mem-7f3c2a' }] });
+  });
+
+  it('with memory off, or malformed, it is still removed whole', () => {
+    for (const reply of [`${PROSE}\n\n${edit}`, `${PROSE}\n\n${edit.replace('<edit>mem-7f3c2a</edit>', '<edit>the watch note</edit>')}`]) {
+      for (const memoryOpen of [true, false]) {
+        const controls = extractWorkshopReplyControls(reply, { memoryOpen });
+        expect(`${controls.rest}${controls.redacted}`).not.toContain('PRIVATE_EDIT_SENTINEL');
+      }
+    }
+  });
+
+  it('never shows while streaming, at any prefix', () => {
+    const reply = `${PROSE}\n\n${edit}`;
+    for (let length = 0; length <= reply.length; length += 1) {
+      expect(stripWorkshopMemoryProposalForStreaming(reply.slice(0, length))).not.toMatch(/PRIVATE_EDIT|<\/?prose-minion-mem|<edit>|<find-in|<replace-with|<append/i);
+    }
   });
 });

@@ -28,6 +28,7 @@ import { workshopMemoryCardKey, workshopMemoryHeldReason } from '@shared/constan
 import { Icon } from '@components/shared/Icon';
 import type { WorkshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
 import { WorkshopMemoryCard } from './WorkshopMemoryCard';
+import { WorkshopMemoryEditCard } from './WorkshopMemoryEditCard';
 
 /** What the thread can ask of project memory; WorkshopApp wires the memory hook in. */
 export interface WorkshopTurnMemoryControls {
@@ -96,7 +97,7 @@ const WorkshopTurnMemoryItem: React.FC<{
     return (
       <div className="pm-ws-memory-settled">
         <Icon name="check" size={13} />
-        <span>Saved to project memory: <b>{proposal.title}</b></span>
+        <span>{proposal.proposes === 'edit' ? 'Updated in project memory' : 'Saved to project memory'}: <b>{proposal.title}</b></span>
         {controls.onOpenManager && proposal.memoryId && (
           <button type="button" className="pm-ws-memory-link" onClick={() => controls.onOpenManager!(proposal.memoryId!)}>
             Open in manager
@@ -109,11 +110,31 @@ const WorkshopTurnMemoryItem: React.FC<{
     return (
       <div className="pm-ws-memory-settled pm-ws-memory-settled-off">
         <Icon name="x" size={13} />
-        <span>Dismissed. <b>{proposal.title}</b> wasn&apos;t saved.</span>
+        <span>
+          {proposal.proposes === 'edit'
+            ? <>Dismissed. The change to <b>{proposal.before.title}</b> wasn&apos;t saved.</>
+            : <>Dismissed. <b>{proposal.title}</b> wasn&apos;t saved.</>}
+        </span>
         <button type="button" className="pm-ws-memory-link" disabled={busy} onClick={() => controls.onReopenCard(turn.id, index)}>
           Show it again
         </button>
       </div>
+    );
+  }
+  const actions = {
+    busy,
+    onSave: () => controls.onSaveCard(turn.id, index),
+    onEdit: () => controls.onEditCard(turn, index),
+    onDismiss: () => controls.onDismissCard(turn.id, index)
+  };
+  if (proposal.proposes === 'edit') {
+    return (
+      <WorkshopMemoryEditCard
+        proposal={proposal}
+        actions={actions}
+        {...(proposal.held ? { held: workshopMemoryHeldReason(proposal.held) } : {})}
+        error={controls.cardErrors.get(key)}
+      />
     );
   }
   return (
@@ -127,12 +148,7 @@ const WorkshopTurnMemoryItem: React.FC<{
       replaces={proposal.supersedes}
       droppedReplaces={proposal.droppedSupersedes}
       error={controls.cardErrors.get(key)}
-      actions={{
-        busy,
-        onSave: () => controls.onSaveCard(turn.id, index),
-        onEdit: () => controls.onEditCard(turn, index),
-        onDismiss: () => controls.onDismissCard(turn.id, index)
-      }}
+      actions={actions}
     />
   );
 };
@@ -226,8 +242,7 @@ export const WorkshopMemoryReceiptLine: React.FC<{ turn: WorkshopTurn; controls?
             title={saved.title}
             summary={saved.summary}
             body={saved.body}
-            replaces={saved.supersedes}
-            droppedReplaces={saved.droppedSupersedes}
+            {...(saved.proposes === 'new' ? { replaces: saved.supersedes, droppedReplaces: saved.droppedSupersedes } : {})}
           />
         )}
       </div>

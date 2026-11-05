@@ -6,9 +6,12 @@
  *
  * When present it is exact: one to `proposalsPerReply` items, each within
  * the format's bounds, and only on a persona's reply (a host or guest
- * assistant turn). Each item names what it proposes (`proposes`: only `new`
- * now). A saved card names the memory it became; a pending or dismissed one
- * names none. A card Save and tell me held names why in `held`.
+ * assistant turn). Each item names what it proposes (`proposes`): `new`, or
+ * `edit` (Slice 6c), which names its target (id, version, load in full,
+ * what it replaces), what the note said (`before`), and `stale` once a Save
+ * found the note changed. A saved card names the memory it became or
+ * changed (an edit's is its target); a pending or dismissed one names none.
+ * A card Save and tell me held names why in `held`.
  *
  * **Development checkpoints** (Slice 6b; ADR 2026-07-30): sessions saved
  * before the list held one card in `memoryProposal`, without `proposes`.
@@ -21,7 +24,9 @@ import {
   WORKSHOP_MEMORY_HOLDS,
   WORKSHOP_MEMORY_PROPOSAL_KINDS,
   WORKSHOP_MEMORY_PROPOSAL_STATES,
+  type WorkshopMemoryNewProposal,
   type WorkshopMemoryProposal,
+  type WorkshopMemoryProposalReplaces,
   type WorkshopTurn
 } from '@messages';
 import {
@@ -44,7 +49,7 @@ const NOT_ONE_LINE = /[\p{Cc}\u2028\u2029]/u;
 /** A turn as a development checkpoint may hold it: one card, before the list (Slice 6b). */
 export type WorkshopLegacyMemoryProposalTurn = WorkshopTurn & {
   /** LEGACY: a development checkpoint's single card; normalized into `memoryProposals`. */
-  memoryProposal?: Omit<WorkshopMemoryProposal, 'proposes'>;
+  memoryProposal?: Omit<WorkshopMemoryNewProposal, 'proposes'>;
 };
 
 /** Strict structure of one turn's `memoryProposals`, and that its turn may carry them. */
@@ -75,35 +80,24 @@ export function assertWorkshopMemoryProposalShape(
 }
 
 function assertProposal(value: unknown, at: string, listed: boolean): void {
+  const proposes = listed ? (value as Record<string, unknown> | null)?.proposes : 'new';
+  if (listed) {
+    enumAt(proposes, `${at}.proposes`, WORKSHOP_MEMORY_PROPOSAL_KINDS);
+  }
+  const edit = proposes === 'edit';
   const proposal = exactObject(
     value,
     at,
-    [...(listed ? ['proposes'] : []), 'title', 'kind', 'summary', 'body', 'state'],
-    ['supersedes', 'droppedSupersedes', 'memoryId', 'held']
+    [...(listed ? ['proposes'] : []), 'title', 'kind', 'summary', 'body', 'state', ...(edit ? ['target', 'before'] : [])],
+    [...(edit ? ['stale'] : ['supersedes', 'droppedSupersedes']), 'memoryId', 'held']
   );
-  if (listed) {
-    enumAt(proposal.proposes, `${at}.proposes`, WORKSHOP_MEMORY_PROPOSAL_KINDS);
-  }
-  oneLineAt(proposal.title, `${at}.title`, PROJECT_MEMORY_FIELD_CHARACTERS.title);
-  enumAt(proposal.kind, `${at}.kind`, PROJECT_MEMORY_KINDS);
-  oneLineAt(proposal.summary, `${at}.summary`, PROJECT_MEMORY_FIELD_CHARACTERS.summary);
-  boundedStringAt(proposal.body, `${at}.body`, PROJECT_MEMORY_FIELD_CHARACTERS.body);
+  assertFields(proposal, at);
   enumAt(proposal.state, `${at}.state`, WORKSHOP_MEMORY_PROPOSAL_STATES);
   if (proposal.held !== undefined) {
     enumAt(proposal.held, `${at}.held`, WORKSHOP_MEMORY_HOLDS);
   }
   if (proposal.supersedes !== undefined) {
-    boundedArrayAt(proposal.supersedes, `${at}.supersedes`, 1, PROJECT_MEMORY_LIST_ENTRIES.supersedes, 'replaced memories');
-    const ids = new Set<string>();
-    proposal.supersedes.forEach((item, index) => {
-      const replaced = exactObject(item, `${at}.supersedes[${index}]`, ['id', 'title']);
-      memoryIdAt(replaced.id, `${at}.supersedes[${index}].id`);
-      oneLineAt(replaced.title, `${at}.supersedes[${index}].title`, PROJECT_MEMORY_FIELD_CHARACTERS.title);
-      if (ids.has(replaced.id as string)) {
-        shapeError(`${at}.supersedes[${index}].id`, 'a memory no other entry names');
-      }
-      ids.add(replaced.id as string);
-    });
+    assertReplaces(proposal.supersedes, `${at}.supersedes`);
   }
   if (proposal.droppedSupersedes !== undefined && (
     !Number.isSafeInteger(proposal.droppedSupersedes)
@@ -112,11 +106,58 @@ function assertProposal(value: unknown, at: string, listed: boolean): void {
   )) {
     shapeError(`${at}.droppedSupersedes`, `an integer from 1 to ${PROJECT_MEMORY_LIST_ENTRIES.supersedes}`);
   }
+  if (edit) {
+    assertEdit(proposal, at);
+  }
   if (proposal.state === 'saved') {
     memoryIdAt(proposal.memoryId, `${at}.memoryId`);
+    if (edit && proposal.memoryId !== (proposal.target as { id: string }).id) {
+      shapeError(`${at}.memoryId`, 'the memory the edit changed');
+    }
   } else if (proposal.memoryId !== undefined) {
     shapeError(`${at}.memoryId`, 'absent on a card that was not saved');
   }
+}
+
+/** What a memory says, within the format's bounds. */
+function assertFields(fields: Record<string, unknown>, at: string): void {
+  oneLineAt(fields.title, `${at}.title`, PROJECT_MEMORY_FIELD_CHARACTERS.title);
+  enumAt(fields.kind, `${at}.kind`, PROJECT_MEMORY_KINDS);
+  oneLineAt(fields.summary, `${at}.summary`, PROJECT_MEMORY_FIELD_CHARACTERS.summary);
+  boundedStringAt(fields.body, `${at}.body`, PROJECT_MEMORY_FIELD_CHARACTERS.body);
+}
+
+function assertEdit(proposal: Record<string, unknown>, at: string): void {
+  const target = exactObject(proposal.target, `${at}.target`, ['id', 'version', 'pinned'], ['supersedes']);
+  memoryIdAt(target.id, `${at}.target.id`);
+  if (typeof target.version !== 'string' || !/^[0-9a-f]{12}$/.test(target.version)) {
+    shapeError(`${at}.target.version`, 'a memory version (twelve lower-case hex digits)');
+  }
+  if (typeof target.pinned !== 'boolean') {
+    shapeError(`${at}.target.pinned`, 'true or false');
+  }
+  if (target.supersedes !== undefined) {
+    assertReplaces(target.supersedes, `${at}.target.supersedes`);
+  }
+  // The before fields are the note's own, so its whole body (not a trimmed copy) may differ in space.
+  assertFields(exactObject(proposal.before, `${at}.before`, ['title', 'kind', 'summary', 'body']), `${at}.before`);
+  if (proposal.stale !== undefined && proposal.stale !== true) {
+    shapeError(`${at}.stale`, 'true or absent');
+  }
+}
+
+function assertReplaces(value: unknown, at: string): void {
+  boundedArrayAt(value, at, 1, PROJECT_MEMORY_LIST_ENTRIES.supersedes, 'replaced memories');
+  const ids = new Set<string>();
+  (value as unknown[]).forEach((item, index) => {
+    const replaced = exactObject(item, `${at}[${index}]`, ['id', 'title']);
+    memoryIdAt(replaced.id, `${at}[${index}].id`);
+    oneLineAt(replaced.title, `${at}[${index}].title`, PROJECT_MEMORY_FIELD_CHARACTERS.title);
+    if (ids.has(replaced.id as string)) {
+      shapeError(`${at}[${index}].id`, 'a memory no other entry names');
+    }
+    ids.add(replaced.id as string);
+  });
 }
 
 /**
@@ -133,18 +174,39 @@ export function listLegacyWorkshopMemoryProposal(turn: WorkshopLegacyMemoryPropo
 }
 
 export function cloneWorkshopMemoryProposal(proposal: WorkshopMemoryProposal): WorkshopMemoryProposal {
-  return {
-    proposes: proposal.proposes,
+  const common = {
     title: proposal.title,
     kind: proposal.kind,
     summary: proposal.summary,
     body: proposal.body,
-    ...(proposal.supersedes ? { supersedes: proposal.supersedes.map((item) => ({ id: item.id, title: item.title })) } : {}),
-    ...(proposal.droppedSupersedes !== undefined ? { droppedSupersedes: proposal.droppedSupersedes } : {}),
     state: proposal.state,
     ...(proposal.memoryId !== undefined ? { memoryId: proposal.memoryId } : {}),
     ...(proposal.held !== undefined ? { held: proposal.held } : {})
   };
+  if (proposal.proposes === 'edit') {
+    return {
+      proposes: 'edit',
+      ...common,
+      target: {
+        id: proposal.target.id,
+        version: proposal.target.version,
+        pinned: proposal.target.pinned,
+        ...(proposal.target.supersedes ? { supersedes: cloneReplaces(proposal.target.supersedes) } : {})
+      },
+      before: { ...proposal.before },
+      ...(proposal.stale ? { stale: true as const } : {})
+    };
+  }
+  return {
+    proposes: 'new',
+    ...common,
+    ...(proposal.supersedes ? { supersedes: cloneReplaces(proposal.supersedes) } : {}),
+    ...(proposal.droppedSupersedes !== undefined ? { droppedSupersedes: proposal.droppedSupersedes } : {})
+  };
+}
+
+function cloneReplaces(items: readonly WorkshopMemoryProposalReplaces[]): WorkshopMemoryProposalReplaces[] {
+  return items.map((item) => ({ id: item.id, title: item.title }));
 }
 
 /** Whether a turn may carry a memory card: a persona's reply. */

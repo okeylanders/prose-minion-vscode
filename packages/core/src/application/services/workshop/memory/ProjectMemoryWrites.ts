@@ -28,16 +28,14 @@
 
 import type { LogSink } from '@/platform';
 import type { WorkshopMemoryDraft, WorkshopMemoryPinnedEstimate } from '@messages';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { projectMemoryBody, type ProjectMemory, type ProjectMemoryOrigin } from '@shared/types/projectMemory';
 import type { ProjectMemoryStore } from '@/infrastructure/storage/ProjectMemoryStore';
 import {
-  isProjectMemoryInEffect,
   listProjectMemories,
   type ProjectMemoryClosedReason,
   type ProjectMemoryListed
 } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
-import { projectMemoryPinnedTokens } from '@/application/services/workshop/memory/ProjectMemoryCatalogFrame';
+import { pinnedBudget, saysSomethingElse } from '@/application/services/workshop/memory/ProjectMemoryPinnedBudget';
 import { projectMemoryVersion } from '@/application/services/workshop/memory/ProjectMemoryVersion';
 import { askedProjectMemoryWorkspace, type ProjectMemoryWorkspaceIdentity } from '@/application/services/workshop/memory/ProjectMemoryWorkspaceIdentity';
 
@@ -64,7 +62,9 @@ export type ProjectMemoryWriteRefusalReason =
   | 'failed'
   | 'pinned-budget'
   /** A save's permission was withdrawn before it committed (Save and tell me: PR #201 F-01). */
-  | 'withdrawn';
+  | 'withdrawn'
+  /** An edit suggested against one version of the note found another (Slice 6c): nothing is written. */
+  | 'changed';
 
 /**
  * Why a delete did nothing: a write's reasons, or `changed`, when the file
@@ -114,8 +114,6 @@ interface BoundWorkspace {
   /** The store's commit point: the workspace is open and still the one asked. */
   readonly commit: () => boolean;
 }
-
-const PINNED_BUDGET = PROMPT_BUDGETS.workshopProjectMemory.pinnedTokens;
 
 export class ProjectMemoryWrites {
   private readonly owed = new Set<Promise<unknown>>();
@@ -196,8 +194,14 @@ export class ProjectMemoryWrites {
     });
   }
 
-  /** Edit a saved memory: the sheet's whole draft replaces what it says, and whether it loads in full. */
-  update(id: string, patch: WorkshopMemoryDraft): Promise<ProjectMemoryWriteResult> {
+  /**
+   * Edit a saved memory: the sheet's whole draft replaces what it says, and
+   * whether it loads in full. With `expectedVersion` (a persona's edit
+   * suggestion, Slice 6c) the note's D14 version must still be that one at
+   * the write's turn in the queue and again under the store's claim, where
+   * the bytes it rewrites are read: otherwise nothing is written (`changed`).
+   */
+  update(id: string, patch: WorkshopMemoryDraft, options: { readonly expectedVersion?: string } = {}): Promise<ProjectMemoryWriteResult> {
     return this.owe('update', async (bound) => {
       const listed = await this.listed(bound);
       if (listed.kind === 'refused') {
@@ -207,6 +211,11 @@ export class ProjectMemoryWrites {
       if (!current) {
         return this.refused('update', 'missing', id);
       }
+      const expected = options.expectedVersion;
+      if (expected !== undefined && current.version !== expected) {
+        return this.refused('update', 'changed', id);
+      }
+      let moved = false;
       const known = new Set(listed.memories.map(({ memory }) => memory.id).filter((other) => other !== id));
       const revise = (memory: ProjectMemory): ProjectMemory => {
         const next = {
@@ -228,11 +237,15 @@ export class ProjectMemoryWrites {
       }
       let changedMeaning = false;
       const replaced = await this.store.replace(id, (memory) => {
+        if (expected !== undefined && projectMemoryVersion(memory, current.superseded) !== expected) {
+          moved = true;
+          return undefined;
+        }
         const next = revise(memory);
         changedMeaning = saysSomethingElse(memory, next);
         return changedMeaning || next.pinned !== memory.pinned ? next : undefined;
       }, { directory: bound.asked.directory, beforeCommit: bound.commit });
-      return this.settled('update', id, replaced, changedMeaning, bound);
+      return moved ? this.refused('update', 'changed', id) : this.settled('update', id, replaced, changedMeaning, bound);
     });
   }
 
@@ -456,42 +469,4 @@ export class ProjectMemoryWrites {
   private log(line: string): void {
     this.outputChannel.appendLine(`[ProjectMemoryLibrary] ${line}`);
   }
-}
-
-/** Whether the change touches what the memory says (D10): the fields `updated` follows. */
-function saysSomethingElse(before: ProjectMemory, after: ProjectMemory): boolean {
-  return before.title !== after.title
-    || before.kind !== after.kind
-    || before.summary !== after.summary
-    || before.body !== after.body
-    || before.supersedes.join(',') !== after.supersedes.join(',');
-}
-
-/**
- * Memories loaded in full, with `candidate` in place of the memory `id`
- * names (or added, for a new one), by the frame's renderer and estimator.
- * Refused when the candidate loads in full, the total passes the budget,
- * and the change grows it: shortening an over-budget memory, or turning one
- * off, is always allowed.
- */
-export function pinnedBudget(
-  memories: readonly ProjectMemoryListed[],
-  candidate: ProjectMemory,
-  id: string | undefined
-): WorkshopMemoryPinnedEstimate {
-  const total = (set: readonly ProjectMemoryListed[]): number => set
-    .filter((listed) => listed.memory.pinned && isProjectMemoryInEffect(listed))
-    .reduce((sum, listed) => sum + projectMemoryPinnedTokens(listed), 0);
-  const before = total(memories);
-  const others = memories.filter(({ memory }) => memory.id !== id).map(({ memory, busy }) => ({ memory, ...(busy ? { busy: true as const } : {}) }));
-  const after = listProjectMemories([...others, { memory: candidate }]);
-  const totalTokens = total(after);
-  const self = after.find(({ memory }) => memory === candidate)
-    ?? { memory: candidate, superseded: false, supersededBy: [], busy: false, version: projectMemoryVersion(candidate, false) };
-  return {
-    thisTokens: projectMemoryPinnedTokens(self),
-    totalTokens,
-    budgetTokens: PINNED_BUDGET,
-    refused: candidate.pinned && totalTokens > PINNED_BUDGET && totalTokens > before
-  };
 }

@@ -129,7 +129,8 @@ export class WorkshopMemoryAutoSaves {
     };
     const pendingCard = () => {
       const proposal = workshopMemoryProposalAt(this.session.readRoomLedger().find((candidate) => candidate.id === turnId), index);
-      return proposal?.state === 'pending' && !proposal.held ? proposal : undefined;
+      // Only a new note is ever saved automatically: an edit always waits (Slice 6c).
+      return proposal?.proposes === 'new' && proposal.state === 'pending' && !proposal.held ? proposal : undefined;
     };
     const turn = this.session.readRoomLedger().find((candidate) => candidate.id === turnId);
     const proposal = pendingCard();

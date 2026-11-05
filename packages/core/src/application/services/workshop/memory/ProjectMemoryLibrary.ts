@@ -185,8 +185,8 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
   }
 
   /** Edit a saved memory (the sheet's Save changes). `update` is the update note's (D14). */
-  edit(id: string, patch: WorkshopMemoryDraft): Promise<ProjectMemoryWriteResult> {
-    return this.writes.update(id, patch);
+  edit(id: string, patch: WorkshopMemoryDraft, options?: { readonly expectedVersion?: string }): Promise<ProjectMemoryWriteResult> {
+    return this.writes.update(id, patch, options);
   }
 
   forget(id: string): Promise<ProjectMemoryWriteResult> {
@@ -326,7 +326,7 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
       if (set.kind !== 'set') {
         return set.kind === 'closed' ? { open: false } : { open: true, mode };
       }
-      return { open: true, mode, listed: new Map(set.memories.map(({ memory }) => [memory.id, memory.title])) };
+      return { open: true, mode, listed: new Map(set.memories.map(({ memory }) => [memory.id, memory.title])), memories: set.memories };
     } catch {
       this.log('reply context listing cancelled');
       return { open: true, mode };

@@ -36,6 +36,7 @@ import type { LogSink } from '@/platform';
 import {
   MessageType,
   type WorkshopMemoryDraft,
+  type WorkshopMemoryEditProposal,
   type WorkshopMemoryEditDataMessage,
   type WorkshopMemoryEditDataPayload,
   type WorkshopMemoryEstimateMessage,
@@ -55,6 +56,7 @@ import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks'
 import {
   checkWorkshopMemoryDraft,
   WORKSHOP_MEMORY_DRAFT_FAULTS,
+  WORKSHOP_MEMORY_EDIT_CHANGED,
   workshopMemoryCardKey,
   workshopMemoryDraftsEqual,
   workshopMemoryProposalAt,
@@ -72,6 +74,13 @@ import type {
   WorkshopRoomEffects
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopMemoryAutoSaves } from '@handlers/domain/workshop/WorkshopMemoryAutoSaves';
+import {
+  WORKSHOP_MEMORY_NO_CARD,
+  WORKSHOP_MEMORY_NOT_ELIGIBLE,
+  WORKSHOP_MEMORY_ROOM_CHANGED,
+  WORKSHOP_MEMORY_RUN_ACTIVE,
+  WORKSHOP_PROJECT_MEMORY_REFUSALS
+} from '@handlers/domain/workshop/WorkshopProjectMemoryRefusals';
 import {
   workshopProposalProvenance,
   workshopWriterProvenance
@@ -97,27 +106,6 @@ type Effects = Pick<WorkshopRoomEffects, 'postSessionState' | 'markDirty' | 'rep
 const LOG = '[WorkshopProjectMemoryHandler]';
 const REQUEST_ID_CHARACTERS = 128;
 
-/* eslint-disable @typescript-eslint/naming-convention -- keyed by the library's kebab-case reasons. */
-const REFUSALS: Readonly<Record<Exclude<ProjectMemoryWriteRefusalReason, 'pinned-budget'>, string>> = {
-  off: 'Project memory is off.',
-  'no-workspace': 'Project memory isn\'t available here: no folder is open.',
-  'multi-root': 'Project memory isn\'t available here: this workspace has several folders.',
-  'workspace-changed': 'The workspace changed since this room opened, so its memory can\'t be saved here.',
-  'not-ready': 'Wait for the room to finish loading, then try again.',
-  unknown: 'The memory folder couldn\'t be read. Try again.',
-  missing: 'That memory is no longer in the folder.',
-  busy: 'Another window is editing that memory. Try again in a moment.',
-  conflict: 'Two files hold that memory\'s id. Fix one in the editor first.',
-  invalid: 'That memory can\'t be saved as written. Check its title, summary and note.',
-  failed: 'The memory couldn\'t be saved. Try again.',
-  withdrawn: 'The memory wasn\'t saved: the setting changed before it could be. It waits for you.'
-};
-/* eslint-enable @typescript-eslint/naming-convention */
-
-const RUN_ACTIVE = 'Wait for the reply to finish, then save to memory.';
-const NO_CARD = 'That message no longer holds a memory suggestion.';
-const NOT_ELIGIBLE = 'That message can\'t be saved to memory.';
-const ROOM_CHANGED = 'The room changed before this could be recorded here.';
 
 export class WorkshopProjectMemoryHandler {
   constructor(
@@ -192,12 +180,12 @@ export class WorkshopProjectMemoryHandler {
     const turn = this.session.readRoomLedger().find((candidate) => candidate.id === turnId);
     const proposal = proposalOf(turn);
     if (!turn || !proposal) {
-      this.answer({ requestId, ok: false, error: NO_CARD }, `proposal ${payload.action} refused ${card} reason=no-proposal`);
+      this.answer({ requestId, ok: false, error: WORKSHOP_MEMORY_NO_CARD }, `proposal ${payload.action} refused ${card} reason=no-proposal`);
       return;
     }
     if (payload.action !== 'save') {
       if (proposal.state === 'saved') {
-        this.answer({ requestId, ok: false, error: NO_CARD }, `proposal ${payload.action} refused ${card} reason=saved`);
+        this.answer({ requestId, ok: false, error: WORKSHOP_MEMORY_NO_CARD }, `proposal ${payload.action} refused ${card} reason=saved`);
         return;
       }
       this.session.setMemoryProposalState(turn.id, index, payload.action === 'dismiss' ? 'dismissed' : 'pending');
@@ -219,10 +207,14 @@ export class WorkshopProjectMemoryHandler {
       return;
     }
     const draft: WorkshopMemoryDraft = payload.edited ?? workshopMemoryProposalDraft(proposal);
-    const saving = this.write(requestId, `proposal save ${card}`, draft, false, async () => {
-      const result = await this.library.save(draft, this.proposalProvenance(turn, 'proposed'));
-      return { result, onRecorded: (memoryId) => this.session.setMemoryProposalState(turn.id, index, 'saved', memoryId), action: 'saved', proposedBy: turn.personaId };
-    }, () => this.session.readRoomLedger().some((candidate) => candidate.id === turn.id && proposalOf(candidate)?.state !== 'saved'));
+    const recorded = (memoryId: string) => this.session.setMemoryProposalState(turn.id, index, 'saved', memoryId);
+    const stillApplies = () => this.session.readRoomLedger().some((candidate) => candidate.id === turn.id && proposalOf(candidate)?.state !== 'saved');
+    const saving = proposal.proposes === 'edit'
+      ? this.saveEdit(requestId, card, turn, index, proposal, draft, recorded, stillApplies)
+      : this.write(requestId, `proposal save ${card}`, draft, false, async () => {
+        const result = await this.library.save(draft, this.proposalProvenance(turn, 'proposed'));
+        return { result, onRecorded: recorded, action: 'saved', proposedBy: turn.personaId };
+      }, stillApplies);
     this.proposalSaves.set(key, saving);
     try {
       await saving;
@@ -231,6 +223,40 @@ export class WorkshopProjectMemoryHandler {
         this.proposalSaves.delete(key);
       }
     }
+  }
+
+  /**
+   * An edit card's Save (Slice 6c): its result, or the sheet's version of
+   * it, applied as an ordinary update only while the note's version is the
+   * one it was anchored against, at the write's turn and under the store's
+   * claim. A changed note writes nothing, and the card keeps only Dismiss.
+   */
+  private saveEdit(
+    requestId: string,
+    card: string,
+    turn: WorkshopTurn,
+    index: number,
+    proposal: WorkshopMemoryEditProposal,
+    draft: WorkshopMemoryDraft,
+    recorded: (memoryId: string) => WorkshopTurn,
+    stillApplies: () => boolean
+  ): Promise<WorkshopMemoryWriteResultPayload> {
+    if (proposal.stale) {
+      return Promise.resolve(this.answer({ requestId, ok: false, error: WORKSHOP_MEMORY_EDIT_CHANGED }, `proposal save refused ${card} reason=changed`));
+    }
+    const target = proposal.target.id;
+    return this.write(requestId, `proposal edit ${card} memoryId=${target}`, draft, true, async () => ({
+      result: await this.library.edit(target, draft, { expectedVersion: proposal.target.version }),
+      action: 'updated',
+      onRecorded: recorded,
+      onRefused: (reason) => {
+        if (reason === 'changed') {
+          this.session.markMemoryEditStale(turn.id, index);
+          this.settleRoom('memory edit refused');
+        }
+      },
+      proposedBy: turn.personaId
+    }), stillApplies);
   }
 
   async handleSaveTurn(message: WorkshopSaveTurnToMemoryMessage): Promise<void> {
@@ -242,7 +268,7 @@ export class WorkshopProjectMemoryHandler {
     }
     const turn = this.session.readRoomLedger().find((candidate) => candidate.id === payload.turnId);
     if (!turn || !isWorkshopBookmarkableTurn(turn)) {
-      this.answer({ requestId, ok: false, error: NOT_ELIGIBLE }, `save turn refused turnId=${payload.turnId} reason=not-eligible`);
+      this.answer({ requestId, ok: false, error: WORKSHOP_MEMORY_NOT_ELIGIBLE }, `save turn refused turnId=${payload.turnId} reason=not-eligible`);
       return;
     }
     await this.write(requestId, `save turn turnId=${turn.id}`, payload.draft, false, async () => ({
@@ -328,7 +354,7 @@ export class WorkshopProjectMemoryHandler {
         },
         replaces: found.replaces.map((item) => ({ ...item }))
       }
-      : { requestId, memoryId, error: REFUSALS[found.reason as keyof typeof REFUSALS] ?? REFUSALS.failed };
+      : { requestId, memoryId, error: WORKSHOP_PROJECT_MEMORY_REFUSALS[found.reason as keyof typeof WORKSHOP_PROJECT_MEMORY_REFUSALS] ?? WORKSHOP_PROJECT_MEMORY_REFUSALS.failed };
     this.log(`edit data ${found.kind === 'memory' ? 'sent' : `refused reason=${found.reason}`} memoryId=${memoryId}`);
     const reply: WorkshopMemoryEditDataMessage = {
       type: MessageType.WORKSHOP_MEMORY_EDIT_DATA,
@@ -349,7 +375,7 @@ export class WorkshopProjectMemoryHandler {
     const estimated = await this.library.estimatePinned(typeof payload.memoryId === 'string' ? payload.memoryId : undefined, payload.draft);
     const answer: WorkshopMemoryEstimateResultPayload = estimated.kind === 'estimate'
       ? { requestId, estimate: estimated.estimate }
-      : { requestId, error: REFUSALS[estimated.reason as keyof typeof REFUSALS] ?? REFUSALS.failed };
+      : { requestId, error: WORKSHOP_PROJECT_MEMORY_REFUSALS[estimated.reason as keyof typeof WORKSHOP_PROJECT_MEMORY_REFUSALS] ?? WORKSHOP_PROJECT_MEMORY_REFUSALS.failed };
     const reply: WorkshopMemoryEstimateResultMessage = {
       type: MessageType.WORKSHOP_MEMORY_ESTIMATE_RESULT,
       source: 'extension.workshop',
@@ -373,6 +399,7 @@ export class WorkshopProjectMemoryHandler {
       result: ProjectMemoryWriteResult;
       action: 'saved' | 'updated' | 'forgotten' | 'restored';
       onRecorded?: (memoryId: string) => void;
+      onRefused?: (reason: ProjectMemoryWriteRefusalReason) => void;
       proposedBy?: string;
     }>,
     stillApplies: () => boolean = () => true
@@ -384,21 +411,22 @@ export class WorkshopProjectMemoryHandler {
       }
     }
     if (this.room.isRoomRunActive()) {
-      return this.answer({ requestId, ok: false, error: RUN_ACTIVE }, `${target} refused reason=run-active`);
+      return this.answer({ requestId, ok: false, error: WORKSHOP_MEMORY_RUN_ACTIVE }, `${target} refused reason=run-active`);
     }
     const revision = this.session.readRoomRevision();
-    const { result, action, onRecorded, proposedBy } = await run();
+    const { result, action, onRecorded, onRefused, proposedBy } = await run();
     if (result.kind === 'refused') {
+      onRefused?.(result.reason);
       const error = result.reason === 'pinned-budget' && result.budget
         ? workshopMemoryPinnedRefusal(result.budget, editing)
-        : REFUSALS[result.reason as keyof typeof REFUSALS] ?? REFUSALS.failed;
+        : WORKSHOP_PROJECT_MEMORY_REFUSALS[result.reason as keyof typeof WORKSHOP_PROJECT_MEMORY_REFUSALS] ?? WORKSHOP_PROJECT_MEMORY_REFUSALS.failed;
       return this.answer({ requestId, ok: false, error, ...(result.budget ? { budget: result.budget } : {}) }, `${target} refused reason=${result.reason}`);
     }
     while (this.room.isSessionOperationPending()) {
       await this.room.waitForSessionOperations();
     }
     if (this.session.readRoomRevision() !== revision || !stillApplies()) {
-      return this.answer({ requestId, ok: true, memoryId: result.memory.id, error: ROOM_CHANGED },
+      return this.answer({ requestId, ok: true, memoryId: result.memory.id, error: WORKSHOP_MEMORY_ROOM_CHANGED },
         `${target} written memoryId=${result.memory.id}; receipt not recorded reason=room-changed`);
     }
     onRecorded?.(result.memory.id);

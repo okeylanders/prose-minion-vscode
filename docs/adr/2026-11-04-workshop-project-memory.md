@@ -983,3 +983,62 @@ D6 and D8 stand as written above; this changes what follows from them.*
   place under the cap. Replacing what a saved memory says is the writer's
   decision.
 
+## Addendum 2026-11-05: personas propose edits to a saved note
+
+*Okey's live-pass decision, with the defaults he approved (epic Slice 6c,
+[slice doc](../../.todo/epics/epic-workshop-project-memory-2026-11-04/slice-6c-edits.md)).
+D4, D6 and D8 stand; this adds a second kind of suggestion.*
+
+- **The trailer.** The same `<prose-minion-memory-proposal>` frame. An
+  `<edit>` element naming one saved note, by id exactly as the catalog shows
+  it, marks it as an edit; its other elements are operations, in the order
+  written:
+  - **rewrite:** `<title>`, `<kind>`, `<summary>` or `<body>` replaces that
+    field whole;
+  - **replace:** `<find-in-summary>` or `<find-in-body>`, followed at once by
+    `<replace-with>`. The quote must occur exactly once in that field of the
+    note. There are at most `editReplaces` (5) pairs, none overlapping;
+  - **append** and **prepend:** a passage added to the body, each at most
+    once.
+
+  A field rewritten whole takes no other operation, and an edit names
+  nothing it replaces. A second edit of the same note in one reply is a
+  `duplicate`, and an edit counts toward `proposalsPerReply`. Edit frames are
+  stripped from the bubble, retained history, logs and streaming like any
+  other frame.
+- **Anchoring is the host's.** When the reply is read, host code
+  (`WorkshopMemoryEditAnchor`, a small exact-once finder) finds every quote
+  in the note as the listing has it then, never in text an earlier replace
+  wrote. A model never gives an offset.
+  - The item records the note's D14 version, what the note said
+    (`before`), and the result.
+  - An unknown, archived, superseded, busy or unreadable target drops the
+    edit, as does a quote found zero or several times, overlapping quotes, a
+    result past a field bound, a change that changes nothing, or a result
+    past the pinned budget when the note loads in full. Each is logged by
+    reason.
+  - The field bounds imply the file's byte bound, and the store checks the
+    file again at commit.
+  - The phrasing fence (D9) reads the result, as it does a new note.
+- **The list shape.** `memoryProposals` items are now `proposes: 'new'` or
+  `proposes: 'edit'`. An edit carries `target` (id, version, load in full,
+  what it replaces), `before`, the result as its fields, and `stale` once a
+  Save found the note changed. No `schemaVersion` bump: the field has not
+  shipped.
+- **The version check.** A Save is an ordinary update through the library's
+  queue, bound to its workspace (PR #202 F01), carrying the recorded version.
+  - The note's version must equal it at the write's turn, and again inside
+    the store's claimed rewrite, which reruns its check whenever the bytes
+    it read are not the bytes it claims. That is the commit point.
+  - Otherwise the write is refused as `changed`, nothing is written, the
+    card says "This note changed since it was suggested", and the card offers
+    only Dismiss. It is never re-anchored.
+  - The sheet's Edit… is filled with the result and saves through the same
+    checked path.
+- **Always waits.** An edit is never saved automatically. Under Save and tell
+  me it is held `edit` ("It changes a saved memory, so it waits for you to
+  save it."), after the web-research hold, and takes no place under the cap.
+- **Receipts.** A saved edit leaves the existing `updated` receipt, naming
+  the persona whose suggestion it was, and D14's delivery counts its version
+  as told, exactly as for a writer's edit.
+
