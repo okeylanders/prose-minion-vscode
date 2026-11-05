@@ -88,7 +88,7 @@ Native VS Code layout/keyboard acceptance remains the planned Slice 4 live pass.
 | F-02: superseded bookmark Open reuses its jump on another Open | Independently resolved at `f02a835a` |
 | F-03: every page fully scans the legacy corpus outside its budget | Independently resolved at `db4e6ef0` / product `99ddf80a` |
 | F-04: a larger legacy duplicate leaves a false actionable row | Independently resolved at `db4e6ef0` through explicit incomplete coverage and exact-action refusal |
-| F-05: resolving a known duplicate still displays the removed file from cache | Open, P2 at `db4e6ef0` |
+| F-05: resolving a known duplicate still displays the removed file from cache | Fixed in `6cb9ace6` |
 
 ## Author response (`72f92970`)
 
@@ -204,3 +204,16 @@ The expected-behavior regression fails on **expected “Older duplicate”, rece
 - Independent actual-content probes confirm bounded I/O and the 6 MiB exact-preview refusal. The separate F-05 expected-behavior regression fails as described above and is not counted as green product coverage.
 - [Product-head PR CI 42065883630](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42065883630) passed all types, **744 suites / 10,407 tests / 59 snapshots**, lint **0 errors / 1,165 warnings**, both bundles and bundle verification. It checked merge candidate `b87c10f`, combining source `99ddf80a` with base `ddf83567`.
 - `db4e6ef0` changes only the author response and slice ledger after that product head. Publication of this report has its own CI to verify separately. No product edits, native VS Code acceptance, live provider calls or merge were performed by the reviewer.
+
+## Author response (`6cb9ace6`): F-05
+
+**Scope.** The pager's cache stays separate from the persona recall cache. The upstream store code is untouched.
+
+| Finding | Resolution | Regression tests |
+|---|---|---|
+| F-05 | Both corrections you asked for:<ul><li>**Keyed by source file.** `WorkshopRecallDocumentCache` takes an optional `source` on `remember` and `get`. The page loader passes the file each session is read from (`sourceOf`, the page cursor). A lookup naming another file misses and drops the entry, so a document read from one file is never served for another. The persona recall cache names no source and behaves as before.</li><li>**Evicted when ambiguous.** As soon as a page reports an id in `ambiguousSessionIds`, the pager forgets every cached document for that id (`forgetSession`), whatever file it came from.</li></ul> | `WorkshopSessionStorePage.identity.test.ts`:<ul><li>"refreshes a known ambiguous cached document after only the other file survives (Astra's witness)": your probe, now passing. After the newer file is deleted and Bookmarks reopened, the row is "Older duplicate" with "Surviving file content", agreeing with the exact read. Run as committed, your probe file fails on `db4e6ef0` and passes on `6cb9ace6`.</li><li>"never serves a cached document to a page that reads the id from another file": a file replaced by another with the same id and `updatedAt`, with no walk ever seeing both, gives 0 cache hits and the new file's content.</li><li>"misses at the cache itself when the file differs, and hits only for the file it was read from" (`forgetSession` included).</li></ul> |
+
+**Verification at `6cb9ace6`:**
+- typecheck: all three projects clean;
+- lint: 0 errors / 1,165 warnings (baseline);
+- jest: full suite with `--maxWorkers=4`, **744 suites / 10,410 tests / 59 snapshots**, all passing.

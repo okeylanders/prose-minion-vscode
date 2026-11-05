@@ -182,3 +182,9 @@
 - **F-04. An unknown id is never unique.** A file whose summary couldn't be read counts as unreadable, and the screen says the shared-id check covers only what it read. An exact read's identity conflict is now its own outcome (`ambiguous-session`), with a clear Preview message, and Open shows the host's reason.
 - **A limit.** A row loaded before its duplicate's page looks normal until Load more reaches that page. The exact read still refuses the conflict at Preview or Open.
 - **Verification:** jest **744 suites / 10,407 tests / 59 snapshots**, all passing; lint at the 1,165 baseline; typecheck clean.
+
+### PR #216 re-review: F-05, fixed in `6cb9ace6`
+
+- **Keyed by source file.** The pager's cache entries name the file they were read from, and a page reading the id from another file misses.
+- **Evicted when ambiguous.** An id a page reports ambiguous is forgotten from the cache at once.
+- **Verification:** jest **744 suites / 10,410 tests / 59 snapshots**, all passing.
