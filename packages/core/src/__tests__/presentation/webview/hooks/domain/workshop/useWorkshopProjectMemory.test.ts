@@ -190,10 +190,60 @@ describe('useWorkshopProjectMemory', () => {
 
   it('Forget and Restore post the receipt route', () => {
     const { result: hook } = renderHook(() => useWorkshopProjectMemory());
-    act(() => hook.current.forget('mem-7f3c2a'));
-    act(() => hook.current.restore('mem-7f3c2a'));
+    act(() => hook.current.forget('mem-7f3c2a', 'turn-5-system-1010'));
+    act(() => hook.current.restore('mem-7f3c2a', 'turn-7-system-1020'));
     expect(posted(MessageType.WORKSHOP_MEMORY_FORGET).map((message) => message.payload.action)).toEqual(['forget', 'restore']);
     expect(hook.current.persistedState).toEqual({});
+  });
+
+  describe('a receipt\'s refused Forget or Restore (PR #221 F-01)', () => {
+    const answer = (requestId: unknown, ok: boolean, error?: string) => ({
+      type: MessageType.WORKSHOP_MEMORY_WRITE_RESULT,
+      source: 'extension.workshop',
+      payload: { requestId, ok, ...(error ? { error } : {}) },
+      timestamp: 5
+    } as never);
+    const lastRequest = () => {
+      const requests = posted(MessageType.WORKSHOP_MEMORY_FORGET);
+      return requests[requests.length - 1].payload.requestId;
+    };
+    const BUSY = 'Another window is editing that memory. Try again in a moment.';
+
+    it('is kept for the receipt that asked, busy until answered, and cleared by a retry and by success', () => {
+      const { result: hook } = renderHook(() => useWorkshopProjectMemory({ roomKey: 'room:1' }));
+      act(() => hook.current.forget('mem-7f3c2a', 'turn-5-system-1010'));
+      expect(hook.current.busyReceipts.has('turn-5-system-1010')).toBe(true);
+      act(() => hook.current.handleWriteResult(answer(lastRequest(), false, BUSY)));
+      expect(hook.current.busyReceipts.size).toBe(0);
+      expect(hook.current.receiptErrors.get('turn-5-system-1010')).toEqual({ action: 'forget', error: BUSY });
+      expect(hook.current.receiptErrors.has('turn-7-system-1020')).toBe(false);
+
+      act(() => hook.current.forget('mem-7f3c2a', 'turn-5-system-1010'));
+      expect(hook.current.receiptErrors.size).toBe(0);
+      act(() => hook.current.handleWriteResult(answer(lastRequest(), true)));
+      expect(hook.current.receiptErrors.size).toBe(0);
+      expect(hook.current.busyReceipts.size).toBe(0);
+    });
+
+    it('ignores an answer it never asked for, and a new room drops the old one\'s feedback and late answers', () => {
+      let roomKey = 'room:1';
+      const { result: hook, rerender } = renderHook(() => useWorkshopProjectMemory({ roomKey }));
+      act(() => hook.current.handleWriteResult(answer('someone-else', false, BUSY)));
+      expect(hook.current.receiptErrors.size).toBe(0);
+
+      act(() => hook.current.restore('mem-7f3c2a', 'turn-7-system-1020'));
+      act(() => hook.current.handleWriteResult(answer(lastRequest(), false, BUSY)));
+      expect(hook.current.receiptErrors.get('turn-7-system-1020')).toEqual({ action: 'restore', error: BUSY });
+
+      act(() => hook.current.forget('mem-7f3c2a', 'turn-5-system-1010'));
+      const owedToOldRoom = lastRequest();
+      roomKey = 'room:2';
+      rerender();
+      expect(hook.current.receiptErrors.size).toBe(0);
+      expect(hook.current.busyReceipts.size).toBe(0);
+      act(() => hook.current.handleWriteResult(answer(owedToOldRoom, false, BUSY)));
+      expect(hook.current.receiptErrors.size).toBe(0);
+    });
   });
 
   it('a bubble\'s note is its text, cut at the body\'s bound', () => {

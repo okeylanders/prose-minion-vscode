@@ -1,7 +1,7 @@
 # Slice 1: Format and Store
 
 **Epic:** [Workshop Pinned Context](README.md)
-**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-pinned-context.md), D5 (storage), D6 (bounds)
+**Decision:** [ADR 2026-11-04](../../../../docs/adr/2026-11-04-workshop-pinned-context.md), D5 (storage), D6 (bounds)
 **Branch:** `epic-pinned-context-slice-1-format-store`
 **Status:** Built (2026-11-05), awaiting review. Runs beside Slice 2a. See
 [Built](#built).
@@ -206,7 +206,7 @@ These are additions, or a spec union made complete:
 ## PR #204 review
 
 Astra's review of `182fcd1b`
-([report](../../../docs/pr-reviews/pr-204-pinned-context-format-store-review.md)):
+([report](../../../../docs/pr-reviews/pr-204-pinned-context-format-store-review.md)):
 changes required. The coordinator checked each finding and directed each fix.
 The review's probes are promoted into the permanent suites. The `.txt` probe
 file stays as evidence and is not run.

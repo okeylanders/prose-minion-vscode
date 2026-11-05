@@ -1,10 +1,10 @@
 # Workshop Pinned Context design source
 
 Snapshot of the **Workshop Pinned Context Settings** design canvas, for the
-[Workshop Pinned Context epic](../../../.todo/epics/epic-workshop-pinned-context-2026-11-04/README.md)
+[Workshop Pinned Context epic](../../../.todo/archive/epics/epic-workshop-pinned-context-2026-11-04/README.md)
 and [ADR 2026-11-04](../../adr/2026-11-04-workshop-pinned-context.md). The
 brief, states and open questions are in
-[Slice 0d's doc](../../../.todo/epics/epic-workshop-pinned-context-2026-11-04/slice-0d-tab-design.md).
+[Slice 0d's doc](../../../.todo/archive/epics/epic-workshop-pinned-context-2026-11-04/slice-0d-tab-design.md).
 
 - **Status: approved by Okey on 2026-11-05** (the third pass). This is the
   design Slices 2a, 3 and 4 build.

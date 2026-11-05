@@ -1,7 +1,7 @@
 # Slice 5: Verify Live
 
 **Epic:** [Workshop Pinned Context](README.md)
-**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-pinned-context.md)
+**Decision:** [ADR 2026-11-04](../../../../docs/adr/2026-11-04-workshop-pinned-context.md)
 **Status:** Ready. Slices 1–4 are merged, and the epic is code complete at
 `b668782` (728 suites / 10,239 tests green). It needs a human with VS Code
 (Extension Development Host).

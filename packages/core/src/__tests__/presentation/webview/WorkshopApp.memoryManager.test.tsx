@@ -245,6 +245,66 @@ describe('WorkshopApp · the Memory tab and the manager (Slice 4b)', () => {
     expect(vscode.setState).toHaveBeenLastCalledWith(expect.objectContaining({ workshopMemoryExplainerOpen: true }));
   });
 
+  describe('a receipt\'s refused Forget or Restore shows beside it (PR #221 F-01)', () => {
+    const BUSY = 'Another window is editing that memory. Try again in a moment.';
+    const receipt = (id: string, action: 'saved' | 'forgotten'): WorkshopTurn => ({
+      id, role: 'system', kind: 'divider', participant: 'session', artifact: 'memory_receipt', excerptVersion: 1, timestamp: 2,
+      content: action === 'saved'
+        ? 'Jill saved to project memory: The Rabbit’s watch runs backward (mem-7f3c21).'
+        : 'Forgotten from project memory: The Rabbit’s watch runs backward (mem-7f3c21).',
+      projectMemoryReceipt: action === 'saved'
+        ? { action, memoryId: 'mem-7f3c21', title: 'The Rabbit’s watch runs backward', version: '0123456789ab', by: 'auto', proposedBy: 'jill' }
+        : { action, memoryId: 'mem-7f3c21', title: 'The Rabbit’s watch runs backward', version: '0123456789ab', by: 'writer' }
+    } as unknown as WorkshopTurn);
+    const writeResult = (requestId: unknown, ok: boolean, error?: string) => deliver({
+      type: MessageType.WORKSHOP_MEMORY_WRITE_RESULT,
+      source: 'extension.workshop',
+      payload: { requestId, ok, ...(error ? { error } : {}) },
+      timestamp: 0
+    });
+    const lastForget = () => {
+      const requests = posted(MessageType.WORKSHOP_MEMORY_FORGET);
+      return requests[requests.length - 1].payload;
+    };
+
+    it.each([
+      ['Forget', 'saved', 'forget', 'Couldn’t forget it.'],
+      ['Restore', 'forgotten', 'restore', 'Couldn’t restore it.']
+    ] as const)('%s refused: an alert under its receipt, cleared by a retry; a success shows none', (button, action, posts, heading) => {
+      render(<WorkshopApp />);
+      deliver(session({ turns: [receipt('turn-5-system-1010', action)], totalTurns: 1 }));
+      fireEvent.click(screen.getByRole('button', { name: button }));
+      expect(lastForget()).toMatchObject({ memoryId: 'mem-7f3c21', action: posts });
+      expect((screen.getByRole('button', { name: button }) as HTMLButtonElement).disabled).toBe(true);
+
+      writeResult(lastForget().requestId, false, BUSY);
+      const alert = screen.getByRole('alert');
+      expect(alert.textContent).toContain(heading);
+      expect(alert.textContent).toContain(BUSY);
+      expect((screen.getByRole('button', { name: button }) as HTMLButtonElement).disabled).toBe(false);
+
+      fireEvent.click(screen.getByRole('button', { name: button }));
+      expect(screen.queryByRole('alert')).toBeNull();
+      writeResult(lastForget().requestId, true);
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('an answer nobody asked for says nothing, and a new room drops the old one\'s refusal', () => {
+      render(<WorkshopApp />);
+      deliver(session({ turns: [receipt('turn-5-system-1010', 'saved')], totalTurns: 1 }));
+      writeResult('ws-memory-unknown-1', false, BUSY);
+      expect(screen.queryByRole('alert')).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Forget' }));
+      writeResult(lastForget().requestId, false, BUSY);
+      expect(screen.getByRole('alert').textContent).toContain(BUSY);
+
+      // A Branch keeps the receipt's turn id; the new room still starts quiet.
+      deliver(session({ turns: [receipt('turn-5-system-1010', 'saved')], totalTurns: 1, roomRevision: 2 }));
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+  });
+
   it('the sessions menu’s Memory… opens the manager without Conversation settings', () => {
     render(<WorkshopApp />);
     deliver(session());
