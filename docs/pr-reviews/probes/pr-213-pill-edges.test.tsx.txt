@@ -1,0 +1,122 @@
+/** @jest-environment jsdom */
+import { TextEncoder, TextDecoder } from "node:util";
+Object.assign(globalThis, { TextEncoder, TextDecoder });
+import * as React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ContextPanel } from '@components/workshop/ContextPanel';
+import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinnedContext';
+import { useWorkshopPinnedPills } from '@hooks/domain/workshop/controllers/useWorkshopPinnedPills';
+import { MessageType, type WorkshopContextAttachmentSnapshot, type WorkshopPinnedContextEntryView, type WorkshopPinnedContextPayload } from '@messages';
+import { createMockVSCode } from '@/__tests__/mocks/vscode';
+import { harness as hostHarness } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextHandlerHost';
+import { WorkshopPinnedContextHandler } from '@handlers/domain/workshop/WorkshopPinnedContextHandler';
+import { WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION } from '@/infrastructure/storage/WorkshopPinnedContextStore';
+jest.mock('@hooks/useVSCodeApi');
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+
+const alice: WorkshopContextAttachmentSnapshot = {id:'ctx-1',kind:'file',origin:'writer',label:'alice.md',relativePath:'Characters/alice.md',words:3,addedAt:1};
+const bob: WorkshopContextAttachmentSnapshot = {id:'ctx-1',kind:'file',origin:'writer',label:'bob.md',relativePath:'Characters/bob.md',words:3,addedAt:2};
+const entry = (path: string): WorkshopPinnedContextEntryView => ({path,label:path.split('/').at(-1)!,words:3,state:'ready'});
+const answer = (requestId: string | null, entries: readonly WorkshopPinnedContextEntryView[], extra: Partial<WorkshopPinnedContextPayload> = {}): WorkshopPinnedContextPayload => ({requestId,platform:'posix',availability:{available:true},file:{state:'ok'},revision:`rev-${entries.length}`,entries,totals:{words:3*entries.length,budgetWords:100000,files:entries.length,maxFiles:20},...extra});
+let deliver: (a:WorkshopPinnedContextPayload)=>void;
+function Sheet({attachments,room=1,showPanel=true}:{attachments:WorkshopContextAttachmentSnapshot[];room?:number;showPanel?:boolean}) {
+  const context = useWorkshopPinnedContext({attachments,running:false});
+  const pills = useWorkshopPinnedPills({answer:context.answer,attachments,room,pinnableIds:context.view.pinAttached.ids,pending:context.pending,pinAttachments:context.pinAttachments});
+  deliver = payload => context.handlePinnedContext({type:MessageType.WORKSHOP_PINNED_CONTEXT,source:'extension.workshop',timestamp:1,payload});
+  return <><button data-testid="elsewhere">Elsewhere</button>{showPanel && <ContextPanel attachments={attachments} pendingDelivery={false} isRunning={false}
+    onAddText={jest.fn()} onAddFile={jest.fn()} onRefreshFiles={jest.fn()} onOpenAttachment={jest.fn()} onRemove={jest.fn()}
+    wizardRunning={false} onRunWizard={jest.fn()} onCancelWizard={jest.fn()} pinned={{pills:pills.pills,onPin:pills.pin}} />}</>;
+}
+let vscode:ReturnType<typeof createMockVSCode>;
+const lastId=(type:MessageType)=>vscode.postMessage.mock.calls.map(([m])=>m).filter(m=>m.type===type).at(-1)!.payload.requestId as string;
+beforeEach(()=>{vscode=createMockVSCode();(useVSCodeApi as jest.Mock).mockReturnValue(vscode);});
+afterEach(()=>jest.clearAllMocks());
+function mount(room=1){const view=render(<Sheet attachments={[alice]} room={room}/>);act(()=>deliver(answer(lastId(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT),[])));return view;}
+
+
+it('same file and id across a room replacement does not own a late refusal',()=>{
+  const view=mount(10);
+  fireEvent.click(screen.getByRole('button',{name:'Pin alice.md for new sessions'}));
+  const requestId=lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS);
+  view.rerender(<Sheet attachments={[{...alice}]} room={11}/>);
+  act(()=>deliver(answer(requestId,[],{action:'pin-attachments',ok:false,notice:{kind:'refused',text:'Old room refusal'}})));
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('same file and id across a room replacement does not own a late success even if new Pin owns focus',()=>{
+  const view=mount(10);
+  fireEvent.click(screen.getByRole('button',{name:'Pin alice.md for new sessions'}));
+  const requestId=lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS);
+  view.rerender(<Sheet attachments={[{...alice}]} room={11}/>);
+  screen.getByRole('button',{name:'Pin alice.md for new sessions'}).focus();
+  act(()=>deliver(answer(requestId,[entry(alice.relativePath!)],{action:'pin-attachments',ok:true})));
+  expect(screen.getByRole('button',{name:'alice.md, pinned'})).toBeTruthy();
+  expect(document.activeElement?.tagName).toBe('BODY');
+});
+
+it('same-room metadata snapshot refresh retains valid own refusal',()=>{
+  const view=mount(10);
+  fireEvent.click(screen.getByRole('button',{name:'Pin alice.md for new sessions'}));
+  const requestId=lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS);
+  view.rerender(<Sheet attachments={[{...alice,words:32,truncation:{keptWords:32,totalWords:55}}]} room={10}/>);
+  act(()=>deliver(answer(requestId,[],{action:'pin-attachments',ok:false,notice:{kind:'refused',text:'Valid refusal'}})));
+  expect(screen.getByRole('alert').textContent).toBe('Valid refusal');
+});
+
+it('same-room metadata snapshot refresh retains own landing and focus recovery',()=>{
+  const view=mount(10);
+  const pin=screen.getByRole('button',{name:'Pin alice.md for new sessions'});
+  pin.focus();fireEvent.click(pin);
+  view.rerender(<Sheet attachments={[{...alice,words:32,truncation:{keptWords:32,totalWords:55}}]} room={10}/>);
+  expect(document.activeElement).toBe(pin);
+  act(()=>deliver(answer(lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS),[entry(alice.relativePath!)],{action:'pin-attachments',ok:true})));
+  expect(document.activeElement).toBe(screen.getByRole('button',{name:'alice.md, pinned'}));
+});
+
+it('same-room replacement attachment with same id and path but new addedAt does not own refusal',()=>{
+  const view=mount(10);
+  fireEvent.click(screen.getByRole('button',{name:'Pin alice.md for new sessions'}));
+  const requestId=lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS);
+  view.rerender(<Sheet attachments={[{...alice,addedAt:2}]} room={10}/>);
+  act(()=>deliver(answer(requestId,[],{action:'pin-attachments',ok:false,notice:{kind:'refused',text:'Old attachment refusal'}})));
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('pending Pin keeps focus, guards repeated clicks and keeps focus on refusal',()=>{
+  mount();
+  const pin=screen.getByRole('button',{name:'Pin alice.md for new sessions'});
+  pin.focus();fireEvent.click(pin);
+  const requestId=lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS);
+  expect(pin.getAttribute('aria-disabled')).toBe('true');
+  expect((pin as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(pin);fireEvent.click(pin);
+  expect(vscode.postMessage.mock.calls.filter(([m])=>m.type===MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS)).toHaveLength(1);
+  expect(document.activeElement).toBe(pin);
+  act(()=>deliver(answer(requestId,[],{action:'pin-attachments',ok:false,notice:{kind:'refused',text:'Try again'}})));
+  expect(document.activeElement).toBe(pin);
+  expect(pin.getAttribute('aria-disabled')).toBeNull();
+  expect(screen.getByRole('alert').textContent).toBe('Try again');
+});
+
+it('landed answer cannot reclaim focus on a later panel remount',()=>{
+  const view=mount();
+  const pin=screen.getByRole('button',{name:'Pin alice.md for new sessions'});
+  pin.focus();fireEvent.click(pin);
+  act(()=>deliver(answer(lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS),[entry(alice.relativePath!)],{action:'pin-attachments',ok:true})));
+  expect(document.activeElement).toBe(screen.getByRole('button',{name:'alice.md, pinned'}));
+  view.rerender(<Sheet attachments={[alice]} showPanel={false}/>);
+  expect(document.activeElement?.tagName).toBe('BODY');
+  view.rerender(<Sheet attachments={[alice]}/>);
+  expect(document.activeElement?.tagName).toBe('BODY');
+});
+
+it('a hidden panel cannot claim focus when its pending pin lands and the panel later remounts',()=>{
+  const view=mount();
+  const pin=screen.getByRole('button',{name:'Pin alice.md for new sessions'});
+  pin.focus();fireEvent.click(pin);
+  const requestId=lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS);
+  view.rerender(<Sheet attachments={[alice]} showPanel={false}/>);
+  act(()=>deliver(answer(requestId,[entry(alice.relativePath!)],{action:'pin-attachments',ok:true})));
+  view.rerender(<Sheet attachments={[alice]}/>);
+  expect(document.activeElement?.tagName).toBe('BODY');
+});

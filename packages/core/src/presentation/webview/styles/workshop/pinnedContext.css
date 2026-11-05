@@ -1,6 +1,7 @@
 /*
- * Workshop Pinned Context: the settings tab and its pin picker (Slice 3;
- * Slice 0d's approved boards). On the full tabs' tokens; no new color.
+ * Workshop Pinned Context: the settings tab and its pin picker (Slice 3),
+ * and the context sheet's pin marks and Pin buttons (Slice 4); Slice 0d's
+ * approved boards. On the full tabs' tokens; no new color.
  * Plain CSS on the Chromium 114 floor (webviewCssFloor.test.ts).
  *
  * The tab reuses the Memory tab's well, notice, chips and meter
@@ -263,4 +264,107 @@
   [data-pm-surface="workshop"] .pm-ws-pin-row {
     flex-wrap: wrap;
   }
+}
+
+/* ── The context sheet's pills (Slice 4; Workshop.dc.html) ──────── */
+
+/* A pinned pill: the accent pin after the word count, and its tooltip. */
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pinned {
+  position: relative;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin-mark {
+  display: inline-flex;
+  flex: none;
+  color: var(--pm-accent-hi);
+}
+/* A file pill's glyphs are blue (context.css); the pin keeps its own color. */
+[data-pm-surface="workshop"] .pm-ws-ctx-pill .pm-ws-ctx-pill-pin-mark svg,
+[data-pm-surface="workshop"] .pm-ws-ctx-pill .pm-ws-ctx-pill-pin svg {
+  color: inherit;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin-tip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 2;
+  width: 280px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--pm-border-2);
+  background: var(--pm-surface-3);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--pm-text-2);
+  white-space: normal;
+  pointer-events: none;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin-tip b {
+  color: var(--pm-text);
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pinned:hover .pm-ws-ctx-pill-pin-tip,
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pinned:focus-within .pm-ws-ctx-pill-pin-tip {
+  display: block;
+}
+
+/*
+ * Pin, on an unpinned file pill: shown on hover and focus, as drawn. It
+ * stays in the tab order while hidden (no display: none), so focusing it
+ * shows it.
+ */
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  max-width: 0;
+  padding: 1px 0;
+  overflow: hidden;
+  opacity: 0;
+  border: 0 solid color-mix(in srgb, var(--pm-accent-hi) 45%, transparent);
+  border-radius: var(--pm-r-pill);
+  background: color-mix(in srgb, var(--pm-accent-hi) 12%, transparent);
+  color: var(--pm-text);
+  font: 500 10.5px var(--pm-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill:hover .pm-ws-ctx-pill-pin,
+[data-pm-surface="workshop"] .pm-ws-ctx-pill:focus-within .pm-ws-ctx-pill-pin {
+  max-width: 80px;
+  padding: 1px 7px;
+  border-width: 1px;
+  opacity: 1;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pin[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.55;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill:hover .pm-ws-ctx-pill-pin[aria-disabled="true"],
+[data-pm-surface="workshop"] .pm-ws-ctx-pill:focus-within .pm-ws-ctx-pill-pin[aria-disabled="true"] {
+  opacity: 0.55;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-pinned:hover,
+[data-pm-surface="workshop"] .pm-ws-ctx-pill:hover:has(.pm-ws-ctx-pill-pin) {
+  border-color: var(--pm-accent-hi);
+}
+
+/* A refused pin, where the pill is: its own line under it. */
+[data-pm-surface="workshop"] .pm-ws-ctx-pin-refusal {
+  flex-basis: 100%;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  border-radius: var(--pm-r-input);
+  background: color-mix(in srgb, var(--pm-amber) 8%, transparent);
+  color: var(--pm-text-2);
+  font-size: 11.5px;
+  line-height: 1.45;
 }

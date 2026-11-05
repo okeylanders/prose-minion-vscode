@@ -49,6 +49,7 @@ import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmark
 import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinnedContext';
+import { useWorkshopPinnedPills } from '@hooks/domain/workshop/controllers/useWorkshopPinnedPills';
 import { workshopPinnedContextPanelProps } from '@components/workshop/settings/WorkshopPinnedContextSettingsPanel';
 import { workshopMemoryTabInputOf } from '@hooks/domain/workshop/memory/workshopMemoryListingInputs';
 import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
@@ -256,6 +257,7 @@ export const WorkshopApp: React.FC = () => {
   const projectMemory = useWorkshopProjectMemory();
   const memoryManager = useWorkshopMemoryManager();
   const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
+  const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, room: workshop.roomRevision, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });
   // Whether the Memory tab's explainer shows is this viewer's choice too.
   const persistedMemoryExplainer = usePersistedState<Partial<WorkshopMemoryExplainerPersistence>>();
   const memoryExplainer = useWorkshopMemoryExplainer({
@@ -1159,7 +1161,8 @@ export const WorkshopApp: React.FC = () => {
         onRemove: workshop.removeContextAttachment,
         wizardRunning: workshop.wizardRunning,
         onRunWizard: workshop.runContextWizard,
-        onCancelWizard: workshop.cancelContextWizard
+        onCancelWizard: workshop.cancelContextWizard,
+        pinned: { pills: pinnedPills.pills, onPin: pinnedPills.pin }
       }}
       readIn={{
         entries: readInSources,
