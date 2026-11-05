@@ -121,6 +121,8 @@ export interface PromptBudgets {
     proposalsPerReply: number;
     /** Find-and-replace pairs one edit suggestion may carry (Slice 6c). */
     editReplaces: number;
+    /** Open-room turns one suggestion may cite (Bookmark Recall D10): with its reply and the writer's message, within `sourceTurns`. */
+    citedTurns: number;
   }>;
   /**
    * Workshop Pinned Context (ADR 2026-11-04 D6): how many files the list
@@ -577,7 +579,8 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readsPerTurn: 2,
     autoSavesPerRoom: 5,
     proposalsPerReply: 10,
-    editReplaces: 5
+    editReplaces: 5,
+    citedTurns: 30
   },
   workshopPinnedContext: {
     files: 20,

@@ -5,6 +5,7 @@ import { LIGHTBOX_NUMBERS_READ_STATS } from '@shared/constants/lightboxSteering'
 import { WORKSHOP_LIGHTBOX_TILE_LIMITS } from '@messages';
 import * as path from 'path';
 import * as ts from 'typescript';
+import { PROJECT_MEMORY_LIST_ENTRIES } from '@shared/types/projectMemory';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS } from '@/application/services/workshop/recall/WorkshopRecallReadSection';
 import {
@@ -246,7 +247,9 @@ describe('prompt budgets', () => {
   it('pins the Project Memory starting budgets (ADR 2026-11-04 D11)', () => {
     expect(PROMPT_BUDGETS.workshopProjectMemory).toEqual({ titleCharacters: 120, summaryCharacters: 280, bodyCharacters: 8_000,
       catalogEntries: 40, catalogTokens: 2_000, pinnedTokens: 5_000, queryCharacters: 200, memoryIdCharacters: 16, searchHits: 20,
-      snippetCharacters: 280, readMemories: 5, readCharacters: 40_000, readsPerTurn: 2, autoSavesPerRoom: 5, proposalsPerReply: 10, editReplaces: 5 });
+      snippetCharacters: 280, readMemories: 5, readCharacters: 40_000, readsPerTurn: 2, autoSavesPerRoom: 5, proposalsPerReply: 10, editReplaces: 5, citedTurns: 30 });
+    // A suggestion's cited turns leave room for its reply and the writer's message in a memory's sources (Bookmark Recall D10).
+    expect(PROMPT_BUDGETS.workshopProjectMemory.citedTurns + 2).toBeLessThanOrEqual(PROJECT_MEMORY_LIST_ENTRIES.sourceTurns);
     expect(PROMPT_BUDGETS.workshopProjectMemory.readsPerTurn).toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
   });
 

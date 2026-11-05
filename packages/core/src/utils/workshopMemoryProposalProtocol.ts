@@ -18,12 +18,19 @@
  *   closed list, each `supersedes` a memory id.
  * - **Reasons, never text.** A rejection names its reason and, at most, an
  *   element name; no caller logs what a field held (D9).
+ * - **Cited turns** (ADR 2026-11-05 D10): `cites-turn`, repeated at most
+ *   `citedTurns` times, names an open-room turn the suggestion came from, by
+ *   the turn id `transcript.bookmarks` shows. The codec checks only that each
+ *   is one token; the host keeps a cited turn only when the open room holds
+ *   it and the proposing persona could see it, at save time
+ *   (`workshopProposalProvenance`), and drops anything else by id.
  * - **An edit** (Slice 6c): a frame holding `<edit>` proposes a change to
  *   the memory it names, decoded by `workshopMemoryEditProtocol` from the
  *   same elements, in the order written. Its operations' elements in a frame
  *   without `<edit>` reject it as `edit-element`.
  */
 
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   PROJECT_MEMORY_ID,
   PROJECT_MEMORY_LIST_ENTRIES,
@@ -48,7 +55,16 @@ export interface WorkshopMemoryProposalDraft {
   readonly body: string;
   /** Memory ids, deduplicated, in the order written. */
   readonly supersedes: readonly string[];
+  /** Open-room turns it cites (D10), deduplicated, in the order written; absent when it cites none. */
+  readonly cites?: readonly string[];
 }
+
+/**
+ * What a `cites-turn` may hold: one token, as a turn id or a bookmark ref is
+ * written. Whether it names a turn the persona could see is the host's
+ * check; a ref of another shape survives to be dropped there, by id.
+ */
+export const WORKSHOP_MEMORY_CITED_TURN = /^[A-Za-z0-9@][A-Za-z0-9@/._:-]{0,199}$/;
 
 export const WORKSHOP_MEMORY_PROPOSAL_FAULTS = [
   'stray-text',
@@ -61,6 +77,9 @@ export const WORKSHOP_MEMORY_PROPOSAL_FAULTS = [
   'missing-summary',
   'invalid-supersedes',
   'too-many-supersedes',
+  // A `cites-turn` that isn't one token, or more of them than `citedTurns` (D10).
+  'invalid-cites',
+  'too-many-cites',
   // An edit's element in a frame without `<edit>` (Slice 6c).
   'edit-element'
 ] as const;
@@ -75,7 +94,9 @@ export type WorkshopMemoryProposalDecode =
   | { readonly kind: 'edit'; readonly edit: WorkshopMemoryEditDraft }
   | { readonly kind: 'rejected'; readonly fault: WorkshopMemoryProposalFault };
 
-const FIELDS = ['title', 'kind', 'summary', 'body', 'supersedes'] as const;
+const FIELDS = ['title', 'kind', 'summary', 'body', 'supersedes', 'cites-turn'] as const;
+/** Elements a frame may repeat. */
+const REPEATED: readonly string[] = ['supersedes', 'cites-turn'];
 type Field = typeof FIELDS[number];
 const ELEMENTS: readonly string[] = [...FIELDS, ...WORKSHOP_MEMORY_EDIT_ELEMENTS];
 
@@ -107,7 +128,7 @@ export function decodeWorkshopMemoryProposal(inner: string): WorkshopMemoryPropo
     if (!isField(name)) {
       return reject('edit-element');
     }
-    if (name !== 'supersedes' && values.has(name)) {
+    if (!REPEATED.includes(name) && values.has(name)) {
       return reject('repeated-element');
     }
     values.set(name, [...(values.get(name) ?? []), content]);
@@ -180,7 +201,23 @@ function check(values: ReadonlyMap<Field, string[]>): WorkshopMemoryProposalDeco
   if (supersedes.length > PROJECT_MEMORY_LIST_ENTRIES.supersedes) {
     return reject('too-many-supersedes');
   }
-  return { kind: 'proposal', proposal: { title, kind: kind as ProjectMemoryKind, summary, body, supersedes } };
+  const cites: string[] = [];
+  for (const raw of values.get('cites-turn') ?? []) {
+    const id = raw.trim();
+    if (!WORKSHOP_MEMORY_CITED_TURN.test(id)) {
+      return reject('invalid-cites');
+    }
+    if (!cites.includes(id)) {
+      cites.push(id);
+    }
+  }
+  if (cites.length > PROMPT_BUDGETS.workshopProjectMemory.citedTurns) {
+    return reject('too-many-cites');
+  }
+  return {
+    kind: 'proposal',
+    proposal: { title, kind: kind as ProjectMemoryKind, summary, body, supersedes, ...(cites.length > 0 ? { cites } : {}) }
+  };
 }
 
 function isField(name: string): name is Field {

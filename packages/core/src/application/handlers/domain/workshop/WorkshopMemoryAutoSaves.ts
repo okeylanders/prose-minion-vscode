@@ -35,7 +35,7 @@
  * - **Logs** carry turn and memory ids and reasons, never memory text.
  */
 
-import type { WorkshopMemoryWriteResultPayload, WorkshopTurn } from '@messages';
+import type { WorkshopMemoryProposal, WorkshopMemoryWriteResultPayload, WorkshopTurn } from '@messages';
 import type { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import type { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
 import type { ProjectMemorySaveProvenance } from '@/application/services/workshop/memory/ProjectMemoryWrites';
@@ -57,7 +57,7 @@ export interface WorkshopMemoryAutoSaveRoom {
 }
 
 export interface WorkshopMemoryAutoSaveHooks {
-  provenance(turn: WorkshopTurn): ProjectMemorySaveProvenance;
+  provenance(turn: WorkshopTurn, proposal: WorkshopMemoryProposal): ProjectMemorySaveProvenance;
   settleRoom(): void;
   log(line: string): void;
 }
@@ -147,7 +147,7 @@ export class WorkshopMemoryAutoSaves {
     if (!permitted()) {
       return this.withdrawn(turnId, index, signal, revision, waits);
     }
-    const result = await this.library.save(workshopMemoryProposalDraft(proposal), this.hooks.provenance(turn), { permit: permitted });
+    const result = await this.library.save(workshopMemoryProposalDraft(proposal), this.hooks.provenance(turn, proposal), { permit: permitted });
     if (result.kind === 'refused') {
       return result.reason === 'withdrawn' ? this.withdrawn(turnId, index, signal, revision, waits) : waits(result.reason);
     }

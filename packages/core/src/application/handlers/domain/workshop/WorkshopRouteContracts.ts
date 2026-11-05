@@ -70,6 +70,7 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopBookmarkHandler'
   | 'WorkshopBookmarkBrowserHandler'
   | 'WorkshopProjectMemoryHandler'
+  | 'WorkshopSavedTurnMemoryHandler'
   | 'WorkshopProjectMemoryManagerHandler'
   | 'WorkshopPinnedContextHandler'
   | 'WorkshopWidgetHostHandler';

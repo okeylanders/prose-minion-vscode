@@ -44,6 +44,7 @@ import {
   type WorkshopMemoryEstimateResultPayload,
   type WorkshopMemoryForgetMessage,
   type WorkshopMemoryCreateMessage,
+  type WorkshopMemoryProposal,
   type WorkshopMemoryProposalActionMessage,
   type WorkshopMemoryRequestEditMessage,
   type WorkshopMemoryUpdateMessage,
@@ -79,7 +80,8 @@ import {
   WORKSHOP_MEMORY_NOT_ELIGIBLE,
   WORKSHOP_MEMORY_ROOM_CHANGED,
   WORKSHOP_MEMORY_RUN_ACTIVE,
-  WORKSHOP_PROJECT_MEMORY_REFUSALS
+  WORKSHOP_PROJECT_MEMORY_REFUSALS,
+  workshopMemoryRequestIdOf as requestIdOf
 } from '@handlers/domain/workshop/WorkshopProjectMemoryRefusals';
 import {
   workshopProposalProvenance,
@@ -104,8 +106,6 @@ export interface WorkshopProjectMemoryRoomGate {
 type Effects = Pick<WorkshopRoomEffects, 'postSessionState' | 'markDirty' | 'reportError'>;
 
 const LOG = '[WorkshopProjectMemoryHandler]';
-const REQUEST_ID_CHARACTERS = 128;
-
 
 export class WorkshopProjectMemoryHandler {
   constructor(
@@ -130,7 +130,7 @@ export class WorkshopProjectMemoryHandler {
     this.room,
     this.proposalSaves,
     {
-      provenance: (turn) => this.proposalProvenance(turn, 'auto'),
+      provenance: (turn, proposal) => this.proposalProvenance(turn, 'auto', proposal),
       settleRoom: () => this.settleRoom('project memory receipt'),
       log: (line) => this.log(line)
     }
@@ -212,7 +212,7 @@ export class WorkshopProjectMemoryHandler {
     const saving = proposal.proposes === 'edit'
       ? this.saveEdit(requestId, card, turn, index, proposal, draft, recorded, stillApplies)
       : this.write(requestId, `proposal save ${card}`, draft, false, async () => {
-        const result = await this.library.save(draft, this.proposalProvenance(turn, 'proposed'));
+        const result = await this.library.save(draft, this.proposalProvenance(turn, 'proposed', proposal));
         return { result, onRecorded: recorded, action: 'saved', proposedBy: turn.personaId };
       }, stillApplies);
     this.proposalSaves.set(key, saving);
@@ -267,6 +267,11 @@ export class WorkshopProjectMemoryHandler {
       this.effects.reportError('Save to memory must name its request and a turn');
       return;
     }
+    // A bookmark's row outside the window names its room (Bookmark Recall D9, PR #214 F-03).
+    if (payload.roomRevision !== undefined && payload.roomRevision !== this.session.readRoomRevision()) {
+      this.answer({ requestId, ok: false, error: WORKSHOP_MEMORY_ROOM_CHANGED }, `save turn refused turnId=${payload.turnId} reason=room-changed`);
+      return;
+    }
     const turn = this.session.readRoomLedger().find((candidate) => candidate.id === payload.turnId);
     if (!turn || !isWorkshopBookmarkableTurn(turn)) {
       this.answer({ requestId, ok: false, error: WORKSHOP_MEMORY_NOT_ELIGIBLE }, `save turn refused turnId=${payload.turnId} reason=not-eligible`);
@@ -276,6 +281,11 @@ export class WorkshopProjectMemoryHandler {
       result: await this.library.save(payload.draft, workshopWriterProvenance([turn.id], this.room.liveSessionId())),
       action: 'saved'
     }));
+  }
+
+  /** A writer's save from a source another route checked (`WorkshopSavedTurnMemoryHandler`): this route's checks, queue, receipt and answer. */
+  saveWriterMemory(requestId: string, target: string, draft: WorkshopMemoryDraft, provenance: ProjectMemorySaveProvenance): Promise<WorkshopMemoryWriteResultPayload> {
+    return this.write(requestId, target, draft, false, async () => ({ result: await this.library.save(draft, provenance), action: 'saved' }));
   }
 
   async handleCreate(message: WorkshopMemoryCreateMessage): Promise<void> {
@@ -449,9 +459,10 @@ export class WorkshopProjectMemoryHandler {
       `${target} ${action} memoryId=${result.memory.id}${leavesReceipt ? ' receipt' : ''}`);
   }
 
-  /** A persona's proposal: the host's provenance, never the trailer's (D6). */
-  private proposalProvenance(turn: WorkshopTurn, origin: 'proposed' | 'auto'): ProjectMemorySaveProvenance {
-    return workshopProposalProvenance(this.session.readRoomLedger(), turn, this.room.liveSessionId(), origin);
+  /** A persona's proposal: the host's provenance, never the trailer's (D6); cited turns it refused are logged by id (D10). */
+  private proposalProvenance(turn: WorkshopTurn, origin: 'proposed' | 'auto', proposal: WorkshopMemoryProposal): ProjectMemorySaveProvenance {
+    return workshopProposalProvenance(this.session.readRoomLedger(), turn, this.room.liveSessionId(), origin, proposal, (dropped) =>
+      this.log(`cited turns dropped turnId=${turn.id} ${dropped.map((cite) => `${cite.id}:${cite.reason}`).join(',')}`));
   }
 
   private settleRoom(reason: string): void {
@@ -483,11 +494,4 @@ export class WorkshopProjectMemoryHandler {
   private log(line: string): void {
     this.outputChannel.appendLine(`${LOG} ${line}`);
   }
-}
-
-function requestIdOf(payload: { requestId?: unknown } | undefined): string | undefined {
-  const requestId = payload?.requestId;
-  return typeof requestId === 'string' && requestId.length > 0 && requestId.length <= REQUEST_ID_CHARACTERS
-    ? requestId
-    : undefined;
 }
