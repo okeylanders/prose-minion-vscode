@@ -127,6 +127,19 @@ These are Okey's two live-pass decisions:
 - The epic README row is added. `slice-6-verify-live.md` gets three
   write-path checks.
 
+## Review fixes
+
+- **PR #209 F-01 (P3), fixed.** The stack counted every proposal before its
+  children hid the ones Save and tell me saved, since those show on their
+  receipts. Two automatic saves left an empty "2 suggestions" group, and one
+  automatic save plus one held card labelled a single card "2 suggestions".
+  - `WorkshopTurnMemoryCards` now works out the visible cards first, each
+    keeping its original index. None renders nothing, one is a plain card,
+    and the count names only the cards shown.
+  - Regressions cover all saved automatically, one left, two left, and an
+    action on a later card keeping its own index.
+  - The three count tests fail against the old component.
+
 ## Deviations and choices
 
 - **The cap counts accepted proposals, not frames.** "An 11th frame or later

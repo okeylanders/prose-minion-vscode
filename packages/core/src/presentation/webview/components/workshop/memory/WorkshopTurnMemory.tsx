@@ -51,24 +51,31 @@ export interface WorkshopTurnMemoryControls {
   onOpenManager?: (memoryId: string) => void;
 }
 
-/** A persona reply's cards: one, or several under a small count (Slice 6b). */
+/**
+ * A persona reply's cards: one, or several under a small count (Slice 6b).
+ * A card Save and tell me saved shows on its receipt, not here, so the
+ * visible cards are worked out first, each keeping its index on the turn
+ * (PR #209 F-01): none renders nothing, one is a plain card, and the count
+ * names only the cards shown.
+ */
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopTurnMemoryCards: React.FC<{ turn: WorkshopTurn; controls: WorkshopTurnMemoryControls }> = ({ turn, controls }) => {
-  const proposals = turn.memoryProposals ?? [];
-  if (proposals.length === 0) {
+  const visible = (turn.memoryProposals ?? [])
+    .map((proposal, index) => ({ proposal, index }))
+    .filter(({ proposal, index }) => !(proposal.state === 'saved' && controls.autoSaved?.cardKeys.has(workshopMemoryCardKey(turn.id, index))));
+  if (visible.length === 0) {
     return null;
   }
-  const cards = proposals.map((proposal, index) => (
+  const cards = visible.map(({ proposal, index }) => (
     <WorkshopTurnMemoryItem key={index} turn={turn} index={index} proposal={proposal} controls={controls} />
   ));
-  if (proposals.length === 1) {
+  if (visible.length === 1) {
     return <>{cards}</>;
   }
-  const label = `${proposals.length} memory suggestions`;
   return (
-    <div className="pm-ws-memory-stack" role="group" aria-label={label}>
+    <div className="pm-ws-memory-stack" role="group" aria-label={`${visible.length} memory suggestions`}>
       <div className="pm-ws-memory-stack-head" aria-hidden="true">
-        <Icon name="bookmark" size={12} /> {proposals.length} suggestions
+        <Icon name="bookmark" size={12} /> {visible.length} suggestions
       </div>
       {cards}
     </div>
@@ -86,9 +93,6 @@ const WorkshopTurnMemoryItem: React.FC<{
   const key = workshopMemoryCardKey(turn.id, index);
   const busy = controls.disabled || controls.busyCards.has(key);
   if (proposal.state === 'saved') {
-    if (controls.autoSaved?.cardKeys.has(key)) {
-      return null;
-    }
     return (
       <div className="pm-ws-memory-settled">
         <Icon name="check" size={13} />

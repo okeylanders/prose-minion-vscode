@@ -22,6 +22,7 @@ import type { WorkshopMemoryProposal, WorkshopProjectMemoryReceipt, WorkshopTurn
 import { WorkshopTurnBubble } from '@components/workshop/WorkshopTurnBubble';
 import { WorkshopMemoryCard } from '@components/workshop/memory/WorkshopMemoryCard';
 import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
+import { workshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
 
 const PROPOSAL: WorkshopMemoryProposal = {
   proposes: 'new',
@@ -161,6 +162,60 @@ describe('the memory card', () => {
     expect((within(second).getByRole('button', { name: /^Save$/ }) as HTMLButtonElement).disabled).toBe(false);
     expect(within(second).getByRole('alert').textContent).toBe('Try again.');
     expect(within(first).queryByRole('alert')).toBeNull();
+  });
+
+  describe('cards Save and tell me saved show on their receipts, and are not counted here (PR #209 F-01)', () => {
+    const saved = (title: string, memoryId: string): WorkshopMemoryProposal => ({ ...PROPOSAL, title, supersedes: undefined, state: 'saved', memoryId });
+    const autoReceipt = (memoryId: string, title: string, n: number): WorkshopTurn => ({
+      ...receiptTurn({ action: 'saved', memoryId, title, version: '0123456789ab', by: 'auto', proposedBy: 'jill' }),
+      id: `turn-${5 + n}-system-${1010 + n}`
+    });
+    const render3 = (proposals: WorkshopMemoryProposal[], receipts: WorkshopTurn[], memory = controls()) => {
+      const turn = { ...reply(PROPOSAL), memoryProposals: proposals };
+      const autoSaved = workshopAutoSavedMemories([turn, ...receipts]);
+      return { memory, ...bubble(turn, { ...memory, autoSaved }) };
+    };
+
+    it('all saved automatically: no group, no count, no card', () => {
+      render3([saved('Tea is at six', 'mem-000001'), saved('The Cat grins last', 'mem-000002')],
+        [autoReceipt('mem-000001', 'Tea is at six', 0), autoReceipt('mem-000002', 'The Cat grins last', 1)]);
+      expect(screen.queryByRole('group', { name: /memory suggestions/ })).toBeNull();
+      expect(screen.queryByText(/suggestions$/)).toBeNull();
+      expect(screen.queryByText(/Saved to project memory/)).toBeNull();
+    });
+
+    it('one left beside an automatic save: a plain card, no count', () => {
+      render3([saved('Tea is at six', 'mem-000001'), { ...PROPOSAL, held: 'supersedes' }], [autoReceipt('mem-000001', 'Tea is at six', 0)]);
+      expect(screen.queryByRole('group', { name: /memory suggestions/ })).toBeNull();
+      expect(screen.queryByText(/suggestions$/)).toBeNull();
+      expect(screen.getByRole('group', { name: 'Suggested memory, held for you' })).toBeTruthy();
+    });
+
+    it('two or more left: the count names only the cards shown', () => {
+      render3([saved('Tea is at six', 'mem-000001'), PROPOSAL, { ...PROPOSAL, title: 'The Queen might be bluffing', supersedes: undefined }],
+        [autoReceipt('mem-000001', 'Tea is at six', 0)]);
+      const stack = screen.getByRole('group', { name: '2 memory suggestions' });
+      expect(stack.textContent).toContain('2 suggestions');
+      expect(within(stack).getAllByRole('group', { name: 'Suggested memory' })).toHaveLength(2);
+    });
+
+    it('an action on a later card still names its own index on the turn', () => {
+      const { memory } = render3([saved('Tea is at six', 'mem-000001'), PROPOSAL, { ...PROPOSAL, title: 'The Queen might be bluffing', supersedes: undefined }],
+        [autoReceipt('mem-000001', 'Tea is at six', 0)]);
+      const [first, second] = screen.getAllByRole('group', { name: 'Suggested memory' });
+      fireEvent.click(within(second).getByRole('button', { name: /^Save$/ }));
+      fireEvent.click(within(first).getByRole('button', { name: 'Dismiss' }));
+      fireEvent.click(within(second).getByRole('button', { name: 'Edit…' }));
+      expect(memory.onSaveCard).toHaveBeenCalledWith('turn-4-assistant-1008', 2);
+      expect(memory.onDismissCard).toHaveBeenCalledWith('turn-4-assistant-1008', 1);
+      expect(memory.onEditCard).toHaveBeenCalledWith(expect.objectContaining({ id: 'turn-4-assistant-1008' }), 2);
+    });
+
+    it('a card the writer saved still shows its settled line, counted', () => {
+      render3([saved('Tea is at six', 'mem-000001'), PROPOSAL], []);
+      const stack = screen.getByRole('group', { name: '2 memory suggestions' });
+      expect(stack.textContent).toContain('Saved to project memory: Tea is at six');
+    });
   });
 
   it('one suggestion shows no count', () => {
