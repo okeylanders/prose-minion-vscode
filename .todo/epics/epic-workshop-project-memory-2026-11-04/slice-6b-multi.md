@@ -160,7 +160,8 @@ These are Okey's two live-pass decisions:
   - text between frames;
   - streaming at every prefix of two frames;
   - a retention line for a frames-only reply;
-  - 4,000 frames read in linear time.
+  - 4,000 frames, each decoded once and the rest counted over the cap.
+    This is checked by a count, not a clock, as AGENTS.md asks.
 - `projectMemoryProposalPromptSync.test.ts` pins the cap of 10, checks the
   several-suggestions wording, and decodes the two-trailer example.
 - `WorkshopMemoryAutoSave.test.ts` covers the supersedes hold and its place

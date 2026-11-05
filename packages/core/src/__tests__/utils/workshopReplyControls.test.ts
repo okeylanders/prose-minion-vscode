@@ -6,6 +6,7 @@ import {
   WORKSHOP_MEMORY_ONLY_REPLY_LINE,
   WORKSHOP_MEMORY_PROPOSAL_REDACTION
 } from '@/utils/workshopReplyControls';
+import * as proposalProtocol from '@/utils/workshopMemoryProposalProtocol';
 import { decodeWorkshopMemoryProposal } from '@/utils/workshopMemoryProposalProtocol';
 import { inspectWorkshopWidgetRecommendation } from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
 import { WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY } from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
@@ -360,11 +361,13 @@ describe('several frames, each judged on its own (Slice 6b)', () => {
     expect(sanitizeWorkshopReplyForRetention(frames(3).join('\n'))).toBe(WORKSHOP_MEMORY_ONLY_REPLY_LINE);
   });
 
-  it('reads many frames in time that grows with the reply, not its square', () => {
+  it('reads many frames by counting, not by a clock: each frame decoded once, the rest counted over the cap', () => {
     const many = Array.from({ length: 4_000 }, (_, i) => memoryFrame({ title: `Note ${i}` })).join('\n');
-    const started = Date.now();
+    const decode = jest.spyOn(proposalProtocol, 'decodeWorkshopMemoryProposal');
     const controls = extractWorkshopReplyControls(`${PROSE}\n\n${many}`, OPEN);
     expect(titles(controls)).toHaveLength(CAP);
-    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(controls.memory).toMatchObject({ rejections: Array<string>(4_000 - CAP).fill('over-cap') });
+    expect(decode).toHaveBeenCalledTimes(4_000);
+    decode.mockRestore();
   });
 });
