@@ -1,0 +1,90 @@
+/** @jest-environment jsdom */
+import { TextEncoder, TextDecoder } from "node:util";
+Object.assign(globalThis, { TextEncoder, TextDecoder });
+import * as React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ContextPanel } from '@components/workshop/ContextPanel';
+import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinnedContext';
+import { useWorkshopPinnedPills } from '@hooks/domain/workshop/controllers/useWorkshopPinnedPills';
+import { MessageType, type WorkshopContextAttachmentSnapshot, type WorkshopPinnedContextEntryView, type WorkshopPinnedContextPayload } from '@messages';
+import { createMockVSCode } from '@/__tests__/mocks/vscode';
+import { harness as hostHarness } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextHandlerHost';
+import { WorkshopPinnedContextHandler } from '@handlers/domain/workshop/WorkshopPinnedContextHandler';
+import { WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION } from '@/infrastructure/storage/WorkshopPinnedContextStore';
+jest.mock('@hooks/useVSCodeApi');
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+
+const alice: WorkshopContextAttachmentSnapshot = {id:'ctx-1',kind:'file',origin:'writer',label:'alice.md',relativePath:'Characters/alice.md',words:3,addedAt:1};
+const bob: WorkshopContextAttachmentSnapshot = {id:'ctx-1',kind:'file',origin:'writer',label:'bob.md',relativePath:'Characters/bob.md',words:3,addedAt:2};
+const entry = (path: string): WorkshopPinnedContextEntryView => ({path,label:path.split('/').at(-1)!,words:3,state:'ready'});
+const answer = (requestId: string | null, entries: readonly WorkshopPinnedContextEntryView[], extra: Partial<WorkshopPinnedContextPayload> = {}): WorkshopPinnedContextPayload => ({requestId,platform:'posix',availability:{available:true},file:{state:'ok'},revision:`rev-${entries.length}`,entries,totals:{words:3*entries.length,budgetWords:100000,files:entries.length,maxFiles:20},...extra});
+let deliver: (a:WorkshopPinnedContextPayload)=>void;
+function Sheet({attachments}:{attachments:WorkshopContextAttachmentSnapshot[]}) {
+  const context = useWorkshopPinnedContext({attachments,running:false});
+  const pills = useWorkshopPinnedPills({answer:context.answer,attachments,pinnableIds:context.view.pinAttached.ids,pending:context.pending,pinAttachments:context.pinAttachments});
+  deliver = payload => context.handlePinnedContext({type:MessageType.WORKSHOP_PINNED_CONTEXT,source:'extension.workshop',timestamp:1,payload});
+  return <><button data-testid="elsewhere">Elsewhere</button><ContextPanel attachments={attachments} pendingDelivery={false} isRunning={false}
+    onAddText={jest.fn()} onAddFile={jest.fn()} onRefreshFiles={jest.fn()} onOpenAttachment={jest.fn()} onRemove={jest.fn()}
+    wizardRunning={false} onRunWizard={jest.fn()} onCancelWizard={jest.fn()} pinned={{pills:pills.pills,onPin:pills.pin}} /></>;
+}
+let vscode:ReturnType<typeof createMockVSCode>;
+const lastId=(type:MessageType)=>vscode.postMessage.mock.calls.map(([m])=>m).filter(m=>m.type===type).at(-1)!.payload.requestId as string;
+beforeEach(()=>{vscode=createMockVSCode();(useVSCodeApi as jest.Mock).mockReturnValue(vscode);});
+afterEach(()=>jest.clearAllMocks());
+function mount(){const view=render(<Sheet attachments={[alice]}/>);act(()=>deliver(answer(lastId(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT),[])));return view;}
+
+it('does not show the old room pin refusal on a different attachment reusing ctx-1',async()=>{
+  const h=hostHarness();
+  h.write('Characters/alice.md','Alice belongs to the original room.');
+  h.attachFile('Characters/alice.md',false);
+  const replies:WorkshopPinnedContextPayload[]=[];
+  const handler=new WorkshopPinnedContextHandler({library:h.library,takeFirstRoomReport:()=>undefined},h.session,h.shell as never,
+    (async(m:{type:MessageType,payload:unknown})=>{if(m.type===MessageType.WORKSHOP_PINNED_CONTEXT)replies.push(m.payload as WorkshopPinnedContextPayload);}) as never,
+    h.log,h.effects);
+  const view=mount();
+  act(()=>deliver(answer(null,[],{revision:WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION})));
+  fireEvent.click(screen.getByRole('button',{name:'Pin alice.md for new sessions'}));
+  const requestId=lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS);
+  // The real handler captures room-1 synchronously, before its store read awaits.
+  const pinning=handler.handlePinAttachments({type:MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS,source:'webview.workshop',timestamp:1,
+    payload:{requestId,revision:WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION,attachmentIds:['ctx-1']}});
+  h.scope.current=()=>({available:true,liveSessionId:'room-2'});
+  h.session.reset({clearWorkingSet:true});
+  expect(h.attachFile('Characters/bob.md',false)).toBe('ctx-1');
+  view.rerender(<Sheet attachments={h.session.getContextAttachments()}/>);
+  await pinning;
+  expect(replies[0]).toMatchObject({requestId,ok:false,notice:{kind:'refused',text:'The workspace changed, so pinned context wasn’t changed.'}});
+  act(()=>deliver(replies[0]));
+  console.log({alert:screen.queryByRole('alert')?.textContent,pill:screen.queryByRole('alert')?.previousElementSibling?.textContent});
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('does not move focus to a different room attachment when the old pin succeeds late',()=>{
+  const view=mount();
+  fireEvent.click(screen.getByRole('button',{name:'Pin alice.md for new sessions'}));
+  const requestId=lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS);
+  view.rerender(<Sheet attachments={[bob]}/>);
+  expect(document.activeElement?.tagName).toBe("BODY");
+  act(()=>deliver(answer(requestId,[entry(alice.relativePath!),entry(bob.relativePath!)],{action:'pin-attachments',ok:true})));
+  console.log({active:document.activeElement?.getAttribute('aria-label')});
+  expect(document.activeElement?.tagName).toBe("BODY");
+});
+
+it('does not take focus back after the user deliberately blurs the pending Pin',()=>{
+  mount();
+  const pin=screen.getByRole('button',{name:'Pin alice.md for new sessions'});
+  pin.focus();fireEvent.click(pin);
+  document.body.setAttribute("tabindex", "-1"); document.body.focus(); document.body.removeAttribute("tabindex");
+  expect(document.activeElement?.tagName).toBe("BODY");
+  act(()=>deliver(answer(lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS),[entry(alice.relativePath!)],{action:'pin-attachments',ok:true})));
+  expect(document.activeElement?.tagName).toBe("BODY");
+});
+
+it('preserves focus on another control while a pin lands',()=>{
+  mount();
+  const pin=screen.getByRole('button',{name:'Pin alice.md for new sessions'});
+  pin.focus();fireEvent.click(pin);
+  const elsewhere=screen.getByTestId('elsewhere');elsewhere.focus();
+  act(()=>deliver(answer(lastId(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS),[entry(alice.relativePath!)],{action:'pin-attachments',ok:true})));
+  expect(document.activeElement).toBe(elsewhere);
+});
