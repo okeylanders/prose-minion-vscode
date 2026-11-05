@@ -11,6 +11,9 @@
  *   list at its turn.
  * - **A lease that expires mid-write:** the lock is taken over, and the
  *   stalled holder withdraws before it commits.
+ * - **The fence** (the re-review): a holder stalled *inside* its commit
+ *   rename past the lease lands nothing, a create or a rewrite, because its
+ *   staged list lived in the lock a takeover removed.
  * - **A hand edit,** which takes no lock, at each step: it stands, and the
  *   write is refused or its claimed bytes are set aside.
  * - **A write belongs to the workspace it was asked in:** one whose turn,
@@ -27,6 +30,7 @@ import {
   workshopPinnedContextRevisionOf
 } from '@/infrastructure/storage/WorkshopPinnedContextStore';
 import { STORED_FILE_CLAIM_LEASE_MS } from '@/infrastructure/storage/StoredFileClaims';
+import { WORKSHOP_PINNED_CONTEXT_LOCK_OWNER_BYTES } from '@/infrastructure/storage/WorkshopPinnedContextLock';
 import {
   FILE,
   FOLDER,
@@ -42,7 +46,8 @@ import {
   text
 } from '@/__tests__/infrastructure/storage/workshopPinnedContextStoreHost';
 
-const LOCK = path.join(FOLDER, '.pinned-context.json.lock');
+const LOCK = path.join(FOLDER, '.pinned-context.lock');
+const OWNER = path.join(LOCK, 'owner.json');
 const lockBytes = (token: string, at: number) => new TextEncoder().encode(JSON.stringify({ token, at }));
 
 describe('two windows on one list', () => {
@@ -58,7 +63,7 @@ describe('two windows on one list', () => {
 
     expect(answer).toMatchObject({ ok: false, reason: 'changed', current: { state: 'ok', list: list('Characters/alice.md') } });
     expect(text(fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Characters/alice.md'))));
-    expect(fileSystem.files.has(LOCK)).toBe(false);
+    expect(fileSystem.files.has(OWNER)).toBe(false);
   });
 
   it('create vs create: the window without the lock is busy, and the holder\'s create stands', async () => {
@@ -198,36 +203,122 @@ describe('a lease that expires mid-write', () => {
   });
 });
 
-describe('the lock file', () => {
+describe('the fence: a stale owner\'s commit cannot land after a takeover (PR #204 re-review F-01)', () => {
+  // The re-review's probe, as written (braces added for lint).
+  it('does not let a stale creator commit after its final token check and lease takeover', async () => {
+    const fs = new MemoryFileSystem(); const clock = { at: NOW };
+    const stale = host({ fileSystem: fs, prefix: 'late', clock });
+    const current = host({ fileSystem: fs, prefix: 'current', clock });
+    // Hold the I/O primitive after the creator has passed its final ownership check.
+    const lateGate = holdOnce(fs, 'rename', (from) => from.includes('.tmp-late'));
+    const lateSave = stale.store.update(ABSENT, pin('Characters/late.md'));
+    await lateGate.reached;
+    clock.at += STORED_FILE_CLAIM_LEASE_MS + 1;
+    const first = await current.store.update(ABSENT, pin('Characters/alice.md'));
+    if (!first.ok) { throw new Error(first.reason); }
+    const claimedGate = holdOnce(fs, 'readFile', (from) => from.includes('.claim-'));
+    const rewrite = current.store.update(first.revision, pin('Characters/hatter.md'));
+    await claimedGate.reached;
+    lateGate.open(); const staleResult = await lateSave;
+    claimedGate.open(); await rewrite;
+    expect(staleResult.ok).toBe(false);
+    expect(text(fs.files.get(FILE))).not.toContain('late.md');
+  });
+
+  it('answers the stale creator busy, and the successor\'s rewrite commits', async () => {
+    const fileSystem = new MemoryFileSystem();
+    const clock = { at: NOW };
+    const stale = host({ fileSystem, prefix: 'late', clock });
+    const current = host({ fileSystem, prefix: 'current', clock });
+    const lateGate = holdOnce(fileSystem, 'rename', (from) => from.includes('.tmp-late'));
+    const lateSave = stale.store.update(ABSENT, pin('Characters/late.md'));
+    await lateGate.reached;
+    clock.at += STORED_FILE_CLAIM_LEASE_MS + 1;
+    const first = await current.store.update(ABSENT, pin('Characters/alice.md'));
+    if (!first.ok) {
+      throw new Error(first.reason);
+    }
+    const claimedGate = holdOnce(fileSystem, 'readFile', (file) => file.includes('.claim-'));
+    const rewrite = current.store.update(first.revision, pin('Characters/the-hatter.md'));
+    await claimedGate.reached;
+    lateGate.open();
+    expect(await lateSave).toEqual({ ok: false, reason: 'busy' });
+    claimedGate.open();
+
+    expect(await rewrite).toMatchObject({ ok: true, list: list('Characters/alice.md', 'Characters/the-hatter.md') });
+    expect(everyFile(fileSystem)).toEqual(['pinned-context.json']);
+  });
+
+  it('fences a stale claimed rewrite the same way: stalled inside its commit rename past the lease, it lands nothing', async () => {
+    const fileSystem = new MemoryFileSystem();
+    fileSystem.files.set(FILE, bytesOf(list('Characters/alice.md')));
+    const revision = workshopPinnedContextRevisionOf(bytesOf(list('Characters/alice.md')));
+    const clock = { at: NOW };
+    const stale = host({ fileSystem, prefix: 'late', clock });
+    const current = host({ fileSystem, prefix: 'current', clock });
+    // The stale rewrite has claimed the list and passed its token check; it stalls inside the rename that commits.
+    const lateGate = holdOnce(fileSystem, 'rename', (from) => from.includes('.tmp-late'));
+    const staleRewrite = stale.store.update(revision, pin('Characters/late.md'));
+    await lateGate.reached;
+    expect(fileSystem.files.has(FILE)).toBe(false);
+    clock.at += STORED_FILE_CLAIM_LEASE_MS + 1;
+    // The successor takes the lock over (the stale staged list goes with it), puts the abandoned claim back, and rewrites.
+    expect(await current.store.update(revision, pin('Characters/the-hatter.md'))).toMatchObject({ ok: true });
+    lateGate.open();
+
+    expect(await staleRewrite).toEqual({ ok: false, reason: 'busy' });
+    expect(text(fileSystem.files.get(FILE))).toBe(text(bytesOf(list('Characters/alice.md', 'Characters/the-hatter.md'))));
+    expect(everyFile(fileSystem)).toEqual(['pinned-context.json']);
+  });
+});
+
+describe('the lock directory', () => {
   it('a live lock makes a write busy and is left as it is', async () => {
     const window = host();
-    window.fileSystem.files.set(LOCK, lockBytes('other', NOW - 1_000));
+    window.fileSystem.files.set(OWNER, lockBytes('other', NOW - 1_000));
     expect(await window.store.update(ABSENT, pin('Characters/alice.md'))).toEqual({ ok: false, reason: 'busy' });
-    expect(everyFile(window.fileSystem)).toEqual(['.pinned-context.json.lock']);
+    expect(everyFile(window.fileSystem)).toEqual(['.pinned-context.lock/owner.json']);
   });
 
   it('an abandoned lock, or one that does not read as a lock, is taken over, and nothing of it is left', async () => {
     for (const abandoned of [lockBytes('other', NOW - STORED_FILE_CLAIM_LEASE_MS - 1), new TextEncoder().encode('not a lock')]) {
       const window = host();
-      window.fileSystem.files.set(LOCK, abandoned);
+      window.fileSystem.files.set(OWNER, abandoned);
       expect(await window.store.update(ABSENT, pin('Characters/alice.md'))).toMatchObject({ ok: true });
       expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
     }
   });
 
+  it('an owner over its bound is never read, and the lock counts as abandoned by its file\'s age (PR #204 F-04)', async () => {
+    const window = host();
+    window.fileSystem.files.set(OWNER, new Uint8Array(WORKSHOP_PINNED_CONTEXT_LOCK_OWNER_BYTES + 1).fill(32));
+    // This write's own owner later stands at the same path, so watch what is read, not where.
+    const read = window.fileSystem.readFile.bind(window.fileSystem);
+    const oversizedReads: string[] = [];
+    jest.spyOn(window.fileSystem, 'readFile').mockImplementation(async (file: string) => {
+      if ((window.fileSystem.files.get(file)?.byteLength ?? 0) > WORKSHOP_PINNED_CONTEXT_LOCK_OWNER_BYTES) {
+        oversizedReads.push(path.basename(file));
+      }
+      return read(file);
+    });
+    expect(await window.store.update(ABSENT, pin('Characters/alice.md'))).toMatchObject({ ok: true });
+    expect(oversizedReads).toEqual([]);
+    expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
+  });
+
   it('a takeover that finds a new, live lock where the abandoned one stood puts it back, and is busy', async () => {
     const window = host();
-    window.fileSystem.files.set(LOCK, lockBytes('gone', NOW - STORED_FILE_CLAIM_LEASE_MS - 1));
+    window.fileSystem.files.set(OWNER, lockBytes('gone', NOW - STORED_FILE_CLAIM_LEASE_MS - 1));
     // Between judging the lock abandoned and moving it, another window takes the lock anew.
     const held = holdOnce(window.fileSystem, 'rename', (from) => from === LOCK);
     const writing = window.store.update(ABSENT, pin('Characters/alice.md'));
     await held.reached;
-    window.fileSystem.files.set(LOCK, lockBytes('fresh', NOW));
+    window.fileSystem.files.set(OWNER, lockBytes('fresh', NOW));
     held.open();
 
     expect(await writing).toEqual({ ok: false, reason: 'busy' });
-    expect(text(window.fileSystem.files.get(LOCK))).toBe(text(lockBytes('fresh', NOW)));
-    expect(everyFile(window.fileSystem)).toEqual(['.pinned-context.json.lock']);
+    expect(text(window.fileSystem.files.get(OWNER))).toBe(text(lockBytes('fresh', NOW)));
+    expect(everyFile(window.fileSystem)).toEqual(['.pinned-context.lock/owner.json']);
   });
 });
 

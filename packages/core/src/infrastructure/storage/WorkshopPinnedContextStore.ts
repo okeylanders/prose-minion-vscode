@@ -11,61 +11,52 @@
  * - **Revisions.** A read names its revision, a SHA-256 of the file's bytes;
  *   an absent file has the fixed `WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION`,
  *   so a create is checked as any other write is.
- * - **Bounded reads.** The file is `stat`ed before it is read: one over
- *   `WORKSHOP_PINNED_CONTEXT_FILE_BYTES` is unreadable (`too-large`) without
- *   its bytes being read, and never written. The codec checks the bound
- *   again, since a file can grow between the `stat` and the read.
- * - **One queue, one lock, the board store's write discipline,** through
- *   the shared claimed-file primitive:
- *   - every `update` holds the list's lock (`WorkshopPinnedContextLock`,
- *     PR #204 F-01) from before it reads at its turn until after it
- *     commits; a window that cannot take it is `busy`;
- *   - every `update` names the revision its caller read. At its turn the
- *     file is read again; another revision refuses the write (`changed`,
- *     with the list as it reads now), and nothing is written;
- *   - the first write is staged under a private random name, then renamed
- *     into place, never over anything: a file that appeared meanwhile
- *     answers `changed`;
- *   - every later write is a claimed rewrite in place
- *     (`commitStoredFileRewrite`): the bytes read are the bytes claimed, or
- *     the write is refused as `changed`;
- *   - claims follow `StoredFileClaims`' lease rules: a read settles them
- *     first, so a list left mid-rewrite goes back;
- *   - **an abandoned claim beside a standing list is removed only when it
- *     holds exactly the standing bytes** (PR #204 F-02). The format records
- *     no ancestry, so no other claim can be shown to be an earlier version a
- *     committed write replaced: it may be bytes a refused rewrite could not
- *     put back. Those are set aside under a free ordinary name
+ * - **Bounded reads.** The list, each claim (`maxBytes`, PR #204 F-04) and
+ *   the lock's owner are `stat`ed before they are read: over its bound, a
+ *   file is never read. The list is then `too-large` and never written; a
+ *   claim is kept. The codec checks again, for a file that grew meanwhile.
+ * - **One queue and one lock** (`WorkshopPinnedContextLock`, PR #204 F-01):
+ *   every `update` holds the lock from before it reads at its turn until
+ *   after it commits; a window that cannot take it is `busy`. At its turn:
+ *   - another revision than the caller's refuses the write (`changed`, with
+ *     the list as it reads now), and nothing is written;
+ *   - the new list is staged *inside the lock*. A first write renames it to
+ *     the list's name, never over anything; a later one is a claimed
+ *     rewrite (`commitStoredFileRewrite`) whose claimed bytes must be the
+ *     bytes read;
+ *   - an abandoned claim beside the list is removed only when it holds the
+ *     very bytes that stand (PR #204 F-02); any other is set aside
  *     (`pinned-context.json.set-aside-<id>`), never deleted;
  *   - a file that does not read is never written (`unreadable`).
- * - **Why no write is lost (the race argument).** Writers are this store's
- *   windows, which take the lock, and the writer's editor, which does not.
- *   - *Create vs create:* only the lock's holder reads and writes; a window
- *     that waited for it reads the list at its turn, finds a revision other
- *     than absent, and is `changed`. Should two ever overlap (below), the
- *     create's no-overwrite rename lets one win and reads the other as
- *     `changed`.
- *   - *Create vs claimed rewrite* (F-01): the saved name stands empty only
- *     under a rewrite's claim, which only the lock's holder takes; a create
- *     cannot hold the lock then, so it is `busy` and never renames into it.
- *   - *Rewrite vs rewrite:* the lock serializes them; underneath, a claim is
- *     taken by a no-overwrite rename and its bytes must be the bytes read,
- *     so a rewrite that overlapped anyway claims nothing, or finds the file
- *     changed and puts it back.
- *   - *A lease that expires mid-write:* a holder stalled past the lease
- *     loses its lock to a takeover. It reads its token again immediately
- *     before its commit rename (a create's, and a rewrite's, after its claim
- *     is confirmed) and withdraws as `busy`. The one window left is a stall
- *     past the lease that falls between that check and the rename; then the
- *     claim and no-overwrite rules above still keep either write from
- *     landing over the other's file.
- *   - *A hand edit, at each step:* before the read, it is what is read;
- *     between the read and a create's commit, the no-overwrite rename fails
- *     and the create is `changed`; between the read and a claim, the claimed
- *     bytes differ, go back, and the write is `changed`; while the claim
- *     holds the list, the commit's no-overwrite rename fails, the edit
- *     stands, and the claimed bytes go to a set-aside name (`io`); after the
- *     commit, it simply wins. No step writes over a file it did not read.
+ * - **Why no write is lost.** Writers are this store's windows, which hold
+ *   the lock, and the writer's editor, which does not. A commit is one
+ *   rename whose source is a staged list inside its writer's lock
+ *   directory; a takeover renames that directory aside and deletes it, and
+ *   a rename resolves its source when it runs. So a write commits only
+ *   while its lock is in place, or never. For a holder stalled past the
+ *   lease, at each step:
+ *   - *before or while reading:* its successor reads and writes first; the
+ *     stalled write stages where the lock now is (or nowhere), its token
+ *     check finds another owner, and it is `busy`;
+ *   - *between staging and its token check:* the takeover took its staged
+ *     list; the check fails; `busy`;
+ *   - *after the check, inside its commit rename* (the re-review's case):
+ *     if the rename ran before the takeover, it committed as the only owner
+ *     and the successor reads its list; if after, its source is gone, the
+ *     rename fails, and it is `busy`. A rewrite's claim, meanwhile, goes back
+ *     under its name by the claims' rules (the successor settles it once
+ *     abandoned, or is `busy` while it is live), so nothing is lost;
+ *   - *after committing, before releasing:* its list stands; a release
+ *     renames the lock aside and deletes it only if it is still its own,
+ *     else puts it back, so it never removes its successor's.
+ *   - Within the lease, the lock alone serializes create vs create, create
+ *     vs a claimed rewrite and rewrite vs rewrite.
+ *   - *A hand edit:* before the read, it is what is read; before a create
+ *     commits, the no-overwrite rename fails (`changed`); before a claim,
+ *     the claimed bytes differ and go back (`changed`); under the claim, the
+ *     commit fails, the edit stands and the claimed bytes are set aside
+ *     (`io`); after the commit, it wins. "Never over anything" is the
+ *     platform's no-overwrite rename, which every store here relies on.
  * - **A write belongs to the workspace it was asked in** (D5; Project
  *   Memory's PR #202 F01). `update` captures the list's file when it is
  *   called, before the queue can wait. A write whose turn or commit comes
@@ -94,7 +85,7 @@ import { decodeWorkshopPinnedContext, prepareWorkshopPinnedContext } from '@/inf
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { StoredFileClaims, deleteStoredFileQuietly, storedFileExists } from '@/infrastructure/storage/StoredFileClaims';
 import { commitStoredFileRewrite, type StoredFileRewritePorts } from '@/infrastructure/storage/StoredFileRewrite';
-import { WorkshopPinnedContextLock } from '@/infrastructure/storage/WorkshopPinnedContextLock';
+import { WorkshopPinnedContextLock, type WorkshopPinnedContextHeldLock } from '@/infrastructure/storage/WorkshopPinnedContextLock';
 import { fileSystemErrorCategory, isMissingFileSystemPathError } from '@/infrastructure/storage/fileSystemErrors';
 import {
   WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION,
@@ -149,6 +140,8 @@ export class WorkshopPinnedContextStore {
       claimPattern: CLAIM,
       logPrefix: LOG,
       formatError: fileSystemErrorCategory,
+      // Recovery reads stay within the file bound (PR #204 F-04): a claim or list over it is never read, and is kept.
+      maxBytes: WORKSHOP_PINNED_CONTEXT_FILE_BYTES,
       // Preserve whenever unsure (PR #204 F-02): only a claim of the very bytes that stand is shown to lose nothing.
       leftovers: {
         isEarlierVersion: (claimed, standing) => sameBytes(claimed, standing),
@@ -205,7 +198,7 @@ export class WorkshopPinnedContextStore {
       }
       try {
         for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
-          const result = await this.attemptUpdate(asked, revision, change, permitted, () => lock.stillHeld());
+          const result = await this.attemptUpdate(asked, revision, change, permitted, lock);
           if (result !== 'again') {
             return result;
           }
@@ -228,7 +221,7 @@ export class WorkshopPinnedContextStore {
     revision: string,
     change: WorkshopPinnedContextChange,
     permitted: () => boolean,
-    held: () => Promise<boolean>
+    lock: WorkshopPinnedContextHeldLock
   ): Promise<WorkshopPinnedContextUpdateResult | 'again'> {
     const read = await this.readState(filePath);
     if (!permitted()) {
@@ -263,8 +256,8 @@ export class WorkshopPinnedContextStore {
       return { ok: true, list: before, revision: read.revision };
     }
     const outcome = read.state === 'absent'
-      ? await this.writeNew(filePath, prepared.bytes, permitted, held)
-      : await this.rewrite(filePath, read.bytes, prepared.bytes, permitted, held);
+      ? await this.writeNew(filePath, prepared.bytes, permitted, lock)
+      : await this.rewrite(filePath, read.bytes, prepared.bytes, permitted, lock);
     switch (outcome) {
       case 'committed':
         this.log.appendLine(`${LOG} Saved the list (${prepared.list.files.length} files).`);
@@ -276,6 +269,7 @@ export class WorkshopPinnedContextStore {
         return { ok: false, reason: 'unavailable' };
       case 'lost':
         this.log.appendLine(`${LOG} Not written: the lock was taken over before the write committed.`);
+        // A stale writer never reports ok: its staged list went with its lock (PR #204 F-01).
         return { ok: false, reason: 'busy' };
       case 'busy':
       case 'io':
@@ -366,24 +360,22 @@ export class WorkshopPinnedContextStore {
     return { state: 'busy' };
   }
 
-  /** The first write: staged privately, then renamed into place, never over anything. */
+  /** The first write: staged inside the lock (the fence), then renamed into place, never over anything. */
   private async writeNew(
     filePath: string,
     bytes: Uint8Array,
     permitted: () => boolean,
-    held: () => Promise<boolean>
+    lock: WorkshopPinnedContextHeldLock
   ): Promise<'committed' | 'again' | 'withdrawn' | 'lost' | 'io'> {
-    const folder = path.dirname(filePath);
-    const temporaryPath = path.join(folder, `.${FILE_NAME}.tmp-${this.mintStagingId()}`);
+    const temporaryPath = lock.stagingPath(`.${FILE_NAME}.tmp-${this.mintStagingId()}`);
     try {
-      await this.fileSystem.createDirectory(folder);
       await this.fileSystem.writeFile(temporaryPath, bytes);
     } catch (error) {
       this.log.appendLine(`${LOG} Could not stage the list: ${fileSystemErrorCategory(error)}`);
       await deleteStoredFileQuietly(this.fileSystem, temporaryPath);
       return 'io';
     }
-    if (!(await held())) {
+    if (!(await lock.stillHeld())) {
       await deleteStoredFileQuietly(this.fileSystem, temporaryPath);
       return 'lost';
     }
@@ -396,6 +388,10 @@ export class WorkshopPinnedContextStore {
       await this.fileSystem.rename(temporaryPath, filePath, { overwrite: false });
       return 'committed';
     } catch (error) {
+      // A source that vanished with a takeover: this write was fenced off.
+      if (!(await lock.stillHeld())) {
+        return 'lost';
+      }
       const taken = await storedFileExists(this.fileSystem, filePath);
       await deleteStoredFileQuietly(this.fileSystem, temporaryPath);
       if (taken) {
@@ -413,17 +409,18 @@ export class WorkshopPinnedContextStore {
     read: Uint8Array,
     written: Uint8Array,
     permitted: () => boolean,
-    held: () => Promise<boolean>
+    lock: WorkshopPinnedContextHeldLock
   ): Promise<'committed' | 'again' | 'withdrawn' | 'lost' | 'busy' | 'io'> {
     const folder = path.dirname(filePath);
     let lost = false;
     const outcome = await commitStoredFileRewrite(this.rewritePorts, {
       filePath,
+      stagingPath: lock.stagingPath(`.${FILE_NAME}.tmp-${this.mintStagingId()}`),
       label: 'the list',
       read,
       written,
       confirm: async () => {
-        lost = !(await held());
+        lost = !(await lock.stillHeld());
         return !lost;
       },
       beforeCommit: permitted,
@@ -442,7 +439,8 @@ export class WorkshopPinnedContextStore {
       case 'withdrawn':
         return lost ? 'lost' : 'withdrawn';
       case 'failed':
-        return 'io';
+        // A source that vanished with a takeover: this write was fenced off.
+        return (await lock.stillHeld()) ? 'io' : 'lost';
     }
   }
 
