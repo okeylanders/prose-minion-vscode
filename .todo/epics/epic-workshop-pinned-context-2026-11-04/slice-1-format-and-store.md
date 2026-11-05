@@ -108,14 +108,16 @@ list yet, and nothing in the UI changes.
   codec, its fixture and its tests.
 - `a4d36e27`: the store, its test host, and its one-window and race tests.
 - `33b68dc1`: the boundary guards.
-- This doc's commit.
+- `e6ba3cdb`: this doc's first Built section.
+- `1516f318`: the byte bound (the coordinator's review of `e6ba3cdb`).
+- This doc's update.
 
 **Where each piece lives.**
 
 | Piece | Where |
 |---|---|
 | List and entry shapes, refusal vocabulary, path rule and key, platform | `shared/types/workshopPinnedContext.ts` (`WorkshopPinnedContextList`, `WorkshopPinnedContextEntry`, `WORKSHOP_PINNED_CONTEXT_REFUSALS`, `workshopPinnedContextPathFault`, `workshopPinnedContextPathKey`, `workshopPinnedContextPlatformOf`) |
-| The bound | `PROMPT_BUDGETS.workshopPinnedContext = { files: 20 }` (`shared/constants/promptBudgets.ts`), pinned in `promptBudgets.test.ts` |
+| The bounds | `PROMPT_BUDGETS.workshopPinnedContext = { files: 20, fileBytes: 128 * 1024 }` (`shared/constants/promptBudgets.ts`), pinned in `promptBudgets.test.ts` |
 | Codec | `infrastructure/storage/WorkshopPinnedContextCodec.ts` (`decodeWorkshopPinnedContext`, `encodeWorkshopPinnedContext`, `prepareWorkshopPinnedContext`) |
 | Fixture | `__tests__/fixtures/pinned-context-v1.json` |
 | Store | `infrastructure/storage/WorkshopPinnedContextStore.ts` (`WorkshopPinnedContextStore`: `availability()`, `read()`, `update(revision, change, options?)`, `shutDown()`) |
@@ -181,20 +183,30 @@ These are additions, or a spec union made complete:
    and a new file has taken the saved name, the claim goes to
    `pinned-context.json.set-aside-<id>`. It is never put over the new file.
 
-**Open question.** The read has no byte bound. Twenty short paths are small,
-but a hand-made multi-megabyte file would be read whole on the extension host.
-A bound (for example 64 KiB, unreadable as a new `too-large` reason) would add
-to the closed refusal union, so it is left for review.
+8. **A byte bound, `too-large`** (the coordinator's decision on review,
+   2026-11-05, following Project Memory's `file-too-large`).
+   - `PROMPT_BUDGETS.workshopPinnedContext.fileBytes` is 128 KiB. Twenty
+     4,096-character paths encode to about 83 KB, so the bound never refuses
+     a list the codec would otherwise read. A test holds that.
+   - `too-large` joins `WORKSHOP_PINNED_CONTEXT_REFUSALS`. The decoder refuses
+     over-bound bytes before decoding them, and
+     `prepareWorkshopPinnedContext` refuses a list that would encode past the
+     bound, so `update` answers `invalid` / `too-large` and writes nothing.
+   - The store `stat`s the file before reading it. An oversized file reads as
+     `unreadable` / `too-large` without its bytes being read, so its revision
+     is `too-large-<size>-<mtime>`, never a SHA-256's hex. It is never
+     written. The decoder's check stays, because a file can grow between the
+     `stat` and the read.
 
 ## Verification
 
-| Check | Before (`b94fc674`) | After (`33b68dc1`) |
+| Check | Before (`b94fc674`) | After (`1516f318`) |
 |---|---|---|
 | `npm run typecheck` | pass | pass |
-| jest | 691 suites / 9,696 tests / 59 snapshots | 694 suites / 9,775 tests / 59 snapshots, all passing |
+| jest | 691 suites / 9,696 tests / 59 snapshots | (full run in progress) |
 | `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (no new warnings) |
 | `from 'vscode'` in `packages/core/src` (outside test strings) | none | none |
-| New files over 500 lines | — | none (the store is 425) |
+| New files over 500 lines | — | none (the store is 440) |
 | Fixtures and tests | — | *Alice*-style made-up paths only |
 | Logs | — | outcomes and error categories only; a test fails on a path or a listed name |
 
