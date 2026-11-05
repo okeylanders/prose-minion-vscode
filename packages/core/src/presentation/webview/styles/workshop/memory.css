@@ -24,15 +24,39 @@
   border-radius: var(--pm-r-tile);
   background: color-mix(in srgb, var(--pm-accent) 6%, transparent);
 }
+/* The head is the well's disclosure button (Slice 6 live pass): it reads as
+   the well's title line, and its chevron turns when the table shows. */
 [data-pm-surface="workshop"] .pm-ws-memory-vs-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
   color: var(--pm-dim);
+  font: inherit;
   font-size: 12px;
+  text-align: left;
+  cursor: pointer;
 }
-[data-pm-surface="workshop"] .pm-ws-memory-vs-head svg {
+[data-pm-surface="workshop"] .pm-ws-memory-vs-chev {
+  display: inline-flex;
+  margin-left: auto;
+  color: var(--pm-faint);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-head:hover .pm-ws-memory-vs-chev {
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-chev svg {
+  transition: transform 120ms ease;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-head[aria-expanded="true"] .pm-ws-memory-vs-chev svg {
+  transform: rotate(90deg);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-vs-head > svg {
   flex: none;
   color: var(--pm-accent-hi);
 }
@@ -48,6 +72,10 @@
   margin: 9px 0 0 22px;
   font-size: 11px;
   line-height: 1.45;
+}
+/* `display: grid` above would otherwise outrank the hidden attribute. */
+[data-pm-surface="workshop"] .pm-ws-memory-vs-grid[hidden] {
+  display: none;
 }
 [data-pm-surface="workshop"] .pm-ws-memory-vs-grid dt {
   margin: 0;

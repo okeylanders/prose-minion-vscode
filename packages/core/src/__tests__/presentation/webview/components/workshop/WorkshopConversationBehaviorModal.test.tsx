@@ -26,6 +26,8 @@ describe('WorkshopConversationBehaviorModal', () => {
       onApply: jest.fn(),
       onOpenMemoryManager: jest.fn(),
       onOpenMemoryFolder: jest.fn(),
+      memoryExplainerOpen: true,
+      onToggleMemoryExplainer: jest.fn(),
       onClose: jest.fn(),
       ...overrides
     };
