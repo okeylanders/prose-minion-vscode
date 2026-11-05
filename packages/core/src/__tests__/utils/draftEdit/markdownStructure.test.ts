@@ -143,6 +143,16 @@ describe('editsChangingStructure: prose-paragraphs (ADR 2026-11-05 D5, PR #226 F
     expect(editsChangingStructure('Alice ran. She stopped.', 'markdown', [control], PROSE)).toEqual(new Set());
   });
 
+  it('lets prose take or lose emphasis and strong, which strict still refuses', () => {
+    const text = 'Alice ran.\n\nShe stopped.';
+    const italics: StructureEdit = { start: 0, end: 5, replacement: '*Alice*' };
+    const appended: StructureEdit = { start: text.length, end: text.length, replacement: '\n\nShe was **very** late.' };
+    expect(editsChangingStructure(text, 'markdown', [italics])).toEqual(new Set([0]));
+    expect(editsChangingStructure(text, 'markdown', [italics, appended], PROSE)).toEqual(new Set());
+    const list = '- Alice ran.\n';
+    expect(editsChangingStructure(list, 'markdown', [{ start: 2, end: 7, replacement: '_Alice_' }], PROSE)).toEqual(new Set());
+  });
+
   it('lets a plain paragraph go', () => {
     const text = 'Alice ran.\n\nShe stopped.\n\nThe Rabbit waited.';
     expect(editsChangingStructure(text, 'markdown', [{ start: 10, end: 24, replacement: '' }], PROSE)).toEqual(new Set());

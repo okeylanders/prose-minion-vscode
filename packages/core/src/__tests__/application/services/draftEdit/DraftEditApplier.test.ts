@@ -250,7 +250,7 @@ describe('DraftEditApplier.apply: the direct retry checks again', () => {
     expect(result).toMatchObject({ outcome: 'stale', applied: [], refused: [] });
   });
 
-  describe('revalidate, on every attempt (ADR 2026-11-05 D7.6, PR #226 F-06)', () => {
+  describe('beforeAttempt, before every applyEdits (ADR 2026-11-05 D7.6, PR #226 F-06)', () => {
     // Astra's witness: the quote is 18% of its paragraph, then the writer deletes the rest of it as the edit goes out.
     const quote = 'Alice walked away.';
     const tail = ' The Hatter quietly remained at the table and waited for the next guest to arrive.';
@@ -267,14 +267,14 @@ describe('DraftEditApplier.apply: the direct retry checks again', () => {
         edits,
         review: 'direct',
         policy: { allowsNewlineChanges: true, structure: 'prose-paragraphs' },
-        revalidate: (document, moved) => {
+        beforeAttempt: (document, moved) => {
           seen.push(document.version);
           return share(document, moved) > 0.6 ? 'rewrite-ceiling' : undefined;
         }
       });
       expect(seen).toEqual([3, 4]);
       expect(documents.applyCalls.map((call) => call.expectedVersion)).toEqual([3]);
-      expect(result).toMatchObject({ outcome: 'revalidation', revalidation: 'rewrite-ceiling', applied: [], notApplied: [{ id: 'a' }] });
+      expect(result).toMatchObject({ outcome: 'before-attempt', beforeAttempt: 'rewrite-ceiling', applied: [], notApplied: [{ id: 'a' }] });
       expect(documents.text).toBe(quote);
     });
 
@@ -285,9 +285,9 @@ describe('DraftEditApplier.apply: the direct retry checks again', () => {
         edits,
         review: 'direct',
         policy: { allowsNewlineChanges: true, structure: 'free' },
-        revalidate: () => 'stale'
+        beforeAttempt: () => 'stale'
       });
-      expect(result.outcome).toBe('revalidation');
+      expect(result.outcome).toBe('before-attempt');
       expect(documents.applyCalls).toEqual([]);
     });
   });

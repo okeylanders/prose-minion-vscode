@@ -11,10 +11,11 @@
  * - **Notes rewrites:** refused when the content holds protected syntax
  *   (links, images, code, HTML), so the writer's markup is never re-typed by
  *   a model, and past `rewriteFileBytes`.
- * - **The rewrite ceiling** (prose): `replaced` is the UTF-16 characters the
- *   replace edits remove; `touched` the characters of the distinct blank-line
- *   paragraphs any of them overlaps. Refused when `replaced` passes the floor
- *   and `share × touched`. Insertions remove nothing, so they never count.
+ * - **The rewrite ceiling** (prose): `changed` is, summed over the replaces,
+ *   the characters each changes past the common start and end of its quote
+ *   and replacement; `touched` the characters of the distinct blank-line
+ *   paragraphs any of them overlaps. Refused when `changed` passes both the
+ *   floor and `share × touched`. Insertions are never counted.
  */
 
 import type { FileEditClassPolicy, FileEditOperationFault } from '@/domain/models/FileEdit';
@@ -81,28 +82,51 @@ export function policyFaults(
   return faults;
 }
 
-/** Whether replace edits, as they now sit in `text`, pass the rewrite ceiling. */
+/**
+ * The characters a replace changes: past the common start and end of its
+ * quote and replacement, the longer side's.
+ */
+export function changedCharacters(before: string, after: string): number {
+  let prefix = 0;
+  while (prefix < before.length && prefix < after.length && before[prefix] === after[prefix]) {
+    prefix += 1;
+  }
+  let suffix = 0;
+  while (
+    suffix < before.length - prefix && suffix < after.length - prefix
+    && before[before.length - 1 - suffix] === after[after.length - 1 - suffix]
+  ) {
+    suffix += 1;
+  }
+  return Math.max(before.length, after.length) - prefix - suffix;
+}
+
+/**
+ * Whether replaces, as they now sit in `text`, pass the rewrite ceiling:
+ * `changed` (summed over them) at most the floor, or at most `share` of the
+ * characters of the distinct blank-line paragraphs their ranges overlap.
+ */
 export function passesRewriteCeiling(
   text: string,
-  edits: ReadonlyArray<{ readonly start: number; readonly end: number; readonly original: string }>,
+  replaces: ReadonlyArray<{ readonly start: number; readonly end: number; readonly changed: number }>,
   ceiling: FileEditClassPolicy['ceiling']
 ): boolean {
   if (!ceiling) {
     return true;
   }
-  const replaced = edits.reduce((sum, edit) => sum + edit.original.length, 0);
-  if (replaced <= ceiling.floorCharacters) {
+  const changed = replaces.reduce((sum, replace) => sum + replace.changed, 0);
+  if (changed <= ceiling.floorCharacters) {
     return true;
   }
   const paragraphs = splitBlankLineParagraphs(text);
   const touched = new Set<number>();
-  for (const edit of edits.filter((each) => each.original.length > 0)) {
+  for (const replace of replaces) {
     paragraphs.forEach((paragraph, index) => {
-      if (paragraph.start < edit.end && edit.start < paragraph.end) {
+      if (paragraph.start < replace.end && replace.start < paragraph.end) {
         touched.add(index);
       }
     });
   }
   const touchedCharacters = [...touched].reduce((sum, index) => sum + paragraphs[index].end - paragraphs[index].start, 0);
-  return replaced <= ceiling.share * touchedCharacters;
+  return changed <= ceiling.share * touchedCharacters;
 }

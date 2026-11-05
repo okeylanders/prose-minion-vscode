@@ -37,12 +37,19 @@ Host only: no persona, no routes, no claim (the claim is Slice 4's).
   - `structure: 'strict' | 'prose-paragraphs' | 'free'` replaces
     `preservesMarkdownStructure`. Proofread and Craft Flags take `strict`,
     and their expectations are unchanged.
-  - `revalidate(document, edits)` runs before every ask, the direct retry
-    included. A reason refuses the attempt, outcome `revalidation`, and
-    nothing is written.
-- **Structure modes.** `editsChangingStructure(…, { mode })`:
+  - `beforeAttempt(document, edits)` runs synchronously, immediately before
+    every `applyEdits`, the direct retry included. A reason refuses the
+    attempt (outcome `before-attempt`): nothing more is written, and no
+    further attempt is made.
+- **Structure modes.** `editsChangingStructure(…, { mode })`.
   `prose-paragraphs` reads a top-level run of paragraphs as one paragraph
-  with their inline tokens in order. Everything else compares as `strict`.
+  with their inline tokens in order, and reads emphasis and strong as their
+  text, so prose may take italics. Everything else compares as `strict`
+  does: links, images, code spans, autolinks and inline HTML included.
+- **The authority epoch (D7.6).** `FileEditAuthorityEpoch` is a platform
+  port: a counter. `VsCodeFileEditAuthorityEpoch` moves it on any
+  workspace-folder change, and on any change to `proseMinion.contextPaths`.
+  It is built in `extension.ts` and disposed with the extension.
 - **The gateway (D7).** `ProjectFileEditGateway.apply(staged, { review,
   stillCurrent })`:
   1. re-authorizes the identity: a catalog member in a fresh candidate read
@@ -50,10 +57,15 @@ Host only: no persona, no routes, no claim (the claim is Slice 4's).
   2. recomputes the class, and prose wins;
   3. opens the document, whose URI must name the identity;
   4. plans, checks freshness and the class policy, then the ceiling;
-  5. runs the last boundary (`stillCurrent()` and a synchronous containment
-     check), with nothing awaited before the applier;
-  6. applies with `revalidate`, which checks freshness and the ceiling on
-     each attempt;
+  5. runs the last boundary, synchronously, with nothing awaited before the
+     applier:
+     - the caller's authority predicate `stillCurrent()`: the claim, the
+       room generation, the setting;
+     - the epoch captured at re-authorization;
+     - containment;
+  6. applies with `beforeAttempt`, which runs the same authority checks, then
+     freshness, the insertion bounds and the ceiling on the live text, before
+     every attempt;
   7. reports by operation and state (`applied`, `partial`, `declined`,
      `stale`, `refused`, `unknown`);
   8. reveals the document.
@@ -101,8 +113,10 @@ Host only: no persona, no routes, no claim (the claim is Slice 4's).
     - paragraphs split, merged and added;
     - a heading or code refused;
     - insertion bounds;
+    - italics allowed;
     - the ceiling, past and under its floor;
-    - the F-06 retry, which writes nothing.
+    - the F-06 retry over the floor, which writes nothing;
+    - Astra's 18-character control, which lands on the retry.
   - **Identity at Apply:**
     - a class turned prose by a glob or by becoming the excerpt;
     - no longer configured;
@@ -111,7 +125,10 @@ Host only: no persona, no routes, no claim (the claim is Slice 4's).
     - an excerpt identity outside the catalog;
     - unopenable;
     - another URI;
-    - `stillCurrent` false.
+    - `stillCurrent` false;
+    - authority moving between attempts (the predicate, or the epoch): no
+      second `applyEdits`, with a control that lands;
+    - the epoch moving after re-authorization.
   - **Read-back:**
     - a missing quote;
     - a stale version in review;
@@ -126,10 +143,13 @@ Host only: no persona, no routes, no claim (the claim is Slice 4's).
     `prose-paragraphs`;
   - the single-newline control;
   - a paragraph removed;
+  - emphasis and strong free in prose, refused in strict;
   - every other block and inline construct still refused.
 - **`DraftEditApplier.test.ts`:** Astra's shrink-the-paragraph retry refused
-  by `revalidate` with nothing written, and a first-attempt refusal asks
+  by `beforeAttempt` with nothing written, and a first-attempt refusal asks
   nothing.
+- **`VsCodeFileEditAuthorityEpoch.test.ts`:** the epoch moves on a folder
+  change and a context-path setting, never on another setting.
 - **Other tests:**
   - `ContextResourceResolverCandidates.test.ts`;
   - `VsCodeDocumentEditor.open.test.ts` (open, peek, reveal);
@@ -164,9 +184,10 @@ Host only: no persona, no routes, no claim (the claim is Slice 4's).
   before the host is asked (protected, markup, line break) make the card
   `refused` when nothing else landed. When some operations land and others
   are refused, the card is `partial`.
-- **Emphasis in prose.** New emphasis inside prose is still refused under
-  `prose-paragraphs`, as under `strict`. The ADR's list names links, images,
-  code spans, autolinks and inline HTML, and doesn't settle emphasis, so I
-  kept the stricter reading.
+- **The ceiling's measure** (the coordinator's call; the ADR will follow).
+  `changed` is each replace's characters past the common start and end of
+  its quote and replacement, summed. It is refused only when `changed` is
+  over 300 and over 0.6 × touched. Where a replace stands moves with its
+  edit between attempts; how much it changes does not.
 - **CRLF.** In a CRLF document, a model's `\n` becomes `\r\n`, and the
   separator is a CRLF blank line.

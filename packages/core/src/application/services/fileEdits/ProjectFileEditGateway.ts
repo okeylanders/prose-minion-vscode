@@ -13,12 +13,15 @@
  *    must name the identity.
  * 4. **Plan** with the shared planner, then check freshness (D6) and the
  *    class policy (D5).
- * 5. **The last dispatch boundary.** The handler's `stillCurrent()` and the
- *    synchronous identity check run with nothing awaited between them and
- *    the applier's call.
+ * 5. **The last dispatch boundary.** The caller's authority predicate
+ *    (`stillCurrent()`: the claim, the room generation, the setting), the
+ *    authority epoch taken at re-authorization, and the synchronous
+ *    containment check run with nothing awaited before the applier's call.
  * 6. **Apply through `DraftEditApplier`** with the class's structure mode
- *    and a `revalidate` that re-checks freshness and the ceiling on every
- *    attempt. A refused retry writes nothing.
+ *    and a `beforeAttempt` the applier runs synchronously immediately before
+ *    every `applyEdits`, its retry included: the same authority checks, then
+ *    freshness, the insertion bounds and the ceiling on the live text. A
+ *    refused attempt writes nothing more and makes no further attempt.
  * 7. **Report by operation**, from the applier's result.
  * 8. **Show the document** when something landed and no editor shows it.
  *
@@ -36,6 +39,7 @@ import {
   type StagedFileEdit
 } from '@/domain/models/FileEdit';
 import type { DocumentEditor } from '@/platform/DocumentEditor';
+import type { FileEditAuthorityEpoch } from '@/platform/FileEditAuthorityEpoch';
 import type { FileSystem } from '@/platform/FileSystem';
 import type { LogSink } from '@/platform/LogSink';
 import type { Workspace } from '@/platform/Workspace';
@@ -55,7 +59,7 @@ import {
   samePath,
   type FileEditExcerptPort
 } from './fileEditIdentity';
-import { freshnessFaults, passesRewriteCeiling, policyFaults, type OperationFault } from './fileEditPolicyChecks';
+import { changedCharacters, freshnessFaults, passesRewriteCeiling, policyFaults, type OperationFault } from './fileEditPolicyChecks';
 
 /** The card's state after an Apply (D8), less `pending` and `applying`, which are the handler's. */
 export type FileEditApplyState = 'applied' | 'partial' | 'declined' | 'stale' | 'refused' | 'unknown';
@@ -86,6 +90,7 @@ export interface ProjectFileEditGatewayDependencies {
   readonly fileSystem: Pick<FileSystem, 'stat'>;
   readonly documents: Pick<DocumentEditor, 'open' | 'reveal'>;
   readonly applier: Pick<DraftEditApplier, 'apply'>;
+  readonly epoch: FileEditAuthorityEpoch;
   readonly log: LogSink;
 }
 
@@ -111,7 +116,8 @@ export class ProjectFileEditGateway {
     if (staged.operations.length === 0) {
       return whole(staged, 'refused', 'no-operations');
     }
-    // 1. Re-authorize the recorded identity.
+    // 1. Re-authorize the recorded identity, under the epoch it is read at.
+    const epoch = dependencies.epoch.current();
     const fsPath = fsPathOf(staged.target.documentUri);
     if (!fsPath) {
       return whole(staged, 'refused', 'outside-workspace');
@@ -174,30 +180,49 @@ export class ProjectFileEditGateway {
       replacement: edit.text,
       label: EDIT_LABEL
     }));
-    if (!passesRewriteCeiling(document.text, edits, policy.ceiling)) {
-      return faulted(staged, operations.flatMap((operation, index) => operation.op === 'replace' ? [{ index, fault: 'rewrite-ceiling' as const }] : []));
+    // Each replace's change is fixed; where it stands moves with its edit.
+    const changes = new Map(operations.flatMap((operation, index) =>
+      operation.op === 'replace' ? [[index, changedCharacters(operation.find, operation.with)] as const] : []));
+    const replacesIn = (placed: ReadonlyArray<{ readonly id: string; readonly start: number; readonly end: number }>) =>
+      placed.flatMap((edit) => (plan.edits[Number(edit.id.slice('edit-'.length))]?.operations ?? [])
+        .filter((index) => changes.has(index))
+        .map((index) => ({ start: edit.start, end: edit.end, changed: changes.get(index) as number })));
+    if (!passesRewriteCeiling(document.text, replacesIn(edits), policy.ceiling)) {
+      return faulted(staged, [...changes.keys()].map((index) => ({ index, fault: 'rewrite-ceiling' as const })));
     }
 
-    // 5. The last dispatch boundary.
-    if (!options.stillCurrent()) {
-      return whole(staged, 'refused', 'superseded');
-    }
-    if (!insideWorkspace(fsPath, dependencies.workspace)) {
-      return whole(staged, 'refused', 'outside-workspace');
+    // 5. The last dispatch boundary: authority, synchronously.
+    const authority = (): FileEditApplyRefusal | undefined => {
+      if (!options.stillCurrent()) {
+        return 'superseded';
+      }
+      if (dependencies.epoch.current() !== epoch) {
+        return 'authority-changed';
+      }
+      return insideWorkspace(fsPath, dependencies.workspace) ? undefined : 'outside-workspace';
+    };
+    const refusal = authority();
+    if (refusal) {
+      return whole(staged, 'refused', refusal);
     }
 
-    // 6. Apply, re-checking freshness and the ceiling on every attempt.
+    // 6. Apply; before every attempt, authority and then the text, on the live document.
     const result = await dependencies.applier.apply({
       document,
       edits,
       review: options.review,
       policy: { allowsNewlineChanges: policy.allowsNewlineChanges, structure: policy.structure },
-      revalidate: (live, moved) => {
-        const stale = freshnessFaults(live.text, fsPath, operations, staged.baseline)[0];
-        if (stale) {
-          return stale.fault;
+      beforeAttempt: (live, moved) => {
+        const lost = authority();
+        if (lost) {
+          return lost;
         }
-        return passesRewriteCeiling(live.text, moved, policy.ceiling) ? undefined : 'rewrite-ceiling';
+        const fault = freshnessFaults(live.text, fsPath, operations, staged.baseline)[0]
+          ?? policyFaults(live.text, fsPath, live.languageId, operations, policy)[0];
+        if (fault) {
+          return fault.fault;
+        }
+        return passesRewriteCeiling(live.text, replacesIn(moved), policy.ceiling) ? undefined : 'rewrite-ceiling';
       }
     });
 
@@ -275,8 +300,12 @@ function report(
     if (refusal) {
       return { index, outcome: 'refused', reason: refusal };
     }
-    if (result.outcome === 'revalidation') {
-      return { index, outcome: STALE_FAULTS.has(result.revalidation ?? '') ? 'stale' : 'refused', reason: result.revalidation };
+    if (result.outcome === 'before-attempt') {
+      // An attempt refused after one that wrote nothing: nothing of this landed.
+      const landedEarlier = byEdit.get(id) === 'landed';
+      return landedEarlier
+        ? { index, outcome: 'landed' }
+        : { index, outcome: STALE_FAULTS.has(result.beforeAttempt ?? '') ? 'stale' : 'refused', reason: result.beforeAttempt };
     }
     return { index, outcome: byEdit.get(id) ?? 'unknown' };
   });
@@ -287,8 +316,8 @@ function report(
   if (landed > 0) {
     return { state: 'partial', operations };
   }
-  if (result.outcome === 'revalidation') {
-    return { state: STALE_FAULTS.has(result.revalidation ?? '') ? 'stale' : 'refused', reason: result.revalidation, operations };
+  if (result.outcome === 'before-attempt') {
+    return { state: STALE_FAULTS.has(result.beforeAttempt ?? '') ? 'stale' : 'refused', reason: result.beforeAttempt, operations };
   }
   if (operations.some(({ outcome }) => outcome === 'unknown') || result.outcome === 'closed') {
     return { state: 'unknown', operations };

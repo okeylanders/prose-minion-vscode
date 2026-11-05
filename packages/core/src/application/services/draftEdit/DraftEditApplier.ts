@@ -16,9 +16,10 @@
  *    unknown because the writer edited there meanwhile. The host's changes
  *    may be smaller than the edits, or one change spanning a thousand of
  *    them (PR #172 F-04); both read back as the edits they are.
- * 3a. Before every ask, the first and the retry, the caller's `revalidate`
- *    (when given) reads the document and the edits as they now stand; a
- *    reason it gives refuses the attempt, and nothing is written.
+ * 3a. Immediately before every ask, the first and the retry, the caller's
+ *    `beforeAttempt` (when given) reads the document and the edits as they
+ *    now stand, synchronously; a reason it gives refuses the attempt,
+ *    nothing more is written, and no further attempt is made.
  * 4. A direct apply that found the document moved (the writer typed as it
  *    went out) follows its edits through the writer's edits, checks every
  *    one again against the document as it now stands (it may now be in
@@ -63,13 +64,13 @@ export interface DraftEditApplyRequest {
   readonly review: DocumentEditReview;
   readonly policy: Pick<DraftEditPassPolicy, 'allowsNewlineChanges' | 'structure'>;
   /**
-   * The caller's own rules, run on every attempt, the direct retry included,
-   * against the document as it stands and the edits as they now sit there,
-   * just before the host is asked (ADR 2026-11-05 D7.6). A reason refuses
-   * the attempt: nothing is written. Synchronous, so nothing moves between
-   * it and the host's call.
+   * The caller's own rules, run synchronously immediately before every
+   * `applyEdits`, the direct retry included, against the document as it
+   * stands and the edits as they now sit there (ADR 2026-11-05 D7.6). A
+   * reason refuses the attempt: nothing more is written and no further
+   * attempt is made.
    */
-  readonly revalidate?: (document: DocumentSnapshot, edits: readonly DraftEditEdit[]) => string | undefined;
+  readonly beforeAttempt?: (document: DocumentSnapshot, edits: readonly DraftEditEdit[]) => string | undefined;
 }
 
 export type DraftEditRefusal = 'changed' | 'protected' | 'line-break' | 'overlapping' | 'markup';
@@ -89,10 +90,10 @@ export interface DraftEditApplyResult {
    * The host's last answer. `nothing` when every edit was refused, so the
    * host was never asked; `changed` when the document had already moved.
    */
-  readonly outcome: DocumentApplyOutcome['kind'] | 'nothing' | 'changed' | 'revalidation';
+  readonly outcome: DocumentApplyOutcome['kind'] | 'nothing' | 'changed' | 'before-attempt';
   readonly failure?: string;
-  /** The caller's `revalidate` reason, when it refused an attempt (`revalidation`). */
-  readonly revalidation?: string;
+  /** The caller's `beforeAttempt` reason, when it refused an attempt (`before-attempt`). */
+  readonly beforeAttempt?: string;
   /** Edit ids that landed. */
   readonly applied: readonly string[];
   /** Edit ids still standing as they were (unticked, declined, refused by the host), at their place after. */
@@ -127,22 +128,24 @@ export class DraftEditApplier {
     const unknown: string[] = [];
     const history: Array<readonly DocumentTextChange[]> = [];
     for (let attempt = 1; ; attempt += 1) {
-      const revalidation = request.revalidate?.(document, members);
-      if (revalidation !== undefined) {
+      const groups = joinTouching(members);
+      const watch = this.documents.watch(document.uri, document.version);
+      if (!watch) {
+        return { outcome: 'changed', applied, notApplied: [], unknown: [...unknown, ...ids(groups)], refused };
+      }
+      // Nothing awaited from here to the host's call.
+      const before = request.beforeAttempt?.(document, members);
+      if (before !== undefined) {
+        watch.dispose();
         return {
-          outcome: 'revalidation',
-          revalidation,
+          outcome: 'before-attempt',
+          beforeAttempt: before,
           applied,
           notApplied: members.map(({ id, start, end }) => ({ id, start, end })),
           unknown,
           refused,
           settled: { snapshot: document, edits: history }
         };
-      }
-      const groups = joinTouching(members);
-      const watch = this.documents.watch(document.uri, document.version);
-      if (!watch) {
-        return { outcome: 'changed', applied, notApplied: [], unknown: [...unknown, ...ids(groups)], refused };
       }
       const outcome = await this.documents.applyEdits(document.uri, groups.map(toDocumentEdit), {
         expectedVersion: document.version,

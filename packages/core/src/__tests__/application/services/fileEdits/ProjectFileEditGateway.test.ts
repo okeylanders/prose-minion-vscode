@@ -27,6 +27,8 @@ interface Fixture {
   readonly gateway: ProjectFileEditGateway;
   readonly documents: FakeDocuments;
   readonly fakes: HostFakes;
+  /** The host's authority epoch: move it to change a root or a context-path setting. */
+  readonly epoch: { value: number };
 }
 
 function fixture(options: { path?: string; text?: string; host?: HostBehavior; fakes?: Partial<HostFakes> } = {}): Fixture {
@@ -37,10 +39,11 @@ function fixture(options: { path?: string; text?: string; host?: HostBehavior; f
     ...options.fakes
   });
   const { candidates, excerpt, workspace, fileSystem, log } = ports(fakes);
+  const epoch = { value: 0 };
   const gateway = new ProjectFileEditGateway({
-    candidates, excerpt, workspace, fileSystem, log, documents, applier: new DraftEditApplier(documents)
+    candidates, excerpt, workspace, fileSystem, log, documents, applier: new DraftEditApplier(documents), epoch: { current: () => epoch.value }
   });
-  return { gateway, documents, fakes };
+  return { gateway, documents, fakes, epoch };
 }
 
 function staged(path: string, text: string, staging: FileEditClass, ...operations: TextEditOperation[]): StagedFileEdit {
@@ -115,6 +118,13 @@ describe('ProjectFileEditGateway: prose', () => {
     expect(documents.text).toBe('Alice sat by her sister on the bank. The White Rabbit ran close by her.\n\nIt and checked its `watch` twice.\n\nAlice followed.\n');
   });
 
+  it('lets prose take italics, in an edit or an appended paragraph', async () => {
+    const { gateway, documents } = prose();
+    const outcome = await gateway.apply(chapter(replace('sat by her sister', 'sat by her *sister*'), { op: 'append', text: 'She was **very** late.' }), DIRECT);
+    expect(outcome.state).toBe('applied');
+    expect(documents.text).toContain('She was **very** late.');
+  });
+
   it('keeps every other structure, and protected regions', async () => {
     const heading = await prose().gateway.apply(chapter({ op: 'append', text: '# Chapter two' }), DIRECT);
     expect(heading).toMatchObject({ state: 'refused', reason: 'markup' });
@@ -142,7 +152,22 @@ describe('ProjectFileEditGateway: prose', () => {
     expect(under.state).toBe('applied');
   });
 
-  it('checks the ceiling again on the retry: a paragraph that shrank under the quote writes nothing (F-06)', async () => {
+  it('lets Astra\'s 18-character quote through on the retry: under the floor, the ceiling never applies', async () => {
+    const quote = 'Alice walked away.';
+    const tail = ' The Hatter quietly remained at the table and waited for the next guest to arrive.';
+    const text = `${quote}${tail}\n`;
+    const { gateway, documents } = fixture({
+      path: CHAPTER,
+      text,
+      host: firstThen(writerTypes([{ offset: quote.length, length: tail.length, text: '' }]), applyAll)
+    });
+    const outcome = await gateway.apply(staged(CHAPTER, text, 'prose', replace(quote, 'Nobody came home.')), DIRECT);
+    expect(outcome.state).toBe('applied');
+    expect(documents.applyCalls.map((call) => call.expectedVersion)).toEqual([1, 2]);
+    expect(documents.text).toBe('Nobody came home.\n');
+  });
+
+  it('checks the ceiling again on the retry: a paragraph that shrank under a quote over the floor writes nothing (F-06)', async () => {
     const quote = `${'Alice walked slowly away from the bank. '.repeat(9).trim()}`;
     const tail = ` ${'The Hatter quietly remained at the table and waited for the next guest. '.repeat(10).trim()}`;
     const text = `${quote}${tail}\n`;
@@ -197,6 +222,43 @@ describe('ProjectFileEditGateway: identity and class at Apply', () => {
     const other = fixture();
     (other.documents as unknown as { open: (uri: string) => Promise<unknown> }).open = async () => ({ ...other.documents.snapshot(), uri: uriOf(CHAPTER) });
     expect(await other.gateway.apply(note(replace('curious', 'brave')), DIRECT)).toMatchObject({ state: 'refused', reason: 'identity-changed' });
+  });
+
+  it('makes no second applyEdits when authority moves between attempts (D7.6)', async () => {
+    const elsewhere = { offset: NOTE_TEXT.length, length: 0, text: 'x' };
+    const run = async (move: (fixture: Fixture, current: { value: boolean }) => void) => {
+      const current = { value: true };
+      const holder: { fixture?: Fixture } = {};
+      const host: HostBehavior = firstThen((edits, review, document) => {
+        move(holder.fixture as Fixture, current);
+        return writerTypes([elsewhere])(edits, review, document);
+      }, applyAll);
+      holder.fixture = fixture({ host });
+      const outcome = await holder.fixture.gateway.apply(note(replace('curious', 'brave')), { review: 'direct', stillCurrent: () => current.value });
+      return { outcome, calls: holder.fixture.documents.applyCalls.length, text: holder.fixture.documents.text };
+    };
+    // The setting turned off, or the room generation moved: the caller's predicate.
+    const predicate = await run((_fixture, current) => { current.value = false; });
+    expect(predicate).toMatchObject({ outcome: { state: 'refused', reason: 'superseded' }, calls: 1 });
+    expect(predicate.text).toContain('curious');
+    // A root or a context-path setting changed: the epoch.
+    const epoch = await run((moved) => { moved.epoch.value += 1; });
+    expect(epoch).toMatchObject({ outcome: { state: 'refused', reason: 'authority-changed' }, calls: 1 });
+    // Control: nothing moves, so the retry lands.
+    const control = await run(() => undefined);
+    expect(control).toMatchObject({ outcome: { state: 'applied' }, calls: 2 });
+    expect(control.text).toContain('brave');
+  });
+
+  it('writes nothing when the epoch moved after re-authorization', async () => {
+    const moving = fixture();
+    const open = moving.documents.open.bind(moving.documents);
+    (moving.documents as unknown as { open: typeof open }).open = async (uri: string) => {
+      moving.epoch.value += 1;
+      return open(uri);
+    };
+    expect(await moving.gateway.apply(note(replace('curious', 'brave')), DIRECT)).toMatchObject({ state: 'refused', reason: 'authority-changed' });
+    expect(moving.documents.applyCalls).toEqual([]);
   });
 
   it('writes nothing when the handler\'s last boundary fails', async () => {

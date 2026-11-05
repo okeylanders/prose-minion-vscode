@@ -135,6 +135,6 @@ This is the same flow as Project Memory and Bookmark Recall.
   - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 754 suites, 10,499 tests, 59 snapshots. See [the slice doc](slice-1-shared-planner.md).
 - **2026-11-05. Slice 2 (staging and the gateway).**
   - First built to the original ADR, then reworked to the revised contracts (PR #226 F-02, F-03, F-05, F-06).
-  - Built: the resolver's every-candidate read; `FileEditStagingService`; the applier's `structure` mode and `revalidate`; `ProjectFileEditGateway` (D7); `DocumentEditor.open` / `peek` / `reveal`; budgets; boundary pins.
+  - Built: the resolver's every-candidate read; `FileEditStagingService`; the applier's `structure` mode and `beforeAttempt`; the `FileEditAuthorityEpoch` port; `ProjectFileEditGateway` (D7); `DocumentEditor.open` / `peek` / `reveal`; budgets; boundary pins.
   - One Draft Edit read-back fix: a pure insertion now reads as applied.
-  - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 760 suites, 10,554 tests, 59 snapshots. See [the slice doc](slice-2-gateway.md).
+  - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 761 suites, 10,560 tests, 59 snapshots. See [the slice doc](slice-2-gateway.md).

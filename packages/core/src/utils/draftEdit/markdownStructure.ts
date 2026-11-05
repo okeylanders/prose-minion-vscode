@@ -25,8 +25,9 @@
  * - Plain text has no structure, so nothing is refused there.
  * - **`prose-paragraphs`** (persona edits to prose, ADR 2026-11-05 D5): a
  *   run of top-level paragraphs, blank lines between, reads as one paragraph
- *   whose inline shape is theirs in order, so plain paragraphs may split,
- *   merge, appear or go, while a heading, list, quote, fence, table, break,
+ *   whose inline shape is theirs in order, and emphasis and strong read as
+ *   their text, so plain paragraphs may split, merge, appear or go and prose
+ *   may take italics, while a heading, list, quote, fence, table, break,
  *   HTML block, or a link, image, code span, autolink or inline HTML (as
  *   `strict` reads them) still moves it. Proofread and Craft Flags read
  *   `strict`, the default.
@@ -150,7 +151,7 @@ function shapeOf(source: string, links: Links, options: StructureOptions): strin
   // A fresh lexer per read (tokens accumulate on one), sharing the document's definitions.
   lexer.tokens.links = { ...links };
   const tokens = lexer.lex(source);
-  return describe(options.mode === 'prose-paragraphs' ? joinParagraphRuns(tokens) : tokens);
+  return options.mode === 'prose-paragraphs' ? describe(joinParagraphRuns(tokens), true) : describe(tokens);
 }
 
 /** Top-level runs of paragraphs, blank lines between, as one paragraph holding their inline tokens in order. */
@@ -175,32 +176,41 @@ function joinParagraphRuns(tokens: readonly Token[]): Token[] {
   return joined;
 }
 
-function describe(tokens: readonly Token[]): string {
-  const parts: string[] = [];
-  for (const token of tokens) {
-    const part = describeToken(token);
-    // Adjacent text runs are one: how `marked` splits plain text is not structure.
-    if (part === 'text' && parts[parts.length - 1] === 'text') {
-      continue;
-    }
-    parts.push(part);
-  }
-  return parts.join(',');
+/** `prose`: emphasis and strong are their text (`prose-paragraphs`). */
+function describe(tokens: readonly Token[], prose = false): string {
+  return describeParts(tokens, prose).join(',');
 }
 
-function describeToken(token: Token): string {
+function describeParts(tokens: readonly Token[], prose: boolean): string[] {
+  const parts: string[] = [];
+  for (const token of tokens) {
+    const own = prose && (token.type === 'em' || token.type === 'strong')
+      ? describeParts((token as Tokens.Em | Tokens.Strong).tokens ?? [], prose)
+      : [describeToken(token, prose)];
+    for (const part of own) {
+      // Adjacent text runs are one: how `marked` splits plain text is not structure.
+      if (part === 'text' && parts[parts.length - 1] === 'text') {
+        continue;
+      }
+      parts.push(part);
+    }
+  }
+  return parts;
+}
+
+function describeToken(token: Token, prose = false): string {
   switch (token.type) {
     case 'heading':
-      return `heading${(token as Tokens.Heading).depth}(${describe((token as Tokens.Heading).tokens)})`;
+      return `heading${(token as Tokens.Heading).depth}(${describe((token as Tokens.Heading).tokens, prose)})`;
     case 'list': {
       const list = token as Tokens.List;
-      const items = list.items.map((item) => `${item.task ? (item.checked ? 'done' : 'task') : 'item'}(${describe(item.tokens)})`).join('|');
+      const items = list.items.map((item) => `${item.task ? (item.checked ? 'done' : 'task') : 'item'}(${describe(item.tokens, prose)})`).join('|');
       return `list${list.ordered ? 'ol' : 'ul'}${list.loose ? 'loose' : ''}[${items}]`;
     }
     case 'table': {
       // Every cell's inline shape, header and body: a tag or a link made inside a cell keeps the table's size (PR #172 F-03 re-review).
       const table = token as Tokens.Table;
-      const cells = (row: readonly Tokens.TableCell[]) => row.map((cell) => `cell(${describe(cell.tokens)})`).join('|');
+      const cells = (row: readonly Tokens.TableCell[]) => row.map((cell) => `cell(${describe(cell.tokens, prose)})`).join('|');
       return `table[${table.align.map((align) => align ?? 'none').join('|')}](${cells(table.header)})[${table.rows.map(cells).join('/')}]`;
     }
     case 'link':
@@ -208,15 +218,20 @@ function describeToken(token: Token): string {
       // Where it goes is not prose: a fix to a reference's label can resolve it to another definition (PR #183 F-01).
       const link = token as Tokens.Link | Tokens.Image;
       const target = JSON.stringify([link.href, link.title ?? null]);
-      const nested = Array.isArray(link.tokens) ? `(${describe(link.tokens)})` : '';
+      const nested = Array.isArray(link.tokens) ? `(${describe(link.tokens, prose)})` : '';
       return `${token.type}${target}${nested}`;
     }
     case 'text': {
       const text = token as Tokens.Text;
-      return text.tokens && text.tokens.some((child) => child.type !== 'text') ? `text(${describe(text.tokens)})` : 'text';
+      if (!text.tokens || !text.tokens.some((child) => child.type !== 'text')) {
+        return 'text';
+      }
+      // In prose, emphasis inside a text run is its text: a run that reads as plain is plain.
+      const inner = describe(text.tokens, prose);
+      return inner === 'text' ? 'text' : `text(${inner})`;
     }
     default: {
-      const nested = 'tokens' in token && Array.isArray(token.tokens) ? `(${describe(token.tokens as Token[])})` : '';
+      const nested = 'tokens' in token && Array.isArray(token.tokens) ? `(${describe(token.tokens as Token[], prose)})` : '';
       return `${token.type}${nested}`;
     }
   }

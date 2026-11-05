@@ -29,9 +29,10 @@ export interface FileEditApplyOptions {
   /** `direct`: the card was the review (Apply); `preview`: Refactor Preview (Review in editor…). */
   readonly review: 'direct' | 'preview';
   /**
-   * The handler's last dispatch boundary (D8): whether the claim is held,
-   * the room and turn are the same and the setting is still `ask`. Called
-   * with nothing awaited between it and the applier's call.
+   * The caller's authority predicate (D7.6, D8): the claim is held, the room
+   * generation captured at the action is unchanged, and the setting is still
+   * `ask`. Called synchronously at the last boundary and before every
+   * attempt, with nothing awaited before the host's call.
    */
   readonly stillCurrent: () => boolean;
 }
@@ -75,6 +76,7 @@ export type FileEditApplyRefusal =
   | 'not-text'
   | 'too-large'
   | 'superseded'
+  | 'authority-changed'
   | 'host-failed';
 
 /** An operation's fault at Apply: the planner's, freshness, or the class policy's. */

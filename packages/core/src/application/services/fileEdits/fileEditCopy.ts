@@ -79,6 +79,8 @@ function refusalMessage(reason: string | undefined): string {
       return `That file is larger than the ${BOUNDS.fileBytes / MIB} MiB edit limit.`;
     case 'superseded':
       return 'The room moved on before the change was made, so nothing changed.';
+    case 'authority-changed':
+      return 'The workspace folders or configured project files changed, so nothing changed. Ask again.';
     case 'not-allowed':
       return 'Prose is never rewritten whole.';
     case 'insertion-too-long':
