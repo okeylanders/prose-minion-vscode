@@ -19,7 +19,9 @@
  * - **Paths** keep `workshopPinnedContextPathFault`'s rule, and each appears
  *   once by `workshopPinnedContextPathKey` (case-folded on Windows: the
  *   platform is passed in).
- * - **At most `WORKSHOP_PINNED_CONTEXT_FILES` entries.**
+ * - **At most `WORKSHOP_PINNED_CONTEXT_FILES` entries,** in at most
+ *   `WORKSHOP_PINNED_CONTEXT_FILE_BYTES` bytes, checked before decoding;
+ *   a list that would encode past it is never written.
  * - **Stable bytes.** Two-space indent, `format` first, a trailing newline,
  *   so a hand edit diffs cleanly. A leading byte-order mark (a Windows
  *   editor's) is read past, and never written.
@@ -29,6 +31,7 @@
  */
 
 import {
+  WORKSHOP_PINNED_CONTEXT_FILE_BYTES,
   WORKSHOP_PINNED_CONTEXT_FILES,
   WORKSHOP_PINNED_CONTEXT_FORMAT,
   workshopPinnedContextPathFault,
@@ -58,6 +61,11 @@ export function decodeWorkshopPinnedContext(
   bytes: Uint8Array | string,
   platform: WorkshopPinnedContextPathPlatform
 ): WorkshopPinnedContextDecoded {
+  // Over the bound is refused before anything is decoded (a string counts its UTF-8 bytes).
+  const byteLength = typeof bytes === 'string' ? encoder.encode(bytes).byteLength : bytes.byteLength;
+  if (byteLength > WORKSHOP_PINNED_CONTEXT_FILE_BYTES) {
+    return { ok: false, reason: 'too-large' };
+  }
   let text: string;
   try {
     text = typeof bytes === 'string' ? bytes : new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
@@ -127,9 +135,9 @@ export function prepareWorkshopPinnedContext(
   list: WorkshopPinnedContextList,
   platform: WorkshopPinnedContextPathPlatform
 ): WorkshopPinnedContextPrepared {
-  const text = encodeWorkshopPinnedContext(list);
-  const decoded = decodeWorkshopPinnedContext(text, platform);
-  return decoded.ok ? { ok: true, list: decoded.list, bytes: encoder.encode(text) } : decoded;
+  const bytes = encoder.encode(encodeWorkshopPinnedContext(list));
+  const decoded = decodeWorkshopPinnedContext(bytes, platform);
+  return decoded.ok ? { ok: true, list: decoded.list, bytes } : decoded;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

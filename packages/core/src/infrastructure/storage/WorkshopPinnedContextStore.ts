@@ -11,6 +11,10 @@
  * - **Revisions.** A read names its revision, a SHA-256 of the file's bytes;
  *   an absent file has the fixed `WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION`,
  *   so a create is checked as any other write is.
+ * - **Bounded reads.** The file is `stat`ed before it is read: one over
+ *   `WORKSHOP_PINNED_CONTEXT_FILE_BYTES` is unreadable (`too-large`) without
+ *   its bytes being read, and never written. The codec checks the bound
+ *   again, since a file can grow between the `stat` and the read.
  * - **One queue, the board store's write discipline,** through the shared
  *   claimed-file primitive:
  *   - every `update` names the revision its caller read. At its turn the
@@ -43,6 +47,7 @@ import * as path from 'node:path';
 import type { FileSystem, LogSink, Workspace } from '@/platform';
 import {
   WORKSHOP_PINNED_CONTEXT_DISPLAY_PATH,
+  WORKSHOP_PINNED_CONTEXT_FILE_BYTES,
   workshopPinnedContextPlatformOf,
   type WorkshopPinnedContextList,
   type WorkshopPinnedContextPathPlatform,
@@ -120,6 +125,8 @@ type StoreRead =
 type FileRead =
   | { state: 'absent' }
   | { state: 'present'; bytes: Uint8Array }
+  /** Over the byte bound by its `stat`: never read. */
+  | { state: 'too-large'; size: number; mtime: number }
   | { state: 'busy' | 'io' };
 
 export class WorkshopPinnedContextStore {
@@ -287,6 +294,9 @@ export class WorkshopPinnedContextStore {
       case 'busy':
       case 'io':
         return { state: file.state };
+      case 'too-large':
+        // No bytes were read, so no hash: a revision from its size and time, never a SHA-256's hex. It is never written anyway.
+        return { state: 'unreadable', reason: 'too-large', revision: `too-large-${file.size}-${file.mtime}` };
       case 'present': {
         const revision = revisionOf(file.bytes);
         const decoded = decodeWorkshopPinnedContext(file.bytes, this.platform);
@@ -318,6 +328,11 @@ export class WorkshopPinnedContextStore {
         return { state: 'io' };
       }
       try {
+        const stat = await this.fileSystem.stat(filePath);
+        if (stat.size > WORKSHOP_PINNED_CONTEXT_FILE_BYTES) {
+          this.log.appendLine(`${LOG} The list is over the size bound; it was not read.`);
+          return { state: 'too-large', size: stat.size, mtime: stat.mtime };
+        }
         return { state: 'present', bytes: await this.fileSystem.readFile(filePath) };
       } catch (error) {
         if (!isMissingFileSystemPathError(error)) {

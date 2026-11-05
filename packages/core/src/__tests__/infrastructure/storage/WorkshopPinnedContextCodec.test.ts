@@ -12,6 +12,7 @@ import {
   prepareWorkshopPinnedContext
 } from '@/infrastructure/storage/WorkshopPinnedContextCodec';
 import {
+  WORKSHOP_PINNED_CONTEXT_FILE_BYTES,
   WORKSHOP_PINNED_CONTEXT_FILES,
   WORKSHOP_PINNED_CONTEXT_REFUSALS,
   workshopPinnedContextPathKey,
@@ -24,6 +25,11 @@ const FIXTURE = path.resolve(__dirname, '../../fixtures/pinned-context-v1.json')
 const fixture = () => fs.readFileSync(FIXTURE, 'utf8');
 const json = (value: unknown) => JSON.stringify(value);
 const files = (...paths: string[]) => paths.map((entryPath) => ({ path: entryPath }));
+/** A valid file padded with trailing whitespace (which JSON allows) to exactly `bytes` bytes. */
+const paddedTo = (bytes: number) => {
+  const base = encodeWorkshopPinnedContext({ files: files('Characters/alice.md') });
+  return base + ' '.repeat(bytes - new TextEncoder().encode(base).byteLength);
+};
 const refusal = (text: string | Uint8Array, platform: 'posix' | 'windows' = 'posix') => {
   const decoded = decodeWorkshopPinnedContext(text, platform);
   return decoded.ok ? 'read' : { reason: decoded.reason, ...(decoded.entry !== undefined ? { entry: decoded.entry } : {}) };
@@ -99,6 +105,7 @@ describe('format 1: every refusal, whole', () => {
     ['a bad second entry', json({ format: 1, files: files('Characters/alice.md', '../the-hatter.md') }), 'path', 1],
     ['a duplicate', json({ format: 1, files: files('Characters/alice.md', 'Project/brief.md', 'Characters/alice.md') }), 'duplicate', 2],
     ['a duplicate in another Unicode form', json({ format: 1, files: files('Places/caf\u00e9.md', 'Places/cafe\u0301.md') }), 'duplicate', 1],
+    ['a file one byte over the bound', paddedTo(WORKSHOP_PINNED_CONTEXT_FILE_BYTES + 1), 'too-large', null],
     ['one entry too many', json({ format: 1, files: Array.from({ length: WORKSHOP_PINNED_CONTEXT_FILES + 1 }, (_, index) => ({ path: `Notes/${index}.md` })) }), 'too-many', null]
   ];
 
@@ -119,6 +126,30 @@ describe('format 1: every refusal, whole', () => {
 
   it('keeps names that only look odd: dots inside a name, spaces, colons past the first segment', () => {
     expect(refusal(json({ format: 1, files: files('.hidden/alice.md', 'Characters/alice..draft.md', 'Notes/10:30 tea.md') }))).toBe('read');
+  });
+});
+
+describe('format 1: the byte bound', () => {
+  it('is PROMPT_BUDGETS.workshopPinnedContext.fileBytes, 128 KiB', () => {
+    expect(WORKSHOP_PINNED_CONTEXT_FILE_BYTES).toBe(PROMPT_BUDGETS.workshopPinnedContext.fileBytes);
+    expect(WORKSHOP_PINNED_CONTEXT_FILE_BYTES).toBe(128 * 1024);
+  });
+
+  it('reads a file exactly at the bound, and refuses one byte over, as text or as bytes', () => {
+    expect(refusal(paddedTo(WORKSHOP_PINNED_CONTEXT_FILE_BYTES))).toBe('read');
+    expect(refusal(paddedTo(WORKSHOP_PINNED_CONTEXT_FILE_BYTES + 1))).toEqual({ reason: 'too-large' });
+    expect(refusal(new TextEncoder().encode(paddedTo(WORKSHOP_PINNED_CONTEXT_FILE_BYTES + 1)))).toEqual({ reason: 'too-large' });
+  });
+
+  it('refuses over-bound bytes before decoding them: even ones that are not JSON say too-large', () => {
+    expect(refusal(new Uint8Array(WORKSHOP_PINNED_CONTEXT_FILE_BYTES + 1).fill(0xff))).toEqual({ reason: 'too-large' });
+  });
+
+  it('never refuses a full list of long paths: twenty 4,096-character paths fit under the bound', () => {
+    const long = (index: number) => `Notes/${String(index).padStart(2, '0')}-${'a'.repeat(4_096 - 9)}`;
+    const full = { files: Array.from({ length: WORKSHOP_PINNED_CONTEXT_FILES }, (_, index) => ({ path: long(index) })) };
+    expect(full.files.every((entry) => entry.path.length === 4_096)).toBe(true);
+    expect(prepareWorkshopPinnedContext(full, 'posix').ok).toBe(true);
   });
 });
 
@@ -145,6 +176,11 @@ describe('prepareWorkshopPinnedContext', () => {
   it('gives the bytes a list writes, when they read back', () => {
     const prepared = prepareWorkshopPinnedContext({ files: files('Characters/alice.md') }, 'posix');
     expect(prepared.ok && new TextDecoder().decode(prepared.bytes)).toBe(encodeWorkshopPinnedContext({ files: files('Characters/alice.md') }));
+  });
+
+  it('refuses a list whose bytes would pass the bound', () => {
+    const huge = { files: Array.from({ length: WORKSHOP_PINNED_CONTEXT_FILES }, (_, index) => ({ path: `Notes/${index}-${'a'.repeat(7_000)}` })) };
+    expect(prepareWorkshopPinnedContext(huge, 'posix')).toEqual({ ok: false, reason: 'too-large' });
   });
 
   it('refuses a list that would not read back, with the reason', () => {

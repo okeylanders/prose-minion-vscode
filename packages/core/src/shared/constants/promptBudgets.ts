@@ -106,11 +106,12 @@ export interface PromptBudgets {
   }>;
   /**
    * Workshop Pinned Context (ADR 2026-11-04 D6): how many files the list
-   * may hold. The codec refuses a longer list whole; the tab refuses a pin
-   * past it.
+   * may hold (the codec refuses a longer list whole; the tab refuses a pin
+   * past it), and the largest file read or written.
    */
   readonly workshopPinnedContext: Readonly<{
     files: number;
+    fileBytes: number;
   }>;
   readonly workshopTodos: Readonly<{
     items: number;
@@ -550,7 +551,12 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readsPerTurn: 2,
     autoSavesPerRoom: 5
   },
-  workshopPinnedContext: { files: 20 },
+  workshopPinnedContext: {
+    files: 20,
+    // 128 KiB, not less: 20 entries at a 4,096-character path encode to about
+    // 83 KB, and the bound must never refuse a list the codec otherwise reads.
+    fileBytes: 128 * 1024
+  },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {
     turns: 100,

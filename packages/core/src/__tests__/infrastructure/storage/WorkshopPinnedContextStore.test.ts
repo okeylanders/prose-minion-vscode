@@ -16,7 +16,7 @@ import {
   WorkshopPinnedContextStore,
   workshopPinnedContextRevisionOf
 } from '@/infrastructure/storage/WorkshopPinnedContextStore';
-import { WORKSHOP_PINNED_CONTEXT_FILES } from '@shared/types/workshopPinnedContext';
+import { WORKSHOP_PINNED_CONTEXT_FILE_BYTES, WORKSHOP_PINNED_CONTEXT_FILES } from '@shared/types/workshopPinnedContext';
 import { FILE, FOLDER, NOW, ROOT, bytesOf, everyFile, list, pin, pinnedHost as host, text } from '@/__tests__/infrastructure/storage/workshopPinnedContextStoreHost';
 
 const claimOf = (at: number, id: string) => path.join(FOLDER, `.pinned-context.json.claim-${at}-${id}`);
@@ -192,6 +192,39 @@ describe('a file that does not read is never written', () => {
     expect(window.fileSystem.files.get(FILE)).toEqual(bad);
     expect(window.fileSystem.renameCalls).toEqual([]);
     expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
+  });
+});
+
+describe('a file over the byte bound', () => {
+  const oversized = () => new TextEncoder().encode(`${text(bytesOf(list('Characters/alice.md')))}${' '.repeat(WORKSHOP_PINNED_CONTEXT_FILE_BYTES)}`);
+
+  it('reads as unreadable, too-large, without its bytes being read', async () => {
+    const window = host();
+    window.fileSystem.files.set(FILE, oversized());
+    const read = await window.store.read();
+    expect(read).toMatchObject({ state: 'unreadable', reason: 'too-large' });
+    expect(read.state === 'unreadable' && /^[0-9a-f]{64}$/.test(read.revision)).toBe(false);
+    expect(window.fileSystem.readFileCalls).not.toContain(FILE);
+  });
+
+  it('is never written, even by an update naming its revision', async () => {
+    const window = host();
+    const bytes = oversized();
+    window.fileSystem.files.set(FILE, bytes);
+    const read = await window.store.read();
+    const revision = read.state === 'unreadable' ? read.revision : '';
+    expect(await window.store.update(revision, () => list())).toEqual({ ok: false, reason: 'unreadable' });
+    expect(window.fileSystem.files.get(FILE)).toEqual(bytes);
+    expect(window.fileSystem.readFileCalls).not.toContain(FILE);
+    expect(window.fileSystem.renameCalls).toEqual([]);
+    expect(everyFile(window.fileSystem)).toEqual(['pinned-context.json']);
+  });
+
+  it('refuses a change whose list would pass the bound, and writes nothing', async () => {
+    const window = host();
+    const huge = () => list(...Array.from({ length: WORKSHOP_PINNED_CONTEXT_FILES }, (_, index) => `Notes/${index}-${'a'.repeat(7_000)}`));
+    expect(await window.store.update(ABSENT, huge)).toEqual({ ok: false, reason: 'invalid', refusal: 'too-large' });
+    expect(window.fileSystem.files.size).toBe(0);
   });
 });
 

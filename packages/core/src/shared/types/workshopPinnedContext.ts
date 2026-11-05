@@ -18,6 +18,9 @@ export const WORKSHOP_PINNED_CONTEXT_FORMAT = 1;
 /** The most files the list holds (D6); a longer file is unreadable whole. */
 export const WORKSHOP_PINNED_CONTEXT_FILES = PROMPT_BUDGETS.workshopPinnedContext.files;
 
+/** The largest file read or written; a larger one is unreadable whole (`too-large`). */
+export const WORKSHOP_PINNED_CONTEXT_FILE_BYTES = PROMPT_BUDGETS.workshopPinnedContext.fileBytes;
+
 /** Where the list lives, relative to the workspace folder, as the tab names it. */
 export const WORKSHOP_PINNED_CONTEXT_DISPLAY_PATH = 'prose-minion/pinned-context.json';
 
@@ -42,9 +45,11 @@ export interface WorkshopPinnedContextList {
  * - `unknown-key`: a key format 1 does not define, at the root or in an entry;
  * - `path`: an entry's path is missing, not a string, or breaks the path rule;
  * - `duplicate`: two entries name one file;
- * - `too-many`: more entries than `WORKSHOP_PINNED_CONTEXT_FILES`.
+ * - `too-many`: more entries than `WORKSHOP_PINNED_CONTEXT_FILES`;
+ * - `too-large`: more bytes than `WORKSHOP_PINNED_CONTEXT_FILE_BYTES`, refused
+ *   before it is decoded.
  */
-export const WORKSHOP_PINNED_CONTEXT_REFUSALS = ['json', 'format', 'unknown-key', 'path', 'duplicate', 'too-many'] as const;
+export const WORKSHOP_PINNED_CONTEXT_REFUSALS = ['json', 'format', 'unknown-key', 'path', 'duplicate', 'too-many', 'too-large'] as const;
 export type WorkshopPinnedContextRefusal = typeof WORKSHOP_PINNED_CONTEXT_REFUSALS[number];
 
 /**
