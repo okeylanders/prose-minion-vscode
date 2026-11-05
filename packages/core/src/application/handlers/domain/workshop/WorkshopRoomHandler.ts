@@ -18,6 +18,7 @@
  */
 
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
+import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import type { WorkshopProjectMemoryPort } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import type { WorkshopPinnedContextServices } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 import {
@@ -248,7 +249,8 @@ export class WorkshopRoomHandler {
     private readonly outputChannel: LogSink,
     projectMemory: WorkshopProjectMemoryPort,
     pinnedContext: WorkshopPinnedContextServices,
-    bookmarkBrowser: WorkshopBookmarkBrowserPort
+    bookmarkBrowser: WorkshopBookmarkBrowserPort,
+    memoryDrafts: WorkshopMemoryDraftPorts
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -283,6 +285,7 @@ export class WorkshopRoomHandler {
         projectMemory,
         pinnedContext,
         bookmarkBrowser,
+        memoryDrafts,
         outputChannel: this.outputChannel
       },
       {

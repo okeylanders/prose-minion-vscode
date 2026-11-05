@@ -17,6 +17,17 @@ import {
 import type { WorkshopMemoryDraft, WorkshopMemoryHold, WorkshopMemoryPinnedEstimate, WorkshopMemoryProposal, WorkshopTurn } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
+/**
+ * A turn's text as a new memory's note: whole when it fits, else cut at the
+ * bound, for the writer to shape. The sheet's body and the helper's draft
+ * (Helper Agent Slice 2) read a turn through this one rule.
+ */
+export function workshopMemoryNoteFromTurn(content: string): string {
+  const text = content.trim();
+  const bound = PROMPT_BUDGETS.workshopProjectMemory.bodyCharacters;
+  return text.length <= bound ? text : text.slice(0, bound).trimEnd();
+}
+
 export type WorkshopMemoryDraftFault =
   | 'not-a-draft'
   | 'title-empty'

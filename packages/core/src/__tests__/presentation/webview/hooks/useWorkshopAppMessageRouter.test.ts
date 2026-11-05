@@ -41,7 +41,8 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleWriteResult: jest.fn(),
     handleEditData: jest.fn(),
     handleEstimateResult: jest.fn(),
-    handleTurnPreview: jest.fn()
+    handleTurnPreview: jest.fn(),
+    handleMemoryDraftResult: jest.fn()
   },
   memoryManager: {
     handleListing: jest.fn(),
@@ -164,6 +165,15 @@ describe('buildWorkshopAppMessageRoutes', () => {
 
     expect(deps.bookmarks.handleTurnPreview).toHaveBeenCalledWith(message);
     expect(deps.projectMemory.handleTurnPreview).toHaveBeenCalledWith(message);
+  });
+
+  it('routes the helper\'s memory draft to the memory sheet (Helper Agent Slice 2)', () => {
+    const deps = makeDeps();
+    const message = { type: MessageType.WORKSHOP_MEMORY_DRAFT_RESULT, payload: {} } as never;
+
+    buildWorkshopAppMessageRoutes(deps)[MessageType.WORKSHOP_MEMORY_DRAFT_RESULT]!(message);
+
+    expect(deps.projectMemory.handleMemoryDraftResult).toHaveBeenCalledWith(message);
   });
 
   it('routes the Bookmarks screen\'s three answers to its transport (Bookmark Recall Slice 2)', () => {

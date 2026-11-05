@@ -12,6 +12,9 @@
  *   disables Save. The host refuses it again at Save.
  * - **The source line** says where the memory comes from, without claiming a
  *   recallable source the host hasn't confirmed (PR #196 watchpoint 5).
+ * - **The helper's draft** (Helper Agent Slice 2): "Drafting…" placeholders
+ *   while it drafts, one muted line when it can't. Its values arrive as the
+ *   draft's, through the hook.
  * - The UI never says "pin" (Slice 0d decision 16).
  */
 
@@ -27,6 +30,7 @@ import {
 import { Icon } from '@components/shared/Icon';
 import { WorkshopModalShell } from '../WorkshopModalShell';
 import type { WorkshopMemorySheetState } from '@hooks/domain/workshop/useWorkshopProjectMemory';
+import { WORKSHOP_MEMORY_HELPER_DRAFT_COPY, workshopMemoryHelperPlaceholder } from '@hooks/domain/workshop/memory/workshopMemoryHelperDraft';
 
 const KIND_CARDS: Readonly<Record<ProjectMemoryKind, { label: string; help: string }>> = Object.freeze({
   decision: { label: 'Decision', help: 'A choice the project made.' },
@@ -93,6 +97,8 @@ export const WorkshopMemorySheet: React.FC<WorkshopMemorySheetProps> = ({ sheet,
   const saveDisabled = sheet.loading || sheet.saving || fault !== undefined || refusedByBudget;
   const titleText = draft.title.trim() || '…';
   const source = sourceLine(sheet);
+  // The helper's draft (Helper Agent Slice 2): placeholders while it drafts, never values; one quiet line if it can't.
+  const helperPlaceholder = workshopMemoryHelperPlaceholder(sheet);
 
   return (
     <WorkshopModalShell
@@ -127,6 +133,7 @@ export const WorkshopMemorySheet: React.FC<WorkshopMemorySheetProps> = ({ sheet,
                 ref={titleRef}
                 type="text"
                 value={draft.title}
+                placeholder={helperPlaceholder}
                 maxLength={PROJECT_MEMORY_FIELD_CHARACTERS.title}
                 disabled={sheet.saving}
                 onChange={(event) => onChange({ title: event.target.value })}
@@ -159,12 +166,16 @@ export const WorkshopMemorySheet: React.FC<WorkshopMemorySheetProps> = ({ sheet,
               <input
                 type="text"
                 value={draft.summary}
+                placeholder={helperPlaceholder}
                 maxLength={PROJECT_MEMORY_FIELD_CHARACTERS.summary}
                 disabled={sheet.saving}
                 onChange={(event) => onChange({ summary: event.target.value })}
               />
               <small>{count(draft.summary, PROJECT_MEMORY_FIELD_CHARACTERS.summary)}</small>
             </label>
+            {sheet.helper?.status === 'failed' && (
+              <p className="pm-ws-memory-hint pm-ws-memory-helper-failed" role="status">{WORKSHOP_MEMORY_HELPER_DRAFT_COPY.failed}</p>
+            )}
 
             <label className="pm-ws-memory-field">
               <span>Note <span className="pm-ws-memory-hint">· read in full only when a persona needs it</span></span>

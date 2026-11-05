@@ -26,6 +26,7 @@ import * as React from 'react';
 import {
   MessageType,
   type WorkshopMemoryDraft,
+  type WorkshopMemoryDraftResultMessage,
   type WorkshopMemoryEditDataMessage,
   type WorkshopMemoryEstimateResultMessage,
   type WorkshopMemoryListedTitle,
@@ -47,38 +48,11 @@ import {
 } from '@hooks/domain/workshop/memory/workshopMemoryBookmarkSheets';
 import { withWorkshopMemoryEntry, withWorkshopMemoryKey } from '@hooks/domain/workshop/memory/workshopMemoryKeyedState';
 import { workshopMemorySheetSubmission } from '@hooks/domain/workshop/memory/workshopMemorySheetSubmission';
+import type { WorkshopMemoryReceiptError, WorkshopMemorySheetState } from '@hooks/domain/workshop/memory/workshopMemorySheetState';
+import { workshopMemoryHelperDraftRequest, workshopMemoryHelperTouched, workshopMemorySheetWithHelperDraft } from '@hooks/domain/workshop/memory/workshopMemoryHelperDraft';
 
 export { workshopMemoryNoteFromTurn, type WorkshopMemoryRoomBookmark, type WorkshopMemorySavedBookmark };
-
-/** What the sheet is for: a card's edit, a saved memory's edit, a turn of this room or of a saved session as source, or nothing. */
-export type WorkshopMemorySheetMode = 'card' | 'memory' | 'turn' | 'saved-turn' | 'new';
-
-
-export interface WorkshopMemorySheetState {
-  readonly mode: WorkshopMemorySheetMode;
-  /** The card's or bubble's turn. */
-  readonly turnId?: string;
-  /** The card's index on its turn (Slice 6b); a card's edit only. */
-  readonly proposalIndex?: number;
-  /** The saved memory being edited: a receipt's or the manager's, or the note an edit card changes (Slice 6c). */
-  readonly memoryId?: string;
-  readonly draft: WorkshopMemoryDraft;
-  /** Titles of the memories `draft.supersedes` names. */
-  readonly replaces: readonly WorkshopMemoryListedTitle[];
-  /** A saved memory's fields are still being read. */
-  readonly loading: boolean;
-  /** The pending write's request, while the host saves. */
-  readonly saving: boolean;
-  readonly estimate?: WorkshopMemoryPinnedEstimate;
-  readonly error?: string;
-  /** Who the source is, for the source line ("Jill's reply"). */
-  readonly sourceLabel?: string;
-  /** A bookmark's turn outside the window: the room it was asked in. */
-  readonly roomRevision?: number;
-  /** A saved session's turn: its session and title. */
-  readonly sessionId?: string;
-  readonly sessionTitle?: string;
-}
+export type { WorkshopMemoryReceiptError, WorkshopMemorySheetMode, WorkshopMemorySheetState } from '@hooks/domain/workshop/memory/workshopMemorySheetState';
 
 export interface WorkshopProjectMemoryState {
   sheet: WorkshopMemorySheetState | null;
@@ -93,12 +67,6 @@ export interface WorkshopProjectMemoryState {
    * its next try, its success, or a new room (PR #221 F-01).
    */
   receiptErrors: ReadonlyMap<string, WorkshopMemoryReceiptError>;
-}
-
-/** What a receipt's refused action says beside it. */
-export interface WorkshopMemoryReceiptError {
-  readonly action: 'forget' | 'restore';
-  readonly error: string;
 }
 
 export interface UseWorkshopProjectMemoryOptions {
@@ -140,6 +108,8 @@ export interface WorkshopProjectMemoryActions {
   handleEstimateResult: (message: WorkshopMemoryEstimateResultMessage) => void;
   /** A turn preview this hook asked for, to prefill a bookmark outside the window. */
   handleTurnPreview: (message: WorkshopTurnPreviewMessage) => void;
+  /** The helper's draft for the open sheet (Helper Agent Slice 2): taken only for that sheet's request. */
+  handleMemoryDraftResult: (message: WorkshopMemoryDraftResultMessage) => void;
 }
 
 export interface WorkshopProjectMemoryPersistence {
@@ -218,16 +188,22 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     }, ESTIMATE_DELAY_MS);
   }, [mint, post]);
 
-  const openSheet = React.useCallback((state: WorkshopMemorySheetState) => {
+  /** Opens `state`, unless a save is out; a sheet opened from a turn asks the helper for a draft (memory/workshopMemoryHelperDraft). */
+  const openSheet = React.useCallback((state: WorkshopMemorySheetState): boolean => {
     if (sheetRef.current?.saving) {
-      return;
+      return false;
     }
     sheetRequest.current = undefined;
-    setSheet(state);
+    const asked = workshopMemoryHelperDraftRequest(state, mint());
+    setSheet(asked?.sheet ?? state);
+    if (asked) {
+      post(MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST, asked.payload);
+    }
     if (!state.loading) {
       requestEstimate(state);
     }
-  }, [requestEstimate, setSheet]);
+    return true;
+  }, [mint, post, requestEstimate, setSheet]);
 
   const editCard = React.useCallback((turn: WorkshopTurn, index: number) => {
     const proposal = workshopMemoryProposalAt(turn, index);
@@ -268,10 +244,9 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
       return;
     }
     const { turnId, roomRevision, message } = bookmark;
-    const sheetState = workshopMemoryRoomBookmarkSheet({ turnId, roomRevision, ...(message ? { message } : {}) });
-    openSheet(sheetState);
+    const opened = openSheet(workshopMemoryRoomBookmarkSheet({ turnId, roomRevision, ...(message ? { message } : {}) }));
     // Without the row's message, the host's turn preview fills the note.
-    if (!message && sheetRef.current === sheetState) {
+    if (!message && opened) {
       const requestId = mint();
       previewRequest.current = requestId;
       post(MessageType.WORKSHOP_REQUEST_TURN_PREVIEW, { requestId, turnId, roomRevision });
@@ -329,7 +304,8 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     if (!current || current.saving || current.loading) {
       return;
     }
-    const next = { ...current, draft: { ...current.draft, ...change }, error: undefined };
+    const helper = workshopMemoryHelperTouched(current.helper, change);
+    const next = { ...current, draft: { ...current.draft, ...change }, ...(helper ? { helper } : {}), error: undefined };
     setSheet(next);
     requestEstimate(next);
   }, [requestEstimate, setSheet]);
@@ -468,6 +444,16 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     setSheet({ ...current, estimate });
   }, [setSheet]);
 
+  const handleMemoryDraftResult = React.useCallback((message: WorkshopMemoryDraftResultMessage) => {
+    const next = workshopMemorySheetWithHelperDraft(sheetRef.current, message.payload);
+    if (next) {
+      setSheet(next);
+      if (!next.loading) {
+        requestEstimate(next);
+      }
+    }
+  }, [requestEstimate, setSheet]);
+
   return {
     sheet,
     busyCards,
@@ -493,6 +479,7 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     handleEditData,
     handleEstimateResult,
     handleTurnPreview,
+    handleMemoryDraftResult,
     persistedState: {}
   };
 }

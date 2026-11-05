@@ -21,6 +21,7 @@ import { WorkshopBookmarkBrowserHandler } from '@handlers/domain/workshop/Worksh
 import { WorkshopProjectMemoryHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import { WorkshopProjectMemoryManagerHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
 import { WorkshopSavedTurnMemoryHandler } from '@handlers/domain/workshop/WorkshopSavedTurnMemoryHandler';
+import { WorkshopMemoryDraftHandler } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
 import { WorkshopPinnedContextHandler } from '@handlers/domain/workshop/WorkshopPinnedContextHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
@@ -76,6 +77,7 @@ export class WorkshopSliceComposition {
   private readonly projectMemoryHandler: WorkshopProjectMemoryHandler;
   private readonly projectMemoryManagerHandler: WorkshopProjectMemoryManagerHandler;
   private readonly savedTurnMemoryHandler: WorkshopSavedTurnMemoryHandler;
+  private readonly memoryDraftHandler: WorkshopMemoryDraftHandler;
   private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
   private readonly pinnedContextHandler: WorkshopPinnedContextHandler;
   private readonly contextHandler: WorkshopContextHandler;
@@ -97,6 +99,7 @@ export class WorkshopSliceComposition {
       projectMemory,
       pinnedContext,
       bookmarkBrowser,
+      memoryDrafts,
       outputChannel
     } = dependencies;
     const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
@@ -295,6 +298,8 @@ export class WorkshopSliceComposition {
       outputChannel,
       (message) => host.reportRouteError('workshop', message, undefined, 'WorkshopSavedTurnMemoryHandler')
     );
+    // The helper's draft of a memory opened from a turn (Helper Agent Slice 2): it reads the turn itself and writes nothing.
+    this.memoryDraftHandler = new WorkshopMemoryDraftHandler(memoryDrafts, session, bookmarkBrowser, postMessage, outputChannel);
     // The memory manager's own routes beside them (Slice 4b): listing, Always load in full, Delete, Open file and folder.
     this.projectMemoryManagerHandler = new WorkshopProjectMemoryManagerHandler(
       projectMemory,
@@ -378,6 +383,7 @@ export class WorkshopSliceComposition {
     this.savedTurnMemoryHandler.registerRoutes(
       this.createMutationRegistrar(router, 'WorkshopSavedTurnMemoryHandler')
     );
+    this.memoryDraftHandler.registerRoutes(router);
     this.projectMemoryManagerHandler.registerRoutes(router);
     this.pinnedContextHandler.registerRoutes(
       router,
@@ -412,6 +418,7 @@ export class WorkshopSliceComposition {
     this.lexicalGravityHandler.dispose();
     this.lightboxTileHandler.dispose();
     this.bookmarkBrowserHandler.dispose();
+    this.memoryDraftHandler.dispose();
     this.host.disposeRoomSubscriptions();
     this.sessionMessageHandler.dispose();
     this.host.disposeActiveRoomRun();

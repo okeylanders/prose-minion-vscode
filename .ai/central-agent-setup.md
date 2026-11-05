@@ -143,6 +143,7 @@ packages/core/src/
                 ├── bookmarks.ts
                 ├── bookmarkBrowser.ts
                 ├── projectMemory.ts
+                ├── memoryDraft.ts
                 ├── projectMemoryManager.ts
                 ├── pinnedContext.ts
                 ├── widgets.ts

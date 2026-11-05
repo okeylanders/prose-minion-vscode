@@ -186,6 +186,8 @@ import {
   WorkshopMemoryWriteResultMessage,
   WorkshopMemoryEditDataMessage,
   WorkshopMemoryEstimateResultMessage,
+  WorkshopMemoryDraftRequestMessage,
+  WorkshopMemoryDraftResultMessage,
   WorkshopMemoryListMessage,
   WorkshopMemoryListingMessage,
   WorkshopMemoryManagerActionMessage,
@@ -362,6 +364,7 @@ export type WebviewToExtensionMessage =
   | WorkshopMemoryForgetMessage
   | WorkshopMemoryRequestEditMessage
   | WorkshopMemoryEstimateMessage
+  | WorkshopMemoryDraftRequestMessage
   | WorkshopMemoryListMessage
   | WorkshopMemoryManagerActionMessage
   | WorkshopRequestPinnedContextMessage
@@ -470,6 +473,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopMemoryWriteResultMessage
   | WorkshopMemoryEditDataMessage
   | WorkshopMemoryEstimateResultMessage
+  | WorkshopMemoryDraftResultMessage
   | WorkshopMemoryListingMessage
   | WorkshopMemoryManagerResultMessage
   | WorkshopPinnedContextMessage

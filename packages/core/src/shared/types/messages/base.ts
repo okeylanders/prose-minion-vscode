@@ -178,6 +178,9 @@ export enum MessageType {
   WORKSHOP_MEMORY_EDIT_DATA = 'workshop_memory_edit_data',
   WORKSHOP_MEMORY_ESTIMATE = 'workshop_memory_estimate',
   WORKSHOP_MEMORY_ESTIMATE_RESULT = 'workshop_memory_estimate_result',
+  // The helper's draft of a memory's title, summary and kind (Helper Agent Slice 2)
+  WORKSHOP_MEMORY_DRAFT_REQUEST = 'workshop_memory_draft_request',
+  WORKSHOP_MEMORY_DRAFT_RESULT = 'workshop_memory_draft_result',
   // Workshop Project Memory: the manager (epic Slice 4b)
   WORKSHOP_MEMORY_LIST = 'workshop_memory_list',
   WORKSHOP_MEMORY_LISTING = 'workshop_memory_listing',

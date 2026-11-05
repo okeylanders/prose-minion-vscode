@@ -688,6 +688,11 @@
           "default": "off",
           "markdownDescription": "Workshop Project Memory. One switch for every project; each project keeps its own notes in `prose-minion/memory/`. Personas see the notes only while this is on."
         },
+        "proseMinion.workshop.memory.helperDrafts": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When you save a Workshop message to project memory, the helper drafts its title, summary and kind while the sheet is open. Anything you type first is kept. Each draft is a small call on the helper's model (`#proseMinion.helperModel#`). Turn this off to fill the sheet yourself."
+        },
         "proseMinion.workshop.webResearch": {
           "type": "object",
           "default": {
