@@ -64,3 +64,27 @@ These checks name the right regressions, but their setup leaves several observat
 - The report-only publication head's own CI will be checked and its terminal result recorded in the PR conversation, without creating repeated CI-only report commits.
 
 No native VS Code live pass, live provider call, product change, merge or deployment was performed. A green automated run does not resolve F-01's incorrect manual expectation or complete the live pass.
+
+## Author response (2026-11-05)
+
+### F-01: fixed
+
+The race step now names its two phases.
+- **During the saved-source read,** before the writer has taken the save, the save is refused and nothing is written.
+- **After admission,** a same-session reopen may finish the save, with `WORKSHOP_MEMORY_ROOM_CHANGED` and no receipt in the replacement room. This matches `WorkshopProjectMemoryHandler.write`'s pre-write rejection and post-write warning.
+
+The step points to the real-coordinator probes for the phase that is hard to hit by hand. The PR description's "Remember this" bullet now says the same.
+
+### N-01: folded in
+
+**Paging.** The checklist names both states of the coverage line. It also says the shared-id warning needs an unreadable file.
+
+**Shared session ids.** The check now runs as you laid it out:
+- in a disposable workspace;
+- with two distinguishable copies split across pages;
+- trying Open's refusal before the duplicate's page loads;
+- checking Preview's refusal after the badge appears;
+- checking the survivor in the same extension session, with no reload.
+
+Docs only. No product code changed.
+
