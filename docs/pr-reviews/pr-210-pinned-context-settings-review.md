@@ -1,6 +1,47 @@
 # PR #210 review: Pinned Context settings tab
 
-## Correction re-review — 2026-11-05
+## Final correction re-review — 2026-11-05
+
+- **Reviewed implementation:** `0cf6b5be8070a84cc9bf30e52290ab4272f13e5e`.
+- Target: `epic-pinned-context`, observed at `7b9fd0b4331f6551aae73a3b547466441831b740`.
+- **Verdict: Review clear. No confirmed findings remain.** F01–F07 and N01 are closed at this implementation.
+- GitHub reported mergeable/clean, and [exact-head verify CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41969010064/job/127052606981) passed typecheck, tests, lint and both webpack bundles.
+- No formal GitHub approval, merge, provider call or deployment performed. This is a review verdict, not a merge action.
+
+### F03 closure
+
+The remaining overlapping-mutation race is fixed by numbering list observations inside the existing store queue. `readObserved()` preserves captured-file checks and returns a strictly increasing observation with each completed queued read. The library carries that observation through its asynchronous description, and the handler includes it in the payload. The hook keeps the highest applied observation rather than assuming request or answer order proves freshness.
+
+An older answer still settles its own request and exposes its outcome/notice, but cannot restore an older list. The original read-versus-write fixes remain intact. Host answers that read no list can omit observations and use the fallback rules; no concrete material regression was found in those paths.
+
+Verified with:
+- All five original expected UI probes, unchanged.
+- The remaining mutation-order expected probe, unchanged; it now retains the newer empty list.
+- The real-host delayed-description ordering control, unchanged.
+- Positive observation cases in both arrival orders, including an earlier-issued request whose list observation is newer.
+- A newer pushed list surviving older read and mutation replies, while refusal/pending state still settles.
+- Unavailable fallback followed by a later observed workspace list.
+- Store/library tests and root/room/symlink boundary controls, with captured-root semantics unchanged.
+
+Additional observation probes are preserved as [review evidence](probes/pr-210-observation-boundaries.test.tsx.txt).
+
+### Final verification
+
+- All **1,980 apps/packages blobs** match the reviewed head, verified before and after testing. Independent verification agrees.
+- Complete local suite, with temporary review-only probes excluded: **720 suites / 10,054 tests / 59 snapshots passed in one uninterrupted run** (884 seconds). This includes the author's promoted original and mutation-order regression probes.
+- `npm run typecheck`: **pass**, all three projects.
+- `npm run lint`: **pass**, 0 errors / 1,165 warnings; temporary review-only probes excluded.
+- Independent focused UI/host-order replays and observation checks: **5 suites / 19 tests passed**.
+- Independent store/library/host boundary checks: **3 suites / 46 tests passed**.
+- Exact-head CI: **pass**, including build of both bundles.
+- The previous correction's full baseline also completed clean: **718 suites / 10,048 tests / 59 snapshots**, at `c6b24c13`.
+- UI validation used React/jsdom and real host/coordinator fixtures. Native VS Code visual interaction, a native Windows runtime and live provider calls were not exercised.
+
+This review applies to the exact implementation above and the tested target. Later implementation or target changes require checking their delta. The following sections preserve the finding history; their earlier changes-required verdicts are superseded by this final result.
+
+---
+
+## First correction re-review (historical) — 2026-11-05
 
 - **Reviewed correction head:** `c6b24c13585f846a5bcebe03362a37f5d43c8adc`.
 - Implementation corrections: `5f777852fcb5a976293571363503c7bf3b648d5b`; author verification note: `368ed4047fdef135f04992b8043443657f89038f`. Both are ancestors of the reviewed head. The later `c6b24c13` review-document commit preserved those fixes.
@@ -46,7 +87,7 @@ Evidence:
 - Independent host replays and supplied fix regressions: **4 suites / 17 tests passed** (original identity 4, original root/room/symlink boundaries 3, rollback 1, supplied fixes 9).
 - Original expected UI probes: **5 passed unchanged**. Original long-path probes: **3 passed unchanged**.
 - New mutation-order investigation: real-host control and observed-hook control pass; **one expected hook regression test fails** as described above.
-- The corrected full suite is running and is **not yet claimed as passed**. The historical 711-suite result below applies only to original implementation `9e1fd707`.
+- The first-correction full suite subsequently completed at `c6b24c13`: **718 suites / 10,048 tests / 59 snapshots passed**. The historical 711-suite result below applies only to original implementation `9e1fd707`.
 - No native VS Code visual pass, native Windows-host run or live provider call was performed.
 
 ---
