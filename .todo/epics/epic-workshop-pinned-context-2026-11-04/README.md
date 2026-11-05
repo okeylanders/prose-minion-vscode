@@ -3,8 +3,8 @@
 **Status:** Coding. The spec is done, with all six questions decided, and
 Okey approved the design on 2026-11-05. Project Memory was merged in at
 `17d52cf`, and again at `25c9443`, and again at `2a014cb` (#209).
-Slices 2a, 1, 2b and 3 have merged; Slice 4's PR is next, and then Slice 5,
-Okey's live pass (see [Threads](#threads)).
+Every code slice has merged (2a, 1, 2b, 3 and 4). Project Memory's final
+merge is next, then Slice 5, Okey's live pass (see [Threads](#threads)).
 **Priority:** Medium
 **Created:** 2026-11-04
 **Integration branch:** `epic-pinned-context`, cut from `main` at `24d9d6e`.
@@ -102,7 +102,7 @@ branch.
 | 2a | [`session_01UrwcerFSuu47ewLKUezS45`](https://claude.ai/code/session_01UrwcerFSuu47ewLKUezS45) | `epic-pinned-context-slice-2a-starts-seed-port` | 2026-11-05, from `b94fc67` | Merged: PR #203 at `d356d38`. Astra found F01 (no workspace check after the seed's `prepare`), fixed at `db93354`, cleared at `d9c536e` |
 | 2b | [`session_01UrwcetPHzVLFpo6ZCkjf1A`](https://claude.ai/code/session_01UrwcetPHzVLFpo6ZCkjf1A) | `epic-pinned-context-slice-2b-room-seed` | 2026-11-05, from `c35c281` (the epic at `94a33df` with Slices 1 and 2a merged in; 696 suites / 9,820 tests green) | Merged: PR #208 at `c52821b` (2026-11-05), at `abb5854` (706 / 9,957 green; CI green). Astra found F01–F04 at `b042908`; F02–F04 closed at `d8b8d2a`, F01 after a second fix binding every seed read to the captured root's own files, nested roots included (`0ead5d0`) |
 | 3 | [`session_01Urwcevx3JATnaqRCJbE4Yb`](https://claude.ai/code/session_01Urwcevx3JATnaqRCJbE4Yb) | `epic-pinned-context-slice-3-settings-tab` | 2026-11-05, from `51b4988` (2b at `e36526b` with the epic merged in) | Merged: PR #210 at `207dc70` (2026-11-05). Astra found F01–F07 and N01 at `9e1fd70`; all closed at `0cf6b5b` after two rounds (one source rule in the reader, the attach under the room lock, list answers ordered by store observation, one path bound); 720 / 10,054 green |
-| 4 | [`session_01UrwceuHxZCNJyH9v5vdWHT`](https://claude.ai/code/session_01UrwceuHxZCNJyH9v5vdWHT) | `epic-pinned-context-slice-4-sheet-marks` | 2026-11-05, from `fa5aef6` (Slice 3's head) | PR #213 at `ecfde3e` (723 / 10,136 green), in Astra's review. Built at `812ce9a` with the approved board's "· N pinned"; merged Slice 3's branch (`4b74ee6`) and the epic at `fe30330` (`f16c6c0`) |
+| 4 | [`session_01UrwceuHxZCNJyH9v5vdWHT`](https://claude.ai/code/session_01UrwceuHxZCNJyH9v5vdWHT) | `epic-pinned-context-slice-4-sheet-marks` | 2026-11-05, from `fa5aef6` (Slice 3's head) | Merged: PR #213 at `f102f75` (2026-11-05). Astra found F01 (a pill's outcome drawn on a reused id in a new room) and N01 (focus return) at `ecfde3e`; both closed at `f2d5a6c` by binding each outcome to its room (`roomRevision`) and attachment; 724 / 10,148 green |
 
 ## How the Slices Are Built
 
@@ -299,3 +299,8 @@ the repo:
 - **2026-11-05. Slice 4's PR opened** as #213, at `ecfde3e` (723 suites /
   10,136 tests), the epic's last code PR. Slice 4 took Slice 3's review
   fixes and #209 in one merge of the epic.
+- **2026-11-05. Slice 4 merged** as PR #213 (`f102f75`), after Astra's
+  final re-review came back clear at `f2d5a6c`. **Every code slice is in.**
+  Project Memory's coordinator merges its final round (Slice 6c, #212, at
+  `0050eb8`) next, on this coordinator's go. It trial-merged cleanly onto
+  Slice 4's head. Then Slice 5, Okey's live pass.
