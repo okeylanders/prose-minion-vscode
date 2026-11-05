@@ -85,7 +85,7 @@ describe('WorkshopMemoryBrowserModal', () => {
       .every((text) => screen.queryByText(text))).toBe(true);
     expect(sectionTitles()).toEqual(['Needs attention', 'Active', 'Superseded and archived']);
     expect([...document.querySelectorAll('.pm-ws-sessions-group-label')].map((label) => label.textContent)).toEqual([
-      'Decisions 2', 'Canon 2', 'Preferences 1', 'Open threads 1'
+      'Decisions 2', 'Canon 2', 'Open threads 1', 'Preferences 1'
     ]);
   });
 

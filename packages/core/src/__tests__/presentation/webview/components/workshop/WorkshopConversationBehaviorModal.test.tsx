@@ -28,6 +28,8 @@ describe('WorkshopConversationBehaviorModal', () => {
       onOpenMemoryManager: jest.fn(),
       onOpenMemoryFolder: jest.fn(),
       pinnedContext: pinnedContextPanelPropsStub(),
+      memoryExplainerOpen: true,
+      onToggleMemoryExplainer: jest.fn(),
       onClose: jest.fn(),
       ...overrides
     };

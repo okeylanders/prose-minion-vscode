@@ -28,6 +28,8 @@ function renderPanel(overrides: Partial<WorkshopMemorySettingsPanelProps> = {}) 
     onSelectMode: jest.fn(),
     onOpenManager: jest.fn(),
     onOpenFolder: jest.fn(),
+    explainerOpen: true,
+    onToggleExplainer: jest.fn(),
     ...overrides
   };
   const ids = MEMORY_TAB;
@@ -159,6 +161,26 @@ describe('WorkshopMemorySettingsPanel', () => {
     fireEvent.click(card('Save and tell me'));
     expect(props.onSelectMode).toHaveBeenCalledWith('auto');
     expect(screen.getByText('Nothing loads')).not.toBeNull();
+  });
+
+  it('the well’s head is its disclosure: it names the table it shows, and folds it away (Slice 6 live pass)', () => {
+    const { props, view } = renderPanel();
+    const head = screen.getByRole('button', { name: /^Memory isn’t context\. They reach personas differently\./ });
+    expect(head.getAttribute('aria-expanded')).toBe('true');
+    const table = document.getElementById(head.getAttribute('aria-controls') ?? '')!;
+    expect(table.tagName).toBe('DL');
+    expect(table.hidden).toBe(false);
+    fireEvent.click(head);
+    expect(props.onToggleExplainer).toHaveBeenCalledTimes(1);
+
+    view.rerender(
+      <WorkshopMemorySettingsPanel {...props} explainerOpen={false} />
+    );
+    const folded = screen.getByRole('button', { name: /^Memory isn’t context\./ });
+    expect(folded.getAttribute('aria-expanded')).toBe('false');
+    expect(document.getElementById(folded.getAttribute('aria-controls') ?? '')!.hidden).toBe(true);
+    // Folded, the well keeps its name and its place before the cards.
+    expect(screen.getByRole('region', { name: 'Memory isn’t context.' })).not.toBeNull();
   });
 
   it('never says pin', () => {

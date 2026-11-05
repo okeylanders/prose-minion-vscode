@@ -14,6 +14,7 @@ import {
   workshopMemoryTitleRule,
   type WorkshopMemoryManagerInput
 } from '@hooks/domain/workshop/memory/workshopMemoryManagerView';
+import { PROJECT_MEMORY_KINDS } from '@shared/types/projectMemory';
 import { FULL_OVER, managerLibrary, memoryEntry } from './workshopMemoryFixtures';
 
 const IN_BUDGET_MANAGER = {
@@ -75,7 +76,7 @@ describe('workshopMemoryManagerView', () => {
         fileName: 'tea-party-seating-1a9e04.md',
         badge: 'Can’t read',
         meta: 'unreadable',
-        reason: '“kind” isn’t one Memory knows: decision, canon, preference or open-thread.',
+        reason: '“kind” isn’t one Memory knows: decision, canon, theme, idea, open-thread or preference.',
         canOpen: true
       }
     ]);
@@ -228,10 +229,23 @@ describe('workshopMemoryManagerView', () => {
     expect(manager({ estimate: undefined }).chips.map((chip) => chip.text)).toEqual(['6 active', '3 files need attention']);
   });
 
+  it('groups by all six kinds in the writer’s order: settled, unsettled, how you work (Slice 6a)', () => {
+    const kinds = [...PROJECT_MEMORY_KINDS].reverse();
+    const library = {
+      ...managerLibrary(),
+      memories: kinds.map((kind, index) => memoryEntry({ entryKey: `key-${kind}`, id: `mem-6a000${index}`, title: `A ${kind}`, kind }))
+    };
+    const view = manager({ library, estimate: undefined });
+    expect(groupMemoriesByKind(view.active).map((group) => [group.label, group.items.map((row) => row.entry.kind)])).toEqual([
+      ['Decisions', ['decision']], ['Canon', ['canon']], ['Themes', ['theme']],
+      ['Ideas', ['idea']], ['Open threads', ['open-thread']], ['Preferences', ['preference']]
+    ]);
+  });
+
   it('groups by kind in the design’s order, and by date', () => {
     const view = manager();
     expect(groupMemoriesByKind(view.active).map((group) => [group.label, group.items.length])).toEqual([
-      ['Decisions', 2], ['Canon', 2], ['Preferences', 1], ['Open threads', 1]
+      ['Decisions', 2], ['Canon', 2], ['Open threads', 1], ['Preferences', 1]
     ]);
     // The shared buckets: this week is within seven days.
     const now = new Date(2026, 10, 3, 18, 0, 0);
