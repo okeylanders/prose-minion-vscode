@@ -56,7 +56,7 @@
 [data-pm-surface="workshop"] .pm-ws-memory-vs-head[aria-expanded="true"] .pm-ws-memory-vs-chev svg {
   transform: rotate(90deg);
 }
-[data-pm-surface="workshop"] .pm-ws-memory-vs-head svg {
+[data-pm-surface="workshop"] .pm-ws-memory-vs-head > svg {
   flex: none;
   color: var(--pm-accent-hi);
 }
