@@ -55,6 +55,9 @@ interface WorkshopConversationBehaviorModalProps {
   memoryFolder?: WorkshopMemoryFolderStatus;
   /** The Pinned context tab: the host's list and its actions, which save at once (not a draft). */
   pinnedContext: WorkshopPinnedContextSettingsPanelProps;
+  /** Whether the Memory tab's "Memory isn't context" table shows: this viewer's choice. */
+  memoryExplainerOpen: boolean;
+  onToggleMemoryExplainer: () => void;
   isRunning: boolean;
   errorMessage?: string;
   onApply: (
@@ -80,6 +83,8 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   memory,
   memoryFolder,
   pinnedContext,
+  memoryExplainerOpen,
+  onToggleMemoryExplainer,
   isRunning,
   errorMessage,
   onApply,
@@ -193,6 +198,8 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         mode={memoryDraft}
         disabled={editingLocked}
         {...(memoryFolder ? { folderStatus: memoryFolder } : {})}
+        explainerOpen={memoryExplainerOpen}
+        onToggleExplainer={onToggleMemoryExplainer}
         onSelectMode={setMemoryDraft}
         onOpenManager={onOpenMemoryManager}
         onOpenFolder={onOpenMemoryFolder}

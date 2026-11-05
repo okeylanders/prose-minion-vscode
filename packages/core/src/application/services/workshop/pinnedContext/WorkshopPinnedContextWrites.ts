@@ -40,6 +40,7 @@ import {
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   workshopPinnedFileLabel,
+  workshopPinnedListedUnderRoot,
   type WorkshopPinnedContextFileReader,
   type WorkshopPinnedContextIntakePort
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextFileReader';
@@ -52,6 +53,7 @@ import {
   WORKSHOP_PINNED_WORDS,
   workshopPinnedFileFaultWords,
   workshopPinnedListRefusalWords,
+  workshopPinnedBackslashWords,
   workshopPinnedListUnavailableWords,
   workshopPinnedOverBudgetWords
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextWords';
@@ -95,21 +97,63 @@ export class WorkshopPinnedContextWrites {
       if (!summary) {
         return this.refuse(WORKSHOP_PINNED_WORDS.notInCatalog, 'not-in-catalog');
       }
-      const entryPath = this.inFolder(list.rootPath, summary.absolutePath);
-      if (!entryPath) {
+      if (!isPathWithinRoot(list.rootPath, summary.absolutePath)) {
         return this.refuse(WORKSHOP_PINNED_WORDS.outsideProject, 'outside');
       }
-      entries.push({ path: entryPath });
+      // The reader's rule (PR #208 F01): a row is this root's only when the root and its path give it back.
+      if (!workshopPinnedListedUnderRoot(list.rootPath, summary) || workshopPinnedContextPathFault(summary.path) !== undefined) {
+        return this.refuse(WORKSHOP_PINNED_WORDS.workspaceChanged, 'workspace-changed');
+      }
+      entries.push({ path: summary.path });
     }
     return this.pin(ask, revision, list, entries);
   }
 
   async pinPaths(ask: WorkshopPinnedContextAsk, revision: string, entries: readonly WorkshopPinnedContextEntry[]): Promise<WorkshopPinnedContextWriteResult> {
-    if (entries.some((entry) => workshopPinnedContextPathFault(entry.path) !== undefined)) {
-      return this.refuse(WORKSHOP_PINNED_WORDS.outsideProject, 'outside');
+    for (const entry of entries) {
+      const fault = workshopPinnedContextPathFault(entry.path);
+      if (fault === 'backslash') {
+        // A file inside the project whose name holds `\` (POSIX): format 1 can't name it.
+        return this.refuse(workshopPinnedBackslashWords(workshopPinnedFileLabel(entry.path)), 'backslash');
+      }
+      if (fault !== undefined) {
+        return this.refuse(WORKSHOP_PINNED_WORDS.outsideProject, 'outside');
+      }
     }
     const list = await this.atRevision(ask, revision);
     return isList(list) ? this.pin(ask, revision, list, entries) : list;
+  }
+
+  /**
+   * A file the host's picker chose: the folder is the one asked in, captured
+   * before the pick is awaited, and the file must lie inside it (ADR D8). Its
+   * path relative to that folder is the entry; `\` is a separator only on
+   * Windows, so on POSIX a name holding one is refused by the path rule.
+   */
+  async pinPicked(
+    ask: WorkshopPinnedContextAsk,
+    revision: string,
+    pick: (projectFolder: string) => Promise<string | undefined>
+  ): Promise<WorkshopPinnedContextWriteResult | { readonly kind: 'cancelled' }> {
+    // The root the room was asked in, never the folder as it reads later (PR #208 F01).
+    const where = ask.where;
+    if (!where) {
+      return this.notAsked();
+    }
+    const picked = await pick(where.rootPath);
+    if (picked === undefined) {
+      this.log('Pick cancelled');
+      return { kind: 'cancelled' };
+    }
+    if (!ask.still()) {
+      return this.refuse(WORKSHOP_PINNED_WORDS.workspaceChanged, 'unavailable');
+    }
+    if (!isPathWithinRoot(where.rootPath, picked)) {
+      return this.refuse(WORKSHOP_PINNED_WORDS.outsideProject, 'outside');
+    }
+    const relative = path.relative(where.rootPath, picked);
+    const entryPath = this.platform === 'windows' ? relative.replace(/\\/g, '/') : relative;
+    return this.pinPaths(ask, revision, [{ path: entryPath }]);
   }
 
   async unpin(ask: WorkshopPinnedContextAsk, revision: string, entryPath: string): Promise<WorkshopPinnedContextWriteResult> {
@@ -156,7 +200,7 @@ export class WorkshopPinnedContextWrites {
     if (!where.available) {
       return { kind: 'refused', words: workshopPinnedListUnavailableWords(where.reason), category: where.reason };
     }
-    const read = await this.store.read();
+    const read = await this.store.read({ filePath: where.filePath });
     if (entryPath === undefined) {
       return read.state === 'absent'
         ? { kind: 'refused', words: WORKSHOP_PINNED_WORDS.noListFile, category: 'absent' }
@@ -204,6 +248,9 @@ export class WorkshopPinnedContextWrites {
     } catch {
       return this.refuse(WORKSHOP_PINNED_WORDS.readFailed, 'read-failed');
     }
+    if (reads.some((read) => read.state === 'unreadable' && read.fault === 'workspace-changed')) {
+      return this.refuse(WORKSHOP_PINNED_WORDS.workspaceChanged, 'workspace-changed');
+    }
     for (const read of reads.slice(list.files.length)) {
       if (read.state === 'missing') {
         return this.refuse(`Can’t pin ${read.label}: it isn’t there.`, 'missing');
@@ -227,14 +274,11 @@ export class WorkshopPinnedContextWrites {
 
   /** The list at the tab's revision, or why there is none to change. */
   private async atRevision(ask: WorkshopPinnedContextAsk, revision: string): Promise<AtRevision | WorkshopPinnedContextWriteResult> {
-    const where = this.store.availability();
-    if (!where.available) {
-      return this.refuse(workshopPinnedListUnavailableWords(where.reason), where.reason);
+    const where = ask.where;
+    if (!where) {
+      return this.notAsked();
     }
-    if (!ask.accepted) {
-      return this.refuse(WORKSHOP_PINNED_WORDS.notReady, 'not-ready');
-    }
-    const read = await this.store.read();
+    const read = await this.store.read({ filePath: where.filePath });
     const refusal = this.readRefusal(read);
     if (refusal) {
       return refusal;
@@ -297,13 +341,12 @@ export class WorkshopPinnedContextWrites {
     }
   }
 
-  /** A catalog file's path relative to the folder, `/`-separated, or undefined outside it. */
-  private inFolder(rootPath: string, absolutePath: string): string | undefined {
-    if (!isPathWithinRoot(rootPath, absolutePath)) {
-      return undefined;
-    }
-    const relative = path.relative(rootPath, absolutePath).split(path.sep).join('/');
-    return workshopPinnedContextPathFault(relative) === undefined ? relative : undefined;
+  /** A change asked with no accepted room: no single folder, or the room not settled yet. */
+  private notAsked(): WorkshopPinnedContextWriteResult {
+    const now = this.store.availability();
+    return now.available
+      ? this.refuse(WORKSHOP_PINNED_WORDS.notReady, 'not-ready')
+      : this.refuse(workshopPinnedListUnavailableWords(now.reason), now.reason);
   }
 
   private key(entryPath: string): string {

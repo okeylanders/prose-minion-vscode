@@ -132,6 +132,10 @@ import {
   useWorkshopRailTabs,
   WorkshopRailTabsPersistence
 } from './hooks/domain/workshop/controllers/useWorkshopRailTabs';
+import {
+  useWorkshopMemoryExplainer,
+  type WorkshopMemoryExplainerPersistence
+} from '@hooks/domain/workshop/controllers/useWorkshopMemoryExplainer';
 import { useWorkshopAppMessageRouter } from '@hooks/useWorkshopAppMessageRouter';
 import { useWorkshopRoom } from '@hooks/domain/workshop/useWorkshopRoom';
 import { useWorkshopSessions } from '@hooks/domain/workshop/useWorkshopSessions';
@@ -254,6 +258,11 @@ export const WorkshopApp: React.FC = () => {
   const memoryManager = useWorkshopMemoryManager();
   const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
   const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });
+  // Whether the Memory tab's explainer shows is this viewer's choice too.
+  const persistedMemoryExplainer = usePersistedState<Partial<WorkshopMemoryExplainerPersistence>>();
+  const memoryExplainer = useWorkshopMemoryExplainer({
+    initialOpen: persistedMemoryExplainer?.workshopMemoryExplainerOpen
+  });
   // The rail's tab is this viewer's preference (webview state, never the
   // session file); the controller re-baselines its badges on each new room,
   // and Material's on each new chat target.
@@ -475,6 +484,7 @@ export const WorkshopApp: React.FC = () => {
     ...excerptVerify.persistedState,
     ...chrome.persistedState,
     ...railTabs.persistedState,
+    ...memoryExplainer.persistedState,
   });
 
   // Initial data requests: the session is requested inside useWorkshopRoom,
@@ -1697,6 +1707,8 @@ export const WorkshopApp: React.FC = () => {
         memory={workshopMemoryTabInputOf(memoryManager.listing)}
         memoryFolder={memoryManager.folder}
         pinnedContext={workshopPinnedContextPanelProps(pinnedContext, workshop)}
+        memoryExplainerOpen={memoryExplainer.explainerOpen}
+        onToggleMemoryExplainer={memoryExplainer.toggleExplainer}
         isRunning={roomMutationLocked}
         errorMessage={workshop.errorMessage}
         onApply={workshop.setConversationSettings}

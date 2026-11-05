@@ -42,6 +42,7 @@ import {
   type WorkshopMovePinnedContextMessage,
   type WorkshopOpenPinnedContextFileMessage,
   type WorkshopPinContextAttachmentsMessage,
+  type WorkshopPinContextPickFileMessage,
   type WorkshopPinContextResourcesMessage,
   type WorkshopPinnedContextAction,
   type WorkshopPinnedContextMessage,
@@ -71,6 +72,7 @@ const WORDS = {
   running: 'Wait for the reply to finish to attach files to this conversation. Pinning and unpinning still work, and apply to new conversations.',
   nothingMissing: 'Every pinned file is already in this conversation.',
   listUnavailable: 'Pinned context couldn’t be read just now, so nothing was attached.',
+  workspaceChanged: 'The project folder changed, so nothing was attached. Try again.',
   openFailed: 'That file couldn’t be opened.'
 } as const;
 
@@ -92,7 +94,7 @@ export class WorkshopPinnedContextHandler {
   constructor(
     private readonly pinnedContext: WorkshopPinnedContextServices,
     private readonly session: WorkshopPinnedContextSessionPort,
-    private readonly shell: Pick<ShellService, 'openFileInEditor'>,
+    private readonly shell: Pick<ShellService, 'openFileInEditor' | 'pickFile'>,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
     private readonly effects: WorkshopPinnedContextEffects
@@ -102,6 +104,7 @@ export class WorkshopPinnedContextHandler {
     router.register(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT, this.handleRequest.bind(this));
     router.register(MessageType.WORKSHOP_PIN_CONTEXT_RESOURCES, this.handlePinResources.bind(this));
     router.register(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS, this.handlePinAttachments.bind(this));
+    router.register(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE, this.handlePinPickedFile.bind(this));
     router.register(MessageType.WORKSHOP_UNPIN_CONTEXT, this.handleUnpin.bind(this));
     router.register(MessageType.WORKSHOP_MOVE_PINNED_CONTEXT, this.handleMove.bind(this));
     router.register(MessageType.WORKSHOP_OPEN_PINNED_CONTEXT_FILE, this.handleOpen.bind(this));
@@ -160,9 +163,9 @@ export class WorkshopPinnedContextHandler {
       if (!attachment) {
         return this.refuse(requestId, 'pin-attachments', WORDS.notInRoom, 'pin refused (not in room)');
       }
-      const entryPath = attachment.kind === 'file'
-        ? (attachment.configuredResource?.path ?? attachment.relativePath)?.replace(/\\/g, '/')
-        : undefined;
+      const written = attachment.kind === 'file' ? attachment.configuredResource?.path ?? attachment.relativePath : undefined;
+      // Windows may hand back `\`; on POSIX it is a filename character, which the path rule refuses (PR #208 F02).
+      const entryPath = written !== undefined && this.pinnedContext.library.platform === 'windows' ? written.replace(/\\/g, '/') : written;
       if (!entryPath) {
         return this.refuse(requestId, 'pin-attachments', WORDS.outsideProject, `pin refused (${attachment.kind} without a project path)`);
       }
@@ -170,6 +173,30 @@ export class WorkshopPinnedContextHandler {
     }
     const result = await this.pinnedContext.library.pinPaths(revision, entries);
     return this.settle(requestId, 'pin-attachments', result, `pin ${entries.length} by id`);
+  }
+
+  /**
+   * Explore project folders… in pin mode: the host's own picker, starting in
+   * the project folder. The path is the host's; the library pins it only
+   * inside the folder of the room it was asked in. A dismissed picker
+   * answers nothing.
+   */
+  async handlePinPickedFile(message: WorkshopPinContextPickFileMessage): Promise<void> {
+    const payload = message.payload;
+    const requestId = requestIdOf(payload);
+    if (!requestId) {
+      return this.log('pick refused (malformed)');
+    }
+    const revision = revisionOf(payload);
+    if (!revision) {
+      return this.refuse(requestId, 'pin-file', WORDS.malformed, 'pick refused (malformed)');
+    }
+    const result = await this.pinnedContext.library.pinPickedFile(revision, async (projectFolder) =>
+      (await this.shell.pickFile({ title: 'Pin a file from this project', openLabel: 'Pin', defaultPath: projectFolder }))?.fsPath);
+    if (result.kind === 'cancelled') {
+      return this.log('pick cancelled');
+    }
+    return this.settle(requestId, 'pin-file', result, 'pin 1 by pick');
   }
 
   async handleUnpin(message: WorkshopUnpinContextMessage): Promise<void> {
@@ -237,9 +264,13 @@ export class WorkshopPinnedContextHandler {
     if (this.effects.activeRunLabel()) {
       return this.refuse(requestId, 'attach-missing', WORDS.running, 'attach refused (running)');
     }
-    const read = await this.pinnedContext.library.readForSeed();
+    const { read, still } = await this.pinnedContext.library.readForRoom();
     if (read.state === 'list-unreadable') {
       return this.refuse(requestId, 'attach-missing', WORDS.listUnavailable, `attach refused (list ${read.category})`);
+    }
+    // Read from the root this room was asked in, and attached only while it is still the room (PR #208 F01).
+    if (read.state === 'workspace-changed' || !still()) {
+      return this.refuse(requestId, 'attach-missing', WORDS.workspaceChanged, 'attach refused (workspace changed)');
     }
     if (this.effects.activeRunLabel()) {
       return this.refuse(requestId, 'attach-missing', WORDS.running, 'attach refused (running)');
@@ -369,7 +400,10 @@ export function workshopPinnedContextPayloadOf(
     case 'unreadable':
       return { ...base, availability: { available: true }, file: { state: 'unreadable', words: description.words } };
     case 'unavailable':
-      return { ...base, availability: { available: false, reason: description.reason, words: description.words }, file: { state: 'absent' } };
+      // The folder changed under the read (PR #208 F01): the list is there, just not readable this moment.
+      return description.reason === 'workspace-changed'
+        ? { ...base, availability: { available: true }, file: { state: 'io', words: description.words } }
+        : { ...base, availability: { available: false, reason: description.reason, words: description.words }, file: { state: 'absent' } };
     case 'busy':
     case 'io':
       return { ...base, availability: { available: true }, file: { state: description.state, words: description.words } };

@@ -14,9 +14,10 @@ export function emptyPinnedContextServices(): WorkshopPinnedContextServices {
     library: {
       platform: 'posix',
       describe: async () => ({ state: 'listed', revision: 'absent', rows: [], words: 0, absent: true }),
-      readForSeed: async () => ({ state: 'nothing' }),
+      readForRoom: async () => ({ read: { state: 'nothing' }, still: () => true }),
       pinResources: unchanged,
       pinPaths: unchanged,
+      pinPickedFile: unchanged,
       unpin: unchanged,
       move: unchanged,
       openTarget: async () => ({ kind: 'refused', words: 'Nothing to open.', category: 'absent' })

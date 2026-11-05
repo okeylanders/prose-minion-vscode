@@ -180,6 +180,7 @@ export enum MessageType {
   WORKSHOP_PINNED_CONTEXT = 'workshop_pinned_context',
   WORKSHOP_PIN_CONTEXT_RESOURCES = 'workshop_pin_context_resources',
   WORKSHOP_PIN_CONTEXT_ATTACHMENTS = 'workshop_pin_context_attachments',
+  WORKSHOP_PIN_CONTEXT_PICK_FILE = 'workshop_pin_context_pick_file',
   WORKSHOP_UNPIN_CONTEXT = 'workshop_unpin_context',
   WORKSHOP_MOVE_PINNED_CONTEXT = 'workshop_move_pinned_context',
   WORKSHOP_ATTACH_PINNED_CONTEXT = 'workshop_attach_pinned_context',

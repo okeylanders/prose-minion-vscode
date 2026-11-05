@@ -218,5 +218,31 @@ describe('WorkshopApp · the Memory tab and the manager (Slice 4b)', () => {
     expect(marked?.textContent).toContain('The Rabbit’s watch runs backward');
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
+
+  it('“Memory isn’t context” starts open, folds away, and stays folded for this viewer (Slice 6 live pass)', () => {
+    const view = render(<WorkshopApp />);
+    deliver(session());
+    let settings = openMemoryTab();
+    const head = () => within(settings).getByRole('button', { name: /^Memory isn’t context\./ });
+    expect(head().getAttribute('aria-expanded')).toBe('true');
+    expect(within(settings).getByText('Every conversation in this project')).not.toBeNull();
+
+    fireEvent.click(head());
+    expect(head().getAttribute('aria-expanded')).toBe('false');
+    const table = document.getElementById(head().getAttribute('aria-controls') ?? '');
+    expect(table?.hidden).toBe(true);
+    expect(vscode.setState).toHaveBeenLastCalledWith(expect.objectContaining({ workshopMemoryExplainerOpen: false }));
+
+    // A reload reads the viewer's choice back from webview state.
+    view.unmount();
+    vscode.getState.mockReturnValue({ workshopMemoryExplainerOpen: false });
+    render(<WorkshopApp />);
+    deliver(session());
+    settings = openMemoryTab();
+    expect(head().getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(head());
+    expect(head().getAttribute('aria-expanded')).toBe('true');
+    expect(vscode.setState).toHaveBeenLastCalledWith(expect.objectContaining({ workshopMemoryExplainerOpen: true }));
+  });
 });
 

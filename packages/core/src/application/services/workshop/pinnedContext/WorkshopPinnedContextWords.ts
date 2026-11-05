@@ -27,6 +27,10 @@ export function workshopPinnedFileFaultWords(fault: WorkshopPinnedFileFault): st
       return 'it’s outside this project, or reached through a link.';
     case 'read-failed':
       return 'the file couldn’t be read.';
+    case 'ambiguous':
+      return 'more than one file in the project has this name, written differently. Pin the one you mean again.';
+    case 'workspace-changed':
+      return 'the project folder changed while it was read.';
   }
 }
 
@@ -59,7 +63,10 @@ export function workshopPinnedListRefusalWords(
 }
 
 /** The unavailable notice, as the Memory tab's. */
-export function workshopPinnedListUnavailableWords(reason: WorkshopPinnedContextUnavailableReason): string {
+export function workshopPinnedListUnavailableWords(reason: WorkshopPinnedContextUnavailableReason | 'workspace-changed'): string {
+  if (reason === 'workspace-changed') {
+    return 'The project folder changed while pinned context was read. Try again.';
+  }
   const why = reason === 'no-workspace'
     ? 'No folder is open, so there’s no project to pin files in. Open a single folder to use pinned context.'
     : 'This workspace has several folders, so pinned context can’t tell which project it belongs to.';
@@ -101,4 +108,9 @@ export function workshopPinnedOverBudgetWords(labels: readonly string[], words: 
   const shorten = labels.length === 1 ? 'shorten this one' : 'pin fewer of these';
   return `Can’t pin ${which}: pinned context would come to ${aboutWords(words)} of ${BUDGET_WORDS} words. ` +
     `Unpin another file, or ${shorten}.`;
+}
+
+/** A file inside the project whose name holds a backslash (POSIX): format 1's paths can't name it. */
+export function workshopPinnedBackslashWords(label: string): string {
+  return `Can’t pin ${label}: pinned context can’t store a file name with a backslash in it.`;
 }

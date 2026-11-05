@@ -17,7 +17,7 @@ import {
   workshopPinnedContextRevisionOf
 } from '@/infrastructure/storage/WorkshopPinnedContextStore';
 import { WORKSHOP_PINNED_CONTEXT_FILE_BYTES, WORKSHOP_PINNED_CONTEXT_FILES } from '@shared/types/workshopPinnedContext';
-import { FILE, FOLDER, NOW, ROOT, bytesOf, everyFile, list, listRenames, pin, pinnedHost as host, text } from '@/__tests__/infrastructure/storage/workshopPinnedContextStoreHost';
+import { FILE, FOLDER, NOW, OTHER_FILE, OTHER_ROOT, ROOT, bytesOf, everyFile, list, listRenames, pin, pinnedHost as host, text } from '@/__tests__/infrastructure/storage/workshopPinnedContextStoreHost';
 
 const claimOf = (at: number, id: string) => path.join(FOLDER, `.pinned-context.json.claim-${at}-${id}`);
 
@@ -358,5 +358,33 @@ describe('logs and shutdown', () => {
     await window.store.shutDown();
     expect(window.fileSystem.files.has(FILE)).toBe(true);
     await expect(writing).resolves.toMatchObject({ ok: true });
+  });
+});
+
+describe('a read pinned to a file (Slice 2b, PR #208 F01)', () => {
+  it('reads the list when its turn finds the file the caller captured', async () => {
+    const window = host();
+    window.fileSystem.files.set(FILE, bytesOf(list('Characters/alice.md')));
+
+    await expect(window.store.read({ filePath: FILE })).resolves.toMatchObject({ state: 'ok', list: list('Characters/alice.md') });
+  });
+
+  it('answers workspace-changed, and reads nothing, when its turn finds another project\'s list', async () => {
+    const window = host();
+    window.fileSystem.files.set(OTHER_FILE, bytesOf(list('Private/queen.md')));
+    const reading = window.store.read({ filePath: FILE });
+    window.folders.splice(0, 1, { path: OTHER_ROOT, name: 'other' });
+
+    await expect(reading).resolves.toEqual({ state: 'unavailable', reason: 'workspace-changed' });
+    expect(window.fileSystem.readFileCalls).not.toContain(OTHER_FILE);
+  });
+
+  it('keeps today\'s live read for a caller that names no file', async () => {
+    const window = host();
+    window.fileSystem.files.set(OTHER_FILE, bytesOf(list('Private/queen.md')));
+    const reading = window.store.read();
+    window.folders.splice(0, 1, { path: OTHER_ROOT, name: 'other' });
+
+    await expect(reading).resolves.toMatchObject({ state: 'ok', list: list('Private/queen.md') });
   });
 });

@@ -142,6 +142,18 @@ it back only as a key into the list it just read (ADR D8).
   reset's confirmation, styles, and their tests.
 - This doc.
 - `fa5b7997`: merge of Slice 2b's branch at `b0429082` (no conflicts).
+- `7af567db`: merge of `epic-pinned-context` at `25c9443c` (four keep-both conflicts).
+- `0f862cde`: merge of 2b's last head, `a817f561` (a probe test and docs).
+- `1e06c642`: merge of `epic-pinned-context` at `c52821b5`, after #204 and
+  #208 merged (docs only; no conflicts).
+- `3f4a5d5e`: merge of Slice 2b with #208's F01–F04, plus the binding below.
+  2b's new shapes (the captured `where`, the `workspace-changed` states)
+  joined the ports module.
+- The coordinator's three follow-ups: `0b4e6bd7` (`\` only on Windows in pin
+  by id), the host-picker route for Explore project folders…, and an
+  end-to-end test of the menu's count.
+- A follow-up: pin by id converts `\` only on Windows, with a test per
+  platform (25 handler tests).
 
 **Where each piece lives.**
 
@@ -163,6 +175,18 @@ it back only as a key into the list it just read (ADR D8).
 
 **How it works.**
 
+- **Every write is bound to the root it was asked in** (PR #208 F01). Each
+  write uses `ask.where`, the root and list file captured with the ask, and
+  never reads `availability()` a second time:
+  - the list is read pinned to that file, and pinned files are read under
+    that root;
+  - a catalog row not listed under that root is refused as
+    `workspace-changed`, by the reader's own rule
+    (`workshopPinnedListedUnderRoot`);
+  - the pick opens in that root, and is contained and made relative
+    against it;
+  - Attach missing reads through `readForRoom()`, bound the same way, and
+    attaches only while the ask still holds.
 - **Every write passes 2b's live-room check.** Each library write calls
   `askLiveRoom()` synchronously, before anything awaits, and hands its
   `still` to `store.update` as `beforeCommit`. It reads the list first: a
@@ -173,7 +197,10 @@ it back only as a key into the list it just read (ADR D8).
   stored path is its path relative to the folder.
 - **Pin by attachment id:** the handler resolves each `ctx-N` in the live
   room. A file's `configuredResource.path`, or else its `relativePath`,
-  becomes the entry; anything else is refused before any read. The library
+  becomes the entry; anything else is refused before any read. A `\` is
+  read as a separator only on Windows; on POSIX it stays a filename
+  character, which the path rule refuses in its own words (the coordinator's call, after
+  #208 F02). The library
   checks the path rule and reads the file through the intake doors. A
   `refused` read (outside the folder, or through a link) says "Only files
   inside this project can be pinned."
@@ -200,7 +227,7 @@ it back only as a key into the list it just read (ADR D8).
 
 **Tests.**
 
-- `WorkshopPinnedContextHandler.test.ts` (23), through the real library,
+- `WorkshopPinnedContextHandler.test.ts` and `.pick.test.ts` (29, over `workshopPinnedContextHandlerHost.ts`), through the real library,
   store and intake on a memory folder, with a real session aggregate:
   - the list, absent and unavailable, unreadable;
   - the first room's report, once;
@@ -208,6 +235,10 @@ it back only as a key into the list it just read (ADR D8).
   - refusals: a text note, outside the folder, over words, over files, an
     unreadable file, several folders, a stale revision, and the live room
     moving before the commit;
+  - Explore project folders…: inside (the picker opens in the project
+    folder), outside (nothing read), dismissed (no answer), a stale
+    revision;
+  - `\` in an attachment's path, one test per platform;
   - forged input: a catalog key not in the catalog, a `ctx-N` not in the
     room or malformed (no file read), and an `entryPath` not in the list
     (no unpin, no move, nothing opened);
@@ -215,7 +246,8 @@ it back only as a key into the list it just read (ADR D8).
     exists;
   - attach missing: order and catalog key, over budget, refused while
     running and while a session operation is pending, nothing missing.
-- `useWorkshopPinnedContext.test.ts` (5): the mount request and the menu's
+- `useWorkshopPinnedContext.test.ts` (6): the host-picker pick doesn't hold
+  the tab, and its answer is taken; the mount request and the menu's
   count; a stale answer and a push while waiting are ignored; every change
   names the revision; "In this conversation" follows the snapshot with
   nothing posted; the preference persists and is restored.
@@ -228,12 +260,16 @@ it back only as a key into the list it just read (ADR D8).
   - a moved row scrolled into view with the focus on its Move button;
   - the picker: pinned rows disabled and marked "Pinned", no Explore, the
     estimate, a refusal above its footer, closed when the pin lands.
+- `WorkshopApp.pinnedContext.test.tsx` (1), through the real app: an answer
+  with entries shows "New session: full reset, empty context" and the new
+  full-reset subtitle, and the confirmation names the pinned files; an empty
+  list brings back today's menu.
 - `workshopSessionConfirmCopy.test.ts`: the full reset at 0, 1 and 10
   pinned files; the empty-context confirmation unchanged at every count.
 - Updated, deliberately: the tab list's tests (five tabs, the arrows, Home
   and End through `pinned-context`), the modal's key-navigation test, the
   Memory tab's order assertions and its footer line, the app router test,
-  the route ledger (80 routes, 46 mutation, 34 direct), the room handler's
+  the route ledger (81 routes, 46 mutation, 35 direct), the room handler's
   route count, and `workshopStyles.test.ts`'s cascade list.
 - `boundaries.test.ts`: the panel and the picker post nothing; one
   construction of the handler, in `WorkshopSliceComposition`; `CoreServices`
@@ -244,10 +280,10 @@ it back only as a key into the list it just read (ADR D8).
 | Check | Before (`51b4988b`, after `npm ci`) | After |
 |---|---|---|
 | `npm run typecheck` | pass | pass |
-| `npx jest -w 2` | 702 suites / 9,902 tests / 59 snapshots, all passing | 705 suites / 9,966 tests / 59 snapshots, all passing |
+| `npx jest -w 2` | 702 suites / 9,902 tests / 59 snapshots, all passing | 711 suites / 10,021 tests / 59 snapshots, all passing |
 | `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (none new) |
 | `from 'vscode'` in `packages/core/src` | none | none |
-| New files over 500 lines | — | none (largest: the handler test, 433) |
+| New files over 500 lines | — | none (largest: `WorkshopPinnedContextWrites.ts`, 364 lines; the handler's tests are split across a shared host and two files) |
 | Files already over 500 | — | wiring only: `WorkshopApp.tsx` +6, `WorkshopRoomHandler.ts` +3, `MessageHandler.ts` +2 |
 | The settings modal | 273 lines | 281 lines |
 | Picker parity (`WorkshopContextSelectorParity`, `WorkshopApp.contextSelectorParity`) and the session browser tests | pass | pass, unchanged (no diff) |
@@ -257,8 +293,19 @@ it back only as a key into the list it just read (ADR D8).
 The baseline was measured in a clean worktree at `51b4988b`; Slice 2b's
 counts (702 / 9,902 / 59; 0 / 1,165) hold. "After" is measured at `fa5b7997`,
 after merging Slice 2b's branch at `b0429082` (its kept fix `54e7db78` and
-Slice 1's #204 re-review fixes), as the coordinator asked. That merge brings
-11 of the new tests (2b measured 9,913); the rest of the 64 are this slice's.
+Slice 1's #204 re-review fixes), as the coordinator asked, and again after
+the follow-ups (the counts above are the latter). The merge brings 11 of
+the new tests (2b measured 9,913); the other 61 are this slice's. The counts in the table are at `1e06c642`, the PR head's code: the epic
+merged after #204 and #208 landed in it (docs only). Before it, `0f862cde`
+brought 2b's last head (Astra's nested-workspace probe, +1 suite, +2
+tests), and `3f4a5d5e` 2b's #208 fixes
+(+1 suite, +24 tests with this slice's three binding tests). Before that,
+the counts were at `7af567db`, after merging `epic-pinned-context` at `25c9443c`
+(Project Memory's #206 and #207), which adds 2 suites and 21 tests. Its four
+conflicts were the modal's props, `WorkshopApp`'s wiring, and the modal's two
+test prop builders. Each kept both sides: Pinned context's props beside
+Memory's explainer props, and both persisted keys (`pinnedContextNoteOpen`
+and `workshopMemoryExplainerOpen`).
 
 ## Deviations
 
@@ -283,12 +330,23 @@ Slice 1's #204 re-review fixes), as the coordinator asked. That merge brings
    refusal can be answered.
 3. **Describe's `listed` gains `absent`,** so the tab can tell "no file yet"
    (Open file disabled, "The file is made…") from an empty list on disk.
-4. **The picker in pin mode has no "Explore project folders…".** 0d draws it
-   ("files in this project only"), but the spec's routes have no host
-   picker for pinning, and the webview never introduces a path. The shared
-   picker gains two opt-ins, `onExplore` now optional and `attachedLabel`;
-   without them the Workshop's and the Lightbox's markup is unchanged. A
-   host-picker pin route can come later if Okey wants it.
+4. **"Explore project folders…" pins through a ninth message,**
+   `WORKSHOP_PIN_CONTEXT_PICK_FILE` (`{ requestId, revision }`), which the
+   spec's table didn't list (the coordinator's call, restoring 0d's design).
+   - The host opens its own picker in the project folder; `ShellService.pickFile`
+     gains an optional `defaultPath`.
+   - The library captures the live room before the pick is awaited and
+     refuses a file outside that room's folder ("Only files inside this
+     project can be pinned."). It turns the file into the entry path (`\` a
+     separator only on Windows) and pins it with the same bounds, revision
+     and `beforeCommit`.
+   - A dismissed picker answers nothing, so the hook keeps the pick off the
+     tab's pending state and takes its answer when one comes.
+   - The webview never sends a path.
+
+   The shared picker gains one opt-in, `attachedLabel` ("Pinned"), and
+   `onExplore` became optional. With the defaults, the Workshop's and the
+   Lightbox's markup is unchanged.
 5. **The picker stays open until the host answers**, so a refusal shows in
    it, above its footer, as 0d's PickerRefused board draws. Its own footer
    (`PinFooter`) reads the shared estimate
@@ -307,6 +365,11 @@ Slice 1's #204 re-review fixes), as the coordinator asked. That merge brings
 
 **Copy added to the approved design** (in its voice):
 
+- a project folder that changed under a read or a write: 2b's "The project
+  folder changed while pinned context was read. Try again.", and Attach
+  missing's "The project folder changed, so nothing was attached. Try
+  again.";
+
 - the list `busy` or `io`: Slice 2b's words as the notice ("Pinned context
   is being changed in another window. Try again in a moment." / "pinned-
   context.json couldn't be read. Try again, or check the project folder."),
@@ -321,6 +384,10 @@ Slice 1's #204 re-review fixes), as the coordinator asked. That merge brings
   then try again.", "The workspace changed, so pinned context wasn't
   changed.", and "There's no pinned-context.json yet. The file is made when
   you pin the first file.";
+- a file inside the project whose name holds a backslash (POSIX): "Can't
+  pin *alice\notes.md*: pinned context can't store a file name with a
+  backslash in it." ("Only files inside this project can be pinned." stays
+  for files that really are outside it);
 - 0d's file bound line gains "Unpin a file to make room.";
 - several files at once over budget: "Can't pin these *N* files: … or pin
   fewer of these.";
@@ -338,13 +405,13 @@ Slice 1's #204 re-review fixes), as the coordinator asked. That merge brings
   cleared, then the *N* pinned files are attached. Saved sessions on disk
   are not touched."
 
-**Not done here:** the settings round trip doesn't apply (pinned context is
-a project file, not a VS Code setting); say so in the PR. No WorkshopApp
-render test drives the menu's count end to end; the hook's count and 2a's
-menu tests cover each half.
+**Not applicable:** the settings round trip (pinned context is a project
+file, not a VS Code setting); say so in the PR.
 
 ## Progress
 
 - **2026-11-04.** Slice doc written with the spec.
 - **2026-11-05.** Built on `epic-pinned-context-slice-3-settings-tab`; see
   Built, Verification and Deviations above.
+- **2026-11-05.** The coordinator's follow-ups, Slice 2b's #208 fixes and
+  the epic merged; verified at `1e06c642` and handed over for the PR.

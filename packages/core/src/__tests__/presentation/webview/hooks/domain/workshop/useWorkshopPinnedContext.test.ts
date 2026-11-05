@@ -101,6 +101,18 @@ describe('useWorkshopPinnedContext', () => {
     expect(posts(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS)[0].payload).toMatchObject({ revision: 'rev-1', attachmentIds: ['ctx-3'] });
   });
 
+  it('asks the host to pick a file without holding the tab, and takes the pick\'s answer when it comes', () => {
+    const { result } = renderHook(() => useWorkshopPinnedContext({ attachments: [], running: false }));
+    act(() => result.current.handlePinnedContext(message(answer(lastId(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT)))));
+    act(() => { result.current.pinPickedFile(); });
+    const pick = posts(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE)[0].payload;
+    expect(pick).toEqual({ requestId: expect.any(String), revision: 'rev-1' });
+    expect(result.current.pending).toBe(false);
+
+    act(() => result.current.handlePinnedContext(message(answer(pick.requestId as string, { revision: 'rev-2', action: 'pin-file', ok: true }))));
+    expect(result.current.answer?.revision).toBe('rev-2');
+  });
+
   it('derives "In this conversation" and the missing count from the room, and follows it', () => {
     const { result, rerender } = renderHook(
       ({ attachments }) => useWorkshopPinnedContext({ attachments, running: false }),

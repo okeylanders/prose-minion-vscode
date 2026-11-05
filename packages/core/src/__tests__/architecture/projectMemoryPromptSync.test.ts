@@ -60,6 +60,23 @@ describe('project-memory prompt ↔ PROMPT_BUDGETS', () => {
     expect(prose).toContain('active (the default, the notes in effect), superseded, archived, or all');
     expect(WORKSHOP_MEMORY_SEARCH_STATUSES).toEqual(['active', 'superseded', 'archived', 'all']);
   });
+
+  it('teaches what each kind means, every kind once, in the closed list\'s order (Slice 6a)', () => {
+    const section = /### What each kind means\n([\s\S]*?)\n### /.exec(prose)![1];
+    const taught = [...section.matchAll(/^- An? `([a-z-]+)`/gm)].map((match) => match[1]);
+    const named = [...section.matchAll(/`([a-z-]+)`/g)].map((match) => match[1]);
+    expect([...new Set(named)]).toEqual([...PROJECT_MEMORY_KINDS]);
+    expect(taught).toEqual(['decision', 'theme', 'idea', 'open-thread', 'preference']);
+  });
+
+  it('describes an idea as unsettled: never canon, never a decision, superseded when chosen', () => {
+    const idea = /^- An `idea` (.*)$/m.exec(prose)![1];
+    expect(idea).toContain('has not chosen');
+    expect(idea).toContain('It is unsettled: never treat it as canon or as a decision');
+    expect(idea).toContain('the decision or canon note that records it supersedes the idea');
+    expect(prose).toContain('An idea is a candidate answer or direction; an open thread is the question itself.');
+    expect(prose).toContain('Canon is what happens; a theme is what it means.');
+  });
 });
 
 describe('project-memory prompt examples, through the real codec', () => {

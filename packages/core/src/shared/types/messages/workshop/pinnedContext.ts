@@ -84,7 +84,7 @@ export interface WorkshopPinnedContextPayload {
   readonly ok?: boolean;
 }
 
-export type WorkshopPinnedContextAction = 'pin-resources' | 'pin-attachments' | 'unpin' | 'move' | 'attach-missing' | 'open';
+export type WorkshopPinnedContextAction = 'pin-resources' | 'pin-attachments' | 'pin-file' | 'unpin' | 'move' | 'attach-missing' | 'open';
 
 export interface WorkshopRequestPinnedContextMessage extends MessageEnvelope<{ readonly requestId: string }> {
   type: MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT;
@@ -112,6 +112,21 @@ export interface WorkshopPinContextAttachmentsPayload {
 
 export interface WorkshopPinContextAttachmentsMessage extends MessageEnvelope<WorkshopPinContextAttachmentsPayload> {
   type: MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS;
+}
+
+/**
+ * Explore project folders… in pin mode: the host opens its own file picker
+ * in the project folder and pins the file chosen if it lies inside the
+ * project. The webview names no path; the host introduces it. A cancelled
+ * pick is answered with nothing.
+ */
+export interface WorkshopPinContextPickFilePayload {
+  readonly requestId: string;
+  readonly revision: string;
+}
+
+export interface WorkshopPinContextPickFileMessage extends MessageEnvelope<WorkshopPinContextPickFilePayload> {
+  type: MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE;
 }
 
 export interface WorkshopUnpinContextPayload {
