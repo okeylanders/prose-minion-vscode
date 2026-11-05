@@ -86,8 +86,8 @@ The reviewed version yields four failing and two passing tests. Remove the tempo
 
 | Item | Priority | Status |
 |---|---|---|
-| F-01: abort during preparation is lost | P2 | Open; two failing probes |
-| F-02: preparation errors escape result union | P2 | Open; two failing probes |
+| F-01: abort during preparation is lost | P2 | Fixed by the implementation thread: the signal is read after each preparation await and immediately before dispatch; probes pass and are ported as tests. Awaiting re-review |
+| F-02: preparation errors escape result union | P2 | Fixed by the implementation thread: preparation is inside the error boundary and returns `failed: error`; probes pass and are ported as tests. Awaiting re-review |
 | A-04: memory output contract | Acceptance | Passed at reviewed code head |
 | A-05: full service cancellation/failure lifecycle | Acceptance | Incomplete until F-01/F-02 are fixed |
 | A-01–A-03 and UI lifecycle | Acceptance | Carry into Slice 2 |

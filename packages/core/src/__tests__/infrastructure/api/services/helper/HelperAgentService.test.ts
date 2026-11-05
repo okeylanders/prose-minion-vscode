@@ -139,8 +139,11 @@ describe('HelperAgentService', () => {
     try {
       const { service, runInitial } = harness(['hang']);
       const running = service.run('count', { items: [] });
-      await Promise.resolve();
-      await Promise.resolve();
+      // Preparation's awaits settle first; the timer starts at dispatch.
+      for (let turn = 0; turn < 20 && runInitial.mock.calls.length === 0; turn += 1) {
+        await Promise.resolve();
+      }
+      expect(runInitial).toHaveBeenCalledTimes(1);
       const signal = (runInitial.mock.calls[0][0] as { options: { signal: AbortSignal } }).options.signal;
       expect(signal.aborted).toBe(false);
       jest.advanceTimersByTime(countTask.call.timeoutMs - 1);
@@ -153,15 +156,83 @@ describe('HelperAgentService', () => {
     }
   });
 
-  it('reports an error and a caller\'s stop apart', async () => {
-    const { service } = harness([new Error('provider refused'), 'hang']);
+  it('reports an error and a caller\'s stop after dispatch apart, the stop aborting the sent request', async () => {
+    const { service, runInitial } = harness([new Error('provider refused'), 'hang']);
     await expect(service.run('echo', { word: 'Alice' })).resolves.toEqual({ kind: 'failed', reason: 'error' });
     const stop = new AbortController();
     const running = service.run('echo', { word: 'Alice' }, { signal: stop.signal });
-    await Promise.resolve();
+    for (let turn = 0; turn < 20 && runInitial.mock.calls.length < 2; turn += 1) {
+      await Promise.resolve();
+    }
+    expect(runInitial).toHaveBeenCalledTimes(2);
+    const sent = (runInitial.mock.calls[1][0] as { options: { signal: AbortSignal } }).options.signal;
+    stop.abort();
+    expect(sent.aborted).toBe(true);
+    await expect(running).resolves.toEqual({ kind: 'failed', reason: 'cancelled' });
+  });
+
+  it('sends nothing when stopped while the engine is being prepared, and says cancelled (PR #228 F-01)', async () => {
+    const { service, runInitial, resources, logged } = harness([{ content: '{"echo": "Alice"}' }]);
+    let ready: () => void = () => undefined;
+    resources.ensureInitialized.mockImplementationOnce(() => new Promise<undefined>((resolve) => { ready = () => resolve(undefined); }));
+    const stop = new AbortController();
+    const running = service.run('echo', { word: 'Alice' }, { signal: stop.signal });
+    stop.abort();
+    ready();
+    await expect(running).resolves.toEqual({ kind: 'failed', reason: 'cancelled' });
+    expect(runInitial).not.toHaveBeenCalled();
+    expect(logged()).toEqual(['[Helper] echo: cancelled before it was sent (5 characters)']);
+  });
+
+  it('sends nothing when stopped while the prompt loads, and says cancelled (PR #228 F-01)', async () => {
+    const { service, runInitial, promptLoader } = harness([{ content: '{"echo": "Alice"}' }]);
+    let loaded: () => void = () => undefined;
+    promptLoader.loadPrompts.mockImplementationOnce(() => new Promise<string>((resolve) => { loaded = () => resolve('SYSTEM'); }));
+    const stop = new AbortController();
+    const running = service.run('echo', { word: 'Alice' }, { signal: stop.signal });
     await Promise.resolve();
     stop.abort();
+    loaded();
     await expect(running).resolves.toEqual({ kind: 'failed', reason: 'cancelled' });
+    expect(runInitial).not.toHaveBeenCalled();
+  });
+
+  it('sends nothing when stopped in the turn after preparation ends, before dispatch (PR #228 F-01)', async () => {
+    const { service, runInitial, promptLoader } = harness([{ content: '{"echo": "Alice"}' }]);
+    const stop = new AbortController();
+    promptLoader.loadPrompts.mockImplementationOnce(async () => {
+      // Resolves, then the caller stops before the run resumes.
+      queueMicrotask(() => stop.abort());
+      return 'SYSTEM';
+    });
+    await expect(service.run('echo', { word: 'Alice' }, { signal: stop.signal })).resolves.toEqual({ kind: 'failed', reason: 'cancelled' });
+    expect(runInitial).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['the engine fails to initialize', 'ensureInitialized'],
+    ['the prompt cannot be loaded', 'loadPrompts']
+  ] as const)('returns failed, not a rejection, when %s; its log names no text (PR #228 F-02)', async (_name, step) => {
+    const { service, runInitial, resources, promptLoader, logged } = harness([{ content: '{"echo": "Alice"}' }]);
+    const failure = new Error(`${SECRET} could not be read`);
+    if (step === 'ensureInitialized') {
+      resources.ensureInitialized.mockRejectedValueOnce(failure);
+    } else {
+      promptLoader.loadPrompts.mockRejectedValueOnce(failure);
+    }
+    await expect(service.run('echo', { word: SECRET })).resolves.toEqual({ kind: 'failed', reason: 'error' });
+    expect(runInitial).not.toHaveBeenCalled();
+    expect(logged()).toEqual([`[Helper] echo: not sent, preparing the call failed (${SECRET.length} characters)`]);
+  });
+
+  it('says cancelled, not failed, when preparation fails after the caller stopped it (PR #228 F-02)', async () => {
+    const { service, resources } = harness([]);
+    const stop = new AbortController();
+    resources.ensureInitialized.mockImplementationOnce(async () => {
+      stop.abort();
+      throw new Error('initialization interrupted');
+    });
+    await expect(service.run('echo', { word: 'Alice' }, { signal: stop.signal })).resolves.toEqual({ kind: 'failed', reason: 'cancelled' });
   });
 
   it('reads an engine\'s cancelled result as stopped, never as an answer', async () => {

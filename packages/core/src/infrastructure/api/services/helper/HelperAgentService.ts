@@ -59,6 +59,29 @@ export class HelperAgentService<Policies extends Readonly<Record<string, AnyHelp
     private readonly log: Pick<LogSink, 'appendLine'>
   ) {}
 
+  /** Preparation's outcome, logged here by kind; a prepared run, or the result the call ends with. */
+  private async prepare(
+    task: string,
+    policy: AnyHelperTaskPolicy,
+    counts: string,
+    signal: AbortSignal | undefined
+  ): Promise<PreparedHelperRun | HelperRunResult<never>> {
+    const prepared = await prepareHelperRun(this.resources, this.promptLoader, policy.promptSection, signal);
+    switch (prepared) {
+      case 'cancelled':
+        this.log.appendLine(`[Helper] ${task}: cancelled before it was sent${counts}`);
+        return { kind: 'failed', reason: 'cancelled' };
+      case 'unconfigured':
+        this.log.appendLine(`[Helper] ${task}: not sent, no API key${counts}`);
+        return { kind: 'unconfigured' };
+      case 'error':
+        this.log.appendLine(`[Helper] ${task}: not sent, preparing the call failed${counts}`);
+        return { kind: 'failed', reason: 'error' };
+      default:
+        return prepared;
+    }
+  }
+
   async run<Task extends keyof Policies & string>(
     task: Task,
     input: HelperTaskInput<Policies[Task]>,
@@ -66,19 +89,11 @@ export class HelperAgentService<Policies extends Readonly<Record<string, AnyHelp
   ): Promise<HelperRunResult<HelperTaskOutput<Policies[Task]>>> {
     const policy = this.policies[task];
     const counts = describeCounts(policy.describeInput(input));
-    if (options.signal?.aborted) {
-      this.log.appendLine(`[Helper] ${task}: cancelled before it was sent${counts}`);
-      return { kind: 'failed', reason: 'cancelled' };
+    const prepared = await this.prepare(task, policy, counts, options.signal);
+    if ('kind' in prepared) {
+      return prepared;
     }
-    await this.resources.ensureInitialized();
-    const engine = this.resources.getEngine('helper');
-    if (!engine) {
-      this.log.appendLine(`[Helper] ${task}: not sent, no API key${counts}`);
-      return { kind: 'unconfigured' };
-    }
-    // Read once, before anything is awaited: the call names this model.
-    const model = engine.getModel();
-    const systemMessage = await this.promptLoader.loadPrompts([HELPER_BASE_PROMPT, policy.promptSection]);
+    const { engine, model, systemMessage } = prepared;
     const stop = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -91,6 +106,12 @@ export class HelperAgentService<Policies extends Readonly<Record<string, AnyHelp
       this.log.appendLine(`[Helper] ${task} on ${model || 'no model'}: ${reason}${counts}`);
       return { kind: 'failed', reason, ...(usage ? { usage } : {}) };
     };
+    // Immediately before dispatch: a stop that landed after preparation's last check is never sent (PR #228 F-01).
+    if (options.signal?.aborted) {
+      clearTimeout(timer);
+      options.signal.removeEventListener('abort', forward);
+      return failed('cancelled');
+    }
 
     let result: ExecutionResult;
     try {
@@ -126,6 +147,46 @@ export class HelperAgentService<Policies extends Readonly<Record<string, AnyHelp
     this.log.appendLine(`[Helper] ${task} on ${answeredBy}: drafted${repaired}${counts}${usageWords}`);
     return { kind: 'drafted', value: read.value, ...(result.usage ? { usage: result.usage } : {}) };
   }
+}
+
+/**
+ * Everything before dispatch: the manager's engine, the run's model and
+ * the prompt. Inside the run's error boundary, so a failed initialization
+ * or prompt read is a `failed` result like any other (PR #228 F-02), and
+ * the caller's signal is read again after each await, so a call stopped
+ * while it prepared is never sent (F-01).
+ */
+async function prepareHelperRun(
+  resources: HelperEngineSource,
+  promptLoader: Pick<PromptLoader, 'loadPrompts'>,
+  promptSection: string,
+  signal: AbortSignal | undefined
+): Promise<PreparedHelperRun | 'cancelled' | 'unconfigured' | 'error'> {
+  if (signal?.aborted) {
+    return 'cancelled';
+  }
+  try {
+    await resources.ensureInitialized();
+    if (signal?.aborted) {
+      return 'cancelled';
+    }
+    const engine = resources.getEngine('helper');
+    if (!engine) {
+      return 'unconfigured';
+    }
+    // Read once, before anything else is awaited: the call names this model.
+    const model = engine.getModel();
+    const systemMessage = await promptLoader.loadPrompts([HELPER_BASE_PROMPT, promptSection]);
+    return signal?.aborted ? 'cancelled' : { engine, model, systemMessage };
+  } catch {
+    return signal?.aborted ? 'cancelled' : 'error';
+  }
+}
+
+interface PreparedHelperRun {
+  readonly engine: NonNullable<ReturnType<HelperEngineSource['getEngine']>>;
+  readonly model: string;
+  readonly systemMessage: string;
 }
 
 /** The task's data as quoted JSON: never instructions. Exported so worked examples are checked byte for byte. */
