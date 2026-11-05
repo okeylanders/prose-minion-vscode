@@ -132,8 +132,13 @@ export function applyTextEdits(text: string, edits: ReadonlyArray<{ readonly sta
 
 /**
  * The content: after the leading skip, without the whitespace around it.
- * Content that is only whitespace is an empty span at the skip's end.
+ * Content that is only whitespace is an empty span at the skip's end. What a
+ * rewrite replaces, and a file edit's baseline hashes (ADR 2026-11-05 D6).
  */
+export function textEditContentSpan(text: string, skipLeading = 0): { readonly start: number; readonly end: number } {
+  return contentSpan(text, skipLeading);
+}
+
 function contentSpan(text: string, skipLeading: number): { readonly start: number; readonly end: number } {
   const from = Math.min(Math.max(0, Math.floor(skipLeading)), text.length);
   const region = text.slice(from);

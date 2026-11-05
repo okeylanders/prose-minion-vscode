@@ -79,6 +79,10 @@ export class FakeDocuments implements DocumentEditor {
     return uri === this.uri && this.isOpen ? this.snapshot() : undefined;
   }
 
+  peek(uri: string) {
+    return uri === this.uri && this.isOpen ? this.snapshot() : undefined;
+  }
+
   async reveal(uri: string): Promise<boolean> {
     if (uri !== this.uri || this.visible) {
       return false;

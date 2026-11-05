@@ -1,4 +1,5 @@
 import type { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
+import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import type {
   AnalysisResultMessage,
   CategorySearchResultMessage,
@@ -196,8 +197,11 @@ export interface CoreServices {
    */
   workshopTranscriptRecallService: WorkshopTranscriptRecallService;
   /**
-   * Persona file edits (ADR 2026-11-05 D4): the one gateway from a request
-   * to a project file, through Draft Edit's applier. No handler constructs it.
+   * Persona file edits (ADR 2026-11-05 D7): the one gateway from a staged
+   * proposal to a project file, through Draft Edit's applier. No handler
+   * constructs it.
    */
   projectFileEditGateway: ProjectFileEditGateway;
+  /** Persona file edits (D4): a frame's target staged to an identity, class and baseline when a reply is read. */
+  fileEditStaging: FileEditStaging;
 }

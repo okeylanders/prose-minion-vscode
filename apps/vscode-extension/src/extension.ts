@@ -74,8 +74,9 @@ import {
   ProofreadService,
   DraftEditUseCase,
   DraftEditApplier,
+  FileEditStagingService,
   ProjectFileEditGateway,
-  workshopExcerptFileEditSource,
+  workshopExcerptFileEditDocument,
   CraftFlagsService,
   CraftFlagsUseCase,
   liveCatalogPrices,
@@ -557,11 +558,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     draftEditApplier,
     outputChannel
   );
-  // Persona file edits (ADR 2026-11-05 D4): the one gateway, over the same applier and a fresh catalog per edit.
-  const projectFileEditGateway = new ProjectFileEditGateway({
-    catalog: contextResourceResolver,
-    excerpt: workshopExcerptFileEditSource(workshopSessionService, workshopContextIntakeService),
+  // Persona file edits (ADR 2026-11-05 D4, D7): staging and the one gateway, over the same applier,
+  // the resolver's every-candidate read and the room's excerpt.
+  const fileEditExcerpt = workshopExcerptFileEditDocument(workshopSessionService, workshopContextIntakeService);
+  const fileEditStaging = new FileEditStagingService({
+    candidates: contextResourceResolver,
+    excerpt: fileEditExcerpt,
     workspace: platform.workspace,
+    fileSystem: platform.fileSystem,
+    documents: platform.documents,
+    log: outputChannel
+  });
+  const projectFileEditGateway = new ProjectFileEditGateway({
+    candidates: contextResourceResolver,
+    excerpt: fileEditExcerpt,
+    workspace: platform.workspace,
+    fileSystem: platform.fileSystem,
     documents: platform.documents,
     applier: draftEditApplier,
     log: outputChannel
@@ -601,6 +613,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     accountBalanceService,
     workshopSessionService,
     projectFileEditGateway,
+    fileEditStaging,
     workshopRoomDeliveryService,
     workshopPersonaCapabilityFactory,
     workshopToolSidePass,

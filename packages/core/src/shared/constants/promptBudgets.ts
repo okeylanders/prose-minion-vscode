@@ -136,9 +136,12 @@ export interface PromptBudgets {
   }>;
   /** Persona file edits (ADR 2026-11-05 D5, D11): the gateway's bounds. */
   readonly workshopFileEdits: Readonly<{
-    appendWords: number;
+    insertWords: number;
+    insertCharacters: number;
     rewriteCeilingShare: number;
+    rewriteFloorCharacters: number;
     fileBytes: number;
+    rewriteFileBytes: number;
   }>;
   readonly workshopTodos: Readonly<{
     items: number;
@@ -600,12 +603,16 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     pathCharacters: 4096
   },
   workshopFileEdits: {
-    // Q2: a prose append or prepend adds at most about 400 words.
-    appendWords: 400,
-    // Q2: replaces on prose change at most 60% of the touched paragraphs' characters.
+    // D5: each prose append or prepend adds at most 400 words (/\S+/gu) and 4,000 characters.
+    insertWords: 400,
+    insertCharacters: 4_000,
+    // D5: prose replaces may remove at most 60% of the touched paragraphs' characters, past a 300-character floor.
     rewriteCeilingShare: 0.6,
+    rewriteFloorCharacters: 300,
     // resource.read's source ceiling: a file a persona cannot read whole is never edited.
-    fileBytes: 2 * 1024 * 1024
+    fileBytes: 2 * 1024 * 1024,
+    // D5: a notes rewrite replaces at most 32 KiB.
+    rewriteFileBytes: 32 * 1024
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {

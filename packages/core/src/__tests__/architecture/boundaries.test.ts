@@ -1659,7 +1659,9 @@ describe('architectural boundaries', () => {
       'application/services/draftEdit/DraftEditUseCase.ts',
       'application/services/draftEdit/CraftFlagsUseCase.ts',
       'application/services/draftEdit/DraftEditApplier.ts',
-      // Persona file edits (ADR 2026-11-05 D4, D6): it opens, and reveals, the file it edits through the applier.
+      // Persona file edits (ADR 2026-11-05 D4, D6, D7): staging peeks at an open buffer for the baseline;
+      // the gateway opens, and reveals, the file it edits through the applier.
+      'application/services/fileEdits/FileEditStagingService.ts',
       'application/services/fileEdits/ProjectFileEditGateway.ts'
     ]);
     const offenders = collectSourceFiles(SRC_ROOT)
@@ -1711,9 +1713,9 @@ describe('architectural boundaries', () => {
     expect(workshop.filter((file) => documentPorts.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')))).toEqual([]);
   });
 
-  it('never saves a document: the gateway holds no file system and asks no save (ADR 2026-11-05 D6)', () => {
+  it('never saves a document: file edits read files and write only through the applier (ADR 2026-11-05 D7)', () => {
     const root = path.join(SRC_ROOT, 'application', 'services', 'fileEdits');
-    const saves = /\b(?:FileSystem|writeFile|save)\b|\.save\(/;
+    const saves = /\b(?:writeFile|createDirectory|rename|copy|save)\b|\.save\(|\.delete\(/;
     expect(collectSourceFiles(root).filter((file) => saves.test(fs.readFileSync(file, 'utf8'))).map((file) => path.basename(file))).toEqual([]);
   });
 

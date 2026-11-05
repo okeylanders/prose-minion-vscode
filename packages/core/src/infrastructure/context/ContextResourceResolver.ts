@@ -8,6 +8,8 @@ import * as path from 'path';
 import { ContextPathGroup } from '@shared/types';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import {
+  ContextResourceCandidate,
+  ContextResourceCandidateReader,
   ContextResourceContent,
   ContextResourceProviderFactory,
   ContextResourceProvider,
@@ -26,7 +28,7 @@ interface InternalContextResource {
 /**
  * Provides access to project reference materials based on user-configured glob patterns.
  */
-export class ContextResourceResolver implements ContextResourceProviderFactory {
+export class ContextResourceResolver implements ContextResourceProviderFactory, ContextResourceCandidateReader {
   constructor(
     private readonly settings: SettingsStore,
     private readonly fileSystem: FileSystem,
@@ -89,15 +91,38 @@ export class ContextResourceResolver implements ContextResourceProviderFactory {
     };
   }
 
-  private async collectResources(groups: ContextPathGroup[]): Promise<InternalContextResource[]> {
+  /**
+   * Every match, kept (ADR 2026-11-05 D4.1): each group, root and relative
+   * path a supported file matches, with no first-root-wins dedupe. The same
+   * containment and symbolic-link checks admit each one. The catalog
+   * (`createProvider`) is unchanged.
+   */
+  async listCandidates(groups: ContextPathGroup[]): Promise<ContextResourceCandidate[]> {
+    const candidates: ContextResourceCandidate[] = [];
+    await this.forEachMatch(groups, (group, folder, match, sizeBytes) => {
+      if (this.isSupportedFile(match)) {
+        candidates.push({
+          group,
+          relativePath: path.relative(folder.path, match).replace(/\\/g, '/'),
+          workspaceFolderPath: folder.path,
+          absolutePath: match,
+          sizeBytes
+        });
+      }
+    });
+    return candidates;
+  }
+
+  /** Every contained, symlink-free match, in group → root → pattern order. */
+  private async forEachMatch(
+    groups: ContextPathGroup[],
+    visit: (group: ContextPathGroup, folder: { path: string; name: string }, match: string, sizeBytes: number) => void
+  ): Promise<boolean> {
     const workspaceFolders = this.workspace.workspaceFolders();
     if (workspaceFolders.length === 0) {
       this.outputChannel?.appendLine('[ContextResourceResolver] No workspace folders found.');
-      return [];
+      return false;
     }
-
-    const resources: InternalContextResource[] = [];
-    const seenPaths = new Set<string>();
 
     for (const group of groups) {
       const patterns = this.getPatternsForGroup(group);
@@ -130,31 +155,43 @@ export class ContextResourceResolver implements ContextResourceProviderFactory {
             if (sizeBytes === undefined) {
               continue;
             }
-
-            const relativePath = path.relative(workspaceFolder.path, match).replace(/\\/g, '/');
-            const normalizedKey = this.normalizeKey(relativePath);
-
-            if (seenPaths.has(normalizedKey)) {
-              continue;
-            }
-
-            if (!this.isSupportedFile(match)) {
-              continue;
-            }
-
-            seenPaths.add(normalizedKey);
-
-            resources.push({
-              group,
-              path: relativePath,
-              label: this.deriveLabel(match),
-              sizeBytes,
-              workspaceFolder: workspaceFolder.name,
-              absolutePath: match
-            });
+            visit(group, workspaceFolder, match, sizeBytes);
           }
         }
       }
+    }
+    return true;
+  }
+
+  private async collectResources(groups: ContextPathGroup[]): Promise<InternalContextResource[]> {
+    const resources: InternalContextResource[] = [];
+    const seenPaths = new Set<string>();
+
+    const searched = await this.forEachMatch(groups, (group, workspaceFolder, match, sizeBytes) => {
+      const relativePath = path.relative(workspaceFolder.path, match).replace(/\\/g, '/');
+      const normalizedKey = this.normalizeKey(relativePath);
+
+      if (seenPaths.has(normalizedKey)) {
+        return;
+      }
+
+      if (!this.isSupportedFile(match)) {
+        return;
+      }
+
+      seenPaths.add(normalizedKey);
+
+      resources.push({
+        group,
+        path: relativePath,
+        label: this.deriveLabel(match),
+        sizeBytes,
+        workspaceFolder: workspaceFolder.name,
+        absolutePath: match
+      });
+    });
+    if (!searched) {
+      return [];
     }
 
     // Sort results for stable ordering: group -> path

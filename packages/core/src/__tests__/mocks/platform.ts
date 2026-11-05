@@ -147,6 +147,7 @@ export function createFakeEditorContext(overrides: Partial<EditorContext> = {}):
 export function createFakeDocumentEditor(overrides: Partial<DocumentEditor> = {}): DocumentEditor {
   return {
     open: async () => undefined,
+    peek: () => undefined,
     reveal: async () => false,
     watch: () => undefined,
     applyEdits: async () => ({ kind: 'closed' }),

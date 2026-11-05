@@ -1,29 +1,26 @@
 /**
- * Persona file edits (ADR 2026-11-05 D4, D5): the request the one gateway
- * takes, the policies by target, and what it answers. Pure data.
+ * Persona file edits at Apply (ADR 2026-11-05 D5, D7): the staged proposal
+ * the gateway takes, the policies by class, and the names of what it can
+ * refuse. Pure data. Staging's own types are `FileEditStaging`.
  *
- * - **A request doesn't care where it came from** (D4.1): a trailer's
- *   proposal builds it today, a later capability builds the same one (D10).
- * - **Targets are keys, never paths** (D4.2): a configured resource by
- *   `{ group, path }`, looked up in a fresh catalog, or the room's excerpt
- *   at the version the proposal was made against.
- * - **Policies are data** (D5): every group has a kind, and every kind a
- *   policy row. A new group does not compile until it has one.
+ * - **A request doesn't care where it came from** (D4, D12): a trailer's
+ *   staged proposal today, a later capability the same.
+ * - **The class is decided by identity** (D5), never by a trailer's group;
+ *   policies are data keyed by class.
  */
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import type { ContextPathGroup } from '@shared/types/context';
+import type { DraftEditStructureMode } from '@/domain/models/DraftEdit';
+import type { FileEditBaseline, FileEditClass, FileEditIdentity } from '@/domain/models/FileEditStaging';
 import type { TextEditFaultKind, TextEditOperation } from '@/utils/textEdits/textEditOperations';
-
-export type FileEditTarget =
-  | { readonly kind: 'resource'; readonly group: ContextPathGroup; readonly path: string }
-  /** The room's excerpt document, as it stood at `excerptVersion`. */
-  | { readonly kind: 'excerpt'; readonly excerptVersion: number };
 
 export type FileEditSource = { readonly kind: 'proposal'; readonly turnId: string; readonly index: number };
 
-export interface FileEditRequest {
-  readonly target: FileEditTarget;
+/** A proposal as staging left it: its identity, class and baseline, and its operations. */
+export interface StagedFileEdit {
+  readonly target: FileEditIdentity;
+  readonly class: FileEditClass;
+  readonly baseline: FileEditBaseline;
   readonly operations: readonly TextEditOperation[];
   readonly source: FileEditSource;
 }
@@ -31,67 +28,60 @@ export interface FileEditRequest {
 export interface FileEditApplyOptions {
   /** `direct`: the card was the review (Apply); `preview`: Refactor Preview (Review in editor…). */
   readonly review: 'direct' | 'preview';
+  /**
+   * The handler's last dispatch boundary (D8): whether the claim is held,
+   * the room and turn are the same and the setting is still `ask`. Called
+   * with nothing awaited between it and the applier's call.
+   */
+  readonly stillCurrent: () => boolean;
 }
 
-/** Prose is the writer's draft; notes are everything else the project keeps. */
-export type FileEditTargetKind = 'prose' | 'notes';
+/** Context groups whose members are prose (D5). */
+export const FILE_EDIT_PROSE_GROUPS: ReadonlySet<string> = new Set(['chapters', 'manuscript']);
 
-export const FILE_EDIT_GROUP_KINDS: Readonly<Record<ContextPathGroup, FileEditTargetKind>> = {
-  chapters: 'prose',
-  manuscript: 'prose',
-  characters: 'notes',
-  locations: 'notes',
-  themes: 'notes',
-  things: 'notes',
-  projectBrief: 'notes',
-  general: 'notes'
-};
-
-export interface FileEditTargetPolicy {
-  /** Whether a whole-file rewrite (after front matter) is allowed. */
+export interface FileEditClassPolicy {
+  /** Whether a whole-content rewrite (after front matter) is allowed. */
   readonly allowsRewrite: boolean;
-  /** The applier's rules (ADR 2026-10-21 D4). */
   readonly allowsNewlineChanges: boolean;
-  readonly preservesMarkdownStructure: boolean;
-  /** With structure preserved, whether paragraphs may still merge, split or be added. */
-  readonly paragraphsMayMergeOrSplit: boolean;
-  /** Words an append or prepend may add; undefined when unbounded. */
-  readonly passageWords?: number;
-  /** The share of the touched paragraphs' characters replaces may change; undefined when unbounded. */
-  readonly rewriteCeilingShare?: number;
+  readonly structure: DraftEditStructureMode;
+  /** Each append or prepend's bounds; undefined when unbounded. */
+  readonly insertion?: { readonly words: number; readonly characters: number };
+  /** The rewrite ceiling over the touched paragraphs; undefined when none. */
+  readonly ceiling?: { readonly share: number; readonly floorCharacters: number };
 }
 
 const BOUNDS = PROMPT_BUDGETS.workshopFileEdits;
 
 /** D5's table. */
-export const FILE_EDIT_TARGET_POLICIES: Readonly<Record<FileEditTargetKind, FileEditTargetPolicy>> = {
-  // A chapter is never rewritten whole; paragraphs may merge or split, its Markdown structure holds.
+export const FILE_EDIT_TARGET_POLICIES: Readonly<Record<FileEditClass, FileEditClassPolicy>> = {
   prose: {
     allowsRewrite: false,
     allowsNewlineChanges: true,
-    preservesMarkdownStructure: true,
-    paragraphsMayMergeOrSplit: true,
-    passageWords: BOUNDS.appendWords,
-    rewriteCeilingShare: BOUNDS.rewriteCeilingShare
+    structure: 'prose-paragraphs',
+    insertion: { words: BOUNDS.insertWords, characters: BOUNDS.insertCharacters },
+    ceiling: { share: BOUNDS.rewriteCeilingShare, floorCharacters: BOUNDS.rewriteFloorCharacters }
   },
-  notes: { allowsRewrite: true, allowsNewlineChanges: true, preservesMarkdownStructure: false, paragraphsMayMergeOrSplit: true }
+  notes: { allowsRewrite: true, allowsNewlineChanges: true, structure: 'free' }
 };
 
-/** Why a request was refused before anything was planned. */
-export type FileEditRefusal =
+/** Why an Apply was refused, before or instead of any write. */
+export type FileEditApplyRefusal =
   | 'no-operations'
-  | 'unknown-group'
-  | 'unsafe-path'
-  | 'not-configured'
-  | 'ambiguous-path'
+  | 'no-longer-configured'
   | 'outside-workspace'
+  | 'catalog-unreadable'
+  | 'unreadable'
+  | 'identity-changed'
   | 'not-text'
   | 'too-large'
-  | 'catalog-unreadable'
-  | 'no-excerpt'
-  | 'excerpt-manual'
-  | 'excerpt-stale'
-  | 'unreadable';
+  | 'superseded'
+  | 'host-failed';
 
-/** An operation's fault: the planner's, or the prose policy's. */
-export type FileEditOperationFault = TextEditFaultKind | 'passage-too-long' | 'over-rewrite-ceiling';
+/** An operation's fault at Apply: the planner's, freshness, or the class policy's. */
+export type FileEditOperationFault =
+  | TextEditFaultKind
+  | 'baseline-changed'
+  | 'insertion-too-long'
+  | 'rewrite-ceiling'
+  | 'rewrite-protected'
+  | 'rewrite-too-large';

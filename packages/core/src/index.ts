@@ -243,9 +243,11 @@ export {
 } from '@/application/services/draftEdit/DraftEditUseCase';
 export { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
 export { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
-export type { FileEditOutcome, FileEditOperationLanding } from '@/application/services/fileEdits/ProjectFileEditGateway';
+export type { FileEditApplyOutcome, FileEditApplyState, FileEditOperationOutcome } from '@/application/services/fileEdits/ProjectFileEditGateway';
+export { FileEditStagingService } from '@/application/services/fileEdits/FileEditStagingService';
 export * from '@/domain/models/FileEdit';
-export { workshopExcerptFileEditSource } from '@/application/services/workshop/WorkshopExcerptFileEditSource';
+export * from '@/domain/models/FileEditStaging';
+export { workshopExcerptFileEditDocument } from '@/application/services/workshop/WorkshopExcerptFileEditDocument';
 export { describeDraftEditOutcome, describeQuickFixOutcome, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
 export {
   DRAFT_EDIT_LANGUAGE_IDS,

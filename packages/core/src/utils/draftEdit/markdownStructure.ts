@@ -23,12 +23,13 @@
  * - A block too long to lex quickly is not verified, and its edits are
  *   refused: unsure is never "unchanged".
  * - Plain text has no structure, so nothing is refused there.
- * - **Paragraphs that may merge or split** (persona edits to prose, ADR
- *   2026-11-05 D5): with `paragraphsMayMergeOrSplit`, a run of top-level
- *   paragraphs, blank lines between, reads as one paragraph whose inline
- *   shape is theirs in order, so joining, splitting or adding plain
- *   paragraphs keeps the shape, and a heading, list, fence or new inline
- *   markup still moves it. Proofread never sets it.
+ * - **`prose-paragraphs`** (persona edits to prose, ADR 2026-11-05 D5): a
+ *   run of top-level paragraphs, blank lines between, reads as one paragraph
+ *   whose inline shape is theirs in order, so plain paragraphs may split,
+ *   merge, appear or go, while a heading, list, quote, fence, table, break,
+ *   HTML block, or a link, image, code span, autolink or inline HTML (as
+ *   `strict` reads them) still moves it. Proofread and Craft Flags read
+ *   `strict`, the default.
  */
 
 import { Lexer, getDefaults, type Links, type Token, type Tokens } from 'marked';
@@ -45,7 +46,7 @@ export const MAX_VERIFIED_BLOCK_LENGTH = 50_000;
 
 /** The indices of `edits` that would change the document's Markdown structure. */
 export interface StructureOptions {
-  readonly paragraphsMayMergeOrSplit?: boolean;
+  readonly mode?: 'strict' | 'prose-paragraphs';
 }
 
 export function editsChangingStructure(
@@ -149,7 +150,7 @@ function shapeOf(source: string, links: Links, options: StructureOptions): strin
   // A fresh lexer per read (tokens accumulate on one), sharing the document's definitions.
   lexer.tokens.links = { ...links };
   const tokens = lexer.lex(source);
-  return describe(options.paragraphsMayMergeOrSplit ? joinParagraphRuns(tokens) : tokens);
+  return describe(options.mode === 'prose-paragraphs' ? joinParagraphRuns(tokens) : tokens);
 }
 
 /** Top-level runs of paragraphs, blank lines between, as one paragraph holding their inline tokens in order. */

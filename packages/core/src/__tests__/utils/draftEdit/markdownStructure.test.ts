@@ -121,26 +121,50 @@ describe('editsChangingStructure', () => {
   });
 });
 
-describe('editsChangingStructure: paragraphs that may merge or split (ADR 2026-11-05 D5)', () => {
-  const TEXT = 'Alice sat by her sister.\n\nThe White Rabbit ran by.\n';
-  const at = (find: string, replacement: string): StructureEdit => {
-    const start = TEXT.indexOf(find);
-    return { start, end: start + find.length, replacement };
-  };
-  const loose = { paragraphsMayMergeOrSplit: true };
+describe('editsChangingStructure: prose-paragraphs (ADR 2026-11-05 D5, PR #226 F-05)', () => {
+  const PROSE = { mode: 'prose-paragraphs' } as const;
+  // Astra's witnesses (docs/pr-reviews/probes/pr-226-*): refused under strict, free under prose-paragraphs.
+  const WITNESSES: Array<[string, string, StructureEdit]> = [
+    ['split paragraph', 'Alice ran. She stopped.', { start: 10, end: 11, replacement: '\n\n' }],
+    ['append new paragraph', 'Alice ran.', { start: 10, end: 10, replacement: '\n\nShe stopped.' }],
+    ['prepend new paragraph', 'Alice ran.', { start: 0, end: 0, replacement: 'She looked.\n\n' }],
+    ['merge paragraphs', 'Alice ran.\n\nShe stopped.', { start: 10, end: 12, replacement: ' ' }]
+  ];
 
-  it('lets plain paragraphs split, merge or be added only when asked', () => {
-    const split = [at('sat by', 'sat\n\nby')];
-    expect(editsChangingStructure(TEXT, 'markdown', split)).toEqual(new Set([0]));
-    expect(editsChangingStructure(TEXT, 'markdown', split, loose)).toEqual(new Set());
-    expect(editsChangingStructure(TEXT, 'markdown', [at('sister.\n\nThe', 'sister. The')], loose)).toEqual(new Set());
-    expect(editsChangingStructure(TEXT, 'markdown', [{ start: TEXT.length - 1, end: TEXT.length - 1, replacement: '\n\nAlice followed.' }], loose))
-      .toEqual(new Set());
+  it.each(WITNESSES)('%s: refused under strict, kept under prose-paragraphs', (_name, text, edit) => {
+    expect(editsChangingStructure(text, 'markdown', [edit])).toEqual(new Set([0]));
+    expect(editsChangingStructure(text, 'markdown', [edit], { mode: 'strict' })).toEqual(new Set([0]));
+    expect(editsChangingStructure(text, 'markdown', [edit], PROSE)).toEqual(new Set());
   });
 
-  it('still refuses a heading, a list or new inline markup', () => {
-    expect(editsChangingStructure(TEXT, 'markdown', [at('The White', '# The White')], loose)).toEqual(new Set([0]));
-    expect(editsChangingStructure(TEXT, 'markdown', [at('sat by', 'sat\n\n- by')], loose)).toEqual(new Set([0]));
-    expect(editsChangingStructure(TEXT, 'markdown', [at('sat by', 'sat *by*')], loose)).toEqual(new Set([0]));
+  it('keeps the single-newline control under both', () => {
+    const control: StructureEdit = { start: 10, end: 11, replacement: '\n' };
+    expect(editsChangingStructure('Alice ran. She stopped.', 'markdown', [control])).toEqual(new Set());
+    expect(editsChangingStructure('Alice ran. She stopped.', 'markdown', [control], PROSE)).toEqual(new Set());
+  });
+
+  it('lets a plain paragraph go', () => {
+    const text = 'Alice ran.\n\nShe stopped.\n\nThe Rabbit waited.';
+    expect(editsChangingStructure(text, 'markdown', [{ start: 10, end: 24, replacement: '' }], PROSE)).toEqual(new Set());
+  });
+
+  it('still refuses every other block and the inline constructs strict reads', () => {
+    const text = 'Alice sat by her sister.\n\nThe White Rabbit ran by.\n';
+    const at = (find: string, replacement: string): StructureEdit => {
+      const start = text.indexOf(find);
+      return { start, end: start + find.length, replacement };
+    };
+    for (const edit of [
+      at('The White', '# The White'),
+      at('sat by', 'sat\n\n- by'),
+      at('sat by', 'sat\n\n> by'),
+      at('sat by', 'sat\n\n---\n\nby'),
+      at('sat by', 'sat [by](https://example.com)'),
+      at('sat by', 'sat `by`'),
+      at('sat by', 'sat <b>by</b>'),
+      { start: text.length - 1, end: text.length - 1, replacement: '\n\n```\ncode\n```' }
+    ]) {
+      expect(editsChangingStructure(text, 'markdown', [edit], PROSE)).toEqual(new Set([0]));
+    }
   });
 });

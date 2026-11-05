@@ -68,6 +68,18 @@ describe('VsCodeDocumentEditor.open', () => {
   });
 });
 
+describe('VsCodeDocumentEditor.peek', () => {
+  it('reads an open document and loads nothing', async () => {
+    workspace.openTextDocument.mockReset();
+    const editor = new VsCodeDocumentEditor({ appendLine: jest.fn() } as never);
+    workspace.textDocuments = [];
+    expect(editor.peek(URI)).toBeUndefined();
+    workspace.textDocuments = [document()];
+    expect(editor.peek(URI)).toEqual({ uri: URI, version: 3, text: 'Alice is curious.', languageId: 'markdown' });
+    expect(workspace.openTextDocument).not.toHaveBeenCalled();
+  });
+});
+
 describe('VsCodeDocumentEditor.reveal', () => {
   beforeEach(() => {
     window.visibleTextEditors = [];

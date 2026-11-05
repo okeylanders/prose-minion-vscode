@@ -96,12 +96,19 @@ export class VsCodeDocumentEditor implements DocumentEditor, vscode.Disposable {
     return { uri: document.uri.toString(), version: document.version, text: document.getText(), languageId: document.languageId };
   }
 
+  peek(uri: string): DocumentSnapshot | undefined {
+    const document = this.find(uri);
+    return document && !document.isClosed
+      ? { uri: document.uri.toString(), version: document.version, text: document.getText(), languageId: document.languageId }
+      : undefined;
+  }
+
   async reveal(uri: string): Promise<boolean> {
-    const document = vscode.workspace.textDocuments.find((each) => each.uri.toString() === uri);
+    const document = this.find(uri);
     if (!document || document.isClosed) {
       return false;
     }
-    if (vscode.window.visibleTextEditors.some((editor) => editor.document.uri.toString() === uri)) {
+    if (vscode.window.visibleTextEditors.some((editor) => editor.document.uri.toString() === document.uri.toString())) {
       return false;
     }
     try {
@@ -190,6 +197,17 @@ export class VsCodeDocumentEditor implements DocumentEditor, vscode.Disposable {
     return options.review === 'preview'
       ? { kind: 'declined' }
       : { kind: 'failed', message: 'The editor did not apply the change.' };
+  }
+
+  /** An open document by any spelling of its URI: parsed, so a `file:` URL and VS Code's own string agree. */
+  private find(uri: string): vscode.TextDocument | undefined {
+    let key: string;
+    try {
+      key = vscode.Uri.parse(uri, true).toString();
+    } catch {
+      return undefined;
+    }
+    return vscode.workspace.textDocuments.find((each) => each.uri.toString() === key);
   }
 
   dispose(): void {

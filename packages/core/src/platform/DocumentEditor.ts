@@ -30,9 +30,10 @@
  * the host does, the applier's watch reads the lifetime as ended, so
  * nothing more is shown.
  *
- * Persona file edits (ADR 2026-11-05 D6) add two methods for the one
- * gateway that writes a project file: `open` loads a document's buffer
- * without showing it, so an edit can be placed against its live text; and
+ * Persona file edits (ADR 2026-11-05 D6) add three methods for the one
+ * gateway that writes a project file: `peek` reads an open document without
+ * loading anything; `open` loads a document's buffer without showing it, so
+ * an edit can be placed against its live text; and
  * `reveal` shows a document the writer cannot see after an edit lands in
  * it, since the applier never saves and a hidden dirty buffer would be a
  * change the writer never sees.
@@ -119,6 +120,12 @@ export interface DocumentEditor {
    * when it cannot be loaded as text.
    */
   open(uri: string): Promise<DocumentSnapshot | undefined>;
+  /**
+   * The document at `uri` as it stands, only when it is already open: never
+   * loads one (staging reads the live buffer when there is one, else the
+   * file; ADR 2026-11-05 D6).
+   */
+  peek(uri: string): DocumentSnapshot | undefined;
   /**
    * Show the open document without taking focus (a preview tab in VS Code),
    * unless an editor already shows it. Whether it was shown now.
