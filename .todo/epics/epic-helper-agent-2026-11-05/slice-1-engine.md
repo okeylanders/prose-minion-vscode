@@ -47,3 +47,21 @@
 - **Usage** reaches the token widget through the engine's fan-out, as every scope's does, and also rides on the result.
 - **`AIResourceManager.ts`** was at 503 lines, over the 500 line rule but not on the epic's list. It grows by five lines, only the scope's bundle seam that every scope adds (AGENTS.md: "its bundle in `AIResourceManager`").
 - **Lint naming.** The task keys stay kebab-case (`memory-draft`, as the ADR names them), with the repo's `naming-convention` disable comments beside them.
+
+## Acceptance checks (PR #225 review, A-01–A-05)
+
+Slice 1 owns A-04, the engine's half of A-05, and the bounds A-01 sets on the helper's input. A-02, A-03 and the rest of A-01 and A-05 are Slice 2's, where the sheet and the route are.
+
+| Check | How Slice 1 meets it | Test |
+|---|---|---|
+| A-01, the input is bounded | The task cuts its passage to `inputCharacters`, pinned equal to the sheet body's 8,000 UTF-16 code units. | `MemoryDraftTask.test.ts` ("sends the passage… cut to the task's bound", "reads as much of the turn as the memory sheet's body holds") |
+| A-04, exact shape and known kind | `helperExactFields`: a missing or extra field is a fault. The kind must be one of `PROJECT_MEMORY_KINDS`. | `MemoryDraftTask.test.ts` ("drops a draft missing a field…", "reads every kind of the closed list…") |
+| A-04, the existing one-line rule | `PROJECT_MEMORY_NOT_ONE_LINE` (control characters, U+2028, U+2029) moved to `shared/types/projectMemory.ts`. The sheet's `checkWorkshopMemoryDraft` and the helper's decoder both read it, so there is no second copy. | `MemoryDraftTask.test.ts` ("drops a title or summary holding a tab / carriage return / bell / C1 control / line separator / paragraph separator") |
+| A-04, the same limits as production | Bounds read `PROJECT_MEMORY_FIELD_CHARACTERS`, and the prompt's numbers and kinds are pinned to it. A sweep of edge drafts agrees with the sheet's own check, both ways, astral characters included. | `MemoryDraftTask.test.ts` ("agrees with the sheet's own check…"); `helperPromptSync.test.ts` |
+| A-04, no invention or truncation | Over-bound, empty, multi-line or unknown values fail. Only `parseModelJson`'s structure-only repairs are accepted, and they are logged by kind. | `MemoryDraftTask.test.ts` ("drops a field over its bound, never clipping it", "reads through the shared parser…") |
+| A-05, a finite timeout, set explicitly | The policy's `timeoutMs` (20 s), owned by the service's own timer, aborts the request's signal. A stalled transport is stopped, with fake timers. | `HelperAgentService.test.ts` ("stops a stalled transport at the task's own timeout…") |
+| A-05, caller abort | The caller's signal is forwarded. An already-aborted signal sends nothing. | `HelperAgentService.test.ts` ("reports an error and a caller's stop apart", "sends nothing when the caller stopped it first") |
+| A-05, capability-free and discarded | `AGENT_RUN_POLICIES.helper`: no catalog, no rounds, no corrections, discard. Calls carry no `tools` and no `reasoning`. | `HelperAgentService.test.ts` ("runs two different tasks…", "runs its helper policy capability-free…") |
+| A-05, bounded output, usage once, no text in logs | `maxTokens` is the policy's ceiling, and a reply cut off or too long is refused. Usage reaches the token listeners only through the engine's own fan-out; the service passes it back but never emits it. Logs carry task, model, outcome and counts. | `HelperAgentService.test.ts` ("drops a faulty answer by its kind…", "logs the task, the model, the outcome and counts, never the text") |
+| A-05, following | An unpicked helper follows a Proofread change, a picked one stays its own, a cleared pick follows again, and `following` reports it. | `ModelScopeSelections.test.ts` (helper block); `AIResourceManagerHelperScope.test.ts` |
+| A-05, retirement | A key refresh retires the held engine's transport, so it starts no new call. The new bundle keeps the followed model. A call already sent settles, as every scope's does (PR #169 F-01). | `AIResourceManagerHelperScope.test.ts` ("retires its engine's transport when a key change rebuilds its bundle…") |

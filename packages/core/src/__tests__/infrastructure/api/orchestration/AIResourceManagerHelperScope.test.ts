@@ -4,7 +4,7 @@
  * moving when Proofread's does; picked, its own. Model ids are placeholders.
  */
 import { AIResourceManager } from '@orchestration/AIResourceManager';
-import { DEFAULT_PROOFREAD_MODEL } from '@orchestration/ModelScopeSelections';
+import { DEFAULT_PROOFREAD_MODEL, followingModelScopes } from '@orchestration/ModelScopeSelections';
 
 const PROOFREAD = 'placeholder/proofread-model';
 const HELPER = 'placeholder/helper-model';
@@ -59,6 +59,27 @@ describe('AIResourceManager: the helper scope (ADR 2026-11-05 D3)', () => {
     configured.helperModel = '';
     await manager.refreshModelSelections();
     expect(manager.getEngine('helper')?.getModel()).toBe('placeholder/proofread-model-next');
+    manager.dispose();
+  });
+
+  it('reports itself following until picked, and not once picked (MODEL_DATA.following)', () => {
+    expect(followingModelScopes({ get: (_section: string, key: string) => ({ proofreadModel: PROOFREAD } as Record<string, string>)[key] })).toContain('helper');
+    expect(followingModelScopes({ get: (_section: string, key: string) => ({ helperModel: HELPER } as Record<string, string>)[key] })).not.toContain('helper');
+  });
+
+  it('retires its engine\'s transport when a key change rebuilds its bundle: the held engine starts no new call (A-05; PR #169 F-01)', async () => {
+    const manager = managerOf({ proofreadModel: PROOFREAD });
+    await manager.ensureInitialized();
+    const held = manager.getEngine('helper')!;
+    expect(held.isProviderAvailable()).toBe(true);
+
+    await manager.refreshConfiguration();
+
+    expect(held.isProviderAvailable()).toBe(false);
+    await expect(held.runInitial({} as never)).rejects.toMatchObject({ reason: 'missing-credentials' });
+    expect(manager.getEngine('helper')).not.toBe(held);
+    expect(manager.getEngine('helper')?.isProviderAvailable()).toBe(true);
+    expect(manager.getEngine('helper')?.getModel()).toBe(PROOFREAD);
     manager.dispose();
   });
 

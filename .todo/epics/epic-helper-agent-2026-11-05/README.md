@@ -92,3 +92,4 @@ This is the same flow as Project Memory and Bookmark Recall.
   - `helper` is a following scope (`MODEL_SCOPE_FOLLOWS.helper = 'proofread'`). Following was already keyed by that map; only comments and one header chip assumed the assistant model.
   - `HelperAgentService` with `HELPER_TASK_POLICIES` (`memory-draft`), the generic prompt, the task's section and worked example, its codec and budgets. Built in `extension.ts`, in `CoreServices`; no routes or UI yet.
   - Verification: typecheck clean; lint 0 errors and no new warnings; jest 757 suites / 10,520 tests / 59 snapshots, all passing; no `from 'vscode'` in `packages/core/src`.
+  - A-01–A-05 (PR #225 review): the one-line rule is shared (`PROJECT_MEMORY_NOT_ONE_LINE`), the timeout test is deterministic, and the helper's retirement is pinned; the checks are tabled in the slice doc. Jest 757 suites / 10,530 tests / 59 snapshots; lint 0 errors, 1,165 warnings.

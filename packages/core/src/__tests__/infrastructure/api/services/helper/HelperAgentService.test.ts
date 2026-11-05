@@ -29,7 +29,7 @@ const echoTask: HelperTaskPolicy<{ word: string }, { echo: string }> = {
     if (fault) {
       return { ok: false, fault };
     }
-    const echo = helperLine(root.echo, 40);
+    const echo = helperLine(root.echo, 40, /[\n]/u);
     return echo.ok ? { ok: true, value: { echo: echo.value } } : echo;
   },
   call: { temperature: 0, outputTokens: 50, responseCharacters: 500, timeoutMs: 1_000 }
@@ -134,10 +134,28 @@ describe('HelperAgentService', () => {
     expect(logged()[0]).toBe(`[Helper] echo on ${MODEL}: rejected, unknown-field (5 characters), 340 tokens`);
   });
 
-  it('reports an error, a timeout and a caller\'s stop apart', async () => {
-    const { service } = harness([new Error('provider refused'), 'hang', 'hang']);
+  it('stops a stalled transport at the task\'s own timeout, aborting the request, and reports a timeout (A-05)', async () => {
+    jest.useFakeTimers();
+    try {
+      const { service, runInitial } = harness(['hang']);
+      const running = service.run('count', { items: [] });
+      await Promise.resolve();
+      await Promise.resolve();
+      const signal = (runInitial.mock.calls[0][0] as { options: { signal: AbortSignal } }).options.signal;
+      expect(signal.aborted).toBe(false);
+      jest.advanceTimersByTime(countTask.call.timeoutMs - 1);
+      expect(signal.aborted).toBe(false);
+      jest.advanceTimersByTime(1);
+      expect(signal.aborted).toBe(true);
+      await expect(running).resolves.toEqual({ kind: 'failed', reason: 'timeout' });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('reports an error and a caller\'s stop apart', async () => {
+    const { service } = harness([new Error('provider refused'), 'hang']);
     await expect(service.run('echo', { word: 'Alice' })).resolves.toEqual({ kind: 'failed', reason: 'error' });
-    await expect(service.run('count', { items: [] })).resolves.toEqual({ kind: 'failed', reason: 'timeout' });
     const stop = new AbortController();
     const running = service.run('echo', { word: 'Alice' }, { signal: stop.signal });
     await Promise.resolve();

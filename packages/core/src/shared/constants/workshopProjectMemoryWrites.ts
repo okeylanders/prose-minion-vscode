@@ -12,7 +12,8 @@ import {
   PROJECT_MEMORY_FIELD_CHARACTERS,
   PROJECT_MEMORY_ID,
   PROJECT_MEMORY_KINDS,
-  PROJECT_MEMORY_LIST_ENTRIES
+  PROJECT_MEMORY_LIST_ENTRIES,
+  PROJECT_MEMORY_NOT_ONE_LINE
 } from '@shared/types/projectMemory';
 import type { WorkshopMemoryDraft, WorkshopMemoryHold, WorkshopMemoryPinnedEstimate, WorkshopMemoryProposal, WorkshopTurn } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -28,7 +29,7 @@ export type WorkshopMemoryDraftFault =
   | 'body-too-long'
   | 'too-many-replaced';
 
-const NOT_ONE_LINE = /[\p{Cc}\u2028\u2029]/u;
+const NOT_ONE_LINE = PROJECT_MEMORY_NOT_ONE_LINE;
 
 /* eslint-disable @typescript-eslint/naming-convention -- keyed by the faults' kebab-case words. */
 export const WORKSHOP_MEMORY_DRAFT_FAULTS: Readonly<Record<WorkshopMemoryDraftFault, string>> = {
