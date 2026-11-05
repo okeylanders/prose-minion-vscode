@@ -1094,6 +1094,11 @@ sessions:
   `WORKSHOP_LIST_SESSIONS`. The live port's `readWriterBookmarks` (every
   bookmark, for the writer) serves only the screen; a persona reads the
   open room only through `readLiveRoomBookmarks`.
+- **Memories from bookmarks** ([ADR 2026-11-05](docs/adr/2026-11-05-workshop-bookmark-recall.md) D9, D10).
+  - **A saved session's turn** is saved by `WorkshopSavedTurnMemoryHandler` (`WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY`). It checks the turn only through recall's `savedTurn`, refuses `ambiguous-session`, and writes only through `WorkshopProjectMemoryHandler.saveWriterMemory`, Project Memory's own write path.
+  - **A live turn outside the window** saves through `WORKSHOP_SAVE_TURN_TO_MEMORY` with `roomRevision`.
+  - **A proposal's `<cites-turn>`** is checked at save by `workshopProposalProvenance`. It keeps an id only when the open room's ledger holds the turn and the proposer could see it (`isWorkshopTurnVisibleToParticipant`), and drops anything else by id. Kept turns join `sourceTurns` within 32, and `sourceSession` stays the live room.
+  - **Saved-session citations are refused** until memories have multi-session sources.
 
 ### Lightbox Source Ownership
 

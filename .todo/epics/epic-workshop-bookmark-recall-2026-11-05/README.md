@@ -1,6 +1,6 @@
 # Epic: Workshop Bookmark Recall
 
-**Status:** Slice 3 in progress. Slice 2 merged at `78fe28d` (PR #216). Slice 1 merged at `ddf8356` (PR #215). Slice 0 (spec) merged at `8e9b612` (PR #214). The branch `epic/workshop-bookmark-recall` was cut from `epic-pinned-context` at `f298098` on 2026-11-05, after Pinned Context finished its code (Project Memory 6a–6c merged in at `b668782`). `main` was merged in for the Wayfinding close-out docs.
+**Status:** Slice 3 built (PR #219), in review. Slice 2 merged at `78fe28d` (PR #216). Slice 1 merged at `ddf8356` (PR #215). Slice 0 (spec) merged at `8e9b612` (PR #214). The branch `epic/workshop-bookmark-recall` was cut from `epic-pinned-context` at `f298098` on 2026-11-05, after Pinned Context finished its code (Project Memory 6a–6c merged in at `b668782`). `main` was merged in for the Wayfinding close-out docs.
 **Priority:** Medium
 **Created:** 2026-11-05
 **Integration branch:** `epic/workshop-bookmark-recall`. Each slice is built on its own branch, `epic/workshop-bookmark-recall-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -24,7 +24,7 @@ Every bookmark saved since Wayfinding reads unchanged.
 | 0 | Spec | ADR, this epic, slice docs, open questions | All | Done (PR #214, `8e9b612`) |
 | 1 | [Recall reads bookmarks](slice-1-recall-operation.md) | `transcript.bookmarks` end to end, the open room through a read-only live port, read marks, and the Wayfinding D10 pin rewritten | D1–D7 | Done (PR #215, `ddf8356`) |
 | 2 | [The Bookmarks screen](slice-2-bookmarks-screen.md) | Read-only browser across sessions: preview, Open, Open at bookmark | D8 | Done (PR #216, `78fe28d`) |
-| 3 | [Remember this, and proposals that cite bookmarks](slice-3-remember-this.md) | A saved bookmark becomes a memory citing its session and turn, and a persona's proposal cites the bookmarked turns | D9, D10 | In progress |
+| 3 | [Remember this, and proposals that cite bookmarks](slice-3-remember-this.md) | A saved bookmark becomes a memory citing its session and turn, and a persona's proposal cites the bookmarked turns | D9, D10 | Built (PR #219), in review |
 | 4 | [Verify live](slice-4-live-pass.md) | Extension Development Host pass; ADR → Accepted; memory bank | — | Pending (needs a human with VS Code) |
 
 **Order:** 1 → 2 → 3.
@@ -152,3 +152,9 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
   - **The Bookmarks screen's rows** carry source and turn ids. Live rows come from the full ledger, matched by `roomRevision`. An ambiguous row is never actionable.
   - **The upstream store code** (`findNamedSession`, `list()`, `rememberNamedSessionPath`) is Okey's to change in Pinned Context. Don't touch it here.
   - **The branch.** Slice 3 starts on `epic/workshop-bookmark-recall-slice-3-remember-this`, cut from the epic at `78fe28d`. The #218 sync merges in when it lands.
+- **2026-11-05. Slice 3 built** on `epic/workshop-bookmark-recall-slice-3-remember-this` (PR #219), in two commits: host `5e60b21c`, webview `20ce3f66`. The [slice doc's implementation note](slice-3-remember-this.md#implementation-note) lists the files, the tests by criterion, and eleven readings the ADR left open.
+  - **"Remember this," host side.** A saved session's bookmark saves through a new sibling route owner, `WorkshopSavedTurnMemoryHandler` (`WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY`). It checks the turn with recall's `savedTurn` and refuses `ambiguous-session`, never resolving it. It writes through Project Memory's own write path, by a new seam (`saveWriterMemory`), so `WorkshopProjectMemoryHandler` stays at 497 lines.
+  - **The live route** takes `roomRevision` and refuses another room.
+  - **"Remember this," webview side.** It is on the Bookmarks screen's rows and on the Notes list. An in-window turn goes through `saveTurn`, unchanged. A turn outside the window prefills from the host's message. A saved turn opens the sheet's new `saved-turn` mode: "From “Title”, …".
+  - **Cited turns (D10).** The trailer gains `<cites-turn>`, at most 30. At save, the host keeps a cited turn only when the open room holds it and the proposer could see it (`isWorkshopTurnVisibleToParticipant`). It drops the rest, saved-session and `current@…` refs included, and logs them by id. Kept turns join `sourceTurns` after the writer's message and the reply, each once, within 32. The prompt teaches the field with a worked example.
+  - **Verification:** typecheck clean; lint 0 errors / 1,165 warnings (baseline); jest **749 suites / 10,453 tests / 59 snapshots**, all passing (full run, `--maxWorkers=4`); no `vscode` import in core.
