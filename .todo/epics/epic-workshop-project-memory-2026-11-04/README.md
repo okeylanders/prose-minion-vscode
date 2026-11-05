@@ -333,7 +333,8 @@ The feature note's six open questions, plus the design scope:
     not caught. A change to the target's own bytes always is.
   - **Next (Okey's ask):** merge this epic into `epic-pinned-context` once
     its Slice 4 lands and its coordinator gives the go.
-  - **Follow-up idea (not filed):** a neutral, pure edit planner shared by
+  - **Follow-up idea (filed 2026-11-05 as [ADR 2026-11-05: Personas Propose
+    Edits to Project Files](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D3):** a neutral, pure edit planner shared by
     Draft Edit and memory edits. It would hold the operations and the
     anchoring, while each target keeps its own apply path. Raise it when
     Workshop agents get file editing.
