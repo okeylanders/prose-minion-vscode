@@ -269,7 +269,7 @@ describe('WorkshopPinnedContextSettingsPanel: the list well', () => {
       fireEvent.click(down);
       expect(props.onMove).toHaveBeenCalledWith('Characters/alice.md', 'down');
 
-      rerender(payload(), { pendingRequestId: 'move-1' }); // waiting: nothing moves yet
+      rerender(payload(), { pendingRequestIds: ['move-1'] }); // waiting: nothing moves yet
       const moved = [...TEN];
       [moved[2], moved[3]] = [moved[3], moved[2]];
       act(() => rerender(payload({ entries: moved, revision: 'rev-2' })));
@@ -341,7 +341,7 @@ describe('WorkshopPinnedContextSettingsPanel: Add from project… in pin mode', 
     fireEvent.click(button('Pin 1 file'));
     expect(props.onPinResources).toHaveBeenCalledWith([{ group: 'characters', path: 'Characters/the-duchess.md' }]);
 
-    rerender(payload(), { catalog, pendingRequestId: 'pin-1' });
+    rerender(payload(), { catalog, pendingRequestIds: ['pin-1'] });
     expect((button('Pinning…') as HTMLButtonElement).disabled).toBe(true);
 
     const refused = 'Can’t pin the-duchess.md: pinned context would come to about 104,000 of 100,000 words. Unpin another file, or shorten this one.';

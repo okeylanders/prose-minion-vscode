@@ -103,6 +103,8 @@ export interface PromptBudgets {
     readCharacters: number;
     readsPerTurn: number;
     autoSavesPerRoom: number;
+    /** Suggestions one reply may carry (Slice 6b): frames past it are dropped and counted. */
+    proposalsPerReply: number;
   }>;
   /**
    * Workshop Pinned Context (ADR 2026-11-04 D6): how many files the list
@@ -112,6 +114,7 @@ export interface PromptBudgets {
   readonly workshopPinnedContext: Readonly<{
     files: number;
     fileBytes: number;
+    pathCharacters: number;
   }>;
   readonly workshopTodos: Readonly<{
     items: number;
@@ -549,13 +552,17 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readMemories: 5,
     readCharacters: 40_000,
     readsPerTurn: 2,
-    autoSavesPerRoom: 5
+    autoSavesPerRoom: 5,
+    proposalsPerReply: 10
   },
   workshopPinnedContext: {
     files: 20,
     // 128 KiB, not less: 20 entries at a 4,096-character path encode to about
     // 83 KB, and the bound must never refuse a list the codec otherwise reads.
-    fileBytes: 128 * 1024
+    fileBytes: 128 * 1024,
+    // The longest entry path, in UTF-16 code units: the codec's path rule, every
+    // pin route and the tab's entry keys all hold this one bound (PR #210 F07).
+    pathCharacters: 4096
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {

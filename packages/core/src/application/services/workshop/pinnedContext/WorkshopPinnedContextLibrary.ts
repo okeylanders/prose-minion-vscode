@@ -62,7 +62,7 @@ import type { ConfiguredResourceRef } from '@messages';
 const LOG = '[WorkshopPinnedContext]';
 
 /** The store's reads, its live availability, and the tab's writes (Slice 3). */
-export type WorkshopPinnedContextStorePort = Pick<WorkshopPinnedContextStore, 'availability' | 'read' | 'update'>;
+export type WorkshopPinnedContextStorePort = Pick<WorkshopPinnedContextStore, 'availability' | 'read' | 'readObserved' | 'update'>;
 
 /** The accepted workspace, as the coordinator reads it now. */
 export type WorkshopPinnedContextScopePort = () => WorkshopSessionRecallScope;
@@ -170,7 +170,15 @@ export class WorkshopPinnedContextLibrary implements WorkshopPinnedContextTabPor
     if (!where.available) {
       return { state: 'unavailable', reason: where.reason, words: workshopPinnedListUnavailableWords(where.reason) };
     }
-    const read = await this.store.read({ filePath: where.filePath });
+    const observed = await this.store.readObserved({ filePath: where.filePath });
+    return { ...(await this.describeRead(where, observed.read)), observation: observed.observation };
+  }
+
+  /** One read of the list, described; its files read under the same root. */
+  private async describeRead(
+    where: WorkshopPinnedContextWhere,
+    read: WorkshopPinnedContextRead
+  ): Promise<WorkshopPinnedContextDescription> {
     switch (read.state) {
       case 'absent':
         return { state: 'listed', revision: read.revision, rows: [], words: 0, absent: true };

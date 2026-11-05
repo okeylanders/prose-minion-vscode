@@ -408,6 +408,69 @@ and `workshopMemoryExplainerOpen`).
 **Not applicable:** the settings round trip (pinned context is a project
 file, not a VS Code setting); say so in the PR.
 
+## PR #210 review fixes
+
+Astra's review of `9e1fd707` (`docs/pr-reviews/pr-210-pinned-context-settings-review.md`,
+committed at `bdab66e6`): changes required, F01–F07 and N01. Each is fixed
+on this branch; her probes are promoted into the suite (their headers say
+what changed), and each failing one fails on `9e1fd707` and passes now.
+
+| Finding | What changed | Tests |
+|---|---|---|
+| F01 | One source rule in the shared reader (`WorkshopPinnedContextFileReader`, `WorkshopPinnedSourceResolution`): the exact catalog row; else the exact file under the captured root, through the workspace door; only when that file is absent, the one normalized catalog spelling. `listedUnderRoot` and the authorized-path check stay. Describe, seed, Attach missing and pin validation all read through it | `WorkshopPinnedContextHostIdentityProbe` (the picker case), `WorkshopPinnedContextReviewFixes` (describe, seed, fallback) |
+| F02 | Attach missing reads and installs as one room operation in the coordinator's session-operation queue (`runRoomOperation` → `runContextRefresh`, as Refresh changed files does). An Open or reset asked meanwhile waits behind it, or is refused at the gate | `WorkshopPinnedContextSessionOperationProbe` (failed Open keeps the attach), `WorkshopPinnedContextReviewFixes` (successful Open runs after the attach) |
+| F03 | The hook tracks changes apart from list reads. A change's answer is always taken; a read is taken only while it is the newest read and no change has settled since it was asked; a push only while no change waits. A dismissed pick never blocks pushes | `WorkshopPinnedContextSettingsUiProbe` (reopen during a pin, native pick), `WorkshopPinnedContextHostControlsProbe` |
+| F04 | "In this conversation" comes from the room's attachments alone; Attach missing counts readable files the room lacks, the aggregate's budget guard deciding each. The template's warnings stay as they were | `WorkshopPinnedContextSettingsUiProbe`, `WorkshopPinnedContextHostControlsProbe` |
+| F05 | Open resolves through the reader's rule (`resolve`): it opens the resolved source, a source that can't be read for repair, and refuses a missing or ambiguous one | `WorkshopPinnedContextHostIdentityProbe` (normalized Open), `WorkshopPinnedContextReviewFixes` |
+| F06 | Attach missing checks room presence first, whatever the source's health, then names each file left out by its category (not found, couldn't be read, doesn't fit) | `WorkshopPinnedContextHostIdentityProbe` (missing, unreadable), the handler test's mixed case |
+| F07 | One bound, `PROMPT_BUDGETS.workshopPinnedContext.pathCharacters` (4,096, the figure the file bound was sized for), exported as `WORKSHOP_PINNED_CONTEXT_PATH_CHARACTERS`: the path rule refuses past it (`too-long`), so the codec and every pin route do, and the handler accepts keys up to it | `WorkshopPinnedContextLongPathProbe`, `WorkshopPinnedContextReviewFixes` |
+| N01 | The picker marks "Pinned" by the shared canonical key on the host's platform (`\` a separator only on Windows) | `WorkshopPinnedContextSettingsUiProbe` |
+
+Astra's two control probes (`HostControls`, `BoundaryControls`) are promoted
+too, unchanged. The handler's answer-building moved to
+`WorkshopPinnedContextAnswers.ts` to keep it under 500 lines.
+
+**Copy added:** "That file isn't there any more, so it can't be opened.
+Unpin it, or put the file back."; "More than one file in your context
+folders matches this entry, so none was opened. Fix the entry in
+pinned-context.json."; "Can't pin *x*: its path is longer than pinned
+context can store (4,096 characters)."; Attach missing's "Not attached:
+*x* (not found / couldn't be read / doesn't fit …)".
+
+### Re-review: F03 by observation
+
+Astra's re-review (`aa71009a`, merged) closed F01, F02, F04–F07 and N01. It
+left F03 open with a new case. A native pick of A, which is already pinned,
+is a no-op, and its describe reads the old list. Unpin A then commits and
+answers. The pick's older answer, arriving last, would put A back on screen.
+
+The fix orders answers by when the list was read, not by request or reply
+order:
+
+- **The store numbers each read.** `WorkshopPinnedContextStore.readObserved`
+  takes a monotonic `observation` inside the store's queue.
+- **Every answer carries it.** `describe()` carries it (`WorkshopPinnedContextDescription.observation`)
+  into every list answer's payload (`observation?`). A mutation's answer
+  carries the observation of the list it describes. The revision is not
+  used.
+- **The hook keeps the highest it has applied.**
+  - A lower answer still settles its own pending state and shows its own
+    notice and outcome, but never replaces the list.
+  - An equal or higher one applies.
+  - The earlier read rules remain only as the fallback when an answer has
+    no observation (no list read).
+- **The host still sends older lists.** It does not skip them (the optional
+  step), and the promoted host probe pins that behavior as written.
+
+Tests:
+
+- Astra's `WorkshopPinnedContextMutationOrderHostProbe` and
+  `…MutationOrderUiProbe`, promoted unchanged apart from a header.
+- The hook's overlapping-change case, in each answer order.
+- An older refusal that settles over a newer list.
+- The host's observations rising across a read and an unpin.
+- Every earlier F03 probe passes unchanged.
+
 ## Progress
 
 - **2026-11-04.** Slice doc written with the spec.
@@ -415,3 +478,5 @@ file, not a VS Code setting); say so in the PR.
   Built, Verification and Deviations above.
 - **2026-11-05.** The coordinator's follow-ups, Slice 2b's #208 fixes and
   the epic merged; verified at `1e06c642` and handed over for the PR.
+- **2026-11-05.** Re-review F03 fixed by store observation; verified (720
+  suites / 10,054 tests, typecheck clean, lint 0 errors / 1,165 warnings).

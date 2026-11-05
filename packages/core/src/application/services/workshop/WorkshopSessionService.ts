@@ -143,6 +143,7 @@ import {
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import { cloneTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
 import { cloneWorkshopMemoryProposal } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
+import { workshopMemoryProposalAt } from '@shared/constants/workshopProjectMemoryWrites';
 import {
   cloneWorkshopMemoryReceipt,
   workshopMemoryReceiptContent
@@ -1685,7 +1686,7 @@ export class WorkshopSessionService {
     citations?: UrlCitation[],
     widgetRecommendation?: WorkshopWidgetRecommendation,
     model?: WorkshopTurnModel,
-    memoryProposal?: WorkshopMemoryProposal
+    memoryProposals: readonly WorkshopMemoryProposal[] = []
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1734,9 +1735,9 @@ export class WorkshopSessionService {
       widgetRecommendation: (isHost || isGuest) && widgetRecommendation
         ? cloneWidgetRecommendation(widgetRecommendation)
         : undefined,
-      // A memory card belongs to a persona's reply (ADR 2026-11-04 D6).
-      memoryProposal: (isHost || isGuest) && memoryProposal
-        ? cloneWorkshopMemoryProposal(memoryProposal)
+      // Memory cards belong to a persona's reply (ADR 2026-11-04 D6; never an empty list).
+      memoryProposals: (isHost || isGuest) && memoryProposals.length > 0
+        ? memoryProposals.map(cloneWorkshopMemoryProposal)
         : undefined
     };
 
@@ -1852,29 +1853,32 @@ export class WorkshopSessionService {
   }
 
   /**
-   * Settle a persona's memory card (ADR 2026-11-04 D6): saved (naming the
-   * memory it became), dismissed, or shown again. Refuses a turn that holds
-   * no card.
+   * Settle one of a persona's memory cards (ADR 2026-11-04 D6; Slice 6b):
+   * saved (naming the memory it became), dismissed, or shown again. Refuses
+   * a turn that holds no card at `index`.
    */
-  setMemoryProposalState(turnId: string, state: WorkshopMemoryProposalState, memoryId?: string): WorkshopTurn {
+  setMemoryProposalState(turnId: string, index: number, state: WorkshopMemoryProposalState, memoryId?: string): WorkshopTurn {
     const turn = this.turnLedger.update(turnId, (current) => {
-      if (!current.memoryProposal) {
+      const proposal = workshopMemoryProposalAt(current, index);
+      if (!proposal || !current.memoryProposals) {
         return;
       }
-      const { memoryId: _previous, ...proposal } = current.memoryProposal;
-      current.memoryProposal = state === 'saved' && memoryId ? { ...proposal, state, memoryId } : { ...proposal, state };
+      const { memoryId: _previous, ...rest } = proposal;
+      current.memoryProposals = current.memoryProposals.map((item, at) => at !== index
+        ? item
+        : state === 'saved' && memoryId ? { ...rest, state, memoryId } : { ...rest, state });
     });
-    if (!turn?.memoryProposal) {
+    if (!workshopMemoryProposalAt(turn, index)) {
       throw Object.assign(new Error('That message no longer holds a memory suggestion.'), { reason: 'no-proposal' });
     }
-    return cloneTurn(turn);
+    return cloneTurn(turn!);
   }
 
-  /** Hold a pending card for the writer, with why (Save and tell me's cap reached at its commit: PR #201 F-04). */
-  holdMemoryProposal(turnId: string, held: WorkshopMemoryHold): void {
+  /** Hold one pending card for the writer, with why (Save and tell me's cap reached at its commit: PR #201 F-04). */
+  holdMemoryProposal(turnId: string, index: number, held: WorkshopMemoryHold): void {
     this.turnLedger.update(turnId, (current) => {
-      if (current.memoryProposal?.state === 'pending') {
-        current.memoryProposal = { ...current.memoryProposal, held };
+      if (current.memoryProposals && workshopMemoryProposalAt(current, index)?.state === 'pending') {
+        current.memoryProposals = current.memoryProposals.map((item, at) => at === index ? { ...item, held } : item);
       }
     });
   }

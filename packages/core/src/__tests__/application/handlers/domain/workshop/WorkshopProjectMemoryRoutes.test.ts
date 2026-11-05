@@ -31,8 +31,8 @@ describe('Workshop routes — project memory writes', () => {
       analysisResult(`Good.\n\n${frame}`, { conversationId: 'host-conv' }) as never
     );
     await route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'So the watch runs backward?' });
-    const reply = ledger().find((turn) => turn.memoryProposal);
-    expect(reply?.memoryProposal?.state).toBe('pending');
+    const reply = ledger().find((turn) => turn.memoryProposals);
+    expect(reply?.memoryProposals?.[0]?.state).toBe('pending');
     expect(reply?.content).toBe('Good.');
     return reply!;
   }
@@ -56,12 +56,12 @@ describe('Workshop routes — project memory writes', () => {
     const reply = await cardedReply();
     const before = snapshots();
 
-    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r1', turnId: reply.id, action: 'save' });
+    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r1', turnId: reply.id, index: 0, action: 'save' });
 
     expect(memoryFiles()).toHaveLength(1);
     const [result] = results();
     expect(result).toMatchObject({ requestId: 'r1', ok: true, memoryId: expect.stringMatching(/^mem-[0-9a-f]{6}$/) });
-    const card = ledger().find((turn) => turn.id === reply.id)!.memoryProposal!;
+    const card = ledger().find((turn) => turn.id === reply.id)!.memoryProposals![0];
     expect(card).toMatchObject({ state: 'saved', memoryId: result.memoryId });
     expect(receipts()).toHaveLength(1);
     expect(receipts()[0]).toMatchObject({
@@ -84,7 +84,7 @@ describe('Workshop routes — project memory writes', () => {
 
   it('the receipt is room history for every participant, and its line is never the memory\'s body', async () => {
     const reply = await cardedReply();
-    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r1', turnId: reply.id, action: 'save' });
+    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r1', turnId: reply.id, index: 0, action: 'save' });
     const receipt = receipts()[0];
 
     const forGuest = projectWorkshopRoomTurns(ledger(), { kind: 'personaGuest', personaId: 'margot' });
@@ -97,7 +97,7 @@ describe('Workshop routes — project memory writes', () => {
   it('Edit then Save writes the sheet\'s version', async () => {
     const reply = await cardedReply();
     await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, {
-      requestId: 'r2', turnId: reply.id, action: 'save', edited: draft({ title: 'The watch runs backward, always' })
+      requestId: 'r2', turnId: reply.id, index: 0, action: 'save', edited: draft({ title: 'The watch runs backward, always' })
     });
     const [result] = results();
     expect(result.ok).toBe(true);
@@ -110,9 +110,9 @@ describe('Workshop routes — project memory writes', () => {
     const reply = await cardedReply();
     await Promise.all([
       route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, {
-        requestId: 'r-edit', turnId: reply.id, action: 'save', edited: draft({ title: 'The watch runs backward, always' })
+        requestId: 'r-edit', turnId: reply.id, index: 0, action: 'save', edited: draft({ title: 'The watch runs backward, always' })
       }),
-      route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r-card', turnId: reply.id, action: 'save' })
+      route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r-card', turnId: reply.id, index: 0, action: 'save' })
     ]);
 
     expect(memoryFiles()).toHaveLength(1);
@@ -120,37 +120,37 @@ describe('Workshop routes — project memory writes', () => {
     const byId = Object.fromEntries(results().map((result) => [result.requestId, result]));
     expect(byId['r-edit']).toMatchObject({ ok: true });
     expect(byId['r-card']).toMatchObject({ ok: true, memoryId: byId['r-edit'].memoryId });
-    expect(ledger().find((turn) => turn.id === reply.id)?.memoryProposal).toMatchObject({ state: 'saved', memoryId: byId['r-edit'].memoryId });
+    expect(ledger().find((turn) => turn.id === reply.id)?.memoryProposals?.[0]).toMatchObject({ state: 'saved', memoryId: byId['r-edit'].memoryId });
   });
 
   it('a Dismiss sent while the card saves waits it out, and is refused once it is saved (PR #200 F-05)', async () => {
     const reply = await cardedReply();
     await Promise.all([
-      route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r-save', turnId: reply.id, action: 'save' }),
-      route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r-dismiss', turnId: reply.id, action: 'dismiss' })
+      route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r-save', turnId: reply.id, index: 0, action: 'save' }),
+      route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r-dismiss', turnId: reply.id, index: 0, action: 'dismiss' })
     ]);
     const byId = Object.fromEntries(results().map((result) => [result.requestId, result]));
     expect(byId['r-save'].ok).toBe(true);
     expect(byId['r-dismiss'].ok).toBe(false);
-    expect(ledger().find((turn) => turn.id === reply.id)?.memoryProposal?.state).toBe('saved');
+    expect(ledger().find((turn) => turn.id === reply.id)?.memoryProposals?.[0]?.state).toBe('saved');
   });
 
   it('Dismiss writes nothing, and Show it again brings the card back', async () => {
     const reply = await cardedReply();
-    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r3', turnId: reply.id, action: 'dismiss' });
-    expect(ledger().find((turn) => turn.id === reply.id)?.memoryProposal?.state).toBe('dismissed');
+    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r3', turnId: reply.id, index: 0, action: 'dismiss' });
+    expect(ledger().find((turn) => turn.id === reply.id)?.memoryProposals?.[0]?.state).toBe('dismissed');
     expect(memoryFiles()).toEqual([]);
     expect(receipts()).toEqual([]);
 
-    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r4', turnId: reply.id, action: 'reopen' });
-    expect(ledger().find((turn) => turn.id === reply.id)?.memoryProposal?.state).toBe('pending');
+    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r4', turnId: reply.id, index: 0, action: 'reopen' });
+    expect(ledger().find((turn) => turn.id === reply.id)?.memoryProposals?.[0]?.state).toBe('pending');
     expect(results().map((result) => result.ok)).toEqual([true, true]);
   });
 
   it('every write waits behind the session-operation gate, and answers its request', async () => {
     const reply = await cardedReply();
     (harness.persistence.isSessionOperationPending as jest.Mock).mockReturnValue(true);
-    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r5', turnId: reply.id, action: 'save' });
+    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r5', turnId: reply.id, index: 0, action: 'save' });
     await route(MessageType.WORKSHOP_MEMORY_CREATE, { requestId: 'r6', draft: draft() });
     await route(MessageType.WORKSHOP_SAVE_TURN_TO_MEMORY, { requestId: 'r7', turnId: reply.id, draft: draft() });
     await route(MessageType.WORKSHOP_MEMORY_UPDATE, { requestId: 'r8', memoryId: 'mem-7f3c2a', patch: draft() });
@@ -159,13 +159,13 @@ describe('Workshop routes — project memory writes', () => {
       ['r5', false], ['r6', false], ['r7', false], ['r8', false], ['r9', false]
     ]);
     expect(memoryFiles()).toEqual([]);
-    expect(ledger().find((turn) => turn.id === reply.id)?.memoryProposal?.state).toBe('pending');
+    expect(ledger().find((turn) => turn.id === reply.id)?.memoryProposals?.[0]?.state).toBe('pending');
   });
 
   it('a card stays saveable with memory turned off: the writer acts (D8)', async () => {
     const reply = await cardedReply();
     harness.memory.state.mode = 'off';
-    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r1', turnId: reply.id, action: 'save' });
+    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r1', turnId: reply.id, index: 0, action: 'save' });
     expect(results()[0].ok).toBe(true);
     expect(memoryFiles()).toHaveLength(1);
   });
@@ -176,7 +176,7 @@ describe('Workshop routes — project memory writes', () => {
       analysisResult(`Good.\n\n${memoryFrame()}`, { conversationId: 'host-conv' }) as never
     );
     await route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'So the watch runs backward?' });
-    expect(ledger().some((turn) => turn.memoryProposal)).toBe(false);
+    expect(ledger().some((turn) => turn.memoryProposals)).toBe(false);
     expect(ledger().at(-1)?.content).toBe('Good.');
   });
 
@@ -232,7 +232,7 @@ describe('Workshop routes — project memory writes', () => {
 
   it('logs ids and reasons, never the memory\'s text', async () => {
     const reply = await cardedReply();
-    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r1', turnId: reply.id, action: 'save' });
+    await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'r1', turnId: reply.id, index: 0, action: 'save' });
     const lines = (harness.log.appendLine as jest.Mock).mock.calls.map(([line]) => String(line)).join('\n')
       + harness.memory.lines.join('\n');
     expect(lines).not.toContain(BODY_SENTINEL);

@@ -32,7 +32,8 @@ describe('project-memory proposal prompt ↔ PROMPT_BUDGETS', () => {
     [/`<title>`: one line, at most ([\d,]+) characters/, [budgets.titleCharacters]],
     [/`<summary>`: one line, at most ([\d,]+) characters/, [budgets.summaryCharacters]],
     [/`<body>`: optional, at most ([\d,]+) characters/, [budgets.bodyCharacters]],
-    [/one per element, at most ([\d,]+)\./, [PROJECT_MEMORY_LIST_ENTRIES.supersedes]]
+    [/one per element, at most ([\d,]+)\./, [PROJECT_MEMORY_LIST_ENTRIES.supersedes]],
+    [/One reply suggests at most ([\d,]+) notes\./, [budgets.proposalsPerReply]]
   ];
 
   it.each(pinned)('quotes %s from its bound', (pattern, expected) => {
@@ -59,6 +60,15 @@ describe('project-memory proposal prompt ↔ PROMPT_BUDGETS', () => {
     expect(prose).toContain('When the writer chooses an idea, propose the `decision` or `canon` note that records the choice, and name the idea in `<supersedes>`.');
   });
 
+  it('teaches several suggestions: rarely, on request or for distinct things, each alone (Slice 6b)', () => {
+    expect(prose).toContain('Most replies suggest none.');
+    expect(prose).toContain('Suggest several only when the writer asks for them, or when several distinct things settled in this exchange.');
+    expect(prose).toContain('it never repeats or overlaps another suggestion in the same reply');
+    expect(prose).toContain('Each trailer is checked on its own');
+    expect(prose).toContain('A note that replaces another always waits for the writer to save it.');
+    expect(prose).not.toContain('at most one note');
+  });
+
   it('carries the never-list (D9)', () => {
     expect(prose).toContain('It never records anything about the writer\'s feelings, health, relationships or private life');
     expect(prose).toContain('never say a note was saved, and never promise to remember anything');
@@ -68,28 +78,36 @@ describe('project-memory proposal prompt ↔ PROMPT_BUDGETS', () => {
 describe('the trailer example, through the production extractor and codec', () => {
   const examples = [...PROMPT.matchAll(/```xml\n([\s\S]*?)```/g)].map((match) => match[1].trim());
 
-  it('shows exactly one example, and it decodes to the proposal it shows', () => {
+  it('shows exactly one example: two trailers, which decode to the two proposals it shows', () => {
     expect(examples).toHaveLength(1);
     const reply = `Good. It earns its place.\n\n${examples[0]}\n`;
     expect(extractWorkshopReplyControls(reply, { memoryOpen: true })).toEqual({
       rest: 'Good. It earns its place.',
-      redacted: 'Good. It earns its place.\n\n[project memory proposal removed]',
+      redacted: 'Good. It earns its place.\n\n[project memory proposal removed]\n\n[project memory proposal removed]',
       memory: {
-        kind: 'proposal',
-        proposal: {
+        kind: 'frames',
+        proposals: [{
           title: 'The Rabbit\'s watch runs backward',
           kind: 'canon',
           summary: 'From chapter 3 on, the White Rabbit\'s watch runs backward; nobody in Wonderland remarks on it.',
           body: 'We settled this while working the tea-party scene. The watch running backward is the first sign that time in Wonderland is wrong. Nobody comments on it; the reader notices before Alice does.',
           supersedes: ['mem-1a9e04']
-        }
+        }, {
+          title: 'The Hatter might know the Rabbit',
+          kind: 'idea',
+          summary: 'A possibility, not chosen: the Hatter and the White Rabbit knew each other before Alice arrived.',
+          body: '',
+          supersedes: []
+        }],
+        rejections: []
       }
     });
   });
 
   it('is refused anywhere but last, as the prose says', () => {
     const reply = `${examples[0]}\n\nGood. It earns its place.`;
-    expect(extractWorkshopReplyControls(reply, { memoryOpen: true }).memory).toEqual({ kind: 'rejected', reason: 'misplaced' });
+    expect(extractWorkshopReplyControls(reply, { memoryOpen: true }).memory)
+      .toEqual({ kind: 'frames', proposals: [], rejections: ['misplaced', 'misplaced'] });
   });
 });
 

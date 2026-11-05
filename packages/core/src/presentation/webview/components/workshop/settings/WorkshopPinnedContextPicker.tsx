@@ -24,6 +24,7 @@ import {
   type ProjectResourcePickerFooterState
 } from '@components/fulltab/ProjectResourcePickerModal';
 import { estimateProjectResourceWords } from '@components/fulltab/ProjectResourceAttachFooter';
+import { workshopPinnedContextPathKey } from '@shared/types/workshopPinnedContext';
 import type {
   ConfiguredResourceEntry,
   ConfiguredResourceRef,
@@ -45,9 +46,9 @@ export interface WorkshopPinnedContextPickerProps {
   pinnedPaths: readonly string[];
   /** Words pinned context has left under the context limit. */
   remainingWords: number;
-  /** The host's last answer, and the request still waiting, to tell this picker's pin. */
+  /** The host's last answer (its platform names "Pinned" rows), and the changes still waiting, to tell this picker's pin. */
   answer?: WorkshopPinnedContextPayload;
-  pendingRequestId?: string;
+  pendingRequestIds?: readonly string[];
   onSearch: (query: string) => void;
   onClearSearch: () => void;
   /** Ask the host to pin; the id of the request, or undefined when there is no list to change. */
@@ -65,14 +66,19 @@ export const WorkshopPinnedContextPicker: React.FC<WorkshopPinnedContextPickerPr
   pinnedPaths,
   remainingWords,
   answer,
-  pendingRequestId,
+  pendingRequestIds = [],
   onSearch,
   onClearSearch,
   onPin,
   onExplore,
   onClose
 }) => {
-  const pinned = React.useMemo(() => new Set(pinnedPaths), [pinnedPaths]);
+  // The host's canonical key, on the host's platform, as the shared match rule compares paths (PR #210 N01).
+  const platform = answer?.platform ?? 'posix';
+  const pinned = React.useMemo(
+    () => new Set(pinnedPaths.map((entryPath) => workshopPinnedContextPathKey(entryPath, platform))),
+    [pinnedPaths, platform]
+  );
   return (
     <ProjectResourcePickerModal
       open={open}
@@ -85,7 +91,7 @@ export const WorkshopPinnedContextPicker: React.FC<WorkshopPinnedContextPickerPr
       onExplore={onExplore}
       onClose={onClose}
       selection="multiple"
-      isAttached={(entry) => pinned.has(entry.path)}
+      isAttached={(entry) => pinned.has(workshopPinnedContextPathKey(platform === 'windows' ? entry.path.replace(/\\/g, '/') : entry.path, platform))}
       attachedLabel="Pinned"
       onConfirm={() => undefined}
       renderFooter={(state) => (
@@ -93,7 +99,7 @@ export const WorkshopPinnedContextPicker: React.FC<WorkshopPinnedContextPickerPr
           {...state}
           remainingWords={remainingWords}
           {...(answer ? { answer } : {})}
-          {...(pendingRequestId ? { pendingRequestId } : {})}
+          pendingRequestIds={pendingRequestIds}
           onPin={onPin}
         />
       )}
@@ -104,15 +110,15 @@ export const WorkshopPinnedContextPicker: React.FC<WorkshopPinnedContextPickerPr
 interface PinFooterProps extends ProjectResourcePickerFooterState {
   remainingWords: number;
   answer?: WorkshopPinnedContextPayload;
-  pendingRequestId?: string;
+  pendingRequestIds: readonly string[];
   onPin: (items: ConfiguredResourceRef[]) => string | undefined;
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
-const PinFooter: React.FC<PinFooterProps> = ({ selected, close, remainingWords, answer, pendingRequestId, onPin }) => {
+const PinFooter: React.FC<PinFooterProps> = ({ selected, close, remainingWords, answer, pendingRequestIds, onPin }) => {
   const [asked, setAsked] = React.useState<string | undefined>(undefined);
   const settled = asked !== undefined && answer?.requestId === asked;
-  const waiting = asked !== undefined && pendingRequestId === asked;
+  const waiting = asked !== undefined && pendingRequestIds.includes(asked);
   React.useEffect(() => {
     if (settled && answer?.ok) {
       close();

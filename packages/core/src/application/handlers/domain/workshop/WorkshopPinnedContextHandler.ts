@@ -47,7 +47,6 @@ import {
   type WorkshopPinnedContextAction,
   type WorkshopPinnedContextMessage,
   type WorkshopPinnedContextNotice,
-  type WorkshopPinnedContextPayload,
   type WorkshopRequestPinnedContextMessage,
   type WorkshopTurn,
   type WorkshopUnpinContextMessage
@@ -55,12 +54,16 @@ import {
 import { isContextPathGroup } from '@shared/types/context';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { workshopPinnedContextMatches } from '@shared/constants/workshopPinnedContext';
-import type { WorkshopPinnedContextEntry } from '@shared/types/workshopPinnedContext';
+import {
+  workshopPinnedAttachResultWords,
+  workshopPinnedContextPayloadOf,
+  type WorkshopPinnedAttachLeftOut
+} from '@handlers/domain/workshop/WorkshopPinnedContextAnswers';
+import { WORKSHOP_PINNED_CONTEXT_PATH_CHARACTERS, type WorkshopPinnedContextEntry } from '@shared/types/workshopPinnedContext';
 
 const LOG = '[WorkshopPinnedContextHandler]';
 const REQUEST_ID_CHARACTERS = 128;
 const REVISION_CHARACTERS = 128;
-const ENTRY_PATH_CHARACTERS = 1024;
 const PIN_REQUEST_ITEMS = PROMPT_BUDGETS.workshopPinnedContext.files;
 const ATTACHMENT_ID = /^ctx-\d{1,9}$/;
 
@@ -70,7 +73,6 @@ const WORDS = {
   notInRoom: 'That file isn’t attached to this conversation any more. Nothing was pinned.',
   outsideProject: 'Only files inside this project can be pinned.',
   running: 'Wait for the reply to finish to attach files to this conversation. Pinning and unpinning still work, and apply to new conversations.',
-  nothingMissing: 'Every pinned file is already in this conversation.',
   listUnavailable: 'Pinned context couldn’t be read just now, so nothing was attached.',
   workspaceChanged: 'The project folder changed, so nothing was attached. Try again.',
   openFailed: 'That file couldn’t be opened.'
@@ -78,6 +80,10 @@ const WORDS = {
 
 /** The session service's half this handler uses. */
 export type WorkshopPinnedContextSessionPort = Pick<WorkshopSessionService, 'getContextAttachments' | 'getContextAttachment' | 'addContextAttachment'>;
+
+type AttachOutcome =
+  | { readonly attached: readonly string[]; readonly leftOut: readonly WorkshopPinnedAttachLeftOut[] }
+  | { readonly refused: string; readonly line: string };
 
 export interface WorkshopPinnedContextEffects {
   postSessionState: () => void;
@@ -88,6 +94,12 @@ export interface WorkshopPinnedContextEffects {
   activeRunLabel: () => string | undefined;
   /** Resolves once the room has hydrated, so the first room's report exists. */
   roomReady: () => Promise<unknown>;
+  /**
+   * Run room work in the coordinator's session-operation queue (the room's
+   * existing ownership, as Refresh changed files uses), so an Open or reset
+   * waits behind it rather than capturing a rollback before it lands.
+   */
+  runRoomOperation: (work: () => Promise<void>) => Promise<void>;
 }
 
 export class WorkshopPinnedContextHandler {
@@ -264,48 +276,73 @@ export class WorkshopPinnedContextHandler {
     if (this.effects.activeRunLabel()) {
       return this.refuse(requestId, 'attach-missing', WORDS.running, 'attach refused (running)');
     }
+
+    // The read and the install run as one room operation, in the coordinator's own session-operation
+    // queue (as Refresh changed files does): an Open or reset asked meanwhile waits behind it, so its
+    // rollback checkpoint holds what this attached (PR #210 F02).
+    let outcome: AttachOutcome | undefined;
+    try {
+      await this.effects.runRoomOperation(async () => {
+        outcome = await this.attachMissing();
+      });
+    } catch {
+      outcome = { refused: WORDS.workspaceChanged, line: 'attach refused (room operation failed)' };
+    }
+    if (!outcome || 'refused' in outcome) {
+      return this.refuse(requestId, 'attach-missing', outcome?.refused ?? WORDS.workspaceChanged, outcome?.line ?? 'attach refused');
+    }
+    const { attached, leftOut } = outcome;
+    const changed = attached.length > 0;
+    await this.answer(requestId, { action: 'attach-missing', ok: changed, notice: { kind: changed ? 'done' : 'refused', text: workshopPinnedAttachResultWords(attached, leftOut) } },
+      `attach missing (attached=${attached.length}, ${(['missing', 'unreadable', 'over-budget'] as const)
+        .map((reason) => `${reason}=${leftOut.filter((entry) => entry.reason === reason).length}`).join(', ')})`);
+  }
+
+  /** Inside the room operation: read for this room, then attach each ready pinned file it lacks. */
+  private async attachMissing(): Promise<AttachOutcome> {
+    if (this.effects.activeRunLabel()) {
+      return { refused: WORDS.running, line: 'attach refused (running)' };
+    }
     const { read, still } = await this.pinnedContext.library.readForRoom();
     if (read.state === 'list-unreadable') {
-      return this.refuse(requestId, 'attach-missing', WORDS.listUnavailable, `attach refused (list ${read.category})`);
+      return { refused: WORDS.listUnavailable, line: `attach refused (list ${read.category})` };
     }
     // Read from the root this room was asked in, and attached only while it is still the room (PR #208 F01).
     if (read.state === 'workspace-changed' || !still()) {
-      return this.refuse(requestId, 'attach-missing', WORDS.workspaceChanged, 'attach refused (workspace changed)');
+      return { refused: WORDS.workspaceChanged, line: 'attach refused (workspace changed)' };
     }
     if (this.effects.activeRunLabel()) {
-      return this.refuse(requestId, 'attach-missing', WORDS.running, 'attach refused (running)');
+      return { refused: WORDS.running, line: 'attach refused (running)' };
     }
     const platform = this.pinnedContext.library.platform;
     const attached: string[] = [];
-    const leftOut: string[] = [];
-    let changed = false;
+    const leftOut: WorkshopPinnedAttachLeftOut[] = [];
     for (const file of read.state === 'listed' ? read.files : []) {
-      if (file.state !== 'ready') {
+      // Already here, whatever the source's health now: the room keeps its own copy (PR #210 F06).
+      if (this.session.getContextAttachments().some((attachment) => workshopPinnedContextMatches(file.entry, attachment, platform))) {
         continue;
       }
-      if (this.session.getContextAttachments().some((attachment) => workshopPinnedContextMatches(file.entry, attachment, platform))) {
+      if (file.state !== 'ready') {
+        leftOut.push({ label: file.label, reason: file.state });
         continue;
       }
       const result = this.session.addContextAttachment(file.input);
       if (!result.ok) {
         if (result.reason !== 'duplicate') {
-          leftOut.push(file.label);
+          leftOut.push({ label: file.label, reason: 'over-budget' });
         }
         continue;
       }
-      changed = true;
       attached.push(file.label);
       if (result.eventTurn) {
         this.effects.postTurn(result.eventTurn);
       }
     }
-    if (changed) {
+    if (attached.length > 0) {
       this.effects.markDirty('pinned context attached');
       this.effects.postSessionState();
     }
-    const text = attachedWords(attached, leftOut);
-    await this.answer(requestId, { action: 'attach-missing', ok: changed, notice: { kind: changed ? 'done' : 'refused', text } },
-      `attach missing (attached=${attached.length}, over-budget=${leftOut.length})`);
+    return { attached, leftOut };
   }
 
   /** The first room's seed report, on the status line, once (Slice 2b, deviation 4). */
@@ -364,65 +401,6 @@ export class WorkshopPinnedContextHandler {
   }
 }
 
-/** The answer's list, from the library's description. Pure. */
-export function workshopPinnedContextPayloadOf(
-  description: WorkshopPinnedContextDescription,
-  platform: WorkshopPinnedContextPayload['platform'],
-  requestId: string | null
-): WorkshopPinnedContextPayload {
-  const totals = (files: number, words: number) => ({
-    words,
-    budgetWords: PROMPT_BUDGETS.contextAttachments.words,
-    files,
-    maxFiles: PROMPT_BUDGETS.workshopPinnedContext.files
-  });
-  const base = { requestId, platform, entries: [], totals: totals(0, 0), revision: null };
-  switch (description.state) {
-    case 'listed':
-      return {
-        ...base,
-        availability: { available: true },
-        file: { state: description.absent ? 'absent' : 'ok' },
-        revision: description.revision,
-        entries: description.rows.map((row) => ({
-          path: row.path,
-          label: row.label,
-          ...(row.source?.kind === 'catalog' ? { group: row.source.group } : {}),
-          ...(row.state === 'ready' || row.state === 'head-sliced' ? { words: row.words } : {}),
-          state: row.state,
-          ...(row.stateWords ? { stateWords: row.stateWords } : {}),
-          ...(row.state === 'head-sliced' && row.totalWords !== undefined
-            ? { truncation: { keptWords: row.words, totalWords: row.totalWords } }
-            : {})
-        })),
-        totals: totals(description.rows.length, description.words)
-      };
-    case 'unreadable':
-      return { ...base, availability: { available: true }, file: { state: 'unreadable', words: description.words } };
-    case 'unavailable':
-      // The folder changed under the read (PR #208 F01): the list is there, just not readable this moment.
-      return description.reason === 'workspace-changed'
-        ? { ...base, availability: { available: true }, file: { state: 'io', words: description.words } }
-        : { ...base, availability: { available: false, reason: description.reason, words: description.words }, file: { state: 'absent' } };
-    case 'busy':
-    case 'io':
-      return { ...base, availability: { available: true }, file: { state: description.state, words: description.words } };
-  }
-}
-
-function attachedWords(attached: readonly string[], leftOut: readonly string[]): string {
-  if (attached.length === 0 && leftOut.length === 0) {
-    return WORDS.nothingMissing;
-  }
-  const files = (count: number) => `${count} pinned ${count === 1 ? 'file' : 'files'}`;
-  const left = leftOut.length > 0
-    ? ` Not attached: ${leftOut.join(', ')} (doesn’t fit in the ${PROMPT_BUDGETS.contextAttachments.words.toLocaleString('en-US')}-word context limit).`
-    : '';
-  return attached.length > 0
-    ? `Attached ${files(attached.length)} to this conversation.${left}`
-    : `Nothing was attached.${left}`;
-}
-
 function requestIdOf(payload: { requestId?: unknown } | undefined): string | undefined {
   const requestId = payload?.requestId;
   return typeof requestId === 'string' && requestId.length > 0 && requestId.length <= REQUEST_ID_CHARACTERS ? requestId : undefined;
@@ -434,7 +412,7 @@ function revisionOf(payload: { revision?: unknown } | undefined): string | undef
 }
 
 function entryPathOf(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 && value.length <= ENTRY_PATH_CHARACTERS ? value : undefined;
+  return typeof value === 'string' && value.length > 0 && value.length <= WORKSHOP_PINNED_CONTEXT_PATH_CHARACTERS ? value : undefined;
 }
 
 function resourcesOf(value: unknown): ConfiguredResourceRef[] | undefined {
@@ -447,7 +425,7 @@ function resourcesOf(value: unknown): ConfiguredResourceRef[] | undefined {
       return undefined;
     }
     const { group, path } = item as { group?: unknown; path?: unknown };
-    if (typeof group !== 'string' || !isContextPathGroup(group) || typeof path !== 'string' || path.length === 0 || path.length > ENTRY_PATH_CHARACTERS) {
+    if (typeof group !== 'string' || !isContextPathGroup(group) || typeof path !== 'string' || path.length === 0 || path.length > WORKSHOP_PINNED_CONTEXT_PATH_CHARACTERS) {
       return undefined;
     }
     items.push({ group, path });

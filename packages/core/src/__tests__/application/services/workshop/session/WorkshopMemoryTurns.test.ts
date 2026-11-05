@@ -47,8 +47,8 @@ function roomWithCardAndReceipt() {
   const carded = room.hostMessage('So the watch runs backward?', {
     reply: `Yes.\n\n${memoryFrame({ body: BODY })}`
   });
-  expect(carded.memoryProposal?.state).toBe('pending');
-  room.session.setMemoryProposalState(carded.id, 'saved', 'mem-7f3c2a');
+  expect(carded.memoryProposals?.[0]?.state).toBe('pending');
+  room.session.setMemoryProposalState(carded.id, 0, 'saved', 'mem-7f3c2a');
   const receipt = room.session.appendMemoryReceipt(RECEIPT);
   const last = room.hostMessage('And the Cat?');
   return { room, first, carded, receipt, last };
@@ -92,7 +92,7 @@ describe('memory cards and receipts in the session', () => {
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
     );
     const turns = session.readRoomLedger();
-    expect(turns.find((turn) => turn.id === carded.id)?.memoryProposal).toMatchObject({ state: 'saved', memoryId: 'mem-7f3c2a', body: BODY });
+    expect(turns.find((turn) => turn.id === carded.id)?.memoryProposals).toMatchObject([{ proposes: 'new', state: 'saved', memoryId: 'mem-7f3c2a', body: BODY }]);
     expect(turns.find((turn) => turn.id === receipt.id)?.projectMemoryReceipt).toEqual(RECEIPT);
   });
 
@@ -104,24 +104,65 @@ describe('memory cards and receipts in the session', () => {
       mutate(checkpoint.workshop.turns);
       return checkpoint as unknown as WorkshopPersistedSessionV2;
     };
-    const card = (turns: Array<Record<string, unknown>>) => turns.find((turn) => turn.memoryProposal)!;
+    const card = (turns: Array<Record<string, unknown>>) => turns.find((turn) => turn.memoryProposals)!;
+    const first = (turns: Array<Record<string, unknown>>) => (card(turns).memoryProposals as Array<Record<string, unknown>>)[0];
     const receipt = (turns: Array<Record<string, unknown>>) => turns.find((turn) => turn.projectMemoryReceipt)!;
     const writer = (turns: Array<Record<string, unknown>>) => turns.find((turn) => turn.participant === 'writer')!;
 
     it.each<[string, (turns: Array<Record<string, unknown>>) => void, RegExp]>([
-      ['a card on a writer turn', (turns) => { writer(turns).memoryProposal = card(turns).memoryProposal; }, /memoryProposal must be a host or guest persona reply/],
-      ['a saved card naming no memory', (turns) => { delete (card(turns).memoryProposal as Record<string, unknown>).memoryId; }, /memoryProposal\.memoryId must be a memory id/],
-      ['a pending card naming a memory', (turns) => { (card(turns).memoryProposal as Record<string, unknown>).state = 'pending'; }, /memoryProposal\.memoryId must be absent/],
-      ['a card with an unknown field', (turns) => { (card(turns).memoryProposal as Record<string, unknown>).origin = 'proposed'; }, /unknown field origin/],
-      ['a card of an unknown kind', (turns) => { (card(turns).memoryProposal as Record<string, unknown>).kind = 'secret'; }, /memoryProposal\.kind/],
+      ['a card on a writer turn', (turns) => { writer(turns).memoryProposals = card(turns).memoryProposals; }, /memoryProposals must be a host or guest persona reply/],
+      ['a saved card naming no memory', (turns) => { delete first(turns).memoryId; }, /memoryProposals\[0\]\.memoryId must be a memory id/],
+      ['a pending card naming a memory', (turns) => { first(turns).state = 'pending'; }, /memoryProposals\[0\]\.memoryId must be absent/],
+      ['a card with an unknown field', (turns) => { first(turns).origin = 'proposed'; }, /unknown field origin/],
+      ['a card of an unknown kind', (turns) => { first(turns).kind = 'secret'; }, /memoryProposals\[0\]\.kind/],
+      ['a card proposing something unknown', (turns) => { first(turns).proposes = 'edit'; }, /memoryProposals\[0\]\.proposes/],
+      ['a card that names what it proposes nowhere', (turns) => { delete first(turns).proposes; }, /memoryProposals\[0\]/],
+      ['an empty list of cards', (turns) => { card(turns).memoryProposals = []; }, /memoryProposals/],
+      ['more cards than a reply may carry', (turns) => {
+        card(turns).memoryProposals = Array.from({ length: 11 }, () => ({ ...first(turns) }));
+      }, /memoryProposals/],
+      ['the single card of before the list, in the current shape', (turns) => {
+        const turn = card(turns);
+        const { proposes: _proposes, ...single } = first(turns);
+        delete turn.memoryProposals;
+        turn.memoryProposal = single;
+      }, /memoryProposal must be absent/],
       ['a receipt on a writer turn', (turns) => { writer(turns).projectMemoryReceipt = receipt(turns).projectMemoryReceipt; }, /projectMemoryReceipt must be a receipt only on a session memory_receipt divider/],
       ['a memory_receipt divider with no receipt', (turns) => { delete receipt(turns).projectMemoryReceipt; }, /projectMemoryReceipt must be a receipt on a memory_receipt divider/],
       ['a receipt with a bad version', (turns) => { (receipt(turns).projectMemoryReceipt as Record<string, unknown>).version = 'v1'; }, /version must be a memory version/],
       ['a receipt carrying a body', (turns) => { (receipt(turns).projectMemoryReceipt as Record<string, unknown>).body = BODY; }, /unknown field body/]
-    ])('%s', (_name, mutate, message) => {
+    ])('%s', (name, mutate, message) => {
       const session = withTurn(mutate);
       expect(() => parseWorkshopPersistedSession(JSON.parse(JSON.stringify(session)))).toThrow(message);
-      expect(() => decodeWorkshopPersistedSessionCheckpoint(JSON.parse(JSON.stringify(session)))).toThrow(message);
+      if (!name.startsWith('the single card')) {
+        expect(() => decodeWorkshopPersistedSessionCheckpoint(JSON.parse(JSON.stringify(session)))).toThrow(message);
+      }
+    });
+
+    it('a development checkpoint\'s single card is listed as its only card, and logged by name (Slice 6b)', () => {
+      const session = withTurn((turns) => {
+        const turn = card(turns);
+        const { proposes: _proposes, ...single } = first(turns);
+        delete turn.memoryProposals;
+        turn.memoryProposal = single;
+      });
+      const text = JSON.stringify(session);
+      expect(text).toContain('"memoryProposal"');
+      const decoded = decodeWorkshopPersistedSessionCheckpoint(JSON.parse(text));
+      expect(decoded.normalizations).toEqual(['listed-single-memory-proposal']);
+      const listed = decoded.session.workshop.turns.find((turn) => turn.memoryProposals)!;
+      expect(listed.memoryProposals).toEqual([expect.objectContaining({ proposes: 'new', state: 'saved', memoryId: 'mem-7f3c2a', body: BODY })]);
+      expect(JSON.stringify(decoded.session)).not.toContain('"memoryProposal"');
+      // What it writes back is the current shape, read whole.
+      expect(() => parseWorkshopPersistedSession(JSON.parse(JSON.stringify(decoded.session)))).not.toThrow();
+    });
+
+    it('a development checkpoint can\'t hold both shapes', () => {
+      const session = withTurn((turns) => {
+        const { proposes: _proposes, ...single } = first(turns);
+        card(turns).memoryProposal = single;
+      });
+      expect(() => decodeWorkshopPersistedSessionCheckpoint(JSON.parse(JSON.stringify(session)))).toThrow(/memoryProposal must be absent beside memoryProposals/);
     });
   });
 
@@ -133,7 +174,7 @@ describe('memory cards and receipts in the session', () => {
         conversations: room.archive(),
         cut: { kind: 'afterTurn', turnId: carded.id }
       });
-      expect(kept.workshop.turns.find((turn) => turn.id === carded.id)?.memoryProposal?.state).toBe('saved');
+      expect(kept.workshop.turns.find((turn) => turn.id === carded.id)?.memoryProposals?.[0]?.state).toBe('saved');
       expect(kept.workshop.turns.some((turn) => turn.projectMemoryReceipt)).toBe(false);
 
       const cut = rewindWorkshopSession({
@@ -141,7 +182,7 @@ describe('memory cards and receipts in the session', () => {
         conversations: room.archive(),
         cut: { kind: 'afterTurn', turnId: first.id }
       });
-      expect(cut.workshop.turns.some((turn) => turn.memoryProposal)).toBe(false);
+      expect(cut.workshop.turns.some((turn) => turn.memoryProposals)).toBe(false);
     });
 
     it('Branch keeps the card and the receipt up to the cut; New clears them', async () => {
@@ -154,7 +195,7 @@ describe('memory cards and receipts in the session', () => {
 
       const outcome = await harness.coordinator.branchFrom({ kind: 'beforeTurn', turnId: lastQuestion.id });
       const branch = (await harness.store.readNamed(outcome.branch.sessionId))!;
-      expect(branch.workshop.turns.filter((turn) => turn.memoryProposal)).toHaveLength(1);
+      expect(branch.workshop.turns.filter((turn) => turn.memoryProposals)).toHaveLength(1);
       expect(branch.workshop.turns.filter((turn) => turn.projectMemoryReceipt)).toHaveLength(1);
 
       await harness.coordinator.resetSession({ start: 'carry' });

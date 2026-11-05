@@ -403,7 +403,7 @@ export class WorkshopRoomHandler {
         this.sendError('workshop.run_tool', errorMessage, details),
       widgetRecommendationRejected: (errorMessage, details) =>
         this.sendError('workshop.widget_recommendation', errorMessage, details),
-      memoryAutoSave: (turn) => this.sliceComposition.autoSaveMemoryProposal(turn, controller.signal),
+      memoryAutoSave: (turn, indexes) => this.sliceComposition.autoSaveMemoryProposals(turn, indexes, controller.signal),
       memoryAutoSavesInRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
       settled: (requestId) => this.settleActiveRun(requestId)
     });
@@ -1394,15 +1394,15 @@ export class WorkshopRoomHandler {
    * as they stop any running run (its permission is withdrawn).
    */
   private memoryAutoSaveFor(signal: AbortSignal): {
-    hand: (turn: WorkshopTurn) => void;
+    hand: (turn: WorkshopTurn, indexes: readonly number[]) => void;
     inRoom: () => number;
     settled: () => Promise<void> | undefined;
   } {
     let saving: Promise<void> | undefined;
     return {
       inRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
-      hand: (turn) => {
-        saving = this.sliceComposition.autoSaveMemoryProposal(turn, signal);
+      hand: (turn, indexes) => {
+        saving = this.sliceComposition.autoSaveMemoryProposals(turn, indexes, signal);
       },
       settled: () => saving
     };

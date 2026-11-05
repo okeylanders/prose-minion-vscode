@@ -122,6 +122,7 @@ type FileRead =
 
 export class WorkshopPinnedContextStore {
   private queue: Promise<unknown> = Promise.resolve();
+  private observations = 0;
   private readonly owed = new Set<Promise<unknown>>();
   private readonly platform: WorkshopPinnedContextPathPlatform;
   private readonly mintStagingId: () => string;
@@ -168,16 +169,23 @@ export class WorkshopPinnedContextStore {
 
   /** The list as it reads now, with its revision. */
   read(options: WorkshopPinnedContextReadOptions = {}): Promise<WorkshopPinnedContextRead> {
-    return this.enqueue(async () => {
-      const where = this.availability();
-      if (!where.available) {
-        return { state: 'unavailable', reason: where.reason };
-      }
-      if (options.filePath !== undefined && where.filePath !== options.filePath) {
-        return { state: 'unavailable', reason: 'workspace-changed' };
-      }
-      return publicRead(await this.readState(where.filePath));
-    });
+    return this.readObserved(options).then(({ read }) => read);
+  }
+
+  /** As `read`, numbered in the queue's order: a higher `observation` is a later snapshot (PR #210 F03). */
+  readObserved(options: WorkshopPinnedContextReadOptions = {}): Promise<{ read: WorkshopPinnedContextRead; observation: number }> {
+    return this.enqueue(async () => ({ read: await this.readQueued(options), observation: ++this.observations }));
+  }
+
+  private async readQueued(options: WorkshopPinnedContextReadOptions): Promise<WorkshopPinnedContextRead> {
+    const where = this.availability();
+    if (!where.available) {
+      return { state: 'unavailable', reason: where.reason };
+    }
+    if (options.filePath !== undefined && where.filePath !== options.filePath) {
+      return { state: 'unavailable', reason: 'workspace-changed' };
+    }
+    return publicRead(await this.readState(where.filePath));
   }
 
   /**

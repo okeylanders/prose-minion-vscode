@@ -30,6 +30,7 @@ import { workshopAutoSavedMemories } from '@hooks/domain/workshop/memory/worksho
 
 const BODY = 'Jill and I agreed the Cat\'s arrivals are never shown.';
 const PROPOSAL: WorkshopMemoryProposal = {
+  proposes: 'new',
   title: 'The Cheshire Cat is never seen arriving',
   kind: 'canon',
   summary: 'It is always already there.',
@@ -49,7 +50,7 @@ const reply = (proposal: WorkshopMemoryProposal): WorkshopTurn => ({
   excerptVersion: 1,
   content: 'And the Cat never arrives on the page.',
   timestamp: 1,
-  memoryProposal: proposal
+  memoryProposals: [proposal]
 });
 
 const RECEIPT: WorkshopProjectMemoryReceipt = {
@@ -73,7 +74,7 @@ const SAVED = reply({ ...PROPOSAL, state: 'saved', memoryId: 'mem-7f3c2a' });
 const controls = (turns: WorkshopTurn[] = [], overrides: Partial<WorkshopTurnMemoryControls> = {}): WorkshopTurnMemoryControls => ({
   disabled: false,
   autoSaved: workshopAutoSavedMemories(turns),
-  busyTurnIds: new Set(),
+  busyCards: new Set(),
   cardErrors: new Map(),
   onSaveCard: jest.fn(),
   onEditCard: jest.fn(),
@@ -108,7 +109,7 @@ describe('the held card', () => {
     expect(card.textContent).toContain('Live web research was available for this reply, so this memory waits for you to save it.');
     expect(card.textContent).not.toContain('Saved to this project only.');
     fireEvent.click(screen.getByRole('button', { name: /^Save$/ }));
-    expect(memory.onSaveCard).toHaveBeenCalledWith('turn-4-assistant-1008');
+    expect(memory.onSaveCard).toHaveBeenCalledWith('turn-4-assistant-1008', 0);
     expect(screen.getByRole('button', { name: 'Edit…' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy();
   });
@@ -196,8 +197,8 @@ describe('workshopAutoSavedMemories', () => {
     const forgotten = { ...receiptTurn({ ...RECEIPT, action: 'forgotten', by: 'writer' }), id: 'turn-6-system-1012' };
     const result = workshopAutoSavedMemories([SAVED, receiptTurn(), forgotten]);
     expect([...result.cards.keys()]).toEqual(['turn-5-system-1010']);
-    expect(result.cards.get('turn-5-system-1010')).toBe(SAVED.memoryProposal);
-    expect([...result.replyTurnIds]).toEqual([SAVED.id]);
+    expect(result.cards.get('turn-5-system-1010')).toBe(SAVED.memoryProposals![0]);
+    expect([...result.cardKeys]).toEqual([`${SAVED.id}#0`]);
     expect(workshopAutoSavedMemories([reply(PROPOSAL)]).cards.size).toBe(0);
   });
 });

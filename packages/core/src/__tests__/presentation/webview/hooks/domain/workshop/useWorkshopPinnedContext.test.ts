@@ -143,4 +143,35 @@ describe('useWorkshopPinnedContext', () => {
     const reloaded = renderHook(() => useWorkshopPinnedContext({ attachments: [], running: false }));
     expect(reloaded.result.current.noteOpen).toBe(false);
   });
+
+  it.each(['older answer last', 'older answer first'] as const)(
+    'orders overlapping changes by the store observation, not by reply order (%s; PR #210 F03)', (order) => {
+      const { result } = renderHook(() => useWorkshopPinnedContext({ attachments: [], running: false }));
+      act(() => result.current.handlePinnedContext(message(answer(lastId(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT), { observation: 1 }))));
+      let pick = '';
+      let unpin = '';
+      act(() => { pick = result.current.pinPickedFile()!; });
+      act(() => { unpin = result.current.unpin('Characters/alice.md')!; });
+      // The pick's list was read before the unpin committed (observation 2); the unpin's after (3).
+      const stale = message(answer(pick, { observation: 2, action: 'pin-file', ok: true }));
+      const fresh = message(answer(unpin, { observation: 3, revision: 'rev-2', action: 'unpin', ok: true, entries: [answer(null).entries[1]] }));
+      const replies = order === 'older answer last' ? [fresh, stale] : [stale, fresh];
+      replies.forEach((reply) => act(() => result.current.handlePinnedContext(reply)));
+
+      expect(result.current.answer?.revision).toBe('rev-2');
+      expect(result.current.pinnedFileCount).toBe(1);
+      expect(result.current.pendingRequestIds).toEqual([]);
+    });
+
+  it('settles an older answer and shows its own outcome, over the newer list', () => {
+    const { result } = renderHook(() => useWorkshopPinnedContext({ attachments: [], running: false }));
+    act(() => result.current.handlePinnedContext(message(answer(lastId(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT), { observation: 5 }))));
+    let pin = '';
+    act(() => { pin = result.current.pinResources([{ group: 'characters', path: 'Characters/the-hatter.md' }])!; });
+    act(() => result.current.handlePinnedContext(message(answer(pin, {
+      observation: 4, revision: 'older', action: 'pin-resources', ok: false, notice: { kind: 'refused', text: 'Pinned context holds at most 20 files.' }
+    }))));
+    expect(result.current.answer).toMatchObject({ revision: 'rev-1', requestId: pin, ok: false, notice: { kind: 'refused', text: 'Pinned context holds at most 20 files.' } });
+    expect(result.current.pending).toBe(false);
+  });
 });

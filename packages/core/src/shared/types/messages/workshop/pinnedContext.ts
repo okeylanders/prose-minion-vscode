@@ -67,6 +67,13 @@ export interface WorkshopPinnedContextPayload {
   readonly platform: WorkshopPinnedContextPathPlatform;
   readonly availability: WorkshopPinnedContextAvailabilityView;
   readonly file: WorkshopPinnedContextFileState;
+  /**
+   * The store read this list was drawn from, numbered in the store's queue
+   * (PR #210 F03): a higher one is a later snapshot, whatever order answers
+   * arrive in. The webview never lets a lower one replace the list it shows.
+   * Absent when no list was read.
+   */
+  readonly observation?: number;
   /** The revision every change names; null when there is no list to change. */
   readonly revision: string | null;
   readonly entries: readonly WorkshopPinnedContextEntryView[];
