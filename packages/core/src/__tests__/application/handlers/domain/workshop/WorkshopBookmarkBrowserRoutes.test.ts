@@ -40,6 +40,10 @@ function corpusOf(sessions: WorkshopPersistedSessionV2[]) {
       await gate.hold;
       return sessions.find((session) => session.sessionId === sessionId);
     }),
+    readPagedSession: jest.fn(async (cursor: string, sessionId: string) => {
+      await gate.hold;
+      return cursor === sessionId ? sessions.find((session) => session.sessionId === sessionId) : undefined;
+    }),
     listPage: jest.fn(async (request: { after?: string; limit: number }) => {
       const ordered = [...sessions].sort((left, right) => right.sessionId.localeCompare(left.sessionId))
         .filter((session) => request.after === undefined || session.sessionId.localeCompare(request.after) < 0);

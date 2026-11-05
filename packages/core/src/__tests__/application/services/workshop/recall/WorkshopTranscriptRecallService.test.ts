@@ -73,6 +73,8 @@ class FakeSessionStore implements WorkshopRecallCorpusPort {
       remaining: ordered.length - taken.length
     };
   });
+  /** The page's own file: here, the session by id (the cursor is its id). */
+  readonly readPagedSession = jest.fn(async (_cursor: string, sessionId: string) => this.readNamed(sessionId));
   readonly readNamed = jest.fn(async (sessionId: string) => {
     this.onRead?.(sessionId);
     const failure = this.failures.get(sessionId);

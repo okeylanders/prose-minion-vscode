@@ -103,6 +103,7 @@ describe('saved sessions, a page at a time (PR #214 F-02)', () => {
       jest.spyOn(room.coordinator, 'flush'),
       jest.spyOn(room.coordinator, 'initialize')
     ];
+    const readPaged = jest.spyOn(room.pages, 'readPagedSession');
     const readNamed = jest.spyOn(room.pages, 'readNamed');
     const list = jest.spyOn(room.pages, 'list');
 
@@ -110,7 +111,9 @@ describe('saved sessions, a page at a time (PR #214 F-02)', () => {
     expect(first).toMatchObject({ read: 3, cacheHits: 0 });
     const second = paged(await room.recall.bookmarkPage({}));
     expect(second).toMatchObject({ read: 3, cacheHits: 3 });
-    expect(readNamed).toHaveBeenCalledTimes(3);
+    expect(readPaged).toHaveBeenCalledTimes(3);
+    // Page-local reads only: never the exact-read path (PR #216 F-01).
+    expect(readNamed).not.toHaveBeenCalled();
     touched.forEach((spy) => expect(spy).not.toHaveBeenCalled());
     // Never the browser's capped, query-capable listing.
     expect(list).not.toHaveBeenCalled();
@@ -142,10 +145,10 @@ describe('saved sessions, a page at a time (PR #214 F-02)', () => {
     await expect(room.recall.bookmarkPage({}, before.signal)).rejects.toMatchObject({ name: 'AbortError' });
 
     const during = new AbortController();
-    const readNamed = room.pages.readNamed.bind(room.pages);
-    jest.spyOn(room.pages, 'readNamed').mockImplementation(async (sessionId) => {
+    const readPaged = room.pages.readPagedSession.bind(room.pages);
+    jest.spyOn(room.pages, 'readPagedSession').mockImplementation(async (cursor, sessionId) => {
       during.abort();
-      return readNamed(sessionId);
+      return readPaged(cursor, sessionId);
     });
     await expect(room.recall.bookmarkPage({}, during.signal)).rejects.toMatchObject({ name: 'AbortError' });
   });
@@ -153,10 +156,10 @@ describe('saved sessions, a page at a time (PR #214 F-02)', () => {
   it('refuses once the open room is another, and discards what it read', async () => {
     const room = await workspace();
     await saveBookmarkedSessions(room.store, 2);
-    const readNamed = room.pages.readNamed.bind(room.pages);
-    jest.spyOn(room.pages, 'readNamed').mockImplementation(async (sessionId) => {
+    const readPaged = room.pages.readPagedSession.bind(room.pages);
+    jest.spyOn(room.pages, 'readPagedSession').mockImplementation(async (cursor, sessionId) => {
       jest.spyOn(room.coordinator, 'recallScope').mockReturnValue({ available: true, liveSessionId: 'another-room' });
-      return readNamed(sessionId);
+      return readPaged(cursor, sessionId);
     });
     expect(await room.recall.bookmarkPage({})).toEqual({ available: false, reason: 'not-ready' });
   });

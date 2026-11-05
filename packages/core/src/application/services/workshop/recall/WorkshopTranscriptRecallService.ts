@@ -138,6 +138,8 @@ export interface WorkshopRecallCorpusPort {
   readNamed(sessionId: string): Promise<WorkshopPersistedSessionV2 | undefined>;
   /** Every session file, a bounded page at a time, uncapped by `list`'s 200 (ADR 2026-11-05 D8). */
   listPage(request: { after?: string; limit: number }, signal?: AbortSignal): Promise<WorkshopRecallSessionPage>;
+  /** A page's session from the file its entry names, if that file holds it; page-local (PR #216 F-01). */
+  readPagedSession(cursor: string, sessionId: string): Promise<WorkshopPersistedSessionV2 | undefined>;
 }
 
 export interface WorkshopTranscriptRecallServiceOptions {
@@ -422,8 +424,13 @@ export class WorkshopTranscriptRecallService {
       signal,
       (listSignal) => this.corpus.listPage({ ...(request.after !== undefined ? { after: request.after } : {}), limit }, listSignal),
       async (scope, page) => {
+        // Each session is read from the file its own entry names (PR #216 F-01).
+        const files = new Map(page.entries.flatMap((entry) => (entry.summary ? [[entry.summary.sessionId, entry.cursor] as const] : [])));
+        const pageLoader = new WorkshopRecallDocumentLoader(
+          { readNamed: (sessionId) => this.corpus.readPagedSession(files.get(sessionId) ?? '', sessionId) },
+          this.cache, this.limits.unreadableSessionBytes, (line) => this.log(line));
         const result = await workshopRecallBookmarkPage(page, scope.liveSessionId, (sessions) =>
-          this.loader.loadAll(sessions, Number.POSITIVE_INFINITY, scope, signal));
+          pageLoader.loadAll(sessions, Number.POSITIVE_INFINITY, scope, signal));
         this.log(workshopRecallBookmarkPageLogLine(result));
         return result;
       }

@@ -16,6 +16,8 @@
  *   when it lies outside the loaded window; a refused Open jumps nowhere.
  * - Closing the screen returns focus to its opener, and a late answer to an
  *   earlier request is dropped.
+ * - A bookmark Open another action supersedes (the New shortcut over its
+ *   confirmation) never jumps in a later, ordinary Open (PR #216 F-02).
  */
 
 import './support/jsdomTextEncoding';
@@ -64,7 +66,8 @@ const TO_HOST = new Set<MessageType>([
   MessageType.WORKSHOP_REQUEST_LIVE_BOOKMARKS,
   MessageType.WORKSHOP_REQUEST_SAVED_TURN_PREVIEW,
   MessageType.WORKSHOP_REQUEST_TURN_PREVIEW,
-  MessageType.WORKSHOP_OPEN_SESSION
+  MessageType.WORKSHOP_OPEN_SESSION,
+  MessageType.WORKSHOP_RESET_SESSION
 ]);
 const TO_WEBVIEW = new Set<MessageType>([
   MessageType.WORKSHOP_SESSION_STATE,
@@ -93,6 +96,8 @@ function corpusOf(sessions: WorkshopPersistedSessionV2[]) {
     availability: () => ({ available: true as const }),
     list: jest.fn(async () => ({ sessions: sessions.map(summary), truncated: false })),
     readNamed: jest.fn(async (sessionId: string) => sessions.find((session) => session.sessionId === sessionId)),
+    readPagedSession: jest.fn(async (cursor: string, sessionId: string) =>
+      (cursor === sessionId ? sessions.find((session) => session.sessionId === sessionId) : undefined)),
     listPage: jest.fn(async (request: { after?: string; limit: number }) => {
       const ordered = sessions.filter((session) => request.after === undefined || session.sessionId < request.after)
         .sort((left, right) => (left.sessionId < right.sessionId ? 1 : -1));
@@ -338,4 +343,35 @@ describe('WorkshopApp Bookmarks screen against the real host (ADR 2026-11-05 D8)
     await act(async () => { window.dispatchEvent(new MessageEvent('message', { data: late })); });
     expect(within(screenDialog()).getByText('Bookmarks from all 2 saved sessions.')).toBeTruthy();
   });
+  it('drops a bookmark Open the New shortcut supersedes, so a later ordinary Open does not jump (PR #216 F-02)', async () => {
+    const { harness, saved, pump } = await bridged();
+    await openFromMenu(pump);
+    const row = within(screenDialog()).getByText('Tea party', { selector: '.pm-ws-session-row-meta span' }).closest('article')!;
+    fireEvent.click(within(row as HTMLElement).getByRole('button', { name: `Open at bookmark ${BOOKMARK_LABEL}` }));
+    const originalConfirm = screen.getByRole('dialog', { name: 'Open “Tea party”?' });
+    // The real session controller handles this shortcut while focus is on a confirmation button.
+    const cancel = within(originalConfirm).getByRole('button', { name: 'Cancel' });
+    cancel.focus();
+    fireEvent.keyDown(cancel, { key: 'N', ctrlKey: true, shiftKey: true });
+    expect(screen.queryByRole('dialog', { name: 'Open “Tea party”?' })).toBeNull();
+    const replacementConfirm = screen.getByRole('dialog');
+    fireEvent.click(within(replacementConfirm).getByRole('button', { name: 'New session' }));
+    await pump();
+    expect(harness.persistence.resetSession).toHaveBeenCalled();
+    expect(harness.persistence.openNamed).not.toHaveBeenCalled();
+
+    // Ordinary Open of a different saved room must not reuse Tea party's abandoned bookmark target.
+    openHydrates(harness, saved[1]);
+    await openFromMenu(pump);
+    (Element.prototype.scrollIntoView as jest.Mock).mockClear();
+    fireEvent.click(within(screenDialog()).getByRole('button', { name: 'Open session The garden' }));
+    const nextConfirm = screen.queryByRole('dialog', { name: 'Open “The garden”?' });
+    if (nextConfirm) {
+      fireEvent.click(within(nextConfirm).getByRole('button', { name: 'Open session' }));
+    }
+    await pump();
+    expect(harness.persistence.openNamed).toHaveBeenCalledWith('alice-2', expect.any(Function));
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+  });
+
 });

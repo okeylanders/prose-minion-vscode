@@ -987,14 +987,12 @@ export const WorkshopApp: React.FC = () => {
   });
   const bookmarkOpenAt = useWorkshopBookmarkOpenAt({
     roomRevision: workshop.sessionReady ? workshop.roomRevision : undefined,
+    sessionConfirm,
+    sessionActionPending: workshopSessions.sessionActionPending,
     sessionActionResult: workshopSessions.sessionActionResult,
     openStoredSession,
     jumpToTurn
   });
-  const cancelSessionConfirmAndJump = React.useCallback(() => {
-    bookmarkOpenAt.dropPendingJump();
-    cancelSessionConfirm();
-  }, [bookmarkOpenAt.dropPendingJump, cancelSessionConfirm]);
   const openBookmark = React.useCallback(
     // The host's `inWindow` decides; the thread is never searched to re-derive it.
     (bookmark: WorkshopBookmarkSummary) => bookmark.inWindow
@@ -1852,7 +1850,7 @@ export const WorkshopApp: React.FC = () => {
         open={sessionConfirm !== null}
         {...workshopSessionConfirmCopy(sessionConfirm, { shelvedExcerptTitle, pinnedFileCount: pinnedContext.pinnedFileCount })}
         onConfirm={acceptSessionConfirm}
-        onCancel={cancelSessionConfirmAndJump}
+        onCancel={cancelSessionConfirm}
       />
       <WorkshopToast toast={toast} />
     </FullTabShell>

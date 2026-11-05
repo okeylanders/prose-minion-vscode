@@ -8,9 +8,13 @@
  *   stable order and bounds each page by files and bytes, so every session
  *   it takes is read here: cached documents are free, cold ones go through
  *   the loader, under the call's scope.
- * - **The open room is left out** (it is read through the live port), and
- *   so is a second file claiming an id already read, which counts as
- *   unreadable: an exact read could not tell the two apart.
+ * - **The open room is left out** (it is read through the live port).
+ * - **An id two files claim is never resolved** (PR #216 F-01). The store
+ *   marks such an entry `ambiguous`, counting claims over the whole folder,
+ *   so on every page either file lands on it is named unreadable and never
+ *   read; within one page a repeated id counts the same way. A page reads
+ *   each session from the file its own entry names (`load`), never through
+ *   the store's exact-read path cache.
  * - **Every session is accounted for:** read, unreadable (named when its
  *   summary was readable), or not yet read (`remaining`, after `next`).
  * - Rows are recall's bookmarks (WorkshopRecallBookmarks): field by field,
@@ -26,6 +30,8 @@ export interface WorkshopRecallSessionPageEntry {
   readonly cursor: string;
   /** Absent when the store could not read the file's summary. */
   readonly summary?: WorkshopRecallSessionSummary;
+  /** Another file in the folder claims the same session id. */
+  readonly ambiguous?: true;
 }
 
 /** What the corpus port's `listPage` returns. */
@@ -78,12 +84,12 @@ export async function workshopRecallBookmarkPage(
   const wanted: WorkshopRecallSessionSummary[] = [];
   const unreadableSessions: Array<{ sessionId: string; title: string }> = [];
   let unnamed = 0;
-  for (const { summary } of page.entries) {
+  for (const { summary, ambiguous } of page.entries) {
     if (!summary) {
       unnamed += 1;
     } else if (summary.sessionId === liveSessionId) {
       continue;
-    } else if (seen.has(summary.sessionId)) {
+    } else if (ambiguous || seen.has(summary.sessionId)) {
       unreadableSessions.push({ sessionId: summary.sessionId, title: summary.title });
     } else {
       seen.add(summary.sessionId);
