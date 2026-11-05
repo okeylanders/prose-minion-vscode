@@ -199,7 +199,8 @@ them as [decided](../../../docs/adr/2026-11-04-workshop-pinned-context.md#decide
 1. the tab sits after About you;
 2. an ordinary New session tops up;
 3. over budget, each file that fits attaches, in order;
-4. the bound is 20 files, tuned in Slice 5;
+4. the bound is 20 files, tuned in Slice 5 (**tuned to 50** in the live
+   pass, Okey, 2026-11-05);
 6. Pin from a pill, as drawn; unpinning stays in the tab.
 
 **Merge, then code (Okey, 2026-11-05).** Project Memory merged in (see
@@ -317,3 +318,12 @@ the repo:
   with no conflicts and no pinned-context code touched. The duplicate
   `memory.css` import is gone. Verified twice at 728 suites / 10,239 tests.
   **The epic is code complete;** Slice 5, Okey's live pass, is next.
+- **2026-11-05. Slice 5 live pass, first fixes merged** as PR #217
+  (`fa10e8d`).
+  - Pin what's attached now, with 22 files, was refused as an unreadable
+    request: the handler used the list's 20-file bound as its message-shape
+    check. A pin past the bound now gets the bound's own words.
+  - Okey tuned the bound to **50**, and the list file's byte bound to 256
+    KiB.
+  - Astra's N-01 (the byte bound's fit is proved only for ASCII paths) is
+    low-priority tech debt.
