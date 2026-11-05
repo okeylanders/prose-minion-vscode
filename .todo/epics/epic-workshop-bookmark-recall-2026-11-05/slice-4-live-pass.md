@@ -15,7 +15,10 @@ Record the commit tested, the VS Code version and OS, the screen reader, and wha
 
   Each answer cites the session and turn, and the full message shows (or a stated cut with a hint).
 - [ ] **Reads.** Ask a persona to read a saved session. Bookmarked turns carry their label.
-- [ ] **The open room.** Bookmark a turn in the open room. No persona sees it.
+- [ ] **The open room.** Bookmark a few turns in the open room, then ask: "can you see what I bookmarked in this session and propose any new memories?"
+  - The persona lists them with their messages.
+  - Its proposals cite the bookmarked turns: open a saved memory's source.
+  - A guest doesn't see a bookmark on a private exchange it wasn't part of.
 - [ ] **Opening the screen.** It opens from the sessions menu and from the Notes tab.
   - [ ] Rows, search, and both groupings.
   - [ ] Preview, Open session, and Open at bookmark, including a turn outside the window.

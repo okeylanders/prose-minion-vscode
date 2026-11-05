@@ -4,14 +4,15 @@
 **Priority:** Medium
 **Created:** 2026-11-05
 **Integration branch:** `epic/workshop-bookmark-recall`. Each slice is built on its own branch, `epic/workshop-bookmark-recall-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
-**Decision:** [ADR 2026-11-05: Bookmarks Personas Can Read, and a Bookmarks Screen](../../../docs/adr/2026-11-05-workshop-bookmark-recall.md) (Proposed; Q1–Q6 for Okey)
+**Decision:** [ADR 2026-11-05: Bookmarks Personas Can Read, and a Bookmarks Screen](../../../docs/adr/2026-11-05-workshop-bookmark-recall.md) (Proposed; Okey answered Q1–Q6 on 2026-11-05)
 **Realizes:** [Bookmarks personas can read, and a Bookmarks screen](../../features/feature-workshop-bookmark-recall/README.md)
 **Downstream of:** Wayfinding (on `main`), Project Memory, and Pinned Context. Fixes from those two epics' live passes are merged in as they land.
 
 ## Goal
 
 Two outcomes:
-- **For personas:** read the writer's bookmarks in saved sessions on request. That means a fast list, filtered by session, date, text and speaker, with each bookmark's full message, plus marks on bookmarked turns in a read.
+- **For personas:** read the writer's bookmarks on request, in the open room and in saved sessions. That means a fast list, filtered by scope, session, date, text and speaker, with each bookmark's full message, plus marks on bookmarked turns in a read.
+  - Okey's own use case is "can you see what I bookmarked in this session and propose any new memories?" A memory proposed that way cites the bookmarked turns (ADR D10).
 - **For the writer:** one screen of every bookmark, with preview, Open, Open at bookmark, and "Remember this".
 
 Every bookmark saved since Wayfinding reads unchanged.
@@ -21,9 +22,9 @@ Every bookmark saved since Wayfinding reads unchanged.
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR, this epic, slice docs, open questions | All | In review |
-| 1 | [Recall reads bookmarks](slice-1-recall-operation.md) | `transcript.bookmarks` end to end, read marks, the D10 pin rewritten | D1–D7 | Planned |
+| 1 | [Recall reads bookmarks](slice-1-recall-operation.md) | `transcript.bookmarks` end to end, the open room through a read-only live port, read marks, and the Wayfinding D10 pin rewritten | D1–D7 | Planned |
 | 2 | [The Bookmarks screen](slice-2-bookmarks-screen.md) | Read-only browser across sessions: preview, Open, Open at bookmark | D8 | Planned |
-| 3 | [Remember this](slice-3-remember-this.md) | A saved bookmark becomes a memory, citing its session and turn | D9 | Planned |
+| 3 | [Remember this, and proposals that cite bookmarks](slice-3-remember-this.md) | A saved bookmark becomes a memory citing its session and turn, and a persona's proposal cites the bookmarked turns | D9, D10 | Planned |
 | 4 | [Verify live](slice-4-live-pass.md) | Extension Development Host pass; ADR → Accepted; memory bank | — | Pending (needs a human with VS Code) |
 
 **Order:** 1 → 2 → 3.
@@ -63,11 +64,14 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
 
 ## Completion Criteria
 
-- `transcript.bookmarks` returns saved sessions' bookmarks, with full messages, within stated bounds and with hints that decode as written. Its filters are session, recent, match, persona, query, speaker and the dates.
+- `transcript.bookmarks` returns bookmarks from the open room and saved sessions, with full messages, within stated bounds and with hints that decode as written.
+  - Its filters are scope, session, recent, match, persona, query, speaker and the dates.
+  - From the open room, a persona sees only bookmarks on turns it could see.
 - `transcript.read` marks bookmarked turns. Export and the turn preview are unchanged.
 - The Bookmarks screen lists every bookmark across saved sessions and the live room. It can preview, open the session, and jump to the turn.
 - "Remember this" saves a saved session's bookmarked message as a memory, citing its session and turn.
-- Bookmarks never enter a room frame, a catch-up or provider history. The live room's bookmarks never reach a persona.
+- Bookmarks never enter a room frame, a catch-up or provider history. A persona reads them only on request.
+- A persona's memory proposal from bookmarks cites the bookmarked turns, and the host checks every one.
 - Every bookmark saved since Wayfinding reads unchanged.
 
 ## Close-out (with the final PR)
@@ -85,3 +89,7 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
     - the call syntax is `<prose-minion-tool-call name="…">`;
     - the bounds belong in `PROMPT_BUDGETS.workshopTranscriptRecall`;
     - `<match>` and `<persona>` choose sessions, so bookmark filters need their own fields.
+- **2026-11-05. Okey's answers to Q1–Q6.** All six are recorded in the ADR.
+  - **Q1 changed the design.** The open room's bookmarks are visible to personas, on request, through `<scope>` and a read-only live port, filtered by what the asking persona could see. His use case added D10: a memory proposed from bookmarks cites them.
+  - **Q4 is a follow-up.** Catalog counts went to [their own feature note](../../features/feature-workshop-recall-bookmark-counts/README.md).
+  - **Q2, Q3, Q5 and Q6 stand as proposed.**

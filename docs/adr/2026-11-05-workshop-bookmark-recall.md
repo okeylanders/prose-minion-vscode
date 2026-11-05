@@ -1,6 +1,6 @@
 # ADR 2026-11-05: Bookmarks Personas Can Read, and a Bookmarks Screen
 
-**Status:** Proposed (2026-11-05). Questions Q1–Q6 are for the writer.
+**Status:** Proposed (2026-11-05). The writer answered Q1–Q6 the same day ([answers](#the-writers-answers-2026-11-05)). Q1 changed D1: personas see the open room's bookmarks too, on request.
 **Date:** 2026-11-05
 **Epic:** [Workshop Bookmark Recall](../../.todo/epics/epic-workshop-bookmark-recall-2026-11-05/README.md)
 **Feature:** [Bookmarks personas can read, and a Bookmarks screen](../../.todo/features/feature-workshop-bookmark-recall/README.md)
@@ -36,17 +36,23 @@ The code this builds on is already on this branch:
 
 ## Decision
 
-### D1. Personas read bookmarks of saved sessions, on request only
+### D1. Personas read bookmarks on request: the open room's and saved sessions'
 
-- **Where bookmarks reach a persona.** Only through recall: the new operation (D2) and the turn mark in `transcript.read` (D5). Never through a room frame, a catch-up, the catalog frame, provider history, or any per-turn prompt. Toggling a bookmark therefore never changes what a persona is sent, which keeps the prompt cache stable.
-- **The live room's bookmarks don't reach personas.** Recall excludes the live room (`recallableSessions`, `liveSessionId`), and so does this. For the room that is open, bookmarks stay as Wayfinding D5 left them: presentation only. (Q1.)
-- **Today's bookmarks read unchanged.** The stored shape doesn't change. A session saved by the Wayfinding release reads into every new surface, and a fixture pins it.
-- **The writer's labels are shown.** A label is the writer's own short text, like a to-do's. It is quoted as record text under recall's framing line. An unnamed bookmark shows its default label, computed at read (`workshopBookmarkDefaultLabel`), never stored.
+- **Where bookmarks reach a persona.** Only through `transcript.bookmarks` (D2) and the turn mark in `transcript.read` (D5). They never reach it through a room frame, a catch-up, the catalog frame, provider history, or any per-turn prompt.
+  - Toggling a bookmark therefore never changes what a persona is sent each turn, and the prompt cache stays stable.
+  - A persona sees bookmarks when it asks, or when the writer asks it to look ("can you see what I bookmarked in this session and propose any new memories?").
+- **The open room counts (Q1, Okey).** `transcript.bookmarks` reads the open room's bookmarks as well as saved sessions' (`<scope>`, D2).
+  - **Where recall reads the open room.** Recall still never lists, searches or reads the open room's turns. It reaches the open room's bookmarks through one read-only port, `WorkshopLiveRoomBookmarks`, which the session service implements over the live bookmark ledger and `readRoomLedger()`. Recall imports the port as a type only. It never imports the session service, and it never writes or flushes.
+  - **What a persona may see from the open room.** It sees only the bookmarks on turns it could see. That means room-visible turns, and private exchanges it was part of, decided by the room's own audience rule (`WorkshopRoomAudience`). A private exchange between the writer and another persona stays private, and so do its bookmarks.
+  - **What the result carries.** The open room's rows carry no session id, only "this conversation" and the turn's position.
+- **Today's bookmarks read unchanged.** The stored shape doesn't change. A session saved by the Wayfinding release reads into every new surface, and a fixture pins this.
+- **The writer's labels are shown.** A label is the writer's own short text, like a to-do's, and is quoted as record text under recall's framing line. An unnamed bookmark shows its default label (`workshopBookmarkDefaultLabel`), which is computed at read and never stored.
 
 ### D2. A fifth recall operation: `transcript.bookmarks`
 
 ```text
 <prose-minion-tool-call name="transcript.bookmarks">
+  <scope>all</scope>                current | saved | all (default all: the open room first, then saved sessions)
   <recent>10</recent>               most recent N saved sessions (exclusive with <session>)
   <session>…</session>              or: one session; repeatable up to bookmarkSessionsNamed
   <match>…</match>                  chooses sessions, as D8 of 2026-10-06 defines (title + excerpt label)
@@ -58,11 +64,17 @@ The code this builds on is already on this branch:
 </prose-minion-tool-call>
 ```
 
+- **`<scope>`** picks where bookmarks come from:
+  - `current` is the open room only, which is the "in this session" case.
+  - `saved` is saved sessions only.
+  - `all` is the open room first, then saved sessions.
+
+  `<recent>`, `<session>`, `<match>` and `<persona>` choose saved sessions, so they're refused with `<scope>current</scope>`. The bookmark filters apply to every scope.
 - **The family's meanings stand.** `<match>` and `<persona>` choose sessions everywhere in `transcript.*` (2026-10-06 D8), and they keep that meaning here.
   - The filters that pick bookmarks are new and named for what they do: `<query>`, `<speaker>`, `<since>` and `<until>`.
   - This corrects the feature note, which had `<match>` and `<persona>` filter items. (Q2.)
 - **Order of work, as `transcript.todos` does it:**
-  1. Session choice comes from the listing, with no file read.
+  1. Saved-session choice comes from the listing, with no file read. The open room's bookmarks come from the live port.
   2. `<recent>` caps how many sessions are read.
   3. Cold reads share `searchSourceBytes`.
   4. Bookmarks are filtered, then bounded.
@@ -74,7 +86,7 @@ The code this builds on is already on this branch:
 - **The message is whole when it fits.**
   - Each message is capped at `bookmarkMessageCharacters`. A longer one is cut at a stated point, with a hint that decodes exactly as written: a `transcript.read` of that session's turn.
   - The whole body is packed into `bookmarkCharacters`, and is subject to the context-window clamp reads use, because it carries turn text.
-- **Results** come grouped by session, newest first. Within a session they are in thread order.
+- **Results** come grouped by session, with the open room first, then saved sessions newest first. Within a session they are in thread order.
 - **Every bound** the service applies is stated in the body's footer, as `transcript.todos` does.
 
 ### D3. Bounds join `PROMPT_BUDGETS.workshopTranscriptRecall`
@@ -129,6 +141,8 @@ Following Project Memory D12, Slice 1 adds the operation to every list at once:
 
 Like `transcript.read` and `transcript.todos`, a bookmarks result is publishable to the room (`PUBLISHABLE_CAPABILITY_OPERATIONS`). `guest-base.md` and the recall prompt say so.
 
+Publication never widens what a persona could see. An open-room row is in the result only if the asking persona could see its turn (D1). The room's audience rules then decide who else hears the result, as for any capability result. A row from a private exchange is therefore never published to a persona outside that exchange. Slice 1 pins this with a test.
+
 ### D8. The Bookmarks screen: read-only, through the recall service
 
 - **Where it opens.**
@@ -161,28 +175,35 @@ Like `transcript.read` and `transcript.todos`, a bookmarks result is publishable
   - The host checks the turn through the recall service, and writes `{ origin: 'writer', sourceSession, sourceTurns: [turnId] }`.
   - The sheet gains a mode whose source line names the saved session ("from “Title”").
   - The prefill is the projected message the host supplies, never a webview copy.
-- **Provenance only cites.** It points to the bookmark's moment and never stores the bookmark itself, so the two features stay independent. (Q6.)
+- **Provenance only cites.** It points to the bookmark's moment and never stores the bookmark itself, so the two features stay independent. (Q6, in scope.)
 
-## Questions for Okey
+### D10. A memory a persona proposes from a bookmark cites it
 
-Each has a recommended default; the epic is built on the defaults unless he says otherwise.
+This is Okey's use case: "can you see what I bookmarked in this session and propose any new memories?"
 
-1. **The live room's bookmarks.** Should a persona see bookmarks in the room that is open?
-   - **Default: no.** Recall reads other saved sessions only, and the open room's bookmarks stay presentation-only. If wanted, a later slice can add them as room evidence, the way to-dos are.
-2. **The filter names.** `<match>` and `<persona>` keep the family's "choose sessions" meaning. The bookmark filters are `<query>` (label or text), `<speaker>`, and `<since>`/`<until>`.
-   - **Default: yes.**
-3. **The forward-only artifact.** A room holding a `transcript.bookmarks` card won't open in older builds. Accept, as with Wayfinding D9?
-   - **Default: accept.**
-4. **No catalog counts.** Drop per-session bookmark counts from `transcript.catalog`? Counting means reading every file, or a search-index format change.
-   - **Default: drop.**
-5. **Where the screen opens.** "Bookmarks…" in the sessions menu, plus "All bookmarks…" in the Notes tab.
-   - **Default: both.**
-6. **"Remember this" from the screen.** Is it in scope for this epic, or later?
-   - **Default: in scope (Slice 3).**
+- **Today's provenance.** A persona's proposal cites the reply that made it and the writer's message before it (`workshopProposalProvenance`).
+- **What changes.** A proposal may also name the bookmarked turns it came from. Project Memory's proposal trailer gains an optional list of turn ids, taken from the `transcript.bookmarks` result.
+- **How the host checks them.** The host keeps a cited turn only if two things hold:
+  - the turn is in the open room's ledger, and was visible to the proposing persona;
+  - or the turn is in a saved session, named with its session, and recall confirms it (`positionsOf`).
+
+  The host drops any other cited turn and logs it by id, never by text. The memory's `sourceTurns` then include the turns the host kept, within the existing bound of 32.
+- **What doesn't change.** A proposal with no cited turns behaves exactly as today. The prompt teaches the field, and Project Memory's proposal sync test holds the prompt to it.
+
+## The writer's answers (2026-11-05)
+
+1. **The open room's bookmarks: visible, on request.** That changes D1. Okey's use case is "can you see what I bookmarked in this session and propose any new memories?" The open room is reached through `<scope>` (D2) and a read-only live port, filtered by what the asking persona could see. D10 follows from it.
+2. **The filter names: yes.** `<query>`, `<speaker>`, `<since>` and `<until>` filter bookmarks; `<match>` and `<persona>` keep choosing sessions.
+3. **The forward-only artifact: accepted.** That's D6.
+4. **Catalog counts: later.** They're worth having, but they need a search-index change. Recorded as [a follow-up](../../.todo/features/feature-workshop-recall-bookmark-counts/README.md).
+5. **Where the screen opens: both.** The sessions menu, and the Notes tab.
+6. **"Remember this" from the screen: yes.** That's Slice 3.
 
 ## Consequences
 
-- **Bookmarks matter to personas.** A persona can find "where we decided it" in seconds, and every answer cites a session and a turn it can read in full.
+- **Bookmarks matter to personas.**
+  - A persona can find "where we decided it" in seconds, and every answer cites a session and a turn it can read in full.
+  - The open room's bookmarks can become memories that cite them.
 - **The writer finds bookmarks without remembering which session** they live in.
 - **The recall family grows to five operations.** Every list in D4 widens once, and the sync tests hold the prompt to the code.
 - **Forward-only again** (D6), for rooms that hold a bookmarks card.
@@ -194,4 +215,6 @@ Each has a recommended default; the epic is built on the defaults unless he says
 - **A bookmarks list inside every `transcript.read`.** Rejected. It repeats the turns, and the dedicated operation is faster.
 - **Reuse `<match>` and `<persona>` to filter bookmarks.** Rejected. It would give one field two meanings within one family (2026-10-06 D8).
 - **List bookmarks through `WORKSHOP_LIST_SESSIONS`.** Rejected. That route initializes and flushes, so it isn't read-only.
-- **Store bookmark counts in the search index.** Deferred, to Q4.
+- **Store bookmark counts in the search index.** Deferred, to a follow-up (Q4).
+- **Put the open room's bookmarks in every prompt, as live to-dos are.** Rejected. On request answers the use case, without per-turn cost or cache churn.
+- **A separate `room.*` family for the open room.** Rejected. It would widen every family list (Project Memory D12's full list) for one source, while `<scope>` keeps one operation and one grammar.
