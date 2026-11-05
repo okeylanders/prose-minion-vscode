@@ -144,3 +144,7 @@ This is the same flow as Project Memory and Bookmark Recall.
   - F-03: a refused retry keeps earlier `unknown` and landed outcomes.
   - N-01: the write path's resolver logs counts only.
   - Astra's reproductions are ported as regression tests. After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 762 suites, 10,585 tests, 59 snapshots.
+- **2026-11-05. Slice 2 re-review (PR #229).**
+  - F-01 to F-03 closed.
+  - N-01's excerpt route is fixed: the file-edit excerpt authorization reads a counts-only catalog (`resolver.countsOnly()`), tested end to end.
+  - After: typecheck clean; lint 0 errors, 1,165 warnings; jest 763 suites, 10,589 tests, 59 snapshots.

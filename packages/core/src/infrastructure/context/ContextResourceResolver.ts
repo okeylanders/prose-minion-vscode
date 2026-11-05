@@ -48,8 +48,18 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
     private readonly outputChannel?: LogSink
   ) {}
 
-  async createProvider(groups: ContextPathGroup[]): Promise<ContextResourceProvider> {
-    const resources = await this.collectResources(groups);
+  /**
+   * The same tolerant catalog, but its diagnostics carry counts only: no
+   * pattern, path or host message (ADR 2026-11-05 D13; PR #229 N-01). For
+   * lookups a file edit's staging or Apply reaches, such as the excerpt's
+   * authorization. What the catalog lists is unchanged.
+   */
+  countsOnly(): ContextResourceProviderFactory {
+    return { createProvider: (groups) => this.createProvider(groups, 'counts') };
+  }
+
+  async createProvider(groups: ContextPathGroup[], diagnostics: 'detailed' | 'counts' = 'detailed'): Promise<ContextResourceProvider> {
+    const resources = await this.collectResources(groups, diagnostics);
     const summaries = resources.map(resource => this.toSummary(resource));
     const resourceMap = new Map<string, InternalContextResource>();
 
@@ -92,9 +102,9 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
             });
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            this.outputChannel?.appendLine(
-              `[ContextResourceResolver] Failed to read resource ${resource.path}: ${message}`
-            );
+            this.outputChannel?.appendLine(diagnostics === 'counts'
+              ? '[ContextResourceResolver] Failed to read a configured resource.'
+              : `[ContextResourceResolver] Failed to read resource ${resource.path}: ${message}`);
           }
         }
 
@@ -145,7 +155,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
    */
   private async forEachMatch(
     groups: ContextPathGroup[],
-    mode: 'browse' | 'authoritative',
+    mode: 'browse' | 'browse-counts' | 'authoritative',
     visit: (group: ContextPathGroup, folder: { path: string; name: string }, match: string, sizeBytes: number) => void,
     exclude: () => void = () => undefined
   ): Promise<boolean> {
@@ -179,6 +189,10 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
             if (mode === 'authoritative') {
               throw new ContextCandidateReadIncomplete('search');
             }
+            if (mode === 'browse-counts') {
+              this.outputChannel?.appendLine('[ContextResourceResolver] A configured-resource search failed.');
+              continue;
+            }
             const message = error instanceof Error ? error.message : String(error);
             this.outputChannel?.appendLine(
               `[ContextResourceResolver] Error searching with pattern "${normalizedPattern}": ${message}`
@@ -187,8 +201,8 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
           }
 
           for (const match of matches) {
-            if (mode === 'browse') {
-              const sizeBytes = await this.safeWorkspaceResourceSize(workspaceFolder.path, match);
+            if (mode !== 'authoritative') {
+              const sizeBytes = await this.safeWorkspaceResourceSize(workspaceFolder.path, match, mode === 'browse');
               if (sizeBytes !== undefined) {
                 visit(group, workspaceFolder, match, sizeBytes);
               }
@@ -210,11 +224,11 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
     return true;
   }
 
-  private async collectResources(groups: ContextPathGroup[]): Promise<InternalContextResource[]> {
+  private async collectResources(groups: ContextPathGroup[], diagnostics: 'detailed' | 'counts'): Promise<InternalContextResource[]> {
     const resources: InternalContextResource[] = [];
     const seenPaths = new Set<string>();
 
-    const searched = await this.forEachMatch(groups, 'browse', (group, workspaceFolder, match, sizeBytes) => {
+    const searched = await this.forEachMatch(groups, diagnostics === 'counts' ? 'browse-counts' : 'browse', (group, workspaceFolder, match, sizeBytes) => {
       const relativePath = path.relative(workspaceFolder.path, match).replace(/\\/g, '/');
       const normalizedKey = this.normalizeKey(relativePath);
 
@@ -311,9 +325,13 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
    * lexical escapes and any symlink in the workspace-relative ancestor chain
    * before a model-visible key can enter the configured catalog.
    */
-  private async safeWorkspaceResourceSize(root: string, candidate: string): Promise<number | undefined> {
+  private async safeWorkspaceResourceSize(root: string, candidate: string, detailed = true): Promise<number | undefined> {
     const inspected = await this.inspectWorkspaceResource(root, candidate);
     const relativePath = path.relative(root, candidate).replace(/\\/g, '/');
+    if (!detailed && inspected.kind !== 'ok') {
+      this.outputChannel?.appendLine('[ContextResourceResolver] Skipped a configured-resource match.');
+      return undefined;
+    }
     switch (inspected.kind) {
       case 'ok':
         return inspected.sizeBytes;

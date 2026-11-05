@@ -239,3 +239,28 @@ Host only: no persona, no routes, no claim (the claim is Slice 4's).
     - landed plus unknown plus refused reads as partial.
   - **N-01**: log sentinels for a private pattern, a host error naming a
     path, and linked and outside matches.
+
+### Re-review: N-01 through the excerpt route (Astra at `72c47b2e` / `288da6e9`)
+
+F-01 to F-03 closed. N-01 stayed open on the excerpt route, which staging
+and Apply both reach:
+`workshopExcerptFileEditDocument` → `authorizeExcerptReread` → the intake
+service's catalog → the resolver's browse walk, which logged patterns, host
+messages and linked paths.
+
+- **Fix.** `ContextResourceResolver.countsOnly()` is a provider factory over
+  the same tolerant catalog. It lists exactly what the catalog lists, but its
+  diagnostics carry counts only: a failed search, a skipped match and a failed
+  read are each logged without a pattern, path or message.
+  - `extension.ts` builds the file-edit excerpt adapter over its own
+    `WorkshopContextIntakeService(resolver.countsOnly(), …)`.
+  - The writer's catalog, and every other intake flow, keep their detailed
+    diagnostics.
+  - The write checks are unchanged.
+- **Tests:**
+  - `fileEditExcerptLogging.test.ts` runs the real excerpt adapter, intake
+    service and resolver, composed as `extension.ts` composes them. A staging
+    run through a failing search and an Apply over a linked match each log no
+    sentinel. A control shows the writer's own catalog keeps its detail.
+  - The test fails against the old composition.
+  - `providerAssembly.test.ts` pins the composition.

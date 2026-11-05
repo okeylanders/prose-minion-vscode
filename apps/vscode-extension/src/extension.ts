@@ -563,7 +563,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // the resolver's every-candidate read and the room's excerpt.
   const fileEditAuthorityEpoch = new VsCodeFileEditAuthorityEpoch();
   context.subscriptions.push(fileEditAuthorityEpoch);
-  const fileEditExcerpt = workshopExcerptFileEditDocument(workshopSessionService, workshopContextIntakeService);
+  // The excerpt's authorization on the write path reads a counts-only catalog: no pattern or path in the log (PR #229 N-01).
+  const fileEditExcerpt = workshopExcerptFileEditDocument(
+    workshopSessionService,
+    new WorkshopContextIntakeService(contextResourceResolver.countsOnly(), platform.fileSystem, platform.workspace)
+  );
   const fileEditStaging = new FileEditStagingService({
     candidates: contextResourceResolver,
     excerpt: fileEditExcerpt,
