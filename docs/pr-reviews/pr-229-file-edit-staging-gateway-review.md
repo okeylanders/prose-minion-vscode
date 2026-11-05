@@ -1,6 +1,8 @@
 # PR #229 review: File-edit staging and gateway
 
-**Verdict: changes requested. Three blocking findings (F-01–F-03), plus the logging acceptance gap N-01.**
+**Latest disposition: F-01–F-03 are closed after independent re-review of `72c47b2e` and `288da6e9`. N-01 remains open through the real excerpt-authorization composition; D13 acceptance is not yet complete.**
+
+**Initial verdict at `778a09a6`: changes requested, with three blocking findings plus N-01.**
 
 - PR: [#229](https://github.com/okeylanders/prose-minion-vscode/pull/229)
 - Reviewed implementation: `778a09a6e8113475e8fa25a969b978d396727f67`
@@ -197,6 +199,72 @@ test('REPRO: actual resolver used during staging logs paths and raw host error m
     .stage({kind: 'resource', group: 'general', path: 'chapters/alice.md'});
   expect(log.appendLine.mock.calls.flat().join('\n')).toContain('/private/AliceSentinel.md');
   expect(log.appendLine.mock.calls.flat().join('\n')).toContain('PrivateSentinel/*.md');
+});
+
+```
+
+## Re-review at `72c47b2e` / `288da6e9`
+
+The implementation fix is `72c47b2edf8f80be10089779e54de93a4a4ba80c`. The subsequently inspected `288da6e9f790040d651a9bf4bde86198b684be57` merges the already-reviewed planner and adds only documentation/review artifacts relative to the fix.
+
+- **F-01 closed:** authoritative candidate discovery now rejects any failed search or unreadable metadata instead of proving uniqueness/class from a partial result. Successful browse behavior remains separate. Verified failure witnesses and complete notes/prose controls.
+- **F-02 closed:** prose mode ignores top-level plain paragraph wrappers while retaining non-paragraph and inline structure. Empty/boundary append and prepend, whole-paragraph removal, and forbidden structure controls pass. Strict mode is unchanged.
+- **F-03 closed:** retry refusal is applied only to still-standing edits; earlier landed/unknown outcomes survive, and the overall state checks unknown before the retry-refusal fallback. Authority, epoch, text-refusal and mixed-landed/unknown witnesses pass.
+- **Focused tests:** 10 suites / 148 tests passed. The two additional composition witnesses below also passed while asserting the remaining unsafe logging behavior. Current-head CI is checked and reported separately; no merge or implementation change was performed by the review.
+
+### N-01 remains: excerpt authorization still takes the browse logging path
+
+The fix sanitizes `listCandidates`, but both staging and Apply also call the real excerpt port. With a file excerpt present, the composition is:
+
+`workshopExcerptFileEditDocument.currentDocument` → `WorkshopContextIntakeService.authorizeExcerptReread` → `resolveConfiguredSource` → `openCatalog` → `ContextResourceResolver.createProvider` → the **browse** walk.
+
+That walk still logs raw search errors, configured patterns and rejected linked paths. Staging reads the excerpt before the authoritative candidates; Apply reads it after candidate authorization. Thus a staging refusal can log a raw error first, and an otherwise successful Apply can also log a linked candidate's path. The new regression tests fake `excerpt.currentDocument`, so they do not exercise this composition.
+
+The first witness below stages through a failing search with a file excerpt present and observes the fabricated `/private/AliceSentinel.md`. The second successfully applies a paragraph append and observes the fabricated `LinkedSentinel.md` diagnostic. **All paths and marker names in these tests are synthetic fixtures, not private user data.**
+
+**Required correction:** sanitize or avoid these diagnostics along the excerpt lookup used by file edits, without weakening its authorization. Add log-sentinel tests using the real excerpt adapter, intake service and resolver together. F-01–F-03 remain closed; this is the remaining N-01/D13 gap, not a reopening of their write-safety fixes.
+
+For reproduction, temporarily save this as `packages/core/src/__tests__/application/services/fileEdits/reviewExcerptLogging.test.ts` and run it with Jest `--runInBand --runTestsByPath`. It asserts the current leak; invert the sentinel expectations when fixing it.
+
+```typescript
+import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
+import { FileEditStagingService } from '@/application/services/fileEdits/FileEditStagingService';
+import { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
+import { fileEditBaseline } from '@/application/services/fileEdits/fileEditIdentity';
+import { workshopExcerptFileEditDocument } from '@/application/services/workshop/WorkshopExcerptFileEditDocument';
+import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
+import { ContextResourceResolver } from '@/infrastructure/context/ContextResourceResolver';
+import { FileType } from '@/platform';
+import { createFakeFileSystem, createFakeSettings, createFakeWorkspace } from '../../../mocks/platform';
+import { FakeDocuments } from '../draftEdit/fakeDocuments';
+const URI = 'file:///workspace/chapter.md';
+const source = {kind: 'file' as const, sourceUri: URI, relativePath: 'chapter.md'};
+function setup(failing: boolean) {
+  const log = {appendLine: jest.fn(), show: jest.fn(), clear: jest.fn()};
+  const workspace = createFakeWorkspace({workspaceFolders: () => [{path:'/workspace', name:'workspace'}],
+    findFiles: async () => { if(failing) throw new Error('FAILED /private/AliceSentinel.md');
+      return ['/workspace/chapter.md', '/workspace/LinkedSentinel.md']; }});
+  const fileSystem = createFakeFileSystem({stat: async (p) => ({type:p.includes('LinkedSentinel') ? FileType.SymbolicLink : FileType.File, size:10, ctime:0, mtime:0})});
+  const resolver = new ContextResourceResolver(createFakeSettings({'contextPaths.general':'PrivateSentinel/*.md'}), fileSystem, workspace, log);
+  const excerpt = workshopExcerptFileEditDocument({getExcerpt: () => ({text:'Alice.', version:1, pinnedAt:0, source})},
+    new WorkshopContextIntakeService(resolver, fileSystem, workspace));
+  const documents = new FakeDocuments('Alice.', URI);
+  const shared = {candidates:resolver, excerpt, documents, fileSystem, workspace, log};
+  return {log, staging:new FileEditStagingService(shared),
+    gateway:new ProjectFileEditGateway({...shared, applier:new DraftEditApplier(documents), epoch:{current:()=>0}})};
+}
+test('REPRO N-01: real excerpt adapter logs raw search error before authoritative staging read', async () => {
+  const {log, staging} = setup(true);
+  await staging.stage({kind:'resource', group:'general', path:'chapter.md'});
+  expect(log.appendLine.mock.calls.flat().join('\n')).toContain('/private/AliceSentinel.md');
+});
+test('REPRO N-01: real excerpt adapter invokes browse logging during otherwise successful Apply', async () => {
+  const {log, gateway} = setup(false);
+  const result = await gateway.apply({target:{kind:'file', documentUri:URI, relativePath:'chapter.md'}, class:'prose',
+    baseline:fileEditBaseline('Alice.', '/workspace/chapter.md'), operations:[{op:'append', text:'The Rabbit ran.'}],
+    source:{kind:'proposal', turnId:'turn-1', index:0}}, {review:'direct', stillCurrent:()=>true});
+  expect(result.state).toBe('applied');
+  expect(log.appendLine.mock.calls.flat().join('\n')).toContain('LinkedSentinel.md');
 });
 
 ```
