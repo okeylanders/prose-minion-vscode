@@ -1,6 +1,6 @@
 # PR #214 review: Workshop Bookmark Recall specification
 
-**Latest disposition: see the final re-review below. F-01–F-06 are closed at specification level; F-07 needs one P2 continuation-identity correction.**
+**Latest disposition: all F-01–F-07 are closed at specification level. See the final re-review of `ca3b2d67` below; implementation and live acceptance remain separate.**
 
 **Initial disposition at `ca3a6b88`: four P2 planning corrections requested before implementation.** This is a review of the proposed architecture and slice contracts, not a claim that the unimplemented feature currently fails, a formal GitHub approval, or authorization to merge.
 
@@ -180,3 +180,16 @@ Bookmark IDs are session-local: [the ledger mints them from its counter and time
 | Finding | Resolution | Where |
 |---|---|---|
 | F-07 (remaining) | Every row now shows a **qualified ref**, and `<bookmark>` takes only that ref, never a bare id.<ul><li>A saved bookmark's ref is `{sessionId}/{bookmarkId}`.</li><li>An open-room bookmark's ref is `current@{liveSessionId}/{bookmarkId}`, with the room's identity taken from `recallScope()`.</li></ul>The host checks the source on every read. A saved source is checked through recall. An open-room ref must name the room that is open now; after New, Open, Rewind into a new session, or Branch, it is refused as `stale-bookmark-ref` and never retargeted. `<bookmark>` accepts only `<from>` beside it, because the ref already names its source. Every hint emits the qualified ref. Tests cover:<ul><li>duplicate ids across two saved sessions, both branched and same-clock;</li><li>a duplicate id across the open room and a saved session;</li><li>stale open-room refs after New, Open and Branch.</li></ul> | ADR D2; Slice 1 codec and tests |
+
+
+## Re-review of `ca3b2d67`: all specification findings closed
+
+**Disposition: no actionable specification finding remains at `ca3b2d671d496bd4d3b264fd47a767cd02036251`, against target `f2980986bb24d4627ffc60048ae7600020d342ce`.** This is a technical planning review, not formal GitHub approval, implementation verification, native acceptance or authorization to merge.
+
+F-07 is now addressed. Every rendered bookmark continuation uses a source-qualified reference: the saved session's identity plus bookmark ID, or a current-room-qualified identity plus bookmark ID. The host validates that source, the bookmark form permits only its offset field alongside it, and each hint emits the qualified reference. The plan explicitly tests collisions between two saved sessions and current/saved sources, plus stale current references. This resolves the remaining ambiguity without changing existing stored bookmark IDs.
+
+F-01–F-06 remain closed as recorded in the preceding re-review. Dates and the recorded writer decisions are also addressed. The current plan deliberately defers cross-session proposal citations to a separate provenance-format feature; the saved-bookmark writer action still cites its one saved source.
+
+The reviewed delta contains only the ADR, Slice 1 plan and author response. The executable/test baseline is unchanged, so no additional runtime test pass is claimed or required for these text corrections. The earlier verification and its limits still apply. CI for `04a287df` passed all stages; the new author head's [run 42023359872](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42023359872) was still running when this closure was written.
+
+**Implementation review remains required:** the named privacy, persistence, paging, projection, collision, continuation, room-ownership and source-provenance witnesses must be implemented and run in their slices. Closing the design findings does not attest that those future behaviors exist.
