@@ -1,0 +1,23 @@
+Run from exact-head checkout. No product edits required:
+
+mkdir -p /tmp/pr221-ui-probe
+cp docs/pr-reviews/probes/pr-221-receipt-refusal-recheck.test.tsx.txt /tmp/pr221-ui-probe/receipt.test.tsx
+ln -s "$PWD/node_modules" /tmp/pr221-ui-probe/node_modules
+node - <<'JS'
+const fs = require('fs');
+const c = require('./jest.config');
+c.rootDir = process.cwd();
+c.roots = ['/tmp/pr221-ui-probe'];
+c.testMatch = ['**/receipt.test.tsx'];
+c.modulePaths = [process.cwd() + '/node_modules'];
+fs.writeFileSync('/tmp/pr221-ui-jest.json', JSON.stringify(c));
+JS
+npx jest --config /tmp/pr221-ui-jest.json --runInBand --silent
+
+Observed correction head 12e575b32e54703da3b87e25931d631cefbca8b9:
+All five independent tests pass.
+Original real-App Forget/Restore error visibility cases remain unchanged.
+Hook control adapted only to receipt id/API; added concurrent distinct receipts,
+reverse and duplicate response order, retries, success, replaced room with reused
+receipt id, real-App disabled controls and late response after replacement.
+Historical failing artifact preserved separately.

@@ -1,0 +1,39 @@
+import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
+import { deferred } from '@/__tests__/application/handlers/domain/lightboxHandlerHarness';
+import { DRAFT, memoryHost, everyFile } from '@/__tests__/infrastructure/storage/projectMemoryStoreHost';
+
+describe('PR 221 integration: identity collisions across distinct titles', () => {
+  it('witness: overlapping identical IDs with different titles both succeed, then become unusable conflicts', async () => {
+    const fs = new MemoryFileSystem();
+    const a = memoryHost({ fileSystem: fs, prefix: 'a', mintMemoryId: () => 'c0ffee' });
+    const ids = ['c0ffee', 'facade'];
+    const b = memoryHost({ fileSystem: fs, prefix: 'b', mintMemoryId: () => ids.shift() ?? 'ffffff' });
+    const reached = deferred<void>();
+    const release = deferred<void>();
+    const rename = fs.rename.bind(fs);
+    jest.spyOn(fs, 'rename').mockImplementation(async (from, to, options) => {
+      if (from.includes('.tmp-b')) { reached.resolve(); await release.promise; }
+      return rename(from, to, options);
+    });
+    const savingB = b.store.create({ ...DRAFT, title: 'The Hatter keeps six' });
+    await reached.promise;
+    const savedA = await a.store.create({ ...DRAFT, title: 'The Rabbit runs backward' });
+    release.resolve();
+    const savedB = await savingB;
+    expect(savedA).toMatchObject({ kind: 'created', entry: { memory: { id: 'mem-c0ffee' } } });
+    expect(savedB).toMatchObject({ kind: 'created', entry: { memory: { id: 'mem-c0ffee' } } });
+    expect(everyFile(fs)).toHaveLength(2);
+    expect(await a.store.list()).toMatchObject({ kind: 'listed', memories: [], conflicts: [{ id: 'mem-c0ffee' }] });
+    expect(await a.store.read('mem-c0ffee')).toEqual({ kind: 'conflict' });
+  });
+  it('control: sequential distinct titles avoid an existing ID from the folder listing', async () => {
+    const fs = new MemoryFileSystem();
+    const a = memoryHost({ fileSystem: fs, prefix: 'a', mintMemoryId: () => 'c0ffee' });
+    const ids = ['c0ffee', 'facade'];
+    const b = memoryHost({ fileSystem: fs, prefix: 'b', mintMemoryId: () => ids.shift() ?? 'ffffff' });
+    await a.store.create({ ...DRAFT, title: 'The Rabbit runs backward' });
+    expect(await b.store.create({ ...DRAFT, title: 'The Hatter keeps six' }))
+      .toMatchObject({ kind: 'created', entry: { memory: { id: 'mem-facade' } } });
+    expect(await a.store.list()).toMatchObject({ kind: 'listed', conflicts: [] });
+  });
+});
