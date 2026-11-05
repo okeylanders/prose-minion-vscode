@@ -690,6 +690,12 @@ export interface WorkshopPickExcerptFileMessage extends MessageEnvelope<Record<s
   type: MessageType.WORKSHOP_PICK_EXCERPT_FILE;
 }
 
+/*
+ * Zero-payload messages use the house `Record<string, never>` idiom directly
+ * (9 prior siblings; PR #67 review #9) — unlike an empty interface, it
+ * actually rejects smuggled fields.
+ */
+
 /**
  * "Re-read from file" (Sprint 12): re-run the original read + head-slice
  * against the file-backed excerpt's stored sourceUri. Unchanged content
