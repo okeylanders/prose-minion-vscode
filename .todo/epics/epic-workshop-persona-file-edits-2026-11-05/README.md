@@ -27,9 +27,9 @@
 |---|---|---|---|---|
 | 0 | Spec | ADR and this epic | All | In review |
 | 1 | Shared planner | `utils/textEdits/`: the operations and exactly-once anchoring, pure. Memory edits move onto it with no behavior change; their tests run unchanged. | D3 | Built ([slice doc](slice-1-shared-planner.md)) |
-| 2 | Staging and the gateway | The resolver's every-candidate read; `FileEditStaging` implemented (identity, ambiguity refusal, class by identity, baseline); `DocumentEditor.open` (port and VS Code adapter); the applier's `structure` mode (`strict` / `prose-paragraphs` / `free`) and `revalidate` on every attempt; `ProjectFileEditGateway` (re-authorize, recompute class, plan, freshness, ceiling, a last-boundary callback, apply, report by operation, show the document); boundary pins. Host-only, no persona, no routes. | D4–D7, D13 | Built ([slice doc](slice-2-gateway.md)) |
+| 2 | Staging and the gateway | The resolver's every-candidate read; `FileEditStaging` implemented (identity, ambiguity refusal, class by identity, baseline); `DocumentEditor.open` (port and VS Code adapter); the applier's `structure` mode (`strict` / `prose-paragraphs` / `free`) and `beforeAttempt` immediately before every `applyEdits` (authority predicate and text checks); the `FileEditAuthorityEpoch` port; `ProjectFileEditGateway` (re-authorize, recompute class, plan, freshness, ceiling, the last-boundary predicate, apply, report by operation, show the document); boundary pins. Host-only, no persona, no routes. | D4–D7, D13 | Built ([slice doc](slice-2-gateway.md)) |
 | 3 | The proposal | The `<prose-minion-file-edit>` codec and D2's bounds; the persona prompt section and worked example, with a sync test; reading frames out of a reply and staging each through the `FileEditStaging` port (a fake in tests); `fileEditProposals` (D10's shape) on the turn, with the session codec, checkpoint normalization and transcript projection; the `fileEdits` setting | D2, D10, D11 | In progress |
-| 4 | Cards and Apply | The handler's claim and outcomes (D8: join, replay, `applying` flushed before dispatch, `partial`, `unknown`); Apply, Review in editor…, Decline and Preview routes with request ids; the real staging joined; thread cards with diffs; `landed` records; refusals in the writer's words | D8, D9, D10 | Not started |
+| 4 | Cards and Apply | The handler's claim keyed by room generation, and outcomes (D8: join, replay, `checkpointFileEdit` acknowledged durable in every recoverable checkpoint before dispatch, `partial`, `unknown`); Apply, Review in editor…, Decline and Preview routes with request ids; the real staging joined; thread cards with diffs; `landed` records; refusals in the writer's words | D8, D9, D10 | Not started |
 | 5 | Verify live | Extension Development Host pass on notes and a chapter; ADR → Accepted; memory bank; `AGENTS.md`; Apply to Draft's note settled | — | Not started |
 
 **Order:** 1 → (2 ∥ 3) → 4 → 5.
@@ -88,8 +88,16 @@ This is the same flow as Project Memory and Bookmark Recall.
   - a path or URI from a model or the webview is never trusted, and only text files under the size bound are accepted.
 - **The class comes from identity.** A file with any chapters or manuscript membership, through any root, or an excerpt document, gets prose rules whichever group the trailer named.
 - **A rewrite needs its baseline.** A note changed since staging makes the card stale, and nothing is overwritten.
-- **Apply lands at most once.** Double Apply, Apply racing Decline, a room replaced mid-apply, a preview with entries unticked, and a reopened `applying` card each produce one truthful receipt and no duplicate edit.
-- **Every attempt is checked again.** The applier's internal retry re-runs freshness, the ceiling and the structure mode.
+- **Apply lands at most once.** Each of these produces one truthful receipt and no duplicate edit:
+  - a double Apply;
+  - Apply racing Decline;
+  - a room replaced mid-apply;
+  - the same session reopened while an old action is paused;
+  - a preview with entries unticked;
+  - a reopened `applying` card;
+  - a failed or deferred `applying` checkpoint, which writes nothing.
+- **Authority is checked before every write attempt.** The setting turned off, the room replaced, or roots or context paths changed between the applier's first attempt and its retry: the retry writes nothing.
+- **Every attempt is checked again.** The applier's internal retry re-runs freshness, the ceiling (witness: a quote over the 300-character floor; control: one below it) and the structure mode.
 - **Notes** take rewrite, replace, append and prepend. A rewrite over protected syntax is refused, with a reason.
 - **Prose** takes replace, plus bounded append and prepend. Plain paragraphs may split, merge or be added; every other structure is kept, and the ceiling holds.
 - **Both** keep protected regions. Proofread's strict structure check is unchanged.
@@ -109,6 +117,13 @@ This is the same flow as Project Memory and Bookmark Recall.
   - **The revision.** The ADR is revised: D4 staging, D5 classes, structure modes and the exact ceiling, D6 baseline, D7 the gateway with `revalidate`, D8 the claim, D10 the session shape, D13 guards. Its ledger maps each finding.
   - **Slices re-scoped.** Slice 2 now includes staging, the resolver's every-candidate read, and the applier's structure mode and `revalidate`. Slice 3 stages through a port. Slice 4 owns the claim.
   - **Threads informed.** The Slice 2 and 3 threads hold their contract-dependent parts until this revision lands.
+- **2026-11-05. PR #226 re-review (Astra).**
+  - **Closed:** F-01, F-02, F-03, F-05, F-06 and N-01–N-03.
+  - **F-04 had three refinements, now settled in D7 and D8:**
+    - `applying` must be acknowledged durable before any write (`checkpointFileEdit`);
+    - the claim and its outcomes are keyed by room generation (`readRoomRevision()`);
+    - the authority predicate runs before every `applyEdits`, the retry included, with an authority epoch for roots and context paths.
+  - **The F-06 witness** moves above the 300-character floor.
 
 - **2026-11-05. Slice 0.**
   - Okey asked for persona file editing. He chose option B, notes and chapters, and asked whether autonomous editing could follow without rework (yes: ADR D10).
