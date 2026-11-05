@@ -294,8 +294,13 @@ the catalog key's path equals the entry's path. Otherwise it matches when
   live pass tuned it to **50** (Okey, 2026-11-05): the first real project
   had 22 files to pin. It also caps the reads a New session makes (50 × 5
   MiB at worst), and the list file's byte bound rises with it to 256 KiB,
-  so 50 maximum-length paths always fit. A refusal names the bound and the
-  count the pin would make.
+  so 50 maximum-length **ASCII** paths fit. Long non-ASCII paths take up to 3
+  bytes per character, so they can meet the byte bound's safe `too-large`
+  refusal before 50 files. The store refuses before writing, the 20-file /
+  128 KiB pairing had the same gap, and reconciling the two bounds is
+  low-priority tech debt (PR #217 N-01,
+  `.todo/tech-debt/2026-11-05-pinned-context-utf8-byte-bound.md`). A refusal
+  names the bound and the count the pin would make.
 - **Over budget anyway** (a file grew, a hand edit, or the carried working
   set is large): seeding goes in pinned order and attaches **each file that
   fits in what remains**. A large file that doesn't fit doesn't block the

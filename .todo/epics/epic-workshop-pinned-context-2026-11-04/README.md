@@ -318,3 +318,12 @@ the repo:
   with no conflicts and no pinned-context code touched. The duplicate
   `memory.css` import is gone. Verified twice at 728 suites / 10,239 tests.
   **The epic is code complete;** Slice 5, Okey's live pass, is next.
+- **2026-11-05. Slice 5 live pass, first fixes merged** as PR #217
+  (`fa10e8d`).
+  - Pin what's attached now, with 22 files, was refused as an unreadable
+    request: the handler used the list's 20-file bound as its message-shape
+    check. A pin past the bound now gets the bound's own words.
+  - Okey tuned the bound to **50**, and the list file's byte bound to 256
+    KiB.
+  - Astra's N-01 (the byte bound's fit is proved only for ASCII paths) is
+    low-priority tech debt.

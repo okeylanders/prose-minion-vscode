@@ -97,3 +97,7 @@ Use a test project with *Alice*-style files, never a manuscript in progress.
     byte bound rises from 128 KiB to 256 KiB, so 50 maximum-length paths
     still fit (the codec test checks it). The 22-attachment pin is a test of
     its own.
+  - **Merged** as PR #217 (`fa10e8d`), after Astra's review came back clear
+    at `dfa108d` (729 suites / 10,244 tests; CI green). Astra's N-01 (the
+    byte bound's fit is proved only for ASCII paths) is deferred, low
+    priority, to `.todo/tech-debt/2026-11-05-pinned-context-utf8-byte-bound.md`.
