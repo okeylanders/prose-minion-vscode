@@ -1,0 +1,14 @@
+PR #226 exact-head contract witnesses
+Reviewed SHA: 0ed3ba75ec9feea84c491e73a3510619556890c7
+Node 24.22.1; marked 16.4.1; production source and fixture files fetched at the reviewed SHA.
+No full-suite or live-host acceptance claim.
+
+{"name":"split paragraph","refused":[0]}
+{"name":"append new paragraph","refused":[0]}
+{"name":"prepend new paragraph","refused":[0]}
+{"name":"merge paragraphs","refused":[0]}
+{"name":"line within paragraph","refused":[]}
+{"name":"retry after same paragraph shrinks","initialQuotedShare":0.18,"shareAtRetry":1,"versions":[3,4],"applied":["a"],"finalText":"Nobody came home."}
+{"name":"no proposal baseline","applied":["rewrite"],"finalText":"Alice lives in Paris."}
+{"name":"rewrite retains code but spans protected text","refused":[{"id":"rewrite","reason":"protected"}],"calls":0}
+PASS: 8 exact-head contract witnesses; no product implementation tested.
