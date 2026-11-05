@@ -36,8 +36,12 @@ export interface WorkshopRoomSeedPlan {
   readonly kind: WorkshopRoomSeedKind;
 }
 
-/** Why a pinned file was not attached to the room. */
-export type WorkshopRoomSeedLeftOutReason = 'missing' | 'unreadable' | 'over-budget';
+/**
+ * Why a pinned file was not attached to the room. `workspace-changed`
+ * (Slice 2b, PR #208 F01): the project folder changed while the seed read,
+ * so nothing it read is installed.
+ */
+export type WorkshopRoomSeedLeftOutReason = 'missing' | 'unreadable' | 'over-budget' | 'workspace-changed';
 
 export interface WorkshopRoomSeedLeftOut {
   /** The file's label, for the writer's result line. Never logged. */

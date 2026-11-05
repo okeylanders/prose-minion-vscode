@@ -36,6 +36,8 @@ function leftOutReason(reason: WorkshopRoomSeedLeftOutReason): string {
       return 'couldn’t be read';
     case 'over-budget':
       return `doesn’t fit in the ${PROMPT_BUDGETS.contextAttachments.words.toLocaleString('en-US')}-word context limit`;
+    case 'workspace-changed':
+      return 'the project folder changed while it was read';
   }
 }
 
@@ -48,6 +50,8 @@ function keptReason(reason: WorkshopRoomSeedLeftOutReason): string {
       return 'couldn’t be read now';
     case 'over-budget':
       return `its current version doesn’t fit in the ${PROMPT_BUDGETS.contextAttachments.words.toLocaleString('en-US')}-word context limit`;
+    case 'workspace-changed':
+      return 'the project folder changed while it was read';
   }
 }
 
@@ -121,7 +125,7 @@ function seedLogPart(seed: WorkshopRoomSeedReport | undefined): string {
   if (!seedSays(seed)) {
     return '';
   }
-  const reasons = (['missing', 'unreadable', 'over-budget'] as const)
+  const reasons = (['missing', 'unreadable', 'over-budget', 'workspace-changed'] as const)
     .map((reason) => [reason, seed.leftOut.filter((entry) => !entry.kept && entry.reason === reason).length] as const)
     .filter(([, count]) => count > 0)
     .map(([reason, count]) => `${reason}:${count}`)

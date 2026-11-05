@@ -55,8 +55,12 @@ export const WORKSHOP_PINNED_CONTEXT_LIST_LABEL = 'pinned-context.json';
 interface PlanContents {
   readonly ask: WorkshopPinnedContextAsk;
   readonly files: readonly WorkshopPinnedFileRead[];
-  /** The list itself could not be read: the report names it, and nothing is attached. */
-  readonly listUnreadable: boolean;
+  /**
+   * The list itself gave nothing to install: it could not be read, or the
+   * project folder changed while the seed read (PR #208 F01). The report
+   * names the list, and nothing is attached.
+   */
+  readonly listFault?: 'unreadable' | 'workspace-changed';
 }
 
 const NOTHING: WorkshopRoomSeedReport = Object.freeze({
@@ -87,24 +91,28 @@ export class WorkshopPinnedContextRoomSeed implements WorkshopRoomSeed {
       this.log(`Seed not prepared: the workspace couldn't be read (${fileSystemErrorCategory(error)})`);
       return plan;
     }
-    if (!ask.accepted) {
+    if (!ask.accepted || !ask.where) {
       return plan;
     }
     try {
-      const read = await this.library.readForSeed();
+      // Every read is of the root captured here, never the live one (PR #208 F01).
+      const read = await this.library.readForSeed(ask.where);
       switch (read.state) {
         case 'nothing':
           return plan;
         case 'list-unreadable':
-          this.plans.set(plan, { ask, files: [], listUnreadable: true });
+          this.plans.set(plan, { ask, files: [], listFault: 'unreadable' });
+          return plan;
+        case 'workspace-changed':
+          this.plans.set(plan, { ask, files: [], listFault: 'workspace-changed' });
           return plan;
         case 'listed':
-          this.plans.set(plan, { ask, files: read.files, listUnreadable: false });
+          this.plans.set(plan, { ask, files: read.files });
           return plan;
       }
     } catch (error) {
       this.log(`Seed read failed (${fileSystemErrorCategory(error)})`);
-      this.plans.set(plan, { ask, files: [], listUnreadable: true });
+      this.plans.set(plan, { ask, files: [], listFault: 'unreadable' });
     }
     return plan;
   }
@@ -119,13 +127,13 @@ export class WorkshopPinnedContextRoomSeed implements WorkshopRoomSeed {
       this.log(`Seed dropped: the workspace changed before the ${plan.kind} room started`);
       return this.settled(plan.kind, NOTHING);
     }
-    if (contents.listUnreadable) {
-      this.log(`Seeded ${plan.kind} room (list unreadable; attached=0)`);
+    if (contents.listFault) {
+      this.log(`Seeded ${plan.kind} room (list ${contents.listFault}; attached=0)`);
       return this.settled(plan.kind, {
         pinnedCount: 0,
         attachedCount: 0,
         attachedWords: 0,
-        leftOut: [{ label: WORKSHOP_PINNED_CONTEXT_LIST_LABEL, reason: 'unreadable' }]
+        leftOut: [{ label: WORKSHOP_PINNED_CONTEXT_LIST_LABEL, reason: contents.listFault }]
       });
     }
     const report = this.installFiles(contents.files, room);
@@ -166,7 +174,7 @@ export class WorkshopPinnedContextRoomSeed implements WorkshopRoomSeed {
       // A carried file whose re-read is left out stays in the room as it was.
       const keptMark = carried ? { kept: true as const } : {};
       if (file.state !== 'ready') {
-        leftOut.push({ label: file.label, reason: file.state, ...keptMark });
+        leftOut.push({ label: file.label, reason: file.state === 'missing' ? 'missing' : 'unreadable', ...keptMark });
         continue;
       }
       const placed = carried ? this.reread(file, carried, room) : this.attach(file, room);
@@ -180,7 +188,11 @@ export class WorkshopPinnedContextRoomSeed implements WorkshopRoomSeed {
     return { pinnedCount: files.length, attachedCount, attachedWords, leftOut };
   }
 
-  /** The room's attachment this pinned file already is, by the shared rule or the aggregate's duplicate key. */
+  /**
+   * The room's attachment this pinned file already is: by the shared rule, by
+   * the file's source identity under the captured root (known whether or not
+   * its read succeeded; PR #208 F04), or by the aggregate's duplicate key.
+   */
   private carried(
     file: WorkshopPinnedFileRead,
     attachments: readonly WorkshopContextAttachment[]
@@ -189,6 +201,7 @@ export class WorkshopPinnedContextRoomSeed implements WorkshopRoomSeed {
     return attachments.find((attachment) =>
       attachment.kind === 'file' && (
         workshopPinnedContextMatches(file.entry, attachment, this.platform) ||
+        (attachment.sourceUri !== undefined && file.sourceUris.includes(attachment.sourceUri)) ||
         (input?.sourceUri !== undefined && attachment.sourceUri === input.sourceUri) ||
         (input?.configuredResource !== undefined &&
           attachment.configuredResource?.group === input.configuredResource.group &&

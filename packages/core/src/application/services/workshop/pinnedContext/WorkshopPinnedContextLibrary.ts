@@ -80,7 +80,7 @@ export interface WorkshopPinnedContextRow {
 export type WorkshopPinnedContextDescription =
   | { readonly state: 'listed'; readonly revision: string; readonly rows: readonly WorkshopPinnedContextRow[]; readonly words: number }
   | { readonly state: 'unreadable'; readonly revision: string; readonly reason: WorkshopPinnedContextRefusal; readonly entry?: number; readonly words: string }
-  | { readonly state: 'unavailable'; readonly reason: WorkshopPinnedContextUnavailableReason; readonly words: string }
+  | { readonly state: 'unavailable'; readonly reason: WorkshopPinnedContextUnavailableReason | 'workspace-changed'; readonly words: string }
   | { readonly state: 'busy' | 'io'; readonly words: string };
 
 /** What a seed attaches: every pinned file, in pinned order, or why the list gave none. */
@@ -89,9 +89,22 @@ export type WorkshopPinnedContextSeedRead =
   /** Nothing is pinned, or there is no single folder (ADR D2: never seed then). */
   | { readonly state: 'nothing' }
   /** The list file is there and cannot be read now, as a category for the log. */
-  | { readonly state: 'list-unreadable'; readonly category: 'unreadable' | 'busy' | 'io' | 'failed' };
+  | { readonly state: 'list-unreadable'; readonly category: 'unreadable' | 'busy' | 'io' | 'failed' }
+  /**
+   * The project folder changed while the seed read (PR #208 F01): the list or
+   * a file would have come from another root. Nothing it read is installed.
+   */
+  | { readonly state: 'workspace-changed' };
+
+/** The workspace's one folder and its list's file, captured together. */
+export interface WorkshopPinnedContextWhere {
+  readonly rootPath: string;
+  readonly filePath: string;
+}
 
 export interface WorkshopPinnedContextAsk {
+  /** Where the ask was made, when there was an accepted workspace to ask in. */
+  readonly where: WorkshopPinnedContextWhere | undefined;
   /** False when there was no accepted workspace to ask in. */
   readonly accepted: boolean;
   /** Whether that workspace is still the accepted one: a write's `beforeCommit`, a seed's install check. */
@@ -123,7 +136,7 @@ export class WorkshopPinnedContextLibrary {
   askLiveRoom(): WorkshopPinnedContextAsk {
     return this.ask(() => {
       const scope = this.scope();
-      return scope.available ? this.identity(scope.liveSessionId) : undefined;
+      return scope.available ? scope.liveSessionId : undefined;
     });
   }
 
@@ -135,25 +148,27 @@ export class WorkshopPinnedContextLibrary {
   askSeedWorkspace(): WorkshopPinnedContextAsk {
     return this.ask(() => {
       const scope = this.scope();
-      if (scope.available) {
-        return this.identity(scope.liveSessionId);
-      }
-      return scope.reason === 'not-ready' ? this.identity(FIRST_ROOM) : undefined;
+      return scope.available ? scope.liveSessionId : scope.reason === 'not-ready' ? FIRST_ROOM : undefined;
     });
   }
 
   /** The list, every entry resolved now, in the tab's words (ADR D8; Slice 0d). */
   async describe(): Promise<WorkshopPinnedContextDescription> {
-    const read = await this.store.read();
+    // One root for the whole description: the list and every file under it (PR #208 F01).
+    const where = this.store.availability();
+    if (!where.available) {
+      return { state: 'unavailable', reason: where.reason, words: workshopPinnedListUnavailableWords(where.reason) };
+    }
+    const read = await this.store.read({ filePath: where.filePath });
     switch (read.state) {
       case 'absent':
         return { state: 'listed', revision: read.revision, rows: [], words: 0 };
       case 'ok': {
-        const where = this.store.availability();
-        if (!where.available) {
-          return { state: 'unavailable', reason: where.reason, words: workshopPinnedListUnavailableWords(where.reason) };
-        }
         const { reads } = await this.reader.readAll(where.rootPath, read.list.files);
+        if (reads.some(movedUnderTheRead)) {
+          this.log('Description withdrawn: the workspace changed while pinned files were read');
+          return { state: 'unavailable', reason: 'workspace-changed', words: workshopPinnedListUnavailableWords('workspace-changed') };
+        }
         const rows = reads.map(rowOf);
         return { state: 'listed', revision: read.revision, rows, words: rows.reduce((total, row) => total + row.words, 0) };
       }
@@ -174,18 +189,27 @@ export class WorkshopPinnedContextLibrary {
     }
   }
 
-  /** Every pinned file read for a seed, through the intake doors, in pinned order. Never rejects. */
-  async readForSeed(): Promise<WorkshopPinnedContextSeedRead> {
+  /**
+   * Every pinned file read for a seed, through the intake doors, in pinned
+   * order, from `where` only: the root and list file `askSeedWorkspace`
+   * captured (PR #208 F01). Never rejects.
+   */
+  async readForSeed(where: WorkshopPinnedContextWhere): Promise<WorkshopPinnedContextSeedRead> {
     let read: WorkshopPinnedContextRead;
     try {
-      read = await this.store.read();
+      read = await this.store.read({ filePath: where.filePath });
     } catch (error) {
       this.log(`List read failed for a seed (${fileSystemErrorCategory(error)})`);
       return { state: 'list-unreadable', category: 'failed' };
     }
     switch (read.state) {
       case 'absent':
+        return { state: 'nothing' };
       case 'unavailable':
+        if (read.reason === 'workspace-changed') {
+          this.log('Seed read withdrawn: the workspace changed before the list was read');
+          return { state: 'workspace-changed' };
+        }
         return { state: 'nothing' };
       case 'unreadable':
         this.log(`List unreadable for a seed (${read.reason})`);
@@ -200,14 +224,15 @@ export class WorkshopPinnedContextLibrary {
     if (read.list.files.length === 0) {
       return { state: 'nothing' };
     }
-    const where = this.store.availability();
-    if (!where.available) {
-      return { state: 'nothing' };
-    }
     try {
       const { reads, catalogUnreadable } = await this.reader.readAll(where.rootPath, read.list.files);
       if (catalogUnreadable) {
         this.log('Catalog unreadable for a seed; pinned files read as workspace files');
+      }
+      const moved = reads.filter(movedUnderTheRead).length;
+      if (moved > 0) {
+        this.log(`Seed read withdrawn: the workspace changed while pinned files were read (files=${moved})`);
+        return { state: 'workspace-changed' };
       }
       return { state: 'listed', files: reads };
     } catch (error) {
@@ -216,12 +241,22 @@ export class WorkshopPinnedContextLibrary {
     }
   }
 
-  private ask(current: () => ProjectMemoryWorkspaceIdentity | undefined): WorkshopPinnedContextAsk {
-    const { asked, still } = askedProjectMemoryWorkspace(current);
-    return { accepted: asked !== undefined, still };
+  /**
+   * The workspace now, captured once: its root and list file, and the room's
+   * identity from them. `still` reads the room and the folder live each time.
+   */
+  private ask(roomNow: () => string | undefined): WorkshopPinnedContextAsk {
+    const availability = this.store.availability();
+    const where = availability.available ? { rootPath: availability.rootPath, filePath: availability.filePath } : undefined;
+    const { asked, still } = askedProjectMemoryWorkspace(() => this.identity(roomNow()));
+    const accepted = where !== undefined && asked !== undefined && asked.directory === where.filePath;
+    return { where: accepted ? where : undefined, accepted, still };
   }
 
-  private identity(room: string): ProjectMemoryWorkspaceIdentity | undefined {
+  private identity(room: string | undefined): ProjectMemoryWorkspaceIdentity | undefined {
+    if (room === undefined) {
+      return undefined;
+    }
     const where = this.store.availability();
     return where.available ? { room, directory: where.filePath } : undefined;
   }
@@ -229,6 +264,11 @@ export class WorkshopPinnedContextLibrary {
   private log(line: string): void {
     this.outputChannel.appendLine(`${LOG} ${line}`);
   }
+}
+
+/** A read that would have come from another root than the one it was asked for. */
+function movedUnderTheRead(read: WorkshopPinnedFileRead): boolean {
+  return read.state === 'unreadable' && read.fault === 'workspace-changed';
 }
 
 function rowOf(read: WorkshopPinnedFileRead): WorkshopPinnedContextRow {

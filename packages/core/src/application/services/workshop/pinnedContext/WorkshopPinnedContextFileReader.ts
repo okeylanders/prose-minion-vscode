@@ -9,6 +9,10 @@
  *   `authorizeExcerptReread` (contained in the folder, no symbolic link) and
  *   read through `loadFile`, as a context refresh does.
  *
+ * **Only from the captured root** (PR #208 F01). Every read is of a path
+ * under the root the caller captured, checked before anything is read; a
+ * file that would come from elsewhere is `workspace-changed`, never read.
+ *
  * Both use `CONTEXT_ATTACHMENTS`' bounds: `fileBytes`, and the head slice at
  * the context budget's words. The only other thing it asks the host is a
  * `stat`, so a file that is gone reads as `missing` rather than as a failed
@@ -36,6 +40,7 @@ import {
   type WorkshopPinnedContextPathPlatform
 } from '@shared/types/workshopPinnedContext';
 import { isMissingFileSystemPathError } from '@/infrastructure/storage/fileSystemErrors';
+import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 
 /** The intake service's doors the reader uses, and no others. */
 export type WorkshopPinnedContextIntakePort = Pick<
@@ -54,32 +59,42 @@ export type WorkshopPinnedFileSource =
  * - `too-large`: more bytes than `CONTEXT_ATTACHMENTS.fileBytes`;
  * - `empty`: nothing but whitespace;
  * - `refused`: outside the project, or reached through a symbolic link;
- * - `read-failed`: the read itself failed.
+ * - `read-failed`: the read itself failed;
+ * - `ambiguous`: no catalog row names the path exactly, and several distinct
+ *   rows name it by its normalized key, so none is chosen (PR #208 F03);
+ * - `workspace-changed`: the file would have come from outside the root the
+ *   read was asked for, so it was not read (PR #208 F01). A caller installs
+ *   nothing from a read that holds one.
  */
-export type WorkshopPinnedFileFault = 'not-a-file' | 'too-large' | 'empty' | 'refused' | 'read-failed';
+export type WorkshopPinnedFileFault =
+  | 'not-a-file' | 'too-large' | 'empty' | 'refused' | 'read-failed' | 'ambiguous' | 'workspace-changed';
+
+interface WorkshopPinnedFileIdentity {
+  readonly entry: WorkshopPinnedContextEntry;
+  readonly label: string;
+  /**
+   * The file URIs this entry names under the captured root, whatever the read
+   * found (PR #208 F04): the path the entry spells, and the catalog row it
+   * resolved to when that differs. A carried copy is recognized by these even
+   * when its read failed. Never a URI outside the root.
+   */
+  readonly sourceUris: readonly string[];
+}
 
 /** One pinned file as read now, in pinned order. */
 export type WorkshopPinnedFileRead =
-  | {
+  | (WorkshopPinnedFileIdentity & {
       readonly state: 'ready';
-      readonly entry: WorkshopPinnedContextEntry;
-      readonly label: string;
       readonly source: WorkshopPinnedFileSource;
       /** What an attach adds: `origin: 'writer'`, head-sliced at the budget. */
       readonly input: WorkshopContextAttachmentInput;
-    }
-  | {
-      readonly state: 'missing';
-      readonly entry: WorkshopPinnedContextEntry;
-      readonly label: string;
-    }
-  | {
+    })
+  | (WorkshopPinnedFileIdentity & { readonly state: 'missing' })
+  | (WorkshopPinnedFileIdentity & {
       readonly state: 'unreadable';
-      readonly entry: WorkshopPinnedContextEntry;
-      readonly label: string;
       readonly source: WorkshopPinnedFileSource;
       readonly fault: WorkshopPinnedFileFault;
-    };
+    });
 
 const BOUNDS = {
   maxBytes: PROMPT_BUDGETS.contextAttachments.fileBytes,
@@ -106,6 +121,12 @@ function intakeFault(reason: WorkshopIntakeRefusal['reason']): WorkshopPinnedFil
   }
 }
 
+/** A catalog row the entry names: exactly, or alone by its normalized key; or why none is chosen. */
+type CatalogMatch =
+  | { kind: 'row'; summary: ContextResourceSummary }
+  | { kind: 'ambiguous' }
+  | { kind: 'none' };
+
 export class WorkshopPinnedContextFileReader {
   constructor(
     private readonly intake: WorkshopPinnedContextIntakePort,
@@ -114,9 +135,10 @@ export class WorkshopPinnedContextFileReader {
   ) {}
 
   /**
-   * Read every entry, in order, against one fresh catalog. A catalog that
-   * cannot be opened reads every entry as a workspace file; the second
-   * return value says so, for the log.
+   * Read every entry, in order, against one fresh catalog, from under
+   * `rootPath` only: the root the caller captured, never the live one
+   * (PR #208 F01). A catalog that cannot be opened reads every entry as a
+   * workspace file; the second return value says so, for the log.
    */
   async readAll(
     rootPath: string,
@@ -128,45 +150,70 @@ export class WorkshopPinnedContextFileReader {
     } catch {
       catalog = undefined;
     }
-    const byKey = new Map<string, ContextResourceSummary>();
-    for (const summary of catalog?.entries() ?? []) {
-      const key = workshopPinnedContextPathKey(summary.path, this.platform);
-      if (!byKey.has(key)) {
-        byKey.set(key, summary);
-      }
-    }
+    const rows = catalog?.entries() ?? [];
     const reads: WorkshopPinnedFileRead[] = [];
     for (const entry of entries) {
-      const summary = byKey.get(workshopPinnedContextPathKey(entry.path, this.platform));
-      reads.push(await this.readOne(rootPath, entry, catalog && summary ? { catalog, summary } : undefined));
+      reads.push(await this.readOne(rootPath, entry, catalog, this.match(entry, rows)));
     }
     return { reads, catalogUnreadable: catalog === undefined };
+  }
+
+  /** The exact stored path first; a normalized match only when one distinct row has it (PR #208 F03). */
+  private match(entry: WorkshopPinnedContextEntry, rows: readonly ContextResourceSummary[]): CatalogMatch {
+    const exact = rows.find((row) => row.path === entry.path);
+    if (exact) {
+      return { kind: 'row', summary: exact };
+    }
+    const wanted = workshopPinnedContextPathKey(entry.path, this.platform);
+    const keyed = rows.filter((row) => workshopPinnedContextPathKey(row.path, this.platform) === wanted);
+    const distinct = new Set(keyed.map((row) => row.path));
+    if (distinct.size > 1) {
+      return { kind: 'ambiguous' };
+    }
+    return keyed.length > 0 ? { kind: 'row', summary: keyed[0] } : { kind: 'none' };
   }
 
   private async readOne(
     rootPath: string,
     entry: WorkshopPinnedContextEntry,
-    listed: { catalog: WorkshopContextIntakeCatalog; summary: ContextResourceSummary } | undefined
+    catalog: WorkshopContextIntakeCatalog | undefined,
+    match: CatalogMatch
   ): Promise<WorkshopPinnedFileRead> {
-    const label = workshopPinnedFileLabel(entry.path);
+    const named = path.join(rootPath, ...entry.path.split('/'));
+    const listed = match.kind === 'row' && isPathWithinRoot(rootPath, match.summary.absolutePath) ? match.summary : undefined;
+    const identity: WorkshopPinnedFileIdentity = {
+      entry,
+      label: workshopPinnedFileLabel(entry.path),
+      sourceUris: [...new Set([named, ...(listed ? [listed.absolutePath] : [])].map((file) => pathToFileURL(file).toString()))]
+    };
+    if (match.kind === 'ambiguous') {
+      return { ...identity, state: 'unreadable', source: { kind: 'workspace' }, fault: 'ambiguous' };
+    }
+    if (match.kind === 'row' && !listed) {
+      // The catalog listed another root's file: the workspace moved under the read.
+      return { ...identity, state: 'unreadable', source: { kind: 'catalog', group: match.summary.group }, fault: 'workspace-changed' };
+    }
     try {
-      return listed
-        ? await this.readListed(entry, label, listed.catalog, listed.summary)
-        : await this.readWorkspaceFile(rootPath, entry, label);
+      return catalog && listed
+        ? await this.readListed(identity, catalog, listed)
+        : await this.readWorkspaceFile(rootPath, identity, named);
     } catch {
       return {
+        ...identity,
         state: 'unreadable',
-        entry,
-        label,
-        source: listed ? { kind: 'catalog', group: listed.summary.group } : { kind: 'workspace' },
+        source: listed ? { kind: 'catalog', group: listed.group } : { kind: 'workspace' },
         fault: 'read-failed'
       };
     }
   }
 
+  /**
+   * Through the catalog's own door. The provider reads the absolute path it
+   * listed when the catalog opened, which `readOne` checked is under the
+   * captured root before anything is read.
+   */
   private async readListed(
-    entry: WorkshopPinnedContextEntry,
-    label: string,
+    identity: WorkshopPinnedFileIdentity,
     catalog: WorkshopContextIntakeCatalog,
     summary: ContextResourceSummary
   ): Promise<WorkshopPinnedFileRead> {
@@ -175,14 +222,13 @@ export class WorkshopPinnedContextFileReader {
     switch (loaded.kind) {
       case 'loaded':
         return {
+          ...identity,
           state: 'ready',
-          entry,
-          label,
           source,
           input: {
             kind: 'file',
             origin: 'writer',
-            label,
+            label: identity.label,
             content: loaded.resource.text,
             words: loaded.resource.words,
             sourceUri: pathToFileURL(summary.absolutePath).toString(),
@@ -192,57 +238,61 @@ export class WorkshopPinnedContextFileReader {
           }
         };
       case 'missing':
-        return { state: 'missing', entry, label };
+        return { ...identity, state: 'missing' };
       case 'too-large':
-        return { state: 'unreadable', entry, label, source, fault: 'too-large' };
+        return { ...identity, state: 'unreadable', source, fault: 'too-large' };
       case 'empty':
-        return { state: 'unreadable', entry, label, source, fault: 'empty' };
+        return { ...identity, state: 'unreadable', source, fault: 'empty' };
       case 'unreadable':
-        return { state: 'unreadable', entry, label, source, fault: 'read-failed' };
+        return { ...identity, state: 'unreadable', source, fault: 'read-failed' };
     }
   }
 
+  /**
+   * Through the workspace door, at the path the entry names under the
+   * captured root. Authorization may recover a path against the live root;
+   * a path it hands back outside the captured one is never read.
+   */
   private async readWorkspaceFile(
     rootPath: string,
-    entry: WorkshopPinnedContextEntry,
-    label: string
+    identity: WorkshopPinnedFileIdentity,
+    fsPath: string
   ): Promise<WorkshopPinnedFileRead> {
     const source: WorkshopPinnedFileSource = { kind: 'workspace' };
-    const fsPath = path.join(rootPath, ...entry.path.split('/'));
     try {
       await this.fileSystem.stat(fsPath);
     } catch (error) {
       return isMissingFileSystemPathError(error)
-        ? { state: 'missing', entry, label }
-        : { state: 'unreadable', entry, label, source, fault: 'read-failed' };
+        ? { ...identity, state: 'missing' }
+        : { ...identity, state: 'unreadable', source, fault: 'read-failed' };
     }
     const authorization = await this.intake.authorizeExcerptReread({
       kind: 'file',
       sourceUri: pathToFileURL(fsPath).toString(),
-      relativePath: entry.path
+      relativePath: identity.entry.path
     });
     if (authorization.kind === 'refused') {
-      return { state: 'unreadable', entry, label, source, fault: 'refused' };
+      return { ...identity, state: 'unreadable', source, fault: 'refused' };
     }
-    const loaded = await this.intake.loadFile(authorization.fsPath, entry.path, BOUNDS, 'attach');
+    if (!isPathWithinRoot(rootPath, authorization.fsPath)) {
+      return { ...identity, state: 'unreadable', source, fault: 'workspace-changed' };
+    }
+    const loaded = await this.intake.loadFile(authorization.fsPath, identity.entry.path, BOUNDS, 'attach');
     if (loaded.kind === 'refused') {
-      return { state: 'unreadable', entry, label, source, fault: intakeFault(loaded.refusal.reason) };
+      return { ...identity, state: 'unreadable', source, fault: intakeFault(loaded.refusal.reason) };
     }
-    const configured = authorization.source.configuredResource;
     return {
+      ...identity,
       state: 'ready',
-      entry,
-      label,
-      source: configured ? { kind: 'catalog', group: configured.group } : source,
+      source,
       input: {
         kind: 'file',
         origin: 'writer',
-        label,
+        label: identity.label,
         content: loaded.file.text,
         words: loaded.file.words,
-        sourceUri: authorization.source.sourceUri,
-        relativePath: entry.path,
-        ...(configured ? { configuredResource: { ...configured } } : {}),
+        sourceUri: pathToFileURL(authorization.fsPath).toString(),
+        relativePath: identity.entry.path,
         ...(loaded.file.truncation ? { truncation: { ...loaded.file.truncation } } : {})
       }
     };
