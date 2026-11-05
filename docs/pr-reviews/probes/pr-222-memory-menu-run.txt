@@ -1,0 +1,37 @@
+PR #222 independent review evidence, 2026-11-05.
+Reviewed code head: 584208360959c8e4fc3d0559991cb2afb4050bf9.
+
+Run the six real-App probes from a checkout of that head:
+
+cp docs/pr-reviews/probes/pr-222-memory-menu.test.tsx.txt packages/core/src/__tests__/presentation/webview/pr222.independent.test.tsx
+npm test -- --runInBand --runTestsByPath packages/core/src/__tests__/presentation/webview/pr222.independent.test.tsx
+rm packages/core/src/__tests__/presentation/webview/pr222.independent.test.tsx
+
+The probe uses the existing App test's mocked host and synthetic Alice fixture.
+It does not contact a provider, operate on real memory files or mock the manager.
+The final source and its successful six-test output are preserved beside this file.
+
+Main integration rehearsal, performed only in a disposable worktree:
+- Start at 584208360959c8e4fc3d0559991cb2afb4050bf9.
+- Merge 4d6ead93 (full SHA is in the report), with --no-commit --no-ff.
+- Two files conflict: WorkshopApp.tsx and WorkshopApp.memoryManager.test.tsx.
+- Keep bookmarkBrowser plus roomKey and useWorkshopProjectMemory({ roomKey }).
+- Keep both adjacent test blocks, each with its own closing brace.
+- The adjacent patch records the resolved versions of those TWO files relative
+  to the PR head, not the rest of the automatically merged main changes. Do not
+  apply it alone and call that the receipt fix. The actual fix also changes the
+  memory hook, receipt UI, styles and their tests.
+- Keep openMemoryManager and both of its consumers; that rename auto-merges.
+
+Checks on this local combined tree:
+  npm run typecheck
+  npm test -- --runInBand --testPathPattern='(WorkshopSessionsMenu|WorkshopApp.memoryManager|useWorkshopMemoryManager|useWorkshopProjectMemory|WorkshopTurnMemory|WorkshopSaveAndTellMe|WorkshopMemoryBrowser|useWorkshopRailTabs|WorkshopBookmarkBrowser|WorkshopApp.bookmarkBrowser|boundaries)'
+  # 17 suites / 269 tests passed.
+
+Run the existing #221 independent receipt probes on the combined tree too:
+  cp docs/pr-reviews/probes/pr-221-receipt-refusal-recheck.test.tsx.txt packages/core/src/__tests__/presentation/webview/pr221.integration-check.test.tsx
+  npm test -- --runInBand --runTestsByPath packages/core/src/__tests__/presentation/webview/pr221.integration-check.test.tsx
+  rm packages/core/src/__tests__/presentation/webview/pr221.integration-check.test.tsx
+  # 5 tests passed, unchanged.
+
+No product change or integration commit from that worktree was published.

@@ -681,7 +681,8 @@ export const WorkshopApp: React.FC = () => {
     setMemorySettingsVisible(true);
     requestMemoryListing();
   }, [requestMemoryListing, setMemorySettingsVisible]);
-  const openMemoryManagerFromSettings = React.useCallback(() => memoryManager.openManager(), [memoryManager.openManager]);
+  // Settings' Manage memories… and the sessions menu's Memory… open the manager unfocused.
+  const openMemoryManager = React.useCallback(() => memoryManager.openManager(), [memoryManager.openManager]);
   const closeBehaviorModal = React.useCallback(() => {
     setBehaviorModalOpen(false);
     setMemorySettingsVisible(false);
@@ -1090,6 +1091,7 @@ export const WorkshopApp: React.FC = () => {
         onExportSession={openExportSessionModal}
         onBrowseSessions={openSessionBrowser}
         onBrowseBookmarks={bookmarkBrowser.openBrowser}
+        onBrowseMemory={openMemoryManager}
         onOpenSession={openStoredSession}
       />
       <FullTabHeaderStatus
@@ -1754,7 +1756,7 @@ export const WorkshopApp: React.FC = () => {
         isRunning={roomMutationLocked}
         errorMessage={workshop.errorMessage}
         onApply={workshop.setConversationSettings}
-        onOpenMemoryManager={openMemoryManagerFromSettings}
+        onOpenMemoryManager={openMemoryManager}
         onOpenMemoryFolder={memoryManager.openFolder}
         onClose={closeBehaviorModal}
       />

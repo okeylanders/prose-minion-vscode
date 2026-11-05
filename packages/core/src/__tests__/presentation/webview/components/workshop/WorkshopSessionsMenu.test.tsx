@@ -100,6 +100,22 @@ describe('WorkshopSessionsMenu', () => {
     expect(props.onBrowseSessions).toHaveBeenCalledTimes(1);
   });
 
+  it('offers Memory… last, under Bookmarks…, and opens the memory manager through it', () => {
+    const { props } = renderMenu({ onBrowseBookmarks: jest.fn(), onBrowseMemory: jest.fn() });
+    const items = screen.getAllByRole('menuitem').map((item) => item.textContent ?? '');
+    expect(items.slice(-2)).toEqual(['Bookmarks…', 'Memory…']);
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Memory…' }));
+    expect(props.onOpenChange).toHaveBeenCalledWith(false);
+    expect(props.onBrowseMemory).toHaveBeenCalledTimes(1);
+    expect(props.onBrowseBookmarks).not.toHaveBeenCalled();
+  });
+
+  it('shows no Memory… item without a way to open the manager', () => {
+    renderMenu();
+    expect(screen.queryByRole('menuitem', { name: 'Memory…' })).toBeNull();
+  });
+
   it('keeps Export available in an unsaved room but not before the first message', () => {
     renderMenu({ disabled: true });
     const exportItem = screen.getByRole('menuitem', { name: /^Export…$/ }) as HTMLButtonElement;
