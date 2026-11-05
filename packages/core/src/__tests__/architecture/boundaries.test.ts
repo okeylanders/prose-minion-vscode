@@ -2681,6 +2681,13 @@ describe('Workshop Pinned Context storage (Slice 1; ADR 2026-11-04 D5)', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('keeps the context sheet\'s pin marks derived: the panel posts nothing, and the session shape names no pinned mark (Slice 4; ADR 2026-11-04 D4)', () => {
+    const panel = fs.readFileSync(path.join(SRC_ROOT, 'presentation/webview/components/workshop/ContextPanel.tsx'), 'utf8');
+    expect(panel).not.toMatch(/\b(?:postMessage|useVSCodeApi|MessageType|acquireVsCodeApi)\b/);
+    const sessionShape = fs.readFileSync(path.join(SRC_ROOT, 'application/services/workshop/WorkshopSessionStateV1.ts'), 'utf8');
+    expect(sessionShape).not.toMatch(/\bpinned\b|PinnedContext/);
+  });
+
   it('routes the tab only through its one handler, composed once (Slice 3)', () => {
     const constructions = collectSourceFiles(SRC_ROOT)
       .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
