@@ -265,12 +265,25 @@ snapshots, all passing; lint 0 errors / 1,165 warnings (none new).
    an unavailable workspace report nothing (D2). If the coordinator would
    rather have a list-level field on the report, that's a port change for
    2a's owner.
-3. **A carried pinned file whose re-read is left out keeps its old body**
-   (missing, unreadable or now over budget), and is named in `leftOut`. The
-   result line therefore says "not attached: alice.md (not found)" for a
-   file the writer still sees as a pill, with its earlier text. Nothing is
-   removed for the writer (D6), but the wording may want "not re-read" for
-   that case. Open for Slice 3's copy pass.
+3. **A carried file kept as it was** (fixed on the coordinator's review of
+   `e36526b4`). A carried pinned file whose re-read is left out (missing,
+   unreadable, or now over budget) keeps the body it had, as before. The
+   report now marks that entry `kept: true`, an **additive change to the
+   port** (`WorkshopRoomSeedLeftOut.kept`, in `WorkshopRoomSeed.ts`, on the
+   epic since #203 merged), set only when the room still holds the carried
+   body.
+   - The result line never lists a kept file as "not attached". It gets its
+     own clause: "… 1 of 2 pinned files attached; kept as it was: alice.md
+     (not found now)." The other reasons read "(couldn't be read now)" and
+     "(its current version doesn't fit in the 100,000-word context limit)".
+     A file that wasn't carried keeps today's wording, in its own "not
+     attached" clause before the kept one.
+   - `attachedCount` still counts only files attached or re-read now.
+   - The seed's log tallies and the handler's log line gain `kept=<n>`, with
+     no labels; the reason tallies count only files that aren't kept.
+   - Tests: a carried file re-read as missing, as unreadable and as over
+     budget each give the kept wording; a file that wasn't carried keeps
+     today's beside a kept one; the handler's log counts a kept file.
 4. **The first room's report isn't on the ticker yet.** The coordinator
    discards `install`'s return at the first room, and must not grow here, so
    the seed keeps that one report (`takeFirstRoomReport()`, once). Posting it

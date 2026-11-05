@@ -21,7 +21,8 @@
  *   - every file goes through the aggregate's budget and duplicate guards.
  *     One that doesn't fit is left out and the next is tried; nothing is
  *     truncated to fit (D6). A carried file whose re-read is left out keeps
- *     the body it had: nothing is removed for the writer.
+ *     the body it had, and the report marks it `kept`: nothing is removed
+ *     for the writer, and the result line never calls it "not attached".
  * - **Logs** carry counts and categories only.
  */
 
@@ -129,10 +130,11 @@ export class WorkshopPinnedContextRoomSeed implements WorkshopRoomSeed {
     }
     const report = this.installFiles(contents.files, room);
     const count = (reason: WorkshopRoomSeedLeftOut['reason']) =>
-      report.leftOut.filter((entry) => entry.reason === reason).length;
+      report.leftOut.filter((entry) => !entry.kept && entry.reason === reason).length;
     this.log(
       `Seeded ${plan.kind} room (attached=${report.attachedCount}, missing=${count('missing')}, ` +
-      `unreadable=${count('unreadable')}, over-budget=${count('over-budget')})`
+      `unreadable=${count('unreadable')}, over-budget=${count('over-budget')}, ` +
+      `kept=${report.leftOut.filter((entry) => entry.kept).length})`
     );
     return this.settled(plan.kind, report);
   }
@@ -161,13 +163,15 @@ export class WorkshopPinnedContextRoomSeed implements WorkshopRoomSeed {
     let attachedWords = 0;
     for (const file of files) {
       const carried = this.carried(file, room.getContextAttachments());
+      // A carried file whose re-read is left out stays in the room as it was.
+      const keptMark = carried ? { kept: true as const } : {};
       if (file.state !== 'ready') {
-        leftOut.push({ label: file.label, reason: file.state });
+        leftOut.push({ label: file.label, reason: file.state, ...keptMark });
         continue;
       }
       const placed = carried ? this.reread(file, carried, room) : this.attach(file, room);
       if (placed === undefined) {
-        leftOut.push({ label: file.label, reason: 'over-budget' });
+        leftOut.push({ label: file.label, reason: 'over-budget', ...keptMark });
         continue;
       }
       attachedCount += 1;
