@@ -93,3 +93,15 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
   - **Q1 changed the design.** The open room's bookmarks are visible to personas, on request, through `<scope>` and a read-only live port, filtered by what the asking persona could see. His use case added D10: a memory proposed from bookmarks cites them.
   - **Q4 is a follow-up.** Catalog counts went to [their own feature note](../../features/feature-workshop-recall-bookmark-counts/README.md).
   - **Q2, Q3, Q5 and Q6 stand as proposed.**
+- **2026-11-05. PR #214 review (Astra).** She raised one P1 (F-05) and six P2s (F-01–F-04, F-06, F-07), all against the spec. Each is answered in the ADR and the slice docs, and the ledger is in [the review](../../../docs/pr-reviews/pr-214-workshop-bookmark-recall-spec-review.md).
+  - **F-01.** Nothing about bookmarks is injected automatically, and a requested result is ordinary evidence. The rewritten pin tests both halves.
+  - **F-05 (P1).** A result holding any open-room row the room couldn't see is never published. It stays with the persona that asked.
+  - **F-02.** The browser reads saved sessions in pages, through a read-only `listPage` cursor, and says how much it covers.
+  - **F-03.** The host builds live rows from the full ledger, by `roomRevision`. An out-of-window "Remember this" uses the host's message and Project Memory's live-turn route.
+  - **F-04.** Read marks also go on collapsed tool reports.
+  - **F-06.**
+    - Rows carry turn ids.
+    - Proposal citations are limited to the open room, because a memory has one source session.
+    - Saved-session citations went to [their own follow-up](../../features/feature-workshop-memory-multi-session-sources/README.md).
+  - **F-07.** `<bookmark>` and `<from>` read one bookmark's whole message in windows, and that's the continuation every cut message points to.
+  - **Dates.** They use the holding session's own zone, with `<until>` inclusive, and impossible dates are refused.
