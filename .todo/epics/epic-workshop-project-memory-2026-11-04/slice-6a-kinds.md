@@ -17,8 +17,9 @@ the boundaries:
   the idea is a candidate answer. When an idea is chosen, the decision or canon
   memory that records the choice supersedes it.
 
-The order everywhere is Decision · Canon · Theme · Preference · Idea · Open
-thread: settled, then how the writer works, then unsettled.
+The order everywhere is Decision · Canon · Theme · Idea · Open thread ·
+Preference: settled, then unsettled, then how the writer works. (The first
+brief put Preference fourth; Okey moved it last on 2026-11-05.)
 
 ## What changed
 
@@ -33,10 +34,27 @@ thread: settled, then how the writer works, then unsettled.
     map, adding "Themes" and "Ideas", so the manager's order can't drift.
   - The unreadable `kind` reason builds its list from the constant: "decision,
     canon, theme, preference, idea or open-thread".
-- `WorkshopMemorySheet`: Theme ("What the story is about.") and Idea ("A
-  possibility, not chosen yet."). The kind grid is three columns by two; at
-  760px and below it stays two columns, three rows. Checked in Chromium at a
-  688px sheet and at 360px.
+- `WorkshopMemorySheet` adds Theme ("What the story is about.") and Idea ("A
+  possibility, not chosen yet.").
+- The kind cards show six across or 3×2, and nothing in between (Okey's rule):
+  - The field around the radio group is a named container
+    (`.pm-ws-memory-kind-field`, `container: pm-ws-memory-kinds / inline-size`).
+  - The grid is `repeat(3, …)` by default. It becomes `repeat(6, …)` only under
+    `@container pm-ws-memory-kinds (min-width: 940px)`, which is six 150px cards
+    plus five 8px gaps.
+  - It never uses `auto-fit` or `auto-fill`, so no row is ever 5+1 or 4+2.
+  - Under the existing 760px stack rule, it is 2×3.
+- Measured in Chromium:
+  - The field is at most 988px wide: the sheet is up to 1040px, minus 26px
+    padding on each side. So six across appears only on a wide panel.
+  - On one line, the widest card ("A possibility, not chosen yet.") needs 156px
+    in the default sans font and 167px with a Segoe-style stack. Keeping every
+    description on one line would need about 1,000–1,050px, which the sheet
+    never reaches.
+  - At 940px, names never wrap, but the Idea and Open thread descriptions take
+    two lines. The row stretches the cards to one height. By 988px every
+    description fits on one line.
+  - Field widths checked: 988 → 6, 940 → 6, 939 → 3, 688 → 3.
 - `WorkshopMemoryCard` labels gain the two kinds. In `WorkshopMemoryRow`'s
   icons, theme is `orbit` (a motif the story circles) and idea is `sparkle`.
 - `project-memory-capability.md` gains "What each kind means", which says how
@@ -62,6 +80,8 @@ thread: settled, then how the writer works, then unsettled.
 - **Design snapshot and feature note.** `docs/design/workshop-project-memory/`
   and `.todo/features/feature-workshop-project-memory/README.md` keep the four
   kinds they were written with, as snapshots of history.
+- The manager has no row of kind chips or filters, only the Kind/Date grouping
+  toggle. So the six-or-three rule applies to the sheet alone.
 - Lightbox's `open-thread` (`lightboxPlotTiles.ts`) is a separate vocabulary
   and is untouched.
 
@@ -73,6 +93,14 @@ thread: settled, then how the writer works, then unsettled.
   descriptions, and Theme and Idea pick like any other kind.
 - `workshopMemoryManagerView.test.ts`: groups six memories, given in reverse,
   into the six groups in order. The unreadable-kind reason names all six.
+- `workshopMemoryKindGrid.test.ts` (new) pins the grid rule:
+  - 3 columns by default;
+  - 6 only under the kind field's container query, at `6 × 150 + 5 × 8` px;
+  - 2 only under the 760px media rule;
+  - never `auto-fit` or `auto-fill`;
+  - the sheet's radio group sits in that container.
+- `webviewCssFloor.test.ts` passes: `@container` is Chromium 105, inside the
+  114 floor.
 - `projectMemoryPromptSync.test.ts`: the kinds section names exactly
   `PROJECT_MEMORY_KINDS`, in order. An idea is described as unsettled, never
   canon or a decision, and superseded when chosen. The canon/theme and

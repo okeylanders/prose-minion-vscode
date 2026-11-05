@@ -559,11 +559,26 @@
 [data-pm-surface="workshop"] .pm-ws-memory-hint {
   color: var(--pm-dim);
 }
+/*
+ * The six kinds (Slice 6a): six across when they fit, otherwise three by
+ * two, and nothing in between (never 5+1 or 4+2, so never auto-fit or
+ * auto-fill). Six across starts where each card is 150px: 6 x 150 plus five
+ * 8px gaps. Names never wrap there; the longest descriptions may take two
+ * lines in some editor fonts, and the row stretches the cards to one height.
+ * Under the 760px stack rule below, two by three.
+ */
+[data-pm-surface="workshop"] .pm-ws-memory-kind-field {
+  container: pm-ws-memory-kinds / inline-size;
+}
 [data-pm-surface="workshop"] .pm-ws-memory-kinds {
   display: grid;
-  /* Six kinds: three by two at the sheet's width, two by three when narrow (Slice 6a). */
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+@container pm-ws-memory-kinds (min-width: 940px) {
+  [data-pm-surface="workshop"] .pm-ws-memory-kinds {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 [data-pm-surface="workshop"] .pm-ws-memory-kind-card {
   display: flex;

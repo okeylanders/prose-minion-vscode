@@ -72,9 +72,9 @@ describe('WorkshopMemorySheet', () => {
       'DecisionA choice the project made.',
       'CanonA fact of the story.',
       'ThemeWhat the story is about.',
-      'PreferenceHow you like to work.',
       'IdeaA possibility, not chosen yet.',
-      'Open threadA question to come back to.'
+      'Open threadA question to come back to.',
+      'PreferenceHow you like to work.'
     ]);
   });
 

@@ -31,10 +31,10 @@ const KIND_CARDS: Readonly<Record<ProjectMemoryKind, { label: string; help: stri
   decision: { label: 'Decision', help: 'A choice the project made.' },
   canon: { label: 'Canon', help: 'A fact of the story.' },
   theme: { label: 'Theme', help: 'What the story is about.' },
-  preference: { label: 'Preference', help: 'How you like to work.' },
   idea: { label: 'Idea', help: 'A possibility, not chosen yet.' },
   // eslint-disable-next-line @typescript-eslint/naming-convention -- ProjectMemoryKind ids are kebab-case format literals.
-  'open-thread': { label: 'Open thread', help: 'A question to come back to.' }
+  'open-thread': { label: 'Open thread', help: 'A question to come back to.' },
+  preference: { label: 'Preference', help: 'How you like to work.' }
 });
 
 interface WorkshopMemorySheetProps {
@@ -126,7 +126,7 @@ export const WorkshopMemorySheet: React.FC<WorkshopMemorySheetProps> = ({ sheet,
               <small>{count(draft.title, PROJECT_MEMORY_FIELD_CHARACTERS.title)}</small>
             </label>
 
-            <div className="pm-ws-memory-field">
+            <div className="pm-ws-memory-field pm-ws-memory-kind-field">
               <span id="pm-ws-memory-kind-label">Kind</span>
               <div className="pm-ws-memory-kinds" role="radiogroup" aria-labelledby="pm-ws-memory-kind-label">
                 {PROJECT_MEMORY_KINDS.map((kind) => (

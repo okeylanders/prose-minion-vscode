@@ -912,8 +912,8 @@ The six questions this ADR opened, decided by the writer on 2026-11-04.
 
 Format 1's closed `kind` list gains two kinds, so it reads, in this order
 everywhere (`PROJECT_MEMORY_KINDS`, the sheet's cards, the manager's groups):
-`decision` · `canon` · `theme` · `preference` · `idea` · `open-thread`. That is
-settled, then how the writer works, then unsettled.
+`decision` · `canon` · `theme` · `idea` · `open-thread` · `preference`. That is
+settled, then unsettled, then how the writer works.
 
 - **`theme`:** what the story is about, a meaning or motif it keeps returning
   to. Feedback should serve it. Canon is what *happens* in the story; a theme is
@@ -929,4 +929,5 @@ migration (AGENTS.md: never migrate a development shape; ADR 2026-07-30's
 release rule applies from the first release). Both persona prompts teach the
 boundaries, and their sync tests hold the kinds they name to
 `PROJECT_MEMORY_KINDS`. The unreadable-file reason derives its list from the
-constant.
+constant. The sheet shows the six kind cards six across when they fit, otherwise
+three by two, never a row with an orphan (a container query, not `auto-fit`).

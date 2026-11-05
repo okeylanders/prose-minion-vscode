@@ -21,19 +21,19 @@ export const PROJECT_MEMORY_FORMAT = 1;
  * - `canon`: a story fact ("the Rabbit's watch runs backward"): what happens;
  * - `theme`: what the story is about, a meaning or motif it keeps returning
  *   to ("time slips away from everyone who chases it"): what it means;
- * - `preference`: how the writer likes to work ("structure before line edits");
  * - `idea`: a possibility the writer floated and has not chosen ("the
  *   Hatter might be the Rabbit's brother"). Never canon or a decision; when
  *   it is chosen, the decision or canon memory that records it supersedes it;
  * - `open-thread`: a question to come back to ("does the Duchess know?").
  *   An idea is a candidate answer or direction; an open thread is the
- *   question the story still owes.
+ *   question the story still owes;
+ * - `preference`: how the writer likes to work ("structure before line edits").
  *
  * The order is the writer's everywhere (the sheet's cards, the manager's
- * groups): settled, then how the writer works, then unsettled
+ * groups): settled, then unsettled, then how the writer works
  * (epic Slice 6a, 2026-11-05).
  */
-export const PROJECT_MEMORY_KINDS = ['decision', 'canon', 'theme', 'preference', 'idea', 'open-thread'] as const;
+export const PROJECT_MEMORY_KINDS = ['decision', 'canon', 'theme', 'idea', 'open-thread', 'preference'] as const;
 export type ProjectMemoryKind = typeof PROJECT_MEMORY_KINDS[number];
 
 /**

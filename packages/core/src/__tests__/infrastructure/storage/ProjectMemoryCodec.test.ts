@@ -106,7 +106,7 @@ describe('format 1: a round trip, and the fixtures as written', () => {
   });
 
   it('round-trips every kind, status and origin', () => {
-    expect(PROJECT_MEMORY_KINDS).toEqual(['decision', 'canon', 'theme', 'preference', 'idea', 'open-thread']);
+    expect(PROJECT_MEMORY_KINDS).toEqual(['decision', 'canon', 'theme', 'idea', 'open-thread', 'preference']);
     for (const kind of PROJECT_MEMORY_KINDS) {
       for (const status of ['active', 'archived'] as const) {
         const memory: ProjectMemory = { ...RABBIT, kind, status, pinned: status === 'active' };

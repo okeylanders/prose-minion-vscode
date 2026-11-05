@@ -66,7 +66,7 @@ describe('project-memory prompt ↔ PROMPT_BUDGETS', () => {
     const taught = [...section.matchAll(/^- An? `([a-z-]+)`/gm)].map((match) => match[1]);
     const named = [...section.matchAll(/`([a-z-]+)`/g)].map((match) => match[1]);
     expect([...new Set(named)]).toEqual([...PROJECT_MEMORY_KINDS]);
-    expect(taught).toEqual(['decision', 'theme', 'preference', 'idea', 'open-thread']);
+    expect(taught).toEqual(['decision', 'theme', 'idea', 'open-thread', 'preference']);
   });
 
   it('describes an idea as unsettled: never canon, never a decision, superseded when chosen', () => {

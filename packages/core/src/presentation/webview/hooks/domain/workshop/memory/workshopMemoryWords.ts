@@ -38,19 +38,19 @@ export const MEMORY_KIND_WORDS: Readonly<Record<ProjectMemoryKind, string>> = Ob
   decision: 'decision',
   canon: 'canon',
   theme: 'theme',
-  preference: 'preference',
   idea: 'idea',
-  'open-thread': 'open thread'
+  'open-thread': 'open thread',
+  preference: 'preference'
 });
 
 const MEMORY_KIND_GROUP_LABELS: Readonly<Record<ProjectMemoryKind, string>> = Object.freeze({
   decision: 'Decisions',
   canon: 'Canon',
   theme: 'Themes',
-  preference: 'Preferences',
   idea: 'Ideas',
   // eslint-disable-next-line @typescript-eslint/naming-convention -- ProjectMemoryKind ids are kebab-case format literals.
-  'open-thread': 'Open threads'
+  'open-thread': 'Open threads',
+  preference: 'Preferences'
 });
 
 /** A kind's group heading, in the manager's order: `PROJECT_MEMORY_KINDS`' own. */
