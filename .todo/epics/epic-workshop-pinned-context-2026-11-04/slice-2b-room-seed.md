@@ -309,6 +309,39 @@ Slice 1's PR #204 re-review fixes `92acb220` merged in): typecheck passes;
    moment." and "pinned-context.json couldn't be read. Try again, or check
    the project folder."
 
+## PR #208 review
+
+Astra reviewed `b0429082` (report: `docs/pr-reviews/pr-208-pinned-context-room-seed-review.md`):
+changes required, four findings, all confirmed by the coordinator. First the
+epic was merged in (`356831da`, pushed alone so CI could start), then:
+
+- `bc503b93`: the fixes;
+- `5853bb03`: the regressions, with Astra's three probes promoted into
+  `pinnedContext/WorkshopPinnedContextReviewFixes.test.ts`. Run against the
+  pre-fix code, 11 of its 13 cases fail; the other two are controls (a held
+  catalog load still reads A, and a single normalized match is still read).
+
+| Finding | Fix | Test |
+|---|---|---|
+| **F01 (high)**: a seed's reads followed the live workspace, so A→B→A during `prepare` installed B's list and text into A | `askSeedWorkspace()` captures the root and the list's file once (`WorkshopPinnedContextAsk.where`), and `readForSeed(where)` reads only from them. **Slice 1's store gains an additive `read({ filePath })`** (`WorkshopPinnedContextReadOptions`): at its turn, another list file answers `unavailable` / `workspace-changed` and nothing is read; a caller naming no file reads live, as before. The reader checks every catalog row's absolute path, and every path `authorizeExcerptReread` hands back, with `isPathWithinRoot(capturedRoot, …)` before reading; a path outside is the fault `workspace-changed`, never read. Any such fault withdraws the whole plan. The report is one entry, `pinned-context.json` / `workspace-changed` (a new reason on the seed port, additive), and the line says "(the project folder changed while it was read)". `describe()` holds one root the same way, and answers `unavailable` / `workspace-changed`. Logs say which read was withdrawn, with a count, never a path | Astra's probe; A→B→A while the list read is queued (with the exact result line, and logs free of paths and names); A→B→A while the catalog opens; a held catalog load (control: it reads A's file); A→B→A while a workspace file's `stat` is held; `describe()` both ways; the store's `read({ filePath })` three ways (`WorkshopPinnedContextStore.test.ts`) |
+| **F02 (medium)**: on POSIX, `Characters\alice.md` matched `Characters/alice.md` | `attachmentPathKey` turns `\` into `/` only when the platform is `windows` | Astra's probe; match-rule cases for POSIX `relativePath` and catalog key, and Windows |
+| **F03 (medium)**: the reader picked the first catalog row by NFC key, so with both `café` spellings present it read the wrong file | The exact stored path is looked up first. A normalized match is used only when exactly one distinct catalog path has it; several give the fault `ambiguous`, left out as unreadable ("Can't read: more than one file in the project has this name, written differently. Pin the one you mean again."). Slice 1's duplicate rule is unchanged | Astra's probe; a single normalized match still read; an ambiguous Windows case-fold, in the seed and in `describe()` |
+| **F04 (medium)**: a carried copy known by its URI under an older display path was reported "not attached" when its re-read failed | Every read result, failed ones too, carries `sourceUris`: the file URIs the entry names under the captured root (the path it spells, and the catalog row it resolved to when that differs), derived from the root and the entry, never from a read. Carried copies are matched by them. No body is invented and containment is unchanged | Astra's two probes (missing, whitespace-only) |
+
+Two smaller changes came with these:
+
+- **The workspace door no longer takes a catalog key from authorization.**
+  `authorizeExcerptReread` matches against a live catalog, which could
+  belong to another project mid-switch. The reader's own snapshot already
+  decides the catalog case.
+- **The test host's catalog lists the live folder's files when it opens,** as
+  the real provider does. It also gains `moveTo` and `pinIn` for the
+  two-project tests.
+
+After the fixes: the store is 489 lines, the reader 300 and the library 305.
+Typecheck passes, lint has 0 errors and 1,165 warnings (none new), and the
+full `npx jest -w 2` on `5853bb03` (the code head) runs 703 suites / 9,930 tests / 59 snapshots, all passing.
+
 ## Progress
 
 - **2026-11-04.** Slice doc written with the spec (as Slice 2).
