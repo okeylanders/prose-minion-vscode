@@ -193,6 +193,7 @@ import {
   WorkshopPinnedContextMessage,
   WorkshopPinContextResourcesMessage,
   WorkshopPinContextAttachmentsMessage,
+  WorkshopPinContextPickFileMessage,
   WorkshopUnpinContextMessage,
   WorkshopMovePinnedContextMessage,
   WorkshopAttachPinnedContextMessage,
@@ -357,6 +358,7 @@ export type WebviewToExtensionMessage =
   | WorkshopRequestPinnedContextMessage
   | WorkshopPinContextResourcesMessage
   | WorkshopPinContextAttachmentsMessage
+  | WorkshopPinContextPickFileMessage
   | WorkshopUnpinContextMessage
   | WorkshopMovePinnedContextMessage
   | WorkshopAttachPinnedContextMessage

@@ -27,7 +27,10 @@ function harness(options: Parameters<typeof seedHost>[0] & { report?: WorkshopRo
       posted.push(message.payload as WorkshopPinnedContextPayload);
     }
   });
-  const shell = { openFileInEditor: jest.fn(async () => undefined) };
+  const shell = {
+    openFileInEditor: jest.fn(async () => undefined),
+    pickFile: jest.fn(async (_options?: { defaultPath?: string }): Promise<{ fsPath: string; uri: string } | undefined> => undefined)
+  };
   const effects = {
     postSessionState: jest.fn(),
     postTurn: jest.fn(),
@@ -309,6 +312,53 @@ describe('WorkshopPinnedContextHandler: pinning', () => {
     h.scope.current = () => ({ available: true, liveSessionId: 'room-2' });
     await expect(pinning).resolves.toMatchObject({ ok: false, notice: { kind: 'refused', text: 'The workspace changed, so pinned context wasn’t changed.' } });
     expect(h.listOnDisk()).toBeUndefined();
+  });
+});
+
+describe('WorkshopPinnedContextHandler: Explore project folders… (the host\'s picker)', () => {
+  const picks = (h: ReturnType<typeof harness>, fsPath: string | undefined) =>
+    h.shell.pickFile.mockResolvedValueOnce(fsPath === undefined ? undefined : { fsPath, uri: `file://${fsPath}` });
+
+  it('pins a file inside the project, opening the picker in the project folder', async () => {
+    const h = harness();
+    h.write('Notes/garden.md', 'The garden door is small.');
+    picks(h, path.join(ROOT, 'Notes', 'garden.md'));
+    const answer = await h.send(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE, { revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION });
+    expect(answer).toMatchObject({ action: 'pin-file', ok: true });
+    expect(h.shell.pickFile).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: ROOT }));
+    expect(h.listOnDisk()).toEqual(['Notes/garden.md']);
+    expect(h.lines.join('\n')).not.toContain('garden');
+  });
+
+  it('refuses a file outside the project, with nothing read or written', async () => {
+    const h = harness();
+    h.fileSystem.files.set('/elsewhere/alice.md', new TextEncoder().encode('Alice.'));
+    const readFile = jest.spyOn(h.fileSystem, 'readFile');
+    picks(h, '/elsewhere/alice.md');
+    await expect(h.send(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE, { revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION }))
+      .resolves.toMatchObject({ ok: false, notice: { kind: 'refused', text: 'Only files inside this project can be pinned.' } });
+    expect(readFile.mock.calls.filter(([file]) => file === '/elsewhere/alice.md')).toEqual([]);
+    expect(h.listOnDisk()).toBeUndefined();
+  });
+
+  it('answers nothing when the picker is dismissed', async () => {
+    const h = harness();
+    picks(h, undefined);
+    await expect(h.send(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE, { revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION }))
+      .rejects.toThrow('no answer');
+    expect(h.listOnDisk()).toBeUndefined();
+  });
+
+  it('refuses a stale revision and answers with the current list', async () => {
+    const h = harness();
+    h.write('Project/brief.md', 'A brief.');
+    h.write('Notes/garden.md', 'The garden.');
+    h.pin('Project/brief.md');
+    picks(h, path.join(ROOT, 'Notes', 'garden.md'));
+    const answer = await h.send(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE, { revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION });
+    expect(answer).toMatchObject({ ok: false, notice: { kind: 'changed' } });
+    expect(answer.entries.map((entry) => entry.path)).toEqual(['Project/brief.md']);
+    expect(h.listOnDisk()).toEqual(['Project/brief.md']);
   });
 });
 

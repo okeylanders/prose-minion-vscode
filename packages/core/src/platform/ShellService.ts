@@ -58,11 +58,13 @@ export interface ShellService {
    * undefined when the user dismisses the dialog (dismissal is not an error).
    * `filters` maps display names to extension lists, mirroring
    * `vscode.OpenDialogOptions.filters`. `openLabel` names the confirm button
-   * (the Workshop's "Pin" when omitted).
+   * (the Workshop's "Pin" when omitted). `defaultPath` is the folder the
+   * dialog starts in (Pinned context's pick starts in the project folder).
    */
   pickFile(options?: {
     title?: string;
     filters?: Record<string, string[]>;
     openLabel?: string;
+    defaultPath?: string;
   }): Promise<PickedFile | undefined>;
 }

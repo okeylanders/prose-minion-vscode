@@ -48,6 +48,7 @@ export interface WorkshopPinnedContextSettingsPanelProps {
   onToggleNote: () => void;
   onPinResources: (items: ConfiguredResourceRef[]) => string | undefined;
   onPinAttachments: (attachmentIds: readonly string[]) => string | undefined;
+  onPinPickedFile: () => string | undefined;
   onUnpin: (entryPath: string) => string | undefined;
   onMove: (entryPath: string, direction: 'up' | 'down') => string | undefined;
   onAttachMissing: () => string;
@@ -72,6 +73,7 @@ export const WorkshopPinnedContextSettingsPanel: React.FC<WorkshopPinnedContextS
   onToggleNote,
   onPinResources,
   onPinAttachments,
+  onPinPickedFile,
   onUnpin,
   onMove,
   onAttachMissing,
@@ -310,6 +312,7 @@ export const WorkshopPinnedContextSettingsPanel: React.FC<WorkshopPinnedContextS
         onSearch={onSearch}
         onClearSearch={onClearSearch}
         onPin={onPinResources}
+        onExplore={() => { onPinPickedFile(); }}
         onClose={() => setPickerOpen(false)}
       />
     </>
@@ -335,6 +338,7 @@ export function workshopPinnedContextPanelProps(
     onToggleNote: pinned.toggleNote,
     onPinResources: pinned.pinResources,
     onPinAttachments: pinned.pinAttachments,
+    onPinPickedFile: pinned.pinPickedFile,
     onUnpin: pinned.unpin,
     onMove: pinned.move,
     onAttachMissing: pinned.attachMissing,

@@ -112,6 +112,37 @@ export class WorkshopPinnedContextWrites {
     return isList(list) ? this.pin(ask, revision, list, entries) : list;
   }
 
+  /**
+   * A file the host's picker chose: the folder is the one asked in, captured
+   * before the pick is awaited, and the file must lie inside it (ADR D8). Its
+   * path relative to that folder is the entry; `\` is a separator only on
+   * Windows, so on POSIX a name holding one is refused by the path rule.
+   */
+  async pinPicked(
+    ask: WorkshopPinnedContextAsk,
+    revision: string,
+    pick: (projectFolder: string) => Promise<string | undefined>
+  ): Promise<WorkshopPinnedContextWriteResult | { readonly kind: 'cancelled' }> {
+    const where = this.store.availability();
+    if (!where.available) {
+      return this.refuse(workshopPinnedListUnavailableWords(where.reason), where.reason);
+    }
+    const picked = await pick(where.rootPath);
+    if (picked === undefined) {
+      this.log('Pick cancelled');
+      return { kind: 'cancelled' };
+    }
+    if (!ask.still()) {
+      return this.refuse(WORKSHOP_PINNED_WORDS.workspaceChanged, 'unavailable');
+    }
+    if (!isPathWithinRoot(where.rootPath, picked)) {
+      return this.refuse(WORKSHOP_PINNED_WORDS.outsideProject, 'outside');
+    }
+    const relative = path.relative(where.rootPath, picked);
+    const entryPath = this.platform === 'windows' ? relative.replace(/\\/g, '/') : relative;
+    return this.pinPaths(ask, revision, [{ path: entryPath }]);
+  }
+
   async unpin(ask: WorkshopPinnedContextAsk, revision: string, entryPath: string): Promise<WorkshopPinnedContextWriteResult> {
     const list = await this.atRevision(ask, revision);
     if (!isList(list)) {

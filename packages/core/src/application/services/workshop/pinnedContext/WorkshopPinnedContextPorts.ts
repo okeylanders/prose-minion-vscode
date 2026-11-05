@@ -87,6 +87,15 @@ export interface WorkshopPinnedContextTabPort {
   pinResources(revision: string, items: readonly ConfiguredResourceRef[]): Promise<WorkshopPinnedContextWriteResult>;
   /** Pin files a room holds, by the workspace-relative path the handler resolved from the live room. */
   pinPaths(revision: string, entries: readonly WorkshopPinnedContextEntry[]): Promise<WorkshopPinnedContextWriteResult>;
+  /**
+   * Pin a file the host's own picker chose (Explore project folders…). The
+   * live room is captured before `pick` is awaited; the file must lie inside
+   * that room's folder. `pick` resolving undefined (dismissed) is `cancelled`.
+   */
+  pinPickedFile(
+    revision: string,
+    pick: (projectFolder: string) => Promise<string | undefined>
+  ): Promise<WorkshopPinnedContextWriteResult | { readonly kind: 'cancelled' }>;
   unpin(revision: string, entryPath: string): Promise<WorkshopPinnedContextWriteResult>;
   move(revision: string, entryPath: string, direction: 'up' | 'down'): Promise<WorkshopPinnedContextWriteResult>;
   /** An entry's file, or the list file when `entryPath` is absent: resolved from the list as read now, contained. */

@@ -111,6 +111,13 @@ export class WorkshopPinnedContextLibrary implements WorkshopPinnedContextTabPor
     return this.writes.pinPaths(this.askLiveRoom(), revision, entries);
   }
 
+  pinPickedFile(
+    revision: string,
+    pick: (projectFolder: string) => Promise<string | undefined>
+  ): Promise<WorkshopPinnedContextWriteResult | { readonly kind: 'cancelled' }> {
+    return this.writes.pinPicked(this.askLiveRoom(), revision, pick);
+  }
+
   unpin(revision: string, entryPath: string): Promise<WorkshopPinnedContextWriteResult> {
     return this.writes.unpin(this.askLiveRoom(), revision, entryPath);
   }

@@ -21,6 +21,7 @@ export function pinnedContextPanelPropsStub(
     onToggleNote: jest.fn(),
     onPinResources: jest.fn(() => 'pin-1'),
     onPinAttachments: jest.fn(() => 'pin-2'),
+    onPinPickedFile: jest.fn(() => 'pick-1'),
     onUnpin: jest.fn(() => 'unpin-1'),
     onMove: jest.fn(() => 'move-1'),
     onAttachMissing: jest.fn(() => 'attach-1'),

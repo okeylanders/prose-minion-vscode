@@ -317,18 +317,22 @@ describe('WorkshopPinnedContextSettingsPanel: Add from project… in pin mode', 
     return panel;
   };
 
-  it('keeps pinned rows disabled and marked, offers no Explore, and estimates against what\'s left', () => {
-    openPicker();
+  it('keeps pinned rows disabled and marked, offers the host\'s picker, and estimates against what\'s left', () => {
+    const { props } = openPicker();
     expect(screen.getByText('Pin context')).not.toBeNull();
     const alice = screen.getByRole('checkbox', { name: /Characters\/alice\.md/ }) as HTMLButtonElement;
     expect(alice.disabled).toBe(true);
     expect(within(alice).getByText('Pinned')).not.toBeNull();
-    expect(screen.queryByText(/Explore project folders/)).toBeNull();
+    expect(screen.getByText('opens the system picker; files in this project only')).not.toBeNull();
 
     fireEvent.click(screen.getByRole('checkbox', { name: /the-caterpillar/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /the-duchess/ }));
     expect(screen.getByText('2 files · ~2,901 words est.')).not.toBeNull();
     expect(button('Pin 2 files')).not.toBeNull();
+
+    fireEvent.click(button(/Explore project folders/));
+    expect(props.onPinPickedFile).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Pin context')).toBeNull();
   });
 
   it('keeps the picker open until the host answers: a refusal shows above its footer, a pin that lands closes it', () => {

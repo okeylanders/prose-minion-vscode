@@ -223,6 +223,7 @@ const WORKSHOP_ROUTE_OWNERS = [
       'WORKSHOP_REQUEST_PINNED_CONTEXT',
       'WORKSHOP_PIN_CONTEXT_RESOURCES',
       'WORKSHOP_PIN_CONTEXT_ATTACHMENTS',
+      'WORKSHOP_PIN_CONTEXT_PICK_FILE',
       'WORKSHOP_UNPIN_CONTEXT',
       'WORKSHOP_MOVE_PINNED_CONTEXT',
       'WORKSHOP_OPEN_PINNED_CONTEXT_FILE'
@@ -1905,12 +1906,12 @@ describe('architectural boundaries', () => {
     // Wayfinding Slice 5 added the read-only turn preview (direct).
     // Project Memory Slice 3 added five writes (mutation) and the sheet's two reads (direct).
     // Project Memory Slice 4b added the manager's listing and actions (direct).
-    // Pinned Context Slice 3 added the tab's six list routes (direct) and Attach missing (mutation).
-    expect(expectedOwnerPairs).toHaveLength(80);
+    // Pinned Context Slice 3 added the tab's seven list routes (direct) and Attach missing (mutation).
+    expect(expectedOwnerPairs).toHaveLength(81);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(46);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(34);
+      .toHaveLength(35);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });

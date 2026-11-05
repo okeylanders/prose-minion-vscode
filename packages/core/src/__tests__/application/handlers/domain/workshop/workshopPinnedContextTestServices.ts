@@ -17,6 +17,7 @@ export function emptyPinnedContextServices(): WorkshopPinnedContextServices {
       readForSeed: async () => ({ state: 'nothing' }),
       pinResources: unchanged,
       pinPaths: unchanged,
+      pinPickedFile: unchanged,
       unpin: unchanged,
       move: unchanged,
       openTarget: async () => ({ kind: 'refused', words: 'Nothing to open.', category: 'absent' })

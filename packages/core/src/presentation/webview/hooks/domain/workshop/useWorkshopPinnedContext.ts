@@ -52,6 +52,12 @@ export interface WorkshopPinnedContextActions {
   /** Each change returns the request id it posted, or undefined when there is no list to change. */
   pinResources: (items: readonly ConfiguredResourceRef[]) => string | undefined;
   pinAttachments: (attachmentIds: readonly string[]) => string | undefined;
+  /**
+   * Explore project folders… in pin mode: the host opens its picker. A
+   * dismissed picker is answered with nothing, so this request never holds
+   * the tab's other controls; its answer is still taken when it comes.
+   */
+  pinPickedFile: () => string | undefined;
   unpin: (entryPath: string) => string | undefined;
   move: (entryPath: string, direction: 'up' | 'down') => string | undefined;
   attachMissing: () => string;
@@ -86,6 +92,7 @@ export function useWorkshopPinnedContext({ attachments, running }: UseWorkshopPi
   const [answer, setAnswer] = React.useState<WorkshopPinnedContextPayload | undefined>(undefined);
   const [pendingRequestId, setPendingRequestId] = React.useState<string | undefined>(undefined);
   const waiting = React.useRef<string | undefined>(undefined);
+  const picking = React.useRef<string | undefined>(undefined);
   const revision = React.useRef<string | null>(null);
   const ids = React.useRef({ prefix: `ws-pinned-${Math.random().toString(36).slice(2, 10)}`, count: 0 });
 
@@ -114,8 +121,33 @@ export function useWorkshopPinnedContext({ attachments, running }: UseWorkshopPi
     requestList();
   }, [requestList]);
 
+  const pinPickedFile = React.useCallback((): string | undefined => {
+    if (revision.current === null) {
+      return undefined;
+    }
+    ids.current.count += 1;
+    const requestId = `${ids.current.prefix}-${ids.current.count}`;
+    picking.current = requestId;
+    vscode.postMessage({
+      type: MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE,
+      source: SOURCE,
+      payload: { requestId, revision: revision.current },
+      timestamp: Date.now()
+    });
+    return requestId;
+  }, [vscode]);
+
   const handlePinnedContext = React.useCallback((message: WorkshopPinnedContextMessage) => {
     const payload = message.payload;
+    if (payload.requestId !== null && payload.requestId === picking.current) {
+      // The pick's answer: taken unless a newer request waits, whose answer will be newer.
+      picking.current = undefined;
+      if (waiting.current === undefined) {
+        revision.current = payload.revision;
+        setAnswer(payload);
+      }
+      return;
+    }
     if (payload.requestId === null ? waiting.current !== undefined : payload.requestId !== waiting.current) {
       return;
     }
@@ -125,7 +157,7 @@ export function useWorkshopPinnedContext({ attachments, running }: UseWorkshopPi
     setAnswer(payload);
   }, []);
 
-  const actions: Omit<WorkshopPinnedContextActions, 'requestList' | 'handlePinnedContext' | 'toggleNote'> = React.useMemo(() => ({
+  const actions: Omit<WorkshopPinnedContextActions, 'requestList' | 'handlePinnedContext' | 'toggleNote' | 'pinPickedFile'> = React.useMemo(() => ({
     pinResources: (items) => change(MessageType.WORKSHOP_PIN_CONTEXT_RESOURCES, { items: items.map(({ group, path }) => ({ group, path })) }),
     pinAttachments: (attachmentIds) => change(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS, { attachmentIds: [...attachmentIds] }),
     unpin: (entryPath) => change(MessageType.WORKSHOP_UNPIN_CONTEXT, { entryPath }),
@@ -152,6 +184,7 @@ export function useWorkshopPinnedContext({ attachments, running }: UseWorkshopPi
     noteOpen,
     requestList,
     ...actions,
+    pinPickedFile,
     toggleNote,
     handlePinnedContext,
     persistedState

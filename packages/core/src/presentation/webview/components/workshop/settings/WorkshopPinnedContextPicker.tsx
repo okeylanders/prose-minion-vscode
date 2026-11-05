@@ -10,9 +10,10 @@
  *   answers. A pin that lands closes the picker; a refusal shows above the
  *   footer, where the writer acted.
  *
- * It names files by catalog key only, and offers no "Explore project
- * folders…": the webview never introduces a path (ADR 2026-11-04 D8). It
- * posts nothing; every host effect is a callback.
+ * Rows are named by catalog key. "Explore project folders…" asks the host
+ * to open its own picker; the host introduces the path and pins it only
+ * inside this project, so the webview never sends one (ADR 2026-11-04 D8).
+ * It posts nothing; every host effect is a callback.
  */
 
 import * as React from 'react';
@@ -33,7 +34,7 @@ import type {
 const COPY: ProjectResourcePickerCopy = {
   eyebrow: 'Pin context',
   description: 'Files you pin are attached to every new conversation in this project, after the ones already pinned.',
-  exploreNote: ''
+  exploreNote: 'opens the system picker; files in this project only'
 };
 
 export interface WorkshopPinnedContextPickerProps {
@@ -51,6 +52,8 @@ export interface WorkshopPinnedContextPickerProps {
   onClearSearch: () => void;
   /** Ask the host to pin; the id of the request, or undefined when there is no list to change. */
   onPin: (items: ConfiguredResourceRef[]) => string | undefined;
+  /** Explore project folders…: the host's own picker, which pins a file inside this project. */
+  onExplore: () => void;
   onClose: () => void;
 }
 
@@ -66,6 +69,7 @@ export const WorkshopPinnedContextPicker: React.FC<WorkshopPinnedContextPickerPr
   onSearch,
   onClearSearch,
   onPin,
+  onExplore,
   onClose
 }) => {
   const pinned = React.useMemo(() => new Set(pinnedPaths), [pinnedPaths]);
@@ -78,6 +82,7 @@ export const WorkshopPinnedContextPicker: React.FC<WorkshopPinnedContextPickerPr
       searchResults={searchResults}
       onSearch={onSearch}
       onClearSearch={onClearSearch}
+      onExplore={onExplore}
       onClose={onClose}
       selection="multiple"
       isAttached={(entry) => pinned.has(entry.path)}

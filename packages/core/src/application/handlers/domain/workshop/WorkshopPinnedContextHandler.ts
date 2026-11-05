@@ -42,6 +42,7 @@ import {
   type WorkshopMovePinnedContextMessage,
   type WorkshopOpenPinnedContextFileMessage,
   type WorkshopPinContextAttachmentsMessage,
+  type WorkshopPinContextPickFileMessage,
   type WorkshopPinContextResourcesMessage,
   type WorkshopPinnedContextAction,
   type WorkshopPinnedContextMessage,
@@ -92,7 +93,7 @@ export class WorkshopPinnedContextHandler {
   constructor(
     private readonly pinnedContext: WorkshopPinnedContextServices,
     private readonly session: WorkshopPinnedContextSessionPort,
-    private readonly shell: Pick<ShellService, 'openFileInEditor'>,
+    private readonly shell: Pick<ShellService, 'openFileInEditor' | 'pickFile'>,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
     private readonly effects: WorkshopPinnedContextEffects
@@ -102,6 +103,7 @@ export class WorkshopPinnedContextHandler {
     router.register(MessageType.WORKSHOP_REQUEST_PINNED_CONTEXT, this.handleRequest.bind(this));
     router.register(MessageType.WORKSHOP_PIN_CONTEXT_RESOURCES, this.handlePinResources.bind(this));
     router.register(MessageType.WORKSHOP_PIN_CONTEXT_ATTACHMENTS, this.handlePinAttachments.bind(this));
+    router.register(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE, this.handlePinPickedFile.bind(this));
     router.register(MessageType.WORKSHOP_UNPIN_CONTEXT, this.handleUnpin.bind(this));
     router.register(MessageType.WORKSHOP_MOVE_PINNED_CONTEXT, this.handleMove.bind(this));
     router.register(MessageType.WORKSHOP_OPEN_PINNED_CONTEXT_FILE, this.handleOpen.bind(this));
@@ -170,6 +172,30 @@ export class WorkshopPinnedContextHandler {
     }
     const result = await this.pinnedContext.library.pinPaths(revision, entries);
     return this.settle(requestId, 'pin-attachments', result, `pin ${entries.length} by id`);
+  }
+
+  /**
+   * Explore project folders… in pin mode: the host's own picker, starting in
+   * the project folder. The path is the host's; the library pins it only
+   * inside the folder of the room it was asked in. A dismissed picker
+   * answers nothing.
+   */
+  async handlePinPickedFile(message: WorkshopPinContextPickFileMessage): Promise<void> {
+    const payload = message.payload;
+    const requestId = requestIdOf(payload);
+    if (!requestId) {
+      return this.log('pick refused (malformed)');
+    }
+    const revision = revisionOf(payload);
+    if (!revision) {
+      return this.refuse(requestId, 'pin-file', WORDS.malformed, 'pick refused (malformed)');
+    }
+    const result = await this.pinnedContext.library.pinPickedFile(revision, async (projectFolder) =>
+      (await this.shell.pickFile({ title: 'Pin a file from this project', openLabel: 'Pin', defaultPath: projectFolder }))?.fsPath);
+    if (result.kind === 'cancelled') {
+      return this.log('pick cancelled');
+    }
+    return this.settle(requestId, 'pin-file', result, 'pin 1 by pick');
   }
 
   async handleUnpin(message: WorkshopUnpinContextMessage): Promise<void> {
