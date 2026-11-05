@@ -26,6 +26,10 @@ import { WorkshopBehaviorSettingsPanel } from './settings/WorkshopBehaviorSettin
 import { WorkshopAboutYouSettingsPanel } from './settings/WorkshopAboutYouSettingsPanel';
 import { WorkshopAdvancedSettingsPanel } from './settings/WorkshopAdvancedSettingsPanel';
 import { WorkshopMemorySettingsPanel } from './settings/WorkshopMemorySettingsPanel';
+import {
+  WorkshopPinnedContextSettingsPanel,
+  type WorkshopPinnedContextSettingsPanelProps
+} from './settings/WorkshopPinnedContextSettingsPanel';
 import type { WorkshopMemoryTabInput } from '@hooks/domain/workshop/memory/workshopMemoryTabView';
 import type { WorkshopMemoryFolderStatus } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 
@@ -49,6 +53,8 @@ interface WorkshopConversationBehaviorModalProps {
   memory: Omit<WorkshopMemoryTabInput, 'mode'>;
   /** Open memory folder's status, shown in the Memory tab (PR #202 F04). */
   memoryFolder?: WorkshopMemoryFolderStatus;
+  /** The Pinned context tab: the host's list and its actions, which save at once (not a draft). */
+  pinnedContext: WorkshopPinnedContextSettingsPanelProps;
   /** Whether the Memory tab's "Memory isn't context" table shows: this viewer's choice. */
   memoryExplainerOpen: boolean;
   onToggleMemoryExplainer: () => void;
@@ -76,6 +82,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   projectMemoryMode,
   memory,
   memoryFolder,
+  pinnedContext,
   memoryExplainerOpen,
   onToggleMemoryExplainer,
   isRunning,
@@ -183,6 +190,8 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         onConfirmClearChange={setConfirmClear}
       />
     ),
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the tab's id, as the slice spec names it.
+    'pinned-context': () => <WorkshopPinnedContextSettingsPanel {...pinnedContext} />,
     memory: () => (
       <WorkshopMemorySettingsPanel
         {...memory}
@@ -219,7 +228,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         <div>
           <div className="pm-ws-eyebrow">Workshop · Room settings</div>
           <h2 id="pm-ws-settings-title">Conversation settings</h2>
-          <p>Choose how Workshop personas respond, what they may proactively offer, what you explicitly share, what they remember about this project, and whether they may research the live web.</p>
+          <p>Choose how Workshop personas respond, what they may proactively offer, what you explicitly share and attach to every new conversation, what they remember about this project, and whether they may research the live web.</p>
         </div>
         <WorkshopModalShell.CloseButton />
       </div>
@@ -269,7 +278,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
           </span>
         ) : (
           <span className="pm-ws-behavior-foot-note">
-            Applies the Behavior, About You, Memory, and Advanced drafts together. Memory and live web research take effect on your next message.
+            Applies the Behavior, About You, Memory, and Advanced drafts together. Pinned context saves as you change it and applies to new conversations. Memory and live web research take effect on your next message.
           </span>
         )}
         <button className="pm-ws-action-btn" type="button" onClick={onClose}>Cancel</button>

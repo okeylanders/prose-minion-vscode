@@ -49,13 +49,15 @@ export class VsCodeShellService implements ShellService {
     title?: string;
     filters?: Record<string, string[]>;
     openLabel?: string;
+    defaultPath?: string;
   }): Promise<PickedFile | undefined> {
     const [chosen] = (await vscode.window.showOpenDialog({
       canSelectMany: false,
       canSelectFolders: false,
       openLabel: options?.openLabel ?? 'Pin',
       title: options?.title,
-      filters: options?.filters
+      filters: options?.filters,
+      ...(options?.defaultPath ? { defaultUri: vscode.Uri.file(options.defaultPath) } : {})
     })) ?? [];
     return chosen ? { fsPath: chosen.fsPath, uri: chosen.toString() } : undefined;
   }

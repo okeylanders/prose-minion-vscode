@@ -142,6 +142,7 @@ packages/core/src/
                 ├── bookmarks.ts
                 ├── projectMemory.ts
                 ├── projectMemoryManager.ts
+                ├── pinnedContext.ts
                 ├── widgets.ts
                 ├── standingDirectives.ts
                 ├── creativeVariations.ts

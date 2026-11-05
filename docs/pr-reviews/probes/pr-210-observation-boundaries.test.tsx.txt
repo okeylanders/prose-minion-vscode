@@ -1,0 +1,55 @@
+/** @jest-environment jsdom */
+import * as React from 'react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
+import { WorkshopPinnedContextPicker } from '@components/workshop/settings/WorkshopPinnedContextPicker';
+import { workshopPinnedContextTabView } from '@hooks/domain/workshop/pinnedContext/workshopPinnedContextTabView';
+import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinnedContext';
+import { MessageType, type WorkshopPinnedContextPayload, type WorkshopContextAttachmentSnapshot } from '@messages';
+import { createMockVSCode } from '@/__tests__/mocks/vscode';
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+jest.mock('@hooks/useVSCodeApi');
+const answer = (requestId: string | null, overrides: Partial<WorkshopPinnedContextPayload> = {}): WorkshopPinnedContextPayload => ({requestId, platform:'posix', availability:{available:true}, file:{state:'ok'}, revision:'before',entries:[],totals:{words:0,budgetWords:100000,files:0,maxFiles:20}, ...overrides});
+const message = (payload: WorkshopPinnedContextPayload) => ({type:MessageType.WORKSHOP_PINNED_CONTEXT, source:'extension.workshop', timestamp:1, payload}) as const;
+
+
+function mounted() {
+ const vscode = createMockVSCode();
+ (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+ const hook = renderHook(() => useWorkshopPinnedContext({attachments:[],running:false}));
+ const lastId = () => vscode.postMessage.mock.calls.at(-1)![0].payload.requestId as string;
+ act(() => hook.result.current.handlePinnedContext(message(answer(lastId(),{observation:1}))));
+ return {...hook,lastId};
+}
+it('accepts an earlier-requested mutation whose store observation is newer, and settles both', () => {
+ const {result} = mounted(); let pick = '';let change = '';
+ act(() => {pick = result.current.pinPickedFile()!;change = result.current.unpin('Characters/alice.md')!;});
+ act(() => result.current.handlePinnedContext(message(answer(change,{observation:2,revision:'two',action:'unpin',ok:true}))));
+ act(() => result.current.handlePinnedContext(message(answer(pick,{observation:3,revision:'three',action:'pin-file',ok:false,notice:{kind:'changed'}}))));
+ expect(result.current.answer?.revision).toBe('three');
+ expect(result.current.pendingRequestIds).toEqual([]);
+ expect(result.current.pending).toBe(false);
+});
+it('orders a newer push ahead of pending reads and mutations without losing their refusal', () => {
+ const {result,lastId} = mounted();let change = '';
+ act(() => {change = result.current.pinResources([{group:'characters',path:'Characters/alice.md'}])!;result.current.requestList();});
+ const read = lastId();
+ act(() => result.current.handlePinnedContext(message(answer(null,{observation:5,revision:'five'}))));
+ act(() => result.current.handlePinnedContext(message(answer(read,{observation:3,revision:'three'}))));
+ act(() => result.current.handlePinnedContext(message(answer(change,{observation:4,revision:'four',action:'pin-resources',ok:false,notice:{kind:'refused',text:'Refused.'}}))));
+ expect(result.current.answer?.revision).toBe('five');
+ expect(result.current.answer?.notice).toEqual({kind:'refused',text:'Refused.'});
+ expect(result.current.pending).toBe(false);
+ expect(result.current.pendingRequestIds).toEqual([]);
+ act(() => result.current.handlePinnedContext(message(answer(null,{observation:2,revision:'two'}))));
+ expect(result.current.answer?.revision).toBe('five');
+});
+it('accepts unavailable fallback then a later observed workspace list', () => {
+ const {result,lastId} = mounted();
+ act(() => result.current.requestList());
+ act(() => result.current.handlePinnedContext(message(answer(lastId(),{revision:null,availability:{available:false,reason:'no-workspace',words:'No folder.'}}))));
+ expect(result.current.view.locked).toBe(true);
+ act(() => result.current.requestList());
+ act(() => result.current.handlePinnedContext(message(answer(lastId(),{observation:2,revision:'new-workspace'}))));
+ expect(result.current.answer?.revision).toBe('new-workspace');
+ expect(result.current.view.locked).toBe(false);
+});

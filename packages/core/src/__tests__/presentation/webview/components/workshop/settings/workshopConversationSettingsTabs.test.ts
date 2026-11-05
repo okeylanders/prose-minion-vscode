@@ -6,7 +6,7 @@ import {
 describe('workshopConversationSettingsTabs', () => {
   it('lists the tabs in strip order with distinct ids', () => {
     expect(WORKSHOP_CONVERSATION_SETTINGS_TABS.map((entry) => entry.label))
-      .toEqual(['Behavior', 'About you', 'Memory', 'Advanced']);
+      .toEqual(['Behavior', 'About you', 'Pinned context', 'Memory', 'Advanced']);
     const ids = WORKSHOP_CONVERSATION_SETTINGS_TABS.flatMap((entry) => [
       entry.id,
       entry.tabElementId,
@@ -22,6 +22,12 @@ describe('workshopConversationSettingsTabs', () => {
     expect(workshopConversationSettingsTabForKey(tabs, 'behavior', 'ArrowLeft')).toBe('advanced');
     expect(workshopConversationSettingsTabForKey(tabs, 'profile', 'Home')).toBe('behavior');
     expect(workshopConversationSettingsTabForKey(tabs, 'profile', 'End')).toBe('advanced');
+    // Pinned Context Slice 3: the fifth tab sits between About you and Memory.
+    expect(workshopConversationSettingsTabForKey(tabs, 'profile', 'ArrowRight')).toBe('pinned-context');
+    expect(workshopConversationSettingsTabForKey(tabs, 'pinned-context', 'ArrowRight')).toBe('memory');
+    expect(workshopConversationSettingsTabForKey(tabs, 'memory', 'ArrowLeft')).toBe('pinned-context');
+    expect(workshopConversationSettingsTabForKey(tabs, 'pinned-context', 'Home')).toBe('behavior');
+    expect(workshopConversationSettingsTabForKey(tabs, 'pinned-context', 'End')).toBe('advanced');
   });
 
   it('ignores keys the strip does not handle', () => {

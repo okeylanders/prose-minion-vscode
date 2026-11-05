@@ -17,6 +17,27 @@ describe('workshopSessionConfirmCopy', () => {
     ).body).toContain('“Cold sill” was typed or pasted');
   });
 
+  it('says the full reset starts with the pinned files once any are pinned (Pinned Context Slice 3)', () => {
+    const none = workshopSessionConfirmCopy({ kind: 'new-full' }, { pinnedFileCount: 0 });
+    expect(none.body).toMatch(/^This starts an empty room:/);
+    expect(workshopSessionConfirmCopy({ kind: 'new-full' }, {})).toEqual(none);
+
+    const one = workshopSessionConfirmCopy({ kind: 'new-full' }, { pinnedFileCount: 1 });
+    expect(one.body).toBe('This starts a new room with your pinned context: the excerpt, anything on the shelf, ' +
+      'every context attachment, the thread, tasks, guests, and conversation memory are all cleared, ' +
+      'then the pinned file is attached. Saved sessions on disk are not touched.');
+    expect(workshopSessionConfirmCopy({ kind: 'new-full' }, { pinnedFileCount: 10 }).body)
+      .toContain('cleared, then the 10 pinned files are attached.');
+    expect(one.title).toBe('Clear the excerpt and context?');
+    expect(one.confirmLabel).toBe('Clear everything');
+  });
+
+  it('keeps the empty-context confirmation as it is at every count (Slice 2a)', () => {
+    const at = (pinnedFileCount: number) => workshopSessionConfirmCopy({ kind: 'new-empty' }, { pinnedFileCount });
+    expect(at(10)).toEqual(at(1));
+    expect(at(1)).toEqual(workshopSessionConfirmCopy({ kind: 'new-empty' }, {}));
+  });
+
   it('says the empty-context start leaves pinned context out (ADR 2026-11-04 D2)', () => {
     const copy = workshopSessionConfirmCopy({ kind: 'new-empty' }, {});
     expect(copy.title).toBe('Clear the excerpt and context?');

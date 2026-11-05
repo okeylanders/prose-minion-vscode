@@ -241,7 +241,7 @@ describe('prompt budgets', () => {
   });
 
   it('pins the Pinned Context list bound (ADR 2026-11-04 D6)', () => {
-    expect(PROMPT_BUDGETS.workshopPinnedContext).toEqual({ files: 20, fileBytes: 128 * 1024 });
+    expect(PROMPT_BUDGETS.workshopPinnedContext).toEqual({ files: 20, fileBytes: 128 * 1024, pathCharacters: 4096 });
   });
 
   it('gives every session of the largest read a share that clears the per-session minimum (D9)', () => {

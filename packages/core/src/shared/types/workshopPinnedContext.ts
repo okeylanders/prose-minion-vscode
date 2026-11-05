@@ -21,6 +21,13 @@ export const WORKSHOP_PINNED_CONTEXT_FILES = PROMPT_BUDGETS.workshopPinnedContex
 /** The largest file read or written; a larger one is unreadable whole (`too-large`). */
 export const WORKSHOP_PINNED_CONTEXT_FILE_BYTES = PROMPT_BUDGETS.workshopPinnedContext.fileBytes;
 
+/**
+ * The longest entry path (UTF-16 code units). The path rule refuses a longer
+ * one, so the codec, every pin route and the tab's entry keys share it: a key
+ * the host sends is always one it takes back (PR #210 F07).
+ */
+export const WORKSHOP_PINNED_CONTEXT_PATH_CHARACTERS = PROMPT_BUDGETS.workshopPinnedContext.pathCharacters;
+
 /** Where the list lives, relative to the workspace folder, as the tab names it. */
 export const WORKSHOP_PINNED_CONTEXT_DISPLAY_PATH = 'prose-minion/pinned-context.json';
 
@@ -105,11 +112,15 @@ function ntfsUpcase(text: string): string {
  * empty; `/`-separated with no backslash; no leading `/` and no drive
  * letter; no empty, `.` or `..` segment (so no trailing `/` either); and no
  * control character, C0 (U+0000–U+001F), DEL or C1 (U+0080–U+009F; PR #204
- * N-01).
+ * N-01); and at most `WORKSHOP_PINNED_CONTEXT_PATH_CHARACTERS` long (PR #210
+ * F07).
  */
-export function workshopPinnedContextPathFault(entryPath: string): 'empty' | 'backslash' | 'absolute' | 'drive' | 'segment' | 'control' | undefined {
+export function workshopPinnedContextPathFault(entryPath: string): 'empty' | 'too-long' | 'backslash' | 'absolute' | 'drive' | 'segment' | 'control' | undefined {
   if (entryPath.length === 0) {
     return 'empty';
+  }
+  if (entryPath.length > WORKSHOP_PINNED_CONTEXT_PATH_CHARACTERS) {
+    return 'too-long';
   }
   if (/[\u0000-\u001f\u007f-\u009f]/.test(entryPath)) {
     return 'control';

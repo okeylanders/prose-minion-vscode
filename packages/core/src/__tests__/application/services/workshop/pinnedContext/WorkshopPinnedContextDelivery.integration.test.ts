@@ -14,6 +14,7 @@
  * *Alice*, with made-up paths and text. No provider is called.
  */
 import { WorkshopRoomHandler } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
+import { emptyPinnedContextServices } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextTestServices';
 import type { WorkshopWidgetRuntime } from '@/application/handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopRoomDeliveryService } from '@/application/services/workshop/WorkshopRoomDeliveryService';
@@ -132,7 +133,8 @@ async function firstHostRun(seed: (session: WorkshopSessionService) => Promise<v
     { export: jest.fn() },
     { gesturePlayground: { generateMenu: jest.fn() }, lexicalGravity: { model: {}, repository: {}, directives: {} } } as unknown as WorkshopWidgetRuntime,
     output,
-    libraryHost().library
+    libraryHost().library,
+    emptyPinnedContextServices()
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);

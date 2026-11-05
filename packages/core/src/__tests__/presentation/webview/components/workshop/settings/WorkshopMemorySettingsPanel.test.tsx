@@ -56,7 +56,7 @@ describe('WorkshopMemorySettingsPanel', () => {
     expect(screen.getByRole('tabpanel', { name: 'Memory' })).not.toBeNull();
     const used = WORKSHOP_CONVERSATION_SETTINGS_TABS.flatMap((entry) => [entry.tabElementId, entry.panelElementId]);
     expect(new Set(used).size).toBe(used.length);
-    expect(WORKSHOP_CONVERSATION_SETTINGS_TABS.map((entry) => entry.label)).toEqual(['Behavior', 'About you', 'Memory', 'Advanced']);
+    expect(WORKSHOP_CONVERSATION_SETTINGS_TABS.map((entry) => entry.label)).toEqual(['Behavior', 'About you', 'Pinned context', 'Memory', 'Advanced']);
   });
 
   it('on, with memories: the well, the cards, the start-of-conversation row and its meters', () => {

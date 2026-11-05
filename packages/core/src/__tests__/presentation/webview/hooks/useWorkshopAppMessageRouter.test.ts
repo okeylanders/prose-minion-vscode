@@ -43,6 +43,7 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     noteEditData: jest.fn(),
     noteSessionState: jest.fn()
   },
+  pinnedContext: { handlePinnedContext: jest.fn() },
   widgetHost: {
     handleWidgetConfigData: jest.fn(),
     handleWidgetConfigRestored: jest.fn(),
@@ -354,5 +355,7 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.memoryManager.noteEditData).toHaveBeenCalledWith(edit);
     expect(routes[MessageType.WORKSHOP_MEMORY_LISTING]).toBe(deps.memoryManager.handleListing);
     expect(routes[MessageType.WORKSHOP_MEMORY_MANAGER_RESULT]).toBe(deps.memoryManager.handleManagerResult);
+    // Pinned Context Slice 3: the tab's list answers reach its hook.
+    expect(routes[MessageType.WORKSHOP_PINNED_CONTEXT]).toBe(deps.pinnedContext.handlePinnedContext);
   });
 });
