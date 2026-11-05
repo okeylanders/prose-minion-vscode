@@ -31,6 +31,7 @@ jest.mock('../../../presentation/webview/components/workshop/widgets/showVsTell/
 jest.mock('../../../presentation/webview/components/workshop/standingDirectiveRail.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/schematic/schematic.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/workshop/memory.css', () => ({}));
+// eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked component's own name.
 jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmLogo: () => null }));
 
 import { useVSCodeApi } from '@hooks/useVSCodeApi';

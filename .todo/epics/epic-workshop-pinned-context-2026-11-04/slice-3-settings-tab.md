@@ -208,7 +208,7 @@ it back only as a key into the list it just read (ADR D8).
 
 **Tests.**
 
-- `WorkshopPinnedContextHandler.test.ts` (29), through the real library,
+- `WorkshopPinnedContextHandler.test.ts` and `.pick.test.ts` (29, over `workshopPinnedContextHandlerHost.ts`), through the real library,
   store and intake on a memory folder, with a real session aggregate:
   - the list, absent and unavailable, unreadable;
   - the first room's report, once;
@@ -261,10 +261,10 @@ it back only as a key into the list it just read (ADR D8).
 | Check | Before (`51b4988b`, after `npm ci`) | After |
 |---|---|---|
 | `npm run typecheck` | pass | pass |
-| `npx jest -w 2` | 702 suites / 9,902 tests / 59 snapshots, all passing | 705 suites / 9,966 tests / 59 snapshots, all passing |
+| `npx jest -w 2` | 702 suites / 9,902 tests / 59 snapshots, all passing | 707 suites / 9,974 tests / 59 snapshots, all passing |
 | `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (none new) |
 | `from 'vscode'` in `packages/core/src` | none | none |
-| New files over 500 lines | — | none (largest: the handler test, 433) |
+| New files over 500 lines | — | none (largest: `WorkshopPinnedContextWrites.ts`, 364 lines; the handler's tests are split across a shared host and two files) |
 | Files already over 500 | — | wiring only: `WorkshopApp.tsx` +6, `WorkshopRoomHandler.ts` +3, `MessageHandler.ts` +2 |
 | The settings modal | 273 lines | 281 lines |
 | Picker parity (`WorkshopContextSelectorParity`, `WorkshopApp.contextSelectorParity`) and the session browser tests | pass | pass, unchanged (no diff) |
@@ -274,8 +274,9 @@ it back only as a key into the list it just read (ADR D8).
 The baseline was measured in a clean worktree at `51b4988b`; Slice 2b's
 counts (702 / 9,902 / 59; 0 / 1,165) hold. "After" is measured at `fa5b7997`,
 after merging Slice 2b's branch at `b0429082` (its kept fix `54e7db78` and
-Slice 1's #204 re-review fixes), as the coordinator asked. That merge brings
-11 of the new tests (2b measured 9,913); the rest of the 64 are this slice's.
+Slice 1's #204 re-review fixes), as the coordinator asked, and again after
+the follow-ups (the counts above are the latter). The merge brings 11 of
+the new tests (2b measured 9,913); the other 61 are this slice's.
 
 ## Deviations
 

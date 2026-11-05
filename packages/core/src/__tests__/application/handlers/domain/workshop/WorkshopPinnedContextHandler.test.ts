@@ -5,103 +5,12 @@
  * made-up paths and text.
  */
 import * as path from 'node:path';
-import { MessageRouter } from '@handlers/MessageRouter';
-import { WorkshopPinnedContextHandler } from '@handlers/domain/workshop/WorkshopPinnedContextHandler';
-import type { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopRouteContracts';
-import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION } from '@/infrastructure/storage/WorkshopPinnedContextStore';
 import { decodeWorkshopPinnedContext } from '@/infrastructure/storage/WorkshopPinnedContextCodec';
-import type { WorkshopRoomSeedReport } from '@/application/services/workshop/pinnedContext/WorkshopRoomSeed';
-import { MessageType, type WorkshopPinnedContextPayload } from '@messages';
+import { MessageType } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { LIST_FILE, ROOT, seedHost, words } from '@/__tests__/application/services/workshop/pinnedContext/pinnedContextSeedHost';
-
-const BUDGET = PROMPT_BUDGETS.contextAttachments.words;
-
-function harness(options: Parameters<typeof seedHost>[0] & { report?: WorkshopRoomSeedReport } = {}) {
-  const host = seedHost(options);
-  const session = new WorkshopSessionService(() => 1);
-  const posted: WorkshopPinnedContextPayload[] = [];
-  const postMessage = jest.fn(async (message: { type: MessageType; payload: unknown }) => {
-    if (message.type === MessageType.WORKSHOP_PINNED_CONTEXT) {
-      posted.push(message.payload as WorkshopPinnedContextPayload);
-    }
-  });
-  const shell = {
-    openFileInEditor: jest.fn(async () => undefined),
-    pickFile: jest.fn(async (_options?: { defaultPath?: string }): Promise<{ fsPath: string; uri: string } | undefined> => undefined)
-  };
-  const effects = {
-    postSessionState: jest.fn(),
-    postTurn: jest.fn(),
-    markDirty: jest.fn(),
-    sendStatus: jest.fn(),
-    activeRunLabel: jest.fn((): string | undefined => undefined),
-    roomReady: jest.fn(async () => undefined)
-  };
-  let report = options.report;
-  const takeFirstRoomReport = jest.fn(() => {
-    const taken = report;
-    report = undefined;
-    return taken;
-  });
-  const handler = new WorkshopPinnedContextHandler(
-    { library: host.library, takeFirstRoomReport },
-    session,
-    shell as never,
-    postMessage as never,
-    host.log,
-    effects
-  );
-  const router = new MessageRouter();
-  const gate = { pending: false };
-  const registerMutation: WorkshopMutationRouteRegistrar = (type, handle, _action, onBlocked) => {
-    router.register(type, async (message) => {
-      if (gate.pending) {
-        onBlocked?.('Wait for the current session save or replacement to finish before changing the room.', message as never);
-        return;
-      }
-      await handle(message as never);
-    });
-  };
-  handler.registerRoutes(router, registerMutation);
-  let next = 0;
-  const send = async (type: MessageType, payload: Record<string, unknown>): Promise<WorkshopPinnedContextPayload> => {
-    const requestId = `req-${++next}`;
-    await router.route({ type, source: 'webview.test', payload: { requestId, ...payload }, timestamp: 0 } as never);
-    await new Promise((resolve) => setImmediate(resolve));
-    const answer = posted.filter((entry) => entry.requestId === requestId).at(-1);
-    if (!answer) {
-      throw new Error(`no answer for ${type}`);
-    }
-    return answer;
-  };
-  const listOnDisk = () => {
-    const bytes = host.fileSystem.files.get(LIST_FILE);
-    if (!bytes) {
-      return undefined;
-    }
-    const decoded = decodeWorkshopPinnedContext(bytes, 'posix');
-    return decoded.ok ? decoded.list.files.map((entry) => entry.path) : decoded;
-  };
-  const attachFile = (relativePath: string, configured: boolean) => {
-    const result = session.addContextAttachment({
-      kind: 'file',
-      origin: 'writer',
-      label: path.posix.basename(relativePath),
-      content: 'Alice was beginning to get very tired.',
-      words: 7,
-      sourceUri: `file://${ROOT}/${relativePath}`,
-      relativePath,
-      ...(configured ? { configuredResource: { group: 'characters' as const, path: relativePath } } : {})
-    });
-    if (!result.ok) {
-      throw new Error('not attached');
-    }
-    return result.attachment.id;
-  };
-  return { ...host, session, posted, postMessage, shell, effects, takeFirstRoomReport, gate, send, listOnDisk, attachFile };
-}
+import { LIST_FILE, ROOT, words } from '@/__tests__/application/services/workshop/pinnedContext/pinnedContextSeedHost';
+import { BUDGET, harness } from './workshopPinnedContextHandlerHost';
 
 describe('WorkshopPinnedContextHandler: the list', () => {
   it('answers the list with the host\'s platform, each entry\'s group, words and state, and the totals', async () => {
@@ -312,53 +221,6 @@ describe('WorkshopPinnedContextHandler: pinning', () => {
     h.scope.current = () => ({ available: true, liveSessionId: 'room-2' });
     await expect(pinning).resolves.toMatchObject({ ok: false, notice: { kind: 'refused', text: 'The workspace changed, so pinned context wasn’t changed.' } });
     expect(h.listOnDisk()).toBeUndefined();
-  });
-});
-
-describe('WorkshopPinnedContextHandler: Explore project folders… (the host\'s picker)', () => {
-  const picks = (h: ReturnType<typeof harness>, fsPath: string | undefined) =>
-    h.shell.pickFile.mockResolvedValueOnce(fsPath === undefined ? undefined : { fsPath, uri: `file://${fsPath}` });
-
-  it('pins a file inside the project, opening the picker in the project folder', async () => {
-    const h = harness();
-    h.write('Notes/garden.md', 'The garden door is small.');
-    picks(h, path.join(ROOT, 'Notes', 'garden.md'));
-    const answer = await h.send(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE, { revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION });
-    expect(answer).toMatchObject({ action: 'pin-file', ok: true });
-    expect(h.shell.pickFile).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: ROOT }));
-    expect(h.listOnDisk()).toEqual(['Notes/garden.md']);
-    expect(h.lines.join('\n')).not.toContain('garden');
-  });
-
-  it('refuses a file outside the project, with nothing read or written', async () => {
-    const h = harness();
-    h.fileSystem.files.set('/elsewhere/alice.md', new TextEncoder().encode('Alice.'));
-    const readFile = jest.spyOn(h.fileSystem, 'readFile');
-    picks(h, '/elsewhere/alice.md');
-    await expect(h.send(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE, { revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION }))
-      .resolves.toMatchObject({ ok: false, notice: { kind: 'refused', text: 'Only files inside this project can be pinned.' } });
-    expect(readFile.mock.calls.filter(([file]) => file === '/elsewhere/alice.md')).toEqual([]);
-    expect(h.listOnDisk()).toBeUndefined();
-  });
-
-  it('answers nothing when the picker is dismissed', async () => {
-    const h = harness();
-    picks(h, undefined);
-    await expect(h.send(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE, { revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION }))
-      .rejects.toThrow('no answer');
-    expect(h.listOnDisk()).toBeUndefined();
-  });
-
-  it('refuses a stale revision and answers with the current list', async () => {
-    const h = harness();
-    h.write('Project/brief.md', 'A brief.');
-    h.write('Notes/garden.md', 'The garden.');
-    h.pin('Project/brief.md');
-    picks(h, path.join(ROOT, 'Notes', 'garden.md'));
-    const answer = await h.send(MessageType.WORKSHOP_PIN_CONTEXT_PICK_FILE, { revision: WORKSHOP_PINNED_CONTEXT_ABSENT_REVISION });
-    expect(answer).toMatchObject({ ok: false, notice: { kind: 'changed' } });
-    expect(answer.entries.map((entry) => entry.path)).toEqual(['Project/brief.md']);
-    expect(h.listOnDisk()).toEqual(['Project/brief.md']);
   });
 });
 
