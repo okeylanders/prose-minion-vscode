@@ -20,7 +20,9 @@ import { Icon } from '@components/shared/Icon';
 export const WORKSHOP_MEMORY_KIND_LABELS: Readonly<Record<ProjectMemoryKind, string>> = Object.freeze({
   decision: 'decision',
   canon: 'canon',
+  theme: 'theme',
   preference: 'preference',
+  idea: 'idea',
   // eslint-disable-next-line @typescript-eslint/naming-convention -- ProjectMemoryKind ids are kebab-case format literals.
   'open-thread': 'open thread'
 });

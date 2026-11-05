@@ -561,7 +561,8 @@
 }
 [data-pm-surface="workshop"] .pm-ws-memory-kinds {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Six kinds: three by two at the sheet's width, two by three when narrow (Slice 6a). */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 [data-pm-surface="workshop"] .pm-ws-memory-kind-card {

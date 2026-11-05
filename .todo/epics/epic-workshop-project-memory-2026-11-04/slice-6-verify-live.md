@@ -56,6 +56,9 @@ anything screenshotted or recorded.
 - [ ] Save to memory… on a writer bubble.
 - [ ] Supersede a memory. The old one shows superseded in the manager and leaves
       the next room's frame.
+- [ ] Propose and save a Theme and an Idea (Slice 6a). Ask a persona about the
+      idea and check it treats it as unsettled: never as canon or a decision.
+      Choose it, and the proposed decision or canon memory supersedes it.
 - [ ] Two windows on one workspace each save a memory at the same moment, and
       both files stand.
 - [ ] Close the window during a save, then reopen. The file is whole or absent,

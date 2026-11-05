@@ -3,7 +3,7 @@
  * design README's "Words": the UI never says "pin"). Pure.
  */
 
-import type { ProjectMemoryKind, ProjectMemoryOrigin } from '@shared/types/projectMemory';
+import { PROJECT_MEMORY_KINDS, type ProjectMemoryKind, type ProjectMemoryOrigin } from '@shared/types/projectMemory';
 import type { WorkshopMemoryEntry, WorkshopMemorySource } from './workshopMemoryViewInputs';
 
 /** A count, as the design writes them: "1,800". Fixed to en-US, so tests and screens agree. */
@@ -37,17 +37,25 @@ export function filesWord(count: number): string {
 export const MEMORY_KIND_WORDS: Readonly<Record<ProjectMemoryKind, string>> = Object.freeze({
   decision: 'decision',
   canon: 'canon',
+  theme: 'theme',
   preference: 'preference',
+  idea: 'idea',
   'open-thread': 'open thread'
 });
 
-/** A kind's group heading, in the manager's order. */
-export const MEMORY_KIND_GROUPS: ReadonlyArray<{ readonly kind: ProjectMemoryKind; readonly label: string }> = [
-  { kind: 'decision', label: 'Decisions' },
-  { kind: 'canon', label: 'Canon' },
-  { kind: 'preference', label: 'Preferences' },
-  { kind: 'open-thread', label: 'Open threads' }
-];
+const MEMORY_KIND_GROUP_LABELS: Readonly<Record<ProjectMemoryKind, string>> = Object.freeze({
+  decision: 'Decisions',
+  canon: 'Canon',
+  theme: 'Themes',
+  preference: 'Preferences',
+  idea: 'Ideas',
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- ProjectMemoryKind ids are kebab-case format literals.
+  'open-thread': 'Open threads'
+});
+
+/** A kind's group heading, in the manager's order: `PROJECT_MEMORY_KINDS`' own. */
+export const MEMORY_KIND_GROUPS: ReadonlyArray<{ readonly kind: ProjectMemoryKind; readonly label: string }> =
+  PROJECT_MEMORY_KINDS.map((kind) => ({ kind, label: MEMORY_KIND_GROUP_LABELS[kind] }));
 
 /** Who saved a memory, in words (Slice 0d decision 12). */
 export function memoryOriginWords(origin: ProjectMemoryOrigin, proposedByLabel: string | undefined): string {
@@ -123,7 +131,7 @@ export function memoryInEffect(entry: Pick<WorkshopMemoryEntry, 'status' | 'supe
 }
 
 const KEY_WORDS: Readonly<Record<string, string>> = Object.freeze({
-  kind: '“kind” isn’t one Memory knows: decision, canon, preference or open-thread',
+  kind: `“kind” isn’t one Memory knows: ${PROJECT_MEMORY_KINDS.slice(0, -1).join(', ')} or ${PROJECT_MEMORY_KINDS[PROJECT_MEMORY_KINDS.length - 1]}`,
   status: '“status” isn’t active or archived',
   origin: '“origin” isn’t writer, proposed or auto',
   pinned: '“pinned” isn’t true or false',

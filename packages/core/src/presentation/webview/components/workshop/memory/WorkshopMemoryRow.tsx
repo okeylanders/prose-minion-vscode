@@ -31,7 +31,9 @@ export interface WorkshopMemoryRowActions {
 const KIND_ICONS: Record<ProjectMemoryKind, IconName> = {
   decision: 'stamp',
   canon: 'book',
+  theme: 'orbit',
   preference: 'sliders',
+  idea: 'sparkle',
   'open-thread': 'dialogue'
 };
 
