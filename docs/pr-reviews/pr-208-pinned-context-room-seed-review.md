@@ -7,7 +7,13 @@
 - Scope: Slice 2b's seed, library, file reader, matching, budget/refresh handling, reports, delivery, wiring/shutdown, and integration with the corrected Slice 1 store.
 - No production fixes, formal GitHub approval, merge, provider calls or deployment performed.
 
-## Dependency and merge state
+## Integration and full-suite update
+
+At `356831da0e4754e91364c04079a94ba6fe714515`, the branch merged the updated epic base. The merge changes documentation only relative to the review-report commit; the production code and all four findings are unchanged. GitHub now reports the PR mergeable/clean, and its [verify check](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41955155333/job/127008187550) passed. These gates do not resolve the behavioral findings.
+
+The complete local run finished: **702 repository suites, 9,913 tests and 59 snapshots passed**. The only failure among the 703 discovered suites was the deliberately added F01 cross-workspace review probe. All five focused independent probes remain reproducible failures as documented below. Verdict remains **Changes required**.
+
+## Dependency and initial merge state
 
 This head carries #204's corrected production commit `92acb2207b5008ea318859b95fd870831e5e9417`. The later #204 head `fea75aa3` differs by its final review-report commit, not a missing production fix. The #203 workspace-promotion guards are also present.
 
@@ -97,8 +103,8 @@ Exact source/test files under `packages/` and `apps/`, relevant epic docs and `.
 - `npm run lint`: **pass**, 0 errors / 1,165 warnings, matching baseline.
 - Focused repository tests for pinned context, seed calls/workspace guards, start reports and extension shutdown: **12 suites / 204 tests passed**.
 - Independent expected-behavior probes: **5 failed** (F01 one, F02 one, F03 one, F04 two). Observed output confirms the cross-project attachment and the unrelated POSIX slot replacement.
-- A memory-bounded full local suite is running. It also discovered the separately added F01 probe; that intentional review failure must not be mistaken for a pre-existing repository test failure. No full local pass is claimed yet.
-- GitHub head checks: none returned at review time; PR reported not mergeable.
+- Memory-bounded full local suite: **702 repository suites / 9,913 tests / 59 snapshots passed**. The one additional discovered F01 review probe failed as expected (overall invocation: 703 suites, 9,914 tests).
+- GitHub: initial reviewed implementation had no checks because of the integration conflict. The later documentation-only epic merge `356831da` passed `verify` and is mergeable/clean; findings remain open.
 - No Extension Development Host/manual visual pass or live provider call was performed.
 
 ## Reproduction artifacts
