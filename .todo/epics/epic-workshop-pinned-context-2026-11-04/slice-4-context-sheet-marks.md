@@ -198,7 +198,60 @@ The styles were checked by eye in Chromium against `Workshop.dc.html`, with
 the real stylesheets on static pill markup: the accent mark, the tooltip on
 hover, the hovered Pin with the accent border, and the refusal line.
 
-## Deviations
+## Review fixes (PR #213, Astra at `ecfde3e`)
+
+Astra's report and probe arrived as `9487b48`, merged before the fix (a fast
+forward: the branch had nothing newer). The fix is `0121923`.
+
+- **F01 (P2): a pill's outcome belongs to the room and the attachment that
+  asked.** Attachment ids are local to a room: a reset numbers from `ctx-1`
+  again, and hydration restores saved ids. So an old room's refusal could
+  show under a new room's `ctx-1`, and a late landing could take its focus.
+  - A press now records the room: the snapshot's `roomRevision`, which the
+    host mints anew on reset and on every replacement (New, Open, Branch,
+    Rewind). It also records the attachment's own identity,
+    `workshopPillOwnerKey`: id, kind, relative path, catalog key and
+    `addedAt`.
+  - A refusal or a landing is drawn on a pill only while both still hold.
+  - The list, its marks, the head's count and Slice 3's ordering by
+    observation are unchanged. The mark follows the list in any room.
+  - The controller takes `room` (`WorkshopApp` passes `workshop.roomRevision`),
+    and ignores a press while another change waits.
+- **N01 (low): focus returns only when the removed Pin held it.**
+  - The Pin button's ref is detached before React removes the node, so it
+    can still see whether the button held the focus. Only then does the
+    landed pill's label take it, in the same commit. The mark is cleared
+    once the commit's refs are in.
+  - A waiting Pin is `aria-disabled`, not `disabled`, so it keeps the focus
+    until the answer comes, and a press on it does nothing. Before, a
+    disabled button could drop the focus on its own.
+  - A deliberate blur, or a move to another control, is respected.
+- **Tests:**
+  - `ContextPanel.pinnedIdentity.test.tsx` (7). Astra's probe is promoted
+    with its assertions as written: the real-host refusal across a reset
+    with a reused `ctx-1`, a late success on another attachment under the
+    id, a deliberate blur, and the control (focus on another control). The
+    only change is that the sheet names its room, as `WorkshopApp` does.
+  - Added there: a Pin that keeps the focus gives it back to its own pill.
+    A late success and a late refusal across a room replacement, which
+    attaches the same file again under the same id, are not drawn in the
+    new room.
+  - `workshopPinnedPills.test.ts` (+5): the owner rule in its own room,
+    another room under the reused id, the same file in a new room, another
+    attachment in the same room, and the owner key.
+  - `ContextPanel.pinned.test.tsx`: the waiting Pin is now `aria-disabled`,
+    keeps the focus, and a second press posts nothing.
+
+| Check | Before (`ecfde3e`, the reviewed head) | After (`0121923`) |
+|---|---|---|
+| `npm run typecheck` | pass | pass |
+| `npx jest -w 3` | 723 suites / 10,136 tests / 59 snapshots | 724 suites / 10,148 tests / 59 snapshots, all passing |
+| `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (none new) |
+| `from 'vscode'` in `packages/core/src` | none | none |
+| `WorkshopApp.tsx` | 1,829 lines | 1,829 lines (one argument added to the controller call) |
+| `ContextPanel.tsx` | 341 lines | 362 lines |
+
+
 
 1. **The refusal of a stale revision** (`notice: changed`, which carries no
    words) reads, in the design's voice: "Pinned context changed in another
