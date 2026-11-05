@@ -310,7 +310,7 @@ Fixed in `f15a81a6`.
 | Check | Before (`b94fc674`) | After (`18b7b03a`) |
 |---|---|---|
 | `npm run typecheck` | pass | pass |
-| jest | 691 suites / 9,696 tests / 59 snapshots | (full run in progress) |
+| jest | 691 suites / 9,696 tests / 59 snapshots | 694 suites / 9,813 tests / 59 snapshots, all passing (`npx jest -w 2`) |
 | `npm run lint` | 0 errors / 1,165 warnings | 0 errors / 1,165 warnings (no new warnings) |
 | `from 'vscode'` in `packages/core/src` (outside test strings) | none | none |
 | New files over 500 lines | — | none (the store is 484, the lock 174, the contracts 62) |
