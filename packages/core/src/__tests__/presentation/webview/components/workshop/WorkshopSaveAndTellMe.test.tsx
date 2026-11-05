@@ -174,7 +174,7 @@ describe('Save and tell me\'s receipt', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Forget' }));
     expect(memory.onEditMemory).toHaveBeenCalledWith('mem-7f3c2a');
-    expect(memory.onForget).toHaveBeenCalledWith('mem-7f3c2a');
+    expect(memory.onForget).toHaveBeenCalledWith('mem-7f3c2a', 'turn-5-system-1010');
 
     fireEvent.click(opened);
     expect(screen.getByRole('button', { name: 'Show the saved memory' }).getAttribute('aria-expanded')).toBe('false');

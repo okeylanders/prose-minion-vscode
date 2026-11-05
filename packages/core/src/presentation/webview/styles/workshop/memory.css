@@ -573,6 +573,15 @@
 }
 
 /* Receipts: centered divider lines every participant receives. */
+/* A receipt's refused Forget or Restore, said under it (PR #221 F-01). */
+[data-pm-surface="workshop"] .pm-ws-memory-receipt-error {
+  margin: 4px auto 0;
+  max-width: 560px;
+  color: var(--pm-amber);
+  font-size: 11.5px;
+  line-height: 1.45;
+  text-align: center;
+}
 [data-pm-surface="workshop"] .pm-ws-memory-receipt {
   display: flex;
   align-items: center;

@@ -1,0 +1,43 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+ts-jest[ts-jest-transformer] (WARN) Define `ts-jest` config under `globals` is deprecated. Please do
+transform: {
+    <transform_regex>: ['ts-jest', { /* ts-jest config goes here in Jest */ }],
+},
+See more at https://kulshekhar.github.io/ts-jest/docs/getting-started/presets#advanced
+FAIL ../../../tmp/pr221-ui-probe/receipt.test.tsx
+  ● PR221: displays a correlated Forget refusal
+
+    expect(received).not.toBeNull()
+
+    Received: null
+
+      110 |  expect(screen.queryByText(error)).toBeNull();
+      111 |  deliver(answer(request.payload.requestId, false, error));
+    > 112 |  expect(screen.queryByText(error)).not.toBeNull();
+          |                                        ^
+      113 | });
+      114 |
+      115 | it('PR221 control: hook correlates refusal and clears it on retry/success', () => {
+
+      at ../../../tmp/pr221-ui-probe/receipt.test.tsx:112:40
+
+  ● PR221: displays a correlated Restore refusal
+
+    expect(received).not.toBeNull()
+
+    Received: null
+
+      110 |  expect(screen.queryByText(error)).toBeNull();
+      111 |  deliver(answer(request.payload.requestId, false, error));
+    > 112 |  expect(screen.queryByText(error)).not.toBeNull();
+          |                                        ^
+      113 | });
+      114 |
+      115 | it('PR221 control: hook correlates refusal and clears it on retry/success', () => {
+
+      at ../../../tmp/pr221-ui-probe/receipt.test.tsx:112:40
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 1 passed, 3 total
+Snapshots:   0 total
+Time:        5.222 s, estimated 11 s
