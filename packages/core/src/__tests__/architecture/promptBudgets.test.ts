@@ -189,7 +189,7 @@ describe('prompt budgets', () => {
       wordCharacters: 100,
       contextCharacters: 4_000,
       purposeCharacters: 500,
-      callsPerTurn: 5,
+      callsPerTurn: 15,
       fullEntriesPerTurn: 1,
       analysisRunsPerTurn: 1
     });
