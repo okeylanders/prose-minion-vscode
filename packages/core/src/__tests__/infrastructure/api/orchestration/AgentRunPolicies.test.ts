@@ -4,6 +4,7 @@ import {
   resolveWorkshopParticipantPolicy
 } from '@orchestration/AgentRunPolicies';
 import type { AnyAgentCapability } from '@orchestration/AgentRunContracts';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 describe('agent-run caller-to-policy matrix', () => {
   it('keeps every migrated route on one explicit catalog, retention, visibility, and cleanup policy', () => {
@@ -23,7 +24,7 @@ describe('agent-run caller-to-policy matrix', () => {
     expect(AGENT_RUN_POLICIES.workshopHost).toMatchObject({
       capabilityCatalog: 'workshopPersona',
       retention: 'retain',
-      maxCapabilityRounds: 5,
+      maxCapabilityRounds: PROMPT_BUDGETS.workshopCapability.callsPerTurn,
       maxCorrectionTurns: 1,
       onCapabilityLimit: 'forceFinalResponse',
       cleanupOwner: 'workshop-session'
