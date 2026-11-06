@@ -87,3 +87,64 @@ export type FileEditOperationFault =
   | 'rewrite-ceiling'
   | 'rewrite-protected'
   | 'rewrite-too-large';
+
+/**
+ * What one landed operation wrote (D10, N-01), for a future Revert: its text
+ * before and after, up to `landedContextCharacters` of the text after the
+ * apply on each side, and the document's version after. Past
+ * `revertCharacters`, or when the version after is not known, only hashes.
+ */
+export type FileEditLandedRecord =
+  | {
+    readonly operation: number;
+    readonly before: string;
+    readonly after: string;
+    readonly contextBefore: string;
+    readonly contextAfter: string;
+    readonly versionAfter: number;
+  }
+  | {
+    readonly operation: number;
+    readonly beforeSha256: string;
+    readonly afterSha256: string;
+  };
+
+/** The card's state after an Apply (D8), less `pending` and `applying`, which are the handler's. */
+export type FileEditApplyState = 'applied' | 'partial' | 'declined' | 'stale' | 'refused' | 'unknown';
+
+export interface FileEditOperationOutcome {
+  readonly index: number;
+  readonly outcome: 'landed' | 'not-applied' | 'unknown' | 'refused' | 'stale';
+  readonly reason?: string;
+}
+
+export interface FileEditApplyOutcome {
+  readonly state: FileEditApplyState;
+  /** Why it was refused or stale, when it was. */
+  readonly reason?: string;
+  /** Every operation, in the order given. */
+  readonly operations: readonly FileEditOperationOutcome[];
+  /** The document after, while it is open. */
+  readonly document?: { readonly uri: string; readonly version: number };
+  /** Whether the document was shown because no editor showed it. */
+  readonly revealed: boolean;
+  readonly message: string;
+  /** One record per landed operation (D10), when any landed. */
+  readonly landed?: readonly FileEditLandedRecord[];
+}
+
+/** A rewrite's card preview (D9): its before and after while the baseline holds, else stale or refused. Never a URI. */
+export type FileEditPreview =
+  | { readonly kind: 'rewrite'; readonly before: string; readonly after: string }
+  | { readonly kind: 'stale'; readonly reason: 'baseline-changed' }
+  | { readonly kind: 'refused'; readonly reason: FileEditApplyRefusal | 'not-a-rewrite' };
+
+/**
+ * Apply and a rewrite's preview, as a caller reaches them (D7, D9): the
+ * gateway's two doors, named without the gateway, so the Workshop's handler
+ * never names a document port, the applier or the gateway itself.
+ */
+export interface FileEditApplyPort {
+  apply(staged: StagedFileEdit, options: FileEditApplyOptions): Promise<FileEditApplyOutcome>;
+  preview(staged: StagedFileEdit): Promise<FileEditPreview>;
+}

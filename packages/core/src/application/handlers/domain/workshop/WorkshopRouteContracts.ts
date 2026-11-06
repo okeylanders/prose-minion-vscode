@@ -42,9 +42,11 @@ import type {
 
 /** The one project-memory library as the Workshop's route owners reach it: Slice 3's writes and Slice 4b's manager. */
 export type WorkshopProjectMemoryPort = WorkshopProjectMemoryWritePort & WorkshopProjectMemoryManagerPort;
+import type { FileEditApplyPort } from '@/domain/models/FileEdit';
 import type {
   ErrorSource,
   MessageType,
+  WorkshopFileEditsMode,
   WorkshopSessionAction,
   WorkshopTurn
 } from '@messages';
@@ -73,6 +75,7 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopSavedTurnMemoryHandler'
   | 'WorkshopProjectMemoryManagerHandler'
   | 'WorkshopPinnedContextHandler'
+  | 'WorkshopFileEditHandler'
   | 'WorkshopWidgetHostHandler';
 
 /**
@@ -133,6 +136,8 @@ export interface WorkshopSliceCompositionDependencies {
   pinnedContext: WorkshopPinnedContextServices;
   /** The Bookmarks screen's reads (ADR 2026-11-05 D8): the recall service, built in extension.ts. */
   bookmarkBrowser: WorkshopBookmarkBrowserPort;
+  /** Persona file edits' Apply and Preview (ADR 2026-11-05 D7–D9): the one gateway, built in extension.ts. */
+  fileEditApply: FileEditApplyPort;
   outputChannel: LogSink;
 }
 
@@ -159,6 +164,8 @@ export interface WorkshopSliceHostEffects {
   activeRunLabel: () => 'Context wizard' | 'response' | undefined;
   sendRoomMessage: WorkshopOneShotWidgetRoomSend;
   isRoomRunActive: () => boolean;
+  /** `proseMinion.workshop.fileEdits`, read live (ADR 2026-11-05 D11): checked at Apply and at the last boundary. */
+  fileEditsMode: () => WorkshopFileEditsMode;
   /**
    * Host-side only (Wayfinding D4): what the chat target's manifest recorded
    * when a read-in file was read, for the reader's "changed since".

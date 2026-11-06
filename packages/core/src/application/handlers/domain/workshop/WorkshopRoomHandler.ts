@@ -29,6 +29,7 @@ import {
   type WorkshopReplyFileEditContext
 } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
 import type { FileEditStaging } from '@/domain/models/FileEditStaging';
+import type { FileEditApplyPort } from '@/domain/models/FileEdit';
 import { workshopTurnForWebview } from '@/application/services/workshop/fileEdits/WorkshopFileEditWebviewView';
 import { LogSink, ShellService } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
@@ -256,7 +257,9 @@ export class WorkshopRoomHandler {
     pinnedContext: WorkshopPinnedContextServices,
     bookmarkBrowser: WorkshopBookmarkBrowserPort,
     /** Persona file edits' staging (ADR 2026-11-05 D4): `FileEditStagingService`, built in `extension.ts`. */
-    private readonly fileEditStaging: FileEditStaging
+    private readonly fileEditStaging: FileEditStaging,
+    /** Persona file edits' Apply and Preview (ADR 2026-11-05 D7–D9): the gateway, built in `extension.ts`. */
+    fileEditApply: FileEditApplyPort
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -291,6 +294,7 @@ export class WorkshopRoomHandler {
         projectMemory,
         pinnedContext,
         bookmarkBrowser,
+        fileEditApply,
         outputChannel: this.outputChannel
       },
       {
@@ -308,6 +312,7 @@ export class WorkshopRoomHandler {
         sendRoomMessage: (text, displayText, executeOptions) =>
           this.executeMessage(text, displayText, undefined, executeOptions),
         isRoomRunActive: () => this.activeRun !== undefined,
+        fileEditsMode: () => this.conversationSettingsService.getFileEditsMode(),
         findReadInRecord: (identity) => this.assistantToolService.findConversationContextSourceRead(
           this.chatTargetConversation().conversationId,
           identity

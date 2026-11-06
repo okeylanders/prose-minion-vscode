@@ -1,5 +1,6 @@
 /** File-edit trailers and a fake staging port for tests (made-up text: Alice). */
 
+import type { FileEditApplyOptions, FileEditApplyOutcome, FileEditApplyPort, StagedFileEdit } from '@/domain/models/FileEdit';
 import type {
   FileEditStaging,
   FileEditStagingRefusal,
@@ -75,3 +76,33 @@ export function fakeFileEditStaging(options: {
 }
 
 export const URI_SENTINEL = 'zzq-uri';
+
+/** A fake Apply port (ADR 2026-11-05 D7): records what it is asked, and answers each Apply `applied`, unless told otherwise. */
+export function fakeFileEditApply(answer?: (staged: StagedFileEdit, options: FileEditApplyOptions) => Promise<FileEditApplyOutcome> | FileEditApplyOutcome): FileEditApplyPort & {
+  applies: Array<{ staged: StagedFileEdit; options: FileEditApplyOptions }>;
+  previews: StagedFileEdit[];
+} {
+  const applies: Array<{ staged: StagedFileEdit; options: FileEditApplyOptions }> = [];
+  const previews: StagedFileEdit[] = [];
+  return {
+    applies,
+    previews,
+    async apply(staged, options) {
+      applies.push({ staged, options });
+      if (answer) {
+        return answer(staged, options);
+      }
+      return {
+        state: 'applied',
+        operations: staged.operations.map((_, index) => ({ index, outcome: 'landed' as const })),
+        landed: staged.operations.map((_, index) => ({ operation: index, beforeSha256: 'b'.repeat(64), afterSha256: 'c'.repeat(64) })),
+        revealed: false,
+        message: 'Applied. The file is not saved yet.'
+      };
+    },
+    async preview(staged) {
+      previews.push(staged);
+      return { kind: 'refused', reason: 'not-a-rewrite' };
+    }
+  };
+}

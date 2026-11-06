@@ -301,3 +301,46 @@ export function settleWorkshopFileEditProposalsOnReopen(turn: WorkshopTurn): Wor
 export function cloneWorkshopFileEditProposal(proposal: WorkshopFileEditProposal): WorkshopFileEditProposal {
   return JSON.parse(JSON.stringify(proposal)) as WorkshopFileEditProposal;
 }
+
+/** One card's settlement (D8, D10): what Apply, Decline or a preview leaves on it. */
+export interface WorkshopFileEditSettlement {
+  readonly state: WorkshopFileEditProposal['state'];
+  readonly reason?: string;
+  readonly outcomes?: readonly WorkshopFileEditOperationOutcome[];
+  readonly landed?: WorkshopFileEditProposal['landed'];
+}
+
+export function workshopFileEditProposalAt(turn: Pick<WorkshopTurn, 'fileEditProposals'> | undefined, index: number): WorkshopFileEditProposal | undefined {
+  return Number.isSafeInteger(index) && index >= 0 ? turn?.fileEditProposals?.[index] : undefined;
+}
+
+/**
+ * A turn's cards with the one at `index` settled, held to the session
+ * codec's rules (`assertWorkshopFileEditProposalShape`): its staging,
+ * operations and why are kept, and only state, reason, outcomes and landed
+ * records change, replacing what it had. Throws on a turn with no card
+ * there, or on a settlement the codec would refuse, so nothing a session
+ * could not read back is ever held.
+ */
+export function settleWorkshopFileEditProposal(
+  turn: WorkshopTurn,
+  index: number,
+  settlement: WorkshopFileEditSettlement
+): WorkshopFileEditProposal[] {
+  const proposals = turn.fileEditProposals;
+  const current = workshopFileEditProposalAt(turn, index);
+  if (!proposals || !current) {
+    throw Object.assign(new Error('That message no longer holds this suggested edit.'), { reason: 'no-card' });
+  }
+  const { state: _state, reason: _reason, outcomes: _outcomes, landed: _landed, ...kept } = current;
+  const settled: WorkshopFileEditProposal = {
+    ...kept,
+    state: settlement.state,
+    ...(settlement.reason !== undefined ? { reason: settlement.reason } : {}),
+    ...(settlement.outcomes !== undefined ? { outcomes: [...settlement.outcomes] } : {}),
+    ...(settlement.landed !== undefined ? { landed: settlement.landed.map((record) => ({ ...record })) } : {})
+  };
+  const next = proposals.map((proposal, at) => at === index ? settled : proposal);
+  assertWorkshopFileEditProposalShape({ ...turn, fileEditProposals: next } as unknown as Record<string, unknown>, `turn ${turn.id}`, false);
+  return next.map(cloneWorkshopFileEditProposal);
+}
