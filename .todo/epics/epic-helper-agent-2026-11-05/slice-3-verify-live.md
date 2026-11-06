@@ -32,15 +32,17 @@ The automated suites already prove the contracts: A-01 to A-05, D5.7 and PR #231
    - Try changing the kind before the draft lands. Your choice stays.
 8. **A bookmark.** On a bookmarked turn, use **Remember this**, both from the Bookmarks screen (a saved session) and from the thread. It drafts the same way.
 9. **A tool result.** Save a capability card to memory. That's a tool's report, for example after a persona looked something up. There should be no "Drafting…" and no line: the sheet opens with the report as its body, and you fill the rest.
+   - Check the other side of this rule too. When the same card is bookmarked and saved from **outside** the thread's window, or from a saved session, the sheet holds the safe preview, so it *does* draft. Both are deliberate (PR #231 F-01).
 10. **Closing early.** Open the sheet and close it while it's drafting, then reopen it. Nothing stale fills in, and a fresh draft starts.
-11. **Saving early.** Press **Save** while it's still drafting, once the title and summary are filled. The note saves as you see it, and nothing changes afterwards.
+11. **Saving early.** Open the sheet and type a valid title and summary yourself before the helper answers, then press **Save** at once. The note saves as you see it, and nothing changes afterwards.
 
 ## Off, and failure
 
 12. **Off.** Set `proseMinion.workshop.memory.helperDrafts` to off.
     - Save to memory… shows no "Drafting…" and no line.
     - Turn it back on without reloading. Drafting works again.
-13. **Failure.** Use a model id that doesn't exist, or remove the key temporarily. The sheet shows one muted line, "Couldn't draft a title and summary.", and you can fill it yourself.
+    - Open a **new** sheet for each check. The switch stops new requests; it doesn't revoke one already under way.
+13. **Failure.** Use a model id that doesn't exist, or remove the key temporarily. The sheet shows one muted line, "Couldn't draft a title and summary.", and you can fill it yourself. Put the model and key back before measuring cost and speed.
 
 ## Cost, speed and logs
 
