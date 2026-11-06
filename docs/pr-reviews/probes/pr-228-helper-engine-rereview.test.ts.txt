@@ -1,0 +1,105 @@
+import { HelperAgentService } from '@services/helper/HelperAgentService';
+import { HELPER_TASK_POLICIES } from '@services/helper/HelperTaskPolicies';
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { ConversationManager } from '@orchestration/ConversationManager';
+
+const TEXT = 'Alice follows the rabbit.';
+const INPUT = { text: TEXT, source: 'writer' as const };
+const ANSWER = '{"title":"Alice follows","summary":"Alice follows the rabbit.","kind":"canon"}';
+const MODEL = 'placeholder/helper';
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+function harness() {
+  const runInitial = jest.fn(async (_request: { options: { signal: AbortSignal } }) => ({ content: ANSWER }));
+  const resources = { ensureInitialized: async () => undefined, getEngine: () => ({ getModel: () => MODEL, runInitial }) };
+  const prompts = { loadPrompts: jest.fn(async () => 'SYSTEM') };
+  const log = { appendLine: jest.fn() };
+  return { runInitial, resources, prompts, log, service: new HelperAgentService(resources as never, prompts, HELPER_TASK_POLICIES, log) };
+}
+
+describe('PR 228 independent correction probes', () => {
+  it('keeps cancellation when a pending prompt read rejects, without logging its error text', async () => {
+    const h = harness();
+    const loaded = deferred<string>();
+    h.prompts.loadPrompts.mockReturnValueOnce(loaded.promise);
+    const stop = new AbortController();
+    const running = h.service.run('memory-draft', INPUT, { signal: stop.signal });
+    await Promise.resolve();
+    stop.abort();
+    loaded.reject(new Error(TEXT));
+    await expect(running).resolves.toEqual({ kind: 'failed', reason: 'cancelled' });
+    expect(h.runInitial).not.toHaveBeenCalled();
+    expect(h.log.appendLine.mock.calls.flat().join('\n')).not.toContain(TEXT);
+  });
+
+  it('leaves no timer or listener after successful, rejected-output and failed calls', async () => {
+    jest.useFakeTimers();
+    try {
+      for (const mode of ['success', 'rejected', 'error'] as const) {
+        const h = harness();
+        if (mode === 'rejected') h.runInitial.mockResolvedValueOnce({ content: 'not json' });
+        if (mode === 'error') h.runInitial.mockRejectedValueOnce(new Error('provider failed'));
+        const stop = new AbortController();
+        const added = jest.spyOn(stop.signal, 'addEventListener');
+        const removed = jest.spyOn(stop.signal, 'removeEventListener');
+        const result = await h.service.run('memory-draft', INPUT, { signal: stop.signal });
+        expect(result.kind).toBe(mode === 'success' ? 'drafted' : mode === 'rejected' ? 'rejected' : 'failed');
+        expect(added).toHaveBeenCalledTimes(1);
+        expect(removed).toHaveBeenCalledWith('abort', added.mock.calls[0][1]);
+        expect(jest.getTimerCount()).toBe(0);
+        added.mockRestore(); removed.mockRestore();
+      }
+    } finally { jest.useRealTimers(); }
+  });
+
+  it('honors abort at every preparation microtask boundary without starting later work', async () => {
+    jest.useFakeTimers();
+    try {
+      let beforeDispatch = 0;
+      let afterDispatch = 0;
+      for (let ticks = 0; ticks < 12; ticks += 1) {
+        const h = harness();
+        h.runInitial.mockImplementationOnce((request) => new Promise((_resolve, reject) => {
+          request.options.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+        }));
+        const stop = new AbortController();
+        const running = h.service.run('memory-draft', INPUT, { signal: stop.signal });
+        for (let tick = 0; tick < ticks; tick += 1) await Promise.resolve();
+        const sent = h.runInitial.mock.calls.length;
+        if (sent) afterDispatch += 1; else beforeDispatch += 1;
+        stop.abort();
+        await expect(running).resolves.toEqual({ kind: 'failed', reason: 'cancelled' });
+        expect(h.runInitial).toHaveBeenCalledTimes(sent);
+        expect(jest.getTimerCount()).toBe(0);
+      }
+      expect(beforeDispatch).toBeGreaterThan(0);
+      expect(afterDispatch).toBeGreaterThan(0);
+    } finally { jest.useRealTimers(); }
+  });
+
+  it('does not reach the real engine transport after cancellation during prompt loading', async () => {
+    const completion = jest.fn(async () => ({ content: ANSWER }));
+    const provider = { createChatCompletion: completion, getModel: () => MODEL };
+    const conversations = new ConversationManager();
+    const engine = new AgentRunEngine(provider as never, conversations);
+    try {
+      const loaded = deferred<string>();
+      const service = new HelperAgentService(
+        { ensureInitialized: async () => undefined, getEngine: () => engine },
+        { loadPrompts: () => loaded.promise }, HELPER_TASK_POLICIES, { appendLine: jest.fn() }
+      );
+      const stop = new AbortController();
+      const running = service.run('memory-draft', INPUT, { signal: stop.signal });
+      await Promise.resolve();
+      stop.abort();
+      loaded.resolve('SYSTEM');
+      await expect(running).resolves.toEqual({ kind: 'failed', reason: 'cancelled' });
+      expect(completion).not.toHaveBeenCalled();
+      expect(conversations.getActiveConversationCount()).toBe(0);
+    } finally { engine.dispose(); }
+  });
+});

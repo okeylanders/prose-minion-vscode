@@ -66,3 +66,42 @@ SHA-256 789f027f0f2de703a409a028848b5c94b4c2368e5c1fbdbebb725f34a18ecc33
 No live model call, native VS Code GUI/accessibility pass, full duplicate local
 suite, production source edit, merge, auto-merge or deployment was performed.
 The report publication commit's CI is checked separately in the PR conversation.
+
+
+CORRECTION RE-REVIEW: d1b861df8f745740dca830eeab757f3474c06103
+2026-11-05. Original findings F-01 and F-02 independently resolved.
+
+1. Original six-probe artifact copied unchanged to its temporary test path.
+   Same focused command as section 3 above: 14 suites / 210 tests PASS.
+   Includes 13 production suites / 204 tests plus all 6 original probes.
+   Four formerly failing probes now PASS. Temporary copy removed afterward.
+
+2. Additional artifact: pr-228-helper-engine-rereview.test.ts.txt.
+   Temporary path:
+   packages/core/src/__tests__/infrastructure/api/services/helper/HelperAgentService.rereview228.test.ts
+   npm test -- --runInBand --runTestsByPath <temporary path>
+   PASS: 4 independent tests.
+   - Pending prompt rejection after abort returns cancelled, no error text logged.
+   - Success, rejected output and provider failure clean up timer and listener.
+   - Sweep of 12 microtask positions includes pre-/post-dispatch aborts; no call
+     starts after cancellation, and already-started work receives the abort.
+   - Real AgentRunEngine with mocked transport: prompt-load cancellation produces
+     zero transport calls and no retained conversation.
+   Temporary executable copy removed; archived as text only.
+
+3. npm run typecheck: PASS all three projects.
+   npm run lint: PASS, 0 errors / 1,165 existing warnings.
+   git diff --check ae80d4d d1b861d: PASS.
+   Full local suite and local build not rerun for this narrow correction.
+
+4. Exact correction-head CI: PASS.
+   https://github.com/okeylanders/prose-minion-vscode/actions/runs/42131541776
+   Verify job 127609110595. Checkout 0c93ab96044720c2661aab19a8ff0ed8863444b4.
+   Merge d1b861df8f745740dca830eeab757f3474c06103 into c040cb6a9fbd2b4ae247bb26416bb2e8dc2b2c18.
+   All typechecks; 757 suites / 10,536 tests / 59 snapshots;
+   lint 0 errors / 1,165 warnings; both production bundles and sentinel check.
+   Three existing webview size/performance warnings.
+
+No new blocker; written approval of the correction head. No production edits,
+merge, auto-merge, deployment, live provider or native VS Code pass by this review.
+The follow-up documentation publication receives its own CI check in the PR.
