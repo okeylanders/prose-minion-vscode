@@ -188,5 +188,5 @@ This is the same flow as Project Memory and Bookmark Recall.
     - the pure word diff, bounded, with its own tests;
     - the stylesheet `styles/workshop/fileEdits.css` (Chromium 114 floor).
   - The setting's row in Conversation settings is deferred to Slice 5.
-  - After: AFTER_PLACEHOLDER
+  - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 785 suites, 10,979 tests, 59 snapshots.
   - See [the slice doc](slice-4b-cards.md).
