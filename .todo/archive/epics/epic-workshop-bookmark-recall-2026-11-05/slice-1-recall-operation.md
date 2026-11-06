@@ -1,7 +1,7 @@
 # Slice 1: Recall Reads Bookmarks
 
 **Epic:** [Workshop Bookmark Recall](README.md)
-**Decision:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-bookmark-recall.md), D1–D7
+**Decision:** [ADR 2026-11-05](../../../../docs/adr/2026-11-05-workshop-bookmark-recall.md), D1–D7
 **Status:** Done (branch `epic/workshop-bookmark-recall-slice-1-recall-operation`, cut from the epic at `8e9b612`; PR #215). See the [implementation note](#implementation-note).
 
 ## Outcome

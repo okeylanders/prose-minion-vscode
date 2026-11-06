@@ -1,10 +1,10 @@
 # Epic: Workshop Bookmark Recall
 
-**Status:** Slices 0–3 merged. Slice 3 merged at `298c17d` (PR #219). Slice 4, the live pass, is ready for Okey. Slice 2 merged at `78fe28d` (PR #216). Slice 1 merged at `ddf8356` (PR #215). Slice 0 (spec) merged at `8e9b612` (PR #214). The branch `epic/workshop-bookmark-recall` was cut from `epic-pinned-context` at `f298098` on 2026-11-05, after Pinned Context finished its code (Project Memory 6a–6c merged in at `b668782`). `main` was merged in for the Wayfinding close-out docs.
+**Status:** Complete (2026-11-06), archived, and merged to `main` with Okey's approval after his live pass. Slices 0–3 merged into the epic (PRs #214, #215, #216, #219), with the live-pass checklist (#220), two syncs (#218, #224) and the live pass's call and read limits (#237, #238). The branch `epic/workshop-bookmark-recall` was cut from `epic-pinned-context` at `f298098` on 2026-11-05.
 **Priority:** Medium
 **Created:** 2026-11-05
 **Integration branch:** `epic/workshop-bookmark-recall`. Each slice is built on its own branch, `epic/workshop-bookmark-recall-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
-**Decision:** [ADR 2026-11-05: Bookmarks Personas Can Read, and a Bookmarks Screen](../../../docs/adr/2026-11-05-workshop-bookmark-recall.md) (Proposed; Okey answered Q1–Q6 on 2026-11-05)
+**Decision:** [ADR 2026-11-05: Bookmarks Personas Can Read, and a Bookmarks Screen](../../../../docs/adr/2026-11-05-workshop-bookmark-recall.md) (Accepted 2026-11-06; Okey answered Q1–Q6 on 2026-11-05)
 **Realizes:** [Bookmarks personas can read, and a Bookmarks screen](../../features/feature-workshop-bookmark-recall/README.md)
 **Downstream of:** Wayfinding (on `main`), Project Memory, and Pinned Context. Fixes from those two epics' live passes are merged in as they land.
 
@@ -76,9 +76,13 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
 
 ## Close-out (with the final PR)
 
-- Add a "Superseded in part by ADR 2026-11-05" line to ADR 2026-11-03's D5 and D10. That file lives on `main`; editing it now would cut across the downstream epics.
-- Archive the feature note, and Wayfinding's epic and feature notes, once nothing downstream links to them. Fix the links in the same pass.
-- Remind Okey about PR #205 (Workshop settings user-only) when this epic is done. It is still open into `main`, its tech-debt README conflicts with Wayfinding, and its new scope test will need a `proseMinion.workshop.projectMemory` row.
+Done on 2026-11-06, with the merge to `main`:
+
+- [x] ADR 2026-11-05 is Accepted.
+- [x] ADR 2026-11-03's D5 and D10 say they are superseded in part.
+- [x] This epic, its feature note, Wayfinding's epic and its four feature notes are archived. All 120 relative links that pointed into them were rewritten, and a link check found no new breaks.
+- [x] [The memory-bank entry](../../../../.memory-bank/20261106-2118-workshop-bookmark-recall-complete.md) is written.
+- [x] Okey was reminded about PR #205 (Workshop settings user-only) and #128. #205 is still open into `main`. Its tech-debt README conflicts with Wayfinding, and its new scope test will need a `proseMinion.workshop.projectMemory` row.
 
 ## Progress Notes
 
@@ -91,9 +95,9 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
     - `<match>` and `<persona>` choose sessions, so bookmark filters need their own fields.
 - **2026-11-05. Okey's answers to Q1–Q6.** All six are recorded in the ADR.
   - **Q1 changed the design.** The open room's bookmarks are visible to personas, on request, through `<scope>` and a read-only live port, filtered by what the asking persona could see. His use case added D10: a memory proposed from bookmarks cites them.
-  - **Q4 is a follow-up.** Catalog counts went to [their own feature note](../../features/feature-workshop-recall-bookmark-counts/README.md).
+  - **Q4 is a follow-up.** Catalog counts went to [their own feature note](../../../features/feature-workshop-recall-bookmark-counts/README.md).
   - **Q2, Q3, Q5 and Q6 stand as proposed.**
-- **2026-11-05. PR #214 review (Astra).** She raised one P1 (F-05) and six P2s (F-01–F-04, F-06, F-07), all against the spec. Each is answered in the ADR and the slice docs, and the ledger is in [the review](../../../docs/pr-reviews/pr-214-workshop-bookmark-recall-spec-review.md).
+- **2026-11-05. PR #214 review (Astra).** She raised one P1 (F-05) and six P2s (F-01–F-04, F-06, F-07), all against the spec. Each is answered in the ADR and the slice docs, and the ledger is in [the review](../../../../docs/pr-reviews/pr-214-workshop-bookmark-recall-spec-review.md).
   - **F-01.** Nothing about bookmarks is injected automatically, and a requested result is ordinary evidence. The rewritten pin tests both halves.
   - **F-05 (P1).** A result holding any open-room row the room couldn't see is never published. It stays with the persona that asked.
   - **F-02.** The browser reads saved sessions in pages, through a read-only `listPage` cursor, and says how much it covers.
@@ -102,7 +106,7 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
   - **F-06.**
     - Rows carry turn ids.
     - Proposal citations are limited to the open room, because a memory has one source session.
-    - Saved-session citations went to [their own follow-up](../../features/feature-workshop-memory-multi-session-sources/README.md).
+    - Saved-session citations went to [their own follow-up](../../../features/feature-workshop-memory-multi-session-sources/README.md).
   - **F-07.** `<bookmark>` and `<from>` read one bookmark's whole message in windows, and that's the continuation every cut message points to.
   - **Dates.** They use the holding session's own zone, with `<until>` inclusive, and impossible dates are refused.
 - **2026-11-05. Slice 0 merged** into the epic at `8e9b612` (PR #214), after Astra closed F-01–F-07 at the spec level and CI passed on `57bfac2`.
@@ -124,7 +128,7 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
   - **F-01:** a bookmark window at the `<from>` ceiling (999,999) said "This is the end of the message." although text remained.
   - **The fix (`ac43aa58`):** a window says the end only where the message ends. Past the ceiling, it says how much is left and that the rest can't be read by ref.
   - **The ceiling stays.** The prompt teaches the notice and the sync test pins its number.
-  - **Re-review:** clean. Ledger: [the review](../../../docs/pr-reviews/pr-215-workshop-bookmark-recall-slice-1-review.md).
+  - **Re-review:** clean. Ledger: [the review](../../../../docs/pr-reviews/pr-215-workshop-bookmark-recall-slice-1-review.md).
 - **2026-11-05. Slice 1 merged** into the epic at `ddf8356` (PR #215), after CI passed on `3855e71`.
 - **Since Slice 1** (for the Slice 2 thread):
   - **What Slice 2 builds on.** The recall document now carries bookmarks (`WorkshopRecallDocument`). The live port is `WorkshopLiveRoomBookmarks`, implemented by `WorkshopLiveRoomBookmarkReader`, built in `extension.ts`.
@@ -135,11 +139,11 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
   - **Host.** The store's read-only `listPage` walks every session file by cursor, uncapped by the 200, each page bounded by `WORKSHOP_BOOKMARK_BROWSER_LIMITS`. Recall's scope rule moved to `WorkshopRecallScopeGate`, so the service shrank to 466 lines and gained `bookmarkPage`, `liveRoomBookmarks` and `savedTurn`. The recall service joins `CoreServices`. `WorkshopBookmarkBrowserHandler` owns four direct routes; the fourth, `WORKSHOP_CANCEL_BOOKMARK_PAGE`, lets the host stop a page.
   - **Webview.** `readOnly` on the shared browser and row. The screen is reached from "Bookmarks…" and "All bookmarks…". Preview uses the turn-preview sheet with saved and given sources. Open session goes through its confirmation, and Open at bookmark waits for Open's result and the new room before it jumps. `WorkshopApp.tsx` grew 1,828 → 1,860 lines, wiring only.
   - **Verification:** typecheck clean; lint 0 errors / 1,165 warnings (baseline); jest **743 suites / 10,390 tests / 59 snapshots**, all passing (full run, `--maxWorkers=4`); no `vscode` import in core.
-- **2026-11-05. PR #216 review (Astra)** raised two P2s. Both are fixed in `72f92970`, and the ledger is in [the review](../../../docs/pr-reviews/pr-216-workshop-bookmark-browser-review.md).
+- **2026-11-05. PR #216 review (Astra)** raised two P2s. Both are fixed in `72f92970`, and the ledger is in [the review](../../../../docs/pr-reviews/pr-216-workshop-bookmark-browser-review.md).
   - **F-01.** Paging no longer primes the store's exact-read path cache. It counts ids folder-wide, and never resolves a duplicate. The shared cache path is fixed upstream in Pinned Context.
   - **F-02.** Open at bookmark follows its own Open and drops the jump when that Open is superseded.
   - **Verification:** jest **744 suites / 10,399 tests / 59 snapshots**, all passing; lint at the 1,165 baseline; typecheck clean.
-- **2026-11-05. PR #216 re-reviews (Astra)** raised three more findings against the fixes. All are fixed, and the ledger is in [the review](../../../docs/pr-reviews/pr-216-workshop-bookmark-browser-review.md).
+- **2026-11-05. PR #216 re-reviews (Astra)** raised three more findings against the fixes. All are fixed, and the ledger is in [the review](../../../../docs/pr-reviews/pr-216-workshop-bookmark-browser-review.md).
   - **F-03 (P2), `99ddf80a`.** The folder-wide id scan ran outside the page budget. It is gone. Each page reads only its own files, and shared ids are detected across the walk in page-local walk state (`WorkshopRecallBookmarkWalks`). Earlier rows are marked "Shared session id" and their Opens are disabled.
   - **F-04 (P3), `99ddf80a`.** An id the browser couldn't read is never taken as unique. The coverage note says so, and an exact read's conflict is its own outcome (`ambiguous-session`).
   - **F-05 (P2), `6cb9ace6`.** The pager's document cache is keyed by source file, and an ambiguous id is evicted.
@@ -158,7 +162,7 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
   - **"Remember this," webview side.** It is on the Bookmarks screen's rows and on the Notes list. An in-window turn goes through `saveTurn`, unchanged. A turn outside the window prefills from the host's message. A saved turn opens the sheet's new `saved-turn` mode: "From “Title”, …".
   - **Cited turns (D10).** The trailer gains `<cites-turn>`, at most 30. At save, the host keeps a cited turn only when the open room holds it and the proposer could see it (`isWorkshopTurnVisibleToParticipant`). It drops the rest, saved-session and `current@…` refs included, and logs them by id. Kept turns join `sourceTurns` after the writer's message and the reply, each once, within 32. The prompt teaches the field with a worked example.
   - **Verification:** typecheck clean; lint 0 errors / 1,165 warnings (baseline); jest **749 suites / 10,453 tests / 59 snapshots**, all passing (full run, `--maxWorkers=4`); no `vscode` import in core.
-- **2026-11-05. PR #219 review (Astra)** raised two P2s, both fixed; the ledger is in [the review](../../../docs/pr-reviews/pr-219-remember-this-review.md).
+- **2026-11-05. PR #219 review (Astra)** raised two P2s, both fixed; the ledger is in [the review](../../../../docs/pr-reviews/pr-219-remember-this-review.md).
   - **F-01.** A saved capability-card bookmark couldn't be remembered: the route judged the projection's kind. Eligibility is now the original turn's (`bookmarkable`, through recall), and the screen offers only what the host saves.
   - **F-02.** A saved-turn save read the room after the source read, so a same-id reopen or a Rewind could take its receipt. The route now takes the room when its message arrives, and the write refuses, writing nothing, if it moved.
   - **Verification:** jest **751 suites / 10,465 tests / 59 snapshots**, all passing; lint at the 1,165 baseline; typecheck clean.
@@ -175,4 +179,5 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
   It needs Okey in VS Code. After it come the close-out steps, including the #205 reminder.
 - **2026-11-06. Live pass: 15 capability calls per turn.** Okey asked for more calls per persona turn. `callsPerTurn` goes from 5 to 15 (ADR D11), on `epic/workshop-bookmark-recall-calls-per-turn`. The per-operation limits stay, and the engine's ceiling tests now count from the constant.
 - **2026-11-06. Live pass: higher read limits.** Okey found the per-operation limits tight for broad research. Transcript reads go from 2 to 10, sharing the same 300,000 characters. Memory reads go from 2 to 5, full entries from 1 to 3, and analysis runs from 1 to 2 (ADR D11). The read limits' prompt sentences move with them, and every limit's test counts from its constant.
-- **2026-11-06. Follow-up: reads that fit the window.** With 15 calls a turn, memory reads and file reads can fill the context window, and the turn then fails instead of answering. [The feature note](../../features/feature-workshop-reads-fit-the-window/README.md) plans three changes: every read fits itself with recall's rule, a guard in the engine ends a full turn with a reply, and `resource.read` reads several files in one call. It is ADR-first and outside this epic.
+- **2026-11-06. Follow-up: reads that fit the window.** With 15 calls a turn, memory reads and file reads can fill the context window, and the turn then fails instead of answering. [The feature note](../../../features/feature-workshop-reads-fit-the-window/README.md) plans three changes: every read fits itself with recall's rule, a guard in the engine ends a full turn with a reply, and `resource.read` reads several files in one call. It is ADR-first and outside this epic.
+- **2026-11-06. Live pass and close-out.** Okey tested the epic branch with #237 and #238 in: "This is working great so far." He reported no findings and said to merge. The "Session's reply" wording stays as is. This epic and Wayfinding's notes are archived, and the epic merges to `main`.

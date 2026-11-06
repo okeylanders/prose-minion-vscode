@@ -291,7 +291,7 @@ These patterns from Sprint 03 (commit 5) are now **requirements** for all future
 **Sprint 03**:
 - [PR #20](https://github.com/okeylanders/prose-minion-vscode/pull/20)
 - [Sprint 03 Doc](../.todo/epics/epic-unified-settings-architecture-2025-11-03/sprints/03-metricstab-migration.md)
-- [Sprint 03 Completion Summary](./20251103-2021-sprint-03-metricstab-migration-complete.md)
+- [Sprint 03 Completion Summary](20251103-2021-sprint-03-metricstab-migration-complete.md)
 
 **Sprint 04**:
 - [Sprint 04 Doc](../.todo/epics/epic-unified-settings-architecture-2025-11-03/sprints/04-domain-hooks-extraction.md)

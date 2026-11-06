@@ -1,9 +1,9 @@
 # Slice 1: Rail Tabs
 
 **Epic:** [Workshop Wayfinding](README.md)
-**Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1
-**Design:** `Main.dc.html` and `Today.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** Done. Merged into the epic through PR #184 (`d45d57c`), after Astra's re-review of `e53b694` resolved F-01, N-01 and N-02 ([review](../../../docs/pr-reviews/pr-184-workshop-wayfinding-rail-tabs-review.md)).
+**Decision:** [ADR 2026-11-03](../../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1
+**Design:** `Main.dc.html` and `Today.dc.html` in [`docs/design/workshop-wayfinding/`](../../../../docs/design/workshop-wayfinding/README.md)
+**Status:** Done. Merged into the epic through PR #184 (`d45d57c`), after Astra's re-review of `e53b694` resolved F-01, N-01 and N-02 ([review](../../../../docs/pr-reviews/pr-184-workshop-wayfinding-rail-tabs-review.md)).
 
 ## Outcome
 

@@ -1,16 +1,16 @@
 # Feature: Bookmarks Personas Can Read, and a Bookmarks Screen
 
 **Date Identified:** 2026-11-04
-**Status:** Planned in [Epic: Workshop Bookmark Recall](../../epics/epic-workshop-bookmark-recall-2026-11-05/README.md). Decisions are in [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-bookmark-recall.md), which supersedes Wayfinding D5 and D10 in part and corrects this note's grammar sketch (`<match>` and `<persona>` choose sessions; bookmark filters are `<query>`, `<speaker>`, `<since>` and `<until>`).
+**Status:** Shipped (2026-11-06) by [Epic: Workshop Bookmark Recall](../../epics/epic-workshop-bookmark-recall-2026-11-05/README.md), merged to `main` with its ADR Accepted. Decisions are in [ADR 2026-11-05](../../../../docs/adr/2026-11-05-workshop-bookmark-recall.md), which supersedes Wayfinding D5 and D10 in part and corrects this note's grammar sketch (`<match>` and `<persona>` choose sessions; bookmark filters are `<query>`, `<speaker>`, `<since>` and `<until>`).
 **Priority:** Medium
 **Origin:** Okey, at the Workshop Wayfinding Slice 8 review
 **Related:**
-- [ADR 2026-11-03: Workshop Wayfinding](../../../docs/adr/2026-11-03-workshop-wayfinding.md):
+- [ADR 2026-11-03: Workshop Wayfinding](../../../../docs/adr/2026-11-03-workshop-wayfinding.md):
   - D5: bookmarks are host-owned session state, presentation only.
   - D6: whole-room operations.
   - D10: recall and prompts don't carry bookmarks.
-- [ADR 2026-10-05: Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md): the `transcript.*` family.
-- [Feature: Workshop Project Memory](../feature-workshop-project-memory/README.md). These pair well; see "Pairing with project memory" below.
+- [ADR 2026-10-05: Workshop Personas Recall Saved Session Transcripts](../../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md): the `transcript.*` family.
+- [Feature: Workshop Project Memory](../../../features/feature-workshop-project-memory/README.md). These pair well; see "Pairing with project memory" below.
 - [Thread Bookmarks](../feature-workshop-thread-bookmarks/README.md): the feature Wayfinding built.
 
 ## Problem

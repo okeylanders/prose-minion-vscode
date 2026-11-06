@@ -333,7 +333,7 @@ React.useEffect(() => {
 - **Epic**: [epic-unified-settings-architecture.md](../../.todo/epics/epic-unified-settings-architecture-2025-11-03/epic-unified-settings-architecture.md)
 - **Sprint**: [04-domain-hooks-extraction.md](../../.todo/epics/epic-unified-settings-architecture-2025-11-03/sprints/04-domain-hooks-extraction.md)
 - **Architecture Debt**: [2025-11-05-useeffect-extraction-pattern.md](../../.todo/architecture-debt/2025-11-05-useeffect-extraction-pattern.md)
-- **Previous**: [20251104-1011-sprint-03-merged-and-sprint-04-review.md](./20251104-1011-sprint-03-merged-and-sprint-04-review.md)
+- **Previous**: [20251104-1011-sprint-03-merged-and-sprint-04-review.md](20251104-1011-sprint-03-merged-and-sprint-04-review.md)
 
 ---
 

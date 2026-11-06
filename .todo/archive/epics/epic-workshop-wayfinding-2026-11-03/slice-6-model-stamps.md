@@ -1,8 +1,8 @@
 # Slice 6: Model Stamps
 
 **Epic:** [Workshop Wayfinding](README.md)
-**Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D7 and D9
-**Status:** Done. Merged into the epic through PR #185 (`07d24e7`) after Astra's third round resolved F-01 to F-04 and the two recorded decisions ([review](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md)). Built in `7e38081`, `9d86713`, `584a529`; review fixes `623a4be`, `174012c`, `7e0b534`; re-review fixes `09ea77f`, `247c87a`.
+**Decision:** [ADR 2026-11-03](../../../../docs/adr/2026-11-03-workshop-wayfinding.md), D7 and D9
+**Status:** Done. Merged into the epic through PR #185 (`07d24e7`) after Astra's third round resolved F-01 to F-04 and the two recorded decisions ([review](../../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md)). Built in `7e38081`, `9d86713`, `584a529`; review fixes `623a4be`, `174012c`, `7e0b534`; re-review fixes `09ea77f`, `247c87a`.
 
 ## Outcome
 

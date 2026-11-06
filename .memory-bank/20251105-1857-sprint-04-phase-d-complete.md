@@ -394,8 +394,8 @@ npm run build
 - **Epic**: [epic-unified-settings-architecture.md](../../.todo/epics/epic-unified-settings-architecture-2025-11-03/epic-unified-settings-architecture.md)
 - **Sprint**: [04-domain-hooks-extraction.md](../../.todo/epics/epic-unified-settings-architecture-2025-11-03/sprints/04-domain-hooks-extraction.md)
 - **Previous Memory Bank Entries**:
-  - [20251105-1445-sprint-04-phase-c-complete.md](./20251105-1445-sprint-04-phase-c-complete.md) - Phase C summary
-  - [20251104-1011-sprint-03-merged-and-sprint-04-review.md](./20251104-1011-sprint-03-merged-and-sprint-04-review.md) - Sprint 03 completion
+  - [20251105-1445-sprint-04-phase-c-complete.md](20251105-1445-sprint-04-phase-c-complete.md) - Phase C summary
+  - [20251104-1011-sprint-03-merged-and-sprint-04-review.md](20251104-1011-sprint-03-merged-and-sprint-04-review.md) - Sprint 03 completion
 
 ---
 

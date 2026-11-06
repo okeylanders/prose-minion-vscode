@@ -912,8 +912,8 @@ Infrastructure (OpenRouterClient, VSCode API, File System)
 ## Links & References
 
 ### Related ADRs
-- [ADR-2025-10-26: Message Architecture Organization](./2025-10-26-message-architecture-organization.md) - MessageHandler refactor (god component → domain handlers)
-- [ADR-2025-10-27: Presentation Layer Domain Hooks](./2025-10-27-presentation-layer-domain-hooks.md) - App.tsx refactor (god component → domain hooks)
+- [ADR-2025-10-26: Message Architecture Organization](2025-10-26-message-architecture-organization.md) - MessageHandler refactor (god component → domain handlers)
+- [ADR-2025-10-27: Presentation Layer Domain Hooks](2025-10-27-presentation-layer-domain-hooks.md) - App.tsx refactor (god component → domain hooks)
 
 ### Memory Bank
 - [Presentation Layer Architectural Review](./.memory-bank/20251102-1845-presentation-layer-architectural-review.md) - 9.8/10 score, proven pattern

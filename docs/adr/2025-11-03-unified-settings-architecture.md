@@ -3,7 +3,7 @@
 **Status**: Accepted
 **Date**: 2025-11-03
 **Deciders**: Development Team
-**Related**: [ADR-2025-10-27: Presentation Layer Domain Hooks](./2025-10-27-presentation-layer-domain-hooks.md)
+**Related**: [ADR-2025-10-27: Presentation Layer Domain Hooks](2025-10-27-presentation-layer-domain-hooks.md)
 
 ---
 
@@ -801,8 +801,8 @@ The backend `MessageHandler` will use semantic methods to group settings (Phase 
 ## References
 
 ### Related ADRs
-- [ADR-2025-10-27: Presentation Layer Domain Hooks](./2025-10-27-presentation-layer-domain-hooks.md) - Established hook pattern
-- [ADR-2025-10-28: Message Envelope Architecture](./2025-10-28-message-envelope-architecture.md) - Message routing strategy
+- [ADR-2025-10-27: Presentation Layer Domain Hooks](2025-10-27-presentation-layer-domain-hooks.md) - Established hook pattern
+- [ADR-2025-10-28: Message Envelope Architecture](2025-10-28-message-envelope-architecture.md) - Message routing strategy
 
 ### Analysis Documents
 - [Settings Architecture Analysis](./../.todo/architecture-debt/2025-11-02-settings-architecture-analysis.md) - Comprehensive 1818-line analysis

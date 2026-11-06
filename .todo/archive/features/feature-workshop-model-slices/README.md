@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-10-27
 **Source**: Brainstorm with Okey (Workshop sidebar batch)
-**Status**: Shipped (2026-11-05) by [Epic: Workshop Wayfinding](../../epics/epic-workshop-wayfinding-2026-11-03/README.md); decisions in [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md) (Accepted). The epic merges to `main` in one PR. This note stays here until the [bookmark recall follow-up](../feature-workshop-bookmark-recall/README.md) and the downstream epics are done, so their links keep working.
+**Status**: Shipped (2026-11-05) by [Epic: Workshop Wayfinding](../../epics/epic-workshop-wayfinding-2026-11-03/README.md); decisions in [ADR 2026-11-03](../../../../docs/adr/2026-11-03-workshop-wayfinding.md) (Accepted). The epic merges to `main` in one PR. This note stays here until the [bookmark recall follow-up](../feature-workshop-bookmark-recall/README.md) and the downstream epics are done, so their links keep working.
 **Priority**: Medium
 
 > Its persistence decision is shared with
@@ -93,7 +93,7 @@ next reply under the new model brings it back.
 Put the calculation in **one pure function** under `shared/`, used by both the
 thread and `projectWorkshopTranscript`. That keeps export and the thread in
 agreement, which is the "one projection" rule from
-[ADR 2026-10-05](../../../docs/adr/2026-10-05-workshop-transcript-export.md).
+[ADR 2026-10-05](../../../../docs/adr/2026-10-05-workshop-transcript-export.md).
 The HTML export copies thread CSS rules, so the slice's style joins the
 mirror test.
 
@@ -107,7 +107,7 @@ before the window. Without it, the thread shows no slice at the edge.
 
 **1. Old sessions in new builds: free.** The field is optional, unstamped turns
 produce no slices, and per
-[ADR 2026-07-30](../../../docs/adr/2026-07-30-workshop-session-codec-evolution.md)
+[ADR 2026-07-30](../../../../docs/adr/2026-07-30-workshop-session-codec-evolution.md)
 an optional addition needs no `schemaVersion` bump.
 
 **2. New sessions in old builds: not free.** The codec is strict. `assertTurn`

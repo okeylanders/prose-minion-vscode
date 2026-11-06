@@ -258,8 +258,8 @@ We iterated on the ADR **three times**:
 - [ADR-2025-10-27: Presentation Layer Domain Hooks](../docs/adr/2025-10-27-presentation-layer-domain-hooks.md) - App.tsx refactor (697→394 lines)
 
 ### Previous Memory Bank Entries
-- [20251111-1430-prose-analysis-service-refactor-adr-draft.md](./20251111-1430-prose-analysis-service-refactor-adr-draft.md)
-- [20251111-1545-measurement-facade-decision.md](./20251111-1545-measurement-facade-decision.md)
+- [20251111-1430-prose-analysis-service-refactor-adr-draft.md](20251111-1430-prose-analysis-service-refactor-adr-draft.md)
+- [20251111-1545-measurement-facade-decision.md](20251111-1545-measurement-facade-decision.md)
 
 ### Epic
 - [.todo/epics/epic-prose-analysis-service-refactor-2025-11-11/](../.todo/epics/epic-prose-analysis-service-refactor-2025-11-11/)

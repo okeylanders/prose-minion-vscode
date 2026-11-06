@@ -550,7 +550,7 @@ async handleAnalyzeDialogue(message: AnalyzeDialogueMessage): Promise<void> {
 - Message Contracts: [src/shared/types/messages/analysis.ts](../../src/shared/types/messages/analysis.ts)
 - Analysis Handler: [src/application/handlers/domain/AnalysisHandler.ts](../../src/application/handlers/domain/AnalysisHandler.ts)
 - System Prompts: [resources/system-prompts/dialogue-microbeat-assistant/](../../resources/system-prompts/dialogue-microbeat-assistant/)
-- Similar Pattern: Clickable Resource Pills ([ADR 2025-11-02](./2025-11-02-clickable-resource-pills.md))
+- Similar Pattern: Clickable Resource Pills ([ADR 2025-11-02](2025-11-02-clickable-resource-pills.md))
 
 ## Success Metrics
 

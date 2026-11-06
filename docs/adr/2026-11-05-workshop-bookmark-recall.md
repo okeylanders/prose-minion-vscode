@@ -1,12 +1,12 @@
 # ADR 2026-11-05: Bookmarks Personas Can Read, and a Bookmarks Screen
 
-**Status:** Proposed (2026-11-05).
+**Status:** Accepted (2026-11-06), when Okey approved merging the epic to `main` after his live pass. It was proposed on 2026-11-05.
 - The writer answered Q1–Q6 the same day ([answers](#the-writers-answers-2026-11-05)). Q1 changed D1: personas see the open room's bookmarks too, on request.
 - The PR #214 review (F-01–F-07) tightened D1, D2, D5, D7, D8 and D10 ([review](../pr-reviews/pr-214-workshop-bookmark-recall-spec-review.md)).
 - The live pass (2026-11-06) raised a persona's capability calls per turn from 5 to 15, and its per-turn read limits, at the writer's request (D11).
 **Date:** 2026-11-05
-**Epic:** [Workshop Bookmark Recall](../../.todo/epics/epic-workshop-bookmark-recall-2026-11-05/README.md)
-**Feature:** [Bookmarks personas can read, and a Bookmarks screen](../../.todo/features/feature-workshop-bookmark-recall/README.md)
+**Epic:** [Workshop Bookmark Recall](../../.todo/archive/epics/epic-workshop-bookmark-recall-2026-11-05/README.md)
+**Feature:** [Bookmarks personas can read, and a Bookmarks screen](../../.todo/archive/features/feature-workshop-bookmark-recall/README.md)
 **Supersedes in part:** [ADR 2026-11-03: Workshop Wayfinding](2026-11-03-workshop-wayfinding.md):
 - **D5, "Presentation only":** for saved sessions.
 - **D10, the recall bullet.**
