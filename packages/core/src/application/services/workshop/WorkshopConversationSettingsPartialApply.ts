@@ -1,85 +1,190 @@
 /**
- * The global project-memory mode as Conversation settings' apply writes it
- * (ADR 2026-11-04 D8; PR #202 F03). An apply writes the mode first, so the
- * prompt rebuild sees it; when the apply fails, it undoes its own write and
- * only that: nothing when it wrote none, and nothing when the setting no
- * longer holds what it wrote (a newer choice in VS Code Settings stands, and
- * the settings watcher's sync reconciles the prompts with it). A write back
- * VS Code refuses raises `WorkshopConversationSettingsPartialApplyError`.
+ * The global modes Conversation settings' apply writes: the project-memory
+ * mode (ADR 2026-11-04 D8; PR #202 F03) and suggested file edits (ADR
+ * 2026-11-05 D11, its row added in Slice 4c). An apply writes each mode
+ * first, so the prompt rebuild sees it; when the apply fails, it undoes its
+ * own writes and only those: nothing for a mode it wrote none of, and
+ * nothing for a mode that no longer holds what it wrote (a newer choice in
+ * VS Code Settings stands, and the settings watcher's sync reconciles the
+ * prompts with it). A write back VS Code refuses raises
+ * `WorkshopConversationSettingsPartialApplyError`.
  */
 import type { LogSink, SettingsStore } from '@/platform';
 import {
+  coerceWorkshopFileEditsMode,
   coerceWorkshopProjectMemoryMode,
+  WORKSHOP_FILE_EDITS_SETTING,
   WORKSHOP_PROJECT_MEMORY_SETTING,
+  type WorkshopFileEditsMode,
   type WorkshopProjectMemoryMode
 } from '@messages';
 
-/** What an apply did to the mode: wrote `wrote` over `over`, or failed with `error`; empty when it wrote nothing. */
-export interface WorkshopProjectMemoryModeWrite {
-  readonly wrote?: WorkshopProjectMemoryMode;
-  readonly over?: WorkshopProjectMemoryMode;
+/** What an apply did to a mode: wrote `wrote` over `over`, or failed with `error`; empty when it wrote nothing. */
+export interface WorkshopGlobalModeWrite<Mode extends string> {
+  readonly wrote?: Mode;
+  readonly over?: Mode;
   readonly error?: string;
 }
 
+/** The modes an apply could not set back, each as its setting holds it now. */
+export interface WorkshopGlobalModesLeft {
+  readonly projectMemory?: WorkshopProjectMemoryMode;
+  readonly fileEdits?: WorkshopFileEditsMode;
+}
+
 /**
- * An apply that failed after it wrote the mode, and could not write it back.
- * The mode the writer chose stands; every other setting is as it was. The
- * handler says so, rather than that the previous settings are all active.
+ * An apply that failed after it wrote a mode, and could not write it back.
+ * The modes it names stand as the writer chose them; every other setting is
+ * as it was. The handler says so, rather than that the previous settings are
+ * all active.
  */
 export class WorkshopConversationSettingsPartialApplyError extends Error {
+  /** The project-memory mode the global setting holds now, when it could not be set back. */
+  readonly projectMemory?: WorkshopProjectMemoryMode;
+  /** The file-edits mode the global setting holds now, when it could not be set back. */
+  readonly fileEdits?: WorkshopFileEditsMode;
+
   constructor(
-    /** The mode the global setting holds now. */
-    readonly projectMemory: WorkshopProjectMemoryMode,
+    left: WorkshopGlobalModesLeft,
     readonly cause: unknown,
     readonly rollbackError: string
   ) {
-    super(`${messageOf(cause)}; the project memory mode could not be set back: ${rollbackError}`);
+    super(`${messageOf(cause)}; ${leftNames(left)} could not be set back: ${rollbackError}`);
     this.name = 'WorkshopConversationSettingsPartialApplyError';
+    if (left.projectMemory !== undefined) {
+      this.projectMemory = left.projectMemory;
+    }
+    if (left.fileEdits !== undefined) {
+      this.fileEdits = left.fileEdits;
+    }
   }
 }
 
-export class WorkshopProjectMemoryModeSetting {
+const PROJECT_MEMORY_MODE_WORDS: Record<WorkshopProjectMemoryMode, string> = { off: 'Off', ask: 'Ask first', auto: 'Save and tell me' };
+const FILE_EDITS_MODE_WORDS: Record<WorkshopFileEditsMode, string> = { off: 'Off', ask: 'Ask first' };
+
+/** The writer's words for an apply that left a mode it could not set back. */
+export function workshopConversationSettingsPartialApplyWords(error: WorkshopConversationSettingsPartialApplyError): string {
+  const left = [
+    error.projectMemory !== undefined ? `Project memory is now ${PROJECT_MEMORY_MODE_WORDS[error.projectMemory]}` : undefined,
+    error.fileEdits !== undefined ? `Suggested file edits are now ${FILE_EDITS_MODE_WORDS[error.fileEdits]}` : undefined
+  ].filter((each): each is string => each !== undefined);
+  const said = left.length === 2 ? `${left[0]} and ${left[1].charAt(0).toLowerCase()}${left[1].slice(1)}` : left[0];
+  return `Could not change conversation settings. ${said}: ${left.length === 2 ? 'they' : 'it'} couldn't be set back. ` +
+    'Your other previous settings are still active.';
+}
+
+interface WorkshopGlobalModeSpec<Mode extends string> {
+  readonly setting: { readonly section: string; readonly key: string };
+  readonly coerce: (raw: unknown) => Mode;
+  /** Its name in the log ("Project memory mode"). */
+  readonly label: string;
+}
+
+/** One global mode setting: read live, written by an apply, and that write undone when the apply fails. */
+export class WorkshopGlobalModeSetting<Mode extends string> {
   constructor(
     private readonly settings: SettingsStore,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    private readonly spec: WorkshopGlobalModeSpec<Mode>
   ) {}
 
-  /** The mode as the setting holds it now; an unknown value reads as Off. */
-  get(): WorkshopProjectMemoryMode {
-    return coerceWorkshopProjectMemoryMode(
-      this.settings.get<unknown>(WORKSHOP_PROJECT_MEMORY_SETTING.section, WORKSHOP_PROJECT_MEMORY_SETTING.key)
-    );
+  /** The mode as the setting holds it now, through the mode's own coercion. */
+  get(): Mode {
+    return this.spec.coerce(this.settings.get<unknown>(this.spec.setting.section, this.spec.setting.key));
   }
 
   /** Write `next` when it differs; say what was written over what, or why it wasn't. */
-  async write(next: WorkshopProjectMemoryMode | undefined): Promise<WorkshopProjectMemoryModeWrite> {
+  async write(next: Mode | undefined): Promise<WorkshopGlobalModeWrite<Mode>> {
     const over = this.get();
     if (next === undefined || next === over) {
       return {};
     }
     try {
-      await this.settings.update(WORKSHOP_PROJECT_MEMORY_SETTING.section, WORKSHOP_PROJECT_MEMORY_SETTING.key, next);
-      this.outputChannel.appendLine(`[WorkshopConversationSettingsService] Project memory mode set to ${next}`);
+      await this.settings.update(this.spec.setting.section, this.spec.setting.key, next);
+      this.outputChannel.appendLine(`[WorkshopConversationSettingsService] ${this.spec.label} set to ${next}`);
       return { wrote: next, over };
     } catch (error) {
       return { error: messageOf(error) };
     }
   }
 
-  /** Undo `write` while the setting still holds what it wrote, then rethrow `error`. */
-  async undo(write: WorkshopProjectMemoryModeWrite, error: unknown): Promise<never> {
-    if (write.wrote !== undefined && write.over !== undefined) {
-      if (this.get() !== write.wrote) {
-        this.outputChannel.appendLine('[WorkshopConversationSettingsService] Project memory mode changed since the apply wrote it; the newer choice stands');
-      } else {
-        const rollback = await this.write(write.over);
-        if (rollback.error) {
-          throw new WorkshopConversationSettingsPartialApplyError(this.get(), error, rollback.error);
-        }
-      }
+  /**
+   * Undo `write` while the setting still holds what it wrote. Answers why a
+   * write back failed, or nothing when it succeeded or there was nothing to undo.
+   */
+  async rollback(write: WorkshopGlobalModeWrite<Mode>): Promise<string | undefined> {
+    if (write.wrote === undefined || write.over === undefined) {
+      return undefined;
     }
-    throw error;
+    if (this.get() !== write.wrote) {
+      this.outputChannel.appendLine(`[WorkshopConversationSettingsService] ${this.spec.label} changed since the apply wrote it; the newer choice stands`);
+      return undefined;
+    }
+    return (await this.write(write.over)).error;
   }
+}
+
+export function workshopProjectMemoryModeSetting(settings: SettingsStore, outputChannel: LogSink): WorkshopGlobalModeSetting<WorkshopProjectMemoryMode> {
+  return new WorkshopGlobalModeSetting(settings, outputChannel, {
+    setting: WORKSHOP_PROJECT_MEMORY_SETTING,
+    coerce: coerceWorkshopProjectMemoryMode,
+    label: 'Project memory mode'
+  });
+}
+
+/** Unset reads `ask`, anything unknown `off` (D11). */
+export function workshopFileEditsModeSetting(settings: SettingsStore, outputChannel: LogSink): WorkshopGlobalModeSetting<WorkshopFileEditsMode> {
+  return new WorkshopGlobalModeSetting(settings, outputChannel, {
+    setting: WORKSHOP_FILE_EDITS_SETTING,
+    coerce: coerceWorkshopFileEditsMode,
+    label: 'File edits mode'
+  });
+}
+
+/** The writes an apply made to the global modes, undone together when it fails. */
+export interface WorkshopGlobalModeWrites {
+  readonly projectMemory: WorkshopGlobalModeWrite<WorkshopProjectMemoryMode>;
+  readonly fileEdits: WorkshopGlobalModeWrite<WorkshopFileEditsMode>;
+}
+
+/** Why VS Code refused each mode write, by mode; empty when none failed. */
+export function workshopGlobalModeWriteErrors(writes: WorkshopGlobalModeWrites): { projectMemory?: string; fileEdits?: string } {
+  return {
+    ...(writes.projectMemory.error ? { projectMemory: writes.projectMemory.error } : {}),
+    ...(writes.fileEdits.error ? { fileEdits: writes.fileEdits.error } : {})
+  };
+}
+
+/**
+ * Undo an apply's own mode writes, the last written first, then rethrow
+ * `error`; or raise the partial-apply error naming each mode that could not
+ * be set back, as it stands now.
+ */
+export async function undoWorkshopGlobalModeWrites(
+  modes: { readonly projectMemory: WorkshopGlobalModeSetting<WorkshopProjectMemoryMode>; readonly fileEdits: WorkshopGlobalModeSetting<WorkshopFileEditsMode> },
+  writes: WorkshopGlobalModeWrites,
+  error: unknown
+): Promise<never> {
+  const fileEditsFailure = await modes.fileEdits.rollback(writes.fileEdits);
+  const projectMemoryFailure = await modes.projectMemory.rollback(writes.projectMemory);
+  if (fileEditsFailure !== undefined || projectMemoryFailure !== undefined) {
+    throw new WorkshopConversationSettingsPartialApplyError(
+      {
+        ...(projectMemoryFailure !== undefined ? { projectMemory: modes.projectMemory.get() } : {}),
+        ...(fileEditsFailure !== undefined ? { fileEdits: modes.fileEdits.get() } : {})
+      },
+      error,
+      [projectMemoryFailure, fileEditsFailure].filter((each): each is string => each !== undefined).join('; ')
+    );
+  }
+  throw error;
+}
+
+function leftNames(left: WorkshopGlobalModesLeft): string {
+  return [left.projectMemory !== undefined ? 'the project memory mode' : undefined, left.fileEdits !== undefined ? 'the file edits mode' : undefined]
+    .filter((each): each is string => each !== undefined)
+    .join(' and ');
 }
 
 function messageOf(error: unknown): string {

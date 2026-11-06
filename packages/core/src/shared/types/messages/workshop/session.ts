@@ -1,7 +1,7 @@
 /** Workshop session, excerpt, turn, todo, and persistence-facing contracts. */
 
 import type { WorkshopMemoryProposal, WorkshopProjectMemoryReceipt } from './projectMemory';
-import type { WorkshopFileEditProposal } from './fileEdits';
+import type { WorkshopFileEditProposal, WorkshopFileEditsMode } from './fileEdits';
 import { MessageEnvelope, MessageType } from '../base';
 import { TokenUsage } from '../tokenUsage';
 import { UrlCitation } from '../citations';
@@ -895,6 +895,12 @@ export interface WorkshopSessionStatePayload {
    * webview reads Off (fail closed).
    */
   projectMemory?: WorkshopProjectMemoryMode;
+  /**
+   * The global suggested-file-edits mode (ADR 2026-11-05 D11), outside the
+   * session aggregate. The host always sends it; absent reads as the
+   * setting's default (`ask`), the same rule as the setting unset.
+   */
+  fileEdits?: WorkshopFileEditsMode;
   persistence: {
     available: boolean;
     unavailableReason?: 'no-workspace' | 'multi-root';

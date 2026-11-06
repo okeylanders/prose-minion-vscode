@@ -15,6 +15,7 @@ import {
   WorkshopWriterProfile,
   WorkshopWebResearchSettings,
   workshopWebResearchSettingsEqual,
+  type WorkshopFileEditsMode,
   type WorkshopProjectMemoryMode
 } from '@messages';
 import {
@@ -40,6 +41,7 @@ interface PendingApply {
   baselineProfile: WorkshopWriterProfile;
   submittedWebResearch: WorkshopWebResearchSettings;
   submittedMemoryMode: WorkshopProjectMemoryMode;
+  submittedFileEditsMode: WorkshopFileEditsMode;
 }
 
 interface WorkshopConversationBehaviorModalProps {
@@ -49,6 +51,8 @@ interface WorkshopConversationBehaviorModalProps {
   webResearch: WorkshopWebResearchSettings;
   /** The global project-memory mode, as the host has it (ADR 2026-11-04 D8). */
   projectMemoryMode: WorkshopProjectMemoryMode;
+  /** The global suggested-file-edits mode, as the host has it (ADR 2026-11-05 D11): the Behavior tab's draft. */
+  fileEditsMode: WorkshopFileEditsMode;
   /** What the Memory tab draws from the host's listing; the mode is the modal's draft. */
   memory: Omit<WorkshopMemoryTabInput, 'mode'>;
   /** Open memory folder's status, shown in the Memory tab (PR #202 F04). */
@@ -64,7 +68,8 @@ interface WorkshopConversationBehaviorModalProps {
     behavior: WorkshopConversationBehavior,
     writerProfile: WorkshopWriterProfile,
     webResearch: WorkshopWebResearchSettings,
-    projectMemoryMode: WorkshopProjectMemoryMode
+    projectMemoryMode: WorkshopProjectMemoryMode,
+    fileEditsMode: WorkshopFileEditsMode
   ) => void;
   /** Manage memories… and Show in manager: the manager opens over these settings, which keep their drafts. */
   onOpenMemoryManager: () => void;
@@ -80,6 +85,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   writerProfile,
   webResearch,
   projectMemoryMode,
+  fileEditsMode,
   memory,
   memoryFolder,
   pinnedContext,
@@ -97,6 +103,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   const [profileDraft, setProfileDraft] = React.useState({ ...writerProfile });
   const [webResearchDraft, setWebResearchDraft] = React.useState({ ...webResearch });
   const [memoryDraft, setMemoryDraft] = React.useState<WorkshopProjectMemoryMode>(projectMemoryMode);
+  const [fileEditsDraft, setFileEditsDraft] = React.useState<WorkshopFileEditsMode>(fileEditsMode);
   const [pending, setPending] = React.useState<PendingApply | null>(null);
   const [confirmClear, setConfirmClear] = React.useState(false);
   const tabRefs = React.useRef<Partial<Record<WorkshopConversationSettingsTab, HTMLButtonElement | null>>>({});
@@ -108,6 +115,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       setProfileDraft({ ...writerProfile });
       setWebResearchDraft({ ...webResearch });
       setMemoryDraft(projectMemoryMode);
+      setFileEditsDraft(fileEditsMode);
       setPending(null);
       setConfirmClear(false);
     }
@@ -124,6 +132,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       && workshopWriterProfilesEqual(writerProfile, pending.submittedProfile)
       && workshopWebResearchSettingsEqual(webResearch, pending.submittedWebResearch)
       && projectMemoryMode === pending.submittedMemoryMode
+      && fileEditsMode === pending.submittedFileEditsMode
     ) {
       setPending(null);
       onClose();
@@ -133,7 +142,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
     ) {
       setPending(null);
     }
-  }, [behavior, onClose, open, pending, projectMemoryMode, webResearch, writerProfile]);
+  }, [behavior, fileEditsMode, onClose, open, pending, projectMemoryMode, webResearch, writerProfile]);
 
   React.useEffect(() => {
     if (pending && errorMessage) setPending(null);
@@ -160,14 +169,15 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       preferredAddress: profileDraft.preferredAddress.trim(),
       bio: profileDraft.bio.trim()
     };
-    onApply(submittedBehavior, submittedProfile, webResearchDraft, memoryDraft);
+    onApply(submittedBehavior, submittedProfile, webResearchDraft, memoryDraft, fileEditsDraft);
     setPending({
       submittedBehavior,
       submittedProfile,
       baselineBehavior: { ...behavior },
       baselineProfile: { ...writerProfile },
       submittedWebResearch: { ...webResearchDraft },
-      submittedMemoryMode: memoryDraft
+      submittedMemoryMode: memoryDraft,
+      submittedFileEditsMode: fileEditsDraft
     });
   };
 
@@ -177,8 +187,10 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
     behavior: () => (
       <WorkshopBehaviorSettingsPanel
         draft={behaviorDraft}
+        fileEdits={fileEditsDraft}
         disabled={editingLocked}
         onDraftChange={setBehaviorDraft}
+        onSelectFileEdits={setFileEditsDraft}
       />
     ),
     profile: () => (

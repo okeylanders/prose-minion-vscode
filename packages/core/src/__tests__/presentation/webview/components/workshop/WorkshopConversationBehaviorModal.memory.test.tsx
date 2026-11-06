@@ -29,6 +29,7 @@ function renderModal(overrides: Partial<Props> = {}) {
     writerProfile: { ...DEFAULT_WORKSHOP_WRITER_PROFILE },
     webResearch: { ...DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS },
     projectMemoryMode: 'off',
+    fileEditsMode: 'ask',
     memory: { workspace: { kind: 'available' }, estimate: IN_BUDGET, saved: 12, unreadable: [], conflicts: [] },
     isRunning: false,
     onApply: jest.fn(),
@@ -67,7 +68,8 @@ describe('Conversation settings · Memory', () => {
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
       DEFAULT_WORKSHOP_WRITER_PROFILE,
       DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
-      'auto'
+      'auto',
+      'ask'
     );
   });
 

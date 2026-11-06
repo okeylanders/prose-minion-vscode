@@ -1,4 +1,9 @@
-/** Conversation settings · Behavior: response style, expression, depth, initiative, continuity. */
+/**
+ * Conversation settings · Behavior: response style, expression, depth,
+ * initiative, suggested file edits, continuity. Suggested file edits is the
+ * global `proseMinion.workshop.fileEdits` (ADR 2026-11-05 D11), a draft
+ * applied with the others; the rest is the session's behavior draft.
+ */
 
 import * as React from 'react';
 import { Icon, IconName } from '@components/shared/Icon';
@@ -6,6 +11,7 @@ import {
   WORKSHOP_INTERACTION_MODE_LABELS,
   WORKSHOP_RELATIONAL_DEPTH_LABELS,
   WorkshopConversationBehavior,
+  WorkshopFileEditsMode,
   WorkshopInteractionMode,
   WorkshopPersonaExpressionLevel,
   WorkshopRelationalDepth
@@ -58,6 +64,16 @@ const RELATIONAL_DEPTH_CARDS: ReadonlyArray<{
   }
 ];
 
+const FILE_EDITS_CARDS: ReadonlyArray<{
+  mode: WorkshopFileEditsMode;
+  icon: IconName;
+  name: string;
+  description: string;
+}> = [
+  { mode: 'off', icon: 'circleSlash', name: 'Off', description: 'Personas never propose edits to your files.' },
+  { mode: 'ask', icon: 'hand', name: 'Ask first', description: 'Each edit waits as a card, with its changes, until you press Apply.' }
+];
+
 const ExpressionGlyph: React.FC<{ level: WorkshopPersonaExpressionLevel }> = ({ level }) => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     {level === 'subtle' ? (
@@ -76,14 +92,19 @@ const ExpressionGlyph: React.FC<{ level: WorkshopPersonaExpressionLevel }> = ({ 
 
 interface WorkshopBehaviorSettingsPanelProps {
   draft: WorkshopConversationBehavior;
+  /** The suggested-file-edits draft: global, applied with the behavior draft. */
+  fileEdits: WorkshopFileEditsMode;
   disabled: boolean;
   onDraftChange: React.Dispatch<React.SetStateAction<WorkshopConversationBehavior>>;
+  onSelectFileEdits: (mode: WorkshopFileEditsMode) => void;
 }
 
 export const WorkshopBehaviorSettingsPanel: React.FC<WorkshopBehaviorSettingsPanelProps> = ({
   draft,
+  fileEdits,
   disabled,
-  onDraftChange
+  onDraftChange,
+  onSelectFileEdits
 }) => (
   <>
     <SettingsRule label="Response style" />
@@ -162,6 +183,22 @@ export const WorkshopBehaviorSettingsPanel: React.FC<WorkshopBehaviorSettingsPan
         }))}
       />
     </div>
+
+    <SettingsRule label="Suggested file edits" />
+    <div className="pm-ws-behavior-cards pm-ws-behavior-cards-two">
+      {FILE_EDITS_CARDS.map((card) => (
+        <OptionCard
+          key={card.mode}
+          selected={fileEdits === card.mode}
+          disabled={disabled}
+          icon={<Icon name={card.icon} size={14} />}
+          name={card.name}
+          description={card.description}
+          onClick={() => onSelectFileEdits(card.mode)}
+        />
+      ))}
+    </div>
+    <p className="pm-ws-behavior-note">Personas may propose edits to notes and chapters; nothing changes until you press Apply.</p>
 
     <SettingsRule label="Session continuity" />
     <div className="pm-ws-behavior-row">

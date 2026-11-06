@@ -137,6 +137,20 @@ describe('useWorkshopFileEdits', () => {
     expect(hook.current.cardFeedback.get(CARD)?.answer).toBe('joined');
   });
 
+  it('a transient refusal settled back to pending keeps its words, and Apply posts again (D8, amended 2026-11-06)', () => {
+    const { result: hook } = mount();
+    act(() => hook.current.apply(TURN, 0));
+    const [sent] = posted(MessageType.WORKSHOP_FILE_EDIT_ACTION);
+    act(() => hook.current.handleResult(result({
+      requestId: sent.payload.requestId as string, answer: 'settled', state: 'pending', reason: 'host-failed', message: 'The editor could not make the change.'
+    })));
+    expect(hook.current.busyCards.has(CARD)).toBe(false);
+    expect(hook.current.cardFeedback.get(CARD)).toEqual({ answer: 'settled', message: 'The editor could not make the change.' });
+    act(() => hook.current.apply(TURN, 0));
+    expect(posted(MessageType.WORKSHOP_FILE_EDIT_ACTION)).toHaveLength(2);
+    expect(hook.current.cardFeedback.has(CARD)).toBe(false);
+  });
+
   it('an answer naming another room, or another card, is ignored', () => {
     const { result: hook } = mount();
     act(() => hook.current.apply(TURN, 0));

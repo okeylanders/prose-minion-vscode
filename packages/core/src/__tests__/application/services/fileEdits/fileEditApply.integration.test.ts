@@ -47,6 +47,8 @@ interface Options {
   named?: boolean;
   /** Hold the gateway's catalog read, or its open, until released. */
   pause?: 'catalog' | 'open';
+  /** Fail the gateway's first catalog reads, this many. */
+  catalogFailures?: number;
 }
 
 async function harness(options: Options = {}) {
@@ -78,6 +80,7 @@ async function harness(options: Options = {}) {
   const gates = { catalog: deferred(), open: deferred() };
   const reached = { catalog: deferred(), open: deferred() };
   const epoch = { value: 0 };
+  let catalogFailures = options.catalogFailures ?? 0;
   const gateway = new ProjectFileEditGateway({
     ...hostPorts,
     candidates: {
@@ -85,6 +88,10 @@ async function harness(options: Options = {}) {
         if (options.pause === 'catalog') {
           reached.catalog.resolve();
           await gates.catalog.promise;
+        }
+        if (catalogFailures > 0) {
+          catalogFailures -= 1;
+          throw new Error('the catalog could not be listed');
         }
         return hostPorts.candidates.listCandidates();
       }
@@ -318,6 +325,47 @@ describe('Apply lands at most once (F-04)', () => {
     await reopened.coordinator.openNamed('alice');
     const card = reopened.session.readRoomLedger().find((each) => each.id === fixture.turn.id)?.fileEditProposals?.[0];
     expect(card).toMatchObject({ state: 'unknown', reason: 'applying-on-reopen', outcomes: ['unknown'] });
+  });
+});
+
+describe('a transient refusal returns the card to pending; a possible landing never does (D8, amended 2026-11-06)', () => {
+  it('the catalog unreadable at Apply: pending with its reason, saved pending, then a second Apply lands once', async () => {
+    const fixture = await harness({ catalogFailures: 1 });
+    await fixture.act('apply', 'r1');
+    expect(fixture.documents.applyCalls).toEqual([]);
+    expect(fixture.card()?.state).toBe('pending');
+    expect(fixture.results()[0]).toMatchObject({ answer: 'settled', state: 'pending', reason: 'catalog-unreadable' });
+    // The durable `applying` is replaced by the next flush.
+    await fixture.coordinator.flush();
+    expect((await fixture.savedCard())?.state).toBe('pending');
+
+    await fixture.act('apply', 'r2');
+    expect(fixture.documents.applyCalls).toHaveLength(1);
+    expect(fixture.card()).toMatchObject({ state: 'applied', outcomes: ['landed'] });
+    expect(fixture.documents.text.match(/Alice is ten\./g)).toHaveLength(1);
+  });
+
+  it('an exception after applyEdits: unknown, with no Apply, through save and reopen', async () => {
+    const fixture = await harness({
+      host: (edits, _review, document) => {
+        document.edit(edits.map((edit) => ({ offset: edit.start, length: edit.end - edit.start, text: edit.newText })));
+        throw new Error('the editor fell over after writing');
+      }
+    });
+    await fixture.act('apply', 'r1');
+    expect(fixture.documents.applyCalls).toHaveLength(1);
+    expect(fixture.card()).toMatchObject({ state: 'unknown', reason: 'outcome-unknown', outcomes: ['unknown'] });
+    await fixture.act('apply', 'r2');
+    expect(fixture.documents.applyCalls).toHaveLength(1);
+    expect(fixture.results()[1]).toMatchObject({ answer: 'replayed', state: 'unknown' });
+
+    await fixture.coordinator.flush();
+    const saved = await fixture.store.readCurrent();
+    const reopened = setupCoordinator();
+    await reopened.store.writeCurrent(saved!);
+    await reopened.coordinator.initialize();
+    const card = reopened.session.readRoomLedger().find((each) => each.id === fixture.turn.id)?.fileEditProposals?.[0];
+    expect(card).toMatchObject({ state: 'unknown', reason: 'outcome-unknown', outcomes: ['unknown'] });
   });
 });
 
