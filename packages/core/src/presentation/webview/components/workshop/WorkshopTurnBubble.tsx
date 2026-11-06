@@ -26,6 +26,8 @@ import {
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { WorkshopBookmarkToggle } from './WorkshopBookmarkToggle';
 import { WorkshopMemoryReceiptLine, WorkshopTurnMemoryCards, workshopSaveToMemoryAction, type WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
+import { WorkshopTurnFileEdits } from './fileEdits/WorkshopTurnFileEdits';
+import type { WorkshopFileEditControls } from './fileEdits/WorkshopFileEditCard';
 import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks';
 import { workshopToolIcon } from './workshopToolIcons';
 import { WORKSHOP_WIDGET_ICONS } from './workshopWidgetIcons';
@@ -100,6 +102,8 @@ interface WorkshopTurnBubbleProps {
   modelLabel?: (modelId: string) => string;
   /** Project memory's card, receipts and Save to memory… (ADR 2026-11-04 D6, D7). */
   memory?: WorkshopTurnMemoryControls;
+  /** A persona's suggested file edits (ADR 2026-11-05 D9). */
+  fileEdits?: WorkshopFileEditControls;
 }
 
 /**
@@ -374,7 +378,8 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   bookmarkDisabled = false,
   onToggleBookmark,
   modelLabel = workshopRawModelId,
-  memory
+  memory,
+  fileEdits
 }) => {
   const memoryAction = workshopSaveToMemoryAction(turn, memory);
   const modelText = workshopTurnModelLabel(turn.model, modelLabel);
@@ -753,6 +758,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           </div>
         )}
         {memory && <WorkshopTurnMemoryCards turn={turn} controls={memory} />}
+        {fileEdits && <WorkshopTurnFileEdits turn={turn} controls={fileEdits} />}
         <div className="pm-ws-turn-actions">
           <button type="button" onClick={() => onCopy(turn.content, turn)}>
             <Icon name="copy" size={13} /> Copy
