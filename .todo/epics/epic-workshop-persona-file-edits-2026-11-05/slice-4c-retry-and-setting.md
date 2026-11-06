@@ -165,6 +165,7 @@ The review is Astra's, at `8450dd8c`, in [`docs/pr-reviews/pr-236-retry-and-sett
 - **Baseline** at `9f70f236`: typecheck clean; lint 0 errors, 1,165 warnings; jest 785 suites, 10,988 tests, 59 snapshots. The jest count is derived: the baseline run overlapped my first edits, so it is the final run less the 42 tests and 3 suites this slice adds. The three suites that were mid-edit were rerun clean at `9f70f236`, 40 tests passing.
 - **After:** typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 788 suites, 11,030 tests, 59 snapshots, all passing.
   - The first full run caught `MessageHandler.test.ts`'s fake settings service, which lacked `getFileEditsMode`, now in every session state. Its two failing tests were fixed by adding the method (the suite passes, 26 tests).
+- **After the PR #236 fixes:** typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 788 suites, 11,040 tests, 59 snapshots, all passing (+10 tests: 3 for F-01, 4 for F-02, 3 for N-01).
 - **Updated test, beyond the ones listed above:** `MessageHandler.test.ts`'s fake gains `getFileEditsMode`.
 - **File sizes.**
   - `WorkshopConversationSettingsService.ts`: 491 → 499, kept under 500 by moving the mode-error gathering into the partial-apply module.
