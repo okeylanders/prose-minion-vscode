@@ -31,6 +31,7 @@ import {
   LIVE_SESSION,
   SOURCE_SESSION
 } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 const call = (operation: string, body = ''): string =>
   `<prose-minion-tool-call name="${operation}">${body}</prose-minion-tool-call>`;
@@ -145,13 +146,16 @@ describe('memory.* through the persona capability', () => {
   });
 
   it('allows readsPerTurn reads in one turn, then refuses with memory-read-limit', async () => {
+    const { readsPerTurn } = PROMPT_BUDGETS.workshopProjectMemory;
     const wired = wire(seeded());
-    await invoke(wired, call('memory.read', '<memory>mem-7f3c2a</memory>'));
-    await invoke(wired, call('memory.read', '<memory>mem-1a9e04</memory>'));
-    const third = await invoke(wired, call('memory.read', '<memory>mem-0c0c0c</memory>'));
-    expect(third.evidence).toContain('status="rejected"');
-    expect(third.evidence).toContain('Only 2 memory reads are allowed per user turn.');
-    expect(third.evidence).toContain('memory-read-limit');
+    const ids = ['mem-7f3c2a', 'mem-1a9e04'];
+    for (let index = 0; index < readsPerTurn; index += 1) {
+      await invoke(wired, call('memory.read', `<memory>${ids[index % ids.length]}</memory>`));
+    }
+    const pastTheLimit = await invoke(wired, call('memory.read', '<memory>mem-0c0c0c</memory>'));
+    expect(pastTheLimit.evidence).toContain('status="rejected"');
+    expect(pastTheLimit.evidence).toContain(`Only ${readsPerTurn} memory reads are allowed per user turn.`);
+    expect(pastTheLimit.evidence).toContain('memory-read-limit');
   });
 
   it('never shows an unreadable or a conflicting file, in any output or log', async () => {

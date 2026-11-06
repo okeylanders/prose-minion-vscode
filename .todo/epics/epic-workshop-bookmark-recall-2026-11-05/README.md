@@ -174,3 +174,4 @@ This is the same flow as Wayfinding, Project Memory and Pinned Context.
 
   It needs Okey in VS Code. After it come the close-out steps, including the #205 reminder.
 - **2026-11-06. Live pass: 15 capability calls per turn.** Okey asked for more calls per persona turn. `callsPerTurn` goes from 5 to 15 (ADR D11), on `epic/workshop-bookmark-recall-calls-per-turn`. The per-operation limits stay, and the engine's ceiling tests now count from the constant.
+- **2026-11-06. Live pass: higher read limits.** Okey found the per-operation limits tight for broad research. Transcript reads go from 2 to 10, sharing the same 300,000 characters. Memory reads go from 2 to 5, full entries from 1 to 3, and analysis runs from 1 to 2 (ADR D11). The read limits' prompt sentences move with them, and every limit's test counts from its constant.
