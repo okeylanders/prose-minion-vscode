@@ -2,12 +2,14 @@
 
 import type { WorkshopWidgetConfigSnapshot } from '@messages';
 import {
-  assertCreativeVariationsDraftCheckpointShape,
   assertCreativeVariationsDraftIntegrity,
-  assertCreativeVariationsDraftShape,
+  assertCreativeVariationsDraftShape
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigCodec';
+import {
+  assertCreativeVariationsDraftCheckpointShape,
   normalizeCreativeVariationsDraftForHydration,
   type CreativeVariationsCheckpointNormalization
-} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigCodec';
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsCheckpointNormalization';
 import {
   assertGesturePlaygroundDraftCheckpointShape,
   assertGesturePlaygroundDraftIntegrity,
