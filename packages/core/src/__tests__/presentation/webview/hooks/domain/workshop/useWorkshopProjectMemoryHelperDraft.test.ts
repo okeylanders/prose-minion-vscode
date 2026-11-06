@@ -77,7 +77,7 @@ describe('useWorkshopProjectMemory — the helper\'s draft', () => {
     const { result: hook } = renderHook(() => useWorkshopProjectMemory());
     act(() => hook.current.saveTurn(turn));
 
-    expect(requests()).toEqual([{ requestId: expect.any(String), turnId: turn.id }]);
+    expect(requests()).toEqual([{ requestId: expect.any(String), turnId: turn.id, note: 'bubble' }]);
     expect(hook.current.sheet?.helper).toMatchObject({ status: 'drafting', touched: [] });
     expect(hook.current.sheet?.draft).toMatchObject({ title: '', summary: '' });
 
@@ -236,7 +236,7 @@ describe('useWorkshopProjectMemory — the helper\'s draft', () => {
   it('names the open room on a live turn\'s request, and the bookmark\'s own room outside the window (A-02)', () => {
     const { result: hook, rerender } = renderHook(({ roomRevision }) => useWorkshopProjectMemory({ roomRevision }), { initialProps: { roomRevision: 3 } });
     act(() => hook.current.saveTurn(turn));
-    expect(requests()[0]).toEqual({ requestId: expect.any(String), turnId: turn.id, roomRevision: 3 });
+    expect(requests()[0]).toEqual({ requestId: expect.any(String), turnId: turn.id, note: 'bubble', roomRevision: 3 });
     act(() => hook.current.closeSheet());
     rerender({ roomRevision: 4 });
     act(() => hook.current.saveTurn(turn));
@@ -292,7 +292,7 @@ describe('useWorkshopProjectMemory — the helper\'s draft', () => {
   it('a room bookmark outside the window asks by its room, and the preview that lands later keeps the draft', () => {
     const { result: hook } = renderHook(() => useWorkshopProjectMemory());
     act(() => hook.current.rememberRoomBookmark({ turnId: turn.id, roomRevision: 7 }));
-    expect(requests()).toEqual([{ requestId: expect.any(String), turnId: turn.id, roomRevision: 7 }]);
+    expect(requests()).toEqual([{ requestId: expect.any(String), turnId: turn.id, note: 'preview', roomRevision: 7 }]);
     const preview = vscode.postMessage.mock.calls
       .map(([message]: [{ type: MessageType; payload: { requestId: string } }]) => message)
       .find((message) => message.type === MessageType.WORKSHOP_REQUEST_TURN_PREVIEW);

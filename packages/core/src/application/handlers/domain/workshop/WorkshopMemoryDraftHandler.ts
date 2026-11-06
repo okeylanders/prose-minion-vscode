@@ -11,7 +11,10 @@
  *   the text is the transcript projection's (`workshopTurnPreview` /
  *   `workshopTurnPreviewOfEntry`), cut as the sheet's note is
  *   (`workshopMemoryNoteFromTurn`). A turn a bookmark may not mark is
- *   refused, by the bubbles' rule.
+ *   refused, by the bubbles' rule. The draft must describe the sheet's own
+ *   note: a live sheet holding the bubble's text that differs from the
+ *   projection (a capability card's) is answered `withheld`, with no model
+ *   call (PR #231 F-01).
  * - **The room it was asked in.** Its revision is read when the request
  *   arrives, before anything is awaited, and read again after a saved
  *   turn's read: a room replaced meanwhile (a reopen with the same id, a
@@ -75,6 +78,8 @@ export type WorkshopMemoryDraftRecall = Pick<WorkshopTranscriptRecallService, 's
 
 const LOG = '[WorkshopMemoryDraftHandler]';
 const REFUSED_ROOM_CHANGED = 'room-changed';
+/** A live turn whose sheet holds a note the helper would not read (PR #231 F-01). */
+const WITHHELD = Symbol('withheld');
 
 /** Whether drafting is on, as the webview hears it: the route's answer and the config watcher's push read this one rule. */
 export function workshopMemoryDraftsSettingMessage(settings: Pick<SettingsStore, 'get'>): WorkshopMemoryDraftsSettingMessage {
@@ -141,7 +146,8 @@ export class WorkshopMemoryDraftHandler {
     const turnId = idOf(payload.turnId);
     const sessionId = payload.sessionId === undefined ? undefined : idOf(payload.sessionId);
     if (!turnId || (payload.sessionId !== undefined && !sessionId)
-      || (payload.roomRevision !== undefined && typeof payload.roomRevision !== 'number')) {
+      || (payload.roomRevision !== undefined && typeof payload.roomRevision !== 'number')
+      || (payload.note !== undefined && payload.note !== 'bubble' && payload.note !== 'preview')) {
       this.answer(requestId, 'refused', 'malformed');
       return;
     }
@@ -155,10 +161,14 @@ export class WorkshopMemoryDraftHandler {
     this.inFlight = owner;
     try {
       const turn = sessionId === undefined
-        ? this.liveTurn(turnId, payload.roomRevision, roomRevision)
+        ? this.liveTurn(turnId, payload.roomRevision, roomRevision, payload.note ?? 'bubble')
         : await this.savedTurn(sessionId, turnId, roomRevision);
       if (controller.signal.aborted) {
         this.log(`request ${requestId} stopped before it was sent`);
+        return;
+      }
+      if (turn === WITHHELD) {
+        this.answer(requestId, 'withheld', 'note-differs');
         return;
       }
       if (typeof turn === 'string') {
@@ -188,7 +198,19 @@ export class WorkshopMemoryDraftHandler {
   }
 
   /** A turn of the open room, by the room it was asked in; a reason when it can't be read. */
-  private liveTurn(turnId: string, askedIn: number | undefined, current: number): WorkshopTurnPreview | string {
+  /**
+   * A turn of the open room, by the room it was asked in; a reason when it
+   * can't be read. The helper reads the safe projection, never the turn's
+   * own text. When the sheet holds the bubble's text and that isn't the
+   * projection's (a capability card's), the draft is withheld rather than
+   * describing a note the writer isn't saving (PR #231 F-01).
+   */
+  private liveTurn(
+    turnId: string,
+    askedIn: number | undefined,
+    current: number,
+    note: 'bubble' | 'preview'
+  ): WorkshopTurnPreview | string | typeof WITHHELD {
     if (askedIn !== undefined && askedIn !== current) {
       return REFUSED_ROOM_CHANGED;
     }
@@ -196,7 +218,14 @@ export class WorkshopMemoryDraftHandler {
     if (!turn || !isWorkshopBookmarkableTurn(turn)) {
       return 'not-eligible';
     }
-    return workshopTurnPreview(turn) ?? 'not-eligible';
+    const preview = workshopTurnPreview(turn);
+    if (!preview) {
+      return 'not-eligible';
+    }
+    if (note === 'bubble' && workshopMemoryNoteFromTurn(turn.content) !== workshopMemoryNoteFromTurn(preview.content)) {
+      return WITHHELD;
+    }
+    return preview;
   }
 
   /**

@@ -5,7 +5,12 @@
  * - **What asks.** A sheet opened from a turn: a bubble's Save to memory…,
  *   a room bookmark's Remember this (in the window or out of it), a saved
  *   session's. A card's Edit…, a saved memory's edit and New ask nothing.
- *   The request names the turn by its ids; the host reads its text.
+ *   The request names the turn by its ids, and which note the sheet holds;
+ *   the host reads its text.
+ * - **Only the sheet's own note** (PR #231 F-01). The helper reads the safe
+ *   projection. A capability card's bubble isn't it, so a sheet opened on
+ *   one asks for nothing (`helperWithheld`), and the host's `withheld` is
+ *   silence like `off`.
  * - **Correlated.** The request's id lives on the sheet it was asked for,
  *   so a closed sheet, or one opened since, never takes a late answer.
  * - **The writer's typing wins.** A field the writer touched (title,
@@ -24,6 +29,7 @@
  */
 
 import type {
+  WorkshopTurn,
   WorkshopMemoryDraft,
   WorkshopMemoryDraftRequestPayload,
   WorkshopMemoryDraftResultPayload
@@ -55,13 +61,15 @@ export function workshopMemoryHelperDraftRequest(
   /** The open room's revision, for a turn of this room that names none of its own. */
   roomRevision?: number
 ): { readonly sheet: WorkshopMemorySheetState; readonly payload: WorkshopMemoryDraftRequestPayload } | undefined {
-  if (sheet.turnId === undefined) {
+  if (sheet.turnId === undefined || sheet.helperWithheld) {
     return undefined;
   }
   let payload: WorkshopMemoryDraftRequestPayload;
   if (sheet.mode === 'turn') {
+    // A bookmark outside the window names its own room, and its sheet holds the host's preview; otherwise the bubble's text.
     const room = sheet.roomRevision ?? roomRevision;
-    payload = { requestId, turnId: sheet.turnId, ...(room !== undefined ? { roomRevision: room } : {}) };
+    const note = sheet.roomRevision !== undefined ? 'preview' : 'bubble';
+    payload = { requestId, turnId: sheet.turnId, note, ...(room !== undefined ? { roomRevision: room } : {}) };
   } else if (sheet.mode === 'saved-turn' && sheet.sessionId !== undefined) {
     payload = { requestId, turnId: sheet.turnId, sessionId: sheet.sessionId };
   } else {
@@ -96,7 +104,7 @@ export function workshopMemorySheetWithHelperDraft(
   if (!sheet || !helper || helper.requestId !== answer.requestId || helper.status !== 'drafting') {
     return undefined;
   }
-  if (answer.outcome === 'off') {
+  if (answer.outcome === 'off' || answer.outcome === 'withheld') {
     return { ...sheet, helper: { ...helper, status: 'stopped' } };
   }
   if (answer.outcome !== 'drafted' || !answer.draft) {
@@ -122,4 +130,13 @@ export function workshopMemoryHelperDraftInFlight(sheet: WorkshopMemorySheetStat
 /** The sheet with its draft stopped: no placeholder, no line, and no answer taken. */
 export function workshopMemorySheetWithHelperStopped(sheet: WorkshopMemorySheetState): WorkshopMemorySheetState {
   return sheet.helper?.status === 'drafting' ? { ...sheet, helper: { ...sheet.helper, status: 'stopped' } } : sheet;
+}
+
+/**
+ * Whether a turn's bubble can be drafted from: its text is what the helper
+ * would read. A capability card's bubble holds its evidence, which the
+ * helper never reads, so its sheet is withheld (PR #231 F-01).
+ */
+export function workshopMemoryBubbleDraftable(turn: Pick<WorkshopTurn, 'capability'>): boolean {
+  return turn.capability === undefined;
 }

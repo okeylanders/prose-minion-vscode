@@ -34,6 +34,8 @@ export interface WorkshopMemorySheetState {
   /** A saved session's turn: its session and title. */
   readonly sessionId?: string;
   readonly sessionTitle?: string;
+  /** The sheet's note isn't what the helper would read (a capability card's bubble), so it asks for no draft (PR #231 F-01). */
+  readonly helperWithheld?: true;
   /** The helper's draft of the title, summary and kind, when the sheet asked for one (Helper Agent Slice 2). */
   readonly helper?: WorkshopMemoryHelperDraftState;
 }

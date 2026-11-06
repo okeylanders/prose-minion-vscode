@@ -99,3 +99,4 @@ This is the same flow as Project Memory and Bookmark Recall.
   - `proseMinion.workshop.memory.helperDrafts` (default on): the webview knows it, and off is silence (D5.7 as amended); the host still answers a stray request `off` with no model call.
   - A-01–A-05 are tabled in the slice doc with their tests.
   - Verification: typecheck clean; lint 0 errors, 1,165 warnings (the baseline); jest 760 suites / 10,592 tests / 59 snapshots, all passing; no `from 'vscode'` in `packages/core/src`; no new file over 500 lines.
+  - PR #231 review: F-01 (a capability card's sheet and the helper read different notes) fixed by withholding: such a sheet asks for nothing, and the host answers `withheld` with no model call; silence on the sheet.

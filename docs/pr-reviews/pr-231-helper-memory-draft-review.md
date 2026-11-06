@@ -85,7 +85,7 @@ The reviewed head yields two failures and eleven passes. Remove the temporary `.
 
 | Item | Status |
 |---|---|
-| F-01: live capability sheet/helper sources differ | Open, P2; two independent reproductions |
+| F-01: live capability sheet/helper sources differ | Fixed by the implementation thread (withhold, not widen): a capability card's bubble sheet asks for nothing and shows nothing; the host answers a bubble-note request whose note isn't the projection's `withheld`, with no model call. The two probes' cases become regressions of that behavior in `WorkshopMemoryDraftSource.integration.test.ts`. Awaiting re-review |
 | #228 F-01/F-02 preparation corrections | Integrated unchanged and independently verified through the route |
 | A-01 safe source/bound | Privacy/bound pass; sheet-source equivalence blocked by F-01 |
 | A-02/A-03 correlation and touched fields | Pass at reviewed head |

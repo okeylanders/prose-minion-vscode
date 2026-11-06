@@ -21,6 +21,15 @@ export interface WorkshopMemoryDraftRequestPayload {
   sessionId?: string;
   /** A turn of the open room outside the window: the room the sheet was opened in. */
   roomRevision?: number;
+  /**
+   * Which note a live turn's sheet holds (PR #231 F-01): `bubble`, the turn's
+   * own text as its bubble shows it (Save to memory…, an in-window Remember
+   * this); `preview`, the host's projected preview (a bookmark outside the
+   * window). Absent reads as `bubble`. The host drafts only when the note it
+   * would send is the note the sheet holds. A saved turn's sheet is always
+   * the preview.
+   */
+  note?: 'bubble' | 'preview';
 }
 
 export interface WorkshopMemoryDraftRequestMessage extends MessageEnvelope<WorkshopMemoryDraftRequestPayload> {
@@ -36,15 +45,18 @@ export interface WorkshopMemoryHelperDraft {
 
 /**
  * How the request ended. Every outcome but `drafted` leaves the sheet as
- * it is; every one but `off` says so in one quiet line:
+ * it is; every one but `off` and `withheld` says so in one quiet line:
  * - `off`: `proseMinion.workshop.memory.helperDrafts` is off; nothing was
  *   sent, and the sheet says nothing (D5.7: off is silence);
  * - `unconfigured`: no API key; nothing was sent;
+ * - `withheld`: a source the helper doesn't draft, because what it would read
+ *   isn't the sheet's note (a capability card's bubble: PR #231 F-01); nothing
+ *   was sent, and the sheet says nothing;
  * - `refused`: the host would not read the turn (gone, not a message, another room);
  * - `failed`: the call errored, timed out or was stopped;
  * - `malformed`: the answer was dropped for a fault of its own.
  */
-export type WorkshopMemoryDraftOutcome = 'drafted' | 'off' | 'unconfigured' | 'refused' | 'failed' | 'malformed';
+export type WorkshopMemoryDraftOutcome = 'drafted' | 'off' | 'withheld' | 'unconfigured' | 'refused' | 'failed' | 'malformed';
 
 export interface WorkshopMemoryDraftResultPayload {
   requestId: string;

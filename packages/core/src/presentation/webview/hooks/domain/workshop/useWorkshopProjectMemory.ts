@@ -50,7 +50,7 @@ import {
 import { withWorkshopMemoryEntry, withWorkshopMemoryKey } from '@hooks/domain/workshop/memory/workshopMemoryKeyedState';
 import { workshopMemorySheetSubmission } from '@hooks/domain/workshop/memory/workshopMemorySheetSubmission';
 import type { WorkshopMemoryReceiptError, WorkshopMemorySheetState } from '@hooks/domain/workshop/memory/workshopMemorySheetState';
-import { workshopMemoryHelperTouched, workshopMemorySheetWithHelperDraft } from '@hooks/domain/workshop/memory/workshopMemoryHelperDraft';
+import { workshopMemoryBubbleDraftable, workshopMemoryHelperTouched, workshopMemorySheetWithHelperDraft } from '@hooks/domain/workshop/memory/workshopMemoryHelperDraft';
 import { useWorkshopMemoryHelperDrafts } from '@hooks/domain/workshop/memory/useWorkshopMemoryHelperDrafts';
 
 export { workshopMemoryNoteFromTurn, type WorkshopMemoryRoomBookmark, type WorkshopMemorySavedBookmark };
@@ -237,6 +237,7 @@ export function useWorkshopProjectMemory({ roomKey, roomRevision }: UseWorkshopP
       mode: 'turn',
       turnId: turn.id,
       draft: { ...EMPTY_DRAFT, body: workshopMemoryNoteFromTurn(turn.content) },
+      ...(workshopMemoryBubbleDraftable(turn) ? {} : { helperWithheld: true as const }),
       replaces: [],
       loading: false,
       saving: false,

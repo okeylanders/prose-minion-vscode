@@ -277,14 +277,33 @@ describe('WorkshopMemoryDraftHandler: lifecycle (A-05) and the setting (D5.7)', 
 });
 
 describe('WorkshopMemoryDraftHandler: a safe source and its room (A-01, A-02)', () => {
-  it('admits an eligible capability card through its safe event, never its evidence', async () => {
+  it('drafts an eligible capability card only from a sheet that holds its safe preview, never its evidence (PR #231 F-01)', async () => {
     const { scripted, ask, run, posted } = setup();
     scripted.hostMessage('Check the cups.', { capabilityRounds: 1, reply: 'Alice counts the cups.' });
     const card = scripted.session.readRoomLedger().find((turn) => turn.capability)!;
-    await ask({ turnId: card.id });
+    await ask({ turnId: card.id, note: 'preview', roomRevision: scripted.session.readRoomRevision() });
     expect(posted[0].outcome).toBe('drafted');
     expect(run.mock.calls[0][1].source).toBe('persona');
     expect(run.mock.calls[0][1].text).not.toContain('changes hands');
+  });
+
+  it.each([['the bubble', 'bubble'], ['no note named', undefined]] as const)(
+    'withholds a capability card whose sheet holds %s: the helper would describe a note the writer isn\'t saving (PR #231 F-01)',
+    async (_name, note) => {
+      const { scripted, ask, run, posted } = setup();
+      scripted.hostMessage('Check the cups.', { capabilityRounds: 1, reply: 'Alice counts the cups.' });
+      const card = scripted.session.readRoomLedger().find((turn) => turn.capability)!;
+      await ask({ turnId: card.id, ...(note ? { note } : {}) });
+      expect(run).not.toHaveBeenCalled();
+      expect(posted).toEqual([{ requestId: 'draft-1', outcome: 'withheld' }]);
+    }
+  );
+
+  it('refuses a note it does not know, with no model call', async () => {
+    const { ask, run, posted, reply } = setup();
+    await ask({ turnId: reply.id, note: 'raw' as never });
+    expect(run).not.toHaveBeenCalled();
+    expect(posted).toEqual([{ requestId: 'draft-1', outcome: 'refused' }]);
   });
 
   it('refuses a session marker, which no bookmark may mark, with no model call', async () => {
