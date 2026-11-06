@@ -599,7 +599,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
         return this.lookupDictionary(request, onRunModel);
       case 'dictionary.full-entry':
         if (this.fullEntryCalls >= PROMPT_BUDGETS.workshopCapability.fullEntriesPerTurn) {
-          return this.rejected(request, 'Only one full Writer\'s Dictionary entry is allowed per user turn.');
+          return this.rejected(request, workshopPerTurnLimitMessage(
+            PROMPT_BUDGETS.workshopCapability.fullEntriesPerTurn, 'full Writer\'s Dictionary entry', 'full Writer\'s Dictionary entries'
+          ));
         }
         this.fullEntryCalls += 1;
         return this.generateFullEntry(request, onRunModel);
@@ -607,7 +609,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
         if (this.analysisCalls >= PROMPT_BUDGETS.workshopCapability.analysisRunsPerTurn) {
           return this.rejected(
             request,
-            'Only one analysis side pass is allowed per user turn.',
+            workshopPerTurnLimitMessage(
+              PROMPT_BUDGETS.workshopCapability.analysisRunsPerTurn, 'analysis side pass', 'analysis side passes'
+            ),
             { rejectionReason: 'analysis-run-limit' }
           );
         }
@@ -954,4 +958,11 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private assertNever(request: never): never {
     throw new Error(`Unhandled Workshop capability: ${JSON.stringify(request)}`);
   }
+}
+
+/** The refusal a capability with its own per-turn ceiling gives once the turn has used it up. */
+function workshopPerTurnLimitMessage(limit: number, singular: string, plural: string): string {
+  return limit === 1
+    ? `Only one ${singular} is allowed per user turn.`
+    : `Only ${limit} ${plural} are allowed per user turn.`;
 }
