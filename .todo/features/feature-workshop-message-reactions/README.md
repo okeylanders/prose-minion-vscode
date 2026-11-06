@@ -95,6 +95,14 @@ Glyphs render from the OS emoji font, so the list keeps to emoji that
 Windows 10, macOS and common Linux fonts all draw. Newer ones (🫠 melting,
 Unicode 14) need checking.
 
+## Decisions (Okey, 2026-11-06)
+
+| # | Decision | How hard |
+|---|---|---|
+| R1 | **A persona may reply with a reaction alone.** For "thanks!" or "got it", the persona answers with only the trailer. | Not hard, with one wrinkle. Project Memory's "only controls, no prose" path already covers it: the host writes a display line and retained history holds that line, never an empty message. The wrinkle: the reply is still a ledger turn with a rewind mark, so the thread draws it as a slim line ("Jill reacted ❤️"), not as nothing, and Rewind, bookmarks and export can still address it. The prompt allows it only when the writer's message asks for nothing. |
+| R2 | **Guests see reactions too.** A reaction is visible to exactly the participants who can see the turn it is on: the room-ledger ADR's §2 visibility predicate, unchanged. A guest is told whose message it was ("the writer reacted 🔥 to Jill's reply"). | Not hard, if delivery records are kept per participant from the first slice. The host needs one anyway, and a host-only record would have to be redone for guests. |
+| R3 | **Rewind, Branch and Side Quests keep delivery honest.** A reaction goes with its turn, as a bookmark does (`workshopBookmarksWithin`, `WorkshopSessionRewind.ts:224`). A reaction on a kept turn stays, but its delivery stands only if the persona's kept retained history recorded it. Otherwise it is undelivered and arrives again on the next turn. | Not hard, with a precedent: the host's context delivery survives a cut only when the host's mark records its revision (`hostMark.contextRevision`, `WorkshopSessionRewind.ts:193`). Reactions record theirs on the same mark. |
+
 ## Open questions for the ADR
 
 - **What the persona sees.**
@@ -104,22 +112,13 @@ Unicode 14) need checking.
   - A bound on how many reactions one frame carries.
   - Whether a reaction removed after the persona saw it is said ("the writer
     took back their 🔥"), or simply dropped.
-- **Who sees what.** Does a guest see the writer's reaction to the host's
-  message? The visibility predicate (room-ledger ADR §2) decides. Tools are
-  instruments, not participants (§9): does a reaction to a tool report reach
-  the host?
-- **Reaction-only replies.** May a persona answer "thanks!" with only a
-  reaction and no bubble? Project Memory's "only controls, no prose" path
-  writes a host line so retained history is never empty. Reactions would
-  need the same rule.
+- **Tool reports.** Tools are instruments, not participants (room-ledger ADR
+  §9): does a reaction to a tool report reach the host?
 - **Where the trailer sits.** The order on the reply's tail with the widget
   recommendation and the memory proposal, and what a malformed or unknown
   reaction does (dropped, logged by reason).
 - **Persistence.** An optional session field during the epic, then the
-  codec-evolution ADR's release rule (2026-07-30). Rewind, Branch and Side
-  Quests: reactions on cut turns go with them, and whether a reaction was
-  delivered must be rewound with the persona's retained history, or the
-  persona "remembers" a reaction it never got.
+  codec-evolution ADR's release rule (2026-07-30).
 - **Transcripts and recall.** The transcript projection needs an explicit
   include or omit decision for reactions (export ADR). The same goes for
   what `transcript.read` shows a persona of a saved session.
@@ -141,8 +140,13 @@ Unicode 14) need checking.
       codec accepts only listed ids, at most one per reply, and removes the
       trailer from display, retention and logs.
 - [ ] No reaction starts a model call on its own.
-- [ ] Rewind, Branch and Side Quests keep reactions and their delivery
-      consistent with the cut.
+- [ ] R1: a reply that is only a reaction draws a slim line, and retained
+      history holds the host's line, never an empty message.
+- [ ] R2: a guest receives a reaction exactly when the visibility predicate
+      shows it the turn, with whose message it was.
+- [ ] R3: Rewind, Branch and Side Quests drop reactions with cut turns. A
+      reaction whose delivery was cut arrives again on the next turn,
+      witnessed by a test.
 - [ ] Logs carry reaction ids and counts, never message text.
 
 ## Related
