@@ -535,9 +535,9 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     wordCharacters: 100,
     contextCharacters: 4_000,
     purposeCharacters: 500,
-    callsPerTurn: 5,
-    fullEntriesPerTurn: 1,
-    analysisRunsPerTurn: 1
+    callsPerTurn: 15,
+    fullEntriesPerTurn: 3,
+    analysisRunsPerTurn: 2
   },
   workshopResource: {
     queryCharacters: 200,
@@ -566,7 +566,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readCharacters: 150_000,
     readSessions: 10,
     readCharactersPerTurn: 300_000,
-    readsPerTurn: 2,
+    readsPerTurn: 10,
     todoSessions: 50,
     todoItems: 60,
     todoCharacters: 16_000,
@@ -592,7 +592,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     snippetCharacters: 280,
     readMemories: 5,
     readCharacters: 40_000,
-    readsPerTurn: 2,
+    readsPerTurn: 5,
     autoSavesPerRoom: 5,
     proposalsPerReply: 10,
     editReplaces: 5,
