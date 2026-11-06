@@ -66,6 +66,10 @@ import {
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { countWords } from '@/utils/textUtils';
 import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/WorkshopSessionCheckpointEquality';
+import {
+  workshopCheckpointHoldsApplying,
+  type WorkshopFileEditCheckpointResult
+} from '@/application/services/workshop/fileEdits/WorkshopFileEditCheckpoint';
 import { cleanRollingCheckpoint, isCleanRollingCheckpoint, withoutRollingProvenance } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import { hasSameWorkshopRecoveryContent } from '@/application/services/workshop/WorkshopSessionRecoveryEquality';
 import type {
@@ -617,6 +621,75 @@ export class WorkshopSessionPersistenceCoordinator {
     } else if (this.pendingRollingMirror) {
       await this.serializeSessionOperation(() => this.retryRollingMirror());
     }
+  }
+
+  /**
+   * The durable `applying` checkpoint for one file-edit card (ADR 2026-11-05
+   * D8): ordered behind autosaves and room operations, it writes every
+   * recoverable checkpoint now (`current.json`; the named file first when
+   * the room is named) and reads each back. `{ ok: true }` only when each
+   * holds that exact card in `applying`; any failed write, unavailable store,
+   * mirror failure, moved generation, active run or read-back that differs
+   * is `{ ok: false }`, and the caller writes nothing to the document.
+   */
+  checkpointFileEdit(generation: number, turnId: string, index: number): Promise<WorkshopFileEditCheckpointResult> {
+    const live = () => generation === this.session.readRoomRevision();
+    const work = Promise.all([this.autosaveQueue, this.initializePromise ?? this.initialize(), this.sessionOperationQueue])
+      .then(async (): Promise<WorkshopFileEditCheckpointResult> => {
+        if (!live()) {
+          return { ok: false, reason: 'room-changed' };
+        }
+        if (!this.store.availability().available || this.currentCheckpointError || this.workspaceChangedSinceLoad()) {
+          return { ok: false, reason: 'store-unavailable' };
+        }
+        const holds = (turns: Parameters<typeof workshopCheckpointHoldsApplying>[0]) => workshopCheckpointHoldsApplying(turns, turnId, index);
+        if (!holds(this.session.readRoomLedger())) {
+          return { ok: false, reason: 'not-applying' };
+        }
+        const revision = this.dirtyRevision;
+        const namedSessionId = this.activeNamedSessionId;
+        let snapshot: WorkshopPersistedSessionV2;
+        try {
+          snapshot = await this.capture(this.identity);
+        } catch (error) {
+          return { ok: false, reason: error instanceof WorkshopSessionActiveRunPersistenceError ? 'run-active' : 'checkpoint-failed' };
+        }
+        if (!live() || !holds(snapshot.workshop.turns)) {
+          return { ok: false, reason: live() ? 'not-applying' : 'room-changed' };
+        }
+        try {
+          if (namedSessionId) {
+            const checkpoint = { ...snapshot, savedAt: normalizedIso(this.now()) };
+            await this.store.updateNamed(namedSessionId, checkpoint, this.requireAcceptedNamedCheckpoint(namedSessionId));
+            this.acceptedNamedCheckpoint = checkpoint;
+            if (!holds((await this.readNamedCheckpoint(namedSessionId))?.session.workshop.turns)) {
+              return { ok: false, reason: 'checkpoint-failed' };
+            }
+            try {
+              await this.mirrorNamedCheckpoint(checkpoint);
+            } catch {
+              this.pendingRollingMirror = checkpoint;
+              return { ok: false, reason: 'mirror-failed' };
+            }
+          } else {
+            await this.store.writeCurrent(snapshot);
+          }
+          if (!holds((await this.readCurrentCheckpoint())?.session.workshop.turns)) {
+            return { ok: false, reason: namedSessionId ? 'mirror-failed' : 'checkpoint-failed' };
+          }
+        } catch {
+          return { ok: false, reason: 'checkpoint-failed' };
+        }
+        this.writtenRevision = Math.max(this.writtenRevision, revision);
+        return live() ? { ok: true } : { ok: false, reason: 'room-changed' };
+      })
+      .catch((): WorkshopFileEditCheckpointResult => ({ ok: false, reason: 'checkpoint-failed' }));
+    this.autosaveQueue = work.then(() => undefined);
+    return work.then((result) => {
+      this.outputChannel.appendLine(`[WorkshopSessionPersistence] File edit checkpoint turn=${turnId} index=${index} ` +
+        `${result.ok ? 'held' : `refused reason=${result.reason}`}`);
+      return result;
+    });
   }
 
   async saveNamed(

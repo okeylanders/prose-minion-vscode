@@ -21,6 +21,7 @@
  */
 
 import type { ContextPathGroup } from '../../context';
+import type { MessageEnvelope, MessageType } from '../base';
 
 /** The one setting (D11): exactly `off` | `ask`. No input can name another value. */
 export const WORKSHOP_FILE_EDITS_MODES = ['off', 'ask'] as const;
@@ -180,3 +181,110 @@ export function workshopFileEditDisplayPath(proposal: Pick<WorkshopFileEditPropo
   }
   return proposal.requested.kind === 'excerpt' ? 'excerpt' : proposal.requested.path;
 }
+
+/*
+ * Routes (ADR 2026-11-05 D8, D9; epic Slice 4a). Every request carries a
+ * webview-minted `requestId` the host echoes, and the room generation the
+ * card was shown in (`roomRevision`, the session state's). An answer names
+ * the generation it belongs to, so the webview ignores one for an earlier
+ * room (the #221 pattern). This correlates answers only: the host's claim is
+ * what serializes writes. No route carries or answers a `documentUri`.
+ */
+
+/**
+ * A card's action: `apply` applies directly (the card was the review),
+ * `review` through the editor's Refactor Preview ("Review in editor…"),
+ * `decline` declines it. Offered only while the card is `pending`; the host
+ * answers every other state by replaying it, writing nothing.
+ */
+export type WorkshopFileEditAction = 'apply' | 'review' | 'decline';
+
+export interface WorkshopFileEditActionPayload {
+  requestId: string;
+  /** The room generation the card was shown in; another room's action is refused. */
+  roomRevision: number;
+  turnId: string;
+  /** Which of the turn's cards: its index in `fileEditProposals`. */
+  index: number;
+  action: WorkshopFileEditAction;
+}
+
+export interface WorkshopFileEditActionMessage extends MessageEnvelope<WorkshopFileEditActionPayload> {
+  type: MessageType.WORKSHOP_FILE_EDIT_ACTION;
+}
+
+/**
+ * What an action came to:
+ * - `settled`: it ran; `state` is the card's now (a declined card, or an
+ *   Apply's outcome; a discarded review or a lost boundary is `pending`
+ *   again, nothing written);
+ * - `joined`: an Apply or Review joined one already running on this card,
+ *   and carries that one's outcome;
+ * - `replayed`: the card had already settled; nothing was written;
+ * - `held`: Decline while the card is being applied; nothing changed;
+ * - `refused`: nothing was written and the card stays as it was (`state`),
+ *   for `reason` (the setting off, a reply running, a checkpoint refused);
+ * - `room-changed`: the room was replaced before or while it ran; any
+ *   outcome belongs to the earlier room and was dropped;
+ * - `no-card`: the turn holds no card there.
+ */
+export type WorkshopFileEditAnswer = 'settled' | 'joined' | 'replayed' | 'held' | 'refused' | 'room-changed' | 'no-card';
+
+export interface WorkshopFileEditResultPayload {
+  requestId: string;
+  /** The room generation the action was taken in. */
+  roomRevision: number;
+  turnId: string;
+  index: number;
+  answer: WorkshopFileEditAnswer;
+  /** The card's state after; absent for `room-changed` and `no-card`. */
+  state?: WorkshopFileEditState;
+  /** A reason kind (`WORKSHOP_FILE_EDIT_REASON_WORDS`), when there is one. */
+  reason?: string;
+  /** The writer's words for it. */
+  message: string;
+}
+
+export interface WorkshopFileEditResultMessage extends MessageEnvelope<WorkshopFileEditResultPayload> {
+  type: MessageType.WORKSHOP_FILE_EDIT_RESULT;
+}
+
+/** A rewrite card's before and after (D6, D9), asked for when the card is shown. */
+export interface WorkshopFileEditPreviewRequestPayload {
+  requestId: string;
+  roomRevision: number;
+  turnId: string;
+  index: number;
+}
+
+export interface WorkshopFileEditPreviewRequestMessage extends MessageEnvelope<WorkshopFileEditPreviewRequestPayload> {
+  type: MessageType.WORKSHOP_FILE_EDIT_PREVIEW;
+}
+
+/**
+ * The live content a rewrite would replace and the rewrite, read only
+ * while the baseline holds; `stale` once it no longer does (the card turns
+ * stale too); `refused` with a reason kind otherwise. Never a URI.
+ */
+export type WorkshopFileEditPreview =
+  | { readonly kind: 'rewrite'; readonly before: string; readonly after: string }
+  | { readonly kind: 'stale'; readonly reason: string; readonly message: string }
+  | { readonly kind: 'refused'; readonly reason: string; readonly message: string };
+
+export interface WorkshopFileEditPreviewResultPayload {
+  requestId: string;
+  roomRevision: number;
+  turnId: string;
+  index: number;
+  preview: WorkshopFileEditPreview;
+}
+
+export interface WorkshopFileEditPreviewResultMessage extends MessageEnvelope<WorkshopFileEditPreviewResultPayload> {
+  type: MessageType.WORKSHOP_FILE_EDIT_PREVIEW_RESULT;
+}
+
+/** A card's routes, webview to host. */
+export type WorkshopFileEditWebviewMessage = WorkshopFileEditActionMessage | WorkshopFileEditPreviewRequestMessage;
+
+/** Their answers, host to webview. */
+export type WorkshopFileEditExtensionMessage = WorkshopFileEditResultMessage | WorkshopFileEditPreviewResultMessage;

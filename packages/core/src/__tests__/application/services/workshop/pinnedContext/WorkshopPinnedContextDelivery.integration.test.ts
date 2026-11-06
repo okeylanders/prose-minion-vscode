@@ -16,7 +16,7 @@
 import { WorkshopRoomHandler } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
 import { emptyPinnedContextServices } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextTestServices';
 import { unusedBookmarkBrowser } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
-import { fakeFileEditStaging } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
+import { fakeFileEditApply, fakeFileEditStaging } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
 import type { WorkshopWidgetRuntime } from '@/application/handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopRoomDeliveryService } from '@/application/services/workshop/WorkshopRoomDeliveryService';
@@ -138,7 +138,8 @@ async function firstHostRun(seed: (session: WorkshopSessionService) => Promise<v
     libraryHost().library,
     emptyPinnedContextServices(),
     unusedBookmarkBrowser(),
-    fakeFileEditStaging()
+    fakeFileEditStaging(),
+    fakeFileEditApply()
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);

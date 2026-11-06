@@ -34,11 +34,16 @@ import { DEFAULT_CONTEXT_GROUPS, type ContextResourceCandidate, type ContextReso
 import {
   FILE_EDIT_TARGET_POLICIES,
   type FileEditApplyOptions,
+  type FileEditApplyOutcome,
+  type FileEditApplyPort,
+  type FileEditClassPolicy,
+  type FileEditOperationOutcome,
+  type FileEditPreview,
   type FileEditApplyRefusal,
   type FileEditOperationFault,
   type StagedFileEdit
 } from '@/domain/models/FileEdit';
-import type { DocumentEditor } from '@/platform/DocumentEditor';
+import type { DocumentEditor, DocumentSnapshot } from '@/platform/DocumentEditor';
 import type { FileEditAuthorityEpoch } from '@/platform/FileEditAuthorityEpoch';
 import type { FileSystem } from '@/platform/FileSystem';
 import type { LogSink } from '@/platform/LogSink';
@@ -47,9 +52,12 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { planTextEdits } from '@/utils/textEdits/planTextEdits';
 import type { TextEditOperation } from '@/utils/textEdits/textEditOperations';
 import { fileEditOutcomeMessage } from './fileEditCopy';
+import { fileEditLandedRecords } from './fileEditLandedRecords';
 import {
   classOf,
   containedWithoutLinks,
+  fileEditBaseline,
+  fileEditContent,
   fileEditSkipLeading,
   fsPathOf,
   insideWorkspace,
@@ -61,27 +69,17 @@ import {
 } from './fileEditIdentity';
 import { changedCharacters, freshnessFaults, passesRewriteCeiling, policyFaults, type OperationFault } from './fileEditPolicyChecks';
 
-/** The card's state after an Apply (D8), less `pending` and `applying`, which are the handler's. */
-export type FileEditApplyState = 'applied' | 'partial' | 'declined' | 'stale' | 'refused' | 'unknown';
+export type { FileEditApplyOutcome, FileEditApplyState, FileEditOperationOutcome, FileEditPreview } from '@/domain/models/FileEdit';
 
-export interface FileEditOperationOutcome {
-  readonly index: number;
-  readonly outcome: 'landed' | 'not-applied' | 'unknown' | 'refused' | 'stale';
-  readonly reason?: string;
-}
-
-export interface FileEditApplyOutcome {
-  readonly state: FileEditApplyState;
-  /** Why it was refused or stale, when it was. */
-  readonly reason?: string;
-  /** Every operation, in the order given. */
-  readonly operations: readonly FileEditOperationOutcome[];
-  /** The document after, while it is open. */
-  readonly document?: { readonly uri: string; readonly version: number };
-  /** Whether the document was shown because no editor showed it. */
-  readonly revealed: boolean;
-  readonly message: string;
-}
+type Resolution =
+  | { readonly kind: 'refused'; readonly reason: FileEditApplyRefusal }
+  | {
+    readonly kind: 'resolved';
+    readonly epoch: number;
+    readonly fsPath: string;
+    readonly policy: FileEditClassPolicy;
+    readonly document: DocumentSnapshot;
+  };
 
 export interface ProjectFileEditGatewayDependencies {
   readonly candidates: ContextResourceCandidateReader;
@@ -97,7 +95,7 @@ export interface ProjectFileEditGatewayDependencies {
 const EDIT_LABEL = 'Prose Minion: suggested edit';
 const STALE_FAULTS: ReadonlySet<string> = new Set(['not-found', 'ambiguous', 'baseline-changed']);
 
-export class ProjectFileEditGateway {
+export class ProjectFileEditGateway implements FileEditApplyPort {
   constructor(private readonly dependencies: ProjectFileEditGatewayDependencies) {}
 
   async apply(staged: StagedFileEdit, options: FileEditApplyOptions): Promise<FileEditApplyOutcome> {
@@ -111,48 +109,93 @@ export class ProjectFileEditGateway {
     return outcome;
   }
 
-  private async run(staged: StagedFileEdit, options: FileEditApplyOptions): Promise<FileEditApplyOutcome> {
-    const { dependencies } = this;
-    if (staged.operations.length === 0) {
-      return whole(staged, 'refused', 'no-operations');
+  /**
+   * A rewrite's before and after for its card (D6, D9): the live content
+   * the rewrite would replace, read through Apply's own resolution (steps
+   * 1–3), only while the baseline holds; otherwise `stale`. It writes
+   * nothing and logs counts only.
+   */
+  async preview(staged: StagedFileEdit): Promise<FileEditPreview> {
+    let preview: FileEditPreview;
+    try {
+      preview = await this.readPreview(staged);
+    } catch {
+      preview = { kind: 'refused', reason: 'host-failed' };
     }
+    this.dependencies.log.appendLine(`[FileEdit] preview turn=${staged.source.turnId} index=${staged.source.index} ` +
+      `target=${staged.target.kind} result=${preview.kind}${preview.kind === 'refused' ? ` reason=${preview.reason}` : ''}`);
+    return preview;
+  }
+
+  private async readPreview(staged: StagedFileEdit): Promise<FileEditPreview> {
+    const rewrite = staged.operations.length === 1 && staged.operations[0].op === 'rewrite' ? staged.operations[0] : undefined;
+    if (!rewrite) {
+      return { kind: 'refused', reason: 'not-a-rewrite' };
+    }
+    const resolved = await this.resolve(staged);
+    if (resolved.kind === 'refused') {
+      return resolved;
+    }
+    const { document, fsPath } = resolved;
+    const live = fileEditBaseline(document.text, fsPath);
+    if (live.sha256 !== staged.baseline.sha256 || live.length !== staged.baseline.length) {
+      return { kind: 'stale', reason: 'baseline-changed' };
+    }
+    return { kind: 'rewrite', before: fileEditContent(document.text, fsPath), after: rewrite.text };
+  }
+
+  /** Steps 1–3: the identity re-authorized, the class recomputed, the document opened and read. */
+  private async resolve(staged: StagedFileEdit): Promise<Resolution> {
+    const { dependencies } = this;
     // 1. Re-authorize the recorded identity, under the epoch it is read at.
     const epoch = dependencies.epoch.current();
     const fsPath = fsPathOf(staged.target.documentUri);
     if (!fsPath) {
-      return whole(staged, 'refused', 'outside-workspace');
+      return { kind: 'refused', reason: 'outside-workspace' };
     }
     let candidates: ContextResourceCandidate[];
     try {
       candidates = await dependencies.candidates.listCandidates(DEFAULT_CONTEXT_GROUPS);
     } catch {
-      return whole(staged, 'refused', 'catalog-unreadable');
+      return { kind: 'refused', reason: 'catalog-unreadable' };
     }
     const memberships = membershipsOf(candidates, fsPath);
     if (staged.target.kind === 'file' && memberships.length === 0) {
-      return whole(staged, 'refused', 'no-longer-configured');
+      return { kind: 'refused', reason: 'no-longer-configured' };
     }
     if (!(await containedWithoutLinks(fsPath, dependencies.workspace, dependencies.fileSystem))) {
-      return whole(staged, 'refused', 'outside-workspace');
+      return { kind: 'refused', reason: 'outside-workspace' };
     }
     // 2. Recompute the class: prose wins.
     const excerpt = await dependencies.excerpt.currentDocument();
     const isExcerptDocument = staged.target.kind === 'excerpt' || (excerpt !== undefined && samePath(excerpt.fsPath, fsPath));
     const kind = staged.class === 'prose' ? 'prose' : classOf(memberships, isExcerptDocument);
-    const policy = FILE_EDIT_TARGET_POLICIES[kind];
 
     // 3. Open the document; its URI must name the identity.
     const document = await dependencies.documents.open(staged.target.documentUri);
     if (!document) {
-      return whole(staged, 'refused', 'unreadable');
+      return { kind: 'refused', reason: 'unreadable' };
     }
     if (!sameDocument(document.uri, staged.target.documentUri)) {
-      return whole(staged, 'refused', 'identity-changed');
+      return { kind: 'refused', reason: 'identity-changed' };
     }
     const textFault = liveTextFault(document.text, PROMPT_BUDGETS.workshopFileEdits.fileBytes);
     if (textFault) {
-      return whole(staged, 'refused', textFault);
+      return { kind: 'refused', reason: textFault };
     }
+    return { kind: 'resolved', epoch, fsPath, policy: FILE_EDIT_TARGET_POLICIES[kind], document };
+  }
+
+  private async run(staged: StagedFileEdit, options: FileEditApplyOptions): Promise<FileEditApplyOutcome> {
+    const { dependencies } = this;
+    if (staged.operations.length === 0) {
+      return whole(staged, 'refused', 'no-operations');
+    }
+    const resolved = await this.resolve(staged);
+    if (resolved.kind === 'refused') {
+      return whole(staged, 'refused', resolved.reason);
+    }
+    const { epoch, fsPath, policy, document } = resolved;
 
     // From here to the applier's call nothing is awaited.
     // 4. Plan, then freshness and the policy.
@@ -228,10 +271,14 @@ export class ProjectFileEditGateway {
 
     // 7. Report; 8. show.
     const reported = report(staged, plan.edits.map((edit) => edit.operations), result);
-    const landed = reported.operations.some(({ outcome }) => outcome === 'landed');
+    const landedOperations = new Set(reported.operations.flatMap(({ index, outcome }) => outcome === 'landed' ? [index] : []));
+    const landed = landedOperations.size > 0;
     const revealed = landed && result.settled ? await dependencies.documents.reveal(result.settled.snapshot.uri) : false;
     return {
       ...reported,
+      ...(landed
+        ? { landed: fileEditLandedRecords(document.text, plan.edits, plan.operations, landedOperations, result.settled?.snapshot.version) }
+        : {}),
       ...(result.settled ? { document: { uri: result.settled.snapshot.uri, version: result.settled.snapshot.version } } : {}),
       revealed,
       message: fileEditOutcomeMessage(reported.state, reported.reason)

@@ -147,7 +147,9 @@ import { cloneTurnModel } from '@/application/services/workshop/WorkshopTurnMode
 import { cloneWorkshopMemoryProposal } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
 import {
   cloneWorkshopFileEditProposal,
-  settleWorkshopFileEditProposalsOnReopen
+  settleWorkshopFileEditProposal,
+  settleWorkshopFileEditProposalsOnReopen,
+  type WorkshopFileEditSettlement
 } from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
 import { workshopMemoryProposalAt } from '@shared/constants/workshopProjectMemoryWrites';
 import {
@@ -1884,6 +1886,25 @@ export class WorkshopSessionService {
       throw Object.assign(new Error('That message no longer holds a memory suggestion.'), { reason: 'no-proposal' });
     }
     return cloneTurn(turn!);
+  }
+
+  /**
+   * Settle one of a persona's file-edit cards (ADR 2026-11-05 D8, D10): its
+   * state, reason, per-operation outcomes and landed records, held to the
+   * session codec's rules. Throws (`reason: 'no-card'`) on a turn with no
+   * card there, and on a settlement the codec would refuse.
+   */
+  setFileEditProposalState(turnId: string, index: number, settlement: WorkshopFileEditSettlement): WorkshopTurn {
+    let found = false;
+    const turn = this.turnLedger.update(turnId, (current) => {
+      const next = settleWorkshopFileEditProposal(current, index, settlement);
+      found = true;
+      current.fileEditProposals = next;
+    });
+    if (!turn || !found) {
+      throw Object.assign(new Error('That message no longer holds this suggested edit.'), { reason: 'no-card' });
+    }
+    return cloneTurn(turn);
   }
 
   /** An edit card whose Save found its note changed since it was suggested (Slice 6c): only Dismiss is offered now. */

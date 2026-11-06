@@ -93,6 +93,8 @@ const WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryManagerHandler.ts';
 const WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopPinnedContextHandler.ts';
+const WORKSHOP_FILE_EDIT_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopFileEditHandler.ts';
 const WORKSHOP_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopContextHandler.ts';
 const WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER =
@@ -254,6 +256,17 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: ['WORKSHOP_ATTACH_PINNED_CONTEXT']
+  },
+  // A file-edit card's actions change the room, behind the gate; its rewrite preview is a read (ADR 2026-11-05 D8, D9).
+  {
+    owner: WORKSHOP_FILE_EDIT_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_FILE_EDIT_ACTION']
+  },
+  {
+    owner: WORKSHOP_FILE_EDIT_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_FILE_EDIT_PREVIEW']
   },
   {
     owner: WORKSHOP_SESSION_HANDLER_OWNER,
@@ -419,6 +432,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopContextHandler',
   'WorkshopExcerptScopeHandler',
   'WorkshopCreativeVariationsHandler',
+  'WorkshopFileEditHandler',
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
@@ -2028,11 +2042,12 @@ describe('architectural boundaries', () => {
     // Pinned Context Slice 3 added the tab's seven list routes (direct) and Attach missing (mutation).
     // Bookmark Recall Slice 2 added the Bookmarks screen's page, cancel, live rows and saved turn (direct).
     // Bookmark Recall Slice 3 added "Remember this" from a saved session (mutation).
-    expect(expectedOwnerPairs).toHaveLength(86);
+    // Persona File Edits Slice 4a added a card's action (mutation) and a rewrite's preview (direct).
+    expect(expectedOwnerPairs).toHaveLength(88);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(47);
+      .toHaveLength(48);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(39);
+      .toHaveLength(40);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
