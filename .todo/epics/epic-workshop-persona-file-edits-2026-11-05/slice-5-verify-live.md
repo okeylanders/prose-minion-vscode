@@ -63,12 +63,22 @@ This pass checks what tests can't:
 
 ## Review in editor…
 
+Refactor Preview opens its entries **unticked**. Tick an entry before applying it. If you press Apply with nothing ticked, nothing is written and the card returns to pending, as in step 11 (PR #235 F-01).
+
 9. **Review, then apply.**
    - **Review in editor…** opens Refactor Preview with the change.
-   - Apply it there. The card reads applied.
-10. **Untick an entry.** On a card with two or more operations, untick one in the preview and apply.
-    - The card reads partial, by operation: "1 of 2 changes applied."
-    - Its line must not claim the rest "were not" applied if any are unknown (Astra's #233 note, fixed in #234).
+   - Tick its entry, then apply. The card reads applied.
+10. **Untick an entry.** You need a card whose two changes show as **two separate entries**.
+    - **Two changes that touch become one entry**, because the planner joins touching ranges. So use two replacements apart from each other.
+    - For example, in a note holding "Alice is curious. The White Rabbit is late.", ask for `curious` → `brave` and `White Rabbit` → `Hatter` in one edit.
+    - **Steps:**
+      1. Open **Review in editor…** and check the preview lists two entries.
+      2. Tick both, then untick one.
+      3. Apply.
+    - **What you should see:**
+      - Only the ticked change is in the file.
+      - The card reads partial, by operation: "1 of 2 changes applied."
+      - Its line must not claim the rest "were not" applied if any are unknown (Astra's #233 note, fixed in #234).
 11. **Discard the preview.** Discard it. The card returns to pending, with Apply offered again, since nothing was written.
 
 ## Freshness and staleness
