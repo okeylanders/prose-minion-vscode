@@ -271,7 +271,7 @@ The writer asked for both during the live pass: "more like 15" calls, then highe
   - **Memory:** five memory reads can carry 200,000 characters.
   - **Files:** fifteen `resource.read`s can carry about 960 KiB.
   - **When the window is known,** the preflight then refuses the next request, and the turn fails with the context-window message instead of answering.
-  - **No guard is added for it here.**
+  - **No guard is added for it here.** [A follow-up](../../.todo/features/feature-workshop-reads-fit-the-window/README.md) fits every read to the window, adds the engine's guard, and lets `resource.read` read several files in one call.
 - **Where it's pinned.** `promptBudgets.test.ts` holds the values. The tests of each ceiling count from the constant, so a later change moves only the constant, its pin, and, for the two read limits, the prompt's sentence.
 
 ## The writer's answers (2026-11-05)
