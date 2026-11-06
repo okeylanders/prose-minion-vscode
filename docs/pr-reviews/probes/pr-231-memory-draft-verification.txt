@@ -42,3 +42,28 @@ three existing webview size/performance warnings remain.
 Report-publication-head CI recorded separately in the PR conversation.
 
 No local full-suite or local production-build run. No native VS Code visual pass. No live provider call.
+
+
+Correction re-review, 2026-11-06:
+Head: f4b2f0411038f290fd4bc3fd91dcc634ba30b676
+Base: 9bd8ac919f6dc350a869afe79578fc2c696e7cf1 (#228 merged)
+Fix commit: cbebd1cf (withhold unsafe-to-match bubble drafts, do not widen input).
+
+1. git diff --check aea407b f4b2f04: pass.
+2. npm run typecheck: all three pass.
+3. npm run lint: 0 errors, 1,165 existing warnings.
+4. Same focused production test pattern as original review:
+   34 suites, 529 tests pass; 20.367 s.
+5. New correction artifact + unchanged original host/helper artifact:
+   Temporarily copied to review231Correction.test.ts and review231Integration.test.ts,
+   npm test -- --runInBand --runTestsByPath [both paths]
+   2 suites, 16 tests pass; 3.923 s.
+   Correction probes cover abstention for capability bubbles/in-window bookmarks,
+   continued preview and ordinary-source equality, all touched-field subsets,
+   pending-sheet replacement with withheld sheet, omitted/malformed/forged source tags,
+   and saved capability preview equality.
+   Original eight host/helper integration probes all pass unchanged.
+6. Executable copies removed. Artifacts remain .txt outside normal discovery.
+7. Exact-correction-head CI run 42134770460 (https://github.com/okeylanders/prose-minion-vscode/actions/runs/42134770460), job 127620004909, passed. Checkout identifies 282f2bc merging f4b2f041 into 9bd8ac91. All typechecks; 761 suites / 10,608 tests / 59 snapshots; lint 0 errors / 1,165 warnings; both production bundles and sentinel verification pass. Three existing webview size/performance warnings remain. The new report-publication head is checked separately in the PR conversation.
+
+Only report/probe documentation is published. No live provider call or native VS Code visual pass.

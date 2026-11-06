@@ -1,6 +1,30 @@
 # PR #231 review: Helper Agent Slice 2 memory drafting
 
-## Verdict
+## Current verdict: correction re-review
+
+**Written approval of correction head `f4b2f0411038f290fd4bc3fd91dcc634ba30b676`. F-01 is independently resolved; no new blocking finding.** This supersedes the original changes-requested verdict below. It is not a formal self-approval or permission to merge.
+
+### What changed and what was checked again
+
+- **F-01 resolved by withholding, not widening.** A capability-card bubble and its in-window bookmark keep the existing report body, but the sheet sets `helperWithheld` and makes no helper request. There is no placeholder or failure line. Ordinary writer/reply bubbles still draft normally.
+- **The host independently enforces the source contract.** Live requests name `note: 'bubble' | 'preview'`; absence defaults to strict `bubble`, unknown values are refused. A bubble's bounded original text is compared with the safe projected note, and mismatches answer `withheld` without calling the helper. The comparison never sends the original text. Even a forged `preview` marker can only request the existing safe projection, not capability evidence.
+- **Preview paths remain useful.** Outside-window capability bookmarks and saved capability bookmarks still draft from the same safe event their sheet body holds. New independent tests cover both paths. The room revision and recall gates remain unchanged.
+- **Replacing sheets preserves lifetime ownership.** A new independent test replaces a pending ordinary sheet with a withheld capability sheet: the previous request is cancelled, its late answer changes nothing and no replacement helper call starts.
+- **The earlier engine corrections remain intact.** All eight unchanged handler/service integration probes from the original review pass, including cancellation during preparation and saved reads, preparation errors, stale-owner cleanup and a bounded capability-free real-engine request with mocked transport.
+- **The old reproductions are retained as history.** Two original source probes assumed every capability sheet would post a request. That assumption is deliberately no longer true. The [new correction artifact](probes/pr-231-memory-draft-rereview.test.ts.txt) changes those two cases to require abstention, retains their positive controls and adds switch-to-withheld, malformed/default request-marker and saved-capability coverage. This is verification of the accepted alternative, not a claim that the old assertions pass unchanged.
+- #228 has merged; the current PR base is `9bd8ac919f6dc350a869afe79578fc2c696e7cf1`. The merge adds its review documentation and no new executable delta beyond the focused F-01 correction.
+
+### Correction-head verification
+
+- All three local typechecks pass; full lint remains **0 errors / 1,165 existing warnings**.
+- **34 focused production suites / 529 tests pass**. This includes the seven new production cross-layer regressions and the request-marker defaults/refusals.
+- **16 independent probes pass**: eight new/adapted correction probes plus all eight unchanged original host/helper integration probes. Temporary executable copies were removed; archived text remains outside test discovery.
+- `git diff --check aea407b f4b2f04`: passed. Safe transcript projection and helper engine/codec remain unchanged by the correction.
+- Exact-correction-head CI run 42134770460 (https://github.com/okeylanders/prose-minion-vscode/actions/runs/42134770460), job 127620004909, passed. Checkout identifies 282f2bc merging f4b2f041 into 9bd8ac91. All typechecks; 761 suites / 10,608 tests / 59 snapshots; lint 0 errors / 1,165 warnings; both production bundles and sentinel verification pass. Three existing webview size/performance warnings remain. The new report-publication head is checked separately in the PR conversation.
+- No local full-suite or local production-build pass is claimed. No native VS Code visual pass or live provider call was made. The nonblocking toggle-during-flight clarification remains as documented below.
+- Only review documentation and the new probe artifact are published. No production edit, merge, auto-merge or deployment is performed; #205 remains deferred.
+
+## Original verdict (superseded by the correction re-review)
 
 **Changes requested at code head `5ae99bd85acfc7ff6cc90dc20555b2b7ba598a9e`: one P2 source-equivalence finding.** The live capability-card sheet and the new helper do not read the same note. The host's safe projection must remain intact; the correction must not send capability evidence to the helper.
 
@@ -85,9 +109,9 @@ The reviewed head yields two failures and eleven passes. Remove the temporary `.
 
 | Item | Status |
 |---|---|
-| F-01: live capability sheet/helper sources differ | Fixed by the implementation thread (withhold, not widen): a capability card's bubble sheet asks for nothing and shows nothing; the host answers a bubble-note request whose note isn't the projection's `withheld`, with no model call. The two probes' cases become regressions of that behavior in `WorkshopMemoryDraftSource.integration.test.ts`. Awaiting re-review |
+| F-01: live capability sheet/helper sources differ | Resolved and independently verified at `f4b2f041`: mismatched bubbles abstain, safe preview paths still draft |
 | #228 F-01/F-02 preparation corrections | Integrated unchanged and independently verified through the route |
-| A-01 safe source/bound | Privacy/bound pass; sheet-source equivalence blocked by F-01 |
+| A-01 safe source/bound | Pass at `f4b2f041`; privacy preserved and every offered draft uses the intended safe note |
 | A-02/A-03 correlation and touched fields | Pass at reviewed head |
 | A-04 output contract | Inherited corrected engine tests pass |
 | A-05 caller/service lifetime | Pass, including pending source read and preparation boundaries |
