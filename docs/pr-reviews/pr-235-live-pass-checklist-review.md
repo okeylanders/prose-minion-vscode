@@ -1,17 +1,31 @@
 # PR #235: Slice 5 live-pass checklist review
 
-Date: 2026-11-06  
-Reviewed head: `41c2bb58c3c9115b79cf624a3552b0cc9946a724`  
-Base: `9f70f23676250e629dabec4790f60d80c74db987`  
+Date: 2026-11-06
+Original reviewed head: `41c2bb58c3c9115b79cf624a3552b0cc9946a724`
+Correction reviewed: `20e0b3b08b43839854b54129a0a6abb281d60833`
+Base: `9f70f23676250e629dabec4790f60d80c74db987`
 Scope: the two changed planning documents, checked against the implementation at that head, the ADR, and the final #233/#234 reviews.
 
 ## Disposition
 
-**Changes requested for F-01: make the Refactor Preview partial-apply recipe executable and deterministic.** This is a checklist defect, not a newly found runtime defect. The rest of the plan is consistent with the reviewed implementation and correctly leaves native VS Code, visual and accessibility acceptance for the live pass.
+**Approved for the checklist/documentation scope. F-01 is corrected and closed at `20e0b3b0`.** The correction supplies a deterministic two-entry fixture and explicit checkbox preparation. No remaining blocking finding was found. The plan correctly leaves native VS Code, visual and accessibility acceptance for the live pass.
 
 Slice 4c remains a prerequisite. This review does not approve #236's implementation, certify the live pass, accept the ADR, or authorize a merge.
 
-## F-01 (P2): Use two independent preview entries and explicitly select them
+## Re-review of the correction
+
+The only checklist change since the original review is the F-01 correction:
+
+- The preview section now says its confirmation entries begin unticked and must be selected.
+- Step 9 explicitly ticks the entry before applying.
+- Step 10 names two non-touching replacements, verifies two separate entries, ticks both, unticks one, and checks that only the ticked change landed with the 1-of-2 tally.
+- It retains the uncertainty-safe wording check and the discarded-preview return to pending.
+
+The supplied fixture matches the independent production-planner witness below. The correction changes no production code. Relative-link and checklist-number checks were repeated; both pass. The earlier report head `ca41ed558403fbeeefb509fa3d87975db4b8288b` also passed [CI run 42218784756](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42218784756). Correction-head and final-report-head CI are checked independently on the PR; no not-yet-finished run is called green here.
+
+## F-01 (P2, closed): Use two independent preview entries and explicitly select them
+
+The following records the original finding and its evidence. It no longer describes an open defect.
 
 Location: `.todo/epics/epic-workshop-persona-file-edits-2026-11-05/slice-5-verify-live.md:66–71`, especially step 10.
 
