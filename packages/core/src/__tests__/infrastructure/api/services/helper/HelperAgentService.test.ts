@@ -2,9 +2,12 @@
  * HelperAgentService (ADR 2026-11-05 D1–D4): one engine for every task.
  * Driven here by two fake tasks, so nothing it does can hang on a task's
  * name; the real registry's task is checked the same way. The engine is a
- * stand-in: no provider is reached. Alice fixtures.
+ * stand-in, and so is the model catalog: no provider is reached. Alice
+ * fixtures.
  */
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
+import type { ReasoningCatalog } from '@orchestration/ReasoningCatalog';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { HelperAgentService } from '@services/helper/HelperAgentService';
 import { HELPER_TASK_POLICIES } from '@services/helper/HelperTaskPolicies';
 import {
@@ -18,7 +21,7 @@ const USAGE = { promptTokens: 300, completionTokens: 40, totalTokens: 340 };
 const MODEL = 'placeholder/helper-model';
 const SECRET = 'Alice hides the key under the mushroom';
 
-type Reply = { content: string; finishReason?: string; cancelled?: boolean; usage?: typeof USAGE } | Error | 'hang';
+type Reply = { content: string; finishReason?: string; cancelled?: boolean; usage?: typeof USAGE; reasoningTokens?: number } | Error | 'hang';
 
 const echoTask: HelperTaskPolicy<{ word: string }, { echo: string }> = {
   promptSection: 'helper/fake-echo.md',
@@ -51,7 +54,8 @@ const countTask: HelperTaskPolicy<{ items: readonly string[] }, { count: number 
 
 const FAKE_POLICIES = { echo: echoTask, count: countTask } as const;
 
-function harness(replies: Reply[], options: { engine?: boolean } = {}) {
+/** By default the catalog says the model can stop reasoning, so it logs nothing. */
+function harness(replies: Reply[], options: { engine?: boolean; model?: string; alwaysReasons?: ReasoningCatalog['alwaysReasons'] } = {}) {
   const queue = [...replies];
   const runInitial = jest.fn((request: { options: { signal?: AbortSignal } }) => {
     const next = queue.shift();
@@ -68,16 +72,18 @@ function harness(replies: Reply[], options: { engine?: boolean } = {}) {
     }
     return Promise.resolve({ usedGuides: [], requestedResources: [], artifacts: [], finishReason: 'stop', usage: USAGE, modelId: MODEL, ...next });
   });
-  const engine = { runInitial, getModel: jest.fn(() => MODEL) };
+  const engine = { runInitial, getModel: jest.fn(() => options.model ?? MODEL) };
   const resources = {
     ensureInitialized: jest.fn(async () => undefined),
     getEngine: jest.fn(() => (options.engine === false ? undefined : engine))
   };
   const promptLoader = { loadPrompts: jest.fn(async (files: string[]) => `SYSTEM ${files.join(' + ')}`) };
   const log = { appendLine: jest.fn() };
-  const service = new HelperAgentService(resources as never, promptLoader, FAKE_POLICIES, log);
+  const catalog = { alwaysReasons: jest.fn(options.alwaysReasons ?? (async () => false)) };
+  const service = new HelperAgentService(resources as never, promptLoader, FAKE_POLICIES, catalog, log);
   const logged = () => log.appendLine.mock.calls.map(([line]) => line as string);
-  return { service, runInitial, resources, promptLoader, log, logged };
+  const sentOptions = (call = 0) => (runInitial.mock.calls[call][0] as unknown as { options: Record<string, unknown> }).options;
+  return { service, runInitial, resources, promptLoader, catalog, log, logged, sentOptions };
 }
 
 describe('HelperAgentService', () => {
@@ -104,8 +110,8 @@ describe('HelperAgentService', () => {
     for (const [request, policy] of [[echo, echoTask], [count, countTask]] as const) {
       expect(request.toolName).toBe('helper');
       expect(request.policy).toBe(AGENT_RUN_POLICIES.helper);
-      expect(request.options).toMatchObject({ model: MODEL, temperature: 0, maxTokens: policy.call.outputTokens });
-      expect(request.options).not.toHaveProperty('reasoning');
+      // Reasoning off on every call (ADR 2026-11-05 D1, amended 2026-11-06): the ceiling is the reply's alone.
+      expect(request.options).toMatchObject({ model: MODEL, temperature: 0, maxTokens: policy.call.outputTokens, reasoning: { effort: 'none' } });
       expect(request.options).not.toHaveProperty('tools');
       expect(request.options.signal).toBeInstanceOf(AbortSignal);
     }
@@ -263,7 +269,7 @@ describe('HelperAgentService', () => {
     const { runInitial, resources, promptLoader, log } = harness([
       { content: '{"title": "Alice falls", "summary": "Alice falls down the rabbit hole.", "kind": "canon"}' }
     ]);
-    const service = new HelperAgentService(resources as never, promptLoader, HELPER_TASK_POLICIES, log);
+    const service = new HelperAgentService(resources as never, promptLoader, HELPER_TASK_POLICIES, { alwaysReasons: async () => false }, log);
     await expect(service.run('memory-draft', { text: 'Alice fell down the rabbit hole.', source: 'writer' })).resolves.toEqual({
       kind: 'drafted',
       value: { title: 'Alice falls', summary: 'Alice falls down the rabbit hole.', kind: 'canon' },
@@ -271,5 +277,110 @@ describe('HelperAgentService', () => {
     });
     expect(promptLoader.loadPrompts).toHaveBeenCalledWith([HELPER_BASE_PROMPT, 'helper/10-memory-draft.md']);
     expect(runInitial).toHaveBeenCalledTimes(1);
+    // The raised ceiling (live pass, 2026-11-06) reaches the call, with reasoning off.
+    expect(PROMPT_BUDGETS.helper['memory-draft'].outputTokens).toBe(1_000);
+    expect((runInitial.mock.calls[0][0] as unknown as { options: Record<string, unknown> }).options)
+      .toMatchObject({ maxTokens: 1_000, reasoning: { effort: 'none' } });
+  });
+
+  describe('reasoning (ADR 2026-11-05 D1, amended 2026-11-06)', () => {
+    it('asks the catalog about the exact model the call goes to', async () => {
+      const { service, catalog } = harness([{ content: '{"echo": "Alice"}' }]);
+      await service.run('echo', { word: 'Alice' });
+      expect(catalog.alwaysReasons.mock.calls).toEqual([[MODEL]]);
+    });
+
+    it('sends a model that always reasons the light budget on top of the ceiling, never off and never a refusal', async () => {
+      const { service, sentOptions, logged } = harness([{ content: '{"echo": "Alice"}' }], { alwaysReasons: async () => true });
+      await expect(service.run('echo', { word: 'Alice' })).resolves.toMatchObject({ kind: 'drafted' });
+      const light = PROMPT_BUDGETS.reasoning.light;
+      expect(sentOptions()).toMatchObject({ maxTokens: echoTask.call.outputTokens + light, reasoning: { maxTokens: light } });
+      expect(sentOptions().reasoning).not.toHaveProperty('effort');
+      expect(logged()[0]).toBe(`[Helper] echo: the model catalog says ${MODEL} always reasons, so it was sent the light thinking budget on top of its ceiling`);
+    });
+
+    it.each([
+      ['cannot say', async (): Promise<boolean | undefined> => undefined],
+      ['cannot be read', async (): Promise<boolean | undefined> => { throw new Error('offline'); }]
+    ] as const)('sends off as asked when the catalog %s, and says so', async (_name, alwaysReasons) => {
+      const { service, sentOptions, logged } = harness([{ content: '{"echo": "Alice"}' }], { alwaysReasons });
+      await expect(service.run('echo', { word: 'Alice' })).resolves.toMatchObject({ kind: 'drafted' });
+      expect(sentOptions()).toMatchObject({ maxTokens: echoTask.call.outputTokens, reasoning: { effort: 'none' } });
+      expect(logged()).toContain(`[Helper] echo: the model catalog cannot say whether ${MODEL} can stop reasoning; reasoning off sent as asked`);
+    });
+
+    it('asks nothing and sends off when no model is named', async () => {
+      const { service, catalog, sentOptions } = harness([{ content: '{"echo": "Alice"}' }], { model: '' });
+      await service.run('echo', { word: 'Alice' });
+      expect(catalog.alwaysReasons).not.toHaveBeenCalled();
+      expect(sentOptions()).toMatchObject({ maxTokens: echoTask.call.outputTokens, reasoning: { effort: 'none' } });
+      expect(sentOptions()).not.toHaveProperty('model');
+    });
+
+    it('counts an unanswered catalog read in the call\'s time: a timeout, nothing sent', async () => {
+      jest.useFakeTimers();
+      try {
+        const { service, runInitial, catalog } = harness([], { alwaysReasons: () => new Promise<boolean>(() => undefined) });
+        const running = service.run('count', { items: [] });
+        for (let turn = 0; turn < 20 && catalog.alwaysReasons.mock.calls.length === 0; turn += 1) {
+          await Promise.resolve();
+        }
+        expect(catalog.alwaysReasons).toHaveBeenCalledTimes(1);
+        jest.advanceTimersByTime(countTask.call.timeoutMs);
+        await expect(running).resolves.toEqual({ kind: 'failed', reason: 'timeout' });
+        expect(runInitial).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('sends nothing when the caller stops it during the catalog read', async () => {
+      let answer: (value: boolean) => void = () => undefined;
+      const { service, runInitial, catalog } = harness([{ content: '{"echo": "Alice"}' }], {
+        alwaysReasons: () => new Promise<boolean>((resolve) => { answer = resolve; })
+      });
+      const stop = new AbortController();
+      const running = service.run('echo', { word: 'Alice' }, { signal: stop.signal });
+      for (let turn = 0; turn < 20 && catalog.alwaysReasons.mock.calls.length === 0; turn += 1) {
+        await Promise.resolve();
+      }
+      stop.abort();
+      answer(false);
+      await expect(running).resolves.toEqual({ kind: 'failed', reason: 'cancelled' });
+      expect(runInitial).not.toHaveBeenCalled();
+    });
+
+    it('logs reported reasoning tokens as a count beside the usage, never in it', async () => {
+      const { service, logged } = harness([
+        { content: '{"echo": "Alice"}', reasoningTokens: 312 },
+        { content: '{"echo": "Alice"}' }
+      ]);
+      const drafted = await service.run('echo', { word: 'Alice' });
+      await service.run('echo', { word: 'Alice' });
+      expect(drafted).toEqual({ kind: 'drafted', value: { echo: 'Alice' }, usage: USAGE });
+      expect(logged()).toEqual([
+        `[Helper] echo on ${MODEL}: drafted (5 characters), 340 tokens, 312 reasoning`,
+        `[Helper] echo on ${MODEL}: drafted (5 characters), 340 tokens`
+      ]);
+    });
+
+    it('still rejects a memory draft cut off at its ceiling, never salvaging it (the live pass\'s finding)', async () => {
+      const { runInitial, resources, promptLoader, log } = harness([{
+        content: '{"title": "Alice falls", "summary": "Alice falls down the rabbit hole.", "kind": "canon"}',
+        finishReason: 'length',
+        usage: { promptTokens: 1_452, completionTokens: 1_000, totalTokens: 2_452 },
+        reasoningTokens: 900
+      }]);
+      const service = new HelperAgentService(resources as never, promptLoader, HELPER_TASK_POLICIES, { alwaysReasons: async () => false }, log);
+      await expect(service.run('memory-draft', { text: 'Alice fell down the rabbit hole.', source: 'writer' })).resolves.toEqual({
+        kind: 'rejected',
+        fault: 'cut-off',
+        usage: { promptTokens: 1_452, completionTokens: 1_000, totalTokens: 2_452 }
+      });
+      expect(runInitial).toHaveBeenCalledTimes(1);
+      expect(log.appendLine.mock.calls.map(([line]) => line)).toEqual([
+        `[Helper] memory-draft on ${MODEL}: rejected, cut-off (32 characters), 2,452 tokens, 900 reasoning`
+      ]);
+    });
   });
 });

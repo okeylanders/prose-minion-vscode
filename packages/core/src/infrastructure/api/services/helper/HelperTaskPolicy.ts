@@ -42,7 +42,11 @@ export type HelperDecoded<Output> =
   | { readonly ok: true; readonly value: Output }
   | { readonly ok: false; readonly fault: HelperReplyFault };
 
-/** The settings every call of a task is made with. No reasoning level: the helper never sends one. */
+/**
+ * The settings every call of a task is made with. No reasoning level of its
+ * own: the engine asks every task's calls for reasoning `off` (D1, amended
+ * 2026-11-06), so a task's ceiling is the reply's alone.
+ */
 export interface HelperCallSettings {
   readonly temperature: 0;
   /** The reply's ceiling, in tokens. */

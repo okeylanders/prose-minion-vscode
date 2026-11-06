@@ -6,7 +6,7 @@
  */
 import { REASONING_LEVELS } from '@/domain/models/ReasoningLevel';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
-import { liveCatalogReasoning, refusesReasoningOff, type ReasoningCatalog } from '@services/draftEdit/DraftEditReasoningSupport';
+import { liveCatalogReasoning, refusesReasoningOff, type ReasoningCatalog } from '@orchestration/ReasoningCatalog';
 
 const MODEL = 'test/model';
 
