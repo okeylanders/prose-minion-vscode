@@ -3,7 +3,7 @@
 **Date:** 2026-08-05
 **Sprint:** [`05-session-aggregate-extraction.md`](../../.todo/epics/epic-workshop-architecture-refactor-2026-08-03/sprints/05-session-aggregate-extraction.md)
 **Epic:** [Workshop Architecture Refactor](../../.todo/epics/epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md)
-**Decision:** [ADR 2026-08-03 — Workshop Feature Family and Module Boundaries](../adr/2026-08-03-workshop-feature-family-and-module-boundaries.md) §4, §8
+**Decision:** [ADR 2026-08-03 — Workshop Feature Family and Module Boundaries](../../docs/adr/2026-08-03-workshop-feature-family-and-module-boundaries.md) §4, §8
 **Branch point:** `476afbf1` (Sprint 04 merged)
 **Audience:** decision owner + implementer. **Task:** approve the extraction set, then implement.
 **Status:** `READY FOR REVIEW` — one blocking decision (D1) and one required pre-slice (S0).

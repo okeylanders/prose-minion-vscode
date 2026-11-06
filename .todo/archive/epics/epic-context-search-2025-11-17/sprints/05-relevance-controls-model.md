@@ -164,4 +164,4 @@ Category Model: [dropdown with 4 options]
 - [CategorySearchService](../../../src/infrastructure/api/services/search/CategorySearchService.ts)
 - [SearchTab](../../../src/presentation/webview/components/SearchTab.tsx)
 - [useSearch Hook](../../../src/presentation/webview/hooks/domain/useSearch.ts)
-- [Sprint 04](04-performance-polish.md) - Previous sprint
+- [Sprint 04](./04-performance-polish.md) - Previous sprint

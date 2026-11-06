@@ -247,7 +247,7 @@ Is the phase order optimal?
 - [ADR-2025-10-27: Presentation Layer Domain Hooks](../docs/adr/2025-10-27-presentation-layer-domain-hooks.md) - App.tsx refactor template
 
 ### Memory Bank
-- [Presentation Layer Architectural Review](20251102-1845-presentation-layer-architectural-review.md) - 9.8/10 score, proven pattern
+- [Presentation Layer Architectural Review](./../.memory-bank/20251102-1845-presentation-layer-architectural-review.md) - 9.8/10 score, proven pattern
 
 ### Related Specs
 - [Context Search Requirements](./../.todo/search-module/2025-10-24-context-search-component.md) - Blocked by this refactor

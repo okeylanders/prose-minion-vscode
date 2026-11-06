@@ -1,6 +1,6 @@
 # Epic: Unified Settings Architecture
 
-**Quick Start**: See [epic-unified-settings-architecture.md](epic-unified-settings-architecture.md) for full details.
+**Quick Start**: See [epic-unified-settings-architecture.md](./epic-unified-settings-architecture.md) for full details.
 
 ---
 
@@ -30,7 +30,7 @@ Unify all settings management using Domain Hooks to fix critical bugs and improv
 
 **Documentation**:
 - [ADR: Unified Settings Architecture](../../docs/adr/2025-11-03-unified-settings-architecture.md)
-- [Epic Overview](epic-unified-settings-architecture.md)
+- [Epic Overview](./epic-unified-settings-architecture.md)
 
 **Analysis**:
 - [Settings Architecture Analysis](../../.todo/architecture-debt/2025-11-02-settings-architecture-analysis.md)
@@ -45,7 +45,7 @@ Unify all settings management using Domain Hooks to fix critical bugs and improv
 ## Start Here
 
 1. **Read**: [ADR](../../docs/adr/2025-11-03-unified-settings-architecture.md) (decision rationale)
-2. **Understand**: [Epic Overview](epic-unified-settings-architecture.md) (full context)
+2. **Understand**: [Epic Overview](./epic-unified-settings-architecture.md) (full context)
 3. **Start**: [Sprint 01](sprints/01-searchtab-urgent-fix.md) (critical fix)
 
 ---

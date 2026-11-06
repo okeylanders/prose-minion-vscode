@@ -272,7 +272,7 @@ This decision demonstrates **YAGNI** (You Aren't Gonna Need It):
 ## Related Documents
 
 - **ADR**: [docs/adr/2025-11-11-prose-analysis-service-refactor.md](../docs/adr/2025-11-11-prose-analysis-service-refactor.md) (See Appendix A)
-- **Previous Memory Bank Entry**: [20251111-1430-prose-analysis-service-refactor-adr-draft.md](20251111-1430-prose-analysis-service-refactor-adr-draft.md)
+- **Previous Memory Bank Entry**: [20251111-1430-prose-analysis-service-refactor-adr-draft.md](./20251111-1430-prose-analysis-service-refactor-adr-draft.md)
 - **Current ProseAnalysisService**: [src/infrastructure/api/ProseAnalysisService.ts](../src/infrastructure/api/ProseAnalysisService.ts)
 
 ---

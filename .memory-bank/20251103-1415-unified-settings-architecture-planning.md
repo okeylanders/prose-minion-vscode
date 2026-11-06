@@ -402,7 +402,7 @@ private shouldBroadcastWordSearchSettings(event) {
 
 ### Memory Bank
 - [20251102-settings-architecture-analysis-complete.md](./20251102-settings-architecture-analysis-complete.md) - Analysis session
-- [20251103-1230-state-of-repo-snapshot.md](20251103-1230-state-of-repo-snapshot.md) - Repository state
+- [20251103-1230-state-of-repo-snapshot.md](./20251103-1230-state-of-repo-snapshot.md) - Repository state
 - [20251103-unified-settings-architecture-planning.md](./20251103-unified-settings-architecture-planning.md) - **THIS FILE**
 
 ---
