@@ -1,9 +1,9 @@
 # PR #242 review: Helper Agent truncated memory drafts
 
-**Disposition: request changes.** F-01 is a reproduced cancellation regression. The reasoning policy and increased output allowance otherwise match the amended ADR. This is a code-review verdict, not live-provider acceptance or merge authorization.
+**Current disposition: approve the code after the F-01 correction at `4906f1cc`.** The original request-changes verdict below is superseded by the re-review at the end of this report. Live-provider acceptance remains a separate, unverified step. This review does not authorize a merge.
 
 - **PR:** [#242](https://github.com/okeylanders/prose-minion-vscode/pull/242)
-- **Reviewed code head:** `ab65c3e58e38040e2d5bd58fbca07817e44241da`
+- **Initially reviewed code head:** `ab65c3e58e38040e2d5bd58fbca07817e44241da`
 - **Base:** `7271a6b15c98628829d514efa174ca3298d61ccc` (`epic/helper-agent`)
 - **Branch:** `epic/helper-agent-slice-3-fix-cut-off-drafts`
 - **Reviewed:** 2026-11-06
@@ -90,4 +90,33 @@ The reported 400-token failure establishes exhaustion of the old output allowanc
 
 After F-01 is fixed, repeat Save to memory several times on the affected `anthropic/claude-sonnet-5.5` configuration, recording the outcome, total/completion usage and reasoning count when supplied. A requested reasoning setting is not proof the upstream provider honors it, and the increased budget does not guarantee every response will complete. The live pass must establish whether this particular intermittent cutoff is resolved.
 
-**Conclusion:** address F-01 and rerun the cancellation regressions before approval. Keep the live-model repetition check as a separate acceptance step. No merge, auto-merge, deployment, or unrelated PR changes were performed.
+**Initial conclusion (superseded by the re-review below):** address F-01 and rerun the cancellation regressions before approval. Keep the live-model repetition check as a separate acceptance step. No merge, auto-merge, deployment, or unrelated PR changes were performed.
+
+
+## Re-review: F-01 resolved (2026-11-06)
+
+**Re-reviewed code head:** `4906f1cc5b4a64b9292975bf4b8ab19fe1a4412a`.
+
+**Verdict: approve the scoped code change; no remaining blocking findings.** The correction changes only the helper service and its regression tests. The reasoning policy, budgets, decoder and provider wiring remain as reviewed above.
+
+### Why F-01 is closed
+
+- Immediately after installing the forwarding listener, the service checks whether the caller is already aborted and forwards that state. An abort in the preparation handoff therefore reaches the internal controller before the catalog wait.
+- The dispatch guard again checks the caller's own signal, and its result prioritizes that caller cancellation over timeout classification.
+- Both original two- and three-microtask dispatch reproductions pass unchanged. The independent unresolved-catalog reproduction also passes unchanged, returning `cancelled` rather than `timeout`.
+- The three checked-in regressions cover both handoff timings and the stalled catalog. The stalled test advances no timer, so it proves prompt cancellation rather than merely a different label after the timeout.
+
+The free underlying catalog read can still begin or settle after the wait has been cancelled. This is the existing shared-catalog limitation described above; it cannot start the cancelled inference. No extra production changes were made during this review.
+
+### Re-review verification
+
+- **7 related suites / 105 tests passed**, covering the current helper tests, architecture boundaries, shared reasoning catalog/request, Draft Edit integration, and four independent temporary probes (three real-client/mocked-fetch cases and the original stalled-catalog case).
+- **30/30 helper tests passed** in a separate run with both original independent handoff probes appended unchanged to the 28 checked-in helper tests.
+- All three `npm run typecheck` stages passed.
+- `npm run lint`: **0 errors / 1,165 warnings** after temporary probes were removed.
+- The working tree was restored clean before the report update. The only published follow-up is this documentation.
+- [CI run 42312539886](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42312539886), job `verify`, passed for code head `4906f1cc` merged into base `7271a6b1` (checkout `078a0c8`). **761 suites / 10,620 tests / 59 snapshots**, all typechecks, lint (0 errors / 1,165 warnings), both webpack bundles and `verify:bundle` passed. Any CI caused by this report update is a separate later run; it is not covered by this result.
+
+These local runs are focused re-review coverage, not a second full local suite. Full current-code coverage is the exact-head CI result above. The first full local run remains attributed to `ab65c3e5`.
+
+**F-01 is resolved.** Repeated live Save to memory checks on the affected model remain outstanding; no mocked result in either review establishes that upstream provider behavior. No merge, auto-merge or deployment was performed.
