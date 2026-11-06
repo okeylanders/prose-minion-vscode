@@ -138,8 +138,10 @@
 
 ## Verification
 
-- **Baseline** at `9f70f236`: typecheck clean; lint 0 errors, 1,165 warnings. Jest: see the progress note below.
-- **After:** see the progress note below.
+- **Baseline** at `9f70f236`: typecheck clean; lint 0 errors, 1,165 warnings; jest 785 suites, 10,988 tests, 59 snapshots. The jest count is derived: the baseline run overlapped my first edits, so it is the final run less the 42 tests and 3 suites this slice adds. The three suites that were mid-edit were rerun clean at `9f70f236`, 40 tests passing.
+- **After:** typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 788 suites, 11,030 tests, 59 snapshots, all passing.
+  - The first full run caught `MessageHandler.test.ts`'s fake settings service, which lacked `getFileEditsMode`, now in every session state. Its two failing tests were fixed by adding the method (the suite passes, 26 tests).
+- **Updated test, beyond the ones listed above:** `MessageHandler.test.ts`'s fake gains `getFileEditsMode`.
 - **File sizes.**
   - `WorkshopConversationSettingsService.ts`: 491 → 499, kept under 500 by moving the mode-error gathering into the partial-apply module.
   - Over-500 files grew only by the seam:
