@@ -241,6 +241,51 @@ describe('WorkshopApp file-edit cards', () => {
       expect(previewRequests()).toHaveLength(2);
     });
 
+    const refuse = (requestId: unknown) => deliver({
+      type: MessageType.WORKSHOP_FILE_EDIT_PREVIEW_RESULT,
+      source: 'extension.workshop',
+      payload: {
+        requestId, roomRevision: 5, turnId: 'turn-2', index: 0,
+        preview: { kind: 'refused', reason: 'unreadable', message: 'That file could not be opened or read as text.' }
+      },
+      timestamp: 0
+    });
+    const toggle = (details: HTMLDetailsElement, open: boolean) => act(() => {
+      details.open = open;
+      details.dispatchEvent(new Event('toggle'));
+    });
+
+    it('a refused preview is asked again when the writer reopens the disclosure (PR #234 F-02)', () => {
+      render(<WorkshopApp />);
+      deliver(session([reply(rewrite())]));
+      const details = openDisclosure();
+      const [first] = previewRequests();
+      refuse(first.payload.requestId);
+      expect(card().textContent).toContain('That file could not be opened or read as text.');
+
+      toggle(details, false);
+      expect(previewRequests()).toHaveLength(1);
+      toggle(details, true);
+      const requests = previewRequests();
+      expect(requests).toHaveLength(2);
+      expect(requests[1].payload.roomRevision).toBe(5);
+      previewAnswer(requests[1].payload.requestId, 5, 'ROOM-5 cast list.');
+      expect(card().textContent).toContain('ROOM-5 cast list.');
+    });
+
+    it('a refused preview left open is not retried on its own (PR #234 F-02 control)', () => {
+      render(<WorkshopApp />);
+      deliver(session([reply(rewrite())]));
+      openDisclosure();
+      const [first] = previewRequests();
+      refuse(first.payload.requestId);
+      // Later renders (another snapshot of the same room) ask nothing more.
+      deliver(session([reply(rewrite())]));
+      deliver(session([reply(rewrite())]));
+      expect(previewRequests()).toHaveLength(1);
+      expect(card().textContent).toContain('That file could not be opened or read as text.');
+    });
+
     it('a closed disclosure asks nothing when the room changes', () => {
       render(<WorkshopApp />);
       deliver(session([reply(rewrite())]));

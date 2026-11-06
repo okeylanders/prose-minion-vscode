@@ -97,7 +97,8 @@ const RewriteBody: React.FC<WorkshopFileEditOperationProps & { view: Extract<Wor
  * (Open, Branch, Rewind keep turn ids, so this disclosure can stay mounted
  * and open) clears the hook's previews, and an open disclosure with none
  * asks again, for the room now on screen. The old room's late answer is
- * the hook's to drop.
+ * the hook's to drop. A refused read is retried only when the writer opens
+ * the disclosure again (PR #234 F-02).
  */
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 const PendingRewrite: React.FC<{ preview?: WorkshopFileEditPreviewView; onOpenPreview: () => void }> = ({ preview, onOpenPreview }) => {
@@ -111,7 +112,15 @@ const PendingRewrite: React.FC<{ preview?: WorkshopFileEditPreviewView; onOpenPr
   return (
     <details
       className="pm-ws-file-edit-rewrite"
-      onToggle={(event) => setOpen((event.currentTarget as HTMLDetailsElement).open)}
+      onToggle={(event) => {
+        const opened = (event.currentTarget as HTMLDetailsElement).open;
+        setOpen(opened);
+        // A writer's reopen retries a refused read (PR #234 F-02); a refused
+        // preview left open is never retried on its own, and stale is final.
+        if (opened && preview?.status === 'refused') {
+          onOpenPreview();
+        }
+      }}
     >
       <summary>Before and after</summary>
       <RewritePreview preview={preview} />

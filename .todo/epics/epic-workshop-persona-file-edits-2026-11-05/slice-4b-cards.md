@@ -155,3 +155,9 @@ Webview only. No host change.
     - words: the mixed case, with a `not-applied` control, and the gateway's message reading the same table;
     - card view: the line and the tally;
     - card: the outcome badges, the tally, the status line, and no button.
+- **F-02 (P2, re-review): reopening the disclosure no longer retried a refused preview.**
+  - F-01's guard (`open && !preview`) treated a `refused` preview as present, so a transient read failure stayed until the room changed. The hook had already freed the card to be asked again.
+  - The disclosure's `onToggle` now asks again when the writer opens it on a `refused` preview. The automatic request still runs only when the preview is missing, a new room included. A refused preview left open is never retried on its own, and a stale one stays final.
+  - Tests, through the real App and router:
+    - refused, close, reopen sends a second request, whose answer shows (fails without the fix);
+    - a control: a refused disclosure left open, across later snapshots of the same room, sends no retry.
