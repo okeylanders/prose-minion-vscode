@@ -145,3 +145,13 @@ Webview only. No host change.
   - The pending rewrite (`PendingRewrite`) now tracks whether its disclosure is open. While it is open and has no preview, it asks for one for the room on screen (`requestPreviewWhenOpenWithout`).
   - The hook still drops the old room's late answers, and a closed disclosure asks nothing.
   - Regressions, through the real App and router (room 5 → 6): a preview already **ready**, and one still **in flight**, each end with a fresh request for room 6, and the old room's answer never shows. A control covers a closed disclosure asking nothing. Both fail without the fix.
+- **PR #233's nonblocking note: a `partial` card with an `unknown` operation.**
+  - The line said "Some of the changes were applied; the rest were not." That is false when some of the rest are `unknown`.
+  - It now reads `WORKSHOP_FILE_EDIT_PARTIAL_UNCERTAIN_WORDS`: "Some of the changes were applied; for the others, it is not known whether they landed. Check the file before asking again. The file is not saved yet."
+  - The choice is made by `workshopFileEditStateWords(state, outcomes)`, which `workshopFileEditCardWords` calls with an optional `outcomes`.
+  - One source: `fileEditCopy.fileEditOutcomeMessage` no longer repeats the applied or partial sentence. It reads the shared table, and the gateway passes it each operation's outcome. The handler's answers (settled, joined, replayed) word a partial card from its outcomes too; the outcomes are used only for wording and are never posted.
+  - The tally agrees: "1 of 2 changes applied; 1 not known."
+  - Tests:
+    - words: the mixed case, with a `not-applied` control, and the gateway's message reading the same table;
+    - card view: the line and the tally;
+    - card: the outcome badges, the tally, the status line, and no button.

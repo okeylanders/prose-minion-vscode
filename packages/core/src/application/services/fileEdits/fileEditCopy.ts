@@ -7,7 +7,11 @@
  */
 
 import type { FileEditStagingRefusal } from '@/domain/models/FileEditStaging';
-import { WORKSHOP_FILE_EDIT_REASON_WORDS, workshopFileEditReasonWords } from '@shared/constants/workshopFileEditWords';
+import {
+  WORKSHOP_FILE_EDIT_REASON_WORDS,
+  workshopFileEditReasonWords,
+  workshopFileEditStateWords
+} from '@shared/constants/workshopFileEditWords';
 import type { FileEditApplyState } from './ProjectFileEditGateway';
 
 const unhandled = (value: never): never => {
@@ -18,13 +22,17 @@ export function fileEditStagingRefusalMessage(reason: FileEditStagingRefusal): s
   return WORKSHOP_FILE_EDIT_REASON_WORDS[reason];
 }
 
-/** One line for an Apply's outcome, by state and reason. */
-export function fileEditOutcomeMessage(state: FileEditApplyState, reason?: string): string {
+/**
+ * One line for an Apply's outcome, by state and reason, and by its
+ * operations' outcomes: a partial outcome with an `unknown` among them
+ * never says "the rest were not" (PR #233 note). The words are the shared
+ * table's, the card's own.
+ */
+export function fileEditOutcomeMessage(state: FileEditApplyState, reason?: string, outcomes?: readonly string[]): string {
   switch (state) {
     case 'applied':
-      return 'Applied. The file is not saved yet.';
     case 'partial':
-      return 'Some of the changes were applied; the rest were not. The file is not saved yet.';
+      return workshopFileEditStateWords(state, outcomes);
     case 'declined':
       return 'The review was discarded; nothing changed.';
     case 'unknown':

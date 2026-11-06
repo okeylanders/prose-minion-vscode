@@ -61,14 +61,16 @@ export interface WorkshopFileEditCardView {
 export function workshopFileEditCardView(proposal: WorkshopFileEditProposal): WorkshopFileEditCardView {
   const outcomes = proposal.outcomes ?? [];
   const landed = outcomes.filter((outcome) => outcome === 'landed').length;
+  const unknown = outcomes.filter((outcome) => outcome === 'unknown').length;
+  // It agrees with the state's line: an unknown operation is never counted as not applied (PR #233 note).
   const tally = outcomes.length > 1 || proposal.state === 'partial'
-    ? `${landed} of ${outcomes.length} ${outcomes.length === 1 ? 'change' : 'changes'} applied.`
+    ? `${landed} of ${outcomes.length} ${outcomes.length === 1 ? 'change' : 'changes'} applied${unknown > 0 ? `; ${unknown} not known` : ''}.`
     : undefined;
   return {
     path: workshopFileEditDisplayPath(proposal),
     ...(proposal.class ? { classLabel: WORKSHOP_FILE_EDIT_CLASS_LABELS[proposal.class] } : {}),
     why: proposal.why,
-    words: workshopFileEditCardWords(proposal.state, proposal.reason),
+    words: workshopFileEditCardWords(proposal.state, proposal.reason, outcomes),
     actionable: proposal.state === 'pending',
     ...(tally && outcomes.length > 0 ? { tally } : {}),
     operations: proposal.operations.map((operation, at) => operationView(proposal, operation, at, outcomes[at]))

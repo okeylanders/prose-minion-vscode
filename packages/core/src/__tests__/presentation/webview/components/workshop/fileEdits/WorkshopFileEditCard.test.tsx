@@ -19,7 +19,7 @@ jest.mock('marked', () => {
 });
 
 import { WORKSHOP_FILE_EDIT_STATES, type WorkshopFileEditProposal, type WorkshopTurn } from '@messages';
-import { workshopFileEditCardWords } from '@shared/constants/workshopFileEditWords';
+import { WORKSHOP_FILE_EDIT_PARTIAL_UNCERTAIN_WORDS, workshopFileEditCardWords } from '@shared/constants/workshopFileEditWords';
 import { WorkshopFileEditCard, type WorkshopFileEditControls } from '@components/workshop/fileEdits/WorkshopFileEditCard';
 import { WorkshopTurnBubble } from '@components/workshop/WorkshopTurnBubble';
 import type { WorkshopFileEditPreviewView } from '@hooks/domain/workshop/useWorkshopFileEdits';
@@ -123,6 +123,22 @@ describe('WorkshopFileEditCard', () => {
     expect(outcomes).toEqual(['Applied', 'Not applied']);
     expect(screen.getByText('1 of 2 changes applied.')).toBeTruthy();
     expect(screen.getByRole('status').textContent).toBe(workshopFileEditCardWords('partial', 'changed'));
+  });
+
+  it('a partial card with an unknown operation never says the rest were not applied (PR #233 note)', () => {
+    draw(card({
+      operations: [
+        { op: 'replace', find: 'Alice ran', with: 'Alice walked' },
+        { op: 'append', text: 'The Rabbit was late.' }
+      ],
+      state: 'partial',
+      outcomes: ['landed', 'unknown']
+    }));
+    expect([...document.querySelectorAll('.pm-ws-file-edit-outcome')].map((each) => each.textContent)).toEqual(['Applied', 'Not known']);
+    expect(screen.getByText('1 of 2 changes applied; 1 not known.')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toBe(WORKSHOP_FILE_EDIT_PARTIAL_UNCERTAIN_WORDS);
+    expect(screen.getByRole('group').textContent).not.toMatch(/the rest were not/);
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 
   it('an unknown card says so by operation and offers no second Apply', () => {

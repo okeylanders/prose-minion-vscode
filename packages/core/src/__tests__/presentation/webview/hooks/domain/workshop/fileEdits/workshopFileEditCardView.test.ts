@@ -5,7 +5,7 @@
  */
 
 import { WORKSHOP_FILE_EDIT_STATES, type WorkshopFileEditProposal } from '@messages';
-import { workshopFileEditCardWords } from '@shared/constants/workshopFileEditWords';
+import { WORKSHOP_FILE_EDIT_PARTIAL_UNCERTAIN_WORDS, workshopFileEditCardWords } from '@shared/constants/workshopFileEditWords';
 import {
   workshopFileEditCardKey,
   workshopFileEditCardView,
@@ -68,6 +68,14 @@ describe('workshopFileEditCardView', () => {
     expect(view.operations.map((operation) => operation.outcome)).toEqual(['landed', 'not-applied']);
     expect(view.tally).toBe('1 of 2 changes applied.');
     expect(view.words).toBe(workshopFileEditCardWords('partial', 'changed'));
+  });
+
+  it('a partial card with an unknown operation says so, in its line and its tally (PR #233 note)', () => {
+    const view = workshopFileEditCardView(card({ state: 'partial', outcomes: ['landed', 'unknown'] }));
+    expect(view.words).toBe(WORKSHOP_FILE_EDIT_PARTIAL_UNCERTAIN_WORDS);
+    expect(view.words).not.toMatch(/the rest were not/);
+    expect(view.tally).toBe('1 of 2 changes applied; 1 not known.');
+    expect(view.operations.map((operation) => operation.outcome)).toEqual(['landed', 'unknown']);
   });
 
   it('an applied single operation needs no tally', () => {
