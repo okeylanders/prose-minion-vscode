@@ -2,12 +2,13 @@
 
 ## Verdict
 
-**Changes requested: F-02 (P2), a refused preview cannot be retried after the first correction. F-01 is closed at `4c894d7d`.** No production code was changed by this review. No merge was performed.
+**Scoped code review approved at `51daee91`: F-01 and F-02 are closed, as is the partial/unknown wording note.** Exact-head CI is tracked separately in the PR conversation; native-host acceptance remains Slice 5. No production code was changed by this review. No merge was performed.
 
 - PR: <https://github.com/okeylanders/prose-minion-vscode/pull/234>
 - Initial reviewed code: `f8d46cce66e9bcc94b6db0b5013761c5eebccd32`
 - Correction reviewed: `4c894d7d49c8da69dd2804a78e87a7c907f24124`
 - Later wording correction: `91b8e9912f75ce7b182b2029f2241b8004a272fd`; merge head `7787cdec` has the same runtime tree.
+- Final correction: `252d37f2`, incorporated in reviewed head `51daee91ef64aa225eef1516e9116da7b33a90b0`.
 - 4b-only diff: `d0c172b7..f8d46cce`; 4a is the separately reviewed #233 dependency.
 - Initial review: <https://github.com/okeylanders/prose-minion-vscode/pull/234#pullrequestreview-5794537859>
 - Correction review: <https://github.com/okeylanders/prose-minion-vscode/pull/234#pullrequestreview-5794568568>
@@ -41,7 +42,7 @@ npm test -- --runInBand --runTestsByPath packages/core/src/__tests__/presentatio
 
 Both cases pass at the reviewed code by asserting the defect, not a fixed implementation. The witness uses the production App, routing, hook, thread and card; only the host message bridge is controlled. Remove the temporary test copy afterward.
 
-## Correction review: F-01 closed; F-02 (P2) introduced in `4c894d7d`
+## First correction review: F-01 closed; F-02 (P2) introduced in `4c894d7d` (now closed)
 
 `PendingRewrite` now keeps disclosure-open state and requests a missing preview while open. The new App tests cover both a ready and an in-flight preview across room replacement, reject the late old-room answer, and leave a closed disclosure unread. Those cases pass, closing F-01.
 
@@ -97,3 +98,21 @@ The partial/unknown wording note above is closed. At `91b8e991`, **28 focused su
 The F-02 retry regression test also passes against the initial `f8d46cce` code and fails against `4c894d7d`, independently confirming that the first correction introduced the problem. It remains open in `7787cdec`.
 
 At this follow-up, report commit `c0b2d972` and wording commit `91b8e991` both still have CI in progress, not a completed current-head pass. Their original predecessor's green result is not substituted for those checks. No source fix or merge was performed by this review.
+
+
+## Final correction re-review: `252d37f2` / `51daee91`
+
+**F-02 is closed.** The automatic effect still requests only when an open disclosure has no preview, preserving the room-replacement correction. The explicit toggle handler now requests when the writer reopens a refused preview. Loading, ready and stale previews do not auto-request, and a refused panel left open does not retry on its own. The hook's synchronous request guard remains the deduplication owner.
+
+The independent [retry regression test](probes/pr-234-refused-preview-retry.test.tsx.txt), previously failing at `4c894d7d`, now passes unchanged at `51daee91`. The production App suite also exercises explicit refusal/reopen, refusal left open across repeated snapshots, both ready/in-flight room replacements, late old-room rejection and a closed-disclosure control. No additional defect was found in the correction.
+
+At exact code head `51daee91`:
+
+- Independent retry regression: **1/1 passed**.
+- Focused file-edit suite: **28 suites / 463 tests passed**.
+- All three typecheck targets: **passed**.
+- Lint: **0 errors / 1,165 warnings**.
+- Production build: **passed** with `NODE_OPTIONS=--max-old-space-size=2048 npm run build`, including the bundle sentinel check.
+- [Exact-head CI run 42145718665](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42145718665): in progress at report preparation. Its final result, and the report-only head's result, are checked and recorded separately in the PR conversation rather than being inferred from prior green commits.
+
+The code-review blockers are resolved. This approves the implemented Slice 4b scope, not the still-pending native VS Code, theme, keyboard/screen-reader and real Refactor Preview acceptance in Slice 5. No production edits or merge were performed by this review.
