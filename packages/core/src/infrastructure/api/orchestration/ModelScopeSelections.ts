@@ -8,9 +8,10 @@
  *   when it is absent. A blank one is kept blank, so the hot-swap names it
  *   rather than running on a guess.
  * - **Following scopes (Lightbox Slice 4L; Craft Flags, Draft Edit Slice
- *   3c).** The Lightbox and Craft Flags have no model of their own until the
- *   writer picks one: the setting blank, each runs on the model of the scope
- *   it follows (`MODEL_SCOPE_FOLLOWS`: the assistant model, the Workshop's),
+ *   3c; the helper, ADR 2026-11-05 D3).** They have no model of their own
+ *   until the writer picks one: the setting blank, each runs on the model of
+ *   the own scope it names in `MODEL_SCOPE_FOLLOWS` (the Lightbox and Craft
+ *   Flags the assistant model, the helper Proofread's),
  *   resolved after that scope's own default, so it always names a model and
  *   moves when that one does. Picked, it is its own, and nothing the
  *   followed scope does changes it.
@@ -54,7 +55,8 @@ export const MODEL_SCOPE_SETTING_KEYS: Readonly<Record<ModelScope, string>> = {
   widget: 'widgetModel',
   lightbox: 'lightboxModel',
   proofread: 'proofreadModel',
-  craft: 'craftModel'
+  craft: 'craftModel',
+  helper: 'helperModel'
 };
 
 const FOLLOWING_SCOPES = Object.keys(MODEL_SCOPE_FOLLOWS) as FollowingModelScope[];

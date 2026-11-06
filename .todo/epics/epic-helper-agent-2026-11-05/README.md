@@ -18,7 +18,7 @@
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR and this epic | All | In review |
-| 1 | Engine | `helper` model scope end to end; `HelperAgentService` with the task registry, the generic prompt, and the `memory-draft` task (prompt section, worked example, codec, budgets, sync tests); composition root and `CoreServices`. No routes, no UI. | D1–D4, D5's codec | Not started |
+| 1 | Engine | `helper` model scope end to end; `HelperAgentService` with the task registry, the generic prompt, and the `memory-draft` task (prompt section, worked example, codec, budgets, sync tests); composition root and `CoreServices`. No routes, no UI. | D1–D4, D5's codec | Built ([slice doc](slice-1-engine.md)) |
 | 2 | Drafting in the memory sheet | Draft request and result routes; the handler reads the turn host-side (live turn, or a saved turn through recall's `savedTurn`); the hook's correlation and untouched-field fill; the "Drafting…" placeholders; the quiet failure line; the `helperDrafts` setting | D5 | Not started |
 | 3 | Verify live | Extension Development Host pass; ADR → Accepted; memory bank; `AGENTS.md` | — | Not started |
 
@@ -87,3 +87,10 @@ This is the same flow as Project Memory and Bookmark Recall.
   - Okey asked for a general assist agent with a generic prompt. Its first job is titling and summarizing a memory on Save to memory…, and a later job is configuring project locations from a workspace scan.
   - He chose automatic drafting, then handed the implementation to the coordinator.
   - ADR drafted, defaults taken, epic cut from the Bookmark Recall tip at `b4ca7b86`.
+- **2026-11-05. Slice 1 (Engine).** See [slice-1-engine.md](slice-1-engine.md).
+  - Baseline at `a02d785d` (Node 22 in this container): 753 suites / 10,481 tests / 59 snapshots, all passing; lint 0 errors, 1,165 warnings.
+  - `helper` is a following scope (`MODEL_SCOPE_FOLLOWS.helper = 'proofread'`). Following was already keyed by that map; only comments and one header chip assumed the assistant model.
+  - `HelperAgentService` with `HELPER_TASK_POLICIES` (`memory-draft`), the generic prompt, the task's section and worked example, its codec and budgets. Built in `extension.ts`, in `CoreServices`; no routes or UI yet.
+  - Verification: typecheck clean; lint 0 errors and no new warnings; jest 757 suites / 10,520 tests / 59 snapshots, all passing; no `from 'vscode'` in `packages/core/src`.
+  - A-01–A-05 (PR #225 review): the one-line rule is shared (`PROJECT_MEMORY_NOT_ONE_LINE`), the timeout test is deterministic, and the helper's retirement is pinned; the checks are tabled in the slice doc. Jest 757 suites / 10,530 tests / 59 snapshots; lint 0 errors, 1,165 warnings.
+  - PR #228 review: F-01 (a stop during preparation was lost) and F-02 (preparation errors rejected `run`) fixed; the review's probes pass and four are ported as tests. Jest 757 suites / 10,536 tests / 59 snapshots; lint 0 errors, 1,165 warnings.
