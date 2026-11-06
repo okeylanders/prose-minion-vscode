@@ -134,13 +134,42 @@ export interface PromptBudgets {
     fileBytes: number;
     pathCharacters: number;
   }>;
-  /** Persona file edits (ADR 2026-11-05 D5, D11): the gateway's bounds. */
+  /**
+   * Workshop persona file edits (ADR 2026-11-05 D2, D10). The proposal's
+   * bounds (Slice 3) are the codec's and the session's; the gateway's
+   * (Slice 2) are `rewriteCeilingShare`, `rewriteFloorCharacters`,
+   * `fileBytes` and `rewriteFileBytes`, and it enforces `insertWords` on prose.
+   */
   readonly workshopFileEdits: Readonly<{
+    /** Frames one reply may carry: past it, dropped and counted (Q4). */
+    proposalsPerReply: number;
+    /** One frame's inside: a longer frame is dropped whole, unread past it. */
+    frameCharacters: number;
+    /** The one-line `<why>`. */
+    whyCharacters: number;
+    /** `<find>` / `<replace-with>` pairs one frame may carry. */
+    editReplaces: number;
+    /** A `<find>`'s quote. */
+    findCharacters: number;
+    /** A `<replace-with>`'s text. */
+    replaceWithCharacters: number;
+    /** An append or a prepend on prose, in words (`/\S+/gu`): the gateway's policy, taught by the prompt. */
     insertWords: number;
+    /** Every append and prepend, in characters: the codec's. */
     insertCharacters: number;
+    /** A `<rewrite>`'s new text. */
+    rewriteCharacters: number;
+    /** A landed record's `before` and `after` (D10); past it, only their hashes. */
+    revertCharacters: number;
+    /** A landed record's context on each side, which anchors a deletion (D10). */
+    landedContextCharacters: number;
+    /** Prose replaces may change at most this share of the touched paragraphs' characters (D5)... */
     rewriteCeilingShare: number;
+    /** ...once they change more than this many characters (D5). */
     rewriteFloorCharacters: number;
+    /** A file the gateway edits: `resource.read`'s source ceiling (D11). */
     fileBytes: number;
+    /** A notes rewrite's content (D5). */
     rewriteFileBytes: number;
   }>;
   readonly workshopTodos: Readonly<{
@@ -603,10 +632,18 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     pathCharacters: 4096
   },
   workshopFileEdits: {
-    // D5: each prose append or prepend adds at most 400 words (/\S+/gu) and 4,000 characters.
+    proposalsPerReply: 5,
+    frameCharacters: 24_000,
+    whyCharacters: 200,
+    editReplaces: 8,
+    findCharacters: 2_000,
+    replaceWithCharacters: 4_000,
     insertWords: 400,
     insertCharacters: 4_000,
-    // D5: prose replaces may remove at most 60% of the touched paragraphs' characters, past a 300-character floor.
+    rewriteCharacters: 16_000,
+    revertCharacters: 4_000,
+    landedContextCharacters: 80,
+    // D5: prose replaces may change at most 60% of the touched paragraphs' characters, past a 300-character floor.
     rewriteCeilingShare: 0.6,
     rewriteFloorCharacters: 300,
     // resource.read's source ceiling: a file a persona cannot read whole is never edited.

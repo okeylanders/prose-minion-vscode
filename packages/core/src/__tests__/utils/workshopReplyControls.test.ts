@@ -2,7 +2,7 @@ import {
   extractWorkshopReplyControls,
   hasWorkshopMemoryProposalText,
   sanitizeWorkshopReplyForRetention,
-  stripWorkshopMemoryProposalForStreaming,
+  stripWorkshopReplyTrailersForStreaming,
   WORKSHOP_MEMORY_ONLY_REPLY_LINE,
   WORKSHOP_MEMORY_PROPOSAL_REDACTION
 } from '@/utils/workshopReplyControls';
@@ -234,19 +234,19 @@ describe('a streaming reply never shows a memory frame (PR #200 F-02)', () => {
     ['a frame after the widget section', `${PROSE}\n\n${WIDGET}\n\n${frame}`]
   ])('at every prefix of %s', (_label, reply) => {
     for (let length = 0; length <= reply.length; length += 1) {
-      const shown = stripWorkshopMemoryProposalForStreaming(reply.slice(0, length));
+      const shown = stripWorkshopReplyTrailersForStreaming(reply.slice(0, length));
       expect(shown).not.toMatch(/SENTINEL|<prose-minion-mem|<\/prose-minion-mem/i);
       expect(reply.startsWith(shown.trimEnd()) || shown === '').toBe(true);
     }
-    expect(stripWorkshopMemoryProposalForStreaming(reply)).toBe(extractWorkshopReplyControls(reply, OPEN).rest);
+    expect(stripWorkshopReplyTrailersForStreaming(reply)).toBe(extractWorkshopReplyControls(reply, OPEN).rest);
   });
 
   it('holds back a fragment that could still open a frame, and releases one that cannot', () => {
-    expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} <`)).toBe(PROSE);
-    expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} <prose-min`)).toBe(PROSE);
-    expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} </prose-minion-memory`)).toBe(PROSE);
-    expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} <em>`)).toBe(`${PROSE} <em>`);
-    expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} <prose-minion-memory-proposalx`)).toBe(`${PROSE} <prose-minion-memory-proposalx`);
+    expect(stripWorkshopReplyTrailersForStreaming(`${PROSE} <`)).toBe(PROSE);
+    expect(stripWorkshopReplyTrailersForStreaming(`${PROSE} <prose-min`)).toBe(PROSE);
+    expect(stripWorkshopReplyTrailersForStreaming(`${PROSE} </prose-minion-memory`)).toBe(PROSE);
+    expect(stripWorkshopReplyTrailersForStreaming(`${PROSE} <em>`)).toBe(`${PROSE} <em>`);
+    expect(stripWorkshopReplyTrailersForStreaming(`${PROSE} <prose-minion-memory-proposalx`)).toBe(`${PROSE} <prose-minion-memory-proposalx`);
   });
 });
 
@@ -271,7 +271,7 @@ describe('a marker that is not exactly the grammar\'s tag hides everything after
       expect(sanitizeWorkshopReplyForRetention(reply)).toBe(PROSE);
     }
     for (let length = 0; length <= reply.length; length += 1) {
-      expect(stripWorkshopMemoryProposalForStreaming(reply.slice(0, length))).not.toMatch(/PRIVATE_MEMORY|<\/?prose-minion-mem/i);
+      expect(stripWorkshopReplyTrailersForStreaming(reply.slice(0, length))).not.toMatch(/PRIVATE_MEMORY|<\/?prose-minion-mem/i);
     }
   });
 
@@ -347,7 +347,7 @@ describe('several frames, each judged on its own (Slice 6b)', () => {
   it('never shows any of several frames while streaming, at any prefix', () => {
     const reply = `${PROSE}\n\n${memoryFrame({ title: 'SENTINEL one' })}\n${memoryFrame({ title: 'SENTINEL two', body: 'SENTINEL' })}`;
     for (let length = 0; length <= reply.length; length += 1) {
-      expect(stripWorkshopMemoryProposalForStreaming(reply.slice(0, length))).not.toMatch(/SENTINEL|<\/?prose-minion-mem/i);
+      expect(stripWorkshopReplyTrailersForStreaming(reply.slice(0, length))).not.toMatch(/SENTINEL|<\/?prose-minion-mem/i);
     }
   });
 
@@ -404,7 +404,7 @@ describe('an edit frame is stripped like any other (Slice 6c)', () => {
   it('never shows while streaming, at any prefix', () => {
     const reply = `${PROSE}\n\n${edit}`;
     for (let length = 0; length <= reply.length; length += 1) {
-      expect(stripWorkshopMemoryProposalForStreaming(reply.slice(0, length))).not.toMatch(/PRIVATE_EDIT|<\/?prose-minion-mem|<edit>|<find-in|<replace-with|<append/i);
+      expect(stripWorkshopReplyTrailersForStreaming(reply.slice(0, length))).not.toMatch(/PRIVATE_EDIT|<\/?prose-minion-mem|<edit>|<find-in|<replace-with|<append/i);
     }
   });
 });

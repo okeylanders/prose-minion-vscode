@@ -35,8 +35,9 @@ import {
 import { boundedLogText } from '@/utils/boundedLogText';
 import {
   extractWorkshopReplyControls,
-  WORKSHOP_MEMORY_ONLY_REPLY_LINE
+  workshopTrailersOnlyReplyLine
 } from '@/utils/workshopReplyControls';
+import type { WorkshopReplyFileEditContext } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
 import {
   settleWorkshopMemoryProposals,
   WORKSHOP_REPLY_MEMORY_CLOSED,
@@ -134,6 +135,13 @@ export interface WorkshopRunCompletionInput {
   memoryAutoSave?: (turn: WorkshopTurn, indexes: readonly number[]) => void;
   /** The room's automatic saves, landed and in flight (PR #201 F-04); absent, its landed receipts. */
   memoryAutoSavesInRoom?: () => number;
+  /**
+   * The reply's file edits, staged before completion (ADR 2026-11-05 D4,
+   * D11; `resolveWorkshopReplyFileEdits`), with the setting read when the
+   * reply was read. Used only for the reply it was resolved from. Absent, a
+   * frame is still stripped, and dropped and counted (`not-staged`).
+   */
+  fileEdits?: WorkshopReplyFileEditContext;
   log: (line: string) => void;
   events: WorkshopRunCompletionEvents;
 }
@@ -283,7 +291,14 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     webResearchAttached: result.webResearchAttached === true,
     autoSavesInRoom: input.memoryAutoSavesInRoom ?? (() => countWorkshopRoomAutoSaves(session.readRoomLedger()))
   });
-  for (const line of memory.logs) {
+  const fileEdits = input.fileEdits?.reply === result.content
+    ? input.fileEdits
+    : {
+      proposals: [],
+      logs: (controls.fileEdits ? [...controls.fileEdits.proposals, ...controls.fileEdits.rejections] : [])
+        .map(() => 'File edit proposal dropped (reason=not-staged)')
+    };
+  for (const line of [...memory.logs, ...fileEdits.logs]) {
     input.log(`${line} (${label})`);
   }
   const reply = controls.rest;
@@ -328,16 +343,17 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   const strippedDisplayContent = widgetRecommendation.outcome !== 'absent'
     ? stripWorkshopWidgetRecommendationControl(reply)
     : reply;
-  // A control-only reply (a widget, a memory proposal, or both) leaves no
-  // provider prose to show, so completion writes the displayed note itself,
-  // and the turn must not be attributed to a model (Astra F-02,
-  // completion-stage note; ADR 2026-11-04 D6).
-  const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || controls.memory.kind !== 'none')
+  // A control-only reply (a widget, a memory proposal, a file edit, or any
+  // of them together) leaves no provider prose to show, so completion
+  // writes the displayed note itself, and the turn must not be attributed
+  // to a model (Astra F-02, completion-stage note; ADR 2026-11-04 D6).
+  const trailers = { memory: controls.memory.kind !== 'none', fileEdits: controls.fileEdits !== undefined };
+  const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || trailers.memory || trailers.fileEdits)
     && strippedDisplayContent.trim().length === 0;
   const displayContent = !hostWritesDisplay
     ? strippedDisplayContent
     : widgetRecommendation.outcome === 'absent'
-      ? WORKSHOP_MEMORY_ONLY_REPLY_LINE
+      ? workshopTrailersOnlyReplyLine(trailers)
       : recommendationRejected
         ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
         : `${label} returned a widget setup without an accompanying note.`;
@@ -353,7 +369,8 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       ? widgetRecommendation.recommendation
       : undefined,
     hostWritesDisplay ? undefined : workshopTurnModelOf(result),
-    memory.proposals
+    memory.proposals,
+    fileEdits.proposals
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {

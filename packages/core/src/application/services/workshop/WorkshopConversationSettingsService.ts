@@ -11,6 +11,9 @@ import {
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WORKSHOP_WEB_RESEARCH_SETTING,
   coerceWorkshopProjectMemoryMode,
+  coerceWorkshopFileEditsMode,
+  WORKSHOP_FILE_EDITS_SETTING,
+  WorkshopFileEditsMode,
   WorkshopConversationBehavior,
   WorkshopPersonaId,
   WorkshopWriterProfile,
@@ -74,6 +77,8 @@ export class WorkshopConversationSettingsService {
    * change between off and on rebuilds them, as every settings change does.
    */
   private projectMemoryPrompted: boolean;
+  /** Whether the persona prompts were last built teaching file edits (ADR 2026-11-05 D9), as for memory. */
+  private fileEditsPrompted: boolean;
 
   constructor(
     private readonly session: WorkshopSessionService,
@@ -85,6 +90,7 @@ export class WorkshopConversationSettingsService {
     this.projectMemoryMode = new WorkshopProjectMemoryModeSetting(settings, outputChannel);
     this.webResearch = this.readWebResearchSetting();
     this.projectMemoryPrompted = this.projectMemoryOn();
+    this.fileEditsPrompted = this.fileEditsOpen();
   }
 
   /**
@@ -259,7 +265,9 @@ export class WorkshopConversationSettingsService {
     const profileChanged = !workshopWriterProfilesEqual(previousProfile, nextProfile);
     const projectMemoryOn = this.projectMemoryOn();
     const projectMemoryChanged = projectMemoryOn !== this.projectMemoryPrompted;
-    if (!behaviorChanged && !profileChanged && !projectMemoryChanged) {
+    const fileEditsOn = this.fileEditsOpen();
+    const fileEditsChanged = fileEditsOn !== this.fileEditsPrompted;
+    if (!behaviorChanged && !profileChanged && !projectMemoryChanged && !fileEditsChanged) {
       return {
         changed: false,
         deferred: false,
@@ -274,6 +282,7 @@ export class WorkshopConversationSettingsService {
       || previousBehavior.expressionLevel !== nextBehavior.expressionLevel
       || previousBehavior.relationalDepth !== nextBehavior.relationalDepth
       || projectMemoryChanged
+      || fileEditsChanged
     ) {
       await this.assistantToolService.replaceWorkshopConversationSettings(
         this.replacementTargets(),
@@ -289,6 +298,12 @@ export class WorkshopConversationSettingsService {
       this.projectMemoryPrompted = projectMemoryOn;
       this.outputChannel.appendLine(
         `[WorkshopConversationSettingsService] Project memory ${projectMemoryOn ? 'on' : 'off'}; persona prompts rebuilt`
+      );
+    }
+    if (fileEditsChanged) {
+      this.fileEditsPrompted = fileEditsOn;
+      this.outputChannel.appendLine(
+        `[WorkshopConversationSettingsService] File edits ${fileEditsOn ? 'on' : 'off'}; persona prompts rebuilt`
       );
     }
     return { changed: true, deferred: false, behaviorChanged, profileChanged };
@@ -321,6 +336,18 @@ export class WorkshopConversationSettingsService {
   /** The global project-memory mode, read live (D8): the Memory tab's draft starts from it. */
   getProjectMemoryMode(): WorkshopProjectMemoryMode {
     return this.projectMemoryMode.get();
+  }
+
+  /** `proseMinion.workshop.fileEdits`, read live (ADR 2026-11-05 D9): unset is `ask`, anything unknown `off`. */
+  getFileEditsMode(): WorkshopFileEditsMode {
+    return coerceWorkshopFileEditsMode(
+      this.settings.get<unknown>(WORKSHOP_FILE_EDITS_SETTING.section, WORKSHOP_FILE_EDITS_SETTING.key)
+    );
+  }
+
+  /** Whether personas propose file edits now: the prompt teaches the trailer, and a reply's frames are read. */
+  fileEditsOpen(): boolean {
+    return this.getFileEditsMode() === 'ask';
   }
 
   private projectMemoryOn(): boolean {

@@ -682,6 +682,20 @@
           "default": "off",
           "markdownDescription": "Workshop Project Memory. One switch for every project; each project keeps its own notes in `prose-minion/memory/`. Personas see the notes only while this is on."
         },
+        "proseMinion.workshop.fileEdits": {
+          "type": "string",
+          "scope": "application",
+          "enum": [
+            "off",
+            "ask"
+          ],
+          "enumDescriptions": [
+            "Workshop personas never propose edits to your project files.",
+            "Personas may propose edits to notes and chapters; each waits as a card until you apply it."
+          ],
+          "default": "ask",
+          "markdownDescription": "Workshop persona file edits. A persona can propose an edit to a project file (a note, a chapter, or the excerpt's document). Nothing in a file changes until you press Apply on its card."
+        },
         "proseMinion.workshop.webResearch": {
           "type": "object",
           "default": {

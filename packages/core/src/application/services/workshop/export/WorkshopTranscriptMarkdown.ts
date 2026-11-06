@@ -14,7 +14,8 @@ import {
   WorkshopTranscript,
   WorkshopTranscriptEntry,
   WorkshopTranscriptLine,
-  countWorkshopTranscriptMessages
+  countWorkshopTranscriptMessages,
+  workshopTranscriptFileEditLabel
 } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { describeWorkshopTranscript } from './WorkshopTranscriptDescription';
 import {
@@ -85,6 +86,15 @@ function renderEntry(entry: WorkshopTranscriptLine, options: WorkshopTranscriptR
           '',
           ...entry.sources.map((source, index) =>
             `${index + 1}. [${escapeInline(source.label)}](<${linkDestination(source.url)}>)`
+          )
+        ].join('\n'));
+      }
+      if (entry.fileEdits?.length) {
+        lines.push([
+          '**Suggested file edits**',
+          '',
+          ...entry.fileEdits.map((edit) =>
+            `- ${escapeInline(workshopTranscriptFileEditLabel(edit))} · ${edit.state}: ${escapeInline(edit.why)}`
           )
         ].join('\n'));
       }

@@ -2647,6 +2647,7 @@ describe('architectural boundaries', () => {
       'bookmarks.ts',
       'context.ts',
       'creativeVariations.ts',
+      'fileEdits.ts',
       'gesturePlayground.ts',
       'index.ts',
       'lexicalGravity.ts',

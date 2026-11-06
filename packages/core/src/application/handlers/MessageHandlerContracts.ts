@@ -202,6 +202,10 @@ export interface CoreServices {
    * constructs it.
    */
   projectFileEditGateway: ProjectFileEditGateway;
-  /** Persona file edits (D4): a frame's target staged to an identity, class and baseline when a reply is read. */
+  /**
+   * Persona file edits' staging (ADR 2026-11-05 D4): a frame's target staged
+   * to an identity, class and baseline when a reply is read. Built in
+   * `extension.ts` (`FileEditStagingService`).
+   */
   fileEditStaging: FileEditStaging;
 }

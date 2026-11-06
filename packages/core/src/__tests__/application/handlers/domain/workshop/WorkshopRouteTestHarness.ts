@@ -1,6 +1,8 @@
+import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import { WorkshopRoomHandler } from '@handlers/domain/workshop/WorkshopRoomHandler';
 import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
 import { unusedBookmarkBrowser } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
+import { fakeFileEditStaging } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import { libraryHost } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import type {
@@ -139,6 +141,8 @@ export interface WorkshopRouteTestHarnessOptions {
   bookmarkBrowser?: (session: WorkshopSessionService) => WorkshopBookmarkBrowserPort;
   /** The session's clock (turn and bookmark times); 1 by default. */
   sessionNow?: () => number;
+  /** Persona file edits' staging port (ADR 2026-11-05 D4); absent by default, as before Slice 4 binds it. */
+  fileEditStaging?: FileEditStaging;
 }
 
 export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarnessOptions = {}): WorkshopRouteTestHarness => {
@@ -366,7 +370,8 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     log,
     memory.library,
     emptyPinnedContextServices(),
-    options.bookmarkBrowser?.(session) ?? unusedBookmarkBrowser()
+    options.bookmarkBrowser?.(session) ?? unusedBookmarkBrowser(),
+    options.fileEditStaging ?? fakeFileEditStaging()
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);
