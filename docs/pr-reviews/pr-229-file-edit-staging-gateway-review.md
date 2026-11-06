@@ -1,6 +1,6 @@
 # PR #229 review: File-edit staging and gateway
 
-**Latest disposition: all F-01–F-03 and N-01 are closed after independent final re-review of `0fad8ddc`. No remaining code-review blocker in this slice. Exact-head CI remains a separate gate and is reported on the PR.**
+**Latest disposition: all F-01–F-03 and N-01 remain closed after independent final re-review of `0fad8ddc` and the actual #229/#230 integration at `6749bf7f`. The combined tree passes typecheck/lint and 24 focused suites / 380 tests. No remaining code-review blocker; exact-head CI is a separate gate reported on the PR.**
 
 **Initial verdict at `778a09a6`: changes requested, with three blocking findings plus N-01.**
 
@@ -283,3 +283,20 @@ N-01's remaining composition path is corrected, not merely hidden by a test fake
 **Verification:** 14 focused suites / 186 tests passed, including the two independent no-leak witnesses, the real-composition regression tests, provider assembly, resolver behavior, staging/gateway checks, strict/prose Markdown modes, reconciliation and document adapters. The temporary independent test file was removed after the run; only review documentation is changed by this review. A final local aggregate typecheck/lint/Jest run and current-head CI are running separately and their outcomes will be recorded on the PR.
 
 The staging identity output did not change in either #229 fix. The colon/long-path persistence correction belongs to #230's shared pre-adoption/persisted identity guard and is independently reviewed there. This approval does not certify the later Slice 4 claim/routes or a live Extension Development Host pass. Nothing was merged.
+
+## Combined-stack re-review at `6749bf7f` (2026-11-06)
+
+**Reviewed merge:** `6749bf7f0134dce68f5e592f7e2ab17295daaa5f`, combining #229 with the merged #230 epic at `10393d85`. **Verdict: approved; all existing findings remain closed and no new integration blocker found.**
+
+- Inspected the merge resolutions: staging is required end to end and is bound to the real service at the composition root; the unavailable-staging branch is removed consistently; budget keys are the union of both slices with shared values preserved; README status and test-harness defaults match the wiring.
+- The gateway, strict/prose Markdown policies, authoritative candidate read and sanitized excerpt composition are unchanged by the integration. The #230 shared identity guard and persistable-refusal correction remain intact.
+- Ran the committed real staging → completed reply → full checkpoint save/reopen integration coverage for notes, chapters, excerpt aliases and refused targets.
+- Independently reran **12 additional identity/alias cases on this actual combined tree with normal ts-jest diagnostics**, using real #229 staging, excerpt adapter, intake and resolver rather than a staging stub: colon filename, deep display path, ordinary control, oversized display/URI and multiline metadata refusal, model-path rejection controls, prose rewrite refused through a resource alias, and duplicate excerpt/resource identity collapsed to one persisted card. All passed. This supersedes the earlier runtime-only source-overlay limitation for those cases.
+
+**Local verification on the combined tree:**
+- `npm run typecheck`: passed for core, webview and extension.
+- `npm run lint`: 0 errors / 1,165 warnings.
+- Focused integration and regression selection: **24 suites / 380 tests passed**, including the 12 additional independent cases. The temporary independent file was removed after the run.
+- Full aggregate/build verification for this new merge and the report-only successor is checked through exact-head GitHub CI and reported on the PR. The earlier local 763-suite / 10,589-test full pass was at `0fad8ddc`, not claimed as a full merged-tree run.
+
+No runtime code was changed or merged by this review. Slice 4's claim/UI/Apply routes and the live host pass remain separate future gates.
