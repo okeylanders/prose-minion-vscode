@@ -3,12 +3,14 @@
 **Status:** Proposed (2026-11-05).
 - The writer answered Q1–Q6 the same day ([answers](#the-writers-answers-2026-11-05)). Q1 changed D1: personas see the open room's bookmarks too, on request.
 - The PR #214 review (F-01–F-07) tightened D1, D2, D5, D7, D8 and D10 ([review](../pr-reviews/pr-214-workshop-bookmark-recall-spec-review.md)).
+- The live pass (2026-11-06) raised a persona's capability calls per turn from 5 to 15, at the writer's request (D11).
 **Date:** 2026-11-05
 **Epic:** [Workshop Bookmark Recall](../../.todo/epics/epic-workshop-bookmark-recall-2026-11-05/README.md)
 **Feature:** [Bookmarks personas can read, and a Bookmarks screen](../../.todo/features/feature-workshop-bookmark-recall/README.md)
 **Supersedes in part:** [ADR 2026-11-03: Workshop Wayfinding](2026-11-03-workshop-wayfinding.md):
 - **D5, "Presentation only":** for saved sessions.
 - **D10, the recall bullet.**
+- **The shared `callsPerTurn: 5`** that [ADR 2026-07-29](2026-07-29-workshop-measurement-capability.md), [ADR 2026-10-05](2026-10-05-workshop-session-transcript-recall.md) and [ADR 2026-11-04](2026-11-04-workshop-project-memory.md) name: it is 15 (D11).
 
 Everything else in D5 and D10 stands.
 **Extends:**
@@ -239,6 +241,19 @@ This is Okey's use case: "can you see what I bookmarked in this session and prop
   - "Remember this" from a saved bookmark (D9) needs no such change, because its one source is that saved session.
 - **What doesn't change.** A proposal with no cited turns behaves exactly as today. The prompt teaches the field, and Project Memory's proposal sync test holds the prompt to it.
 
+### D11. A persona may make 15 capability calls per user turn (2026-11-06)
+
+The writer asked for it during the live pass ("more like 15").
+
+- **One constant.** `PROMPT_BUDGETS.workshopCapability.callsPerTurn` goes from 5 to 15. It sets `AGENT_RUN_POLICIES.workshopHost.maxCapabilityRounds`, the ceiling for the host and every guest, and the number the persona's instruction and per-turn reminder state. Nothing else names it.
+- **What doesn't change:**
+  - **The per-operation limits stay.** They bound context, not calls: two `transcript.read`s within `readCharactersPerTurn`, two `memory.read`s, one `dictionary.full-entry`, one `analysis.run`.
+  - **The other policies keep their rounds.** A tool chat (`workshopTool`), the sidebar assistant and context generation keep 2.
+  - **The forced final reply still ends a turn at the ceiling.**
+- **The cost.** Calls are serial, and each is another model round-trip carrying the conversation so far. A persona that uses all fifteen makes up to three times as many requests as before, and its evidence stays in context.
+- **The window.** Only recall's reads are clamped to the room the window has left. A `resource.read` is not: fifteen of them can carry about 960 KiB. When the window is known, the preflight then refuses the next request, and the turn fails with the context-window message instead of answering. No guard is added for it here.
+- **Where it's pinned.** `promptBudgets.test.ts` holds the value. The engine's ceiling tests count calls from the constant, so a later change moves only the constant and its pin.
+
 ## The writer's answers (2026-11-05)
 
 1. **The open room's bookmarks: visible, on request.** That changes D1. Okey's use case is "can you see what I bookmarked in this session and propose any new memories?" The open room is reached through `<scope>` (D2) and a read-only live port, filtered by what the asking persona could see. D10 follows from it.
@@ -257,6 +272,7 @@ This is Okey's use case: "can you see what I bookmarked in this session and prop
 - **The recall family grows to five operations.** Every list in D4 widens once, and the sync tests hold the prompt to the code.
 - **Forward-only again** (D6), for rooms that hold a bookmarks card.
 - **The shared browser gains a `readOnly` opt-in.** Callers that don't use it keep their exact markup.
+- **A persona's turn may run longer** (D11): up to 15 capability calls, each another model request.
 
 ## Alternatives considered
 
