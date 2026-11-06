@@ -359,7 +359,7 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     const { useCase, gesture, documents, pass, letPricingGo } = heldPricing();
     const planned = useCase.plan(gesture);
     documents.close();
-    documents.open = true;
+    documents.isOpen = true;
     letPricingGo();
 
     expect(await planned).toEqual({ kind: 'changed' });
@@ -372,7 +372,7 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     letPricingGo();
     expect((await planned).kind).toBe('ready');
     documents.close();
-    documents.open = true;
+    documents.isOpen = true;
 
     expect(await useCase.run(gesture, { model: MODEL })).toEqual({ kind: 'changed' });
     expect(pass.flag).not.toHaveBeenCalled();
@@ -383,7 +383,7 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     const context = setup(CHAPTER, [read(flag('a chill ran down her spine', { before: 'pocket, ' }))]);
     (context.pass.flag as jest.Mock).mockImplementationOnce(async (request: CraftFlagsRunRequest) => {
       context.documents.close();
-      context.documents.open = true;
+      context.documents.isOpen = true;
       return request.stillCurrent?.() === false ? { kind: 'ended' } : { kind: 'completed', calls: [] };
     });
     expect(await context.runOnce()).toEqual({ kind: 'changed' });
@@ -468,7 +468,7 @@ describe('CraftFlagsUseCase: reasoning off on a model that always reasons (PR #1
     const context = setup(CHAPTER, []);
     (context.pass.refusesReasoning as jest.Mock).mockImplementationOnce(async () => {
       context.documents.close();
-      context.documents.open = true;
+      context.documents.isOpen = true;
       return false;
     });
 

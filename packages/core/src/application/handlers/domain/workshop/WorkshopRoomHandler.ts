@@ -255,8 +255,8 @@ export class WorkshopRoomHandler {
     projectMemory: WorkshopProjectMemoryPort,
     pinnedContext: WorkshopPinnedContextServices,
     bookmarkBrowser: WorkshopBookmarkBrowserPort,
-    /** Persona file edits' staging (ADR 2026-11-05 D4); absent until the gateway's is bound (Slice 4). */
-    private readonly fileEditStaging?: FileEditStaging
+    /** Persona file edits' staging (ADR 2026-11-05 D4): `FileEditStagingService`, built in `extension.ts`. */
+    private readonly fileEditStaging: FileEditStaging
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and

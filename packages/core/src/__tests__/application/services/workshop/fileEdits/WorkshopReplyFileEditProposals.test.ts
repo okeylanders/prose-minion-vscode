@@ -109,12 +109,6 @@ describe('resolveWorkshopReplyFileEdits', () => {
     ] });
   });
 
-  it('with no port bound, nothing is staged and no card is made', async () => {
-    const context = await resolveWorkshopReplyFileEdits({ reply: `Yes.\n\n${sentinelFileEditFrame()}`, open: true });
-    expect(context?.proposals).toEqual([]);
-    expect(context?.logs).toEqual(['File edit proposal dropped (reason=staging-unavailable)']);
-  });
-
   it('a reply with no file-edit tag stages nothing and returns nothing', async () => {
     const staging = fakeFileEditStaging();
     await expect(resolveWorkshopReplyFileEdits({ reply: 'Just prose.', open: true, staging })).resolves.toBeUndefined();

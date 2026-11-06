@@ -2,6 +2,7 @@ import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import { WorkshopRoomHandler } from '@handlers/domain/workshop/WorkshopRoomHandler';
 import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
 import { unusedBookmarkBrowser } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
+import { fakeFileEditStaging } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import { libraryHost } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import type {
@@ -370,7 +371,7 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     memory.library,
     emptyPinnedContextServices(),
     options.bookmarkBrowser?.(session) ?? unusedBookmarkBrowser(),
-    options.fileEditStaging
+    options.fileEditStaging ?? fakeFileEditStaging()
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);

@@ -65,16 +65,25 @@ export interface DraftEditPassPolicy {
   readonly modelScope: ModelScope;
   /** Whether a fix may add, remove or move a line break (Proofread: never, D6). */
   readonly allowsNewlineChanges: boolean;
-  /** Whether fixes must leave the document's Markdown structure as it was (Proofread: always, PR #172 F-03). */
-  readonly preservesMarkdownStructure: boolean;
+  /** How fixes may change the document's Markdown structure (Proofread: never, `strict`, PR #172 F-03). */
+  readonly structure: DraftEditStructureMode;
   /** The reasoning level a run sends when the writer names none (the writer's choice, 2026-10-27). */
   readonly reasoning: ReasoningLevel;
 }
 
+/**
+ * What an apply may do to a Markdown document's structure (ADR 2026-11-05
+ * D5): `strict` keeps every block and inline construct as it was;
+ * `prose-paragraphs` lets plain paragraphs split, merge, appear or go, and
+ * keeps everything else as `strict` does; `free` compares nothing (notes).
+ * Protected regions hold in every mode.
+ */
+export type DraftEditStructureMode = 'strict' | 'prose-paragraphs' | 'free';
+
 export const DRAFT_EDIT_PASS_POLICIES: Readonly<Record<DraftEditPassKind, DraftEditPassPolicy>> = {
-  proofread: { modelScope: 'proofread', allowsNewlineChanges: false, preservesMarkdownStructure: true, reasoning: 'light' },
+  proofread: { modelScope: 'proofread', allowsNewlineChanges: false, structure: 'strict', reasoning: 'light' },
   // Craft Flags never writes: nothing reads its fix rules, which take the strictest values should that change.
-  craft: { modelScope: 'craft', allowsNewlineChanges: false, preservesMarkdownStructure: true, reasoning: 'standard' }
+  craft: { modelScope: 'craft', allowsNewlineChanges: false, structure: 'strict', reasoning: 'standard' }
 };
 
 /** A half-open span of UTF-16 code units: `start` included, `end` excluded. */

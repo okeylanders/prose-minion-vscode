@@ -139,7 +139,7 @@ export class CraftFlagsUseCase {
 
   constructor(
     private readonly craftPass: CraftFlagsPassPort,
-    private readonly documents: DocumentEditor,
+    private readonly documents: Pick<DocumentEditor, 'watch'>,
     private readonly annotations: IssueAnnotator,
     private readonly log: LogSink
   ) {}

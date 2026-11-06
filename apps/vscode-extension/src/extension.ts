@@ -74,6 +74,9 @@ import {
   ProofreadService,
   DraftEditUseCase,
   DraftEditApplier,
+  FileEditStagingService,
+  ProjectFileEditGateway,
+  workshopExcerptFileEditDocument,
   CraftFlagsService,
   CraftFlagsUseCase,
   liveCatalogPrices,
@@ -96,6 +99,7 @@ import { VsCodeWorkspace } from './platform/vscode/VsCodeWorkspace';
 import { VsCodeShellService } from './platform/vscode/VsCodeShellService';
 import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
 import { VsCodeDocumentEditor } from './platform/vscode/VsCodeDocumentEditor';
+import { VsCodeFileEditAuthorityEpoch } from './platform/vscode/VsCodeFileEditAuthorityEpoch';
 import { CRAFT_FLAGS, VsCodeIssueAnnotator } from './platform/vscode/VsCodeIssueAnnotator';
 import { OpenFileInLightboxHost, openFileInLightbox } from './application/commands/openFileInLightbox';
 import { shutDownExtension, type ExtensionShutdownParts } from './application/extensionShutdown';
@@ -549,13 +553,41 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     rejectedModelResponseRecoveryPresenter,
     outputChannel
   );
+  const draftEditApplier = new DraftEditApplier(platform.documents);
   const draftEdit = new DraftEditUseCase(
     proofreadService,
     platform.documents,
     platform.annotations,
-    new DraftEditApplier(platform.documents),
+    draftEditApplier,
     outputChannel
   );
+  // Persona file edits (ADR 2026-11-05 D4, D7): staging and the one gateway, over the same applier,
+  // the resolver's every-candidate read and the room's excerpt.
+  const fileEditAuthorityEpoch = new VsCodeFileEditAuthorityEpoch();
+  context.subscriptions.push(fileEditAuthorityEpoch);
+  // The excerpt's authorization on the write path reads a counts-only catalog: no pattern or path in the log (PR #229 N-01).
+  const fileEditExcerpt = workshopExcerptFileEditDocument(
+    workshopSessionService,
+    new WorkshopContextIntakeService(contextResourceResolver.countsOnly(), platform.fileSystem, platform.workspace)
+  );
+  const fileEditStaging = new FileEditStagingService({
+    candidates: contextResourceResolver,
+    excerpt: fileEditExcerpt,
+    workspace: platform.workspace,
+    fileSystem: platform.fileSystem,
+    documents: platform.documents,
+    log: outputChannel
+  });
+  const projectFileEditGateway = new ProjectFileEditGateway({
+    candidates: contextResourceResolver,
+    excerpt: fileEditExcerpt,
+    workspace: platform.workspace,
+    fileSystem: platform.fileSystem,
+    documents: platform.documents,
+    applier: draftEditApplier,
+    epoch: fileEditAuthorityEpoch,
+    log: outputChannel
+  });
   // Craft Flags (Slice 3c): one call per category on the manager-owned `craft` scope, priced from the live
   // catalog before a run; its run takes no applier, so it only ever flags.
   const craftFlags = new CraftFlagsUseCase(
@@ -590,6 +622,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     categorySearchService,
     accountBalanceService,
     workshopSessionService,
+    projectFileEditGateway,
+    fileEditStaging,
     workshopRoomDeliveryService,
     workshopPersonaCapabilityFactory,
     workshopToolSidePass,

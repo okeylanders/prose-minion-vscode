@@ -4,7 +4,8 @@
  *
  * The room reads the setting when the reply is read and, while it is `ask`,
  * stages each frame that decodes through the `FileEditStaging` port (the
- * gateway's target module implements it; Slice 4 binds it). Staging is async
+ * gateway's target module, `FileEditStagingService`, built in
+ * `extension.ts`). Staging is async
  * and bounded: at most `proposalsPerReply` frames, staged together. A frame
  * staged becomes a `pending` card with the identity, class and baseline
  * staging took; a frame staging refused becomes a `refused` card with the
@@ -15,8 +16,7 @@
  * F-01). A rewrite staged to prose is refused here, since
  * staging decided the class (`rewrite-on-prose`, D5), keeping its identity.
  * Two frames staged to one identity (one `documentUri`) keep only the first
- * (`duplicate-identity`): one card per file per reply. With the setting `off`, nothing is staged. With no
- * port bound, nothing is staged and no card is made (`staging-unavailable`).
+ * (`duplicate-identity`): one card per file per reply. With the setting `off`, nothing is staged.
  *
  * Completion (`WorkshopRunCompletion`) takes the context this returns and
  * uses its cards only for the reply it was resolved from. A reply holding no
@@ -52,8 +52,8 @@ export interface WorkshopReplyFileEditInput {
   readonly reply: string;
   /** The setting, read when the reply is read (D11). */
   readonly open: boolean;
-  /** The staging port; absent until Slice 4 binds it. */
-  readonly staging?: FileEditStaging;
+  /** The staging port (D4). */
+  readonly staging: FileEditStaging;
   readonly signal?: AbortSignal;
 }
 
@@ -77,10 +77,6 @@ export async function resolveWorkshopReplyFileEdits(
     return { reply: input.reply, proposals: [], logs };
   }
   const staging = input.staging;
-  if (!staging) {
-    logs.push(...control.proposals.map(() => 'File edit proposal dropped (reason=staging-unavailable)'));
-    return { reply: input.reply, proposals: [], logs };
-  }
   const results = await Promise.all(control.proposals.map((draft) => stageOne(staging, draft)));
   const proposals: WorkshopFileEditProposal[] = [];
   const identities = new Set<string>();

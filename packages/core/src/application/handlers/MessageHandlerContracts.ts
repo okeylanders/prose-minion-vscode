@@ -1,3 +1,4 @@
+import type { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
 import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import type {
   AnalysisResultMessage,
@@ -190,15 +191,21 @@ export interface CoreServices {
    */
   workshopPinnedContext: WorkshopPinnedContextServices;
   /**
-   * Persona file edits' staging (ADR 2026-11-05 D4): the gateway's target
-   * module, bound by Slice 4. Absent, a reply's frames are stripped and
-   * dropped, and no card is made.
-   */
-  fileEditStaging?: FileEditStaging;
-  /**
    * Session recall (ADR 2026-10-05; ADR 2026-11-05 D8): the one service,
    * whose writer-facing reads serve the Bookmarks screen. Personas reach it
    * only through the capability factory; no handler constructs it.
    */
   workshopTranscriptRecallService: WorkshopTranscriptRecallService;
+  /**
+   * Persona file edits (ADR 2026-11-05 D7): the one gateway from a staged
+   * proposal to a project file, through Draft Edit's applier. No handler
+   * constructs it.
+   */
+  projectFileEditGateway: ProjectFileEditGateway;
+  /**
+   * Persona file edits' staging (ADR 2026-11-05 D4): a frame's target staged
+   * to an identity, class and baseline when a reply is read. Built in
+   * `extension.ts` (`FileEditStagingService`).
+   */
+  fileEditStaging: FileEditStaging;
 }

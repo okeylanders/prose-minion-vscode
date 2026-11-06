@@ -76,15 +76,6 @@ describe('Workshop routes — file-edit proposals on a reply', () => {
     expect(turn.fileEditProposals).toBeUndefined();
   });
 
-  it('with no staging port bound, the frame is stripped and no card is made', async () => {
-    harness = createWorkshopRouteTestHarness();
-    await harness.pin();
-    sent = 0;
-    const turn = await reply(`She is ten now.\n\n${fileEditFrame()}`);
-    expect(turn.content).toBe('She is ten now.');
-    expect(turn.fileEditProposals).toBeUndefined();
-  });
-
   it('an unknown setting value fails closed: nothing is staged', async () => {
     setFileEdits('auto');
     await reply(`She is ten now.\n\n${fileEditFrame()}`);

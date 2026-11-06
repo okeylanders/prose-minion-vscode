@@ -26,9 +26,9 @@
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR and this epic | All | Done (PR #226, `b14c46b`) |
-| 1 | Shared planner | `utils/textEdits/`: the operations and exactly-once anchoring, pure. Memory edits move onto it with no behavior change; their tests run unchanged. | D3 | Done (#227) ([slice doc](slice-1-shared-planner.md)) |
-| 2 | Staging and the gateway | The resolver's every-candidate read; `FileEditStaging` implemented (identity, ambiguity refusal, class by identity, baseline); `DocumentEditor.open` (port and VS Code adapter); the applier's `structure` mode (`strict` / `prose-paragraphs` / `free`) and `beforeAttempt` immediately before every `applyEdits` (authority predicate and text checks); the `FileEditAuthorityEpoch` port; `ProjectFileEditGateway` (re-authorize, recompute class, plan, freshness, ceiling, the last-boundary predicate, apply, report by operation, show the document); boundary pins. Host-only, no persona, no routes. | D4–D7, D13 | In progress |
-| 3 | The proposal | The `<prose-minion-file-edit>` codec and D2's bounds; the persona prompt section and worked example, with a sync test; reading frames out of a reply and staging each through the `FileEditStaging` port (a fake in tests); `fileEditProposals` (D10's shape) on the turn, with the session codec, checkpoint normalization and transcript projection; the `fileEdits` setting | D2, D10, D11 | Built ([slice doc](slice-3-proposal.md)) |
+| 1 | Shared planner | `utils/textEdits/`: the operations and exactly-once anchoring, pure. Memory edits move onto it with no behavior change; their tests run unchanged. | D3 | Done (PR #227, `36be1aa7`) ([slice doc](slice-1-shared-planner.md)) |
+| 2 | Staging and the gateway | The resolver's every-candidate read; `FileEditStaging` implemented (identity, ambiguity refusal, class by identity, baseline); `DocumentEditor.open` (port and VS Code adapter); the applier's `structure` mode (`strict` / `prose-paragraphs` / `free`) and `beforeAttempt` immediately before every `applyEdits` (authority predicate and text checks); the `FileEditAuthorityEpoch` port; `ProjectFileEditGateway` (re-authorize, recompute class, plan, freshness, ceiling, the last-boundary predicate, apply, report by operation, show the document); boundary pins. Host-only, no persona, no routes. | D4–D7, D13 | Done (PR #229) ([slice doc](slice-2-gateway.md)) |
+| 3 | The proposal | The `<prose-minion-file-edit>` codec and D2's bounds; the persona prompt section and worked example, with a sync test; reading frames out of a reply and staging each through the `FileEditStaging` port (a fake in tests); `fileEditProposals` (D10's shape) on the turn, with the session codec, checkpoint normalization and transcript projection; the `fileEdits` setting | D2, D10, D11 | Done (PR #230, `10393d85`) ([slice doc](slice-3-proposal.md)) |
 | 4 | Cards and Apply | The handler's claim keyed by room generation, and outcomes (D8: join, replay, `checkpointFileEdit` acknowledged durable in every recoverable checkpoint before dispatch, `partial`, `unknown`); Apply, Review in editor…, Decline and Preview routes with request ids; the real staging joined; thread cards with diffs; `landed` records; refusals in the writer's words | D8, D9, D10 | Not started |
 | 5 | Verify live | Extension Development Host pass on notes and a chapter; ADR → Accepted; memory bank; `AGENTS.md`; Apply to Draft's note settled | — | Not started |
 
@@ -133,6 +133,21 @@ This is the same flow as Project Memory and Bookmark Recall.
   - Baseline on `0ed3ba75`: typecheck clean; lint 0 errors, 1,165 warnings; jest 753 suites, 10,481 tests, 59 snapshots.
   - `utils/textEdits/` built; memory edits plan through it. No memory-edit test changed.
   - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 754 suites, 10,499 tests, 59 snapshots. See [the slice doc](slice-1-shared-planner.md).
+- **2026-11-05. Slice 2 (staging and the gateway).**
+  - First built to the original ADR, then reworked to the revised contracts (PR #226 F-02, F-03, F-05, F-06).
+  - Built: the resolver's every-candidate read; `FileEditStagingService`; the applier's `structure` mode and `beforeAttempt`; the `FileEditAuthorityEpoch` port; `ProjectFileEditGateway` (D7); `DocumentEditor.open` / `peek` / `reveal`; budgets; boundary pins.
+  - One Draft Edit read-back fix: a pure insertion now reads as applied.
+  - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 761 suites, 10,560 tests, 59 snapshots. See [the slice doc](slice-2-gateway.md).
+- **2026-11-05. Slice 2 review fixes (PR #229).**
+  - F-01: the candidate read fails closed.
+  - F-02: plain paragraphs appear and go at structural boundaries.
+  - F-03: a refused retry keeps earlier `unknown` and landed outcomes.
+  - N-01: the write path's resolver logs counts only.
+  - Astra's reproductions are ported as regression tests. After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 762 suites, 10,585 tests, 59 snapshots.
+- **2026-11-05. Slice 2 re-review (PR #229).**
+  - F-01 to F-03 closed.
+  - N-01's excerpt route is fixed: the file-edit excerpt authorization reads a counts-only catalog (`resolver.countsOnly()`), tested end to end.
+  - After: typecheck clean; lint 0 errors, 1,165 warnings; jest 763 suites, 10,589 tests, 59 snapshots.
 - **2026-11-05. Slice 3 (the proposal).**
   - Baseline on `f4dcc641`: typecheck clean; lint 0 errors, 1,165 warnings; jest 754 suites, 10,499 tests, 59 snapshots.
   - Built: the `<prose-minion-file-edit>` codec, budgets, the prompt with its worked example and sync test, one-pass trailer reading beside memory, `fileEditProposals` with its session codec, the transcript projection and the `fileEdits` setting. No gateway, UI or apply.
@@ -145,3 +160,8 @@ This is the same flow as Project Memory and Bookmark Recall.
     - `documentUri` kept out of the webview;
     - log sentinels.
   - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 762 suites, 10,670 tests, 59 snapshots.
+- **2026-11-06. Slice 2 synced with Slice 3 (the epic at `10393d85`).**
+  - `CoreServices.fileEditStaging` is required and bound to `FileEditStagingService`. Slice 3's `staging-unavailable` branch was unreachable, so it and its two tests are gone; test harnesses default to `fakeFileEditStaging()`.
+  - `PROMPT_BUDGETS.workshopFileEdits` is the union of both slices' keys, with one `insertWords` and one `insertCharacters`.
+  - New `fileEditStagingSession.integration.test.ts` (the first part of the combined-stack gate): real staging, then a completed reply, then a pending card, a full save and a reopen. It covers a note, a chapter, an excerpt alias (by key and as `<excerpt/>`) and a staging refusal.
+  - After: typecheck clean; lint 0 errors, 1,165 warnings; jest 773 suites, 10,774 tests, 59 snapshots.
