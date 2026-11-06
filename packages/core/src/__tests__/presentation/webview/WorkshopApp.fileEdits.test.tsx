@@ -171,6 +171,84 @@ describe('WorkshopApp file-edit cards', () => {
     expect(status().textContent).toBe(workshopFileEditCardWords('applied'));
   });
 
+  describe('an open rewrite disclosure across a room change (PR #234 F-01)', () => {
+    const NOTE = 'notes/cast.md';
+    const rewrite = () => proposal({
+      target: { kind: 'file', relativePath: NOTE },
+      class: 'notes',
+      operations: [{ op: 'rewrite', text: 'Cast: Alice, the White Rabbit.' }],
+      why: 'Add the Rabbit to the cast list.'
+    });
+    const previewRequests = () => vscode.postMessage.mock.calls
+      .map(([message]: [{ type: MessageType; payload: Record<string, unknown> }]) => message)
+      .filter((message) => message.type === MessageType.WORKSHOP_FILE_EDIT_PREVIEW);
+    const card = () => screen.getByRole('group', { name: `Suggested edit to ${NOTE}` });
+    const openDisclosure = () => {
+      const details = card().querySelector('details') as HTMLDetailsElement;
+      act(() => {
+        details.open = true;
+        details.dispatchEvent(new Event('toggle'));
+      });
+      return details;
+    };
+    const previewAnswer = (requestId: unknown, roomRevision: number, before: string) => deliver({
+      type: MessageType.WORKSHOP_FILE_EDIT_PREVIEW_RESULT,
+      source: 'extension.workshop',
+      payload: { requestId, roomRevision, turnId: 'turn-2', index: 0, preview: { kind: 'rewrite', before, after: 'Cast: Alice, the White Rabbit.' } },
+      timestamp: 0
+    });
+
+    it('a preview already read for the old room is asked again for the new one', () => {
+      render(<WorkshopApp />);
+      deliver(session([reply(rewrite())]));
+      const details = openDisclosure();
+      const [first] = previewRequests();
+      expect(first.payload.roomRevision).toBe(5);
+      previewAnswer(first.payload.requestId, 5, 'ROOM-5 cast list.');
+      expect(card().textContent).toContain('ROOM-5 cast list.');
+
+      deliver(session([reply(rewrite())], { roomRevision: 6 }));
+      // The same disclosure stays mounted and open, and asks for room 6.
+      expect(card().querySelector('details')).toBe(details);
+      expect(details.open).toBe(true);
+      const requests = previewRequests();
+      expect(requests).toHaveLength(2);
+      expect(requests[1].payload.roomRevision).toBe(6);
+      expect(card().textContent).not.toContain('ROOM-5 cast list.');
+      expect(card().textContent).toContain('Reading the file…');
+
+      previewAnswer(requests[1].payload.requestId, 6, 'ROOM-6 cast list.');
+      expect(card().textContent).toContain('ROOM-6 cast list.');
+    });
+
+    it('a preview still in flight for the old room is asked again, and its late answer never shows', () => {
+      render(<WorkshopApp />);
+      deliver(session([reply(rewrite())]));
+      openDisclosure();
+      const [first] = previewRequests();
+
+      deliver(session([reply(rewrite())], { roomRevision: 6 }));
+      const requests = previewRequests();
+      expect(requests).toHaveLength(2);
+      expect(requests[1].payload.roomRevision).toBe(6);
+
+      previewAnswer(first.payload.requestId, 5, 'ROOM-5 cast list.');
+      expect(card().textContent).not.toContain('ROOM-5 cast list.');
+      expect(card().textContent).toContain('Reading the file…');
+
+      previewAnswer(requests[1].payload.requestId, 6, 'ROOM-6 cast list.');
+      expect(card().textContent).toContain('ROOM-6 cast list.');
+      expect(previewRequests()).toHaveLength(2);
+    });
+
+    it('a closed disclosure asks nothing when the room changes', () => {
+      render(<WorkshopApp />);
+      deliver(session([reply(rewrite())]));
+      deliver(session([reply(rewrite())], { roomRevision: 6 }));
+      expect(previewRequests()).toHaveLength(0);
+    });
+  });
+
   it('names no URI in the tree or in what it posts', () => {
     const { container } = render(<WorkshopApp />);
     deliver(session([reply(proposal())]));

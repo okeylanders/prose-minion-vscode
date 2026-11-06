@@ -137,3 +137,11 @@ Webview only. No host change.
 
 1. **Feedback on a `pending` card that a reload later shows.** Feedback lives only in the hook (nothing persists), so after a reload a refused Apply's words are gone, and the card reads "Nothing changes until you apply it." That seems right, since nothing changed, but the refusal's reason is lost.
 2. **The tally** shows on any settled card with more than one operation, and on every partial one. A single-operation `applied` card shows its one Applied badge and no tally.
+
+## Review fixes (PR #234)
+
+- **F-01 (P2): an open rewrite disclosure was stuck after a room change.**
+  - Open, Branch and Rewind can keep turn ids, so the card and its `<details>` stay mounted and open. The hook cleared its previews for the new room, but the preview was asked only from `onToggle`, so the card showed "Reading the file…" forever.
+  - The pending rewrite (`PendingRewrite`) now tracks whether its disclosure is open. While it is open and has no preview, it asks for one for the room on screen (`requestPreviewWhenOpenWithout`).
+  - The hook still drops the old room's late answers, and a closed disclosure asks nothing.
+  - Regressions, through the real App and router (room 5 → 6): a preview already **ready**, and one still **in flight**, each end with a fresh request for room 6, and the old room's answer never shows. A control covers a closed disclosure asking nothing. Both fail without the fix.

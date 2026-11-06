@@ -88,14 +88,30 @@ const RewriteBody: React.FC<WorkshopFileEditOperationProps & { view: Extract<Wor
         </details>
       );
   }
+  return <PendingRewrite preview={preview} onOpenPreview={onOpenPreview} />;
+};
+
+/**
+ * A pending rewrite's before and after, read while its disclosure is open
+ * (PR #234 F-01). The preview belongs to the room it was read in: a new room
+ * (Open, Branch, Rewind keep turn ids, so this disclosure can stay mounted
+ * and open) clears the hook's previews, and an open disclosure with none
+ * asks again, for the room now on screen. The old room's late answer is
+ * the hook's to drop.
+ */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
+const PendingRewrite: React.FC<{ preview?: WorkshopFileEditPreviewView; onOpenPreview: () => void }> = ({ preview, onOpenPreview }) => {
+  const [open, setOpen] = React.useState(false);
+  const requestPreviewWhenOpenWithout = React.useCallback(() => {
+    if (open && !preview) {
+      onOpenPreview();
+    }
+  }, [open, preview, onOpenPreview]);
+  React.useEffect(requestPreviewWhenOpenWithout, [requestPreviewWhenOpenWithout]);
   return (
     <details
       className="pm-ws-file-edit-rewrite"
-      onToggle={(event) => {
-        if ((event.currentTarget as HTMLDetailsElement).open) {
-          onOpenPreview();
-        }
-      }}
+      onToggle={(event) => setOpen((event.currentTarget as HTMLDetailsElement).open)}
     >
       <summary>Before and after</summary>
       <RewritePreview preview={preview} />
