@@ -1,5 +1,11 @@
 # PR #232 review: Helper Agent live-pass checklist
 
+## Follow-up documentation review
+
+**Written approval extended to `0392603d55c4ec1da636e2696e1bd1402a19177c`. No blocking finding.** Its only change from report-publication head `1df70726` is the checklist: N-01's safe-preview distinction, N-02's manually typed early-save test, and N-03's new-sheet off/on test and restored model/key are now explicit. All three nonblocking instructions below are incorporated. The native/live-model pass and ADR acceptance remain pending.
+
+The complete follow-up diff and `git diff --check 1df7072 0392603` were checked. No production or test file changed. The 10 focused suites / 145 tests were also rerun successfully on `1df70726`. Both the original reviewed head's [CI 42136618245](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42136618245) and first report-publication head's [PR CI 42137287953](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42137287953) have passed: all typechecks, 761 suites / 10,608 tests / 59 snapshots, lint 0 errors / 1,165 existing warnings, both bundles and sentinel verification. The three existing bundle size/performance warnings remain. Final-head CI is recorded in the PR conversation, not assumed from those older green runs.
+
 ## Verdict
 
 **Written approval of the documentation at `3b5fe0f19a2dbeb035c725b5defa60cca995df2b`. No blocking finding.** The checklist is consistent with the implemented Helper Agent and keeps the actual native/live-model pass and ADR acceptance as future work. This is not a claim that the live pass has happened, a formal self-approval, or permission to merge.
