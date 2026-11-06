@@ -36,6 +36,7 @@ import type { WorkshopReadInRecordLookup } from '@handlers/domain/workshop/Works
 import type { WorkshopProjectMemoryWritePort } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import type { WorkshopProjectMemoryManagerPort } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
+import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import type {
   WorkshopPinnedContextServices
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
@@ -133,6 +134,8 @@ export interface WorkshopSliceCompositionDependencies {
   pinnedContext: WorkshopPinnedContextServices;
   /** The Bookmarks screen's reads (ADR 2026-11-05 D8): the recall service, built in extension.ts. */
   bookmarkBrowser: WorkshopBookmarkBrowserPort;
+  /** The helper's memory drafts (ADR 2026-11-05 D5): the helper agent, built in extension.ts, and the setting that turns it off. */
+  memoryDrafts: WorkshopMemoryDraftPorts;
   outputChannel: LogSink;
 }
 

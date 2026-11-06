@@ -1,7 +1,8 @@
 import { WorkshopRoomHandler } from '@handlers/domain/workshop/WorkshopRoomHandler';
 import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
-import { unusedBookmarkBrowser } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
+import { unusedBookmarkBrowser, unusedMemoryDrafts } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
+import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import { libraryHost } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import type {
   WorkshopWidgetRuntime
@@ -137,6 +138,8 @@ export interface WorkshopRouteTestHarness {
 export interface WorkshopRouteTestHarnessOptions {
   /** The Bookmarks screen's recall port over the harness's session; by default every read throws. */
   bookmarkBrowser?: (session: WorkshopSessionService) => WorkshopBookmarkBrowserPort;
+  /** The helper's memory drafts (Helper Agent Slice 2); by default drafting is off and the helper is never reached. */
+  memoryDrafts?: WorkshopMemoryDraftPorts;
   /** The session's clock (turn and bookmark times); 1 by default. */
   sessionNow?: () => number;
 }
@@ -366,7 +369,8 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     log,
     memory.library,
     emptyPinnedContextServices(),
-    options.bookmarkBrowser?.(session) ?? unusedBookmarkBrowser()
+    options.bookmarkBrowser?.(session) ?? unusedBookmarkBrowser(),
+    options.memoryDrafts ?? unusedMemoryDrafts()
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);

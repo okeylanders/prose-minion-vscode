@@ -89,6 +89,8 @@ const WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryHandler.ts';
 const WORKSHOP_SAVED_TURN_MEMORY_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopSavedTurnMemoryHandler.ts';
+const WORKSHOP_MEMORY_DRAFT_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopMemoryDraftHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryManagerHandler.ts';
 const WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER =
@@ -228,6 +230,12 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_SAVED_TURN_MEMORY_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: ['WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY']
+  },
+  // The helper's draft of a memory (Helper Agent Slice 2): it writes nothing, so it waits on no gate.
+  {
+    owner: WORKSHOP_MEMORY_DRAFT_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_MEMORY_DRAFT_REQUEST', 'WORKSHOP_MEMORY_DRAFT_CANCEL', 'WORKSHOP_REQUEST_MEMORY_DRAFTS_SETTING']
   },
   // Slice 4b's manager routes change no room state (no receipt, no snapshot), so none waits on the gate.
   {
@@ -422,6 +430,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
+  'WorkshopMemoryDraftHandler',
   'WorkshopPinnedContextHandler',
   'WorkshopProjectMemoryHandler',
   'WorkshopProjectMemoryManagerHandler',
@@ -1972,11 +1981,12 @@ describe('architectural boundaries', () => {
     // Pinned Context Slice 3 added the tab's seven list routes (direct) and Attach missing (mutation).
     // Bookmark Recall Slice 2 added the Bookmarks screen's page, cancel, live rows and saved turn (direct).
     // Bookmark Recall Slice 3 added "Remember this" from a saved session (mutation).
-    expect(expectedOwnerPairs).toHaveLength(86);
+    // Helper Agent Slice 2 added the memory sheet's draft request, its cancel and the setting's read (direct).
+    expect(expectedOwnerPairs).toHaveLength(89);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(47);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(39);
+      .toHaveLength(42);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -2628,6 +2638,7 @@ describe('architectural boundaries', () => {
       'index.ts',
       'lexicalGravity.ts',
       'lightboxTiles.ts',
+      'memoryDraft.ts',
       'participants.ts',
       'pinnedContext.ts',
       'projectMemory.ts',

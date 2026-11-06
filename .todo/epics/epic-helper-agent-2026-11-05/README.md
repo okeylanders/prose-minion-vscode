@@ -19,7 +19,7 @@
 |---|---|---|---|---|
 | 0 | Spec | ADR and this epic | All | In review |
 | 1 | Engine | `helper` model scope end to end; `HelperAgentService` with the task registry, the generic prompt, and the `memory-draft` task (prompt section, worked example, codec, budgets, sync tests); composition root and `CoreServices`. No routes, no UI. | D1–D4, D5's codec | Built ([slice doc](slice-1-engine.md)) |
-| 2 | Drafting in the memory sheet | Draft request and result routes; the handler reads the turn host-side (live turn, or a saved turn through recall's `savedTurn`); the hook's correlation and untouched-field fill; the "Drafting…" placeholders; the quiet failure line; the `helperDrafts` setting | D5 | Not started |
+| 2 | Drafting in the memory sheet | Draft request and result routes; the handler reads the turn host-side (live turn, or a saved turn through recall's `savedTurn`); the hook's correlation and untouched-field fill; the "Drafting…" placeholders; the quiet failure line; the `helperDrafts` setting | D5 | Built ([slice doc](slice-2-memory-draft.md)) |
 | 3 | Verify live | Extension Development Host pass; ADR → Accepted; memory bank; `AGENTS.md` | — | Not started |
 
 **Order:** 1 → 2 → 3. One thread builds 1 and then 2, as two PRs.
@@ -94,3 +94,9 @@ This is the same flow as Project Memory and Bookmark Recall.
   - Verification: typecheck clean; lint 0 errors and no new warnings; jest 757 suites / 10,520 tests / 59 snapshots, all passing; no `from 'vscode'` in `packages/core/src`.
   - A-01–A-05 (PR #225 review): the one-line rule is shared (`PROJECT_MEMORY_NOT_ONE_LINE`), the timeout test is deterministic, and the helper's retirement is pinned; the checks are tabled in the slice doc. Jest 757 suites / 10,530 tests / 59 snapshots; lint 0 errors, 1,165 warnings.
   - PR #228 review: F-01 (a stop during preparation was lost) and F-02 (preparation errors rejected `run`) fixed; the review's probes pass and four are ported as tests. Jest 757 suites / 10,536 tests / 59 snapshots; lint 0 errors, 1,165 warnings.
+- **2026-11-05. Slice 2 (Drafting in the memory sheet).** See [slice-2-memory-draft.md](slice-2-memory-draft.md).
+  - `WORKSHOP_MEMORY_DRAFT_REQUEST` / `_RESULT` / `_CANCEL`, and the setting's request and push. `WorkshopMemoryDraftHandler` reads the turn host-side (the ledger, or recall's `savedTurn`), bound to its room, and asks the helper. The sheet takes only its own request's answer, fills untouched fields, shows "Drafting…" placeholders and one quiet line on failure, and stops its draft on Close, Save, another opening and unmount.
+  - `proseMinion.workshop.memory.helperDrafts` (default on): the webview knows it, and off is silence (D5.7 as amended); the host still answers a stray request `off` with no model call.
+  - A-01–A-05 are tabled in the slice doc with their tests.
+  - Verification: typecheck clean; lint 0 errors, 1,165 warnings (the baseline); jest 760 suites / 10,592 tests / 59 snapshots, all passing; no `from 'vscode'` in `packages/core/src`; no new file over 500 lines.
+  - PR #231 review: F-01 (a capability card's sheet and the helper read different notes) fixed by withholding: such a sheet asks for nothing, and the host answers `withheld` with no model call; silence on the sheet.
