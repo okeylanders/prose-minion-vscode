@@ -24,6 +24,12 @@ import {
   hasWorkshopMemoryProposalText
 } from '@/utils/workshopReplyControls';
 import { resolveWorkshopReplyMemory, type WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
+import {
+  resolveWorkshopReplyFileEdits,
+  type WorkshopReplyFileEditContext
+} from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
+import type { FileEditStaging } from '@/domain/models/FileEditStaging';
+import { workshopTurnForWebview } from '@/application/services/workshop/fileEdits/WorkshopFileEditWebviewView';
 import { LogSink, ShellService } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
@@ -248,7 +254,9 @@ export class WorkshopRoomHandler {
     private readonly outputChannel: LogSink,
     projectMemory: WorkshopProjectMemoryPort,
     pinnedContext: WorkshopPinnedContextServices,
-    bookmarkBrowser: WorkshopBookmarkBrowserPort
+    bookmarkBrowser: WorkshopBookmarkBrowserPort,
+    /** Persona file edits' staging (ADR 2026-11-05 D4); absent until the gateway's is bound (Slice 4). */
+    private readonly fileEditStaging?: FileEditStaging
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -408,6 +416,7 @@ export class WorkshopRoomHandler {
         this.sendError('workshop.widget_recommendation', errorMessage, details),
       memoryAutoSave: (turn, indexes) => this.sliceComposition.autoSaveMemoryProposals(turn, indexes, controller.signal),
       memoryAutoSavesInRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
+      fileEdits: (reply, signal) => this.replyFileEdits(reply, signal),
       settled: (requestId) => this.settleActiveRun(requestId)
     });
   }
@@ -659,11 +668,13 @@ export class WorkshopRoomHandler {
         });
         const pendingMemory = this.replyMemory(result.content, controller.signal);
         const replyMemory = pendingMemory && await pendingMemory;
+        const fileEdits = await this.replyFileEdits(result.content, controller.signal);
         const memoryAutoSave = this.memoryAutoSaveFor(controller.signal);
         const assistantTurn = completeWorkshopRun({
           memory: replyMemory,
           memoryAutoSave: memoryAutoSave.hand,
           memoryAutoSavesInRoom: memoryAutoSave.inRoom,
+          fileEdits,
           session: this.session,
           requestId,
           label: workshopPersonaLabel(personaId),
@@ -1194,11 +1205,13 @@ export class WorkshopRoomHandler {
 
       const pendingMemory = this.replyMemory(result.content, controller.signal);
       const replyMemory = pendingMemory && await pendingMemory;
+      const fileEdits = await this.replyFileEdits(result.content, controller.signal);
       const memoryAutoSave = this.memoryAutoSaveFor(controller.signal);
       const assistantTurn = completeWorkshopRun({
         memory: replyMemory,
         memoryAutoSave: memoryAutoSave.hand,
         memoryAutoSavesInRoom: memoryAutoSave.inRoom,
+        fileEdits,
         session: this.session,
         requestId,
         label,
@@ -1423,6 +1436,20 @@ export class WorkshopRoomHandler {
       : undefined;
   }
 
+  /**
+   * A reply's file edits, staged before completion (ADR 2026-11-05 D4,
+   * D11): the setting is read now, when the reply is read. A reply holding
+   * no file-edit tag stages nothing and costs no await.
+   */
+  private replyFileEdits(reply: string, signal: AbortSignal): Promise<WorkshopReplyFileEditContext | undefined> {
+    return resolveWorkshopReplyFileEdits({
+      reply,
+      open: this.conversationSettingsService.fileEditsOpen(),
+      staging: this.fileEditStaging,
+      signal
+    });
+  }
+
   private excerptMutationBlockedReason(): string | undefined {
     switch (this.currentRunKind()) {
       case 'room':
@@ -1515,7 +1542,7 @@ export class WorkshopRoomHandler {
     const message: WorkshopTurnMessage = {
       type: MessageType.WORKSHOP_TURN,
       source: 'extension.workshop',
-      payload: { turn },
+      payload: { turn: workshopTurnForWebview(turn) },
       timestamp: Date.now()
     };
     void this.postMessage(message);
@@ -1532,7 +1559,9 @@ export class WorkshopRoomHandler {
   }
 
   private postSessionState(): void {
-    const session = this.session.getSnapshot();
+    const snapshot = this.session.getSnapshot();
+    // A file-edit card's `documentUri` is host-only (ADR 2026-11-05 D4.3).
+    const session = { ...snapshot, turns: snapshot.turns.map(workshopTurnForWebview) };
     session.contextBudget = this.activeContextBudget();
     const availability = this.sessionPersistence.availability();
     const message: WorkshopSessionStateMessage = {

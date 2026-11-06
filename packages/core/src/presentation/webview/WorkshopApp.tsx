@@ -82,7 +82,7 @@ import { WorkshopStandingDirectiveRail } from './components/workshop/WorkshopSta
 import {
   stripWorkshopWidgetRecommendationControl
 } from '@/utils/workshopWidgetRecommendationProtocol';
-import { stripWorkshopMemoryProposalForStreaming } from '@/utils/workshopReplyControls';
+import { stripWorkshopReplyTrailersForStreaming } from '@/utils/workshopReplyControls';
 import { WorkshopNoticeModal } from './components/workshop/WorkshopNoticeModal';
 import { useStartupNotice } from './hooks/domain/useStartupNotice';
 import { WorkshopChooseHostModal } from './components/workshop/WorkshopChooseHostModal';
@@ -529,7 +529,7 @@ export const WorkshopApp: React.FC = () => {
   const latestTurnId = workshop.turns.at(-1)?.id;
   const visibleStreamingContent = React.useMemo(
     // A memory proposal never shows while it streams (PR #200 F-02).
-    () => stripWorkshopWidgetRecommendationControl(stripWorkshopMemoryProposalForStreaming(workshop.streamingContent)),
+    () => stripWorkshopWidgetRecommendationControl(stripWorkshopReplyTrailersForStreaming(workshop.streamingContent)),
     [workshop.streamingContent]
   );
   useWorkshopThreadAutoscroll({

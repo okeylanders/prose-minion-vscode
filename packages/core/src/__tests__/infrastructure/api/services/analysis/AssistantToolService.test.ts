@@ -436,6 +436,35 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     expect(taught()).toEqual([false, false, true, true, false, false]);
   });
 
+  it('teaches the file-edit trailer to host and guest prompts only while the setting is on (ADR 2026-11-05 D9)', async () => {
+    const engine = makeEngine('file-edit-trailer');
+    const loadPrompts = jest.fn().mockResolvedValue('prompt');
+    const service = build(managerFor(() => engine), loadPrompts);
+    await flush();
+    const behavior = {
+      interactionMode: 'conversational' as const,
+      expressionLevel: 'subtle' as const,
+      relationalDepth: 'attuned' as const,
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
+    };
+    const targets = [
+      { conversationId: 'host-conv', personaId: 'jill' as const, role: 'host' as const },
+      { conversationId: 'guest-conv', personaId: 'margot' as const, role: 'guest' as const }
+    ];
+    const taught = () => loadPrompts.mock.calls.map(([paths]: [string[]]) =>
+      paths.includes('workshop-personas/file-edit-proposals.md'));
+
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    let open = true;
+    service.setWorkshopFileEditsGrammar(() => open);
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    open = false;
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+
+    expect(taught()).toEqual([false, false, true, true, false, false]);
+  });
+
   it('does not touch the engine when any replacement prompt fails to assemble', async () => {
     const engine = makeEngine('replacement-failure');
     const loadPrompts = jest.fn()

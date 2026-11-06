@@ -26,6 +26,7 @@ import {
   WORKSHOP_WRITER_PROFILE_SETTING,
   WORKSHOP_WEB_RESEARCH_SETTING,
   WORKSHOP_PROJECT_MEMORY_SETTING,
+  WORKSHOP_FILE_EDITS_SETTING,
   LightboxSetSourcePayload
 } from '@messages';
 import {
@@ -210,7 +211,8 @@ export class MessageHandler {
       lightboxBoardLibrary,
       projectMemory,
       workshopPinnedContext,
-      workshopTranscriptRecallService
+      workshopTranscriptRecallService,
+      fileEditStaging
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -358,7 +360,8 @@ export class MessageHandler {
       outputChannel,
       projectMemory,
       workshopPinnedContext,
-      workshopTranscriptRecallService
+      workshopTranscriptRecallService,
+      fileEditStaging
     );
     // Lightbox editor tab (ADR 2026-10-19 D10) — the 13th domain, composed
     // like the others. The shell owns the file picker; the service owns boards.
@@ -707,8 +710,9 @@ export class MessageHandler {
       WORKSHOP_WEB_RESEARCH_SETTING.key;
     const workshopProjectMemoryKey = `${WORKSHOP_PROJECT_MEMORY_SETTING.section}.` +
       WORKSHOP_PROJECT_MEMORY_SETTING.key;
+    const workshopFileEditsKey = `${WORKSHOP_FILE_EDITS_SETTING.section}.${WORKSHOP_FILE_EDITS_SETTING.key}`;
     if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey) || affects(workshopWebResearchKey)
-      || affects(workshopProjectMemoryKey)) {
+      || affects(workshopProjectMemoryKey) || affects(workshopFileEditsKey)) {
       void this.workshopHandler.syncConversationSettingsFromSettings();
     }
 

@@ -144,6 +144,7 @@ packages/core/src/
                 ├── bookmarkBrowser.ts
                 ├── projectMemory.ts
                 ├── projectMemoryManager.ts
+                ├── fileEdits.ts
                 ├── pinnedContext.ts
                 ├── widgets.ts
                 ├── standingDirectives.ts

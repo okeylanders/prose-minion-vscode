@@ -1,0 +1,28 @@
+import { pathToFileURL } from 'url';
+import { parseWorkshopPersistedSession } from '@/application/services/workshop/WorkshopPersistedSession';
+import { resolveWorkshopReplyFileEdits } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
+import { fileEditFrame } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
+import { ScriptedWorkshopRoom } from './ScriptedWorkshopRoom';
+import { scriptedCheckpoint } from './WorkshopCoordinatorHarness';
+import type { FileEditStaging } from '@/domain/models/FileEditStaging';
+
+// An output-contract witness: #229's excerpt branch returns the room's
+// authorized relativePath verbatim, without the model resource-path rules.
+it.each([['colon filename', 'draft:one.md'], ['long nested path', `${'nested/'.repeat(180)}chapter.md`]])(
+  'a valid existing excerpt becomes unpersistable after staging: %s', async (_name, relativePath) => {
+    const documentUri = pathToFileURL(`/workspace/novel/${relativePath}`).toString();
+    const room = new ScriptedWorkshopRoom().start();
+    room.session.setExcerpt({ text: 'Alice is seven.', source: { kind: 'file', sourceUri: documentUri, relativePath } });
+    room.hostMessage('Read this chapter.');
+    expect(() => parseWorkshopPersistedSession(scriptedCheckpoint('probe', room))).not.toThrow();
+    const staging: FileEditStaging = { stage: async () => ({
+      kind: 'staged', target: { kind: 'excerpt', documentUri, relativePath },
+      class: 'prose', baseline: { sha256: 'a'.repeat(64), length: 15 }
+    }) };
+    const reply = `Yes.\n\n${fileEditFrame({ excerpt: true })}`;
+    room.fileEdits = await resolveWorkshopReplyFileEdits({ reply, open: true, staging });
+    const turn = room.hostMessage('Change her age.', { reply });
+    expect(turn.fileEditProposals?.[0].state).toBe('pending');
+    expect(() => parseWorkshopPersistedSession(scriptedCheckpoint('probe', room))).toThrow(/target.relativePath/);
+  }
+);
