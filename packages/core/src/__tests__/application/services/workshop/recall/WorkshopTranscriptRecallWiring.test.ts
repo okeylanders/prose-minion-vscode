@@ -202,15 +202,17 @@ describe('transcript.* through the persona capability', () => {
   });
 
   it('records a read over the turn’s read limit as rejected', async () => {
+    const { readsPerTurn } = PROMPT_BUDGETS.workshopTranscriptRecall;
     const wired = wire(corpus);
-    for (let index = 0; index < 3; index += 1) {
+    for (let index = 0; index <= readsPerTurn; index += 1) {
       await invoke(wired, call('transcript.read', `<session>${corpus.sessions.endings}</session>`));
     }
     const reads = wired.session.readRoomLedger().filter((turn) => turn.artifact === 'transcript_read');
 
-    expect(reads.map((turn) => turn.capability!.status)).toEqual(['success', 'success', 'rejected']);
-    expect(reads[2].content).toBe(
-      'Only 2 transcript reads are allowed per user turn. Answer from the reads you have, ' +
+    expect(reads.map((turn) => turn.capability!.status))
+      .toEqual([...Array(readsPerTurn).fill('success'), 'rejected']);
+    expect(reads[readsPerTurn].content).toBe(
+      `Only ${readsPerTurn} transcript reads are allowed per user turn. Answer from the reads you have, ` +
         'and tell the writer which sessions and turns are left for your next turn.'
     );
   });

@@ -242,15 +242,18 @@ describe('a turn’s read limits', () => {
     const capability = capabilityOver();
     const reading = jest.spyOn(service, 'read');
 
-    await capability.fulfill(read('no-such-session'));
-    await capability.fulfill(read(corpus.sessions.endings));
-    const third = await capability.fulfill(read(corpus.sessions.endings));
+    const { readsPerTurn } = PROMPT_BUDGETS.workshopTranscriptRecall;
 
-    expect(PROMPT_BUDGETS.workshopTranscriptRecall.readsPerTurn).toBe(2);
-    expect(reading).toHaveBeenCalledTimes(2);
-    expect(third).toMatchObject({
+    await capability.fulfill(read('no-such-session'));
+    for (let index = 1; index < readsPerTurn; index += 1) {
+      await capability.fulfill(read(corpus.sessions.endings));
+    }
+    const pastTheLimit = await capability.fulfill(read(corpus.sessions.endings));
+
+    expect(reading).toHaveBeenCalledTimes(readsPerTurn);
+    expect(pastTheLimit).toMatchObject({
       status: 'rejected',
-      error: 'Only 2 transcript reads are allowed per user turn. Answer from the reads you have, ' +
+      error: `Only ${readsPerTurn} transcript reads are allowed per user turn. Answer from the reads you have, ` +
         'and tell the writer which sessions and turns are left for your next turn.',
       metadata: { rejectionReason: 'recall-read-limit' }
     });
