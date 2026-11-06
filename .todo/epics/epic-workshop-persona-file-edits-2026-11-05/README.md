@@ -1,6 +1,6 @@
 # Epic: Workshop Persona File Edits
 
-**Status:** Slice 0 (spec) merged (PR #226, `b14c46b`). Slice 1 in review (PR #227). Slices 2 and 3 in progress.
+**Status:** Code complete. Slices 0–4 are merged: #226 `b14c46b`, #227 `36be1aa7`, #229, #230 `10393d85`, #233 `bd2706d9` and #234 `9f70f236`. Slice 4c (Okey's answers from the live-pass checklist) is next; then Slice 5, the live pass.
 **Priority:** Medium
 **Created:** 2026-11-05
 **Integration branch:** `epic/workshop-persona-file-edits`, cut from `epic/workshop-bookmark-recall` at `b4ca7b86` (the feature tip: Bookmark Recall Slices 0–3, #222, and `main` with Project Memory and Pinned Context). Each slice is built on `epic/workshop-persona-file-edits-slice-<N>-<slug>` and merges into the epic through a reviewed PR.
@@ -29,8 +29,9 @@
 | 1 | Shared planner | `utils/textEdits/`: the operations and exactly-once anchoring, pure. Memory edits move onto it with no behavior change; their tests run unchanged. | D3 | Done (PR #227, `36be1aa7`) ([slice doc](slice-1-shared-planner.md)) |
 | 2 | Staging and the gateway | The resolver's every-candidate read; `FileEditStaging` implemented (identity, ambiguity refusal, class by identity, baseline); `DocumentEditor.open` (port and VS Code adapter); the applier's `structure` mode (`strict` / `prose-paragraphs` / `free`) and `beforeAttempt` immediately before every `applyEdits` (authority predicate and text checks); the `FileEditAuthorityEpoch` port; `ProjectFileEditGateway` (re-authorize, recompute class, plan, freshness, ceiling, the last-boundary predicate, apply, report by operation, show the document); boundary pins. Host-only, no persona, no routes. | D4–D7, D13 | Done (PR #229) ([slice doc](slice-2-gateway.md)) |
 | 3 | The proposal | The `<prose-minion-file-edit>` codec and D2's bounds; the persona prompt section and worked example, with a sync test; reading frames out of a reply and staging each through the `FileEditStaging` port (a fake in tests); `fileEditProposals` (D10's shape) on the turn, with the session codec, checkpoint normalization and transcript projection; the `fileEdits` setting | D2, D10, D11 | Done (PR #230, `10393d85`) ([slice doc](slice-3-proposal.md)) |
-| 4 | Cards and Apply | The handler's claim keyed by room generation, and outcomes (D8: join, replay, `checkpointFileEdit` acknowledged durable in every recoverable checkpoint before dispatch, `partial`, `unknown`); Apply, Review in editor…, Decline and Preview routes with request ids; the real staging joined; thread cards with diffs; `landed` records; refusals in the writer's words | D8, D9, D10 | 4a (host: routes, claim, checkpoint, outcomes, words) built ([slice doc](slice-4a-apply.md)); 4b (cards) built ([slice doc](slice-4b-cards.md)) |
-| 5 | Verify live | Extension Development Host pass on notes and a chapter; ADR → Accepted; memory bank; `AGENTS.md`; Apply to Draft's note settled | — | Not started |
+| 4 | Cards and Apply | The handler's claim keyed by room generation, and outcomes (D8: join, replay, `checkpointFileEdit` acknowledged durable in every recoverable checkpoint before dispatch, `partial`, `unknown`); Apply, Review in editor…, Decline and Preview routes with request ids; the real staging joined; thread cards with diffs; `landed` records; refusals in the writer's words | D8, D9, D10 | Done: 4a, the host (PR #233, `bd2706d9`; [slice doc](slice-4a-apply.md)); 4b, the cards (PR #234, `9f70f236`; [slice doc](slice-4b-cards.md)) |
+| 4c | Okey's answers | Transient refusals where nothing was written (`catalog-unreadable` at Apply, `host-failed`) return the card to pending, with Apply offered again; a row for `proseMinion.workshop.fileEdits` in the Workshop's Conversation settings; ADR D8 and D11 amended | D8, D11 | In progress |
+| 5 | [Verify live](slice-5-verify-live.md) | Extension Development Host pass on notes and a chapter; ADR → Accepted; memory bank; `AGENTS.md`; Apply to Draft's note settled | — | Ready for Okey once 4c merges (checklist) |
 
 **Order:** 1 → (2 ∥ 3) → 4 → 5.
 - Slices 2 and 3 both use Slice 1's operation types.
@@ -190,3 +191,18 @@ This is the same flow as Project Memory and Bookmark Recall.
   - The setting's row in Conversation settings is deferred to Slice 5.
   - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 785 suites, 10,979 tests, 59 snapshots.
   - See [the slice doc](slice-4b-cards.md).
+- **2026-11-06. PR #233 review (Astra): Slice 4a approved** at `d0c172b7`, with no claim, dispatch, checkpoint, codec or durability blocker.
+  - **One note, not blocking:** a `partial` card holding an `unknown` operation said "the rest were not" applied. Carried into 4b and fixed there.
+  - Merged at `bd2706d9`; CI green on `f768b08c`.
+- **2026-11-06. PR #234 review (Astra): Slice 4b approved** at `51daee91`, after two rounds.
+  - **F-01 (P2):** an open rewrite disclosure stuck on "Reading the file…" after a room change (Open, Branch and Rewind can keep turn ids). Now an open disclosure with no preview asks for the room on screen.
+  - **F-02 (P2):** that fix stopped a refused preview from being retried on reopen. Now a writer's reopen retries a refused preview; one left open never retries on its own, and a stale one stays final.
+  - **PR #233's note:** a partial card with an `unknown` operation now says so. The line comes from one table, read by the gateway's message too, and the tally agrees ("1 of 2 changes applied; 1 not known").
+  - After: typecheck clean; lint 0 errors, 1,165 warnings; jest 785 suites, 10,987 tests, 59 snapshots.
+  - Merged at `9f70f236`; CI green on `7a0453f7`.
+- **2026-11-06. Slices 0–4 merged; Okey answered the checklist's questions.** [Slice 5's checklist](slice-5-verify-live.md) asked three:
+  - **transient refusals** (`catalog-unreadable`, `host-failed`): retry. They return to pending, since nothing was written;
+  - **the Conversation settings row** for `proseMinion.workshop.fileEdits`: yes;
+  - **feedback after a reload**: fine as is.
+
+  The first two are Slice 4c, which runs before the live pass.
