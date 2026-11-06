@@ -216,6 +216,46 @@ describe('HelperAgentService', () => {
   });
 
   it.each([
+    ['two turns', (stop: AbortController) => queueMicrotask(() => queueMicrotask(() => stop.abort()))],
+    ['three turns', (stop: AbortController) => queueMicrotask(() => queueMicrotask(() => queueMicrotask(() => stop.abort())))]
+  ] as const)('sends nothing when stopped %s after preparation ends, before its listener is installed (PR #242 F-01)', async (_name, later) => {
+    const { service, runInitial, promptLoader, logged } = harness([{ content: '{"echo": "Alice"}' }]);
+    const stop = new AbortController();
+    promptLoader.loadPrompts.mockImplementationOnce(async () => {
+      later(stop);
+      return 'SYSTEM';
+    });
+    await expect(service.run('echo', { word: 'Alice' }, { signal: stop.signal })).resolves.toEqual({ kind: 'failed', reason: 'cancelled' });
+    expect(runInitial).not.toHaveBeenCalled();
+    expect(logged()).toEqual([`[Helper] echo on ${MODEL}: cancelled (5 characters)`]);
+  });
+
+  it('ends cancelled at once, never as a timeout, when the stop lands before a catalog read that stalls (PR #242 F-01)', async () => {
+    // Timers are fake so a timeout cannot end it; microtasks stay real so the stop lands.
+    jest.useFakeTimers({ doNotFake: ['queueMicrotask'] });
+    try {
+      const { service, runInitial, promptLoader } = harness([{ content: '{"echo": "Alice"}' }], {
+        alwaysReasons: () => new Promise<boolean>(() => undefined)
+      });
+      const stop = new AbortController();
+      promptLoader.loadPrompts.mockImplementationOnce(async () => {
+        queueMicrotask(() => queueMicrotask(() => stop.abort()));
+        return 'SYSTEM';
+      });
+      let settled: unknown;
+      void service.run('echo', { word: 'Alice' }, { signal: stop.signal }).then((result) => { settled = result; });
+      for (let turn = 0; turn < 20 && settled === undefined; turn += 1) {
+        await Promise.resolve();
+      }
+      // No timer advanced: it ended on the stop alone.
+      expect(settled).toEqual({ kind: 'failed', reason: 'cancelled' });
+      expect(runInitial).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it.each([
     ['the engine fails to initialize', 'ensureInitialized'],
     ['the prompt cannot be loaded', 'loadPrompts']
   ] as const)('returns failed, not a rejection, when %s; its log names no text (PR #228 F-02)', async (_name, step) => {

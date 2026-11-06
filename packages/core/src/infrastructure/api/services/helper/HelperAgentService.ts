@@ -110,6 +110,11 @@ export class HelperAgentService<Policies extends Readonly<Record<string, AnyHelp
     }, policy.call.timeoutMs);
     const forward = () => stop.abort(options.signal?.reason);
     options.signal?.addEventListener('abort', forward, { once: true });
+    // A listener never hears an abort that already fired: a stop that landed after preparation's
+    // last check is forwarded here, so the catalog wait below ends at once (PR #242 F-01).
+    if (options.signal?.aborted) {
+      forward();
+    }
     const failed = (reason: 'error' | 'timeout' | 'cancelled', usage?: TokenUsage): HelperRunResult<never> => {
       this.log.appendLine(`[Helper] ${task} on ${model || 'no model'}: ${reason}${counts}`);
       return { kind: 'failed', reason, ...(usage ? { usage } : {}) };
@@ -119,11 +124,11 @@ export class HelperAgentService<Policies extends Readonly<Record<string, AnyHelp
       helperReasoningRequest(model, policy.call.outputTokens, this.reasoningCatalog, this.log, `[Helper] ${task}`),
       stop.signal
     ).catch(() => 'error' as const);
-    // Immediately before dispatch: a stop that landed after preparation's last check is never sent (PR #228 F-01).
-    if (ask === 'aborted' || ask === 'error' || stop.signal.aborted) {
+    // Immediately before dispatch: the caller's own signal is read again, so a stop is never sent (PR #228 F-01).
+    if (ask === 'aborted' || ask === 'error' || stop.signal.aborted || options.signal?.aborted) {
       clearTimeout(timer);
       options.signal?.removeEventListener('abort', forward);
-      return failed(timedOut ? 'timeout' : stop.signal.aborted ? 'cancelled' : 'error');
+      return failed(options.signal?.aborted ? 'cancelled' : timedOut ? 'timeout' : stop.signal.aborted ? 'cancelled' : 'error');
     }
 
     let result: ExecutionResult;
