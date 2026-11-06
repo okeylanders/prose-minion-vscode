@@ -7,6 +7,7 @@
 - PR: <https://github.com/okeylanders/prose-minion-vscode/pull/234>
 - Initial reviewed code: `f8d46cce66e9bcc94b6db0b5013761c5eebccd32`
 - Correction reviewed: `4c894d7d49c8da69dd2804a78e87a7c907f24124`
+- Later wording correction: `91b8e9912f75ce7b182b2029f2241b8004a272fd`; merge head `7787cdec` has the same runtime tree.
 - 4b-only diff: `d0c172b7..f8d46cce`; 4a is the separately reviewed #233 dependency.
 - Initial review: <https://github.com/okeylanders/prose-minion-vscode/pull/234#pullrequestreview-5794537859>
 - Correction review: <https://github.com/okeylanders/prose-minion-vscode/pull/234#pullrequestreview-5794568568>
@@ -66,7 +67,7 @@ The correction replaces the old unconditional request-on-open with `open && !pre
 
 ## Nonblocking notes and the live-pass boundary
 
-1. **Mixed partial/unknown wording:** the shared `partial` line says “the rest were not,” even when a per-operation badge reads “Not known.” This is inherited from the shared host/gateway vocabulary and is also noted in #233's review. Prefer wording that does not claim uncertain operations definitely failed. Do not infer that a remaining edit is safe to repeat.
+1. **Mixed partial/unknown wording, closed at `91b8e991`:** the shared `partial` line previously said “the rest were not,” even when an operation read “Not known.” The correction threads outcomes through the gateway, settled/joined/replayed answers and card view, and the tally now counts unknown operations explicitly. Independent production-stack checks confirm one host write, truthful messages and preserved durable outcomes. This does not change the claim/checkpoint/state semantics.
 2. **Keyboard review of long text:** the new diff and before/after blocks cap height at 240px with `overflow: auto`, while their `<p>`/`<pre>` elements have no explicit tab stop. Include keyboard-only access to content below the fold in the Chromium 114 floor pass, not just modern-browser behavior. This is a live-pass check, not a browser-verified finding in this review.
 3. **Native acceptance remains pending:** Refactor Preview focus/checkboxes/discard, actual dirty-buffer visibility, narrow layouts, themes and screen-reader announcements must still be exercised in the Extension Development Host. No live model call or native VS Code acceptance is claimed. A local synthetic browser fixture was prepared, but Chromium could not launch in this environment (`socket() failed: Operation not permitted`), so no screenshots or visual pass are represented as completed.
 
@@ -87,3 +88,12 @@ At code head `f8d46cce`, using Node `v24.22.1` locally:
 At correction `4c894d7d`, the focused suite passes **28 suites / 458 tests**, and all three typecheck targets pass. Its real-App suite passes **7 tests**, including all three new lifecycle tests. The additional retry witness **fails** for F-02. The original-head full-suite/build results above are not represented as a full validation of newer source.
 
 Only this report and the text reproduction artifacts are published. Passing existing automated gates does not close F-02 or establish native-host acceptance.
+
+
+## Later follow-up: `91b8e991` / `7787cdec`
+
+The partial/unknown wording note above is closed. At `91b8e991`, **28 focused suites / 461 tests** and all three typecheck targets pass. A separate **8-suite / 169-test** run includes the production-stack witnesses, now checking truthful settled, joined and terminal-replay answers for a mixed landed/unknown result. `7787cdec` merges the epic after #233 landed and adds only the #233 review artifacts; its runtime tree is unchanged.
+
+The F-02 retry regression test also passes against the initial `f8d46cce` code and fails against `4c894d7d`, independently confirming that the first correction introduced the problem. It remains open in `7787cdec`.
+
+At this follow-up, report commit `c0b2d972` and wording commit `91b8e991` both still have CI in progress, not a completed current-head pass. Their original predecessor's green result is not substituted for those checks. No source fix or merge was performed by this review.
