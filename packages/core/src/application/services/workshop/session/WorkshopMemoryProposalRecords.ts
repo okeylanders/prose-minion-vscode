@@ -12,7 +12,9 @@
  * said (`before`), and `stale` once a Save
  * found the note changed. A saved card names the memory it became or
  * changed (an edit's is its target); a pending or dismissed one names none.
- * A card Save and tell me held names why in `held`.
+ * A card Save and tell me held names why in `held`. A new note may name the
+ * open-room turns its trailer cited (`cites`, Bookmark Recall D10): one to
+ * `citedTurns` tokens, each once.
  *
  * **Development checkpoints** (Slice 6b; ADR 2026-07-30): sessions saved
  * before the list held one card in `memoryProposal`, without `proposes`.
@@ -44,6 +46,7 @@ import {
   shapeError
 } from '@/application/services/workshop/persistedValidation';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { WORKSHOP_MEMORY_CITED_TURN } from '@/utils/workshopMemoryProposalProtocol';
 
 const NOT_ONE_LINE = /[\p{Cc}\u2028\u2029]/u;
 
@@ -90,7 +93,7 @@ function assertProposal(value: unknown, at: string, listed: boolean): void {
     value,
     at,
     [...(listed ? ['proposes'] : []), 'title', 'kind', 'summary', 'body', 'state', ...(edit ? ['target', 'before'] : [])],
-    [...(edit ? ['stale'] : ['supersedes', 'droppedSupersedes']), 'memoryId', 'held']
+    [...(edit ? ['stale'] : ['supersedes', 'droppedSupersedes', 'cites']), 'memoryId', 'held']
   );
   assertFields(proposal, at);
   enumAt(proposal.state, `${at}.state`, WORKSHOP_MEMORY_PROPOSAL_STATES);
@@ -106,6 +109,9 @@ function assertProposal(value: unknown, at: string, listed: boolean): void {
     || (proposal.droppedSupersedes as number) > PROJECT_MEMORY_LIST_ENTRIES.supersedes
   )) {
     shapeError(`${at}.droppedSupersedes`, `an integer from 1 to ${PROJECT_MEMORY_LIST_ENTRIES.supersedes}`);
+  }
+  if (proposal.cites !== undefined) {
+    assertCites(proposal.cites, `${at}.cites`);
   }
   if (edit) {
     assertEdit(proposal, at);
@@ -153,6 +159,19 @@ function assertEdit(proposal: Record<string, unknown>, at: string): void {
   assertFields(exactObject(proposal.before, `${at}.before`, ['title', 'kind', 'summary', 'body']), `${at}.before`);
   if (proposal.stale !== undefined && proposal.stale !== true) {
     shapeError(`${at}.stale`, 'true or absent');
+  }
+}
+
+function assertCites(value: unknown, at: string): void {
+  boundedArrayAt(value, at, 1, PROMPT_BUDGETS.workshopProjectMemory.citedTurns, 'cited turns');
+  const ids = value as unknown[];
+  ids.forEach((id, index) => {
+    if (typeof id !== 'string' || !WORKSHOP_MEMORY_CITED_TURN.test(id)) {
+      shapeError(`${at}[${index}]`, 'a cited turn (one token)');
+    }
+  });
+  if (new Set(ids).size !== ids.length) {
+    shapeError(at, 'each turn once');
   }
 }
 
@@ -212,7 +231,8 @@ export function cloneWorkshopMemoryProposal(proposal: WorkshopMemoryProposal): W
     proposes: 'new',
     ...common,
     ...(proposal.supersedes ? { supersedes: cloneReplaces(proposal.supersedes) } : {}),
-    ...(proposal.droppedSupersedes !== undefined ? { droppedSupersedes: proposal.droppedSupersedes } : {})
+    ...(proposal.droppedSupersedes !== undefined ? { droppedSupersedes: proposal.droppedSupersedes } : {}),
+    ...(proposal.cites ? { cites: [...proposal.cites] } : {})
   };
 }
 

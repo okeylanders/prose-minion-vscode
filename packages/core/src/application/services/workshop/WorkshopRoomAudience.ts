@@ -11,6 +11,7 @@ import {
   WorkshopTurn
 } from '@messages';
 import {
+  WORKSHOP_CAPABILITY_PUBLICATION_WITHHELD,
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityOperation,
   WorkshopCapabilityPrincipal
@@ -33,6 +34,9 @@ const PUBLISHABLE_CAPABILITY_OPERATIONS: ReadonlySet<WorkshopCapabilityOperation
   // (ADR 2026-10-05 §7, D6); the catalog and search stay private discovery.
   'transcript.read',
   'transcript.todos',
+  // A bookmark list is room evidence too, unless the host withheld it for
+  // holding an open-room row the room could not see (ADR 2026-11-05 D7).
+  'transcript.bookmarks',
   // A memory read is published with the reply that used it (ADR 2026-11-04,
   // question 5); the catalog and search stay private discovery.
   'memory.read'
@@ -65,11 +69,44 @@ export function workshopTurnAudience(turn: WorkshopTurn): WorkshopRoomAudience {
   return { kind: 'room' };
 }
 
+/**
+ * Whether a capability card may be published with the reply that used it.
+ * A result the host stamped withheld when it built it never is (ADR
+ * 2026-11-05 D7, PR #214 F-05): the policy reads the whole result's stamp,
+ * never its rows.
+ */
 export function isWorkshopPublishableCapabilityEvidence(
   capability: WorkshopCapabilityArtifactDetails
 ): boolean {
   return PUBLISHABLE_CAPABILITY_OPERATIONS.has(capability.operation)
-    && (capability.status === 'success' || capability.status === 'partial');
+    && (capability.status === 'success' || capability.status === 'partial')
+    && workshopCapabilityPublicationWithheld(capability.metadata) === undefined;
+}
+
+/** The reason, by id, a result's host stamped it unpublishable; undefined when it did not. */
+export function workshopCapabilityPublicationWithheld(
+  metadata: Readonly<Record<string, unknown>> | undefined
+): string | undefined {
+  const reason = metadata?.[WORKSHOP_CAPABILITY_PUBLICATION_WITHHELD];
+  return typeof reason === 'string' ? reason : undefined;
+}
+
+/**
+ * Whether a participant could see a turn of the open room: a turn the whole
+ * room sees, or private work of its own, never an instrument's sidecar.
+ * The rule a join snapshot hands a new conversation, and the one the open
+ * room's bookmarks are filtered by (ADR 2026-11-05 D1).
+ */
+export function isWorkshopTurnVisibleToParticipant(
+  turn: WorkshopTurn,
+  reader: WorkshopCapabilityPrincipal
+): boolean {
+  const audience = workshopTurnAudience(turn);
+  return audience.kind === 'room'
+    || (
+      audience.principal.kind !== 'toolSidecar'
+      && sameParticipantPrincipal(audience.principal, reader)
+    );
 }
 
 /**

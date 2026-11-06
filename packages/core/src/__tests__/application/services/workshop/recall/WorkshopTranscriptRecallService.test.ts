@@ -62,6 +62,19 @@ class FakeSessionStore implements WorkshopRecallCorpusPort {
     sessions: this.sessions.map(summaryOf),
     truncated: this.truncated
   }));
+  /** Pages over the sessions newest id first, the cursor an id (the real walk is pinned with the store). */
+  readonly listPage = jest.fn(async (request: { after?: string; limit: number }) => {
+    const ordered = [...this.sessions].sort((left, right) => right.sessionId.localeCompare(left.sessionId))
+      .filter((session) => request.after === undefined || session.sessionId.localeCompare(request.after) < 0);
+    const taken = ordered.slice(0, request.limit);
+    return {
+      entries: taken.map((session) => ({ cursor: session.sessionId, summary: summaryOf(session) })),
+      ...(ordered.length > taken.length ? { next: taken[taken.length - 1].sessionId } : {}),
+      remaining: ordered.length - taken.length
+    };
+  });
+  /** The page's own file: here, the session by id (the cursor is its id). */
+  readonly readPagedSession = jest.fn(async (_cursor: string, sessionId: string) => this.readNamed(sessionId));
   readonly readNamed = jest.fn(async (sessionId: string) => {
     this.onRead?.(sessionId);
     const failure = this.failures.get(sessionId);

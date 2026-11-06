@@ -7,6 +7,7 @@
 
 import type { WorkshopPersonaAnalysisRunInputs } from '@/application/services/workshop/WorkshopAnalysisInputs';
 import {
+  WORKSHOP_CAPABILITY_PUBLICATION_WITHHELD,
   workshopCapabilityFamily,
   type WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
@@ -71,7 +72,11 @@ function recallMetrics(result: WorkshopCapabilityResult): string {
     `limitedBy=${word('limitedBy')}`,
     `rejection=${typeof metadata?.rejectionReason === 'string'
       ? metadata.rejectionReason
-      : result.status === 'rejected' ? 'unspecified' : 'none'}`
+      : result.status === 'rejected' ? 'unspecified' : 'none'}`,
+    // A result the host withheld from the room names why, by id (ADR 2026-11-05 D7).
+    ...(typeof metadata?.[WORKSHOP_CAPABILITY_PUBLICATION_WITHHELD] === 'string'
+      ? [`withheld=${String(metadata[WORKSHOP_CAPABILITY_PUBLICATION_WITHHELD])}`]
+      : [])
   ];
   return `recallMetrics=${values.join(';')}`;
 }

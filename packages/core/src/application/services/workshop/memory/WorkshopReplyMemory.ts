@@ -129,6 +129,7 @@ function settleOne(
     body: draft.body,
     ...(supersedes.length > 0 ? { supersedes } : {}),
     ...(dropped > 0 ? { droppedSupersedes: dropped } : {}),
+    ...(draft.cites ? { cites: [...draft.cites] } : {}),
     state: 'pending',
     ...(route.kind === 'held' ? { held: route.held } : {})
   };
@@ -137,7 +138,7 @@ function settleOne(
     proposal,
     auto: route.kind === 'auto',
     log: `Memory proposal ${outcome}kind=${draft.kind}; supersedes=${supersedes.map((item) => item.id).join(',') || 'none'}; ` +
-      `dropped=${dropped}${context.listed ? '' : '; listing=unread'})`
+      `dropped=${dropped}${draft.cites ? `; cites=${draft.cites.length}` : ''}${context.listed ? '' : '; listing=unread'})`
   };
 }
 

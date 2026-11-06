@@ -2818,3 +2818,27 @@
 [data-pm-surface="workshop"] .pm-ws-banners {
   display: contents;
 }
+
+/* The Notes tab's way into the Bookmarks screen (Bookmark Recall Slice 2). */
+[data-pm-surface="workshop"] .pm-ws-bookmark-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-head-actions > span {
+  color: var(--pm-dim);
+  font: 10.5px/1.45 var(--pm-mono);
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-browse-all {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--pm-accent-hi);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-browse-all:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 2px;
+}

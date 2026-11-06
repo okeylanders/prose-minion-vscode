@@ -1,0 +1,22 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> prose-minion-monorepo@2.12.0 test
+> jest --runInBand --runTestsByPath packages/core/src/__tests__/presentation/webview/pr221.integration-check.test.tsx
+
+ts-jest[ts-jest-transformer] (WARN) Define `ts-jest` config under `globals` is deprecated. Please do
+transform: {
+    <transform_regex>: ['ts-jest', { /* ts-jest config goes here in Jest */ }],
+},
+See more at https://kulshekhar.github.io/ts-jest/docs/getting-started/presets#advanced
+PASS packages/core/src/__tests__/presentation/webview/pr221.integration-check.test.tsx
+  ✓ PR221: displays a correlated Forget refusal (262 ms)
+  ✓ PR221: displays a correlated Restore refusal (88 ms)
+  ✓ PR221 control: hook correlates refusal and clears it on retry/success (3 ms)
+  ✓ PR221 recheck: independent receipts, reversed responses, replaced rooms, reused receipt ids (3 ms)
+  ✓ PR221 recheck: real App disables a pending receipt, retries cleanly, clears on replacement and ignores its late answer (337 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       5 passed, 5 total
+Snapshots:   0 total
+Time:        4.893 s
+Ran all test suites within paths "packages/core/src/__tests__/presentation/webview/pr221.integration-check.test.tsx".

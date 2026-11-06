@@ -1,0 +1,86 @@
+import { WorkshopSavedTurnMemoryHandler } from '@handlers/domain/workshop/WorkshopSavedTurnMemoryHandler';
+import { WorkshopProjectMemoryHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
+import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+import { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
+import { ProjectMemoryStore } from '@/infrastructure/storage/ProjectMemoryStore';
+import { setupCoordinator, scriptedCheckpoint } from '@/__tests__/application/services/workshop/session/WorkshopCoordinatorHarness';
+import { ScriptedWorkshopRoom } from '@/__tests__/application/services/workshop/session/ScriptedWorkshopRoom';
+import { RECALL_WORKSPACE } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import { createFakeSettings } from '@/__tests__/mocks/platform';
+import { holdOnce } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks';
+import { MessageType } from '@messages';
+
+async function setup() {
+  const room = setupCoordinator();
+  await room.coordinator.initialize();
+  const scripted = new ScriptedWorkshopRoom().start();
+  const reply = scripted.hostMessage('What does Alice remember?', { capabilityRounds: 1, reply: 'The Rabbit has a watch.' });
+  const capability = scripted.session.readRoomLedger().find((turn) => turn.capability)!;
+  scripted.session.setTurnBookmark(capability.id, true);
+  scripted.hostMessage('What happens next?', { reply: 'Alice follows the Rabbit.' });
+  await room.store.saveNamed(scriptedCheckpoint('saved-source', scripted));
+  await room.store.saveNamed(scriptedCheckpoint('live-room', scripted));
+  await room.coordinator.openNamed('live-room');
+  const recall = new WorkshopTranscriptRecallService(room.store, room.coordinator, room.log);
+  const memoryStore = new ProjectMemoryStore(room.fs, RECALL_WORKSPACE, room.log);
+  const library = new ProjectMemoryLibrary(memoryStore, room.coordinator, recall, createFakeSettings(), room.log);
+  const posted: any[] = [];
+  const post = async (value: any) => { posted.push(value); };
+  const memoryHandler = new WorkshopProjectMemoryHandler(room.session, library, {
+    isRoomRunActive: () => false,
+    isSessionOperationPending: () => room.coordinator.isSessionOperationPending(),
+    waitForSessionOperations: () => room.coordinator.waitForSessionOperations(),
+    liveSessionId: () => { const scope = room.coordinator.recallScope(); return scope.available ? scope.liveSessionId : undefined; }
+  }, { postSessionState: () => undefined, markDirty: () => undefined, reportError: jest.fn() } as never, post, room.log);
+  const handler = new WorkshopSavedTurnMemoryHandler(recall, memoryHandler, post, room.log, jest.fn());
+  const save = (turnId: string) => handler.handleSaveSavedTurn({ type: MessageType.WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY, source: 'webview.workshop', timestamp: 1,
+    payload: { requestId: 'probe-save', sessionId: 'saved-source', turnId, draft: { title: 'The Rabbit', kind: 'canon', summary: 'The Rabbit has a watch.', body: '', supersedes: [], pinned: false } }
+  });
+  return { ...room, recall, memoryStore, posted, save, reply, capability };
+}
+
+describe('PR 219 saved memory audit probes', () => {
+  it('reproduces rejecting an eligible saved capability bookmark', async () => {
+    const r = await setup();
+    expect(isWorkshopBookmarkableTurn(r.capability)).toBe(true);
+    const read = await r.recall.savedTurn('saved-source', r.capability.id);
+    expect(read).toMatchObject({ kind: 'turn', entry: { kind: 'event' } });
+    const page = await r.recall.bookmarkPage({});
+    expect(page).toMatchObject({ available: true, sessions: [{ sessionId: 'saved-source', bookmarks: [{ turnId: r.capability.id }] }] });
+    await r.save(r.capability.id);
+    expect(r.posted.at(-1).payload).toMatchObject({ ok: false });
+    expect(r.session.readRoomLedger().filter((turn) => turn.projectMemoryReceipt)).toHaveLength(0);
+  });
+
+  it.each(['reopen', 'rewind'] as const)('reproduces a receipt being appended after a same-id %s during a saved-turn read', async (operation) => {
+    const r = await setup();
+    const before = r.session.readRoomRevision();
+    const hold = holdOnce(r.store as never, 'readNamed', (id: string) => id === 'saved-source');
+    const pending = r.save(r.reply.id);
+    await hold.arrived;
+    if (operation === 'reopen') {
+      await r.coordinator.openNamed('live-room');
+    } else {
+      await r.coordinator.rewindTo({ kind: 'afterTurn', turnId: r.reply.id }, { origin: 'writer' });
+    }
+    expect(r.session.readRoomRevision()).not.toBe(before);
+    hold.release();
+    await pending;
+    expect(r.posted.at(-1).payload).toMatchObject({ ok: true });
+    expect(r.posted.at(-1).payload).not.toHaveProperty('error');
+    expect(r.session.readRoomLedger().filter((turn) => turn.projectMemoryReceipt)).toHaveLength(1);
+  });
+  it('control: refuses when the saved source becomes the live room during the read', async () => {
+    const r = await setup();
+    const hold = holdOnce(r.store as never, 'readNamed', (id: string) => id === 'saved-source');
+    const pending = r.save(r.reply.id);
+    await hold.arrived;
+    await r.coordinator.openNamed('saved-source');
+    hold.release();
+    await pending;
+    expect(r.posted.at(-1).payload).toMatchObject({ ok: false, error: 'The room changed while the saved session was read. Try again.' });
+    expect(r.session.readRoomLedger().filter((turn) => turn.projectMemoryReceipt)).toHaveLength(0);
+  });
+
+});

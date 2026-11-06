@@ -30,6 +30,11 @@
  * grouped list:
  * - `afterSection`: a second section of the same markup after the list, its
  *   rows ungrouped, with the same rename and delete state and focus order.
+ *
+ * One opt-in the Workshop's Bookmarks screen takes (ADR 2026-11-05 D8):
+ * - `readOnly`: nothing can be renamed or deleted, so `onRename` and
+ *   `onDelete` may be left out; rows (drawn with `SavedItemRow`'s own
+ *   `readOnly`) still open. The markup the browser draws is unchanged.
  */
 
 import * as React from 'react';
@@ -78,9 +83,13 @@ export interface SavedItemBrowserModalProps<T> {
   itemTitle: (item: T) => string;
   renderRow: (item: T, controls: SavedItemRowControls) => React.ReactNode;
   footer: React.ReactNode;
-  onRename: (key: string, title: string) => void;
-  onDelete: (key: string) => void;
+  /** Required unless `readOnly`. */
+  onRename?: (key: string, title: string) => void;
+  /** Required unless `readOnly`. */
+  onDelete?: (key: string) => void;
   onClose: () => void;
+  /** Nothing renames or deletes: every row's rename and delete stay closed. */
+  readOnly?: boolean;
   renameRule?: (draft: string) => string | undefined;
   sendOnlyEdits?: boolean;
   returnFocus?: boolean;
@@ -115,7 +124,8 @@ export function SavedItemBrowserModal<T>({
   onClose,
   renameRule,
   sendOnlyEdits = false,
-  returnFocus = false
+  returnFocus = false,
+  readOnly = false
 }: SavedItemBrowserModalProps<T>): React.ReactElement {
   const [groupBy, setGroupBy] = React.useState(groupings[0]?.key ?? '');
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -235,13 +245,13 @@ export function SavedItemBrowserModal<T>({
         const next = renameDraft.trim();
         if (!sendOnlyEdits || (renameDirty && next !== titleOf(editingId))) {
           if (next) {
-            onRename(editingId, next);
+            onRename?.(editingId, next);
           }
         }
       } else {
         const next = renameDraft.trim();
         if (next) {
-          onRename(editingId, next);
+          onRename?.(editingId, next);
         }
       }
       if (how === 'enter') {
@@ -285,7 +295,11 @@ export function SavedItemBrowserModal<T>({
       renameDraft,
       ...(editingId === key && renameError ? { renameError } : {}),
       confirmingDelete: confirmDeleteId === key,
-      beginRename: () => beginRename(item),
+      beginRename: () => {
+        if (!readOnly) {
+          beginRename(item);
+        }
+      },
       changeRenameDraft: (value: string) => {
         setRenameDraft(value);
         setRenameDirty(true);
@@ -294,6 +308,9 @@ export function SavedItemBrowserModal<T>({
       commitRename,
       cancelRename,
       beginDelete: () => {
+        if (readOnly) {
+          return;
+        }
         setEditingId(null);
         deleted.current = null;
         focusLater({ kind: 'keep', key });
@@ -305,7 +322,7 @@ export function SavedItemBrowserModal<T>({
           deleted.current = { key, next: keys[keys.indexOf(key) + 1] ?? null };
           focusLater({ kind: 'delete', key });
         }
-        onDelete(key);
+        onDelete?.(key);
       },
       cancelDelete: () => {
         focusLater({ kind: 'delete', key });

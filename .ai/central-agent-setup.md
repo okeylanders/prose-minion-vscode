@@ -141,6 +141,7 @@ packages/core/src/
                 ├── context.ts
                 ├── participants.ts
                 ├── bookmarks.ts
+                ├── bookmarkBrowser.ts
                 ├── projectMemory.ts
                 ├── projectMemoryManager.ts
                 ├── pinnedContext.ts
@@ -1069,6 +1070,36 @@ sessions:
 - **Boundary lists.** A new `recall/` module joins `WORKSHOP_RECALL_MODULES`
   and the capability boundary in `boundaries.test.ts`, and stays under 500
   lines. No handler constructs the recall service; one instance owns the cache.
+- **Bookmarks and the open room** ([ADR 2026-11-05](docs/adr/2026-11-05-workshop-bookmark-recall.md)).
+  `transcript.bookmarks` is the one operation that reads the open room, and
+  only its bookmarks, through `WorkshopLiveRoomBookmarks`: a types-only port
+  in `recall/`, implemented by `WorkshopLiveRoomBookmarkReader` over the full
+  ledger and built only in `extension.ts`. Recall never imports the session
+  service or the reader. The port returns only bookmarks on turns the reader
+  could see (`isWorkshopTurnVisibleToParticipant`, the room's own rule).
+  Nothing about bookmarks enters a frame, catch-up or per-turn prompt of its
+  own accord; a requested result is ordinary evidence, and one holding an
+  open-room row the room could not see is stamped
+  `WORKSHOP_CAPABILITY_PUBLICATION_WITHHELD`, which the audience policy reads
+  and never publishes. Refs name their source (`{sessionId}/{bookmarkId}`,
+  `current@{liveSessionId}/{bookmarkId}`); a replaced room's ref is
+  `stale-bookmark-ref`, never retargeted. A read's `bookmarked: "…"` mark is
+  the read window's, never the shared projection's.
+- **The Bookmarks screen** ([ADR 2026-11-05](docs/adr/2026-11-05-workshop-bookmark-recall.md) D8)
+  reads only through the recall service's writer-facing seams
+  (`bookmarkPage`, `liveRoomBookmarks`, `savedTurn`), which
+  `WorkshopBookmarkBrowserHandler` reaches through `CoreServices`; no
+  handler constructs the service. Saved sessions come a page at a time
+  through the store's read-only `listPage` (uncapped by the browser's 200,
+  bounded by `WORKSHOP_BOOKMARK_BROWSER_LIMITS`), never
+  `WORKSHOP_LIST_SESSIONS`. The live port's `readWriterBookmarks` (every
+  bookmark, for the writer) serves only the screen; a persona reads the
+  open room only through `readLiveRoomBookmarks`.
+- **Memories from bookmarks** ([ADR 2026-11-05](docs/adr/2026-11-05-workshop-bookmark-recall.md) D9, D10).
+  - **A saved session's turn** is saved by `WorkshopSavedTurnMemoryHandler` (`WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY`). It checks the turn only through recall's `savedTurn`, refuses `ambiguous-session`, and writes only through `WorkshopProjectMemoryHandler.saveWriterMemory`, Project Memory's own write path.
+  - **A live turn outside the window** saves through `WORKSHOP_SAVE_TURN_TO_MEMORY` with `roomRevision`.
+  - **A proposal's `<cites-turn>`** is checked at save by `workshopProposalProvenance`. It keeps an id only when the open room's ledger holds the turn and the proposer could see it (`isWorkshopTurnVisibleToParticipant`), and drops anything else by id. Kept turns join `sourceTurns` within 32, and `sourceSession` stays the live room.
+  - **Saved-session citations are refused** until memories have multi-session sources.
 
 ### Workshop Pinned Context
 

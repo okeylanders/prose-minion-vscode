@@ -31,3 +31,14 @@ export const WORKSHOP_MEMORY_NO_CARD = 'That message no longer holds a memory su
 export const WORKSHOP_MEMORY_NOT_ELIGIBLE = 'That message can\'t be saved to memory.';
 export const WORKSHOP_MEMORY_ROOM_CHANGED = 'The room changed before this could be recorded here.';
 
+
+/** The longest request id a reply echoes; a webview mints short ones. */
+const REQUEST_ID_CHARACTERS = 128;
+
+/** A write route's request id, when it is one a reply can echo: shared by every memory write route. */
+export function workshopMemoryRequestIdOf(payload: { requestId?: unknown } | undefined): string | undefined {
+  const requestId = payload?.requestId;
+  return typeof requestId === 'string' && requestId.length > 0 && requestId.length <= REQUEST_ID_CHARACTERS
+    ? requestId
+    : undefined;
+}

@@ -17,7 +17,7 @@ import {
 } from '@/application/services/workshop/WorkshopRoomFrameRenderer';
 import {
   isWorkshopTurnAlreadyVisibleToPrincipal,
-  sameParticipantPrincipal,
+  isWorkshopTurnVisibleToParticipant,
   workshopTurnAudience
 } from '@/application/services/workshop/WorkshopRoomAudience';
 
@@ -86,17 +86,8 @@ export function projectWorkshopJoinSnapshotTurns(
   reader: WorkshopCapabilityPrincipal,
   currentInvitationTurnId?: string
 ): WorkshopTurn[] {
-  return turns.filter((turn) => {
-    if (turn.id === currentInvitationTurnId) {
-      return false;
-    }
-    const audience = workshopTurnAudience(turn);
-    return audience.kind === 'room'
-      || (
-        audience.principal.kind !== 'toolSidecar'
-        && sameParticipantPrincipal(audience.principal, reader)
-      );
-  });
+  return turns.filter((turn) => turn.id !== currentInvitationTurnId
+    && isWorkshopTurnVisibleToParticipant(turn, reader));
 }
 
 /**

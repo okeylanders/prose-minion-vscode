@@ -81,6 +81,20 @@ export interface PromptBudgets {
     /** The rendered list's hard cap; the renderer takes it as an overridable option. */
     todoCharacters: number;
     todoMatchCharacters: number;
+    /**
+     * `transcript.bookmarks` (ADR 2026-11-05 D3): the largest `<recent>`,
+     * the most `<session>` fields, the bookmarks one list shows, the list's
+     * hard cap (the context-window clamp may lower it), one message's cap and
+     * the window `<bookmark>` reads it in, the query's length, and the
+     * largest `<from>`; the message's own length bounds it again.
+     */
+    bookmarkSessions: number;
+    bookmarkSessionsNamed: number;
+    bookmarkItems: number;
+    bookmarkCharacters: number;
+    bookmarkMessageCharacters: number;
+    bookmarkQueryCharacters: number;
+    bookmarkFromMax: number;
   }>;
   /**
    * Workshop Project Memory (ADR 2026-11-04 D11): the memory fields' bounds
@@ -107,6 +121,8 @@ export interface PromptBudgets {
     proposalsPerReply: number;
     /** Find-and-replace pairs one edit suggestion may carry (Slice 6c). */
     editReplaces: number;
+    /** Open-room turns one suggestion may cite (Bookmark Recall D10): with its reply and the writer's message, within `sourceTurns`. */
+    citedTurns: number;
   }>;
   /**
    * Workshop Pinned Context (ADR 2026-11-04 D6): how many files the list
@@ -503,9 +519,9 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     wordCharacters: 100,
     contextCharacters: 4_000,
     purposeCharacters: 500,
-    callsPerTurn: 5,
-    fullEntriesPerTurn: 1,
-    analysisRunsPerTurn: 1
+    callsPerTurn: 15,
+    fullEntriesPerTurn: 3,
+    analysisRunsPerTurn: 2
   },
   workshopResource: {
     queryCharacters: 200,
@@ -534,11 +550,18 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readCharacters: 150_000,
     readSessions: 10,
     readCharactersPerTurn: 300_000,
-    readsPerTurn: 2,
+    readsPerTurn: 10,
     todoSessions: 50,
     todoItems: 60,
     todoCharacters: 16_000,
-    todoMatchCharacters: 200
+    todoMatchCharacters: 200,
+    bookmarkSessions: 50,
+    bookmarkSessionsNamed: 10,
+    bookmarkItems: 60,
+    bookmarkCharacters: 24_000,
+    bookmarkMessageCharacters: 4_000,
+    bookmarkQueryCharacters: 200,
+    bookmarkFromMax: 999_999
   },
   workshopProjectMemory: {
     titleCharacters: 120,
@@ -553,10 +576,11 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     snippetCharacters: 280,
     readMemories: 5,
     readCharacters: 40_000,
-    readsPerTurn: 2,
+    readsPerTurn: 5,
     autoSavesPerRoom: 5,
     proposalsPerReply: 10,
-    editReplaces: 5
+    editReplaces: 5,
+    citedTurns: 30
   },
   workshopPinnedContext: {
     // 50, tuned in the Slice 5 live pass (Okey, 2026-11-05): the first real

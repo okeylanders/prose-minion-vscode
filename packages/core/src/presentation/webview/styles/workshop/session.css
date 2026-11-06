@@ -1085,3 +1085,23 @@
   outline: 2px solid var(--pm-accent-hi);
   outline-offset: 2px;
 }
+
+/* The Bookmarks screen (Bookmark Recall Slice 2, ADR 2026-11-05 D8): the
+   session browser's rows, read-only, with a bookmark glyph in the speaker's
+   identity color and up to three actions. */
+[data-pm-surface="workshop"] .pm-ws-bookmark-browser-glyph {
+  flex: none;
+  width: 28px;
+  justify-content: center;
+  margin-top: 3px;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-browser-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-browser-coverage {
+  color: var(--pm-text-2);
+  font-size: 12px;
+}

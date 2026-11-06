@@ -1,0 +1,38 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> prose-minion-monorepo@2.12.0 test
+> jest --runInBand --testPathPattern=(WorkshopSessionsMenu|WorkshopApp.memoryManager|useWorkshopMemoryManager|useWorkshopProjectMemory|WorkshopTurnMemory|WorkshopSaveAndTellMe|WorkshopMemoryBrowser|useWorkshopRailTabs|WorkshopBookmarkBrowser|WorkshopApp.bookmarkBrowser|boundaries)
+
+ts-jest[ts-jest-transformer] (WARN) Define `ts-jest` config under `globals` is deprecated. Please do
+transform: {
+    <transform_regex>: ['ts-jest', { /* ts-jest config goes here in Jest */ }],
+},
+See more at https://kulshekhar.github.io/ts-jest/docs/getting-started/presets#advanced
+PASS packages/core/src/__tests__/architecture/boundaries.test.ts (9.777 s)
+PASS packages/core/src/__tests__/presentation/webview/WorkshopApp.bookmarkBrowser.test.tsx (14.413 s)
+PASS packages/core/src/__tests__/presentation/webview/WorkshopApp.memoryManager.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/memory/WorkshopMemoryBrowserModal.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/WorkshopTurnMemory.test.tsx
+PASS packages/core/src/__tests__/application/handlers/domain/workshop/WorkshopBookmarkBrowserRoutes.test.ts
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/useWorkshopMemoryManager.test.ts
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/useWorkshopProjectMemory.test.ts
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/controllers/useWorkshopRailTabs.test.ts
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/widgets/showVsTell/showVsTellPresentationBoundaries.test.ts
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/useWorkshopBookmarkBrowser.test.ts
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/WorkshopSaveAndTellMe.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/useWorkshopProjectMemoryBookmarks.test.ts
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/WorkshopSessionsMenu.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/bookmarks/workshopBookmarkBrowserView.test.ts
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/bookmarks/WorkshopBookmarkBrowserModal.remember.test.tsx
+PASS packages/core/src/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariationsPresentationBoundaries.test.ts
+
+Test Suites: 17 passed, 17 total
+Tests:       269 passed, 269 total
+Snapshots:   0 total
+Time:        36.251 s
+Ran all test suites matching /(WorkshopSessionsMenu|WorkshopApp.memoryManager|useWorkshopMemoryManager|useWorkshopProjectMemory|WorkshopTurnMemory|WorkshopSaveAndTellMe|WorkshopMemoryBrowser|useWorkshopRailTabs|WorkshopBookmarkBrowser|WorkshopApp.bookmarkBrowser|boundaries)/i.
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

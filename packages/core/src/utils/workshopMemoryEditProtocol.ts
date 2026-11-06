@@ -36,6 +36,8 @@ export const WORKSHOP_MEMORY_EDIT_REPLACES = PROMPT_BUDGETS.workshopProjectMemor
 export const WORKSHOP_MEMORY_EDIT_FAULTS = [
   'invalid-edit-target',
   'edit-supersedes',
+  // A change cites no turns: it keeps its note's sources (Bookmark Recall D10).
+  'edit-cites',
   'empty-edit',
   'unpaired-find',
   'empty-find',
@@ -91,6 +93,9 @@ export function decodeWorkshopMemoryEdit(
     }
     if (name === 'supersedes') {
       return reject('edit-supersedes');
+    }
+    if (name === 'cites-turn') {
+      return reject('edit-cites');
     }
     if (name === 'replace-with') {
       return reject('unpaired-find');

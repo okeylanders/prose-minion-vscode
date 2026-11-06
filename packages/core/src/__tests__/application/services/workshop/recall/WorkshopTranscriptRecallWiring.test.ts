@@ -124,18 +124,20 @@ describe('transcript.* through the persona capability', () => {
       ));
   });
 
-  it('runs every operation, and publishes only reads and to-do lists with the committed reply', async () => {
+  it('runs every operation, and publishes only reads, to-do lists and bookmark lists with the committed reply', async () => {
     const wired = wire(corpus);
     const results = [];
     for (const xml of [
       call('transcript.catalog', '<match>chapter 6.7</match>'),
       call('transcript.search', '<query>simile</query><persona>Jill</persona>'),
       call('transcript.read', `<session turns="1-3">${corpus.sessions.stock}</session><session>${corpus.sessions.cliche}</session>`),
-      call('transcript.todos', '<match>6.7</match><status>open</status>')
+      call('transcript.todos', '<match>6.7</match><status>open</status>'),
+      call('transcript.bookmarks', '<scope>saved</scope>')
     ]) {
       results.push(await invoke(wired, xml));
     }
-    expect(results.map(({ fulfillment }) => fulfillment.deliveredSources?.length)).toEqual([0, 0, 2, 1]);
+    // The corpus holds no bookmarks, so the list shows none and names no row.
+    expect(results.map(({ fulfillment }) => fulfillment.deliveredSources?.length)).toEqual([0, 0, 2, 1, 0]);
     wired.session.completeRun('host-request', 'Here is where the 6.7 chats landed.', undefined, false, 'host-conversation');
 
     const recalled = wired.session.readRoomLedger().filter((turn) => turn.toolLabel === 'Session Recall');
@@ -144,7 +146,8 @@ describe('transcript.* through the persona capability', () => {
         ['transcript_catalog', 'success', false],
         ['transcript_search', 'success', false],
         ['transcript_read', 'success', true],
-        ['transcript_todos', 'success', true]
+        ['transcript_todos', 'success', true],
+        ['transcript_bookmarks', 'success', true]
       ]);
   });
 
@@ -161,6 +164,20 @@ describe('transcript.* through the persona capability', () => {
     expect(capability.statusMessage({ capability: 'transcript.search', query: 'tide' }))
       .toBe('Jill is searching saved Workshop sessions for “tide”…');
     expect(capability.statusTicker({ capability: 'transcript.todos', status: 'all' })).toBe('Recall · all to-dos');
+    const bookmarks: WorkshopCapabilityRequest = { capability: 'transcript.bookmarks', scope: 'current', query: 'Alice rows' };
+    expect(capability.statusMessage(bookmarks)).toBe('Jill is checking the writer\'s bookmarks…');
+    expect(capability.statusTicker(bookmarks)).toBe('Recall · bookmarks (current)');
+    // A query is counted, never quoted, in the log.
+    expect(capability.requestLogSummary(bookmarks)).toBe(
+      'scope=current; recent=default; sessions=0; persona=any; matchChars=0; queryChars=10; speaker=any; since=any; until=any'
+    );
+    const one: WorkshopCapabilityRequest = {
+      capability: 'transcript.bookmarks',
+      bookmark: { source: 'current', liveSessionId: 'room-1', bookmarkId: 'bookmark-1-5' },
+      from: 4000
+    };
+    expect(capability.statusMessage(one)).toBe('Jill is reading a bookmarked message…');
+    expect(capability.requestLogSummary(one)).toBe('bookmark=current@room-1/bookmark-1-5; from=4000');
   });
 
   it('leaves a visible artifact for a refused call, and for one over the call limit', () => {
@@ -185,15 +202,17 @@ describe('transcript.* through the persona capability', () => {
   });
 
   it('records a read over the turn’s read limit as rejected', async () => {
+    const { readsPerTurn } = PROMPT_BUDGETS.workshopTranscriptRecall;
     const wired = wire(corpus);
-    for (let index = 0; index < 3; index += 1) {
+    for (let index = 0; index <= readsPerTurn; index += 1) {
       await invoke(wired, call('transcript.read', `<session>${corpus.sessions.endings}</session>`));
     }
     const reads = wired.session.readRoomLedger().filter((turn) => turn.artifact === 'transcript_read');
 
-    expect(reads.map((turn) => turn.capability!.status)).toEqual(['success', 'success', 'rejected']);
-    expect(reads[2].content).toBe(
-      'Only 2 transcript reads are allowed per user turn. Answer from the reads you have, ' +
+    expect(reads.map((turn) => turn.capability!.status))
+      .toEqual([...Array(readsPerTurn).fill('success'), 'rejected']);
+    expect(reads[readsPerTurn].content).toBe(
+      `Only ${readsPerTurn} transcript reads are allowed per user turn. Answer from the reads you have, ` +
         'and tell the writer which sessions and turns are left for your next turn.'
     );
   });

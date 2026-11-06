@@ -61,6 +61,13 @@ export type WorkshopCapabilityRejectionReason =
   | 'invalid-status'
   | 'invalid-recent'
   | 'conflicting-session-selection'
+  // Bookmark recall (ADR 2026-11-05 D2).
+  | 'invalid-scope'
+  | 'conflicting-scope'
+  | 'unknown-speaker'
+  | 'invalid-date'
+  | 'invalid-bookmark-ref'
+  | 'invalid-from'
   // Project memory (WorkshopProjectMemoryXmlCodec).
   | 'invalid-kind'
   | 'invalid-memory-id'
@@ -98,7 +105,7 @@ export const createWorkshopCapabilityInstruction = (
     '## Workshop Capability Protocol',
     '',
     `You may make at most ${budgets.callsPerTurn} capability calls during this user turn. ` +
-      `You may request dictionary.full-entry at most ${budgets.fullEntriesPerTurn} time and analysis.run at most ${budgets.analysisRunsPerTurn} time.`,
+      `You may request dictionary.full-entry at most ${timesAllowed(budgets.fullEntriesPerTurn)} and analysis.run at most ${timesAllowed(budgets.analysisRunsPerTurn)}.`,
     'This allowance resets with every new writer message. Never carry an exhausted capability budget forward from an earlier turn.',
     'A capability call must be your entire response: one bare, well-formed XML document with no prose, Markdown fence, second call, or characters before or after it.',
     '',
@@ -196,6 +203,8 @@ export class WorkshopCapabilityXmlCodec {
       case 'transcript.search':
       case 'transcript.read':
       case 'transcript.todos':
+      // By hand too: without this case, the operation falls to `unknown-capability`.
+      case 'transcript.bookmarks':
         return inspectWorkshopTranscriptRecallCall(operation, document);
       // The family's codec, by hand: this switch has no `never` guard (ADR 2026-11-04 D12).
       case 'memory.catalog':
@@ -462,4 +471,9 @@ export class WorkshopCapabilityXmlCodec {
     )?.[0];
     return field ? { kind: 'invalid', reason: 'oversized-input', field } : undefined;
   }
+}
+
+/** "1 time", "3 times": how often the turn allows a capability with its own ceiling. */
+function timesAllowed(count: number): string {
+  return `${count} ${count === 1 ? 'time' : 'times'}`;
 }

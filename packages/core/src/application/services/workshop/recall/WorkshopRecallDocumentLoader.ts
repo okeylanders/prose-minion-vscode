@@ -46,9 +46,14 @@ export interface WorkshopRecallLoadedDocuments {
   readonly cost: Omit<WorkshopRecallScanBounds, 'listingTruncated'>;
 }
 
-type LoadedDocument =
+export type WorkshopRecallLoadedDocument =
   | { readonly document: WorkshopRecallDocument; readonly parsedBytes: number }
-  | { readonly document?: undefined };
+  /**
+   * `missing`: the store found no such session; `conflict`: more than one
+   * file claims its id, so the store refused to choose (PR #216 F-04);
+   * `unreadable`: it could not read one.
+   */
+  | { readonly document?: undefined; readonly reason: 'missing' | 'conflict' | 'unreadable' };
 
 export class WorkshopRecallDocumentLoader {
   constructor(
@@ -56,7 +61,9 @@ export class WorkshopRecallDocumentLoader {
     private readonly cache: WorkshopRecallDocumentCache,
     /** What a cold read that produced no document is charged against the byte budget. */
     private readonly unreadableSessionBytes: number,
-    private readonly log: (line: string) => void
+    private readonly log: (line: string) => void,
+    /** The file a session is read from, when the cache must match it too (the Bookmarks screen's pages, PR #216 F-05). */
+    private readonly sourceOf: (sessionId: string) => string | undefined = () => undefined
   ) {}
 
   /**
@@ -78,7 +85,7 @@ export class WorkshopRecallDocumentLoader {
     let cacheHits = 0;
     for (const summary of sessions) {
       throwIfRecallAborted(signal);
-      const cached = this.cache.get(summary.sessionId, summary.updatedAt);
+      const cached = this.cache.get(summary.sessionId, summary.updatedAt, this.sourceOf(summary.sessionId));
       if (cached) {
         outcomes.push({ kind: 'loaded', document: cached, cacheHit: true });
         documents.push(cached);
@@ -90,7 +97,7 @@ export class WorkshopRecallDocumentLoader {
         notReadByByteBudget += 1;
         continue;
       }
-      const loaded = await this.load(summary, scope, signal);
+      const loaded = await this.readDocument(summary.sessionId, scope, signal);
       if (!loaded.document) {
         outcomes.push({ kind: 'unreadable' });
         unreadableSessions += 1;
@@ -109,34 +116,43 @@ export class WorkshopRecallDocumentLoader {
     };
   }
 
-  /** A cold read: `loadAll` has already looked in the cache, with nothing awaited since. */
-  private async load(
-    summary: WorkshopRecallSessionSummary,
+  /**
+   * A cold read of one named session, by id: what `loadAll` does when the
+   * cache misses, and what a saved turn's preview reads directly (its
+   * session may lie past the listing). The document is cached under the
+   * call's generation.
+   */
+  async readDocument(
+    sessionId: string,
     scope: WorkshopRecallReadScope,
     signal?: AbortSignal
-  ): Promise<LoadedDocument> {
+  ): Promise<WorkshopRecallLoadedDocument> {
     // Never read under a scope that no longer holds, nor keep what such a read returned.
     scope.assertHolds();
     let session: WorkshopPersistedSessionV2 | undefined;
     try {
-      session = await this.corpus.readNamed(summary.sessionId);
+      session = await this.corpus.readNamed(sessionId);
     } catch (error) {
       // A read that failed because the call was cancelled is a cancellation.
       throwIfRecallAborted(signal);
-      this.log(`Skipped unreadable session ${summary.sessionId}: ${errorMessage(error)}`);
-      return {};
+      this.log(`Skipped unreadable session ${sessionId}: ${errorMessage(error)}`);
+      // Matched by name: recall knows the store only as a type.
+      return { reason: error instanceof Error && error.name === IDENTITY_CONFLICT ? 'conflict' : 'unreadable' };
     }
     throwIfRecallAborted(signal);
     scope.assertHolds();
-    if (!session || session.sessionId !== summary.sessionId) {
-      this.log(`Skipped session ${summary.sessionId}: it was not found where the listing put it`);
-      return {};
+    if (!session || session.sessionId !== sessionId) {
+      this.log(`Skipped session ${sessionId}: it was not found where the listing put it`);
+      return { reason: 'missing' };
     }
     const document = buildWorkshopRecallDocument(session);
-    this.cache.remember(document, scope.generation);
+    this.cache.remember(document, scope.generation, this.sourceOf(sessionId));
     return { document, parsedBytes: estimatedSourceBytes(session) };
   }
 }
+
+/** The store's refusal when more than one file claims a session id. */
+const IDENTITY_CONFLICT = 'WorkshopNamedSessionIdentityConflictError';
 
 export function throwIfRecallAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) {

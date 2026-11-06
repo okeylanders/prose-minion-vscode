@@ -218,7 +218,8 @@ describe('each transcript.* operation, request to result', () => {
       catalog: async () => unavailable,
       search: async () => unavailable,
       read: async () => unavailable,
-      todos: async () => unavailable
+      todos: async () => unavailable,
+      bookmarks: async () => unavailable
     };
     const capability = capabilityOver(recall);
 
@@ -226,7 +227,8 @@ describe('each transcript.* operation, request to result', () => {
       { capability: 'transcript.catalog' },
       { capability: 'transcript.search', query: 'tide' },
       read('any'),
-      { capability: 'transcript.todos' }
+      { capability: 'transcript.todos' },
+      { capability: 'transcript.bookmarks' }
     ] as WorkshopTranscriptRecallRequest[]) {
       const result = await capability.fulfill(request);
       expect(result).toMatchObject({ status: 'failed', metadata: { outcome: 'unavailable', unavailableReason: 'workspace-changed' } });
@@ -240,15 +242,18 @@ describe('a turn’s read limits', () => {
     const capability = capabilityOver();
     const reading = jest.spyOn(service, 'read');
 
-    await capability.fulfill(read('no-such-session'));
-    await capability.fulfill(read(corpus.sessions.endings));
-    const third = await capability.fulfill(read(corpus.sessions.endings));
+    const { readsPerTurn } = PROMPT_BUDGETS.workshopTranscriptRecall;
 
-    expect(PROMPT_BUDGETS.workshopTranscriptRecall.readsPerTurn).toBe(2);
-    expect(reading).toHaveBeenCalledTimes(2);
-    expect(third).toMatchObject({
+    await capability.fulfill(read('no-such-session'));
+    for (let index = 1; index < readsPerTurn; index += 1) {
+      await capability.fulfill(read(corpus.sessions.endings));
+    }
+    const pastTheLimit = await capability.fulfill(read(corpus.sessions.endings));
+
+    expect(reading).toHaveBeenCalledTimes(readsPerTurn);
+    expect(pastTheLimit).toMatchObject({
       status: 'rejected',
-      error: 'Only 2 transcript reads are allowed per user turn. Answer from the reads you have, ' +
+      error: `Only ${readsPerTurn} transcript reads are allowed per user turn. Answer from the reads you have, ` +
         'and tell the writer which sessions and turns are left for your next turn.',
       metadata: { rejectionReason: 'recall-read-limit' }
     });
@@ -525,6 +530,7 @@ describe('cancellation', () => {
       catalog: service.catalog.bind(service),
       search: service.search.bind(service),
       todos: service.todos.bind(service),
+      bookmarks: service.bookmarks.bind(service),
       read: async (request, signal) => {
         const result = await service.read(request, signal);
         during.abort();
@@ -541,6 +547,7 @@ describe('cancellation', () => {
       catalog: service.catalog.bind(service),
       search: service.search.bind(service),
       read: service.read.bind(service),
+      bookmarks: service.bookmarks.bind(service),
       todos: async (request, signal) => {
         controller.abort();
         return service.todos(request, signal);

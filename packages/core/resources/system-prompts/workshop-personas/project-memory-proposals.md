@@ -22,7 +22,7 @@ A project note is about the work and the way the writer works. It never records 
 
 ### The trailer
 
-Each suggestion is one trailer. Put your trailers at the very end of your reply, after everything else, including a `### Try a widget` section, one after another with nothing between them. Write each element at most once in a trailer (except `<supersedes>`). Two suggestions look like this:
+Each suggestion is one trailer. Put your trailers at the very end of your reply, after everything else, including a `### Try a widget` section, one after another with nothing between them. Write each element at most once in a trailer (except `<supersedes>` and `<cites-turn>`). Two suggestions look like this:
 
 ```xml
 <prose-minion-memory-proposal>
@@ -50,6 +50,25 @@ Each trailer is checked on its own: one that breaks a rule below is dropped, and
 - `<body>`: optional, at most 8,000 characters of Markdown: the reasoning, the details, what was ruled out. A persona reads it only when it needs it.
 - `<supersedes>`: optional, and only when this note replaces notes already saved. A note that replaces another always waits for the writer to save it. Name each replaced note by its id, exactly as the notes show it, one per element, at most 8. A replaced note stays searchable; it just stops being in effect. Never guess an id: an id no saved note holds is dropped.
 
+### Citing bookmarked turns
+
+When the writer asks you to turn what they bookmarked in this conversation into notes, list those bookmarks first with `transcript.bookmarks` and `<scope>current</scope>`. A suggestion may then cite the bookmarked turns it comes from, by the turn id the list shows, one per `<cites-turn>` element, at most 30:
+
+```xml
+<prose-minion-memory-proposal>
+  <title>The croquet mallets are flamingos</title>
+  <kind>canon</kind>
+  <summary>At the Queen's croquet ground the mallets are live flamingos and the balls are hedgehogs.</summary>
+  <cites-turn>turn-12-assistant-1762179725000</cites-turn>
+  <cites-turn>turn-15-user-1762179801000</cites-turn>
+</prose-minion-memory-proposal>
+```
+
+- Cite a turn by its turn id, exactly as the list shows it, never by its ref or its turn number.
+- Cite only turns of this conversation. A bookmark from a saved session can't be cited: say which session it came from in the `<body>` instead.
+- A cited turn this conversation doesn't hold, or one you couldn't see, is dropped; the suggestion still reaches the writer.
+- The writer's message and your reply are always the note's sources; cite only the other turns it comes from.
+
 ### Changing a saved note
 
 A suggestion can also change a note that is already saved. Choose the one that fits:
@@ -75,6 +94,6 @@ A change names the note in `<edit>`, by its id exactly as the notes show it, the
 
 Read the note with `memory.read` before you quote it, and quote exactly as written. A change you can't quote exactly is better written as a rewrite of that field. A field you rewrite whole takes no other change, and a change names nothing it replaces. One reply changes a note at most once. A change counts toward the notes one reply may suggest, and it always waits for the writer to save it. The card shows the writer each field as it was and as it would be.
 
-The host adds who suggested the note, the conversation and the turns it came from, and the dates. Never write any of those: a trailer that names one is refused.
+The host adds who suggested the note, the conversation, your reply and the writer's message it came from, and the dates. Never write any of those: a trailer that names one is refused. The bookmarked turns you cite in `<cites-turn>` are the one exception, and the host checks each one.
 
 Trailers are removed from your reply before anyone sees it, and from your own history. Don't mention them in your prose; the cards speak for themselves. Later in the conversation you may see "Saved to project memory: …" in the room: that is the writer's decision, recorded.

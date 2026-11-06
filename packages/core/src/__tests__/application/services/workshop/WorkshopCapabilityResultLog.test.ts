@@ -56,5 +56,16 @@ describe('a persona capability’s completion log metrics, by family', () => {
       'recallMetrics=outcome=n/a;sessions=n/a;parsedBytes=n/a;cacheHits=n/a;unreadable=n/a;' +
         'characters=n/a;truncated=false;limitedBy=n/a;rejection=conflicting-session-selection'
     );
+    // A bookmark list withheld from the room names why, by id, and never a label (ADR 2026-11-05 D7).
+    expect(workshopCapabilityResultLogSummary(result({
+      capability: 'transcript.bookmarks',
+      metadata: {
+        outcome: 'bookmarks', sessionCount: 0, characters: 900, truncated: false,
+        publicationWithheld: 'open-room-private-turn', withheldBookmarks: ['bookmark-2-5']
+      }
+    }))).toBe(
+      'recallMetrics=outcome=bookmarks;sessions=0;parsedBytes=n/a;cacheHits=n/a;unreadable=n/a;' +
+        'characters=900;truncated=false;limitedBy=n/a;rejection=none;withheld=open-room-private-turn'
+    );
   });
 });

@@ -10,7 +10,7 @@
  */
 
 import * as React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { WorkshopBookmarkList } from '@components/workshop/WorkshopBookmarkList';
 import { WorkshopBookmarkSummary } from '@messages';
 
@@ -208,5 +208,15 @@ describe('WorkshopBookmarkList', () => {
     renderList(rows, { disabled: true });
     expect((screen.getByRole('button', { name: 'Remove bookmark: Dialogue & Beats · report' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: 'Rename bookmark: Dialogue & Beats · report' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('offers Remember this on each row only when asked, and hands it the bookmark (Bookmark Recall D9)', () => {
+    renderList();
+    expect(screen.queryByRole('button', { name: /^Remember this/ })).toBeNull();
+    cleanup();
+    const onRemember = jest.fn();
+    renderList(rows, { onRemember });
+    fireEvent.click(screen.getByRole('button', { name: 'Remember this: Jill · The barn opens on the eggs' }));
+    expect(onRemember).toHaveBeenCalledWith(rows[0]);
   });
 });
