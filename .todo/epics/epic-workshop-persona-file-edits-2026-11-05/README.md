@@ -29,7 +29,7 @@
 | 1 | Shared planner | `utils/textEdits/`: the operations and exactly-once anchoring, pure. Memory edits move onto it with no behavior change; their tests run unchanged. | D3 | Done (PR #227, `36be1aa7`) ([slice doc](slice-1-shared-planner.md)) |
 | 2 | Staging and the gateway | The resolver's every-candidate read; `FileEditStaging` implemented (identity, ambiguity refusal, class by identity, baseline); `DocumentEditor.open` (port and VS Code adapter); the applier's `structure` mode (`strict` / `prose-paragraphs` / `free`) and `beforeAttempt` immediately before every `applyEdits` (authority predicate and text checks); the `FileEditAuthorityEpoch` port; `ProjectFileEditGateway` (re-authorize, recompute class, plan, freshness, ceiling, the last-boundary predicate, apply, report by operation, show the document); boundary pins. Host-only, no persona, no routes. | D4–D7, D13 | Done (PR #229) ([slice doc](slice-2-gateway.md)) |
 | 3 | The proposal | The `<prose-minion-file-edit>` codec and D2's bounds; the persona prompt section and worked example, with a sync test; reading frames out of a reply and staging each through the `FileEditStaging` port (a fake in tests); `fileEditProposals` (D10's shape) on the turn, with the session codec, checkpoint normalization and transcript projection; the `fileEdits` setting | D2, D10, D11 | Done (PR #230, `10393d85`) ([slice doc](slice-3-proposal.md)) |
-| 4 | Cards and Apply | The handler's claim keyed by room generation, and outcomes (D8: join, replay, `checkpointFileEdit` acknowledged durable in every recoverable checkpoint before dispatch, `partial`, `unknown`); Apply, Review in editor…, Decline and Preview routes with request ids; the real staging joined; thread cards with diffs; `landed` records; refusals in the writer's words | D8, D9, D10 | 4a (host: routes, claim, checkpoint, outcomes, words) built ([slice doc](slice-4a-apply.md)); 4b (cards) not started |
+| 4 | Cards and Apply | The handler's claim keyed by room generation, and outcomes (D8: join, replay, `checkpointFileEdit` acknowledged durable in every recoverable checkpoint before dispatch, `partial`, `unknown`); Apply, Review in editor…, Decline and Preview routes with request ids; the real staging joined; thread cards with diffs; `landed` records; refusals in the writer's words | D8, D9, D10 | 4a (host: routes, claim, checkpoint, outcomes, words) built ([slice doc](slice-4a-apply.md)); 4b (cards) built ([slice doc](slice-4b-cards.md)) |
 | 5 | Verify live | Extension Development Host pass on notes and a chapter; ADR → Accepted; memory bank; `AGENTS.md`; Apply to Draft's note settled | — | Not started |
 
 **Order:** 1 → (2 ∥ 3) → 4 → 5.
@@ -179,3 +179,14 @@ This is the same flow as Project Memory and Bookmark Recall.
   - Astra's F-04 acceptance cases run on the real coordinator, store, staging, gateway and applier, each with a control. The combined integration gate gains one Apply round trip, through save and reopen.
   - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 780 suites, 10,912 tests, 59 snapshots.
   - See [the slice doc](slice-4a-apply.md), which lists the message contracts 4b consumes.
+- **2026-11-06. Slice 4b (the cards, webview).**
+  - Baseline on `d0c172b7` (Slice 4a's head): typecheck clean; jest 780 suites, 10,912 tests, 59 snapshots.
+  - Built:
+    - `useWorkshopFileEdits`: Apply, Review in editor…, Decline and the rewrite preview, each under a minted request id and the room on screen; answers taken only when still waited for, for that room and card (#221); busy, feedback and previews per card; everything dropped with a new room; nothing persisted;
+    - the cards (`components/workshop/fileEdits/`): path, class, why, operations (a word diff for a replace, the added text for append and prepend, before and after for a rewrite from the preview or a landed record), outcomes by operation, the host's words for every state, and actions only while `pending`;
+    - `aria-busy`, a `role=status` state line, buttons named with their file, and focus moved to the state line when an action settles the card;
+    - the pure word diff, bounded, with its own tests;
+    - the stylesheet `styles/workshop/fileEdits.css` (Chromium 114 floor).
+  - The setting's row in Conversation settings is deferred to Slice 5.
+  - After: typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 785 suites, 10,979 tests, 59 snapshots.
+  - See [the slice doc](slice-4b-cards.md).

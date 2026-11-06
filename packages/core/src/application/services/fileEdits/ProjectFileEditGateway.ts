@@ -281,7 +281,7 @@ export class ProjectFileEditGateway implements FileEditApplyPort {
         : {}),
       ...(result.settled ? { document: { uri: result.settled.snapshot.uri, version: result.settled.snapshot.version } } : {}),
       revealed,
-      message: fileEditOutcomeMessage(reported.state, reported.reason)
+      message: fileEditOutcomeMessage(reported.state, reported.reason, reported.operations.map(({ outcome }) => outcome))
     };
   }
 }

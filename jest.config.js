@@ -39,10 +39,10 @@ module.exports = {
     // Edit/Preview sheet, Sprint 13A) can be tested against the REAL renderer
     // instead of a stub that would prove nothing about the output.
     '^marked$': '<rootDir>/node_modules/marked/lib/marked.umd.js',
-    // Pinned Context Slice 3's stylesheet, imported by WorkshopApp: stubbed here
-    // rather than with a jest.mock in every test that renders the app, so the
-    // Workshop's picker parity tests run unchanged.
-    'styles/workshop/pinnedContext\\.css$': '<rootDir>/packages/core/src/__tests__/mocks/styleStub.ts',
+    // Pinned Context Slice 3's and Persona File Edits Slice 4b's stylesheets,
+    // imported by WorkshopApp: stubbed here rather than with a jest.mock in
+    // every test that renders the app, so the Workshop's tests run unchanged.
+    'styles/workshop/(?:pinnedContext|fileEdits)\\.css$': '<rootDir>/packages/core/src/__tests__/mocks/styleStub.ts',
   },
   collectCoverageFrom: [
     'packages/core/src/**/*.{ts,tsx}',

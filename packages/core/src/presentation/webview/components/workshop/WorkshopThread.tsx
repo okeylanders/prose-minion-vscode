@@ -1,6 +1,7 @@
 /** Render completed Workshop history with sidecar-correlated affordances. */
 
 import type { WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
+import type { WorkshopFileEditControls } from './fileEdits/WorkshopFileEditCard';
 import * as React from 'react';
 import {
   ModelOption,
@@ -62,6 +63,8 @@ interface WorkshopThreadProps {
   modelsBeforeWindow?: WorkshopModelsBeforeWindow;
   /** Project memory's card, receipts and Save to memory… (ADR 2026-11-04 D6, D7). */
   memory?: WorkshopTurnMemoryControls;
+  /** A persona's suggested file edits (ADR 2026-11-05 D9). */
+  fileEdits?: WorkshopFileEditControls;
 }
 
 const NO_BOOKMARKS: ReadonlySet<string> = new Set();
@@ -101,7 +104,8 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   onToggleBookmark,
   modelOptions = NO_MODEL_OPTIONS,
   modelsBeforeWindow,
-  memory
+  memory,
+  fileEdits
 }) => {
   // Every turn the thread holds, seeded from the window: the same derivation
   // the transcript export runs over the full ledger.
@@ -167,6 +171,7 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
               onToggleBookmark={onToggleBookmark}
               modelLabel={modelLabel}
               memory={memory}
+              fileEdits={fileEdits}
             />
           </React.Fragment>
         );

@@ -9,6 +9,7 @@ import { fileEditOutcomeMessage, fileEditStagingRefusalMessage } from '@/applica
 import type { FileEditApplyRefusal, FileEditOperationFault } from '@/domain/models/FileEdit';
 import { FILE_EDIT_STAGING_REFUSALS } from '@/domain/models/FileEditStaging';
 import {
+  WORKSHOP_FILE_EDIT_PARTIAL_UNCERTAIN_WORDS,
   WORKSHOP_FILE_EDIT_REASON_WORDS,
   WORKSHOP_FILE_EDIT_STATE_WORDS,
   workshopFileEditCardWords,
@@ -92,5 +93,19 @@ describe('workshopFileEditWords', () => {
     for (const kind of [...APPLY_REFUSALS, ...OPERATION_FAULTS, ...APPLIER_REFUSALS]) {
       expect(fileEditOutcomeMessage('refused', kind)).toBe(WORKSHOP_FILE_EDIT_REASON_WORDS[kind as WorkshopFileEditReasonKind]);
     }
+  });
+
+  it('never says "the rest were not" of a partial card whose others are unknown (PR #233 note)', () => {
+    const mixed = ['landed', 'unknown'] as const;
+    expect(workshopFileEditCardWords('partial', undefined, mixed)).toBe(WORKSHOP_FILE_EDIT_PARTIAL_UNCERTAIN_WORDS);
+    expect(WORKSHOP_FILE_EDIT_PARTIAL_UNCERTAIN_WORDS).not.toMatch(/the rest were not/);
+    expect(WORKSHOP_FILE_EDIT_PARTIAL_UNCERTAIN_WORDS).toMatch(/not known/);
+    expect(workshopFileEditCardWords('partial', 'changed', mixed)).toMatch(/^Some of the changes were applied; for the others, it is not known/);
+    // Control: a partial card whose others were not applied says so.
+    expect(workshopFileEditCardWords('partial', undefined, ['landed', 'not-applied'])).toBe(WORKSHOP_FILE_EDIT_STATE_WORDS.partial);
+    // The gateway's message reads the same table, outcomes and all.
+    expect(fileEditOutcomeMessage('partial', undefined, mixed)).toBe(WORKSHOP_FILE_EDIT_PARTIAL_UNCERTAIN_WORDS);
+    expect(fileEditOutcomeMessage('partial', undefined, ['landed', 'not-applied'])).toBe(WORKSHOP_FILE_EDIT_STATE_WORDS.partial);
+    expect(fileEditOutcomeMessage('applied')).toBe(WORKSHOP_FILE_EDIT_STATE_WORDS.applied);
   });
 });

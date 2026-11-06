@@ -48,6 +48,8 @@ import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
 import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
+import { useWorkshopFileEdits } from '@hooks/domain/workshop/useWorkshopFileEdits';
+import { useWorkshopFileEditControls } from '@components/workshop/fileEdits/useWorkshopFileEditControls';
 import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinnedContext';
 import { useWorkshopPinnedPills } from '@hooks/domain/workshop/controllers/useWorkshopPinnedPills';
 import { workshopPinnedContextPanelProps } from '@components/workshop/settings/WorkshopPinnedContextSettingsPanel';
@@ -184,6 +186,7 @@ import './styles/workshop/shell.css';
 import './styles/workshop/context.css';
 import './styles/workshop/session.css';
 import './styles/workshop/memory.css';
+import './styles/workshop/fileEdits.css';
 import './styles/workshop/pinnedContext.css';
 import './components/workshop/widgets/gesturePlayground/gesturePlayground.css';
 import './components/workshop/widgets/lexicalGravity/lexicalGravity.css';
@@ -262,6 +265,7 @@ export const WorkshopApp: React.FC = () => {
   // badges and the memory receipts' feedback both start over with a new one.
   const roomKey = workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending';
   const projectMemory = useWorkshopProjectMemory({ roomKey });
+  const fileEdits = useWorkshopFileEdits({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
   const memoryManager = useWorkshopMemoryManager();
   const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
   const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, room: workshop.roomRevision, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });
@@ -456,6 +460,7 @@ export const WorkshopApp: React.FC = () => {
     projectMemory,
     memoryManager,
     pinnedContext,
+    fileEdits,
     workshopRoom: workshop,
     workshopSessions,
     widgetHost,
@@ -578,6 +583,8 @@ export const WorkshopApp: React.FC = () => {
     projectMemory.editCard, projectMemory.dismissCard, projectMemory.reopenCard, projectMemory.saveTurn,
     projectMemory.editMemory, projectMemory.forget, projectMemory.restore, memoryManager.openManager
   ]);
+
+  const fileEditControls = useWorkshopFileEditControls({ fileEdits, locked: roomMutationLocked, running: workshop.isRunning });
 
   // Recomputing a full word split per streamed token was O(excerpt) work on
   // the token clock (PR #67 review #11) — the excerpt only changes on re-pin.
@@ -1351,6 +1358,7 @@ export const WorkshopApp: React.FC = () => {
             bookmarkDisabled={roomMutationLocked}
             onToggleBookmark={bookmarks.setTurnBookmark}
             memory={memoryControls}
+            fileEdits={fileEditControls}
             modelOptions={modelsSettings.modelOptions}
             modelsBeforeWindow={workshop.modelsBeforeWindow}
           />

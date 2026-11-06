@@ -140,7 +140,7 @@ export class WorkshopFileEditHandler {
     }
     if (proposal.state !== 'pending') {
       this.answer(requestId, { ...ids, answer: 'replayed', state: proposal.state, ...(proposal.reason ? { reason: proposal.reason } : {}) },
-        `${action} replayed ${where} state=${proposal.state}`);
+        `${action} replayed ${where} state=${proposal.state}`, proposal.outcomes);
       return;
     }
     if (action === 'decline') {
@@ -214,7 +214,7 @@ export class WorkshopFileEditHandler {
     }
     this.answerAll(held, { ...ids, answer: 'settled', state: recorded.state, ...(recorded.reason ? { reason: recorded.reason } : {}) },
       `${review} settled ${where} state=${recorded.state}${recorded.reason ? ` reason=${recorded.reason}` : ''} ` +
-      `landed=${recorded.outcomes?.filter((each) => each === 'landed').length ?? 0}`);
+      `landed=${recorded.outcomes?.filter((each) => each === 'landed').length ?? 0}`, recorded.outcomes);
   }
 
   /** The outcome on the card; one the codec refuses is held as unknown, never lost. */
@@ -294,21 +294,23 @@ export class WorkshopFileEditHandler {
     this.effects.postSessionState();
   }
 
-  private answerAll(held: Claim, answer: Answer, line: string): void {
+  /** `outcomes` only words the answer (a partial card's line reads them); they are not posted. */
+  private answerAll(held: Claim, answer: Answer, line: string, outcomes?: readonly string[]): void {
     this.log(`${line} requests=${held.requestIds.length}`);
-    held.requestIds.forEach((requestId, at) => this.post(requestId, at === 0 || answer.answer !== 'settled' ? answer : { ...answer, answer: 'joined' }));
+    held.requestIds.forEach((requestId, at) =>
+      this.post(requestId, at === 0 || answer.answer !== 'settled' ? answer : { ...answer, answer: 'joined' }, outcomes));
   }
 
-  private answer(requestId: string, answer: Answer, line: string): void {
+  private answer(requestId: string, answer: Answer, line: string, outcomes?: readonly string[]): void {
     this.log(line);
-    this.post(requestId, answer);
+    this.post(requestId, answer, outcomes);
   }
 
-  private post(requestId: string, answer: Answer): void {
+  private post(requestId: string, answer: Answer, outcomes?: readonly string[]): void {
     const reply: WorkshopFileEditResultMessage = {
       type: MessageType.WORKSHOP_FILE_EDIT_RESULT,
       source: 'extension.workshop',
-      payload: { requestId, ...answer, message: wordsOf(answer) },
+      payload: { requestId, ...answer, message: wordsOf(answer, outcomes) },
       timestamp: Date.now()
     };
     void this.postMessage(reply);
@@ -335,10 +337,10 @@ function claimKey(generation: number, turnId: string, index: number): string {
 }
 
 /** An answer in the writer's words: the card's line when it names a state, else its reason's. */
-function wordsOf(answer: Answer): string {
+function wordsOf(answer: Answer, outcomes?: readonly string[]): string {
   const state: WorkshopFileEditState | undefined = answer.state;
   if (answer.answer === 'refused' || answer.answer === 'held' || state === undefined) {
     return workshopFileEditReasonWords(answer.reason);
   }
-  return workshopFileEditCardWords(state, answer.reason);
+  return workshopFileEditCardWords(state, answer.reason, outcomes);
 }

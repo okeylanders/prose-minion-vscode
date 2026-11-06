@@ -66,6 +66,7 @@ import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 import type { UseWorkshopProjectMemoryReturn } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import type { UseWorkshopMemoryManagerReturn } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import type { UseWorkshopPinnedContextReturn } from '@hooks/domain/workshop/useWorkshopPinnedContext';
+import type { UseWorkshopFileEditsReturn } from '@hooks/domain/workshop/useWorkshopFileEdits';
 
 export interface WorkshopAppMessageRouterDeps {
   workshopRoom: UseWorkshopRoomReturn;
@@ -85,6 +86,8 @@ export interface WorkshopAppMessageRouterDeps {
   memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData' | 'noteSessionState'>;
   /** The Pinned context tab's list (Pinned Context Slice 3). */
   pinnedContext: Pick<UseWorkshopPinnedContextReturn, 'handlePinnedContext'>;
+  /** A suggested file edit's answers (Persona File Edits Slice 4b); absent reads as none. */
+  fileEdits?: Pick<UseWorkshopFileEditsReturn, 'handleResult' | 'handlePreviewResult'>;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -117,6 +120,7 @@ export function buildWorkshopAppMessageRoutes(
     projectMemory,
     memoryManager,
     pinnedContext,
+    fileEdits,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -186,6 +190,10 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_MEMORY_LISTING]: memoryManager.handleListing,
     [MessageType.WORKSHOP_MEMORY_MANAGER_RESULT]: memoryManager.handleManagerResult,
     [MessageType.WORKSHOP_PINNED_CONTEXT]: pinnedContext.handlePinnedContext,
+    ...(fileEdits ? {
+      [MessageType.WORKSHOP_FILE_EDIT_RESULT]: fileEdits.handleResult,
+      [MessageType.WORKSHOP_FILE_EDIT_PREVIEW_RESULT]: fileEdits.handlePreviewResult
+    } : {}),
     [MessageType.WORKSHOP_MEMORY_ESTIMATE_RESULT]: projectMemory.handleEstimateResult,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshopRoom.handleContextSearchResults,
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT]:

@@ -109,16 +109,34 @@ export const WORKSHOP_FILE_EDIT_STATE_WORDS: Readonly<Record<WorkshopFileEditSta
 });
 
 /**
- * A card's line: its reason's words when it has one, else its state's.
- * `applied` and `partial` lead with the state, since a reason there only
- * says why the rest did not land.
+ * A partial card some of whose other operations are `unknown` (PR #233
+ * note): "the rest were not" would be false, so it says it is not known.
  */
-export function workshopFileEditCardWords(state: WorkshopFileEditState, reason?: string): string {
+export const WORKSHOP_FILE_EDIT_PARTIAL_UNCERTAIN_WORDS =
+  'Some of the changes were applied; for the others, it is not known whether they landed. Check the file before asking again. The file is not saved yet.';
+
+/**
+ * A state's line, read against its operations' outcomes when it has them:
+ * `partial` with any `unknown` among them reads the uncertain line.
+ */
+export function workshopFileEditStateWords(state: WorkshopFileEditState, outcomes?: readonly string[]): string {
+  if (state === 'partial' && outcomes?.includes('unknown')) {
+    return WORKSHOP_FILE_EDIT_PARTIAL_UNCERTAIN_WORDS;
+  }
+  return WORKSHOP_FILE_EDIT_STATE_WORDS[state];
+}
+
+/**
+ * A card's line: its reason's words when it has one, else its state's
+ * (read against its outcomes). `applied` and `partial` lead with the state,
+ * since a reason there only says why the rest did not land.
+ */
+export function workshopFileEditCardWords(state: WorkshopFileEditState, reason?: string, outcomes?: readonly string[]): string {
   if (reason === undefined) {
-    return WORKSHOP_FILE_EDIT_STATE_WORDS[state];
+    return workshopFileEditStateWords(state, outcomes);
   }
   if (state === 'applied' || state === 'partial') {
-    return `${WORKSHOP_FILE_EDIT_STATE_WORDS[state]} ${workshopFileEditReasonWords(reason)}`;
+    return `${workshopFileEditStateWords(state, outcomes)} ${workshopFileEditReasonWords(reason)}`;
   }
   return workshopFileEditReasonWords(reason);
 }
