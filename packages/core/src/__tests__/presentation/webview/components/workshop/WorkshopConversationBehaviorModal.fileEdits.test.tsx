@@ -98,6 +98,26 @@ describe('Conversation settings · Suggested file edits', () => {
     expect(card('Ask first').getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('an untouched row follows a newer host mode while the modal is open, and Apply sends it (PR #236 F-02 witness)', () => {
+    const { props, rerender } = renderModal({ fileEditsMode: 'ask' });
+    rerender({ fileEditsMode: 'off' });
+    expect(card('Off').getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
+    expect(applied(props)[4]).toBe('off');
+  });
+
+  it('control: a row the writer picked keeps their choice through a newer host mode, and other drafts are kept', () => {
+    const { props, rerender } = renderModal({ fileEditsMode: 'ask' });
+    fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+    fireEvent.click(card('Ask first'));
+    rerender({ fileEditsMode: 'off' });
+    expect(card('Ask first').getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
+    expect(applied(props)[0].interactionMode).toBe('analysis');
+    expect(applied(props)[4]).toBe('ask');
+  });
+
   it('a change in VS Code Settings while the modal is closed is the next draft', () => {
     const { rerender } = renderModal({ open: false });
     rerender({ open: false, fileEditsMode: 'off' });

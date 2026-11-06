@@ -127,6 +127,7 @@ import type {
 import { WorkshopSliceComposition } from '@handlers/domain/workshop/WorkshopSliceComposition';
 import {
   WorkshopConversationSettingsPartialApplyError,
+  workshopConversationSettingsApplyReport,
   workshopConversationSettingsPartialApplyWords
 } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
 
@@ -445,28 +446,10 @@ export class WorkshopRoomHandler {
         message.payload?.projectMemory,
         message.payload?.fileEdits
       );
-      if (result.persistenceErrors) {
-        const persistenceDetails = [
-          result.persistenceErrors.behavior
-            ? `behavior: ${result.persistenceErrors.behavior}`
-            : undefined,
-          result.persistenceErrors.writerProfile
-            ? `writer profile: ${result.persistenceErrors.writerProfile}`
-            : undefined,
-          result.persistenceErrors.webResearch
-            ? `web research: ${result.persistenceErrors.webResearch}`
-            : undefined,
-          result.persistenceErrors.projectMemory ? `project memory: ${result.persistenceErrors.projectMemory}` : undefined,
-          result.persistenceErrors.fileEdits ? `file edits: ${result.persistenceErrors.fileEdits}` : undefined
-        ].filter(Boolean).join('; ');
-        this.outputChannel.appendLine(
-          `[WorkshopRoomHandler] Conversation settings are active but could not be persisted: ${persistenceDetails}`
-        );
-        this.sendError(
-          'workshop',
-          'Conversation settings changed for this session, but VS Code could not save them for restart.',
-          persistenceDetails
-        );
+      const report = workshopConversationSettingsApplyReport(result);
+      if (report) {
+        this.outputChannel.appendLine(`[WorkshopRoomHandler] ${report.logLine}`);
+        this.sendError('workshop', report.message, report.details);
       }
       if (result.changed) {
         this.sessionPersistence.markDirty('conversation settings changed');

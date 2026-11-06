@@ -116,7 +116,8 @@ describe('suggested file edits through Conversation settings', () => {
     const { state, service, assistant, apply } = room('ask');
     state.refuse = (key) => key === 'workshop.fileEdits';
     const result = await apply('off');
-    expect(result.persistenceErrors).toEqual({ fileEdits: 'settings are read-only' });
+    expect(result.persistenceErrors).toBeUndefined();
+    expect(result.modeRefusals).toEqual({ fileEdits: { error: 'settings are read-only', effective: 'ask' } });
     expect(service.getFileEditsMode()).toBe('ask');
     expect(assistant.replaceWorkshopConversationSettings).not.toHaveBeenCalled();
   });

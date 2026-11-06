@@ -369,6 +369,25 @@ describe('a transient refusal returns the card to pending; a possible landing ne
   });
 });
 
+describe('a reveal failure after a settled landing (PR #236 N-01)', () => {
+  it('the card stays applied with what landed, offers no Apply, and is still applied after save and reopen', async () => {
+    const fixture = await harness();
+    jest.spyOn(fixture.documents, 'reveal').mockRejectedValueOnce(new Error('the tab could not open'));
+    await fixture.act('apply', 'r1');
+    expect(fixture.card()).toMatchObject({ state: 'applied', outcomes: ['landed'], landed: [{ operation: 0, after: 'Alice is ten' }] });
+    await fixture.act('apply', 'r2');
+    expect(fixture.documents.applyCalls).toHaveLength(1);
+    expect(fixture.results()[1]).toMatchObject({ answer: 'replayed', state: 'applied' });
+
+    await fixture.coordinator.flush();
+    const reopened = setupCoordinator();
+    await reopened.store.writeCurrent((await fixture.store.readCurrent())!);
+    await reopened.coordinator.initialize();
+    expect(reopened.session.readRoomLedger().find((each) => each.id === fixture.turn.id)?.fileEditProposals?.[0])
+      .toMatchObject({ state: 'applied', outcomes: ['landed'] });
+  });
+});
+
 describe('the combined integration gate: one Apply round trip', () => {
   it('stage, reply, Apply: the card is applied with what landed, and survives save and reopen', async () => {
     const fixture = await harness({ frame: REPLACE_AND_APPEND });

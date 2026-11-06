@@ -26,7 +26,8 @@
  *    means nothing was written: a failure before any `applyEdits`, or a
  *    read-back that found nothing landed. A failure after the applier was
  *    let through to `applyEdits` may follow a landing, so it reads
- *    `unknown` (D8, amended 2026-11-06).
+ *    `unknown` (D8, amended 2026-11-06), unless the read-back settled it
+ *    first: a failure to show the document keeps the result.
  * 8. **Show the document** when something landed and no editor shows it.
  *
  * Nothing is ever saved. Logs carry ids, counts and fault kinds, never the
@@ -292,7 +293,9 @@ export class ProjectFileEditGateway implements FileEditApplyPort {
     const reported = report(staged, plan.edits.map((edit) => edit.operations), result);
     const landedOperations = new Set(reported.operations.flatMap(({ index, outcome }) => outcome === 'landed' ? [index] : []));
     const landed = landedOperations.size > 0;
-    const revealed = landed && result.settled ? await dependencies.documents.reveal(result.settled.snapshot.uri) : false;
+    // The read-back has settled what landed; showing the document cannot change that, so its failure keeps the result
+    // (PR #236 N-01). Only a throw before this point, whose landing the read-back did not settle, reads `unknown`.
+    const revealed = landed && result.settled ? await this.reveal(staged, result.settled.snapshot.uri) : false;
     return {
       ...reported,
       ...(landed
@@ -302,6 +305,16 @@ export class ProjectFileEditGateway implements FileEditApplyPort {
       revealed,
       message: fileEditOutcomeMessage(reported.state, reported.reason, reported.operations.map(({ outcome }) => outcome))
     };
+  }
+
+  /** Step 8: show the document. A failure is logged (ids only) and reads as not shown. */
+  private async reveal(staged: StagedFileEdit, uri: string): Promise<boolean> {
+    try {
+      return await this.dependencies.documents.reveal(uri);
+    } catch {
+      this.dependencies.log.appendLine(`[FileEdit] reveal failed turn=${staged.source.turnId} index=${staged.source.index}`);
+      return false;
+    }
   }
 }
 

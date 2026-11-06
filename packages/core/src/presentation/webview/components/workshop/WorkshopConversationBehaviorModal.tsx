@@ -102,8 +102,13 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   const [behaviorDraft, setBehaviorDraft] = React.useState({ ...behavior });
   const [profileDraft, setProfileDraft] = React.useState({ ...writerProfile });
   const [webResearchDraft, setWebResearchDraft] = React.useState({ ...webResearch });
-  const [memoryDraft, setMemoryDraft] = React.useState<WorkshopProjectMemoryMode>(projectMemoryMode);
-  const [fileEditsDraft, setFileEditsDraft] = React.useState<WorkshopFileEditsMode>(fileEditsMode);
+  // The global modes' rows (PR #236 F-02): undefined until the writer picks one, and meanwhile they follow the host's
+  // mode, so a change made in VS Code Settings while the modal is open is never written back over by an untouched row.
+  // A row the writer picked keeps their choice, which Apply then sends.
+  const [memoryPick, setMemoryPick] = React.useState<WorkshopProjectMemoryMode | undefined>(undefined);
+  const [fileEditsPick, setFileEditsPick] = React.useState<WorkshopFileEditsMode | undefined>(undefined);
+  const memoryDraft = memoryPick ?? projectMemoryMode;
+  const fileEditsDraft = fileEditsPick ?? fileEditsMode;
   const [pending, setPending] = React.useState<PendingApply | null>(null);
   const [confirmClear, setConfirmClear] = React.useState(false);
   const tabRefs = React.useRef<Partial<Record<WorkshopConversationSettingsTab, HTMLButtonElement | null>>>({});
@@ -114,8 +119,8 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       setBehaviorDraft({ ...behavior });
       setProfileDraft({ ...writerProfile });
       setWebResearchDraft({ ...webResearch });
-      setMemoryDraft(projectMemoryMode);
-      setFileEditsDraft(fileEditsMode);
+      setMemoryPick(undefined);
+      setFileEditsPick(undefined);
       setPending(null);
       setConfirmClear(false);
     }
@@ -190,7 +195,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         fileEdits={fileEditsDraft}
         disabled={editingLocked}
         onDraftChange={setBehaviorDraft}
-        onSelectFileEdits={setFileEditsDraft}
+        onSelectFileEdits={setFileEditsPick}
       />
     ),
     profile: () => (
@@ -212,7 +217,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         {...(memoryFolder ? { folderStatus: memoryFolder } : {})}
         explainerOpen={memoryExplainerOpen}
         onToggleExplainer={onToggleMemoryExplainer}
-        onSelectMode={setMemoryDraft}
+        onSelectMode={setMemoryPick}
         onOpenManager={onOpenMemoryManager}
         onOpenFolder={onOpenMemoryFolder}
       />

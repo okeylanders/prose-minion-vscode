@@ -148,12 +148,90 @@ export interface WorkshopGlobalModeWrites {
   readonly fileEdits: WorkshopGlobalModeWrite<WorkshopFileEditsMode>;
 }
 
-/** Why VS Code refused each mode write, by mode; empty when none failed. */
-export function workshopGlobalModeWriteErrors(writes: WorkshopGlobalModeWrites): { projectMemory?: string; fileEdits?: string } {
-  return {
-    ...(writes.projectMemory.error ? { projectMemory: writes.projectMemory.error } : {}),
-    ...(writes.fileEdits.error ? { fileEdits: writes.fileEdits.error } : {})
+/** A global mode VS Code refused to change: why, and the mode still in effect. */
+export interface WorkshopGlobalModeRefusal<Mode extends string> {
+  readonly error: string;
+  readonly effective: Mode;
+}
+
+export interface WorkshopGlobalModeRefusals {
+  readonly projectMemory?: WorkshopGlobalModeRefusal<WorkshopProjectMemoryMode>;
+  readonly fileEdits?: WorkshopGlobalModeRefusal<WorkshopFileEditsMode>;
+}
+
+type WorkshopGlobalModes = {
+  readonly projectMemory: WorkshopGlobalModeSetting<WorkshopProjectMemoryMode>;
+  readonly fileEdits: WorkshopGlobalModeSetting<WorkshopFileEditsMode>;
+};
+
+/**
+ * The mode writes VS Code refused, each with the mode still in effect (PR #236 F-01). A refused mode never took
+ * effect, so it is never reported as a setting active for this session; `{}` when none was refused.
+ */
+export function workshopGlobalModeRefusals(modes: WorkshopGlobalModes, writes: WorkshopGlobalModeWrites): { modeRefusals?: WorkshopGlobalModeRefusals } {
+  const refusals: WorkshopGlobalModeRefusals = {
+    ...(writes.projectMemory.error ? { projectMemory: { error: writes.projectMemory.error, effective: modes.projectMemory.get() } } : {}),
+    ...(writes.fileEdits.error ? { fileEdits: { error: writes.fileEdits.error, effective: modes.fileEdits.get() } } : {})
   };
+  return Object.keys(refusals).length > 0 ? { modeRefusals: refusals } : {};
+}
+
+/**
+ * The writer's words for refused mode changes: which modes could not be changed, and what each still is. `alsoApplied`
+ * adds that the rest of the submission did take effect, so a mixed apply is reported truthfully.
+ */
+export function workshopGlobalModeRefusalWords(refusals: WorkshopGlobalModeRefusals, alsoApplied: boolean): string {
+  return [
+    refusals.projectMemory
+      ? `VS Code could not change project memory, so it is still ${PROJECT_MEMORY_MODE_WORDS[refusals.projectMemory.effective]}.`
+      : undefined,
+    refusals.fileEdits
+      ? `VS Code could not change suggested file edits, so they are still ${FILE_EDITS_MODE_WORDS[refusals.fileEdits.effective]}.`
+      : undefined,
+    alsoApplied ? 'Your other conversation settings were applied.' : undefined
+  ].filter((each): each is string => each !== undefined).join(' ');
+}
+
+/** What an apply reports beyond success: settings saved for this session only, and modes VS Code refused. */
+export interface WorkshopConversationSettingsApplyOutcome {
+  readonly changed: boolean;
+  readonly persistenceErrors?: { readonly behavior?: string; readonly writerProfile?: string; readonly webResearch?: string };
+  readonly modeRefusals?: WorkshopGlobalModeRefusals;
+}
+
+/**
+ * The room's one report of an apply that did not fully land (PR #236 F-01), or nothing when it did. A setting active
+ * for this session but not saved for restart says so; a refused mode says it did not change and what it still is. A
+ * mixed apply says both, and never calls a refused mode active.
+ */
+export function workshopConversationSettingsApplyReport(
+  outcome: WorkshopConversationSettingsApplyOutcome
+): { readonly message: string; readonly details: string; readonly logLine: string } | undefined {
+  const unsaved = outcome.persistenceErrors && Object.keys(outcome.persistenceErrors).length > 0 ? outcome.persistenceErrors : undefined;
+  const refused = outcome.modeRefusals;
+  if (!unsaved && !refused) {
+    return undefined;
+  }
+  const unsavedDetails = [
+    unsaved?.behavior ? `behavior: ${unsaved.behavior}` : undefined,
+    unsaved?.writerProfile ? `writer profile: ${unsaved.writerProfile}` : undefined,
+    unsaved?.webResearch ? `web research: ${unsaved.webResearch}` : undefined
+  ].filter((each): each is string => each !== undefined).join('; ');
+  const refusedDetails = [
+    refused?.projectMemory ? `project memory: ${refused.projectMemory.error}` : undefined,
+    refused?.fileEdits ? `file edits: ${refused.fileEdits.error}` : undefined
+  ].filter((each): each is string => each !== undefined).join('; ');
+  const message = [
+    refused ? workshopGlobalModeRefusalWords(refused, outcome.changed && !unsaved) : undefined,
+    unsaved
+      ? `${refused ? 'Your other conversation settings' : 'Conversation settings'} changed for this session, but VS Code could not save them for restart.`
+      : undefined
+  ].filter((each): each is string => each !== undefined).join(' ');
+  const logLine = [
+    unsaved ? `Conversation settings are active but could not be persisted: ${unsavedDetails}` : undefined,
+    refused ? `Global modes not changed, VS Code refused: ${refusedDetails}` : undefined
+  ].filter((each): each is string => each !== undefined).join('; ');
+  return { message, details: [unsavedDetails, refusedDetails].filter((each) => each.length > 0).join('; '), logLine };
 }
 
 /**
@@ -162,7 +240,7 @@ export function workshopGlobalModeWriteErrors(writes: WorkshopGlobalModeWrites):
  * be set back, as it stands now.
  */
 export async function undoWorkshopGlobalModeWrites(
-  modes: { readonly projectMemory: WorkshopGlobalModeSetting<WorkshopProjectMemoryMode>; readonly fileEdits: WorkshopGlobalModeSetting<WorkshopFileEditsMode> },
+  modes: WorkshopGlobalModes,
   writes: WorkshopGlobalModeWrites,
   error: unknown
 ): Promise<never> {

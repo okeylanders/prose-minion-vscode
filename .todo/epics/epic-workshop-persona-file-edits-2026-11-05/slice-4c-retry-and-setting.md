@@ -42,7 +42,7 @@
 ### Decisions
 
 1. **The flag lives in `beforeAttempt`, not around the applier's call.** A throw inside `applier.apply` before its first `applyEdits` (its checks, its watch) wrote nothing. A flag set around the whole call would read that as `unknown` and offer no retry where one is safe. `beforeAttempt` is the applier's documented "immediately before every `applyEdits`" seam (D7.6), so the gateway needs no new applier contract.
-2. **A throw after a landing reads `unknown`, never what the read-back would have said.** For example, `reveal` throwing after edits landed now reads `unknown`. Before this slice, the catch-all called that `refused` / `host-failed`, which claimed nothing was written. `unknown` is safe; it is coarser than the truth. See question 2.
+2. **A throw after dispatch reads `unknown` unless the read-back settled the landing first.** Before this slice, the catch-all called any throw `refused` / `host-failed`, which could claim nothing was written while edits had landed. A failure to show the document (step 8) is now caught on its own and keeps the settled `applied` / `partial` result, with `revealed: false` (PR #236 N-01, below). Any other throw after dispatch reads `unknown`.
 3. **The reason is not stored**, as Okey answered (point 3). After a reload the card is plainly `pending`.
 
 ### Questions for the live pass
@@ -53,7 +53,7 @@
    - `no-longer-configured`: the file left the context paths.
 
    Should any of them return to `pending`?
-2. **`reveal` failing after a landing** now reads `unknown`. Should the gateway keep the read-back's outcome when only the reveal fails (`revealed: false`)? That would be a small change in step 8.
+2. ~~**`reveal` failing after a landing.**~~ Settled by the PR #236 review (N-01): the read-back's result is kept. The coordinator tells Okey.
 
 ## Task 2: the settings row
 
@@ -135,6 +135,30 @@
   - an external change becomes the next draft.
 - **`useWorkshopRoomAndSessions.test.ts`** (+1): it holds the host's mode, and posts it unless a draft is given.
 - **Updated for the new field:** the modal's two suites (`onApply`'s fifth argument, the `fileEditsMode` prop) and the room hook's payload test. The memory-mode suites (`WorkshopConversationSettingsMemoryApply`, `WorkshopRoomHandler.memoryModeRollback`) run unchanged.
+
+## PR #236 review fixes
+
+The review is Astra's, at `8450dd8c`, in [`docs/pr-reviews/pr-236-retry-and-settings-review.md`](../../../docs/pr-reviews/pr-236-retry-and-settings-review.md). It found no unsafe retry in the dispatch or checkpoint path.
+
+- **F-01 (P2): a refused mode change read as active for the session.** A global mode VS Code refuses to write never took effect, but it was reported with the behavior and profile persistence errors as "changed for this session". The project-memory mode had the same wording, so both are fixed together.
+  - **The service.** It now reports `modeRefusals` (`{ error, effective }` per mode) apart from `persistenceErrors`, which keeps only settings that are active but unsaved.
+  - **One report.** `workshopConversationSettingsApplyReport` (pure, in `WorkshopConversationSettingsPartialApply.ts`) words the outcome, with its details and log line:
+    - a refused mode: "VS Code could not change suggested file edits, so they are still Ask first." / "VS Code could not change project memory, so it is still Off.";
+    - a mixed apply adds "Your other conversation settings were applied.";
+    - settings active but unsaved keep their sentence.
+  - **The handler** posts that report, and shrank to 1,691 lines.
+  - **Tests.** In `WorkshopRoomHandler.fileEditsSetting.test.ts`: Astra's route witness, a mixed apply and the memory mode. All three fail without the fix. The two service tests of a refused write now expect `modeRefusals`.
+- **F-02 (P2): an untouched mode row went stale and wrote over a newer choice.**
+  - **The fix.** The modal's two global-mode rows are `undefined` until the writer picks one, and meanwhile follow the host's mode (`memoryPick ?? projectMemoryMode`, `fileEditsPick ?? fileEditsMode`). Opening the modal resets the picks only, so the other drafts are untouched.
+  - **The conflict policy.** A row the writer picked keeps their choice through a newer host mode, and Apply sends it. That is deliberate: it is the writer's last edit.
+  - **Tests.** Astra's witness, and the same case for the memory row, both fail without the fix. Each has a control in which a deliberate pick survives a host update, with the Behavior draft kept.
+  - **A residual window.** An untouched row sends the host's mode as the webview last heard it. A VS Code edit that lands after the snapshot was posted and before the apply reaches the host could still be written over. The window is the length of a message round trip. Omitting an untouched field would close it, but Astra's witness pins the latest host mode being sent, so I kept that contract. Flagged for review.
+- **N-01 (nonblocking, done): a reveal failure keeps a settled landing.** Step 8 is now `ProjectFileEditGateway.reveal`, which catches its own failure, logs `[FileEdit] reveal failed turn=… index=…` and answers `false`.
+  - The applied or partial result, its outcomes and its landed records stand.
+  - A throw before the read-back settles still reads `unknown`.
+  - **Tests.** In the gateway: applied and partial, each with `revealed: false`. In integration: applied through save and reopen, with the next Apply replayed and no second write. All three fail without the change.
+  - **Astra's probe superseded.** Her `reveal-only failure … persists unknown` probe asserted the earlier behavior and now fails by design.
+  - The ADR's D8 note says this.
 
 ## Verification
 

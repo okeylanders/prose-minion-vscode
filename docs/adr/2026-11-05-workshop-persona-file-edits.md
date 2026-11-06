@@ -375,10 +375,13 @@ only the applier calls `applyEdits`. No Workshop module reaches
     applier is let through to `applyEdits` (marked in `beforeAttempt`,
     immediately before every call), or for a read-back that found nothing
     landed and nothing unknown. A failure after `applyEdits` was called may
-    follow a landing, so it reads `unknown`, by operation, with no Apply. A
-    crash between the checkpoint and the flush still reads `unknown` on
-    reopen, which is safe. Every other refusal (`unreadable` among them)
-    stays terminal.
+    follow a landing, so it reads `unknown`, by operation, with no Apply.
+    Once the read-back has settled what landed, a failure to show the
+    document (D7.8) keeps that result, `applied` or `partial`, with
+    `revealed: false`. Neither offers Apply, so a retry can't follow (PR
+    #236 N-01). A crash between the checkpoint and the flush still reads
+    `unknown` on reopen, which is safe. Every other refusal (`unreadable`
+    among them) stays terminal.
 - **Preview.** No command is ever sent to Refactor Preview: no discard.
 - **Shutdown.** Claims are not awaited at deactivation, since a preview may
   wait on the writer indefinitely. The acknowledged `applying` reads as

@@ -27,7 +27,8 @@ import {
 } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
 import {
   undoWorkshopGlobalModeWrites,
-  workshopGlobalModeWriteErrors,
+  workshopGlobalModeRefusals,
+  type WorkshopGlobalModeRefusals,
   workshopFileEditsModeSetting,
   workshopProjectMemoryModeSetting,
   type WorkshopGlobalModeSetting
@@ -37,14 +38,15 @@ export interface WorkshopConversationSettingsPersistenceErrors {
   behavior?: string;
   writerProfile?: string;
   webResearch?: string;
-  projectMemory?: string;
-  fileEdits?: string;
 }
 
 export interface WorkshopConversationSettingsUpdate {
   changed: boolean;
   deferred: boolean;
+  /** Settings active in the room that VS Code could not save for restart. */
   persistenceErrors?: WorkshopConversationSettingsPersistenceErrors;
+  /** Global modes VS Code refused to change: never active, each still its effective mode (PR #236 F-01). */
+  modeRefusals?: WorkshopGlobalModeRefusals;
 }
 
 interface WorkshopConversationSettingsApplyResult extends WorkshopConversationSettingsUpdate {
@@ -123,7 +125,6 @@ export class WorkshopConversationSettingsService {
       this.assertBetweenRuns();
       const modes = { projectMemory: this.projectMemoryMode, fileEdits: this.fileEditsMode };
       const writes = { projectMemory: await modes.projectMemory.write(nextProjectMemory), fileEdits: await modes.fileEdits.write(nextFileEdits) };
-      const modeErrors = workshopGlobalModeWriteErrors(writes);
       const result = await this.apply(nextBehavior, nextProfile)
         .catch((error: unknown) => undoWorkshopGlobalModeWrites(modes, writes, error));
       this.externalSyncPending = false;
@@ -142,13 +143,12 @@ export class WorkshopConversationSettingsService {
           && workshopWebResearchSettingsEqual(pendingWebResearch.appliedValue, nextWebResearch));
       this.webResearch = nextWebResearch;
       const changed = result.changed || webResearchChanged;
+      const modeRefusals = workshopGlobalModeRefusals(modes, writes);
       if (!persistBehavior && !persistProfile && !persistWebResearch) {
-        return this.publicResult(Object.keys(modeErrors).length > 0
-          ? { ...result, changed, persistenceErrors: modeErrors }
-          : { ...result, changed });
+        return { ...this.publicResult({ ...result, changed }), ...modeRefusals };
       }
 
-      const persistenceErrors: WorkshopConversationSettingsPersistenceErrors = { ...modeErrors };
+      const persistenceErrors: WorkshopConversationSettingsPersistenceErrors = {};
       if (persistBehavior) {
         try {
           await this.settings.update(
@@ -194,11 +194,10 @@ export class WorkshopConversationSettingsService {
         }
       }
       if (changed) this.logSettingsApplied(nextBehavior, nextProfile, nextWebResearch);
-      return this.publicResult(
-        Object.keys(persistenceErrors).length > 0
-          ? { ...result, changed, persistenceErrors }
-          : { ...result, changed }
-      );
+      return {
+        ...this.publicResult(Object.keys(persistenceErrors).length > 0 ? { ...result, changed, persistenceErrors } : { ...result, changed }),
+        ...modeRefusals
+      };
     });
   }
 

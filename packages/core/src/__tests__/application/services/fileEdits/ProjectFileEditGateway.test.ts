@@ -372,3 +372,24 @@ describe('ProjectFileEditGateway: host-failed means nothing was written (D8, ame
     expect(documents.text).toContain('brave');
   });
 });
+
+describe('ProjectFileEditGateway: a reveal failure keeps a settled result (PR #236 N-01)', () => {
+  it('applied stays applied, with its landed records, revealed false, and the failure logged by ids only', async () => {
+    const { gateway, documents, fakes } = fixture();
+    jest.spyOn(documents, 'reveal').mockRejectedValueOnce(new Error('the tab could not open'));
+    const outcome = await gateway.apply(note(replace('curious', 'brave')), DIRECT);
+    expect(outcome).toMatchObject({ state: 'applied', revealed: false, operations: [{ outcome: 'landed' }], landed: [{ operation: 0 }] });
+    expect(documents.text).toContain('brave');
+    expect(fakes.log).toContain('[FileEdit] reveal failed turn=turn-7 index=0');
+    expect(fakes.log.some((line) => line.includes('apply threw'))).toBe(false);
+    expectNoLeaks(fakes.log, 'curious', 'brave', 'Alice');
+  });
+
+  it('partial stays partial, by operation', async () => {
+    const { gateway, documents } = fixture({ host: applyTicked((edit) => edit.newText === 'brave') });
+    jest.spyOn(documents, 'reveal').mockRejectedValueOnce(new Error('the tab could not open'));
+    const outcome = await gateway.apply(note(replace('curious', 'brave'), replace('White Rabbit', 'Hatter')), PREVIEW);
+    expect(outcome).toMatchObject({ state: 'partial', revealed: false });
+    expect(outcomes(outcome)).toEqual(['landed', 'not-applied']);
+  });
+});
