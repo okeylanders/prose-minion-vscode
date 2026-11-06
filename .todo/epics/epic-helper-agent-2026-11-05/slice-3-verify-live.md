@@ -47,7 +47,7 @@ The automated suites already prove the contracts: A-01 to A-05, D5.7 and PR #231
 ## Cost, speed and logs
 
 14. **Usage.** The token widget shows the helper's calls. Note a typical cost and how long a draft takes.
-15. **The output ceiling.** It's set to 400 tokens, an estimate from Slice 1. If a real draft is ever cut off or refused as malformed, note it.
+15. **The output ceiling.** It's 1,000 tokens, raised from Slice 1's 400 after the first finding below, with reasoning asked off. If a real draft is ever cut off or refused as malformed, note it, with the log line's reasoning count if it shows one.
 16. **Logs.** Each draft logs the task, model, outcome and counts, and never the note's text.
 
 ## Close-out (after the pass)
@@ -64,4 +64,19 @@ The automated suites already prove the contracts: A-01 to A-05, D5.7 and PR #231
 
 ## Notes from the pass
 
-_(Okey's findings go here.)_
+### 2026-11-06: the first draft came back cut off
+
+- **What happened.** Okey's first Save to memory… was refused:
+  `[Helper] memory-draft on anthropic/claude-sonnet-5.5: rejected, cut-off (840 characters), 1,852 tokens`.
+  - `840 characters` is the input passage, not the reply.
+  - The reply used all 400 output tokens, where a finished `{title, summary, kind}` is about 100 to 130.
+  - The second and third tries worked: it's intermittent.
+- **Most likely cause.** The model spent its output reasoning. The helper sent no reasoning setting (D1), so a model that decides per call how long to think could spend the ceiling thinking. The other possibility is that it wrote far past the JSON.
+- **The fix** (branch `epic/helper-agent-slice-3-fix-cut-off-drafts`; ADR D1, amended 2026-11-06):
+  - every helper call asks for reasoning `off`;
+  - a model the live catalog marks as always reasoning gets the `light` budget on top of the ceiling instead, never `off` and never a refusal; a catalog that cannot say sends `off`;
+  - the ceiling is raised from 400 to 1,000 tokens; the field bounds and `responseCharacters` still hold drafts to their size, and a cut-off is still refused;
+  - the log line adds reasoning tokens when the provider reports them (`, 312 reasoning`).
+- **To check on the next pass.** Save to memory… several times on the same model. No `cut-off`; if a line shows a reasoning count, note it.
+
+No other findings so far.

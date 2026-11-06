@@ -62,7 +62,7 @@ import {
   reportedThinking,
   type DraftEditInterruption
 } from '@services/draftEdit/DraftEditCalls';
-import { refusesReasoningOff, type ReasoningCatalog } from '@services/draftEdit/DraftEditReasoningSupport';
+import { refusesReasoningOff, type ReasoningCatalog } from '@orchestration/ReasoningCatalog';
 import { decodeCraftFlagsReply, readCraftFlagsFrame } from '@services/craftFlags/CraftFlagsResponseCodec';
 import { sumTokenUsage } from '@/utils/tokenUsage';
 

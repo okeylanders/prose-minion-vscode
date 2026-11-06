@@ -1833,8 +1833,9 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   fields persisted shapes list exactly. A reply cut off at its ceiling with
   most of its output spent thinking is rejected in host words naming the
   setting (`draftEditCeilingRejection`), never salvaged. Every other model
-  scope sends no reasoning setting; a level belongs to the request, never
-  the model. **`off` is never sent to a model that always reasons** (PR #181
+  scope sends no reasoning setting but the helper's, which asks for `off`
+  ([ADR 2026-11-05](docs/adr/2026-11-05-helper-agent.md) D1, amended
+  2026-11-06); a level belongs to the request, never the model. **`off` is never sent to a model that always reasons** (PR #181
   F-01): at `off` alone, each pass asks the live catalog
   (`ReasoningCatalog`, `refusesReasoningOff`) about the exact model it sends
   to (Proofread's run model, pinned on every chunk; Craft Flags' priced model
@@ -1842,7 +1843,10 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   and a model marked `reasoning.mandatory` is refused with nothing sent
   (`reasoning-required`), never given another level or model. A catalog that
   cannot say sends `off` as asked. A new pass with a level asks the same
-  check.
+  check. The catalog rule lives in `orchestration/ReasoningCatalog.ts`, so
+  the helper reads it without importing Draft Edit; where a pass refuses, the
+  helper sends a model that always reasons the `light` budget on top of its
+  ceiling.
 - **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
   holds the prompt's category list to `PROOFREAD_CATEGORIES`, and reads the
   example's response through the production frame reader, codec, anchoring

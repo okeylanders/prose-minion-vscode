@@ -10,9 +10,14 @@
  * - **It proposes; it never writes** (D2). No tools, no capabilities, no
  *   file access: code hands it its input, and its answer is data the caller
  *   shows the writer. A faulty answer is dropped and logged by its kind.
- * - **No reasoning setting.** Temperature 0 and the task's small ceiling.
- * - **Bounded in time.** Each call stops at the task's `timeoutMs`, or
- *   when the caller's signal aborts; the two are told apart.
+ * - **Reasoning off** (D1, amended 2026-11-06): temperature 0, the task's
+ *   ceiling, and reasoning `off`; a model the catalog marks as always
+ *   reasoning gets the `light` budget on top of the ceiling instead
+ *   (`HelperReasoning`). Reasoning tokens a provider reports are logged as
+ *   a count, never added to `TokenUsage`.
+ * - **Bounded in time.** Each call, its catalog read included, stops at the
+ *   task's `timeoutMs`, or when the caller's signal aborts; the two are
+ *   told apart.
  * - **Usage** reaches the token listeners through the engine, as every
  *   scope's does, and rides on the result.
  * - **Logs** carry the task, the model, the outcome and counts, never text.
@@ -23,7 +28,9 @@ import type { LogSink } from '@/platform';
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
+import type { ReasoningCatalog } from '@orchestration/ReasoningCatalog';
 import type { PromptLoader } from '@/tools/shared/prompts';
+import { helperReasoningRequest } from '@services/helper/HelperReasoning';
 import { readHelperReply } from '@services/helper/HelperReply';
 import {
   HELPER_BASE_PROMPT,
@@ -56,6 +63,7 @@ export class HelperAgentService<Policies extends Readonly<Record<string, AnyHelp
     private readonly resources: HelperEngineSource,
     private readonly promptLoader: Pick<PromptLoader, 'loadPrompts'>,
     private readonly policies: Policies,
+    private readonly reasoningCatalog: ReasoningCatalog,
     private readonly log: Pick<LogSink, 'appendLine'>
   ) {}
 
@@ -102,15 +110,25 @@ export class HelperAgentService<Policies extends Readonly<Record<string, AnyHelp
     }, policy.call.timeoutMs);
     const forward = () => stop.abort(options.signal?.reason);
     options.signal?.addEventListener('abort', forward, { once: true });
+    // A listener never hears an abort that already fired: a stop that landed after preparation's
+    // last check is forwarded here, so the catalog wait below ends at once (PR #242 F-01).
+    if (options.signal?.aborted) {
+      forward();
+    }
     const failed = (reason: 'error' | 'timeout' | 'cancelled', usage?: TokenUsage): HelperRunResult<never> => {
       this.log.appendLine(`[Helper] ${task} on ${model || 'no model'}: ${reason}${counts}`);
       return { kind: 'failed', reason, ...(usage ? { usage } : {}) };
     };
-    // Immediately before dispatch: a stop that landed after preparation's last check is never sent (PR #228 F-01).
-    if (options.signal?.aborted) {
+    // Inside the call's time: an unanswered catalog read is a timeout or a stop like any other.
+    const ask = await untilAborted(
+      helperReasoningRequest(model, policy.call.outputTokens, this.reasoningCatalog, this.log, `[Helper] ${task}`),
+      stop.signal
+    ).catch(() => 'error' as const);
+    // Immediately before dispatch: the caller's own signal is read again, so a stop is never sent (PR #228 F-01).
+    if (ask === 'aborted' || ask === 'error' || stop.signal.aborted || options.signal?.aborted) {
       clearTimeout(timer);
-      options.signal.removeEventListener('abort', forward);
-      return failed('cancelled');
+      options.signal?.removeEventListener('abort', forward);
+      return failed(options.signal?.aborted ? 'cancelled' : timedOut ? 'timeout' : stop.signal.aborted ? 'cancelled' : 'error');
     }
 
     let result: ExecutionResult;
@@ -123,7 +141,8 @@ export class HelperAgentService<Policies extends Readonly<Record<string, AnyHelp
         options: {
           ...(model ? { model } : {}),
           temperature: policy.call.temperature,
-          maxTokens: policy.call.outputTokens,
+          maxTokens: ask.maxTokens,
+          reasoning: ask.reasoning,
           signal: stop.signal
         }
       });
@@ -137,7 +156,8 @@ export class HelperAgentService<Policies extends Readonly<Record<string, AnyHelp
       return failed(timedOut ? 'timeout' : 'cancelled', result.usage);
     }
     const answeredBy = result.modelId ?? model ?? 'no model';
-    const usageWords = result.usage ? `, ${result.usage.totalTokens.toLocaleString('en-US')} tokens` : '';
+    const usageWords = (result.usage ? `, ${result.usage.totalTokens.toLocaleString('en-US')} tokens` : '')
+      + (result.reasoningTokens !== undefined ? `, ${result.reasoningTokens.toLocaleString('en-US')} reasoning` : '');
     const read = readHelperReply(policy, result.rawContent ?? result.content, result.finishReason);
     if (!read.ok) {
       this.log.appendLine(`[Helper] ${task} on ${answeredBy}: rejected, ${read.fault}${counts}${usageWords}`);
@@ -187,6 +207,21 @@ interface PreparedHelperRun {
   readonly engine: NonNullable<ReturnType<HelperEngineSource['getEngine']>>;
   readonly model: string;
   readonly systemMessage: string;
+}
+
+/** `work`'s value, or 'aborted' as soon as `signal` aborts (the work is left to settle unread). */
+function untilAborted<T>(work: Promise<T>, signal: AbortSignal): Promise<T | 'aborted'> {
+  if (signal.aborted) {
+    return Promise.resolve('aborted');
+  }
+  return new Promise((resolve, reject) => {
+    const onAbort = () => resolve('aborted');
+    signal.addEventListener('abort', onAbort, { once: true });
+    work.then(
+      (value) => { signal.removeEventListener('abort', onAbort); resolve(value); },
+      (error: unknown) => { signal.removeEventListener('abort', onAbort); reject(error); }
+    );
+  });
 }
 
 /** The task's data as quoted JSON: never instructions. Exported so worked examples are checked byte for byte. */

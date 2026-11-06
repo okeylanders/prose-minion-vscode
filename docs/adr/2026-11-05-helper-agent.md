@@ -47,7 +47,31 @@ What exists today:
   - an output codec (`parseModelJson`, then exact fields);
   - its bounds in `PROMPT_BUDGETS.helper.<task>`;
   - its call settings (temperature 0, a small output ceiling, no reasoning
-    level).
+    level of its own).
+- **Amended 2026-11-06 (Slice 3's live pass): reasoning off.** The first
+  live Save to memory… came back cut off: the reply spent all 400 output
+  tokens, where a finished draft is about 100 to 130. Most likely the model
+  decided for itself to think, since the helper sent no reasoning setting;
+  it may instead have written past the JSON. Both are covered:
+  - **Reasoning off.** The engine asks every helper call for reasoning
+    `off` (`reasoningRequest`, `effort: 'none'`), whatever the task.
+  - **A model that always reasons** is never sent `off` (PR #181 F-01's
+    rule): the live catalog is asked about the exact model the call goes
+    to. Where Draft Edit refuses such a model, the helper sends it the
+    `light` budget (`PROMPT_BUDGETS.reasoning.light`) on top of the output
+    ceiling. Drafting is automatic, and a refusal would only show the quiet
+    failure line. A catalog that cannot say sends `off` as asked, as Draft
+    Edit's does. The catalog read counts in the call's time.
+  - **The catalog rule is neutral ground.** `ReasoningCatalog` and
+    `refusesReasoningOff` moved from `services/draftEdit/` to
+    `orchestration/ReasoningCatalog.ts`, so the helper reads them without
+    importing Draft Edit; Draft Edit's behavior is unchanged.
+  - **The ceiling is raised** from 400 to 1,000 tokens. Drafts don't get
+    longer: the decoder holds the title and summary to their bounds,
+    `responseCharacters` still refuses a long reply, and a cut-off is still
+    refused, never salvaged.
+  - **Reasoning tokens** a provider reports are logged on the helper's line
+    as a count (`, 312 reasoning`), never added to `TokenUsage`.
 - **Adding a task** adds a policy, a prompt section, a worked example that
   decodes through the production codec, and a sync test. It never adds a
   branch in the engine.

@@ -2318,7 +2318,8 @@ describe('architectural boundaries', () => {
     // What it may read: its own modules, the shared parser, the run engine's contracts, prompts, budgets and shared types.
     const allowed = [
       '@services/helper/', '@parsers/', '@orchestration/AIResourceManager', '@orchestration/AgentRunPolicies',
-      '@orchestration/AgentRunContracts', '@/tools/shared/prompts', '@/platform', '@messages',
+      '@orchestration/AgentRunContracts', '@orchestration/ReasoningCatalog', '@orchestration/ReasoningRequest',
+      '@/tools/shared/prompts', '@/platform', '@messages',
       '@shared/constants/promptBudgets', '@shared/types/projectMemory'
     ];
     expect(imports.filter(({ module }) => !allowed.some((prefix) => module.startsWith(prefix)))

@@ -578,6 +578,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     aiResourceManager,
     resourceLoader.getPromptLoader(),
     HELPER_TASK_POLICIES,
+    reasoningCatalog,
     outputChannel
   );
 

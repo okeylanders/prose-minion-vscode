@@ -829,7 +829,12 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.
     'memory-draft': {
       inputCharacters: 8_000,
-      outputTokens: 400,
+      // A finished draft is about 100 to 130 tokens. 400 left a model that
+      // thought or ran on no room, and the live pass's first draft came back
+      // cut off (2026-11-06). The decoder still holds title and summary to
+      // their bounds and `responseCharacters` still refuses a long reply, so
+      // the extra room never makes a draft longer; a cut-off is still refused.
+      outputTokens: 1_000,
       responseCharacters: 4_000
     }
   },
