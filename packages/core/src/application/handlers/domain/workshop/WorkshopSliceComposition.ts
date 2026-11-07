@@ -265,6 +265,7 @@ export class WorkshopSliceComposition {
     );
     this.reactionHandler = new WorkshopReactionHandler(session, outputChannel, {
       postSessionState: host.postSessionState, markDirty,
+      isRoomBusy: () => host.isRoomRunActive() || this.contextHandler.isRunning(),
       reportError: (message, details) => host.reportRouteError('workshop.reaction', message, details, 'WorkshopReactionHandler')
     });
     // The Bookmarks screen's reads beside them (ADR 2026-11-05 D8): through recall, never the gate.

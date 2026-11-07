@@ -16,7 +16,16 @@ import type {
 type WorkshopReactionEffects = Pick<
   WorkshopRoomEffects,
   'postSessionState' | 'markDirty' | 'reportError'
->;
+> & {
+  /**
+   * True while a response or the context wizard runs: the webview's
+   * `roomMutationLocked`, checked again here (PR #245 M2), so a post that
+   * raced the lock never lands mid-run, where Slice 2's delivery reads them.
+   */
+  isRoomBusy: () => boolean;
+};
+
+const ROOM_BUSY = 'Wait for the room to finish before reacting.';
 
 /**
  * Owns the Workshop reaction routes (ADR 2026-11-07 D2, D8): add or remove
@@ -87,6 +96,13 @@ export class WorkshopReactionHandler {
     source: string,
     change: () => 'added' | 'removed' | 'unchanged'
   ): void {
+    if (this.effects.isRoomBusy()) {
+      this.outputChannel.appendLine(
+        `[WorkshopReactionHandler] Reaction ${action} refused (${target}, reason=run-active, source=${source})`
+      );
+      this.effects.reportError(ROOM_BUSY);
+      return;
+    }
     try {
       const outcome = change();
       this.outputChannel.appendLine(

@@ -189,6 +189,52 @@ describe('Workshop reaction routes', () => {
     expect(logLines(harness)).toContain(`Reaction hide removed (turnId=${harness.writer.id}, reaction=heart, author=host`);
   });
 
+  it('refuses a reaction while a reply is running, though the webview\'s lock was missed (PR #245 M2)', async () => {
+    const harness = await roomWithReply();
+    let release!: () => void;
+    harness.service.continueConversation.mockImplementationOnce(async (conversationId: string) => {
+      await new Promise<void>((resolve) => { release = resolve; });
+      return {
+        toolName: 'workshop-test', content: 'held reply', timestamp: new Date(0), conversationId,
+        usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 }
+      } as never;
+    });
+    const running = harness.router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'And then?' }) as never);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(harness.session.getSnapshot().activeRequestId).toBeDefined();
+    harness.persistence.markDirty.mockClear();
+
+    await react(harness, harness.reply.id, 'fire');
+    await hide(harness, harness.writer.id, 'heart', { kind: 'host' });
+
+    expect(harness.session.readRoomReactions()).toEqual([]);
+    expect(errors(harness).map((error) => error.message).slice(-2))
+      .toEqual(['Wait for the room to finish before reacting.', 'Wait for the room to finish before reacting.']);
+    expect(harness.persistence.markDirty).not.toHaveBeenCalledWith('reaction committed');
+    expect(logLines(harness)).toContain('reason=run-active');
+
+    release();
+    await running;
+    await react(harness, harness.reply.id, 'fire');
+    expect(harness.session.readRoomReactions()).toHaveLength(1);
+  });
+
+  it('waits behind the session-operation gate (Open, Rewind, Branch, New): nothing reaches the ledger', async () => {
+    const harness = await roomWithReply();
+    await react(harness, harness.reply.id, 'fire');
+    harness.persistence.isSessionOperationPending.mockReturnValue(true);
+    harness.persistence.markDirty.mockClear();
+
+    await react(harness, harness.reply.id, 'heart');
+    await react(harness, harness.reply.id, 'fire', false);
+    await hide(harness, harness.writer.id, 'heart', { kind: 'host' });
+
+    expect(harness.session.readRoomReactions().map((reaction) => reaction.reaction)).toEqual(['fire']);
+    expect(harness.persistence.markDirty).not.toHaveBeenCalled();
+    const gate = 'Wait for the current session save or replacement to finish before changing the room.';
+    expect(errors(harness).map((error) => error.message)).toEqual([gate, gate, gate]);
+  });
+
   it('logs ids and outcomes only, never the turn\'s words', async () => {
     const harness = await roomWithReply();
 
