@@ -1,6 +1,6 @@
 # Epic: Workshop Message Reactions
 
-**Status:** Slice 1 (writer reactions) in progress. The ADR is Accepted.
+**Status:** Slice 1 (writer reactions) built, awaiting its PR. The ADR is Accepted.
 **Priority:** Medium
 **Opened:** 2026-11-07
 **Branch:** `epic/workshop-message-reactions`, cut from
@@ -25,7 +25,7 @@ reaction starts a model call or edits retained history.
 | # | Slice | Branch | Outcome | Status |
 |---|---|---|---|---|
 | 0 | Spec | `epic/workshop-message-reactions` | The ADR and this README | Done (`f25c2ea7`; Accepted 2026-11-07) |
-| 1 | Writer reactions | `…-slice-1-writer-reactions` | D1, D2, D3, D8: registry, `reactions` session key, codec and normalization, ledger and routes, chips and palette by mouse and keyboard, Rewind/Branch/Side Quest handling. No model involved. | Not started |
+| 1 | Writer reactions | `…-slice-1-writer-reactions` | D1, D2, D3, D8: registry, `reactions` session key, codec and normalization, ledger and routes, chips and palette by mouse and keyboard, Rewind/Branch/Side Quest handling. No model involved. | Built; awaiting review |
 | 2 | Delivery | `…-slice-2-delivery` | D4, D6: `<workshop-reactions>`, `reactionDelivery` on reply turns, the delivered view; R2 and R3 witnessed; the byte-identical-prefix test | Not started |
 | 3 | Persona reactions | `…-slice-3-persona-reactions` | D5: the trailer in `extractWorkshopReplyControls`, its outcome table, R1's host line and slim line, the prompt, the live-region announcement, Q8's setting | Not started |
 | 4 | Live pass | `…-slice-4-live-pass` | Tune how often personas react; record counts on an *Alice* fixture conversation per persona and expression level | Not started |
@@ -97,3 +97,11 @@ rebase a shared branch). Read only: never commit to
 - **2026-11-07.** Okey took every recommendation (Q1–Q10); the ADR is
   Accepted. Slice 1 opens on
   `epic/workshop-message-reactions-slice-1-writer-reactions`.
+- **2026-11-07.** Slice 1 built on its branch: the registry
+  (`shared/constants/workshopReactions.ts`), the `reactions` session key
+  (`WorkshopReactionRecords`, `WorkshopReactionLedger`, the
+  `dropped-dangling-reactions` normalization), `workshopReactionsWithin` in
+  the rewind transform, `WorkshopReactionHandler`'s two mutation routes
+  (`WORKSHOP_SET_TURN_REACTION`, `WORKSHOP_HIDE_TURN_REACTION`), and the
+  bubble's palette and chips. The full suite: 802 suites, 11,263 tests,
+  59 snapshots.
