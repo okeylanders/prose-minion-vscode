@@ -112,6 +112,8 @@ export interface WorkshopGuestJoinInput {
   timeFrame?: string;
   /** Pre-built `<workshop-reactions>` frame for the joining conversation (ADR 2026-11-07 D4). */
   reactionsFrame?: string;
+  /** The transcript, when the caller built it first (the reactions frame reads what it delivers). */
+  transcript?: WorkshopTranscript;
 }
 
 export interface WorkshopGuestJoinMessage {
@@ -328,7 +330,7 @@ function buildGuestExcerptFrame(excerpt: WorkshopExcerpt): string {
 export function buildWorkshopGuestJoinMessage(
   input: WorkshopGuestJoinInput
 ): WorkshopGuestJoinMessage {
-  const transcript = buildWorkshopGuestTranscript(
+  const transcript = input.transcript ?? buildWorkshopGuestTranscript(
     input.roomTurns,
     input.roomFrameOptions
   );

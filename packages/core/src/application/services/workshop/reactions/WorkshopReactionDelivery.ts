@@ -7,7 +7,10 @@
  *
  * Owed to a participant: each reaction standing now, on a turn it can see
  * (`isWorkshopTurnVisibleToParticipant`, R2), not in its delivered view, and
- * never its own. The writer's reactions, and (Q3) another persona's reaction
+ * never its own. Delivered only once the reader holds the turn (`holds`: its
+ * own turns, turns at or before its room offset, and the turns this
+ * message's catch-up or join transcript hands it; PR #246 L1): a reaction on
+ * a turn catch-up deferred waits for the turn. The writer's reactions, and (Q3) another persona's reaction
  * on the writer's message. Newest first; at most `deliveredPerReply` are
  * delivered (and recorded) at once, the frame listing `framePerTurn` of them
  * and counting the rest; anything older past the bound is owed to a later
@@ -43,6 +46,8 @@ export interface WorkshopReactionDeliveryInput {
   readonly hostPersonaId: WorkshopPersonaId;
   /** `start` for a conversation's first message (a fresh host, a guest's join). */
   readonly kind: 'start' | 'update';
+  /** Whether the reader holds `turn` once this message lands (`WorkshopReactionDeliveryStage`'s predicates). */
+  readonly holds: (turn: WorkshopTurn) => boolean;
 }
 
 export interface WorkshopReactionDeliveryPlan {
@@ -54,6 +59,8 @@ export interface WorkshopReactionDeliveryPlan {
   readonly counted: number;
   /** Owed past `deliveredPerReply`, left for a later turn. */
   readonly deferred: number;
+  /** Untold, on turns the reader does not hold yet (catch-up deferred them). */
+  readonly waiting: number;
 }
 
 const personaName = (turn: WorkshopTurn, hostPersonaId: WorkshopPersonaId): string =>
@@ -87,13 +94,15 @@ export function planWorkshopReactionDelivery(input: WorkshopReactionDeliveryInpu
   const view = workshopReactionDeliveredView(input.turns, reader);
   const told = input.kind === 'start' ? new Set<string>() : view.reactions;
   const byId = new Map(input.turns.map((turn) => [turn.id, turn]));
-  const owed = input.reactions
+  const untold = input.reactions
     .map((reaction, index) => ({ reaction, index, turn: byId.get(reaction.turnId) }))
     .filter((entry): entry is typeof entry & { turn: WorkshopTurn } =>
       entry.turn !== undefined
       && workshopReactionAuthorKey(entry.reaction.author) !== readerKey
       && isWorkshopTurnVisibleToParticipant(entry.turn, reader)
-      && !told.has(workshopReactionKey(entry.reaction)))
+      && !told.has(workshopReactionKey(entry.reaction)));
+  const owed = untold
+    .filter((entry) => input.holds(entry.turn))
     .sort((left, right) => right.reaction.createdAt - left.reaction.createdAt || right.index - left.index);
 
   const sent = owed.slice(0, PROMPT_BUDGETS.workshopReactions.deliveredPerReply);
@@ -118,6 +127,7 @@ export function planWorkshopReactionDelivery(input: WorkshopReactionDeliveryInpu
     ...(record ? { record } : {}),
     listed: entries.length,
     counted,
-    deferred: owed.length - sent.length
+    deferred: owed.length - sent.length,
+    waiting: untold.length - owed.length
   };
 }

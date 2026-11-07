@@ -8,6 +8,7 @@
  */
 
 import { MessageType } from '@messages';
+import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 import { createWorkshopRouteTestHarness, message } from './WorkshopRouteTestHarness';
 
 const send = (harness: ReturnType<typeof createWorkshopRouteTestHarness>, text: string) =>
@@ -41,7 +42,7 @@ describe('reaction delivery through the room handler (ADR 2026-11-07 D4, D6)', (
 
     await send(harness, 'Who is late?');
     const sent = lastContinued(harness);
-    expect(sent).toContain('<workshop-reactions>\nReactions added since your last reply.');
+    expect(sent).toContain('<workshop-reactions>\nReactions you haven\'t been told of yet.');
     expect(sent).toContain('- The writer reacted mind-blown ("hadn\'t thought of that") to your reply that began');
     expect(sent.indexOf('</workshop-reactions>')).toBeLessThan(sent.indexOf('WRITER MESSAGE:'));
     expect(sent.endsWith('WRITER MESSAGE:\nWho is late?')).toBe(true);
@@ -116,6 +117,81 @@ describe('reaction delivery through the room handler (ADR 2026-11-07 D4, D6)', (
     (harness.log.appendLine as jest.Mock).mockClear();
     await send(harness, 'Who is late?');
     const lines = (harness.log.appendLine as jest.Mock).mock.calls.map(([line]) => String(line)).filter((line) => line.includes('Reactions delivery'));
-    expect(lines).toEqual(['[WorkshopRoomHandler] Reactions delivery staged (host, update): listed=1 counted=0 deferred=0']);
+    expect(lines).toEqual(['[WorkshopRoomHandler] Reactions delivery staged (host, update): listed=1 counted=0 deferred=0 waiting=0']);
+  });
+
+  it('a synthesis that starts a fresh host conversation begins its view, so the next message delivers again (PR #246 M1)', async () => {
+    const harness = await hostRoom();
+    const [first] = replies(harness);
+    await react(harness, first.id, 'fire');
+    await send(harness, 'Who is late?');
+    expect(lastContinued(harness)).toContain('reacted fire');
+
+    // A settings change loses the conversation generation: every conversation is cleared.
+    (harness.service.continueConversation as jest.Mock).mockRejectedValueOnce(
+      Object.assign(new Error('gone'), { name: 'ConversationNotFoundError' })
+    );
+    await send(harness, 'Still there?');
+    expect(harness.session.getHostConversationId()).toBeUndefined();
+
+    // The tool run's synthesis starts the host's new conversation, without a frame.
+    await harness.runProse();
+    const synthesisMessage = (harness.service.startWorkshopPersonaConversation as jest.Mock).mock.calls.at(-1)[0].message as string;
+    expect(synthesisMessage).not.toContain('<workshop-reactions>');
+    const synthesis = harness.session.readRoomLedger().filter((turn) => turn.artifact === 'persona_synthesis').at(-1)!;
+    expect(synthesis.reactionDelivery).toEqual([{ participant: { kind: 'host' }, kind: 'start', reactions: [] }]);
+
+    await send(harness, 'Where were we?');
+    expect(lastContinued(harness)).toContain('- The writer reacted fire ("this is strong") to your reply that began');
+  });
+
+  it.each([
+    ['an AbortError cancel', () => Object.assign(new Error('stopped'), { name: 'AbortError' })],
+    ['an unavailable model\'s rollback', () => new AgentRunUnavailableError('context-window-exceeded')]
+  ])('%s records nothing, and the next message carries the reaction', async (_case, failure) => {
+    const harness = await hostRoom();
+    const [first] = replies(harness);
+    await react(harness, first.id, 'heart');
+    (harness.service.continueConversation as jest.Mock).mockRejectedValueOnce(failure());
+
+    await send(harness, 'Who is late?');
+    expect(lastContinued(harness)).toContain('reacted heart');
+    expect(harness.session.readRoomLedger().some((turn) => turn.reactionDelivery)).toBe(false);
+
+    await send(harness, 'Who is late, then?');
+    expect(lastContinued(harness)).toContain('reacted heart');
+    expect(replies(harness).at(-1)!.reactionDelivery).toHaveLength(1);
+  });
+
+  it('an overtaken run records nothing; the message that overtook it carries the reaction', async () => {
+    const harness = await hostRoom();
+    const [first] = replies(harness);
+    await react(harness, first.id, 'heart');
+    (harness.service.continueConversation as jest.Mock).mockImplementationOnce(
+      (_id: string, _message: string, options: { signal: AbortSignal }) => new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+      })
+    );
+
+    const overtaken = send(harness, 'Who is late?');
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(lastContinued(harness)).toContain('reacted heart');
+    await send(harness, 'Never mind: who is the Queen?');
+    await overtaken;
+
+    expect(lastContinued(harness)).toContain('reacted heart');
+    const recorded = harness.session.readRoomLedger().filter((turn) => turn.reactionDelivery);
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0].id).toBe(replies(harness).at(-1)!.id);
+  });
+
+  it('never posts the record to the webview (PR #246 L3)', async () => {
+    const harness = await hostRoom();
+    const [first] = replies(harness);
+    await react(harness, first.id, 'fire');
+    harness.postMessage.mockClear();
+    await send(harness, 'Who is late?');
+    expect(replies(harness).at(-1)!.reactionDelivery).toHaveLength(1);
+    expect(JSON.stringify(harness.postMessage.mock.calls)).not.toContain('reactionDelivery');
   });
 });

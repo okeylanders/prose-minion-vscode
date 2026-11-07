@@ -35,7 +35,7 @@ const owedTo = (
   turns: readonly WorkshopTurn[],
   reactions: Parameters<typeof planWorkshopReactionDelivery>[0]['reactions'],
   reader: Parameters<typeof planWorkshopReactionDelivery>[0]['reader'] = HOST
-) => planWorkshopReactionDelivery({ turns, reactions, reader, hostPersonaId: 'jill', kind: 'update' }).listed;
+) => planWorkshopReactionDelivery({ turns, reactions, reader, hostPersonaId: 'jill', kind: 'update', holds: () => true }).listed;
 
 /** Two exchanges; the writer reacts fire to the first reply; the third message delivers it. */
 function deliveredRoom() {
@@ -58,7 +58,7 @@ describe('reaction delivery across the room (ADR 2026-11-07 D4, D6)', () => {
     const delivered = history.slice(beforeMessages.length);
     expect(delivered.map((entry) => entry.role)).toEqual(['user', 'assistant']);
     expect(delivered[0].content).toMatch(/^<workshop-reactions>\n/);
-    expect(delivered[0].content).toContain('- The writer reacted fire ("this is strong") to your reply that began "Host reply to "Where did the rabbit go?"."');
+    expect(delivered[0].content).toContain('- The writer reacted fire ("this is strong") to your reply that began "Host reply to \\"Where did the rabbit go?\\"."');
     expect(delivered[0].content).toContain('</workshop-reactions>\n[host] Who is late?');
     expect(third.reactionDelivery).toEqual([{
       participant: HOST, kind: 'update', reactions: [{ turnId: expect.any(String), author: { kind: 'writer' }, reaction: 'fire' }]
@@ -100,6 +100,19 @@ describe('reaction delivery across the room (ADR 2026-11-07 D4, D6)', () => {
     const next = room.hostMessage('Anything new?');
     expect(hostHistory(room).at(-2)!.content).toContain('reacted heart');
     expect(next.reactionDelivery).toEqual([record]);
+  });
+
+  it('capability sub-turns inside a host run carry no record; the final reply does (PR #246 L5)', () => {
+    const room = new ScriptedWorkshopRoom().start();
+    const first = room.hostMessage('Where did the rabbit go?');
+    room.session.setWriterReaction(first.id, 'fire', true);
+    const before = room.session.readRoomLedger().length;
+    const reply = room.hostMessage('Look it up.', { capabilityRounds: 2 });
+    const added = room.session.readRoomLedger().slice(before);
+    const capabilityTurns = added.filter((turn) => turn.capability);
+    expect(capabilityTurns).toHaveLength(2);
+    expect(capabilityTurns.every((turn) => turn.reactionDelivery === undefined)).toBe(true);
+    expect(added.filter((turn) => turn.reactionDelivery).map((turn) => turn.id)).toEqual([reply.id]);
   });
 
   it('stages a record only for the conversation the run answers for', () => {

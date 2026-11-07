@@ -8,7 +8,8 @@
  * When present it is exact: on a persona reply (`role: 'assistant'`, a host
  * or guest turn), one `{ participant, kind, reactions }` naming that reply's
  * own participant, each reaction `{ turnId, author, reaction }` with a known
- * id, each triple at most once, at most `deliveredPerReply` of them. It rides
+ * id, each triple at most once, at most `WORKSHOP_REACTION_DELIVERY_LIMITS`
+ * of them. It rides
  * the reply, never the writer turn, so a cut that removes the reply removes
  * the record with the history that received it (R3).
  *
@@ -21,7 +22,6 @@
  */
 
 import type { WorkshopReactionDelivery } from '@messages';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
 import { isWorkshopReactionId, workshopReactionAuthorKey } from '@shared/constants/workshopReactions';
 import {
@@ -35,6 +35,14 @@ import {
   assertWorkshopReactionAuthorShape,
   workshopReactionKey
 } from '@/application/services/workshop/session/WorkshopReactionRecords';
+
+/**
+ * The most reactions one record holds: the codec's own bound, pinned so a
+ * saved session stays valid however the delivery budget
+ * (`PROMPT_BUDGETS.workshopReactions.deliveredPerReply`) is later tuned
+ * (ADR 2026-07-30). A test holds the budget at or under it.
+ */
+export const WORKSHOP_REACTION_DELIVERY_LIMITS = Object.freeze({ reactions: 1_000 });
 
 /** Strict structure of a turn's `reactionDelivery`; refused on any turn but a persona reply, or for another participant. */
 export function assertWorkshopReactionDeliveryShape(
@@ -63,7 +71,7 @@ export function assertWorkshopReactionDeliveryShape(
       delivery.reactions,
       `${itemPath}.reactions`,
       0,
-      PROMPT_BUDGETS.workshopReactions.deliveredPerReply,
+      WORKSHOP_REACTION_DELIVERY_LIMITS.reactions,
       'delivered reactions'
     );
     if (delivery.kind === 'update' && delivery.reactions.length === 0) {

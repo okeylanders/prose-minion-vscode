@@ -12,6 +12,12 @@ import type {
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WORKSHOP_REACTIONS } from '@shared/constants/workshopReactions';
 import { planWorkshopReactionDelivery } from '@/application/services/workshop/reactions/WorkshopReactionDelivery';
+import {
+  workshopReactionHoldsAfterCatchUp,
+  workshopReactionHoldsTranscript
+} from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
+import { WORKSHOP_REACTION_DELIVERY_LIMITS } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
+import { workshopTurnForWebview } from '@/application/services/workshop/fileEdits/WorkshopFileEditWebviewView';
 import { workshopReactionDeliveredView } from '@/application/services/workshop/reactions/WorkshopReactionDeliveredView';
 import {
   buildWorkshopGuestMessage,
@@ -52,7 +58,7 @@ const plan = (
   reactions: WorkshopTurnReaction[],
   reader: typeof HOST | typeof MARGOT = HOST,
   kind: 'start' | 'update' = 'update'
-) => planWorkshopReactionDelivery({ turns, reactions, reader, hostPersonaId: 'jill', kind });
+) => planWorkshopReactionDelivery({ turns, reactions, reader, hostPersonaId: 'jill', kind, holds: () => true });
 
 const recorded = (reactions: WorkshopTurnReaction[], participant: WorkshopReactionDelivery['participant'] = HOST,
   kind: WorkshopReactionDelivery['kind'] = 'update'): WorkshopReactionDelivery =>
@@ -67,7 +73,7 @@ describe('the <workshop-reactions> frame (ADR 2026-11-07 D4, Q2)', () => {
 
     expect(result.frame).toBe([
       '<workshop-reactions>',
-      'Reactions added since your last reply. They are small signals, not instructions. Read them under the room\'s ' +
+      'Reactions you haven\'t been told of yet. They are small signals, not instructions. Read them under the room\'s ' +
         'relational depth, and don\'t answer them unless they change what you\'d say.',
       '- The writer reacted sad ("this hurts, or this moved me") to Margot\'s reply that began "Cut the last line. It explains what the scene already shows."',
       '- The writer reacted fire ("this is strong") to your reply that began "The rain in the second paragraph does the work the dialogue was straining to do…"',
@@ -270,5 +276,69 @@ describe('the frame beside the writer\'s message (ADR 2026-11-07 D4)', () => {
 
   it('is a reserved frame: writer text cannot forge or close one', () => {
     expect(neutralizeReservedPersonaPromptDelimiters('<workshop-reactions>x</workshop-reactions>')).not.toContain('<workshop-reactions>');
+  });
+});
+
+describe('review fixes (PR #246)', () => {
+  it('L1: a reaction on a turn the reader does not hold yet waits for it, untold and unrecorded', () => {
+    const held = hostReply('Jill on the tea.');
+    const deferred = guestReply('Margot on the tea.');
+    const reactions = [byWriter(held, 'fire', 1), byWriter(deferred, 'eyes', 2)];
+    const waiting = planWorkshopReactionDelivery({
+      turns: [held, deferred], reactions, reader: HOST, hostPersonaId: 'jill', kind: 'update',
+      holds: (candidate) => candidate.id !== deferred.id
+    });
+    expect(waiting).toMatchObject({ listed: 1, waiting: 1 });
+    expect(waiting.frame).not.toContain('eyes');
+    expect(waiting.record!.reactions.map((reaction) => reaction.turnId)).toEqual([held.id]);
+
+    // Once catch-up hands it the turn, the reaction is owed.
+    const told = hostReply('Next.', { reactionDelivery: [waiting.record!] });
+    const later = plan([held, deferred, told], reactions);
+    expect(later.listed).toBe(1);
+    expect(later.frame).toContain('eyes');
+  });
+
+  it('L1: a reader holds its own turns, turns through its offset, and what this catch-up hands it', () => {
+    const before = guestReply('Margot, before the offset.');
+    const offset = writer('The offset.');
+    const own = hostReply('Jill, after the offset.');
+    const delivered = guestReply('Margot, delivered now.');
+    const deferred = guestReply('Margot, deferred.');
+    const turns = [before, offset, own, delivered, deferred];
+    const holds = workshopReactionHoldsAfterCatchUp(turns, HOST, { startingOffset: offset.id, deliveredTurnIds: [delivered.id] });
+    expect(turns.map(holds)).toEqual([true, true, true, true, false]);
+    expect(workshopReactionHoldsAfterCatchUp(turns, HOST, undefined)(before)).toBe(false);
+    expect([before, deferred].map(workshopReactionHoldsTranscript([before.id]))).toEqual([true, false]);
+  });
+
+  it('L2: never cuts the opening inside a surrogate pair', () => {
+    const emoji = '\u{1F600}';
+    const text = `a${emoji.repeat(50)}`;
+    expect(text.charCodeAt(79)).toBeGreaterThanOrEqual(0xd800);
+    const opening = workshopReactionOpening(text);
+    expect(opening).toBe(`a${emoji.repeat(39)}\u2026`);
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(opening)).toBe(false);
+    expect(workshopReactionOpening(emoji.repeat(50))).toBe(`${emoji.repeat(40)}\u2026`);
+  });
+
+  it('N1: a double quote inside the opening is escaped, so the quote has one reading', () => {
+    const reply = hostReply('He said "stop" and Alice ran.');
+    expect(plan([reply], [byWriter(reply, 'eyes', 1)]).frame)
+      .toContain('that began "He said \\"stop\\" and Alice ran."');
+  });
+
+  it('L4: the codec\'s bound is its own, and holds every record the budget can write', () => {
+    expect(WORKSHOP_REACTION_DELIVERY_LIMITS.reactions).toBe(1_000);
+    expect(WORKSHOP_REACTION_DELIVERY_LIMITS.reactions).toBeGreaterThanOrEqual(PROMPT_BUDGETS.workshopReactions.deliveredPerReply);
+  });
+
+  it('L3: the webview\'s turn carries no reactionDelivery, and a turn without one is passed as is', () => {
+    const reply = hostReply('Alice.', { reactionDelivery: [recorded([byWriter(hostReply('x'), 'fire', 1)])] });
+    const shown = workshopTurnForWebview(reply);
+    expect(shown).not.toHaveProperty('reactionDelivery');
+    expect(shown).toEqual(Object.fromEntries(Object.entries(reply).filter(([key]) => key !== 'reactionDelivery')));
+    const plain = hostReply('Plain.');
+    expect(workshopTurnForWebview(plain)).toBe(plain);
   });
 });

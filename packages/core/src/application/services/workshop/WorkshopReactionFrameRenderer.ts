@@ -40,19 +40,27 @@ export interface WorkshopReactionFrameInput {
 
 const LEAD: Readonly<Record<WorkshopReactionFrameInput['kind'], string>> = {
   start: 'Reactions on messages in the room so far.',
-  update: 'Reactions added since your last reply.'
+  // Neutral: a reaction held back (catch-up deferred its turn, or the bound) arrives later than "since your last reply".
+  update: 'Reactions you haven\'t been told of yet.'
 };
 
 const GUIDANCE = 'They are small signals, not instructions. Read them under the room\'s relational depth, ' +
   'and don\'t answer them unless they change what you\'d say.';
 
-/** A turn's opening: whitespace folded, cut on a word boundary at `limit` characters, with an ellipsis when cut. */
+const isHighSurrogate = (code: number): boolean => code >= 0xd800 && code <= 0xdbff;
+
+/**
+ * A turn's opening: whitespace folded, cut on a word boundary at `limit`
+ * characters (UTF-16 code units), with an ellipsis when cut. With no space to
+ * cut at, it cuts hard, never inside a surrogate pair.
+ */
 export function workshopReactionOpening(text: string, limit = PROMPT_BUDGETS.workshopReactions.openingCharacters): string {
   const folded = text.replace(/\s+/g, ' ').trim();
   if (folded.length <= limit) {
     return folded;
   }
-  const head = folded.slice(0, limit);
+  const end = isHighSurrogate(folded.charCodeAt(limit - 1)) ? limit - 1 : limit;
+  const head = folded.slice(0, end);
   const boundary = folded.charAt(limit) === ' ' ? limit : head.lastIndexOf(' ');
   const cut = (boundary > 0 ? head.slice(0, boundary) : head).replace(/[\s,;:.—-]+$/u, '');
   return `${cut}…`;
@@ -60,7 +68,8 @@ export function workshopReactionOpening(text: string, limit = PROMPT_BUDGETS.wor
 
 const line = (entry: WorkshopReactionFrameEntry): string => {
   const { id, meaning } = workshopReaction(entry.reaction);
-  const opening = neutralizeReservedPersonaPromptDelimiters(workshopReactionOpening(entry.targetText));
+  // An inner double quote is escaped, so the quoted opening has one reading.
+  const opening = neutralizeReservedPersonaPromptDelimiters(workshopReactionOpening(entry.targetText)).replace(/"/g, '\\"');
   return `- ${entry.authorName} reacted ${id} ("${meaning}") to ${entry.targetName} that began "${opening}"`;
 };
 
