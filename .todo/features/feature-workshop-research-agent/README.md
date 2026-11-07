@@ -57,8 +57,8 @@ and why the room needs it) and hands it to a **research agent**:
   per caller, the capability catalog, the round limit, corrections and
   retention. `context` runs a catalog over two rounds and discards;
   `workshopHost` retains.
-- **The Helper Agent** (`epic/helper-agent`, not on `main` yet; ADR
-  2026-11-05): its own model scope that follows a cheap one until picked,
+- **The Helper Agent** (on `main` since #243; ADR 2026-11-05): its own
+  model scope that follows a cheap one until picked,
   built only in `extension.ts`, tasks as policies, logs without text, and a
   boundary test that keeps it apart from feature modules.
 - **The capability families** (`WORKSHOP_CAPABILITY_OPERATIONS`,
@@ -154,8 +154,8 @@ recall's window clamp. No new private channel between conversations.
   Closest sibling; overlaps here.
 - [Workshop Task Sidecar Conversations](../feature-workshop-task-sidecar-conversations/README.md):
   another delegated conversation shape, writer-launched.
-- [ADR 2026-11-05: A Helper Agent for Small Tasks](../../../docs/adr/2026-11-05-helper-agent.md)
-  (on `epic/helper-agent` until that epic reaches `main`).
+- [ADR 2026-11-05: A Helper Agent for Small Tasks](../../../docs/adr/2026-11-05-helper-agent.md):
+  D2, the no-tools rule this note keeps the helper to.
 - [ADR 2026-10-05: Session Transcript Recall](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md):
   the capability families and the window seam.
 
@@ -172,5 +172,5 @@ recall's window clamp. No new private channel between conversations.
 - `packages/core/src/shared/types/messages/workshop/settings.ts`
   (`WorkshopWebResearchSettings`)
 - `apps/vscode-extension/package.json` (`proseMinion.workshop.webResearch`)
-- `infrastructure/api/services/helper/HelperAgentService.ts` (on
-  `epic/helper-agent`)
+- `packages/core/src/infrastructure/api/services/helper/HelperAgentService.ts`
+  (the pattern a research service would follow)

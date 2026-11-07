@@ -1,7 +1,7 @@
 # Feature: Workshop Session Name Draft
 
 **Date Identified:** 2026-11-06
-**Status:** Idea. Waits on the [Helper Agent](#related) epic reaching `main`. A helper task under that ADR's D1, so it may need only a short amendment, not a new ADR.
+**Status:** Idea. Ready to build: the [Helper Agent](#related) reached `main` with #243. A helper task under that ADR's D1, so it may need only a short amendment, not a new ADR.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-06
 
@@ -105,12 +105,12 @@ The engine gets no branch for it.
 |---|---|---|
 | N1 | **A hyphen separator** (` - `), "easier on users". | Applies to the default too, so drafted and default names read alike. |
 | N2 | **The date reads `Nov 6, 2026`.** | It is the room's start date in the room's own time zone (the session records `timezone`), so a room started late at night keeps its own day. A fixed format, not the system locale that today's default uses (`toLocaleDateString(undefined, …)`). |
-| N3 | **One Workshop-wide helper-drafts setting**, not a second switch for names. | `proseMinion.workshop.memory.helperDrafts` is memory-scoped and belongs to the in-flight Helper Agent epic. The rename is free only until it ships, so it should be handed to that epic before its live pass. This note does not touch it. |
+| N3 | **One Workshop-wide helper-drafts setting**, not a second switch for names. | The Helper Agent reached `main` (#243) with the memory-scoped name, `proseMinion.workshop.memory.helperDrafts`. Renaming it stays free until a Marketplace release ships it, so do the rename with this feature, or before that release. |
 | N4 | **Export drafts too, unless the session is already named.** | A named room's title stays as it is in both sheets. |
 
 **Ships without the helper.** N1 and N2 change the default
-(`excerpt - persona - Nov 6, 2026`) with no model at all, so that part could
-land before the Helper Agent epic reaches `main`.
+(`excerpt - persona - Nov 6, 2026`) with no model at all, so that part can
+land on its own, ahead of the draft.
 
 ## Open questions
 
@@ -140,9 +140,8 @@ land before the Helper Agent epic reaches `main`.
 
 ## Related
 
-- [ADR 2026-11-05: A Helper Agent for Small Tasks](../../../docs/adr/2026-11-05-helper-agent.md)
-  (on `epic/helper-agent` until it reaches `main`): D1 tasks as policies, D5
-  `memory-draft`, the template this mirrors.
+- [ADR 2026-11-05: A Helper Agent for Small Tasks](../../../docs/adr/2026-11-05-helper-agent.md):
+  D1 tasks as policies, D5 `memory-draft`, the template this mirrors.
 - [ADR 2026-10-05: Workshop Transcript Export](../../../docs/adr/2026-10-05-workshop-transcript-export.md):
   the one projection.
 - [Workshop Research Agent](../feature-workshop-research-agent/README.md):
@@ -154,6 +153,7 @@ land before the Helper Agent epic reaches `main`.
 - `packages/core/src/presentation/webview/WorkshopApp.tsx` (`suggestedSessionTitle`, `excerptSessionLabel`)
 - `packages/core/src/application/services/workshop/WorkshopSessionTimeService.ts` (`startedAt`)
 - `packages/core/src/application/services/workshop/transcript/WorkshopTranscript.ts`
-- On `epic/helper-agent`: `infrastructure/api/services/helper/` (`HELPER_TASK_POLICIES`),
-  `resources/system-prompts/helper/`, and `WorkshopMemoryDraftHandler` (the
-  request/result pattern to mirror)
+- `packages/core/src/infrastructure/api/services/helper/` (`HELPER_TASK_POLICIES`)
+  and `packages/core/resources/system-prompts/helper/`
+- `packages/core/src/application/handlers/domain/workshop/WorkshopMemoryDraftHandler.ts`
+  (the request/result pattern to mirror)
