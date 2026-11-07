@@ -1,6 +1,6 @@
 # Epic: Workshop Message Reactions
 
-**Status:** Slice 0 (spec). The ADR is Proposed; Q1–Q10 wait on Okey.
+**Status:** Slice 1 (writer reactions) in progress. The ADR is Accepted.
 **Priority:** Medium
 **Opened:** 2026-11-07
 **Branch:** `epic/workshop-message-reactions`, cut from
@@ -24,7 +24,7 @@ reaction starts a model call or edits retained history.
 
 | # | Slice | Branch | Outcome | Status |
 |---|---|---|---|---|
-| 0 | Spec | `epic/workshop-message-reactions` | The ADR and this README | In review with Okey |
+| 0 | Spec | `epic/workshop-message-reactions` | The ADR and this README | Done (`f25c2ea7`; Accepted 2026-11-07) |
 | 1 | Writer reactions | `…-slice-1-writer-reactions` | D1, D2, D3, D8: registry, `reactions` session key, codec and normalization, ledger and routes, chips and palette by mouse and keyboard, Rewind/Branch/Side Quest handling. No model involved. | Not started |
 | 2 | Delivery | `…-slice-2-delivery` | D4, D6: `<workshop-reactions>`, `reactionDelivery` on reply turns, the delivered view; R2 and R3 witnessed; the byte-identical-prefix test | Not started |
 | 3 | Persona reactions | `…-slice-3-persona-reactions` | D5: the trailer in `extractWorkshopReplyControls`, its outcome table, R1's host line and slim line, the prompt, the live-region announcement, Q8's setting | Not started |
@@ -68,7 +68,7 @@ rebase a shared branch). Read only: never commit to
 
 ## Completion Criteria
 
-- [ ] The ADR settles Q1–Q10 and is Accepted.
+- [x] The ADR settles Q1–Q10 and is Accepted.
 - [ ] The writer adds and removes reactions on a persona bubble, by mouse
       and keyboard; they survive save, open and reload.
 - [ ] On its next turn the persona receives the reactions since its last
@@ -94,3 +94,6 @@ rebase a shared branch). Read only: never commit to
 - **2026-11-07.** Epic branch cut from `9bfce925`. The feature note comes
   in unchanged from `claude/idea-inbox`; the ADR is Proposed with R1–R3 as
   decided and Q1–Q10 put to Okey.
+- **2026-11-07.** Okey took every recommendation (Q1–Q10); the ADR is
+  Accepted. Slice 1 opens on
+  `epic/workshop-message-reactions-slice-1-writer-reactions`.

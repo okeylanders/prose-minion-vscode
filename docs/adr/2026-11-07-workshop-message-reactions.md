@@ -1,7 +1,8 @@
 # ADR 2026-11-07: Workshop Message Reactions
 
-**Status:** Proposed (2026-11-07). R1–R3 decided by Okey on 2026-11-06;
-Q1–Q10 below wait on him, each with a recommendation.
+**Status:** Accepted (2026-11-07). Proposed 2026-11-07. R1–R3 decided by
+Okey on 2026-11-06; Q1–Q10 decided by Okey on 2026-11-07, each as
+recommended (see [Decisions on the open questions](#decisions-on-the-open-questions-okey-2026-11-07)).
 **Date:** 2026-11-07
 **Epic:** [Workshop Message Reactions](../../.todo/epics/epic-workshop-message-reactions-2026-11-07/README.md)
 **Feature note:** [Workshop Message Reactions](../../.todo/features/feature-workshop-message-reactions/README.md)
@@ -328,7 +329,14 @@ that reply's own participant, each triple at most once, bounded.
   `deliveredPerReply` (a codec bound on one record). A sync test holds the
   prompt's stated numbers to them.
 
-## Open questions for Okey (each with a recommendation)
+## Decisions on the open questions (Okey, 2026-11-07)
+
+Okey took every recommendation below. Each Q now reads as decided; the
+text is kept as written so the reasoning stays with the decision. Where a
+D-section above says "(**Qn**)", that question's recommendation is the
+decision.
+
+## The open questions as put (each with its recommendation)
 
 - **Q1. Is "celebration hands" 🙌?** *Recommend yes:* 🙌 `raised-hands`
   ("celebrate this"). 👏 clapping is the other reading; we could add it as a
