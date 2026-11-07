@@ -156,7 +156,7 @@ Unicode 14) need checking.
 - [Workshop Amplified Expression](../feature-workshop-amplified-expression/README.md)
 - [Workshop Participant Identity Colors](../feature-workshop-participant-identity-colors/README.md):
   how a persona's chip is told apart.
-- [Workshop Thread Bookmarks](../feature-workshop-thread-bookmarks/README.md):
+- [Workshop Thread Bookmarks](../../archive/features/feature-workshop-thread-bookmarks/README.md):
   the per-turn mark this is shaped like.
 - [ADR 2026-11-04: Workshop Project Memory](../../../docs/adr/2026-11-04-workshop-project-memory.md)
   D6: the reply trailer and its outcome table.
