@@ -65,17 +65,34 @@ describe('Conversation settings · Suggested file edits', () => {
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
       DEFAULT_WORKSHOP_WRITER_PROFILE,
       DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
-      'off',
+      undefined,
       'off'
     );
   });
 
-  it('an untouched row sends the host\'s mode, so Apply never changes it', () => {
-    const { props } = renderModal({ fileEditsMode: 'off' });
+  it('an untouched row sends nothing, so Apply never changes it, and the apply settles on Behavior alone', () => {
+    const { props, rerender } = renderModal({ fileEditsMode: 'off' });
     fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
     expect(applied(props)[0].interactionMode).toBe('analysis');
+    expect(applied(props)[3]).toBeUndefined();
+    expect(applied(props)[4]).toBeUndefined();
+    // Settlement compares only what was submitted: a host mode that moved meanwhile does not hold it open.
+    rerender({ fileEditsMode: 'ask', projectMemoryMode: 'ask', behavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR, interactionMode: 'analysis' } });
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('a single picked mode: settlement waits for that mode only', () => {
+    const { props, rerender } = renderModal({ fileEditsMode: 'ask', projectMemoryMode: 'off' });
+    fireEvent.click(card('Off'));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
+    expect(applied(props)[3]).toBeUndefined();
     expect(applied(props)[4]).toBe('off');
+    // The memory mode moving does not settle it, nor hold it open; the picked mode arriving does.
+    rerender({ fileEditsMode: 'ask', projectMemoryMode: 'auto' });
+    expect(props.onClose).not.toHaveBeenCalled();
+    rerender({ fileEditsMode: 'off', projectMemoryMode: 'auto' });
+    expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 
   it('the apply settles only when the host holds the submitted mode, and the cards are locked meanwhile', () => {
@@ -98,13 +115,13 @@ describe('Conversation settings · Suggested file edits', () => {
     expect(card('Ask first').getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('an untouched row follows a newer host mode while the modal is open, and Apply sends it (PR #236 F-02 witness)', () => {
+  it('an untouched row shows a newer host mode while the modal is open, and Apply sends nothing for it (PR #236 F-02)', () => {
     const { props, rerender } = renderModal({ fileEditsMode: 'ask' });
     rerender({ fileEditsMode: 'off' });
     expect(card('Off').getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
-    expect(applied(props)[4]).toBe('off');
+    expect(applied(props)[4]).toBeUndefined();
   });
 
   it('control: a row the writer picked keeps their choice through a newer host mode, and other drafts are kept', () => {

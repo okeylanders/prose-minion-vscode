@@ -572,19 +572,21 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       behavior: WorkshopConversationBehavior,
       profile: WorkshopWriterProfile,
       research = DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
-      memoryMode: WorkshopProjectMemoryMode = projectMemoryMode,
-      editsMode: WorkshopFileEditsMode = fileEditsMode
+      memoryMode?: WorkshopProjectMemoryMode,
+      editsMode?: WorkshopFileEditsMode
     ) => {
       setErrorMessage('');
+      // A mode is sent only when the writer picked it: an omitted one is left as the host has it, never filled from
+      // the mode this webview last heard, which may be stale (PR #236 F-02 re-review).
       post(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS, {
         behavior,
         writerProfile: profile,
         webResearch: research,
-        projectMemory: memoryMode,
-        fileEdits: editsMode
+        ...(memoryMode !== undefined ? { projectMemory: memoryMode } : {}),
+        ...(editsMode !== undefined ? { fileEdits: editsMode } : {})
       });
     },
-    [post, projectMemoryMode, fileEditsMode]
+    [post]
   );
 
   const todoAction = React.useCallback(

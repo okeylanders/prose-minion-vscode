@@ -152,7 +152,19 @@ The review is Astra's, at `8450dd8c`, in [`docs/pr-reviews/pr-236-retry-and-sett
   - **The fix.** The modal's two global-mode rows are `undefined` until the writer picks one, and meanwhile follow the host's mode (`memoryPick ?? projectMemoryMode`, `fileEditsPick ?? fileEditsMode`). Opening the modal resets the picks only, so the other drafts are untouched.
   - **The conflict policy.** A row the writer picked keeps their choice through a newer host mode, and Apply sends it. That is deliberate: it is the writer's last edit.
   - **Tests.** Astra's witness, and the same case for the memory row, both fail without the fix. Each has a control in which a deliberate pick survives a host update, with the Behavior draft kept.
-  - **A residual window.** An untouched row sends the host's mode as the webview last heard it. A VS Code edit that lands after the snapshot was posted and before the apply reaches the host could still be written over. The window is the length of a message round trip. Omitting an untouched field would close it, but Astra's witness pins the latest host mode being sent, so I kept that contract. Flagged for review.
+  - **Closed at the re-review: untouched rows send nothing.** Astra's re-review at `9bfce925` confirmed the window as real. Through the production modal, room hook, router and settings service, an Off already on the host but not yet in React was written back to Ask first. It happened for both modes. The earlier witness's exact payload was never a requirement. The fix:
+    - The modal passes only the writer's picks (`memoryPick`, `fileEditsPick`): `undefined` for an untouched row. The row still shows the host's latest mode.
+    - `useWorkshopRoom.setConversationSettings` posts a mode only when one is given; its old default filled an omitted mode from the mode it last heard. `WorkshopSetConversationSettingsPayload.projectMemory` and `.fileEdits` are now optional.
+    - The host already leaves an absent mode as it stands (`applyFromWebview`'s `undefined` writes nothing); her host control pins it.
+    - Settlement waits only for the modes actually submitted. With none, Behavior and the profile alone settle it; with one, a move in the other mode neither settles it nor holds it open.
+  - **Tests.** In `WorkshopConversationSettingsDelayedModes.test.tsx`, her delayed-snapshot witness, ported, for both modes:
+    - an untouched mode is absent from the payload, and the host value is unchanged;
+    - control: a deliberate pick is still sent and written;
+    - control: a payload with no mode leaves both as they stand;
+    - the hook never fills an omitted mode.
+
+    In the modal suites: settlement with no mode, settlement with one, and an untouched row showing a newer host mode yet sending nothing. With the modal and hook stashed, both witnesses, the hook test and the modal regressions fail; every control passes.
+  - **Updated for the omission:** the modal suites' `onApply` expectations (`undefined` for untouched rows) and the room hook's payload tests.
 - **N-01 (nonblocking, done): a reveal failure keeps a settled landing.** Step 8 is now `ProjectFileEditGateway.reveal`, which catches its own failure, logs `[FileEdit] reveal failed turn=… index=…` and answers `false`.
   - The applied or partial result, its outcomes and its landed records stand.
   - A throw before the read-back settles still reads `unknown`.

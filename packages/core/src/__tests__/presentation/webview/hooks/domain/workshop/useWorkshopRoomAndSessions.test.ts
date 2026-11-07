@@ -440,14 +440,16 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
     expect(result.current.sessionActionResult).toBeUndefined();
   });
 
-  it('holds the host\'s suggested-file-edits mode, and posts it unless a draft is given (ADR 2026-11-05 D11)', () => {
+  it('holds the host\'s suggested-file-edits mode, and posts a mode only when one is picked (ADR 2026-11-05 D11; PR #236 F-02)', () => {
     const { result } = renderHook(() => useWorkshop());
     expect(result.current.fileEditsMode).toBe('ask');
     const state = sessionState({});
     act(() => result.current.handleSessionState({ ...state, payload: { ...state.payload, fileEdits: 'off' } }));
     expect(result.current.fileEditsMode).toBe('off');
     act(() => result.current.setConversationSettings(DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR, DEFAULT_WORKSHOP_WRITER_PROFILE));
-    expect(posted(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS).at(-1).payload.fileEdits).toBe('off');
+    // Never filled from the mode this webview last heard: that may be stale.
+    expect(posted(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS).at(-1).payload).not.toHaveProperty('fileEdits');
+    expect(posted(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS).at(-1).payload).not.toHaveProperty('projectMemory');
     act(() => result.current.setConversationSettings(
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR, DEFAULT_WORKSHOP_WRITER_PROFILE, undefined, undefined, 'ask'
     ));
@@ -475,11 +477,8 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
       .toEqual({
         behavior: selected,
         writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
-        ,webResearch: { enabled: false },
-        // No Memory draft given: the mode the host last sent (Off by default), so Apply never changes it.
-        projectMemory: 'off',
-        // Nor a file-edits draft: the mode the host last sent (Ask first, the setting's default).
-        fileEdits: 'ask'
+        ,webResearch: { enabled: false }
+        // No mode picked: neither is sent, so the host leaves both as they stand (PR #236 F-02).
       });
     expect(result.current.conversationBehavior).toEqual(
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
