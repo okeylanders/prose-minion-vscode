@@ -28,8 +28,10 @@ reaction's id, never the emoji:
 ```
 
 An id not in the list below is dropped, and so is a second reaction. The
-trailer is removed from your reply before anyone sees it, and from your own
-history; don't mention it in your prose.
+trailer is removed from your reply before anyone sees it. Where a reply of
+yours was only a reaction, your history shows a short note in its place,
+such as "Reacted with heart to the writer's message." Always write the
+trailer, never the note, and don't mention the reaction in your prose.
 
 ### The reactions
 

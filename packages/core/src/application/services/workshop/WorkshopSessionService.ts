@@ -123,15 +123,10 @@ import {
   WorkshopReactionRefusedError
 } from '@/application/services/workshop/session/WorkshopReactionLedger';
 import { isWorkshopReactableTurn, type WorkshopReactionId } from '@shared/constants/workshopReactions';
-
-/** A reply's kept reaction for `completeRun` (ADR 2026-11-07 D5): its id, and whether it was all the reply held (R1). */
-export interface WorkshopReplyReactionCommit {
-  readonly reaction: WorkshopReactionId;
-  readonly only: boolean;
-}
 import {
   WorkshopTurnLedger
 } from '@/application/services/workshop/session/WorkshopTurnLedger';
+import type { WorkshopReactionRefusalReason } from '@/application/services/workshop/session/WorkshopReactionLedger';
 import {
   WorkshopPassageScope
 } from '@/application/services/workshop/session/WorkshopPassageScope';
@@ -265,6 +260,21 @@ export class WorkshopSessionActiveRunPersistenceError extends Error {
  */
 let roomRevisionCounter = 0;
 const mintRoomRevision = (): number => ++roomRevisionCounter;
+
+/** What became of a persona's reaction at its reply's commit (PR #247 L1): the ledger's word, or `no-target`. */
+export type WorkshopPersonaReactionOutcome = WorkshopReactionChange | WorkshopReactionRefusalReason | 'no-target';
+
+/** A reply's reaction for `completeRun` (ADR 2026-11-07 D5, R1; PR #247 M1). */
+export interface WorkshopReplyReactionCommit {
+  /** The reaction the judge kept; absent when every reaction frame was dropped. */
+  readonly reaction?: WorkshopReactionId;
+  /** Whether reaction frames were all the reply held: no prose, widget, memory or file-edit frame. */
+  readonly only: boolean;
+  /** The host's line without the reaction, for a reply the host writes whose reaction does not land; absent for prose. */
+  readonly unlandedContent?: string;
+  /** Hears what became of a kept reaction, for the run's log. */
+  readonly outcome?: (outcome: WorkshopPersonaReactionOutcome) => void;
+}
 
 export class WorkshopSessionService {
   /** Pinned/shelved passage and immutable-before-memory scope state machine. */
@@ -1722,7 +1732,7 @@ export class WorkshopSessionService {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
     }
-    const reactionTarget = reaction ? this.personaReplyReactionTarget(requestId) : undefined;
+    const reactionTarget = reaction?.reaction ? this.personaReplyReactionTarget(requestId) : undefined;
 
     const active = this.activeRun;
     const isHost = active.target === 'host';
@@ -1828,8 +1838,26 @@ export class WorkshopSessionService {
     }
     // The persona's own reaction (ADR 2026-11-07 D5) rides the reply that carried it, written
     // through the ledger in this one commit, so a cut or rollback of the reply takes it too.
-    if (reaction && reactionTarget && this.addPersonaReplyReaction(reaction, reactionTarget, turn)) {
-      turn.reactionOnly = reaction.only ? reaction.reaction : undefined;
+    if (reaction && (isHost || isGuest)) {
+      const outcome = reaction.reaction === undefined
+        ? undefined
+        : reactionTarget ? this.addPersonaReplyReaction(reaction.reaction, reactionTarget, turn) : 'no-target';
+      if (outcome !== undefined) {
+        reaction.outcome?.(outcome);
+      }
+      if (outcome === 'added') {
+        if (reaction.only) {
+          turn.reactionOnly = reaction.reaction;
+        }
+      } else {
+        // Nothing landed, so the host's line names no reaction, and a reply of nothing else takes none (PR #247 M1).
+        if (reaction.unlandedContent !== undefined) {
+          turn.content = reaction.unlandedContent;
+        }
+        if (reaction.only) {
+          turn.noMessage = true;
+        }
+      }
     }
     this.turnLedger.append(turn);
     for (const capabilityTurnId of new Set(active.capabilityTurnIds ?? [])) {
@@ -1866,20 +1894,23 @@ export class WorkshopSessionService {
       || active.artifact !== 'persona_message' || !active.writerTurnId) {
       return undefined;
     }
+    const author: WorkshopTurnReactionAuthor = active.target === 'personaGuest' && active.guestPersonaId
+      ? { kind: 'personaGuest', personaId: active.guestPersonaId }
+      : { kind: 'host' };
     const turn = this.turnLedger.find(active.writerTurnId);
-    return turn && isWorkshopReactableTurn(turn, { kind: 'host' }) ? turn : undefined;
+    return turn && isWorkshopReactableTurn(turn, author) ? turn : undefined;
   }
 
-  /** Add the reply's reaction on `target`; false when the ledger refuses it (a full session). */
-  private addPersonaReplyReaction(reaction: WorkshopReplyReactionCommit, target: WorkshopTurn, reply: WorkshopTurn): boolean {
+  /** Add the reply's reaction on `target`: the ledger's change, or the reason it refused. */
+  private addPersonaReplyReaction(reaction: WorkshopReactionId, target: WorkshopTurn, reply: WorkshopTurn): WorkshopPersonaReactionOutcome {
     const author: WorkshopTurnReactionAuthor = reply.participant === 'guest' && reply.personaId
       ? { kind: 'personaGuest', personaId: reply.personaId }
       : { kind: 'host' };
     try {
-      return this.reactionLedger.add({ turnId: target.id, reaction: reaction.reaction, author, viaTurnId: reply.id }, target) === 'added';
+      return this.reactionLedger.add({ turnId: target.id, reaction, author, viaTurnId: reply.id }, target);
     } catch (error) {
       if (error instanceof WorkshopReactionRefusedError) {
-        return false;
+        return error.reason;
       }
       throw error;
     }

@@ -80,18 +80,33 @@ export const WORKSHOP_FILE_EDIT_ONLY_REPLY_LINE = 'Proposed an edit to a project
 /** The same, for a reply that was only trailers of both kinds. */
 export const WORKSHOP_TRAILERS_ONLY_REPLY_LINE = 'Proposed a project memory and an edit to a project file.';
 
-/** The trailer kinds a reply held. `reaction` is its first known id, `true` when it named none (ADR 2026-11-07 R1). */
+/**
+ * The ledger's line for a reply whose only trailer was a reaction that was
+ * dropped (ADR 2026-11-07 D5; PR #247 M1): it names no reaction, since none
+ * was kept, and the turn takes no reaction of its own (`noMessage`).
+ */
+export const WORKSHOP_NO_MESSAGE_REPLY_LINE = 'Replied without a message.';
+
+/**
+ * The trailer kinds a reply held, for the host's line (ADR 2026-11-07 R1).
+ * `reaction` is a reaction to name, `true` for one it cannot name, absent
+ * for none: retention passes the reply's intent, read from its text; the
+ * ledger passes only a reaction that was kept.
+ */
 export interface WorkshopTrailerKinds {
   readonly memory: boolean;
   readonly fileEdits: boolean;
   readonly reaction?: WorkshopReactionId | true;
 }
 
+/** The reaction's object, named so a reader of the room's catch-up knows what it was on (PR #247 L4). */
+const REACTION_OBJECT = "the writer's message";
+
 /**
- * The host's line for a reply that held only trailers, by the kinds it held:
- * "Reacted with heart.", "Proposed a project memory and reacted with heart.",
- * and so on. Decided from the reply's text alone, so retention (which never
- * sees the setting or the room) and the ledger write the same line.
+ * The host's line for a reply that held only trailers, by the kinds it
+ * names: "Reacted with heart to the writer's message.", "Proposed a project
+ * memory and reacted with heart to the writer's message.", and so on. With
+ * nothing to name, it is `WORKSHOP_NO_MESSAGE_REPLY_LINE`.
  */
 export function workshopTrailersOnlyReplyLine(kinds: WorkshopTrailerKinds): string {
   const proposals = kinds.memory || kinds.fileEdits
@@ -100,9 +115,11 @@ export function workshopTrailersOnlyReplyLine(kinds: WorkshopTrailerKinds): stri
       : kinds.fileEdits ? WORKSHOP_FILE_EDIT_ONLY_REPLY_LINE : WORKSHOP_MEMORY_ONLY_REPLY_LINE
     : undefined;
   if (kinds.reaction === undefined) {
-    return proposals ?? WORKSHOP_MEMORY_ONLY_REPLY_LINE;
+    return proposals ?? WORKSHOP_NO_MESSAGE_REPLY_LINE;
   }
-  const reacted = kinds.reaction === true ? 'reacted' : `reacted with ${workshopReaction(kinds.reaction).label}`;
+  const reacted = kinds.reaction === true
+    ? `reacted to ${REACTION_OBJECT}`
+    : `reacted with ${workshopReaction(kinds.reaction).label} to ${REACTION_OBJECT}`;
   if (!proposals) {
     return `R${reacted.slice(1)}.`;
   }

@@ -12,6 +12,7 @@ import {
   stripWorkshopReplyTrailersForStreaming,
   WORKSHOP_FILE_EDIT_ONLY_REPLY_LINE,
   WORKSHOP_MEMORY_ONLY_REPLY_LINE,
+  WORKSHOP_NO_MESSAGE_REPLY_LINE,
   WORKSHOP_TRAILERS_ONLY_REPLY_LINE,
   workshopTrailersOnlyReplyLine
 } from '@/utils/workshopReplyControls';
@@ -108,16 +109,21 @@ describe('the reaction trailer joins the tail (D5)', () => {
 });
 
 describe('R1: the host\'s line for a reply of trailers alone', () => {
-  it('names the reaction, alone and beside proposals', () => {
-    expect(workshopTrailersOnlyReplyLine({ memory: false, fileEdits: false, reaction: 'heart' })).toBe('Reacted with heart.');
-    expect(workshopTrailersOnlyReplyLine({ memory: false, fileEdits: false, reaction: 'thumbs-up' })).toBe('Reacted with thumbs up.');
-    expect(workshopTrailersOnlyReplyLine({ memory: false, fileEdits: false, reaction: true })).toBe('Reacted.');
+  it('names the reaction and its object (PR #247 L4), alone and beside proposals', () => {
+    expect(workshopTrailersOnlyReplyLine({ memory: false, fileEdits: false, reaction: 'heart' })).toBe("Reacted with heart to the writer's message.");
+    expect(workshopTrailersOnlyReplyLine({ memory: false, fileEdits: false, reaction: 'thumbs-up' })).toBe("Reacted with thumbs up to the writer's message.");
+    expect(workshopTrailersOnlyReplyLine({ memory: false, fileEdits: false, reaction: true })).toBe("Reacted to the writer's message.");
     expect(workshopTrailersOnlyReplyLine({ memory: true, fileEdits: false, reaction: 'fire' }))
-      .toBe('Proposed a project memory and reacted with fire.');
+      .toBe("Proposed a project memory and reacted with fire to the writer's message.");
     expect(workshopTrailersOnlyReplyLine({ memory: false, fileEdits: true, reaction: 'fire' }))
-      .toBe('Proposed an edit to a project file and reacted with fire.');
+      .toBe("Proposed an edit to a project file and reacted with fire to the writer's message.");
     expect(workshopTrailersOnlyReplyLine({ memory: true, fileEdits: true, reaction: 'fire' }))
-      .toBe('Proposed a project memory and an edit to a project file, and reacted with fire.');
+      .toBe("Proposed a project memory and an edit to a project file, and reacted with fire to the writer's message.");
+  });
+
+  it('with nothing to name, the neutral line (PR #247 M1)', () => {
+    expect(workshopTrailersOnlyReplyLine({ memory: false, fileEdits: false })).toBe(WORKSHOP_NO_MESSAGE_REPLY_LINE);
+    expect(WORKSHOP_NO_MESSAGE_REPLY_LINE).toBe('Replied without a message.');
   });
 
   it('keeps the earlier kinds\' lines as they were', () => {
@@ -127,14 +133,14 @@ describe('R1: the host\'s line for a reply of trailers alone', () => {
   });
 
   it('retention holds the host line for a reaction-only reply, and only the prose otherwise', () => {
-    expect(sanitizeWorkshopReplyForRetention(reaction('heart'))).toBe('Reacted with heart.');
-    expect(sanitizeWorkshopReplyForRetention(`  ${reaction(' Heart ')}  `)).toBe('Reacted with heart.');
-    expect(sanitizeWorkshopReplyForRetention(reaction('clapping'))).toBe('Reacted.');
-    expect(sanitizeWorkshopReplyForRetention(`${memoryFrame()}\n${reaction('fire')}`)).toBe('Proposed a project memory and reacted with fire.');
+    expect(sanitizeWorkshopReplyForRetention(reaction('heart'))).toBe("Reacted with heart to the writer's message.");
+    expect(sanitizeWorkshopReplyForRetention(`  ${reaction(' Heart ')}  `)).toBe("Reacted with heart to the writer's message.");
+    expect(sanitizeWorkshopReplyForRetention(reaction('clapping'))).toBe("Reacted to the writer's message.");
+    expect(sanitizeWorkshopReplyForRetention(`${memoryFrame()}\n${reaction('fire')}`)).toBe("Proposed a project memory and reacted with fire to the writer's message.");
     expect(sanitizeWorkshopReplyForRetention(`${PROSE}\n\n${reaction('heart')}`)).toBe(PROSE);
     expect(stripWorkshopReplyTrailersForRetention(`${PROSE}\n\n${reaction('heart')}`)).toBe(PROSE);
     // The line names the frame the judge would keep: the first well-formed known one, not a misplaced one before it.
-    expect(sanitizeWorkshopReplyForRetention(`</prose-minion-reaction>\n${reaction('fire')}`)).toBe('Reacted with fire.');
+    expect(sanitizeWorkshopReplyForRetention(`</prose-minion-reaction>\n${reaction('fire')}`)).toBe("Reacted with fire to the writer's message.");
   });
 });
 

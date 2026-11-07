@@ -26,6 +26,7 @@ import { assertWorkshopTurnModel } from '@/application/services/workshop/Worksho
 import { contextSourceProvenanceFault } from '@orchestration/ContextSourceRecord';
 import { assertWorkshopBookmarksShape } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
 import {
+  assertWorkshopNoMessageShape,
   assertWorkshopReactionOnlyShape,
   assertWorkshopReactionsShape
 } from '@/application/services/workshop/session/WorkshopReactionRecords';
@@ -608,8 +609,9 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       'projectMemoryDelivery',
       // Reactions' delivery record (ADR 2026-11-07 D6; additive).
       'reactionDelivery',
-      // A reaction-only reply (ADR 2026-11-07 R1; additive).
-      'reactionOnly'
+      // A reaction-only reply (ADR 2026-11-07 R1; additive), and one whose reaction was dropped (PR #247 M1).
+      'reactionOnly',
+      'noMessage'
     ]
   );
   stringAt(turn.id, `${path}.id`);
@@ -687,6 +689,9 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   }
   if (turn.reactionOnly !== undefined) {
     assertWorkshopReactionOnlyShape(turn.reactionOnly, `${path}.reactionOnly`, turn);
+  }
+  if (turn.noMessage !== undefined) {
+    assertWorkshopNoMessageShape(turn.noMessage, `${path}.noMessage`, turn);
   }
   if (turn.standingDirectiveChange !== undefined) {
     assertStandingDirectiveChange(

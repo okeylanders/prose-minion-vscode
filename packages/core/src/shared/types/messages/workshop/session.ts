@@ -483,6 +483,14 @@ export interface WorkshopTurn {
    * line, and the writer cannot react to it (Q10). Host and guest replies only.
    */
   reactionOnly?: WorkshopReactionId;
+  /**
+   * A persona reply that held nothing to show: only a reaction trailer that
+   * was dropped (persona reactions off, no writer message to react to, a
+   * full session, an unknown id; PR #247 M1). Its content is the host's
+   * neutral line, and the writer cannot react to it. Host and guest replies
+   * only; never beside `reactionOnly`.
+   */
+  noMessage?: true;
 }
 
 /** One memory as a conversation was told of it: its id and its D14 version. */

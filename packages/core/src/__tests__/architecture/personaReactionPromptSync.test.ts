@@ -13,7 +13,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
+import { extractWorkshopReplyControls, sanitizeWorkshopReplyForRetention } from '@/utils/workshopReplyControls';
 import { WORKSHOP_REACTION_TAG } from '@/utils/workshopReplyReaction';
 import { WORKSHOP_REACTION_TONES, WORKSHOP_REACTIONS } from '@shared/constants/workshopReactions';
 import {
@@ -56,6 +56,12 @@ describe('persona-reaction prompt ↔ the registry', () => {
     });
     expect(controls.reaction).toEqual({ reaction: 'mind-blown', rejections: [] });
     expect(controls.rest).toBe('Alice follows the rabbit.');
+  });
+
+  it('quotes the note history shows exactly as retention writes it (PR #247 L3)', () => {
+    const note = PROMPT.replace(/\s+/g, ' ').match(/such as "([^"]+)"/)![1];
+    expect(note).toBe(sanitizeWorkshopReplyForRetention(`<${WORKSHOP_REACTION_TAG}>heart</${WORKSHOP_REACTION_TAG}>`));
+    expect(PROMPT.replace(/\s+/g, ' ')).toContain('Always write the trailer, never the note');
   });
 
   it('states the permission\'s rules and the trailer\'s place', () => {

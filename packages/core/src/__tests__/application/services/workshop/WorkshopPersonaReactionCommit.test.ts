@@ -19,6 +19,7 @@ import { validateWorkshopSessionStateV1 } from '@/application/services/workshop/
 import { parseWorkshopSessionStateV1 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import { projectWorkshopTranscript } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { isWorkshopReactableTurn } from '@shared/constants/workshopReactions';
+import { WorkshopReactionRefusedError } from '@/application/services/workshop/session/WorkshopReactionLedger';
 import { ScriptedWorkshopRoom } from './session/ScriptedWorkshopRoom';
 
 const trailer = (id: string) => `<prose-minion-reaction>${id}</prose-minion-reaction>`;
@@ -62,7 +63,7 @@ describe('a persona\'s reaction, committed with its reply (ADR 2026-11-07 D5)', 
     const scripted = room();
     const reply = scripted.hostMessage('Thanks, Jill!', { reply: trailer('heart') });
 
-    expect(reply.content).toBe('Reacted with heart.');
+    expect(reply.content).toBe("Reacted with heart to the writer's message.");
     expect(reply.reactionOnly).toBe('heart');
     expect(reply.model).toBeUndefined();
     expect(isWorkshopReactableTurn(reply, { kind: 'writer' })).toBe(false);
@@ -72,7 +73,7 @@ describe('a persona\'s reaction, committed with its reply (ADR 2026-11-07 D5)', 
     expect(state.retainedHistoryMarks?.some((mark) => mark.turnId === reply.id)).toBe(true);
     // The transcript projects it as its host line (D7), and no reaction.
     const projected = JSON.stringify(projectWorkshopTranscript(scripted.session.readRoomLedger(), { title: 'Alice', exportedAt: 0 }));
-    expect(projected).toContain('Reacted with heart.');
+    expect(projected).toContain("Reacted with heart to the writer's message.");
     expect(projected).not.toContain('reactionOnly');
   });
 
@@ -82,18 +83,47 @@ describe('a persona\'s reaction, committed with its reply (ADR 2026-11-07 D5)', 
     const reply = scripted.hostMessage('Note that Alice is seven.', {
       reply: `<prose-minion-memory-proposal>\n<title>Alice</title>\n</prose-minion-memory-proposal>\n${trailer('thumbs-up')}`
     });
-    expect(reply.content).toBe('Proposed a project memory and reacted with thumbs up.');
+    expect(reply.content).toBe("Proposed a project memory and reacted with thumbs up to the writer's message.");
     expect(reply.reactionOnly).toBeUndefined();
     expect(scripted.session.readRoomReactions()).toHaveLength(1);
   });
 
-  it('off (Q8): dropped as reactions-off, stored nowhere, the line still the host\'s', () => {
+  it('off (Q8): dropped as reactions-off, stored nowhere; the line names no reaction and the turn takes none (PR #247 M1)', () => {
     const scripted = room(false);
     const reply = scripted.hostMessage('Thanks!', { reply: trailer('heart') });
     expect(scripted.session.readRoomReactions()).toEqual([]);
     expect(reply.reactionOnly).toBeUndefined();
-    expect(reply.content).toBe('Reacted with heart.');
+    expect('reactionOnly' in reply).toBe(false);
+    expect(reply.noMessage).toBe(true);
+    expect(reply.content).toBe('Replied without a message.');
+    expect(isWorkshopReactableTurn(reply, { kind: 'writer' })).toBe(false);
     expect(scripted.log).toContain('Persona reaction dropped (reason=reactions-off; reaction=heart) (Jill)');
+  });
+
+  it('a dropped reaction beside a card: the line names the card only, and the reply stays reactable', () => {
+    const scripted = room(false);
+    const reply = scripted.hostMessage('Note that Alice is seven.', {
+      reply: `<prose-minion-memory-proposal>\n<title>Alice</title>\n</prose-minion-memory-proposal>\n${trailer('heart')}`
+    });
+    expect(reply.content).toBe('Proposed a project memory.');
+    expect(reply.noMessage).toBeUndefined();
+    expect(isWorkshopReactableTurn(reply, { kind: 'writer' })).toBe(true);
+  });
+
+  it('a full session (L1): the reply commits without its reaction, logged by the ledger\'s reason, and names none', () => {
+    const scripted = room();
+    const ledger = (scripted.session as unknown as { reactionLedger: { add: () => never } }).reactionLedger;
+    const add = jest.spyOn(ledger, 'add').mockImplementationOnce(() => {
+      throw new WorkshopReactionRefusedError('session-full', 'This session holds as many reactions as it can.');
+    });
+    const reply = scripted.hostMessage('Thanks!', { reply: trailer('heart') });
+    add.mockRestore();
+    expect(scripted.session.readRoomReactions()).toEqual([]);
+    expect(reply).toEqual(expect.objectContaining({ content: 'Replied without a message.', noMessage: true }));
+    expect(reply.reactionOnly).toBeUndefined();
+    expect(scripted.log).toContain('Persona reaction dropped (reason=session-full; reaction=heart; Jill)');
+    const state = scripted.session.exportCommittedState();
+    expect(() => validateWorkshopSessionStateV1(parseWorkshopSessionStateV1(state))).not.toThrow();
   });
 
   it('a second frame is over-cap and an unknown id is dropped; logs carry ids and reasons, never text', () => {
@@ -188,5 +218,29 @@ describe('reactionOnly in the session codec (ADR 2026-11-07 R1; additive)', () =
       [...state.reactions!, { turnId: reply.id, reaction: 'fire', author: { kind: 'writer' }, createdAt: 1 }],
       state.turns
     )).toThrow('is on a turn its author cannot react to');
+  });
+
+  it('noMessage (PR #247 M1) round-trips; refused off a persona reply, beside reactionOnly, or as anything but true', () => {
+    const scripted = room(false);
+    const reply = scripted.hostMessage('Thanks!', { reply: trailer('heart') });
+    const state = scripted.session.exportCommittedState();
+    expect(parseWorkshopSessionStateV1(JSON.parse(JSON.stringify(state))).turns.find((turn) => turn.id === reply.id)!.noMessage).toBe(true);
+    const writer = state.turns.filter((turn) => turn.role === 'user').at(-1)!;
+    expect(() => parseWorkshopSessionStateV1(withTurn(state, writer.id, { noMessage: true }))).toThrow(/noMessage/);
+    expect(() => parseWorkshopSessionStateV1(withTurn(state, reply.id, { noMessage: 'yes' }))).toThrow(/noMessage/);
+    expect(() => parseWorkshopSessionStateV1(withTurn(state, reply.id, { reactionOnly: 'heart' }))).toThrow(/noMessage/);
+  });
+
+  it('integrity refuses a reaction on a noMessage reply, and any persona reaction it would carry', () => {
+    const scripted = room(false);
+    const reply = scripted.hostMessage('Thanks!', { reply: trailer('heart') });
+    const state = scripted.session.exportCommittedState();
+    const writer = state.turns.filter((turn) => turn.role === 'user').at(-1)!;
+    expect(() => assertWorkshopReactionIntegrity(
+      [{ turnId: reply.id, reaction: 'fire', author: { kind: 'writer' }, createdAt: 1 }], state.turns
+    )).toThrow('is on a turn its author cannot react to');
+    expect(() => assertWorkshopReactionIntegrity(
+      [{ turnId: writer.id, reaction: 'heart', author: { kind: 'host' }, viaTurnId: reply.id, createdAt: 1 }], state.turns
+    )).toThrow("does not name its persona's reply to that message");
   });
 });

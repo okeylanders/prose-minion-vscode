@@ -184,4 +184,24 @@ describe('WorkshopApp persona reactions', () => {
     deliver(session({ turns: [writerTurn, hostTurn, reactionOnly], totalTurns: 3, reactions: [jills] }));
     expect(region().textContent).toBe('');
   });
+
+  it('never announces across a room replacement: a live turn followed directly by an Open (PR #247 M2)', () => {
+    render(<WorkshopApp />);
+    deliver(session());
+    deliver(turnMessage(reactionOnly));
+    // The Open's room reuses the per-session turn ids, and its reaction names the same reply id.
+    deliver(session({ turns: [writerTurn, hostTurn, reactionOnly], totalTurns: 3, reactions: [jills], roomRevision: 99 }));
+    expect(region().textContent).toBe('');
+    // A later snapshot of the opened room says nothing either: what was waiting was cleared.
+    deliver(session({ turns: [writerTurn, hostTurn, reactionOnly], totalTurns: 3, reactions: [jills], roomRevision: 99 }));
+    expect(region().textContent).toBe('');
+  });
+
+  it('never announces a reply the previous snapshot already showed', () => {
+    render(<WorkshopApp />);
+    deliver(session({ turns: [writerTurn, hostTurn, reactionOnly], totalTurns: 3, reactions: [jills] }));
+    deliver(turnMessage(reactionOnly));
+    deliver(session({ turns: [writerTurn, hostTurn, reactionOnly], totalTurns: 3, reactions: [jills] }));
+    expect(region().textContent).toBe('');
+  });
 });

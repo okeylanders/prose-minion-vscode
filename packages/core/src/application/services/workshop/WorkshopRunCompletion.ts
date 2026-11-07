@@ -12,7 +12,10 @@
  */
 
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
-import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import {
+  WorkshopSessionService,
+  type WorkshopPersonaReactionOutcome
+} from '@/application/services/workshop/WorkshopSessionService';
 import {
   isApiKeyNotConfiguredWarning,
   TokenUsage,
@@ -270,15 +273,21 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || trailers.memory || trailers.fileEdits
     || trailers.reaction !== undefined) && strippedDisplayContent.trim().length === 0;
   // R1: a reply that was only its reaction is drawn as a slim line; with cards or a widget it is a reply.
+  // The ledger's line names only a reaction that lands (PR #247 M1); retention keeps the reply's intent.
   const kept = controls.reaction?.reaction;
-  const reaction = kept && {
+  const hostLine = hostWritesDisplay && widgetRecommendation.outcome === 'absent';
+  const reaction = controls.reaction && {
     reaction: kept,
-    only: hostWritesDisplay && widgetRecommendation.outcome === 'absent' && !trailers.memory && !trailers.fileEdits
+    only: hostLine && !trailers.memory && !trailers.fileEdits,
+    ...(hostLine ? { unlandedContent: workshopTrailersOnlyReplyLine({ memory: trailers.memory, fileEdits: trailers.fileEdits }) } : {}),
+    outcome: (outcome: WorkshopPersonaReactionOutcome) => input.log(outcome === 'added'
+      ? `Persona reaction kept (reaction=${kept}; ${label})`
+      : `Persona reaction dropped (reason=${outcome}; reaction=${kept}; ${label})`)
   };
   const displayContent = !hostWritesDisplay
     ? strippedDisplayContent
     : widgetRecommendation.outcome === 'absent'
-      ? workshopTrailersOnlyReplyLine(trailers)
+      ? workshopTrailersOnlyReplyLine({ memory: trailers.memory, fileEdits: trailers.fileEdits, ...(kept ? { reaction: kept } : {}) })
       : recommendationRejected
         ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
         : `${label} returned a widget setup without an accompanying note.`;
@@ -309,15 +318,12 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     return undefined;
   }
 
-  if (kept) {
-    const landed = session.readRoomReactions().some((entry) => entry.viaTurnId === turn.id);
-    input.log(landed ? `Persona reaction kept (reaction=${kept}; ${label})` : `Persona reaction dropped (reason=session-full; reaction=${kept}; ${label})`);
-  }
   try {
     announceCommittedRun(input, turn, {
       widgetRecommendation,
       unavailableWidgetSource,
-      displayContent,
+      // The session may have rewritten the host's line when a reaction did not land.
+      displayContent: turn.content,
       truncated
     });
     input.settleCommittedRun?.(turn);

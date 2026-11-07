@@ -61,10 +61,10 @@ describe('persona reactions through the room handler (ADR 2026-11-07 D5)', () =>
 
     const turnPost = harness.postMessage.mock.calls.map(([posted]) => posted)
       .filter((posted) => posted.type === MessageType.WORKSHOP_TURN).at(-1)!;
-    expect(turnPost.payload.turn).toEqual(expect.objectContaining({ content: 'Reacted with thanks.', reactionOnly: 'thanks', participant: 'host' }));
+    expect(turnPost.payload.turn).toEqual(expect.objectContaining({ content: "Reacted with thanks to the writer's message.", reactionOnly: 'thanks', participant: 'host' }));
     const stream = harness.postMessage.mock.calls.map(([posted]) => posted)
       .filter((posted) => posted.type === MessageType.STREAM_COMPLETE).at(-1)!;
-    expect(stream.payload.content).toBe('Reacted with thanks.');
+    expect(stream.payload.content).toBe("Reacted with thanks to the writer's message.");
   });
 
   it('a guest\'s reply reacts too, as that guest', async () => {
@@ -107,6 +107,7 @@ describe('persona reactions through the room handler (ADR 2026-11-07 D5)', () =>
     expect(harness.session.readRoomReactions()).toEqual([]);
     expect(lines(harness).some((line) => line.includes('Persona reaction dropped (reason=reactions-off; reaction=thumbs-up)'))).toBe(true);
     const reply = harness.session.readRoomLedger().at(-1)!;
+    expect(reply.content).toBe('Agreed.');
     await harness.router.route(message(MessageType.WORKSHOP_SET_TURN_REACTION, { turnId: reply.id, reaction: 'heart', reacted: true }) as never);
     expect(harness.session.readRoomReactions()).toEqual([expect.objectContaining({ turnId: reply.id, author: { kind: 'writer' } })]);
   });
@@ -135,5 +136,38 @@ describe('persona reactions through the room handler (ADR 2026-11-07 D5)', () =>
     harness.postMessage.mockClear();
     await harness.router.route(message(MessageType.WORKSHOP_SET_TURN_REACTION, { turnId: reply.id, reaction: 'fire', reacted: true }) as never);
     expect(harness.session.readRoomReactions().filter((entry) => entry.author.kind === 'writer')).toEqual([]);
+  });
+
+  it.each([
+    ['reactions-off', false, 'Thanks!', `${'<prose-minion-reaction>'}heart</prose-minion-reaction>`],
+    ['unknown', true, 'Thanks!', '<prose-minion-reaction>clapping</prose-minion-reaction>']
+  ])('M1: a reply of a dropped reaction (%s) names none, posts no chip, and takes no reaction', async (reason, open, text, reply) => {
+    const harness = await hostRoom();
+    if (!open) {
+      const get = harness.settings.get;
+      harness.settings.get = ((section: string, key: string, fallback?: unknown) =>
+        key === 'workshop.reactions.personas' ? false : get(section, key, fallback)) as typeof get;
+    }
+    harness.postMessage.mockClear();
+    nextReply(harness, reply);
+    await send(harness, text);
+    const turn = harness.session.readRoomLedger().at(-1)!;
+    expect(turn).toEqual(expect.objectContaining({ content: 'Replied without a message.', noMessage: true }));
+    expect(turn.reactionOnly).toBeUndefined();
+    expect(harness.session.readRoomReactions()).toEqual([]);
+    expect(JSON.stringify(harness.postMessage.mock.calls)).not.toMatch(/Reacted|heart|clapping/);
+    expect(lines(harness).some((line) => line.includes(`reason=${reason}`))).toBe(true);
+    await harness.router.route(message(MessageType.WORKSHOP_SET_TURN_REACTION, { turnId: turn.id, reaction: 'fire', reacted: true }) as never);
+    expect(harness.session.readRoomReactions()).toEqual([]);
+  });
+
+  it('M1: a synthesis of a dropped reaction alone (no-target) names none and takes no reaction', async () => {
+    const harness = await hostRoom();
+    nextReply(harness, '<prose-minion-reaction>hundred</prose-minion-reaction>');
+    await harness.runProse();
+    const synthesis = harness.session.readRoomLedger().filter((turn) => turn.artifact === 'persona_synthesis').at(-1)!;
+    expect(synthesis).toEqual(expect.objectContaining({ content: 'Replied without a message.', noMessage: true }));
+    await harness.router.route(message(MessageType.WORKSHOP_SET_TURN_REACTION, { turnId: synthesis.id, reaction: 'fire', reacted: true }) as never);
+    expect(harness.session.readRoomReactions()).toEqual([]);
   });
 });
