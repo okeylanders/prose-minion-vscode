@@ -18,6 +18,7 @@
 export * from './participants';
 export * from './bookmarks';
 export * from './bookmarkBrowser';
+export * from './reactions';
 export * from './projectMemory';
 export * from './memoryDraft';
 export * from './projectMemoryManager';

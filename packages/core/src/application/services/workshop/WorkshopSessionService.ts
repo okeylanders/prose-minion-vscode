@@ -46,7 +46,8 @@ import {
   WorkshopMemoryProposalState,
   WorkshopProjectMemoryReceipt,
   WorkshopProjectMemoryDelivery,
-  WorkshopTurnBookmark
+  WorkshopTurnBookmark,
+  WorkshopTurnReaction
 } from '@messages';
 import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
@@ -112,6 +113,12 @@ import {
   WorkshopBookmarkChange,
   WorkshopBookmarkLedger
 } from '@/application/services/workshop/session/WorkshopBookmarkLedger';
+import {
+  WorkshopReactionChange,
+  WorkshopReactionIdentity,
+  WorkshopReactionLedger
+} from '@/application/services/workshop/session/WorkshopReactionLedger';
+import type { WorkshopReactionId } from '@shared/constants/workshopReactions';
 import {
   WorkshopTurnLedger
 } from '@/application/services/workshop/session/WorkshopTurnLedger';
@@ -297,6 +304,8 @@ export class WorkshopSessionService {
   private readonly todoLedger: WorkshopTodoLedger;
   /** The writer's bookmarks; presentation only, never in a prompt (ADR 2026-11-03 D5). */
   private readonly bookmarkLedger: WorkshopBookmarkLedger;
+  /** Message reactions; no change to one starts a model call (ADR 2026-11-07 D2, D4). */
+  private readonly reactionLedger: WorkshopReactionLedger;
   /** Where each retained history stood at each commit (ADR 2026-09-30 §3). */
   private readonly retainedHistory: WorkshopRetainedHistoryLedger;
   private behavior: WorkshopConversationBehavior;
@@ -318,6 +327,7 @@ export class WorkshopSessionService {
     this.standingDirectiveLedger = new WorkshopStandingDirectiveLedger(this.now);
     this.todoLedger = new WorkshopTodoLedger(this.now);
     this.bookmarkLedger = new WorkshopBookmarkLedger(this.now);
+    this.reactionLedger = new WorkshopReactionLedger(this.now);
     this.turnLedger = new WorkshopTurnLedger(this.now);
     this.retainedHistory = new WorkshopRetainedHistoryLedger(
       (turnId) => this.turnLedger.position(turnId)
@@ -1953,6 +1963,23 @@ export class WorkshopSessionService {
     return this.bookmarkLedger.rename(bookmarkId, label);
   }
 
+  /** Add (`true`) or remove (`false`) one of the writer's reactions on a turn (ADR 2026-11-07 D2). */
+  setWriterReaction(turnId: string, reaction: WorkshopReactionId, reacted: boolean): WorkshopReactionChange {
+    return reacted
+      ? this.reactionLedger.add({ turnId, reaction, author: { kind: 'writer' } }, this.turnLedger.find(turnId))
+      : this.reactionLedger.remove({ turnId, reaction, author: { kind: 'writer' } });
+  }
+
+  /** Remove one reaction by its identity: the writer's own, or Hide on a persona's (Q6). */
+  removeReaction(identity: WorkshopReactionIdentity): WorkshopReactionChange {
+    return this.reactionLedger.remove(identity);
+  }
+
+  /** The stored reactions, defensively copied. */
+  readRoomReactions(): WorkshopTurnReaction[] {
+    return this.reactionLedger.list();
+  }
+
   /** The bookmarks themselves, for recall's live-room port (ADR 2026-11-05 D1). */
   readRoomBookmarks(): WorkshopTurnBookmark[] {
     return this.bookmarkLedger.list();
@@ -2025,6 +2052,7 @@ export class WorkshopSessionService {
     const rollbackTurnIds = new Set([writerTurn.id]);
     this.turnLedger.removeByIds(rollbackTurnIds);
     this.bookmarkLedger.pruneTo(new Set(this.turnLedger.project((turn) => turn.id)));
+    this.reactionLedger.pruneTo(new Set(this.turnLedger.project((turn) => turn.id)));
     this.threadArtifacts = this.threadArtifacts.filter(
       (artifact) => !rollbackTurnIds.has(artifact.turnId)
     );
@@ -2044,6 +2072,7 @@ export class WorkshopSessionService {
     }
     this.turnLedger.removeByIds(new Set([turn.id]));
     this.bookmarkLedger.pruneTo(new Set(this.turnLedger.project((candidate) => candidate.id)));
+    this.reactionLedger.pruneTo(new Set(this.turnLedger.project((candidate) => candidate.id)));
     this.activeRun = undefined;
     return turn;
   }
@@ -2096,6 +2125,7 @@ export class WorkshopSessionService {
     this.pendingContextRevision = undefined;
     this.todoLedger.reset();
     this.bookmarkLedger.reset();
+    this.reactionLedger.reset();
     this.retainedHistory.reset();
     this.lastCommittedPersonaBehavior = undefined;
     this.participantRoster.reset();
@@ -2120,6 +2150,7 @@ export class WorkshopSessionService {
     const standingDirectiveState = this.standingDirectiveLedger.exportState();
     const todoState = this.todoLedger.exportState();
     const bookmarkState = this.bookmarkLedger.exportState();
+    const reactions = this.reactionLedger.list();
     const turnState = this.turnLedger.exportState();
     const passageState = this.passageScope.exportState();
     const rosterState = this.participantRoster.exportState();
@@ -2192,6 +2223,7 @@ export class WorkshopSessionService {
       todos: todoState.todos,
       // Written only when the room holds one (ADR 2026-11-03 D9).
       bookmarks: bookmarkState.bookmarks.length > 0 ? bookmarkState.bookmarks : undefined,
+      ...(reactions.length > 0 ? { reactions } : {}),
       retainedHistoryMarks: retainedHistoryState.marks,
       lastCommittedPersonaBehavior: this.lastCommittedPersonaBehavior
         ? { ...this.lastCommittedPersonaBehavior }
@@ -2229,7 +2261,8 @@ export class WorkshopSessionService {
       allowLegacyOpenSessionWithExcerpt: true,
       skipWidgetDraftIntegrity: true,
       skipRetainedHistoryMarkIntegrity: true,
-      allowDanglingBookmarks: true
+      allowDanglingBookmarks: true,
+      allowDanglingReactions: true
     });
     const normalization = normalizeWorkshopSessionCheckpointForHydration(state);
     const normalized = normalization.state;
@@ -2260,6 +2293,7 @@ export class WorkshopSessionService {
       counter: normalized.counters.todo
     });
     const bookmarkState = this.bookmarkLedger.prepareState(normalized.bookmarks ?? []);
+    const reactionState = this.reactionLedger.prepareState(normalized.reactions ?? []);
     const widgetConfigState = this.widgetConfigLedger.prepareState({
       configs: normalized.widgetConfigs ?? [],
       counter: normalized.counters.widgetConfig ?? 0
@@ -2410,6 +2444,7 @@ export class WorkshopSessionService {
     this.standingDirectiveLedger.installPreparedState(standingDirectiveState);
     this.todoLedger.installPreparedState(todoState);
     this.bookmarkLedger.installPreparedState(bookmarkState);
+    this.reactionLedger.installPreparedState(reactionState);
     this.turnLedger.installPreparedState(turnState);
     this.retainedHistory.installPreparedState(retainedHistoryState);
     this.passageScope.installPreparedState(passageState);
@@ -2550,6 +2585,11 @@ export class WorkshopSessionService {
       bookmarks: this.bookmarkLedger.summaries(
         this.turnLedger.project((turn) => turn),
         new Set(windowed.map((turn) => turn.id))
+      ),
+      reactions: this.reactionLedger.summaries(
+        windowed,
+        (turnId) => this.turnLedger.find(turnId),
+        this.participantRoster.snapshot().host.personaId
       ),
       widgetConfigs: this.widgetConfigLedger.summariesFor(visibleWidgetConfigIds),
       standingDirectives: this.standingDirectiveSummaries(),

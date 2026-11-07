@@ -60,6 +60,7 @@ const readySession = (): WorkshopSessionStateMessage => ({
       standingDirectives: [],
       todos: [],
       bookmarks: [],
+      reactions: [],
       turns: [],
       turnRewindability: {},
       totalTurns: 0,
