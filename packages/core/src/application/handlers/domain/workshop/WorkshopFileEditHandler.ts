@@ -15,6 +15,10 @@
  *   then `checkpointFileEdit` must answer `{ ok: true }` (every recoverable
  *   checkpoint read back holding it). Anything else returns the card to
  *   `pending` and writes nothing.
+ * - **A transient refusal returns the card to `pending`** (D8, amended
+ *   2026-11-06): `catalog-unreadable` at Apply and `host-failed`, which the
+ *   gateway gives only when nothing was written. The answer carries the
+ *   reason, so the writer reads why beside an Apply offered again.
  * - **The boundary.** The gateway calls `stillCurrent()` at its last
  *   dispatch boundary and before every attempt: this claim is still held,
  *   the generation is unchanged, and the setting is still `ask`.
@@ -51,6 +55,7 @@ import { workshopFileEditCardWords, workshopFileEditReasonWords } from '@shared/
 import type { WorkshopFileEditCheckpointPort } from '@/application/services/workshop/fileEdits/WorkshopFileEditCheckpoint';
 import {
   WORKSHOP_FILE_EDIT_UNKNOWN_REASON,
+  workshopFileEditRetryReasonOf,
   workshopFileEditSettlementOf,
   workshopStagedFileEditOf
 } from '@/application/services/workshop/fileEdits/WorkshopFileEditSettlements';
@@ -196,8 +201,11 @@ export class WorkshopFileEditHandler {
 
     const stillCurrent = () => this.claims.get(key) === held && sameRoom() && this.room.fileEditsMode() === 'ask';
     let settlement: WorkshopFileEditSettlement;
+    let retryReason: string | undefined;
     try {
-      settlement = workshopFileEditSettlementOf(await this.gateway.apply(staged, { review, stillCurrent }));
+      const outcome = await this.gateway.apply(staged, { review, stillCurrent });
+      settlement = workshopFileEditSettlementOf(outcome);
+      retryReason = workshopFileEditRetryReasonOf(outcome);
     } catch {
       // The gateway never rejects; if it did, nothing says whether it wrote.
       settlement = { state: 'unknown', reason: WORKSHOP_FILE_EDIT_UNKNOWN_REASON, outcomes: staged.operations.map(() => 'unknown' as const) };
@@ -212,8 +220,10 @@ export class WorkshopFileEditHandler {
       this.answerAll(held, { ...ids, answer: 'no-card', reason: 'no-card' }, `${review} outcome dropped ${where} reason=no-card`);
       return;
     }
-    this.answerAll(held, { ...ids, answer: 'settled', state: recorded.state, ...(recorded.reason ? { reason: recorded.reason } : {}) },
-      `${review} settled ${where} state=${recorded.state}${recorded.reason ? ` reason=${recorded.reason}` : ''} ` +
+    // A pending card stores no reason; a transient refusal's rides on the answer alone.
+    const reason = recorded.reason ?? (recorded.state === 'pending' ? retryReason : undefined);
+    this.answerAll(held, { ...ids, answer: 'settled', state: recorded.state, ...(reason ? { reason } : {}) },
+      `${review} settled ${where} state=${recorded.state}${reason ? ` reason=${reason}` : ''} ` +
       `landed=${recorded.outcomes?.filter((each) => each === 'landed').length ?? 0}`, recorded.outcomes);
   }
 

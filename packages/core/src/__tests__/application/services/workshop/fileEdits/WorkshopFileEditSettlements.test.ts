@@ -4,6 +4,7 @@
  * session setter that holds every settlement to the codec. *Alice*.
  */
 import {
+  workshopFileEditRetryReasonOf,
   workshopFileEditSettlementOf,
   workshopStagedFileEditOf
 } from '@/application/services/workshop/fileEdits/WorkshopFileEditSettlements';
@@ -30,9 +31,29 @@ describe('workshopFileEditSettlementOf', () => {
     ['stale', outcome({ state: 'stale', reason: 'baseline-changed' }), { state: 'stale', reason: 'baseline-changed' }],
     ['refused', outcome({ state: 'refused', reason: 'protected' }), { state: 'refused', reason: 'protected' }],
     ['the boundary lost (superseded)', outcome({ state: 'refused', reason: 'superseded' }), { state: 'pending' }],
-    ['the boundary lost (authority-changed)', outcome({ state: 'refused', reason: 'authority-changed' }), { state: 'pending' }]
+    ['the boundary lost (authority-changed)', outcome({ state: 'refused', reason: 'authority-changed' }), { state: 'pending' }],
+    ['transient: the catalog unreadable at Apply', outcome({ state: 'refused', reason: 'catalog-unreadable' }), { state: 'pending' }],
+    ['transient: the host failed with nothing written', outcome({ state: 'refused', reason: 'host-failed' }), { state: 'pending' }],
+    ['control: unreadable stays refused', outcome({ state: 'refused', reason: 'unreadable' }), { state: 'refused', reason: 'unreadable' }]
   ])('%s', (_label, given, expected) => {
     expect(workshopFileEditSettlementOf(given)).toMatchObject(expected);
+    if ((expected as { state: string }).state === 'pending') {
+      // A pending card holds nothing else: no reason, no outcomes.
+      expect(workshopFileEditSettlementOf(given)).toEqual({ state: 'pending' });
+    }
+  });
+
+  it('gives a transient refusal\'s reason for the answer, and none for any other outcome', () => {
+    expect(workshopFileEditRetryReasonOf(outcome({ state: 'refused', reason: 'catalog-unreadable' }))).toBe('catalog-unreadable');
+    expect(workshopFileEditRetryReasonOf(outcome({ state: 'refused', reason: 'host-failed' }))).toBe('host-failed');
+    for (const other of [
+      outcome({ state: 'refused', reason: 'superseded' }),
+      outcome({ state: 'refused', reason: 'unreadable' }),
+      outcome({ state: 'declined' }),
+      outcome({ state: 'unknown', reason: 'host-failed' })
+    ]) {
+      expect(workshopFileEditRetryReasonOf(other)).toBeUndefined();
+    }
   });
 });
 

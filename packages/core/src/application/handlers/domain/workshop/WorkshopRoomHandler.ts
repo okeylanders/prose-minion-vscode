@@ -126,11 +126,11 @@ import type {
   WorkshopWidgetRuntime
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSliceComposition } from '@handlers/domain/workshop/WorkshopSliceComposition';
-import type { WorkshopProjectMemoryMode } from '@messages';
-import { WorkshopConversationSettingsPartialApplyError } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
-
-/** The mode's names as the Memory tab's cards give them. */
-const PROJECT_MEMORY_MODE_WORDS: Record<WorkshopProjectMemoryMode, string> = { off: 'Off', ask: 'Ask first', auto: 'Save and tell me' };
+import {
+  WorkshopConversationSettingsPartialApplyError,
+  workshopConversationSettingsApplyReport,
+  workshopConversationSettingsPartialApplyWords
+} from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
 let requestIdCounter = 0;
@@ -446,29 +446,13 @@ export class WorkshopRoomHandler {
         message.payload?.behavior,
         message.payload?.writerProfile,
         message.payload?.webResearch,
-        message.payload?.projectMemory
+        message.payload?.projectMemory,
+        message.payload?.fileEdits
       );
-      if (result.persistenceErrors) {
-        const persistenceDetails = [
-          result.persistenceErrors.behavior
-            ? `behavior: ${result.persistenceErrors.behavior}`
-            : undefined,
-          result.persistenceErrors.writerProfile
-            ? `writer profile: ${result.persistenceErrors.writerProfile}`
-            : undefined,
-          result.persistenceErrors.webResearch
-            ? `web research: ${result.persistenceErrors.webResearch}`
-            : undefined,
-          result.persistenceErrors.projectMemory ? `project memory: ${result.persistenceErrors.projectMemory}` : undefined
-        ].filter(Boolean).join('; ');
-        this.outputChannel.appendLine(
-          `[WorkshopRoomHandler] Conversation settings are active but could not be persisted: ${persistenceDetails}`
-        );
-        this.sendError(
-          'workshop',
-          'Conversation settings changed for this session, but VS Code could not save them for restart.',
-          persistenceDetails
-        );
+      const report = workshopConversationSettingsApplyReport(result);
+      if (report) {
+        this.outputChannel.appendLine(`[WorkshopRoomHandler] ${report.logLine}`);
+        this.sendError('workshop', report.message, report.details);
       }
       if (result.changed) {
         this.sessionPersistence.markDirty('conversation settings changed');
@@ -482,7 +466,7 @@ export class WorkshopRoomHandler {
       this.sendError(
         'workshop',
         error instanceof WorkshopConversationSettingsPartialApplyError
-          ? `Could not change conversation settings. Project memory is now ${PROJECT_MEMORY_MODE_WORDS[error.projectMemory]}: it couldn't be set back. Your other previous settings are still active.`
+          ? workshopConversationSettingsPartialApplyWords(error)
           : 'Could not change conversation settings. The previous settings are still active.',
         details
       );
@@ -1580,6 +1564,7 @@ export class WorkshopRoomHandler {
         writerProfile: this.conversationSettingsService.getWriterProfile(),
         webResearch: this.conversationSettingsService.getWebResearch(),
         projectMemory: this.conversationSettingsService.getProjectMemoryMode(),
+        fileEdits: this.conversationSettingsService.getFileEditsMode(),
         persistence: {
           available: availability.available,
           unavailableReason: availability.available ? undefined : availability.reason,

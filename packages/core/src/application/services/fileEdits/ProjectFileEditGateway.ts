@@ -22,7 +22,12 @@
  *    every `applyEdits`, its retry included: the same authority checks, then
  *    freshness, the insertion bounds and the ceiling on the live text. A
  *    refused attempt writes nothing more and makes no further attempt.
- * 7. **Report by operation**, from the applier's result.
+ * 7. **Report by operation**, from the applier's result. `host-failed`
+ *    means nothing was written: a failure before any `applyEdits`, or a
+ *    read-back that found nothing landed. A failure after the applier was
+ *    let through to `applyEdits` may follow a landing, so it reads
+ *    `unknown` (D8, amended 2026-11-06), unless the read-back settled it
+ *    first: a failure to show the document keeps the result.
  * 8. **Show the document** when something landed and no editor shows it.
  *
  * Nothing is ever saved. Logs carry ids, counts and fault kinds, never the
@@ -71,6 +76,11 @@ import { changedCharacters, freshnessFaults, passesRewriteCeiling, policyFaults,
 
 export type { FileEditApplyOutcome, FileEditApplyState, FileEditOperationOutcome, FileEditPreview } from '@/domain/models/FileEdit';
 
+/** Whether the applier was let through to `applyEdits`: set in `beforeAttempt`, immediately before the call. */
+interface Dispatch {
+  started: boolean;
+}
+
 type Resolution =
   | { readonly kind: 'refused'; readonly reason: FileEditApplyRefusal }
   | {
@@ -99,11 +109,16 @@ export class ProjectFileEditGateway implements FileEditApplyPort {
   constructor(private readonly dependencies: ProjectFileEditGatewayDependencies) {}
 
   async apply(staged: StagedFileEdit, options: FileEditApplyOptions): Promise<FileEditApplyOutcome> {
+    const dispatch: Dispatch = { started: false };
     let outcome: FileEditApplyOutcome;
     try {
-      outcome = await this.run(staged, options);
+      outcome = await this.run(staged, options, dispatch);
     } catch {
-      outcome = whole(staged, 'refused', 'host-failed');
+      // Before any `applyEdits`, nothing was written, and the card may be applied again; after one, a landing may have
+      // followed, so it is not known (ADR D8, amended 2026-11-06).
+      outcome = dispatch.started ? notKnown(staged) : whole(staged, 'refused', 'host-failed');
+      this.dependencies.log.appendLine(`[FileEdit] apply threw turn=${staged.source.turnId} index=${staged.source.index} ` +
+        `dispatched=${dispatch.started}`);
     }
     this.dependencies.log.appendLine(logLine(staged, outcome));
     return outcome;
@@ -186,7 +201,7 @@ export class ProjectFileEditGateway implements FileEditApplyPort {
     return { kind: 'resolved', epoch, fsPath, policy: FILE_EDIT_TARGET_POLICIES[kind], document };
   }
 
-  private async run(staged: StagedFileEdit, options: FileEditApplyOptions): Promise<FileEditApplyOutcome> {
+  private async run(staged: StagedFileEdit, options: FileEditApplyOptions, dispatch: Dispatch): Promise<FileEditApplyOutcome> {
     const { dependencies } = this;
     if (staged.operations.length === 0) {
       return whole(staged, 'refused', 'no-operations');
@@ -265,7 +280,12 @@ export class ProjectFileEditGateway implements FileEditApplyPort {
         if (fault) {
           return fault.fault;
         }
-        return passesRewriteCeiling(live.text, replacesIn(moved), policy.ceiling) ? undefined : 'rewrite-ceiling';
+        if (!passesRewriteCeiling(live.text, replacesIn(moved), policy.ceiling)) {
+          return 'rewrite-ceiling';
+        }
+        // The applier calls `applyEdits` next, synchronously: from here a failure may follow a landing.
+        dispatch.started = true;
+        return undefined;
       }
     });
 
@@ -273,7 +293,9 @@ export class ProjectFileEditGateway implements FileEditApplyPort {
     const reported = report(staged, plan.edits.map((edit) => edit.operations), result);
     const landedOperations = new Set(reported.operations.flatMap(({ index, outcome }) => outcome === 'landed' ? [index] : []));
     const landed = landedOperations.size > 0;
-    const revealed = landed && result.settled ? await dependencies.documents.reveal(result.settled.snapshot.uri) : false;
+    // The read-back has settled what landed; showing the document cannot change that, so its failure keeps the result
+    // (PR #236 N-01). Only a throw before this point, whose landing the read-back did not settle, reads `unknown`.
+    const revealed = landed && result.settled ? await this.reveal(staged, result.settled.snapshot.uri) : false;
     return {
       ...reported,
       ...(landed
@@ -283,6 +305,16 @@ export class ProjectFileEditGateway implements FileEditApplyPort {
       revealed,
       message: fileEditOutcomeMessage(reported.state, reported.reason, reported.operations.map(({ outcome }) => outcome))
     };
+  }
+
+  /** Step 8: show the document. A failure is logged (ids only) and reads as not shown. */
+  private async reveal(staged: StagedFileEdit, uri: string): Promise<boolean> {
+    try {
+      return await this.dependencies.documents.reveal(uri);
+    } catch {
+      this.dependencies.log.appendLine(`[FileEdit] reveal failed turn=${staged.source.turnId} index=${staged.source.index}`);
+      return false;
+    }
   }
 }
 
@@ -309,6 +341,16 @@ function whole(staged: StagedFileEdit, state: 'refused' | 'stale', reason: FileE
     operations: staged.operations.map((_, index) => ({ index, outcome: state, reason })),
     revealed: false,
     message: fileEditOutcomeMessage(state, reason)
+  };
+}
+
+/** A failure after `applyEdits` was called: whether anything landed is not known, operation by operation. */
+function notKnown(staged: StagedFileEdit): FileEditApplyOutcome {
+  return {
+    state: 'unknown',
+    operations: staged.operations.map((_, index) => ({ index, outcome: 'unknown' })),
+    revealed: false,
+    message: fileEditOutcomeMessage('unknown')
   };
 }
 
@@ -376,6 +418,7 @@ function report(
     case 'changed':
       return { state: 'stale', reason: 'document-changed', operations };
     case 'failed':
+      // The read-back found nothing landed and nothing unknown (both checked above): nothing was written.
       return { state: 'refused', reason: 'host-failed', operations };
     default: {
       const refusal = operations.find(({ outcome }) => outcome === 'refused');

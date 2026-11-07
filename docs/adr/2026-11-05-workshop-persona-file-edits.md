@@ -361,6 +361,27 @@ only the applier calls `applyEdits`. No Workshop module reaches
 - **No blind retry.** `unknown`, `partial`, `stale` and `refused` offer no
   Apply; the writer asks the persona again. A discarded Refactor Preview
   (`declined` from the host) wrote nothing, so the card returns to `pending`.
+  - **Amended 2026-11-06: transient refusals where nothing was written
+    return to pending (Okey, 2026-11-06).** Two more refusals return the
+    card to `pending`, through the same path as the boundary refusals, so
+    the next flush persists `pending` over the durable `applying`:
+    - `catalog-unreadable` at Apply (the gateway's candidate read failed);
+    - `host-failed`.
+
+    The answer carries the reason, so the writer reads why beside Apply
+    offered again. A pending card stores no reason, so the line is not kept
+    across a reload. **A retry is offered only when nothing could have
+    landed.** The gateway gives `host-failed` only for a failure before the
+    applier is let through to `applyEdits` (marked in `beforeAttempt`,
+    immediately before every call), or for a read-back that found nothing
+    landed and nothing unknown. A failure after `applyEdits` was called may
+    follow a landing, so it reads `unknown`, by operation, with no Apply.
+    Once the read-back has settled what landed, a failure to show the
+    document (D7.8) keeps that result, `applied` or `partial`, with
+    `revealed: false`. Neither offers Apply, so a retry can't follow (PR
+    #236 N-01). A crash between the checkpoint and the flush still reads
+    `unknown` on reopen, which is safe. Every other refusal (`unreadable`
+    among them) stays terminal.
 - **Preview.** No command is ever sent to Refactor Preview: no discard.
 - **Shutdown.** Claims are not awaited at deactivation, since a preview may
   wait on the writer indefinitely. The acknowledged `applying` reads as
@@ -420,6 +441,11 @@ Codec rules:
   - at the last dispatch boundary (D8): with `off`, nothing is written.
 - **No other value.** v1's type has no `auto`, and no model or webview input
   can name one.
+- **A row in Conversation settings** (added 2026-11-06, Okey). The Behavior
+  tab's "Suggested file edits" row offers Off and Ask first. It is a draft
+  applied with the others, written to this global setting the way the
+  project-memory mode is: before the prompt rebuild, set back when the apply
+  fails, and read back into the webview with no reload.
 
 ### D12. The seam for autonomous editing (not built)
 
@@ -465,7 +491,7 @@ frames, for staging refusals, and for apply failures.
 | F-01 (P1) Rewrite baseline | D6. A hash of the content is staged and checked on every attempt; the rewrite's before/after comes from the host while the baseline holds; append and prepend are fresh by rule, guarded by D8's claim. |
 | F-02 (P1) Target identity | D4. Every candidate is resolved; ambiguity is refused; the identity is a host-written `documentUri`, re-authorized at Apply (D7.1, D7.5); an excerpt is bound to the document it was staged from. |
 | F-03 (P1) Prose by identity | D5. The class comes from every membership through every root, plus excerpt documents; it is recomputed at Apply. |
-| F-04 (P2) Claim and outcomes | D8. The claim is keyed by the room generation and taken before any await; duplicates join; Decline and terminal states replay; `partial` and `unknown` exist, with no blind retry. After the re-review: `applying` must be acknowledged durable in every recoverable checkpoint (`checkpointFileEdit`) before dispatch; and the authority predicate (claim, generation, setting, authority epoch) runs before every `applyEdits` attempt (D7.6). |
+| F-04 (P2) Claim and outcomes | D8. The claim is keyed by the room generation and taken before any await; duplicates join; Decline and terminal states replay; `partial` and `unknown` exist, with no blind retry (amended 2026-11-06: `catalog-unreadable` at Apply and `host-failed` return to `pending` only when nothing was written; a possible landing reads `unknown`). After the re-review: `applying` must be acknowledged durable in every recoverable checkpoint (`checkpointFileEdit`) before dispatch; and the authority predicate (claim, generation, setting, authority epoch) runs before every `applyEdits` attempt (D7.6). |
 | F-05 (P2) Markdown structure | D5's structure modes. `strict` is unchanged for Proofread and Craft Flags; `prose-paragraphs` frees plain-paragraph boundaries only. Built and tested in Slice 2. |
 | F-06 (P2) Ceiling on retry | D5's exact ceiling, and D7.6's `beforeAttempt` on every attempt. The refusal witness uses a quote over the 300-character floor, with a below-floor control. |
 | N-01 Revert record | D10's `landed` records, and D12's narrowed Revert. |

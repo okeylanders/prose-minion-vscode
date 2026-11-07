@@ -359,6 +359,64 @@ describe('Apply: outcomes on the card (D8, D10)', () => {
   });
 });
 
+describe('Apply: a transient refusal returns the card to pending (D8, amended 2026-11-06)', () => {
+  const refusedWith = (reason: string) => (staged: StagedFileEdit): FileEditApplyOutcome => ({
+    state: 'refused', reason, operations: staged.operations.map((_, index) => ({ index, outcome: 'refused' as const, reason })), revealed: false, message: ''
+  });
+  const thenLands = (reason: string) => {
+    let calls = 0;
+    return (staged: StagedFileEdit) => (calls++ === 0 ? refusedWith(reason)(staged) : landedAll(staged));
+  };
+
+  it.each([
+    ['catalog-unreadable', 'The project’s configured files could not be listed.'],
+    ['host-failed', 'The editor could not make the change.']
+  ])('%s: the card is pending, the answer says why, and a second Apply lands', async (reason, words) => {
+    const fixture = await setup({ apply: thenLands(reason) });
+    await fixture.act('apply', 'r1');
+    expect(fixture.card()?.state).toBe('pending');
+    expect(fixture.card()?.reason).toBeUndefined();
+    expect(fixture.results()[0]).toMatchObject({ requestId: 'r1', answer: 'settled', state: 'pending', reason, message: words });
+    expect(fixture.log.join('\n')).toContain(`state=pending reason=${reason}`);
+
+    await fixture.act('apply', 'r2');
+    expect(fixture.gateway.applies).toHaveLength(2);
+    expect(fixture.checkpoint.checkpointFileEdit).toHaveBeenCalledTimes(2);
+    expect(fixture.card()).toMatchObject({ state: 'applied', outcomes: ['landed'] });
+    expect(fixture.results()[1]).toMatchObject({ requestId: 'r2', answer: 'settled', state: 'applied' });
+  });
+
+  it('a joined request gets the same reason', async () => {
+    const release = deferred<void>();
+    const fixture = await setup({ apply: async (staged) => { await release.promise; return refusedWith('host-failed')(staged); } });
+    const first = fixture.act('apply', 'r1');
+    const second = fixture.act('apply', 'r2');
+    release.resolve();
+    await Promise.all([first, second]);
+    expect(fixture.results().map(({ answer, state, reason }) => ({ answer, state, reason }))).toEqual([
+      { answer: 'settled', state: 'pending', reason: 'host-failed' },
+      { answer: 'joined', state: 'pending', reason: 'host-failed' }
+    ]);
+  });
+
+  it('control: unreadable stays refused, with no Apply offered again', async () => {
+    const fixture = await setup({ apply: refusedWith('unreadable') });
+    await fixture.act('apply', 'r1');
+    expect(fixture.card()).toMatchObject({ state: 'refused', reason: 'unreadable' });
+    await fixture.act('apply', 'r2');
+    expect(fixture.gateway.applies).toHaveLength(1);
+    expect(fixture.results()[1]).toMatchObject({ answer: 'replayed', state: 'refused', reason: 'unreadable' });
+  });
+
+  it('control: a boundary refusal is unchanged: pending, with no reason on the answer', async () => {
+    const fixture = await setup({ apply: refusedWith('superseded') });
+    await fixture.act('apply', 'r1');
+    expect(fixture.card()?.state).toBe('pending');
+    expect(fixture.results()[0]).toEqual(expect.objectContaining({ answer: 'settled', state: 'pending', message: 'Nothing changes until you apply it.' }));
+    expect(fixture.results()[0].reason).toBeUndefined();
+  });
+});
+
 describe('the rewrite preview (D6, D9)', () => {
   const rewrite = [fileEditFrame({ body: ['<rewrite>Alice is ten.</rewrite>'] })];
 
