@@ -1,0 +1,84 @@
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
+import { ConversationManager } from '@orchestration/ConversationManager';
+import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+import { saveRecallRoom } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import { libraryHost, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
+
+const call = (name: string, body: string) => `<prose-minion-tool-call name="${name}">${body}</prose-minion-tool-call>`;
+const mixedFinal = `Summary.
+<prose-minion-memory-proposal><kind>canon</kind><title>Budget note</title><summary>A brief note.</summary><body>A preserved fact.</body></prose-minion-memory-proposal>
+<prose-minion-file-edit><group>characters</group><path>notes.md</path><append>A brief addition.</append><why>Preserve the detail.</why></prose-minion-file-edit>`;
+
+describe('PR 244 mixed capability ceilings through real persona adapter and engine', () => {
+  it('enforces 15 combined calls, nested 10/5 read limits, fresh-turn resets, usage, and mixed final trailers', async () => {
+    const saved = await saveRecallRoom('Small recall source', session => {
+      session.setSessionScope('open');
+      session.beginPersonaMessage('saved-turn', 'What is the fact?');
+      session.completeRun('saved-turn', 'The fact is small.', undefined, false, 'runtime-host');
+    });
+    const recall = new WorkshopTranscriptRecallService(saved.store, saved.coordinator, saved.log);
+    const readRecall = jest.spyOn(recall, 'read');
+    const host = libraryHost();
+    host.put(writerMemory({ id: 'mem-123abc', title: 'Small note', body: 'A small fact.' }));
+    const readMemory = jest.spyOn(host.library, 'read');
+    const session = new WorkshopSessionService();
+    session.setSessionScope('open');
+    const factory = new WorkshopPersonaCapabilityFactory({} as never, {} as never,
+      { createProvider: jest.fn() } as never, session, saved.log, recall, host.library);
+    const client = { createChatCompletion: jest.fn(), createStreamingChatCompletion: jest.fn() };
+    const engine = new AgentRunEngine(client as never, new ConversationManager());
+    const transcriptCall = call('transcript.read', `<session>${saved.savedSessionId}</session>`);
+    const memoryCall = call('memory.read', '<memory>mem-123abc</memory>');
+    const sixteenth = call('resource.read', '<group>characters</group><path>notes.md</path>');
+    const sequence: string[] = [];
+    for (let i = 0; i < 10; i++) { sequence.push(transcriptCall); if (i < 5) sequence.push(memoryCall); }
+    const queue = () => {
+      for (const content of [...sequence, sixteenth, mixedFinal]) {
+        client.createChatCompletion.mockResolvedValueOnce({ content, finishReason: 'stop',
+          usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 } });
+      }
+    };
+    let conversationId: string | undefined;
+    try {
+      for (let turn = 0; turn < 2; turn++) {
+        const requestId = `turn-${turn}`;
+        session.beginPersonaMessage(requestId, 'Read the sources.');
+        const adapter = factory.create({ requestId, personaId: 'jill', owner: { kind: 'host' },
+          excerptVersion: session.getExcerptVersion(), signal: new AbortController().signal,
+          events: { status: jest.fn(), turnCompleted: jest.fn(), sessionChanged: jest.fn() }, conversationId });
+        const fulfill = jest.spyOn(adapter, 'fulfill');
+        const forceFinal = jest.spyOn(adapter, 'limitInstruction');
+        queue();
+        const result = conversationId
+          ? await engine.continueConversation({ conversationId, userMessage: 'Read again.', policy: AGENT_RUN_POLICIES.workshopHost, capability: adapter })
+          : await engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Read sources.', policy: AGENT_RUN_POLICIES.workshopHost, capability: adapter });
+        conversationId = result.conversationId;
+        expect(conversationId).toBeTruthy();
+        expect(fulfill).toHaveBeenCalledTimes(15);
+        expect(fulfill.mock.calls.map(([request]) => request.capability)).toEqual(sequence.map(xml => xml.includes('transcript.read') ? 'transcript.read' : 'memory.read'));
+        expect(forceFinal).toHaveBeenCalledTimes(1);
+        expect(readRecall).toHaveBeenCalledTimes(10 * (turn + 1));
+        expect(readMemory).toHaveBeenCalledTimes(5 * (turn + 1));
+        const outcomes = await Promise.all(fulfill.mock.results.map(result => result.value));
+        expect(outcomes.every(outcome => outcome.evidence.includes('status="success"'))).toBe(true);
+        expect(result.usage).toMatchObject({ promptTokens: 51, completionTokens: 34, totalTokens: 85, requestCount: 17 });
+        expect(client.createChatCompletion).toHaveBeenCalledTimes(17 * (turn + 1));
+        const controls = extractWorkshopReplyControls(result.content, { memoryOpen: true, fileEditsOpen: true });
+        expect(controls.memory.kind).toBe('frames');
+        if (controls.memory.kind === 'frames') { expect(controls.memory.rejections).toEqual([]); expect(controls.memory.proposals).toHaveLength(1); }
+        expect(controls.fileEdits?.rejections).toEqual([]);
+        expect(controls.fileEdits?.proposals).toHaveLength(1);
+        const parse = (xml: string) => { const inspected = adapter.inspectRequest(xml); if (inspected.kind !== 'request') throw new Error(JSON.stringify(inspected)); return inspected.request; };
+        expect((await adapter.fulfill(parse(transcriptCall))).evidence).toContain('recall-read-limit');
+        expect((await adapter.fulfill(parse(memoryCall))).evidence).toContain('memory-read-limit');
+        expect(readRecall).toHaveBeenCalledTimes(10 * (turn + 1));
+        expect(readMemory).toHaveBeenCalledTimes(5 * (turn + 1));
+        session.completeRun(requestId, result.content, result.usage, false, 'runtime-host');
+      }
+    } finally { engine.dispose(); jest.restoreAllMocks(); }
+  });
+});
