@@ -4,7 +4,9 @@
  * honor a token count, and a level reads sensibly on all of them. Each
  * level but `off` names a thinking budget in `PROMPT_BUDGETS.reasoning`,
  * sent on top of the reply's own ceiling. Proofread and Craft Flags each read
- * one at the gesture; every other model scope sends none.
+ * one at the gesture; the helper asks for `off` (or `light` for a model that
+ * always reasons: ADR 2026-11-05 D1, amended 2026-11-06); every other model
+ * scope sends none.
  */
 
 export const REASONING_LEVELS = ['off', 'light', 'standard', 'deep'] as const;

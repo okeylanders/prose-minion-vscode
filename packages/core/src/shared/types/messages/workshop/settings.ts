@@ -111,6 +111,20 @@ export const WORKSHOP_PROJECT_MEMORY_SETTING = Object.freeze({
   key: 'workshop.projectMemory'
 });
 
+/**
+ * The helper's draft of a memory's title, summary and kind when the sheet
+ * opens from a turn (ADR 2026-11-05 D5.7): on by default.
+ */
+export const WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING = Object.freeze({
+  section: 'proseMinion',
+  key: 'workshop.memory.helperDrafts'
+});
+
+/** Only an explicit `false` turns drafting off; anything else reads as the default, on. */
+export function coerceWorkshopMemoryHelperDrafts(raw: unknown): boolean {
+  return raw !== false;
+}
+
 /** Fail closed: anything but a known mode reads as `off`. */
 export function coerceWorkshopProjectMemoryMode(raw: unknown): WorkshopProjectMemoryMode {
   return WORKSHOP_PROJECT_MEMORY_MODES.find((mode) => mode === raw) ?? 'off';

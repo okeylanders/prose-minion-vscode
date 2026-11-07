@@ -1,5 +1,6 @@
 import type { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
 import type { FileEditStaging } from '@/domain/models/FileEditStaging';
+import type { HelperAgent } from '@services/helper/HelperTaskPolicies';
 import type {
   AnalysisResultMessage,
   CategorySearchResultMessage,
@@ -208,4 +209,10 @@ export interface CoreServices {
    * `extension.ts` (`FileEditStagingService`).
    */
   fileEditStaging: FileEditStaging;
+  /**
+   * The helper agent (ADR 2026-11-05 D4): small model jobs on the `helper`
+   * scope, each a policy. It proposes and never writes; no handler
+   * constructs it.
+   */
+  helperAgentService: HelperAgent;
 }

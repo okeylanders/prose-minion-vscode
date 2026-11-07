@@ -36,6 +36,7 @@ import type { WorkshopReadInRecordLookup } from '@handlers/domain/workshop/Works
 import type { WorkshopProjectMemoryWritePort } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import type { WorkshopProjectMemoryManagerPort } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
+import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import type {
   WorkshopPinnedContextServices
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
@@ -138,6 +139,8 @@ export interface WorkshopSliceCompositionDependencies {
   bookmarkBrowser: WorkshopBookmarkBrowserPort;
   /** Persona file edits' Apply and Preview (ADR 2026-11-05 D7–D9): the one gateway, built in extension.ts. */
   fileEditApply: FileEditApplyPort;
+  /** The helper's memory drafts (ADR 2026-11-05 D5): the helper agent, built in extension.ts, and the setting that turns it off. */
+  memoryDrafts: WorkshopMemoryDraftPorts;
   outputChannel: LogSink;
 }
 

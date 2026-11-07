@@ -12,7 +12,7 @@
  * It reads the shared chrome's state (see `useFullTabChrome`) but owns none.
  */
 import * as React from 'react';
-import type { OpenRouterBalance } from '@messages';
+import { MODEL_SCOPE_FOLLOWS, type OpenRouterBalance } from '@messages';
 import { ModelSelector } from '@components/shared/ModelSelector';
 import { MODEL_FOLLOW_COPY, modelFollowLabel } from '@components/shared/modelFollowing';
 import type { UseAccountBalanceReturn } from '@hooks/domain/useAccountBalance';
@@ -76,7 +76,7 @@ export const FullTabHeaderStatus: React.FC<FullTabHeaderStatusProps> = ({
   const remaining = openrouter?.credits?.remaining;
   const follow = modelScope === 'lightbox'
     ? {
-        label: modelFollowLabel('lightbox', models.modelSelections.assistant, models.modelOptions),
+        label: modelFollowLabel('lightbox', models.modelSelections[MODEL_SCOPE_FOLLOWS.lightbox], models.modelOptions),
         description: MODEL_FOLLOW_COPY.lightbox.description,
         following: models.followingModelScopes.includes('lightbox'),
         onFollow: () => models.followModelSelection('lightbox')

@@ -443,7 +443,8 @@ describe('WorkshopPersonaCapability', () => {
     ));
   });
 
-  it('preserves partial full-entry metadata and rejects a second full entry before service execution', async () => {
+  it('preserves partial full-entry metadata and rejects a full entry past the turn\'s limit before service execution', async () => {
+    const { fullEntriesPerTurn } = PROMPT_BUDGETS.workshopCapability;
     const adapter = capability();
     const request = {
       capability: 'dictionary.full-entry' as const,
@@ -452,9 +453,12 @@ describe('WorkshopPersonaCapability', () => {
       purpose: 'Explore the full lexical field.'
     };
     const first = await adapter.fulfill(request);
+    for (let index = 1; index < fullEntriesPerTurn; index += 1) {
+      await adapter.fulfill(request);
+    }
     const second = await adapter.fulfill(request);
 
-    expect(dictionary.generateParallelDictionary).toHaveBeenCalledTimes(1);
+    expect(dictionary.generateParallelDictionary).toHaveBeenCalledTimes(fullEntriesPerTurn);
     expect(dictionary.generateParallelDictionary).toHaveBeenCalledWith(
       'liminal',
       'Threshold scene.\n\nLookup purpose: Explore the full lexical field.',
@@ -468,7 +472,7 @@ describe('WorkshopPersonaCapability', () => {
     expect(first.evidence).toContain('soundplay-rhyme');
     expect(first.deliveredItems).toEqual(['dictionary.full-entry:partial']);
     expect(second.deliveredItems).toEqual(['dictionary.full-entry:rejected']);
-    expect(second.evidence).toContain('Only one full Writer');
+    expect(second.evidence).toContain(`Only ${fullEntriesPerTurn} full Writer's Dictionary entries are allowed per user turn.`);
     expect(session.getSnapshot().turns.slice(-2).map(turn => turn.capability?.status))
       .toEqual(['partial', 'rejected']);
   });
@@ -604,15 +608,18 @@ describe('WorkshopPersonaCapability', () => {
     expect(events.status.mock.calls.flat().join(' ')).not.toContain('private report chunk');
   });
 
-  it('rejects a second analysis call in the same user turn before invoking the side pass', async () => {
+  it('rejects an analysis call past the turn\'s limit before invoking the side pass', async () => {
+    const { analysisRunsPerTurn } = PROMPT_BUDGETS.workshopCapability;
     const adapter = capability();
     const request = inheritedAnalysisRequest;
-    await adapter.fulfill(request);
+    for (let index = 0; index < analysisRunsPerTurn; index += 1) {
+      await adapter.fulfill(request);
+    }
     const rejected = await adapter.fulfill(request);
 
-    expect(analysis.runWithInputs).toHaveBeenCalledTimes(1);
+    expect(analysis.runWithInputs).toHaveBeenCalledTimes(analysisRunsPerTurn);
     expect(rejected.deliveredItems).toEqual(['analysis.run:rejected']);
-    expect(rejected.evidence).toContain('Only one analysis side pass');
+    expect(rejected.evidence).toContain(`Only ${analysisRunsPerTurn} analysis side passes are allowed per user turn.`);
   });
 
   it('returns structured cancellation evidence without inventing content', async () => {

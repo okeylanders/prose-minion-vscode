@@ -90,7 +90,7 @@ packages/core/src/
 ├── domain/            # Domain layer (business logic)
 │   └── models/        # Domain models and entities
 ├── infrastructure/    # Infrastructure layer (external integrations)
-│   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/; parsers/ModelJsonRepair.ts reads a model's JSON with a structure-only repair under a content guard, and salvages a reply cut off at its ceiling (Lightbox Slice 4H; feature-agnostic, imports nothing); asked, it reports the root's member keys in the text's order (`rootKeys`, Slice 4K)
+│   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/; parsers/ModelJsonRepair.ts reads a model's JSON with a structure-only repair under a content guard, and salvages a reply cut off at its ceiling (Lightbox Slice 4H; feature-agnostic, imports nothing); asked, it reports the root's member keys in the text's order (`rootKeys`, Slice 4K); services/helper/ is the helper agent: one engine whose tasks are policies (`HELPER_TASK_POLICIES`), which proposes and never writes (ADR 2026-11-05); orchestration/ReasoningCatalog.ts says whether a model always reasons, for Draft Edit and the helper alike
 │   ├── account/       # OpenRouter account-balance client + service
 │   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points (Slice 4C; its Sections detector is `utils/chapterSections.ts` since Draft Edit Slice 3c part 4); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A); each block's own fields and a member closed out of its block moved back into it (`LightboxBlockFormat`, Slice 4K); how a run's groups start, settle and stop, keeping each lens's reading until a usable new one replaces it, with its provenance and earlier mark (`LightboxReadingState`, Slice 4J)
 │   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163), its rewrites in place under a claim (Slice 5A.1), and its claims, live or abandoned by age (PR #164); from Slice 5A.2 one file per board: saves in place at the revision a window read, new files (`LightboxBoardNewFile`), every chapter's listing, a picked file read where it lies, and the store's contracts in `LightboxBoardStoreContracts`
@@ -143,6 +143,7 @@ packages/core/src/
                 ├── bookmarks.ts
                 ├── bookmarkBrowser.ts
                 ├── projectMemory.ts
+                ├── memoryDraft.ts
                 ├── projectMemoryManager.ts
                 ├── fileEdits.ts
                 ├── pinnedContext.ts
@@ -489,7 +490,7 @@ usePersistence({
    - HTTP client for OpenRouter API
    - Reads the API key host-side from SecretStorage (via the `SecretStore` port)
    - Supports multiple AI models (Claude, GPT-4, Gemini)
-   - Instantiated per model scope (assistant, dictionary, context, category, widget, lightbox) by the one `AIResourceManager` the composition root builds; `ModelScopeSelections` resolves each scope's model
+   - Instantiated per model scope (assistant, dictionary, context, category, widget, lightbox, helper, among others) by the one `AIResourceManager` the composition root builds; `ModelScopeSelections` resolves each scope's model
 
 5. **Prompt System** ([prompts.ts](packages/core/src/tools/shared/prompts.ts))
    - Loads system prompts from `packages/core/resources/system-prompts/`
@@ -895,7 +896,7 @@ npm run package  # Creates .vsix file
 ### OpenRouter API
 
 - **API key stored in VSCode SecretStorage** - OS-level encryption via platform keychains (macOS Keychain, Windows Credential Manager, Linux libsecret); automatic migration from legacy settings-based storage
-- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `widgetModel`, `proofreadModel`, `lightboxModel` and `craftModel`. The last two are the Lightbox's and Craft Flags' own: empty by default, each follows `assistantModel` (the Workshop's) until the writer picks one, and none ever writes another ([ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D6 addendum, 2026-10-24; [ADR 2026-10-21](docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md), Slice 3c)
+- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `widgetModel`, `proofreadModel`, `lightboxModel`, `craftModel` and `helperModel`. The Lightbox's and Craft Flags' are empty by default and each follows `assistantModel` (the Workshop's) until the writer picks one; the helper agent's follows `proofreadModel`; none ever writes another ([ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D6 addendum, 2026-10-24; [ADR 2026-10-21](docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md), Slice 3c; [ADR 2026-11-05](docs/adr/2026-11-05-helper-agent.md) D3)
 - Unified `maxTokens` across tools (default 10000) with truncation notices when responses hit the cap
 - Cost tracking available through OpenRouter dashboard
 - Managed via Settings overlay UI (gear icon) with Save/Clear buttons
@@ -1833,8 +1834,9 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   fields persisted shapes list exactly. A reply cut off at its ceiling with
   most of its output spent thinking is rejected in host words naming the
   setting (`draftEditCeilingRejection`), never salvaged. Every other model
-  scope sends no reasoning setting; a level belongs to the request, never
-  the model. **`off` is never sent to a model that always reasons** (PR #181
+  scope sends no reasoning setting but the helper's, which asks for `off`
+  ([ADR 2026-11-05](docs/adr/2026-11-05-helper-agent.md) D1, amended
+  2026-11-06); a level belongs to the request, never the model. **`off` is never sent to a model that always reasons** (PR #181
   F-01): at `off` alone, each pass asks the live catalog
   (`ReasoningCatalog`, `refusesReasoningOff`) about the exact model it sends
   to (Proofread's run model, pinned on every chunk; Craft Flags' priced model
@@ -1842,7 +1844,10 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   and a model marked `reasoning.mandatory` is refused with nothing sent
   (`reasoning-required`), never given another level or model. A catalog that
   cannot say sends `off` as asked. A new pass with a level asks the same
-  check.
+  check. The catalog rule lives in `orchestration/ReasoningCatalog.ts`, so
+  the helper reads it without importing Draft Edit; where a pass refuses, the
+  helper sends a model that always reasons the `light` budget on top of its
+  ceiling.
 - **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
   holds the prompt's category list to `PROOFREAD_CATEGORIES`, and reads the
   example's response through the production frame reader, codec, anchoring
@@ -1963,6 +1968,54 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
     inside a surrogate pair finds the same match forever (F-04). A test of a
     scan bounds it by its search count (`withPhraseScanLimit`), never a
     clock. Inflected forms count apart: the stated limit.
+
+### Helper Agent
+
+Follow [ADR 2026-11-05](docs/adr/2026-11-05-helper-agent.md) when adding a
+small model job, or touching the memory sheet's automatic draft:
+
+- **One engine, tasks as policies.** `HelperAgentService`
+  (`infrastructure/api/services/helper/`) runs every task. A task is a policy
+  in `HELPER_TASK_POLICIES`, keyed by the `HelperTask` union, and brings:
+  - its prompt section (`resources/system-prompts/helper/10-<task>.md`);
+  - an input builder (plain data in);
+  - an exact-field decoder read through `parseModelJson`;
+  - its bounds in `PROMPT_BUDGETS.helper.<task>`;
+  - a worked example that decodes through the production codec, with a sync
+    test.
+
+  The engine never gets a task-specific branch.
+- **It proposes; it never writes.** No tools, no capabilities, no file
+  access. It imports no Workshop, Lightbox or Draft Edit module
+  (`boundaries.test.ts`). A malformed, out-of-bounds or cut-off reply is
+  dropped and logged by fault kind, never repaired into something the writer
+  didn't see.
+- **Built once.** It is built in `extension.ts`, joins `CoreServices`, and
+  handlers call it. Its scope is `helper` (`proseMinion.helperModel`), which
+  follows Proofread's model until picked.
+- **Reasoning is off** (D1, amended 2026-11-06). Every call asks for `off`.
+  A model the live catalog marks as always reasoning gets the `light` budget
+  on top of the ceiling, never `off` and never a refusal. The catalog read
+  runs inside the call's timed window. Reasoning tokens are logged as a
+  count, never added to `TokenUsage`.
+- **Stops are checked where they can land** (PR #228 F-01, PR #242 F-01).
+  - Preparation checks the caller's signal.
+  - An abort that fired before the forwarding listener was installed is
+    forwarded at once.
+  - The caller's signal is read again immediately before dispatch.
+  - A stop is `cancelled`, never a timeout.
+- **The memory draft (D5).**
+  - **What is read.** The webview posts `WORKSHOP_MEMORY_DRAFT_REQUEST` with
+    ids only. The host reads the turn itself, from the ledger or recall's
+    `savedTurn`.
+  - **What is taken.** The sheet takes only its own request's answer, fills
+    only fields the writer hasn't touched, and never changes the body.
+  - **Failure** is one quiet line.
+  - **`proseMinion.workshop.memory.helperDrafts` off** is silence, and the
+    host answers a stray request `off` with no call.
+  - **A capability card's sheet asks for nothing** (`withheld`, PR #231
+    F-01).
+- **Logs** carry the task, model, outcome and counts, never the text.
 
 ### Editor Menus and Command Titles
 

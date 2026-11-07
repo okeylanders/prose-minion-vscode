@@ -526,6 +526,22 @@ export interface PromptBudgets {
     registerCharacters: number;
   }>;
   /**
+   * The helper agent's tasks (ADR 2026-11-05 D1), one entry per task. A
+   * task's answer fields are bounded where the data they fill is (the
+   * memory draft's title and summary by `workshopProjectMemory`).
+   */
+  readonly helper: Readonly<{
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.
+    'memory-draft': Readonly<{
+      /** The turn's text sent to the helper is cut to this, as the sheet's body is. */
+      inputCharacters: number;
+      /** Output ceiling; a reply that reaches it is rejected, never salvaged. */
+      outputTokens: number;
+      /** A reply longer than this is refused before it is read. */
+      responseCharacters: number;
+    }>;
+  }>;
+  /**
    * The thinking budget each reasoning level names, in tokens, sent on top
    * of a reply's own ceiling (ADR 2026-10-21, reasoning levels). `off` has
    * none; `light` is the smallest budget Anthropic accepts.
@@ -557,9 +573,9 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     wordCharacters: 100,
     contextCharacters: 4_000,
     purposeCharacters: 500,
-    callsPerTurn: 5,
-    fullEntriesPerTurn: 1,
-    analysisRunsPerTurn: 1
+    callsPerTurn: 15,
+    fullEntriesPerTurn: 3,
+    analysisRunsPerTurn: 2
   },
   workshopResource: {
     queryCharacters: 200,
@@ -588,7 +604,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readCharacters: 150_000,
     readSessions: 10,
     readCharactersPerTurn: 300_000,
-    readsPerTurn: 2,
+    readsPerTurn: 10,
     todoSessions: 50,
     todoItems: 60,
     todoCharacters: 16_000,
@@ -614,7 +630,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     snippetCharacters: 280,
     readMemories: 5,
     readCharacters: 40_000,
-    readsPerTurn: 2,
+    readsPerTurn: 5,
     autoSavesPerRoom: 5,
     proposalsPerReply: 10,
     editReplaces: 5,
@@ -866,6 +882,19 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     whyCharacters: 300,
     suggestionCharacters: 200,
     registerCharacters: 160
+  },
+  helper: {
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.
+    'memory-draft': {
+      inputCharacters: 8_000,
+      // A finished draft is about 100 to 130 tokens. 400 left a model that
+      // thought or ran on no room, and the live pass's first draft came back
+      // cut off (2026-11-06). The decoder still holds title and summary to
+      // their bounds and `responseCharacters` still refuses a long reply, so
+      // the extra room never makes a draft longer; a cut-off is still refused.
+      outputTokens: 1_000,
+      responseCharacters: 4_000
+    }
   },
   reasoning: {
     light: 1_024,

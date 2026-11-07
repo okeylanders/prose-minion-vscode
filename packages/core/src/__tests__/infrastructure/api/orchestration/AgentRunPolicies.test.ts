@@ -4,6 +4,7 @@ import {
   resolveWorkshopParticipantPolicy
 } from '@orchestration/AgentRunPolicies';
 import type { AnyAgentCapability } from '@orchestration/AgentRunContracts';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 describe('agent-run caller-to-policy matrix', () => {
   it('keeps every migrated route on one explicit catalog, retention, visibility, and cleanup policy', () => {
@@ -16,14 +17,15 @@ describe('agent-run caller-to-policy matrix', () => {
       'CategorySearchService batches',
       'ContextAssistantService',
       'ProofreadService chunks',
-      'CraftFlagsService categories'
+      'CraftFlagsService categories',
+      'HelperAgentService tasks'
     ]);
     expect(AGENT_RUN_POLICIES.assistant).toMatchObject({ capabilityCatalog: 'guides', retention: 'discard', cleanupOwner: 'engine', onCapabilityLimit: 'forceFinalResponse' });
     expect(AGENT_RUN_POLICIES.workshopTool).toMatchObject({ capabilityCatalog: 'workshopToolContext', retention: 'retain', cleanupOwner: 'workshop-session', onCapabilityLimit: 'forceFinalResponse' });
     expect(AGENT_RUN_POLICIES.workshopHost).toMatchObject({
       capabilityCatalog: 'workshopPersona',
       retention: 'retain',
-      maxCapabilityRounds: 5,
+      maxCapabilityRounds: PROMPT_BUDGETS.workshopCapability.callsPerTurn,
       maxCorrectionTurns: 1,
       onCapabilityLimit: 'forceFinalResponse',
       cleanupOwner: 'workshop-session'

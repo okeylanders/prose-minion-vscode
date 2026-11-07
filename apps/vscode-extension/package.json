@@ -335,6 +335,12 @@
           "markdownDescription": "AI model for Craft Flags (the editor's right-click **Prose Minion: Craft Flags** command), which reads a whole chapter and flags line notes such as clichés and shifts of register. Leave empty to use the same model as the Workshop (`#proseMinion.assistantModel#`), following it when it changes. Choosing a model here gives Craft Flags its own, and never changes the Workshop's. Enter any OpenRouter model ID.",
           "order": 5.6
         },
+        "proseMinion.helperModel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "AI model for the helper agent's small automatic tasks, such as drafting a memory's title and summary when you save a Workshop reply to memory. Leave empty to use the same model as Proofread (`#proseMinion.proofreadModel#`), following it when it changes. Choosing a model here gives the helper its own, and never changes Proofread's. Enter any OpenRouter model ID.",
+          "order": 5.65
+        },
         "proseMinion.craftFlags.categories": {
           "type": "array",
           "items": {
@@ -695,6 +701,11 @@
           ],
           "default": "ask",
           "markdownDescription": "Workshop persona file edits. A persona can propose an edit to a project file (a note, a chapter, or the excerpt's document). Nothing in a file changes until you press Apply on its card."
+        },
+        "proseMinion.workshop.memory.helperDrafts": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When you save a Workshop message to project memory, the helper drafts its title, summary and kind while the sheet is open. Anything you type first is kept. Each draft is a small call on the helper's model (`#proseMinion.helperModel#`). Turn this off to fill the sheet yourself."
         },
         "proseMinion.workshop.webResearch": {
           "type": "object",
