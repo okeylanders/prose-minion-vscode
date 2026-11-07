@@ -1,0 +1,32 @@
+PR #232 documentation review, 2026-11-06
+Reviewed head: 3b5fe0f19a2dbeb035c725b5defa60cca995df2b
+Base: 550a64913286f2e3287aef598b2336284b8a8533
+
+git diff --check 550a649 HEAD
+Result: pass.
+
+git diff --name-status 307ff8a HEAD
+Result: only the epic README and new slice-3-verify-live.md. No executable or test changes since #231's approved publication head.
+
+Dependencies: package-lock.json compared byte-for-byte with the installed #231 checkout, then node_modules was symlinked locally to that checkout. No dependency or lockfile change.
+
+npm test -- --runInBand --runTestsByPath \
+  packages/core/src/__tests__/application/handlers/domain/workshop/WorkshopMemoryDraftSource.integration.test.ts \
+  packages/core/src/__tests__/application/handlers/domain/workshop/WorkshopMemoryDraftHandler.test.ts \
+  packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/useWorkshopProjectMemoryHelperDraft.test.ts \
+  packages/core/src/__tests__/presentation/webview/components/workshop/WorkshopMemorySheetHelperDraft.test.tsx \
+  packages/core/src/__tests__/infrastructure/api/services/helper/HelperAgentService.test.ts \
+  packages/core/src/__tests__/infrastructure/api/services/helper/MemoryDraftTask.test.ts \
+  packages/core/src/__tests__/infrastructure/api/orchestration/AIResourceManagerHelperScope.test.ts \
+  packages/core/src/__tests__/infrastructure/api/orchestration/ModelScopeSelections.test.ts \
+  packages/core/src/__tests__/presentation/webview/components/SettingsOverlay.test.tsx \
+  packages/core/src/__tests__/architecture/helperPromptSync.test.ts
+
+Test Suites: 10 passed, 10 total
+Tests:       145 passed, 145 total
+Snapshots:   0 total
+Time:        8.845 s
+The existing ts-jest configuration deprecation warning remains.
+
+No native VS Code session or live model call. No new independent probes. No local aggregate gates claimed.
+Exact-head CI completion and publication-head verification are recorded in the PR conversation to avoid CI-only report commits.

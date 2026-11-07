@@ -2,7 +2,7 @@
 
 **Status:** Identified
 **Priority:** Medium
-**Source:** Workshop Wayfinding Slice 1 ([epic](../epics/epic-workshop-wayfinding-2026-11-03/README.md)), found while extracting the rail
+**Source:** Workshop Wayfinding Slice 1 ([epic](../archive/epics/epic-workshop-wayfinding-2026-11-03/README.md)), found while extracting the rail
 
 ## Problem
 

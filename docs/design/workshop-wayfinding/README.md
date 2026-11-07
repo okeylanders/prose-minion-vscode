@@ -1,7 +1,7 @@
 # Workshop Wayfinding design source
 
 Snapshot of the **Workshop Rail Planning** design canvas, the source of truth for
-the [Workshop Wayfinding epic](../../../.todo/epics/epic-workshop-wayfinding-2026-11-03/README.md)
+the [Workshop Wayfinding epic](../../../.todo/archive/epics/epic-workshop-wayfinding-2026-11-03/README.md)
 and [ADR 2026-11-03](../../adr/2026-11-03-workshop-wayfinding.md).
 
 - **Source:** a Claude Design canvas artifact,

@@ -1,5 +1,5 @@
 import { emptyPinnedContextServices } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextTestServices';
-import { unusedBookmarkBrowser } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
+import { unusedBookmarkBrowser, unusedMemoryDrafts } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
 import { fakeFileEditApply, fakeFileEditStaging } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
 import {
   WorkshopRoomHandler
@@ -30,6 +30,7 @@ import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import type { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 import { MessageType } from '@messages';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
@@ -204,7 +205,8 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
       emptyPinnedContextServices(),
       unusedBookmarkBrowser(),
       fakeFileEditStaging(),
-      fakeFileEditApply()
+      fakeFileEditApply(),
+      unusedMemoryDrafts()
     );
     const router = new MessageRouter();
     handler.registerRoutes(router);
@@ -237,7 +239,7 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
       policy: {
         id: 'workshop-host',
         capabilityCatalog: 'workshopPersona',
-        maxCapabilityRounds: 5,
+        maxCapabilityRounds: PROMPT_BUDGETS.workshopCapability.callsPerTurn,
         retention: 'retain'
       },
       capability: { catalog: 'workshopPersona' }

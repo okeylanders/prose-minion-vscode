@@ -1,0 +1,126 @@
+import { WorkshopMemoryDraftHandler } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
+import { ScriptedWorkshopRoom } from '@/__tests__/application/services/workshop/session/ScriptedWorkshopRoom';
+import { HelperAgentService } from '@services/helper/HelperAgentService';
+import { HELPER_TASK_POLICIES } from '@services/helper/HelperTaskPolicies';
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { ConversationManager } from '@orchestration/ConversationManager';
+import { projectWorkshopTranscriptTurn } from '@/application/services/workshop/transcript/WorkshopTranscript';
+import { workshopMemoryNoteFromTurn } from '@shared/constants/workshopProjectMemoryWrites';
+import { MessageType } from '@messages';
+
+const VALUE = { title: 'Alice counts', summary: 'Alice counts the cups.', kind: 'canon' };
+const ANSWER = JSON.stringify(VALUE);
+function gate<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+function harness() {
+  const room = new ScriptedWorkshopRoom().start();
+  const reply = room.hostMessage('Count cups', { reply: `  Alice ${'counts cups. '.repeat(900)}  `,
+    attachment: { label: 'private.md', content: 'PRIVATE-ATTACHMENT-SENTINEL' } });
+  const runInitial = jest.fn(async () => ({ content: ANSWER, finishReason: 'stop' }));
+  const resources = { ensureInitialized: jest.fn(async (): Promise<void> => undefined), getEngine: jest.fn(() => ({ getModel: () => 'test/helper', runInitial })) };
+  const prompts = { loadPrompts: jest.fn(async () => 'SYSTEM') };
+  const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+  const helper = new HelperAgentService(resources as never, prompts, HELPER_TASK_POLICIES, log);
+  const savedTurn = jest.fn(async () => ({ kind: 'turn' as const, sessionId: 'saved', title: 'Alice', turnId: reply.id,
+    position: 1, entry: projectWorkshopTranscriptTurn(reply)!, bookmarkable: true }));
+  const post = jest.fn(async () => undefined);
+  const handler = new WorkshopMemoryDraftHandler({ helper, settings: { get: () => true } as never }, room.session, { savedTurn }, post, log);
+  const ask = (requestId = 'r', saved = false) => handler.handleDraftRequest({
+    type: MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST, source: 'webview.workshop.memory', timestamp: 1,
+    payload: { requestId, turnId: reply.id, roomRevision: room.session.readRoomRevision(), ...(saved ? { sessionId: 'saved' } : {}) }
+  });
+  const cancel = (requestId = 'r') => handler.handleCancel({ type: MessageType.WORKSHOP_MEMORY_DRAFT_CANCEL,
+    source: 'webview.workshop.memory', timestamp: 2, payload: { requestId } });
+  return { room, reply, runInitial, resources, prompts, helper, savedTurn, post, log, handler, ask, cancel };
+}
+
+describe('PR 231 independent host/helper integration probes', () => {
+  it.each(['initialization', 'prompt'] as const)('integrates #228 F-01: cancel during %s sends and answers nothing', async (phase) => {
+    const h = harness();
+    const ready = gate<void>();
+    if (phase === 'initialization') h.resources.ensureInitialized.mockImplementationOnce(() => ready.promise);
+    else h.prompts.loadPrompts.mockImplementationOnce(async () => { await ready.promise; return 'SYSTEM'; });
+    const pending = h.ask();
+    await Promise.resolve();
+    await h.cancel();
+    ready.resolve();
+    await pending;
+    expect(h.runInitial).not.toHaveBeenCalled();
+    expect(h.post).not.toHaveBeenCalled();
+  });
+
+  it.each(['initialization', 'prompt'] as const)('integrates #228 F-02: %s failure gives one quiet failed outcome', async (phase) => {
+    const h = harness();
+    const error = new Error('PRIVATE-PREPARATION-FAILURE-SENTINEL');
+    if (phase === 'initialization') h.resources.ensureInitialized.mockRejectedValueOnce(error);
+    else h.prompts.loadPrompts.mockRejectedValueOnce(error);
+    await h.ask();
+    expect(h.runInitial).not.toHaveBeenCalled();
+    expect(h.post).toHaveBeenCalledTimes(1);
+    expect(h.post).toHaveBeenCalledWith(expect.objectContaining({ payload: { requestId: 'r', outcome: 'failed' } }));
+    expect(JSON.stringify(h.log.appendLine.mock.calls)).not.toContain(error.message);
+  });
+
+  it.each(['cancel', 'dispose'] as const)('%s during pending saved read suppresses every subsequent helper call', async (action) => {
+    const h = harness();
+    const ready = gate<Awaited<ReturnType<typeof h.savedTurn>>>();
+    const found = await h.savedTurn();
+    h.savedTurn.mockImplementationOnce(() => ready.promise);
+    const pending = h.ask('r', true);
+    if (action === 'cancel') await h.cancel(); else h.handler.dispose();
+    ready.resolve(found);
+    await pending;
+    expect(h.resources.ensureInitialized).not.toHaveBeenCalled();
+    expect(h.runInitial).not.toHaveBeenCalled();
+    expect(h.post).not.toHaveBeenCalled();
+  });
+
+  it('an older saved read settling cannot clear the newer request owner', async () => {
+    const h = harness();
+    const old = gate<Awaited<ReturnType<typeof h.savedTurn>>>();
+    const fresh = gate<Awaited<ReturnType<typeof h.savedTurn>>>();
+    const found = await h.savedTurn();
+    h.savedTurn.mockImplementationOnce(() => old.promise).mockImplementationOnce(() => fresh.promise);
+    const first = h.ask('old', true);
+    const second = h.ask('new', true);
+    old.resolve(found);
+    await first;
+    await h.cancel('new');
+    fresh.resolve(found);
+    await second;
+    expect(h.resources.ensureInitialized).not.toHaveBeenCalled();
+    expect(h.post).not.toHaveBeenCalled();
+  });
+
+  it('actual provider request gets bounded safe text, no authority, no retention, and one usage event', async () => {
+    const h = harness();
+    const usage = { promptTokens: 20, completionTokens: 10, totalTokens: 30 };
+    const createChatCompletion = jest.fn(async () => ({ content: ANSWER, usage, finishReason: 'stop' }));
+    const conversations = new ConversationManager();
+    const onUsage = jest.fn();
+    const engine = new AgentRunEngine({ getModel: () => 'test/helper', createChatCompletion } as never, conversations, undefined, h.log, onUsage);
+    const helper = new HelperAgentService({ ensureInitialized: async () => undefined, getEngine: () => engine }, h.prompts, HELPER_TASK_POLICIES, h.log);
+    const handler = new WorkshopMemoryDraftHandler({ helper, settings: { get: () => true } as never }, h.room.session, { savedTurn: h.savedTurn }, h.post, h.log);
+    try {
+      await handler.handleDraftRequest({ type: MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST, source: 'webview.workshop.memory', timestamp: 1,
+        payload: { requestId: 'bounded', turnId: h.reply.id, roomRevision: h.room.session.readRoomRevision() } });
+      const sent = createChatCompletion.mock.calls[0] as unknown as [Array<{ role: string; content: string }>, Record<string, unknown>];
+      const content = sent[0].find((message) => message.role === 'user')!.content;
+      const input = JSON.parse(content.split('\n\n').slice(1).join('\n\n'));
+      expect(input).toEqual({ task: 'memory-draft', source: 'persona', passage: workshopMemoryNoteFromTurn(h.reply.content) });
+      expect(input.passage.length).toBe(8000);
+      expect(JSON.stringify(sent)).not.toContain('PRIVATE-ATTACHMENT-SENTINEL');
+      expect(sent[1]).toMatchObject({ model: 'test/helper', temperature: 0, maxTokens: 400 });
+      expect(sent[1].tools).toBeUndefined();
+      expect(sent[1].reasoning).toBeUndefined();
+      expect(conversations.getActiveConversationCount()).toBe(0);
+      expect(onUsage).toHaveBeenCalledTimes(1);
+      expect(onUsage).toHaveBeenCalledWith(usage);
+      expect(JSON.stringify(h.log.appendLine.mock.calls)).not.toContain('counts cups');
+      expect(h.post).toHaveBeenCalledWith(expect.objectContaining({ payload: { requestId: 'bounded', outcome: 'drafted', draft: VALUE } }));
+    } finally { engine.dispose(); }
+  });
+});

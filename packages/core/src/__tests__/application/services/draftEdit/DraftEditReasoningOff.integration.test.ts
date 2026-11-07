@@ -30,7 +30,7 @@ import { ProofreadService } from '@services/proofread/ProofreadService';
 import { PROOFREAD_CLOSING_SENTINEL, PROOFREAD_OPENING_SENTINEL } from '@services/proofread/ProofreadResponseFrame';
 import { CraftFlagsService } from '@services/craftFlags/CraftFlagsService';
 import { CRAFT_FLAGS_CLOSING_SENTINEL, CRAFT_FLAGS_OPENING_SENTINEL } from '@services/craftFlags/CraftFlagsResponseCodec';
-import { liveCatalogReasoning } from '@services/draftEdit/DraftEditReasoningSupport';
+import { liveCatalogReasoning } from '@orchestration/ReasoningCatalog';
 import { DraftEditUseCase } from '@/application/services/draftEdit/DraftEditUseCase';
 import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
 import { CraftFlagsUseCase } from '@/application/services/draftEdit/CraftFlagsUseCase';

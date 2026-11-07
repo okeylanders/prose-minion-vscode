@@ -12,10 +12,22 @@ import {
   PROJECT_MEMORY_FIELD_CHARACTERS,
   PROJECT_MEMORY_ID,
   PROJECT_MEMORY_KINDS,
-  PROJECT_MEMORY_LIST_ENTRIES
+  PROJECT_MEMORY_LIST_ENTRIES,
+  PROJECT_MEMORY_NOT_ONE_LINE
 } from '@shared/types/projectMemory';
 import type { WorkshopMemoryDraft, WorkshopMemoryHold, WorkshopMemoryPinnedEstimate, WorkshopMemoryProposal, WorkshopTurn } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+
+/**
+ * A turn's text as a new memory's note: whole when it fits, else cut at the
+ * bound, for the writer to shape. The sheet's body and the helper's draft
+ * (Helper Agent Slice 2) read a turn through this one rule.
+ */
+export function workshopMemoryNoteFromTurn(content: string): string {
+  const text = content.trim();
+  const bound = PROMPT_BUDGETS.workshopProjectMemory.bodyCharacters;
+  return text.length <= bound ? text : text.slice(0, bound).trimEnd();
+}
 
 export type WorkshopMemoryDraftFault =
   | 'not-a-draft'
@@ -28,7 +40,7 @@ export type WorkshopMemoryDraftFault =
   | 'body-too-long'
   | 'too-many-replaced';
 
-const NOT_ONE_LINE = /[\p{Cc}\u2028\u2029]/u;
+const NOT_ONE_LINE = PROJECT_MEMORY_NOT_ONE_LINE;
 
 /* eslint-disable @typescript-eslint/naming-convention -- keyed by the faults' kebab-case words. */
 export const WORKSHOP_MEMORY_DRAFT_FAULTS: Readonly<Record<WorkshopMemoryDraftFault, string>> = {

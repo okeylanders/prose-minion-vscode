@@ -1,7 +1,7 @@
 # Feature: Memories That Cite Turns From More Than One Session
 
 **Date Identified:** 2026-11-05
-**Status:** Idea. It was deferred from the [bookmark recall epic](../../epics/epic-workshop-bookmark-recall-2026-11-05/README.md) (ADR 2026-11-05 D10; PR #214 F-06).
+**Status:** Idea. It was deferred from the [bookmark recall epic](../../archive/epics/epic-workshop-bookmark-recall-2026-11-05/README.md) (ADR 2026-11-05 D10; PR #214 F-06).
 **Priority:** Low
 **Related:** [ADR 2026-11-04: Workshop Project Memory](../../../docs/adr/2026-11-04-workshop-project-memory.md) (D3: provenance, D4: format 1)
 
