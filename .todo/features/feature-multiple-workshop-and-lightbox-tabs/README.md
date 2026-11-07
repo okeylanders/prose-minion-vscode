@@ -87,9 +87,13 @@ back.
   pinned context, recall's open-room bookmarks, memory proposal provenance,
   the helper's memory draft, export, and the shutdown flush (every room).
   - Step one changes no behavior: thread the room id through with one room.
-- **`current.json` stays the first room's.** Session files are Marketplace
-  writer data (ADR 2026-07-30), so an existing writer's unnamed room must
-  restore exactly as it does today. Other tabs get their own current files.
+- **Several unsaved rooms (T1, Okey 2026-11-07: "we have to support
+  that").** Each tab's unsaved room has its own current file. One naming,
+  to be settled in the ADR, is a GUID per room (`current-<uuid>.json`).
+  Session files are Marketplace writer data (ADR 2026-07-30), so whatever
+  the naming, an existing writer's `current.json` must still restore,
+  exactly as it does today. Either it is read as the first room, or a
+  one-time migration moves it to the new name.
 - **One tab per named session.** Opening a session another tab holds
   reveals that tab, the way VS Code reveals an open file. Two rooms writing
   one session file would overwrite each other.
@@ -108,8 +112,19 @@ back.
 | 4 | Rules between tabs | One tab per named session, seed targeting, Branch into a new tab |
 | 5 | Live pass | Several tabs of each, a reload, a shutdown |
 
+## Decisions (Okey, 2026-11-07)
+
+| # | Decision | Left for the ADR |
+|---|---|---|
+| T1 | **More than one unsaved Workshop room**, each in its own tab, is required. | How current files are named (GUIDs, for example) and how today's `current.json` carries over. |
+
 ## Open questions
 
+- **A closed tab's unsaved room (T1).** Today, closing the Workshop keeps
+  `current.json`, and reopening restores it. With a current file per room,
+  does a closed tab's room stay, listed in the session browser as unsaved
+  and reopenable? Or is it discarded on close, after a confirmation?
+  Without a rule, unsaved room files pile up.
 - **The same chapter in two Lightbox tabs?** Allowed, so two boards can be
   compared, or reveal the tab that has it?
 - **Branch into a new tab?** Branch already never writes its source, so
@@ -133,8 +148,10 @@ back.
       restore are its own, and the source-ownership witnesses hold per tab.
 - [ ] Two Workshop tabs hold two rooms. A turn, Rewind, Branch, a pin or a
       memory proposal in one never touches the other (witnessed).
-- [ ] An existing writer's `current.json` restores into the first tab
-      unchanged, from a fixture of today's file.
+- [ ] Two unsaved rooms in two tabs each keep their own current file, and
+      both restore after a reload (T1).
+- [ ] An existing writer's `current.json` restores unchanged, from a fixture
+      of today's file, whatever naming the ADR picks.
 - [ ] Opening a named session another tab holds reveals that tab.
 - [ ] A reload restores every tab to its own room or board. Shutdown flushes
       every room and drains every board's owed writes.
