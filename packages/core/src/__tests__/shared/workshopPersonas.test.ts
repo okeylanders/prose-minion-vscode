@@ -10,6 +10,7 @@ import {
   WORKSHOP_PERSONA_CATALOG,
   WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
   WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS,
+  WORKSHOP_REACTIONS_PROMPT_PATH,
   WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
   workshopPersonaSystemPromptPaths,
   workshopPersonaLabel
@@ -56,7 +57,8 @@ describe('Workshop persona catalog and packaged prompts', () => {
       WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
       ...Object.values(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS),
       WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
-      ...Object.values(WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS)
+      ...Object.values(WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS),
+      WORKSHOP_REACTIONS_PROMPT_PATH
     ];
     expect(new Set(foundationPaths).size).toBe(WORKSHOP_PERSONA_CATALOG.length);
     expect(new Set(expressionPaths).size).toBe(WORKSHOP_PERSONA_CATALOG.length);
@@ -99,7 +101,8 @@ describe('Workshop persona catalog and packaged prompts', () => {
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
         WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
-        WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS.reserved
+        WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS.reserved,
+        WORKSHOP_REACTIONS_PROMPT_PATH
       ]);
 
       const fullPaths = workshopPersonaSystemPromptPaths(
@@ -120,6 +123,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
         WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
         WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS.attuned,
+        WORKSHOP_REACTIONS_PROMPT_PATH,
         persona.expressionProfilePath
       ]);
       expect(fullPaths).not.toContain(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.analysis);
@@ -143,6 +147,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
         WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
         WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS.reflective,
+        WORKSHOP_REACTIONS_PROMPT_PATH,
         persona.expressionProfilePath,
         persona.expressionCalibrationPath
       ]);

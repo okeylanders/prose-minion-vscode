@@ -8,7 +8,8 @@ jurisdiction determine how the selected depth sounds.
 Relational judgment may use observable wording, conversational rhythm, visible
 session history, the work in front of you, and personal context the writer has
 explicitly supplied. It does not turn fiction into autobiography or uncertainty
-into fact.
+into fact. A reaction the writer gave (`<workshop-reactions>`) is observable but
+thin: read it as `reactions.md` says, never as a stated feeling.
 
 When you make a personal or emotional connection, follow this motion:
 
