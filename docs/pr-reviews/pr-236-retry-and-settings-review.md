@@ -2,12 +2,13 @@
 
 ## Verdict
 
-**Changes requested at `9bfce925`: F-01 and N-01 are closed; F-02 remains open (P2).** The notified-update case is corrected, but an untouched row still overwrites a newer host Off while its snapshot is in flight. This is reproduced through the production modal, room hook, router and settings service for both global modes. No unsafe retry was found. This review changes only its report and text test witnesses, not production code. No merge was performed.
+**Scoped code review approved at `300a0e61`: F-01, F-02 and N-01 are closed.** The delayed-snapshot race now passes through the production modal, room hook, router and settings service for both global modes. Untouched modes are omitted end to end, and pending Apply waits only for explicitly selected modes. No unsafe retry was found. This review changes only its report and text test witnesses, not production code. No merge was performed. Exact-head CI is reported separately below and in the PR follow-up.
 
 - PR: <https://github.com/okeylanders/prose-minion-vscode/pull/236>
 - Initial reviewed code: `8450dd8cd39b72443a5fc7719fa01f778e6929f7`
 - Correction: `3d8942f`, with documentation head `d286d41fadc1df7c09ddbf32898dc6771a251421`.
-- Current reviewed code: `9bfce925305a5b9a5eee309b1de3fca3e011680f`, including the epic sync at `9dfa293f8a6cb5a62a49f7cffbf4ab5dd60cdaeb`.
+- Intermediate reviewed code: `9bfce925305a5b9a5eee309b1de3fca3e011680f`, including the epic sync at `9dfa293f8a6cb5a62a49f7cffbf4ab5dd60cdaeb`.
+- Final correction: `21a54625`, with reviewed documentation/test-lint head `300a0e61f2a7f8be4edba540dd2232e48f855d85`.
 - The initial findings and original validation below are retained as history; the current correction review is appended.
 - Base: `9f70f23676250e629dabec4790f60d80c74db987`
 - Reconciliation: the PR had no existing comments or reviews when this pass began. Earlier #233 and #234 review artifacts were read as dependency context; their closed findings are not reopened here.
@@ -25,7 +26,7 @@ That tells the writer the requested disable took effect temporarily, although pr
 
 **Independent reproduction:** [route witness](probes/pr-236-file-edits-refusal.test.ts.txt). It uses the real router, room handler and settings service, with only the settings port rejecting the Off write. The snapshot assertion (`ask`) passes; the assertion that the error must not claim “changed for this session” fails on the reviewed code.
 
-## F-02 (P2, partially corrected; still open at `9bfce925`): An untouched open modal can overwrite a newer Off choice
+## F-02 (P2, closed at `300a0e61`): An untouched open modal can overwrite a newer Off choice
 
 **Anchor:** [`WorkshopConversationBehaviorModal.tsx:111–122`](https://github.com/okeylanders/prose-minion-vscode/blob/8450dd8cd39b72443a5fc7719fa01f778e6929f7/packages/core/src/presentation/webview/components/workshop/WorkshopConversationBehaviorModal.tsx#L111-L122), with unconditional submission at [169–181](https://github.com/okeylanders/prose-minion-vscode/blob/8450dd8cd39b72443a5fc7719fa01f778e6929f7/packages/core/src/presentation/webview/components/workshop/WorkshopConversationBehaviorModal.tsx#L169-L181).
 
@@ -99,7 +100,7 @@ The [six-case delayed-snapshot witness](probes/pr-236-delayed-modes.test.tsx.txt
 **Required complete correction:**
 
 1. Continue displaying the live host mode for untouched rows, but submit only explicit picks for both global modes.
-2. Preserve omission through `useWorkshopRoom`; remove its cached-mode defaults for these optional fields. The current message and service contracts already accept absence.
+2. Preserve omission through `useWorkshopRoom`; remove its cached-mode defaults for these optional fields. The host service already handles absence; the shared payload type must expose optional modes too.
 3. Make pending/apply settlement require equality only for modes actually submitted. Do not leave an unrelated Apply waiting for a stale, unsubmitted mode. Retain the existing error unlock and deliberate-pick behavior.
 4. Cover delayed snapshots, explicit picks, omitted-hook fields, host no-write behavior, and successful modal settlement without discarding other drafts.
 
@@ -109,7 +110,7 @@ The original witness's expectation that an untouched row sends the latest observ
 
 **Retry safety rechecked.** Dispatch tracking spans the applier's attempts; each attempt rechecks authority and policy immediately before dispatch. Landed/unknown reconciliation precedes any `host-failed` retry result. New Apply requests still claim the card, checkpoint applying to current/named storage, and recheck live Off/run/room gates. Interrupted applying reopens as unknown. No new retry-safety defect was found. The four-case independent witness checks durable state but does not itself reopen or exercise its optional named-session branch; those broader cases are covered by the separate integration suite and production-path inspection.
 
-### Current-head verification
+### Intermediate-head verification at `9bfce925`
 
 - Node `v24.22.1`, unchanged production tree at `9bfce925`.
 - **15 existing focused suites / 259 tests passed**: gateway, apply integration, handler, settlement, room setting route, settings service/file-edit/memory paths, all three modal suites, room/session hook, and file-edit hook.
@@ -121,3 +122,30 @@ The original witness's expectation that an untouched row sends the latest observ
 - Report-head CI is checked separately after publication; the reviewed code-head pass is not substituted for the report commit's status.
 
 To rerun all independent cases, copy the three original witnesses as described above, plus `pr-236-delayed-modes.test.tsx.txt` to `packages/core/src/__tests__/presentation/webview/components/workshop/Review236DelayedModes.test.tsx`. Run `npm test -- --runInBand --testPathPattern='Review236(DelayedModes|Independent|RetryIndependent)'`, then remove the temporary copies. At `9bfce925`, expect exactly the three delayed-mode failures, with all other cases passing.
+
+
+## Final correction review: `300a0e61` (2026-11-07)
+
+The author supplied `21a54625` while the preceding review publication's CI was running, followed by `300a0e61` for test lint and recorded counts. The previous changes-requested verdict applies to `9bfce925`; it is superseded by this scoped approval after checking the new production diff and rerunning the witnesses.
+
+**F-02 closed across the complete path:**
+
+- The modal still displays `pick ?? hostMode`, so untouched rows follow received host updates and explicit picks survive them. Apply sends the optional picks themselves.
+- `useWorkshopRoom.setConversationSettings` no longer defaults omitted modes from its cached state. Its payload includes a mode only when a pick was supplied.
+- `WorkshopSetConversationSettingsPayload` now marks both modes optional. This makes the wire type match the host service's existing leave-absent-modes-unchanged behavior.
+- Pending Apply stores only submitted modes and checks only those modes on settlement. Production tests prove that an unrelated host-mode change neither blocks an unpicked row nor prematurely satisfies a picked row.
+- Abandoned picks still reset on reopen, deliberately picked rows still win under the chosen conflict policy, unrelated Behavior drafts survive host updates, and the existing refusal/error unlock behavior is retained.
+
+The [six-case delayed-snapshot witness](probes/pr-236-delayed-modes.test.tsx.txt) passes without changing any assertions: both delayed Off cases, both explicit-pick controls, omitted-mode host preservation, and hook omission. The author also ported those six cases into `WorkshopConversationSettingsDelayedModes.test.tsx`, so they now run in the production test gate.
+
+The earlier [external-mode text witness](probes/pr-236-file-edits-external-mode.test.tsx.txt) is updated only for the deliberate omission contract: untouched mode arguments are undefined, including the untouched memory argument beside an explicit file-edit pick. It continues to test received host updates, explicit Off, pending settlement, and reopening. The retry/reveal and refusal witnesses still pass. No production source was edited by this review.
+
+Final local verification, Node `v24.22.1`, at unchanged production code `300a0e61`:
+
+- **16 existing focused suites / 266 tests passed**, including the newly ported delayed-mode suite.
+- **Four independent suites / 19 tests passed**. The three failures recorded at `9bfce925` are now resolved.
+- All three typecheck targets passed; lint passed with **0 errors / 1,165 warnings**; production build and bundle verification passed with the same three webpack size/performance warnings.
+- Full local tests were not rerun. Exact-code-head [CI run 42397076496](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42397076496) is checked independently of the earlier report commit's successful [run 42396331223](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42396331223). Final code/report CI outcomes are posted in the PR follow-up rather than inferred from an earlier commit.
+- No native-host or live-model acceptance is claimed; Slice 5 remains the native acceptance boundary.
+
+The rerun commands above remain valid, but at `300a0e61` all 19 independent cases pass. Temporary copies were removed after validation. No merge, production fix, deployment or live provider call was performed by this review.

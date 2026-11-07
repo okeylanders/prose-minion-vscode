@@ -4,7 +4,7 @@
  * PR #236 re-review at 9bfce925. Copy beside the conversation-modal tests.
  * A delayed host snapshot is deliberate: the setting is already Off, but
  * the webview still displays Ask first. These are corrected-contract tests,
- * so the untouched-row and omitted-hook cases must fail until F-02 is fixed.
+ * so the untouched-row and omitted-hook cases fail before the correction and pass at 300a0e61.
  * No production components, hooks, router or settings service are mocked.
  */
 import * as React from 'react';
