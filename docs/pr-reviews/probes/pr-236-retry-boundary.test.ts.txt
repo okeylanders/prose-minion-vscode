@@ -1,0 +1,188 @@
+/**
+ * Slice 4a's acceptance (ADR 2026-11-05 D7, D8, D10; PR #226 F-04 and its
+ * re-review): the file-edit handler over the real session, the real
+ * persistence coordinator and store (in memory), the real staging, gateway
+ * and applier (over `FakeDocuments`). Each case writes the document at most
+ * once, or not at all, and leaves one truthful card, with a control beside
+ * it. Then one round trip, the combined integration gate's Apply: stage,
+ * reply, Apply, a card `applied` with what landed, saved and reopened.
+ * Made-up paths and text: *Alice*.
+ */
+import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
+import { FileEditStagingService } from '@/application/services/fileEdits/FileEditStagingService';
+import { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
+import { resolveWorkshopReplyFileEdits } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
+import { WorkshopFileEditHandler } from '@handlers/domain/workshop/WorkshopFileEditHandler';
+import {
+  MessageType,
+  type WorkshopFileEditAction,
+  type WorkshopFileEditResultPayload,
+  type WorkshopFileEditsMode,
+  type WorkshopTurn
+} from '@messages';
+import { fileEditFrame } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
+import { ScriptedWorkshopRoom } from '../workshop/session/ScriptedWorkshopRoom';
+import { HARNESS_ROOT, scriptedCheckpoint, setupCoordinator } from '../workshop/session/WorkshopCoordinatorHarness';
+import { applyAll, applyTicked, FakeDocuments, firstThen, writerTypes, type HostBehavior } from '../draftEdit/fakeDocuments';
+import { candidate, hostFakes, ports, uriOf } from './fileEditFixtures';
+
+const NOTE = `${HARNESS_ROOT}/characters/alice.md`;
+const NOTE_TEXT = '---\ntitle: Alice\n---\n\nAlice is seven.\n\nShe follows the White Rabbit.\n';
+const REPLACE = fileEditFrame({ group: 'characters', path: 'characters/alice.md' });
+const REPLACE_AND_APPEND = fileEditFrame({
+  group: 'characters',
+  path: 'characters/alice.md',
+  body: ['<find>Alice is seven.</find>', '<replace-with>Alice is ten.</replace-with>', '<append>She is late.</append>']
+});
+
+function deferred<T = void>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+interface Options {
+  frame?: string;
+  host?: HostBehavior;
+  named?: boolean;
+  /** Hold the gateway's catalog read, or its open, until released. */
+  pause?: 'catalog' | 'open';
+  /** Fail the gateway's first catalog reads, this many. */
+  catalogFailures?: number;
+}
+
+async function harness(options: Options = {}) {
+  const coordinated = setupCoordinator();
+  const documents = new FakeDocuments(NOTE_TEXT, uriOf(NOTE), 'markdown', 1, options.host ?? applyAll);
+  const fakes = hostFakes({ roots: [HARNESS_ROOT], candidates: [candidate('characters', 'characters/alice.md', HARNESS_ROOT)] });
+  const hostPorts = ports(fakes);
+
+  // A persona's reply, staged for real and recorded on its turn.
+  const scripted = new ScriptedWorkshopRoom().start();
+  scripted.hostMessage('Read Alice.');
+  const reply = `Her age changes.\n\n${options.frame ?? REPLACE}`;
+  scripted.fileEdits = await resolveWorkshopReplyFileEdits({
+    reply, open: true, staging: new FileEditStagingService({ ...hostPorts, documents })
+  });
+  scripted.hostMessage('Change her age.', { reply });
+  if (options.named) {
+    await coordinated.store.saveNamed(scriptedCheckpoint('alice', scripted));
+    await coordinated.coordinator.initialize();
+    await coordinated.coordinator.openNamed('alice');
+  } else {
+    await coordinated.store.writeCurrent(scriptedCheckpoint('rolling', scripted));
+    await coordinated.coordinator.initialize();
+  }
+  const { session, coordinator, store } = coordinated;
+  const turn = session.readRoomLedger().find((each) => each.fileEditProposals?.length) as WorkshopTurn;
+  expect(turn.fileEditProposals?.[0]).toMatchObject({ state: 'pending', class: 'notes' });
+
+  const gates = { catalog: deferred(), open: deferred() };
+  const reached = { catalog: deferred(), open: deferred() };
+  const epoch = { value: 0 };
+  let catalogFailures = options.catalogFailures ?? 0;
+  const gateway = new ProjectFileEditGateway({
+    ...hostPorts,
+    candidates: {
+      listCandidates: async () => {
+        if (options.pause === 'catalog') {
+          reached.catalog.resolve();
+          await gates.catalog.promise;
+        }
+        if (catalogFailures > 0) {
+          catalogFailures -= 1;
+          throw new Error('the catalog could not be listed');
+        }
+        return hostPorts.candidates.listCandidates();
+      }
+    },
+    documents: {
+      open: async (uri) => {
+        if (options.pause === 'open') {
+          reached.open.resolve();
+          await gates.open.promise;
+        }
+        return documents.open(uri);
+      },
+      reveal: (uri) => documents.reveal(uri)
+    },
+    applier: new DraftEditApplier(documents),
+    epoch: { current: () => epoch.value }
+  });
+  const gate = { run: false, mode: 'ask' as WorkshopFileEditsMode };
+  const posted: Array<{ type: MessageType; payload: any }> = [];
+  const handler = new WorkshopFileEditHandler(
+    session,
+    gateway,
+    coordinator,
+    { isRoomRunActive: () => gate.run, fileEditsMode: () => gate.mode },
+    { postSessionState: () => undefined, markDirty: (reason) => coordinator.markDirty(reason), reportError: jest.fn() },
+    async (message) => { posted.push(message as never); },
+    { appendLine: () => undefined, show: () => undefined, clear: () => undefined }
+  );
+  const act = (action: WorkshopFileEditAction, requestId: string, roomRevision = session.readRoomRevision()) => handler.handleAction({
+    type: MessageType.WORKSHOP_FILE_EDIT_ACTION,
+    source: 'webview.workshop',
+    payload: { requestId, roomRevision, turnId: turn.id, index: 0, action },
+    timestamp: 0
+  } as never);
+  const card = () => session.readRoomLedger().find((each) => each.id === turn.id)?.fileEditProposals?.[0];
+  const results = () => posted.filter((each) => each.type === MessageType.WORKSHOP_FILE_EDIT_RESULT).map((each) => each.payload as WorkshopFileEditResultPayload);
+  const savedCard = async (where: 'current' | 'named' = 'current') => {
+    const saved = where === 'current' ? await store.readCurrent() : await store.readNamed('alice');
+    return saved?.workshop.turns.find((each) => each.id === turn.id)?.fileEditProposals?.[0];
+  };
+  return { ...coordinated, documents, gateway, gate, gates, reached, epoch, handler, act, card, results, savedCard, turn };
+}
+
+describe('PR 236 independent retry boundary probes', () => {
+  it('an open failure persists pending, retries with authority checked, and lands once', async () => {
+    const fixture = await harness();
+    jest.spyOn(fixture.documents, 'open').mockRejectedValueOnce(new Error('temporary open error'));
+    await fixture.act('apply', 'first');
+    expect(fixture.documents.applyCalls).toHaveLength(0);
+    expect(fixture.results()[0]).toMatchObject({ state: 'pending', reason: 'host-failed' });
+    await fixture.coordinator.flush();
+    expect((await fixture.savedCard())?.state).toBe('pending');
+    fixture.gate.mode = 'off';
+    await fixture.act('apply', 'off');
+    expect(fixture.documents.applyCalls).toHaveLength(0);
+    expect(fixture.results()[1]).toMatchObject({ answer: 'refused', reason: 'file-edits-off' });
+    fixture.gate.mode = 'ask';
+    await fixture.act('apply', 'retry');
+    expect(fixture.documents.applyCalls).toHaveLength(1);
+    expect(fixture.card()?.state).toBe('applied');
+  });
+
+  it('a dispatch throwing without a proven read-back is still terminal unknown even if this fake wrote nothing', async () => {
+    const fixture = await harness({ host: () => { throw new Error('unproven dispatch outcome'); } });
+    await fixture.act('apply', 'first');
+    expect(fixture.documents.text).toBe(NOTE_TEXT);
+    expect(fixture.card()).toMatchObject({ state: 'unknown', outcomes: ['unknown'] });
+    await fixture.act('apply', 'again');
+    expect(fixture.documents.applyCalls).toHaveLength(1);
+  });
+
+  it('failed with a conclusive nothing-landed read-back can retry exactly once', async () => {
+    const fixture = await harness({ host: firstThen(() => ({ kind: 'failed', message: 'temporary error' }), applyAll) });
+    await fixture.act('apply', 'first');
+    expect(fixture.card()?.state).toBe('pending');
+    expect(fixture.results()[0]).toMatchObject({ reason: 'host-failed' });
+    await fixture.act('apply', 'again');
+    expect(fixture.documents.applyCalls).toHaveLength(2);
+    expect(fixture.documents.text).toBe(NOTE_TEXT.replace('Alice is seven.', 'Alice is ten.'));
+    expect(fixture.card()?.state).toBe('applied');
+  });
+
+  it('reveal-only failure does not offer a second Apply and persists unknown', async () => {
+    const fixture = await harness();
+    jest.spyOn(fixture.documents, 'reveal').mockRejectedValueOnce(new Error('reveal failed'));
+    await fixture.act('apply', 'first');
+    expect(fixture.documents.text).toBe(NOTE_TEXT.replace('Alice is seven.', 'Alice is ten.'));
+    expect(fixture.card()).toMatchObject({ state: 'unknown', outcomes: ['unknown'] });
+    await fixture.coordinator.flush();
+    expect((await fixture.savedCard())?.state).toBe('unknown');
+    await fixture.act('apply', 'again');
+    expect(fixture.documents.applyCalls).toHaveLength(1);
+  });
+});

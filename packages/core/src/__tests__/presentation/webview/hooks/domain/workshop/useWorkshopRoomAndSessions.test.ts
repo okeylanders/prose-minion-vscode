@@ -440,6 +440,22 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
     expect(result.current.sessionActionResult).toBeUndefined();
   });
 
+  it('holds the host\'s suggested-file-edits mode, and posts it unless a draft is given (ADR 2026-11-05 D11)', () => {
+    const { result } = renderHook(() => useWorkshop());
+    expect(result.current.fileEditsMode).toBe('ask');
+    const state = sessionState({});
+    act(() => result.current.handleSessionState({ ...state, payload: { ...state.payload, fileEdits: 'off' } }));
+    expect(result.current.fileEditsMode).toBe('off');
+    act(() => result.current.setConversationSettings(DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR, DEFAULT_WORKSHOP_WRITER_PROFILE));
+    expect(posted(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS).at(-1).payload.fileEdits).toBe('off');
+    act(() => result.current.setConversationSettings(
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR, DEFAULT_WORKSHOP_WRITER_PROFILE, undefined, undefined, 'ask'
+    ));
+    expect(posted(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS).at(-1).payload.fileEdits).toBe('ask');
+    // The host's mode, not the draft, until the host answers.
+    expect(result.current.fileEditsMode).toBe('off');
+  });
+
   it('submits one complete conversation behavior object without optimistic state', () => {
     const { result } = renderHook(() => useWorkshop());
     const selected = {
@@ -461,7 +477,9 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
         writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
         ,webResearch: { enabled: false },
         // No Memory draft given: the mode the host last sent (Off by default), so Apply never changes it.
-        projectMemory: 'off'
+        projectMemory: 'off',
+        // Nor a file-edits draft: the mode the host last sent (Ask first, the setting's default).
+        fileEdits: 'ask'
       });
     expect(result.current.conversationBehavior).toEqual(
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR

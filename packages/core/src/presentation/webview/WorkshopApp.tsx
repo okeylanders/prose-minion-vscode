@@ -1756,6 +1756,7 @@ export const WorkshopApp: React.FC = () => {
         writerProfile={workshop.writerProfile}
         webResearch={workshop.webResearch}
         projectMemoryMode={workshop.projectMemoryMode}
+        fileEditsMode={workshop.fileEditsMode}
         memory={workshopMemoryTabInputOf(memoryManager.listing)}
         memoryFolder={memoryManager.folder}
         pinnedContext={workshopPinnedContextPanelProps(pinnedContext, workshop)}

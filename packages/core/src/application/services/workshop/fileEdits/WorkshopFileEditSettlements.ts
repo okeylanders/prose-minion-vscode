@@ -14,7 +14,12 @@
  *   - `stale` and `refused`: their reason, no outcomes (the codec's rule);
  *   - `declined` (a discarded review wrote nothing) and a refusal at the
  *     last boundary (`superseded`, `authority-changed`: nothing written)
- *     return the card to `pending`, so it can be applied again.
+ *     return the card to `pending`, so it can be applied again;
+ *   - so do the transient refusals (`catalog-unreadable` at Apply,
+ *     `host-failed`), which the gateway gives only when nothing was written
+ *     (D8, amended 2026-11-06). Their reason is the answer's
+ *     (`workshopFileEditRetryReasonOf`), never stored: a pending card holds
+ *     no reason.
  */
 
 import type { FileEditApplyOutcome, StagedFileEdit } from '@/domain/models/FileEdit';
@@ -23,6 +28,13 @@ import type { WorkshopFileEditSettlement } from '@/application/services/workshop
 
 /** Refusals at the last dispatch boundary: nothing was written, and the card may be applied again (D8.3). */
 export const WORKSHOP_FILE_EDIT_BOUNDARY_REFUSALS: ReadonlySet<string> = new Set(['superseded', 'authority-changed']);
+
+/**
+ * Transient refusals: nothing was written, and the next Apply may succeed (Okey, 2026-11-06). The gateway gives
+ * `host-failed` only before any `applyEdits`, or when the read-back found nothing landed; a failure that may follow a
+ * landing reads `unknown`.
+ */
+export const WORKSHOP_FILE_EDIT_TRANSIENT_REFUSALS: ReadonlySet<string> = new Set(['catalog-unreadable', 'host-failed']);
 
 /** The reason an `unknown` card carries when the gateway gave none. */
 export const WORKSHOP_FILE_EDIT_UNKNOWN_REASON = 'outcome-unknown';
@@ -60,7 +72,7 @@ export function workshopFileEditSettlementOf(outcome: FileEditApplyOutcome): Wor
     case 'stale':
       return { state: 'stale', ...(outcome.reason ? { reason: outcome.reason } : {}) };
     case 'refused':
-      return outcome.reason !== undefined && WORKSHOP_FILE_EDIT_BOUNDARY_REFUSALS.has(outcome.reason)
+      return returnsToPending(outcome.reason)
         ? { state: 'pending' }
         : { state: 'refused', reason: outcome.reason ?? 'refused' };
     default: {
@@ -68,4 +80,18 @@ export function workshopFileEditSettlementOf(outcome: FileEditApplyOutcome): Wor
       throw new Error(`Unhandled file edit state: ${String(never)}`);
     }
   }
+}
+
+/**
+ * The reason an Apply's answer carries when its card went back to `pending` with words to say: a transient refusal's.
+ * The writer reads why, and Apply is offered again. A boundary refusal or a discarded review carries none.
+ */
+export function workshopFileEditRetryReasonOf(outcome: FileEditApplyOutcome): string | undefined {
+  return outcome.state === 'refused' && outcome.reason !== undefined && WORKSHOP_FILE_EDIT_TRANSIENT_REFUSALS.has(outcome.reason)
+    ? outcome.reason
+    : undefined;
+}
+
+function returnsToPending(reason: string | undefined): boolean {
+  return reason !== undefined && (WORKSHOP_FILE_EDIT_BOUNDARY_REFUSALS.has(reason) || WORKSHOP_FILE_EDIT_TRANSIENT_REFUSALS.has(reason));
 }

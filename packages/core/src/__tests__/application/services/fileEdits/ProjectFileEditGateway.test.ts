@@ -313,3 +313,83 @@ describe('ProjectFileEditGateway: the read-back', () => {
     expectNoLeaks(fakes.log, 'curious', 'brave', 'Mabel', 'Secret garden', 'Alice');
   });
 });
+
+describe('ProjectFileEditGateway: host-failed means nothing was written (D8, amended 2026-11-06)', () => {
+  const editsThenThrows: HostBehavior = (edits, _review, document) => {
+    document.edit(edits.map((edit) => ({ offset: edit.start, length: edit.end - edit.start, text: edit.newText })));
+    throw new Error('the editor fell over after writing');
+  };
+
+  it('a throw before the applier is let through to applyEdits is nothing written: refused host-failed', async () => {
+    const opening = fixture();
+    (opening.documents as unknown as { open: () => Promise<never> }).open = async () => { throw new Error('open failed'); };
+    expect(await opening.gateway.apply(note(replace('curious', 'brave')), DIRECT))
+      .toMatchObject({ state: 'refused', reason: 'host-failed', operations: [{ outcome: 'refused', reason: 'host-failed' }] });
+    expect(opening.documents.applyCalls).toEqual([]);
+
+    const watching = fixture();
+    (watching.documents as unknown as { watch: () => never }).watch = () => { throw new Error('watch failed'); };
+    expect(await watching.gateway.apply(note(replace('curious', 'brave')), DIRECT)).toMatchObject({ state: 'refused', reason: 'host-failed' });
+    expect(watching.documents.applyCalls).toEqual([]);
+    expect(watching.fakes.log).toContain('[FileEdit] apply threw turn=turn-7 index=0 dispatched=false');
+  });
+
+  it('a throw after applyEdits was called may follow a landing: unknown by operation, never host-failed', async () => {
+    const { gateway, documents, fakes } = fixture({ host: editsThenThrows });
+    const outcome = await gateway.apply(note(replace('curious', 'brave'), replace('White Rabbit', 'Hatter')), DIRECT);
+    expect(outcome).toMatchObject({ state: 'unknown', revealed: false });
+    expect(outcome.reason).toBeUndefined();
+    expect(outcomes(outcome)).toEqual(['unknown', 'unknown']);
+    expect(documents.applyCalls).toHaveLength(1);
+    expect(documents.text).toContain('brave');
+    expect(fakes.log).toContain('[FileEdit] apply threw turn=turn-7 index=0 dispatched=true');
+    expectNoLeaks(fakes.log, 'curious', 'brave', 'Hatter', 'Alice');
+  });
+
+  it('a throw on the retry, after a first attempt went out, is unknown too', async () => {
+    const { gateway, documents } = fixture({ host: firstThen(writerTypes([{ offset: NOTE_TEXT.length, length: 0, text: 'x' }]), () => {
+      throw new Error('the retry fell over');
+    }) });
+    const outcome = await gateway.apply(note(replace('curious', 'brave')), DIRECT);
+    expect(outcome).toMatchObject({ state: 'unknown', operations: [{ outcome: 'unknown' }] });
+    expect(documents.applyCalls).toHaveLength(2);
+  });
+
+  it('a host that answers failed, and whose read-back finds nothing landed, wrote nothing: refused host-failed', async () => {
+    const { gateway, documents } = fixture({ host: () => ({ kind: 'failed', message: 'no' }) });
+    const outcome = await gateway.apply(note(replace('curious', 'brave')), DIRECT);
+    expect(outcome).toMatchObject({ state: 'refused', reason: 'host-failed', operations: [{ outcome: 'not-applied' }] });
+    expect(documents.text).toBe(NOTE_TEXT);
+  });
+
+  it('control: a host that answers failed after writing is read back as landed, never host-failed', async () => {
+    const { gateway, documents } = fixture({ host: (edits, review, document) => {
+      applyAll(edits, review, document);
+      return { kind: 'failed', message: 'no' };
+    } });
+    const outcome = await gateway.apply(note(replace('curious', 'brave')), DIRECT);
+    expect(outcome.state).toBe('applied');
+    expect(documents.text).toContain('brave');
+  });
+});
+
+describe('ProjectFileEditGateway: a reveal failure keeps a settled result (PR #236 N-01)', () => {
+  it('applied stays applied, with its landed records, revealed false, and the failure logged by ids only', async () => {
+    const { gateway, documents, fakes } = fixture();
+    jest.spyOn(documents, 'reveal').mockRejectedValueOnce(new Error('the tab could not open'));
+    const outcome = await gateway.apply(note(replace('curious', 'brave')), DIRECT);
+    expect(outcome).toMatchObject({ state: 'applied', revealed: false, operations: [{ outcome: 'landed' }], landed: [{ operation: 0 }] });
+    expect(documents.text).toContain('brave');
+    expect(fakes.log).toContain('[FileEdit] reveal failed turn=turn-7 index=0');
+    expect(fakes.log.some((line) => line.includes('apply threw'))).toBe(false);
+    expectNoLeaks(fakes.log, 'curious', 'brave', 'Alice');
+  });
+
+  it('partial stays partial, by operation', async () => {
+    const { gateway, documents } = fixture({ host: applyTicked((edit) => edit.newText === 'brave') });
+    jest.spyOn(documents, 'reveal').mockRejectedValueOnce(new Error('the tab could not open'));
+    const outcome = await gateway.apply(note(replace('curious', 'brave'), replace('White Rabbit', 'Hatter')), PREVIEW);
+    expect(outcome).toMatchObject({ state: 'partial', revealed: false });
+    expect(outcomes(outcome)).toEqual(['landed', 'not-applied']);
+  });
+});

@@ -1,6 +1,7 @@
 /** Workshop settings, defaults, validation, and settings-route contracts. */
 
 import { MessageEnvelope, MessageType } from '../base';
+import type { WorkshopFileEditsMode } from './fileEdits';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Conversation behavior (ADR 2026-07-20) — the writer-owned, room-level
@@ -325,6 +326,8 @@ export interface WorkshopSetConversationSettingsPayload {
   webResearch: WorkshopWebResearchSettings;
   /** The Memory tab's mode draft (ADR 2026-11-04 D8): global, written to the writer's settings. */
   projectMemory: WorkshopProjectMemoryMode;
+  /** The Behavior tab's suggested-file-edits draft (ADR 2026-11-05 D11): global, written to the writer's settings. */
+  fileEdits: WorkshopFileEditsMode;
 }
 
 export interface WorkshopSetConversationSettingsMessage

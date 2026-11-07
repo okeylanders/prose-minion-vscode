@@ -29,6 +29,7 @@ function renderModal(overrides: Partial<Props> = {}) {
     writerProfile: { ...DEFAULT_WORKSHOP_WRITER_PROFILE },
     webResearch: { ...DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS },
     projectMemoryMode: 'off',
+    fileEditsMode: 'ask',
     memory: { workspace: { kind: 'available' }, estimate: IN_BUDGET, saved: 12, unreadable: [], conflicts: [] },
     isRunning: false,
     onApply: jest.fn(),
@@ -67,7 +68,8 @@ describe('Conversation settings · Memory', () => {
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
       DEFAULT_WORKSHOP_WRITER_PROFILE,
       DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
-      'auto'
+      'auto',
+      'ask'
     );
   });
 
@@ -110,6 +112,24 @@ describe('Conversation settings · Memory', () => {
     rerender({ open: true });
     fireEvent.click(screen.getByRole('tab', { name: 'Memory' }));
     expect(card('Ask first').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('an untouched mode follows a newer host mode while the modal is open (PR #236 F-02)', () => {
+    const { props, rerender } = renderModal({ projectMemoryMode: 'off' });
+    rerender({ projectMemoryMode: 'auto' });
+    fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
+    expect((props.onApply as jest.Mock).mock.calls[0][3]).toBe('auto');
+  });
+
+  it('control: a mode the writer picked keeps their choice through a newer host mode', () => {
+    const { props, rerender } = renderModal({ projectMemoryMode: 'off' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Memory' }));
+    fireEvent.click(card('Ask first'));
+    rerender({ projectMemoryMode: 'auto' });
+    expect(card('Ask first').getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
+    expect((props.onApply as jest.Mock).mock.calls[0][3]).toBe('ask');
   });
 
   it('an unavailable workspace leaves the mode choosable and applied', () => {
