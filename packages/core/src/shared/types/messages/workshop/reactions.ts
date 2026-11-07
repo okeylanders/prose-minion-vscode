@@ -33,6 +33,27 @@ export interface WorkshopTurnReaction {
   createdAt: number;
 }
 
+/** A reaction a persona's conversation was told of, by its identity triple (ADR 2026-11-07 D6). */
+export interface WorkshopDeliveredReaction {
+  turnId: string;
+  author: WorkshopTurnReactionAuthor;
+  reaction: WorkshopReactionId;
+}
+
+/**
+ * What one `<workshop-reactions>` frame told a persona's conversation
+ * (ADR 2026-11-07 D6), recorded on the reply that answered the message the
+ * frame rode. `start` is a conversation's first message (a fresh host, a
+ * guest's join): it begins that conversation's view, so a re-invited guest
+ * never inherits an earlier membership's (Project Memory's PR #198 F-02
+ * precedent). `update` adds to it.
+ */
+export interface WorkshopReactionDelivery {
+  participant: { kind: 'host' } | { kind: 'personaGuest'; personaId: WorkshopPersonaId };
+  kind: 'start' | 'update';
+  reactions: WorkshopDeliveredReaction[];
+}
+
 /**
  * One reaction as the snapshot shows it, on a turn in the snapshot's window:
  * the writer's first, then the personas', each in the order given. `label`

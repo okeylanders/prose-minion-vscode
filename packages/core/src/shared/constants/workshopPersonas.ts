@@ -126,6 +126,14 @@ export const WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATH =
 export const WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH =
   'workshop-personas/file-edit-proposals.md';
 
+/**
+ * How to read the `<workshop-reactions>` frame (ADR 2026-11-07 D4): taught
+ * to host and guest always, after the selected relational depth it is read
+ * under. The writer's reactions are not a setting, so neither is this.
+ */
+export const WORKSHOP_REACTIONS_PROMPT_PATH =
+  'workshop-personas/reactions.md';
+
 export const WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS: Readonly<
   Record<WorkshopRelationalDepth, string>
 > = Object.freeze({
@@ -174,6 +182,7 @@ export function workshopPersonaSystemPromptPaths(
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],
     WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
     WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS[behavior.relationalDepth],
+    ...(participant ? [WORKSHOP_REACTIONS_PROMPT_PATH] : []),
     ...(behavior.expressionLevel === 'subtle' ? [] : [persona.expressionProfilePath]),
     ...(behavior.expressionLevel === 'amplified' ? [persona.expressionCalibrationPath] : [])
   ];

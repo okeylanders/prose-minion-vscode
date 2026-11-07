@@ -42,7 +42,8 @@ export function workshopReactionKey(
   return `${reaction.turnId}\u0000${workshopReactionAuthorKey(reaction.author)}\u0000${reaction.reaction}`;
 }
 
-function assertAuthor(value: unknown, path: string): WorkshopTurnReactionAuthor {
+/** Strict structure of a reaction's author; the delivery records read it too. */
+export function assertWorkshopReactionAuthorShape(value: unknown, path: string): WorkshopTurnReactionAuthor {
   const author = exactObject(value, path, ['kind'], ['personaId']);
   if (author.kind === 'writer' || author.kind === 'host') {
     if (author.personaId !== undefined) {
@@ -73,7 +74,7 @@ export function assertWorkshopReactionsShape(value: unknown): void {
     if (!isWorkshopReactionId(entry.reaction)) {
       shapeError(`${path}.reaction`, 'a known Workshop reaction id');
     }
-    const author = assertAuthor(entry.author, `${path}.author`);
+    const author = assertWorkshopReactionAuthorShape(entry.author, `${path}.author`);
     if (author.kind === 'writer') {
       if (entry.viaTurnId !== undefined) {
         shapeError(`${path}.viaTurnId`, 'absent on the writer\'s reaction');

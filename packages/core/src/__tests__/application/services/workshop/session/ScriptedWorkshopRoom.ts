@@ -27,6 +27,13 @@ import {
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopRoomDeliveryService } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import {
+  prepareWorkshopReactionDelivery,
+  stageWorkshopReactionDelivery,
+  workshopReactionHoldsAfterCatchUp,
+  workshopReactionHoldsTranscript,
+  type WorkshopReactionHolds
+} from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
 import type {
   WorkshopConversationLogicalKey,
   WorkshopSessionStateV1
@@ -174,7 +181,10 @@ export class ScriptedWorkshopRoom {
     const pendingHostUpdates = this.session.hasHostConversation()
       ? this.session.collectPendingHostUpdates()
       : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
+    const reactions = this.reactions({ kind: 'host' }, this.session.hasHostConversation() ? 'update' : 'start',
+      workshopReactionHoldsAfterCatchUp(this.session.readRoomLedger(), { kind: 'host' }, roomDelivery));
     const writerTurn = this.session.beginPersonaMessage(requestId, text, this.refs(staged));
+    reactions.stage(requestId);
     if (options.projectMemory) {
       this.session.stageProjectMemoryDelivery(requestId, options.projectMemory);
     }
@@ -183,7 +193,7 @@ export class ScriptedWorkshopRoom {
     const conversationId = this.commitHistory(
       this.session.getHostConversationId(),
       `workshop_persona_${this.session.getSelectedPersonaId()}`,
-      `[host] ${text}`,
+      `${reactions.lead}[host] ${text}`,
       replyContent,
       evidence,
       options.resources
@@ -391,10 +401,13 @@ export class ScriptedWorkshopRoom {
       { kind: 'personaGuest', personaId },
       joinStart.turn.id
     );
+    const reactions = this.reactions({ kind: 'personaGuest', personaId }, 'start',
+      workshopReactionHoldsTranscript(joinTurns.map((turn) => turn.id)));
+    reactions.stage(requestId);
     const conversationId = this.commitHistory(
       undefined,
       `workshop_guest_${personaId}`,
-      `[join ${personaId}] ${joinTurns.length} room turns; ${opening}`,
+      `${reactions.lead}[join ${personaId}] ${joinTurns.length} room turns; ${opening}`,
       `${personaId} joins.`
     );
     const reply = completeWorkshopRun({
@@ -428,11 +441,14 @@ export class ScriptedWorkshopRoom {
     const requestId = this.requestId(`guest-${personaId}`);
     this.session.setChatTarget({ kind: 'personaGuest', personaId });
     const roomDelivery = this.delivery.prepare({ kind: 'personaGuest', personaId });
+    const reactions = this.reactions({ kind: 'personaGuest', personaId }, 'update',
+      workshopReactionHoldsAfterCatchUp(this.session.readRoomLedger(), { kind: 'personaGuest', personaId }, roomDelivery));
     this.session.beginPersonaGuestMessage(personaId, requestId, text);
+    reactions.stage(requestId);
     const conversationId = this.commitHistory(
       this.session.getPersonaGuestConversationId(personaId),
       `workshop_guest_${personaId}`,
-      `[guest ${personaId}] ${text}`,
+      `${reactions.lead}[guest ${personaId}] ${text}`,
       `${personaId} reply to "${text}".`
     );
     const reply = this.complete(requestId, personaId, conversationId, `${personaId} reply to "${text}".`, () => {
@@ -440,6 +456,23 @@ export class ScriptedWorkshopRoom {
     });
     this.rest(`${personaId} reply: ${text}`);
     return reply;
+  }
+
+  /**
+   * Reaction delivery as the room handler does it (ADR 2026-11-07 D4, D6):
+   * planned before the run begins, staged once it has. The frame leads the
+   * scripted user message, so retained history shows what was delivered.
+   */
+  private reactions(
+    reader: { kind: 'host' } | { kind: 'personaGuest'; personaId: WorkshopPersonaId },
+    kind: 'start' | 'update',
+    holds: WorkshopReactionHolds
+  ): { lead: string; stage: (requestId: string) => void } {
+    const plan = prepareWorkshopReactionDelivery(this.session, reader, kind, holds);
+    return {
+      lead: plan.frame ? `${plan.frame}\n` : '',
+      stage: (requestId) => stageWorkshopReactionDelivery(this.session, requestId, reader, plan, (line) => this.log.push(line))
+    };
   }
 
   dismissGuest(personaId: WorkshopPersonaId): this {

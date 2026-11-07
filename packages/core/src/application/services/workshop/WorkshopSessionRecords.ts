@@ -16,6 +16,7 @@ import type { WorkshopContextDeliveryBaseline } from '@/application/services/wor
 import type {
   ContextSourceEntry,
   WorkshopProjectMemoryDelivery,
+  WorkshopReactionDelivery,
   WorkshopActionableFinding,
   WorkshopConversationBehavior,
   WorkshopConversationBehaviorTransition,
@@ -85,6 +86,8 @@ export interface WorkshopActiveRun {
    * here, and written onto its writer turn only when the reply commits.
    */
   projectMemoryDelivery?: WorkshopProjectMemoryDelivery;
+  /** Reactions this run's message delivered (ADR 2026-11-07 D6): written on the reply only when it commits. */
+  reactionDelivery?: WorkshopReactionDelivery;
 }
 
 export interface WorkshopExcerptInput {

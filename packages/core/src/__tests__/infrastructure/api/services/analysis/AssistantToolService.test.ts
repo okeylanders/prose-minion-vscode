@@ -171,6 +171,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       'workshop-personas/interaction-modes/balanced.md',
       'workshop-personas/relational-contract.md',
       'workshop-personas/relational-depth/attuned.md',
+      'workshop-personas/reactions.md',
       'workshop-personas/expression-profiles/quinn.md',
       'workshop-personas/expression-calibrations/quinn.md'
     ]);
@@ -262,7 +263,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       'workshop-personas/interaction-contract.md',
       'workshop-personas/interaction-modes/conversational.md',
       'workshop-personas/relational-contract.md',
-      'workshop-personas/relational-depth/attuned.md'
+      'workshop-personas/relational-depth/attuned.md',
+      'workshop-personas/reactions.md'
     ]);
     expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'workshop_guest_margot',

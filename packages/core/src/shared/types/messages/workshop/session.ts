@@ -8,7 +8,7 @@ import { UrlCitation } from '../citations';
 import type { LabeledContextBudgetSnapshot } from '../inferenceContext';
 import type { ModelScope } from '../configuration';
 import type { WorkshopBookmarkSummary } from './bookmarks';
-import type { WorkshopTurnReactionSummary } from './reactions';
+import type { WorkshopReactionDelivery, WorkshopTurnReactionSummary } from './reactions';
 import type {
   WorkshopAnalysisInputProvenance,
   WorkshopCapabilityArtifactDetails,
@@ -468,6 +468,13 @@ export interface WorkshopTurn {
    * too (PR #198 F-01).
    */
   projectMemoryDelivery?: WorkshopProjectMemoryDelivery[];
+  /**
+   * What reactions the message this persona reply answers delivered (ADR
+   * 2026-11-07 D6): written on the reply when it commits, so a cut, a
+   * rollback or a cancellation that removes the delivery removes its record
+   * too, and the reactions arrive again.
+   */
+  reactionDelivery?: WorkshopReactionDelivery[];
 }
 
 /** One memory as a conversation was told of it: its id and its D14 version. */

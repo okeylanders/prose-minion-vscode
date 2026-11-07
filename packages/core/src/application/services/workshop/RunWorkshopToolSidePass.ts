@@ -6,6 +6,7 @@ import {
 import { resolveWorkshopReplyMemory } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import type { WorkshopReplyFileEditContext } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { stageWorkshopReactionRestart } from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
 import {
   WorkshopRoomDeliveryService,
   workshopRoomDeliveredThrough
@@ -211,6 +212,12 @@ export class RunWorkshopToolSidePass {
           : undefined
       };
       const hostConversationId = this.session.getHostConversationId();
+      if (!hostConversationId) {
+        // A synthesis that starts the host's conversation carries no reactions
+        // frame, but begins its view, so the next message delivers again (PR #246 M1).
+        stageWorkshopReactionRestart(this.session, synthesisRequestId, { kind: 'host' }, (line) =>
+          this.outputChannel.appendLine(`[RunWorkshopToolSidePass] ${line}`));
+      }
       pendingHostUpdates = this.session.prepareHostUpdatesForDelivery(hostConversationId);
       const todoEvidence = buildWorkshopTodoEvidence(this.session.collectOpenTodosForHost());
       const hostUpdateFrame = hostConversationId ? buildWorkshopHostUpdateFrame(pendingHostUpdates) : undefined;

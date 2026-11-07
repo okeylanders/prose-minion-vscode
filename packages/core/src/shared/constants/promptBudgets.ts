@@ -127,11 +127,17 @@ export interface PromptBudgets {
   /**
    * Workshop message reactions (ADR 2026-11-07 D9). `perSession` is the
    * codec's bound on stored entries; the ledger refuses an add past it.
-   * `framePerTurn`, `openingCharacters` and `deliveredPerReply` land with
-   * the slices that read them.
+   * Delivery (D4, D6): a `<workshop-reactions>` frame lists at most
+   * `framePerTurn` reactions, newest first, then a count line; each target
+   * is quoted by an opening cut on a word boundary at `openingCharacters`.
+   * One reply's `reactionDelivery` records at most `deliveredPerReply`
+   * reactions (the codec's bound); older ones past it wait for a later turn.
    */
   readonly workshopReactions: Readonly<{
     perSession: number;
+    framePerTurn: number;
+    openingCharacters: number;
+    deliveredPerReply: number;
   }>;
   /**
    * Workshop Pinned Context (ADR 2026-11-04 D6): how many files the list
@@ -647,7 +653,11 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   },
   workshopReactions: {
     // Generous: 19 writer reactions on each of a few hundred replies, plus the personas'.
-    perSession: 5_000
+    perSession: 5_000,
+    framePerTurn: 8,
+    openingCharacters: 80,
+    // A codec bound no prompt states: generous, so a long room's join hears every standing reaction.
+    deliveredPerReply: 1_000
   },
   workshopPinnedContext: {
     // 50, tuned in the Slice 5 live pass (Okey, 2026-11-05): the first real
