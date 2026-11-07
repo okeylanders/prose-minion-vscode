@@ -71,6 +71,7 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopStandingDirectiveHandler'
   | 'WorkshopTodoHandler'
   | 'WorkshopBookmarkHandler'
+  | 'WorkshopReactionHandler'
   | 'WorkshopBookmarkBrowserHandler'
   | 'WorkshopProjectMemoryHandler'
   | 'WorkshopSavedTurnMemoryHandler'

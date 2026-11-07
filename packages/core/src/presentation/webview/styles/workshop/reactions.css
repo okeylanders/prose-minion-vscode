@@ -1,0 +1,84 @@
+/* Message reactions (ADR 2026-11-07 D8): the palette in a bubble's actions, and its chips. */
+[data-pm-surface="workshop"] .pm-ws-reaction-wrap {
+  position: relative;
+  display: inline-flex;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-palette {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border-2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-group-label {
+  color: var(--pm-muted);
+  font: 11px var(--pm-sans);
+  margin-bottom: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 32px);
+  gap: 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-actions .pm-ws-reaction-option {
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 17px;
+  line-height: 1;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-actions .pm-ws-reaction-option-on {
+  border-color: var(--pm-accent-lo);
+  background: color-mix(in srgb, var(--pm-accent-hi) 14%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--pm-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pm-muted);
+  padding: 2px 8px;
+  font: 12px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-chip-writer {
+  border-color: var(--pm-accent-lo);
+  background: color-mix(in srgb, var(--pm-accent-hi) 14%, transparent);
+  font-size: 14px;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-hide {
+  border: 0;
+  background: transparent;
+  color: var(--pm-muted);
+  padding: 0 2px;
+  font: 11px var(--pm-sans);
+  text-decoration: underline;
+  cursor: pointer;
+}
+/* Locked (PR #245 L2): still focusable, so focus can come back to it. */
+[data-pm-surface="workshop"] .pm-ws-reaction-add[aria-disabled="true"],
+[data-pm-surface="workshop"] .pm-ws-reaction-chip[aria-disabled="true"],
+[data-pm-surface="workshop"] .pm-ws-reaction-hide[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+}

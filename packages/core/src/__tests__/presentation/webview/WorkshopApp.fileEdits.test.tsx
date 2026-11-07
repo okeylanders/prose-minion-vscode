@@ -84,6 +84,7 @@ const session = (turns: WorkshopTurn[], overrides: Partial<WorkshopSessionSnapsh
       standingDirectives: [],
       todos: [],
       bookmarks: [],
+      reactions: [],
       turns,
       turnRewindability: {},
       totalTurns: turns.length,

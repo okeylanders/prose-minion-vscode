@@ -26,6 +26,10 @@ import {
   danglingWorkshopBookmarks,
   workshopBookmarksWithin
 } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
+import {
+  danglingWorkshopReactions,
+  workshopReactionsWithin
+} from '@/application/services/workshop/session/WorkshopReactionRecords';
 
 export type WorkshopSessionCheckpointNormalization =
   | 'discarded-legacy-scope-transition'
@@ -50,6 +54,9 @@ export type WorkshopSessionCheckpointNormalization =
   // Workshop Wayfinding Slice 4 (ADR 2026-11-03 D9): a bookmark whose turn is
   // gone marks nothing, so it goes rather than refusing the session.
   | 'dropped-dangling-bookmarks'
+  // Message Reactions Slice 1 (ADR 2026-11-07 D2): a reaction whose turn, or
+  // whose carrying reply, is gone marks nothing, so it goes.
+  | 'dropped-dangling-reactions'
   // Project Memory Slice 6b: a development checkpoint's single memory card
   // (`memoryProposal`) becomes the only item of `memoryProposals`.
   | 'listed-single-memory-proposal';
@@ -245,8 +252,16 @@ export function normalizeWorkshopSessionCheckpointForHydration(
     normalizations.push('dropped-dangling-bookmarks');
   }
 
+  const danglingReactions = danglingWorkshopReactions(state.reactions, turns);
+  if (danglingReactions.length > 0) {
+    normalizations.push('dropped-dangling-reactions');
+  }
+
   const normalized: WorkshopSessionStateV1 = {
     ...state,
+    ...(danglingReactions.length > 0
+      ? { reactions: workshopReactionsWithin(state.reactions, new Set(turns.map((turn) => turn.id))) }
+      : {}),
     ...(danglingBookmarks.length > 0
       ? { bookmarks: workshopBookmarksWithin(state.bookmarks, new Set(turns.map((turn) => turn.id))) }
       : {}),

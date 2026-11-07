@@ -111,6 +111,7 @@ function warmWorkshopSession(cacheModel: string): WorkshopSessionStateMessage {
         standingDirectives: [],
         todos: [],
         bookmarks: [],
+        reactions: [],
         turns: [],
         turnRewindability: {},
         totalTurns: 0,

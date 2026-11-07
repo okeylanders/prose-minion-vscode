@@ -25,6 +25,7 @@ import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import { assertWorkshopTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
 import { contextSourceProvenanceFault } from '@orchestration/ContextSourceRecord';
 import { assertWorkshopBookmarksShape } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
+import { assertWorkshopReactionsShape } from '@/application/services/workshop/session/WorkshopReactionRecords';
 import { assertWorkshopMemoryProposalShape } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
 import { assertWorkshopFileEditProposalShape } from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
 import { assertWorkshopMemoryReceiptShape } from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
@@ -122,7 +123,9 @@ function assertWorkshopSessionShape(
       'retainedHistoryMarks',
       'hostContextDelivery',
       // Optional since ADR 2026-11-03 D9: written only when one exists.
-      'bookmarks'
+      'bookmarks',
+      // Optional since ADR 2026-11-07 D2: written only when one exists.
+      'reactions'
     ]
   );
   if (state.excerpt !== undefined) {
@@ -167,6 +170,9 @@ function assertWorkshopSessionShape(
   arrayOf(state.todos, 'Workshop session state.todos', assertStoredTodo);
   if (state.bookmarks !== undefined) {
     assertWorkshopBookmarksShape(state.bookmarks);
+  }
+  if (state.reactions !== undefined) {
+    assertWorkshopReactionsShape(state.reactions);
   }
   if (state.widgetConfigs !== undefined) {
     arrayOf(

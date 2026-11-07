@@ -8,6 +8,7 @@ import { UrlCitation } from '../citations';
 import type { LabeledContextBudgetSnapshot } from '../inferenceContext';
 import type { ModelScope } from '../configuration';
 import type { WorkshopBookmarkSummary } from './bookmarks';
+import type { WorkshopTurnReactionSummary } from './reactions';
 import type {
   WorkshopAnalysisInputProvenance,
   WorkshopCapabilityArtifactDetails,
@@ -584,6 +585,11 @@ export interface WorkshopSessionSnapshot {
    * those whose bubble is outside `turns` (ADR 2026-11-03 D5).
    */
   bookmarks: WorkshopBookmarkSummary[];
+  /**
+   * Reactions on the turns in `turns` (ADR 2026-11-07 D8), per turn the
+   * writer's first. Display-safe; the stored entries never leave the host.
+   */
+  reactions: WorkshopTurnReactionSummary[];
   /** Bounded widget identities for chips in the visible turn window. */
   widgetConfigs: WorkshopWidgetConfigSummary[];
   /** Active passage-scoped prose directives; one entry per closed family. */
