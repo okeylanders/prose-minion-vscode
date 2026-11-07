@@ -26,6 +26,8 @@ import * as React from 'react';
 import {
   MessageType,
   type WorkshopMemoryDraft,
+  type WorkshopMemoryDraftResultMessage,
+  type WorkshopMemoryDraftsSettingMessage,
   type WorkshopMemoryEditDataMessage,
   type WorkshopMemoryEstimateResultMessage,
   type WorkshopMemoryListedTitle,
@@ -47,38 +49,12 @@ import {
 } from '@hooks/domain/workshop/memory/workshopMemoryBookmarkSheets';
 import { withWorkshopMemoryEntry, withWorkshopMemoryKey } from '@hooks/domain/workshop/memory/workshopMemoryKeyedState';
 import { workshopMemorySheetSubmission } from '@hooks/domain/workshop/memory/workshopMemorySheetSubmission';
+import type { WorkshopMemoryReceiptError, WorkshopMemorySheetState } from '@hooks/domain/workshop/memory/workshopMemorySheetState';
+import { workshopMemoryBubbleDraftable, workshopMemoryHelperTouched, workshopMemorySheetWithHelperDraft } from '@hooks/domain/workshop/memory/workshopMemoryHelperDraft';
+import { useWorkshopMemoryHelperDrafts } from '@hooks/domain/workshop/memory/useWorkshopMemoryHelperDrafts';
 
 export { workshopMemoryNoteFromTurn, type WorkshopMemoryRoomBookmark, type WorkshopMemorySavedBookmark };
-
-/** What the sheet is for: a card's edit, a saved memory's edit, a turn of this room or of a saved session as source, or nothing. */
-export type WorkshopMemorySheetMode = 'card' | 'memory' | 'turn' | 'saved-turn' | 'new';
-
-
-export interface WorkshopMemorySheetState {
-  readonly mode: WorkshopMemorySheetMode;
-  /** The card's or bubble's turn. */
-  readonly turnId?: string;
-  /** The card's index on its turn (Slice 6b); a card's edit only. */
-  readonly proposalIndex?: number;
-  /** The saved memory being edited: a receipt's or the manager's, or the note an edit card changes (Slice 6c). */
-  readonly memoryId?: string;
-  readonly draft: WorkshopMemoryDraft;
-  /** Titles of the memories `draft.supersedes` names. */
-  readonly replaces: readonly WorkshopMemoryListedTitle[];
-  /** A saved memory's fields are still being read. */
-  readonly loading: boolean;
-  /** The pending write's request, while the host saves. */
-  readonly saving: boolean;
-  readonly estimate?: WorkshopMemoryPinnedEstimate;
-  readonly error?: string;
-  /** Who the source is, for the source line ("Jill's reply"). */
-  readonly sourceLabel?: string;
-  /** A bookmark's turn outside the window: the room it was asked in. */
-  readonly roomRevision?: number;
-  /** A saved session's turn: its session and title. */
-  readonly sessionId?: string;
-  readonly sessionTitle?: string;
-}
+export type { WorkshopMemoryReceiptError, WorkshopMemorySheetMode, WorkshopMemorySheetState } from '@hooks/domain/workshop/memory/workshopMemorySheetState';
 
 export interface WorkshopProjectMemoryState {
   sheet: WorkshopMemorySheetState | null;
@@ -95,12 +71,6 @@ export interface WorkshopProjectMemoryState {
   receiptErrors: ReadonlyMap<string, WorkshopMemoryReceiptError>;
 }
 
-/** What a receipt's refused action says beside it. */
-export interface WorkshopMemoryReceiptError {
-  readonly action: 'forget' | 'restore';
-  readonly error: string;
-}
-
 export interface UseWorkshopProjectMemoryOptions {
   /**
    * The room's identity (`room:<revision>`); a new one (New, Open, Rewind,
@@ -108,6 +78,8 @@ export interface UseWorkshopProjectMemoryOptions {
    * room before (PR #221 F-01).
    */
   roomKey?: string;
+  /** The open room's revision once ready: the room a turn's draft request names (Helper Agent Slice 2, A-02). */
+  roomRevision?: number;
 }
 
 export interface WorkshopProjectMemoryActions {
@@ -140,6 +112,10 @@ export interface WorkshopProjectMemoryActions {
   handleEstimateResult: (message: WorkshopMemoryEstimateResultMessage) => void;
   /** A turn preview this hook asked for, to prefill a bookmark outside the window. */
   handleTurnPreview: (message: WorkshopTurnPreviewMessage) => void;
+  /** The helper's draft for the open sheet (Helper Agent Slice 2): taken only for that sheet's request. */
+  handleMemoryDraftResult: (message: WorkshopMemoryDraftResultMessage) => void;
+  /** Whether drafting is on (D5.7): off, a sheet asks for nothing. */
+  handleMemoryDraftsSetting: (message: WorkshopMemoryDraftsSettingMessage) => void;
 }
 
 export interface WorkshopProjectMemoryPersistence {
@@ -160,7 +136,7 @@ type Pending =
 const SOURCE = 'webview.workshop.memory';
 const ESTIMATE_DELAY_MS = 250;
 
-export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOptions = {}): UseWorkshopProjectMemoryReturn {
+export function useWorkshopProjectMemory({ roomKey, roomRevision }: UseWorkshopProjectMemoryOptions = {}): UseWorkshopProjectMemoryReturn {
   const vscode = useVSCodeApi();
   const [sheet, setSheetState] = React.useState<WorkshopMemorySheetState | null>(null);
   // The sheet as last set, so actions read it without side effects in an updater.
@@ -190,6 +166,9 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
   const post = React.useCallback((type: MessageType, payload: object) => {
     vscode.postMessage({ type, source: SOURCE, payload, timestamp: Date.now() });
   }, [vscode]);
+  // The helper's drafts (Helper Agent Slice 2): asked on opening from a turn, stopped on Close, Save, a new opening and unmount.
+  const drafts = useWorkshopMemoryHelperDrafts({ post, mint, roomRevision, currentSheet: React.useCallback(() => sheetRef.current, []) });
+  const { ask: askDraft, stop: stopDraft } = drafts;
 
   // Keyed feedback, by card and by receipt (pure updates: memory/workshopMemoryKeyedState).
   const setCardBusy = React.useCallback((card: string, busy: boolean) => setBusyCards((current) => withWorkshopMemoryKey(current, card, busy)), []);
@@ -218,16 +197,19 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     }, ESTIMATE_DELAY_MS);
   }, [mint, post]);
 
-  const openSheet = React.useCallback((state: WorkshopMemorySheetState) => {
+  /** Opens `state`, unless a save is out; a sheet opened from a turn asks the helper for a draft (memory/workshopMemoryHelperDraft). */
+  const openSheet = React.useCallback((state: WorkshopMemorySheetState): boolean => {
     if (sheetRef.current?.saving) {
-      return;
+      return false;
     }
     sheetRequest.current = undefined;
-    setSheet(state);
+    stopDraft(sheetRef.current);
+    setSheet(askDraft(state));
     if (!state.loading) {
       requestEstimate(state);
     }
-  }, [requestEstimate, setSheet]);
+    return true;
+  }, [askDraft, requestEstimate, setSheet, stopDraft]);
 
   const editCard = React.useCallback((turn: WorkshopTurn, index: number) => {
     const proposal = workshopMemoryProposalAt(turn, index);
@@ -255,6 +237,7 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
       mode: 'turn',
       turnId: turn.id,
       draft: { ...EMPTY_DRAFT, body: workshopMemoryNoteFromTurn(turn.content) },
+      ...(workshopMemoryBubbleDraftable(turn) ? {} : { helperWithheld: true as const }),
       replaces: [],
       loading: false,
       saving: false,
@@ -268,10 +251,9 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
       return;
     }
     const { turnId, roomRevision, message } = bookmark;
-    const sheetState = workshopMemoryRoomBookmarkSheet({ turnId, roomRevision, ...(message ? { message } : {}) });
-    openSheet(sheetState);
+    const opened = openSheet(workshopMemoryRoomBookmarkSheet({ turnId, roomRevision, ...(message ? { message } : {}) }));
     // Without the row's message, the host's turn preview fills the note.
-    if (!message && sheetRef.current === sheetState) {
+    if (!message && opened) {
       const requestId = mint();
       previewRequest.current = requestId;
       post(MessageType.WORKSHOP_REQUEST_TURN_PREVIEW, { requestId, turnId, roomRevision });
@@ -329,7 +311,8 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     if (!current || current.saving || current.loading) {
       return;
     }
-    const next = { ...current, draft: { ...current.draft, ...change }, error: undefined };
+    const helper = workshopMemoryHelperTouched(current.helper, change);
+    const next = { ...current, draft: { ...current.draft, ...change }, ...(helper ? { helper } : {}), error: undefined };
     setSheet(next);
     requestEstimate(next);
   }, [requestEstimate, setSheet]);
@@ -365,8 +348,9 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     }
     const submission = workshopMemorySheetSubmission(current, requestId);
     post(submission.type, submission.payload);
-    setSheet({ ...current, saving: true, error: undefined });
-  }, [mint, post, setCardBusy, setCardError, setSheet]);
+    // Save freezes the fields: a draft still out is stopped, so what was submitted is what the sheet shows (A-02).
+    setSheet({ ...stopDraft(current), saving: true, error: undefined });
+  }, [mint, post, setCardBusy, setCardError, setSheet, stopDraft]);
 
   const dismissSheet = React.useCallback(() => {
     window.clearTimeout(estimateTimer.current);
@@ -374,8 +358,9 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     editRequest.current = undefined;
     previewRequest.current = undefined;
     estimateRequest.current = undefined;
+    stopDraft(sheetRef.current);
     setSheet(null);
-  }, [setSheet]);
+  }, [setSheet, stopDraft]);
 
   /** Close, Escape or the backdrop: not while a save is out, so its answer is never lost (PR #200 F-05). */
   const closeSheet = React.useCallback(() => {
@@ -468,6 +453,16 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     setSheet({ ...current, estimate });
   }, [setSheet]);
 
+  const handleMemoryDraftResult = React.useCallback((message: WorkshopMemoryDraftResultMessage) => {
+    const next = workshopMemorySheetWithHelperDraft(sheetRef.current, message.payload);
+    if (next) {
+      setSheet(next);
+      if (!next.loading) {
+        requestEstimate(next);
+      }
+    }
+  }, [requestEstimate, setSheet]);
+
   return {
     sheet,
     busyCards,
@@ -493,6 +488,8 @@ export function useWorkshopProjectMemory({ roomKey }: UseWorkshopProjectMemoryOp
     handleEditData,
     handleEstimateResult,
     handleTurnPreview,
+    handleMemoryDraftResult,
+    handleMemoryDraftsSetting: drafts.handleDraftsSetting,
     persistedState: {}
   };
 }

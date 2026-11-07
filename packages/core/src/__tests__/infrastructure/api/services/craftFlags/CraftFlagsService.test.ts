@@ -18,7 +18,7 @@ import {
   type CraftFlagsPriceSource
 } from '@services/craftFlags/CraftFlagsService';
 import { CRAFT_FLAGS_CLOSING_SENTINEL, CRAFT_FLAGS_OPENING_SENTINEL } from '@services/craftFlags/CraftFlagsResponseCodec';
-import type { ReasoningCatalog } from '@services/draftEdit/DraftEditReasoningSupport';
+import type { ReasoningCatalog } from '@orchestration/ReasoningCatalog';
 
 const USAGE = { promptTokens: 4000, completionTokens: 600, totalTokens: 4600, costUsd: 0.02 };
 const PASSAGE = 'But when the Rabbit actually took a watch out of its waistcoat-pocket, a chill ran down her spine.';

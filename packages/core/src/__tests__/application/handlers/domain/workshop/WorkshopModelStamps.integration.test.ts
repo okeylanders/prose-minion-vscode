@@ -1,5 +1,5 @@
 import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
-import { unusedBookmarkBrowser } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
+import { unusedBookmarkBrowser, unusedMemoryDrafts } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
 import {
   WorkshopRoomHandler
 } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
@@ -199,7 +199,8 @@ Add a key.`, conversationId, 'vendor/never');
       output,
       libraryHost().library,
       emptyPinnedContextServices(),
-      unusedBookmarkBrowser()
+      unusedBookmarkBrowser(),
+      unusedMemoryDrafts()
     );
     const router = new MessageRouter();
     handler.registerRoutes(router);

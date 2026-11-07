@@ -222,7 +222,9 @@ export {
 // --- Draft Edit (ADR 2026-10-21): the Proofread and Craft Flags passes, their runs, and the adapter's helpers ---
 export { ProofreadService } from '@services/proofread/ProofreadService';
 export { CraftFlagsService, liveCatalogPrices } from '@services/craftFlags/CraftFlagsService';
-export { liveCatalogReasoning } from '@services/draftEdit/DraftEditReasoningSupport';
+export { HelperAgentService } from '@services/helper/HelperAgentService';
+export { HELPER_TASK_POLICIES } from '@services/helper/HelperTaskPolicies';
+export { liveCatalogReasoning } from '@orchestration/ReasoningCatalog';
 export {
   CraftFlagsUseCase,
   type CraftFlagsApproval,

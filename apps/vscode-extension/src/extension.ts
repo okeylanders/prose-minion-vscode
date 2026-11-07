@@ -75,6 +75,8 @@ import {
   DraftEditUseCase,
   DraftEditApplier,
   CraftFlagsService,
+  HelperAgentService,
+  HELPER_TASK_POLICIES,
   CraftFlagsUseCase,
   liveCatalogPrices,
   liveCatalogReasoning,
@@ -571,6 +573,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel
   );
 
+  // The helper agent (ADR 2026-11-05 D4): small model jobs on the manager-owned `helper` scope, each a policy.
+  const helperAgentService = new HelperAgentService(
+    aiResourceManager,
+    resourceLoader.getPromptLoader(),
+    HELPER_TASK_POLICIES,
+    reasoningCatalog,
+    outputChannel
+  );
+
   const coreServices: CoreServices = {
     assistantToolService,
     dictionaryService,
@@ -613,6 +624,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       library: workshopPinnedContextLibrary,
       takeFirstRoomReport: () => workshopPinnedContextRoomSeed.takeFirstRoomReport()
     },
+    helperAgentService,
     workshopTranscriptRecallService
   };
 

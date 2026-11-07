@@ -652,6 +652,11 @@
 [data-pm-surface="workshop"] .pm-ws-memory-hint {
   color: var(--pm-dim);
 }
+/* The helper's quiet line when it couldn't draft (Helper Agent Slice 2). */
+[data-pm-surface="workshop"] .pm-ws-memory-helper-failed {
+  margin: -4px 0 0;
+  font-size: 11.5px;
+}
 /*
  * The six kinds (Slice 6a): six across when they fit, otherwise three by
  * two, and nothing in between (never 5+1 or 4+2, so never auto-fit or

@@ -1,3 +1,4 @@
+import type { HelperAgent } from '@services/helper/HelperTaskPolicies';
 import type {
   AnalysisResultMessage,
   CategorySearchResultMessage,
@@ -194,4 +195,10 @@ export interface CoreServices {
    * only through the capability factory; no handler constructs it.
    */
   workshopTranscriptRecallService: WorkshopTranscriptRecallService;
+  /**
+   * The helper agent (ADR 2026-11-05 D4): small model jobs on the `helper`
+   * scope, each a policy. It proposes and never writes; no handler
+   * constructs it.
+   */
+  helperAgentService: HelperAgent;
 }

@@ -1,0 +1,161 @@
+/** @jest-environment jsdom */
+import { act, renderHook } from '@testing-library/react';
+import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
+import { WorkshopMemoryDraftHandler } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
+import { ScriptedWorkshopRoom } from '@/__tests__/application/services/workshop/session/ScriptedWorkshopRoom';
+import { workshopTurnPreview } from '@/application/services/workshop/transcript/WorkshopTurnPreview';
+import { workshopMemorySheetWithHelperDraft } from '@hooks/domain/workshop/memory/workshopMemoryHelperDraft';
+import { workshopMemoryNoteFromTurn } from '@shared/constants/workshopProjectMemoryWrites';
+import { MessageType } from '@messages';
+import { createMockVSCode } from '@/__tests__/mocks/vscode';
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+jest.mock('@hooks/useVSCodeApi');
+const DRAFT = { title: 'A title', summary: 'A summary.', kind: 'canon' as const };
+
+describe('PR 231 independent correction probes', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => { jest.useRealTimers(); jest.clearAllMocks(); });
+  it.each(['bubble', 'in-window bookmark', 'out-of-window bookmark'] as const)(
+    'F-01 resolved: %s abstains or uses the same safe note', async (opening) => {
+      const room = new ScriptedWorkshopRoom().start();
+      room.hostMessage('Check the cups.', { capabilityRounds: 1, reply: 'Alice counts the cups.' });
+      // This is the actual webview snapshot, not an invented view of the host ledger.
+      const card = room.session.getSnapshot().turns.find((turn) => turn.capability)!;
+      expect(card).toBeDefined();
+      const vscode = createMockVSCode();
+      (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+      const { result, unmount } = renderHook(() => useWorkshopProjectMemory({ roomRevision: room.session.readRoomRevision() }));
+      act(() => {
+        if (opening === 'bubble') result.current.saveTurn(card);
+        else result.current.rememberRoomBookmark({
+          turnId: card.id, roomRevision: room.session.readRoomRevision(),
+          ...(opening === 'in-window bookmark' ? { turn: card } : { message: workshopTurnPreview(card)! })
+        });
+      });
+      const request = vscode.postMessage.mock.calls.map(([message]) => message)
+        .find((message) => message.type === MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST)!;
+      if (opening !== 'out-of-window bookmark') {
+        expect(request).toBeUndefined();
+        expect(result.current.sheet!.helper).toBeUndefined();
+        expect(result.current.sheet!.helperWithheld).toBe(true);
+        expect(result.current.sheet!.draft.body).toBe(workshopMemoryNoteFromTurn(card.content));
+        unmount();
+        return;
+      }
+      expect(request.payload.note).toBe('preview');
+      const run = jest.fn(async () => ({ kind: 'drafted' as const, value: DRAFT }));
+      const handler = new WorkshopMemoryDraftHandler({ helper: { run }, settings: { get: () => true } as never },
+        room.session, { savedTurn: jest.fn() }, async () => undefined,
+        { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
+      await handler.handleDraftRequest(request);
+      const actualInput = (run.mock.calls[0] as unknown as [string, { text: string }])[1].text;
+      expect(actualInput).toBe(workshopMemoryNoteFromTurn(workshopTurnPreview(card)!.content));
+      // Never remedy the mismatch by sending the private capability body to the helper.
+      expect(actualInput).not.toBe(card.content);
+      const displayedBody = result.current.sheet!.draft.body;
+      unmount();
+      expect(actualInput).toBe(displayedBody);
+    }
+  );
+
+  it('ordinary writer and reply sheets preserve the provider-source equality', async () => {
+    const room = new ScriptedWorkshopRoom().start();
+    const reply = room.hostMessage('Why the cups?', { reply: 'Alice counts the cups.' });
+    const writer = room.session.getSnapshot().turns.find((turn) => turn.role === 'user' && turn.kind === 'message')!;
+    for (const turn of [writer, reply]) {
+      const vscode = createMockVSCode();
+      (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+      const { result, unmount } = renderHook(() => useWorkshopProjectMemory());
+      act(() => result.current.saveTurn(turn));
+      expect(result.current.sheet!.draft.body).toBe(workshopMemoryNoteFromTurn(workshopTurnPreview(turn)!.content));
+      unmount();
+    }
+  });
+
+  it('all eight touched-field subsets preserve writer values and unrelated fields', () => {
+    const fields = ['title', 'summary', 'kind'] as const;
+    for (let mask = 0; mask < 8; mask++) {
+      const touched = fields.filter((_, i) => mask & (1 << i));
+      const sheet = { mode: 'turn' as const, turnId: 't', draft: {
+        title: 'Writer title', summary: 'Writer summary.', kind: 'decision' as const,
+        body: 'Writer edited body', supersedes: ['m1'], pinned: true
+      }, replaces: [], loading: false, saving: false, sourceLabel: 'Jill',
+      helper: { requestId: 'r', status: 'drafting' as const, touched } };
+      const next = workshopMemorySheetWithHelperDraft(sheet, { requestId: 'r', outcome: 'drafted', draft: DRAFT })!;
+      for (const field of fields) expect(next.draft[field]).toBe(touched.includes(field) ? sheet.draft[field] : DRAFT[field]);
+      expect(next.draft.body).toBe(sheet.draft.body);
+      expect(next.draft.supersedes).toBe(sheet.draft.supersedes);
+      expect(next.draft.pinned).toBe(true);
+      expect(next.sourceLabel).toBe('Jill');
+      expect(workshopMemorySheetWithHelperDraft(next, { requestId: 'r', outcome: 'drafted', draft: DRAFT })).toBeUndefined();
+    }
+  });
+
+  it('replacing a drafting ordinary sheet with a withheld capability sheet cancels its owner and ignores a late answer', () => {
+    const room = new ScriptedWorkshopRoom().start();
+    const reply = room.hostMessage('Check cups.', { capabilityRounds: 1, reply: 'Counted cups.' });
+    const card = room.session.getSnapshot().turns.find(turn => turn.capability)!;
+    const vscode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+    const { result, unmount } = renderHook(() => useWorkshopProjectMemory());
+    act(() => result.current.saveTurn(reply));
+    const request = vscode.postMessage.mock.calls.map(([m]) => m).find(m => m.type === MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST)!;
+    act(() => result.current.saveTurn(card));
+    const before = result.current.sheet;
+    act(() => result.current.handleMemoryDraftResult({ type: MessageType.WORKSHOP_MEMORY_DRAFT_RESULT,
+      source: 'extension.workshop', timestamp: 1, payload: { requestId: request.payload.requestId, outcome: 'drafted', draft: DRAFT } }));
+    expect(result.current.sheet).toBe(before);
+    const posted = vscode.postMessage.mock.calls.map(([m]) => m);
+    expect(posted.filter(m => m.type === MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST)).toHaveLength(1);
+    expect(posted.filter(m => m.type === MessageType.WORKSHOP_MEMORY_DRAFT_CANCEL).map(m => m.payload))
+      .toEqual([{ requestId: request.payload.requestId }]);
+    unmount();
+  });
+
+  it('host defaults to strict bubble, refuses unknown note tags, and a forged preview can still expose only the safe event', async () => {
+    const room = new ScriptedWorkshopRoom().start();
+    room.hostMessage('Read cups.', { capabilityRounds: 1 });
+    const card = room.session.getSnapshot().turns.find(turn => turn.capability)!;
+    const run = jest.fn(async () => ({ kind: 'drafted' as const, value: DRAFT }));
+    const post = jest.fn(async (_message: unknown) => undefined);
+    const handler = new WorkshopMemoryDraftHandler({ helper: { run }, settings: { get: () => true } as never },
+      room.session, { savedTurn: jest.fn() }, post, { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
+    for (const note of [undefined, 'bubble', 'raw', null, false, 1, {}, []]) {
+      await handler.handleDraftRequest({ type: MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST, source: 'webview.workshop.memory', timestamp: 1,
+        payload: { requestId: 'r', turnId: card.id, ...(note === undefined ? {} : { note }) } } as never);
+      const response = post.mock.calls[post.mock.calls.length - 1][0] as { payload: { outcome: string } };
+      expect(response.payload.outcome).toBe(note === undefined || note === 'bubble' ? 'withheld' : 'refused');
+      expect(run).not.toHaveBeenCalled();
+    }
+    await handler.handleDraftRequest({ type: MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST, source: 'webview.workshop.memory', timestamp: 1,
+      payload: { requestId: 'preview', turnId: card.id, note: 'preview', text: card.content } } as never);
+    const input = (run.mock.calls[0] as unknown as [string, { text: string }])[1].text;
+    expect(input).toBe(workshopMemoryNoteFromTurn(workshopTurnPreview(card)!.content));
+    expect(input).not.toBe(card.content);
+  });
+
+  it('saved capability bookmarks still draft exactly the projected body without capability evidence', async () => {
+    const room = new ScriptedWorkshopRoom().start();
+    room.hostMessage('Check cups.', { capabilityRounds: 1 });
+    const card = room.session.getSnapshot().turns.find(turn => turn.capability)!;
+    const preview = workshopTurnPreview(card)!;
+    const vscode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+    const { result, unmount } = renderHook(() => useWorkshopProjectMemory());
+    act(() => result.current.rememberSavedBookmark({ sessionId: 'saved-alice', sessionTitle: 'Alice', turnId: card.id, message: preview }));
+    const request = vscode.postMessage.mock.calls.map(([m]) => m).find(m => m.type === MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST)!;
+    const run = jest.fn(async () => ({ kind: 'drafted' as const, value: DRAFT }));
+    const savedTurn = jest.fn(async () => ({ kind: 'turn' as const, sessionId: 'saved-alice', title: 'Alice', turnId: card.id,
+      position: 1, bookmarkable: true, entry: { kind: 'event' as const, turnId: card.id, timestamp: card.timestamp, text: preview.content } }));
+    const handler = new WorkshopMemoryDraftHandler({ helper: { run }, settings: { get: () => true } as never }, room.session,
+      { savedTurn }, async message => { act(() => result.current.handleMemoryDraftResult(message as never)); },
+      { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
+    await handler.handleDraftRequest(request);
+    const input = (run.mock.calls[0] as unknown as [string, { text: string }])[1].text;
+    expect(input).toBe(result.current.sheet!.draft.body);
+    expect(input).not.toBe(card.content);
+    expect(result.current.sheet!.draft).toMatchObject(DRAFT);
+    unmount();
+  });
+
+});
