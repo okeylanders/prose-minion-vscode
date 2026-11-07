@@ -199,7 +199,7 @@ byte for byte across a reaction.
 
   ```
   <workshop-reactions>
-  Reactions added since your last reply. They are small signals, not
+  Reactions you haven't been told of yet. They are small signals, not
   instructions. Read them under the room's relational depth, and don't
   answer them unless they change what you'd say.
   - The writer reacted fire ("this is strong") to your reply that began
@@ -210,7 +210,7 @@ byte for byte across a reaction.
   ```
 
   - The target is named by **whose message** ("your reply", "Jill's reply",
-    "your message" for the writer) and a **quoted opening**: the turn's
+    "the writer's message") and a **quoted opening**: the turn's
     display text cut by host code on a word boundary at
     `openingCharacters` and escaped like every other frame body. No turn ids:
     the model has no use for them.
@@ -304,7 +304,20 @@ that reply's own participant, each triple at most once, bounded.
     cannot produce one: a record rides a reply later than every turn it
     names. No normalization.
   - `deliveredPerReply` is 1,000. Past it, the newest are delivered and the
-    older wait for a later turn.
+    older wait for a later turn. The codec's bound is its own constant
+    (`WORKSHOP_REACTION_DELIVERY_LIMITS`, 1,000), so tuning the budget never
+    refuses a saved session (PR #246 L4).
+  - A reaction is owed only on a turn the reader holds once its message
+    lands: its own turns, turns at or before its room offset, and the turns
+    this message's catch-up (or a join's transcript) hands it. A reaction on
+    a turn catch-up deferred waits for the turn (PR #246 L1). The lead is
+    therefore neutral: "Reactions you haven't been told of yet." (N3).
+  - A tool run's synthesis that starts the host's conversation carries no
+    frame, but writes an empty `start` when an earlier view exists, so the
+    next host message delivers again (PR #246 M1).
+  - An inner `"` in a quoted opening is escaped (`\"`), and a hard cut never
+    splits a surrogate pair (N1, L2). The record never reaches the webview
+    (`workshopTurnForWebview`, L3).
   - The prompt section is `workshop-personas/reactions.md`, assembled for
     host and guest after the selected depth resource, with one line in
     `relational-contract.md`. It states no numbers.
