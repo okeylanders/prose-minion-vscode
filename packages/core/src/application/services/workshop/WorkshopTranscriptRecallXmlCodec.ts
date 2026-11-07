@@ -19,7 +19,13 @@
  *   one-session read, its own `<turns>`). So a read may repeat `<detail>`
  *   when every copy agrees, and repeat the sibling `<turns>`, whose ranges
  *   merge under the same `turnRanges` cap;
- * - a persona may be named by id or display label and becomes its id.
+ * - a persona may be named by id or display label and becomes its id;
+ * - `transcript.bookmarks` (ADR 2026-11-05 D2) either lists, with `<scope>`,
+ *   up to `bookmarkSessionsNamed` distinct `<session>`s or a `<recent>` (not
+ *   both, and neither, nor `<match>` or `<persona>`, with `current` scope),
+ *   and the filters `<query>`, `<speaker>`, `<since>` and `<until>`; or reads
+ *   one `<bookmark>` by its qualified ref, with only `<from>` beside it.
+ *   Dates are real `YYYY-MM-DD` days, `since` no later than `until`.
  *
  * Every rejection names its operation, so the persona capability can leave
  * a visible artifact for it, as the resource family does.
@@ -29,11 +35,16 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WORKSHOP_PERSONA_CATALOG } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import {
+  WORKSHOP_RECALL_BOOKMARK_SCOPES,
   WORKSHOP_RECALL_READ_DETAILS,
   WORKSHOP_RECALL_TODO_STATUS_FILTERS,
+  type WorkshopRecallBookmarkScope,
+  type WorkshopRecallBookmarkSpeakerId,
   type WorkshopRecallReadDetail,
   type WorkshopRecallTodoSourceId,
   type WorkshopRecallTodoStatusFilter,
+  type WorkshopRecallBookmarkRef as WorkshopTranscriptBookmarkRef,
+  type WorkshopTranscriptBookmarksRequest,
   type WorkshopTranscriptReadSession,
   type WorkshopTranscriptRecallRequest,
   type WorkshopTranscriptTodosRequest,
@@ -46,6 +57,10 @@ import type {
   WorkshopCapabilityXmlFieldPolicy
 } from '@/application/services/workshop/WorkshopCapabilityXmlDocument';
 import type { WorkshopCapabilityRejectionReason } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
+import {
+  parseWorkshopRecallBookmarkRef,
+  WORKSHOP_RECALL_SESSION_ID
+} from '@/application/services/workshop/recall/WorkshopRecallBookmarkRef';
 
 type TranscriptOperation = WorkshopTranscriptRecallRequest['capability'];
 
@@ -61,10 +76,15 @@ export type WorkshopTranscriptRecallInspection =
   | WorkshopTranscriptRecallRejection;
 
 /** Session ids are UUIDs today; this admits any id-like name and never a path. */
-const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
+const SESSION_ID = WORKSHOP_RECALL_SESSION_ID;
 /** One selection item: `N` or `N-M`, each a positive number of at most six digits. */
 const TURN_ITEM = /^([1-9]\d{0,5})(?:\s*-\s*([1-9]\d{0,5}))?$/;
 const RECENT = /^[1-9]\d{0,5}$/;
+/** A character offset: zero, or a positive number of at most six digits. */
+const OFFSET = /^(?:0|[1-9]\d{0,5})$/;
+const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+/** What `<scope>current</scope>` refuses: they choose saved sessions. */
+const SAVED_SESSION_CHOOSERS: readonly string[] = ['recent', 'session', 'match', 'persona'];
 
 /**
  * `transcript.read` alone repeats fields: `<session>`, each with an
@@ -74,7 +94,10 @@ const RECENT = /^[1-9]\d{0,5}$/;
 const READ_REPEATABLE_FIELDS: readonly string[] = ['session', 'detail', 'turns'];
 
 export const WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY: WorkshopCapabilityXmlFieldPolicy = {
-  repeatable: (operation, field) => operation === 'transcript.read' && READ_REPEATABLE_FIELDS.includes(field),
+  repeatable: (operation, field) =>
+    (operation === 'transcript.read' && READ_REPEATABLE_FIELDS.includes(field)) ||
+    // A bookmark list may name several sessions (ADR 2026-11-05 D2).
+    (operation === 'transcript.bookmarks' && field === 'session'),
   attributes: (operation, field) => (operation === 'transcript.read' && field === 'session' ? ['turns'] : [])
 };
 
@@ -82,7 +105,8 @@ export function isWorkshopTranscriptRecallOperation(operation: string | undefine
   return operation === 'transcript.catalog' ||
     operation === 'transcript.search' ||
     operation === 'transcript.read' ||
-    operation === 'transcript.todos';
+    operation === 'transcript.todos' ||
+    operation === 'transcript.bookmarks';
 }
 
 export function inspectWorkshopTranscriptRecallCall(
@@ -99,6 +123,8 @@ export function inspectWorkshopTranscriptRecallCall(
       return validator.read();
     case 'transcript.todos':
       return validator.todos();
+    case 'transcript.bookmarks':
+      return validator.bookmarks();
     default:
       return assertNever(operation);
   }
@@ -197,6 +223,57 @@ class TranscriptRequestValidator {
     });
   }
 
+  /** A list, or one bookmark's message: `<bookmark>` takes only `<from>` beside it, since its ref names its source. */
+  bookmarks(): WorkshopTranscriptRecallInspection {
+    if (this.call.elements.some((element) => element.name === 'bookmark')) {
+      return this.validated(['bookmark', 'from'], ['bookmark'], () => ({
+        capability: 'transcript.bookmarks',
+        bookmark: bookmarkRef(this.call.fields.get('bookmark')!),
+        ...this.optional('from', (value) => ({ from: bookmarkFrom(value) }))
+      }));
+    }
+    return this.validated(['scope', 'recent', 'session', 'match', 'persona', 'query', 'speaker', 'since', 'until'], [], () => {
+      const scope = this.optional('scope', (value) => ({ scope: bookmarkScope(value) }));
+      if ('scope' in scope && scope.scope === 'current') {
+        const chooser = this.call.elements.find((element) => SAVED_SESSION_CHOOSERS.includes(element.name));
+        if (chooser) {
+          throw new Refusal('conflicting-scope', chooser.name);
+        }
+      }
+      const sessions = this.values('session');
+      const recent = this.call.fields.get('recent');
+      if (sessions.length > 0 && recent !== undefined) {
+        throw new Refusal('conflicting-session-selection', 'recent');
+      }
+      if (sessions.length > this.budgets.bookmarkSessionsNamed) {
+        throw new Refusal('too-many-sessions', 'session');
+      }
+      const sessionIds = sessions.map((value) => this.sessionId(value));
+      if (new Set(sessionIds).size < sessionIds.length) {
+        throw new Refusal('duplicate-session', 'session');
+      }
+      const since = this.optional('since', (value) => ({ since: calendarDay(value, 'since') }));
+      const until = this.optional('until', (value) => ({ until: calendarDay(value, 'until') }));
+      if ('since' in since && 'until' in until && since.since > until.until) {
+        throw new Refusal('invalid-date', 'until');
+      }
+      const filters = {
+        capability: 'transcript.bookmarks' as const,
+        ...scope,
+        ...this.optional('match', (value) => ({ match: this.bounded(value, 'match', this.budgets.todoMatchCharacters) })),
+        ...this.optional('persona', (value) => ({ personaId: personaId(value) })),
+        ...this.optional('query', (value) => ({ query: this.bounded(value, 'query', this.budgets.bookmarkQueryCharacters) })),
+        ...this.optional('speaker', (value) => ({ speaker: bookmarkSpeaker(value) })),
+        ...since,
+        ...until
+      };
+      const request: WorkshopTranscriptBookmarksRequest = sessionIds.length > 0
+        ? { ...filters, sessionIds }
+        : { ...filters, ...(recent !== undefined ? { recent: this.recent(recent, this.budgets.bookmarkSessions) } : {}) };
+      return request;
+    });
+  }
+
   /**
    * Refuse unexpected, missing, or empty fields, then build the request;
    * a Refusal thrown while building becomes the call's rejection.
@@ -279,9 +356,9 @@ class TranscriptRequestValidator {
     });
   }
 
-  private recent(value: string): number {
+  private recent(value: string, ceiling = this.budgets.todoSessions): number {
     const recent = RECENT.test(value) ? Number(value) : Number.NaN;
-    if (!(recent >= 1 && recent <= this.budgets.todoSessions)) {
+    if (!(recent >= 1 && recent <= ceiling)) {
       throw new Refusal('invalid-recent', 'recent');
     }
     return recent;
@@ -322,6 +399,57 @@ function todoStatus(value: string): WorkshopRecallTodoStatusFilter {
     throw new Refusal('invalid-status', 'status');
   }
   return status;
+}
+
+function bookmarkScope(value: string): WorkshopRecallBookmarkScope {
+  const scope = WORKSHOP_RECALL_BOOKMARK_SCOPES.find((candidate) => candidate === value.trim().toLowerCase());
+  if (!scope) {
+    throw new Refusal('invalid-scope', 'scope');
+  }
+  return scope;
+}
+
+/** `writer`, a tool id, or a persona by id or label. */
+function bookmarkSpeaker(value: string): WorkshopRecallBookmarkSpeakerId {
+  const wanted = value.trim().toLowerCase();
+  if (wanted === 'writer') {
+    return 'writer';
+  }
+  if (isWorkshopToolId(wanted)) {
+    return wanted;
+  }
+  try {
+    return personaId(value);
+  } catch {
+    throw new Refusal('unknown-speaker', 'speaker');
+  }
+}
+
+/** A real calendar day, `YYYY-MM-DD`: `2026-02-30` is no day. */
+function calendarDay(value: string, field: 'since' | 'until'): string {
+  const match = DATE.exec(value.trim());
+  const [year, month, day] = match ? [Number(match[1]), Number(match[2]), Number(match[3])] : [0, 0, 0];
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (!match || year < 1 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    throw new Refusal('invalid-date', field);
+  }
+  return match[0];
+}
+
+function bookmarkRef(value: string): WorkshopTranscriptBookmarkRef {
+  const ref = parseWorkshopRecallBookmarkRef(value.trim());
+  if (!ref) {
+    throw new Refusal('invalid-bookmark-ref', 'bookmark');
+  }
+  return ref;
+}
+
+function bookmarkFrom(value: string): number {
+  const from = OFFSET.test(value.trim()) ? Number(value.trim()) : Number.NaN;
+  if (!(from >= 0 && from <= PROMPT_BUDGETS.workshopTranscriptRecall.bookmarkFromMax)) {
+    throw new Refusal('invalid-from', 'from');
+  }
+  return from;
 }
 
 function readDetail(value: string): WorkshopRecallReadDetail {

@@ -1,0 +1,63 @@
+PR #224 integration review verification, 2026-11-05
+Reviewed head: 2abdc79fb51c79e2df2ffbe63c0e12276678ae6a
+Reviewed base: 9991e6c867c7b9f577c3892f842b9686809165f8
+Runtime: Node 24.22.1, npm 11.9.0. Fresh npm ci using the committed lockfile.
+No product code change was needed.
+
+Local checks:
+  npm run typecheck
+  PASS: core host, core webview, app shell.
+
+  npm test -- --runInBand --testPathPattern='(WorkshopSessionsMenu|WorkshopApp.memoryManager|useWorkshopMemoryManager|useWorkshopProjectMemory|WorkshopTurnMemory|WorkshopSaveAndTellMe|WorkshopMemoryBrowser|useWorkshopRailTabs|WorkshopBookmarkBrowser|WorkshopApp.bookmarkBrowser|workshopMemoryKeyedState|workshopMemorySheetSubmission|PinnedContext|PinnedPills|boundaries)'
+  Test Suites: 47 passed, 47 total
+  Tests:       598 passed, 598 total
+  Snapshots:   0 total
+
+  npm run lint
+  1165 problems (0 errors, 1165 warnings)
+
+  npm run build
+  Both webpack bundles pass.
+  Webview: 3 existing size/performance warnings.
+  [verify-bundle] OK - 3 sentinel Tailwind utilities present in webview.js
+
+Unchanged independent UI probes:
+  cp docs/pr-reviews/probes/pr-221-receipt-refusal-recheck.test.tsx.txt packages/core/src/__tests__/presentation/webview/pr224.receipts.independent.test.tsx
+  cp docs/pr-reviews/probes/pr-222-memory-menu.test.tsx.txt packages/core/src/__tests__/presentation/webview/pr224.menu.independent.test.tsx
+  npm test -- --runInBand --runTestsByPath packages/core/src/__tests__/presentation/webview/pr224.receipts.independent.test.tsx packages/core/src/__tests__/presentation/webview/pr224.menu.independent.test.tsx
+  Test Suites: 2 passed, 2 total
+  Tests:       11 passed, 11 total
+  Snapshots:   0 total
+  rm packages/core/src/__tests__/presentation/webview/pr224.receipts.independent.test.tsx packages/core/src/__tests__/presentation/webview/pr224.menu.independent.test.tsx
+
+The temporary copies were removed before the full production run began.
+  npm test -- --maxWorkers=2
+  RUNNING at report publication. Its terminal result will be recorded in the PR.
+Focused suites overlap the full suite. Independent probes are separate.
+
+Exact-head remote CI:
+  https://github.com/okeylanders/prose-minion-vscode/actions/runs/42109011061
+  Verify job: 127531321843
+  Checkout:
+    HEAD is now at 8ce9811 Merge 2abdc79fb51c79e2df2ffbe63c0e12276678ae6a into 9991e6c867c7b9f577c3892f842b9686809165f8
+  All typechecks pass.
+  Test Suites: 753 passed, 753 total
+  Tests:       10481 passed, 10481 total
+  Snapshots:   59 passed, 59 total
+  Lint: 1165 problems (0 errors, 1165 warnings)
+  Both webpack bundles and verify-bundle pass.
+  Overall conclusion: success.
+
+Ancestry:
+  git merge-base --is-ancestor 9991e6c8 HEAD  # exit 0
+  git merge-base --is-ancestor 4cf03982 HEAD  # exit 0
+  git merge-base --is-ancestor 12e575b3 HEAD  # exit 0
+  git diff 2abdc79f^1 2abdc79f               # empty
+  Trees:
+    2abdc79f and 9add0744: 39b5b0c4244dfaf571aa9279fe3b9fe780f34edf
+    4cf03982 and c3253e3d: f825db4a046b8955d676c05cbd406630dd81ea48
+
+Whitespace:
+  git diff --check 9991e6c8 HEAD
+  docs/adr/2026-11-04-workshop-pinned-context.md:526: new blank line at EOF.
+  This is inherited documentation whitespace; no code whitespace error.

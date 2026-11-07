@@ -22,6 +22,7 @@ describe('workshopCapabilityFamily', () => {
       ['transcript.search', 'transcript'],
       ['transcript.read', 'transcript'],
       ['transcript.todos', 'transcript'],
+      ['transcript.bookmarks', 'transcript'],
       ['memory.catalog', 'memory'],
       ['memory.search', 'memory'],
       ['memory.read', 'memory']

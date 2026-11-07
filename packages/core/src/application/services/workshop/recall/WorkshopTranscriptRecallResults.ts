@@ -18,6 +18,7 @@ import type {
   WorkshopRecallHeader,
   WorkshopRecallTodo
 } from '@/application/services/workshop/recall/WorkshopRecallDocument';
+import type { WorkshopRecallBookmark } from '@/application/services/workshop/recall/WorkshopRecallBookmarks';
 import type {
   WorkshopRecallMatchMode,
   WorkshopRecallQuery,
@@ -166,6 +167,8 @@ export type WorkshopRecallSessionRead =
       readonly fromStart: boolean;
       /** Ascending and non-overlapping. */
       readonly ranges: readonly WorkshopRecallReadRange[];
+      /** The session's bookmarks: what marks a bookmarked turn's entry (ADR 2026-11-05 D5). */
+      readonly bookmarks: readonly WorkshopRecallBookmark[];
       readonly cacheHit: boolean;
     };
 

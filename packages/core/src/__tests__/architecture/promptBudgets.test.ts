@@ -5,6 +5,7 @@ import { LIGHTBOX_NUMBERS_READ_STATS } from '@shared/constants/lightboxSteering'
 import { WORKSHOP_LIGHTBOX_TILE_LIMITS } from '@messages';
 import * as path from 'path';
 import * as ts from 'typescript';
+import { PROJECT_MEMORY_LIST_ENTRIES } from '@shared/types/projectMemory';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS } from '@/application/services/workshop/recall/WorkshopRecallReadSection';
 import {
@@ -188,9 +189,9 @@ describe('prompt budgets', () => {
       wordCharacters: 100,
       contextCharacters: 4_000,
       purposeCharacters: 500,
-      callsPerTurn: 5,
-      fullEntriesPerTurn: 1,
-      analysisRunsPerTurn: 1
+      callsPerTurn: 15,
+      fullEntriesPerTurn: 3,
+      analysisRunsPerTurn: 2
     });
     expect(PROMPT_BUDGETS.workshopResource).toEqual({
       queryCharacters: 200,
@@ -207,7 +208,7 @@ describe('prompt budgets', () => {
     });
   });
 
-  it('pins the Session Recall starting budgets (ADR 2026-10-05 §5; to-dos and reads, D11)', () => {
+  it('pins the Session Recall starting budgets (ADR 2026-10-05 §5; to-dos and reads, D11; bookmarks, ADR 2026-11-05 D3)', () => {
     expect(PROMPT_BUDGETS.workshopTranscriptRecall).toEqual({
       queryCharacters: 200,
       sessionIdCharacters: 100,
@@ -222,12 +223,22 @@ describe('prompt budgets', () => {
       readCharacters: 150_000,
       readSessions: 10,
       readCharactersPerTurn: 300_000,
-      readsPerTurn: 2,
+      readsPerTurn: 10,
       todoSessions: 50,
       todoItems: 60,
       todoCharacters: 16_000,
-      todoMatchCharacters: 200
+      todoMatchCharacters: 200,
+      bookmarkSessions: 50,
+      bookmarkSessionsNamed: 10,
+      bookmarkItems: 60,
+      bookmarkCharacters: 24_000,
+      bookmarkMessageCharacters: 4_000,
+      bookmarkQueryCharacters: 200,
+      bookmarkFromMax: 999_999
     });
+    // A bookmarked message is read in windows no larger than the list it came from.
+    expect(PROMPT_BUDGETS.workshopTranscriptRecall.bookmarkMessageCharacters)
+      .toBeLessThan(PROMPT_BUDGETS.workshopTranscriptRecall.bookmarkCharacters);
     // Recall shares the per-turn call ceiling; its reads stay inside it.
     expect(PROMPT_BUDGETS.workshopTranscriptRecall.readsPerTurn)
       .toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
@@ -236,7 +247,9 @@ describe('prompt budgets', () => {
   it('pins the Project Memory starting budgets (ADR 2026-11-04 D11)', () => {
     expect(PROMPT_BUDGETS.workshopProjectMemory).toEqual({ titleCharacters: 120, summaryCharacters: 280, bodyCharacters: 8_000,
       catalogEntries: 40, catalogTokens: 2_000, pinnedTokens: 5_000, queryCharacters: 200, memoryIdCharacters: 16, searchHits: 20,
-      snippetCharacters: 280, readMemories: 5, readCharacters: 40_000, readsPerTurn: 2, autoSavesPerRoom: 5, proposalsPerReply: 10, editReplaces: 5 });
+      snippetCharacters: 280, readMemories: 5, readCharacters: 40_000, readsPerTurn: 5, autoSavesPerRoom: 5, proposalsPerReply: 10, editReplaces: 5, citedTurns: 30 });
+    // A suggestion's cited turns leave room for its reply and the writer's message in a memory's sources (Bookmark Recall D10).
+    expect(PROMPT_BUDGETS.workshopProjectMemory.citedTurns + 2).toBeLessThanOrEqual(PROJECT_MEMORY_LIST_ENTRIES.sourceTurns);
     expect(PROMPT_BUDGETS.workshopProjectMemory.readsPerTurn).toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
   });
 
@@ -248,9 +261,11 @@ describe('prompt budgets', () => {
     const { readCharacters, readSessions, readCharactersPerTurn, readsPerTurn } = PROMPT_BUDGETS.workshopTranscriptRecall;
 
     expect(readSessions * WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS).toBeLessThanOrEqual(readCharacters);
-    // The turn's total holds every read it allows at full size. When it equalled
-    // one read, a large first read left the second nothing (D11, amended in Slice 4).
-    expect(readCharactersPerTurn).toBe(readsPerTurn * readCharacters);
+    // The turn's total holds two full reads. When it equalled one read, a large
+    // first read left the second nothing (D11, amended in Slice 4). More reads
+    // share it, so many short reads fit too (Bookmark Recall D11).
+    expect(readCharactersPerTurn).toBe(2 * readCharacters);
+    expect(readsPerTurn).toBeGreaterThanOrEqual(2);
   });
 
   it('pins the model-facing Conversation Widget budgets and aggregate frame ceiling', () => {

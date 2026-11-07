@@ -2,10 +2,10 @@
 
 **Status:** Accepted (2026-11-05), when Okey approved merging the epic to `main`. It was proposed on 2026-11-03. The writer amended D1 and confirmed D9 on 2026-11-03 ([amendment](#amendment-2026-11-03-one-badge-rule-and-d9-confirmed)), and amended D8 and D10 on 2026-11-04 ([amendment](#amendment-2026-11-04-the-model-in-the-bubble-header)).
 **Date:** 2026-11-03
-**Epic:** [Workshop Wayfinding](../../.todo/epics/epic-workshop-wayfinding-2026-11-03/README.md)
+**Epic:** [Workshop Wayfinding](../../.todo/archive/epics/epic-workshop-wayfinding-2026-11-03/README.md)
 **Design:** [`docs/design/workshop-wayfinding/`](../design/workshop-wayfinding/README.md), a snapshot of the planning canvas
 **Extends:** [ADR 2026-07-30: Workshop Session Codec Evolution](2026-07-30-workshop-session-codec-evolution.md); [ADR 2026-09-30: Workshop Rewind and Branch](2026-09-30-workshop-rewind-and-branch.md); [ADR 2026-10-05: Workshop Transcript Export](2026-10-05-workshop-transcript-export.md); [ADR 2026-10-19: Lightbox](2026-10-19-lightbox-inspiration-board.md) (D2, the shared full-tab shell)
-**Realizes:** [Two-Tab Rail](../../.todo/features/feature-workshop-rail-tabs/README.md), [Read-In Material](../../.todo/features/feature-workshop-rail-read-in/README.md), [Thread Bookmarks](../../.todo/features/feature-workshop-thread-bookmarks/README.md), [Model Slices](../../.todo/features/feature-workshop-model-slices/README.md)
+**Realizes:** [Two-Tab Rail](../../.todo/archive/features/feature-workshop-rail-tabs/README.md), [Read-In Material](../../.todo/archive/features/feature-workshop-rail-read-in/README.md), [Thread Bookmarks](../../.todo/archive/features/feature-workshop-thread-bookmarks/README.md), [Model Slices](../../.todo/archive/features/feature-workshop-model-slices/README.md)
 
 ## Context
 
@@ -126,6 +126,8 @@ someone decides what opening it means.
 
 ### D5. Bookmarks are host-owned session state the writer controls
 
+> **Superseded in part by [ADR 2026-11-05](2026-11-05-workshop-bookmark-recall.md)** (D1, D8): bookmarks stay host-owned and the writer's, but they are no longer presentation only for saved sessions. Personas read them on request, and the Bookmarks screen lists them.
+
 The writer can bookmark a bubble and come back to it. "Pin" already means the
 excerpt in code and UI, so these are **bookmarks** (`WorkshopTurnBookmark`).
 
@@ -230,6 +232,8 @@ turn's `model` from D7.
 
 ### D10. Export carries bookmarks and models; recall and prompts don't
 
+> **Superseded in part by [ADR 2026-11-05](2026-11-05-workshop-bookmark-recall.md)** (D1, D2, D5): the recall bullet. Recall carries bookmarks on request through `transcript.bookmarks`, and `transcript.read` marks bookmarked turns. Nothing about bookmarks enters a prompt unasked.
+
 - **JSON export:** turns gain `bookmarked` and `model`. The fields are
   additive, so `formatVersion` stays 1, per ADR 2026-10-05's rule (bump only when
   a field changes meaning or disappears).
@@ -264,7 +268,7 @@ turn's `model` from D7.
 ## Amendment 2026-11-04: the model in the bubble header
 
 The writer decided this on 2026-11-04, at the Slice 8 decision review. It is
-built in [Slice 7b](../../.todo/epics/epic-workshop-wayfinding-2026-11-03/slice-7b-model-in-header.md).
+built in [Slice 7b](../../.todo/archive/epics/epic-workshop-wayfinding-2026-11-03/slice-7b-model-in-header.md).
 
 **D8: every stamped reply names its model in its header.** The bubble's
 participant label is followed by the model that served the reply.
@@ -276,7 +280,7 @@ participant label is followed by the model that served the reply.
   requested model served among others, the label names them all, in order,
   without "via": "Jill · Opus 5.5, Sonnet 5". This replaces the under-body
   served-by note, which is retired, so there is one place to look. The
-  [slice doc](../../.todo/epics/epic-workshop-wayfinding-2026-11-03/slice-7b-model-in-header.md#the-rule)
+  [slice doc](../../.todo/archive/epics/epic-workshop-wayfinding-2026-11-03/slice-7b-model-in-header.md#the-rule)
   holds the full table.
 - **Capability cards.** A stamped dictionary or analysis card names its model
   in its thread header by the same rule; in Markdown and HTML export, where it

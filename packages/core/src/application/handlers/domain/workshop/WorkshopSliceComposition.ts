@@ -17,8 +17,10 @@ import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/Workshop
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
 import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookmarkHandler';
+import { WorkshopBookmarkBrowserHandler } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import { WorkshopProjectMemoryHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import { WorkshopProjectMemoryManagerHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
+import { WorkshopSavedTurnMemoryHandler } from '@handlers/domain/workshop/WorkshopSavedTurnMemoryHandler';
 import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
 import { WorkshopPinnedContextHandler } from '@handlers/domain/workshop/WorkshopPinnedContextHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
@@ -70,8 +72,10 @@ export class WorkshopSliceComposition {
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
   private readonly todoHandler: WorkshopTodoHandler;
   private readonly bookmarkHandler: WorkshopBookmarkHandler;
+  private readonly bookmarkBrowserHandler: WorkshopBookmarkBrowserHandler;
   private readonly projectMemoryHandler: WorkshopProjectMemoryHandler;
   private readonly projectMemoryManagerHandler: WorkshopProjectMemoryManagerHandler;
+  private readonly savedTurnMemoryHandler: WorkshopSavedTurnMemoryHandler;
   private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
   private readonly pinnedContextHandler: WorkshopPinnedContextHandler;
   private readonly contextHandler: WorkshopContextHandler;
@@ -92,6 +96,7 @@ export class WorkshopSliceComposition {
       widgetRuntime,
       projectMemory,
       pinnedContext,
+      bookmarkBrowser,
       outputChannel
     } = dependencies;
     const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
@@ -250,6 +255,15 @@ export class WorkshopSliceComposition {
       postMessage,
       sessionPersistence
     );
+    // The Bookmarks screen's reads beside them (ADR 2026-11-05 D8): through recall, never the gate.
+    this.bookmarkBrowserHandler = new WorkshopBookmarkBrowserHandler(
+      bookmarkBrowser,
+      session,
+      sessionPersistence,
+      postMessage,
+      outputChannel,
+      (message) => host.reportRouteError('workshop.bookmark', message, undefined, 'WorkshopBookmarkBrowserHandler')
+    );
     // Project memory's write routes (ADR 2026-11-04 D13; Slice 3).
     this.projectMemoryHandler = new WorkshopProjectMemoryHandler(
       session,
@@ -271,6 +285,15 @@ export class WorkshopSliceComposition {
       },
       postMessage,
       outputChannel
+    );
+    // "Remember this" on a saved session's bookmark (ADR 2026-11-05 D9): checked through recall, written through the route above.
+    this.savedTurnMemoryHandler = new WorkshopSavedTurnMemoryHandler(
+      bookmarkBrowser,
+      this.projectMemoryHandler,
+      session,
+      postMessage,
+      outputChannel,
+      (message) => host.reportRouteError('workshop', message, undefined, 'WorkshopSavedTurnMemoryHandler')
     );
     // The memory manager's own routes beside them (Slice 4b): listing, Always load in full, Delete, Open file and folder.
     this.projectMemoryManagerHandler = new WorkshopProjectMemoryManagerHandler(
@@ -343,6 +366,7 @@ export class WorkshopSliceComposition {
       router,
       this.createMutationRegistrar(router, 'WorkshopBookmarkHandler')
     );
+    this.bookmarkBrowserHandler.registerRoutes(router);
     this.lightboxTileHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopLightboxTileHandler')
@@ -350,6 +374,9 @@ export class WorkshopSliceComposition {
     this.projectMemoryHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopProjectMemoryHandler')
+    );
+    this.savedTurnMemoryHandler.registerRoutes(
+      this.createMutationRegistrar(router, 'WorkshopSavedTurnMemoryHandler')
     );
     this.projectMemoryManagerHandler.registerRoutes(router);
     this.pinnedContextHandler.registerRoutes(
@@ -384,6 +411,7 @@ export class WorkshopSliceComposition {
     this.showVsTellHandler.dispose();
     this.lexicalGravityHandler.dispose();
     this.lightboxTileHandler.dispose();
+    this.bookmarkBrowserHandler.dispose();
     this.host.disposeRoomSubscriptions();
     this.sessionMessageHandler.dispose();
     this.host.disposeActiveRoomRun();

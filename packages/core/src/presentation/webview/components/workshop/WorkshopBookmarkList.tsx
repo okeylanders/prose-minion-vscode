@@ -9,6 +9,10 @@
  * by the host) is tagged "opens in reader": opening it shows the turn in the
  * read-only preview instead of jumping.
  *
+ * "Remember this" (Bookmark Recall D9) opens the memory sheet with the
+ * bookmark's message: Save to memory… for a turn in the window, the host's
+ * message for one outside it.
+ *
  * Every accessible name starts with what the row shows (its label); the
  * meta line is the row's description. A label is writer text: shown, never
  * logged.
@@ -31,6 +35,10 @@ export interface WorkshopBookmarkListProps {
   /** The host's answer to the latest rename. */
   renameOutcome?: WorkshopRenameBookmarkResultPayload | null;
   onRemove: (turnId: string) => void;
+  /** Opens the Bookmarks screen (ADR 2026-11-05 D8): every bookmark, saved sessions' too. */
+  onBrowseAll?: () => void;
+  /** "Remember this" (ADR 2026-11-05 D9): the memory sheet, with the bookmark's message. */
+  onRemember?: (bookmark: WorkshopBookmarkSummary) => void;
 }
 
 /** Why another row's Rename waits (PR #189 F-03). */
@@ -63,7 +71,9 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
   onOpen,
   onRename,
   renameOutcome = null,
-  onRemove
+  onRemove,
+  onBrowseAll,
+  onRemember
 }) => {
   const rename = useWorkshopBookmarkRename({ bookmarks, onRename, outcome: renameOutcome });
   const idPrefix = React.useId();
@@ -88,7 +98,16 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
         <div className="pm-ws-eyebrow" id={`${idPrefix}-title`}>
           <Icon name="bookmark" size={12} /> Bookmarks
         </div>
-        <span aria-live="polite">{count} · thread order</span>
+        {onBrowseAll ? (
+          <div className="pm-ws-bookmark-head-actions">
+            <span aria-live="polite">{count} · thread order</span>
+            <button type="button" className="pm-ws-bookmark-browse-all" onClick={onBrowseAll}>
+              All bookmarks…
+            </button>
+          </div>
+        ) : (
+          <span aria-live="polite">{count} · thread order</span>
+        )}
       </div>
       {count === 0 ? (
         <p className="pm-ws-todos-empty">Bookmark a reply to find it here.</p>
@@ -160,6 +179,16 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
                 )}
                 {editing ? null : (
                   <div className="pm-ws-todo-actions">
+                    {onRemember ? (
+                      <button
+                        type="button"
+                        title="Remember this"
+                        aria-label={`Remember this: ${bookmark.label}`}
+                        onClick={() => onRemember(bookmark)}
+                      >
+                        <Icon name="save" size={12} />
+                      </button>
+                    ) : null}
                     <button
                       ref={(element) => { renameButtons.current.set(bookmark.id, element); }}
                       type="button"

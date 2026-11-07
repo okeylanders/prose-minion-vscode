@@ -83,8 +83,12 @@ const WORKSHOP_TODO_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopTodoHandler.ts';
 const WORKSHOP_BOOKMARK_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopBookmarkHandler.ts';
+const WORKSHOP_BOOKMARK_BROWSER_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopBookmarkBrowserHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryHandler.ts';
+const WORKSHOP_SAVED_TURN_MEMORY_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopSavedTurnMemoryHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryManagerHandler.ts';
 const WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER =
@@ -190,6 +194,17 @@ const WORKSHOP_ROUTE_OWNERS = [
     registration: 'direct',
     messageTypes: ['WORKSHOP_REQUEST_TURN_PREVIEW']
   },
+  // The Bookmarks screen's reads (ADR 2026-11-05 D8): through recall, never behind the gate.
+  {
+    owner: WORKSHOP_BOOKMARK_BROWSER_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: [
+      'WORKSHOP_REQUEST_BOOKMARK_PAGE',
+      'WORKSHOP_CANCEL_BOOKMARK_PAGE',
+      'WORKSHOP_REQUEST_LIVE_BOOKMARKS',
+      'WORKSHOP_REQUEST_SAVED_TURN_PREVIEW'
+    ]
+  },
   // Project memory's writes (ADR 2026-11-04 D13; Slice 3): room changes behind
   // the gate, the sheet's reads direct.
   {
@@ -207,6 +222,12 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER,
     registration: 'direct',
     messageTypes: ['WORKSHOP_MEMORY_REQUEST_EDIT', 'WORKSHOP_MEMORY_ESTIMATE']
+  },
+  // "Remember this" on a saved session's bookmark (Bookmark Recall Slice 3): a write, behind the gate.
+  {
+    owner: WORKSHOP_SAVED_TURN_MEMORY_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY']
   },
   // Slice 4b's manager routes change no room state (no receipt, no snapshot), so none waits on the gate.
   {
@@ -376,6 +397,10 @@ const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
     reference: /WorkshopBookmarkHandler/
   },
   {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopBookmarkBrowserHandler.ts'),
+    reference: /WorkshopBookmarkBrowserHandler/
+  },
+  {
     file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopProjectMemoryHandler.ts'),
     reference: /WorkshopProjectMemoryHandler/
   },
@@ -389,6 +414,7 @@ const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
   }
 ] as const;
 const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
+  'WorkshopBookmarkBrowserHandler',
   'WorkshopBookmarkHandler',
   'WorkshopContextHandler',
   'WorkshopExcerptScopeHandler',
@@ -399,6 +425,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopPinnedContextHandler',
   'WorkshopProjectMemoryHandler',
   'WorkshopProjectMemoryManagerHandler',
+  'WorkshopSavedTurnMemoryHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
   'WorkshopShowVsTellHandler',
@@ -1030,17 +1057,34 @@ const WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS:
 /** Session recall (ADR 2026-10-05): everything under it is capability code. */
 const WORKSHOP_RECALL_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'recall');
 const WORKSHOP_RECALL_MODULES = [
+  'WorkshopLiveRoomBookmarks.ts',
+  'WorkshopRecallBookmarkList.ts',
+  'WorkshopRecallBookmarkPage.ts',
+  'WorkshopRecallBookmarkPager.ts',
+  'WorkshopRecallBookmarkWalks.ts',
+  'WorkshopRecallBookmarkQuery.ts',
+  'WorkshopRecallBookmarkRef.ts',
+  'WorkshopRecallBookmarkResults.ts',
+  'WorkshopRecallBookmarks.ts',
+  'WorkshopRecallBookmarksOperation.ts',
+  'WorkshopRecallCatalogOperation.ts',
   'WorkshopRecallCopy.ts',
   'WorkshopRecallCorpusSelection.ts',
   'WorkshopRecallDocument.ts',
   'WorkshopRecallDocumentCache.ts',
   'WorkshopRecallDocumentLoader.ts',
+  'WorkshopRecallOperationResults.ts',
   'WorkshopRecallReadAllocation.ts',
+  'WorkshopRecallReadOperation.ts',
   'WorkshopRecallReadSection.ts',
   'WorkshopRecallReadWindow.ts',
+  'WorkshopRecallSavedTurn.ts',
+  'WorkshopRecallScopeGate.ts',
+  'WorkshopRecallSearchOperation.ts',
   'WorkshopRecallText.ts',
   'WorkshopRecallTime.ts',
   'WorkshopRecallTodoList.ts',
+  'WorkshopRecallTodosOperation.ts',
   'WorkshopRecallWindowClamp.ts',
   'WorkshopTranscriptRecallCapability.ts',
   'WorkshopTranscriptRecallRenderer.ts',
@@ -1057,6 +1101,12 @@ const WORKSHOP_RECALL_MODULES = [
 const RECALL_TYPE_ONLY_MODULE = /(?:^|\/)(?:WorkshopSessionStore|WorkshopSessionPersistenceCoordinator)$/;
 /** These render thread-artifact bodies, which recall must never emit (runway F11). */
 const RECALL_FORBIDDEN_MODULE = /(?:^|\/)(?:WorkshopRoomFrameRenderer|WorkshopThreadArtifactFrame)$/;
+/**
+ * The open room reaches recall only through its read-only port (ADR
+ * 2026-11-05 D1): recall never imports the session aggregate, or the host's
+ * side of the port, even as a type.
+ */
+const RECALL_LIVE_ROOM_MODULE = /(?:^|\/)(?:WorkshopSessionService|WorkshopLiveRoomBookmarkReader)$/;
 
 /**
  * Project memory's read path (ADR 2026-11-04 D10, D12, D13): capability
@@ -1691,6 +1741,16 @@ describe('architectural boundaries', () => {
     expect(imports
       .filter(({ module }) => RECALL_FORBIDDEN_MODULE.test(module))
       .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    expect(imports
+      .filter(({ module }) => RECALL_LIVE_ROOM_MODULE.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // The port itself is types only: it can carry no behavior into recall.
+    expect(imports
+      .filter(({ file, typeOnly }) => file.endsWith('WorkshopLiveRoomBookmarks.ts') && !typeOnly)
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // Each module stays under 500 lines.
+    expect(recallFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
+      .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
   });
 
   it('keeps project memory on its read-only ports and off the room-frame renderers (ADR 2026-11-04 D10, D12)', () => {
@@ -1910,11 +1970,13 @@ describe('architectural boundaries', () => {
     // Project Memory Slice 3 added five writes (mutation) and the sheet's two reads (direct).
     // Project Memory Slice 4b added the manager's listing and actions (direct).
     // Pinned Context Slice 3 added the tab's seven list routes (direct) and Attach missing (mutation).
-    expect(expectedOwnerPairs).toHaveLength(81);
+    // Bookmark Recall Slice 2 added the Bookmarks screen's page, cancel, live rows and saved turn (direct).
+    // Bookmark Recall Slice 3 added "Remember this" from a saved session (mutation).
+    expect(expectedOwnerPairs).toHaveLength(86);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(46);
+      .toHaveLength(47);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(35);
+      .toHaveLength(39);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -2011,7 +2073,7 @@ describe('architectural boundaries', () => {
         );
     });
 
-    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(8);
+    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(9);
     expect(offenders).toEqual([]);
   });
 
@@ -2525,6 +2587,7 @@ describe('architectural boundaries', () => {
     ];
 
     expect(messageModules).toEqual([
+      'bookmarkBrowser.ts',
       'bookmarks.ts',
       'context.ts',
       'creativeVariations.ts',

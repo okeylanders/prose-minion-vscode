@@ -1,0 +1,37 @@
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { seedHost, words } from './pinnedContextSeedHost';
+
+describe('PR 218: fifty-file seed integration on the Bookmark Recall epic', () => {
+  const paths = Array.from({ length: 50 }, (_, i) => `Notes/note-${i}.md`);
+
+  it.each(['first', 'new', 'full-reset'] as const)('seeds all fifty in order for %s, without changing recall budgets', async (kind) => {
+    const host = seedHost();
+    for (const entry of paths) host.write(entry, 'Alice follows the Rabbit.');
+    host.pin(...paths);
+    const session = new WorkshopSessionService();
+    const report = host.seed.install(await host.seed.prepare(kind), session);
+    expect(session.getContextAttachments().map(a => a.relativePath)).toEqual(paths);
+    expect(report).toEqual({ pinnedCount: 50, attachedCount: 50, attachedWords: 200, leftOut: [] });
+    expect(PROMPT_BUDGETS.workshopTranscriptRecall).toMatchObject({
+      bookmarkSessions: 50, bookmarkSessionsNamed: 10, bookmarkItems: 60,
+      bookmarkCharacters: 24_000, bookmarkMessageCharacters: 4_000,
+      bookmarkQueryCharacters: 200, bookmarkFromMax: 999_999
+    });
+  });
+
+  it('keeps the word bound independent: skips a first file beyond the remaining room and still attaches all 49 later small files', async () => {
+    const host = seedHost();
+    host.write(paths[0], words(30_000));
+    for (const entry of paths.slice(1)) host.write(entry, 'Alice.');
+    host.pin(...paths);
+    const session = new WorkshopSessionService();
+    const carriedWords = PROMPT_BUDGETS.contextAttachments.words - 20_000;
+    expect(session.addContextAttachment({ kind: 'text', origin: 'writer', label: 'Carried note',
+      content: words(carriedWords), words: carriedWords }).ok).toBe(true);
+    const report = host.seed.install(await host.seed.prepare('new'), session);
+    expect(session.getContextAttachments().slice(1).map(a => a.relativePath)).toEqual(paths.slice(1));
+    expect(report).toEqual({ pinnedCount: 50, attachedCount: 49, attachedWords: 49,
+      leftOut: [{ label: 'note-0.md', reason: 'over-budget' }] });
+  });
+});

@@ -177,6 +177,7 @@ import {
   WorkshopSetTurnBookmarkMessage,
   WorkshopMemoryProposalActionMessage,
   WorkshopSaveTurnToMemoryMessage,
+  WorkshopSaveSavedTurnToMemoryMessage,
   WorkshopMemoryCreateMessage,
   WorkshopMemoryUpdateMessage,
   WorkshopMemoryForgetMessage,
@@ -202,6 +203,13 @@ import {
   WorkshopRenameBookmarkResultMessage,
   WorkshopRequestTurnPreviewMessage,
   WorkshopTurnPreviewMessage,
+  WorkshopRequestBookmarkPageMessage,
+  WorkshopCancelBookmarkPageMessage,
+  WorkshopBookmarkPageMessage,
+  WorkshopRequestLiveBookmarksMessage,
+  WorkshopLiveBookmarksMessage,
+  WorkshopRequestSavedTurnPreviewMessage,
+  WorkshopSavedTurnPreviewMessage,
   WorkshopPickExcerptFileMessage,
   WorkshopRereadExcerptMessage,
   WorkshopSetSessionScopeMessage,
@@ -348,6 +356,7 @@ export type WebviewToExtensionMessage =
   | WorkshopSetTurnBookmarkMessage
   | WorkshopMemoryProposalActionMessage
   | WorkshopSaveTurnToMemoryMessage
+  | WorkshopSaveSavedTurnToMemoryMessage
   | WorkshopMemoryCreateMessage
   | WorkshopMemoryUpdateMessage
   | WorkshopMemoryForgetMessage
@@ -365,6 +374,10 @@ export type WebviewToExtensionMessage =
   | WorkshopOpenPinnedContextFileMessage
   | WorkshopRenameBookmarkMessage
   | WorkshopRequestTurnPreviewMessage
+  | WorkshopRequestBookmarkPageMessage
+  | WorkshopCancelBookmarkPageMessage
+  | WorkshopRequestLiveBookmarksMessage
+  | WorkshopRequestSavedTurnPreviewMessage
   | WorkshopPickExcerptFileMessage
   | WorkshopRereadExcerptMessage
   | WorkshopSetSessionScopeMessage
@@ -450,6 +463,9 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextAttachmentContentMessage
   | WorkshopReadInResourceContentMessage
   | WorkshopTurnPreviewMessage
+  | WorkshopBookmarkPageMessage
+  | WorkshopLiveBookmarksMessage
+  | WorkshopSavedTurnPreviewMessage
   | WorkshopRenameBookmarkResultMessage
   | WorkshopMemoryWriteResultMessage
   | WorkshopMemoryEditDataMessage

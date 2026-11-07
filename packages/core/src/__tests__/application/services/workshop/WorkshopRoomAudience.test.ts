@@ -1,5 +1,8 @@
 import {
+  isWorkshopPublishableCapabilityEvidence,
   isWorkshopTurnAlreadyVisibleToPrincipal,
+  isWorkshopTurnVisibleToParticipant,
+  workshopCapabilityPublicationWithheld,
   workshopTurnAudience,
 } from '@/application/services/workshop/WorkshopRoomAudience';
 import { WorkshopTurn } from '@messages';
@@ -108,6 +111,9 @@ describe('workshopTurnAudience', () => {
     ['transcript.read', 'transcript_read', 'failed', false],
     ['transcript.read', 'transcript_read', 'rejected', false],
     ['transcript.todos', 'transcript_todos', 'cancelled', false],
+    // A bookmark list publishes like a to-do list unless the host withheld it (ADR 2026-11-05 D7).
+    ['transcript.bookmarks', 'transcript_bookmarks', 'success', true],
+    ['transcript.bookmarks', 'transcript_bookmarks', 'rejected', false],
     ['transcript.catalog', 'transcript_catalog', 'success', false],
     ['transcript.search', 'transcript_search', 'success', false]
   ] as const)('a published %s (%s, %s) reaches the room: %s', (operation, artifact, status, room) => {
@@ -128,6 +134,60 @@ describe('workshopTurnAudience', () => {
     expect(workshopTurnAudience(recalled)).toEqual(room ? { kind: 'room' } : guest);
     expect(workshopTurnAudience({ ...recalled, capability: { ...recalled.capability!, publishedWithTurnId: undefined } }))
       .toEqual(guest);
+  });
+});
+
+describe('a result the host stamped withheld (ADR 2026-11-05 D7, PR #214 F-05)', () => {
+  const card = (metadata?: Record<string, unknown>) => turn({
+    participant: 'guest',
+    artifact: 'transcript_bookmarks',
+    capability: {
+      operation: 'transcript.bookmarks',
+      status: 'success',
+      requestSummary: 'bookmarks in this conversation',
+      requestedByPersonaId: 'cliff',
+      invokedBy: { kind: 'personaGuest', personaId: 'cliff' },
+      ...(metadata ? { metadata } : {}),
+      publishedWithTurnId: 'turn-2'
+    }
+  });
+
+  it('is never publishable, and stays with its invoker even beside a publication fact', () => {
+    const withheld = card({ publicationWithheld: 'open-room-private-turn', withheldBookmarks: ['bookmark-1-1'] });
+    expect(workshopCapabilityPublicationWithheld(withheld.capability!.metadata)).toBe('open-room-private-turn');
+    expect(isWorkshopPublishableCapabilityEvidence(withheld.capability!)).toBe(false);
+    expect(workshopTurnAudience(withheld)).toEqual({ kind: 'private', principal: { kind: 'personaGuest', personaId: 'cliff' } });
+  });
+
+  it('reads the stamp alone: an unstamped result publishes, and any other metadata changes nothing', () => {
+    for (const metadata of [undefined, { outcome: 'bookmarks' }, { publicationWithheld: true }]) {
+      expect(isWorkshopPublishableCapabilityEvidence(card(metadata).capability!)).toBe(true);
+      expect(workshopTurnAudience(card(metadata))).toEqual({ kind: 'room' });
+    }
+  });
+});
+
+describe('isWorkshopTurnVisibleToParticipant', () => {
+  const privateCard = (invokedBy: { kind: 'host' } | { kind: 'personaGuest'; personaId: 'cliff' }) => turn({
+    artifact: 'transcript_catalog',
+    capability: {
+      operation: 'transcript.catalog',
+      status: 'success',
+      requestSummary: 'saved-session catalog',
+      requestedByPersonaId: 'cliff',
+      invokedBy
+    }
+  });
+
+  it('shows a room turn to everyone, private work only to its own participant, and a sidecar to none', () => {
+    const readers = [{ kind: 'host' }, { kind: 'personaGuest', personaId: 'cliff' }, { kind: 'personaGuest', personaId: 'margot' }] as const;
+    const sidecar = turn({ participant: 'tool', artifact: 'direct_tool_response', toolId: 'prose' });
+    expect(readers.map((reader) => isWorkshopTurnVisibleToParticipant(turn(), reader))).toEqual([true, true, true]);
+    expect(readers.map((reader) => isWorkshopTurnVisibleToParticipant(privateCard({ kind: 'personaGuest', personaId: 'cliff' }), reader)))
+      .toEqual([false, true, false]);
+    expect(readers.map((reader) => isWorkshopTurnVisibleToParticipant(privateCard({ kind: 'host' }), reader)))
+      .toEqual([true, false, false]);
+    expect(readers.map((reader) => isWorkshopTurnVisibleToParticipant(sidecar, reader))).toEqual([false, false, false]);
   });
 });
 

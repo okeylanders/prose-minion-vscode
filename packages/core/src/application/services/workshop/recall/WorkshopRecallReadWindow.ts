@@ -9,6 +9,10 @@
  *   participant is the tool) to one line naming its turn and word count.
  *   The writer's messages, host and guest persona replies, and events stay
  *   whole: the discussion of a report is usually the reply after it.
+ * - A turn the writer bookmarked carries `bookmarked: "{label}"` in its
+ *   header, full or collapsed (ADR 2026-11-05 D5). The mark is this
+ *   renderer's, never the shared projection's, so export and the turn
+ *   preview are unchanged; it counts toward the window like any text.
  * - Day headers use the session's timezone; elapsed gaps get the room
  *   frames' "[N hours later]" markers; a jump to the next requested range
  *   is marked.
@@ -85,14 +89,16 @@ export function formatWorkshopRecallTurnRanges(ranges: readonly WorkshopRecallTu
  * Pack whole entries in ledger order until `budget` characters are spent,
  * counting each block's separator. Only the first entry of an empty window
  * may be cut. `sessionId` is given in a read of several sessions, so each
- * collapsed report names the session its turn belongs to.
+ * collapsed report names the session its turn belongs to. `bookmarks`
+ * names each bookmarked turn's label, by turn id.
  */
 export function packWorkshopRecallReadWindow(
   ranges: readonly WorkshopRecallReadRange[],
   timezone: string,
   budget: number,
   detail: WorkshopRecallReadDetail,
-  sessionId?: string
+  sessionId?: string,
+  bookmarks: ReadonlyMap<string, string> = new Map()
 ): WorkshopRecallReadWindow {
   const clock = new WorkshopRecallClock(timezone);
   const window: WorkshopRecallReadWindow = { blocks: [], delivered: [], continuation: [], collapsed: [] };
@@ -110,7 +116,8 @@ export function packWorkshopRecallReadWindow(
     for (const [index, entry] of range.entries.entries()) {
       const lead = leadIn(previous, entry, index === 0, clock);
       const report = detail === 'discussion' ? toolReport(entry.entry) : undefined;
-      const text = report ? collapsedReport(entry.position, report, clock, sessionId) : renderEntry(entry, clock);
+      const mark = bookmarkMark(bookmarks.get(entry.turnId));
+      const text = report ? collapsedReport(entry.position, report, clock, sessionId, mark) : renderEntry(entry, clock, mark);
       const block = [...lead, text].join(WORKSHOP_RECALL_BLOCK_SEPARATOR);
       const cost = block.length + WORKSHOP_RECALL_BLOCK_SEPARATOR.length;
       if (used + cost <= budget) {
@@ -198,15 +205,20 @@ function leadIn(
   return lead;
 }
 
-function renderEntry(recall: WorkshopRecallEntry, clock: WorkshopRecallClock): string {
+/** ` · bookmarked: "Label"`, or nothing for a turn without a bookmark. */
+function bookmarkMark(label: string | undefined): string {
+  return label === undefined ? '' : ` · bookmarked: "${recallLabel(label)}"`;
+}
+
+function renderEntry(recall: WorkshopRecallEntry, clock: WorkshopRecallClock, mark: string): string {
   const { entry, position } = recall;
   const at = `turn ${position} · ${clock.time(entry.timestamp)}`;
   switch (entry.kind) {
     case 'event':
-      return `[${at} · event] ${entry.text}`;
+      return `[${at} · event${mark}] ${entry.text}`;
     case 'writer': {
       const lines = [
-        `[${at} · ${WORKSHOP_TRANSCRIPT_WRITER_LABEL}${entry.privateWith ? ` · private with ${recallLabel(entry.privateWith)}` : ''}]`
+        `[${at} · ${WORKSHOP_TRANSCRIPT_WRITER_LABEL}${entry.privateWith ? ` · private with ${recallLabel(entry.privateWith)}` : ''}${mark}]`
       ];
       if (entry.attachmentLabels.length > 0) {
         lines.push(`Attached: ${recallLabelList(entry.attachmentLabels, ATTACHMENT_LABEL_CHARACTERS)}`);
@@ -221,7 +233,7 @@ function renderEntry(recall: WorkshopRecallEntry, clock: WorkshopRecallClock): s
     }
     case 'reply': {
       // Labels from a saved file are clipped; the reply itself is the record.
-      const lines = [`[${at} · ${recallLabel(entry.speaker)}${entry.privateWith ? ' · private' : ''}]`];
+      const lines = [`[${at} · ${recallLabel(entry.speaker)}${entry.privateWith ? ' · private' : ''}${mark}]`];
       if (entry.truncated) {
         lines.push('(This reply hit the max-token limit and was cut off.)');
       }
@@ -261,14 +273,15 @@ function collapsedReport(
   position: number,
   report: WorkshopTranscriptReplyEntry,
   clock: WorkshopRecallClock,
-  sessionId: string | undefined
+  sessionId: string | undefined,
+  mark: string
 ): string {
   const words = countWords(report.content);
   const turns = sessionId === undefined
     ? `<turns>${position}</turns>`
     : `<session turns="${position}">${recallLabel(sessionId)}</session>`;
   return `[turn ${position} · ${clock.time(report.timestamp)} · ${recallLabel(report.speaker)} report` +
-    `${report.privateWith ? ' · private' : ''} · ${formatCount(words)} ${words === 1 ? 'word' : 'words'} · ` +
+    `${report.privateWith ? ' · private' : ''}${mark} · ${formatCount(words)} ${words === 1 ? 'word' : 'words'} · ` +
     `read it in full with ${turns} <detail>full</detail>]`;
 }
 

@@ -1,4 +1,5 @@
 import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
+import { unusedBookmarkBrowser } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
 import {
   WorkshopRoomHandler
 } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
@@ -197,7 +198,8 @@ Add a key.`, conversationId, 'vendor/never');
       } as unknown as WorkshopWidgetRuntime,
       output,
       libraryHost().library,
-      emptyPinnedContextServices()
+      emptyPinnedContextServices(),
+      unusedBookmarkBrowser()
     );
     const router = new MessageRouter();
     handler.registerRoutes(router);

@@ -56,6 +56,9 @@ import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/Wor
 import { workshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
 import { WorkshopMemorySheet } from '@components/workshop/memory/WorkshopMemorySheet';
 import { WorkshopMemoryManagerMount } from '@components/workshop/memory/WorkshopMemoryManagerMount';
+import { WorkshopBookmarkBrowserMount } from '@components/workshop/bookmarks/WorkshopBookmarkBrowserMount';
+import { useWorkshopBookmarkBrowser } from '@hooks/domain/workshop/useWorkshopBookmarkBrowser';
+import { useWorkshopBookmarkOpenAt } from '@hooks/domain/workshop/controllers/useWorkshopBookmarkOpenAt';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
@@ -253,6 +256,8 @@ export const WorkshopApp: React.FC = () => {
   );
   const readIn = useWorkshopReadIn();
   const bookmarks = useWorkshopBookmarks({ onBeforeChange: workshop.clearError });
+  // The Bookmarks screen (Bookmark Recall Slice 2, ADR 2026-11-05 D8).
+  const bookmarkBrowser = useWorkshopBookmarkBrowser();
   // The room's generation (first load, New, Open, Rewind, Branch): the rail's
   // badges and the memory receipts' feedback both start over with a new one.
   const roomKey = workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending';
@@ -447,6 +452,7 @@ export const WorkshopApp: React.FC = () => {
   useWorkshopAppMessageRouter({
     readIn,
     bookmarks,
+    bookmarkBrowser,
     projectMemory,
     memoryManager,
     pinnedContext,
@@ -675,7 +681,8 @@ export const WorkshopApp: React.FC = () => {
     setMemorySettingsVisible(true);
     requestMemoryListing();
   }, [requestMemoryListing, setMemorySettingsVisible]);
-  const openMemoryManagerFromSettings = React.useCallback(() => memoryManager.openManager(), [memoryManager.openManager]);
+  // Settings' Manage memories… and the sessions menu's Memory… open the manager unfocused.
+  const openMemoryManager = React.useCallback(() => memoryManager.openManager(), [memoryManager.openManager]);
   const closeBehaviorModal = React.useCallback(() => {
     setBehaviorModalOpen(false);
     setMemorySettingsVisible(false);
@@ -730,7 +737,10 @@ export const WorkshopApp: React.FC = () => {
     readInScopeKey: `${roomKey}\u0000${chatTargetIdentity}`,
     turnPreview: bookmarks.turnPreview,
     requestTurnPreview: bookmarks.requestTurnPreview,
-    clearTurnPreview: bookmarks.clearTurnPreview
+    clearTurnPreview: bookmarks.clearTurnPreview,
+    savedTurnPreview: bookmarkBrowser.savedTurnPreview,
+    requestSavedTurnPreview: bookmarkBrowser.requestSavedTurnPreview,
+    clearSavedTurnPreview: bookmarkBrowser.clearSavedTurnPreview
   });
   const {
     textSheet,
@@ -742,6 +752,8 @@ export const WorkshopApp: React.FC = () => {
     openAttachmentSheet,
     openReadInSheet,
     openTurnPreviewSheet,
+    openSavedTurnPreviewSheet,
+    openGivenTurnPreviewSheet,
     addExcerptByPaste,
     addExcerptFromProject,
     applyTextSheet,
@@ -979,6 +991,14 @@ export const WorkshopApp: React.FC = () => {
     closeOverlay: closeTextSheet,
     onOutsideWindow: openTurnPreviewSheet
   });
+  const bookmarkOpenAt = useWorkshopBookmarkOpenAt({
+    roomRevision: workshop.sessionReady ? workshop.roomRevision : undefined,
+    sessionConfirm,
+    sessionActionPending: workshopSessions.sessionActionPending,
+    sessionActionResult: workshopSessions.sessionActionResult,
+    openStoredSession,
+    jumpToTurn
+  });
   const openBookmark = React.useCallback(
     // The host's `inWindow` decides; the thread is never searched to re-derive it.
     (bookmark: WorkshopBookmarkSummary) => bookmark.inWindow
@@ -1070,6 +1090,8 @@ export const WorkshopApp: React.FC = () => {
         exportDisabled={!workshop.sessionReady || sessionLoading || !hasExportableTurns}
         onExportSession={openExportSessionModal}
         onBrowseSessions={openSessionBrowser}
+        onBrowseBookmarks={bookmarkBrowser.openBrowser}
+        onBrowseMemory={openMemoryManager}
         onOpenSession={openStoredSession}
       />
       <FullTabHeaderStatus
@@ -1186,7 +1208,14 @@ export const WorkshopApp: React.FC = () => {
         onOpen: openBookmark,
         onRename: bookmarks.renameBookmark,
         renameOutcome: bookmarks.renameOutcome,
-        onRemove: (turnId) => bookmarks.setTurnBookmark(turnId, false)
+        onRemove: (turnId) => bookmarks.setTurnBookmark(turnId, false),
+        onBrowseAll: bookmarkBrowser.openBrowser,
+        // Remember this (Bookmark Recall D9): the host's `inWindow` decides whether the snapshot's turn is the source.
+        onRemember: workshop.sessionReady ? (bookmark) => projectMemory.rememberRoomBookmark({
+          turnId: bookmark.turnId,
+          roomRevision: workshop.roomRevision,
+          ...(bookmark.inWindow ? { turn: workshop.turns.find((turn) => turn.id === bookmark.turnId) } : {})
+        }) : undefined
       }}
     />
   );
@@ -1479,6 +1508,17 @@ export const WorkshopApp: React.FC = () => {
       onBoundaryError={handleBoundaryError}
       inertBehindOverlay={textSheet !== null}
     >
+      {/* Before the text sheet, so a bookmark's preview stacks above the screen. */}
+      <WorkshopBookmarkBrowserMount
+        browser={bookmarkBrowser}
+        openDisabled={!workshop.sessionReady || sessionMutationsDisabled || !workshop.persistenceAvailable}
+        openStoredSession={openStoredSession}
+        openAtBookmark={bookmarkOpenAt.openAtBookmark}
+        openSavedTurnPreviewSheet={openSavedTurnPreviewSheet}
+        openGivenTurnPreviewSheet={openGivenTurnPreviewSheet}
+        rememberRoomBookmark={projectMemory.rememberRoomBookmark}
+        rememberSavedBookmark={projectMemory.rememberSavedBookmark}
+      />
       {/* The ONE Edit/Preview sheet for excerpt paste, Add text, editing a
           text note, editing a wizard-generated brief, and reading a project file
           (Sprint 13A §5–§7). */}
@@ -1716,7 +1756,7 @@ export const WorkshopApp: React.FC = () => {
         isRunning={roomMutationLocked}
         errorMessage={workshop.errorMessage}
         onApply={workshop.setConversationSettings}
-        onOpenMemoryManager={openMemoryManagerFromSettings}
+        onOpenMemoryManager={openMemoryManager}
         onOpenMemoryFolder={memoryManager.openFolder}
         onClose={closeBehaviorModal}
       />

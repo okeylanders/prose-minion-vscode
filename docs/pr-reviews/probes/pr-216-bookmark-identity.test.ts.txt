@@ -1,0 +1,51 @@
+/**
+ * PR #216 F-01 independent defect witnesses at 13df46bf.
+ * These assertions record the CURRENT defect, not the corrected behavior.
+ *
+ * In a disposable checkout of the reviewed head:
+ * cp docs/pr-reviews/probes/pr-216-bookmark-identity.test.ts.txt \
+ *   packages/core/src/__tests__/infrastructure/storage/review216HostProbe.test.ts
+ * npx jest --runInBand --runTestsByPath \
+ *   packages/core/src/__tests__/infrastructure/storage/review216HostProbe.test.ts
+ *
+ * Two valid older files share an identity, behind the old browser's 200-file
+ * cutoff. Exact resolution correctly refuses before bookmark paging and
+ * incorrectly chooses the older file afterward. Both the same-page and
+ * across-normal-25-file-pages cases are pinned.
+ */
+
+import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
+import { WorkshopSessionStore, WorkshopNamedSessionIdentityConflictError } from '@/infrastructure/storage/WorkshopSessionStore';
+import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+import { RECALL_WORKSPACE, recallLog } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import { bookmarkedCheckpoint } from '@/__tests__/application/services/workshop/recall/workshopBookmarkBrowserFixtures';
+
+it.each([200, 224])('paging after %i newer files bypasses an old duplicate identity conflict beyond the legacy 200 files', async (newerFiles) => {
+ const fs = new MemoryFileSystem();
+ const put = (name: string, id: string, title: string) => fs.files.set(`/workspace/novel/prose-minion/sessions/${name}.json`, new TextEncoder().encode(JSON.stringify(bookmarkedCheckpoint(id,title))));
+ for (let i=0; i<newerFiles; i++) put(`20260101-${String(i).padStart(4,'0')}`, `new-${i}`, `New ${i}`);
+ put('20200101-000001-newer-duplicate', 'duplicate', 'Newer duplicate');
+ put('20200101-000000-older-duplicate', 'duplicate', 'Older duplicate');
+ const store = new WorkshopSessionStore(fs, RECALL_WORKSPACE, recallLog(), undefined, undefined, {bookmarkBrowserSessions:25,bookmarkBrowserBytes:32*1024*1024});
+ const legacy = await store.list();
+ expect(legacy.sessions).toHaveLength(200);
+ expect(legacy.sessions.some(s => s.sessionId === 'duplicate')).toBe(false);
+ await expect(store.readNamed('duplicate')).rejects.toBeInstanceOf(WorkshopNamedSessionIdentityConflictError);
+ const recall = new WorkshopTranscriptRecallService(store, {recallScope: () => ({available:true, liveSessionId:'live'})}, recallLog());
+ let after: string | undefined;
+ const duplicatePages: unknown[] = [];
+ do {
+  const page = await recall.bookmarkPage(after === undefined ? {} : {after});
+  if (!page.available) throw Error('unavailable');
+  if (page.sessions.some(s => s.sessionId === 'duplicate')) duplicatePages.push({sessions:page.sessions.filter(s => s.sessionId === 'duplicate').map(s => ({id:s.sessionId,title:s.title})),read:page.read,unreadable:page.unreadable,unreadableSessions:page.unreadableSessions,cacheHits:page.cacheHits});
+  after = page.next;
+ } while (after !== undefined);
+ const exact = await store.readNamed('duplicate');
+ expect(exact?.title).toBe('Older duplicate');
+ console.log(`PROBE newerFiles=${newerFiles}`, JSON.stringify(duplicatePages), 'exactReadAfter=', exact?.title);
+ if(newerFiles===200) expect(duplicatePages).toEqual([{sessions:[{id:'duplicate',title:'Older duplicate'}],read:1,unreadable:1,unreadableSessions:[{sessionId:'duplicate',title:'Older duplicate'}],cacheHits:0}]);
+ if(newerFiles===224) expect(duplicatePages).toEqual([
+  {sessions:[{id:'duplicate',title:'Newer duplicate'}],read:25,unreadable:0,unreadableSessions:[],cacheHits:0},
+  {sessions:[{id:'duplicate',title:'Newer duplicate'}],read:1,unreadable:0,unreadableSessions:[],cacheHits:1}
+ ]);
+});

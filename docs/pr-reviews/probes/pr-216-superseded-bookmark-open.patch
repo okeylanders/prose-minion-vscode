@@ -1,0 +1,46 @@
+--- a/packages/core/src/__tests__/presentation/webview/WorkshopApp.bookmarkBrowser.test.tsx
++++ b/packages/core/src/__tests__/presentation/webview/WorkshopApp.bookmarkBrowser.test.tsx
+@@ -64,7 +64,8 @@
+   MessageType.WORKSHOP_REQUEST_LIVE_BOOKMARKS,
+   MessageType.WORKSHOP_REQUEST_SAVED_TURN_PREVIEW,
+   MessageType.WORKSHOP_REQUEST_TURN_PREVIEW,
+-  MessageType.WORKSHOP_OPEN_SESSION
++  MessageType.WORKSHOP_OPEN_SESSION,
++  MessageType.WORKSHOP_RESET_SESSION
+ ]);
+ const TO_WEBVIEW = new Set<MessageType>([
+   MessageType.WORKSHOP_SESSION_STATE,
+@@ -338,4 +339,33 @@
+     await act(async () => { window.dispatchEvent(new MessageEvent('message', { data: late })); });
+     expect(within(screenDialog()).getByText('Bookmarks from all 2 saved sessions.')).toBeTruthy();
+   });
++  it('independent: a New shortcut superseding bookmark Open does not hijack a later ordinary Open', async () => {
++    const { harness, saved, pump } = await bridged();
++    await openFromMenu(pump);
++    const row = within(screenDialog()).getByText('Tea party', { selector: '.pm-ws-session-row-meta span' }).closest('article')!;
++    fireEvent.click(within(row as HTMLElement).getByRole('button', { name: `Open at bookmark ${BOOKMARK_LABEL}` }));
++    const originalConfirm = screen.getByRole('dialog', { name: 'Open “Tea party”?' });
++    // The real session controller handles this shortcut while focus is on a confirmation button.
++    const cancel = within(originalConfirm).getByRole('button', { name: 'Cancel' });
++    cancel.focus();
++    fireEvent.keyDown(cancel, { key: 'N', ctrlKey: true, shiftKey: true });
++    expect(screen.queryByRole('dialog', { name: 'Open “Tea party”?' })).toBeNull();
++    const replacementConfirm = screen.getByRole('dialog');
++    fireEvent.click(within(replacementConfirm).getByRole('button', { name: 'New session' }));
++    await pump();
++    expect(harness.persistence.resetSession).toHaveBeenCalled();
++    expect(harness.persistence.openNamed).not.toHaveBeenCalled();
++
++    // Ordinary Open of a different saved room must not reuse Tea party's abandoned bookmark target.
++    openHydrates(harness, saved[1]);
++    await openFromMenu(pump);
++    (Element.prototype.scrollIntoView as jest.Mock).mockClear();
++    fireEvent.click(within(screenDialog()).getByRole('button', { name: 'Open session The garden' }));
++    const nextConfirm = screen.queryByRole('dialog', { name: 'Open “The garden”?' });
++    if (nextConfirm) fireEvent.click(within(nextConfirm).getByRole('button', { name: 'Open session' }));
++    await pump();
++    expect(harness.persistence.openNamed).toHaveBeenCalledWith('alice-2', expect.any(Function));
++    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
++  });
++
+ });

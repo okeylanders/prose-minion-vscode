@@ -303,6 +303,7 @@ workshop/
 ├── context.ts               # Context and message-attachment contracts
 ├── participants.ts          # Persona/tool ids and participant IPC
 ├── bookmarks.ts             # The writer's bookmarks: stored entry, summary, set and rename
+├── bookmarkBrowser.ts       # The Bookmarks screen: saved pages by cursor, the open room's rows, a saved turn's preview (ADR 2026-11-05 D8)
 ├── projectMemory.ts         # Project memory's proposal, receipt and write routes
 ├── projectMemoryManager.ts  # The memory manager: listing, estimate, residency, its own actions
 ├── pinnedContext.ts         # The Pinned context tab: the list, pin, unpin, move, attach missing, open

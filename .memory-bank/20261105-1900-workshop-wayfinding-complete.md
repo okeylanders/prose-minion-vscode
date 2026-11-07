@@ -1,7 +1,7 @@
 # Workshop Wayfinding: complete
 
 **Date:** 2026-11-05
-**Epic:** [`.todo/epics/epic-workshop-wayfinding-2026-11-03/`](../.todo/epics/epic-workshop-wayfinding-2026-11-03/README.md)
+**Epic:** [`.todo/archive/epics/epic-workshop-wayfinding-2026-11-03/`](../.todo/archive/epics/epic-workshop-wayfinding-2026-11-03/README.md)
 **Decision:** [ADR 2026-11-03](../docs/adr/2026-11-03-workshop-wayfinding.md), now Accepted, with amendments of 2026-11-03 (D1, D9) and 2026-11-04 (D8, D10)
 **Branch:** `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0), merged to `main` in one PR
 
@@ -39,7 +39,7 @@
 
 ## Follow-ups
 
-- **[Bookmark recall and a Bookmarks screen](../.todo/features/feature-workshop-bookmark-recall/README.md).** It will be cut from `epic-pinned-context` once Pinned Context and the final Project Memory work land. It needs a D5/D10 amendment and reads today's bookmarks unchanged.
+- **[Bookmark recall and a Bookmarks screen](../.todo/archive/features/feature-workshop-bookmark-recall/README.md).** It will be cut from `epic-pinned-context` once Pinned Context and the final Project Memory work land. It needs a D5/D10 amendment and reads today's bookmarks unchanged.
 - **Tech debt filed during the epic:**
   - codec downgrade tolerance;
   - the WorkshopApp root's size;

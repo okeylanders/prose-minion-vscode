@@ -19,6 +19,7 @@ import type {
 import type { ContextSourceEntry } from '@shared/types';
 import type { WorkshopTurnPreview } from '@messages';
 import type { WorkshopTurnPreviewState } from '@hooks/domain/workshop/useWorkshopBookmarks';
+import type { WorkshopSavedTurnPreviewState } from '@hooks/domain/workshop/useWorkshopBookmarkBrowser';
 
 /** What the sheet is being used for; drives kicker, copy, and affordances. */
 export type WorkshopTextSheetMode =
@@ -46,7 +47,17 @@ export type WorkshopTextSheetMode =
    * the transcript projects it. Each opening is its own request, and so its
    * own sheet.
    */
-  | { kind: 'turn-preview'; turnId: string; requestId: string; label?: string };
+  | { kind: 'turn-preview'; turnId: string; requestId: string; label?: string; source?: WorkshopTurnPreviewSource };
+
+/**
+ * Where a previewed turn comes from (ADR 2026-11-05 D8). Absent: this room,
+ * by the room's own preview route. `saved`: a saved session, by its own
+ * route. `given`: a turn the Bookmarks screen already holds whole (the open
+ * room's rows carry their message), so nothing is asked.
+ */
+export type WorkshopTurnPreviewSource =
+  | { kind: 'saved'; sessionId: string; sessionTitle: string }
+  | { kind: 'given'; turn: WorkshopTurnPreview };
 
 export interface WorkshopTextSheetState {
   mode: WorkshopTextSheetMode;
@@ -84,6 +95,10 @@ export interface UseWorkshopContextSheetOptions {
   turnPreview: WorkshopTurnPreviewState | null;
   requestTurnPreview: (turnId: string) => string;
   clearTurnPreview: () => void;
+  /** A saved session's turn (`useWorkshopBookmarkBrowser`), for the Bookmarks screen's Preview. */
+  savedTurnPreview?: WorkshopSavedTurnPreviewState | null;
+  requestSavedTurnPreview?: (sessionId: string, turnId: string) => string;
+  clearSavedTurnPreview?: () => void;
 }
 
 /** What the open sheet shows, whichever host round-trip feeds it. */
@@ -125,6 +140,10 @@ export interface WorkshopContextSheetActions {
   openReadInSheet: (entry: ContextSourceEntry, participantLabel: string) => void;
   /** Opens a turn outside the window in the read-only preview, replacing any open sheet. */
   openTurnPreviewSheet: (turnId: string, label?: string) => void;
+  /** Opens a saved session's turn in the read-only preview (the Bookmarks screen). */
+  openSavedTurnPreviewSheet: (sessionId: string, turnId: string, label: string, sessionTitle: string) => void;
+  /** Opens a turn already held whole (an open-room bookmark's message) in the read-only preview. */
+  openGivenTurnPreviewSheet: (turnId: string, turn: WorkshopTurnPreview, label: string) => void;
   addExcerptByPaste: () => void;
   addExcerptFromProject: () => void;
   applyTextSheet: (text: string) => void;
@@ -178,7 +197,10 @@ export function useWorkshopContextSheet({
   readInScopeKey,
   turnPreview,
   requestTurnPreview,
-  clearTurnPreview
+  clearTurnPreview,
+  savedTurnPreview = null,
+  requestSavedTurnPreview,
+  clearSavedTurnPreview
 }: UseWorkshopContextSheetOptions): UseWorkshopContextSheetReturn {
   const [textSheet, setTextSheet] = React.useState<WorkshopTextSheetState | null>(null);
 
@@ -187,7 +209,8 @@ export function useWorkshopContextSheet({
     clearAttachmentContent();
     clearReadInContent();
     clearTurnPreview();
-  }, [clearAttachmentContent, clearReadInContent, clearTurnPreview]);
+    clearSavedTurnPreview?.();
+  }, [clearAttachmentContent, clearReadInContent, clearSavedTurnPreview, clearTurnPreview]);
 
   const scopeKeyRef = React.useRef(readInScopeKey);
   const closeReaderWhenScopeChanged = React.useCallback(() => {
@@ -284,6 +307,27 @@ export function useWorkshopContextSheet({
     setTextSheet({ mode: { kind: 'turn-preview', turnId, requestId, ...(label ? { label } : {}) } });
   }, [clearAttachmentContent, clearReadInContent, requestTurnPreview]);
 
+  const openSavedTurnPreviewSheet = React.useCallback(
+    (sessionId: string, turnId: string, label: string, sessionTitle: string) => {
+      if (!requestSavedTurnPreview) {
+        return;
+      }
+      clearAttachmentContent();
+      clearReadInContent();
+      const requestId = requestSavedTurnPreview(sessionId, turnId);
+      setTextSheet({ mode: { kind: 'turn-preview', turnId, requestId, label, source: { kind: 'saved', sessionId, sessionTitle } } });
+    },
+    [clearAttachmentContent, clearReadInContent, requestSavedTurnPreview]
+  );
+
+  const givenCount = React.useRef(0);
+  const openGivenTurnPreviewSheet = React.useCallback((turnId: string, turn: WorkshopTurnPreview, label: string) => {
+    clearAttachmentContent();
+    clearReadInContent();
+    givenCount.current += 1;
+    setTextSheet({ mode: { kind: 'turn-preview', turnId, requestId: `given-${givenCount.current}`, label, source: { kind: 'given', turn } } });
+  }, [clearAttachmentContent, clearReadInContent]);
+
   const applyTextSheet = React.useCallback((text: string) => {
     // The reader and the preview are read-only: nothing they show can be applied.
     if (!textSheet || textSheet.mode.kind === 'read-in' || textSheet.mode.kind === 'turn-preview') {
@@ -355,9 +399,14 @@ export function useWorkshopContextSheet({
     if (!textSheet) {
       return undefined;
     }
+    if (textSheet.mode.kind === 'turn-preview' && textSheet.mode.source?.kind === 'given') {
+      const { turn } = textSheet.mode.source;
+      return { value: turn.content, loading: false, canOpenInEditor: false, turnPreview: turn };
+    }
     if (textSheet.mode.kind === 'turn-preview') {
-      // Matched to the opening on screen by its request id.
-      const reply = turnPreview?.requestId === textSheet.mode.requestId ? turnPreview : undefined;
+      // Matched to the opening on screen by its request id, from the room's preview or a saved session's.
+      const pending = textSheet.mode.source?.kind === 'saved' ? savedTurnPreview : turnPreview;
+      const reply = pending?.requestId === textSheet.mode.requestId ? pending : undefined;
       return {
         value: reply?.turn?.content,
         loading: reply?.turn === undefined && reply?.error === undefined,
@@ -409,6 +458,8 @@ export function useWorkshopContextSheet({
     openAttachmentSheet,
     openReadInSheet,
     openTurnPreviewSheet,
+    openSavedTurnPreviewSheet,
+    openGivenTurnPreviewSheet,
     addExcerptByPaste,
     addExcerptFromProject,
     applyTextSheet,

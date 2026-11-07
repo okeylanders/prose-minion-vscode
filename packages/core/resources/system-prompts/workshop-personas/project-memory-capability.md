@@ -73,6 +73,6 @@ Reads are shared with the room when your reply commits. Catalogs and searches st
 
 ### Limits and refusals
 
-You may make at most 2 `memory.read` calls in one user turn. One read holds at most 40,000 characters; a note that does not fit is named, never cut, so read it on its own.
+You may make at most 5 `memory.read` calls in one user turn. One read holds at most 40,000 characters; a note that does not fit is named, never cut, so read it on its own.
 
 An unknown id is reported as unknown; take ids from a block, a catalog, or a search. A note being edited in another window is reported as being edited; try it again later. When project memory is off, or this workspace has no single folder, every call is refused and says why. Tell the writer plainly and answer without the notes.

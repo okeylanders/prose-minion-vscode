@@ -206,13 +206,21 @@ const sheetCopy = (
       };
     case 'turn-preview': {
       const turn = handlers.turnPreview;
+      // The Bookmarks screen's sources (ADR 2026-11-05 D8); the room's own preview reads as before.
+      const source = mode.source;
       return {
-        kicker: turn ? `${turn.speaker} · ${formatReadInTime(turn.timestamp)}` : 'From this session',
+        kicker: turn
+          ? `${turn.speaker} · ${formatReadInTime(turn.timestamp)}`
+          : source?.kind === 'saved' ? 'From a saved session' : 'From this session',
         title: mode.label ?? turn?.speaker ?? 'A message from this session',
-        sub: 'This message is outside the thread’s loaded window, so it opens here, read-only.',
+        sub: source?.kind === 'saved'
+          ? `A message from the saved session “${source.sessionTitle}”, read-only.`
+          : source?.kind === 'given'
+            ? 'A bookmarked message from this conversation, read-only.'
+            : 'This message is outside the thread’s loaded window, so it opens here, read-only.',
         placeholder: '',
         editLabel: 'Source',
-        meta: 'Outside the loaded window',
+        meta: source?.kind === 'saved' ? 'Saved session' : source?.kind === 'given' ? 'From your bookmarks' : 'Outside the loaded window',
         foot: turn?.truncated ? 'The reply stopped at the max-token limit · read-only' : 'Read-only',
         applyLabel: '',
         readOnly: true,

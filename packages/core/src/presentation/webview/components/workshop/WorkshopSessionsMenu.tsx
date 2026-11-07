@@ -46,6 +46,13 @@ interface WorkshopSessionsMenuProps {
   exportDisabled: boolean;
   onExportSession: () => void;
   onBrowseSessions: () => void;
+  /** Opens the Bookmarks screen (ADR 2026-11-05 D8), beside Browse all sessions. */
+  onBrowseBookmarks?: () => void;
+  /**
+   * Opens the project memory manager straight from the menu, under Bookmarks,
+   * so a look at saved memories needs no detour through Conversation settings.
+   */
+  onBrowseMemory?: () => void;
   onOpenSession: (session: WorkshopSessionSummary) => void;
 }
 
@@ -82,6 +89,8 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
   exportDisabled,
   onExportSession,
   onBrowseSessions,
+  onBrowseBookmarks,
+  onBrowseMemory,
   onOpenSession
 }) => {
   const recent = sessions.slice(0, 3);
@@ -165,6 +174,16 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
       <SavedItemsMenu.Item icon="search" onSelect={onBrowseSessions}>
         Browse all sessions…
       </SavedItemsMenu.Item>
+      {onBrowseBookmarks && (
+        <SavedItemsMenu.Item icon="bookmark" onSelect={onBrowseBookmarks}>
+          Bookmarks…
+        </SavedItemsMenu.Item>
+      )}
+      {onBrowseMemory && (
+        <SavedItemsMenu.Item icon="book" onSelect={onBrowseMemory}>
+          Memory…
+        </SavedItemsMenu.Item>
+      )}
     </SavedItemsMenu>
   );
 };

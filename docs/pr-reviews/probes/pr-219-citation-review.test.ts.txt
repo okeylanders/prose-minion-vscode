@@ -1,0 +1,36 @@
+/** Independent PR #219 review probes. No production edits. */
+import { MessageType, type WorkshopTurn } from '@messages';
+import { memoryFrame } from '@/__tests__/application/services/workshop/memory/memoryProposalFixtures';
+import { analysisResult, createWorkshopRouteTestHarness, message } from './WorkshopRouteTestHarness';
+import { workshopProposalProvenance } from '@handlers/domain/workshop/WorkshopProjectMemoryProvenance';
+
+it('Save and tell me forwards the proposal cites into the saved memory through real completion', async () => {
+  const h = createWorkshopRouteTestHarness();
+  h.memory.state.mode = 'auto';
+  await h.pin();
+  const route = (type: MessageType, payload: unknown) => h.router.route(message(type, payload) as never);
+  h.service.startWorkshopPersonaConversation.mockResolvedValueOnce(analysisResult('Pepper everywhere.', { conversationId: 'host-conv' }) as never);
+  await route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'The Duchess sneezes?' });
+  const earlier = h.session.readRoomLedger().filter(turn => turn.participant === 'host').at(-1)!;
+  h.service.continueConversation.mockResolvedValueOnce(analysisResult(`Yes.\n\n${memoryFrame({extra: `<cites-turn>${earlier.id}</cites-turn>\n<cites-turn>saved-session/bookmark-1-1</cites-turn>`})}`, {conversationId: 'host-conv'}) as never);
+  await route(MessageType.WORKSHOP_SEND_MESSAGE, {text: 'Remember the pepper.'});
+  const carded = h.session.readRoomLedger().find(turn => turn.memoryProposals)!;
+  const card = carded.memoryProposals![0];
+  expect(card.state).toBe('saved');
+  const result = await h.memory.store.read(card.memoryId!);
+  expect(result.kind).toBe('memory');
+  if (result.kind !== 'memory') throw new Error('Missing memory');
+  const prompted = h.session.readRoomLedger().filter(turn => turn.participant === 'writer').at(-1)!;
+  expect(result.entry.memory).toMatchObject({origin: 'auto', sourceSession: 'live-room-0001', sourceTurns: [prompted.id, carded.id, earlier.id]});
+  expect(h.log.appendLine).toHaveBeenCalledWith(expect.stringContaining('saved-session/bookmark-1-1:not-a-turn'));
+});
+
+it('at save a source removed since the proposal was created is dropped without changing the other provenance', () => {
+  const writer = {id:'turn-1-user-1', role:'user', participant:'writer', kind:'message', content:'Question', timestamp:1} as WorkshopTurn;
+  const removed = {id:'turn-2-assistant-2', role:'assistant', participant:'host', kind:'message', content:'Earlier', timestamp:2} as WorkshopTurn;
+  const carded = {id:'turn-3-assistant-3', role:'assistant', participant:'host', personaId:'jill', kind:'message', content:'Reply', timestamp:3} as WorkshopTurn;
+  const proposal = {proposes:'new' as const, title:'A source', kind:'canon' as const, summary:'A fact', body:'', state:'pending' as const, cites:[removed.id]};
+  const onDropped = jest.fn();
+  expect(workshopProposalProvenance([writer, carded], carded, 'live-room-1', 'proposed', proposal, onDropped)).toEqual({origin:'proposed', proposedBy:'jill', sourceSession:'live-room-1', sourceTurns:[writer.id, carded.id]});
+  expect(onDropped).toHaveBeenCalledWith([{id:removed.id, reason:'not-in-room'}]);
+});

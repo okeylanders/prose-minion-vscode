@@ -22,6 +22,7 @@ import type { UseWorkshopRoomReturn } from '@hooks/domain/workshop/useWorkshopRo
 import type { UseWorkshopSessionsReturn } from '@hooks/domain/workshop/useWorkshopSessions';
 import type { UseWorkshopReadInReturn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import type { UseWorkshopBookmarksReturn } from '@hooks/domain/workshop/useWorkshopBookmarks';
+import type { UseWorkshopBookmarkBrowserReturn } from '@hooks/domain/workshop/useWorkshopBookmarkBrowser';
 import type {
   UseWorkshopExcerptVerifyReturn
 } from '@hooks/domain/useWorkshopExcerptVerify';
@@ -73,8 +74,13 @@ export interface WorkshopAppMessageRouterDeps {
   readIn: UseWorkshopReadInReturn;
   /** Bookmarks and the turn preview (Wayfinding Slice 5). */
   bookmarks: UseWorkshopBookmarksReturn;
+  /** The Bookmarks screen's answers (Bookmark Recall Slice 2). */
+  bookmarkBrowser: Pick<
+    UseWorkshopBookmarkBrowserReturn,
+    'handleSessionState' | 'handleBookmarkPage' | 'handleLiveBookmarks' | 'handleSavedTurnPreview'
+  >;
   /** Project memory's write answers and the sheet's reads (Project Memory Slice 3). */
-  projectMemory: Pick<UseWorkshopProjectMemoryReturn, 'handleWriteResult' | 'handleEditData' | 'handleEstimateResult'>;
+  projectMemory: Pick<UseWorkshopProjectMemoryReturn, 'handleWriteResult' | 'handleEditData' | 'handleEstimateResult' | 'handleTurnPreview'>;
   /** The Memory tab's listing and the manager's answers (Project Memory Slice 4b). */
   memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData' | 'noteSessionState'>;
   /** The Pinned context tab's list (Pinned Context Slice 3). */
@@ -107,6 +113,7 @@ export function buildWorkshopAppMessageRoutes(
     workshopSessions,
     readIn,
     bookmarks,
+    bookmarkBrowser,
     projectMemory,
     memoryManager,
     pinnedContext,
@@ -133,6 +140,7 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_SESSION_STATE]: (message) => {
       workshopRoom.handleSessionState(message);
       bookmarks.handleSessionState(message);
+      bookmarkBrowser.handleSessionState(message);
       widgetHost.handleSessionState(message);
       memoryManager.noteSessionState(message);
     },
@@ -157,8 +165,15 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshopRoom.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshopRoom.handleContextAttachmentContent,
     [MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT]: readIn.handleReadInResourceContent,
-    [MessageType.WORKSHOP_TURN_PREVIEW]: bookmarks.handleTurnPreview,
+    // The reader's preview, and a memory sheet prefilled from a bookmark outside the window; each takes only its own requests.
+    [MessageType.WORKSHOP_TURN_PREVIEW]: (message) => {
+      bookmarks.handleTurnPreview(message);
+      projectMemory.handleTurnPreview(message);
+    },
     [MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT]: bookmarks.handleRenameResult,
+    [MessageType.WORKSHOP_BOOKMARK_PAGE]: bookmarkBrowser.handleBookmarkPage,
+    [MessageType.WORKSHOP_LIVE_BOOKMARKS]: bookmarkBrowser.handleLiveBookmarks,
+    [MessageType.WORKSHOP_SAVED_TURN_PREVIEW]: bookmarkBrowser.handleSavedTurnPreview,
     // Slice 3's answers reach both hooks; each takes only its own requests.
     [MessageType.WORKSHOP_MEMORY_WRITE_RESULT]: (message) => {
       projectMemory.handleWriteResult(message);
