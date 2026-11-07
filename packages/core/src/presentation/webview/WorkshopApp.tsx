@@ -46,6 +46,8 @@ import { WorkshopRail } from './components/workshop/WorkshopRail';
 import { partitionContextSources } from '@utils/workshop/contextSources';
 import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
+import { useWorkshopReactions } from '@hooks/domain/workshop/useWorkshopReactions';
+import type { WorkshopReactionControls } from '@components/workshop/reactions/WorkshopTurnReactions';
 import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import { useWorkshopFileEdits } from '@hooks/domain/workshop/useWorkshopFileEdits';
@@ -188,6 +190,7 @@ import './styles/workshop/session.css';
 import './styles/workshop/memory.css';
 import './styles/workshop/fileEdits.css';
 import './styles/workshop/pinnedContext.css';
+import './styles/workshop/reactions.css';
 import './components/workshop/widgets/gesturePlayground/gesturePlayground.css';
 import './components/workshop/widgets/lexicalGravity/lexicalGravity.css';
 import './components/workshop/widgets/creativeVariations/creativeVariations.css';
@@ -259,6 +262,7 @@ export const WorkshopApp: React.FC = () => {
   );
   const readIn = useWorkshopReadIn();
   const bookmarks = useWorkshopBookmarks({ onBeforeChange: workshop.clearError });
+  const reactions = useWorkshopReactions({ onBeforeChange: workshop.clearError });
   // The Bookmarks screen (Bookmark Recall Slice 2, ADR 2026-11-05 D8).
   const bookmarkBrowser = useWorkshopBookmarkBrowser();
   // The room's generation (first load, New, Open, Rewind, Branch): the rail's
@@ -456,6 +460,7 @@ export const WorkshopApp: React.FC = () => {
   useWorkshopAppMessageRouter({
     readIn,
     bookmarks,
+    reactions,
     bookmarkBrowser,
     projectMemory,
     memoryManager,
@@ -585,6 +590,12 @@ export const WorkshopApp: React.FC = () => {
   ]);
 
   const fileEditControls = useWorkshopFileEditControls({ fileEdits, locked: roomMutationLocked, running: workshop.isRunning });
+  const reactionControls = React.useMemo<WorkshopReactionControls>(() => ({
+    reactionsOf: (turnId) => reactions.reactionsByTurn.get(turnId) ?? [],
+    disabled: roomMutationLocked,
+    onSet: reactions.setTurnReaction,
+    onHide: reactions.hideTurnReaction
+  }), [reactions.reactionsByTurn, reactions.setTurnReaction, reactions.hideTurnReaction, roomMutationLocked]);
 
   // Recomputing a full word split per streamed token was O(excerpt) work on
   // the token clock (PR #67 review #11) — the excerpt only changes on re-pin.
@@ -1359,6 +1370,7 @@ export const WorkshopApp: React.FC = () => {
             onToggleBookmark={bookmarks.setTurnBookmark}
             memory={memoryControls}
             fileEdits={fileEditControls}
+            reactions={reactionControls}
             modelOptions={modelsSettings.modelOptions}
             modelsBeforeWindow={workshop.modelsBeforeWindow}
           />
