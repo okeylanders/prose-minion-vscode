@@ -1,12 +1,14 @@
 # ADR 2026-11-05: A Helper Agent for Small Tasks
 
-**Status:** Proposed (2026-11-05).
+**Status:** Accepted (2026-11-07), after Okey's live pass. Proposed 2026-11-05.
 - **Okey's choice:** automatic drafting for the first task.
 - **Q1–Q3:** Okey handed the implementation to the coordinator, who took the
-  recommended defaults ([below](#defaults-taken-2026-11-05)). Okey may
-  override any of them before the live pass.
+  recommended defaults ([below](#defaults-taken-2026-11-05)). The live pass
+  kept all three.
+- **The live pass** changed one thing: D1's reasoning amendment of
+  2026-11-06 (PR #242).
 **Date:** 2026-11-05
-**Epic:** [Helper Agent](../../.todo/epics/epic-helper-agent-2026-11-05/README.md)
+**Epic:** [Helper Agent](../../.todo/archive/epics/epic-helper-agent-2026-11-05/README.md)
 **Related:**
 - [ADR 2026-11-04: Workshop Project Memory](2026-11-04-workshop-project-memory.md):
   the memory sheet the first task fills.

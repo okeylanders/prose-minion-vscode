@@ -33,7 +33,7 @@ These clarify how to execute the existing checklist; they do not reopen the earl
 
 ### N-01: Keep the capability bookmark cases distinct
 
-At [steps 8–9](../../.todo/epics/epic-helper-agent-2026-11-05/slice-3-verify-live.md#drafting-in-the-memory-sheet-d5), use an ordinary writer/persona message for “It drafts the same way.” For a capability card, explicitly check all three source cases:
+At [steps 8–9](../../.todo/archive/epics/epic-helper-agent-2026-11-05/slice-3-verify-live.md#drafting-in-the-memory-sheet-d5), use an ordinary writer/persona message for “It drafts the same way.” For a capability card, explicitly check all three source cases:
 
 - **Bubble / in-window Remember this:** the sheet contains the report; no draft request, placeholder or failure line.
 - **Outside-window Remember this:** the sheet contains the safe operation/status preview, and that preview may be drafted.

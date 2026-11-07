@@ -1,6 +1,6 @@
 # Slice 3: Verify live
 
-**Status:** Ready for Okey.
+**Status:** Done (2026-11-07). Okey's pass found one problem, fixed in #242, and nothing else.
 **Covers:** the Extension Development Host pass for D3 (the model scope) and D5 (drafting in the memory sheet). Close-out follows.
 
 The automated suites already prove the contracts: A-01 to A-05, D5.7 and PR #231's F-01. This pass checks what tests can't: how it looks and feels, a real model's drafts, cost and latency, and native VS Code behaviour.
@@ -79,4 +79,13 @@ The automated suites already prove the contracts: A-01 to A-05, D5.7 and PR #231
   - the log line adds reasoning tokens when the provider reports them (`, 312 reasoning`).
 - **To check on the next pass.** Save to memory… several times on the same model. No `cut-off`; if a line shows a reasoning count, note it.
 
-No other findings so far.
+No other findings.
+
+### 2026-11-07: done
+
+- Okey approved the merge to `main` after the fix merged.
+- The close-out is done:
+  - the ADR is Accepted;
+  - the memory-bank entry is written;
+  - `AGENTS.md` has the Helper Agent section.
+- D6 `project-locations` stays in the ADR for a later epic.

@@ -2,7 +2,7 @@
 
 **Status:** Built, in review. The coordinator's two changes (setting off is silence; cancel on Close and disposal) and the PR #225 checks (A-01–A-05) are in.
 **Branch:** `epic/helper-agent-slice-2-memory-draft`, from the Slice 1 head, with `epic/helper-agent` (the spec, the review, ADR D5.6–D5.7 as amended at `2d47d52f`) merged in.
-**Decisions:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-helper-agent.md) D5.
+**Decisions:** [ADR 2026-11-05](../../../../docs/adr/2026-11-05-helper-agent.md) D5.
 
 ## Scope
 

@@ -2,7 +2,7 @@
 
 **Status:** Built, in review.
 **Branch:** `epic/helper-agent-slice-1-engine`, from `epic/helper-agent-slice-0-spec`.
-**Decisions:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-helper-agent.md) D1–D4, and D5's codec.
+**Decisions:** [ADR 2026-11-05](../../../../docs/adr/2026-11-05-helper-agent.md) D1–D4, and D5's codec.
 
 ## Scope
 

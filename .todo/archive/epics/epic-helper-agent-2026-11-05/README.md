@@ -1,10 +1,10 @@
 # Epic: Helper Agent
 
-**Status:** Code complete. Slices 0–2 are merged: #225 `c040cb6`, #228 `9bd8ac9`, #231 `550a649`. Slice 3, the live pass, is ready for Okey.
+**Status:** Done (2026-11-07). Slices 0–3 are merged: #225 `c040cb6`, #228 `9bd8ac9`, #231 `550a649`, and the live pass's fix #242 `7604c8e1`. Merged to `main` on Okey's approval after his live pass. Archived on 2026-11-07.
 **Priority:** Medium
 **Created:** 2026-11-05
 **Integration branch:** `epic/helper-agent`, cut from `epic/workshop-bookmark-recall` at `b4ca7b86` (the feature tip: Bookmark Recall Slices 0–3, #222, and `main` with Project Memory and Pinned Context). Each slice is built on `epic/helper-agent-slice-<N>-<slug>` and merges into the epic through a reviewed PR.
-**Decision:** [ADR 2026-11-05: A Helper Agent for Small Tasks](../../../docs/adr/2026-11-05-helper-agent.md) (Proposed; defaults taken for Q1–Q3)
+**Decision:** [ADR 2026-11-05: A Helper Agent for Small Tasks](../../../../docs/adr/2026-11-05-helper-agent.md) (Accepted 2026-11-07; defaults taken for Q1–Q3)
 **Downstream of:** Bookmark Recall. Its live-pass fixes are merged in as they land. The epic goes to `main` after Bookmark Recall does.
 **Sibling:** Workshop Persona File Edits runs in parallel on its own epic branch, `epic/workshop-persona-file-edits` (spec: [PR #226](https://github.com/okeylanders/prose-minion-vscode/pull/226)); its README joins this tree when the two epics meet (PR #225 N-02). Whichever reaches `main` second merges the other first.
 
@@ -20,7 +20,7 @@
 | 0 | Spec | ADR and this epic | All | Done (PR #225, `c040cb6`) |
 | 1 | Engine | `helper` model scope end to end; `HelperAgentService` with the task registry, the generic prompt, and the `memory-draft` task (prompt section, worked example, codec, budgets, sync tests); composition root and `CoreServices`. No routes, no UI. | D1–D4, D5's codec | Done (PR #228, `9bd8ac9`; [slice doc](slice-1-engine.md)) |
 | 2 | Drafting in the memory sheet | Draft request and result routes; the handler reads the turn host-side (live turn, or a saved turn through recall's `savedTurn`); the hook's correlation and untouched-field fill; the "Drafting…" placeholders; the quiet failure line; the `helperDrafts` setting | D5 | Done (PR #231, `550a649`; [slice doc](slice-2-memory-draft.md)) |
-| 3 | [Verify live](slice-3-verify-live.md) | Extension Development Host pass; ADR → Accepted; memory bank; `AGENTS.md` | — | Ready for Okey (checklist) |
+| 3 | [Verify live](slice-3-verify-live.md) | Extension Development Host pass; ADR → Accepted; memory bank; `AGENTS.md` | — | Done (checklist #232; fix #242, `7604c8e1`) |
 
 **Order:** 1 → 2 → 3. One thread builds 1 and then 2, as two PRs.
 
@@ -81,7 +81,7 @@ This is the same flow as Project Memory and Bookmark Recall.
     - A-04: the whole output contract;
     - A-05: timeout, cancellation, usage and following.
   - **N-01 and N-02** (the cost wording and the sibling link) are fixed in the spec.
-  - Ledger: [the review](../../../docs/pr-reviews/pr-225-helper-agent-spec-review.md).
+  - Ledger: [the review](../../../../docs/pr-reviews/pr-225-helper-agent-spec-review.md).
 
 - **2026-11-05. Slice 0.**
   - Okey asked for a general assist agent with a generic prompt. Its first job is titling and summarizing a memory on Save to memory…, and a later job is configuring project locations from a workspace scan.
@@ -104,3 +104,20 @@ This is the same flow as Project Memory and Bookmark Recall.
   - **#228 (engine)** merged at `9bd8ac9`. Astra had found two problems in the work before the model call (F-01, F-02); both were fixed, and she checked them with probes at twelve points between preparation and dispatch.
   - **#231 (drafting)** merged at `550a649`. F-01: a capability card's sheet holds its report while the safe projection holds a status line, so drafting is withheld there, rendered as silence. Astra verified it with 16 independent probes.
   - **Slice 3's checklist** is ready for Okey.
+- **2026-11-06. Bookmark Recall's raised limits synced in** (#239, `7271a6b1`). Astra reviewed the imported change; the helper keeps its own capability-free policy and limits.
+- **2026-11-06. Slice 3, the live pass (Okey).**
+  - **One finding:** the first Save to memory… came back cut off at the 400-token ceiling, where a finished draft is about 100 to 130 tokens. It was intermittent: the next two tries drafted.
+  - **The fix (#242, `7604c8e1`):**
+    - every helper call asks for reasoning off;
+    - a model that always reasons gets the light budget on top of the ceiling;
+    - the ceiling rises to 1,000 tokens;
+    - the helper's log line counts reasoning tokens;
+    - `ReasoningCatalog` moves to `orchestration/`.
+  - **Review:** Astra's F-01, a stop landing before the forwarding listener was installed, was fixed before the merge.
+  - Okey found nothing else.
+- **2026-11-07. Closed.**
+  - ADR 2026-11-05 is Accepted.
+  - `main` (Bookmark Recall's close-out, #240) is merged in.
+  - `AGENTS.md` gains the Helper Agent section.
+  - The epic is archived, and a [memory-bank entry](../../../../.memory-bank/20261107-0100-helper-agent-complete.md) records it.
+
