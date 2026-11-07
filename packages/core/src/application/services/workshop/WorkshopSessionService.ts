@@ -46,10 +46,12 @@ import {
   WorkshopMemoryProposalState,
   WorkshopProjectMemoryReceipt,
   WorkshopProjectMemoryDelivery,
+  WorkshopReactionDelivery,
   WorkshopTurnBookmark,
   WorkshopTurnReaction
 } from '@messages';
 import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
+import { cloneWorkshopReactionDelivery } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
 import {
@@ -1810,6 +1812,10 @@ export class WorkshopSessionService {
     if ((isHost || isGuest) && active.projectMemoryDelivery) {
       turn.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, active.projectMemoryDelivery);
     }
+    // Reactions too (ADR 2026-11-07 D6): a reply that never commits records nothing, so they arrive again.
+    if ((isHost || isGuest) && active.reactionDelivery) {
+      turn.reactionDelivery = [cloneWorkshopReactionDelivery(active.reactionDelivery)];
+    }
     this.turnLedger.append(turn);
     for (const capabilityTurnId of new Set(active.capabilityTurnIds ?? [])) {
       this.turnLedger.update(capabilityTurnId, (capabilityTurn) => {
@@ -1852,6 +1858,25 @@ export class WorkshopSessionService {
       return false;
     }
     this.activeRun!.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, delivery)[0];
+    return true;
+  }
+
+  /**
+   * Stage what reactions this run's message delivered (ADR 2026-11-07 D6),
+   * as `stageProjectMemoryDelivery` does: written onto the reply only if it
+   * commits. False when the run is no longer active, or answers for another
+   * conversation.
+   */
+  stageReactionDelivery(requestId: string, delivery: WorkshopReactionDelivery): boolean {
+    const active = this.activeRun;
+    const own = active?.requestId === requestId && (active.target === 'host'
+      ? delivery.participant.kind === 'host'
+      : active.target === 'personaGuest' && delivery.participant.kind === 'personaGuest'
+        && delivery.participant.personaId === active.guestPersonaId);
+    if (!own) {
+      return false;
+    }
+    active!.reactionDelivery = cloneWorkshopReactionDelivery(delivery);
     return true;
   }
 

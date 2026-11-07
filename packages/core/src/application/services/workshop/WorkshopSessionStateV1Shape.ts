@@ -57,6 +57,7 @@ import {
   stringAt
 } from '@/application/services/workshop/persistedValidation';
 import { assertWorkshopProjectMemoryDeliveryShape } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
+import { assertWorkshopReactionDeliveryShape } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -601,7 +602,9 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       'fileEditProposals',
       'projectMemoryReceipt',
       // Project memory's delivery record (ADR 2026-11-04 D14; additive).
-      'projectMemoryDelivery'
+      'projectMemoryDelivery',
+      // Reactions' delivery record (ADR 2026-11-07 D6; additive).
+      'reactionDelivery'
     ]
   );
   stringAt(turn.id, `${path}.id`);
@@ -673,6 +676,9 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   }
   if (turn.projectMemoryDelivery !== undefined) {
     assertWorkshopProjectMemoryDeliveryShape(turn.projectMemoryDelivery, `${path}.projectMemoryDelivery`, turn);
+  }
+  if (turn.reactionDelivery !== undefined) {
+    assertWorkshopReactionDeliveryShape(turn.reactionDelivery, `${path}.reactionDelivery`, turn);
   }
   if (turn.standingDirectiveChange !== undefined) {
     assertStandingDirectiveChange(
