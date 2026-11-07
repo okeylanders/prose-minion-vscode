@@ -9,20 +9,25 @@
 
 | ID | Severity | Finding | Decision | Resolution |
 |---|---|---|---|---|
-| M1 | Medium | A dropped reaction still shows "Reacted with heart." as a reactable bubble | Fix | |
-| M2 | Medium | The live region can announce on a later snapshot, including an Open | Fix | |
-| L1 | Low | A reaction that wasn't stored is always logged as `session-full` | Fix | |
-| L2 | Low | The slim line still shows the glyph after Hide | Ask Okey (spec as written) | |
-| L3 | Low | The prompt and retained history disagree about the reaction-only line | Fix | |
-| L4 | Low | Other personas read "Reacted with heart." in catch-up with no object | Fix | |
-| N1 | Nit | An explicit `reactionOnly: undefined` key | Fix | |
-| N2 | Nit | An interface declared between import blocks | Fix | |
-| N3 | Nit | The streaming bubble may flash the host line before the slim line | Fix if small; otherwise note | |
-| N4 | Nit | `personaReplyReactionTarget` checks a guest's target as the host | Fix | |
+| M1 | Medium | A dropped reaction still shows "Reacted with heart." as a reactable bubble | Fix || `b63b3d26`: a reaction that doesn't land is never named. A reply of nothing else reads "Replied without a message." with `noMessage: true` (additive, codec-checked). Beside cards, the line is the cards' alone. The predicate and integrity carrier rule are narrowed together. Every drop reason has a test (off, no-target synthesis, unknown, session-full); the old pinned test is replaced. Retention keeps the intent line (L3). |
+| M2 | Medium | The live region can announce on a later snapshot, including an Open | Fix || `b63b3d26`: the live set is keyed by `roomRevision` and cleared on replacement, and only replies absent from the previous snapshot are announced. Tests: a live turn then an Open; a reply the previous snapshot already showed. |
+| L1 | Low | A reaction that wasn't stored is always logged as `session-full` | Fix || `b63b3d26`: `addPersonaReplyReaction` returns the ledger's change or refusal reason, reported through `completeRun`'s outcome callback and logged verbatim (`reason=session-full`, tested). |
+| L2 | Low | The slim line still shows the glyph after Hide | Ask Okey (spec as written) || Open: waiting on Okey. No change; the slim line keeps its glyph after Hide, as specified. |
+| L3 | Low | The prompt and retained history disagree about the reaction-only line | Fix || `b63b3d26`: the prompt now says history shows a short note (quoted) and to always write the trailer, never the note. A sync test holds the quote to retention's line. |
+| L4 | Low | Other personas read "Reacted with heart." in catch-up with no object | Fix || `b63b3d26`: the line names its object ("Reacted with heart to the writer's message."), in the ledger, catch-up and retention alike. R1's slim line is unchanged. |
+| N1 | Nit | An explicit `reactionOnly: undefined` key | Fix || `b63b3d26`: `reactionOnly` is set only when it applies (tested with `'reactionOnly' in reply`). |
+| N2 | Nit | An interface declared between import blocks | Fix || `b63b3d26`: the commit types sit below the imports. |
+| N3 | Nit | The streaming bubble may flash the host line before the slim line | Fix if small; otherwise note || No change: STREAM_COMPLETE doesn't carry content into the bubble. The live bubble shows the trailer-stripped buffer (empty for a reaction-only reply), so the host line never flashes. At most an empty live bubble shows until WORKSHOP_TURN lands, as for a memory-only reply. |
+| N4 | Nit | `personaReplyReactionTarget` checks a guest's target as the host | Fix || `b63b3d26`: the target is checked with the run's real author (a guest as itself). |
 
 ## Verification at `8e496098` (coordinator's own run)
 
 The run is recorded in the PR thread once it finishes.
+
+## Verification after the fixes (implementation thread, `b63b3d26`)
+
+- `npm run typecheck`: clean. `npm run lint`: 0 errors, no new warnings in touched files.
+- `npx jest`: 815 suites, 11,411 tests, 59 snapshots, all passing (was 815 / 11,400 / 59 at `8e496098`).
 
 ## Findings
 

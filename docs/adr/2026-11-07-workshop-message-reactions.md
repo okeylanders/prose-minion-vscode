@@ -282,22 +282,32 @@ A persona reacts to the writer's message its reply answers with a trailer:
     message. Slice 1's integrity rule accepts it.
   - **The write.** The reaction is written in `completeRun`, through the
     ledger, before the reply is appended, in the reply's own commit. A
-    rollback, cancel, overtaken run or zombie never reaches it. A full session
-    (`perSession`) drops it, logged `session-full`.
+    rollback, cancel, overtaken run or zombie never reaches it. The run's log
+    names the ledger's own outcome or refusal reason (`session-full`, …;
+    PR #247 L1).
   - **R1's mark** is an optional, additive turn field,
     `reactionOnly?: WorkshopReactionId`, with no `schemaVersion` bump. It is
-    set only when the reaction was kept and the reply held nothing else: no
+    set only when the reaction landed and the reply held nothing else: no
     prose, no widget, no memory or file-edit frame. The field is allowed only
-    on a host or guest `persona_message` reply. It outlives a Hide (Q6).
-  - **Q10.** `isWorkshopReactableTurn` excludes a `reactionOnly` turn for the
-    writer. Integrity's carrier check never read that predicate, so the turn
-    still carries its persona's reaction.
-  - **The host line** is decided from the reply's text alone, so retention and
-    the ledger agree: "Reacted with heart.", "Reacted." for an id it cannot
-    name, and "Proposed a project memory and reacted with fire." beside
-    proposals. A reply of a dropped reaction alone keeps the line as an
-    ordinary bubble, as a dropped memory frame keeps its line (memory-off
-    precedent).
+    on a host or guest `persona_message` reply. It outlives a Hide (Q6;
+    whether the slim line should change after a Hide is open, PR #247 L2).
+  - **A dropped reaction is never claimed** (PR #247 M1). When no reaction
+    lands (off, `no-target`, unknown, a full session), the ledger's line
+    names none: a reply of nothing else reads "Replied without a message."
+    and carries `noMessage: true` (additive, on a host or guest message or
+    synthesis, never beside `reactionOnly`); beside cards it reads as the
+    cards' line alone.
+  - **Q10, and M1's twin.** `isWorkshopReactableTurn` excludes a
+    `reactionOnly` turn and a `noMessage` turn for the writer, and
+    integrity's carrier check refuses a persona reaction carried by a
+    `noMessage` reply, in the same change. A `reactionOnly` reply still
+    carries its persona's reaction.
+  - **The host line names its object** (PR #247 L4): "Reacted with heart to
+    the writer's message.", "Proposed a project memory and reacted with fire
+    to the writer's message.". Retention decides it from the reply's text
+    alone (the reply's intent, as the memory-off precedent does), and the
+    prompt quotes that note, telling the persona to write the trailer, never
+    the note (L3; a sync test holds the quote to retention).
   - **The prompt's permission is its own resource**,
     `workshop-personas/persona-reactions.md`, taught after `reactions.md`
     only while persona reactions are on, so Q8's "omit the section" omits
@@ -308,8 +318,9 @@ A persona reacts to the writer's message its reply answers with a trailer:
     prompts (`WorkshopPromptedGrammars`, beside memory and file edits).
   - **D8's announcement.** A persona's reaction summary carries `viaTurnId`.
     The webview announces a reaction only when its reply arrived live
-    (`WORKSHOP_TURN`), on the first snapshot after it, so hydration, Open,
-    reload and re-renders announce nothing.
+    (`WORKSHOP_TURN`), in the same room (`roomRevision`), and was absent from
+    the previous snapshot, so hydration, Open, New, Rewind, Branch, reload
+    and re-renders announce nothing (PR #247 M2).
   - **N4.** `prose-minion-reaction` is reserved in `RESERVED_PERSONA_FRAME`.
 
 ### D6. Delivery records ride the reply turn
