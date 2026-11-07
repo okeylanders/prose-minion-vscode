@@ -63,6 +63,7 @@ function assertAuthor(value: unknown, path: string): WorkshopTurnReactionAuthor 
 export function assertWorkshopReactionsShape(value: unknown): void {
   boundedArrayAt(value, PATH, 0, PROMPT_BUDGETS.workshopReactions.perSession, 'reactions');
   const keys = new Set<string>();
+  const carriers = new Set<string>();
   value.forEach((item, index) => {
     const path = `${PATH}[${index}]`;
     const entry = exactObject(item, path, ['turnId', 'reaction', 'author', 'createdAt'], ['viaTurnId']);
@@ -88,6 +89,13 @@ export function assertWorkshopReactionsShape(value: unknown): void {
       shapeError(path, 'a reaction no other entry already gives (turn, author and reaction)');
     }
     keys.add(key);
+    // A persona reacts at most once per reply (ADR 2026-11-07 D5).
+    if (author.kind !== 'writer') {
+      if (carriers.has(entry.viaTurnId as string)) {
+        shapeError(`${path}.viaTurnId`, 'a reply no other persona reaction names (one reaction per reply)');
+      }
+      carriers.add(entry.viaTurnId as string);
+    }
   });
 }
 
@@ -137,10 +145,38 @@ function carriesPersonaReaction(
     : reply.participant === 'guest' && reply.personaId === author.personaId;
 }
 
+/** Whether `turn` is a writer room message: the kind of turn a persona's reply answers. */
+const isWriterRoomMessage = (turn: WorkshopTurn): boolean =>
+  turn.role === 'user' && turn.kind === 'message' && turn.participant === 'writer'
+  && turn.artifact === 'persona_message';
+
+/**
+ * Whether the reply at `viaPosition` is the one that answers the writer
+ * message at `position` for `author` (ADR 2026-11-07 D2, D5; PR #245 M1):
+ * that persona's first reply after it, with no later writer room message
+ * between them.
+ */
+function answersWriterMessage(
+  author: Exclude<WorkshopTurnReactionAuthor, { kind: 'writer' }>,
+  turns: readonly WorkshopTurn[],
+  position: number,
+  viaPosition: number
+): boolean {
+  if (viaPosition <= position || !carriesPersonaReaction(author, turns[viaPosition])) {
+    return false;
+  }
+  for (let index = position + 1; index < viaPosition; index += 1) {
+    if (isWriterRoomMessage(turns[index]) || carriesPersonaReaction(author, turns[index])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Referential integrity: every reaction names a turn in the ledger that its
- * author may react to, and a persona's names a later reply of that same
- * persona. Raw checkpoint preflight skips the existence rules, because
+ * author may react to, and a persona's names the reply of that persona that
+ * answers the writer message it is on. Raw checkpoint preflight skips the existence rules, because
  * normalization drops a dangling reaction; it never skips the others.
  */
 export function assertWorkshopReactionIntegrity(
@@ -167,10 +203,9 @@ export function assertWorkshopReactionIntegrity(
     }
     if (reaction.author.kind !== 'writer' && (
       viaPosition === undefined
-      || viaPosition <= position
-      || !carriesPersonaReaction(reaction.author, turns[viaPosition])
+      || !answersWriterMessage(reaction.author, turns, position, viaPosition)
     )) {
-      throw new Error(`${label} does not name a later reply of its persona`);
+      throw new Error(`${label} does not name its persona's reply to that message`);
     }
   }
 }

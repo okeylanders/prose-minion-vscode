@@ -13,6 +13,7 @@
 import type { WorkshopTurn, WorkshopTurnReaction } from '@messages';
 import type { WorkshopRewindCut } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import { rewindWorkshopSession } from '@/application/services/workshop/session/WorkshopSessionRewind';
+import { workshopReactionsWithin } from '@/application/services/workshop/session/WorkshopReactionRecords';
 import {
   projectWorkshopTranscript,
   projectWorkshopTranscriptTurn
@@ -33,9 +34,9 @@ const writerMessages = (room: ScriptedWorkshopRoom): WorkshopTurn[] => room.sess
 
 /**
  * Three exchanges with the host, saved as a named session and opened. The
- * writer reacted to every reply; the host's third reply carried a reaction
- * to the writer's second question (as Slice 3 will write one; the codec
- * asks only for a later reply of the same persona).
+ * writer reacted to every reply; the host's second reply carried a reaction
+ * to the writer's second question, the message it answers (as Slice 3 will
+ * write one).
  */
 async function openReactedRoom() {
   const room = new ScriptedWorkshopRoom().start();
@@ -52,7 +53,7 @@ async function openReactedRoom() {
     turnId: questions[1].id,
     reaction: 'mind-blown',
     author: { kind: 'host' },
-    viaTurnId: replies[2].id,
+    viaTurnId: replies[1].id,
     createdAt: 9
   };
   checkpoint.workshop.reactions = [...checkpoint.workshop.reactions!, persona];
@@ -106,17 +107,28 @@ describe('reactions across whole-room operations (ADR 2026-11-07 D3)', () => {
     expect(reactedTurns((await store.readCurrent())?.workshop.reactions)).toEqual([`${replies[0].id}:fire`]);
   });
 
-  it('a persona\'s reaction goes with the reply that carried it, though its writer message stays', async () => {
+  it('Rewind after the second reply keeps the persona\'s reaction with the reply that carried it', async () => {
     const { coordinator, session, replies, questions } = await openReactedRoom();
 
-    // Cut after the host's second reply: the question it reacted to is kept,
-    // the third reply that carried the reaction is not.
     await coordinator.rewindTo(after(replies[1].id), { origin: 'writer' });
 
-    const kept = session.readRoomLedger().map((turn) => turn.id);
-    expect(kept).toContain(questions[1].id);
-    expect(kept).not.toContain(replies[2].id);
-    expect(reactedTurns(session.readRoomReactions())).toEqual([`${replies[0].id}:fire`, `${replies[1].id}:heart`]);
+    expect(reactedTurns(session.readRoomReactions())).toEqual([
+      `${replies[0].id}:fire`,
+      `${replies[1].id}:heart`,
+      `${questions[1].id}:mind-blown`
+    ]);
+  });
+
+  it('a persona\'s reaction goes with its carrying reply even where its writer message is kept', () => {
+    // No rest-point cut separates a writer message from the reply that
+    // answers it today; the rule the transform applies holds regardless.
+    const persona: WorkshopTurnReaction = {
+      turnId: 'turn-w', reaction: 'heart', author: { kind: 'host' }, viaTurnId: 'turn-r', createdAt: 1
+    };
+    const writer: WorkshopTurnReaction = { turnId: 'turn-r', reaction: 'fire', author: { kind: 'writer' }, createdAt: 2 };
+
+    expect(workshopReactionsWithin([persona, writer], new Set(['turn-w']))).toBeUndefined();
+    expect(workshopReactionsWithin([persona, writer], new Set(['turn-w', 'turn-r']))).toEqual([persona, writer]);
   });
 
   it('Rewind past every reaction leaves the room with no reactions key', async () => {
@@ -145,7 +157,8 @@ describe('reactions across whole-room operations (ADR 2026-11-07 D3)', () => {
     const branch = (await harness.store.readNamed(outcome.branch.sessionId))!;
     expect(reactedTurns(branch.workshop.reactions)).toEqual([
       `${harness.replies[0].id}:fire`,
-      `${harness.replies[1].id}:heart`
+      `${harness.replies[1].id}:heart`,
+      `${harness.questions[1].id}:mind-blown`
     ]);
     expect(await textOf(harness.fs, harness.sourcePath)).toBe(sourceBefore);
     expect((await harness.store.readNamed('reacted'))!.workshop.reactions).toHaveLength(4);

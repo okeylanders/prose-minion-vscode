@@ -20,6 +20,8 @@ import {
 import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/WorkshopSessionCheckpointEquality';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR } from '@messages';
+import type { WorkshopTurn, WorkshopTurnReaction } from '@messages';
+import { assertWorkshopReactionIntegrity } from '@/application/services/workshop/session/WorkshopReactionRecords';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { setupCoordinator } from './session/WorkshopCoordinatorHarness';
 
@@ -129,15 +131,16 @@ describe('reactions in the session codec (ADR 2026-11-07 D2)', () => {
       ['a persona reaction without a viaTurnId', entry({ turnId: WRITER, author: { kind: 'host' } }), /\.viaTurnId must be the non-empty id/],
       ['a negative createdAt', entry({ createdAt: -1 }), /\.createdAt must be/],
       ['an empty turn id', entry({ turnId: '' }), /\.turnId must be non-empty string/],
+      ['two persona reactions through one reply', [SAVED[3], { ...SAVED[3], reaction: 'eyes' }], /one reaction per reply/],
       ['the same reaction twice', [SAVED[0], { ...SAVED[0], createdAt: 2_009 }], /a reaction no other entry already gives/],
       ['the writer reacting to their own message', entry({ turnId: WRITER }), /cannot react to/],
       ['the writer reacting to a tool report', entry({ turnId: REPORT }), /cannot react to/],
       ['the writer reacting to a capability card', entry({ turnId: CARD }), /cannot react to/],
       ['the writer reacting to a divider', entry({ turnId: START }), /cannot react to/],
       ['a persona reacting to a reply', [{ ...SAVED[3], turnId: REPLY, viaTurnId: SYNTHESIS }], /cannot react to/],
-      ['a persona reaction carried by another persona\'s reply', [{ ...SAVED[3], author: guest }], /does not name a later reply of its persona/],
-      ['a persona reaction carried by a synthesis', [{ ...SAVED[3], viaTurnId: SYNTHESIS }], /does not name a later reply of its persona/],
-      ['a persona reaction carried by the turn it is on', [{ ...SAVED[3], viaTurnId: WRITER }], /does not name a later reply of its persona/]
+      ['a persona reaction carried by another persona\'s reply', [{ ...SAVED[3], author: guest }], /does not name its persona's reply to that message/],
+      ['a persona reaction carried by a synthesis', [{ ...SAVED[3], viaTurnId: SYNTHESIS }], /does not name its persona's reply to that message/],
+      ['a persona reaction carried by the turn it is on', [{ ...SAVED[3], viaTurnId: WRITER }], /does not name its persona's reply to that message/]
     ])('refuses %s', (_label, reactions, message) => {
       expectRefused(withReactions(reactions), message);
     });
@@ -150,6 +153,46 @@ describe('reactions in the session codec (ADR 2026-11-07 D2)', () => {
         createdAt: index
       }));
       expectRefused(withReactions(many), /reactions must be an array of at most 5000 reactions/);
+    });
+  });
+
+  describe('a persona reaction rides the reply that answers its message (PR #245 M1)', () => {
+    const turnAt = (id: string, facts: Partial<WorkshopTurn>): WorkshopTurn => ({
+      id,
+      role: 'assistant',
+      kind: 'message',
+      participant: 'host',
+      artifact: 'persona_message',
+      personaId: 'jill',
+      excerptVersion: 1,
+      content: 'Alice runs.',
+      timestamp: 1,
+      ...facts
+    });
+    const writer = (id: string) => turnAt(id, { role: 'user', participant: 'writer', personaId: undefined });
+    const guest = (id: string) => turnAt(id, { participant: 'guest', personaId: 'margot' });
+    const host = (id: string) => turnAt(id, {});
+    const tool = (id: string) => turnAt(id, { participant: 'tool', kind: 'tool_run', artifact: 'tool_report', personaId: undefined });
+    const reaction = (turnId: string, viaTurnId: string, author: WorkshopTurnReaction['author'] = { kind: 'host' }): WorkshopTurnReaction =>
+      ({ turnId, reaction: 'heart', author, viaTurnId, createdAt: 1 });
+    const check = (turns: WorkshopTurn[], reactions: WorkshopTurnReaction[]) =>
+      () => assertWorkshopReactionIntegrity(reactions, turns);
+
+    it('accepts the persona\'s first reply after the message, past a tool report and another persona', () => {
+      const turns = [writer('w1'), tool('t1'), guest('g1'), host('h1')];
+      expect(check(turns, [reaction('w1', 'h1'), reaction('w1', 'g1', { kind: 'personaGuest', personaId: 'margot' })])).not.toThrow();
+    });
+
+    it('refuses a later reply of the persona when it replied to the message before', () => {
+      expect(check([writer('w1'), host('h1'), host('h2')], [reaction('w1', 'h2')]))
+        .toThrow(/does not name its persona's reply to that message/);
+    });
+
+    it('refuses a reply after a later writer message', () => {
+      expect(check([writer('w1'), writer('w2'), host('h1')], [reaction('w1', 'h1')]))
+        .toThrow(/does not name its persona's reply to that message/);
+      expect(check([writer('w1'), host('h1'), writer('w2'), host('h2')], [reaction('w1', 'h2')]))
+        .toThrow(/does not name its persona's reply to that message/);
     });
   });
 
