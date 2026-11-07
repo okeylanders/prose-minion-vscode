@@ -35,15 +35,15 @@ When Save session opens on an unnamed room, the helper drafts the summary,
 and code builds the name in Okey's pattern:
 
 ```
-alice-ch3.md — The Rabbit's watch runs backward — Nov 4
-└ excerpt name ┘ └──── helper's summary ────┘ └ started ┘
+alice-ch3.md - The Rabbit's watch runs backward - Nov 4, 2026
+└ excerpt name ┘ └──── helper's summary ────┘   └─ started ─┘
 ```
 
 - **The helper writes only the summary** (1–10 words). The excerpt name and
   the date are facts the host already holds, so code adds them. The model
   never gets the chance to garble a file name or a date.
 - **No named excerpt, no first part.** An open conversation, or a room whose
-  excerpt has no source file, is `summary — date`.
+  excerpt has no source file, is `summary - date`.
 - **The date is the room's start** (`startedAt`, kept by
   `WorkshopSessionTimeService`), not the day it was saved.
 
@@ -64,9 +64,11 @@ The engine gets no branch for it.
 
 ## Proposed shape (mirrors `memory-draft`, D5)
 
-1. **When.** Save session opens on an unnamed room that has at least one
-   exchange. A named room already has its title, and an empty room has
-   nothing to summarize; both keep today's behavior and ask for nothing.
+1. **When.** Save session or Export session opens on an unnamed room that
+   has at least one exchange (N4). A named room already has its title, and
+   an empty room has nothing to summarize; both keep the default and ask for
+   nothing. One draft serves the room as it stands: opening the other sheet
+   before a new turn reuses it rather than calling again.
 2. **The webview sends ids only.** It posts a draft request with a minted
    request id. The host reads the room itself; it never takes text from the
    webview.
@@ -97,28 +99,33 @@ The engine gets no branch for it.
 7. **Failure is quiet.** On no key, an error, a timeout or a faulty answer,
    today's default stays. It is a usable name, so no failure line is needed.
 
+## Decisions (Okey, 2026-11-07)
+
+| # | Decision | Notes |
+|---|---|---|
+| N1 | **A hyphen separator** (` - `), "easier on users". | Applies to the default too, so drafted and default names read alike. |
+| N2 | **The date reads `Nov 6, 2026`.** | It is the room's start date in the room's own time zone (the session records `timezone`), so a room started late at night keeps its own day. A fixed format, not the system locale that today's default uses (`toLocaleDateString(undefined, …)`). |
+| N3 | **One Workshop-wide helper-drafts setting**, not a second switch for names. | `proseMinion.workshop.memory.helperDrafts` is memory-scoped and belongs to the in-flight Helper Agent epic. The rename is free only until it ships, so it should be handed to that epic before its live pass. This note does not touch it. |
+| N4 | **Export drafts too, unless the session is already named.** | A named room's title stays as it is in both sheets. |
+
+**Ships without the helper.** N1 and N2 change the default
+(`excerpt - persona - Nov 6, 2026`) with no model at all, so that part could
+land before the Helper Agent epic reaches `main`.
+
 ## Open questions
 
-- **The separator.** Today's default uses an em dash (` — `); Okey's
-  pattern is written with a hyphen (` - `). Which?
-- **The date format.** Today's is `Nov 6` (no year). With the room's start
-  date, rooms from different years can collide. `Nov 6, 2026`, or
-  `2026-11-06`?
-- **The setting.** The helper's existing switch is
-  `proseMinion.workshop.memory.helperDrafts`, which is scoped to memory. One
-  Workshop-wide helper-drafts setting, or a second switch for names? The
-  setting hasn't shipped, so a rename is free, but it belongs to the Helper
-  Agent epic, not this note.
 - **Which turns.** Is "first two, plus the latest exchange" the right
   sample? Should guest replies count as persona replies?
-- **Export.** Export session also uses `suggestedSessionTitle`. Should it
-  take the draft too, or only Save?
 
 ## Completion Criteria
 
-- [ ] Save session on an unnamed room with an exchange fills the title as
-      `[excerpt name] — summary — start date`, or `summary — start date`
-      with no named excerpt.
+- [ ] Save session and Export session on an unnamed room with an exchange
+      fill the title as `[excerpt name] - summary - Nov 6, 2026`, or
+      `summary - Nov 6, 2026` with no named excerpt. A named room's title is
+      never replaced.
+- [ ] The date is the room's start in the room's time zone. A test covers a
+      room started just before midnight.
+- [ ] The default (no draft) uses the same separator and date format.
 - [ ] The helper receives only the chosen turns, through the transcript
       projection, within its bounds. A test pins what is sent and what is
       not (no excerpt text, context bodies, attachments or tool reports).
