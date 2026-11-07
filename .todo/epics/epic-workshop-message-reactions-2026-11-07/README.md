@@ -1,6 +1,6 @@
 # Epic: Workshop Message Reactions
 
-**Status:** Slice 1 (writer reactions) built, awaiting its PR. The ADR is Accepted.
+**Status:** Slice 2 (delivery) in progress. Slice 1 merged (PR #245). The ADR is Accepted.
 **Priority:** Medium
 **Opened:** 2026-11-07
 **Branch:** `epic/workshop-message-reactions`, cut from
@@ -25,8 +25,8 @@ reaction starts a model call or edits retained history.
 | # | Slice | Branch | Outcome | Status |
 |---|---|---|---|---|
 | 0 | Spec | `epic/workshop-message-reactions` | The ADR and this README | Done (`f25c2ea7`; Accepted 2026-11-07) |
-| 1 | Writer reactions | `…-slice-1-writer-reactions` | D1, D2, D3, D8: registry, `reactions` session key, codec and normalization, ledger and routes, chips and palette by mouse and keyboard, Rewind/Branch/Side Quest handling. No model involved. | Built; awaiting review |
-| 2 | Delivery | `…-slice-2-delivery` | D4, D6: `<workshop-reactions>`, `reactionDelivery` on reply turns, the delivered view; R2 and R3 witnessed; the byte-identical-prefix test | Not started |
+| 1 | Writer reactions | `…-slice-1-writer-reactions` | D1, D2, D3, D8: registry, `reactions` session key, codec and normalization, ledger and routes, chips and palette by mouse and keyboard, Rewind/Branch/Side Quest handling. No model involved. | Done: PR #245, merged `104595eb` ([review](../../../docs/pr-reviews/workshop-message-reactions-slice-1-writer-reactions-review.md)) |
+| 2 | Delivery | `…-slice-2-delivery` | D4, D6: `<workshop-reactions>`, `reactionDelivery` on reply turns, the delivered view; R2 and R3 witnessed; the byte-identical-prefix test | In progress |
 | 3 | Persona reactions | `…-slice-3-persona-reactions` | D5: the trailer in `extractWorkshopReplyControls`, its outcome table, R1's host line and slim line, the prompt, the live-region announcement, Q8's setting. Q10: the reaction-only reply narrows `isWorkshopReactableTurn` (the writer cannot react to it) and `assertWorkshopReactionIntegrity` (it carries the persona's reaction) together, in one change (PR #245 N3). | Not started |
 | 4 | Live pass | `…-slice-4-live-pass` | Tune how often personas react; record counts on an *Alice* fixture conversation per persona and expression level | Not started |
 
@@ -105,3 +105,9 @@ rebase a shared branch). Read only: never commit to
   (`WORKSHOP_SET_TURN_REACTION`, `WORKSHOP_HIDE_TURN_REACTION`), and the
   bubble's palette and chips. The full suite: 802 suites, 11,263 tests,
   59 snapshots.
+- **2026-11-07.** PR #245 (Slice 1) reviewed: M1 (persona-reaction
+  integrity tightened before Slice 3 writes it), M2 (the host refuses
+  reactions during a run), L1–L3, L5 fixed; L4 to the live pass; N1
+  deferred; N2 tech debt. Merged `104595eb` at 804 suites / 11,298 tests.
+  Slice 2 (delivery) opens on
+  `epic/workshop-message-reactions-slice-2-delivery`.
