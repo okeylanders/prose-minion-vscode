@@ -6,15 +6,15 @@
  * - The writer's chips come first. Each is a pressed toggle named "You
  *   reacted: mind-blown"; pressing it removes the reaction.
  * - A persona's chip is named "Jill reacted: heart", with a Hide action that
- *   removes it (Q6). Persona reactions are written from Slice 3; they render
- *   from state now.
+ *   removes it (Q6). A persona writes it with a reply's trailer (D5).
  *
  * A removed chip takes focus with it only when it held focus: the next chip
  * on the bubble takes it, or the bubble's "Add reaction" button when none
  * is left (PR #245 L2). While the room is locked the chips stay focusable
  * (`aria-disabled`) and do nothing.
  *
- * Nothing here is announced through a live region (Slice 3's).
+ * A new persona reaction is announced once by the reactions hook's live
+ * region (D8), never here.
  */
 
 import * as React from 'react';

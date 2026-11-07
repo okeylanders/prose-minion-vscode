@@ -27,7 +27,7 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
   readIn: {
     handleReadInResourceContent: jest.fn()
   } as never,
-  reactions: { handleSessionState: jest.fn() },
+  reactions: { handleSessionState: jest.fn(), noteLiveTurn: jest.fn() },
   bookmarks: {
     handleSessionState: jest.fn(),
     handleTurnPreview: jest.fn()

@@ -26,6 +26,7 @@ import {
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { WorkshopBookmarkToggle } from './WorkshopBookmarkToggle';
 import { type WorkshopReactionControls, workshopReactionAction, WorkshopTurnReactionChips } from './reactions/WorkshopTurnReactions';
+import { WorkshopReactionOnlyLine } from './reactions/WorkshopReactionOnlyLine';
 import { WorkshopMemoryReceiptLine, WorkshopTurnMemoryCards, workshopSaveToMemoryAction, type WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
 import { WorkshopTurnFileEdits } from './fileEdits/WorkshopTurnFileEdits';
 import type { WorkshopFileEditControls } from './fileEdits/WorkshopFileEditCard';
@@ -497,6 +498,13 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
 
   if (turn.projectMemoryReceipt) {
     return <WorkshopMemoryReceiptLine turn={turn} controls={memory} />;
+  }
+
+  if (turn.reactionOnly) {
+    const actions = bookmarkAction || rewindAction || branchAction
+      ? <>{bookmarkAction}{rewindAction}{branchAction}</>
+      : null;
+    return <WorkshopReactionOnlyLine turn={turn} reaction={turn.reactionOnly} identity={turnIdentity} actions={actions} />;
   }
 
   if (
