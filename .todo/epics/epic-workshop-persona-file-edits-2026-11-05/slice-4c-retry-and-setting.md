@@ -178,6 +178,8 @@ The review is Astra's, at `8450dd8c`, in [`docs/pr-reviews/pr-236-retry-and-sett
 - **After:** typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 788 suites, 11,030 tests, 59 snapshots, all passing.
   - The first full run caught `MessageHandler.test.ts`'s fake settings service, which lacked `getFileEditsMode`, now in every session state. Its two failing tests were fixed by adding the method (the suite passes, 26 tests).
 - **After the PR #236 fixes:** typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 788 suites, 11,040 tests, 59 snapshots, all passing (+10 tests: 3 for F-01, 4 for F-02, 3 for N-01).
+- **After merging the epic sync (`9dfa293f`) at `9bfce925`:** typecheck clean; lint 0 errors, 1,165 warnings; jest 796 suites, 11,179 tests, 59 snapshots; `npm run build` compiles (its 3 warnings are webpack's asset-size notices).
+- **After the F-02 re-review fix:** typecheck clean; lint 0 errors, 1,165 warnings (no new); jest 797 suites, 11,186 tests, 59 snapshots, all passing; `npm run build` compiles, with the same 3 asset-size warnings.
 - **Updated test, beyond the ones listed above:** `MessageHandler.test.ts`'s fake gains `getFileEditsMode`.
 - **File sizes.**
   - `WorkshopConversationSettingsService.ts`: 491 → 499, kept under 500 by moving the mode-error gathering into the partial-apply module.

@@ -29,20 +29,25 @@ import {
 import { pinnedContextPanelPropsStub } from './settings/pinnedContextPanelPropsStub';
 
 jest.mock('@hooks/useVSCodeApi');
+// eslint-disable-next-line @typescript-eslint/naming-convention -- the globals' own names.
 Object.assign(globalThis, { TextEncoder, TextDecoder });
 
 async function setup() {
   const { createWorkshopRouteTestHarness, message } = await import('@/__tests__/application/handlers/domain/workshop/WorkshopRouteTestHarness');
   const host = createWorkshopRouteTestHarness();
+  /* eslint-disable @typescript-eslint/naming-convention -- keyed by the settings' own keys. */
   const modes: Record<string, 'ask' | 'off'> = {
     'workshop.fileEdits': 'ask',
     'workshop.projectMemory': 'ask'
   };
+  /* eslint-enable @typescript-eslint/naming-convention */
   const originalGet = host.settings.get.bind(host.settings);
   (host.settings as { get: SettingsStore['get'] }).get = ((section: string, key: string, fallback?: unknown) =>
     key in modes ? modes[key] : originalGet(section, key, fallback)) as SettingsStore['get'];
   (host.settings.update as jest.Mock).mockImplementation(async (_section: string, key: string, value: unknown) => {
-    if (key in modes) modes[key] = value as 'ask' | 'off';
+    if (key in modes) {
+      modes[key] = value as 'ask' | 'off';
+    }
   });
   await host.pin();
   await host.router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Open the room.' }) as never);
@@ -103,10 +108,14 @@ describe('Conversation settings: delayed global-mode snapshots (PR #236 F-02)', 
   it.each(rows)('control: an explicit $name pick still writes Ask first over a newer host Off', async (row) => {
     const h = await setup();
     render(<WorkshopConversationBehaviorModal {...h.props} />);
-    if (row.tab === 'Memory') fireEvent.click(screen.getByRole('tab', { name: 'Memory' }));
+    if (row.tab === 'Memory') {
+      fireEvent.click(screen.getByRole('tab', { name: 'Memory' }));
+    }
     fireEvent.click(screen.getByRole('button', { name: /^Off/ }));
     fireEvent.click(screen.getByRole('button', { name: /^Ask first/ }));
-    if (row.tab === 'Memory') fireEvent.click(screen.getByRole('tab', { name: 'Behavior' }));
+    if (row.tab === 'Memory') {
+      fireEvent.click(screen.getByRole('tab', { name: 'Behavior' }));
+    }
     h.modes[row.key] = 'off';
     clickApply();
     await h.host.router.route(submitted(h.vscode));
