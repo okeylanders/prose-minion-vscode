@@ -35,6 +35,10 @@
  *   `rest` like memory frames, redacted as `[file edit proposal removed]`, and
  *   judged by `workshopReplyFileEdits` into `fileEdits`, which is absent when
  *   the reply held none.
+ * - **Reactions** (ADR 2026-11-07 D5): `<prose-minion-reaction>` frames join
+ *   the same pass, removed from `rest`, redacted as `[reaction removed]`, and
+ *   judged by `workshopReplyReaction` into `reaction`, absent when the reply
+ *   held none. A reply of trailers alone keeps the host's line (R1).
  */
 
 import {
@@ -53,6 +57,15 @@ import {
   workshopReplyTrailerStructureRejection,
   type WorkshopReplyTrailerFrame
 } from '@/utils/workshopReplyTrailerFrames';
+import {
+  decodeWorkshopReactionTrailer,
+  judgeWorkshopReplyReactions,
+  WORKSHOP_REACTION_REDACTION,
+  WORKSHOP_REACTION_TAG,
+  type WorkshopReplyReactionControl,
+  type WorkshopReplyReactionOptions
+} from '@/utils/workshopReplyReaction';
+import { workshopReaction, type WorkshopReactionId } from '@shared/constants/workshopReactions';
 import { sanitizeWorkshopWidgetRecommendationForRetention } from '@/utils/workshopWidgetRecommendationProtocol';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
@@ -67,18 +80,52 @@ export const WORKSHOP_FILE_EDIT_ONLY_REPLY_LINE = 'Proposed an edit to a project
 /** The same, for a reply that was only trailers of both kinds. */
 export const WORKSHOP_TRAILERS_ONLY_REPLY_LINE = 'Proposed a project memory and an edit to a project file.';
 
-/** The host's line for a reply that held only trailers, by the kinds it held. */
-export function workshopTrailersOnlyReplyLine(kinds: { readonly memory: boolean; readonly fileEdits: boolean }): string {
-  return kinds.memory && kinds.fileEdits
-    ? WORKSHOP_TRAILERS_ONLY_REPLY_LINE
-    : kinds.fileEdits ? WORKSHOP_FILE_EDIT_ONLY_REPLY_LINE : WORKSHOP_MEMORY_ONLY_REPLY_LINE;
+/**
+ * The ledger's line for a reply whose only trailer was a reaction that was
+ * dropped (ADR 2026-11-07 D5; PR #247 M1): it names no reaction, since none
+ * was kept, and the turn takes no reaction of its own (`noMessage`).
+ */
+export const WORKSHOP_NO_MESSAGE_REPLY_LINE = 'Replied without a message.';
+
+/**
+ * The trailer kinds a reply held, for the host's line (ADR 2026-11-07 R1).
+ * `reaction` is a reaction to name, `true` for one it cannot name, absent
+ * for none: retention passes the reply's intent, read from its text; the
+ * ledger passes only a reaction that was kept.
+ */
+export interface WorkshopTrailerKinds {
+  readonly memory: boolean;
+  readonly fileEdits: boolean;
+  readonly reaction?: WorkshopReactionId | true;
 }
 
-const TRAILERS_ONLY_REPLY_LINES: readonly string[] = [
-  WORKSHOP_MEMORY_ONLY_REPLY_LINE,
-  WORKSHOP_FILE_EDIT_ONLY_REPLY_LINE,
-  WORKSHOP_TRAILERS_ONLY_REPLY_LINE
-];
+/** The reaction's object, named so a reader of the room's catch-up knows what it was on (PR #247 L4). */
+const REACTION_OBJECT = "the writer's message";
+
+/**
+ * The host's line for a reply that held only trailers, by the kinds it
+ * names: "Reacted with heart to the writer's message.", "Proposed a project
+ * memory and reacted with heart to the writer's message.", and so on. With
+ * nothing to name, it is `WORKSHOP_NO_MESSAGE_REPLY_LINE`.
+ */
+export function workshopTrailersOnlyReplyLine(kinds: WorkshopTrailerKinds): string {
+  const proposals = kinds.memory || kinds.fileEdits
+    ? kinds.memory && kinds.fileEdits
+      ? WORKSHOP_TRAILERS_ONLY_REPLY_LINE
+      : kinds.fileEdits ? WORKSHOP_FILE_EDIT_ONLY_REPLY_LINE : WORKSHOP_MEMORY_ONLY_REPLY_LINE
+    : undefined;
+  if (kinds.reaction === undefined) {
+    return proposals ?? WORKSHOP_NO_MESSAGE_REPLY_LINE;
+  }
+  const reacted = kinds.reaction === true
+    ? `reacted to ${REACTION_OBJECT}`
+    : `reacted with ${workshopReaction(kinds.reaction).label} to ${REACTION_OBJECT}`;
+  if (!proposals) {
+    return `R${reacted.slice(1)}.`;
+  }
+  const joiner = kinds.memory && kinds.fileEdits ? ', and ' : ' and ';
+  return `${proposals.slice(0, -1)}${joiner}${reacted}.`;
+}
 
 export type WorkshopReplyMemoryRejection =
   | 'misplaced'
@@ -106,6 +153,10 @@ export interface WorkshopReplyControls {
   readonly memory: WorkshopReplyMemoryControl;
   /** The reply's file-edit frames, judged (ADR 2026-11-05 D2); absent when it held none. */
   readonly fileEdits?: WorkshopReplyFileEditControl;
+  /** The reply's reaction frames, judged (ADR 2026-11-07 D5); absent when it held none. */
+  readonly reaction?: WorkshopReplyReactionControl;
+  /** The trailer kinds it held, for the host's line (R1). */
+  readonly trailers: WorkshopTrailerKinds;
 }
 
 export interface WorkshopReplyControlsOptions {
@@ -113,10 +164,20 @@ export interface WorkshopReplyControlsOptions {
   readonly memoryOpen: boolean;
   /** Whether personas may propose file edits now (`fileEdits: ask`, read with the reply; D9). Absent reads as off. */
   readonly fileEditsOpen?: boolean;
+  /** Whether personas may react now, and whether this reply answers a writer message (Q8, D5). Absent reads as off. */
+  readonly reactions?: WorkshopReplyReactionOptions;
 }
 
 /** Every trailer kind the tail holds, found in one pass. */
-const TRAILER_TAGS = [WORKSHOP_MEMORY_PROPOSAL_TAG, WORKSHOP_FILE_EDIT_TAG] as const;
+const TRAILER_TAGS = [WORKSHOP_MEMORY_PROPOSAL_TAG, WORKSHOP_FILE_EDIT_TAG, WORKSHOP_REACTION_TAG] as const;
+
+const NO_TRAILERS: WorkshopTrailerKinds = { memory: false, fileEdits: false };
+
+const REDACTIONS: Readonly<Record<string, string>> = {
+  [WORKSHOP_MEMORY_PROPOSAL_TAG]: WORKSHOP_MEMORY_PROPOSAL_REDACTION,
+  [WORKSHOP_FILE_EDIT_TAG]: WORKSHOP_FILE_EDIT_REDACTION,
+  [WORKSHOP_REACTION_TAG]: WORKSHOP_REACTION_REDACTION
+};
 
 type Frame = WorkshopReplyTrailerFrame;
 
@@ -127,19 +188,32 @@ export function extractWorkshopReplyControls(
 ): WorkshopReplyControls {
   const frames = findWorkshopReplyTrailerFrames(reply, TRAILER_TAGS);
   if (frames.length === 0) {
-    return { rest: reply, redacted: reply, memory: { kind: 'none' } };
+    return { rest: reply, redacted: reply, memory: { kind: 'none' }, trailers: NO_TRAILERS };
   }
   const atTail = workshopReplyTrailerFramesAtTail(reply, frames);
   const placed = frames.map((frame, index) => ({ frame, atTail: atTail[index] }));
   const memoryFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_MEMORY_PROPOSAL_TAG);
   const fileEditFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_FILE_EDIT_TAG);
+  const reactionFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_REACTION_TAG);
+  // The first well-formed known id: the one the judge keeps whenever it keeps one, read from the text alone.
+  const named = reactionFrames
+    .map(({ frame, atTail: tail }) => workshopReplyTrailerStructureRejection(frame, tail) || frame.inner === undefined
+      ? undefined
+      : decodeWorkshopReactionTrailer(frame.inner))
+    .find((id) => id !== undefined);
   return {
     rest: removeWorkshopReplyTrailerFrames(reply, frames, () => ''),
-    redacted: removeWorkshopReplyTrailerFrames(reply, frames, (frame) => frame.tag === WORKSHOP_FILE_EDIT_TAG
-      ? WORKSHOP_FILE_EDIT_REDACTION
-      : WORKSHOP_MEMORY_PROPOSAL_REDACTION),
+    redacted: removeWorkshopReplyTrailerFrames(reply, frames, (frame) => REDACTIONS[frame.tag] ?? WORKSHOP_MEMORY_PROPOSAL_REDACTION),
     memory: memoryFrames.length > 0 ? judge(memoryFrames, options) : { kind: 'none' },
-    ...(fileEditFrames.length > 0 ? { fileEdits: judgeWorkshopReplyFileEdits(fileEditFrames, options.fileEditsOpen === true) } : {})
+    ...(fileEditFrames.length > 0 ? { fileEdits: judgeWorkshopReplyFileEdits(fileEditFrames, options.fileEditsOpen === true) } : {}),
+    ...(reactionFrames.length > 0
+      ? { reaction: judgeWorkshopReplyReactions(reactionFrames, options.reactions ?? { open: false, hasTarget: false }) }
+      : {}),
+    trailers: {
+      memory: memoryFrames.length > 0,
+      fileEdits: fileEditFrames.length > 0,
+      ...(reactionFrames.length > 0 ? { reaction: named ?? true } : {})
+    }
   };
 }
 
@@ -155,21 +229,26 @@ export function hasWorkshopMemoryProposalText(reply: string): boolean {
 
 /**
  * Retained history's copy of a reply (D6, "stripped twice"): without trailer
- * frames (memory and file edits), and the host's line when trailers were all
- * it held. The widget sanitizer runs after this, on what is left.
+ * frames (memory, file edits and reactions), and the host's line when
+ * trailers were all it held (`hostLine`). The widget sanitizer runs after
+ * this, on what is left, but never on the host's line.
  */
-export function stripWorkshopReplyTrailersForRetention(reply: string): string {
+function retainedWithoutTrailers(reply: string): { readonly text: string; readonly hostLine: boolean } {
   const controls = extractWorkshopReplyControls(reply, { memoryOpen: false });
-  const kinds = { memory: controls.memory.kind !== 'none', fileEdits: controls.fileEdits !== undefined };
-  if ((kinds.memory || kinds.fileEdits) && controls.rest.trim().length === 0) {
-    return workshopTrailersOnlyReplyLine(kinds);
+  const { trailers } = controls;
+  if ((trailers.memory || trailers.fileEdits || trailers.reaction !== undefined) && controls.rest.trim().length === 0) {
+    return { text: workshopTrailersOnlyReplyLine(trailers), hostLine: true };
   }
-  return controls.rest;
+  return { text: controls.rest, hostLine: false };
+}
+
+export function stripWorkshopReplyTrailersForRetention(reply: string): string {
+  return retainedWithoutTrailers(reply).text;
 }
 
 /**
  * What a reply still streaming may show (PR #200 F-02): every trailer frame
- * (memory and file edits) removed as `rest` removes it (an unclosed one to
+ * (memory, file edits and reactions) removed as `rest` removes it (an unclosed one to
  * the end, so a frame being written never shows), and a trailing fragment
  * that could still become a frame's tag held back until the next token
  * settles it. Pure over the text so far; the final reply is the extractor's.
@@ -243,8 +322,8 @@ function judgeFrame(
  * `AssistantToolService` hands this to the engine).
  */
 export function sanitizeWorkshopReplyForRetention(reply: string): string {
-  const withoutTrailers = stripWorkshopReplyTrailersForRetention(reply);
-  return TRAILERS_ONLY_REPLY_LINES.includes(withoutTrailers)
-    ? withoutTrailers
-    : sanitizeWorkshopWidgetRecommendationForRetention(withoutTrailers);
+  const withoutTrailers = retainedWithoutTrailers(reply);
+  return withoutTrailers.hostLine
+    ? withoutTrailers.text
+    : sanitizeWorkshopWidgetRecommendationForRetention(withoutTrailers.text);
 }

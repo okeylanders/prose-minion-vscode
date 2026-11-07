@@ -176,7 +176,7 @@ describe('Workshop reaction routes', () => {
       harness.session.getSnapshot().conversationBehavior
     );
     expect(harness.session.getSnapshot().reactions).toEqual([
-      { turnId: harness.writer.id, reaction: 'heart', author: { kind: 'host' }, label: 'Jill' }
+      { turnId: harness.writer.id, reaction: 'heart', author: { kind: 'host' }, label: 'Jill', viaTurnId: expect.any(String) }
     ]);
 
     await hide(harness, harness.writer.id, 'heart', { kind: 'writer' });

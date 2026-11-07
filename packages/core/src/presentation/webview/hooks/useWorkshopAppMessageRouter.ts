@@ -77,7 +77,7 @@ export interface WorkshopAppMessageRouterDeps {
   /** Bookmarks and the turn preview (Wayfinding Slice 5). */
   bookmarks: UseWorkshopBookmarksReturn;
   /** Message reactions (ADR 2026-11-07 D8): the snapshot's summaries. */
-  reactions: Pick<UseWorkshopReactionsReturn, 'handleSessionState'>;
+  reactions: Pick<UseWorkshopReactionsReturn, 'handleSessionState' | 'noteLiveTurn'>;
   /** The Bookmarks screen's answers (Bookmark Recall Slice 2). */
   bookmarkBrowser: Pick<
     UseWorkshopBookmarkBrowserReturn,
@@ -153,7 +153,10 @@ export function buildWorkshopAppMessageRoutes(
       widgetHost.handleSessionState(message);
       memoryManager.noteSessionState(message);
     },
-    [MessageType.WORKSHOP_TURN]: workshopRoom.handleTurn,
+    [MessageType.WORKSHOP_TURN]: (message) => {
+      workshopRoom.handleTurn(message);
+      reactions.noteLiveTurn(message);
+    },
     [MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED]:
       workshopRoom.handleComposerDraftRestored,
     [MessageType.WORKSHOP_SESSIONS_DATA]: workshopSessions.handleSessionsData,

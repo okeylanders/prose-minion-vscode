@@ -102,8 +102,8 @@ describe('WorkshopReactionLedger', () => {
     ledger.add({ turnId: REPLY.id, reaction: 'fire', author: WRITER }, REPLY);
 
     expect(ledger.summaries(TURNS, find, 'jill')).toEqual([
-      { turnId: WRITER_MESSAGE.id, reaction: 'thanks', author: { kind: 'personaGuest', personaId: 'margot' }, label: 'Margot' },
-      { turnId: WRITER_MESSAGE.id, reaction: 'heart', author: { kind: 'host' }, label: 'Jill' },
+      { turnId: WRITER_MESSAGE.id, reaction: 'thanks', author: { kind: 'personaGuest', personaId: 'margot' }, label: 'Margot', viaTurnId: GUEST_REPLY.id },
+      { turnId: WRITER_MESSAGE.id, reaction: 'heart', author: { kind: 'host' }, label: 'Jill', viaTurnId: REPLY.id },
       { turnId: REPLY.id, reaction: 'fire', author: WRITER, label: 'You' },
       { turnId: GUEST_REPLY.id, reaction: 'eyes', author: WRITER, label: 'You' }
     ]);

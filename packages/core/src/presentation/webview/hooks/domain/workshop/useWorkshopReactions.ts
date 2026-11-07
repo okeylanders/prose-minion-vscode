@@ -7,6 +7,14 @@
  * ids only (a turn id and a reaction id, and for Hide the persona's author)
  * and waits for the next snapshot; nothing is applied optimistically.
  *
+ * A persona's new reaction (Slice 3) is announced once, politely (D8):
+ * only a reaction whose carrying reply arrived live in this mount (a
+ * `WORKSHOP_TURN`), in the same room (`roomRevision`), and was not already
+ * in the previous snapshot, on the first snapshot after it. Hydration,
+ * reload and a re-render deliver no live reply, and a room replacement
+ * (Open, New, Rewind, Branch) clears what was waiting (PR #247 M2), so they
+ * announce nothing.
+ *
  * Nothing here is persisted: the session file owns reactions, so they
  * survive save, open and reload with the room.
  */
@@ -16,15 +24,20 @@ import {
   MessageType,
   WorkshopHideTurnReactionPayload,
   WorkshopSessionStateMessage,
+  WorkshopTurnMessage,
   WorkshopSetTurnReactionPayload,
   WorkshopTurnReactionSummary
 } from '@messages';
-import type { WorkshopReactionId } from '@shared/constants/workshopReactions';
+import { workshopReaction, type WorkshopReactionId } from '@shared/constants/workshopReactions';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 
 export interface WorkshopReactionsState {
   /** Each turn's reactions as the snapshot gave them, the writer's first. */
   reactionsByTurn: ReadonlyMap<string, readonly WorkshopTurnReactionSummary[]>;
+  /** The polite live region's text: the latest persona reactions that arrived live, or empty. */
+  announcement: string;
+  /** Moves with every announcement, so the same words said twice are read twice (a keyed node). */
+  announcementSerial: number;
 }
 
 export interface WorkshopReactionsActions {
@@ -37,6 +50,8 @@ export interface WorkshopReactionsActions {
     author: WorkshopHideTurnReactionPayload['author']
   ) => void;
   handleSessionState: (message: WorkshopSessionStateMessage) => void;
+  /** A turn that arrived live: a persona reply's reaction may be announced on the next snapshot. */
+  noteLiveTurn: (message: WorkshopTurnMessage) => void;
 }
 
 export interface WorkshopReactionsPersistence {
@@ -56,6 +71,22 @@ export interface UseWorkshopReactionsOptions {
 const SOURCE = 'webview.workshop.reactions';
 const NO_REACTIONS: ReadonlyMap<string, readonly WorkshopTurnReactionSummary[]> = new Map();
 const NO_PERSISTENCE: WorkshopReactionsPersistence = {};
+
+/**
+ * "Jill reacted heart to your message": one announcement for the reactions
+ * whose reply arrived live and is new since the previous snapshot.
+ */
+export function workshopPersonaReactionAnnouncement(
+  summaries: readonly WorkshopTurnReactionSummary[] | undefined,
+  liveReplies: ReadonlySet<string>,
+  previousTurnIds: ReadonlySet<string> = new Set()
+): string {
+  return (summaries ?? [])
+    .filter((summary) => summary.author.kind !== 'writer' && summary.viaTurnId !== undefined
+      && liveReplies.has(summary.viaTurnId) && !previousTurnIds.has(summary.viaTurnId))
+    .map((summary) => `${summary.label} reacted ${workshopReaction(summary.reaction).label} to your message`)
+    .join('. ');
+}
 
 /** Group a snapshot's summaries by turn, keeping their order. */
 export function groupWorkshopReactionsByTurn(
@@ -78,6 +109,11 @@ export function useWorkshopReactions({
 }: UseWorkshopReactionsOptions = {}): UseWorkshopReactionsReturn {
   const vscode = useVSCodeApi();
   const [reactionsByTurn, setReactionsByTurn] = React.useState(NO_REACTIONS);
+  const [announced, setAnnounced] = React.useState({ text: '', serial: 0 });
+  // Persona replies that arrived live since the last snapshot, and the room they arrived in: each has one
+  // snapshot of that room to show its reaction. The previous snapshot's turns are never announced again.
+  const liveRepliesRef = React.useRef(new Set<string>());
+  const roomRef = React.useRef<{ revision?: number; turnIds: ReadonlySet<string> }>({ turnIds: new Set() });
   const beforeChangeRef = React.useRef(onBeforeChange);
   beforeChangeRef.current = onBeforeChange;
 
@@ -103,14 +139,36 @@ export function useWorkshopReactions({
   );
 
   const handleSessionState = React.useCallback((message: WorkshopSessionStateMessage) => {
-    setReactionsByTurn(groupWorkshopReactionsByTurn(message.payload.session.reactions));
+    const { reactions: summaries, roomRevision, turns } = message.payload.session;
+    setReactionsByTurn(groupWorkshopReactionsByTurn(summaries));
+    const live = liveRepliesRef.current;
+    const previous = roomRef.current;
+    const sameRoom = previous.revision === roomRevision;
+    roomRef.current = { revision: roomRevision, turnIds: new Set(turns.map((turn) => turn.id)) };
+    if (live.size > 0) {
+      const text = sameRoom ? workshopPersonaReactionAnnouncement(summaries, live, previous.turnIds) : '';
+      live.clear();
+      if (text) {
+        setAnnounced((current) => ({ text, serial: current.serial + 1 }));
+      }
+    }
+  }, []);
+
+  const noteLiveTurn = React.useCallback((message: WorkshopTurnMessage) => {
+    const { turn } = message.payload;
+    if (turn.role === 'assistant' && (turn.participant === 'host' || turn.participant === 'guest')) {
+      liveRepliesRef.current.add(turn.id);
+    }
   }, []);
 
   return {
     reactionsByTurn,
+    announcement: announced.text,
+    announcementSerial: announced.serial,
     setTurnReaction,
     hideTurnReaction,
     handleSessionState,
+    noteLiveTurn,
     persistedState: NO_PERSISTENCE
   };
 }

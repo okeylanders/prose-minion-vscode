@@ -27,7 +27,7 @@ reaction starts a model call or edits retained history.
 | 0 | Spec | `epic/workshop-message-reactions` | The ADR and this README | Done (`f25c2ea7`; Accepted 2026-11-07) |
 | 1 | Writer reactions | `…-slice-1-writer-reactions` | D1, D2, D3, D8: registry, `reactions` session key, codec and normalization, ledger and routes, chips and palette by mouse and keyboard, Rewind/Branch/Side Quest handling. No model involved. | Done: PR #245, merged `104595eb` ([review](../../../docs/pr-reviews/workshop-message-reactions-slice-1-writer-reactions-review.md)) |
 | 2 | Delivery | `…-slice-2-delivery` | D4, D6: `<workshop-reactions>`, `reactionDelivery` on reply turns, the delivered view; R2 and R3 witnessed; the byte-identical-prefix test | Done: PR #246, merged `af6f3b52` ([review](../../../docs/pr-reviews/workshop-message-reactions-slice-2-delivery-review.md)) |
-| 3 | Persona reactions | `…-slice-3-persona-reactions` | D5: the trailer in `extractWorkshopReplyControls`, its outcome table, R1's host line and slim line, the prompt, the live-region announcement, Q8's setting. Q10: the reaction-only reply narrows `isWorkshopReactableTurn` (the writer cannot react to it) and `assertWorkshopReactionIntegrity` (it carries the persona's reaction) together, in one change (PR #245 N3). Reserve `prose-minion-reaction` in `RESERVED_PERSONA_FRAME`, with a test that quoted writer text carrying one is neutralized (PR #246 N4). | In progress |
+| 3 | Persona reactions | `…-slice-3-persona-reactions` | D5: the trailer in `extractWorkshopReplyControls`, its outcome table, R1's host line and slim line, the prompt, the live-region announcement, Q8's setting. Q10: the reaction-only reply narrows `isWorkshopReactableTurn` (the writer cannot react to it) and `assertWorkshopReactionIntegrity` (it carries the persona's reaction) together, in one change (PR #245 N3). Reserve `prose-minion-reaction` in `RESERVED_PERSONA_FRAME`, with a test that quoted writer text carrying one is neutralized (PR #246 N4). | Built on its branch; awaiting PR |
 | 4 | Live pass | `…-slice-4-live-pass` | Tune how often personas react; record counts on an *Alice* fixture conversation per persona and expression level | Not started |
 
 Slice branches are `epic/workshop-message-reactions-slice-<N>-<slug>`.
@@ -131,3 +131,18 @@ rebase a shared branch). Read only: never commit to
   epic (PR #236 merged, `926190d9`) merged in at `aacc21f5`: 808 suites /
   11,353 tests green. Slice 3 opens on
   `epic/workshop-message-reactions-slice-3-persona-reactions`.
+- **2026-11-07.** Slice 3 built on its branch (the ADR's D5 implementation
+  notes have the detail and the deviations).
+  - **Trailer.** `<prose-minion-reaction>` joins the tail
+    (`utils/workshopReplyReaction.ts`), and is redacted as `[reaction removed]`.
+  - **Write.** The reaction is written in `completeRun` through the ledger, on
+    the run's own writer message.
+  - **R1.** `reactionOnly` on the turn; the host's line is decided from the
+    text.
+  - **Prompt.** The permission is its own resource, `persona-reactions.md`,
+    taught only while `proseMinion.workshop.reactions.personas` is on.
+  - **Webview.** The slim line, and D8's live region, which announces a
+    reaction only when its reply arrived live.
+  - **Review carry-overs.** Q10 and N4 are done.
+  - **Full suite.** Before: 808 suites, 11,353 tests, 59 snapshots. After:
+    815 suites, 11,400 tests, 59 snapshots.

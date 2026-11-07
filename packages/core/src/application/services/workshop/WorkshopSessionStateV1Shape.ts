@@ -25,7 +25,11 @@ import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import { assertWorkshopTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
 import { contextSourceProvenanceFault } from '@orchestration/ContextSourceRecord';
 import { assertWorkshopBookmarksShape } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
-import { assertWorkshopReactionsShape } from '@/application/services/workshop/session/WorkshopReactionRecords';
+import {
+  assertWorkshopNoMessageShape,
+  assertWorkshopReactionOnlyShape,
+  assertWorkshopReactionsShape
+} from '@/application/services/workshop/session/WorkshopReactionRecords';
 import { assertWorkshopMemoryProposalShape } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
 import { assertWorkshopFileEditProposalShape } from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
 import { assertWorkshopMemoryReceiptShape } from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
@@ -604,7 +608,10 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       // Project memory's delivery record (ADR 2026-11-04 D14; additive).
       'projectMemoryDelivery',
       // Reactions' delivery record (ADR 2026-11-07 D6; additive).
-      'reactionDelivery'
+      'reactionDelivery',
+      // A reaction-only reply (ADR 2026-11-07 R1; additive), and one whose reaction was dropped (PR #247 M1).
+      'reactionOnly',
+      'noMessage'
     ]
   );
   stringAt(turn.id, `${path}.id`);
@@ -679,6 +686,12 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   }
   if (turn.reactionDelivery !== undefined) {
     assertWorkshopReactionDeliveryShape(turn.reactionDelivery, `${path}.reactionDelivery`, turn);
+  }
+  if (turn.reactionOnly !== undefined) {
+    assertWorkshopReactionOnlyShape(turn.reactionOnly, `${path}.reactionOnly`, turn);
+  }
+  if (turn.noMessage !== undefined) {
+    assertWorkshopNoMessageShape(turn.noMessage, `${path}.noMessage`, turn);
   }
   if (turn.standingDirectiveChange !== undefined) {
     assertStandingDirectiveChange(

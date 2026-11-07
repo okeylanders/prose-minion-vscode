@@ -37,7 +37,7 @@ function widgetOutcome(rest: string): string {
 describe('extractWorkshopReplyControls', () => {
   it('leaves a reply without a frame exactly as it is', () => {
     const reply = `${PROSE}\n\n${WIDGET}`;
-    expect(extractWorkshopReplyControls(reply, OPEN)).toEqual({ rest: reply, redacted: reply, memory: { kind: 'none' } });
+    expect(extractWorkshopReplyControls(reply, OPEN)).toEqual({ rest: reply, redacted: reply, memory: { kind: 'none' }, trailers: { memory: false, fileEdits: false } });
     expect(hasWorkshopMemoryProposalText(reply)).toBe(false);
   });
 
@@ -277,7 +277,7 @@ describe('a marker that is not exactly the grammar\'s tag hides everything after
 
   it('leaves a longer tag name alone: it is not a marker', () => {
     const reply = `${PROSE} <prose-minion-memory-proposals> stays.`;
-    expect(extractWorkshopReplyControls(reply, OPEN)).toEqual({ rest: reply, redacted: reply, memory: { kind: 'none' } });
+    expect(extractWorkshopReplyControls(reply, OPEN)).toEqual({ rest: reply, redacted: reply, memory: { kind: 'none' }, trailers: { memory: false, fileEdits: false } });
   });
 });
 

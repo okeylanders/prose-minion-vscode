@@ -1440,6 +1440,10 @@ export const WorkshopApp: React.FC = () => {
             reserved height so messages coming and going never jitter the
             band (or move the divider), and the live region exists before
             its first announcement. */}
+        {/* A persona's new reaction, said once (ADR 2026-11-07 D8). */}
+        <div className="pm-ws-visually-hidden" role="status" aria-live="polite" data-pm-reaction-announcer="">
+          <span key={reactions.announcementSerial}>{reactions.announcement}</span>
+        </div>
         <div className="pm-ws-status-ticker" role="status" aria-live="polite">
           {(workshop.tickerMessage || workshop.statusMessage) && (
             <span className="pm-ws-ticker-live">

@@ -126,6 +126,21 @@ export function coerceWorkshopMemoryHelperDrafts(raw: unknown): boolean {
   return raw !== false;
 }
 
+/**
+ * Whether personas may react to the writer's message (ADR 2026-11-07 Q8): on
+ * by default. Off omits the prompt's permission and drops any reaction
+ * trailer as `reactions-off`; the writer's own reactions are not a setting.
+ */
+export const WORKSHOP_PERSONA_REACTIONS_SETTING = Object.freeze({
+  section: 'proseMinion',
+  key: 'workshop.reactions.personas'
+});
+
+/** Only an explicit `false` turns persona reactions off; anything else reads as the default, on. */
+export function coerceWorkshopPersonaReactions(raw: unknown): boolean {
+  return raw !== false;
+}
+
 /** Fail closed: anything but a known mode reads as `off`. */
 export function coerceWorkshopProjectMemoryMode(raw: unknown): WorkshopProjectMemoryMode {
   return WORKSHOP_PROJECT_MEMORY_MODES.find((mode) => mode === raw) ?? 'off';

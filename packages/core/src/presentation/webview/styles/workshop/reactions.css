@@ -82,3 +82,21 @@
   opacity: 0.55;
   cursor: default;
 }
+/* A reaction-only reply (ADR 2026-11-07 R1): a slim line, not a bubble. */
+[data-pm-surface="workshop"] .pm-ws-reaction-only {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+  padding: 2px 4px;
+  color: var(--pm-dim);
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-only-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-only-actions {
+  margin: 0;
+}

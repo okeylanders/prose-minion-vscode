@@ -436,6 +436,7 @@ export class WorkshopRoomHandler {
       memoryAutoSave: (turn, indexes) => this.sliceComposition.autoSaveMemoryProposals(turn, indexes, controller.signal),
       memoryAutoSavesInRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
       fileEdits: (reply, signal) => this.replyFileEdits(reply, signal),
+      reactionsOpen: () => this.conversationSettingsService.personaReactionsOpen(),
       settled: (requestId) => this.settleActiveRun(requestId)
     });
   }
@@ -689,6 +690,7 @@ export class WorkshopRoomHandler {
           memoryAutoSave: memoryAutoSave.hand,
           memoryAutoSavesInRoom: memoryAutoSave.inRoom,
           fileEdits,
+          reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
           session: this.session,
           requestId,
           label: workshopPersonaLabel(personaId),
@@ -1241,6 +1243,7 @@ export class WorkshopRoomHandler {
         memoryAutoSave: memoryAutoSave.hand,
         memoryAutoSavesInRoom: memoryAutoSave.inRoom,
         fileEdits,
+        reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
         session: this.session,
         requestId,
         label,

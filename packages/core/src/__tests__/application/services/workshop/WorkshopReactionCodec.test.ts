@@ -95,7 +95,7 @@ describe('reactions in the session codec (ADR 2026-11-07 D2)', () => {
     const snapshot = hydrate(withReactions(SAVED)).getSnapshot();
 
     expect(snapshot.reactions).toEqual([
-      { turnId: WRITER, reaction: 'mind-blown', author: { kind: 'host' }, label: 'Jill' },
+      { turnId: WRITER, reaction: 'mind-blown', author: { kind: 'host' }, label: 'Jill', viaTurnId: REPLY },
       { turnId: REPLY, reaction: 'fire', author: { kind: 'writer' }, label: 'You' },
       { turnId: REPLY, reaction: 'heart', author: { kind: 'writer' }, label: 'You' },
       { turnId: SYNTHESIS, reaction: 'thinking', author: { kind: 'writer' }, label: 'You' }

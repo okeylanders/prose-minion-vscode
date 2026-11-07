@@ -9,6 +9,7 @@ import type { LabeledContextBudgetSnapshot } from '../inferenceContext';
 import type { ModelScope } from '../configuration';
 import type { WorkshopBookmarkSummary } from './bookmarks';
 import type { WorkshopReactionDelivery, WorkshopTurnReactionSummary } from './reactions';
+import type { WorkshopReactionId } from '@shared/constants/workshopReactions';
 import type {
   WorkshopAnalysisInputProvenance,
   WorkshopCapabilityArtifactDetails,
@@ -475,6 +476,21 @@ export interface WorkshopTurn {
    * too, and the reactions arrive again.
    */
   reactionDelivery?: WorkshopReactionDelivery[];
+  /**
+   * A persona reply that held only a reaction (ADR 2026-11-07 R1): the id it
+   * reacted with, on the writer message the reply answers. Its content is
+   * the host's line ("Reacted with heart."); the thread draws it as a slim
+   * line, and the writer cannot react to it (Q10). Host and guest replies only.
+   */
+  reactionOnly?: WorkshopReactionId;
+  /**
+   * A persona reply that held nothing to show: only a reaction trailer that
+   * was dropped (persona reactions off, no writer message to react to, a
+   * full session, an unknown id; PR #247 M1). Its content is the host's
+   * neutral line, and the writer cannot react to it. Host and guest replies
+   * only; never beside `reactionOnly`.
+   */
+  noMessage?: true;
 }
 
 /** One memory as a conversation was told of it: its id and its D14 version. */
