@@ -53,6 +53,10 @@ import {
 } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+import {
+  prepareWorkshopReactionDelivery,
+  stageWorkshopReactionDelivery
+} from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
 import type {
   WorkshopOneShotWidgetRoomArtifact
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
@@ -184,6 +188,8 @@ interface WorkshopTargetTurnInput {
   hostUpdateFrame?: string;
   threadArtifactFrames: string[];
   timeNotice?: WorkshopPreparedTimeNotice;
+  /** `<workshop-reactions>` for a persona turn (ADR 2026-11-07 D4). */
+  reactionsFrame?: string;
 }
 
 interface WorkshopTargetTurn {
@@ -596,6 +602,10 @@ export class WorkshopRoomHandler {
         kind: 'personaGuest',
         personaId
       }, joinStart.turn.id);
+      // A join starts the guest's conversation: its view of reactions begins here (ADR 2026-11-07 D6).
+      const joinReader = { kind: 'personaGuest', personaId } as const;
+      const joinReactions = prepareWorkshopReactionDelivery(this.session, joinReader, 'start');
+      stageWorkshopReactionDelivery(this.session, requestId, joinReader, joinReactions, (line) => this.outputChannel.appendLine(`[WorkshopRoomHandler] ${line}`));
       const join = buildWorkshopGuestJoinMessage({
         guestPersonaId: personaId,
         excerpt: joinStart.excerpt,
@@ -611,6 +621,7 @@ export class WorkshopRoomHandler {
             this.session.getRoomThreadArtifactsForTurn(turn.id)
         },
         timeFrame: timeNotice?.frame,
+        reactionsFrame: joinReactions.frame,
         ...behaviorFramesFor(joinStart.turn)
       });
       this.activeRun = {
@@ -863,6 +874,7 @@ export class WorkshopRoomHandler {
                 todoEvidence: input.todoEvidence,
                 hostUpdate: input.hostUpdateFrame,
                 threadArtifactFrames: input.threadArtifactFrames,
+                reactionsFrame: input.reactionsFrame,
                 ...(conversationId ? personaBehaviorFrames : {})
               }),
               statusMessage: input.hasConversationalCatchUp
@@ -941,7 +953,8 @@ export class WorkshopRoomHandler {
                 input.text,
                 input.roomCatchUp,
                 input.threadArtifactFrames,
-                personaBehaviorFrames
+                personaBehaviorFrames,
+                input.reactionsFrame
               ),
               statusMessage: input.hasConversationalCatchUp
                 ? `Catching ${workshopPersonaLabel(target.personaId)} up on the room…`
@@ -1100,6 +1113,10 @@ export class WorkshopRoomHandler {
         }
       : undefined;
     const timeNotice = targetPlan.prepareTimeNotice();
+    // Reactions since this conversation's last reply; a fresh host's is its first message (ADR 2026-11-07 D4, D6).
+    const reactionPlan = roomReader
+      ? prepareWorkshopReactionDelivery(this.session, roomReader, conversationId ? 'update' : 'start')
+      : undefined;
     this.beginSessionInteraction();
     const {
       modelMessage,
@@ -1117,8 +1134,12 @@ export class WorkshopRoomHandler {
       todoEvidence,
       hostUpdateFrame,
       threadArtifactFrames,
-      timeNotice
+      timeNotice,
+      reactionsFrame: reactionPlan?.frame
     });
+    if (roomReader && reactionPlan) {
+      stageWorkshopReactionDelivery(this.session, requestId, roomReader, reactionPlan, (line) => this.outputChannel.appendLine(`[WorkshopRoomHandler] ${line}`));
+    }
     this.activeRun = { requestId, label, toolId, guestPersonaId, controller };
     // Sprint 13C: capabilities are participant-owned. Host and persona-guest
     // turns each mint one adapter with their own principal; direct-tool
