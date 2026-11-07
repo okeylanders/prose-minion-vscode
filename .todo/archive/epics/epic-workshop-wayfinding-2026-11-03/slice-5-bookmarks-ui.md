@@ -1,9 +1,9 @@
 # Slice 5: Bookmarks in the Rail and Thread
 
 **Epic:** [Workshop Wayfinding](README.md)
-**Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1 (amended: badge, no toast), D5, and D6
-**Design:** `Main.dc.html` (the Bookmark button and the Notes tab) in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** Done. Merged into the epic through PR #189 (`4a180ab`) after Astra's re-review resolved F-01 through F-04 and N-01 ([review](../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md)). Built in `d295bcd`, `bba9a43`, `3823135`, `5a59a0c`, `47326e1`; review fixes `e944375`, `c97d947`, `0659956`, `905f43b`.
+**Decision:** [ADR 2026-11-03](../../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1 (amended: badge, no toast), D5, and D6
+**Design:** `Main.dc.html` (the Bookmark button and the Notes tab) in [`docs/design/workshop-wayfinding/`](../../../../docs/design/workshop-wayfinding/README.md)
+**Status:** Done. Merged into the epic through PR #189 (`4a180ab`) after Astra's re-review resolved F-01 through F-04 and N-01 ([review](../../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md)). Built in `d295bcd`, `bba9a43`, `3823135`, `5a59a0c`, `47326e1`; review fixes `e944375`, `c97d947`, `0659956`, `905f43b`.
 
 ## Outcome
 
@@ -260,7 +260,7 @@ See `docs/pr-reviews/` for PRs #186, #187 and #188.
   - `WorkshopApp.bookmarkHost.test.tsx`: the real App bridged to the real host routes.
   - `WorkshopTurnPreviewRoomBinding.test.ts`: the real coordinator and store.
   - `WorkshopApp.turnPreview.test.tsx`: the observed message order.
-  - The ledger is in [the review](../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md#author-response).
+  - The ledger is in [the review](../../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md#author-response).
 
 ### PR #189 re-review fixes (`0659956`, `905f43b`)
 
@@ -271,7 +271,7 @@ See `docs/pr-reviews/` for PRs #186, #187 and #188.
 - **Tests.**
   - F-03: `WorkshopApp.bookmarkHost.test.tsx`.
   - F-04: `WorkshopTurnPreviewAfterFailedReplacement.test.ts`.
-  - The ledger is in [the review](../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md#author-response-re-review).
+  - The ledger is in [the review](../../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md#author-response-re-review).
 
 ### Follow-ups
 

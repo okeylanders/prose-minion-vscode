@@ -1,8 +1,8 @@
 # Slice 3: Read-In Provenance
 
 **Epic:** [Workshop Wayfinding](README.md)
-**Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D3, D4 (provenance and honesty), and D9
-**Status:** Done. Merged into the epic through PR #187 (`89d6f26`) after Astra's re-review resolved F-01, F-02 and N-01 ([review](../../../docs/pr-reviews/pr-187-workshop-wayfinding-read-in-provenance-review.md)). Built in `e36e4af`, `3b23a92`, `2163cb9`; review fixes `6575bbb`, `16aa38c`, `9801e01`. D9 (forward-only compatibility) was confirmed by Okey on 2026-11-03.
+**Decision:** [ADR 2026-11-03](../../../../docs/adr/2026-11-03-workshop-wayfinding.md), D3, D4 (provenance and honesty), and D9
+**Status:** Done. Merged into the epic through PR #187 (`89d6f26`) after Astra's re-review resolved F-01, F-02 and N-01 ([review](../../../../docs/pr-reviews/pr-187-workshop-wayfinding-read-in-provenance-review.md)). Built in `e36e4af`, `3b23a92`, `2163cb9`; review fixes `6575bbb`, `16aa38c`, `9801e01`. D9 (forward-only compatibility) was confirmed by Okey on 2026-11-03.
 
 ## Outcome
 
@@ -205,7 +205,7 @@ Each has a test.
 - **Row identity.** A row has no id, so the reader names it by `deliveredAt`
   plus the file it already sends, and the host takes the newest match.
   Two rows sharing a millisecond are
-  [tech debt](../../tech-debt/2026-11-04-read-in-row-identity.md).
+  [tech debt](../../../tech-debt/2026-11-04-read-in-row-identity.md).
   - The lookup uses the file as the catalog resolves it, the path
     `resource.read` recorded, not the webview's spelling.
 - **"Changed since" is only said when it is known.** `changedSinceRead` is
@@ -228,7 +228,7 @@ Each has a test.
 
 ### PR #187 review fixes
 
-Astra's [review](../../../docs/pr-reviews/pr-187-workshop-wayfinding-read-in-provenance-review.md)
+Astra's [review](../../../../docs/pr-reviews/pr-187-workshop-wayfinding-read-in-provenance-review.md)
 found three issues. All three are fixed; the ledger is in her report.
 
 - **F-01, `16aa38c`.** After a jump, the overlay's opener restore took focus

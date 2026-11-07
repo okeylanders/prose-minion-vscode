@@ -1,11 +1,12 @@
 # Epic: Workshop Wayfinding
 
+**Archived:** 2026-11-06, with the Bookmark Recall close-out. Its downstream epic no longer links to it as active work.
 **Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 merged (PR #187, `89d6f26`). Slice 4 merged (PR #188, `356c751`). Slice 5 merged (PR #189, `4a180ab`). Slice 7 merged (PR #190, `6c12df5`). Slice 7b merged (PR #195, `4578b71`). Slices 1–7b are done. Slice 8 is closed: Okey settled its decisions and approved merging the epic to `main` on 2026-11-05.
 **Priority:** Medium
 **Created:** 2026-11-03
 **Integration branch:** `epic/workshop-wayfinding`. Each slice is built on its own branch, `epic/workshop-wayfinding-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
-**Decision:** [ADR 2026-11-03: Workshop Wayfinding](../../../docs/adr/2026-11-03-workshop-wayfinding.md) (Accepted, 2026-11-05)
-**Design:** [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md), a snapshot of the planning canvas
+**Decision:** [ADR 2026-11-03: Workshop Wayfinding](../../../../docs/adr/2026-11-03-workshop-wayfinding.md) (Accepted, 2026-11-05)
+**Design:** [`docs/design/workshop-wayfinding/`](../../../../docs/design/workshop-wayfinding/README.md), a snapshot of the planning canvas
 **Realizes:** [Two-Tab Rail](../../features/feature-workshop-rail-tabs/README.md), [Read-In Material](../../features/feature-workshop-rail-read-in/README.md), [Thread Bookmarks](../../features/feature-workshop-thread-bookmarks/README.md), [Model Slices](../../features/feature-workshop-model-slices/README.md)
 
 ## Goal
@@ -145,7 +146,7 @@ the ADR:
     PascalCase `naming-convention` kind (`WorkshopRail`, the test's
     `StatefulRail` and `PmLogo` mock). No `from 'vscode'` in core.
   - **Sizes.** `WorkshopApp.tsx` 1,743 → 1,671 (it was already over 500;
-    [tech debt](../../tech-debt/2026-11-03-workshop-app-root-size.md)).
+    [tech debt](../../../tech-debt/2026-11-03-workshop-app-root-size.md)).
     `WorkshopRail.tsx` 158, `useWorkshopRailTabs.ts` 159. `styles/workshop/shell.css`
     is already 2,600+ lines; the slice doc put the tab rules there, so it grew
     by 23 net lines (tools rules out, tab rules in).
@@ -177,7 +178,7 @@ the ADR:
     it. All three are fixed: both panels stay mounted and the inactive one is
     `hidden`; the list is keyed by room, so a draft never crosses rooms; a
     draft whose task is gone is dropped; each panel is a tab stop. The ledger
-    is in [the review](../../../docs/pr-reviews/pr-184-workshop-wayfinding-rail-tabs-review.md).
+    is in [the review](../../../../docs/pr-reviews/pr-184-workshop-wayfinding-rail-tabs-review.md).
   - **Coordinator's answers (2026-11-03).**
     - *Badge vs. toast:* D1 is amended to the canvas's rule. An inactive tab
       badges whatever lands in it while hidden, whoever added it, and nothing
@@ -235,7 +236,7 @@ the ADR:
     projection picks fields explicitly, so the stamp stays out of export and
     recall until Slice 7 (D10).
 - **2026-11-03. Slice 6 review fixes (PR #185).** Astra
-  ([review](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md))
+  ([review](../../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md))
   found two P2 provenance faults and one scope decision:
   - **`623a4be`, F-01 and F-02.**
     - **F-01.** Served ids are only models a response named. The client
@@ -264,7 +265,7 @@ the ADR:
     Each grew only by the new field and its reads.
 - **2026-11-03. Slice 6 re-review fixes (PR #185).** Astra re-reviewed
   `edf98ce`
-  ([notes](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md#re-review-findings-at-edf98ce-2026-11-03)).
+  ([notes](../../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md#re-review-findings-at-edf98ce-2026-11-03)).
   The earlier fixes held. She found two more P2s and asked for one decision:
   - **`09ea77f`, F-03.** A stream's model named in a frame with no content now
     reaches the engine at once. An interrupted stream (EOF without a terminal
@@ -307,7 +308,7 @@ the ADR:
   - **Sizes.** New files are all under 500 lines. Files already over 500
     that grew: `WorkshopApp.tsx` 1,673 → 1,699 (the read-in wiring; the
     sheet-body derivation moved out to the controller;
-    [tech debt](../../tech-debt/2026-11-03-workshop-app-root-size.md));
+    [tech debt](../../../tech-debt/2026-11-03-workshop-app-root-size.md));
     `WorkshopContextHandler.ts` 977 → 993 (two registrations and the
     collaborator; the route bodies live in `WorkshopReadInRoutes`);
     `WorkshopContextIntakeService.ts` 590 → 595 (`readText`, which `load`
@@ -347,7 +348,7 @@ the ADR:
     - *Counts.* At `1687b0a`: 606 suites / 8,601 tests / 59 snapshots, all
       passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged
       from the merged head. The ledger is in
-      [the review](../../../docs/pr-reviews/pr-186-workshop-wayfinding-read-in-review.md).
+      [the review](../../../../docs/pr-reviews/pr-186-workshop-wayfinding-read-in-review.md).
   - **PR #186 re-review (Astra, 2026-11-03).** F-01 confirmed fixed. A new
     P2, F-02, had been there since the slice was first built: activating
     another row behind an open reader showed B's heading over A's body,
@@ -358,7 +359,7 @@ the ADR:
     - `WorkshopModalShell` gains an opt-in `trapFocus`, which only the text
       sheet turns on.
     - The shared modal gap is
-      [tech debt](../../tech-debt/2026-11-03-workshop-modal-focus-containment.md).
+      [tech debt](../../../tech-debt/2026-11-03-workshop-modal-focus-containment.md).
     - *Counts.* At `3c184c2`: 606 suites / 8,608 tests / 59 snapshots, all
       passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.
   - **PR #186 second re-review (Astra, 2026-11-04).** F-01 and F-02
@@ -366,7 +367,7 @@ the ADR:
     position, so a positive `tabindex` in rendered Markdown escaped the
     wrap. Fixed in `fe0d47d` by ordering stops as the browser does.
     Stripping positive `tabindex` from rendered content is
-    [tech debt](../../tech-debt/2026-11-04-markdown-positive-tabindex.md).
+    [tech debt](../../../tech-debt/2026-11-04-markdown-positive-tabindex.md).
     - *Counts.* At `fe0d47d`: 606 suites / 8,609 tests / 59 snapshots, all
       passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.
   - **PR #186 third re-review (Astra, 2026-11-04).** N-01 confirmed. One P3,
@@ -419,7 +420,7 @@ the ADR:
     - Before, on a clean worktree at `0839502`: 606 suites / 8,610 tests / 59
       snapshots. One wall-clock test failed under load and passed alone. It
       is already tracked:
-      [tech debt](../../tech-debt/2026-11-03-lightbox-passages-wall-clock-test.md).
+      [tech debt](../../../tech-debt/2026-11-03-lightbox-passages-wall-clock-test.md).
     - After, at `2163cb9`: 611 / 8,683 / 59, all passing.
     - `npm run typecheck` is clean.
     - `npm run lint` has 0 errors. Warnings went 1,136 → 1,138, both new
@@ -454,13 +455,13 @@ the ADR:
     - Jump rows are named "Show the card for {label} in the thread".
     - The optional rail "changed since" tag is not built.
   - **Follow-ups.**
-    - [Read-in row identity](../../tech-debt/2026-11-04-read-in-row-identity.md):
+    - [Read-in row identity](../../../tech-debt/2026-11-04-read-in-row-identity.md):
       rows that share a delivery time share provenance in the reader.
     - Slice 8's live pass should check two things: the reader's scroll to the
       range, and the jump's focus in a real webview.
   - **PR #187 review (Astra, 2026-11-04).** Two P2s and one P3, all fixed.
     The ledger is in
-    [the review](../../../docs/pr-reviews/pr-187-workshop-wayfinding-read-in-provenance-review.md).
+    [the review](../../../../docs/pr-reviews/pr-187-workshop-wayfinding-read-in-provenance-review.md).
     - **`6575bbb`, F-02.** A writer-source row validated with a
       `sourceFingerprint` would have reached `WORKSHOP_SESSION_STATE`.
       - The codec now refuses the key on writer rows.
@@ -530,7 +531,7 @@ the ADR:
     - A rolled-back provisional turn takes its bookmark with it.
   - **PR #188 review (Astra, 2026-11-04).** One P2, F-01, fixed in `5d0b5fc`.
     The ledger is in
-    [the review](../../../docs/pr-reviews/pr-188-workshop-wayfinding-bookmarks-host-review.md).
+    [the review](../../../../docs/pr-reviews/pr-188-workshop-wayfinding-bookmarks-host-review.md).
     - The id grammar accepted a counter of any length. Hydration turned an
       oversized one into `Infinity` or an exponent, the next set minted an id
       the codec refuses, and every later save failed.
@@ -602,7 +603,7 @@ the ADR:
     an action-row control that export never renders.
   - **PR #189 review (Astra, 2026-11-04).** Two P2s, both fixed in
     `e944375`, and one P3, N-01, fixed in `c97d947`. The ledger is in
-    [the review](../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md#author-response).
+    [the review](../../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md#author-response).
     - **F-01.** A rename refused under the session-operation gate lost the
       writer's draft, because the field closed as soon as it posted. A
       rename now names its request. `WORKSHOP_RENAME_BOOKMARK_RESULT`
@@ -617,7 +618,7 @@ the ADR:
     - *Counts.* At `e944375`: 628 suites / 8,910 tests / 59 snapshots, all
       passing. At `c97d947`: 628 / 8,913 / 59; one Lightbox passages
       wall-clock test failed under load in the full run and passed alone
-      ([tech debt](../../tech-debt/2026-11-03-lightbox-passages-wall-clock-test.md)).
+      ([tech debt](../../../tech-debt/2026-11-03-lightbox-passages-wall-clock-test.md)).
       With the N-01 App witness: 628 / 8,914 / 59, all passing. Typecheck clean. Lint 0 errors, 1,146 → 1,150 warnings, all
       `naming-convention`: one enum member, one `PmLogo` mock, and the jsdom
       text-encoding shim's two names.
@@ -683,7 +684,7 @@ the ADR:
     - `extension.ts` 895 → 899
 
     New files are all under 500 lines.
-  - **Filed:** [divider accessible names](../../tech-debt/2026-11-04-workshop-thread-divider-accessible-names.md).
+  - **Filed:** [divider accessible names](../../../tech-debt/2026-11-04-workshop-thread-divider-accessible-names.md).
   - **Merged.** Astra's review at `f9a6ab7` found no actionable issues. CI was
     green on `b47fa10`, and the coordinator merged PR #190 into the epic at
     `6c12df5`.
@@ -723,7 +724,7 @@ the ADR:
   - **ADR.** 2026-11-03 is Accepted.
   - **Feature notes.** The four are marked Shipped.
   - **Memory bank.** There's an entry,
-    [`20261105-1900-workshop-wayfinding-complete.md`](../../../.memory-bank/20261105-1900-workshop-wayfinding-complete.md).
+    [`20261105-1900-workshop-wayfinding-complete.md`](../../../../.memory-bank/20261105-1900-workshop-wayfinding-complete.md).
   - **Archiving is deferred.** This folder and the four feature notes stay
     where they are for now. The Project Memory and Pinned Context epics were
     cut from this epic's tip, and their docs, together with the ADR, the

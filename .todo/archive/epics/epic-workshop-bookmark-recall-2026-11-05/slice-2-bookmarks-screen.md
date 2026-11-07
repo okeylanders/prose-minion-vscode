@@ -1,7 +1,7 @@
 # Slice 2: The Bookmarks Screen
 
 **Epic:** [Workshop Bookmark Recall](README.md)
-**Decision:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-bookmark-recall.md), D8
+**Decision:** [ADR 2026-11-05](../../../../docs/adr/2026-11-05-workshop-bookmark-recall.md), D8
 **Status:** Done (branch `epic/workshop-bookmark-recall-slice-2-bookmarks-screen`, cut from the epic at `ddf8356`; PR #216)
 
 ## Outcome

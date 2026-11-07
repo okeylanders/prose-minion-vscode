@@ -1,9 +1,9 @@
 # Slice 7: Model Slices
 
 **Epic:** [Workshop Wayfinding](README.md)
-**Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D8 and D10 (models)
-**Design:** `Main.dc.html` and `Slices.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** Done. Merged into the epic through PR #190 (`6c12df5`). Astra's review found no actionable issues ([review](../../../docs/pr-reviews/pr-190-workshop-wayfinding-model-slices-review.md)). Built in `1fdcabb`, `b6b6b70`, `6712111`, `0d2bc51`, `b564a4b`, `9c17bd4`, `a78afa6`.
+**Decision:** [ADR 2026-11-03](../../../../docs/adr/2026-11-03-workshop-wayfinding.md), D8 and D10 (models)
+**Design:** `Main.dc.html` and `Slices.dc.html` in [`docs/design/workshop-wayfinding/`](../../../../docs/design/workshop-wayfinding/README.md)
+**Status:** Done. Merged into the epic through PR #190 (`6c12df5`). Astra's review found no actionable issues ([review](../../../../docs/pr-reviews/pr-190-workshop-wayfinding-model-slices-review.md)). Built in `1fdcabb`, `b6b6b70`, `6712111`, `0d2bc51`, `b564a4b`, `9c17bd4`, `a78afa6`.
 
 ## Outcome
 
@@ -296,7 +296,7 @@ thread divider; `0d2bc51` bubble note and title; `b564a4b` export and mirror;
   name, and a separator's children are presentational, so matching it would
   make the slice silent. The slice uses the same classes and markup, plus
   the name. The existing dividers are filed as
-  [tech debt](../../tech-debt/2026-11-04-workshop-thread-divider-accessible-names.md).
+  [tech debt](../../../tech-debt/2026-11-04-workshop-thread-divider-accessible-names.md).
 - **The window rule, stated.** When a slice's writer turn falls before the
   window and its reply is inside it, the thread draws the slice before the
   reply, the first place it can. `workshopModelSlicesInWindow` states that

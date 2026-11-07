@@ -1,7 +1,7 @@
 # Slice 4: Verify Live
 
 **Epic:** [Workshop Bookmark Recall](README.md)
-**Status:** Ready for Okey (needs a human with VS Code). Build is at `298c17dc` on `epic/workshop-bookmark-recall`.
+**Status:** Done (2026-11-06). Okey live-tested the epic branch with the call and read limits raised (#237, #238): "This is working great so far." He reported no findings and approved the merge to `main`. The items were not reported one by one.
 
 ## Checklist
 
@@ -29,7 +29,7 @@ Record the commit tested, the VS Code version and OS, the screen reader, and wha
 - [ ] **The Bookmarks screen at scale (Slice 2, PR #216).**
   - [ ] **Paging.** With more than 25 saved sessions, "Load more" pages through them.
     - With every session readable, the coverage line reads "Bookmarks from N of M saved sessions".
-    - The warning "Shared session ids are checked across the N sessions read; M couldn't be read…" appears only when at least one session can't be read. To see it, include an unreadable file, for example one over the browser's 5 MiB bound.
+    - The warning "Shared session ids are checked across the N sessions read; M couldn't be read…" appears only when at least one session can't be read. To see it, include an unreadable file, for example one over the browser's 5 MiB bound. Astra's PR #224 note: use a 6 MiB fixture the search index has no entry for.
   - [ ] **Shared session ids.** Use a disposable test workspace, never your only copies. `WorkshopSessionStorePage.identity.test.ts` has the patterns.
     - **Set-up.** Make two valid files that claim the same session id and `updatedAt`, with different titles and different, distinguishable bookmarked text. Put them on different pages: about 24 newer sessions between them.
     - **Before loading the duplicate's page:** Preview the first copy's row, and try Open. The exact read refuses with a clear reason (`ambiguous-session`).
@@ -45,7 +45,7 @@ Record the commit tested, the VS Code version and OS, the screen reader, and wha
   - [ ] From a live bookmark outside the window, from the screen's leading rows or a Notes row: the sheet is prefilled from the host's message. Saving records this room as the source.
   - [ ] From a saved session's bookmark: the source line reads "From “Title”, …". The memory manager names that session and turn.
   - [ ] From a saved **capability-card** bookmark: the memory saves with the card's safe summary.
-    - Known wording nit (PR #219 re-review, non-blocking): the sheet labels it "Session's reply". Decide whether it should read differently.
+    - Known wording nit (PR #219 re-review, non-blocking): the sheet labels it "Session's reply". Kept as is: Okey asked for no change at the merge.
   - [ ] **A save that overlaps a room change.** There are two phases, with different expected results (PR #220 F-01):
     - **Before the save reaches the memory writer**, while the saved session is still being read: reopen the same session, or Rewind. The save is refused with "the room changed", and nothing is written: no memory and no receipt.
     - **After the writer has taken the save:** a same-session reopen may still finish it. The memory is saved, the room-changed warning shows (`WORKSHOP_MEMORY_ROOM_CHANGED`), and no receipt enters the replacement room.

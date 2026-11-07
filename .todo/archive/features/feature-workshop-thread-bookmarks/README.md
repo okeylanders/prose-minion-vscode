@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-10-27
 **Source**: Brainstorm with Okey (Workshop sidebar batch). Okey's working name is "pins"
-**Status**: Shipped (2026-11-05) by [Epic: Workshop Wayfinding](../../epics/epic-workshop-wayfinding-2026-11-03/README.md); decisions in [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md) (Accepted). The epic merges to `main` in one PR. This note stays here until the [bookmark recall follow-up](../feature-workshop-bookmark-recall/README.md) and the downstream epics are done, so their links keep working.
+**Status**: Shipped (2026-11-05) by [Epic: Workshop Wayfinding](../../epics/epic-workshop-wayfinding-2026-11-03/README.md); decisions in [ADR 2026-11-03](../../../../docs/adr/2026-11-03-workshop-wayfinding.md) (Accepted). The epic merges to `main` in one PR. This note stays here until the [bookmark recall follow-up](../feature-workshop-bookmark-recall/README.md) and the downstream epics are done, so their links keep working.
 **Priority**: Medium
 
 > Lives in tab 2 of the [two-tab rail](../feature-workshop-rail-tabs/README.md),
@@ -48,7 +48,7 @@ one `git mv`.
 - **Label:** a deterministic default built from the bubble (participant label
   plus the first line, truncated). It's never model-generated, the same rule
   as `toolLabel` and `personaLabel`. The writer can rename it. If
-  [response save names](../feature-workshop-response-save-names/README.md)
+  [response save names](../../../features/feature-workshop-response-save-names/README.md)
   lands first, the default can reuse the turn's save name.
 - **Rail list in thread order**, not creation order, so it reads like a table
   of contents. Clicking a bookmark scrolls to the bubble and focuses it.
@@ -85,13 +85,13 @@ and the participant, because the bubble itself may not be in `turns`.
 | Open | Loaded from the session |
 | Rewind | Bookmarks on cut turns are pruned inside the shared room-replacement transaction, as marks are |
 | Branch | The branch keeps bookmarks up to the cut. The source file is untouched, because Branch never writes it |
-| Export | The projection needs an explicit include/omit decision ([ADR 2026-10-05](../../../docs/adr/2026-10-05-workshop-transcript-export.md)). Lean: include a marker in Markdown and HTML and a field in JSON (JSON has its own `formatVersion`) |
+| Export | The projection needs an explicit include/omit decision ([ADR 2026-10-05](../../../../docs/adr/2026-10-05-workshop-transcript-export.md)). Lean: include a marker in Markdown and HTML and a field in JSON (JSON has its own `formatVersion`) |
 | Recall | Omit in v1. Later, "the writer bookmarked this" is a strong hint for `transcript.*` reads ("where did we land?") |
 
 ## Persistence
 
 Bookmarks add an optional collection to session state. Per
-[ADR 2026-07-30](../../../docs/adr/2026-07-30-workshop-session-codec-evolution.md)
+[ADR 2026-07-30](../../../../docs/adr/2026-07-30-workshop-session-codec-evolution.md)
 that needs no `schemaVersion` bump. But the codec is strict, so **older builds
 will refuse any session that has bookmarks**. It's the same decision as model
 stamps; make it once, for both:

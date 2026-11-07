@@ -1,7 +1,7 @@
 # Slice 3: Remember This, and Proposals That Cite Bookmarks
 
 **Epic:** [Workshop Bookmark Recall](README.md)
-**Decision:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-bookmark-recall.md), D9 and D10, with [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md) D3
+**Decision:** [ADR 2026-11-05](../../../../docs/adr/2026-11-05-workshop-bookmark-recall.md), D9 and D10, with [ADR 2026-11-04](../../../../docs/adr/2026-11-04-workshop-project-memory.md) D3
 **Status:** Done (branch `epic/workshop-bookmark-recall-slice-3-remember-this`, cut from the epic at `78fe28d`; PR #219). See the [implementation note](#implementation-note).
 
 ## Outcome
@@ -130,11 +130,11 @@ Built on `epic/workshop-bookmark-recall-slice-3-remember-this` (PR #219) in two 
 
 ### PR #219 review
 
-Astra raised two P2s; both are fixed, and the ledger is in [the review](../../../docs/pr-reviews/pr-219-remember-this-review.md).
+Astra raised two P2s; both are fixed, and the ledger is in [the review](../../../../docs/pr-reviews/pr-219-remember-this-review.md).
 
 - **F-01.** Saved capability-card bookmarks can now be remembered. Eligibility is the original turn's (`bookmarkable` on recall entries and bookmarks), and the screen's row is `rememberable` only when the host would save it.
 - **F-02.** The saved-turn route takes the room revision when its message arrives. The shared write refuses, writing nothing, when the room was replaced during the source read (a same-id reopen or a Rewind included).
 
 ### Deferred
 
-- **Saved-session citations in a proposal** (PR #214 F-06). These are refused and logged, as planned. Session-qualified, multi-source provenance is [its own follow-up](../../features/feature-workshop-memory-multi-session-sources/README.md).
+- **Saved-session citations in a proposal** (PR #214 F-06). These are refused and logged, as planned. Session-qualified, multi-source provenance is [its own follow-up](../../../features/feature-workshop-memory-multi-session-sources/README.md).

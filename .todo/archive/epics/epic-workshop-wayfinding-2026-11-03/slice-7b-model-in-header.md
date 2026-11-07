@@ -1,8 +1,8 @@
 # Slice 7b: The Model in the Bubble Header
 
 **Epic:** [Workshop Wayfinding](README.md)
-**Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), the [2026-11-04 amendment](../../../docs/adr/2026-11-03-workshop-wayfinding.md#amendment-2026-11-04-the-model-in-the-bubble-header) to D8 and D10
-**Status:** Done. Merged into the epic through PR #195 (`4578b71`). Astra's implementation review at `3e0b172` approved it with no blocking finding ([review](../../../docs/pr-reviews/pr-195-workshop-wayfinding-model-header-review.md)).
+**Decision:** [ADR 2026-11-03](../../../../docs/adr/2026-11-03-workshop-wayfinding.md), the [2026-11-04 amendment](../../../../docs/adr/2026-11-03-workshop-wayfinding.md#amendment-2026-11-04-the-model-in-the-bubble-header) to D8 and D10
+**Status:** Done. Merged into the epic through PR #195 (`4578b71`). Astra's implementation review at `3e0b172` approved it with no blocking finding ([review](../../../../docs/pr-reviews/pr-195-workshop-wayfinding-model-header-review.md)).
 
 ## Outcome
 

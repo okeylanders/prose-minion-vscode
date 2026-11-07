@@ -1,7 +1,7 @@
 # Slice 8: Verify Live
 
 **Epic:** [Workshop Wayfinding](README.md)
-**Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), all decisions
+**Decision:** [ADR 2026-11-03](../../../../docs/adr/2026-11-03-workshop-wayfinding.md), all decisions
 **Status:** Closed (2026-11-05). Okey settled all five decisions and approved merging the epic to `main`. He didn't report checklist results item by item, so the boxes below stay unticked. Anything the pass turns up later is filed as a follow-up, the same way as a blocker or as accepted debt.
 
 ## Outcome
@@ -184,11 +184,11 @@ Once the checklist is done:
 
 ## Open tech debt from this epic
 
-- [Session codec downgrade tolerance](../../tech-debt/2026-11-03-workshop-session-codec-downgrade-tolerance.md) (D9)
-- [Workshop app root size](../../tech-debt/2026-11-03-workshop-app-root-size.md)
-- [Dictionary normalized-block success](../../tech-debt/2026-11-03-dictionary-normalized-block-success.md)
-- [Workshop modal focus containment](../../tech-debt/2026-11-03-workshop-modal-focus-containment.md)
-- [Lightbox passages wall-clock test](../../tech-debt/2026-11-03-lightbox-passages-wall-clock-test.md)
-- [Markdown positive tabindex](../../tech-debt/2026-11-04-markdown-positive-tabindex.md)
-- [Read-in row identity](../../tech-debt/2026-11-04-read-in-row-identity.md)
-- [Thread divider accessible names](../../tech-debt/2026-11-04-workshop-thread-divider-accessible-names.md)
+- [Session codec downgrade tolerance](../../../tech-debt/2026-11-03-workshop-session-codec-downgrade-tolerance.md) (D9)
+- [Workshop app root size](../../../tech-debt/2026-11-03-workshop-app-root-size.md)
+- [Dictionary normalized-block success](../../../tech-debt/2026-11-03-dictionary-normalized-block-success.md)
+- [Workshop modal focus containment](../../../tech-debt/2026-11-03-workshop-modal-focus-containment.md)
+- [Lightbox passages wall-clock test](../../../tech-debt/2026-11-03-lightbox-passages-wall-clock-test.md)
+- [Markdown positive tabindex](../../../tech-debt/2026-11-04-markdown-positive-tabindex.md)
+- [Read-in row identity](../../../tech-debt/2026-11-04-read-in-row-identity.md)
+- [Thread divider accessible names](../../../tech-debt/2026-11-04-workshop-thread-divider-accessible-names.md)
