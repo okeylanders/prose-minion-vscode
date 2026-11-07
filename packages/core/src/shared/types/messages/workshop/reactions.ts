@@ -65,6 +65,12 @@ export interface WorkshopTurnReactionSummary {
   reaction: WorkshopReactionId;
   author: WorkshopTurnReactionAuthor;
   label: string;
+  /**
+   * A persona's reaction only: the reply that carried it (ids only). The
+   * webview announces a persona's reaction once, when its reply arrived live
+   * in this mount (D8), never on hydration, Open or reload.
+   */
+  viaTurnId?: string;
 }
 
 /** Add (`true`) or remove (`false`) one of the writer's reactions on a turn. Idempotent. */

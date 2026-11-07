@@ -27,6 +27,7 @@ import {
   WORKSHOP_WEB_RESEARCH_SETTING,
   WORKSHOP_PROJECT_MEMORY_SETTING,
   WORKSHOP_FILE_EDITS_SETTING,
+  WORKSHOP_PERSONA_REACTIONS_SETTING,
   WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING,
   LightboxSetSourcePayload
 } from '@messages';
@@ -718,8 +719,10 @@ export class MessageHandler {
     const workshopProjectMemoryKey = `${WORKSHOP_PROJECT_MEMORY_SETTING.section}.` +
       WORKSHOP_PROJECT_MEMORY_SETTING.key;
     const workshopFileEditsKey = `${WORKSHOP_FILE_EDITS_SETTING.section}.${WORKSHOP_FILE_EDITS_SETTING.key}`;
+    // Persona reactions (ADR 2026-11-07 Q8): the prompt's permission rides only while they are on.
+    const workshopReactionsKey = `${WORKSHOP_PERSONA_REACTIONS_SETTING.section}.${WORKSHOP_PERSONA_REACTIONS_SETTING.key}`;
     if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey) || affects(workshopWebResearchKey)
-      || affects(workshopProjectMemoryKey) || affects(workshopFileEditsKey)) {
+      || affects(workshopProjectMemoryKey) || affects(workshopFileEditsKey) || affects(workshopReactionsKey)) {
       void this.workshopHandler.syncConversationSettingsFromSettings();
     }
     // The helper's memory drafts (ADR 2026-11-05 D5.7): the sheet hears the switch, and off asks for nothing.

@@ -100,6 +100,25 @@ export function assertWorkshopReactionsShape(value: unknown): void {
   });
 }
 
+/**
+ * Strict structure of a turn's `reactionOnly` (ADR 2026-11-07 R1): a known
+ * id, on a host or guest reply to the room. The reaction it names may since
+ * have been hidden (Q6), so nothing requires it still to stand.
+ */
+export function assertWorkshopReactionOnlyShape(
+  value: unknown,
+  path: string,
+  turn: { readonly role?: unknown; readonly participant?: unknown; readonly artifact?: unknown; readonly capability?: unknown }
+): void {
+  if (turn.role !== 'assistant' || (turn.participant !== 'host' && turn.participant !== 'guest')
+    || turn.artifact !== 'persona_message' || turn.capability !== undefined) {
+    shapeError(path, 'a mark on a persona reply');
+  }
+  if (!isWorkshopReactionId(value)) {
+    shapeError(path, 'a known Workshop reaction id');
+  }
+}
+
 /** Whether a reaction's turns (its target and, for a persona's, its carrying reply) are all in `turnIds`. */
 const standsIn = (reaction: WorkshopTurnReaction, turnIds: ReadonlySet<string>): boolean =>
   turnIds.has(reaction.turnId)

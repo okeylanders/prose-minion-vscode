@@ -134,6 +134,15 @@ export const WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH =
 export const WORKSHOP_REACTIONS_PROMPT_PATH =
   'workshop-personas/reactions.md';
 
+/**
+ * The permission to react (ADR 2026-11-07 D5): the trailer, the vocabulary by
+ * id and gloss, and how rarely. Taught after `reactions.md` only while
+ * `proseMinion.workshop.reactions.personas` is on (Q8), so a persona never
+ * writes a trailer while they are off; a change rebuilds the prompt.
+ */
+export const WORKSHOP_PERSONA_REACTIONS_PROMPT_PATH =
+  'workshop-personas/persona-reactions.md';
+
 export const WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS: Readonly<
   Record<WorkshopRelationalDepth, string>
 > = Object.freeze({
@@ -159,7 +168,7 @@ export function workshopPersonaSystemPromptPaths(
     WorkshopConversationBehavior,
     'interactionMode' | 'expressionLevel' | 'relationalDepth'
   >,
-  options: { readonly projectMemory?: boolean; readonly fileEdits?: boolean } = {}
+  options: { readonly projectMemory?: boolean; readonly fileEdits?: boolean; readonly personaReactions?: boolean } = {}
 ): string[] {
   const participant = basePromptPath === WORKSHOP_HOST_BASE_PROMPT_PATH
     || basePromptPath === WORKSHOP_GUEST_BASE_PROMPT_PATH;
@@ -183,6 +192,7 @@ export function workshopPersonaSystemPromptPaths(
     WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
     WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS[behavior.relationalDepth],
     ...(participant ? [WORKSHOP_REACTIONS_PROMPT_PATH] : []),
+    ...(participant && options.personaReactions ? [WORKSHOP_PERSONA_REACTIONS_PROMPT_PATH] : []),
     ...(behavior.expressionLevel === 'subtle' ? [] : [persona.expressionProfilePath]),
     ...(behavior.expressionLevel === 'amplified' ? [persona.expressionCalibrationPath] : [])
   ];

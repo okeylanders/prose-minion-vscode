@@ -48,7 +48,8 @@ import {
   WorkshopProjectMemoryDelivery,
   WorkshopReactionDelivery,
   WorkshopTurnBookmark,
-  WorkshopTurnReaction
+  WorkshopTurnReaction,
+  WorkshopTurnReactionAuthor
 } from '@messages';
 import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { cloneWorkshopReactionDelivery } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
@@ -118,9 +119,16 @@ import {
 import {
   WorkshopReactionChange,
   WorkshopReactionIdentity,
-  WorkshopReactionLedger
+  WorkshopReactionLedger,
+  WorkshopReactionRefusedError
 } from '@/application/services/workshop/session/WorkshopReactionLedger';
-import type { WorkshopReactionId } from '@shared/constants/workshopReactions';
+import { isWorkshopReactableTurn, type WorkshopReactionId } from '@shared/constants/workshopReactions';
+
+/** A reply's kept reaction for `completeRun` (ADR 2026-11-07 D5): its id, and whether it was all the reply held (R1). */
+export interface WorkshopReplyReactionCommit {
+  readonly reaction: WorkshopReactionId;
+  readonly only: boolean;
+}
 import {
   WorkshopTurnLedger
 } from '@/application/services/workshop/session/WorkshopTurnLedger';
@@ -1708,11 +1716,13 @@ export class WorkshopSessionService {
     widgetRecommendation?: WorkshopWidgetRecommendation,
     model?: WorkshopTurnModel,
     memoryProposals: readonly WorkshopMemoryProposal[] = [],
-    fileEditProposals: readonly WorkshopFileEditProposal[] = []
+    fileEditProposals: readonly WorkshopFileEditProposal[] = [],
+    reaction?: WorkshopReplyReactionCommit
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
     }
+    const reactionTarget = reaction ? this.personaReplyReactionTarget(requestId) : undefined;
 
     const active = this.activeRun;
     const isHost = active.target === 'host';
@@ -1816,6 +1826,11 @@ export class WorkshopSessionService {
     if ((isHost || isGuest) && active.reactionDelivery) {
       turn.reactionDelivery = [cloneWorkshopReactionDelivery(active.reactionDelivery)];
     }
+    // The persona's own reaction (ADR 2026-11-07 D5) rides the reply that carried it, written
+    // through the ledger in this one commit, so a cut or rollback of the reply takes it too.
+    if (reaction && reactionTarget && this.addPersonaReplyReaction(reaction, reactionTarget, turn)) {
+      turn.reactionOnly = reaction.only ? reaction.reaction : undefined;
+    }
     this.turnLedger.append(turn);
     for (const capabilityTurnId of new Set(active.capabilityTurnIds ?? [])) {
       this.turnLedger.update(capabilityTurnId, (capabilityTurn) => {
@@ -1836,6 +1851,38 @@ export class WorkshopSessionService {
       };
     }
     return cloneTurn(turn);
+  }
+
+  /**
+   * The writer message the active run's reply answers, which a persona's
+   * reaction trailer may react to (ADR 2026-11-07 D5): the run's own writer
+   * room message, for a host or guest message (a guest's join included).
+   * Undefined for a tool run, its synthesis, or a sidecar: those answer no
+   * writer message, so their trailer is `no-target`.
+   */
+  personaReplyReactionTarget(requestId: string): WorkshopTurn | undefined {
+    const active = this.activeRun;
+    if (active?.requestId !== requestId || (active.target !== 'host' && active.target !== 'personaGuest')
+      || active.artifact !== 'persona_message' || !active.writerTurnId) {
+      return undefined;
+    }
+    const turn = this.turnLedger.find(active.writerTurnId);
+    return turn && isWorkshopReactableTurn(turn, { kind: 'host' }) ? turn : undefined;
+  }
+
+  /** Add the reply's reaction on `target`; false when the ledger refuses it (a full session). */
+  private addPersonaReplyReaction(reaction: WorkshopReplyReactionCommit, target: WorkshopTurn, reply: WorkshopTurn): boolean {
+    const author: WorkshopTurnReactionAuthor = reply.participant === 'guest' && reply.personaId
+      ? { kind: 'personaGuest', personaId: reply.personaId }
+      : { kind: 'host' };
+    try {
+      return this.reactionLedger.add({ turnId: target.id, reaction: reaction.reaction, author, viaTurnId: reply.id }, target) === 'added';
+    } catch (error) {
+      if (error instanceof WorkshopReactionRefusedError) {
+        return false;
+      }
+      throw error;
+    }
   }
 
   /**

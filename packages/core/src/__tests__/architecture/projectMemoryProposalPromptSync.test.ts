@@ -129,7 +129,8 @@ describe('the trailer example, through the production extractor and codec', () =
           supersedes: []
         }],
         rejections: []
-      }
+      },
+      trailers: { memory: true, fileEdits: false }
     });
   });
 

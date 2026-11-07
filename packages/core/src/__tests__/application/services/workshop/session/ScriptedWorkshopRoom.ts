@@ -130,6 +130,8 @@ export class ScriptedWorkshopRoom {
   memoryAutoSave?: (turn: WorkshopTurn, indexes: readonly number[]) => void;
   /** A reply's staged file edits (ADR 2026-11-05 D4): a test resolves them first; used only for the reply they match. */
   fileEdits?: WorkshopReplyFileEditContext;
+  /** Whether personas may react (ADR 2026-11-07 Q8); absent, a reaction trailer is dropped as `reactions-off`. */
+  reactionsOpen?: boolean;
   /** Whether each reply's run had web search tools attached (Slice 5's hold). */
   webResearchAttached = false;
 
@@ -580,6 +582,7 @@ export class ScriptedWorkshopRoom {
       settleCommittedRun: settle,
       memory: this.memoryContext,
       ...(this.fileEdits ? { fileEdits: this.fileEdits } : {}),
+      ...(this.reactionsOpen !== undefined ? { reactionsOpen: this.reactionsOpen } : {}),
       ...(this.memoryAutoSave ? { memoryAutoSave: this.memoryAutoSave } : {}),
       log: (line) => this.log.push(line),
       events: silentEvents()

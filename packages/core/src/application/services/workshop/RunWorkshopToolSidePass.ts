@@ -76,6 +76,8 @@ export interface WorkshopToolSidePassEvents {
   memoryAutoSavesInRoom?: () => number;
   /** The synthesis's file edits, staged with the setting read now (ADR 2026-11-05 D4, D11); absent, none are staged. */
   fileEdits?: (reply: string, signal: AbortSignal) => Promise<WorkshopReplyFileEditContext | undefined>;
+  /** Whether personas may react (ADR 2026-11-07 Q8); a synthesis answers no writer message, so its trailer is `no-target`. */
+  reactionsOpen?: () => boolean;
   settled: (requestId: string) => void;
 }
 
@@ -291,6 +293,7 @@ export class RunWorkshopToolSidePass {
         memory: replyMemory,
         memoryAutoSavesInRoom: events.memoryAutoSavesInRoom,
         fileEdits: replyFileEdits,
+        reactionsOpen: events.reactionsOpen?.(),
         memoryAutoSave: events.memoryAutoSave && ((turn, indexes) => {
           memorySave = events.memoryAutoSave!(turn, indexes);
         }),

@@ -171,7 +171,8 @@ export class WorkshopReactionLedger {
         turnId: reaction.turnId,
         reaction: reaction.reaction,
         author: cloneAuthor(reaction.author),
-        label: labelOf(reaction)
+        label: labelOf(reaction),
+        ...(reaction.viaTurnId !== undefined ? { viaTurnId: reaction.viaTurnId } : {})
       }));
     });
   }

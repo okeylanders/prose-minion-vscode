@@ -660,6 +660,11 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     allowedToken: /(?:(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)ConfigCodec|assert(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)(?:Draft|RecommendationSeed)Shape|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell)/
   },
   {
+    file: 'application/services/workshop/widgets/WorkshopWidgetRecommendationRejectionCopy.ts',
+    reason: 'recommendation rejection copy, moved verbatim out of WorkshopRunCompletion (Message Reactions Slice 3)',
+    allowedToken: /(?:lengthBudget|lensSlug|metaphorPull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references|subjectText|mustSurvive|mustNotChange|aim|distance|requestedCount|invalid_distance|invalid_requested_count)/
+  },
+  {
     file: 'application/services/workshop/WorkshopRunCompletion.ts',
     reason: 'recommendation source-availability boundary',
     allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|show-vs-tell|lengthBudget|lensSlug|metaphorPull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references|subjectText|mustSurvive|mustNotChange|aim|distance|requestedCount|invalid_distance|invalid_requested_count)/
@@ -909,6 +914,10 @@ const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
   {
     file: 'application/services/workshop/WorkshopRunCompletion.ts',
     reason: 'delegates recommendation semantics through the feature operations registry'
+  },
+  {
+    file: 'application/services/workshop/widgets/WorkshopWidgetRecommendationRejectionCopy.ts',
+    reason: 'copy keyed by rejected seed field, moved from WorkshopRunCompletion; no per-feature dispatch'
   },
   {
     file: 'application/services/workshop/directives/WorkshopStandingDirectiveOperations.ts',

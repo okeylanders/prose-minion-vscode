@@ -68,17 +68,20 @@ export const workshopReaction = (id: WorkshopReactionId): WorkshopReactionDefini
 
 /** The turn facts the rule reads; the bubble, the ledger and the codec pass the same turn. */
 export type WorkshopReactableTurnFacts = Pick<WorkshopTurn, 'role' | 'kind' | 'participant' | 'artifact'>
-  & Partial<Pick<WorkshopTurn, 'capability'>>;
+  & Partial<Pick<WorkshopTurn, 'capability' | 'reactionOnly'>>;
 
 /**
- * A persona reply in the room: a host or guest answer, or the host's synthesis
- * of a report (a `tool_run` turn), never a tool's report or a capability card.
+ * A persona reply in the room the writer may react to: a host or guest
+ * answer, or the host's synthesis of a report (a `tool_run` turn), never a
+ * tool's report, a capability card, or a reply that held only a reaction
+ * (Q10: there is nothing there to react to but the reaction).
  */
 const isPersonaReply = (turn: WorkshopReactableTurnFacts): boolean =>
   turn.role === 'assistant'
   && (turn.participant === 'host' || turn.participant === 'guest')
   && (turn.artifact === 'persona_message' || turn.artifact === 'persona_synthesis')
-  && turn.capability === undefined;
+  && turn.capability === undefined
+  && turn.reactionOnly === undefined;
 
 /** The writer's own message to the room's personas (never a direct tool message). */
 const isWriterRoomMessage = (turn: WorkshopReactableTurnFacts): boolean =>
@@ -93,11 +96,11 @@ const isWriterRoomMessage = (turn: WorkshopReactableTurnFacts): boolean =>
  * the palette only where the host would accept it).
  *
  * - The writer reacts to a persona reply (a host or guest answer). Never a
- *   tool report, a capability card, a divider, a context change, or their
- *   own message. Slice 3's reaction-only reply (Q10) is excluded here too,
- *   once that turn kind exists.
+ *   tool report, a capability card, a divider, a context change, their own
+ *   message, or a reaction-only reply (Q10).
  * - A persona reacts only to the writer's message. That its reply answers
- *   that message is the records' check (`viaTurnId`), not this one.
+ *   that message is the records' check (`viaTurnId`), not this one; a
+ *   reaction-only reply carries it like any other reply (PR #245 N3).
  */
 export function isWorkshopReactableTurn(
   turn: WorkshopReactableTurnFacts,
