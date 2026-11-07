@@ -130,7 +130,8 @@ const WORKSHOP_MODEL_SLICE_SCOPE_LABELS: Readonly<Record<ModelScope, string>> = 
   widget: 'Widget model',
   lightbox: 'Lightbox model',
   proofread: 'Proofread model',
-  craft: 'Craft model'
+  craft: 'Craft model',
+  helper: 'Helper model'
 };
 
 /** The slice's copy, as the thread and the export both write it. */

@@ -196,6 +196,7 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
         {renderModelSelect('lightbox', 'Lightbox Model', 'Runs the Lightbox’s analyses. “Same as Workshop” uses the Assistant Model above and follows it when it changes; pick a model to give the Lightbox its own.')}
         {renderModelSelect('proofread', 'Proofread Model', 'Runs Proofread from the editor’s right-click menu. Precision matters more than flair, so a fast, inexpensive model is the default.')}
         {renderModelSelect('craft', 'Craft Flags Model', 'Runs Craft Flags from the editor’s right-click menu: line notes on a whole chapter. Left on “Same as Workshop”, it reads with the Assistant Model above; pick a model to give Craft Flags its own.')}
+        {renderModelSelect('helper', 'Helper Model', 'Runs the helper’s small automatic tasks, such as drafting a memory’s title and summary. Left on “Same as Proofread”, it uses the Proofread Model above; pick a model to give the helper its own.')}
       </section>
 
       {/* General */}

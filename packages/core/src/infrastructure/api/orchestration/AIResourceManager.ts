@@ -7,7 +7,7 @@
  * of AI resources including:
  * - API key retrieval (SecretStorage with settings fallback)
  * - Model scope resolution (`ModelScopeSelections`: each scope's own setting,
- *   and the Lightbox's, which follows the assistant model until it has one)
+ *   and the following scopes', which follow another scope until they have one)
  * - OpenRouterClient creation per scope
  * - AgentRunEngine lifecycle management
  * - StatusCallback propagation
@@ -244,6 +244,8 @@ export class AIResourceManager {
     const proofreadModel = selections.proofread;
     // Craft Flags' own engine (ADR 2026-10-21, Slice 3c): it follows the assistant model until picked, as the Lightbox's does.
     const craftModel = selections.craft;
+    // The helper agent's own engine (ADR 2026-11-05 D3): it follows Proofread's model until picked.
+    const helperModel = selections.helper;
 
     // Create AI resources for each scope
     assistantEngine.attachProvider(
@@ -262,6 +264,7 @@ export class AIResourceManager {
     const lightboxResources = this.createResourceBundle(apiKey!, 'lightbox', lightboxModel);
     const proofreadResources = this.createResourceBundle(apiKey!, 'proofread', proofreadModel);
     const craftResources = this.createResourceBundle(apiKey!, 'craft', craftModel);
+    const helperResources = this.createResourceBundle(apiKey!, 'helper', helperModel);
 
     this.aiResources = {
       assistant: assistantResources,
@@ -271,7 +274,8 @@ export class AIResourceManager {
       widget: widgetResources,
       lightbox: lightboxResources,
       proofread: proofreadResources,
-      craft: craftResources
+      craft: craftResources,
+      helper: helperResources
     };
 
     // Note: Both statusCallback and tokenUsageCallback are passed in constructor
@@ -286,7 +290,8 @@ export class AIResourceManager {
       widget: widgetModel,
       lightbox: lightboxModel,
       proofread: proofreadModel,
-      craft: craftModel
+      craft: craftModel,
+      helper: helperModel
     };
     this.initialized = true;
   }
@@ -298,7 +303,7 @@ export class AIResourceManager {
   /**
    * Get the manager-owned agent-run engine for a specific model scope.
    *
-   * @param scope - The model scope ('assistant', 'dictionary', 'context', 'category', 'widget', 'lightbox', 'proofread', 'craft')
+   * @param scope - The model scope ('assistant', 'dictionary', 'context', 'category', 'widget', 'lightbox', 'proofread', 'craft', 'helper')
    * @returns AgentRunEngine if available, undefined otherwise
    */
   getEngine(scope: ModelScope): AgentRunEngine | undefined {

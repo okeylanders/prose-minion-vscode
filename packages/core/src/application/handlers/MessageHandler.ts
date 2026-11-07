@@ -26,6 +26,7 @@ import {
   WORKSHOP_WRITER_PROFILE_SETTING,
   WORKSHOP_WEB_RESEARCH_SETTING,
   WORKSHOP_PROJECT_MEMORY_SETTING,
+  WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING,
   LightboxSetSourcePayload
 } from '@messages';
 import {
@@ -51,6 +52,7 @@ import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
 import { WorkshopRoomHandler } from './domain/workshop/WorkshopRoomHandler';
+import { workshopMemoryDraftsSettingMessage } from './domain/workshop/WorkshopMemoryDraftHandler';
 import { LightboxHandler } from './domain/LightboxHandler';
 import { workshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
 import { LightboxReadingHandler } from './domain/LightboxReadingHandler';
@@ -150,7 +152,8 @@ export class MessageHandler {
     'proseMinion.widgetModel',
     'proseMinion.lightboxModel',
     'proseMinion.proofreadModel',
-    'proseMinion.craftModel'
+    'proseMinion.craftModel',
+    'proseMinion.helperModel'
   ] as const;
 
   private readonly UI_KEYS = [
@@ -210,7 +213,8 @@ export class MessageHandler {
       lightboxBoardLibrary,
       projectMemory,
       workshopPinnedContext,
-      workshopTranscriptRecallService
+      workshopTranscriptRecallService,
+      helperAgentService
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -358,7 +362,8 @@ export class MessageHandler {
       outputChannel,
       projectMemory,
       workshopPinnedContext,
-      workshopTranscriptRecallService
+      workshopTranscriptRecallService,
+      { helper: helperAgentService, settings: this.platform.settings }
     );
     // Lightbox editor tab (ADR 2026-10-19 D10) — the 13th domain, composed
     // like the others. The shell owns the file picker; the service owns boards.
@@ -710,6 +715,10 @@ export class MessageHandler {
     if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey) || affects(workshopWebResearchKey)
       || affects(workshopProjectMemoryKey)) {
       void this.workshopHandler.syncConversationSettingsFromSettings();
+    }
+    // The helper's memory drafts (ADR 2026-11-05 D5.7): the sheet hears the switch, and off asks for nothing.
+    if (affects(`${WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING.section}.${WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING.key}`)) {
+      void this.postMessage(workshopMemoryDraftsSettingMessage(this.platform.settings));
     }
 
     // Only refresh service if model configs changed

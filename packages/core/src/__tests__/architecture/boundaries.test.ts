@@ -89,6 +89,8 @@ const WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryHandler.ts';
 const WORKSHOP_SAVED_TURN_MEMORY_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopSavedTurnMemoryHandler.ts';
+const WORKSHOP_MEMORY_DRAFT_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopMemoryDraftHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryManagerHandler.ts';
 const WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER =
@@ -228,6 +230,12 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_SAVED_TURN_MEMORY_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: ['WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY']
+  },
+  // The helper's draft of a memory (Helper Agent Slice 2): it writes nothing, so it waits on no gate.
+  {
+    owner: WORKSHOP_MEMORY_DRAFT_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_MEMORY_DRAFT_REQUEST', 'WORKSHOP_MEMORY_DRAFT_CANCEL', 'WORKSHOP_REQUEST_MEMORY_DRAFTS_SETTING']
   },
   // Slice 4b's manager routes change no room state (no receipt, no snapshot), so none waits on the gate.
   {
@@ -422,6 +430,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
+  'WorkshopMemoryDraftHandler',
   'WorkshopPinnedContextHandler',
   'WorkshopProjectMemoryHandler',
   'WorkshopProjectMemoryManagerHandler',
@@ -1972,11 +1981,12 @@ describe('architectural boundaries', () => {
     // Pinned Context Slice 3 added the tab's seven list routes (direct) and Attach missing (mutation).
     // Bookmark Recall Slice 2 added the Bookmarks screen's page, cancel, live rows and saved turn (direct).
     // Bookmark Recall Slice 3 added "Remember this" from a saved session (mutation).
-    expect(expectedOwnerPairs).toHaveLength(86);
+    // Helper Agent Slice 2 added the memory sheet's draft request, its cancel and the setting's read (direct).
+    expect(expectedOwnerPairs).toHaveLength(89);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(47);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(39);
+      .toHaveLength(42);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -2291,6 +2301,40 @@ describe('architectural boundaries', () => {
       .toMatch(/from '@parsers\/ModelJsonRepair'/);
   });
 
+  it('keeps the helper agent apart: it imports no Workshop, Lightbox or Draft Edit module, and only the composition root builds it (ADR 2026-11-05 D2, D4)', () => {
+    const helper = path.join(SRC_ROOT, 'infrastructure', 'api', 'services', 'helper');
+    const files = collectSourceFiles(helper);
+    expect(files.map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))).toEqual(expect.arrayContaining([
+      'infrastructure/api/services/helper/HelperAgentService.ts',
+      'infrastructure/api/services/helper/HelperTaskPolicies.ts',
+      'infrastructure/api/services/helper/tasks/MemoryDraftTask.ts'
+    ]));
+    expect(files.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)).toEqual([]);
+    const imports = files.flatMap((file) => moduleImports(file, fs.readFileSync(file, 'utf8'))
+      .map(({ module }) => ({ file: path.relative(SRC_ROOT, file), module })));
+    // The helper writes nothing and knows no feature: tasks receive plain data.
+    const feature = /workshop|lightbox|draftEdit|craftFlags|proofread|presentation|application\//i;
+    expect(imports.filter(({ module }) => feature.test(module)).map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // What it may read: its own modules, the shared parser, the run engine's contracts, prompts, budgets and shared types.
+    const allowed = [
+      '@services/helper/', '@parsers/', '@orchestration/AIResourceManager', '@orchestration/AgentRunPolicies',
+      '@orchestration/AgentRunContracts', '@orchestration/ReasoningCatalog', '@orchestration/ReasoningRequest',
+      '@/tools/shared/prompts', '@/platform', '@messages',
+      '@shared/constants/promptBudgets', '@shared/types/projectMemory'
+    ];
+    expect(imports.filter(({ module }) => !allowed.some((prefix) => module.startsWith(prefix)))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => /\bnew\s+HelperAgentService\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file))
+      .filter((file) => !file.startsWith('__tests__'));
+    expect(constructions).toEqual([]);
+    // Its engine is the manager's own `helper` scope's.
+    expect(fs.readFileSync(path.join(SRC_ROOT, 'infrastructure/api/orchestration/AIResourceManager.ts'), 'utf8'))
+      .toMatch(/this\.createResourceBundle\(apiKey!, 'helper', helperModel\)/);
+    expect(fs.readFileSync(path.join(helper, 'HelperAgentService.ts'), 'utf8')).toMatch(/getEngine\('helper'\)/);
+  });
+
   it('keeps the tolerant reader to model replies: saved boards and the Workshop keep their strict readers (Lightbox Slice 4K)', () => {
     const files = collectSourceFiles(SRC_ROOT);
     const importersOf = (module: string) => files
@@ -2595,6 +2639,7 @@ describe('architectural boundaries', () => {
       'index.ts',
       'lexicalGravity.ts',
       'lightboxTiles.ts',
+      'memoryDraft.ts',
       'participants.ts',
       'pinnedContext.ts',
       'projectMemory.ts',

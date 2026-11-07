@@ -95,7 +95,11 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     // Pinned Context Slice 3 added the tab's eight routes.
     // Bookmark Recall Slice 2 added the Bookmarks screen's four reads.
     // Bookmark Recall Slice 3 added "Remember this" from a saved session.
-    expect(router.handlerCount).toBe(86);
+    // Helper Agent Slice 2 added the memory sheet's draft request, its cancel and the setting's read.
+    expect(router.hasHandler(MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_MEMORY_DRAFT_CANCEL)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_MEMORY_DRAFTS_SETTING)).toBe(true);
+    expect(router.handlerCount).toBe(89);
   });
 
   it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {

@@ -261,7 +261,7 @@ export const WorkshopApp: React.FC = () => {
   // The room's generation (first load, New, Open, Rewind, Branch): the rail's
   // badges and the memory receipts' feedback both start over with a new one.
   const roomKey = workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending';
-  const projectMemory = useWorkshopProjectMemory({ roomKey });
+  const projectMemory = useWorkshopProjectMemory({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
   const memoryManager = useWorkshopMemoryManager();
   const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
   const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, room: workshop.roomRevision, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });

@@ -25,7 +25,7 @@ import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { PROOFREAD_PROMPTS, ProofreadService } from '@services/proofread/ProofreadService';
-import type { ReasoningCatalog } from '@services/draftEdit/DraftEditReasoningSupport';
+import type { ReasoningCatalog } from '@orchestration/ReasoningCatalog';
 import {
   RUNS_ISSUE,
   THE_THE_ISSUE,

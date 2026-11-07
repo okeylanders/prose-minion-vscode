@@ -2,8 +2,8 @@
  * ModelScopeSelections (Lightbox Slice 4L): the one rule that turns the
  * `proseMinion.*Model` settings into the model each scope runs on. The
  * Lightbox and Craft Flags (Draft Edit Slice 3c) each follow the assistant
- * model (the Workshop's) until they have one of their own. Model ids are
- * placeholders.
+ * model (the Workshop's), and the helper (ADR 2026-11-05 D3) Proofread's,
+ * until they have one of their own. Model ids are placeholders.
  */
 import {
   DEFAULT_PROOFREAD_MODEL,
@@ -75,7 +75,8 @@ describe('resolveModelScopeSelections: the Lightbox model scope (Slice 4L)', () 
       widget: DEFAULT_WIDGET_MODEL,
       lightbox: defaults.assistant,
       proofread: DEFAULT_PROOFREAD_MODEL,
-      craft: defaults.assistant
+      craft: defaults.assistant,
+      helper: DEFAULT_PROOFREAD_MODEL
     });
   });
 });
@@ -95,7 +96,7 @@ describe('resolveModelScopeSelections: the Craft Flags model scope (Draft Edit S
   it('runs on its own model once picked, apart from the Lightbox\'s, and the assistant model never moves it', () => {
     const values: Record<string, unknown> = { assistantModel: WORKSHOP, craftModel: ` ${CRAFT} ` };
     expect(resolveModelScopeSelections(settingsOf(values))).toMatchObject({ assistant: WORKSHOP, lightbox: WORKSHOP, craft: CRAFT });
-    expect(followingModelScopes(settingsOf(values))).toEqual(['lightbox']);
+    expect(followingModelScopes(settingsOf(values))).toEqual(['lightbox', 'helper']);
 
     values.assistantModel = 'placeholder/workshop-model-next';
     expect(resolveModelScopeSelections(settingsOf(values)).craft).toBe(CRAFT);
@@ -130,11 +131,43 @@ describe('resolveModelScopeSelections: the Proofread model scope (ADR 2026-10-21
   });
 });
 
+describe('resolveModelScopeSelections: the helper model scope (ADR 2026-11-05 D3)', () => {
+  const PROOFREAD = 'placeholder/proofread-model';
+  const HELPER = 'placeholder/helper-model';
+
+  it('follows Proofread\'s model, not the assistant\'s, while it has none of its own', () => {
+    expect(resolveModelScopeSelections(settingsOf({ assistantModel: WORKSHOP })).helper).toBe(DEFAULT_PROOFREAD_MODEL);
+    const values: Record<string, unknown> = { assistantModel: WORKSHOP, proofreadModel: PROOFREAD, helperModel: '' };
+    expect(resolveModelScopeSelections(settingsOf(values)).helper).toBe(PROOFREAD);
+    expect(followingModelScopes(settingsOf(values))).toContain('helper');
+
+    values.proofreadModel = 'placeholder/proofread-model-next';
+    expect(resolveModelScopeSelections(settingsOf(values)).helper).toBe('placeholder/proofread-model-next');
+    values.assistantModel = 'placeholder/workshop-model-next';
+    expect(resolveModelScopeSelections(settingsOf(values)).helper).toBe('placeholder/proofread-model-next');
+  });
+
+  it('runs on its own model once the writer picks one, and Proofread never moves it, nor it Proofread', () => {
+    const values: Record<string, unknown> = { proofreadModel: PROOFREAD, helperModel: ` ${HELPER} ` };
+    expect(resolveModelScopeSelections(settingsOf(values))).toMatchObject({ proofread: PROOFREAD, helper: HELPER });
+    expect(followingModelScopes(settingsOf(values))).not.toContain('helper');
+
+    values.proofreadModel = 'placeholder/proofread-model-next';
+    expect(resolveModelScopeSelections(settingsOf(values))).toMatchObject({ proofread: 'placeholder/proofread-model-next', helper: HELPER });
+  });
+
+  it('follows again once its setting is cleared', () => {
+    expect(resolveModelScopeSelections(settingsOf({ proofreadModel: PROOFREAD, helperModel: '   ' })).helper).toBe(PROOFREAD);
+  });
+});
+
 describe('the following scopes', () => {
   it('reports which scopes have no model of their own', () => {
-    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP }))).toEqual(['lightbox', 'craft']);
-    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP, lightboxModel: LIGHTBOX }))).toEqual(['craft']);
-    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP, lightboxModel: LIGHTBOX, craftModel: 'placeholder/craft-model' }))).toEqual([]);
+    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP }))).toEqual(['lightbox', 'craft', 'helper']);
+    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP, lightboxModel: LIGHTBOX }))).toEqual(['craft', 'helper']);
+    expect(followingModelScopes(settingsOf({
+      assistantModel: WORKSHOP, lightboxModel: LIGHTBOX, craftModel: 'placeholder/craft-model', helperModel: 'placeholder/helper-model'
+    }))).toEqual([]);
     expect(ownFollowingModel(settingsOf({ lightboxModel: 42 }), 'lightbox')).toBeUndefined();
   });
 
@@ -147,10 +180,17 @@ describe('the following scopes', () => {
       widget: 'widgetModel',
       lightbox: 'lightboxModel',
       proofread: 'proofreadModel',
-      craft: 'craftModel'
+      craft: 'craftModel',
+      helper: 'helperModel'
     });
-    expect(MODEL_SCOPE_FOLLOWS).toEqual({ lightbox: 'assistant', craft: 'assistant' });
-    expect(['lightbox', 'craft', 'assistant', 'widget', 'toString', undefined].map(isFollowingModelScope))
-      .toEqual([true, true, false, false, false, false]);
+    expect(MODEL_SCOPE_FOLLOWS).toEqual({ lightbox: 'assistant', craft: 'assistant', helper: 'proofread' });
+    expect(['lightbox', 'craft', 'helper', 'assistant', 'proofread', 'widget', 'toString', undefined].map(isFollowingModelScope))
+      .toEqual([true, true, true, false, false, false, false, false]);
+  });
+
+  it('never follows a following scope, so one lookup always names an own scope\'s model', () => {
+    for (const followed of Object.values(MODEL_SCOPE_FOLLOWS)) {
+      expect(isFollowingModelScope(followed)).toBe(false);
+    }
   });
 });

@@ -14,8 +14,9 @@
  */
 
 import type { WorkshopMemoryDraft, WorkshopTurn, WorkshopTurnPreview, WorkshopTurnPreviewPayload } from '@messages';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import type { WorkshopMemorySheetState } from '@hooks/domain/workshop/useWorkshopProjectMemory';
+import { workshopMemoryNoteFromTurn } from '@shared/constants/workshopProjectMemoryWrites';
+export { workshopMemoryNoteFromTurn };
+import type { WorkshopMemorySheetState } from '@hooks/domain/workshop/memory/workshopMemorySheetState';
 
 /** A bookmark of this room: its turn when the snapshot holds it, else its room and, when known, the host's message. */
 export interface WorkshopMemoryRoomBookmark {
@@ -36,13 +37,6 @@ export interface WorkshopMemorySavedBookmark {
 export const WORKSHOP_MEMORY_EMPTY_DRAFT: WorkshopMemoryDraft = {
   title: '', kind: 'decision', summary: '', body: '', supersedes: [], pinned: false
 };
-
-/** A bubble's text as a new memory's note: whole when it fits, else cut at the bound, for the writer to shape. */
-export function workshopMemoryNoteFromTurn(content: string): string {
-  const text = content.trim();
-  const bound = PROMPT_BUDGETS.workshopProjectMemory.bodyCharacters;
-  return text.length <= bound ? text : text.slice(0, bound).trimEnd();
-}
 
 /** Who a host message is from, as the source line names it. */
 function sourceOf(message: WorkshopTurnPreview): string {
@@ -95,7 +89,8 @@ export function workshopMemorySheetWithPreview(
     || current.turnId !== answer.turnId || current.roomRevision !== answer.roomRevision) {
     return undefined;
   }
+  // Only the note: a helper's draft that landed first keeps its title, summary and kind (Helper Agent Slice 2).
   return answer.turn
-    ? { ...current, draft: prefilled(answer.turn), loading: false, sourceLabel: sourceOf(answer.turn) }
+    ? { ...current, draft: { ...current.draft, body: workshopMemoryNoteFromTurn(answer.turn.content) }, loading: false, sourceLabel: sourceOf(answer.turn) }
     : { ...current, loading: false, error: answer.error ?? 'That message could not be shown.' };
 }

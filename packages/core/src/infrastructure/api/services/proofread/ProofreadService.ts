@@ -55,7 +55,7 @@ import {
   reportedThinking,
   type DraftEditInterruption
 } from '@services/draftEdit/DraftEditCalls';
-import { refusesReasoningOff, type ReasoningCatalog } from '@services/draftEdit/DraftEditReasoningSupport';
+import { refusesReasoningOff, type ReasoningCatalog } from '@orchestration/ReasoningCatalog';
 import { DraftEditFrameError } from '@services/draftEdit/DraftEditResponseFrame';
 import { readProofreadFrame } from '@services/proofread/ProofreadResponseFrame';
 import { decodeProofreadReply } from '@services/proofread/ProofreadResponseCodec';

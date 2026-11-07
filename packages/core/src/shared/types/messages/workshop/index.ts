@@ -19,6 +19,7 @@ export * from './participants';
 export * from './bookmarks';
 export * from './bookmarkBrowser';
 export * from './projectMemory';
+export * from './memoryDraft';
 export * from './projectMemoryManager';
 export * from './pinnedContext';
 export * from './settings';

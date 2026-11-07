@@ -67,6 +67,14 @@ export const PROJECT_MEMORY_FIELD_CHARACTERS = Object.freeze({
   body: PROMPT_BUDGETS.workshopProjectMemory.bodyCharacters
 });
 
+/**
+ * What breaks a one-line field (title, summary): any control character
+ * (tabs and line breaks among them) and the Unicode line and paragraph
+ * separators. One rule for the sheet's check, the host's write and the
+ * helper's draft (ADR 2026-11-05 A-04).
+ */
+export const PROJECT_MEMORY_NOT_ONE_LINE = /[\p{Cc}\u2028\u2029]/u;
+
 /** At most this many source turns, and this many superseded memories, per memory. */
 export const PROJECT_MEMORY_LIST_ENTRIES = {
   sourceTurns: 32,
