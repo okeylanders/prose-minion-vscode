@@ -248,6 +248,74 @@ describe('WorkshopApp reactions', () => {
     ]);
   });
 
+  it('closes when focus leaves it, without taking focus back (PR #245 L3)', () => {
+    render(<WorkshopApp />);
+    deliver(session());
+    fireEvent.click(addButton('turn-2'));
+    const option = within(screen.getByRole('dialog')).getByRole('button', { name: 'heart' });
+
+    // Focus moving to the button keeps it open: the button's own toggle decides.
+    fireEvent.focusOut(option, { relatedTarget: addButton('turn-2') });
+    expect(screen.getByRole('dialog')).toBeTruthy();
+
+    const elsewhere = within(bubble('turn-2')).getByRole('button', { name: 'Copy' });
+    fireEvent.focusOut(option, { relatedTarget: elsewhere });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(addButton('turn-2').getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('closes on a lock and returns focus to its button, which stays focusable (PR #245 L2)', () => {
+    render(<WorkshopApp />);
+    deliver(session());
+    fireEvent.click(addButton('turn-2'));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+
+    deliver(session({ activeToolId: 'prose' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(addButton('turn-2'));
+    expect(addButton('turn-2').getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(addButton('turn-2'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // A locked chip does nothing either.
+    deliver(session({ activeToolId: 'prose', reactions: [mine('turn-2', 'fire')] }));
+    fireEvent.click(within(bubble('turn-2')).getByRole('button', { name: 'You reacted: fire' }));
+    expect(posted(MessageType.WORKSHOP_SET_TURN_REACTION)).toEqual([]);
+  });
+
+  it('hands focus to the next chip, then to "Add reaction", as chips are removed (PR #245 L2)', () => {
+    render(<WorkshopApp />);
+    deliver(session({ reactions: [mine('turn-2', 'fire'), mine('turn-2', 'heart')] }));
+
+    const fire = within(bubble('turn-2')).getByRole('button', { name: 'You reacted: fire' });
+    fire.focus();
+    fireEvent.click(fire);
+    deliver(session({ reactions: [mine('turn-2', 'heart')] }));
+    const heart = within(bubble('turn-2')).getByRole('button', { name: 'You reacted: heart' });
+    expect(document.activeElement).toBe(heart);
+
+    fireEvent.click(heart);
+    deliver(session());
+    expect(document.activeElement).toBe(addButton('turn-2'));
+  });
+
+  it('hands focus from a hidden persona chip on the writer\'s bubble to the next one', () => {
+    render(<WorkshopApp />);
+    const jill = { turnId: 'turn-1', reaction: 'heart', author: { kind: 'host' }, label: 'Jill' } as const;
+    const margot = {
+      turnId: 'turn-1', reaction: 'eyes', author: { kind: 'personaGuest', personaId: 'margot' }, label: 'Margot'
+    } as const;
+    deliver(session({ reactions: [jill, margot] }));
+
+    const hideJill = within(bubble('turn-1')).getByRole('button', { name: 'Hide Jill\'s heart' });
+    hideJill.focus();
+    fireEvent.click(hideJill);
+    deliver(session({ reactions: [margot] }));
+
+    expect(document.activeElement).toBe(within(bubble('turn-1')).getByRole('button', { name: 'Hide Margot\'s eyes' }));
+    expect(within(bubble('turn-1')).getByRole('group', { name: 'Margot reacted: eyes' })).toBeTruthy();
+  });
+
   it('persists nothing of reactions in the webview\'s state', () => {
     render(<WorkshopApp />);
     deliver(session({ reactions: [mine('turn-2', 'fire')] }));

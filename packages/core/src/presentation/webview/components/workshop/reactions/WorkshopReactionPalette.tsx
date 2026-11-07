@@ -2,10 +2,16 @@
  * A bubble's "Add reaction" button and its palette (ADR 2026-11-07 D8).
  *
  * The palette is a popover of the 19 reactions in three labelled groups
- * (warm, curious, negative). Arrow keys move through it (Left/Right by one,
- * Up/Down by a row, Home/End to the ends), Enter or Space picks, and Escape
- * or a click outside closes it and returns focus to the button. A reaction
- * the writer already gave shows as pressed, and picking it removes it.
+ * (warm, curious, negative), each its own grid of five columns. Arrow keys
+ * move through it: Left/Right by one in reading order, Up/Down by a row of
+ * the grid on screen, into the next group's same column (clamped to its
+ * row) past a group's edge (PR #245 L1); Home/End go to the ends. Enter or
+ * Space picks. Escape closes it and returns focus to the button; a click
+ * outside, or focus leaving it, closes it without moving focus (L3).
+ *
+ * While the room is locked the button stays focusable (`aria-disabled`, its
+ * reason as its title) and does nothing; a lock taken while the palette is
+ * open closes it and returns focus to the button (L2).
  *
  * It posts nothing itself: the caller sends the change and the next snapshot
  * says what the host kept.
@@ -30,16 +36,46 @@ export interface WorkshopReactionPaletteProps {
   onPick: (turnId: string, reaction: WorkshopReactionId, reacted: boolean) => void;
 }
 
-const ORDER: readonly WorkshopReactionId[] = WORKSHOP_REACTION_TONES.flatMap(({ tone }) =>
+const GROUPS: readonly (readonly WorkshopReactionId[])[] = WORKSHOP_REACTION_TONES.map(({ tone }) =>
   WORKSHOP_REACTIONS.filter((reaction) => reaction.tone === tone).map((reaction) => reaction.id));
+const ORDER: readonly WorkshopReactionId[] = GROUPS.flat();
 
-/** Where a key moves focus from `index`, or undefined for a key the grid does not handle. */
-export function workshopReactionPaletteMove(key: string, index: number, count: number): number | undefined {
+/** The id of a bubble's "Add reaction" button, so its chips can return focus to it. */
+export const workshopReactionAddButtonId = (turnId: string): string => `pm-ws-reaction-add-${turnId}`;
+
+/**
+ * Where a key moves focus from `index` in the flat order, over groups of
+ * `sizes` laid out `columns` wide; undefined for a key the grid does not
+ * handle. Up and Down keep the column, clamped to the target row's length.
+ */
+export function workshopReactionPaletteMove(
+  key: string,
+  index: number,
+  sizes: readonly number[] = GROUPS.map((group) => group.length),
+  columns: number = WORKSHOP_REACTION_PALETTE_COLUMNS
+): number | undefined {
+  const count = sizes.reduce((total, size) => total + size, 0);
+  const starts = sizes.map((_, group) => sizes.slice(0, group).reduce((total, size) => total + size, 0));
+  const group = starts.findIndex((start, at) => index >= start && index < start + sizes[at]);
+  const offset = index - starts[group];
+  const row = Math.floor(offset / columns);
+  const column = offset % columns;
+  /** The cell at `row`, `column` of `target`, the column clamped to that row's length. */
+  const cell = (target: number, targetRow: number): number =>
+    starts[target] + Math.min(targetRow * columns + column, sizes[target] - 1);
   switch (key) {
     case 'ArrowRight': return Math.min(count - 1, index + 1);
     case 'ArrowLeft': return Math.max(0, index - 1);
-    case 'ArrowDown': return Math.min(count - 1, index + WORKSHOP_REACTION_PALETTE_COLUMNS);
-    case 'ArrowUp': return Math.max(0, index - WORKSHOP_REACTION_PALETTE_COLUMNS);
+    case 'ArrowDown':
+      if ((row + 1) * columns < sizes[group]) {
+        return cell(group, row + 1);
+      }
+      return group + 1 < sizes.length ? cell(group + 1, 0) : index;
+    case 'ArrowUp':
+      if (row > 0) {
+        return cell(group, row - 1);
+      }
+      return group > 0 ? cell(group - 1, Math.floor((sizes[group - 1] - 1) / columns)) : index;
     case 'Home': return 0;
     case 'End': return count - 1;
     default: return undefined;
@@ -66,12 +102,13 @@ export const WorkshopReactionPalette: React.FC<WorkshopReactionPaletteProps> = (
     }
   }, []);
 
-  // A lock taken while the palette is open closes it.
+  // A lock taken while the palette is open closes it, and focus goes back to
+  // the button, which stays focusable while locked (PR #245 L2).
   React.useEffect(() => {
     if (disabled && open) {
-      setOpen(false);
+      close(true);
     }
-  }, [disabled, open]);
+  }, [disabled, open, close]);
 
   React.useEffect(() => {
     if (open) {
@@ -99,10 +136,20 @@ export const WorkshopReactionPalette: React.FC<WorkshopReactionPaletteProps> = (
       close(true);
       return;
     }
-    const next = workshopReactionPaletteMove(event.key, focusIndex, ORDER.length);
+    const next = workshopReactionPaletteMove(event.key, focusIndex);
     if (next !== undefined) {
       event.preventDefault();
       setFocusIndex(next);
+    }
+  };
+
+  // Tab out of the palette, or any focus leaving it, closes it without
+  // taking focus back (PR #245 L3). Focus moving to the button is the
+  // button's own toggle to make.
+  const onBlur = (event: React.FocusEvent<HTMLDivElement>) => {
+    const next = event.relatedTarget as Node | null;
+    if (!next || !wrapRef.current?.contains(next)) {
+      close(false);
     }
   };
 
@@ -116,13 +163,17 @@ export const WorkshopReactionPalette: React.FC<WorkshopReactionPaletteProps> = (
       <button
         type="button"
         ref={triggerRef}
+        id={workshopReactionAddButtonId(turnId)}
         className="pm-ws-reaction-add"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? paletteId : undefined}
-        disabled={disabled}
+        aria-disabled={disabled || undefined}
         title={disabled ? 'Wait for the room to finish before reacting' : 'React to this reply'}
         onClick={() => {
+          if (disabled) {
+            return;
+          }
           if (open) {
             close(false);
             return;
@@ -140,6 +191,7 @@ export const WorkshopReactionPalette: React.FC<WorkshopReactionPaletteProps> = (
           role="dialog"
           aria-label="Add a reaction"
           onKeyDown={onKeyDown}
+          onBlur={onBlur}
         >
           {WORKSHOP_REACTION_TONES.map(({ tone, label }) => {
             const headingId = `${paletteId}-${tone}`;

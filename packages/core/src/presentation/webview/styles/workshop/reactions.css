@@ -75,3 +75,10 @@
   text-decoration: underline;
   cursor: pointer;
 }
+/* Locked (PR #245 L2): still focusable, so focus can come back to it. */
+[data-pm-surface="workshop"] .pm-ws-reaction-add[aria-disabled="true"],
+[data-pm-surface="workshop"] .pm-ws-reaction-chip[aria-disabled="true"],
+[data-pm-surface="workshop"] .pm-ws-reaction-hide[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+}
