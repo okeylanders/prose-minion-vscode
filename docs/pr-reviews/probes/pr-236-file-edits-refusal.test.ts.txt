@@ -23,3 +23,26 @@ describe('PR 236 independent settings refusal witness', () => {
     expect(error.message).toMatch(/(not|could not|still|unchanged)/i);
   });
 });
+
+
+describe('PR 236 correction mixed-result controls', () => {
+  it('keeps a rejected mode distinct from an active Behavior change whose persistence also fails', async () => {
+    const harness = createWorkshopRouteTestHarness();
+    const get = harness.settings.get.bind(harness.settings);
+    (harness.settings as { get: SettingsStore['get'] }).get = ((section: string, key: string, fallback?: unknown) =>
+      key === 'workshop.fileEdits' ? 'ask' : get(section, key, fallback)) as SettingsStore['get'];
+    (harness.settings.update as jest.Mock).mockRejectedValue(new Error('settings are read-only'));
+    await harness.pin();
+    await harness.router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Open the room.' }) as never);
+    await harness.router.route(message(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS, {
+      behavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR, interactionMode: 'analysis' }, projectMemory: 'off', fileEdits: 'off'
+    }) as never);
+    const state = harness.posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload;
+    expect(state.fileEdits).toBe('ask');
+    expect(state.session.conversationBehavior.interactionMode).toBe('analysis');
+    const error = harness.posted(MessageType.ERROR).at(-1).payload;
+    expect(error.message).toBe('VS Code could not change suggested file edits, so they are still Ask first. Your other conversation settings changed for this session, but VS Code could not save them for restart.');
+    expect(error.details).toContain('file edits: settings are read-only');
+    expect(error.details).toContain('behavior: settings are read-only');
+  });
+});
