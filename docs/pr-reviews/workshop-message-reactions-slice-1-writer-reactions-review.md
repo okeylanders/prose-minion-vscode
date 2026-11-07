@@ -9,16 +9,16 @@
 
 | ID | Severity | Finding | Decision | Resolution |
 |---|---|---|---|---|
-| M1 | Medium | Integrity accepts persona reactions the ADR forbids | Fix | |
-| M2 | Medium | The host does not refuse a reaction while a run is active | Fix | |
-| L1 | Low | Up/Down in the palette doesn't follow the visual grid | Fix | |
-| L2 | Low | Pressing a writer chip drops keyboard focus to `<body>` | Fix | |
-| L3 | Low | Tab leaves the palette open, and Escape is then dead | Fix | |
-| L4 | Low | The upward popover may be clipped on top-of-thread bubbles | Live pass | |
-| L5 | Low | Test gaps (rollback, session-op gate, `unchanged` not dirtying) | Fix | |
-| N1 | Nit | No `roomRevision` on reaction routes | Defer | |
-| N2 | Nit | Every snapshot rebuilds the reactions map and re-renders all bubbles | Tech debt | |
-| N3 | Nit | Q10 narrowing for Slice 3's reaction-only reply needs a tracked note | Fix (note) | |
+| M1 | Medium | Integrity accepts persona reactions the ADR forbids | Fix | `d8d74c3e`: the via reply must be the persona's first reply after `turnId`, with no writer room message between; a second persona reaction per `viaTurnId` is refused in the shape. Codec cases for both, plus a pure integrity table. |
+| M2 | Medium | The host does not refuse a reaction while a run is active | Fix | `d97459ba`: both routes refuse while a response or the context wizard runs (`isRoomBusy`, the webview's lock checked again), `reason=run-active`. Route test with a held reply. |
+| L1 | Low | Up/Down in the palette doesn't follow the visual grid | Fix | `4f7c6393`: Up/Down by row and column within each group, into the adjacent group's same column, clamped; table test against the real 10/3/6. |
+| L2 | Low | Pressing a writer chip drops keyboard focus to `<body>` | Fix | `4f7c6393`: a removed chip that held focus hands it to the next chip, else Add reaction. A lock closes the palette and refocuses its button; the button and chips are `aria-disabled` (focusable) while locked. |
+| L3 | Low | Tab leaves the palette open, and Escape is then dead | Fix | `4f7c6393`: focusout to anywhere outside the palette and its button closes it, without taking focus back. |
+| L4 | Low | The upward popover may be clipped on top-of-thread bubbles | Live pass | Live pass (Slice 4). |
+| L5 | Low | Test gaps (rollback, session-op gate, `unchanged` not dirtying) | Fix | `d97459ba`, `4f7c6393`: aggregate rollback tests (`rollbackMessageRun`, `rollbackToolRun`); the session-op gate refusing all reaction routes (one predicate covers Open, Rewind, Branch, New); persona chips on a writer bubble. `unchanged` not dirtying was already covered (add and remove, `WorkshopRoutes.reactions`). |
+| N1 | Nit | No `roomRevision` on reaction routes | Defer | Deferred. |
+| N2 | Nit | Every snapshot rebuilds the reactions map and re-renders all bubbles | Tech debt | Filed `.todo/tech-debt/2026-11-07-workshop-snapshot-maps-rebuilt-per-snapshot.md` (reactions and bookmarks). |
+| N3 | Nit | Q10 narrowing for Slice 3's reaction-only reply needs a tracked note | Fix (note) | Noted in the epic README's Slice 3 row. |
 | N4 | Nit | Hide as its own route | Accepted as is | No change |
 
 ## Verification at `1d1b72eb` (coordinator's own run)
