@@ -64,8 +64,8 @@ describe('WorkshopConversationBehaviorModal', () => {
       { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR, proactiveAssistance: false },
       DEFAULT_WORKSHOP_WRITER_PROFILE,
       DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
-      'off',
-      'ask'
+      undefined,
+      undefined
     );
   });
 
@@ -126,8 +126,8 @@ describe('WorkshopConversationBehaviorModal', () => {
       expect.objectContaining({ interactionMode: 'analysis' }),
       { enabled: true, preferredAddress: 'Okey', bio: 'I write fiction.' },
       DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
-      'off',
-      'ask'
+      undefined,
+      undefined
     );
     expect(screen.getByText('Conversation settings are updating…')).not.toBeNull();
   });
@@ -149,8 +149,8 @@ describe('WorkshopConversationBehaviorModal', () => {
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
       DEFAULT_WORKSHOP_WRITER_PROFILE,
       DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
-      'off',
-      'ask'
+      undefined,
+      undefined
     );
   });
 
@@ -241,8 +241,8 @@ describe('WorkshopConversationBehaviorModal', () => {
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
       DEFAULT_WORKSHOP_WRITER_PROFILE,
       { enabled: true },
-      'off',
-      'ask'
+      undefined,
+      undefined
     );
   });
 

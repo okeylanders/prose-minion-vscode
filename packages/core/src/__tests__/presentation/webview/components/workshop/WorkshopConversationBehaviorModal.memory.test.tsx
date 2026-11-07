@@ -69,7 +69,7 @@ describe('Conversation settings · Memory', () => {
       DEFAULT_WORKSHOP_WRITER_PROFILE,
       DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
       'auto',
-      'ask'
+      undefined
     );
   });
 
@@ -114,12 +114,15 @@ describe('Conversation settings · Memory', () => {
     expect(card('Ask first').getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('an untouched mode follows a newer host mode while the modal is open (PR #236 F-02)', () => {
+  it('an untouched mode shows a newer host mode, and Apply sends nothing for it (PR #236 F-02)', () => {
     const { props, rerender } = renderModal({ projectMemoryMode: 'off' });
     rerender({ projectMemoryMode: 'auto' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Memory' }));
+    expect(card('Save and tell me').getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('tab', { name: 'Behavior' }));
     fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
-    expect((props.onApply as jest.Mock).mock.calls[0][3]).toBe('auto');
+    expect((props.onApply as jest.Mock).mock.calls[0][3]).toBeUndefined();
   });
 
   it('control: a mode the writer picked keeps their choice through a newer host mode', () => {

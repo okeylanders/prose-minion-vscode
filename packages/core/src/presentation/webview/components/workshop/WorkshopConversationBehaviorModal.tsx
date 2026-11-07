@@ -40,8 +40,9 @@ interface PendingApply {
   baselineBehavior: WorkshopConversationBehavior;
   baselineProfile: WorkshopWriterProfile;
   submittedWebResearch: WorkshopWebResearchSettings;
-  submittedMemoryMode: WorkshopProjectMemoryMode;
-  submittedFileEditsMode: WorkshopFileEditsMode;
+  /** Absent when the row was not picked: nothing was sent, so nothing waits for it. */
+  submittedMemoryMode?: WorkshopProjectMemoryMode;
+  submittedFileEditsMode?: WorkshopFileEditsMode;
 }
 
 interface WorkshopConversationBehaviorModalProps {
@@ -68,8 +69,9 @@ interface WorkshopConversationBehaviorModalProps {
     behavior: WorkshopConversationBehavior,
     writerProfile: WorkshopWriterProfile,
     webResearch: WorkshopWebResearchSettings,
-    projectMemoryMode: WorkshopProjectMemoryMode,
-    fileEditsMode: WorkshopFileEditsMode
+    /** The writer's pick, or undefined when the row was not touched: the host's mode is then left as it stands. */
+    projectMemoryMode: WorkshopProjectMemoryMode | undefined,
+    fileEditsMode: WorkshopFileEditsMode | undefined
   ) => void;
   /** Manage memories… and Show in manager: the manager opens over these settings, which keep their drafts. */
   onOpenMemoryManager: () => void;
@@ -104,7 +106,8 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   const [webResearchDraft, setWebResearchDraft] = React.useState({ ...webResearch });
   // The global modes' rows (PR #236 F-02): undefined until the writer picks one, and meanwhile they follow the host's
   // mode, so a change made in VS Code Settings while the modal is open is never written back over by an untouched row.
-  // A row the writer picked keeps their choice, which Apply then sends.
+  // A row the writer picked keeps their choice, which Apply then sends; an untouched row sends nothing, so a host change
+  // the webview has not heard of yet is never written back over (PR #236 F-02 re-review).
   const [memoryPick, setMemoryPick] = React.useState<WorkshopProjectMemoryMode | undefined>(undefined);
   const [fileEditsPick, setFileEditsPick] = React.useState<WorkshopFileEditsMode | undefined>(undefined);
   const memoryDraft = memoryPick ?? projectMemoryMode;
@@ -136,8 +139,8 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       workshopConversationBehaviorsEqual(behavior, pending.submittedBehavior)
       && workshopWriterProfilesEqual(writerProfile, pending.submittedProfile)
       && workshopWebResearchSettingsEqual(webResearch, pending.submittedWebResearch)
-      && projectMemoryMode === pending.submittedMemoryMode
-      && fileEditsMode === pending.submittedFileEditsMode
+      && (pending.submittedMemoryMode === undefined || projectMemoryMode === pending.submittedMemoryMode)
+      && (pending.submittedFileEditsMode === undefined || fileEditsMode === pending.submittedFileEditsMode)
     ) {
       setPending(null);
       onClose();
@@ -174,15 +177,15 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       preferredAddress: profileDraft.preferredAddress.trim(),
       bio: profileDraft.bio.trim()
     };
-    onApply(submittedBehavior, submittedProfile, webResearchDraft, memoryDraft, fileEditsDraft);
+    onApply(submittedBehavior, submittedProfile, webResearchDraft, memoryPick, fileEditsPick);
     setPending({
       submittedBehavior,
       submittedProfile,
       baselineBehavior: { ...behavior },
       baselineProfile: { ...writerProfile },
       submittedWebResearch: { ...webResearchDraft },
-      submittedMemoryMode: memoryDraft,
-      submittedFileEditsMode: fileEditsDraft
+      ...(memoryPick !== undefined ? { submittedMemoryMode: memoryPick } : {}),
+      ...(fileEditsPick !== undefined ? { submittedFileEditsMode: fileEditsPick } : {})
     });
   };
 

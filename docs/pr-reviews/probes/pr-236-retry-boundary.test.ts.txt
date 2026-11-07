@@ -174,14 +174,14 @@ describe('PR 236 independent retry boundary probes', () => {
     expect(fixture.card()?.state).toBe('applied');
   });
 
-  it('reveal-only failure does not offer a second Apply and persists unknown', async () => {
+  it('reveal-only failure keeps the known landing and never offers a second Apply', async () => {
     const fixture = await harness();
     jest.spyOn(fixture.documents, 'reveal').mockRejectedValueOnce(new Error('reveal failed'));
     await fixture.act('apply', 'first');
     expect(fixture.documents.text).toBe(NOTE_TEXT.replace('Alice is seven.', 'Alice is ten.'));
-    expect(fixture.card()).toMatchObject({ state: 'unknown', outcomes: ['unknown'] });
+    expect(fixture.card()).toMatchObject({ state: 'applied', outcomes: ['landed'], landed: [expect.objectContaining({ operation: 0, before: 'Alice is seven', after: 'Alice is ten' })] });
     await fixture.coordinator.flush();
-    expect((await fixture.savedCard())?.state).toBe('unknown');
+    expect((await fixture.savedCard())?.state).toBe('applied');
     await fixture.act('apply', 'again');
     expect(fixture.documents.applyCalls).toHaveLength(1);
   });
