@@ -1,6 +1,6 @@
 # Epic: Workshop Message Reactions
 
-**Status:** Slice 2 (delivery) in progress. Slice 1 merged (PR #245). The ADR is Accepted.
+**Status:** Slice 2 (delivery) built on its branch, awaiting review. Slice 1 merged (PR #245). The ADR is Accepted.
 **Priority:** Medium
 **Opened:** 2026-11-07
 **Branch:** `epic/workshop-message-reactions`, cut from
@@ -26,7 +26,7 @@ reaction starts a model call or edits retained history.
 |---|---|---|---|---|
 | 0 | Spec | `epic/workshop-message-reactions` | The ADR and this README | Done (`f25c2ea7`; Accepted 2026-11-07) |
 | 1 | Writer reactions | `…-slice-1-writer-reactions` | D1, D2, D3, D8: registry, `reactions` session key, codec and normalization, ledger and routes, chips and palette by mouse and keyboard, Rewind/Branch/Side Quest handling. No model involved. | Done: PR #245, merged `104595eb` ([review](../../../docs/pr-reviews/workshop-message-reactions-slice-1-writer-reactions-review.md)) |
-| 2 | Delivery | `…-slice-2-delivery` | D4, D6: `<workshop-reactions>`, `reactionDelivery` on reply turns, the delivered view; R2 and R3 witnessed; the byte-identical-prefix test | In progress |
+| 2 | Delivery | `…-slice-2-delivery` | D4, D6: `<workshop-reactions>`, `reactionDelivery` on reply turns, the delivered view; R2 and R3 witnessed; the byte-identical-prefix test | Built, awaiting review |
 | 3 | Persona reactions | `…-slice-3-persona-reactions` | D5: the trailer in `extractWorkshopReplyControls`, its outcome table, R1's host line and slim line, the prompt, the live-region announcement, Q8's setting. Q10: the reaction-only reply narrows `isWorkshopReactableTurn` (the writer cannot react to it) and `assertWorkshopReactionIntegrity` (it carries the persona's reaction) together, in one change (PR #245 N3). | Not started |
 | 4 | Live pass | `…-slice-4-live-pass` | Tune how often personas react; record counts on an *Alice* fixture conversation per persona and expression level | Not started |
 
@@ -111,3 +111,16 @@ rebase a shared branch). Read only: never commit to
   deferred; N2 tech debt. Merged `104595eb` at 804 suites / 11,298 tests.
   Slice 2 (delivery) opens on
   `epic/workshop-message-reactions-slice-2-delivery`.
+- **2026-11-07.** Slice 2 built on its branch.
+  - **Record.** `reactionDelivery` on a persona reply
+    (`WorkshopReactionDeliveryRecords`), with a `start`/`update` kind so a
+    re-invited guest folds afresh (see the ADR's D6 implementation notes).
+  - **Fold, plan and frame.** The fold is `WorkshopReactionDeliveredView`.
+    The pure planner is `reactions/WorkshopReactionDelivery`. The frame is
+    `WorkshopReactionFrameRenderer`, wired through the room handler for host
+    messages, guest messages and guest joins (`WorkshopReactionDeliveryStage`).
+  - **Prompt.** `workshop-personas/reactions.md`.
+  - **Budgets.** `framePerTurn` 8, `openingCharacters` 80,
+    `deliveredPerReply` 1,000.
+  - **Full suite.** Before: 804 suites, 11,298 tests, 59 snapshots. After:
+    807 suites, 11,334 tests, 59 snapshots.

@@ -290,6 +290,24 @@ that reply's own participant, each triple at most once, bounded.
   replies' records.
 - A reaction removed and re-added before the next turn is the same triple
   and is not announced twice.
+- **Implementation notes (Slice 2).**
+  - The record carries a `kind`: `start` on a conversation's first message
+    (a fresh host, a guest's join), `update` otherwise. A `start` begins the
+    fold again, so a guest dismissed and re-invited is told again what its
+    earlier membership was told: its new conversation never heard it. This is
+    Project Memory's `frame`/`note` precedent (PR #198 F-02). An empty `start`
+    is written only when an earlier view exists to end.
+  - A guest's join carries the frame too ("Reactions on messages in the room
+    so far."), beside its transcript.
+  - A triple whose turn is gone is kept and inert, as a Project Memory record
+    keeps a memory id the library no longer holds. The rewind transform
+    cannot produce one: a record rides a reply later than every turn it
+    names. No normalization.
+  - `deliveredPerReply` is 1,000. Past it, the newest are delivered and the
+    older wait for a later turn.
+  - The prompt section is `workshop-personas/reactions.md`, assembled for
+    host and guest after the selected depth resource, with one line in
+    `relational-contract.md`. It states no numbers.
 
 ### D7. Transcripts and recall
 
