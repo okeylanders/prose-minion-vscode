@@ -1,10 +1,11 @@
 import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import { WorkshopRoomHandler } from '@handlers/domain/workshop/WorkshopRoomHandler';
 import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
-import { unusedBookmarkBrowser } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
+import { unusedBookmarkBrowser, unusedMemoryDrafts } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
 import type { FileEditApplyPort } from '@/domain/models/FileEdit';
 import { fakeFileEditApply, fakeFileEditStaging } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
+import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import { libraryHost } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import type {
   WorkshopWidgetRuntime
@@ -140,6 +141,8 @@ export interface WorkshopRouteTestHarness {
 export interface WorkshopRouteTestHarnessOptions {
   /** The Bookmarks screen's recall port over the harness's session; by default every read throws. */
   bookmarkBrowser?: (session: WorkshopSessionService) => WorkshopBookmarkBrowserPort;
+  /** The helper's memory drafts (Helper Agent Slice 2); by default drafting is off and the helper is never reached. */
+  memoryDrafts?: WorkshopMemoryDraftPorts;
   /** The session's clock (turn and bookmark times); 1 by default. */
   sessionNow?: () => number;
   /** Persona file edits' staging port (ADR 2026-11-05 D4); absent by default, as before Slice 4 binds it. */
@@ -375,7 +378,8 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     emptyPinnedContextServices(),
     options.bookmarkBrowser?.(session) ?? unusedBookmarkBrowser(),
     options.fileEditStaging ?? fakeFileEditStaging(),
-    options.fileEditApply ?? fakeFileEditApply()
+    options.fileEditApply ?? fakeFileEditApply(),
+    options.memoryDrafts ?? unusedMemoryDrafts()
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);

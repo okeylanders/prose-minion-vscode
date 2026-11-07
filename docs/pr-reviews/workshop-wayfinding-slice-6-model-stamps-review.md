@@ -56,7 +56,7 @@ No provider wrote that displayed reply. This contradicts the provider-produced-o
 
 ### N-01: reconcile Dictionary's exclusion with the completion claim
 
-The author explicitly records that `dictionary.lookup` and `dictionary.full-entry` assistant turns remain unstamped in [the slice's deviations](../../.todo/epics/epic-workshop-wayfinding-2026-11-03/slice-6-model-stamps.md#built) and [a dedicated debt item](../../.todo/tech-debt/2026-11-03-workshop-dictionary-turn-model-stamps.md). `WorkshopPersonaCapability` sends these through `recordCapabilityArtifact` without a model; a new test deliberately pins that behavior.
+The author explicitly records that `dictionary.lookup` and `dictionary.full-entry` assistant turns remain unstamped in [the slice's deviations](../../.todo/archive/epics/epic-workshop-wayfinding-2026-11-03/slice-6-model-stamps.md#built) and [a dedicated debt item](../../.todo/tech-debt/2026-11-03-workshop-dictionary-turn-model-stamps.md). `WorkshopPersonaCapability` sends these through `recordCapabilityArtifact` without a model; a new test deliberately pins that behavior.
 
 This is disclosed scope, not an undisclosed implementation omission. It nevertheless conflicts with the broad checked criterion, "Every provider-produced assistant turn carries `model`." Decide whether D7 includes Dictionary turns, then either stamp them with `scope: 'dictionary'` or explicitly narrow the ADR and completion criterion. The same-scope rule planned for Slice 7 already distinguishes them from assistant-scope changes. Resource and recall turns correctly remain unstamped because they make no provider call.
 

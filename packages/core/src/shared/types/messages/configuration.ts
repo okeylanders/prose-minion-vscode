@@ -10,7 +10,7 @@ import { TokenUsage } from './tokenUsage';
 // Model Configuration Types
 // ============================================================================
 
-export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget' | 'lightbox' | 'proofread' | 'craft';
+export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget' | 'lightbox' | 'proofread' | 'craft' | 'helper';
 
 /** Every model scope, for readers that check a persisted value (Workshop model stamps). */
 const MODEL_SCOPE_MEMBERS = {
@@ -21,7 +21,8 @@ const MODEL_SCOPE_MEMBERS = {
   widget: true,
   lightbox: true,
   proofread: true,
-  craft: true
+  craft: true,
+  helper: true
 } as const satisfies Record<ModelScope, true>;
 
 export const MODEL_SCOPES = Object.freeze(Object.keys(MODEL_SCOPE_MEMBERS)) as readonly ModelScope[];
@@ -32,16 +33,23 @@ export function isModelScope(value: unknown): value is ModelScope {
 
 /**
  * A scope with no model of its own until the writer picks one (Lightbox
- * Slice 4L; Craft Flags, Draft Edit Slice 3c). Unset, it runs on the model
- * of the scope it follows, and moves when that one does; picked, its model
- * is its own.
+ * Slice 4L; Craft Flags, Draft Edit Slice 3c; the helper agent, ADR
+ * 2026-11-05 D3). Unset, it runs on the model of the scope it follows, and
+ * moves when that one does; picked, its model is its own.
  */
-export type FollowingModelScope = 'lightbox' | 'craft';
+export type FollowingModelScope = 'lightbox' | 'craft' | 'helper';
 
-/** What each following scope follows: the assistant model (the Workshop's). */
+/**
+ * The own scope each following scope follows. The Lightbox and Craft Flags
+ * follow the assistant model (the Workshop's); the helper follows
+ * Proofread's, an inexpensive default for small automatic calls. A
+ * following scope never follows another following scope, so one lookup
+ * always names a model.
+ */
 export const MODEL_SCOPE_FOLLOWS: Readonly<Record<FollowingModelScope, Exclude<ModelScope, FollowingModelScope>>> = {
   lightbox: 'assistant',
-  craft: 'assistant'
+  craft: 'assistant',
+  helper: 'proofread'
 };
 
 export function isFollowingModelScope(scope: unknown): scope is FollowingModelScope {

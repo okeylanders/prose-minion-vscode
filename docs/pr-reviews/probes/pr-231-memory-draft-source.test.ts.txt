@@ -1,0 +1,84 @@
+/** @jest-environment jsdom */
+import { act, renderHook } from '@testing-library/react';
+import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
+import { WorkshopMemoryDraftHandler } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
+import { ScriptedWorkshopRoom } from '@/__tests__/application/services/workshop/session/ScriptedWorkshopRoom';
+import { workshopTurnPreview } from '@/application/services/workshop/transcript/WorkshopTurnPreview';
+import { workshopMemorySheetWithHelperDraft } from '@hooks/domain/workshop/memory/workshopMemoryHelperDraft';
+import { workshopMemoryNoteFromTurn } from '@shared/constants/workshopProjectMemoryWrites';
+import { MessageType } from '@messages';
+import { createMockVSCode } from '@/__tests__/mocks/vscode';
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+jest.mock('@hooks/useVSCodeApi');
+const DRAFT = { title: 'A title', summary: 'A summary.', kind: 'canon' as const };
+
+describe('PR 231 independent sheet/source probes', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => { jest.useRealTimers(); jest.clearAllMocks(); });
+  it.each(['bubble', 'in-window bookmark', 'out-of-window bookmark'] as const)(
+    'F-01: %s gives the helper the same safe source the sheet holds', async (opening) => {
+      const room = new ScriptedWorkshopRoom().start();
+      room.hostMessage('Check the cups.', { capabilityRounds: 1, reply: 'Alice counts the cups.' });
+      // This is the actual webview snapshot, not an invented view of the host ledger.
+      const card = room.session.getSnapshot().turns.find((turn) => turn.capability)!;
+      expect(card).toBeDefined();
+      const vscode = createMockVSCode();
+      (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+      const { result, unmount } = renderHook(() => useWorkshopProjectMemory({ roomRevision: room.session.readRoomRevision() }));
+      act(() => {
+        if (opening === 'bubble') result.current.saveTurn(card);
+        else result.current.rememberRoomBookmark({
+          turnId: card.id, roomRevision: room.session.readRoomRevision(),
+          ...(opening === 'in-window bookmark' ? { turn: card } : { message: workshopTurnPreview(card)! })
+        });
+      });
+      const request = vscode.postMessage.mock.calls.map(([message]) => message)
+        .find((message) => message.type === MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST)!;
+      const run = jest.fn(async () => ({ kind: 'drafted' as const, value: DRAFT }));
+      const handler = new WorkshopMemoryDraftHandler({ helper: { run }, settings: { get: () => true } as never },
+        room.session, { savedTurn: jest.fn() }, async () => undefined,
+        { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
+      await handler.handleDraftRequest(request);
+      const actualInput = (run.mock.calls[0] as unknown as [string, { text: string }])[1].text;
+      expect(actualInput).toBe(workshopMemoryNoteFromTurn(workshopTurnPreview(card)!.content));
+      // Never remedy the mismatch by sending the private capability body to the helper.
+      expect(actualInput).not.toBe(card.content);
+      const displayedBody = result.current.sheet!.draft.body;
+      unmount();
+      expect(actualInput).toBe(displayedBody);
+    }
+  );
+
+  it('ordinary writer and reply sheets preserve the provider-source equality', async () => {
+    const room = new ScriptedWorkshopRoom().start();
+    const reply = room.hostMessage('Why the cups?', { reply: 'Alice counts the cups.' });
+    const writer = room.session.getSnapshot().turns.find((turn) => turn.role === 'user' && turn.kind === 'message')!;
+    for (const turn of [writer, reply]) {
+      const vscode = createMockVSCode();
+      (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+      const { result, unmount } = renderHook(() => useWorkshopProjectMemory());
+      act(() => result.current.saveTurn(turn));
+      expect(result.current.sheet!.draft.body).toBe(workshopMemoryNoteFromTurn(workshopTurnPreview(turn)!.content));
+      unmount();
+    }
+  });
+
+  it('all eight touched-field subsets preserve writer values and unrelated fields', () => {
+    const fields = ['title', 'summary', 'kind'] as const;
+    for (let mask = 0; mask < 8; mask++) {
+      const touched = fields.filter((_, i) => mask & (1 << i));
+      const sheet = { mode: 'turn' as const, turnId: 't', draft: {
+        title: 'Writer title', summary: 'Writer summary.', kind: 'decision' as const,
+        body: 'Writer edited body', supersedes: ['m1'], pinned: true
+      }, replaces: [], loading: false, saving: false, sourceLabel: 'Jill',
+      helper: { requestId: 'r', status: 'drafting' as const, touched } };
+      const next = workshopMemorySheetWithHelperDraft(sheet, { requestId: 'r', outcome: 'drafted', draft: DRAFT })!;
+      for (const field of fields) expect(next.draft[field]).toBe(touched.includes(field) ? sheet.draft[field] : DRAFT[field]);
+      expect(next.draft.body).toBe(sheet.draft.body);
+      expect(next.draft.supersedes).toBe(sheet.draft.supersedes);
+      expect(next.draft.pinned).toBe(true);
+      expect(next.sourceLabel).toBe('Jill');
+      expect(workshopMemorySheetWithHelperDraft(next, { requestId: 'r', outcome: 'drafted', draft: DRAFT })).toBeUndefined();
+    }
+  });
+});

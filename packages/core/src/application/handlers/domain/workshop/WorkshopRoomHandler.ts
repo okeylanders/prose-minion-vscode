@@ -18,6 +18,7 @@
  */
 
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
+import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import type { WorkshopProjectMemoryPort } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import type { WorkshopPinnedContextServices } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 import {
@@ -259,7 +260,8 @@ export class WorkshopRoomHandler {
     /** Persona file edits' staging (ADR 2026-11-05 D4): `FileEditStagingService`, built in `extension.ts`. */
     private readonly fileEditStaging: FileEditStaging,
     /** Persona file edits' Apply and Preview (ADR 2026-11-05 D7–D9): the gateway, built in `extension.ts`. */
-    fileEditApply: FileEditApplyPort
+    fileEditApply: FileEditApplyPort,
+    memoryDrafts: WorkshopMemoryDraftPorts
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -295,6 +297,7 @@ export class WorkshopRoomHandler {
         pinnedContext,
         bookmarkBrowser,
         fileEditApply,
+        memoryDrafts,
         outputChannel: this.outputChannel
       },
       {

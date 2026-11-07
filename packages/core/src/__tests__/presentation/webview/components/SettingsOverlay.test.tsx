@@ -171,6 +171,25 @@ describe('SettingsOverlay', () => {
       expect(onModelChange).not.toHaveBeenCalledWith('lightbox', expect.anything());
     });
 
+    it('gives the helper a row that follows Proofread, not the Workshop, until picked (ADR 2026-11-05 D3)', () => {
+      const PROOFREAD = 'placeholder/proofread-model';
+      const HELPER = 'placeholder/helper-model';
+      const { onModelChange, onFollowModel } = renderOverlay({
+        modelOptions: [...modelOptions, { id: PROOFREAD, label: 'Proofread placeholder' }, { id: HELPER, label: 'Helper placeholder' }],
+        modelSelections: { assistant: WORKSHOP, proofread: PROOFREAD, helper: PROOFREAD },
+        followingModelScopes: ['helper']
+      });
+      const helper = screen.getByText('Helper Model').closest('label')?.querySelector('select') as HTMLSelectElement;
+
+      expect(helper.value).toBe('');
+      expect(helper.selectedOptions[0].textContent).toBe('Same as Proofread (Proofread placeholder)');
+      fireEvent.change(helper, { target: { value: HELPER } });
+      expect(onModelChange).toHaveBeenLastCalledWith('helper', HELPER);
+      fireEvent.change(helper, { target: { value: '' } });
+      expect(onFollowModel).toHaveBeenCalledWith('helper');
+      expect(onModelChange).not.toHaveBeenCalledWith('proofread', expect.anything());
+    });
+
     it('offers no "Same as" choice on a scope that follows nothing', () => {
       renderOverlay({ modelOptions, modelSelections: { assistant: WORKSHOP } });
 

@@ -1,7 +1,7 @@
 # Feature: Bookmark Counts in the Session Catalog
 
 **Date Identified:** 2026-11-05
-**Status:** Idea, for after the [bookmark recall epic](../../epics/epic-workshop-bookmark-recall-2026-11-05/README.md). Okey: "write this as something we add later. I think it's worthwhile" (ADR 2026-11-05, Q4).
+**Status:** Idea, for after the [bookmark recall epic](../../archive/epics/epic-workshop-bookmark-recall-2026-11-05/README.md). Okey: "write this as something we add later. I think it's worthwhile" (ADR 2026-11-05, Q4).
 **Priority:** Low
 **Related:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-bookmark-recall.md) (D5 left this out); [ADR 2026-10-05](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md) (`transcript.catalog` reads no session file)
 
