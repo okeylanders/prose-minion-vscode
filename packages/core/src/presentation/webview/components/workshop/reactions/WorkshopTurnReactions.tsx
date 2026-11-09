@@ -1,17 +1,21 @@
 /**
- * A bubble's reactions (ADR 2026-11-07 D8): the chips under it and the "Add
- * reaction" palette in its actions, offered only on turns the host would
- * accept (the shared `isWorkshopReactableTurn` rule, for the writer).
+ * A bubble's reaction corner (ADR 2026-11-07 D8; Slice 3b): one small cluster
+ * of its reactions in the bubble's bottom-right corner, left to right, and the
+ * "Add reaction" button after it, offered only on turns the host would accept
+ * (the shared `isWorkshopReactableTurn` rule, for the writer). The button is
+ * always shown; a writer's own message has reactions only from personas, and
+ * no button.
  *
- * - The writer's chips come first. Each is a pressed toggle named "You
- *   reacted: mind-blown"; pressing it removes the reaction.
- * - A persona's chip is named "Jill reacted: heart", with a Hide action that
- *   removes it (Q6). A persona writes it with a reply's trailer (D5).
+ * - The writer's reactions come first, then personas'. Each is one button
+ *   whose press removes it: "You reacted: mind-blown. Remove" unsets the
+ *   writer's own; "Jill reacted: heart. Remove" hides a persona's (Q6: Hide
+ *   is removal). A persona writes its reaction with a reply's trailer (D5).
  *
- * A removed chip takes focus with it only when it held focus: the next chip
- * on the bubble takes it, or the bubble's "Add reaction" button when none
- * is left (PR #245 L2). While the room is locked the chips stay focusable
- * (`aria-disabled`) and do nothing.
+ * A removed reaction takes focus with it only when it held focus: the next
+ * reaction in the cluster takes it, else the previous one, else the bubble's
+ * "Add reaction" button, else the bubble itself (PR #245 L2, PR #247 F-01),
+ * never the page. While the room is locked every button stays focusable
+ * (`aria-disabled`) and does nothing.
  *
  * A new persona reaction is announced once by the reactions hook's live
  * region (D8), never here.
@@ -41,46 +45,37 @@ export interface WorkshopReactionControls {
 
 const WRITER = { kind: 'writer' } as const;
 
-/** The palette for a bubble's action row, or null where the writer cannot react. */
-export function workshopReactionAction(
-  turn: WorkshopTurn,
-  controls: WorkshopReactionControls | undefined
-): React.ReactElement | null {
-  if (!controls || !isWorkshopReactableTurn(turn, WRITER)) {
-    return null;
-  }
-  const given = new Set(controls.reactionsOf(turn.id)
-    .filter((summary) => summary.author.kind === 'writer')
-    .map((summary) => summary.reaction));
-  return (
-    <WorkshopReactionPalette
-      turnId={turn.id}
-      given={given}
-      disabled={controls.disabled}
-      onPick={controls.onSet}
-    />
-  );
-}
-
-export interface WorkshopTurnReactionChipsProps {
+export interface WorkshopTurnReactionCornerProps {
   turn: WorkshopTurn;
   controls: WorkshopReactionControls;
 }
 
-const chipKey = (summary: WorkshopTurnReactionSummary): string => {
+const reactionKey = (summary: WorkshopTurnReactionSummary): string => {
   const author = summary.author;
   return `${author.kind === 'personaGuest' ? author.personaId : author.kind}-${summary.reaction}`;
 };
 
-/** Marks each chip's one focusable control, so a removal can hand focus on. */
-const FOCUS_TARGET = 'data-pm-reaction-focus';
+/** The writer's first, then personas', each side in the host's order. */
+export function workshopReactionClusterOrder(
+  summaries: readonly WorkshopTurnReactionSummary[]
+): WorkshopTurnReactionSummary[] {
+  return [
+    ...summaries.filter((summary) => summary.author.kind === 'writer'),
+    ...summaries.filter((summary) => summary.author.kind !== 'writer')
+  ];
+}
 
-export const WorkshopTurnReactionChips: React.FC<WorkshopTurnReactionChipsProps> = ({ turn, controls }) => {
-  const summaries = controls.reactionsOf(turn.id);
-  const chipsRef = React.useRef<HTMLDivElement>(null);
-  // The chip whose removal was asked for, and where it stood.
+/** Marks each reaction's button, so a removal can hand focus on. */
+const FOCUS_TARGET = 'data-pm-reaction-focus';
+const LOCKED_TITLE = 'Wait for the room to finish before reacting';
+
+export const WorkshopTurnReactionCorner: React.FC<WorkshopTurnReactionCornerProps> = ({ turn, controls }) => {
+  const summaries = workshopReactionClusterOrder(controls.reactionsOf(turn.id));
+  const reactable = isWorkshopReactableTurn(turn, WRITER);
+  const cornerRef = React.useRef<HTMLDivElement>(null);
+  // The reaction whose removal was asked for, and where it stood.
   const pendingFocus = React.useRef<{ key: string; index: number } | null>(null);
-  const keys = summaries.map(chipKey).join('|');
+  const keys = summaries.map(reactionKey).join('|');
 
   React.useEffect(() => {
     const pending = pendingFocus.current;
@@ -88,68 +83,75 @@ export const WorkshopTurnReactionChips: React.FC<WorkshopTurnReactionChipsProps>
       return;
     }
     pendingFocus.current = null;
-    // Focus went with the chip only if nothing else has taken it since.
+    // Focus went with the reaction only if nothing else has taken it since.
     if (document.activeElement && document.activeElement !== document.body) {
       return;
     }
-    const targets = chipsRef.current?.querySelectorAll<HTMLElement>(`[${FOCUS_TARGET}]`);
+    const corner = cornerRef.current;
+    const targets = corner?.querySelectorAll<HTMLElement>(`[${FOCUS_TARGET}]`);
+    // The next one now stands at the removed one's index; past the end, the previous one.
     const next = targets && targets.length > 0 ? targets[Math.min(pending.index, targets.length - 1)] : undefined;
-    (next ?? document.getElementById(workshopReactionAddButtonId(turn.id)))?.focus();
+    const fallback = next
+      ?? document.getElementById(workshopReactionAddButtonId(turn.id))
+      ?? corner?.closest<HTMLElement>('[tabindex="-1"]');
+    fallback?.focus();
   }, [keys, turn.id]);
 
-  if (summaries.length === 0) {
-    return null;
-  }
   const remove = (summary: WorkshopTurnReactionSummary, index: number, action: () => void) => {
     if (controls.disabled) {
       return;
     }
-    pendingFocus.current = { key: chipKey(summary), index };
+    pendingFocus.current = { key: reactionKey(summary), index };
     action();
   };
-  const lockedTitle = 'Wait for the room to finish before reacting';
+
+  const given = new Set(summaries
+    .filter((summary) => summary.author.kind === 'writer')
+    .map((summary) => summary.reaction));
+
+  // The corner stays mounted, empty, so a removal's focus can still find its bubble.
   return (
-    <div className="pm-ws-reaction-chips" role="group" aria-label="Reactions" ref={chipsRef}>
-      {summaries.map((summary, index) => {
-        const reaction = workshopReaction(summary.reaction);
-        const focusTarget = { [FOCUS_TARGET]: '' };
-        if (summary.author.kind === 'writer') {
-          return (
-            <button
-              key={chipKey(summary)}
-              type="button"
-              className="pm-ws-reaction-chip pm-ws-reaction-chip-writer"
-              aria-pressed={true}
-              aria-label={`You reacted: ${reaction.label}`}
-              title={controls.disabled ? lockedTitle : `Remove your ${reaction.label}`}
-              aria-disabled={controls.disabled || undefined}
-              {...focusTarget}
-              onClick={() => remove(summary, index, () => controls.onSet(turn.id, summary.reaction, false))}
-            >
-              <span aria-hidden="true">{reaction.glyph}</span>
-            </button>
-          );
-        }
-        const author = summary.author;
-        const name = `${summary.label} reacted: ${reaction.label}`;
-        return (
-          <span key={chipKey(summary)} className="pm-ws-reaction-chip pm-ws-reaction-chip-persona" role="group" aria-label={name}>
-            <span aria-hidden="true">{reaction.glyph}</span>
-            <span className="pm-ws-reaction-chip-name" aria-hidden="true">{summary.label}</span>
-            <button
-              type="button"
-              className="pm-ws-reaction-hide"
-              aria-label={`Hide ${summary.label}'s ${reaction.label}`}
-              title={controls.disabled ? lockedTitle : `Hide ${summary.label}'s ${reaction.label}`}
-              aria-disabled={controls.disabled || undefined}
-              {...focusTarget}
-              onClick={() => remove(summary, index, () => controls.onHide(turn.id, summary.reaction, author))}
-            >
-              Hide
-            </button>
-          </span>
-        );
-      })}
+    <div className="pm-ws-reaction-corner" ref={cornerRef}>
+      {summaries.length > 0 && (
+        <div className="pm-ws-reaction-cluster" role="group" aria-label="Reactions">
+          {summaries.map((summary, index) => {
+            const reaction = workshopReaction(summary.reaction);
+            const author = summary.author;
+            const writer = author.kind === 'writer';
+            const meaning = writer ? `You reacted: ${reaction.label}` : `${summary.label} reacted: ${reaction.label}`;
+            const removeTitle = writer ? `Remove your ${reaction.label}` : `Remove ${summary.label}'s ${reaction.label}`;
+            return (
+              <button
+                key={reactionKey(summary)}
+                type="button"
+                className={`pm-ws-reaction-item pm-ws-reaction-item-${writer ? 'writer' : 'persona'}`}
+                aria-label={`${meaning}. Remove`}
+                title={controls.disabled ? LOCKED_TITLE : `${meaning}. ${removeTitle}`}
+                aria-disabled={controls.disabled || undefined}
+                {...{ [FOCUS_TARGET]: '' }}
+                onClick={() => remove(summary, index, () => {
+                  if (author.kind === 'writer') {
+                    controls.onSet(turn.id, summary.reaction, false);
+                  } else {
+                    controls.onHide(turn.id, summary.reaction, author);
+                  }
+                })}
+              >
+                <span className="pm-ws-reaction-item-glyph" aria-hidden="true">{reaction.glyph}</span>
+                {!writer && <span className="pm-ws-reaction-item-name" aria-hidden="true">{summary.label}</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {reactable && (
+        <WorkshopReactionPalette
+          turnId={turn.id}
+          given={given}
+          disabled={controls.disabled}
+          onPick={controls.onSet}
+        />
+      )}
     </div>
   );
 };

@@ -160,7 +160,7 @@ describe('WorkshopApp persona reactions', () => {
     expect(within(line).getByRole('img', { name: 'heart' }).textContent).toBe('❤️');
     expect(within(line).queryByRole('button', { name: /Add reaction/ })).toBeNull();
     expect(line.textContent).not.toContain('Reacted with heart.');
-    expect(within(bubble('turn-1')).getByRole('group', { name: 'Jill reacted: heart' })).toBeTruthy();
+    expect(within(bubble('turn-1')).getByRole('button', { name: 'Jill reacted: heart. Remove' })).toBeTruthy();
   });
 
   it('announces a persona reaction once, when its reply arrived live', () => {

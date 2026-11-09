@@ -4,7 +4,10 @@
  */
 
 import { WORKSHOP_REACTIONS, type WorkshopReactionId } from '@shared/constants/workshopReactions';
-import { workshopReactionPaletteMove } from '@components/workshop/reactions/WorkshopReactionPalette';
+import {
+  workshopReactionPaletteMove,
+  workshopReactionPalettePlacement
+} from '@components/workshop/reactions/WorkshopReactionPalette';
 
 const ORDER = ['warm', 'curious', 'negative'].flatMap((tone) =>
   WORKSHOP_REACTIONS.filter((reaction) => reaction.tone === tone).map((reaction) => reaction.id));
@@ -50,5 +53,23 @@ describe('workshopReactionPaletteMove', () => {
 
   it('leaves other keys alone', () => {
     expect(workshopReactionPaletteMove('Tab', 0)).toBeUndefined();
+  });
+});
+
+describe('workshopReactionPalettePlacement (PR #245 L4)', () => {
+  it('opens up when the palette fits above the button', () => {
+    expect(workshopReactionPalettePlacement({ above: 300, below: 20 }, 200)).toBe('up');
+    // Exactly the palette and its gap still fits.
+    expect(workshopReactionPalettePlacement({ above: 206, below: 0 }, 200)).toBe('up');
+  });
+
+  it('flips down when there is no room above but room below', () => {
+    expect(workshopReactionPalettePlacement({ above: 205, below: 400 }, 200)).toBe('down');
+    expect(workshopReactionPalettePlacement({ above: 40, below: 206 }, 200)).toBe('down');
+  });
+
+  it('takes the roomier side when it fits on neither', () => {
+    expect(workshopReactionPalettePlacement({ above: 120, below: 80 }, 200)).toBe('up');
+    expect(workshopReactionPalettePlacement({ above: 80, below: 120 }, 200)).toBe('down');
   });
 });

@@ -1,11 +1,13 @@
 /** @jest-environment jsdom */
 
 /**
- * WorkshopApp reactions (ADR 2026-11-07 D8), through the real App: a persona
- * reply's "Add reaction" opens the palette in three labelled groups, the
- * keyboard moves through it and Escape returns focus to the button; a pick
- * posts ids only and waits for the host; the writer's chips are toggles that
- * remove; a persona's chip has a Hide action. The webview persists nothing.
+ * WorkshopApp reactions (ADR 2026-11-07 D8; Slice 3b), through the real App:
+ * a persona reply's corner holds its reactions left to right and an icon
+ * "Add reaction" button, which opens the palette in three labelled groups
+ * (up, or down without room above); the keyboard moves through it and Escape
+ * returns focus to the button; a pick posts ids only and waits for the host;
+ * a click on any reaction removes it (a persona's by Hide). The webview
+ * persists nothing.
  */
 
 import * as React from 'react';
@@ -145,14 +147,48 @@ describe('WorkshopApp reactions', () => {
     .filter((entry) => entry.type === type)
     .map((entry) => entry.payload);
 
-  const addButton = (turnId: string) => within(bubble(turnId)).getByRole('button', { name: /Add reaction/ });
+  const addButton = (turnId: string) => within(bubble(turnId)).getByRole('button', { name: 'Add reaction' });
+  const corner = (turnId: string) => bubble(turnId).querySelector<HTMLElement>('.pm-ws-reaction-corner')!;
+  const cluster = (turnId: string) => within(bubble(turnId)).getByRole('group', { name: 'Reactions' });
 
-  it('offers "Add reaction" on a persona reply, and not on the writer\'s own message', () => {
+  it('offers an icon "Add reaction" button in a persona reply\'s corner, always shown, and none on the writer\'s own message', () => {
     render(<WorkshopApp />);
     deliver(session());
 
-    expect(addButton('turn-2').getAttribute('aria-expanded')).toBe('false');
-    expect(within(bubble('turn-1')).queryByRole('button', { name: /Add reaction/ })).toBeNull();
+    const add = addButton('turn-2');
+    expect(add.getAttribute('aria-expanded')).toBe('false');
+    expect(add.getAttribute('title')).toBe('Add reaction');
+    // An icon, not a text label: the name is its accessible name alone.
+    expect(add.textContent).toBe('');
+    expect(add.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    // In the bubble's corner, outside the action row, and not hover-only.
+    expect(corner('turn-2').contains(add)).toBe(true);
+    expect(add.closest('.pm-ws-turn-actions')).toBeNull();
+    expect(corner('turn-2').parentElement).toBe(bubble('turn-2'));
+    expect(corner('turn-2').className).not.toMatch(/hover/);
+    expect(within(bubble('turn-1')).queryByRole('button', { name: 'Add reaction' })).toBeNull();
+  });
+
+  it('lines a bubble\'s reactions up left to right before the button: the writer\'s first, then personas\'', () => {
+    render(<WorkshopApp />);
+    const jill = { turnId: 'turn-2', reaction: 'heart', author: { kind: 'host' }, label: 'Jill' } as const;
+    const margot = {
+      turnId: 'turn-2', reaction: 'eyes', author: { kind: 'personaGuest', personaId: 'margot' }, label: 'Margot'
+    } as const;
+    deliver(session({ reactions: [jill, mine('turn-2', 'fire'), margot] }));
+
+    expect(within(cluster('turn-2')).getAllByRole('button').map((item) => item.getAttribute('aria-label'))).toEqual([
+      'You reacted: fire. Remove',
+      'Jill reacted: heart. Remove',
+      'Margot reacted: eyes. Remove'
+    ]);
+    const [, jillItem] = within(cluster('turn-2')).getAllByRole('button');
+    expect(jillItem.textContent).toBe('❤️Jill');
+    expect(jillItem.getAttribute('title')).toBe('Jill reacted: heart. Remove Jill\'s heart');
+    // The cluster, then the button, in one corner.
+    expect(Array.from(corner('turn-2').children).map((child) => child.className)).toEqual([
+      'pm-ws-reaction-cluster', 'pm-ws-reaction-wrap'
+    ]);
   });
 
   it('opens the palette in three labelled groups, focused on its first reaction', () => {
@@ -169,6 +205,44 @@ describe('WorkshopApp reactions', () => {
       .map((button) => button.getAttribute('aria-label'))).toEqual(['thinking', 'eyes', 'surprised']);
     expect(document.activeElement?.getAttribute('aria-label')).toBe('heart');
     expect(addButton('turn-2').getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('opens the palette up, and down when the button sits too near the top (PR #245 L4)', () => {
+    render(<WorkshopApp />);
+    deliver(session());
+    const rect = (top: number, height: number) => ({
+      top, bottom: top + height, height, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => ({})
+    }) as DOMRect;
+    const original = Element.prototype.getBoundingClientRect;
+    let triggerTop = 600;
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      if (this.classList.contains('pm-ws-reaction-add')) {
+        return rect(triggerTop, 28);
+      }
+      return this.classList.contains('pm-ws-reaction-palette') ? rect(0, 200) : original.call(this);
+    };
+    try {
+      fireEvent.click(addButton('turn-2'));
+      expect(screen.getByRole('dialog').getAttribute('data-placement')).toBe('up');
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+      // The first option is focused only once the palette is placed, so the browser
+      // never scrolls toward a palette drawn on the side with no room.
+      const focus = jest.spyOn(HTMLElement.prototype, 'focus');
+      const placedAtFocus: (string | null)[] = [];
+      focus.mockImplementation(function (this: HTMLElement) {
+        placedAtFocus.push(this.closest('[role="dialog"]')?.getAttribute('data-placement') ?? null);
+      });
+      triggerTop = 40;
+      fireEvent.click(addButton('turn-2'));
+      focus.mockRestore();
+      expect(screen.getByRole('dialog').getAttribute('data-placement')).toBe('down');
+      expect(screen.getByRole('dialog').className).toContain('pm-ws-reaction-palette-down');
+      expect(screen.getByRole('dialog').style.visibility).toBe('');
+      expect(placedAtFocus).toEqual(['down']);
+    } finally {
+      Element.prototype.getBoundingClientRect = original;
+    }
   });
 
   it('moves with the arrow keys, Home and End, and Escape closes it and returns focus to the button', () => {
@@ -211,19 +285,18 @@ describe('WorkshopApp reactions', () => {
     ]);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(addButton('turn-2'));
-    expect(within(bubble('turn-2')).queryByRole('button', { name: 'You reacted: mind-blown' })).toBeNull();
+    expect(within(bubble('turn-2')).queryByRole('button', { name: 'You reacted: mind-blown. Remove' })).toBeNull();
 
     deliver(session({ reactions: [mine('turn-2', 'mind-blown')] }));
-    const chip = within(bubble('turn-2')).getByRole('button', { name: 'You reacted: mind-blown' });
-    expect(chip.getAttribute('aria-pressed')).toBe('true');
-    expect(chip.textContent).toBe('\u{1F92F}');
+    const item = within(cluster('turn-2')).getByRole('button', { name: 'You reacted: mind-blown. Remove' });
+    expect(item.textContent).toBe('\u{1F92F}');
   });
 
-  it('removes the writer\'s reaction from its chip, or by picking it again in the palette', () => {
+  it('removes the writer\'s reaction with a click on it, or by picking it again in the palette', () => {
     render(<WorkshopApp />);
     deliver(session({ reactions: [mine('turn-2', 'fire'), mine('turn-2', 'heart')] }));
 
-    fireEvent.click(within(bubble('turn-2')).getByRole('button', { name: 'You reacted: fire' }));
+    fireEvent.click(within(bubble('turn-2')).getByRole('button', { name: 'You reacted: fire. Remove' }));
     expect(posted(MessageType.WORKSHOP_SET_TURN_REACTION).at(-1)).toEqual({ turnId: 'turn-2', reaction: 'fire', reacted: false });
 
     fireEvent.click(addButton('turn-2'));
@@ -234,18 +307,19 @@ describe('WorkshopApp reactions', () => {
     expect(posted(MessageType.WORKSHOP_SET_TURN_REACTION).at(-1)).toEqual({ turnId: 'turn-2', reaction: 'heart', reacted: false });
   });
 
-  it('draws a persona\'s reaction as a named chip with a Hide action that posts its author', () => {
+  it('removes a persona\'s reaction with a click on it, posting a Hide with its author, and offers no separate Hide', () => {
     render(<WorkshopApp />);
     deliver(session({
       reactions: [{ turnId: 'turn-1', reaction: 'heart', author: { kind: 'host' }, label: 'Jill' }]
     }));
 
-    const chip = within(bubble('turn-1')).getByRole('group', { name: 'Jill reacted: heart' });
-    fireEvent.click(within(chip).getByRole('button', { name: 'Hide Jill\'s heart' }));
+    expect(within(bubble('turn-1')).queryByRole('button', { name: /^Hide/ })).toBeNull();
+    fireEvent.click(within(cluster('turn-1')).getByRole('button', { name: 'Jill reacted: heart. Remove' }));
 
     expect(posted(MessageType.WORKSHOP_HIDE_TURN_REACTION)).toEqual([
       { turnId: 'turn-1', reaction: 'heart', author: { kind: 'host' } }
     ]);
+    expect(posted(MessageType.WORKSHOP_SET_TURN_REACTION)).toEqual([]);
   });
 
   it('closes when focus leaves it, without taking focus back (PR #245 L3)', () => {
@@ -277,21 +351,39 @@ describe('WorkshopApp reactions', () => {
     expect(addButton('turn-2').getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(addButton('turn-2'));
     expect(screen.queryByRole('dialog')).toBeNull();
-    // A locked chip does nothing either.
-    deliver(session({ activeToolId: 'prose', reactions: [mine('turn-2', 'fire')] }));
-    fireEvent.click(within(bubble('turn-2')).getByRole('button', { name: 'You reacted: fire' }));
+    // A locked reaction stays focusable and does nothing either, the writer's or a persona's.
+    deliver(session({
+      activeToolId: 'prose',
+      reactions: [mine('turn-2', 'fire'), { turnId: 'turn-1', reaction: 'heart', author: { kind: 'host' }, label: 'Jill' }]
+    }));
+    const fire = within(bubble('turn-2')).getByRole('button', { name: 'You reacted: fire. Remove' });
+    const jill = within(bubble('turn-1')).getByRole('button', { name: 'Jill reacted: heart. Remove' });
+    for (const item of [fire, jill]) {
+      expect(item.getAttribute('aria-disabled')).toBe('true');
+      expect(item.hasAttribute('disabled')).toBe(false);
+      expect(item.getAttribute('title')).toBe('Wait for the room to finish before reacting');
+      fireEvent.click(item);
+    }
     expect(posted(MessageType.WORKSHOP_SET_TURN_REACTION)).toEqual([]);
+    expect(posted(MessageType.WORKSHOP_HIDE_TURN_REACTION)).toEqual([]);
   });
 
-  it('hands focus to the next chip, then to "Add reaction", as chips are removed (PR #245 L2)', () => {
+  it('hands focus to the next reaction, then the previous, then to "Add reaction", as reactions are removed (PR #245 L2)', () => {
     render(<WorkshopApp />);
-    deliver(session({ reactions: [mine('turn-2', 'fire'), mine('turn-2', 'heart')] }));
+    deliver(session({ reactions: [mine('turn-2', 'fire'), mine('turn-2', 'heart'), mine('turn-2', 'eyes')] }));
 
-    const fire = within(bubble('turn-2')).getByRole('button', { name: 'You reacted: fire' });
+    const fire = within(bubble('turn-2')).getByRole('button', { name: 'You reacted: fire. Remove' });
     fire.focus();
     fireEvent.click(fire);
+    deliver(session({ reactions: [mine('turn-2', 'heart'), mine('turn-2', 'eyes')] }));
+    expect(document.activeElement).toBe(within(bubble('turn-2')).getByRole('button', { name: 'You reacted: heart. Remove' }));
+
+    // The last one removed: focus goes back to the one before it.
+    const eyes = within(bubble('turn-2')).getByRole('button', { name: 'You reacted: eyes. Remove' });
+    eyes.focus();
+    fireEvent.click(eyes);
     deliver(session({ reactions: [mine('turn-2', 'heart')] }));
-    const heart = within(bubble('turn-2')).getByRole('button', { name: 'You reacted: heart' });
+    const heart = within(bubble('turn-2')).getByRole('button', { name: 'You reacted: heart. Remove' });
     expect(document.activeElement).toBe(heart);
 
     fireEvent.click(heart);
@@ -299,7 +391,7 @@ describe('WorkshopApp reactions', () => {
     expect(document.activeElement).toBe(addButton('turn-2'));
   });
 
-  it('hands focus from a hidden persona chip on the writer\'s bubble to the next one', () => {
+  it('hands focus from a removed persona reaction on the writer\'s bubble to the next one', () => {
     render(<WorkshopApp />);
     const jill = { turnId: 'turn-1', reaction: 'heart', author: { kind: 'host' }, label: 'Jill' } as const;
     const margot = {
@@ -307,19 +399,48 @@ describe('WorkshopApp reactions', () => {
     } as const;
     deliver(session({ reactions: [jill, margot] }));
 
-    const hideJill = within(bubble('turn-1')).getByRole('button', { name: 'Hide Jill\'s heart' });
-    hideJill.focus();
-    fireEvent.click(hideJill);
+    const jillItem = within(bubble('turn-1')).getByRole('button', { name: 'Jill reacted: heart. Remove' });
+    jillItem.focus();
+    fireEvent.click(jillItem);
     deliver(session({ reactions: [margot] }));
 
-    expect(document.activeElement).toBe(within(bubble('turn-1')).getByRole('button', { name: 'Hide Margot\'s eyes' }));
-    expect(within(bubble('turn-1')).getByRole('group', { name: 'Margot reacted: eyes' })).toBeTruthy();
+    expect(document.activeElement).toBe(within(bubble('turn-1')).getByRole('button', { name: 'Margot reacted: eyes. Remove' }));
+  });
+
+  it('hands focus to the writer\'s bubble itself when its last persona reaction is removed (PR #247 F-01)', () => {
+    render(<WorkshopApp />);
+    const jill = { turnId: 'turn-1', reaction: 'heart', author: { kind: 'host' }, label: 'Jill' } as const;
+    deliver(session({ reactions: [jill] }));
+
+    const jillItem = within(bubble('turn-1')).getByRole('button', { name: 'Jill reacted: heart. Remove' });
+    jillItem.focus();
+    fireEvent.click(jillItem);
+    deliver(session());
+
+    expect(within(bubble('turn-1')).queryByRole('group', { name: 'Reactions' })).toBeNull();
+    expect(document.activeElement).toBe(bubble('turn-1'));
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it('leaves focus where the writer moved it when the removal\'s snapshot arrives late', () => {
+    render(<WorkshopApp />);
+    const jill = { turnId: 'turn-1', reaction: 'heart', author: { kind: 'host' }, label: 'Jill' } as const;
+    deliver(session({ reactions: [jill] }));
+
+    const jillItem = within(bubble('turn-1')).getByRole('button', { name: 'Jill reacted: heart. Remove' });
+    jillItem.focus();
+    fireEvent.click(jillItem);
+    const copy = within(bubble('turn-2')).getByRole('button', { name: 'Copy' });
+    copy.focus();
+    deliver(session());
+
+    expect(document.activeElement).toBe(copy);
   });
 
   it('persists nothing of reactions in the webview\'s state', () => {
     render(<WorkshopApp />);
     deliver(session({ reactions: [mine('turn-2', 'fire')] }));
-    fireEvent.click(within(bubble('turn-2')).getByRole('button', { name: 'You reacted: fire' }));
+    fireEvent.click(within(bubble('turn-2')).getByRole('button', { name: 'You reacted: fire. Remove' }));
 
     expect(JSON.stringify(vscode.setState.mock.calls)).not.toContain('reaction');
   });
