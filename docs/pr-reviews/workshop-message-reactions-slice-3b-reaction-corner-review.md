@@ -9,12 +9,12 @@
 
 | ID | Severity | Finding | Decision | Resolution |
 |---|---|---|---|---|
-| M1 | Medium | A fast double click can remove a reaction the writer never aimed at | Fix | |
-| L1 | Low | The corner adds about 44px under every reactable persona reply | Fix (spacing) | |
-| L2 | Low | Screen readers hear each reaction twice (title ≠ name) | Fix | |
-| L3 | Low | The palette's side is chosen once and can clip after the thread scrolls | Fix | |
-| L4 | Low | A refused removal leaves its focus hand-off armed | Fix | |
-| T1 | Test | No test for double activation, or for clicking a reaction while the palette is open | Fix | |
+| M1 | Medium | A fast double click can remove a reaction the writer never aimed at | Fix | Fixed. A removal records the snapshot list it was asked against (`removingFrom`). Further presses on that corner are ignored until the host's next snapshot of the bubble's reactions, which is a new list identity. That covers a refusal too, so the corner never stays locked. `NO_TURN_REACTIONS` gives a turn with no reactions one stable list. Test: a double click (Jill's heart, then the reaction that slid under the pointer, then Jill's again) posts one Hide, and the next snapshot re-arms the corner. |
+| L1 | Low | The corner adds about 44px under every reactable persona reply | Fix (spacing) | Fixed. Dropped the corner's `margin-top`; the turn's flex `gap` spaces it. No other layout change. The after-captures were regenerated and are 8px tighter. |
+| L2 | Low | Screen readers hear each reaction twice (title ≠ name) | Fix | Fixed. An unlocked reaction's `title` is its accessible name ("Jill reacted: heart. Remove"). The locked title stays. The cluster test pins it. |
+| L3 | Low | The palette's side is chosen once and can clip after the thread scrolls | Fix | Fixed. While the palette is open, a scroll of its clipping ancestor (the thread, else the window) closes it. Focus returns to the + only when it was inside the palette. Option focus uses `preventScroll`, so a focus move never scrolls and closes the palette. Test covers both: focus inside goes to +; focus on + is not moved. |
+| L4 | Low | A refused removal leaves its focus hand-off armed | Fix | Fixed. The hand-off effect runs on every new snapshot of the bubble's reactions and clears `pendingFocus` whether or not the key went. Test: a refused removal, focus dropped, then a later removal from elsewhere leaves focus on body. |
+| T1 | Test | No test for double activation, or for clicking a reaction while the palette is open | Fix | Fixed. Added tests for a double activation (M1), a refusal that re-arms (L4), clicking a reaction while the palette is open (it closes; one post; focus to + after the snapshot), and the scroll close (L3). |
 
 ## Findings
 
