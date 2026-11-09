@@ -1,8 +1,8 @@
 # Restore focus after hiding the last persona reaction
 
-- Status: Open
-- Priority: Low / P3
-- Source: [PR #247 independent review, F-01](../../docs/pr-reviews/pr-247-independent-persona-reactions-review.md)
+- Status: Resolved in Message Reactions Slice 3b, 2026-11-09 (`epic/workshop-message-reactions-slice-3b-reaction-corner`), all four completion criteria. A removed reaction that held focus hands it to the next reaction in the bubble's corner cluster, else the previous one, else the bubble's "Add reaction" button, else the bubble itself (programmatically focusable, `tabIndex=-1`), never `<body>`; a late snapshot leaves focus where the writer moved it. Witnessed in `WorkshopApp.reactions.test.tsx` (the writer's bubble losing its last persona reaction, next and previous neighbours, and a late snapshot). Slice 3b also folded Hide into the reaction itself: a click on any reaction removes it, so the separate Hide button is gone.
+- Priority: Was Low / P3; resolved
+- Source: [PR #247 independent review, F-01](../../../docs/pr-reviews/pr-247-independent-persona-reactions-review.md)
 - Reviewed implementation: `b7c9419f05fc1d2b5b2256cb3e962afc51998421`
 - Ownership: Workshop reaction-chip presentation
 

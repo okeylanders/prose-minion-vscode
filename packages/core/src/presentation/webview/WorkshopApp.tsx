@@ -47,7 +47,7 @@ import { partitionContextSources } from '@utils/workshop/contextSources';
 import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
 import { useWorkshopReactions } from '@hooks/domain/workshop/useWorkshopReactions';
-import type { WorkshopReactionControls } from '@components/workshop/reactions/WorkshopTurnReactions';
+import { NO_TURN_REACTIONS, type WorkshopReactionControls } from '@components/workshop/reactions/WorkshopTurnReactions';
 import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import { useWorkshopFileEdits } from '@hooks/domain/workshop/useWorkshopFileEdits';
@@ -591,7 +591,7 @@ export const WorkshopApp: React.FC = () => {
 
   const fileEditControls = useWorkshopFileEditControls({ fileEdits, locked: roomMutationLocked, running: workshop.isRunning });
   const reactionControls = React.useMemo<WorkshopReactionControls>(() => ({
-    reactionsOf: (turnId) => reactions.reactionsByTurn.get(turnId) ?? [],
+    reactionsOf: (turnId) => reactions.reactionsByTurn.get(turnId) ?? NO_TURN_REACTIONS,
     disabled: roomMutationLocked,
     onSet: reactions.setTurnReaction,
     onHide: reactions.hideTurnReaction
