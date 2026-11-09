@@ -63,7 +63,7 @@ describe('WorkshopMemorySettingsPanel', () => {
     renderPanel();
     const well = screen.getByRole('region', { name: 'Memory isn’t context.' });
     expect(within(well).getByText('Every conversation in this project')).not.toBeNull();
-    expect(within(well).getByText('Kept small: about 7,000 tokens in all')).not.toBeNull();
+    expect(within(well).getByText('Kept small: about 11,000 tokens in all')).not.toBeNull();
     expect(within(well).getByText('Much larger: up to 100,000 words')).not.toBeNull();
 
     expect(card('Ask first').getAttribute('aria-pressed')).toBe('true');
@@ -77,7 +77,7 @@ describe('WorkshopMemorySettingsPanel', () => {
     expect(full.getAttribute('aria-valuenow')).toBe('1104');
     expect(full.getAttribute('aria-valuemax')).toBe('5000');
     expect(full.getAttribute('aria-valuetext')).toBe('Loaded in full: 2, about 1,100 of 5,000 tokens');
-    expect(list.getAttribute('aria-valuetext')).toBe('Titles and summaries: all 10 fit, about 700 of 2,000 tokens');
+    expect(list.getAttribute('aria-valuetext')).toBe('Titles and summaries: all 10 fit, about 700 of 6,000 tokens');
     expect(screen.getByText('prose-minion/memory/')).not.toBeNull();
   });
 
@@ -112,10 +112,10 @@ describe('WorkshopMemorySettingsPanel', () => {
   });
 
   it('the list over its budget: the amber meter and the searchable line', () => {
-    renderPanel({ estimate: LIST_OVER, saved: 40 });
+    renderPanel({ estimate: LIST_OVER, saved: 100 });
     const list = screen.getAllByRole('meter')[1];
     expect(list.firstElementChild?.className).toBe('pm-ws-memory-meter-fill pm-ws-memory-meter-full');
-    expect(screen.getByRole('status').textContent).toBe('12 more are searchable. Personas find them with memory search when the conversation needs them.');
+    expect(screen.getByRole('status').textContent).toBe('22 more are searchable. Personas find them with memory search when the conversation needs them.');
   });
 
   it('set to load in full, over its budget: the requested figure apart from the loaded one', () => {

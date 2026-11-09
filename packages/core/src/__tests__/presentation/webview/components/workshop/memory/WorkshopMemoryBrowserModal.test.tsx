@@ -81,7 +81,7 @@ describe('WorkshopMemoryBrowserModal', () => {
     expect(screen.getByText('Workshop · Project memory')).not.toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('searchbox', { name: 'Search project memories' }));
     expect(screen.getByText('searches notes')).not.toBeNull();
-    expect(['6 active', '4 in full · ≈ 4,300 of 5,000 tokens', 'list · ≈ 700 of 2,000 tokens', '3 files need attention']
+    expect(['6 active', '4 in full · ≈ 4,300 of 5,000 tokens', 'list · ≈ 700 of 6,000 tokens', '3 files need attention']
       .every((text) => screen.queryByText(text))).toBe(true);
     expect(sectionTitles()).toEqual(['Needs attention', 'Active', 'Superseded and archived']);
     expect([...document.querySelectorAll('.pm-ws-sessions-group-label')].map((label) => label.textContent)).toEqual([

@@ -89,15 +89,15 @@ const rowNotes = (manager: ReturnType<typeof workshopMemoryManagerView>, residen
     .map((row) => row.notes.join(' '));
 
 describe('set to load in full past both budgets (PR #199 F-02)', () => {
-  it('count-bound: 45 set, 2 in full, 40 listed, 3 searchable only, and every line says so', () => {
-    const { estimate, library, tab, manager } = views(Array.from({ length: 45 }, (_, index) => note(index + 1, true, 'A short line.')));
-    expect([estimate.pinnedLoaded, estimate.catalogEntries]).toEqual([2, 40]);
+  it('count-bound: 105 set, 2 in full, 100 listed, 3 searchable only, and every line says so', () => {
+    const { estimate, library, tab, manager } = views(Array.from({ length: 105 }, (_, index) => note(index + 1, true, 'A short line.')));
+    expect([estimate.pinnedLoaded, estimate.catalogEntries]).toEqual([2, 100]);
 
     expect(tab.load.more).toEqual([
-      '43 memories set to load in full don’t fit: 40 load as list entries, and 3 are searchable only. Turn off Always load in full on one in Manage memories… to make room.'
+      '103 memories set to load in full don’t fit: 100 load as list entries, and 3 are searchable only. Turn off Always load in full on one in Manage memories… to make room.'
     ]);
     expect(tab.load.more.join(' ')).not.toMatch(/more are searchable/);
-    expect(manager.overNote).toContain('43 of them don’t fit: 40 load as list entries, and 3 are searchable only');
+    expect(manager.overNote).toContain('103 of them don’t fit: 100 load as list entries, and 3 are searchable only');
 
     const searchable = rowNotes(manager, 'searchable', library);
     expect(searchable).toHaveLength(3);
@@ -105,27 +105,27 @@ describe('set to load in full past both budgets (PR #199 F-02)', () => {
       expect(line).toBe('Doesn’t fit at the start: not in full, and the list is full too. Personas can still find it with memory search. Turn off Always load in full on another to make room.');
     }
     const listed = rowNotes(manager, 'listed', library);
-    expect(listed).toHaveLength(40);
+    expect(listed).toHaveLength(100);
     expect(listed.every((line) => line.includes('so it loads as a list entry'))).toBe(true);
   });
 
   it('token-bound: long summaries fill the list before its count does', () => {
     const summary = 'S'.repeat(PROMPT_BUDGETS.workshopProjectMemory.summaryCharacters);
-    const { estimate, library, tab, manager } = views(Array.from({ length: 32 }, (_, index) => note(index + 1, true, summary)));
+    const { estimate, library, tab, manager } = views(Array.from({ length: 92 }, (_, index) => note(index + 1, true, summary)));
     const listedCount = estimate.catalogEntries;
     expect(estimate.pinnedLoaded).toBe(2);
-    expect(listedCount).toBeLessThan(30);
-    const searchableCount = 30 - listedCount;
+    expect(listedCount).toBeLessThan(90);
+    const searchableCount = 90 - listedCount;
     expect(rowNotes(manager, 'searchable', library)).toHaveLength(searchableCount);
     expect(tab.load.more[0]).toBe(
-      `30 memories set to load in full don’t fit: ${listedCount} load as list entries, and ${searchableCount} are searchable only. Turn off Always load in full on one in Manage memories… to make room.`
+      `90 memories set to load in full don’t fit: ${listedCount} load as list entries, and ${searchableCount} are searchable only. Turn off Always load in full on one in Manage memories… to make room.`
     );
   });
 
   it('unpinned memories past the list still read as “more are searchable”, apart from the ones set to load in full', () => {
     const memories = [
       ...Array.from({ length: 3 }, (_, index) => note(index + 1, true, 'A short line.')),
-      ...Array.from({ length: 45 }, (_, index) => note(index + 100, false, 'A short line.'))
+      ...Array.from({ length: 105 }, (_, index) => note(index + 1000, false, 'A short line.'))
     ];
     const { tab } = views(memories);
     expect(tab.load.more).toEqual([
