@@ -42,7 +42,7 @@ describe('workshopMemoryTabView', () => {
       contextWords: PROMPT_BUDGETS.contextAttachments.words
     });
     expect(tab().well).toEqual({
-      memorySize: 'Kept small: about 11,000 tokens in all',
+      memorySize: 'Kept small: about 7,000 tokens in all',
       contextSize: 'Much larger: up to 100,000 words'
     });
     expect(tab({ budgets: { pinnedTokens: 3_000, catalogTokens: 1_000, contextWords: 50_000 } }).well).toEqual({
@@ -59,7 +59,7 @@ describe('workshopMemoryTabView', () => {
     expect(load.chips.map((chip) => chip.text)).toEqual(['12 memories', '2 in full', '≈ 1,800 tokens']);
     expect(load.meters.map((meter) => [meter.left, meter.right, meter.full])).toEqual([
       ['Loaded in full · 2', 'about 1,100 of 5,000 tokens', false],
-      ['Titles and summaries · all 10 fit', 'about 700 of 6,000 tokens', false]
+      ['Titles and summaries · all 10 fit', 'about 700 of 2,000 tokens', false]
     ]);
     expect(load.meters[0]).toMatchObject({ percent: 22, value: 1_104, max: 5_000, valueText: 'Loaded in full: 2, about 1,100 of 5,000 tokens' });
     expect(load.more).toEqual([]);
@@ -90,15 +90,15 @@ describe('workshopMemoryTabView', () => {
   });
 
   it('the list over its budget: amber and full, and how many more are searchable', () => {
-    const { load } = tab({ estimate: LIST_OVER, saved: 100 });
+    const { load } = tab({ estimate: LIST_OVER, saved: 40 });
     expect(load.name).toBe('Memories loaded in full first, then the most recent');
     expect(load.description).toBe('Each persona sees the title and summary of the memories that fit, and the 3 set to load in full. Choose Always load in full for the ones every conversation needs.');
-    expect(load.chips.map((chip) => chip.text)).toEqual(['100 memories', '3 in full', '≈ 8,400 tokens']);
+    expect(load.chips.map((chip) => chip.text)).toEqual(['40 memories', '3 in full', '≈ 4,400 tokens']);
     expect(load.meters.map((meter) => [meter.left, meter.right, meter.full, meter.percent])).toEqual([
       ['Loaded in full · 3', 'about 2,400 of 5,000 tokens', false, 48],
-      ['Titles and summaries · 75 of 97 fit', 'about 6,000 of 6,000 tokens', true, 100]
+      ['Titles and summaries · 25 of 37 fit', 'about 2,000 of 2,000 tokens', true, 100]
     ]);
-    expect(load.more).toEqual(['22 more are searchable. Personas find them with memory search when the conversation needs them.']);
+    expect(load.more).toEqual(['12 more are searchable. Personas find them with memory search when the conversation needs them.']);
   });
 
   it('set to load in full, over its budget: set apart from loaded, loaded within the budget, the start total the whole frame', () => {
@@ -114,7 +114,7 @@ describe('workshopMemoryTabView', () => {
       value: 4_410,
       max: 5_000
     });
-    expect(load.meters[1]).toMatchObject({ left: 'Titles and summaries · all 9 fit', right: 'about 800 of 6,000 tokens', full: false });
+    expect(load.meters[1]).toMatchObject({ left: 'Titles and summaries · all 9 fit', right: 'about 800 of 2,000 tokens', full: false });
     expect(load.more).toEqual(['1 memory set to load in full doesn’t fit, so it loads as a list entry. Turn off Always load in full on one in Manage memories… to make room.']);
   });
 

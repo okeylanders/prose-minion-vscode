@@ -184,3 +184,10 @@ rebase a shared branch). Read only: never commit to
   - **L4.** A refusal's snapshot disarms the focus hand-off.
   - **T1.** Tests for a double activation and for a press while the
     palette is open.
+- **2026-11-09.** Slice 3b (Okey's redesign: the icon add-reaction button
+  in the bubble's corner, reactions clustered beside it, click to remove;
+  PR #247 F-01 fixed) reviewed (M1 double-click guard, L1–L4, T1 fixed)
+  and merged as PR #248 (`fa68772f`). On Okey's ask, the Project Memory
+  list budget was raised directly on the epic branch (`964bf66f`):
+  `catalogTokens` 2,000 → 6,000 and `catalogEntries` 40 → 100 (ADR
+  2026-11-04, addendum 2026-11-09). 815 suites / 11,422 tests green.

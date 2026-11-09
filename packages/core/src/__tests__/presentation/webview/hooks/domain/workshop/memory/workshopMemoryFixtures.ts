@@ -47,17 +47,17 @@ export const IN_BUDGET: WorkshopMemoryFrameEstimate = {
   catalogEntries: 10
 };
 
-/** The list over its budget: 100 memories, 3 in full, 75 of 97 fit. */
+/** The list over its budget: 40 memories, 3 in full, 25 of 37 fit. */
 export const LIST_OVER: WorkshopMemoryFrameEstimate = {
-  memories: 100,
+  memories: 40,
   pinned: 3,
   pinnedLoaded: 3,
   pinnedTokens: 2_390,
   pinnedOver: false,
-  catalogTokens: 5_996,
-  frameTokens: 8_410,
+  catalogTokens: 1_996,
+  frameTokens: 4_410,
   pinnedLoadedTokens: 2_390,
-  catalogEntries: 75
+  catalogEntries: 25
 };
 
 /** Set to load in full past 5,000: 4 set, 3 loaded, about 5,600 requested. */

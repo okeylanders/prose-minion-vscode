@@ -39,7 +39,7 @@ describe('workshopMemoryManagerView', () => {
     expect(view.chips).toEqual([
       { text: '6 active', warn: false },
       { text: '4 in full · ≈ 4,300 of 5,000 tokens', warn: false },
-      { text: 'list · ≈ 700 of 6,000 tokens', warn: false },
+      { text: 'list · ≈ 700 of 2,000 tokens', warn: false },
       { text: '3 files need attention', warn: true }
     ]);
     expect(view.offNote).toBeUndefined();

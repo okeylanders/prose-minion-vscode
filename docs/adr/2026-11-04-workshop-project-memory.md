@@ -683,8 +683,8 @@ workshopProjectMemory: {
   titleCharacters: 120,
   summaryCharacters: 280,
   bodyCharacters: 8_000,        // a memory's body, the codec's bound too
-  catalogEntries: 100,          // 40 until the 2026-11-09 addendum
-  catalogTokens: 6_000,         // 2_000 until the 2026-11-09 addendum; entries, by estimateTextTokens (the engine's estimator)
+  catalogEntries: 40,
+  catalogTokens: 2_000,         // entries, by estimateTextTokens (the engine's estimator)
   pinnedTokens: 5_000,          // all pinned bodies together, same estimator (question 4)
   queryCharacters: 200,
   memoryIdCharacters: 16,
@@ -1057,20 +1057,3 @@ D4, D6 and D8 stand; this adds a second kind of suggestion.*
   the persona whose suggestion it was, and D14's delivery counts its version
   as told, exactly as for a writer's edit.
 
-## Addendum 2026-11-09: a larger list of titles and summaries
-
-Okey hit the list's budget while catching up a project. With 58 memories,
-25 of the 56 not loaded in full fit within 2,000 tokens, and the other 31
-were searchable only. One list entry costs about 80 tokens.
-
-- `catalogTokens` goes from 2,000 to **6,000**, room for about 75 titles
-  and summaries.
-- `catalogEntries` goes from 40 to **100**, so the token budget is the one
-  a writer meets. A cap of 40 would bind before 6,000 tokens are used.
-- `pinnedTokens` stays 5,000. The frame is now at most about 11,000 tokens
-  at a conversation's start, up from about 7,000 (decided question 4).
-- Nothing else changes: memories past the list stay searchable, and the
-  settings tab and the manager read both numbers from the budget.
-
-The pin in `promptBudgets.test.ts` holds the new values. The memory tab's
-and manager's tests state the new limits.
