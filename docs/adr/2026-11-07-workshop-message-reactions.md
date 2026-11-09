@@ -405,6 +405,15 @@ that reply's own participant, each triple at most once, bounded.
   reload.
 - The webview posts ids only (turn id and reaction id); the host decides
   what may be reacted to.
+- **Slice 3b (2026-11-09, Okey's request) reshaped the palette and chips
+  into one corner.** The "Add reaction" button is an icon (an outline
+  smiley with a plus), always shown in the bubble's bottom-right corner,
+  named "Add reaction". The bubble's reactions sit in one cluster to its
+  left, the writer's first; each is one button whose press removes it
+  ("You reacted: fire. Remove"; "Jill reacted: heart. Remove", which is
+  Q6's Hide), so there is no separate Hide button. The palette opens up,
+  or down without room above. A removed reaction's focus goes to the next
+  reaction, the previous one, the button, then the bubble itself.
 
 ### D9. Logs and bounds
 
