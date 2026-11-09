@@ -12,7 +12,8 @@
  * the grid on screen, into the next group's same column (clamped to its
  * row) past a group's edge (PR #245 L1); Home/End go to the ends. Enter or
  * Space picks. Escape closes it and returns focus to the button; a click
- * outside, or focus leaving it, closes it without moving focus (L3).
+ * outside, or focus leaving it, closes it without moving focus (L3). A
+ * scroll of the thread closes it too (PR #248 L3).
  *
  * While the room is locked the button stays focusable (`aria-disabled`, its
  * reason as its title) and does nothing; a lock taken while the palette is
@@ -67,16 +68,25 @@ export function workshopReactionPalettePlacement(
   return space.above >= space.below ? 'up' : 'down';
 }
 
-/** The box the palette must stay inside: the nearest clipping ancestor's, or the viewport's. */
-function clippingBounds(element: HTMLElement): { top: number; bottom: number } {
+/** The nearest ancestor that clips the palette (the thread), or null for the viewport. */
+function clippingAncestor(element: HTMLElement): HTMLElement | null {
   for (let parent = element.parentElement; parent; parent = parent.parentElement) {
     const overflow = window.getComputedStyle(parent).overflowY;
     if (overflow === 'auto' || overflow === 'scroll' || overflow === 'hidden') {
-      const box = parent.getBoundingClientRect();
-      return { top: Math.max(0, box.top), bottom: Math.min(window.innerHeight, box.bottom) };
+      return parent;
     }
   }
-  return { top: 0, bottom: window.innerHeight };
+  return null;
+}
+
+/** The box the palette must stay inside: the clipping ancestor's, or the viewport's. */
+function clippingBounds(element: HTMLElement): { top: number; bottom: number } {
+  const clip = clippingAncestor(element);
+  if (!clip) {
+    return { top: 0, bottom: window.innerHeight };
+  }
+  const box = clip.getBoundingClientRect();
+  return { top: Math.max(0, box.top), bottom: Math.min(window.innerHeight, box.bottom) };
 }
 
 /** The outline smiley with a plus (inline, as the composer's comp glyphs are: no icon font). */
@@ -182,9 +192,24 @@ export const WorkshopReactionPalette: React.FC<WorkshopReactionPaletteProps> = (
 
   React.useEffect(() => {
     if (open && placement !== undefined) {
-      optionRefs.current[focusIndex]?.focus();
+      // No scroll to follow focus: a scroll closes the palette (L3).
+      optionRefs.current[focusIndex]?.focus({ preventScroll: true });
     }
   }, [open, placement, focusIndex]);
+
+  // Its side was chosen when it opened; a scroll of the thread (a streaming
+  // reply) could leave it clipped, so a scroll closes it (PR #248 L3). Focus
+  // goes back to the button only when it was in the palette.
+  React.useEffect(() => {
+    const trigger = triggerRef.current;
+    if (!open || !trigger) {
+      return undefined;
+    }
+    const target: HTMLElement | Window = clippingAncestor(trigger) ?? window;
+    const onScroll = () => close(Boolean(paletteRef.current?.contains(document.activeElement)));
+    target.addEventListener('scroll', onScroll, { passive: true });
+    return () => target.removeEventListener('scroll', onScroll);
+  }, [open, close]);
 
   React.useEffect(() => {
     if (!open) {

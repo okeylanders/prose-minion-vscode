@@ -1,13 +1,13 @@
 /* Message reactions (ADR 2026-11-07 D8; Slice 3b): the corner in a bubble's
    bottom right, holding its reactions left to right and the "Add reaction"
-   button after them. It sits in the bubble's flow, so it never covers text. */
+   button after them. It sits in the bubble's flow, so it never covers text;
+   the turn's own flex gap spaces it (PR #248 L1). */
 [data-pm-surface="workshop"] .pm-ws-reaction-corner {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: 6px;
-  margin-top: 8px;
 }
 [data-pm-surface="workshop"] .pm-ws-reaction-corner:empty {
   display: none;

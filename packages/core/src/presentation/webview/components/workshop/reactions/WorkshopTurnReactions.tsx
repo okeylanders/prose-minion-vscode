@@ -17,6 +17,12 @@
  * never the page. While the room is locked every button stays focusable
  * (`aria-disabled`) and does nothing.
  *
+ * Once a removal is asked, the corner's reactions ignore presses until the
+ * host's next snapshot of this bubble's reactions (PR #248 M1): the cluster
+ * is right-aligned, so a double click would otherwise land on the reaction
+ * that slid under the pointer. A snapshot that keeps the asked-for reaction
+ * (the host refused) disarms the focus hand-off (L4).
+ *
  * A new persona reaction is announced once by the reactions hook's live
  * region (D8), never here.
  */
@@ -45,6 +51,9 @@ export interface WorkshopReactionControls {
 
 const WRITER = { kind: 'writer' } as const;
 
+/** A turn with no reactions: one list, so its identity moves only with a snapshot. */
+export const NO_TURN_REACTIONS: readonly WorkshopTurnReactionSummary[] = Object.freeze([]);
+
 export interface WorkshopTurnReactionCornerProps {
   turn: WorkshopTurn;
   controls: WorkshopReactionControls;
@@ -70,19 +79,24 @@ const FOCUS_TARGET = 'data-pm-reaction-focus';
 const LOCKED_TITLE = 'Wait for the room to finish before reacting';
 
 export const WorkshopTurnReactionCorner: React.FC<WorkshopTurnReactionCornerProps> = ({ turn, controls }) => {
-  const summaries = workshopReactionClusterOrder(controls.reactionsOf(turn.id));
+  // A new snapshot gives every turn with reactions a new list, so its identity marks the host's answer.
+  const snapshot = controls.reactionsOf(turn.id);
+  const summaries = workshopReactionClusterOrder(snapshot);
   const reactable = isWorkshopReactableTurn(turn, WRITER);
   const cornerRef = React.useRef<HTMLDivElement>(null);
   // The reaction whose removal was asked for, and where it stood.
   const pendingFocus = React.useRef<{ key: string; index: number } | null>(null);
-  const keys = summaries.map(reactionKey).join('|');
+  // The snapshot a removal was asked against: presses wait for the next one (M1).
+  const removingFrom = React.useRef<readonly WorkshopTurnReactionSummary[] | null>(null);
 
   React.useEffect(() => {
+    removingFrom.current = null;
     const pending = pendingFocus.current;
-    if (!pending || keys.split('|').includes(pending.key)) {
+    pendingFocus.current = null;
+    // A snapshot that keeps the reaction is a refusal: nothing to hand on (L4).
+    if (!pending || snapshot.some((summary) => reactionKey(summary) === pending.key)) {
       return;
     }
-    pendingFocus.current = null;
     // Focus went with the reaction only if nothing else has taken it since.
     if (document.activeElement && document.activeElement !== document.body) {
       return;
@@ -95,12 +109,13 @@ export const WorkshopTurnReactionCorner: React.FC<WorkshopTurnReactionCornerProp
       ?? document.getElementById(workshopReactionAddButtonId(turn.id))
       ?? corner?.closest<HTMLElement>('[tabindex="-1"]');
     fallback?.focus();
-  }, [keys, turn.id]);
+  }, [snapshot, turn.id]);
 
   const remove = (summary: WorkshopTurnReactionSummary, index: number, action: () => void) => {
-    if (controls.disabled) {
+    if (controls.disabled || removingFrom.current === snapshot) {
       return;
     }
+    removingFrom.current = snapshot;
     pendingFocus.current = { key: reactionKey(summary), index };
     action();
   };
@@ -118,15 +133,14 @@ export const WorkshopTurnReactionCorner: React.FC<WorkshopTurnReactionCornerProp
             const reaction = workshopReaction(summary.reaction);
             const author = summary.author;
             const writer = author.kind === 'writer';
-            const meaning = writer ? `You reacted: ${reaction.label}` : `${summary.label} reacted: ${reaction.label}`;
-            const removeTitle = writer ? `Remove your ${reaction.label}` : `Remove ${summary.label}'s ${reaction.label}`;
+            const name = `${writer ? 'You' : summary.label} reacted: ${reaction.label}. Remove`;
             return (
               <button
                 key={reactionKey(summary)}
                 type="button"
                 className={`pm-ws-reaction-item pm-ws-reaction-item-${writer ? 'writer' : 'persona'}`}
-                aria-label={`${meaning}. Remove`}
-                title={controls.disabled ? LOCKED_TITLE : `${meaning}. ${removeTitle}`}
+                aria-label={name}
+                title={controls.disabled ? LOCKED_TITLE : name}
                 aria-disabled={controls.disabled || undefined}
                 {...{ [FOCUS_TARGET]: '' }}
                 onClick={() => remove(summary, index, () => {

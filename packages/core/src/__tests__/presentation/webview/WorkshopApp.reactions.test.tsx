@@ -184,7 +184,8 @@ describe('WorkshopApp reactions', () => {
     ]);
     const [, jillItem] = within(cluster('turn-2')).getAllByRole('button');
     expect(jillItem.textContent).toBe('❤️Jill');
-    expect(jillItem.getAttribute('title')).toBe('Jill reacted: heart. Remove Jill\'s heart');
+    // The title is the name, so a screen reader hears it once (PR #248 L2).
+    expect(jillItem.getAttribute('title')).toBe('Jill reacted: heart. Remove');
     // The cluster, then the button, in one corner.
     expect(Array.from(corner('turn-2').children).map((child) => child.className)).toEqual([
       'pm-ws-reaction-cluster', 'pm-ws-reaction-wrap'
@@ -435,6 +436,89 @@ describe('WorkshopApp reactions', () => {
     deliver(session());
 
     expect(document.activeElement).toBe(copy);
+  });
+
+  it('posts one removal for a double click, until the host\'s next snapshot (PR #248 M1, T1)', () => {
+    render(<WorkshopApp />);
+    const jill = { turnId: 'turn-2', reaction: 'heart', author: { kind: 'host' }, label: 'Jill' } as const;
+    deliver(session({ reactions: [mine('turn-2', 'fire'), jill] }));
+
+    // The second press lands on whatever slid under the pointer: it does nothing.
+    fireEvent.click(within(cluster('turn-2')).getByRole('button', { name: 'Jill reacted: heart. Remove' }));
+    fireEvent.click(within(cluster('turn-2')).getByRole('button', { name: 'You reacted: fire. Remove' }));
+    fireEvent.click(within(cluster('turn-2')).getByRole('button', { name: 'Jill reacted: heart. Remove' }));
+    expect(posted(MessageType.WORKSHOP_HIDE_TURN_REACTION)).toEqual([
+      { turnId: 'turn-2', reaction: 'heart', author: { kind: 'host' } }
+    ]);
+    expect(posted(MessageType.WORKSHOP_SET_TURN_REACTION)).toEqual([]);
+
+    // The host's answer re-arms the corner.
+    deliver(session({ reactions: [mine('turn-2', 'fire')] }));
+    fireEvent.click(within(cluster('turn-2')).getByRole('button', { name: 'You reacted: fire. Remove' }));
+    expect(posted(MessageType.WORKSHOP_SET_TURN_REACTION)).toEqual([
+      { turnId: 'turn-2', reaction: 'fire', reacted: false }
+    ]);
+  });
+
+  it('re-arms on a refusal and disarms its focus hand-off (PR #248 L4)', () => {
+    render(<WorkshopApp />);
+    deliver(session({ reactions: [mine('turn-2', 'fire')] }));
+    const fire = () => within(bubble('turn-2')).getByRole('button', { name: 'You reacted: fire. Remove' });
+
+    fire().focus();
+    fireEvent.click(fire());
+    // The host refused: its snapshot keeps the reaction.
+    deliver(session({ reactions: [mine('turn-2', 'fire')], roomRevision: 2 }));
+    fireEvent.click(fire());
+    expect(posted(MessageType.WORKSHOP_SET_TURN_REACTION)).toHaveLength(2);
+
+    // A refusal again, focus dropped meanwhile; a later removal from elsewhere pulls nothing.
+    deliver(session({ reactions: [mine('turn-2', 'fire')], roomRevision: 3 }));
+    (document.activeElement as HTMLElement).blur();
+    deliver(session({ roomRevision: 4 }));
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('removes a reaction pressed while the palette is open, and closes the palette (T1)', () => {
+    render(<WorkshopApp />);
+    deliver(session({ reactions: [mine('turn-2', 'fire')] }));
+    fireEvent.click(addButton('turn-2'));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+
+    const fire = within(cluster('turn-2')).getByRole('button', { name: 'You reacted: fire. Remove' });
+    fireEvent.mouseDown(fire);
+    fire.focus();
+    fireEvent.click(fire);
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(posted(MessageType.WORKSHOP_SET_TURN_REACTION)).toEqual([
+      { turnId: 'turn-2', reaction: 'fire', reacted: false }
+    ]);
+    deliver(session());
+    expect(document.activeElement).toBe(addButton('turn-2'));
+  });
+
+  it('closes the palette when the thread scrolls, returning focus only from inside it (PR #248 L3)', () => {
+    render(<WorkshopApp />);
+    deliver(session());
+    const thread = bubble('turn-2').closest<HTMLElement>('.pm-ws-thread')!;
+    thread.style.overflowY = 'auto';
+
+    fireEvent.click(addButton('turn-2'));
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('heart');
+    fireEvent.scroll(thread);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(addButton('turn-2'));
+
+    // Focus back on the button (the palette stays open): the scroll closes it and moves no focus.
+    fireEvent.click(addButton('turn-2'));
+    addButton('turn-2').focus();
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    const focus = jest.spyOn(HTMLElement.prototype, 'focus');
+    fireEvent.scroll(thread);
+    expect(focus).not.toHaveBeenCalled();
+    focus.mockRestore();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('persists nothing of reactions in the webview\'s state', () => {
