@@ -35,6 +35,13 @@
  * - A persona reply's edit offers (ADR 2026-11-10 D8) are omitted, by
  *   decision: they are controls, not content, as recommendation chips are.
  *   No entry carries `editOffers`, a kind, a count or an offer's file.
+ * - A press on an offer (ADR 2026-11-10 D8; epic Slice 2):
+ *   - its writer turn (`editOfferRequest`) is included as an event holding
+ *     its host sentence: the writer pressed and wrote nothing, so it is
+ *     never a writer entry;
+ *   - its answer (`editOfferAnswer`) is included as the persona's reply: the
+ *     host's line, which names the source reply's time, and its cards as any
+ *     reply's cards are shown. The keys themselves are not carried.
  * - Neither slices, `model` nor `fileEdits` come from
  *   `projectWorkshopTranscriptTurn`, so session recall and the turn
  *   preview, which read turns only through it, never see them.
@@ -267,6 +274,10 @@ export function projectWorkshopTranscriptTurn(
     turn.artifact === 'excerpt_revision' ||
     turn.participant === 'session'
   ) {
+    return event(turn, turn.content);
+  }
+  if (turn.editOfferRequest) {
+    // A press: the writer wrote nothing, so the host's sentence is an event (ADR 2026-11-10 D8).
     return event(turn, turn.content);
   }
   if (turn.role === 'user') {

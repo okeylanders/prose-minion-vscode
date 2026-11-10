@@ -59,6 +59,9 @@ export const WORKSHOP_FILE_EDIT_REASON_WORDS = Object.freeze({
   'rewrite-ceiling': 'This rewrites too much of the passage: prose takes edits, not rewrites.',
   'rewrite-protected': 'This note holds links, images, code or HTML, which a rewrite would retype. Ask for replace edits instead.',
   'rewrite-too-large': `A note is rewritten whole only up to ${BOUNDS.rewriteFileBytes / 1024} KiB. Ask for replace edits instead.`,
+  // An answer to a reply's offer (ADR 2026-11-10 D5, D6).
+  'more-than-a-fix': 'This is more than a small fix. Ask for it as a rewrite.',
+  'not-the-offered-file': 'This edit is for a different file than the one the reply offered, so it can’t be applied.',
   // The applier's refusals (DraftEditRefusal; `overlapping` is above).
   changed: 'The text changed as the edit went out, so nothing more was changed.',
   protected: 'This would change protected text (front matter, code, links or markup), so nothing changed.',

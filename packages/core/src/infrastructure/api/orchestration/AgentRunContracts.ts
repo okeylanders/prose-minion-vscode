@@ -178,6 +178,20 @@ export interface AgentRunOptions {
    */
   readonly retainedAssistantContentSanitizer?: (content: string) => string;
   /**
+   * The owner's check of the run's final reply: an instruction when the
+   * reply is not one it can accept, else nothing. Given the provider's final
+   * reply once it holds no capability call, before presentation cleanup. On
+   * an instruction, the engine replays it to the model as a correction turn,
+   * spending the policy's `maxCorrectionTurns` as a rejected capability
+   * request does, and checks the new reply the same way. When none is left,
+   * the run returns the rejected reply with `finalReplyRejected`, and
+   * commits nothing to retained history: the conversation is as it was
+   * before the turn, as after a cancellation. A correction's tokens stream
+   * through `onToken` after the first reply's, so a caller that shows the
+   * stream should not set both.
+   */
+  readonly finalReplyCheck?: (content: string) => string | undefined;
+  /**
    * The model every request of this run goes to, whatever the engine's model
    * is by then (a hot-swap, or a following scope moving): the model a writer
    * approved with its price (Craft Flags, PR #177 F-01). The context
@@ -243,6 +257,8 @@ export interface ExecutionResult {
    */
   readonly replySource?: AgentRunReplySource;
   readonly cancelled?: boolean;
+  /** The run's `finalReplyCheck` still refused the reply with no correction turn left; nothing was retained. */
+  readonly finalReplyRejected?: boolean;
   readonly conversationId?: string;
   readonly citations?: UrlCitation[];
 }

@@ -42,6 +42,8 @@ import {
   WorkshopWidgetRecommendation,
   WorkshopMemoryProposal,
   WorkshopEditOffer,
+  WorkshopEditOfferAnswer,
+  WorkshopEditOfferRequest,
   WorkshopFileEditProposal,
   WorkshopMemoryHold,
   WorkshopMemoryProposalState,
@@ -1611,7 +1613,8 @@ export class WorkshopSessionService {
     requestId: string,
     displayText: string,
     messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[],
-    widgetCommit?: WorkshopTurnWidgetCommit
+    widgetCommit?: WorkshopTurnWidgetCommit,
+    editOfferRequest?: WorkshopEditOfferRequest
   ): WorkshopTurn {
     this.requireParticipantSubject();
     return this.beginMessage(
@@ -1621,7 +1624,8 @@ export class WorkshopSessionService {
       undefined,
       undefined,
       messageAttachments,
-      widgetCommit
+      widgetCommit,
+      editOfferRequest
     );
   }
 
@@ -1631,7 +1635,8 @@ export class WorkshopSessionService {
     requestId: string,
     displayText: string,
     messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[],
-    widgetCommit?: WorkshopTurnWidgetCommit
+    widgetCommit?: WorkshopTurnWidgetCommit,
+    editOfferRequest?: WorkshopEditOfferRequest
   ): WorkshopTurn {
     this.requireParticipantSubject();
     if (!this.isLivePersonaGuest(personaId)) {
@@ -1644,7 +1649,8 @@ export class WorkshopSessionService {
       undefined,
       personaId,
       messageAttachments,
-      widgetCommit
+      widgetCommit,
+      editOfferRequest
     );
   }
 
@@ -1699,7 +1705,8 @@ export class WorkshopSessionService {
     model?: WorkshopTurnModel,
     memoryProposals: readonly WorkshopMemoryProposal[] = [],
     fileEditProposals: readonly WorkshopFileEditProposal[] = [],
-    editOffers: readonly WorkshopEditOffer[] = []
+    editOffers: readonly WorkshopEditOffer[] = [],
+    editOfferAnswer?: WorkshopEditOfferAnswer
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1757,7 +1764,9 @@ export class WorkshopSessionService {
         ? fileEditProposals.map(cloneWorkshopFileEditProposal)
         : undefined,
       // What the reply offers as edits (ADR 2026-11-10 D2; never an empty list).
-      editOffers: (isHost || isGuest) && editOffers.length > 0 ? editOffers.map(cloneWorkshopEditOffer) : undefined
+      editOffers: (isHost || isGuest) && editOffers.length > 0 ? editOffers.map(cloneWorkshopEditOffer) : undefined,
+      // The answer to a press names the reply and kind it answers (ADR 2026-11-10 D3).
+      ...((isHost || isGuest) && editOfferAnswer ? { editOfferAnswer: { ...editOfferAnswer } } : {})
     };
 
     if (isHost && conversationId) {
@@ -2593,7 +2602,8 @@ export class WorkshopSessionService {
     toolId?: WorkshopToolId,
     guestPersonaId?: WorkshopPersonaId,
     messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[],
-    widgetCommit?: WorkshopTurnWidgetCommit
+    widgetCommit?: WorkshopTurnWidgetCommit,
+    editOfferRequest?: WorkshopEditOfferRequest
   ): WorkshopTurn {
     const reportTurnId = toolId
       ? this.participantRoster.getToolSidecarLatestReportTurnId(toolId)
@@ -2618,6 +2628,8 @@ export class WorkshopSessionService {
         ? messageAttachments.map(cloneMessageAttachmentSnapshot)
         : undefined,
       widgetCommit: widgetCommit ? { ...widgetCommit } : undefined,
+      // A press's writer turn names the reply and kind pressed (ADR 2026-11-10 D3).
+      ...(editOfferRequest ? { editOfferRequest: { ...editOfferRequest } } : {}),
       content: displayText,
       timestamp: this.now(),
       excerptVersion: this.getExcerptVersion(),

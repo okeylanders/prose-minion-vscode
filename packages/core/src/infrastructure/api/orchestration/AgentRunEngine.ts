@@ -469,92 +469,114 @@ export class AgentRunEngine {
       last = await recoverInvalidRequest(last);
       let rounds = 0;
 
-      while (!last.cancelled && capability && last.exactRequest && rounds < policy.maxCapabilityRounds) {
-        const request = last.exactRequest;
-        rounds += 1;
-        this.statusCallback?.(
-          capability.statusMessage(request),
-          capability.statusTicker?.(request)
-        );
-        // Provider-measured cost attribution (Phase 7): the prompt-token
-        // delta between this round's observation and the next one belongs
-        // to the evidence delivered between them.
-        const promptTokensBeforeEvidence = latestObservation?.promptTokens;
-        const fulfillment = await this.fulfillCapability(
-          capability,
-          request,
-          provider,
-          [...currentMessages(), { role: 'assistant', content: this.privateSafe(capability, last.content) }],
-          policy.retention === 'retain',
-          runOptions
-        );
-        totalUsage = this.addUsage(totalUsage, fulfillment.usage);
-        artifacts.push(...fulfillment.artifacts);
-        if (capability.catalog === 'guides') usedGuides.push(...fulfillment.deliveredItems);
-        if (capability.catalog === 'projectContext') requestedResources.push(...fulfillment.deliveredItems);
-        if (capability.catalog === 'workshopToolContext') {
-          // The composite catalog delivers both kinds in one round; each
-          // artifact already declares which side it came from.
-          for (const artifact of fulfillment.artifacts) {
-            (artifact.catalog === 'guides' ? usedGuides : requestedResources).push(artifact.id);
+      let finalReplyRejected = false;
+      // The capability rounds and the forced final, then the owner's check of the final reply (`finalReplyCheck`):
+      // a correction turn re-enters the rounds, so a corrected reply may still read before it answers.
+      for (;;) {
+        while (!last.cancelled && capability && last.exactRequest && rounds < policy.maxCapabilityRounds) {
+          const request = last.exactRequest;
+          rounds += 1;
+          this.statusCallback?.(
+            capability.statusMessage(request),
+            capability.statusTicker?.(request)
+          );
+          // Provider-measured cost attribution (Phase 7): the prompt-token
+          // delta between this round's observation and the next one belongs
+          // to the evidence delivered between them.
+          const promptTokensBeforeEvidence = latestObservation?.promptTokens;
+          const fulfillment = await this.fulfillCapability(
+            capability,
+            request,
+            provider,
+            [...currentMessages(), { role: 'assistant', content: this.privateSafe(capability, last.content) }],
+            policy.retention === 'retain',
+            runOptions
+          );
+          totalUsage = this.addUsage(totalUsage, fulfillment.usage);
+          artifacts.push(...fulfillment.artifacts);
+          if (capability.catalog === 'guides') usedGuides.push(...fulfillment.deliveredItems);
+          if (capability.catalog === 'projectContext') requestedResources.push(...fulfillment.deliveredItems);
+          if (capability.catalog === 'workshopToolContext') {
+            // The composite catalog delivers both kinds in one round; each
+            // artifact already declares which side it came from.
+            for (const artifact of fulfillment.artifacts) {
+              (artifact.catalog === 'guides' ? usedGuides : requestedResources).push(artifact.id);
+            }
           }
-        }
-        // Retained-history evidence gets a stable `art-N` address at injection
-        // (ADR 2026-07-18): the Phase 7 manifest and tombstone surgery target
-        // stored entries by this id. Discarded runs need no address.
-        const artifactId = policy.retention === 'retain'
-          ? this.conversationManager.nextArtifactId(conversationId)
-          : undefined;
-        const evidence = artifactId
-          ? wrapAgentFetchedArtifactEvidence(artifactId, fulfillment.evidence)
-          : fulfillment.evidence;
-        this.outputChannel?.appendLine(
-          `[AgentRunEngine] Fulfilled ${capability.catalog} capability ${rounds}/${policy.maxCapabilityRounds} ` +
-          `(${capability.requestLogSummary(request)}): ${fulfillment.evidence.length} evidence chars; ` +
-          `delivered=${fulfillment.deliveredItems.join(', ') || 'none'}` +
-          (artifactId ? `; artifactId=${artifactId}` : '')
-        );
-        last = await runInstructedTurn(last, evidence);
-        if (policy.retention === 'retain' && fulfillment.deliveredSources?.length) {
-          collectedSources.push(...this.toContextSourceEntries(
-            fulfillment.deliveredSources,
-            capability.catalog === 'workshopPersona' ? 'host' : 'tool',
-            promptTokensBeforeEvidence,
-            latestObservation?.promptTokens,
-            artifactId
-          ));
-        }
-        last = await recoverInvalidRequest(last);
-      }
-
-      if (!last.cancelled && capability && last.exactRequest && policy.onCapabilityLimit === 'forceFinalResponse') {
-        artifacts.push(...(capability.handleCapabilityLimit?.(last.exactRequest) ?? []));
-        this.outputChannel?.appendLine(
-          `[AgentRunEngine] ${policy.id} reached ${policy.maxCapabilityRounds} capability rounds; forcing final response.`
-        );
-        last = await runInstructedTurn(last, capability.limitInstruction());
-        if (this.needsForcedFinalRetry(last)) {
+          // Retained-history evidence gets a stable `art-N` address at injection
+          // (ADR 2026-07-18): the Phase 7 manifest and tombstone surgery target
+          // stored entries by this id. Discarded runs need no address.
+          const artifactId = policy.retention === 'retain'
+            ? this.conversationManager.nextArtifactId(conversationId)
+            : undefined;
+          const evidence = artifactId
+            ? wrapAgentFetchedArtifactEvidence(artifactId, fulfillment.evidence)
+            : fulfillment.evidence;
           this.outputChannel?.appendLine(
-            `[AgentRunEngine] ${policy.id} returned another capability call during its forced-final turn; retrying once.`
+            `[AgentRunEngine] Fulfilled ${capability.catalog} capability ${rounds}/${policy.maxCapabilityRounds} ` +
+            `(${capability.requestLogSummary(request)}): ${fulfillment.evidence.length} evidence chars; ` +
+            `delivered=${fulfillment.deliveredItems.join(', ') || 'none'}` +
+            (artifactId ? `; artifactId=${artifactId}` : '')
+          );
+          last = await runInstructedTurn(last, evidence);
+          if (policy.retention === 'retain' && fulfillment.deliveredSources?.length) {
+            collectedSources.push(...this.toContextSourceEntries(
+              fulfillment.deliveredSources,
+              capability.catalog === 'workshopPersona' ? 'host' : 'tool',
+              promptTokensBeforeEvidence,
+              latestObservation?.promptTokens,
+              artifactId
+            ));
+          }
+          last = await recoverInvalidRequest(last);
+        }
+
+        if (!last.cancelled && capability && last.exactRequest && policy.onCapabilityLimit === 'forceFinalResponse') {
+          artifacts.push(...(capability.handleCapabilityLimit?.(last.exactRequest) ?? []));
+          this.outputChannel?.appendLine(
+            `[AgentRunEngine] ${policy.id} reached ${policy.maxCapabilityRounds} capability rounds; forcing final response.`
           );
           last = await runInstructedTurn(last, capability.limitInstruction());
+          if (this.needsForcedFinalRetry(last)) {
+            this.outputChannel?.appendLine(
+              `[AgentRunEngine] ${policy.id} returned another capability call during its forced-final turn; retrying once.`
+            );
+            last = await runInstructedTurn(last, capability.limitInstruction());
+          }
+          last = await recoverInvalidRequest(last);
+          if (this.needsForcedFinalRetry(last)) {
+            const fallback = 'The assistant exhausted its capability-call limit without returning a final response. Please try again.';
+            this.outputChannel?.appendLine(
+              `[AgentRunEngine] ${policy.id} did not produce final prose after the forced-final retry.`
+            );
+            runOptions.onToken?.(fallback);
+            last = {
+              ...last,
+              content: fallback,
+              visibleContent: fallback,
+              exactRequest: undefined,
+              invalidRequest: undefined,
+              hostFallback: true
+            };
+          }
         }
-        last = await recoverInvalidRequest(last);
-        if (this.needsForcedFinalRetry(last)) {
-          const fallback = 'The assistant exhausted its capability-call limit without returning a final response. Please try again.';
+
+        const instruction = last.cancelled || last.exactRequest ? undefined : runOptions.finalReplyCheck?.(last.content);
+        if (!instruction) {
+          break;
+        }
+        if (correctionTurns >= policy.maxCorrectionTurns) {
+          finalReplyRejected = true;
           this.outputChannel?.appendLine(
-            `[AgentRunEngine] ${policy.id} did not produce final prose after the forced-final retry.`
+            `[AgentRunEngine] ${policy.id} final reply rejected with no correction turn left; nothing retained.`
           );
-          runOptions.onToken?.(fallback);
-          last = {
-            ...last,
-            content: fallback,
-            visibleContent: fallback,
-            exactRequest: undefined,
-            invalidRequest: undefined,
-            hostFallback: true
-          };
+          break;
         }
+        correctionTurns += 1;
+        this.outputChannel?.appendLine(
+          `[AgentRunEngine] ${policy.id} correction turn ${correctionTurns}/${policy.maxCorrectionTurns} after a rejected final reply.`
+        );
+        last = await recoverInvalidRequest(await runInstructedTurn(last, instruction));
       }
 
       let visibleContent = this.toVisibleContent(
@@ -570,7 +592,7 @@ export class AgentRunEngine {
         runOptions.onToken?.(visibleContent);
         this.outputChannel?.appendLine(`[AgentRunEngine] ${policy.id} completed with no visible final prose.`);
       }
-      if (!cancelled) {
+      if (!cancelled && !finalReplyRejected) {
         const retainedAssistantContent = runOptions.retainedAssistantContentSanitizer
           ? runOptions.retainedAssistantContentSanitizer(visibleContent)
           : visibleContent;
@@ -618,7 +640,8 @@ export class AgentRunEngine {
         // carry a model stamp, decided here rather than from its text.
         replySource: last.hostFallback ? 'host-fallback' : 'provider',
         citations: runCitations,
-        cancelled
+        cancelled,
+        ...(finalReplyRejected ? { finalReplyRejected: true } : {})
       };
     } catch (error) {
       throw this.toUnavailableError(error);

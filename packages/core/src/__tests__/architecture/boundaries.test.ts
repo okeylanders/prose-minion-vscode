@@ -97,6 +97,8 @@ const WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopPinnedContextHandler.ts';
 const WORKSHOP_FILE_EDIT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopFileEditHandler.ts';
+const WORKSHOP_EDIT_OFFER_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopEditOfferHandler.ts';
 const WORKSHOP_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopContextHandler.ts';
 const WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER =
@@ -276,6 +278,12 @@ const WORKSHOP_ROUTE_OWNERS = [
     registration: 'direct',
     messageTypes: ['WORKSHOP_FILE_EDIT_PREVIEW']
   },
+  // A press on a reply's edit offer starts a run, behind the gate (ADR 2026-11-10 D4).
+  {
+    owner: WORKSHOP_EDIT_OFFER_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_EDIT_OFFER_ACTION']
+  },
   {
     owner: WORKSHOP_SESSION_HANDLER_OWNER,
     registration: 'mutation',
@@ -440,6 +448,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopContextHandler',
   'WorkshopExcerptScopeHandler',
   'WorkshopCreativeVariationsHandler',
+  'WorkshopEditOfferHandler',
   'WorkshopFileEditHandler',
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
@@ -1969,18 +1978,21 @@ describe('architectural boundaries', () => {
       'application/services/workshop/RunWorkshopToolSidePass.ts'
     ]);
     // The aggregate's two provider-history commit points are finalized only
-    // by the two completion functions…
+    // by the completion functions (a pressed edit offer's answer has its own,
+    // ADR 2026-11-10 D5)…
     expect(filesMatching(/\.completeRun\(/)).toEqual([
-      'application/services/workshop/WorkshopRunCompletion.ts'
+      'application/services/workshop/WorkshopRunCompletion.ts',
+      'application/services/workshop/fileEdits/WorkshopEditOfferAnswerCompletion.ts'
     ]);
     expect(filesMatching(/\.completeToolReport\(/)).toEqual([
       'application/services/workshop/WorkshopAnalysisSidePass.ts'
     ]);
-    // …which both record through the one completion-boundary step…
+    // …which all record through the one completion-boundary step…
     expect(filesMatching(/\brecordWorkshopRetainedHistoryCommit\(/)).toEqual([
       'application/services/workshop/WorkshopAnalysisSidePass.ts',
       'application/services/workshop/WorkshopRetainedHistoryCommit.ts',
-      'application/services/workshop/WorkshopRunCompletion.ts'
+      'application/services/workshop/WorkshopRunCompletion.ts',
+      'application/services/workshop/fileEdits/WorkshopEditOfferAnswerCompletion.ts'
     ]);
     // …the only caller of the aggregate's recorder.
     expect(filesMatching(/\.recordRetainedHistoryMark\(/)).toEqual([
@@ -2053,9 +2065,10 @@ describe('architectural boundaries', () => {
     // Bookmark Recall Slice 3 added "Remember this" from a saved session (mutation).
     // Persona File Edits Slice 4a added a card's action (mutation) and a rewrite's preview (direct).
     // Helper Agent Slice 2 added the memory sheet's draft request, its cancel and the setting's read (direct).
-    expect(expectedOwnerPairs).toHaveLength(91);
+    // Reply Edit Actions Slice 2 added the press on a reply's edit offer (mutation).
+    expect(expectedOwnerPairs).toHaveLength(92);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(48);
+      .toHaveLength(49);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
       .toHaveLength(43);
     expect(duplicateLedgerEntries).toEqual([]);

@@ -27,7 +27,7 @@ import { contextSourceProvenanceFault } from '@orchestration/ContextSourceRecord
 import { assertWorkshopBookmarksShape } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
 import { assertWorkshopMemoryProposalShape } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
 import { assertWorkshopFileEditProposalShape } from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
-import { assertWorkshopEditOfferShape } from '@/application/services/workshop/session/WorkshopEditOfferRecords';
+import { assertWorkshopEditOfferPressShape, assertWorkshopEditOfferShape } from '@/application/services/workshop/session/WorkshopEditOfferRecords';
 import { assertWorkshopMemoryReceiptShape } from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
 import {
   isLiveWorkshopWidgetId,
@@ -596,6 +596,9 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       'fileEditProposals',
       // A reply's edit offers (ADR 2026-11-10 D8; additive, no version bump in this slice).
       'editOffers',
+      // A press and its answer (ADR 2026-11-10 D3; additive).
+      'editOfferRequest',
+      'editOfferAnswer',
       'projectMemoryReceipt',
       // Project memory's delivery record (ADR 2026-11-04 D14; additive).
       'projectMemoryDelivery'
@@ -680,6 +683,7 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   assertWorkshopMemoryProposalShape(turn, path, checkpoint);
   assertWorkshopFileEditProposalShape(turn, path, checkpoint);
   assertWorkshopEditOfferShape(turn, path, checkpoint);
+  assertWorkshopEditOfferPressShape(turn, path, checkpoint);
   assertWorkshopMemoryReceiptShape(turn, path);
 }
 

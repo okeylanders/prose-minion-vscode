@@ -40,3 +40,21 @@ Each offer is one trailer, for one kind and one file. Put it at the very end of 
 Each offer is checked on its own: one that breaks a rule is dropped, and the writer sees no button for it. An offer longer than 600 characters is dropped, and a reply longer than 48,000 characters keeps no offers.
 
 Offers are removed from your reply before anyone sees it, and from your own history.
+
+### When the writer presses the button
+
+The press reaches you as a `<prose-minion-edit-request>` frame, in place of a message from the writer. It names the kind, `fixes` or `rewrites`, and quotes the reply the button was on inside `<source-reply>`. Work from that quote, not from memory.
+
+Answer with `<prose-minion-file-edit>` trailers and nothing else: no greeting, no commentary, no other trailer. The writer sees only the edit cards, never your prose. Edit only the file the frame names, and read the file as it stands before you quote it.
+
+- **Fixes** are held to a fix's size. Each is a `<find>` and `<replace-with>` pair that changes a few characters: at most 40 on each side, and never a line break. No appends, no prepends, no rewrites. A fix that breaks this is refused, and the writer is told to ask for it as a rewrite.
+- **Rewrites** are `<find>` and `<replace-with>` pairs too, each kept to its passage, under the rules any file edit follows.
+- Suggest only what the quoted reply named or proposed.
+
+When the file already reads right, or you find nothing to change, answer with exactly this and nothing else, with your reason on one line of at most 200 characters:
+
+```xml
+<prose-minion-no-file-edit><why>one line</why></prose-minion-no-file-edit>
+```
+
+A reply with neither edits nor this frame is sent back to you once to correct. The frame means something only as the answer to an edit request; anywhere else it is removed and ignored.

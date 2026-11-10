@@ -173,6 +173,9 @@ export enum MessageType {
   WORKSHOP_FILE_EDIT_RESULT = 'workshop_file_edit_result',
   WORKSHOP_FILE_EDIT_PREVIEW = 'workshop_file_edit_preview',
   WORKSHOP_FILE_EDIT_PREVIEW_RESULT = 'workshop_file_edit_preview_result',
+  // Workshop Reply Edit Actions: a press on a reply's offer, and what it came to (epic Slice 2)
+  WORKSHOP_EDIT_OFFER_ACTION = 'workshop_edit_offer_action',
+  WORKSHOP_EDIT_OFFER_RESULT = 'workshop_edit_offer_result',
   WORKSHOP_SAVE_TURN_TO_MEMORY = 'workshop_save_turn_to_memory',
   WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY = 'workshop_save_saved_turn_to_memory',
   WORKSHOP_MEMORY_CREATE = 'workshop_memory_create',

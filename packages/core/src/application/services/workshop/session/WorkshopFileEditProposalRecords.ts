@@ -21,7 +21,10 @@
  *   `landedContextCharacters`, or only their hashes;
  * - a `reason`, the host's one line, never on a pending, applying or
  *   declined card;
- * - no two cards naming one identity (`documentUri`), nor requesting one file.
+ * - no two cards naming one identity (`documentUri`), nor requesting one file;
+ * - `intent`, optional (ADR 2026-11-10 D6; epic Reply Edit Actions Slice 2):
+ *   `fixes` on a card that answers a reply's fixes offer. Additive, like the
+ *   field itself: no development checkpoint held another shape of it.
  * `landed` records exist only on applied and partial cards; an unknown card
  * records no landed operation.
  *
@@ -35,6 +38,7 @@
 
 import {
   WORKSHOP_FILE_EDIT_CLASSES,
+  WORKSHOP_FILE_EDIT_INTENTS,
   WORKSHOP_FILE_EDIT_OPERATION_OUTCOMES,
   WORKSHOP_FILE_EDIT_RECORD_LIMITS,
   WORKSHOP_FILE_EDIT_REOPENED_APPLYING_REASON,
@@ -105,8 +109,12 @@ function assertProposal(value: unknown, at: string): WorkshopFileEditRequestedTa
     value,
     at,
     ['requested', 'operations', 'why', 'state'],
-    ['target', 'class', 'baseline', 'reason', 'outcomes', 'landed']
+    ['target', 'class', 'baseline', 'reason', 'outcomes', 'landed', 'intent']
   );
+  if (proposal.intent !== undefined) {
+    // Host-written at staging (ADR 2026-11-10 D6): a fixes answer's card, held to the fixes policy at every Apply.
+    enumAt(proposal.intent, `${at}.intent`, WORKSHOP_FILE_EDIT_INTENTS);
+  }
   const requested = assertRequested(proposal.requested, `${at}.requested`);
   const operations = assertOperations(proposal.operations, `${at}.operations`);
   oneLineAt(proposal.why, `${at}.why`, BUDGETS.whyCharacters);
