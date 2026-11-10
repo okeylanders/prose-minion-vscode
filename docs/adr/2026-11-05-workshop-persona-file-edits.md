@@ -1,14 +1,17 @@
 # ADR 2026-11-05: Personas Propose Edits to Project Files
 
-**Status:** Proposed (2026-11-05), revised the same day after the PR #226
-review ([how each finding is settled](#pr-226-review-how-each-finding-is-settled)).
+**Status:** Accepted (2026-11-10), after Okey's live pass. Proposed 2026-11-05,
+revised the same day after the PR #226 review
+([how each finding is settled](#pr-226-review-how-each-finding-is-settled)).
+The pass's answers amended D8 (transient refusals retry) and D11 (a row in
+Conversation settings) on 2026-11-06.
 - **Scope (Okey's choice):** project notes **and** chapter drafts
   ("option B"). Autonomous editing is out of scope; D12 keeps a seam for it.
 - **Q1–Q5:** Okey handed the implementation to the coordinator, who took the
-  recommended defaults ([below](#defaults-taken-2026-11-05)). Okey may
-  override any of them before the live pass.
+  recommended defaults ([below](#defaults-taken-2026-11-05)). The live pass
+  kept all five.
 **Date:** 2026-11-05
-**Epic:** [Workshop Persona File Edits](../../.todo/epics/epic-workshop-persona-file-edits-2026-11-05/README.md)
+**Epic:** [Workshop Persona File Edits](../../.todo/archive/epics/epic-workshop-persona-file-edits-2026-11-05/README.md)
 **Extends:**
 - [ADR 2026-10-21: Draft Edit](2026-10-21-draft-edit-engine-and-document-write-back.md):
   its applier becomes the document write path for persona edits too, with

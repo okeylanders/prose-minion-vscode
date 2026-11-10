@@ -2,7 +2,7 @@
 
 **Status:** Built, for review.
 **Branch:** `epic/workshop-persona-file-edits-slice-4c-retry-and-setting`, from `origin/epic/workshop-persona-file-edits` at `9f70f236` (Slices 1–4b merged).
-**Decision:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D8's "No blind retry" (amended 2026-11-06), D11 (the row), and the PR #226 ledger's F-04 row.
+**Decision:** [ADR 2026-11-05](../../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D8's "No blind retry" (amended 2026-11-06), D11 (the row), and the PR #226 ledger's F-04 row.
 **Why:** Okey's answers to the live-pass checklist (2026-11-06):
 1. A temporary failure should let him press Apply again. **Task 1.**
 2. He wants a settings row for `proseMinion.workshop.fileEdits`. **Task 2.**
@@ -138,7 +138,7 @@
 
 ## PR #236 review fixes
 
-The review is Astra's, at `8450dd8c`, in [`docs/pr-reviews/pr-236-retry-and-settings-review.md`](../../../docs/pr-reviews/pr-236-retry-and-settings-review.md). It found no unsafe retry in the dispatch or checkpoint path.
+The review is Astra's, at `8450dd8c`, in [`docs/pr-reviews/pr-236-retry-and-settings-review.md`](../../../../docs/pr-reviews/pr-236-retry-and-settings-review.md). It found no unsafe retry in the dispatch or checkpoint path.
 
 - **F-01 (P2): a refused mode change read as active for the session.** A global mode VS Code refuses to write never took effect, but it was reported with the behavior and profile persistence errors as "changed for this session". The project-memory mode had the same wording, so both are fixed together.
   - **The service.** It now reports `modeRefusals` (`{ error, effective }` per mode) apart from `persistenceErrors`, which keeps only settings that are active but unsaved.

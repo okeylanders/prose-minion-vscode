@@ -1,6 +1,6 @@
 # Slice 5: Verify live
 
-**Status:** Ready for Okey once Slice 4c merges. Slice 4c carries his 2026-11-06 answers below.
+**Status:** Done (2026-11-10). Okey's pass approved the merge to `main`, with one finding filed as a follow-up.
 **Covers:** the Extension Development Host pass for the whole epic: a persona proposes (D2, D4), the class decides the rules (D5), the baseline and freshness (D6), Apply and Review in editor… (D7, D8), the cards (D9), session state (D10) and the setting (D11). Close-out follows.
 
 The automated suites already prove the contracts:
@@ -152,4 +152,24 @@ Refactor Preview opens its entries **unticked**. Tick an entry before applying i
 
 ## Notes from the pass
 
-_(Okey's findings go here.)_
+### 2026-11-10: Okey's pass
+
+- **Works:** "The file editing works well when I ask the model specifically to prepare it."
+- **Finding: proposals need repeated asking.** He had to ask several times before a persona produced a file-edit card.
+  - It isn't a fault in Apply or the cards.
+  - It is how readily a persona offers the trailer.
+  - Filed as [proposal readiness](../../../features/feature-workshop-file-edit-proposal-readiness/README.md), with the likely causes.
+- **Approved** the merge to `main`.
+
+### The close-out (2026-11-10)
+
+- **ADR 2026-11-05** is Accepted.
+- **The codec: no `schemaVersion` bump** (ADR 2026-07-30).
+  - `fileEditProposals` is a new optional field on a turn. No formerly valid shape becomes invalid, and no existing field changes meaning.
+  - A build without it can't open a session holding cards, as with any added field under the strict codec. That's forward compatibility, which a migration doesn't address.
+- **Apply to Draft's note** is settled in place:
+  - Apply Recommendations is dropped;
+  - its target rules are D5's prose policy;
+  - what's left is Apply Variation (no model), a later use of the gateway.
+- **`AGENTS.md`** has a Workshop Persona File Edits section.
+- **The memory-bank entry** is written.

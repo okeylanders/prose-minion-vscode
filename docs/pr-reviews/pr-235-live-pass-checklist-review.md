@@ -27,7 +27,7 @@ The supplied fixture matches the independent production-planner witness below. T
 
 The following records the original finding and its evidence. It no longer describes an open defect.
 
-Location: `.todo/epics/epic-workshop-persona-file-edits-2026-11-05/slice-5-verify-live.md:66–71`, especially step 10.
+Location: `.todo/archive/epics/epic-workshop-persona-file-edits-2026-11-05/slice-5-verify-live.md:66–71`, especially step 10.
 
 The recipe starts with “two or more operations,” says to untick one entry, and expects “1 of 2 changes applied.” Those conditions do not establish that outcome:
 

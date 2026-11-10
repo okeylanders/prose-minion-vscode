@@ -2,7 +2,7 @@
 
 **Status:** Built, for review.
 **Branch:** `epic/workshop-persona-file-edits-slice-4a-apply`, from the combined stack (`epic/workshop-persona-file-edits-slice-2-gateway` at `6749bf7f`: Slices 1–3 and the gateway, in review as PR #229).
-**Decision:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D7.5–D7.6, D8, D9 (words and routes), D10 (`landed`).
+**Decision:** [ADR 2026-11-05](../../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D7.5–D7.6, D8, D9 (words and routes), D10 (`landed`).
 **Next:** Slice 4b (the webview cards) builds on this head. It consumes the routes below and the words table.
 
 Host only. No webview, no UI.

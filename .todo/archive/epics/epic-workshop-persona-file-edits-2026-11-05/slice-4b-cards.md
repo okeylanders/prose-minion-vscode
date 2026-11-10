@@ -2,7 +2,7 @@
 
 **Status:** Built, for review.
 **Branch:** `epic/workshop-persona-file-edits-slice-4b-cards`, from Slice 4a's head (`epic/workshop-persona-file-edits-slice-4a-apply` at `d0c172b7`, in review).
-**Decision:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D8 (states, no blind retry, no command to Refactor Preview), D9 (cards), D10.
+**Decision:** [ADR 2026-11-05](../../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D8 (states, no blind retry, no command to Refactor Preview), D9 (cards), D10.
 **Consumes:** the routes and words table [Slice 4a](slice-4a-apply.md) lists under "Message contracts (for 4b)".
 **Next:** Slice 5 (verify live).
 
