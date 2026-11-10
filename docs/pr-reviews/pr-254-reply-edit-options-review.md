@@ -1,5 +1,12 @@
 # PR #254: Reply Edit Actions Slice 3b review
 
+## Resolution ledger
+
+| Item | Resolution |
+|---|---|
+| **D1** The requested-rewrite ceiling | **Decided by Okey, 2026-11-10: option A.** The ceiling stays lifted entirely for a requested rewrite, as built, with the whole-short-file consequence stated to him. No code change. Recorded in the ADR's second addendum. The alternatives put to him were a host-enforced passage bound (B) and a higher ceiling (C). |
+| **M1** The README merge conflict | Resolved in `1b955b6d` (the epic merged into the slice, all three progress notes kept); verified by the reviewer in `ffc78ccb`. |
+
 - **Reviewed code:** `7a5d332365e1578901ccb8cd691890d54001be27`.
 - **Target:** `epic/workshop-reply-edit-actions`, at `cfca765fcc0daf536de7460c5796aa0ec9b7d902`.
 - **Date:** 2026-11-10.

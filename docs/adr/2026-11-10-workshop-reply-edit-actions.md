@@ -589,6 +589,15 @@ passage: prose takes edits, not rewrites." The card replaced a bracketed
 placeholder paragraph with written-out prose, which is what the writer
 pressed the chip for. His words: "our limit on edits may be too small."
 
+- **Confirmed by Okey (2026-11-10, PR #254 D1): option A, the ceiling is
+  lifted entirely for a requested rewrite.** He chose it knowing the
+  consequence the review probed: a find-and-replace that fits the trailer's
+  bounds can replace the whole of a short prose file. "Never the whole
+  file" is taught to the persona, not enforced by the host. What stands
+  between that and the file is the writer: the card shows the full diff,
+  Apply is theirs, the change is one undo step, and nothing is saved for
+  them. A host-enforced passage bound and a higher ceiling were the
+  alternatives, and were not taken.
 - **Why the ceiling can go here.** ADR 2026-11-05 D5's rewrite ceiling
   keeps a persona from rewriting the writer's prose unasked. A requested
   rewrite is asked for: the writer pressed the chip, and reviews the diff on
