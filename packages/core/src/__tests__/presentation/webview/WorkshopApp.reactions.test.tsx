@@ -164,7 +164,9 @@ describe('WorkshopApp reactions', () => {
     // In the bubble's corner, outside the action row, and not hover-only.
     expect(corner('turn-2').contains(add)).toBe(true);
     expect(add.closest('.pm-ws-turn-actions')).toBeNull();
-    expect(corner('turn-2').parentElement).toBe(bubble('turn-2'));
+    // Reply Edit Actions Slice 3 (ADR 2026-11-10 U1): a reply's corner is the right end of its footer row.
+    expect(corner('turn-2').parentElement?.className).toBe('pm-ws-turn-foot');
+    expect(corner('turn-2').parentElement?.parentElement).toBe(bubble('turn-2'));
     expect(corner('turn-2').className).not.toMatch(/hover/);
     expect(within(bubble('turn-1')).queryByRole('button', { name: 'Add reaction' })).toBeNull();
   });

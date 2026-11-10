@@ -45,10 +45,12 @@ export interface WorkshopFileEditCardProps {
   index: number;
   proposal: WorkshopFileEditProposal;
   controls: WorkshopFileEditControls;
+  /** "fixes" or "rewrites" on a card that answers an edit offer (ADR 2026-11-10 U4). */
+  mark?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
-export const WorkshopFileEditCard: React.FC<WorkshopFileEditCardProps> = ({ turnId, index, proposal, controls }) => {
+export const WorkshopFileEditCard: React.FC<WorkshopFileEditCardProps> = ({ turnId, index, proposal, controls, mark }) => {
   const key = workshopFileEditCardKey(turnId, index);
   const view = React.useMemo(() => workshopFileEditCardView(proposal), [proposal]);
   const requestOut = controls.busyCards.has(key);
@@ -94,6 +96,7 @@ export const WorkshopFileEditCard: React.FC<WorkshopFileEditCardProps> = ({ turn
         </span>
         <span className="pm-ws-file-edit-path">{view.path}</span>
         {view.classLabel && <span className="pm-ws-file-edit-class">{view.classLabel}</span>}
+        {mark && <span className={`pm-ws-file-edit-class${view.classLabel ? ' pm-ws-file-edit-intent' : ''}`}>{mark}</span>}
       </div>
       {view.why && <div className="pm-ws-file-edit-why">{view.why}</div>}
       <ol className="pm-ws-file-edit-ops">

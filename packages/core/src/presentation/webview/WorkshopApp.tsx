@@ -52,6 +52,8 @@ import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProj
 import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import { useWorkshopFileEdits } from '@hooks/domain/workshop/useWorkshopFileEdits';
 import { useWorkshopFileEditControls } from '@components/workshop/fileEdits/useWorkshopFileEditControls';
+import { useWorkshopEditOffers } from '@hooks/domain/workshop/useWorkshopEditOffers';
+import type { WorkshopEditOfferControls } from '@components/workshop/editOffers/WorkshopEditOfferChip';
 import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinnedContext';
 import { useWorkshopPinnedPills } from '@hooks/domain/workshop/controllers/useWorkshopPinnedPills';
 import { workshopPinnedContextPanelProps } from '@components/workshop/settings/WorkshopPinnedContextSettingsPanel';
@@ -191,6 +193,7 @@ import './styles/workshop/memory.css';
 import './styles/workshop/fileEdits.css';
 import './styles/workshop/pinnedContext.css';
 import './styles/workshop/reactions.css';
+import './styles/workshop/editOffers.css';
 import './components/workshop/widgets/gesturePlayground/gesturePlayground.css';
 import './components/workshop/widgets/lexicalGravity/lexicalGravity.css';
 import './components/workshop/widgets/creativeVariations/creativeVariations.css';
@@ -270,6 +273,7 @@ export const WorkshopApp: React.FC = () => {
   const roomKey = workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending';
   const projectMemory = useWorkshopProjectMemory({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
   const fileEdits = useWorkshopFileEdits({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
+  const editOffers = useWorkshopEditOffers({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
   const memoryManager = useWorkshopMemoryManager();
   const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
   const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, room: workshop.roomRevision, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });
@@ -466,6 +470,7 @@ export const WorkshopApp: React.FC = () => {
     memoryManager,
     pinnedContext,
     fileEdits,
+    editOffers,
     workshopRoom: workshop,
     workshopSessions,
     widgetHost,
@@ -1009,6 +1014,16 @@ export const WorkshopApp: React.FC = () => {
     closeOverlay: closeTextSheet,
     onOutsideWindow: openTurnPreviewSheet
   });
+  // A reply's edit offers (ADR 2026-11-10 U1–U5): the chips ask through the hook; an answered chip and the
+  // lines' links move focus on the thread's one scroll-and-focus path.
+  const editOfferControls = React.useMemo<WorkshopEditOfferControls>(() => ({
+    running: workshop.isRunning,
+    locked: roomMutationLocked,
+    askingOffers: editOffers.askingOffers,
+    offerFeedback: editOffers.offerFeedback,
+    onAsk: editOffers.ask,
+    onGoToTurn: jumpToTurn
+  }), [workshop.isRunning, roomMutationLocked, editOffers.askingOffers, editOffers.offerFeedback, editOffers.ask, jumpToTurn]);
   const bookmarkOpenAt = useWorkshopBookmarkOpenAt({
     roomRevision: workshop.sessionReady ? workshop.roomRevision : undefined,
     sessionConfirm,
@@ -1371,6 +1386,7 @@ export const WorkshopApp: React.FC = () => {
             memory={memoryControls}
             fileEdits={fileEditControls}
             reactions={reactionControls}
+            editOffers={editOfferControls}
             modelOptions={modelsSettings.modelOptions}
             modelsBeforeWindow={workshop.modelsBeforeWindow}
           />
@@ -1443,6 +1459,10 @@ export const WorkshopApp: React.FC = () => {
         {/* A persona's new reaction, said once (ADR 2026-11-07 D8). */}
         <div className="pm-ws-visually-hidden" role="status" aria-live="polite" data-pm-reaction-announcer="">
           <span key={reactions.announcementSerial}>{reactions.announcement}</span>
+        </div>
+        {/* What a pressed edit offer came to, said once (ADR 2026-11-10 U6). */}
+        <div className="pm-ws-visually-hidden" role="status" aria-live="polite" data-pm-edit-offer-announcer="">
+          <span key={editOffers.announcementSerial}>{editOffers.announcement}</span>
         </div>
         <div className="pm-ws-status-ticker" role="status" aria-live="polite">
           {(workshop.tickerMessage || workshop.statusMessage) && (

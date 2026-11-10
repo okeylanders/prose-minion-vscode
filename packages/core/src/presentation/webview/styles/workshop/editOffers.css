@@ -1,0 +1,127 @@
+/* A reply's footer (ADR 2026-11-10 U1; Reply Edit Actions Slice 3): one row,
+   offers at the left and the reaction corner at the right. Flex and wrap
+   only (the Chromium 114 floor): in a narrow column the offers take the
+   first line and the corner sits under them at the right. */
+[data-pm-surface="workshop"] .pm-ws-turn-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-foot .pm-ws-reaction-corner {
+  margin-left: auto;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-foot-bare {
+  display: none;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-offers,
+[data-pm-surface="workshop"] .pm-ws-offer-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-offer-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--pm-dim);
+  font: 11px var(--pm-sans);
+}
+/* A chip: one button that keeps its place through every state. */
+[data-pm-surface="workshop"] .pm-ws-offer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  border: 1px solid color-mix(in srgb, var(--pm-accent) 42%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pm-text-2);
+  padding: 3px 11px;
+  font: 12px var(--pm-sans);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-offer b {
+  color: var(--pm-text);
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-offer:not([aria-disabled="true"]):hover {
+  color: var(--pm-text);
+  border-color: var(--pm-accent-lo);
+}
+[data-pm-surface="workshop"] .pm-ws-offer:focus-visible,
+[data-pm-surface="workshop"] .pm-ws-offer-source-link:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 1px;
+}
+[data-pm-surface="workshop"] .pm-ws-offer-asked {
+  border-style: dashed;
+  color: var(--pm-muted);
+  cursor: default;
+}
+[data-pm-surface="workshop"] .pm-ws-offer-answered {
+  border-color: var(--pm-border);
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-offer-ok {
+  color: var(--pm-green);
+}
+[data-pm-surface="workshop"] .pm-ws-offer-nothing-to-change {
+  border-color: var(--pm-border);
+  color: var(--pm-muted);
+}
+/* Waiting (U5): still focusable, and its description says why. */
+[data-pm-surface="workshop"] .pm-ws-offer[aria-disabled="true"]:not(.pm-ws-offer-asked) {
+  border-color: var(--pm-border);
+  color: var(--pm-dim);
+  opacity: 0.7;
+  cursor: default;
+}
+[data-pm-surface="workshop"] .pm-ws-offer-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pm-accent-hi);
+}
+/* The widget recommendation chip, in the footer: the offers' shape. */
+[data-pm-surface="workshop"] .pm-ws-turn-offers .pm-ws-widget-reco {
+  align-self: center;
+  margin: 0;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 3px 11px;
+}
+/* The press (U3): a divider line, with a link to the reply it was pressed on. */
+[data-pm-surface="workshop"] .pm-ws-offer-source-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--pm-muted);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-offer-source-link:hover {
+  color: var(--pm-text);
+}
+/* The answer (U4): the host's sentence in place of the persona's prose. */
+[data-pm-surface="workshop"] .pm-ws-offer-answer-line {
+  margin: 0;
+  color: var(--pm-text-2);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-offer-answer-line .pm-ws-offer-source-link {
+  color: var(--pm-accent-hi);
+}
+/* A card's "fixes" or "rewrites" mark sits beside its class. */
+[data-pm-surface="workshop"] .pm-ws-file-edit-intent {
+  margin-left: 0;
+}
