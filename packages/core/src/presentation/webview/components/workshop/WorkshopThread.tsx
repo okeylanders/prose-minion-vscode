@@ -3,6 +3,7 @@
 import type { WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
 import type { WorkshopFileEditControls } from './fileEdits/WorkshopFileEditCard';
 import type { WorkshopReactionControls } from './reactions/WorkshopTurnReactions';
+import type { WorkshopEditOfferControls } from './editOffers/WorkshopEditOfferChip';
 import * as React from 'react';
 import {
   ModelOption,
@@ -68,6 +69,8 @@ interface WorkshopThreadProps {
   fileEdits?: WorkshopFileEditControls;
   /** Reaction chips and the palette (ADR 2026-11-07 D8). */
   reactions?: WorkshopReactionControls;
+  /** A reply's edit-offer chips and their lines (ADR 2026-11-10 U1–U4). */
+  editOffers?: WorkshopEditOfferControls;
 }
 
 const NO_BOOKMARKS: ReadonlySet<string> = new Set();
@@ -109,7 +112,8 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   modelsBeforeWindow,
   memory,
   fileEdits,
-  reactions
+  reactions,
+  editOffers
 }) => {
   // Every turn the thread holds, seeded from the window: the same derivation
   // the transcript export runs over the full ledger.
@@ -177,6 +181,7 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
               memory={memory}
               fileEdits={fileEdits}
               reactions={reactions}
+              editOffers={editOffers}
             />
           </React.Fragment>
         );

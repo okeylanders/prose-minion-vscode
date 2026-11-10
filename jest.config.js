@@ -42,7 +42,7 @@ module.exports = {
     // Pinned Context Slice 3's and Persona File Edits Slice 4b's stylesheets,
     // imported by WorkshopApp: stubbed here rather than with a jest.mock in
     // every test that renders the app, so the Workshop's tests run unchanged.
-    'styles/workshop/(?:pinnedContext|fileEdits|reactions)\\.css$': '<rootDir>/packages/core/src/__tests__/mocks/styleStub.ts',
+    'styles/workshop/(?:pinnedContext|fileEdits|reactions|editOffers)\\.css$': '<rootDir>/packages/core/src/__tests__/mocks/styleStub.ts',
   },
   collectCoverageFrom: [
     'packages/core/src/**/*.{ts,tsx}',

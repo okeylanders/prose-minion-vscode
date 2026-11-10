@@ -68,6 +68,7 @@ import type { UseWorkshopProjectMemoryReturn } from '@hooks/domain/workshop/useW
 import type { UseWorkshopMemoryManagerReturn } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import type { UseWorkshopPinnedContextReturn } from '@hooks/domain/workshop/useWorkshopPinnedContext';
 import type { UseWorkshopFileEditsReturn } from '@hooks/domain/workshop/useWorkshopFileEdits';
+import type { UseWorkshopEditOffersReturn } from '@hooks/domain/workshop/useWorkshopEditOffers';
 
 export interface WorkshopAppMessageRouterDeps {
   workshopRoom: UseWorkshopRoomReturn;
@@ -91,6 +92,8 @@ export interface WorkshopAppMessageRouterDeps {
   pinnedContext: Pick<UseWorkshopPinnedContextReturn, 'handlePinnedContext'>;
   /** A suggested file edit's answers (Persona File Edits Slice 4b); absent reads as none. */
   fileEdits?: Pick<UseWorkshopFileEditsReturn, 'handleResult' | 'handlePreviewResult'>;
+  /** A pressed edit offer's answer (Reply Edit Actions Slice 3); absent reads as none. */
+  editOffers?: Pick<UseWorkshopEditOffersReturn, 'handleResult' | 'noteSessionState'>;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -125,6 +128,7 @@ export function buildWorkshopAppMessageRoutes(
     memoryManager,
     pinnedContext,
     fileEdits,
+    editOffers,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -152,6 +156,7 @@ export function buildWorkshopAppMessageRoutes(
       bookmarkBrowser.handleSessionState(message);
       widgetHost.handleSessionState(message);
       memoryManager.noteSessionState(message);
+      editOffers?.noteSessionState();
     },
     [MessageType.WORKSHOP_TURN]: (message) => {
       workshopRoom.handleTurn(message);
@@ -202,6 +207,7 @@ export function buildWorkshopAppMessageRoutes(
       [MessageType.WORKSHOP_FILE_EDIT_RESULT]: fileEdits.handleResult,
       [MessageType.WORKSHOP_FILE_EDIT_PREVIEW_RESULT]: fileEdits.handlePreviewResult
     } : {}),
+    ...(editOffers ? { [MessageType.WORKSHOP_EDIT_OFFER_RESULT]: editOffers.handleResult } : {}),
     [MessageType.WORKSHOP_MEMORY_ESTIMATE_RESULT]: projectMemory.handleEstimateResult,
     [MessageType.WORKSHOP_MEMORY_DRAFT_RESULT]: projectMemory.handleMemoryDraftResult,
     [MessageType.WORKSHOP_MEMORY_DRAFTS_SETTING]: projectMemory.handleMemoryDraftsSetting,

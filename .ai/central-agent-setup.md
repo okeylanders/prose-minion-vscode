@@ -226,6 +226,7 @@ packages/core/src/presentation/webview/
 │           ├── useWorkshopSeedReceiver.ts  # This mount's seed receiver id, announced once listening (PR #150 F-08)
 │           ├── useWorkshopSeedClaim.ts     # Hold, claim and answer a handed-over seed, per kind
 │           ├── useWorkshopLightboxTiles.ts # A Lightbox tile: claim, accept after the grant, answer
+│           ├── useWorkshopEditOffers.ts    # A reply's edit-offer chips: the press (ids only), its correlated answer, the one announcement (ADR 2026-11-10 U2–U6)
 │           ├── controllers/            # Transient modal/surface state machines
 │           │   ├── creativeVariations/useCreativeVariationsAuthoring.ts
 │           │   └── showVsTell/         # useShowVsTellAuthoring, Intake, CommitFlow, InvalidationWatch

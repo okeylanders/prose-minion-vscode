@@ -29,6 +29,9 @@ import { type WorkshopReactionControls, WorkshopTurnReactionCorner } from './rea
 import { WorkshopReactionOnlyLine } from './reactions/WorkshopReactionOnlyLine';
 import { WorkshopMemoryReceiptLine, WorkshopTurnMemoryCards, workshopSaveToMemoryAction, type WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
 import { WorkshopTurnFileEdits } from './fileEdits/WorkshopTurnFileEdits';
+import { WorkshopTurnFoot } from './editOffers/WorkshopTurnFoot';
+import type { WorkshopEditOfferControls } from './editOffers/WorkshopEditOfferChip';
+import { WorkshopEditOfferAnswerLine, WorkshopEditOfferRequestLine } from './editOffers/WorkshopEditOfferLines';
 import type { WorkshopFileEditControls } from './fileEdits/WorkshopFileEditCard';
 import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks';
 import { workshopToolIcon } from './workshopToolIcons';
@@ -108,6 +111,8 @@ interface WorkshopTurnBubbleProps {
   fileEdits?: WorkshopFileEditControls;
   /** The reaction corner: its cluster and the "Add reaction" palette (ADR 2026-11-07 D8). */
   reactions?: WorkshopReactionControls;
+  /** The footer's edit-offer chips, and the press's and answer's lines (ADR 2026-11-10 U1–U4). */
+  editOffers?: WorkshopEditOfferControls;
 }
 
 /**
@@ -384,7 +389,8 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   modelLabel = workshopRawModelId,
   memory,
   fileEdits,
-  reactions
+  reactions,
+  editOffers
 }) => {
   const memoryAction = workshopSaveToMemoryAction(turn, memory);
   const modelText = workshopTurnModelLabel(turn.model, modelLabel);
@@ -527,6 +533,9 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   }
 
   if (turn.role === 'user') {
+    if (turn.editOfferRequest) {
+      return <WorkshopEditOfferRequestLine turn={turn} request={turn.editOfferRequest} identity={turnIdentity} onGoToTurn={editOffers?.onGoToTurn} />;
+    }
     if (turn.kind === 'message') {
       const widgetCommit = turn.widgetCommit?.rail === 'thread-artifact'
         ? turn.widgetCommit
@@ -698,6 +707,8 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
               ))}
             </div>
           </div>
+        ) : turn.editOfferAnswer ? (
+          <WorkshopEditOfferAnswerLine turn={turn} answer={turn.editOfferAnswer} onGoToTurn={editOffers?.onGoToTurn} />
         ) : (
           <MarkdownRenderer content={turn.content} className="pm-ws-turn-body" />
         )}
@@ -789,25 +800,29 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           {rewindAction}
           {branchAction}
         </div>
-        {turn.widgetRecommendation && onOpenWidgetRecommendation && (
-          <button
-            type="button"
-            className="pm-ws-widget-reco"
-            title={`Opens ${workshopWidgetLabel(turn.widgetRecommendation.widgetId)} prefilled — everything stays editable, nothing runs until you say so`}
-            onClick={() => onOpenWidgetRecommendation(
-              turn.widgetRecommendation!,
-              turn.personaLabel,
-              turn.personaId
-            )}
-          >
-            <Icon name={WORKSHOP_WIDGET_ICONS[turn.widgetRecommendation.widgetId]} size={13} />{' '}
-            {workshopWidgetLabel(turn.widgetRecommendation.widgetId)}{' '}
-            <span className="pm-ws-widget-chip-meta">
-              {widgetRecommendationMeta(turn.widgetRecommendation)}
-            </span>
-          </button>
-        )}
-        {reactions && <WorkshopTurnReactionCorner turn={turn} controls={reactions} />}
+        <WorkshopTurnFoot
+          turn={turn}
+          offers={editOffers}
+          reactions={reactions}
+          widgetChip={turn.widgetRecommendation && onOpenWidgetRecommendation && (
+            <button
+              type="button"
+              className="pm-ws-widget-reco"
+              title={`Opens ${workshopWidgetLabel(turn.widgetRecommendation.widgetId)} prefilled — everything stays editable, nothing runs until you say so`}
+              onClick={() => onOpenWidgetRecommendation(
+                turn.widgetRecommendation!,
+                turn.personaLabel,
+                turn.personaId
+              )}
+            >
+              <Icon name={WORKSHOP_WIDGET_ICONS[turn.widgetRecommendation.widgetId]} size={13} />{' '}
+              {workshopWidgetLabel(turn.widgetRecommendation.widgetId)}{' '}
+              <span className="pm-ws-widget-chip-meta">
+                {widgetRecommendationMeta(turn.widgetRecommendation)}
+              </span>
+            </button>
+          )}
+        />
       </div>
       {quickActionToolId && (
         <WorkshopQuickActionBar

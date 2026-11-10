@@ -271,8 +271,9 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // writes the displayed note itself, and the turn must not be attributed
   // to a model (Astra F-02, completion-stage note; ADR 2026-11-04 D6).
   const { trailers } = controls;
+  // A reply of edit offers alone names nothing: it reads "Replied without a message." (ADR 2026-11-10 addendum).
   const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || trailers.memory || trailers.fileEdits
-    || trailers.reaction !== undefined) && strippedDisplayContent.trim().length === 0;
+    || trailers.reaction !== undefined || controls.editOffers !== undefined) && strippedDisplayContent.trim().length === 0;
   // R1: a reply that was only its reaction is drawn as a slim line; with cards or a widget it is a reply.
   // The ledger's line names only a reaction that lands (PR #247 M1); retention keeps the reply's intent.
   const kept = controls.reaction?.reaction;

@@ -279,13 +279,16 @@ export function hasWorkshopMemoryProposalText(reply: string): boolean {
  * Retained history's copy of a reply (D6, "stripped twice"): without trailer
  * frames (memory, file edits, edit offers and reactions), and the host's line
  * when trailers were all it held (`hostLine`). An edit offer earns no line of
- * its own (ADR 2026-11-10 D1). The widget sanitizer runs after this, on what
+ * its own (ADR 2026-11-10 D1): a reply of offers alone keeps
+ * `WORKSHOP_NO_MESSAGE_REPLY_LINE`, never an empty turn. The widget sanitizer runs after this, on what
  * is left, but never on the host's line.
  */
 function retainedWithoutTrailers(reply: string): { readonly text: string; readonly hostLine: boolean } {
   const controls = extractWorkshopReplyControls(reply, { memoryOpen: false });
   const { trailers } = controls;
-  if ((trailers.memory || trailers.fileEdits || trailers.reaction !== undefined) && controls.rest.trim().length === 0) {
+  // An offer-only reply names nothing, so its line is "Replied without a message." (ADR 2026-11-10 addendum).
+  if ((trailers.memory || trailers.fileEdits || trailers.reaction !== undefined || controls.editOffers !== undefined)
+    && controls.rest.trim().length === 0) {
     return { text: workshopTrailersOnlyReplyLine(trailers), hostLine: true };
   }
   return { text: controls.rest, hostLine: false };
