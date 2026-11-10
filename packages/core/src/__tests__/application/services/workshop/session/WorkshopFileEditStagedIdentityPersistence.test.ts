@@ -38,6 +38,7 @@ import { scriptedCheckpoint } from './WorkshopCoordinatorHarness';
 /** #229's excerpt branch: the room's excerpt identity, returned as it is. */
 function excerptStaging(room: ScriptedWorkshopRoom): FileEditStaging {
   return {
+    resolve: async () => ({ kind: 'refused', reason: 'excerpt-not-a-file' }),
     stage: async () => {
       const source = room.session.getExcerpt()?.source;
       if (!source || source.kind !== 'file') {

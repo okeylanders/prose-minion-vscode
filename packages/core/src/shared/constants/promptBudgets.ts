@@ -172,6 +172,26 @@ export interface PromptBudgets {
     /** A notes rewrite's content (D5). */
     rewriteFileBytes: number;
   }>;
+  /**
+   * A reply's edit offers (ADR 2026-11-10 D1): the declaration a persona ends
+   * a reply with, the press's source reply (D4), an answer's "nothing to
+   * change" reason (D5) and the fixes policy (D6). Pinned to
+   * `workshop-personas/reply-edit-offers.md` by a sync test.
+   */
+  readonly workshopEditOffers: Readonly<{
+    /** Offer frames one reply may keep: one per kind. */
+    offersPerReply: number;
+    /** One frame's inside: a longer frame is dropped whole, unread. */
+    frameCharacters: number;
+    /** The largest `<count>`; the least is 1. */
+    count: number;
+    /** A reply longer than this gets no offers: a press quotes it whole (D4). */
+    sourceReplyCharacters: number;
+    /** An answer's one-line `<why>` when there is nothing to change (D5). */
+    whyCharacters: number;
+    /** Changed characters on each side of one fix (D6). */
+    fixChangedCharacters: number;
+  }>;
   readonly workshopTodos: Readonly<{
     items: number;
     characters: number;
@@ -666,6 +686,14 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     fileBytes: 2 * 1024 * 1024,
     // D5: a notes rewrite replaces at most 32 KiB.
     rewriteFileBytes: 32 * 1024
+  },
+  workshopEditOffers: {
+    offersPerReply: 2,
+    frameCharacters: 600,
+    count: 99,
+    sourceReplyCharacters: 48_000,
+    whyCharacters: 200,
+    fixChangedCharacters: 40
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {

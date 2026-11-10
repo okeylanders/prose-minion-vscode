@@ -41,6 +41,7 @@ import {
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetRecommendation,
   WorkshopMemoryProposal,
+  WorkshopEditOffer,
   WorkshopFileEditProposal,
   WorkshopMemoryHold,
   WorkshopMemoryProposalState,
@@ -151,6 +152,7 @@ import {
   settleWorkshopFileEditProposalsOnReopen,
   type WorkshopFileEditSettlement
 } from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
+import { cloneWorkshopEditOffer } from '@/application/services/workshop/session/WorkshopEditOfferRecords';
 import { workshopMemoryProposalAt } from '@shared/constants/workshopProjectMemoryWrites';
 import {
   cloneWorkshopMemoryReceipt,
@@ -1696,7 +1698,8 @@ export class WorkshopSessionService {
     widgetRecommendation?: WorkshopWidgetRecommendation,
     model?: WorkshopTurnModel,
     memoryProposals: readonly WorkshopMemoryProposal[] = [],
-    fileEditProposals: readonly WorkshopFileEditProposal[] = []
+    fileEditProposals: readonly WorkshopFileEditProposal[] = [],
+    editOffers: readonly WorkshopEditOffer[] = []
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1752,7 +1755,9 @@ export class WorkshopSessionService {
       // File-edit cards too (ADR 2026-11-05 D8; never an empty list).
       fileEditProposals: (isHost || isGuest) && fileEditProposals.length > 0
         ? fileEditProposals.map(cloneWorkshopFileEditProposal)
-        : undefined
+        : undefined,
+      // What the reply offers as edits (ADR 2026-11-10 D2; never an empty list).
+      editOffers: (isHost || isGuest) && editOffers.length > 0 ? editOffers.map(cloneWorkshopEditOffer) : undefined
     };
 
     if (isHost && conversationId) {

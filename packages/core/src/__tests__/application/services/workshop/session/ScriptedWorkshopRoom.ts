@@ -16,7 +16,7 @@
  * point; Sprint 02 rewinds to each one and compares (the equivalence oracle).
  */
 
-import type { WorkshopReplyFileEditContext } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
+import type { WorkshopReplyEditsContext } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
 import type { WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import {
   completeWorkshopRun,
@@ -122,7 +122,7 @@ export class ScriptedWorkshopRoom {
   /** Save and tell me's saver (Slice 5); absent, a card waits as under Ask first. */
   memoryAutoSave?: (turn: WorkshopTurn, indexes: readonly number[]) => void;
   /** A reply's staged file edits (ADR 2026-11-05 D4): a test resolves them first; used only for the reply they match. */
-  fileEdits?: WorkshopReplyFileEditContext;
+  fileEdits?: WorkshopReplyEditsContext;
   /** Whether each reply's run had web search tools attached (Slice 5's hold). */
   webResearchAttached = false;
 
@@ -424,7 +424,8 @@ export class ScriptedWorkshopRoom {
     return reply;
   }
 
-  guestMessage(personaId: WorkshopPersonaId, text: string): WorkshopTurn {
+  guestMessage(personaId: WorkshopPersonaId, text: string, options: { reply?: string } = {}): WorkshopTurn {
+    const replyContent = options.reply ?? `${personaId} reply to "${text}".`;
     const requestId = this.requestId(`guest-${personaId}`);
     this.session.setChatTarget({ kind: 'personaGuest', personaId });
     const roomDelivery = this.delivery.prepare({ kind: 'personaGuest', personaId });
@@ -433,9 +434,9 @@ export class ScriptedWorkshopRoom {
       this.session.getPersonaGuestConversationId(personaId),
       `workshop_guest_${personaId}`,
       `[guest ${personaId}] ${text}`,
-      `${personaId} reply to "${text}".`
+      replyContent
     );
-    const reply = this.complete(requestId, personaId, conversationId, `${personaId} reply to "${text}".`, () => {
+    const reply = this.complete(requestId, personaId, conversationId, replyContent, () => {
       this.delivery.commit(roomDelivery);
     });
     this.rest(`${personaId} reply: ${text}`);

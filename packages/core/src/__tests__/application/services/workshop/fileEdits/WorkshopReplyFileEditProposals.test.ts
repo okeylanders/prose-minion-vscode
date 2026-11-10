@@ -81,7 +81,7 @@ describe('resolveWorkshopReplyFileEdits', () => {
     const staging = fakeFileEditStaging();
     // Two requests that stage to one identity (as two groups listing one file would).
     const sameFile: typeof staging = {
-      calls: staging.calls,
+      ...staging,
       stage: async (target) => {
         const result = await staging.stage(target);
         return result.kind === 'staged' ? { ...result, target: { ...result.target, documentUri: 'file:///ws/one.md' } } : result;

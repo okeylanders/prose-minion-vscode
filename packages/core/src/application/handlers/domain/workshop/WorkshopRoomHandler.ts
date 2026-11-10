@@ -26,9 +26,9 @@ import {
 } from '@/utils/workshopReplyControls';
 import { resolveWorkshopReplyMemory, type WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import {
-  resolveWorkshopReplyFileEdits,
-  type WorkshopReplyFileEditContext
-} from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
+  resolveWorkshopReplyEdits,
+  type WorkshopReplyEditsContext
+} from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
 import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import type { FileEditApplyPort } from '@/domain/models/FileEdit';
 import { workshopTurnForWebview } from '@/application/services/workshop/fileEdits/WorkshopFileEditWebviewView';
@@ -1430,11 +1430,11 @@ export class WorkshopRoomHandler {
 
   /**
    * A reply's file edits, staged before completion (ADR 2026-11-05 D4,
-   * D11): the setting is read now, when the reply is read. A reply holding
-   * no file-edit tag stages nothing and costs no await.
+   * D11), and its edit offers, resolved (ADR 2026-11-10 D2): the setting is
+   * read now, when the reply is read. A reply holding neither tag costs no await.
    */
-  private replyFileEdits(reply: string, signal: AbortSignal): Promise<WorkshopReplyFileEditContext | undefined> {
-    return resolveWorkshopReplyFileEdits({
+  private replyFileEdits(reply: string, signal: AbortSignal): Promise<WorkshopReplyEditsContext | undefined> {
+    return resolveWorkshopReplyEdits({
       reply,
       open: this.conversationSettingsService.fileEditsOpen(),
       staging: this.fileEditStaging,

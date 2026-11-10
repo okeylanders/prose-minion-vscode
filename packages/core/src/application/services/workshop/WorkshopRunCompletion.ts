@@ -37,7 +37,7 @@ import {
   extractWorkshopReplyControls,
   workshopTrailersOnlyReplyLine
 } from '@/utils/workshopReplyControls';
-import type { WorkshopReplyFileEditContext } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
+import { reportWorkshopEditOffers, settleWorkshopReplyEditOffers, type WorkshopReplyEditsContext } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
 import {
   settleWorkshopMemoryProposals,
   WORKSHOP_REPLY_MEMORY_CLOSED,
@@ -139,9 +139,10 @@ export interface WorkshopRunCompletionInput {
    * The reply's file edits, staged before completion (ADR 2026-11-05 D4,
    * D11; `resolveWorkshopReplyFileEdits`), with the setting read when the
    * reply was read. Used only for the reply it was resolved from. Absent, a
-   * frame is still stripped, and dropped and counted (`not-staged`).
+   * frame is still stripped, and dropped and counted (`not-staged`). It
+   * carries the reply's edit offers too, resolved (ADR 2026-11-10 D2).
    */
-  fileEdits?: WorkshopReplyFileEditContext;
+  fileEdits?: WorkshopReplyEditsContext;
   log: (line: string) => void;
   events: WorkshopRunCompletionEvents;
 }
@@ -291,7 +292,7 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     webResearchAttached: result.webResearchAttached === true,
     autoSavesInRoom: input.memoryAutoSavesInRoom ?? (() => countWorkshopRoomAutoSaves(session.readRoomLedger()))
   });
-  const fileEdits = input.fileEdits?.reply === result.content
+  const fileEdits: Pick<WorkshopReplyEditsContext, 'proposals' | 'logs' | 'editOffers'> = input.fileEdits?.reply === result.content
     ? input.fileEdits
     : {
       proposals: [],
@@ -357,6 +358,9 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       : recommendationRejected
         ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
         : `${label} returned a widget setup without an accompanying note.`;
+  // An offer says what the reply's prose holds (ADR 2026-11-10 D1): settled once the display is known.
+  const editOffers = settleWorkshopReplyEditOffers(controls.editOffers, fileEdits.editOffers,
+    { content: displayContent, hostWritten: hostWritesDisplay }, (line) => input.log(`${line} (${label})`));
   const turn = session.completeRun(
     requestId,
     displayContent,
@@ -370,7 +374,8 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       : undefined,
     hostWritesDisplay ? undefined : workshopTurnModelOf(result),
     memory.proposals,
-    fileEdits.proposals
+    fileEdits.proposals,
+    editOffers
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {
@@ -382,6 +387,7 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     );
     return undefined;
   }
+  reportWorkshopEditOffers(editOffers, turn, (line) => input.log(`${line} (${label})`));
 
   try {
     announceCommittedRun(input, turn, {

@@ -126,6 +126,14 @@ export const WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATH =
 export const WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH =
   'workshop-personas/file-edit-proposals.md';
 
+/**
+ * The edit-offer trailer (ADR 2026-11-10 D1): taught beside the file-edit
+ * trailer, under the same condition, so a persona never declares an offer
+ * while file edits are off.
+ */
+export const WORKSHOP_REPLY_EDIT_OFFERS_PROMPT_PATH =
+  'workshop-personas/reply-edit-offers.md';
+
 export const WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS: Readonly<
   Record<WorkshopRelationalDepth, string>
 > = Object.freeze({
@@ -169,7 +177,7 @@ export function workshopPersonaSystemPromptPaths(
     ...(participant && options.projectMemory
       ? [WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH, WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATH]
       : []),
-    ...(participant && options.fileEdits ? [WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH] : []),
+    ...(participant && options.fileEdits ? [WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH, WORKSHOP_REPLY_EDIT_OFFERS_PROMPT_PATH] : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],
     WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,

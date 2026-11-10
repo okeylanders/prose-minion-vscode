@@ -2,6 +2,7 @@
 
 import type { WorkshopMemoryProposal, WorkshopProjectMemoryReceipt } from './projectMemory';
 import type { WorkshopFileEditProposal, WorkshopFileEditsMode } from './fileEdits';
+import type { WorkshopEditOffer } from './editOffers';
 import { MessageEnvelope, MessageType } from '../base';
 import { TokenUsage } from '../tokenUsage';
 import { UrlCitation } from '../citations';
@@ -457,6 +458,8 @@ export interface WorkshopTurn {
   memoryProposals?: WorkshopMemoryProposal[];
   /** A persona's file-edit proposals (ADR 2026-11-05 D8): one to `proposalsPerReply`, in the order written, never empty. */
   fileEditProposals?: WorkshopFileEditProposal[];
+  /** What a persona's reply offers as edits (ADR 2026-11-10 D2): at most one per kind, in the order written, never empty. */
+  editOffers?: WorkshopEditOffer[];
   /** A save, edit, Forget or Restore of a project memory, on its divider (D7). Never the body. */
   projectMemoryReceipt?: WorkshopProjectMemoryReceipt;
   /**

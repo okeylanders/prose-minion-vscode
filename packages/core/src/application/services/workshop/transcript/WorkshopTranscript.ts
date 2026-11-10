@@ -32,6 +32,9 @@
  * - A persona reply's file-edit cards (ADR 2026-11-05 D10) carry each card's
  *   display path, its `why` and its state: never an operation's text (a
  *   quote, a replacement, a passage) and never the host's `documentUri`.
+ * - A persona reply's edit offers (ADR 2026-11-10 D8) are omitted, by
+ *   decision: they are controls, not content, as recommendation chips are.
+ *   No entry carries `editOffers`, a kind, a count or an offer's file.
  * - Neither slices, `model` nor `fileEdits` come from
  *   `projectWorkshopTranscriptTurn`, so session recall and the turn
  *   preview, which read turns only through it, never see them.
