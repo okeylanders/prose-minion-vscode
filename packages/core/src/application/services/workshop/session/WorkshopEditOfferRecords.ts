@@ -1,0 +1,68 @@
+/**
+ * `WorkshopTurn.editOffers` in the persisted session (ADR 2026-11-10 D2, D8;
+ * epic Slice 1). Optional and additive: written only when present, no
+ * `schemaVersion` change in this slice (the release decision is ADR
+ * 2026-07-30's, at the epic's end). A session without it reads and writes
+ * exactly as before.
+ *
+ * When present it is exact: one to `offersPerReply` offers, only on a
+ * persona's reply, no two of one kind. Each offer holds:
+ * - `kind`: `WORKSHOP_EDIT_OFFER_KINDS`;
+ * - `target`: the host-written identity its file resolved to when the reply
+ *   was read, held to the staging contract a file-edit card's identity is
+ *   (`workshopFileEditIdentityHoldable`), never to a model's lookup grammar;
+ * - `count`, optional: a whole number within the trailer's bound.
+ * An offer stores no state (D3), so there is nothing to settle on reopen.
+ *
+ * No development checkpoint ever held another shape of this field, so
+ * `WorkshopSessionCheckpointNormalization` repairs nothing for it.
+ */
+
+import {
+  WORKSHOP_EDIT_OFFER_KINDS,
+  workshopFileEditIdentityHoldable,
+  type WorkshopEditOffer
+} from '@messages';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  boundedArrayAt,
+  enumAt,
+  exactObject,
+  shapeError
+} from '@/application/services/workshop/persistedValidation';
+import { isWorkshopEditOfferCount } from '@/utils/workshopEditOfferProtocol';
+
+const BUDGETS = PROMPT_BUDGETS.workshopEditOffers;
+
+/** Strict structure of one turn's `editOffers`, and that its turn may carry them. */
+export function assertWorkshopEditOfferShape(turn: Record<string, unknown>, path: string, checkpoint: boolean): void {
+  if (turn.editOffers === undefined) {
+    return;
+  }
+  const at = `${path}.editOffers`;
+  if (!checkpoint && (turn.role !== 'assistant' || (turn.participant !== 'host' && turn.participant !== 'guest'))) {
+    shapeError(at, 'a host or guest persona reply');
+  }
+  boundedArrayAt(turn.editOffers, at, 1, BUDGETS.offersPerReply, 'edit offers');
+  const kinds = new Set<unknown>();
+  turn.editOffers.forEach((item, index) => {
+    const offer = exactObject(item, `${at}[${index}]`, ['kind', 'target'], ['count']);
+    enumAt(offer.kind, `${at}[${index}].kind`, WORKSHOP_EDIT_OFFER_KINDS);
+    if (kinds.has(offer.kind)) {
+      shapeError(`${at}[${index}].kind`, 'a kind no earlier offer has');
+    }
+    kinds.add(offer.kind);
+    const target = exactObject(offer.target, `${at}[${index}].target`, ['kind', 'documentUri', 'relativePath']);
+    enumAt(target.kind, `${at}[${index}].target.kind`, ['file', 'excerpt']);
+    if (!workshopFileEditIdentityHoldable(target)) {
+      shapeError(`${at}[${index}].target`, 'a host identity: a one-line documentUri and display path, each within its bound');
+    }
+    if (offer.count !== undefined && !isWorkshopEditOfferCount(offer.count)) {
+      shapeError(`${at}[${index}].count`, `a whole number from 1 to ${BUDGETS.count}`);
+    }
+  });
+}
+
+export function cloneWorkshopEditOffer(offer: WorkshopEditOffer): WorkshopEditOffer {
+  return { ...offer, target: { ...offer.target } };
+}

@@ -22,6 +22,7 @@ export * from './projectMemory';
 export * from './memoryDraft';
 export * from './projectMemoryManager';
 export * from './fileEdits';
+export * from './editOffers';
 export * from './pinnedContext';
 export * from './settings';
 export * from './context';

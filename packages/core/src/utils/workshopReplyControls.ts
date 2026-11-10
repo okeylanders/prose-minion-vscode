@@ -35,6 +35,11 @@
  *   `rest` like memory frames, redacted as `[file edit proposal removed]`, and
  *   judged by `workshopReplyFileEdits` into `fileEdits`, which is absent when
  *   the reply held none.
+ * - **Edit offers** (ADR 2026-11-10 D1): `<prose-minion-edit-offer>` frames
+ *   join the same pass, removed from `rest`, redacted as
+ *   `[edit offer removed]`, and judged by `workshopReplyEditOffers` into
+ *   `editOffers`, absent when the reply held none. An offer never earns a
+ *   host line: a reply that was only offers leaves nothing.
  */
 
 import {
@@ -46,6 +51,12 @@ import {
 import { isWorkshopMemoryEditDraft, type WorkshopMemoryEditDraft } from '@/utils/workshopMemoryEditProtocol';
 import { WORKSHOP_FILE_EDIT_TAG } from '@/utils/workshopFileEditProtocol';
 import { judgeWorkshopReplyFileEdits, type WorkshopReplyFileEditControl } from '@/utils/workshopReplyFileEdits';
+import { WORKSHOP_EDIT_OFFER_TAG } from '@/utils/workshopEditOfferProtocol';
+import {
+  judgeWorkshopReplyEditOffers,
+  WORKSHOP_EDIT_OFFER_REDACTION,
+  type WorkshopReplyEditOfferControl
+} from '@/utils/workshopReplyEditOffers';
 import {
   findWorkshopReplyTrailerFrames,
   removeWorkshopReplyTrailerFrames,
@@ -106,6 +117,8 @@ export interface WorkshopReplyControls {
   readonly memory: WorkshopReplyMemoryControl;
   /** The reply's file-edit frames, judged (ADR 2026-11-05 D2); absent when it held none. */
   readonly fileEdits?: WorkshopReplyFileEditControl;
+  /** The reply's edit-offer frames, judged (ADR 2026-11-10 D1); absent when it held none. */
+  readonly editOffers?: WorkshopReplyEditOfferControl;
 }
 
 export interface WorkshopReplyControlsOptions {
@@ -116,7 +129,13 @@ export interface WorkshopReplyControlsOptions {
 }
 
 /** Every trailer kind the tail holds, found in one pass. */
-const TRAILER_TAGS = [WORKSHOP_MEMORY_PROPOSAL_TAG, WORKSHOP_FILE_EDIT_TAG] as const;
+const TRAILER_TAGS = [WORKSHOP_MEMORY_PROPOSAL_TAG, WORKSHOP_FILE_EDIT_TAG, WORKSHOP_EDIT_OFFER_TAG] as const;
+
+const REDACTIONS: Readonly<Record<string, string>> = {
+  [WORKSHOP_MEMORY_PROPOSAL_TAG]: WORKSHOP_MEMORY_PROPOSAL_REDACTION,
+  [WORKSHOP_FILE_EDIT_TAG]: WORKSHOP_FILE_EDIT_REDACTION,
+  [WORKSHOP_EDIT_OFFER_TAG]: WORKSHOP_EDIT_OFFER_REDACTION
+};
 
 type Frame = WorkshopReplyTrailerFrame;
 
@@ -133,19 +152,34 @@ export function extractWorkshopReplyControls(
   const placed = frames.map((frame, index) => ({ frame, atTail: atTail[index] }));
   const memoryFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_MEMORY_PROPOSAL_TAG);
   const fileEditFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_FILE_EDIT_TAG);
+  const editOfferFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_EDIT_OFFER_TAG);
+  const rest = removeWorkshopReplyTrailerFrames(reply, frames, () => '');
+  const fileEdits = fileEditFrames.length > 0 ? judgeWorkshopReplyFileEdits(fileEditFrames, options.fileEditsOpen === true) : undefined;
   return {
-    rest: removeWorkshopReplyTrailerFrames(reply, frames, () => ''),
-    redacted: removeWorkshopReplyTrailerFrames(reply, frames, (frame) => frame.tag === WORKSHOP_FILE_EDIT_TAG
-      ? WORKSHOP_FILE_EDIT_REDACTION
-      : WORKSHOP_MEMORY_PROPOSAL_REDACTION),
+    rest,
+    redacted: removeWorkshopReplyTrailerFrames(reply, frames, (frame) => REDACTIONS[frame.tag] ?? WORKSHOP_MEMORY_PROPOSAL_REDACTION),
     memory: memoryFrames.length > 0 ? judge(memoryFrames, options) : { kind: 'none' },
-    ...(fileEditFrames.length > 0 ? { fileEdits: judgeWorkshopReplyFileEdits(fileEditFrames, options.fileEditsOpen === true) } : {})
+    ...(fileEdits ? { fileEdits } : {}),
+    ...(editOfferFrames.length > 0
+      ? {
+        editOffers: judgeWorkshopReplyEditOffers(editOfferFrames, {
+          open: options.fileEditsOpen === true,
+          hasProse: rest.trim().length > 0,
+          hasFileEditProposal: (fileEdits?.proposals.length ?? 0) > 0
+        })
+      }
+      : {})
   };
 }
 
 /** Whether a reply holds a file-edit tag (a cheap check before anything is staged; ADR 2026-11-05 D4). */
 export function hasWorkshopFileEditText(reply: string): boolean {
   return reply.toLowerCase().includes(WORKSHOP_FILE_EDIT_TAG);
+}
+
+/** Whether a reply holds an edit-offer tag (a cheap check before a file is resolved; ADR 2026-11-10 D2). */
+export function hasWorkshopEditOfferText(reply: string): boolean {
+  return reply.toLowerCase().includes(WORKSHOP_EDIT_OFFER_TAG);
 }
 
 /** Whether a reply holds anything the extractor would remove (a cheap check before a listing is read). */
@@ -155,8 +189,9 @@ export function hasWorkshopMemoryProposalText(reply: string): boolean {
 
 /**
  * Retained history's copy of a reply (D6, "stripped twice"): without trailer
- * frames (memory and file edits), and the host's line when trailers were all
- * it held. The widget sanitizer runs after this, on what is left.
+ * frames (memory, file edits and edit offers), and the host's line when
+ * memory or file-edit trailers were all it held. An edit offer earns no line
+ * (ADR 2026-11-10 D1). The widget sanitizer runs after this, on what is left.
  */
 export function stripWorkshopReplyTrailersForRetention(reply: string): string {
   const controls = extractWorkshopReplyControls(reply, { memoryOpen: false });
@@ -169,7 +204,7 @@ export function stripWorkshopReplyTrailersForRetention(reply: string): string {
 
 /**
  * What a reply still streaming may show (PR #200 F-02): every trailer frame
- * (memory and file edits) removed as `rest` removes it (an unclosed one to
+ * (memory, file edits and edit offers) removed as `rest` removes it (an unclosed one to
  * the end, so a frame being written never shows), and a trailing fragment
  * that could still become a frame's tag held back until the next token
  * settles it. Pure over the text so far; the final reply is the extractor's.

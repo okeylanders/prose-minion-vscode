@@ -44,7 +44,18 @@ export type FileEditStagingResult =
     }
   | { readonly kind: 'refused'; readonly reason: FileEditStagingRefusal };
 
+/** A target resolved to its identity alone (ADR 2026-11-10 D2): no text is read, so there is no class or baseline. */
+export type FileEditResolutionResult =
+  | { readonly kind: 'resolved'; readonly target: FileEditIdentity }
+  | { readonly kind: 'refused'; readonly reason: FileEditStagingRefusal };
+
 /** Staging (D4): called once per frame when a reply is read. It never rejects; a failure is a refusal. */
 export interface FileEditStaging {
   stage(target: FileEditStagingTarget): Promise<FileEditStagingResult>;
+  /**
+   * The identity `stage` would give the target, by the same rules (D4), with
+   * no baseline: the file's text is never read. For what names a file without
+   * yet editing it (a reply's edit offer, ADR 2026-11-10 D2).
+   */
+  resolve(target: FileEditStagingTarget): Promise<FileEditResolutionResult>;
 }

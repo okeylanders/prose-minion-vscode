@@ -4,7 +4,7 @@ import {
   hasWorkshopMemoryProposalText
 } from '@/utils/workshopReplyControls';
 import { resolveWorkshopReplyMemory } from '@/application/services/workshop/memory/WorkshopReplyMemory';
-import type { WorkshopReplyFileEditContext } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
+import type { WorkshopReplyEditsContext } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   WorkshopRoomDeliveryService,
@@ -74,7 +74,7 @@ export interface WorkshopToolSidePassEvents {
   /** The room's automatic saves, landed and in flight, for the cap (PR #201 F-04). */
   memoryAutoSavesInRoom?: () => number;
   /** The synthesis's file edits, staged with the setting read now (ADR 2026-11-05 D4, D11); absent, none are staged. */
-  fileEdits?: (reply: string, signal: AbortSignal) => Promise<WorkshopReplyFileEditContext | undefined>;
+  fileEdits?: (reply: string, signal: AbortSignal) => Promise<WorkshopReplyEditsContext | undefined>;
   settled: (requestId: string) => void;
 }
 
