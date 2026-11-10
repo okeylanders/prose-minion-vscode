@@ -51,7 +51,7 @@ The target's additional progress entry overlaps the slice's edits. No merge or c
 
 ## Independent verification
 
-Checks ran against the reviewed code under Node `v24.22.1`, without live provider calls. Installed dependencies match the checked-out lockfile byte for byte.
+Checks ran against the reviewed code under Node `v24.22.1`, without live provider calls. Installed dependencies were reused from a checkout with a byte-identical package lockfile.
 
 - `npm run typecheck`: all three stages passed.
 - `npm run build`: both bundles and bundle verification passed; existing webpack size warnings remain.
@@ -60,7 +60,7 @@ Checks ran against the reviewed code under Node `v24.22.1`, without live provide
 - Policy/protocol/reminder focused run: **9 suites / 145 tests passed**, covering the rewrite/fixes gateways, option codec, answer frame, reminder routes, resolver, and prompt synchronization. Together with the lifecycle run: **16 suites / 266 tests passed**.
 - Additional temporary whole-file safety probe: **1 passed control and 1 expected failed safety assertion**, described under D1. The probe was outside the repository; no production code or shipped test was changed.
 - `git diff --check` reports four added blank lines at EOF, all in changed tests. This is non-blocking whitespace: `WorkshopEditOfferStatus.test.ts:228`, `replyEditOfferPressPromptSync.test.ts:142`, `workshopEditOfferChipView.test.ts:223`, and `workshopReplyEditOffers.test.ts:208`.
-- A full `npm test -- --runInBand` was started and is still running at publication preparation. **No independent full-suite pass is claimed here.** The PR's reported 841 suites / 11,889 tests / 59 snapshots remains author-reported until that run finishes.
+- Full `npm test -- --runInBand`: **841 suites / 11,889 tests / 59 snapshots passed**, in 502.82 seconds, with a clean exit. This finished after the initial review publication; the independently observed counts match the PR's report. The verdict and decision gate are unchanged.
 
 ## CI and remaining scope
 
