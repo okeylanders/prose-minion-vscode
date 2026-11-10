@@ -1,7 +1,7 @@
 # Feature: `@` in the Workshop Composer to Attach a Project File
 
 **Date Identified:** 2026-11-09
-**Status:** Idea. Small to medium, mostly presentation: it reuses the existing catalog and attach routes. No ADR, but the token-and-pill question below should be settled before building.
+**Status:** Idea. Small to medium, mostly presentation: it reuses the existing catalog and attach routes. No ADR; the token-and-pill question is settled (A1).
 **Priority:** Medium
 **Origin:** Okey, 2026-11-09
 
@@ -78,19 +78,32 @@ So `@` is a faster way into what exists. It needs no new host route.
   as it is. Anchoring at the caret in a textarea needs a mirror-element
   measurement, which can come later.
 
+## Decisions (Okey, 2026-11-10)
+
+| # | Decision | What it means |
+|---|---|---|
+| A1 | **The pill is the truth.** Deleting a token leaves the file attached. | The token is prose in a plain textarea. Removing a pill leaves the text as it is, and deleting `@ch3` from the sentence leaves the pill. No rich input is needed. |
+| A2 | **`@persona` is coming.** Reserve the namespace now. | The list is built with sections from the start: **Files** now, **People** later. A file token can never be read as a persona token (below). |
+
+### Keeping file tokens and persona tokens apart (A2)
+
+- **A file token always has a `.` or a `/`:** its extension
+  (`@alice-ch3.md`), or its group path when it has none
+  (`@characters/jill`).
+- **A persona token never has either** (`@Jill`).
+- So a reader of the message, the persona or any later parser, can tell the
+  two apart from the token alone, before People exists.
+- **A test pins the rule** for every token the file list can insert,
+  duplicate basenames and extensionless files included.
+
 ## Open questions
 
-- **The token and the pill: which is the truth?** In a plain textarea a
-  token is just text. Leaning: the pill is the truth and the token is prose.
-  Removing a pill leaves the text, and deleting the token leaves the pill.
-  Atomic tokens that delete as a unit (like Slack's) need a rich input
-  instead of the textarea, which is a bigger change.
 - **This message, or the room?** `@` attaches to this message. Offer a way
   to add to room context instead, such as a modifier on the row ("Add to
   room context")?
-- **`@` for personas too?** Writers may later want `@Jill` to address a
-  guest. If so, reserve the namespace now: the list would show Files and
-  People sections.
+- **What `@persona` does** (A2, later). Address a guest, invite one, or
+  only mention them? That belongs to its own feature. This one only keeps
+  the namespace free.
 - **Beyond configured files?** The catalog covers configured context groups.
   Is Browse project… enough for the rest, or should `@` list every text file
   in the workspace?
@@ -104,6 +117,11 @@ So `@` is a faster way into what exists. It needs no new host route.
 - [ ] Enter, Tab, ↑, ↓ and Escape behave as above, Enter sends only with the
       list closed, and IME composition is respected (tests).
 - [ ] Duplicate basenames get unique tokens matching their frame labels.
+- [ ] Every file token holds a `.` or a `/`, so none can read as a persona
+      token (A2). The list renders its Files section in a sectioned list
+      that People can join.
+- [ ] Deleting a token leaves its pill, and removing a pill leaves the text
+      (A1).
 - [ ] Picking a file already staged doesn't stage it twice.
 - [ ] The combobox's ARIA is tested, and the shared picker's tests are
       unchanged.
