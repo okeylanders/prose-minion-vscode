@@ -7,7 +7,7 @@
  * refused with none left.
  */
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
-import type { AgentCapability } from '@orchestration/AgentRunContracts';
+import { AGENT_FINAL_REPLY_REFUSED, type AgentCapability, type AgentFinalReplyCheck } from '@orchestration/AgentRunContracts';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ConversationManager } from '@orchestration/ConversationManager';
 
@@ -36,7 +36,7 @@ describe('AgentRunEngine: the final-reply check', () => {
   let engine: AgentRunEngine;
   let conversationId: string;
   const replies = (...contents: string[]) => contents.forEach((content) => client.createChatCompletion.mockResolvedValueOnce({ content }));
-  const run = (check: jest.Mock | ((reply: string) => string | undefined), adapter = capability()) => engine.continueConversation({
+  const run = (check: AgentFinalReplyCheck, adapter = capability()) => engine.continueConversation({
     conversationId,
     userMessage: 'Was Alice curious?',
     policy: AGENT_RUN_POLICIES.workshopHost,
@@ -57,6 +57,8 @@ describe('AgentRunEngine: the final-reply check', () => {
     client.createChatCompletion.mockClear();
   });
 
+  afterEach(() => engine.dispose());
+
   it('has a correction budget to spend on the policy it is tested with', () => {
     expect(AGENT_RUN_POLICIES.workshopHost.maxCorrectionTurns).toBe(1);
   });
@@ -66,20 +68,20 @@ describe('AgentRunEngine: the final-reply check', () => {
     const check = jest.fn(oneWord);
     const result = await run(check);
     expect(check).toHaveBeenCalledTimes(1);
-    expect(check).toHaveBeenCalledWith('Yes');
+    expect(check).toHaveBeenCalledWith('Yes', { incomplete: false });
     expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
     expect(result.content).toBe('Yes');
     expect(result.finalReplyRejected).toBeUndefined();
     expect(history().slice(-2)).toEqual(['Was Alice curious?', '[retained] Yes']);
   });
 
-  it('replays the instruction as one correction turn, and retains the corrected exchange', async () => {
+  it('replays the rejected reply in the correction request, and retains only the owner\'s form of it (PR #252 F-02)', async () => {
     replies('She was, very much so, as the Rabbit found.', 'Yes');
     const check = jest.fn(oneWord);
     const result = await run(check);
     expect(check).toHaveBeenCalledTimes(2);
     expect(client.createChatCompletion).toHaveBeenCalledTimes(2);
-    // The correction request carries the refused reply and the instruction, in order.
+    // The model is shown its own reply and the instruction, in order.
     const sent = client.createChatCompletion.mock.calls[1][0].map((entry: { role: string; content: string }) => [entry.role, entry.content]);
     expect(sent.slice(-3)).toEqual([
       ['user', 'Was Alice curious?'],
@@ -88,9 +90,53 @@ describe('AgentRunEngine: the final-reply check', () => {
     ]);
     expect(result.content).toBe('Yes');
     expect(result.finalReplyRejected).toBeUndefined();
+    // Retained: the rejected reply goes through the run's sanitizer, as the final one does.
     expect(history().slice(-4)).toEqual([
-      'Was Alice curious?', 'She was, very much so, as the Rabbit found.', INSTRUCTION, '[retained] Yes'
+      'Was Alice curious?', '[retained] She was, very much so, as the Rabbit found.', INSTRUCTION, '[retained] Yes'
     ]);
+  });
+
+  it('keeps capability calls and evidence as they were replayed: only a rejected final reply takes the retained form', async () => {
+    replies(REQUEST, 'Let me think about it.', 'Yes');
+    await run(jest.fn(oneWord));
+    const kept = history().slice(-6);
+    expect(kept[0]).toBe('Was Alice curious?');
+    expect(kept[1]).toBe(REQUEST);
+    expect(kept[2]).toContain('Curious: eager to know.');
+    expect(kept.slice(3)).toEqual(['[retained] Let me think about it.', INSTRUCTION, '[retained] Yes']);
+  });
+
+  it('with no sanitizer, retains the rejected reply as it was replayed', async () => {
+    replies('She was.', 'Yes');
+    await engine.continueConversation({
+      conversationId, userMessage: 'Was Alice curious?', policy: AGENT_RUN_POLICIES.workshopHost, capability: capability(),
+      options: { finalReplyCheck: oneWord }
+    });
+    expect(history().slice(-4)).toEqual(['Was Alice curious?', 'She was.', INSTRUCTION, 'Yes']);
+  });
+
+  it('refuses a reply outright when the check says so: no correction turn, nothing retained', async () => {
+    replies('She was.', 'Never reached');
+    const before = history();
+    const result = await run(() => AGENT_FINAL_REPLY_REFUSED);
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
+    expect(result.finalReplyRejected).toBe(true);
+    expect(history()).toEqual(before);
+  });
+
+  it.each([
+    ['the token ceiling', 'length', 'Response truncated'],
+    ['an ordinary stop', 'stop', undefined]
+  ])('tells the check whether the provider cut the reply short (%s), and never shows it the display notice (PR #252 F-01)', async (_name, finishReason, notice) => {
+    client.createChatCompletion.mockResolvedValueOnce({ content: 'Yes', finishReason });
+    const check = jest.fn(oneWord);
+    const result = await run(check);
+    expect(check).toHaveBeenCalledWith('Yes', { incomplete: finishReason === 'length' });
+    if (notice) {
+      expect(result.content).toContain(notice);
+    } else {
+      expect(result.content).toBe('Yes');
+    }
   });
 
   it('returns a reply still refused after its correction turn as rejected, and retains nothing', async () => {

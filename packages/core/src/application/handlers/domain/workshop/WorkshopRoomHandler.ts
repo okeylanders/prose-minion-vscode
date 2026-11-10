@@ -1221,7 +1221,7 @@ export class WorkshopRoomHandler {
 
       const pendingMemory = this.replyMemory(result.content, controller.signal);
       const replyMemory = pendingMemory && await pendingMemory;
-      const fileEdits = await this.replyFileEdits(result.content, controller.signal);
+      const fileEdits = await this.replyFileEdits(result.content, controller.signal, directedRun?.boundExcerpt);
       const memoryAutoSave = this.memoryAutoSaveFor(controller.signal);
       const assistantTurn = (directedRun?.complete ?? completeWorkshopRun)({
         memory: replyMemory,
@@ -1459,11 +1459,12 @@ export class WorkshopRoomHandler {
    * D11), and its edit offers, resolved (ADR 2026-11-10 D2): the setting is
    * read now, when the reply is read. A reply holding neither tag costs no await.
    */
-  private replyFileEdits(reply: string, signal: AbortSignal): Promise<WorkshopReplyEditsContext | undefined> {
+  private replyFileEdits(reply: string, signal: AbortSignal, boundExcerpt?: WorkshopDirectedRun['boundExcerpt']): Promise<WorkshopReplyEditsContext | undefined> {
     return resolveWorkshopReplyEdits({
       reply,
       open: this.conversationSettingsService.fileEditsOpen(),
       staging: this.fileEditStaging,
+      ...(boundExcerpt ? { boundExcerpt } : {}),
       signal
     });
   }

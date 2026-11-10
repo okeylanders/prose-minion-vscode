@@ -78,10 +78,17 @@ function attribute(value: string): string {
   return neutralizeReservedPersonaPromptDelimiters(value).replace(/["<>\r\n]/g, ' ').trim();
 }
 
+/**
+ * Which file to edit. An excerpt offer keeps the document it was bound to
+ * when the reply was read (D2; PR #252 F-03): the directive names it by its
+ * display path, and says that `<excerpt/>` means that file in this answer,
+ * whatever the room's excerpt is now. The host stages the answer the same way.
+ */
 function fileWords(target: WorkshopEditRequestFrameInput['offer']['target']): string {
+  const path = attribute(target.relativePath);
   return target.kind === 'excerpt'
-    ? 'Edit only <excerpt/>, the file your reply named.'
-    : `Edit only the file your reply named, ${attribute(target.relativePath)}: name it by its <group> and <path>, as in any file edit.`;
+    ? `Edit only the file your reply named, ${path}: name it as <excerpt/>. In this answer <excerpt/> means that file, even if the room's excerpt has changed since.`
+    : `Edit only the file your reply named, ${path}: name it by its <group> and <path>, as in any file edit.`;
 }
 
 export function buildWorkshopEditRequestFrame(input: WorkshopEditRequestFrameInput): string {

@@ -41,6 +41,7 @@ import {
   AgentRunUnavailableError
 } from '@orchestration/AgentRunEngine';
 import {
+  AgentFinalReplyCheck,
   AnyAgentCapability,
   ExecutionResult,
   StreamingTokenCallback
@@ -110,7 +111,7 @@ export interface AnalysisStreamingOptions {
    * usual sanitizer.
    */
   finalReply?: {
-    check: (content: string) => string | undefined;
+    check: AgentFinalReplyCheck;
     retained: (content: string) => string;
   };
 }

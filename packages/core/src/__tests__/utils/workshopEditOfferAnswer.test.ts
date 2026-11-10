@@ -4,7 +4,9 @@
  * functions, tested without a model. Made-up text: Alice.
  */
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { readWorkshopEditOfferAnswer, workshopEditOfferAnswerCheck } from '@/utils/workshopEditOfferAnswer';
+import { readWorkshopEditOfferAnswer, workshopEditOfferAnswerVerdict } from '@/utils/workshopEditOfferAnswer';
+
+const verdict = (reply: string, incomplete = false) => workshopEditOfferAnswerVerdict(reply, { incomplete });
 import {
   buildWorkshopEditRequestFrame,
   WORKSHOP_EDIT_REQUEST_CORRECTION,
@@ -98,7 +100,7 @@ describe('reading an answer (D5): every other trailer closed', () => {
     ['a memory proposal alone', MEMORY]
   ])('%s: neither', (_name, reply) => {
     expect(readWorkshopEditOfferAnswer(reply).outcome).toBe('neither');
-    expect(workshopEditOfferAnswerCheck(reply)).toBe(WORKSHOP_EDIT_REQUEST_CORRECTION);
+    expect(verdict(reply)).toBe('correct');
   });
 
   it('drops and counts everything else: prose, memory, offers, and a no-edit frame beside kept edits', () => {
@@ -106,14 +108,20 @@ describe('reading an answer (D5): every other trailer closed', () => {
     expect(read.outcome).toBe('proposed');
     expect(read.outcome === 'proposed' && read.proposals).toHaveLength(1);
     expect(read.dropped).toEqual({ fileEdits: 1, memory: 1, editOffers: 1, noFileEdit: 1, strayCharacters: 'Here you go!'.length });
-    expect(workshopEditOfferAnswerCheck(`Here you go!\n\n${fileEditFrame()}`)).toBeUndefined();
-    expect(workshopEditOfferAnswerCheck(`A word first.\n\n${none()}`)).toBeUndefined();
+    expect(verdict(`Here you go!\n\n${fileEditFrame()}`)).toBeUndefined();
+    expect(verdict(`A word first.\n\n${none()}`)).toBeUndefined();
   });
 
   it('the correction names both ways to answer, in the forms the reader takes', () => {
     expect(WORKSHOP_EDIT_REQUEST_CORRECTION).toContain('<prose-minion-file-edit>');
     expect(WORKSHOP_EDIT_REQUEST_CORRECTION).toContain(WORKSHOP_NO_FILE_EDIT_FORM);
-    expect(workshopEditOfferAnswerCheck(WORKSHOP_NO_FILE_EDIT_FORM)).toBeUndefined();
+    expect(verdict(WORKSHOP_NO_FILE_EDIT_FORM)).toBeUndefined();
+  });
+
+  it('refuses a cut-off reply outright, whatever it holds: never salvaged, never corrected (PR #252 F-01)', () => {
+    for (const reply of [fileEditFrame(), none(), 'Only prose.', `${fileEditFrame()}\n<prose-minion-file-edit><group>chap`]) {
+      expect(verdict(reply, true)).toBe('refuse');
+    }
   });
 });
 
@@ -123,13 +131,14 @@ describe('the directive frame (D4): built from the ledger\'s turn', () => {
     turn, at: '2:02 pm', offer: { kind: 'fixes', count: 3, target: { kind: 'excerpt', relativePath: 'chapters/chapter-1.md' } }, ...overrides
   });
 
-  it('is D4\'s frame for a fixes press on the excerpt, word for word', () => {
+  it('is D4\'s frame for a fixes press on the excerpt, word for word, naming the excerpt offer\'s own file (PR #252 F-03)', () => {
     expect(frame()).toBe([
       '<prose-minion-edit-request kind="fixes">',
       'The writer pressed "3 fixes" on your reply of 2:02 pm, quoted below. Suggest those fixes as file edits now.',
       '',
       'Reply with <prose-minion-file-edit> trailers and nothing else: no greeting, no commentary, no other trailer. '
-        + 'Edit only <excerpt/>, the file your reply named. Read the file as it stands before you quote it.',
+        + 'Edit only the file your reply named, chapters/chapter-1.md: name it as <excerpt/>. In this answer <excerpt/> means that file, '
+        + 'even if the room\'s excerpt has changed since. Read the file as it stands before you quote it.',
       '',
       'Fixes only: the spelling, grammar and punctuation slips your reply named. Each is a find-and-replace that changes a few '
         + 'characters. No rewording, no appends, no rewrites, and nothing your reply did not name.',

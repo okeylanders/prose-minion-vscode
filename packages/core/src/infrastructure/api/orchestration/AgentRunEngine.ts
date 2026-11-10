@@ -17,7 +17,9 @@ import {
 } from './ConversationManager';
 import {
   AgentCapabilityRejection,
+  AGENT_FINAL_REPLY_REFUSED,
   AGENT_RUN_INTERRUPTED_FINISH_REASON,
+  isAgentRunIncomplete,
   AgentRunOptions,
   AnyAgentCapability,
   CapabilityArtifact,
@@ -470,6 +472,7 @@ export class AgentRunEngine {
       let rounds = 0;
 
       let finalReplyRejected = false;
+      const rejectedFinalReplies: Array<{ readonly index: number; readonly content: string }> = [];
       // The capability rounds and the forced final, then the owner's check of the final reply (`finalReplyCheck`):
       // a correction turn re-enters the rounds, so a corrected reply may still read before it answers.
       for (;;) {
@@ -561,14 +564,19 @@ export class AgentRunEngine {
           }
         }
 
-        const instruction = last.cancelled || last.exactRequest ? undefined : runOptions.finalReplyCheck?.(last.content);
-        if (!instruction) {
+        if (last.cancelled || last.exactRequest || !runOptions.finalReplyCheck) {
           break;
         }
-        if (correctionTurns >= policy.maxCorrectionTurns) {
+        // The check reads the reply as the run returns it, before any display notice (PR #252 F-01).
+        const checked = this.toVisibleContent(last.content, undefined, capability, last.visibleContent);
+        const verdict = runOptions.finalReplyCheck(checked, { incomplete: isAgentRunIncomplete(last.finishReason) });
+        if (verdict === undefined) {
+          break;
+        }
+        if (verdict === AGENT_FINAL_REPLY_REFUSED || correctionTurns >= policy.maxCorrectionTurns) {
           finalReplyRejected = true;
           this.outputChannel?.appendLine(
-            `[AgentRunEngine] ${policy.id} final reply rejected with no correction turn left; nothing retained.`
+            `[AgentRunEngine] ${policy.id} final reply ${verdict === AGENT_FINAL_REPLY_REFUSED ? 'refused' : 'rejected with no correction turn left'}; nothing retained.`
           );
           break;
         }
@@ -576,7 +584,9 @@ export class AgentRunEngine {
         this.outputChannel?.appendLine(
           `[AgentRunEngine] ${policy.id} correction turn ${correctionTurns}/${policy.maxCorrectionTurns} after a rejected final reply.`
         );
-        last = await recoverInvalidRequest(await runInstructedTurn(last, instruction));
+        // The correction request replays the rejected reply; retained history keeps the owner's form of it (PR #252 F-02).
+        rejectedFinalReplies.push({ index: pendingMessages.length, content: checked });
+        last = await recoverInvalidRequest(await runInstructedTurn(last, verdict));
       }
 
       let visibleContent = this.toVisibleContent(
@@ -596,6 +606,11 @@ export class AgentRunEngine {
         const retainedAssistantContent = runOptions.retainedAssistantContentSanitizer
           ? runOptions.retainedAssistantContentSanitizer(visibleContent)
           : visibleContent;
+        if (runOptions.retainedAssistantContentSanitizer) {
+          for (const rejected of rejectedFinalReplies) {
+            pendingMessages[rejected.index] = { role: 'assistant', content: runOptions.retainedAssistantContentSanitizer(rejected.content) };
+          }
+        }
         pendingMessages.push({ role: 'assistant', content: retainedAssistantContent });
         this.conversationManager.addMessages(conversationId, pendingMessages);
         if (collectedSources.length > 0) {

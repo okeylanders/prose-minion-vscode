@@ -28,6 +28,7 @@ export const WORKSHOP_EDIT_OFFER_REFUSAL_WORDS: Readonly<Record<WorkshopEditOffe
   'not-sent': 'The request could not be sent. Try again.',
   stopped: 'Stopped. Nothing was suggested.',
   'no-answer': 'The persona didn’t answer with edits. Try again, or ask in your own words.',
+  'cut-off': 'The answer was cut off before it finished, so nothing was suggested. Try again, or ask for fewer edits at a time.',
   failed: 'The request failed, so nothing was suggested. Try again.'
 });
 /* eslint-enable @typescript-eslint/naming-convention */

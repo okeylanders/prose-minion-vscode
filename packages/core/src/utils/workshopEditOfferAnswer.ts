@@ -18,13 +18,14 @@
  *   reply's prose (a widget recommendation's text included; its reader is
  *   not run). `stray` is how many characters of prose that was.
  *
- * The same function is the engine's final-reply check for a press
- * (`workshopEditOfferAnswerCheck`) and completion's reading of the result,
- * so the two cannot disagree about what an answer is.
+ * The same function is behind the engine's final-reply check for a press
+ * (`workshopEditOfferAnswerVerdict`) and completion's reading of the
+ * result, and the engine hands the check the reply as it returns it, before
+ * any display notice, so the two cannot disagree about what an answer is
+ * (PR #252 F-01).
  */
 
 import type { WorkshopFileEditDraft } from '@/utils/workshopFileEditProtocol';
-import { WORKSHOP_EDIT_REQUEST_CORRECTION } from '@/utils/workshopEditRequestFrame';
 import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
 
 export interface WorkshopEditOfferAnswerDropped {
@@ -67,7 +68,22 @@ export function readWorkshopEditOfferAnswer(reply: string): WorkshopEditOfferAns
   return { outcome: 'neither', dropped: { ...base, noFileEdit: noFileEditRejected + (why !== undefined ? 1 : 0) } };
 }
 
-/** The engine's final-reply check for a press (D5): the correction instruction when the reply is neither, else nothing. */
-export function workshopEditOfferAnswerCheck(reply: string): string | undefined {
-  return readWorkshopEditOfferAnswer(reply).outcome === 'neither' ? WORKSHOP_EDIT_REQUEST_CORRECTION : undefined;
+/** What a press's final-reply check answers: nothing (accepted), `correct` (one correction turn), or `refuse` (a failure at once). */
+export type WorkshopEditOfferAnswerVerdict = 'correct' | 'refuse' | undefined;
+
+/**
+ * The verdict on a press's final reply (D5; PR #252 F-01), by the one rule
+ * the engine's check and completion both read:
+ * - a reply the provider cut short (its token ceiling, or an interrupted
+ *   stream) is refused outright. A cut-off answer is never salvaged: a frame
+ *   may be whole and its neighbour lost, and a correction would be cut the
+ *   same way;
+ * - a reply that is neither edits nor the no-edit frame is corrected once;
+ * - anything else is accepted.
+ */
+export function workshopEditOfferAnswerVerdict(reply: string, facts: { readonly incomplete: boolean }): WorkshopEditOfferAnswerVerdict {
+  if (facts.incomplete) {
+    return 'refuse';
+  }
+  return readWorkshopEditOfferAnswer(reply).outcome === 'neither' ? 'correct' : undefined;
 }

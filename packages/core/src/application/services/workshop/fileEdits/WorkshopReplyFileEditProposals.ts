@@ -34,7 +34,7 @@ import {
 
 /** The host's reason for a rewrite staged to prose (D5: prose is never rewritten whole). */
 export const WORKSHOP_FILE_EDIT_REWRITE_ON_PROSE = 'rewrite-on-prose';
-import type { FileEditStaging, FileEditStagingResult } from '@/domain/models/FileEditStaging';
+import type { FileEditIdentity, FileEditStaging, FileEditStagingResult } from '@/domain/models/FileEditStaging';
 import type { WorkshopFileEditDraft } from '@/utils/workshopFileEditProtocol';
 import { extractWorkshopReplyControls, hasWorkshopFileEditText } from '@/utils/workshopReplyControls';
 
@@ -54,6 +54,8 @@ export interface WorkshopReplyFileEditInput {
   readonly open: boolean;
   /** The staging port (D4). */
   readonly staging: FileEditStaging;
+  /** The document `<excerpt/>` names in this reply, when its run was bound to one (ADR 2026-11-10 D2; PR #252 F-03). */
+  readonly boundExcerpt?: FileEditIdentity;
   readonly signal?: AbortSignal;
 }
 
@@ -77,7 +79,7 @@ export async function resolveWorkshopReplyFileEdits(
     return { reply: input.reply, proposals: [], logs };
   }
   const staging = input.staging;
-  const results = await Promise.all(control.proposals.map((draft) => stageOne(staging, draft)));
+  const results = await Promise.all(control.proposals.map((draft) => stageOne(staging, draft, input.boundExcerpt)));
   const proposals: WorkshopFileEditProposal[] = [];
   const identities = new Set<string>();
   control.proposals.forEach((draft, index) => {
@@ -98,10 +100,10 @@ export async function resolveWorkshopReplyFileEdits(
   return { reply: input.reply, proposals, logs };
 }
 
-async function stageOne(staging: FileEditStaging, draft: WorkshopFileEditDraft): Promise<StagedOrRefused> {
+async function stageOne(staging: FileEditStaging, draft: WorkshopFileEditDraft, boundExcerpt?: FileEditIdentity): Promise<StagedOrRefused> {
   let result: FileEditStagingResult;
   try {
-    result = await staging.stage(draft.target);
+    result = await staging.stage(draft.target, boundExcerpt ? { boundExcerpt } : undefined);
   } catch {
     return { kind: 'refused', reason: 'unreadable' };
   }

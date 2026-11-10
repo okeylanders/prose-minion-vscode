@@ -55,8 +55,9 @@ import {
   type WorkshopEditOfferRunOutcome
 } from '@/application/services/workshop/fileEdits/WorkshopEditOfferAnswerCompletion';
 import { workshopEditOfferMayBeAsked, workshopEditOfferStatus } from '@/application/services/workshop/fileEdits/WorkshopEditOfferStatus';
-import { workshopEditOfferAnswerCheck } from '@/utils/workshopEditOfferAnswer';
-import { buildWorkshopEditRequestFrame, WORKSHOP_EDIT_REQUEST_MESSAGE } from '@/utils/workshopEditRequestFrame';
+import { AGENT_FINAL_REPLY_REFUSED, type AgentFinalReplyCheck, type AgentFinalReplyFacts } from '@orchestration/AgentRunContracts';
+import { workshopEditOfferAnswerVerdict } from '@/utils/workshopEditOfferAnswer';
+import { buildWorkshopEditRequestFrame, WORKSHOP_EDIT_REQUEST_CORRECTION, WORKSHOP_EDIT_REQUEST_MESSAGE } from '@/utils/workshopEditRequestFrame';
 import type {
   WorkshopDirectedRun,
   WorkshopDirectedRunResult,
@@ -123,9 +124,13 @@ export class WorkshopEditOfferHandler {
       // Built from the ledger's turn, never from anything the press carried (D4).
       frame: buildWorkshopEditRequestFrame({ turn, at: sourceAt, offer }),
       finalReply: {
-        check: workshopEditOfferAnswerCheck,
+        check: (reply, facts) => this.checkAnswer(reply, facts),
         retained: (reply) => workshopEditOfferRetainedReply(ids.kind, reply)
       },
+      // An excerpt offer keeps the document it was bound to (D2; PR #252 F-03), whatever the room's excerpt is now.
+      ...(offer.target.kind === 'excerpt' && offer.target.documentUri
+        ? { boundExcerpt: { kind: 'excerpt' as const, documentUri: offer.target.documentUri, relativePath: offer.target.relativePath } }
+        : {}),
       complete: (input) => completeWorkshopEditOfferRun(input, {
         request,
         offer,
@@ -156,6 +161,16 @@ export class WorkshopEditOfferHandler {
     const reason: WorkshopEditOfferRefusal = outcome?.reason ?? (ran.cancelled ? 'stopped' : ran.refusalReason !== undefined ? 'not-sent' : 'failed');
     this.post(requestId, { ...ids, answer: 'failed', reason }, workshopEditOfferRefusalWords(reason));
     this.log(`press failed turn=${turn.id} kind=${ids.kind} reason=${reason}`);
+  }
+
+  /**
+   * The engine's check of a press's final reply (D5; PR #252 F-01): what
+   * completion would fail is refused or corrected here, before the engine
+   * retains anything. File edits turned off during the run refuse it too.
+   */
+  private checkAnswer(reply: string, facts: AgentFinalReplyFacts): ReturnType<AgentFinalReplyCheck> {
+    const verdict = this.room.fileEditsMode() === 'ask' ? workshopEditOfferAnswerVerdict(reply, facts) : 'refuse';
+    return verdict === 'refuse' ? AGENT_FINAL_REPLY_REFUSED : verdict === 'correct' ? WORKSHOP_EDIT_REQUEST_CORRECTION : undefined;
   }
 
   /** D4's checks, in order, with nothing awaited: the press as the ledger holds it, or why it is refused. */

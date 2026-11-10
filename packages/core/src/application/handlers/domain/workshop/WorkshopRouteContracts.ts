@@ -44,6 +44,8 @@ import type {
 /** The one project-memory library as the Workshop's route owners reach it: Slice 3's writes and Slice 4b's manager. */
 export type WorkshopProjectMemoryPort = WorkshopProjectMemoryWritePort & WorkshopProjectMemoryManagerPort;
 import type { FileEditApplyPort } from '@/domain/models/FileEdit';
+import type { FileEditIdentity } from '@/domain/models/FileEditStaging';
+import type { AgentFinalReplyCheck } from '@orchestration/AgentRunContracts';
 import type { WorkshopRunCompletionInput } from '@/application/services/workshop/WorkshopRunCompletion';
 import type {
   ErrorSource,
@@ -64,6 +66,7 @@ import type {
  *   `message` fills that slot;
  * - nothing streams to the thread, and `finalReply` checks and words the
  *   reply (the engine's `finalReplyCheck`);
+ * - `boundExcerpt` says which document `<excerpt/>` names in the reply;
  * - `complete` settles the result in place of `completeWorkshopRun`;
  * - a run that fails or is stopped rolls its writer turn back.
  */
@@ -73,9 +76,15 @@ export interface WorkshopDirectedRun {
   readonly message: string;
   readonly frame: string;
   readonly finalReply: {
-    readonly check: (content: string) => string | undefined;
+    readonly check: AgentFinalReplyCheck;
     readonly retained: (content: string) => string;
   };
+  /**
+   * The document `<excerpt/>` names in this run's reply, when the run is
+   * bound to one (an excerpt offer's own, ADR 2026-11-10 D2): the reply's
+   * file edits are staged against it, whatever the room's excerpt is now.
+   */
+  readonly boundExcerpt?: FileEditIdentity;
   readonly complete: (input: WorkshopRunCompletionInput) => WorkshopTurn | undefined;
 }
 

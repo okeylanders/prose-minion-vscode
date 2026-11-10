@@ -156,6 +156,8 @@ export const WORKSHOP_EDIT_OFFER_REFUSALS = [
   'stopped',
   /** The persona answered with neither edits nor the no-edit frame, after its correction turn. */
   'no-answer',
+  /** The answer was cut off (the token ceiling, or the provider interrupted it): never salvaged. */
+  'cut-off',
   /** The run failed. */
   'failed'
 ] as const;

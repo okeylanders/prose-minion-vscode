@@ -23,7 +23,7 @@ import {
 } from '@/application/services/workshop/fileEdits/WorkshopEditOfferAnswerCompletion';
 import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import { workshopEditOfferRequestLine } from '@shared/constants/workshopEditOfferWords';
-import { workshopEditOfferAnswerCheck } from '@/utils/workshopEditOfferAnswer';
+import { workshopEditOfferAnswerVerdict } from '@/utils/workshopEditOfferAnswer';
 import type { WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import {
   completeWorkshopRun,
@@ -492,8 +492,11 @@ export class ScriptedWorkshopRoom {
     } else {
       this.session.beginPersonaMessage(requestId, line, undefined, undefined, request);
     }
-    const fileEdits = await resolveWorkshopReplyEdits({ reply: answer, open: true, staging });
-    const committed = workshopEditOfferAnswerCheck(answer) === undefined;
+    const boundExcerpt = offer.target.kind === 'excerpt' && offer.target.documentUri
+      ? { kind: 'excerpt' as const, documentUri: offer.target.documentUri, relativePath: offer.target.relativePath }
+      : undefined;
+    const fileEdits = await resolveWorkshopReplyEdits({ reply: answer, open: true, staging, ...(boundExcerpt ? { boundExcerpt } : {}) });
+    const committed = workshopEditOfferAnswerVerdict(answer, { incomplete: false }) === undefined;
     const conversationId = guest
       ? this.session.getPersonaGuestConversationId(guest)
       : this.session.getHostConversationId();

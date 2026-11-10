@@ -13,6 +13,7 @@
 
 import { MessageType, type WorkshopEditOfferKind, type WorkshopTurn } from '@messages';
 import { WORKSHOP_EDIT_OFFER_REFUSAL_WORDS } from '@shared/constants/workshopEditOfferWords';
+import { AGENT_FINAL_REPLY_REFUSED, type AgentFinalReplyCheck } from '@orchestration/AgentRunContracts';
 import { WORKSHOP_EDIT_REQUEST_CORRECTION } from '@/utils/workshopEditRequestFrame';
 import {
   editOfferFrame,
@@ -97,7 +98,7 @@ describe('Workshop routes — a press on a reply\'s edit offer', () => {
 
     // The run: the author's own conversation, the directive frame, the reply's check, and nothing streamed.
     const [conversationId, modelMessage, options] = harness.service.continueConversation.mock.calls[0] as unknown as
-      [string, string, { finalReply: { check: (reply: string) => string | undefined; retained: (reply: string) => string } }];
+      [string, string, { finalReply: { check: AgentFinalReplyCheck; retained: (reply: string) => string } }];
     expect(conversationId).toBe('host-conv');
     expect(modelMessage).toContain('<prose-minion-edit-request kind="fixes">');
     // The source reply's time, in the session's timezone, as the room shows it.
@@ -106,8 +107,9 @@ describe('Workshop routes — a press on a reply\'s edit offer', () => {
     expect(modelMessage).toContain(`<source-reply turn="${source.id}" at="${at}">\n${SAID}\n</source-reply>`);
     expect(modelMessage.trimEnd().endsWith('Follow the edit request frame above.)')).toBe(true);
     expect(modelMessage).toContain(`Edit only the file your reply named, ${CHAPTER}`);
-    expect(options.finalReply.check('Sure, will do.')).toBe(WORKSHOP_EDIT_REQUEST_CORRECTION);
-    expect(options.finalReply.check(fixes())).toBeUndefined();
+    expect(options.finalReply.check('Sure, will do.', { incomplete: false })).toBe(WORKSHOP_EDIT_REQUEST_CORRECTION);
+    expect(options.finalReply.check(fixes(), { incomplete: false })).toBeUndefined();
+    expect(options.finalReply.check(fixes(), { incomplete: true })).toBe(AGENT_FINAL_REPLY_REFUSED);
     expect(options.finalReply.retained(`Chatter.\n\n${fixes()}`)).toBe('Suggested 2 fixes as file edits.');
     expect(harness.posted(MessageType.STREAM_CHUNK)).toEqual([]);
 

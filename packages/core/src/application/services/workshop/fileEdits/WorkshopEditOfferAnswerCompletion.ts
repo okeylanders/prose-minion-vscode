@@ -13,6 +13,9 @@
  *     the rest to it at every Apply.
  * - **`none`** is exactly the no-file-edit frame, with its one-line why.
  * - **Neither** (after the engine's correction turn) is a failure.
+ * - **A cut-off answer** (the token ceiling, or an interrupted stream) is a
+ *   failure too, never salvaged: the engine's check refused it by the same
+ *   fact (`finishReason`) and retained nothing (PR #252 F-01).
  * - **The persona's prose is never shown or kept.** The bubble holds the
  *   host's line; stray prose is counted in the log, never logged. The
  *   actionable-findings reader and the widget-recommendation reader are not
@@ -53,7 +56,7 @@ export const WORKSHOP_FILE_EDIT_NOT_THE_OFFERED_FILE = 'not-the-offered-file';
 /** What a press's run came to, as its route answers it. */
 export type WorkshopEditOfferRunOutcome =
   | { readonly kind: 'answered'; readonly turn: WorkshopTurn; readonly cards: number; readonly changes: number }
-  | { readonly kind: 'failed'; readonly reason: Extract<WorkshopEditOfferRefusal, 'stopped' | 'no-answer' | 'file-edits-off' | 'failed'> };
+  | { readonly kind: 'failed'; readonly reason: Extract<WorkshopEditOfferRefusal, 'stopped' | 'no-answer' | 'cut-off' | 'file-edits-off' | 'failed'> };
 
 /** The press a run answers: read from the ledger before the run began. */
 export interface WorkshopEditOfferPress {
@@ -131,6 +134,10 @@ export function completeWorkshopEditOfferRun(input: WorkshopRunCompletionInput, 
     return fail('failed', 'no-retained-conversation');
   }
 
+  // The engine's check refused a cut-off reply and retained nothing (PR #252 F-01); completion reads the same fact.
+  if (isAgentRunIncomplete(result.finishReason)) {
+    return fail('cut-off', `finish=${result.finishReason === 'length' ? 'length' : 'interrupted'}`);
+  }
   const read = readWorkshopEditOfferAnswer(result.content);
   const dropped = droppedLine(read.dropped);
   if (read.outcome === 'neither') {
@@ -164,7 +171,7 @@ export function completeWorkshopEditOfferRun(input: WorkshopRunCompletionInput, 
     requestId,
     content,
     result.usage,
-    isAgentRunIncomplete(result.finishReason),
+    false,
     result.conversationId,
     [],
     undefined,
