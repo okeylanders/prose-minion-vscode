@@ -516,6 +516,71 @@ where they differ, this addendum holds.
   Message Reactions' "Replied without a message." line when the two epics
   meet.
 
+## Addendum, 2026-11-10 (second): alternative versions get a chip each
+
+**From Okey's first live run.** Jill answered "give me an idea of what
+you're thinking" with three written-out versions of one passage ("Version
+1", "Version 2", "A third option"), and no chip was drawn. His words: "if
+you're going to provide prose, then give options to apply it."
+
+**What was wrong.** Two things, both in the design, not the code:
+- **The teaching talked the persona out of declaring.** "Most replies
+  declare nothing" and "never as an invitation" read as "when in doubt,
+  don't". A probe of the same model with the shipped teaching and an *Alice*
+  excerpt declared the typos and not the three versions.
+- **"Rewrites" had no shape for alternatives.** One chip that applies "the
+  rewrites" makes no sense when the reply offers three ways to write the
+  same line and the writer would pick one.
+
+**What changes.**
+
+- **D1: a rewrites offer may name options.** Up to `optionsPerOffer` (4)
+  `<option>` elements, each the short label the reply's prose gave that
+  version, one line, at most `optionCharacters` (40). Options are for
+  alternatives the writer chooses between. Rewrites that belong together
+  stay one offer with no options. A fixes offer takes no options. A
+  malformed, empty, duplicate or over-bound option drops the frame.
+
+  ```xml
+  <prose-minion-edit-offer>
+    <kind>rewrites</kind>
+    <excerpt/>
+    <option>Version 1</option>
+    <option>Version 2</option>
+    <option>A third option</option>
+  </prose-minion-edit-offer>
+  ```
+- **D1: declaring is the rule, not the exception.** The teaching now says:
+  whenever a reply writes out replacement prose for a passage of a file, or
+  names small fixes to it, declare it, because the writer has no other way
+  to turn those words into an edit. It still declares only what the prose
+  holds. With that wording and the options grammar, the same probe declared
+  the three versions and the typos, twice out of two.
+- **D1: a per-turn reminder.** While file edits are on and the room has a
+  file to target, the persona's message carries a one-line
+  `<workshop-edit-offer-reminder>` frame, as Message Reactions' invite
+  does. It is never sent with a press. The system prompt alone was not
+  enough for reactions, and this prompt is longer.
+- **U2: one chip per option.** The footer reads "As edits", then the fixes
+  chip, then a chip per option, labeled with the option's own words
+  ("Version 1"). Each has the same five states. An offer without options
+  keeps its one "N rewrites" chip.
+- **D3, D4: an option is part of the press.** The press carries
+  `{ requestId, roomRevision, turnId, kind, option? }`, the option by index.
+  The request turn and the answer record it, and status is derived per
+  option. Pressing one option does not use up the others.
+- **D4: the directive names the chosen version.** "The writer chose
+  'Version 1' from your reply. Suggest that version only, as file edits."
+  The label is the host's stored copy, neutralized.
+- **U3, U4: the lines name it.** "You asked Jill for an edit · Version 1,
+  from that reply ↑" and "Suggested Version 1 as an edit to …".
+- **D6 is unchanged.** An option is a rewrite and takes the file's class
+  policy.
+
+**Not changed:** the host still never reads a reply's prose to decide what
+to draw. The label on a chip is the persona's declared text, bounded and
+shown as text, as a card's `<why>` is.
+
 ## How this meets Message Reactions
 
 Both epics edit `workshopReplyControls.ts` and `WorkshopTurnBubble.tsx`.
