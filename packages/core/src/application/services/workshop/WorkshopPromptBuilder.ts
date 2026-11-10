@@ -112,6 +112,8 @@ export interface WorkshopGuestJoinInput {
   timeFrame?: string;
   /** Pre-built `<workshop-reactions>` frame for the joining conversation (ADR 2026-11-07 D4). */
   reactionsFrame?: string;
+  /** Pre-built `<workshop-reaction-invite>` (ADR 2026-11-07, 2026-11-10 addendum), placed after the reactions frame. */
+  reactionInviteFrame?: string;
   /** The transcript, when the caller built it first (the reactions frame reads what it delivers). */
   transcript?: WorkshopTranscript;
 }
@@ -156,11 +158,13 @@ export function buildWorkshopGuestMessage(
   threadArtifactFrames: readonly string[] = [],
   behaviorFrames: WorkshopBehaviorFrames = {},
   /** Pre-built `<workshop-reactions>` frame (ADR 2026-11-07 D4). */
-  reactionsFrame?: string
+  reactionsFrame?: string,
+  /** Pre-built `<workshop-reaction-invite>` (2026-11-10 addendum), placed after the reactions frame. */
+  reactionInviteFrame?: string
 ): string {
   const safeWriterMessage = neutralizeReservedPersonaPromptDelimiters(writerMessage);
   if (
-    !roomCatchUp && threadArtifactFrames.length === 0 && !reactionsFrame &&
+    !roomCatchUp && threadArtifactFrames.length === 0 && !reactionsFrame && !reactionInviteFrame &&
     !behaviorFrames.interactionFrame && !behaviorFrames.activationFrame
       && !behaviorFrames.transitionFrame && !behaviorFrames.timeFrame
   ) {
@@ -174,6 +178,7 @@ export function buildWorkshopGuestMessage(
       ? [neutralizeTrustedFrame(roomCatchUp, 'workshop-room-catch-up'), '']
       : []),
     ...(reactionsFrame ? [reactionsFrame, ''] : []),
+    ...(reactionInviteFrame ? [reactionInviteFrame, ''] : []),
     ...threadArtifactFrames.flatMap((frame) => [frame, '']),
     ...(behaviorFrames.activationFrame ? [behaviorFrames.activationFrame, ''] : []),
     '<writer-message>',
@@ -351,6 +356,7 @@ export function buildWorkshopGuestJoinMessage(
     '',
     ...(input.contextAttachmentsFrame ? [input.contextAttachmentsFrame, ''] : []),
     ...(input.reactionsFrame ? [input.reactionsFrame, ''] : []),
+    ...(input.reactionInviteFrame ? [input.reactionInviteFrame, ''] : []),
     ...(input.activationFrame ? [input.activationFrame, ''] : []),
     '<writer-message>',
     neutralizeReservedPersonaPromptDelimiters(input.openingMessage),
@@ -568,6 +574,8 @@ export interface WorkshopHostMessageOptions {
   timeFrame?: string;
   /** Pre-built `<workshop-reactions>` frame (ADR 2026-11-07 D4). */
   reactionsFrame?: string;
+  /** Pre-built `<workshop-reaction-invite>` (2026-11-10 addendum), placed after the reactions frame. */
+  reactionInviteFrame?: string;
 }
 
 /** Combine pending host context with the writer's ordinary host turn. */
@@ -583,7 +591,7 @@ export function buildWorkshopHostMessage(
     !options.roomCatchUp && !options.hostUpdate &&
     !options.todoEvidence && threadArtifactFrames.length === 0 &&
     !options.interactionFrame && !options.activationFrame && !options.transitionFrame &&
-    !options.timeFrame && !options.reactionsFrame
+    !options.timeFrame && !options.reactionsFrame && !options.reactionInviteFrame
   ) {
     return safeWriterMessage;
   }
@@ -607,6 +615,8 @@ export function buildWorkshopHostMessage(
     options.todoEvidence ? '' : undefined,
     options.reactionsFrame,
     options.reactionsFrame ? '' : undefined,
+    options.reactionInviteFrame,
+    options.reactionInviteFrame ? '' : undefined,
     // Thread artifacts sit last before the message they accompany.
     ...threadArtifactFrames.flatMap((frame) => [frame, '']),
     options.activationFrame,

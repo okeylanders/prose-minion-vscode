@@ -59,6 +59,7 @@ import {
   workshopReactionHoldsAfterCatchUp,
   workshopReactionHoldsTranscript
 } from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
+import { workshopReactionInviteFor } from '@/application/services/workshop/reactions/WorkshopReactionInvite';
 import type {
   WorkshopOneShotWidgetRoomArtifact
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
@@ -248,6 +249,22 @@ export class WorkshopRoomHandler {
   private readonly sliceComposition: WorkshopSliceComposition;
   /** One prefixed log line: counts and keys only (the reaction delivery steps log through it). */
   private readonly logLine = (line: string): void => this.outputChannel.appendLine(`[WorkshopRoomHandler] ${line}`);
+
+  /**
+   * The per-turn reaction invite for the run just begun (ADR 2026-11-07,
+   * 2026-11-10 addendum): only while persona reactions are on and the run's
+   * reply has a writer message to react to. Logged without text.
+   */
+  private reactionInvite(requestId: string): string | undefined {
+    const invite = workshopReactionInviteFor(
+      this.conversationSettingsService.personaReactionsOpen(),
+      this.session.personaReplyReactionTarget(requestId)
+    );
+    if (invite) {
+      this.logLine('Reaction invite added');
+    }
+    return invite;
+  }
 
   constructor(
     private readonly assistantToolService: AssistantToolService,
@@ -622,6 +639,7 @@ export class WorkshopRoomHandler {
         this.session, joinReader, 'start', workshopReactionHoldsTranscript(transcript.deliveredTurnIds)
       );
       stageWorkshopReactionDelivery(this.session, requestId, joinReader, joinReactions, this.logLine);
+      const joinInvite = this.reactionInvite(requestId);
       const join = buildWorkshopGuestJoinMessage({
         guestPersonaId: personaId,
         excerpt: joinStart.excerpt,
@@ -634,6 +652,7 @@ export class WorkshopRoomHandler {
         transcript,
         timeFrame: timeNotice?.frame,
         reactionsFrame: joinReactions.frame,
+        reactionInviteFrame: joinInvite,
         ...behaviorFramesFor(joinStart.turn)
       });
       this.activeRun = {
@@ -888,6 +907,7 @@ export class WorkshopRoomHandler {
                 hostUpdate: input.hostUpdateFrame,
                 threadArtifactFrames: input.threadArtifactFrames,
                 reactionsFrame: input.reactionsFrame,
+                reactionInviteFrame: this.reactionInvite(input.requestId),
                 ...(conversationId ? personaBehaviorFrames : {})
               }),
               statusMessage: input.hasConversationalCatchUp
@@ -967,7 +987,8 @@ export class WorkshopRoomHandler {
                 input.roomCatchUp,
                 input.threadArtifactFrames,
                 personaBehaviorFrames,
-                input.reactionsFrame
+                input.reactionsFrame,
+                this.reactionInvite(input.requestId)
               ),
               statusMessage: input.hasConversationalCatchUp
                 ? `Catching ${workshopPersonaLabel(target.personaId)} up on the room…`

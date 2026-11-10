@@ -29,6 +29,7 @@ reaction starts a model call or edits retained history.
 | 2 | Delivery | `…-slice-2-delivery` | D4, D6: `<workshop-reactions>`, `reactionDelivery` on reply turns, the delivered view; R2 and R3 witnessed; the byte-identical-prefix test | Done: PR #246, merged `af6f3b52` ([review](../../../docs/pr-reviews/workshop-message-reactions-slice-2-delivery-review.md)) |
 | 3 | Persona reactions | `…-slice-3-persona-reactions` | D5: the trailer in `extractWorkshopReplyControls`, its outcome table, R1's host line and slim line, the prompt, the live-region announcement, Q8's setting. Q10: the reaction-only reply narrows `isWorkshopReactableTurn` (the writer cannot react to it) and `assertWorkshopReactionIntegrity` (it carries the persona's reaction) together, in one change (PR #245 N3). Reserve `prose-minion-reaction` in `RESERVED_PERSONA_FRAME`, with a test that quoted writer text carrying one is neutralized (PR #246 N4). | Done: PR #247, merged `e540b67a` ([review](../../../docs/pr-reviews/workshop-message-reactions-slice-3-persona-reactions-review.md), [independent review](../../../docs/pr-reviews/pr-247-independent-persona-reactions-review.md)) |
 | 3b | Reaction corner | `…-slice-3b-reaction-corner` | Okey's request (2026-11-09): an icon "Add reaction" button (outline smiley with a plus), always shown, in each reactable bubble's bottom-right corner; the bubble's reactions in one cluster to its left, the writer's first; a click on any reaction removes it (a persona's by Hide; the separate Hide button gone). The palette opens up, or down without room above (PR #245 L4). Closes PR #247 F-01 (focus after the last reaction on a writer bubble). Presentation only. | PR #248, review fixes on the branch ([review](../../../docs/pr-reviews/workshop-message-reactions-slice-3b-reaction-corner-review.md), [evidence](../../../docs/pr-reviews/evidence/workshop-reactions-slice-3b-visual/README.md)) |
+| 4a | Prompt tuning | `…-slice-4a-prompt-tuning` | Okey's live report (2026-11-10: personas never reacted, and never answered his reactions) and his four decisions, in the ADR's 2026-11-10 addendum: `reactions.md` and the frame say a reaction shapes the reply; `persona-reactions.md` names the moments to react, with worked *Alice* examples; a per-turn `<workshop-reaction-invite>` wherever a reply's trailer has a target; frequency by expression level (supersedes Q7). No live model calls. | Built on its branch |
 | 4 | Live pass | `…-slice-4-live-pass` | Tune how often personas react; record counts on an *Alice* fixture conversation per persona and expression level. (The Hide-focus fix, PR #247 F-01, and the palette on the topmost bubble, PR #245 L4, moved to Slice 3b.) | Not started |
 
 Slice branches are `epic/workshop-message-reactions-slice-<N>-<slug>`.
@@ -191,3 +192,19 @@ rebase a shared branch). Read only: never commit to
   list budget was raised directly on the epic branch (`964bf66f`):
   `catalogTokens` 2,000 → 6,000 and `catalogEntries` 40 → 100 (ADR
   2026-11-04, addendum 2026-11-09). 815 suites / 11,422 tests green.
+- **2026-11-10.** Slice 4a (prompt tuning) built on
+  `epic/workshop-message-reactions-slice-4a-prompt-tuning`, from Okey's live
+  report that personas never reacted and never answered his reactions. The
+  ADR's 2026-11-10 addendum records his four decisions:
+  - `reactions.md` and the frame's guidance now say a reaction shapes the
+    reply, with a check-in for curious or negative ones.
+  - `persona-reactions.md` names the moments to react, with four worked
+    *Alice* examples.
+  - A per-turn `<workshop-reaction-invite>` (`reactions/WorkshopReactionInvite`)
+    rides wherever `personaReplyReactionTarget` gives a trailer a target. It
+    is reserved, retained with its message, and logged without text.
+  - `reaction-frequency/{subtle,full,amplified}.md` (about one reply in six,
+    four or three) is taught after `persona-reactions.md`, superseding Q7.
+  - **Full suite.** Before: 815 suites, 11,422 tests, 59 snapshots. After:
+    817 suites, 11,456 tests, 59 snapshots. Lint: 0 errors. No live model
+    calls; Okey tests live, and Slice 4 tunes from his counts.
