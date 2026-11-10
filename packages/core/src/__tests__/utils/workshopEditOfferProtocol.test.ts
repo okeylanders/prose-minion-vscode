@@ -23,7 +23,7 @@ describe('decodeWorkshopEditOffer', () => {
   it('names the tag, the closed kinds and the closed elements', () => {
     expect(WORKSHOP_EDIT_OFFER_TAG).toBe('prose-minion-edit-offer');
     expect(WORKSHOP_EDIT_OFFER_KINDS).toEqual(['fixes', 'rewrites']);
-    expect(WORKSHOP_EDIT_OFFER_ELEMENTS).toEqual(['kind', 'group', 'path', 'excerpt', 'count']);
+    expect(WORKSHOP_EDIT_OFFER_ELEMENTS).toEqual(['kind', 'group', 'path', 'excerpt', 'count', 'option']);
   });
 
   it('reads each kind, for the excerpt or a catalog file, with or without a count', () => {

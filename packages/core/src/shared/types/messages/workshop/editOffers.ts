@@ -39,19 +39,45 @@ export interface WorkshopEditOffer {
   /** The persona's own count, within `PROMPT_BUDGETS.workshopEditOffers.count`. */
   readonly count?: number;
   /**
+   * On a rewrites offer only (second addendum): the labels the reply gave
+   * its alternative versions, one to `optionsPerOffer`, each one trimmed
+   * line within `optionCharacters`, no two alike once case-folded. The
+   * writer picks one; a press names it by its index here. Declared, bounded
+   * text, shown as text.
+   */
+  readonly options?: readonly string[];
+  /**
    * In the webview's view of the turn only (D3): derived by the host for
    * every turn it posts. Never stored: the session codec refuses the key.
+   * For an offer with options it is absent, and `optionStatuses` holds one
+   * status per option instead.
    */
   readonly status?: WorkshopEditOfferStatus;
+  /** In the webview's view only, never stored: one derived status per option, in `options`' order. */
+  readonly optionStatuses?: readonly WorkshopEditOfferStatus[];
+}
+
+/** Whether `option` names what a press of `offer` must: an index into its options, or nothing when it has none. */
+export function workshopEditOfferOptionFits(offer: Pick<WorkshopEditOffer, 'options'>, option: number | undefined): boolean {
+  if (!offer.options) {
+    return option === undefined;
+  }
+  return option !== undefined && Number.isSafeInteger(option) && option >= 0 && option < offer.options.length;
 }
 
 /** An offer as the webview sees it: the display path, never the `documentUri` (ADR 2026-11-05 D4.3). */
-export function workshopEditOfferForWebview(offer: WorkshopEditOffer, status?: WorkshopEditOfferStatus): WorkshopEditOffer {
+export function workshopEditOfferForWebview(
+  offer: WorkshopEditOffer,
+  statusOf?: (option: number | undefined) => WorkshopEditOfferStatus
+): WorkshopEditOffer {
   return {
     kind: offer.kind,
     target: { kind: offer.target.kind, relativePath: offer.target.relativePath },
     ...(offer.count !== undefined ? { count: offer.count } : {}),
-    ...(status ? { status } : {})
+    ...(offer.options ? { options: [...offer.options] } : {}),
+    ...(statusOf
+      ? offer.options ? { optionStatuses: offer.options.map((_label, index) => statusOf(index)) } : { status: statusOf(undefined) }
+      : {})
   };
 }
 
@@ -66,6 +92,8 @@ export function workshopEditOfferForWebview(offer: WorkshopEditOffer, status?: W
 export interface WorkshopEditOfferRequest {
   readonly sourceTurnId: string;
   readonly kind: WorkshopEditOfferKind;
+  /** The version the writer chose, by its index in the offer's `options`; absent for an offer without them. */
+  readonly option?: number;
 }
 
 /** What an answer came to: edit cards, or nothing to change. */
@@ -76,6 +104,8 @@ export type WorkshopEditOfferOutcome = (typeof WORKSHOP_EDIT_OFFER_OUTCOMES)[num
 export interface WorkshopEditOfferAnswer {
   readonly sourceTurnId: string;
   readonly kind: WorkshopEditOfferKind;
+  /** The version it answers, as on the request. */
+  readonly option?: number;
   readonly outcome: WorkshopEditOfferOutcome;
   /** With `none` only: the persona's one line, within `whyCharacters`. */
   readonly why?: string;
@@ -121,6 +151,8 @@ export interface WorkshopEditOfferActionPayload {
   roomRevision: number;
   turnId: string;
   kind: WorkshopEditOfferKind;
+  /** The chosen version's index in the offer's options: required when the offer has options, refused otherwise. */
+  option?: number;
 }
 
 export interface WorkshopEditOfferActionMessage extends MessageEnvelope<WorkshopEditOfferActionPayload> {
@@ -142,7 +174,7 @@ export const WORKSHOP_EDIT_OFFER_REFUSALS = [
   'run-active',
   /** The room holds no such turn. */
   'no-turn',
-  /** The turn holds no offer of that kind. */
+  /** The turn holds no offer of that kind, or the press named an option the offer does not have (or none, when it has them). */
   'no-offer',
   /** The offer is already answered, and asking again could double an edit (D7). */
   'already-answered',
@@ -176,6 +208,8 @@ export interface WorkshopEditOfferResultPayload {
   roomRevision: number;
   turnId: string;
   kind: WorkshopEditOfferKind;
+  /** The press's own option, echoed. */
+  option?: number;
   answer: 'answered' | 'refused' | 'failed';
   answerTurnId?: string;
   outcome?: WorkshopEditOfferOutcome;

@@ -91,7 +91,12 @@ export async function resolveWorkshopReplyEditOffers(input: WorkshopReplyFileEdi
       logs.push(dropped(`unresolved:${result}`));
       return;
     }
-    offers.push({ kind: draft.kind, target: result, ...(draft.count !== undefined ? { count: draft.count } : {}) });
+    offers.push({
+      kind: draft.kind,
+      target: result,
+      ...(draft.count !== undefined ? { count: draft.count } : {}),
+      ...(draft.options ? { options: [...draft.options] } : {})
+    });
   });
   return { offers, logs };
 }
@@ -147,7 +152,7 @@ export function settleWorkshopReplyEditOffers(
 export function reportWorkshopEditOffers(offers: readonly WorkshopEditOffer[], turn: Pick<WorkshopTurn, 'editOffers'>, log: (line: string) => void): void {
   for (const offer of offers) {
     log(turn.editOffers
-      ? `Edit offer kept (kind=${offer.kind}; target=${offer.target.kind}; count=${offer.count ?? 'none'})`
+      ? `Edit offer kept (kind=${offer.kind}; target=${offer.target.kind}; count=${offer.count ?? 'none'}${offer.options ? `; options=${offer.options.length}` : ''})`
       : dropped('not-a-persona'));
   }
 }

@@ -11,12 +11,16 @@
  * - `target`: the host-written identity its file resolved to when the reply
  *   was read, held to the staging contract a file-edit card's identity is
  *   (`workshopFileEditIdentityHoldable`), never to a model's lookup grammar;
- * - `count`, optional: a whole number within the trailer's bound.
+ * - `count`, optional: a whole number within the trailer's bound;
+ * - `options`, optional, on a rewrites offer only: the trailer codec's own
+ *   rule (`areWorkshopEditOfferOptions`). `status` and `optionStatuses` are
+ *   the webview's view and are refused here, as any unknown key is.
  * An offer stores no state (D3), so there is nothing to settle on reopen.
  *
  * **The press's two keys** (D3; Slice 2), optional and additive the same way:
  * - `editOfferRequest` on the writer turn a press made: exactly
- *   `{ sourceTurnId, kind }`;
+ *   `{ sourceTurnId, kind }`, with `option` (an index within the options'
+ *   bound) on a rewrites press of one version;
  * - `editOfferAnswer` on the persona's answer: exactly
  *   `{ sourceTurnId, kind, outcome }`, with a one-line `why` within
  *   `whyCharacters` on a `none` answer and never on a `proposed` one.
@@ -42,7 +46,7 @@ import {
   stringAt
 } from '@/application/services/workshop/persistedValidation';
 import { oneLineAt } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
-import { isWorkshopEditOfferCount } from '@/utils/workshopEditOfferProtocol';
+import { areWorkshopEditOfferOptions, isWorkshopEditOfferCount } from '@/utils/workshopEditOfferProtocol';
 
 const BUDGETS = PROMPT_BUDGETS.workshopEditOffers;
 
@@ -58,7 +62,7 @@ export function assertWorkshopEditOfferShape(turn: Record<string, unknown>, path
   boundedArrayAt(turn.editOffers, at, 1, BUDGETS.offersPerReply, 'edit offers');
   const kinds = new Set<unknown>();
   turn.editOffers.forEach((item, index) => {
-    const offer = exactObject(item, `${at}[${index}]`, ['kind', 'target'], ['count']);
+    const offer = exactObject(item, `${at}[${index}]`, ['kind', 'target'], ['count', 'options']);
     enumAt(offer.kind, `${at}[${index}].kind`, WORKSHOP_EDIT_OFFER_KINDS);
     if (kinds.has(offer.kind)) {
       shapeError(`${at}[${index}].kind`, 'a kind no earlier offer has');
@@ -72,6 +76,10 @@ export function assertWorkshopEditOfferShape(turn: Record<string, unknown>, path
     if (offer.count !== undefined && !isWorkshopEditOfferCount(offer.count)) {
       shapeError(`${at}[${index}].count`, `a whole number from 1 to ${BUDGETS.count}`);
     }
+    if (offer.options !== undefined && (offer.kind !== 'rewrites' || !areWorkshopEditOfferOptions(offer.options))) {
+      shapeError(`${at}[${index}].options`,
+        `on a rewrites offer, 1 to ${BUDGETS.optionsPerOffer} one-line labels of at most ${BUDGETS.optionCharacters} characters, no two alike`);
+    }
   });
 }
 
@@ -82,18 +90,20 @@ export function assertWorkshopEditOfferPressShape(turn: Record<string, unknown>,
     if (!checkpoint && (turn.role !== 'user' || turn.participant !== 'writer')) {
       shapeError(at, 'a writer turn');
     }
-    const request = exactObject(turn.editOfferRequest, at, ['sourceTurnId', 'kind']);
+    const request = exactObject(turn.editOfferRequest, at, ['sourceTurnId', 'kind'], ['option']);
     stringAt(request.sourceTurnId, `${at}.sourceTurnId`);
     enumAt(request.kind, `${at}.kind`, WORKSHOP_EDIT_OFFER_KINDS);
+    assertOption(request, at);
   }
   if (turn.editOfferAnswer !== undefined) {
     const at = `${path}.editOfferAnswer`;
     if (!checkpoint && (turn.role !== 'assistant' || (turn.participant !== 'host' && turn.participant !== 'guest'))) {
       shapeError(at, 'a host or guest persona reply');
     }
-    const answer = exactObject(turn.editOfferAnswer, at, ['sourceTurnId', 'kind', 'outcome'], ['why']);
+    const answer = exactObject(turn.editOfferAnswer, at, ['sourceTurnId', 'kind', 'outcome'], ['why', 'option']);
     stringAt(answer.sourceTurnId, `${at}.sourceTurnId`);
     enumAt(answer.kind, `${at}.kind`, WORKSHOP_EDIT_OFFER_KINDS);
+    assertOption(answer, at);
     enumAt(answer.outcome, `${at}.outcome`, WORKSHOP_EDIT_OFFER_OUTCOMES);
     if (answer.why !== undefined) {
       if (answer.outcome !== 'none') {
@@ -104,6 +114,17 @@ export function assertWorkshopEditOfferPressShape(turn: Record<string, unknown>,
   }
 }
 
+/** A press's `option`: an index a rewrites offer's options could hold. Which offer it names is read from the thread. */
+function assertOption(record: Record<string, unknown>, at: string): void {
+  if (record.option === undefined) {
+    return;
+  }
+  const option = record.option;
+  if (record.kind !== 'rewrites' || typeof option !== 'number' || !Number.isSafeInteger(option) || option < 0 || option >= BUDGETS.optionsPerOffer) {
+    shapeError(`${at}.option`, `on a rewrites press, a whole number from 0 to ${BUDGETS.optionsPerOffer - 1}`);
+  }
+}
+
 export function cloneWorkshopEditOffer(offer: WorkshopEditOffer): WorkshopEditOffer {
-  return { ...offer, target: { ...offer.target } };
+  return { ...offer, target: { ...offer.target }, ...(offer.options ? { options: [...offer.options] } : {}) };
 }

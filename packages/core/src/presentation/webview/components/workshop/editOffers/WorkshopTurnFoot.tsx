@@ -1,7 +1,8 @@
 /**
  * A reply's footer (ADR 2026-11-10 U1; epic Slice 3): one row under the
  * action row. At the left, what the persona offers to do next: a quiet lead
- * "As edits" and the edit-offer chips (fixes, then rewrites), then the
+ * "As edits" and the edit-offer chips (fixes, then rewrites: one chip, or
+ * one per alternative version the offer names), then the
  * persona's widget recommendation chip, which lives here now. At the right,
  * the reaction corner, composed as it is.
  *
@@ -55,15 +56,27 @@ export const WorkshopTurnFoot: React.FC<WorkshopTurnFootProps> = ({ turn, offers
               <span className="pm-ws-offer-lead" aria-hidden="true">
                 <Icon name="pen" size={12} /> As edits
               </span>
-              {editOffers.map((offer) => (
-                <WorkshopEditOfferChip
-                  key={offer.kind}
-                  turnId={turn.id}
-                  personaLabel={personaLabel}
-                  offer={offer}
-                  controls={offers}
-                />
-              ))}
+              {editOffers.flatMap((offer) => offer.options
+                // Alternative versions: a chip each, in the order declared (second addendum).
+                ? offer.options.map((_label, option) => (
+                    <WorkshopEditOfferChip
+                      key={`${offer.kind}#${option}`}
+                      turnId={turn.id}
+                      personaLabel={personaLabel}
+                      offer={offer}
+                      option={option}
+                      controls={offers}
+                    />
+                  ))
+                : [(
+                    <WorkshopEditOfferChip
+                      key={offer.kind}
+                      turnId={turn.id}
+                      personaLabel={personaLabel}
+                      offer={offer}
+                      controls={offers}
+                    />
+                  )])}
             </div>
           )}
           {widgetChip}

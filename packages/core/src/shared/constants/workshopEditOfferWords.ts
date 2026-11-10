@@ -46,18 +46,24 @@ export function workshopEditOfferCountWords(kind: WorkshopEditOfferKind, count: 
 }
 
 /** The press's writer turn (D4): what the transcript, recall and other participants' catch-up read. */
-export function workshopEditOfferRequestLine(personaLabel: string, kind: WorkshopEditOfferKind): string {
-  return `Asked ${personaLabel} to suggest the ${kind} from their reply as file edits.`;
+export function workshopEditOfferRequestLine(personaLabel: string, kind: WorkshopEditOfferKind, option?: string): string {
+  // A chosen version is named by the persona's own declared label (second addendum): bounded, one line, shown as text.
+  return option === undefined
+    ? `Asked ${personaLabel} to suggest the ${kind} from their reply as file edits.`
+    : `Asked ${personaLabel} for an edit · ${option}, from that reply.`;
 }
 
 /** The answer's line when it proposed cards (U4). `at` is the source reply's time as the room shows it. */
-export function workshopEditOfferProposedLine(kind: WorkshopEditOfferKind, changes: number, relativePath: string, at: string): string {
-  return `Suggested ${workshopEditOfferCountWords(kind, changes)} to ${relativePath}, from the ${at} reply.`;
+export function workshopEditOfferProposedLine(kind: WorkshopEditOfferKind, changes: number, relativePath: string, at: string, option?: string): string {
+  return option === undefined
+    ? `Suggested ${workshopEditOfferCountWords(kind, changes)} to ${relativePath}, from the ${at} reply.`
+    : `Suggested ${option} as an edit to ${relativePath}, from the ${at} reply.`;
 }
 
 /** The answer's line when there was nothing to change (U4), with the persona's one-line reason. */
-export function workshopEditOfferNoneLine(personaLabel: string, why: string | undefined): string {
-  return why ? `${personaLabel} found nothing to change: ${why}` : `${personaLabel} found nothing to change.`;
+export function workshopEditOfferNoneLine(personaLabel: string, why: string | undefined, option?: string): string {
+  const found = option === undefined ? `${personaLabel} found nothing to change` : `${personaLabel} found nothing to change for ${option}`;
+  return why ? `${found}: ${why}` : `${found}.`;
 }
 
 /** What retained history keeps in place of an answer (D5): the host's line, never the persona's prose or trailers. */
@@ -76,8 +82,14 @@ export function workshopEditOfferRetainedLine(kind: WorkshopEditOfferKind, read:
 export function workshopEditOfferAnsweredWords(
   personaLabel: string,
   kind: WorkshopEditOfferKind,
-  answer: { readonly outcome: 'proposed'; readonly changes: number; readonly relativePath: string } | { readonly outcome: 'none' }
+  answer: { readonly outcome: 'proposed'; readonly changes: number; readonly relativePath: string } | { readonly outcome: 'none' },
+  option?: string
 ): string {
+  if (option !== undefined) {
+    return answer.outcome === 'none'
+      ? `${personaLabel} found nothing to change for ${option}.`
+      : `${personaLabel} suggested ${option} as an edit to ${answer.relativePath}. It is at the end of the conversation.`;
+  }
   return answer.outcome === 'none'
     ? `${personaLabel} found nothing to change.`
     : `${personaLabel} suggested ${workshopEditOfferCountWords(kind, answer.changes)} to ${answer.relativePath}. They are at the end of the conversation.`;

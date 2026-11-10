@@ -206,6 +206,10 @@ export interface PromptBudgets {
     whyCharacters: number;
     /** Changed characters on each side of one fix (D6). */
     fixChangedCharacters: number;
+    /** `<option>` elements one rewrites offer may name: alternative versions, a chip each (second addendum). */
+    optionsPerOffer: number;
+    /** One option's label, trimmed, on one line. */
+    optionCharacters: number;
   }>;
   readonly workshopTodos: Readonly<{
     items: number;
@@ -716,7 +720,9 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     count: 99,
     sourceReplyCharacters: 48_000,
     whyCharacters: 200,
-    fixChangedCharacters: 40
+    fixChangedCharacters: 40,
+    optionsPerOffer: 4,
+    optionCharacters: 40
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {

@@ -8,8 +8,11 @@
  *   elements exactly the codec's;
  * - its worked example decodes, through the production extractor and codec,
  *   to the offers it shows, placed last as the prose says;
- * - it teaches the rules a persona must keep: declare only what the prose
- *   holds, never as an invitation, never beside a file-edit trailer;
+ * - it teaches the rules a persona must keep: declare whatever replacement
+ *   prose or fixes the reply holds (the rule, not the exception: ADR
+ *   2026-11-10's second addendum), only what the prose holds, never as an
+ *   invitation, never beside a file-edit trailer, and an `<option>` for each
+ *   alternative version;
  * - it is taught to host and guest only while file edits are on, right
  *   after the file-edit teaching.
  * Made-up text: Alice.
@@ -42,11 +45,14 @@ describe('edit-offer prompt ↔ PROMPT_BUDGETS', () => {
   const pinned: ReadonlyArray<readonly [RegExp, number[]]> = [
     [/One reply declares at most ([\d,]+) offers/, [budgets.offersPerReply]],
     [/a whole number from ([\d,]+) to ([\d,]+)/, [1, budgets.count]],
+    // Alternative versions (second addendum): how many, and how long a label.
+    [/up to ([\d,]+) options/, [budgets.optionsPerOffer]],
+    [/one line of at most ([\d,]+) characters, and no two the same/, [budgets.optionCharacters]],
     [/An offer longer than ([\d,]+) characters is dropped/, [budgets.frameCharacters]],
     [/a reply longer than ([\d,]+) characters keeps no offers/, [budgets.sourceReplyCharacters]],
     // The press (Slice 2): a fix's size, and the no-edit answer's one line.
     [/at most ([\d,]+) on each side/, [budgets.fixChangedCharacters]],
-    [/one line of at most ([\d,]+) characters/, [budgets.whyCharacters]]
+    [/your reason on one line of at most ([\d,]+) characters/, [budgets.whyCharacters]]
   ];
 
   it.each(pinned)('quotes %s from its bound', (pattern, expected) => {
@@ -81,7 +87,16 @@ describe('edit-offer prompt ↔ the vocabulary and the codec', () => {
 
   it('teaches the rules a persona must keep', () => {
     expect(prose).toContain('Declare only what the reply\'s prose really holds');
-    expect(prose).toContain('Never declare an offer as an invitation');
+    expect(prose).toContain('Never declare an offer as an invitation for something not written');
+    // Declaring is the rule, not the exception (second addendum): the sentence the live probe was run with.
+    expect(prose).toContain('Whenever your reply writes out replacement prose for a passage of a file, or names small fixes to it, declare it: '
+      + 'the writer has no other way to turn your words into an edit. That holds for one rewrite and for several alternative versions of the '
+      + 'same passage alike.');
+    expect(prose).not.toContain('Most replies declare nothing');
+    // Options are for a choice between versions, one per version, labeled as the prose labels it; left out otherwise.
+    expect(prose).toContain('name each one in the `rewrites` offer with an `<option>`: one for each version, labeled as your prose labels it');
+    expect(prose).toContain('Leave `<option>` out when the rewrites belong together');
+    expect(prose).toContain('A `fixes` offer takes none.');
     expect(prose).toContain('Never put an offer and a file-edit trailer in the same reply.');
     expect(prose).toContain('A reply with no prose has nothing to offer.');
     expect(prose).toContain('Name it as a file-edit trailer names it: `<group>` and `<path>`');
@@ -95,19 +110,28 @@ describe('the worked example, through the production extractor and codec', () =>
   const said = 'Three slips in the excerpt: "begining", "its\' own", and a doubled "the". '
     + 'And the Rabbit\'s two lines in the chapter would land harder cut short.';
 
-  it('shows one example of two offers', () => {
-    expect(examples).toHaveLength(1);
+  it('shows two examples: fixes beside three versions, and rewrites that belong together', () => {
+    expect(examples).toHaveLength(2);
   });
 
-  it('decodes to the two offers it shows, in order, and leaves the prose', () => {
+  it('decodes the first to the fixes and the three versions it shows, in order, and leaves the prose', () => {
     const controls = extractWorkshopReplyControls(`${said}\n\n${examples[0]}\n`, { memoryOpen: false, fileEditsOpen: true });
     expect(controls.rest).toBe(said);
     expect(controls.editOffers).toEqual({
       kind: 'frames',
       offers: [
         { kind: 'fixes', target: { kind: 'excerpt' }, count: 3 },
-        { kind: 'rewrites', target: { kind: 'resource', group: 'chapters', path: 'chapters/down-the-rabbit-hole.md' }, count: 2 }
+        { kind: 'rewrites', target: { kind: 'excerpt' }, options: ['Version 1', 'Version 2', 'A third option'] }
       ],
+      rejections: []
+    });
+  });
+
+  it('decodes the second to one rewrites offer with no options', () => {
+    const controls = extractWorkshopReplyControls(`${said}\n\n${examples[1]}\n`, { memoryOpen: false, fileEditsOpen: true });
+    expect(controls.editOffers).toEqual({
+      kind: 'frames',
+      offers: [{ kind: 'rewrites', target: { kind: 'resource', group: 'chapters', path: 'chapters/down-the-rabbit-hole.md' }, count: 2 }],
       rejections: []
     });
     expect(CONTEXT_PATH_GROUPS as readonly string[]).toContain('chapters');

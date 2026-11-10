@@ -14,6 +14,13 @@
  *   names its file exactly as a file edit does. One file per offer.
  * - **`<count>`:** optional, once: a whole number from 1 to `count`, in
  *   digits. It is for a chip's label only.
+ * - **`<option>`:** on a rewrites offer only, up to `optionsPerOffer` times:
+ *   the label the reply's prose gave one alternative version. Each is
+ *   trimmed, one line, 1 to `optionCharacters` characters, and unlike every
+ *   other once case-folded. An option on a fixes offer (`option-on-fixes`),
+ *   more than the bound (`too-many-options`), an empty one (`empty-option`),
+ *   one over its bound or over a line (`invalid-option`) or a repeat
+ *   (`duplicate-option`) refuses the frame.
  *
  * The target is only what the frame named: the host resolves it to an
  * identity (D2). Reasons, never text: no caller logs what a field held.
@@ -37,13 +44,18 @@ import {
 export const WORKSHOP_EDIT_OFFER_TAG = 'prose-minion-edit-offer';
 
 /** Every element the frame reads; `excerpt` alone may close itself. */
-export const WORKSHOP_EDIT_OFFER_ELEMENTS = ['kind', 'group', 'path', 'excerpt', 'count'] as const;
+export const WORKSHOP_EDIT_OFFER_ELEMENTS = ['kind', 'group', 'path', 'excerpt', 'count', 'option'] as const;
 
 export const WORKSHOP_EDIT_OFFER_FAULTS = [
   'repeated-element',
   'missing-kind',
   'unknown-kind',
-  'invalid-count'
+  'invalid-count',
+  'option-on-fixes',
+  'too-many-options',
+  'empty-option',
+  'invalid-option',
+  'duplicate-option'
 ] as const;
 export type WorkshopEditOfferFault =
   | typeof WORKSHOP_EDIT_OFFER_FAULTS[number]
@@ -55,6 +67,8 @@ export interface WorkshopEditOfferDraft {
   readonly kind: WorkshopEditOfferKind;
   readonly target: WorkshopFileEditRequestedTarget;
   readonly count?: number;
+  /** A rewrites offer's alternative versions, as labeled: trimmed, in the order written. */
+  readonly options?: readonly string[];
 }
 
 export type WorkshopEditOfferDecode =
@@ -78,7 +92,8 @@ export function decodeWorkshopEditOffer(inner: string): WorkshopEditOfferDecode 
   const elements = read.elements;
   const seen = new Set<string>();
   for (const { name } of elements) {
-    if (seen.has(name)) {
+    // `<option>` alone may repeat: one per alternative version.
+    if (name !== 'option' && seen.has(name)) {
       return reject('repeated-element');
     }
     seen.add(name);
@@ -94,12 +109,64 @@ export function decodeWorkshopEditOffer(inner: string): WorkshopEditOfferDecode 
   if (typeof target === 'string') {
     return reject(target);
   }
+  const options = decodeOptions(kind, elements.filter((element) => element.name === 'option').map((element) => element.content.trim()));
+  if (typeof options === 'string') {
+    return reject(options);
+  }
+  const named = options.length > 0 ? { options } : {};
   const written = elements.find((element) => element.name === 'count')?.content.trim();
   if (written === undefined) {
-    return { kind: 'offer', offer: { kind, target } };
+    return { kind: 'offer', offer: { kind, target, ...named } };
   }
   const count = COUNT.test(written) ? Number(written) : undefined;
-  return isWorkshopEditOfferCount(count) ? { kind: 'offer', offer: { kind, target, count } } : reject('invalid-count');
+  return isWorkshopEditOfferCount(count) ? { kind: 'offer', offer: { kind, target, count, ...named } } : reject('invalid-count');
+}
+
+/** A line break or any other control character: an option label is one line of text. */
+const NOT_ONE_LINE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u;
+
+/** Whether a string is one option label: the codec's rule, and the session codec's for a saved offer. */
+export function isWorkshopEditOfferOption(value: unknown): value is string {
+  return typeof value === 'string' && value.length >= 1 && value.length <= PROMPT_BUDGETS.workshopEditOffers.optionCharacters
+    && value.trim() === value && !NOT_ONE_LINE.test(value);
+}
+
+/** How two labels are compared: a repeat differs by more than letter case. */
+export function workshopEditOfferOptionKey(label: string): string {
+  return label.normalize('NFC').toLowerCase();
+}
+
+/** Whether a list is a rewrites offer's options: one to the bound, each a label, no two alike. */
+export function areWorkshopEditOfferOptions(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length >= 1 && value.length <= PROMPT_BUDGETS.workshopEditOffers.optionsPerOffer
+    && value.every(isWorkshopEditOfferOption) && new Set(value.map(workshopEditOfferOptionKey)).size === value.length;
+}
+
+function decodeOptions(kind: WorkshopEditOfferKind, labels: readonly string[]): readonly string[] | WorkshopEditOfferFault {
+  if (labels.length === 0) {
+    return labels;
+  }
+  if (kind !== 'rewrites') {
+    return 'option-on-fixes';
+  }
+  if (labels.length > PROMPT_BUDGETS.workshopEditOffers.optionsPerOffer) {
+    return 'too-many-options';
+  }
+  const seen = new Set<string>();
+  for (const label of labels) {
+    if (label.length === 0) {
+      return 'empty-option';
+    }
+    if (!isWorkshopEditOfferOption(label)) {
+      return 'invalid-option';
+    }
+    const key = workshopEditOfferOptionKey(label);
+    if (seen.has(key)) {
+      return 'duplicate-option';
+    }
+    seen.add(key);
+  }
+  return labels;
 }
 
 function reject(fault: WorkshopEditOfferFault): Extract<WorkshopEditOfferDecode, { kind: 'rejected' }> {

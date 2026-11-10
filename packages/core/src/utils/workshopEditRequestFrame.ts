@@ -19,7 +19,9 @@
  *   history may have been compacted or the room reopened; the quote makes
  *   the source certain either way.
  * - **The wording differs by kind** only in its middle paragraph
- *   (`WORKSHOP_EDIT_REQUEST_KIND_WORDS`).
+ *   (`WORKSHOP_EDIT_REQUEST_KIND_WORDS`). A press of one version of an offer
+ *   with options names that version, by the host's stored label, and asks
+ *   for it alone (`workshopEditRequestOptionWords`).
  * - **The persona-facing words live here,** beside the frame they belong to.
  *   `replyEditOfferPressPromptSync.test.ts` holds them to the persona
  *   prompt's teaching (`workshop-personas/reply-edit-offers.md`) and to the
@@ -72,7 +74,25 @@ export interface WorkshopEditRequestFrameInput {
   readonly at: string;
   /** The turn's own offer of the pressed kind. */
   readonly offer: Pick<WorkshopEditOffer, 'kind' | 'count'> & { readonly target: Pick<WorkshopEditOffer['target'], 'kind' | 'relativePath'> };
+  /**
+   * The version the writer chose, for an offer with options (second
+   * addendum): the host's stored label, never the webview's. Neutralized
+   * here before it is written.
+   */
+  readonly option?: string;
 }
+
+/** What a press of one version asks for, in place of the kind's words: that version only. `label` is already neutralized. */
+export function workshopEditRequestOptionWords(label: string): { readonly pressed: string; readonly rule: string } {
+  return {
+    pressed: `The writer chose "${label}" from your reply`,
+    rule: `That version only: the replacement prose your reply wrote out as "${label}". Suggest it as find-and-replace kept to its passage, `
+      + 'under the prose rules you already know. Leave the other versions out, and add nothing your reply did not propose.'
+  };
+}
+
+/** The ask that ends a version's first line. */
+export const WORKSHOP_EDIT_REQUEST_OPTION_ASK = 'Suggest that version only, as file edits.';
 
 function attribute(value: string): string {
   return neutralizeReservedPersonaPromptDelimiters(value).replace(/["<>\r\n]/g, ' ').trim();
@@ -95,14 +115,17 @@ export function buildWorkshopEditRequestFrame(input: WorkshopEditRequestFrameInp
   const { turn, offer } = input;
   const words = WORKSHOP_EDIT_REQUEST_KIND_WORDS[offer.kind];
   const at = attribute(input.at);
+  const chosen = input.option === undefined ? undefined : workshopEditRequestOptionWords(attribute(input.option));
   return [
     `<${WORKSHOP_EDIT_REQUEST_TAG} kind="${offer.kind}">`,
-    `The writer pressed "${workshopEditOfferCountWords(offer.kind, offer.count)}" on your reply of ${at}, quoted below. ${words.ask}`,
+    chosen
+      ? `${chosen.pressed} of ${at}, quoted below. ${WORKSHOP_EDIT_REQUEST_OPTION_ASK}`
+      : `The writer pressed "${workshopEditOfferCountWords(offer.kind, offer.count)}" on your reply of ${at}, quoted below. ${words.ask}`,
     '',
     `Reply with <${WORKSHOP_FILE_EDIT_TAG}> trailers and nothing else: no greeting, no commentary, no other trailer. `
       + `${fileWords(offer.target)} Read the file as it stands before you quote it.`,
     '',
-    words.rule,
+    chosen ? chosen.rule : words.rule,
     '',
     'If the file already reads right, or you find nothing to change, reply with exactly:',
     WORKSHOP_NO_FILE_EDIT_FORM,

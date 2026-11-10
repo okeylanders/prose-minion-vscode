@@ -66,6 +66,7 @@ import {
   workshopReactionHoldsTranscript
 } from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
 import { workshopReactionInviteFor } from '@/application/services/workshop/reactions/WorkshopReactionInvite';
+import { workshopEditOfferReminderFor } from '@/application/services/workshop/fileEdits/WorkshopEditOfferReminder';
 import type {
   WorkshopOneShotWidgetRoomArtifact
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
@@ -128,6 +129,8 @@ import {
   WorkshopComposerDraftRestoredMessage,
   WorkshopTurnMessage,
   WorkshopTurnWidgetCommit,
+  WorkshopExcerpt,
+  workshopExcerptSourceUri,
 } from '@messages';
 import { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
@@ -277,6 +280,20 @@ export class WorkshopRoomHandler {
       this.logLine('Reaction invite added');
     }
     return invite;
+  }
+
+  /** The per-turn edit-offer reminder for a persona's message (ADR 2026-11-10, second addendum). Logged without text. */
+  private editOfferReminder(toPersona: boolean, press: boolean, excerpt: WorkshopExcerpt | undefined): string[] {
+    const reminder = workshopEditOfferReminderFor({
+      fileEditsOpen: this.conversationSettingsService.fileEditsOpen(),
+      excerptFromFile: excerpt !== undefined && workshopExcerptSourceUri(excerpt.source) !== undefined,
+      toPersona,
+      press
+    });
+    if (reminder) {
+      this.logLine('Edit offer reminder added');
+    }
+    return reminder ? [reminder] : [];
   }
 
   constructor(
@@ -668,7 +685,8 @@ export class WorkshopRoomHandler {
         transcript,
         timeFrame: timeNotice?.frame,
         reactionsFrame: joinReactions.frame,
-        reactionInviteFrame: joinInvite,
+        // The edit-offer reminder shares the invite's slot on a join, which has no thread-artifact slot.
+        reactionInviteFrame: [joinInvite, ...this.editOfferReminder(true, false, joinStart.excerpt)].filter(Boolean).join('\n\n') || undefined,
         ...behaviorFramesFor(joinStart.turn)
       });
       this.activeRun = {
@@ -1158,7 +1176,9 @@ export class WorkshopRoomHandler {
     const threadArtifactFrames = [
       ...roomThreadArtifacts.map(buildWorkshopThreadArtifactFrame),
       // A press's directive rides the frames' own slot, last before the message (ADR 2026-11-10 D4).
-      ...(directedRun ? [directedRun.frame] : [])
+      ...(directedRun ? [directedRun.frame] : []),
+      // The edit-offer reminder rides it too, never with a press and never for a tool (second addendum).
+      ...this.editOfferReminder(roomReader !== undefined, directedRun !== undefined, excerpt)
     ];
     const widgetCommitRef: WorkshopTurnWidgetCommit | undefined = widgetArtifact
       ? {

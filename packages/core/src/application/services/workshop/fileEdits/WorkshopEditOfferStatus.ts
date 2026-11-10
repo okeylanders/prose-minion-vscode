@@ -3,7 +3,8 @@
  * D7; epic Slice 2). Pure over the full ledger: nothing about "used" is
  * stored, so a cut, a branch, a reopen or an import needs no rule of its own.
  *
- * For the offer of `kind` on turn `turnId`:
+ * For the offer of `kind` on turn `turnId` (and, for an offer with options,
+ * the one `option`: a request or answer counts only for the option it names):
  * - a run is going and a request for it stands after its latest answer:
  *   **asked**;
  * - no answer turn names it: **open**;
@@ -33,15 +34,17 @@ export function workshopEditOfferStatus(
   ledger: readonly Turn[],
   turnId: string,
   kind: WorkshopEditOfferKind,
-  facts: { readonly runActive: boolean }
+  facts: { readonly runActive: boolean },
+  /** The option of an offer with options: status is per option, so one version's press never uses up another's. */
+  option?: number
 ): WorkshopEditOfferStatus {
   let answer: Turn | undefined;
   let requestedSinceAnswer = false;
   for (const turn of ledger) {
-    if (turn.editOfferAnswer?.sourceTurnId === turnId && turn.editOfferAnswer.kind === kind) {
+    if (turn.editOfferAnswer?.sourceTurnId === turnId && turn.editOfferAnswer.kind === kind && turn.editOfferAnswer.option === option) {
       answer = turn;
       requestedSinceAnswer = false;
-    } else if (turn.editOfferRequest?.sourceTurnId === turnId && turn.editOfferRequest.kind === kind) {
+    } else if (turn.editOfferRequest?.sourceTurnId === turnId && turn.editOfferRequest.kind === kind && turn.editOfferRequest.option === option) {
       requestedSinceAnswer = true;
     }
   }

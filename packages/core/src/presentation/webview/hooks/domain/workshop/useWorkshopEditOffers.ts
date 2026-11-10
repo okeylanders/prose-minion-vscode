@@ -5,12 +5,14 @@
  *
  * - **Host-owned truth.** An offer and its status arrive on the snapshot's
  *   turns; nothing is worked out here. A press posts ids only (a minted
- *   `requestId`, the room revision, the turn id and the kind) and waits for
+ *   `requestId`, the room revision, the turn id, the kind and, for one
+ *   version, its option's index) and waits for
  *   `WORKSHOP_EDIT_OFFER_RESULT`.
  * - **Correlated** (the file-edit cards' pattern). Only an answer still
  *   waited for, for the room on screen, is taken: a late, duplicate or other
  *   room's answer changes nothing.
- * - **Per chip** (`turnId#kind`): asking while its request is out; one
+ * - **Per chip** (`turnId#kind`, and `#option` for one version of an offer
+ *   with options): asking while its request is out; one
  *   request per chip at a time. A refusal's or failure's words stay with the
  *   chip until the next snapshot.
  * - **Announced once** (U6), by the one polite live region this hook owns:
@@ -42,7 +44,7 @@ export interface WorkshopEditOffersState {
 
 export interface WorkshopEditOffersActions {
   /** Ask the reply's author for its fixes or rewrites as edits. */
-  ask: (turnId: string, kind: WorkshopEditOfferKind) => void;
+  ask: (turnId: string, kind: WorkshopEditOfferKind, option?: number) => void;
   handleResult: (message: WorkshopEditOfferResultMessage) => void;
   /** A snapshot arrived: a chip's held words go with it. */
   noteSessionState: () => void;
@@ -107,9 +109,9 @@ export function useWorkshopEditOffers({ roomKey, roomRevision }: UseWorkshopEdit
       return next;
     }), []);
 
-  const ask = React.useCallback((turnId: string, kind: WorkshopEditOfferKind) => {
+  const ask = React.useCallback((turnId: string, kind: WorkshopEditOfferKind, option?: number) => {
     const { key, revision } = room.current;
-    const chip = workshopEditOfferKey(turnId, kind);
+    const chip = workshopEditOfferKey(turnId, kind, option);
     if (revision === undefined || askingRef.current.has(chip)) {
       return;
     }
@@ -119,7 +121,7 @@ export function useWorkshopEditOffers({ roomKey, roomRevision }: UseWorkshopEdit
     setAsking(chip, true);
     setFeedback(chip, undefined);
     // Ids only (D4): no text, no path, no count.
-    const payload: WorkshopEditOfferActionPayload = { requestId, roomRevision: revision, turnId, kind };
+    const payload: WorkshopEditOfferActionPayload = { requestId, roomRevision: revision, turnId, kind, ...(option !== undefined ? { option } : {}) };
     vscode.postMessage({ type: MessageType.WORKSHOP_EDIT_OFFER_ACTION, source: SOURCE, payload, timestamp: Date.now() });
   }, [setAsking, setFeedback, vscode]);
 
@@ -148,7 +150,7 @@ export function useWorkshopEditOffers({ roomKey, roomRevision }: UseWorkshopEdit
     pending.current.delete(payload.requestId);
     const sameRoom = owner.roomKey === room.current.key && owner.roomRevision === payload.roomRevision
       && payload.roomRevision === room.current.revision;
-    if (!sameRoom || owner.chip !== workshopEditOfferKey(payload.turnId, payload.kind)) {
+    if (!sameRoom || owner.chip !== workshopEditOfferKey(payload.turnId, payload.kind, payload.option)) {
       return;
     }
     setAsking(owner.chip, false);
