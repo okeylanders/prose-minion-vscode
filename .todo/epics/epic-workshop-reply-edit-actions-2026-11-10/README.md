@@ -1,6 +1,6 @@
 # Epic: Workshop Reply Edit Actions
 
-**Status:** Design approved (Okey, 2026-11-10); he took all eight recommendations. Slice 1 is next.
+**Status:** Design approved (Okey, 2026-11-10); he took all eight recommendations. Slice 1 is built and awaits its PR.
 **Priority:** Medium
 **Created:** 2026-11-10
 **Integration branch:** `epic/workshop-reply-edit-actions`, cut at `c0a6e497` ("Merge Workshop Persona File Edits into main (#249)"), which is `main`'s tip on 2026-11-10. The brief named `926190d9`, the tip of `epic/workshop-persona-file-edits`; that epic had already reached `main`, so the branch was fast-forwarded from `926190d9` to `main` before its first commit. Each slice is built on `epic/workshop-reply-edit-actions-slice-<N>-<slug>` and merges into the epic through a reviewed PR.
@@ -28,7 +28,7 @@ Mockups are in [`mockups/`](mockups/): four PNGs and their HTML source. Render t
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR, this README, mockups, the idea note | All | Done (`1cc96d73`); approved by Okey 2026-11-10 |
-| 1 | The declaration | The offer tag, codec and bounds; its place in `extractWorkshopReplyControls`; resolving its file; `editOffers` on the turn, in the session codec and omitted from the transcript; the persona prompt, a worked example and sync tests. No route, no UI. | D1, D2, D8 | Not started |
+| 1 | The declaration | The offer tag, codec and bounds; its place in `extractWorkshopReplyControls`; resolving its file; `editOffers` on the turn, in the session codec and omitted from the transcript; the persona prompt, a worked example and sync tests. No route, no UI. | D1, D2, D8 | Built on its slice branch; awaiting its PR ([notes](slice-1-declaration.md)) |
 | 2 | The press | The action and result routes; the request turn and the directive frame; the engine's `finalReplyCheck`; reading the answer; `intent` and the fixes policy; the derived status in the turn's view; Rewind, Branch and reopen witnesses. No UI. | D3–D7, D9 | Not started |
 | 3 | The footer | The footer row, the chips and their states, the widget chip's move, the request line, the answer's line and card marks, the live region. **Starts after Message Reactions is on `main` and merged here.** | U1–U6 | Not started |
 | 4 | Verify live | Extension Development Host pass with Okey; tune the fix bound; ADR → Accepted; the codec's release decision; `AGENTS.md`; memory bank | — | Not started |
@@ -91,3 +91,4 @@ All eight of [the ADR's questions](../../../docs/adr/2026-11-10-workshop-reply-e
 
 - **2026-11-10, Slice 0.** Branch cut at `c0a6e497`. The idea note copied unchanged from `claude/idea-inbox` (blob `4bee4019`, identical). ADR, README and mockups written. No code changed, so no test run was taken; Slice 1 records the baseline.
 - **2026-11-10.** Okey approved the design and took all eight recommendations. Added the to-do rules to the ADR (U1, D4, D5) after his question.
+- **2026-11-10, Slice 1.** The declaration, host only. Baseline on the epic's tip: 797 suites / 11,186 tests. After: 802 suites / 11,284 tests, typecheck clean, lint unchanged at 0 errors. Choices and details are in [slice-1-declaration.md](slice-1-declaration.md).

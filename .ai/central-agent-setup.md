@@ -146,6 +146,7 @@ packages/core/src/
                 ├── memoryDraft.ts
                 ├── projectMemoryManager.ts
                 ├── fileEdits.ts
+                ├── editOffers.ts
                 ├── pinnedContext.ts
                 ├── widgets.ts
                 ├── standingDirectives.ts
