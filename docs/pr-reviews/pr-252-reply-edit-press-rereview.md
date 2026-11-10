@@ -1,5 +1,26 @@
 # PR #252 re-review: reply edit press fixes
 
+## Resolution ledger
+
+Checked against the code first: R1 reproduced as described, and is the limit the first ledger declared. Fixed in `a31ea6c2` on the slice branch.
+
+| Finding | Verified | What changed | Tests |
+|---|---|---|---|
+| **R1** Undo the retained exchange when completion refuses a continued press | Reproduced. The engine committed the exchange before it returned; the room then awaited staging; completion's failure path discarded history only for a newly created conversation. | **Retention is deferred, not compensated.** A run may set `AgentRunOptions.deferRetention`: the engine commits nothing (messages, context-source rows, context snapshot) and hands its owner the commit. The press's completion calls it only after the session has taken the answer turn, and before the retained-history mark is recorded. A press that fails at any point after the reply ended never retained anything. | `WorkshopEditOfferEngine.integration.test.ts`, both transports, through the real engine, conversation store, router and completion, with staging held open by a gate (no sleeps): Stop during staging and file edits turned off during staging, each asserting the ledger and the whole retained history equal their pre-press state, then the same press succeeding and retaining exactly its own exchange. |
+| R1: never touch a newer exchange | — | A held commit belongs to the history its run read. If the conversation is gone, or its history has changed since, the commit retains nothing and answers false. It is single-use. | `AgentRunEngine.finalReplyCheck.test.ts`: a held commit called after a newer exchange is dropped and the newer history stands; never called, the next run reads the conversation as it was; a conversation gone; no commit handed over for a rejected reply; a corrected exchange held whole. Integration: a newer message that preempts a press while its edits are staged keeps its own exchange, and the press adds nothing. |
+
+**Why deferral.** A compensation would have to cut this run's messages back out, and with them the context-source rows and the context snapshot the commit wrote, and then prove no newer run had written since. Deferral writes none of them until adoption, so there is nothing to cut, no provider message to parse, no mark to prune and no id counter to lower (ADR 2026-09-30). The retained-history mark is recorded after the commit, as before, so marks still describe a settled participant. The one thing a held run has already spent is its `art-N` artifact ids: the counter is not lowered.
+
+**Also changed:** a press preempted by a newer message now rolls its request turn back (`WorkshopRoomHandler.preemptActiveRun`), as a stopped or failed press does. Before, the newer run's preemption left the press's request turn in the thread.
+
+**The earlier ledger's "one limit left" is closed** for a press. Nothing remains of it: a press retains its exchange only when its answer turn is in the ledger.
+
+**Scope.** Ordinary messages are unchanged. The same order (retained before settled) exists for them and is filed as [tech debt](../../.todo/tech-debt/2026-11-10-workshop-reply-retained-before-settlement.md), not widened into this PR.
+
+**The scope note on rereading an old excerpt file** stands as written: the bound identity reaches staging and Apply, but no capability rereads a file outside the catalog after the excerpt changes. It is not addressed here.
+
+**After the fix:** 812 suites / 11,454 tests / 59 snapshots, all passing; typecheck clean; lint 0 errors / 1,165 warnings; build passing. Node 22.
+
 **Verdict: changes requested. One P2 retention/settlement blocker remains.**
 
 - PR: [#252](https://github.com/okeylanders/prose-minion-vscode/pull/252)
