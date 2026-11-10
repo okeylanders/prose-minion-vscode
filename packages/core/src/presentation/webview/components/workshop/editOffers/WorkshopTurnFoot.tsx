@@ -17,7 +17,7 @@
  */
 
 import * as React from 'react';
-import type { WorkshopTurn } from '@messages';
+import { WORKSHOP_EDIT_OFFER_KINDS, type WorkshopTurn } from '@messages';
 import { Icon } from '@components/shared/Icon';
 import { workshopEditOfferGroupLabel } from '@hooks/domain/workshop/editOffers/workshopEditOfferChipView';
 import { isWorkshopReactableTurn } from '@shared/constants/workshopReactions';
@@ -38,7 +38,11 @@ export interface WorkshopTurnFootProps {
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopTurnFoot: React.FC<WorkshopTurnFootProps> = ({ turn, offers, widgetChip, reactions }) => {
-  const editOffers = offers && turn.personaLabel ? turn.editOffers ?? [] : [];
+  // Fixes, then rewrites, whatever order the reply declared them in (U1; PR #253 N1).
+  const editOffers = offers && turn.personaLabel
+    ? [...(turn.editOffers ?? [])].sort((left, right) =>
+      WORKSHOP_EDIT_OFFER_KINDS.indexOf(left.kind) - WORKSHOP_EDIT_OFFER_KINDS.indexOf(right.kind))
+    : [];
   const personaLabel = turn.personaLabel ?? '';
   const hasOffers = editOffers.length > 0 || !!widgetChip;
   const cornerDrawn = !!reactions && (isWorkshopReactableTurn(turn, WRITER) || reactions.reactionsOf(turn.id).length > 0);

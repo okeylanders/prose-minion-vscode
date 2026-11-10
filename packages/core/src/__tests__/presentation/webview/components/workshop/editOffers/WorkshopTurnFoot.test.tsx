@@ -133,6 +133,14 @@ describe('a reply\'s footer row (U1)', () => {
     expect(order.join(' ')).toMatch(/^(action )+(offer )+reaction$/);
   });
 
+  it('draws fixes before rewrites whatever order the reply declared them in, and leaves the turn as it was (PR #253 N1)', () => {
+    const declared = [offer('rewrites', 2), offer('fixes', 3)];
+    render(bubble({ turn: reply({ editOffers: declared }), offers: offerControls() }));
+    const kinds = Array.from(document.querySelectorAll('[data-pm-offer]')).map((element) => element.getAttribute('data-pm-offer'));
+    expect(kinds).toEqual(['fixes', 'rewrites']);
+    expect(declared.map((entry) => entry.kind)).toEqual(['rewrites', 'fixes']);
+  });
+
   it('no bubble gains a row: the widget chip has no row of its own any more', () => {
     render(bubble({ turn: reply({ widgetRecommendation: recommendation }), reactions: reactionControls(), onOpenWidgetRecommendation: jest.fn() }));
     const widget = screen.getByRole('button', { name: /Gesture Playground/ });

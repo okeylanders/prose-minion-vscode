@@ -1,5 +1,11 @@
 # PR #253: Reply Edit Actions Slice 3 review
 
+## Resolution ledger
+
+| Finding | What changed | Test |
+|---|---|---|
+| **N1** (P3, non-blocking) Fixes before rewrites, whatever order the reply declared | `WorkshopTurnFoot` draws a sorted copy of the turn's offers, by `WORKSHOP_EDIT_OFFER_KINDS`. The turn is not mutated, and which action each chip asks for is unchanged. | `WorkshopTurnFoot.test.tsx`: a rewrites-first reply draws fixes first, and the declared list keeps its order. |
+
 - **Reviewed code:** `22668b920b578070d0052717ccb995f25e8e830d`.
 - **Base:** `e250a6d7656398079adf987403c489849afb7045` (`epic/workshop-reply-edit-actions`).
 - **Date:** 2026-11-10.
