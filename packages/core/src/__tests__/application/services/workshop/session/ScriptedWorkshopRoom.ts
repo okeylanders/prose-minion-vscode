@@ -494,7 +494,9 @@ export class ScriptedWorkshopRoom {
     source: WorkshopTurn,
     kind: WorkshopEditOfferKind,
     answer: string,
-    staging: FileEditStaging
+    staging: FileEditStaging,
+    /** One version of an offer with options, by its index (second addendum). */
+    option?: number
   ): Promise<WorkshopTurn | undefined> {
     const offer = source.editOffers?.find((candidate) => candidate.kind === kind);
     if (!offer || !source.personaId) {
@@ -504,8 +506,9 @@ export class ScriptedWorkshopRoom {
     const reader = guest ? { kind: 'personaGuest' as const, personaId: guest } : { kind: 'host' as const };
     const requestId = this.requestId(`press-${kind}`);
     const roomDelivery = this.delivery.prepare(reader);
-    const request = { sourceTurnId: source.id, kind };
-    const line = workshopEditOfferRequestLine(source.personaLabel ?? 'Jill', kind);
+    const request = { sourceTurnId: source.id, kind, ...(option !== undefined ? { option } : {}) };
+    const optionLabel = option !== undefined ? offer.options?.[option] : undefined;
+    const line = workshopEditOfferRequestLine(source.personaLabel ?? 'Jill', kind, optionLabel);
     if (guest) {
       this.session.beginPersonaGuestMessage(guest, requestId, line, undefined, undefined, request);
     } else {
@@ -537,7 +540,7 @@ export class ScriptedWorkshopRoom {
       ...(fileEdits ? { fileEdits } : {}),
       log: (entry) => this.log.push(entry),
       events: silentEvents()
-    }, { request, offer, sourceAt: '2:02 pm', fileEditsOpen: () => true, commitRetained: () => true, settled: () => undefined });
+    }, { request, offer, ...(optionLabel !== undefined ? { optionLabel } : {}), sourceAt: '2:02 pm', fileEditsOpen: () => true, commitRetained: () => true, settled: () => undefined });
     if (turn) {
       this.rest(`press answered: ${kind} on ${source.id}`);
     }

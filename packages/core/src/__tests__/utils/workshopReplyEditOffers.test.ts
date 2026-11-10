@@ -161,3 +161,48 @@ describe('an offer never shows, and never earns a host line (D1)', () => {
     expect(stripWorkshopReplyTrailersForStreaming('Alice wrote <prose> here')).toBe('Alice wrote <prose> here');
   });
 });
+
+describe('edit-offer frames that name versions (second addendum)', () => {
+  const option = (label: string) => `<option>${label}</option>`;
+  const versions = (...labels: string[]) => editOfferFrame({ kind: 'rewrites', excerpt: true, extra: labels.map(option) });
+
+  it('a rewrites frame keeps its labels; the frame is removed from the prose and redacted like any other', () => {
+    const controls = extractWorkshopReplyControls(`${SAID}\n\n${FIXES}\n${versions('Version 1', 'Version 2', 'A third option')}\n`, OPEN);
+    expect(controls.rest).toBe(SAID);
+    expect(controls.redacted).toBe(`${SAID}\n\n${WORKSHOP_EDIT_OFFER_REDACTION}\n\n${WORKSHOP_EDIT_OFFER_REDACTION}`);
+    expect(controls.editOffers).toEqual({
+      kind: 'frames',
+      offers: [
+        { kind: 'fixes', target: { kind: 'excerpt' }, count: 3 },
+        { kind: 'rewrites', target: { kind: 'excerpt' }, options: ['Version 1', 'Version 2', 'A third option'] }
+      ],
+      rejections: []
+    });
+    // A label never shows in the bubble's text, the stream or retained history.
+    for (const shown of [controls.rest, stripWorkshopReplyTrailersForStreaming(`${SAID}\n\n${versions('Version 1')}`),
+      stripWorkshopReplyTrailersForRetention(`${SAID}\n\n${versions('Version 1')}`)]) {
+      expect(shown).not.toContain('Version 1');
+    }
+  });
+
+  it('a bad option drops its own frame by name, and leaves the other frame standing', () => {
+    const dropped = (frame: string) => offers(`${SAID}\n\n${FIXES}\n${frame}`);
+    const fixesOnly = [{ kind: 'fixes', target: { kind: 'excerpt' }, count: 3 }];
+    expect(dropped(versions('a', 'b', 'c', 'd', 'e'))).toEqual({ kind: 'frames', offers: fixesOnly, rejections: ['malformed:too-many-options'] });
+    expect(dropped(versions('Version 1', ''))).toEqual({ kind: 'frames', offers: fixesOnly, rejections: ['malformed:empty-option'] });
+    expect(dropped(versions('Version 1', 'version 1'))).toEqual({ kind: 'frames', offers: fixesOnly, rejections: ['malformed:duplicate-option'] });
+    expect(dropped(versions('x'.repeat(PROMPT_BUDGETS.workshopEditOffers.optionCharacters + 1))))
+      .toEqual({ kind: 'frames', offers: fixesOnly, rejections: ['malformed:invalid-option'] });
+    expect(offers(`${SAID}\n\n${editOfferFrame({ excerpt: true, extra: [option('Version 1')] })}\n${REWRITES}`)).toEqual({
+      kind: 'frames',
+      offers: [{ kind: 'rewrites', target: { kind: 'resource', group: 'chapters', path: 'chapters/down-the-rabbit-hole.md' }, count: 2 }],
+      rejections: ['malformed:option-on-fixes']
+    });
+  });
+
+  it('four full-length labels on a catalog file fit a frame', () => {
+    const frame = editOfferFrame({ kind: 'rewrites', extra: ['a', 'b', 'c', 'd'].map((letter) => option(letter.repeat(PROMPT_BUDGETS.workshopEditOffers.optionCharacters))) });
+    expect(offers(`${SAID}\n\n${frame}`)?.offers).toHaveLength(1);
+  });
+});
+

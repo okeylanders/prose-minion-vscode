@@ -198,3 +198,86 @@ describe('a reply\'s edit offers through Branch and reopen, by the real coordina
     expect(new TextDecoder().decode(await harness.fs.readFile(harness.sourcePath))).toBe(before);
   });
 });
+
+/**
+ * Alternative versions (second addendum; Slice 3b): status is per option, so
+ * the same witnesses hold option by option, with no rule of their own.
+ */
+describe('a rewrites offer\'s versions across whole-room operations (second addendum)', () => {
+  const LABELS = ['Version 1', 'Version 2', 'A third option'];
+  const VERSIONS = `${editOfferFrame({ kind: 'fixes', count: 2 })}\n${editOfferFrame({ kind: 'rewrites', extra: LABELS.map((label) => `<option>${label}</option>`) })}`;
+  const version = (turns: readonly WorkshopTurn[], source: WorkshopTurn, option: number) =>
+    workshopEditOfferStatus(turns, source.id, 'rewrites', { runActive: false }, option);
+  const states = (turns: readonly WorkshopTurn[], source: WorkshopTurn) => LABELS.map((_label, option) => version(turns, source, option).state);
+
+  async function versionedRoom() {
+    const staging = fakeFileEditStaging();
+    const room = new ScriptedWorkshopRoom().start();
+    room.hostMessage('Where does Alice begin?');
+    const source = await room.withStagedReply(`${SAID}\n\n${VERSIONS}`, staging,
+      (reply) => room.hostMessage('Give me an idea of what you are thinking.', { reply }));
+    return { room, staging, source };
+  }
+
+  it('keeps the labels on the reply; pressing one version uses up neither another nor the fixes', async () => {
+    const { room, staging, source } = await versionedRoom();
+    expect(source.editOffers?.map((offer) => [offer.kind, offer.options])).toEqual([['fixes', undefined], ['rewrites', LABELS]]);
+    const second = (await room.editOfferPress(source, 'rewrites', REWRITE, staging, 1))!;
+    room.hostMessage('And what of the Queen?');
+    const third = (await room.editOfferPress(source, 'rewrites', NONE, staging, 2))!;
+
+    const turns = room.session.readRoomLedger();
+    expect(turns.filter((turn) => turn.editOfferRequest).map((turn) => [turn.editOfferRequest, turn.content])).toEqual([
+      [{ sourceTurnId: source.id, kind: 'rewrites', option: 1 }, 'Asked Jill for an edit · Version 2, from that reply.'],
+      [{ sourceTurnId: source.id, kind: 'rewrites', option: 2 }, 'Asked Jill for an edit · A third option, from that reply.']
+    ]);
+    expect(second.editOfferAnswer).toEqual({ sourceTurnId: source.id, kind: 'rewrites', option: 1, outcome: 'proposed' });
+    expect(second.content).toBe(`Suggested Version 2 as an edit to ${CHAPTER}, from the 2:02 pm reply.`);
+    expect(third.content).toBe('Jill found nothing to change for A third option: The chapter already reads beginning.');
+    expect(states(turns, source)).toEqual(['open', 'answered', 'nothing-to-change']);
+    expect(version(turns, source, 1)).toEqual({ state: 'answered', answerTurnId: second.id, cards: 1, changes: 1, askAgain: false });
+    expect(status(turns, source, 'fixes')).toEqual({ state: 'open' });
+    // An answer for a version says nothing of the offer read with no option.
+    expect(status(turns, source, 'rewrites')).toEqual({ state: 'open' });
+  });
+
+  it('a cut that removes one version\'s answer reopens that version alone', async () => {
+    const { room, staging, source } = await versionedRoom();
+    const first = (await room.editOfferPress(source, 'rewrites', REWRITE, staging, 0))!;
+    await room.editOfferPress(source, 'rewrites', REWRITE, staging, 2);
+    expect(states(room.session.readRoomLedger(), source)).toEqual(['answered', 'open', 'answered']);
+
+    const cut = rewindWorkshopSession({
+      workshop: room.session.exportCommittedState(),
+      conversations: room.archive(),
+      cut: after(first.id)
+    });
+
+    expect(states(cut.workshop.turns, source)).toEqual(['answered', 'open', 'open']);
+    expect(cut.workshop.turns.find((turn) => turn.id === source.id)?.editOffers?.[1].options).toEqual(LABELS);
+  });
+
+  it('a reopened session and a branch carry the labels and derive each version\'s status from the turns alone', async () => {
+    const { room, staging, source } = await versionedRoom();
+    const answer = (await room.editOfferPress(source, 'rewrites', REWRITE, staging, 1))!;
+    room.hostMessage('And what of the Queen?');
+    const harness = setupCoordinator();
+    await harness.store.saveNamed(scriptedCheckpoint('versions', room));
+    await harness.coordinator.initialize();
+    await harness.coordinator.openNamed('versions');
+
+    const reopened = harness.session.readRoomLedger();
+    expect(reopened.find((turn) => turn.id === source.id)?.editOffers?.[1].options).toEqual(LABELS);
+    expect(reopened.find((turn) => turn.id === answer.id)?.editOfferAnswer).toEqual({ sourceTurnId: source.id, kind: 'rewrites', option: 1, outcome: 'proposed' });
+    expect(states(reopened, source)).toEqual(['open', 'answered', 'open']);
+
+    const before = await harness.coordinator.branchFrom(after(source.id));
+    const alone = (await harness.store.readNamed(before.branch.sessionId))!.workshop.turns;
+    expect(alone.find((turn) => turn.id === source.id)?.editOffers?.[1].options).toEqual(LABELS);
+    expect(states(alone, source)).toEqual(['open', 'open', 'open']);
+
+    await harness.coordinator.openNamed('versions');
+    const withAnswer = await harness.coordinator.branchFrom(after(answer.id));
+    expect(states((await harness.store.readNamed(withAnswer.branch.sessionId))!.workshop.turns, source)).toEqual(['open', 'answered', 'open']);
+  });
+});

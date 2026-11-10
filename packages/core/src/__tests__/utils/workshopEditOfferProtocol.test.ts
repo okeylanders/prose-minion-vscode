@@ -6,6 +6,7 @@
 import { WORKSHOP_EDIT_OFFER_KINDS } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
+  areWorkshopEditOfferOptions,
   decodeWorkshopEditOffer,
   isWorkshopEditOfferCount,
   WORKSHOP_EDIT_OFFER_ELEMENTS,
@@ -87,5 +88,58 @@ describe('decodeWorkshopEditOffer', () => {
     expect(fault('<kind>fixes</kind><excerpt/> three typos')).toBe('stray-text');
     expect(fault('<kind>fixes<excerpt/>')).toBe('unclosed-element');
     expect(fault('<kind/><excerpt/>')).toBe('stray-text');
+  });
+
+  describe('options: alternative versions (second addendum)', () => {
+    const BOUNDS = PROMPT_BUDGETS.workshopEditOffers;
+    const options = (...labels: string[]) => fault(`<kind>rewrites</kind><excerpt/>${labels.map((label) => `<option>${label}</option>`).join('')}`);
+
+    it('holds the bounds the prompt quotes', () => {
+      expect(BOUNDS.optionsPerOffer).toBe(4);
+      expect(BOUNDS.optionCharacters).toBe(40);
+    });
+
+    it('reads one to four labels on a rewrites offer, trimmed, in the order written, with or without a count', () => {
+      expect(options('Version 1', ' Version 2 ', 'A third option')).toEqual({
+        kind: 'rewrites', target: { kind: 'excerpt' }, options: ['Version 1', 'Version 2', 'A third option']
+      });
+      expect(options('Only one')).toMatchObject({ options: ['Only one'] });
+      expect(options('a', 'b', 'c', 'd')).toMatchObject({ options: ['a', 'b', 'c', 'd'] });
+      expect(options('x'.repeat(BOUNDS.optionCharacters))).toMatchObject({ options: ['x'.repeat(40)] });
+      // Elements in any order, among the others.
+      expect(fault(`<option>Version 1</option><count>2</count>${FILE}<option>Version 2</option><kind>rewrites</kind>`)).toEqual({
+        kind: 'rewrites',
+        target: { kind: 'resource', group: 'chapters', path: 'chapters/down-the-rabbit-hole.md' },
+        count: 2,
+        options: ['Version 1', 'Version 2']
+      });
+    });
+
+    it('a rewrites offer with none carries no options key', () => {
+      expect(fault('<kind>rewrites</kind><excerpt/>')).toEqual({ kind: 'rewrites', target: { kind: 'excerpt' } });
+    });
+
+    it('refuses the whole frame by name: on fixes, a fifth, empty, over a line or its bound, or a repeat', () => {
+      expect(fault('<kind>fixes</kind><excerpt/><option>Version 1</option>')).toBe('option-on-fixes');
+      expect(options('a', 'b', 'c', 'd', 'e')).toBe('too-many-options');
+      expect(options('Version 1', '')).toBe('empty-option');
+      expect(options('Version 1', '   ')).toBe('empty-option');
+      expect(options('x'.repeat(BOUNDS.optionCharacters + 1))).toBe('invalid-option');
+      expect(options('Version\n1')).toBe('invalid-option');
+      expect(options('Version\u20281')).toBe('invalid-option');
+      expect(options('Version 1', 'Version 2', 'version 1')).toBe('duplicate-option');
+      expect(options('Version 1', ' VERSION 1 ')).toBe('duplicate-option');
+      // A label is text: a nested element inside one is only more characters, never read.
+      expect(options('<kind>fixes</kind>')).toMatchObject({ kind: 'rewrites', options: ['<kind>fixes</kind>'] });
+      expect(fault('<kind>rewrites</kind><excerpt/><option>Version 1')).toBe('unclosed-element');
+      expect(fault('<kind>rewrites</kind><excerpt/><option/>')).toBe('stray-text');
+    });
+
+    it('holds a saved list to the same rule', () => {
+      expect(areWorkshopEditOfferOptions(['Version 1', 'Version 2'])).toBe(true);
+      for (const bad of [[], ['a', 'b', 'c', 'd', 'e'], [''], [' a'], ['a', 'A'], ['a\nb'], [1], 'a', undefined, null, ['x'.repeat(41)]]) {
+        expect(areWorkshopEditOfferOptions(bad)).toBe(false);
+      }
+    });
   });
 });

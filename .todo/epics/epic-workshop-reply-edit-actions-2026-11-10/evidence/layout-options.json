@@ -1,0 +1,110 @@
+{
+  "wide": {
+    "foot": {
+      "top": -692,
+      "bottom": -662,
+      "left": 49,
+      "right": 909
+    },
+    "offers": {
+      "top": -691,
+      "bottom": -663,
+      "left": 49,
+      "right": 431
+    },
+    "corner": {
+      "top": -692,
+      "bottom": -662,
+      "left": 836,
+      "right": 909
+    },
+    "chips": [
+      {
+        "label": "1 fix",
+        "top": -691,
+        "bottom": -663,
+        "left": 114,
+        "right": 160
+      },
+      {
+        "label": "Version 1",
+        "top": -691,
+        "bottom": -663,
+        "left": 166,
+        "right": 241
+      },
+      {
+        "label": "Version 2",
+        "top": -691,
+        "bottom": -663,
+        "left": 247,
+        "right": 324
+      },
+      {
+        "label": "A third option",
+        "top": -691,
+        "bottom": -663,
+        "left": 330,
+        "right": 431
+      }
+    ],
+    "scrolls": false,
+    "chipsInOrder": true,
+    "oneRow": true,
+    "cornerAtRight": true
+  },
+  "narrow": {
+    "foot": {
+      "top": 713,
+      "bottom": 811,
+      "left": 49,
+      "right": 445
+    },
+    "offers": {
+      "top": 713,
+      "bottom": 775,
+      "left": 49,
+      "right": 445
+    },
+    "corner": {
+      "top": 781,
+      "bottom": 811,
+      "left": 372,
+      "right": 445
+    },
+    "chips": [
+      {
+        "label": "1 fix",
+        "top": 713,
+        "bottom": 741,
+        "left": 114,
+        "right": 160
+      },
+      {
+        "label": "Version 1",
+        "top": 713,
+        "bottom": 741,
+        "left": 166,
+        "right": 241
+      },
+      {
+        "label": "Version 2 suggested",
+        "top": 713,
+        "bottom": 741,
+        "left": 247,
+        "right": 423
+      },
+      {
+        "label": "A third option",
+        "top": 747,
+        "bottom": 775,
+        "left": 49,
+        "right": 149
+      }
+    ],
+    "scrolls": false,
+    "chipsInOrder": true,
+    "chipsWithinFoot": true,
+    "cornerAtRight": true
+  }
+}

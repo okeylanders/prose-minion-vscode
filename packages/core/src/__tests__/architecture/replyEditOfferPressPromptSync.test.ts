@@ -108,3 +108,19 @@ describe('the press\'s refusal words', () => {
     }
   });
 });
+
+describe('edit-offer prompt ↔ a press of one version (second addendum)', () => {
+  it('teaches what the frame says: the version is named by its label, and that version alone is suggested', () => {
+    const { WORKSHOP_EDIT_REQUEST_OPTION_ASK, workshopEditRequestOptionWords } = jest.requireActual('@/utils/workshopEditRequestFrame');
+    const prompt = jest.requireActual('fs').readFileSync(
+      jest.requireActual('path').resolve(__dirname, '../../../resources/system-prompts/workshop-personas/reply-edit-offers.md'), 'utf8');
+    expect(prompt).toContain('When the writer chose one of your versions, the frame names it by the label you gave it: '
+      + 'suggest that version only, and leave the others out.');
+    expect(WORKSHOP_EDIT_REQUEST_OPTION_ASK).toBe('Suggest that version only, as file edits.');
+    const words = workshopEditRequestOptionWords('Version 1');
+    expect(words.pressed).toBe('The writer chose "Version 1" from your reply');
+    expect(words.rule).toContain('That version only');
+    expect(words.rule).toContain('Leave the other versions out');
+  });
+});
+
