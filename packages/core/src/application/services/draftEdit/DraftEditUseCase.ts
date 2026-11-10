@@ -143,7 +143,7 @@ export class DraftEditUseCase {
 
   constructor(
     private readonly proofreadPass: ProofreadPassPort,
-    private readonly documents: DocumentEditor,
+    private readonly documents: Pick<DocumentEditor, 'watch' | 'applyEdits'>,
     private readonly annotations: IssueAnnotator,
     private readonly applier: DraftEditApplier,
     private readonly log: LogSink

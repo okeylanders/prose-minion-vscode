@@ -42,6 +42,30 @@ export interface ContextResourceProvider {
   loadResources(paths: string[]): Promise<ContextResourceContent[]>;
 }
 
+/**
+ * One configured match, kept whole (ADR 2026-11-05 D4.1): every workspace
+ * folder, relative path and group a file matches, never only the first. The
+ * same containment and symbolic-link checks admit it as admit the catalog.
+ * HOST-SIDE ONLY: never crosses the webview, a prompt or a log.
+ */
+export interface ContextResourceCandidate {
+  readonly group: ContextPathGroup;
+  /** Relative to `workspaceFolderPath`, `/`-separated. */
+  readonly relativePath: string;
+  readonly workspaceFolderPath: string;
+  readonly absolutePath: string;
+  readonly sizeBytes: number;
+}
+
+/**
+ * Every configured match across groups and roots, read fresh. Authoritative:
+ * it rejects when any search or metadata read fails, never returning part of
+ * the answer (PR #229 F-01).
+ */
+export interface ContextResourceCandidateReader {
+  listCandidates(groups: ContextPathGroup[]): Promise<ContextResourceCandidate[]>;
+}
+
 /** Application-facing factory seam implemented by ContextResourceResolver. */
 export interface ContextResourceProviderFactory {
   createProvider(groups: ContextPathGroup[]): Promise<ContextResourceProvider>;

@@ -1,5 +1,6 @@
 import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
 import { unusedBookmarkBrowser, unusedMemoryDrafts } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
+import { fakeFileEditApply, fakeFileEditStaging } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
 import {
   WorkshopRoomHandler
 } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
@@ -200,6 +201,8 @@ Add a key.`, conversationId, 'vendor/never');
       libraryHost().library,
       emptyPinnedContextServices(),
       unusedBookmarkBrowser(),
+      fakeFileEditStaging(),
+      fakeFileEditApply(),
       unusedMemoryDrafts()
     );
     const router = new MessageRouter();

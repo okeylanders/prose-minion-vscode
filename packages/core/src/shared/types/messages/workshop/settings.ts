@@ -1,6 +1,7 @@
 /** Workshop settings, defaults, validation, and settings-route contracts. */
 
 import { MessageEnvelope, MessageType } from '../base';
+import type { WorkshopFileEditsMode } from './fileEdits';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Conversation behavior (ADR 2026-07-20) — the writer-owned, room-level
@@ -323,8 +324,13 @@ export interface WorkshopSetConversationSettingsPayload {
   behavior: WorkshopConversationBehavior;
   writerProfile: WorkshopWriterProfile;
   webResearch: WorkshopWebResearchSettings;
-  /** The Memory tab's mode draft (ADR 2026-11-04 D8): global, written to the writer's settings. */
-  projectMemory: WorkshopProjectMemoryMode;
+  /**
+   * The Memory tab's mode, when the writer picked one (ADR 2026-11-04 D8): global, written to the writer's settings.
+   * Absent leaves the host's mode as it stands (PR #236 F-02).
+   */
+  projectMemory?: WorkshopProjectMemoryMode;
+  /** The Behavior tab's suggested-file-edits pick (ADR 2026-11-05 D11), likewise; absent leaves it as it stands. */
+  fileEdits?: WorkshopFileEditsMode;
 }
 
 export interface WorkshopSetConversationSettingsMessage

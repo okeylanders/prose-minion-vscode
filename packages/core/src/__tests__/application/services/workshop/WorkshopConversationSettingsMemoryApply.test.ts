@@ -97,7 +97,9 @@ describe('the Memory tab\'s mode through Conversation settings', () => {
   it('a write VS Code refuses is reported, and the mode stays as it was', async () => {
     const { service, assistant } = room('off', true);
     const result = await service.applyFromWebview(behavior, DEFAULT_WORKSHOP_WRITER_PROFILE, DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS, 'ask');
-    expect(result.persistenceErrors).toEqual({ projectMemory: 'settings are read-only' });
+    // Refused, not active for the session (PR #236 F-01): reported apart from settings VS Code could not save.
+    expect(result.persistenceErrors).toBeUndefined();
+    expect(result.modeRefusals).toEqual({ projectMemory: { error: 'settings are read-only', effective: 'off' } });
     expect(service.getProjectMemoryMode()).toBe('off');
     expect(assistant.replaceWorkshopConversationSettings).not.toHaveBeenCalled();
   });

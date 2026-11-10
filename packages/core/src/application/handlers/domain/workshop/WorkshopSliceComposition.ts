@@ -24,6 +24,7 @@ import { WorkshopSavedTurnMemoryHandler } from '@handlers/domain/workshop/Worksh
 import { WorkshopMemoryDraftHandler } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
 import { WorkshopPinnedContextHandler } from '@handlers/domain/workshop/WorkshopPinnedContextHandler';
+import { WorkshopFileEditHandler } from '@handlers/domain/workshop/WorkshopFileEditHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import {
   WorkshopGesturePlaygroundHandler
@@ -80,6 +81,7 @@ export class WorkshopSliceComposition {
   private readonly memoryDraftHandler: WorkshopMemoryDraftHandler;
   private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
   private readonly pinnedContextHandler: WorkshopPinnedContextHandler;
+  private readonly fileEditHandler: WorkshopFileEditHandler;
   private readonly contextHandler: WorkshopContextHandler;
   private readonly excerptScopeHandler: WorkshopExcerptScopeHandler;
 
@@ -99,6 +101,7 @@ export class WorkshopSliceComposition {
       projectMemory,
       pinnedContext,
       bookmarkBrowser,
+      fileEditApply,
       memoryDrafts,
       outputChannel
     } = dependencies;
@@ -325,6 +328,21 @@ export class WorkshopSliceComposition {
         runRoomOperation: (work) => sessionPersistence.runContextRefresh(work)
       }
     );
+    // A persona file-edit card's Apply, Review in editor…, Decline and Preview (ADR 2026-11-05 D8, D9; Slice 4a).
+    this.fileEditHandler = new WorkshopFileEditHandler(
+      session,
+      fileEditApply,
+      sessionPersistence,
+      { isRoomRunActive: host.isRoomRunActive, fileEditsMode: host.fileEditsMode },
+      {
+        postSessionState: host.postSessionState,
+        markDirty,
+        reportError: (message, details) =>
+          host.reportRouteError('workshop', message, details, 'WorkshopFileEditHandler')
+      },
+      postMessage,
+      outputChannel
+    );
   }
 
   registerRoutes(
@@ -388,6 +406,10 @@ export class WorkshopSliceComposition {
     this.pinnedContextHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopPinnedContextHandler')
+    );
+    this.fileEditHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopFileEditHandler')
     );
   }
 

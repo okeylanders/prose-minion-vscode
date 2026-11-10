@@ -78,7 +78,7 @@ These are concrete checks for Slices 1 and 2, not demonstrated failures in this 
 
 ### N-02 — The sibling epic link is not present in this tree
 
-The [epic's sibling link](https://github.com/okeylanders/prose-minion-vscode/blob/a02d785daa902f0af84b18163e07fcd9c548b044/.todo/archive/epics/epic-helper-agent-2026-11-05/README.md#L9) targets `../epic-workshop-persona-file-edits-2026-11-05/README.md`, which does not exist at this head. A verified sibling PR/branch link can serve until that document lands. The four other local file links in the two new documents resolve.
+The [epic's sibling link](https://github.com/okeylanders/prose-minion-vscode/blob/a02d785daa902f0af84b18163e07fcd9c548b044/.todo/epics/epic-helper-agent-2026-11-05/README.md#L9) targets `../epic-workshop-persona-file-edits-2026-11-05/README.md`, which does not exist at this head. A verified sibling PR/branch link can serve until that document lands. The four other local file links in the two new documents resolve.
 
 ## Verification and limits
 

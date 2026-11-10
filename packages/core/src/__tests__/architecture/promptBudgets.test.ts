@@ -38,6 +38,8 @@ const NON_PROMPT_LIMITS = new Set([
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_TRIGRAMS_PER_BATCH',
   'presentation/webview/components/tabs/AnalysisTab.tsx:MAX_EXCERPT_LENGTH',
   'presentation/webview/components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityModal.tsx:PREVIEW_SOURCE_HEIGHT_CAP',
+  // A file-edit card's word diff bounds its own table; no prompt sees it (Persona File Edits Slice 4b).
+  'presentation/webview/utils/workshop/workshopFileEditWordDiff.ts:WORD_DIFF_CELL_LIMIT',
   // The Dictionary history caps stored lookups; no prompt sees it.
   'shared/constants/dictionaryHistory.ts:DICTIONARY_HISTORY_LIMIT',
   // Transcript export names files and documents; no prompt sees them.

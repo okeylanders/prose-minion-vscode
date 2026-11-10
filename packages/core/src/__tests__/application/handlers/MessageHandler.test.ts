@@ -200,7 +200,8 @@ function createTestAssembly(): TestAssembly {
       flushDeferredSettingsSync: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
       getWriterProfile: jest.fn().mockReturnValue(DEFAULT_WORKSHOP_WRITER_PROFILE),
       getWebResearch: jest.fn().mockReturnValue({ enabled: false }),
-      getProjectMemoryMode: jest.fn().mockReturnValue('off')
+      getProjectMemoryMode: jest.fn().mockReturnValue('off'),
+      getFileEditsMode: jest.fn().mockReturnValue('ask')
     },
     workshopSessionTimeService: new WorkshopSessionTimeService({
       now: () => new Date('2026-07-23T14:00:00.000Z'),

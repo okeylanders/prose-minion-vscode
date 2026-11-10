@@ -10,11 +10,13 @@ import {
   applyMinimal,
   applyTicked,
   decline,
+  firstThen,
   writerTypes
 } from '@/__tests__/application/services/draftEdit/fakeDocuments';
+import type { DocumentSnapshot } from '@/platform/DocumentEditor';
 
 const TEXT = 'Alice was begining to get vrey tired of sitting by her sister.';
-const PROOFREAD = { allowsNewlineChanges: false, preservesMarkdownStructure: true };
+const PROOFREAD = { allowsNewlineChanges: false, structure: 'strict' } as const;
 
 function edit(id: string, original: string, replacement: string, text = TEXT, from = 0): DraftEditEdit {
   const start = text.indexOf(original, from);
@@ -148,7 +150,7 @@ describe('DraftEditApplier.apply', () => {
       document: documents.snapshot(),
       edits: [edit('b', 'vrey tired', 'very\ntired')],
       review: 'direct',
-      policy: { allowsNewlineChanges: true, preservesMarkdownStructure: true }
+      policy: { allowsNewlineChanges: true, structure: 'strict' }
     });
 
     expect(result).toMatchObject({ applied: ['b'], refused: [] });
@@ -247,5 +249,46 @@ describe('DraftEditApplier.apply: the direct retry checks again', () => {
     expect(documents.text).toContain('teh');
     expect(result).toMatchObject({ outcome: 'stale', applied: [], refused: [] });
   });
-});
 
+  describe('beforeAttempt, before every applyEdits (ADR 2026-11-05 D7.6, PR #226 F-06)', () => {
+    // Astra's witness: the quote is 18% of its paragraph, then the writer deletes the rest of it as the edit goes out.
+    const quote = 'Alice walked away.';
+    const tail = ' The Hatter quietly remained at the table and waited for the next guest to arrive.';
+    const edits = [{ id: 'a', start: 0, end: quote.length, original: quote, replacement: 'Nobody came home.', label: 'Persona file edit' }];
+    const share = (document: DocumentSnapshot, moved: readonly { start: number; end: number }[]) =>
+      moved.reduce((sum, edit) => sum + edit.end - edit.start, 0) / document.text.trim().length;
+
+    it('refuses the retry when the paragraph shrank under the quote, and writes nothing', async () => {
+      const documents = new FakeDocuments(quote + tail, undefined, 'markdown', 3,
+        firstThen(writerTypes([{ offset: quote.length, length: tail.length, text: '' }]), applyAll));
+      const seen: number[] = [];
+      const result = await new DraftEditApplier(documents).apply({
+        document: documents.snapshot(),
+        edits,
+        review: 'direct',
+        policy: { allowsNewlineChanges: true, structure: 'prose-paragraphs' },
+        beforeAttempt: (document, moved) => {
+          seen.push(document.version);
+          return share(document, moved) > 0.6 ? 'rewrite-ceiling' : undefined;
+        }
+      });
+      expect(seen).toEqual([3, 4]);
+      expect(documents.applyCalls.map((call) => call.expectedVersion)).toEqual([3]);
+      expect(result).toMatchObject({ outcome: 'before-attempt', beforeAttempt: 'rewrite-ceiling', applied: [], notApplied: [{ id: 'a' }] });
+      expect(documents.text).toBe(quote);
+    });
+
+    it('asks nothing when the first attempt is refused', async () => {
+      const documents = new FakeDocuments(quote + tail);
+      const result = await new DraftEditApplier(documents).apply({
+        document: documents.snapshot(),
+        edits,
+        review: 'direct',
+        policy: { allowsNewlineChanges: true, structure: 'free' },
+        beforeAttempt: () => 'stale'
+      });
+      expect(result.outcome).toBe('before-attempt');
+      expect(documents.applyCalls).toEqual([]);
+    });
+  });
+});

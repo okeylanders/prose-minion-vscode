@@ -7,6 +7,7 @@
  * native vscode object is passed directly at the composition root.
  */
 export * from './DocumentEditor';
+export * from './FileEditAuthorityEpoch';
 export * from './EditorContext';
 export * from './FileSystem';
 export * from './GlobalStateStore';

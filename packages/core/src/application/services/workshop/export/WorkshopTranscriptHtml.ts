@@ -27,7 +27,8 @@ import {
   WorkshopTranscriptModelSliceEntry,
   WorkshopTranscriptReplyEntry,
   WorkshopTranscriptWriterEntry,
-  countWorkshopTranscriptMessages
+  countWorkshopTranscriptMessages,
+  workshopTranscriptFileEditLabel
 } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { describeWorkshopTranscript } from './WorkshopTranscriptDescription';
 import { WORKSHOP_TRANSCRIPT_HTML_CSS } from './WorkshopTranscriptHtmlStyles';
@@ -193,7 +194,20 @@ function renderReply(entry: WorkshopTranscriptReplyEntry, options: WorkshopTrans
   }</div>`;
   return `<article class="pm-ws-turn pm-ws-turn-assistant${
     entry.privateWith ? ' pm-ws-turn-private' : ''
-  }" aria-label="${escapeHtml(entry.speaker)}">${head}${truncated}${body}${renderSources(entry)}</article>`;
+  }" aria-label="${escapeHtml(entry.speaker)}">${head}${truncated}${body}${renderSources(entry)}${renderFileEdits(entry)}</article>`;
+}
+
+/** A reply's file-edit cards: file, state and why, never the edit's text (ADR 2026-11-05 D8). */
+function renderFileEdits(entry: WorkshopTranscriptReplyEntry): string {
+  if (!entry.fileEdits?.length) {
+    return '';
+  }
+  const items = entry.fileEdits.map((edit) =>
+    `<li>${escapeHtml(workshopTranscriptFileEditLabel(edit))} · ${escapeHtml(edit.state)}: ${escapeHtml(edit.why)}</li>`);
+  return '<div class="pm-ws-export-file-edits" aria-label="Suggested file edits">' +
+    '<div class="pm-ws-eyebrow">Suggested file edits</div>' +
+    `<ul>${items.join('')}</ul>` +
+    '</div>';
 }
 
 function renderSources(entry: WorkshopTranscriptReplyEntry): string {

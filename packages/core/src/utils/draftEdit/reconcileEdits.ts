@@ -124,7 +124,9 @@ function readEvent<T extends ReconcilableEdit>(pre: string, changes: readonly Te
       continue;
     }
     // Text inserted at an edit's start lands before it, and moves it; text inserted at its end lands after it.
-    const start = each.start + shiftBefore(each.start, true);
+    // An insertion's own text is the edit, never text before it (persona file edits, ADR 2026-11-05 D4).
+    const insertedHere = replacedHere.has(each) && each.start === each.end;
+    const start = each.start + shiftBefore(each.start, !insertedHere);
     if (replacedHere.has(each)) {
       each.state = 'replaced';
       each.end = start + each.edit.replacement.length;

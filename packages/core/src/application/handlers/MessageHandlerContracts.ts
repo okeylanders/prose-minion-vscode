@@ -1,3 +1,5 @@
+import type { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
+import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import type { HelperAgent } from '@services/helper/HelperTaskPolicies';
 import type {
   AnalysisResultMessage,
@@ -195,6 +197,18 @@ export interface CoreServices {
    * only through the capability factory; no handler constructs it.
    */
   workshopTranscriptRecallService: WorkshopTranscriptRecallService;
+  /**
+   * Persona file edits (ADR 2026-11-05 D7): the one gateway from a staged
+   * proposal to a project file, through Draft Edit's applier. No handler
+   * constructs it.
+   */
+  projectFileEditGateway: ProjectFileEditGateway;
+  /**
+   * Persona file edits' staging (ADR 2026-11-05 D4): a frame's target staged
+   * to an identity, class and baseline when a reply is read. Built in
+   * `extension.ts` (`FileEditStagingService`).
+   */
+  fileEditStaging: FileEditStaging;
   /**
    * The helper agent (ADR 2026-11-05 D4): small model jobs on the `helper`
    * scope, each a policy. It proposes and never writes; no handler
