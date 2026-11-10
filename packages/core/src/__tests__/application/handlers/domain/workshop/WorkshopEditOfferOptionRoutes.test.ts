@@ -127,8 +127,7 @@ describe('Workshop routes — a press on one version of a reply\'s rewrites', ()
     expect(request.content).toBe('Asked Jill for an edit · Version 2, from that reply.');
     expect(answer.editOfferAnswer).toEqual({ sourceTurnId: source.id, kind: 'rewrites', option: 1, outcome: 'proposed' });
     expect(answer.content).toBe(`Suggested Version 2 as an edit to ${CHAPTER}, from the ${at} reply.`);
-    expect(answer.fileEditProposals).toEqual([expect.objectContaining({ state: 'pending' })]);
-    expect(answer.fileEditProposals![0]).not.toHaveProperty('intent');
+    expect(answer.fileEditProposals).toEqual([expect.objectContaining({ state: 'pending', intent: 'rewrites' })]);
 
     expect(result).toEqual({
       requestId: 'press-1',
@@ -193,5 +192,60 @@ describe('Workshop routes — a press on one version of a reply\'s rewrites', ()
     await settle();
     expect(harness.posted(MessageType.WORKSHOP_EDIT_OFFER_RESULT)).toEqual([]);
     expect(ledger()).toHaveLength(before);
+  });
+
+  describe('a requested rewrite\'s intent is the host\'s (second addendum)', () => {
+    const LONG = `Down, down, down. ${'She fell very slowly, with time to look about her. '.repeat(8)}`.trim();
+    const whole = (extra: string[] = []) => fileEditFrame({
+      group: 'chapters', path: CHAPTER, why: 'The fall, written out.',
+      body: ['<find>[Describe the fall here.]</find>', `<replace-with>${LONG}</replace-with>`, ...extra]
+    });
+
+    it('a rewrites answer that replaces a whole placeholder stages pending, marked rewrites by the host', async () => {
+      answerWith(whole());
+      const result = await press('rewrites', 0);
+      expect(result).toMatchObject({ answer: 'answered', outcome: 'proposed', cards: 1 });
+      expect(LONG.length).toBeGreaterThan(300);
+      expect(lastReply().fileEditProposals).toEqual([expect.objectContaining({ state: 'pending', intent: 'rewrites' })]);
+      // The webview reads the mark; it cannot write it: the press carried ids only.
+      expect(JSON.stringify(harness.service.continueConversation.mock.calls)).not.toContain('"intent"');
+    });
+
+    it('the identical frame in an ordinary reply carries no intent, whatever the reply or its frame claims', async () => {
+      const claiming = whole(['<intent>rewrites</intent>']);
+      for (const reply of [`Here is the fall.\n\n${whole()}`, `Here is the fall.\n\n${claiming}`]) {
+        harness.service.continueConversation.mockResolvedValueOnce(analysisResult(reply, { conversationId: 'host-conv' }) as never);
+        await route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Write the fall out.' });
+        await settle();
+        for (const card of lastReply().fileEditProposals ?? []) {
+          expect(card).not.toHaveProperty('intent');
+        }
+      }
+      // The frame that named an intent is no frame at all: the format has no such element.
+      expect(lastReply().fileEditProposals).toBeUndefined();
+      expect(ledger().filter((turn) => turn.fileEditProposals?.some((card) => card.intent)).length).toBe(0);
+    });
+
+    it('a press that names an intent of its own is the same press: the host reads the kind from its ledger', async () => {
+      answerWith(whole());
+      presses += 1;
+      await route(MessageType.WORKSHOP_EDIT_OFFER_ACTION, {
+        requestId: 'forged', roomRevision: harness.session.readRoomRevision(), turnId: source.id, kind: 'fixes', intent: 'rewrites'
+      });
+      await settle();
+      // A fixes press stays a fixes press: the long replace is more than a fix, and is refused on its card.
+      expect(lastReply().editOfferAnswer).toEqual({ sourceTurnId: source.id, kind: 'fixes', outcome: 'proposed' });
+      expect(lastReply().fileEditProposals).toEqual([expect.objectContaining({ state: 'refused', reason: 'more-than-a-fix', intent: 'fixes' })]);
+    });
+
+    it('an answer whose replacement is past the trailer\'s bound is no answer', async () => {
+      const over = fileEditFrame({
+        group: 'chapters', path: CHAPTER, why: 'Too long.',
+        body: ['<find>[Describe the fall here.]</find>', `<replace-with>${'a'.repeat(4_001)}</replace-with>`]
+      });
+      answerWith(over);
+      harness.service.continueConversation.mockResolvedValueOnce(analysisResult(over, { conversationId: 'host-conv' }) as never);
+      expect(await press('rewrites', 0)).toMatchObject({ answer: 'failed', reason: 'no-answer' });
+    });
   });
 });

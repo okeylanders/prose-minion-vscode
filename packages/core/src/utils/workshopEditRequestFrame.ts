@@ -51,7 +51,7 @@ export const WORKSHOP_EDIT_REQUEST_KIND_WORDS: Readonly<Record<WorkshopEditOffer
   rewrites: {
     ask: 'Suggest those rewrites as file edits now.',
     rule: 'Rewrites only: the passages your reply reworded, or said how to reword. Each is a find-and-replace kept to its passage, '
-      + 'under the prose rules you already know. Nothing your reply did not propose.'
+      + 'which it may replace whole, under the prose rules you already know. Never the whole file, and nothing your reply did not propose.'
   }
 });
 
@@ -87,7 +87,8 @@ export function workshopEditRequestOptionWords(label: string): { readonly presse
   return {
     pressed: `The writer chose "${label}" from your reply`,
     rule: `That version only: the replacement prose your reply wrote out as "${label}". Suggest it as find-and-replace kept to its passage, `
-      + 'under the prose rules you already know. Leave the other versions out, and add nothing your reply did not propose.'
+      + 'which it may replace whole, under the prose rules you already know. Never the whole file. Leave the other versions out, and add '
+      + 'nothing your reply did not propose.'
   };
 }
 

@@ -198,7 +198,8 @@ describe('the directive frame (D4): built from the ledger\'s turn', () => {
         + 'even if the room\'s excerpt has changed since. Read the file as it stands before you quote it.',
       '',
       'That version only: the replacement prose your reply wrote out as "Version 1". Suggest it as find-and-replace kept to its passage, '
-        + 'under the prose rules you already know. Leave the other versions out, and add nothing your reply did not propose.'
+        + 'which it may replace whole, under the prose rules you already know. Never the whole file. Leave the other versions out, and add '
+        + 'nothing your reply did not propose.'
     ]);
     expect(chosen).not.toContain('The writer pressed');
     expect(chosen).not.toContain('Rewrites only');

@@ -63,6 +63,28 @@
 12. **A label is shown as text.** The chip renders it through React; the directive strips quotes, angle brackets and line breaks from it after neutralizing reserved frames.
 13. **No checkpoint normalization.** The new fields are optional and additive; no development checkpoint held another shape.
 
+## A requested rewrite lifts the ceiling (added after Okey's second live run)
+
+A press on a rewrites chip worked, and its card was then refused at Apply by ADR 2026-11-05 D5's rewrite ceiling. The card replaced a bracketed placeholder paragraph with written-out prose. The coordinator relayed Okey's decision ("our limit on edits may be too small"); the ADR's second addendum now records it.
+
+- **What changed.** A card staged from a rewrites answer carries `intent: 'rewrites'`. `FILE_EDIT_INTENT_POLICIES.rewrites` is `{ liftsRewriteCeiling: true }`, and the gateway reads its policy through `fileEditPolicyWithIntent`, so the ceiling is skipped at the plan and before every attempt.
+- **Size of the change.** A policy lookup. The gateway's two ceiling checks are untouched; they read a policy that has no ceiling. `FileEditIntentPolicy` is now `{ narrows?, liftsRewriteCeiling }`, with the fixes rows under `narrows`.
+- **What still refuses a requested rewrite,** for the same reason as a proposal nobody asked for (tested pair by pair):
+  - a whole-file `<rewrite>` of prose;
+  - a replace that reaches into a link target or inline code;
+  - a replace that adds a heading or a list (`markup`), small or whole-passage;
+  - an append past `insertWords`;
+  - a quote found nowhere, or twice;
+  - a replacement past the trailer's `replaceWithCharacters` (the frame is dropped, so the press is `no-answer`).
+- **Unchanged.** An ordinary proposal with the identical operations is still refused `rewrite-ceiling`. A fixes card is still `more-than-a-fix`.
+- **The intent is the host's.** It is the pressed offer's kind, read from the ledger. A file-edit frame that names an `<intent>` is dropped as malformed, and a press that carries an `intent` field is read as if it did not.
+- **The card's mark** still reads `intent ?? the answer's kind`, so a rewrites card saved before this change draws the same and keeps the ceiling.
+- **The session codec** takes `intent: 'fixes' | 'rewrites'`. The transcript still carries no intent.
+- **The teaching** says a pressed rewrite may replace the whole passage the reply reworded, never the whole file. It does not name the ceiling. A sync test holds that.
+- **Tests:** `ProjectFileEditGatewayRewrites.test.ts` (new, the real applier and the retry path), and four cases in `WorkshopEditOfferOptionRoutes.test.ts`.
+
+**This relaxes a guard on writes to the writer's files.** It rests on the coordinator's relay of Okey's decision; it should be confirmed with him at review.
+
 ## Things to know
 
 - **One existing assertion changed deliberately.** `WorkshopRoomHandler.roomAndRun.test.ts` expected the host's first message to be the reaction invite and the writer's words. The reminder now sits between them.
@@ -97,12 +119,12 @@ Extended: `WorkshopEditOfferWholeRoom.test.ts` (Rewind, Branch and reopen per op
 
 | Check | Baseline (epic tip `1e39168b`) | After |
 |---|---|---|
-| `npx jest` | 836 suites / 11,780 tests / 59 snapshots, all passing | 840 suites / 11,867 tests / 59 snapshots, all passing |
+| `npx jest` | 836 suites / 11,780 tests / 59 snapshots, all passing | 841 suites / 11,889 tests / 59 snapshots, all passing |
 | `npm run typecheck` | — | passes |
 | `npm run lint` | 0 errors, 1,171 warnings | 0 errors, 1,171 warnings |
 | `npm run build` | — | passes |
 
 - The baseline was taken in a clean worktree of the epic's tip, under Node 22.
 - `packages/core/src` has no `from 'vscode'` import.
-- No new file is over 500 lines; the largest is the route test at 197.
+- No new file is over 500 lines; the largest is the route test at 251.
 - No test makes a model call.

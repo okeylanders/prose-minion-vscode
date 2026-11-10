@@ -21,7 +21,9 @@
  *   on each side past the common start and end of its quote and replacement
  *   (`changedCharacters`, the ceiling's own measure), and none changes a
  *   line break. It reads only the operations, so staging runs it with no
- *   file text and the gateway on every attempt.
+ *   file text and the gateway on every attempt. `rewrites` narrows
+ *   nothing: it lifts the ceiling (the second addendum), which the gateway
+ *   does through `fileEditPolicyWithIntent`.
  */
 
 import { FILE_EDIT_MORE_THAN_A_FIX, type FileEditClassPolicy, type FileEditIntentPolicy, type FileEditOperationFault } from '@/domain/models/FileEdit';
@@ -124,7 +126,8 @@ function changesLineBreak(before: string, after: string): boolean {
 }
 
 /** What an intent's policy refuses, by operation (D6). Pure over the operations. */
-export function intentFaults(operations: readonly TextEditOperation[], policy: FileEditIntentPolicy | undefined): OperationFault[] {
+export function intentFaults(operations: readonly TextEditOperation[], intent: FileEditIntentPolicy | undefined): OperationFault[] {
+  const policy = intent?.narrows;
   if (!policy) {
     return [];
   }

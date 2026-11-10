@@ -81,9 +81,9 @@ describe('a reply\'s edit offers across whole-room operations (ADR 2026-11-10 D3
     expect(turns.indexOf(requests[1]) - turns.findIndex((turn) => turn.id === fixes.id)).toBeGreaterThan(4);
     expect(status(turns, source, 'fixes')).toEqual({ state: 'answered', answerTurnId: fixes.id, cards: 1, changes: 2, askAgain: false });
     expect(status(turns, source, 'rewrites')).toEqual({ state: 'answered', answerTurnId: rewrites.id, cards: 1, changes: 1, askAgain: false });
-    // A fixes answer's cards carry the intent; a rewrites answer's take their class policy alone.
+    // Each answer's cards carry the pressed kind as their intent: fixes narrow, rewrites lift the ceiling (second addendum).
     expect(fixes.fileEditProposals?.map((card) => card.intent)).toEqual(['fixes']);
-    expect(rewrites.fileEditProposals?.map((card) => card.intent)).toEqual([undefined]);
+    expect(rewrites.fileEditProposals?.map((card) => card.intent)).toEqual(['rewrites']);
   });
 
   it('a cut that removes an answer reopens its offer, with nothing to roll back', async () => {
@@ -270,6 +270,8 @@ describe('a rewrites offer\'s versions across whole-room operations (second adde
     expect(reopened.find((turn) => turn.id === source.id)?.editOffers?.[1].options).toEqual(LABELS);
     expect(reopened.find((turn) => turn.id === answer.id)?.editOfferAnswer).toEqual({ sourceTurnId: source.id, kind: 'rewrites', option: 1, outcome: 'proposed' });
     expect(states(reopened, source)).toEqual(['open', 'answered', 'open']);
+    // A requested rewrite's card keeps its intent through the codec, so the ceiling stays lifted after a reopen.
+    expect(reopened.find((turn) => turn.id === answer.id)?.fileEditProposals?.map((card) => card.intent)).toEqual(['rewrites']);
 
     const before = await harness.coordinator.branchFrom(after(source.id));
     const alone = (await harness.store.readNamed(before.branch.sessionId))!.workshop.turns;

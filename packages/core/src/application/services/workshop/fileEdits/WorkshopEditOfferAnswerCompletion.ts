@@ -8,6 +8,8 @@
  *   to the press:
  *   - a card staged to a file other than the offer's is refused
  *     (`not-the-offered-file`);
+ *   - a rewrites answer's cards carry `intent: 'rewrites'`: the gateway lifts
+ *     the prose rewrite ceiling for them, and nothing else (second addendum);
  *   - a fixes answer's cards carry `intent: 'fixes'`, and one that breaks the
  *     fixes policy is refused at once (`more-than-a-fix`); the gateway holds
  *     the rest to it at every Apply.
@@ -97,7 +99,8 @@ export function workshopEditOfferAnswerCards(
   offer: Pick<WorkshopEditOffer, 'kind' | 'target'>
 ): WorkshopFileEditProposal[] {
   return staged.map((card): WorkshopFileEditProposal => {
-    const intent = offer.kind === 'fixes' ? { intent: 'fixes' as const } : {};
+    // The intent is the pressed offer's kind, from the host's own request turn: fixes narrow, rewrites lift the ceiling.
+    const intent = { intent: offer.kind };
     if (!card.target) {
       // Refused at staging: it has no identity to compare, and keeps its own reason.
       return { ...card, ...intent };
