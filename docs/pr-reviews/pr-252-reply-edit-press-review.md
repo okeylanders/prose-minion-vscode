@@ -60,9 +60,9 @@ Local checks use Node `v24.22.1` and the existing dependency installation from t
 - All 12 changed production test suites: **291 tests passed**.
 - Independent review probes: **7 passing checks**. Six bridge the real engine, conversation manager, router, and completion using mocked transport/capability/staging seams (three streaming, three non-streaming). One exercises the scripted real session/completion plus directive/author checks with a fake staging port modeling current-excerpt resolution. The latter does not claim an end-to-end run through the real `FileEditStagingService`; that service's resolution was separately inspected.
 - `git diff 603ad364...6841476c --check`: passed.
-- The full local `npm test -- --runInBand` run is still underway at initial publication. Its final result will be appended; it is not represented as passed here.
+- Full local `npm test -- --runInBand`: **810 suites / 11,415 tests / 59 snapshots passed**, in 549.805 seconds. After printing the complete passing result, Jest stayed alive on the new test's cleanup intervals described below. The process was stopped then (exit 130), so this is a completed assertion result, not a clean aggregate-command exit.
 
-**Test-harness follow-up:** the new `AgentRunEngine.finalReplyCheck.test.ts` creates engines without calling `dispose()`. The focused run prints all 291 assertions as passed but then reports that Jest has not exited. Add `afterEach(() => engine.dispose())`, as the existing engine suites do, so the new cleanup intervals do not keep serial test runs alive. This is separate from the three product findings.
+**Test-harness follow-up:** the new `AgentRunEngine.finalReplyCheck.test.ts` creates engines without calling `dispose()`. Both the focused run and full serial run finish all assertions successfully but then report that Jest has not exited. Add `afterEach(() => engine.dispose())`, as the existing engine suites do, so the new cleanup intervals do not keep serial test runs alive. This is separate from the three product findings.
 
 ### Exact-code-head CI
 
