@@ -157,3 +157,72 @@ describe('the webview\'s view of a turn\'s offers (D3, U5)', () => {
     ]);
   });
 });
+
+describe('status per option, and the view of an offer with options (second addendum)', () => {
+  const LABELS = ['Version 1', 'Version 2', 'A third option'];
+  const VERSIONED = turn('reply', { editOffers: [offer('fixes', 3), { ...offer('rewrites'), options: LABELS }] });
+  const ask = (id: string, option?: number) =>
+    turn(id, { role: 'user', participant: 'writer', editOfferRequest: { sourceTurnId: 'reply', kind: 'rewrites', ...(option !== undefined ? { option } : {}) } });
+  const answer = (id: string, option: number | undefined, cards: WorkshopFileEditProposal[]) =>
+    turn(id, { editOfferAnswer: { sourceTurnId: 'reply', kind: 'rewrites', ...(option !== undefined ? { option } : {}), outcome: 'proposed' }, fileEditProposals: cards });
+  const of = (ledger: WorkshopTurn[], option?: number, runActive = false) =>
+    workshopEditOfferStatus(ledger, 'reply', 'rewrites', { runActive }, option);
+
+  it('an answer counts only for the option it names: one version never uses up another', () => {
+    const ledger = [VERSIONED, ask('q1', 1), answer('a1', 1, [card('pending')])];
+    expect(of(ledger, 1)).toEqual({ state: 'answered', answerTurnId: 'a1', cards: 1, changes: 1, askAgain: false });
+    expect(of(ledger, 0)).toEqual({ state: 'open' });
+    expect(of(ledger, 2)).toEqual({ state: 'open' });
+    // Nor does it answer the offer read with no option, or the fixes.
+    expect(of(ledger)).toEqual({ state: 'open' });
+    expect(status(ledger)).toEqual({ state: 'open' });
+    // And an answer that names no option is no version's.
+    expect(of([VERSIONED, ask('q1'), answer('a1', undefined, [card('pending')])], 0)).toEqual({ state: 'open' });
+  });
+
+  it('asked is the one option whose request stands while a run is going', () => {
+    const ledger = [VERSIONED, ask('q1', 1), answer('a1', 1, [card('pending')]), ask('q2', 2)];
+    expect(of(ledger, 2, true)).toEqual({ state: 'asked' });
+    expect(of(ledger, 1, true).state).toBe('answered');
+    expect(of(ledger, 0, true)).toEqual({ state: 'open' });
+  });
+
+  it('D7 holds option by option', () => {
+    const ledger = [VERSIONED, ask('q1', 0), answer('a1', 0, [card('declined')]), ask('q2', 1), answer('a2', 1, [card('applied')])];
+    expect(of(ledger, 0)).toMatchObject({ state: 'ask-again', askAgain: true });
+    expect(of(ledger, 1)).toMatchObject({ state: 'answered', askAgain: false });
+    expect(workshopEditOfferMayBeAsked(of(ledger, 0))).toBe(true);
+    expect(workshopEditOfferMayBeAsked(of(ledger, 1))).toBe(false);
+  });
+
+  it('the view carries the labels and one status per option in place of the offer\'s own, and still no URI', () => {
+    const ledger = [VERSIONED, ask('q1', 1), answer('a1', 1, [card('pending')])];
+    const room: WorkshopEditOfferRoomView = { fileEditsOpen: true, runActive: false, ledger: () => ledger, authorPresent: () => true };
+    const view = workshopTurnForWebview(VERSIONED, room);
+    expect(view.editOffers).toEqual([
+      { kind: 'fixes', target: { kind: 'file', relativePath: 'chapters/one.md' }, count: 3, status: { state: 'open' } },
+      {
+        kind: 'rewrites',
+        target: { kind: 'file', relativePath: 'chapters/one.md' },
+        options: LABELS,
+        optionStatuses: [{ state: 'open' }, { state: 'answered', answerTurnId: 'a1', cards: 1, changes: 1, askAgain: false }, { state: 'open' }]
+      }
+    ]);
+    expect(JSON.stringify(view)).not.toContain('zzq-uri');
+    // The labels are a copy: the view never hands the ledger's own list out.
+    expect(view.editOffers![1].options).not.toBe(VERSIONED.editOffers![1].options);
+  });
+
+  it('an author who left blocks every option that would ask', () => {
+    const room: WorkshopEditOfferRoomView = { fileEditsOpen: true, runActive: false, ledger: () => [VERSIONED], authorPresent: () => false };
+    expect(workshopTurnForWebview(VERSIONED, room).editOffers![1].optionStatuses).toEqual(
+      LABELS.map(() => ({ state: 'open', blocked: 'author-left' })));
+  });
+
+  it('with file edits off the offer and its labels are left out; with no room view the labels pass with no status', () => {
+    const closed: WorkshopEditOfferRoomView = { fileEditsOpen: false, runActive: false, ledger: () => [VERSIONED], authorPresent: () => true };
+    expect(workshopTurnForWebview(VERSIONED, closed).editOffers).toBeUndefined();
+    expect(workshopTurnForWebview(VERSIONED).editOffers![1]).toEqual({ kind: 'rewrites', target: { kind: 'file', relativePath: 'chapters/one.md' }, options: LABELS });
+  });
+});
+

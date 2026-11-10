@@ -575,11 +575,50 @@ you're going to provide prose, then give options to apply it."
 - **U3, U4: the lines name it.** "You asked Jill for an edit · Version 1,
   from that reply ↑" and "Suggested Version 1 as an edit to …".
 - **D6 is unchanged.** An option is a rewrite and takes the file's class
-  policy.
+  policy. *(Amended the same day: see "A requested rewrite lifts the
+  ceiling" below.)*
 
 **Not changed:** the host still never reads a reply's prose to decide what
 to draw. The label on a chip is the persona's declared text, bounded and
 shown as text, as a card's `<why>` is.
+
+**A requested rewrite lifts the ceiling (Okey's second live run,
+2026-11-10).** A press on a rewrites chip worked end to end, and the
+answer's card was then refused at Apply: "This rewrites too much of the
+passage: prose takes edits, not rewrites." The card replaced a bracketed
+placeholder paragraph with written-out prose, which is what the writer
+pressed the chip for. His words: "our limit on edits may be too small."
+
+- **Confirmed by Okey (2026-11-10, PR #254 D1): option A, the ceiling is
+  lifted entirely for a requested rewrite.** He chose it knowing the
+  consequence the review probed: a find-and-replace that fits the trailer's
+  bounds can replace the whole of a short prose file. "Never the whole
+  file" is taught to the persona, not enforced by the host. What stands
+  between that and the file is the writer: the card shows the full diff,
+  Apply is theirs, the change is one undo step, and nothing is saved for
+  them. A host-enforced passage bound and a higher ceiling were the
+  alternatives, and were not taken.
+- **Why the ceiling can go here.** ADR 2026-11-05 D5's rewrite ceiling
+  keeps a persona from rewriting the writer's prose unasked. A requested
+  rewrite is asked for: the writer pressed the chip, and reviews the diff on
+  the card before anything is written.
+- **D6 gains a row.** A card staged from a rewrites answer carries
+  `intent: 'rewrites'`, and `FILE_EDIT_INTENT_POLICIES.rewrites` lifts the
+  rewrite ceiling for it, on every apply attempt. That is all it lifts.
+- **Everything else of the class policy holds:** quotes anchored exactly
+  once, no `<rewrite>` of a prose file, the trailer's bounds, appends and
+  prepends within `insertWords`, the `prose-paragraphs` structure mode,
+  protected regions, freshness, the claim and checkpoint, and the
+  offered-file check.
+- **Unchanged:** an ordinary, unrequested proposal keeps the ceiling and its
+  words. `fixes` is as it was.
+- **The intent is the host's.** It is written from the pressed offer's kind,
+  which the host reads from its own ledger. No trailer element and no route
+  field carries it.
+- **The teaching** says a pressed rewrite may replace the whole passage the
+  reply reworded, as find-and-replace kept to that passage, never the file.
+  It does not mention the ceiling.
+- **A card saved before this** has no intent and keeps the ceiling.
 
 ## How this meets Message Reactions
 

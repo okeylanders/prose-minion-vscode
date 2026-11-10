@@ -21,9 +21,9 @@
 import type { WorkshopEditOffer, WorkshopEditOfferKind } from '@messages';
 import { workshopEditOfferCountWords, workshopEditOfferRefusalWords } from '@shared/constants/workshopEditOfferWords';
 
-/** A chip's key in the hook's state: its turn and its kind. */
-export function workshopEditOfferKey(turnId: string, kind: WorkshopEditOfferKind): string {
-  return `${turnId}#${kind}`;
+/** A chip's key in the hook's state: its turn, its kind and, for one version of an offer with options, its option. */
+export function workshopEditOfferKey(turnId: string, kind: WorkshopEditOfferKind, option?: number): string {
+  return option === undefined ? `${turnId}#${kind}` : `${turnId}#${kind}#${option}`;
 }
 
 export type WorkshopEditOfferChipFace = 'open' | 'asked' | 'answered' | 'nothing-to-change' | 'ask-again';
@@ -69,8 +69,7 @@ const kindNoun = (kind: WorkshopEditOfferKind, count: number | undefined): strin
   count === 1 ? (kind === 'fixes' ? 'fix' : 'rewrite') : kind;
 
 /** "Wait for the current reply to finish", the room's lock, or the author who left: first that holds. */
-function waitingReason(offer: WorkshopEditOffer, facts: WorkshopEditOfferChipFacts): string | undefined {
-  const status = offer.status;
+function waitingReason(status: WorkshopEditOffer['status'], facts: WorkshopEditOfferChipFacts): string | undefined {
   if (status && status.state !== 'asked' && status.blocked === 'author-left') {
     return `${facts.personaLabel} isn’t in this room now`;
   }
@@ -83,7 +82,11 @@ function waitingReason(offer: WorkshopEditOffer, facts: WorkshopEditOfferChipFac
   return undefined;
 }
 
-export function workshopEditOfferChipView(offer: WorkshopEditOffer, facts: WorkshopEditOfferChipFacts): WorkshopEditOfferChipView {
+export function workshopEditOfferChipView(offer: WorkshopEditOffer, facts: WorkshopEditOfferChipFacts, option?: number): WorkshopEditOfferChipView {
+  const version = option === undefined ? undefined : offer.options?.[option];
+  if (version !== undefined && option !== undefined) {
+    return optionChipView(offer, version, offer.optionStatuses?.[option] ?? { state: 'open' }, facts);
+  }
   const { kind } = offer;
   const { personaLabel } = facts;
   const path = offer.target.relativePath;
@@ -103,7 +106,7 @@ export function workshopEditOfferChipView(offer: WorkshopEditOffer, facts: Works
   }
 
   const ask = (face: WorkshopEditOfferChipFace, count: number | undefined, words: string, name: string): WorkshopEditOfferChipView => {
-    const waiting = waitingReason(offer, facts);
+    const waiting = waitingReason(status, facts);
     return {
       face,
       ...(count !== undefined ? { count } : {}),
@@ -146,6 +149,55 @@ export function workshopEditOfferChipView(offer: WorkshopEditOffer, facts: Works
         name: `${label}. Go to the edits.`,
         press: { kind: 'go', answerTurnId: status.answerTurnId }
       };
+    }
+  }
+}
+
+/**
+ * One version of an offer with options (second addendum): the chip is
+ * labeled with the persona's own declared words, shown as text, and has the
+ * same five faces. It carries no count: a version is one edit to ask for.
+ */
+function optionChipView(
+  offer: WorkshopEditOffer,
+  version: string,
+  status: NonNullable<WorkshopEditOffer['status']>,
+  facts: WorkshopEditOfferChipFacts
+): WorkshopEditOfferChipView {
+  const { personaLabel } = facts;
+  const path = offer.target.relativePath;
+  if (status.state === 'asked' || facts.asking) {
+    const label = `Asking ${personaLabel} for ${version}…`;
+    return { face: 'asked', words: label, label, name: `${label} The room’s Stop ends the request.`, press: { kind: 'none' } };
+  }
+  const ask = (face: WorkshopEditOfferChipFace, words: string, name: string): WorkshopEditOfferChipView => {
+    const waiting = waitingReason(status, facts);
+    return {
+      face,
+      words,
+      label: words,
+      name,
+      press: { kind: 'ask' },
+      ...(waiting ? { waiting } : {}),
+      ...(facts.feedback ? { feedback: facts.feedback } : {})
+    };
+  };
+  switch (status.state) {
+    case 'open':
+      return ask('open', version, `${version}. Ask ${personaLabel} to suggest it as an edit to ${path}.`);
+    case 'nothing-to-change':
+      return ask('nothing-to-change', `${version} · nothing to change · ask again`,
+        `${version}, nothing to change, ask again. Ask ${personaLabel} again to suggest it as an edit to ${path}.`);
+    case 'ask-again':
+      return ask('ask-again', `${version} · ask again`,
+        `${version}, ask again. The last suggested edits were not applied. Ask ${personaLabel} again to suggest it as an edit to ${path}.`);
+    case 'answered': {
+      if (status.askAgain) {
+        return ask('ask-again', `${version} suggested · ask again`,
+          `${version} suggested, ask again. Ask ${personaLabel} again to suggest it as an edit to ${path}.`);
+      }
+      const label = `${version} suggested`;
+      return { face: 'answered', words: label, label, name: `${label}. Go to the edits.`, press: { kind: 'go', answerTurnId: status.answerTurnId } };
     }
   }
 }

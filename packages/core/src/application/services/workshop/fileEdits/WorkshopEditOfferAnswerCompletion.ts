@@ -8,6 +8,8 @@
  *   to the press:
  *   - a card staged to a file other than the offer's is refused
  *     (`not-the-offered-file`);
+ *   - a rewrites answer's cards carry `intent: 'rewrites'`: the gateway lifts
+ *     the prose rewrite ceiling for them, and nothing else (second addendum);
  *   - a fixes answer's cards carry `intent: 'fixes'`, and one that breaks the
  *     fixes policy is refused at once (`more-than-a-fix`); the gateway holds
  *     the rest to it at every Apply.
@@ -67,6 +69,8 @@ export interface WorkshopEditOfferPress {
   readonly request: WorkshopEditOfferRequest;
   /** The source turn's own offer, with its host identity. */
   readonly offer: WorkshopEditOffer;
+  /** The chosen version's label, from the stored offer, when the press named an option. */
+  readonly optionLabel?: string;
   /** The source reply's time as the room shows it. */
   readonly sourceAt: string;
   /** `proseMinion.workshop.fileEdits` is still `ask`, read at completion. */
@@ -95,7 +99,8 @@ export function workshopEditOfferAnswerCards(
   offer: Pick<WorkshopEditOffer, 'kind' | 'target'>
 ): WorkshopFileEditProposal[] {
   return staged.map((card): WorkshopFileEditProposal => {
-    const intent = offer.kind === 'fixes' ? { intent: 'fixes' as const } : {};
+    // The intent is the pressed offer's kind, from the host's own request turn: fixes narrow, rewrites lift the ceiling.
+    const intent = { intent: offer.kind };
     if (!card.target) {
       // Refused at staging: it has no identity to compare, and keeps its own reason.
       return { ...card, ...intent };
@@ -116,8 +121,9 @@ export function workshopEditOfferAnswerCards(
  */
 export function completeWorkshopEditOfferRun(input: WorkshopRunCompletionInput, press: WorkshopEditOfferPress): WorkshopTurn | undefined {
   const { session, requestId, label, result, events } = input;
-  const { kind, sourceTurnId } = press.request;
-  const where = `source=${sourceTurnId} kind=${kind}`;
+  const { kind, sourceTurnId, option } = press.request;
+  const named = option !== undefined ? { option } : {};
+  const where = `source=${sourceTurnId} kind=${kind} option=${option ?? 'none'}`;
   const fail = (reason: Extract<WorkshopEditOfferRunOutcome, { kind: 'failed' }>['reason'], line: string): undefined => {
     input.log(`Edit offer run left no answer (${where}; reason=${reason}; ${line})`);
     // No turn is kept: the press's writer turn leaves with the run, so the offer reads open again.
@@ -161,8 +167,8 @@ export function completeWorkshopEditOfferRun(input: WorkshopRunCompletionInput, 
   let answer: WorkshopEditOfferAnswer;
   let content: string;
   if (read.outcome === 'none') {
-    answer = { sourceTurnId, kind, outcome: 'none', why: read.why };
-    content = workshopEditOfferNoneLine(label, read.why);
+    answer = { sourceTurnId, kind, ...named, outcome: 'none', why: read.why };
+    content = workshopEditOfferNoneLine(label, read.why, press.optionLabel);
   } else {
     // The room staged this reply's frames (`resolveWorkshopReplyEdits`); anything else was never staged.
     const staged = input.fileEdits?.reply === result.content ? input.fileEdits : undefined;
@@ -174,8 +180,8 @@ export function completeWorkshopEditOfferRun(input: WorkshopRunCompletionInput, 
       return fail('no-answer', `${dropped}; staged=0`);
     }
     const changes = cards.reduce((sum, card) => sum + card.operations.length, 0);
-    answer = { sourceTurnId, kind, outcome: 'proposed' };
-    content = workshopEditOfferProposedLine(kind, changes, press.offer.target.relativePath, press.sourceAt);
+    answer = { sourceTurnId, kind, ...named, outcome: 'proposed' };
+    content = workshopEditOfferProposedLine(kind, changes, press.offer.target.relativePath, press.sourceAt, press.optionLabel);
   }
 
   const turn = session.completeRun(

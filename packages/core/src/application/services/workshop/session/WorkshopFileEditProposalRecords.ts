@@ -23,8 +23,11 @@
  *   declined card;
  * - no two cards naming one identity (`documentUri`), nor requesting one file;
  * - `intent`, optional (ADR 2026-11-10 D6; epic Reply Edit Actions Slice 2):
- *   `fixes` on a card that answers a reply's fixes offer. Additive, like the
- *   field itself: no development checkpoint held another shape of it.
+ *   `fixes` on a card that answers a reply's fixes offer, `rewrites` on one
+ *   that answers a rewrites offer (its second addendum; a rewrites card
+ *   saved before that carries none, and keeps its class's ceiling).
+ *   Additive, like the field itself: no development checkpoint held another
+ *   shape of it.
  * `landed` records exist only on applied and partial cards; an unknown card
  * records no landed operation.
  *

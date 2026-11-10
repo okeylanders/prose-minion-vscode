@@ -36,6 +36,11 @@
  * every attempt, and applied with no line-break change and the `strict`
  * structure mode. A breach is `more-than-a-fix`, and nothing is written.
  *
+ * **A requested rewrite lifts the ceiling** (its second addendum). A
+ * proposal staged with `intent: 'rewrites'` (the answer to a press on a
+ * rewrites chip) is not held to the class's rewrite ceiling, in step 4 or
+ * before any attempt. Everything else of its class policy stands.
+ *
  * Nothing is ever saved. Logs carry ids, counts and fault kinds, never the
  * text, a quote, a path or a URI.
  */
@@ -45,6 +50,7 @@ import { DEFAULT_CONTEXT_GROUPS, type ContextResourceCandidate, type ContextReso
 import {
   FILE_EDIT_INTENT_POLICIES,
   FILE_EDIT_TARGET_POLICIES,
+  fileEditPolicyWithIntent,
   type FileEditApplyOptions,
   type FileEditApplyOutcome,
   type FileEditApplyPort,
@@ -218,11 +224,9 @@ export class ProjectFileEditGateway implements FileEditApplyPort {
       return whole(staged, 'refused', resolved.reason);
     }
     const { epoch, fsPath, document } = resolved;
-    // An intent only narrows its class's policy (ADR 2026-11-10 D6).
+    // Fixes narrow the class's policy (ADR 2026-11-10 D6); a requested rewrite lifts its ceiling alone (second addendum).
     const intent = staged.intent ? FILE_EDIT_INTENT_POLICIES[staged.intent] : undefined;
-    const policy: FileEditClassPolicy = intent
-      ? { ...resolved.policy, allowsRewrite: false, allowsNewlineChanges: intent.allowsNewlineChanges, structure: intent.structure }
-      : resolved.policy;
+    const policy: FileEditClassPolicy = fileEditPolicyWithIntent(resolved.policy, intent);
 
     // From here to the applier's call nothing is awaited.
     // 4. Plan, then freshness and the policy.

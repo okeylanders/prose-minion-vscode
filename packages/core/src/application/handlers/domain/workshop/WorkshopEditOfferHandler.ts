@@ -3,7 +3,9 @@
  * Reply Edit Actions Slice 2): `WORKSHOP_EDIT_OFFER_ACTION` in, and
  * `WORKSHOP_EDIT_OFFER_RESULT` out.
  *
- * - **A press carries ids only:** `{ requestId, roomRevision, turnId, kind }`.
+ * - **A press carries ids only:** `{ requestId, roomRevision, turnId, kind, option? }`.
+ *   `option` is an index into the stored offer's options (second addendum):
+ *   required when the offer has them, refused otherwise (`no-offer`).
  *   Everything else is read from the host's own ledger.
  * - **Before anything is awaited** (D4), in this order:
  *   1. the room's lock: the route is behind the session-operation gate, the
@@ -37,6 +39,7 @@ import type { LogSink } from '@/platform';
 import {
   isWorkshopEditOfferKind,
   MessageType,
+  workshopEditOfferOptionFits,
   type WorkshopChatTarget,
   type WorkshopEditOfferActionMessage,
   type WorkshopEditOfferKind,
@@ -79,7 +82,7 @@ export interface WorkshopEditOfferRoomGate {
   runDirected(target: WorkshopChatTarget, run: WorkshopDirectedRun): Promise<WorkshopDirectedRunResult>;
 }
 
-type Ids = Pick<WorkshopEditOfferResultPayload, 'roomRevision' | 'turnId' | 'kind'>;
+type Ids = Pick<WorkshopEditOfferResultPayload, 'roomRevision' | 'turnId' | 'kind' | 'option'>;
 
 const LOG = '[WorkshopEditOfferHandler]';
 
@@ -119,15 +122,17 @@ export class WorkshopEditOfferHandler {
     // The engine holds the run's exchange until the answer is adopted (PR #252 R1): a press that fails after the
     // reply ended (stopped, or file edits turned off, while its edits are staged) never retained anything.
     let commitRetained: (() => boolean) | undefined;
-    const request = { sourceTurnId: turn.id, kind: ids.kind };
+    const request = { sourceTurnId: turn.id, kind: ids.kind, ...(ids.option !== undefined ? { option: ids.option } : {}) };
+    // The chosen version's label is the host's stored copy, read from the ledger's offer by the press's index.
+    const optionLabel = ids.option !== undefined ? offer.options?.[ids.option] : undefined;
     const sourceAt = this.room.formatTurnTime(turn.timestamp);
-    this.log(`press taken turn=${turn.id} kind=${ids.kind} author=${target.kind} count=${offer.count ?? 'none'}`);
+    this.log(`press taken turn=${turn.id} kind=${ids.kind} option=${ids.option ?? 'none'} author=${target.kind} count=${offer.count ?? 'none'}`);
     const ran = await this.room.runDirected(target, {
       editOfferRequest: request,
-      displayText: workshopEditOfferRequestLine(label, ids.kind),
+      displayText: workshopEditOfferRequestLine(label, ids.kind, optionLabel),
       message: WORKSHOP_EDIT_REQUEST_MESSAGE,
       // Built from the ledger's turn, never from anything the press carried (D4).
-      frame: buildWorkshopEditRequestFrame({ turn, at: sourceAt, offer }),
+      frame: buildWorkshopEditRequestFrame({ turn, at: sourceAt, offer, ...(optionLabel !== undefined ? { option: optionLabel } : {}) }),
       finalReply: {
         check: (reply, facts) => this.checkAnswer(reply, facts),
         retained: (reply) => workshopEditOfferRetainedReply(ids.kind, reply),
@@ -142,6 +147,7 @@ export class WorkshopEditOfferHandler {
       complete: (input) => completeWorkshopEditOfferRun(input, {
         request,
         offer,
+        ...(optionLabel !== undefined ? { optionLabel } : {}),
         sourceAt,
         fileEditsOpen: () => this.room.fileEditsMode() === 'ask',
         commitRetained: () => commitRetained?.() ?? true,
@@ -161,15 +167,15 @@ export class WorkshopEditOfferHandler {
         ...(proposed ? { cards: outcome.cards, changes: outcome.changes } : {})
       }, workshopEditOfferAnsweredWords(label, ids.kind, proposed
         ? { outcome: 'proposed', changes: outcome.changes, relativePath: offer.target.relativePath }
-        : { outcome: 'none' }));
-      this.log(`press answered turn=${turn.id} kind=${ids.kind} answer=${outcome.turn.id} outcome=${proposed ? 'proposed' : 'none'} ` +
+        : { outcome: 'none' }, optionLabel));
+      this.log(`press answered turn=${turn.id} kind=${ids.kind} option=${ids.option ?? 'none'} answer=${outcome.turn.id} outcome=${proposed ? 'proposed' : 'none'} ` +
         `cards=${outcome.cards} changes=${outcome.changes}`);
       return;
     }
     // The run left no turns: completion said why, or the room's message path did.
     const reason: WorkshopEditOfferRefusal = outcome?.reason ?? (ran.cancelled ? 'stopped' : ran.refusalReason !== undefined ? 'not-sent' : 'failed');
     this.post(requestId, { ...ids, answer: 'failed', reason }, workshopEditOfferRefusalWords(reason));
-    this.log(`press failed turn=${turn.id} kind=${ids.kind} reason=${reason}`);
+    this.log(`press failed turn=${turn.id} kind=${ids.kind} option=${ids.option ?? 'none'} reason=${reason}`);
   }
 
   /**
@@ -201,10 +207,11 @@ export class WorkshopEditOfferHandler {
       return 'no-turn';
     }
     const offer = turn.editOffers?.find((candidate) => candidate.kind === ids.kind);
-    if (!offer) {
+    // An offer with options is pressed one version at a time; one without takes no option.
+    if (!offer || !workshopEditOfferOptionFits(offer, ids.option)) {
       return 'no-offer';
     }
-    if (!workshopEditOfferMayBeAsked(workshopEditOfferStatus(ledger, turn.id, ids.kind, { runActive: false }))) {
+    if (!workshopEditOfferMayBeAsked(workshopEditOfferStatus(ledger, turn.id, ids.kind, { runActive: false }, ids.option))) {
       return 'already-answered';
     }
     if (this.room.fileEditsMode() !== 'ask') {
@@ -216,7 +223,7 @@ export class WorkshopEditOfferHandler {
 
   private refuse(requestId: string, ids: Ids, reason: WorkshopEditOfferRefusal): void {
     this.post(requestId, { ...ids, answer: 'refused', reason }, workshopEditOfferRefusalWords(reason));
-    this.log(`press refused turn=${ids.turnId} kind=${ids.kind} reason=${reason}`);
+    this.log(`press refused turn=${ids.turnId} kind=${ids.kind} option=${ids.option ?? 'none'} reason=${reason}`);
   }
 
   private post(requestId: string, answer: Omit<WorkshopEditOfferResultPayload, 'requestId' | 'message'>, message: string): void {
@@ -254,11 +261,23 @@ export function workshopEditOfferAuthorTarget(
     : undefined;
 }
 
-function pressOf(payload: { requestId?: unknown; roomRevision?: unknown; turnId?: unknown; kind?: unknown } | undefined):
+function pressOf(payload: { requestId?: unknown; roomRevision?: unknown; turnId?: unknown; kind?: unknown; option?: unknown } | undefined):
   { requestId: string; ids: Ids } | undefined {
   const requestId = requestIdOf(payload);
   if (!requestId || typeof payload?.turnId !== 'string' || !Number.isSafeInteger(payload.roomRevision) || !isWorkshopEditOfferKind(payload.kind)) {
     return undefined;
   }
-  return { requestId, ids: { roomRevision: payload.roomRevision as number, turnId: payload.turnId, kind: payload.kind as WorkshopEditOfferKind } };
+  const option = payload.option;
+  if (option !== undefined && (typeof option !== 'number' || !Number.isSafeInteger(option) || option < 0)) {
+    return undefined;
+  }
+  return {
+    requestId,
+    ids: {
+      roomRevision: payload.roomRevision as number,
+      turnId: payload.turnId,
+      kind: payload.kind as WorkshopEditOfferKind,
+      ...(option !== undefined ? { option } : {})
+    }
+  };
 }

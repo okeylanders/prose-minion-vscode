@@ -58,11 +58,14 @@ const noteFix = (...operations: TextEditOperation[]) => staged(NOTE, NOTE_TEXT, 
 
 describe('the fixes policy is data beside the class policies (D6)', () => {
   it('holds exactly D6\'s row: replace only, the fix bound, no line break, strict', () => {
-    expect([...FIXES.operations]).toEqual(['replace']);
-    expect(FIXES.changedCharacters).toBe(BOUND);
+    const rows = FIXES.narrows!;
+    expect([...rows.operations]).toEqual(['replace']);
+    expect(rows.changedCharacters).toBe(BOUND);
     expect(BOUND).toBe(40);
-    expect(FIXES.allowsNewlineChanges).toBe(false);
-    expect(FIXES.structure).toBe('strict');
+    expect(rows.allowsNewlineChanges).toBe(false);
+    expect(rows.structure).toBe('strict');
+    // Fixes lift nothing.
+    expect(FIXES.liftsRewriteCeiling).toBe(false);
     // It only narrows: no class is stricter on any row.
     for (const policy of Object.values(FILE_EDIT_TARGET_POLICIES)) {
       expect(policy.allowsNewlineChanges).toBe(true);

@@ -148,4 +148,56 @@ describe('useWorkshopEditOffers', () => {
     const { result: hook } = mount();
     expect(hook.current.persistedState).toEqual({});
   });
+
+  describe('one version of an offer with options (second addendum)', () => {
+    const versionResult = (payload: Partial<WorkshopEditOfferResultPayload> & { requestId: string }) =>
+      result({ kind: 'rewrites', ...payload });
+    const idOf = (index: number) => presses()[index].payload.requestId as string;
+
+    it('a press posts the option\'s index beside the ids, and nothing else', () => {
+      const { result: hook } = mount();
+      act(() => hook.current.ask(TURN, 'rewrites', 1));
+      expect(presses()[0].payload).toEqual({ requestId: expect.stringMatching(/^ws-edit-offer-/), roomRevision: 3, turnId: TURN, kind: 'rewrites', option: 1 });
+      expect([...hook.current.askingOffers]).toEqual([`${TURN}#rewrites#1`]);
+    });
+
+    it('each option is its own chip: one request per option at a time, and siblings may be asked meanwhile', () => {
+      const { result: hook } = mount();
+      act(() => {
+        hook.current.ask(TURN, 'rewrites', 1);
+        hook.current.ask(TURN, 'rewrites', 1);
+        hook.current.ask(TURN, 'rewrites', 2);
+        hook.current.ask(TURN, 'rewrites', 0);
+      });
+      expect(presses().map((press) => press.payload.option)).toEqual([1, 2, 0]);
+      expect(hook.current.askingOffers.size).toBe(3);
+    });
+
+    it('takes only the answer for its own option, and holds a refusal\'s words on that option alone', () => {
+      const { result: hook } = mount();
+      act(() => hook.current.ask(TURN, 'rewrites', 1));
+      act(() => hook.current.ask(TURN, 'rewrites', 2));
+      // An answer that echoes another option, or none, is not this request's.
+      act(() => hook.current.handleResult(versionResult({ requestId: idOf(0), option: 2 })));
+      expect(hook.current.askingOffers.has(`${TURN}#rewrites#1`)).toBe(true);
+      expect(hook.current.announcement).toBe('');
+
+      act(() => hook.current.handleResult(versionResult({ requestId: idOf(1), option: 2, answer: 'failed', reason: 'failed', message: 'The request failed.' })));
+      expect(hook.current.askingOffers.has(`${TURN}#rewrites#2`)).toBe(false);
+      expect([...hook.current.offerFeedback]).toEqual([[`${TURN}#rewrites#2`, 'The request failed.']]);
+      expect(hook.current.announcement).toBe('The request failed.');
+    });
+
+    it('announces an option\'s answer once, in the host\'s words', () => {
+      const { result: hook } = mount();
+      act(() => hook.current.ask(TURN, 'rewrites', 0));
+      const said = 'Jill suggested Version 1 as an edit to chapters/down-the-rabbit-hole.md. It is at the end of the conversation.';
+      act(() => hook.current.handleResult(versionResult({ requestId: idOf(0), option: 0, message: said })));
+      const serial = hook.current.announcementSerial;
+      expect(hook.current.announcement).toBe(said);
+      act(() => hook.current.handleResult(versionResult({ requestId: idOf(0), option: 0, message: said })));
+      expect(hook.current.announcementSerial).toBe(serial);
+      expect(hook.current.askingOffers.size).toBe(0);
+    });
+  });
 });

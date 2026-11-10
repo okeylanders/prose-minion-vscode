@@ -102,7 +102,7 @@ describe('a press and its answer in the saved session (D3, D8)', () => {
       ['a why past its bound', (turns) => { answers(turns)[1].editOfferAnswer.why = 'a'.repeat(201); }, /editOfferAnswer\.why/],
       ['a stored used flag on an answer', (turns) => { answers(turns)[0].editOfferAnswer.used = true; }, /unknown field used/],
       ['a stored status on the offer', (turns) => { reply(turns).editOffers[0].status = { state: 'answered' }; }, /unknown field status/],
-      ['an unknown intent on a card', (turns) => { answers(turns)[0].fileEditProposals[0].intent = 'rewrites'; }, /intent must be fixes/]
+      ['an unknown intent on a card', (turns) => { answers(turns)[0].fileEditProposals[0].intent = 'everything'; }, /intent must be fixes \| rewrites/]
     ])('%s', async (_name, mutate, expected) => {
       const text = await checkpointWith(mutate);
       expect(() => parseWorkshopPersistedSession(JSON.parse(text))).toThrow(expected);

@@ -66,11 +66,11 @@ describe('the press\'s teaching ↔ the directive frame', () => {
   it('quotes the fixes policy\'s numbers and the why\'s bound, and the policy is what it says', () => {
     expect(Number(/at most ([\d,]+) on each side/.exec(PRESS)![1])).toBe(budgets.fixChangedCharacters);
     expect(Number(/one line of at most ([\d,]+) characters/.exec(PRESS)![1])).toBe(budgets.whyCharacters);
-    expect(FILE_EDIT_INTENT_POLICIES.fixes.changedCharacters).toBe(budgets.fixChangedCharacters);
+    expect(FILE_EDIT_INTENT_POLICIES.fixes.narrows!.changedCharacters).toBe(budgets.fixChangedCharacters);
     expect(PRESS).toContain('never a line break');
-    expect(FILE_EDIT_INTENT_POLICIES.fixes.allowsNewlineChanges).toBe(false);
+    expect(FILE_EDIT_INTENT_POLICIES.fixes.narrows!.allowsNewlineChanges).toBe(false);
     expect(PRESS).toContain('No appends, no prepends, no rewrites.');
-    expect([...FILE_EDIT_INTENT_POLICIES.fixes.operations]).toEqual(['replace']);
+    expect([...FILE_EDIT_INTENT_POLICIES.fixes.narrows!.operations]).toEqual(['replace']);
     // The card's own words point the same way the prompt does.
     expect(PRESS).toContain('ask for it as a rewrite');
     expect(WORKSHOP_FILE_EDIT_REASON_WORDS['more-than-a-fix']).toContain('Ask for it as a rewrite.');
@@ -108,3 +108,35 @@ describe('the press\'s refusal words', () => {
     }
   });
 });
+
+describe('edit-offer prompt ↔ a press of one version (second addendum)', () => {
+  it('teaches what the frame says: the version is named by its label, and that version alone is suggested', () => {
+    const { WORKSHOP_EDIT_REQUEST_OPTION_ASK, workshopEditRequestOptionWords } = jest.requireActual('@/utils/workshopEditRequestFrame');
+    const prompt = jest.requireActual('fs').readFileSync(
+      jest.requireActual('path').resolve(__dirname, '../../../resources/system-prompts/workshop-personas/reply-edit-offers.md'), 'utf8');
+    expect(prompt).toContain('When the writer chose one of your versions, the frame names it by the label you gave it: '
+      + 'suggest that version only, and leave the others out.');
+    expect(WORKSHOP_EDIT_REQUEST_OPTION_ASK).toBe('Suggest that version only, as file edits.');
+    const words = workshopEditRequestOptionWords('Version 1');
+    expect(words.pressed).toBe('The writer chose "Version 1" from your reply');
+    expect(words.rule).toContain('That version only');
+    expect(words.rule).toContain('Leave the other versions out');
+  });
+});
+
+describe('edit-offer prompt ↔ a requested rewrite (second addendum)', () => {
+  it('teaches that a pressed rewrite may replace the whole passage, never the file, and says nothing of any other edit', () => {
+    const prompt: string = jest.requireActual('fs').readFileSync(
+      jest.requireActual('path').resolve(__dirname, '../../../resources/system-prompts/workshop-personas/reply-edit-offers.md'), 'utf8');
+    expect(prompt).toContain('Because the writer asked for it, a pair may replace the whole passage your reply reworded');
+    expect(prompt).toContain('Keep it to that passage, never the whole file.');
+    // The teaching never names the ceiling or a lifted limit: it is not an invitation for any other edit.
+    expect(prompt).not.toMatch(/ceiling|lifted|limit is/i);
+    const { WORKSHOP_EDIT_REQUEST_KIND_WORDS } = jest.requireActual('@/utils/workshopEditRequestFrame');
+    expect(WORKSHOP_EDIT_REQUEST_KIND_WORDS.rewrites.rule).toContain('which it may replace whole');
+    expect(WORKSHOP_EDIT_REQUEST_KIND_WORDS.rewrites.rule).toContain('Never the whole file');
+    expect(WORKSHOP_EDIT_REQUEST_KIND_WORDS.fixes.rule).not.toContain('replace whole');
+    expect(FILE_EDIT_INTENT_POLICIES.rewrites).toEqual({ liftsRewriteCeiling: true });
+  });
+});
+

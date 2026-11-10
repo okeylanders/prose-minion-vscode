@@ -185,7 +185,8 @@ describe('Workshop routes — a press on a reply\'s edit offer', () => {
     answerWith(fixes(CHAPTER, ['<find>She was tired.</find>', `<replace-with>${'Alice had grown so tired of sitting by her sister on the bank. '.repeat(2)}</replace-with>`]));
     await press('rewrites');
     expect(lastReply().editOfferAnswer?.kind).toBe('rewrites');
-    expect(lastReply().fileEditProposals?.map((card) => [card.state, card.intent])).toEqual([['pending', undefined]]);
+    // A rewrites answer's cards carry their own intent, host-written from the press (second addendum).
+    expect(lastReply().fileEditProposals?.map((card) => [card.state, card.intent])).toEqual([['pending', 'rewrites']]);
   });
 
   it('refuses a second press while the answer\'s card is pending: asking again could double it', async () => {

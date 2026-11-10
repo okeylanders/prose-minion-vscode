@@ -30,7 +30,8 @@ export interface WorkshopEditOfferControls {
   locked: boolean;
   askingOffers: ReadonlySet<string>;
   offerFeedback: ReadonlyMap<string, string>;
-  onAsk: (turnId: string, kind: WorkshopEditOfferKind) => void;
+  /** `option` names one version of an offer with options, by its index. */
+  onAsk: (turnId: string, kind: WorkshopEditOfferKind, option?: number) => void;
   /** Move focus to a turn's bubble: an answer from its chip, a source reply from a link. */
   onGoToTurn: (turnId: string) => void;
 }
@@ -39,12 +40,14 @@ export interface WorkshopEditOfferChipProps {
   turnId: string;
   personaLabel: string;
   offer: WorkshopEditOffer;
+  /** One version of an offer with options: its index. Absent for an offer's one chip. */
+  option?: number;
   controls: WorkshopEditOfferControls;
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
-export const WorkshopEditOfferChip: React.FC<WorkshopEditOfferChipProps> = ({ turnId, personaLabel, offer, controls }) => {
-  const key = workshopEditOfferKey(turnId, offer.kind);
+export const WorkshopEditOfferChip: React.FC<WorkshopEditOfferChipProps> = ({ turnId, personaLabel, offer, option, controls }) => {
+  const key = workshopEditOfferKey(turnId, offer.kind, option);
   const feedback = controls.offerFeedback.get(key);
   const facts: WorkshopEditOfferChipFacts = {
     personaLabel,
@@ -53,7 +56,7 @@ export const WorkshopEditOfferChip: React.FC<WorkshopEditOfferChipProps> = ({ tu
     locked: controls.locked,
     ...(feedback ? { feedback } : {})
   };
-  const view = workshopEditOfferChipView(offer, facts);
+  const view = workshopEditOfferChipView(offer, facts, option);
   const descriptionId = React.useId();
   const description = view.waiting ?? view.feedback;
   const inert = view.press.kind === 'none' || view.waiting !== undefined;
@@ -63,7 +66,11 @@ export const WorkshopEditOfferChip: React.FC<WorkshopEditOfferChipProps> = ({ tu
       return;
     }
     if (view.press.kind === 'ask') {
-      controls.onAsk(turnId, offer.kind);
+      if (option === undefined) {
+        controls.onAsk(turnId, offer.kind);
+      } else {
+        controls.onAsk(turnId, offer.kind, option);
+      }
     } else if (view.press.kind === 'go') {
       controls.onGoToTurn(view.press.answerTurnId);
     }
@@ -75,6 +82,7 @@ export const WorkshopEditOfferChip: React.FC<WorkshopEditOfferChipProps> = ({ tu
         type="button"
         className={`pm-ws-offer pm-ws-offer-${view.face}`}
         data-pm-offer={offer.kind}
+        data-pm-offer-option={option}
         aria-label={view.name}
         aria-busy={view.face === 'asked' || undefined}
         aria-disabled={inert || undefined}

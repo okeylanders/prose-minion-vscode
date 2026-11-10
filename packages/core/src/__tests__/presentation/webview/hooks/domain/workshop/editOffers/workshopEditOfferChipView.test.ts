@@ -144,3 +144,80 @@ describe('workshopEditOfferChipView', () => {
     expect(workshopEditOfferGroupLabel('Jill')).toBe('Edits Jill can suggest from this reply');
   });
 });
+
+describe('one version of an offer with options (second addendum)', () => {
+  const LABELS = ['Version 1', 'Version 2', 'A third option'];
+  const OPEN: WorkshopEditOfferStatus = { state: 'open' };
+  const versions = (statuses: WorkshopEditOfferStatus[] = [OPEN, OPEN, OPEN]): WorkshopEditOffer =>
+    ({ kind: 'rewrites', target: { kind: 'file', relativePath: PATH }, options: LABELS, optionStatuses: statuses });
+  const version = (option: number, status: WorkshopEditOfferStatus = OPEN, room: Partial<WorkshopEditOfferChipFacts> = {}) =>
+    workshopEditOfferChipView(versions(LABELS.map((_label, index) => (index === option ? status : OPEN))), facts(room), option);
+
+  it('keys a chip by its turn, kind and option', () => {
+    expect(workshopEditOfferKey('turn-2', 'rewrites', 0)).toBe('turn-2#rewrites#0');
+    expect(workshopEditOfferKey('turn-2', 'rewrites')).toBe('turn-2#rewrites');
+  });
+
+  it('open: the option\'s own words, no count, and a name that says who, what and where', () => {
+    expect(version(0)).toEqual({
+      face: 'open',
+      words: 'Version 1',
+      label: 'Version 1',
+      name: `Version 1. Ask Jill to suggest it as an edit to ${PATH}.`,
+      press: { kind: 'ask' }
+    });
+    expect(version(2).label).toBe('A third option');
+  });
+
+  it('asked, by the host\'s status or this webview\'s own press: busy, and a press does nothing', () => {
+    for (const asked of [version(1, { state: 'asked' }), version(1, OPEN, { asking: true })]) {
+      expect(asked).toEqual({
+        face: 'asked',
+        words: 'Asking Jill for Version 2…',
+        label: 'Asking Jill for Version 2…',
+        name: 'Asking Jill for Version 2… The room’s Stop ends the request.',
+        press: { kind: 'none' }
+      });
+    }
+  });
+
+  it('answered goes to the answer; nothing to change and ask again ask, each in its own words', () => {
+    expect(version(1, { state: 'answered', answerTurnId: 'turn-9', cards: 1, changes: 1, askAgain: false })).toEqual({
+      face: 'answered',
+      words: 'Version 2 suggested',
+      label: 'Version 2 suggested',
+      name: 'Version 2 suggested. Go to the edits.',
+      press: { kind: 'go', answerTurnId: 'turn-9' }
+    });
+    expect(version(1, { state: 'nothing-to-change', answerTurnId: 'turn-9', askAgain: true })).toMatchObject({
+      face: 'nothing-to-change',
+      label: 'Version 2 · nothing to change · ask again',
+      name: `Version 2, nothing to change, ask again. Ask Jill again to suggest it as an edit to ${PATH}.`,
+      press: { kind: 'ask' }
+    });
+    expect(version(1, { state: 'ask-again', answerTurnId: 'turn-9', cards: 1, changes: 1, askAgain: true })).toMatchObject({
+      face: 'ask-again',
+      label: 'Version 2 · ask again',
+      name: `Version 2, ask again. The last suggested edits were not applied. Ask Jill again to suggest it as an edit to ${PATH}.`,
+      press: { kind: 'ask' }
+    });
+    expect(version(1, { state: 'answered', answerTurnId: 'turn-9', cards: 1, changes: 1, askAgain: true })).toMatchObject({
+      face: 'ask-again', label: 'Version 2 suggested · ask again', press: { kind: 'ask' }
+    });
+  });
+
+  it('waits for the same three reasons, in the same order, and carries a refusal\'s words', () => {
+    expect(version(0, { state: 'open', blocked: 'author-left' }, { running: true, locked: true }).waiting).toBe('Jill isn’t in this room now');
+    expect(version(0, OPEN, { running: true, locked: true }).waiting).toBe(workshopEditOfferRefusalWords('run-active'));
+    expect(version(0, OPEN, { locked: true }).waiting).toBe(workshopEditOfferRefusalWords('session-operation'));
+    expect(version(0, OPEN, { feedback: 'The request failed.' }).feedback).toBe('The request failed.');
+    expect(version(1, { state: 'answered', answerTurnId: 'turn-9', cards: 1, changes: 1, askAgain: false }, { running: true }).waiting).toBeUndefined();
+  });
+
+  it('reads open when the host sent no status, and falls back to the offer\'s one chip for an option it does not have', () => {
+    const bare: WorkshopEditOffer = { kind: 'rewrites', target: { kind: 'file', relativePath: PATH }, options: LABELS };
+    expect(workshopEditOfferChipView(bare, facts(), 1)).toMatchObject({ face: 'open', label: 'Version 2' });
+    expect(workshopEditOfferChipView(bare, facts(), 7)).toMatchObject({ face: 'open', label: 'rewrites' });
+  });
+});
+

@@ -12,7 +12,8 @@
  * - otherwise each offer carries its derived status
  *   (`workshopEditOfferStatus`, over the full ledger, so an answer outside
  *   the webview's window still counts), and `blocked: 'author-left'` when
- *   the reply's author is no longer in the room.
+ *   the reply's author is no longer in the room. An offer with options
+ *   carries one status per option (`optionStatuses`) in place of its own.
  * The ledger is read only for a turn that holds an offer. Without a room
  * view (a test, a caller with no room), offers pass with no status.
  *
@@ -56,12 +57,17 @@ export function workshopTurnForWebview(turn: WorkshopTurn, room?: WorkshopEditOf
     ...rest,
     ...(turn.fileEditProposals ? { fileEditProposals: turn.fileEditProposals.map(workshopFileEditProposalForWebview) } : {}),
     ...(offers
-      ? { editOffers: offers.map((offer) => workshopEditOfferForWebview(offer, room && statusOf(turn, offer.kind, room))) }
+      ? { editOffers: offers.map((offer) => workshopEditOfferForWebview(offer, room && ((option) => statusOf(turn, offer.kind, option, room)))) }
       : {})
   };
 }
 
-function statusOf(turn: WorkshopTurn, kind: NonNullable<WorkshopTurn['editOffers']>[number]['kind'], room: WorkshopEditOfferRoomView): WorkshopEditOfferStatus {
-  const status = workshopEditOfferStatus(room.ledger(), turn.id, kind, { runActive: room.runActive });
+function statusOf(
+  turn: WorkshopTurn,
+  kind: NonNullable<WorkshopTurn['editOffers']>[number]['kind'],
+  option: number | undefined,
+  room: WorkshopEditOfferRoomView
+): WorkshopEditOfferStatus {
+  const status = workshopEditOfferStatus(room.ledger(), turn.id, kind, { runActive: room.runActive }, option);
   return status.state === 'asked' || room.authorPresent(turn) ? status : { ...status, blocked: 'author-left' };
 }
