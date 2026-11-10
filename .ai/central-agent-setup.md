@@ -79,6 +79,7 @@ packages/core/src/
 │               ├── WorkshopSessionExportHandler.ts   # Read-only transcript export
 │               ├── WorkshopStandingDirectiveHandler.ts
 │               ├── WorkshopTodoHandler.ts
+│               ├── WorkshopReactionHandler.ts # Message reactions: the writer's add/remove, Hide on a persona's (ADR 2026-11-07)
 │               ├── WorkshopLightboxTileHandler.ts # A Lightbox tile offered, then staged above the composer (seed kind `lightbox-tile`)
 │               ├── WorkshopPinnedContextHandler.ts # Pinned context: the settings tab's list, pins, unpin, move, Attach missing, Open (ADR 2026-11-04)
 │               └── widgets/
@@ -142,6 +143,7 @@ packages/core/src/
                 ├── participants.ts
                 ├── bookmarks.ts
                 ├── bookmarkBrowser.ts
+                ├── reactions.ts
                 ├── projectMemory.ts
                 ├── memoryDraft.ts
                 ├── projectMemoryManager.ts

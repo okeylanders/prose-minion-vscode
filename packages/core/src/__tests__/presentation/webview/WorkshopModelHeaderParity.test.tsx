@@ -198,6 +198,7 @@ function snapshot(turns: WorkshopTurn[], start: number): WorkshopSessionStateMes
         standingDirectives: [],
         todos: [],
         bookmarks: [],
+        reactions: [],
         turns: window,
         turnRewindability: {},
         totalTurns: turns.length,

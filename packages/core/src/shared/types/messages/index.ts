@@ -175,6 +175,8 @@ import {
   WorkshopRunContextWizardMessage,
   WorkshopTodoActionMessage,
   WorkshopSetTurnBookmarkMessage,
+  WorkshopSetTurnReactionMessage,
+  WorkshopHideTurnReactionMessage,
   WorkshopMemoryProposalActionMessage,
   WorkshopFileEditWebviewMessage,
   WorkshopFileEditExtensionMessage,
@@ -360,6 +362,8 @@ export type WebviewToExtensionMessage =
   | WorkshopRunContextWizardMessage
   | WorkshopTodoActionMessage
   | WorkshopSetTurnBookmarkMessage
+  | WorkshopSetTurnReactionMessage
+  | WorkshopHideTurnReactionMessage
   | WorkshopMemoryProposalActionMessage
   | WorkshopFileEditWebviewMessage
   | WorkshopEditOfferWebviewMessage

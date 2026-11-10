@@ -22,6 +22,7 @@ import type { UseWorkshopRoomReturn } from '@hooks/domain/workshop/useWorkshopRo
 import type { UseWorkshopSessionsReturn } from '@hooks/domain/workshop/useWorkshopSessions';
 import type { UseWorkshopReadInReturn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import type { UseWorkshopBookmarksReturn } from '@hooks/domain/workshop/useWorkshopBookmarks';
+import type { UseWorkshopReactionsReturn } from '@hooks/domain/workshop/useWorkshopReactions';
 import type { UseWorkshopBookmarkBrowserReturn } from '@hooks/domain/workshop/useWorkshopBookmarkBrowser';
 import type {
   UseWorkshopExcerptVerifyReturn
@@ -75,6 +76,8 @@ export interface WorkshopAppMessageRouterDeps {
   readIn: UseWorkshopReadInReturn;
   /** Bookmarks and the turn preview (Wayfinding Slice 5). */
   bookmarks: UseWorkshopBookmarksReturn;
+  /** Message reactions (ADR 2026-11-07 D8): the snapshot's summaries. */
+  reactions: Pick<UseWorkshopReactionsReturn, 'handleSessionState' | 'noteLiveTurn'>;
   /** The Bookmarks screen's answers (Bookmark Recall Slice 2). */
   bookmarkBrowser: Pick<
     UseWorkshopBookmarkBrowserReturn,
@@ -116,6 +119,7 @@ export function buildWorkshopAppMessageRoutes(
     workshopSessions,
     readIn,
     bookmarks,
+    reactions,
     bookmarkBrowser,
     projectMemory,
     memoryManager,
@@ -144,11 +148,15 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_SESSION_STATE]: (message) => {
       workshopRoom.handleSessionState(message);
       bookmarks.handleSessionState(message);
+      reactions.handleSessionState(message);
       bookmarkBrowser.handleSessionState(message);
       widgetHost.handleSessionState(message);
       memoryManager.noteSessionState(message);
     },
-    [MessageType.WORKSHOP_TURN]: workshopRoom.handleTurn,
+    [MessageType.WORKSHOP_TURN]: (message) => {
+      workshopRoom.handleTurn(message);
+      reactions.noteLiveTurn(message);
+    },
     [MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED]:
       workshopRoom.handleComposerDraftRestored,
     [MessageType.WORKSHOP_SESSIONS_DATA]: workshopSessions.handleSessionsData,

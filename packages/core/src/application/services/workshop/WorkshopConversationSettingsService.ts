@@ -12,6 +12,8 @@ import {
   WORKSHOP_WEB_RESEARCH_SETTING,
   coerceWorkshopProjectMemoryMode,
   coerceWorkshopFileEditsMode,
+  coerceWorkshopPersonaReactions,
+  WORKSHOP_PERSONA_REACTIONS_SETTING,
   WorkshopFileEditsMode,
   WorkshopConversationBehavior,
   WorkshopPersonaId,
@@ -33,6 +35,7 @@ import {
   workshopProjectMemoryModeSetting,
   type WorkshopGlobalModeSetting
 } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
+import { WorkshopPromptedGrammars } from '@/application/services/workshop/WorkshopPromptedGrammars';
 
 export interface WorkshopConversationSettingsPersistenceErrors {
   behavior?: string;
@@ -81,14 +84,8 @@ export class WorkshopConversationSettingsService {
   private pendingProfilePersistence?: PendingPersistence<WorkshopWriterProfile>;
   private pendingWebResearchPersistence?: PendingPersistence<WorkshopWebResearchSettings>;
   private webResearch: WorkshopWebResearchSettings;
-  /**
-   * Whether the persona prompts were last built with project memory on
-   * (ADR 2026-11-04 D8): the grammar file rides only while it is, so a mode
-   * change between off and on rebuilds them, as every settings change does.
-   */
-  private projectMemoryPrompted: boolean;
-  /** Whether the persona prompts were last built teaching file edits (ADR 2026-11-05 D9), as for memory. */
-  private fileEditsPrompted: boolean;
+  /** Which optional grammars the persona prompts were last built with (memory, file edits, persona reactions). */
+  private readonly prompted: WorkshopPromptedGrammars;
 
   constructor(
     private readonly session: WorkshopSessionService,
@@ -100,8 +97,11 @@ export class WorkshopConversationSettingsService {
     this.projectMemoryMode = workshopProjectMemoryModeSetting(settings, outputChannel);
     this.fileEditsMode = workshopFileEditsModeSetting(settings, outputChannel);
     this.webResearch = this.readWebResearchSetting();
-    this.projectMemoryPrompted = this.projectMemoryOn();
-    this.fileEditsPrompted = this.fileEditsOpen();
+    this.prompted = new WorkshopPromptedGrammars({
+      projectMemory: () => this.projectMemoryOn(),
+      fileEdits: () => this.fileEditsOpen(),
+      personaReactions: () => this.personaReactionsOpen()
+    });
   }
 
   /**
@@ -272,11 +272,8 @@ export class WorkshopConversationSettingsService {
     const previousProfile = this.writerProfileService.getProfile();
     const behaviorChanged = !workshopConversationBehaviorsEqual(previousBehavior, nextBehavior);
     const profileChanged = !workshopWriterProfilesEqual(previousProfile, nextProfile);
-    const projectMemoryOn = this.projectMemoryOn();
-    const projectMemoryChanged = projectMemoryOn !== this.projectMemoryPrompted;
-    const fileEditsOn = this.fileEditsOpen();
-    const fileEditsChanged = fileEditsOn !== this.fileEditsPrompted;
-    if (!behaviorChanged && !profileChanged && !projectMemoryChanged && !fileEditsChanged) {
+    const grammarChanges = this.prompted.changes();
+    if (!behaviorChanged && !profileChanged && grammarChanges.length === 0) {
       return {
         changed: false,
         deferred: false,
@@ -290,8 +287,7 @@ export class WorkshopConversationSettingsService {
       || previousBehavior.interactionMode !== nextBehavior.interactionMode
       || previousBehavior.expressionLevel !== nextBehavior.expressionLevel
       || previousBehavior.relationalDepth !== nextBehavior.relationalDepth
-      || projectMemoryChanged
-      || fileEditsChanged
+      || grammarChanges.length > 0
     ) {
       await this.assistantToolService.replaceWorkshopConversationSettings(
         this.replacementTargets(),
@@ -303,18 +299,7 @@ export class WorkshopConversationSettingsService {
 
     this.session.setConversationBehavior(nextBehavior);
     this.writerProfileService.commit(nextProfile);
-    if (projectMemoryChanged) {
-      this.projectMemoryPrompted = projectMemoryOn;
-      this.outputChannel.appendLine(
-        `[WorkshopConversationSettingsService] Project memory ${projectMemoryOn ? 'on' : 'off'}; persona prompts rebuilt`
-      );
-    }
-    if (fileEditsChanged) {
-      this.fileEditsPrompted = fileEditsOn;
-      this.outputChannel.appendLine(
-        `[WorkshopConversationSettingsService] File edits ${fileEditsOn ? 'on' : 'off'}; persona prompts rebuilt`
-      );
-    }
+    this.prompted.commit(grammarChanges, (line) => this.outputChannel.appendLine(`[WorkshopConversationSettingsService] ${line}`));
     return { changed: true, deferred: false, behaviorChanged, profileChanged };
   }
 
@@ -355,6 +340,13 @@ export class WorkshopConversationSettingsService {
   /** Whether personas propose file edits now: the prompt teaches the trailer, and a reply's frames are read. */
   fileEditsOpen(): boolean {
     return this.getFileEditsMode() === 'ask';
+  }
+
+  /** `proseMinion.workshop.reactions.personas` (ADR 2026-11-07 Q8), read live: only an explicit `false` is off. */
+  personaReactionsOpen(): boolean {
+    return coerceWorkshopPersonaReactions(
+      this.settings.get<unknown>(WORKSHOP_PERSONA_REACTIONS_SETTING.section, WORKSHOP_PERSONA_REACTIONS_SETTING.key)
+    );
   }
 
   private projectMemoryOn(): boolean {

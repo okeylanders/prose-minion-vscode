@@ -12,7 +12,10 @@
  */
 
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
-import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import {
+  WorkshopSessionService,
+  type WorkshopPersonaReactionOutcome
+} from '@/application/services/workshop/WorkshopSessionService';
 import {
   isApiKeyNotConfiguredWarning,
   TokenUsage,
@@ -24,11 +27,15 @@ import { inspectWorkshopActionableFindings } from './WorkshopActionableFindings'
 import { workshopTurnModelOf } from '@/application/services/workshop/WorkshopTurnModel';
 import {
   inspectWorkshopWidgetRecommendation,
-  WorkshopWidgetRecommendationInspection
+  type WorkshopWidgetRecommendationInspection
 } from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
 import {
   WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
 } from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
+import {
+  widgetRecommendationRejectionNotice,
+  widgetRecommendationRejectionReason
+} from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationRejectionCopy';
 import {
   stripWorkshopWidgetRecommendationControl
 } from '@/utils/workshopWidgetRecommendationProtocol';
@@ -38,6 +45,7 @@ import {
   workshopTrailersOnlyReplyLine
 } from '@/utils/workshopReplyControls';
 import { reportWorkshopEditOffers, settleWorkshopReplyEditOffers, type WorkshopReplyEditsContext } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
+import { workshopReplyReactionDropLog } from '@/utils/workshopReplyReaction';
 import {
   settleWorkshopMemoryProposals,
   WORKSHOP_REPLY_MEMORY_CLOSED,
@@ -143,103 +151,14 @@ export interface WorkshopRunCompletionInput {
    * carries the reply's edit offers too, resolved (ADR 2026-11-10 D2).
    */
   fileEdits?: WorkshopReplyEditsContext;
+  /**
+   * Whether personas may react (`proseMinion.workshop.reactions.personas`,
+   * read with the reply; ADR 2026-11-07 Q8). Absent reads as off: a trailer
+   * is still stripped, and dropped as `reactions-off`.
+   */
+  reactionsOpen?: boolean;
   log: (line: string) => void;
   events: WorkshopRunCompletionEvents;
-}
-
-const WIDGET_FIELD_LABELS = Object.freeze({
-  targetPhrase: 'Target phrase',
-  writerInstructions: 'Writer instructions',
-  contextText: 'Surrounding context',
-  sourceReferences: 'Source references',
-  characterNotes: 'Character notes',
-  subjectText: 'Subject passage',
-  mustSurvive: 'Must survive',
-  mustNotChange: 'Must not change',
-  aim: 'Creative aim',
-  distance: 'Sampling distance',
-  requestedCount: 'Take count',
-  lensSlug: 'Lens',
-  weight: 'Weight',
-  reach: 'Reach',
-  metaphorPull: 'Metaphor pull',
-  beatText: 'Told beat',
-  subject: 'Chip subject',
-  povMode: 'POV mode',
-  povFocalCharacter: 'POV focal character',
-  position: 'Handling position',
-  channels: 'Emphasis channels',
-  lengthBudget: 'Length allowance'
-});
-
-const INVALID_WIDGET_FIELD_COPY = Object.freeze({
-  empty: 'was empty',
-  target_missing_from_context: 'did not contain the exact target phrase',
-  invalid_source_references: 'contained unavailable or malformed source references',
-  invalid_distance: 'was outside the allowed sampling distances',
-  invalid_requested_count: 'was not three, four, or five',
-  unsupported_lens: 'named a lens that personas are not allowed to seed',
-  invalid_weight: 'was outside the allowed weight steps',
-  invalid_reach: 'was outside the allowed reach values',
-  invalid_metaphor_pull: 'was not true or false',
-  multiline: 'was not a single line',
-  invalid_pov_mode: 'was outside the allowed POV modes',
-  invalid_focal_character: 'named a focal character without a declared POV mode',
-  invalid_position: 'was outside the allowed handling positions',
-  invalid_channels: 'named an unknown or repeated channel',
-  invalid_length_budget: 'was outside the allowed length allowances'
-});
-
-function widgetRecommendationRejectionReason(
-  inspection: Extract<WorkshopWidgetRecommendationInspection, { outcome: 'rejected' }>
-): string {
-  if (inspection.rejection === 'field_too_long') {
-    return `${inspection.rejection}:${inspection.field}:`
-      + `${inspection.actualCharacters}/${inspection.maximumCharacters}`;
-  }
-  if (inspection.rejection === 'frame_too_long') {
-    return `${inspection.rejection}:${inspection.actualCharacters}/${inspection.maximumCharacters}`;
-  }
-  if (inspection.rejection === 'invalid_field') {
-    return `${inspection.rejection}:${inspection.field}:${inspection.reason}`;
-  }
-  return inspection.rejection;
-}
-
-function widgetRecommendationRejectionNotice(
-  label: string,
-  inspection: Extract<WorkshopWidgetRecommendationInspection, { outcome: 'rejected' }>
-): { message: string; details: string } {
-  const message = inspection.widgetId
-    ? `${label}'s ${workshopWidgetLabel(inspection.widgetId)} setup could not be prepared.`
-    : `${label}'s widget recommendation could not be prepared.`;
-  if (inspection.rejection === 'field_too_long') {
-    return {
-      message,
-      details: `${WIDGET_FIELD_LABELS[inspection.field]} used `
-        + `${inspection.actualCharacters.toLocaleString('en-US')} characters; the limit is `
-        + `${inspection.maximumCharacters.toLocaleString('en-US')}. Ask ${label} to try again.`
-    };
-  }
-  if (inspection.rejection === 'frame_too_long') {
-    return {
-      message,
-      details: `The generated setup used ${inspection.actualCharacters.toLocaleString('en-US')} `
-        + `characters; the complete-frame limit is `
-        + `${inspection.maximumCharacters.toLocaleString('en-US')}. Ask ${label} to try again.`
-    };
-  }
-  if (inspection.rejection === 'invalid_field') {
-    return {
-      message,
-      details: `${WIDGET_FIELD_LABELS[inspection.field]} `
-        + `${INVALID_WIDGET_FIELD_COPY[inspection.reason]}. Ask ${label} to try again.`
-    };
-  }
-  return {
-    message,
-    details: `The generated setup was incomplete or invalid. Ask ${label} to try again.`
-  };
 }
 
 /**
@@ -287,7 +206,10 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // project-memory frame is split off first, and every other reader takes
   // the rest; every log takes the redacted copy, never the memory's text.
   const memoryContext = input.memory ?? WORKSHOP_REPLY_MEMORY_CLOSED;
-  const controls = extractWorkshopReplyControls(result.content, { memoryOpen: memoryContext.open });
+  const controls = extractWorkshopReplyControls(result.content, {
+    memoryOpen: memoryContext.open,
+    reactions: { open: input.reactionsOpen === true, hasTarget: session.personaReplyReactionTarget(requestId) !== undefined }
+  });
   const memory = settleWorkshopMemoryProposals(controls.memory, memoryContext, input.memoryAutoSave && {
     webResearchAttached: result.webResearchAttached === true,
     autoSavesInRoom: input.memoryAutoSavesInRoom ?? (() => countWorkshopRoomAutoSaves(session.readRoomLedger()))
@@ -299,7 +221,7 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       logs: (controls.fileEdits ? [...controls.fileEdits.proposals, ...controls.fileEdits.rejections] : [])
         .map(() => 'File edit proposal dropped (reason=not-staged)')
     };
-  for (const line of [...memory.logs, ...fileEdits.logs]) {
+  for (const line of [...memory.logs, ...fileEdits.logs, ...(controls.reaction?.rejections ?? []).map(workshopReplyReactionDropLog)]) {
     input.log(`${line} (${label})`);
   }
   const reply = controls.rest;
@@ -348,13 +270,25 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // of them together) leaves no provider prose to show, so completion
   // writes the displayed note itself, and the turn must not be attributed
   // to a model (Astra F-02, completion-stage note; ADR 2026-11-04 D6).
-  const trailers = { memory: controls.memory.kind !== 'none', fileEdits: controls.fileEdits !== undefined };
-  const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || trailers.memory || trailers.fileEdits)
-    && strippedDisplayContent.trim().length === 0;
+  const { trailers } = controls;
+  const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || trailers.memory || trailers.fileEdits
+    || trailers.reaction !== undefined) && strippedDisplayContent.trim().length === 0;
+  // R1: a reply that was only its reaction is drawn as a slim line; with cards or a widget it is a reply.
+  // The ledger's line names only a reaction that lands (PR #247 M1); retention keeps the reply's intent.
+  const kept = controls.reaction?.reaction;
+  const hostLine = hostWritesDisplay && widgetRecommendation.outcome === 'absent';
+  const reaction = controls.reaction && {
+    reaction: kept,
+    only: hostLine && !trailers.memory && !trailers.fileEdits,
+    ...(hostLine ? { unlandedContent: workshopTrailersOnlyReplyLine({ memory: trailers.memory, fileEdits: trailers.fileEdits }) } : {}),
+    outcome: (outcome: WorkshopPersonaReactionOutcome) => input.log(outcome === 'added'
+      ? `Persona reaction kept (reaction=${kept}; ${label})`
+      : `Persona reaction dropped (reason=${outcome}; reaction=${kept}; ${label})`)
+  };
   const displayContent = !hostWritesDisplay
     ? strippedDisplayContent
     : widgetRecommendation.outcome === 'absent'
-      ? workshopTrailersOnlyReplyLine(trailers)
+      ? workshopTrailersOnlyReplyLine({ memory: trailers.memory, fileEdits: trailers.fileEdits, ...(kept ? { reaction: kept } : {}) })
       : recommendationRejected
         ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
         : `${label} returned a widget setup without an accompanying note.`;
@@ -375,7 +309,9 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     hostWritesDisplay ? undefined : workshopTurnModelOf(result),
     memory.proposals,
     fileEdits.proposals,
-    editOffers
+    editOffers,
+    undefined,
+    reaction
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {
@@ -393,7 +329,8 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     announceCommittedRun(input, turn, {
       widgetRecommendation,
       unavailableWidgetSource,
-      displayContent,
+      // The session may have rewritten the host's line when a reaction did not land.
+      displayContent: turn.content,
       truncated
     });
     input.settleCommittedRun?.(turn);

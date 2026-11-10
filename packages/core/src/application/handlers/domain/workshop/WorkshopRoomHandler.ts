@@ -59,6 +59,13 @@ import {
 } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+import {
+  prepareWorkshopReactionDelivery,
+  stageWorkshopReactionDelivery,
+  workshopReactionHoldsAfterCatchUp,
+  workshopReactionHoldsTranscript
+} from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
+import { workshopReactionInviteFor } from '@/application/services/workshop/reactions/WorkshopReactionInvite';
 import type {
   WorkshopOneShotWidgetRoomArtifact
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
@@ -66,6 +73,7 @@ import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopExcerptSourceFrame,
   buildWorkshopGuestJoinMessage,
+  buildWorkshopGuestTranscript,
   buildWorkshopGuestMessage,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
@@ -193,6 +201,8 @@ interface WorkshopTargetTurnInput {
   hostUpdateFrame?: string;
   threadArtifactFrames: string[];
   timeNotice?: WorkshopPreparedTimeNotice;
+  /** `<workshop-reactions>` for a persona turn (ADR 2026-11-07 D4). */
+  reactionsFrame?: string;
 }
 
 interface WorkshopTargetTurn {
@@ -248,6 +258,26 @@ export class WorkshopRoomHandler {
   private readonly disposeStatusListener: () => void;
   private readonly disposeSessionSaveStatusListener: () => void;
   private readonly sliceComposition: WorkshopSliceComposition;
+  /** One prefixed log line: counts and keys only (the reaction delivery steps log through it). */
+  private readonly logLine = (line: string): void => this.outputChannel.appendLine(`[WorkshopRoomHandler] ${line}`);
+
+  /**
+   * The per-turn reaction invite for the run just begun (ADR 2026-11-07,
+   * 2026-11-10 addendum): only while persona reactions are on and the run's
+   * reply has a writer message to react to. Logged without text. A press on
+   * an edit offer is never invited: its answer is trailers alone (ADR
+   * 2026-11-10 D5).
+   */
+  private reactionInvite(requestId: string): string | undefined {
+    const invite = workshopReactionInviteFor(
+      this.conversationSettingsService.personaReactionsOpen(),
+      this.session.personaReplyReactionTarget(requestId)
+    );
+    if (invite) {
+      this.logLine('Reaction invite added');
+    }
+    return invite;
+  }
 
   constructor(
     private readonly assistantToolService: AssistantToolService,
@@ -439,6 +469,7 @@ export class WorkshopRoomHandler {
       memoryAutoSave: (turn, indexes) => this.sliceComposition.autoSaveMemoryProposals(turn, indexes, controller.signal),
       memoryAutoSavesInRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
       fileEdits: (reply, signal) => this.replyFileEdits(reply, signal),
+      reactionsOpen: () => this.conversationSettingsService.personaReactionsOpen(),
       settled: (requestId) => this.settleActiveRun(requestId)
     });
   }
@@ -610,6 +641,21 @@ export class WorkshopRoomHandler {
         kind: 'personaGuest',
         personaId
       }, joinStart.turn.id);
+      const roomFrameOptions = {
+        writerName: workshopWriterPreferredAddress(writerProfile),
+        renderedAt: Date.now(),
+        threadArtifactsForTurn: (turn: WorkshopTurn) =>
+          this.session.getRoomThreadArtifactsForTurn(turn.id)
+      };
+      const transcript = buildWorkshopGuestTranscript(joinRoomTurns, roomFrameOptions);
+      // A join starts the guest's conversation: its view of reactions begins
+      // here, over the turns its transcript hands it (ADR 2026-11-07 D6; PR #246 L1).
+      const joinReader = { kind: 'personaGuest', personaId } as const;
+      const joinReactions = prepareWorkshopReactionDelivery(
+        this.session, joinReader, 'start', workshopReactionHoldsTranscript(transcript.deliveredTurnIds)
+      );
+      stageWorkshopReactionDelivery(this.session, requestId, joinReader, joinReactions, this.logLine);
+      const joinInvite = this.reactionInvite(requestId);
       const join = buildWorkshopGuestJoinMessage({
         guestPersonaId: personaId,
         excerpt: joinStart.excerpt,
@@ -618,13 +664,11 @@ export class WorkshopRoomHandler {
         ),
         roomTurns: joinRoomTurns,
         openingMessage,
-        roomFrameOptions: {
-          writerName: workshopWriterPreferredAddress(writerProfile),
-          renderedAt: Date.now(),
-          threadArtifactsForTurn: (turn) =>
-            this.session.getRoomThreadArtifactsForTurn(turn.id)
-        },
+        roomFrameOptions,
+        transcript,
         timeFrame: timeNotice?.frame,
+        reactionsFrame: joinReactions.frame,
+        reactionInviteFrame: joinInvite,
         ...behaviorFramesFor(joinStart.turn)
       });
       this.activeRun = {
@@ -681,6 +725,7 @@ export class WorkshopRoomHandler {
           memoryAutoSave: memoryAutoSave.hand,
           memoryAutoSavesInRoom: memoryAutoSave.inRoom,
           fileEdits,
+          reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
           session: this.session,
           requestId,
           label: workshopPersonaLabel(personaId),
@@ -878,6 +923,8 @@ export class WorkshopRoomHandler {
                 todoEvidence: input.todoEvidence,
                 hostUpdate: input.hostUpdateFrame,
                 threadArtifactFrames: input.threadArtifactFrames,
+                reactionsFrame: input.reactionsFrame,
+                reactionInviteFrame: input.editOfferRequest ? undefined : this.reactionInvite(input.requestId),
                 ...(conversationId ? personaBehaviorFrames : {})
               }),
               statusMessage: input.hasConversationalCatchUp
@@ -957,7 +1004,9 @@ export class WorkshopRoomHandler {
                 input.text,
                 input.roomCatchUp,
                 input.threadArtifactFrames,
-                personaBehaviorFrames
+                personaBehaviorFrames,
+                input.reactionsFrame,
+                input.editOfferRequest ? undefined : this.reactionInvite(input.requestId)
               ),
               statusMessage: input.hasConversationalCatchUp
                 ? `Catching ${workshopPersonaLabel(target.personaId)} up on the room…`
@@ -1121,6 +1170,15 @@ export class WorkshopRoomHandler {
         }
       : undefined;
     const timeNotice = targetPlan.prepareTimeNotice();
+    // Reactions since this conversation's last reply; a fresh host's is its first message (ADR 2026-11-07 D4, D6).
+    const reactionPlan = roomReader
+      ? prepareWorkshopReactionDelivery(
+          this.session,
+          roomReader,
+          conversationId ? 'update' : 'start',
+          workshopReactionHoldsAfterCatchUp(this.session.readRoomLedger(), roomReader, roomDelivery)
+        )
+      : undefined;
     this.beginSessionInteraction();
     const {
       modelMessage,
@@ -1139,8 +1197,12 @@ export class WorkshopRoomHandler {
       todoEvidence,
       hostUpdateFrame,
       threadArtifactFrames,
-      timeNotice
+      timeNotice,
+      reactionsFrame: reactionPlan?.frame
     });
+    if (roomReader && reactionPlan) {
+      stageWorkshopReactionDelivery(this.session, requestId, roomReader, reactionPlan, this.logLine);
+    }
     this.activeRun = { requestId, label, toolId, guestPersonaId, controller, ...(directedRun ? { directed: true } : {}) };
     // Sprint 13C: capabilities are participant-owned. Host and persona-guest
     // turns each mint one adapter with their own principal; direct-tool
@@ -1230,6 +1292,7 @@ export class WorkshopRoomHandler {
         memoryAutoSave: memoryAutoSave.hand,
         memoryAutoSavesInRoom: memoryAutoSave.inRoom,
         fileEdits,
+        reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
         session: this.session,
         requestId,
         label,

@@ -55,6 +55,7 @@ const session = (overrides: Partial<WorkshopSessionSnapshot> = {}): WorkshopSess
       standingDirectives: [],
       todos: [],
       bookmarks: [],
+      reactions: [],
       turns: [],
       turnRewindability: {},
       totalTurns: 0,

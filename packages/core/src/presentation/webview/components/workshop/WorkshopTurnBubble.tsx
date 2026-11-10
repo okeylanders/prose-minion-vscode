@@ -25,6 +25,8 @@ import {
 } from '@messages';
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { WorkshopBookmarkToggle } from './WorkshopBookmarkToggle';
+import { type WorkshopReactionControls, WorkshopTurnReactionCorner } from './reactions/WorkshopTurnReactions';
+import { WorkshopReactionOnlyLine } from './reactions/WorkshopReactionOnlyLine';
 import { WorkshopMemoryReceiptLine, WorkshopTurnMemoryCards, workshopSaveToMemoryAction, type WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
 import { WorkshopTurnFileEdits } from './fileEdits/WorkshopTurnFileEdits';
 import type { WorkshopFileEditControls } from './fileEdits/WorkshopFileEditCard';
@@ -104,6 +106,8 @@ interface WorkshopTurnBubbleProps {
   memory?: WorkshopTurnMemoryControls;
   /** A persona's suggested file edits (ADR 2026-11-05 D9). */
   fileEdits?: WorkshopFileEditControls;
+  /** The reaction corner: its cluster and the "Add reaction" palette (ADR 2026-11-07 D8). */
+  reactions?: WorkshopReactionControls;
 }
 
 /**
@@ -379,7 +383,8 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onToggleBookmark,
   modelLabel = workshopRawModelId,
   memory,
-  fileEdits
+  fileEdits,
+  reactions
 }) => {
   const memoryAction = workshopSaveToMemoryAction(turn, memory);
   const modelText = workshopTurnModelLabel(turn.model, modelLabel);
@@ -494,6 +499,13 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
     return <WorkshopMemoryReceiptLine turn={turn} controls={memory} />;
   }
 
+  if (turn.reactionOnly) {
+    const actions = bookmarkAction || rewindAction || branchAction
+      ? <>{bookmarkAction}{rewindAction}{branchAction}</>
+      : null;
+    return <WorkshopReactionOnlyLine turn={turn} reaction={turn.reactionOnly} identity={turnIdentity} actions={actions} />;
+  }
+
   if (
     turn.participant === 'session' ||
     turn.artifact === 'session_start' ||
@@ -567,6 +579,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
               {branchAction}
             </div>
           )}
+          {reactions && <WorkshopTurnReactionCorner turn={turn} controls={reactions} />}
         </div>
       );
     }
@@ -794,6 +807,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </span>
           </button>
         )}
+        {reactions && <WorkshopTurnReactionCorner turn={turn} controls={reactions} />}
       </div>
       {quickActionToolId && (
         <WorkshopQuickActionBar

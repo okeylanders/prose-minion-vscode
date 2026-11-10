@@ -26,6 +26,7 @@ const WORKSHOP_STYLE_IMPORTS = [
   './styles/workshop/memory.css',
   './styles/workshop/fileEdits.css',
   './styles/workshop/pinnedContext.css',
+  './styles/workshop/reactions.css',
   './components/workshop/widgets/gesturePlayground/gesturePlayground.css',
   './components/workshop/widgets/lexicalGravity/lexicalGravity.css',
   './components/workshop/widgets/creativeVariations/creativeVariations.css',

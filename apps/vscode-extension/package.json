@@ -707,6 +707,11 @@
           "default": true,
           "markdownDescription": "When you save a Workshop message to project memory, the helper drafts its title, summary and kind while the sheet is open. Anything you type first is kept. Each draft is a small call on the helper's model (`#proseMinion.helperModel#`). Turn this off to fill the sheet yourself."
         },
+        "proseMinion.workshop.reactions.personas": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Let Workshop personas react to your message with an emoji, rarely and at most once a reply. Turn this off and personas no longer react; your own reactions, and what personas hear of them, stay as they are."
+        },
         "proseMinion.workshop.webResearch": {
           "type": "object",
           "default": {

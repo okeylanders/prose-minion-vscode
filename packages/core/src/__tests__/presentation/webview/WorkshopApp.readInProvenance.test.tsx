@@ -82,6 +82,7 @@ const session = (
       standingDirectives: [],
       todos: [],
       bookmarks: [],
+      reactions: [],
       turns: [hostTurn],
       turnRewindability: {},
       totalTurns: 1,

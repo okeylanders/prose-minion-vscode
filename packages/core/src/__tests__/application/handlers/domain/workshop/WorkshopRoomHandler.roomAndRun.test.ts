@@ -15,6 +15,7 @@ import {
 } from './WorkshopRouteTestHarness';
 import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
+import { renderWorkshopReactionInvite } from '@/application/services/workshop/reactions/WorkshopReactionInvite';
 
 interface WorkshopDisposableSliceComposition {
   gesturePlaygroundHandler: { dispose: () => void };
@@ -377,7 +378,8 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
     ) as any);
 
     expect(service.startWorkshopPersonaConversation).toHaveBeenCalledWith(
-      expect.objectContaining({ personaId: 'jill', message: 'Where does this scene turn?' }),
+      // Persona reactions default on, so the reaction invite rides ahead of the message (2026-11-10 addendum).
+      expect.objectContaining({ personaId: 'jill', message: `${renderWorkshopReactionInvite()}\n\nWRITER MESSAGE:\nWhere does this scene turn?` }),
       expect.objectContaining({
         signal: expect.anything(),
         onToken: expect.any(Function),

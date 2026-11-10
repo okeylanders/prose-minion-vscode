@@ -304,6 +304,7 @@ workshop/
 ├── participants.ts          # Persona/tool ids and participant IPC
 ├── bookmarks.ts             # The writer's bookmarks: stored entry, summary, set and rename
 ├── bookmarkBrowser.ts       # The Bookmarks screen: saved pages by cursor, the open room's rows, a saved turn's preview (ADR 2026-11-05 D8)
+├── reactions.ts             # Message reactions: stored entry, snapshot summary, the writer's set and Hide (ADR 2026-11-07 D2)
 ├── projectMemory.ts         # Project memory's proposal, receipt and write routes
 ├── memoryDraft.ts           # The helper's draft of a memory's title, summary and kind (Helper Agent Slice 2)
 ├── projectMemoryManager.ts  # The memory manager: listing, estimate, residency, its own actions

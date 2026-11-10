@@ -34,6 +34,14 @@ import {
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopRoomDeliveryService } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import {
+  prepareWorkshopReactionDelivery,
+  stageWorkshopReactionDelivery,
+  workshopReactionHoldsAfterCatchUp,
+  workshopReactionHoldsTranscript,
+  type WorkshopReactionHolds
+} from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
+import { workshopReactionInviteFor } from '@/application/services/workshop/reactions/WorkshopReactionInvite';
 import type {
   WorkshopConversationLogicalKey,
   WorkshopSessionStateV1
@@ -131,6 +139,8 @@ export class ScriptedWorkshopRoom {
   memoryAutoSave?: (turn: WorkshopTurn, indexes: readonly number[]) => void;
   /** A reply's staged file edits (ADR 2026-11-05 D4): a test resolves them first; used only for the reply they match. */
   fileEdits?: WorkshopReplyEditsContext;
+  /** Whether personas may react (ADR 2026-11-07 Q8); absent, a reaction trailer is dropped as `reactions-off`. */
+  reactionsOpen?: boolean;
   /** Whether each reply's run had web search tools attached (Slice 5's hold). */
   webResearchAttached = false;
 
@@ -182,7 +192,10 @@ export class ScriptedWorkshopRoom {
     const pendingHostUpdates = this.session.hasHostConversation()
       ? this.session.collectPendingHostUpdates()
       : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
+    const reactions = this.reactions({ kind: 'host' }, this.session.hasHostConversation() ? 'update' : 'start',
+      workshopReactionHoldsAfterCatchUp(this.session.readRoomLedger(), { kind: 'host' }, roomDelivery));
     const writerTurn = this.session.beginPersonaMessage(requestId, text, this.refs(staged));
+    reactions.stage(requestId);
     if (options.projectMemory) {
       this.session.stageProjectMemoryDelivery(requestId, options.projectMemory);
     }
@@ -191,7 +204,7 @@ export class ScriptedWorkshopRoom {
     const conversationId = this.commitHistory(
       this.session.getHostConversationId(),
       `workshop_persona_${this.session.getSelectedPersonaId()}`,
-      `[host] ${text}`,
+      `${reactions.lead}${this.invite(requestId)}[host] ${text}`,
       replyContent,
       evidence,
       options.resources
@@ -399,10 +412,13 @@ export class ScriptedWorkshopRoom {
       { kind: 'personaGuest', personaId },
       joinStart.turn.id
     );
+    const reactions = this.reactions({ kind: 'personaGuest', personaId }, 'start',
+      workshopReactionHoldsTranscript(joinTurns.map((turn) => turn.id)));
+    reactions.stage(requestId);
     const conversationId = this.commitHistory(
       undefined,
       `workshop_guest_${personaId}`,
-      `[join ${personaId}] ${joinTurns.length} room turns; ${opening}`,
+      `${reactions.lead}${this.invite(requestId)}[join ${personaId}] ${joinTurns.length} room turns; ${opening}`,
       `${personaId} joins.`
     );
     const reply = completeWorkshopRun({
@@ -437,11 +453,14 @@ export class ScriptedWorkshopRoom {
     const requestId = this.requestId(`guest-${personaId}`);
     this.session.setChatTarget({ kind: 'personaGuest', personaId });
     const roomDelivery = this.delivery.prepare({ kind: 'personaGuest', personaId });
+    const reactions = this.reactions({ kind: 'personaGuest', personaId }, 'update',
+      workshopReactionHoldsAfterCatchUp(this.session.readRoomLedger(), { kind: 'personaGuest', personaId }, roomDelivery));
     this.session.beginPersonaGuestMessage(personaId, requestId, text);
+    reactions.stage(requestId);
     const conversationId = this.commitHistory(
       this.session.getPersonaGuestConversationId(personaId),
       `workshop_guest_${personaId}`,
-      `[guest ${personaId}] ${text}`,
+      `${reactions.lead}${this.invite(requestId)}[guest ${personaId}] ${text}`,
       replyContent
     );
     const reply = this.complete(requestId, personaId, conversationId, replyContent, () => {
@@ -523,6 +542,33 @@ export class ScriptedWorkshopRoom {
       this.rest(`press answered: ${kind} on ${source.id}`);
     }
     return turn;
+  }
+
+  /**
+   * Reaction delivery as the room handler does it (ADR 2026-11-07 D4, D6):
+   * planned before the run begins, staged once it has. The frame leads the
+   * scripted user message, so retained history shows what was delivered.
+   */
+  private reactions(
+    reader: { kind: 'host' } | { kind: 'personaGuest'; personaId: WorkshopPersonaId },
+    kind: 'start' | 'update',
+    holds: WorkshopReactionHolds
+  ): { lead: string; stage: (requestId: string) => void } {
+    const plan = prepareWorkshopReactionDelivery(this.session, reader, kind, holds);
+    return {
+      lead: plan.frame ? `${plan.frame}\n` : '',
+      stage: (requestId) => stageWorkshopReactionDelivery(this.session, requestId, reader, plan, (line) => this.log.push(line))
+    };
+  }
+
+  /**
+   * The per-turn reaction invite as the room handler adds it (2026-11-10
+   * addendum): after the run began, only while persona reactions are on and
+   * the run has a writer message to react to. It follows the reactions frame.
+   */
+  private invite(requestId: string): string {
+    const invite = workshopReactionInviteFor(this.reactionsOpen === true, this.session.personaReplyReactionTarget(requestId));
+    return invite ? `${invite}\n` : '';
   }
 
   dismissGuest(personaId: WorkshopPersonaId): this {
@@ -630,6 +676,7 @@ export class ScriptedWorkshopRoom {
       settleCommittedRun: settle,
       memory: this.memoryContext,
       ...(this.fileEdits ? { fileEdits: this.fileEdits } : {}),
+      ...(this.reactionsOpen !== undefined ? { reactionsOpen: this.reactionsOpen } : {}),
       ...(this.memoryAutoSave ? { memoryAutoSave: this.memoryAutoSave } : {}),
       log: (line) => this.log.push(line),
       events: silentEvents()

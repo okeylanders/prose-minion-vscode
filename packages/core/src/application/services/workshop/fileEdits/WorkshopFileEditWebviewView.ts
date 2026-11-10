@@ -15,6 +15,9 @@
  *   the reply's author is no longer in the room.
  * The ledger is read only for a turn that holds an offer. Without a room
  * view (a test, a caller with no room), offers pass with no status.
+ *
+ * `reactionDelivery` (ADR 2026-11-07 D6) is host bookkeeping the webview
+ * never reads, so it never leaves the host (PR #246 L3).
  */
 
 import {
@@ -44,10 +47,10 @@ export function workshopEditOfferRoomViewOnce(view: WorkshopEditOfferRoomView): 
 }
 
 export function workshopTurnForWebview(turn: WorkshopTurn, room?: WorkshopEditOfferRoomView): WorkshopTurn {
-  if (!turn.fileEditProposals && !turn.editOffers) {
+  if (!turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery) {
     return turn;
   }
-  const { editOffers, ...rest } = turn;
+  const { editOffers, reactionDelivery: _hostOnly, ...rest } = turn;
   const offers = editOffers && (!room || room.fileEditsOpen) ? editOffers : undefined;
   return {
     ...rest,

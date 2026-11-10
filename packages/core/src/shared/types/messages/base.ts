@@ -157,6 +157,9 @@ export enum MessageType {
   WORKSHOP_SET_TURN_BOOKMARK = 'workshop_set_turn_bookmark',
   WORKSHOP_RENAME_BOOKMARK = 'workshop_rename_bookmark',
   WORKSHOP_RENAME_BOOKMARK_RESULT = 'workshop_rename_bookmark_result',
+  // Workshop message reactions (ADR 2026-11-07 D2): the writer's, and Hide on a persona's.
+  WORKSHOP_SET_TURN_REACTION = 'workshop_set_turn_reaction',
+  WORKSHOP_HIDE_TURN_REACTION = 'workshop_hide_turn_reaction',
   WORKSHOP_REQUEST_TURN_PREVIEW = 'workshop_request_turn_preview',
   WORKSHOP_TURN_PREVIEW = 'workshop_turn_preview',
   /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
