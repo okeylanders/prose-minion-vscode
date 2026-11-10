@@ -35,13 +35,18 @@ const PROMPT = fs.readFileSync(path.resolve(__dirname,
 const budgets = PROMPT_BUDGETS.workshopEditOffers;
 const number = (quoted: string): number => Number(quoted.replace(/,/g, ''));
 const prose = PROMPT.replace(/```[\s\S]*?```/g, '');
+/** The declaration's teaching; the press's (Slice 2) follows it, and `replyEditOfferPressPromptSync` holds that. */
+const DECLARATION = PROMPT.slice(0, PROMPT.indexOf('### When the writer presses the button'));
 
 describe('edit-offer prompt ↔ PROMPT_BUDGETS', () => {
   const pinned: ReadonlyArray<readonly [RegExp, number[]]> = [
     [/One reply declares at most ([\d,]+) offers/, [budgets.offersPerReply]],
     [/a whole number from ([\d,]+) to ([\d,]+)/, [1, budgets.count]],
     [/An offer longer than ([\d,]+) characters is dropped/, [budgets.frameCharacters]],
-    [/a reply longer than ([\d,]+) characters keeps no offers/, [budgets.sourceReplyCharacters]]
+    [/a reply longer than ([\d,]+) characters keeps no offers/, [budgets.sourceReplyCharacters]],
+    // The press (Slice 2): a fix's size, and the no-edit answer's one line.
+    [/at most ([\d,]+) on each side/, [budgets.fixChangedCharacters]],
+    [/one line of at most ([\d,]+) characters/, [budgets.whyCharacters]]
   ];
 
   it.each(pinned)('quotes %s from its bound', (pattern, expected) => {
@@ -69,7 +74,7 @@ describe('edit-offer prompt ↔ the vocabulary and the codec', () => {
   });
 
   it('teaches every element the codec reads, and no other', () => {
-    const taught = new Set([...PROMPT.matchAll(/`<([a-z-]+)\/?>`/g)].map((match) => match[1]));
+    const taught = new Set([...DECLARATION.matchAll(/`<([a-z-]+)\/?>`/g)].map((match) => match[1]));
     expect([...taught].sort()).toEqual([...WORKSHOP_EDIT_OFFER_ELEMENTS].sort());
     expect(PROMPT).toContain(`<${WORKSHOP_EDIT_OFFER_TAG}>`);
   });
@@ -86,7 +91,7 @@ describe('edit-offer prompt ↔ the vocabulary and the codec', () => {
 });
 
 describe('the worked example, through the production extractor and codec', () => {
-  const examples = [...PROMPT.matchAll(/```xml\n([\s\S]*?)```/g)].map((match) => match[1].trim());
+  const examples = [...DECLARATION.matchAll(/```xml\n([\s\S]*?)```/g)].map((match) => match[1].trim());
   const said = 'Three slips in the excerpt: "begining", "its\' own", and a doubled "the". '
     + 'And the Rabbit\'s two lines in the chapter would land harder cut short.';
 

@@ -40,6 +40,12 @@
  *   `[edit offer removed]`, and judged by `workshopReplyEditOffers` into
  *   `editOffers`, absent when the reply held none. An offer never earns a
  *   host line: a reply that was only offers leaves nothing.
+ * - **The no-file-edit frame** (ADR 2026-11-10 D5): `<prose-minion-no-file-edit>`
+ *   joins the pass too, removed from `rest`, redacted as
+ *   `[no file edit note removed]`, and judged by `workshopNoFileEditProtocol`
+ *   into `noFileEdit`. Only an answer to a pressed offer reads it
+ *   (`workshopEditOfferAnswer`); anywhere else it is stripped, and earns no
+ *   host line.
  */
 
 import {
@@ -57,6 +63,12 @@ import {
   WORKSHOP_EDIT_OFFER_REDACTION,
   type WorkshopReplyEditOfferControl
 } from '@/utils/workshopReplyEditOffers';
+import {
+  judgeWorkshopReplyNoFileEdit,
+  WORKSHOP_NO_FILE_EDIT_REDACTION,
+  WORKSHOP_NO_FILE_EDIT_TAG,
+  type WorkshopReplyNoFileEditControl
+} from '@/utils/workshopNoFileEditProtocol';
 import {
   findWorkshopReplyTrailerFrames,
   removeWorkshopReplyTrailerFrames,
@@ -119,6 +131,8 @@ export interface WorkshopReplyControls {
   readonly fileEdits?: WorkshopReplyFileEditControl;
   /** The reply's edit-offer frames, judged (ADR 2026-11-10 D1); absent when it held none. */
   readonly editOffers?: WorkshopReplyEditOfferControl;
+  /** The reply's no-file-edit frames, judged (ADR 2026-11-10 D5); absent when it held none. */
+  readonly noFileEdit?: WorkshopReplyNoFileEditControl;
 }
 
 export interface WorkshopReplyControlsOptions {
@@ -129,12 +143,13 @@ export interface WorkshopReplyControlsOptions {
 }
 
 /** Every trailer kind the tail holds, found in one pass. */
-const TRAILER_TAGS = [WORKSHOP_MEMORY_PROPOSAL_TAG, WORKSHOP_FILE_EDIT_TAG, WORKSHOP_EDIT_OFFER_TAG] as const;
+const TRAILER_TAGS = [WORKSHOP_MEMORY_PROPOSAL_TAG, WORKSHOP_FILE_EDIT_TAG, WORKSHOP_EDIT_OFFER_TAG, WORKSHOP_NO_FILE_EDIT_TAG] as const;
 
 const REDACTIONS: Readonly<Record<string, string>> = {
   [WORKSHOP_MEMORY_PROPOSAL_TAG]: WORKSHOP_MEMORY_PROPOSAL_REDACTION,
   [WORKSHOP_FILE_EDIT_TAG]: WORKSHOP_FILE_EDIT_REDACTION,
-  [WORKSHOP_EDIT_OFFER_TAG]: WORKSHOP_EDIT_OFFER_REDACTION
+  [WORKSHOP_EDIT_OFFER_TAG]: WORKSHOP_EDIT_OFFER_REDACTION,
+  [WORKSHOP_NO_FILE_EDIT_TAG]: WORKSHOP_NO_FILE_EDIT_REDACTION
 };
 
 type Frame = WorkshopReplyTrailerFrame;
@@ -153,6 +168,7 @@ export function extractWorkshopReplyControls(
   const memoryFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_MEMORY_PROPOSAL_TAG);
   const fileEditFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_FILE_EDIT_TAG);
   const editOfferFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_EDIT_OFFER_TAG);
+  const noFileEditFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_NO_FILE_EDIT_TAG);
   const rest = removeWorkshopReplyTrailerFrames(reply, frames, () => '');
   const fileEdits = fileEditFrames.length > 0 ? judgeWorkshopReplyFileEdits(fileEditFrames, options.fileEditsOpen === true) : undefined;
   return {
@@ -168,7 +184,8 @@ export function extractWorkshopReplyControls(
           hasFileEditProposal: (fileEdits?.proposals.length ?? 0) > 0
         })
       }
-      : {})
+      : {}),
+    ...(noFileEditFrames.length > 0 ? { noFileEdit: judgeWorkshopReplyNoFileEdit(noFileEditFrames) } : {})
   };
 }
 

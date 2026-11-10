@@ -16,7 +16,14 @@
  * point; Sprint 02 rewinds to each one and compares (the equivalence oracle).
  */
 
-import type { WorkshopReplyEditsContext } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
+import { resolveWorkshopReplyEdits, type WorkshopReplyEditsContext } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
+import {
+  completeWorkshopEditOfferRun,
+  workshopEditOfferRetainedReply
+} from '@/application/services/workshop/fileEdits/WorkshopEditOfferAnswerCompletion';
+import type { FileEditStaging } from '@/domain/models/FileEditStaging';
+import { workshopEditOfferRequestLine } from '@shared/constants/workshopEditOfferWords';
+import { workshopEditOfferAnswerVerdict } from '@/utils/workshopEditOfferAnswer';
 import type { WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import {
   completeWorkshopRun,
@@ -51,6 +58,7 @@ import type { AssistantToolService } from '@services/analysis/AssistantToolServi
 import type {
   ContextSourceEntry,
   WorkshopChatTarget,
+  WorkshopEditOfferKind,
   WorkshopGesturePlaygroundDraft,
   WorkshopPersonaId,
   WorkshopProjectMemoryDelivery,
@@ -441,6 +449,80 @@ export class ScriptedWorkshopRoom {
     });
     this.rest(`${personaId} reply: ${text}`);
     return reply;
+  }
+
+  /**
+   * A reply whose trailers are staged first, as the room stages them (a
+   * file-edit card, an edit offer): `send` is `hostMessage` or
+   * `guestMessage` with that reply.
+   */
+  async withStagedReply(reply: string, staging: FileEditStaging, send: (reply: string) => WorkshopTurn): Promise<WorkshopTurn> {
+    this.fileEdits = await resolveWorkshopReplyEdits({ reply, open: true, staging });
+    try {
+      return send(reply);
+    } finally {
+      this.fileEdits = undefined;
+    }
+  }
+
+  /**
+   * A press on a reply's edit offer (ADR 2026-11-10 D4, D5), sequenced as
+   * the room handler runs it: the request turn, the author's own
+   * conversation, the answer staged, then the answer's own completion.
+   * Returns the answer turn, or undefined when the answer was none.
+   */
+  async editOfferPress(
+    source: WorkshopTurn,
+    kind: WorkshopEditOfferKind,
+    answer: string,
+    staging: FileEditStaging
+  ): Promise<WorkshopTurn | undefined> {
+    const offer = source.editOffers?.find((candidate) => candidate.kind === kind);
+    if (!offer || !source.personaId) {
+      throw new Error(`Scripted press: ${source.id} offers no ${kind}`);
+    }
+    const guest = source.participant === 'guest' ? source.personaId : undefined;
+    const reader = guest ? { kind: 'personaGuest' as const, personaId: guest } : { kind: 'host' as const };
+    const requestId = this.requestId(`press-${kind}`);
+    const roomDelivery = this.delivery.prepare(reader);
+    const request = { sourceTurnId: source.id, kind };
+    const line = workshopEditOfferRequestLine(source.personaLabel ?? 'Jill', kind);
+    if (guest) {
+      this.session.beginPersonaGuestMessage(guest, requestId, line, undefined, undefined, request);
+    } else {
+      this.session.beginPersonaMessage(requestId, line, undefined, undefined, request);
+    }
+    const boundExcerpt = offer.target.kind === 'excerpt' && offer.target.documentUri
+      ? { kind: 'excerpt' as const, documentUri: offer.target.documentUri, relativePath: offer.target.relativePath }
+      : undefined;
+    const fileEdits = await resolveWorkshopReplyEdits({ reply: answer, open: true, staging, ...(boundExcerpt ? { boundExcerpt } : {}) });
+    const committed = workshopEditOfferAnswerVerdict(answer, { incomplete: false }) === undefined;
+    const conversationId = guest
+      ? this.session.getPersonaGuestConversationId(guest)
+      : this.session.getHostConversationId();
+    if (committed) {
+      // The engine retains nothing for a rejected final reply.
+      this.commitHistory(conversationId, 'press', `[press ${kind}] ${source.id}`, workshopEditOfferRetainedReply(kind, answer));
+    }
+    const turn = completeWorkshopEditOfferRun({
+      session: this.session,
+      requestId,
+      label: source.personaLabel ?? 'Jill',
+      result: this.result(answer, conversationId),
+      aborted: false,
+      createsRetainedConversation: false,
+      copy: workshopMessageCompletionCopy(source.personaLabel ?? 'Jill'),
+      discardConversation: (id) => this.conversations.deleteConversation(id),
+      readRetainedHistory: (id) => this.conversations.getCommittedHistoryCounts(id),
+      settleCommittedRun: () => this.delivery.commit(roomDelivery),
+      ...(fileEdits ? { fileEdits } : {}),
+      log: (entry) => this.log.push(entry),
+      events: silentEvents()
+    }, { request, offer, sourceAt: '2:02 pm', fileEditsOpen: () => true, commitRetained: () => true, settled: () => undefined });
+    if (turn) {
+      this.rest(`press answered: ${kind} on ${source.id}`);
+    }
+    return turn;
   }
 
   dismissGuest(personaId: WorkshopPersonaId): this {

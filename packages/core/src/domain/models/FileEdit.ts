@@ -23,6 +23,8 @@ export interface StagedFileEdit {
   readonly baseline: FileEditBaseline;
   readonly operations: readonly TextEditOperation[];
   readonly source: FileEditSource;
+  /** What the proposal was asked for, when that holds it to a stricter policy than its class (ADR 2026-11-10 D6). */
+  readonly intent?: FileEditIntent;
 }
 
 export interface FileEditApplyOptions {
@@ -65,6 +67,38 @@ export const FILE_EDIT_TARGET_POLICIES: Readonly<Record<FileEditClass, FileEditC
   notes: { allowsRewrite: true, allowsNewlineChanges: true, structure: 'free' }
 };
 
+/**
+ * What a proposal was asked for, when that is narrower than its file's class
+ * allows (ADR 2026-11-10 D6). `fixes`: the answer to a reply's fixes offer.
+ */
+export type FileEditIntent = 'fixes';
+
+export interface FileEditIntentPolicy {
+  /** The only operations it takes. */
+  readonly operations: ReadonlySet<TextEditOperation['op']>;
+  /** The most one pair may change, on each side, measured as the rewrite ceiling measures `changed`. */
+  readonly changedCharacters: number;
+  readonly allowsNewlineChanges: boolean;
+  readonly structure: DraftEditStructureMode;
+}
+
+/**
+ * D6's table: data beside the class policies. An intent only narrows: the
+ * gateway applies it on top of the class policy, at staging and on every
+ * apply attempt. A proposal with no intent takes its class policy unchanged.
+ */
+export const FILE_EDIT_INTENT_POLICIES: Readonly<Record<FileEditIntent, FileEditIntentPolicy>> = {
+  fixes: {
+    operations: new Set(['replace']),
+    changedCharacters: PROMPT_BUDGETS.workshopEditOffers.fixChangedCharacters,
+    allowsNewlineChanges: false,
+    structure: 'strict'
+  }
+};
+
+/** The one fault an intent policy gives: the edit is more than what was asked for. */
+export const FILE_EDIT_MORE_THAN_A_FIX = 'more-than-a-fix';
+
 /** Why an Apply was refused, before or instead of any write. */
 export type FileEditApplyRefusal =
   | 'no-operations'
@@ -86,7 +120,8 @@ export type FileEditOperationFault =
   | 'insertion-too-long'
   | 'rewrite-ceiling'
   | 'rewrite-protected'
-  | 'rewrite-too-large';
+  | 'rewrite-too-large'
+  | typeof FILE_EDIT_MORE_THAN_A_FIX;
 
 /**
  * What one landed operation wrote (D10, N-01), for a future Revert: its text

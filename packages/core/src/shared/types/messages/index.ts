@@ -178,6 +178,8 @@ import {
   WorkshopMemoryProposalActionMessage,
   WorkshopFileEditWebviewMessage,
   WorkshopFileEditExtensionMessage,
+  WorkshopEditOfferWebviewMessage,
+  WorkshopEditOfferExtensionMessage,
   WorkshopSaveTurnToMemoryMessage,
   WorkshopSaveSavedTurnToMemoryMessage,
   WorkshopMemoryCreateMessage,
@@ -360,6 +362,7 @@ export type WebviewToExtensionMessage =
   | WorkshopSetTurnBookmarkMessage
   | WorkshopMemoryProposalActionMessage
   | WorkshopFileEditWebviewMessage
+  | WorkshopEditOfferWebviewMessage
   | WorkshopSaveTurnToMemoryMessage
   | WorkshopSaveSavedTurnToMemoryMessage
   | WorkshopMemoryCreateMessage
@@ -475,6 +478,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopRenameBookmarkResultMessage
   | WorkshopMemoryWriteResultMessage
   | WorkshopFileEditExtensionMessage
+  | WorkshopEditOfferExtensionMessage
   | WorkshopMemoryEditDataMessage
   | WorkshopMemoryEstimateResultMessage
   | WorkshopMemoryDraftHostMessage

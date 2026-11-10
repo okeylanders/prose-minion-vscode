@@ -104,6 +104,16 @@ export type WorkshopFileEditLanded =
     readonly afterSha256: string;
   };
 
+/**
+ * What a card was asked for, when that holds it to a stricter policy than
+ * its file's class (ADR 2026-11-10 D6). `fixes`: the answer to a reply's
+ * fixes offer, held to a fix's size by the gateway
+ * (`FILE_EDIT_INTENT_POLICIES`). A card with no intent takes its class
+ * policy unchanged.
+ */
+export const WORKSHOP_FILE_EDIT_INTENTS = ['fixes'] as const;
+export type WorkshopFileEditIntent = (typeof WORKSHOP_FILE_EDIT_INTENTS)[number];
+
 /** A persona's proposed edit to one file, its trailer stripped (D2, D10). */
 export interface WorkshopFileEditProposal {
   readonly requested: WorkshopFileEditRequestedTarget;
@@ -124,6 +134,8 @@ export interface WorkshopFileEditProposal {
   readonly outcomes?: readonly WorkshopFileEditOperationOutcome[];
   /** One per landed operation. */
   readonly landed?: readonly WorkshopFileEditLanded[];
+  /** Host-written at staging (ADR 2026-11-10 D6); absent, the class policy alone. */
+  readonly intent?: WorkshopFileEditIntent;
 }
 
 /** Bounds the host's own fields hold (the model's are `PROMPT_BUDGETS.workshopFileEdits`). */

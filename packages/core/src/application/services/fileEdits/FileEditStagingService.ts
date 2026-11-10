@@ -23,6 +23,7 @@ import type {
   FileEditIdentity,
   FileEditResolutionResult,
   FileEditStaging,
+  FileEditStagingOptions,
   FileEditStagingRefusal,
   FileEditStagingResult,
   FileEditStagingTarget
@@ -40,6 +41,7 @@ import {
   documentUriOf,
   fileEditBaseline,
   findFileEditCandidate,
+  fsPathOf,
   isTextFilePath,
   liveTextFault,
   membershipsOf,
@@ -61,10 +63,10 @@ const BYTES = PROMPT_BUDGETS.workshopFileEdits.fileBytes;
 export class FileEditStagingService implements FileEditStaging {
   constructor(private readonly dependencies: FileEditStagingDependencies) {}
 
-  async stage(target: FileEditStagingTarget): Promise<FileEditStagingResult> {
+  async stage(target: FileEditStagingTarget, options?: FileEditStagingOptions): Promise<FileEditStagingResult> {
     let result: FileEditStagingResult;
     try {
-      result = await this.stageTarget(target);
+      result = await this.stageTarget(target, options?.boundExcerpt);
     } catch {
       result = refused('unreadable');
     }
@@ -86,8 +88,8 @@ export class FileEditStagingService implements FileEditStaging {
     return result;
   }
 
-  private async stageTarget(target: FileEditStagingTarget): Promise<FileEditStagingResult> {
-    const identified = await this.identify(target);
+  private async stageTarget(target: FileEditStagingTarget, boundExcerpt?: FileEditIdentity): Promise<FileEditStagingResult> {
+    const identified = await this.identify(target, boundExcerpt);
     if (identified.kind === 'refused') {
       return identified;
     }
@@ -110,8 +112,17 @@ export class FileEditStagingService implements FileEditStaging {
   }
 
   /** The target's one identity (D4), or why it has none. Reads the catalog and the excerpt; never a file's text. */
-  private async identify(target: FileEditStagingTarget): Promise<Identified | Extract<FileEditStagingResult, { kind: 'refused' }>> {
-    const excerpt = await this.dependencies.excerpt.currentDocument();
+  private async identify(
+    target: FileEditStagingTarget,
+    boundExcerpt?: FileEditIdentity
+  ): Promise<Identified | Extract<FileEditStagingResult, { kind: 'refused' }>> {
+    // A run bound to an excerpt document names that one as `<excerpt/>`, never the room's excerpt as it is now
+    // (ADR 2026-11-10 D2; PR #252 F-03). It is held to every rule the current excerpt is: containment, text, size.
+    // A resource target still reads the room's excerpt, for its class.
+    const boundPath = boundExcerpt ? fsPathOf(boundExcerpt.documentUri) : undefined;
+    const excerpt = boundExcerpt && target.kind === 'excerpt'
+      ? boundPath === undefined ? undefined : { fsPath: boundPath, relativePath: boundExcerpt.relativePath }
+      : await this.dependencies.excerpt.currentDocument();
     let candidates: ContextResourceCandidate[] | undefined;
     try {
       candidates = await this.dependencies.candidates.listCandidates(DEFAULT_CONTEXT_GROUPS);

@@ -16,9 +16,15 @@
  *   and replacement; `touched` the characters of the distinct blank-line
  *   paragraphs any of them overlaps. Refused when `changed` passes both the
  *   floor and `share × touched`. Insertions are never counted.
+ * - **An intent's policy** (ADR 2026-11-10 D6, `intentFaults`): for `fixes`,
+ *   every operation is a replace, each changes at most `changedCharacters`
+ *   on each side past the common start and end of its quote and replacement
+ *   (`changedCharacters`, the ceiling's own measure), and none changes a
+ *   line break. It reads only the operations, so staging runs it with no
+ *   file text and the gateway on every attempt.
  */
 
-import type { FileEditClassPolicy, FileEditOperationFault } from '@/domain/models/FileEdit';
+import { FILE_EDIT_MORE_THAN_A_FIX, type FileEditClassPolicy, type FileEditIntentPolicy, type FileEditOperationFault } from '@/domain/models/FileEdit';
 import type { FileEditBaseline } from '@/domain/models/FileEditStaging';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { splitBlankLineParagraphs } from '@/utils/blankLineParagraphs';
@@ -99,6 +105,36 @@ export function changedCharacters(before: string, after: string): number {
     suffix += 1;
   }
   return Math.max(before.length, after.length) - prefix - suffix;
+}
+
+/** Whether a replace changes a line break: one stands in what differs between its quote and replacement. */
+function changesLineBreak(before: string, after: string): boolean {
+  let prefix = 0;
+  while (prefix < before.length && prefix < after.length && before[prefix] === after[prefix]) {
+    prefix += 1;
+  }
+  let suffix = 0;
+  while (
+    suffix < before.length - prefix && suffix < after.length - prefix
+    && before[before.length - 1 - suffix] === after[after.length - 1 - suffix]
+  ) {
+    suffix += 1;
+  }
+  return /[\r\n]/.test(before.slice(prefix, before.length - suffix) + after.slice(prefix, after.length - suffix));
+}
+
+/** What an intent's policy refuses, by operation (D6). Pure over the operations. */
+export function intentFaults(operations: readonly TextEditOperation[], policy: FileEditIntentPolicy | undefined): OperationFault[] {
+  if (!policy) {
+    return [];
+  }
+  return operations.flatMap((operation, index) => {
+    const breaks = !policy.operations.has(operation.op)
+      || (operation.op === 'replace' && (
+        changedCharacters(operation.find, operation.with) > policy.changedCharacters
+        || (!policy.allowsNewlineChanges && changesLineBreak(operation.find, operation.with))));
+    return breaks ? [{ index, fault: FILE_EDIT_MORE_THAN_A_FIX }] : [];
+  });
 }
 
 /**

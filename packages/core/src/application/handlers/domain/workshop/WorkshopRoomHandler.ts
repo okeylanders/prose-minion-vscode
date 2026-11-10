@@ -31,7 +31,13 @@ import {
 } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
 import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import type { FileEditApplyPort } from '@/domain/models/FileEdit';
-import { workshopTurnForWebview } from '@/application/services/workshop/fileEdits/WorkshopFileEditWebviewView';
+import {
+  workshopEditOfferRoomViewOnce,
+  workshopTurnForWebview,
+  type WorkshopEditOfferRoomView
+} from '@/application/services/workshop/fileEdits/WorkshopFileEditWebviewView';
+import { workshopEditOfferAuthorTarget } from '@handlers/domain/workshop/WorkshopEditOfferHandler';
+import { workshopEditRequestTime } from '@/utils/workshopEditRequestFrame';
 import { LogSink, ShellService } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
@@ -121,6 +127,8 @@ import { workshopMessageAttachmentKind } from '@shared/constants/workshopThreadA
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import type {
+  WorkshopDirectedRun,
+  WorkshopDirectedRunResult,
   WorkshopMutationRouteRegistrar,
   WorkshopTranscriptExportPort,
   WorkshopWidgetRuntime
@@ -178,6 +186,7 @@ interface WorkshopTargetTurnInput {
   displayText: string;
   attachmentRefs: readonly WorkshopMessageAttachmentSnapshot[];
   widgetCommitRef?: WorkshopTurnWidgetCommit;
+  editOfferRequest?: WorkshopDirectedRun['editOfferRequest'];
   roomCatchUp?: string;
   hasConversationalCatchUp: boolean;
   todoEvidence?: WorkshopTodoEvidenceFrame;
@@ -232,6 +241,8 @@ export class WorkshopRoomHandler {
     toolId?: WorkshopToolId;
     guestPersonaId?: WorkshopPersonaId;
     controller: AbortController;
+    /** A host-directed run: its writer turn leaves with it when it is preempted (ADR 2026-11-10 D3). */
+    directed?: boolean;
   };
 
   private readonly disposeStatusListener: () => void;
@@ -316,6 +327,9 @@ export class WorkshopRoomHandler {
           this.executeMessage(text, displayText, undefined, executeOptions),
         isRoomRunActive: () => this.activeRun !== undefined,
         fileEditsMode: () => this.conversationSettingsService.getFileEditsMode(),
+        runDirected: (target, run) =>
+          this.executeMessage(run.message, run.displayText, target, { directedRun: run }),
+        formatTurnTime: (timestamp) => workshopEditRequestTime(timestamp, this.sessionTime.exportState().timezone),
         findReadInRecord: (identity) => this.assistantToolService.findConversationContextSourceRead(
           this.chatTargetConversation().conversationId,
           identity
@@ -849,7 +863,8 @@ export class WorkshopRoomHandler {
               input.requestId,
               input.displayText,
               input.attachmentRefs,
-              input.widgetCommitRef
+              input.widgetCommitRef,
+              input.editOfferRequest
             );
             const personaBehaviorFrames: WorkshopPersonaBehaviorFrames = {
               ...behaviorFramesFor(userTurn),
@@ -928,7 +943,8 @@ export class WorkshopRoomHandler {
               input.requestId,
               input.displayText,
               input.attachmentRefs,
-              input.widgetCommitRef
+              input.widgetCommitRef,
+              input.editOfferRequest
             );
             const personaBehaviorFrames: WorkshopPersonaBehaviorFrames = {
               ...behaviorFramesFor(userTurn),
@@ -978,8 +994,10 @@ export class WorkshopRoomHandler {
        * writer turn and artifact, not after the participant finishes replying.
        */
       onRoomAccepted?: (userTurnId: string) => void;
+      /** A reply edit offer's press (ADR 2026-11-10 D4, D5): see `WorkshopDirectedRun`. */
+      directedRun?: WorkshopDirectedRun;
     }
-  ): Promise<{ committed: boolean; refusalReason?: string }> {
+  ): Promise<WorkshopDirectedRunResult> {
     const personaId = this.session.getSelectedPersonaId();
     const targetPlan = this.resolveMessageTarget(
       targetOverride ?? this.session.getChatTarget(),
@@ -1087,9 +1105,12 @@ export class WorkshopRoomHandler {
         `[WorkshopRoomHandler] Widget artifact riding this send: ${widgetArtifact.id} (${widgetArtifact.widgetId}, config ${widgetArtifact.widgetConfigId})`
       );
     }
-    const threadArtifactFrames = roomThreadArtifacts.map(
-      buildWorkshopThreadArtifactFrame
-    );
+    const directedRun = executeOptions?.directedRun;
+    const threadArtifactFrames = [
+      ...roomThreadArtifacts.map(buildWorkshopThreadArtifactFrame),
+      // A press's directive rides the frames' own slot, last before the message (ADR 2026-11-10 D4).
+      ...(directedRun ? [directedRun.frame] : [])
+    ];
     const widgetCommitRef: WorkshopTurnWidgetCommit | undefined = widgetArtifact
       ? {
           widgetId: widgetArtifact.widgetId,
@@ -1112,6 +1133,7 @@ export class WorkshopRoomHandler {
       displayText,
       attachmentRefs,
       widgetCommitRef,
+      editOfferRequest: directedRun?.editOfferRequest,
       roomCatchUp,
       hasConversationalCatchUp,
       todoEvidence,
@@ -1119,7 +1141,7 @@ export class WorkshopRoomHandler {
       threadArtifactFrames,
       timeNotice
     });
-    this.activeRun = { requestId, label, toolId, guestPersonaId, controller };
+    this.activeRun = { requestId, label, toolId, guestPersonaId, controller, ...(directedRun ? { directed: true } : {}) };
     // Sprint 13C: capabilities are participant-owned. Host and persona-guest
     // turns each mint one adapter with their own principal; direct-tool
     // sidecars stay capability-free instruments. Decide "which participant is
@@ -1165,13 +1187,16 @@ export class WorkshopRoomHandler {
     this.sendStreamStarted(requestId);
     this.sendStatus(statusMessage);
 
+    // A directed run's reply is never shown (ADR 2026-11-10 D5): its tokens go nowhere.
+    const onToken = directedRun ? () => undefined : (token: string) => this.sendStreamChunk(requestId, token);
     try {
       const result = conversationId
         ? await this.assistantToolService.continueConversation(conversationId, modelMessage, {
             signal: controller.signal,
-            onToken: (token: string) => this.sendStreamChunk(requestId, token),
+            onToken,
             capability: participantCapability,
-            webResearch: this.conversationSettingsService.getWebResearch().enabled
+            webResearch: this.conversationSettingsService.getWebResearch().enabled,
+            finalReply: directedRun?.finalReply
           })
         : await this.assistantToolService.startWorkshopPersonaConversation({
             personaId,
@@ -1190,16 +1215,17 @@ export class WorkshopRoomHandler {
               : undefined
           }, {
             signal: controller.signal,
-            onToken: (token: string) => this.sendStreamChunk(requestId, token),
+            onToken,
             capability: participantCapability!,
-            webResearch: this.conversationSettingsService.getWebResearch().enabled
+            webResearch: this.conversationSettingsService.getWebResearch().enabled,
+            finalReply: directedRun?.finalReply
           });
 
       const pendingMemory = this.replyMemory(result.content, controller.signal);
       const replyMemory = pendingMemory && await pendingMemory;
-      const fileEdits = await this.replyFileEdits(result.content, controller.signal);
+      const fileEdits = await this.replyFileEdits(result.content, controller.signal, directedRun?.boundExcerpt);
       const memoryAutoSave = this.memoryAutoSaveFor(controller.signal);
-      const assistantTurn = completeWorkshopRun({
+      const assistantTurn = (directedRun?.complete ?? completeWorkshopRun)({
         memory: replyMemory,
         memoryAutoSave: memoryAutoSave.hand,
         memoryAutoSavesInRoom: memoryAutoSave.inRoom,
@@ -1309,7 +1335,8 @@ export class WorkshopRoomHandler {
             this.postComposerDraftRestored(rolledBack.content);
           }
         }
-      } else {
+      } else if (!directedRun || !this.session.rollbackMessageRun(requestId)) {
+        // A directed run's writer turn leaves with a failed run (ADR 2026-11-10 D3); any other stays visible.
         this.session.abandonRun(requestId);
       }
       if (pendingHostUpdates) {
@@ -1346,7 +1373,8 @@ export class WorkshopRoomHandler {
         committed: false,
         ...(error instanceof AgentRunUnavailableError
           ? { refusalReason: error.message }
-          : {})
+          : {}),
+        ...(error instanceof Error && error.name === 'AbortError' ? { cancelled: true } : {})
       };
     } finally {
       this.settleActiveRun(requestId);
@@ -1433,11 +1461,12 @@ export class WorkshopRoomHandler {
    * D11), and its edit offers, resolved (ADR 2026-11-10 D2): the setting is
    * read now, when the reply is read. A reply holding neither tag costs no await.
    */
-  private replyFileEdits(reply: string, signal: AbortSignal): Promise<WorkshopReplyEditsContext | undefined> {
+  private replyFileEdits(reply: string, signal: AbortSignal, boundExcerpt?: WorkshopDirectedRun['boundExcerpt']): Promise<WorkshopReplyEditsContext | undefined> {
     return resolveWorkshopReplyEdits({
       reply,
       open: this.conversationSettingsService.fileEditsOpen(),
       staging: this.fileEditStaging,
+      ...(boundExcerpt ? { boundExcerpt } : {}),
       signal
     });
   }
@@ -1470,7 +1499,9 @@ export class WorkshopRoomHandler {
         `[WorkshopRoomHandler] Preempting in-flight run: ${this.activeRun.requestId} (${this.activeRun.label})`
       );
       this.activeRun.controller.abort();
-      this.session.abandonRun(this.activeRun.requestId);
+      if (!this.activeRun.directed || !this.session.rollbackMessageRun(this.activeRun.requestId)) {
+        this.session.abandonRun(this.activeRun.requestId);
+      }
       this.activeRun = undefined;
     }
   }
@@ -1534,10 +1565,20 @@ export class WorkshopRoomHandler {
     const message: WorkshopTurnMessage = {
       type: MessageType.WORKSHOP_TURN,
       source: 'extension.workshop',
-      payload: { turn: workshopTurnForWebview(turn) },
+      payload: { turn: workshopTurnForWebview(turn, this.editOfferRoomView()) },
       timestamp: Date.now()
     };
     void this.postMessage(message);
+  }
+
+  /** What an edit offer's view is derived from, read when a turn is posted (ADR 2026-11-10 D3, U5). */
+  private editOfferRoomView(): WorkshopEditOfferRoomView {
+    return {
+      fileEditsOpen: this.conversationSettingsService.getFileEditsMode() === 'ask',
+      runActive: this.activeRun !== undefined,
+      ledger: () => this.session.readRoomLedger(),
+      authorPresent: (turn) => workshopEditOfferAuthorTarget(this.session, turn) !== undefined
+    };
   }
 
   private postComposerDraftRestored(text: string): void {
@@ -1552,8 +1593,9 @@ export class WorkshopRoomHandler {
 
   private postSessionState(): void {
     const snapshot = this.session.getSnapshot();
-    // A file-edit card's `documentUri` is host-only (ADR 2026-11-05 D4.3).
-    const session = { ...snapshot, turns: snapshot.turns.map(workshopTurnForWebview) };
+    // A file-edit card's `documentUri` is host-only (ADR 2026-11-05 D4.3); an offer's status is derived here (ADR 2026-11-10 D3).
+    const room = workshopEditOfferRoomViewOnce(this.editOfferRoomView());
+    const session = { ...snapshot, turns: snapshot.turns.map((turn) => workshopTurnForWebview(turn, room)) };
     session.contextBudget = this.activeContextBudget();
     const availability = this.sessionPersistence.availability();
     const message: WorkshopSessionStateMessage = {

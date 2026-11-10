@@ -44,13 +44,58 @@ import type {
 /** The one project-memory library as the Workshop's route owners reach it: Slice 3's writes and Slice 4b's manager. */
 export type WorkshopProjectMemoryPort = WorkshopProjectMemoryWritePort & WorkshopProjectMemoryManagerPort;
 import type { FileEditApplyPort } from '@/domain/models/FileEdit';
+import type { FileEditIdentity } from '@/domain/models/FileEditStaging';
+import type { AgentFinalReplyCheck } from '@orchestration/AgentRunContracts';
+import type { WorkshopRunCompletionInput } from '@/application/services/workshop/WorkshopRunCompletion';
 import type {
   ErrorSource,
   MessageType,
+  WorkshopChatTarget,
+  WorkshopEditOfferRequest,
   WorkshopFileEditsMode,
   WorkshopSessionAction,
   WorkshopTurn
 } from '@messages';
+
+/**
+ * A host-directed run in place of a writer's message (a reply edit offer's
+ * press; ADR 2026-11-10 D4, D5). It rides the room's one message path, so
+ * the room's usual frames are delivered unchanged; what differs is here:
+ * - the writer turn holds the host's sentence and names what was pressed;
+ * - `frame` is a trusted frame placed before the writer-message slot, and
+ *   `message` fills that slot;
+ * - nothing streams to the thread, and `finalReply` checks and words the
+ *   reply (the engine's `finalReplyCheck`);
+ * - `boundExcerpt` says which document `<excerpt/>` names in the reply;
+ * - `complete` settles the result in place of `completeWorkshopRun`;
+ * - a run that fails or is stopped rolls its writer turn back.
+ */
+export interface WorkshopDirectedRun {
+  readonly editOfferRequest: WorkshopEditOfferRequest;
+  readonly displayText: string;
+  readonly message: string;
+  readonly frame: string;
+  readonly finalReply: {
+    readonly check: AgentFinalReplyCheck;
+    readonly retained: (content: string) => string;
+    /** The engine holds the run's retention, and hands over its commit: called once the reply is adopted, or never. */
+    readonly deferRetention?: (commit: () => boolean) => void;
+  };
+  /**
+   * The document `<excerpt/>` names in this run's reply, when the run is
+   * bound to one (an excerpt offer's own, ADR 2026-11-10 D2): the reply's
+   * file edits are staged against it, whatever the room's excerpt is now.
+   */
+  readonly boundExcerpt?: FileEditIdentity;
+  readonly complete: (input: WorkshopRunCompletionInput) => WorkshopTurn | undefined;
+}
+
+/** What the room's message path came to; `cancelled` when the run was stopped before it completed. */
+export interface WorkshopDirectedRunResult {
+  committed: boolean;
+  refusalReason?: string;
+  cancelled?: boolean;
+}
 
 /** Register a Workshop mutation behind the shared session-operation gate. */
 export type WorkshopMutationRouteRegistrar = (
@@ -77,6 +122,7 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopProjectMemoryManagerHandler'
   | 'WorkshopPinnedContextHandler'
   | 'WorkshopFileEditHandler'
+  | 'WorkshopEditOfferHandler'
   | 'WorkshopWidgetHostHandler';
 
 /**
@@ -169,6 +215,10 @@ export interface WorkshopSliceHostEffects {
   isRoomRunActive: () => boolean;
   /** `proseMinion.workshop.fileEdits`, read live (ADR 2026-11-05 D11): checked at Apply and at the last boundary. */
   fileEditsMode: () => WorkshopFileEditsMode;
+  /** A reply edit offer's press (ADR 2026-11-10 D4): a host-directed run to its author's own conversation. */
+  runDirected: (target: WorkshopChatTarget, run: WorkshopDirectedRun) => Promise<WorkshopDirectedRunResult>;
+  /** A turn's time as the room shows it, in the session's timezone. */
+  formatTurnTime: (timestamp: number) => string;
   /**
    * Host-side only (Wayfinding D4): what the chat target's manifest recorded
    * when a read-in file was read, for the reader's "changed since".

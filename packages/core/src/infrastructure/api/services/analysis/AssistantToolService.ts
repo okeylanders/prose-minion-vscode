@@ -41,6 +41,7 @@ import {
   AgentRunUnavailableError
 } from '@orchestration/AgentRunEngine';
 import {
+  AgentFinalReplyCheck,
   AnyAgentCapability,
   ExecutionResult,
   StreamingTokenCallback
@@ -102,6 +103,19 @@ export interface AnalysisStreamingOptions {
   workshopSource?: ConfiguredResourceRef;
   /** Opt-in, per-turn server-side web search for Workshop persona conversations. */
   webResearch?: boolean;
+  /**
+   * A Workshop persona turn whose final reply its owner checks and words
+   * (the engine's `finalReplyCheck`): `check` returns a correction
+   * instruction or nothing, and `retained` is what retained history keeps in
+   * place of the reply. Absent, the reply is retained by the Workshop's
+   * usual sanitizer. `deferRetention` is the engine's: the owner commits
+   * the exchange once it adopts the reply, or never.
+   */
+  finalReply?: {
+    check: AgentFinalReplyCheck;
+    retained: (content: string) => string;
+    deferRetention?: (commit: () => boolean) => void;
+  };
 }
 
 export interface WorkshopHostStreamingOptions extends AnalysisStreamingOptions {
@@ -623,7 +637,9 @@ export class AssistantToolService {
         signal: streamingOptions?.signal,
         onToken: streamingOptions?.onToken,
         tools: webTools,
-        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
+        retainedAssistantContentSanitizer: streamingOptions.finalReply?.retained ?? sanitizeWorkshopReplyForRetention,
+        finalReplyCheck: streamingOptions.finalReply?.check,
+        deferRetention: streamingOptions.finalReply?.deferRetention
       }
     });
 
@@ -752,7 +768,9 @@ export class AssistantToolService {
         signal: streamingOptions?.signal,
         onToken: streamingOptions?.onToken,
         tools: webTools,
-        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
+        retainedAssistantContentSanitizer: streamingOptions?.finalReply?.retained ?? sanitizeWorkshopReplyForRetention,
+        finalReplyCheck: streamingOptions?.finalReply?.check,
+        deferRetention: streamingOptions?.finalReply?.deferRetention
       }
     });
 
