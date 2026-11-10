@@ -478,6 +478,44 @@ These are code, tested without a model:
 - the fixes policy (D6);
 - everything ADR 2026-11-05 D13 lists, unchanged, for the cards.
 
+## Addendum, 2026-11-10: what Slices 1 and 2 settled
+
+Built and reviewed (PRs #251 and #252). Each item refines a decision above;
+where they differ, this addendum holds.
+
+- **D3, D7: `askAgain` rides on the status.** The five states stay. A
+  `nothing-to-change` offer may always be asked again, and a `proposed` one
+  when D7's rule holds. The host takes a press when the state is open or
+  `askAgain` holds. Slice 3 draws it.
+- **D4: an excerpt offer keeps its file** (PR #252 F-03). The directive names
+  the offered file by its display path and says `<excerpt/>` means that file.
+  The answer's excerpt target is staged against the offer's stored identity,
+  whatever the room's excerpt is by then, in the catalog or not.
+- **D5: a cut-off or interrupted answer is a failure** (F-01). The engine's
+  check reads the reply before any display notice and is told when it is
+  incomplete. No partial frame is salvaged; the reason is `cut-off`.
+- **D5: rejected prose is not retained either** (F-02). After a successful
+  correction turn, the rejected reply's retained copy is the host's line.
+- **D5: nothing is retained until the answer is adopted** (R1). A press's run
+  defers retention (`deferRetention`): the engine hands its owner the commit,
+  and the host makes it only after the session has taken the answer turn. A
+  press that fails, is stopped, is preempted by a newer message, or finds
+  file edits turned off leaves the thread and the persona's history exactly
+  as they were. A held commit never writes over a history that has moved.
+- **D5: the correction budget is shared.** A run that spent its one
+  correction turn on a rejected capability request has none for its final
+  reply.
+- **D1: `<prose-minion-no-file-edit>` is a trailer tag** like the others, so
+  it is stripped from any reply.
+- **U3, U4: host lines use no pronoun.** "Asked Jill to suggest the fixes
+  from their reply as file edits." and "Suggested 3 fixes to …, from the
+  2:02 pm reply." The mockups' "her" is not built.
+- **D8: the request turn is an event in the transcript,** not a writer
+  entry.
+- **D1: an offer-only reply** reads as an empty reply does today. It takes
+  Message Reactions' "Replied without a message." line when the two epics
+  meet.
+
 ## How this meets Message Reactions
 
 Both epics edit `workshopReplyControls.ts` and `WorkshopTurnBubble.tsx`.
