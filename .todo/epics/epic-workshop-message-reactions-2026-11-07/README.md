@@ -208,3 +208,9 @@ rebase a shared branch). Read only: never commit to
   - **Full suite.** Before: 815 suites, 11,422 tests, 59 snapshots. After:
     817 suites, 11,456 tests, 59 snapshots. Lint: 0 errors. No live model
     calls; Okey tests live, and Slice 4 tunes from his counts.
+- **2026-11-10.** Okey's live report: personas never reacted, and never
+  acknowledged his reactions. Slice 4a (PR #250, merged `f6a0ccb2`)
+  rewrote the prompts per his four decisions (ADR addendum 2026-11-10,
+  superseding Q7): respond to reactions, react more readily, a per-turn
+  invite, frequency by Expression. 817 suites / 11,456 tests green. Next:
+  Okey's live counts drive the next round of tuning.
