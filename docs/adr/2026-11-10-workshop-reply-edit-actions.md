@@ -1,7 +1,8 @@
 # ADR 2026-11-10: A Reply Offers Its Fixes and Rewrites as Edits
 
-**Status:** Proposed (2026-11-10). Nothing is built. Okey's answers to
-[the open questions](#open-questions-for-okey) settle it.
+**Status:** Proposed (2026-11-10); design approved by Okey the same day, who
+took every recommendation in [the questions](#the-questions-as-put-okey-took-each-recommendation-2026-11-10).
+It becomes Accepted after the live pass. Nothing is built yet.
 **Date:** 2026-11-10
 **Epic:** [Workshop Reply Edit Actions](../../.todo/epics/epic-workshop-reply-edit-actions-2026-11-10/README.md)
 **Idea as filed:** [feature note](../../.todo/features/feature-workshop-reply-edit-actions/README.md)
@@ -76,6 +77,10 @@ Mockups, with *Alice* text, are in the epic folder:
 ([source](../../.todo/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/reply-offers.html)).
 
 ### U1. One footer row: offers at the left, reactions at the right
+
+The footer sits below the action row. Everything above that row keeps its
+place and its markup: the body, "Add a next step" and its findings, web
+sources, memory cards and file-edit cards.
 
 The reaction corner's row becomes **the reply's footer**. Its two ends hold
 the two things that are about this reply in particular:
@@ -371,6 +376,10 @@ exactly:
   rules the persona already knows.
 - **The run is an ordinary persona run,** with its capabilities, so the
   persona can read the file. Its cost is one persona turn.
+- **The room's usual frames ride along unchanged:** the to-do evidence,
+  pending host updates, catch-up and the time notice are delivered as on
+  any message to that persona. The press adds its directive and takes
+  nothing away.
 
 ### D5. What the answer may be
 
@@ -398,6 +407,9 @@ widget recommendation and edit offers are dropped and counted). Then:
   the chip is Open again, and the writer reads "Jill didn't answer with
   edits. Try again, or ask in your own words."
 - **All frames dropped as malformed** counts as neither.
+- **An answer adds no next steps.** Its prose is dropped, so the
+  actionable-findings reader is not run on it: an answer never carries
+  "Add a next step" rows, and never changes the to-do list.
 
 ### D6. Fixes are held to a fix's size, by host code
 
@@ -483,9 +495,7 @@ Reactions reaches `main` first.
   Slice 3, the bubble, starts only after Reactions is on `main` and merged
   into this epic.
 
-## Open questions for Okey
-
-Each has a recommendation, which the slices take unless he says otherwise.
+## The questions as put (Okey took each recommendation, 2026-11-10)
 
 1. **Is the footer row the right home?** Offers at the left of the
    reaction corner's row, with the widget chip moved in beside them (U1).

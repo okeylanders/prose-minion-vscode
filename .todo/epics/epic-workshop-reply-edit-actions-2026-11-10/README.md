@@ -1,10 +1,10 @@
 # Epic: Workshop Reply Edit Actions
 
-**Status:** Design proposed (2026-11-10). Waiting on Okey's answers to the ADR's eight questions. No implementation slice starts before he approves the design.
+**Status:** Design approved (Okey, 2026-11-10); he took all eight recommendations. Slice 1 is next.
 **Priority:** Medium
 **Created:** 2026-11-10
 **Integration branch:** `epic/workshop-reply-edit-actions`, cut at `c0a6e497` ("Merge Workshop Persona File Edits into main (#249)"), which is `main`'s tip on 2026-11-10. The brief named `926190d9`, the tip of `epic/workshop-persona-file-edits`; that epic had already reached `main`, so the branch was fast-forwarded from `926190d9` to `main` before its first commit. Each slice is built on `epic/workshop-reply-edit-actions-slice-<N>-<slug>` and merges into the epic through a reviewed PR.
-**Decision:** [ADR 2026-11-10: A Reply Offers Its Fixes and Rewrites as Edits](../../../docs/adr/2026-11-10-workshop-reply-edit-actions.md) (Proposed)
+**Decision:** [ADR 2026-11-10: A Reply Offers Its Fixes and Rewrites as Edits](../../../docs/adr/2026-11-10-workshop-reply-edit-actions.md) (Proposed; design approved 2026-11-10, Accepted after the live pass)
 **Idea as filed:** [feature note](../../features/feature-workshop-reply-edit-actions/README.md). It is a byte-identical copy of the file on `claude/idea-inbox`, and is never edited here. Status is tracked in this README.
 **Upstream of this epic:** Persona File Edits (on `main`). Message Reactions (`epic/workshop-message-reactions`, ADR 2026-11-07) reaches `main` first; this epic merges `main` after it lands, and builds its bubble slice only then.
 
@@ -23,11 +23,11 @@ A persona's reply that holds simple fixes or rewrites shows a chip for each. One
 
 Mockups are in [`mockups/`](mockups/): four PNGs and their HTML source. Render them again with `node .todo/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/render.js`.
 
-## Slices (proposed; they start after the design is approved)
+## Slices
 
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
-| 0 | Spec | ADR, this README, mockups, the idea note | All | Done on the epic branch; awaiting Okey |
+| 0 | Spec | ADR, this README, mockups, the idea note | All | Done (`1cc96d73`); approved by Okey 2026-11-10 |
 | 1 | The declaration | The offer tag, codec and bounds; its place in `extractWorkshopReplyControls`; resolving its file; `editOffers` on the turn, in the session codec and omitted from the transcript; the persona prompt, a worked example and sync tests. No route, no UI. | D1, D2, D8 | Not started |
 | 2 | The press | The action and result routes; the request turn and the directive frame; the engine's `finalReplyCheck`; reading the answer; `intent` and the fixes policy; the derived status in the turn's view; Rewind, Branch and reopen witnesses. No UI. | D3–D7, D9 | Not started |
 | 3 | The footer | The footer row, the chips and their states, the widget chip's move, the request line, the answer's line and card marks, the live region. **Starts after Message Reactions is on `main` and merged here.** | U1–U6 | Not started |
@@ -69,12 +69,25 @@ The same flow as Helper Agent and Message Reactions.
 - A fixes card over the bound is refused by host code.
 - A cut that removes an answer reopens its offer, with no stored state to repair.
 - No bubble has more footer rows than it has today.
+- A reply's "Add a next step" rows and the to-do list behave exactly as before, with and without an offer.
 - Each criterion is backed by a named test, or stated as covered by the Slice 4 live pass.
 
-## Open questions
+## Decisions taken (Okey, 2026-11-10)
 
-The ADR's eight, each with its recommendation: [Open questions for Okey](../../../docs/adr/2026-11-10-workshop-reply-edit-actions.md#open-questions-for-okey).
+All eight of [the ADR's questions](../../../docs/adr/2026-11-10-workshop-reply-edit-actions.md#the-questions-as-put-okey-took-each-recommendation-2026-11-10), as recommended:
+
+1. The footer row is the home, with the widget chip moved in.
+2. Fixes go through the persona, held to the fixes policy; not Proofread.
+3. An answer shows no persona prose.
+4. The fix bound is 40 changed characters, tuned in the live pass.
+5. One press at a time, never queued.
+6. The action row is not thinned in this epic; it gets its own feature note after this is live.
+7. Ask again, under D7's rule.
+8. No "both" press.
+
+**To-dos are untouched** (Okey asked, 2026-11-10): the offer trailer is stripped before the findings reader runs, the footer sits below "Add a next step", an answer adds no findings, and the to-do evidence frame is delivered as on any message.
 
 ## Progress Notes
 
 - **2026-11-10, Slice 0.** Branch cut at `c0a6e497`. The idea note copied unchanged from `claude/idea-inbox` (blob `4bee4019`, identical). ADR, README and mockups written. No code changed, so no test run was taken; Slice 1 records the baseline.
+- **2026-11-10.** Okey approved the design and took all eight recommendations. Added the to-do rules to the ADR (U1, D4, D5) after his question.
