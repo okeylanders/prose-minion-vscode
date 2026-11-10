@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workshop Reply Edit Actions: the reply's footer (mockup)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  A design mockup for ADR 2026-11-10 (U1-U6). Static HTML, no script.
+  Tokens and bubble rules are copied from styles/fulltab/tokens.css and
+  styles/workshop/shell.css, fileEdits.css and (Message Reactions) reactions.css,
+  so the frames read as the Workshop does. The text is *Alice*, never a writer's.
+  Render: node mockups/render.js
+-->
+<style>
+  :root {
+    --pm-bg: #15110d; --pm-surface: #221a13; --pm-surface-2: #2b2017; --pm-surface-3: #36281b;
+    --pm-inset: #1b150f; --pm-border: #3a2c1f; --pm-border-2: #4d3a28; --pm-border-soft: #2e231a;
+    --pm-text: #f3ece1; --pm-text-2: #c9bbab; --pm-muted: #a4937f; --pm-dim: #7a6c5b;
+    --pm-accent: #e0673a; --pm-accent-hi: #ee7d49; --pm-accent-lo: #c8552c;
+    --pm-accent-soft: rgba(224,103,58,.14); --pm-green: #6fc98a; --pm-amber: #e2b24a;
+    --pm-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --pm-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 32px 40px; background: var(--pm-bg); color: var(--pm-text); font: 13px var(--pm-sans); }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  .lede { color: var(--pm-muted); margin: 0 0 26px; max-width: 880px; line-height: 1.55; }
+  .frame { margin: 0 0 34px; }
+  .frame > h2 { font: 600 11px var(--pm-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--pm-accent-hi); margin: 0 0 4px; }
+  .frame > p { color: var(--pm-muted); margin: 0 0 12px; max-width: 880px; line-height: 1.5; }
+  .narrow { max-width: 430px; }
+
+  /* The bubble, as shell.css draws it */
+  .turn { display: flex; flex-direction: column; gap: 8px; }
+  .assistant { background: var(--pm-surface); border: 1px solid var(--pm-border-soft); border-radius: 12px; padding: 14px 16px; max-width: 860px; }
+  .head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .eyebrow { font: 600 10px var(--pm-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--pm-muted); }
+  .eyebrow .model { text-transform: none; letter-spacing: .02em; font-weight: 400; }
+  .usage { font: 10.5px var(--pm-mono); color: var(--pm-dim); }
+  .body { font-size: 13.5px; line-height: 1.65; color: var(--pm-text-2); }
+  .body p { margin: 8px 0; }
+  .body ul { margin: 6px 0; padding-left: 20px; }
+  .body strong { color: var(--pm-text); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .actions button { border: 1px solid var(--pm-border); border-radius: 8px; background: transparent; color: var(--pm-muted); padding: 6px 9px; font: 12px var(--pm-sans); }
+
+  /* Reactions' corner (reactions.css) */
+  .corner { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; }
+  .cluster { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--pm-border); border-radius: 999px; background: var(--pm-surface-2); }
+  .ritem { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; border: 1px solid transparent; border-radius: 999px; color: var(--pm-muted); padding: 1px 7px; font: 11px var(--pm-sans); }
+  .ritem.writer { border-color: var(--pm-accent-lo); background: rgba(238,125,73,.14); }
+  .radd { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid var(--pm-border); border-radius: 999px; color: var(--pm-muted); font-size: 14px; }
+
+  /* NEW: the reply's footer. One row: offers at the left, the corner at the right. */
+  .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+  .foot .corner { margin-left: auto; }
+  .offers { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+  .offers-lead { display: inline-flex; align-items: center; gap: 5px; color: var(--pm-dim); font: 11px var(--pm-sans); }
+  .offer { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; border: 1px solid color-mix(in srgb, var(--pm-accent) 42%, transparent); border-radius: 999px; background: transparent; color: var(--pm-text-2); padding: 3px 11px; font: 12px var(--pm-sans); }
+  .offer b { color: var(--pm-text); font-weight: 600; }
+  .offer.waiting { border-style: dashed; color: var(--pm-muted); }
+  .offer.off { border-color: var(--pm-border); color: var(--pm-dim); opacity: .7; }
+  .offer.done { border-color: var(--pm-border); color: var(--pm-muted); }
+  .offer.done .ok { color: var(--pm-green); }
+  .offer.none { border-color: var(--pm-border); color: var(--pm-dim); }
+  .offer.focus { outline: 2px solid var(--pm-accent-hi); outline-offset: 1px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--pm-accent-hi); display: inline-block; }
+  .target { color: var(--pm-dim); font: 10.5px var(--pm-mono); }
+
+  /* Today's widget chip, which moves into the same row */
+  .reco { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; border: 1px solid var(--pm-border-2); border-radius: 999px; background: var(--pm-surface-3); color: var(--pm-text); padding: 3px 11px; font: 600 12px var(--pm-sans); }
+  .reco span { color: var(--pm-muted); font-weight: 400; }
+  .reco-row { display: flex; }
+
+  /* The request line and the answer */
+  .divider { display: flex; align-items: center; gap: 12px; color: var(--pm-dim); font: 10px var(--pm-mono); text-transform: uppercase; letter-spacing: .06em; max-width: 860px; margin: 16px 0; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--pm-border-soft); }
+  .divider a { color: var(--pm-muted); text-decoration: underline; text-underline-offset: 2px; }
+  .answer-line { font-size: 13px; color: var(--pm-text-2); }
+  .answer-line a { color: var(--pm-accent-hi); text-underline-offset: 2px; }
+  .stack-head { color: var(--pm-dim); font: 600 10px var(--pm-mono); letter-spacing: .08em; text-transform: uppercase; margin-top: 6px; }
+  .card { display: flex; flex-direction: column; gap: 8px; padding: 12px 13px; border: 1px solid color-mix(in srgb, var(--pm-accent) 42%, transparent); border-radius: 9px; background: var(--pm-inset); }
+  .card-title { display: flex; gap: 8px; align-items: center; color: var(--pm-muted); font: 12px var(--pm-mono); }
+  .pill { border: 1px solid var(--pm-border-2); border-radius: 999px; padding: 1px 7px; font: 10px var(--pm-mono); color: var(--pm-muted); }
+  .why { color: var(--pm-text-2); font-size: 12.5px; }
+  .diff { font: 12px/1.6 var(--pm-mono); color: var(--pm-text-2); border-left: 2px solid var(--pm-border-2); padding-left: 10px; }
+  .diff del { color: #ef7d66; background: rgba(239,125,102,.12); text-decoration: line-through; }
+  .diff ins { color: var(--pm-green); background: rgba(111,201,138,.12); text-decoration: none; }
+  .card-actions { display: flex; gap: 8px; }
+  .card-actions button { border: 1px solid var(--pm-border); border-radius: 8px; background: transparent; color: var(--pm-muted); padding: 5px 10px; font: 12px var(--pm-sans); }
+  .card-actions .primary { border-color: var(--pm-accent-lo); color: var(--pm-accent-hi); }
+  .more { color: var(--pm-dim); font: 11px var(--pm-mono); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; max-width: 1180px; }
+  .cols .assistant { max-width: none; }
+  .tag { display: inline-block; font: 600 10px var(--pm-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--pm-dim); margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<h1>The reply's footer: offers at the left, reactions at the right</h1>
+<p class="lede">Mockup for ADR 2026-11-10. A reply that declared fixes or rewrites shows them as chips at the left end of the row the reaction corner already takes. The widget chip, which has its own row today, moves into that row too. No bubble gains a row; a bubble with a widget chip loses one.</p>
+
+<section class="frame" id="f1">
+  <h2>1 · Before and after</h2>
+  <p>Left: the bubble once Message Reactions lands, with a widget chip. Right: the same reply under this design, declaring 3 fixes and 2 rewrites.</p>
+  <div class="cols">
+    <div>
+      <span class="tag">Today · three footer rows</span>
+      <div class="turn assistant">
+        <div class="head"><span class="eyebrow">Jill <span class="model">· Claude Sonnet</span></span><span class="usage">4,812 processed</span></div>
+        <div class="body">
+          <p>The fall works. Three slips first: <strong>“begining”</strong> in the opening line, a doubled <strong>“the the”</strong> before “rabbit-hole”, and <strong>“it's”</strong> where the well owns its sides.</p>
+          <p>Two lines I'd rewrite. “Alice was beginning to get very tired” could open on the bank itself, and the fall's second sentence says “very slowly” twice over.</p>
+        </div>
+        <div class="actions"><button>Copy</button><button>Save to notes</button><button>Bookmark</button><button>Save to memory…</button><button>Rewind</button><button>Branch</button></div>
+        <div class="reco-row"><span class="reco">Show vs. Tell <span>2 passages</span></span></div>
+        <div class="corner"><span class="cluster"><span class="ritem writer">❤</span></span><span class="radd">☺</span></div>
+      </div>
+    </div>
+    <div>
+      <span class="tag">Proposed · two footer rows, with two more controls</span>
+      <div class="turn assistant">
+        <div class="head"><span class="eyebrow">Jill <span class="model">· Claude Sonnet</span></span><span class="usage">4,812 processed</span></div>
+        <div class="body">
+          <p>The fall works. Three slips first: <strong>“begining”</strong> in the opening line, a doubled <strong>“the the”</strong> before “rabbit-hole”, and <strong>“it's”</strong> where the well owns its sides.</p>
+          <p>Two lines I'd rewrite. “Alice was beginning to get very tired” could open on the bank itself, and the fall's second sentence says “very slowly” twice over.</p>
+        </div>
+        <div class="actions"><button>Copy</button><button>Save to notes</button><button>Bookmark</button><button>Save to memory…</button><button>Rewind</button><button>Branch</button></div>
+        <div class="foot">
+          <span class="offers">
+            <span class="offers-lead">✎ As edits</span>
+            <span class="offer"><b>3</b> fixes</span>
+            <span class="offer"><b>2</b> rewrites</span>
+            <span class="reco">Show vs. Tell <span>2 passages</span></span>
+          </span>
+          <div class="corner"><span class="cluster"><span class="ritem writer">❤</span></span><span class="radd">☺</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="frame" id="f2">
+  <h2>2 · A chip's five states</h2>
+  <p>Each row is the footer alone. A chip never leaves its place, so focus stays on it from the press to the answer.</p>
+  <div class="turn assistant" style="gap:12px">
+    <div><span class="tag">Open · “Ask Jill to suggest her 3 fixes as edits to chapters/down-the-rabbit-hole.md”</span>
+      <div class="foot"><span class="offers"><span class="offers-lead">✎ As edits</span><span class="offer focus"><b>3</b> fixes</span><span class="offer"><b>2</b> rewrites</span></span><div class="corner"><span class="radd">☺</span></div></div></div>
+    <div><span class="tag">Asked · the other chip waits its turn, and says why</span>
+      <div class="foot"><span class="offers"><span class="offers-lead">✎ As edits</span><span class="offer waiting"><span class="dot"></span> Asking Jill for 3 fixes…</span><span class="offer off"><b>2</b> rewrites</span></span><div class="corner"><span class="radd">☺</span></div></div></div>
+    <div><span class="tag">Answered · the chip is now the way to its cards</span>
+      <div class="foot"><span class="offers"><span class="offers-lead">✎ As edits</span><span class="offer done"><span class="ok">✓</span> 3 fixes suggested ↓</span><span class="offer"><b>2</b> rewrites</span></span><div class="corner"><span class="radd">☺</span></div></div></div>
+    <div><span class="tag">Nothing to change · the persona looked, and the file already reads right</span>
+      <div class="foot"><span class="offers"><span class="offers-lead">✎ As edits</span><span class="offer none">3 fixes · nothing to change</span><span class="offer done"><span class="ok">✓</span> 2 rewrites suggested ↓</span></span><div class="corner"><span class="radd">☺</span></div></div></div>
+    <div><span class="tag">Ask again · every card of the last answer was declined, went stale or was refused</span>
+      <div class="foot"><span class="offers"><span class="offers-lead">✎ As edits</span><span class="offer"><b>3</b> fixes · ask again</span><span class="offer done"><span class="ok">✓</span> 2 rewrites suggested ↓</span></span><div class="corner"><span class="radd">☺</span></div></div></div>
+  </div>
+</section>
+
+<section class="frame" id="f3">
+  <h2>3 · The answer, at the end of the thread</h2>
+  <p>The press is one line, not a writer bubble. The answer is the host's sentence and the cards; the persona's own prose never shows.</p>
+  <div class="divider"><span>You asked Jill for edits · the 3 fixes in <a>her 2:02 pm reply ↑</a></span></div>
+  <div class="turn assistant">
+    <div class="head"><span class="eyebrow">Jill <span class="model">· Claude Sonnet</span></span><span class="usage">6,120 processed</span></div>
+    <div class="answer-line">Suggested 3 fixes to <strong>chapters/down-the-rabbit-hole.md</strong>, from <a>her 2:02 pm reply ↑</a>.</div>
+    <div class="stack-head">Suggested file edits · fixes</div>
+    <div class="card">
+      <div class="card-title">chapters/down-the-rabbit-hole.md <span class="pill">chapter</span> <span class="pill">fixes</span></div>
+      <div class="why">The three slips from the reply: a misspelling, a doubled word, and a possessive.</div>
+      <div class="diff">Alice was <del>begining</del><ins>beginning</ins> to get very tired of sitting by her sister on the bank</div>
+      <div class="diff">down <del>the the</del><ins>the</ins> rabbit-hole</div>
+      <div class="diff">the well and <del>it's</del><ins>its</ins> sides</div>
+      <div class="card-actions"><button class="primary">Apply</button><button>Review in editor…</button><button>Decline</button></div>
+    </div>
+    <div class="actions"><button>Copy</button><button>Bookmark</button><button>Rewind</button><button>Branch</button></div>
+    <div class="foot"><span class="offers"></span><div class="corner"><span class="radd">☺</span></div></div>
+  </div>
+</section>
+
+<section class="frame narrow" id="f4">
+  <h2>4 · A narrow column</h2>
+  <p>The row wraps: offers first, the corner under them at the right, as the corner sits today.</p>
+  <div class="turn assistant">
+    <div class="head"><span class="eyebrow">Jill</span><span class="usage">4,812 processed</span></div>
+    <div class="body"><p>The fall works. Three slips first, and two lines I'd rewrite.</p></div>
+    <div class="actions"><button>Copy</button><button>Save to notes</button><button>Bookmark</button><button>Save to memory…</button><button>Rewind</button><button>Branch</button></div>
+    <div class="foot">
+      <span class="offers"><span class="offers-lead">✎ As edits</span><span class="offer"><b>3</b> fixes</span><span class="offer"><b>2</b> rewrites</span><span class="reco">Show vs. Tell <span>2 passages</span></span></span>
+      <div class="corner"><span class="cluster"><span class="ritem writer">❤</span><span class="ritem">👏 Jack</span></span><span class="radd">☺</span></div>
+    </div>
+  </div>
+</section>
+</body>
+</html>
