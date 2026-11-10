@@ -3,7 +3,7 @@
 - **Reviewed code:** `7a5d332365e1578901ccb8cd691890d54001be27`.
 - **Target:** `epic/workshop-reply-edit-actions`, at `cfca765fcc0daf536de7460c5796aa0ec9b7d902`.
 - **Date:** 2026-11-10.
-- **Verdict:** **No confirmed implementation defect found. Approval is held for the explicit rewrite-policy decision below.** The branch also has a documentation merge conflict.
+- **Verdict:** **No confirmed implementation defect found. Approval is held for the explicit rewrite-policy decision below.** The documentation merge conflict was resolved during review (M1 below).
 - **Scope:** Option protocol, reminder delivery, press routing, answer staging, persistence and cloning, derived status, chips and announcements, and the requested-rewrite gateway policy. No production changes or merge performed.
 
 ## D1: The ceiling change needs an explicit owner decision
@@ -30,13 +30,13 @@ An independent probe used the real `ProjectFileEditGateway`, real `DraftEditAppl
 
 This is **a policy consequence, not a separate P2 bug**: the addendum explicitly removes the ceiling and lists the retained guard as “no `<rewrite>` of a prose file,” while describing passage-only scope under teaching. The writer still sees the card's diff and must choose Apply or Review in editor. No automatic write or authorization bypass was demonstrated. Please make the consequence explicit when confirming D1; if a host-enforced passage boundary is intended instead, implement and test that requirement before approval.
 
-## M1: Resolve the documentation merge conflict
+## M1: Documentation merge conflict resolved
 
 GitHub reports the PR as non-mergeable. A local three-way `git merge-tree --write-tree` against the exact target commit confirms one content conflict in:
 
 `.todo/epics/epic-workshop-reply-edit-actions-2026-11-10/README.md`
 
-The target's additional progress entry overlaps the slice's edits. No merge or conflict resolution was attempted in this review. Preserve both sets of progress notes when resolving it, then check the resulting head.
+The target's additional progress entry overlapped the slice's edits. While the full-suite result was being published, the coordinator merged the target into the slice in `1b955b6d`. A fresh three-way check against the same target is clean, and GitHub reports the branch mergeable. The diff from reviewed code `7a5d3323` to `5e845137` contains only the README's additional progress entry and this review report; production code is unchanged. **M1 is resolved.** No merge or conflict resolution was performed by this reviewer.
 
 ## What checked out
 
@@ -64,8 +64,8 @@ Checks ran against the reviewed code under Node `v24.22.1`, without live provide
 
 ## CI and remaining scope
 
-The connector returned no PR-triggered workflow runs and no legacy commit statuses for `7a5d3323`. Those endpoints do not establish that push/check-run CI is green; exact-head CI was not independently verified. The documentation publication will have its own head and CI status.
+The connector returned no PR-triggered workflow runs and no legacy commit statuses for `7a5d3323`. Those endpoints do not establish that push/check-run CI is green; exact-head CI was not independently verified. The subsequent documentation head `5e845137` has PR CI run `42875893890` in progress. Later report-only commits have their own CI status; no pending run is described as green.
 
 No live model call, Extension Development Host session, or assistive-technology session was run. Whether the firmer teaching plus reminder reliably produces options in the real prompt remains the planned live pass. This review does not mark that slice complete.
 
-The authenticated publishing account is the PR author, so this verdict is recorded in this ledger and a COMMENT review, not a formal self-approval. Resolve D1 and M1 and verify the resulting head before treating this PR as ready to merge.
+The authenticated publishing account is the PR author, so this verdict is recorded in this ledger and a COMMENT review, not a formal self-approval. Resolve D1 and verify CI on the resulting head before treating this PR as ready to merge. M1 is resolved.
