@@ -4,7 +4,7 @@
 review (F-02, F-03, F-05, F-06).
 **Branch:** `epic/workshop-persona-file-edits-slice-2-gateway`, from Slice 1's
 head, with the revised spec merged in.
-**Decision:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md)
+**Decision:** [ADR 2026-11-05](../../../../docs/adr/2026-11-05-workshop-persona-file-edits.md)
 D4–D7, D13.
 
 Host only: no persona, no routes, no claim (the claim is Slice 4's).

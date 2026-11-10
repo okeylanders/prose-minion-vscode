@@ -2,7 +2,7 @@
 
 **Status:** Built, in review.
 **Branch:** `epic/workshop-persona-file-edits-slice-1-planner`
-**Decision:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D3
+**Decision:** [ADR 2026-11-05](../../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D3
 
 ## Scope
 

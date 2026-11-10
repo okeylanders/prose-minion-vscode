@@ -2,7 +2,7 @@
 
 **Status:** Built, in review. Revised to the settled contracts (ADR at `494a17d3`: D2, D4, D10, D11, D13; PR #226's ledger), merged in at `ed51137e`.
 **Branch:** `epic/workshop-persona-file-edits-slice-3-proposal`
-**Decision:** [ADR 2026-11-05](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D2, D4 (the port and its caller), D10, D11, D13
+**Decision:** [ADR 2026-11-05](../../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) D2, D4 (the port and its caller), D10, D11, D13
 **Built on:** Slice 1 (`f4dcc641`). It runs parallel to Slice 2, which implements `FileEditStaging`. This slice doesn't touch the gateway, `DocumentEditor` or `DraftEditApplier`. No UI and no apply.
 
 ## Scope

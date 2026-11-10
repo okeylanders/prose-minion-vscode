@@ -1,11 +1,11 @@
 # Epic: Workshop Persona File Edits
 
-**Status:** Code complete. Slices 0–4 are merged: #226 `b14c46b`, #227 `36be1aa7`, #229, #230 `10393d85`, #233 `bd2706d9` and #234 `9f70f236`. Slice 4c (Okey's answers from the live-pass checklist) is next; then Slice 5, the live pass.
+**Status:** Done (2026-11-10). Slices 0–5 are merged: #226 `b14c46b`, #227 `36be1aa7`, #229, #230 `10393d85`, #233 `bd2706d9`, #234 `9f70f236`, #235 `893b86bd` and #236 `926190d9`, with `main` synced in (#244, `9dfa293f`). Merged to `main` on Okey's approval after his live pass. Archived on 2026-11-10.
 **Priority:** Medium
 **Created:** 2026-11-05
 **Integration branch:** `epic/workshop-persona-file-edits`, cut from `epic/workshop-bookmark-recall` at `b4ca7b86` (the feature tip: Bookmark Recall Slices 0–3, #222, and `main` with Project Memory and Pinned Context). Each slice is built on `epic/workshop-persona-file-edits-slice-<N>-<slug>` and merges into the epic through a reviewed PR.
-**Decision:** [ADR 2026-11-05: Personas Propose Edits to Project Files](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) (Proposed; defaults taken for Q1–Q5)
-**Supersedes in part:** [Workshop Apply to Draft](../../features/feature-workshop-apply-to-draft/README.md). Its target rules are D5's prose policy.
+**Decision:** [ADR 2026-11-05: Personas Propose Edits to Project Files](../../../../docs/adr/2026-11-05-workshop-persona-file-edits.md) (Accepted 2026-11-10; defaults taken for Q1–Q5)
+**Supersedes in part:** [Workshop Apply to Draft](../../../features/feature-workshop-apply-to-draft/README.md). Its target rules are D5's prose policy.
 **Downstream of:** Bookmark Recall. Its live-pass fixes are merged in as they land. The epic goes to `main` after Bookmark Recall does.
 **Sibling:** Helper Agent runs in parallel on its own epic branch, `epic/helper-agent` (spec: [PR #225](https://github.com/okeylanders/prose-minion-vscode/pull/225)); its README joins this tree when the two epics meet. Whichever reaches `main` second merges the other first.
 
@@ -30,8 +30,8 @@
 | 2 | Staging and the gateway | The resolver's every-candidate read; `FileEditStaging` implemented (identity, ambiguity refusal, class by identity, baseline); `DocumentEditor.open` (port and VS Code adapter); the applier's `structure` mode (`strict` / `prose-paragraphs` / `free`) and `beforeAttempt` immediately before every `applyEdits` (authority predicate and text checks); the `FileEditAuthorityEpoch` port; `ProjectFileEditGateway` (re-authorize, recompute class, plan, freshness, ceiling, the last-boundary predicate, apply, report by operation, show the document); boundary pins. Host-only, no persona, no routes. | D4–D7, D13 | Done (PR #229) ([slice doc](slice-2-gateway.md)) |
 | 3 | The proposal | The `<prose-minion-file-edit>` codec and D2's bounds; the persona prompt section and worked example, with a sync test; reading frames out of a reply and staging each through the `FileEditStaging` port (a fake in tests); `fileEditProposals` (D10's shape) on the turn, with the session codec, checkpoint normalization and transcript projection; the `fileEdits` setting | D2, D10, D11 | Done (PR #230, `10393d85`) ([slice doc](slice-3-proposal.md)) |
 | 4 | Cards and Apply | The handler's claim keyed by room generation, and outcomes (D8: join, replay, `checkpointFileEdit` acknowledged durable in every recoverable checkpoint before dispatch, `partial`, `unknown`); Apply, Review in editor…, Decline and Preview routes with request ids; the real staging joined; thread cards with diffs; `landed` records; refusals in the writer's words | D8, D9, D10 | Done: 4a, the host (PR #233, `bd2706d9`; [slice doc](slice-4a-apply.md)); 4b, the cards (PR #234, `9f70f236`; [slice doc](slice-4b-cards.md)) |
-| 4c | Okey's answers | Transient refusals where nothing was written (`catalog-unreadable` at Apply, `host-failed`) return the card to pending, with Apply offered again; a row for `proseMinion.workshop.fileEdits` in the Workshop's Conversation settings; ADR D8 and D11 amended | D8, D11 | In progress |
-| 5 | [Verify live](slice-5-verify-live.md) | Extension Development Host pass on notes and a chapter; ADR → Accepted; memory bank; `AGENTS.md`; Apply to Draft's note settled | — | Ready for Okey once 4c merges (checklist) |
+| 4c | Okey's answers | Transient refusals where nothing was written (`catalog-unreadable` at Apply, `host-failed`) return the card to pending, with Apply offered again; a row for `proseMinion.workshop.fileEdits` in the Workshop's Conversation settings; ADR D8 and D11 amended | D8, D11 | Done (PR #236, `926190d9`; [slice doc](slice-4c-retry-and-setting.md)) |
+| 5 | [Verify live](slice-5-verify-live.md) | Extension Development Host pass on notes and a chapter; ADR → Accepted; memory bank; `AGENTS.md`; Apply to Draft's note settled | — | Done (2026-11-10; checklist #235) |
 
 **Order:** 1 → (2 ∥ 3) → 4 → 5.
 - Slices 2 and 3 both use Slice 1's operation types.
@@ -206,3 +206,21 @@ This is the same flow as Project Memory and Bookmark Recall.
   - **feedback after a reload**: fine as is.
 
   The first two are Slice 4c, which runs before the live pass.
+- **2026-11-07. `main` synced in (#244, `9dfa293f`).** It brought Bookmark Recall and the Helper Agent: 13 conflicts, each keeping both sides; routes reconcile to 91 (48 mutation / 43 direct). Astra found no blocking finding. The budgets compose: one 15-call ceiling, nested read limits, and a separate 5-proposal trailer cap.
+- **2026-11-07. Slice 4c merged (#236, `926190d9`).**
+  - **Review rounds:**
+    - F-01: a refused mode write is reported as unchanged;
+    - F-02: a stale untouched row overwrote a newer choice. It took two rounds, and now untouched rows submit nothing;
+    - N-01: a reveal-only failure keeps the settled result.
+  - After: jest 797 suites, 11,186 tests, 59 snapshots.
+- **2026-11-10. Slice 5, the live pass (Okey).**
+  - **What worked:** "The file editing works well when I ask the model specifically to prepare it."
+  - **One finding:** he has to ask several times before a persona proposes. Filed as [proposal readiness](../../../features/feature-workshop-file-edit-proposal-readiness/README.md).
+  - He approved the merge to `main`.
+- **2026-11-10. Closed.**
+  - ADR 2026-11-05 is Accepted.
+  - The codec's release decision: no `schemaVersion` bump.
+  - Apply to Draft's note is settled.
+  - `AGENTS.md` gains the Workshop Persona File Edits section.
+  - The epic is archived, and a [memory-bank entry](../../../../.memory-bank/20261110-1200-workshop-persona-file-edits-complete.md) records it.
+
