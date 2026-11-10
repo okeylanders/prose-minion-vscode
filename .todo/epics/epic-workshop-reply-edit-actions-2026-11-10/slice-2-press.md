@@ -1,6 +1,6 @@
 # Slice 2: The press
 
-**Status:** Built and pushed on `epic/workshop-reply-edit-actions-slice-2-press`; awaiting its PR into `epic/workshop-reply-edit-actions`.
+**Status:** Built and pushed on `epic/workshop-reply-edit-actions-slice-2-press`. PR #252 was reviewed with three findings; all are fixed on the branch ([review and ledger](../../../docs/pr-reviews/pr-252-reply-edit-press-review.md)).
 **Date:** 2026-11-10
 **Decisions:** ADR 2026-11-10 D3–D7 and D9, and D8's new keys.
 **Scope:** Host, contracts and the turn's view. No component, no CSS, no webview hook.
@@ -36,7 +36,7 @@
    - the reply's author is still in the room.
 3. **The run** goes to the author's own conversation through `executeMessage`, with a target override. The to-do evidence, host updates, catch-up and time notice are built by the same code as for any message.
 4. **The directive frame** rides the thread-artifact frames' slot, last before the writer-message slot. That slot holds a one-line host pointer.
-5. **Nothing streams.** The engine checks the final reply with `workshopEditOfferAnswerCheck` and spends one correction turn on a reply that is neither edits nor the no-edit frame.
+5. **Nothing streams.** The engine checks the final reply with the press's check. A reply that is neither edits nor the no-edit frame gets one correction turn. A reply the provider cut short is refused at once.
 6. **Completion** reads the answer, holds each card to the offer's file and (for fixes) the fixes policy, and commits a host line with `editOfferAnswer`. It runs neither the findings reader nor the widget reader.
 7. **The result** names the answer turn, the outcome, and the cards and changes, or a refusal kind with its words.
 
@@ -46,7 +46,7 @@ Each follows how file-edit proposals do it, unless said otherwise.
 
 1. **A status also says whether it may be asked again.** The ADR lists five states, and D7 lets a `none` answer be asked again. So every answered status carries `askAgain`: `nothing-to-change` always has it, `ask-again` is a `proposed` answer whose cards are all spent, and `answered` never has it. The host takes a press when the state is `open` or `askAgain` holds. Slice 3 decides how a "nothing to change" chip offers the second press.
 2. **A failed or stopped press rolls its writer turn back.** `abandonRun` keeps the writer turn of an ordinary failed message; a press uses `rollbackMessageRun` instead, in completion and in `executeMessage`'s catch. Capability cards the run already published stay, as on any rollback.
-3. **A rejected final reply is not retained.** When the engine's check still refuses the reply with no correction turn left, the run returns `finalReplyRejected` and commits nothing to retained history. The persona's conversation is as it was before the press, so a retry does not quote the reply twice.
+3. **A rejected final reply is not retained.** When the engine's check refuses the reply, or still does with no correction turn left, the run returns `finalReplyRejected` and commits nothing to retained history. When a correction succeeds, the rejected reply is retained in the owner's form ("Did not answer with file edits."), never as the persona wrote it (PR #252 F-02).
 4. **The correction budget is shared.** `maxCorrectionTurns` is 1 for a persona turn. A press whose run already spent it on a rejected capability request gets no correction for its final reply.
 5. **The no-file-edit tag joins the one pass.** It is stripped from every reply's display, stream and retained history, and redacted in logs. Only an answer gives it meaning. In any other reply it is dropped and earns no host line.
 6. **`none` needs no file-edit frame at all.** A reply with a dropped file-edit frame beside the no-edit frame is `neither`: it tried to edit and did not.
@@ -54,7 +54,7 @@ Each follows how file-edit proposals do it, unless said otherwise.
 8. **`intent` is only `fixes`.** A rewrites answer's cards carry no intent and take their class policy unchanged. A card's "rewrites" mark comes from its turn's `editOfferAnswer.kind`.
 9. **One fault for the fixes policy:** `more-than-a-fix`. The gateway checks it before planning (so a refused rewrite reads as this fault, not the planner's) and again before every attempt. With an intent, the applier runs with no line-break change and the `strict` structure mode.
 10. **A card for another file keeps its identity** and reads `refused` with `not-the-offered-file`. A card refused at staging keeps its own reason.
-11. **The offer's file is named in the directive by its display path** for a `file` target, and as `<excerpt/>` for the excerpt. Slice 1 keeps the identity, not the group and path the frame named.
+11. **The directive names the offered file by its display path,** for a file and for the excerpt. An excerpt offer keeps the document it was bound to: the directive says `<excerpt/>` means that file, and the answer is staged against it through the staging port's `boundExcerpt` option, whatever the room's excerpt is now (PR #252 F-03).
 12. **The host's lines name no pronoun.** The request reads "Asked Jill to suggest the fixes from their reply as file edits." and the answer "Suggested 3 fixes to chapters/…, from the 2:02 pm reply."
 13. **The answer's count is its changes:** the operations across its cards. The status and the result carry `cards` and `changes` both.
 14. **The request turn is an event in the transcript,** holding its host sentence: the writer wrote nothing. The answer is the persona's reply entry, with its cards as any reply's.
@@ -66,10 +66,11 @@ Each follows how file-edit proposals do it, unless said otherwise.
 
 ## Things to know
 
-- **A truncated answer** can be accepted by the engine's check and then fail completion, because the truncation notice follows the frames. The exchange is then in retained history with no turn in the ledger, as a zombie completion is.
+- **A cut-off answer is a failure, never salvaged** (PR #252 F-01). The engine's check and completion read the same reply and the same `finishReason`, so nothing is retained and the writer reads the `cut-off` words. The gap this note used to describe is closed.
+- **One moment is left:** file edits turned off, or the run stopped, between the engine's commit and completion leaves the exchange retained with no turn, as any run cancelled there does.
 - **A press's request turn reads as a writer message to other participants' catch-up,** with the host's sentence as its text.
-- **`WorkshopRoomHandler.ts` grew by 37 lines,** all of it the seam: the option, the frame's slot, the two run options, the completion choice, the rollback, and the view's room facts.
-- **`AgentRunEngine.ts` grew by 23 lines.** Its diff is larger, because the capability rounds are re-indented inside the check's loop.
+- **`WorkshopRoomHandler.ts` grew by 38 lines,** all of it the seam: the option, the frame's slot, the two run options, the completion choice, the rollback, and the view's room facts.
+- **`AgentRunEngine.ts` grew by 38 lines.** Its diff is larger, because the capability rounds are re-indented inside the check's loop.
 - **Not done here, by design:** the chips, the request line, the answer's line and marks, the live region, and any webview hook. They are Slice 3.
 
 ## Tests added
@@ -80,7 +81,9 @@ Each follows how file-edit proposals do it, unless said otherwise.
 | `services/workshop/session/WorkshopEditOfferWholeRoom.test.ts` | The witnesses: Rewind, Branch and reopen through the real transform and coordinator; two presses turns apart; a guest answered in their own conversation |
 | `services/workshop/session/WorkshopEditOfferPressTurns.test.ts` | The codec's round trip and 14 refused shapes; the transcript, its three exports and recall |
 | `services/workshop/fileEdits/WorkshopEditOfferStatus.test.ts` | The status by state, D7 over every card state, and the webview's view |
-| `services/AgentRunEngine.finalReplyCheck.test.ts` | The engine seam, with a mocked transport and no Workshop name |
+| `services/AgentRunEngine.finalReplyCheck.test.ts` | The engine seam, with a mocked transport and no Workshop name: correction, refusal, the `incomplete` fact, and what is retained |
+| `handlers/domain/workshop/WorkshopEditOfferEngine.integration.test.ts` | PR #252's witnesses through the real engine, conversation store, router and completion, in both transports: a cut-off answer, a successful correction's whole retained history, and an excerpt offer pressed after the excerpt changed |
+| `services/fileEdits/FileEditStagingBoundExcerpt.test.ts` | The real staging service against a bound excerpt document, in and out of the catalog |
 | `services/fileEdits/ProjectFileEditGatewayFixes.test.ts` | The fixes policy as data, its measure and bounds, and each row at Apply against the same edit with no intent |
 | `utils/workshopEditOfferAnswer.test.ts` | The no-file-edit codec, the answer reader, and the directive frame with hostile quoted text |
 | `architecture/replyEditOfferPressPromptSync.test.ts` | The prompt's press section against the frame, the policy, the bounds and the refusal words |
@@ -91,13 +94,13 @@ Updated: `boundaries.test.ts` (the new route owner, its construction, and the se
 
 | Check | Baseline (epic tip `603ad364`) | After |
 |---|---|---|
-| `npx jest` | 802 suites / 11,284 tests / 59 snapshots, all passing | 810 suites / 11,415 tests / 59 snapshots, all passing |
+| `npx jest` | 802 suites / 11,284 tests / 59 snapshots, all passing | 812 suites / 11,440 tests / 59 snapshots, all passing (810 / 11,415 before the review fixes) |
 | `npm run typecheck` | — | passes |
 | `npm run lint` | 0 errors, 1,165 warnings | 0 errors, 1,165 warnings |
 | `npm run build` | — | passes |
 
 - The baseline was taken in a clean worktree of the epic's tip, under Node 22.
 - `packages/core/src` has no `from 'vscode'`.
-- No new file is over 500 lines; the largest is the route test at 354. Files already over grew only by the seam: `WorkshopRoomHandler.ts` +37, `AgentRunEngine.ts` +23, `WorkshopSessionService.ts` +12, `AssistantToolService.ts` +13, `WorkshopSessionStateV1Shape.ts` +4, `session.ts` +4.
+- No new file is over 500 lines; the largest is the route test at 354. Files already over grew only by the seam: `WorkshopRoomHandler.ts` +38, `AgentRunEngine.ts` +38, `WorkshopSessionService.ts` +12, `AssistantToolService.ts` +13, `WorkshopSessionStateV1Shape.ts` +4, `session.ts` +4.
 - No test makes a model call.
 - The press's logs carry turn ids, kinds, counts and fault names. Sentinel tests hold that: no path, URI, reply text, stray prose or why in any line.

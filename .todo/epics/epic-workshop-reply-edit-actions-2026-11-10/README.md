@@ -1,6 +1,6 @@
 # Epic: Workshop Reply Edit Actions
 
-**Status:** Design approved (Okey, 2026-11-10); he took all eight recommendations. Slice 1 is merged (#251, `32a0a84c`). Slice 2 is built on its branch and awaits its PR.
+**Status:** Design approved (Okey, 2026-11-10); he took all eight recommendations. Slice 1 is merged (#251, `32a0a84c`). Slice 2 is in review (PR #252); its three findings are fixed on the branch.
 **Priority:** Medium
 **Created:** 2026-11-10
 **Integration branch:** `epic/workshop-reply-edit-actions`, cut at `c0a6e497` ("Merge Workshop Persona File Edits into main (#249)"), which is `main`'s tip on 2026-11-10. The brief named `926190d9`, the tip of `epic/workshop-persona-file-edits`; that epic had already reached `main`, so the branch was fast-forwarded from `926190d9` to `main` before its first commit. Each slice is built on `epic/workshop-reply-edit-actions-slice-<N>-<slug>` and merges into the epic through a reviewed PR.
@@ -29,7 +29,7 @@ Mockups are in [`mockups/`](mockups/): four PNGs and their HTML source. Render t
 |---|---|---|---|---|
 | 0 | Spec | ADR, this README, mockups, the idea note | All | Done (`1cc96d73`); approved by Okey 2026-11-10 |
 | 1 | The declaration | The offer tag, codec and bounds; its place in `extractWorkshopReplyControls`; resolving its file; `editOffers` on the turn, in the session codec and omitted from the transcript; the persona prompt, a worked example and sync tests. No route, no UI. | D1, D2, D8 | Done (PR #251, `32a0a84c`; [notes](slice-1-declaration.md); [review](../../../docs/pr-reviews/pr-251-reply-edit-offers-declaration-review.md), no findings) |
-| 2 | The press | The action and result routes; the request turn and the directive frame; the engine's `finalReplyCheck`; reading the answer; `intent` and the fixes policy; the derived status in the turn's view; Rewind, Branch and reopen witnesses. No UI. | D3–D7, D9 | Built on `epic/workshop-reply-edit-actions-slice-2-press`; awaiting its PR ([notes](slice-2-press.md)) |
+| 2 | The press | The action and result routes; the request turn and the directive frame; the engine's `finalReplyCheck`; reading the answer; `intent` and the fixes policy; the derived status in the turn's view; Rewind, Branch and reopen witnesses. No UI. | D3–D7, D9 | In review (PR #252): three findings, fixed on the branch ([notes](slice-2-press.md); [review and ledger](../../../docs/pr-reviews/pr-252-reply-edit-press-review.md)) |
 | 3 | The footer | The footer row, the chips and their states, the widget chip's move, the request line, the answer's line and card marks, the live region. **Starts after Message Reactions is on `main` and merged here.** | U1–U6 | Not started |
 | 4 | Verify live | Extension Development Host pass with Okey; tune the fix bound; ADR → Accepted; the codec's release decision; `AGENTS.md`; memory bank | — | Not started |
 
@@ -94,3 +94,4 @@ All eight of [the ADR's questions](../../../docs/adr/2026-11-10-workshop-reply-e
 - **2026-11-10, Slice 1.** The declaration, host only. Baseline on the epic's tip: 797 suites / 11,186 tests. After: 802 suites / 11,284 tests, typecheck clean, lint unchanged at 0 errors. Choices and details are in [slice-1-declaration.md](slice-1-declaration.md).
 - **2026-11-10, PR #251.** Reviewed at `7b8f63ca` with no findings; merged at `5f18a019` as `32a0a84c`, green. Carried forward: an offer-only reply reads as an empty reply until Message Reactions' "Replied without a message." line is here (settle at the Reactions merge); `completeRun`'s new positional argument meets Reactions' in the same slot.
 - **2026-11-10, Slice 2.** The press, host and contracts only. Baseline on the epic's tip (`603ad364`): 802 suites / 11,284 tests. After: 810 suites / 11,415 tests, typecheck clean, lint unchanged at 0 errors, build passing. Choices and details are in [slice-2-press.md](slice-2-press.md). For Slice 3: every answered status carries `askAgain` (a `none` answer may be asked again, by D7), and the view leaves offers out while file edits are off.
+- **2026-11-10, PR #252.** Reviewed at `6841476c`: three P2 findings and a test teardown. All reproduced and are fixed in `087bc158`: a cut-off answer is refused before anything is retained; a rejected reply is retained only in the host's form; an excerpt offer keeps its bound document through the directive and staging. After: 812 suites / 11,440 tests.
