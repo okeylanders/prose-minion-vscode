@@ -33,7 +33,7 @@ import { resolveWorkshopReplyEdits } from '@/application/services/workshop/fileE
 import { workshopTurnForWebview } from '@/application/services/workshop/fileEdits/WorkshopFileEditWebviewView';
 import { DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR, type WorkshopTurn } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { WORKSHOP_FILE_EDIT_ONLY_REPLY_LINE } from '@/utils/workshopReplyControls';
+import { WORKSHOP_FILE_EDIT_ONLY_REPLY_LINE, WORKSHOP_NO_MESSAGE_REPLY_LINE } from '@/utils/workshopReplyControls';
 import type { AnalysisResult } from '@/domain/models/AnalysisResult';
 import {
   editOfferFrame,
@@ -147,10 +147,12 @@ describe('edit offers on a reply', () => {
     expectNoText(log);
   });
 
-  it('a reply of offers alone earns no host line and keeps none', async () => {
+  it('a reply of offers alone reads "Replied without a message." and keeps none', async () => {
     const room = new ScriptedWorkshopRoom().start();
     const turn = await reply(room, `${FIXES}\n${REWRITES}`);
-    expect(turn.content).toBe('');
+    // The host's line names no offer (D1, the addendum): never an empty bubble, and no model's words.
+    expect(turn.content).toBe(WORKSHOP_NO_MESSAGE_REPLY_LINE);
+    expect(turn.model).toBeUndefined();
     expect(turn.editOffers).toBeUndefined();
     expect(dropped(room, 'no-prose')).toBe(2);
   });

@@ -15,7 +15,8 @@ import {
   WORKSHOP_FILE_EDIT_ONLY_REPLY_LINE,
   WORKSHOP_FILE_EDIT_REDACTION,
   WORKSHOP_MEMORY_ONLY_REPLY_LINE,
-  WORKSHOP_MEMORY_PROPOSAL_REDACTION
+  WORKSHOP_MEMORY_PROPOSAL_REDACTION,
+  WORKSHOP_NO_MESSAGE_REPLY_LINE
 } from '@/utils/workshopReplyControls';
 import { WORKSHOP_EDIT_OFFER_REDACTION } from '@/utils/workshopReplyEditOffers';
 import { editOfferFrame, fileEditFrame } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
@@ -130,11 +131,14 @@ describe('each dropped frame has its own named rejection (D1)', () => {
 });
 
 describe('an offer never shows, and never earns a host line (D1)', () => {
-  it('is removed from retained history, and a reply of offers alone leaves nothing', () => {
+  it('is removed from retained history, and a reply of offers alone is retained as "Replied without a message."', () => {
     expect(sanitizeWorkshopReplyForRetention(`${SAID}\n\n${FIXES}\n${REWRITES}`)).toBe(SAID);
-    expect(stripWorkshopReplyTrailersForRetention(`${FIXES}\n${REWRITES}`)).toBe('');
-    // Nothing is left, so it is retained exactly as an empty reply is: no line of its own.
-    expect(sanitizeWorkshopReplyForRetention(FIXES)).toBe(sanitizeWorkshopReplyForRetention(''));
+    // The line names no offer: an offer earns none of its own (D1, the addendum).
+    expect(stripWorkshopReplyTrailersForRetention(`${FIXES}\n${REWRITES}`)).toBe(WORKSHOP_NO_MESSAGE_REPLY_LINE);
+    expect(sanitizeWorkshopReplyForRetention(FIXES)).toBe(WORKSHOP_NO_MESSAGE_REPLY_LINE);
+    expect(sanitizeWorkshopReplyForRetention(`  \n${REWRITES}\n`)).toBe(WORKSHOP_NO_MESSAGE_REPLY_LINE);
+    // A reply that is simply empty still earns no line.
+    expect(stripWorkshopReplyTrailersForRetention('')).toBe('');
   });
 
   it('beside another trailer, the host\'s line names only that trailer', () => {

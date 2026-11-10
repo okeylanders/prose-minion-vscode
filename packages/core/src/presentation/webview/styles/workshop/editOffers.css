@@ -114,8 +114,7 @@
 [data-pm-surface="workshop"] .pm-ws-offer-answer-line {
   margin: 0;
   color: var(--pm-text-2);
-  font-size: 13px;
-  line-height: 1.55;
+  font: 13px/1.55 var(--pm-sans);
   overflow-wrap: anywhere;
 }
 [data-pm-surface="workshop"] .pm-ws-offer-answer-line .pm-ws-offer-source-link {
