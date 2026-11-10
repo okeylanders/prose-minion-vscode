@@ -1,5 +1,16 @@
 # PR #253: Reply Edit Actions Slice 3 review
 
+## Scoped re-review: N1 resolved (2026-11-10)
+
+- **Reviewed fix:** `8be7c0b06d02dd827aff027e9419656342822e1d`.
+- **Verdict:** **Approved on technical review. N1 is resolved; no remaining findings.**
+- The footer copies the incoming offers before sorting by `WORKSHOP_EDIT_OFFER_KINDS`, whose declared order is fixes then rewrites. It keeps the same offer objects, kind-based React keys, and action payloads. The new regression checks both reversed input and preservation of the incoming array.
+- Independent rerun: **7 suites / 93 tests passed**, covering the footer, chip view, edit-offer hook, real app edit offers and reactions, stylesheet order, and Chromium CSS floor. `npm run typecheck` passed all three stages; `git diff --check ba2ab3d3..8be7c0b0` passed.
+- Both exact-fix CI runs passed: [PR CI 42817230016](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42817230016) and [push CI 42817219042](https://github.com/okeylanders/prose-minion-vscode/actions/runs/42817219042). This scoped pass relies on those runs for the full suite, lint, and build; the prior independent full-suite result below remains tied to its original reviewed SHA.
+- No live VS Code/model pass or merge was performed. The documentation update recording this re-review has its own CI status.
+
+The original review below is retained as the historical record.
+
 ## Resolution ledger
 
 | Finding | What changed | Test |
