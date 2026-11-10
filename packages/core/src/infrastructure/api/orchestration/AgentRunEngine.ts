@@ -612,30 +612,50 @@ export class AgentRunEngine {
           }
         }
         pendingMessages.push({ role: 'assistant', content: retainedAssistantContent });
-        this.conversationManager.addMessages(conversationId, pendingMessages);
-        if (collectedSources.length > 0) {
-          // Manifest rows commit ONLY beside a committed turn (Phase 7):
-          // cancellation and transport failure preserve the prior manifest.
-          this.conversationManager.appendContextSources(conversationId, collectedSources);
-          this.outputChannel?.appendLine(
-            `[AgentRunEngine] Context sources committed for ${conversationId}: ` +
-            collectedSources.map((entry) =>
-              `${entry.kind}:${contextSourceLogLabel(entry)}${entry.promptTokensDelta !== undefined ? ` (+${entry.promptTokensDelta} prompt tokens)` : ' (size estimate)'}`
-            ).join(', ')
-          );
-        }
-        if (latestObservation && totalUsage) {
-          const snapshot = this.toContextBudgetSnapshot(latestObservation, peakPromptTokens, totalUsage);
-          this.conversationManager.setContextBudget(conversationId, snapshot);
-          // One line per committed reading, so a moving gauge can be diagnosed
-          // from the log: a different conversation id means a target switch,
-          // the same id shrinking means the provider re-measured or compressed.
-          this.outputChannel?.appendLine(
-            `[AgentRunEngine] Context snapshot committed for ${conversationId}: ` +
-            `context=${snapshot.contextTokens} (prompt ${snapshot.promptTokens} + completion ${snapshot.completionTokens}), ` +
-            `model=${snapshot.modelId}, calls=${snapshot.callsThisTurn}, processed=${snapshot.turnProcessedTokens}, ` +
-            `compression=${snapshot.contextCompression}`
-          );
+        const commitRetained = (): void => {
+          this.conversationManager.addMessages(conversationId, pendingMessages);
+          if (collectedSources.length > 0) {
+            // Manifest rows commit ONLY beside a committed turn (Phase 7):
+            // cancellation and transport failure preserve the prior manifest.
+            this.conversationManager.appendContextSources(conversationId, collectedSources);
+            this.outputChannel?.appendLine(
+              `[AgentRunEngine] Context sources committed for ${conversationId}: ` +
+              collectedSources.map((entry) =>
+                `${entry.kind}:${contextSourceLogLabel(entry)}${entry.promptTokensDelta !== undefined ? ` (+${entry.promptTokensDelta} prompt tokens)` : ' (size estimate)'}`
+              ).join(', ')
+            );
+          }
+          if (latestObservation && totalUsage) {
+            const snapshot = this.toContextBudgetSnapshot(latestObservation, peakPromptTokens, totalUsage);
+            this.conversationManager.setContextBudget(conversationId, snapshot);
+            // One line per committed reading, so a moving gauge can be diagnosed
+            // from the log: a different conversation id means a target switch,
+            // the same id shrinking means the provider re-measured or compressed.
+            this.outputChannel?.appendLine(
+              `[AgentRunEngine] Context snapshot committed for ${conversationId}: ` +
+              `context=${snapshot.contextTokens} (prompt ${snapshot.promptTokens} + completion ${snapshot.completionTokens}), ` +
+              `model=${snapshot.modelId}, calls=${snapshot.callsThisTurn}, processed=${snapshot.turnProcessedTokens}, ` +
+              `compression=${snapshot.contextCompression}`
+            );
+          }
+        };
+        if (runOptions.deferRetention) {
+          // The owner commits once it adopts the reply, or never (`deferRetention`). A held commit belongs to the
+          // history it was run against: once that history has moved on, it is dropped, never appended after a newer turn.
+          let settled = false;
+          runOptions.deferRetention(() => {
+            const current = !settled && this.conversationManager.hasConversation(conversationId)
+              && this.conversationManager.getMessages(conversationId).length === history.length;
+            settled = true;
+            if (!current) {
+              this.outputChannel?.appendLine(`[AgentRunEngine] ${policy.id} held retention dropped for ${conversationId}: the conversation moved on.`);
+              return false;
+            }
+            commitRetained();
+            return true;
+          });
+        } else {
+          commitRetained();
         }
       }
 

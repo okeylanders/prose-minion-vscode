@@ -78,6 +78,8 @@ export interface WorkshopDirectedRun {
   readonly finalReply: {
     readonly check: AgentFinalReplyCheck;
     readonly retained: (content: string) => string;
+    /** The engine holds the run's retention, and hands over its commit: called once the reply is adopted, or never. */
+    readonly deferRetention?: (commit: () => boolean) => void;
   };
   /**
    * The document `<excerpt/>` names in this run's reply, when the run is

@@ -8,6 +8,10 @@
  *   they were before the press, and no correction is requested.
  * - **F-02.** When a correction succeeds, retained history holds the host's
  *   line in place of the rejected prose, never the prose.
+ * - **R1.** A press refused after its reply ended (Stop, or file edits
+ *   turned off, while its edits are staged) retained nothing: the engine
+ *   holds the exchange until the answer is adopted. A newer run's exchange
+ *   is never touched.
  * - **F-03.** An excerpt offer keeps its bound document: pin A, get the
  *   offer, pin B, press, and the answer's `<excerpt/>` is staged against A.
  * Made-up text: Alice.
@@ -47,7 +51,19 @@ const capability = (): AgentCapability<unknown, never> => ({
 /** The room harness with its provider calls run by a real engine over a real conversation store. */
 function bridged(transport: Transport) {
   let excerptPath = 'drafts/pool-of-tears.md';
-  const staging = fakeFileEditStaging({ excerptPath: () => excerptPath });
+  const base = fakeFileEditStaging({ excerptPath: () => excerptPath });
+  // Staging is asynchronous (a catalog or file read): a test may hold it open, with no sleep or guessed timing.
+  let gate: { entered: () => void; release: Promise<void> } | undefined;
+  const staging: typeof base = {
+    ...base,
+    stage: async (target, stagingOptions) => {
+      if (gate) {
+        gate.entered();
+        await gate.release;
+      }
+      return base.stage(target, stagingOptions);
+    }
+  };
   const harness: WorkshopRouteTestHarness = createWorkshopRouteTestHarness({ fileEditStaging: staging });
   const conversations = new ConversationManager();
   const queued: Reply[] = [];
@@ -74,11 +90,16 @@ function bridged(transport: Transport) {
   };
   const engine = new AgentRunEngine(client as never, conversations, jest.fn());
   // As `AssistantToolService` maps them: the Workshop's sanitizer unless the run words its own reply.
-  const options = (given: { signal?: AbortSignal; onToken?: (token: string) => void; finalReply?: { check: AgentRunOptions['finalReplyCheck']; retained: (reply: string) => string } }): AgentRunOptions => ({
+  const options = (given: {
+    signal?: AbortSignal;
+    onToken?: (token: string) => void;
+    finalReply?: { check: AgentRunOptions['finalReplyCheck']; retained: (reply: string) => string; deferRetention?: AgentRunOptions['deferRetention'] };
+  }): AgentRunOptions => ({
     signal: given.signal,
     ...(transport === 'streaming' ? { onToken: given.onToken ?? (() => undefined) } : {}),
     retainedAssistantContentSanitizer: given.finalReply?.retained ?? sanitizeWorkshopReplyForRetention,
-    finalReplyCheck: given.finalReply?.check
+    finalReplyCheck: given.finalReply?.check,
+    deferRetention: given.finalReply?.deferRetention
   });
   const result = (run: ExecutionResult, conversationId: string | undefined) => analysisResult(run.content, {
     conversationId: run.conversationId ?? conversationId, finishReason: run.finishReason
@@ -104,6 +125,19 @@ function bridged(transport: Transport) {
   const history = () => conversations.getMessages(harness.session.getHostConversationId()!).map((entry) => [entry.role, entry.content]);
   return {
     harness, staging, engine, client, queued, route, settle, ledger, history,
+    /** Hold the next staging call open: resolves `entered` once staging is reached; `release` lets it finish. */
+    holdStaging: () => {
+      let release: () => void = () => undefined;
+      let entered: () => void = () => undefined;
+      const reached = new Promise<void>((resolve) => { entered = resolve; });
+      gate = { entered, release: new Promise<void>((resolve) => { release = resolve; }) };
+      return { reached, release: () => { gate = undefined; release(); } };
+    },
+    setFileEdits: (value: unknown) => {
+      const get = harness.settings.get.bind(harness.settings);
+      (harness.settings as { get: unknown }).get = ((section: string, key: string, fallback?: unknown) =>
+        key === 'workshop.fileEdits' ? value : get(section, key, fallback as never)) as typeof harness.settings.get;
+    },
     pinTo: async (relativePath: string) => {
       excerptPath = relativePath;
       await route(MessageType.WORKSHOP_SET_EXCERPT, {
@@ -205,6 +239,84 @@ describe.each<Transport>(['streaming', 'non-streaming'])('a press through the re
     expect(await room.press(source)).toEqual(expect.objectContaining({ answer: 'failed', reason: 'no-answer' }));
     expect(room.history()).toEqual(historyBefore);
     expect(room.ledger()).toEqual(ledgerBefore);
+  });
+
+  describe('R1: a press refused after its reply ended retained nothing', () => {
+    const whileStaging: Array<[string, string, (held: ReturnType<typeof bridged>) => Promise<void>]> = [
+      ['the writer presses Stop', 'stopped', async (held) => {
+        await held.route(MessageType.CANCEL_WORKSHOP_REQUEST, { requestId: held.harness.session.getSnapshot().activeRequestId, domain: 'workshop' });
+      }],
+      ['file edits are turned off', 'file-edits-off', async (held) => {
+        held.setFileEdits('off');
+      }]
+    ];
+
+    it.each(whileStaging)('%s while the answer\'s edits are staged: the ledger and the whole retained history are as before the press', async (_name, reason, act) => {
+      const ledgerBefore = room.ledger();
+      const historyBefore = room.history();
+      room.queued.push({ content: EXCERPT_FIX });
+      const staging = room.holdStaging();
+      const pressed = room.route(MessageType.WORKSHOP_EDIT_OFFER_ACTION, {
+        requestId: 'held', roomRevision: room.harness.session.readRoomRevision(), turnId: source.id, kind: 'fixes'
+      });
+      // The reply has ended and passed its check; its edits are being staged.
+      await staging.reached;
+      expect(room.history()).toEqual(historyBefore);
+
+      await act(room);
+      staging.release();
+      await pressed;
+      await room.settle();
+
+      const result = room.harness.posted(MessageType.WORKSHOP_EDIT_OFFER_RESULT).at(-1)!.payload;
+      expect(result).toEqual(expect.objectContaining({ requestId: 'held', answer: 'failed', reason }));
+      expect(room.ledger()).toEqual(ledgerBefore);
+      expect(room.history()).toEqual(historyBefore);
+      expect(JSON.stringify(room.history())).not.toContain('Suggested 1 fix as file edits.');
+
+      // The same press then succeeds, and retains exactly its own exchange.
+      room.setFileEdits('ask');
+      room.queued.push({ content: EXCERPT_FIX });
+      expect(await room.press(source)).toEqual(expect.objectContaining({ answer: 'answered', outcome: 'proposed', cards: 1 }));
+      const added = room.history().slice(historyBefore.length);
+      expect(added.map(([role]) => role)).toEqual(['user', 'assistant']);
+      expect(added[1]).toEqual(['assistant', 'Suggested 1 fix as file edits.']);
+    });
+
+    it('a newer message that takes the room while the edits are staged keeps its own exchange, and the press adds nothing', async () => {
+      const historyBefore = room.history();
+      room.queued.push({ content: EXCERPT_FIX }, { content: 'The Queen comes later.' });
+      const staging = room.holdStaging();
+      const pressed = room.route(MessageType.WORKSHOP_EDIT_OFFER_ACTION, {
+        requestId: 'overtaken', roomRevision: room.harness.session.readRoomRevision(), turnId: source.id, kind: 'fixes'
+      });
+      await staging.reached;
+      // A new message preempts the run that is still staging, and commits its own exchange first.
+      await room.route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'And what of the Queen?' });
+      await room.settle();
+      const newer = room.history();
+      expect(newer.slice(historyBefore.length).map(([role]) => role)).toEqual(['user', 'assistant']);
+      expect(newer.at(-1)).toEqual(['assistant', 'The Queen comes later.']);
+
+      staging.release();
+      await pressed;
+      await room.settle();
+
+      // The press's held exchange was never committed: the newer run's history stands, untouched.
+      expect(room.history()).toEqual(newer);
+      expect(room.ledger().some((turn) => turn.editOfferRequest || turn.editOfferAnswer)).toBe(false);
+      expect(room.ledger().at(-1)?.content).toBe('The Queen comes later.');
+    });
+
+    it('an adopted answer commits its exchange before its retained-history mark is recorded', async () => {
+      const historyBefore = room.history();
+      room.queued.push({ content: EXCERPT_FIX });
+      await room.press(source);
+      expect(room.history()).toHaveLength(historyBefore.length + 2);
+      // The mark the completion recorded counts the exchange it describes.
+      const marks = room.harness.service.readWorkshopRetainedHistory.mock.results.at(-1)!.value as { messageCount: number };
+      expect(marks.messageCount).toBe(room.history().length - 1);
+    });
   });
 
   it('F-03: pin A, get an excerpt offer, pin B, press: the directive names A and the answer is staged against A', async () => {

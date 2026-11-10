@@ -241,6 +241,8 @@ export class WorkshopRoomHandler {
     toolId?: WorkshopToolId;
     guestPersonaId?: WorkshopPersonaId;
     controller: AbortController;
+    /** A host-directed run: its writer turn leaves with it when it is preempted (ADR 2026-11-10 D3). */
+    directed?: boolean;
   };
 
   private readonly disposeStatusListener: () => void;
@@ -1139,7 +1141,7 @@ export class WorkshopRoomHandler {
       threadArtifactFrames,
       timeNotice
     });
-    this.activeRun = { requestId, label, toolId, guestPersonaId, controller };
+    this.activeRun = { requestId, label, toolId, guestPersonaId, controller, ...(directedRun ? { directed: true } : {}) };
     // Sprint 13C: capabilities are participant-owned. Host and persona-guest
     // turns each mint one adapter with their own principal; direct-tool
     // sidecars stay capability-free instruments. Decide "which participant is
@@ -1497,7 +1499,9 @@ export class WorkshopRoomHandler {
         `[WorkshopRoomHandler] Preempting in-flight run: ${this.activeRun.requestId} (${this.activeRun.label})`
       );
       this.activeRun.controller.abort();
-      this.session.abandonRun(this.activeRun.requestId);
+      if (!this.activeRun.directed || !this.session.rollbackMessageRun(this.activeRun.requestId)) {
+        this.session.abandonRun(this.activeRun.requestId);
+      }
       this.activeRun = undefined;
     }
   }

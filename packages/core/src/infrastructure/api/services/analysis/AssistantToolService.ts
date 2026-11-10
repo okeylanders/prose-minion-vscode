@@ -108,11 +108,13 @@ export interface AnalysisStreamingOptions {
    * (the engine's `finalReplyCheck`): `check` returns a correction
    * instruction or nothing, and `retained` is what retained history keeps in
    * place of the reply. Absent, the reply is retained by the Workshop's
-   * usual sanitizer.
+   * usual sanitizer. `deferRetention` is the engine's: the owner commits
+   * the exchange once it adopts the reply, or never.
    */
   finalReply?: {
     check: AgentFinalReplyCheck;
     retained: (content: string) => string;
+    deferRetention?: (commit: () => boolean) => void;
   };
 }
 
@@ -636,7 +638,8 @@ export class AssistantToolService {
         onToken: streamingOptions?.onToken,
         tools: webTools,
         retainedAssistantContentSanitizer: streamingOptions.finalReply?.retained ?? sanitizeWorkshopReplyForRetention,
-        finalReplyCheck: streamingOptions.finalReply?.check
+        finalReplyCheck: streamingOptions.finalReply?.check,
+        deferRetention: streamingOptions.finalReply?.deferRetention
       }
     });
 
@@ -766,7 +769,8 @@ export class AssistantToolService {
         onToken: streamingOptions?.onToken,
         tools: webTools,
         retainedAssistantContentSanitizer: streamingOptions?.finalReply?.retained ?? sanitizeWorkshopReplyForRetention,
-        finalReplyCheck: streamingOptions?.finalReply?.check
+        finalReplyCheck: streamingOptions?.finalReply?.check,
+        deferRetention: streamingOptions?.finalReply?.deferRetention
       }
     });
 

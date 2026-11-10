@@ -21,6 +21,10 @@
  *   actionable-findings reader and the widget-recommendation reader are not
  *   run, so an answer adds no next steps and no widget chip. The turn
  *   carries no model stamp: the host wrote what it shows.
+ * - **Retention waits for adoption** (PR #252 R1). The engine holds the
+ *   run's exchange; completion commits it only once the session has taken
+ *   the answer turn, so a press that fails here, however late, left nothing
+ *   in the persona's retained history.
  * - **A stopped or failed run leaves no turns:** the press's writer turn is
  *   rolled back, so the offer reads open again. Capability cards the run
  *   already published stay, as on any rollback.
@@ -67,6 +71,13 @@ export interface WorkshopEditOfferPress {
   readonly sourceAt: string;
   /** `proseMinion.workshop.fileEdits` is still `ask`, read at completion. */
   readonly fileEditsOpen: () => boolean;
+  /**
+   * Commit the run's held exchange to the persona's retained history (the
+   * engine's `deferRetention`; PR #252 R1). Called once, when the answer is
+   * adopted, and never for a press that fails: nothing was retained, so
+   * nothing is undone. False when the engine dropped it.
+   */
+  readonly commitRetained: () => boolean;
   readonly settled: (outcome: WorkshopEditOfferRunOutcome) => void;
 }
 
@@ -191,6 +202,10 @@ export function completeWorkshopEditOfferRun(input: WorkshopRunCompletionInput, 
     input.log(`Discarded zombie edit offer answer: ${requestId} (${where})`);
     press.settled({ kind: 'failed', reason: 'failed' });
     return undefined;
+  }
+  // Adopted: only now is the exchange retained, before the mark that describes it is recorded.
+  if (!press.commitRetained()) {
+    input.log(`Edit offer answer adopted without its retained exchange (${where})`);
   }
   const changes = cards.reduce((sum, card) => sum + card.operations.length, 0);
   input.log(`Edit offer answered (${where}; outcome=${answer.outcome}; cards=${cards.length}; changes=${changes}; ` +

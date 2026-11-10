@@ -192,6 +192,80 @@ describe('AgentRunEngine: the final-reply check', () => {
     expect(cancelled).toBeDefined();
   });
 
+  describe('held retention (`deferRetention`; PR #252 R1)', () => {
+    const held = async (extra: { finalReplyCheck?: AgentFinalReplyCheck; signal?: AbortSignal } = {}) => {
+      const commits: Array<() => boolean> = [];
+      const result = await engine.continueConversation({
+        conversationId, userMessage: 'Was Alice curious?', policy: AGENT_RUN_POLICIES.workshopHost, capability: capability(),
+        options: { ...extra, retainedAssistantContentSanitizer: (content) => `[retained] ${content}`, deferRetention: (commit) => commits.push(commit) }
+      });
+      return { commits, result };
+    };
+
+    it('commits nothing until the owner does, then exactly what an unheld run retains', async () => {
+      replies('Yes');
+      const before = history();
+      const { commits, result } = await held();
+      expect(result.content).toBe('Yes');
+      expect(commits).toHaveLength(1);
+      expect(history()).toEqual(before);
+      expect(conversations.getCommittedHistoryCounts(conversationId)?.messageCount).toBe(before.length - 1);
+
+      expect(commits[0]()).toBe(true);
+      expect(history()).toEqual([...before, 'Was Alice curious?', '[retained] Yes']);
+      // Once only.
+      expect(commits[0]()).toBe(false);
+      expect(history()).toHaveLength(before.length + 2);
+    });
+
+    it('an exchange never committed leaves the conversation as it was, and the next run reads it so', async () => {
+      replies('Yes', 'No');
+      const before = history();
+      await held();
+      await engine.continueConversation({
+        conversationId, userMessage: 'And the Queen?', policy: AGENT_RUN_POLICIES.workshopHost, capability: capability()
+      });
+      const sent = client.createChatCompletion.mock.calls[1][0].map((entry: { content: string }) => entry.content);
+      expect(sent).toEqual([...before, 'And the Queen?']);
+      expect(history()).toEqual([...before, 'And the Queen?', 'No']);
+    });
+
+    it('never appends a held exchange after a newer one: the commit is dropped, and the newer history stands', async () => {
+      replies('Yes', 'No');
+      const { commits } = await held();
+      await engine.continueConversation({
+        conversationId, userMessage: 'And the Queen?', policy: AGENT_RUN_POLICIES.workshopHost, capability: capability()
+      });
+      const newer = history();
+      expect(commits[0]()).toBe(false);
+      expect(history()).toEqual(newer);
+      expect(newer.slice(-2)).toEqual(['And the Queen?', 'No']);
+    });
+
+    it('drops a held exchange whose conversation is gone', async () => {
+      replies('Yes');
+      const { commits } = await held();
+      engine.discardConversation(conversationId);
+      expect(commits[0]()).toBe(false);
+    });
+
+    it('hands over no commit for a rejected final reply: there is nothing to retain', async () => {
+      replies('She was.', 'She certainly was.');
+      const { commits, result } = await held({ finalReplyCheck: oneWord });
+      expect(result.finalReplyRejected).toBe(true);
+      expect(commits).toEqual([]);
+    });
+
+    it('holds a corrected exchange whole, with the rejected reply in its retained form', async () => {
+      replies('She was.', 'Yes');
+      const before = history();
+      const { commits } = await held({ finalReplyCheck: oneWord });
+      expect(history()).toEqual(before);
+      expect(commits[0]()).toBe(true);
+      expect(history().slice(before.length)).toEqual(['Was Alice curious?', '[retained] She was.', INSTRUCTION, '[retained] Yes']);
+    });
+  });
+
   it('names no Workshop feature: the seam is the engine\'s own', () => {
     const source = require('fs').readFileSync(require.resolve('@orchestration/AgentRunEngine'), 'utf8') as string;
     expect(source).toContain('finalReplyCheck');

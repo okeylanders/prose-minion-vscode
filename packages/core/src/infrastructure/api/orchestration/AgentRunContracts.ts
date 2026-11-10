@@ -214,6 +214,21 @@ export interface AgentRunOptions {
    */
   readonly finalReplyCheck?: AgentFinalReplyCheck;
   /**
+   * Hold this turn's retention until its owner adopts the reply. When set,
+   * a run that would commit its exchange (its messages, context-source rows
+   * and context snapshot) commits nothing, and hands the owner `commit`
+   * instead, before it returns. The owner calls `commit` once, when it
+   * adopts the reply, or never: an exchange never committed leaves the
+   * conversation exactly as it was before the turn, with nothing to undo.
+   * `commit` answers whether it retained the exchange. It retains nothing,
+   * and answers false, when the conversation is gone or its history has
+   * changed since the run read it, so a held exchange is never appended
+   * after a newer turn. The owner must keep any other run off the
+   * conversation until it has committed or let go. Not called for a
+   * cancelled run or a rejected final reply, which retain nothing anyway.
+   */
+  readonly deferRetention?: (commit: () => boolean) => void;
+  /**
    * The model every request of this run goes to, whatever the engine's model
    * is by then (a hot-swap, or a following scope moving): the model a writer
    * approved with its price (Craft Flags, PR #177 F-01). The context

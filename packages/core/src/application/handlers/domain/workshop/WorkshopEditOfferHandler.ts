@@ -23,7 +23,9 @@
  *   `completeWorkshopEditOfferRun`: cards or a host line, never the
  *   persona's prose.
  * - **A refusal adds no turn.** A stopped or failed run leaves none either,
- *   and the offer reads open again.
+ *   and the offer reads open again. It leaves nothing in the persona's
+ *   retained history: the engine holds the run's exchange, and completion
+ *   commits it only when it adopts the answer (PR #252 R1).
  * - **Answers** echo the request id and name the generation, with the
  *   writer's words (`WORKSHOP_EDIT_OFFER_REFUSAL_WORDS`).
  * - **Logs** carry turn ids, kinds, counts and reason kinds only.
@@ -114,6 +116,9 @@ export class WorkshopEditOfferHandler {
     }
     const { turn, offer, target, label } = prepared;
     let outcome: WorkshopEditOfferRunOutcome | undefined;
+    // The engine holds the run's exchange until the answer is adopted (PR #252 R1): a press that fails after the
+    // reply ended (stopped, or file edits turned off, while its edits are staged) never retained anything.
+    let commitRetained: (() => boolean) | undefined;
     const request = { sourceTurnId: turn.id, kind: ids.kind };
     const sourceAt = this.room.formatTurnTime(turn.timestamp);
     this.log(`press taken turn=${turn.id} kind=${ids.kind} author=${target.kind} count=${offer.count ?? 'none'}`);
@@ -125,7 +130,10 @@ export class WorkshopEditOfferHandler {
       frame: buildWorkshopEditRequestFrame({ turn, at: sourceAt, offer }),
       finalReply: {
         check: (reply, facts) => this.checkAnswer(reply, facts),
-        retained: (reply) => workshopEditOfferRetainedReply(ids.kind, reply)
+        retained: (reply) => workshopEditOfferRetainedReply(ids.kind, reply),
+        deferRetention: (commit) => {
+          commitRetained = commit;
+        }
       },
       // An excerpt offer keeps the document it was bound to (D2; PR #252 F-03), whatever the room's excerpt is now.
       ...(offer.target.kind === 'excerpt' && offer.target.documentUri
@@ -136,6 +144,7 @@ export class WorkshopEditOfferHandler {
         offer,
         sourceAt,
         fileEditsOpen: () => this.room.fileEditsMode() === 'ask',
+        commitRetained: () => commitRetained?.() ?? true,
         settled: (settled) => {
           outcome = settled;
         }

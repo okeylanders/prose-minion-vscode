@@ -518,7 +518,7 @@ export class ScriptedWorkshopRoom {
       ...(fileEdits ? { fileEdits } : {}),
       log: (entry) => this.log.push(entry),
       events: silentEvents()
-    }, { request, offer, sourceAt: '2:02 pm', fileEditsOpen: () => true, settled: () => undefined });
+    }, { request, offer, sourceAt: '2:02 pm', fileEditsOpen: () => true, commitRetained: () => true, settled: () => undefined });
     if (turn) {
       this.rest(`press answered: ${kind} on ${source.id}`);
     }
