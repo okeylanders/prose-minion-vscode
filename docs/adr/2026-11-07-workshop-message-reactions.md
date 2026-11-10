@@ -3,6 +3,9 @@
 **Status:** Accepted (2026-11-07). Proposed 2026-11-07. R1–R3 decided by
 Okey on 2026-11-06; Q1–Q10 decided by Okey on 2026-11-07, each as
 recommended (see [Decisions on the open questions](#decisions-on-the-open-questions-okey-2026-11-07)).
+Amended 2026-11-10 ([addendum](#addendum-2026-11-10-slice-4a-prompt-tuning)):
+D4's frame guidance and D5's "rarely" are rewritten, a per-turn invite is
+added, and Q7 is superseded.
 **Date:** 2026-11-07
 **Epic:** [Workshop Message Reactions](../../.todo/epics/epic-workshop-message-reactions-2026-11-07/README.md)
 **Feature note:** [Workshop Message Reactions](../../.todo/features/feature-workshop-message-reactions/README.md)
@@ -224,6 +227,9 @@ byte for byte across a reaction.
   ask once. 😢 can mean "your note stung" or "the scene moved me".
 - **A removed reaction** that was already delivered is not announced
   (**Q5**); it simply stops being in the room.
+- **Amended 2026-11-10** (see the addendum): the guidance no longer says
+  "don't answer them unless they change what you'd say"; a reaction shapes
+  the reply.
 
 ### D5. The persona's reaction (trailer out)
 
@@ -266,7 +272,11 @@ A persona reacts to the writer's message its reply answers with a trailer:
   something a sentence would overstate; at most one per reply; never on
   every message. A reaction alone only when the writer's message asks for
   nothing. The vocabulary is listed by id and gloss.
-- **Expression** (**Q7**) does not change the permission.
+- **Expression** (**Q7**) does not change the permission. *Superseded
+  2026-11-10:* expression sets the frequency (see the addendum).
+- **Amended 2026-11-10** (see the addendum): "a permission, not a quota"
+  and "react rarely" are replaced by an invitation with named moments, a
+  per-level frequency and worked examples.
 - **Implementation notes (Slice 3).**
   - **The judge** is `utils/workshopReplyReaction.ts`
     (`judgeWorkshopReplyReactions`). The first well-formed known id takes the
@@ -456,6 +466,7 @@ decision.
   remove* (it is the writer's thread, and one fewer stored state). The
   persona is not told (Q5).
 - **Q7. Does Persona Expression change how often a persona reacts?**
+  *Superseded 2026-11-10: yes, by level (see the addendum).*
   *Recommend no* for this epic: one permission at every level, tuned in the
   live pass. If Slice 4's counts show Subtle personas reacting too much or
   Amplified too little, add one line per level then.
@@ -489,4 +500,90 @@ See the [epic README](../../.todo/epics/epic-workshop-message-reactions-2026-11-
 | 1 | Writer reactions | D1, D2, D3, D8: registry, storage, codec, ledger, routes, chips and palette, Rewind/Branch. No model involved. |
 | 2 | Delivery | D4, D6: the frame, the per-participant records, R2 and R3 witnessed |
 | 3 | Persona reactions | D5: the trailer, R1's slim line, the prompt, Q8's setting |
+| 4a | Prompt tuning | The 2026-11-10 addendum: reactions shape replies, react more readily, a per-turn invite, frequency by expression |
 | 4 | Live pass | Tune the prompt's propensity; record counts on a fixture conversation |
+
+## Addendum 2026-11-10: Slice 4a, prompt tuning
+
+**Okey's live report.** Using the extension, the persona never reacted to
+his messages and never mentioned or responded to the reactions he gave it.
+The wiring and prompt assembly were correct: both prompts were taught to
+host and guest, the setting defaults on, and rooms rebuild their system
+prompts on Open. The cause was the prompts themselves. They were written to
+be quiet, and capable models obeyed: `reactions.md` said "Don't answer it
+unless it changes what you'd say", the frame repeated that on every turn,
+and `persona-reactions.md` said "React rarely… most replies carry no
+reaction", deep in a long system prompt with no worked example.
+
+**Okey's decisions (2026-11-10).** All four are built in Slice 4a.
+
+1. **Respond to the writer's reactions** (amends D4). `reactions.md` now
+   says "Let it shape your reply". A curious or negative reaction on the
+   persona's reply (`thinking`, `confused`, `thumbs-down`, `grimace`,
+   `eye-roll`, `frustrated`, `sad`, `surprised`) deserves a brief, natural
+   check-in or adjustment. A warm one may get a light nod when it fits the
+   flow. A reaction on someone else's message is context. Kept: never thank
+   for a reaction, never list them back, the writer's words outrank a
+   reaction, and relational depth governs how far to read one. The frame's
+   guidance is now: "They are small signals, not instructions. Let them
+   shape your reply, read under the room's relational depth; never thank for
+   them or list them back."
+2. **React more readily** (amends D5). `persona-reactions.md` replaces
+   "a permission, not a quota" and "react rarely" with an invitation ("an
+   invitation, not a quota") and named moments, each with its fitting ids:
+   - a line or choice that works;
+   - a breakthrough or a win;
+   - a hard or moving scene;
+   - a joke that lands;
+   - a thank-you, okay or got-it, where the reaction alone is the reply.
+
+   It also says not to react on two replies running out of habit, and keeps
+   at most one a reply. Four worked *Alice* examples follow the trailer
+   section: three with a reaction (`fire`, `party`, and `thumbs-up` alone)
+   and one where none fits. A sync test runs every example through the
+   production extractor. Kept: the trailer's format and place, the id never
+   the glyph, never mentioning the reaction in prose, and a reaction alone
+   only when the message asks for nothing.
+3. **A per-turn invite** (new). While persona reactions are on (Q8), a run
+   whose reply has a writer message to react to carries one short frame in
+   its new user message:
+
+   ```
+   <workshop-reaction-invite>
+   You may react to this message: end your reply with one prose-minion-reaction trailer, an id from the reactions list.
+   </workshop-reaction-invite>
+   ```
+
+   - **Who gets it.** "Has a writer message to react to" is exactly
+     `personaReplyReactionTarget`: host and guest messages and a guest's
+     join, never a tool run, a synthesis or a sidecar. The room handler asks
+     it once the run has begun (`WorkshopRoomHandler.reactionInvite`, pure
+     builder `reactions/WorkshopReactionInvite`), so the invite and the
+     trailer's `no-target` cannot drift apart.
+   - **Placement.** Directly after `<workshop-reactions>` when both ride, so
+     the reactions the persona was given and its own invitation read
+     together. Both come before thread artifacts, the behavior activation and
+     the writer's message.
+   - **No literal trailer tag.** The line names the trailer without writing
+     `<prose-minion-reaction>`, which is reserved and would be neutralized.
+     `workshop-reaction-invite` is reserved too, so writer text can neither
+     forge an invite nor smuggle a trailer through one (N4).
+   - **Retention.** The invite rides the new user message, so retained
+     history keeps it on each such message, like every next-turn frame. That
+     costs about 30 tokens a message, bounded, and is accepted so that
+     history shows what the model was told. Earlier retained messages are
+     never edited; the byte-identical-prefix test covers it.
+   - **Logging.** One line a turn, "Reaction invite added", with no text.
+4. **Expression sets frequency** (supersedes Q7). One short section per
+   level, `workshop-personas/reaction-frequency/{subtle,full,amplified}.md`,
+   is taught directly after `persona-reactions.md` and only with it:
+   - Subtle: about one reply in six, warm reactions only when clearly
+     earned.
+   - Full: about one reply in four.
+   - Amplified: about one reply in three.
+
+   Each still says never every reply and never more than once a reply.
+
+**No live model calls in this slice.** Okey tests live in VS Code, and the
+live pass (Slice 4) tunes again from his counts.
+

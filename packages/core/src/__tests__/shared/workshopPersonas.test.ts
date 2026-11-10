@@ -11,6 +11,7 @@ import {
   WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
   WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS,
   WORKSHOP_REACTIONS_PROMPT_PATH,
+  WORKSHOP_REACTION_FREQUENCY_PROMPT_PATHS,
   WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
   workshopPersonaSystemPromptPaths,
   workshopPersonaLabel
@@ -58,7 +59,8 @@ describe('Workshop persona catalog and packaged prompts', () => {
       ...Object.values(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS),
       WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
       ...Object.values(WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS),
-      WORKSHOP_REACTIONS_PROMPT_PATH
+      WORKSHOP_REACTIONS_PROMPT_PATH,
+      ...Object.values(WORKSHOP_REACTION_FREQUENCY_PROMPT_PATHS)
     ];
     expect(new Set(foundationPaths).size).toBe(WORKSHOP_PERSONA_CATALOG.length);
     expect(new Set(expressionPaths).size).toBe(WORKSHOP_PERSONA_CATALOG.length);

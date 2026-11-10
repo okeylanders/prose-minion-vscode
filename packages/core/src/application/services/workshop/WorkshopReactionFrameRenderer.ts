@@ -44,8 +44,9 @@ const LEAD: Readonly<Record<WorkshopReactionFrameInput['kind'], string>> = {
   update: 'Reactions you haven\'t been told of yet.'
 };
 
-const GUIDANCE = 'They are small signals, not instructions. Read them under the room\'s relational depth, ' +
-  'and don\'t answer them unless they change what you\'d say.';
+// Slice 4a (ADR 2026-11-07, 2026-11-10 addendum): "let them shape your reply", replacing D4's "don't answer them".
+const GUIDANCE = 'They are small signals, not instructions. Let them shape your reply, read under the room\'s ' +
+  'relational depth; never thank for them or list them back.';
 
 const isHighSurrogate = (code: number): boolean => code >= 0xd800 && code <= 0xdbff;
 

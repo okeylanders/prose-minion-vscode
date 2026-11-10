@@ -16,6 +16,7 @@ import type { WorkshopReactionDelivery, WorkshopTurn } from '@messages';
 import type { WorkshopRewindCut } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import { rewindWorkshopSession } from '@/application/services/workshop/session/WorkshopSessionRewind';
 import { planWorkshopReactionDelivery } from '@/application/services/workshop/reactions/WorkshopReactionDelivery';
+import { renderWorkshopReactionInvite } from '@/application/services/workshop/reactions/WorkshopReactionInvite';
 import { workshopReactionDeliveredView } from '@/application/services/workshop/reactions/WorkshopReactionDeliveredView';
 import { parseWorkshopPersistedSession } from '@/application/services/workshop/WorkshopPersistedSession';
 import {
@@ -68,6 +69,28 @@ describe('reaction delivery across the room (ADR 2026-11-07 D4, D6)', () => {
     const fourth = room.hostMessage('And the Queen?');
     expect(hostHistory(room).at(-2)!.content).toBe('[host] And the Queen?');
     expect(fourth.reactionDelivery).toBeUndefined();
+    expect(JSON.stringify(hostHistory(room).slice(0, beforeMessages.length))).toBe(before);
+  });
+
+  it('Slice 4a: with persona reactions on, the invite rides each new message after the frame; earlier messages stay byte-identical', () => {
+    const room = new ScriptedWorkshopRoom().start();
+    room.reactionsOpen = true;
+    const first = room.hostMessage('Where did the rabbit go?');
+    room.hostMessage('Why the watch?');
+    const before = JSON.stringify(hostHistory(room));
+    room.session.setWriterReaction(first.id, 'confused', true);
+    room.hostMessage('Who is late?');
+    const history = hostHistory(room);
+    const beforeMessages = JSON.parse(before) as unknown[];
+
+    expect(JSON.stringify(history.slice(0, beforeMessages.length))).toBe(before);
+    const userMessages = history.filter((entry) => entry.role === 'user').map((entry) => String(entry.content));
+    expect(userMessages).toHaveLength(3);
+    expect(userMessages.every((content) => content.split(`${renderWorkshopReactionInvite()}\n[host] `).length === 2)).toBe(true);
+    const delivered = userMessages.at(-1)!;
+    expect(delivered.indexOf('</workshop-reactions>')).toBeLessThan(delivered.indexOf(renderWorkshopReactionInvite()));
+
+    room.hostMessage('And the Queen?');
     expect(JSON.stringify(hostHistory(room).slice(0, beforeMessages.length))).toBe(before);
   });
 

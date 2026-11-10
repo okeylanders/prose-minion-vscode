@@ -7,6 +7,7 @@
 
 import type {
   WorkshopConversationBehavior,
+  WorkshopPersonaExpressionLevel,
   WorkshopInteractionMode,
   WorkshopPersonaId,
   WorkshopRelationalDepth
@@ -136,12 +137,28 @@ export const WORKSHOP_REACTIONS_PROMPT_PATH =
 
 /**
  * The permission to react (ADR 2026-11-07 D5): the trailer, the vocabulary by
- * id and gloss, and how rarely. Taught after `reactions.md` only while
+ * id and gloss, the moments that invite one, and worked examples (Slice 4a,
+ * 2026-11-10 addendum). Taught after `reactions.md` only while
  * `proseMinion.workshop.reactions.personas` is on (Q8), so a persona never
  * writes a trailer while they are off; a change rebuilds the prompt.
  */
 export const WORKSHOP_PERSONA_REACTIONS_PROMPT_PATH =
   'workshop-personas/persona-reactions.md';
+
+/**
+ * How often to react, by the selected expression level (ADR 2026-11-07,
+ * 2026-11-10 addendum, superseding Q7): Subtle about one reply in six, Full
+ * about one in four, Amplified about one in three. Taught directly after
+ * `persona-reactions.md`, and only with it, so it never teaches a frequency
+ * while persona reactions are off.
+ */
+export const WORKSHOP_REACTION_FREQUENCY_PROMPT_PATHS: Readonly<
+  Record<WorkshopPersonaExpressionLevel, string>
+> = Object.freeze({
+  subtle: 'workshop-personas/reaction-frequency/subtle.md',
+  full: 'workshop-personas/reaction-frequency/full.md',
+  amplified: 'workshop-personas/reaction-frequency/amplified.md'
+});
 
 export const WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS: Readonly<
   Record<WorkshopRelationalDepth, string>
@@ -192,7 +209,9 @@ export function workshopPersonaSystemPromptPaths(
     WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
     WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS[behavior.relationalDepth],
     ...(participant ? [WORKSHOP_REACTIONS_PROMPT_PATH] : []),
-    ...(participant && options.personaReactions ? [WORKSHOP_PERSONA_REACTIONS_PROMPT_PATH] : []),
+    ...(participant && options.personaReactions
+      ? [WORKSHOP_PERSONA_REACTIONS_PROMPT_PATH, WORKSHOP_REACTION_FREQUENCY_PROMPT_PATHS[behavior.expressionLevel]]
+      : []),
     ...(behavior.expressionLevel === 'subtle' ? [] : [persona.expressionProfilePath]),
     ...(behavior.expressionLevel === 'amplified' ? [persona.expressionCalibrationPath] : [])
   ];

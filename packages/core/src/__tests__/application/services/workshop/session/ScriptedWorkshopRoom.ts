@@ -34,6 +34,7 @@ import {
   workshopReactionHoldsTranscript,
   type WorkshopReactionHolds
 } from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
+import { workshopReactionInviteFor } from '@/application/services/workshop/reactions/WorkshopReactionInvite';
 import type {
   WorkshopConversationLogicalKey,
   WorkshopSessionStateV1
@@ -195,7 +196,7 @@ export class ScriptedWorkshopRoom {
     const conversationId = this.commitHistory(
       this.session.getHostConversationId(),
       `workshop_persona_${this.session.getSelectedPersonaId()}`,
-      `${reactions.lead}[host] ${text}`,
+      `${reactions.lead}${this.invite(requestId)}[host] ${text}`,
       replyContent,
       evidence,
       options.resources
@@ -409,7 +410,7 @@ export class ScriptedWorkshopRoom {
     const conversationId = this.commitHistory(
       undefined,
       `workshop_guest_${personaId}`,
-      `${reactions.lead}[join ${personaId}] ${joinTurns.length} room turns; ${opening}`,
+      `${reactions.lead}${this.invite(requestId)}[join ${personaId}] ${joinTurns.length} room turns; ${opening}`,
       `${personaId} joins.`
     );
     const reply = completeWorkshopRun({
@@ -450,7 +451,7 @@ export class ScriptedWorkshopRoom {
     const conversationId = this.commitHistory(
       this.session.getPersonaGuestConversationId(personaId),
       `workshop_guest_${personaId}`,
-      `${reactions.lead}[guest ${personaId}] ${text}`,
+      `${reactions.lead}${this.invite(requestId)}[guest ${personaId}] ${text}`,
       `${personaId} reply to "${text}".`
     );
     const reply = this.complete(requestId, personaId, conversationId, `${personaId} reply to "${text}".`, () => {
@@ -475,6 +476,16 @@ export class ScriptedWorkshopRoom {
       lead: plan.frame ? `${plan.frame}\n` : '',
       stage: (requestId) => stageWorkshopReactionDelivery(this.session, requestId, reader, plan, (line) => this.log.push(line))
     };
+  }
+
+  /**
+   * The per-turn reaction invite as the room handler adds it (2026-11-10
+   * addendum): after the run began, only while persona reactions are on and
+   * the run has a writer message to react to. It follows the reactions frame.
+   */
+  private invite(requestId: string): string {
+    const invite = workshopReactionInviteFor(this.reactionsOpen === true, this.session.personaReplyReactionTarget(requestId));
+    return invite ? `${invite}\n` : '';
   }
 
   dismissGuest(personaId: WorkshopPersonaId): this {
