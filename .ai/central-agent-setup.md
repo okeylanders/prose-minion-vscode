@@ -145,6 +145,7 @@ packages/core/src/
                 ├── projectMemory.ts
                 ├── memoryDraft.ts
                 ├── projectMemoryManager.ts
+                ├── fileEdits.ts
                 ├── pinnedContext.ts
                 ├── widgets.ts
                 ├── standingDirectives.ts
@@ -1177,6 +1178,71 @@ settings tab, or how a room start attaches it:
   removed Pin held it (PR #213).
 - **Logs carry counts and categories,** never paths, names or contents.
   Tests use *Alice*-style made-up paths.
+
+### Workshop Persona File Edits
+
+Follow [ADR 2026-11-05](docs/adr/2026-11-05-workshop-persona-file-edits.md)
+when touching how a persona proposes an edit to a project file, how it is
+staged, or how Apply writes it:
+
+- **A persona proposes; the writer applies.** A reply ends with up to five
+  `<prose-minion-file-edit>` trailers, bounded by
+  `PROMPT_BUDGETS.workshopFileEdits` and pinned to the prompt by
+  `fileEditProposalPromptSync.test.ts`. A bad, over-bound or extra frame is
+  dropped and counted, never shown, and never cut.
+  - `proseMinion.workshop.fileEdits` is `off` | `ask`, with no `auto`.
+  - The Behavior tab's "Suggested file edits" row writes it the way the
+    project-memory mode is written. Untouched mode rows submit nothing (PR
+    #236 F-02).
+- **One planner, one write path.**
+  - `utils/textEdits/` plans memory edits and file edits alike: quotes
+    anchored exactly once, never offsets.
+  - Only the gateway (`ProjectFileEditGateway`) and Draft Edit's runs reach
+    `DraftEditApplier`, and only the applier calls `applyEdits`
+    (`boundaries.test.ts`). No Workshop module reaches `DocumentEditor`.
+  - Nothing is saved for the writer.
+- **Staged once, to a host identity** (D4–D6, `FileEditStaging`). The host
+  writes `documentUri`. An ambiguous target is refused, never given to the
+  first root, and the webview never sees the URI.
+  - **The class** (prose or notes) comes from every membership the file
+    has, plus excerpt documents, and is recomputed at Apply.
+  - **The baseline** is the content's SHA-256.
+  - **Freshness:** a rewrite needs the baseline; a replace needs its quote
+    exactly once; append and prepend are always fresh.
+- **Prose rules** (D5, `FILE_EDIT_TARGET_POLICIES`).
+  - No rewrite.
+  - Appends and prepends are plain paragraphs within `insertWords`.
+  - Structure mode is `prose-paragraphs`. Draft Edit's passes keep
+    `strict`; notes are `free`.
+  - The rewrite ceiling (more than 300 changed characters and more than 60%
+    of the touched paragraphs) is checked on the live text at every attempt.
+  - Protected regions are never touched.
+- **The claim and the durable checkpoint** (D7, D8).
+  - The handler claims `(roomGeneration, turnId, index)` before any await.
+    Duplicates join, and terminal cards replay.
+  - `checkpointFileEdit` must hold `applying` in every recoverable file
+    before dispatch; anything else is a refusal with no write.
+  - `beforeAttempt` re-checks the authority predicate before every
+    `applyEdits`: claim, generation, setting, authority epoch, then the text.
+- **Honest states, no blind retry** (D8, amended 2026-11-06).
+  - The states: `pending`, `applying`, `applied`, `partial`, `declined`,
+    `stale`, `refused`, `unknown`.
+  - Only `pending` offers Apply. `catalog-unreadable` at Apply and
+    `host-failed` before dispatch return to `pending`.
+  - A failure after `applyEdits` was called reads `unknown`. A reveal-only
+    failure keeps the settled result.
+  - Every reason's words live in one table
+    (`shared/constants/workshopFileEditWords.ts`), shared by the host and
+    the cards.
+- **Session state** (D10). `fileEditProposals` on a turn carries `landed`
+  records (bounded before/after with context) for D12's future Revert. An
+  `applying` card found on reopen reads `unknown`. Transcript export shows
+  a card's path, why and state, never its operations.
+- **D12 keeps autonomy additive.** Staging and apply don't care where a
+  request came from, and Apply is a host action keyed by a stored proposal.
+  Nothing accepts `auto` until that feature chooses its own authorization.
+- **Logs** carry ids, counts and fault kinds, never the writer's text, a
+  quote, a path or a URI.
 
 ### Lightbox Source Ownership
 

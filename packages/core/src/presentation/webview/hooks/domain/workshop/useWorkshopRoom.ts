@@ -65,6 +65,8 @@ import {
   WorkshopWebResearchSettings,
   WorkshopProjectMemoryMode,
   coerceWorkshopProjectMemoryMode,
+  WorkshopFileEditsMode,
+  coerceWorkshopFileEditsMode,
   WorkshopStandingDirectiveSummary,
   coerceWorkshopConversationBehavior,
   coerceWorkshopWriterProfile,
@@ -168,6 +170,8 @@ export interface WorkshopRoomState {
   webResearch: WorkshopWebResearchSettings;
   /** The global project-memory mode (ADR 2026-11-04 D8): the Memory tab's draft starts from it. */
   projectMemoryMode: WorkshopProjectMemoryMode;
+  /** The global suggested-file-edits mode (ADR 2026-11-05 D11): the Behavior tab's draft starts from it. */
+  fileEditsMode: WorkshopFileEditsMode;
   /** Public metadata for the latest retained sidecar per tool. */
   toolSidecars: WorkshopToolSidecarSnapshot[];
   /** Explicitly invited persona guests, including disposed history markers. */
@@ -239,7 +243,8 @@ export interface WorkshopRoomActions {
     behavior: WorkshopConversationBehavior,
     writerProfile: WorkshopWriterProfile,
     webResearch?: WorkshopWebResearchSettings,
-    projectMemoryMode?: WorkshopProjectMemoryMode
+    projectMemoryMode?: WorkshopProjectMemoryMode,
+    fileEditsMode?: WorkshopFileEditsMode
   ) => void;
   todoAction: (action: WorkshopTodoAction) => void;
   cancelRun: () => void;
@@ -329,6 +334,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   const [webResearch, setWebResearch] =
     React.useState<WorkshopWebResearchSettings>({ ...DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS });
   const [projectMemoryMode, setProjectMemoryMode] = React.useState<WorkshopProjectMemoryMode>('off');
+  const [fileEditsMode, setFileEditsMode] = React.useState<WorkshopFileEditsMode>(coerceWorkshopFileEditsMode(undefined));
   const [toolSidecars, setToolSidecars] = React.useState<WorkshopToolSidecarSnapshot[]>([]);
   const [personaGuests, setPersonaGuests] = React.useState<WorkshopPersonaGuestSnapshot[]>([]);
   const [contextBudget, setContextBudget] = React.useState<LabeledContextBudgetSnapshot | undefined>();
@@ -566,17 +572,21 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       behavior: WorkshopConversationBehavior,
       profile: WorkshopWriterProfile,
       research = DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
-      memoryMode: WorkshopProjectMemoryMode = projectMemoryMode
+      memoryMode?: WorkshopProjectMemoryMode,
+      editsMode?: WorkshopFileEditsMode
     ) => {
       setErrorMessage('');
+      // A mode is sent only when the writer picked it: an omitted one is left as the host has it, never filled from
+      // the mode this webview last heard, which may be stale (PR #236 F-02 re-review).
       post(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS, {
         behavior,
         writerProfile: profile,
         webResearch: research,
-        projectMemory: memoryMode
+        ...(memoryMode !== undefined ? { projectMemory: memoryMode } : {}),
+        ...(editsMode !== undefined ? { fileEdits: editsMode } : {})
       });
     },
-    [post, projectMemoryMode]
+    [post]
   );
 
   const todoAction = React.useCallback(
@@ -675,6 +685,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       setWriterProfile(coerceWorkshopWriterProfile(message.payload.writerProfile));
       setWebResearch(coerceWorkshopWebResearchSettings(message.payload.webResearch));
       setProjectMemoryMode(coerceWorkshopProjectMemoryMode(message.payload.projectMemory));
+      setFileEditsMode(coerceWorkshopFileEditsMode(message.payload.fileEdits));
       setToolSidecars(session.participants.toolSidecars);
       setPersonaGuests(session.participants.personaGuests);
       setContextBudget(session.contextBudget);
@@ -845,6 +856,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     writerProfile,
     webResearch,
     projectMemoryMode,
+    fileEditsMode,
     toolSidecars,
     personaGuests,
     contextBudget,

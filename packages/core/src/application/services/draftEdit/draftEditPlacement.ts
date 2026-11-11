@@ -107,7 +107,7 @@ export function placeFindings(
     }
   }
   const placed = [...kept, ...hostIssues].sort(byPlace);
-  return policy.preservesMarkdownStructure ? flagStructureChanges(placed, target) : placed;
+  return policy.structure === 'free' ? placed : flagStructureChanges(placed, target, policy.structure);
 }
 
 /** A spelling or wrong-word finding whose quote is one word the writer accepts. */
@@ -116,9 +116,9 @@ function onAcceptedWord(finding: ProofreadFinding, accepted: ReadonlySet<string>
 }
 
 /** Fixes that would change the Markdown structure, together as Fix would make them, flagged instead. */
-function flagStructureChanges(issues: ProofreadIssue[], target: DraftEditTarget): ProofreadIssue[] {
+function flagStructureChanges(issues: ProofreadIssue[], target: DraftEditTarget, mode: 'strict' | 'prose-paragraphs'): ProofreadIssue[] {
   const fixes = issues.filter((issue) => issue.disposition === 'fix').filter(hasReplacement);
-  const unsafe = editsChangingStructure(target.text, target.languageId, fixes);
+  const unsafe = editsChangingStructure(target.text, target.languageId, fixes, { mode });
   if (unsafe.size === 0) {
     return issues;
   }

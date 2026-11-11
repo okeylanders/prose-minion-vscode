@@ -16,6 +16,10 @@
  *    unknown because the writer edited there meanwhile. The host's changes
  *    may be smaller than the edits, or one change spanning a thousand of
  *    them (PR #172 F-04); both read back as the edits they are.
+ * 3a. Immediately before every ask, the first and the retry, the caller's
+ *    `beforeAttempt` (when given) reads the document and the edits as they
+ *    now stand, synchronously; a reason it gives refuses the attempt,
+ *    nothing more is written, and no further attempt is made.
  * 4. A direct apply that found the document moved (the writer typed as it
  *    went out) follows its edits through the writer's edits, checks every
  *    one again against the document as it now stands (it may now be in
@@ -58,7 +62,15 @@ export interface DraftEditApplyRequest {
   readonly document: DocumentSnapshot;
   readonly edits: readonly DraftEditEdit[];
   readonly review: DocumentEditReview;
-  readonly policy: Pick<DraftEditPassPolicy, 'allowsNewlineChanges' | 'preservesMarkdownStructure'>;
+  readonly policy: Pick<DraftEditPassPolicy, 'allowsNewlineChanges' | 'structure'>;
+  /**
+   * The caller's own rules, run synchronously immediately before every
+   * `applyEdits`, the direct retry included, against the document as it
+   * stands and the edits as they now sit there (ADR 2026-11-05 D7.6). A
+   * reason refuses the attempt: nothing more is written and no further
+   * attempt is made.
+   */
+  readonly beforeAttempt?: (document: DocumentSnapshot, edits: readonly DraftEditEdit[]) => string | undefined;
 }
 
 export type DraftEditRefusal = 'changed' | 'protected' | 'line-break' | 'overlapping' | 'markup';
@@ -78,8 +90,10 @@ export interface DraftEditApplyResult {
    * The host's last answer. `nothing` when every edit was refused, so the
    * host was never asked; `changed` when the document had already moved.
    */
-  readonly outcome: DocumentApplyOutcome['kind'] | 'nothing' | 'changed';
+  readonly outcome: DocumentApplyOutcome['kind'] | 'nothing' | 'changed' | 'before-attempt';
   readonly failure?: string;
+  /** The caller's `beforeAttempt` reason, when it refused an attempt (`before-attempt`). */
+  readonly beforeAttempt?: string;
   /** Edit ids that landed. */
   readonly applied: readonly string[];
   /** Edit ids still standing as they were (unticked, declined, refused by the host), at their place after. */
@@ -100,7 +114,7 @@ interface EditGroup extends TextRange {
 }
 
 export class DraftEditApplier {
-  constructor(private readonly documents: DocumentEditor) {}
+  constructor(private readonly documents: Pick<DocumentEditor, 'watch' | 'applyEdits'>) {}
 
   async apply(request: DraftEditApplyRequest): Promise<DraftEditApplyResult> {
     const refused: Array<{ id: string; reason: DraftEditRefusal }> = [];
@@ -118,6 +132,20 @@ export class DraftEditApplier {
       const watch = this.documents.watch(document.uri, document.version);
       if (!watch) {
         return { outcome: 'changed', applied, notApplied: [], unknown: [...unknown, ...ids(groups)], refused };
+      }
+      // Nothing awaited from here to the host's call.
+      const before = request.beforeAttempt?.(document, members);
+      if (before !== undefined) {
+        watch.dispose();
+        return {
+          outcome: 'before-attempt',
+          beforeAttempt: before,
+          applied,
+          notApplied: members.map(({ id, start, end }) => ({ id, start, end })),
+          unknown,
+          refused,
+          settled: { snapshot: document, edits: history }
+        };
       }
       const outcome = await this.documents.applyEdits(document.uri, groups.map(toDocumentEdit), {
         expectedVersion: document.version,
@@ -179,11 +207,11 @@ function check(
       accepted.push(edit);
     }
   }
-  if (!policy.preservesMarkdownStructure) {
+  if (policy.structure === 'free') {
     return accepted;
   }
   // Together, as they would land: two edits can make structure neither makes alone.
-  const unsafe = editsChangingStructure(document.text, document.languageId, accepted);
+  const unsafe = editsChangingStructure(document.text, document.languageId, accepted, { mode: policy.structure });
   accepted.filter((_, index) => unsafe.has(index)).forEach((edit) => refused.push({ id: edit.id, reason: 'markup' }));
   return accepted.filter((_, index) => !unsafe.has(index));
 }

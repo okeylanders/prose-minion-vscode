@@ -16,6 +16,7 @@
  * point; Sprint 02 rewinds to each one and compares (the equivalence oracle).
  */
 
+import type { WorkshopReplyFileEditContext } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
 import type { WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import {
   completeWorkshopRun,
@@ -120,6 +121,8 @@ export class ScriptedWorkshopRoom {
   memoryContext?: WorkshopReplyMemoryContext;
   /** Save and tell me's saver (Slice 5); absent, a card waits as under Ask first. */
   memoryAutoSave?: (turn: WorkshopTurn, indexes: readonly number[]) => void;
+  /** A reply's staged file edits (ADR 2026-11-05 D4): a test resolves them first; used only for the reply they match. */
+  fileEdits?: WorkshopReplyFileEditContext;
   /** Whether each reply's run had web search tools attached (Slice 5's hold). */
   webResearchAttached = false;
 
@@ -543,6 +546,7 @@ export class ScriptedWorkshopRoom {
       readRetainedHistory: (id) => this.conversations.getCommittedHistoryCounts(id),
       settleCommittedRun: settle,
       memory: this.memoryContext,
+      ...(this.fileEdits ? { fileEdits: this.fileEdits } : {}),
       ...(this.memoryAutoSave ? { memoryAutoSave: this.memoryAutoSave } : {}),
       log: (line) => this.log.push(line),
       events: silentEvents()

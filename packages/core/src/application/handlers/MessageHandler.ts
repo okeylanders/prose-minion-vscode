@@ -26,6 +26,7 @@ import {
   WORKSHOP_WRITER_PROFILE_SETTING,
   WORKSHOP_WEB_RESEARCH_SETTING,
   WORKSHOP_PROJECT_MEMORY_SETTING,
+  WORKSHOP_FILE_EDITS_SETTING,
   WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING,
   LightboxSetSourcePayload
 } from '@messages';
@@ -214,6 +215,8 @@ export class MessageHandler {
       projectMemory,
       workshopPinnedContext,
       workshopTranscriptRecallService,
+      fileEditStaging,
+      projectFileEditGateway,
       helperAgentService
     } = services;
 
@@ -363,6 +366,8 @@ export class MessageHandler {
       projectMemory,
       workshopPinnedContext,
       workshopTranscriptRecallService,
+      fileEditStaging,
+      projectFileEditGateway,
       { helper: helperAgentService, settings: this.platform.settings }
     );
     // Lightbox editor tab (ADR 2026-10-19 D10) — the 13th domain, composed
@@ -712,8 +717,9 @@ export class MessageHandler {
       WORKSHOP_WEB_RESEARCH_SETTING.key;
     const workshopProjectMemoryKey = `${WORKSHOP_PROJECT_MEMORY_SETTING.section}.` +
       WORKSHOP_PROJECT_MEMORY_SETTING.key;
+    const workshopFileEditsKey = `${WORKSHOP_FILE_EDITS_SETTING.section}.${WORKSHOP_FILE_EDITS_SETTING.key}`;
     if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey) || affects(workshopWebResearchKey)
-      || affects(workshopProjectMemoryKey)) {
+      || affects(workshopProjectMemoryKey) || affects(workshopFileEditsKey)) {
       void this.workshopHandler.syncConversationSettingsFromSettings();
     }
     // The helper's memory drafts (ADR 2026-11-05 D5.7): the sheet hears the switch, and off asks for nothing.

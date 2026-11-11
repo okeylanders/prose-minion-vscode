@@ -1,0 +1,88 @@
+/* Independent review probes. Run at the reviewed checkout:
+ * node /path/to/pr227-independent.cjs [repo-root]
+ * Reads the pre-extraction anchor from git, loads current production TypeScript,
+ * and checks decoded memory edits plus shared-planner invariants.
+ */
+const fs = require('node:fs');
+const path = require('node:path');
+const Module = require('node:module');
+const assert = require('node:assert/strict');
+const cp = require('node:child_process');
+const root = path.resolve(process.argv[2] || process.cwd());
+const ts = require(path.join(root, 'node_modules/typescript'));
+const sourceRoot = path.join(root, 'packages/core/src');
+const resolveFilename = Module._resolveFilename;
+Module._resolveFilename = function(request, parent, ...rest) {
+  if (request.startsWith('@/')) request = path.join(sourceRoot, request.slice(2));
+  else if (request.startsWith('@shared/')) request = path.join(sourceRoot, 'shared', request.slice(8));
+  return resolveFilename.call(this, request, parent, ...rest);
+};
+const transpile = source => ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true }}).outputText;
+require.extensions['.ts'] = (module, file) => module._compile(transpile(fs.readFileSync(file, 'utf8')), file);
+const anchorPath = 'packages/core/src/application/services/workshop/memory/WorkshopMemoryEditAnchor.ts';
+const beforeSource = cp.execFileSync('git', ['show', `b14c46b8ca1e3e37966c27eccd0eb916c590c316:${anchorPath}`], {cwd:root,encoding:'utf8'});
+const beforeModule = new Module(path.join(root, anchorPath));
+beforeModule.filename = path.join(root, anchorPath);
+beforeModule.paths = module.paths;
+beforeModule._compile(transpile(beforeSource), beforeModule.filename);
+const oldAnchor = beforeModule.exports.anchorWorkshopMemoryEdit;
+const {anchorWorkshopMemoryEdit} = require(path.join(root, anchorPath));
+const {decodeWorkshopMemoryEdit} = require(path.join(sourceRoot, 'utils/workshopMemoryEditProtocol.ts'));
+const {planTextEdits,applyTextEdits} = require(path.join(sourceRoot,'utils/textEdits/planTextEdits.ts'));
+const same = (a,b,label) => assert.deepEqual(a,b,label);
+let compared = 0;
+const bodies = ['', 'Alice', 'Alice Rabbit', '  Alice\n\nRabbit\n', 'Alice 🐇. Rabbit ran.', 'aa a', 'a\r\nb', 'a\tb'];
+const summaries = ['Alice Rabbit', 'Alice and Alice', 'Alice 🐇'];
+for (const body of bodies) for (const summary of summaries) {
+  const note = {title:'A note',kind:'canon',summary,body};
+  const rewrites = ['title','kind','summary','body'].map(field=>[{name:field,content:field==='kind'?'theme':field==='body'?'':'New text'}]);
+  const finds = [...new Set([body.trim(),summary,'Alice','Rabbit','a','aa','🐇','missing','Alice Rabbit'].filter(Boolean))];
+  const replacements = [];
+  for (const field of ['body','summary']) for (const find of finds) for (const content of ['', 'x', 'New\ntext', '🦊']) {
+    replacements.push([{name:`find-in-${field}`,content:find},{name:'replace-with',content}]);
+  }
+  const passages = [[],[{name:'prepend',content:'First.'}],[{name:'append',content:'Last.'}],[{name:'append',content:'Last.'},{name:'prepend',content:'First.'}],[{name:'prepend',content:'First.'},{name:'append',content:'Last.'}]];
+  const groups = [[],...rewrites,...replacements];
+  // Two-replacement cases include overlapping, touching, missing and cross-field quotes.
+  for (const first of replacements.slice(0,40)) for (const second of replacements.slice(-24)) groups.push([...first,...second]);
+  for (const group of groups) for (const passage of passages) {
+    const decoded = decodeWorkshopMemoryEdit([{name:'edit',content:'mem-000001'},...group,...passage]);
+    if (decoded.kind !== 'edit') continue;
+    const old = oldAnchor(decoded.edit,note), current = anchorWorkshopMemoryEdit(decoded.edit,note);
+    same(current,old,JSON.stringify({note,operations:decoded.edit.operations,old,current}));
+    compared++;
+  }
+}
+console.log(`PASS: ${compared} decoder-valid memory edit cases exactly match the pre-extraction anchor.`);
+let planned = 0;
+const texts = ['', ' ', '\n\n', 'abc', ' abc\n', 'ab cd', 'abc\r\n', '😀abc🐇', '---\ntitle: Alice\n---\n\nabc\n'];
+for (const text of texts) for (const skipLeading of [0, text.indexOf('abc') < 0 ? 0 : text.indexOf('abc'),text.length]) {
+  const operations = [{op:'append',text:'Last'},{op:'prepend',text:'First'},{op:'rewrite',text:'New'},...['a','b','c','ab','bc','abc','😀','🐇',' '].flatMap(find=>['','x','🦊'].map(withText=>({op:'replace',find,with:withText})))];
+  const lists = [[],...operations.map(o=>[o])];
+  for (const a of operations) for (const b of operations) lists.push([a,b]);
+  for (const ops of lists) {
+    const plan = planTextEdits(text,ops,{allowsRewrite:true,skipLeading});
+    if(plan.kind!=='planned') continue;
+    same(plan.operations.map(x=>x.index),ops.map((_,i)=>i),'operation indices');
+    for (let i=0;i<plan.edits.length;i++) {
+      const e=plan.edits[i];
+      assert(e.start>=0 && e.end>=e.start && e.end<=text.length,'valid bounds');
+      if(i) assert(plan.edits[i-1].end<e.start,'strict separation');
+      same(e.text,e.operations.map(index=>plan.operations[index].text).join(''),'joined operation text');
+    }
+    let cursor=0,expected='';
+    for(const e of plan.edits) { expected+=text.slice(cursor,e.start)+e.text;cursor=e.end; }
+    expected+=text.slice(cursor);
+    same(applyTextEdits(text,plan.edits),expected,'forward reconstruction');
+    same([...plan.edits.flatMap(e=>e.operations)].sort((a,b)=>a-b),ops.map((_,i)=>i),'each op appears once');
+    planned++;
+  }
+}
+console.log(`PASS: ${planned} successful planner cases have valid separated ranges, exact operation coverage, matching joined text and matching application.`);
+const file='---\ntitle: Alice\n---\n\nAlice sat.\r\n';
+const fm='---\ntitle: Alice\n---\n'.length;
+const edits=[{op:'prepend',text:'First.'},{op:'replace',find:'Alice sat.',with:''},{op:'append',text:'Last.'}];
+const plan=planTextEdits(file,edits,{allowsRewrite:true,skipLeading:fm,separator:'\r\n\r\n'});
+assert.equal(plan.kind,'planned');
+same(applyTextEdits(file,plan.edits),'---\ntitle: Alice\n---\n\nFirst.\r\n\r\nLast.\r\n','delete all content + both inserts + preserved front matter/newline');
+console.log('PASS: front matter, full-content deletion, both insertions and CRLF separator compose correctly.');

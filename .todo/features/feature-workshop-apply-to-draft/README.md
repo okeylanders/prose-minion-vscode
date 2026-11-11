@@ -2,7 +2,14 @@
 
 **Date Identified**: 2026-07-07
 **Source**: Workshop editor-tab Sprint 04 parked item; expanded 2026-10-21 (Okey)
-**Status**: Parked. Builds on the Draft Edit foundation planned in
+**Status**: Superseded in part by [ADR 2026-11-05: Personas Propose Edits
+to Project Files](../../../docs/adr/2026-11-05-workshop-persona-file-edits.md),
+settled at that epic's close (2026-11-10):
+- its target rules are that ADR's prose policy (D5);
+- Apply Recommendations is dropped, since personas propose edits directly (Q5);
+- **what remains open is [Apply Variation](#apply-variation-no-model-the-original-scope)
+  alone**: no model, a later use of the persona file-edit gateway (D4, D7).
+Previously: Parked. Builds on the Draft Edit foundation planned in
 [Feature: Proofread](../feature-proofread/README.md). Its passes' shape is
 fixed by [ADR 2026-10-21 D11](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md#d11-reserved-passes-constraints-fixed-now-built-later).
 **Priority**: Medium

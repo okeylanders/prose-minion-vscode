@@ -168,6 +168,11 @@ export enum MessageType {
   WORKSHOP_REQUEST_SAVED_TURN_PREVIEW = 'workshop_request_saved_turn_preview',
   WORKSHOP_SAVED_TURN_PREVIEW = 'workshop_saved_turn_preview',
   WORKSHOP_MEMORY_PROPOSAL_ACTION = 'workshop_memory_proposal_action',
+  // Workshop Persona File Edits: Apply, Review in editor…, Decline and Preview (epic Slice 4a)
+  WORKSHOP_FILE_EDIT_ACTION = 'workshop_file_edit_action',
+  WORKSHOP_FILE_EDIT_RESULT = 'workshop_file_edit_result',
+  WORKSHOP_FILE_EDIT_PREVIEW = 'workshop_file_edit_preview',
+  WORKSHOP_FILE_EDIT_PREVIEW_RESULT = 'workshop_file_edit_preview_result',
   WORKSHOP_SAVE_TURN_TO_MEMORY = 'workshop_save_turn_to_memory',
   WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY = 'workshop_save_saved_turn_to_memory',
   WORKSHOP_MEMORY_CREATE = 'workshop_memory_create',

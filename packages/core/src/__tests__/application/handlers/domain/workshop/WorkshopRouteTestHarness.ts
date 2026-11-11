@@ -1,6 +1,9 @@
+import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import { WorkshopRoomHandler } from '@handlers/domain/workshop/WorkshopRoomHandler';
 import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
 import { unusedBookmarkBrowser, unusedMemoryDrafts } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
+import type { FileEditApplyPort } from '@/domain/models/FileEdit';
+import { fakeFileEditApply, fakeFileEditStaging } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import { libraryHost } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
@@ -142,6 +145,9 @@ export interface WorkshopRouteTestHarnessOptions {
   memoryDrafts?: WorkshopMemoryDraftPorts;
   /** The session's clock (turn and bookmark times); 1 by default. */
   sessionNow?: () => number;
+  /** Persona file edits' staging port (ADR 2026-11-05 D4); absent by default, as before Slice 4 binds it. */
+  fileEditStaging?: FileEditStaging;
+  fileEditApply?: FileEditApplyPort;
 }
 
 export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarnessOptions = {}): WorkshopRouteTestHarness => {
@@ -310,7 +316,8 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     resolveRevealPath: jest.fn().mockResolvedValue(
       '/workspace/prose-minion/sessions/saved-1.json'
     ),
-    deleteNamed: jest.fn().mockResolvedValue(undefined)
+    deleteNamed: jest.fn().mockResolvedValue(undefined),
+    checkpointFileEdit: jest.fn().mockResolvedValue({ ok: true })
   } as unknown as jest.Mocked<WorkshopSessionPersistenceCoordinator>;
   const roomDelivery = new WorkshopRoomDeliveryService(session);
   // Real projection + renderers over the live session; only the disk is fake.
@@ -370,6 +377,8 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     memory.library,
     emptyPinnedContextServices(),
     options.bookmarkBrowser?.(session) ?? unusedBookmarkBrowser(),
+    options.fileEditStaging ?? fakeFileEditStaging(),
+    options.fileEditApply ?? fakeFileEditApply(),
     options.memoryDrafts ?? unusedMemoryDrafts()
   );
   const router = new MessageRouter();

@@ -95,6 +95,8 @@ const WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryManagerHandler.ts';
 const WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopPinnedContextHandler.ts';
+const WORKSHOP_FILE_EDIT_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopFileEditHandler.ts';
 const WORKSHOP_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopContextHandler.ts';
 const WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER =
@@ -263,6 +265,17 @@ const WORKSHOP_ROUTE_OWNERS = [
     registration: 'mutation',
     messageTypes: ['WORKSHOP_ATTACH_PINNED_CONTEXT']
   },
+  // A file-edit card's actions change the room, behind the gate; its rewrite preview is a read (ADR 2026-11-05 D8, D9).
+  {
+    owner: WORKSHOP_FILE_EDIT_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_FILE_EDIT_ACTION']
+  },
+  {
+    owner: WORKSHOP_FILE_EDIT_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_FILE_EDIT_PREVIEW']
+  },
   {
     owner: WORKSHOP_SESSION_HANDLER_OWNER,
     registration: 'mutation',
@@ -427,6 +440,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopContextHandler',
   'WorkshopExcerptScopeHandler',
   'WorkshopCreativeVariationsHandler',
+  'WorkshopFileEditHandler',
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
@@ -1667,7 +1681,11 @@ describe('architectural boundaries', () => {
       'platform/index.ts',
       'application/services/draftEdit/DraftEditUseCase.ts',
       'application/services/draftEdit/CraftFlagsUseCase.ts',
-      'application/services/draftEdit/DraftEditApplier.ts'
+      'application/services/draftEdit/DraftEditApplier.ts',
+      // Persona file edits (ADR 2026-11-05 D4, D6, D7): staging peeks at an open buffer for the baseline;
+      // the gateway opens, and reveals, the file it edits through the applier.
+      'application/services/fileEdits/FileEditStagingService.ts',
+      'application/services/fileEdits/ProjectFileEditGateway.ts'
     ]);
     const offenders = collectSourceFiles(SRC_ROOT)
       .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
@@ -1686,6 +1704,42 @@ describe('architectural boundaries', () => {
       .filter((file) => writes.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')));
 
     expect(offenders).toEqual([]);
+  });
+
+  it('reaches the applier only from Draft Edit\'s runs and the file-edit gateway (ADR 2026-11-05 D4)', () => {
+    const applierModule = /from\s+['"]@\/application\/services\/draftEdit\/DraftEditApplier['"]/;
+    const importers = collectSourceFiles(SRC_ROOT)
+      .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
+      .filter((file) => !file.startsWith('__tests__/'))
+      .filter((file) => applierModule.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')))
+      .sort();
+
+    expect(importers).toEqual([
+      'application/services/draftEdit/DraftEditUseCase.ts',
+      // Types only: the edit shape a run's issues are turned into.
+      'application/services/draftEdit/draftEditIssues.ts',
+      'application/services/draftEdit/draftEditRunFixes.ts',
+      'application/services/fileEdits/ProjectFileEditGateway.ts',
+      // The barrel, for the composition root.
+      'index.ts'
+    ]);
+  });
+
+  it('keeps every Workshop module off the document ports: persona edits go through the gateway (ADR 2026-11-05 D4)', () => {
+    const documentPorts = /\b(?:DocumentEditor|DraftEditApplier|ProjectFileEditGateway)\b|\.documents\.(?:open|reveal|watch|applyEdits)\(/;
+    const workshop = collectSourceFiles(SRC_ROOT)
+      .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
+      .filter((file) => !file.startsWith('__tests__/'))
+      .filter((file) => /(?:^|\/)workshop\/|(?:^|\/)Workshop[\w]*\.tsx?$/.test(file));
+
+    expect(workshop.length).toBeGreaterThan(100);
+    expect(workshop.filter((file) => documentPorts.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')))).toEqual([]);
+  });
+
+  it('never saves a document: file edits read files and write only through the applier (ADR 2026-11-05 D7)', () => {
+    const root = path.join(SRC_ROOT, 'application', 'services', 'fileEdits');
+    const saves = /\b(?:writeFile|createDirectory|rename|copy|save)\b|\.save\(|\.delete\(/;
+    expect(collectSourceFiles(root).filter((file) => saves.test(fs.readFileSync(file, 'utf8'))).map((file) => path.basename(file))).toEqual([]);
   });
 
   it('keeps Craft Flags write-free: no Craft Flags module names the applier or asks for an edit (ADR 2026-10-21, Slice 3c)', () => {
@@ -1715,6 +1769,22 @@ describe('architectural boundaries', () => {
 
     expect(draftEdit).toEqual(expect.arrayContaining(['application/services/draftEdit/CraftFlagsUseCase.ts', 'utils/chapterSections.ts']));
     expect(draftEdit.filter((file) => lightbox.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')))).toEqual([]);
+  });
+
+  it('keeps the shared edit planner feature-free: utils/textEdits imports only itself (ADR 2026-11-05 D3)', () => {
+    const root = path.join(SRC_ROOT, 'utils', 'textEdits');
+    const files = collectSourceFiles(root).map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'));
+    expect(files).toEqual(expect.arrayContaining([
+      'utils/textEdits/findExactlyOnce.ts',
+      'utils/textEdits/planTextEdits.ts',
+      'utils/textEdits/textEditOperations.ts'
+    ]));
+    const specifier = /(?:from\s+|import\s*\(\s*|require\s*\(\s*)['"]([^'"]+)['"]/g;
+    const offenders = files.flatMap((file) => [...fs.readFileSync(path.join(SRC_ROOT, file), 'utf8').matchAll(specifier)]
+      .map((match) => match[1])
+      .filter((imported) => !imported.startsWith('@/utils/textEdits/'))
+      .map((imported) => `${file} -> ${imported}`));
+    expect(offenders).toEqual([]);
   });
 
   it('application handlers do not construct infrastructure services', () => {
@@ -1981,12 +2051,13 @@ describe('architectural boundaries', () => {
     // Pinned Context Slice 3 added the tab's seven list routes (direct) and Attach missing (mutation).
     // Bookmark Recall Slice 2 added the Bookmarks screen's page, cancel, live rows and saved turn (direct).
     // Bookmark Recall Slice 3 added "Remember this" from a saved session (mutation).
+    // Persona File Edits Slice 4a added a card's action (mutation) and a rewrite's preview (direct).
     // Helper Agent Slice 2 added the memory sheet's draft request, its cancel and the setting's read (direct).
-    expect(expectedOwnerPairs).toHaveLength(89);
+    expect(expectedOwnerPairs).toHaveLength(91);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(47);
+      .toHaveLength(48);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(42);
+      .toHaveLength(43);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -2635,6 +2706,7 @@ describe('architectural boundaries', () => {
       'bookmarks.ts',
       'context.ts',
       'creativeVariations.ts',
+      'fileEdits.ts',
       'gesturePlayground.ts',
       'index.ts',
       'lexicalGravity.ts',

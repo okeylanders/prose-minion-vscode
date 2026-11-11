@@ -117,6 +117,15 @@ export const WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH =
 export const WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATH =
   'workshop-personas/project-memory-proposals.md';
 
+/**
+ * The file-edit trailer (ADR 2026-11-05 D2, D9): taught to host and guest
+ * only while `proseMinion.workshop.fileEdits` is `ask`, so a persona never
+ * proposes an edit while the setting is off. A change of the setting
+ * rebuilds the prompt, as memory's mode does.
+ */
+export const WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH =
+  'workshop-personas/file-edit-proposals.md';
+
 export const WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS: Readonly<
   Record<WorkshopRelationalDepth, string>
 > = Object.freeze({
@@ -142,7 +151,7 @@ export function workshopPersonaSystemPromptPaths(
     WorkshopConversationBehavior,
     'interactionMode' | 'expressionLevel' | 'relationalDepth'
   >,
-  options: { readonly projectMemory?: boolean } = {}
+  options: { readonly projectMemory?: boolean; readonly fileEdits?: boolean } = {}
 ): string[] {
   const participant = basePromptPath === WORKSHOP_HOST_BASE_PROMPT_PATH
     || basePromptPath === WORKSHOP_GUEST_BASE_PROMPT_PATH;
@@ -160,6 +169,7 @@ export function workshopPersonaSystemPromptPaths(
     ...(participant && options.projectMemory
       ? [WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH, WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATH]
       : []),
+    ...(participant && options.fileEdits ? [WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH] : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],
     WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,

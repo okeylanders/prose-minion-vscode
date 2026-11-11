@@ -25,6 +25,13 @@ import {
   hasWorkshopMemoryProposalText
 } from '@/utils/workshopReplyControls';
 import { resolveWorkshopReplyMemory, type WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
+import {
+  resolveWorkshopReplyFileEdits,
+  type WorkshopReplyFileEditContext
+} from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
+import type { FileEditStaging } from '@/domain/models/FileEditStaging';
+import type { FileEditApplyPort } from '@/domain/models/FileEdit';
+import { workshopTurnForWebview } from '@/application/services/workshop/fileEdits/WorkshopFileEditWebviewView';
 import { LogSink, ShellService } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
@@ -119,11 +126,11 @@ import type {
   WorkshopWidgetRuntime
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSliceComposition } from '@handlers/domain/workshop/WorkshopSliceComposition';
-import type { WorkshopProjectMemoryMode } from '@messages';
-import { WorkshopConversationSettingsPartialApplyError } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
-
-/** The mode's names as the Memory tab's cards give them. */
-const PROJECT_MEMORY_MODE_WORDS: Record<WorkshopProjectMemoryMode, string> = { off: 'Off', ask: 'Ask first', auto: 'Save and tell me' };
+import {
+  WorkshopConversationSettingsPartialApplyError,
+  workshopConversationSettingsApplyReport,
+  workshopConversationSettingsPartialApplyWords
+} from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
 let requestIdCounter = 0;
@@ -250,6 +257,10 @@ export class WorkshopRoomHandler {
     projectMemory: WorkshopProjectMemoryPort,
     pinnedContext: WorkshopPinnedContextServices,
     bookmarkBrowser: WorkshopBookmarkBrowserPort,
+    /** Persona file edits' staging (ADR 2026-11-05 D4): `FileEditStagingService`, built in `extension.ts`. */
+    private readonly fileEditStaging: FileEditStaging,
+    /** Persona file edits' Apply and Preview (ADR 2026-11-05 D7–D9): the gateway, built in `extension.ts`. */
+    fileEditApply: FileEditApplyPort,
     memoryDrafts: WorkshopMemoryDraftPorts
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
@@ -285,6 +296,7 @@ export class WorkshopRoomHandler {
         projectMemory,
         pinnedContext,
         bookmarkBrowser,
+        fileEditApply,
         memoryDrafts,
         outputChannel: this.outputChannel
       },
@@ -303,6 +315,7 @@ export class WorkshopRoomHandler {
         sendRoomMessage: (text, displayText, executeOptions) =>
           this.executeMessage(text, displayText, undefined, executeOptions),
         isRoomRunActive: () => this.activeRun !== undefined,
+        fileEditsMode: () => this.conversationSettingsService.getFileEditsMode(),
         findReadInRecord: (identity) => this.assistantToolService.findConversationContextSourceRead(
           this.chatTargetConversation().conversationId,
           identity
@@ -411,6 +424,7 @@ export class WorkshopRoomHandler {
         this.sendError('workshop.widget_recommendation', errorMessage, details),
       memoryAutoSave: (turn, indexes) => this.sliceComposition.autoSaveMemoryProposals(turn, indexes, controller.signal),
       memoryAutoSavesInRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
+      fileEdits: (reply, signal) => this.replyFileEdits(reply, signal),
       settled: (requestId) => this.settleActiveRun(requestId)
     });
   }
@@ -432,29 +446,13 @@ export class WorkshopRoomHandler {
         message.payload?.behavior,
         message.payload?.writerProfile,
         message.payload?.webResearch,
-        message.payload?.projectMemory
+        message.payload?.projectMemory,
+        message.payload?.fileEdits
       );
-      if (result.persistenceErrors) {
-        const persistenceDetails = [
-          result.persistenceErrors.behavior
-            ? `behavior: ${result.persistenceErrors.behavior}`
-            : undefined,
-          result.persistenceErrors.writerProfile
-            ? `writer profile: ${result.persistenceErrors.writerProfile}`
-            : undefined,
-          result.persistenceErrors.webResearch
-            ? `web research: ${result.persistenceErrors.webResearch}`
-            : undefined,
-          result.persistenceErrors.projectMemory ? `project memory: ${result.persistenceErrors.projectMemory}` : undefined
-        ].filter(Boolean).join('; ');
-        this.outputChannel.appendLine(
-          `[WorkshopRoomHandler] Conversation settings are active but could not be persisted: ${persistenceDetails}`
-        );
-        this.sendError(
-          'workshop',
-          'Conversation settings changed for this session, but VS Code could not save them for restart.',
-          persistenceDetails
-        );
+      const report = workshopConversationSettingsApplyReport(result);
+      if (report) {
+        this.outputChannel.appendLine(`[WorkshopRoomHandler] ${report.logLine}`);
+        this.sendError('workshop', report.message, report.details);
       }
       if (result.changed) {
         this.sessionPersistence.markDirty('conversation settings changed');
@@ -468,7 +466,7 @@ export class WorkshopRoomHandler {
       this.sendError(
         'workshop',
         error instanceof WorkshopConversationSettingsPartialApplyError
-          ? `Could not change conversation settings. Project memory is now ${PROJECT_MEMORY_MODE_WORDS[error.projectMemory]}: it couldn't be set back. Your other previous settings are still active.`
+          ? workshopConversationSettingsPartialApplyWords(error)
           : 'Could not change conversation settings. The previous settings are still active.',
         details
       );
@@ -662,11 +660,13 @@ export class WorkshopRoomHandler {
         });
         const pendingMemory = this.replyMemory(result.content, controller.signal);
         const replyMemory = pendingMemory && await pendingMemory;
+        const fileEdits = await this.replyFileEdits(result.content, controller.signal);
         const memoryAutoSave = this.memoryAutoSaveFor(controller.signal);
         const assistantTurn = completeWorkshopRun({
           memory: replyMemory,
           memoryAutoSave: memoryAutoSave.hand,
           memoryAutoSavesInRoom: memoryAutoSave.inRoom,
+          fileEdits,
           session: this.session,
           requestId,
           label: workshopPersonaLabel(personaId),
@@ -1197,11 +1197,13 @@ export class WorkshopRoomHandler {
 
       const pendingMemory = this.replyMemory(result.content, controller.signal);
       const replyMemory = pendingMemory && await pendingMemory;
+      const fileEdits = await this.replyFileEdits(result.content, controller.signal);
       const memoryAutoSave = this.memoryAutoSaveFor(controller.signal);
       const assistantTurn = completeWorkshopRun({
         memory: replyMemory,
         memoryAutoSave: memoryAutoSave.hand,
         memoryAutoSavesInRoom: memoryAutoSave.inRoom,
+        fileEdits,
         session: this.session,
         requestId,
         label,
@@ -1426,6 +1428,20 @@ export class WorkshopRoomHandler {
       : undefined;
   }
 
+  /**
+   * A reply's file edits, staged before completion (ADR 2026-11-05 D4,
+   * D11): the setting is read now, when the reply is read. A reply holding
+   * no file-edit tag stages nothing and costs no await.
+   */
+  private replyFileEdits(reply: string, signal: AbortSignal): Promise<WorkshopReplyFileEditContext | undefined> {
+    return resolveWorkshopReplyFileEdits({
+      reply,
+      open: this.conversationSettingsService.fileEditsOpen(),
+      staging: this.fileEditStaging,
+      signal
+    });
+  }
+
   private excerptMutationBlockedReason(): string | undefined {
     switch (this.currentRunKind()) {
       case 'room':
@@ -1518,7 +1534,7 @@ export class WorkshopRoomHandler {
     const message: WorkshopTurnMessage = {
       type: MessageType.WORKSHOP_TURN,
       source: 'extension.workshop',
-      payload: { turn },
+      payload: { turn: workshopTurnForWebview(turn) },
       timestamp: Date.now()
     };
     void this.postMessage(message);
@@ -1535,7 +1551,9 @@ export class WorkshopRoomHandler {
   }
 
   private postSessionState(): void {
-    const session = this.session.getSnapshot();
+    const snapshot = this.session.getSnapshot();
+    // A file-edit card's `documentUri` is host-only (ADR 2026-11-05 D4.3).
+    const session = { ...snapshot, turns: snapshot.turns.map(workshopTurnForWebview) };
     session.contextBudget = this.activeContextBudget();
     const availability = this.sessionPersistence.availability();
     const message: WorkshopSessionStateMessage = {
@@ -1546,6 +1564,7 @@ export class WorkshopRoomHandler {
         writerProfile: this.conversationSettingsService.getWriterProfile(),
         webResearch: this.conversationSettingsService.getWebResearch(),
         projectMemory: this.conversationSettingsService.getProjectMemoryMode(),
+        fileEdits: this.conversationSettingsService.getFileEditsMode(),
         persistence: {
           available: availability.available,
           unavailableReason: availability.available ? undefined : availability.reason,

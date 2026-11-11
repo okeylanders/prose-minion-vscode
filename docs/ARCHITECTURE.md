@@ -307,6 +307,7 @@ workshop/
 ├── projectMemory.ts         # Project memory's proposal, receipt and write routes
 ├── memoryDraft.ts           # The helper's draft of a memory's title, summary and kind (Helper Agent Slice 2)
 ├── projectMemoryManager.ts  # The memory manager: listing, estimate, residency, its own actions
+├── fileEdits.ts             # Persona file edits: the setting, a card's target, operations, state and what landed (ADR 2026-11-05 D8)
 ├── pinnedContext.ts         # The Pinned context tab: the list, pin, unpin, move, attach missing, open
 ├── widgets.ts               # Explicit family unions and generic widget IPC
 ├── standingDirectives.ts    # Standing family snapshot/summary/change

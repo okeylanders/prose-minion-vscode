@@ -41,6 +41,7 @@ import {
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetRecommendation,
   WorkshopMemoryProposal,
+  WorkshopFileEditProposal,
   WorkshopMemoryHold,
   WorkshopMemoryProposalState,
   WorkshopProjectMemoryReceipt,
@@ -144,6 +145,12 @@ import {
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import { cloneTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
 import { cloneWorkshopMemoryProposal } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
+import {
+  cloneWorkshopFileEditProposal,
+  settleWorkshopFileEditProposal,
+  settleWorkshopFileEditProposalsOnReopen,
+  type WorkshopFileEditSettlement
+} from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
 import { workshopMemoryProposalAt } from '@shared/constants/workshopProjectMemoryWrites';
 import {
   cloneWorkshopMemoryReceipt,
@@ -1688,7 +1695,8 @@ export class WorkshopSessionService {
     citations?: UrlCitation[],
     widgetRecommendation?: WorkshopWidgetRecommendation,
     model?: WorkshopTurnModel,
-    memoryProposals: readonly WorkshopMemoryProposal[] = []
+    memoryProposals: readonly WorkshopMemoryProposal[] = [],
+    fileEditProposals: readonly WorkshopFileEditProposal[] = []
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1740,6 +1748,10 @@ export class WorkshopSessionService {
       // Memory cards belong to a persona's reply (ADR 2026-11-04 D6; never an empty list).
       memoryProposals: (isHost || isGuest) && memoryProposals.length > 0
         ? memoryProposals.map(cloneWorkshopMemoryProposal)
+        : undefined,
+      // File-edit cards too (ADR 2026-11-05 D8; never an empty list).
+      fileEditProposals: (isHost || isGuest) && fileEditProposals.length > 0
+        ? fileEditProposals.map(cloneWorkshopFileEditProposal)
         : undefined
     };
 
@@ -1874,6 +1886,25 @@ export class WorkshopSessionService {
       throw Object.assign(new Error('That message no longer holds a memory suggestion.'), { reason: 'no-proposal' });
     }
     return cloneTurn(turn!);
+  }
+
+  /**
+   * Settle one of a persona's file-edit cards (ADR 2026-11-05 D8, D10): its
+   * state, reason, per-operation outcomes and landed records, held to the
+   * session codec's rules. Throws (`reason: 'no-card'`) on a turn with no
+   * card there, and on a settlement the codec would refuse.
+   */
+  setFileEditProposalState(turnId: string, index: number, settlement: WorkshopFileEditSettlement): WorkshopTurn {
+    let found = false;
+    const turn = this.turnLedger.update(turnId, (current) => {
+      const next = settleWorkshopFileEditProposal(current, index, settlement);
+      found = true;
+      current.fileEditProposals = next;
+    });
+    if (!turn || !found) {
+      throw Object.assign(new Error('That message no longer holds this suggested edit.'), { reason: 'no-card' });
+    }
+    return cloneTurn(turn);
   }
 
   /** An edit card whose Save found its note changed since it was suggested (Slice 6c): only Dismiss is offered now. */
@@ -2220,7 +2251,8 @@ export class WorkshopSessionService {
       normalized.pendingMessageAttachments.map(cloneMessageAttachment);
     const threadArtifacts = (normalized.threadArtifacts ?? []).map(cloneThreadArtifact);
     const turnState = this.turnLedger.prepareState({
-      turns: normalized.turns,
+      // A card found `applying` reads as `unknown` (ADR 2026-11-05 D8's reopen rule).
+      turns: normalized.turns.map(settleWorkshopFileEditProposalsOnReopen),
       counter: normalized.counters.turn
     });
     const todoState = this.todoLedger.prepareState({

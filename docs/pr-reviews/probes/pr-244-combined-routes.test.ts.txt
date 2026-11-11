@@ -1,0 +1,48 @@
+import { MessageType } from '@messages';
+import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
+import { projectWorkshopTranscriptTurn } from '@/application/services/workshop/transcript/WorkshopTranscript';
+import { fakeFileEditApply, fakeFileEditStaging, sentinelFileEditFrame, URI_SENTINEL, QUOTE_SENTINEL, WITH_SENTINEL, PASSAGE_SENTINEL, WHY_SENTINEL } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
+import { analysisResult, createWorkshopRouteTestHarness, message } from '@/__tests__/application/handlers/domain/workshop/WorkshopRouteTestHarness';
+
+const settle = async () => {
+  for (let round = 0; round < 8; round += 1) await new Promise(resolve => setImmediate(resolve));
+};
+
+describe('PR 244 independent combined route witness', () => {
+  it.each(['bubble', 'preview'] as const)('keeps file edits and %s helper drafting independent in one composed room', async note => {
+    const draft = { title: 'Alice waits', summary: 'Alice waits beside the clock.', kind: 'canon' as const };
+    const run = jest.fn(async () => ({ kind: 'drafted' as const, value: draft }));
+    const edits = fakeFileEditApply();
+    const h = createWorkshopRouteTestHarness({
+      fileEditStaging: fakeFileEditStaging(), fileEditApply: edits,
+      memoryDrafts: { helper: { run }, settings: { get: jest.fn(() => true) as WorkshopMemoryDraftPorts['settings']['get'] } }
+    });
+    const route = (type: MessageType, payload: unknown) => h.router.route(message(type, payload) as never);
+    try {
+      await h.pin();
+      h.service.startWorkshopPersonaConversation.mockResolvedValueOnce(
+        analysisResult(`Alice waits beside the clock.\n\n${sentinelFileEditFrame()}`, { conversationId: 'host-conv' }) as never
+      );
+      await route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Please suggest a change.' });
+      await settle();
+      const turn = [...h.session.readRoomLedger()].reverse().find(each => each.fileEditProposals?.length)!;
+      expect(turn.content).toBe('Alice waits beside the clock.');
+      expect(turn.fileEditProposals?.[0].state).toBe('pending');
+      const before = JSON.stringify(turn.fileEditProposals);
+      await route(MessageType.WORKSHOP_MEMORY_DRAFT_REQUEST, { requestId: 'draft-1', turnId: turn.id, roomRevision: h.session.readRoomRevision(), note });
+      expect(run).toHaveBeenCalledWith('memory-draft', { text: turn.content, source: 'persona' }, { signal: expect.any(AbortSignal) });
+      expect(h.posted(MessageType.WORKSHOP_MEMORY_DRAFT_RESULT)[0].payload).toEqual({ requestId: 'draft-1', outcome: 'drafted', draft });
+      const helperInputAndRecall = JSON.stringify([run.mock.calls, projectWorkshopTranscriptTurn(turn)]);
+      for (const sentinel of [URI_SENTINEL, QUOTE_SENTINEL, WITH_SENTINEL, PASSAGE_SENTINEL, WHY_SENTINEL, 'characters/alice.md']) {
+        expect(helperInputAndRecall).not.toContain(sentinel);
+      }
+      expect(JSON.stringify(turn.fileEditProposals)).toBe(before);
+      expect(edits.applies).toHaveLength(0);
+      await route(MessageType.WORKSHOP_FILE_EDIT_ACTION, { requestId: 'apply-1', turnId: turn.id, index: 0, roomRevision: h.session.readRoomRevision(), action: 'apply' });
+      await settle();
+      expect(edits.applies).toHaveLength(1);
+      expect(h.posted(MessageType.WORKSHOP_FILE_EDIT_RESULT)[0].payload).toMatchObject({ requestId: 'apply-1', answer: 'settled', state: 'applied' });
+      expect(run).toHaveBeenCalledTimes(1);
+    } finally { h.handler.dispose(); }
+  });
+});

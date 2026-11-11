@@ -11,6 +11,8 @@ import {
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WORKSHOP_WEB_RESEARCH_SETTING,
   coerceWorkshopProjectMemoryMode,
+  coerceWorkshopFileEditsMode,
+  WorkshopFileEditsMode,
   WorkshopConversationBehavior,
   WorkshopPersonaId,
   WorkshopWriterProfile,
@@ -23,19 +25,28 @@ import {
 import {
   renderWorkshopStandingDirectiveFrames
 } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
-import { WorkshopProjectMemoryModeSetting } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
+import {
+  undoWorkshopGlobalModeWrites,
+  workshopGlobalModeRefusals,
+  type WorkshopGlobalModeRefusals,
+  workshopFileEditsModeSetting,
+  workshopProjectMemoryModeSetting,
+  type WorkshopGlobalModeSetting
+} from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
 
 export interface WorkshopConversationSettingsPersistenceErrors {
   behavior?: string;
   writerProfile?: string;
   webResearch?: string;
-  projectMemory?: string;
 }
 
 export interface WorkshopConversationSettingsUpdate {
   changed: boolean;
   deferred: boolean;
+  /** Settings active in the room that VS Code could not save for restart. */
   persistenceErrors?: WorkshopConversationSettingsPersistenceErrors;
+  /** Global modes VS Code refused to change: never active, each still its effective mode (PR #236 F-01). */
+  modeRefusals?: WorkshopGlobalModeRefusals;
 }
 
 interface WorkshopConversationSettingsApplyResult extends WorkshopConversationSettingsUpdate {
@@ -61,7 +72,9 @@ interface PendingPersistence<T> {
  */
 export class WorkshopConversationSettingsService {
   /** The global project-memory mode: read live, written by an apply, and that write undone when the apply fails. */
-  private readonly projectMemoryMode: WorkshopProjectMemoryModeSetting;
+  private readonly projectMemoryMode: WorkshopGlobalModeSetting<WorkshopProjectMemoryMode>;
+  /** The global file-edits mode (ADR 2026-11-05 D11), as for memory. */
+  private readonly fileEditsMode: WorkshopGlobalModeSetting<WorkshopFileEditsMode>;
   private queue: Promise<void> = Promise.resolve();
   private externalSyncPending = false;
   private pendingBehaviorPersistence?: PendingPersistence<WorkshopConversationBehavior>;
@@ -74,6 +87,8 @@ export class WorkshopConversationSettingsService {
    * change between off and on rebuilds them, as every settings change does.
    */
   private projectMemoryPrompted: boolean;
+  /** Whether the persona prompts were last built teaching file edits (ADR 2026-11-05 D9), as for memory. */
+  private fileEditsPrompted: boolean;
 
   constructor(
     private readonly session: WorkshopSessionService,
@@ -82,34 +97,36 @@ export class WorkshopConversationSettingsService {
     private readonly outputChannel: LogSink,
     private readonly writerProfileService: WorkshopWriterProfileService
   ) {
-    this.projectMemoryMode = new WorkshopProjectMemoryModeSetting(settings, outputChannel);
+    this.projectMemoryMode = workshopProjectMemoryModeSetting(settings, outputChannel);
+    this.fileEditsMode = workshopFileEditsModeSetting(settings, outputChannel);
     this.webResearch = this.readWebResearchSetting();
     this.projectMemoryPrompted = this.projectMemoryOn();
+    this.fileEditsPrompted = this.fileEditsOpen();
   }
 
   /**
-   * Apply and persist the modal's complete Behavior, About You, Memory and
-   * Advanced submission. The project-memory mode is global and read live
-   * (ADR 2026-11-04 D8), so it is written first: the prompt rebuild below
-   * then sees the mode the writer chose. Absent (`undefined`), it is left
-   * as it is.
+   * Apply and persist the modal's complete submission. The project-memory (ADR 2026-11-04 D8) and file-edits
+   * (ADR 2026-11-05 D11) modes are global and read live, so they are written first, for the prompt rebuild
+   * below. An absent mode is left as it is; an unknown one is written `off`.
    */
   applyFromWebview(
     rawBehavior: unknown,
     rawWriterProfile: unknown,
     rawWebResearch: unknown = undefined,
-    rawProjectMemory: unknown = undefined
+    rawProjectMemory: unknown = undefined,
+    rawFileEdits: unknown = undefined
   ): Promise<WorkshopConversationSettingsUpdate> {
     const nextBehavior = coerceWorkshopConversationBehavior(rawBehavior);
     const nextProfile = coerceWorkshopWriterProfile(rawWriterProfile);
     const nextWebResearch = coerceWorkshopWebResearchSettings(rawWebResearch);
     const nextProjectMemory = rawProjectMemory === undefined ? undefined : coerceWorkshopProjectMemoryMode(rawProjectMemory);
+    const nextFileEdits = rawFileEdits === undefined ? undefined : coerceWorkshopFileEditsMode(rawFileEdits);
     return this.serialize(async () => {
       this.assertBetweenRuns();
-      const projectMemoryWrite = await this.projectMemoryMode.write(nextProjectMemory);
-      const projectMemoryError = projectMemoryWrite.error;
+      const modes = { projectMemory: this.projectMemoryMode, fileEdits: this.fileEditsMode };
+      const writes = { projectMemory: await modes.projectMemory.write(nextProjectMemory), fileEdits: await modes.fileEdits.write(nextFileEdits) };
       const result = await this.apply(nextBehavior, nextProfile)
-        .catch((error: unknown) => this.projectMemoryMode.undo(projectMemoryWrite, error));
+        .catch((error: unknown) => undoWorkshopGlobalModeWrites(modes, writes, error));
       this.externalSyncPending = false;
       const pendingBehavior = this.pendingBehaviorPersistence;
       const pendingProfile = this.pendingProfilePersistence;
@@ -126,13 +143,12 @@ export class WorkshopConversationSettingsService {
           && workshopWebResearchSettingsEqual(pendingWebResearch.appliedValue, nextWebResearch));
       this.webResearch = nextWebResearch;
       const changed = result.changed || webResearchChanged;
+      const modeRefusals = workshopGlobalModeRefusals(modes, writes);
       if (!persistBehavior && !persistProfile && !persistWebResearch) {
-        return this.publicResult(projectMemoryError
-          ? { ...result, changed, persistenceErrors: { projectMemory: projectMemoryError } }
-          : { ...result, changed });
+        return { ...this.publicResult({ ...result, changed }), ...modeRefusals };
       }
 
-      const persistenceErrors: WorkshopConversationSettingsPersistenceErrors = projectMemoryError ? { projectMemory: projectMemoryError } : {};
+      const persistenceErrors: WorkshopConversationSettingsPersistenceErrors = {};
       if (persistBehavior) {
         try {
           await this.settings.update(
@@ -178,11 +194,10 @@ export class WorkshopConversationSettingsService {
         }
       }
       if (changed) this.logSettingsApplied(nextBehavior, nextProfile, nextWebResearch);
-      return this.publicResult(
-        Object.keys(persistenceErrors).length > 0
-          ? { ...result, changed, persistenceErrors }
-          : { ...result, changed }
-      );
+      return {
+        ...this.publicResult(Object.keys(persistenceErrors).length > 0 ? { ...result, changed, persistenceErrors } : { ...result, changed }),
+        ...modeRefusals
+      };
     });
   }
 
@@ -259,7 +274,9 @@ export class WorkshopConversationSettingsService {
     const profileChanged = !workshopWriterProfilesEqual(previousProfile, nextProfile);
     const projectMemoryOn = this.projectMemoryOn();
     const projectMemoryChanged = projectMemoryOn !== this.projectMemoryPrompted;
-    if (!behaviorChanged && !profileChanged && !projectMemoryChanged) {
+    const fileEditsOn = this.fileEditsOpen();
+    const fileEditsChanged = fileEditsOn !== this.fileEditsPrompted;
+    if (!behaviorChanged && !profileChanged && !projectMemoryChanged && !fileEditsChanged) {
       return {
         changed: false,
         deferred: false,
@@ -274,6 +291,7 @@ export class WorkshopConversationSettingsService {
       || previousBehavior.expressionLevel !== nextBehavior.expressionLevel
       || previousBehavior.relationalDepth !== nextBehavior.relationalDepth
       || projectMemoryChanged
+      || fileEditsChanged
     ) {
       await this.assistantToolService.replaceWorkshopConversationSettings(
         this.replacementTargets(),
@@ -289,6 +307,12 @@ export class WorkshopConversationSettingsService {
       this.projectMemoryPrompted = projectMemoryOn;
       this.outputChannel.appendLine(
         `[WorkshopConversationSettingsService] Project memory ${projectMemoryOn ? 'on' : 'off'}; persona prompts rebuilt`
+      );
+    }
+    if (fileEditsChanged) {
+      this.fileEditsPrompted = fileEditsOn;
+      this.outputChannel.appendLine(
+        `[WorkshopConversationSettingsService] File edits ${fileEditsOn ? 'on' : 'off'}; persona prompts rebuilt`
       );
     }
     return { changed: true, deferred: false, behaviorChanged, profileChanged };
@@ -321,6 +345,16 @@ export class WorkshopConversationSettingsService {
   /** The global project-memory mode, read live (D8): the Memory tab's draft starts from it. */
   getProjectMemoryMode(): WorkshopProjectMemoryMode {
     return this.projectMemoryMode.get();
+  }
+
+  /** `proseMinion.workshop.fileEdits`, read live (ADR 2026-11-05 D9): unset is `ask`, anything unknown `off`. */
+  getFileEditsMode(): WorkshopFileEditsMode {
+    return this.fileEditsMode.get();
+  }
+
+  /** Whether personas propose file edits now: the prompt teaches the trailer, and a reply's frames are read. */
+  fileEditsOpen(): boolean {
+    return this.getFileEditsMode() === 'ask';
   }
 
   private projectMemoryOn(): boolean {

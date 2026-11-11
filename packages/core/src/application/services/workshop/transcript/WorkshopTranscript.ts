@@ -29,14 +29,24 @@
  *   before the first entry at or after the turn it belongs before, so a turn
  *   the transcript omits never drops one. A stamped reply or capability
  *   card carries its `model` (D10).
- * - Neither slices nor `model` come from `projectWorkshopTranscriptTurn`, so
- *   session recall and the turn preview, which read turns only through it,
- *   never see them.
+ * - A persona reply's file-edit cards (ADR 2026-11-05 D10) carry each card's
+ *   display path, its `why` and its state: never an operation's text (a
+ *   quote, a replacement, a passage) and never the host's `documentUri`.
+ * - Neither slices, `model` nor `fileEdits` come from
+ *   `projectWorkshopTranscriptTurn`, so session recall and the turn
+ *   preview, which read turns only through it, never see them.
  *
  * Pure and deterministic: the caller supplies the turns and the clock.
  */
 
-import { citationDisplayLabel, type ModelScope, type WorkshopTurn, type WorkshopTurnModel } from '@messages';
+import {
+  citationDisplayLabel,
+  type ModelScope,
+  type WorkshopFileEditState,
+  workshopFileEditDisplayPath,
+  type WorkshopTurn,
+  type WorkshopTurnModel
+} from '@messages';
 import {
   deriveWorkshopModelSlices,
   workshopModelSliceText,
@@ -80,6 +90,20 @@ export interface WorkshopTranscriptReplyEntry {
   bookmarked?: true;
   /** The model stamp, set by `projectWorkshopTranscript` only (ADR 2026-11-03 D10). */
   model?: WorkshopTurnModel;
+  /** The reply's file-edit cards, set by `projectWorkshopTranscript` only (ADR 2026-11-05 D8). */
+  fileEdits?: WorkshopTranscriptFileEdit[];
+}
+
+/** One file-edit card as a transcript shows it: its display path, why, and what became of it. Never its text or URI. */
+export interface WorkshopTranscriptFileEdit {
+  path: string;
+  why: string;
+  state: WorkshopFileEditState;
+}
+
+/** A card's file in words: its display path. */
+export function workshopTranscriptFileEditLabel(edit: Pick<WorkshopTranscriptFileEdit, 'path'>): string {
+  return edit.path;
 }
 
 export interface WorkshopTranscriptSource {
@@ -150,7 +174,7 @@ export function projectWorkshopTranscript(
       return [];
     }
     const marked = meta.bookmarkedTurnIds?.has(turn.id) ? { ...entry, bookmarked: true as const } : entry;
-    return [...pending.splice(0), withModel(marked, turn)];
+    return [...pending.splice(0), withFileEdits(withModel(marked, turn), turn)];
   });
   // A slice whose turns all print nothing still closes the transcript.
   entries.push(...pending);
@@ -203,6 +227,21 @@ function withModel(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): Workshop
       requestedModelId: turn.model.requestedModelId,
       servedModelIds: [...turn.model.servedModelIds]
     }
+  };
+}
+
+/** A reply's file-edit cards: display path, why and state, never the operations or the URI (D10). */
+function withFileEdits(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): WorkshopTranscriptEntry {
+  if (entry.kind !== 'reply' || !turn.fileEditProposals?.length) {
+    return entry;
+  }
+  return {
+    ...entry,
+    fileEdits: turn.fileEditProposals.map((proposal) => ({
+      path: workshopFileEditDisplayPath(proposal),
+      why: proposal.why,
+      state: proposal.state
+    }))
   };
 }
 

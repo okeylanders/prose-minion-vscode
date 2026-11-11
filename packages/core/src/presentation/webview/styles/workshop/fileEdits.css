@@ -1,0 +1,226 @@
+/*
+ * Workshop persona file edits: the cards under a reply (ADR 2026-11-05 D9;
+ * epic Slice 4b), on the full tabs' tokens; no new color. Plain CSS on the
+ * Chromium 114 floor (webviewCssFloor.test.ts). Scoped to the Workshop.
+ */
+
+[data-pm-surface="workshop"] .pm-ws-file-edit-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-stack-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pm-dim);
+  font: 600 10px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-stack .pm-ws-file-edit-card {
+  margin-top: 0;
+}
+
+[data-pm-surface="workshop"] .pm-ws-file-edit-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px 13px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-inset);
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-card.pm-ws-file-edit-pending,
+[data-pm-surface="workshop"] .pm-ws-file-edit-card.pm-ws-file-edit-applying {
+  border-color: color-mix(in srgb, var(--pm-accent) 42%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-card.pm-ws-file-edit-partial,
+[data-pm-surface="workshop"] .pm-ws-file-edit-card.pm-ws-file-edit-stale,
+[data-pm-surface="workshop"] .pm-ws-file-edit-card.pm-ws-file-edit-refused,
+[data-pm-surface="workshop"] .pm-ws-file-edit-card.pm-ws-file-edit-unknown {
+  border-color: color-mix(in srgb, var(--pm-amber) 45%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-card[aria-busy="true"] {
+  opacity: 0.85;
+}
+
+[data-pm-surface="workshop"] .pm-ws-file-edit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--pm-muted);
+  font: 600 10px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-path {
+  min-width: 0;
+  color: var(--pm-text);
+  font: 12px var(--pm-mono);
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-class {
+  margin-left: auto;
+  padding: 2px 7px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-pill);
+  color: var(--pm-muted);
+  font: 600 9.5px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-why {
+  color: var(--pm-text-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+[data-pm-surface="workshop"] .pm-ws-file-edit-ops {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-op {
+  padding-left: 10px;
+  border-left: 2px solid var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-op-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-op-label,
+[data-pm-surface="workshop"] .pm-ws-file-edit-side-label {
+  color: var(--pm-dim);
+  font: 600 10px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-outcome {
+  color: var(--pm-muted);
+  font: 10px var(--pm-mono);
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-outcome-landed {
+  color: var(--pm-green);
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-outcome-not-applied,
+[data-pm-surface="workshop"] .pm-ws-file-edit-outcome-unknown {
+  color: var(--pm-amber);
+}
+
+[data-pm-surface="workshop"] .pm-ws-file-edit-diff,
+[data-pm-surface="workshop"] .pm-ws-file-edit-text {
+  margin: 0;
+  max-height: 240px;
+  overflow: auto;
+  color: var(--pm-text-2);
+  font: 12px/1.5 var(--pm-sans);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-diff del {
+  color: var(--pm-red);
+  text-decoration-color: var(--pm-red);
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-diff ins {
+  color: var(--pm-green);
+  text-decoration: none;
+  background: rgba(111, 201, 138, 0.1);
+}
+
+[data-pm-surface="workshop"] .pm-ws-file-edit-rewrite summary {
+  cursor: pointer;
+  color: var(--pm-muted);
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-before-after {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+}
+@media (max-width: 760px) {
+  [data-pm-surface="workshop"] .pm-ws-file-edit-before-after {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-before {
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-note {
+  margin: 6px 0 0;
+  color: var(--pm-dim);
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-note-stale,
+[data-pm-surface="workshop"] .pm-ws-file-edit-note-refused {
+  color: var(--pm-amber);
+}
+
+[data-pm-surface="workshop"] .pm-ws-file-edit-tally {
+  color: var(--pm-muted);
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-status {
+  color: var(--pm-dim);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-status:focus {
+  outline: 1px solid var(--pm-accent);
+  outline-offset: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-partial .pm-ws-file-edit-status,
+[data-pm-surface="workshop"] .pm-ws-file-edit-stale .pm-ws-file-edit-status,
+[data-pm-surface="workshop"] .pm-ws-file-edit-refused .pm-ws-file-edit-status,
+[data-pm-surface="workshop"] .pm-ws-file-edit-unknown .pm-ws-file-edit-status {
+  color: var(--pm-amber);
+}
+
+[data-pm-surface="workshop"] .pm-ws-file-edit-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-apply {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--pm-accent-lo);
+  border-radius: var(--pm-r-button);
+  background: var(--pm-accent);
+  color: #fff;
+  font: 600 11.5px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-ghost {
+  padding: 5px 10px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-button);
+  background: var(--pm-surface-2);
+  color: var(--pm-muted);
+  font: 11.5px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-foot button:disabled,
+[data-pm-surface="workshop"] .pm-ws-file-edit-foot button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+}
+[data-pm-surface="workshop"] .pm-ws-file-edit-hint {
+  color: var(--pm-dim);
+  font-size: 11px;
+}

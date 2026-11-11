@@ -120,3 +120,72 @@ describe('editsChangingStructure', () => {
     expect(refused(text, [edit(text, '< Rabbit >', '<Rabbit>')], 'plaintext')).toEqual([]);
   });
 });
+
+describe('editsChangingStructure: prose-paragraphs (ADR 2026-11-05 D5, PR #226 F-05)', () => {
+  const PROSE = { mode: 'prose-paragraphs' } as const;
+  // Astra's witnesses (docs/pr-reviews/probes/pr-226-*): refused under strict, free under prose-paragraphs.
+  const WITNESSES: Array<[string, string, StructureEdit]> = [
+    ['split paragraph', 'Alice ran. She stopped.', { start: 10, end: 11, replacement: '\n\n' }],
+    ['append new paragraph', 'Alice ran.', { start: 10, end: 10, replacement: '\n\nShe stopped.' }],
+    ['prepend new paragraph', 'Alice ran.', { start: 0, end: 0, replacement: 'She looked.\n\n' }],
+    ['merge paragraphs', 'Alice ran.\n\nShe stopped.', { start: 10, end: 12, replacement: ' ' }]
+  ];
+
+  it.each(WITNESSES)('%s: refused under strict, kept under prose-paragraphs', (_name, text, edit) => {
+    expect(editsChangingStructure(text, 'markdown', [edit])).toEqual(new Set([0]));
+    expect(editsChangingStructure(text, 'markdown', [edit], { mode: 'strict' })).toEqual(new Set([0]));
+    expect(editsChangingStructure(text, 'markdown', [edit], PROSE)).toEqual(new Set());
+  });
+
+  it('keeps the single-newline control under both', () => {
+    const control: StructureEdit = { start: 10, end: 11, replacement: '\n' };
+    expect(editsChangingStructure('Alice ran. She stopped.', 'markdown', [control])).toEqual(new Set());
+    expect(editsChangingStructure('Alice ran. She stopped.', 'markdown', [control], PROSE)).toEqual(new Set());
+  });
+
+  it('lets prose take or lose emphasis and strong, which strict still refuses', () => {
+    const text = 'Alice ran.\n\nShe stopped.';
+    const italics: StructureEdit = { start: 0, end: 5, replacement: '*Alice*' };
+    const appended: StructureEdit = { start: text.length, end: text.length, replacement: '\n\nShe was **very** late.' };
+    expect(editsChangingStructure(text, 'markdown', [italics])).toEqual(new Set([0]));
+    expect(editsChangingStructure(text, 'markdown', [italics, appended], PROSE)).toEqual(new Set());
+    const list = '- Alice ran.\n';
+    expect(editsChangingStructure(list, 'markdown', [{ start: 2, end: 7, replacement: '_Alice_' }], PROSE)).toEqual(new Set());
+  });
+
+  it('lets a plain paragraph appear or go at a structural boundary (PR #229 F-02)', () => {
+    const insert = (text: string, at: number, replacement: string): StructureEdit => ({ start: at, end: at, replacement });
+    expect(editsChangingStructure('', 'markdown', [insert('', 0, 'Alice entered.')], PROSE)).toEqual(new Set());
+    expect(editsChangingStructure('# One\n', 'markdown', [insert('# One\n', 5, '\n\nAlice entered.')], PROSE)).toEqual(new Set());
+    expect(editsChangingStructure('# One\n', 'markdown', [insert('# One\n', 0, 'Alice entered.\n\n')], PROSE)).toEqual(new Set());
+    expect(editsChangingStructure('Alice.\n\n---\n', 'markdown', [insert('Alice.\n\n---\n', 11, '\n\nAlice entered.')], PROSE)).toEqual(new Set());
+    expect(editsChangingStructure('Alice entered.', 'markdown', [{ start: 0, end: 14, replacement: '' }], PROSE)).toEqual(new Set());
+    // Strict still reads each of these as a change.
+    expect(editsChangingStructure('# One\n', 'markdown', [insert('# One\n', 5, '\n\nAlice entered.')])).toEqual(new Set([0]));
+  });
+
+  it('lets a plain paragraph go', () => {
+    const text = 'Alice ran.\n\nShe stopped.\n\nThe Rabbit waited.';
+    expect(editsChangingStructure(text, 'markdown', [{ start: 10, end: 24, replacement: '' }], PROSE)).toEqual(new Set());
+  });
+
+  it('still refuses every other block and the inline constructs strict reads', () => {
+    const text = 'Alice sat by her sister.\n\nThe White Rabbit ran by.\n';
+    const at = (find: string, replacement: string): StructureEdit => {
+      const start = text.indexOf(find);
+      return { start, end: start + find.length, replacement };
+    };
+    for (const edit of [
+      at('The White', '# The White'),
+      at('sat by', 'sat\n\n- by'),
+      at('sat by', 'sat\n\n> by'),
+      at('sat by', 'sat\n\n---\n\nby'),
+      at('sat by', 'sat [by](https://example.com)'),
+      at('sat by', 'sat `by`'),
+      at('sat by', 'sat <b>by</b>'),
+      { start: text.length - 1, end: text.length - 1, replacement: '\n\n```\ncode\n```' }
+    ]) {
+      expect(editsChangingStructure(text, 'markdown', [edit], PROSE)).toEqual(new Set([0]));
+    }
+  });
+});
