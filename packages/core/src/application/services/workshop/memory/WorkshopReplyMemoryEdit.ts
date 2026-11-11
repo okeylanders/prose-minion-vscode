@@ -12,8 +12,10 @@
  *   item records the note's edit token (every field a Save can overwrite,
  *   and its standing: PR #212 F-02), which a Save must still find, and
  *   every id it supersedes, listed or not (F-01).
- * - **The result** passes the phrasing fence (D9) exactly as a new note
- *   does, and the pinned budget when the note loads in full (D5). The
+ * - **The result** is read by the phrasing fence (D9) exactly as a new
+ *   note is: a flag holds it `personal`, in either mode and before any
+ *   other hold, with the matched word on its card (amended 2026-11-11).
+ *   It must pass the pinned budget when the note loads in full (D5). The
  *   field bounds imply the file's byte bound (PR #194 F-05); the store
  *   checks the file again at commit.
  * - **Always waits.** Under Save and tell me it is held `edit` (after the
@@ -27,7 +29,7 @@ import type { ProjectMemoryListed } from '@/application/services/workshop/memory
 import { pinnedBudget } from '@/application/services/workshop/memory/ProjectMemoryPinnedBudget';
 import { projectMemoryEditToken } from '@/application/services/workshop/memory/ProjectMemoryVersion';
 import { anchorWorkshopMemoryEdit } from '@/application/services/workshop/memory/WorkshopMemoryEditAnchor';
-import { workshopMemoryProposalPhrasingFault } from '@/application/services/workshop/memory/WorkshopMemoryProposalPhrasing';
+import { workshopMemoryProposalPhrasingFlag } from '@/application/services/workshop/memory/WorkshopMemoryProposalPhrasing';
 import type { WorkshopMemoryEditDraft } from '@/utils/workshopMemoryEditProtocol';
 
 export interface WorkshopSettledMemoryEdit {
@@ -64,10 +66,7 @@ export function settleWorkshopMemoryEdit(
     return dropped(anchoring.reason);
   }
   const { before, after } = anchoring;
-  const fault = workshopMemoryProposalPhrasingFault(after, writerName);
-  if (fault) {
-    return { log: `Memory edit withheld (target=${edit.target}; reason=${fault})` };
-  }
+  const flag = workshopMemoryProposalPhrasingFlag(after, writerName);
   if (memory.pinned) {
     const budget = pinnedBudget(memories, { ...memory, ...after, body: projectMemoryBody(after.body) }, memory.id);
     if (budget.refused) {
@@ -77,12 +76,16 @@ export function settleWorkshopMemoryEdit(
   const titles = new Map(memories.map((entry) => [entry.memory.id, entry.memory.title]));
   const replaces = memory.supersedes.flatMap((id) => titles.has(id) ? [{ id, title: titles.get(id) as string }] : []);
   const changed = (['title', 'kind', 'summary', 'body'] as const).filter((field) => after[field] !== before[field]);
+  // The fence's hold comes before the mode's (D9, amended 2026-11-11); its word is the card's, never the log's.
+  const hold: WorkshopMemoryHold | undefined = flag ? 'personal' : held;
+  const reason = flag ? flag.fault : held;
   return {
     proposal: {
       proposes: 'edit',
       ...after,
       state: 'pending',
-      ...(held ? { held } : {}),
+      ...(hold ? { held: hold } : {}),
+      ...(flag ? { heldWord: flag.word } : {}),
       target: {
         id: memory.id,
         token: projectMemoryEditToken(memory, listed.superseded),
@@ -93,7 +96,7 @@ export function settleWorkshopMemoryEdit(
       },
       before
     },
-    log: `Memory edit ${held ? `held (reason=${held}; ` : 'pending ('}target=${memory.id}; changes=${changed.join(',')}; ` +
+    log: `Memory edit ${reason ? `held (reason=${reason}; ` : 'pending ('}target=${memory.id}; changes=${changed.join(',')}; ` +
       `operations=${edit.operations.map((operation) => operation.op).join(',')})`
   };
 }

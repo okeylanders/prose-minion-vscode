@@ -199,10 +199,30 @@ describe('settling an edit against the listing', () => {
     expect(settled.logs).toEqual([`Memory edit dropped (target=${NOTE.id}; reason=${reason})`]);
   });
 
-  it('checks the result, not the trailer, against the phrasing fence (D9)', () => {
+  it('checks the result, not the trailer, against the phrasing fence, and holds what it flags (D9, amended 2026-11-11)', () => {
     const settled = settle(`Good.\n\n${frame('<append>You seem anxious about the ending lately.</append>')}`);
+    expect(settled.proposals).toHaveLength(1);
+    expect(settled.proposals[0]).toMatchObject({ proposes: 'edit', state: 'pending', held: 'personal', heldWord: 'anxious' });
+    expect(settled.logs).toEqual([`Memory edit held (reason=personal-inference; target=${NOTE.id}; changes=body; operations=append)`]);
+    expect(settled.logs.join('\n')).not.toContain('anxious');
+  });
+
+  it('a flagged edit is held "personal" under Save and tell me too, before its "edit" hold and the web-research hold', () => {
+    const reply = `Good.\n\n${frame('<append>You\'ve kept Alice\'s family quarrel unresolved.</append>')}`;
+    const settled = settleWorkshopMemoryProposals(extractWorkshopReplyControls(reply, OPEN).memory,
+      { open: true, mode: 'auto', memories: listProjectMemories([{ memory: NOTE }]) },
+      { webResearchAttached: true, autoSavesInRoom: () => 0 });
+    expect(settled.proposals.map((proposal) => [proposal.proposes, proposal.held, proposal.heldWord])).toEqual([['edit', 'personal', 'family']]);
+    expect(settled.autoSave).toEqual([]);
+  });
+
+  it('a flagged edit past the pinned budget is still dropped: the hold never lets one through', () => {
+    const pinned = { ...NOTE, pinned: true };
+    const others = Array.from({ length: 4 }, (_, i) => memory({ id: `mem-00000${i}`, pinned: true, body: 'x '.repeat(3_000) }));
+    const listing = listProjectMemories([{ memory: pinned }, ...others.map((other) => ({ memory: other }))]);
+    const settled = settle(`Good.\n\n${frame(`<append>You want the family scenes tighter. ${'Tea. '.repeat(1_500)}</append>`)}`, listing);
     expect(settled.proposals).toEqual([]);
-    expect(settled.logs).toEqual([`Memory edit withheld (target=${NOTE.id}; reason=personal-inference)`]);
+    expect(settled.logs).toEqual([`Memory edit dropped (target=${NOTE.id}; reason=pinned-budget)`]);
   });
 
   it('refuses a change that would take the memories loaded in full past their budget', () => {

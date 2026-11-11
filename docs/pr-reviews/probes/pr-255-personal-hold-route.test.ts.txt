@@ -1,0 +1,44 @@
+/** Independent PR #255 route witness. Fiction-only data; in-memory store. */
+import { MessageType, type WorkshopProjectMemoryMode } from '@messages';
+import { memoryFrame } from '@/__tests__/application/services/workshop/memory/memoryProposalFixtures';
+import { MEMORY } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { analysisResult, createWorkshopRouteTestHarness, message } from './WorkshopRouteTestHarness';
+
+it.each<Exclude<WorkshopProjectMemoryMode, 'off'>>(['ask', 'auto'])(
+  '%s: personal hold survives dismiss/reopen; only explicit Save writes, exactly once', async (mode) => {
+    const h = createWorkshopRouteTestHarness();
+    h.memory.state.mode = mode;
+    await h.pin();
+    const route = (type: MessageType, payload: unknown) => h.router.route(message(type, payload) as never);
+    const files = () => [...h.memory.fileSystem.files.keys()].filter((file) => file.startsWith(MEMORY) && file.endsWith('.md'));
+    h.service.startWorkshopPersonaConversation.mockResolvedValueOnce(analysisResult(
+      `A craft note.\n\n${memoryFrame({ body: "You've kept Alice's family quarrel unresolved." })}`,
+      { conversationId: 'host-conv', webResearchAttached: true }
+    ) as never);
+    await route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'What did we settle about the story?' });
+    for (let i = 0; i < 5; i += 1) { await new Promise((resolve) => setImmediate(resolve)); }
+    const turn = h.session.readRoomLedger().find((candidate) => candidate.memoryProposals)!;
+    const card = () => h.session.readRoomLedger().find((candidate) => candidate.id === turn.id)!.memoryProposals![0];
+    expect(card()).toMatchObject({ state: 'pending', held: 'personal', heldWord: 'family' });
+    expect(files()).toEqual([]);
+    expect(h.session.readRoomLedger().filter((entry) => entry.projectMemoryReceipt)).toEqual([]);
+    const act = (action: 'dismiss' | 'reopen' | 'save') => route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION,
+      { requestId: `review255-${action}`, turnId: turn.id, index: 0, action });
+    await act('dismiss');
+    expect(card()).toMatchObject({ state: 'dismissed', held: 'personal', heldWord: 'family' });
+    expect(files()).toEqual([]);
+    await act('reopen');
+    expect(card()).toMatchObject({ state: 'pending', held: 'personal', heldWord: 'family' });
+    expect(files()).toEqual([]);
+    await act('save');
+    await act('save');
+    expect(files()).toHaveLength(1);
+    expect(card()).toMatchObject({ state: 'saved', held: 'personal', heldWord: 'family' });
+    const receipts = h.session.readRoomLedger().filter((entry) => entry.projectMemoryReceipt);
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0].projectMemoryReceipt).toMatchObject({ action: 'saved', by: 'writer' });
+    const read = await h.memory.store.read(card().memoryId!);
+    expect(read.kind === 'memory' && read.entry.memory.origin).toBe('proposed');
+    expect(read.kind === 'memory' && read.entry.memory.body).toContain("Alice's family quarrel");
+  }
+);

@@ -5,7 +5,7 @@ import {
 } from '@/application/services/workshop/WorkshopRunCompletion';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import type { WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
-import { workshopMemoryProposalPhrasingFault } from '@/application/services/workshop/memory/WorkshopMemoryProposalPhrasing';
+import { workshopMemoryProposalPhrasingFlag } from '@/application/services/workshop/memory/WorkshopMemoryProposalPhrasing';
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { sanitizeWorkshopReplyForRetention, WORKSHOP_MEMORY_ONLY_REPLY_LINE } from '@/utils/workshopReplyControls';
 import { memoryFrame, WIDGET } from '@/__tests__/application/services/workshop/memory/memoryProposalFixtures';
@@ -165,10 +165,13 @@ describe('completeWorkshopRun with a project-memory trailer', () => {
     expect(log.mock.calls.filter(([line]) => String(line).startsWith('Memory proposal pending'))).toHaveLength(2);
   });
 
-  it('the phrasing fence withholds one card of several, and keeps the rest', () => {
+  it('the phrasing fence holds one card of several, and leaves the rest as they were', () => {
     const turn = settle(`Good.\n\n${memoryFrame({ title: 'One' })}\n${memoryFrame({ title: 'Two', body: 'You seem anxious about the ending lately.' })}`, OPEN)!;
-    expect(turn.memoryProposals?.map((proposal) => proposal.title)).toEqual(['One']);
-    expect(logged()).toContain('Memory proposal withheld (reason=personal-inference)');
+    expect(turn.memoryProposals?.map((proposal) => [proposal.title, proposal.held, proposal.heldWord])).toEqual([
+      ['One', undefined, undefined],
+      ['Two', 'personal', 'anxious']
+    ]);
+    expect(logged()).toContain('Memory proposal held (reason=personal-inference; ');
   });
 
   it('a reply whose every trailer was dropped carries no list, never an empty one', () => {
@@ -177,10 +180,12 @@ describe('completeWorkshopRun with a project-memory trailer', () => {
   });
 
   describe('the phrasing fence (D9)', () => {
-    it('withholds a writer-directed personal inference, logged by reason', () => {
+    it('holds a writer-directed personal inference for the writer, logged by reason, never by word', () => {
       const turn = settle(`Good.\n\n${memoryFrame({ body: 'You seem anxious about the ending lately.' })}`, OPEN)!;
-      expect(turn.memoryProposals).toBeUndefined();
-      expect(logged()).toContain('Memory proposal withheld (reason=personal-inference)');
+      expect(turn.memoryProposals?.[0]).toMatchObject({ state: 'pending', held: 'personal', heldWord: 'anxious' });
+      expect(logged()).toContain('Memory proposal held (reason=personal-inference; ');
+      expect(logged()).not.toContain('withheld');
+      expect(logged()).not.toContain('anxious');
     });
 
     it('keeps a character\'s feelings, which are canon', () => {
@@ -189,11 +194,12 @@ describe('completeWorkshopRun with a project-memory trailer', () => {
     });
 
     it('reads "the writer", the second person and the About-you name', () => {
-      expect(workshopMemoryProposalPhrasingFault({ title: 'T', summary: 'The writer is going through a divorce.', body: '' })).toBe('personal-inference');
-      expect(workshopMemoryProposalPhrasingFault({ title: 'T', summary: 'S', body: 'Your health comes first.' })).toBe('personal-inference');
-      expect(workshopMemoryProposalPhrasingFault({ title: 'T', summary: 'Okeymo mentioned therapy.', body: '' }, 'Okeymo')).toBe('personal-inference');
-      expect(workshopMemoryProposalPhrasingFault({ title: 'T', summary: 'You prefer structure before line edits.', body: '' })).toBeUndefined();
-      expect(workshopMemoryProposalPhrasingFault({ title: 'T', summary: 'The Duchess is ill in chapter 6.', body: '' })).toBeUndefined();
+      const flagged = (word: string) => ({ fault: 'personal-inference', word });
+      expect(workshopMemoryProposalPhrasingFlag({ title: 'T', summary: 'The writer is going through a divorce.', body: '' })).toEqual(flagged('divorce'));
+      expect(workshopMemoryProposalPhrasingFlag({ title: 'T', summary: 'S', body: 'Your health comes first.' })).toEqual(flagged('health'));
+      expect(workshopMemoryProposalPhrasingFlag({ title: 'T', summary: 'Okeymo mentioned therapy.', body: '' }, 'Okeymo')).toEqual(flagged('therapy'));
+      expect(workshopMemoryProposalPhrasingFlag({ title: 'T', summary: 'You prefer structure before line edits.', body: '' })).toBeUndefined();
+      expect(workshopMemoryProposalPhrasingFlag({ title: 'T', summary: 'The Duchess is ill in chapter 6.', body: '' })).toBeUndefined();
     });
   });
 
@@ -207,7 +213,7 @@ describe('completeWorkshopRun with a project-memory trailer', () => {
       ['unclosed', `Good.\n\n<prose-minion-memory-proposal><title>${SENTINEL}</title>`, OPEN],
       ['memory off', `Good.\n\n${sentinelFrame()}`, { open: false }],
       ['control only', sentinelFrame(), OPEN],
-      ['withheld', `Good.\n\n${memoryFrame({ title: SENTINEL, body: `You seem anxious. ${SENTINEL}` })}`, OPEN],
+      ['held personal', `Good.\n\n${memoryFrame({ title: SENTINEL, body: `You seem anxious. ${SENTINEL}` })}`, OPEN],
       ['provenance named', `Good.\n\n${memoryFrame({ title: SENTINEL, extra: `<source-session>${SENTINEL}</source-session>` })}`, OPEN],
       ['supersedes sentinel', `Good.\n\n${memoryFrame({ title: SENTINEL, supersedes: [SENTINEL] })}`, OPEN]
     ];

@@ -12,7 +12,10 @@
  * said (`before`), and `stale` once a Save
  * found the note changed. A saved card names the memory it became or
  * changed (an edit's is its target); a pending or dismissed one names none.
- * A card Save and tell me held names why in `held`. A new note may name the
+ * A held card names why in `held`; one held `personal` (the phrasing fence,
+ * D9, in either mode) also names the word it matched, `heldWord` (a lower-
+ * case word of letters), and no other card does. Both are added values, not
+ * a migration (ADR 2026-07-30). A new note may name the
  * open-room turns its trailer cited (`cites`, Bookmark Recall D10): one to
  * `citedTurns` tokens, each once.
  *
@@ -49,6 +52,9 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WORKSHOP_MEMORY_CITED_TURN } from '@/utils/workshopMemoryProposalProtocol';
 
 const NOT_ONE_LINE = /[\p{Cc}\u2028\u2029]/u;
+/** A word of `WORKSHOP_MEMORY_PERSONAL_WORDS`' shape, not its membership: a list that changes must not refuse a saved session. */
+const HELD_WORD_CHARACTERS = 40;
+const HELD_WORD = new RegExp(`^\\p{Ll}{1,${HELD_WORD_CHARACTERS}}$`, 'u');
 
 /** A turn as a development checkpoint may hold it: one card, before the list (Slice 6b). */
 export type WorkshopLegacyMemoryProposalTurn = WorkshopTurn & {
@@ -93,12 +99,19 @@ function assertProposal(value: unknown, at: string, listed: boolean): void {
     value,
     at,
     [...(listed ? ['proposes'] : []), 'title', 'kind', 'summary', 'body', 'state', ...(edit ? ['target', 'before'] : [])],
-    [...(edit ? ['stale'] : ['supersedes', 'droppedSupersedes', 'cites']), 'memoryId', 'held']
+    [...(edit ? ['stale'] : ['supersedes', 'droppedSupersedes', 'cites']), 'memoryId', 'held', 'heldWord']
   );
   assertFields(proposal, at);
   enumAt(proposal.state, `${at}.state`, WORKSHOP_MEMORY_PROPOSAL_STATES);
   if (proposal.held !== undefined) {
     enumAt(proposal.held, `${at}.held`, WORKSHOP_MEMORY_HOLDS);
+  }
+  if (proposal.held === 'personal') {
+    if (typeof proposal.heldWord !== 'string' || !HELD_WORD.test(proposal.heldWord)) {
+      shapeError(`${at}.heldWord`, `the word the fence matched (lower-case letters, at most ${HELD_WORD_CHARACTERS})`);
+    }
+  } else if (proposal.heldWord !== undefined) {
+    shapeError(`${at}.heldWord`, 'absent unless held personal');
   }
   if (proposal.supersedes !== undefined) {
     assertReplaces(proposal.supersedes, `${at}.supersedes`);
@@ -210,7 +223,8 @@ export function cloneWorkshopMemoryProposal(proposal: WorkshopMemoryProposal): W
     body: proposal.body,
     state: proposal.state,
     ...(proposal.memoryId !== undefined ? { memoryId: proposal.memoryId } : {}),
-    ...(proposal.held !== undefined ? { held: proposal.held } : {})
+    ...(proposal.held !== undefined ? { held: proposal.held } : {}),
+    ...(proposal.heldWord !== undefined ? { heldWord: proposal.heldWord } : {})
   };
   if (proposal.proposes === 'edit') {
     return {
