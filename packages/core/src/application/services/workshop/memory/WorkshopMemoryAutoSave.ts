@@ -20,6 +20,10 @@
  *     earlier proposals admitted for saving count too (`admitted`), so a
  *     batch fills the cap and the rest are held `room-cap`;
  *   - otherwise saved at once (`origin: auto`, a receipt `by: 'auto'`).
+ *
+ * The phrasing fence's `personal` hold (D9, amended 2026-11-11) is decided
+ * before this, by `WorkshopReplyMemory` and `WorkshopReplyMemoryEdit`, in
+ * either mode: a flagged proposal never reaches this route.
  */
 
 import type { WorkshopMemoryHold, WorkshopProjectMemoryMode, WorkshopTurn } from '@messages';
