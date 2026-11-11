@@ -180,14 +180,16 @@ describe('a reply\'s footer row (U1)', () => {
     expect(document.querySelector('[data-pm-offer]')).toBeNull();
   });
 
-  it('a writer\'s message keeps its corner as it was, with no footer row', () => {
+  it('a writer\'s message keeps its corner on its own bubble (the tapback frame, Slice 3c), with no footer row', () => {
     render(bubble({
       turn: reply({ id: 'turn-1', role: 'user', participant: 'writer', personaId: undefined, personaLabel: undefined, content: 'Does the fall work?' }),
       offers: offerControls(),
       reactions: reactionControls()
     }));
     expect(document.querySelector('.pm-ws-turn-foot')).toBeNull();
-    expect(document.querySelector('.pm-ws-reaction-corner')?.parentElement?.className).toContain('pm-ws-turn-user');
+    const frame = document.querySelector('.pm-ws-reaction-corner')?.parentElement;
+    expect(frame?.className).toContain('pm-ws-turn-message-frame');
+    expect(frame?.parentElement?.className).toContain('pm-ws-turn-user');
   });
 });
 

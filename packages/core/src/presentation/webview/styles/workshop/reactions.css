@@ -154,3 +154,39 @@
 [data-pm-surface="workshop"] .pm-ws-reaction-only-actions {
   margin: 0;
 }
+/* The writer's tapback (ADR 2026-11-07 D8; Slice 3c): the cluster sits on the
+   writer bubble's bottom-right corner, half on its edge. The frame is one
+   grid column, so a cluster wider than a short message widens the bubble
+   (never past its left edge), and the corner stays in flow, so the action
+   row below clears the overhang. Only a bubble with reactions makes room. */
+[data-pm-surface="workshop"] .pm-ws-turn-message-frame {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: min(640px, 100%);
+  min-width: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-message-frame > .pm-ws-turn-message {
+  max-width: none;
+  min-width: 0;
+}
+/* Room under the text for the half of the pill that sits on the bubble. */
+[data-pm-surface="workshop"] .pm-ws-turn-message-frame-tapback > .pm-ws-turn-message {
+  padding-bottom: 22px;
+}
+/* A cluster is 30px tall (a 24px reaction, 2px padding, 1px border): half of it rises onto the bubble. */
+[data-pm-surface="workshop"] .pm-ws-turn-message-frame > .pm-ws-reaction-corner {
+  position: relative;
+  z-index: 1;
+  justify-self: end;
+  min-width: 0;
+  max-width: calc(100% - 20px);
+  margin: -15px 10px 0;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-message-frame .pm-ws-reaction-cluster {
+  border-color: var(--pm-border-2);
+  background: var(--pm-surface-2);
+  /* A ring in the thread's own color parts the chip from the border it crosses. */
+  box-shadow: 0 0 0 2px var(--pm-bg), 0 2px 6px rgba(0, 0, 0, 0.35);
+  /* Half its height, so one row is a pill and a wrapped cluster stays a chip. */
+  border-radius: 15px;
+}

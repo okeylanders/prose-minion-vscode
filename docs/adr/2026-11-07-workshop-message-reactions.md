@@ -424,6 +424,14 @@ that reply's own participant, each triple at most once, bounded.
   Q6's Hide), so there is no separate Hide button. The palette opens up,
   or down without room above. A removed reaction's focus goes to the next
   reaction, the previous one, the button, then the bubble itself.
+- **Slice 3c (2026-11-11, Okey's choice) draws personas' reactions on the
+  writer's own message as a tapback.** The cluster sits on the writer
+  bubble's bottom-right corner, half on its edge, instead of below the
+  action row. It follows the text in the DOM, so the reading and tab order
+  is text, reactions, actions. The bubble widens to hold a wide cluster;
+  only a bubble with reactions makes room for it. Persona bubbles keep 3b's
+  corner. Every 3b behavior is unchanged. Presentation only
+  ([evidence](../pr-reviews/evidence/workshop-reactions-slice-3c-tapback/README.md)).
 
 ### D9. Logs and bounds
 
