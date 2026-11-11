@@ -49,8 +49,6 @@ export const MODEL_PARAMETER_METADATA: Readonly<Record<string, ModelParameterCou
   'mistralai/mistral-medium-3-5': { label: '128B params', confidence: 'published' },
   'mistralai/mistral-small-2603': { label: '119B params', confidence: 'published' },
   'nousresearch/hermes-4-405b': { label: '405B params', confidence: 'published' },
-  'nousresearch/hermes-3-llama-3.1-70b': { label: '70B params', confidence: 'published' },
-  'nousresearch/hermes-3-llama-3.1-405b': { label: '405B params', confidence: 'published' },
   'xiaomi/mimo-v2.6-flash': { label: '309B params · 15B active', confidence: 'published' },
   'xiaomi/mimo-v2.6-pro': { label: '>1T params', confidence: 'published' },
   'xiaomi/mimo-v2.6-pro-ultraspeed': { label: '1T params', confidence: 'published' },

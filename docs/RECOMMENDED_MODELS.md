@@ -4,14 +4,13 @@ Prose Minion connects to OpenRouter to provide access to the world's best AI mod
 
 Here is a guide to the models we recommend for creative writing, analysis, and editing.
 
-**Catalog audit: October 27, 2026.** Added GPT-6.1 Terra / Terra Pro,
-Kimi K3.1 Pro, MiniMax M3.1 Flash, DeepSeek V4.1 Flash 1017, and Mercury 3
-as opt-in choices. Removed three unavailable IDs from the curated pickers:
-`deepseek/deepseek-r1`, `sao10k/l3.3-euryale-70b`, and
-`arcee-ai/trinity-large-thinking`. Existing defaults and saved selections are
-unchanged. Availability and advertised capabilities were checked against
-[OpenRouter's live catalog](https://openrouter.ai/api/v1/models) and serving
-endpoints; the additions' prose quality has not been evaluated in Prose Minion.
+**Catalog audit: November 11, 2026.** Added Claude Fable 5.2, Gemini 4
+Carbon, Muse Ember, and Tencent Hy4 as opt-in choices. Removed Mercury 2.5,
+Mercury 3, and Hermes 3 70B / 405B from the curated pickers after each was
+absent from [OpenRouter's live catalog](https://openrouter.ai/api/v1/models)
+and had no serving endpoints. Defaults and saved selections are unchanged.
+Availability and advertised capabilities do not establish prose quality or
+successful inference in Prose Minion.
 
 ---
 
@@ -43,6 +42,13 @@ endpoints; the additions' prose quality has not been evaluated in Prose Minion.
   - OpenRouter: https://openrouter.ai/meta/muse-spark-1.3
   - Meta: https://ai.meta.com/
 
+### Meta Muse Ember — Low-Cost Long Context
+
+- **Best For:** Trying inexpensive editorial analysis, extraction, and Category Search
+- **Description:** 1,048,576-token context, multimodal input, text output, and mandatory reasoning. The November 11 catalog price was $0.10/M input and $0.50/M output. Prose quality in Prose Minion is unverified
+- **Links:**
+  - OpenRouter: https://openrouter.ai/meta/muse-ember
+
 ### Meta Muse Wonder — Premium Long-Context Reasoning
 
 - **Best For:** Trying complex editorial planning and manuscript-scale analysis where a premium reasoning model may help
@@ -65,6 +71,13 @@ endpoints; the additions' prose quality has not been evaluated in Prose Minion.
 - **Description:** OpenRouter lists 1M context, text/image/file input, adaptive reasoning, and a 128K maximum output. Its prose quality has not been verified in this extension
 - **Links:**
   - OpenRouter: https://openrouter.ai/anthropic/claude-sonnet-5.5
+
+### Claude Fable 5.2 — Premium Reasoning
+
+- **Best For:** Trying demanding manuscript-scale analysis and editorial work
+- **Description:** 1,000,000-token context, up to 128,000 output tokens, and mandatory reasoning. The November 11 catalog price was $8/M input and $40/M output. Earlier Fable models remain selectable; prose quality in Prose Minion is unverified
+- **Links:**
+  - OpenRouter: https://openrouter.ai/anthropic/claude-fable-5.2
 
 ### Claude Fable 5.1 — Long-Running Editorial Work
 
@@ -157,19 +170,18 @@ endpoints; the additions' prose quality has not been evaluated in Prose Minion.
   - OpenRouter: https://openrouter.ai/nousresearch/hermes-4-405b
   - Nous Research: https://nousresearch.com/
 
-### Nous Hermes 3 70B and 405B — Character-Focused Drafting
-
-- **Best For:** Dialogue, roleplay, and character exploration
-- **Description:** Both available Hermes 3 checkpoints have 131K context. The 70B and 405B sizes remain separate choices
-- **Links:**
-  - OpenRouter 70B: https://openrouter.ai/nousresearch/hermes-3-llama-3.1-70b
-  - OpenRouter 405B: https://openrouter.ai/nousresearch/hermes-3-llama-3.1-405b
-
 ---
 
 ## 🧠 Deep Analysis & Structural Logic
 
 **Best for:** Dictionary definitions, Prose Analysis critiques, finding plot holes, and structural editing
+
+### Gemini 4 Carbon — Long-Context Reasoning
+
+- **Best For:** Trying long-document analysis and complex Category Search
+- **Description:** 1,048,576-token context, multimodal input, structured output, and mandatory reasoning. The November 11 catalog price was $2/M input and $10/M output; endpoint pricing and limits may differ. Prose quality in Prose Minion is unverified
+- **Links:**
+  - OpenRouter: https://openrouter.ai/google/gemini-4-carbon
 
 ### Gemini 4 Argon — Long-Context Reasoning
 
@@ -535,21 +547,12 @@ endpoints; the additions' prose quality has not been evaluated in Prose Minion.
   - OpenRouter: https://openrouter.ai/openai/gpt-oss-120b:nitro
   - OpenAI: https://openai.com/open-models/
 
-### Mercury 2.5 — Diffusion-Speed Utility Work
+### Tencent Hy4 — General-Purpose Long Context
 
-- **Best For:** Dictionary alternatives, Category Search, rapid critiques, and other latency-sensitive utility work
-- **Description:** Inception's 260K-context diffusion reasoning model is fast and inexpensive. It remains an opt-in choice rather than a default
+- **Best For:** Trying inexpensive editorial analysis and Category Search
+- **Description:** 1,048,576-token context, text and image input, structured output, and optional reasoning. The November 11 catalog price was $0.417/M input and $1.2505/M output. Prose quality in Prose Minion is unverified
 - **Links:**
-  - OpenRouter: https://openrouter.ai/inception/mercury-2.5
-  - Inception: https://www.inceptionlabs.ai/
-
-### Mercury 3 — Long-Context Diffusion Utility Work
-
-- **Best For:** Trying responsive dictionary alternatives, Category Search, and quick critiques
-- **Description:** 1,000,000-token context, up to 131,072 output tokens, text input/output, optional reasoning, tools, and structured outputs. Mercury 2.5 remains selectable
-- **Pricing:** October 27 catalog rates: $0.10/M input and $0.35/M output tokens; serving endpoints and discounts may differ
-- **Links:**
-  - OpenRouter: https://openrouter.ai/inception/mercury-3
+  - OpenRouter: https://openrouter.ai/tencent/hy4
 
 ### Solar Mini 4 — Low-Cost Long Context
 

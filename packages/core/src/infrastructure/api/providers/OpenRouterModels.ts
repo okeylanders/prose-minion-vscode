@@ -76,6 +76,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Premium 1M-context Meta reasoner for complex editorial search; prose quality in Prose Minion is unverified'
   },
   {
+    id: 'meta/muse-ember',
+    name: 'Muse Ember',
+    family: 'Muse',
+    description: 'Low-cost 1M-context reasoning model for category matching; prose quality in Prose Minion is unverified'
+  },
+  {
     id: 'anthropic/claude-sonnet-4.5',
     name: 'Claude Sonnet 4.5',
     family: 'Claude Sonnet',
@@ -134,6 +140,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'Claude Opus 5.5',
     family: 'Claude Opus',
     description: '1M-context premium reasoner for difficult category matching and long editorial inputs'
+  },
+  {
+    id: 'anthropic/claude-fable-5.2',
+    name: 'Claude Fable 5.2',
+    family: 'Claude Fable',
+    description: 'Premium 1M-context model with mandatory reasoning for complex category matching; prose quality in Prose Minion is unverified'
   },
   {
     id: 'openai/gpt-5.4-mini',
@@ -220,18 +232,6 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Default for Category Search; OpenAI\'s open-weight reasoner routed to the highest-throughput available provider for extremely fast semantic matching'
   },
   {
-    id: 'inception/mercury-2.5',
-    name: 'Mercury 2.5',
-    family: 'Inception Mercury',
-    description: 'Extremely fast, low-cost diffusion reasoning model with 260K context for responsive dictionary lookups, category matching, and utility analysis'
-  },
-  {
-    id: 'inception/mercury-3',
-    name: 'Mercury 3',
-    family: 'Inception Mercury',
-    description: '1M-context diffusion model with optional reasoning for low-cost category matching; prose quality in Prose Minion is unverified'
-  },
-  {
     id: 'upstage/solar-mini4',
     name: 'Solar Mini 4',
     family: 'Solar',
@@ -298,6 +298,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Google\'s flagship 1M-context reasoning model for complex category matching; prose quality in Prose Minion is unverified'
   },
   {
+    id: 'google/gemini-4-carbon',
+    name: 'Gemini 4 Carbon',
+    family: 'Gemini 4',
+    description: '1M-context model with mandatory reasoning for complex category matching; prose quality in Prose Minion is unverified'
+  },
+  {
     id: 'deepseek/deepseek-v4-flash',
     name: 'DeepSeek V4 Flash',
     family: 'DeepSeek V4',
@@ -332,6 +338,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'MiniMax M3.1 Flash',
     family: 'MiniMax',
     description: 'Low-cost 1M-context multimodal model with mandatory reasoning for category matching; prose quality in Prose Minion is unverified'
+  },
+  {
+    id: 'tencent/hy4',
+    name: 'Hy4',
+    family: 'Tencent Hy',
+    description: '1M-context model with optional reasoning for category matching; prose quality in Prose Minion is unverified'
   },
   {
     id: 'stepfun/step-3.7-flash',
@@ -528,6 +540,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Premium 1M-context Meta reasoning model for complex, long-running work. Accepts text, images, video, audio, and PDFs; prose quality in Prose Minion is unverified.'
   },
   {
+    id: 'meta/muse-ember',
+    name: 'Muse Ember',
+    family: 'Muse',
+    description: 'Low-cost 1M-context multimodal model with mandatory reasoning. An opt-in choice for editorial and utility work; prose quality in Prose Minion is unverified.'
+  },
+  {
     id: 'anthropic/claude-opus-4.1',
     name: 'Claude Opus 4.1',
     family: 'Claude Opus',
@@ -582,6 +600,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Anthropic\'s upgraded Fable model with 1M context, more concise planning, and stronger long-running knowledge work. Retained alongside Fable 5 so writers can compare their editorial voices.'
   },
   {
+    id: 'anthropic/claude-fable-5.2',
+    name: 'Claude Fable 5.2',
+    family: 'Claude Fable',
+    description: 'Premium 1M-context model with mandatory reasoning for demanding editorial work. Retained alongside earlier Fable choices; prose quality in Prose Minion is unverified.'
+  },
+  {
     id: 'anthropic/claude-opus-4.5',
     name: 'Claude Opus 4.5',
     family: 'Claude Opus',
@@ -616,18 +640,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Claude Opus 5.5',
     family: 'Claude Opus',
     description: 'Premium 1M-context reasoner for sustained manuscript critique and complex editorial work.'
-  },
-  {
-    id: 'inception/mercury-2.5',
-    name: 'Mercury 2.5',
-    family: 'Inception Mercury',
-    description: 'Extremely fast diffusion reasoning model with 260K context and very low token cost. A strong fit for dictionary alternatives, category matching, quick critiques, and other latency-sensitive utility work.'
-  },
-  {
-    id: 'inception/mercury-3',
-    name: 'Mercury 3',
-    family: 'Inception Mercury',
-    description: '1M-context diffusion model with optional reasoning, tools, and structured outputs. An opt-in choice for responsive dictionary and editorial work; prose quality in Prose Minion is unverified.'
   },
   {
     id: 'upstage/solar-mini4',
@@ -694,6 +706,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'MiniMax M3.1 Flash',
     family: 'MiniMax',
     description: 'Low-cost 1M-context multimodal model with mandatory reasoning, tools, and structured outputs. An opt-in choice for editorial analysis; prose quality in Prose Minion is unverified.'
+  },
+  {
+    id: 'tencent/hy4',
+    name: 'Hy4',
+    family: 'Tencent Hy',
+    description: '1M-context text and image model with optional reasoning and structured output. An opt-in choice for editorial work; prose quality in Prose Minion is unverified.'
   },
   {
     id: 'stepfun/step-3.7-flash',
@@ -772,6 +790,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Gemini 4 Argon',
     family: 'Gemini 4',
     description: 'Google\'s flagship reasoning model with 1M context, multimodal input, and structured-output support. An opt-in choice for long-document analysis; prose quality in Prose Minion is unverified.'
+  },
+  {
+    id: 'google/gemini-4-carbon',
+    name: 'Gemini 4 Carbon',
+    family: 'Gemini 4',
+    description: '1M-context multimodal model with mandatory reasoning and structured output. An opt-in choice for long-document analysis; prose quality in Prose Minion is unverified.'
   },
   {
     id: 'z-ai/glm-4.5',
@@ -1138,18 +1162,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Nous Hermes 4 405B',
     family: 'Hermes 4',
     description: 'Uncensored frontier model. Best for mature themes, gritty narratives, and avoiding "assistant voice".'
-  },
-  {
-    id: 'nousresearch/hermes-3-llama-3.1-70b',
-    name: 'Nous Hermes 3 70B Instruct',
-    family: 'Hermes 3',
-    description: '131K-context instruction model for roleplay, dialogue, and character-focused drafting.'
-  },
-  {
-    id: 'nousresearch/hermes-3-llama-3.1-405b',
-    name: 'Nous Hermes 3 405B Instruct',
-    family: 'Hermes 3',
-    description: 'Larger 131K-context Hermes 3 model for roleplay, dialogue, and character-focused drafting.'
   },
   {
     id: 'xiaomi/mimo-v2.6-flash',

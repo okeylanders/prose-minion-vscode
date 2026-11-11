@@ -90,6 +90,8 @@ All eight of [the ADR's questions](../../../docs/adr/2026-11-10-workshop-reply-e
 
 ## Progress Notes
 
+- **2026-11-11, shared model catalog.** Refreshed opt-in models and removed unavailable choices on this branch; see the [model audit](model-audit-2026-11-11.md). This does not change the reply-edit live-pass gate.
+
 - **2026-11-10, Slice 0.** Branch cut at `c0a6e497`. The idea note copied unchanged from `claude/idea-inbox` (blob `4bee4019`, identical). ADR, README and mockups written. No code changed, so no test run was taken; Slice 1 records the baseline.
 - **2026-11-10.** Okey approved the design and took all eight recommendations. Added the to-do rules to the ADR (U1, D4, D5) after his question.
 - **2026-11-10, Slice 1.** The declaration, host only. Baseline on the epic's tip: 797 suites / 11,186 tests. After: 802 suites / 11,284 tests, typecheck clean, lint unchanged at 0 errors. Choices and details are in [slice-1-declaration.md](slice-1-declaration.md).
