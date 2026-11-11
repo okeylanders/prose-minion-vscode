@@ -1,0 +1,51 @@
+/** @jest-environment jsdom */
+/** Independent PR #255 production-card witness. No Markdown or card mocks. */
+import * as React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { WorkshopTurnMemoryCards, type WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
+import { settleWorkshopMemoryProposals } from '@/application/services/workshop/memory/WorkshopReplyMemory';
+import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
+import { memoryFrame } from '@/__tests__/application/services/workshop/memory/memoryProposalFixtures';
+import { projectMemoryBody, type ProjectMemory } from '@shared/types/projectMemory';
+import { listProjectMemories } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
+import type { WorkshopTurn } from '@messages';
+
+it.each(['new', 'edit'] as const)('%s: the flagged result reaches the real card and its actions retain the index', (kind) => {
+  const note: ProjectMemory = {
+    id: 'mem-7f3c2a', title: 'The Rabbit at tea', kind: 'canon', summary: 'The watch runs backward.',
+    status: 'active', pinned: false, created: '2026-11-01T10:00:00Z', updated: '2026-11-03T14:22:05Z',
+    origin: 'writer', sourceTurns: [], supersedes: [], body: projectMemoryBody('Settled at the tea party.')
+  };
+  const body = "You've kept Alice's family quarrel unresolved.";
+  const frame = kind === 'new' ? memoryFrame({ body })
+    : `<prose-minion-memory-proposal><edit>${note.id}</edit><append>${body}</append></prose-minion-memory-proposal>`;
+  const settled = settleWorkshopMemoryProposals(extractWorkshopReplyControls(`Good.\n\n${frame}`, { memoryOpen: true }).memory,
+    { open: true, mode: 'ask', memories: listProjectMemories([{ memory: note }]) });
+  expect(settled.proposals).toHaveLength(1);
+  const turn: WorkshopTurn = {
+    id: 'turn-4-assistant-1008', role: 'assistant', kind: 'message', participant: 'host',
+    artifact: 'persona_message', personaId: 'jill', personaLabel: 'Jill', excerptVersion: 1,
+    content: 'Good.', timestamp: 1, memoryProposals: [...settled.proposals]
+  };
+  const controls: WorkshopTurnMemoryControls = {
+    disabled: false, busyCards: new Set(), cardErrors: new Map(), onSaveCard: jest.fn(), onEditCard: jest.fn(),
+    onDismissCard: jest.fn(), onReopenCard: jest.fn(), onSaveTurn: jest.fn(), onEditMemory: jest.fn(),
+    onForget: jest.fn(), onRestore: jest.fn()
+  };
+  const { rerender } = render(<WorkshopTurnMemoryCards turn={turn} controls={controls} />);
+  const label = kind === 'new' ? 'Suggested memory, held for you' : 'Suggested change, held for you';
+  expect(screen.getByRole('group', { name: label }).textContent).toContain(
+    'This note speaks of you near a word about personal life (“family”), so it waits for you to check it before saving.');
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Edit…' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  expect(controls.onSaveCard).toHaveBeenCalledWith(turn.id, 0);
+  expect(controls.onEditCard).toHaveBeenCalledWith(turn, 0);
+  expect(controls.onDismissCard).toHaveBeenCalledWith(turn.id, 0);
+  const dismissed = { ...turn, memoryProposals: settled.proposals.map((p) => ({ ...p, state: 'dismissed' as const })) };
+  rerender(<WorkshopTurnMemoryCards turn={dismissed} controls={controls} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Show it again' }));
+  expect(controls.onReopenCard).toHaveBeenCalledWith(turn.id, 0);
+  rerender(<WorkshopTurnMemoryCards turn={turn} controls={controls} />);
+  expect(screen.getByRole('group', { name: label }).textContent).toContain('“family”');
+});
