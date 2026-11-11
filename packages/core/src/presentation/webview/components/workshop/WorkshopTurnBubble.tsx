@@ -25,8 +25,9 @@ import {
 } from '@messages';
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { WorkshopBookmarkToggle } from './WorkshopBookmarkToggle';
-import { type WorkshopReactionControls, WorkshopTurnReactionCorner } from './reactions/WorkshopTurnReactions';
+import { type WorkshopReactionControls } from './reactions/WorkshopTurnReactions';
 import { WorkshopReactionOnlyLine } from './reactions/WorkshopReactionOnlyLine';
+import { WorkshopWriterMessage } from './reactions/WorkshopWriterMessage';
 import { WorkshopMemoryReceiptLine, WorkshopTurnMemoryCards, workshopSaveToMemoryAction, type WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
 import { WorkshopTurnFileEdits } from './fileEdits/WorkshopTurnFileEdits';
 import { WorkshopTurnFoot } from './editOffers/WorkshopTurnFoot';
@@ -563,7 +564,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
               <Icon name="info" size={11} /> {privateInstrumentLabel}
             </span>
           )}
-          <div className="pm-ws-turn-message">{turn.content}</div>
+          <WorkshopWriterMessage turn={turn} reactions={reactions} />
           {widgetCommit && onOpenWidgetConfig && (() => {
             const face = widgetCommitChipFace(widgetCommit, widgetConfigSummary);
             return (
@@ -588,7 +589,6 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
               {branchAction}
             </div>
           )}
-          {reactions && <WorkshopTurnReactionCorner turn={turn} controls={reactions} />}
         </div>
       );
     }
