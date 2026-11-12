@@ -23,7 +23,7 @@ Node `v24.22.1`; dependencies reused from a checkout with a byte-identical `pack
 - `npm run lint`: passed, 0 errors / 1,171 warnings, matching the documented baseline.
 - `npm run build`: both bundles and bundle verification passed; existing webpack performance warnings remain.
 - Three focused integration/whole-room suites passed: **44 tests** (`WorkshopEditOfferEngine.integration`, `WorkshopReactionDeliveryWholeRoom`, `WorkshopEditOfferWholeRoom`).
-- Full local `npm test -- --runInBand`: **still running at initial publication**, with 274 suites passed and no failure observed then. This is not a completed full-suite result; it will be added when the run finishes.
+- Full local `npm test -- --runInBand`: **843 suites / 11,915 tests / 59 snapshots passed**, exit 0, in 756.892 seconds. This finished after initial publication; the independently observed counts match the PR's report.
 - `git diff --check` identifies five added blank lines at EOF, in one ADR and four tests, including four already noted by the #254 review. Non-blocking whitespace only.
 
 ## Exact-head CI and limits
