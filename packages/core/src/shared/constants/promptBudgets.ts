@@ -125,6 +125,21 @@ export interface PromptBudgets {
     citedTurns: number;
   }>;
   /**
+   * Workshop message reactions (ADR 2026-11-07 D9). `perSession` is the
+   * codec's bound on stored entries; the ledger refuses an add past it.
+   * Delivery (D4, D6): a `<workshop-reactions>` frame lists at most
+   * `framePerTurn` reactions, newest first, then a count line; each target
+   * is quoted by an opening cut on a word boundary at `openingCharacters`.
+   * One reply's `reactionDelivery` records at most `deliveredPerReply`
+   * reactions (the codec's bound); older ones past it wait for a later turn.
+   */
+  readonly workshopReactions: Readonly<{
+    perSession: number;
+    framePerTurn: number;
+    openingCharacters: number;
+    deliveredPerReply: number;
+  }>;
+  /**
    * Workshop Pinned Context (ADR 2026-11-04 D6): how many files the list
    * may hold (the codec refuses a longer list whole; the tab refuses a pin
    * past it), and the largest file read or written.
@@ -171,6 +186,30 @@ export interface PromptBudgets {
     fileBytes: number;
     /** A notes rewrite's content (D5). */
     rewriteFileBytes: number;
+  }>;
+  /**
+   * A reply's edit offers (ADR 2026-11-10 D1): the declaration a persona ends
+   * a reply with, the press's source reply (D4), an answer's "nothing to
+   * change" reason (D5) and the fixes policy (D6). Pinned to
+   * `workshop-personas/reply-edit-offers.md` by a sync test.
+   */
+  readonly workshopEditOffers: Readonly<{
+    /** Offer frames one reply may keep: one per kind. */
+    offersPerReply: number;
+    /** One frame's inside: a longer frame is dropped whole, unread. */
+    frameCharacters: number;
+    /** The largest `<count>`; the least is 1. */
+    count: number;
+    /** A reply longer than this gets no offers: a press quotes it whole (D4). */
+    sourceReplyCharacters: number;
+    /** An answer's one-line `<why>` when there is nothing to change (D5). */
+    whyCharacters: number;
+    /** Changed characters on each side of one fix (D6). */
+    fixChangedCharacters: number;
+    /** `<option>` elements one rewrites offer may name: alternative versions, a chip each (second addendum). */
+    optionsPerOffer: number;
+    /** One option's label, trimmed, on one line. */
+    optionCharacters: number;
   }>;
   readonly workshopTodos: Readonly<{
     items: number;
@@ -636,6 +675,14 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     editReplaces: 5,
     citedTurns: 30
   },
+  workshopReactions: {
+    // Generous: 19 writer reactions on each of a few hundred replies, plus the personas'.
+    perSession: 5_000,
+    framePerTurn: 8,
+    openingCharacters: 80,
+    // A codec bound no prompt states: generous, so a long room's join hears every standing reaction.
+    deliveredPerReply: 1_000
+  },
   workshopPinnedContext: {
     // 50, tuned in the Slice 5 live pass (Okey, 2026-11-05): the first real
     // project pinned 22, past the starting value of 20.
@@ -666,6 +713,16 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     fileBytes: 2 * 1024 * 1024,
     // D5: a notes rewrite replaces at most 32 KiB.
     rewriteFileBytes: 32 * 1024
+  },
+  workshopEditOffers: {
+    offersPerReply: 2,
+    frameCharacters: 600,
+    count: 99,
+    sourceReplyCharacters: 48_000,
+    whyCharacters: 200,
+    fixChangedCharacters: 40,
+    optionsPerOffer: 4,
+    optionCharacters: 40
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {

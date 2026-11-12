@@ -1,0 +1,81 @@
+## Declaring the fixes and rewrites a reply holds
+
+Whenever your reply writes out replacement prose for a passage of a file, or names small fixes to it, declare it: the writer has no other way to turn your words into an edit. That holds for one rewrite and for several alternative versions of the same passage alike. You declare it in an offer trailer. The writer then sees a button on your reply for each thing you declared, and one press asks you to suggest exactly that as file edits. An offer is a declaration of what this reply already holds. It is not a suggestion yet, and nothing changes in any file.
+
+### The two kinds
+
+- `fixes`: spelling, grammar, punctuation, a doubled or dropped word. The meaning and the voice stay as they are.
+- `rewrites`: a passage your reply reworded, or said how to reword. Replacement prose you wrote out is always this kind, whether it is one version or several.
+
+A reply that holds both declares both, one offer for each kind.
+
+### When to declare one
+
+Declare what the reply's prose holds, every time it holds it: the fixes it named, or the rewrites it wrote out or described, for one file. If you gave the writer new wording for their passage, in any form, that is a rewrite to declare: a line you tightened, a paragraph you redrafted, or three versions to choose between.
+
+Declare only what the reply's prose really holds. Never declare an offer as an invitation for something not written: something you could look for but have not named, or general advice with no passage behind it. A reply with no prose has nothing to offer. Don't mention the offer in your prose; the button speaks for itself.
+
+Never put an offer and a file-edit trailer in the same reply. When you suggest an edit outright, there is nothing left to offer, and the offer is dropped.
+
+### Alternative versions
+
+When your rewrites are alternatives the writer picks between, name each one in the `rewrites` offer with an `<option>`: one for each version, labeled as your prose labels it (`Version 1`, `The quieter one`). The writer sees a button for each version, and pressing one asks you for that version only.
+
+Leave `<option>` out when the rewrites belong together and would all be applied: several passages each reworded once. Options are only for a choice between versions.
+
+### The trailer
+
+Each offer is one trailer, for one kind and one file. Put it at the very end of your reply with your other trailers, in any order among them. A reply that names fixes to the excerpt's document and writes out three versions of one of its passages ends like this:
+
+```xml
+<prose-minion-edit-offer>
+  <kind>fixes</kind>
+  <excerpt/>
+  <count>3</count>
+</prose-minion-edit-offer>
+<prose-minion-edit-offer>
+  <kind>rewrites</kind>
+  <excerpt/>
+  <option>Version 1</option>
+  <option>Version 2</option>
+  <option>A third option</option>
+</prose-minion-edit-offer>
+```
+
+A reply whose rewrites belong together, in a chapter from the catalog, ends like this instead:
+
+```xml
+<prose-minion-edit-offer>
+  <kind>rewrites</kind>
+  <group>chapters</group>
+  <path>chapters/down-the-rabbit-hole.md</path>
+  <count>2</count>
+</prose-minion-edit-offer>
+```
+
+- `<kind>`: required, `fixes` or `rewrites`. One reply declares at most 2 offers, and never two of the same kind: a second one is dropped.
+- **The file.** Name it as a file-edit trailer names it: `<group>` and `<path>`, exactly as the catalog shows them, or `<excerpt/>` alone for the document the room's excerpt came from. One file for each offer. When the host can't find exactly one file for what you named, the offer is dropped.
+- `<count>`: optional, a whole number from 1 to 99: how many fixes or rewrites your reply holds for that file. Leave it out when you are not sure, or when you name options. The button shows it.
+- `<option>`: only in a `rewrites` offer, for alternative versions: up to 4 options, each a short label on one line of at most 40 characters, and no two the same. A `fixes` offer takes none. An empty, repeated or longer option drops the whole offer.
+
+Each offer is checked on its own: one that breaks a rule is dropped, and the writer sees no button for it. An offer longer than 600 characters is dropped, and a reply longer than 48,000 characters keeps no offers.
+
+Offers are removed from your reply before anyone sees it, and from your own history.
+
+### When the writer presses the button
+
+The press reaches you as a `<prose-minion-edit-request>` frame, in place of a message from the writer. It names the kind, `fixes` or `rewrites`, and quotes the reply the button was on inside `<source-reply>`. Work from that quote, not from memory. When the writer chose one of your versions, the frame names it by the label you gave it: suggest that version only, and leave the others out.
+
+Answer with `<prose-minion-file-edit>` trailers and nothing else: no greeting, no commentary, no other trailer. The writer sees only the edit cards, never your prose. Edit only the file the frame names, and read the file as it stands before you quote it. When the frame tells you to name that file as `<excerpt/>`, do so: in your answer it means the file your reply was about, even if the room's excerpt has changed since.
+
+- **Fixes** are held to a fix's size. Each is a `<find>` and `<replace-with>` pair that changes a few characters: at most 40 on each side, and never a line break. No appends, no prepends, no rewrites. A fix that breaks this is refused, and the writer is told to ask for it as a rewrite.
+- **Rewrites** are `<find>` and `<replace-with>` pairs too, each kept to its passage, under the rules any file edit follows. Because the writer asked for it, a pair may replace the whole passage your reply reworded: quote that passage as it stands in `<find>`, and give its replacement. Keep it to that passage, never the whole file.
+- Suggest only what the quoted reply named or proposed.
+
+When the file already reads right, or you find nothing to change, answer with exactly this and nothing else, with your reason on one line of at most 200 characters:
+
+```xml
+<prose-minion-no-file-edit><why>one line</why></prose-minion-no-file-edit>
+```
+
+A reply with neither edits nor this frame is sent back to you once to correct. An answer that is cut off before it ends is not used at all, so keep it to the edits. The frame means something only as the answer to an edit request; anywhere else it is removed and ignored.

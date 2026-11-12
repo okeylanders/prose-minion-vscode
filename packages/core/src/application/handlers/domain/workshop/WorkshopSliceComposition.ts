@@ -17,6 +17,7 @@ import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/Workshop
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
 import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookmarkHandler';
+import { WorkshopReactionHandler } from '@handlers/domain/workshop/WorkshopReactionHandler';
 import { WorkshopBookmarkBrowserHandler } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import { WorkshopProjectMemoryHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
 import { WorkshopProjectMemoryManagerHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
@@ -25,6 +26,7 @@ import { WorkshopMemoryDraftHandler } from '@handlers/domain/workshop/WorkshopMe
 import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
 import { WorkshopPinnedContextHandler } from '@handlers/domain/workshop/WorkshopPinnedContextHandler';
 import { WorkshopFileEditHandler } from '@handlers/domain/workshop/WorkshopFileEditHandler';
+import { WorkshopEditOfferHandler } from '@handlers/domain/workshop/WorkshopEditOfferHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import {
   WorkshopGesturePlaygroundHandler
@@ -74,6 +76,7 @@ export class WorkshopSliceComposition {
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
   private readonly todoHandler: WorkshopTodoHandler;
   private readonly bookmarkHandler: WorkshopBookmarkHandler;
+  private readonly reactionHandler: WorkshopReactionHandler;
   private readonly bookmarkBrowserHandler: WorkshopBookmarkBrowserHandler;
   private readonly projectMemoryHandler: WorkshopProjectMemoryHandler;
   private readonly projectMemoryManagerHandler: WorkshopProjectMemoryManagerHandler;
@@ -82,6 +85,7 @@ export class WorkshopSliceComposition {
   private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
   private readonly pinnedContextHandler: WorkshopPinnedContextHandler;
   private readonly fileEditHandler: WorkshopFileEditHandler;
+  private readonly editOfferHandler: WorkshopEditOfferHandler;
   private readonly contextHandler: WorkshopContextHandler;
   private readonly excerptScopeHandler: WorkshopExcerptScopeHandler;
 
@@ -261,6 +265,11 @@ export class WorkshopSliceComposition {
       postMessage,
       sessionPersistence
     );
+    this.reactionHandler = new WorkshopReactionHandler(session, outputChannel, {
+      postSessionState: host.postSessionState, markDirty,
+      isRoomBusy: () => host.isRoomRunActive() || this.contextHandler.isRunning(),
+      reportError: (message, details) => host.reportRouteError('workshop.reaction', message, details, 'WorkshopReactionHandler')
+    });
     // The Bookmarks screen's reads beside them (ADR 2026-11-05 D8): through recall, never the gate.
     this.bookmarkBrowserHandler = new WorkshopBookmarkBrowserHandler(
       bookmarkBrowser,
@@ -343,6 +352,22 @@ export class WorkshopSliceComposition {
       postMessage,
       outputChannel
     );
+    // A press on a reply's edit offer (ADR 2026-11-10 D4): a host-directed run on the room's own message path.
+    this.editOfferHandler = new WorkshopEditOfferHandler(
+      session,
+      {
+        activeRunLabel: host.activeRunLabel,
+        fileEditsMode: host.fileEditsMode,
+        formatTurnTime: host.formatTurnTime,
+        runDirected: host.runDirected
+      },
+      {
+        reportError: (message, details) =>
+          host.reportRouteError('workshop', message, details, 'WorkshopEditOfferHandler')
+      },
+      postMessage,
+      outputChannel
+    );
   }
 
   registerRoutes(
@@ -390,6 +415,7 @@ export class WorkshopSliceComposition {
       this.createMutationRegistrar(router, 'WorkshopBookmarkHandler')
     );
     this.bookmarkBrowserHandler.registerRoutes(router);
+    this.reactionHandler.registerRoutes(this.createMutationRegistrar(router, 'WorkshopReactionHandler'));
     this.lightboxTileHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopLightboxTileHandler')
@@ -411,6 +437,7 @@ export class WorkshopSliceComposition {
       router,
       this.createMutationRegistrar(router, 'WorkshopFileEditHandler')
     );
+    this.editOfferHandler.registerRoutes(this.createMutationRegistrar(router, 'WorkshopEditOfferHandler'));
   }
 
   /** Save and tell me (Slice 5): a recorded reply's cards at `indexes`, saved now in order, as the tail of the run `signal` belongs to. */

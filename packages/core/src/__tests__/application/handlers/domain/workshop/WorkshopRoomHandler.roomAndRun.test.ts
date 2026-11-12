@@ -15,6 +15,8 @@ import {
 } from './WorkshopRouteTestHarness';
 import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
+import { renderWorkshopReactionInvite } from '@/application/services/workshop/reactions/WorkshopReactionInvite';
+import { renderWorkshopEditOfferReminder } from '@/application/services/workshop/fileEdits/WorkshopEditOfferReminder';
 
 interface WorkshopDisposableSliceComposition {
   gesturePlaygroundHandler: { dispose: () => void };
@@ -377,7 +379,13 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
     ) as any);
 
     expect(service.startWorkshopPersonaConversation).toHaveBeenCalledWith(
-      expect.objectContaining({ personaId: 'jill', message: 'Where does this scene turn?' }),
+      // Persona reactions default on, so the reaction invite rides ahead of the message (2026-11-10 addendum). File
+      // edits default to ask and the excerpt came from a file, so the edit-offer reminder rides too (ADR 2026-11-10,
+      // second addendum), last before the message.
+      expect.objectContaining({
+        personaId: 'jill',
+        message: `${renderWorkshopReactionInvite()}\n\n${renderWorkshopEditOfferReminder()}\n\nWRITER MESSAGE:\nWhere does this scene turn?`
+      }),
       expect.objectContaining({
         signal: expect.anything(),
         onToken: expect.any(Function),

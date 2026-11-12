@@ -126,6 +126,85 @@ describe('FileEditStagingService', () => {
     await expect(unreadable.stage(resource('characters', 'characters/alice.md'))).resolves.toMatchObject({ reason: 'catalog-unreadable' });
   });
 
+  describe('resolve (ADR 2026-11-10 D2): the same identity, with no baseline', () => {
+    /** A staging service whose file reads and open-buffer peeks are counted. */
+    function counted(fakes: HostFakes) {
+      const { candidates, excerpt, workspace, fileSystem, log } = ports(fakes);
+      const reads: string[] = [];
+      const service = new FileEditStagingService({
+        candidates,
+        excerpt,
+        workspace,
+        fileSystem: { stat: fileSystem.stat, readFile: async (filePath: string) => { reads.push(filePath); return fileSystem.readFile(filePath); } },
+        documents: { peek: (uri: string) => { reads.push(uri); return undefined; } },
+        log
+      });
+      return { service, reads };
+    }
+
+    it('gives exactly the identity staging gives, for a file and for the excerpt, and reads no text', async () => {
+      const chapter = `${ROOT}/drafts/one.md`;
+      const fakes = hostFakes({
+        candidates: [candidate('characters', 'characters/Alice.md'), candidate('general', 'drafts/one.md')],
+        files: { [`${ROOT}/characters/Alice.md`]: NOTE_TEXT, [chapter]: 'Alice ran.' },
+        excerpt: { fsPath: chapter, relativePath: 'drafts/one.md' }
+      });
+      for (const target of [resource('characters', 'characters/alice.md'), { kind: 'excerpt' } as const]) {
+        const { service, reads } = counted(fakes);
+        const resolved = await service.resolve(target);
+        expect(reads).toEqual([]);
+        const staged = await service.stage(target);
+        expect(staged.kind).toBe('staged');
+        expect(resolved).toEqual({ kind: 'resolved', target: (staged as { target: unknown }).target });
+        expect(resolved).not.toHaveProperty('baseline');
+        expect(resolved).not.toHaveProperty('class');
+      }
+    });
+
+    it('resolves a file whose text could not be read or edited: freshness belongs to the cards', async () => {
+      const fakes = hostFakes({ candidates: [candidate('characters', 'characters/alice.md')], files: {} });
+      await expect(staging(fakes).resolve(resource('characters', 'characters/alice.md')))
+        .resolves.toEqual({ kind: 'resolved', target: { kind: 'file', documentUri: uriOf(NOTE), relativePath: 'characters/alice.md' } });
+      await expect(staging(fakes).stage(resource('characters', 'characters/alice.md'))).resolves.toEqual({ kind: 'refused', reason: 'unreadable' });
+    });
+
+    it('refuses by staging\'s own identity rules: one physical file, a file excerpt inside the workspace, the catalog', async () => {
+      const twoRoots = hostFakes({
+        roots: [ROOT, '/second'],
+        candidates: [candidate('chapters', 'chapters/one.md'), candidate('chapters', 'chapters/one.md', '/second')]
+      });
+      await expect(staging(twoRoots).resolve(resource('chapters', 'chapters/one.md'))).resolves.toEqual({ kind: 'refused', reason: 'ambiguous-target' });
+      const fakes = hostFakes({ candidates: [candidate('characters', 'characters/alice.md'), candidate('characters', 'characters/map.png')] });
+      const resolve = (target: FileEditStagingTarget) => staging(fakes).resolve(target);
+      await expect(resolve(resource('characters', 'characters/hatter.md'))).resolves.toEqual({ kind: 'refused', reason: 'not-configured' });
+      await expect(resolve(resource('characters', '../secret.md'))).resolves.toEqual({ kind: 'refused', reason: 'unsafe-path' });
+      await expect(resolve({ kind: 'resource', group: 'diaries' as never, path: 'x.md' })).resolves.toEqual({ kind: 'refused', reason: 'unknown-group' });
+      await expect(resolve(resource('characters', 'characters/map.png'))).resolves.toEqual({ kind: 'refused', reason: 'not-text' });
+      // A manual (pasted) excerpt, or none, has no document.
+      await expect(resolve({ kind: 'excerpt' })).resolves.toEqual({ kind: 'refused', reason: 'excerpt-not-a-file' });
+      const outside = hostFakes({ excerpt: { fsPath: '/elsewhere/one.md', relativePath: 'one.md' } });
+      await expect(staging(outside).resolve({ kind: 'excerpt' })).resolves.toEqual({ kind: 'refused', reason: 'outside-workspace' });
+      const unreadable = staging(fakes);
+      (unreadable as unknown as { dependencies: { candidates: unknown } }).dependencies.candidates = { listCandidates: async () => { throw new Error('x'); } };
+      await expect(unreadable.resolve(resource('characters', 'characters/alice.md'))).resolves.toEqual({ kind: 'refused', reason: 'catalog-unreadable' });
+      (unreadable as unknown as { dependencies: { excerpt: unknown } }).dependencies.excerpt = { currentDocument: async () => { throw new Error('x'); } };
+      await expect(unreadable.resolve({ kind: 'excerpt' })).resolves.toEqual({ kind: 'refused', reason: 'unreadable' });
+    });
+
+    it('logs the target kind and the outcome, never a path or URI', async () => {
+      const fakes = hostFakes({ candidates: [candidate('characters', 'characters/alice.md')] });
+      await staging(fakes).resolve(resource('characters', 'characters/alice.md'));
+      await staging(fakes).resolve(resource('characters', 'characters/hatter.md'));
+      await staging(fakes).resolve({ kind: 'excerpt' });
+      expect(fakes.log).toEqual([
+        '[FileEdit] resolved target=group=characters identity=file',
+        '[FileEdit] resolved target=group=characters refused=not-configured',
+        '[FileEdit] resolved target=excerpt refused=excerpt-not-a-file'
+      ]);
+      expectNoLeaks(fakes.log, 'alice', 'hatter');
+    });
+  });
+
   it('logs the target kind and the outcome, never a path, URI or the text', async () => {
     const fakes = hostFakes({ candidates: [candidate('characters', 'characters/alice.md')], files: { [NOTE]: NOTE_TEXT } });
     await staging(fakes).stage(resource('characters', 'characters/alice.md'));

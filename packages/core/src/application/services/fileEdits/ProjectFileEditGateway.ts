@@ -30,6 +30,17 @@
  *    first: a failure to show the document keeps the result.
  * 8. **Show the document** when something landed and no editor shows it.
  *
+ * **An intent narrows** (ADR 2026-11-10 D6). A proposal staged with
+ * `intent: 'fixes'` is held to `FILE_EDIT_INTENT_POLICIES` on top of its
+ * class policy: checked with the class policy in step 4 and again before
+ * every attempt, and applied with no line-break change and the `strict`
+ * structure mode. A breach is `more-than-a-fix`, and nothing is written.
+ *
+ * **A requested rewrite lifts the ceiling** (its second addendum). A
+ * proposal staged with `intent: 'rewrites'` (the answer to a press on a
+ * rewrites chip) is not held to the class's rewrite ceiling, in step 4 or
+ * before any attempt. Everything else of its class policy stands.
+ *
  * Nothing is ever saved. Logs carry ids, counts and fault kinds, never the
  * text, a quote, a path or a URI.
  */
@@ -37,7 +48,9 @@
 import type { DraftEditApplier, DraftEditApplyResult, DraftEditEdit } from '@/application/services/draftEdit/DraftEditApplier';
 import { DEFAULT_CONTEXT_GROUPS, type ContextResourceCandidate, type ContextResourceCandidateReader } from '@/domain/models/ContextGeneration';
 import {
+  FILE_EDIT_INTENT_POLICIES,
   FILE_EDIT_TARGET_POLICIES,
+  fileEditPolicyWithIntent,
   type FileEditApplyOptions,
   type FileEditApplyOutcome,
   type FileEditApplyPort,
@@ -72,7 +85,7 @@ import {
   samePath,
   type FileEditExcerptPort
 } from './fileEditIdentity';
-import { changedCharacters, freshnessFaults, passesRewriteCeiling, policyFaults, type OperationFault } from './fileEditPolicyChecks';
+import { changedCharacters, freshnessFaults, intentFaults, passesRewriteCeiling, policyFaults, type OperationFault } from './fileEditPolicyChecks';
 
 export type { FileEditApplyOutcome, FileEditApplyState, FileEditOperationOutcome, FileEditPreview } from '@/domain/models/FileEdit';
 
@@ -210,11 +223,19 @@ export class ProjectFileEditGateway implements FileEditApplyPort {
     if (resolved.kind === 'refused') {
       return whole(staged, 'refused', resolved.reason);
     }
-    const { epoch, fsPath, policy, document } = resolved;
+    const { epoch, fsPath, document } = resolved;
+    // Fixes narrow the class's policy (ADR 2026-11-10 D6); a requested rewrite lifts its ceiling alone (second addendum).
+    const intent = staged.intent ? FILE_EDIT_INTENT_POLICIES[staged.intent] : undefined;
+    const policy: FileEditClassPolicy = fileEditPolicyWithIntent(resolved.policy, intent);
 
     // From here to the applier's call nothing is awaited.
     // 4. Plan, then freshness and the policy.
     const operations = staged.operations.map((operation) => inLineEndings(operation, document.text));
+    // The intent's policy reads only the operations, so it is checked before the plan: a rewrite it refuses is its fault.
+    const beyondIntent = intentFaults(operations, intent);
+    if (beyondIntent.length > 0) {
+      return faulted(staged, beyondIntent);
+    }
     const plan = planTextEdits(document.text, operations, {
       allowsRewrite: policy.allowsRewrite,
       skipLeading: fileEditSkipLeading(document.text, fsPath),
@@ -276,7 +297,8 @@ export class ProjectFileEditGateway implements FileEditApplyPort {
           return lost;
         }
         const fault = freshnessFaults(live.text, fsPath, operations, staged.baseline)[0]
-          ?? policyFaults(live.text, fsPath, live.languageId, operations, policy)[0];
+          ?? policyFaults(live.text, fsPath, live.languageId, operations, policy)[0]
+          ?? intentFaults(operations, intent)[0];
         if (fault) {
           return fault.fault;
         }

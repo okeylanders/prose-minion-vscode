@@ -22,6 +22,7 @@ import type { UseWorkshopRoomReturn } from '@hooks/domain/workshop/useWorkshopRo
 import type { UseWorkshopSessionsReturn } from '@hooks/domain/workshop/useWorkshopSessions';
 import type { UseWorkshopReadInReturn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import type { UseWorkshopBookmarksReturn } from '@hooks/domain/workshop/useWorkshopBookmarks';
+import type { UseWorkshopReactionsReturn } from '@hooks/domain/workshop/useWorkshopReactions';
 import type { UseWorkshopBookmarkBrowserReturn } from '@hooks/domain/workshop/useWorkshopBookmarkBrowser';
 import type {
   UseWorkshopExcerptVerifyReturn
@@ -67,6 +68,7 @@ import type { UseWorkshopProjectMemoryReturn } from '@hooks/domain/workshop/useW
 import type { UseWorkshopMemoryManagerReturn } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import type { UseWorkshopPinnedContextReturn } from '@hooks/domain/workshop/useWorkshopPinnedContext';
 import type { UseWorkshopFileEditsReturn } from '@hooks/domain/workshop/useWorkshopFileEdits';
+import type { UseWorkshopEditOffersReturn } from '@hooks/domain/workshop/useWorkshopEditOffers';
 
 export interface WorkshopAppMessageRouterDeps {
   workshopRoom: UseWorkshopRoomReturn;
@@ -75,6 +77,8 @@ export interface WorkshopAppMessageRouterDeps {
   readIn: UseWorkshopReadInReturn;
   /** Bookmarks and the turn preview (Wayfinding Slice 5). */
   bookmarks: UseWorkshopBookmarksReturn;
+  /** Message reactions (ADR 2026-11-07 D8): the snapshot's summaries. */
+  reactions: Pick<UseWorkshopReactionsReturn, 'handleSessionState' | 'noteLiveTurn'>;
   /** The Bookmarks screen's answers (Bookmark Recall Slice 2). */
   bookmarkBrowser: Pick<
     UseWorkshopBookmarkBrowserReturn,
@@ -88,6 +92,8 @@ export interface WorkshopAppMessageRouterDeps {
   pinnedContext: Pick<UseWorkshopPinnedContextReturn, 'handlePinnedContext'>;
   /** A suggested file edit's answers (Persona File Edits Slice 4b); absent reads as none. */
   fileEdits?: Pick<UseWorkshopFileEditsReturn, 'handleResult' | 'handlePreviewResult'>;
+  /** A pressed edit offer's answer (Reply Edit Actions Slice 3); absent reads as none. */
+  editOffers?: Pick<UseWorkshopEditOffersReturn, 'handleResult' | 'noteSessionState'>;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -116,11 +122,13 @@ export function buildWorkshopAppMessageRoutes(
     workshopSessions,
     readIn,
     bookmarks,
+    reactions,
     bookmarkBrowser,
     projectMemory,
     memoryManager,
     pinnedContext,
     fileEdits,
+    editOffers,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -144,11 +152,16 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_SESSION_STATE]: (message) => {
       workshopRoom.handleSessionState(message);
       bookmarks.handleSessionState(message);
+      reactions.handleSessionState(message);
       bookmarkBrowser.handleSessionState(message);
       widgetHost.handleSessionState(message);
       memoryManager.noteSessionState(message);
+      editOffers?.noteSessionState();
     },
-    [MessageType.WORKSHOP_TURN]: workshopRoom.handleTurn,
+    [MessageType.WORKSHOP_TURN]: (message) => {
+      workshopRoom.handleTurn(message);
+      reactions.noteLiveTurn(message);
+    },
     [MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED]:
       workshopRoom.handleComposerDraftRestored,
     [MessageType.WORKSHOP_SESSIONS_DATA]: workshopSessions.handleSessionsData,
@@ -194,6 +207,7 @@ export function buildWorkshopAppMessageRoutes(
       [MessageType.WORKSHOP_FILE_EDIT_RESULT]: fileEdits.handleResult,
       [MessageType.WORKSHOP_FILE_EDIT_PREVIEW_RESULT]: fileEdits.handlePreviewResult
     } : {}),
+    ...(editOffers ? { [MessageType.WORKSHOP_EDIT_OFFER_RESULT]: editOffers.handleResult } : {}),
     [MessageType.WORKSHOP_MEMORY_ESTIMATE_RESULT]: projectMemory.handleEstimateResult,
     [MessageType.WORKSHOP_MEMORY_DRAFT_RESULT]: projectMemory.handleMemoryDraftResult,
     [MessageType.WORKSHOP_MEMORY_DRAFTS_SETTING]: projectMemory.handleMemoryDraftsSetting,

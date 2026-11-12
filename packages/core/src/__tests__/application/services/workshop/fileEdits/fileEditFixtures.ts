@@ -34,6 +34,31 @@ export function fileEditFrame(fields: {
   ].join('\n');
 }
 
+/** An edit-offer trailer (ADR 2026-11-10 D1); `null` leaves an element out. */
+export function editOfferFrame(fields: {
+  kind?: string | null;
+  group?: string | null;
+  path?: string | null;
+  excerpt?: boolean;
+  count?: string | number | null;
+  extra?: string[];
+} = {}): string {
+  const target = fields.excerpt
+    ? ['<excerpt/>']
+    : [
+      ...(fields.group === null ? [] : [`<group>${fields.group ?? 'chapters'}</group>`]),
+      ...(fields.path === null ? [] : [`<path>${fields.path ?? 'chapters/down-the-rabbit-hole.md'}</path>`])
+    ];
+  return [
+    '<prose-minion-edit-offer>',
+    ...(fields.kind === null ? [] : [`<kind>${fields.kind ?? 'fixes'}</kind>`]),
+    ...target,
+    ...(fields.count === null || fields.count === undefined ? [] : [`<count>${fields.count}</count>`]),
+    ...(fields.extra ?? []),
+    '</prose-minion-edit-offer>'
+  ].join('\n');
+}
+
 /** A frame whose every text is a sentinel, for log and transcript checks. */
 export function sentinelFileEditFrame(path = 'characters/alice.md'): string {
   return fileEditFrame({
@@ -51,11 +76,30 @@ export function sentinelFileEditFrame(path = 'characters/alice.md'): string {
 export function fakeFileEditStaging(options: {
   refuse?: (target: FileEditStagingTarget) => FileEditStagingRefusal | undefined;
   reject?: boolean;
-} = {}): FileEditStaging & { calls: FileEditStagingTarget[] } {
+  /** The room's excerpt document now, as the real service reads it at each call; `chapters/chapter-1.md` when absent. */
+  excerptPath?: () => string;
+} = {}): FileEditStaging & { calls: FileEditStagingTarget[]; resolutions: FileEditStagingTarget[] } {
   const calls: FileEditStagingTarget[] = [];
+  const resolutions: FileEditStagingTarget[] = [];
   return {
     calls,
-    async stage(target) {
+    resolutions,
+    async resolve(target) {
+      resolutions.push(target);
+      if (options.reject) {
+        throw new Error(`resolution failed for ${URI_SENTINEL}`);
+      }
+      const refusal = options.refuse?.(target);
+      if (refusal) {
+        return { kind: 'refused', reason: refusal };
+      }
+      const relativePath = target.kind === 'excerpt' ? options.excerptPath?.() ?? 'chapters/chapter-1.md' : target.path;
+      return {
+        kind: 'resolved',
+        target: { kind: target.kind === 'excerpt' ? 'excerpt' : 'file', documentUri: `file:///ws/${URI_SENTINEL}/${relativePath}`, relativePath }
+      };
+    },
+    async stage(target, staging) {
       calls.push(target);
       if (options.reject) {
         throw new Error(`staging failed for ${URI_SENTINEL}`);
@@ -64,7 +108,11 @@ export function fakeFileEditStaging(options: {
       if (refusal) {
         return { kind: 'refused', reason: refusal };
       }
-      const relativePath = target.kind === 'excerpt' ? 'chapters/chapter-1.md' : target.path;
+      if (target.kind === 'excerpt' && staging?.boundExcerpt) {
+        // As the real service does (PR #252 F-03): the run's bound document, not the room's excerpt now.
+        return { kind: 'staged', target: { ...staging.boundExcerpt }, class: 'prose', baseline: { sha256: 'a'.repeat(64), length: 42 } };
+      }
+      const relativePath = target.kind === 'excerpt' ? options.excerptPath?.() ?? 'chapters/chapter-1.md' : target.path;
       return {
         kind: 'staged',
         target: { kind: target.kind === 'excerpt' ? 'excerpt' : 'file', documentUri: `file:///ws/${URI_SENTINEL}/${relativePath}`, relativePath },

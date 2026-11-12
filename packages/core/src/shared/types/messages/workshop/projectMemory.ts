@@ -27,13 +27,18 @@ export const WORKSHOP_MEMORY_PROPOSAL_STATES = ['pending', 'saved', 'dismissed']
 export type WorkshopMemoryProposalState = typeof WORKSHOP_MEMORY_PROPOSAL_STATES[number];
 
 /**
- * Why a proposal waits under Save and tell me (D8; Slice 5): its reply's run
- * had web research attached, it changes a saved memory (Slice 6c: an edit
- * always waits for the writer), it replaces one (Slice 6b: so does a
- * supersession), or the room reached `autoSavesPerRoom`. Absent under Ask
- * first, and on a card Save and tell me saved.
+ * Why a proposal waits for the writer (D8; Slice 5): its reply's run had web
+ * research attached, it changes a saved memory (Slice 6c: an edit always
+ * waits for the writer), it replaces one (Slice 6b: so does a supersession),
+ * or the room reached `autoSavesPerRoom`. Those four are Save and tell me's,
+ * absent under Ask first and on a card Save and tell me saved.
+ *
+ * `personal` (D9, amended 2026-11-11) is the one hold recorded in both
+ * modes, and it comes before every other: the phrasing fence found a
+ * sentence about the writer near a word about personal life, so the card
+ * shows that word (`heldWord`) and is never saved automatically.
  */
-export const WORKSHOP_MEMORY_HOLDS = ['web-research', 'edit', 'supersedes', 'room-cap'] as const;
+export const WORKSHOP_MEMORY_HOLDS = ['personal', 'web-research', 'edit', 'supersedes', 'room-cap'] as const;
 export type WorkshopMemoryHold = typeof WORKSHOP_MEMORY_HOLDS[number];
 
 /** A memory the proposal replaces, as the listing named it when the reply landed. */
@@ -59,8 +64,14 @@ interface WorkshopMemoryProposalCommon {
   state: WorkshopMemoryProposalState;
   /** The memory it became (a new note) or changed (an edit), once saved. */
   memoryId?: string;
-  /** Held for the writer under Save and tell me, and why (Slice 5); kept once settled. */
+  /** Held for the writer, and why (Slice 5; `personal` in either mode, D9); kept once settled. */
   held?: WorkshopMemoryHold;
+  /**
+   * With `held: 'personal'` only, and always with it: the listed word the
+   * phrasing fence matched, lower case, shown on the writer's own card and
+   * never logged.
+   */
+  heldWord?: string;
 }
 
 /**

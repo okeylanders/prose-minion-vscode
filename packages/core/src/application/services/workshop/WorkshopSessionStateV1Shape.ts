@@ -25,8 +25,14 @@ import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import { assertWorkshopTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
 import { contextSourceProvenanceFault } from '@orchestration/ContextSourceRecord';
 import { assertWorkshopBookmarksShape } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
+import {
+  assertWorkshopNoMessageShape,
+  assertWorkshopReactionOnlyShape,
+  assertWorkshopReactionsShape
+} from '@/application/services/workshop/session/WorkshopReactionRecords';
 import { assertWorkshopMemoryProposalShape } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
 import { assertWorkshopFileEditProposalShape } from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
+import { assertWorkshopEditOfferPressShape, assertWorkshopEditOfferShape } from '@/application/services/workshop/session/WorkshopEditOfferRecords';
 import { assertWorkshopMemoryReceiptShape } from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
 import {
   isLiveWorkshopWidgetId,
@@ -56,6 +62,7 @@ import {
   stringAt
 } from '@/application/services/workshop/persistedValidation';
 import { assertWorkshopProjectMemoryDeliveryShape } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
+import { assertWorkshopReactionDeliveryShape } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -122,7 +129,9 @@ function assertWorkshopSessionShape(
       'retainedHistoryMarks',
       'hostContextDelivery',
       // Optional since ADR 2026-11-03 D9: written only when one exists.
-      'bookmarks'
+      'bookmarks',
+      // Optional since ADR 2026-11-07 D2: written only when one exists.
+      'reactions'
     ]
   );
   if (state.excerpt !== undefined) {
@@ -167,6 +176,9 @@ function assertWorkshopSessionShape(
   arrayOf(state.todos, 'Workshop session state.todos', assertStoredTodo);
   if (state.bookmarks !== undefined) {
     assertWorkshopBookmarksShape(state.bookmarks);
+  }
+  if (state.reactions !== undefined) {
+    assertWorkshopReactionsShape(state.reactions);
   }
   if (state.widgetConfigs !== undefined) {
     arrayOf(
@@ -593,9 +605,19 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       'memoryProposal',
       // Persona file edits (ADR 2026-11-05 D8; additive, no version bump in this slice).
       'fileEditProposals',
+      // A reply's edit offers (ADR 2026-11-10 D8; additive, no version bump in this slice).
+      'editOffers',
+      // A press and its answer (ADR 2026-11-10 D3; additive).
+      'editOfferRequest',
+      'editOfferAnswer',
       'projectMemoryReceipt',
       // Project memory's delivery record (ADR 2026-11-04 D14; additive).
-      'projectMemoryDelivery'
+      'projectMemoryDelivery',
+      // Reactions' delivery record (ADR 2026-11-07 D6; additive).
+      'reactionDelivery',
+      // A reaction-only reply (ADR 2026-11-07 R1; additive), and one whose reaction was dropped (PR #247 M1).
+      'reactionOnly',
+      'noMessage'
     ]
   );
   stringAt(turn.id, `${path}.id`);
@@ -668,6 +690,15 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   if (turn.projectMemoryDelivery !== undefined) {
     assertWorkshopProjectMemoryDeliveryShape(turn.projectMemoryDelivery, `${path}.projectMemoryDelivery`, turn);
   }
+  if (turn.reactionDelivery !== undefined) {
+    assertWorkshopReactionDeliveryShape(turn.reactionDelivery, `${path}.reactionDelivery`, turn);
+  }
+  if (turn.reactionOnly !== undefined) {
+    assertWorkshopReactionOnlyShape(turn.reactionOnly, `${path}.reactionOnly`, turn);
+  }
+  if (turn.noMessage !== undefined) {
+    assertWorkshopNoMessageShape(turn.noMessage, `${path}.noMessage`, turn);
+  }
   if (turn.standingDirectiveChange !== undefined) {
     assertStandingDirectiveChange(
       turn.standingDirectiveChange,
@@ -676,6 +707,8 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   }
   assertWorkshopMemoryProposalShape(turn, path, checkpoint);
   assertWorkshopFileEditProposalShape(turn, path, checkpoint);
+  assertWorkshopEditOfferShape(turn, path, checkpoint);
+  assertWorkshopEditOfferPressShape(turn, path, checkpoint);
   assertWorkshopMemoryReceiptShape(turn, path);
 }
 

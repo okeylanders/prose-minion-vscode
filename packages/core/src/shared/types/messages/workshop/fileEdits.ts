@@ -104,6 +104,19 @@ export type WorkshopFileEditLanded =
     readonly afterSha256: string;
   };
 
+/**
+ * What the writer asked a card for, by pressing a reply's edit-offer chip
+ * (ADR 2026-11-10 D6 and its second addendum). Host-written, from the
+ * host's own request turn: no trailer and no route carries it.
+ * - `fixes`: the answer to a fixes offer, held to a fix's size by the
+ *   gateway (`FILE_EDIT_INTENT_POLICIES`).
+ * - `rewrites`: the answer to a rewrites offer. The gateway lifts the prose
+ *   rewrite ceiling for it, and nothing else of its class's policy.
+ * A card with no intent takes its class policy unchanged.
+ */
+export const WORKSHOP_FILE_EDIT_INTENTS = ['fixes', 'rewrites'] as const;
+export type WorkshopFileEditIntent = (typeof WORKSHOP_FILE_EDIT_INTENTS)[number];
+
 /** A persona's proposed edit to one file, its trailer stripped (D2, D10). */
 export interface WorkshopFileEditProposal {
   readonly requested: WorkshopFileEditRequestedTarget;
@@ -124,6 +137,8 @@ export interface WorkshopFileEditProposal {
   readonly outcomes?: readonly WorkshopFileEditOperationOutcome[];
   /** One per landed operation. */
   readonly landed?: readonly WorkshopFileEditLanded[];
+  /** Host-written at staging (ADR 2026-11-10 D6); absent, the class policy alone. */
+  readonly intent?: WorkshopFileEditIntent;
 }
 
 /** Bounds the host's own fields hold (the model's are `PROMPT_BUDGETS.workshopFileEdits`). */

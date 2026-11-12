@@ -7,6 +7,7 @@
 
 import type {
   WorkshopConversationBehavior,
+  WorkshopPersonaExpressionLevel,
   WorkshopInteractionMode,
   WorkshopPersonaId,
   WorkshopRelationalDepth
@@ -126,6 +127,47 @@ export const WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATH =
 export const WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH =
   'workshop-personas/file-edit-proposals.md';
 
+/**
+ * The edit-offer trailer (ADR 2026-11-10 D1): taught beside the file-edit
+ * trailer, under the same condition, so a persona never declares an offer
+ * while file edits are off.
+ */
+export const WORKSHOP_REPLY_EDIT_OFFERS_PROMPT_PATH =
+  'workshop-personas/reply-edit-offers.md';
+
+/**
+ * How to read the `<workshop-reactions>` frame (ADR 2026-11-07 D4): taught
+ * to host and guest always, after the selected relational depth it is read
+ * under. The writer's reactions are not a setting, so neither is this.
+ */
+export const WORKSHOP_REACTIONS_PROMPT_PATH =
+  'workshop-personas/reactions.md';
+
+/**
+ * The permission to react (ADR 2026-11-07 D5): the trailer, the vocabulary by
+ * id and gloss, the moments that invite one, and worked examples (Slice 4a,
+ * 2026-11-10 addendum). Taught after `reactions.md` only while
+ * `proseMinion.workshop.reactions.personas` is on (Q8), so a persona never
+ * writes a trailer while they are off; a change rebuilds the prompt.
+ */
+export const WORKSHOP_PERSONA_REACTIONS_PROMPT_PATH =
+  'workshop-personas/persona-reactions.md';
+
+/**
+ * How often to react, by the selected expression level (ADR 2026-11-07,
+ * 2026-11-10 addendum, superseding Q7): Subtle about one reply in six, Full
+ * about one in four, Amplified about one in three. Taught directly after
+ * `persona-reactions.md`, and only with it, so it never teaches a frequency
+ * while persona reactions are off.
+ */
+export const WORKSHOP_REACTION_FREQUENCY_PROMPT_PATHS: Readonly<
+  Record<WorkshopPersonaExpressionLevel, string>
+> = Object.freeze({
+  subtle: 'workshop-personas/reaction-frequency/subtle.md',
+  full: 'workshop-personas/reaction-frequency/full.md',
+  amplified: 'workshop-personas/reaction-frequency/amplified.md'
+});
+
 export const WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS: Readonly<
   Record<WorkshopRelationalDepth, string>
 > = Object.freeze({
@@ -151,7 +193,7 @@ export function workshopPersonaSystemPromptPaths(
     WorkshopConversationBehavior,
     'interactionMode' | 'expressionLevel' | 'relationalDepth'
   >,
-  options: { readonly projectMemory?: boolean; readonly fileEdits?: boolean } = {}
+  options: { readonly projectMemory?: boolean; readonly fileEdits?: boolean; readonly personaReactions?: boolean } = {}
 ): string[] {
   const participant = basePromptPath === WORKSHOP_HOST_BASE_PROMPT_PATH
     || basePromptPath === WORKSHOP_GUEST_BASE_PROMPT_PATH;
@@ -169,11 +211,15 @@ export function workshopPersonaSystemPromptPaths(
     ...(participant && options.projectMemory
       ? [WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH, WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATH]
       : []),
-    ...(participant && options.fileEdits ? [WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH] : []),
+    ...(participant && options.fileEdits ? [WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH, WORKSHOP_REPLY_EDIT_OFFERS_PROMPT_PATH] : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],
     WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
     WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS[behavior.relationalDepth],
+    ...(participant ? [WORKSHOP_REACTIONS_PROMPT_PATH] : []),
+    ...(participant && options.personaReactions
+      ? [WORKSHOP_PERSONA_REACTIONS_PROMPT_PATH, WORKSHOP_REACTION_FREQUENCY_PROMPT_PATHS[behavior.expressionLevel]]
+      : []),
     ...(behavior.expressionLevel === 'subtle' ? [] : [persona.expressionProfilePath]),
     ...(behavior.expressionLevel === 'amplified' ? [persona.expressionCalibrationPath] : [])
   ];

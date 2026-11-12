@@ -12,6 +12,8 @@
  *   link on the way; a pasted excerpt, or none, is `excerpt-not-a-file`.
  * - **The baseline** is read from the live buffer when the document is open
  *   (`DocumentEditor.peek`), else from the file.
+ * - **`resolve`** (ADR 2026-11-10 D2) is the same identity by the same
+ *   rules (`identify`), and stops there: no text is read.
  *
  * It never rejects. Logs carry the target kind and the refusal, never a path.
  */
@@ -19,7 +21,9 @@
 import { DEFAULT_CONTEXT_GROUPS, type ContextResourceCandidate, type ContextResourceCandidateReader } from '@/domain/models/ContextGeneration';
 import type {
   FileEditIdentity,
+  FileEditResolutionResult,
   FileEditStaging,
+  FileEditStagingOptions,
   FileEditStagingRefusal,
   FileEditStagingResult,
   FileEditStagingTarget
@@ -37,6 +41,7 @@ import {
   documentUriOf,
   fileEditBaseline,
   findFileEditCandidate,
+  fsPathOf,
   isTextFilePath,
   liveTextFault,
   membershipsOf,
@@ -58,10 +63,10 @@ const BYTES = PROMPT_BUDGETS.workshopFileEdits.fileBytes;
 export class FileEditStagingService implements FileEditStaging {
   constructor(private readonly dependencies: FileEditStagingDependencies) {}
 
-  async stage(target: FileEditStagingTarget): Promise<FileEditStagingResult> {
+  async stage(target: FileEditStagingTarget, options?: FileEditStagingOptions): Promise<FileEditStagingResult> {
     let result: FileEditStagingResult;
     try {
-      result = await this.stageTarget(target);
+      result = await this.stageTarget(target, options?.boundExcerpt);
     } catch {
       result = refused('unreadable');
     }
@@ -70,8 +75,54 @@ export class FileEditStagingService implements FileEditStaging {
     return result;
   }
 
-  private async stageTarget(target: FileEditStagingTarget): Promise<FileEditStagingResult> {
-    const excerpt = await this.dependencies.excerpt.currentDocument();
+  async resolve(target: FileEditStagingTarget): Promise<FileEditResolutionResult> {
+    let result: FileEditResolutionResult;
+    try {
+      const identified = await this.identify(target);
+      result = identified.kind === 'identified' ? { kind: 'resolved', target: identified.identity } : identified;
+    } catch {
+      result = refused('unreadable');
+    }
+    this.dependencies.log.appendLine(`[FileEdit] resolved target=${target.kind === 'resource' ? `group=${target.group}` : 'excerpt'} ` +
+      (result.kind === 'resolved' ? `identity=${result.target.kind}` : `refused=${result.reason}`));
+    return result;
+  }
+
+  private async stageTarget(target: FileEditStagingTarget, boundExcerpt?: FileEditIdentity): Promise<FileEditStagingResult> {
+    const identified = await this.identify(target, boundExcerpt);
+    if (identified.kind === 'refused') {
+      return identified;
+    }
+    const { identity, fsPath, candidates, excerpt } = identified;
+    const text = await this.liveText(identity.documentUri, fsPath);
+    if (text === undefined) {
+      return refused('unreadable');
+    }
+    const fault = liveTextFault(text, BYTES);
+    if (fault) {
+      return refused(fault);
+    }
+    const isExcerptDocument = identity.kind === 'excerpt' || (excerpt !== undefined && samePath(excerpt.fsPath, fsPath));
+    return {
+      kind: 'staged',
+      target: identity,
+      class: classOf(membershipsOf(candidates ?? [], fsPath), isExcerptDocument),
+      baseline: fileEditBaseline(text, fsPath)
+    };
+  }
+
+  /** The target's one identity (D4), or why it has none. Reads the catalog and the excerpt; never a file's text. */
+  private async identify(
+    target: FileEditStagingTarget,
+    boundExcerpt?: FileEditIdentity
+  ): Promise<Identified | Extract<FileEditStagingResult, { kind: 'refused' }>> {
+    // A run bound to an excerpt document names that one as `<excerpt/>`, never the room's excerpt as it is now
+    // (ADR 2026-11-10 D2; PR #252 F-03). It is held to every rule the current excerpt is: containment, text, size.
+    // A resource target still reads the room's excerpt, for its class.
+    const boundPath = boundExcerpt ? fsPathOf(boundExcerpt.documentUri) : undefined;
+    const excerpt = boundExcerpt && target.kind === 'excerpt'
+      ? boundPath === undefined ? undefined : { fsPath: boundPath, relativePath: boundExcerpt.relativePath }
+      : await this.dependencies.excerpt.currentDocument();
     let candidates: ContextResourceCandidate[] | undefined;
     try {
       candidates = await this.dependencies.candidates.listCandidates(DEFAULT_CONTEXT_GROUPS);
@@ -117,22 +168,7 @@ export class FileEditStagingService implements FileEditStaging {
     if (!isTextFilePath(fsPath)) {
       return refused('not-text');
     }
-
-    const text = await this.liveText(identity.documentUri, fsPath);
-    if (text === undefined) {
-      return refused('unreadable');
-    }
-    const fault = liveTextFault(text, BYTES);
-    if (fault) {
-      return refused(fault);
-    }
-    const isExcerptDocument = identity.kind === 'excerpt' || (excerpt !== undefined && samePath(excerpt.fsPath, fsPath));
-    return {
-      kind: 'staged',
-      target: identity,
-      class: classOf(membershipsOf(candidates ?? [], fsPath), isExcerptDocument),
-      baseline: fileEditBaseline(text, fsPath)
-    };
+    return { kind: 'identified', identity, fsPath, candidates, excerpt };
   }
 
   /** The live buffer when the document is open, else the file as VS Code would read it (no byte-order mark). */
@@ -149,6 +185,14 @@ export class FileEditStagingService implements FileEditStaging {
   }
 }
 
-function refused(reason: FileEditStagingRefusal): FileEditStagingResult {
+interface Identified {
+  readonly kind: 'identified';
+  readonly identity: FileEditIdentity;
+  readonly fsPath: string;
+  readonly candidates: ContextResourceCandidate[] | undefined;
+  readonly excerpt: { readonly fsPath: string; readonly relativePath: string } | undefined;
+}
+
+function refused(reason: FileEditStagingRefusal): Extract<FileEditStagingResult, { kind: 'refused' }> {
   return { kind: 'refused', reason };
 }

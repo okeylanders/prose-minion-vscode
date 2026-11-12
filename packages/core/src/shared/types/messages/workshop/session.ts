@@ -2,12 +2,15 @@
 
 import type { WorkshopMemoryProposal, WorkshopProjectMemoryReceipt } from './projectMemory';
 import type { WorkshopFileEditProposal, WorkshopFileEditsMode } from './fileEdits';
+import type { WorkshopEditOffer, WorkshopEditOfferAnswer, WorkshopEditOfferRequest } from './editOffers';
 import { MessageEnvelope, MessageType } from '../base';
 import { TokenUsage } from '../tokenUsage';
 import { UrlCitation } from '../citations';
 import type { LabeledContextBudgetSnapshot } from '../inferenceContext';
 import type { ModelScope } from '../configuration';
 import type { WorkshopBookmarkSummary } from './bookmarks';
+import type { WorkshopReactionDelivery, WorkshopTurnReactionSummary } from './reactions';
+import type { WorkshopReactionId } from '@shared/constants/workshopReactions';
 import type {
   WorkshopAnalysisInputProvenance,
   WorkshopCapabilityArtifactDetails,
@@ -457,6 +460,12 @@ export interface WorkshopTurn {
   memoryProposals?: WorkshopMemoryProposal[];
   /** A persona's file-edit proposals (ADR 2026-11-05 D8): one to `proposalsPerReply`, in the order written, never empty. */
   fileEditProposals?: WorkshopFileEditProposal[];
+  /** What a persona's reply offers as edits (ADR 2026-11-10 D2): at most one per kind, in the order written, never empty. */
+  editOffers?: WorkshopEditOffer[];
+  /** On a writer turn a press made (ADR 2026-11-10 D3, D4): the reply and kind pressed. Its content is the host's sentence. */
+  editOfferRequest?: WorkshopEditOfferRequest;
+  /** On the answer to a press (ADR 2026-11-10 D3, D5): the reply and kind it answers, and its outcome. Its content is the host's line. */
+  editOfferAnswer?: WorkshopEditOfferAnswer;
   /** A save, edit, Forget or Restore of a project memory, on its divider (D7). Never the body. */
   projectMemoryReceipt?: WorkshopProjectMemoryReceipt;
   /**
@@ -467,6 +476,28 @@ export interface WorkshopTurn {
    * too (PR #198 F-01).
    */
   projectMemoryDelivery?: WorkshopProjectMemoryDelivery[];
+  /**
+   * What reactions the message this persona reply answers delivered (ADR
+   * 2026-11-07 D6): written on the reply when it commits, so a cut, a
+   * rollback or a cancellation that removes the delivery removes its record
+   * too, and the reactions arrive again.
+   */
+  reactionDelivery?: WorkshopReactionDelivery[];
+  /**
+   * A persona reply that held only a reaction (ADR 2026-11-07 R1): the id it
+   * reacted with, on the writer message the reply answers. Its content is
+   * the host's line ("Reacted with heart."); the thread draws it as a slim
+   * line, and the writer cannot react to it (Q10). Host and guest replies only.
+   */
+  reactionOnly?: WorkshopReactionId;
+  /**
+   * A persona reply that held nothing to show: only a reaction trailer that
+   * was dropped (persona reactions off, no writer message to react to, a
+   * full session, an unknown id; PR #247 M1). Its content is the host's
+   * neutral line, and the writer cannot react to it. Host and guest replies
+   * only; never beside `reactionOnly`.
+   */
+  noMessage?: true;
 }
 
 /** One memory as a conversation was told of it: its id and its D14 version. */
@@ -584,6 +615,11 @@ export interface WorkshopSessionSnapshot {
    * those whose bubble is outside `turns` (ADR 2026-11-03 D5).
    */
   bookmarks: WorkshopBookmarkSummary[];
+  /**
+   * Reactions on the turns in `turns` (ADR 2026-11-07 D8), per turn the
+   * writer's first. Display-safe; the stored entries never leave the host.
+   */
+  reactions: WorkshopTurnReactionSummary[];
   /** Bounded widget identities for chips in the visible turn window. */
   widgetConfigs: WorkshopWidgetConfigSummary[];
   /** Active passage-scoped prose directives; one entry per closed family. */

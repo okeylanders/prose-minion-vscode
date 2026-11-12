@@ -78,6 +78,10 @@ export const WORKSHOP_FILE_EDIT_FAULTS = [
 ] as const;
 export type WorkshopFileEditFault = typeof WORKSHOP_FILE_EDIT_FAULTS[number] | WorkshopTrailerReadFault;
 
+/** The faults naming a file can raise. */
+export type WorkshopFileEditTargetFault = Extract<WorkshopFileEditFault,
+  'missing-target' | 'conflicting-target' | 'missing-group' | 'missing-path' | 'unknown-group' | 'invalid-path' | 'path-too-long' | 'excerpt-not-empty'>;
+
 /** What a valid frame carries; staging adds the identity, class and baseline, and the host its state. */
 export interface WorkshopFileEditDraft {
   readonly target: WorkshopFileEditRequestedTarget;
@@ -106,7 +110,7 @@ export function decodeWorkshopFileEdit(inner: string): WorkshopFileEditDecode {
     }
     seen.add(name);
   }
-  const target = decodeTarget(elements);
+  const target = decodeWorkshopFileEditTarget(elements);
   if (typeof target === 'string') {
     return reject(target);
   }
@@ -124,7 +128,12 @@ export function decodeWorkshopFileEdit(inner: string): WorkshopFileEditDecode {
   return { kind: 'edit', edit: { target, operations, why } };
 }
 
-function decodeTarget(elements: readonly WorkshopTrailerElement[]): WorkshopFileEditRequestedTarget | WorkshopFileEditFault {
+/**
+ * The file a frame names, from its elements: `<excerpt/>` alone, or `<group>`
+ * and `<path>` by `resource.read`'s rule. Shared with the edit-offer codec
+ * (ADR 2026-11-10 D1), which names its file exactly as a file edit does.
+ */
+export function decodeWorkshopFileEditTarget(elements: readonly WorkshopTrailerElement[]): WorkshopFileEditRequestedTarget | WorkshopFileEditTargetFault {
   const group = elements.find((element) => element.name === 'group')?.content.trim();
   const path = elements.find((element) => element.name === 'path')?.content.trim();
   const excerpt = elements.find((element) => element.name === 'excerpt');
@@ -148,7 +157,7 @@ function decodeTarget(elements: readonly WorkshopTrailerElement[]): WorkshopFile
 }
 
 /** A resource target's group and path against `resource.read`'s rule, or the fault. */
-export function workshopFileEditResourceFault(group: string, path: string): WorkshopFileEditFault | undefined {
+export function workshopFileEditResourceFault(group: string, path: string): WorkshopFileEditTargetFault | undefined {
   if (!isContextPathGroup(group)) {
     return 'unknown-group';
   }

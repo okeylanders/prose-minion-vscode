@@ -157,6 +157,9 @@ export enum MessageType {
   WORKSHOP_SET_TURN_BOOKMARK = 'workshop_set_turn_bookmark',
   WORKSHOP_RENAME_BOOKMARK = 'workshop_rename_bookmark',
   WORKSHOP_RENAME_BOOKMARK_RESULT = 'workshop_rename_bookmark_result',
+  // Workshop message reactions (ADR 2026-11-07 D2): the writer's, and Hide on a persona's.
+  WORKSHOP_SET_TURN_REACTION = 'workshop_set_turn_reaction',
+  WORKSHOP_HIDE_TURN_REACTION = 'workshop_hide_turn_reaction',
   WORKSHOP_REQUEST_TURN_PREVIEW = 'workshop_request_turn_preview',
   WORKSHOP_TURN_PREVIEW = 'workshop_turn_preview',
   /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
@@ -173,6 +176,9 @@ export enum MessageType {
   WORKSHOP_FILE_EDIT_RESULT = 'workshop_file_edit_result',
   WORKSHOP_FILE_EDIT_PREVIEW = 'workshop_file_edit_preview',
   WORKSHOP_FILE_EDIT_PREVIEW_RESULT = 'workshop_file_edit_preview_result',
+  // Workshop Reply Edit Actions: a press on a reply's offer, and what it came to (epic Slice 2)
+  WORKSHOP_EDIT_OFFER_ACTION = 'workshop_edit_offer_action',
+  WORKSHOP_EDIT_OFFER_RESULT = 'workshop_edit_offer_result',
   WORKSHOP_SAVE_TURN_TO_MEMORY = 'workshop_save_turn_to_memory',
   WORKSHOP_SAVE_SAVED_TURN_TO_MEMORY = 'workshop_save_saved_turn_to_memory',
   WORKSHOP_MEMORY_CREATE = 'workshop_memory_create',

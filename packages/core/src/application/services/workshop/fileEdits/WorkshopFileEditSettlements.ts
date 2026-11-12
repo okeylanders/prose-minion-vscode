@@ -49,7 +49,9 @@ export function workshopStagedFileEditOf(turnId: string, index: number, proposal
     class: proposal.class,
     baseline: { sha256: baseline.sha256, length: baseline.length },
     operations: proposal.operations.map((operation) => ({ ...operation })),
-    source: { kind: 'proposal', turnId, index }
+    source: { kind: 'proposal', turnId, index },
+    // A fixes answer's card is held to the fixes policy at every Apply (ADR 2026-11-10 D6).
+    ...(proposal.intent ? { intent: proposal.intent } : {})
   };
 }
 

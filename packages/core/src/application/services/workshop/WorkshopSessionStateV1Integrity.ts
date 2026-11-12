@@ -24,6 +24,7 @@ import {
   findInconsistentRetainedHistoryMarkKeys
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
 import { assertWorkshopBookmarkIntegrity } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
+import { assertWorkshopReactionIntegrity } from '@/application/services/workshop/session/WorkshopReactionRecords';
 
 export interface WorkshopSessionStateV1ValidationOptions {
   /**
@@ -42,6 +43,8 @@ export interface WorkshopSessionStateV1ValidationOptions {
   skipRetainedHistoryMarkIntegrity?: boolean;
   /** Raw checkpoint preflight runs before a dangling bookmark is dropped (ADR 2026-11-03 D9). */
   allowDanglingBookmarks?: boolean;
+  /** Raw checkpoint preflight runs before a dangling reaction is dropped (ADR 2026-11-07 D2). */
+  allowDanglingReactions?: boolean;
 }
 
 export function validateWorkshopSessionStateV1(
@@ -444,6 +447,9 @@ export function validateWorkshopSessionStateV1(
   }
   assertWorkshopBookmarkIntegrity(state.bookmarks, state.turns, {
     allowDanglingTurns: options.allowDanglingBookmarks
+  });
+  assertWorkshopReactionIntegrity(state.reactions, state.turns, {
+    allowDanglingTurns: options.allowDanglingReactions
   });
 
   if (!isWorkshopPersonaId(state.participants.host.personaId)) {
