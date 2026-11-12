@@ -1,6 +1,6 @@
 # Slice 2: The press
 
-**Status:** Built and pushed on `epic/workshop-reply-edit-actions-slice-2-press`. PR #252 was reviewed with three findings; all are fixed on the branch, and so is the re-review's one ([review](../../../docs/pr-reviews/pr-252-reply-edit-press-review.md), [re-review](../../../docs/pr-reviews/pr-252-reply-edit-press-rereview.md)).
+**Status:** Built and pushed on `epic/workshop-reply-edit-actions-slice-2-press`. PR #252 was reviewed with three findings; all are fixed on the branch, and so is the re-review's one ([review](../../../../docs/pr-reviews/pr-252-reply-edit-press-review.md), [re-review](../../../../docs/pr-reviews/pr-252-reply-edit-press-rereview.md)).
 **Date:** 2026-11-10
 **Decisions:** ADR 2026-11-10 D3–D7 and D9, and D8's new keys.
 **Scope:** Host, contracts and the turn's view. No component, no CSS, no webview hook.
@@ -69,7 +69,7 @@ Each follows how file-edit proposals do it, unless said otherwise.
 - **A cut-off answer is a failure, never salvaged** (PR #252 F-01). The engine's check and completion read the same reply and the same `finishReason`, so nothing is retained and the writer reads the `cut-off` words. The gap this note used to describe is closed.
 - **A press retains nothing until its answer is adopted** (PR #252 R1). The engine holds the run's exchange (`deferRetention`), and completion commits it once the session has taken the answer turn. Stop, or file edits turned off, while the answer's edits are staged leaves the persona's history as it was. A held commit is dropped if the conversation has moved on.
 - **A press preempted by a newer message rolls its request turn back,** as a stopped press does.
-- **Ordinary messages still retain before they settle.** That is filed as [tech debt](../../tech-debt/2026-11-10-workshop-reply-retained-before-settlement.md).
+- **Ordinary messages still retain before they settle.** That is filed as [tech debt](../../../tech-debt/2026-11-10-workshop-reply-retained-before-settlement.md).
 - **A press's request turn reads as a writer message to other participants' catch-up,** with the host's sentence as its text.
 - **`WorkshopRoomHandler.ts` grew by 42 lines,** all of it the seam: the option, the frame's slot, the two run options, the completion choice, the rollback, and the view's room facts.
 - **`AgentRunEngine.ts` grew by 58 lines** (the check, the retained copies and the held commit). Its diff is larger, because the capability rounds are re-indented inside the check's loop.

@@ -74,7 +74,7 @@ Updated: `WorkshopApp.reactions.test.tsx` (choice 3), `workshopStyles.test.ts` (
 
 ## Evidence
 
-`evidence/render.js` renders the real `WorkshopTurnBubble` under the Workshop's real stylesheets and screenshots it with Playwright (`node .todo/epics/epic-workshop-reply-edit-actions-2026-11-10/evidence/render.js`).
+`evidence/render.js` renders the real `WorkshopTurnBubble` under the Workshop's real stylesheets and screenshots it with Playwright (`node .todo/archive/epics/epic-workshop-reply-edit-actions-2026-11-10/evidence/render.js`).
 
 | File | Shows |
 |---|---|

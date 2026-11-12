@@ -852,8 +852,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-28, PR #183's integration review fixes (`83b23457`, F-01–F-03) and the re-review's F-03 correction (`e1ba8b67`) on `epic/lightbox`, under Node 18):
-- 591 suites / 8,394 tests / 59 snapshots
+**Test Inventory** (measured 2026-11-12 on `epic/workshop-reply-edit-actions` as it went to `main`: Reply Edit Actions, Message Reactions, the memory fence fix and the model catalog refresh):
+- 843 suites / 11,915 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1247,6 +1247,129 @@ staged, or how Apply writes it:
   Nothing accepts `auto` until that feature chooses its own authorization.
 - **Logs** carry ids, counts and fault kinds, never the writer's text, a
   quote, a path or a URI.
+
+### Workshop Message Reactions
+
+Follow [ADR 2026-11-07](docs/adr/2026-11-07-workshop-message-reactions.md)
+when touching the reaction palette, what a persona hears of a reaction, or a
+persona's own reaction:
+
+- **A closed vocabulary, by id.** `WORKSHOP_REACTIONS`
+  (`shared/constants/workshopReactions.ts`) is the only place a glyph is
+  named. The model writes the id, never the glyph; sync tests hold the
+  prompts' vocabulary to the registry.
+- **Stored on the session** as `reactions`, beside `bookmarks`. An entry's
+  identity is `(turnId, author, reaction)`; a persona's carries `viaTurnId`,
+  the reply that made it.
+  - `isWorkshopReactableTurn(turn, author)` is the one rule for what may be
+    reacted to, used by the codec, the ledger and the webview. The writer
+    reacts to a persona's reply; a persona only to the writer's message its
+    reply answers.
+  - `WorkshopReactionLedger` adds and removes inside the room's mutation
+    gate. The webview posts ids only.
+  - The codec's fields are optional and additive, with no `schemaVersion`
+    bump (ADR 2026-07-30).
+- **No reaction starts a model call or edits history.** A reaction reaches a
+  persona as a `<workshop-reactions>` frame in its *next* user message.
+  Earlier retained messages stay byte for byte, and a test pins it.
+- **Delivery rides the reply turn** (`reactionDelivery`, D6). What a
+  participant was told is the fold of those records over its own replies
+  (`WorkshopReactionDeliveredView`), never a mark on retained history. A cut
+  that removes the reply makes the reaction owed again. The record never
+  reaches the webview.
+- **One transform.** `workshopReactionsWithin` runs inside
+  `rewindWorkshopSession`: a persona's reaction goes with the reply that made
+  it. Rewind, Branch and a Side Quest's End need nothing of their own.
+- **A persona's reaction is a trailer** (`<prose-minion-reaction>`), found in
+  `extractWorkshopReplyControls`' one pass and judged by
+  `judgeWorkshopReplyReactions`: at most one a reply, a known id, and only
+  where the reply answers a writer message (`personaReplyReactionTarget`).
+  - It is written in `completeRun`, through the ledger, in the reply's own
+    commit.
+  - A dropped reaction is never claimed: a reply of nothing else reads
+    "Replied without a message." (`noMessage`), and a reaction-only reply
+    carries `reactionOnly` and draws as a slim line.
+  - The per-turn `<workshop-reaction-invite>` is added exactly where the
+    trailer has a target, so the two cannot drift. A pressed edit offer
+    never gets it.
+- **The setting** `proseMinion.workshop.reactions.personas` turns only
+  personas' reactions off; a change rebuilds the persona prompts. Expression
+  level sets how often a persona reacts (`reaction-frequency/`).
+- **The shared transcript projection omits reactions** (D7), so export and
+  recall do not grow.
+- **Where they draw.** A persona's bubble keeps its reactions in the footer
+  corner (`WorkshopTurnReactionCorner`). On the writer's own message they sit
+  on the bubble's corner as a tapback (`WorkshopWriterMessage`, Slice 3c);
+  the DOM order stays text, reactions, actions.
+- **Logs** carry reaction ids, counts and reasons, never message text or a
+  quoted opening.
+
+### Workshop Reply Edit Actions
+
+Follow [ADR 2026-11-10](docs/adr/2026-11-10-workshop-reply-edit-actions.md)
+when touching a reply's edit-offer chips, what a press asks, or how its
+answer is read:
+
+- **The reply declares; the renderer never guesses.** A reply that writes
+  out replacement prose, or names small fixes, ends with a
+  `<prose-minion-edit-offer>` trailer: kind `fixes` or `rewrites`, the file
+  (`<excerpt/>`, or `<group>` and `<path>`), an optional `<count>`, and on
+  `rewrites` up to four `<option>` labels, one per alternative version.
+  - It is read in `extractWorkshopReplyControls`' one pass, bounded by
+    `PROMPT_BUDGETS.workshopEditOffers`, and held to the prompt by
+    `replyEditOfferPromptSync.test.ts`.
+  - A bad or extra frame is dropped and logged ("Edit offer dropped"), never
+    shown. Chips are never drawn from a reply's prose.
+  - An offer is bound to its file when it is declared. An excerpt offer
+    keeps the document it named, never the room's current excerpt (PR #252
+    F-03).
+  - A per-turn `<workshop-edit-offer-reminder>` frame repeats the rule,
+    because the teaching alone was not enough against a live model.
+- **Status is derived, never stored.** `workshopEditOfferStatus` reads the
+  ledger: `open`, `asked`, `answered`, `nothing-to-change`, `ask-again`, and
+  one status per option. A Rewind that removes an answer reopens its offer
+  with nothing to repair. `editOffers`, `editOfferRequest` and
+  `editOfferAnswer` are optional, additive turn fields, with no
+  `schemaVersion` bump.
+- **A press carries ids only:** `WORKSHOP_EDIT_OFFER_ACTION` with
+  `{ requestId, roomRevision, turnId, kind, option? }`. The host finds the
+  reply in the ledger and quotes it in a `<prose-minion-edit-request>`
+  directive (`<source-reply>`); the webview never sends the reply's text, a
+  path or an instruction.
+- **The answer is cards or a host line, never prose.** The engine's
+  `finalReplyCheck` holds the answer to file-edit trailers or
+  `<prose-minion-no-file-edit><why>`, and spends the run's ordinary
+  correction turns.
+  - A cut-off or interrupted answer is refused before anything is retained
+    (PR #252 F-01), and rejected prose is never retained (F-02).
+  - `deferRetention` hands the commit to the press: the exchange is retained
+    only once the answer turn is adopted, so Stop or the setting going off
+    mid-staging leaves nothing behind (PR #252 R1).
+  - Both seams are the engine's and name no feature. A new use passes its
+    own check; never add a Workshop branch to `AgentRunEngine`.
+- **Intent is set by the host, from the press** (`FILE_EDIT_INTENT_POLICIES`).
+  - `fixes` narrows: find-and-replace only, at most 40 changed characters a
+    side, no line break, `strict` structure. A card over the bound is
+    refused by host code.
+  - `rewrites` lifts the prose rewrite ceiling, and only for a card from a
+    pressed rewrites offer (Okey, PR #254 D1, option A). The writer's review
+    of the card and Apply are the control. Every other prose rule of
+    Persona File Edits stands.
+  - Staging, the claim, the checkpoint and Apply are Persona File Edits',
+    unchanged. No model output can name an intent.
+- **One footer row.** `WorkshopTurnFoot` (`components/workshop/editOffers/`)
+  holds the offer chips, the widget recommendation chip and the reaction
+  corner, so a bubble gains no row. Fixes draw before rewrites whatever
+  order the reply declared them in (PR #253 N1). A rewrites offer with
+  options draws one chip per version.
+- **The hook** `useWorkshopEditOffers` owns the press and its correlated
+  answer, by `requestId` and `roomRevision`, and makes the one live-region
+  announcement. It persists nothing.
+- **Host lines name no one by pronoun,** and the request turn is a
+  transcript event with its own include decision in
+  `projectWorkshopTranscript`.
+- **Logs** carry ids, kinds, counts and fault kinds, never the reply's text,
+  a quote or a path.
 
 ### Lightbox Source Ownership
 

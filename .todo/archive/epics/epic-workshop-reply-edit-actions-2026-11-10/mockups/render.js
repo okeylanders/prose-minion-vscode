@@ -1,5 +1,5 @@
 // Renders reply-offers.html to PNGs beside it: one per frame, and the whole page.
-// Run from the repository root: node .todo/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/render.js
+// Run from the repository root: node .todo/archive/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/render.js
 const path = require('path');
 const { chromium } = require('playwright');
 

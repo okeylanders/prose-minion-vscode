@@ -1,10 +1,11 @@
 # ADR 2026-11-10: A Reply Offers Its Fixes and Rewrites as Edits
 
-**Status:** Proposed (2026-11-10); design approved by Okey the same day, who
-took every recommendation in [the questions](#the-questions-as-put-okey-took-each-recommendation-2026-11-10).
-It becomes Accepted after the live pass. Nothing is built yet.
+**Status:** Accepted (2026-11-12), on Okey's word to take the epic to `main`
+after his live runs. Proposed 2026-11-10; design approved by Okey the same
+day, who took every recommendation in [the questions](#the-questions-as-put-okey-took-each-recommendation-2026-11-10).
+Two addenda of 2026-11-10 record what the build and his live runs changed.
 **Date:** 2026-11-10
-**Epic:** [Workshop Reply Edit Actions](../../.todo/epics/epic-workshop-reply-edit-actions-2026-11-10/README.md)
+**Epic:** [Workshop Reply Edit Actions](../../.todo/archive/epics/epic-workshop-reply-edit-actions-2026-11-10/README.md)
 **Idea as filed:** [feature note](../../.todo/features/feature-workshop-reply-edit-actions/README.md)
 **Extends:**
 - [ADR 2026-11-05: Personas Propose Edits to Project Files](2026-11-05-workshop-persona-file-edits.md).
@@ -70,11 +71,11 @@ Whether an offer was used is read from the thread, never stored.
 ## The writer's surface
 
 Mockups, with *Alice* text, are in the epic folder:
-[before and after](../../.todo/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/1-before-and-after.png),
-[a chip's states](../../.todo/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/2-chip-states.png),
-[the answer](../../.todo/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/3-answer.png),
-[a narrow column](../../.todo/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/4-narrow.png)
-([source](../../.todo/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/reply-offers.html)).
+[before and after](../../.todo/archive/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/1-before-and-after.png),
+[a chip's states](../../.todo/archive/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/2-chip-states.png),
+[the answer](../../.todo/archive/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/3-answer.png),
+[a narrow column](../../.todo/archive/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/4-narrow.png)
+([source](../../.todo/archive/epics/epic-workshop-reply-edit-actions-2026-11-10/mockups/reply-offers.html)).
 
 ### U1. One footer row: offers at the left, reactions at the right
 

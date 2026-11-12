@@ -41,7 +41,7 @@ This is **a policy consequence, not a separate P2 bug**: the addendum explicitly
 
 GitHub reports the PR as non-mergeable. A local three-way `git merge-tree --write-tree` against the exact target commit confirms one content conflict in:
 
-`.todo/epics/epic-workshop-reply-edit-actions-2026-11-10/README.md`
+`.todo/archive/epics/epic-workshop-reply-edit-actions-2026-11-10/README.md`
 
 The target's additional progress entry overlapped the slice's edits. While the full-suite result was being published, the coordinator merged the target into the slice in `1b955b6d`. A fresh three-way check against the same target is clean, and GitHub reports the branch mergeable. The diff from reviewed code `7a5d3323` to `5e845137` contains only the README's additional progress entry and this review report; production code is unchanged. **M1 is resolved.** No merge or conflict resolution was performed by this reviewer.
 

@@ -106,7 +106,7 @@ Extended: `WorkshopEditOfferWholeRoom.test.ts` (Rewind, Branch and reopen per op
 
 ## Evidence
 
-`node .todo/epics/epic-workshop-reply-edit-actions-2026-11-10/evidence/render-options.js` renders the real `WorkshopTurnBubble` under the Workshop's stylesheets.
+`node .todo/archive/epics/epic-workshop-reply-edit-actions-2026-11-10/evidence/render-options.js` renders the real `WorkshopTurnBubble` under the Workshop's stylesheets.
 
 | File | Shows |
 |---|---|

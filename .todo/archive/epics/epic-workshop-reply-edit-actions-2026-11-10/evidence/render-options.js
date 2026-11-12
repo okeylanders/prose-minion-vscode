@@ -1,7 +1,7 @@
 // Evidence for Reply Edit Actions Slice 3b (ADR 2026-11-10, second addendum: a chip per alternative version): renders the REAL thread components
 // (WorkshopTurnBubble and everything under it) to static markup, under the Workshop's real stylesheets,
 // and screenshots each state with Playwright. Text is Alice, never a writer's.
-// Run from the repository root: node .todo/epics/epic-workshop-reply-edit-actions-2026-11-10/evidence/render-options.js
+// Run from the repository root: node .todo/archive/epics/epic-workshop-reply-edit-actions-2026-11-10/evidence/render-options.js
 const fs = require('fs');
 const path = require('path');
 const Module = require('module');
