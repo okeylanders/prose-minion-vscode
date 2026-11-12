@@ -5,6 +5,97 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.0] - Unreleased — Workshop memory, pinned context, bookmarks, suggested edits, and reactions
+
+### Overview
+
+Seven merges reached `main` after v2.12.0: [#211](https://github.com/okeylanders/prose-minion-vscode/pull/211) (Wayfinding), [#221](https://github.com/okeylanders/prose-minion-vscode/pull/221) (Project Memory), [#223](https://github.com/okeylanders/prose-minion-vscode/pull/223) (Pinned Context), [#240](https://github.com/okeylanders/prose-minion-vscode/pull/240) (Bookmark Recall), [#243](https://github.com/okeylanders/prose-minion-vscode/pull/243) (Helper Agent), [#249](https://github.com/okeylanders/prose-minion-vscode/pull/249) (Persona File Edits), and [#257](https://github.com/okeylanders/prose-minion-vscode/pull/257) (Reply Edit Actions, with Message Reactions, the memory fence fix, and the November 11 catalog refresh). The range from `cfac12ba` holds 832 commits. Every feature is in the Workshop. This is an additive release: no `schemaVersion` changed, existing model selections are not migrated, and Project Memory is off by default. The version number and date are unconfirmed until publication.
+
+### Wayfinding: rail tabs, read-in, bookmarks, and model stamps
+
+- The Workshop rail has a Material tab and a Notes tab, and the rail's Tools block is retired. A tab whose content arrives while it is hidden gets a badge; nothing switches tabs on its own.
+- Material's **Read in** list shows what the chat target fetched. Resource rows open in a read-only reader that marks the lines read and says when the file has changed since; card-backed rows jump to their card. The host's SHA-256 fingerprint never reaches the webview.
+- Bookmarks are host-owned and saved as an optional session key. They follow New, Open, Rewind, and Branch. The bubble has a toggle; the Notes list has rename (confirmed by the host), remove, and jump. A turn outside the window opens in a read-only preview bound to its room. Export marks bookmarked turns.
+- Every provider reply records its scope, the model requested, and the models served; host-written fallbacks are unstamped. A divider marks where a scope's requested model changes, and a reply's header names its model, with "via" when another model served it. One derivation serves the thread and the export.
+- See the [Wayfinding ADR](adr/2026-11-03-workshop-wayfinding.md) and the [completion record](../.memory-bank/20261105-1900-workshop-wayfinding-complete.md).
+
+### Project Memory
+
+- `proseMinion.workshop.projectMemory` is `off` | `ask` | `auto`, one switch for every project, default `off`. Each project keeps its own memories as Markdown files with frontmatter in `prose-minion/memory/`. Kinds are decision, canon, theme, idea, open thread, and preference.
+- A bounded catalog (every active memory's title and summary) loads in a room's first user message, with the memories marked **Always load in full**; a persona reads other bodies on request through the `memory.*` capability family. The frame is built once and never rewritten, so the provider prompt cache keeps its prefix.
+- A persona proposes a memory as a reply trailer the host strips and checks. In `ask` the proposal is a card with Save, Edit…, and Dismiss; in `auto` it is saved and a receipt divider tells the room. The writer saves any turn through the memory sheet. Edits, Forget, and Restore leave receipts too.
+- The Memory tab of conversation settings holds the mode and the start-of-conversation estimate; **Sessions → Memory…** opens the manager: search, group by kind or date, edit, archive, delete, and open the folder.
+- **The memory fence fix** ([#255](https://github.com/okeylanders/prose-minion-vscode/pull/255); ADR D8/D9, addendum of 2026-11-11). A proposal that trips the personal-word list is now a pending card held `personal`, naming the word, in both modes. It was dropped silently before. It is never auto-saved.
+- See the [Project Memory ADR](adr/2026-11-04-workshop-project-memory.md). The epic's close-out (archive and memory-bank record) had not been written at this release's preparation.
+
+### Pinned Context
+
+- `prose-minion/pinned-context.json` (format 1) lists up to 50 files, at most 256 KiB, that every new Workshop conversation starts with. One bad entry refuses the whole file rather than silently unpinning one. Writes hold a directory lock with a 30-second lease and stage inside it.
+- Room starts are `carry`, `full-reset`, and `empty`: New tops up (carried pinned files are re-read in their slot, missing ones appended), a full reset attaches the list, and the empty start, Open, Branch, Rewind, and reload never seed. Over budget, each file that fits attaches in order; nothing is truncated.
+- "Pinned" is derived from the list and never stored in a session, so the session codec did not change for this feature. The settings tab names files by catalog key, attachment id, or entry key, never a path.
+- See the [Pinned Context ADR](adr/2026-11-04-workshop-pinned-context.md) and the [completion record](../.memory-bank/20261105-1955-workshop-pinned-context-complete.md). The byte bound's fit is proved only for ASCII paths ([tech debt](../.todo/tech-debt/2026-11-05-pinned-context-utf8-byte-bound.md)).
+
+### Bookmark Recall and the Bookmarks screen
+
+- `transcript.bookmarks` is a fifth recall operation. It reads saved sessions and, on request, the open room, through a read-only port that returns only bookmarks on turns the asking persona could see. A result holding an open-room row the room could not see is never published to the room.
+- The Bookmarks screen is read-only and pages through every saved session; it is reached from the sessions menu and the Notes tab. **Remember this** saves a bookmarked turn as a project memory with its source, from the open room or a saved session.
+- A persona's memory proposal can cite the open room's turns; the host checks each citation at save. Saved-session citations are refused until memories have multi-session sources.
+- A persona's capability calls per turn rise from 5 to 15; transcript reads from 2 to 10 (sharing 300,000 characters), memory reads from 2 to 5, full entries from 1 to 3, and analysis runs from 1 to 2 ([#237](https://github.com/okeylanders/prose-minion-vscode/pull/237), [#238](https://github.com/okeylanders/prose-minion-vscode/pull/238)).
+- See the [Bookmark Recall ADR](adr/2026-11-05-workshop-bookmark-recall.md) and the [completion record](../.memory-bank/20261106-2118-workshop-bookmark-recall-complete.md). Memory and file reads are not yet fitted to the context window ([feature note](../.todo/features/feature-workshop-reads-fit-the-window/README.md)).
+
+### Helper Agent
+
+- `HelperAgentService` runs small model jobs as policies (`HELPER_TASK_POLICIES`), with no tools, capabilities, or writes of its own. Its scope is `helper` (`proseMinion.helperModel`), which follows Proofread's model until picked.
+- Its first task drafts the memory sheet's title, summary, and kind. The webview posts ids only; the host reads the turn. The sheet fills only fields the writer has not touched and never changes the body. Failure is one quiet line; `proseMinion.workshop.memory.helperDrafts` off is silence.
+- Every helper call asks for reasoning off. A model the live catalog marks as always reasoning gets the light budget on top of the 1,000-token ceiling rather than a refusal.
+- See the [Helper Agent ADR](adr/2026-11-05-helper-agent.md) and the [completion record](../.memory-bank/20261107-0100-helper-agent-complete.md).
+
+### Persona File Edits
+
+- A reply may end with up to five `<prose-minion-file-edit>` trailers. Each staged proposal is a card with a diff, Apply, Review in editor…, and Decline. `proseMinion.workshop.fileEdits` is `off` | `ask`, default `ask`; there is no `auto`.
+- Memory edits and file edits share one planner (`utils/textEdits/`), which anchors quotes exactly once and never uses offsets. File edits and Draft Edit share `DraftEditApplier`: one undo step, the version guard, protected regions, read-back, and no save.
+- A proposal is staged once to a host identity and never retargeted; an ambiguous target is refused. On prose there is no rewrite, appends and prepends are plain paragraphs within 400 words, and the rewrite ceiling (more than 300 changed characters and more than 60% of the touched paragraphs) is checked on the live text at every attempt.
+- The claim is taken before any await, and `applying` is checkpointed durably before any write. States are `pending`, `applying`, `applied`, `partial`, `declined`, `stale`, `refused`, and `unknown`; only `pending` offers Apply. A failure after dispatch reads `unknown`, never "nothing written".
+- See the [Persona File Edits ADR](adr/2026-11-05-workshop-persona-file-edits.md) and the [completion record](../.memory-bank/20261110-1200-workshop-persona-file-edits-complete.md).
+
+### Reply Edit Actions
+
+- A reply that names small fixes or writes out replacement prose ends with a `<prose-minion-edit-offer>` trailer: kind `fixes` or `rewrites`, the file, an optional count, and on `rewrites` up to four option labels. Chips are drawn only from a checked trailer, never from a reply's prose.
+- A press carries ids only. The host quotes the source reply from the ledger, and the engine's `finalReplyCheck` holds the answer to file-edit trailers or one "nothing to change" line. `deferRetention` retains the exchange only once the answer turn is adopted.
+- Offer status is derived from the ledger and never stored, so a Rewind that removes an answer reopens its offer. `fixes` narrows a card to find-and-replace changes of at most 40 changed characters a side; a pressed `rewrites` offer lifts the prose rewrite ceiling for that card alone.
+- One footer row holds the offer chips, the widget recommendation chip, and the reaction corner. Fixes draw before rewrites.
+- See the [Reply Edit Actions ADR](adr/2026-11-10-workshop-reply-edit-actions.md) and the [completion record](../.memory-bank/20261112-1200-workshop-reply-edit-actions-complete.md). The 40-character bound has not been tuned against live use, and a refused press shows only in the chip's tooltip and the live region.
+
+### Message Reactions
+
+- `WORKSHOP_REACTIONS` is a closed vocabulary of nineteen reactions by id, in warm, curious, and negative tones. The writer reacts to a persona's reply; a persona reacts only to the writer's message its reply answers, at most once a reply, by a trailer the host judges.
+- No reaction starts a model call or edits retained history. A reaction reaches a persona as a `<workshop-reactions>` frame in its next user message, and what a participant was told is the fold of the delivery records on its own replies.
+- A persona's bubble keeps its reactions in the footer corner; on the writer's message they sit on the bubble's corner. `proseMinion.workshop.reactions.personas` (default on) turns only personas' reactions off. The shared transcript projection omits reactions, so export and recall do not grow.
+- See the [Message Reactions ADR](adr/2026-11-07-workshop-message-reactions.md). The epic's Slice 4 (recorded per-persona tuning counts) is not done.
+
+### OpenRouter catalog
+
+- The [November 11 catalog audit](../.todo/archive/epics/epic-workshop-reply-edit-actions-2026-11-10/model-audit-2026-11-11.md) adds four opt-in choices to the shared curated and Category Search lists: Claude Fable 5.2, Gemini 4 Carbon, Muse Ember, and Tencent Hy4. Four unavailable IDs were removed: `inception/mercury-2.5`, `inception/mercury-3`, `nousresearch/hermes-3-llama-3.1-70b`, and `nousresearch/hermes-3-llama-3.1-405b`. [RECOMMENDED_MODELS.md](RECOMMENDED_MODELS.md) is updated.
+- The audit checked catalog records and endpoints; it did not run paid inference or establish prose quality. Defaults and saved selections are unchanged. Three of the additions always reason, which the Proofread and helper safeguards read from the live catalog when it is available.
+
+### Session compatibility
+
+- No `schemaVersion` changed. Every new persisted field is optional and additive ([ADR 2026-07-30](adr/2026-07-30-workshop-session-codec-evolution.md)): `bookmarks` and each turn's `model`; `memoryProposals` with `held` and `heldWord`, `projectMemoryReceipt`, and `projectMemoryDelivery`; `fileEditProposals`; `editOffers`, `editOfferRequest`, and `editOfferAnswer`; and `reactions`, `reactionDelivery`, `reactionOnly`, and `noMessage`.
+- Earlier versions' strict validators do not accept these fields, so a session holding any of them does not open in v2.12.0 or earlier. Every provider reply is stamped with its model, so in practice that is most sessions continued in this version. Unchanged older sessions still round-trip. Users who sync sessions should update every machine first.
+
+### Workshop tour and README artwork
+
+- The startup notice moves to `v10` and leads with four pages: "New: Suggested edits you apply", "New: Project Memory", "New: Pinned context", and "New: Bookmarks, reactions, and a two-tab rail". v2.12.0's Lightbox and Draft Edit pages follow as primers, without "New:". The tour is twenty-one pages, newest release first.
+- Eight notice shots join `WORKSHOP_NOTICE_SHOTS`: `reply-edit-offers`, `file-edit-card`, `memory-suggested-card`, `memory-sheet-draft`, `pinned-context-tab`, `context-pinned-pills`, `bookmarks-screen`, and `reaction-palette`. The tour's only code change is that content: the version key, the shot names, and the page entries.
+- The README leads with v2.13.0 and four composites: `workshop-suggested-edits.png`, `workshop-project-memory.png`, `workshop-pinned-context.png`, and `workshop-bookmarks-reactions.png`. The Lightbox and Draft Edit move from the release lead into feature sections after the Workshop's, with their images. Privacy names project memories, the pinned-context list, and suggested edits.
+- Every capture is a 2× shot of the real webview bundle built from this branch, driven by a stand-in host that answers the tab's requests with fixture data. The conversation, memories, and bookmarks are made up, about *Alice's Adventures in Wonderland* (public domain); no model was called. The header's model name is demo content.
+
+### Review and acceptance limits
+
+- Each epic was reviewed slice by slice, with ledgers in `docs/pr-reviews/`. At the #257 merge the suite was 843 suites, 11,915 tests, and 59 snapshots, all passing; this is integration evidence, not a claim about the release package.
+- Okey ran each feature live before its merge. Whether live models declare edit offers reliably under a long persona prompt rests on those runs, not on a test. A packaged-VSIX acceptance pass and wider live-provider quality checks remain separate release steps.
+- Not shipped: autonomous file edits, Revert for an applied edit, saved-session citations in memory proposals, and the helper's project-locations task.
+
 ## [2.12.0] - 2026-11-02 — Lightbox and Draft Edit
 
 ### Overview

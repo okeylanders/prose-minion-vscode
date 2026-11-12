@@ -2,6 +2,40 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.13.0] - Unreleased
+
+### Added
+
+- **Suggested file edits.** A Workshop persona can suggest an edit to a text file in your project: a note, a chapter, or the excerpt's document. Each edit is a card under the reply with its changes shown against your text, and **Apply**, **Review in editor…**, and **Decline**. Apply makes one change you can undo; Review opens it in VS Code's Refactor Preview. Nothing changes in a file until you apply a card, and the file is never saved for you.
+- **Edit chips on a reply.** When a reply names small fixes or writes out a rewrite, its footer shows a chip for each: one for the fixes, and one for each version of a rewrite. Pressing a chip asks the reply's author for exactly those edits, which arrive as cards, or as one line saying there is nothing to change.
+- **Project Memory.** Turn it on in conversation settings, on the **Memory** tab. With **Ask first**, a persona can suggest a memory under its reply and you choose whether to save it; with **Save and tell me**, personas save what's worth keeping and tell you in the thread. Save any message yourself with **Save to memory…**. Memories are Markdown files in `prose-minion/memory/`; later conversations in the project start with each memory's title and summary, and personas open a full note when they need it. Manage them from **Sessions → Memory…**.
+- **A drafted memory sheet.** When you save a message to memory, a helper drafts the title, summary, and kind while the sheet is open. Anything you type first is kept, and the note itself is never changed. The helper has its own model setting, which follows Proofread's until you choose one. Turn drafting off with `Workshop › Memory: Helper Drafts`.
+- **Pinned context.** A **Pinned context** tab in conversation settings keeps a list of up to 50 files that every new Workshop conversation in the project starts with. Pinned files are marked with a pin in the Context panel. The list is saved in `prose-minion/pinned-context.json`.
+- **Bookmarks.** Bookmark any message, name the bookmark, and jump back to it from the rail's **Notes** tab. **Sessions → Bookmarks…** browses every bookmark in the open conversation and your saved sessions, with preview, **Open at bookmark**, and **Remember this**, which saves a bookmarked message as a project memory. Personas can read your bookmarks when you ask them to.
+- **Reactions.** React to a persona's reply with an emoji; its author hears of it with your next message. Personas can react to your messages too, at most once a reply. Turn personas' reactions off with `Workshop › Reactions: Personas`.
+- **A two-tab rail.** **Material** holds the excerpt, the context, and a **Read in** list of the files a persona read and the tools it ran; **Notes** holds to-dos and bookmarks. A tab gets a badge when something arrives while it is hidden.
+- **Model names on replies.** Each reply's header names the model that wrote it, and says so when a different model served the request. A divider marks where the model changed. Exported transcripts show the same.
+- Four opt-in OpenRouter choices join the model pickers: Claude Fable 5.2, Gemini 4 Carbon, Muse Ember, and Tencent Hy4. Existing model selections and defaults are unchanged; these additions have not been qualified for prose quality.
+
+### Changed
+
+- A suggested memory that speaks of you near a personal word is now shown as a card for you to decide on, in both Project Memory modes. It was previously left out without notice. It is never saved automatically.
+- Personas can make up to 15 look-ups in one turn (was 5), including up to 10 saved-session reads, 5 memory reads, and 2 tool runs.
+- **New session** and **New session: full reset** start with your pinned context. **New session: full reset, empty context** starts with none. Opening, branching, or rewinding a saved session leaves its context as it was.
+- The Workshop's startup tour opens once more and begins with suggested edits, Project Memory, pinned context, and bookmarks and reactions.
+
+### Removed
+
+- Removed Mercury 2.5, Mercury 3, Hermes 3 70B, and Hermes 3 405B from the curated choices after they were unavailable in the November 11 OpenRouter catalog check. Saved settings are not rewritten.
+- The rail's Tools block is retired; the composer's **Tools** button opens the same tools.
+
+### Upgrade notes
+
+- Existing Workshop sessions remain readable. Sessions saved by this version can hold bookmarks, model names, reactions, memory cards, and edit cards, and earlier Prose Minion versions cannot open a session that holds them. Because every new reply records its model, that is most sessions you continue in this version. If you sync sessions between machines, update every machine first.
+- Project Memory is off by default. Suggested file edits are on by default, set to ask first; turn them off under **Suggested file edits** in conversation settings.
+- Asking for edits, memory suggestions, and memory drafts are model requests and may incur provider charges. Saved memories add to what each conversation sends. Read a suggested edit before you apply it; model output is not a substitute for editorial judgment.
+- These features have extensive automated and review coverage and were used live by the author. Wider native VS Code acceptance and live-provider quality checks remain separate release checks.
+
 ## [2.12.0] - 2026-11-02
 
 ### Added

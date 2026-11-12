@@ -124,8 +124,217 @@ const COMPOSER_CONTROLS_ALT = 'The Workshop composer control bar';
 
 const PAGES: readonly NoticePage[] = [
   {
-    title: 'New: Lightbox',
+    title: 'New: Suggested edits you apply',
     tag: 'new',
+    body: (
+      <>
+        A persona can now suggest an edit to a file in your project: a note, a chapter, or the
+        excerpt&rsquo;s document. Each one arrives as a card under the reply, with every change
+        shown against your text. <b>Apply</b> lands it as one change you can undo,{' '}
+        <b>Review in editor&hellip;</b> opens it in VS Code&rsquo;s Refactor Preview first, and{' '}
+        <b>Decline</b> sets it aside. The file is never saved for you. When a reply names small
+        fixes or writes out a rewrite, chips in its footer ask its author for exactly those edits:
+        one for the fixes, and one for each version of a rewrite.
+      </>
+    ),
+    note: (
+      <>
+        Unasked, a persona keeps its edits to your chapters small; a larger rewrite comes only
+        from a chip you pressed. Turn suggestions off under <b>Suggested file edits</b> on the
+        Behavior tab of conversation settings.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'reply-edit-offers',
+        alt: 'The foot of a reply from Jill: its action row, then As edits with a 3 fixes chip and a chip for each rewrite, On the bank and In her head',
+        maxWidthPx: 480,
+        ratio: '1768 / 340',
+        callouts: [
+          { label: '1', leftPercent: 10, topPercent: 64.1, widthPercent: 8.1, heightPercent: 22.4 },
+          { label: '2', leftPercent: 17.7, topPercent: 64.1, widthPercent: 22.3, heightPercent: 22.4 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'file-edit-card',
+        alt: 'A suggested edit card for a chapter file: three Replace changes shown against the text, then Apply, Review in editor, and Decline',
+        maxWidthPx: 480,
+        ratio: '1684 / 544',
+        callouts: [
+          { label: '3', leftPercent: 2, topPercent: 25.6, widthPercent: 46, heightPercent: 46.3 },
+          { label: '4', leftPercent: 2, topPercent: 80.9, widthPercent: 33.2, heightPercent: 13.2 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: '3 fixes', detail: 'asks the reply’s author for the small fixes it named, as a card.' },
+      { label: '2', term: 'One chip per version', detail: 'asks for that written-out rewrite as an edit.' },
+      { label: '3', term: 'Replace', detail: 'each change, shown against your text.' },
+      { label: '4', term: 'Apply · Review in editor… · Decline', detail: 'nothing changes in the file until you choose.' }
+    ]
+  },
+  {
+    title: 'New: Project Memory',
+    tag: 'new',
+    body: (
+      <>
+        Give the Workshop a memory of your project. Turn it on in conversation settings, on the{' '}
+        <b>Memory</b> tab. With <b>Ask first</b>, a persona can suggest a note under its reply, and
+        it is saved only when you choose <b>Save</b>. With <b>Save and tell me</b>, personas save
+        what&rsquo;s worth keeping and say so in the thread. Save any message yourself with{' '}
+        <b>Save to memory&hellip;</b>: the sheet opens at once, and a helper drafts its title,
+        summary, and kind while you look. Later conversations in this project start knowing every
+        memory&rsquo;s title and summary, and a persona opens the full note when it needs it.
+      </>
+    ),
+    note: (
+      <>
+        Memories are Markdown files in <b>prose-minion/memory/</b>. Browse, edit, archive,
+        or delete them from <b>Sessions</b> &rarr; <b>Memory&hellip;</b>. A suggested note that
+        speaks of you near a personal word is held as a card for you to decide, and is never saved
+        on its own. Project Memory is off until you turn it on.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'memory-suggested-card',
+        alt: 'A Suggested for project memory card under a reply, kind Canon, with its title, summary, and Save, Edit, and Dismiss',
+        maxWidthPx: 480,
+        ratio: '1684 / 352',
+        callouts: [
+          { label: '1', leftPercent: 2, topPercent: 70.5, widthPercent: 25, heightPercent: 20.4 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'memory-sheet-draft',
+        alt: 'The Save to project memory sheet with its title, the Canon kind, and its summary filled in',
+        maxWidthPx: 480,
+        ratio: '2080 / 882',
+        callouts: [
+          { label: '2', leftPercent: 2.1, topPercent: 40.4, widthPercent: 95.8, heightPercent: 57.6 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Save · Edit… · Dismiss', detail: 'a suggested memory waits until you decide.' },
+      { label: '2', term: 'Title, kind, and summary', detail: 'drafted for you; anything you type first is kept, and the note is never changed.' }
+    ]
+  },
+  {
+    title: 'New: Pinned context',
+    tag: 'new',
+    body: (
+      <>
+        Stop attaching the same files to every conversation. Open conversation settings, choose
+        the <b>Pinned context</b> tab, and pin the files most conversations need: characters,
+        places, the project brief. Every new conversation in this project then starts with them
+        attached, in your order, read as they are at that moment. In the Context panel a pinned
+        file carries a pin. After the start, a conversation&rsquo;s context is its own: removing a
+        file there doesn&rsquo;t unpin it, and unpinning doesn&rsquo;t remove it from conversations
+        already under way.
+      </>
+    ),
+    note: (
+      <>
+        <b>New session</b> and <b>New session: full reset</b> start with the pinned files;{' '}
+        <b>full reset, empty context</b> starts with none. Opening, branching, or rewinding a
+        saved session leaves its context as it was. The list is a file in your project,{' '}
+        <b>prose-minion/pinned-context.json</b>, of up to 50 files.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'pinned-context-tab',
+        alt: 'The Pinned context tab: Attached to every new conversation, 4 files and about 2,814 words, and the first two pinned files with their order arrows, Open, and Unpin',
+        maxWidthPx: 480,
+        ratio: '1840 / 710',
+        callouts: [
+          { label: '1', leftPercent: 75.6, topPercent: 6.5, widthPercent: 22.3, heightPercent: 9 },
+          { label: '2', leftPercent: 76.8, topPercent: 66, widthPercent: 20.6, heightPercent: 28.1 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'context-pinned-pills',
+        alt: 'The Workshop Context panel: 3 attachments, 3 pinned, and three files each marked with a pin',
+        maxWidthPx: 300,
+        ratio: '694 / 384',
+        callouts: [
+          { label: '3', leftPercent: 3.5, topPercent: 42, widthPercent: 65.9, heightPercent: 53.9 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Files and words', detail: 'pinned files count toward the 100,000-word context limit.' },
+      { label: '2', term: 'Arrows · Open · Unpin', detail: 'set the order, read a file, or take it off the list.' },
+      { label: '3', term: 'Pin', detail: 'marks the pinned files attached to this conversation.' }
+    ]
+  },
+  {
+    title: 'New: Bookmarks, reactions, and a two-tab rail',
+    tag: 'new',
+    body: (
+      <>
+        The rail now has two tabs: <b>Material</b> holds the excerpt, the context, and what a
+        persona read in, and <b>Notes</b> holds your to-dos and bookmarks. <b>Bookmark</b> any
+        message, then open <b>Sessions</b> &rarr; <b>Bookmarks&hellip;</b> to browse every
+        bookmark in this conversation and in your saved sessions. Preview one, open its session at
+        the bookmark, or choose <b>Remember this</b> to save it as a project memory. Ask a persona
+        what you bookmarked, and it can look. Each reply&rsquo;s header now names the model that
+        wrote it. And you can react: pick an emoji under a reply, and its author hears of it with
+        your next message.
+      </>
+    ),
+    note: (
+      <>
+        Now and then a persona reacts to your message too, at most once a reply. Turn that off
+        with the <b>Workshop &rsaquo; Reactions: Personas</b> setting. A reaction never starts a
+        model call on its own.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'bookmarks-screen',
+        alt: 'The Bookmarks screen: two bookmarks from this conversation with Remember this, Preview, and Show in thread, then one from a saved session with Open session and Open at bookmark',
+        maxWidthPx: 480,
+        ratio: '2360 / 906',
+        callouts: [
+          { label: '1', leftPercent: 67.4, topPercent: 25.1, widthPercent: 10.8, heightPercent: 10.6 },
+          { label: '2', leftPercent: 83.4, topPercent: 83.9, widthPercent: 11.9, heightPercent: 10.6 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'reaction-palette',
+        alt: 'The reaction palette open under a reply, in Warm, Curious, and Negative groups, and Jill’s heart on the corner of the writer’s message',
+        maxWidthPx: 360,
+        ratio: '1234 / 744',
+        callouts: [
+          { label: '3', leftPercent: 52.7, topPercent: 15.9, widthPercent: 33.1, heightPercent: 68.8 },
+          { label: '4', leftPercent: 86.3, topPercent: 17.8, widthPercent: 11, heightPercent: 10.7 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Remember this', detail: 'saves the bookmarked message as a project memory, with its source.' },
+      { label: '2', term: 'Open at bookmark', detail: 'opens the saved session at that message.' },
+      { label: '3', term: 'Add reaction', detail: 'warm, curious, or negative; press yours again to remove it.' },
+      { label: '4', term: 'A persona’s reaction', detail: 'sits on the corner of your own message.' }
+    ]
+  },
+  {
+    title: 'Lightbox',
+    tag: 'primer',
     body: (
       <>
         Hold a chapter up to the light. Choose <b>Open File in Lightbox</b> from the editor&rsquo;s
@@ -175,8 +384,8 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: Proofread and Craft Flags',
-    tag: 'new',
+    title: 'Proofread and Craft Flags',
+    tag: 'primer',
     body: (
       <>
         Right-click a Markdown or plain-text file and open the <b>Prose Minion</b> menu.{' '}
