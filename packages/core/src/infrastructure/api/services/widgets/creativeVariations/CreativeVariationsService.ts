@@ -113,17 +113,21 @@ export class CreativeVariationsService {
       );
     }
     try {
-      return {
-        cancelled: false,
-        workup: decodeCreativeVariationsResponse(content, {
-          workupId: request.workupId,
-          subjectText: generationDraft.subject.text,
-          invariants: generationDraft.invariants,
-          requestedCount: generationDraft.requestedCount
-        }),
-        usage: result.usage,
-        truncated: false
-      };
+      let omittedFields = 0;
+      const workup = decodeCreativeVariationsResponse(content, {
+        workupId: request.workupId,
+        subjectText: generationDraft.subject.text,
+        invariants: generationDraft.invariants,
+        requestedCount: generationDraft.requestedCount,
+        onOmittedField: () => { omittedFields += 1; }
+      });
+      if (omittedFields > 0) {
+        this.outputChannel?.appendLine(
+          `[CreativeVariationsService] Reply left out invariantFlags on ${omittedFields} `
+          + 'card(s); read as none.'
+        );
+      }
+      return { cancelled: false, workup, usage: result.usage, truncated: false };
     } catch (error) {
       const rejection = this.errorMessage(error);
       const nextStep = rejection.includes('writer-declared nonblank invariant field')

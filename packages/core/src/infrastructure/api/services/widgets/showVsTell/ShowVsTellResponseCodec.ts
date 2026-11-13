@@ -35,6 +35,7 @@ import {
 import {
   isShowVsTellWorkupId
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellWorkupId';
+import { fillOmittedEmpties } from '@services/widgets/widgetReplyOmissions';
 
 export const SHOW_VS_TELL_RESPONSE_START = '===SHOW_VS_TELL_V1===';
 export const SHOW_VS_TELL_RESPONSE_END = '===END_SHOW_VS_TELL_V1===';
@@ -45,6 +46,8 @@ export interface ShowVsTellResponseContext {
   /** Host-minted for this attempt; the model never supplies an id. */
   workupId: string;
   invariants: WorkshopShowVsTellInvariants;
+  /** Told each time a variant leaves out a field that is read as empty. */
+  onOmittedField?: (field: string) => void;
 }
 
 export function decodeShowVsTellResponse(
@@ -82,7 +85,7 @@ export function decodeShowVsTellResponse(
     );
   }
 
-  const workup = assembleWorkup(parsed, context.workupId);
+  const workup = assembleWorkup(parsed, context.workupId, context.onOmittedField);
   assertShowVsTellWorkupShape(workup, 'Show vs. Tell workup');
   const settled = workup as WorkshopShowVsTellWorkup;
   assertShowVsTellWorkupIntegrity(settled, context.invariants, 'Show vs. Tell workup');
@@ -91,9 +94,14 @@ export function decodeShowVsTellResponse(
 
 /**
  * Wire-level extraction only: exact keys and JSON types. Ids are derived here,
- * after parsing and never from the model, from group and variant order.
+ * after parsing and never from the model, from group and variant order. A
+ * variant with no risk to flag may leave `invariantFlags` out: read as none.
  */
-function assembleWorkup(parsed: unknown, workupId: string): unknown {
+function assembleWorkup(
+  parsed: unknown,
+  workupId: string,
+  onOmittedField?: (field: string) => void
+): unknown {
   const root = exactObject(parsed, RESPONSE_PATH, ['version', 'groups']);
   numberAt(root.version, `${RESPONSE_PATH}.version`);
   if (root.version !== SHOW_VS_TELL_GENERATION_PROTOCOL_VERSION) {
@@ -109,14 +117,16 @@ function assembleWorkup(parsed: unknown, workupId: string): unknown {
     arrayOf(group.variants, `${groupPath}.variants`, (variantValue, variantPath) => {
       ordinal += 1;
       const id = showVsTellVariantId(workupId, ordinal);
-      const variant = exactObject(variantValue, variantPath, [
-        'prose',
-        'channels',
-        'gains',
-        'costs',
-        'direction',
-        'invariantFlags'
-      ]);
+      const variant = fillOmittedEmpties(
+        exactObject(
+          variantValue,
+          variantPath,
+          ['prose', 'channels', 'gains', 'costs', 'direction'],
+          ['invariantFlags']
+        ),
+        { invariantFlags: 'list' },
+        onOmittedField
+      );
       stringAt(variant.prose, `${variantPath}.prose`);
       stringAt(variant.gains, `${variantPath}.gains`);
       stringAt(variant.costs, `${variantPath}.costs`);

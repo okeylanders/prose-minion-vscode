@@ -156,6 +156,52 @@ describe('decodeShowVsTellResponse', () => {
     });
   });
 
+  describe('a variant with nothing to flag', () => {
+    const everyVariant = (
+      wire: WireResponse,
+      change: (variant: Record<string, unknown>) => void
+    ): void => {
+      for (const group of wire.groups) {
+        for (const variant of group.variants) {
+          change(variant as unknown as Record<string, unknown>);
+        }
+      }
+    };
+
+    it('reads an omitted invariantFlags as none, and reports each omission', () => {
+      const onOmittedField = jest.fn();
+      const content = mutated((wire) => everyVariant(wire, (variant) => {
+        delete variant.invariantFlags;
+      }));
+      const workup = decodeShowVsTellResponse(content, { ...context, onOmittedField });
+      const variants = workup.groups.flatMap((group) => group.variants);
+
+      expect(variants.every((variant) => variant.invariantFlags.length === 0)).toBe(true);
+      expect(onOmittedField).toHaveBeenCalledTimes(variants.length);
+      expect(onOmittedField).toHaveBeenCalledWith('invariantFlags');
+    });
+
+    it('reads a null invariantFlags as none', () => {
+      const workup = decode(mutated((wire) => everyVariant(wire, (variant) => {
+        variant.invariantFlags = null;
+      })));
+      expect(workup.groups.flatMap((group) => group.variants)
+        .every((variant) => variant.invariantFlags.length === 0)).toBe(true);
+    });
+
+    it('reports nothing when every variant writes the field', () => {
+      const onOmittedField = jest.fn();
+      decodeShowVsTellResponse(exampleResponseText(), { ...context, onOmittedField });
+      expect(onOmittedField).not.toHaveBeenCalled();
+    });
+
+    it('still rejects an invariantFlags that is not a list', () => {
+      expect(() => decode(mutated((wire) => {
+        (wire.groups[0].variants[0] as unknown as Record<string, unknown>).invariantFlags = 'none';
+      }))).toThrow(/invariantFlags/);
+    });
+  });
+
   describe('group count, kind, and order', () => {
     it.each<[string, (wire: WireResponse) => void]>([
       ['three groups', (wire) => { wire.groups.pop(); }],

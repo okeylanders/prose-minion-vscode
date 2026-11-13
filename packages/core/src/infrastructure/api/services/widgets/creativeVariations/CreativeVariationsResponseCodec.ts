@@ -26,6 +26,7 @@ import {
 import {
   creativeVariationsFlagId
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
+import { fillOmittedEmpties } from '@services/widgets/widgetReplyOmissions';
 
 export const CREATIVE_VARIATIONS_RESPONSE_START = '===CREATIVE_VARIATIONS_V1===';
 export const CREATIVE_VARIATIONS_RESPONSE_END = '===END_CREATIVE_VARIATIONS_V1===';
@@ -35,6 +36,8 @@ export interface CreativeVariationsResponseContext {
   subjectText: string;
   invariants: WorkshopCreativeVariationsInvariants;
   requestedCount: WorkshopCreativeVariationsRequestedCount;
+  /** Told each time a card leaves out a field that is read as empty. */
+  onOmittedField?: (field: string) => void;
 }
 
 export function decodeCreativeVariationsResponse(
@@ -108,10 +111,16 @@ function decodeCard(
   context: CreativeVariationsResponseContext
 ): WorkshopCreativeVariationCard {
   const budget = PROMPT_BUDGETS.workshopWidgets;
-  const card = exactObject(
-    value,
-    path,
-    ['position', 'approach', 'direction', 'prose', 'tradeoff', 'invariantFlags']
+  // A card with no risk to flag may leave `invariantFlags` out: read as none.
+  const card = fillOmittedEmpties(
+    exactObject(
+      value,
+      path,
+      ['position', 'approach', 'direction', 'prose', 'tradeoff'],
+      ['invariantFlags']
+    ),
+    { invariantFlags: 'list' },
+    context.onOmittedField
   );
   numberAt(card.position, `${path}.position`);
   if (card.position !== expectedPosition) {

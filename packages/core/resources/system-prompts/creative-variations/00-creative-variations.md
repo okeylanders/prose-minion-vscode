@@ -22,6 +22,7 @@ Protocol rules:
   - At most 8 `invariantFlags` per card; each flag `note` ≤ 400 characters.
 - Make every card materially different in approach, direction, and prose. Do not repeat the subject as the variation.
 - Honor the requested distance: familiar stays near conventional choices; adjacent takes a clear neighboring move; tail pursues uncommon but defensible moves; far-tail pursues surprising, still usable moves.
+- Every card carries `invariantFlags`. Write `"invariantFlags":[]` when the card has no risk to flag; never leave the field out.
 - `invariantFlags` contains only real risks found in that card. Each flag is exactly `{ "invariantField": "must-survive" | "must-not-change", "kind": "advisory-risk" | "hard-conflict", "note": "..." }`.
 - Flag only an invariant field the writer actually supplied. `hard-conflict` is permitted only for `must-not-change`; use `advisory-risk` for uncertain or negotiable pressure.
 - An invariant whose value is an empty string or only whitespace was not supplied. Do not flag it; one flag against a blank invariant invalidates the entire response.

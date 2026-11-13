@@ -97,7 +97,7 @@ POV is a constraint, not a channel. Interiority may only be the POV character's 
 
 ## Flags
 
-`invariantFlags` lists only real risks found in that variant. Each flag is exactly `{ "invariantField": "must-survive" | "must-not-change", "kind": "advisory-risk" | "hard-conflict", "note": "..." }`.
+Every variant carries `invariantFlags`. Write `"invariantFlags":[]` when the variant has no risk to flag; never leave the field out. `invariantFlags` lists only real risks found in that variant. Each flag is exactly `{ "invariantField": "must-survive" | "must-not-change", "kind": "advisory-risk" | "hard-conflict", "note": "..." }`.
 
 - Flag only an invariant field the writer actually supplied. An invariant whose value is an empty string or only whitespace was not supplied. Do not flag it; one flag against a blank invariant invalidates the entire response.
 - `hard-conflict` is permitted only for `must-not-change`. Use `advisory-risk` for uncertain or negotiable pressure, and always for `must-survive`.
