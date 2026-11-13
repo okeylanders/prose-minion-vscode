@@ -120,15 +120,19 @@ export class ShowVsTellService {
       );
     }
     try {
-      return {
-        cancelled: false,
-        workup: decodeShowVsTellResponse(content, {
-          workupId: request.workupId,
-          invariants: generationDraft.invariants
-        }),
-        usage: result.usage,
-        truncated: false
-      };
+      let omittedFields = 0;
+      const workup = decodeShowVsTellResponse(content, {
+        workupId: request.workupId,
+        invariants: generationDraft.invariants,
+        onOmittedField: () => { omittedFields += 1; }
+      });
+      if (omittedFields > 0) {
+        this.outputChannel?.appendLine(
+          `[ShowVsTellService] Reply left out invariantFlags on ${omittedFields} `
+          + 'variant(s); read as none.'
+        );
+      }
+      return { cancelled: false, workup, usage: result.usage, truncated: false };
     } catch (error) {
       const rejection = this.errorMessage(error);
       const nextStep = rejection.includes('writer-declared nonblank invariant field')

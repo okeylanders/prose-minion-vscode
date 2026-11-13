@@ -47,6 +47,65 @@ describe('CreativeVariationsResponseCodec', () => {
     expect(workup.overlap.pairs).toHaveLength(3);
   });
 
+  describe('a card with nothing to flag', () => {
+    const withoutFlags = (value: unknown) => ({
+      version: 1,
+      cards: cards().map((card) => {
+        const { invariantFlags: _flags, ...rest } = card;
+        return value === undefined ? rest : { ...rest, invariantFlags: value };
+      })
+    });
+
+    it('reads an omitted invariantFlags as none, and reports each omission', () => {
+      const onOmittedField = jest.fn();
+      const workup = decodeCreativeVariationsResponse(
+        framed(withoutFlags(undefined)),
+        { ...context, onOmittedField }
+      );
+
+      expect(workup.cards.map((card) => card.invariantFlags)).toEqual([[], [], []]);
+      expect(onOmittedField.mock.calls).toEqual([
+        ['invariantFlags'], ['invariantFlags'], ['invariantFlags']
+      ]);
+    });
+
+    it('reads the omission as none when the writer declared no invariants', () => {
+      const workup = decodeCreativeVariationsResponse(
+        framed(withoutFlags(undefined)),
+        { ...context, invariants: { mustSurvive: '', mustNotChange: '' } }
+      );
+      expect(workup.cards.every((card) => card.invariantFlags.length === 0)).toBe(true);
+    });
+
+    it('reads a null invariantFlags as none', () => {
+      const workup = decodeCreativeVariationsResponse(framed(withoutFlags(null)), context);
+      expect(workup.cards.every((card) => card.invariantFlags.length === 0)).toBe(true);
+    });
+
+    it('reports nothing when every card writes the field', () => {
+      const onOmittedField = jest.fn();
+      decodeCreativeVariationsResponse(framed(), { ...context, onOmittedField });
+      expect(onOmittedField).not.toHaveBeenCalled();
+    });
+
+    it('still rejects an invariantFlags that is not a list', () => {
+      expect(() => decodeCreativeVariationsResponse(framed(withoutFlags('none')), context))
+        .toThrow(/invariantFlags/);
+    });
+
+    it.each(['position', 'approach', 'direction', 'prose', 'tradeoff'])(
+      'still rejects a card missing %s',
+      (field) => {
+        const values = cards() as unknown as Record<string, unknown>[];
+        delete values[0][field];
+        expect(() => decodeCreativeVariationsResponse(
+          framed({ version: 1, cards: values }),
+          context
+        )).toThrow(new RegExp(`missing required field ${field}`));
+      }
+    );
+  });
+
   it.each([4, 5] as const)('accepts an exact %i-card response', (requestedCount) => {
     const workup = decodeCreativeVariationsResponse(
       framed({ version: 1, cards: cards(requestedCount) }),

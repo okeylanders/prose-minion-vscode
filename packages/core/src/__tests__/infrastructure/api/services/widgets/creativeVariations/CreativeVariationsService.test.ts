@@ -57,10 +57,41 @@ const build = (provider = {
     { present },
     { appendLine } as never
   );
-  return { service, runInitial, getEngine, loadPrompts, capture, present };
+  return { service, runInitial, getEngine, loadPrompts, capture, present, appendLine };
 };
 
 describe('CreativeVariationsService', () => {
+  it('settles a reply whose cards leave out invariantFlags, and logs the omission', async () => {
+    const parsed = JSON.parse(response().split('\n')[1]) as {
+      cards: Record<string, unknown>[];
+    };
+    for (const card of parsed.cards) {
+      delete card.invariantFlags;
+    }
+    const content = [
+      '===CREATIVE_VARIATIONS_V1===',
+      JSON.stringify(parsed),
+      '===END_CREATIVE_VARIATIONS_V1==='
+    ].join('\n');
+    const { service, capture, appendLine } = build({
+      cancelled: false,
+      content,
+      rawContent: content,
+      finishReason: 'stop',
+      usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 }
+    });
+
+    const result = await service.generate(request());
+
+    expect(result).toMatchObject({ cancelled: false, truncated: false });
+    if (result.cancelled) { throw new Error('expected a settled workup'); }
+    expect(result.workup.cards.map((card) => card.invariantFlags)).toEqual([[], [], []]);
+    expect(capture).not.toHaveBeenCalled();
+    expect(appendLine).toHaveBeenCalledWith(
+      '[CreativeVariationsService] Reply left out invariantFlags on 3 card(s); read as none.'
+    );
+  });
+
   it('loads the prompt pair and settles one quality-first widget call', async () => {
     const { service, runInitial, getEngine, loadPrompts } = build();
     const onToken = jest.fn();

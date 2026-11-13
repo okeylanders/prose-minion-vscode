@@ -29,7 +29,8 @@ import {
   validateLexicalGravityDraft,
   validateLexicalGravityLens
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
-import { exactObject } from '@/application/services/workshop/persistedValidation';
+import { exactObject, isRecord } from '@/application/services/workshop/persistedValidation';
+import { fillOmittedEmpties } from '@services/widgets/widgetReplyOmissions';
 import {
   lexicalGravityLensSlug
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
@@ -143,14 +144,7 @@ export class LexicalGravityModelService {
         PREVIEW_END,
         BUDGET.lexicalPreviewResponseCharacters
       );
-      const parsed = exactObject(
-        JSON.parse(framed),
-        'Lexical Gravity preview response',
-        [
-          'version', 'semanticPositions', 'selectedDynamicId',
-          'openEntailment', 'text'
-        ]
-      );
+      const parsed = this.readPreviewReply(JSON.parse(framed));
       const validated = validateLexicalGravityDraft({
         ...draft,
         preview: { ...parsed, configKey, sourceText }
@@ -264,6 +258,41 @@ export class LexicalGravityModelService {
         + 'Try building the lens again.'
       );
     }
+  }
+
+  /**
+   * A preview with nothing to map may leave its empty fields out rather than
+   * write `[]` or `null`: no positions, no dynamic, no entailment, and a
+   * position on no axis. Each is read as that empty value; the shared draft
+   * validation then holds the reply to every other rule.
+   */
+  private readPreviewReply(value: unknown): Record<string, unknown> {
+    const omitted: string[] = [];
+    const note = (field: string): void => { omitted.push(field); };
+    const reply = fillOmittedEmpties(
+      exactObject(
+        value,
+        'Lexical Gravity preview response',
+        ['version', 'text'],
+        ['semanticPositions', 'selectedDynamicId', 'openEntailment']
+      ),
+      { semanticPositions: 'list', selectedDynamicId: 'null', openEntailment: 'null' },
+      note
+    );
+    if (Array.isArray(reply.semanticPositions)) {
+      reply.semanticPositions = reply.semanticPositions.map((position: unknown) => (
+        isRecord(position)
+          ? fillOmittedEmpties(position, { axisId: 'null', axisPosition: 'null' }, note)
+          : position
+      ));
+    }
+    if (omitted.length > 0) {
+      this.outputChannel?.appendLine(
+        `[LexicalGravityModelService] Preview reply left out ${omitted.length} empty `
+        + `field(s) (${[...new Set(omitted)].join(', ')}); read as empty.`
+      );
+    }
+    return reply;
   }
 
   private extractFrame(

@@ -157,6 +157,50 @@ describe('LexicalGravityModelService', () => {
     )).resolves.toMatchObject(body);
   });
 
+  it('reads a no-op preview that leaves its empty fields out as empty', async () => {
+    const { service, appendLine, capture } = createService(previewResponse(
+      { version: 2, text: 'The room waited.' } as never
+    ));
+
+    await expect(service.preview(musicDraft(), 'The room waited.')).resolves.toMatchObject({
+      semanticPositions: [],
+      selectedDynamicId: null,
+      openEntailment: null,
+      text: 'The room waited.'
+    });
+    expect(capture).not.toHaveBeenCalled();
+    expect(appendLine).toHaveBeenCalledWith(
+      '[LexicalGravityModelService] Preview reply left out 3 empty field(s) '
+      + '(semanticPositions, selectedDynamicId, openEntailment); read as empty.'
+    );
+  });
+
+  it('reads a position that leaves out its axis as on no axis', async () => {
+    const body = previewBody();
+    const { axisId: _axisId, axisPosition: _axisPosition, ...position } =
+      body.semanticPositions[0];
+    const { service } = createService(previewResponse(
+      { ...body, semanticPositions: [position] } as never
+    ));
+
+    const preview = await service.preview(musicDraft(), 'The room waited.');
+
+    expect(preview.semanticPositions).toEqual([
+      { ...position, axisId: null, axisPosition: null }
+    ]);
+  });
+
+  it('still rejects a preview missing its text, or carrying an unknown field', async () => {
+    const { text: _text, ...withoutText } = previewBody();
+    await expect(createService(previewResponse(withoutText as never)).service.preview(
+      musicDraft(),
+      'The room waited.'
+    )).rejects.toThrow(/usable preview/);
+    await expect(createService(previewResponse(
+      previewBody('The room waited.', { score: 1 })
+    )).service.preview(musicDraft(), 'The room waited.')).rejects.toThrow(/usable preview/);
+  });
+
   it('fails closed on undeclared semantic references and wrapper prose', async () => {
     const undeclared = previewBody('The room waited.', { selectedDynamicId: 'develop' });
     const rejected = createService(previewResponse(undeclared));
