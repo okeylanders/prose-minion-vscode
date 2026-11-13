@@ -363,6 +363,30 @@ A settled workup contains exactly `requestedCount` cards with contiguous,
 one-based positions in array order. Missing, duplicate, or gapped positions and
 unknown response keys reject the whole response before ids or overlap are derived.
 
+**Amended 2026-11-13 (PR #258): one wire-field exception.** A card that leaves
+out `invariantFlags`, or writes it as `null`, is read as carrying no flags
+instead of rejecting the response. A live reply was discarded whole for this
+omission alone, with every take usable. The exception is narrow:
+
+- It covers only a field whose empty value means "nothing to report". Missing
+  content fields, unknown keys, wrong types and bad flags still reject the
+  whole response, and "invalid or partial result never renders" stands for
+  everything else.
+- It is the reply boundary's only. The persisted config codec still requires
+  the field, which the host always writes.
+- **It loses provenance.** A settled workup does not record whether the model
+  wrote `[]` or left the field out, and an omission is not evidence the model
+  checked the invariants. The service's output-channel count is diagnostic,
+  not writer-facing. This fits D3 as amended: flags are visible context, never
+  commit authority, and a model-written `[]` was never proof of a check either.
+- If a later product decision needs a guaranteed invariant check, keep an
+  "unverified" state or require a validated check result. Do not treat this
+  fallback as assurance.
+
+Show vs. Tell's `invariantFlags` and the Lexical Gravity preview's empty fields
+follow the same rule, through one helper (`widgetReplyOmissions.ts`); see
+"Workshop Widget Replies" in the agents guide.
+
 Every flag must reference a writer field whose trimmed value is nonblank;
 otherwise the response codec rejects the workup rather than letting the model
 invent an invariant. `hard-conflict` is additionally valid only for
