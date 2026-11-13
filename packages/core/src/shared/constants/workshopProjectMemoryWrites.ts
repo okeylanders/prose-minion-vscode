@@ -176,10 +176,14 @@ export function workshopMemoryDraftsEqual(a: WorkshopMemoryDraft, b: WorkshopMem
  * Why a held card waits (Slice 0d, "In the thread", item 4; D8). Neither
  * line claims a search ran (the hold reads whether search tools were
  * attached: PR #196 F-01), and the cap is room-wide, so neither names a
- * persona (F-02).
+ * persona (F-02). `personal` names the word the fence matched (`heldWord`,
+ * D9): the writer's own note's word, shown to the writer.
  */
-export function workshopMemoryHeldReason(held: WorkshopMemoryHold): string {
+export function workshopMemoryHeldReason(held: WorkshopMemoryHold, word?: string): string {
   switch (held) {
+    case 'personal':
+      return `This note speaks of you near a word about personal life${word ? ` (\u201c${word}\u201d)` : ''}, ` +
+        'so it waits for you to check it before saving.';
     case 'web-research':
       return 'Live web research was available for this reply, so this memory waits for you to save it.';
     case 'edit':

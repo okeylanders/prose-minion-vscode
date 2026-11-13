@@ -43,7 +43,7 @@ describe('file-edit frames in a reply', () => {
   });
 
   it('a reply with no frame has no file edits at all', () => {
-    expect(extractWorkshopReplyControls('Just prose.', OPEN)).toEqual({ rest: 'Just prose.', redacted: 'Just prose.', memory: { kind: 'none' } });
+    expect(extractWorkshopReplyControls('Just prose.', OPEN)).toEqual({ rest: 'Just prose.', redacted: 'Just prose.', memory: { kind: 'none' }, trailers: { memory: false, fileEdits: false } });
   });
 
   it('several frames are kept in the order written, up to the cap; past it, each is dropped and counted', () => {

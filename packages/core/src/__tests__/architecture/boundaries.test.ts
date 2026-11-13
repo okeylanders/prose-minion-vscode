@@ -83,6 +83,8 @@ const WORKSHOP_TODO_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopTodoHandler.ts';
 const WORKSHOP_BOOKMARK_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopBookmarkHandler.ts';
+const WORKSHOP_REACTION_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopReactionHandler.ts';
 const WORKSHOP_BOOKMARK_BROWSER_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopBookmarkBrowserHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER =
@@ -97,6 +99,8 @@ const WORKSHOP_PINNED_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopPinnedContextHandler.ts';
 const WORKSHOP_FILE_EDIT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopFileEditHandler.ts';
+const WORKSHOP_EDIT_OFFER_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopEditOfferHandler.ts';
 const WORKSHOP_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopContextHandler.ts';
 const WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER =
@@ -198,6 +202,11 @@ const WORKSHOP_ROUTE_OWNERS = [
     registration: 'direct',
     messageTypes: ['WORKSHOP_REQUEST_TURN_PREVIEW']
   },
+  {
+    owner: WORKSHOP_REACTION_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_SET_TURN_REACTION', 'WORKSHOP_HIDE_TURN_REACTION']
+  },
   // The Bookmarks screen's reads (ADR 2026-11-05 D8): through recall, never behind the gate.
   {
     owner: WORKSHOP_BOOKMARK_BROWSER_HANDLER_OWNER,
@@ -275,6 +284,12 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_FILE_EDIT_HANDLER_OWNER,
     registration: 'direct',
     messageTypes: ['WORKSHOP_FILE_EDIT_PREVIEW']
+  },
+  // A press on a reply's edit offer starts a run, behind the gate (ADR 2026-11-10 D4).
+  {
+    owner: WORKSHOP_EDIT_OFFER_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_EDIT_OFFER_ACTION']
   },
   {
     owner: WORKSHOP_SESSION_HANDLER_OWNER,
@@ -422,6 +437,10 @@ const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
     reference: /WorkshopBookmarkBrowserHandler/
   },
   {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopReactionHandler.ts'),
+    reference: /WorkshopReactionHandler/
+  },
+  {
     file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopProjectMemoryHandler.ts'),
     reference: /WorkshopProjectMemoryHandler/
   },
@@ -440,6 +459,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopContextHandler',
   'WorkshopExcerptScopeHandler',
   'WorkshopCreativeVariationsHandler',
+  'WorkshopEditOfferHandler',
   'WorkshopFileEditHandler',
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
@@ -448,6 +468,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopPinnedContextHandler',
   'WorkshopProjectMemoryHandler',
   'WorkshopProjectMemoryManagerHandler',
+  'WorkshopReactionHandler',
   'WorkshopSavedTurnMemoryHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
@@ -646,6 +667,11 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
     reason: 'closed persisted union validator',
     allowedToken: /(?:(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)ConfigCodec|assert(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)(?:Draft|RecommendationSeed)Shape|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell)/
+  },
+  {
+    file: 'application/services/workshop/widgets/WorkshopWidgetRecommendationRejectionCopy.ts',
+    reason: 'recommendation rejection copy, moved verbatim out of WorkshopRunCompletion (Message Reactions Slice 3)',
+    allowedToken: /(?:lengthBudget|lensSlug|metaphorPull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references|subjectText|mustSurvive|mustNotChange|aim|distance|requestedCount|invalid_distance|invalid_requested_count)/
   },
   {
     file: 'application/services/workshop/WorkshopRunCompletion.ts',
@@ -897,6 +923,10 @@ const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
   {
     file: 'application/services/workshop/WorkshopRunCompletion.ts',
     reason: 'delegates recommendation semantics through the feature operations registry'
+  },
+  {
+    file: 'application/services/workshop/widgets/WorkshopWidgetRecommendationRejectionCopy.ts',
+    reason: 'copy keyed by rejected seed field, moved from WorkshopRunCompletion; no per-feature dispatch'
   },
   {
     file: 'application/services/workshop/directives/WorkshopStandingDirectiveOperations.ts',
@@ -1969,18 +1999,21 @@ describe('architectural boundaries', () => {
       'application/services/workshop/RunWorkshopToolSidePass.ts'
     ]);
     // The aggregate's two provider-history commit points are finalized only
-    // by the two completion functions…
+    // by the completion functions (a pressed edit offer's answer has its own,
+    // ADR 2026-11-10 D5)…
     expect(filesMatching(/\.completeRun\(/)).toEqual([
-      'application/services/workshop/WorkshopRunCompletion.ts'
+      'application/services/workshop/WorkshopRunCompletion.ts',
+      'application/services/workshop/fileEdits/WorkshopEditOfferAnswerCompletion.ts'
     ]);
     expect(filesMatching(/\.completeToolReport\(/)).toEqual([
       'application/services/workshop/WorkshopAnalysisSidePass.ts'
     ]);
-    // …which both record through the one completion-boundary step…
+    // …which all record through the one completion-boundary step…
     expect(filesMatching(/\brecordWorkshopRetainedHistoryCommit\(/)).toEqual([
       'application/services/workshop/WorkshopAnalysisSidePass.ts',
       'application/services/workshop/WorkshopRetainedHistoryCommit.ts',
-      'application/services/workshop/WorkshopRunCompletion.ts'
+      'application/services/workshop/WorkshopRunCompletion.ts',
+      'application/services/workshop/fileEdits/WorkshopEditOfferAnswerCompletion.ts'
     ]);
     // …the only caller of the aggregate's recorder.
     expect(filesMatching(/\.recordRetainedHistoryMark\(/)).toEqual([
@@ -2053,9 +2086,11 @@ describe('architectural boundaries', () => {
     // Bookmark Recall Slice 3 added "Remember this" from a saved session (mutation).
     // Persona File Edits Slice 4a added a card's action (mutation) and a rewrite's preview (direct).
     // Helper Agent Slice 2 added the memory sheet's draft request, its cancel and the setting's read (direct).
-    expect(expectedOwnerPairs).toHaveLength(91);
+    // Reply Edit Actions Slice 2 added the press on a reply's edit offer (mutation).
+    // Message Reactions Slice 1 added the writer's reaction change and Hide on a persona's (mutation).
+    expect(expectedOwnerPairs).toHaveLength(94);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(48);
+      .toHaveLength(51);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
       .toHaveLength(43);
     expect(duplicateLedgerEntries).toEqual([]);
@@ -2154,7 +2189,7 @@ describe('architectural boundaries', () => {
         );
     });
 
-    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(9);
+    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(10);
     expect(offenders).toEqual([]);
   });
 
@@ -2706,6 +2741,7 @@ describe('architectural boundaries', () => {
       'bookmarks.ts',
       'context.ts',
       'creativeVariations.ts',
+      'editOffers.ts',
       'fileEdits.ts',
       'gesturePlayground.ts',
       'index.ts',
@@ -2716,6 +2752,7 @@ describe('architectural boundaries', () => {
       'pinnedContext.ts',
       'projectMemory.ts',
       'projectMemoryManager.ts',
+      'reactions.ts',
       'seedDelivery.ts',
       'session.ts',
       'settings.ts',

@@ -23,7 +23,7 @@ describe('selected cache duration', () => {
   it.each(['openai/gpt-5.5', 'openai/gpt-5.4', 'openai/gpt-5.2', 'openai/gpt-4.1',
     'openai/gpt-oss-120b', 'openai/gpt-chat-latest', 'openrouter/auto', 'other/gpt-5.6-terra',
     'moonshotai/kimi-k3.1-pro', 'minimax/minimax-m3.1-flash',
-    'deepseek/deepseek-v4.1-flash-1017', 'inception/mercury-3',
+    'deepseek/deepseek-v4.1-flash-1017', 'meta/muse-ember', 'google/gemini-4-carbon', 'tencent/hy4',
     'openai/gpt-5.60invalid', 'openai/gpt-60invalid'])('keeps %s lifetime unknown', model => {
     expect(getOpenRouterPromptCacheTtlSeconds(model)).toBeUndefined();
   });
@@ -70,6 +70,8 @@ describe('selected cache duration', () => {
     expect(qwen.messages).toEqual([cachedMessage('user', 'Hello')]);
     expect(getOpenRouterPromptCacheTtlSeconds('qwen/qwen-plus', '1h')).toBe(300);
     expect(getOpenRouterPromptCacheTtlSeconds('anthropic/claude-sonnet-5', '1h')).toBe(3600);
+    expect(prepareOpenRouterPromptCacheRequest('anthropic/claude-fable-5.2', [], 'room', '1h').cache_control)
+      .toEqual({ type: 'ephemeral', ttl: '1h' });
     expect(getOpenRouterPromptCacheTtlSeconds('google/gemini-2.5-pro', '1h')).toBeUndefined();
   });
 });
@@ -126,7 +128,9 @@ describe('OpenRouter prompt cache request policies', () => {
     'deepseek/deepseek-v4.1-flash-1017',
     'moonshotai/kimi-k3.1-pro',
     'minimax/minimax-m3.1-flash',
-    'inception/mercury-3',
+    'meta/muse-ember',
+    'google/gemini-4-carbon',
+    'tencent/hy4',
     'google/gemini-3.8-flash',
     'meta/muse-spark-1.3',
     'meta/muse-wonder',

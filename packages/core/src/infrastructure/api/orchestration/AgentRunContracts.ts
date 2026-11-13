@@ -161,6 +161,20 @@ export type AgentCapabilityFactory = () => AnyAgentCapability;
 
 export type StreamingTokenCallback = (token: string) => void;
 
+/** A final-reply check's answer that refuses the reply outright: no correction turn, nothing retained. */
+export const AGENT_FINAL_REPLY_REFUSED = Symbol('agent-final-reply-refused');
+
+/** What the engine tells a final-reply check about the reply beside its text. */
+export interface AgentFinalReplyFacts {
+  /** The provider stopped at its token ceiling, or interrupted the stream. */
+  readonly incomplete: boolean;
+}
+
+export type AgentFinalReplyCheck = (
+  content: string,
+  reply: AgentFinalReplyFacts
+) => string | typeof AGENT_FINAL_REPLY_REFUSED | undefined;
+
 export interface AgentRunOptions {
   readonly temperature?: number;
   readonly maxTokens?: number;
@@ -177,6 +191,43 @@ export interface AgentRunOptions {
    * visible result remain untouched so the owning domain can parse controls.
    */
   readonly retainedAssistantContentSanitizer?: (content: string) => string;
+  /**
+   * The owner's check of the run's final reply. It is given the reply as
+   * the run will return it (`content`, once it holds no capability call),
+   * before any truncation or interruption notice is appended, and whether
+   * the provider cut it short (`incomplete`): a display notice is never part
+   * of what is validated. It answers:
+   * - nothing: the reply is accepted;
+   * - an instruction: the engine replays it to the model as a correction
+   *   turn, spending the policy's `maxCorrectionTurns` as a rejected
+   *   capability request does, and checks the new reply the same way;
+   * - `AGENT_FINAL_REPLY_REFUSED`: the reply is refused with no correction.
+   * A reply refused, or still not accepted when no correction turn is left,
+   * is returned with `finalReplyRejected`, and nothing is committed to
+   * retained history: the conversation is as it was before the turn, as
+   * after a cancellation. When a correction succeeds, the rejected reply is
+   * retained through `retainedAssistantContentSanitizer`, as the final reply
+   * is, so only the owner's retained form of it is kept; the model is still
+   * shown its own reply in the correction request. A correction's tokens
+   * stream through `onToken` after the first reply's, so a caller that shows
+   * the stream should not set both.
+   */
+  readonly finalReplyCheck?: AgentFinalReplyCheck;
+  /**
+   * Hold this turn's retention until its owner adopts the reply. When set,
+   * a run that would commit its exchange (its messages, context-source rows
+   * and context snapshot) commits nothing, and hands the owner `commit`
+   * instead, before it returns. The owner calls `commit` once, when it
+   * adopts the reply, or never: an exchange never committed leaves the
+   * conversation exactly as it was before the turn, with nothing to undo.
+   * `commit` answers whether it retained the exchange. It retains nothing,
+   * and answers false, when the conversation is gone or its history has
+   * changed since the run read it, so a held exchange is never appended
+   * after a newer turn. The owner must keep any other run off the
+   * conversation until it has committed or let go. Not called for a
+   * cancelled run or a rejected final reply, which retain nothing anyway.
+   */
+  readonly deferRetention?: (commit: () => boolean) => void;
   /**
    * The model every request of this run goes to, whatever the engine's model
    * is by then (a hot-swap, or a following scope moving): the model a writer
@@ -243,6 +294,8 @@ export interface ExecutionResult {
    */
   readonly replySource?: AgentRunReplySource;
   readonly cancelled?: boolean;
+  /** The run's `finalReplyCheck` still refused the reply with no correction turn left; nothing was retained. */
+  readonly finalReplyRejected?: boolean;
   readonly conversationId?: string;
   readonly citations?: UrlCitation[];
 }

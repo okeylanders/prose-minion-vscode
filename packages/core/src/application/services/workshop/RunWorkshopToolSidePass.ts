@@ -4,8 +4,9 @@ import {
   hasWorkshopMemoryProposalText
 } from '@/utils/workshopReplyControls';
 import { resolveWorkshopReplyMemory } from '@/application/services/workshop/memory/WorkshopReplyMemory';
-import type { WorkshopReplyFileEditContext } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
+import type { WorkshopReplyEditsContext } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { stageWorkshopReactionRestart } from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
 import {
   WorkshopRoomDeliveryService,
   workshopRoomDeliveredThrough
@@ -74,7 +75,9 @@ export interface WorkshopToolSidePassEvents {
   /** The room's automatic saves, landed and in flight, for the cap (PR #201 F-04). */
   memoryAutoSavesInRoom?: () => number;
   /** The synthesis's file edits, staged with the setting read now (ADR 2026-11-05 D4, D11); absent, none are staged. */
-  fileEdits?: (reply: string, signal: AbortSignal) => Promise<WorkshopReplyFileEditContext | undefined>;
+  fileEdits?: (reply: string, signal: AbortSignal) => Promise<WorkshopReplyEditsContext | undefined>;
+  /** Whether personas may react (ADR 2026-11-07 Q8); a synthesis answers no writer message, so its trailer is `no-target`. */
+  reactionsOpen?: () => boolean;
   settled: (requestId: string) => void;
 }
 
@@ -211,6 +214,12 @@ export class RunWorkshopToolSidePass {
           : undefined
       };
       const hostConversationId = this.session.getHostConversationId();
+      if (!hostConversationId) {
+        // A synthesis that starts the host's conversation carries no reactions
+        // frame, but begins its view, so the next message delivers again (PR #246 M1).
+        stageWorkshopReactionRestart(this.session, synthesisRequestId, { kind: 'host' }, (line) =>
+          this.outputChannel.appendLine(`[RunWorkshopToolSidePass] ${line}`));
+      }
       pendingHostUpdates = this.session.prepareHostUpdatesForDelivery(hostConversationId);
       const todoEvidence = buildWorkshopTodoEvidence(this.session.collectOpenTodosForHost());
       const hostUpdateFrame = hostConversationId ? buildWorkshopHostUpdateFrame(pendingHostUpdates) : undefined;
@@ -284,6 +293,7 @@ export class RunWorkshopToolSidePass {
         memory: replyMemory,
         memoryAutoSavesInRoom: events.memoryAutoSavesInRoom,
         fileEdits: replyFileEdits,
+        reactionsOpen: events.reactionsOpen?.(),
         memoryAutoSave: events.memoryAutoSave && ((turn, indexes) => {
           memorySave = events.memoryAutoSave!(turn, indexes);
         }),

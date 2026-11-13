@@ -1,0 +1,48 @@
+{
+  "wide": {
+    "foot": {
+      "top": 252,
+      "bottom": 282,
+      "left": 49,
+      "right": 909
+    },
+    "offers": {
+      "top": 253,
+      "bottom": 281,
+      "left": 49,
+      "right": 588
+    },
+    "corner": {
+      "top": 252,
+      "bottom": 282,
+      "left": 836,
+      "right": 909
+    },
+    "scrolls": false,
+    "oneRow": true,
+    "cornerAtRight": true
+  },
+  "narrow": {
+    "foot": {
+      "top": 2661,
+      "bottom": 2759,
+      "left": 49,
+      "right": 445
+    },
+    "offers": {
+      "top": 2661,
+      "bottom": 2723,
+      "left": 49,
+      "right": 445
+    },
+    "corner": {
+      "top": 2729,
+      "bottom": 2759,
+      "left": 307,
+      "right": 445
+    },
+    "scrolls": false,
+    "cornerUnderOffers": true,
+    "cornerAtRight": true
+  }
+}

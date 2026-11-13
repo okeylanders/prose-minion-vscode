@@ -16,7 +16,14 @@
  * point; Sprint 02 rewinds to each one and compares (the equivalence oracle).
  */
 
-import type { WorkshopReplyFileEditContext } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
+import { resolveWorkshopReplyEdits, type WorkshopReplyEditsContext } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
+import {
+  completeWorkshopEditOfferRun,
+  workshopEditOfferRetainedReply
+} from '@/application/services/workshop/fileEdits/WorkshopEditOfferAnswerCompletion';
+import type { FileEditStaging } from '@/domain/models/FileEditStaging';
+import { workshopEditOfferRequestLine } from '@shared/constants/workshopEditOfferWords';
+import { workshopEditOfferAnswerVerdict } from '@/utils/workshopEditOfferAnswer';
 import type { WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import {
   completeWorkshopRun,
@@ -27,6 +34,14 @@ import {
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopRoomDeliveryService } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import {
+  prepareWorkshopReactionDelivery,
+  stageWorkshopReactionDelivery,
+  workshopReactionHoldsAfterCatchUp,
+  workshopReactionHoldsTranscript,
+  type WorkshopReactionHolds
+} from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
+import { workshopReactionInviteFor } from '@/application/services/workshop/reactions/WorkshopReactionInvite';
 import type {
   WorkshopConversationLogicalKey,
   WorkshopSessionStateV1
@@ -51,6 +66,7 @@ import type { AssistantToolService } from '@services/analysis/AssistantToolServi
 import type {
   ContextSourceEntry,
   WorkshopChatTarget,
+  WorkshopEditOfferKind,
   WorkshopGesturePlaygroundDraft,
   WorkshopPersonaId,
   WorkshopProjectMemoryDelivery,
@@ -122,7 +138,9 @@ export class ScriptedWorkshopRoom {
   /** Save and tell me's saver (Slice 5); absent, a card waits as under Ask first. */
   memoryAutoSave?: (turn: WorkshopTurn, indexes: readonly number[]) => void;
   /** A reply's staged file edits (ADR 2026-11-05 D4): a test resolves them first; used only for the reply they match. */
-  fileEdits?: WorkshopReplyFileEditContext;
+  fileEdits?: WorkshopReplyEditsContext;
+  /** Whether personas may react (ADR 2026-11-07 Q8); absent, a reaction trailer is dropped as `reactions-off`. */
+  reactionsOpen?: boolean;
   /** Whether each reply's run had web search tools attached (Slice 5's hold). */
   webResearchAttached = false;
 
@@ -174,7 +192,10 @@ export class ScriptedWorkshopRoom {
     const pendingHostUpdates = this.session.hasHostConversation()
       ? this.session.collectPendingHostUpdates()
       : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
+    const reactions = this.reactions({ kind: 'host' }, this.session.hasHostConversation() ? 'update' : 'start',
+      workshopReactionHoldsAfterCatchUp(this.session.readRoomLedger(), { kind: 'host' }, roomDelivery));
     const writerTurn = this.session.beginPersonaMessage(requestId, text, this.refs(staged));
+    reactions.stage(requestId);
     if (options.projectMemory) {
       this.session.stageProjectMemoryDelivery(requestId, options.projectMemory);
     }
@@ -183,7 +204,7 @@ export class ScriptedWorkshopRoom {
     const conversationId = this.commitHistory(
       this.session.getHostConversationId(),
       `workshop_persona_${this.session.getSelectedPersonaId()}`,
-      `[host] ${text}`,
+      `${reactions.lead}${this.invite(requestId)}[host] ${text}`,
       replyContent,
       evidence,
       options.resources
@@ -391,10 +412,13 @@ export class ScriptedWorkshopRoom {
       { kind: 'personaGuest', personaId },
       joinStart.turn.id
     );
+    const reactions = this.reactions({ kind: 'personaGuest', personaId }, 'start',
+      workshopReactionHoldsTranscript(joinTurns.map((turn) => turn.id)));
+    reactions.stage(requestId);
     const conversationId = this.commitHistory(
       undefined,
       `workshop_guest_${personaId}`,
-      `[join ${personaId}] ${joinTurns.length} room turns; ${opening}`,
+      `${reactions.lead}${this.invite(requestId)}[join ${personaId}] ${joinTurns.length} room turns; ${opening}`,
       `${personaId} joins.`
     );
     const reply = completeWorkshopRun({
@@ -424,22 +448,130 @@ export class ScriptedWorkshopRoom {
     return reply;
   }
 
-  guestMessage(personaId: WorkshopPersonaId, text: string): WorkshopTurn {
+  guestMessage(personaId: WorkshopPersonaId, text: string, options: { reply?: string } = {}): WorkshopTurn {
+    const replyContent = options.reply ?? `${personaId} reply to "${text}".`;
     const requestId = this.requestId(`guest-${personaId}`);
     this.session.setChatTarget({ kind: 'personaGuest', personaId });
     const roomDelivery = this.delivery.prepare({ kind: 'personaGuest', personaId });
+    const reactions = this.reactions({ kind: 'personaGuest', personaId }, 'update',
+      workshopReactionHoldsAfterCatchUp(this.session.readRoomLedger(), { kind: 'personaGuest', personaId }, roomDelivery));
     this.session.beginPersonaGuestMessage(personaId, requestId, text);
+    reactions.stage(requestId);
     const conversationId = this.commitHistory(
       this.session.getPersonaGuestConversationId(personaId),
       `workshop_guest_${personaId}`,
-      `[guest ${personaId}] ${text}`,
-      `${personaId} reply to "${text}".`
+      `${reactions.lead}${this.invite(requestId)}[guest ${personaId}] ${text}`,
+      replyContent
     );
-    const reply = this.complete(requestId, personaId, conversationId, `${personaId} reply to "${text}".`, () => {
+    const reply = this.complete(requestId, personaId, conversationId, replyContent, () => {
       this.delivery.commit(roomDelivery);
     });
     this.rest(`${personaId} reply: ${text}`);
     return reply;
+  }
+
+  /**
+   * A reply whose trailers are staged first, as the room stages them (a
+   * file-edit card, an edit offer): `send` is `hostMessage` or
+   * `guestMessage` with that reply.
+   */
+  async withStagedReply(reply: string, staging: FileEditStaging, send: (reply: string) => WorkshopTurn): Promise<WorkshopTurn> {
+    this.fileEdits = await resolveWorkshopReplyEdits({ reply, open: true, staging });
+    try {
+      return send(reply);
+    } finally {
+      this.fileEdits = undefined;
+    }
+  }
+
+  /**
+   * A press on a reply's edit offer (ADR 2026-11-10 D4, D5), sequenced as
+   * the room handler runs it: the request turn, the author's own
+   * conversation, the answer staged, then the answer's own completion.
+   * Returns the answer turn, or undefined when the answer was none.
+   */
+  async editOfferPress(
+    source: WorkshopTurn,
+    kind: WorkshopEditOfferKind,
+    answer: string,
+    staging: FileEditStaging,
+    /** One version of an offer with options, by its index (second addendum). */
+    option?: number
+  ): Promise<WorkshopTurn | undefined> {
+    const offer = source.editOffers?.find((candidate) => candidate.kind === kind);
+    if (!offer || !source.personaId) {
+      throw new Error(`Scripted press: ${source.id} offers no ${kind}`);
+    }
+    const guest = source.participant === 'guest' ? source.personaId : undefined;
+    const reader = guest ? { kind: 'personaGuest' as const, personaId: guest } : { kind: 'host' as const };
+    const requestId = this.requestId(`press-${kind}`);
+    const roomDelivery = this.delivery.prepare(reader);
+    const request = { sourceTurnId: source.id, kind, ...(option !== undefined ? { option } : {}) };
+    const optionLabel = option !== undefined ? offer.options?.[option] : undefined;
+    const line = workshopEditOfferRequestLine(source.personaLabel ?? 'Jill', kind, optionLabel);
+    if (guest) {
+      this.session.beginPersonaGuestMessage(guest, requestId, line, undefined, undefined, request);
+    } else {
+      this.session.beginPersonaMessage(requestId, line, undefined, undefined, request);
+    }
+    const boundExcerpt = offer.target.kind === 'excerpt' && offer.target.documentUri
+      ? { kind: 'excerpt' as const, documentUri: offer.target.documentUri, relativePath: offer.target.relativePath }
+      : undefined;
+    const fileEdits = await resolveWorkshopReplyEdits({ reply: answer, open: true, staging, ...(boundExcerpt ? { boundExcerpt } : {}) });
+    const committed = workshopEditOfferAnswerVerdict(answer, { incomplete: false }) === undefined;
+    const conversationId = guest
+      ? this.session.getPersonaGuestConversationId(guest)
+      : this.session.getHostConversationId();
+    if (committed) {
+      // The engine retains nothing for a rejected final reply.
+      this.commitHistory(conversationId, 'press', `[press ${kind}] ${source.id}`, workshopEditOfferRetainedReply(kind, answer));
+    }
+    const turn = completeWorkshopEditOfferRun({
+      session: this.session,
+      requestId,
+      label: source.personaLabel ?? 'Jill',
+      result: this.result(answer, conversationId),
+      aborted: false,
+      createsRetainedConversation: false,
+      copy: workshopMessageCompletionCopy(source.personaLabel ?? 'Jill'),
+      discardConversation: (id) => this.conversations.deleteConversation(id),
+      readRetainedHistory: (id) => this.conversations.getCommittedHistoryCounts(id),
+      settleCommittedRun: () => this.delivery.commit(roomDelivery),
+      ...(fileEdits ? { fileEdits } : {}),
+      log: (entry) => this.log.push(entry),
+      events: silentEvents()
+    }, { request, offer, ...(optionLabel !== undefined ? { optionLabel } : {}), sourceAt: '2:02 pm', fileEditsOpen: () => true, commitRetained: () => true, settled: () => undefined });
+    if (turn) {
+      this.rest(`press answered: ${kind} on ${source.id}`);
+    }
+    return turn;
+  }
+
+  /**
+   * Reaction delivery as the room handler does it (ADR 2026-11-07 D4, D6):
+   * planned before the run begins, staged once it has. The frame leads the
+   * scripted user message, so retained history shows what was delivered.
+   */
+  private reactions(
+    reader: { kind: 'host' } | { kind: 'personaGuest'; personaId: WorkshopPersonaId },
+    kind: 'start' | 'update',
+    holds: WorkshopReactionHolds
+  ): { lead: string; stage: (requestId: string) => void } {
+    const plan = prepareWorkshopReactionDelivery(this.session, reader, kind, holds);
+    return {
+      lead: plan.frame ? `${plan.frame}\n` : '',
+      stage: (requestId) => stageWorkshopReactionDelivery(this.session, requestId, reader, plan, (line) => this.log.push(line))
+    };
+  }
+
+  /**
+   * The per-turn reaction invite as the room handler adds it (2026-11-10
+   * addendum): after the run began, only while persona reactions are on and
+   * the run has a writer message to react to. It follows the reactions frame.
+   */
+  private invite(requestId: string): string {
+    const invite = workshopReactionInviteFor(this.reactionsOpen === true, this.session.personaReplyReactionTarget(requestId));
+    return invite ? `${invite}\n` : '';
   }
 
   dismissGuest(personaId: WorkshopPersonaId): this {
@@ -547,6 +679,7 @@ export class ScriptedWorkshopRoom {
       settleCommittedRun: settle,
       memory: this.memoryContext,
       ...(this.fileEdits ? { fileEdits: this.fileEdits } : {}),
+      ...(this.reactionsOpen !== undefined ? { reactionsOpen: this.reactionsOpen } : {}),
       ...(this.memoryAutoSave ? { memoryAutoSave: this.memoryAutoSave } : {}),
       log: (line) => this.log.push(line),
       events: silentEvents()

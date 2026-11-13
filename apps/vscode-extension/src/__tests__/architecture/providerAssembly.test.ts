@@ -692,6 +692,8 @@ describe('app-shell provider assembly', () => {
     expect(at('new ProjectMemoryStore(')).toBeLessThan(at('new ProjectMemoryLibrary('));
     expect(at('new ProjectMemoryLibrary(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
     expect(source).toContain('assistantToolService.setWorkshopProjectMemoryGrammar(() => projectMemoryLibrary.teachesGrammar());');
+    // Persona reactions' permission rides the prompt only while the setting is on (ADR 2026-11-07 Q8).
+    expect(source).toContain('assistantToolService.setWorkshopReactionsGrammar(() => workshopConversationSettingsService.personaReactionsOpen());');
     // The store has one consumer in 2a, the library.
     expect(source.match(/projectMemoryStore\b/g)).toHaveLength(2);
   });

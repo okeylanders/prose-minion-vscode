@@ -34,6 +34,7 @@ const stateWithTurns = (turns: WorkshopTurn[], totalTurns = turns.length): Works
       standingDirectives: [],
       todos: [],
       bookmarks: [],
+      reactions: [],
       turns,
       turnRewindability: {},
       totalTurns,

@@ -27,6 +27,7 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
   readIn: {
     handleReadInResourceContent: jest.fn()
   } as never,
+  reactions: { handleSessionState: jest.fn(), noteLiveTurn: jest.fn() },
   bookmarks: {
     handleSessionState: jest.fn(),
     handleTurnPreview: jest.fn()
@@ -153,6 +154,7 @@ describe('buildWorkshopAppMessageRoutes', () => {
 
     expect(deps.workshopRoom.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.bookmarks.handleSessionState).toHaveBeenCalledWith(message);
+    expect(deps.reactions.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.bookmarkBrowser.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.widgetHost.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.memoryManager.noteSessionState).toHaveBeenCalledWith(message);

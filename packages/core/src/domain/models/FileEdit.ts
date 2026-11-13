@@ -23,6 +23,8 @@ export interface StagedFileEdit {
   readonly baseline: FileEditBaseline;
   readonly operations: readonly TextEditOperation[];
   readonly source: FileEditSource;
+  /** What the proposal was asked for, when that holds it to a stricter policy than its class (ADR 2026-11-10 D6). */
+  readonly intent?: FileEditIntent;
 }
 
 export interface FileEditApplyOptions {
@@ -65,6 +67,74 @@ export const FILE_EDIT_TARGET_POLICIES: Readonly<Record<FileEditClass, FileEditC
   notes: { allowsRewrite: true, allowsNewlineChanges: true, structure: 'free' }
 };
 
+/**
+ * What the writer asked a proposal for, when that changes what its file's
+ * class allows (ADR 2026-11-10 D6 and its second addendum). Host-written:
+ * it comes only from the press the host's own request turn records.
+ * - `fixes`: the answer to a reply's fixes offer. It narrows.
+ * - `rewrites`: the answer to a reply's rewrites offer. It lifts the prose
+ *   rewrite ceiling, and nothing else.
+ */
+export type FileEditIntent = 'fixes' | 'rewrites';
+
+/** The rows an intent holds a proposal to, on top of its class policy. */
+export interface FileEditIntentNarrowing {
+  /** The only operations it takes. */
+  readonly operations: ReadonlySet<TextEditOperation['op']>;
+  /** The most one pair may change, on each side, measured as the rewrite ceiling measures `changed`. */
+  readonly changedCharacters: number;
+  readonly allowsNewlineChanges: boolean;
+  readonly structure: DraftEditStructureMode;
+}
+
+export interface FileEditIntentPolicy {
+  /** What it narrows; absent, the class policy's own rows stand. */
+  readonly narrows?: FileEditIntentNarrowing;
+  /**
+   * Whether the class's rewrite ceiling is lifted (second addendum). The
+   * ceiling keeps a persona from rewriting the writer's prose unasked; a
+   * requested rewrite was asked for, and the writer reviews its diff on the
+   * card before anything is written. Every other rule of the class stands.
+   */
+  readonly liftsRewriteCeiling: boolean;
+}
+
+/**
+ * D6's table: data beside the class policies. The gateway applies it on top
+ * of the class policy, on every apply attempt. A proposal with no intent
+ * takes its class policy unchanged, ceiling included.
+ */
+export const FILE_EDIT_INTENT_POLICIES: Readonly<Record<FileEditIntent, FileEditIntentPolicy>> = {
+  fixes: {
+    narrows: {
+      operations: new Set(['replace']),
+      changedCharacters: PROMPT_BUDGETS.workshopEditOffers.fixChangedCharacters,
+      allowsNewlineChanges: false,
+      structure: 'strict'
+    },
+    liftsRewriteCeiling: false
+  },
+  rewrites: { liftsRewriteCeiling: true }
+};
+
+/** The class policy a proposal is held to, with its intent's policy laid over it. */
+export function fileEditPolicyWithIntent(policy: FileEditClassPolicy, intent: FileEditIntentPolicy | undefined): FileEditClassPolicy {
+  if (!intent) {
+    return policy;
+  }
+  const narrowed: FileEditClassPolicy = intent.narrows
+    ? { ...policy, allowsRewrite: false, allowsNewlineChanges: intent.narrows.allowsNewlineChanges, structure: intent.narrows.structure }
+    : policy;
+  if (!intent.liftsRewriteCeiling) {
+    return narrowed;
+  }
+  const { ceiling: _lifted, ...rest } = narrowed;
+  return rest;
+}
+
+/** The one fault an intent policy gives: the edit is more than what was asked for. */
+export const FILE_EDIT_MORE_THAN_A_FIX = 'more-than-a-fix';
+
 /** Why an Apply was refused, before or instead of any write. */
 export type FileEditApplyRefusal =
   | 'no-operations'
@@ -86,7 +156,8 @@ export type FileEditOperationFault =
   | 'insertion-too-long'
   | 'rewrite-ceiling'
   | 'rewrite-protected'
-  | 'rewrite-too-large';
+  | 'rewrite-too-large'
+  | typeof FILE_EDIT_MORE_THAN_A_FIX;
 
 /**
  * What one landed operation wrote (D10, N-01), for a future Revert: its text

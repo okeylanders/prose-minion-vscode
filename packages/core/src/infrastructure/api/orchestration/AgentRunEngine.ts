@@ -17,7 +17,9 @@ import {
 } from './ConversationManager';
 import {
   AgentCapabilityRejection,
+  AGENT_FINAL_REPLY_REFUSED,
   AGENT_RUN_INTERRUPTED_FINISH_REASON,
+  isAgentRunIncomplete,
   AgentRunOptions,
   AnyAgentCapability,
   CapabilityArtifact,
@@ -469,92 +471,122 @@ export class AgentRunEngine {
       last = await recoverInvalidRequest(last);
       let rounds = 0;
 
-      while (!last.cancelled && capability && last.exactRequest && rounds < policy.maxCapabilityRounds) {
-        const request = last.exactRequest;
-        rounds += 1;
-        this.statusCallback?.(
-          capability.statusMessage(request),
-          capability.statusTicker?.(request)
-        );
-        // Provider-measured cost attribution (Phase 7): the prompt-token
-        // delta between this round's observation and the next one belongs
-        // to the evidence delivered between them.
-        const promptTokensBeforeEvidence = latestObservation?.promptTokens;
-        const fulfillment = await this.fulfillCapability(
-          capability,
-          request,
-          provider,
-          [...currentMessages(), { role: 'assistant', content: this.privateSafe(capability, last.content) }],
-          policy.retention === 'retain',
-          runOptions
-        );
-        totalUsage = this.addUsage(totalUsage, fulfillment.usage);
-        artifacts.push(...fulfillment.artifacts);
-        if (capability.catalog === 'guides') usedGuides.push(...fulfillment.deliveredItems);
-        if (capability.catalog === 'projectContext') requestedResources.push(...fulfillment.deliveredItems);
-        if (capability.catalog === 'workshopToolContext') {
-          // The composite catalog delivers both kinds in one round; each
-          // artifact already declares which side it came from.
-          for (const artifact of fulfillment.artifacts) {
-            (artifact.catalog === 'guides' ? usedGuides : requestedResources).push(artifact.id);
+      let finalReplyRejected = false;
+      const rejectedFinalReplies: Array<{ readonly index: number; readonly content: string }> = [];
+      // The capability rounds and the forced final, then the owner's check of the final reply (`finalReplyCheck`):
+      // a correction turn re-enters the rounds, so a corrected reply may still read before it answers.
+      for (;;) {
+        while (!last.cancelled && capability && last.exactRequest && rounds < policy.maxCapabilityRounds) {
+          const request = last.exactRequest;
+          rounds += 1;
+          this.statusCallback?.(
+            capability.statusMessage(request),
+            capability.statusTicker?.(request)
+          );
+          // Provider-measured cost attribution (Phase 7): the prompt-token
+          // delta between this round's observation and the next one belongs
+          // to the evidence delivered between them.
+          const promptTokensBeforeEvidence = latestObservation?.promptTokens;
+          const fulfillment = await this.fulfillCapability(
+            capability,
+            request,
+            provider,
+            [...currentMessages(), { role: 'assistant', content: this.privateSafe(capability, last.content) }],
+            policy.retention === 'retain',
+            runOptions
+          );
+          totalUsage = this.addUsage(totalUsage, fulfillment.usage);
+          artifacts.push(...fulfillment.artifacts);
+          if (capability.catalog === 'guides') usedGuides.push(...fulfillment.deliveredItems);
+          if (capability.catalog === 'projectContext') requestedResources.push(...fulfillment.deliveredItems);
+          if (capability.catalog === 'workshopToolContext') {
+            // The composite catalog delivers both kinds in one round; each
+            // artifact already declares which side it came from.
+            for (const artifact of fulfillment.artifacts) {
+              (artifact.catalog === 'guides' ? usedGuides : requestedResources).push(artifact.id);
+            }
           }
-        }
-        // Retained-history evidence gets a stable `art-N` address at injection
-        // (ADR 2026-07-18): the Phase 7 manifest and tombstone surgery target
-        // stored entries by this id. Discarded runs need no address.
-        const artifactId = policy.retention === 'retain'
-          ? this.conversationManager.nextArtifactId(conversationId)
-          : undefined;
-        const evidence = artifactId
-          ? wrapAgentFetchedArtifactEvidence(artifactId, fulfillment.evidence)
-          : fulfillment.evidence;
-        this.outputChannel?.appendLine(
-          `[AgentRunEngine] Fulfilled ${capability.catalog} capability ${rounds}/${policy.maxCapabilityRounds} ` +
-          `(${capability.requestLogSummary(request)}): ${fulfillment.evidence.length} evidence chars; ` +
-          `delivered=${fulfillment.deliveredItems.join(', ') || 'none'}` +
-          (artifactId ? `; artifactId=${artifactId}` : '')
-        );
-        last = await runInstructedTurn(last, evidence);
-        if (policy.retention === 'retain' && fulfillment.deliveredSources?.length) {
-          collectedSources.push(...this.toContextSourceEntries(
-            fulfillment.deliveredSources,
-            capability.catalog === 'workshopPersona' ? 'host' : 'tool',
-            promptTokensBeforeEvidence,
-            latestObservation?.promptTokens,
-            artifactId
-          ));
-        }
-        last = await recoverInvalidRequest(last);
-      }
-
-      if (!last.cancelled && capability && last.exactRequest && policy.onCapabilityLimit === 'forceFinalResponse') {
-        artifacts.push(...(capability.handleCapabilityLimit?.(last.exactRequest) ?? []));
-        this.outputChannel?.appendLine(
-          `[AgentRunEngine] ${policy.id} reached ${policy.maxCapabilityRounds} capability rounds; forcing final response.`
-        );
-        last = await runInstructedTurn(last, capability.limitInstruction());
-        if (this.needsForcedFinalRetry(last)) {
+          // Retained-history evidence gets a stable `art-N` address at injection
+          // (ADR 2026-07-18): the Phase 7 manifest and tombstone surgery target
+          // stored entries by this id. Discarded runs need no address.
+          const artifactId = policy.retention === 'retain'
+            ? this.conversationManager.nextArtifactId(conversationId)
+            : undefined;
+          const evidence = artifactId
+            ? wrapAgentFetchedArtifactEvidence(artifactId, fulfillment.evidence)
+            : fulfillment.evidence;
           this.outputChannel?.appendLine(
-            `[AgentRunEngine] ${policy.id} returned another capability call during its forced-final turn; retrying once.`
+            `[AgentRunEngine] Fulfilled ${capability.catalog} capability ${rounds}/${policy.maxCapabilityRounds} ` +
+            `(${capability.requestLogSummary(request)}): ${fulfillment.evidence.length} evidence chars; ` +
+            `delivered=${fulfillment.deliveredItems.join(', ') || 'none'}` +
+            (artifactId ? `; artifactId=${artifactId}` : '')
+          );
+          last = await runInstructedTurn(last, evidence);
+          if (policy.retention === 'retain' && fulfillment.deliveredSources?.length) {
+            collectedSources.push(...this.toContextSourceEntries(
+              fulfillment.deliveredSources,
+              capability.catalog === 'workshopPersona' ? 'host' : 'tool',
+              promptTokensBeforeEvidence,
+              latestObservation?.promptTokens,
+              artifactId
+            ));
+          }
+          last = await recoverInvalidRequest(last);
+        }
+
+        if (!last.cancelled && capability && last.exactRequest && policy.onCapabilityLimit === 'forceFinalResponse') {
+          artifacts.push(...(capability.handleCapabilityLimit?.(last.exactRequest) ?? []));
+          this.outputChannel?.appendLine(
+            `[AgentRunEngine] ${policy.id} reached ${policy.maxCapabilityRounds} capability rounds; forcing final response.`
           );
           last = await runInstructedTurn(last, capability.limitInstruction());
+          if (this.needsForcedFinalRetry(last)) {
+            this.outputChannel?.appendLine(
+              `[AgentRunEngine] ${policy.id} returned another capability call during its forced-final turn; retrying once.`
+            );
+            last = await runInstructedTurn(last, capability.limitInstruction());
+          }
+          last = await recoverInvalidRequest(last);
+          if (this.needsForcedFinalRetry(last)) {
+            const fallback = 'The assistant exhausted its capability-call limit without returning a final response. Please try again.';
+            this.outputChannel?.appendLine(
+              `[AgentRunEngine] ${policy.id} did not produce final prose after the forced-final retry.`
+            );
+            runOptions.onToken?.(fallback);
+            last = {
+              ...last,
+              content: fallback,
+              visibleContent: fallback,
+              exactRequest: undefined,
+              invalidRequest: undefined,
+              hostFallback: true
+            };
+          }
         }
-        last = await recoverInvalidRequest(last);
-        if (this.needsForcedFinalRetry(last)) {
-          const fallback = 'The assistant exhausted its capability-call limit without returning a final response. Please try again.';
+
+        if (last.cancelled || last.exactRequest || !runOptions.finalReplyCheck) {
+          break;
+        }
+        // The check reads the reply as the run returns it, before any display notice (PR #252 F-01).
+        const checked = this.toVisibleContent(last.content, undefined, capability, last.visibleContent);
+        const verdict = runOptions.finalReplyCheck(checked, { incomplete: isAgentRunIncomplete(last.finishReason) });
+        if (verdict === undefined) {
+          break;
+        }
+        if (verdict === AGENT_FINAL_REPLY_REFUSED || correctionTurns >= policy.maxCorrectionTurns) {
+          finalReplyRejected = true;
           this.outputChannel?.appendLine(
-            `[AgentRunEngine] ${policy.id} did not produce final prose after the forced-final retry.`
+            `[AgentRunEngine] ${policy.id} final reply ${verdict === AGENT_FINAL_REPLY_REFUSED ? 'refused' : 'rejected with no correction turn left'}; nothing retained.`
           );
-          runOptions.onToken?.(fallback);
-          last = {
-            ...last,
-            content: fallback,
-            visibleContent: fallback,
-            exactRequest: undefined,
-            invalidRequest: undefined,
-            hostFallback: true
-          };
+          break;
         }
+        correctionTurns += 1;
+        this.outputChannel?.appendLine(
+          `[AgentRunEngine] ${policy.id} correction turn ${correctionTurns}/${policy.maxCorrectionTurns} after a rejected final reply.`
+        );
+        // The correction request replays the rejected reply; retained history keeps the owner's form of it (PR #252 F-02).
+        rejectedFinalReplies.push({ index: pendingMessages.length, content: checked });
+        last = await recoverInvalidRequest(await runInstructedTurn(last, verdict));
       }
 
       let visibleContent = this.toVisibleContent(
@@ -570,35 +602,60 @@ export class AgentRunEngine {
         runOptions.onToken?.(visibleContent);
         this.outputChannel?.appendLine(`[AgentRunEngine] ${policy.id} completed with no visible final prose.`);
       }
-      if (!cancelled) {
+      if (!cancelled && !finalReplyRejected) {
         const retainedAssistantContent = runOptions.retainedAssistantContentSanitizer
           ? runOptions.retainedAssistantContentSanitizer(visibleContent)
           : visibleContent;
-        pendingMessages.push({ role: 'assistant', content: retainedAssistantContent });
-        this.conversationManager.addMessages(conversationId, pendingMessages);
-        if (collectedSources.length > 0) {
-          // Manifest rows commit ONLY beside a committed turn (Phase 7):
-          // cancellation and transport failure preserve the prior manifest.
-          this.conversationManager.appendContextSources(conversationId, collectedSources);
-          this.outputChannel?.appendLine(
-            `[AgentRunEngine] Context sources committed for ${conversationId}: ` +
-            collectedSources.map((entry) =>
-              `${entry.kind}:${contextSourceLogLabel(entry)}${entry.promptTokensDelta !== undefined ? ` (+${entry.promptTokensDelta} prompt tokens)` : ' (size estimate)'}`
-            ).join(', ')
-          );
+        if (runOptions.retainedAssistantContentSanitizer) {
+          for (const rejected of rejectedFinalReplies) {
+            pendingMessages[rejected.index] = { role: 'assistant', content: runOptions.retainedAssistantContentSanitizer(rejected.content) };
+          }
         }
-        if (latestObservation && totalUsage) {
-          const snapshot = this.toContextBudgetSnapshot(latestObservation, peakPromptTokens, totalUsage);
-          this.conversationManager.setContextBudget(conversationId, snapshot);
-          // One line per committed reading, so a moving gauge can be diagnosed
-          // from the log: a different conversation id means a target switch,
-          // the same id shrinking means the provider re-measured or compressed.
-          this.outputChannel?.appendLine(
-            `[AgentRunEngine] Context snapshot committed for ${conversationId}: ` +
-            `context=${snapshot.contextTokens} (prompt ${snapshot.promptTokens} + completion ${snapshot.completionTokens}), ` +
-            `model=${snapshot.modelId}, calls=${snapshot.callsThisTurn}, processed=${snapshot.turnProcessedTokens}, ` +
-            `compression=${snapshot.contextCompression}`
-          );
+        pendingMessages.push({ role: 'assistant', content: retainedAssistantContent });
+        const commitRetained = (): void => {
+          this.conversationManager.addMessages(conversationId, pendingMessages);
+          if (collectedSources.length > 0) {
+            // Manifest rows commit ONLY beside a committed turn (Phase 7):
+            // cancellation and transport failure preserve the prior manifest.
+            this.conversationManager.appendContextSources(conversationId, collectedSources);
+            this.outputChannel?.appendLine(
+              `[AgentRunEngine] Context sources committed for ${conversationId}: ` +
+              collectedSources.map((entry) =>
+                `${entry.kind}:${contextSourceLogLabel(entry)}${entry.promptTokensDelta !== undefined ? ` (+${entry.promptTokensDelta} prompt tokens)` : ' (size estimate)'}`
+              ).join(', ')
+            );
+          }
+          if (latestObservation && totalUsage) {
+            const snapshot = this.toContextBudgetSnapshot(latestObservation, peakPromptTokens, totalUsage);
+            this.conversationManager.setContextBudget(conversationId, snapshot);
+            // One line per committed reading, so a moving gauge can be diagnosed
+            // from the log: a different conversation id means a target switch,
+            // the same id shrinking means the provider re-measured or compressed.
+            this.outputChannel?.appendLine(
+              `[AgentRunEngine] Context snapshot committed for ${conversationId}: ` +
+              `context=${snapshot.contextTokens} (prompt ${snapshot.promptTokens} + completion ${snapshot.completionTokens}), ` +
+              `model=${snapshot.modelId}, calls=${snapshot.callsThisTurn}, processed=${snapshot.turnProcessedTokens}, ` +
+              `compression=${snapshot.contextCompression}`
+            );
+          }
+        };
+        if (runOptions.deferRetention) {
+          // The owner commits once it adopts the reply, or never (`deferRetention`). A held commit belongs to the
+          // history it was run against: once that history has moved on, it is dropped, never appended after a newer turn.
+          let settled = false;
+          runOptions.deferRetention(() => {
+            const current = !settled && this.conversationManager.hasConversation(conversationId)
+              && this.conversationManager.getMessages(conversationId).length === history.length;
+            settled = true;
+            if (!current) {
+              this.outputChannel?.appendLine(`[AgentRunEngine] ${policy.id} held retention dropped for ${conversationId}: the conversation moved on.`);
+              return false;
+            }
+            commitRetained();
+            return true;
+          });
+        } else {
+          commitRetained();
         }
       }
 
@@ -618,7 +675,8 @@ export class AgentRunEngine {
         // carry a model stamp, decided here rather than from its text.
         replySource: last.hostFallback ? 'host-fallback' : 'provider',
         citations: runCitations,
-        cancelled
+        cancelled,
+        ...(finalReplyRejected ? { finalReplyRejected: true } : {})
       };
     } catch (error) {
       throw this.toUnavailableError(error);

@@ -6,6 +6,7 @@
 import type { DraftEditRefusal } from '@/application/services/draftEdit/DraftEditApplier';
 import { WORKSHOP_FILE_EDIT_CHECKPOINT_REFUSALS, type WorkshopFileEditCheckpointRefusal } from '@/application/services/workshop/fileEdits/WorkshopFileEditCheckpoint';
 import { fileEditOutcomeMessage, fileEditStagingRefusalMessage } from '@/application/services/fileEdits/fileEditCopy';
+import { WORKSHOP_FILE_EDIT_NOT_THE_OFFERED_FILE } from '@/application/services/workshop/fileEdits/WorkshopEditOfferAnswerCompletion';
 import type { FileEditApplyRefusal, FileEditOperationFault } from '@/domain/models/FileEdit';
 import { FILE_EDIT_STAGING_REFUSALS } from '@/domain/models/FileEditStaging';
 import {
@@ -27,14 +28,20 @@ const APPLY_REFUSALS = every<FileEditApplyRefusal>({
 });
 const OPERATION_FAULTS = every<FileEditOperationFault>({
   'not-found': true, ambiguous: true, overlapping: true, 'conflicting-operations': true, 'not-allowed': true,
-  'baseline-changed': true, 'insertion-too-long': true, 'rewrite-ceiling': true, 'rewrite-protected': true, 'rewrite-too-large': true
+  'baseline-changed': true, 'insertion-too-long': true, 'rewrite-ceiling': true, 'rewrite-protected': true, 'rewrite-too-large': true,
+  // An intent's policy (ADR 2026-11-10 D6).
+  'more-than-a-fix': true
 });
 const APPLIER_REFUSALS = every<DraftEditRefusal>({ changed: true, protected: true, 'line-break': true, overlapping: true, markup: true });
 /* eslint-enable @typescript-eslint/naming-convention */
 const CHECKPOINT_REFUSALS = every<WorkshopFileEditCheckpointRefusal>(
   Object.fromEntries(WORKSHOP_FILE_EDIT_CHECKPOINT_REFUSALS.map((kind) => [kind, true])) as Record<WorkshopFileEditCheckpointRefusal, true>
 );
-const CARD_KINDS = ['rewrite-on-prose', WORKSHOP_FILE_EDIT_UNPERSISTABLE_IDENTITY_REASON, WORKSHOP_FILE_EDIT_REOPENED_APPLYING_REASON];
+const CARD_KINDS = [
+  'rewrite-on-prose', WORKSHOP_FILE_EDIT_UNPERSISTABLE_IDENTITY_REASON, WORKSHOP_FILE_EDIT_REOPENED_APPLYING_REASON,
+  // An answer's card for another file than its offer's (ADR 2026-11-10 D5).
+  WORKSHOP_FILE_EDIT_NOT_THE_OFFERED_FILE
+];
 const HANDLER_KINDS: WorkshopFileEditReasonKind[] = [
   'outcome-unknown', 'file-edits-off', 'run-active', 'room-changed', 'no-card', 'applying', 'session-operation',
   'document-changed', 'refused', 'not-a-rewrite'

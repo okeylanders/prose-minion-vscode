@@ -67,6 +67,7 @@ const session = (scope: WorkshopSessionScope): WorkshopSessionStateMessage => ({
       standingDirectives: [],
       todos: [],
       bookmarks: [],
+      reactions: [],
       turns: [],
       turnRewindability: {},
       totalTurns: 0,

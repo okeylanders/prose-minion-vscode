@@ -1,16 +1,19 @@
 /**
- * What a project memory may never record (ADR 2026-11-04 D9): an inference
- * about the writer's feelings, health, relationships or private life. The
- * trailer's prompt says so; this host check backs it up. Pure.
+ * What a project memory may never record (ADR 2026-11-04 D9, amended
+ * 2026-11-11): an inference about the writer's feelings, health,
+ * relationships or private life. The trailer's prompt says so; this host
+ * check is a second pair of eyes, never a gate. Pure.
  *
  * - It reads only **sentences about the writer**: a sentence of the title,
  *   summary or body that speaks to or of the writer, in the second person
  *   ("you", "your"), as "the writer" or "the author", or by the About-you
  *   name.
- * - It withholds a proposal when such a sentence holds a word from
+ * - It **flags** a proposal when such a sentence holds a word from
  *   `WORKSHOP_MEMORY_PERSONAL_WORDS` (feelings, health, relationships,
- *   private life). A withheld proposal shows no card, and its reason is
- *   logged, never its text.
+ *   private life), and names the first word it matched. A flagged proposal
+ *   is held `personal` (D8): its card shows, under Ask first and Save and
+ *   tell me alike, with the word in its reason, and it is never saved
+ *   automatically. The log carries the reason, never the word or the text.
  *
  * **The limits, stated plainly.** This is an English word fence, not a
  * parse, in the style of `LightboxSteeringPhrasing`.
@@ -19,11 +22,14 @@
  * - It never reads characters' feelings, which are legitimate `canon`: a
  *   sentence about Alice is not a sentence about the writer.
  * - A listed word used about the work in a sentence that names the writer
- *   ("you want the family scenes tighter") is withheld. That's the safe
- *   failure; the writer can still save it with Save to memory….
+ *   ("you want the family scenes tighter", "you've kept Alice's family
+ *   quarrel unresolved") is flagged. Fiction's vocabulary is this list's
+ *   vocabulary, so that happens often: the writer reads the card and
+ *   decides. That's why a flag holds and never withholds (2026-11-11): a
+ *   withheld note vanished, and neither the writer nor the persona knew.
  */
 
-/** Words that mark a personal domain, lower case; a sentence about the writer that holds one is withheld. */
+/** Words that mark a personal domain, lower case; a sentence about the writer that holds one is flagged. */
 export const WORKSHOP_MEMORY_PERSONAL_WORDS: readonly string[] = Object.freeze([
   // Feelings and mood
   'anxious', 'anxiety', 'depressed', 'depression', 'lonely', 'loneliness', 'grief', 'grieving',
@@ -49,17 +55,24 @@ const PERSONAL: ReadonlySet<string> = new Set(WORKSHOP_MEMORY_PERSONAL_WORDS);
 
 export type WorkshopMemoryPhrasingFault = 'personal-inference';
 
+/** What the fence flagged: the fault, for the log, and the listed word it matched, for the writer's card only. */
+export interface WorkshopMemoryPhrasingFlag {
+  readonly fault: WorkshopMemoryPhrasingFault;
+  /** Lower case, one of `WORKSHOP_MEMORY_PERSONAL_WORDS`. Never logged. */
+  readonly word: string;
+}
+
 export interface WorkshopMemoryPhrasingInput {
   readonly title: string;
   readonly summary: string;
   readonly body: string;
 }
 
-/** Why the proposal is withheld, or undefined when it may be shown. */
-export function workshopMemoryProposalPhrasingFault(
+/** Why the proposal waits for the writer, and the word that matched, or undefined when nothing was flagged. */
+export function workshopMemoryProposalPhrasingFlag(
   proposal: WorkshopMemoryPhrasingInput,
   writerName?: string
-): WorkshopMemoryPhrasingFault | undefined {
+): WorkshopMemoryPhrasingFlag | undefined {
   const name = writerName?.trim();
   const namePattern = name ? new RegExp(`(?:^|[^\\p{L}])${escapeRegExp(name)}(?:$|[^\\p{L}])`, 'iu') : undefined;
   const sentences = [proposal.title, proposal.summary, proposal.body]
@@ -70,8 +83,9 @@ export function workshopMemoryProposalPhrasingFault(
     if (!aboutWriter) {
       continue;
     }
-    if ((folded.toLocaleLowerCase('en-US').match(WORD) ?? []).some((word) => PERSONAL.has(word))) {
-      return 'personal-inference';
+    const word = (folded.toLocaleLowerCase('en-US').match(WORD) ?? []).find((candidate) => PERSONAL.has(candidate));
+    if (word !== undefined) {
+      return { fault: 'personal-inference', word };
     }
   }
   return undefined;

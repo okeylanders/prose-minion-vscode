@@ -41,6 +41,7 @@ import {
   AgentRunUnavailableError
 } from '@orchestration/AgentRunEngine';
 import {
+  AgentFinalReplyCheck,
   AnyAgentCapability,
   ExecutionResult,
   StreamingTokenCallback
@@ -102,6 +103,19 @@ export interface AnalysisStreamingOptions {
   workshopSource?: ConfiguredResourceRef;
   /** Opt-in, per-turn server-side web search for Workshop persona conversations. */
   webResearch?: boolean;
+  /**
+   * A Workshop persona turn whose final reply its owner checks and words
+   * (the engine's `finalReplyCheck`): `check` returns a correction
+   * instruction or nothing, and `retained` is what retained history keeps in
+   * place of the reply. Absent, the reply is retained by the Workshop's
+   * usual sanitizer. `deferRetention` is the engine's: the owner commits
+   * the exchange once it adopts the reply, or never.
+   */
+  finalReply?: {
+    check: AgentFinalReplyCheck;
+    retained: (content: string) => string;
+    deferRetention?: (commit: () => boolean) => void;
+  };
 }
 
 export interface WorkshopHostStreamingOptions extends AnalysisStreamingOptions {
@@ -235,6 +249,7 @@ export class AssistantToolService {
   private workshopProjectMemoryGrammar: () => boolean = () => false;
   /** Whether persona prompts teach the file-edit trailer now (ADR 2026-11-05 D9); off until bound. */
   private workshopFileEditsGrammar: () => boolean = () => false;
+  private workshopReactionsGrammar: () => boolean = () => false;
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
@@ -273,6 +288,11 @@ export class AssistantToolService {
   /** Bind the file-edit trailer check (the `fileEdits` setting); called once, in `extension.ts`. */
   setWorkshopFileEditsGrammar(teachesGrammar: () => boolean): void {
     this.workshopFileEditsGrammar = teachesGrammar;
+  }
+
+  /** Bind the persona-reaction permission check (ADR 2026-11-07 Q8); called once, in `extension.ts`. */
+  setWorkshopReactionsGrammar(teachesGrammar: () => boolean): void {
+    this.workshopReactionsGrammar = teachesGrammar;
   }
 
   addStatusListener(listener: StatusEmitter): () => void {
@@ -623,7 +643,9 @@ export class AssistantToolService {
         signal: streamingOptions?.signal,
         onToken: streamingOptions?.onToken,
         tools: webTools,
-        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
+        retainedAssistantContentSanitizer: streamingOptions.finalReply?.retained ?? sanitizeWorkshopReplyForRetention,
+        finalReplyCheck: streamingOptions.finalReply?.check,
+        deferRetention: streamingOptions.finalReply?.deferRetention
       }
     });
 
@@ -752,7 +774,9 @@ export class AssistantToolService {
         signal: streamingOptions?.signal,
         onToken: streamingOptions?.onToken,
         tools: webTools,
-        retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
+        retainedAssistantContentSanitizer: streamingOptions?.finalReply?.retained ?? sanitizeWorkshopReplyForRetention,
+        finalReplyCheck: streamingOptions?.finalReply?.check,
+        deferRetention: streamingOptions?.finalReply?.deferRetention
       }
     });
 
@@ -928,7 +952,11 @@ export class AssistantToolService {
           : WORKSHOP_GUEST_BASE_PROMPT_PATH,
         persona,
         behavior,
-        { projectMemory: this.workshopProjectMemoryGrammar(), fileEdits: this.workshopFileEditsGrammar() }
+        {
+          projectMemory: this.workshopProjectMemoryGrammar(),
+          fileEdits: this.workshopFileEditsGrammar(),
+          personaReactions: this.workshopReactionsGrammar()
+        }
       )
     ), behavior, writerProfile);
     const directives = standingDirectiveFrames

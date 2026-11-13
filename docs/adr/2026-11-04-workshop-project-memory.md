@@ -429,7 +429,7 @@ A persona proposes a memory with a trailer at the end of its reply:
   each memory frame replaced by `[project memory proposal removed]`. That
   includes the widget-rejection dump of `boundedLogText(result.content)`
   (`WorkshopRunCompletion.ts:259-293`), the actionable-findings log, and any
-  rejected-response record. D9 states the same rule for withheld proposals.
+  rejected-response record. D9 states the same rule for flagged proposals.
   Slice 3 pins it with sentinel text across every outcome above.
 - **Stripped twice.** The bubble shows the reply without the trailer, and
   retained history keeps it without the trailer too. Retention goes through
@@ -521,6 +521,11 @@ and no update note repeats it.
   attached is always held for the writer, even under Save and tell me. The test
   is "attached", not "cited", because citations can't prove that no search ran
   (Context 5).
+- **The personal hold** *(added by the
+  [addendum of 2026-11-11](#addendum-2026-11-11-the-phrasing-fence-holds-it-never-withholds))*.
+  A proposal the phrasing fence flags (D9) is held `personal`, in both modes
+  and before every other hold, with the matched word on its card. It is never
+  saved automatically and takes no place under the cap.
 - **The writer's own paths** need no model: *Save to memory…* on any eligible
   bubble (D5 of ADR 2026-11-03's eligibility list) opens the same sheet with the
   turn as its source, *New memory* in the manager, and editing the file in VS
@@ -570,12 +575,16 @@ The trailer's prompt says this. A host check, `WorkshopMemoryProposalPhrasing`,
 backs it up. It's a conservative word fence in the style of
 `LightboxSteeringPhrasing` (`core/infrastructure/lightbox/LightboxSteeringPhrasing.ts:41-90`),
 and it reads only sentences about the writer: second person, "the writer", or
-the About-you name. It withholds a proposal whose such sentence carries a
-personal-domain word.
+the About-you name. It **flags** a proposal whose such sentence carries a
+personal-domain word; it never withholds one *(amended by the
+[addendum of 2026-11-11](#addendum-2026-11-11-the-phrasing-fence-holds-it-never-withholds);
+the original rule withheld it)*.
 
 - Its limit is stated: it can't catch every inference, and it never reads
   characters' feelings, which are legitimate `canon`.
-- A withheld proposal shows no card and logs its reason, never its text.
+- A flagged proposal is held `personal` (D8): its card shows, in either mode,
+  naming the word that matched, and it waits for the writer. Its log line
+  carries the reason, never its text or the word.
 - **No memory payload in any log.** A title, summary, body or `supersedes`
   list from a proposal or a file never enters a log line, a diagnostic dump or
   a rejected-response record. Every path that logs a reply logs the
@@ -1020,7 +1029,9 @@ D4, D6 and D8 stand; this adds a second kind of suggestion.*
     reason.
   - The field bounds imply the file's byte bound, and the store checks the
     file again at commit.
-  - The phrasing fence (D9) reads the result, as it does a new note.
+  - The phrasing fence (D9) reads the result, as it does a new note. *(Since
+    the addendum of 2026-11-11, a flag holds the edit `personal`; it no
+    longer drops it.)*
 - **The list shape.** `memoryProposals` items are now `proposes: 'new'` or
   `proposes: 'edit'`. An edit carries `target` (id, edit token, load in
   full, the complete `supersedes` id list, and `replaces`, the titles of
@@ -1056,4 +1067,55 @@ D4, D6 and D8 stand; this adds a second kind of suggestion.*
 - **Receipts.** A saved edit leaves the existing `updated` receipt, naming
   the persona whose suggestion it was, and D14's delivery counts its version
   as told, exactly as for a writer's edit.
+
+## Addendum 2026-11-11: the phrasing fence holds; it never withholds
+
+**Context.** On 2026-11-11 a persona proposed two notes about a story's
+relationship arc ("I've kept Ava's release separate from the unresolved
+relationship question"). The writer saw no cards. Asked, the persona
+apologized for not sending them, but it had: D9's fence withheld both, and the
+log said only `Memory proposal withheld (reason=personal-inference)`.
+
+D9's fence reads sentences that speak to or of the writer. A persona's craft
+notes speak to the writer all the time ("you want the family scenes tighter"),
+and the fence's word list is fiction's vocabulary: family, relationship,
+marriage, mother, grief, trauma, faith, afraid. D9 called a false positive "the
+safe failure". In practice it was a silent one: no card, nothing said to the
+writer or the persona, and the writer's own *Save to memory…* only helps if
+the writer knows there was a note to save.
+
+**Decision.** The fence flags; it never withholds.
+
+- **A new hold, `personal`,** joins `WORKSHOP_MEMORY_HOLDS`. A proposal the
+  fence flags, new note or edit, settles as a pending card held `personal`.
+  - It applies **in both modes**. It is the one hold recorded under Ask
+    first, where the others don't apply.
+  - It comes **before every other hold** (`web-research`, `edit`,
+    `supersedes`, `room-cap`).
+  - It is **never saved automatically**, and takes no place under
+    `autoSavesPerRoom`.
+- **The card names the word that matched.** It carries `heldWord`, which is
+  present exactly when `held` is `personal`. The line is "This note speaks of
+  you near a word about personal life ("relationship"), so it waits for you to
+  check it before saving." This is the writer's own note's word, shown to the
+  writer. The fence returns the word along with its fault
+  (`workshopMemoryProposalPhrasingFlag`).
+- **Logs** keep D9's rule. The line is
+  `Memory proposal held (reason=personal-inference; …)` (or `Memory edit held
+  (…)`), with ids, counts and reasons, never the text or the word.
+- **The session codec** reads `held: 'personal'` and `heldWord` as added
+  optional values, with no `schemaVersion` bump (ADR 2026-07-30). `heldWord`
+  is checked by shape (one lower-case word, at most 40 letters), not by
+  membership in the word list, so a later change to the list never refuses a
+  saved session.
+- **Unchanged:** the persona's prompt keeps "What a note may never record". The
+  rule is the persona's to follow. The host check is a second pair of eyes for
+  the writer, not a gate. An edit that would break the pinned budget is still
+  dropped: a hold never lets through a note that a structural rule refuses.
+
+**Consequences.** A real personal inference now reaches the writer's screen as
+a held card instead of vanishing. The writer is the one it is about, and
+*Dismiss* is one press. Nothing is written without the writer. The persona
+still isn't told what became of its notes. That is a separate question
+(a host line on the persona's next turn), which this addendum leaves open.
 

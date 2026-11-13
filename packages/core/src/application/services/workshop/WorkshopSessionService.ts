@@ -41,14 +41,21 @@ import {
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetRecommendation,
   WorkshopMemoryProposal,
+  WorkshopEditOffer,
+  WorkshopEditOfferAnswer,
+  WorkshopEditOfferRequest,
   WorkshopFileEditProposal,
   WorkshopMemoryHold,
   WorkshopMemoryProposalState,
   WorkshopProjectMemoryReceipt,
   WorkshopProjectMemoryDelivery,
-  WorkshopTurnBookmark
+  WorkshopReactionDelivery,
+  WorkshopTurnBookmark,
+  WorkshopTurnReaction,
+  WorkshopTurnReactionAuthor
 } from '@messages';
 import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
+import { cloneWorkshopReactionDelivery } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
 import {
@@ -113,8 +120,16 @@ import {
   WorkshopBookmarkLedger
 } from '@/application/services/workshop/session/WorkshopBookmarkLedger';
 import {
+  WorkshopReactionChange,
+  WorkshopReactionIdentity,
+  WorkshopReactionLedger,
+  WorkshopReactionRefusedError
+} from '@/application/services/workshop/session/WorkshopReactionLedger';
+import { isWorkshopReactableTurn, type WorkshopReactionId } from '@shared/constants/workshopReactions';
+import {
   WorkshopTurnLedger
 } from '@/application/services/workshop/session/WorkshopTurnLedger';
+import type { WorkshopReactionRefusalReason } from '@/application/services/workshop/session/WorkshopReactionLedger';
 import {
   WorkshopPassageScope
 } from '@/application/services/workshop/session/WorkshopPassageScope';
@@ -151,6 +166,7 @@ import {
   settleWorkshopFileEditProposalsOnReopen,
   type WorkshopFileEditSettlement
 } from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
+import { cloneWorkshopEditOffer } from '@/application/services/workshop/session/WorkshopEditOfferRecords';
 import { workshopMemoryProposalAt } from '@shared/constants/workshopProjectMemoryWrites';
 import {
   cloneWorkshopMemoryReceipt,
@@ -249,6 +265,21 @@ export class WorkshopSessionActiveRunPersistenceError extends Error {
 let roomRevisionCounter = 0;
 const mintRoomRevision = (): number => ++roomRevisionCounter;
 
+/** What became of a persona's reaction at its reply's commit (PR #247 L1): the ledger's word, or `no-target`. */
+export type WorkshopPersonaReactionOutcome = WorkshopReactionChange | WorkshopReactionRefusalReason | 'no-target';
+
+/** A reply's reaction for `completeRun` (ADR 2026-11-07 D5, R1; PR #247 M1). */
+export interface WorkshopReplyReactionCommit {
+  /** The reaction the judge kept; absent when every reaction frame was dropped. */
+  readonly reaction?: WorkshopReactionId;
+  /** Whether reaction frames were all the reply held: no prose, widget, memory or file-edit frame. */
+  readonly only: boolean;
+  /** The host's line without the reaction, for a reply the host writes whose reaction does not land; absent for prose. */
+  readonly unlandedContent?: string;
+  /** Hears what became of a kept reaction, for the run's log. */
+  readonly outcome?: (outcome: WorkshopPersonaReactionOutcome) => void;
+}
+
 export class WorkshopSessionService {
   /** Pinned/shelved passage and immutable-before-memory scope state machine. */
   private readonly passageScope: WorkshopPassageScope;
@@ -297,6 +328,8 @@ export class WorkshopSessionService {
   private readonly todoLedger: WorkshopTodoLedger;
   /** The writer's bookmarks; presentation only, never in a prompt (ADR 2026-11-03 D5). */
   private readonly bookmarkLedger: WorkshopBookmarkLedger;
+  /** Message reactions; no change to one starts a model call (ADR 2026-11-07 D2, D4). */
+  private readonly reactionLedger: WorkshopReactionLedger;
   /** Where each retained history stood at each commit (ADR 2026-09-30 §3). */
   private readonly retainedHistory: WorkshopRetainedHistoryLedger;
   private behavior: WorkshopConversationBehavior;
@@ -318,6 +351,7 @@ export class WorkshopSessionService {
     this.standingDirectiveLedger = new WorkshopStandingDirectiveLedger(this.now);
     this.todoLedger = new WorkshopTodoLedger(this.now);
     this.bookmarkLedger = new WorkshopBookmarkLedger(this.now);
+    this.reactionLedger = new WorkshopReactionLedger(this.now);
     this.turnLedger = new WorkshopTurnLedger(this.now);
     this.retainedHistory = new WorkshopRetainedHistoryLedger(
       (turnId) => this.turnLedger.position(turnId)
@@ -1609,7 +1643,8 @@ export class WorkshopSessionService {
     requestId: string,
     displayText: string,
     messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[],
-    widgetCommit?: WorkshopTurnWidgetCommit
+    widgetCommit?: WorkshopTurnWidgetCommit,
+    editOfferRequest?: WorkshopEditOfferRequest
   ): WorkshopTurn {
     this.requireParticipantSubject();
     return this.beginMessage(
@@ -1619,7 +1654,8 @@ export class WorkshopSessionService {
       undefined,
       undefined,
       messageAttachments,
-      widgetCommit
+      widgetCommit,
+      editOfferRequest
     );
   }
 
@@ -1629,7 +1665,8 @@ export class WorkshopSessionService {
     requestId: string,
     displayText: string,
     messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[],
-    widgetCommit?: WorkshopTurnWidgetCommit
+    widgetCommit?: WorkshopTurnWidgetCommit,
+    editOfferRequest?: WorkshopEditOfferRequest
   ): WorkshopTurn {
     this.requireParticipantSubject();
     if (!this.isLivePersonaGuest(personaId)) {
@@ -1642,7 +1679,8 @@ export class WorkshopSessionService {
       undefined,
       personaId,
       messageAttachments,
-      widgetCommit
+      widgetCommit,
+      editOfferRequest
     );
   }
 
@@ -1696,11 +1734,15 @@ export class WorkshopSessionService {
     widgetRecommendation?: WorkshopWidgetRecommendation,
     model?: WorkshopTurnModel,
     memoryProposals: readonly WorkshopMemoryProposal[] = [],
-    fileEditProposals: readonly WorkshopFileEditProposal[] = []
+    fileEditProposals: readonly WorkshopFileEditProposal[] = [],
+    editOffers: readonly WorkshopEditOffer[] = [],
+    editOfferAnswer?: WorkshopEditOfferAnswer,
+    reaction?: WorkshopReplyReactionCommit
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
     }
+    const reactionTarget = reaction?.reaction ? this.personaReplyReactionTarget(requestId) : undefined;
 
     const active = this.activeRun;
     const isHost = active.target === 'host';
@@ -1752,7 +1794,11 @@ export class WorkshopSessionService {
       // File-edit cards too (ADR 2026-11-05 D8; never an empty list).
       fileEditProposals: (isHost || isGuest) && fileEditProposals.length > 0
         ? fileEditProposals.map(cloneWorkshopFileEditProposal)
-        : undefined
+        : undefined,
+      // What the reply offers as edits (ADR 2026-11-10 D2; never an empty list).
+      editOffers: (isHost || isGuest) && editOffers.length > 0 ? editOffers.map(cloneWorkshopEditOffer) : undefined,
+      // The answer to a press names the reply and kind it answers (ADR 2026-11-10 D3).
+      ...((isHost || isGuest) && editOfferAnswer ? { editOfferAnswer: { ...editOfferAnswer } } : {})
     };
 
     if (isHost && conversationId) {
@@ -1800,6 +1846,33 @@ export class WorkshopSessionService {
     if ((isHost || isGuest) && active.projectMemoryDelivery) {
       turn.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, active.projectMemoryDelivery);
     }
+    // Reactions too (ADR 2026-11-07 D6): a reply that never commits records nothing, so they arrive again.
+    if ((isHost || isGuest) && active.reactionDelivery) {
+      turn.reactionDelivery = [cloneWorkshopReactionDelivery(active.reactionDelivery)];
+    }
+    // The persona's own reaction (ADR 2026-11-07 D5) rides the reply that carried it, written
+    // through the ledger in this one commit, so a cut or rollback of the reply takes it too.
+    if (reaction && (isHost || isGuest)) {
+      const outcome = reaction.reaction === undefined
+        ? undefined
+        : reactionTarget ? this.addPersonaReplyReaction(reaction.reaction, reactionTarget, turn) : 'no-target';
+      if (outcome !== undefined) {
+        reaction.outcome?.(outcome);
+      }
+      if (outcome === 'added') {
+        if (reaction.only) {
+          turn.reactionOnly = reaction.reaction;
+        }
+      } else {
+        // Nothing landed, so the host's line names no reaction, and a reply of nothing else takes none (PR #247 M1).
+        if (reaction.unlandedContent !== undefined) {
+          turn.content = reaction.unlandedContent;
+        }
+        if (reaction.only) {
+          turn.noMessage = true;
+        }
+      }
+    }
     this.turnLedger.append(turn);
     for (const capabilityTurnId of new Set(active.capabilityTurnIds ?? [])) {
       this.turnLedger.update(capabilityTurnId, (capabilityTurn) => {
@@ -1823,6 +1896,41 @@ export class WorkshopSessionService {
   }
 
   /**
+   * The writer message the active run's reply answers, which a persona's
+   * reaction trailer may react to (ADR 2026-11-07 D5): the run's own writer
+   * room message, for a host or guest message (a guest's join included).
+   * Undefined for a tool run, its synthesis, or a sidecar: those answer no
+   * writer message, so their trailer is `no-target`.
+   */
+  personaReplyReactionTarget(requestId: string): WorkshopTurn | undefined {
+    const active = this.activeRun;
+    if (active?.requestId !== requestId || (active.target !== 'host' && active.target !== 'personaGuest')
+      || active.artifact !== 'persona_message' || !active.writerTurnId) {
+      return undefined;
+    }
+    const author: WorkshopTurnReactionAuthor = active.target === 'personaGuest' && active.guestPersonaId
+      ? { kind: 'personaGuest', personaId: active.guestPersonaId }
+      : { kind: 'host' };
+    const turn = this.turnLedger.find(active.writerTurnId);
+    return turn && isWorkshopReactableTurn(turn, author) ? turn : undefined;
+  }
+
+  /** Add the reply's reaction on `target`: the ledger's change, or the reason it refused. */
+  private addPersonaReplyReaction(reaction: WorkshopReactionId, target: WorkshopTurn, reply: WorkshopTurn): WorkshopPersonaReactionOutcome {
+    const author: WorkshopTurnReactionAuthor = reply.participant === 'guest' && reply.personaId
+      ? { kind: 'personaGuest', personaId: reply.personaId }
+      : { kind: 'host' };
+    try {
+      return this.reactionLedger.add({ turnId: target.id, reaction, author, viaTurnId: reply.id }, target);
+    } catch (error) {
+      if (error instanceof WorkshopReactionRefusedError) {
+        return error.reason;
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Stage what project memory this run's message delivered (ADR 2026-11-04
    * D14). It is written onto the reply only if the reply commits, so a
    * cancelled, abandoned or rolled-back run leaves no record. False when the
@@ -1842,6 +1950,25 @@ export class WorkshopSessionService {
       return false;
     }
     this.activeRun!.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, delivery)[0];
+    return true;
+  }
+
+  /**
+   * Stage what reactions this run's message delivered (ADR 2026-11-07 D6),
+   * as `stageProjectMemoryDelivery` does: written onto the reply only if it
+   * commits. False when the run is no longer active, or answers for another
+   * conversation.
+   */
+  stageReactionDelivery(requestId: string, delivery: WorkshopReactionDelivery): boolean {
+    const active = this.activeRun;
+    const own = active?.requestId === requestId && (active.target === 'host'
+      ? delivery.participant.kind === 'host'
+      : active.target === 'personaGuest' && delivery.participant.kind === 'personaGuest'
+        && delivery.participant.personaId === active.guestPersonaId);
+    if (!own) {
+      return false;
+    }
+    active!.reactionDelivery = cloneWorkshopReactionDelivery(delivery);
     return true;
   }
 
@@ -1953,6 +2080,23 @@ export class WorkshopSessionService {
     return this.bookmarkLedger.rename(bookmarkId, label);
   }
 
+  /** Add (`true`) or remove (`false`) one of the writer's reactions on a turn (ADR 2026-11-07 D2). */
+  setWriterReaction(turnId: string, reaction: WorkshopReactionId, reacted: boolean): WorkshopReactionChange {
+    return reacted
+      ? this.reactionLedger.add({ turnId, reaction, author: { kind: 'writer' } }, this.turnLedger.find(turnId))
+      : this.reactionLedger.remove({ turnId, reaction, author: { kind: 'writer' } });
+  }
+
+  /** Remove one reaction by its identity: the writer's own, or Hide on a persona's (Q6). */
+  removeReaction(identity: WorkshopReactionIdentity): WorkshopReactionChange {
+    return this.reactionLedger.remove(identity);
+  }
+
+  /** The stored reactions, defensively copied. */
+  readRoomReactions(): WorkshopTurnReaction[] {
+    return this.reactionLedger.list();
+  }
+
   /** The bookmarks themselves, for recall's live-room port (ADR 2026-11-05 D1). */
   readRoomBookmarks(): WorkshopTurnBookmark[] {
     return this.bookmarkLedger.list();
@@ -2025,6 +2169,7 @@ export class WorkshopSessionService {
     const rollbackTurnIds = new Set([writerTurn.id]);
     this.turnLedger.removeByIds(rollbackTurnIds);
     this.bookmarkLedger.pruneTo(new Set(this.turnLedger.project((turn) => turn.id)));
+    this.reactionLedger.pruneTo(new Set(this.turnLedger.project((turn) => turn.id)));
     this.threadArtifacts = this.threadArtifacts.filter(
       (artifact) => !rollbackTurnIds.has(artifact.turnId)
     );
@@ -2044,6 +2189,7 @@ export class WorkshopSessionService {
     }
     this.turnLedger.removeByIds(new Set([turn.id]));
     this.bookmarkLedger.pruneTo(new Set(this.turnLedger.project((candidate) => candidate.id)));
+    this.reactionLedger.pruneTo(new Set(this.turnLedger.project((candidate) => candidate.id)));
     this.activeRun = undefined;
     return turn;
   }
@@ -2096,6 +2242,7 @@ export class WorkshopSessionService {
     this.pendingContextRevision = undefined;
     this.todoLedger.reset();
     this.bookmarkLedger.reset();
+    this.reactionLedger.reset();
     this.retainedHistory.reset();
     this.lastCommittedPersonaBehavior = undefined;
     this.participantRoster.reset();
@@ -2120,6 +2267,7 @@ export class WorkshopSessionService {
     const standingDirectiveState = this.standingDirectiveLedger.exportState();
     const todoState = this.todoLedger.exportState();
     const bookmarkState = this.bookmarkLedger.exportState();
+    const reactions = this.reactionLedger.list();
     const turnState = this.turnLedger.exportState();
     const passageState = this.passageScope.exportState();
     const rosterState = this.participantRoster.exportState();
@@ -2192,6 +2340,7 @@ export class WorkshopSessionService {
       todos: todoState.todos,
       // Written only when the room holds one (ADR 2026-11-03 D9).
       bookmarks: bookmarkState.bookmarks.length > 0 ? bookmarkState.bookmarks : undefined,
+      ...(reactions.length > 0 ? { reactions } : {}),
       retainedHistoryMarks: retainedHistoryState.marks,
       lastCommittedPersonaBehavior: this.lastCommittedPersonaBehavior
         ? { ...this.lastCommittedPersonaBehavior }
@@ -2229,7 +2378,8 @@ export class WorkshopSessionService {
       allowLegacyOpenSessionWithExcerpt: true,
       skipWidgetDraftIntegrity: true,
       skipRetainedHistoryMarkIntegrity: true,
-      allowDanglingBookmarks: true
+      allowDanglingBookmarks: true,
+      allowDanglingReactions: true
     });
     const normalization = normalizeWorkshopSessionCheckpointForHydration(state);
     const normalized = normalization.state;
@@ -2260,6 +2410,7 @@ export class WorkshopSessionService {
       counter: normalized.counters.todo
     });
     const bookmarkState = this.bookmarkLedger.prepareState(normalized.bookmarks ?? []);
+    const reactionState = this.reactionLedger.prepareState(normalized.reactions ?? []);
     const widgetConfigState = this.widgetConfigLedger.prepareState({
       configs: normalized.widgetConfigs ?? [],
       counter: normalized.counters.widgetConfig ?? 0
@@ -2410,6 +2561,7 @@ export class WorkshopSessionService {
     this.standingDirectiveLedger.installPreparedState(standingDirectiveState);
     this.todoLedger.installPreparedState(todoState);
     this.bookmarkLedger.installPreparedState(bookmarkState);
+    this.reactionLedger.installPreparedState(reactionState);
     this.turnLedger.installPreparedState(turnState);
     this.retainedHistory.installPreparedState(retainedHistoryState);
     this.passageScope.installPreparedState(passageState);
@@ -2551,6 +2703,11 @@ export class WorkshopSessionService {
         this.turnLedger.project((turn) => turn),
         new Set(windowed.map((turn) => turn.id))
       ),
+      reactions: this.reactionLedger.summaries(
+        windowed,
+        (turnId) => this.turnLedger.find(turnId),
+        this.participantRoster.snapshot().host.personaId
+      ),
       widgetConfigs: this.widgetConfigLedger.summariesFor(visibleWidgetConfigIds),
       standingDirectives: this.standingDirectiveSummaries(),
       turns: windowed,
@@ -2588,7 +2745,8 @@ export class WorkshopSessionService {
     toolId?: WorkshopToolId,
     guestPersonaId?: WorkshopPersonaId,
     messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[],
-    widgetCommit?: WorkshopTurnWidgetCommit
+    widgetCommit?: WorkshopTurnWidgetCommit,
+    editOfferRequest?: WorkshopEditOfferRequest
   ): WorkshopTurn {
     const reportTurnId = toolId
       ? this.participantRoster.getToolSidecarLatestReportTurnId(toolId)
@@ -2613,6 +2771,8 @@ export class WorkshopSessionService {
         ? messageAttachments.map(cloneMessageAttachmentSnapshot)
         : undefined,
       widgetCommit: widgetCommit ? { ...widgetCommit } : undefined,
+      // A press's writer turn names the reply and kind pressed (ADR 2026-11-10 D3).
+      ...(editOfferRequest ? { editOfferRequest: { ...editOfferRequest } } : {}),
       content: displayText,
       timestamp: this.now(),
       excerptVersion: this.getExcerptVersion(),

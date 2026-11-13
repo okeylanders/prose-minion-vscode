@@ -138,7 +138,7 @@ const WorkshopTurnMemoryItem: React.FC<{
       <WorkshopMemoryEditCard
         proposal={proposal}
         actions={actions}
-        {...(proposal.held ? { held: workshopMemoryHeldReason(proposal.held) } : {})}
+        {...(proposal.held ? { held: workshopMemoryHeldReason(proposal.held, proposal.heldWord) } : {})}
         error={controls.cardErrors.get(key)}
       />
     );
@@ -146,7 +146,7 @@ const WorkshopTurnMemoryItem: React.FC<{
   return (
     <WorkshopMemoryCard
       heading={proposal.held ? 'Held for you to decide' : 'Suggested for project memory'}
-      {...(proposal.held ? { held: workshopMemoryHeldReason(proposal.held) } : {})}
+      {...(proposal.held ? { held: workshopMemoryHeldReason(proposal.held, proposal.heldWord) } : {})}
       kind={proposal.kind}
       title={proposal.title}
       summary={proposal.summary}

@@ -18,6 +18,7 @@ import {
   WorkshopToolId,
   WorkshopTurn,
   WorkshopTurnBookmark,
+  WorkshopTurnReaction,
   WorkshopTodoItem,
   WorkshopWidgetConfigSnapshot
 } from '@messages';
@@ -187,6 +188,11 @@ export interface WorkshopSessionStateV1 {
    */
   bookmarks?: WorkshopTurnBookmark[];
   /**
+   * Message reactions (ADR 2026-11-07 D2). OPTIONAL and additive, like
+   * `bookmarks`: absent means none, and written only when one exists.
+   */
+  reactions?: WorkshopTurnReaction[];
+  /**
    * Retained-history marks in ledger order (ADR 2026-09-30 §3). OPTIONAL in
    * the persisted grammar, like `widgetConfigs` before it (ADR 2026-07-30: an
    * optional field invalidates no prior shape, so no schema bump). Absent
@@ -218,7 +224,8 @@ export function parseWorkshopSessionStateV1(value: unknown): WorkshopSessionStat
     // An inconsistent mark degrades rewindability, never a session open:
     // checkpoint normalization drops such keys before strict validation.
     skipRetainedHistoryMarkIntegrity: true,
-    allowDanglingBookmarks: true
+    allowDanglingBookmarks: true,
+    allowDanglingReactions: true
   });
   return decoded;
 }

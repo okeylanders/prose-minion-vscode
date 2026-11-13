@@ -45,6 +45,8 @@ export type {
   WorkshopRoomFrameRenderOptions,
   WorkshopTranscript
 } from '@/application/services/workshop/WorkshopRoomFrameRenderer';
+export { buildWorkshopTimeContextFrame } from '@/application/services/workshop/WorkshopTimeContextFrame';
+export type { WorkshopTimeContextFrameInput } from '@/application/services/workshop/WorkshopTimeContextFrame';
 export {
   buildWorkshopThreadArtifactFrame
 } from '@/application/services/workshop/WorkshopThreadArtifactFrame';
@@ -108,6 +110,12 @@ export interface WorkshopGuestJoinInput {
   transitionFrame?: string;
   /** Trusted session clock frame, delivered on the persona's next turn only. */
   timeFrame?: string;
+  /** Pre-built `<workshop-reactions>` frame for the joining conversation (ADR 2026-11-07 D4). */
+  reactionsFrame?: string;
+  /** Pre-built `<workshop-reaction-invite>` (ADR 2026-11-07, 2026-11-10 addendum), placed after the reactions frame. */
+  reactionInviteFrame?: string;
+  /** The transcript, when the caller built it first (the reactions frame reads what it delivers). */
+  transcript?: WorkshopTranscript;
 }
 
 export interface WorkshopGuestJoinMessage {
@@ -148,11 +156,15 @@ export function buildWorkshopGuestMessage(
   writerMessage: string,
   roomCatchUp?: string,
   threadArtifactFrames: readonly string[] = [],
-  behaviorFrames: WorkshopBehaviorFrames = {}
+  behaviorFrames: WorkshopBehaviorFrames = {},
+  /** Pre-built `<workshop-reactions>` frame (ADR 2026-11-07 D4). */
+  reactionsFrame?: string,
+  /** Pre-built `<workshop-reaction-invite>` (2026-11-10 addendum), placed after the reactions frame. */
+  reactionInviteFrame?: string
 ): string {
   const safeWriterMessage = neutralizeReservedPersonaPromptDelimiters(writerMessage);
   if (
-    !roomCatchUp && threadArtifactFrames.length === 0 &&
+    !roomCatchUp && threadArtifactFrames.length === 0 && !reactionsFrame && !reactionInviteFrame &&
     !behaviorFrames.interactionFrame && !behaviorFrames.activationFrame
       && !behaviorFrames.transitionFrame && !behaviorFrames.timeFrame
   ) {
@@ -165,6 +177,8 @@ export function buildWorkshopGuestMessage(
     ...(roomCatchUp
       ? [neutralizeTrustedFrame(roomCatchUp, 'workshop-room-catch-up'), '']
       : []),
+    ...(reactionsFrame ? [reactionsFrame, ''] : []),
+    ...(reactionInviteFrame ? [reactionInviteFrame, ''] : []),
     ...threadArtifactFrames.flatMap((frame) => [frame, '']),
     ...(behaviorFrames.activationFrame ? [behaviorFrames.activationFrame, ''] : []),
     '<writer-message>',
@@ -321,7 +335,7 @@ function buildGuestExcerptFrame(excerpt: WorkshopExcerpt): string {
 export function buildWorkshopGuestJoinMessage(
   input: WorkshopGuestJoinInput
 ): WorkshopGuestJoinMessage {
-  const transcript = buildWorkshopGuestTranscript(
+  const transcript = input.transcript ?? buildWorkshopGuestTranscript(
     input.roomTurns,
     input.roomFrameOptions
   );
@@ -341,6 +355,8 @@ export function buildWorkshopGuestJoinMessage(
     subjectFrame,
     '',
     ...(input.contextAttachmentsFrame ? [input.contextAttachmentsFrame, ''] : []),
+    ...(input.reactionsFrame ? [input.reactionsFrame, ''] : []),
+    ...(input.reactionInviteFrame ? [input.reactionInviteFrame, ''] : []),
     ...(input.activationFrame ? [input.activationFrame, ''] : []),
     '<writer-message>',
     neutralizeReservedPersonaPromptDelimiters(input.openingMessage),
@@ -556,54 +572,10 @@ export interface WorkshopHostMessageOptions {
   transitionFrame?: string;
   /** Trusted session clock frame, delivered on the persona's next turn only. */
   timeFrame?: string;
-}
-
-export interface WorkshopTimeContextFrameInput {
-  reason: 'session_start' | 'session_resume' | 'hourly';
-  sessionStartedAt: string;
-  observedAt: string;
-  timezone: string;
-}
-
-const describeElapsedTime = (startedAt: string, observedAt: string): string => {
-  const elapsedMinutes = Math.max(
-    0,
-    Math.floor((Date.parse(observedAt) - Date.parse(startedAt)) / 60_000)
-  );
-  if (elapsedMinutes < 1) {
-    return 'less than one minute';
-  }
-  if (elapsedMinutes < 60) {
-    return `${elapsedMinutes} minute${elapsedMinutes === 1 ? '' : 's'}`;
-  }
-  const hours = Math.floor(elapsedMinutes / 60);
-  const minutes = elapsedMinutes % 60;
-  const hourLabel = `${hours} hour${hours === 1 ? '' : 's'}`;
-  return minutes === 0
-    ? hourLabel
-    : `${hourLabel}, ${minutes} minute${minutes === 1 ? '' : 's'}`;
-};
-
-/** Build extension-authored temporal context; never persist it in model history as a system turn. */
-export function buildWorkshopTimeContextFrame(
-  input: WorkshopTimeContextFrameInput
-): string {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    dateStyle: 'full',
-    timeStyle: 'long',
-    timeZone: input.timezone
-  });
-  const reason = input.reason.replace(/_/g, '-');
-  return [
-    `<workshop-time-context reason="${reason}">`,
-    `Session started: ${formatter.format(new Date(input.sessionStartedAt))}`,
-    `Current local time: ${formatter.format(new Date(input.observedAt))}`,
-    `Elapsed since session start: ${describeElapsedTime(input.sessionStartedAt, input.observedAt)}`,
-    `Timezone: ${neutralizeReservedPersonaPromptDelimiters(input.timezone)}`,
-    'This timestamp is temporal context for the current turn, not a request to discuss time.',
-    'Do not infer what the writer did, thought, or felt during any elapsed gap.',
-    '</workshop-time-context>'
-  ].join('\n');
+  /** Pre-built `<workshop-reactions>` frame (ADR 2026-11-07 D4). */
+  reactionsFrame?: string;
+  /** Pre-built `<workshop-reaction-invite>` (2026-11-10 addendum), placed after the reactions frame. */
+  reactionInviteFrame?: string;
 }
 
 /** Combine pending host context with the writer's ordinary host turn. */
@@ -619,7 +591,7 @@ export function buildWorkshopHostMessage(
     !options.roomCatchUp && !options.hostUpdate &&
     !options.todoEvidence && threadArtifactFrames.length === 0 &&
     !options.interactionFrame && !options.activationFrame && !options.transitionFrame &&
-    !options.timeFrame
+    !options.timeFrame && !options.reactionsFrame && !options.reactionInviteFrame
   ) {
     return safeWriterMessage;
   }
@@ -641,6 +613,10 @@ export function buildWorkshopHostMessage(
     options.roomCatchUp ? '' : undefined,
     options.todoEvidence?.message,
     options.todoEvidence ? '' : undefined,
+    options.reactionsFrame,
+    options.reactionsFrame ? '' : undefined,
+    options.reactionInviteFrame,
+    options.reactionInviteFrame ? '' : undefined,
     // Thread artifacts sit last before the message they accompany.
     ...threadArtifactFrames.flatMap((frame) => [frame, '']),
     options.activationFrame,

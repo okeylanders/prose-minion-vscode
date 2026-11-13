@@ -1,0 +1,192 @@
+/* Message reactions (ADR 2026-11-07 D8; Slice 3b): the corner in a bubble's
+   bottom right, holding its reactions left to right and the "Add reaction"
+   button after them. It sits in the bubble's flow, so it never covers text;
+   the turn's own flex gap spaces it (PR #248 L1). */
+[data-pm-surface="workshop"] .pm-ws-reaction-corner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-corner:empty {
+  display: none;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-cluster {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 2px;
+  border: 1px solid var(--pm-border);
+  border-radius: 999px;
+  background: var(--pm-surface-2);
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pm-muted);
+  padding: 1px 7px;
+  font: 11px var(--pm-sans);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-item-glyph {
+  font-size: 14px;
+  line-height: 1;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-item-writer {
+  border-color: var(--pm-accent-lo);
+  background: color-mix(in srgb, var(--pm-accent-hi) 14%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-item:not([aria-disabled="true"]):hover {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-wrap {
+  position: relative;
+  display: inline-flex;
+}
+/* The "Add reaction" button: an icon, always shown. */
+[data-pm-surface="workshop"] .pm-ws-reaction-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--pm-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pm-muted);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-add:not([aria-disabled="true"]):hover,
+[data-pm-surface="workshop"] .pm-ws-reaction-add[aria-expanded="true"] {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-add:focus-visible,
+[data-pm-surface="workshop"] .pm-ws-reaction-item:focus-visible,
+[data-pm-surface="workshop"] .pm-ws-reaction-option:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 1px;
+}
+/* The palette opens up from the corner, or down when there is no room above (PR #245 L4). */
+[data-pm-surface="workshop"] .pm-ws-reaction-palette {
+  position: absolute;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border-2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-palette-up {
+  bottom: calc(100% + 6px);
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-palette-down {
+  top: calc(100% + 6px);
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-group-label {
+  color: var(--pm-muted);
+  font: 11px var(--pm-sans);
+  margin-bottom: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 32px);
+  gap: 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  background: transparent;
+  color: var(--pm-muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-option:hover {
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-option-on {
+  border-color: var(--pm-accent-lo);
+  background: color-mix(in srgb, var(--pm-accent-hi) 14%, transparent);
+}
+/* Locked (PR #245 L2): still focusable, so focus can come back to it. */
+[data-pm-surface="workshop"] .pm-ws-reaction-add[aria-disabled="true"],
+[data-pm-surface="workshop"] .pm-ws-reaction-item[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+}
+/* A reaction-only reply (ADR 2026-11-07 R1): a slim line, not a bubble. */
+[data-pm-surface="workshop"] .pm-ws-reaction-only {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+  padding: 2px 4px;
+  color: var(--pm-dim);
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-only-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-reaction-only-actions {
+  margin: 0;
+}
+/* The writer's tapback (ADR 2026-11-07 D8; Slice 3c): the cluster sits on the
+   writer bubble's bottom-right corner, half on its edge. The frame is one
+   grid column, so a cluster wider than a short message widens the bubble
+   (never past its left edge), and the corner stays in flow, so the action
+   row below clears the overhang. Only a bubble with reactions makes room. */
+[data-pm-surface="workshop"] .pm-ws-turn-message-frame {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: min(640px, 100%);
+  min-width: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-message-frame > .pm-ws-turn-message {
+  max-width: none;
+  min-width: 0;
+}
+/* Room under the text for the half of the pill that sits on the bubble. */
+[data-pm-surface="workshop"] .pm-ws-turn-message-frame-tapback > .pm-ws-turn-message {
+  padding-bottom: 22px;
+}
+/* A cluster is 30px tall (a 24px reaction, 2px padding, 1px border): half of it rises onto the bubble. */
+[data-pm-surface="workshop"] .pm-ws-turn-message-frame > .pm-ws-reaction-corner {
+  position: relative;
+  z-index: 1;
+  justify-self: end;
+  min-width: 0;
+  max-width: calc(100% - 20px);
+  margin: -15px 10px 0;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-message-frame .pm-ws-reaction-cluster {
+  border-color: var(--pm-border-2);
+  background: var(--pm-surface-2);
+  /* A ring in the thread's own color parts the chip from the border it crosses. */
+  box-shadow: 0 0 0 2px var(--pm-bg), 0 2px 6px rgba(0, 0, 0, 0.35);
+  /* Half its height, so one row is a pill and a wrapped cluster stays a chip. */
+  border-radius: 15px;
+}

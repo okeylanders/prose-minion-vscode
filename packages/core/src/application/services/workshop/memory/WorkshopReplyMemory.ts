@@ -8,8 +8,11 @@
  *
  * - **Off or unavailable:** the trailer was already stripped; it's dropped
  *   with a log line and no card (D8).
- * - **The phrasing fence** (D9) withholds a proposal that infers something
- *   personal about the writer: no card, a logged reason.
+ * - **The phrasing fence** (D9, amended 2026-11-11) flags a proposal that
+ *   may infer something personal about the writer. It is held `personal`
+ *   in either mode, before any other hold, with the matched word on its
+ *   card (`heldWord`) and never in the log; it's never saved automatically.
+ *   A flagged edit is held the same way.
  * - **`supersedes`** keeps each id a listed memory holds, with the title it
  *   had, and drops the rest, counted for the card's note (D6). When the
  *   listing could not be read, every one is dropped and counted.
@@ -29,9 +32,10 @@ import { isWorkshopMemoryEditDraft } from '@/utils/workshopMemoryEditProtocol';
 import type { ProjectMemoryListed } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
 import { settleWorkshopMemoryEdit } from '@/application/services/workshop/memory/WorkshopReplyMemoryEdit';
 import type { WorkshopMemoryProposalDraft } from '@/utils/workshopMemoryProposalProtocol';
-import { workshopMemoryProposalPhrasingFault } from '@/application/services/workshop/memory/WorkshopMemoryProposalPhrasing';
+import { workshopMemoryProposalPhrasingFlag } from '@/application/services/workshop/memory/WorkshopMemoryProposalPhrasing';
 import {
   routeWorkshopMemoryProposal,
+  type WorkshopMemoryProposalRoute,
   type WorkshopMemoryRunFacts
 } from '@/application/services/workshop/memory/WorkshopMemoryAutoSave';
 
@@ -81,18 +85,13 @@ export function settleWorkshopMemoryProposals(
       const logs = control.rejections.map((reason) => `Memory proposal dropped (reason=${reason})`);
       for (const draft of control.proposals) {
         if (isWorkshopMemoryEditDraft(draft)) {
-          // An edit always waits for the writer; under Save and tell me it says why (Slice 6c).
+          // An edit always waits for the writer; under Save and tell me it says why (Slice 6c). The fence's hold, if any, is the edit's own.
           const route = run ? routeWorkshopMemoryProposal(context.mode, run, { supersedes: [], edit: true }) : { kind: 'wait' as const };
           const edit = settleWorkshopMemoryEdit(draft, context.memories, context.writerName, route.kind === 'held' ? route.held : undefined);
           if (edit.proposal) {
             proposals.push(edit.proposal);
           }
           logs.push(edit.log);
-          continue;
-        }
-        const fault = workshopMemoryProposalPhrasingFault(draft, context.writerName);
-        if (fault) {
-          logs.push(`Memory proposal withheld (reason=${fault})`);
           continue;
         }
         const settled = settleOne(draft, context, run, autoSave.length);
@@ -120,7 +119,11 @@ function settleOne(
     return title === undefined ? [] : [{ id, title }];
   });
   const dropped = draft.supersedes.length - supersedes.length;
-  const route = run ? routeWorkshopMemoryProposal(context.mode, run, draft, admitted) : { kind: 'wait' as const };
+  const flag = workshopMemoryProposalPhrasingFlag(draft, context.writerName);
+  // The fence's hold comes first, in both modes, and is never saved automatically (D9, amended 2026-11-11).
+  const route: WorkshopMemoryProposalRoute = flag
+    ? { kind: 'held', held: 'personal' }
+    : run ? routeWorkshopMemoryProposal(context.mode, run, draft, admitted) : { kind: 'wait' };
   const proposal: WorkshopMemoryProposal = {
     proposes: 'new',
     title: draft.title,
@@ -131,9 +134,10 @@ function settleOne(
     ...(dropped > 0 ? { droppedSupersedes: dropped } : {}),
     ...(draft.cites ? { cites: [...draft.cites] } : {}),
     state: 'pending',
-    ...(route.kind === 'held' ? { held: route.held } : {})
+    ...(route.kind === 'held' ? { held: route.held } : {}),
+    ...(flag ? { heldWord: flag.word } : {})
   };
-  const outcome = route.kind === 'held' ? `held (reason=${route.held}; ` : route.kind === 'auto' ? 'saving (mode=auto; ' : 'pending (';
+  const outcome = flag ? `held (reason=${flag.fault}; ` : route.kind === 'held' ? `held (reason=${route.held}; ` : route.kind === 'auto' ? 'saving (mode=auto; ' : 'pending (';
   return {
     proposal,
     auto: route.kind === 'auto',
