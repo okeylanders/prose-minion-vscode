@@ -1248,6 +1248,30 @@ staged, or how Apply writes it:
 - **Logs** carry ids, counts and fault kinds, never the writer's text, a
   quote, a path or a URI.
 
+### Workshop Widget Replies
+
+A widget's reply codec is exact, with one tolerance: a field whose empty
+value means "nothing to report" may be left out.
+
+- **What is read as empty.** `invariantFlags` on a Creative Variations card
+  or a Show vs. Tell variant (none); on a Lexical Gravity preview,
+  `semanticPositions` (none), `selectedDynamicId`, `openEntailment`, and a
+  position's `axisId` and `axisPosition` (null). A `null` where a list
+  belongs is read as the empty list.
+- **One helper.** `fillOmittedEmpties`
+  (`infrastructure/api/services/widgets/widgetReplyOmissions.ts`) fills them.
+  The codec names the field among `exactObject`'s optional keys, so unknown
+  fields, wrong types and missing content fields still reject. Never default
+  a field that carries content.
+- **Logged, by count.** Each service logs how many fields a reply left out,
+  never the reply.
+- **The prompt still asks for the field.** Each prompt says to write it even
+  when empty; the tolerance is for a model that does not.
+- **Persisted configs stay exact.** The host always writes the field, so the
+  config codecs (`*ConfigCodec`) still require it.
+- **A new widget field** joins the tolerance only when its absence and its
+  empty value mean the same thing.
+
 ### Workshop Message Reactions
 
 Follow [ADR 2026-11-07](docs/adr/2026-11-07-workshop-message-reactions.md)
