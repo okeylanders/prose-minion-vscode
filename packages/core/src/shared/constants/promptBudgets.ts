@@ -217,6 +217,21 @@ export interface PromptBudgets {
     /** One option's label, trimmed, on one line. */
     optionCharacters: number;
   }>;
+  /**
+   * Selected Text (ADR 2026-11-14 D15): the editor's selection as a one-shot
+   * message attachment. It is cut at capture to `words` and `characters`,
+   * whichever is tighter, and the pill says so before the send. The webview
+   * sees a one-line preview of `previewCharacters`; the window keeps the
+   * newest `snapshots`; a watching composer hears at most one selection per
+   * `pushIntervalMs`, trailing edge included.
+   */
+  readonly workshopSelectedText: Readonly<{
+    words: number;
+    characters: number;
+    previewCharacters: number;
+    snapshots: number;
+    pushIntervalMs: number;
+  }>;
   readonly workshopTodos: Readonly<{
     items: number;
     characters: number;
@@ -733,6 +748,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     optionsPerOffer: 4,
     optionCharacters: 40
   },
+  workshopSelectedText: { words: 5_000, characters: 40_000, previewCharacters: 120, snapshots: 8, pushIntervalMs: 150 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {
     turns: 100,

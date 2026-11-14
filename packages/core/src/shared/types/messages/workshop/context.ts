@@ -8,6 +8,7 @@ import type {
   ConfiguredResourceSearchResults
 } from '../configuredResources';
 import type { WorkshopLightboxTileAttachmentMeta } from './lightboxTiles';
+import type { WorkshopSelectedTextAttachmentMeta } from './selectedText';
 // The canonical configured-resource key (`ConfiguredResourceRef`) is stamped
 // during source resolution so model-requested reads can cite `{ group, path }`
 // instead of reconstructing a path (Sprint 12). It and the catalog shapes the
@@ -45,6 +46,8 @@ export interface WorkshopMessageAttachmentSnapshot {
   truncation?: WorkshopMessageAttachmentTruncation;
   /** A Lightbox reading brought here (Slice 4), rather than a file. */
   lightboxTile?: WorkshopLightboxTileAttachmentMeta;
+  /** The editor's selection when the message was sent (ADR 2026-11-14 D13), rather than a file. */
+  selectedText?: WorkshopSelectedTextAttachmentMeta;
 }
 
 /**

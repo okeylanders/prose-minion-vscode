@@ -37,6 +37,7 @@ import {
   WorkshopSeedOutcome,
   WorkshopSeedRefusal,
   WorkshopStageLightboxTileMessage,
+  WorkshopStageSelectedTextMessage,
   WorkshopUiActions,
   WorkshopSetExcerptMessage,
   coerceWebviewErrorText,
@@ -70,7 +71,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     // eslint-disable-next-line @typescript-eslint/naming-convention -- seed kinds are kebab-case protocol literals.
     'lexical-gravity-build': this.createSeedDelivery('lexical-gravity-build'),
     // eslint-disable-next-line @typescript-eslint/naming-convention -- seed kinds are kebab-case protocol literals.
-    'lightbox-tile': this.createSeedDelivery('lightbox-tile')
+    'lightbox-tile': this.createSeedDelivery('lightbox-tile'),
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- seed kinds are kebab-case protocol literals.
+    'selected-text': this.createSeedDelivery('selected-text')
   };
 
   constructor(
@@ -150,6 +153,8 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       this.outputChannel,
       this.uiActions
     );
+    // Selected Text's watch pushes only to a visible tab (ADR 2026-11-14 D14): a restored tab may start hidden.
+    this.messageHandler.setWorkshopSurfaceVisible?.(panel.visible);
 
     // Config-change watcher lives in the shell (keeps MessageHandler
     // vscode-free), mirroring the sidebar provider's wiring.
@@ -193,8 +198,13 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
         return;
       }
       // A tile's accept stages it in the session: only under the grant it names (PR #151 F-06).
-      if (shape?.type === MessageType.WORKSHOP_ACCEPT_LIGHTBOX_TILE && !this.acceptsLightboxTile(panel, shape.payload)) {
+      if (shape?.type === MessageType.WORKSHOP_ACCEPT_LIGHTBOX_TILE && !this.acceptsSeed('lightbox-tile', panel, shape.payload)) {
         this.outputChannel.appendLine('[Workshop] A tile accept was dropped: its delivery is not granted to this webview');
+        return;
+      }
+      // A selection's accept, the same way (ADR 2026-11-14 D12).
+      if (shape?.type === MessageType.WORKSHOP_ACCEPT_SELECTED_TEXT && !this.acceptsSeed('selected-text', panel, shape.payload)) {
+        this.outputChannel.appendLine('[Workshop] A selection accept was dropped: its delivery is not granted to this webview');
         return;
       }
       void this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);
@@ -204,6 +214,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     // retainContextWhenHidden — replay the cache on re-reveal, exactly like
     // the sidebar does on visibility change.
     const viewStateSubscription = panel.onDidChangeViewState(() => {
+      if (this.panel === panel) {
+        this.messageHandler?.setWorkshopSurfaceVisible?.(panel.visible);
+      }
       if (panel.visible && this.panel === panel) {
         this.messageHandler?.flushCachedResults?.();
         // A retained tab does not remount React. Reuse the normal load route
@@ -316,6 +329,31 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     });
   }
 
+  /**
+   * Stage the editor's selection above the Workshop composer (ADR 2026-11-14
+   * D12), the way `stageLightboxTile` stages a tile. The offer carries the
+   * snapshot's id only: the command captured it at its gesture, and the
+   * Workshop's handler reads the snapshot by that id when the webview's
+   * granted claim asks it to stage. The promise settles with the webview's
+   * answer (staged, or busy, full or duplicate), or why it did not arrive.
+   */
+  public stageSelectedText(snapshotId: string): Promise<WorkshopSeedOutcome> {
+    this.openOrReveal();
+    const panel = this.panel;
+    if (!panel || !this.messageHandler) {
+      return Promise.resolve({ opened: false, reason: 'unavailable' });
+    }
+    return this.seedDeliveries['selected-text'].offer(panel, (deliveryId) => {
+      const message: WorkshopStageSelectedTextMessage = {
+        type: MessageType.WORKSHOP_STAGE_SELECTED_TEXT,
+        source: 'extension.workshop',
+        payload: { deliveryId, snapshotId },
+        timestamp: Date.now()
+      };
+      void this.messageHandler?.handleMessage(message);
+    });
+  }
+
   /** One kind's delivery: ready only for the current, listening, visible panel. */
   private createSeedDelivery(kind: WorkshopSeedKind): WorkshopSeedDelivery<vscode.WebviewPanel> {
     return new WorkshopSeedDelivery<vscode.WebviewPanel>(kind, {
@@ -388,18 +426,19 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   }
 
   /**
-   * Whether a tile's accept may reach the session (PR #151 F-06): it names
-   * the tile delivery granted, now, to the receiver that sends it. The path
-   * from here to the staging mutation is synchronous (router, mutation gate,
-   * handler), so the grant checked is the grant the tile stages under. A
-   * late accept from a reloaded webview, or one for an offer never granted,
-   * stages nothing; the delivery has already settled, or is still waiting.
+   * Whether a staged seed's accept (a tile's, a selection's) may reach the
+   * session (PR #151 F-06): it names that kind's delivery granted, now, to
+   * the receiver that sends it. The path from here to the staging mutation
+   * is synchronous (router, mutation gate, handler), so the grant checked is
+   * the grant it stages under. A late accept from a reloaded webview, or one
+   * for an offer never granted, stages nothing; the delivery has already
+   * settled, or is still waiting.
    */
-  private acceptsLightboxTile(panel: vscode.WebviewPanel, payload: unknown): boolean {
+  private acceptsSeed(kind: WorkshopSeedKind, panel: vscode.WebviewPanel, payload: unknown): boolean {
     const shape = payload as { deliveryId?: unknown; receiver?: unknown } | undefined;
     return typeof shape?.deliveryId === 'string'
       && typeof shape.receiver === 'string'
-      && this.seedDeliveries['lightbox-tile'].isGranted(panel, shape.deliveryId, shape.receiver);
+      && this.seedDeliveries[kind].isGranted(panel, shape.deliveryId, shape.receiver);
   }
 
   public dispose(): void {

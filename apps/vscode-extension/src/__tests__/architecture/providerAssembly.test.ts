@@ -344,12 +344,12 @@ describe('app-shell provider assembly', () => {
     // selection, the file entry without one. They never show together.
     expect(entries(EDITOR_CONTEXT_SUBMENU, OPEN_FILE)).toEqual([{
       command: OPEN_FILE,
-      group: '2_open@2',
+      group: '2_open@3',
       when: '!editorHasSelection && resourceScheme == file && (editorLangId == markdown || editorLangId == plaintext)'
     }]);
     expect(entries(EDITOR_CONTEXT_SUBMENU, 'prose-minion.lightboxSelection')).toEqual([{
       command: 'prose-minion.lightboxSelection',
-      group: '2_open@2',
+      group: '2_open@3',
       when: 'editorHasSelection'
     }]);
 

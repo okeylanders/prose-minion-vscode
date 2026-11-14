@@ -158,6 +158,7 @@ packages/core/src/
                 ├── showVsTell.ts
                 ├── seedDelivery.ts
                 ├── lightboxTiles.ts
+                ├── selectedText.ts
                 └── settings.ts
 ```
 

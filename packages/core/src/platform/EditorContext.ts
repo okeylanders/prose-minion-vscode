@@ -13,6 +13,8 @@
  * `selection`/`activeFile` source modes, and the webview's selection request.
  */
 
+import type { PlatformDisposable } from './SecretStore';
+
 export interface ActiveSelectionInfo {
   /** Selected text (empty string when the selection is empty). */
   text: string;
@@ -76,4 +78,21 @@ export interface EditorContext {
    * active editor and no remembered selection.
    */
   getActiveSelection(): ActiveSelectionInfo | undefined;
+
+  /**
+   * The last focused text editor's selection now, empty included (ADR
+   * 2026-11-14 D10). Unlike `getActiveSelection`, nothing is remembered: a
+   * deselect reports `isEmpty: true`, and `undefined` means no text editor
+   * has had focus, or the last one's document has closed. A webview tab
+   * taking focus does not change the answer.
+   */
+  currentSelection(): ActiveSelectionInfo | undefined;
+
+  /**
+   * Fires when that selection, its text, or its editor may have changed: a
+   * selection change, another editor taking focus, an edit to that document,
+   * or that document closing. Raw and unthrottled; a listener reads
+   * `currentSelection()` when it wants the state.
+   */
+  onDidChangeSelection(listener: () => void): PlatformDisposable;
 }

@@ -319,6 +319,7 @@ workshop/
 ├── showVsTell.ts            # Show vs. Tell draft, grouped workup, and artifact line keys
 ├── seedDelivery.ts          # Handed-over seeds: claim, grant or deny, answer
 ├── lightboxTiles.ts         # A Lightbox tile staged above the composer: item, bounds, offer/accept/staged
+├── selectedText.ts          # The editor's selection as a one-shot attachment: seed offer/accept/staged, watch and current
 └── settings.ts              # Defaults, validators, coercers, equality
 ```
 
