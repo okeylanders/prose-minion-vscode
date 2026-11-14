@@ -612,7 +612,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'resource.catalog':
       case 'resource.search':
       case 'resource.read':
-        return this.resourceCapability.fulfill(request);
+        // A read is fitted to half the room left; catalog and search ignore it (ADR 2026-11-14 D2).
+        return this.resourceCapability.fulfill(request, window);
       case 'transcript.catalog':
       case 'transcript.search':
       case 'transcript.read':
