@@ -1,3 +1,22 @@
+# Re-review, 2026-11-14
+
+Reviewed implementation: `0cf83f138ce32029ff478d55a86f78113b299937`.
+
+**Verdict: scoped technical approval; F-01 is resolved.** This supersedes the original changes-requested verdict below. No additional blocking finding in the revised Continue path. Not release approval or live UI/provider certification.
+
+The webview now posts one scope request with `rereadFile`. `WorkshopExcerptContinuation` runs authorization/read through `runContextRefresh`, which synchronously marks a pending session operation before awaiting initialization, queued operations or disk reads. The shared mutation registrar refuses incoming sends and other room mutations while pending. Scope is chosen and the loaded excerpt is applied synchronously after the read, with the run guard rechecked. The unchosen path independently prevents sending during Continue. Unreadable/unauthorized files explicitly continue with the carried text and show a failure message; active-run/busy requests do not read. Repeated Continue is refused while busy.
+
+Verification at the reviewed implementation SHA:
+- 3 focused suites, 89 tests passed: `WorkshopRoutes.excerptScope`, `WorkshopExcerptScopeHandler`, `useWorkshopRoomAndSessions`.
+- The route suite covers a deferred disk read with immediate send: no model call during the read, then v3/current text on the subsequent send, plus unchosen-path defense without the mocked queue gate.
+- `npm run typecheck`, `npm run build`, and `npm run lint` passed (lint warnings remain).
+- GitHub CI run 43606096646 reports success for this SHA.
+- Full local suite was not rerun in this pass. The regression harness models the pending-operation gate; the actual coordinator/registrar wiring was inspected. No live Extension Development Host or real provider tests.
+
+The PR description still describes the obsolete two-message/webview-only implementation; the code and this re-review supersede those statements. Update it for clarity before handoff. No merge performed.
+
+---
+
 # PR #260 review: file-backed Continue and re-read
 
 - Reviewed implementation: `3000f9c13325f1db2216e8e4169fd780f611b63c`.
