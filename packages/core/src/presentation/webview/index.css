@@ -3256,6 +3256,83 @@ select:focus {
   font-family: var(--pm-mono);
   font-size: 10.5px;
 }
+/* Search (the ADR's 2026-11-14 amendment): the field, its toggle and count
+   above the rows; a hit marked in a row; a definition's snippet under it. */
+.pm-dictionary-history-search {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+.pm-dictionary-history-search-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  background: var(--pm-inset);
+  color: var(--pm-muted);
+}
+.pm-dictionary-history-search-field:focus-within {
+  border-color: var(--pm-accent);
+}
+.pm-dictionary-history-search-field input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--pm-text);
+  font: inherit;
+  font-size: 12px;
+}
+.pm-dictionary-history-search-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  min-height: 18px;
+  color: var(--pm-muted);
+  font-size: 11.5px;
+}
+.pm-dictionary-history-search-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.pm-dictionary-history-search-toggle input {
+  margin: 0;
+}
+.pm-dictionary-history-search-status {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+}
+.pm-dictionary-history-mark {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: var(--pm-accent-soft);
+  box-shadow: inset 0 -2px 0 var(--pm-accent);
+  color: var(--pm-text);
+}
+.pm-dictionary-history-snippet {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--pm-muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+  white-space: normal;
+}
+.pm-dictionary-history-snippet-label {
+  color: var(--pm-text-2);
+}
 .pm-dictionary-history-delete {
   flex: none;
   display: grid;
