@@ -163,6 +163,62 @@ describe('ExcerptPanel — passage pinned', () => {
     expect(props.onRereadFile).toHaveBeenCalled();
   });
 
+  /**
+   * A new room that kept its excerpt has no conversation yet. The file may
+   * have been edited since, so re-reading is offered beside the fresh choices
+   * rather than making the writer find the same file in the list again.
+   */
+  it('offers Re-read from file before the first message, beside the fresh choices', () => {
+    const { props } = renderPanel({
+      scope: null,
+      roomHasMemory: false,
+      excerpt: excerptWith(fileSource)
+    });
+
+    expect(screen.queryByText(/Session live/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /paste or type/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /choose from project/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /re-read from file/i }));
+
+    expect(props.onRereadFile).toHaveBeenCalledTimes(1);
+    expect(props.onChooseFile).not.toHaveBeenCalled();
+  });
+
+  it('holds Re-read from file while a run is going', () => {
+    renderPanel({ scope: 'excerpt', isRunning: true, excerpt: excerptWith(fileSource) });
+
+    expect(
+      (screen.getByRole('button', { name: /re-read from file/i }) as HTMLButtonElement).disabled
+    ).toBe(true);
+  });
+
+  it.each<[string, WorkshopExcerptSource]>([
+    ['pasted or typed', { kind: 'manual' }],
+    [
+      'an editor selection',
+      {
+        kind: 'editor-selection',
+        sourceUri: 'file:///chapters/05.md',
+        relativePath: 'chapters/05.md',
+        startLine: 3,
+        endLine: 9
+      }
+    ]
+  ])('offers no Re-read for a passage that is %s', (_origin, source) => {
+    renderPanel({ scope: null, roomHasMemory: false, excerpt: excerptWith(source) });
+
+    expect(screen.queryByRole('button', { name: /re-read from file/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /paste or type/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /choose from project/i })).toBeTruthy();
+  });
+
+  it('keeps the locked card to Re-read alone once the room has a conversation', () => {
+    renderPanel({ scope: 'excerpt', roomHasMemory: true, excerpt: excerptWith(fileSource) });
+
+    expect(screen.getAllByRole('button').map((button) => button.textContent?.trim()))
+      .toEqual(['Re-read from file']);
+  });
+
   it('offers Update text… when locked on typed or pasted origin', () => {
     const { props } = renderPanel({
       scope: 'excerpt',
