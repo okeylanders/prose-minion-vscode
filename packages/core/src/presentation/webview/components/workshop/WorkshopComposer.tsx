@@ -62,7 +62,12 @@ interface WorkshopComposerProps {
    */
   roomHasMemory: boolean;
   /** Prefill requested from outside (an open-chat starter chip); appended once. */
-  draftSeed?: { text: string; token: number };
+  /**
+   * `keepDraft`: a text the host gives back (a refused or rolled-back send, a
+   * rewound message) never replaces what the writer has typed since. It goes
+   * ahead of it, a blank line between (PR #264 P2).
+   */
+  draftSeed?: { text: string; token: number; keepDraft?: boolean };
   /** Open the shared Edit/Preview sheet to choose the passage path before memory exists. */
   onAddExcerpt: () => void;
   /** The current recipient already has a retained conversation (drives copy). */
@@ -91,6 +96,21 @@ interface WorkshopComposerProps {
   onOpenConversationSettings: () => void;
   onOpenTools: () => void;
   onOpenWidgets: () => void;
+}
+
+/**
+ * The draft after a seed. A starter replaces it. A text the host gives back
+ * (`keepDraft`) fills an empty composer, and otherwise is put ahead of what
+ * the writer has typed since: neither text is ever lost (PR #264 P2).
+ */
+export function workshopComposerDraftAfterSeed(
+  current: string,
+  seed: { text: string; keepDraft?: boolean }
+): string {
+  if (!seed.keepDraft || current.trim().length === 0) {
+    return seed.text;
+  }
+  return seed.text.trim().length === 0 ? current : `${seed.text}\n\n${current}`;
 }
 
 /**
@@ -211,7 +231,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
       return;
     }
     appliedSeedRef.current = draftSeed.token;
-    setDraft(draftSeed.text);
+    setDraft((current) => workshopComposerDraftAfterSeed(current, draftSeed));
     textareaRef.current?.focus();
   }, [draftSeed]);
 

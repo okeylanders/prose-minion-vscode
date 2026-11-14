@@ -10,7 +10,7 @@
 
 import * as React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { WorkshopComposer } from '@components/workshop/WorkshopComposer';
+import { WorkshopComposer, workshopComposerDraftAfterSeed } from '@components/workshop/WorkshopComposer';
 import {
   workshopAttachmentSize,
   workshopAttachmentTitle,
@@ -155,5 +155,76 @@ describe('workshopAttachmentPills — Selected Text', () => {
     expect(workshopAttachmentTitle(staged)).toBe('Drafts/alice-ch3.md · line 12 · 62 words');
     // A file's pill is what it was.
     expect(workshopAttachmentSize({ id: 'ta-2', label: 'notes.md', words: 10 }, 'composer')).toBe('10 words');
+  });
+});
+
+describe('WorkshopComposer — a text the host gives back (PR #264 P2)', () => {
+  afterEach(cleanup);
+
+  const props = (overrides: Partial<React.ComponentProps<typeof WorkshopComposer>> = {}): React.ComponentProps<typeof WorkshopComposer> => ({
+    canMessage: true,
+    scope: 'excerpt',
+    hasExcerpt: true,
+    roomHasMemory: false,
+    onAddExcerpt: jest.fn(),
+    hasConversation: true,
+    recipientLabel: 'Jill',
+    isRunning: false,
+    sessionReady: true,
+    conversationBehavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR },
+    writerProfileShared: false,
+    messageAttachments: [],
+    onSend: jest.fn(),
+    onCancel: jest.fn(),
+    onOpenContext: jest.fn(),
+    onAttachToMessage: jest.fn(),
+    onRemoveMessageAttachment: jest.fn(),
+    onOpenTools: jest.fn(),
+    onOpenWidgets: jest.fn(),
+    onOpenConversationSettings: jest.fn(),
+    ...overrides
+  });
+  const composer = () => screen.getByRole('textbox', { name: 'Message Jill' }) as HTMLTextAreaElement;
+
+  it('the reviewer\'s reproduction: send, type again, then the refusal arrives, and both texts survive', () => {
+    const initial = props();
+    const { rerender } = render(<WorkshopComposer {...initial} />);
+    fireEvent.change(composer(), { target: { value: 'original refused prompt' } });
+    fireEvent.keyDown(composer(), { key: 'Enter' });
+    expect(initial.onSend).toHaveBeenCalledWith('original refused prompt');
+    expect(composer().value).toBe('');
+
+    // The refusal is still in transit; the writer keeps writing.
+    fireEvent.change(composer(), { target: { value: 'newer unsent writing' } });
+    // The host gives the refused text back.
+    rerender(<WorkshopComposer {...initial} draftSeed={{ text: 'original refused prompt', token: 1, keepDraft: true }} />);
+
+    expect(composer().value).toBe('original refused prompt\n\nnewer unsent writing');
+    // The same seed drawn again changes nothing more.
+    rerender(<WorkshopComposer {...initial} draftSeed={{ text: 'original refused prompt', token: 1, keepDraft: true }} />);
+    expect(composer().value).toBe('original refused prompt\n\nnewer unsent writing');
+  });
+
+  it('fills an empty composer with the text given back, exactly', () => {
+    const initial = props();
+    const { rerender } = render(<WorkshopComposer {...initial} />);
+    fireEvent.change(composer(), { target: { value: '   ' } });
+    rerender(<WorkshopComposer {...initial} draftSeed={{ text: 'original refused prompt', token: 1, keepDraft: true }} />);
+    expect(composer().value).toBe('original refused prompt');
+  });
+
+  it('a starter still replaces the draft, as it always has', () => {
+    const initial = props();
+    const { rerender } = render(<WorkshopComposer {...initial} />);
+    fireEvent.change(composer(), { target: { value: 'half a thought' } });
+    rerender(<WorkshopComposer {...initial} draftSeed={{ text: 'Brainstorm the Caucus-race.', token: 1 }} />);
+    expect(composer().value).toBe('Brainstorm the Caucus-race.');
+  });
+
+  it('states the rule as a function: nothing typed is ever dropped by a text given back', () => {
+    expect(workshopComposerDraftAfterSeed('', { text: 'back', keepDraft: true })).toBe('back');
+    expect(workshopComposerDraftAfterSeed('typed since', { text: 'back', keepDraft: true })).toBe('back\n\ntyped since');
+    expect(workshopComposerDraftAfterSeed('typed since', { text: '', keepDraft: true })).toBe('typed since');
+    expect(workshopComposerDraftAfterSeed('typed since', { text: 'starter' })).toBe('starter');
   });
 });

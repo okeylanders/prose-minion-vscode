@@ -108,6 +108,37 @@ describe('a Selected Text send that lands after its room was replaced', () => {
     expect(snapshots.find('snap-1')).toBeDefined();
   });
 
+  it.each(REPLACEMENTS)('%s: a pill drawn before it is refused, and the same selection drawn again in the new room is not', async (_name, replace) => {
+    const shown = await roomWithAPillShown();
+    const { real, routes, snapshots } = shown;
+    await replace(real.coordinator, shown);
+    const newRoom = real.session.readRoomRevision();
+    const before = roomFacts(real.session);
+
+    // The webview has moved to the new room, and something still names the old pill as it was drawn: refused.
+    await routes.router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, {
+      text: DRAFT, selectedTextSnapshotId: 'snap-1', roomRevision: shown.shownIn
+    }) as never);
+    expect(roomFacts(real.session)).toEqual(before);
+    expect(routes.posted(MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED).map((entry) => entry.payload.text)).toEqual([DRAFT]);
+
+    // The hook dropped its pill and asked again: the host answers a repeated subscribe with the current state.
+    const pushesBefore = routes.posted(MessageType.WORKSHOP_SELECTED_TEXT_CURRENT).length;
+    await routes.router.route(message(MessageType.WORKSHOP_SELECTED_TEXT_WATCH, { on: true }) as never);
+    const redrawn = routes.posted(MessageType.WORKSHOP_SELECTED_TEXT_CURRENT).slice(pushesBefore).map((entry) => entry.payload.selection);
+    expect(redrawn).toEqual([expect.objectContaining({ snapshotId: 'snap-1' })]);
+    expect(snapshots.find('snap-1')).toBeDefined();
+
+    // Drawn in the new room and sent as the new room's, it is accepted by the room check.
+    await routes.router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, {
+      text: DRAFT, selectedTextSnapshotId: 'snap-1', roomRevision: newRoom
+    }) as never);
+    const refusals = (routes.log.appendLine as jest.Mock).mock.calls.map(([line]) => line as string)
+      .filter((line) => line.includes('Send refused whole'));
+    expect(refusals).toHaveLength(1);
+    expect(routes.posted(MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED)).toHaveLength(1);
+  });
+
   it('the same send, in the room it was shown in, stages the selection', async () => {
     const shown = await roomWithAPillShown();
     const { real, routes } = shown;

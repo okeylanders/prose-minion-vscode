@@ -45,10 +45,10 @@ describe('useWorkshopSelectedText', () => {
     .map(([posted]: [{ type: MessageType; payload: Record<string, unknown> }]) => posted)
     .filter((posted) => posted.type === type)
     .map((posted) => posted.payload);
-  const mount = (pending: WorkshopMessageAttachmentSnapshot[] = []) => renderHook(
-    (props: { pending: WorkshopMessageAttachmentSnapshot[] }) =>
-      useWorkshopSelectedText({ seedReceiver: RECEIVER, pendingMessageAttachments: props.pending }),
-    { initialProps: { pending } }
+  const mount = (pending: WorkshopMessageAttachmentSnapshot[] = [], roomRevision = 1) => renderHook(
+    (props: { pending: WorkshopMessageAttachmentSnapshot[]; roomRevision?: number }) =>
+      useWorkshopSelectedText({ seedReceiver: RECEIVER, roomRevision: props.roomRevision ?? roomRevision, pendingMessageAttachments: props.pending }),
+    { initialProps: { pending } as { pending: WorkshopMessageAttachmentSnapshot[]; roomRevision?: number } }
   );
 
   beforeEach(() => {
@@ -61,7 +61,7 @@ describe('useWorkshopSelectedText', () => {
     const { result } = mount();
     expect(result.current.includeSelectedText).toBe(false);
     expect(result.current.livePill).toBeNull();
-    expect(result.current.sendSnapshotId).toBeUndefined();
+    expect(result.current.sendSelection).toBeUndefined();
     expect(result.current.persistedState).toEqual({ includeSelectedText: false });
     expect(posts(MessageType.WORKSHOP_SELECTED_TEXT_WATCH)).toEqual([]);
     // A push that arrives while it is off is nobody's.
@@ -78,12 +78,12 @@ describe('useWorkshopSelectedText', () => {
     act(() => result.current.handleSelectedTextCurrent(current(summary('snap-1'))));
     act(() => result.current.handleSelectedTextCurrent(current(summary('snap-2', { startLine: 50, endLine: 50 }))));
     expect(result.current.livePill).toEqual({ selection: summary('snap-2', { startLine: 50, endLine: 50 }) });
-    expect(result.current.sendSnapshotId).toBe('snap-2');
+    expect(result.current.sendSelection).toEqual({ snapshotId: 'snap-2', roomRevision: 1 });
 
     // A deselect clears the pill.
     act(() => result.current.handleSelectedTextCurrent(current(null)));
     expect(result.current.livePill).toBeNull();
-    expect(result.current.sendSnapshotId).toBeUndefined();
+    expect(result.current.sendSelection).toBeUndefined();
 
     act(() => result.current.handleSelectedTextCurrent(current(summary('snap-3'))));
     act(() => result.current.setIncludeSelectedText(false));
@@ -107,14 +107,14 @@ describe('useWorkshopSelectedText', () => {
     act(() => result.current.setIncludeSelectedText(true));
     act(() => result.current.handleSelectedTextCurrent(current(summary('snap-1'))));
     expect(result.current.livePill).toBeNull();
-    expect(result.current.sendSnapshotId).toBeUndefined();
+    expect(result.current.sendSelection).toBeUndefined();
 
     act(() => result.current.handleSelectedTextCurrent(current(summary('snap-2'))));
     expect(result.current.livePill?.selection.snapshotId).toBe('snap-2');
     // The staged pill is removed: the first selection would be live again.
     act(() => result.current.handleSelectedTextCurrent(current(summary('snap-1'))));
     rerender({ pending: [] });
-    expect(result.current.sendSnapshotId).toBe('snap-1');
+    expect(result.current.sendSelection).toEqual({ snapshotId: 'snap-1', roomRevision: 1 });
   });
 
   it('draws the live pill disabled, with the reason, when the message has no room, and names nothing on a send', () => {
@@ -123,8 +123,77 @@ describe('useWorkshopSelectedText', () => {
     act(() => result.current.setIncludeSelectedText(true));
     act(() => result.current.handleSelectedTextCurrent(current(summary('snap-1'))));
     expect(result.current.livePill).toEqual({ selection: summary('snap-1'), disabledReason: WORKSHOP_SELECTED_TEXT_FULL_REASON });
-    expect(result.current.sendSnapshotId).toBeUndefined();
+    expect(result.current.sendSelection).toBeUndefined();
     expect(workshopLiveSelectedText(true, summary('snap-1'), full.slice(1))).toEqual({ selection: summary('snap-1') });
+  });
+
+  describe('a pill belongs to the room it was drawn in (ADR 2026-11-14 D14; PR #264 P2)', () => {
+    it('stamps the pill with the room on screen when it arrived, and a send names that room', () => {
+      const { result } = mount([], 7);
+      act(() => result.current.setIncludeSelectedText(true));
+      act(() => result.current.handleSelectedTextCurrent(current(summary('snap-1'))));
+      expect(result.current.sendSelection).toEqual({ snapshotId: 'snap-1', roomRevision: 7 });
+    });
+
+    it('drops the pill when the room on screen changes, asks the host again, and shows a pill only from a push in the new room', () => {
+      const { result, rerender } = mount([], 1);
+      act(() => result.current.setIncludeSelectedText(true));
+      act(() => result.current.handleSelectedTextCurrent(current(summary('snap-1'))));
+      // A send racing the replacement, before the webview has heard of it, names room 1: the host refuses it.
+      const racing = result.current.sendSelection;
+      expect(racing).toEqual({ snapshotId: 'snap-1', roomRevision: 1 });
+      expect(posts(MessageType.WORKSHOP_SELECTED_TEXT_WATCH)).toEqual([{ on: true }]);
+
+      // New, Open, Rewind or Branch landed: the room on screen is room 2.
+      rerender({ pending: [], roomRevision: 2 });
+      expect(result.current.livePill).toBeNull();
+      expect(result.current.sendSelection).toBeUndefined();
+      // The host is asked for the current selection again; its answer is a fresh draw.
+      expect(posts(MessageType.WORKSHOP_SELECTED_TEXT_WATCH)).toEqual([{ on: true }, { on: true }]);
+
+      // The same snapshot pushed again is a pill drawn in room 2, and is sent as room 2's.
+      act(() => result.current.handleSelectedTextCurrent(current(summary('snap-1'))));
+      expect(result.current.livePill?.selection.snapshotId).toBe('snap-1');
+      expect(result.current.sendSelection).toEqual({ snapshotId: 'snap-1', roomRevision: 2 });
+      // Nothing ever named the old pill under the new room's revision.
+      expect(racing).toEqual({ snapshotId: 'snap-1', roomRevision: 1 });
+    });
+
+    it('never offers an old room\'s pill for a send, even in the render the room changed in', () => {
+      const seen: Array<ReturnType<typeof useWorkshopSelectedText>['sendSelection']> = [];
+      const { result, rerender } = renderHook(
+        (props: { roomRevision: number }) => {
+          const hook = useWorkshopSelectedText({ seedReceiver: RECEIVER, roomRevision: props.roomRevision, pendingMessageAttachments: [] });
+          seen.push(hook.sendSelection);
+          return hook;
+        },
+        { initialProps: { roomRevision: 1 } }
+      );
+      act(() => result.current.setIncludeSelectedText(true));
+      act(() => result.current.handleSelectedTextCurrent(current(summary('snap-1'))));
+      seen.length = 0;
+      rerender({ roomRevision: 2 });
+      // Every render since the change: no pill, so nothing to send.
+      expect(seen.length).toBeGreaterThan(0);
+      expect(seen.every((selection) => selection === undefined)).toBe(true);
+    });
+
+    it('asks nothing of the host on a room change while the toggle is off', () => {
+      const { rerender } = mount([], 1);
+      rerender({ pending: [], roomRevision: 2 });
+      expect(posts(MessageType.WORKSHOP_SELECTED_TEXT_WATCH)).toEqual([]);
+    });
+
+    it('drops a push that arrived for the first room when the first session state names another', () => {
+      // The window remembered the toggle on; the watch answers before the session snapshot does.
+      vscode.getState.mockReturnValue({ includeSelectedText: true });
+      const { result, rerender } = mount([], 0);
+      act(() => result.current.handleSelectedTextCurrent(current(summary('snap-1'))));
+      rerender({ pending: [], roomRevision: 5 });
+      expect(result.current.livePill).toBeNull();
+      act(() => result.current.handleSelectedTextCurrent(current(summary('snap-1'))));
+      expect(result.current.sendSelection).toEqual({ snapshotId: 'snap-1', roomRevision: 5 });
+    });
   });
 
   it('claims an offered selection before accepting it, accepts once under its receiver, and answers the provider', () => {

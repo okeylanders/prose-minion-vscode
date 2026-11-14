@@ -35,7 +35,9 @@ const shared: {
   session?: import('@/application/services/workshop/WorkshopSessionService').WorkshopSessionService;
   snapshots?: import('@/application/services/workshop/selection/EditorSelectionSnapshots').EditorSelectionSnapshots;
   readySession?: (pending: unknown[]) => unknown;
-} = {};
+  /** What the real handler's room check made of each send's selection, in order. */
+  sends: Array<{ ok: boolean; kind?: string; reason?: string }>;
+} = { sends: [] };
 
 /* eslint-disable @typescript-eslint/naming-convention -- the mocked barrel's export names and stylesheet modules. */
 jest.mock('@prose-minion/core', () => {
@@ -70,9 +72,13 @@ jest.mock('@prose-minion/core', () => {
         messages.MessageType.WORKSHOP_SELECTED_TEXT_WATCH
       ];
       return {
-        handleMessage: async (message: { type: string }) => {
+        handleMessage: async (message: { type: string; payload?: unknown }) => {
           if (routed.includes(message.type)) {
             await router.route(message);
+          }
+          // The send's own mutation begins with the real room check and staging, as the room handler calls it.
+          if (message.type === messages.MessageType.WORKSHOP_SEND_MESSAGE) {
+            shared.sends.push(handler.stageForSend(message.payload));
           }
         },
         setWorkshopSurfaceVisible: (visible: boolean) => handler.setVisible(visible),
@@ -109,7 +115,7 @@ import {
   recordingLog
 } from '@/__tests__/application/services/workshop/selection/selectedTextFixtures';
 
-const ROOM_REVISION = 4;
+/** The session state the host posts: always the real aggregate's own room revision. */
 const readySession = (pendingMessageAttachments: unknown[] = []) => ({
   type: MessageType.WORKSHOP_SESSION_STATE,
   source: 'extension.workshop',
@@ -119,7 +125,7 @@ const readySession = (pendingMessageAttachments: unknown[] = []) => ({
       participantSubjectReady: true,
       excerptVersion: 0,
       replacementCount: 0,
-      roomRevision: ROOM_REVISION,
+      roomRevision: shared.session!.readRoomRevision(),
       contextRevision: 0,
       contextAttachments: [],
       pendingMessageAttachments,
@@ -168,6 +174,7 @@ describe('Selected Text from the Workshop panel provider to the Workshop compose
     jest.useFakeTimers();
     __resetOverlayFocusStateForTests();
     shared.session = new WorkshopSessionService(() => 1);
+    shared.sends = [];
     editor = new FakeEditorSelection();
     let minted = 0;
     shared.snapshots = new EditorSelectionSnapshots(editor, recordingLog(), { mintId: () => `snap-${++minted}` });
@@ -405,8 +412,9 @@ describe('Selected Text from the Workshop panel provider to the Workshop compose
       editor.change(aliceSelection({ text: 'Who are YOU?', startLine: 50, endLine: 50 }));
       typeAndSend('Is the silence doing enough here?');
       expect(sent(MessageType.WORKSHOP_SEND_MESSAGE)).toEqual([
-        { text: 'Is the silence doing enough here?', selectedTextSnapshotId: 'snap-1', roomRevision: ROOM_REVISION }
+        { text: 'Is the silence doing enough here?', selectedTextSnapshotId: 'snap-1', roomRevision: shared.session!.readRoomRevision() }
       ]);
+      expect(shared.sends).toEqual([{ ok: true, kind: 'staged' }]);
       // The host still holds what the pill showed.
       expect(shared.snapshots!.find('snap-1')?.text).toBe(ALICE_TEXT);
 
@@ -416,6 +424,66 @@ describe('Selected Text from the Workshop panel provider to the Workshop compose
       await flush();
       expect(sent(MessageType.WORKSHOP_SELECTED_TEXT_WATCH)).toEqual([{ on: true }, { on: false }]);
       expect(livePill()).toBeNull();
+    });
+
+    describe('across a room replacement, from the webview to the host (ADR 2026-11-14 D14; PR #264 P2)', () => {
+      /** The pill is drawn in room A: toggle on, the push released. */
+      const pillShownInRoomA = async () => {
+        const panel = await openWorkshop();
+        editor.select(aliceSelection());
+        fireEvent.click(toggle());
+        await flush();
+        await drain(panel);
+        expect(livePill()?.textContent).toContain('lines 40–44');
+        return { panel, roomA: shared.session!.readRoomRevision() };
+      };
+      /** New: the aggregate becomes another room; its state is posted to the webview, as the room handler posts it. */
+      const replaceRoom = (panel: HostPanel) => {
+        shared.session!.reset();
+        panel.outbox.push(readySession(shared.session!.getSnapshot().pendingMessageAttachments));
+      };
+
+      it('a send that races the replacement names the room the pill was drawn in, and the host refuses it whole', async () => {
+        const { panel, roomA } = await pillShownInRoomA();
+        replaceRoom(panel);
+        expect(shared.session!.readRoomRevision()).not.toBe(roomA);
+        // The new room's state has not reached the webview: the pill is still on screen, drawn in room A.
+        typeAndSend('Is the silence doing enough here?');
+        expect(sent(MessageType.WORKSHOP_SEND_MESSAGE)).toEqual([
+          { text: 'Is the silence doing enough here?', selectedTextSnapshotId: 'snap-1', roomRevision: roomA }
+        ]);
+        expect(shared.sends).toEqual([expect.objectContaining({ ok: false, reason: 'room-changed' })]);
+        expect(staged()).toEqual([]);
+      });
+
+      it('once the webview shows the new room the old pill is gone: a send carries no selection until one is drawn there', async () => {
+        const { panel, roomA } = await pillShownInRoomA();
+        replaceRoom(panel);
+        const roomB = shared.session!.readRoomRevision();
+        // The webview processes the new room's state, and nothing else yet.
+        await release(panel, 1);
+        expect(livePill()).toBeNull();
+        // It asked the host for the current selection again.
+        expect(sent(MessageType.WORKSHOP_SELECTED_TEXT_WATCH)).toEqual([{ on: true }, { on: true }]);
+        expect(heldTypes(panel)).toEqual([MessageType.WORKSHOP_SELECTED_TEXT_CURRENT]);
+
+        // The selection still stands in the editor and its snapshot is still held, but no pill is on screen:
+        // the send names no selection, so the old pill is never stamped with the new room.
+        typeAndSend('Sent with no pill on screen.');
+        expect(sent(MessageType.WORKSHOP_SEND_MESSAGE)).toEqual([{ text: 'Sent with no pill on screen.' }]);
+        expect(shared.sends).toEqual([{ ok: true, kind: 'none' }]);
+        expect(shared.snapshots!.find('snap-1')).toBeDefined();
+
+        // The host's answer arrives: a pill drawn in room B, sent as room B's, and accepted.
+        await drain(panel);
+        expect(livePill()?.textContent).toContain('lines 40–44');
+        typeAndSend('Now with the pill I can see.');
+        expect(sent(MessageType.WORKSHOP_SEND_MESSAGE).at(-1)).toEqual(
+          { text: 'Now with the pill I can see.', selectedTextSnapshotId: 'snap-1', roomRevision: roomB }
+        );
+        expect(roomB).not.toBe(roomA);
+        expect(shared.sends.at(-1)).toEqual({ ok: true, kind: 'staged' });
+      });
     });
 
     it('hides the live pill when its snapshot is staged by hand: one selection, one pill', async () => {
