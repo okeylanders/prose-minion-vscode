@@ -25,22 +25,23 @@
  *
  * Every kind of seed runs the same protocol. Slice 3 has one kind, a Build
  * lens subject handed over from the Lightbox; Slice 4 adds a Lightbox tile,
- * staged above the composer (`lightboxTiles.ts`). A new kind joins
- * `WorkshopSeedKind`.
+ * staged above the composer (`lightboxTiles.ts`); Everyday Conveniences adds
+ * the editor's selection, staged the same way (`selectedText.ts`). A new kind
+ * joins `WorkshopSeedKind`.
  */
 
 import { MessageEnvelope, MessageType } from '../base';
 
 /** What a seed opens in the Workshop. */
-export type WorkshopSeedKind = 'lexical-gravity-build' | 'lightbox-tile';
+export type WorkshopSeedKind = 'lexical-gravity-build' | 'lightbox-tile' | 'selected-text';
 
 /**
  * Why the Workshop did not open a granted seed:
  * - `busy`: a sheet the writer is using is open (Build lens), or the room is
  *   busy: a response is running, or the session is being saved or replaced
- *   (a staged tile);
+ *   (a staged tile or selection);
  * - `full`: the next message already carries as many attachments as one may;
- * - `duplicate`: that tile is already waiting above the composer.
+ * - `duplicate`: that tile or selection is already waiting above the composer.
  */
 export type WorkshopSeedRefusal = 'busy' | 'full' | 'duplicate';
 

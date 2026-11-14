@@ -155,7 +155,7 @@ Focused passes, from Dialogue & Beats to Continuity — each one a single, opini
 
 ## The Workshop: a writers' room in an editor tab
 
-Choose **Open Workshop**, or select a passage and choose **Send Selection to Workshop**. Pick Jill or a specialist host, invite persona guests, and keep the work in one thread that saves itself to your project. Attach standing context of up to 100,000 words, run the writing tools in the room, and turn findings into a to-do list everyone can see. The Workshop is in beta.
+Choose **Open Workshop**, or select a passage and choose **Send to New Workshop Excerpt**. Pick Jill or a specialist host, invite persona guests, and keep the work in one thread that saves itself to your project. Attach standing context of up to 100,000 words, run the writing tools in the room, and turn findings into a to-do list everyone can see. The Workshop is in beta.
 
 **Explore one idea at a time.** Gesture Playground, Lexical Gravity, Creative Variations, and Show vs. Tell are widgets with a commit point you control. Show vs. Tell moves a told beat along a five-position continuum from **State it** to **Inhabit**, with a readout of what each position gains and costs, then returns alternatives to keep as prose or as a direction. Nothing is inserted into your manuscript.
 

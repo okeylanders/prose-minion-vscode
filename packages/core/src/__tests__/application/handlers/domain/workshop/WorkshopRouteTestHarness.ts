@@ -1,11 +1,12 @@
 import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import { WorkshopRoomHandler } from '@handlers/domain/workshop/WorkshopRoomHandler';
 import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
-import { unusedBookmarkBrowser, unusedMemoryDrafts } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
+import { unusedBookmarkBrowser, unusedMemoryDrafts, unusedSelectedText } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
 import type { FileEditApplyPort } from '@/domain/models/FileEdit';
 import { fakeFileEditApply, fakeFileEditStaging } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
+import type { WorkshopSelectedTextSnapshotsPort } from '@handlers/domain/workshop/WorkshopSelectedTextHandler';
 import { libraryHost } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import type {
   WorkshopWidgetRuntime
@@ -145,14 +146,18 @@ export interface WorkshopRouteTestHarnessOptions {
   memoryDrafts?: WorkshopMemoryDraftPorts;
   /** The session's clock (turn and bookmark times); 1 by default. */
   sessionNow?: () => number;
+  /** The aggregate the routes run over, when a test shares it with a real coordinator; a fresh one by default. */
+  session?: WorkshopSessionService;
   /** Persona file edits' staging port (ADR 2026-11-05 D4); absent by default, as before Slice 4 binds it. */
   fileEditStaging?: FileEditStaging;
   fileEditApply?: FileEditApplyPort;
+  /** Selected Text's snapshots (ADR 2026-11-14 D11); by default nothing is ever selected. */
+  selectedText?: WorkshopSelectedTextSnapshotsPort;
 }
 
 export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarnessOptions = {}): WorkshopRouteTestHarness => {
   let timeNow = new Date('2026-07-23T14:00:00.000Z');
-  const session = new WorkshopSessionService(options.sessionNow ?? (() => 1));
+  const session = options.session ?? new WorkshopSessionService(options.sessionNow ?? (() => 1));
   const contextBudgets = new Map<string, ContextBudgetSnapshot>();
   const contextSources = new Map<string, import('@messages').ContextSourceEntry[]>();
   // Committed history grows by one exchange per completed run; the completion
@@ -379,7 +384,8 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     options.bookmarkBrowser?.(session) ?? unusedBookmarkBrowser(),
     options.fileEditStaging ?? fakeFileEditStaging(),
     options.fileEditApply ?? fakeFileEditApply(),
-    options.memoryDrafts ?? unusedMemoryDrafts()
+    options.memoryDrafts ?? unusedMemoryDrafts(),
+    options.selectedText ?? unusedSelectedText()
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);

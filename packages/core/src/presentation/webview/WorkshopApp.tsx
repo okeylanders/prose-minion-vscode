@@ -155,6 +155,7 @@ import {
 import { useLexicalGravity } from '@hooks/domain/workshop/widgets/useLexicalGravity';
 import { useWorkshopSeedReceiver } from '@hooks/domain/workshop/useWorkshopSeedReceiver';
 import { useWorkshopLightboxTiles } from '@hooks/domain/workshop/useWorkshopLightboxTiles';
+import { useWorkshopSelectedText } from '@hooks/domain/workshop/useWorkshopSelectedText';
 import {
   useCreativeVariations
 } from '@hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations';
@@ -301,6 +302,7 @@ export const WorkshopApp: React.FC = () => {
   const { receiver: seedReceiver } = useWorkshopSeedReceiver();
   const lexicalGravity = useLexicalGravity({ seedReceiver });
   const lightboxTiles = useWorkshopLightboxTiles({ seedReceiver });
+  const selectedText = useWorkshopSelectedText({ seedReceiver, pendingMessageAttachments: workshop.pendingMessageAttachments });
   const creativeVariations = useCreativeVariations();
   const showVsTell = useShowVsTell();
   const excerptVerify = useWorkshopExcerptVerify();
@@ -477,6 +479,7 @@ export const WorkshopApp: React.FC = () => {
     gesturePlayground,
     lexicalGravity,
     lightboxTiles,
+    selectedText,
     creativeVariations,
     creativeVariationsAuthoring,
     showVsTell,
@@ -504,6 +507,7 @@ export const WorkshopApp: React.FC = () => {
     ...showVsTellAuthoring.persistedState,
     ...standingDirectives.persistedState,
     ...excerptVerify.persistedState,
+    ...selectedText.persistedState,
     ...chrome.persistedState,
     ...railTabs.persistedState,
     ...memoryExplainer.persistedState,
@@ -1524,7 +1528,7 @@ export const WorkshopApp: React.FC = () => {
           conversationBehavior={workshop.conversationBehavior}
           writerProfileShared={isWorkshopWriterProfileActive(workshop.writerProfile)}
           messageAttachments={workshop.pendingMessageAttachments}
-          onSend={workshop.sendMessage}
+          onSend={(text) => workshop.sendMessage(text)}
           onCancel={workshop.cancelRun}
           onOpenContext={openContext}
           onAttachToMessage={openMessageAttachSelector}

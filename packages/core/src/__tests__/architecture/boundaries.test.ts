@@ -119,6 +119,8 @@ const WORKSHOP_LEXICAL_HANDLER_OWNER =
   'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts';
 const WORKSHOP_LIGHTBOX_TILE_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopLightboxTileHandler.ts';
+const WORKSHOP_SELECTED_TEXT_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopSelectedTextHandler.ts';
 
 /**
  * Complete inbound Workshop route ledger. MessageRouter rejects duplicates at
@@ -388,6 +390,19 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: ['WORKSHOP_ACCEPT_LIGHTBOX_TILE']
   },
   {
+    // Selected Text (ADR 2026-11-14 D12, D14): the provider's offer and the
+    // toggle's watch are direct, since neither changes session state.
+    owner: WORKSHOP_SELECTED_TEXT_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_STAGE_SELECTED_TEXT', 'WORKSHOP_SELECTED_TEXT_WATCH']
+  },
+  {
+    // Staging the selection is a session mutation, as a tile's is.
+    owner: WORKSHOP_SELECTED_TEXT_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_ACCEPT_SELECTED_TEXT']
+  },
+  {
     owner: WORKSHOP_STANDING_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: [
@@ -470,6 +485,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopProjectMemoryManagerHandler',
   'WorkshopReactionHandler',
   'WorkshopSavedTurnMemoryHandler',
+  'WorkshopSelectedTextHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
   'WorkshopShowVsTellHandler',
@@ -2088,11 +2104,12 @@ describe('architectural boundaries', () => {
     // Helper Agent Slice 2 added the memory sheet's draft request, its cancel and the setting's read (direct).
     // Reply Edit Actions Slice 2 added the press on a reply's edit offer (mutation).
     // Message Reactions Slice 1 added the writer's reaction change and Hide on a persona's (mutation).
-    expect(expectedOwnerPairs).toHaveLength(94);
+    // Everyday Conveniences Slice B added the selection's offer and watch (direct) and its staging (mutation).
+    expect(expectedOwnerPairs).toHaveLength(97);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(51);
+      .toHaveLength(52);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(43);
+      .toHaveLength(45);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });

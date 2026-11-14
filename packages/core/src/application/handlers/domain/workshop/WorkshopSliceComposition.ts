@@ -24,6 +24,7 @@ import { WorkshopProjectMemoryManagerHandler } from '@handlers/domain/workshop/W
 import { WorkshopSavedTurnMemoryHandler } from '@handlers/domain/workshop/WorkshopSavedTurnMemoryHandler';
 import { WorkshopMemoryDraftHandler } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
+import { WorkshopSelectedTextHandler } from '@handlers/domain/workshop/WorkshopSelectedTextHandler';
 import { WorkshopPinnedContextHandler } from '@handlers/domain/workshop/WorkshopPinnedContextHandler';
 import { WorkshopFileEditHandler } from '@handlers/domain/workshop/WorkshopFileEditHandler';
 import { WorkshopEditOfferHandler } from '@handlers/domain/workshop/WorkshopEditOfferHandler';
@@ -83,6 +84,7 @@ export class WorkshopSliceComposition {
   private readonly savedTurnMemoryHandler: WorkshopSavedTurnMemoryHandler;
   private readonly memoryDraftHandler: WorkshopMemoryDraftHandler;
   private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
+  private readonly selectedTextHandler: WorkshopSelectedTextHandler;
   private readonly pinnedContextHandler: WorkshopPinnedContextHandler;
   private readonly fileEditHandler: WorkshopFileEditHandler;
   private readonly editOfferHandler: WorkshopEditOfferHandler;
@@ -107,6 +109,7 @@ export class WorkshopSliceComposition {
       bookmarkBrowser,
       fileEditApply,
       memoryDrafts,
+      selectedText,
       outputChannel
     } = dependencies;
     const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
@@ -234,6 +237,18 @@ export class WorkshopSliceComposition {
     );
     // A Lightbox tile handed over (Lightbox Slice 4): staged above the composer only after a granted claim.
     this.lightboxTileHandler = new WorkshopLightboxTileHandler(
+      session,
+      postMessage,
+      outputChannel,
+      {
+        postSessionState: host.postSessionState,
+        markDirty,
+        isRoomRunActive: host.isRoomRunActive
+      }
+    );
+    // The editor's selection (ADR 2026-11-14 D12): staged by snapshot id, only after a granted claim.
+    this.selectedTextHandler = new WorkshopSelectedTextHandler(
+      selectedText,
       session,
       postMessage,
       outputChannel,
@@ -420,6 +435,10 @@ export class WorkshopSliceComposition {
       router,
       this.createMutationRegistrar(router, 'WorkshopLightboxTileHandler')
     );
+    this.selectedTextHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopSelectedTextHandler')
+    );
     this.projectMemoryHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopProjectMemoryHandler')
@@ -450,6 +469,16 @@ export class WorkshopSliceComposition {
     return this.projectMemoryHandler.autoSavesInRoom();
   }
 
+  /** A send's Selected Text (ADR 2026-11-14 D14): staged inside the send's own mutation, or the whole send is refused. */
+  stageSelectedTextForSend(payload: Parameters<WorkshopSelectedTextHandler['stageForSend']>[0]) {
+    return this.selectedTextHandler.stageForSend(payload);
+  }
+
+  /** The panel's tab became visible or hidden: Selected Text's watch pushes only to a visible tab. */
+  setSurfaceVisible(visible: boolean): void {
+    this.selectedTextHandler.setVisible(visible);
+  }
+
   isContextRunActive(): boolean {
     return this.contextHandler.isRunning();
   }
@@ -466,6 +495,7 @@ export class WorkshopSliceComposition {
     this.showVsTellHandler.dispose();
     this.lexicalGravityHandler.dispose();
     this.lightboxTileHandler.dispose();
+    this.selectedTextHandler.dispose();
     this.bookmarkBrowserHandler.dispose();
     this.memoryDraftHandler.dispose();
     this.host.disposeRoomSubscriptions();

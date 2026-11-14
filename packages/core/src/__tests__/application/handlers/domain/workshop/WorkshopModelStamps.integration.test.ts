@@ -1,5 +1,5 @@
 import { emptyPinnedContextServices } from './workshopPinnedContextTestServices';
-import { unusedBookmarkBrowser, unusedMemoryDrafts } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
+import { unusedBookmarkBrowser, unusedMemoryDrafts, unusedSelectedText } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
 import { fakeFileEditApply, fakeFileEditStaging } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
 import {
   WorkshopRoomHandler
@@ -203,7 +203,8 @@ Add a key.`, conversationId, 'vendor/never');
       unusedBookmarkBrowser(),
       fakeFileEditStaging(),
       fakeFileEditApply(),
-      unusedMemoryDrafts()
+      unusedMemoryDrafts(),
+      unusedSelectedText()
     );
     const router = new MessageRouter();
     handler.registerRoutes(router);

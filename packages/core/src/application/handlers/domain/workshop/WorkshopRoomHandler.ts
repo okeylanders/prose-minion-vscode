@@ -19,6 +19,7 @@
 
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
+import type { WorkshopSelectedTextSnapshotsPort } from '@handlers/domain/workshop/WorkshopSelectedTextHandler';
 import type { WorkshopProjectMemoryPort } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import type { WorkshopPinnedContextServices } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 import {
@@ -322,7 +323,9 @@ export class WorkshopRoomHandler {
     private readonly fileEditStaging: FileEditStaging,
     /** Persona file edits' Apply and Preview (ADR 2026-11-05 D7–D9): the gateway, built in `extension.ts`. */
     fileEditApply: FileEditApplyPort,
-    memoryDrafts: WorkshopMemoryDraftPorts
+    memoryDrafts: WorkshopMemoryDraftPorts,
+    /** Selected Text's snapshots (ADR 2026-11-14 D11): `EditorSelectionSnapshots`, built in `extension.ts`. */
+    selectedText: WorkshopSelectedTextSnapshotsPort
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -359,6 +362,7 @@ export class WorkshopRoomHandler {
         bookmarkBrowser,
         fileEditApply,
         memoryDrafts,
+        selectedText,
         outputChannel: this.outputChannel
       },
       {
@@ -567,6 +571,15 @@ export class WorkshopRoomHandler {
     const text = typeof message.payload?.text === 'string' ? message.payload.text.trim() : '';
     if (text.length === 0) {
       this.sendError('workshop.send_message', 'Cannot send an empty message.');
+      return;
+    }
+
+    // Selected Text (ADR 2026-11-14 D14): the pill's snapshot is staged here, in the send's own mutation,
+    // after its room is checked; otherwise the whole send is refused and the draft goes back to the composer.
+    const selection = this.sliceComposition.stageSelectedTextForSend(message.payload);
+    if (!selection.ok) {
+      this.sendError('workshop.send_message', selection.message);
+      this.postComposerDraftRestored(text);
       return;
     }
 
@@ -1501,6 +1514,11 @@ export class WorkshopRoomHandler {
     this.outputChannel.appendLine(
       `[WorkshopRoomHandler] Cancel ignored: ${requestId} (domain=${domain}, active=${this.activeRun?.requestId ?? 'none'})`
     );
+  }
+
+  /** The panel's tab became visible or hidden (host-only, never a route). */
+  setSurfaceVisible(visible: boolean): void {
+    this.sliceComposition.setSurfaceVisible(visible);
   }
 
   private currentRunKind(): 'room' | 'wizard' | undefined {
