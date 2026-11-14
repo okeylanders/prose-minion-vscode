@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-11-07
 **Reviewed**: 2026-11-07
-**Status**: Identified
+**Status**: Resolved 2026-11-14 in the Everyday Conveniences closing pass: the guide now says 23 and points at `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES`. The number is still not held to the list by a test.
 **Priority**: Low
 **Estimated Effort**: Under an hour
 

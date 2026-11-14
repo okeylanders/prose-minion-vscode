@@ -25,7 +25,7 @@ prose-minion-vscode/
 ```
 
 **The two rules that define this architecture:**
-- **`packages/core` never imports `vscode`.** It depends only on the `Platform` ports (`packages/core/src/platform/`: `LogSink`, `SecretStore`, `SettingsStore`, `FileSystem`, `Workspace`, `ShellService`, `EditorContext`, `DocumentEditor`, `IssueAnnotator`). A non-VS-Code host (e.g. a console app) can reuse core by implementing these ports. **Verify before adding host-coupled code: no `from 'vscode'` in `packages/core/src`.**
+- **`packages/core` never imports `vscode`.** It depends only on the `Platform` ports (`packages/core/src/platform/`: `LogSink`, `SecretStore`, `SettingsStore`, `FileSystem`, `Workspace`, `ShellService`, `EditorContext`, `DocumentEditor`, `IssueAnnotator`). `EditorContext` also reports the current selection, empty included (`currentSelection`, `onDidChangeSelection`), beside the remembered one `getActiveSelection` serves ([ADR 2026-11-14](docs/adr/2026-11-14-everyday-conveniences.md) D10). A non-VS-Code host (e.g. a console app) can reuse core by implementing these ports. **Verify before adding host-coupled code: no `from 'vscode'` in `packages/core/src`.**
 - **`apps/vscode-extension` is the only composition root.** `extension.ts` constructs concrete services + the VS Code Platform implementations and threads them inward. The app imports core *only* through the `@prose-minion/core` barrel (enforced via `eslint no-restricted-imports`); core never imports the app.
 
 `extension.ts` builds a typed `CoreServices` bundle alongside `Platform`.
@@ -43,6 +43,8 @@ packages/core/src/
 ├── platform/           # Ports the host must implement (LogSink, SecretStore, FileSystem, …)
 ├── application/        # Application layer (orchestration)
 │   ├── services/       # Cross-domain application services (e.g. StandardsComparisonService)
+│   │   ├── workshop/reads/     # The shared read fit: WorkshopReadWindowFit (half the room left) and WorkshopReadShares (fair shares), for session recall and `resource.read` alike; imports nothing of recall (ADR 2026-11-14 D1)
+│   │   ├── workshop/selection/ # EditorSelectionSnapshots (the editor's selection by host-minted id, newest 8) and the Selected Text attachment's input (ADR 2026-11-14 D11)
 │   │   └── lightbox/LightboxBoardLibrary.ts # When Lightbox boards save, open as snapshots, restore after a reload, list and delete (Slice 5A); names and spark marks in place through LightboxBoardEdits (Slice 5A.1); every chapter's boards, a picked board file opened, and saves through LightboxBoardSaves: one file per board, named by date, rewritten in place (Slice 5A.2)
 │   └── handlers/       # Message routing and domain handlers
 │       ├── MessageHandler.ts    # Main dispatcher (routes messages)
@@ -51,6 +53,7 @@ packages/core/src/
 │       └── domain/              # 12 flat domains + the Workshop feature family
 │           ├── AnalysisHandler.ts
 │           ├── DictionaryHandler.ts
+│           ├── DictionaryHistorySearchRoute.ts # The history's definitions search: `SEARCH_DICTIONARY_HISTORY`, answered by request id with ids and snippets (registered by DictionaryHandler)
 │           ├── ContextHandler.ts
 │           ├── MetricsHandler.ts
 │           ├── SearchHandler.ts
@@ -69,18 +72,20 @@ packages/core/src/
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
 │           ├── LightboxBoardsHandler.ts   # The saved boards' routes: shelf, open, delete, rename (5A.1), open a board file through the host's picker (5A.2), and each committed save pushed (Slice 5A)
-│           └── workshop/                  # Room owner + 16 composed route owners
+│           └── workshop/                  # Room owner + 23 composed route owners (`WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES` in `boundaries.test.ts` is the list)
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
 │               ├── WorkshopRouteContracts.ts
 │               ├── WorkshopContextHandler.ts
 │               ├── WorkshopExcerptScopeHandler.ts
+│               ├── WorkshopExcerptContinuation.ts # Continue on a carried file passage: one room operation, read first (PR #260 F-01)
 │               ├── WorkshopSessionMessageHandler.ts
 │               ├── WorkshopSessionExportHandler.ts   # Read-only transcript export
 │               ├── WorkshopStandingDirectiveHandler.ts
 │               ├── WorkshopTodoHandler.ts
 │               ├── WorkshopReactionHandler.ts # Message reactions: the writer's add/remove, Hide on a persona's (ADR 2026-11-07)
 │               ├── WorkshopLightboxTileHandler.ts # A Lightbox tile offered, then staged above the composer (seed kind `lightbox-tile`)
+│               ├── WorkshopSelectedTextHandler.ts # Selected Text: the seed's offer and accept, the toggle's watch, and the send's room check (seed kind `selected-text`; ADR 2026-11-14 D12, D14)
 │               ├── WorkshopPinnedContextHandler.ts # Pinned context: the settings tab's list, pins, unpin, move, Attach missing, Open (ADR 2026-11-04)
 │               └── widgets/
 │                   ├── WorkshopWidgetHostHandler.ts
@@ -100,6 +105,7 @@ packages/core/src/
 ├── tools/            # Assist + Measure tools (assist/ measure/ shared/ utility/)
 ├── utils/            # Shared helpers
 └── shared/           # Shared types and utilities
+    ├── utils/        # Pure rules both sides run: foldedTextSearch.ts (case and accents folded; plain substring search, never a pattern from a query)
     └── types/        # Shared type definitions
         └── messages/   # Message contracts (domain-organized)
             ├── index.ts          # Barrel export
@@ -176,7 +182,8 @@ packages/core/src/presentation/webview/
 │   ├── useMessageRouter.ts     # Strategy: MessageType → handler; stable listener
 │   ├── useAppMessageRouter.ts  # Pure buildAppMessageRoutes() map (extracted from App.tsx)
 │   ├── fulltab/
-│   │   └── useFullTabChrome.ts # Generic full-tab chrome state + buildFullTabChromeRoutes (Workshop, Lightbox)
+│   │   ├── useFullTabChrome.ts # Generic full-tab chrome state + buildFullTabChromeRoutes (Workshop, Lightbox)
+│   │   └── useFullTabRailCollapse.ts # Whether a tab's rail is collapsed to its strip: the stored choice when wide, an overlay when narrow (opt-in; the Workshop's)
 │   └── domain/
 │       ├── useAccountBalance.ts        # OpenRouter account balance (ephemeral; empty persistedState)
 │       ├── useThemeSettings.ts         # Sidebar palette (follow-vscode default)
@@ -185,6 +192,7 @@ packages/core/src/presentation/webview/
 │       ├── useContextPathsSettings.ts  # Context paths configuration
 │       ├── useDictionary.ts            # Word/context state and tool name
 │       ├── useDictionaryHistory.ts     # Lookup history: host summaries, ‹ › cursor, draft slot (ADR 2026-10-14)
+│       ├── useDictionaryHistorySearch.ts # "Also search definitions": one debounced request by id, only the pending answer taken; persists nothing
 │       ├── useMetrics.ts               # Per-subtool cache; source mode/path helpers
 │       ├── useModelsSettings.ts        # Model selection settings, and which scopes follow another until picked (the Lightbox's; Slice 4L)
 │       ├── usePublishingSettings.ts    # Publishing presets and trim size
@@ -227,8 +235,10 @@ packages/core/src/presentation/webview/
 │           ├── useWorkshopSeedReceiver.ts  # This mount's seed receiver id, announced once listening (PR #150 F-08)
 │           ├── useWorkshopSeedClaim.ts     # Hold, claim and answer a handed-over seed, per kind
 │           ├── useWorkshopLightboxTiles.ts # A Lightbox tile: claim, accept after the grant, answer
+│           ├── useWorkshopSelectedText.ts  # Selected Text: the seed's claim and accept, the "Include selected text" toggle (persisted), the live pill's metadata
 │           ├── useWorkshopEditOffers.ts    # A reply's edit-offer chips: the press (ids only), its correlated answer, the one announcement (ADR 2026-11-10 U2–U6)
 │           ├── controllers/            # Transient modal/surface state machines
+│           │   ├── useWorkshopRailTabs.ts  # The rail's tabs and unseen-arrival badges; `railHidden` when the rail is collapsed
 │           │   ├── creativeVariations/useCreativeVariationsAuthoring.ts
 │           │   └── showVsTell/         # useShowVsTellAuthoring, Intake, CommitFlow, InvalidationWatch
 │           └── widgets/                # Named feature transport/correlation hooks
@@ -252,6 +262,24 @@ Patterns and conventions:
   root: at 1240px and below the tab scrolls as one page with the aside under
   the rail, and at 760px everything stacks. See
   [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D1–D2.
+  - **A rail may collapse, by opt-in** (Everyday Conveniences item D, PR #261).
+    `FullTabShell`'s `railCollapse` is optional and only the Workshop passes
+    it. Without it the shell's markup is as it was, and
+    `FullTabShell.test.tsx` pins that. A tab with an aside never collapses:
+    the shell ignores `railCollapse` beside one.
+  - **Its state is `useFullTabRailCollapse`, never `useFullTabChrome`,** whose
+    persistence the Lightbox shares. The stored choice
+    (`fullTabRailCollapsed`, per window) applies above 900px. At 900px and
+    below the rail starts collapsed and opens as an overlay, which never
+    writes the stored choice.
+  - **The strip is the tab's** (`components/workshop/WorkshopRailStrip`),
+    handed to the shell as `railCollapse.strip`. The shell and
+    `FullTabRail` name no tab.
+  - **The rail's content stays mounted while collapsed,** hidden, so an
+    inline edit or draft a panel holds survives.
+  - **A tab that opts in tells its badge logic the rail is hidden**
+    (`useWorkshopRailTabs`' `railHidden`), so what arrives while collapsed
+    is badged on the strip.
 - Shared project picker: "Choose from project" is one component,
   `components/fulltab/ProjectResourcePickerModal`, with
   `ProjectResourceAttachFooter` for attach mode. The Workshop's
@@ -367,6 +395,7 @@ useMessageRouter({
 | useMetrics | MetricsHandler | Word frequency, stats, style flags |
 | useDictionary | DictionaryHandler | Word lookups |
 | useDictionaryHistory | DictionaryHandler (+ `DictionaryHistoryStore`) | Dictionary lookup history |
+| useDictionaryHistorySearch | DictionaryHistorySearchRoute (in DictionaryHandler; + `DictionaryHistoryStore.searchDefinitions`) | The history's definitions search |
 | useContext | ContextHandler | Context generation |
 | useSearch | SearchHandler | Word search |
 | useSettings | ConfigurationHandler | Settings, models, API keys |
@@ -378,6 +407,7 @@ useMessageRouter({
 | useLightboxProjectFiles | LightboxHandler (catalog, search, source) and LightboxReadingHandler (context), through `LightboxProjectFiles` | The Lightbox's project picker |
 | useLightboxPassages | LightboxPassageHandler (+ `LightboxService.passageSource`) | The inspector's passages: a paragraph's text, a counted item's sentences |
 | useWorkshopLightboxTiles | WorkshopLightboxTileHandler | A Lightbox tile staged in the Workshop |
+| useWorkshopSelectedText | WorkshopSelectedTextHandler (+ `EditorSelectionSnapshots`) | The editor's selection as a message's Selected Text pill |
 
 **Benefits**:
 - ✅ Same domain boundaries on both sides
@@ -853,14 +883,14 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-11-12 on `epic/workshop-reply-edit-actions` as it went to `main`: Reply Edit Actions, Message Reactions, the memory fence fix and the model catalog refresh):
-- 843 suites / 11,915 tests / 59 snapshots
+**Test Inventory** (measured 2026-11-14 on `epic/everyday-conveniences-close`: the whole Everyday Conveniences epic, items A–E, before it goes to `main`):
+- 870 suites / 12,312 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's sixteen composed route owners
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's 23 composed route owners (the list is `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES`)
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):
@@ -1005,9 +1035,11 @@ Workshop:
   what the old one held as `reset` and resends what it never claimed. Late
   replies from an old receiver are ignored.
 - **Acting on a grant.** A follow-up that changes session state (a tile's
-  `WORKSHOP_ACCEPT_LIGHTBOX_TILE`) names its receiver, and the provider
-  forwards it only while `WorkshopSeedDelivery.isGranted` holds for that
-  delivery and receiver (PR #151 F-06).
+  `WORKSHOP_ACCEPT_LIGHTBOX_TILE`, a selection's
+  `WORKSHOP_ACCEPT_SELECTED_TEXT`) names its receiver, and the provider
+  forwards it only while its own kind's `WorkshopSeedDelivery.isGranted`
+  holds for that delivery and receiver (`WorkshopPanelProvider.acceptsSeed`;
+  PR #151 F-06).
 - **Visibility** is checked at dispatch, not at the grant.
 - **A new kind** joins `WorkshopSeedKind`, gets a delivery in the provider's
   `Record`, a receiver hook composing `useWorkshopSeedClaim`, and an entry in
@@ -1017,16 +1049,80 @@ Workshop:
   quotes and builds the payload; the Workshop checks it again on arrival.
   "Sent" or "staged" waits for the Workshop's own answer, or for its session
   holding the tile when that answer was lost.
+- **The editor sends an id only.** Add Selection to Workshop Message
+  captures a snapshot at the gesture and offers its id; the Workshop's host
+  reads the text by that id on accept. See **Workshop Selected Text**.
 - **Attachment kinds.** A staged attachment that is not a file declares its
   frame kind in `shared/constants/workshopThreadArtifactKinds.ts`; the frame
   builder, the session codec and the session's commit check all read that
   registry, and the body is neutralized like any other. A committed artifact
   has one owner, a widget commit or a message attachment, and each owner's
   kind is checked (PR #151 F-05).
-- **Attachment identity.** A tile is its board and tile ids. Staging,
+- **Attachment identity.** A tile is its board and tile ids. A selection is
+  its snapshot id (`selected-text:<snapshotId>`). Staging,
   Rewind's restage and hydration all ask `WorkshopMessageAttachmentIdentity`
   whether two attachments are one source, so no whole-room operation puts a
-  tile above the composer twice (PR #151 F-01).
+  tile or a selection above the composer twice (PR #151 F-01).
+
+### Workshop Selected Text
+
+Follow [ADR 2026-11-14](docs/adr/2026-11-14-everyday-conveniences.md) D9–D17
+(PR #264) when touching the Selected Text pill, the "Include selected text"
+toggle, or how the editor's selection reaches a message:
+
+- **One pill, two ways in; neither touches the excerpt.** The command Add
+  Selection to Workshop Message stages the pill by hand, as a seed. The
+  composer's toggle shows the current selection as the same pill, live, and
+  attaches it at the send. The room's excerpt never changes.
+- **Text never travels webview → host.** `EditorSelectionSnapshots`
+  (`application/services/workshop/selection/`) holds the selection under a
+  host-minted id.
+  - It is built only in `extension.ts`, one per window, and placed in
+    `CoreServices`.
+  - It keeps the newest 8. The same document, lines and text as the newest
+    snapshot return that snapshot, so one selection has one id.
+  - The webview gets metadata only (id, display name, lines, word count,
+    cut or not, a one-line preview) and sends back only the id.
+- **The cache is the window's; the send is bound to its room.** Replacing
+  the room empties nothing. A send naming a snapshot also names
+  `roomRevision`, and `WorkshopSelectedTextHandler.stageForSend` compares it
+  with the live room's inside the send's own mutation, before it looks the
+  snapshot up (PR #259).
+  - Another room (New, Open, Rewind or Branch landed in between), an
+    unknown id, or a message already full refuses the **whole** send, and
+    the draft goes back to the composer (`postComposerDraftRestored`).
+  - The live selection is never sent unseen. Never send the message without
+    the selection instead.
+  - A snapshot already staged by hand rides the send as it is.
+- **Named apart.** The attachment kind, the seed kind and the meta field are
+  `selected-text` / `selectedText`. `editor-selection` stays the excerpt's
+  source kind only (D13). Never reuse one for the other.
+- **The frame's lines come from the turn's attachment reference**
+  (`workshopThreadArtifactKinds.ts`: the kind's preamble is a function of
+  the attachment's `selectedText`), never from the editor at send time.
+- **Session codec.** `selectedText` is an optional key on a pending
+  attachment and on a turn's attachment reference, exact inside.
+  - No `schemaVersion` bump and no normalization (ADR 2026-07-30).
+  - Forward only: an older build's strict reader rejects a session that
+    holds the key.
+  - `__tests__/fixtures/workshop-session-v2-before-selected-text.json` is
+    the authentic session from before the slice; it must keep reading.
+- **The watch is held only while the panel watches and is visible.**
+  `WORKSHOP_SELECTED_TEXT_WATCH { on }` subscribes; the handler listens to
+  the snapshot service only while watching and visible (`setVisible`, from
+  the panel's view state), and pushes `WORKSHOP_SELECTED_TEXT_CURRENT` once
+  on subscribe and on becoming visible again. The live pill is not session
+  state: a selection change never dirties or saves the session.
+- **The toggle is a UI preference** (`includeSelectedText` in
+  `useWorkshopSelectedText`'s `persistedState`), off by default, per window.
+- **Bounds** are `PROMPT_BUDGETS.workshopSelectedText` (`words`,
+  `characters`, `previewCharacters`, `snapshots`, `pushIntervalMs`). A
+  selection over the bound is cut at capture and the pill says so before
+  the send. A whole-file selection is never refused.
+- **Export and recall show the label only** ("Selected Text"): never the
+  text, the path or the lines (D16). A test pins the projection.
+- **Logs** carry the kind, ids and counts (words, cut or not), never the
+  text, a path or lines.
 
 ### Workshop Transcript Export
 
@@ -1067,9 +1163,11 @@ sessions:
   return `undefined` carries an explicit `never` default.
 - **The engine's window seam.** `AgentCapability.fulfill(request, window?)`
   is the one change outside the Workshop: the engine measures the free
-  context window with the preflight's estimator, and recall clamps each read
-  to half of it. Other capabilities ignore the window. With no window (an
-  unknown context length), a turn's reads share one read's worth.
+  context window with the preflight's estimator. Recall and `resource.read`
+  each fit a read to half of it, through `reads/WorkshopReadWindowFit`
+  (ADR 2026-11-14 D1, D2). Other capabilities ignore the window. With no
+  window (an unknown context length), a turn's reads share one read's worth,
+  each family its own.
 - **Hints decode as written.** Every continuation and hint a renderer emits
   must decode, exactly as written, through the codec, alone and followed
   together. The grammar prompt teaches each form, and a sync test pins its
@@ -1077,6 +1175,9 @@ sessions:
 - **Boundary lists.** A new `recall/` module joins `WORKSHOP_RECALL_MODULES`
   and the capability boundary in `boundaries.test.ts`, and stays under 500
   lines. No handler constructs the recall service; one instance owns the cache.
+  - The fit and the fair shares live in `reads/` (`WORKSHOP_READS_MODULES`),
+    not `recall/`. Recall may import `reads/`; `reads/` imports nothing of
+    recall. See **Workshop File Reads**.
 - **Bookmarks and the open room** ([ADR 2026-11-05](docs/adr/2026-11-05-workshop-bookmark-recall.md)).
   `transcript.bookmarks` is the one operation that reads the open room, and
   only its bookmarks, through `WorkshopLiveRoomBookmarks`: a types-only port
@@ -1107,6 +1208,95 @@ sessions:
   - **A live turn outside the window** saves through `WORKSHOP_SAVE_TURN_TO_MEMORY` with `roomRevision`.
   - **A proposal's `<cites-turn>`** is checked at save by `workshopProposalProvenance`. It keeps an id only when the open room's ledger holds the turn and the proposer could see it (`isWorkshopTurnVisibleToParticipant`), and drops anything else by id. Kept turns join `sourceTurns` within 32, and `sourceSession` stays the live room.
   - **Saved-session citations are refused** until memories have multi-session sources.
+
+### Workshop File Reads
+
+Follow [ADR 2026-11-14](docs/adr/2026-11-14-everyday-conveniences.md) D1–D8
+(PR #263) when touching `resource.read`, how a read is fitted, or what its
+card records:
+
+- **One fitting module.** `reads/WorkshopReadWindowFit` (the largest read
+  whose evidence costs at most half the room left) and
+  `reads/WorkshopReadShares` (fair shares, water-filling) serve recall and
+  file reads alike.
+  - `reads/` imports only what `WORKSHOP_READS_ALLOWED_IMPORTS` lists
+    (`boundaries.test.ts`). A new dependency is added there on purpose.
+  - It imports nothing of recall, memory, session, store or renderer
+    modules.
+- **The bounds** are `PROMPT_BUDGETS.workshopResource`:
+  - `readBytes`: a read of one file, with its `readDefaultLines` window;
+  - `readPaths`: files one read names;
+  - `readBytesMulti`: a read naming two or more, shared fairly;
+  - `readMinimumBytes`: the least a file is given.
+- **Window known:** no per-turn byte total. The fit and the call ceiling
+  are the bounds.
+- **Window unknown:** the turn's file reads together share one
+  `readBytesMulti`, and a limited or refused read says why.
+- **The minimum.** A read whose limit holds less than `readMinimumBytes`
+  for each readable file (or the whole of a smaller one) is refused, with
+  the room it had. It is never cut below the minimum.
+- **A line is never cut.** A line longer than its file's share is that
+  file's own outcome, `line-too-long`: no text, no manifest row, no line
+  range and no fingerprint for that file (D2a, PR #259 F-01).
+- **Every hint makes progress.** A continuation names a later `startLine`,
+  or the same `startLine` with fewer files. It never repeats its own
+  request (`WorkshopResourceReadLongLines.test.ts` follows every hint to
+  the end).
+- **Hints decode as written.** Each continuation is a complete one-path
+  call on one line, and `resourceReadPromptSync.test.ts` decodes every
+  taught form and every hint through the codec.
+- **The grammar** (`WorkshopResourceXmlCodec`):
+  - `<path>` repeats, 1 to `readPaths`; `<group>` is required once;
+  - a `<path>` in another group carries its own `group` attribute;
+  - `startLine` / `endLine` only beside exactly one `<path>`
+    (`ambiguous-lines`);
+  - duplicates are refused (`duplicate-path`), by group and case-folded
+    path. This is deliberately stricter than `findConfiguredResource`,
+    which prefers an exact match: a case-distinct configured pair is read
+    in two calls.
+- **One call, one card, a row per file.** A read is one call against the
+  turn's ceiling and one capability card whose metadata lists each file.
+  - Manifest rows come from `WorkshopResourceCapability.deliveredSources`,
+    one per file that delivered a line, each with its own line range and
+    fingerprint.
+  - A fingerprint never enters the card's metadata.
+- **A file's share inside a multi-file read is not capped at the one-file
+  `readBytes`** (D5 as written; confirmed in PR #263's review).
+  - A line a one-path read can never deliver can land beside a small file.
+  - The window fit still bounds the whole read.
+  - `WorkshopResourceReadMultiFileShareNotCappedAtReadBytes.test.ts` holds
+    the choice. Change it only with the ADR.
+- **The instruction is code,** not a prompt file:
+  `WorkshopResourceInstruction.ts`, with every number from
+  `PROMPT_BUDGETS`. It is entered once and frozen for a conversation, so an
+  older conversation keeps one path a call, which stays valid.
+- **The family's module list is closed.** `boundaries.test.ts` names every
+  `WorkshopResource*.ts` module; a new one joins the list and the
+  capability boundary, imports nothing of recall or memory, and stays under
+  500 lines.
+- **Logs.** A read naming several files logs counts and groups, never a
+  path. A one-path read keeps the line it has always had, which names its
+  configured path (`workshopResourceRequestLogSummary`).
+
+### Workshop Excerpt Re-read
+
+Follow Everyday Conveniences item E (PR #260) when touching Re-read from
+file or Continue on a carried passage:
+
+- **Re-read from file shows for any `file`-kind excerpt,** with or without
+  a conversation (`ExcerptPanel`). A pasted or selected excerpt never
+  offers it.
+- **Continue on a carried file passage is one message and one room
+  operation.** The webview posts `WORKSHOP_SET_SESSION_SCOPE { rereadFile }`
+  once; `WorkshopExcerptContinuation` runs it through `runContextRefresh`.
+  - It reads first. Then the scope is chosen and the passage landed
+    together, with nothing awaited between.
+  - A send during the read is refused in the room's busy words.
+  - An unchanged file says so and keeps its version; an unreadable one
+    continues on the carried text and says it could not be re-read.
+- **A future "choose the path and change the passage" flow goes through a
+  room operation,** never two webview messages (PR #260 F-01): ordered
+  sends are not ordered completions.
 
 ### Workshop Pinned Context
 
@@ -2234,6 +2424,34 @@ small model job, or touching the memory sheet's automatic draft:
     F-01).
 - **Logs** carry the task, model, outcome and counts, never the text.
 
+### Dictionary History Search
+
+Follow [ADR 2026-10-14](docs/adr/2026-10-14-dictionary-lookup-history.md)'s
+amendment of 2026-11-14 (D10, D11; PR #262) when touching the history
+popup's search:
+
+- **The popup filters what it holds.** Word, context preview and file name
+  are matched in the webview over the summaries it already has
+  (`utils/dictionaryHistorySearch.ts`, pure). No message is sent.
+- **A word matches through `dictionaryPhraseKey`,** the prior-lookup
+  offer's rule. A test holds the two together.
+- **One fold, both sides.** `shared/utils/foldedTextSearch.ts` folds case
+  and accents; matching is plain substring search on folded text. Never
+  build a pattern from a query.
+- **Definitions are searched on the host.** `SEARCH_DICTIONARY_HISTORY`
+  goes to `DictionaryHistorySearchRoute`, which asks
+  `DictionaryHistoryStore.searchDefinitions`.
+  - The webview mints `requestId` and the host echoes it.
+  - The answer carries ids and snippets, never a body.
+  - The query is clipped on both sides, never refused.
+- **Only the pending answer is taken,** and the popup shows it only for the
+  query on screen (`useDictionaryHistorySearch`). A newer query, the toggle
+  going off or the popup closing stops the wait before anything new is
+  sent.
+- **Nothing is persisted:** the query and the toggle are the open popup's
+  state.
+- **Logs carry counts only,** never the query, a word, a path or a snippet.
+
 ### Editor Menus and Command Titles
 
 Every contributed command takes `"category": "Prose Minion"` and a short
@@ -2244,6 +2462,16 @@ command goes in that submenu's menu, with its own `when` clause, never
 straight into `editor/context`. `editorContextMenu.test.ts` evaluates the
 `when` clauses as VS Code does: add a row to its table for a new editor
 state.
+
+Two Workshop commands take a selection, and their titles keep them apart
+(ADR 2026-11-14 D9):
+
+- **`prose-minion.workshopSelection` is titled "Send to New Workshop
+  Excerpt".** It replaces the room's excerpt, as it always has.
+- **`prose-minion.addSelectionToWorkshopMessage` is "Add Selection to
+  Workshop Message".** It stages a Selected Text pill for the next message
+  and never touches the excerpt. It sits beside the first in the submenu
+  (`2_open@1`, `2_open@2`).
 
 ### Operational Tips
 
