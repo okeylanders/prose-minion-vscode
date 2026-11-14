@@ -1,6 +1,6 @@
 # Epic: Everyday Conveniences
 
-**Status:** In progress. Slice 0 is merged (PR #259). E is merged (PR #260). D and C are in review (PRs #261, #262). A and B are being built.
+**Status:** In progress. Slice 0 is merged (PR #259). E and C are merged (PRs #260, #262). D is in review (PR #261). A and B are being built.
 **Priority:** Medium
 **Opened:** 2026-11-14
 **Branch:** `epic/everyday-conveniences`, cut from `main` at `964aa0e4`
@@ -32,7 +32,7 @@ live in this README and the ADR.
 | 0 | Spec | `epic/everyday-conveniences-spec` | The ADR (A and B) | Done: PR #259, merged `5cfbaa64` ([review](../../../docs/pr-reviews/pr-259-everyday-conveniences-adr-review.md): one finding, fixed as D2a) |
 | E | Re-read in a new room | `…-reread-excerpt` | Re-read from file on any file-backed excerpt; Continue re-reads, as one host operation | Done: PR #260, merged `13fa4165` ([review](../../../docs/pr-reviews/pr-260-reread-excerpt-review.md): one finding, fixed) |
 | D | Collapsible rail | `…-collapsible-rail` | `FullTabShell` opt-in; the Workshop's rail collapses to an icon strip | PR #261, in review |
-| C | Dictionary history search | `…-dictionary-history-search` | Filter in the popup; "Also search definitions" on the host | PR #262, in review |
+| C | Dictionary history search | `…-dictionary-history-search` | Filter in the popup; "Also search definitions" on the host | Done: PR #262, merged `c1c9e2be` ([review](../../../docs/pr-reviews/pr-262-dictionary-history-search-review.md): no blocking findings) |
 | A | Multi-file reads | `…-multi-file-reads` | Shared window fit; `resource.read` fitted; repeated `<path>` | In progress |
 | B | Selected Text | `…-selected-text` | Port fix, snapshots by id, `editor-selection` attachment, command and toggle; the old command retitled | In progress |
 
@@ -103,6 +103,7 @@ Decisions made while building are added below as they are taken.
 |---|---|---|---|
 | Baseline (`main` at `964aa0e4`) | not run | | |
 | E's branch at `0cf83f13` (PR #260) | 844 | 11,964 | 59 |
+| C's branch at `67a7222e` (PR #262) | 850 | 12,041 | 59 |
 
 ## Completion Criteria
 
