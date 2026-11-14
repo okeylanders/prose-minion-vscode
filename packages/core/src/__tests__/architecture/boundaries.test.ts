@@ -1127,7 +1127,6 @@ const WORKSHOP_RECALL_MODULES = [
   'WorkshopRecallDocumentCache.ts',
   'WorkshopRecallDocumentLoader.ts',
   'WorkshopRecallOperationResults.ts',
-  'WorkshopRecallReadAllocation.ts',
   'WorkshopRecallReadOperation.ts',
   'WorkshopRecallReadSection.ts',
   'WorkshopRecallReadWindow.ts',
@@ -1138,7 +1137,6 @@ const WORKSHOP_RECALL_MODULES = [
   'WorkshopRecallTime.ts',
   'WorkshopRecallTodoList.ts',
   'WorkshopRecallTodosOperation.ts',
-  'WorkshopRecallWindowClamp.ts',
   'WorkshopTranscriptRecallCapability.ts',
   'WorkshopTranscriptRecallRenderer.ts',
   'WorkshopTranscriptRecallRequestCopy.ts',
@@ -1191,6 +1189,22 @@ const WORKSHOP_MEMORY_MODULES = [
   'WorkshopReplyMemory.ts',
   'WorkshopReplyMemoryEdit.ts'
 ];
+/**
+ * The shared read fit (ADR 2026-11-14 D1): the window fit and the fair
+ * shares, used by session recall and by file reads. Recall may import it;
+ * it imports no recall, memory, session, store or renderer module.
+ */
+const WORKSHOP_READS_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'reads');
+const WORKSHOP_READS_MODULES = [
+  'WorkshopReadShares.ts',
+  'WorkshopReadWindowFit.ts'
+];
+/** All a module under `reads/` may import. */
+const WORKSHOP_READS_ALLOWED_IMPORTS = [
+  '@orchestration/RequestContextPreflight',
+  '@shared/types/workshopCapabilities'
+];
+
 const MEMORY_TYPE_ONLY_MODULE = /(?:^|\/)(?:ProjectMemoryStore|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService)$/;
 
 const WORKSHOP_CAPABILITY_BOUNDARY = [
@@ -1206,7 +1220,8 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceRead.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceInstruction.ts'),
   ...collectSourceFiles(WORKSHOP_RECALL_ROOT),
-  ...collectSourceFiles(WORKSHOP_MEMORY_ROOT)
+  ...collectSourceFiles(WORKSHOP_MEMORY_ROOT),
+  ...collectSourceFiles(WORKSHOP_READS_ROOT)
 ];
 const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)|import\s+.*['"](?:vscode|react|@providers\/))/;
 
@@ -1863,6 +1878,30 @@ describe('architectural boundaries', () => {
       .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
     // Each module stays under 500 lines.
     expect(recallFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
+      .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
+  });
+
+  it('keeps the shared read fit free of recall, memory, session, store and renderer modules (ADR 2026-11-14 D1)', () => {
+    const readsFiles = collectSourceFiles(WORKSHOP_READS_ROOT);
+    expect(readsFiles.map((file) => path.basename(file)).sort()).toEqual(WORKSHOP_READS_MODULES);
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(readsFiles));
+    const imports = readsFiles.flatMap((file) =>
+      moduleImports(file, fs.readFileSync(file, 'utf8'))
+        .map((entry) => ({ file: path.relative(SRC_ROOT, file), ...entry }))
+    );
+    // An allowlist, so a new dependency is added here on purpose.
+    expect(imports
+      .filter(({ module }) => !WORKSHOP_READS_ALLOWED_IMPORTS.includes(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    expect(imports
+      .filter(({ module }) => /\/(?:recall|memory|session|pinnedContext)\/|Workshop(?:Session|RoomFrame|ThreadArtifact)/.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // The move left nothing behind: recall holds neither module, and names neither file.
+    const recallNames = collectSourceFiles(WORKSHOP_RECALL_ROOT).map((file) => path.basename(file));
+    expect(recallNames).not.toContain('WorkshopRecallWindowClamp.ts');
+    expect(recallNames).not.toContain('WorkshopRecallReadAllocation.ts');
+    // Each module stays under 500 lines.
+    expect(readsFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
       .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
   });
 
