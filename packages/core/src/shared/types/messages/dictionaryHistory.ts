@@ -121,3 +121,47 @@ export interface DictionaryHistoryEntryMessage
   extends MessageEnvelope<DictionaryHistoryEntryPayload> {
   type: MessageType.DICTIONARY_HISTORY_ENTRY;
 }
+
+// History search: definitions, on the host (the ADR's 2026-11-14 amendment)
+
+export interface SearchDictionaryHistoryPayload {
+  /** Minted by the webview and echoed by the host; the popup takes only the answer it still waits for. */
+  requestId: string;
+  /** As typed. The host reads at most `DICTIONARY_HISTORY_SEARCH_QUERY_CHARS` of it. */
+  query: string;
+}
+
+export interface SearchDictionaryHistoryMessage
+  extends MessageEnvelope<SearchDictionaryHistoryPayload> {
+  type: MessageType.SEARCH_DICTIONARY_HISTORY;
+}
+
+/**
+ * The first hit in one result body, with a little of the text around it.
+ * Whitespace is collapsed, and `before` and `after` carry an `…` where they
+ * were cut. Each part is bounded; no body ever crosses to the webview here.
+ */
+export interface DictionaryHistorySearchSnippet {
+  before: string;
+  hit: string;
+  after: string;
+}
+
+export interface DictionaryHistoryDefinitionMatch {
+  id: string;
+  snippet: DictionaryHistorySearchSnippet;
+}
+
+export type DictionaryHistorySearchResultPayload =
+  | {
+    requestId: string;
+    status: 'found';
+    /** Newest first, one per entry whose result holds the query. */
+    matches: DictionaryHistoryDefinitionMatch[];
+  }
+  | { requestId: string; status: 'failed' };
+
+export interface DictionaryHistorySearchResultMessage
+  extends MessageEnvelope<DictionaryHistorySearchResultPayload> {
+  type: MessageType.DICTIONARY_HISTORY_SEARCH_RESULT;
+}

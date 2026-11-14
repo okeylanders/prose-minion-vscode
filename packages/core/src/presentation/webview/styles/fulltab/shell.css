@@ -244,6 +244,84 @@
   border-radius: 6px;
   border: 3px solid var(--pm-bg);
 }
+/* Collapsible rail (Everyday Conveniences, item D). Opt-in through
+   FullTabShell's `railCollapse`; a tab that does not opt in gets none of
+   these classes. Plain grid and one transition, on the Chromium 114 floor.
+   - Collapsed, the rail's column is a strip the tab fills with its own icons.
+   - On a narrow tab the open rail lays over the main column
+     (.pm-ws-split-rail-overlay) instead of squeezing it: the column stays the
+     strip's width and the rail is positioned over the split.
+   The control sits in the rail's top trailing corner and scrolls with it; a
+   tab that opts in keeps that corner clear. */
+[data-pm-frame="fulltab"] .pm-ws-split-collapsible {
+  position: relative;
+  transition: grid-template-columns 160ms ease;
+}
+[data-pm-frame="fulltab"] .pm-ws-split-rail-collapsed,
+[data-pm-frame="fulltab"] .pm-ws-split-rail-overlay {
+  grid-template-columns: 52px 1fr;
+}
+[data-pm-frame="fulltab"] .pm-ws-split-collapsible > .pm-ws-main {
+  grid-column: 2;
+}
+[data-pm-frame="fulltab"] .pm-ws-rail-collapsible {
+  position: relative;
+  overflow-x: hidden;
+}
+[data-pm-frame="fulltab"] .pm-ws-rail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* The content stays mounted while collapsed; the display above would
+   otherwise override the hidden attribute. */
+[data-pm-frame="fulltab"] .pm-ws-rail-body[hidden] {
+  display: none;
+}
+[data-pm-frame="fulltab"] .pm-ws-rail-toggle {
+  position: absolute;
+  top: 9px;
+  right: 8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--pm-muted);
+  cursor: pointer;
+}
+[data-pm-frame="fulltab"] .pm-ws-rail-toggle:hover {
+  border-color: var(--pm-border);
+  background: var(--pm-surface-2);
+  color: var(--pm-text);
+}
+[data-pm-frame="fulltab"] .pm-ws-rail-collapsed {
+  align-items: center;
+  padding: 9px 0 14px;
+}
+[data-pm-frame="fulltab"] .pm-ws-rail-collapsed .pm-ws-rail-toggle {
+  position: static;
+  flex-shrink: 0;
+}
+[data-pm-frame="fulltab"] .pm-ws-split-rail-overlay > .pm-ws-rail-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  width: 372px;
+  max-width: 100%;
+  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-pm-frame="fulltab"] .pm-ws-split-collapsible {
+    transition: none;
+  }
+}
 /* Rail sections: inset cards on the raised rail (2026-07-26 design drop).
    Moved from styles/workshop/shell.css in Lightbox Slice 2A, declarations
    unchanged, so the Lightbox rail can use them too. */

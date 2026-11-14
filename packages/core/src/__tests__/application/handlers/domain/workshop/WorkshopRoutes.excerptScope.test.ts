@@ -21,6 +21,8 @@ describe('Workshop composed routing — excerpt and scope owner', () => {
   let resourceProviderFactory: WorkshopRouteTestHarness['resourceProviderFactory'];
   let posted: WorkshopRouteTestHarness['posted'];
   let pin: WorkshopRouteTestHarness['pin'];
+  let service: WorkshopRouteTestHarness['service'];
+  let persistence: WorkshopRouteTestHarness['persistence'];
 
   beforeEach(() => {
     ({
@@ -34,7 +36,9 @@ describe('Workshop composed routing — excerpt and scope owner', () => {
       resourceFiles,
       resourceProviderFactory,
       posted,
-      pin
+      pin,
+      service,
+      persistence
     } = createWorkshopRouteTestHarness());
   });
 
@@ -100,6 +104,229 @@ describe('Workshop composed routing — excerpt and scope owner', () => {
         version: 2,
         text: 'The sea forgets the shore entirely.',
         source: { kind: 'file', sourceUri: 'file:///ws/chapter.md', relativePath: 'External file: chapter.md' }
+      });
+    });
+
+    /**
+     * A new room that kept its excerpt (epic Everyday Conveniences, item E):
+     * no conversation exists and no path is chosen, and the version carries
+     * across the room boundary.
+     */
+    describe('in a new room that kept its excerpt', () => {
+      const onDisk = (content: string) => {
+        fileSystem.readFile = jest.fn().mockResolvedValue(new TextEncoder().encode(content));
+      };
+      const carryIntoNewRoom = async () => {
+        await seedFileExcerpt('Alice was beginning to get very tired.');
+        onDisk('Alice was beginning to get very tired of sitting.');
+        await reread();
+        // The same aggregate boundary a `carry` start crosses.
+        session.reset();
+        expect(session.getSnapshot()).toMatchObject({
+          scope: null,
+          roomHasMemory: false,
+          excerpt: { version: 2 }
+        });
+      };
+      // Continue on a file-backed carried passage is ONE message (PR #260 F-01).
+      const continueWithCurrentFile = () =>
+        router.route(
+          message(MessageType.WORKSHOP_SET_SESSION_SCOPE, { scope: 'excerpt', rereadFile: true }) as any
+        );
+      const send = (text: string) =>
+        router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text }) as any);
+      /** Hold the file read open, as slow disk I/O would. */
+      const deferRead = () => {
+        let release!: (content: string) => void;
+        const started = new Promise<void>((resolveStarted) => {
+          fileSystem.readFile = jest.fn(() => {
+            resolveStarted();
+            return new Promise<Uint8Array>((resolve) => {
+              release = (content) => resolve(new TextEncoder().encode(content));
+            });
+          });
+        });
+        return { started, release: (content: string) => release(content) };
+      };
+      /** The coordinator's queue, as far as routes can see it: pending while an operation runs. */
+      const modelRoomOperationGate = () => {
+        let pending = 0;
+        persistence.isSessionOperationPending.mockImplementation(() => pending > 0);
+        persistence.runContextRefresh.mockImplementation(async (work: () => Promise<void>) => {
+          pending += 1;
+          try {
+            await work();
+          } finally {
+            pending -= 1;
+          }
+        });
+      };
+
+      it('lands an edited file as the next version before the first message', async () => {
+        await carryIntoNewRoom();
+        onDisk('Alice was not a bit tired.');
+
+        await reread();
+
+        expect(posted(MessageType.ERROR)).toHaveLength(0);
+        expect(session.getExcerpt()).toMatchObject({
+          version: 3,
+          text: 'Alice was not a bit tired.',
+          source: { kind: 'file', sourceUri: 'file:///ws/chapter.md' }
+        });
+      });
+
+      it('says an unchanged file is unchanged, and keeps its version', async () => {
+        await carryIntoNewRoom();
+
+        await reread();
+
+        expect(posted(MessageType.ERROR)).toHaveLength(0);
+        expect(session.getExcerpt()?.version).toBe(2);
+        expect(posted(MessageType.STATUS).at(-1).payload.message).toMatch(/unchanged/i);
+      });
+
+      it('continues with the file\'s current text, as the next version', async () => {
+        await carryIntoNewRoom();
+        onDisk('Alice was not a bit tired.');
+
+        await continueWithCurrentFile();
+
+        expect(posted(MessageType.ERROR)).toHaveLength(0);
+        expect(session.getSnapshot()).toMatchObject({
+          scope: 'excerpt',
+          excerpt: { version: 3, text: 'Alice was not a bit tired.' }
+        });
+      });
+
+      it('continues with the stored version and says so when the file is unchanged', async () => {
+        await carryIntoNewRoom();
+
+        await continueWithCurrentFile();
+
+        expect(posted(MessageType.ERROR)).toHaveLength(0);
+        expect(session.getSnapshot()).toMatchObject({ scope: 'excerpt', excerpt: { version: 2 } });
+        expect(posted(MessageType.STATUS).at(-1).payload.message).toMatch(/unchanged/i);
+      });
+
+      it('takes the file\'s text for a passage continued from the shelf', async () => {
+        await carryIntoNewRoom();
+        await router.route(
+          message(MessageType.WORKSHOP_SET_SESSION_SCOPE, { scope: 'open' }) as any
+        );
+        expect(session.getSnapshot()).toMatchObject({ shelvedExcerpt: { version: 2 } });
+        onDisk('Alice was not a bit tired.');
+
+        await continueWithCurrentFile();
+
+        expect(posted(MessageType.ERROR)).toHaveLength(0);
+        expect(session.getSnapshot()).toMatchObject({
+          scope: 'excerpt',
+          excerpt: { version: 3, text: 'Alice was not a bit tired.' }
+        });
+      });
+
+      it('continues a pasted passage as it stands, reading nothing', async () => {
+        await pin();
+        session.setExcerpt({ text: 'Down the rabbit-hole.', source: { kind: 'manual' } });
+        session.reset();
+        const versionCarried = session.getExcerpt()!.version;
+        fileSystem.readFile = jest.fn();
+
+        await continueWithCurrentFile();
+
+        expect(fileSystem.readFile).not.toHaveBeenCalled();
+        expect(posted(MessageType.ERROR)).toHaveLength(0);
+        expect(session.getSnapshot()).toMatchObject({
+          scope: 'excerpt',
+          excerpt: { version: versionCarried, text: 'Down the rabbit-hole.' }
+        });
+      });
+
+      it('still continues, and says once that the file could not be re-read', async () => {
+        await carryIntoNewRoom();
+        fileSystem.stat = jest.fn().mockRejectedValue(new Error('ENOENT'));
+
+        await continueWithCurrentFile();
+
+        expect(session.getSnapshot()).toMatchObject({ scope: 'excerpt', excerpt: { version: 2 } });
+        expect(posted(MessageType.ERROR)).toHaveLength(1);
+        expect(posted(MessageType.ERROR)[0].payload.message).toMatch(/could not be re-read/i);
+      });
+
+      it('refuses Continue once while a response is running, and reads nothing', async () => {
+        await carryIntoNewRoom();
+        await continueWithCurrentFile();
+        service.startWorkshopPersonaConversation.mockReturnValue(new Promise(() => undefined));
+        void send('Where does the scene turn?');
+        await Promise.resolve();
+        fileSystem.readFile = jest.fn();
+        const errorsBefore = posted(MessageType.ERROR).length;
+
+        await continueWithCurrentFile();
+
+        expect(fileSystem.readFile).not.toHaveBeenCalled();
+        expect(posted(MessageType.ERROR)).toHaveLength(errorsBefore + 1);
+      });
+
+      /**
+       * PR #260 F-01. Continue used to choose the path first and read after,
+       * so a message sent while the disk was being read went out on the old
+       * passage, and the read then lost to the run it had let start.
+       */
+      describe('with a message sent while the file is still being read', () => {
+        it('refuses the message as busy, then lands the file as the next version', async () => {
+          await carryIntoNewRoom();
+          modelRoomOperationGate();
+          const read = deferRead();
+
+          const continued = continueWithCurrentFile();
+          await read.started;
+          await send('Where does the scene turn?');
+
+          expect(service.startWorkshopPersonaConversation).not.toHaveBeenCalled();
+          expect(posted(MessageType.ERROR).at(-1).payload.message)
+            .toMatch(/wait for the current session save or replacement/i);
+
+          read.release('Alice was not a bit tired.');
+          await continued;
+
+          expect(session.getSnapshot()).toMatchObject({
+            scope: 'excerpt',
+            excerpt: { version: 3, text: 'Alice was not a bit tired.' }
+          });
+          expect(service.startWorkshopPersonaConversation).not.toHaveBeenCalled();
+
+          await send('Where does the scene turn?');
+          expect(service.startWorkshopPersonaConversation).toHaveBeenCalledTimes(1);
+          expect(JSON.stringify(service.startWorkshopPersonaConversation.mock.calls[0]))
+            .toContain('Alice was not a bit tired.');
+        });
+
+        // The second line of defence, with no queue to lean on: the path is
+        // not chosen until the read settles, so the room is not send-ready.
+        it('keeps the path unchosen for the whole read, so no message can go out', async () => {
+          await carryIntoNewRoom();
+          const read = deferRead();
+
+          const continued = continueWithCurrentFile();
+          await read.started;
+
+          expect(session.getSnapshot()).toMatchObject({
+            scope: null,
+            participantSubjectReady: false
+          });
+          await send('Where does the scene turn?');
+          expect(service.startWorkshopPersonaConversation).not.toHaveBeenCalled();
+
+          read.release('Alice was not a bit tired.');
+          await continued;
+
+          expect(session.getSnapshot()).toMatchObject({
+            scope: 'excerpt',
+            excerpt: { version: 3, text: 'Alice was not a bit tired.' }
+          });
+        });
       });
     });
 

@@ -26,6 +26,11 @@ import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { usePersistedState } from '@hooks/usePersistence';
 import { DictionaryView, UseDictionaryReturn } from '@hooks/domain/useDictionary';
 import {
+  DictionaryHistorySearchActions,
+  DictionaryHistorySearchState,
+  useDictionaryHistorySearch
+} from '@hooks/domain/useDictionaryHistorySearch';
+import {
   DictionaryHistoryDirection,
   DictionaryHistoryPosition,
   DictionaryHistoryStep,
@@ -105,9 +110,14 @@ export interface DictionaryHistoryPersistence {
   dictionaryHistoryCursorId: string | null;
 }
 
-export type UseDictionaryHistoryReturn = DictionaryHistoryState & DictionaryHistoryActions & {
-  persistedState: DictionaryHistoryPersistence;
-};
+/**
+ * The popup's definitions search rides along (`useDictionaryHistorySearch`):
+ * it is the history's own, routed and passed down with it, and persists nothing.
+ */
+export type UseDictionaryHistoryReturn = DictionaryHistoryState & DictionaryHistoryActions
+  & DictionaryHistorySearchState & DictionaryHistorySearchActions & {
+    persistedState: DictionaryHistoryPersistence;
+  };
 
 interface HistoryNavigation {
   entries: DictionaryHistorySummary[];
@@ -145,6 +155,12 @@ const viewOf = (target: DictionaryHistoryTarget): DictionaryView => ({
 export const useDictionaryHistory = (target: DictionaryHistoryTarget): UseDictionaryHistoryReturn => {
   const vscode = useVSCodeApi();
   const persisted = usePersistedState<{ dictionaryHistoryCursorId?: string | null }>();
+  const {
+    definitionSearch,
+    searchDefinitions,
+    cancelDefinitionSearch,
+    handleHistorySearchResult
+  } = useDictionaryHistorySearch();
 
   const [navigation, setNavigation] = React.useState<HistoryNavigation>(() => ({
     entries: [],
@@ -329,6 +345,7 @@ export const useDictionaryHistory = (target: DictionaryHistoryTarget): UseDictio
     cursorSummary: summaryFor(entries, cursorId),
     olderSummary: stepSummary(entries, olderStep),
     newerSummary: stepSummary(entries, newerStep),
+    definitionSearch,
 
     // Actions
     requestHistory,
@@ -341,6 +358,9 @@ export const useDictionaryHistory = (target: DictionaryHistoryTarget): UseDictio
     clearHistory,
     followRecordedEntry,
     beginNewLookup,
+    searchDefinitions,
+    cancelDefinitionSearch,
+    handleHistorySearchResult,
 
     // Persistence
     persistedState: {
