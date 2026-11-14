@@ -119,7 +119,7 @@ describe('The editor context menu (Draft Edit Slice 3)', () => {
   it.each<[string, Context, string[][]]>([
     ['a selection in a saved Markdown file', { ...markdownFile, editorHasSelection: true }, [
       ['Word Lookup', 'Assistant'],
-      ['Send Selection to Workshop', 'Open Selection in Lightbox'],
+      ['Send to New Workshop Excerpt', 'Add Selection to Workshop Message', 'Open Selection in Lightbox'],
       ['Proofread and Flag', 'Proofread and Fix'],
       ['Craft Flags']
     ]],
@@ -134,7 +134,7 @@ describe('The editor context menu (Draft Edit Slice 3)', () => {
     ]],
     ['a selection in a JavaScript file', { resourceScheme: 'file', editorLangId: 'javascript', editorHasSelection: true }, [
       ['Word Lookup', 'Assistant'],
-      ['Send Selection to Workshop', 'Open Selection in Lightbox']
+      ['Send to New Workshop Excerpt', 'Add Selection to Workshop Message', 'Open Selection in Lightbox']
     ]]
   ])('offers, for %s, the commands the flat list offered, in its order, then Craft Flags in its own group (Slice 3c)', (_case, context, expected) => {
     expect(drawn('editor/context', context)).toEqual([['Prose Minion']]);
@@ -143,6 +143,25 @@ describe('The editor context menu (Draft Edit Slice 3)', () => {
 
   it('shows no Prose Minion entry where it has nothing to offer: a JavaScript file with nothing selected', () => {
     expect(drawn('editor/context', { resourceScheme: 'file', editorLangId: 'javascript', editorHasSelection: false })).toEqual([]);
+  });
+
+  it('keeps the two selection commands apart: the excerpt\'s, retitled, then the message\'s, each only with a selection (ADR 2026-11-14 D9, D12)', () => {
+    const entries = manifest.contributes.menus[SUBMENU];
+    const row = (command: string) => entries.find((entry) => entry.command === command);
+    expect(titles.get('prose-minion.workshopSelection')).toBe('Send to New Workshop Excerpt');
+    expect(titles.get('prose-minion.addSelectionToWorkshopMessage')).toBe('Add Selection to Workshop Message');
+    expect([...titles.values()]).not.toContain('Send Selection to Workshop');
+    expect(row('prose-minion.workshopSelection')).toEqual({ when: 'editorHasSelection', command: 'prose-minion.workshopSelection', group: '2_open@1' });
+    expect(row('prose-minion.addSelectionToWorkshopMessage'))
+      .toEqual({ when: 'editorHasSelection', command: 'prose-minion.addSelectionToWorkshopMessage', group: '2_open@2' });
+    // The Lightbox's two rows moved down one, together.
+    expect(row('prose-minion.lightboxSelection')?.group).toBe('2_open@3');
+    expect(row('prose-minion.openFileInLightbox')?.group).toBe('2_open@3');
+    // Any text document: an untitled buffer with a selection is offered both.
+    expect(drawn(SUBMENU, { resourceScheme: 'untitled', editorLangId: 'plaintext', editorHasSelection: true })[1])
+      .toEqual(['Send to New Workshop Excerpt', 'Add Selection to Workshop Message', 'Open Selection in Lightbox']);
+    const manifestText = fs.readFileSync(EXTENSION_MANIFEST, 'utf8');
+    expect(manifestText).toContain('"onCommand:prose-minion.addSelectionToWorkshopMessage"');
   });
 
   it('labels every command once: the menus by its short title, the Command Palette as "Prose Minion: title"', () => {

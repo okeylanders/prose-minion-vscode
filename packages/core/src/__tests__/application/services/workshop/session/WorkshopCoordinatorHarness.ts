@@ -61,7 +61,13 @@ export function scriptedCheckpoint(
 }
 
 export function setupCoordinator(
-  options: { workspace?: 'single' | 'none'; roomSeed?: WorkshopRoomSeed; fileSystem?: MemoryFileSystem } = {}
+  options: {
+    workspace?: 'single' | 'none';
+    roomSeed?: WorkshopRoomSeed;
+    fileSystem?: MemoryFileSystem;
+    /** The aggregate the coordinator owns, when a test shares it with a handler; a fresh one by default. */
+    session?: WorkshopSessionService;
+  } = {}
 ) {
   const fs = options.fileSystem ?? new MemoryFileSystem();
   const log: LogSink = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
@@ -69,7 +75,7 @@ export function setupCoordinator(
     options.workspace === 'none' ? [] : [{ name: 'novel', path: HARNESS_ROOT }]
   );
   const store = new WorkshopSessionStore(fs, workspace, log, harnessNow);
-  const session = new WorkshopSessionService(() => harnessNow().getTime());
+  const session = options.session ?? new WorkshopSessionService(() => harnessNow().getTime());
   const manager = new ConversationManager();
   const assistant = {
     exportWorkshopConversationArchive: jest.fn(

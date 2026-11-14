@@ -27,6 +27,8 @@ const NON_PROMPT_LIMITS = new Set([
   'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts:MAX_DELIVERY_ID',
   // So is a Lightbox tile's (Slice 4).
   'application/handlers/domain/workshop/WorkshopLightboxTileHandler.ts:MAX_DELIVERY_ID',
+  // And a Selected Text offer's (Everyday Conveniences Slice B).
+  'application/handlers/domain/workshop/WorkshopSelectedTextHandler.ts:MAX_DELIVERY_ID',
   // A Lightbox project picker request's id is a webview-minted correlation id the host echoes (PR #154 F-01).
   'application/handlers/domain/LightboxProjectFiles.ts:MAX_REQUEST_ID_LENGTH',
   // A Read in reader request's id is a webview-minted correlation id the host echoes (PR #186 F-01).
@@ -257,6 +259,11 @@ describe('prompt budgets', () => {
     // A suggestion's cited turns leave room for its reply and the writer's message in a memory's sources (Bookmark Recall D10).
     expect(PROMPT_BUDGETS.workshopProjectMemory.citedTurns + 2).toBeLessThanOrEqual(PROJECT_MEMORY_LIST_ENTRIES.sourceTurns);
     expect(PROMPT_BUDGETS.workshopProjectMemory.readsPerTurn).toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
+  });
+
+  it('pins the Selected Text bound, half of what a file attached to a message may carry (ADR 2026-11-14 D15)', () => {
+    expect(PROMPT_BUDGETS.workshopSelectedText).toEqual({ words: 5_000, characters: 40_000, previewCharacters: 120, snapshots: 8, pushIntervalMs: 150 });
+    expect(PROMPT_BUDGETS.workshopSelectedText.words * 2).toBe(PROMPT_BUDGETS.workshopThreadArtifacts.words);
   });
 
   it('pins the Pinned Context list bound (ADR 2026-11-04 D6)', () => {

@@ -79,6 +79,7 @@ import {
   workshopExcerptFileEditDocument,
   CraftFlagsService,
   HelperAgentService,
+  EditorSelectionSnapshots,
   HELPER_TASK_POLICIES,
   CraftFlagsUseCase,
   liveCatalogPrices,
@@ -99,6 +100,10 @@ import { VsCodeSettingsStore } from './platform/vscode/VsCodeSettingsStore';
 import { VsCodeFileSystem } from './platform/vscode/VsCodeFileSystem';
 import { VsCodeWorkspace } from './platform/vscode/VsCodeWorkspace';
 import { VsCodeShellService } from './platform/vscode/VsCodeShellService';
+import {
+  ADD_SELECTION_TO_WORKSHOP_MESSAGE_COMMAND,
+  addSelectionToWorkshopMessage
+} from './application/commands/addSelectionToWorkshopMessage';
 import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
 import { VsCodeDocumentEditor } from './platform/vscode/VsCodeDocumentEditor';
 import { VsCodeFileEditAuthorityEpoch } from './platform/vscode/VsCodeFileEditAuthorityEpoch';
@@ -617,6 +622,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel
   );
 
+  // Selected Text (ADR 2026-11-14 D11): the window's one snapshot cache, over the editor port.
+  const editorSelectionSnapshots = new EditorSelectionSnapshots(editorContext, outputChannel);
+  context.subscriptions.push(editorSelectionSnapshots);
+
   const coreServices: CoreServices = {
     assistantToolService,
     dictionaryService,
@@ -661,6 +670,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       library: workshopPinnedContextLibrary,
       takeFirstRoomReport: () => workshopPinnedContextRoomSeed.takeFirstRoomReport()
     },
+    editorSelectionSnapshots,
     helperAgentService,
     workshopTranscriptRecallService
   };
@@ -825,6 +835,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
   };
 
+  // Selected Text (ADR 2026-11-14 D12): the selection is captured at the gesture, through the editor port and
+  // the snapshot service, and offered to the Workshop as a seed. The room's excerpt is never touched.
+  const handleAddSelectionToWorkshopMessage = () => addSelectionToWorkshopMessage({
+    hasEditor: () => editorContext.currentSelection() !== undefined,
+    capture: () => editorSelectionSnapshots.capture(),
+    stageSelectedText: (snapshotId) =>
+      workshopPanelProvider?.stageSelectedText(snapshotId) ?? Promise.resolve({ opened: false, reason: 'unavailable' }),
+    showWarning: (message) => { void vscode.window.showWarningMessage(message); },
+    log: (line) => outputChannel.appendLine(line)
+  });
+
   // Lightbox seeding. seedSource boards through the panel's own
   // MessageHandler, into the same handler code as the webview's own requests.
   // A whole file (a menu's URI, or the active editor's) goes through
@@ -943,6 +964,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       workshopPanelProvider?.openOrReveal();
     }),
     vscode.commands.registerCommand('prose-minion.workshopSelection', handleWorkshopSelection),
+    vscode.commands.registerCommand(ADD_SELECTION_TO_WORKSHOP_MESSAGE_COMMAND, handleAddSelectionToWorkshopMessage),
     vscode.commands.registerCommand('prose-minion.openLightbox', () => {
       lightboxPanelProvider?.openOrReveal();
     }),

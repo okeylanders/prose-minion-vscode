@@ -63,6 +63,9 @@ import {
 import type {
   UseWorkshopLightboxTilesReturn
 } from '@hooks/domain/workshop/useWorkshopLightboxTiles';
+import type {
+  UseWorkshopSelectedTextReturn
+} from '@hooks/domain/workshop/useWorkshopSelectedText';
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 import type { UseWorkshopProjectMemoryReturn } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import type { UseWorkshopMemoryManagerReturn } from '@hooks/domain/workshop/useWorkshopMemoryManager';
@@ -99,6 +102,11 @@ export interface WorkshopAppMessageRouterDeps {
   lexicalGravity: UseLexicalGravityReturn;
   /** Lightbox tiles handed over (Lightbox Slice 4). */
   lightboxTiles: UseWorkshopLightboxTilesReturn;
+  /** The editor's selection, by seed or by toggle (ADR 2026-11-14 D17). */
+  selectedText: Pick<
+    UseWorkshopSelectedTextReturn,
+    'handleSeedClaimResult' | 'handleSelectedTextOffered' | 'handleSelectedTextStaged' | 'handleSelectedTextCurrent'
+  >;
   creativeVariations: UseCreativeVariationsReturn;
   creativeVariationsAuthoring: UseCreativeVariationsAuthoringReturn;
   showVsTell: UseShowVsTellReturn;
@@ -133,6 +141,7 @@ export function buildWorkshopAppMessageRoutes(
     gesturePlayground,
     lexicalGravity,
     lightboxTiles,
+    selectedText,
     creativeVariations,
     creativeVariationsAuthoring,
     showVsTell,
@@ -245,11 +254,16 @@ export function buildWorkshopAppMessageRoutes(
         // eslint-disable-next-line @typescript-eslint/naming-convention -- seed kinds are kebab-case protocol literals.
         'lexical-gravity-build': lexicalGravity.handleSeedClaimResult,
         // eslint-disable-next-line @typescript-eslint/naming-convention -- seed kinds are kebab-case protocol literals.
-        'lightbox-tile': lightboxTiles.handleSeedClaimResult
+        'lightbox-tile': lightboxTiles.handleSeedClaimResult,
+        // eslint-disable-next-line @typescript-eslint/naming-convention -- seed kinds are kebab-case protocol literals.
+        'selected-text': selectedText.handleSeedClaimResult
       });
     },
     [MessageType.WORKSHOP_LIGHTBOX_TILE_OFFERED]: lightboxTiles.handleTileOffered,
     [MessageType.WORKSHOP_LIGHTBOX_TILE_STAGED]: lightboxTiles.handleTileStaged,
+    [MessageType.WORKSHOP_SELECTED_TEXT_OFFERED]: selectedText.handleSelectedTextOffered,
+    [MessageType.WORKSHOP_SELECTED_TEXT_STAGED]: selectedText.handleSelectedTextStaged,
+    [MessageType.WORKSHOP_SELECTED_TEXT_CURRENT]: selectedText.handleSelectedTextCurrent,
     [MessageType.STREAM_STARTED]: workshopRoom.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshopRoom.handleStreamChunk,
     [MessageType.STREAM_COMPLETE]: workshopRoom.handleStreamComplete,

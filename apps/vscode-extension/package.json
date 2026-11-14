@@ -104,6 +104,7 @@
     "onCommand:prose-minion.openSettingsOverlay",
     "onCommand:prose-minion.openWorkshop",
     "onCommand:prose-minion.workshopSelection",
+    "onCommand:prose-minion.addSelectionToWorkshopMessage",
     "onCommand:prose-minion.openLightbox",
     "onCommand:prose-minion.lightboxSelection",
     "onCommand:prose-minion.openFileInLightbox",
@@ -163,7 +164,12 @@
       },
       {
         "command": "prose-minion.workshopSelection",
-        "title": "Send Selection to Workshop",
+        "title": "Send to New Workshop Excerpt",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.addSelectionToWorkshopMessage",
+        "title": "Add Selection to Workshop Message",
         "category": "Prose Minion"
       },
       {
@@ -253,13 +259,18 @@
         },
         {
           "when": "editorHasSelection",
-          "command": "prose-minion.lightboxSelection",
+          "command": "prose-minion.addSelectionToWorkshopMessage",
           "group": "2_open@2"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "prose-minion.lightboxSelection",
+          "group": "2_open@3"
         },
         {
           "when": "!editorHasSelection && resourceScheme == file && (editorLangId == markdown || editorLangId == plaintext)",
           "command": "prose-minion.openFileInLightbox",
-          "group": "2_open@2"
+          "group": "2_open@3"
         },
         {
           "when": "editorLangId == markdown || editorLangId == plaintext",

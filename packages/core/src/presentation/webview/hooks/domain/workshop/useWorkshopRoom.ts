@@ -238,7 +238,8 @@ export interface WorkshopRoomActions {
   handleContextSearchResults: (message: WorkshopContextSearchResultsMessage) => void;
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
-  sendMessage: (text: string) => void;
+  /** `selectedTextSnapshotId`: the snapshot the composer's live Selected Text pill showed, when it rides this send. */
+  sendMessage: (text: string, selectedTextSnapshotId?: string) => void;
   seedComposerDraft: (text: string) => void;
   selectPersona: (personaId: WorkshopPersonaId) => void;
   inviteGuest: (personaId: WorkshopPersonaId, openingMessage: string) => void;
@@ -536,11 +537,14 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   );
 
   const sendMessage = React.useCallback(
-    (text: string) => {
+    (text: string, selectedTextSnapshotId?: string) => {
       setErrorMessage('');
-      post(MessageType.WORKSHOP_SEND_MESSAGE, { text });
+      // A send that names a Selected Text snapshot names the room it was shown in (ADR 2026-11-14 D14).
+      post(MessageType.WORKSHOP_SEND_MESSAGE, selectedTextSnapshotId
+        ? { text, selectedTextSnapshotId, roomRevision }
+        : { text });
     },
-    [post]
+    [post, roomRevision]
   );
 
   const seedComposerDraft = React.useCallback((text: string) => {

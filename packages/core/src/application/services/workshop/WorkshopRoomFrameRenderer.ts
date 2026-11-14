@@ -18,6 +18,7 @@ import {
   buildWorkshopThreadArtifactFrame,
   WorkshopThreadArtifact
 } from '@/application/services/workshop/WorkshopThreadArtifactFrame';
+import { workshopMessageAttachmentFrameContext } from '@shared/constants/workshopThreadArtifactKinds';
 
 export interface WorkshopRoomFrameRenderOptions {
   /** Prompt-effective preferred address; raw writer profile never enters session state. */
@@ -102,7 +103,10 @@ export function formatWorkshopRoomTurn(
   return [
     `${neutralizeReservedPersonaPromptDelimiters(speaker)}:`,
     neutralizeReservedPersonaPromptDelimiters(turn.content),
-    ...threadArtifacts.map(buildWorkshopThreadArtifactFrame)
+    ...threadArtifacts.map((artifact) => buildWorkshopThreadArtifactFrame(
+      artifact,
+      workshopMessageAttachmentFrameContext(artifact.id, turn.messageAttachments)
+    ))
   ].join('\n');
 }
 

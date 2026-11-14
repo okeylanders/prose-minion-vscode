@@ -78,6 +78,12 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleSeedClaimResult: jest.fn(),
     handleTileStaged: jest.fn()
   } as never,
+  selectedText: {
+    handleSelectedTextOffered: jest.fn(),
+    handleSeedClaimResult: jest.fn(),
+    handleSelectedTextStaged: jest.fn(),
+    handleSelectedTextCurrent: jest.fn()
+  },
   creativeVariations: {
     handleGenerationProgress: jest.fn(),
     handleGenerationResult: jest.fn(),
@@ -381,6 +387,16 @@ describe('buildWorkshopAppMessageRoutes', () => {
 
     expect(routes[MessageType.WORKSHOP_LIGHTBOX_TILE_OFFERED]).toBe(deps.lightboxTiles.handleTileOffered);
     expect(routes[MessageType.WORKSHOP_LIGHTBOX_TILE_STAGED]).toBe(deps.lightboxTiles.handleTileStaged);
+
+    // Selected Text's claim result reaches its own receiver only (ADR 2026-11-14 D12).
+    const selection = deps.selectedText.handleSeedClaimResult as jest.Mock;
+    routes[MessageType.WORKSHOP_SEED_CLAIM_RESULT]!(result('selected-text') as never);
+    expect(selection).toHaveBeenCalledTimes(1);
+    expect(lexical).toHaveBeenCalledTimes(1);
+    expect(tiles).toHaveBeenCalledTimes(1);
+    expect(routes[MessageType.WORKSHOP_SELECTED_TEXT_OFFERED]).toBe(deps.selectedText.handleSelectedTextOffered);
+    expect(routes[MessageType.WORKSHOP_SELECTED_TEXT_STAGED]).toBe(deps.selectedText.handleSelectedTextStaged);
+    expect(routes[MessageType.WORKSHOP_SELECTED_TEXT_CURRENT]).toBe(deps.selectedText.handleSelectedTextCurrent);
   });
 
   it('hands Slice 3\'s write answers and edit data to both memory hooks, and the manager its own answers (Slice 4b)', () => {

@@ -131,6 +131,9 @@ export { LexicalGravityModelService } from '@services/widgets/LexicalGravityMode
 export { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 export { DictionaryHistoryStore } from '@/infrastructure/storage/DictionaryHistoryStore';
 export { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+// Selected Text: the editor's selection by snapshot id (ADR 2026-11-14 D11)
+export { EditorSelectionSnapshots } from '@/application/services/workshop/selection/EditorSelectionSnapshots';
+export type { EditorSelectionSnapshot } from '@/application/services/workshop/selection/WorkshopSelectedTextAttachment';
 // Seed delivery: a handoff opens only on the panel's grant (PR #150 F-03)
 export {
   WORKSHOP_SEED_TIMEOUT_MS,
