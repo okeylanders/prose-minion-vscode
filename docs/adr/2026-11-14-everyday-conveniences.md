@@ -1,6 +1,6 @@
 # ADR 2026-11-14: Everyday Conveniences: Multi-File Reads and Selected Text
 
-**Status:** Proposed (defaults taken for Okey, 2026-11-14). Amended the same day for PR #259's review: D2a, D4's duplicate rule, D11 and D14's room binding.
+**Status:** Technical review passed (PR #259); slices A (PR #263) and B (PR #264) are built and merged. The product defaults are still proposed, and Okey's to accept (defaults taken for him, 2026-11-14). Amended the same day for PR #259's review: D2a, D4's duplicate rule, D11 and D14's room binding; and for PR #263's review: D5's note on a file's share.
 **Date:** 2026-11-14
 **Epic:** [Everyday Conveniences](../../.todo/epics/epic-everyday-conveniences-2026-11-14/README.md)
 (its "Defaults taken" table is binding here)
@@ -235,6 +235,15 @@ New in `PROMPT_BUDGETS.workshopResource`:
   limit; a short file leaves its room to the others.
 - **Then the fit** (D2) runs over the whole read, shrinking the limit and
   sharing again at each render.
+- **Addendum, 2026-11-14 (PR #263's review): a file's share inside a
+  multi-file read is not capped at `readBytes`.** The files share
+  `readBytesMulti`, so one file may be given more than the 64 KiB a
+  one-path read holds. A line a one-path read can never deliver
+  (`line-too-long`, D2a) can therefore land beside a small file. This is
+  D5 as written, confirmed in PR #263's review, and kept: the window fit
+  (D2) still bounds the whole read. A permanent test makes the choice
+  explicit:
+  `WorkshopResourceReadMultiFileShareNotCappedAtReadBytes.test.ts`.
 
 ### D6. The result: one message, a section per file
 
@@ -475,6 +484,16 @@ onDidChangeSelection(listener: () => void): PlatformDisposable;
   different live selection rides beside them, visibly.
 - **Rewind** restages the captured text as a pill, under its original
   snapshot id (default 7). The pill reads as any restaged pill does.
+- **Addendum, 2026-11-14 (PR #264's review, as built).** "The draft stays"
+  means the draft is restored, never overwritten: a text the host gives
+  back fills an empty composer, and otherwise goes ahead of what the
+  writer typed since, a blank line between (`workshopComposerDraftAfterSeed`,
+  `keepDraft`). The restore is shared, so a rolled-back send and Rewind's
+  and Branch's composer restore follow it too. And the pill's room is the
+  one it was drawn in: the webview stamps each pushed selection with the
+  room revision on screen when it arrived and sends that revision, never
+  the one on screen at send time; a room change drops the pill and asks
+  the host again.
 
 ### D15. The bound
 
