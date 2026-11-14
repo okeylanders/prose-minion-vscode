@@ -1,3 +1,15 @@
+# Re-review, 2026-11-14
+
+Reviewed head: `fb7d9f95c86f5e787eb540335e1d709b2a06888d`.
+
+**Verdict: scoped technical ADR approval. F-01 is addressed; no remaining blocking finding in the reviewed revisions.** This supersedes the original changes-requested verdict below. Product defaults remain proposed, not accepted by this review; implementation and release require their own validation.
+
+D2a now specifies `line-too-long`, no delivered-source identity for an undelivered file, single-file retry only where the share increases sufficiently, and explicit skip/no-retry semantics for an impossible line. It includes the >64 KiB, mixed-file, and short-then-long cases and a continuation progress invariant. D11/D14 now separate window cache lifetime from roomRevision validation inside the send mutation. D4 documents stricter duplicate case folding, and D13 records forward-only persistence compatibility. Reviewed the subsequent D9/Q1 command naming clarification as documentation, not independent verification of product authorization.
+
+Verification: docs-only static review of revisions against the original finding; no local runtime tests needed or run for this ADR. GitHub CI run 43607041238 reports success for the reviewed SHA. No merge performed.
+
+---
+
 # PR #259: Everyday Conveniences ADR review
 
 Reviewed: 2026-11-14. Source head: `5deaca8e4d4a114933b0686e8ffc7fc4825573a7`.
