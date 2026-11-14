@@ -1,6 +1,6 @@
 # Epic: Everyday Conveniences
 
-**Status:** All slices built. Slice 0, E, C, D and A are merged into the epic (PRs #259, #260, #262, #261, #263). B is in review (PR #264). The closing slice (docs, the live-pass checklist and one test) is on `epic/everyday-conveniences-close`, stacked on B. Nothing has gone to `main`; the [live pass](live-pass.md) and the product defaults are Okey's.
+**Status:** Every item is merged into the epic: Slice 0, E, C, D, A and B (PRs #259, #260, #262, #261, #263, #264). The closing slice (docs, the live-pass checklist and one test) is in review, on `epic/everyday-conveniences-close`. Nothing has gone to `main`; the [live pass](live-pass.md) and the product defaults are Okey's.
 **Priority:** Medium
 **Opened:** 2026-11-14
 **Branch:** `epic/everyday-conveniences`, cut from `main` at `964aa0e4`
@@ -34,8 +34,8 @@ live in this README and the ADR.
 | D | Collapsible rail | `…-collapsible-rail` | `FullTabShell` opt-in; the Workshop's rail collapses to an icon strip | Done: PR #261, merged `565a43e0` ([review](../../../docs/pr-reviews/pr-261-collapsible-rail-review.md): no blocking findings) |
 | C | Dictionary history search | `…-dictionary-history-search` | Filter in the popup; "Also search definitions" on the host | Done: PR #262, merged `c1c9e2be` ([review](../../../docs/pr-reviews/pr-262-dictionary-history-search-review.md): no blocking findings) |
 | A | Multi-file reads | `…-multi-file-reads` | Shared window fit; `resource.read` fitted; repeated `<path>` | Done: PR #263, merged `0f152152` (review: no blocking findings; its report is not in the repo) |
-| B | Selected Text | `…-selected-text` | Port fix, snapshots by id, `selected-text` attachment, command and toggle; the old command retitled | PR #264, in review |
-| Close | Closing pass | `…-close` | `AGENTS.md` where a rule changed, the [live-pass checklist](live-pass.md), the D5 share test and ADR note, a memory-bank entry | Pushed; stacked on B, no PR yet |
+| B | Selected Text | `…-selected-text` | Port fix, snapshots by id, `selected-text` attachment, command and toggle; the old command retitled | Done: PR #264, merged `a27de46b` ([review](../../../docs/pr-reviews/pr-264-selected-text-review.md): two P2 findings, both fixed: the restored draft no longer overwrites newer typing; a live pill is bound to the room it was drawn in) |
+| Close | Closing pass | `…-close` | `AGENTS.md` where a rule changed, the [live-pass checklist](live-pass.md), the D5 share test and ADR note, a memory-bank entry | In review |
 
 Slice branches are `epic/everyday-conveniences-<slug>`.
 
@@ -78,6 +78,8 @@ Taken while building:
 |---|---|---|---|---|
 | 21 | A | A file's share inside a multi-file read | Not capped at the one-file 64 KiB: the files share 256 KiB, so a line a one-file read can never deliver can land beside a small file. The window fit still bounds it. A permanent test and a note are owed, to make the choice explicit. **Done in the closing slice:** `WorkshopResourceReadMultiFileShareNotCappedAtReadBytes.test.ts` and D5's addendum. | ADR D5 as written; Astra, PR #263 |
 | 22 | E | Continue's re-read | One host operation, read first; a send during the read is refused in the room's busy words. | PR #260 F-01 |
+| 23 | B | A text the host gives back to the composer | Never replaces a non-empty draft: an empty composer takes it; otherwise it goes ahead of what was typed since, a blank line between. The restore is shared, so a rolled-back send and Rewind's and Branch's composer restore changed too. A starter chip still replaces. **Okey has not seen this live.** | PR #264 P2-1 |
+| 24 | B | Which room a live pill belongs to | The one it was drawn in, as D14 wrote it: the webview stamps each pushed selection with the room on screen and sends that revision; a room change drops the pill and asks the host again. | PR #264 P2-2 |
 
 ## How the slices are built
 
@@ -115,7 +117,9 @@ Taken while building:
 | A's branch at `206aa837`, epic merged in (PR #263) | 860 | 12,195 | 59 |
 | The epic with A at merge (`0f152152`) | not measured separately | | |
 | B's branch at `5e398001`, the whole epic merged in (PR #264) | 869 | 12,306 | 59 |
-| The closing slice (`…-close`, on B) | 870 | 12,312 | 59 |
+| B's branch at `84e76702`, after the review fixes | 869 | 12,321 | 59 |
+| The closing slice (`…-close`) on B at `5e398001` | 870 | 12,312 | 59 |
+| The closing slice with the epic at `a27de46b` merged in | 870 | 12,327 | 59 |
 
 ## Completion Criteria
 
@@ -131,7 +135,7 @@ only once Okey has run its part.
       (PR #263, merged.)
 - [x] B: the command and the toggle both stage a "Selected Text" pill; what
       the pill showed is what is sent; the excerpt is unchanged.
-      (PR #264, **in review, not merged**.)
+      (PR #264, merged.)
 - [x] C: the popup filters by word, context and file; definitions search
       runs on the host, correlated; the keyboard path works. (PR #262.)
 - [x] D: the Workshop's rail collapses and reopens, remembered per window;
@@ -142,7 +146,8 @@ only once Okey has run its part.
       and a [memory-bank entry](../../../.memory-bank/20261114-1945-everyday-conveniences-epic.md).
 - [ ] Okey's live pass, and his word on the defaults (the checklist's
       "Decisions waiting on Okey").
-- [ ] B merged into the epic, then this closing slice.
+- [x] B merged into the epic (`a27de46b`).
+- [ ] This closing slice merged into the epic.
 
 ## Notes
 

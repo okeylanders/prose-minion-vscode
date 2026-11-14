@@ -884,7 +884,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-11-14 on `epic/everyday-conveniences-close`: the whole Everyday Conveniences epic, items A–E, before it goes to `main`):
-- 870 suites / 12,312 tests / 59 snapshots
+- 870 suites / 12,327 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1016,6 +1016,10 @@ touching retained histories or whole-room operations:
   unnamed room, a named room with unsaved work, and a room whose file on
   disk no longer matches it. It checks the file again at the commit that
   replaces `current.json`, through the store's `beforeCommit` seam.
+- **The composer's restore keeps newer typing.** The message a Rewind or
+  Branch gives back to the composer goes ahead of anything the writer has
+  typed since, a blank line between; it never replaces it (PR #264 P2-1;
+  see **Workshop Selected Text**).
 
 ### Workshop Seed Delivery
 
@@ -1094,6 +1098,28 @@ toggle, or how the editor's selection reaches a message:
   - The live selection is never sent unseen. Never send the message without
     the selection instead.
   - A snapshot already staged by hand rides the send as it is.
+- **A live pill belongs to the room it was drawn in** (D14; PR #264 P2-2).
+  - `useWorkshopSelectedText` stores each `WORKSHOP_SELECTED_TEXT_CURRENT`
+    with the room revision on screen when it arrived.
+  - The send posts **that** revision (`sendSelection`), never the one on
+    screen at send time.
+  - When `roomRevision` changes, the hook drops the pill and, with the
+    toggle on, posts the watch again. The host's answer is the fresh draw,
+    stamped with the new room.
+  - A selection stamped with another room is never returned as a pill, even
+    for the one render before it is dropped.
+- **A restored draft never replaces newer typing** (PR #264 P2-1). The
+  composer clears on send and stays editable, so the writer may have typed
+  by the time the host gives a text back.
+  - `WORKSHOP_COMPOSER_DRAFT_RESTORED` is the shared restore: a refused
+    send, a rolled-back send, and Rewind's and Branch's composer restore.
+    `useWorkshopRoom.handleComposerDraftRestored` seeds it with `keepDraft`.
+  - `workshopComposerDraftAfterSeed` (`WorkshopComposer.tsx`): an empty
+    composer takes the text exactly; otherwise it goes ahead of what was
+    typed since, with a blank line between.
+  - A starter chip still replaces the draft (no `keepDraft`).
+  - A new way for the host to hand text back goes through this message,
+    never a seed that overwrites.
 - **Named apart.** The attachment kind, the seed kind and the meta field are
   `selected-text` / `selectedText`. `editor-selection` stays the excerpt's
   source kind only (D13). Never reuse one for the other.

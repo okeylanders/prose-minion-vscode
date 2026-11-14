@@ -118,7 +118,21 @@ has focus is unknown until you try it.
     **Expect:** if the send loses the race it is refused ("The selected
     text changed before this was sent…") and your draft is back in the
     composer. Never a message in the new room carrying the old selection.
-15. - [ ] Read the Output channel.
+15. - [ ] With the toggle on and a selection standing, press **New**.
+    **Expect:** the pill disappears and comes back, drawn for the new
+    room. Send it: it is accepted, not refused.
+16. - [ ] Send a message with the live pill, type something more at once,
+    and have the send refused. (Easiest: replace the room in between, as
+    in step 14.)
+    **Expect:** both texts are in the composer, the refused one first, a
+    blank line, then what you typed since. Nothing is lost.
+17. - [ ] **A visible change to Rewind and Branch that nobody has seen
+    live.** Type a few words in the composer, then Rewind to an earlier
+    message of yours.
+    **Expect:** the rewound message, a blank line, then what you had
+    typed. Before this epic the rewound message replaced your typing. Is
+    this what you want? (Decision 15 below.) Try Branch the same way.
+18. - [ ] Read the Output channel.
     **Expect:** kinds, ids and word counts. No text, path or lines.
 
 ---
@@ -238,6 +252,7 @@ Work went ahead on each default. Say "keep" or what to change.
 | 12 | B | Any text document; a selection inside the excerpt is sent as text | Prose files only; a pointer into the excerpt |
 | 13 | B | Rewind restages the captured text; export shows the label only | Restage the live selection; export the lines |
 | 14 | D | Only the Workshop's rail collapses | The Lightbox too |
+| 15 | B | **To confirm:** a text the host gives back (a refused or rolled-back send, Rewind, Branch) goes ahead of what is in the composer, a blank line between, and never replaces it (B step 17; PR #264 P2-1) | Replace as before when Rewind or Branch is the cause; or ask |
 
 Not built, still in the notes: the engine backstop and the `memory.read`
 fit ([Reads That Fit the Window](../../features/feature-workshop-reads-fit-the-window/README.md));

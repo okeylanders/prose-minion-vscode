@@ -23,8 +23,8 @@
 | C, history search | #262 | `c1c9e2be` | No blocking findings |
 | D, collapsible rail | #261 | `565a43e0` | No blocking findings |
 | A, multi-file reads | #263 | `0f152152` | No blocking findings; one request (below). Its report is not in the repo. |
-| B, Selected Text | #264 | pending (in review) | pending |
-| Close | none yet | pending (`epic/everyday-conveniences-close`, stacked on B) | not reviewed |
+| B, Selected Text | #264 | `a27de46b` | Two P2 findings, both fixed (`84e76702`) |
+| Close | pending | pending (`epic/everyday-conveniences-close`, with the epic merged in) | in review |
 
 ## Decisions
 
@@ -46,6 +46,9 @@
 - **#259 F-01 (Medium): a whole-line read could make no progress.** A valid file can open with a 70 KiB line; the read would deliver nothing and hint the same `startLine` forever. Settled as **D2a**: a line is never cut, the file's outcome is `line-too-long` with nothing delivered, and every hint must name a later line or the same line with fewer files. A test follows every hint to the end.
 - **#259, clarifications:** the snapshot cache is the window's, and the send is bound to its room by `roomRevision` (D11, D14); the duplicate-path rule is stricter than the lookup, on purpose (D4); `selectedText` is forward only (D13).
 - **#260 F-01 (P2): Continue's read could lose to a send.** Two webview messages (choose the path, then read) let a message go out on the old passage. Settled as **one host operation**: `WORKSHOP_SET_SESSION_SCOPE { rereadFile }`, run by `WorkshopExcerptContinuation` through `runContextRefresh`, read first; a send during the read is refused in the room's busy words.
+- **#264 P2-1: a restored draft overwrote newer typing.** A refused send gave its text back through the composer's seed, which replaced whatever the writer had typed in the meantime. Settled with `keepDraft`: an empty composer takes the text; otherwise it goes ahead of the newer writing, a blank line between (`workshopComposerDraftAfterSeed`). The restore is shared, so a rolled-back send and Rewind's and Branch's composer restore changed too. Okey has not seen that change; the live pass asks him.
+- **#264 P2-2: the send stamped the room on screen at send time.** A pill drawn in room A could be sent under room B's revision once the UI had moved on, and the host's check passed. Settled as D14 wrote it: each pushed selection is stamped with the room on screen when it arrived, the send names that revision, and a room change drops the pill and asks the host again.
+- **#264, Astra's correction:** her first review reported the local build as passing; it had been killed (exit 137) under a concurrent Jest run, so it was not verified locally then. CI and slice B's own build passed, and her re-review's build passed.
 - **#263, a request, not a finding:** make the D5 share choice explicit. Done in the closing slice: `WorkshopResourceReadMultiFileShareNotCappedAtReadBytes.test.ts` and a dated addendum to D5.
 
 ## What the closing pass found
@@ -59,9 +62,9 @@
 On `epic/everyday-conveniences-close`, 2026-11-14, run locally:
 - `npm run typecheck`: clean (core, webview, extension).
 - `npm run lint`: 0 errors / 1,172 warnings.
-- `npx jest --maxWorkers=3`: **870 suites / 12,312 tests / 59 snapshots**, all passing (B's count plus the one new suite of 6 tests).
-- `npm run build` was not run in the closing pass.
-- B's branch with the whole epic merged in (`5e398001`) measured 869 suites / 12,306 tests / 59 snapshots.
+- `npx jest --maxWorkers=3`: **870 suites / 12,327 tests / 59 snapshots**, all passing, with the epic at `a27de46b` merged in (B's 869 / 12,321 plus the one new suite of 6 tests).
+- `npm run build`: succeeds.
+- B's branch measured 869 suites / 12,306 tests / 59 snapshots at `5e398001`, and 869 / 12,321 / 59 at `84e76702`, after the review fixes.
 
 **Not verified, by anyone:**
 - Nothing was run in the Extension Development Host.
@@ -81,5 +84,5 @@ On `epic/everyday-conveniences-close`, 2026-11-14, run locally:
 
 ## Links
 
-- Reviews: [#259](../docs/pr-reviews/pr-259-everyday-conveniences-adr-review.md), [#260](../docs/pr-reviews/pr-260-reread-excerpt-review.md), [#261](../docs/pr-reviews/pr-261-collapsible-rail-review.md), [#262](../docs/pr-reviews/pr-262-dictionary-history-search-review.md)
+- Reviews: [#259](../docs/pr-reviews/pr-259-everyday-conveniences-adr-review.md), [#260](../docs/pr-reviews/pr-260-reread-excerpt-review.md), [#261](../docs/pr-reviews/pr-261-collapsible-rail-review.md), [#262](../docs/pr-reviews/pr-262-dictionary-history-search-review.md), [#264](../docs/pr-reviews/pr-264-selected-text-review.md)
 - `AGENTS.md`: Workshop File Reads, Workshop Selected Text, Workshop Excerpt Re-read, Dictionary History Search, and the Full-tab shell's collapse rules
