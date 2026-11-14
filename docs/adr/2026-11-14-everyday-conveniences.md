@@ -311,7 +311,13 @@ New in `PROMPT_BUDGETS.workshopResource`:
 - **By toggle:** "Include selected text", by the composer. While on, the
   current selection shows as the same pill, live, and rides with each
   message.
-- `prose-minion.workshopSelection` (replaces the excerpt) is unchanged.
+- `prose-minion.workshopSelection` (replaces the excerpt) keeps its
+  behavior and is **retitled "Send to New Workshop Excerpt"** (Okey's
+  words, relayed by Ada, 2026-11-14), so the two commands read apart in
+  the submenu. Slice B changes the title wherever it appears: the
+  manifest, `apps/vscode-extension/README.md`, and
+  `editorContextMenu.test.ts`. Archived and past-epic notes keep the old
+  title; the idea note is not edited.
 - Any text document (default 5). A selection inside the excerpt is sent
   as text (default 6). The excerpt never changes.
 
@@ -599,10 +605,10 @@ Two slices, two PRs into `epic/everyday-conveniences`, in either order.
 
 ## Open questions for Okey (work proceeds on the default)
 
-- **Q1. The command for B.** Default: a new "Add Selection to Workshop
-  Message"; "Send Selection to Workshop" keeps replacing the excerpt.
-  The other reading of his words is that the existing command becomes
-  the pill.
+- **Q1. The command for B. Answered** (Okey, relayed by Ada,
+  2026-11-14): keep them separate. The new command is "Add Selection to
+  Workshop Message". The existing one keeps replacing the excerpt and is
+  retitled "Send to New Workshop Excerpt" (D9).
 - **Q2. Several selections in one message.** Default: yes, by hand; the
   live pill hides only when its own snapshot is already staged. The
   stricter choice is one Selected Text pill a message.
