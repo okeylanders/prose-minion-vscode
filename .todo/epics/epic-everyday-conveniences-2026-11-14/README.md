@@ -1,6 +1,6 @@
 # Epic: Everyday Conveniences
 
-**Status:** In progress. Slice 0 (the ADR) is in review; E, D and C are being built.
+**Status:** In progress. Slice 0, E, D and C are in review (PRs #259–#262); A and B wait on Slice 0.
 **Priority:** Medium
 **Opened:** 2026-11-14
 **Branch:** `epic/everyday-conveniences`, cut from `main` at `964aa0e4`
@@ -29,10 +29,10 @@ live in this README and the ADR.
 
 | # | Slice | Branch | Outcome | Status |
 |---|---|---|---|---|
-| 0 | Spec | `epic/everyday-conveniences-spec` | The ADR (A and B) | PR #259, in review |
-| E | Re-read in a new room | `…-reread-excerpt` | Re-read from file on any file-backed excerpt; Continue re-reads | In progress |
-| D | Collapsible rail | `…-collapsible-rail` | `FullTabShell` opt-in; the Workshop's rail collapses to an icon strip | In progress |
-| C | Dictionary history search | `…-dictionary-history-search` | Filter in the popup; "Also search definitions" on the host | In progress |
+| 0 | Spec | `epic/everyday-conveniences-spec` | The ADR (A and B) | PR #259: changes requested, answered (`0a511734`); awaiting re-review |
+| E | Re-read in a new room | `…-reread-excerpt` | Re-read from file on any file-backed excerpt; Continue re-reads, as one host operation | PR #260: changes requested, fixed (`0cf83f13`); awaiting re-review |
+| D | Collapsible rail | `…-collapsible-rail` | `FullTabShell` opt-in; the Workshop's rail collapses to an icon strip | PR #261, in review |
+| C | Dictionary history search | `…-dictionary-history-search` | Filter in the popup; "Also search definitions" on the host | PR #262, in review |
 | A | Multi-file reads | `…-multi-file-reads` | Shared window fit; `resource.read` fitted; repeated `<path>` | After Slice 0 |
 | B | Selected Text | `…-selected-text` | Port fix, snapshots by id, `editor-selection` attachment, command and toggle | After Slice 0 |
 
@@ -45,10 +45,10 @@ brief's defaults. Each is his to overturn.
 
 | # | Item | Question | Default taken | Source |
 |---|---|---|---|---|
-| 1 | A | Scope beyond multi-file | Build part 1's **`resource.read` window fit** too (shared fitting module, half the room left, one read's worth with no window). Ten files in one unfitted call would make "context window exceeded" more likely. | Ada, for Okey |
-| 2 | A | Out of scope | The engine backstop (part 2) and the `memory.read` fit stay in the feature note. | Ada, for Okey |
+| 1 | A | Scope beyond multi-file | Build part 1's **`resource.read` window fit** too (shared fitting module, half the room left, one read's worth with no window). Ten files in one unfitted call would make "context window exceeded" more likely. | **Okey's decision** (relayed by Ada, 2026-11-14) |
+| 2 | A | Out of scope | The engine backstop (part 2) and the `memory.read` fit stay in the feature note. | **Okey's decision** (relayed by Ada, 2026-11-14) |
 | 3 | A | The share, and a per-turn total | Half the room left; no per-turn total when the window is known. | Okey, 2026-11-06 |
-| 4 | B | How a selection is added by hand | A new editor command, **Add Selection to Workshop Message**, in the Prose Minion submenu. "Send Selection to Workshop" (replaces the excerpt) stays. | Brief default; Ada is asking Okey |
+| 4 | B | How a selection is added by hand | Two separate commands. A new one, **Add Selection to Workshop Message**, stages the pill. The existing `prose-minion.workshopSelection` keeps replacing the excerpt and is retitled **Send to New Workshop Excerpt**, everywhere the old title appears. | **Okey's decision** (relayed by Ada, 2026-11-14) |
 | 5 | B | Which documents | Any text document, like the existing selection commands. | Brief default |
 | 6 | B | A selection inside the excerpt | Sent as text. A pointer can come later. | Brief default |
 | 7 | B | Rewind | Restages the captured text, not the live selection. | Brief default |
