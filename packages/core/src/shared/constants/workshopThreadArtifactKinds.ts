@@ -16,7 +16,7 @@ import {
 } from '@shared/constants/workshopWidgets';
 
 /** Message-attachment kinds: a staged attachment that is not a file. */
-export const WORKSHOP_MESSAGE_ATTACHMENT_KINDS = ['lightbox-tile'] as const;
+export const WORKSHOP_MESSAGE_ATTACHMENT_KINDS = ['lightbox-tile', 'selected-text'] as const;
 
 export type WorkshopMessageAttachmentKind = (typeof WORKSHOP_MESSAGE_ATTACHMENT_KINDS)[number];
 
@@ -39,18 +39,54 @@ export const WORKSHOP_THREAD_ARTIFACT_KIND_EXPECTED =
 
 /** The kind a message attachment's frame carries, from its host-owned shape; undefined for a file or note. */
 export function workshopMessageAttachmentKind(
-  attachment: { lightboxTile?: unknown }
+  attachment: { lightboxTile?: unknown; selectedText?: unknown }
 ): WorkshopMessageAttachmentKind | undefined {
-  return attachment.lightboxTile !== undefined ? 'lightbox-tile' : undefined;
+  if (attachment.lightboxTile !== undefined) {
+    return 'lightbox-tile';
+  }
+  // `selected-text` is named apart from `editor-selection`, the excerpt's source kind (ADR 2026-11-14 D13).
+  return attachment.selectedText !== undefined ? 'selected-text' : undefined;
+}
+
+/** What a kind's preamble reads of its attachment: never its body. */
+export interface WorkshopMessageAttachmentFrameContext {
+  /** A Selected Text attachment's lines, from its meta (1-based, inclusive). */
+  selectedText?: { startLine: number; endLine: number };
+}
+
+/** The frame context of one artifact, from the message attachments of the turn it rode. */
+export function workshopMessageAttachmentFrameContext(
+  artifactId: string,
+  attachments: readonly { id: string; selectedText?: { startLine: number; endLine: number } }[] | undefined
+): WorkshopMessageAttachmentFrameContext {
+  const selectedText = attachments?.find((attachment) => attachment.id === artifactId)?.selectedText;
+  return selectedText ? { selectedText: { startLine: selectedText.startLine, endLine: selectedText.endLine } } : {};
 }
 
 /**
  * What each attachment kind's frame tells the persona before its body, in
- * the extension's words. The body itself stays quoted material.
+ * the extension's words. The body itself stays quoted material. A kind whose
+ * preamble names where its text came from (Selected Text's lines) reads that
+ * from the attachment's meta, through the frame context.
  */
-export const WORKSHOP_MESSAGE_ATTACHMENT_KIND_PREAMBLES: Readonly<Record<WorkshopMessageAttachmentKind, string>> = {
+export const WORKSHOP_MESSAGE_ATTACHMENT_KIND_PREAMBLES: Readonly<
+  Record<WorkshopMessageAttachmentKind, (context: WorkshopMessageAttachmentFrameContext) => string>
+> = {
   // eslint-disable-next-line @typescript-eslint/naming-convention -- attachment kinds are kebab-case protocol literals.
-  'lightbox-tile':
+  'lightbox-tile': () =>
     'A reading the writer brought from the Lightbox. Its claim is a model\'s reading of the chapter, offered to discuss, ' +
-    'not a finding. Its quotes were found in the chapter when it was brought.'
+    'not a finding. Its quotes were found in the chapter when it was brought.',
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- attachment kinds are kebab-case protocol literals.
+  'selected-text': (context) => {
+    const lines = context.selectedText;
+    if (!lines || !Number.isSafeInteger(lines.startLine) || !Number.isSafeInteger(lines.endLine)) {
+      // The lines are the meta's, host-written; a frame that cannot say them is never built.
+      throw new Error('A selected-text thread artifact needs its lines');
+    }
+    const where = lines.startLine === lines.endLine
+      ? `at line ${lines.startLine}`
+      : `at lines ${lines.startLine}–${lines.endLine}`;
+    return `Text the writer selected in this file, ${where}, when the message was sent. ` +
+      'It is the passage the message is about: not the writer\'s own words in this message, and not the room\'s excerpt.';
+  }
 };

@@ -134,7 +134,10 @@ import {
 } from '@messages';
 import { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
-import { workshopMessageAttachmentKind } from '@shared/constants/workshopThreadArtifactKinds';
+import {
+  workshopMessageAttachmentFrameContext,
+  workshopMessageAttachmentKind
+} from '@shared/constants/workshopThreadArtifactKinds';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import type {
@@ -1142,7 +1145,7 @@ export class WorkshopRoomHandler {
     const roomThreadArtifacts: WorkshopThreadArtifactFrameInput[] =
       messageAttachments.map((attachment) => ({
         id: attachment.id,
-        // A Lightbox tile's frame says what it is (Slice 4); a file's has no kind.
+        // A Lightbox tile's frame, or a selection's, says what it is; a file's has no kind.
         ...withMessageAttachmentKind(attachment),
         name: attachment.label,
         sourcePath: attachment.relativePath,
@@ -1174,7 +1177,9 @@ export class WorkshopRoomHandler {
     }
     const directedRun = executeOptions?.directedRun;
     const threadArtifactFrames = [
-      ...roomThreadArtifacts.map(buildWorkshopThreadArtifactFrame),
+      // A Selected Text frame reads its lines from its attachment's meta (ADR 2026-11-14 D13).
+      ...roomThreadArtifacts.map((artifact) =>
+        buildWorkshopThreadArtifactFrame(artifact, workshopMessageAttachmentFrameContext(artifact.id, messageAttachments))),
       // A press's directive rides the frames' own slot, last before the message (ADR 2026-11-10 D4).
       ...(directedRun ? [directedRun.frame] : []),
       // The edit-offer reminder rides it too, never with a press and never for a tool (second addendum).
@@ -1813,7 +1818,7 @@ export class WorkshopRoomHandler {
 }
 
 /** The frame kind a staged attachment carries, when it has one. */
-function withMessageAttachmentKind(attachment: { lightboxTile?: unknown }): { kind?: string } {
+function withMessageAttachmentKind(attachment: { lightboxTile?: unknown; selectedText?: unknown }): { kind?: string } {
   const kind = workshopMessageAttachmentKind(attachment);
   return kind ? { kind } : {};
 }

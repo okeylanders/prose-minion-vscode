@@ -34,6 +34,7 @@ import { assertWorkshopMemoryProposalShape } from '@/application/services/worksh
 import { assertWorkshopFileEditProposalShape } from '@/application/services/workshop/session/WorkshopFileEditProposalRecords';
 import { assertWorkshopEditOfferPressShape, assertWorkshopEditOfferShape } from '@/application/services/workshop/session/WorkshopEditOfferRecords';
 import { assertWorkshopMemoryReceiptShape } from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
+import { assertOptionalWorkshopSelectedTextMeta } from '@/application/services/workshop/selection/WorkshopSelectedTextAttachment';
 import {
   isLiveWorkshopWidgetId,
   isWorkshopWidgetId
@@ -357,7 +358,7 @@ function assertMessageAttachment(value: unknown, path: string): void {
     value,
     path,
     ['id', 'label', 'words', 'content'],
-    ['relativePath', 'configuredResource', 'truncation', 'sourceUri', 'lightboxTile']
+    ['relativePath', 'configuredResource', 'truncation', 'sourceUri', 'lightboxTile', 'selectedText']
   );
   stringAt(attachment.id, `${path}.id`);
   stringAt(attachment.label, `${path}.label`);
@@ -370,6 +371,7 @@ function assertMessageAttachment(value: unknown, path: string): void {
     assertKeptWordTruncation(attachment.truncation, `${path}.truncation`);
   }
   assertOptionalLightboxTileMeta(attachment.lightboxTile, `${path}.lightboxTile`);
+  assertOptionalWorkshopSelectedTextMeta(attachment.selectedText, `${path}.selectedText`);
 }
 
 /** A Lightbox tile staged or sent as a message attachment (Lightbox Slice 4): display-safe ids and labels only. */
@@ -865,7 +867,7 @@ function assertMessageAttachmentSnapshot(value: unknown, path: string): void {
     value,
     path,
     ['id', 'label', 'words'],
-    ['relativePath', 'configuredResource', 'truncation', 'lightboxTile']
+    ['relativePath', 'configuredResource', 'truncation', 'lightboxTile', 'selectedText']
   );
   stringAt(attachment.id, `${path}.id`);
   stringAt(attachment.label, `${path}.label`);
@@ -876,6 +878,7 @@ function assertMessageAttachmentSnapshot(value: unknown, path: string): void {
     assertKeptWordTruncation(attachment.truncation, `${path}.truncation`);
   }
   assertOptionalLightboxTileMeta(attachment.lightboxTile, `${path}.lightboxTile`);
+  assertOptionalWorkshopSelectedTextMeta(attachment.selectedText, `${path}.selectedText`);
 }
 
 function assertTokenUsage(value: unknown, path: string): void {
