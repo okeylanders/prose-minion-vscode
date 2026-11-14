@@ -42,11 +42,11 @@ import { recallLabelList } from '@/application/services/workshop/recall/Workshop
 import { recallQuoted } from '@/application/services/workshop/recall/WorkshopRecallCopy';
 import { workshopTranscriptRecallRequestSummary } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRequestCopy';
 import {
-  fitWorkshopRecallReadToWindow,
-  workshopRecallEvidenceTokens,
-  WorkshopRecallMeasuredRead,
-  WorkshopRecallWindowFit
-} from '@/application/services/workshop/recall/WorkshopRecallWindowClamp';
+  fitWorkshopReadToWindow,
+  workshopReadEvidenceTokens,
+  WorkshopMeasuredRead,
+  WorkshopReadWindowFit
+} from '@/application/services/workshop/reads/WorkshopReadWindowFit';
 import {
   recallFailedResult,
   recallNumber as count,
@@ -103,21 +103,21 @@ export async function runWorkshopRecallBookmarks(
   }
   const shown: Shown = result;
   const sourcesOf = new Map<WorkshopCapabilityResult, WorkshopRecallOperationOutcome['sources']>();
-  const render = (characters: number): WorkshopRecallMeasuredRead => {
+  const render = (characters: number): WorkshopMeasuredRead => {
     const recorded = shown.outcome === 'bookmarks'
       ? listOutcome(request, shown, characters, context.now())
       : messageOutcome(request, shown, characters, context.now());
     sourcesOf.set(recorded.result, recorded.sources);
-    return { characters, outcome: recorded.result, tokens: half === undefined ? 0 : workshopRecallEvidenceTokens(recorded.result) };
+    return { size: characters, outcome: recorded.result, tokens: half === undefined ? 0 : workshopReadEvidenceTokens(recorded.result) };
   };
-  const fitted: WorkshopRecallWindowFit = half === undefined
+  const fitted: WorkshopReadWindowFit = half === undefined
     ? { fit: render(first), renders: 1 }
-    : fitWorkshopRecallReadToWindow(render, first, half, minimum);
+    : fitWorkshopReadToWindow(render, first, half, minimum);
   if (!fitted.fit) {
     return { result: tooSmall(context, request, minimum, 0) };
   }
   const outcome = fitted.fit.outcome;
-  context.log(`bookmarks limit=${fitted.fit.characters} characters=${outcome.content!.length}` +
+  context.log(`bookmarks limit=${fitted.fit.size} characters=${outcome.content!.length}` +
     (half === undefined ? ' window=unknown' : ` tokens=${fitted.fit.tokens} halfWindow=${half} renders=${fitted.renders}`) +
     (shown.withheld ? ` withheld=${shown.withheld.reason} bookmarks=${shown.withheld.bookmarkIds.join(',')}` : ''));
   return { result: outcome, sources: sourcesOf.get(outcome) };

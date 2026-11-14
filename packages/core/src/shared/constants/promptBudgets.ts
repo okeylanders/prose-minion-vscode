@@ -42,6 +42,12 @@ export interface PromptBudgets {
     readDefaultLines: number;
     readSourceBytes: number;
     readBytes: number;
+    /** Files one `resource.read` names (ADR 2026-11-14 D5). */
+    readPaths: number;
+    /** A read naming two or more files, before the window fit; also a turn's file reads together when the window is unknown. */
+    readBytesMulti: number;
+    /** The least a file is given; a read that cannot give it is refused. */
+    readMinimumBytes: number;
   }>;
   /**
    * Session Recall (`transcript.*`, ADR 2026-10-05 §5): request field
@@ -627,7 +633,10 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     searchTotalBytes: 2 * 1024 * 1024,
     readDefaultLines: 400,
     readSourceBytes: 2 * 1024 * 1024,
-    readBytes: 64 * 1024
+    readBytes: 64 * 1024,
+    readPaths: 10,
+    readBytesMulti: 256 * 1024,
+    readMinimumBytes: 2_048
   },
   workshopTranscriptRecall: {
     queryCharacters: 200,

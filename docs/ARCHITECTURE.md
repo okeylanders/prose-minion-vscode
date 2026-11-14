@@ -394,7 +394,7 @@ or reads `current.json`, and the live room is never in its own corpus.
   written, through the codec.
 - **The engine's window seam.** `AgentCapability.fulfill(request, window?)`
   receives a `CapabilityContextWindow` that `AgentRunEngine` measures with the
-  preflight's own estimator. `WorkshopRecallWindowClamp` fits each read into
+  preflight's own estimator. `reads/WorkshopReadWindowFit` fits each read into
   half of the free window; other capabilities ignore it. When the model's
   context length is unknown, the engine passes no window and runs no
   preflight, so a turn's reads share one read's worth (`readCharacters`)
@@ -410,8 +410,9 @@ or reads `current.json`, and the live room is never in its own corpus.
 | `recall/WorkshopTranscriptRecallService` | Corpus, scope checks, the document cache, and the four queries |
 | `recall/WorkshopRecallDocument`, `WorkshopRecallDocumentLoader`, `WorkshopRecallDocumentCache` | Recall documents from saved sessions, loaded within a byte budget and cached |
 | `recall/WorkshopTranscriptRecallSearch`, `WorkshopRecallCorpusSelection` | Ranked lexical search, `<match>`, and session selection |
-| `recall/WorkshopTranscriptRecallRenderer`, `WorkshopRecallReadAllocation`, `WorkshopRecallReadSection`, `WorkshopRecallReadWindow`, `WorkshopRecallTodoList` | Model-facing text, fair shares across sessions, and continuations |
-| `recall/WorkshopRecallWindowClamp` | Fits a read into half the free context window |
+| `recall/WorkshopTranscriptRecallRenderer`, `WorkshopRecallReadSection`, `WorkshopRecallReadWindow`, `WorkshopRecallTodoList` | Model-facing text and continuations |
+| `reads/WorkshopReadShares` | Fair shares of one read, across sessions or files (shared with `resource.read`) |
+| `reads/WorkshopReadWindowFit` | Fits a read into half the free context window (shared with `resource.read`) |
 | `recall/WorkshopRecallCopy`, `WorkshopRecallText`, `WorkshopRecallTime`, `WorkshopTranscriptRecallRequestCopy`, `WorkshopTranscriptRecallResults` | Shared copy, bounded labels, clocks, status lines, and result types |
 
 The grammar lives in `transcript-recall-capability.md` in the system prompt,
