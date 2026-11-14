@@ -1155,10 +1155,10 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
   });
 
   /**
-   * Continue on a carried passage (epic Everyday Conveniences, item E): a
-   * file-backed one is re-read straight after the path is chosen, so edits
-   * made since land as the next version. The order is the contract: the host
-   * must adopt the passage before it is asked to re-read it.
+   * Continue on a carried passage (epic Everyday Conveniences, item E): for
+   * a file-backed one the host reads the file and chooses the path as ONE
+   * operation, so it is asked in one message (PR #260 F-01). Two messages
+   * would leave the room send-ready on the old passage while the file is read.
    */
   describe('continuing with a carried passage', () => {
     const wireOrder = () =>
@@ -1168,7 +1168,7 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
           type === MessageType.WORKSHOP_SET_SESSION_SCOPE
           || type === MessageType.WORKSHOP_REREAD_EXCERPT);
 
-    it('chooses the passage path, then re-reads a file-backed passage', () => {
+    it('asks for the passage path and the file\'s current text in one message', () => {
       const { result } = renderHook(() => useWorkshop());
       act(() => result.current.handleSessionState(sessionState({
         scope: null,
@@ -1177,15 +1177,12 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
 
       act(() => result.current.continueWithExcerpt());
 
-      expect(wireOrder()).toEqual([
-        MessageType.WORKSHOP_SET_SESSION_SCOPE,
-        MessageType.WORKSHOP_REREAD_EXCERPT
-      ]);
+      expect(wireOrder()).toEqual([MessageType.WORKSHOP_SET_SESSION_SCOPE]);
       expect(posted(MessageType.WORKSHOP_SET_SESSION_SCOPE).at(-1)?.payload)
-        .toEqual({ scope: 'excerpt' });
+        .toEqual({ scope: 'excerpt', rereadFile: true });
     });
 
-    it('re-reads a file-backed passage that waited on the shelf', () => {
+    it('asks the same for a file-backed passage that waited on the shelf', () => {
       const { result } = renderHook(() => useWorkshop());
       act(() => result.current.handleSessionState(sessionState({
         scope: null,
@@ -1195,10 +1192,9 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
 
       act(() => result.current.continueWithExcerpt());
 
-      expect(wireOrder()).toEqual([
-        MessageType.WORKSHOP_SET_SESSION_SCOPE,
-        MessageType.WORKSHOP_REREAD_EXCERPT
-      ]);
+      expect(wireOrder()).toEqual([MessageType.WORKSHOP_SET_SESSION_SCOPE]);
+      expect(posted(MessageType.WORKSHOP_SET_SESSION_SCOPE).at(-1)?.payload)
+        .toEqual({ scope: 'excerpt', rereadFile: true });
     });
 
     it('continues a pasted passage as it stands, with no re-read', () => {
@@ -1211,6 +1207,22 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
       act(() => result.current.continueWithExcerpt());
 
       expect(wireOrder()).toEqual([MessageType.WORKSHOP_SET_SESSION_SCOPE]);
+      expect(posted(MessageType.WORKSHOP_SET_SESSION_SCOPE).at(-1)?.payload)
+        .toEqual({ scope: 'excerpt' });
+    });
+
+    it('keeps the composer closed until the host answers Continue', () => {
+      const { result } = renderHook(() => useWorkshop());
+      act(() => result.current.handleSessionState(sessionState({
+        scope: null,
+        participantSubjectReady: false,
+        excerpt: excerptSnapshot()
+      })));
+
+      act(() => result.current.continueWithExcerpt());
+
+      expect(result.current.scope).toBeNull();
+      expect(result.current.canMessage).toBe(false);
     });
   });
 

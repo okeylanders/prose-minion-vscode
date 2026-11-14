@@ -218,8 +218,8 @@ export interface WorkshopRoomActions {
   clearAttachmentContent: () => void;
   setSessionScope: (scope: WorkshopSelectableSessionScope) => void;
   /**
-   * Choose the passage path with the carried passage. A file-backed one is
-   * re-read straight after, so the room starts on the file's current text.
+   * Choose the passage path with the carried passage. For a file-backed one
+   * the host reads the file first, so the room starts on its current text.
    */
   continueWithExcerpt: () => void;
   repinExcerpt: () => void;
@@ -436,16 +436,17 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     post(MessageType.WORKSHOP_SET_SESSION_SCOPE, { scope: next });
   }, [post]);
 
-  // Two messages, in this order: the host applies the scope choice before it
-  // receives the re-read, which then revises the passage it just adopted (an
-  // edited file lands as the next version; an unchanged one says so).
+  // One message: the host reads the file, then chooses the path and lands the
+  // read together (PR #260 F-01). Until its snapshot arrives the path stays
+  // unchosen here, so the composer is not send-ready on the old passage.
   const carriedExcerptIsFileBacked = (excerpt ?? shelvedExcerpt)?.source.kind === 'file';
   const continueWithExcerpt = React.useCallback(() => {
-    setSessionScope('excerpt');
-    if (carriedExcerptIsFileBacked) {
-      rereadExcerpt();
-    }
-  }, [setSessionScope, rereadExcerpt, carriedExcerptIsFileBacked]);
+    setErrorMessage('');
+    post(
+      MessageType.WORKSHOP_SET_SESSION_SCOPE,
+      carriedExcerptIsFileBacked ? { scope: 'excerpt', rereadFile: true } : { scope: 'excerpt' }
+    );
+  }, [post, carriedExcerptIsFileBacked]);
 
   const repinExcerpt = React.useCallback(() => {
     setErrorMessage('');

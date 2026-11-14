@@ -689,6 +689,13 @@ export interface WorkshopSetExcerptMessage extends MessageEnvelope<WorkshopSetEx
 
 export interface WorkshopSetSessionScopePayload {
   scope: WorkshopSelectableSessionScope;
+  /**
+   * With `excerpt` only: Continue on a carried, file-backed passage. The host
+   * reads the file first, then chooses the path and lands what it read as one
+   * room operation (an edited file as the next version; an unchanged one says
+   * so). A passage that is not file-backed continues as it stands.
+   */
+  rereadFile?: boolean;
 }
 
 /**
