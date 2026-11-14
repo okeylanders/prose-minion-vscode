@@ -185,6 +185,40 @@
   display: none;
 }
 
+/* The collapsed rail's strip: one icon per rail tab, with its count and its
+   badge stacked under it (Everyday Conveniences, item D). The count and
+   badge reuse the tab strip's own rules above. */
+[data-pm-surface="workshop"] .pm-ws-rail-strip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+[data-pm-surface="workshop"] .pm-ws-rail-strip-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 44px;
+  padding: 8px 0 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pm-muted);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-rail-strip-tab:hover {
+  border-color: var(--pm-border);
+  background: var(--pm-surface-2);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-rail-strip-tab .pm-ws-rail-tab-badge {
+  padding: 1px 4px;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
 /* Writer-owned task list */
 [data-pm-surface="workshop"] .pm-ws-todos {
   gap: 9px;

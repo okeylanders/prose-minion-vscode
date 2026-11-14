@@ -39,6 +39,10 @@ import {
   toDictionaryHistorySummary
 } from '@/infrastructure/storage/dictionaryHistoryCodec';
 import { isMissingFileSystemPathError } from '@/infrastructure/storage/fileSystemErrors';
+import {
+  DictionaryHistoryDefinitionSearch,
+  searchDictionaryHistoryDefinitions
+} from '@/infrastructure/storage/dictionaryHistorySearch';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -138,6 +142,15 @@ export class DictionaryHistoryStore {
       const entry = this.entries.find((candidate) => candidate.id === id);
       return entry ? copyDictionaryHistoryEntry(entry) : undefined;
     });
+  }
+
+  /**
+   * The entries whose result holds `query`, newest first, each with a snippet
+   * around its first hit (the 2026-11-14 search amendment). Reads every entry
+   * held, at most the cap, and hands out no body.
+   */
+  searchDefinitions(query: string): Promise<DictionaryHistoryDefinitionSearch> {
+    return this.enqueue(async () => searchDictionaryHistoryDefinitions(this.entries, query));
   }
 
   /** Insert newest first, evict past the limit, persist, and emit. Never rejects on a write failure. */

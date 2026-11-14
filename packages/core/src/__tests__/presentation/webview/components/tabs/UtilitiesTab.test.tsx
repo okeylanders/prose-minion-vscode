@@ -318,6 +318,10 @@ describe('UtilitiesTab dictionary history', () => {
     clearHistory: jest.fn(),
     followRecordedEntry: jest.fn(),
     beginNewLookup: jest.fn(),
+    definitionSearch: { status: 'idle', query: '', matches: [] },
+    searchDefinitions: jest.fn(),
+    cancelDefinitionSearch: jest.fn(),
+    handleHistorySearchResult: jest.fn(),
     persistedState: { dictionaryHistoryCursorId: null },
     ...overrides
   });

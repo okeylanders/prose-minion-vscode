@@ -108,6 +108,8 @@ export enum MessageType {
   DICTIONARY_HISTORY_ENTRY = 'dictionary_history_entry',
   DELETE_DICTIONARY_HISTORY_ENTRY = 'delete_dictionary_history_entry',
   CLEAR_DICTIONARY_HISTORY = 'clear_dictionary_history',
+  SEARCH_DICTIONARY_HISTORY = 'search_dictionary_history',
+  DICTIONARY_HISTORY_SEARCH_RESULT = 'dictionary_history_search_result',
 
   // Streaming API responses
   STREAM_STARTED = 'stream_started',

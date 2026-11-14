@@ -55,7 +55,9 @@ import {
   RequestDictionaryHistoryEntryMessage,
   DictionaryHistoryEntryMessage,
   DeleteDictionaryHistoryEntryMessage,
-  ClearDictionaryHistoryMessage
+  ClearDictionaryHistoryMessage,
+  SearchDictionaryHistoryMessage,
+  DictionaryHistorySearchResultMessage
 } from './dictionaryHistory';
 import {
   GenerateContextMessage,
@@ -333,6 +335,7 @@ export type WebviewToExtensionMessage =
   | RequestDictionaryHistoryEntryMessage
   | DeleteDictionaryHistoryEntryMessage
   | ClearDictionaryHistoryMessage
+  | SearchDictionaryHistoryMessage
   | CancelAnalysisRequestMessage
   | CancelDictionaryRequestMessage
   | CancelContextRequestMessage
@@ -469,6 +472,7 @@ export type ExtensionToWebviewMessage =
   | DictionaryGenerationProgressMessage
   | DictionaryHistoryMessage
   | DictionaryHistoryEntryMessage
+  | DictionaryHistorySearchResultMessage
   | StreamStartedMessage
   | StreamChunkMessage
   | StreamCompleteMessage

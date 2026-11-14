@@ -16,7 +16,8 @@ import * as React from 'react';
 import { PmLogo } from '@components/shared/PmLogo';
 import {
   FullTabBoundaryErrorHandler,
-  FullTabRail
+  FullTabRail,
+  FullTabRailCollapse
 } from '@components/fulltab/FullTabRail';
 
 export interface FullTabBrand {
@@ -58,6 +59,27 @@ export interface FullTabShellProps {
    * is exactly as before.
    */
   inertBehindOverlay?: boolean;
+  /**
+   * Lets the leading rail collapse to a strip the tab supplies (Everyday
+   * Conveniences, item D). The state and its callbacks come from
+   * `useFullTabRailCollapse`; the shell knows nothing of what the strip
+   * holds. Opt-in; without it the markup is exactly as before. Not combined
+   * with an `aside`: the three-column split keeps its own narrow rules.
+   */
+  railCollapse?: FullTabRailCollapse;
+}
+
+function splitClassName(hasAside: boolean, railCollapse: FullTabRailCollapse | undefined): string {
+  if (hasAside) {
+    return 'pm-ws-split pm-ws-split-with-aside';
+  }
+  if (!railCollapse) {
+    return 'pm-ws-split';
+  }
+  const state = railCollapse.collapsed
+    ? ' pm-ws-split-rail-collapsed'
+    : railCollapse.overlay ? ' pm-ws-split-rail-overlay' : '';
+  return `pm-ws-split pm-ws-split-collapsible${state}`;
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
@@ -70,7 +92,8 @@ export const FullTabShell: React.FC<FullTabShellProps> = ({
   aside,
   onBoundaryError,
   children,
-  inertBehindOverlay = false
+  inertBehindOverlay = false,
+  railCollapse
 }) => {
   // `inert` is spread so React 18 passes it through as a plain attribute
   // (its typings don't list it), as WorkshopApp's loading state does.
@@ -95,11 +118,12 @@ export const FullTabShell: React.FC<FullTabShellProps> = ({
 
     {banners}
 
-    <div className={aside ? 'pm-ws-split pm-ws-split-with-aside' : 'pm-ws-split'} {...behind}>
+    <div className={splitClassName(aside !== undefined, aside ? undefined : railCollapse)} {...behind}>
       <FullTabRail
         label={rail.label}
         boundaryName={rail.boundaryName}
         onBoundaryError={onBoundaryError}
+        {...(railCollapse && !aside ? { collapse: railCollapse } : {})}
       >
         {rail.content}
       </FullTabRail>

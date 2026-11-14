@@ -60,6 +60,9 @@ const renderModal = (overrides: Partial<DictionaryHistoryModalProps> = {}) => {
     durability: PROJECT,
     limit: DICTIONARY_HISTORY_LIMIT,
     selectionDisabled: false,
+    definitionSearch: { status: 'idle', query: '', matches: [] },
+    onSearchDefinitions: jest.fn(),
+    onCancelDefinitionSearch: jest.fn(),
     now: () => NOW,
     onSelect: jest.fn(),
     onDelete: jest.fn(),
@@ -199,6 +202,12 @@ describe('DictionaryHistoryModal', () => {
     expect(document.activeElement).toBe(deleteButton('susurrus'));
   });
 
+  it('focuses the close button on open when there is nothing to search', () => {
+    renderModal({ entries: [] });
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close lookup history' }));
+  });
+
   it('moves focus to the close button when the last entry is deleted', () => {
     const { rerender } = renderModal({ entries: [ENTRIES[1]] });
     const target = deleteButton('petrichor');
@@ -309,7 +318,8 @@ describe('DictionaryHistoryModal', () => {
     opener.focus();
 
     const { rerender } = renderModal();
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close lookup history' }));
+    // The search field, where the writer types (the 2026-11-14 search amendment).
+    expect(document.activeElement).toBe(screen.getByRole('searchbox', { name: 'Search lookup history' }));
     expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true);
 
     rerender({ open: false });

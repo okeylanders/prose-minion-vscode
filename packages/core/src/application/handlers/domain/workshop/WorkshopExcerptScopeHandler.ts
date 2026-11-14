@@ -14,6 +14,7 @@ import {
 import {
   describeWorkshopPendingHostUpdates
 } from '@/application/services/workshop/WorkshopPromptBuilder';
+import { continueWithCurrentFile } from '@handlers/domain/workshop/WorkshopExcerptContinuation';
 import type {
   WorkshopMutationRouteRegistrar,
   WorkshopRoomEffects,
@@ -48,7 +49,9 @@ type WorkshopExcerptScopeEffects = Pick<
   | 'reportError'
   | 'sendStatus'
   | 'discardConversations'
->;
+> & {
+  runRoomOperation: (work: () => Promise<void>) => Promise<void>;
+};
 
 const workshopScopeMutationError = (error: unknown, fallback: string): string =>
   error instanceof WorkshopScopeLockedError
@@ -303,6 +306,22 @@ export class WorkshopExcerptScopeHandler {
     const scope = message.payload?.scope;
     if (!isWorkshopSelectableSessionScope(scope)) {
       this.effects.reportError(`Unknown Workshop session scope: ${String(scope)}`);
+      return;
+    }
+    if (scope === 'excerpt' && message.payload.rereadFile === true) {
+      // Continue on a carried file passage, as one room operation (PR #260 F-01).
+      await continueWithCurrentFile({
+        session: this.session,
+        intake: this.contextIntakeService,
+        log: this.outputChannel,
+        effects: this.effects,
+        runRoomOperation: this.effects.runRoomOperation,
+        rejectWhileRunning: () => this.rejectExcerptMutationWhileRunning(),
+        scopeErrorMessage: (error) =>
+          workshopScopeMutationError(error, 'That session scope is unavailable.'),
+        applyScopeTransition: (transition, reason) => this.applyScopeTransition(transition, reason),
+        replaceExcerpt: (input) => this.tryReplaceExcerpt(input)
+      });
       return;
     }
     if (this.rejectExcerptMutationWhileRunning()) {

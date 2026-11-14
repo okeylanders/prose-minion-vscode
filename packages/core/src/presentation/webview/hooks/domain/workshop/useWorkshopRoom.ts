@@ -217,6 +217,11 @@ export interface WorkshopRoomActions {
   openContextAttachmentFile: (id: string) => void;
   clearAttachmentContent: () => void;
   setSessionScope: (scope: WorkshopSelectableSessionScope) => void;
+  /**
+   * Choose the passage path with the carried passage. For a file-backed one
+   * the host reads the file first, so the room starts on its current text.
+   */
+  continueWithExcerpt: () => void;
   repinExcerpt: () => void;
   requestContextCatalog: () => void;
   searchContextResources: (query: string) => void;
@@ -431,6 +436,18 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     setErrorMessage('');
     post(MessageType.WORKSHOP_SET_SESSION_SCOPE, { scope: next });
   }, [post]);
+
+  // One message: the host reads the file, then chooses the path and lands the
+  // read together (PR #260 F-01). Until its snapshot arrives the path stays
+  // unchosen here, so the composer is not send-ready on the old passage.
+  const carriedExcerptIsFileBacked = (excerpt ?? shelvedExcerpt)?.source.kind === 'file';
+  const continueWithExcerpt = React.useCallback(() => {
+    setErrorMessage('');
+    post(
+      MessageType.WORKSHOP_SET_SESSION_SCOPE,
+      carriedExcerptIsFileBacked ? { scope: 'excerpt', rereadFile: true } : { scope: 'excerpt' }
+    );
+  }, [post, carriedExcerptIsFileBacked]);
 
   const repinExcerpt = React.useCallback(() => {
     setErrorMessage('');
@@ -895,6 +912,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     openContextAttachmentFile,
     clearAttachmentContent,
     setSessionScope,
+    continueWithExcerpt,
     repinExcerpt,
     requestContextCatalog,
     searchContextResources,

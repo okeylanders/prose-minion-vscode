@@ -145,6 +145,7 @@ export class WorkshopSliceComposition {
         markDirty,
         reportError: (message, details) =>
           host.reportRouteError('workshop', message, details, 'WorkshopExcerptScopeHandler'),
+        runRoomOperation: (work) => sessionPersistence.runContextRefresh(work),
         sendStatus: host.sendStatus,
         discardConversations: (conversationIds) => host.discardConversations(conversationIds)
       }

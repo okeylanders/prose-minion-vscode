@@ -107,6 +107,7 @@ export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandle
     },
     [MessageType.DICTIONARY_HISTORY]: dictionaryHistory.handleHistory,
     [MessageType.DICTIONARY_HISTORY_ENTRY]: dictionaryHistory.handleHistoryEntry,
+    [MessageType.DICTIONARY_HISTORY_SEARCH_RESULT]: dictionaryHistory.handleHistorySearchResult,
     [MessageType.STREAM_STARTED]: (msg) => {
       const domain = msg.payload.domain;
       if (domain === 'dictionary') {
