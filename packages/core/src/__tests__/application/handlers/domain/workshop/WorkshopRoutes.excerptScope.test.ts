@@ -103,6 +103,103 @@ describe('Workshop composed routing — excerpt and scope owner', () => {
       });
     });
 
+    /**
+     * A new room that kept its excerpt (epic Everyday Conveniences, item E):
+     * no conversation exists and no path is chosen, and the version carries
+     * across the room boundary.
+     */
+    describe('in a new room that kept its excerpt', () => {
+      const onDisk = (content: string) => {
+        fileSystem.readFile = jest.fn().mockResolvedValue(new TextEncoder().encode(content));
+      };
+      const carryIntoNewRoom = async () => {
+        await seedFileExcerpt('Alice was beginning to get very tired.');
+        onDisk('Alice was beginning to get very tired of sitting.');
+        await reread();
+        // The same aggregate boundary a `carry` start crosses.
+        session.reset();
+        expect(session.getSnapshot()).toMatchObject({
+          scope: null,
+          roomHasMemory: false,
+          excerpt: { version: 2 }
+        });
+      };
+      // Continue posts the path choice and the re-read back to back; neither
+      // waits for the other, so the choice must be applied by the time the
+      // re-read reads the room.
+      const continueThenReread = async () => {
+        const continued = router.route(
+          message(MessageType.WORKSHOP_SET_SESSION_SCOPE, { scope: 'excerpt' }) as any
+        );
+        const reread_ = reread();
+        await Promise.all([continued, reread_]);
+      };
+
+      it('lands an edited file as the next version before the first message', async () => {
+        await carryIntoNewRoom();
+        onDisk('Alice was not a bit tired.');
+
+        await reread();
+
+        expect(posted(MessageType.ERROR)).toHaveLength(0);
+        expect(session.getExcerpt()).toMatchObject({
+          version: 3,
+          text: 'Alice was not a bit tired.',
+          source: { kind: 'file', sourceUri: 'file:///ws/chapter.md' }
+        });
+      });
+
+      it('says an unchanged file is unchanged, and keeps its version', async () => {
+        await carryIntoNewRoom();
+
+        await reread();
+
+        expect(posted(MessageType.ERROR)).toHaveLength(0);
+        expect(session.getExcerpt()?.version).toBe(2);
+        expect(posted(MessageType.STATUS).at(-1).payload.message).toMatch(/unchanged/i);
+      });
+
+      it('continues with the file\'s current text when Continue is followed by a re-read', async () => {
+        await carryIntoNewRoom();
+        onDisk('Alice was not a bit tired.');
+
+        await continueThenReread();
+
+        expect(posted(MessageType.ERROR)).toHaveLength(0);
+        expect(session.getSnapshot()).toMatchObject({
+          scope: 'excerpt',
+          excerpt: { version: 3, text: 'Alice was not a bit tired.' }
+        });
+      });
+
+      it('continues with the stored version and says so when the file is unchanged', async () => {
+        await carryIntoNewRoom();
+
+        await continueThenReread();
+
+        expect(posted(MessageType.ERROR)).toHaveLength(0);
+        expect(session.getSnapshot()).toMatchObject({ scope: 'excerpt', excerpt: { version: 2 } });
+        expect(posted(MessageType.STATUS).at(-1).payload.message).toMatch(/unchanged/i);
+      });
+
+      it('takes the file\'s text for a passage continued from the shelf', async () => {
+        await carryIntoNewRoom();
+        await router.route(
+          message(MessageType.WORKSHOP_SET_SESSION_SCOPE, { scope: 'open' }) as any
+        );
+        expect(session.getSnapshot()).toMatchObject({ shelvedExcerpt: { version: 2 } });
+        onDisk('Alice was not a bit tired.');
+
+        await continueThenReread();
+
+        expect(posted(MessageType.ERROR)).toHaveLength(0);
+        expect(session.getSnapshot()).toMatchObject({
+          scope: 'excerpt',
+          excerpt: { version: 3, text: 'Alice was not a bit tired.' }
+        });
+      });
+    });
+
     it('revises a head-sliced excerpt when only content beyond the visible head changed', async () => {
       const excerptWordCap = PROMPT_BUDGETS.fileExcerpt.words;
       const original = Array.from(

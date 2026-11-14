@@ -808,10 +808,7 @@ export const WorkshopApp: React.FC = () => {
     () => workshop.setSessionScope('open'),
     [workshop.setSessionScope]
   );
-  const continueWithExcerpt = React.useCallback(
-    () => workshop.setSessionScope('excerpt'),
-    [workshop.setSessionScope]
-  );
+  const continueWithExcerpt = workshop.continueWithExcerpt;
 
   // Open-chat starters and rolled-back transient sends use the room hook's
   // one-shot seed; the composer remains the owner of the editable draft.

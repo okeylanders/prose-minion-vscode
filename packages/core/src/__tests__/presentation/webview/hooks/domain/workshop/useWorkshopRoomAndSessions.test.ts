@@ -1154,6 +1154,66 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
     });
   });
 
+  /**
+   * Continue on a carried passage (epic Everyday Conveniences, item E): a
+   * file-backed one is re-read straight after the path is chosen, so edits
+   * made since land as the next version. The order is the contract: the host
+   * must adopt the passage before it is asked to re-read it.
+   */
+  describe('continuing with a carried passage', () => {
+    const wireOrder = () =>
+      mockVSCode.postMessage.mock.calls
+        .map((c) => c[0].type)
+        .filter((type) =>
+          type === MessageType.WORKSHOP_SET_SESSION_SCOPE
+          || type === MessageType.WORKSHOP_REREAD_EXCERPT);
+
+    it('chooses the passage path, then re-reads a file-backed passage', () => {
+      const { result } = renderHook(() => useWorkshop());
+      act(() => result.current.handleSessionState(sessionState({
+        scope: null,
+        excerpt: excerptSnapshot()
+      })));
+
+      act(() => result.current.continueWithExcerpt());
+
+      expect(wireOrder()).toEqual([
+        MessageType.WORKSHOP_SET_SESSION_SCOPE,
+        MessageType.WORKSHOP_REREAD_EXCERPT
+      ]);
+      expect(posted(MessageType.WORKSHOP_SET_SESSION_SCOPE).at(-1)?.payload)
+        .toEqual({ scope: 'excerpt' });
+    });
+
+    it('re-reads a file-backed passage that waited on the shelf', () => {
+      const { result } = renderHook(() => useWorkshop());
+      act(() => result.current.handleSessionState(sessionState({
+        scope: null,
+        excerpt: undefined,
+        shelvedExcerpt: excerptSnapshot()
+      })));
+
+      act(() => result.current.continueWithExcerpt());
+
+      expect(wireOrder()).toEqual([
+        MessageType.WORKSHOP_SET_SESSION_SCOPE,
+        MessageType.WORKSHOP_REREAD_EXCERPT
+      ]);
+    });
+
+    it('continues a pasted passage as it stands, with no re-read', () => {
+      const { result } = renderHook(() => useWorkshop());
+      act(() => result.current.handleSessionState(sessionState({
+        scope: null,
+        excerpt: { ...excerptSnapshot(), source: { kind: 'manual' as const } }
+      })));
+
+      act(() => result.current.continueWithExcerpt());
+
+      expect(wireOrder()).toEqual([MessageType.WORKSHOP_SET_SESSION_SCOPE]);
+    });
+  });
+
   describe('room starts', () => {
     it('posts each start as written, and nothing else', () => {
       const { result } = renderHook(() => useWorkshop());
