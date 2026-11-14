@@ -255,6 +255,11 @@ describe('prompt budgets', () => {
     expect(PROMPT_BUDGETS.workshopProjectMemory.readsPerTurn).toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
   });
 
+  it('pins the Selected Text bound, half of what a file attached to a message may carry (ADR 2026-11-14 D15)', () => {
+    expect(PROMPT_BUDGETS.workshopSelectedText).toEqual({ words: 5_000, characters: 40_000, previewCharacters: 120, snapshots: 8, pushIntervalMs: 150 });
+    expect(PROMPT_BUDGETS.workshopSelectedText.words * 2).toBe(PROMPT_BUDGETS.workshopThreadArtifacts.words);
+  });
+
   it('pins the Pinned Context list bound (ADR 2026-11-04 D6)', () => {
     expect(PROMPT_BUDGETS.workshopPinnedContext).toEqual({ files: 50, fileBytes: 256 * 1024, pathCharacters: 4096 });
   });

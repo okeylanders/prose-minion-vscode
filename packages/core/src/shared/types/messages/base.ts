@@ -269,6 +269,13 @@ export enum MessageType {
   WORKSHOP_LIGHTBOX_TILE_OFFERED = 'workshop_lightbox_tile_offered',
   WORKSHOP_ACCEPT_LIGHTBOX_TILE = 'workshop_accept_lightbox_tile',
   WORKSHOP_LIGHTBOX_TILE_STAGED = 'workshop_lightbox_tile_staged',
+  // Selected Text: the editor's selection as a one-shot attachment, by seed or by toggle (ADR 2026-11-14 D17)
+  WORKSHOP_STAGE_SELECTED_TEXT = 'workshop_stage_selected_text',
+  WORKSHOP_SELECTED_TEXT_OFFERED = 'workshop_selected_text_offered',
+  WORKSHOP_ACCEPT_SELECTED_TEXT = 'workshop_accept_selected_text',
+  WORKSHOP_SELECTED_TEXT_STAGED = 'workshop_selected_text_staged',
+  WORKSHOP_SELECTED_TEXT_WATCH = 'workshop_selected_text_watch',
+  WORKSHOP_SELECTED_TEXT_CURRENT = 'workshop_selected_text_current',
   /* eslint-enable @typescript-eslint/naming-convention */
   WORKSHOP_REQUEST_WIDGET_CONFIG = 'workshop_request_widget_config',
   WORKSHOP_WIDGET_CONFIG_DATA = 'workshop_widget_config_data',

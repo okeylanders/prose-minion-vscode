@@ -79,6 +79,7 @@ import {
   workshopExcerptFileEditDocument,
   CraftFlagsService,
   HelperAgentService,
+  EditorSelectionSnapshots,
   HELPER_TASK_POLICIES,
   CraftFlagsUseCase,
   liveCatalogPrices,
@@ -617,6 +618,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel
   );
 
+  // Selected Text (ADR 2026-11-14 D11): the window's one snapshot cache, over the editor port.
+  const editorSelectionSnapshots = new EditorSelectionSnapshots(editorContext, outputChannel);
+  context.subscriptions.push(editorSelectionSnapshots);
+
   const coreServices: CoreServices = {
     assistantToolService,
     dictionaryService,
@@ -661,6 +666,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       library: workshopPinnedContextLibrary,
       takeFirstRoomReport: () => workshopPinnedContextRoomSeed.takeFirstRoomReport()
     },
+    editorSelectionSnapshots,
     helperAgentService,
     workshopTranscriptRecallService
   };

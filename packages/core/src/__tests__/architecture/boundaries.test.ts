@@ -2754,6 +2754,7 @@ describe('architectural boundaries', () => {
       'projectMemoryManager.ts',
       'reactions.ts',
       'seedDelivery.ts',
+      'selectedText.ts',
       'session.ts',
       'settings.ts',
       'showVsTell.ts',

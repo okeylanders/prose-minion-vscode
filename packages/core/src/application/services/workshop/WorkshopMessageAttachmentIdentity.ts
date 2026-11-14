@@ -5,6 +5,9 @@
  * count as one depends on what they are:
  * - a Lightbox tile is its board and tile ids (`lightboxTile`), durable on
  *   the attachment, its sent reference and its persisted pending copy alike;
+ * - the editor's selection (Selected Text, ADR 2026-11-14 D13) is its
+ *   snapshot id (`selectedText`), durable the same way: one selection has one
+ *   id, so the same selection cannot wait twice;
  * - a configured resource is its group and path;
  * - any other file is its host-private source key (`sourceUri`), when it has
  *   one. A file restaged by Rewind has lost that key (it never leaves the
@@ -16,16 +19,27 @@
  * wherever a tile is restaged from its reference.
  */
 
-import type { ConfiguredResourceRef, WorkshopLightboxTileAttachmentMeta } from '@messages';
+import type {
+  ConfiguredResourceRef,
+  WorkshopLightboxTileAttachmentMeta,
+  WorkshopSelectedTextAttachmentMeta
+} from '@messages';
 
 /** The duplicate-guard key's scheme: never a path, never shown. */
 const LIGHTBOX_TILE_SOURCE_SCHEME = 'lightbox-tile:';
+const SELECTED_TEXT_SOURCE_SCHEME = 'selected-text:';
 
 /** What identifies an attachment's source, on a staged input, a pending copy or a sent reference. */
 export interface WorkshopMessageAttachmentSource {
   sourceUri?: string;
   configuredResource?: ConfiguredResourceRef;
   lightboxTile?: Pick<WorkshopLightboxTileAttachmentMeta, 'boardId' | 'tileId'>;
+  selectedText?: Pick<WorkshopSelectedTextAttachmentMeta, 'snapshotId'>;
+}
+
+/** The host-private duplicate key of a Selected Text attachment: its snapshot id. */
+export function workshopSelectedTextSourceKey(selection: Pick<WorkshopSelectedTextAttachmentMeta, 'snapshotId'>): string {
+  return `${SELECTED_TEXT_SOURCE_SCHEME}${selection.snapshotId}`;
 }
 
 /** The host-private duplicate key of a tile: its board and its id. */
@@ -44,6 +58,11 @@ export function sameWorkshopMessageAttachmentSource(
       && candidate.lightboxTile.boardId === existing.lightboxTile.boardId
       && candidate.lightboxTile.tileId === existing.lightboxTile.tileId;
   }
+  if (candidate.selectedText || existing.selectedText) {
+    return candidate.selectedText !== undefined
+      && existing.selectedText !== undefined
+      && candidate.selectedText.snapshotId === existing.selectedText.snapshotId;
+  }
   if (candidate.sourceUri !== undefined && existing.sourceUri === candidate.sourceUri) {
     return true;
   }
@@ -52,10 +71,16 @@ export function sameWorkshopMessageAttachmentSource(
     && existing.configuredResource?.path === candidate.configuredResource.path;
 }
 
-/** An attachment restaged from its reference, with a tile's source key rebuilt from its ids; anything else as it is. */
+/**
+ * An attachment restaged from its reference, with a tile's source key rebuilt
+ * from its ids and a selection's from its snapshot id; anything else as it is.
+ */
 export function withWorkshopMessageAttachmentSourceKey<T extends WorkshopMessageAttachmentSource>(attachment: T): T {
-  return attachment.lightboxTile
-    ? { ...attachment, sourceUri: workshopLightboxTileSourceKey(attachment.lightboxTile) }
+  if (attachment.lightboxTile) {
+    return { ...attachment, sourceUri: workshopLightboxTileSourceKey(attachment.lightboxTile) };
+  }
+  return attachment.selectedText
+    ? { ...attachment, sourceUri: workshopSelectedTextSourceKey(attachment.selectedText) }
     : attachment;
 }
 
