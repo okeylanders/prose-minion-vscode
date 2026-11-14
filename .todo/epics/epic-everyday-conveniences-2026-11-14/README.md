@@ -1,6 +1,6 @@
 # Epic: Everyday Conveniences
 
-**Status:** Every item is merged into the epic: Slice 0, E, C, D, A and B (PRs #259, #260, #262, #261, #263, #264). The closing slice (docs, the live-pass checklist and one test) is in review, on `epic/everyday-conveniences-close`. Nothing has gone to `main`; the [live pass](live-pass.md) and the product defaults are Okey's.
+**Status:** Every item is merged into the epic: Slice 0, E, C, D, A and B (PRs #259, #260, #262, #261, #263, #264). The closing slice (docs, the live-pass checklist and one test) is merged too (PR #265). The epic is ready for a PR to `main`, which is Okey's to open or ask for. Nothing has gone to `main`; the [live pass](live-pass.md) and the product defaults are Okey's.
 **Priority:** Medium
 **Opened:** 2026-11-14
 **Branch:** `epic/everyday-conveniences`, cut from `main` at `964aa0e4`
@@ -35,7 +35,7 @@ live in this README and the ADR.
 | C | Dictionary history search | `…-dictionary-history-search` | Filter in the popup; "Also search definitions" on the host | Done: PR #262, merged `c1c9e2be` ([review](../../../docs/pr-reviews/pr-262-dictionary-history-search-review.md): no blocking findings) |
 | A | Multi-file reads | `…-multi-file-reads` | Shared window fit; `resource.read` fitted; repeated `<path>` | Done: PR #263, merged `0f152152` (review: no blocking findings; its report is not in the repo) |
 | B | Selected Text | `…-selected-text` | Port fix, snapshots by id, `selected-text` attachment, command and toggle; the old command retitled | Done: PR #264, merged `a27de46b` ([review](../../../docs/pr-reviews/pr-264-selected-text-review.md): two P2 findings, both fixed: the restored draft no longer overwrites newer typing; a live pill is bound to the room it was drawn in) |
-| Close | Closing pass | `…-close` | `AGENTS.md` where a rule changed, the [live-pass checklist](live-pass.md), the D5 share test and ADR note, a memory-bank entry | In review |
+| Close | Closing pass | `…-close` | `AGENTS.md` where a rule changed, the [live-pass checklist](live-pass.md), the D5 share test and ADR note, a memory-bank entry | Done: PR #265, merged `e3cc245b` ([review](../../../docs/pr-reviews/pr-265-everyday-conveniences-close-review.md): no blocking findings) |
 
 Slice branches are `epic/everyday-conveniences-<slug>`.
 
@@ -147,12 +147,12 @@ only once Okey has run its part.
 - [ ] Okey's live pass, and his word on the defaults (the checklist's
       "Decisions waiting on Okey").
 - [x] B merged into the epic (`a27de46b`).
-- [ ] This closing slice merged into the epic.
+- [x] This closing slice merged into the epic (PR #265, `e3cc245b`).
 
 ## Notes
 
 - **PR #263's review report is not in the repo.** `docs/pr-reviews/` holds
-  #259–#262 only. The review's one request (the D5 share test and note) is
+  #259–#262, #264 and #265. The review's one request (the D5 share test and note) is
   recorded in "Taken while building", row 21.
 - **Follow-ups** stay in their notes: the engine backstop and the
   `memory.read` fit in [Reads That Fit the Window](../../features/feature-workshop-reads-fit-the-window/README.md);
