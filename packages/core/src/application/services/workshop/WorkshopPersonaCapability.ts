@@ -35,10 +35,8 @@ import {
   workshopProjectMemoryStatusMessage,
   workshopProjectMemoryStatusTicker
 } from '@/application/services/workshop/memory/WorkshopProjectMemoryRequestCopy';
-import {
-  resourceReadLineRange,
-  WorkshopResourceCapability
-} from '@/application/services/workshop/WorkshopResourceCapability';
+import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
+import { resourceReadLineRange } from '@/application/services/workshop/WorkshopResourceRead';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
 import { LogSink } from '@/platform';

@@ -1201,6 +1201,10 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityResultLog.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopTranscriptRecallXmlCodec.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopPersonaCapability.ts'),
+  // Everyday Conveniences D8: the resource family's codec, read and instruction, split out.
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceXmlCodec.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceRead.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceInstruction.ts'),
   ...collectSourceFiles(WORKSHOP_RECALL_ROOT),
   ...collectSourceFiles(WORKSHOP_MEMORY_ROOT)
 ];
