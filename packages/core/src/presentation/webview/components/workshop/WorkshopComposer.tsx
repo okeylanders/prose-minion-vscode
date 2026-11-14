@@ -12,6 +12,11 @@
  * thread-artifact). Staged message attachments render as removable pills
  * above the input and ride the next send only.
  *
+ * Everyday Conveniences (ADR 2026-11-14 D9, D14): an "Include selected text"
+ * toggle sits in the controls row, after the cache estimate. While it is on, the editor's current
+ * selection is drawn after the staged pills as a live "Selected Text" pill,
+ * from props (`WorkshopSelectedTextControls`); the composer posts nothing.
+ *
  * The draft is deliberately LOCAL state: it's unsent user input, not session
  * truth, so it doesn't belong in WorkshopSessionService (and losing it on a
  * webview reload is acceptable alpha behavior). Staged attachments are HOST
@@ -28,6 +33,11 @@ import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 import { workshopAttachmentSize, workshopAttachmentTitle } from '@components/workshop/workshopAttachmentPills';
 import { WorkshopCacheIndicator } from '@components/workshop/WorkshopCacheIndicator';
+import {
+  WorkshopLiveSelectedTextPill,
+  WorkshopSelectedTextToggle,
+  type WorkshopComposerSelectedText
+} from '@components/workshop/WorkshopSelectedTextControls';
 import {
   WORKSHOP_INTERACTION_MODE_LABELS,
   WORKSHOP_RELATIONAL_DEPTH_LABELS,
@@ -71,6 +81,8 @@ interface WorkshopComposerProps {
   writerProfileShared: boolean;
   /** Staged one-shot attachments for the NEXT message (host truth). */
   messageAttachments: WorkshopMessageAttachmentSnapshot[];
+  /** Selected Text (ADR 2026-11-14 D14): the "Include selected text" toggle and its live pill; absent, neither is drawn. */
+  selectedText?: WorkshopComposerSelectedText;
   onSend: (text: string) => void;
   onCancel: () => void;
   onOpenContext: () => void;
@@ -113,6 +125,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   conversationBehavior,
   writerProfileShared,
   messageAttachments,
+  selectedText,
   onSend,
   onCancel,
   onOpenContext,
@@ -202,6 +215,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
     textareaRef.current?.focus();
   }, [draftSeed]);
 
+  const livePill = selectedText?.livePill ?? null;
   const openWithoutExcerpt = scope === 'open' && !hasExcerpt;
   // The passage path is only reachable from here while nobody has been
   // prompted yet; after that it is a new session, not a button.
@@ -216,12 +230,12 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
 
   return (
     <div className="pm-ws-composer-wrap">
-      {messageAttachments.length > 0 && (
+      {(messageAttachments.length > 0 || livePill) && (
         <div className="pm-ws-comp-attachments" aria-label="Attachments for this message">
           {messageAttachments.map((attachment) => (
             <span
               key={attachment.id}
-              className={`pm-ws-comp-attachment${attachment.lightboxTile ? ' pm-ws-comp-attachment-lightbox' : ''}`}
+              className={`pm-ws-comp-attachment${attachment.lightboxTile ? ' pm-ws-comp-attachment-lightbox' : ''}${attachment.selectedText ? ' pm-ws-comp-attachment-selected' : ''}`}
               title={workshopAttachmentTitle(attachment)}
             >
               <Icon name={attachment.lightboxTile ? 'pin' : 'doc'} size={11} />
@@ -238,7 +252,8 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
               </button>
             </span>
           ))}
-          <span className="pm-ws-comp-attachment-hint">rides the next message only</span>
+          {messageAttachments.length > 0 && <span className="pm-ws-comp-attachment-hint">rides the next message only</span>}
+          {livePill && <WorkshopLiveSelectedTextPill live={livePill} />}
         </div>
       )}
       {/* Sprint 13C: the composer stacks — full-width text entry on top, the
@@ -302,6 +317,13 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           cacheRequestModelId={cacheRequestModelId}
           recipientLabel={recipientLabel}
         />
+        {selectedText && (
+          <WorkshopSelectedTextToggle
+            on={selectedText.includeSelectedText}
+            disabled={!sessionReady}
+            onChange={selectedText.onIncludeSelectedTextChange}
+          />
+        )}
         {canAddExcerpt && (
           /* The composer's own door into the passage path (§4). It sits beside
              the attach button rather than in the action cluster, because it

@@ -1528,7 +1528,12 @@ export const WorkshopApp: React.FC = () => {
           conversationBehavior={workshop.conversationBehavior}
           writerProfileShared={isWorkshopWriterProfileActive(workshop.writerProfile)}
           messageAttachments={workshop.pendingMessageAttachments}
-          onSend={(text) => workshop.sendMessage(text)}
+          selectedText={{
+            includeSelectedText: selectedText.includeSelectedText,
+            onIncludeSelectedTextChange: selectedText.setIncludeSelectedText,
+            livePill: selectedText.livePill
+          }}
+          onSend={(text) => workshop.sendMessage(text, selectedText.sendSnapshotId)}
           onCancel={workshop.cancelRun}
           onOpenContext={openContext}
           onAttachToMessage={openMessageAttachSelector}
