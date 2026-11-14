@@ -8,7 +8,14 @@
  * - a path is workspace-relative and never traverses; whether it names a
  *   configured file is the capability's question, asked of its listing;
  * - a line bound is a positive safe integer, and `endLine` is never before
- *   `startLine`.
+ *   `startLine`;
+ * - a read names one to `readPaths` files (ADR 2026-11-14 D4): `<group>`
+ *   once, and one `<path>` per file, each of which may carry its own
+ *   `group="…"`. Two paths are one when their group and case-folded path
+ *   match, and a read naming a file twice is refused, never merged. That
+ *   is stricter than the lookup, which prefers an exact match, on purpose;
+ * - `startLine` and `endLine` are accepted only beside exactly one
+ *   `<path>`; beside more, which file they mean is ambiguous.
  *
  * Every rejection names its operation, so the persona capability leaves a
  * visible artifact for it, as the transcript and memory families do.
@@ -16,9 +23,10 @@
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { ContextPathGroup, isContextPathGroup } from '@shared/types';
-import type { WorkshopCapabilityRequest } from '@shared/types/workshopCapabilities';
+import type { WorkshopCapabilityRequest, WorkshopResourceReadFile } from '@shared/types/workshopCapabilities';
 import type {
   WorkshopCapabilityXmlCall,
+  WorkshopCapabilityXmlField,
   WorkshopCapabilityXmlFieldPolicy
 } from '@/application/services/workshop/WorkshopCapabilityXmlDocument';
 import type { WorkshopCapabilityRejectionReason } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
@@ -41,10 +49,10 @@ export type WorkshopResourceInspection =
   | { readonly kind: 'request'; readonly request: WorkshopResourceRequest }
   | WorkshopResourceRejection;
 
-/** Every resource field is unique and bare. */
+/** `resource.read` alone repeats a field, `<path>`, and each may carry its own `group`. */
 export const WORKSHOP_RESOURCE_FIELD_POLICY: WorkshopCapabilityXmlFieldPolicy = {
-  repeatable: () => false,
-  attributes: () => []
+  repeatable: (operation, field) => operation === 'resource.read' && field === 'path',
+  attributes: (operation, field) => (operation === 'resource.read' && field === 'path' ? ['group'] : [])
 };
 
 export function inspectWorkshopResourceCall(
@@ -57,7 +65,7 @@ export function inspectWorkshopResourceCall(
     case 'resource.search':
       return searchRequest(call.fields);
     case 'resource.read':
-      return readRequest(call.fields);
+      return readRequest(call);
     default:
       return assertNever(operation);
   }
@@ -95,8 +103,9 @@ function searchRequest(fields: ReadonlyMap<string, string>): WorkshopResourceIns
   };
 }
 
-function readRequest(fields: ReadonlyMap<string, string>): WorkshopResourceInspection {
+function readRequest(call: Pick<WorkshopCapabilityXmlCall, 'fields' | 'elements'>): WorkshopResourceInspection {
   const operation = 'resource.read';
+  const { fields } = call;
   const fieldError = validateFields(operation, fields, ['group', 'path'], ['startLine', 'endLine']);
   if (fieldError) {
     return fieldError;
@@ -105,18 +114,56 @@ function readRequest(fields: ReadonlyMap<string, string>): WorkshopResourceInspe
   if (!isContextPathGroup(group)) {
     return reject(operation, 'unknown-resource-group', 'group');
   }
-  const resourcePath = fields.get('path')!;
-  if (resourcePath.length > PROMPT_BUDGETS.workshopResource.pathCharacters) {
-    return reject(operation, 'oversized-input', 'path');
+  const named = call.elements.filter((element) => element.name === 'path');
+  if (named.length > PROMPT_BUDGETS.workshopResource.readPaths) {
+    return reject(operation, 'too-many-paths', 'path');
   }
-  if (!isSafeConfiguredResourcePath(resourcePath)) {
-    return reject(operation, 'invalid-resource-path', 'path');
+  const files: WorkshopResourceReadFile[] = [];
+  const seen = new Set<string>();
+  for (const element of named) {
+    const file = readFile(element, group);
+    if ('kind' in file) {
+      return file;
+    }
+    // One file, however its letters are cased: stricter than the lookup, on purpose (D4).
+    const key = `${file.group}\0${file.path.toLowerCase()}`;
+    if (seen.has(key)) {
+      return reject(operation, 'duplicate-path', 'path');
+    }
+    seen.add(key);
+    files.push(file);
   }
   const lines = lineBounds(fields);
   if ('kind' in lines) {
     return lines;
   }
-  return { kind: 'request', request: { capability: operation, group, path: resourcePath, ...lines } };
+  const lineField = (['startLine', 'endLine'] as const).find((field) => lines[field] !== undefined);
+  if (files.length > 1 && lineField) {
+    return reject(operation, 'ambiguous-lines', lineField);
+  }
+  return { kind: 'request', request: { capability: operation, files, ...lines } };
+}
+
+/** One `<path>`: its own `group` attribute or the call's, and a safe, bounded path. */
+function readFile(
+  element: WorkshopCapabilityXmlField,
+  callGroup: ContextPathGroup
+): WorkshopResourceReadFile | WorkshopResourceRejection {
+  const operation = 'resource.read';
+  const ownGroup = element.attributes.group;
+  if (ownGroup !== undefined && !isContextPathGroup(ownGroup)) {
+    return reject(operation, 'unknown-resource-group', 'path');
+  }
+  if (!element.value) {
+    return reject(operation, 'empty-field', 'path');
+  }
+  if (element.value.length > PROMPT_BUDGETS.workshopResource.pathCharacters) {
+    return reject(operation, 'oversized-input', 'path');
+  }
+  if (!isSafeConfiguredResourcePath(element.value)) {
+    return reject(operation, 'invalid-resource-path', 'path');
+  }
+  return { group: ownGroup ?? callGroup, path: element.value };
 }
 
 /** `startLine` and `endLine`, each a positive safe integer, in order. */

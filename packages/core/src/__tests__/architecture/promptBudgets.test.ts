@@ -206,7 +206,11 @@ describe('prompt budgets', () => {
       searchTotalBytes: 2 * 1024 * 1024,
       readDefaultLines: 400,
       readSourceBytes: 2 * 1024 * 1024,
-      readBytes: 64 * 1024
+      readBytes: 64 * 1024,
+      // A read of several files (ADR 2026-11-14 D5).
+      readPaths: 10,
+      readBytesMulti: 256 * 1024,
+      readMinimumBytes: 2_048
     });
   });
 

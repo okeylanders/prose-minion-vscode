@@ -8,6 +8,7 @@ import {
   DEFAULT_CONTEXT_GROUPS
 } from '@/domain/models/ContextGeneration';
 import { LogSink } from '@/platform';
+import type { CapabilityContextWindow, CapabilityDeliveredSource } from '@orchestration/AgentRunContracts';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { ContextPathGroup, WorkshopPersonaId } from '@shared/types';
 import {
@@ -16,7 +17,9 @@ import {
 } from '@shared/types/workshopCapabilities';
 import { WorkshopResourceGroupAvailability } from './WorkshopCapabilityXmlCodec';
 import { sliceUtf8 } from './WorkshopConfiguredResourceLookup';
-import { neutralizeWorkshopResourceFence, WorkshopResourceReadOperation } from './WorkshopResourceRead';
+import { WorkshopResourceReadOperation } from './WorkshopResourceRead';
+import { neutralizeWorkshopResourceFence } from './WorkshopResourceReadRenderer';
+import { workshopResourceRequestSummary } from './WorkshopResourceRequestCopy';
 
 type ResourceRequest = Extract<WorkshopCapabilityRequest, {
   capability: 'resource.catalog' | 'resource.search' | 'resource.read';
@@ -47,6 +50,8 @@ export interface WorkshopResourceTurnContext {
 export class WorkshopResourceCapability {
   private providerPromise?: Promise<ContextResourceProvider>;
   private readonly readOperation: WorkshopResourceReadOperation;
+  /** Manifest rows, beside each read's result: host-private, never in the card's metadata. */
+  private readonly sources = new WeakMap<WorkshopCapabilityResult, readonly CapabilityDeliveredSource[]>();
 
   constructor(
     private readonly providerFactory: ContextResourceProviderFactory,
@@ -57,7 +62,10 @@ export class WorkshopResourceCapability {
       resources: () => this.resources(),
       load: async (resourcePath) => (await this.provider()).loadResources([resourcePath]),
       throwIfAborted: () => this.throwIfAborted(),
-      rejected: (request, error) => this.rejected(request, error)
+      rejected: (request, error, metadata) => this.rejected(request, error, metadata),
+      log: (line) => this.outputChannel.appendLine(
+        `[WorkshopResourceCapability] request=${this.turn.requestId} persona=${this.turn.personaId} ${line}`
+      )
     });
   }
 
@@ -72,7 +80,11 @@ export class WorkshopResourceCapability {
       .map(group => ({ group, fileCount: counts.get(group)! }));
   }
 
-  async fulfill(request: ResourceRequest): Promise<WorkshopCapabilityResult> {
+  /**
+   * Catalog and search ignore the window. A read is fitted to half the room
+   * it leaves (ADR 2026-11-14 D2).
+   */
+  async fulfill(request: ResourceRequest, window?: CapabilityContextWindow): Promise<WorkshopCapabilityResult> {
     this.throwIfAborted();
     switch (request.capability) {
       case 'resource.catalog':
@@ -80,10 +92,30 @@ export class WorkshopResourceCapability {
       case 'resource.search':
         return this.search(request);
       case 'resource.read':
-        return this.readOperation.run(request);
+        return this.read(request, window);
       default:
         return this.assertNever(request);
     }
+  }
+
+  /**
+   * Manifest rows for what a read put in context (D7): one per file that
+   * delivered a line, each with its own line range and fingerprint. None
+   * for a catalog, a search, or a read that delivered nothing.
+   */
+  deliveredSources(result: WorkshopCapabilityResult): readonly CapabilityDeliveredSource[] {
+    return this.sources.get(result) ?? [];
+  }
+
+  private async read(
+    request: Extract<ResourceRequest, { capability: 'resource.read' }>,
+    window: CapabilityContextWindow | undefined
+  ): Promise<WorkshopCapabilityResult> {
+    const outcome = await this.readOperation.run(request, window);
+    if (outcome.sources) {
+      this.sources.set(outcome.result, outcome.sources);
+    }
+    return outcome.result;
   }
 
   private async catalog(
@@ -295,7 +327,11 @@ export class WorkshopResourceCapability {
     return neutralizeWorkshopResourceFence(value);
   }
 
-  private rejected(request: ResourceRequest, error: string): WorkshopCapabilityResult {
+  private rejected(
+    request: ResourceRequest,
+    error: string,
+    metadata?: Readonly<Record<string, unknown>>
+  ): WorkshopCapabilityResult {
     this.outputChannel.appendLine(
       `[WorkshopResourceCapability] request=${this.turn.requestId} persona=${this.turn.personaId} ` +
       `capability=${request.capability} rejected=${error}`
@@ -304,11 +340,12 @@ export class WorkshopResourceCapability {
       capability: request.capability,
       status: 'rejected',
       requestSummary: request.capability === 'resource.read'
-        ? request.path
+        ? workshopResourceRequestSummary(request)
         : request.capability === 'resource.search'
           ? request.query
           : request.group ?? 'all',
-      error
+      error,
+      ...(metadata ? { metadata: { ...metadata } } : {})
     };
   }
 

@@ -55,6 +55,10 @@ export type WorkshopCapabilityRejectionReason =
   | 'unknown-resource-group'
   | 'invalid-resource-path'
   | 'invalid-line-range'
+  // A multi-file resource.read (ADR 2026-11-14 D4).
+  | 'ambiguous-lines'
+  | 'too-many-paths'
+  | 'duplicate-path'
   | 'oversized-input'
   // Session recall (WorkshopTranscriptRecallXmlCodec).
   | 'invalid-session-id'

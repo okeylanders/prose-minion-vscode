@@ -1218,6 +1218,11 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   // Everyday Conveniences D8: the resource family's codec, read and instruction, split out.
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceXmlCodec.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceRead.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceReadFiles.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceReadPlan.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceReadRenderer.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceRequestCopy.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceCapability.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceInstruction.ts'),
   ...collectSourceFiles(WORKSHOP_RECALL_ROOT),
   ...collectSourceFiles(WORKSHOP_MEMORY_ROOT),
@@ -1902,6 +1907,29 @@ describe('architectural boundaries', () => {
     expect(recallNames).not.toContain('WorkshopRecallReadAllocation.ts');
     // Each module stays under 500 lines.
     expect(readsFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
+      .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
+  });
+
+  it('keeps the resource family\'s modules in the capability boundary, off recall and memory, and under 500 lines (ADR 2026-11-14 D8)', () => {
+    const resourceFiles = collectSourceFiles(path.join(SRC_ROOT, 'application', 'services', 'workshop'))
+      .filter((file) => /^WorkshopResource[A-Za-z]*\.ts$/.test(path.basename(file)));
+    // Every module the family has is listed, so a new one joins on purpose.
+    expect(resourceFiles.map((file) => path.basename(file)).sort()).toEqual([
+      'WorkshopResourceCapability.ts',
+      'WorkshopResourceInstruction.ts',
+      'WorkshopResourceRead.ts',
+      'WorkshopResourceReadFiles.ts',
+      'WorkshopResourceReadPlan.ts',
+      'WorkshopResourceReadRenderer.ts',
+      'WorkshopResourceRequestCopy.ts',
+      'WorkshopResourceXmlCodec.ts'
+    ]);
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(resourceFiles));
+    // File reads share the fit with recall through `reads/`, never through recall itself.
+    expect(resourceFiles.flatMap((file) => moduleImports(file, fs.readFileSync(file, 'utf8'))
+      .filter(({ module }) => /\/(?:recall|memory)\//.test(module))
+      .map(({ module }) => `${path.relative(SRC_ROOT, file)} -> ${module}`))).toEqual([]);
+    expect(resourceFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
       .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
   });
 

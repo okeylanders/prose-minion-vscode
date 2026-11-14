@@ -714,8 +714,7 @@ describe('WorkshopPersonaCapability', () => {
     });
     const read = await adapter.fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/raven.md'
+      files: [{ group: 'characters', path: 'characters/raven.md' }]
     });
 
     expect(search.evidence).toContain('Raven avoids the west stair.');
@@ -748,8 +747,7 @@ describe('WorkshopPersonaCapability', () => {
     loadResources.mockResolvedValue([{ ...summary, content: 'Raven waits.' }]);
     const result = await capability().fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/raven.md'
+      files: [{ group: 'characters', path: 'characters/raven.md' }]
     });
 
     expect(loadResources).toHaveBeenCalledWith(['characters/raven.md']);
@@ -818,8 +816,7 @@ describe('WorkshopPersonaCapability', () => {
     const adapter = capability();
     const artifacts = adapter.handleCapabilityLimit({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/raven.md'
+      files: [{ group: 'characters', path: 'characters/raven.md' }]
     });
 
     expect(artifacts).toEqual([expect.objectContaining({ category: 'resource.read' })]);
@@ -868,8 +865,7 @@ describe('WorkshopPersonaCapability', () => {
       }]);
       const read = await capability().fulfill({
         capability: 'resource.read',
-        group: 'characters',
-        path: 'Characters/raven.md'
+        files: [{ group: 'characters', path: 'Characters/raven.md' }]
       });
       expect(read.deliveredSources).toEqual([
         expect.objectContaining({
@@ -886,8 +882,7 @@ describe('WorkshopPersonaCapability', () => {
 
       const missingRead = await capability().fulfill({
         capability: 'resource.read',
-        group: 'characters',
-        path: 'Characters/unknown.md'
+        files: [{ group: 'characters', path: 'Characters/unknown.md' }]
       });
       expect(missingRead.deliveredSources).toEqual([]);
     });
