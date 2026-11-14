@@ -16,7 +16,16 @@
  * on, the hook watches (`WORKSHOP_SELECTED_TEXT_WATCH`) and holds the newest
  * `WORKSHOP_SELECTED_TEXT_CURRENT`: the current selection's metadata, never
  * its text. That is the live pill. A send names the snapshot the pill showed
- * (`sendSnapshotId`), so what the writer saw is what the host attaches.
+ * (`sendSelection`), so what the writer saw is what the host attaches.
+ *
+ * **A pill belongs to the room it was drawn in** (D14; PR #264 P2). Each
+ * pushed selection is stamped with the room revision on screen when it
+ * arrived, and a send names *that* revision, never the one on screen at send
+ * time. When the room on screen changes (New, Open, Rewind, Branch, a
+ * restore), the pill held is dropped and the host is asked for the current
+ * selection again: a pill appears in the new room only from a push that
+ * arrives there. So a pill on screen was always drawn in the room on screen,
+ * and an old room's pill can never be sent under a new room's revision.
  *
  * The live pill is not drawn, and not sent, when its snapshot is already
  * staged; it is drawn disabled, with the reason, when the next message has
@@ -58,8 +67,11 @@ export interface WorkshopSelectedTextState {
   includeSelectedText: boolean;
   /** The current selection as a pill, while the toggle is on and its snapshot is not already staged. */
   livePill: WorkshopLiveSelectedText | null;
-  /** The snapshot the next send names: the live pill's, when it is drawn and has room. */
-  sendSnapshotId: string | undefined;
+  /**
+   * What the next send names: the live pill's snapshot and the room it was
+   * drawn in, when the pill is drawn and has room.
+   */
+  sendSelection: { snapshotId: string; roomRevision: number } | undefined;
   /** The delivery the host was asked to stage, until it answers. */
   staging: string | null;
 }
@@ -84,6 +96,8 @@ export type UseWorkshopSelectedTextReturn = WorkshopSelectedTextState & Workshop
 export interface UseWorkshopSelectedTextOptions {
   /** This Workshop mount's seed receiver (`useWorkshopSeedReceiver`). */
   seedReceiver: string;
+  /** The room on screen (the session snapshot's `roomRevision`). */
+  roomRevision: number;
   /** The attachments staged for the next message (host truth, from the session snapshot). */
   pendingMessageAttachments: readonly WorkshopMessageAttachmentSnapshot[];
 }
@@ -109,12 +123,18 @@ export function workshopLiveSelectedText(
 }
 
 export function useWorkshopSelectedText(
-  { seedReceiver, pendingMessageAttachments }: UseWorkshopSelectedTextOptions
+  { seedReceiver, roomRevision, pendingMessageAttachments }: UseWorkshopSelectedTextOptions
 ): UseWorkshopSelectedTextReturn {
   const vscode = useVSCodeApi();
   const persisted = usePersistedState<Partial<WorkshopSelectedTextPersistence>>();
   const [includeSelectedText, setIncludeSelectedTextState] = React.useState(persisted?.includeSelectedText === true);
-  const [current, setCurrent] = React.useState<WorkshopSelectedTextSummary | null>(null);
+  /** The newest pushed selection, with the room on screen when it arrived. */
+  const [current, setCurrent] = React.useState<{ selection: WorkshopSelectedTextSummary; roomRevision: number } | null>(null);
+  /** The room on screen, for handlers that run between renders. */
+  const roomRevisionRef = React.useRef(roomRevision);
+  roomRevisionRef.current = roomRevision;
+  const includeRef = React.useRef(includeSelectedText);
+  includeRef.current = includeSelectedText;
   const claims = useWorkshopSeedClaim<WorkshopOfferedSelection>('selected-text', seedReceiver);
   const [staging, setStaging] = React.useState<string | null>(null);
   const { granted, receive, handleClaimResult, answer } = claims;
@@ -142,6 +162,27 @@ export function useWorkshopSelectedText(
 
   React.useEffect(() => syncWatchWithToggle(), [syncWatchWithToggle]);
 
+  /**
+   * The room on screen changed: the pill held was drawn in another room, so
+   * it goes. While the toggle is on, the host is asked again; its answer is a
+   * fresh draw, stamped with this room.
+   */
+  const shownInRoom = React.useRef(roomRevision);
+  const dropPillWhenRoomChanges = React.useCallback(() => {
+    if (shownInRoom.current === roomRevision) {
+      return;
+    }
+    shownInRoom.current = roomRevision;
+    setCurrent(null);
+    if (includeRef.current) {
+      postWatch(true);
+    }
+  }, [postWatch, roomRevision]);
+
+  React.useEffect(() => {
+    dropPillWhenRoomChanges();
+  }, [dropPillWhenRoomChanges]);
+
   const setIncludeSelectedText = React.useCallback((on: boolean) => {
     setIncludeSelectedTextState(on);
     if (!on) {
@@ -155,8 +196,10 @@ export function useWorkshopSelectedText(
       return;
     }
     const selection = message.payload?.selection;
-    // A state, where the newest wins.
-    setCurrent(selection && typeof selection.snapshotId === 'string' && selection.snapshotId.length > 0 ? selection : null);
+    // A state, where the newest wins. It is drawn in the room on screen now, and keeps that room.
+    setCurrent(selection && typeof selection.snapshotId === 'string' && selection.snapshotId.length > 0
+      ? { selection, roomRevision: roomRevisionRef.current }
+      : null);
   }, [includeSelectedText]);
 
   const handleSelectedTextOffered = React.useCallback((message: WorkshopSelectedTextOfferedMessage) => {
@@ -197,15 +240,26 @@ export function useWorkshopSelectedText(
   }, [answer, granted]);
 
   const livePill = React.useMemo(
-    () => workshopLiveSelectedText(includeSelectedText, current, pendingMessageAttachments),
-    [current, includeSelectedText, pendingMessageAttachments]
+    // A selection drawn in another room is never a pill here, even for the one render before it is dropped.
+    () => workshopLiveSelectedText(
+      includeSelectedText,
+      current && current.roomRevision === roomRevision ? current.selection : null,
+      pendingMessageAttachments
+    ),
+    [current, includeSelectedText, pendingMessageAttachments, roomRevision]
+  );
+  const sendSelection = React.useMemo(
+    () => (livePill && !livePill.disabledReason && current
+      ? { snapshotId: livePill.selection.snapshotId, roomRevision: current.roomRevision }
+      : undefined),
+    [current, livePill]
   );
   const persistedState = React.useMemo(() => ({ includeSelectedText }), [includeSelectedText]);
 
   return {
     includeSelectedText,
     livePill,
-    sendSnapshotId: livePill && !livePill.disabledReason ? livePill.selection.snapshotId : undefined,
+    sendSelection,
     staging,
     setIncludeSelectedText,
     handleSelectedTextOffered,

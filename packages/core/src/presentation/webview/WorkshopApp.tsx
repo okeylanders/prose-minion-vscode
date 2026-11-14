@@ -313,7 +313,9 @@ export const WorkshopApp: React.FC = () => {
   const { receiver: seedReceiver } = useWorkshopSeedReceiver();
   const lexicalGravity = useLexicalGravity({ seedReceiver });
   const lightboxTiles = useWorkshopLightboxTiles({ seedReceiver });
-  const selectedText = useWorkshopSelectedText({ seedReceiver, pendingMessageAttachments: workshop.pendingMessageAttachments });
+  const selectedText = useWorkshopSelectedText({
+    seedReceiver, roomRevision: workshop.roomRevision, pendingMessageAttachments: workshop.pendingMessageAttachments
+  });
   const creativeVariations = useCreativeVariations();
   const showVsTell = useShowVsTell();
   const excerptVerify = useWorkshopExcerptVerify();
@@ -1543,7 +1545,7 @@ export const WorkshopApp: React.FC = () => {
             onIncludeSelectedTextChange: selectedText.setIncludeSelectedText,
             livePill: selectedText.livePill
           }}
-          onSend={(text) => workshop.sendMessage(text, selectedText.sendSnapshotId)}
+          onSend={(text) => workshop.sendMessage(text, selectedText.sendSelection)}
           onCancel={workshop.cancelRun}
           onOpenContext={openContext}
           onAttachToMessage={openMessageAttachSelector}
