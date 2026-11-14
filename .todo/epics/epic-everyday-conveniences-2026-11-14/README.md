@@ -1,6 +1,6 @@
 # Epic: Everyday Conveniences
 
-**Status:** In progress. Slice 0 is merged (PR #259). E, C and D are merged (PRs #260, #262, #261). A and B are being built.
+**Status:** In progress. Slice 0 is merged (PR #259). E, C, D and A are merged (PRs #260, #262, #261, #263). B is being built. A and B are being built.
 **Priority:** Medium
 **Opened:** 2026-11-14
 **Branch:** `epic/everyday-conveniences`, cut from `main` at `964aa0e4`
@@ -33,7 +33,7 @@ live in this README and the ADR.
 | E | Re-read in a new room | `…-reread-excerpt` | Re-read from file on any file-backed excerpt; Continue re-reads, as one host operation | Done: PR #260, merged `13fa4165` ([review](../../../docs/pr-reviews/pr-260-reread-excerpt-review.md): one finding, fixed) |
 | D | Collapsible rail | `…-collapsible-rail` | `FullTabShell` opt-in; the Workshop's rail collapses to an icon strip | Done: PR #261, merged `565a43e0` ([review](../../../docs/pr-reviews/pr-261-collapsible-rail-review.md): no blocking findings) |
 | C | Dictionary history search | `…-dictionary-history-search` | Filter in the popup; "Also search definitions" on the host | Done: PR #262, merged `c1c9e2be` ([review](../../../docs/pr-reviews/pr-262-dictionary-history-search-review.md): no blocking findings) |
-| A | Multi-file reads | `…-multi-file-reads` | Shared window fit; `resource.read` fitted; repeated `<path>` | In progress |
+| A | Multi-file reads | `…-multi-file-reads` | Shared window fit; `resource.read` fitted; repeated `<path>` | Done: PR #263, merged `0f152152` (review: no blocking findings) |
 | B | Selected Text | `…-selected-text` | Port fix, snapshots by id, `editor-selection` attachment, command and toggle; the old command retitled | In progress |
 
 Slice branches are `epic/everyday-conveniences-<slug>`.
@@ -71,7 +71,12 @@ Taken while writing the ADR (its Q1–Q7 carry the detail):
 | 19 | A | The bounds | `readPaths` 10; a multi-file read shares 256 KiB before the fit; a one-path read keeps 64 KiB. Duplicate paths are refused. | ADR D4, D5 |
 | 20 | A | `group` on a `<path>` | Allowed, so a chapter and a character sheet are one read. | ADR Q5 |
 
-Decisions made while building are added below as they are taken.
+Taken while building:
+
+| # | Item | Question | Decision | Source |
+|---|---|---|---|---|
+| 21 | A | A file's share inside a multi-file read | Not capped at the one-file 64 KiB: the files share 256 KiB, so a line a one-file read can never deliver can land beside a small file. The window fit still bounds it. A permanent test and a note are owed, to make the choice explicit. | ADR D5 as written; Astra, PR #263 |
+| 22 | E | Continue's re-read | One host operation, read first; a send during the read is refused in the room's busy words. | PR #260 F-01 |
 
 ## How the slices are built
 
@@ -105,6 +110,8 @@ Decisions made while building are added below as they are taken.
 | E's branch at `0cf83f13` (PR #260) | 844 | 11,964 | 59 |
 | C's branch at `67a7222e` (PR #262) | 850 | 12,041 | 59 |
 | D's branch at `df13e220` (PR #261) | 847 | 11,978 | 59 |
+| The epic at `08542fad` (E, C and D together) | 853 | 12,093 | 59 |
+| A's branch at `206aa837`, epic merged in (PR #263) | 860 | 12,195 | 59 |
 
 ## Completion Criteria
 
