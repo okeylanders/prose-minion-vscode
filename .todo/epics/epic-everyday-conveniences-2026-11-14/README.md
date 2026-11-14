@@ -29,7 +29,7 @@ live in this README and the ADR.
 
 | # | Slice | Branch | Outcome | Status |
 |---|---|---|---|---|
-| 0 | Spec | `epic/everyday-conveniences-spec` | The ADR (A and B) | In progress |
+| 0 | Spec | `epic/everyday-conveniences-spec` | The ADR (A and B) | PR #259, in review |
 | E | Re-read in a new room | `…-reread-excerpt` | Re-read from file on any file-backed excerpt; Continue re-reads | In progress |
 | D | Collapsible rail | `…-collapsible-rail` | `FullTabShell` opt-in; the Workshop's rail collapses to an icon strip | In progress |
 | C | Dictionary history search | `…-dictionary-history-search` | Filter in the popup; "Also search definitions" on the host | In progress |
@@ -59,6 +59,17 @@ brief's defaults. Each is his to overturn.
 | 12 | C | The cap | Stays 500. | Brief default |
 | 13 | D | Who opts in | Only the Workshop. The Lightbox's markup is unchanged. | Brief default |
 | 14 | E | Continue on a file-backed carried passage | Always re-reads: edits land as vN+1, and an unchanged file says so and stays vN. No second button. | Note's leaning |
+
+Taken while writing the ADR (its Q1–Q7 carry the detail):
+
+| # | Item | Question | Default taken | Source |
+|---|---|---|---|---|
+| 15 | B | The attachment kind's name | `selected-text`, not the brief's `editor-selection`: that literal is already the excerpt's source kind. | ADR D13 |
+| 16 | B | Several selections in one message | Allowed by hand, as ordinary pills. The live pill hides only when its own snapshot is already staged. | ADR Q2 |
+| 17 | B | A send whose snapshot is gone | Refuse the whole send and keep the draft; never send the live selection unseen. | ADR Q3 |
+| 18 | B | The selection bound | 5,000 words, cut at capture, said on the pill. No refusal of a whole-file selection. | ADR D15 |
+| 19 | A | The bounds | `readPaths` 10; a multi-file read shares 256 KiB before the fit; a one-path read keeps 64 KiB. Duplicate paths are refused. | ADR D4, D5 |
+| 20 | A | `group` on a `<path>` | Allowed, so a chapter and a character sheet are one read. | ADR Q5 |
 
 Decisions made while building are added below as they are taken.
 
