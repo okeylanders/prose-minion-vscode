@@ -139,6 +139,8 @@ export function createFakeShellService(overrides: Partial<ShellService> = {}): S
 export function createFakeEditorContext(overrides: Partial<EditorContext> = {}): EditorContext {
   return {
     getActiveSelection: (): ActiveSelectionInfo | undefined => undefined,
+    currentSelection: (): ActiveSelectionInfo | undefined => undefined,
+    onDidChangeSelection: () => ({ dispose: () => undefined }),
     ...overrides,
   };
 }
