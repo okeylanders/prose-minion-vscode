@@ -1,6 +1,6 @@
 # ADR 2026-11-14: Everyday Conveniences: Multi-File Reads and Selected Text
 
-**Status:** Proposed (defaults taken for Okey, 2026-11-14)
+**Status:** Proposed (defaults taken for Okey, 2026-11-14). Amended the same day for PR #259's review: D2a, D4's duplicate rule, D11 and D14's room binding.
 **Date:** 2026-11-14
 **Epic:** [Everyday Conveniences](../../.todo/epics/epic-everyday-conveniences-2026-11-14/README.md)
 (its "Defaults taken" table is binding here)
@@ -129,6 +129,39 @@ Checked before deciding; each is settled below.
   the room it had and "name fewer files, or answer from what you have."
   It is never cut below the minimum.
 
+### D2a. A line that does not fit (PR #259 F-01)
+
+Whole-line packing can meet a line longer than its file's share: a valid
+source under 2 MiB may open with a 70 KiB line. Without a rule, the read
+would deliver nothing and hint the same `startLine` forever.
+
+- **A line is never cut.** Today's `sliceUtf8` can end a read mid-line.
+  That stops: a one-path read changes here too, deliberately, and D5's
+  "nothing changes for it but the fit" is amended to say so.
+- **The outcome is the file's own:** `line-too-long`, in its section, with
+  the line's number, its size in bytes and the share it had. No text is
+  delivered for it.
+- **It counts as not delivered.** No manifest row, no line range, no
+  `deliveredItems` entry and no fingerprint for that file. The read's
+  status follows D6 (`partial` beside a file that was read, `failed` alone).
+- **A first line that fits, then a long one,** is an ordinary early stop:
+  the lines before it are delivered, and the continuation names the long
+  line. That next read then meets the rule above.
+- **What the section offers** is decided by host code, and every hint must
+  make progress:
+  - **The line would fit a read of this file alone** (it is within
+    `readBytes` and within half the room left): one hint, the plain
+    one-path call at that `startLine`. Its share is then strictly larger.
+  - **The line fits no read** (over `readBytes`, or over half the room
+    left even alone): no hint at that line. The section says the line
+    cannot be read in this turn, and, when the file has a later line,
+    gives the one-path call at the *next* `startLine`, in words that say
+    it passes over the long line.
+- **The invariant, tested:** a continuation never repeats its own request.
+  It names a later `startLine`, or the same `startLine` with fewer files.
+- **The window ceiling is unchanged.** Nothing here reads past half the
+  room left.
+
 ### D3. No window, one read's worth; a known window, no total
 
 - **Window known:** no per-turn byte total (Okey, 2026-11-06). The fit and
@@ -164,8 +197,15 @@ Checked before deciding; each is settled below.
 - **New refusals** in `WorkshopCapabilityRejectionReason`:
   `ambiguous-lines`, `too-many-paths`, `duplicate-path`.
 - **Duplicates are refused, never merged.** Two paths are one when group
-  and case-folded path match, the rule `findConfiguredResource` resolves
-  by. Recall refuses `duplicate-session` the same way.
+  and case-folded path match. Recall refuses `duplicate-session` the same
+  way.
+  - **This is stricter than the lookup, on purpose** (PR #259).
+    `findConfiguredResource` prefers an exact match and only then falls
+    back to a case-folded one, so `Alice.md` and `alice.md` can both
+    resolve today when both are configured. One multi-file read naming
+    both is refused all the same: the persona reads them in two calls.
+    It is the conservative rule, not the lookup's, and a test names the
+    pair.
 - **The request type** becomes
   `{ capability: 'resource.read'; files: { group; path }[]; startLine?; endLine? }`.
   No new operation: `WORKSHOP_CAPABILITY_OPERATIONS` and
@@ -184,7 +224,8 @@ New in `PROMPT_BUDGETS.workshopResource`:
 | `readMinimumBytes` | 2,048 | the least a file is given (D2) |
 
 - **A one-path read keeps `readBytes` (64 KiB)** and its 400-line default.
-  Nothing changes for it but the fit.
+  Two things change for it: the fit, and that it stops at a whole line
+  (D2a).
 - **Why 256 KiB.** A chapter is 20–40 KB, so six to ten chapters land
   whole. It is about 64,000 tokens, so on any model with less than about
   128,000 tokens free the window fit is the tighter bound, which is the
@@ -205,6 +246,7 @@ New in `PROMPT_BUDGETS.workshopResource`:
 - **Per-file outcomes.** Missing, ambiguous by case, unreadable, over
   `readSourceBytes`, or a `startLine` past the end: each is reported in
   that file's own section, in today's words. The others are still read.
+  A line that does not fit its share is `line-too-long` (D2a).
 - **Status:** `success` when every file was delivered, `partial` when at
   least one was and one was not, `failed` when none was.
 - **Continuation.** A file that stopped early ends its section with a
@@ -214,6 +256,7 @@ New in `PROMPT_BUDGETS.workshopResource`:
   - Each hint decodes alone, exactly as written. Two written together are
     two calls and are refused; the instruction says so.
   - A one-path read cut by bytes or by the fit gets the same hint.
+  - A hint is written only where the next read can deliver a line (D2a).
 - **Metadata** (the card persists it): `files`, one row each of `group`,
   `path`, `outcome`, and when read `startLine`, `endLine`, `totalLines`,
   `bytes`, `truncated`; plus `limitedBy` and `limitBytes`. A one-path
@@ -309,6 +352,11 @@ onDidChangeSelection(listener: () => void): PlatformDisposable;
 - **It keeps the newest 8.** A staged pill has already copied its text
   into the session, so a snapshot is needed only between the pill and the
   send. An evicted id is simply unknown.
+- **The cache is the window's, not a room's** (PR #259). A selection is
+  the editor's, so replacing the room does not empty the cache, and
+  eviction is by count alone. What binds a pill to the room it was shown
+  in is the send's `roomRevision` (D14), never an eviction that happens to
+  fall right.
 - **The webview gets metadata only:** id, display name, lines, word count,
   cut or not, and a preview of at most **120 characters**, one line.
 - **The webview sends back only the id.** Text never travels webview → host.
@@ -369,6 +417,9 @@ onDidChangeSelection(listener: () => void): PlatformDisposable;
   attachment and on a turn's attachment reference
   (`WorkshopSessionStateV1Shape`, both lists), exact inside. Optional and
   additive: no `schemaVersion` bump, no normalization.
+  - **Forward only** (ADR 2026-07-30, PR #259): an older build's strict
+    reader rejects a session that holds the new key. The release notes
+    say so; nothing here promises older builds read newly saved sessions.
 - **Identity.** `WorkshopMessageAttachmentIdentity`: two attachments with
   `selectedText` are one source when their `snapshotId`s match. The host
   key is `selected-text:<snapshotId>`, rebuilt by
@@ -391,11 +442,21 @@ onDidChangeSelection(listener: () => void): PlatformDisposable;
 - **The send.** `WorkshopSendMessagePayload` gains optional
   `selectedTextSnapshotId`: the id the pill showed. In the send's own
   mutation the host looks the snapshot up, stages it, then sends.
-  - **Unknown id** (evicted, or the room was replaced): the whole send is
-    refused, the draft stays, and the composer says "The selected text
-    changed before this was sent. Check the pill and send again." The
-    live selection is never sent unseen, and no paid call goes out
-    without the lines the writer meant.
+  - **The room it was shown in.** With a snapshot id the send also names
+    `roomRevision`, the room the webview was showing when it drew the
+    pill, as bookmark and pin requests already do. The room handler owns
+    the check: inside the send's mutation it compares that revision with
+    the live room's before it looks the snapshot up.
+  - **Another room** (New, Open, Rewind or Branch landed between the pill
+    and the send): the whole send is refused and the draft stays. A test
+    delays the send across each of the four.
+  - **Unknown id** (evicted by count): refused the same way.
+  - **The words, for both:** "The selected text changed before this was
+    sent. Check the pill and send again." The live selection is never
+    sent unseen, and no paid call goes out without the lines the writer
+    meant.
+  - **The command's path** needs no revision of its own: seed delivery
+    already settles a held offer when its receiver or room goes.
   - **No room** (7 attachments already): the live pill is drawn disabled,
     with the reason, before the send; a send that raced it is refused
     the same way.
@@ -495,6 +556,18 @@ Two slices, two PRs into `epic/everyday-conveniences`, in either order.
 - Fit: a read at the window's edge lands within half the room; a window
   too small for the minimum is refused with the room stated; an unknown
   window shares `readBytesMulti` across the turn's reads and says why.
+- A line that does not fit (D2a):
+  - a single line over 64 KiB, alone: `line-too-long`, `failed`, no row,
+    no hint at that line, and the next-line hint when the file has one;
+  - a line over its multi-file share but within `readBytes`: its section
+    hints the one-path call at that line, and that call delivers it;
+  - mixed: a good file beside each of the two (`partial`; the good file's
+    row and fingerprint only);
+  - a short first line, then a long one: the first is delivered, and the
+    follow-up read meets the rule;
+  - every hint a renderer writes differs from the request that made it.
+- A case-distinct configured pair (`Alice.md`, `alice.md`) in one read is
+  refused as `duplicate-path`; each resolves alone.
 - `resourceReadPromptSync.test.ts` (D8).
 - Persona capability: one call counted; one card; a manifest row per
   file with its own line range and fingerprint; Read in from each row.
@@ -507,6 +580,10 @@ Two slices, two PRs into `epic/everyday-conveniences`, in either order.
 - **The witness:** with the toggle on, the pill shows snapshot 1; the
   selection changes; a send naming snapshot 1 attaches snapshot 1's text.
   A send naming an evicted id sends nothing and keeps the draft.
+- **Room replacement:** a pill is shown, then New, Open, Rewind and Branch
+  each land before the delayed send. Each send is refused on its
+  `roomRevision`, with the snapshot still in the cache, and the new room
+  gains no turn and no attachment.
 - Seed: claim before stage; an accept without a grant stages nothing; a
   reloaded receiver; `full` and `duplicate`.
 - Identity: the same snapshot twice; Rewind's restage beside a waiting
