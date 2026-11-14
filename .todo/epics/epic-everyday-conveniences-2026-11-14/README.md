@@ -1,6 +1,6 @@
 # Epic: Everyday Conveniences
 
-**Status:** In progress. Slice 0, E, D and C are in review (PRs #259–#262); A and B wait on Slice 0.
+**Status:** In progress. Slice 0 is merged (PR #259). E, D and C are in review (PRs #260–#262). A and B are being built.
 **Priority:** Medium
 **Opened:** 2026-11-14
 **Branch:** `epic/everyday-conveniences`, cut from `main` at `964aa0e4`
@@ -29,12 +29,12 @@ live in this README and the ADR.
 
 | # | Slice | Branch | Outcome | Status |
 |---|---|---|---|---|
-| 0 | Spec | `epic/everyday-conveniences-spec` | The ADR (A and B) | PR #259: changes requested, answered (`0a511734`); awaiting re-review |
+| 0 | Spec | `epic/everyday-conveniences-spec` | The ADR (A and B) | Done: PR #259, merged `5cfbaa64` ([review](../../../docs/pr-reviews/pr-259-everyday-conveniences-adr-review.md): one finding, fixed as D2a) |
 | E | Re-read in a new room | `…-reread-excerpt` | Re-read from file on any file-backed excerpt; Continue re-reads, as one host operation | PR #260: changes requested, fixed (`0cf83f13`); awaiting re-review |
 | D | Collapsible rail | `…-collapsible-rail` | `FullTabShell` opt-in; the Workshop's rail collapses to an icon strip | PR #261, in review |
 | C | Dictionary history search | `…-dictionary-history-search` | Filter in the popup; "Also search definitions" on the host | PR #262, in review |
-| A | Multi-file reads | `…-multi-file-reads` | Shared window fit; `resource.read` fitted; repeated `<path>` | After Slice 0 |
-| B | Selected Text | `…-selected-text` | Port fix, snapshots by id, `editor-selection` attachment, command and toggle | After Slice 0 |
+| A | Multi-file reads | `…-multi-file-reads` | Shared window fit; `resource.read` fitted; repeated `<path>` | In progress |
+| B | Selected Text | `…-selected-text` | Port fix, snapshots by id, `editor-selection` attachment, command and toggle; the old command retitled | In progress |
 
 Slice branches are `epic/everyday-conveniences-<slug>`.
 
@@ -105,7 +105,7 @@ Decisions made while building are added below as they are taken.
 
 ## Completion Criteria
 
-- [ ] The ADR for A and B is Accepted.
+- [x] The ADR for A and B passed its technical review and is merged (PR #259). Its product defaults stay proposed until Okey accepts them.
 - [ ] A: `resource.read` fits the window and reads up to `readPaths` files
       in one call, each under its own header with its own continuation; a
       bad path is reported in its own section; the grammar prompt is pinned.
