@@ -1,4 +1,26 @@
-# PR #264 review: Selected Text
+# PR #264 re-review: Selected Text
+
+Reviewed code: `e8839f9626b9fba61e61ef6066f79cccb9a0b8f8`
+Fix commit: `84e7670`
+Verdict: **Review clear. Both prior P2 findings are resolved; no new blocking finding identified.** This supersedes the initial changes-requested verdict below. No merge performed.
+
+## Fix verification
+
+- **Draft preservation:** host-restored text now uses `keepDraft`; an empty composer receives it unchanged, while existing newer writing is preserved after the returned text with a blank-line separator. Starter seeds retain their original replacement behavior. The exact prior reproduction now checks that both strings survive, and repeated renders of the same seed do not duplicate them.
+- **Room binding:** the live selection records its displayed room revision. Every render filters out another room's pill; replacement drops it and asks the host for a fresh selection push. The send carries the recorded revision rather than the newest room revision. The hook, send payload, host's four replacement paths, and webview-to-host integration tests cover stale sends and re-display in the new room.
+
+## Verification at the reviewed head
+
+- Focused Jest: **8 suites, 106 tests passed**.
+- `npm run typecheck`: passed (exit 0).
+- `npm run build`: passed (exit 0), including production webpack and bundle verification. This successful rerun supersedes the previous local exit-137 limitation.
+- `npm run lint`: passed (exit 0), **0 errors / 1,172 warnings**.
+- GitHub CI run **43638898619**: completed successfully at `e8839f96`.
+- No full-suite local rerun in this re-review. Real VS Code focus/selection, panel visibility, native menus, and live model calls remain unverified.
+- The report-only publication creates a newer branch head; its CI is separate from the code-head CI above.
+
+## Historical initial review (superseded)
+
 
 Reviewed code: `5e39800149ddcf0a301a71c613696b2582bfe6c4`
 Base: `76280a5054fc4ca8a0f6b6c2d02174b3b7472e13`
