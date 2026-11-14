@@ -105,7 +105,8 @@ describe('WorkshopComposer — Selected Text', () => {
     expect(live.textContent).toContain('follows the editor’s selection');
     expect(live.querySelector('button')).toBeNull();
     expect(live.getAttribute('aria-disabled')).toBeNull();
-    expect(live.getAttribute('title')).toContain('Drafts/alice-ch3.md');
+    // The hover names the whole display path once, then the first line of the selection.
+    expect(live.getAttribute('title')).toBe('Drafts/alice-ch3.md · lines 40–44 · 62 words\nThe Caterpillar and Alice looked at each other');
     expect(screen.getAllByRole('button', { name: 'Remove Selected Text from this message' })).toHaveLength(1);
   });
 

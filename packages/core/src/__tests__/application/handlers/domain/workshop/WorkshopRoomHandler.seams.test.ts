@@ -106,7 +106,11 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     // Message Reactions Slice 1 added the writer's reaction change and Hide on a persona's.
     expect(router.hasHandler(MessageType.WORKSHOP_SET_TURN_REACTION)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_HIDE_TURN_REACTION)).toBe(true);
-    expect(router.handlerCount).toBe(94);
+    // Everyday Conveniences Slice B added Selected Text's offer, its staging and the toggle's watch.
+    expect(router.hasHandler(MessageType.WORKSHOP_STAGE_SELECTED_TEXT)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_ACCEPT_SELECTED_TEXT)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_SELECTED_TEXT_WATCH)).toBe(true);
+    expect(router.handlerCount).toBe(97);
   });
 
   it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {

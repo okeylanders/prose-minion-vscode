@@ -2330,6 +2330,11 @@
   border-style: dashed;
   border-color: var(--pm-accent);
 }
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-live .pm-ws-comp-attachment-label,
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-live .pm-ws-comp-attachment-size {
+  white-space: nowrap;
+  flex: none;
+}
 [data-pm-surface="workshop"] .pm-ws-comp-attachment-live-note {
   font-size: 10.5px;
   color: var(--pm-muted);

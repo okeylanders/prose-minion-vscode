@@ -50,18 +50,18 @@ export const WorkshopSelectedTextToggle: React.FC<{
 export const WorkshopLiveSelectedTextPill: React.FC<{
   live: NonNullable<WorkshopComposerSelectedText['livePill']>;
 }> = ({ live }) => {
-  const detail = workshopSelectedTextDetail({
-    path: live.selection.displayName,
+  const facts = {
     startLine: live.selection.startLine,
     endLine: live.selection.endLine,
     words: live.selection.words,
     truncation: live.selection.truncation
-  });
+  };
+  const detail = workshopSelectedTextDetail({ ...facts, path: live.selection.displayName });
   const disabled = live.disabledReason !== undefined;
   return (
     <span
       className={`pm-ws-comp-attachment pm-ws-comp-attachment-selected pm-ws-comp-attachment-live${disabled ? ' is-disabled' : ''}`}
-      title={disabled ? live.disabledReason : `${live.selection.displayName} · ${detail}\n${live.selection.preview}`}
+      title={disabled ? live.disabledReason : `${live.selection.displayName} · ${workshopSelectedTextDetail(facts)}\n${live.selection.preview}`}
       aria-disabled={disabled || undefined}
       data-snapshot-id={live.selection.snapshotId}
     >

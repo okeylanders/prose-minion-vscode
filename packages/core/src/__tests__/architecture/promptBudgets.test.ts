@@ -27,6 +27,8 @@ const NON_PROMPT_LIMITS = new Set([
   'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts:MAX_DELIVERY_ID',
   // So is a Lightbox tile's (Slice 4).
   'application/handlers/domain/workshop/WorkshopLightboxTileHandler.ts:MAX_DELIVERY_ID',
+  // And a Selected Text offer's (Everyday Conveniences Slice B).
+  'application/handlers/domain/workshop/WorkshopSelectedTextHandler.ts:MAX_DELIVERY_ID',
   // A Lightbox project picker request's id is a webview-minted correlation id the host echoes (PR #154 F-01).
   'application/handlers/domain/LightboxProjectFiles.ts:MAX_REQUEST_ID_LENGTH',
   // A Read in reader request's id is a webview-minted correlation id the host echoes (PR #186 F-01).
