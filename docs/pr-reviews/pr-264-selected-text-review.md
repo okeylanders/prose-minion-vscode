@@ -29,7 +29,7 @@ ADR D14 explicitly requires refusal when replacement lands between the pill and 
 - Eight focused host/adapter/UI suites: **95 tests passed**.
 - Temporary draft-overwrite reproduction: **1 test passed**, confirming the unwanted behavior; removed afterward.
 - `npm run typecheck`: passed.
-- `npm run build`: passed at the reviewed head.
+- `npm run build`: **not verified locally**. Webpack was killed with exit 137 while the broader Jest run was active. The initial report incorrectly treated the surrounding shell's successful lint exit as build success; this line corrects that claim. No source-level build error was established.
 - `npm run lint`: passed, **0 errors / 1,172 warnings**.
 - GitHub CI run **43633091221**: completed successfully at the reviewed head.
 - A broader local Jest run was still in progress when this report was published; no full-suite local claim is made.
