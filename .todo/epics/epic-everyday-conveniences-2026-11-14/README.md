@@ -1,6 +1,6 @@
 # Epic: Everyday Conveniences
 
-**Status:** In progress. Slice 0 is merged (PR #259). E, C, D and A are merged (PRs #260, #262, #261, #263). B is being built. A and B are being built.
+**Status:** All slices built. Slice 0, E, C, D and A are merged into the epic (PRs #259, #260, #262, #261, #263). B is in review (PR #264). The closing slice (docs, the live-pass checklist and one test) is on `epic/everyday-conveniences-close`, stacked on B. Nothing has gone to `main`; the [live pass](live-pass.md) and the product defaults are Okey's.
 **Priority:** Medium
 **Opened:** 2026-11-14
 **Branch:** `epic/everyday-conveniences`, cut from `main` at `964aa0e4`
@@ -33,8 +33,9 @@ live in this README and the ADR.
 | E | Re-read in a new room | `…-reread-excerpt` | Re-read from file on any file-backed excerpt; Continue re-reads, as one host operation | Done: PR #260, merged `13fa4165` ([review](../../../docs/pr-reviews/pr-260-reread-excerpt-review.md): one finding, fixed) |
 | D | Collapsible rail | `…-collapsible-rail` | `FullTabShell` opt-in; the Workshop's rail collapses to an icon strip | Done: PR #261, merged `565a43e0` ([review](../../../docs/pr-reviews/pr-261-collapsible-rail-review.md): no blocking findings) |
 | C | Dictionary history search | `…-dictionary-history-search` | Filter in the popup; "Also search definitions" on the host | Done: PR #262, merged `c1c9e2be` ([review](../../../docs/pr-reviews/pr-262-dictionary-history-search-review.md): no blocking findings) |
-| A | Multi-file reads | `…-multi-file-reads` | Shared window fit; `resource.read` fitted; repeated `<path>` | Done: PR #263, merged `0f152152` (review: no blocking findings) |
-| B | Selected Text | `…-selected-text` | Port fix, snapshots by id, `editor-selection` attachment, command and toggle; the old command retitled | In progress |
+| A | Multi-file reads | `…-multi-file-reads` | Shared window fit; `resource.read` fitted; repeated `<path>` | Done: PR #263, merged `0f152152` (review: no blocking findings; its report is not in the repo) |
+| B | Selected Text | `…-selected-text` | Port fix, snapshots by id, `selected-text` attachment, command and toggle; the old command retitled | PR #264, in review |
+| Close | Closing pass | `…-close` | `AGENTS.md` where a rule changed, the [live-pass checklist](live-pass.md), the D5 share test and ADR note, a memory-bank entry | Pushed; stacked on B, no PR yet |
 
 Slice branches are `epic/everyday-conveniences-<slug>`.
 
@@ -75,7 +76,7 @@ Taken while building:
 
 | # | Item | Question | Decision | Source |
 |---|---|---|---|---|
-| 21 | A | A file's share inside a multi-file read | Not capped at the one-file 64 KiB: the files share 256 KiB, so a line a one-file read can never deliver can land beside a small file. The window fit still bounds it. A permanent test and a note are owed, to make the choice explicit. | ADR D5 as written; Astra, PR #263 |
+| 21 | A | A file's share inside a multi-file read | Not capped at the one-file 64 KiB: the files share 256 KiB, so a line a one-file read can never deliver can land beside a small file. The window fit still bounds it. A permanent test and a note are owed, to make the choice explicit. **Done in the closing slice:** `WorkshopResourceReadMultiFileShareNotCappedAtReadBytes.test.ts` and D5's addendum. | ADR D5 as written; Astra, PR #263 |
 | 22 | E | Continue's re-read | One host operation, read first; a send during the read is refused in the room's busy words. | PR #260 F-01 |
 
 ## How the slices are built
@@ -112,20 +113,43 @@ Taken while building:
 | D's branch at `df13e220` (PR #261) | 847 | 11,978 | 59 |
 | The epic at `08542fad` (E, C and D together) | 853 | 12,093 | 59 |
 | A's branch at `206aa837`, epic merged in (PR #263) | 860 | 12,195 | 59 |
+| The epic with A at merge (`0f152152`) | not measured separately | | |
+| B's branch at `5e398001`, the whole epic merged in (PR #264) | 869 | 12,306 | 59 |
+| The closing slice (`…-close`, on B) | 870 | 12,312 | 59 |
 
 ## Completion Criteria
 
+Built and covered by automated tests. **None of it has been run in the
+Extension Development Host or against a live model**: that is the
+[live-pass checklist](live-pass.md), and an item is finished for the writer
+only once Okey has run its part.
+
 - [x] The ADR for A and B passed its technical review and is merged (PR #259). Its product defaults stay proposed until Okey accepts them.
-- [ ] A: `resource.read` fits the window and reads up to `readPaths` files
+- [x] A: `resource.read` fits the window and reads up to `readPaths` files
       in one call, each under its own header with its own continuation; a
       bad path is reported in its own section; the grammar prompt is pinned.
-- [ ] B: the command and the toggle both stage a "Selected Text" pill; what
+      (PR #263, merged.)
+- [x] B: the command and the toggle both stage a "Selected Text" pill; what
       the pill showed is what is sent; the excerpt is unchanged.
-- [ ] C: the popup filters by word, context and file; definitions search
-      runs on the host, correlated; the keyboard path works.
-- [ ] D: the Workshop's rail collapses and reopens, remembered per window;
-      the Lightbox's markup is unchanged.
-- [ ] E: Re-read from file shows on any file-backed excerpt; Continue
-      re-reads.
-- [ ] A live-pass checklist for Okey, `AGENTS.md` updated, and a
-      memory-bank entry.
+      (PR #264, **in review, not merged**.)
+- [x] C: the popup filters by word, context and file; definitions search
+      runs on the host, correlated; the keyboard path works. (PR #262.)
+- [x] D: the Workshop's rail collapses and reopens, remembered per window;
+      the Lightbox's markup is unchanged. (PR #261.)
+- [x] E: Re-read from file shows on any file-backed excerpt; Continue
+      re-reads. (PR #260.)
+- [x] A [live-pass checklist](live-pass.md) for Okey, `AGENTS.md` updated,
+      and a [memory-bank entry](../../../.memory-bank/20261114-1945-everyday-conveniences-epic.md).
+- [ ] Okey's live pass, and his word on the defaults (the checklist's
+      "Decisions waiting on Okey").
+- [ ] B merged into the epic, then this closing slice.
+
+## Notes
+
+- **PR #263's review report is not in the repo.** `docs/pr-reviews/` holds
+  #259–#262 only. The review's one request (the D5 share test and note) is
+  recorded in "Taken while building", row 21.
+- **Follow-ups** stay in their notes: the engine backstop and the
+  `memory.read` fit in [Reads That Fit the Window](../../features/feature-workshop-reads-fit-the-window/README.md);
+  the files over 500 lines these slices touched in
+  [tech debt](../../tech-debt/2026-11-14-everyday-conveniences-oversized-files.md).
