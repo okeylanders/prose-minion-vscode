@@ -5,11 +5,11 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.14.0] - Unreleased — Everyday Conveniences
+## [2.14.0] - 2026-11-16 — Everyday Conveniences
 
 ### Overview
 
-Two merges and a catalog refresh reached `main` after v2.13.0: [#266](https://github.com/okeylanders/prose-minion-vscode/pull/266) (Everyday Conveniences, five writer conveniences built as one epic) and [#258](https://github.com/okeylanders/prose-minion-vscode/pull/258) (omitted-empty widget reply fields), then the November 16 OpenRouter refresh. The release branch adds a narrow dependency patch. The range holds 65 commits before release preparation. This is an additive minor release: no `schemaVersion` changed, and existing model selections are not migrated. The date is set at publication.
+Two merges and a catalog refresh reached `main` after v2.13.0: [#266](https://github.com/okeylanders/prose-minion-vscode/pull/266) (Everyday Conveniences, five writer conveniences built as one epic) and [#258](https://github.com/okeylanders/prose-minion-vscode/pull/258) (omitted-empty widget reply fields), then the November 16 OpenRouter refresh. The release branch adds a narrow dependency patch. The range holds 65 commits before release preparation. This is an additive minor release: no `schemaVersion` changed, and existing model selections are not migrated. The release is prepared for November 16, 2026.
 
 ### Workshop file reads: several files, fitted to the window
 
