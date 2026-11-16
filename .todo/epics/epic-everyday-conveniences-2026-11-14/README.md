@@ -1,6 +1,6 @@
 # Epic: Everyday Conveniences
 
-**Status:** Every item is merged into the epic: Slice 0, E, C, D, A and B (PRs #259, #260, #262, #261, #263, #264). The closing slice (docs, the live-pass checklist and one test) is merged too (PR #265). The epic is ready for a PR to `main`, which is Okey's to open or ask for. Nothing has gone to `main`; the [live pass](live-pass.md) and the product defaults are Okey's.
+**Status:** Done. Every item is merged into the epic (PRs #259–#265). Okey tested it live and cleared it to merge on 2026-11-16 ("This is working great. You are free to merge. I've tested."); the epic goes to `main` by its own PR. The product defaults stand as taken unless Okey says otherwise.
 **Priority:** Medium
 **Opened:** 2026-11-14
 **Branch:** `epic/everyday-conveniences`, cut from `main` at `964aa0e4`
@@ -144,8 +144,8 @@ only once Okey has run its part.
       re-reads. (PR #260.)
 - [x] A [live-pass checklist](live-pass.md) for Okey, `AGENTS.md` updated,
       and a [memory-bank entry](../../../.memory-bank/20261114-1945-everyday-conveniences-epic.md).
-- [ ] Okey's live pass, and his word on the defaults (the checklist's
-      "Decisions waiting on Okey").
+- [x] Okey's live pass (2026-11-16: tested, cleared to merge). The
+      checklist's "Decisions waiting on Okey" stand as the defaults taken.
 - [x] B merged into the epic (`a27de46b`).
 - [x] This closing slice merged into the epic (PR #265, `e3cc245b`).
 
