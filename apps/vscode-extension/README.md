@@ -24,63 +24,53 @@
 
 ---
 
-## What's new in v2.13.0 — a Workshop that remembers, and edits with you
+## What's new in v2.14.0 — everyday conveniences
 
-Everything here lives in the Workshop, the writers' room in an editor tab.
+Five small things that take friction out of a writing session, and three more models to try.
 
-### Suggested edits you apply
+### Selected Text on a Workshop message
 
-**A persona can now suggest an edit to a file in your project**: a note, a chapter, or the document your excerpt came from. Each edit arrives as a card under the reply, with every change shown against your text. **Apply** lands it as one change you can undo, **Review in editor…** opens it in VS Code's Refactor Preview first, and **Decline** sets it aside. Nothing changes in a file until you apply a card, and the file is never saved for you.
+**Ask about a few lines without changing your excerpt.** Turn on **Include selected text** beside the Workshop composer, and whatever you select in the editor shows above it as a **Selected Text** pill, with its file, lines, and word count. It follows your selection until you send, then goes with that one message. Or right-click a selection and choose **Prose Minion → Add Selection to Workshop Message** to attach it by hand. The persona reads those lines as a selection, apart from the excerpt, and the excerpt never changes. A selection over 5,000 words is cut to its first 5,000, and the pill says so before you send.
 
-**A reply says what it offers.** When a reply names small fixes or writes out a rewrite, its footer shows a chip for each: one for the fixes, and one for each version of a rewrite. Press a chip and the reply's author comes back with exactly those edits as cards, or one line saying there is nothing to change. Unasked, a persona keeps its edits to your chapters small; a larger rewrite comes only from a chip you pressed. Turn suggestions off under **Suggested file edits** in conversation settings.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-suggested-edits.png" alt="Top: a Workshop reply from Jill that names three slips in the opening of Alice's Adventures in Wonderland and writes out two versions of its first line; its footer reads As edits, with a 3 fixes chip and a chip for each version, On the bank and In her head. Bottom: after the fixes chip is pressed, a Suggested edit card for the chapter file with three Replace changes shown against the text, the line Nothing changes until you apply it, and Apply, Review in editor, and Decline. The conversation is demo content" width="100%"/>
-</p>
-
-### Project Memory
-
-**Give the Workshop a memory of your project.** Turn it on in conversation settings, on the **Memory** tab. With **Ask first**, a persona can suggest a note under its reply, and it is saved only when you choose **Save**. With **Save and tell me**, personas save what's worth keeping and say so in the thread. You can save any message yourself with **Save to memory…**: the sheet opens at once, and a small helper drafts its title, summary, and kind while you look. Anything you type first is kept.
-
-Each memory is a Markdown file in `prose-minion/memory/`, with a kind: decision, canon, theme, idea, open thread, or preference. Later conversations in the project start knowing every memory's title and summary; a persona opens a full note when it needs it, and the few you mark **Always load in full** arrive whole. Browse, edit, archive, and delete them from **Sessions → Memory…**. A suggested note that speaks of you near a personal word is held as a card for you to decide, in either mode. Project Memory is off until you turn it on.
+The command that replaces the excerpt is still there, with a clearer name: **Send Selection to Workshop** is now **Send to New Workshop Excerpt**.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-project-memory.png" alt="Top: a writer's message about the White Rabbit's watch with Jill's heart reaction on its corner, and Jill's reply carrying a Suggested for project memory card, kind Canon, with Save, Edit, and Dismiss. Bottom: the Project memories screen, grouped by kind, with six active memories, two marked Loaded in full, each showing who suggested it, who saved it, and the session it came from. The memories are demo content" width="100%"/>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-selected-text.png" alt="Top: the Workshop composer with the Include selected text toggle on and a Selected Text pill above it naming a chapter file, lines 14 to 19, and 96 words, which follows the editor's selection. Bottom: a sent message carrying its Selected Text pill, and Jill's reply about those lines. The conversation is demo content" width="100%"/>
 </p>
 
-### Pinned context
+### Bigger reads, a folding rail, and a fresh read of your chapter
 
-**Stop attaching the same files to every conversation.** In conversation settings, the **Pinned context** tab keeps a list of the files most conversations need: characters, places, the project brief. Every new conversation in the project starts with them attached, in your order, and marks them with a pin. After that, a conversation's context is its own: removing a file there doesn't unpin it. The list is a file in your project, `prose-minion/pinned-context.json`, of up to 50 files.
+**One read, several files.** Ask a persona to compare chapters, or a chapter against a character sheet, and it reads up to ten files in one go, shown as one card. Every file read is now fitted to the room left in the model's context window: a long file stops early and the persona can ask for the rest, where before a full window could fail the turn.
+
+**A side pane that folds away.** Press **Side pane** in the Workshop's header, or the arrow on the rail, and the rail collapses to a strip of icons with its counts, leaving the tab to the conversation. In a narrow window it starts folded and opens over the conversation.
+
+**Re-read from file.** When a new conversation keeps a chapter from the last one, **Re-read from file** picks up the edits you made since, and choosing **Continue** on the carried chapter re-reads it for you.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-pinned-context.png" alt="Left: the Pinned context tab of Conversation settings, Attached to every new conversation, with 4 files and about 2,814 of 100,000 words, and the files in order, each with arrows, Open, and Unpin. Right: the Workshop's Context panel reading 3 attachments, 3 pinned, with a pin on each file" width="100%"/>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-reads-rail-reread.png" alt="Top: a writer asks Jill to compare how chapters one, two, and three open; one Project Resources card reads 3 files, and Jill's reply compares them. Bottom left: the Workshop with its side pane folded to a strip of icons, Material and Notes with their counts. Bottom right: the Excerpt panel of a new conversation that kept its chapter, with Re-read from file. The conversation is demo content" width="100%"/>
 </p>
 
-### Bookmarks, reactions, and finding your way around
+### Search your Dictionary history
 
-**Bookmark any message.** The rail now has two tabs: **Material** holds the excerpt, the context, and a **Read in** list of what a persona read or ran, and **Notes** holds your to-dos and bookmarks. **Sessions → Bookmarks…** browses every bookmark in this conversation and in your saved sessions: preview one, open its session at the bookmark, or choose **Remember this** to save it as a project memory. Ask a persona what you bookmarked, and it can look.
-
-**React to a reply.** Pick an emoji under a reply, and its author hears of it with your next message. Now and then a persona reacts to one of your messages too, and its reaction sits on the corner of your message. A reaction never starts a model call on its own, and the `Workshop › Reactions: Personas` setting turns personas' reactions off.
-
-**See which model wrote what.** Each reply's header names the model that wrote it, and a divider marks where the model changed mid-conversation. Exports carry the same headers.
+**Find the word you looked up last week.** The Dictionary's **Lookup history** popup has a search box that narrows the list as you type, matching each lookup's word, its context, and the file it came from. Tick **Also search definitions** to look inside the saved entries too, and each result shows the line that matched. Search reads your saved history and asks no model.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-bookmarks-reactions.png" alt="Top: the Bookmarks screen, with two bookmarks from this conversation and three from saved sessions, each with Remember this and Preview, and Show in thread or Open session and Open at bookmark. Bottom left: the rail's Material and Notes tabs, with Notes showing the to-do list and two bookmarks. Bottom right: the reaction palette open under a reply, in Warm, Curious, and Negative groups, beside Jill's heart on the corner of the writer's message. The bookmarks are demo content" width="100%"/>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-history-search.png" alt="Left: the Dictionary's Lookup history popup searched for rabbit, with 2 of 8 lookups matching by their context and file name. Right: the same popup searched for sweet with Also search definitions ticked, 3 of 8 matching, and under each result the line of its saved definition that matched. The lookups are demo content" width="100%"/>
 </p>
 
-### Also in v2.13.0
+### Also in v2.14.0
 
-- **Personas can do more in one turn** — up to 15 look-ups a turn, with more saved-session and memory reads among them.
-- **Four new models to try** — Claude Fable 5.2, Gemini 4 Carbon, Muse Ember, and Tencent Hy4 join the model pickers as opt-in choices. Defaults and saved selections are unchanged; their prose quality has not been evaluated in Prose Minion.
-- **A tidier model list** — Mercury 2.5, Mercury 3, Hermes 3 70B, and Hermes 3 405B leave the curated list after OpenRouter stopped listing them. Saved settings are not rewritten.
-- **A helper model** — the memory sheet's draft is a small call on its own model setting, which follows Proofread's until you choose one. Turn drafting off in Settings.
+- **Three new models to try** — Gemini 4 Hydrogen, Qwen4 Max, and Hy4 Flash join the model pickers as opt-in choices. Defaults and saved selections are unchanged; their prose quality has not been evaluated in Prose Minion.
+- **Fewer rejected widget results** — Show vs. Tell, Creative Variations, and Lexical Gravity no longer reject a model's reply because it left out a field that would have been empty.
+- **Two models are on their way out at OpenRouter** — it lists GLM 5.1 as expiring on November 20, 2026 and GLM 4.5 on December 31, 2026. Both are still selectable; if you use one, pick a replacement before then. Saved settings are not rewritten.
 
-**If you sync a project between machines, update Prose Minion on all of them first.** Sessions saved by v2.13.0 can hold bookmarks, model stamps, reactions, memory cards, and edit cards, and an earlier version cannot open a session that holds them.
+**If you sync or share a project's sessions, update Prose Minion everywhere you use them.** A Workshop session that holds a Selected Text attachment cannot be opened by v2.13.0 or earlier.
 
-Asking for edits and drafting a memory call your model and may cost money, and saved memories add to what each conversation sends. Read a card before you apply it. These features are backed by extensive automated tests and the author's own use. Wider live-provider quality checks are still in progress.
+The new features were tested by the author before release and are backed by automated tests. Multi-file reads depend on your model following the read instructions, which wider live use will tell.
 
 ### Earlier releases
 
+- **v2.13.0 — A Workshop that remembers, and edits with you.** Suggested file edits you apply, Project Memory, pinned context, bookmarks across sessions, and reactions. [See the Workshop](#the-workshop-a-writers-room-in-an-editor-tab).
 - **v2.12.0 — Lightbox and Draft Edit.** A chapter on one board, measured by code and then read through AI lenses with checked quotes; and Proofread and Craft Flags from the editor's right-click menu. [See the Lightbox](#the-lightbox-hold-a-chapter-up-to-the-light) and [Draft Edit](#draft-edit-proofread-in-place).
 - **v2.11.0 — Dictionary lookup history.** Step back through up to 500 lookups, reopen one without generating again, and get offered a saved result before you look up a phrase twice. [See the Dictionary](#a-dictionary-that-writes-fiction).
 - **v2.10.1 — Gemini 4 Argon** joins the model pickers.
@@ -181,9 +171,41 @@ Choose **Open Workshop**, or select a passage and choose **Send to New Workshop 
 
 **Cache-aware.** For Claude and supported Qwen routes, the Workshop caches retained conversations. A clock beside the composer estimates the cache window, and each reply's **cached** count shows real reuse. Choose a five-minute or one-hour Claude cache in General settings; cache writes cost more than ordinary input.
 
-**It remembers, and it edits with you.** Personas can suggest edits to your files as cards you apply, keep a Project Memory, start every conversation with your pinned context, and read your bookmarks. [See what's new in v2.13.0](#whats-new-in-v2130--a-workshop-that-remembers-and-edits-with-you).
+**Suggested edits you apply.** A persona can suggest an edit to a file in your project: a note, a chapter, or the document your excerpt came from. Each edit arrives as a card under the reply, with every change shown against your text. **Apply** lands it as one change you can undo, **Review in editor…** opens it in VS Code's Refactor Preview first, and **Decline** sets it aside. Nothing changes in a file until you apply a card, and the file is never saved for you.
 
-**Git-synced projects:** update Prose Minion on every machine together. Sessions saved by a newer version may not open in an older one.
+**A reply says what it offers.** When a reply names small fixes or writes out a rewrite, its footer shows a chip for each: one for the fixes, and one for each version of a rewrite. Press a chip and the reply's author comes back with exactly those edits as cards, or one line saying there is nothing to change. Unasked, a persona keeps its edits to your chapters small; a larger rewrite comes only from a chip you pressed. Turn suggestions off under **Suggested file edits** in conversation settings.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-suggested-edits.png" alt="Top: a Workshop reply from Jill that names three slips in the opening of Alice's Adventures in Wonderland and writes out two versions of its first line; its footer reads As edits, with a 3 fixes chip and a chip for each version, On the bank and In her head. Bottom: after the fixes chip is pressed, a Suggested edit card for the chapter file with three Replace changes shown against the text, the line Nothing changes until you apply it, and Apply, Review in editor, and Decline. The conversation is demo content" width="100%"/>
+</p>
+
+**Project Memory.** Give the Workshop a memory of your project: turn it on in conversation settings, on the **Memory** tab. With **Ask first**, a persona can suggest a note under its reply, and it is saved only when you choose **Save**. With **Save and tell me**, personas save what's worth keeping and say so in the thread. You can save any message yourself with **Save to memory…**: the sheet opens at once, and a small helper drafts its title, summary, and kind while you look. Anything you type first is kept.
+
+Each memory is a Markdown file in `prose-minion/memory/`, with a kind: decision, canon, theme, idea, open thread, or preference. Later conversations in the project start knowing every memory's title and summary; a persona opens a full note when it needs it, and the few you mark **Always load in full** arrive whole. Browse, edit, archive, and delete them from **Sessions → Memory…**. A suggested note that speaks of you near a personal word is held as a card for you to decide, in either mode. Project Memory is off until you turn it on.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-project-memory.png" alt="Top: a writer's message about the White Rabbit's watch with Jill's heart reaction on its corner, and Jill's reply carrying a Suggested for project memory card, kind Canon, with Save, Edit, and Dismiss. Bottom: the Project memories screen, grouped by kind, with six active memories, two marked Loaded in full, each showing who suggested it, who saved it, and the session it came from. The memories are demo content" width="100%"/>
+</p>
+
+**Pinned context.** Stop attaching the same files to every conversation. In conversation settings, the **Pinned context** tab keeps a list of the files most conversations need: characters, places, the project brief. Every new conversation in the project starts with them attached, in your order, and marks them with a pin. After that, a conversation's context is its own: removing a file there doesn't unpin it. The list is a file in your project, `prose-minion/pinned-context.json`, of up to 50 files.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-pinned-context.png" alt="Left: the Pinned context tab of Conversation settings, Attached to every new conversation, with 4 files and about 2,814 of 100,000 words, and the files in order, each with arrows, Open, and Unpin. Right: the Workshop's Context panel reading 3 attachments, 3 pinned, with a pin on each file" width="100%"/>
+</p>
+
+**Bookmark any message.** The rail has two tabs: **Material** holds the excerpt, the context, and a **Read in** list of what a persona read or ran, and **Notes** holds your to-dos and bookmarks. **Sessions → Bookmarks…** browses every bookmark in this conversation and in your saved sessions: preview one, open its session at the bookmark, or choose **Remember this** to save it as a project memory. Ask a persona what you bookmarked, and it can look.
+
+**React to a reply.** Pick an emoji under a reply, and its author hears of it with your next message. Now and then a persona reacts to one of your messages too, and its reaction sits on the corner of your message. A reaction never starts a model call on its own, and the `Workshop › Reactions: Personas` setting turns personas' reactions off.
+
+**See which model wrote what.** Each reply's header names the model that wrote it, and a divider marks where the model changed mid-conversation. Exports carry the same headers.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-bookmarks-reactions.png" alt="Top: the Bookmarks screen, with two bookmarks from this conversation and three from saved sessions, each with Remember this and Preview, and Show in thread or Open session and Open at bookmark. Bottom left: the rail's Material and Notes tabs, with Notes showing the to-do list and two bookmarks. Bottom right: the reaction palette open under a reply, in Warm, Curious, and Negative groups, beside Jill's heart on the corner of the writer's message. The bookmarks are demo content" width="100%"/>
+</p>
+
+**Bring a few lines, or several files.** Attach the editor's selection to one message with **Include selected text**, let a persona read up to ten files in one go, and fold the side pane away when you want the room. [See what's new in v2.14.0](#whats-new-in-v2140--everyday-conveniences).
+
+**Synced or shared projects:** update Prose Minion on every machine together. Sessions saved by a newer version may not open in an older one.
 
 ---
 
@@ -267,6 +289,12 @@ Not a definition lookup — a craft reference: connotation, register, sense expl
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-lookup-history.png" alt="Top left: the Dictionary tab showing lookup 3 of 12, harbourmaster, restored with its From history line, source, and context. Bottom left: the You've looked up harbourmaster before offer, with Open latest entry and Look up again. Right: the Lookup history popup, 12 of 500 lookups newest first, each with its time, mode, options, model, and context, saved in prose-minion/history/dictionary.json" width="100%"/>
+</p>
+
+Search the history by word, context, or file, and tick **Also search definitions** to look inside the saved entries.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-history-search.png" alt="Left: the Dictionary's Lookup history popup searched for rabbit, with 2 of 8 lookups matching by their context and file name. Right: the same popup searched for sweet with Also search definitions ticked, 3 of 8 matching, and under each result the line of its saved definition that matched. The lookups are demo content" width="100%"/>
 </p>
 
 ---
