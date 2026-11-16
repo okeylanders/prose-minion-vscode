@@ -140,8 +140,9 @@ const PAGES: readonly NoticePage[] = [
     note: (
       <>
         The toggle starts off and is remembered. A selection over 5,000 words is cut to its first
-        5,000, and the pill says so before you send. If the selection changes as you send, the
-        message is held back and your draft returned. <b>Send Selection to Workshop</b> is now
+        5,000, and the pill says so before you send. The message carries the selection shown on
+        the pill. If that selection is no longer available or the room has changed, the message
+        is held back and your draft returned. <b>Send Selection to Workshop</b> is now
         named <b>Send to New Workshop Excerpt</b>.
       </>
     ),
@@ -171,7 +172,7 @@ const PAGES: readonly NoticePage[] = [
     ],
     legend: [
       { label: '1', term: 'Selected Text', detail: 'the editor’s selection, attached to your next message.' },
-      { label: '2', term: 'Include selected text', detail: 'on: the pill follows what you select. Off: nothing is attached.' },
+      { label: '2', term: 'Include selected text', detail: 'on: the pill follows what you select. Off: the current selection is not attached automatically.' },
       { label: '3', term: 'On the sent message', detail: 'the pill stays with the message it went with.' }
     ]
   },

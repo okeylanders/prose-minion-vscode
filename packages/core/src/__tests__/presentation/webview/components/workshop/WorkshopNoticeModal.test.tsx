@@ -44,10 +44,12 @@ describe('WorkshopNoticeModal', () => {
     expect(within(copy()).getByText(/goes with that one message/)).toBeTruthy();
     const note = document.querySelector('.pm-ws-notice-note')?.textContent ?? '';
     expect(note).toContain('The toggle starts off and is remembered.');
+    expect(note).toContain('The message carries the selection shown on the pill.');
+    expect(note).toContain('If that selection is no longer available or the room has changed, the message is held back and your draft returned.');
     expect(note).toContain('Send Selection to Workshop is now named Send to New Workshop Excerpt.');
     expect(within(legend()).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
       '1Selected Text — the editor’s selection, attached to your next message.',
-      '2Include selected text — on: the pill follows what you select. Off: nothing is attached.',
+      '2Include selected text — on: the pill follows what you select. Off: the current selection is not attached automatically.',
       '3On the sent message — the pill stays with the message it went with.'
     ]);
   });
