@@ -44,6 +44,7 @@ import {
 import { LogSink } from '@/platform';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
+import { DictionaryHistorySearchRoute } from './DictionaryHistorySearchRoute';
 
 // Generate unique request IDs
 let requestIdCounter = 0;
@@ -56,6 +57,7 @@ export class DictionaryHandler {
   // Track active abort controllers by request ID for cancellation
   private activeRequests = new Map<string, AbortController>();
   private readonly disposeHistoryListener: () => void;
+  private readonly historySearch: DictionaryHistorySearchRoute;
 
   constructor(
     private readonly dictionaryService: DictionaryService,
@@ -63,6 +65,7 @@ export class DictionaryHandler {
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink
   ) {
+    this.historySearch = new DictionaryHistorySearchRoute(history, postMessage, outputChannel);
     // The store is shared by every webview; each handler pushes a fresh list
     // to its own webview after any change, whichever surface caused it.
     this.disposeHistoryListener = history.onDidChange(() => {
@@ -81,6 +84,7 @@ export class DictionaryHandler {
     router.register(MessageType.REQUEST_DICTIONARY_HISTORY_ENTRY, this.handleRequestHistoryEntry.bind(this));
     router.register(MessageType.DELETE_DICTIONARY_HISTORY_ENTRY, this.handleDeleteHistoryEntry.bind(this));
     router.register(MessageType.CLEAR_DICTIONARY_HISTORY, this.handleClearHistory.bind(this));
+    this.historySearch.registerRoutes(router);
   }
 
   /** Release this handler's history subscription; the shared store lives on. */

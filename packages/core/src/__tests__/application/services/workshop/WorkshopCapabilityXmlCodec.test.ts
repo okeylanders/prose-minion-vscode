@@ -162,8 +162,7 @@ describe('WorkshopCapabilityXmlCodec', () => {
       kind: 'request',
       request: {
         capability: 'resource.read',
-        group: 'characters',
-        path: 'characters/raven.md',
+        files: [{ group: 'characters', path: 'characters/raven.md' }],
         startLine: 41,
         endLine: 80
       }
@@ -175,7 +174,7 @@ describe('WorkshopCapabilityXmlCodec', () => {
       '<prose-minion-tool-call name="resource.read"><group>characters</group><path>characters/raven.md</path></prose-minion-tool-call>'
     )).toEqual({
       kind: 'request',
-      request: { capability: 'resource.read', group: 'characters', path: 'characters/raven.md' }
+      request: { capability: 'resource.read', files: [{ group: 'characters', path: 'characters/raven.md' }] }
     });
   });
 

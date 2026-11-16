@@ -45,7 +45,7 @@ const TAB_LABELS: Record<WorkshopRailTab, string> = {
   notes: 'Notes'
 };
 
-const TAB_ICONS: Record<WorkshopRailTab, IconName> = {
+export const WORKSHOP_RAIL_TAB_ICONS: Record<WorkshopRailTab, IconName> = {
   material: 'doc',
   notes: 'list'
 };
@@ -53,7 +53,7 @@ const TAB_ICONS: Record<WorkshopRailTab, IconName> = {
 export const workshopRailTabId = (tab: WorkshopRailTab): string => `pm-ws-rail-tab-${tab}`;
 export const workshopRailPanelId = (tab: WorkshopRailTab): string => `pm-ws-rail-panel-${tab}`;
 
-interface TabSummary {
+export interface WorkshopRailTabSummary {
   count: number;
   /** The tab's accessible name: its label, the count, and any badge. */
   name: string;
@@ -63,7 +63,7 @@ interface TabSummary {
 const newBadge = (unseen: number): string | undefined =>
   unseen > 0 ? `${unseen} new` : undefined;
 
-function summarizeTabs({
+export function summarizeWorkshopRailTabs({
   excerpt,
   context,
   readIn,
@@ -72,7 +72,7 @@ function summarizeTabs({
   unseenNotesCount,
   unseenMaterialCount
 }: Omit<WorkshopRailProps, 'tabs' | 'roomKey'> &
-  Pick<WorkshopRailTabsState, 'unseenNotesCount' | 'unseenMaterialCount'>): Record<WorkshopRailTab, TabSummary> {
+  Pick<WorkshopRailTabsState, 'unseenNotesCount' | 'unseenMaterialCount'>): Record<WorkshopRailTab, WorkshopRailTabSummary> {
   const materialCount = (excerpt.excerpt ? 1 : 0) + context.attachments.length + readIn.entries.length;
   const openTodos = todos.todos.filter((todo) => todo.status === 'open' && !todo.stale).length;
   const bookmarkCount = bookmarks.bookmarks.length;
@@ -124,7 +124,7 @@ export const WorkshopRail: React.FC<WorkshopRailProps> = ({
 }) => {
   const { activeTab, unseenNotesCount, unseenMaterialCount, selectTab } = tabs;
   const tabRefs = React.useRef<Partial<Record<WorkshopRailTab, HTMLButtonElement | null>>>({});
-  const summaries = summarizeTabs({
+  const summaries = summarizeWorkshopRailTabs({
     excerpt,
     context,
     readIn,
@@ -168,7 +168,7 @@ export const WorkshopRail: React.FC<WorkshopRailProps> = ({
               onClick={() => selectTab(tab)}
               onKeyDown={moveWithKeyboard}
             >
-              <Icon name={TAB_ICONS[tab]} size={14} />
+              <Icon name={WORKSHOP_RAIL_TAB_ICONS[tab]} size={14} />
               {TAB_LABELS[tab]}
               <span className="pm-ws-rail-tab-count" aria-hidden="true">{summary.count}</span>
               {summary.badge ? (

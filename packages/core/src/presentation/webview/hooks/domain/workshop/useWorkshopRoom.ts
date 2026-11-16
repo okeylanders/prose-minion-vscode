@@ -201,7 +201,7 @@ export interface WorkshopRoomState {
   streamingChunksPerSecond: number;
   currentRequestId: string | null;
   /** One-shot composer seed for starters and transient-send recovery. */
-  composerDraftSeed?: { text: string; token: number };
+  composerDraftSeed?: { text: string; token: number; keepDraft?: boolean };
 }
 
 export interface WorkshopRoomActions {
@@ -217,6 +217,11 @@ export interface WorkshopRoomActions {
   openContextAttachmentFile: (id: string) => void;
   clearAttachmentContent: () => void;
   setSessionScope: (scope: WorkshopSelectableSessionScope) => void;
+  /**
+   * Choose the passage path with the carried passage. For a file-backed one
+   * the host reads the file first, so the room starts on its current text.
+   */
+  continueWithExcerpt: () => void;
   repinExcerpt: () => void;
   requestContextCatalog: () => void;
   searchContextResources: (query: string) => void;
@@ -233,8 +238,9 @@ export interface WorkshopRoomActions {
   handleContextSearchResults: (message: WorkshopContextSearchResultsMessage) => void;
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
-  sendMessage: (text: string) => void;
-  seedComposerDraft: (text: string) => void;
+  /** `selectedText`: the snapshot the composer's live Selected Text pill showed and the room it was drawn in, when it rides this send. */
+  sendMessage: (text: string, selectedText?: { snapshotId: string; roomRevision: number }) => void;
+  seedComposerDraft: (text: string, keepDraft?: boolean) => void;
   selectPersona: (personaId: WorkshopPersonaId) => void;
   inviteGuest: (personaId: WorkshopPersonaId, openingMessage: string) => void;
   dismissGuest: (personaId: WorkshopPersonaId) => void;
@@ -347,6 +353,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   const [composerDraftSeed, setComposerDraftSeed] = React.useState<{
     text: string;
     token: number;
+    keepDraft?: boolean;
   }>();
   const composerDraftTokenRef = React.useRef(0);
 
@@ -430,6 +437,18 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     setErrorMessage('');
     post(MessageType.WORKSHOP_SET_SESSION_SCOPE, { scope: next });
   }, [post]);
+
+  // One message: the host reads the file, then chooses the path and lands the
+  // read together (PR #260 F-01). Until its snapshot arrives the path stays
+  // unchosen here, so the composer is not send-ready on the old passage.
+  const carriedExcerptIsFileBacked = (excerpt ?? shelvedExcerpt)?.source.kind === 'file';
+  const continueWithExcerpt = React.useCallback(() => {
+    setErrorMessage('');
+    post(
+      MessageType.WORKSHOP_SET_SESSION_SCOPE,
+      carriedExcerptIsFileBacked ? { scope: 'excerpt', rereadFile: true } : { scope: 'excerpt' }
+    );
+  }, [post, carriedExcerptIsFileBacked]);
 
   const repinExcerpt = React.useCallback(() => {
     setErrorMessage('');
@@ -519,16 +538,20 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   );
 
   const sendMessage = React.useCallback(
-    (text: string) => {
+    (text: string, selectedText?: { snapshotId: string; roomRevision: number }) => {
       setErrorMessage('');
-      post(MessageType.WORKSHOP_SEND_MESSAGE, { text });
+      // A send that names a Selected Text snapshot names the room its pill was drawn in, as the pill
+      // recorded it: never the room on screen at send time (ADR 2026-11-14 D14; PR #264 P2).
+      post(MessageType.WORKSHOP_SEND_MESSAGE, selectedText
+        ? { text, selectedTextSnapshotId: selectedText.snapshotId, roomRevision: selectedText.roomRevision }
+        : { text });
     },
     [post]
   );
 
-  const seedComposerDraft = React.useCallback((text: string) => {
+  const seedComposerDraft = React.useCallback((text: string, keepDraft = false) => {
     composerDraftTokenRef.current += 1;
-    setComposerDraftSeed({ text, token: composerDraftTokenRef.current });
+    setComposerDraftSeed({ text, token: composerDraftTokenRef.current, ...(keepDraft ? { keepDraft: true } : {}) });
   }, []);
 
   const selectPersona = React.useCallback(
@@ -729,7 +752,9 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
 
   const handleComposerDraftRestored = React.useCallback(
     (message: WorkshopComposerDraftRestoredMessage) => {
-      seedComposerDraft(message.payload.text);
+      // The host gives text back after the composer cleared it, so the writer may have typed since:
+      // the restored text never replaces that (PR #264 P2).
+      seedComposerDraft(message.payload.text, true);
     },
     [seedComposerDraft]
   );
@@ -891,6 +916,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     openContextAttachmentFile,
     clearAttachmentContent,
     setSessionScope,
+    continueWithExcerpt,
     repinExcerpt,
     requestContextCatalog,
     searchContextResources,

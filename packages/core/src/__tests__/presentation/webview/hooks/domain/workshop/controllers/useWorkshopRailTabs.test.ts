@@ -103,6 +103,21 @@ describe('useWorkshopRailTabs', () => {
     expect(result.current.unseenNotesCount).toBe(0);
   });
 
+  it('badges what arrives in the showing tab while the whole rail is collapsed', () => {
+    const { result, rerender } = renderTabs({ initialTab: 'notes', railHidden: true, todos: [todo('a')] });
+    expect(result.current.unseenNotesCount).toBe(0);
+
+    rerender({ todos: [todo('a'), todo('b')], roomKey: 'room:1', railHidden: true, readIn: [row('Raven')] });
+    expect(result.current.unseenNotesCount).toBe(1);
+    expect(result.current.unseenMaterialCount).toBe(1);
+
+    // Opened again, the showing tab's news is seen; the other tab keeps its badge.
+    rerender({ todos: [todo('a'), todo('b')], roomKey: 'room:1', railHidden: false, readIn: [row('Raven')] });
+    expect(result.current.activeTab).toBe('notes');
+    expect(result.current.unseenNotesCount).toBe(0);
+    expect(result.current.unseenMaterialCount).toBe(1);
+  });
+
   it('never badges a to-do added while Notes is visible', () => {
     const { result, rerender } = renderTabs({ initialTab: 'notes' });
     rerender({ todos: [todo('a')], roomKey: 'room:1' });

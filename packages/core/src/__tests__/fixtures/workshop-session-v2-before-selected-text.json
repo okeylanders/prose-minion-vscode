@@ -1,0 +1,293 @@
+{
+  "schemaVersion": 2,
+  "sessionId": "before-selected-text",
+  "title": "Scripted room",
+  "createdAt": "2026-09-30T12:00:00.000Z",
+  "updatedAt": "2026-09-30T12:00:00.000Z",
+  "temporal": {
+    "schemaVersion": 1,
+    "startedAt": "2026-09-30T12:00:00.000Z",
+    "timezone": "UTC",
+    "lastActivityAt": "2026-09-30T12:00:00.000Z",
+    "personaNotices": []
+  },
+  "summary": {
+    "hostPersonaId": "jill",
+    "participantPersonaIds": [
+      "jill"
+    ],
+    "turnCount": 5,
+    "excerptWordCount": 0
+  },
+  "workshop": {
+    "excerpt": {
+      "text": "Alice was beginning to get very tired of sitting by her sister on the bank.",
+      "version": 1,
+      "source": {
+        "kind": "manual"
+      },
+      "pinnedAt": 1003
+    },
+    "scope": "excerpt",
+    "contextAttachments": [],
+    "hostContextDelivery": {
+      "revision": 0,
+      "attachments": []
+    },
+    "pendingMessageAttachments": [
+      {
+        "label": "white-rabbit.md",
+        "words": 9,
+        "relativePath": "Characters/white-rabbit.md",
+        "configuredResource": {
+          "group": "characters",
+          "path": "Characters/white-rabbit.md"
+        },
+        "content": "The White Rabbit carries a watch and is late.",
+        "sourceUri": "file:///workspace/novel/Characters/white-rabbit.md",
+        "id": "ta-3"
+      }
+    ],
+    "threadArtifacts": [
+      {
+        "id": "ta-1",
+        "name": "alice-notes.md",
+        "content": "The rabbit-hole went straight on like a tunnel for some way.",
+        "turnId": "turn-2-user-1004"
+      },
+      {
+        "id": "ta-2",
+        "kind": "lightbox-tile",
+        "name": "Lightbox Open door: The empty jar",
+        "content": "Reading: Open door, from the Spark lens\nTitle: The empty jar\nClaim: What if the jar came back, full this time, when Alice least needs it?\nQuotes, as the chapter has them:\n- ¶5: “she took down a jar from one of the shelves as she passed”",
+        "turnId": "turn-4-user-1009"
+      }
+    ],
+    "revisions": {
+      "excerpt": 1,
+      "replacementCount": 0,
+      "context": 0
+    },
+    "counters": {
+      "attachment": 0,
+      "threadArtifact": 3,
+      "turn": 5,
+      "todo": 0,
+      "widgetConfig": 0,
+      "standingDirective": 0
+    },
+    "widgetConfigs": [],
+    "standingDirectives": [],
+    "writerSources": {
+      "host": [
+        {
+          "kind": "pin",
+          "origin": "writer",
+          "label": "Pasted excerpt",
+          "sizeChars": 75,
+          "isEstimate": true,
+          "excerptVersion": 1,
+          "deliveredAt": 1003
+        },
+        {
+          "kind": "message-attachment",
+          "origin": "writer",
+          "label": "alice-notes.md",
+          "sizeChars": 60,
+          "isEstimate": true,
+          "artifactId": "ta-1",
+          "deliveredAt": 1008
+        },
+        {
+          "kind": "message-attachment",
+          "origin": "writer",
+          "label": "Lightbox Open door: The empty jar",
+          "sizeChars": 236,
+          "isEstimate": true,
+          "artifactId": "ta-2",
+          "deliveredAt": 1013
+        }
+      ],
+      "tools": {},
+      "guests": []
+    },
+    "turns": [
+      {
+        "id": "turn-1-system-1001",
+        "role": "system",
+        "kind": "divider",
+        "participant": "session",
+        "artifact": "session_start",
+        "excerptVersion": 0,
+        "content": "Session started.",
+        "timestamp": 1002
+      },
+      {
+        "id": "turn-2-user-1004",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "messageAttachments": [
+          {
+            "label": "alice-notes.md",
+            "words": 11,
+            "relativePath": "Notes/alice-notes.md",
+            "truncation": {
+              "keptWords": 11,
+              "totalWords": 240
+            },
+            "id": "ta-1"
+          }
+        ],
+        "content": "Does the opening hold?",
+        "timestamp": 1005,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-3-assistant-1006",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "host",
+        "artifact": "persona_message",
+        "personaId": "jill",
+        "personaLabel": "Jill",
+        "content": "Host reply to \"Does the opening hold?\".",
+        "timestamp": 1007,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-4-user-1009",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "messageAttachments": [
+          {
+            "label": "Lightbox Open door: The empty jar",
+            "words": 47,
+            "relativePath": "Drafts/alice-chapter-1.md",
+            "lightboxTile": {
+              "boardId": "board-1",
+              "tileId": "tile-c-spark-1",
+              "kindLabel": "Open door",
+              "quotes": 1,
+              "sourceLabel": "Drafts/alice-chapter-1.md"
+            },
+            "id": "ta-2"
+          }
+        ],
+        "content": "What do you make of the jar?",
+        "timestamp": 1010,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-5-assistant-1011",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "host",
+        "artifact": "persona_message",
+        "personaId": "jill",
+        "personaLabel": "Jill",
+        "content": "Host reply to \"What do you make of the jar?\".",
+        "timestamp": 1012,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      }
+    ],
+    "participants": {
+      "host": {
+        "personaId": "jill",
+        "conversationKey": "host",
+        "lastSeenRoomTurnId": "turn-1-system-1001"
+      },
+      "toolSidecars": [],
+      "personaGuests": [],
+      "chatTarget": {
+        "kind": "host"
+      }
+    },
+    "todos": [],
+    "retainedHistoryMarks": [
+      {
+        "turnId": "turn-3-assistant-1006",
+        "conversationKey": "host",
+        "messageCount": 2,
+        "contextSourceCount": 0,
+        "writerSourceCount": 2,
+        "lastSeenRoomTurnId": "turn-1-system-1001",
+        "contextRevision": 0,
+        "origin": "commit"
+      },
+      {
+        "turnId": "turn-5-assistant-1011",
+        "conversationKey": "host",
+        "messageCount": 4,
+        "contextSourceCount": 0,
+        "writerSourceCount": 3,
+        "lastSeenRoomTurnId": "turn-1-system-1001",
+        "contextRevision": 0,
+        "origin": "commit"
+      }
+    ],
+    "lastCommittedPersonaBehavior": {
+      "interactionMode": "balanced",
+      "expressionLevel": "full",
+      "relationalDepth": "attuned"
+    }
+  },
+  "conversations": [
+    {
+      "key": "host",
+      "toolName": "workshop_persona_jill",
+      "messages": [
+        {
+          "role": "user",
+          "content": "[host] Does the opening hold?"
+        },
+        {
+          "role": "assistant",
+          "content": "Host reply to \"Does the opening hold?\"."
+        },
+        {
+          "role": "user",
+          "content": "[host] What do you make of the jar?"
+        },
+        {
+          "role": "assistant",
+          "content": "Host reply to \"What do you make of the jar?\"."
+        }
+      ],
+      "lastActivity": 1794670868842,
+      "contextSources": [],
+      "nextArtifactNumber": 0
+    }
+  ]
+}

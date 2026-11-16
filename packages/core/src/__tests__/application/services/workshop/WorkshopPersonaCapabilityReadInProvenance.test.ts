@@ -58,7 +58,7 @@ const FULL_ENTRY: WorkshopCapabilityRequest = {
   capability: 'dictionary.full-entry', word: 'tardy', context: 'the Rabbit', purpose: 'tone'
 };
 const READ_RANGE: WorkshopCapabilityRequest = {
-  capability: 'resource.read', group: 'characters', path: 'characters/rabbit.md', startLine: 2, endLine: 4
+  capability: 'resource.read', files: [{ group: 'characters', path: 'characters/rabbit.md' }], startLine: 2, endLine: 4
 };
 
 describe('persona capability read-in provenance', () => {
@@ -148,7 +148,7 @@ describe('persona capability read-in provenance', () => {
 
   it('records the default window a read returned when it named no lines', async () => {
     const fulfillment = await capability().fulfill({
-      capability: 'resource.read', group: 'characters', path: 'characters/rabbit.md'
+      capability: 'resource.read', files: [{ group: 'characters', path: 'characters/rabbit.md' }]
     });
 
     expect(fulfillment.deliveredSources![0].lineRange).toEqual({ start: 1, end: 5 });
@@ -178,7 +178,7 @@ describe('persona capability read-in provenance', () => {
 
   it('records nothing for a read that failed', async () => {
     const fulfillment = await capability().fulfill({
-      capability: 'resource.read', group: 'characters', path: 'characters/rabbit.md', startLine: 40
+      capability: 'resource.read', files: [{ group: 'characters', path: 'characters/rabbit.md' }], startLine: 40
     });
 
     expect(fulfillment.deliveredSources).toEqual([]);

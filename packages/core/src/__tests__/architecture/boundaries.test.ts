@@ -119,6 +119,8 @@ const WORKSHOP_LEXICAL_HANDLER_OWNER =
   'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts';
 const WORKSHOP_LIGHTBOX_TILE_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopLightboxTileHandler.ts';
+const WORKSHOP_SELECTED_TEXT_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopSelectedTextHandler.ts';
 
 /**
  * Complete inbound Workshop route ledger. MessageRouter rejects duplicates at
@@ -388,6 +390,19 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: ['WORKSHOP_ACCEPT_LIGHTBOX_TILE']
   },
   {
+    // Selected Text (ADR 2026-11-14 D12, D14): the provider's offer and the
+    // toggle's watch are direct, since neither changes session state.
+    owner: WORKSHOP_SELECTED_TEXT_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_STAGE_SELECTED_TEXT', 'WORKSHOP_SELECTED_TEXT_WATCH']
+  },
+  {
+    // Staging the selection is a session mutation, as a tile's is.
+    owner: WORKSHOP_SELECTED_TEXT_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_ACCEPT_SELECTED_TEXT']
+  },
+  {
     owner: WORKSHOP_STANDING_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: [
@@ -470,6 +485,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopProjectMemoryManagerHandler',
   'WorkshopReactionHandler',
   'WorkshopSavedTurnMemoryHandler',
+  'WorkshopSelectedTextHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
   'WorkshopShowVsTellHandler',
@@ -1127,7 +1143,6 @@ const WORKSHOP_RECALL_MODULES = [
   'WorkshopRecallDocumentCache.ts',
   'WorkshopRecallDocumentLoader.ts',
   'WorkshopRecallOperationResults.ts',
-  'WorkshopRecallReadAllocation.ts',
   'WorkshopRecallReadOperation.ts',
   'WorkshopRecallReadSection.ts',
   'WorkshopRecallReadWindow.ts',
@@ -1138,7 +1153,6 @@ const WORKSHOP_RECALL_MODULES = [
   'WorkshopRecallTime.ts',
   'WorkshopRecallTodoList.ts',
   'WorkshopRecallTodosOperation.ts',
-  'WorkshopRecallWindowClamp.ts',
   'WorkshopTranscriptRecallCapability.ts',
   'WorkshopTranscriptRecallRenderer.ts',
   'WorkshopTranscriptRecallRequestCopy.ts',
@@ -1191,6 +1205,22 @@ const WORKSHOP_MEMORY_MODULES = [
   'WorkshopReplyMemory.ts',
   'WorkshopReplyMemoryEdit.ts'
 ];
+/**
+ * The shared read fit (ADR 2026-11-14 D1): the window fit and the fair
+ * shares, used by session recall and by file reads. Recall may import it;
+ * it imports no recall, memory, session, store or renderer module.
+ */
+const WORKSHOP_READS_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'reads');
+const WORKSHOP_READS_MODULES = [
+  'WorkshopReadShares.ts',
+  'WorkshopReadWindowFit.ts'
+];
+/** All a module under `reads/` may import. */
+const WORKSHOP_READS_ALLOWED_IMPORTS = [
+  '@orchestration/RequestContextPreflight',
+  '@shared/types/workshopCapabilities'
+];
+
 const MEMORY_TYPE_ONLY_MODULE = /(?:^|\/)(?:ProjectMemoryStore|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService)$/;
 
 const WORKSHOP_CAPABILITY_BOUNDARY = [
@@ -1201,8 +1231,18 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityResultLog.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopTranscriptRecallXmlCodec.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopPersonaCapability.ts'),
+  // Everyday Conveniences D8: the resource family's codec, read and instruction, split out.
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceXmlCodec.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceRead.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceReadFiles.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceReadPlan.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceReadRenderer.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceRequestCopy.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceCapability.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceInstruction.ts'),
   ...collectSourceFiles(WORKSHOP_RECALL_ROOT),
-  ...collectSourceFiles(WORKSHOP_MEMORY_ROOT)
+  ...collectSourceFiles(WORKSHOP_MEMORY_ROOT),
+  ...collectSourceFiles(WORKSHOP_READS_ROOT)
 ];
 const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)|import\s+.*['"](?:vscode|react|@providers\/))/;
 
@@ -1862,6 +1902,53 @@ describe('architectural boundaries', () => {
       .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
   });
 
+  it('keeps the shared read fit free of recall, memory, session, store and renderer modules (ADR 2026-11-14 D1)', () => {
+    const readsFiles = collectSourceFiles(WORKSHOP_READS_ROOT);
+    expect(readsFiles.map((file) => path.basename(file)).sort()).toEqual(WORKSHOP_READS_MODULES);
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(readsFiles));
+    const imports = readsFiles.flatMap((file) =>
+      moduleImports(file, fs.readFileSync(file, 'utf8'))
+        .map((entry) => ({ file: path.relative(SRC_ROOT, file), ...entry }))
+    );
+    // An allowlist, so a new dependency is added here on purpose.
+    expect(imports
+      .filter(({ module }) => !WORKSHOP_READS_ALLOWED_IMPORTS.includes(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    expect(imports
+      .filter(({ module }) => /\/(?:recall|memory|session|pinnedContext)\/|Workshop(?:Session|RoomFrame|ThreadArtifact)/.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // The move left nothing behind: recall holds neither module, and names neither file.
+    const recallNames = collectSourceFiles(WORKSHOP_RECALL_ROOT).map((file) => path.basename(file));
+    expect(recallNames).not.toContain('WorkshopRecallWindowClamp.ts');
+    expect(recallNames).not.toContain('WorkshopRecallReadAllocation.ts');
+    // Each module stays under 500 lines.
+    expect(readsFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
+      .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
+  });
+
+  it('keeps the resource family\'s modules in the capability boundary, off recall and memory, and under 500 lines (ADR 2026-11-14 D8)', () => {
+    const resourceFiles = collectSourceFiles(path.join(SRC_ROOT, 'application', 'services', 'workshop'))
+      .filter((file) => /^WorkshopResource[A-Za-z]*\.ts$/.test(path.basename(file)));
+    // Every module the family has is listed, so a new one joins on purpose.
+    expect(resourceFiles.map((file) => path.basename(file)).sort()).toEqual([
+      'WorkshopResourceCapability.ts',
+      'WorkshopResourceInstruction.ts',
+      'WorkshopResourceRead.ts',
+      'WorkshopResourceReadFiles.ts',
+      'WorkshopResourceReadPlan.ts',
+      'WorkshopResourceReadRenderer.ts',
+      'WorkshopResourceRequestCopy.ts',
+      'WorkshopResourceXmlCodec.ts'
+    ]);
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(resourceFiles));
+    // File reads share the fit with recall through `reads/`, never through recall itself.
+    expect(resourceFiles.flatMap((file) => moduleImports(file, fs.readFileSync(file, 'utf8'))
+      .filter(({ module }) => /\/(?:recall|memory)\//.test(module))
+      .map(({ module }) => `${path.relative(SRC_ROOT, file)} -> ${module}`))).toEqual([]);
+    expect(resourceFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
+      .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
+  });
+
   it('keeps project memory on its read-only ports and off the room-frame renderers (ADR 2026-11-04 D10, D12)', () => {
     const memoryFiles = collectSourceFiles(WORKSHOP_MEMORY_ROOT);
     const imports = memoryFiles.flatMap((file) =>
@@ -2088,11 +2175,12 @@ describe('architectural boundaries', () => {
     // Helper Agent Slice 2 added the memory sheet's draft request, its cancel and the setting's read (direct).
     // Reply Edit Actions Slice 2 added the press on a reply's edit offer (mutation).
     // Message Reactions Slice 1 added the writer's reaction change and Hide on a persona's (mutation).
-    expect(expectedOwnerPairs).toHaveLength(94);
+    // Everyday Conveniences Slice B added the selection's offer and watch (direct) and its staging (mutation).
+    expect(expectedOwnerPairs).toHaveLength(97);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(51);
+      .toHaveLength(52);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(43);
+      .toHaveLength(45);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -2754,6 +2842,7 @@ describe('architectural boundaries', () => {
       'projectMemoryManager.ts',
       'reactions.ts',
       'seedDelivery.ts',
+      'selectedText.ts',
       'session.ts',
       'settings.ts',
       'showVsTell.ts',

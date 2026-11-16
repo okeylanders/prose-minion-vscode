@@ -126,16 +126,22 @@ describe('useWorkshopRoom', () => {
 
     act(() => result.current.handleComposerDraftRestored(restored('Try me again.')));
     const firstToken = result.current.composerDraftSeed?.token;
+    // A text the host gives back never replaces what was typed since (PR #264 P2).
     expect(result.current.composerDraftSeed).toEqual({
       text: 'Try me again.',
-      token: firstToken
+      token: firstToken,
+      keepDraft: true
     });
 
     act(() => result.current.handleComposerDraftRestored(restored('Try me again.')));
     expect(result.current.composerDraftSeed).toEqual({
       text: 'Try me again.',
-      token: (firstToken ?? 0) + 1
+      token: (firstToken ?? 0) + 1,
+      keepDraft: true
     });
+    // A starter chip still replaces the draft.
+    act(() => result.current.seedComposerDraft('Brainstorm the Caucus-race.'));
+    expect(result.current.composerDraftSeed).toEqual({ text: 'Brainstorm the Caucus-race.', token: (firstToken ?? 0) + 2 });
   });
 
   it('exposes the narrow optimistic-replacement port without owning session actions', () => {

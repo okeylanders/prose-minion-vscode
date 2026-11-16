@@ -1,6 +1,6 @@
 # ADR 2026-10-14: Dictionary Lookup History
 
-**Status:** Proposed (2026-10-14); amended 2026-10-15 after the [PR #144 review](../pr-reviews/pr-144-dictionary-lookup-history-review.md), and again 2026-10-15 to [raise the cap and offer prior lookups](#amendment-2026-10-15-a-larger-cap-and-the-prior-lookup-offer)
+**Status:** Proposed (2026-10-14); amended 2026-10-15 after the [PR #144 review](../pr-reviews/pr-144-dictionary-lookup-history-review.md), and again 2026-10-15 to [raise the cap and offer prior lookups](#amendment-2026-10-15-a-larger-cap-and-the-prior-lookup-offer); amended 2026-11-14 to [search the history](#amendment-2026-11-14-searching-the-history)
 **Date:** 2026-10-14
 **Epic:** [Dictionary Lookup History](../../.todo/epics/epic-dictionary-lookup-history-2026-10-14/README.md)
 **Extends:** [ADR 2026-06-16 — Monorepo Ports and Adapters](2026-06-16-monorepo-ports-and-adapters.md); [ADR 2026-06-18 — MessageHandler Composition-Root Consolidation](2026-06-18-messagehandler-composition-root-consolidation.md)
@@ -357,14 +357,95 @@ Raised by the writer after PR #144 merged.
   - Workshop persona lookups never pass through the tab, so they are never
     interrupted (D2).
 
+## Amendment 2026-11-14: searching the history
+
+Item C of the [Everyday Conveniences epic](../../.todo/epics/epic-everyday-conveniences-2026-11-14/README.md),
+from [Feature: Search the Dictionary's Lookup History](../../.todo/features/feature-dictionary-history-search/README.md).
+This was "Filtering or searching inside the popup" in the out-of-scope list.
+
+- **D10 (new): the popup filters what it already holds.**
+  - A search field at the top of the popup filters the rows as the writer
+    types, by **word, context and file name**, over the
+    `DictionaryHistorySummary[]` the webview has (D5). No message is sent.
+  - Case and accents are ignored, by one pure fold shared by both sides
+    (`shared/utils/foldedTextSearch.ts`): each whitespace character becomes
+    a space, and each letter is lower-cased, decomposed (NFD) and stripped
+    of its combining marks. Matching is plain substring search on folded
+    text. No pattern is built from a query.
+  - **A word matches through `dictionaryPhraseKey`**, D9's rule: the
+    query's key, folded, stands somewhere in the word's key, folded. So any
+    two phrases the prior-lookup offer calls the same lookup find each other
+    in search, and part of a word finds the whole. A test holds the two
+    together.
+  - **Context and file match as written**: the folded query stands somewhere
+    in the row's context preview (the 140-character summary, not the whole
+    context) or in its source path.
+  - The query is one phrase; it is not split into terms. A line under the
+    field counts the rows shown against the whole history ("12 of 500
+    match"). Hits are marked with `<mark>`, rendered as text nodes.
+  - The rule is pure (`presentation/webview/utils/dictionaryHistorySearch.ts`).
+    The query and the toggle below are the open popup's state and are
+    **never persisted**.
+- **D11 (new): "Also search definitions" runs on the host.** Result bodies
+  stay on the host (D5), so searching them adds a route:
+
+  | Message | Direction | Payload |
+  |---|---|---|
+  | `SEARCH_DICTIONARY_HISTORY` | webview → host | `{ requestId, query }` |
+  | `DICTIONARY_HISTORY_SEARCH_RESULT` | host → webview | `{ requestId, status: 'found', matches: { id, snippet }[] }` \| `{ requestId, status: 'failed' }` |
+
+  - **Correlated.** The webview mints each `requestId` and the host echoes
+    it. `useDictionaryHistorySearch` takes only the answer it still waits
+    for. A newer query, the toggle going off, or the popup closing stops the
+    wait at once, before anything new is sent, so a stale answer is never
+    shown. The popup also shows an answer only for the query on screen.
+  - **Debounced** in the webview, by
+    `DICTIONARY_HISTORY_SEARCH_DEBOUNCE_MS` (250).
+  - **Ids and snippets, never bodies.** `snippet` is `{ before, hit, after }`
+    around the entry's first hit, whitespace collapsed, with `…` where it was
+    cut.
+  - **Bounded.** The store reads the entries it holds (at most the cap,
+    500), one linear pass each. The query is clipped to
+    `DICTIONARY_HISTORY_SEARCH_QUERY_CHARS` (100) on both sides, never
+    refused; an empty query matches nothing and reads nothing. A snippet
+    shows at most 40 characters before the hit and 80 after
+    (`…_SNIPPET_BEFORE_CHARS`, `…_SNIPPET_AFTER_CHARS`), and the hit itself
+    at most twice the query bound.
+  - **Where it lives.** `DictionaryHandler` registers
+    `DictionaryHistorySearchRoute`, which asks
+    `DictionaryHistoryStore.searchDefinitions`; the scan is the pure
+    `infrastructure/storage/dictionaryHistorySearch.ts`.
+  - **In the popup.** A row found only in its definition shows the snippet
+    with the hit marked, and the count is the union. While waiting the count
+    line adds "Searching definitions…"; a failure leaves one quiet line and
+    the filter keeps working. A request with no usable id is ignored; a
+    search that throws answers `failed`.
+  - **Logs carry counts only** (matches, entries read, the query's length):
+    never the query, a word, a path or a snippet.
+- **Keyboard.** The field is focused on open (the close button when there
+  is no history to search). `↓` moves into the rows, `↑` `↓` walk them, and
+  `↑` from the first returns to the field. **Enter in the field opens the
+  first match** (nothing with an empty field, no match, or a lookup
+  generating). **Escape clears the query first**, then closes.
+- **Opening a match** is the ordinary history load (D6): it shows the entry
+  and moves the cursor there.
+- **Defaults taken** (the epic's 10–12, Okey's to overturn):
+  - `‹` `›` still walk the **whole** history while a search is active.
+    Search is for finding; opening a match puts the cursor there.
+  - **Text only.** No chips for mode, encyclopedia, palettes or dates.
+  - **The cap stays 500.**
+
 ## Out of scope (follow-ups)
 
 - History for Assistant and Category Search: the rest of the parent feature,
   reusing the `prose-minion/history/` convention.
 - A "Clear request history" control in Settings. The popup's Clear covers the
   Dictionary.
-- Filtering or searching inside the popup, and keyboard shortcuts
-  (`Alt+←`/`Alt+→`).
+- Keyboard shortcuts for `‹` `›` (`Alt+←`/`Alt+→`). (Searching inside the
+  popup was built on 2026-11-14; see the amendment above.)
+- Search follow-ups: filter chips (mode, encyclopedia, palettes, date),
+  searching the whole context rather than its preview, and stepping `‹` `›`
+  through matches only.
 - Merging history across windows.
 - A setting to skip the prior-lookup offer (D9) for writers who rerun
   deliberately, and listing every match in the offer rather than the newest.

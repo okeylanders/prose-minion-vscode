@@ -37,6 +37,7 @@ import type { WorkshopProjectMemoryWritePort } from '@handlers/domain/workshop/W
 import type { WorkshopProjectMemoryManagerPort } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
+import type { WorkshopSelectedTextSnapshotsPort } from '@handlers/domain/workshop/WorkshopSelectedTextHandler';
 import type {
   WorkshopPinnedContextServices
 } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
@@ -111,6 +112,7 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopExcerptScopeHandler'
   | 'WorkshopLexicalGravityHandler'
   | 'WorkshopLightboxTileHandler'
+  | 'WorkshopSelectedTextHandler'
   | 'WorkshopRoomHandler'
   | 'WorkshopSessionMessageHandler'
   | 'WorkshopStandingDirectiveHandler'
@@ -188,6 +190,8 @@ export interface WorkshopSliceCompositionDependencies {
   fileEditApply: FileEditApplyPort;
   /** The helper's memory drafts (ADR 2026-11-05 D5): the helper agent, built in extension.ts, and the setting that turns it off. */
   memoryDrafts: WorkshopMemoryDraftPorts;
+  /** Selected Text (ADR 2026-11-14 D11): the window's selection snapshots, built in extension.ts. */
+  selectedText: WorkshopSelectedTextSnapshotsPort;
   outputChannel: LogSink;
 }
 

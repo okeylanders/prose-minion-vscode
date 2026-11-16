@@ -8,7 +8,7 @@
  *   delivers it to others. A read of several sessions has it once.
  * - Search and catalog text state every bound the service disclosed.
  * - A read gives each session it names a fair share of its characters
- *   (WorkshopRecallReadAllocation). Within its share each session reads as
+ *   (reads/WorkshopReadShares). Within its share each session reads as
  *   a section of its own (WorkshopRecallReadSection): a header, a packed
  *   window, and a footer naming what was shown and where to continue.
  *
@@ -21,7 +21,7 @@ import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { WORKSHOP_TRANSCRIPT_WRITER_LABEL } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import type { WorkshopTranscriptEntry } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { WORKSHOP_RECALL_BLOCK_SEPARATOR } from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
-import { allocateWorkshopRecallReadShares } from '@/application/services/workshop/recall/WorkshopRecallReadAllocation';
+import { allocateWorkshopReadShares } from '@/application/services/workshop/reads/WorkshopReadShares';
 import {
   prepareWorkshopRecallReadSection,
   RECALL_PARTICIPANT_CHARACTERS,
@@ -224,7 +224,7 @@ export function renderWorkshopRecallRead(
   }));
   // Each share covers its section and the separator before it.
   const separator = (index: number): number => (index > 0 ? WORKSHOP_RECALL_BLOCK_SEPARATOR.length : 0);
-  const shares = allocateWorkshopRecallReadShares(budget, sections.map((section, index) => section.need + separator(index)));
+  const shares = allocateWorkshopReadShares(budget, sections.map((section, index) => section.need + separator(index)));
   const rendered = sections.map((section, index) => section.render(shares[index] - separator(index)));
   return {
     content: rendered.map((section) => section.text).join(WORKSHOP_RECALL_BLOCK_SEPARATOR),

@@ -34,6 +34,7 @@ import type { WorkshopSessionTimeService } from '@/application/services/workshop
 import type { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import type { WorkshopTranscriptExportService } from '@/application/services/workshop/export/WorkshopTranscriptExportService';
 import type { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+import type { EditorSelectionSnapshots } from '@/application/services/workshop/selection/EditorSelectionSnapshots';
 import type { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { ProseStatsService } from '@services/measurement/ProseStatsService';
@@ -197,6 +198,12 @@ export interface CoreServices {
    * only through the capability factory; no handler constructs it.
    */
   workshopTranscriptRecallService: WorkshopTranscriptRecallService;
+  /**
+   * Selected Text (ADR 2026-11-14 D11): the window's snapshots of the
+   * editor's selection, by host-minted id. Built in `extension.ts` over the
+   * `EditorContext` port; no handler constructs it.
+   */
+  editorSelectionSnapshots: EditorSelectionSnapshots;
   /**
    * Persona file edits (ADR 2026-11-05 D7): the one gateway from a staged
    * proposal to a project file, through Draft Edit's applier. No handler

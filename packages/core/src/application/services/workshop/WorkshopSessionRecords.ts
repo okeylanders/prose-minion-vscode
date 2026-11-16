@@ -301,7 +301,8 @@ export function cloneMessageAttachmentSnapshot(
     ...snapshot,
     configuredResource: snapshot.configuredResource ? { ...snapshot.configuredResource } : undefined,
     truncation: snapshot.truncation ? { ...snapshot.truncation } : undefined,
-    lightboxTile: snapshot.lightboxTile ? { ...snapshot.lightboxTile } : undefined
+    lightboxTile: snapshot.lightboxTile ? { ...snapshot.lightboxTile } : undefined,
+    ...(snapshot.selectedText ? { selectedText: { ...snapshot.selectedText } } : {})
   };
 }
 
@@ -312,7 +313,8 @@ export function cloneMessageAttachmentInput(
     ...input,
     configuredResource: input.configuredResource ? { ...input.configuredResource } : undefined,
     truncation: input.truncation ? { ...input.truncation } : undefined,
-    lightboxTile: input.lightboxTile ? { ...input.lightboxTile } : undefined
+    lightboxTile: input.lightboxTile ? { ...input.lightboxTile } : undefined,
+    ...(input.selectedText ? { selectedText: { ...input.selectedText } } : {})
   };
 }
 
@@ -326,7 +328,8 @@ export function cloneMessageAttachment(
       : undefined,
     truncation: attachment.truncation ? { ...attachment.truncation } : undefined,
     // A tile's meta is flat: one level of copy keeps the caller's object out of the session.
-    lightboxTile: attachment.lightboxTile ? { ...attachment.lightboxTile } : undefined
+    lightboxTile: attachment.lightboxTile ? { ...attachment.lightboxTile } : undefined,
+    ...(attachment.selectedText ? { selectedText: { ...attachment.selectedText } } : {})
   };
 }
 

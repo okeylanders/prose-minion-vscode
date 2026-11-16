@@ -19,6 +19,7 @@
 
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
+import type { WorkshopSelectedTextSnapshotsPort } from '@handlers/domain/workshop/WorkshopSelectedTextHandler';
 import type { WorkshopProjectMemoryPort } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import type { WorkshopPinnedContextServices } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
 import {
@@ -134,7 +135,10 @@ import {
 } from '@messages';
 import { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
-import { workshopMessageAttachmentKind } from '@shared/constants/workshopThreadArtifactKinds';
+import {
+  workshopMessageAttachmentFrameContext,
+  workshopMessageAttachmentKind
+} from '@shared/constants/workshopThreadArtifactKinds';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import type {
@@ -319,7 +323,9 @@ export class WorkshopRoomHandler {
     private readonly fileEditStaging: FileEditStaging,
     /** Persona file edits' Apply and Preview (ADR 2026-11-05 D7–D9): the gateway, built in `extension.ts`. */
     fileEditApply: FileEditApplyPort,
-    memoryDrafts: WorkshopMemoryDraftPorts
+    memoryDrafts: WorkshopMemoryDraftPorts,
+    /** Selected Text's snapshots (ADR 2026-11-14 D11): `EditorSelectionSnapshots`, built in `extension.ts`. */
+    selectedText: WorkshopSelectedTextSnapshotsPort
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -356,6 +362,7 @@ export class WorkshopRoomHandler {
         bookmarkBrowser,
         fileEditApply,
         memoryDrafts,
+        selectedText,
         outputChannel: this.outputChannel
       },
       {
@@ -564,6 +571,15 @@ export class WorkshopRoomHandler {
     const text = typeof message.payload?.text === 'string' ? message.payload.text.trim() : '';
     if (text.length === 0) {
       this.sendError('workshop.send_message', 'Cannot send an empty message.');
+      return;
+    }
+
+    // Selected Text (ADR 2026-11-14 D14): the pill's snapshot is staged here, in the send's own mutation,
+    // after its room is checked; otherwise the whole send is refused and the draft goes back to the composer.
+    const selection = this.sliceComposition.stageSelectedTextForSend(message.payload);
+    if (!selection.ok) {
+      this.sendError('workshop.send_message', selection.message);
+      this.postComposerDraftRestored(text);
       return;
     }
 
@@ -1142,7 +1158,7 @@ export class WorkshopRoomHandler {
     const roomThreadArtifacts: WorkshopThreadArtifactFrameInput[] =
       messageAttachments.map((attachment) => ({
         id: attachment.id,
-        // A Lightbox tile's frame says what it is (Slice 4); a file's has no kind.
+        // A Lightbox tile's frame, or a selection's, says what it is; a file's has no kind.
         ...withMessageAttachmentKind(attachment),
         name: attachment.label,
         sourcePath: attachment.relativePath,
@@ -1174,7 +1190,9 @@ export class WorkshopRoomHandler {
     }
     const directedRun = executeOptions?.directedRun;
     const threadArtifactFrames = [
-      ...roomThreadArtifacts.map(buildWorkshopThreadArtifactFrame),
+      // A Selected Text frame reads its lines from its attachment's meta (ADR 2026-11-14 D13).
+      ...roomThreadArtifacts.map((artifact) =>
+        buildWorkshopThreadArtifactFrame(artifact, workshopMessageAttachmentFrameContext(artifact.id, messageAttachments))),
       // A press's directive rides the frames' own slot, last before the message (ADR 2026-11-10 D4).
       ...(directedRun ? [directedRun.frame] : []),
       // The edit-offer reminder rides it too, never with a press and never for a tool (second addendum).
@@ -1498,6 +1516,11 @@ export class WorkshopRoomHandler {
     );
   }
 
+  /** The panel's tab became visible or hidden (host-only, never a route). */
+  setSurfaceVisible(visible: boolean): void {
+    this.sliceComposition.setSurfaceVisible(visible);
+  }
+
   private currentRunKind(): 'room' | 'wizard' | undefined {
     if (this.activeRun) {
       return 'room';
@@ -1813,7 +1836,7 @@ export class WorkshopRoomHandler {
 }
 
 /** The frame kind a staged attachment carries, when it has one. */
-function withMessageAttachmentKind(attachment: { lightboxTile?: unknown }): { kind?: string } {
+function withMessageAttachmentKind(attachment: { lightboxTile?: unknown; selectedText?: unknown }): { kind?: string } {
   const kind = workshopMessageAttachmentKind(attachment);
   return kind ? { kind } : {};
 }

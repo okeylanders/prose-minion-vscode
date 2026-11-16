@@ -55,7 +55,9 @@ import {
   RequestDictionaryHistoryEntryMessage,
   DictionaryHistoryEntryMessage,
   DeleteDictionaryHistoryEntryMessage,
-  ClearDictionaryHistoryMessage
+  ClearDictionaryHistoryMessage,
+  SearchDictionaryHistoryMessage,
+  DictionaryHistorySearchResultMessage
 } from './dictionaryHistory';
 import {
   GenerateContextMessage,
@@ -273,6 +275,12 @@ import {
   WorkshopLightboxTileOfferedMessage,
   WorkshopAcceptLightboxTileMessage,
   WorkshopLightboxTileStagedMessage,
+  WorkshopStageSelectedTextMessage,
+  WorkshopSelectedTextOfferedMessage,
+  WorkshopAcceptSelectedTextMessage,
+  WorkshopSelectedTextStagedMessage,
+  WorkshopSelectedTextWatchMessage,
+  WorkshopSelectedTextCurrentMessage,
   WorkshopRequestWidgetConfigMessage,
   WorkshopWidgetConfigDataMessage,
   WorkshopWidgetConfigRestoredMessage,
@@ -327,6 +335,7 @@ export type WebviewToExtensionMessage =
   | RequestDictionaryHistoryEntryMessage
   | DeleteDictionaryHistoryEntryMessage
   | ClearDictionaryHistoryMessage
+  | SearchDictionaryHistoryMessage
   | CancelAnalysisRequestMessage
   | CancelDictionaryRequestMessage
   | CancelContextRequestMessage
@@ -424,6 +433,9 @@ export type WebviewToExtensionMessage =
   | WorkshopSeedReceiverMessage
   | WorkshopStageLightboxTileMessage
   | WorkshopAcceptLightboxTileMessage
+  | WorkshopStageSelectedTextMessage
+  | WorkshopAcceptSelectedTextMessage
+  | WorkshopSelectedTextWatchMessage
   | WorkshopRequestWidgetConfigMessage
   | WorkshopCommitWidgetMessage
   | WorkshopApplyStandingWidgetMessage
@@ -460,6 +472,7 @@ export type ExtensionToWebviewMessage =
   | DictionaryGenerationProgressMessage
   | DictionaryHistoryMessage
   | DictionaryHistoryEntryMessage
+  | DictionaryHistorySearchResultMessage
   | StreamStartedMessage
   | StreamChunkMessage
   | StreamCompleteMessage
@@ -503,6 +516,9 @@ export type ExtensionToWebviewMessage =
   | WorkshopSeedClaimResultMessage
   | WorkshopLightboxTileOfferedMessage
   | WorkshopLightboxTileStagedMessage
+  | WorkshopSelectedTextOfferedMessage
+  | WorkshopSelectedTextStagedMessage
+  | WorkshopSelectedTextCurrentMessage
   | WorkshopWidgetConfigDataMessage
   | WorkshopWidgetConfigRestoredMessage
   | WorkshopWidgetActionResultMessage

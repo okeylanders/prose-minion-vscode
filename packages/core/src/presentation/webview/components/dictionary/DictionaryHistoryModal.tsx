@@ -8,17 +8,39 @@
  *
  * Escape handling and focus capture/return come from `useOverlayDismiss`, the
  * same contract the Workshop modals use. The dialog body mounts only while the
- * popup is open, so the Clear confirmation resets on close by construction
- * rather than by an effect remembering to do it.
+ * popup is open, so the Clear confirmation and the search reset on close by
+ * construction rather than by an effect remembering to do it.
+ *
+ * Search (the ADR's 2026-11-14 amendment). The field at the top filters the
+ * rows as the writer types, by word, context and file name, over the
+ * summaries the popup already holds (`searchDictionaryHistory`); "Also
+ * search definitions" asks the host through the callbacks, and only an
+ * answer for the query on screen is shown. The query lives here and nowhere
+ * else. Keys: the field is focused on open; ↓ moves into the rows and ↑ ↓
+ * walk them (↑ from the first returns to the field); Enter in the field
+ * opens the first match; Escape clears the query, then closes.
  */
 import * as React from 'react';
 import {
   DictionaryHistoryDurability,
+  DictionaryHistorySearchSnippet,
   DictionaryHistorySessionReason,
   DictionaryHistorySummary
 } from '@messages';
 import { Icon } from '@components/shared/Icon';
+import {
+  DICTIONARY_HISTORY_DELETE_CLASS,
+  DICTIONARY_HISTORY_SELECT_CLASS,
+  DictionaryHistoryRow
+} from '@components/dictionary/DictionaryHistoryRow';
+import { DictionaryHistorySearchBar } from '@components/dictionary/DictionaryHistorySearchBar';
+import type { DictionaryHistoryDefinitionSearch } from '@hooks/domain/useDictionaryHistorySearch';
 import { useOverlayDismiss } from '@hooks/useOverlayDismiss';
+import {
+  describeDictionaryHistoryMatches,
+  dictionaryHistorySearchQuery,
+  searchDictionaryHistory
+} from '@utils/dictionaryHistorySearch';
 import { formatDictionaryHistoryTime } from '@utils/formatDictionaryHistoryTime';
 
 export interface DictionaryHistoryModalProps {
@@ -32,6 +54,12 @@ export interface DictionaryHistoryModalProps {
   limit: number;
   /** A lookup is generating, so restoring an entry must wait. */
   selectionDisabled: boolean;
+  /** What the host has said about the definitions of one query. */
+  definitionSearch: DictionaryHistoryDefinitionSearch;
+  /** Ask the host which definitions hold this (folded, bounded) query. */
+  onSearchDefinitions: (query: string) => void;
+  /** Stop waiting for the host and forget its answer. */
+  onCancelDefinitionSearch: () => void;
   /** Test seam for timestamps. */
   now?: () => Date;
   onSelect: (id: string) => void;
@@ -42,7 +70,15 @@ export interface DictionaryHistoryModalProps {
 
 type DictionaryHistoryDialogProps = Omit<DictionaryHistoryModalProps, 'open'>;
 
-const DELETE_BUTTON_CLASS = 'pm-dictionary-history-delete';
+const ROW_SELECTOR = '.pm-dictionary-history-row';
+
+/** The row's button of the kind focus was on, or its other one when that is disabled. */
+const rowButton = (row: Element, preferDelete: boolean): HTMLButtonElement | null => {
+  const select = row.querySelector<HTMLButtonElement>(`.${DICTIONARY_HISTORY_SELECT_CLASS}`);
+  const remove = row.querySelector<HTMLButtonElement>(`.${DICTIONARY_HISTORY_DELETE_CLASS}`);
+  const [first, second] = preferDelete ? [remove, select] : [select, remove];
+  return first && !first.disabled ? first : second;
+};
 
 const systemNow = (): Date => new Date();
 
@@ -81,52 +117,6 @@ const renderDurabilityNote = (durability: DictionaryHistoryDurability): React.Re
   );
 };
 
-/**
- * The badges for one row. Spaces separate them so a screen reader's
- * description does not run "StandardEncyclopedia" together; flex layout
- * ignores the whitespace, so nothing shifts visually.
- */
-const renderEntryBadges = (entry: DictionaryHistorySummary): React.ReactElement => {
-  const badges: React.ReactNode[] = [
-    entry.mode === 'fast' ? (
-      <span key="mode" className="pm-dictionary-history-badge is-fast">
-        <span aria-hidden="true">⚡</span> Fast
-      </span>
-    ) : (
-      <span key="mode" className="pm-dictionary-history-badge">Standard</span>
-    )
-  ];
-  if (entry.includeEncyclopedia) {
-    badges.push(<span key="encyclopedia" className="pm-dictionary-history-badge">Encyclopedia</span>);
-  }
-  if (entry.includePalettes) {
-    badges.push(<span key="palettes" className="pm-dictionary-history-badge">Palettes</span>);
-  }
-  if (entry.modelIds.length > 0) {
-    // More than one only when a fast lookup's blocks straddled a model swap.
-    const models = entry.modelIds.join(' + ');
-    badges.push(
-      <span
-        key="model"
-        className="pm-dictionary-history-badge pm-dictionary-history-model"
-        title={models}
-      >
-        {models}
-      </span>
-    );
-  }
-  return (
-    <span className="pm-dictionary-history-badges">
-      {badges.map((badge, index) => (
-        <React.Fragment key={index}>
-          {index > 0 && ' '}
-          {badge}
-        </React.Fragment>
-      ))}
-    </span>
-  );
-};
-
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 const DictionaryHistoryDialog: React.FC<DictionaryHistoryDialogProps> = ({
   entries,
@@ -134,13 +124,29 @@ const DictionaryHistoryDialog: React.FC<DictionaryHistoryDialogProps> = ({
   durability,
   limit,
   selectionDisabled,
+  definitionSearch,
+  onSearchDefinitions,
+  onCancelDefinitionSearch,
   now = systemNow,
   onSelect,
   onDelete,
   onClear,
   onClose
 }) => {
-  const closeButtonRef = useOverlayDismiss({ open: true, onClose });
+  const [query, setQuery] = React.useState('');
+  const [alsoDefinitions, setAlsoDefinitions] = React.useState(false);
+  const searchRef = React.useRef<HTMLInputElement>(null);
+
+  // Escape cancels the search before it closes the popup.
+  const dismiss = React.useCallback(() => {
+    if (query.length === 0) {
+      onClose();
+      return;
+    }
+    setQuery('');
+    searchRef.current?.focus();
+  }, [onClose, query]);
+  const closeButtonRef = useOverlayDismiss({ open: true, onClose: dismiss });
   const baseId = React.useId();
   const titleId = `${baseId}-title`;
   const confirmTextId = `${baseId}-confirm`;
@@ -157,6 +163,48 @@ const DictionaryHistoryDialog: React.FC<DictionaryHistoryDialogProps> = ({
 
   const hasEntries = entries.length > 0;
   const nowDate = now();
+
+  const searchedQuery = React.useMemo(() => dictionaryHistorySearchQuery(query), [query]);
+  const definitionsWanted = alsoDefinitions && searchedQuery.length > 0;
+  // Only an answer to the query on screen counts; anything else is not shown.
+  const definitionsAnswer = definitionsWanted && definitionSearch.query === searchedQuery ? definitionSearch : null;
+  const definitions = React.useMemo(() => (
+    definitionsAnswer?.status === 'found'
+      ? new Map<string, DictionaryHistorySearchSnippet>(definitionsAnswer.matches.map(match => [match.id, match.snippet]))
+      : null
+  ), [definitionsAnswer]);
+  const view = React.useMemo(
+    () => searchDictionaryHistory(entries, query, definitions),
+    [entries, query, definitions]
+  );
+  const definitionsLine = definitionsAnswer?.status === 'searching'
+    ? 'Searching definitions…'
+    : definitionsAnswer?.status === 'failed'
+      ? "Couldn't search definitions"
+      : '';
+
+  /** The definitions search follows the field and the toggle; the hook debounces it. */
+  const syncDefinitionSearch = React.useCallback(() => {
+    if (definitionsWanted) {
+      onSearchDefinitions(searchedQuery);
+    } else {
+      onCancelDefinitionSearch();
+    }
+  }, [definitionsWanted, onCancelDefinitionSearch, onSearchDefinitions, searchedQuery]);
+  React.useEffect(() => {
+    syncDefinitionSearch();
+  }, [syncDefinitionSearch]);
+
+  // Closing the popup ends its search: nothing is waited for, nothing kept.
+  React.useEffect(() => onCancelDefinitionSearch, [onCancelDefinitionSearch]);
+
+  // The overlay focuses its close button on open; the field is where the writer types.
+  const focusSearchOnOpen = React.useCallback(() => {
+    searchRef.current?.focus();
+  }, []);
+  React.useEffect(() => {
+    focusSearchOnOpen();
+  }, [focusSearchOnOpen]);
 
   React.useEffect(() => {
     if (!hasEntries) {
@@ -187,11 +235,12 @@ const DictionaryHistoryDialog: React.FC<DictionaryHistoryDialogProps> = ({
     if (active && active !== document.body && document.contains(active)) {
       return;
     }
-    const deleteButtons = listRef.current?.querySelectorAll<HTMLButtonElement>(`.${DELETE_BUTTON_CLASS}`);
+    const deleteButtons = listRef.current?.querySelectorAll<HTMLButtonElement>(`.${DICTIONARY_HISTORY_DELETE_CLASS}`);
+    // No row left to take it: the field when a search emptied the list, else the close button.
     const next =
       deleteButtons && deleteButtons.length > 0
         ? deleteButtons[Math.min(pending.index, deleteButtons.length - 1)]
-        : closeButtonRef.current;
+        : searchRef.current ?? closeButtonRef.current;
     next?.focus();
   }, [entries, closeButtonRef]);
 
@@ -204,6 +253,45 @@ const DictionaryHistoryDialog: React.FC<DictionaryHistoryDialogProps> = ({
   const handleDelete = (id: string, index: number) => {
     pendingDeleteRef.current = { id, index };
     onDelete(id);
+  };
+
+  /** ↓ from the field moves into the rows; Enter opens the first match. */
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown') {
+      const first = listRef.current?.querySelector(ROW_SELECTOR);
+      const button = first ? rowButton(first, false) : null;
+      if (button) {
+        event.preventDefault();
+        button.focus();
+      }
+      return;
+    }
+    if (event.key === 'Enter' && view.active && view.rows.length > 0 && !selectionDisabled) {
+      event.preventDefault();
+      onSelect(view.rows[0].entry.id);
+    }
+  };
+
+  /** ↑ ↓ walk the rows, keeping to the button focus was on; ↑ from the first row returns to the field. */
+  const handleListKeyDown = (event: React.KeyboardEvent<HTMLUListElement>) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+      return;
+    }
+    const target = event.target as HTMLElement;
+    const rowElements = Array.from(event.currentTarget.querySelectorAll(ROW_SELECTOR));
+    const at = rowElements.findIndex(row => row.contains(target));
+    if (at < 0) {
+      return;
+    }
+    event.preventDefault();
+    const to = at + (event.key === 'ArrowDown' ? 1 : -1);
+    if (to < 0) {
+      searchRef.current?.focus();
+      return;
+    }
+    if (to < rowElements.length) {
+      rowButton(rowElements[to], target.classList.contains(DICTIONARY_HISTORY_DELETE_CLASS))?.focus();
+    }
   };
 
   const startClear = () => {
@@ -270,61 +358,39 @@ const DictionaryHistoryDialog: React.FC<DictionaryHistoryDialogProps> = ({
                   History opens after the current lookup finishes.
                 </p>
               )}
-              <ul ref={listRef} className="pm-dictionary-history-list" aria-labelledby={titleId}>
-                {entries.map((entry, index) => {
-                  const isCurrent = entry.id === cursorId;
-                  const time = formatDictionaryHistoryTime(entry.createdAt, nowDate);
-                  const timeId = `${baseId}-time-${index}`;
-                  const detailsId = `${baseId}-details-${index}`;
-                  return (
-                    <li
-                      key={entry.id}
-                      className={`pm-dictionary-history-row${isCurrent ? ' is-current' : ''}`}
-                    >
-                      <button
-                        type="button"
-                        className="pm-dictionary-history-select"
-                        aria-label={`Open lookup: ${entry.word}`}
-                        aria-describedby={time ? `${timeId} ${detailsId}` : detailsId}
-                        aria-current={isCurrent ? 'true' : undefined}
-                        disabled={selectionDisabled}
-                        onClick={() => onSelect(entry.id)}
-                      >
-                        <span className="pm-dictionary-history-line">
-                          <strong className="pm-dictionary-history-word">{entry.word}</strong>
-                          {time && (
-                            <time id={timeId} className="pm-dictionary-history-time" dateTime={entry.createdAt}>
-                              {time}
-                            </time>
-                          )}
-                        </span>
-                        <span id={detailsId} className="pm-dictionary-history-details">
-                          {renderEntryBadges(entry)}{' '}
-                          {entry.contextPreview && (
-                            <span className="pm-dictionary-history-context" title={entry.contextPreview}>
-                              {entry.contextPreview}
-                            </span>
-                          )}{' '}
-                          {entry.relativePath && (
-                            <span className="pm-dictionary-history-source" title={entry.relativePath}>
-                              Source: {entry.relativePath}
-                            </span>
-                          )}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        className={DELETE_BUTTON_CLASS}
-                        aria-label={`Delete lookup: ${entry.word}`}
-                        title="Delete from history"
-                        onClick={() => handleDelete(entry.id, index)}
-                      >
-                        <Icon name="trash" size={14} />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+              <DictionaryHistorySearchBar
+                inputRef={searchRef}
+                query={query}
+                alsoDefinitions={alsoDefinitions}
+                matchLine={view.active ? describeDictionaryHistoryMatches(view.rows.length, view.total) : ''}
+                definitionsLine={definitionsLine}
+                onQueryChange={setQuery}
+                onAlsoDefinitionsChange={setAlsoDefinitions}
+                onKeyDown={handleSearchKeyDown}
+              />
+              {view.rows.length === 0 ? (
+                <p className="pm-dictionary-history-empty">No lookups match.</p>
+              ) : (
+                <ul
+                  ref={listRef}
+                  className="pm-dictionary-history-list"
+                  aria-labelledby={titleId}
+                  onKeyDown={handleListKeyDown}
+                >
+                  {view.rows.map((row, index) => (
+                    <DictionaryHistoryRow
+                      key={row.entry.id}
+                      row={row}
+                      rowId={`${baseId}-row-${index}`}
+                      time={formatDictionaryHistoryTime(row.entry.createdAt, nowDate)}
+                      isCurrent={row.entry.id === cursorId}
+                      selectionDisabled={selectionDisabled}
+                      onSelect={onSelect}
+                      onDelete={(id) => handleDelete(id, index)}
+                    />
+                  ))}
+                </ul>
+              )}
             </>
           )}
         </div>

@@ -99,6 +99,17 @@ export interface WorkshopQuickActionMessage extends MessageEnvelope<WorkshopQuic
 /** Free-text follow-up: continues the session's retained conversation. */
 export interface WorkshopSendMessagePayload {
   text: string;
+  /**
+   * The Selected Text snapshot the composer's live pill showed (ADR
+   * 2026-11-14 D14): the host attaches that snapshot's text, never the live
+   * selection, and refuses the whole send when it no longer holds it.
+   */
+  selectedTextSnapshotId?: string;
+  /**
+   * With `selectedTextSnapshotId`: the room the webview was showing when it
+   * drew the pill. A send that lands in another room is refused whole.
+   */
+  roomRevision?: number;
 }
 
 export interface WorkshopSendMessageMessage extends MessageEnvelope<WorkshopSendMessagePayload> {

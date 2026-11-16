@@ -70,8 +70,7 @@ describe('WorkshopResourceCapability', () => {
 
     const read = await capability.fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/raven.md'
+      files: [{ group: 'characters', path: 'characters/raven.md' }]
     });
     expect(read.status).toBe('success');
     expect(loadResources).toHaveBeenLastCalledWith(['characters/raven.md']);
@@ -88,8 +87,7 @@ describe('WorkshopResourceCapability', () => {
 
     const result = await capability.fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/Micah/micah-voice-guide.md'
+      files: [{ group: 'characters', path: 'characters/Micah/micah-voice-guide.md' }]
     });
 
     expect(result.status).toBe('success');
@@ -107,8 +105,7 @@ describe('WorkshopResourceCapability', () => {
 
     const result = await capability.fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'CHARACTERS/MICAH.MD'
+      files: [{ group: 'characters', path: 'CHARACTERS/MICAH.MD' }]
     });
 
     expect(result).toMatchObject({ status: 'rejected' });
@@ -155,8 +152,7 @@ describe('WorkshopResourceCapability', () => {
 
     const read = await capability.fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/micah.md'
+      files: [{ group: 'characters', path: 'characters/micah.md' }]
     });
     expect(read.status).toBe('success');
     expect(loadResources).toHaveBeenCalledWith(['characters/micah.md']);
@@ -256,8 +252,7 @@ describe('WorkshopResourceCapability', () => {
 
     const result = await capability.fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/raven.md'
+      files: [{ group: 'characters', path: 'characters/raven.md' }]
     });
 
     expect(result.metadata).toMatchObject({
@@ -277,8 +272,7 @@ describe('WorkshopResourceCapability', () => {
 
     const result = await capability.fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/raven.md',
+      files: [{ group: 'characters', path: 'characters/raven.md' }],
       startLine: 41,
       endLine: 45
     });
@@ -297,30 +291,36 @@ describe('WorkshopResourceCapability', () => {
     expect(result.content).not.toContain('Line 46');
   });
 
-  it('enforces the shared byte ceiling even when a larger line window is requested', async () => {
-    const largeContent = 'a'.repeat(PROMPT_BUDGETS.workshopResource.readBytes + 50);
+  it('enforces the shared byte ceiling at a whole line even when a larger line window is requested', async () => {
+    // 1,000 lines of 99 characters: 100 bytes each with its separator.
+    const largeContent = Array.from({ length: 1_000 }, () => 'a'.repeat(99)).join('\n');
+    const wholeLines = Math.floor((PROMPT_BUDGETS.workshopResource.readBytes + 1) / 100);
     loadResources.mockResolvedValue([{ ...summary, content: largeContent }]);
 
     const result = await capability.fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/raven.md',
+      files: [{ group: 'characters', path: 'characters/raven.md' }],
       startLine: 1,
       endLine: 2_000
     });
 
+    // A line is never cut (ADR 2026-11-14 D2a): the read stops at the last whole line under the ceiling.
     expect(result.metadata).toMatchObject({
-      bytes: PROMPT_BUDGETS.workshopResource.readBytes,
-      totalBytes: PROMPT_BUDGETS.workshopResource.readBytes + 50,
+      startLine: 1,
+      endLine: wholeLines,
+      bytes: wholeLines * 100 - 1,
+      totalBytes: 1_000 * 100 - 1,
       truncated: true
     });
+    expect(result.metadata!.bytes as number).toBeLessThanOrEqual(PROMPT_BUDGETS.workshopResource.readBytes);
     expect(result.content).toContain(`${PROMPT_BUDGETS.workshopResource.readBytes}-byte ceiling`);
+    expect(result.content).toContain(`<startLine>${wholeLines + 1}</startLine>`);
   });
 
   it.each([
     ['LF', '\n'],
     ['CRLF', '\r\n']
-  ])('recounts the returned line range after multi-line %s truncation', async (_label, separator) => {
+  ])('stops before a line the ceiling would cut, after multi-line %s content', async (_label, separator) => {
     const first = 'a'.repeat(40_000);
     const second = 'b'.repeat(40_000);
     const content = [first, second, 'third'].join(separator);
@@ -329,20 +329,21 @@ describe('WorkshopResourceCapability', () => {
 
     const result = await capability.fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/raven.md',
+      files: [{ group: 'characters', path: 'characters/raven.md' }],
       startLine: 1,
       endLine: 3
     });
 
+    // Line 2 would end mid-line at the ceiling, so the read stops after line 1 (ADR 2026-11-14 D2a).
     expect(result.metadata).toMatchObject({
       startLine: 1,
-      endLine: 2,
+      endLine: 1,
       totalLines: 3,
-      bytes: PROMPT_BUDGETS.workshopResource.readBytes,
+      bytes: 40_000,
       truncated: true
     });
-    expect(result.content).toContain('Lines: 1-2 of 3.');
+    expect(result.content).toContain('Lines: 1-1 of 3.');
+    expect(result.content).not.toContain('bbbb');
   });
 
   it('measures complete CRLF reads on the same normalized basis', async () => {
@@ -353,8 +354,7 @@ describe('WorkshopResourceCapability', () => {
 
     const result = await capability.fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/raven.md',
+      files: [{ group: 'characters', path: 'characters/raven.md' }],
       endLine: 3
     });
 
@@ -375,8 +375,7 @@ describe('WorkshopResourceCapability', () => {
 
     const result = await capability.fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/raven.md'
+      files: [{ group: 'characters', path: 'characters/raven.md' }]
     });
 
     expect(result).toMatchObject({ status: 'failed' });
@@ -407,8 +406,7 @@ describe('WorkshopResourceCapability', () => {
   it('rejects paths outside the configured catalog and ignores unrequested provider output', async () => {
     const unknown = await capability.fulfill({
       capability: 'resource.read',
-      group: 'characters',
-      path: 'characters/unknown.md'
+      files: [{ group: 'characters', path: 'characters/unknown.md' }]
     });
     expect(unknown).toMatchObject({ status: 'rejected' });
     expect(unknown.error).toContain('configured project resources');

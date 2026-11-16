@@ -35,10 +35,13 @@ import {
   workshopProjectMemoryStatusMessage,
   workshopProjectMemoryStatusTicker
 } from '@/application/services/workshop/memory/WorkshopProjectMemoryRequestCopy';
+import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
 import {
-  resourceReadLineRange,
-  WorkshopResourceCapability
-} from '@/application/services/workshop/WorkshopResourceCapability';
+  workshopResourceRequestLogSummary,
+  workshopResourceRequestSummary,
+  workshopResourceStatusMessage,
+  workshopResourceStatusTicker
+} from '@/application/services/workshop/WorkshopResourceRequestCopy';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
 import { LogSink } from '@/platform';
@@ -50,7 +53,6 @@ import {
   CapabilityFulfillment,
   isAgentRunIncomplete
 } from '@orchestration/AgentRunContracts';
-import { isContextPathGroup } from '@shared/types/context';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
 import { workshopTurnModelOf } from '@/application/services/workshop/WorkshopTurnModel';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -246,6 +248,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     }
 
     const completedTurn = this.recordCompletedTurn(request, result, model);
+    const rows = this.deliveredSourceRows(request, result);
     const duration = Date.now() - startedAt;
     const partialFailures = Array.isArray(result.metadata?.partialFailures)
       ? result.metadata.partialFailures.length
@@ -268,10 +271,11 @@ export class WorkshopPersonaCapability implements AgentCapability<
         size: completedTurn.content.length,
         reason: `Requested by ${workshopPersonaLabel(this.turn.personaId)}`
       }] : [],
-      deliveredItems: request.capability === 'resource.read' && result.status === 'success'
-        ? [typeof result.metadata?.path === 'string' ? result.metadata.path : request.path]
+      // Each path a file read delivered (ADR 2026-11-14 D7); else the operation and how it ended.
+      deliveredItems: request.capability === 'resource.read' && rows.length > 0
+        ? rows.map((row) => row.label)
         : [`${request.capability}:${result.status}`],
-      deliveredSources: this.toDeliveredSources(request, result, completedTurn?.id),
+      deliveredSources: completedTurn ? rows.map((row) => ({ ...row, turnId: completedTurn.id })) : rows,
       usage: result.usage
     };
   }
@@ -284,15 +288,6 @@ export class WorkshopPersonaCapability implements AgentCapability<
    * `recordCompletedTurn` just appended, so Read in can jump to it (Wayfinding
    * D4); a call the session refused minted no card, and its rows name none.
    */
-  private toDeliveredSources(
-    request: WorkshopCapabilityRequest,
-    result: WorkshopCapabilityResult,
-    cardTurnId: string | undefined
-  ): CapabilityDeliveredSource[] {
-    const rows = this.deliveredSourceRows(request, result);
-    return cardTurnId ? rows.map((row) => ({ ...row, turnId: cardTurnId })) : rows;
-  }
-
   private deliveredSourceRows(
     request: WorkshopCapabilityRequest,
     result: WorkshopCapabilityResult
@@ -307,25 +302,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'dictionary.lookup':
       case 'dictionary.full-entry':
         return [{ kind: 'dictionary', label: request.word, sizeChars }];
-      case 'resource.read': {
-        const path = typeof result.metadata?.path === 'string' ? result.metadata.path : request.path;
-        const group = typeof result.metadata?.group === 'string' && isContextPathGroup(result.metadata.group)
-          ? result.metadata.group
-          : isContextPathGroup(request.group) ? request.group : undefined;
-        const lineRange = resourceReadLineRange(result.metadata);
-        return [{
-          kind: 'resource',
-          label: path,
-          configuredResource: group ? { group, path } : undefined,
-          sizeChars,
-          ...(lineRange ? { lineRange } : {}),
-          ...(result.sourceFingerprint ? { sourceFingerprint: result.sourceFingerprint } : {})
-        }];
-      }
+      case 'resource.read':
       case 'resource.catalog':
       case 'resource.search':
-        // Bounded listings/snippets, not carried source material.
-        return [];
+        // One row per file a read delivered, each with its own line range and
+        // fingerprint (ADR 2026-11-14 D7); a listing or snippets carry none.
+        return [...this.resourceCapability.deliveredSources(result)];
       case 'transcript.catalog':
       case 'transcript.search':
       case 'transcript.read':
@@ -354,11 +336,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'dictionary.full-entry':
         return `${persona} is checking the Writer's Dictionary for “${request.word}”…`;
       case 'resource.catalog':
-        return `${persona} is checking the configured project-resource catalog…`;
       case 'resource.search':
-        return `${persona} is searching configured project resources for “${request.query}”…`;
       case 'resource.read':
-        return `${persona} is reading ${request.path}…`;
+        return workshopResourceStatusMessage(request, persona);
       case 'transcript.catalog':
       case 'transcript.search':
       case 'transcript.read':
@@ -382,11 +362,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'dictionary.full-entry':
         return `Dictionary · ${request.word}`;
       case 'resource.catalog':
-        return `Resources · ${request.group ?? 'all groups'}`;
       case 'resource.search':
-        return `Search · ${request.group ?? 'all groups'}`;
       case 'resource.read':
-        return `Read · ${request.group}`;
+        return workshopResourceStatusTicker(request);
       case 'transcript.catalog':
       case 'transcript.search':
       case 'transcript.read':
@@ -411,12 +389,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'dictionary.full-entry':
         return `word=${JSON.stringify(request.word)}; contextChars=${request.context.length}; purposeChars=${request.purpose.length}`;
       case 'resource.catalog':
-        return `group=${request.group ?? 'all'}`;
       case 'resource.search':
-        return `group=${request.group ?? 'all'}; query=${JSON.stringify(request.query)}`;
       case 'resource.read':
-        return `group=${request.group}; path=${JSON.stringify(request.path)}; ` +
-          `lines=${request.startLine ?? 'default'}-${request.endLine ?? 'default'}`;
+        return workshopResourceRequestLogSummary(request);
       case 'transcript.catalog':
       case 'transcript.search':
       case 'transcript.read':
@@ -637,7 +612,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'resource.catalog':
       case 'resource.search':
       case 'resource.read':
-        return this.resourceCapability.fulfill(request);
+        // A read is fitted to half the room left; catalog and search ignore it (ADR 2026-11-14 D2).
+        return this.resourceCapability.fulfill(request, window);
       case 'transcript.catalog':
       case 'transcript.search':
       case 'transcript.read':
@@ -839,11 +815,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'dictionary.full-entry':
         return request.word;
       case 'resource.catalog':
-        return request.group ? `${request.group} catalog` : 'configured resource catalog';
       case 'resource.search':
-        return request.group ? `“${request.query}” in ${request.group}` : `“${request.query}”`;
       case 'resource.read':
-        return request.path;
+        return workshopResourceRequestSummary(request);
       case 'transcript.catalog':
       case 'transcript.search':
       case 'transcript.read':

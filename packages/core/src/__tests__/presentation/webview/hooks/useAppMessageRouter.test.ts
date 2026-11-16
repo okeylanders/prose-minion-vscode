@@ -23,6 +23,7 @@ const EXPECTED_ROUTES: MessageType[] = [
   MessageType.FAST_GENERATE_DICTIONARY_RESULT,
   MessageType.DICTIONARY_HISTORY,
   MessageType.DICTIONARY_HISTORY_ENTRY,
+  MessageType.DICTIONARY_HISTORY_SEARCH_RESULT,
   MessageType.STREAM_STARTED,
   MessageType.STREAM_CHUNK,
   MessageType.STREAM_COMPLETE,
@@ -63,6 +64,7 @@ const makeDeps = () => {
     },
     dictionaryHistory: {
       handleHistory: jest.fn(), handleHistoryEntry: jest.fn(), followRecordedEntry: jest.fn(),
+      handleHistorySearchResult: jest.fn(),
     },
     context: {
       handleStreamStarted: jest.fn(), handleStreamChunk: jest.fn(), handleStreamComplete: jest.fn(),
@@ -183,6 +185,19 @@ describe('buildAppMessageRoutes', () => {
 
     expect(deps.dictionaryHistory.handleHistory).toHaveBeenCalledWith(list);
     expect(deps.dictionaryHistory.handleHistoryEntry).toHaveBeenCalledWith(entry);
+  });
+
+  it('routes a definitions search answer to the history hook', () => {
+    const deps = makeDeps();
+    const routes = buildAppMessageRoutes(deps);
+    const answer = {
+      type: MessageType.DICTIONARY_HISTORY_SEARCH_RESULT,
+      payload: { requestId: 'dhs-alice:1', status: 'found', matches: [] }
+    };
+
+    routes[MessageType.DICTIONARY_HISTORY_SEARCH_RESULT]!(answer as never);
+
+    expect(deps.dictionaryHistory.handleHistorySearchResult).toHaveBeenCalledWith(answer);
   });
 
   it.each([

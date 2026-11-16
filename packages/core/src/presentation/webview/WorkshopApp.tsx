@@ -42,7 +42,8 @@ import {
 import { FullTabShell } from '@components/fulltab/FullTabShell';
 import { FullTabHeaderStatus } from '@components/fulltab/FullTabHeaderStatus';
 import { ProviderPausedBanner } from '@components/fulltab/ProviderPausedBanner';
-import { WorkshopRail } from './components/workshop/WorkshopRail';
+import { WorkshopRail, WorkshopRailProps, workshopRailTabId } from './components/workshop/WorkshopRail';
+import { WorkshopRailStrip } from './components/workshop/WorkshopRailStrip';
 import { partitionContextSources } from '@utils/workshop/contextSources';
 import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
@@ -139,6 +140,7 @@ import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistedState, usePersistence } from './hooks/usePersistence';
 import {
   useWorkshopRailTabs,
+  WorkshopRailTab,
   WorkshopRailTabsPersistence
 } from './hooks/domain/workshop/controllers/useWorkshopRailTabs';
 import {
@@ -155,6 +157,7 @@ import {
 import { useLexicalGravity } from '@hooks/domain/workshop/widgets/useLexicalGravity';
 import { useWorkshopSeedReceiver } from '@hooks/domain/workshop/useWorkshopSeedReceiver';
 import { useWorkshopLightboxTiles } from '@hooks/domain/workshop/useWorkshopLightboxTiles';
+import { useWorkshopSelectedText } from '@hooks/domain/workshop/useWorkshopSelectedText';
 import {
   useCreativeVariations
 } from '@hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations';
@@ -180,6 +183,10 @@ import {
 import { useWorkshopExcerptVerify } from './hooks/domain/useWorkshopExcerptVerify';
 import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll';
 import { useFullTabChrome } from '@hooks/fulltab/useFullTabChrome';
+import {
+  FullTabRailCollapsePersistence,
+  useFullTabRailCollapse
+} from '@hooks/fulltab/useFullTabRailCollapse';
 import {
   CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness';
@@ -286,7 +293,12 @@ export const WorkshopApp: React.FC = () => {
   // session file); the controller re-baselines its badges on each new room,
   // and Material's on each new chat target.
   const persistedRailTab = usePersistedState<Partial<WorkshopRailTabsPersistence>>();
+  // Whether the rail is collapsed to its strip is the viewer's too.
+  const railCollapse = useFullTabRailCollapse({
+    initialCollapsed: usePersistedState<Partial<FullTabRailCollapsePersistence>>()?.fullTabRailCollapsed
+  });
   const railTabs = useWorkshopRailTabs({
+    railHidden: railCollapse.collapsed,
     todos: workshop.todos,
     roomKey,
     readIn: readInSources,
@@ -301,6 +313,9 @@ export const WorkshopApp: React.FC = () => {
   const { receiver: seedReceiver } = useWorkshopSeedReceiver();
   const lexicalGravity = useLexicalGravity({ seedReceiver });
   const lightboxTiles = useWorkshopLightboxTiles({ seedReceiver });
+  const selectedText = useWorkshopSelectedText({
+    seedReceiver, roomRevision: workshop.roomRevision, pendingMessageAttachments: workshop.pendingMessageAttachments
+  });
   const creativeVariations = useCreativeVariations();
   const showVsTell = useShowVsTell();
   const excerptVerify = useWorkshopExcerptVerify();
@@ -477,6 +492,7 @@ export const WorkshopApp: React.FC = () => {
     gesturePlayground,
     lexicalGravity,
     lightboxTiles,
+    selectedText,
     creativeVariations,
     creativeVariationsAuthoring,
     showVsTell,
@@ -504,8 +520,10 @@ export const WorkshopApp: React.FC = () => {
     ...showVsTellAuthoring.persistedState,
     ...standingDirectives.persistedState,
     ...excerptVerify.persistedState,
+    ...selectedText.persistedState,
     ...chrome.persistedState,
     ...railTabs.persistedState,
+    ...railCollapse.persistedState,
     ...memoryExplainer.persistedState,
   });
 
@@ -808,10 +826,7 @@ export const WorkshopApp: React.FC = () => {
     () => workshop.setSessionScope('open'),
     [workshop.setSessionScope]
   );
-  const continueWithExcerpt = React.useCallback(
-    () => workshop.setSessionScope('excerpt'),
-    [workshop.setSessionScope]
-  );
+  const continueWithExcerpt = workshop.continueWithExcerpt;
 
   // Open-chat starters and rolled-back transient sends use the room hook's
   // one-shot seed; the composer remains the owner of the editable draft.
@@ -1190,7 +1205,8 @@ export const WorkshopApp: React.FC = () => {
     </div>
   );
 
-  const railContent = (
+  // Typed so the collapsed strip reads the same props the open rail has.
+  const railContent: React.ReactElement<WorkshopRailProps> = (
     <WorkshopRail
       tabs={railTabs}
       roomKey={roomKey}
@@ -1524,7 +1540,12 @@ export const WorkshopApp: React.FC = () => {
           conversationBehavior={workshop.conversationBehavior}
           writerProfileShared={isWorkshopWriterProfileActive(workshop.writerProfile)}
           messageAttachments={workshop.pendingMessageAttachments}
-          onSend={workshop.sendMessage}
+          selectedText={{
+            includeSelectedText: selectedText.includeSelectedText,
+            onIncludeSelectedTextChange: selectedText.setIncludeSelectedText,
+            livePill: selectedText.livePill
+          }}
+          onSend={(text) => workshop.sendMessage(text, selectedText.sendSelection)}
           onCancel={workshop.cancelRun}
           onOpenContext={openContext}
           onAttachToMessage={openMessageAttachSelector}
@@ -1538,6 +1559,12 @@ export const WorkshopApp: React.FC = () => {
     </>
   );
 
+  // A strip icon reopens the rail on its tab, and focus follows to that tab.
+  const openRailTab = (tab: WorkshopRailTab): void => {
+    railTabs.selectTab(tab);
+    railCollapse.expand(workshopRailTabId(tab));
+  };
+
   return (
     <FullTabShell
       brand={{
@@ -1548,6 +1575,12 @@ export const WorkshopApp: React.FC = () => {
       headerActions={headerActions}
       banners={banners}
       rail={{ label: 'Session rail', boundaryName: 'Workshop rail', content: railContent }}
+      railCollapse={{
+        collapsed: railCollapse.collapsed,
+        overlay: railCollapse.overlay,
+        onToggle: railCollapse.onToggle,
+        strip: <WorkshopRailStrip rail={railContent.props} onOpenTab={openRailTab} />
+      }}
       main={{ label: 'Session thread', content: mainContent }}
       onBoundaryError={handleBoundaryError}
       inertBehindOverlay={textSheet !== null}

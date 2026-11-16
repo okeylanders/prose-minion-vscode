@@ -48,6 +48,7 @@ describe('WorkshopExcerptScopeHandler', () => {
     reportError: jest.Mock;
     sendStatus: jest.Mock;
     discardConversations: jest.Mock;
+    runRoomOperation: jest.Mock;
   };
 
   beforeEach(() => {
@@ -97,7 +98,8 @@ describe('WorkshopExcerptScopeHandler', () => {
       markDirty: jest.fn(),
       reportError: jest.fn(),
       sendStatus: jest.fn(),
-      discardConversations: jest.fn()
+      discardConversations: jest.fn(),
+      runRoomOperation: jest.fn(async (work: () => Promise<void>) => { await work(); })
     };
 
     const handler = new WorkshopExcerptScopeHandler(

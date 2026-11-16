@@ -1,5 +1,8 @@
 /**
- * Fair shares of one session-recall read (ADR 2026-10-05 D9): water-filling.
+ * Fair shares of one read (ADR 2026-10-05 D9; ADR 2026-11-14 D1):
+ * water-filling. Session recall shares a read's characters between
+ * sessions, and a file read its bytes between files; "session" below is
+ * either.
  *
  * Every session is offered an equal share of the read's characters. A
  * session that needs less takes only what it needs, and what it leaves is
@@ -20,13 +23,13 @@
  */
 
 /** Each session's share of `budget`, in the order of `needs`. */
-export function allocateWorkshopRecallReadShares(budget: number, needs: readonly number[]): number[] {
+export function allocateWorkshopReadShares(budget: number, needs: readonly number[]): number[] {
   if (!Number.isSafeInteger(budget) || budget < 0) {
-    throw new RangeError(`A session-recall read budget must be a non-negative integer; got ${budget}.`);
+    throw new RangeError(`A read budget must be a non-negative integer; got ${budget}.`);
   }
   for (const need of needs) {
     if (!Number.isSafeInteger(need) || need < 0) {
-      throw new RangeError(`A session-recall read need must be a non-negative integer; got ${need}.`);
+      throw new RangeError(`A read need must be a non-negative integer; got ${need}.`);
     }
   }
   const shares = needs.map(() => 0);

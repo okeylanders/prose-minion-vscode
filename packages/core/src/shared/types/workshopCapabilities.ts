@@ -142,6 +142,12 @@ export interface WorkshopAnalysisInputProvenance {
   truncation?: string;
 }
 
+/** One file a `resource.read` names: a configured group and a path in it (ADR 2026-11-14 D4). */
+export interface WorkshopResourceReadFile {
+  group: ContextPathGroup;
+  path: string;
+}
+
 export type WorkshopCapabilityRequest =
   | {
       capability: 'dictionary.lookup';
@@ -172,8 +178,9 @@ export type WorkshopCapabilityRequest =
     }
   | {
       capability: 'resource.read';
-      group: ContextPathGroup;
-      path: string;
+      /** One to `readPaths`, distinct by group and case-folded path, in the order asked. */
+      files: WorkshopResourceReadFile[];
+      /** Only beside exactly one file. */
       startLine?: number;
       endLine?: number;
     }
@@ -299,12 +306,6 @@ export interface WorkshopCapabilityResult {
   metadata?: Record<string, unknown>;
   usage?: TokenUsage;
   error?: string;
-  /**
-   * Host-private provenance (Workshop Wayfinding D4): the SHA-256 of a read
-   * file's whole text when `resource.read` read it. It rides beside
-   * `metadata`, never in it, because the card persists and shows `metadata`.
-   */
-  sourceFingerprint?: string;
 }
 
 /**

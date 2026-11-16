@@ -104,6 +104,12 @@ describe('DictionaryHandler', () => {
       expect(router.handlerCount).toBeGreaterThanOrEqual(1);
     });
 
+    it('registers the history search route', () => {
+      handler.registerRoutes(router);
+
+      expect(router.hasHandler(MessageType.SEARCH_DICTIONARY_HISTORY)).toBe(true);
+    });
+
     it('registers the four history routes', () => {
       handler.registerRoutes(router);
 

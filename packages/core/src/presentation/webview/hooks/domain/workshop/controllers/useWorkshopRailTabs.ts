@@ -4,7 +4,8 @@
  * It owns which tab is showing and, per tab, how many items arrived while
  * that tab was hidden: to-dos and bookmarks (D5) for Notes, read-in rows for
  * Material (D2). It
- * never switches a tab by itself: a badge is the whole signal.
+ * never switches a tab by itself: a badge is the whole signal. While the rail
+ * is collapsed to its strip, both tabs count as hidden.
  * The selected tab is a per-viewer preference (webview state, never the
  * session file); the seen-id set is deliberately not persisted, so a reload
  * re-baselines on whatever the room already holds.
@@ -56,6 +57,11 @@ export interface UseWorkshopRailTabsOptions {
    * every bookmark may badge, and one cleared while unseen drops its badge.
    */
   bookmarks?: readonly WorkshopBookmarkSummary[];
+  /**
+   * The whole rail is collapsed, so neither tab's panel is showing: both
+   * badge what arrives, and collapsing never hides news.
+   */
+  railHidden?: boolean;
   /** The stored tab from webview state, read by the caller; may be anything. */
   initialTab?: unknown;
 }
@@ -169,6 +175,7 @@ export function useWorkshopRailTabs({
   readIn = NO_READ_IN,
   readInKey = '',
   bookmarks = NO_BOOKMARKS,
+  railHidden = false,
   initialTab
 }: UseWorkshopRailTabsOptions): UseWorkshopRailTabsReturn {
   const [activeTab, setActiveTab] = React.useState<WorkshopRailTab>(
@@ -181,7 +188,7 @@ export function useWorkshopRailTabs({
     [todos]
   );
   const unseenTodoCount = useHiddenTabArrivals({
-    visible: activeTab === 'notes',
+    visible: !railHidden && activeTab === 'notes',
     ids: todoIds,
     badgeableIds: badgeableTodoIds,
     baselineKey: roomKey
@@ -190,7 +197,7 @@ export function useWorkshopRailTabs({
   const bookmarkIds = React.useMemo(() => bookmarks.map((bookmark) => bookmark.id), [bookmarks]);
   const badgeableBookmarkIds = React.useMemo(() => new Set(bookmarkIds), [bookmarkIds]);
   const unseenBookmarkCount = useHiddenTabArrivals({
-    visible: activeTab === 'notes',
+    visible: !railHidden && activeTab === 'notes',
     ids: bookmarkIds,
     badgeableIds: badgeableBookmarkIds,
     // A new room re-baselines, so opening a session with bookmarks never badges.
@@ -204,7 +211,7 @@ export function useWorkshopRailTabs({
     [readIn]
   );
   const unseenMaterialCount = useHiddenTabArrivals({
-    visible: activeTab === 'material',
+    visible: !railHidden && activeTab === 'material',
     ids: readInIds,
     badgeableIds: badgeableReadInIds,
     // A new room or a new chat target both re-baseline Material.

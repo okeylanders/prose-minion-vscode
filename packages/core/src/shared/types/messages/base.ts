@@ -108,6 +108,8 @@ export enum MessageType {
   DICTIONARY_HISTORY_ENTRY = 'dictionary_history_entry',
   DELETE_DICTIONARY_HISTORY_ENTRY = 'delete_dictionary_history_entry',
   CLEAR_DICTIONARY_HISTORY = 'clear_dictionary_history',
+  SEARCH_DICTIONARY_HISTORY = 'search_dictionary_history',
+  DICTIONARY_HISTORY_SEARCH_RESULT = 'dictionary_history_search_result',
 
   // Streaming API responses
   STREAM_STARTED = 'stream_started',
@@ -269,6 +271,13 @@ export enum MessageType {
   WORKSHOP_LIGHTBOX_TILE_OFFERED = 'workshop_lightbox_tile_offered',
   WORKSHOP_ACCEPT_LIGHTBOX_TILE = 'workshop_accept_lightbox_tile',
   WORKSHOP_LIGHTBOX_TILE_STAGED = 'workshop_lightbox_tile_staged',
+  // Selected Text: the editor's selection as a one-shot attachment, by seed or by toggle (ADR 2026-11-14 D17)
+  WORKSHOP_STAGE_SELECTED_TEXT = 'workshop_stage_selected_text',
+  WORKSHOP_SELECTED_TEXT_OFFERED = 'workshop_selected_text_offered',
+  WORKSHOP_ACCEPT_SELECTED_TEXT = 'workshop_accept_selected_text',
+  WORKSHOP_SELECTED_TEXT_STAGED = 'workshop_selected_text_staged',
+  WORKSHOP_SELECTED_TEXT_WATCH = 'workshop_selected_text_watch',
+  WORKSHOP_SELECTED_TEXT_CURRENT = 'workshop_selected_text_current',
   /* eslint-enable @typescript-eslint/naming-convention */
   WORKSHOP_REQUEST_WIDGET_CONFIG = 'workshop_request_widget_config',
   WORKSHOP_WIDGET_CONFIG_DATA = 'workshop_widget_config_data',

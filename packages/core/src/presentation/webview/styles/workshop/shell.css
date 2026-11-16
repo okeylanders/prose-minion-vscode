@@ -185,6 +185,40 @@
   display: none;
 }
 
+/* The collapsed rail's strip: one icon per rail tab, with its count and its
+   badge stacked under it (Everyday Conveniences, item D). The count and
+   badge reuse the tab strip's own rules above. */
+[data-pm-surface="workshop"] .pm-ws-rail-strip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+[data-pm-surface="workshop"] .pm-ws-rail-strip-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 44px;
+  padding: 8px 0 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pm-muted);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-rail-strip-tab:hover {
+  border-color: var(--pm-border);
+  background: var(--pm-surface-2);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-rail-strip-tab .pm-ws-rail-tab-badge {
+  padding: 1px 4px;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
 /* Writer-owned task list */
 [data-pm-surface="workshop"] .pm-ws-todos {
   gap: 9px;
@@ -2289,6 +2323,45 @@
 [data-pm-surface="workshop"] .pm-ws-comp-attachment-hint {
   font-size: 10.5px;
   color: var(--pm-muted);
+}
+/* Selected Text (ADR 2026-11-14 D9, D14): the live pill follows the editor, so its edge is dashed and it has no remove control. */
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-live {
+  padding-right: 9px;
+  border-style: dashed;
+  border-color: var(--pm-accent);
+}
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-live .pm-ws-comp-attachment-label,
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-live .pm-ws-comp-attachment-size {
+  white-space: nowrap;
+  flex: none;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-live-note {
+  font-size: 10.5px;
+  color: var(--pm-muted);
+  font-style: italic;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-live.is-disabled {
+  border-color: var(--pm-border);
+  background: transparent;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-live.is-disabled .pm-ws-comp-attachment-label {
+  text-decoration: line-through;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-selected-toggle-mark {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  flex: none;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-selected-toggle.is-on {
+  color: var(--pm-text);
+  border-color: var(--pm-accent);
+}
+[data-pm-surface="workshop"] .pm-ws-comp-selected-toggle.is-on .pm-ws-comp-selected-toggle-mark {
+  background: var(--pm-accent);
+  border-color: var(--pm-accent);
 }
 [data-pm-surface="workshop"] .pm-ws-turn-attachments {
   display: flex;

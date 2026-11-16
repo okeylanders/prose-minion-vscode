@@ -5,7 +5,9 @@
  * commitment (no "pin" vocabulary), pasted text that matches the active editor
  * selection earns verified provenance, and once the host conversation exists
  * the card locks to `Update text…` (typed origin) or `Re-read from file` (file
- * origin), both riding replaceExcerpt's revision semantics.
+ * origin), both riding replaceExcerpt's revision semantics. A file-backed
+ * passage offers `Re-read from file` before the conversation too (a new room
+ * that kept its excerpt), beside the fresh choices.
  *
  * Sprint 13A (design source: "Prose Minion - Assistant Tab.html",
  * `excerptSection`) makes the block SCOPE-AWARE and moves authoring into the
@@ -262,6 +264,17 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
   }
 
   // ── Excerpt pinned ──
+  const rereadButton = (
+    <button
+      className="pm-ws-file-refresh"
+      type="button"
+      onClick={onRereadFile}
+      disabled={isRunning}
+      title="Re-read this file from disk; on-disk edits land as a new excerpt version"
+    >
+      <Icon name="refresh" size={12} /> Re-read from file
+    </button>
+  );
   return (
     <div className="pm-ws-block">
       <div className="pm-ws-block-head">
@@ -281,19 +294,11 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
           context.
         </p>
       )}
-      <div className={`pm-ws-excerpt-actions${roomHasMemory && fileBacked ? ' pm-ws-excerpt-actions-reread' : ''}`}>
-        {roomHasMemory && fileBacked ? (
-          <button
-            className="pm-ws-file-refresh"
-            type="button"
-            onClick={onRereadFile}
-            disabled={isRunning}
-            title="Re-read this file from disk; on-disk edits land as a new excerpt version"
-          >
-            <Icon name="refresh" size={12} /> Re-read from file
-          </button>
-        ) : (
-          <>
+      {roomHasMemory && fileBacked ? (
+        <div className="pm-ws-excerpt-actions pm-ws-excerpt-actions-reread">{rereadButton}</div>
+      ) : (
+        <>
+          <div className="pm-ws-excerpt-actions">
             <button
               className="pm-ws-action-btn"
               type="button"
@@ -318,9 +323,15 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
                 <Icon name="doc" size={12} /> Choose from project…
               </button>
             )}
-          </>
-        )}
-      </div>
+          </div>
+          {/* A new room that kept its file-backed passage has no conversation
+              yet, but the file may have moved on since: re-reading needs no
+              conversation, so it is offered beside the fresh choices. */}
+          {fileBacked ? (
+            <div className="pm-ws-excerpt-actions pm-ws-excerpt-actions-reread">{rereadButton}</div>
+          ) : null}
+        </>
+      )}
 
       {/* Passage → open. Offered only before the room has a memory: once
           {hostLabel} has read the passage, un-reading it is not something the

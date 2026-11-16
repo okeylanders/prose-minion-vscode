@@ -113,7 +113,8 @@ function resourceMetrics(metadata: WorkshopCapabilityResult['metadata']): string
     `lines=${typeof metadata.startLine === 'number' ? metadata.startLine : 'n/a'}-${typeof metadata.endLine === 'number' ? metadata.endLine : 'n/a'}`,
     `searchMode=${typeof metadata.searchMode === 'string' ? metadata.searchMode : 'n/a'}`,
     `catalogEntries=${typeof metadata.catalogEntriesScanned === 'number' ? metadata.catalogEntriesScanned : 'n/a'}`,
-    `files=${typeof metadata.filesScanned === 'number' ? metadata.filesScanned : typeof metadata.fileCount === 'number' ? metadata.fileCount : 'n/a'}`,
+    // A read's count is the files it delivered (ADR 2026-11-14 D7); a read of several carries no path above.
+    `files=${typeof metadata.filesScanned === 'number' ? metadata.filesScanned : typeof metadata.fileCount === 'number' ? metadata.fileCount : typeof metadata.filesRead === 'number' ? metadata.filesRead : 'n/a'}`,
     `matches=${typeof metadata.matchCount === 'number' ? metadata.matchCount : 'n/a'}`,
     `bytes=${typeof metadata.bytes === 'number' ? metadata.bytes : typeof metadata.bytesScanned === 'number' ? metadata.bytesScanned : 'n/a'}`,
     `truncated=${metadata.truncated === true}`

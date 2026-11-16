@@ -33,6 +33,9 @@ export type DictionaryHistoryNavModel = Pick<
   | 'openEntry'
   | 'deleteEntry'
   | 'clearHistory'
+  | 'definitionSearch'
+  | 'searchDefinitions'
+  | 'cancelDefinitionSearch'
 >;
 
 interface DictionaryHistoryNavProps {
@@ -111,6 +114,9 @@ export const DictionaryHistoryNav: React.FC<DictionaryHistoryNavProps> = ({ hist
           durability={history.durability}
           limit={history.limit}
           selectionDisabled={history.navigationLocked}
+          definitionSearch={history.definitionSearch}
+          onSearchDefinitions={history.searchDefinitions}
+          onCancelDefinitionSearch={history.cancelDefinitionSearch}
           onSelect={selectEntry}
           onDelete={history.deleteEntry}
           onClear={history.clearHistory}

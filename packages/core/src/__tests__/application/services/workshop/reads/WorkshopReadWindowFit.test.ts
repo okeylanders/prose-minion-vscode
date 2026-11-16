@@ -5,19 +5,19 @@
  */
 
 import {
-  fitWorkshopRecallReadToWindow,
-  WORKSHOP_RECALL_CLAMP_RENDERS,
-  WorkshopRecallMeasuredRead
-} from '@/application/services/workshop/recall/WorkshopRecallWindowClamp';
+  fitWorkshopReadToWindow,
+  WORKSHOP_READ_FIT_RENDERS,
+  WorkshopMeasuredRead
+} from '@/application/services/workshop/reads/WorkshopReadWindowFit';
 
 const MINIMUM = 12_000;
 
 /** A render whose cost is `cost(characters)`, counting the renders. */
 const renderer = (cost: (characters: number) => number) => {
   const limits: number[] = [];
-  const render = (characters: number): WorkshopRecallMeasuredRead => {
+  const render = (characters: number): WorkshopMeasuredRead => {
     limits.push(characters);
-    return { characters, tokens: cost(characters), outcome: { capability: 'transcript.read', status: 'success', requestSummary: '' } };
+    return { size: characters, tokens: cost(characters), outcome: { capability: 'transcript.read', status: 'success', requestSummary: '' } };
   };
   return { render, limits };
 };
@@ -25,19 +25,19 @@ const renderer = (cost: (characters: number) => number) => {
 describe('fitting a read to half the window', () => {
   it('keeps the first guess when it fits', () => {
     const { render, limits } = renderer((characters) => Math.ceil(characters / 4));
-    const fitted = fitWorkshopRecallReadToWindow(render, 40_000, 10_000, MINIMUM);
+    const fitted = fitWorkshopReadToWindow(render, 40_000, 10_000, MINIMUM);
 
-    expect(fitted.fit?.characters).toBe(40_000);
+    expect(fitted.fit?.size).toBe(40_000);
     expect(limits).toEqual([40_000]);
   });
 
   it('takes one proportional step for text of even density', () => {
     const { render, limits } = renderer((characters) => Math.ceil(characters * 0.27));
-    const fitted = fitWorkshopRecallReadToWindow(render, 40_000, 10_000, MINIMUM);
+    const fitted = fitWorkshopReadToWindow(render, 40_000, 10_000, MINIMUM);
 
     expect(limits).toHaveLength(2);
     expect(fitted.fit!.tokens).toBeLessThanOrEqual(10_000);
-    expect(fitted.fit!.characters).toBeGreaterThan(36_000);
+    expect(fitted.fit!.size).toBeGreaterThan(36_000);
   });
 
   it('still finds a fit when fair shares keep a dense section whole as the limit shrinks', () => {
@@ -50,19 +50,19 @@ describe('fitting a read to half the window', () => {
     };
     const { render, limits } = renderer(cost);
     const half = 33_000;
-    const fitted = fitWorkshopRecallReadToWindow(render, 4 * half, half, MINIMUM);
+    const fitted = fitWorkshopReadToWindow(render, 4 * half, half, MINIMUM);
 
     expect(fitted.fit).toBeDefined();
     expect(fitted.fit!.tokens).toBeLessThanOrEqual(half);
-    expect(limits.length).toBeLessThanOrEqual(WORKSHOP_RECALL_CLAMP_RENDERS);
+    expect(limits.length).toBeLessThanOrEqual(WORKSHOP_READ_FIT_RENDERS);
   });
 
   it('refuses only when the minimum itself does not fit, and says what the minimum cost', () => {
     const { render, limits } = renderer((characters) => Math.ceil(characters * 0.75));
-    const fitted = fitWorkshopRecallReadToWindow(render, 4 * 2_000, 2_000, 6_000);
+    const fitted = fitWorkshopReadToWindow(render, 4 * 2_000, 2_000, 6_000);
 
     expect(fitted.fit).toBeUndefined();
-    expect(fitted.minimum).toMatchObject({ characters: 6_000, tokens: 4_500 });
+    expect(fitted.minimum).toMatchObject({ size: 6_000, tokens: 4_500 });
     expect(limits).toContain(6_000);
   });
 
@@ -87,14 +87,14 @@ describe('fitting a read to half the window', () => {
         continue;
       }
       const { render, limits } = renderer(cost);
-      const fitted = fitWorkshopRecallReadToWindow(render, first, half, minimum);
+      const fitted = fitWorkshopReadToWindow(render, first, half, minimum);
 
-      expect(limits.length).toBeLessThanOrEqual(WORKSHOP_RECALL_CLAMP_RENDERS);
+      expect(limits.length).toBeLessThanOrEqual(WORKSHOP_READ_FIT_RENDERS);
       if (cost(minimum) <= half) {
         // A read fits, so one is delivered, and it is the largest the search measured.
         expect(fitted.fit).toBeDefined();
         expect(fitted.fit!.tokens).toBeLessThanOrEqual(half);
-        expect(fitted.fit!.characters).toBe(Math.max(...limits.filter((limit) => cost(limit) <= half)));
+        expect(fitted.fit!.size).toBe(Math.max(...limits.filter((limit) => cost(limit) <= half)));
       } else {
         expect(fitted.fit).toBeUndefined();
       }

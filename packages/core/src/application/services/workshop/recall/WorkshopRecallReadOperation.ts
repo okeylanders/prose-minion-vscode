@@ -9,7 +9,7 @@
  *   `readCharactersPerTurn`, two full reads, when the window is known.
  * - The window clamp: a read takes at most half the room the model's
  *   context window has for evidence, by the preflight's own estimate of
- *   what was rendered (WorkshopRecallWindowClamp).
+ *   what was rendered (reads/WorkshopReadWindowFit).
  * - An unknown window: no clamp, and no preflight either, so nothing local
  *   checks what a read costs. The turn's reads then share one read's worth,
  *   `readCharacters`, and a limited or refused read says why (Slice 5).
@@ -37,11 +37,11 @@ import {
   workshopTranscriptRecallRequestSummary
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRequestCopy';
 import {
-  fitWorkshopRecallReadToWindow,
-  workshopRecallEvidenceTokens,
-  WorkshopRecallMeasuredRead,
-  WorkshopRecallWindowFit
-} from '@/application/services/workshop/recall/WorkshopRecallWindowClamp';
+  fitWorkshopReadToWindow,
+  workshopReadEvidenceTokens,
+  WorkshopMeasuredRead,
+  WorkshopReadWindowFit
+} from '@/application/services/workshop/reads/WorkshopReadWindowFit';
 import type { WorkshopRecallReadResult } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
 import {
   assertNeverRecallValue,
@@ -96,23 +96,23 @@ export class WorkshopRecallReadOperation {
     // Below the first guess, only the window limits a read.
     // Each rendering's manifest rows, by the result the window fit keeps.
     const sourcesOf = new Map<WorkshopCapabilityResult, WorkshopRecallOperationOutcome['sources']>();
-    const render = (characters: number): WorkshopRecallMeasuredRead => {
+    const render = (characters: number): WorkshopMeasuredRead => {
       const readLimit: ReadLimit = characters === limit.characters ? limit : { characters, by: 'context-window' };
       const rendered = renderWorkshopRecallRead(result, { now: this.context.now(), readCharacters: characters, notes: this.limitNotes(readLimit, window) });
       const recorded = this.readOutcome(request, result, rendered, readLimit);
       sourcesOf.set(recorded.result, recorded.sources);
-      return { characters, outcome: recorded.result, tokens: window ? workshopRecallEvidenceTokens(recorded.result) : 0 };
+      return { size: characters, outcome: recorded.result, tokens: window ? workshopReadEvidenceTokens(recorded.result) : 0 };
     };
     const half = window ? Math.floor(window.freeInputTokens / 2) : undefined;
-    const fitted: WorkshopRecallWindowFit = half === undefined
+    const fitted: WorkshopReadWindowFit = half === undefined
       ? { fit: render(limit.characters), renders: 1 }
-      : fitWorkshopRecallReadToWindow(render, limit.characters, half, minimum);
+      : fitWorkshopReadToWindow(render, limit.characters, half, minimum);
     if (!fitted.fit) {
       return { result: this.windowTooSmall(request, minimum, half!, fitted.minimum) };
     }
     const { outcome, tokens } = fitted.fit;
     this.readCharacters += outcome.content!.length;
-    this.context.log(`read sessions=${request.sessions.length} limit=${fitted.fit.characters} by=${String(outcome.metadata!.limitedBy)} ` +
+    this.context.log(`read sessions=${request.sessions.length} limit=${fitted.fit.size} by=${String(outcome.metadata!.limitedBy)} ` +
       `characters=${outcome.content!.length} turnTotal=${this.readCharacters}` +
       (half === undefined ? ' window=unknown' : ` tokens=${tokens} halfWindow=${half} renders=${fitted.renders}`));
     return { result: outcome, sources: sourcesOf.get(outcome) };
@@ -184,7 +184,7 @@ export class WorkshopRecallReadOperation {
     request: ReadRequest,
     minimum: number,
     half: number,
-    measured: WorkshopRecallMeasuredRead | undefined
+    measured: WorkshopMeasuredRead | undefined
   ): WorkshopCapabilityResult {
     const tokens = measured?.tokens ?? Number.POSITIVE_INFINITY;
     const characters = Number.isFinite(tokens) && tokens > 0 ? Math.floor(minimum * (half / tokens)) : 0;

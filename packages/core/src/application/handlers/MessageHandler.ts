@@ -218,7 +218,8 @@ export class MessageHandler {
       workshopTranscriptRecallService,
       fileEditStaging,
       projectFileEditGateway,
-      helperAgentService
+      helperAgentService,
+      editorSelectionSnapshots
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -369,7 +370,8 @@ export class MessageHandler {
       workshopTranscriptRecallService,
       fileEditStaging,
       projectFileEditGateway,
-      { helper: helperAgentService, settings: this.platform.settings }
+      { helper: helperAgentService, settings: this.platform.settings },
+      editorSelectionSnapshots
     );
     // Lightbox editor tab (ADR 2026-10-19 D10) — the 13th domain, composed
     // like the others. The shell owns the file picker; the service owns boards.
@@ -460,6 +462,15 @@ export class MessageHandler {
         details
       );
     }
+  }
+
+  /**
+   * The Workshop tab became visible or hidden. Host-only, never a route: the
+   * panel provider says so, and Selected Text's watch pushes the current
+   * selection only to a visible tab (ADR 2026-11-14 D14).
+   */
+  setWorkshopSurfaceVisible(visible: boolean): void {
+    this.workshopHandler.setSurfaceVisible(visible);
   }
 
   /**
