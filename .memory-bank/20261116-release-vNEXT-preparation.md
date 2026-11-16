@@ -1,6 +1,6 @@
 # Release preparation — vNEXT
 
-**Date:** November 16, 2026 (America/Chicago). **Branch:** `release/vNEXT`, based on `aac51253`. **Previous release:** v2.13.0 (November 12). **Proposed version:** v2.14.0 (minor; awaiting confirmation). The release branch is pushed; no version files have been changed. Fable owns release documentation and design.
+**Date:** November 16, 2026 (America/Chicago). **Branch:** `release/v2.14.0`, based on `aac51253`. **Previous release:** v2.13.0 (November 12). **Version:** v2.14.0 (minor; confirmed by Okey). The provisional `origin/release/vNEXT` remains for coordination with Fable. Fable owns release documentation and design.
 
 ## Changes since v2.13.0
 
@@ -23,5 +23,5 @@ Remaining findings are tooling paths: high `@azure/identity` / `@azure/msal-node
 - Typecheck and production build passed with the patched dependencies on Node 20.20.2. Webpack reported three bundle-size warnings; Browserslist data was seven months old. Bundle sentinel passed.
 - Full test and coverage runs passed against patched dependencies on Node 20.20.2: 870 suites, 12,330 tests, 59 snapshots in each. Coverage: 92.78% statements, 85.67% branches, 93.30% functions, 92.74% lines. Earlier Node 26 runs were stopped after the LightboxMisnestedMemberEdges test failed because its deep JSON.stringify witness no longer throws; that suite passed on Node 20.
 - Lint passed: zero errors, 1,172 warnings.
-- Confirm the version before renaming the branch or editing version references. Coordinate that rename with Fable, who may already be working from `release/vNEXT`.
+- Coordinate Fable’s work from `release/vNEXT` into `release/v2.14.0` without losing either branch’s changes. Version references are updated to 2.14.0.
 - Finish Fable's docs, rerun release verification against the final tree, create the VSIX and obtain explicit manual acceptance. Merge, tag, GitHub release and Marketplace publication are separate later gates.
