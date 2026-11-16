@@ -5,6 +5,9 @@ import * as path from 'path';
 import { RECOMMENDED_MODELS } from '@providers/OpenRouterModels';
 
 const EXPECTED_SHARED_MODEL_IDS = [
+  'google/gemini-4-hydrogen',
+  'tencent/hy4-flash',
+  'qwen/qwen4-max',
   'anthropic/claude-fable-5.2',
   'google/gemini-4-carbon',
   'meta/muse-ember',

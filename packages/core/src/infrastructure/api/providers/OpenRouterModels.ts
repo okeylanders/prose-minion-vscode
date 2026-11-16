@@ -304,6 +304,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: '1M-context model with mandatory reasoning for complex category matching; prose quality in Prose Minion is unverified'
   },
   {
+    id: 'google/gemini-4-hydrogen',
+    name: 'Gemini 4 Hydrogen',
+    family: 'Gemini 4',
+    description: '1M-context multimodal model with mandatory reasoning for category matching; prose quality in Prose Minion is unverified'
+  },
+  {
     id: 'deepseek/deepseek-v4-flash',
     name: 'DeepSeek V4 Flash',
     family: 'DeepSeek V4',
@@ -346,6 +352,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: '1M-context model with optional reasoning for category matching; prose quality in Prose Minion is unverified'
   },
   {
+    id: 'tencent/hy4-flash',
+    name: 'Hy4 Flash',
+    family: 'Tencent Hy',
+    description: 'Low-cost 1M-context model with optional reasoning for category matching; prose quality in Prose Minion is unverified'
+  },
+  {
     id: 'stepfun/step-3.7-flash',
     name: 'Step 3.7 Flash',
     family: 'Step',
@@ -386,6 +398,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'Qwen3.8 Max Prime',
     family: 'Qwen3.8',
     description: 'Higher-throughput 1M-context multimodal reasoner for complex category matching at a higher token price'
+  },
+  {
+    id: 'qwen/qwen4-max',
+    name: 'Qwen4 Max',
+    family: 'Qwen4',
+    description: '1M-context flagship model with optional reasoning for category matching; prose quality in Prose Minion is unverified'
   },
   {
     id: 'mistralai/mistral-small-2603',
@@ -714,6 +732,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: '1M-context text and image model with optional reasoning and structured output. An opt-in choice for editorial work; prose quality in Prose Minion is unverified.'
   },
   {
+    id: 'tencent/hy4-flash',
+    name: 'Hy4 Flash',
+    family: 'Tencent Hy',
+    description: 'Low-cost 1M-context text and image model with optional reasoning and structured output. An opt-in choice for editorial work; prose quality in Prose Minion is unverified.'
+  },
+  {
     id: 'stepfun/step-3.7-flash',
     name: 'Step 3.7 Flash',
     family: 'Step',
@@ -794,6 +818,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
   {
     id: 'google/gemini-4-carbon',
     name: 'Gemini 4 Carbon',
+    family: 'Gemini 4',
+    description: '1M-context multimodal model with mandatory reasoning and structured output. An opt-in choice for long-document analysis; prose quality in Prose Minion is unverified.'
+  },
+  {
+    id: 'google/gemini-4-hydrogen',
+    name: 'Gemini 4 Hydrogen',
     family: 'Gemini 4',
     description: '1M-context multimodal model with mandatory reasoning and structured output. An opt-in choice for long-document analysis; prose quality in Prose Minion is unverified.'
   },
@@ -1120,6 +1150,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Qwen3.8 Max Prime',
     family: 'Qwen3.8',
     description: 'Higher-throughput Qwen3.8 Max route with 1M context and text, image, and video input. An opt-in, higher-priced choice for responsive manuscript analysis and editorial planning.'
+  },
+  {
+    id: 'qwen/qwen4-max',
+    name: 'Qwen4 Max',
+    family: 'Qwen4',
+    description: '1M-context multimodal flagship with optional reasoning and structured output. An opt-in choice for long-document analysis; prose quality in Prose Minion is unverified.'
   },
   {
     id: 'qwen/qwen3.8-flash',

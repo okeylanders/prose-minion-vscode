@@ -24,6 +24,7 @@ describe('selected cache duration', () => {
     'openai/gpt-oss-120b', 'openai/gpt-chat-latest', 'openrouter/auto', 'other/gpt-5.6-terra',
     'moonshotai/kimi-k3.1-pro', 'minimax/minimax-m3.1-flash',
     'deepseek/deepseek-v4.1-flash-1017', 'meta/muse-ember', 'google/gemini-4-carbon', 'tencent/hy4',
+    'google/gemini-4-hydrogen', 'tencent/hy4-flash', 'qwen/qwen4-max',
     'openai/gpt-5.60invalid', 'openai/gpt-60invalid'])('keeps %s lifetime unknown', model => {
     expect(getOpenRouterPromptCacheTtlSeconds(model)).toBeUndefined();
   });

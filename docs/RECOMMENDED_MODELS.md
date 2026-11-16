@@ -176,6 +176,12 @@ successful inference in Prose Minion.
 
 **Best for:** Dictionary definitions, Prose Analysis critiques, finding plot holes, and structural editing
 
+### Gemini 4 Hydrogen — Long-Context Workhorse
+
+- **Best For:** Trying long-document analysis and Category Search
+- **Description:** 1,048,576-token context, multimodal input, structured output, and mandatory reasoning. The November 16 catalog price was $1.50/M input and $7.50/M output. Prose quality in Prose Minion is unverified
+- **OpenRouter:** https://openrouter.ai/google/gemini-4-hydrogen
+
 ### Gemini 4 Carbon — Long-Context Reasoning
 
 - **Best For:** Trying long-document analysis and complex Category Search
@@ -494,6 +500,12 @@ successful inference in Prose Minion.
   - OpenRouter: https://openrouter.ai/qwen/qwen3.7-max
   - Qwen: https://qwenlm.github.io/
 
+### Qwen4 Max — Long-Context Flagship
+
+- **Best For:** Trying long-document analysis and Category Search
+- **Description:** 1,000,000-token context, multimodal input, structured output, and optional reasoning. The November 16 catalog price was $1.425/M input and $4.275/M output. Prose quality in Prose Minion is unverified
+- **OpenRouter:** https://openrouter.ai/qwen/qwen4-max
+
 ### Qwen3.8 Max 0902 — Open-Model Flagship
 
 - **Best For:** Complex manuscript analysis, visual context, and long-horizon editorial planning
@@ -546,6 +558,12 @@ successful inference in Prose Minion.
 - **Links:**
   - OpenRouter: https://openrouter.ai/openai/gpt-oss-120b:nitro
   - OpenAI: https://openai.com/open-models/
+
+### Tencent Hy4 Flash — Low-Cost Long Context
+
+- **Best For:** Trying cost-conscious editorial analysis and Category Search
+- **Description:** 1,048,576-token context, text and image input, structured output, and optional reasoning. The November 16 catalog promotional price was $0.035/M input and $0.1405/M output. Prose quality in Prose Minion is unverified
+- **OpenRouter:** https://openrouter.ai/tencent/hy4-flash
 
 ### Tencent Hy4 — General-Purpose Long Context
 
