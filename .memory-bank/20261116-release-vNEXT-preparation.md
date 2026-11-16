@@ -21,6 +21,7 @@ Remaining findings are tooling paths: high `@azure/identity` / `@azure/msal-node
 ## Validation and remaining work
 
 - Typecheck and production build passed with the patched dependencies on Node 20.20.2. Webpack reported three bundle-size warnings; Browserslist data was seven months old. Bundle sentinel passed.
-- Full test and coverage runs against the patched dependencies are in progress on Node 20.20.2. Earlier Node 26 runs were stopped after the LightboxMisnestedMemberEdges test failed because its deep JSON.stringify witness no longer throws; that suite passed on Node 20.
+- Full test and coverage runs passed against patched dependencies on Node 20.20.2: 870 suites, 12,330 tests, 59 snapshots in each. Coverage: 92.78% statements, 85.67% branches, 93.30% functions, 92.74% lines. Earlier Node 26 runs were stopped after the LightboxMisnestedMemberEdges test failed because its deep JSON.stringify witness no longer throws; that suite passed on Node 20.
+- Lint passed: zero errors, 1,172 warnings.
 - Confirm the version before renaming the branch or editing version references. Coordinate that rename with Fable, who may already be working from `release/vNEXT`.
 - Finish Fable's docs, rerun release verification against the final tree, create the VSIX and obtain explicit manual acceptance. Merge, tag, GitHub release and Marketplace publication are separate later gates.
