@@ -30,14 +30,14 @@ decisions live in this README and the ADR.
 
 | # | Item | Source note | Okey's # | Branch | PR | Status |
 |---|---|---|---|---|---|---|
-| 0 | Spec | (this README and the ADR) | | `epic/everyday-conveniences-round-two-spec` | #269 | Reviewed; two findings resolved; waits for re-review |
-| A1 | A, part 1 | thread-earlier-turns | 22 | `…-earlier-turns-notice` | #268 | In review |
-| E | E | lexical-gravity-reads-json-without-repair | 13 | `…-lexical-gravity-json` | | Being built |
-| G | G | composer-at-mentions | 14 | `…-at-mentions` | | Being built |
-| B | B | memory-suggestion-level | 8 | `…-memory-suggestion-level` | | Built on the spec branch; pushed, no PR yet |
-| C | C | memory-title-index | new | `…-memory-title-index` | | Built on B's branch; pushed, no PR yet |
+| 0 | Spec | (this README and the ADR) | | `epic/everyday-conveniences-round-two-spec` | #269 | Merged |
+| A1 | A, part 1 | thread-earlier-turns | 22 | `…-earlier-turns-notice` | #268 | Merged |
+| E | E | lexical-gravity-reads-json-without-repair | 13 | `…-lexical-gravity-json` | #270 | Merged |
+| G | G | composer-at-mentions | 14 | `…-at-mentions` | #271 | Merged |
+| B | B | memory-suggestion-level | 8 | `…-memory-suggestion-level` | #272 | Merged |
+| C | C | memory-title-index | new | `…-memory-title-index` | #274 | Reviewed clear |
 | D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | | After C |
-| A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | | After Slice 0 |
+| A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | #273 | Merged |
 | F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | | After C |
 | H | H | prose-minion-help-reference | 20 | `…-help-reference` | | Last |
 | Close | Closing pass | | | `…-close` | | After H |
@@ -295,6 +295,7 @@ a note.** These are the ones to look at first.
 | `main` at v2.14.0's close (the first epic, `epic/everyday-conveniences-close`) | 870 | 12,327 | 59 |
 | Baseline (`main` at `3f99e733`) | not run | | |
 | B (`…-memory-suggestion-level`, on the spec branch) | 879 | 12,529 | 59 |
+| A, part 2 (`…-earlier-turns`, on the epic branch at `649b9f24`) | 884 | 12,572 | 59 |
 | C (`…-memory-title-index`, on B's branch) | 884 | 12,681 | 59 |
 
 Each slice adds its row.

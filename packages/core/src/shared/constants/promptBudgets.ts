@@ -251,6 +251,16 @@ export interface PromptBudgets {
     snapshots: number;
     pushIntervalMs: number;
   }>;
+  /**
+   * A page of a long room's earlier turns (ADR 2026-11-17 D3). A page stops
+   * at `pageTurns` or at `pageBytes` (the UTF-8 size of its turns as sent),
+   * whichever comes first counting back from the newest, and always holds at
+   * least one turn. The snapshot window stays `WORKSHOP_SNAPSHOT_TURN_WINDOW`.
+   */
+  readonly workshopThread: Readonly<{
+    pageTurns: number;
+    pageBytes: number;
+  }>;
   readonly workshopTodos: Readonly<{
     items: number;
     characters: number;
@@ -776,6 +786,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     optionCharacters: 40
   },
   workshopSelectedText: { words: 5_000, characters: 40_000, previewCharacters: 120, snapshots: 8, pushIntervalMs: 150 },
+  workshopThread: { pageTurns: 100, pageBytes: 1024 * 1024 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {
     turns: 100,
