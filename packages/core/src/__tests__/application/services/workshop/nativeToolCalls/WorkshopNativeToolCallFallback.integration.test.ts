@@ -5,6 +5,7 @@
  * reject, exactly as typed XML is.
  */
 
+import { OPENROUTER_TOOL_CALL_LIMITS } from '@providers/OpenRouterToolCalls';
 import { createNativeToolCallHarness, native, type WireReply } from './nativeToolCallHarness';
 
 type Harness = ReturnType<typeof createNativeToolCallHarness>;
@@ -16,6 +17,9 @@ beforeEach(async () => {
 });
 afterEach(() => room.dispose());
 
+/** Invalid JSON as sent; cut at the bound it would read as `{}`, an unfiltered catalog. */
+const OVERSIZED: WireReply = native('transcript.catalog', '{}'.padEnd(OPENROUTER_TOOL_CALL_LIMITS.argumentCharacters, ' ') + 'invalid tail');
+
 const XML_CALL = '<prose-minion-tool-call name="transcript.catalog"><match>6.11</match></prose-minion-tool-call>';
 
 describe.each([['whole replies', false], ['streamed replies', true]])('a native call the adapter cannot translate (%s)', (_label, streaming) => {
@@ -24,7 +28,12 @@ describe.each([['whole replies', false], ['streamed replies', true]])('a native 
     ['a server tool the persona was not given', native('web_search', { query: 'tea parties' })],
     ['arguments that do not map', native('transcript.catalog', { match: '6.11', limit: 5 })],
     ['unparseable argument JSON', native('transcript.catalog', '{"match": "6.11')],
-    ['arguments that are not an object', native('transcript.catalog', '"6.11"')]
+    ['arguments that are not an object', native('transcript.catalog', '"6.11"')],
+    // PR #267 F-01: a payload the wire did not carry soundly is never read as a call with no arguments.
+    ['arguments sent as an object, not JSON text', { calls: [{ name: 'transcript.catalog', arguments: { match: '6.11' }, raw: true }] }],
+    ['arguments past the boundary\'s bound, whose kept prefix would be valid JSON', OVERSIZED],
+    ['a malformed payload with a finish reason other than tool_calls', { calls: [{ name: 'transcript.catalog', arguments: { match: '6.11' }, raw: true }], finish: 'stop' }],
+    ['an unknown name with a finish reason other than tool_calls', { calls: [{ name: 'file.delete', arguments: {} }], finish: 'stop' }]
   ])('%s: nothing runs, and the persona is asked for the XML request', async (_case, reply) => {
     const { result, visible, unusedReplies } = await room.hostTurn(
       'Which sessions touched 6.11?',

@@ -89,6 +89,12 @@ the persona should have written, and carry on as if it had.
 - **Fallback.** A call that can't be translated sets the first fix's
   correction path going, whatever finish reason the provider gave.
 
+- **Review, PR #267 F-01.** The provider boundary marks a call whose name
+  or arguments were not text, or were over its bounds, and keeps none of its
+  arguments; the translator refuses a marked call. Before this, an object
+  for `arguments` or an over-long payload could run as a call with no
+  arguments.
+
 ### Decisions on the open questions
 
 - **Several native calls in one reply: the first runs, the rest are said.**

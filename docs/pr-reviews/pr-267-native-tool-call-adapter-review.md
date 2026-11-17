@@ -6,6 +6,12 @@ Date: 2026-11-17
 Reviewer: Chatty
 Verdict: Changes recommended for one provider-boundary correctness issue. Not a merge authorization.
 
+## Resolution ledger
+
+| Finding | Status | Where |
+| --- | --- | --- |
+| F-01 | Fixed, awaiting re-review | `OpenRouterToolCalls.ts` marks a malformed or oversized call with a `fault` and keeps none of its arguments (a name too); `WorkshopNativeToolCallTranslator.ts` refuses a marked call first (`malformed-call`, `oversized-call`). Tests: `OpenRouterToolCalls.test.ts`, `WorkshopNativeToolCallTranslator.test.ts`, and whole and streamed cases in `WorkshopNativeToolCallFallback.integration.test.ts`, two with a finish reason other than `tool_calls`. |
+
 ## F-01 · P2 · Reject malformed/overflowed argument payloads instead of executing their repaired prefix
 
 Location: `packages/core/src/infrastructure/api/providers/OpenRouterToolCalls.ts:70–73` (also initialization at line 60).

@@ -57,6 +57,13 @@ export interface AgentCapabilityRejection {
 export interface AgentNativeToolCall {
   readonly name: string;
   readonly arguments: string;
+  /**
+   * The provider boundary could not carry the call soundly (a name or
+   * arguments that were not text, or over its bounds). Its `arguments` are
+   * empty, not what the model sent: a translator must refuse it, never read
+   * it as a call with no arguments.
+   */
+  readonly fault?: 'malformed' | 'oversized';
 }
 
 /**

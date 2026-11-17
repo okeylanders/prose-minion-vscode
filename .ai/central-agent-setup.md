@@ -1631,6 +1631,13 @@ native call may become:
   - Only function calls are read. OpenRouter's own server tools
     (`openrouter:…`) are left out; web search still arrives as citations.
   - Nothing below the capability parses a call's arguments.
+  - **A call is kept whole or marked, never mended** (PR #267 F-01). A name
+    or arguments that are present but not text (`malformed`), or over
+    `OPENROUTER_TOOL_CALL_LIMITS` (`oversized`), mark the call with a
+    `fault` and empty its arguments. Never keep a cut prefix or ignore a
+    bad value: either can read as a different, valid request. A fault holds
+    for the whole call. Arguments that are absent or empty are a sound call
+    with none. A translator refuses a marked call before reading it.
 - **The engine has a seam, never a branch.**
   `AgentCapability.translateNativeToolCalls` is optional.
   `orchestration/AgentNativeToolCalls.ts` offers a reply's calls to it and

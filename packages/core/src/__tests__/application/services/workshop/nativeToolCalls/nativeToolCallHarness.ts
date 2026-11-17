@@ -32,15 +32,23 @@ export interface NativeCall {
   readonly name: string;
   /** An object is sent as JSON; text is sent exactly as given. */
   readonly arguments: unknown;
+  /** Send `arguments` on the wire as it is, not as JSON text: a malformed payload. */
+  readonly raw?: boolean;
 }
 
 /** One scripted provider reply: plain text, or native calls with optional prose beside them. */
-export type WireReply = string | { readonly text?: string; readonly calls: readonly NativeCall[] };
+export type WireReply = string | {
+  readonly text?: string;
+  readonly calls: readonly NativeCall[];
+  /** The finish reason the provider gives; `tool_calls` unless set. */
+  readonly finish?: string;
+};
 
 export const native = (name: string, args: unknown = {}, text?: string): WireReply =>
   ({ calls: [{ name, arguments: args }], ...(text !== undefined ? { text } : {}) });
 
 const argumentText = (value: unknown): string => (typeof value === 'string' ? value : JSON.stringify(value));
+const wireArguments = (call: NativeCall): unknown => (call.raw ? call.arguments : argumentText(call.arguments));
 
 const wholeReply = (reply: WireReply): Response => ({
   ok: true,
@@ -54,10 +62,10 @@ const wholeReply = (reply: WireReply): Response => ({
             role: 'assistant',
             content: reply.text ?? null,
             tool_calls: reply.calls.map((call, index) => ({
-              id: `call_${index}`, type: 'function', function: { name: call.name, arguments: argumentText(call.arguments) }
+              id: `call_${index}`, type: 'function', function: { name: call.name, arguments: wireArguments(call) }
             }))
           },
-          finish_reason: 'tool_calls'
+          finish_reason: reply.finish ?? 'tool_calls'
         }],
     usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }
   })
@@ -74,15 +82,19 @@ const streamedReply = (reply: WireReply): Response => {
   }
   if (typeof reply !== 'string') {
     reply.calls.forEach((call, index) => {
+      frames.push({ choices: [{ delta: { tool_calls: [{ index, id: `call_${index}`, type: 'function', function: { name: call.name, arguments: '' } }] } }] });
+      if (call.raw) {
+        frames.push({ choices: [{ delta: { tool_calls: [{ index, function: { arguments: call.arguments } }] } }] });
+        return;
+      }
       const args = argumentText(call.arguments);
       const middle = Math.ceil(args.length / 2);
-      frames.push({ choices: [{ delta: { tool_calls: [{ index, id: `call_${index}`, type: 'function', function: { name: call.name, arguments: '' } }] } }] });
       frames.push({ choices: [{ delta: { tool_calls: [{ index, function: { arguments: args.slice(0, middle) } }] } }] });
       frames.push({ choices: [{ delta: { tool_calls: [{ index, function: { arguments: args.slice(middle) } }] } }] });
     });
   }
   frames.push({
-    choices: [{ delta: {}, finish_reason: typeof reply === 'string' ? 'stop' : 'tool_calls' }],
+    choices: [{ delta: {}, finish_reason: typeof reply === 'string' ? 'stop' : reply.finish ?? 'tool_calls' }],
     usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }
   });
   const encoded = [...frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`), 'data: [DONE]\n\n']

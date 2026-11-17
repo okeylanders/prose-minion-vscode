@@ -127,6 +127,15 @@ describe('the Workshop\'s native tool-call translator', () => {
     expect(translate(name, args)).toEqual({ kind: 'untranslatable', fault });
   });
 
+  it('refuses a call the provider boundary marked, before reading it as one with no arguments (PR #267 F-01)', () => {
+    // Sound and empty, the same call is an unfiltered catalog; marked, it is nothing.
+    expect(decode('transcript.catalog', '')).toEqual({ kind: 'request', request: { capability: 'transcript.catalog' } });
+    expect(translateWorkshopNativeToolCall({ name: 'transcript.catalog', arguments: '', fault: 'malformed' }))
+      .toEqual({ kind: 'untranslatable', fault: 'malformed-call' });
+    expect(translateWorkshopNativeToolCall({ name: 'transcript.catalog', arguments: '', fault: 'oversized' }))
+      .toEqual({ kind: 'untranslatable', fault: 'oversized-call' });
+  });
+
   it('lists only fields the codec knows, with the codec\'s own repeat and attribute rules', () => {
     for (const operation of WORKSHOP_CAPABILITY_OPERATIONS) {
       for (const [field, rule] of Object.entries(WORKSHOP_NATIVE_CALL_FIELDS[operation])) {

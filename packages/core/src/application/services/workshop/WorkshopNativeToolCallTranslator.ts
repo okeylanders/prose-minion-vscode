@@ -19,7 +19,7 @@
  * - a value is text or a number; a repeating field also takes a list; a
  *   field with attributes also takes an object of its text and attributes.
  * Anything else is untranslatable, by a fault kind that carries no model
- * text. The envelope is built by escaping every value, never by joining raw
+ * text. So is a call the provider boundary marked with a `fault`. The envelope is built by escaping every value, never by joining raw
  * model text, so no argument can add a field, close the call or open another.
  */
 
@@ -92,6 +92,8 @@ export const WORKSHOP_NATIVE_CALL_FIELDS: Readonly<Record<
 
 /** Why a native call has no XML form. Log-safe: never the name, an argument or a value. */
 export type WorkshopNativeToolCallFault =
+  | 'malformed-call'
+  | 'oversized-call'
   | 'unknown-name'
   | 'unparseable-arguments'
   | 'arguments-not-object'
@@ -225,8 +227,13 @@ const render = (operation: WorkshopCapabilityOperation, elements: readonly Eleme
 
 /** One native call as the XML request it stands for, or why it has none. */
 export function translateWorkshopNativeToolCall(
-  call: { readonly name: string; readonly arguments: string }
+  call: { readonly name: string; readonly arguments: string; readonly fault?: 'malformed' | 'oversized' }
 ): WorkshopNativeToolCallTranslation {
+  // A call the provider boundary marked is refused before anything is read: its empty
+  // arguments stand for a payload that was dropped, never for "no arguments" (PR #267 F-01).
+  if (call.fault) {
+    return { kind: 'untranslatable', fault: call.fault === 'oversized' ? 'oversized-call' : 'malformed-call' };
+  }
   const operation = workshopNativeCallOperation(call.name);
   if (!operation) {
     return { kind: 'untranslatable', fault: 'unknown-name' };

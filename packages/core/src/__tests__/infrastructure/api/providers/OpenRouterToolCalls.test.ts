@@ -108,14 +108,62 @@ describe('function calls at the provider boundary', () => {
     expect(readOpenRouterToolCalls({ function: { name: 'x' } })).toBeUndefined();
   });
 
-  it('bounds how many calls and how much argument text one reply may carry', () => {
+  it('bounds how many calls one reply may carry', () => {
     const assembler = new OpenRouterToolCallAssembler();
     for (let index = 0; index < OPENROUTER_TOOL_CALL_LIMITS.calls + 5; index += 1) {
       assembler.add([{ index, function: { name: `tool_${index}`, arguments: '{}' } }]);
     }
-    assembler.add([{ index: 0, function: { arguments: 'x'.repeat(OPENROUTER_TOOL_CALL_LIMITS.argumentCharacters + 50) } }]);
-    const calls = assembler.finish()!;
-    expect(calls).toHaveLength(OPENROUTER_TOOL_CALL_LIMITS.calls);
-    expect(calls[0].arguments).toHaveLength(OPENROUTER_TOOL_CALL_LIMITS.argumentCharacters);
+    expect(assembler.finish()).toHaveLength(OPENROUTER_TOOL_CALL_LIMITS.calls);
+  });
+
+  describe('a call the wire did not carry soundly is marked, never mended (PR #267 F-01)', () => {
+    const limit = OPENROUTER_TOOL_CALL_LIMITS.argumentCharacters;
+    const call = (fn: unknown) => [{ id: 'a', type: 'function', function: fn }];
+    const faulted = (fault: string, name = 'transcript.catalog') => [{ id: 'a', name, arguments: '', fault }];
+
+    it.each<[string, unknown]>([
+      ['an object', { match: '6.11' }],
+      ['a list', ['6.11']],
+      ['a number', 611],
+      ['a boolean', false]
+    ])('marks whole arguments sent as %s malformed, and keeps none of them', (_label, args) => {
+      expect(readOpenRouterToolCalls(call({ name: 'transcript.catalog', arguments: args }))).toEqual(faulted('malformed'));
+    });
+
+    it('marks arguments over the bound oversized instead of keeping a prefix that could parse', () => {
+      const invalidButValidWhenCut = '{}'.padEnd(limit, ' ') + 'invalid tail';
+      expect(() => JSON.parse(invalidButValidWhenCut)).toThrow();
+      expect(readOpenRouterToolCalls(call({ name: 'transcript.catalog', arguments: invalidButValidWhenCut }))).toEqual(faulted('oversized'));
+      // Exactly at the bound is kept whole.
+      const atBound = '{}'.padEnd(limit, ' ');
+      expect(readOpenRouterToolCalls(call({ name: 'transcript.catalog', arguments: atBound }))).toEqual([{ id: 'a', name: 'transcript.catalog', arguments: atBound }]);
+    });
+
+    it('lets a later fragment invalidate the whole pending call, whatever came before or comes after', () => {
+      const fragments = (...later: unknown[]) => {
+        const assembler = new OpenRouterToolCallAssembler();
+        assembler.add([{ index: 0, id: 'a', type: 'function', function: { name: 'transcript.catalog', arguments: '{}' } }]);
+        later.forEach((fn) => assembler.add([{ index: 0, function: fn }]));
+        return assembler.finish();
+      };
+      expect(fragments({ arguments: { match: '6.11' } }, { arguments: ' ' })).toEqual(faulted('malformed'));
+      expect(fragments({ arguments: ' '.repeat(limit) }, { arguments: ' ' })).toEqual(faulted('oversized'));
+      expect(fragments('not a function object')).toEqual(faulted('malformed'));
+      // Sound fragments still stitch, and absent or null fields are simply not there.
+      expect(fragments({ arguments: null }, {}, { name: null, arguments: ' ' })).toEqual([{ id: 'a', name: 'transcript.catalog', arguments: '{} ' }]);
+    });
+
+    it('marks a name that is not text, or too long to keep whole, and never a cut name', () => {
+      expect(readOpenRouterToolCalls(call({ name: 42, arguments: '{}' }))).toEqual(faulted('malformed', ''));
+      // Cut at the bound and trimmed, this name would read as a known operation.
+      const padded = 'transcript.catalog'.padEnd(OPENROUTER_TOOL_CALL_LIMITS.nameCharacters, ' ') + 'x';
+      expect(readOpenRouterToolCalls(call({ name: padded, arguments: '{}' }))).toEqual(faulted('oversized', ''));
+    });
+
+    it('keeps genuinely empty arguments apart: they are a sound call with none', () => {
+      for (const fn of [{ name: 'transcript.catalog' }, { name: 'transcript.catalog', arguments: '' }, { name: 'transcript.catalog', arguments: null }]) {
+        expect(readOpenRouterToolCalls(call(fn))).toEqual([{ id: 'a', name: 'transcript.catalog', arguments: '' }]);
+      }
+    });
   });
 });
