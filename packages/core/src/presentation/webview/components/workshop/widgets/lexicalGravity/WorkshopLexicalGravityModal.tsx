@@ -593,6 +593,9 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                     <div className="pm-ws-lg-cap">
                       model drafted {candidates.length} takes — {rebuildTarget ? 'select exactly one to replace the legacy lens' : 'select one or more to add'}
                     </div>
+                    {lensCandidates?.note && (
+                      <div className="pm-ws-lg-cap" role="status">{lensCandidates.note}</div>
+                    )}
                     {candidates.map((candidate) => (
                       <button
                         type="button"

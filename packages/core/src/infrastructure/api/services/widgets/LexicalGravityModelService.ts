@@ -31,6 +31,8 @@ import {
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 import { exactObject, isRecord } from '@/application/services/workshop/persistedValidation';
 import { fillOmittedEmpties } from '@services/widgets/widgetReplyOmissions';
+import { parseLexicalGravityLensJson } from '@services/widgets/LexicalGravityLensReplyJson';
+import { parseModelJson } from '@parsers/ModelJsonRepair';
 import {
   lexicalGravityLensSlug
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
@@ -40,6 +42,20 @@ const LENSES_START = '===LEXICAL_GRAVITY_LENSES_V2===';
 const LENSES_END = '===END_LEXICAL_GRAVITY_LENSES_V2===';
 const PREVIEW_START = '===LEXICAL_GRAVITY_PREVIEW_V2===';
 const PREVIEW_END = '===END_LEXICAL_GRAVITY_PREVIEW_V2===';
+
+/** What a lens build gives back: the lenses that can be used, and a host line when some could not. */
+export interface LexicalGravityLensBuild {
+  candidates: WorkshopLexicalGravityLensCandidate[];
+  /** Said beside the lenses when fewer than the ask can be used; host words, never the reply's. */
+  note?: string;
+}
+
+/** The host's line for a build that kept fewer lenses than it asked for. */
+export function lexicalGravityLeftOutNote(kept: number, asked: number): string | undefined {
+  const leftOut = asked - kept;
+  if (leftOut <= 0) {return undefined;}
+  return `${leftOut} of ${asked} lenses couldn't be used.`;
+}
 
 export class LexicalGravityModelService {
   constructor(
@@ -53,7 +69,7 @@ export class LexicalGravityModelService {
   async buildLenses(
     query: string,
     options: { signal?: AbortSignal } = {}
-  ): Promise<WorkshopLexicalGravityLensCandidate[]> {
+  ): Promise<LexicalGravityLensBuild> {
     const normalizedQuery = query.trim();
     if (!normalizedQuery || normalizedQuery.length > BUDGET.lexicalBuildQueryCharacters) {
       throw new Error(`Lens subject must be 1–${BUDGET.lexicalBuildQueryCharacters} characters`);
@@ -144,7 +160,9 @@ export class LexicalGravityModelService {
         PREVIEW_END,
         BUDGET.lexicalPreviewResponseCharacters
       );
-      const parsed = this.readPreviewReply(JSON.parse(framed));
+      const json = parseModelJson(framed);
+      this.logRepairs('Preview', json.repairs);
+      const parsed = this.readPreviewReply(json.value);
       const validated = validateLexicalGravityDraft({
         ...draft,
         preview: { ...parsed, configKey, sourceText }
@@ -183,7 +201,7 @@ export class LexicalGravityModelService {
     content: string,
     query: string,
     result: ExecutionResult
-  ): Promise<WorkshopLexicalGravityLensCandidate[]> {
+  ): Promise<LexicalGravityLensBuild> {
     try {
       if (result.finishReason === 'length') {
         throw new Error('response reached its output limit');
@@ -194,8 +212,10 @@ export class LexicalGravityModelService {
         LENSES_END,
         BUDGET.lexicalBuildResponseCharacters
       );
+      const json = parseLexicalGravityLensJson(framed);
+      this.logRepairs('Lens', json.repairs, json.reclosedAttentions);
       const parsed = exactObject(
-        JSON.parse(framed),
+        json.value,
         'Lexical Gravity lens response',
         ['version', 'candidates']
       );
@@ -208,28 +228,7 @@ export class LexicalGravityModelService {
           'and candidates'
         );
       }
-      if (parsed.candidates.length !== BUDGET.lexicalBuildCandidates) {
-        throw new Error(`expected exactly ${BUDGET.lexicalBuildCandidates} candidates`);
-      }
-      const slug = lexicalGravityLensSlug(query);
-      const variants = new Set<string>();
-      return parsed.candidates.map((raw, index) => {
-        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-          throw new Error(`candidate ${index + 1} is not an object`);
-        }
-        const lens = validateLexicalGravityLens({
-          ...(raw as Record<string, unknown>),
-          version: LEXICAL_GRAVITY_LENS_VERSION,
-          slug,
-          source: 'project'
-        });
-        const variant = lens.variant?.trim().toLocaleLowerCase('en-US');
-        if (!variant || variants.has(variant)) {
-          throw new Error('each candidate needs a distinct variant');
-        }
-        variants.add(variant);
-        return { candidateId: `${slug}-${index + 1}`, lens };
-      });
+      return this.usableCandidates(parsed.candidates, lexicalGravityLensSlug(query));
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       this.outputChannel?.appendLine(
@@ -258,6 +257,70 @@ export class LexicalGravityModelService {
         + 'Try building the lens again.'
       );
     }
+  }
+
+  /**
+   * The lenses of a reply that can be used, in the reply's order. The ask is
+   * `lexicalBuildCandidates` lenses; it is not a gate. A lens that fails its
+   * validation, or repeats a variant already kept, is left out and counted,
+   * and the others are kept, with the host's line saying how many of the ask
+   * could not be used. Lenses past the ask are not read. A reply with no
+   * usable lens is rejected, for the first fault found.
+   */
+  private usableCandidates(replies: readonly unknown[], slug: string): LexicalGravityLensBuild {
+    const asked = BUDGET.lexicalBuildCandidates;
+    const candidates: WorkshopLexicalGravityLensCandidate[] = [];
+    const variants = new Set<string>();
+    let invalid = 0;
+    let repeated = 0;
+    let firstFault: Error | undefined;
+    replies.slice(0, asked).forEach((raw, index) => {
+      try {
+        if (!isRecord(raw)) {
+          throw new Error(`candidate ${index + 1} is not an object`);
+        }
+        const lens = validateLexicalGravityLens({
+          ...raw,
+          version: LEXICAL_GRAVITY_LENS_VERSION,
+          slug,
+          source: 'project'
+        });
+        const variant = lens.variant?.trim().toLocaleLowerCase('en-US');
+        if (!variant || variants.has(variant)) {
+          repeated += 1;
+          firstFault ??= new Error('each candidate needs a distinct variant');
+          return;
+        }
+        variants.add(variant);
+        // A lens keeps the place the reply gave it, so its id says which take it was.
+        candidates.push({ candidateId: `${slug}-${index + 1}`, lens });
+      } catch (error) {
+        invalid += 1;
+        firstFault ??= error instanceof Error ? error : new Error(String(error));
+      }
+    });
+    if (candidates.length === 0) {
+      throw firstFault ?? new Error(`expected exactly ${asked} candidates`);
+    }
+    const note = lexicalGravityLeftOutNote(candidates.length, asked);
+    if (note !== undefined || replies.length !== asked) {
+      this.outputChannel?.appendLine(
+        `[LexicalGravityModelService] Lens reply held ${replies.length} lens(es) for an ask of ${asked}; `
+        + `kept ${candidates.length} (invalid ${invalid}, variant missing or repeated ${repeated}, `
+        + `past the ask ${Math.max(0, replies.length - asked)}).`
+      );
+    }
+    return note !== undefined ? { candidates, note } : { candidates };
+  }
+
+  /** Each repair made to a reply's JSON, by its kind: never the reply's text. */
+  private logRepairs(reply: 'Lens' | 'Preview', repairs: readonly string[], reclosedAttentions = 0): void {
+    if (repairs.length === 0) {return;}
+    this.outputChannel?.appendLine(
+      `[LexicalGravityModelService] ${reply} reply JSON repaired: ${repairs.join(', ')}`
+      + (reclosedAttentions > 0 ? ` (${reclosedAttentions} attention object(s) closed again)` : '')
+      + '.'
+    );
   }
 
   /**

@@ -271,6 +271,36 @@ describe('WorkshopLexicalGravityModal', () => {
     );
   });
 
+  it('says the host\'s note beside the lenses a build kept, and nothing when all could be used', () => {
+    const { props, view } = renderModal();
+    fireEvent.change(screen.getByPlaceholderText('Try “code vs. prose”…'), { target: { value: 'croquet' } });
+    fireEvent.click(screen.getByRole('button', { name: /Build lens/ }));
+    const token = (props.onBuildLens as jest.Mock).mock.calls[0][0] as string;
+    const kept = ['The Queen', 'The Hedgehog'].map((variant, index) => ({
+      candidateId: `croquet-${index + 1}`,
+      lens: {
+        ...builtInLexicalGravityLenses()[0],
+        slug: 'croquet',
+        name: 'Croquet',
+        source: 'project' as const,
+        variant
+      }
+    }));
+
+    view.rerender(<WorkshopLexicalGravityModal
+      {...props}
+      lensCandidates={{ token, query: 'croquet', ok: true, candidates: kept, note: "1 of 3 lenses couldn't be used." }}
+    />);
+    expect(screen.getByRole('status').textContent).toBe("1 of 3 lenses couldn't be used.");
+    expect(screen.getByRole('button', { name: /Croquet — The Hedgehog/ })).toBeTruthy();
+
+    view.rerender(<WorkshopLexicalGravityModal
+      {...props}
+      lensCandidates={{ token, query: 'croquet', ok: true, candidates: kept }}
+    />);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
   it('sends one or more selected generated lenses through one project-save boundary', () => {
     const { props, view } = renderModal();
     const input = screen.getByPlaceholderText('Try “code vs. prose”…');

@@ -197,7 +197,7 @@ export class WorkshopLexicalGravityHandler {
             'non-built-in canonical name before rebuilding.'
           );
         }
-        const candidates = await this.model.buildLenses(query, { signal: controller.signal });
+        const { candidates, note } = await this.model.buildLenses(query, { signal: controller.signal });
         if (controller.signal.aborted) {return;}
         this.latestBuild = {
           token,
@@ -206,7 +206,7 @@ export class WorkshopLexicalGravityHandler {
           savedCandidateIds: new Set(),
           rebuildResourceName
         };
-        await this.postCandidates({ token, query, ok: true, candidates });
+        await this.postCandidates({ token, query, ok: true, candidates, ...(note ? { note } : {}) });
         return;
       }
       const slug = lexicalGravityLensSlug(query);
@@ -217,10 +217,10 @@ export class WorkshopLexicalGravityHandler {
         await this.postCandidates({ token, query, ok: true, existingLens });
         return;
       }
-      const candidates = await this.model.buildLenses(query, { signal: controller.signal });
+      const { candidates, note } = await this.model.buildLenses(query, { signal: controller.signal });
       if (controller.signal.aborted) {return;}
       this.latestBuild = { token, query, candidates, savedCandidateIds: new Set() };
-      await this.postCandidates({ token, query, ok: true, candidates });
+      await this.postCandidates({ token, query, ok: true, candidates, ...(note ? { note } : {}) });
     } catch (error) {
       if (controller.signal.aborted) {return;}
       await this.postCandidates({ token, query, ok: false, error: this.errorMessage(error) });
