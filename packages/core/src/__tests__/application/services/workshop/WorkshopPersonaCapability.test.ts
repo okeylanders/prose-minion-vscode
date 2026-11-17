@@ -10,6 +10,7 @@ import type { WorkshopTranscriptRecallPort } from '@/application/services/worksh
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 /** These tests exercise other families; session recall has its own suite. */
 const unusedRecall: WorkshopTranscriptRecallPort = {
@@ -100,7 +101,8 @@ describe('WorkshopPersonaCapability', () => {
     session,
     log,
     unusedRecall,
-    offProjectMemory
+    offProjectMemory,
+    noProjectLenses
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),
@@ -127,7 +129,8 @@ describe('WorkshopPersonaCapability', () => {
       openSession,
       log,
       unusedRecall,
-      offProjectMemory
+      offProjectMemory,
+      noProjectLenses
     ).create({
       requestId: 'open-request',
       excerptVersion: openSession.getExcerptVersion(),

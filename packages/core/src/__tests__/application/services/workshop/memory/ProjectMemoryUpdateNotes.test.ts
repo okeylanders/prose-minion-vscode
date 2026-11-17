@@ -17,6 +17,7 @@ import { parseWorkshopPersistedSession } from '@/application/services/workshop/W
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { projectMemoryDeliveredView } from '@/application/services/workshop/memory/ProjectMemoryDeliveredView';
 import { libraryHost, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 /** A host room over `host`'s folder; `say` runs one writer message to the host and returns what the model received. */
 function room(host: ReturnType<typeof libraryHost>) {
@@ -40,7 +41,8 @@ function room(host: ReturnType<typeof libraryHost>) {
       session,
       { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
       {} as WorkshopTranscriptRecallPort,
-      host.library
+      host.library,
+      noProjectLenses
     ).create({
       requestId,
       excerptVersion: 0,

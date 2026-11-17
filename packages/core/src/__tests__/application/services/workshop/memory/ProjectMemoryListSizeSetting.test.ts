@@ -31,6 +31,7 @@ import { readProjectMemoryListSize, projectMemoryListSizeChoice } from '@/applic
 import { workshopMemoryTabView } from '@hooks/domain/workshop/memory/workshopMemoryTabView';
 import { workshopMemoryTabInputOf } from '@hooks/domain/workshop/memory/workshopMemoryListingInputs';
 import { allLines, libraryHost, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const SENTINEL_TITLE = 'SENTINEL-TITLE-7c1d';
 const id = (index: number): string => `mem-${index.toString(16).padStart(6, '0')}`;
@@ -58,7 +59,8 @@ function capabilityOver(host: ReturnType<typeof libraryHost>, session: WorkshopS
     session,
     host.log,
     {} as WorkshopTranscriptRecallPort,
-    host.library
+    host.library,
+    noProjectLenses
   ).create({
     requestId,
     excerptVersion: 0,

@@ -32,6 +32,7 @@ import {
   SOURCE_SESSION
 } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const call = (operation: string, body = ''): string =>
   `<prose-minion-tool-call name="${operation}">${body}</prose-minion-tool-call>`;
@@ -51,7 +52,8 @@ function wire(host: ReturnType<typeof libraryHost>) {
     session,
     log,
     {} as WorkshopTranscriptRecallPort,
-    host.library
+    host.library,
+    noProjectLenses
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),

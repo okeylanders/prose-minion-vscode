@@ -663,7 +663,10 @@ describe('app-shell provider assembly', () => {
       /liveRoom: new WorkshopLiveRoomBookmarkReader\(\s*workshopSessionService,\s*\(\) => workshopSessionTimeService\.exportState\(\)\.timezone\s*\)\s*\}\s*$/
     );
     expect(source.match(/new WorkshopLiveRoomBookmarkReader\(/g)).toHaveLength(1);
-    expect(factoryArgs).toMatch(/workshopTranscriptRecallService,\s*projectMemoryLibrary\s*$/);
+    // The lens repository is the factory's last port: the personas' read-only `lens.*` calls (ADR 2026-11-17 D16).
+    expect(factoryArgs).toMatch(/workshopTranscriptRecallService,\s*projectMemoryLibrary,\s*lexicalGravityLensRepository\s*$/);
+    expect(source.match(/new LexicalGravityLensRepository\(/g)).toHaveLength(1);
+    expect(at('new LexicalGravityLensRepository(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
     expect(at('new WorkshopSessionStore(')).toBeLessThan(at('new WorkshopSessionPersistenceCoordinator('));
     expect(at('new WorkshopSessionPersistenceCoordinator(')).toBeLessThan(at('new WorkshopTranscriptRecallService('));
     expect(at('new WorkshopTranscriptRecallService(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
