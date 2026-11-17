@@ -37,6 +37,27 @@ export const WORKSHOP_FILE_EDIT_REWRITE_ON_PROSE = 'rewrite-on-prose';
 import type { FileEditIdentity, FileEditStaging, FileEditStagingResult } from '@/domain/models/FileEditStaging';
 import type { WorkshopFileEditDraft } from '@/utils/workshopFileEditProtocol';
 import { extractWorkshopReplyControls, hasWorkshopFileEditText } from '@/utils/workshopReplyControls';
+import type { WorkshopReplyFileEditRejection } from '@/utils/workshopReplyFileEdits';
+
+/** A frame staged to a document an earlier frame of the reply already took: one card per file per reply. */
+export const WORKSHOP_FILE_EDIT_DUPLICATE_IDENTITY = 'duplicate-identity';
+/** A frame that decoded and was never staged: the run was stopped first, or its context was another reply's. */
+export const WORKSHOP_FILE_EDIT_NOT_STAGED = 'not-staged';
+
+/**
+ * One file-edit frame that ended with no card at all, and the step that
+ * dropped it (ADR 2026-11-17 D13): the extractor as the reply was read,
+ * staging, or completion. A frame staging refused is a card, never a drop.
+ */
+export type WorkshopFileEditProposalDrop =
+  | { readonly at: 'read'; readonly reason: WorkshopReplyFileEditRejection }
+  | { readonly at: 'staging'; readonly reason: typeof WORKSHOP_FILE_EDIT_DUPLICATE_IDENTITY }
+  | { readonly at: 'completion'; readonly reason: typeof WORKSHOP_FILE_EDIT_NOT_STAGED };
+
+/** The log line for one dropped frame: a reason, never text. */
+export function workshopFileEditProposalDropLog(drop: WorkshopFileEditProposalDrop): string {
+  return `File edit proposal dropped (reason=${drop.reason})`;
+}
 
 /** What completion needs to know about a reply's file edits, resolved before it runs. */
 export interface WorkshopReplyFileEditContext {
@@ -46,6 +67,8 @@ export interface WorkshopReplyFileEditContext {
   readonly proposals: readonly WorkshopFileEditProposal[];
   /** One log line per frame. */
   readonly logs: readonly string[];
+  /** One entry per frame with no card, typed; `proposals` and this together count every frame the reply held. */
+  readonly drops: readonly WorkshopFileEditProposalDrop[];
 }
 
 export interface WorkshopReplyFileEditInput {
@@ -74,9 +97,16 @@ export async function resolveWorkshopReplyFileEdits(
   if (!control) {
     return undefined;
   }
-  const logs = control.rejections.map((reason) => `File edit proposal dropped (reason=${reason})`);
+  const drops: WorkshopFileEditProposalDrop[] = control.rejections.map((reason) => ({ at: 'read', reason }));
+  const logs = drops.map(workshopFileEditProposalDropLog);
   if (control.proposals.length === 0 || input.signal?.aborted) {
-    return { reply: input.reply, proposals: [], logs };
+    // Stopped before anything was staged: each decoded frame is counted, and none is a card.
+    return {
+      reply: input.reply,
+      proposals: [],
+      logs,
+      drops: [...drops, ...control.proposals.map((): WorkshopFileEditProposalDrop => ({ at: 'completion', reason: WORKSHOP_FILE_EDIT_NOT_STAGED }))]
+    };
   }
   const staging = input.staging;
   const results = await Promise.all(control.proposals.map((draft) => stageOne(staging, draft, input.boundExcerpt)));
@@ -86,7 +116,9 @@ export async function resolveWorkshopReplyFileEdits(
     const result = results[index];
     if (result.kind === 'staged') {
       if (identities.has(result.target.documentUri)) {
-        logs.push('File edit proposal dropped (reason=duplicate-identity)');
+        const drop: WorkshopFileEditProposalDrop = { at: 'staging', reason: WORKSHOP_FILE_EDIT_DUPLICATE_IDENTITY };
+        drops.push(drop);
+        logs.push(workshopFileEditProposalDropLog(drop));
         return;
       }
       identities.add(result.target.documentUri);
@@ -97,7 +129,7 @@ export async function resolveWorkshopReplyFileEdits(
       : `File edit proposal refused at staging (reason=${proposal.reason}; operations=${operationKinds(draft)})`);
     proposals.push(proposal);
   });
-  return { reply: input.reply, proposals, logs };
+  return { reply: input.reply, proposals, logs, drops };
 }
 
 async function stageOne(staging: FileEditStaging, draft: WorkshopFileEditDraft, boundExcerpt?: FileEditIdentity): Promise<StagedOrRefused> {

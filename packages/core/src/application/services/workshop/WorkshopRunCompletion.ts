@@ -45,6 +45,11 @@ import {
   workshopTrailersOnlyReplyLine
 } from '@/utils/workshopReplyControls';
 import { reportWorkshopEditOffers, settleWorkshopReplyEditOffers, type WorkshopReplyEditsContext } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
+import {
+  WORKSHOP_FILE_EDIT_NOT_STAGED,
+  workshopFileEditProposalDropLog,
+  type WorkshopFileEditProposalDrop
+} from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
 import { workshopReplyReactionDropLog } from '@/utils/workshopReplyReaction';
 import {
   settleWorkshopMemoryProposals,
@@ -214,13 +219,10 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     webResearchAttached: result.webResearchAttached === true,
     autoSavesInRoom: input.memoryAutoSavesInRoom ?? (() => countWorkshopRoomAutoSaves(session.readRoomLedger()))
   });
-  const fileEdits: Pick<WorkshopReplyEditsContext, 'proposals' | 'logs' | 'editOffers'> = input.fileEdits?.reply === result.content
+  // A context resolved for another reply stages nothing here: every frame is the typed `not-staged`.
+  const fileEdits: Pick<WorkshopReplyEditsContext, 'proposals' | 'logs' | 'drops' | 'editOffers'> = input.fileEdits?.reply === result.content
     ? input.fileEdits
-    : {
-      proposals: [],
-      logs: (controls.fileEdits ? [...controls.fileEdits.proposals, ...controls.fileEdits.rejections] : [])
-        .map(() => 'File edit proposal dropped (reason=not-staged)')
-    };
+    : notStagedFileEdits(controls.fileEdits ? controls.fileEdits.proposals.length + controls.fileEdits.rejections.length : 0);
   for (const line of [...memory.logs, ...fileEdits.logs, ...(controls.reaction?.rejections ?? []).map(workshopReplyReactionDropLog)]) {
     input.log(`${line} (${label})`);
   }
@@ -350,6 +352,11 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     input.memoryAutoSave?.(turn, memory.autoSave);
   }
   return turn;
+}
+
+function notStagedFileEdits(frames: number): Pick<WorkshopReplyEditsContext, 'proposals' | 'logs' | 'drops'> {
+  const drops = Array.from({ length: frames }, (): WorkshopFileEditProposalDrop => ({ at: 'completion', reason: WORKSHOP_FILE_EDIT_NOT_STAGED }));
+  return { proposals: [], logs: drops.map(workshopFileEditProposalDropLog), drops };
 }
 
 function announceCommittedRun(
