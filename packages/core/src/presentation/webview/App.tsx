@@ -237,6 +237,8 @@ export const App: React.FC = () => {
 
       <main className="app-main" style={{ position: 'relative' }}>
         <SettingsOverlay
+          supportCopyStatus={settings.supportCopyStatus}
+          onCopySupportEmail={settings.copySupportEmail}
           visible={settings.showSettings}
           onClose={settings.close}
           vscode={vscode}

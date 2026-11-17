@@ -50,6 +50,7 @@ const ENTRY_STYLE_IMPORTS = [
   './styles/fulltab/modal.css',
   './styles/fulltab/savedItems.css',
   './styles/fulltab/savedBrowser.css',
+  './styles/settingsSupport.css',
   './index.css'
 ] as const;
 

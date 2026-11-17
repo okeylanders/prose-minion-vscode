@@ -9,9 +9,12 @@ import * as React from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
 import { MessageType, ModelScope, ModelOption } from '@shared/types';
-import { SettingsDataMessage, ApiKeyStatusMessage, ModelDataMessage, TokenUsage } from '@messages';
+import { SettingsDataMessage, ApiKeyStatusMessage, ModelDataMessage, TokenUsage, CopyResultSuccessMessage, ErrorMessage } from '@messages';
+
+export type SupportCopyStatus = 'idle' | 'copying' | 'copied' | 'error';
 
 export interface SettingsState {
+  supportCopyStatus: SupportCopyStatus;
   showSettings: boolean;
   settingsData: Record<string, string | number | boolean>;
   tokenTotals: TokenUsage;
@@ -23,6 +26,9 @@ export interface SettingsState {
 }
 
 export interface SettingsActions {
+  copySupportEmail: (email: string) => void;
+  handleSupportCopySuccess: (message: CopyResultSuccessMessage) => void;
+  handleSupportCopyError: (message: ErrorMessage) => void;
   open: () => void;
   close: () => void;
   toggle: () => void;
@@ -92,6 +98,7 @@ export const useSettings = (): UseSettingsReturn => {
   }>();
 
   const [showSettings, setShowSettings] = React.useState<boolean>(false);
+  const [supportCopyStatus, setSupportCopyStatus] = React.useState<SupportCopyStatus>('idle');
   const [settingsData, setSettingsData] = React.useState<Record<string, string | number | boolean>>(
     persisted?.settingsData ?? {}
   );
@@ -109,6 +116,7 @@ export const useSettings = (): UseSettingsReturn => {
   );
 
   const open = React.useCallback(() => {
+    setSupportCopyStatus('idle');
     setShowSettings(true);
     vscode.postMessage({
       type: MessageType.REQUEST_SETTINGS_DATA,
@@ -137,10 +145,12 @@ export const useSettings = (): UseSettingsReturn => {
   }, [vscode]);
 
   const close = React.useCallback(() => {
+    setSupportCopyStatus('idle');
     setShowSettings(false);
   }, []);
 
   const toggle = React.useCallback(() => {
+    setSupportCopyStatus('idle');
     setShowSettings((prev) => {
       const next = !prev;
       if (next) {
@@ -172,6 +182,28 @@ export const useSettings = (): UseSettingsReturn => {
       return next;
     });
   }, [vscode]);
+
+  const copySupportEmail = React.useCallback((email: string) => {
+    setSupportCopyStatus('copying');
+    vscode.postMessage({
+      type: MessageType.COPY_RESULT,
+      source: 'webview.settings.support',
+      payload: { toolName: 'support_email', content: email },
+      timestamp: Date.now()
+    });
+  }, [vscode]);
+
+  const handleSupportCopySuccess = React.useCallback((message: CopyResultSuccessMessage) => {
+    if (message.payload.toolName === 'support_email') {
+      setSupportCopyStatus(current => current === 'copying' ? 'copied' : current);
+    }
+  }, []);
+
+  const handleSupportCopyError = React.useCallback((message: ErrorMessage) => {
+    if (message.payload.source === 'file_ops.copy') {
+      setSupportCopyStatus(current => current === 'copying' ? 'error' : current);
+    }
+  }, []);
 
   const handleSettingsData = React.useCallback((message: SettingsDataMessage) => {
     // SETTINGS_DATA only contains general settings (not model options/selections)
@@ -325,6 +357,7 @@ export const useSettings = (): UseSettingsReturn => {
 
   return {
     // State
+    supportCopyStatus,
     showSettings,
     settingsData,
     tokenTotals,
@@ -335,6 +368,9 @@ export const useSettings = (): UseSettingsReturn => {
     modelSelections,
 
     // Actions
+    copySupportEmail,
+    handleSupportCopySuccess,
+    handleSupportCopyError,
     open,
     close,
     toggle,

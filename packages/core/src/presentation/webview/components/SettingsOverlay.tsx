@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { ModelScope, ModelOption, MessageType, FollowingModelScope, MODEL_SCOPE_FOLLOWS, isFollowingModelScope } from '@shared/types';
 import { modelFollowLabel } from '@components/shared/modelFollowing';
+import { SettingsSupport } from '@components/SettingsSupport';
+import type { SupportCopyStatus } from '@hooks/domain/useSettings';
 import { UseModelsSettingsReturn } from '../hooks/domain/useModelsSettings';
 import { UseTokensSettingsReturn } from '../hooks/domain/useTokensSettings';
 import { UseTokenTrackingReturn } from '../hooks/domain/useTokenTracking';
@@ -11,6 +13,8 @@ import { RECOMMENDED_MODELS, CATEGORY_MODELS } from '@providers/OpenRouterModels
 import { VSCodeAPI } from '../types/vscode';
 
 type SettingsOverlayProps = {
+  supportCopyStatus: SupportCopyStatus;
+  onCopySupportEmail: (email: string) => void;
   visible: boolean;
   onClose: () => void;
   vscode: VSCodeAPI;
@@ -46,6 +50,8 @@ type SettingsOverlayProps = {
 };
 
 export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
+  supportCopyStatus,
+  onCopySupportEmail,
   visible,
   onClose,
   vscode,
@@ -127,6 +133,8 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
         </div>
         <button onClick={onClose} title="Close" className="settings-button">Close</button>
       </div>
+
+      <SettingsSupport onCopyEmail={onCopySupportEmail} copyStatus={supportCopyStatus} />
 
       {/* Connection */}
       <section className="settings-section">
