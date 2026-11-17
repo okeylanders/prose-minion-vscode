@@ -8,7 +8,8 @@
  */
 
 import * as React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   WorkshopMemorySettingsPanel,
   type WorkshopMemorySettingsPanelProps
@@ -26,6 +27,9 @@ function renderPanel(overrides: Partial<WorkshopMemorySettingsPanelProps> = {}) 
     conflicts: [],
     disabled: false,
     onSelectMode: jest.fn(),
+    suggestions: 'sparingly',
+    suggestionsDisabled: false,
+    onSelectSuggestions: jest.fn(),
     onOpenManager: jest.fn(),
     onOpenFolder: jest.fn(),
     explainerOpen: true,
@@ -89,6 +93,44 @@ describe('WorkshopMemorySettingsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open memory folder' }));
     expect(props.onOpenManager).toHaveBeenCalledTimes(1);
     expect(props.onOpenFolder).toHaveBeenCalledTimes(1);
+  });
+
+  it('Suggest notes: three choices beside the mode, the host\'s level selected, and Save and tell me\'s limit under them', () => {
+    renderPanel({ suggestions: 'readily' });
+    const group = screen.getByRole('group', { name: 'Suggest notes' });
+    const choices = within(group).getAllByRole('button');
+    expect(choices.map((choice) => choice.querySelector('.pm-ws-behavior-card-name')?.textContent)).toEqual(['Sparingly', 'Readily', 'Aggressively']);
+    expect(choices.map((choice) => choice.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
+    expect(screen.getByText(`With Save and tell me, at most ${PROMPT_BUDGETS.workshopProjectMemory.autoSavesPerRoom} notes are saved in one conversation; the rest wait as cards.`)).not.toBeNull();
+    expect(screen.getByText('This choice is saved as soon as you make it, for all your projects.')).not.toBeNull();
+    expect(screen.queryByText('Personas suggest no notes while project memory is off.')).toBeNull();
+    // It sits after the mode cards and before the start-of-conversation row.
+    const rules = [...document.querySelectorAll('.pm-ws-tools-modal-rule')].map((rule) => rule.textContent);
+    expect(rules).toEqual(['Project memory', 'Suggest notes', 'At the start of each conversation', 'Your memories']);
+  });
+
+  it('Suggest notes saves at once: a choice calls out with its level, and the mode draft is untouched', () => {
+    const { props } = renderPanel({ suggestions: 'sparingly' });
+    fireEvent.click(card('Aggressively'));
+    expect(props.onSelectSuggestions).toHaveBeenCalledTimes(1);
+    expect(props.onSelectSuggestions).toHaveBeenCalledWith('aggressively');
+    expect(props.onSelectMode).not.toHaveBeenCalled();
+    // The level already held asks for nothing.
+    fireEvent.click(card('Sparingly'));
+    expect(props.onSelectSuggestions).toHaveBeenCalledTimes(1);
+  });
+
+  it('Suggest notes locks while a response runs, without locking the mode cards; memory off is said, never a lock', () => {
+    const { props } = renderPanel({ suggestionsDisabled: true });
+    expect((card('Readily') as HTMLButtonElement).disabled).toBe(true);
+    expect((card('Off') as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(card('Readily'));
+    expect(props.onSelectSuggestions).not.toHaveBeenCalled();
+
+    cleanup();
+    renderPanel({ mode: 'off' });
+    expect(screen.getByText('Personas suggest no notes while project memory is off.')).not.toBeNull();
+    expect((card('Readily') as HTMLButtonElement).disabled).toBe(false);
   });
 
   it('an apply in flight locks the cards, not the buttons', () => {

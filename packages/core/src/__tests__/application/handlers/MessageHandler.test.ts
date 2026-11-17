@@ -201,6 +201,7 @@ function createTestAssembly(): TestAssembly {
       getWriterProfile: jest.fn().mockReturnValue(DEFAULT_WORKSHOP_WRITER_PROFILE),
       getWebResearch: jest.fn().mockReturnValue({ enabled: false }),
       getProjectMemoryMode: jest.fn().mockReturnValue('off'),
+      memorySuggestionLevel: jest.fn().mockReturnValue('sparingly'),
       getFileEditsMode: jest.fn().mockReturnValue('ask')
     },
     workshopSessionTimeService: new WorkshopSessionTimeService({
@@ -663,7 +664,9 @@ describe('MessageHandler assembly', () => {
   it.each([
     'proseMinion.workshop.conversationBehavior',
     'proseMinion.workshop.writerProfile',
-    'proseMinion.workshop.webResearch'
+    'proseMinion.workshop.webResearch',
+    // How readily personas suggest notes (Round Two item B): the proposals prompt is the level's.
+    'proseMinion.workshop.memory.suggestions'
   ])('pulls external Workshop setting %s into the live room', async (changedKey) => {
     const assembly = createTestAssembly();
     const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));

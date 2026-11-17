@@ -70,6 +70,8 @@ async function setup() {
     onApply: result.current.setConversationSettings,
     onOpenMemoryManager: jest.fn(),
     onOpenMemoryFolder: jest.fn(),
+    memorySuggestions: 'sparingly',
+    onSelectMemorySuggestions: jest.fn(),
     pinnedContext: pinnedContextPanelPropsStub(),
     memoryExplainerOpen: true,
     onToggleMemoryExplainer: jest.fn(),

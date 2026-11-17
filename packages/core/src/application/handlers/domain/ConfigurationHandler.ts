@@ -51,6 +51,10 @@ import {
 } from '@providers/OpenRouterModels';
 import { getModelParameterMetadata } from '@providers/ModelParameterMetadata';
 import { WORD_SEARCH_DEFAULTS } from '@shared/constants/wordSearchDefaults';
+import {
+  isWorkshopMemorySuggestionLevel,
+  WORKSHOP_MEMORY_SUGGESTIONS_SETTING
+} from '@shared/constants/workshopMemorySuggestions';
 
 export class ConfigurationHandler {
   // Track webview-originated config updates to prevent echo-back
@@ -226,7 +230,11 @@ export class ConfigurationHandler {
         'wordSearch.',
         'contextPaths.'
       ];
-      const allowedTop = new Set(['includeCraftGuides', 'temperature', 'maxTokens', 'applyContextWindowTrimming', 'claudeCacheTtl']);
+      const allowedTop = new Set([
+        'includeCraftGuides', 'temperature', 'maxTokens', 'applyContextWindowTrimming', 'claudeCacheTtl',
+        // The Workshop Memory tab's "Suggest notes" row: a closed list, checked below.
+        WORKSHOP_MEMORY_SUGGESTIONS_SETTING.key
+      ]);
 
       const isAllowed = allowedTop.has(key) || allowedPrefixes.some(prefix => key.startsWith(prefix));
       if (!isAllowed) {
@@ -234,6 +242,10 @@ export class ConfigurationHandler {
       }
       if (key === 'claudeCacheTtl' && value !== '5m' && value !== '1h') {
         throw new Error('Claude cache duration must be 5m or 1h');
+      }
+
+      if (key === WORKSHOP_MEMORY_SUGGESTIONS_SETTING.key && !isWorkshopMemorySuggestionLevel(value)) {
+        throw new Error('Suggest notes must be sparingly, readily or aggressively');
       }
 
       // Mark this update as webview-originated to prevent echo-back

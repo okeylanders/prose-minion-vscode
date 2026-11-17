@@ -467,6 +467,51 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     expect(taught()).toEqual([false, false, true, true, false, false]);
   });
 
+  it('builds host and guest prompts with the bound suggestion level\'s proposals file, Sparingly until bound (Round Two item B)', async () => {
+    const engine = makeEngine('memory-suggestions');
+    const loadPrompts = jest.fn().mockResolvedValue('prompt');
+    const service = build(managerFor(() => engine), loadPrompts);
+    await flush();
+    const behavior = {
+      interactionMode: 'conversational' as const,
+      expressionLevel: 'subtle' as const,
+      relationalDepth: 'attuned' as const,
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
+    };
+    const targets = [
+      { conversationId: 'host-conv', personaId: 'jill' as const, role: 'host' as const },
+      { conversationId: 'guest-conv', personaId: 'margot' as const, role: 'guest' as const }
+    ];
+    const proposals = () => loadPrompts.mock.calls.splice(0).map(([paths]: [string[]]) =>
+      paths.filter((each) => each.includes('project-memory-proposals') || each.includes('memory-suggestions/')));
+    const sparingly = ['workshop-personas/project-memory-proposals.md'];
+
+    let memory = true;
+    service.setWorkshopProjectMemoryGrammar(() => memory);
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    expect(proposals()).toEqual([sparingly, sparingly]);
+
+    let level: 'sparingly' | 'readily' | 'aggressively' = 'readily';
+    service.setWorkshopMemorySuggestionLevel(() => level);
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    expect(proposals()).toEqual([['workshop-personas/memory-suggestions/readily.md'], ['workshop-personas/memory-suggestions/readily.md']]);
+
+    level = 'aggressively';
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    expect(proposals()).toEqual([['workshop-personas/memory-suggestions/aggressively.md'], ['workshop-personas/memory-suggestions/aggressively.md']]);
+
+    level = 'sparingly';
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    expect(proposals()).toEqual([sparingly, sparingly]);
+
+    // Off stays off: no level teaches the trailer while memory is closed.
+    memory = false;
+    level = 'aggressively';
+    await service.replaceWorkshopConversationSettings(targets, behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    expect(proposals()).toEqual([[], []]);
+  });
+
   it('does not touch the engine when any replacement prompt fails to assemble', async () => {
     const engine = makeEngine('replacement-failure');
     const loadPrompts = jest.fn()

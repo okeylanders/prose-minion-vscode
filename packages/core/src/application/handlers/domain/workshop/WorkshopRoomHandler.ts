@@ -139,6 +139,7 @@ import {
   workshopMessageAttachmentFrameContext,
   workshopMessageAttachmentKind
 } from '@shared/constants/workshopThreadArtifactKinds';
+import { WORKSHOP_SEND_WITHOUT_ATTACHMENT_REFUSALS } from '@handlers/domain/workshop/WorkshopMessageAttachmentReads';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import type {
@@ -575,6 +576,10 @@ export class WorkshopRoomHandler {
       return;
     }
 
+    if (!(await this.pickedAttachmentsStaged(text))) {
+      return;
+    }
+
     // Selected Text (ADR 2026-11-14 D14): the pill's snapshot is staged here, in the send's own mutation,
     // after its room is checked; otherwise the whole send is refused and the draft goes back to the composer.
     const selection = this.sliceComposition.stageSelectedTextForSend(message.payload);
@@ -601,6 +606,38 @@ export class WorkshopRoomHandler {
       includeMessageAttachments: true,
       restoreDraftOnRollback: true
     });
+  }
+
+  /**
+   * A send waits for the files picked for it (PR #271 F-01). A pick (`@`,
+   * the project picker, the system picker) is read on the host, and its pill
+   * is staged only when the read lands; the send may arrive first. It waits
+   * here, before it stages or collects anything. A file that was not staged,
+   * a read past the deadline, or a room replaced meanwhile refuses the whole
+   * send and gives the draft back: a message never goes without its file
+   * unseen.
+   */
+  private async pickedAttachmentsStaged(text: string): Promise<boolean> {
+    if (!this.sliceComposition.messageAttachmentReadsPending()) {
+      return true;
+    }
+    const room = this.session.readRoomRevision();
+    this.sendStatus('Attaching the picked file before sending…');
+    const reads = await this.sliceComposition.settleMessageAttachmentReads();
+    const fault = room !== this.session.readRoomRevision() || this.sessionPersistence.isSessionOperationPending()
+      ? 'room-changed'
+      : reads.kind === 'staged' ? undefined : reads.kind;
+    if (!fault) {
+      return true;
+    }
+    this.logLine(`Send refused whole: a picked attachment was not staged (${fault})`);
+    this.sendError(
+      'workshop.send_message',
+      WORKSHOP_SEND_WITHOUT_ATTACHMENT_REFUSALS[fault],
+      reads.kind === 'refused' ? reads.reason : undefined
+    );
+    this.postComposerDraftRestored(text);
+    return false;
   }
 
   async handleSelectPersona(message: WorkshopSelectPersonaMessage): Promise<void> {
@@ -1713,6 +1750,7 @@ export class WorkshopRoomHandler {
         writerProfile: this.conversationSettingsService.getWriterProfile(),
         webResearch: this.conversationSettingsService.getWebResearch(),
         projectMemory: this.conversationSettingsService.getProjectMemoryMode(),
+        memorySuggestions: this.conversationSettingsService.memorySuggestionLevel(),
         fileEdits: this.conversationSettingsService.getFileEditsMode(),
         persistence: {
           available: availability.available,

@@ -718,6 +718,22 @@
           "default": "ask",
           "markdownDescription": "Workshop persona file edits. A persona can propose an edit to a project file (a note, a chapter, or the excerpt's document). Nothing in a file changes until you press Apply on its card."
         },
+        "proseMinion.workshop.memory.suggestions": {
+          "type": "string",
+          "scope": "application",
+          "enum": [
+            "sparingly",
+            "readily",
+            "aggressively"
+          ],
+          "enumDescriptions": [
+            "Personas suggest a note only for what will matter later. Most replies suggest none.",
+            "Personas suggest a note whenever something worth keeping comes up, small things included.",
+            "Personas suggest a note for anything a later conversation might want. Expect many."
+          ],
+          "default": "sparingly",
+          "markdownDescription": "How readily Workshop personas suggest project notes. One choice for every project. It changes how often a persona suggests a note, never what a note may hold. It applies while Workshop Project Memory (`#proseMinion.workshop.projectMemory#`) is on; when that saves notes without asking, at most 5 are saved in one conversation and the rest wait as cards."
+        },
         "proseMinion.workshop.memory.helperDrafts": {
           "type": "boolean",
           "default": true,

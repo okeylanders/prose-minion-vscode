@@ -11,6 +11,7 @@ import type { ModelScope } from '../configuration';
 import type { WorkshopBookmarkSummary } from './bookmarks';
 import type { WorkshopReactionDelivery, WorkshopTurnReactionSummary } from './reactions';
 import type { WorkshopReactionId } from '@shared/constants/workshopReactions';
+import type { WorkshopMemorySuggestionLevel } from '@shared/constants/workshopMemorySuggestions';
 import type {
   WorkshopAnalysisInputProvenance,
   WorkshopCapabilityArtifactDetails,
@@ -988,6 +989,11 @@ export interface WorkshopSessionStatePayload {
    * webview reads Off (fail closed).
    */
   projectMemory?: WorkshopProjectMemoryMode;
+  /**
+   * How readily personas suggest notes (`proseMinion.workshop.memory.suggestions`), global like the mode. The
+   * host always sends it; absent or unknown reads Sparingly, the default.
+   */
+  memorySuggestions?: WorkshopMemorySuggestionLevel;
   /**
    * The global suggested-file-edits mode (ADR 2026-11-05 D11), outside the
    * session aggregate. The host always sends it; absent reads as the

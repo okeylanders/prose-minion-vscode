@@ -60,6 +60,7 @@ import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinn
 import { useWorkshopPinnedPills } from '@hooks/domain/workshop/controllers/useWorkshopPinnedPills';
 import { workshopPinnedContextPanelProps } from '@components/workshop/settings/WorkshopPinnedContextSettingsPanel';
 import { workshopMemoryTabInputOf } from '@hooks/domain/workshop/memory/workshopMemoryListingInputs';
+import { useWorkshopMemorySuggestions } from '@hooks/domain/workshop/memory/useWorkshopMemorySuggestions';
 import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
 import { workshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
 import { WorkshopMemorySheet } from '@components/workshop/memory/WorkshopMemorySheet';
@@ -285,6 +286,7 @@ export const WorkshopApp: React.FC = () => {
   // A long room's earlier turns (ADR 2026-11-17 D5): `threadTurns` is what the thread draws.
   const earlierTurns = useWorkshopEarlierTurns({ windowTurns: workshop.turns, hiddenTurns: workshop.hiddenTurns });
   const memoryManager = useWorkshopMemoryManager();
+  const memorySuggestions = useWorkshopMemorySuggestions();
   const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
   const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, room: workshop.roomRevision, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });
   // Whether the Memory tab's explainer shows is this viewer's choice too.
@@ -486,6 +488,7 @@ export const WorkshopApp: React.FC = () => {
     bookmarkBrowser,
     projectMemory,
     memoryManager,
+    memorySuggestions,
     pinnedContext,
     fileEdits,
     editOffers,
@@ -1543,6 +1546,11 @@ export const WorkshopApp: React.FC = () => {
             onIncludeSelectedTextChange: selectedText.setIncludeSelectedText,
             livePill: selectedText.livePill
           }}
+          mentions={{
+            catalog: workshop.contextCatalog,
+            onRequestCatalog: workshop.requestContextCatalog,
+            onAttach: workshop.attachMessageResources
+          }}
           onSend={(text) => workshop.sendMessage(text, selectedText.sendSelection)}
           onCancel={workshop.cancelRun}
           onOpenContext={openContext}
@@ -1825,6 +1833,8 @@ export const WorkshopApp: React.FC = () => {
         projectMemoryMode={workshop.projectMemoryMode}
         fileEditsMode={workshop.fileEditsMode}
         memory={workshopMemoryTabInputOf(memoryManager.listing)}
+        memorySuggestions={memorySuggestions.level}
+        onSelectMemorySuggestions={memorySuggestions.setLevel}
         memoryFolder={memoryManager.folder}
         pinnedContext={workshopPinnedContextPanelProps(pinnedContext, workshop)}
         memoryExplainerOpen={memoryExplainer.explainerOpen}
