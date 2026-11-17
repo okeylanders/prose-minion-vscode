@@ -63,8 +63,9 @@ export const SettingsSupport: React.FC<SettingsSupportProps> = ({ onCopyEmail, c
         <span className="pm-community-book" />
       </span>
     </a>
-    <a className="pm-support-site" href="https://proseminion.app" target="_blank" rel="noopener noreferrer">
-      proseminion.app
-    </a>
+    <p className="pm-support-site">
+      Also visit us at:{' '}
+      <a href="https://proseminion.app" target="_blank" rel="noopener noreferrer">https://proseminion.app</a>
+    </p>
   </section>
 );

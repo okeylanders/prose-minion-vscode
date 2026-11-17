@@ -86,7 +86,7 @@
 }
 
 .pm-support-email:focus-visible,
-.pm-support-site:focus-visible,
+.pm-support-site a:focus-visible,
 .pm-support-copy:focus-visible,
 .pm-community-card:focus-visible {
   outline: 2px solid var(--vscode-focusBorder, var(--pm-accent-hi));
@@ -94,18 +94,22 @@
 }
 
 .pm-support-site {
-  display: block;
-  width: fit-content;
-  margin: 6px 0 -4px auto;
-  padding: 4px 0;
+  margin: 6px 0 -4px;
+  text-align: right;
   color: var(--pm-muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.pm-support-site a {
+  display: inline-block;
+  padding: 4px 0;
+  color: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.pm-support-site:hover { color: var(--pm-text); }
+.pm-support-site a:hover { color: var(--pm-text); }
 
 .pm-community-eyebrow,
 .pm-community-title,
