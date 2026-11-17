@@ -926,6 +926,56 @@ export interface WorkshopComposerDraftRestoredMessage extends MessageEnvelope<{
   type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED;
 }
 
+/**
+ * Ask for the turns directly before a turn (ADR 2026-11-17 D1): a long
+ * room's turns outside the snapshot window, a page at a time. The webview
+ * names a turn, never a position: `beforeTurnId` is the oldest turn it holds.
+ * `requestId` is minted by the webview and echoed, so only the answer still
+ * waited for is taken.
+ */
+export interface WorkshopRequestEarlierTurnsPayload {
+  requestId: string;
+  /** The room on screen (the snapshot's `roomRevision`); the host answers only from it. */
+  roomRevision: number;
+  beforeTurnId: string;
+}
+
+export interface WorkshopRequestEarlierTurnsMessage
+  extends MessageEnvelope<WorkshopRequestEarlierTurnsPayload> {
+  type: MessageType.WORKSHOP_REQUEST_EARLIER_TURNS;
+}
+
+/**
+ * One page of earlier turns, with what the snapshot carries for its window's
+ * turns (D2): the host's Rewind verdicts, the reaction summaries and the
+ * widget-config summaries. The webview merges them and derives nothing.
+ */
+export interface WorkshopEarlierTurnsPage {
+  /** Oldest first, ending directly before `beforeTurnId`. */
+  turns: WorkshopTurn[];
+  turnRewindability: Record<string, WorkshopTurnRewindability>;
+  reactions: WorkshopTurnReactionSummary[];
+  widgetConfigs: WorkshopWidgetConfigSummary[];
+  /** The model-slice seed for the page's first reply: `modelsBeforeWindow`, for the turns before the page. */
+  modelsBefore?: Partial<Record<ModelScope, string>>;
+  /** Turns older than the page's first; zero at the room's first turn. */
+  remainingBefore: number;
+}
+
+export interface WorkshopEarlierTurnsPayload {
+  requestId: string;
+  /** The room the request named, echoed. */
+  roomRevision: number;
+  beforeTurnId: string;
+  /** Absent when the host refused; then `error` says why, naming no content. */
+  page?: WorkshopEarlierTurnsPage;
+  error?: string;
+}
+
+export interface WorkshopEarlierTurnsMessage extends MessageEnvelope<WorkshopEarlierTurnsPayload> {
+  type: MessageType.WORKSHOP_EARLIER_TURNS;
+}
+
 export interface WorkshopSessionStatePayload {
   session: WorkshopSessionSnapshot;
   /** Global writer setting, deliberately outside the serializable session aggregate. */

@@ -166,6 +166,20 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.memoryManager.noteSessionState).toHaveBeenCalledWith(message);
   });
 
+  it('gives a long room\'s earlier turns their page and each session snapshot, and takes neither without them (ADR 2026-11-17 D5)', () => {
+    const earlierTurns = { handleEarlierTurns: jest.fn(), handleSessionState: jest.fn() };
+    const routes = buildWorkshopAppMessageRoutes({ ...makeDeps(), earlierTurns });
+    const page = { type: MessageType.WORKSHOP_EARLIER_TURNS, payload: {} } as never;
+    const state = { type: MessageType.WORKSHOP_SESSION_STATE, payload: {} } as never;
+
+    routes[MessageType.WORKSHOP_EARLIER_TURNS]!(page);
+    routes[MessageType.WORKSHOP_SESSION_STATE]!(state);
+
+    expect(earlierTurns.handleEarlierTurns).toHaveBeenCalledWith(page);
+    expect(earlierTurns.handleSessionState).toHaveBeenCalledWith(state);
+    expect(buildWorkshopAppMessageRoutes(makeDeps())[MessageType.WORKSHOP_EARLIER_TURNS]).toBeUndefined();
+  });
+
   it('routes a turn preview to the bookmarks transport, and to the memory sheet a bookmark outside the window opened (Bookmark Recall Slice 3)', () => {
     const deps = makeDeps();
     const message = { type: MessageType.WORKSHOP_TURN_PREVIEW, payload: {} } as never;

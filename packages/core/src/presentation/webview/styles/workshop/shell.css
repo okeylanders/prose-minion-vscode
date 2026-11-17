@@ -1498,6 +1498,43 @@
   border-radius: var(--pm-r-pill);
   padding: 5px 12px;
 }
+/* "Show earlier turns" (ADR 2026-11-17 D7): the notice, with its control. */
+[data-pm-surface="workshop"] .pm-ws-thread-earlier {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  border-radius: 12px;
+  /* The page lands above the writer's place; the thread moves the scroll itself. */
+  overflow-anchor: none;
+}
+[data-pm-surface="workshop"] .pm-ws-thread-earlier-button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--pm-text);
+  background: transparent;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-pill);
+  padding: 3px 10px;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-thread-earlier-button:not([aria-disabled="true"]):hover {
+  border-color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-thread-earlier-button:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-thread-earlier-button[aria-disabled="true"] {
+  cursor: default;
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-thread-earlier-error {
+  flex-basis: 100%;
+  text-align: center;
+  color: var(--pm-amber);
+}
 
 /* Tools modal. The shared modal chrome (backdrop, box, head, close) and the
    project picker live in styles/fulltab/modal.css. */

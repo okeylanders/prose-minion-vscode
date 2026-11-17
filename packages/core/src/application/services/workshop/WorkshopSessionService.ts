@@ -34,6 +34,7 @@ import {
   WorkshopStandingDirectiveSummary,
   WorkshopToolId,
   WorkshopTodoItem,
+  WorkshopEarlierTurnsPage,
   WorkshopTurn,
   WorkshopTurnModel,
   WorkshopTurnArtifact,
@@ -173,6 +174,12 @@ import {
   workshopMemoryReceiptContent
 } from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
 import { workshopModelsBeforeWindow } from '@shared/workshop/workshopModelSlices';
+import {
+  workshopEarlierTurnsTake,
+  workshopThreadTurnParts,
+  type WorkshopEarlierTurnsBounds,
+  type WorkshopThreadTurnParts
+} from '@/application/services/workshop/session/WorkshopThreadTurnParts';
 import {
   attachmentSnapshot,
   cloneAnalysisInputs,
@@ -2664,6 +2671,50 @@ export class WorkshopSessionService {
     });
   }
 
+  /**
+   * What a thread bubble needs beside its turn, for the snapshot window and
+   * for a page of earlier turns alike (ADR 2026-11-17 D2). Neither computes
+   * these another way.
+   */
+  private threadTurnParts(
+    turns: WorkshopTurn[],
+    alsoWidgetConfigIds: readonly string[] = []
+  ): WorkshopThreadTurnParts {
+    return workshopThreadTurnParts(turns, {
+      rewindability: (turnIds) => this.rewindPolicy().bubbleRewindability(turnIds),
+      reactions: (threadTurns) => this.reactionLedger.summaries(
+        threadTurns,
+        (turnId) => this.turnLedger.find(turnId),
+        this.participantRoster.snapshot().host.personaId
+      ),
+      widgetConfigs: (configIds) => this.widgetConfigLedger.summariesFor(configIds)
+    }, alsoWidgetConfigIds);
+  }
+
+  /**
+   * The turns directly before `beforeTurnId`, within `bounds`, with the same
+   * per-turn parts the snapshot gives its window (ADR 2026-11-17 D1–D3).
+   * A read: it changes nothing. Undefined when the room holds no such turn.
+   */
+  readEarlierTurns(
+    beforeTurnId: string,
+    bounds: WorkshopEarlierTurnsBounds = PROMPT_BUDGETS.workshopThread
+  ): WorkshopEarlierTurnsPage | undefined {
+    const page = this.turnLedger.before(beforeTurnId, workshopEarlierTurnsTake(bounds));
+    if (!page) {
+      return undefined;
+    }
+    const modelsBefore = workshopModelsBeforeWindow(
+      this.turnLedger.project((turn) => turn),
+      page.remainingBefore
+    );
+    return {
+      ...this.threadTurnParts(page.turns),
+      ...(modelsBefore ? { modelsBefore } : {}),
+      remainingBefore: page.remainingBefore
+    };
+  }
+
   getSnapshot(): WorkshopSessionSnapshot {
     const windowed = this.turnLedger.window(WORKSHOP_SNAPSHOT_TURN_WINDOW);
     // The model-slice seed (ADR 2026-11-03 D8): undefined unless the window truncates.
@@ -2672,11 +2723,10 @@ export class WorkshopSessionService {
       this.turnLedger.count() - windowed.length
     );
     const passageState = this.passageScope.exportState();
-    const visibleWidgetConfigIds = new Set(
-      [
-        ...windowed.map((turn) => turn.widgetCommit?.widgetConfigId),
-        ...this.standingDirectiveLedger.list().map((directive) => directive.widgetConfigId)
-      ].filter((id): id is string => id !== undefined)
+    // One projection for the window and for an earlier page (ADR 2026-11-17 D2).
+    const thread = this.threadTurnParts(
+      windowed,
+      this.standingDirectiveLedger.list().map((directive) => directive.widgetConfigId)
     );
     return {
       excerpt: passageState.excerpt ? excerptSnapshot(passageState.excerpt) : undefined,
@@ -2703,17 +2753,11 @@ export class WorkshopSessionService {
         this.turnLedger.project((turn) => turn),
         new Set(windowed.map((turn) => turn.id))
       ),
-      reactions: this.reactionLedger.summaries(
-        windowed,
-        (turnId) => this.turnLedger.find(turnId),
-        this.participantRoster.snapshot().host.personaId
-      ),
-      widgetConfigs: this.widgetConfigLedger.summariesFor(visibleWidgetConfigIds),
+      reactions: thread.reactions,
+      widgetConfigs: thread.widgetConfigs,
       standingDirectives: this.standingDirectiveSummaries(),
-      turns: windowed,
-      turnRewindability: this.rewindPolicy().bubbleRewindability(
-        windowed.map((turn) => turn.id)
-      ),
+      turns: thread.turns,
+      turnRewindability: thread.turnRewindability,
       totalTurns: this.turnLedger.count(),
       truncatedTurns: this.turnLedger.count() - windowed.length,
       ...(modelsBeforeWindow ? { modelsBeforeWindow } : {}),

@@ -72,6 +72,7 @@ import type { UseWorkshopMemoryManagerReturn } from '@hooks/domain/workshop/useW
 import type { UseWorkshopPinnedContextReturn } from '@hooks/domain/workshop/useWorkshopPinnedContext';
 import type { UseWorkshopFileEditsReturn } from '@hooks/domain/workshop/useWorkshopFileEdits';
 import type { UseWorkshopEditOffersReturn } from '@hooks/domain/workshop/useWorkshopEditOffers';
+import type { UseWorkshopEarlierTurnsReturn } from '@hooks/domain/workshop/useWorkshopEarlierTurns';
 
 export interface WorkshopAppMessageRouterDeps {
   workshopRoom: UseWorkshopRoomReturn;
@@ -97,6 +98,8 @@ export interface WorkshopAppMessageRouterDeps {
   fileEdits?: Pick<UseWorkshopFileEditsReturn, 'handleResult' | 'handlePreviewResult'>;
   /** A pressed edit offer's answer (Reply Edit Actions Slice 3); absent reads as none. */
   editOffers?: Pick<UseWorkshopEditOffersReturn, 'handleResult' | 'noteSessionState'>;
+  /** A long room's earlier turns (ADR 2026-11-17 D5); absent reads as none. */
+  earlierTurns?: Pick<UseWorkshopEarlierTurnsReturn, 'handleEarlierTurns' | 'handleSessionState'>;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -137,6 +140,7 @@ export function buildWorkshopAppMessageRoutes(
     pinnedContext,
     fileEdits,
     editOffers,
+    earlierTurns,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -166,6 +170,7 @@ export function buildWorkshopAppMessageRoutes(
       widgetHost.handleSessionState(message);
       memoryManager.noteSessionState(message);
       editOffers?.noteSessionState();
+      earlierTurns?.handleSessionState(message);
     },
     [MessageType.WORKSHOP_TURN]: (message) => {
       workshopRoom.handleTurn(message);
@@ -217,6 +222,7 @@ export function buildWorkshopAppMessageRoutes(
       [MessageType.WORKSHOP_FILE_EDIT_PREVIEW_RESULT]: fileEdits.handlePreviewResult
     } : {}),
     ...(editOffers ? { [MessageType.WORKSHOP_EDIT_OFFER_RESULT]: editOffers.handleResult } : {}),
+    ...(earlierTurns ? { [MessageType.WORKSHOP_EARLIER_TURNS]: earlierTurns.handleEarlierTurns } : {}),
     [MessageType.WORKSHOP_MEMORY_ESTIMATE_RESULT]: projectMemory.handleEstimateResult,
     [MessageType.WORKSHOP_MEMORY_DRAFT_RESULT]: projectMemory.handleMemoryDraftResult,
     [MessageType.WORKSHOP_MEMORY_DRAFTS_SETTING]: projectMemory.handleMemoryDraftsSetting,

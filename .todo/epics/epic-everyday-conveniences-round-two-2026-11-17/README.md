@@ -37,7 +37,7 @@ decisions live in this README and the ADR.
 | B | B | memory-suggestion-level | 8 | `…-memory-suggestion-level` | | After Slice 0 |
 | C | C | memory-title-index | new | `…-memory-title-index` | | After B |
 | D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | | After C |
-| A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | | After Slice 0 |
+| A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | | Built; waits for review |
 | F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | | After C |
 | H | H | prose-minion-help-reference | 20 | `…-help-reference` | | Last |
 | Close | Closing pass | | | `…-close` | | After H |
@@ -294,6 +294,7 @@ a note.** These are the ones to look at first.
 |---|---|---|---|
 | `main` at v2.14.0's close (the first epic, `epic/everyday-conveniences-close`) | 870 | 12,327 | 59 |
 | Baseline (`main` at `3f99e733`) | not run | | |
+| A, part 2 (`…-earlier-turns`, on the epic branch at `649b9f24`) | 884 | 12,572 | 59 |
 
 Each slice adds its row.
 

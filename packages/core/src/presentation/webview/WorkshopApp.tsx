@@ -54,6 +54,7 @@ import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemo
 import { useWorkshopFileEdits } from '@hooks/domain/workshop/useWorkshopFileEdits';
 import { useWorkshopFileEditControls } from '@components/workshop/fileEdits/useWorkshopFileEditControls';
 import { useWorkshopEditOffers } from '@hooks/domain/workshop/useWorkshopEditOffers';
+import { useWorkshopEarlierTurns } from '@hooks/domain/workshop/useWorkshopEarlierTurns';
 import type { WorkshopEditOfferControls } from '@components/workshop/editOffers/WorkshopEditOfferChip';
 import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinnedContext';
 import { useWorkshopPinnedPills } from '@hooks/domain/workshop/controllers/useWorkshopPinnedPills';
@@ -281,6 +282,8 @@ export const WorkshopApp: React.FC = () => {
   const projectMemory = useWorkshopProjectMemory({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
   const fileEdits = useWorkshopFileEdits({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
   const editOffers = useWorkshopEditOffers({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
+  // A long room's earlier turns (ADR 2026-11-17 D5): `threadTurns` is what the thread draws.
+  const earlierTurns = useWorkshopEarlierTurns({ windowTurns: workshop.turns, hiddenTurns: workshop.hiddenTurns });
   const memoryManager = useWorkshopMemoryManager();
   const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
   const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, room: workshop.roomRevision, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });
@@ -486,6 +489,7 @@ export const WorkshopApp: React.FC = () => {
     pinnedContext,
     fileEdits,
     editOffers,
+    earlierTurns,
     workshopRoom: workshop,
     workshopSessions,
     widgetHost,
@@ -588,7 +592,7 @@ export const WorkshopApp: React.FC = () => {
   const toolsEnabled = hasExcerpt && !roomMutationLocked && workshop.sessionReady;
   const composerToolsEnabled = !roomMutationLocked && workshop.sessionReady;
   // Project memory in the thread (ADR 2026-11-04 D6, D7); the host's snapshot is the truth.
-  const autoSavedMemories = React.useMemo(() => workshopAutoSavedMemories(workshop.turns), [workshop.turns]);
+  const autoSavedMemories = React.useMemo(() => workshopAutoSavedMemories(earlierTurns.threadTurns), [earlierTurns.threadTurns]);
   const memoryControls = React.useMemo<WorkshopTurnMemoryControls>(() => ({
     disabled: roomMutationLocked,
     autoSaved: autoSavedMemories,
@@ -939,19 +943,19 @@ export const WorkshopApp: React.FC = () => {
     return earlier;
   }, [workshop.turns, workshop.turnRewindability]);
   const requestRewind = React.useCallback((turn: WorkshopTurn) => {
-    const index = workshop.turns.findIndex((candidate) => candidate.id === turn.id);
+    const index = earlierTurns.threadTurns.findIndex((candidate) => candidate.id === turn.id);
     if (index < 0) {
       return;
     }
-    // The window is always the ledger's newest turns, so every removed turn
+    // The thread is always the ledger's newest turns, so every removed turn
     // is on screen: everything after a reply, and a writer message itself.
-    const removedCount = workshop.turns.length - index - (turn.role === 'user' ? 0 : 1);
+    const removedCount = earlierTurns.threadTurns.length - index - (turn.role === 'user' ? 0 : 1);
     sessionSurfaces.requestRewind(
       turn.id,
       removedCount,
       turn.role === 'user' ? (turn.widgetCommit ? 'widget' : 'composer') : undefined
     );
-  }, [sessionSurfaces.requestRewind, workshop.turns]);
+  }, [sessionSurfaces.requestRewind, earlierTurns.threadTurns]);
   const requestBranch = React.useCallback(
     (turn: WorkshopTurn) => sessionSurfaces.requestBranch(turn.id),
     [sessionSurfaces.requestBranch]
@@ -1374,7 +1378,8 @@ export const WorkshopApp: React.FC = () => {
 
           <WorkshopThread
             hiddenTurns={workshop.hiddenTurns}
-            turns={workshop.turns}
+            earlier={earlierTurns.thread}
+            turns={earlierTurns.threadTurns}
             toolSidecars={workshop.toolSidecars}
             todos={workshop.todos}
             currentExcerptVersion={workshop.excerpt?.version ?? 0}
