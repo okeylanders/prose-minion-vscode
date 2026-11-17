@@ -32,9 +32,9 @@ decisions live in this README and the ADR.
 |---|---|---|---|---|---|---|
 | 0 | Spec | (this README and the ADR) | | `epic/everyday-conveniences-round-two-spec` | #269 | Merged |
 | A1 | A, part 1 | thread-earlier-turns | 22 | `…-earlier-turns-notice` | #268 | Merged |
-| E | E | lexical-gravity-reads-json-without-repair | 13 | #270 | Merged |
-| G | G | composer-at-mentions | 14 | #271 | Merged |
-| B | B | memory-suggestion-level | 8 | #272 | Merged |
+| E | E | lexical-gravity-reads-json-without-repair | 13 | `…-lexical-gravity-json` | #270 | Merged |
+| G | G | composer-at-mentions | 14 | `…-at-mentions` | #271 | Merged |
+| B | B | memory-suggestion-level | 8 | `…-memory-suggestion-level` | #272 | Merged |
 | C | C | memory-title-index | new | `…-memory-title-index` | | After B |
 | D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | | After C |
 | A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | | Built; waits for review |
