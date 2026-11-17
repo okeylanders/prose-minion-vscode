@@ -166,6 +166,9 @@ export const WORKSHOP_TURN_ARTIFACTS = [
   'memory_catalog',
   'memory_search',
   'memory_read',
+  // ADR 2026-11-17 D16: forward-only, as `transcript_bookmarks` was.
+  'lens_catalog',
+  'lens_read',
   'excerpt_revision',
   'context_change',
   'standing_directive_change',

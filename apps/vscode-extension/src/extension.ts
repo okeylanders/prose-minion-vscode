@@ -420,6 +420,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   assistantToolService.setWorkshopMemorySuggestionLevel(() => workshopConversationSettingsService.memorySuggestionLevel());
   // Its writes (Slice 3) are owed until they settle; deactivation drains them.
   projectMemoryLibraryForShutdown = projectMemoryLibrary;
+  // The project's Lexical Gravity lenses: one repository, for the widget's
+  // routes and for the personas' read-only `lens.*` calls (ADR 2026-11-17 D16).
+  const lexicalGravityLensRepository = new LexicalGravityLensRepository(
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel
+  );
   // Persona capabilities are minted per turn by this factory, after the
   // store, the coordinator, and the recall and memory services built from them.
   const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
@@ -429,7 +436,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopSessionService,
     outputChannel,
     workshopTranscriptRecallService,
-    projectMemoryLibrary
+    projectMemoryLibrary,
+    lexicalGravityLensRepository
   );
   const workshopToolSidePass = new RunWorkshopToolSidePass(
     assistantToolService,
@@ -493,11 +501,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     resourceLoader.getPromptLoader(),
     rejectedModelResponseRecovery,
     rejectedModelResponseRecoveryPresenter,
-    outputChannel
-  );
-  const lexicalGravityLensRepository = new LexicalGravityLensRepository(
-    platform.fileSystem,
-    platform.workspace,
     outputChannel
   );
 

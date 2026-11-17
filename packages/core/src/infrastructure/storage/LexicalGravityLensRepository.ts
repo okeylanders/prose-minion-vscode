@@ -46,6 +46,16 @@ export interface LexicalGravityLibraryAvailability {
   displayPath: string;
 }
 
+/**
+ * The library as a reader that must name no file sees it: the lenses that
+ * read, and how many files did not. Never a filename, a slug of a file that
+ * did not read, or a parse error.
+ */
+export interface LexicalGravityReadableLenses {
+  lenses: WorkshopLexicalGravityLens[];
+  unreadableFiles: number;
+}
+
 export interface LexicalGravityLensCatalog {
   lenses: WorkshopLexicalGravityLens[];
   incompatibleResources: WorkshopLexicalGravityLensIncompatibility[];
@@ -76,7 +86,23 @@ export class LexicalGravityLensRepository {
     };
   }
 
+  /** The writer's view, for the Lexical Gravity modal: each file that did not read is named, here and in the log. */
   async list(): Promise<LexicalGravityLensCatalog> {
+    return this.readLibrary('named');
+  }
+
+  /**
+   * The count-only view, for a reader whose log and results may name no
+   * project file (a persona's `lens.*` calls; ADR 2026-11-17 D19, PR #277
+   * F-01). The same files are read by the same rule as `list()`; nothing
+   * about a file that did not read is logged or returned but the count.
+   */
+  async listReadable(): Promise<LexicalGravityReadableLenses> {
+    const { lenses, incompatibleResources } = await this.readLibrary('counted');
+    return { lenses, unreadableFiles: incompatibleResources.length };
+  }
+
+  private async readLibrary(skipped: 'named' | 'counted'): Promise<LexicalGravityLensCatalog> {
     const available = this.availability();
     let entries: Array<[string, FileType]>;
     try {
@@ -94,7 +120,8 @@ export class LexicalGravityLensRepository {
     const results = await Promise.all(files.map(([name]) => this.readLens(
       path.join(available.lensesDirectory, name),
       name,
-      true
+      true,
+      skipped === 'named'
     )));
     return {
       lenses: results.flatMap(({ lens }) => lens ? [lens] : []),
@@ -297,7 +324,8 @@ export class LexicalGravityLensRepository {
   private async readLens(
     filePath: string,
     displayName: string,
-    tolerateInvalid: boolean
+    tolerateInvalid: boolean,
+    logSkipped = true
   ): Promise<LexicalGravityLensReadResult> {
     let parsed: Record<string, unknown> | undefined;
     try {
@@ -338,7 +366,9 @@ export class LexicalGravityLensRepository {
       if (isMissingFileSystemPathError(error)) {return {};}
       const message = error instanceof Error ? error.message : String(error);
       if (tolerateInvalid) {
-        this.log.appendLine(`[LexicalGravityLensRepository] Skipped ${displayName}: ${message}`);
+        if (logSkipped) {
+          this.log.appendLine(`[LexicalGravityLensRepository] Skipped ${displayName}: ${message}`);
+        }
         return {
           incompatibility: {
             resourceName: displayName,

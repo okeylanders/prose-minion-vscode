@@ -35,6 +35,19 @@ import {
   workshopProjectMemoryStatusMessage,
   workshopProjectMemoryStatusTicker
 } from '@/application/services/workshop/memory/WorkshopProjectMemoryRequestCopy';
+import {
+  WorkshopLensCapability,
+  WorkshopLensLibraryPort
+} from '@/application/services/workshop/lens/WorkshopLensCapability';
+import {
+  WORKSHOP_LENS_EVIDENCE_FRAMING,
+  WORKSHOP_LENS_REJECTED_COPY,
+  workshopLensRequestLogSummary,
+  workshopLensRequestSummary,
+  workshopLensStatusMessage,
+  workshopLensStatusTicker
+} from '@/application/services/workshop/lens/WorkshopLensCopy';
+import { workshopInstalledLensOf } from '@/application/services/workshop/lens/WorkshopLensInstalled';
 import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
 import {
   workshopResourceRequestLogSummary,
@@ -140,7 +153,8 @@ export class WorkshopPersonaCapabilityFactory {
     private readonly session: WorkshopSessionService,
     private readonly outputChannel: LogSink,
     private readonly recall: WorkshopTranscriptRecallPort,
-    private readonly memory: WorkshopProjectMemoryPort
+    private readonly memory: WorkshopProjectMemoryPort,
+    private readonly lenses: WorkshopLensLibraryPort
   ) {}
 
   create(turn: WorkshopPersonaCapabilityTurn): WorkshopPersonaCapability {
@@ -152,7 +166,8 @@ export class WorkshopPersonaCapabilityFactory {
       this.outputChannel,
       turn,
       this.recall,
-      this.memory
+      this.memory,
+      this.lenses
     );
   }
 
@@ -179,6 +194,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private readonly resourceCapability: WorkshopResourceCapability;
   private readonly recallCapability: WorkshopTranscriptRecallCapability;
   private readonly memoryCapability: WorkshopProjectMemoryCapability;
+  private readonly lensCapability: WorkshopLensCapability;
 
   constructor(
     private readonly dictionaryService: DictionaryService,
@@ -188,7 +204,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
     private readonly outputChannel: LogSink,
     private readonly turn: WorkshopPersonaCapabilityTurn,
     recall: WorkshopTranscriptRecallPort,
-    memory: WorkshopProjectMemoryPort
+    memory: WorkshopProjectMemoryPort,
+    lenses: WorkshopLensLibraryPort
   ) {
     this.resourceCapability = new WorkshopResourceCapability(
       resourceProviderFactory,
@@ -197,6 +214,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     );
     this.recallCapability = new WorkshopTranscriptRecallCapability(recall, outputChannel, turn);
     this.memoryCapability = new WorkshopProjectMemoryCapability(memory, session, outputChannel, turn);
+    this.lensCapability = new WorkshopLensCapability(lenses, workshopInstalledLensOf(session), outputChannel, turn);
   }
 
   async appendContract(userMessage: string): Promise<string> {
@@ -357,6 +375,10 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.search':
       case 'memory.read':
         return [...this.memoryCapability.deliveredSources(result)];
+      case 'lens.catalog':
+      case 'lens.read':
+        // Private in v1: a lens result adds no manifest row (ADR 2026-11-17 D16).
+        return [];
       default:
         return this.assertNever(request);
     }
@@ -388,6 +410,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.search':
       case 'memory.read':
         return workshopProjectMemoryStatusMessage(request, persona);
+      case 'lens.catalog':
+      case 'lens.read':
+        return workshopLensStatusMessage(request, persona);
       default:
         return this.assertNever(request);
     }
@@ -414,6 +439,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.search':
       case 'memory.read':
         return workshopProjectMemoryStatusTicker(request);
+      case 'lens.catalog':
+      case 'lens.read':
+        return workshopLensStatusTicker(request);
       default:
         return this.assertNever(request);
     }
@@ -441,6 +469,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.search':
       case 'memory.read':
         return workshopProjectMemoryRequestLogSummary(request);
+      case 'lens.catalog':
+      case 'lens.read':
+        return workshopLensRequestLogSummary(request);
       default:
         return this.assertNever(request);
     }
@@ -571,6 +602,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
         return WORKSHOP_TRANSCRIPT_RECALL_REJECTED_COPY;
       case 'memory':
         return WORKSHOP_PROJECT_MEMORY_REJECTED_COPY;
+      case 'lens':
+        return WORKSHOP_LENS_REJECTED_COPY;
       case 'dictionary':
         return undefined;
       default: {
@@ -663,6 +696,10 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.search':
       case 'memory.read':
         return this.memoryCapability.fulfill(request);
+      case 'lens.catalog':
+      case 'lens.read':
+        // A read is fitted, by whole sections, to half the room left (ADR 2026-11-17 D18).
+        return this.lensCapability.fulfill(request, window);
       default:
         return this.assertNever(request);
     }
@@ -867,6 +904,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.search':
       case 'memory.read':
         return workshopProjectMemoryRequestSummary(request);
+      case 'lens.catalog':
+      case 'lens.read':
+        return workshopLensRequestSummary(request);
       default:
         return this.assertNever(request);
     }
@@ -943,6 +983,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
         return WORKSHOP_TRANSCRIPT_RECALL_EVIDENCE_FRAMING;
       case 'memory':
         return WORKSHOP_PROJECT_MEMORY_EVIDENCE_FRAMING;
+      case 'lens':
+        return WORKSHOP_LENS_EVIDENCE_FRAMING;
       case 'dictionary':
       case 'analysis':
         return 'This is separately attributed capability evidence. Use only what it actually contains; do not invent omitted or failed results.';

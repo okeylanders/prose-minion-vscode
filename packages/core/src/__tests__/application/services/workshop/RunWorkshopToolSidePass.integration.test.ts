@@ -41,6 +41,7 @@ import {
   createFakeShellService,
   createFakeWorkspace
 } from '../../../mocks/platform';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 describe('RunWorkshopToolSidePass — handler to agent engine', () => {
   it('uses isolated retained tool and host policies without crossing conversation identities', async () => {
@@ -128,7 +129,8 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
       session,
       output,
       {} as WorkshopTranscriptRecallPort,
-      projectMemory
+      projectMemory,
+      noProjectLenses
     );
     const settings = createFakeSettings();
     const fileSystem = createFakeFileSystem();

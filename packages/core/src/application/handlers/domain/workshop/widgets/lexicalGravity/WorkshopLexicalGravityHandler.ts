@@ -15,7 +15,8 @@ import { LexicalGravityModelService } from '@services/widgets/LexicalGravityMode
 import {
   builtInLexicalGravityLens,
   builtInLexicalGravityLenses,
-  lexicalGravityLensSlug
+  lexicalGravityLensSlug,
+  mergeLexicalGravityLibrary
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 import {
   validateLexicalGravityDraft
@@ -116,16 +117,12 @@ export class WorkshopLexicalGravityHandler {
     const builtIns = builtInLexicalGravityLenses();
     try {
       const projects = await this.repository.list();
-      const bySlug = new Map(builtIns.map((lens) => [lens.slug, lens]));
-      projects.lenses.forEach((lens) => {
-        if (!bySlug.has(lens.slug)) {bySlug.set(lens.slug, lens);}
-      });
       const message: WorkshopLexicalGravityLensesDataMessage = {
         type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA,
         source: 'extension.workshop.lexical-gravity',
         timestamp: Date.now(),
         payload: {
-          lenses: [...bySlug.values()],
+          lenses: mergeLexicalGravityLibrary(builtIns, projects.lenses),
           incompatibleResources: projects.incompatibleResources,
           storagePath: this.repository.availability().displayPath
         }

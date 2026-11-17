@@ -38,7 +38,7 @@ decisions live in this README and the ADR.
 | C | C | memory-title-index | new | `…-memory-title-index` | #274 | Merged |
 | D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | #276 | Review findings resolved; waits for re-review |
 | A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | #273 | Merged |
-| F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | | After C |
+| F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | | Built; waits for review |
 | H | H | prose-minion-help-reference | 20 | `…-help-reference` | | Last |
 | Close | Closing pass | | | `…-close` | | After H |
 
@@ -301,6 +301,7 @@ a note.** These are the ones to look at first.
 | C (`…-memory-title-index`, on B's branch) | 884 | 12,681 | 59 |
 | D (`…-memory-proposal-outcomes`, on C's branch) | 894 | 12,900 | 59 |
 | D after PR #276's review (on the epic branch with A part 2 and C merged in) | 903 | 13,024 | 59 |
+| F (`…-persona-reads-lenses`, on C's branch) | 896 | 12,874 | 59 |
 
 Each slice adds its row.
 

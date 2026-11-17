@@ -35,6 +35,7 @@ import {
   saveSentinelCorpus,
   SavedRecallRoom
 } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const TOOL_CALL_LITERAL =
   '<prose-minion-tool-call name="dictionary.lookup"><word>tide</word><context>a past reply</context>' +
@@ -65,7 +66,8 @@ function wire(room: Pick<SavedRecallRoom, 'store' | 'coordinator' | 'log'>): Wir
     session,
     log,
     recall,
-    offProjectMemory
+    offProjectMemory,
+    noProjectLenses
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),

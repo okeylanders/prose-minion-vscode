@@ -43,6 +43,7 @@ import { offProjectMemory } from '@/__tests__/application/services/workshop/memo
 import { libraryHost } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import { createFakeFileSystem, createFakeSettings, createFakeShellService, createFakeWorkspace } from '../../../../mocks/platform';
 import { seedHost } from './pinnedContextSeedHost';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const MEMORY_FRAME = '<project-memory note="n" built="2026-11-05">\n  <entry id="mem-7f3c2a" kind="canon" updated="2026-11-04">Watch: backward</entry>\n</project-memory>';
 
@@ -102,7 +103,8 @@ async function firstHostRun(seed: (session: WorkshopSessionService) => Promise<v
   };
   const emptyCatalog = { createProvider: jest.fn(async () => ({ listResources: () => [], loadResources: async () => [] })) };
   const capabilities = new WorkshopPersonaCapabilityFactory(
-    {} as DictionaryService, analysis, emptyCatalog as never, session, output, {} as WorkshopTranscriptRecallPort, projectMemory
+    {} as DictionaryService, analysis, emptyCatalog as never, session, output, {} as WorkshopTranscriptRecallPort, projectMemory,
+    noProjectLenses
   );
   const settings = createFakeSettings();
   const profile = new WorkshopWriterProfileService(settings, output);
