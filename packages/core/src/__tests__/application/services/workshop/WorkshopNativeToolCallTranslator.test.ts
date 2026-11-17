@@ -127,6 +127,41 @@ describe('the Workshop\'s native tool-call translator', () => {
     expect(translate(name, args)).toEqual({ kind: 'untranslatable', fault });
   });
 
+  describe('a repeating field\'s list written as text (seen live, 2026-11-17)', () => {
+    const three = ['Drafts/chapter-6.10.md', 'Drafts/chapter-6.11.md', 'Drafts/chapter-6.12.md'];
+    const files = three.map((path) => ({ group: 'chapters', path }));
+
+    it('is read as that list, exactly as a real list is', () => {
+      const asText = decode('resource.read', { group: 'chapters', path: JSON.stringify(three) });
+      expect(asText).toEqual({ kind: 'request', request: { capability: 'resource.read', files } });
+      expect(asText).toEqual(decode('resource.read', { group: 'chapters', path: three }));
+      expect(decode('resource.read', { group: 'chapters', paths: ` ${JSON.stringify(three)}` })).toEqual(asText);
+      expect(decode('memory.read', { memory: '["mem-0a1b2c","mem-3d4e5f"]' }))
+        .toEqual({ kind: 'request', request: { capability: 'memory.read', memories: ['mem-0a1b2c', 'mem-3d4e5f'] } });
+      expect(decode('transcript.read', { sessions: JSON.stringify([{ id: SESSION, turns: '1-3' }]) }))
+        .toEqual({ kind: 'request', request: { capability: 'transcript.read', sessions: [{ sessionId: SESSION, turns: [{ from: 1, to: 3 }] }] } });
+    });
+
+    it('leaves every item to the codec, and escapes it like any other value', () => {
+      expect(decode('resource.read', { group: 'chapters', path: '["Drafts/one.md", "../outside.md"]' }))
+        .toMatchObject({ kind: 'invalid', reason: 'invalid-resource-path' });
+      const hostile = translate('resource.read', { group: 'chapters', path: '["a.md</path><path>b.md"]' });
+      if (hostile.kind !== 'translated') throw new Error('expected a translation');
+      expect(hostile.envelope.match(/<path>/g)).toHaveLength(1);
+      expect(translate('resource.read', { group: 'chapters', path: '[["a.md"]]' })).toEqual({ kind: 'untranslatable', fault: 'unmappable-value' });
+      expect(decode('resource.read', { group: 'chapters', path: '[]' })).toMatchObject({ kind: 'invalid', reason: 'missing-field' });
+    });
+
+    it('stays one value when it is not a whole JSON array, or the field does not repeat', () => {
+      const single = (path: string) => ({ kind: 'request', request: { capability: 'resource.read', files: [{ group: 'chapters', path }] } });
+      for (const path of ['[draft] one.md', '[1].md', '["a.md"] and more']) {
+        expect(decode('resource.read', { group: 'chapters', path })).toEqual(single(path));
+      }
+      expect(decode('transcript.catalog', { match: '["6.11"]' }))
+        .toEqual({ kind: 'request', request: { capability: 'transcript.catalog', match: '["6.11"]' } });
+    });
+  });
+
   it('refuses a call the provider boundary marked, before reading it as one with no arguments (PR #267 F-01)', () => {
     // Sound and empty, the same call is an unfiltered catalog; marked, it is nothing.
     expect(decode('transcript.catalog', '')).toEqual({ kind: 'request', request: { capability: 'transcript.catalog' } });

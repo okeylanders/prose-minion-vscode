@@ -108,6 +108,22 @@ describe.each([['whole replies', false], ['streamed replies', true]])('a native 
     expect(room.sent.at(-1)!.messages.at(-1)!.content).not.toContain('not run');
   });
 
+  it('reads several sessions named as a list written as text, the shape a live model sent', async () => {
+    const other = '0a1b2c3d-0000-4000-8000-000000000612';
+    await room.saveSession(other, 'Chapter 6.12: the croquet pass');
+    const { result } = await room.hostTurn(
+      'Compare the two passes.',
+      [native('transcript.read', { session: JSON.stringify([SESSION, other]) }), ANSWER],
+      { streaming }
+    );
+
+    expect(result.content).toBe(ANSWER);
+    expect(room.cards()).toEqual(['transcript.read:success']);
+    const request = room.sent[1].messages.at(-2)!.content;
+    expect(request.match(/<session>/g)).toHaveLength(2);
+    expect(room.sent[1].messages.at(-1)!.content).toContain('<workshop-capability-result name="transcript.read" status="success"');
+  });
+
   it('counts a translated call against the turn\'s capability calls', async () => {
     const limit = PROMPT_BUDGETS.workshopCapability.callsPerTurn;
     const replies: WireReply[] = [

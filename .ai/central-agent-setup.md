@@ -1658,6 +1658,11 @@ native call may become:
     under its own name or, for a field that repeats, its listed plural.
   - **Values.** Text or a number; a list for a field that repeats; an object
     of text and attributes for a field that carries attributes.
+  - **A list written as text.** For a field that repeats, text that is a
+    whole JSON array is read as that list (`listWrittenAsText`): a live
+    model sent several paths that way (2026-11-17). Any other text, and
+    every field that does not repeat, stays the one value it is. Each item
+    is still the codec's to check.
   - **Escaped, never joined.** Every value is XML-escaped. No argument can
     add a field, close the call or open another.
   - **A new operation or field** joins `WORKSHOP_NATIVE_CALL_FIELDS`. The

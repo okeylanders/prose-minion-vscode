@@ -17,7 +17,10 @@
  *   (`WORKSHOP_NATIVE_CALL_FIELDS`), written under the field's own name or,
  *   for a field that repeats, its listed plural;
  * - a value is text or a number; a repeating field also takes a list; a
- *   field with attributes also takes an object of its text and attributes.
+ *   field with attributes also takes an object of its text and attributes;
+ * - a repeating field's list may arrive as text holding a JSON array, which
+ *   is how a live model sent several paths (2026-11-17). It is read as that
+ *   list, and each item is still the codec's to check.
  * Anything else is untranslatable, by a fault kind that carries no model
  * text. So is a call the provider boundary marked with a `fault`. The envelope is built by escaping every value, never by joining raw
  * model text, so no argument can add a field, close the call or open another.
@@ -178,6 +181,23 @@ function element(name: string, rule: WorkshopNativeCallFieldRule, value: unknown
   return { name, attributes, text };
 }
 
+/**
+ * A list a model wrote as text: `"[\"a.md\", \"b.md\"]"` where the wire wanted an
+ * array. Only text that is a whole JSON array is read so; anything else, a
+ * name that merely opens with a bracket included, stays the one value it is.
+ */
+function listWrittenAsText(value: unknown): unknown[] | undefined {
+  if (typeof value !== 'string' || !value.trimStart().startsWith('[')) {
+    return undefined;
+  }
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function elementsOf(
   fields: Readonly<Record<string, WorkshopNativeCallFieldRule>>,
   args: Record<string, unknown>
@@ -195,9 +215,12 @@ function elementsOf(
     if (seen.has(name)) {throw new Untranslatable('duplicate-argument');}
     seen.add(name);
     const rule = fields[name];
-    if (Array.isArray(value)) {
-      if (!rule.repeatable) {throw new Untranslatable('unmappable-value');}
-      elements.push(...value.map((item) => element(name, rule, item)));
+    if (Array.isArray(value) && !rule.repeatable) {
+      throw new Untranslatable('unmappable-value');
+    }
+    const list = Array.isArray(value) ? value : rule.repeatable ? listWrittenAsText(value) : undefined;
+    if (list) {
+      elements.push(...list.map((item) => element(name, rule, item)));
     } else {
       elements.push(element(name, rule, value));
     }

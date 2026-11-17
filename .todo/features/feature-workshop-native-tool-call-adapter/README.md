@@ -113,6 +113,18 @@ the persona should have written, and carry on as if it had.
 - **A different search route: not taken.** The web plugin searches on every
   call. It stays a note, as below.
 
+### Live pass (Okey, 2026-11-17, Opus with web research on)
+
+- **Names held.** `transcript.catalog`, `transcript.read` and `resource.read`
+  arrived under their own names and were translated and run.
+- **Several paths came as a list written as text,** not a JSON array:
+  `path` was one string holding `["a.md", "b.md", "c.md"]`. The adapter
+  wrote it as a single `<path>`, the lookup refused it, and the persona
+  then typed the XML itself. The translator now reads such text as the
+  list, for a field that repeats.
+- **Still unseen live:** a real JSON array for a repeating field, and
+  `memory.read`.
+
 ### Not verified against a live provider
 
 Tests use a mocked transport. Two things are assumed from OpenRouter's
