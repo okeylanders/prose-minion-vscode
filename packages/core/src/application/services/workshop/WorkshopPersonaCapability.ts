@@ -46,7 +46,13 @@ import { WorkshopSessionService } from '@/application/services/workshop/Workshop
 import { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
 import { LogSink } from '@/platform';
 import {
+  translateWorkshopNativeToolCall,
+  workshopUnrunNativeCallsNote
+} from '@/application/services/workshop/WorkshopNativeToolCallTranslator';
+import {
   AgentCapability,
+  AgentNativeToolCall,
+  AgentNativeToolCallTranslation,
   CapabilityArtifact,
   CapabilityContextWindow,
   CapabilityDeliveredSource,
@@ -168,6 +174,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private readonly codec = new WorkshopCapabilityXmlCodec();
   private fullEntryCalls = 0;
   private analysisCalls = 0;
+  /** The last native call translated, and how many more its reply held that were not run. */
+  private nativeTranslation?: { readonly envelope: string; readonly unrun: number };
   private readonly resourceCapability: WorkshopResourceCapability;
   private readonly recallCapability: WorkshopTranscriptRecallCapability;
   private readonly memoryCapability: WorkshopProjectMemoryCapability;
@@ -223,11 +231,41 @@ export class WorkshopPersonaCapability implements AgentCapability<
   }
 
   inspectRequest(candidate: string): WorkshopCapabilityInspection {
+    // A reply that is not the one just translated owes no note about unrun calls.
+    if (this.nativeTranslation && !candidate.endsWith(this.nativeTranslation.envelope)) {
+      this.nativeTranslation = undefined;
+    }
     return this.codec.inspect(candidate);
+  }
+
+  /**
+   * A provider-native function call, rewritten as the XML request it stands
+   * for (`WorkshopNativeToolCallTranslator`). Nothing runs here: the engine
+   * hands the envelope to `inspectRequest` as it would typed XML. Only the
+   * first call translates, since the wire carries one request a reply; the
+   * rest are counted, and the persona is told beside that call's evidence.
+   * The log names the closed operation, a count or a fault kind, never an
+   * argument or the name the model wrote.
+   */
+  translateNativeToolCalls(calls: readonly AgentNativeToolCall[]): AgentNativeToolCallTranslation {
+    const who = `[WorkshopPersonaCapability] request=${this.turn.requestId} persona=${this.turn.personaId}`;
+    const translation = translateWorkshopNativeToolCall(calls[0]);
+    if (translation.kind === 'untranslatable') {
+      this.nativeTranslation = undefined;
+      this.outputChannel.appendLine(`${who} native tool call not translated: fault=${translation.fault} calls=${calls.length}`);
+      return { kind: 'untranslatable', reason: translation.fault };
+    }
+    this.nativeTranslation = { envelope: translation.envelope, unrun: calls.length - 1 };
+    this.outputChannel.appendLine(
+      `${who} native tool call translated to XML: capability=${translation.operation} calls=${calls.length} unrun=${calls.length - 1}`
+    );
+    return { kind: 'translated', content: translation.envelope };
   }
 
   async fulfill(request: WorkshopCapabilityRequest, window?: CapabilityContextWindow): Promise<CapabilityFulfillment> {
     const startedAt = Date.now();
+    const unrunNativeCalls = this.nativeTranslation?.unrun ?? 0;
+    this.nativeTranslation = undefined;
     let result: WorkshopCapabilityResult;
     // Only a provider run's turn is stamped (ADR 2026-11-03 D7): a persona's
     // analysis or dictionary lookup. The stamp rides beside the result,
@@ -262,7 +300,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
       workshopCapabilityResultLogSummary(result)
     );
     return {
-      evidence: this.formatEvidence(result, this.turn.excerptVersion),
+      evidence: this.formatEvidence(result, this.turn.excerptVersion) +
+        (unrunNativeCalls > 0 ? `\n${workshopUnrunNativeCallsNote(unrunNativeCalls)}` : ''),
       artifacts: completedTurn ? [{
         catalog: this.catalog,
         id: completedTurn.id,

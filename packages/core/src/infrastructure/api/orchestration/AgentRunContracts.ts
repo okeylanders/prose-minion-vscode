@@ -48,6 +48,33 @@ export interface AgentCapabilityRejection {
   readonly reason: string;
 }
 
+/**
+ * A function call a provider returned as structure instead of text: a name
+ * and the raw argument JSON, both exactly as the model wrote them and
+ * neither trusted. The engine never reads or runs one; it hands them to the
+ * capability's `translateNativeToolCalls`.
+ */
+export interface AgentNativeToolCall {
+  readonly name: string;
+  readonly arguments: string;
+  /**
+   * The provider boundary could not carry the call soundly (a name or
+   * arguments that were not text, or over its bounds). Its `arguments` are
+   * empty, not what the model sent: a translator must refuse it, never read
+   * it as a call with no arguments.
+   */
+  readonly fault?: 'malformed' | 'oversized';
+}
+
+/**
+ * A capability's answer to native calls. `translated` carries the request
+ * in the capability's own text protocol, written as the model should have
+ * written it; `reason` is a stable, log-safe fault kind, never model text.
+ */
+export type AgentNativeToolCallTranslation =
+  | { readonly kind: 'translated'; readonly content: string }
+  | { readonly kind: 'untranslatable'; readonly reason: string };
+
 /** Provider-neutral inspection result for any typed capability operation. */
 export type AgentCapabilityInspection<Request, Rejection extends AgentCapabilityRejection> =
   | { readonly kind: 'none' }
@@ -124,6 +151,21 @@ export interface AgentCapability<
   /** Optional compact reminder added to each retained continuation turn. */
   appendTurnContract?(userMessage: string): Promise<string>;
   inspectRequest(candidate: string): AgentCapabilityInspection<Request, Rejection>;
+  /**
+   * Optional adapter for provider-native function calls. A model may ask for
+   * a capability as a structured tool call instead of the text protocol,
+   * above all when the request carries provider tools of its own. The
+   * engine gives the reply's calls, in order, to this method and never
+   * interprets them. A translation is only text: the engine appends it to
+   * the reply and the turn goes on exactly as if the model had typed it, so
+   * `inspectRequest` stays the one validator, the round and correction
+   * budgets apply unchanged, and retained history holds the text, never a
+   * tool call. An implementation runs nothing, and translates one request:
+   * the text protocol carries one a reply. Calls it cannot translate, and
+   * every call of a capability without this method, take the engine's
+   * bounded correction path.
+   */
+  translateNativeToolCalls?(calls: readonly AgentNativeToolCall[]): AgentNativeToolCallTranslation;
   /** `window` is present when the model's live context window is known. */
   fulfill(request: Request, window?: CapabilityContextWindow): Promise<CapabilityFulfillment>;
   stripToolCalls(content: string): string;

@@ -15,8 +15,10 @@ import {
   ConversationNotFoundError,
   ConversationSystemMessageReplacement
 } from './ConversationManager';
+import { adaptNativeToolCalls } from '@orchestration/AgentNativeToolCalls';
 import {
   AgentCapabilityRejection,
+  AgentNativeToolCall,
   AGENT_FINAL_REPLY_REFUSED,
   AGENT_RUN_INTERRUPTED_FINISH_REASON,
   isAgentRunIncomplete,
@@ -122,6 +124,8 @@ interface TurnResult {
   readonly exactRequest?: unknown;
   /** A protocol-shaped response failed structural or allow-list validation. */
   readonly invalidRequest?: AgentCapabilityRejection;
+  /** The reply carried native tool calls its capability could not translate. */
+  readonly untranslatedNativeCall?: boolean;
   readonly citations?: UrlCitation[];
 }
 
@@ -395,6 +399,7 @@ export class AgentRunEngine {
     let latestObservation: InferenceRequestObservation | undefined;
     let peakPromptTokens = 0;
     let correctionTurns = 0;
+    let remindCapabilityProtocol = false;
     // Captured before the first request, with nothing awaited between: a
     // selection change during the run must not relabel it (D7; PR #144 F-03).
     const requestedModelId = this.requestModel(runOptions, provider);
@@ -420,7 +425,49 @@ export class AgentRunEngine {
       peakPromptTokens = Math.max(peakPromptTokens, observation.promptTokens);
     };
 
-    const currentMessages = (): OpenRouterMessage[] => [...history, ...pendingMessages];
+    const currentMessages = (): OpenRouterMessage[] => {
+      const messages = [...history, ...pendingMessages];
+      if (remindCapabilityProtocol) {
+        const last = messages.length - 1;
+        if (messages[last]?.role === 'user') {
+          messages[last] = { ...messages[last], content: `${messages[last].content}\n\nUse the prose-minion-tool-call XML format for capabilities; do not use native tool calls.` };
+        }
+      }
+      return messages;
+    };
+    const executeWithNativeCallRecovery = async (): Promise<TurnResult> => {
+      let messages = currentMessages();
+      let nativeCorrections = 0;
+      for (;;) {
+        const turn = await this.executeTurn(messages, runOptions, capability, provider, retainedConversationId);
+        recordServedModel(turn);
+        recordObservation(turn.observation);
+        totalUsage = this.addUsage(totalUsage, turn.usage);
+        runCitations = this.mergeUrlCitations(runCitations, turn.citations);
+
+        // A native tool call is not our XML capability protocol. The capability
+        // translates one when it maps (`translateNativeToolCalls`): the turn then
+        // holds the request as text and is not empty. This is the fallback for
+        // one that doesn't map, which is never run: ask for the existing protocol.
+        // Only retry an empty turn: streamed prose cannot be retracted.
+        const nativeCall = turn.finishReason === 'tool_calls' || turn.untranslatedNativeCall;
+        if (!capability || turn.cancelled || !nativeCall || turn.content.trim()) return turn;
+        if (nativeCorrections >= policy.maxCorrectionTurns) {
+          const fallback = 'The assistant could not complete its tool request. Please try again; if the problem continues, try another model.';
+          this.outputChannel?.appendLine(`[AgentRunEngine] ${policy.id} exhausted correction turns after an unsupported native tool call.`);
+          runOptions.onToken?.(fallback);
+          return { ...turn, content: fallback, visibleContent: fallback, hostFallback: true };
+        }
+        nativeCorrections += 1;
+        remindCapabilityProtocol = true;
+        this.outputChannel?.appendLine(`[AgentRunEngine] ${policy.id} retrying an unsupported native tool call using the capability protocol.`);
+        messages = [
+          ...messages,
+          { role: 'assistant', content: '[An unsupported native tool call was returned and was not executed.]' },
+          { role: 'user', content: 'Your native tool call was not executed. To use a capability, reply with the prose-minion-tool-call XML format specified in your instructions, not a native tool call. Otherwise answer directly.' }
+        ];
+      }
+    };
     const runInstructedTurn = async (
       previous: TurnResult,
       instruction: string
@@ -429,12 +476,7 @@ export class AgentRunEngine {
         { role: 'assistant', content: this.privateSafe(capability, previous.content) },
         { role: 'user', content: instruction }
       );
-      const next = await this.executeTurn(currentMessages(), runOptions, capability, provider, retainedConversationId);
-      recordServedModel(next);
-      recordObservation(next.observation);
-      totalUsage = this.addUsage(totalUsage, next.usage);
-      runCitations = this.mergeUrlCitations(runCitations, next.citations);
-      return next;
+      return executeWithNativeCallRecovery();
     };
 
     const recoverInvalidRequest = async (last: TurnResult): Promise<TurnResult> => {
@@ -463,11 +505,7 @@ export class AgentRunEngine {
     };
 
     try {
-      let last = await this.executeTurn(currentMessages(), runOptions, capability, provider, retainedConversationId);
-      recordServedModel(last);
-      recordObservation(last.observation);
-      totalUsage = this.addUsage(totalUsage, last.usage);
-      runCitations = this.mergeUrlCitations(runCitations, last.citations);
+      let last = await executeWithNativeCallRecovery();
       last = await recoverInvalidRequest(last);
       let rounds = 0;
 
@@ -907,10 +945,12 @@ export class AgentRunEngine {
       try {
         const response = await provider.createChatCompletion(messages, completionOptions);
         this.emitUsage(response.usage);
-        const inspection = capability?.inspectRequest(response.content);
-        this.logCapabilityInspection(capability, inspection, response.content);
+        const native = adaptNativeToolCalls(capability, response.content, response.toolCalls, this.outputChannel);
+        const inspection = capability?.inspectRequest(native.content);
+        this.logCapabilityInspection(capability, inspection, native.content);
         return {
-          content: response.content,
+          ...(native.untranslated ? { untranslatedNativeCall: true } : {}),
+          content: native.content,
           providerResponseId: response.id,
           finishReason: response.finishReason,
           usage: response.usage,
@@ -938,6 +978,7 @@ export class AgentRunEngine {
     let servedModelId: string | undefined;
     let providerResponseId: string | undefined;
     let citations: UrlCitation[] | undefined;
+    let nativeToolCalls: readonly AgentNativeToolCall[] | undefined;
     let cancelled = false;
     let classification: 'undecided' | 'text' | 'candidate' = 'undecided';
     const visibilityGuard = capability ? new ToolCallStreamVisibilityGuard() : undefined;
@@ -952,6 +993,7 @@ export class AgentRunEngine {
           finishReason = chunk.finishReason ?? finishReason;
           observation = chunk.observation ?? observation;
           citations = chunk.citations ?? citations;
+          nativeToolCalls = chunk.toolCalls ?? nativeToolCalls;
           continue;
         }
         if (!chunk.token) continue;
@@ -997,6 +1039,14 @@ export class AgentRunEngine {
     }
 
     this.emitUsage(usage);
+    // A translated native call joins the reply as the text the model should have written, and passes the
+    // visibility guard as typed text would: the request is withheld, a short narration before it discarded.
+    const native = adaptNativeToolCalls(capability, content, cancelled ? undefined : nativeToolCalls, this.outputChannel);
+    if (native.appended) {
+      content = native.content;
+      const safe = visibilityGuard?.consume(native.appended);
+      if (safe) options.onToken(safe);
+    }
     const inspection = capability?.inspectRequest(content);
     this.logCapabilityInspection(capability, inspection, content);
     const exactRequest = inspection?.kind === 'request' ? inspection.request : undefined;
@@ -1032,7 +1082,8 @@ export class AgentRunEngine {
       citations,
       cancelled,
       exactRequest,
-      invalidRequest
+      invalidRequest,
+      ...(native.untranslated ? { untranslatedNativeCall: true } : {})
     };
   }
 

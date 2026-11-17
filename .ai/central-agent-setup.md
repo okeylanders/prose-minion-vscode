@@ -96,7 +96,7 @@ packages/core/src/
 ├── domain/            # Domain layer (business logic)
 │   └── models/        # Domain models and entities
 ├── infrastructure/    # Infrastructure layer (external integrations)
-│   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/; parsers/ModelJsonRepair.ts reads a model's JSON with a structure-only repair under a content guard, and salvages a reply cut off at its ceiling (Lightbox Slice 4H; feature-agnostic, imports nothing); asked, it reports the root's member keys in the text's order (`rootKeys`, Slice 4K); services/helper/ is the helper agent: one engine whose tasks are policies (`HELPER_TASK_POLICIES`), which proposes and never writes (ADR 2026-11-05); orchestration/ReasoningCatalog.ts says whether a model always reasons, for Draft Edit and the helper alike
+│   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/; providers/OpenRouterToolCalls.ts reads a reply's function calls and orchestration/AgentNativeToolCalls.ts offers them to the run's capability (see **Workshop Native Tool Calls**); parsers/ModelJsonRepair.ts reads a model's JSON with a structure-only repair under a content guard, and salvages a reply cut off at its ceiling (Lightbox Slice 4H; feature-agnostic, imports nothing); asked, it reports the root's member keys in the text's order (`rootKeys`, Slice 4K); services/helper/ is the helper agent: one engine whose tasks are policies (`HELPER_TASK_POLICIES`), which proposes and never writes (ADR 2026-11-05); orchestration/ReasoningCatalog.ts says whether a model always reasons, for Draft Edit and the helper alike
 │   ├── account/       # OpenRouter account-balance client + service
 │   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points (Slice 4C; its Sections detector is `utils/chapterSections.ts` since Draft Edit Slice 3c part 4); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A); each block's own fields and a member closed out of its block moved back into it (`LightboxBlockFormat`, Slice 4K); how a run's groups start, settle and stop, keeping each lens's reading until a usable new one replaces it, with its provenance and earlier mark (`LightboxReadingState`, Slice 4J)
 │   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163), its rewrites in place under a claim (Slice 5A.1), and its claims, live or abandoned by age (PR #164); from Slice 5A.2 one file per board: saves in place at the revision a window read, new files (`LightboxBoardNewFile`), every chapter's listing, a picked file read where it lies, and the store's contracts in `LightboxBoardStoreContracts`
@@ -1611,6 +1611,81 @@ answer is read:
   `projectWorkshopTranscript`.
 - **Logs** carry ids, kinds, counts and fault kinds, never the reply's text,
   a quote or a path.
+
+### Workshop Native Tool Calls
+
+Follow the feature note
+([`.todo/features/feature-workshop-native-tool-call-adapter/`](.todo/features/feature-workshop-native-tool-call-adapter/README.md))
+when touching how a provider's function calls are read, or what a persona's
+native call may become:
+
+- **XML stays the wire.** A persona asks for a capability with a
+  `<prose-minion-tool-call>` request in its text. With web research on, its
+  request carries a `tools` array, and Claude models then send some requests
+  as native tool calls. The adapter rewrites such a call as the XML the
+  persona should have written, and the turn goes on as if it had.
+- **The provider boundary keeps the call.** `OpenRouterClient` returns
+  `toolCalls` beside `content`: `message.tool_calls` whole, or a stream's
+  `delta.tool_calls` fragments stitched per index
+  (`providers/OpenRouterToolCalls.ts`), on the terminal chunk.
+  - Only function calls are read. OpenRouter's own server tools
+    (`openrouter:…`) are left out; web search still arrives as citations.
+  - Nothing below the capability parses a call's arguments.
+  - **A call is kept whole or marked, never mended** (PR #267 F-01). A name
+    or arguments that are present but not text (`malformed`), or over
+    `OPENROUTER_TOOL_CALL_LIMITS` (`oversized`), mark the call with a
+    `fault` and empty its arguments. Never keep a cut prefix or ignore a
+    bad value: either can read as a different, valid request. A fault holds
+    for the whole call. Arguments that are absent or empty are a sound call
+    with none. A translator refuses a marked call before reading it.
+- **The engine has a seam, never a branch.**
+  `AgentCapability.translateNativeToolCalls` is optional.
+  `orchestration/AgentNativeToolCalls.ts` offers a reply's calls to it and
+  appends the text it returns to the reply.
+  - `inspectRequest` then reads the reply as it reads typed XML, so the
+    round budget (`callsPerTurn`), the correction budget, cards and
+    publication are unchanged.
+  - A streamed reply passes the translated text through the visibility
+    guard, as typed text would.
+  - `AgentRunEngine` names no operation and reads no argument;
+    `boundaries.test.ts` holds it.
+- **The Workshop's translator only writes XML**
+  (`WorkshopNativeToolCallTranslator.ts`). It runs nothing and validates
+  nothing: `WorkshopCapabilityXmlCodec` stays the one validator.
+  - **A closed mapping.** The name must be in
+    `WORKSHOP_CAPABILITY_OPERATIONS` (case and the separators `.`, `-`, `_`
+    aside). Each argument must be a field in `WORKSHOP_NATIVE_CALL_FIELDS`,
+    under its own name or, for a field that repeats, its listed plural.
+  - **Values.** Text or a number; a list for a field that repeats; an object
+    of text and attributes for a field that carries attributes.
+  - **A list written as text.** For a field that repeats, text that is a
+    whole JSON array is read as that list (`listWrittenAsText`): a live
+    model sent several paths that way (2026-11-17). Any other text, and
+    every field that does not repeat, stays the one value it is. Each item
+    is still the codec's to check.
+  - **Escaped, never joined.** Every value is XML-escaped. No argument can
+    add a field, close the call or open another.
+  - **A new operation or field** joins `WORKSHOP_NATIVE_CALL_FIELDS`. The
+    table is keyed by the operation list, so a new operation does not
+    compile without it, and a test holds each field to the codec's policy
+    (`WORKSHOP_CAPABILITY_FIELD_POLICY`).
+- **One request a reply.** Only the first native call translates. The
+  persona is told, beside that call's evidence, how many more were not run
+  (`workshopUnrunNativeCallsNote`).
+- **Prose beside a call stays,** as narration before the request: the reply
+  is the prose, a blank line, then the envelope, read as typed XML after
+  narration is.
+- **Retained history holds the XML,** never a tool call. No request carries
+  a tool call or a tool result, so nothing about Rewind marks, archives or
+  the session codec changes.
+- **What can't be translated is never run.** An unknown name, an unmapped
+  argument or unparseable argument JSON takes the engine's bounded
+  correction path (ask for the XML, within `maxCorrectionTurns`, then a
+  host-worded outcome). So does every native call of a capability with no
+  translator.
+- **Logs** carry the closed operation, counts and fault kinds
+  (`WorkshopNativeToolCallFault`), never an argument or the name a model
+  wrote.
 
 ### Lightbox Source Ownership
 

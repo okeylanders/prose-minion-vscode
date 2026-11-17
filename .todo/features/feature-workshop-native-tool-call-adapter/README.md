@@ -1,7 +1,7 @@
 # Feature: Translate a Persona's Native Tool Calls Into the XML Request
 
 **Date Identified:** 2026-11-17
-**Status:** Idea, wanted (Okey: "we'll need the adapter for sure"). A short ADR, or an amendment to the capability ADR, then one or two slices.
+**Status:** Shipped in PR #267 (2026-11-17), reviewed and live-tested by Okey with web research on. The first fix's retry is kept as the fallback for calls that can't be translated. See **What was built** below; the rules live in `AGENTS.md`, **Workshop Native Tool Calls**. Left open here only for what the live pass has not yet seen.
 **Priority:** High. With web research on, Sonnet and Opus personas fail capability calls often.
 **Origin:** Okey's reproduction, 2026-11-17
 
@@ -77,6 +77,66 @@ the persona should have written, and carry on as if it had.
 7. **Logs** carry tool names, counts and fault kinds, never arguments, which
    can quote the writer.
 
+## What was built (2026-11-17)
+
+- **Provider.** `OpenRouterClient` returns `toolCalls` beside `content`,
+  whole or stitched from a stream (`providers/OpenRouterToolCalls.ts`).
+- **Seam.** `AgentCapability.translateNativeToolCalls`, offered a reply's
+  calls by `orchestration/AgentNativeToolCalls.ts`. The engine appends the
+  returned text and reads the reply as it reads typed XML.
+- **Translator.** `WorkshopNativeToolCallTranslator.ts`: the closed mapping
+  (`WORKSHOP_NATIVE_CALL_FIELDS`), escaped XML out, nothing run.
+- **Fallback.** A call that can't be translated sets the first fix's
+  correction path going, whatever finish reason the provider gave.
+
+- **Review, PR #267 F-01.** The provider boundary marks a call whose name
+  or arguments were not text, or were over its bounds, and keeps none of its
+  arguments; the translator refuses a marked call. Before this, an object
+  for `arguments` or an over-long payload could run as a call with no
+  arguments.
+
+### Decisions on the open questions
+
+- **Several native calls in one reply: the first runs, the rest are said.**
+  The persona reads, beside that call's evidence, how many more calls its
+  reply held and that they were not run. Running them as successive rounds
+  would have the host order work the persona never sequenced.
+- **Text beside a call: kept, with the envelope after it.** The reply
+  becomes the prose, a blank line, then the envelope: exactly what typed XML
+  after narration is, so the codec's existing rule decides it (plain
+  narration passes; a preamble with markup is `mixed-content`). In a stream,
+  the envelope goes through the visibility guard, so a short "Let me
+  check…" is dropped with the request, as it is for typed XML.
+- **Prose beside a call that can't be translated: the prose stands.**
+  Streamed prose can't be retracted, so there is no correction turn; the
+  log records the untranslated call.
+- **A different search route: not taken.** The web plugin searches on every
+  call. It stays a note, as below.
+
+### Live pass (Okey, 2026-11-17, Opus with web research on)
+
+- **Names held.** `transcript.catalog`, `transcript.read` and `resource.read`
+  arrived under their own names and were translated and run.
+- **Several paths came as a list written as text,** not a JSON array:
+  `path` was one string holding `["a.md", "b.md", "c.md"]`. The adapter
+  wrote it as a single `<path>`, the lookup refused it, and the persona
+  then typed the XML itself. The translator now reads such text as the
+  list, for a field that repeats.
+- **Still unseen live:** a real JSON array for a repeating field, and
+  `memory.read`.
+
+### Not verified against a live provider
+
+Tests use a mocked transport. Two things are assumed from OpenRouter's
+OpenAI-compatible wire, and a live pass with web research on should confirm
+them:
+
+- the name a model gives an unadvertised call. The translator accepts the
+  operation name with `.`, `-` or `_` as separators, in any case;
+- the argument shapes for repeating fields (`paths`, `sessions`,
+  `memories`). Another shape takes the correction path, so the cost of a
+  wrong guess is one retry.
+
 ## Open questions
 
 - **Several native calls in one reply.** The XML wire carries one request
@@ -93,17 +153,17 @@ the persona should have written, and carry on as if it had.
 
 ## Completion Criteria
 
-- [ ] With web research on, a native `transcript.catalog` call (and one of
+- [x] With web research on, a native `transcript.catalog` call (and one of
       every capability family) is translated, decoded by the codec, run, and
       answered. A test reproduces Okey's case with a mocked transport, both
       streamed and not.
-- [ ] The retained history holds the translated XML and no tool call, and
+- [x] The retained history holds the translated XML and no tool call, and
       the next request is well-formed (test).
-- [ ] An unknown name or unmappable arguments take the correction path, and
+- [x] An unknown name or unmappable arguments take the correction path, and
       nothing runs (test).
-- [ ] `AgentRunEngine` gains a seam, not a Workshop branch
+- [x] `AgentRunEngine` gains a seam, not a Workshop branch
       (`boundaries.test.ts`).
-- [ ] Logs carry no arguments.
+- [x] Logs carry no arguments.
 
 ## Related
 
