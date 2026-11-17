@@ -83,6 +83,8 @@ const WORKSHOP_TODO_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopTodoHandler.ts';
 const WORKSHOP_BOOKMARK_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopBookmarkHandler.ts';
+const WORKSHOP_EARLIER_TURNS_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopEarlierTurnsHandler.ts';
 const WORKSHOP_REACTION_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopReactionHandler.ts';
 const WORKSHOP_BOOKMARK_BROWSER_HANDLER_OWNER =
@@ -203,6 +205,12 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_BOOKMARK_HANDLER_OWNER,
     registration: 'direct',
     messageTypes: ['WORKSHOP_REQUEST_TURN_PREVIEW']
+  },
+  {
+    // A read (ADR 2026-11-17 D4): it writes nothing and joins no gate.
+    owner: WORKSHOP_EARLIER_TURNS_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_REQUEST_EARLIER_TURNS']
   },
   {
     owner: WORKSHOP_REACTION_HANDLER_OWNER,
@@ -474,6 +482,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopContextHandler',
   'WorkshopExcerptScopeHandler',
   'WorkshopCreativeVariationsHandler',
+  'WorkshopEarlierTurnsHandler',
   'WorkshopEditOfferHandler',
   'WorkshopFileEditHandler',
   'WorkshopGesturePlaygroundHandler',
@@ -2284,11 +2293,12 @@ describe('architectural boundaries', () => {
     // Reply Edit Actions Slice 2 added the press on a reply's edit offer (mutation).
     // Message Reactions Slice 1 added the writer's reaction change and Hide on a persona's (mutation).
     // Everyday Conveniences Slice B added the selection's offer and watch (direct) and its staging (mutation).
-    expect(expectedOwnerPairs).toHaveLength(97);
+    // Everyday Conveniences round two, item A added a long room's earlier turns (direct).
+    expect(expectedOwnerPairs).toHaveLength(98);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(52);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(45);
+      .toHaveLength(46);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
