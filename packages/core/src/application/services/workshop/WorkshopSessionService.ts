@@ -54,8 +54,10 @@ import {
   WorkshopTurnReaction,
   WorkshopTurnReactionAuthor
 } from '@messages';
+import type { WorkshopTrailerOutcomes } from '@shared/types/workshopTrailerOutcomes';
 import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { cloneWorkshopReactionDelivery } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
+import { cloneWorkshopTrailerOutcomes } from '@/application/services/workshop/session/WorkshopTrailerOutcomeRecords';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
 import {
@@ -1737,7 +1739,8 @@ export class WorkshopSessionService {
     fileEditProposals: readonly WorkshopFileEditProposal[] = [],
     editOffers: readonly WorkshopEditOffer[] = [],
     editOfferAnswer?: WorkshopEditOfferAnswer,
-    reaction?: WorkshopReplyReactionCommit
+    reaction?: WorkshopReplyReactionCommit,
+    trailerOutcomes?: WorkshopTrailerOutcomes
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1849,6 +1852,10 @@ export class WorkshopSessionService {
     // Reactions too (ADR 2026-11-07 D6): a reply that never commits records nothing, so they arrive again.
     if ((isHost || isGuest) && active.reactionDelivery) {
       turn.reactionDelivery = [cloneWorkshopReactionDelivery(active.reactionDelivery)];
+    }
+    // What became of the reply's trailers rides the reply too (ADR 2026-11-17 D13): host-only, written once.
+    if ((isHost || isGuest) && trailerOutcomes) {
+      turn.trailerOutcomes = cloneWorkshopTrailerOutcomes(trailerOutcomes);
     }
     // The persona's own reaction (ADR 2026-11-07 D5) rides the reply that carried it, written
     // through the ledger in this one commit, so a cut or rollback of the reply takes it too.

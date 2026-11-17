@@ -36,7 +36,7 @@ decisions live in this README and the ADR.
 | G | G | composer-at-mentions | 14 | `…-at-mentions` | | Being built |
 | B | B | memory-suggestion-level | 8 | `…-memory-suggestion-level` | | Built on the spec branch; pushed, no PR yet |
 | C | C | memory-title-index | new | `…-memory-title-index` | | Built on B's branch; pushed, no PR yet |
-| D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | | After C |
+| D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | | Built on C's branch; pushed, no PR yet |
 | A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | | After Slice 0 |
 | F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | | After C |
 | H | H | prose-minion-help-reference | 20 | `…-help-reference` | | Last |
@@ -296,6 +296,7 @@ a note.** These are the ones to look at first.
 | Baseline (`main` at `3f99e733`) | not run | | |
 | B (`…-memory-suggestion-level`, on the spec branch) | 879 | 12,529 | 59 |
 | C (`…-memory-title-index`, on B's branch) | 884 | 12,681 | 59 |
+| D (`…-memory-proposal-outcomes`, on C's branch) | 894 | 12,900 | 59 |
 
 Each slice adds its row.
 

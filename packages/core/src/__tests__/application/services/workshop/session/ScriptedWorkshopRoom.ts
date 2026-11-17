@@ -42,6 +42,10 @@ import {
   type WorkshopReactionHolds
 } from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
 import { workshopReactionInviteFor } from '@/application/services/workshop/reactions/WorkshopReactionInvite';
+import {
+  workshopTrailerOutcomeFrames,
+  type WorkshopTrailerOutcomesReader
+} from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerOutcomesFrame';
 import type {
   WorkshopConversationLogicalKey,
   WorkshopSessionStateV1
@@ -194,6 +198,7 @@ export class ScriptedWorkshopRoom {
       : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
     const reactions = this.reactions({ kind: 'host' }, this.session.hasHostConversation() ? 'update' : 'start',
       workshopReactionHoldsAfterCatchUp(this.session.readRoomLedger(), { kind: 'host' }, roomDelivery));
+    const outcomes = this.outcomes(this.session.hasHostConversation() ? { kind: 'host' } : undefined);
     const writerTurn = this.session.beginPersonaMessage(requestId, text, this.refs(staged));
     reactions.stage(requestId);
     if (options.projectMemory) {
@@ -204,7 +209,7 @@ export class ScriptedWorkshopRoom {
     const conversationId = this.commitHistory(
       this.session.getHostConversationId(),
       `workshop_persona_${this.session.getSelectedPersonaId()}`,
-      `${reactions.lead}${this.invite(requestId)}[host] ${text}`,
+      `${reactions.lead}${this.invite(requestId)}${outcomes}[host] ${text}`,
       replyContent,
       evidence,
       options.resources
@@ -455,12 +460,13 @@ export class ScriptedWorkshopRoom {
     const roomDelivery = this.delivery.prepare({ kind: 'personaGuest', personaId });
     const reactions = this.reactions({ kind: 'personaGuest', personaId }, 'update',
       workshopReactionHoldsAfterCatchUp(this.session.readRoomLedger(), { kind: 'personaGuest', personaId }, roomDelivery));
+    const outcomes = this.outcomes({ kind: 'personaGuest', personaId });
     this.session.beginPersonaGuestMessage(personaId, requestId, text);
     reactions.stage(requestId);
     const conversationId = this.commitHistory(
       this.session.getPersonaGuestConversationId(personaId),
       `workshop_guest_${personaId}`,
-      `${reactions.lead}${this.invite(requestId)}[guest ${personaId}] ${text}`,
+      `${reactions.lead}${this.invite(requestId)}${outcomes}[guest ${personaId}] ${text}`,
       replyContent
     );
     const reply = this.complete(requestId, personaId, conversationId, replyContent, () => {
@@ -572,6 +578,16 @@ export class ScriptedWorkshopRoom {
   private invite(requestId: string): string {
     const invite = workshopReactionInviteFor(this.reactionsOpen === true, this.session.personaReplyReactionTarget(requestId));
     return invite ? `${invite}\n` : '';
+  }
+
+  /**
+   * The host's line on the reader's last reply's trailers, as the room
+   * handler adds it (ADR 2026-11-17 D14, D15): a continuing conversation's
+   * next message only, derived from the ledger.
+   */
+  private outcomes(reader: WorkshopTrailerOutcomesReader | undefined): string {
+    return workshopTrailerOutcomeFrames(reader, () => this.session.readRoomLedger(), (line) => this.log.push(line))
+      .map((frame) => `${frame}\n`).join('');
   }
 
   dismissGuest(personaId: WorkshopPersonaId): this {

@@ -57,6 +57,7 @@ import {
   type WorkshopReplyMemoryContext
 } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import { countWorkshopRoomAutoSaves } from '@/application/services/workshop/memory/WorkshopMemoryAutoSave';
+import { buildWorkshopTrailerOutcomes } from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerOutcomesRecord';
 import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import {
@@ -152,7 +153,8 @@ export interface WorkshopRunCompletionInput {
    * The reply's file edits, staged before completion (ADR 2026-11-05 D4,
    * D11; `resolveWorkshopReplyFileEdits`), with the setting read when the
    * reply was read. Used only for the reply it was resolved from. Absent, a
-   * frame is still stripped, and dropped and counted (`not-staged`). It
+   * frame is still stripped, and dropped and counted (`not-staged`), which
+   * the reply's `trailerOutcomes` records (ADR 2026-11-17 D13). It
    * carries the reply's edit offers too, resolved (ADR 2026-11-10 D2).
    */
   fileEdits?: WorkshopReplyEditsContext;
@@ -314,7 +316,12 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     fileEdits.proposals,
     editOffers,
     undefined,
-    reaction
+    reaction,
+    // What became of the reply's notes and file edits, for the persona's next message (ADR 2026-11-17 D13).
+    buildWorkshopTrailerOutcomes({
+      memory: { cards: memory.proposals.length, drops: memory.drops },
+      fileEdits: { proposals: fileEdits.proposals, drops: fileEdits.drops }
+    })
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {

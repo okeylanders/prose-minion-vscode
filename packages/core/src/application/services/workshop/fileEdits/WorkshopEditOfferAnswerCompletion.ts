@@ -27,6 +27,11 @@
  *   run's exchange; completion commits it only once the session has taken
  *   the answer turn, so a press that fails here, however late, left nothing
  *   in the persona's retained history.
+ * - **The answer leaves outcomes of its own** (ADR 2026-11-17 D13, D15):
+ *   its cards as held to the press (a refused one counted, with no
+ *   reason), its dropped frames, and any memory frame as `off`, through the
+ *   one builder `completeWorkshopRun` uses. The persona hears of them with
+ *   its next writer message; the press's own request carries no line.
  * - **A stopped or failed run leaves no turns:** the press's writer turn is
  *   rolled back, so the offer reads open again. Capability cards the run
  *   already published stay, as on any rollback.
@@ -55,6 +60,10 @@ import {
   workshopEditOfferRetainedLine
 } from '@shared/constants/workshopEditOfferWords';
 import { readWorkshopEditOfferAnswer, type WorkshopEditOfferAnswerDropped } from '@/utils/workshopEditOfferAnswer';
+import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
+import { settleWorkshopMemoryProposals, WORKSHOP_REPLY_MEMORY_CLOSED } from '@/application/services/workshop/memory/WorkshopReplyMemory';
+import type { WorkshopFileEditProposalDrop } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
+import { buildWorkshopTrailerOutcomes } from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerOutcomesRecord';
 
 /** The reason a card for another file than the offer's carries (D5). */
 export const WORKSHOP_FILE_EDIT_NOT_THE_OFFERED_FILE = 'not-the-offered-file';
@@ -164,6 +173,7 @@ export function completeWorkshopEditOfferRun(input: WorkshopRunCompletionInput, 
     return fail('file-edits-off', dropped);
   }
   let cards: WorkshopFileEditProposal[] = [];
+  let fileEditDrops: readonly WorkshopFileEditProposalDrop[] = [];
   let answer: WorkshopEditOfferAnswer;
   let content: string;
   if (read.outcome === 'none') {
@@ -176,6 +186,7 @@ export function completeWorkshopEditOfferRun(input: WorkshopRunCompletionInput, 
       input.log(`${line} (${label})`);
     }
     cards = workshopEditOfferAnswerCards(staged?.proposals ?? [], press.offer);
+    fileEditDrops = staged?.drops ?? [];
     if (cards.length === 0) {
       return fail('no-answer', `${dropped}; staged=0`);
     }
@@ -198,7 +209,14 @@ export function completeWorkshopEditOfferRun(input: WorkshopRunCompletionInput, 
     [],
     cards,
     [],
-    answer
+    answer,
+    undefined,
+    // The answer's own outcomes, through the one builder (ADR 2026-11-17 D13, D15): its cards as held to the press,
+    // its dropped frames, and any memory frame, which an answer always reads as closed.
+    buildWorkshopTrailerOutcomes({
+      memory: { cards: 0, drops: read.dropped.memory > 0 ? closedMemoryDrops(result.content) : [] },
+      fileEdits: { proposals: cards, drops: fileEditDrops }
+    })
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {
@@ -232,6 +250,12 @@ export function completeWorkshopEditOfferRun(input: WorkshopRunCompletionInput, 
   }
   press.settled({ kind: 'answered', turn, cards: cards.length, changes });
   return turn;
+}
+
+/** An answer proposes no memory: each memory frame it held is the read-time `memory-off`, typed as on any reply. */
+function closedMemoryDrops(reply: string) {
+  const { memory } = extractWorkshopReplyControls(reply, { memoryOpen: false, fileEditsOpen: true });
+  return settleWorkshopMemoryProposals(memory, WORKSHOP_REPLY_MEMORY_CLOSED).drops;
 }
 
 function droppedLine(dropped: WorkshopEditOfferAnswerDropped): string {

@@ -10,6 +10,7 @@ import type { LabeledContextBudgetSnapshot } from '../inferenceContext';
 import type { ModelScope } from '../configuration';
 import type { WorkshopBookmarkSummary } from './bookmarks';
 import type { WorkshopReactionDelivery, WorkshopTurnReactionSummary } from './reactions';
+import type { WorkshopTrailerOutcomes } from '../../workshopTrailerOutcomes';
 import type { WorkshopReactionId } from '@shared/constants/workshopReactions';
 import type { WorkshopMemorySuggestionLevel } from '@shared/constants/workshopMemorySuggestions';
 import type {
@@ -484,6 +485,13 @@ export interface WorkshopTurn {
    * too, and the reactions arrive again.
    */
   reactionDelivery?: WorkshopReactionDelivery[];
+  /**
+   * What became of this persona reply's memory-note and file-edit trailers
+   * (ADR 2026-11-17 D13): counts and closed reasons, written once when the
+   * reply commits. Host-only: the persona is told with its next message, and
+   * the webview never receives it. Host and guest replies only.
+   */
+  trailerOutcomes?: WorkshopTrailerOutcomes;
   /**
    * A persona reply that held only a reaction (ADR 2026-11-07 R1): the id it
    * reacted with, on the writer message the reply answers. Its content is

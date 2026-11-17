@@ -42,6 +42,9 @@
  *   - its answer (`editOfferAnswer`) is included as the persona's reply: the
  *     host's line, which names the source reply's time, and its cards as any
  *     reply's cards are shown. The keys themselves are not carried.
+ * - A persona reply's `trailerOutcomes` (ADR 2026-11-17 D13) are omitted, by
+ *   decision: host bookkeeping for the persona's next message, never thread
+ *   content. No entry carries the record, a count or a reason; a test pins it.
  * - Neither slices, `model` nor `fileEdits` come from
  *   `projectWorkshopTranscriptTurn`, so session recall and the turn
  *   preview, which read turns only through it, never see them.

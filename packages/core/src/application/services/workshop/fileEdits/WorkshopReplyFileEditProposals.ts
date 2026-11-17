@@ -18,6 +18,11 @@
  * Two frames staged to one identity (one `documentUri`) keep only the first
  * (`duplicate-identity`): one card per file per reply. With the setting `off`, nothing is staged.
  *
+ * **Every frame is counted once** (ADR 2026-11-17 D13): a frame is a card
+ * (pending or refused) or an entry in `drops`, typed by the step that
+ * dropped it. A run stopped before staging counts each decoded frame as
+ * `not-staged`. Completion builds the reply's `trailerOutcomes` from them.
+ *
  * Completion (`WorkshopRunCompletion`) takes the context this returns and
  * uses its cards only for the reply it was resolved from. A reply holding no
  * file-edit tag costs no await.
@@ -100,13 +105,9 @@ export async function resolveWorkshopReplyFileEdits(
   const drops: WorkshopFileEditProposalDrop[] = control.rejections.map((reason) => ({ at: 'read', reason }));
   const logs = drops.map(workshopFileEditProposalDropLog);
   if (control.proposals.length === 0 || input.signal?.aborted) {
-    // Stopped before anything was staged: each decoded frame is counted, and none is a card.
-    return {
-      reply: input.reply,
-      proposals: [],
-      logs,
-      drops: [...drops, ...control.proposals.map((): WorkshopFileEditProposalDrop => ({ at: 'completion', reason: WORKSHOP_FILE_EDIT_NOT_STAGED }))]
-    };
+    // Stopped before anything was staged: each decoded frame is counted and logged, and none is a card.
+    const notStaged = control.proposals.map((): WorkshopFileEditProposalDrop => ({ at: 'completion', reason: WORKSHOP_FILE_EDIT_NOT_STAGED }));
+    return { reply: input.reply, proposals: [], logs: [...logs, ...notStaged.map(workshopFileEditProposalDropLog)], drops: [...drops, ...notStaged] };
   }
   const staging = input.staging;
   const results = await Promise.all(control.proposals.map((draft) => stageOne(staging, draft, input.boundExcerpt)));
