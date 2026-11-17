@@ -10,6 +10,15 @@
  *   carried it makes the same reply the latest again, so it goes out again.
  * - **Each participant hears only of its own reply:** the host of the
  *   host's, a guest of that guest's.
+ * - **Two messages carry it** (Okey, 2026-11-17): the writer's next message
+ *   to that participant, and the request that asks the host to synthesize a
+ *   tool run. Without the second, the synthesis would become the latest
+ *   reply and the earlier reply's outcomes would never be told. Never a
+ *   tool sidecar's message or a pressed edit offer's request.
+ * - **Owed by the ledger, not the provider conversation** (PR #276 F-01).
+ *   When a retained conversation is lost, the reply and its record are
+ *   still the room's, so the fresh conversation's first message carries the
+ *   line. A participant with no reply in the ledger is told nothing.
  * - **Nothing earlier changes.** The frame rides the new message only.
  * - **Fixed words and counts.** The lines are `workshopTrailerOutcomeLines`',
  *   so the frame holds no title, quote, path, find text or note id.
@@ -71,8 +80,8 @@ export function workshopTrailerOutcomesFrameFor(
 }
 
 /**
- * The frames a message carries, as the room handler adds them: none without
- * a reader (a tool sidecar, a fresh conversation, a pressed edit offer), and
+ * The frames a message carries, as the room handler and the tool side-pass add them: none without
+ * a reader (a tool sidecar, a pressed edit offer), and
  * otherwise the reader's frame, if its latest reply left one. The ledger is
  * read only for a reader. Logged without text.
  */

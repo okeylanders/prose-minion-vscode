@@ -7,8 +7,10 @@
  *   turn, and the persona's next message carries one
  *   `<workshop-trailer-outcomes>` frame before the writer's message.
  * - Once the persona replies again, the line is not repeated.
- * - Never on a direct tool message, a pressed edit offer's request, or a
- *   conversation's first message.
+ * - A tool run's synthesis request carries it too (Okey, 2026-11-17).
+ * - It is owed by the ledger, not the provider conversation: a fresh
+ *   conversation's first message carries it (PR #276 F-01).
+ * - Never on a direct tool message or a pressed edit offer's request.
  * - The record never reaches the webview; the log says only that a line was
  *   added.
  * Made-up text: Alice.
@@ -50,6 +52,16 @@ describe('Workshop routes — a persona is told what became of its notes', () =>
   const lastContinued = (): string => (harness.service.continueConversation as jest.Mock).mock.calls.at(-1)[1];
   const hostReplies = (): WorkshopTurn[] =>
     harness.session.readRoomLedger().filter((turn) => turn.role === 'assistant' && turn.participant === 'host');
+  const lastStarted = (): string =>
+    (harness.service.startWorkshopPersonaConversation as jest.Mock).mock.calls.at(-1)[0].message as string;
+  /** The provider no longer holds the host's conversation: the next send finds out, and the one after starts afresh. */
+  const loseHostConversation = async () => {
+    (harness.service.continueConversation as jest.Mock).mockRejectedValueOnce(
+      Object.assign(new Error('gone'), { name: 'ConversationNotFoundError' })
+    );
+    await send('Still there?');
+    expect(harness.session.getHostConversationId()).toBeUndefined();
+  };
   const logs = (): string[] => (harness.log.appendLine as jest.Mock).mock.calls.map(([line]) => String(line));
 
   beforeEach(async () => {
@@ -134,6 +146,86 @@ describe('Workshop routes — a persona is told what became of its notes', () =>
     expect(toolSent).not.toContain('workshop-trailer-outcomes');
   });
 
+  describe('a tool run before the writer writes again (2026-11-17, Okey)', () => {
+    const synthesisAsked = (): string => lastContinued();
+
+    it('the synthesis request carries the line; the writer\'s next message does not repeat it', async () => {
+      replyNext(`It is settled.\n\n${NOTES}`);
+      await send('Is the watch settled?');
+      const before = JSON.stringify((harness.service.continueConversation as jest.Mock).mock.calls);
+
+      await harness.runProse();
+      await settle();
+      const asked = synthesisAsked();
+      expect(asked).toContain('Synthesize Prose');
+      expect(asked).toContain(FRAME);
+      // The line stands before the request it rides, as on a writer's message.
+      expect(asked.indexOf('</workshop-trailer-outcomes>')).toBeLessThan(asked.indexOf('Synthesize Prose'));
+      expect(asked).not.toContain(TITLE_SENTINEL);
+      expect(logs().filter((line) => line.includes('Trailer outcomes'))).toEqual(['[RunWorkshopToolSidePass] Trailer outcomes added']);
+      // Every earlier message is as it was sent.
+      expect(JSON.stringify((harness.service.continueConversation as jest.Mock).mock.calls.slice(0, -1))).toBe(before);
+
+      // The synthesis landed and is the host's latest reply: nothing is owed.
+      const synthesis = hostReplies().at(-1)!;
+      expect(synthesis.artifact).toBe('persona_synthesis');
+      expect(synthesis).not.toHaveProperty('trailerOutcomes');
+      await send('Who is late?');
+      expect(lastContinued()).not.toContain('workshop-trailer-outcomes');
+      expect(logs().filter((line) => line.includes('Trailer outcomes'))).toHaveLength(1);
+    });
+
+    it('a tool run after a reply with no trailer adds nothing', async () => {
+      await send('And the falling?');
+      await harness.runProse();
+      await settle();
+      expect(synthesisAsked()).toContain('Synthesize Prose');
+      expect(synthesisAsked()).not.toContain('workshop-trailer-outcomes');
+      expect(logs().some((line) => line.includes('Trailer outcomes'))).toBe(false);
+    });
+
+    it('the tool sidecar\'s own request never carries it', async () => {
+      replyNext(`It is settled.\n\n${NOTES}`);
+      await send('Is the watch settled?');
+      await harness.runProse();
+      await settle();
+      expect(JSON.stringify((harness.service.analyzeProse as jest.Mock).mock.calls)).not.toContain('workshop-trailer-outcomes');
+    });
+
+    it('a synthesis that starts the host\'s conversation carries the line too, once (PR #276 F-01)', async () => {
+      replyNext(`It is settled.\n\n${NOTES}`);
+      await send('Is the watch settled?');
+      await loseHostConversation();
+      await harness.runProse();
+      await settle();
+      const started = lastStarted();
+      expect(started).toContain('Synthesize Prose');
+      expect(started.split(FRAME)).toHaveLength(2);
+      expect(hostReplies().at(-1)!.artifact).toBe('persona_synthesis');
+      await send('Who is late?');
+      expect(lastContinued()).toContain('Who is late?');
+      expect(lastContinued()).not.toContain('workshop-trailer-outcomes');
+      // The send that found the conversation gone was built with the line and reached no one; the synthesis request landed it.
+      expect(logs().filter((line) => line.includes('Trailer outcomes'))).toEqual([
+        '[WorkshopRoomHandler] Trailer outcomes added',
+        '[RunWorkshopToolSidePass] Trailer outcomes added'
+      ]);
+    });
+
+    it('the mirror: a synthesis that carries trailers is told of them with the writer\'s next message', async () => {
+      replyNext(`Here is what Prose found.\n\n${memoryFrame({ title: 'The Hatter keeps the time' })}\n${MALFORMED}`);
+      await harness.runProse();
+      await settle();
+      const synthesis = hostReplies().at(-1)!;
+      expect(synthesis.artifact).toBe('persona_synthesis');
+      expect(synthesis.trailerOutcomes).toEqual({ memory: { cards: 1, dropped: [{ reason: 'malformed', count: 1 }] } });
+      await send('Who is late?');
+      expect(lastContinued()).toContain('Your last reply\'s notes: 1 shown as a card, 1 dropped (malformed).');
+      await send('And the Queen?');
+      expect(lastContinued()).not.toContain('workshop-trailer-outcomes');
+    });
+  });
+
   it('a guest hears only of its own reply, and the host only of the host\'s', async () => {
     replyNext(`It is settled.\n\n${NOTES}`);
     await send('Is the watch settled?');
@@ -185,18 +277,40 @@ describe('Workshop routes — a persona is told what became of its notes', () =>
     expect(sent).not.toContain('Your last reply\'s notes');
   });
 
-  it('a conversation\'s first message carries no line, whatever an earlier conversation\'s reply left', async () => {
+  it('a lost conversation still owes the line: the fresh conversation\'s first message carries it, once (PR #276 F-01)', async () => {
     replyNext(`It is settled.\n\n${NOTES}`);
     await send('Is the watch settled?');
-    // The conversation is lost: the next message starts a fresh one, which never wrote that reply.
-    (harness.service.continueConversation as jest.Mock).mockRejectedValueOnce(
-      Object.assign(new Error('gone'), { name: 'ConversationNotFoundError' })
-    );
-    await send('Still there?');
-    expect(harness.session.getHostConversationId()).toBeUndefined();
+    const startsBefore = (harness.service.startWorkshopPersonaConversation as jest.Mock).mock.calls.length;
+    // The conversation is lost; the reply and its record are still the room's.
+    await loseHostConversation();
+    expect(hostReplies().at(-1)!.trailerOutcomes).toEqual({ memory: { cards: 2, dropped: [{ reason: 'malformed', count: 1 }] } });
+
     await send('Where were we?');
-    const fresh = (harness.service.startWorkshopPersonaConversation as jest.Mock).mock.calls.at(-1)[0].message as string;
+    expect((harness.service.startWorkshopPersonaConversation as jest.Mock).mock.calls).toHaveLength(startsBefore + 1);
+    const fresh = lastStarted();
     expect(fresh).toContain('Where were we?');
-    expect(fresh).not.toContain('workshop-trailer-outcomes');
+    expect(fresh.split(FRAME)).toHaveLength(2);
+    expect(fresh.indexOf('</workshop-trailer-outcomes>')).toBeLessThan(fresh.indexOf('WRITER MESSAGE:'));
+    expect(fresh).not.toContain(TITLE_SENTINEL);
+    // The fresh conversation is shown the reply the line is about.
+    // The fresh conversation is not shown the reply itself (the host's room offset is already past it): the line
+    // is all it hears of it.
+    expect(fresh).not.toContain('It is settled.');
+
+    // It replied: nothing is owed on any later send.
+    await send('And the Queen?');
+    expect(lastContinued()).toContain('And the Queen?');
+    expect(lastContinued()).not.toContain('workshop-trailer-outcomes');
+    await send('And the Duchess?');
+    expect(lastContinued()).not.toContain('workshop-trailer-outcomes');
+    // Two messages were built with the line: the send that found the conversation gone (it reached no one, so the
+    // line stayed owed) and the one that landed.
+    expect(logs().filter((line) => line.includes('Trailer outcomes'))).toEqual(Array(2).fill('[WorkshopRoomHandler] Trailer outcomes added'));
+  });
+
+  it('a participant\'s first-ever message carries no line: the ledger holds no reply of its own', () => {
+    const first = (harness.service.startWorkshopPersonaConversation as jest.Mock).mock.calls[0][0].message as string;
+    expect(first).toContain('Does the chase land?');
+    expect(first).not.toContain('workshop-trailer-outcomes');
   });
 });

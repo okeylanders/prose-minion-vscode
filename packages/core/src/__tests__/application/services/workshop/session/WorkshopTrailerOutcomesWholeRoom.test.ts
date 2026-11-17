@@ -150,6 +150,56 @@ describe('Rewind needs nothing of its own (D15)', () => {
   });
 });
 
+describe('a tool run before the writer writes again (2026-11-17, Okey)', () => {
+  /** An exchange, a reply with notes, then a tool run whose synthesis request carries the line. */
+  function toolRoom() {
+    const room = openRoom();
+    const first = room.hostMessage('Where did the rabbit go?');
+    const second = room.hostMessage('Is the watch settled?', { reply: NOTES_REPLY });
+    const before = JSON.stringify(hostHistory(room));
+    const run = room.toolRun('prose');
+    return { room, first, second, run, before };
+  }
+
+  it('the synthesis request carries the line, once; earlier retained messages are byte-identical', () => {
+    const { room, run, before } = toolRoom();
+    const history = hostHistory(room);
+    const beforeMessages = JSON.parse(before) as unknown[];
+    expect(JSON.stringify(history.slice(0, beforeMessages.length))).toBe(before);
+    const delivered = history.slice(beforeMessages.length);
+    expect(delivered.map((entry) => entry.role)).toEqual(['user', 'assistant']);
+    expect(delivered[0].content).toBe(`${FRAME}\n[host] synthesize prose`);
+    expect(run.synthesis).not.toHaveProperty('trailerOutcomes');
+
+    // The synthesis is the host's latest reply now: the writer's next message repeats nothing.
+    room.hostMessage('Who is late?');
+    expect(hostHistory(room).at(-2)!.content).toBe('[host] Who is late?');
+    expect(hostHistory(room).filter((entry) => String(entry.content).includes('workshop-trailer-outcomes'))).toHaveLength(1);
+    // The sidecar's own conversation never held it.
+    expect(JSON.stringify(room.conversations.getMessages(room.session.getToolSidecarConversationId('prose')!)))
+      .not.toContain('workshop-trailer-outcomes');
+  });
+
+  it('a tool run after a reply with no trailer adds nothing', () => {
+    const room = openRoom();
+    room.hostMessage('Where did the rabbit go?');
+    room.toolRun('prose');
+    expect(hostHistory(room).at(-2)!.content).toBe('[host] synthesize prose');
+  });
+
+  it('Rewind past the synthesis request makes the line owed again on the next eligible message', () => {
+    const { room, second, run } = toolRoom();
+    const state = room.session.exportCommittedState();
+    expect(workshopTrailerOutcomesFrameFor(state.turns, HOST)).toBeUndefined();
+
+    const cut = rewindWorkshopSession({ workshop: state, conversations: room.archive(), cut: after(second.id) });
+    expect(cut.workshop.turns.some((turn) => turn.id === run.synthesis.id)).toBe(false);
+    expect(workshopTrailerOutcomesFrameFor(cut.workshop.turns, HOST)).toBe(FRAME);
+    // The cut conversation no longer holds the message that carried it.
+    expect(JSON.stringify(cut.conversations)).not.toContain('workshop-trailer-outcomes');
+  });
+});
+
 describe('each participant hears only of its own reply (D15)', () => {
   it('a guest\'s outcomes reach only the guest; the host\'s only the host', () => {
     const room = openRoom();

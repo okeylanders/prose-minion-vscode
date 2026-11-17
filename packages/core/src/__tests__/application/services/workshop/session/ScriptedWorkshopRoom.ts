@@ -198,7 +198,7 @@ export class ScriptedWorkshopRoom {
       : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
     const reactions = this.reactions({ kind: 'host' }, this.session.hasHostConversation() ? 'update' : 'start',
       workshopReactionHoldsAfterCatchUp(this.session.readRoomLedger(), { kind: 'host' }, roomDelivery));
-    const outcomes = this.outcomes(this.session.hasHostConversation() ? { kind: 'host' } : undefined);
+    const outcomes = this.outcomes({ kind: 'host' });
     const writerTurn = this.session.beginPersonaMessage(requestId, text, this.refs(staged));
     reactions.stage(requestId);
     if (options.projectMemory) {
@@ -350,6 +350,8 @@ export class ScriptedWorkshopRoom {
     const pendingHostUpdates = this.session.hasHostConversation()
       ? this.session.collectPendingHostUpdates()
       : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
+    // A synthesis request tells the host of its last reply's trailers, as a writer's message does.
+    const outcomes = this.outcomes({ kind: 'host' });
     const synthesisRequestId = this.requestId(`synthesis-${toolId}`);
     this.session.beginPersonaSynthesis(synthesisRequestId, completion.turn.id);
     if (options.projectMemory) {
@@ -358,7 +360,7 @@ export class ScriptedWorkshopRoom {
     const hostConversationId = this.commitHistory(
       this.session.getHostConversationId(),
       `workshop_persona_${this.session.getSelectedPersonaId()}`,
-      `[host] synthesize ${toolId}`,
+      `${outcomes}[host] synthesize ${toolId}`,
       `Host synthesis of ${toolId}.`
     );
     const synthesis = completeWorkshopRun({
@@ -582,8 +584,8 @@ export class ScriptedWorkshopRoom {
 
   /**
    * The host's line on the reader's last reply's trailers, as the room
-   * handler adds it (ADR 2026-11-17 D14, D15): a continuing conversation's
-   * next message only, derived from the ledger.
+   * handler adds it (ADR 2026-11-17 D14, D15): derived from the ledger's
+   * latest reply, whether the conversation continues or starts again.
    */
   private outcomes(reader: WorkshopTrailerOutcomesReader | undefined): string {
     return workshopTrailerOutcomeFrames(reader, () => this.session.readRoomLedger(), (line) => this.log.push(line))

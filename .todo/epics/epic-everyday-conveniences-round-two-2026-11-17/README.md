@@ -36,7 +36,7 @@ decisions live in this README and the ADR.
 | G | G | composer-at-mentions | 14 | `…-at-mentions` | #271 | Merged |
 | B | B | memory-suggestion-level | 8 | `…-memory-suggestion-level` | #272 | Merged |
 | C | C | memory-title-index | new | `…-memory-title-index` | #274 | Merged |
-| D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | | Built; waits for review |
+| D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | #276 | Review findings resolved; waits for re-review |
 | A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | #273 | Merged |
 | F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | | After C |
 | H | H | prose-minion-help-reference | 20 | `…-help-reference` | | Last |
@@ -287,6 +287,8 @@ a note.** These are the ones to look at first.
 | 42 | F, H | Who sees a read | Private to the persona that asked. | Publishing needs a context-source kind and Read in (ADR D16, Q4). |
 | 43 | F | ADR 2026-08-01 | Not amended. | It says nothing of who reads a lens; the guard is code. |
 | 44 | H | "Generated or checked" | Both: committed tables written by a script, held by a test, plus an index that makes a hand-written section own every command and setting. | Core cannot read the manifest at run time (ADR D24, Q6). |
+| 45 | D | Which messages carry the line | The writer's next message to the participant, **and the request that asks the host to synthesize a tool run** (2026-11-17). Still derived from the ledger, with no delivery record. Never a tool sidecar's message or a pressed edit offer's request. | **Okey's decision.** Without it, a tool run right after a reply made the synthesis the latest reply, and the earlier reply's outcomes were never told (PR #276; ADR D15 addendum). |
+| 46 | D | A lost conversation | The fresh conversation's first message carries the line, in the same words. | Review F-01 (PR #276). The fresh conversation is not shown the earlier reply, so "Your last reply" names one it cannot see; a different frame `note` there is proposed, not taken. **Okey's to decide.** |
 
 ## Test counts
 
@@ -298,6 +300,7 @@ a note.** These are the ones to look at first.
 | A, part 2 (`…-earlier-turns`, on the epic branch at `649b9f24`) | 884 | 12,572 | 59 |
 | C (`…-memory-title-index`, on B's branch) | 884 | 12,681 | 59 |
 | D (`…-memory-proposal-outcomes`, on C's branch) | 894 | 12,900 | 59 |
+| D after PR #276's review (on the epic branch with A part 2 and C merged in) | 903 | 13,024 | 59 |
 
 Each slice adds its row.
 
@@ -354,6 +357,16 @@ Also settled in that pass:
   the host no longer returns (D5), which the review named as an
   implementation risk.
 - Q1–Q7 stay open, as the orchestrator's defaults ("Defaults taken").
+
+**PR #276** (item D): [the review](../../../docs/pr-reviews/pr-276-trailer-outcomes-review.md),
+at `5e099e47`. One P2 and one P3, both accepted and resolved in code; with
+them, Okey's decision of 2026-11-17 on a tool run's synthesis request.
+
+| Finding | Resolution | ADR |
+|---|---|---|
+| **F-01 (P2).** The room handler asked for a provider conversation id before it read the ledger, so a lost conversation lost the last reply's outcomes: the fresh conversation's first message carried no line, and its reply replaced the one that was owed. | The reader is the participant, whether or not it has a conversation (`WorkshopRoomHandler`, `RunWorkshopToolSidePass`). A press and a tool sidecar are still excluded; a first-ever participant has no reply in the ledger and is told nothing. Tests: the recovery path carries the frame once, a later send carries none, and a first-ever message carries none. | D15 addendum |
+| **F-02 (P3).** The builder clipped each count at 10,000, so 10,001 dropped frames read as an exact 10,000. | The builder never clips. The codec's bound is the longest an array can be (2^32 − 1), which no tally can pass. Test: 10,001 frames record, validate and read as 10,001. The before-fixture still reads. | D15 addendum |
+| **Okey, 2026-11-17.** A tool run right after a reply with outcomes made the synthesis the latest reply; the outcomes were never told. | The synthesis request carries the frame, from the ledger, with no delivery record. Tests: the request carries it, the writer's next message does not repeat it, a sidecar never holds it, earlier messages are byte for byte, and the mirror (a synthesis with trailers) is told with the writer's next message. | D15 addendum; default 45 |
 
 ## Notes
 
