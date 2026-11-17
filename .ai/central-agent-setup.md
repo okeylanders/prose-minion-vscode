@@ -79,6 +79,7 @@ packages/core/src/
 │               ├── WorkshopContextHandler.ts
 │               ├── WorkshopExcerptScopeHandler.ts
 │               ├── WorkshopExcerptContinuation.ts # Continue on a carried file passage: one room operation, read first (PR #260 F-01)
+│               ├── WorkshopMessageAttachmentReads.ts # The reads on their way to staging a message attachment; a send waits for them (PR #271 F-01)
 │               ├── WorkshopSessionMessageHandler.ts
 │               ├── WorkshopSessionExportHandler.ts   # Read-only transcript export
 │               ├── WorkshopStandingDirectiveHandler.ts
@@ -239,6 +240,7 @@ packages/core/src/presentation/webview/
 │           ├── useWorkshopEditOffers.ts    # A reply's edit-offer chips: the press (ids only), its correlated answer, the one announcement (ADR 2026-11-10 U2–U6)
 │           ├── controllers/            # Transient modal/surface state machines
 │           │   ├── useWorkshopRailTabs.ts  # The rail's tabs and unseen-arrival badges; `railHidden` when the rail is collapsed
+│           │   ├── useWorkshopComposerMentions.ts # `@` in the composer: the file list's state, keys and picks; stages through injected callbacks (round two, item G)
 │           │   ├── creativeVariations/useCreativeVariationsAuthoring.ts
 │           │   └── showVsTell/         # useShowVsTellAuthoring, Intake, CommitFlow, InvalidationWatch
 │           └── widgets/                # Named feature transport/correlation hooks
@@ -1303,6 +1305,61 @@ card records:
 - **Logs.** A read naming several files logs counts and groups, never a
   path. A one-path read keeps the line it has always had, which names its
   configured path (`workshopResourceRequestLogSummary`).
+
+### Workshop Composer `@` Mentions
+
+Follow Everyday Conveniences round two, item G
+([the feature note](.todo/features/feature-workshop-composer-at-mentions/README.md),
+decisions A1 and A2) when touching what typing `@` in the composer does:
+
+- **No route of its own.** Opening the list posts
+  `WORKSHOP_REQUEST_CONTEXT_CATALOG`; a pick posts
+  `WORKSHOP_ATTACH_MESSAGE_RESOURCES` with the file's catalog key; Browse
+  project… opens the shared picker in its message mode. The shared picker
+  and its parity tests are untouched.
+- **The pill is the truth (A1).** The token a pick writes is prose in a
+  plain textarea. Nothing reads a token back out of a draft: deleting one
+  leaves its pill, and removing a pill leaves the text. A file already
+  staged takes its token and stages nothing (compared by catalog key).
+- **A file token's first word holds a `.` or a `/` (A2),** so it can never
+  read as a persona token (`@Jill`, later). `workshopMentionTokens` is the
+  one place a token is made: the shortest run of the path's last segments
+  that is unique in the catalog and keeps the rule. A test holds every token
+  the list can insert to it.
+- **Sectioned.** The list renders sections (`Files` today) so People can
+  join without a redesign. Do not add People here.
+- **Where the rules live.**
+  - Pure rules: `utils/workshop/workshopComposerMentions.ts` (trigger
+    detection, folded matching through `foldedTextSearch`, tokens, the
+    draft after a pick). No pattern is built from what the writer typed.
+  - State: the controller `useWorkshopComposerMentions`. It posts nothing.
+  - The list: `components/workshop/WorkshopComposerMentionList`, a listbox
+    the textarea controls (`aria-controls`, `aria-activedescendant`); it
+    never takes focus.
+- **Keys.** While an option is active, Enter and Tab pick it. With no
+  match nothing is active, so Enter sends as it always has. Escape closes
+  the list for that `@` and keeps the draft. Nothing acts during IME
+  composition, the send included.
+- **A send waits for a pick's file, on the host** (PR #271 F-01). A pick
+  only posts the attach request, and Enter is a send key again at once.
+  The composer holds nothing back: ordered sends are not ordered
+  completions, so the host orders them.
+  - `WorkshopMessageAttachmentReads` tracks every read that will stage a
+    message attachment (`@`, the project picker, the system picker),
+    before anything awaits.
+  - `WORKSHOP_SEND_MESSAGE` waits for the reads in flight when it arrives
+    (`pickedAttachmentsStaged`), before it stages or collects anything, at
+    most `WORKSHOP_MESSAGE_ATTACHMENT_READ_WAIT_MS`.
+  - A file that was not staged, a read past the wait, or a room replaced
+    meanwhile refuses the **whole** send and gives the draft back
+    (`postComposerDraftRestored`). A message never goes without a file the
+    writer picked unless the writer sends again. A file already staged is
+    no refusal.
+  - A read stages only into the room it began in (`roomRevision`, checked
+    after each read); otherwise the file is dropped, and the log names no file.
+  - A new way to stage a message attachment after an await tracks its read
+    there.
+- **Nothing is persisted, and nothing of the `@` list is logged.**
 
 ### Workshop Excerpt Re-read
 

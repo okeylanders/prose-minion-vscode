@@ -1538,6 +1538,11 @@ export const WorkshopApp: React.FC = () => {
             onIncludeSelectedTextChange: selectedText.setIncludeSelectedText,
             livePill: selectedText.livePill
           }}
+          mentions={{
+            catalog: workshop.contextCatalog,
+            onRequestCatalog: workshop.requestContextCatalog,
+            onAttach: workshop.attachMessageResources
+          }}
           onSend={(text) => workshop.sendMessage(text, selectedText.sendSelection)}
           onCancel={workshop.cancelRun}
           onOpenContext={openContext}
