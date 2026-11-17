@@ -1379,8 +1379,10 @@ what a persona may see of the Lexical Gravity library:
   - The family imports nothing of `recall/` or `memory/`. It shares only
     `WorkshopCapabilityPaging` and `reads/`.
 - **Where lenses come from.** Project lenses only through
-  `LexicalGravityLensRepository.list()`; built-ins only through
+  `LexicalGravityLensRepository.listReadable()`; built-ins only through
   `builtInLexicalGravityLenses()`.
+  - A read that names a built-in never lists the project's folder: a
+    built-in wins its slug.
   - `mergeLexicalGravityLibrary` (`LexicalGravityLenses.ts`) is the one
     merge rule: a built-in wins its slug. The modal's handler and the
     family both call it.
@@ -1421,6 +1423,15 @@ what a persona may see of the Lexical Gravity library:
   capability card does; the transcript shows the request only.
 - **Logs** carry the operation, counts and outcomes, never a slug a persona
   wrote, a subject or lens text.
+  - **Nor a lens file's name** (PR #277 F-01). The family's port is the
+    repository's count-only `listReadable()`: it returns the lenses that
+    read and how many files did not, and logs nothing about a file. The
+    family never calls `list()`, whose result and log name each skipped
+    file for the writer's own Lexical Gravity modal (`boundaries.test.ts`).
+  - A rule about what a persona's call may log covers every service the
+    call reaches on the shared output channel, not only the family's own
+    lines. `WorkshopLensRepositoryLogs.test.ts` runs the real repository
+    and the capability over one logger; a new reader on this path joins it.
 
 ### Workshop Excerpt Re-read
 

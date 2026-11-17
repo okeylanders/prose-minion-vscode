@@ -886,27 +886,27 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'application/services/workshop/lens/WorkshopLensCapability.ts',
     reason: 'the personas\' read-only lens family: lists and reads the lens library, and names its types, repository and budget (ADR 2026-11-17 D16)',
-    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:LensCatalog|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
+    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:ReadableLenses|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
   },
   {
     file: 'application/services/workshop/lens/WorkshopLensCopy.ts',
     reason: 'the personas\' read-only lens family: lists and reads the lens library, and names its types, repository and budget (ADR 2026-11-17 D16)',
-    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:LensCatalog|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
+    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:ReadableLenses|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
   },
   {
     file: 'application/services/workshop/lens/WorkshopLensInstalled.ts',
     reason: 'the personas\' read-only lens family: lists and reads the lens library, and names its types, repository and budget (ADR 2026-11-17 D16)',
-    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:LensCatalog|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
+    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:ReadableLenses|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
   },
   {
     file: 'application/services/workshop/lens/WorkshopLensRenderer.ts',
     reason: 'the personas\' read-only lens family: lists and reads the lens library, and names its types, repository and budget (ADR 2026-11-17 D16)',
-    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:LensCatalog|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
+    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:ReadableLenses|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
   },
   {
     file: 'application/services/workshop/lens/WorkshopLensXmlCodec.ts',
     reason: 'the personas\' read-only lens family: lists and reads the lens library, and names its types, repository and budget (ADR 2026-11-17 D16)',
-    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:LensCatalog|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
+    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:ReadableLenses|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
   },
   {
     file: 'shared/types/messages/workshop/seedDelivery.ts',
@@ -2041,8 +2041,11 @@ describe('architectural boundaries', () => {
       .filter(({ module, typeOnly }) => /WorkshopSessionService$/.test(module) && !typeOnly)
       .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
     const sources = lensFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
-    // It reads no file itself and writes nothing: no platform file system, and of the repository only `list`.
+    // It reads no file itself and writes nothing: no platform file system, and of the repository only the
+    // count-only `listReadable`, never `list`, whose result and log name files (PR #277 F-01).
     expect(sources).not.toMatch(/\bFileSystem\b|readFile|writeFile|saveManyForQuery|replaceIncompatibleForQuery|findForQuery/);
+    expect(sources).not.toMatch(/\.list\(|\blist\(\)|incompatibleResources|LexicalGravityLensCatalog/);
+    expect(sources).toContain('this.library.listReadable()');
     expect(sources).not.toMatch(/\bnew\s+LexicalGravityLensRepository\b/);
     expect(lensFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
       .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);

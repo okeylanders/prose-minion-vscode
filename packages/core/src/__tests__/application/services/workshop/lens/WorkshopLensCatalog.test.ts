@@ -123,7 +123,7 @@ describe('the library a catalog lists', () => {
     expect(two.result.metadata).toMatchObject({ unreadableFiles: 2 });
     expect((await catalog(lensLibrary([], 1))).content).toContain('1 lens file couldn\'t be read.');
     expect((await catalog(lensLibrary([aliceLens('tea-party')]))).content).not.toContain('couldn\'t be read');
-    expect(`${two.content}\n${JSON.stringify(two.result.metadata)}\n${two.lines.join('\n')}`).not.toMatch(/broken-\d|\.json/);
+    expect(`${two.content}\n${JSON.stringify(two.result.metadata)}\n${two.lines.join('\n')}`).not.toMatch(/\.json/);
   });
 
   it.each([
@@ -137,7 +137,7 @@ describe('the library a catalog lists', () => {
   });
 
   it('a folder that cannot be read lists the built-ins as a partial result', async () => {
-    const { result, content, lines } = await catalog({ list: async () => { throw new Error('EIO: /workspace/SECRET-PATH'); } });
+    const { result, content, lines } = await catalog({ listReadable: async () => { throw new Error('EIO: /workspace/SECRET-PATH'); } });
     expect(result.status).toBe('partial');
     expect(content).toContain('The project\'s lens folder could not be read just now.');
     expect(slugsOn(content)).toEqual(BUILT_INS.map((lens) => lens.slug));

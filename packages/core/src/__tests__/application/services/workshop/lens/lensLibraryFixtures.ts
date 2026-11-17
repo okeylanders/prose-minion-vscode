@@ -7,7 +7,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { CapabilityContextWindow } from '@orchestration/AgentRunContracts';
 import {
   LexicalGravityLibraryUnavailableError,
-  type LexicalGravityLensCatalog
+  type LexicalGravityReadableLenses
 } from '@/infrastructure/storage/LexicalGravityLensRepository';
 import { builtInLexicalGravityLenses } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 import { validateLexicalGravityLens } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
@@ -15,7 +15,7 @@ import { WorkshopLensCapability, type WorkshopLensLibraryPort } from '@/applicat
 
 /** A project with no lens of its own: the built-ins are the whole library. */
 export const noProjectLenses: WorkshopLensLibraryPort = {
-  list: async () => ({ lenses: [], incompatibleResources: [] })
+  listReadable: async () => ({ lenses: [], unreadableFiles: 0 })
 };
 
 /** A valid project lens: a built-in's shape under a made-up slug, name and subject. */
@@ -43,21 +43,13 @@ export function aliceLenses(count: number): WorkshopLexicalGravityLens[] {
 
 /** A library that lists `lenses`, with `unreadable` files that did not read. */
 export function lensLibrary(lenses: readonly WorkshopLexicalGravityLens[], unreadable = 0): WorkshopLensLibraryPort {
-  const catalog: LexicalGravityLensCatalog = {
-    lenses: [...lenses],
-    incompatibleResources: Array.from({ length: unreadable }, (_, index) => ({
-      resourceName: `broken-${index}.json`,
-      foundVersion: null,
-      rebuildQuery: 'broken',
-      message: 'could not be loaded'
-    }))
-  };
-  return { list: async () => catalog };
+  const readable: LexicalGravityReadableLenses = { lenses: [...lenses], unreadableFiles: unreadable };
+  return { listReadable: async () => readable };
 }
 
 /** A workspace with no folder, or several: the repository's own refusal. */
 export function unavailableLensLibrary(reason: 'no-workspace' | 'multi-root'): WorkshopLensLibraryPort {
-  return { list: async () => { throw new LexicalGravityLibraryUnavailableError(reason); } };
+  return { listReadable: async () => { throw new LexicalGravityLibraryUnavailableError(reason); } };
 }
 
 /** A context window with `freeInputTokens` of room for evidence. */

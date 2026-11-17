@@ -4,10 +4,13 @@
  * Read-only, and private to the persona that asked.
  *
  * - **Where lenses come from.** Project lenses only through the
- *   repository's `list()`; built-ins only through
+ *   repository's count-only `listReadable()`, which names no file in its
+ *   result or its log (PR #277 F-01); built-ins only through
  *   `builtInLexicalGravityLenses()`; the two joined by the modal's own rule
  *   (`mergeLexicalGravityLibrary`: a built-in wins its slug). This adapter
  *   reads no file and writes nothing.
+ * - **A built-in is read without the project's folder.** A built-in wins
+ *   its slug, so a read that names one never lists the library.
  * - **No workspace, several roots, or a folder that did not read** still
  *   lists the built-ins, and says why in host words.
  * - **The installed lens** is known by its slug alone, through a narrow
@@ -33,7 +36,7 @@ import {
 } from '@shared/types/workshopCapabilities';
 import {
   LexicalGravityLibraryUnavailableError,
-  type LexicalGravityLensCatalog
+  type LexicalGravityReadableLenses
 } from '@/infrastructure/storage/LexicalGravityLensRepository';
 import {
   builtInLexicalGravityLenses,
@@ -58,9 +61,13 @@ import {
   type WorkshopLensRenderedRead
 } from '@/application/services/workshop/lens/WorkshopLensRenderer';
 
-/** The project library's one question a persona may ask; satisfied by LexicalGravityLensRepository. */
+/**
+ * The project library's one question a persona may ask; satisfied by
+ * LexicalGravityLensRepository. Count-only: the port cannot return or log
+ * the name of a file that did not read.
+ */
 export interface WorkshopLensLibraryPort {
-  list(): Promise<LexicalGravityLensCatalog>;
+  listReadable(): Promise<LexicalGravityReadableLenses>;
 }
 
 /** Which lens the room's Lexical Gravity directive holds, by slug alone. */
@@ -86,13 +93,18 @@ export class WorkshopLensCapability {
 
   async fulfill(request: WorkshopLensRequest, window?: CapabilityContextWindow): Promise<WorkshopCapabilityResult> {
     this.throwIfAborted();
-    const listing = await this.listing();
-    this.throwIfAborted();
     switch (request.capability) {
-      case 'lens.catalog':
+      case 'lens.catalog': {
+        const listing = await this.listing();
+        this.throwIfAborted();
         return this.catalog(request, listing);
-      case 'lens.read':
+      }
+      case 'lens.read': {
+        // A built-in wins its slug, so reading one needs nothing of the project's folder.
+        const listing = this.builtInListing(request.lens) ?? await this.listing();
+        this.throwIfAborted();
         return this.read(request, listing, window);
+      }
       default:
         return assertNever(request);
     }
@@ -102,9 +114,9 @@ export class WorkshopLensCapability {
   private async listing(): Promise<WorkshopLensListing> {
     const builtIns = builtInLexicalGravityLenses();
     let projectLibrary: WorkshopLensProjectLibraryState = 'listed';
-    let listed: LexicalGravityLensCatalog = { lenses: [], incompatibleResources: [] };
+    let listed: LexicalGravityReadableLenses = { lenses: [], unreadableFiles: 0 };
     try {
-      listed = await this.library.list();
+      listed = await this.library.listReadable();
     } catch (error) {
       projectLibrary = error instanceof LexicalGravityLibraryUnavailableError ? error.reason : 'unreadable';
       if (projectLibrary === 'unreadable') {
@@ -119,7 +131,22 @@ export class WorkshopLensCapability {
     return {
       lenses: [...projects, ...builtIns],
       projectLibrary,
-      unreadableFiles: listed.incompatibleResources.length,
+      unreadableFiles: listed.unreadableFiles,
+      ...(installedSlug !== undefined ? { installedSlug } : {})
+    };
+  }
+
+  /** The built-ins alone, when `slug` names one: the project's library is not asked. */
+  private builtInListing(slug: string): WorkshopLensListing | undefined {
+    const builtIns = builtInLexicalGravityLenses();
+    if (!builtIns.some((lens) => lens.slug === slug)) {
+      return undefined;
+    }
+    const installedSlug = this.installed.installedLensSlug();
+    return {
+      lenses: builtIns,
+      projectLibrary: 'listed',
+      unreadableFiles: 0,
       ...(installedSlug !== undefined ? { installedSlug } : {})
     };
   }
