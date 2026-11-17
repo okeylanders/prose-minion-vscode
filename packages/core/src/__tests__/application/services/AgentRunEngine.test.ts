@@ -621,6 +621,63 @@ describe('AgentRunEngine', () => {
     ]);
   });
 
+  it('recovers an empty native tool call through the validated XML capability', async () => {
+    const guides = capability();
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce((async function* () {
+        yield { token: '', done: true, finishReason: 'tool_calls', usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 } };
+      })())
+      .mockReturnValueOnce(stream([GUIDE_REQUEST]))
+      .mockReturnValueOnce(stream(['The answer after reading the guide.']));
+    const visible: string[] = [];
+    const result = await engine.runInitial({
+      toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze this.',
+      policy: AGENT_RUN_POLICIES.assistant, capability: guides,
+      options: { onToken: token => visible.push(token) }
+    });
+
+    expect(client.createStreamingChatCompletion).toHaveBeenCalledTimes(3);
+    expect(client.createStreamingChatCompletion.mock.calls[1][0]).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: 'user', content: expect.stringContaining('not a native tool call') })
+    ]));
+    expect(guides.fulfill).toHaveBeenCalledTimes(1);
+    expect(result.content).toBe('The answer after reading the guide.');
+    expect(visible.join('')).toBe(result.content);
+    expect(result.usage?.totalTokens).toBe(15);
+  });
+
+  it('bounds repeated empty native calls and reports a tool failure', async () => {
+    client.createChatCompletion.mockResolvedValue({ content: '', finishReason: 'tool_calls' });
+    const guides = capability();
+    const result = await engine.runInitial({
+      toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze this.',
+      policy: AGENT_RUN_POLICIES.assistant, capability: guides
+    });
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(2);
+    expect(guides.fulfill).not.toHaveBeenCalled();
+    expect(result.content).toContain('could not complete its tool request');
+  });
+
+  it('keeps the XML reminder and allows a bounded recovery in the next capability round', async () => {
+    const guides = capability();
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: '', finishReason: 'tool_calls' })
+      .mockResolvedValueOnce({ content: GUIDE_REQUEST, finishReason: 'stop' })
+      .mockResolvedValueOnce({ content: '', finishReason: 'tool_calls' })
+      .mockResolvedValueOnce({ content: GUIDE_REQUEST, finishReason: 'stop' })
+      .mockResolvedValueOnce({ content: 'Answer after both reads.', finishReason: 'stop' });
+    const result = await engine.runInitial({
+      toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze this.',
+      policy: AGENT_RUN_POLICIES.assistant, capability: guides
+    });
+    expect(result.content).toBe('Answer after both reads.');
+    expect(guides.fulfill).toHaveBeenCalledTimes(2);
+    expect(client.createChatCompletion.mock.calls[2][0]).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: 'user', content: expect.stringContaining('do not use native tool calls') })
+    ]));
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(5);
+  });
+
   it('buffers an exact XML request, then progressively streams the final answer', async () => {
     const guides = capability();
     client.createStreamingChatCompletion
