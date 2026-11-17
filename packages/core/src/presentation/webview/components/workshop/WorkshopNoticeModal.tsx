@@ -124,8 +124,149 @@ const COMPOSER_CONTROLS_ALT = 'The Workshop composer control bar';
 
 const PAGES: readonly NoticePage[] = [
   {
-    title: 'New: Suggested edits you apply',
+    title: 'New: Selected Text on a message',
     tag: 'new',
+    body: (
+      <>
+        Ask about a few lines without changing your excerpt. Turn on{' '}
+        <b>Include selected text</b> beside the composer, and whatever you select in the editor
+        shows above it as a <b>Selected Text</b> pill, with its file, lines, and word count. It
+        follows your selection until you send, then goes with that one message. Or right-click a
+        selection and choose <b>Prose Minion</b> &rarr; <b>Add Selection to Workshop Message</b>{' '}
+        to attach it by hand. The persona reads those lines as a selection, apart from the
+        excerpt.
+      </>
+    ),
+    note: (
+      <>
+        The toggle starts off and is remembered. A selection over 5,000 words is cut to its first
+        5,000, and the pill says so before you send. The message carries the selection shown on
+        the pill. If that selection is no longer available or the room has changed, the message
+        is held back and your draft returned. <b>Send Selection to Workshop</b> is now
+        named <b>Send to New Workshop Excerpt</b>.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'selected-text-composer',
+        alt: 'The Workshop composer with a Selected Text pill above it, naming a chapter file, lines 14 to 19 and 96 words, and the Include selected text toggle turned on',
+        maxWidthPx: 480,
+        ratio: '1886 / 370',
+        callouts: [
+          { label: '1', leftPercent: 1, topPercent: 3.8, widthPercent: 55.3, heightPercent: 18.6 },
+          { label: '2', leftPercent: 6.8, topPercent: 61.7, widthPercent: 17.6, heightPercent: 22.6 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'selected-text-sent',
+        alt: 'A sent Workshop message with its Selected Text pill above the bubble',
+        maxWidthPx: 480,
+        ratio: '1896 / 284',
+        callouts: [
+          { label: '3', leftPercent: 61.2, topPercent: 4.9, widthPercent: 38.1, heightPercent: 22.2 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Selected Text', detail: 'the editor’s selection, attached to your next message.' },
+      { label: '2', term: 'Include selected text', detail: 'on: the pill follows what you select. Off: the current selection is not attached automatically.' },
+      { label: '3', term: 'On the sent message', detail: 'the pill stays with the message it went with.' }
+    ]
+  },
+  {
+    title: 'New: Bigger reads, a folding rail, and Re-read from file',
+    tag: 'new',
+    body: (
+      <>
+        Ask a persona to compare chapters and it can now read up to ten files in one go, shown as
+        one card. Each read is fitted to the room left in the model&rsquo;s context window: a long
+        file stops early and the persona can ask for the rest, instead of the turn failing. The
+        side pane now folds away: press <b>Side pane</b> in the header, or the arrow on the rail,
+        and it collapses to a strip of icons with its counts. And when a new conversation keeps a
+        chapter from the last one, <b>Re-read from file</b> picks up the edits you made since;
+        choosing <b>Continue</b> on a carried chapter re-reads it for you.
+      </>
+    ),
+    note: (
+      <>
+        A conversation begun before this version keeps reading one file a call. In a narrow
+        window the side pane starts folded and opens over the conversation. Re-read is offered
+        for a chapter chosen as a file, not for pasted or selected text.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'multi-file-read-card',
+        alt: 'A Project Resources card in the thread: 3 files, two named and one more, requested by Jill, success',
+        maxWidthPx: 480,
+        ratio: '1684 / 186',
+        callouts: [
+          { label: '1', leftPercent: 1.9, topPercent: 51.9, widthPercent: 76.4, heightPercent: 29.9 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'rail-collapsed',
+        alt: 'The Workshop with its side pane folded to a strip: an arrow, then the Material and Notes icons with their counts, beside the conversation',
+        maxWidthPx: 400,
+        ratio: '1120 / 416',
+        callouts: [
+          { label: '2', leftPercent: 0, topPercent: 4.3, widthPercent: 10, heightPercent: 76 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Project Resources', detail: 'one card for the whole read, naming its files.' },
+      { label: '2', term: 'The strip', detail: 'Material and Notes with their counts; the arrow opens the pane again.' }
+    ]
+  },
+  {
+    title: 'New: Search your Dictionary history',
+    tag: 'new',
+    body: (
+      <>
+        In the sidebar&rsquo;s Dictionary, open <b>Lookup history</b> and type in the new search
+        box. It narrows the list as you type, matching each lookup&rsquo;s word, its context, and
+        the file it came from. Tick <b>Also search definitions</b> to look inside the saved
+        entries too: each result then shows the line that matched. Opening a result restores the
+        lookup without generating it again.
+      </>
+    ),
+    note: (
+      <>
+        Search reads your saved history only and asks no model. The arrows beside the Dictionary
+        heading still step through the whole history, not just the matches.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'dictionary-history-search',
+        alt: 'The Dictionary’s Lookup history popup searched for sweet, with Also search definitions ticked, 3 of 8 matching, and the first result showing the matching line of its definition',
+        maxWidthPx: 340,
+        ratio: '960 / 668',
+        callouts: [
+          { label: '1', leftPercent: 2.1, topPercent: 27.5, widthPercent: 95.8, heightPercent: 13.7 },
+          { label: '2', leftPercent: 2.1, topPercent: 40.4, widthPercent: 30, heightPercent: 8.1 },
+          { label: '3', leftPercent: 5, topPercent: 78.4, widthPercent: 84, heightPercent: 12.9 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Search', detail: 'words, context, and file names, as you type.' },
+      { label: '2', term: 'Also search definitions', detail: 'looks inside each saved entry.' },
+      { label: '3', term: 'In the definition', detail: 'the line that matched, under its lookup.' }
+    ]
+  },
+  {
+    title: 'Suggested edits you apply',
+    tag: 'primer',
     body: (
       <>
         A persona can now suggest an edit to a file in your project: a note, a chapter, or the
@@ -177,8 +318,8 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: Project Memory',
-    tag: 'new',
+    title: 'Project Memory',
+    tag: 'primer',
     body: (
       <>
         Give the Workshop a memory of your project. Turn it on in conversation settings, on the{' '}
@@ -227,8 +368,8 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: Pinned context',
-    tag: 'new',
+    title: 'Pinned context',
+    tag: 'primer',
     body: (
       <>
         Stop attaching the same files to every conversation. Open conversation settings, choose
@@ -279,8 +420,8 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: Bookmarks, reactions, and a two-tab rail',
-    tag: 'new',
+    title: 'Bookmarks, reactions, and a two-tab rail',
+    tag: 'primer',
     body: (
       <>
         The rail now has two tabs: <b>Material</b> holds the excerpt, the context, and what a

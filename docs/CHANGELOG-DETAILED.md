@@ -5,6 +5,83 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.0] - 2026-11-16 — Everyday Conveniences
+
+### Overview
+
+Two merges and a catalog refresh reached `main` after v2.13.0: [#266](https://github.com/okeylanders/prose-minion-vscode/pull/266) (Everyday Conveniences, five writer conveniences built as one epic) and [#258](https://github.com/okeylanders/prose-minion-vscode/pull/258) (omitted-empty widget reply fields), then the November 16 OpenRouter refresh. The release branch adds a narrow dependency patch. The range holds 65 commits before release preparation. This is an additive minor release: no `schemaVersion` changed, and existing model selections are not migrated. The release is prepared for November 16, 2026.
+
+### Workshop file reads: several files, fitted to the window
+
+- `resource.read` takes 1 to 10 `<path>` elements (`PROMPT_BUDGETS.workshopResource.readPaths`). One read is one call against the turn's ceiling and one capability card, whose metadata lists each file. A path in another group carries its own `group` attribute; duplicate paths are refused; line ranges are allowed only beside exactly one path.
+- Every file read is fitted to half the room left in the context window, by the module recall already used (`reads/WorkshopReadWindowFit`, with fair shares from `reads/WorkshopReadShares`). With the window known there is no per-turn byte total. With it unknown, the turn's file reads share 256 KiB, and a limited or refused read says why.
+- A read is never cut below its minimum: one whose limit holds less than the minimum for each readable file is refused, naming the room it had. A line is never cut either: a line longer than its file's share is that file's own outcome, `line-too-long`, with nothing delivered. Every continuation hint names a later line or the same line with fewer files, and a test follows every hint to the end.
+- The read instruction is entered once and frozen for a conversation, so a conversation begun before this version keeps one path a call.
+- See [ADR 2026-11-14](adr/2026-11-14-everyday-conveniences.md) D1–D8. The engine backstop and the `memory.read` fit remain in [Reads That Fit the Window](../.todo/features/feature-workshop-reads-fit-the-window/README.md); until then a provider's "context window exceeded" is rarer, not gone. How the multi-file card draws its per-file rows and a raw continuation line has not been reviewed by eye.
+
+### Selected Text attachments
+
+- One pill, two ways in, and neither touches the excerpt. The command **Add Selection to Workshop Message** (`prose-minion.addSelectionToWorkshopMessage`) stages the pill by hand, as a seed. The composer's **Include selected text** toggle (off by default, remembered per window) shows the current selection as the same pill, live, and attaches it at the send.
+- Text never travels from the webview to the host. `EditorSelectionSnapshots`, one per window, holds the newest eight selections under host-minted ids; the webview gets metadata and sends back only the id. A selection is cut at 5,000 words at capture.
+- A send naming a snapshot is bound to its room by `roomRevision`. Another room, an unknown id, or a full message refuses the whole send and returns the draft; the message is never sent without the selection instead.
+- `prose-minion.workshopSelection` is retitled **Send to New Workshop Excerpt** and keeps replacing the excerpt.
+- The shared composer restore (`WORKSHOP_COMPOSER_DRAFT_RESTORED`) no longer replaces newer typing: an empty composer takes the text, otherwise it goes ahead of what was typed since. This also changes a rolled-back send and Rewind's and Branch's restore.
+- Rewind restages the captured text once. Transcript export shows the label "Selected Text" only: no text, path, or lines.
+- See ADR 2026-11-14 D9–D17 and the [#264 review](pr-reviews/pr-264-selected-text-review.md). `VsCodeEditorContext`'s real selection events were mocked in tests; Okey's live pass covered them in the Development Host.
+
+### Dictionary history search
+
+- The history popup filters the summaries it already holds, in the webview, by word, context preview, and file name. Matching is substring search on text folded for case and accents (`shared/utils/foldedTextSearch.ts`); a word matches through `dictionaryPhraseKey`, the prior-lookup offer's rule.
+- **Also search definitions** asks the host (`SEARCH_DICTIONARY_HISTORY`), which answers with ids and snippets, never a body. Only the pending answer is taken, and only for the query on screen.
+- The `‹` `›` arrows still walk the whole history, and the cap stays 500. Search reads the 140-character context preview, not the whole context.
+- See the [Dictionary history ADR's 2026-11-14 amendment](adr/2026-10-14-dictionary-lookup-history.md#amendment-2026-11-14-searching-the-history) and the [#262 review](pr-reviews/pr-262-dictionary-history-search-review.md). The definitions search was not timed on a realistic 500-entry history.
+
+### Collapsible Workshop rail
+
+- `FullTabShell` takes an optional `railCollapse`, and only the Workshop passes it; without it the shell's markup is unchanged, and a tab with an aside never collapses. The stored choice (`fullTabRailCollapsed`, per window) applies above 900px. At 900px and below the rail starts collapsed and opens as an overlay, which never writes the stored choice.
+- The rail's content stays mounted while collapsed, so an inline edit or draft survives, and what arrives meanwhile is badged on the strip.
+- See the [#261 review](pr-reviews/pr-261-collapsible-rail-review.md).
+
+### Re-read from file in a new room
+
+- **Re-read from file** shows for any `file`-kind excerpt, with or without a conversation. A pasted or selected excerpt never offers it.
+- Continue on a carried file passage is one message and one room operation (`WORKSHOP_SET_SESSION_SCOPE { rereadFile }`, run by `WorkshopExcerptContinuation`): it reads first, then chooses the scope and lands the passage together. A send during the read is refused in the room's busy words. An unchanged file says so and keeps its version; an unreadable one continues on the carried text and says it could not be re-read.
+- See the [#260 review](pr-reviews/pr-260-reread-excerpt-review.md), whose one finding (a send could win a race with the read) this design closes.
+
+### Widget replies: an omitted empty field reads as empty
+
+- Show vs. Tell, Creative Variations, and Lexical Gravity read an omitted or null empty-able reply field as empty rather than rejecting the reply ([#258](https://github.com/okeylanders/prose-minion-vscode/pull/258)). The prompts are adjusted to match.
+- The tradeoff is recorded in the [#258 review](pr-reviews/pr-258-widget-reply-omissions-review.md): an omitted `invariantFlags` becomes `[]` with no record of whether the model performed the check. The output-channel count is diagnostic only.
+
+### OpenRouter catalog
+
+- The [November 16 audit](model-audit-2026-11-16.md) adds three opt-in choices to the shared curated and Category Search lists: Gemini 4 Hydrogen, Qwen4 Max, and Hy4 Flash. No existing choice was removed. [RECOMMENDED_MODELS.md](RECOMMENDED_MODELS.md) is updated.
+- The audit checked catalog records and endpoints; it did not run paid inference or establish prose quality. Gemini 4 Hydrogen always reasons. Hy4 Flash's catalog price was promotional on the audit date.
+- OpenRouter lists `z-ai/glm-5.1` as expiring November 20, 2026 and `z-ai/glm-4.5` on December 31, 2026. Both had endpoints at the audit and remain selectable; saved selections are not migrated.
+
+### Dependencies
+
+- The lockfile moves narrowly to DOMPurify 3.4.18 (core now requires `^3.4.18`) and Handlebars 4.7.10, a ts-jest development dependency. The cited DOMPurify modes are not enabled by this code. A repeated public-registry audit reports 0 critical, 6 high, and 7 moderate, all on tooling paths; `npm audit --omit=dev` reports 0. The [release checkpoint](../.memory-bank/20261116-release-vNEXT-preparation.md) has the detail. This is not a clean audit.
+
+### Session compatibility
+
+- No `schemaVersion` changed. `selectedText` is a new optional key on a pending attachment and on a turn's attachment reference, with the `selected-text` thread-artifact kind ([ADR 2026-07-30](adr/2026-07-30-workshop-session-codec-evolution.md)).
+- It is forward only: an earlier version's strict reader rejects a session that holds the key. Writers who sync or share sessions should update the other installations they use with those sessions. A session from before this release keeps reading, held by an authentic fixture.
+- The rail's collapse choice and the toggle are window preferences, not session data.
+
+### Workshop tour and README artwork
+
+- The startup notice moves to `v11` and leads with three pages: "New: Selected Text on a message", "New: Bigger reads, a folding rail, and Re-read from file", and "New: Search your Dictionary history". v2.13.0's four pages follow as primers, without "New:". The tour is twenty-four pages, newest release first.
+- Five notice shots join `WORKSHOP_NOTICE_SHOTS`: `selected-text-composer`, `selected-text-sent`, `multi-file-read-card`, `rail-collapsed`, and `dictionary-history-search`. The tour's only code change is that content: the version key, the shot names, and the page entries.
+- The README leads with v2.14.0 and three composites: `workshop-selected-text.png`, `workshop-reads-rail-reread.png`, and `dictionary-history-search.png`, which also joins the Dictionary section. v2.13.0's four subsections move into the Workshop feature section with their images, and the renamed excerpt command is corrected there.
+- Every capture is a 2× shot of the real webview bundle built from the release branch, driven by a stand-in host with fixture data about *Alice's Adventures in Wonderland* (public domain). No model was called; the model names shown are demo content.
+
+### Review and acceptance limits
+
+- Each slice was reviewed before it merged, with ledgers in `docs/pr-reviews/` (#258–#265). Release preparation measured 870 suites, 12,330 tests, and 59 snapshots passing on Node 20.20.2.
+- Okey ran the epic's live pass in the Extension Development Host before the merge. The final release VSIX has not yet had its own manual acceptance.
+- Whether a live model follows a per-file continuation on its own, rather than re-asking for every file, rests on that live pass and wider use, not on a test. No screen-reader pass was made, and Chromium 114 was not exercised for the new surfaces.
+
 ## [2.13.0] - 2026-11-12 — Workshop memory, pinned context, bookmarks, suggested edits, and reactions
 
 ### Overview

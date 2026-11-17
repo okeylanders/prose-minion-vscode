@@ -2,6 +2,38 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.14.0] - 2026-11-16
+
+### Added
+
+- **Selected Text on a Workshop message.** Turn on **Include selected text** beside the composer and the editor's selection shows as a **Selected Text** pill, with its file, lines, and word count; it goes with your next message and leaves the excerpt as it was. Or right-click a selection and choose **Prose Minion → Add Selection to Workshop Message**. The toggle starts off and is remembered. A selection over 5,000 words is cut to its first 5,000, and the pill says so before you send.
+- **Multi-file reads.** A Workshop persona can read up to ten project files in one look-up, shown as one card that names them.
+- **Dictionary history search.** The **Lookup history** popup has a search box that matches each lookup's word, context, and file as you type. **Also search definitions** looks inside the saved entries and shows the matching line under each result. Search asks no model.
+- **A collapsible Workshop rail.** Press **Side pane** in the header, or the arrow on the rail, to fold the rail to a strip of icons with its counts. The choice is remembered. In a narrow window the rail starts folded and opens over the conversation.
+- **Re-read from file in a new conversation.** When a new conversation keeps a chapter chosen as a file, **Re-read from file** is offered before you start, and choosing **Continue** on a carried chapter re-reads it.
+- Three opt-in OpenRouter choices join the model pickers: Gemini 4 Hydrogen, Qwen4 Max, and Hy4 Flash. Existing model selections and defaults are unchanged; these additions have not been qualified for prose quality.
+
+### Changed
+
+- A persona's file reads are fitted to the room left in the model's context window. A long file stops early with a way to ask for the rest, and a read too large for the room is refused with the reason, where a full window could previously fail the turn. Conversations begun before this version keep reading one file per look-up.
+- The editor command **Send Selection to Workshop** is renamed **Send to New Workshop Excerpt**. It still replaces the excerpt.
+- When a send is refused or rolled back, or Rewind or Branch returns a message to the composer, the returned text no longer replaces what you have typed since. It is placed ahead of it.
+- The Workshop's startup tour opens once more and begins with Selected Text, the bigger reads and folding rail, and Dictionary history search.
+
+### Fixed
+
+- Show vs. Tell, Creative Variations, and Lexical Gravity no longer reject a model's reply because it omitted a field that would have been empty. The omitted field is read as empty.
+
+### Security
+
+- Updated the DOMPurify sanitizer to 3.4.18. The advisories it addresses concern modes Prose Minion does not use.
+
+### Upgrade notes
+
+- Older Prose Minion versions cannot open a Workshop session that contains a Selected Text attachment. If you sync or share sessions, update the other installations you use with them. Existing sessions remain readable in this version.
+- OpenRouter lists GLM 5.1 as expiring on November 20, 2026 and GLM 4.5 on December 31, 2026. Both remain selectable; if you use one, choose a replacement before then. Saved settings are not rewritten.
+- These features were tested by the author before they were merged and have automated and review coverage. Acceptance of the final release package, and live-provider quality checks, remain separate release checks.
+
 ## [2.13.0] - 2026-11-12
 
 ### Added
