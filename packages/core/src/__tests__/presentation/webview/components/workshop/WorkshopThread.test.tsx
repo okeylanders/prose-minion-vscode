@@ -179,3 +179,50 @@ describe('WorkshopThread sidecar-owned affordances', () => {
       .toContain('superseded excerpt');
   });
 });
+
+describe('WorkshopThread hidden-turns notice', () => {
+  const noop = jest.fn();
+  const renderThread = (hiddenTurns: number) =>
+    render(
+      <WorkshopThread
+        turns={[report('report-1', 'prose')]}
+        hiddenTurns={hiddenTurns}
+        toolSidecars={[]}
+        currentExcerptVersion={1}
+        onQuickAction={noop}
+        onTalkDirectly={noop}
+        onCopy={noop}
+        onSave={noop}
+      />
+    );
+
+  it('leads the thread, before the first shown turn, in plain words with no promise', () => {
+    const { container } = renderThread(73);
+    const notice = container.querySelector('.pm-ws-thread-hidden');
+    expect(notice?.textContent).toBe(
+      "73 earlier turns aren't shown here. They're kept in full: export, bookmarks and the personas still have them."
+    );
+    expect(notice?.textContent).not.toMatch(/coming soon|pagination/i);
+    expect(container.firstElementChild).toBe(notice);
+    expect(notice?.nextElementSibling?.textContent).toContain('prose report');
+  });
+
+  it('is not a live region, so it announces nothing', () => {
+    const { container } = renderThread(2);
+    const notice = container.querySelector('.pm-ws-thread-hidden');
+    expect(notice?.getAttribute('role')).toBeNull();
+    expect(notice?.getAttribute('aria-live')).toBeNull();
+  });
+
+  it('agrees in number for a single hidden turn', () => {
+    const { container } = renderThread(1);
+    expect(container.querySelector('.pm-ws-thread-hidden')?.textContent).toBe(
+      "1 earlier turn isn't shown here. It's kept in full: export, bookmarks and the personas still have it."
+    );
+  });
+
+  it('draws nothing when no turn is hidden', () => {
+    const { container } = renderThread(0);
+    expect(container.querySelector('.pm-ws-thread-hidden')).toBeNull();
+  });
+});
