@@ -2,7 +2,7 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
-## [2.14.1] - Unreleased
+## [2.14.1] - 2026-11-17
 
 ### Fixed
 
