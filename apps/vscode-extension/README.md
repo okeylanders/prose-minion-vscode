@@ -24,6 +24,10 @@
 
 ---
 
+## v2.14.1 — Workshop reply fix
+
+Fixed cases where a Workshop persona using web research could return a blank reply after trying to use a Workshop tool.
+
 ## What's new in v2.14.0 — everyday conveniences
 
 Five small things that take friction out of a writing session, and three more models to try.
