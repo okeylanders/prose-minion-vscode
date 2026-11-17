@@ -185,4 +185,25 @@ describe('WorkshopApp @ mentions', () => {
     expect(screen.getByRole('dialog').textContent).toContain('this message');
     expect(input.value).toBe('');
   });
+
+  // PR #271 F-01: the composer does not hold a send back. The host does: it is posted the
+  // pick before the send, and a send that arrives during the pick's read waits for it
+  // (WorkshopSendAwaitsPickedAttachment.test.ts). Both ways of sending keep that order.
+  it.each([
+    ['Enter', (input: HTMLTextAreaElement) => { fireEvent.keyDown(input, { key: 'Enter' }); }],
+    ['the Send button', () => { fireEvent.click(screen.getByRole('button', { name: /^Send message to / })); }]
+  ])('a send by %s right after a pick posts the pick first, then the send', (_name, sendIt) => {
+    const { posted, answerCatalog, input } = open();
+    fireEvent.change(input, { target: { value: 'compare with @station' } });
+    answerCatalog();
+    posted();
+
+    fireEvent.keyDown(input, { key: 'Enter' });
+    sendIt(input);
+
+    expect(posted().map(({ type, payload }) => [type, payload.text ?? payload.items])).toEqual([
+      [MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES, [{ group: 'chapters', path: 'Chapters/02-the-station.md' }]],
+      [MessageType.WORKSHOP_SEND_MESSAGE, 'compare with @02-the-station.md']
+    ]);
+  });
 });

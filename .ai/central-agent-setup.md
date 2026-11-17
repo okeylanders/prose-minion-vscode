@@ -79,6 +79,7 @@ packages/core/src/
 │               ├── WorkshopContextHandler.ts
 │               ├── WorkshopExcerptScopeHandler.ts
 │               ├── WorkshopExcerptContinuation.ts # Continue on a carried file passage: one room operation, read first (PR #260 F-01)
+│               ├── WorkshopMessageAttachmentReads.ts # The reads on their way to staging a message attachment; a send waits for them (PR #271 F-01)
 │               ├── WorkshopSessionMessageHandler.ts
 │               ├── WorkshopSessionExportHandler.ts   # Read-only transcript export
 │               ├── WorkshopStandingDirectiveHandler.ts
@@ -1339,7 +1340,26 @@ decisions A1 and A2) when touching what typing `@` in the composer does:
   match nothing is active, so Enter sends as it always has. Escape closes
   the list for that `@` and keeps the draft. Nothing acts during IME
   composition, the send included.
-- **Nothing is persisted or logged.**
+- **A send waits for a pick's file, on the host** (PR #271 F-01). A pick
+  only posts the attach request, and Enter is a send key again at once.
+  The composer holds nothing back: ordered sends are not ordered
+  completions, so the host orders them.
+  - `WorkshopMessageAttachmentReads` tracks every read that will stage a
+    message attachment (`@`, the project picker, the system picker),
+    before anything awaits.
+  - `WORKSHOP_SEND_MESSAGE` waits for the reads in flight when it arrives
+    (`pickedAttachmentsStaged`), before it stages or collects anything, at
+    most `WORKSHOP_MESSAGE_ATTACHMENT_READ_WAIT_MS`.
+  - A file that was not staged, a read past the wait, or a room replaced
+    meanwhile refuses the **whole** send and gives the draft back
+    (`postComposerDraftRestored`). A message never goes without a file the
+    writer picked unless the writer sends again. A file already staged is
+    no refusal.
+  - A read stages only into the room it began in (`roomRevision`, checked
+    after each read); otherwise the file is dropped, and the log names no file.
+  - A new way to stage a message attachment after an await tracks its read
+    there.
+- **Nothing is persisted, and nothing of the `@` list is logged.**
 
 ### Workshop Excerpt Re-read
 

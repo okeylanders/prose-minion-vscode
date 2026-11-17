@@ -53,6 +53,14 @@ import {
   WorkshopExcerptSource,
   workshopExcerptSourceUri
 } from '@messages';
+import {
+  WorkshopMessageAttachmentReads,
+  WORKSHOP_MESSAGE_ATTACHMENT_ROOM_CHANGED,
+  WORKSHOP_MESSAGE_ATTACHMENT_UNREADABLE
+} from '@handlers/domain/workshop/WorkshopMessageAttachmentReads';
+import type {
+  WorkshopMessageAttachmentReadsOutcome
+} from '@handlers/domain/workshop/WorkshopMessageAttachmentReads';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 let requestIdCounter = 0;
@@ -108,6 +116,7 @@ export class WorkshopContextHandler {
   }
 
   private readonly readIn: WorkshopReadInRoutes;
+  private readonly messageAttachmentReads = new WorkshopMessageAttachmentReads();
 
   registerRoutes(
     router: MessageRouter,
@@ -595,6 +604,16 @@ export class WorkshopContextHandler {
     }
   }
 
+  /** True while a file picked for the next message is still being read (PR #271 F-01). */
+  messageAttachmentReadsPending(): boolean {
+    return this.messageAttachmentReads.pending();
+  }
+
+  /** What the reads ahead of a send came to; the send waits here before it collects its attachments. */
+  settleMessageAttachmentReads(): Promise<WorkshopMessageAttachmentReadsOutcome> {
+    return this.messageAttachmentReads.settle();
+  }
+
   async handleAttachMessageResources(
     message: WorkshopAttachMessageResourcesMessage
   ): Promise<void> {
@@ -603,25 +622,43 @@ export class WorkshopContextHandler {
       this.effects.reportError('No valid configured resources to attach to the message.');
       return;
     }
+    // Tracked before anything awaits, so a send that arrives during the read waits for it.
+    await this.messageAttachmentReads.track(
+      this.readAndStageMessageResources(validated, this.session.readRoomRevision())
+    );
+  }
 
+  /** Resolves to nothing when every file is staged, else to the first refusal as the writer was told it. */
+  private async readAndStageMessageResources(
+    items: readonly ConfiguredResourceRef[],
+    room: number
+  ): Promise<string | undefined> {
+    let refusal: string | undefined;
+    const report = (reason: string, details?: string): void => {
+      refusal ??= reason;
+      this.effects.reportError(reason, details);
+    };
     let catalog;
     try {
       catalog = await this.contextIntakeService.openCatalog();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
-      this.effects.reportError('Could not read the configured resource catalog.', details);
-      return;
+      report('Could not read the configured resource catalog.', details);
+      return refusal;
     }
-    for (const item of validated) {
+    for (const item of items) {
       const loaded = await catalog.load(item, {
         maxBytes: PROMPT_BUDGETS.contextAttachments.fileBytes,
         maxWords: PROMPT_BUDGETS.workshopThreadArtifacts.words
       });
+      if (this.session.readRoomRevision() !== room) {
+        return this.messageAttachmentRoomChanged();
+      }
       if (!this.contextIntakeService.reportConfiguredResourceLoadFailure(
         loaded,
         'attach',
         PROMPT_BUDGETS.contextAttachments.fileBytes,
-        this.effects.reportError
+        report
       )) {
         continue;
       }
@@ -634,8 +671,9 @@ export class WorkshopContextHandler {
         configuredResource: { group: item.group, path: item.path },
         sourceUri: pathToFileURL(resource.summary.absolutePath).toString(),
         truncation: resource.truncation
-      });
+      }, report);
     }
+    return refusal;
   }
 
   async handleAttachMessageFile(_message: WorkshopAttachMessageFileMessage): Promise<void> {
@@ -646,10 +684,28 @@ export class WorkshopContextHandler {
     if (!picked) {
       return;
     }
+    // The read after the pick is tracked like a catalog pick's (PR #271 F-01).
+    await this.messageAttachmentReads.track(
+      this.readAndStagePickedMessageFile(picked, this.session.readRoomRevision())
+    );
+  }
+
+  private async readAndStagePickedMessageFile(
+    picked: { fsPath: string; uri: string },
+    room: number
+  ): Promise<string | undefined> {
+    let refusal: string | undefined;
+    const report = (reason: string, details?: string): void => {
+      refusal ??= reason;
+      this.effects.reportError(reason, details);
+    };
     const displayPath = this.contextIntakeService.toDisplayPath(picked.fsPath);
     const loaded = await this.loadContextFileFromDisk(picked.fsPath, displayPath);
+    if (this.session.readRoomRevision() !== room) {
+      return this.messageAttachmentRoomChanged();
+    }
     if (!loaded) {
-      return;
+      return WORKSHOP_MESSAGE_ATTACHMENT_UNREADABLE;
     }
     const totalWords = loaded.truncation?.totalWords ?? loaded.words;
     const bounded = this.boundThreadArtifact(loaded.text, totalWords);
@@ -660,7 +716,16 @@ export class WorkshopContextHandler {
       relativePath: displayPath,
       sourceUri: picked.uri,
       truncation: bounded.truncation
-    });
+    }, report);
+    return refusal;
+  }
+
+  /** A read that began in another room stages nothing: its file was picked for a message that room no longer has. */
+  private messageAttachmentRoomChanged(): string {
+    this.outputChannel.appendLine(
+      '[WorkshopContextHandler] Message attachment dropped: the room was replaced during its read'
+    );
+    return WORKSHOP_MESSAGE_ATTACHMENT_ROOM_CHANGED;
   }
 
   async handleRemoveMessageAttachment(
@@ -892,13 +957,17 @@ export class WorkshopContextHandler {
     this.effects.postSessionState();
   }
 
-  private stageMessageAttachment(input: WorkshopMessageAttachmentInput): void {
+  /** Stage one file; a refusal goes through `report`. A file already staged is no refusal: the message carries it. */
+  private stageMessageAttachment(
+    input: WorkshopMessageAttachmentInput,
+    report: (message: string, details?: string) => void
+  ): void {
     const result = this.session.addMessageAttachment(input);
     if (!result.ok) {
       if (result.reason === 'duplicate') {
         this.effects.reportError(`${input.label} is already attached to this message.`);
       } else {
-        this.effects.reportError(
+        report(
           `A message carries at most ${PROMPT_BUDGETS.workshopThreadArtifacts.itemsPerMessage} attachments.`,
           'Send the message, or remove a staged attachment to make room.'
         );
