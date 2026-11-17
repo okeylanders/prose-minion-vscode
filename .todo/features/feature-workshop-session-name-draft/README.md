@@ -105,7 +105,7 @@ The engine gets no branch for it.
 |---|---|---|
 | N1 | **A hyphen separator** (` - `), "easier on users". | Applies to the default too, so drafted and default names read alike. |
 | N2 | **The date reads `Nov 6, 2026`.** | It is the room's start date in the room's own time zone (the session records `timezone`), so a room started late at night keeps its own day. A fixed format, not the system locale that today's default uses (`toLocaleDateString(undefined, …)`). |
-| N3 | **One Workshop-wide helper-drafts setting**, not a second switch for names. | The Helper Agent reached `main` (#243) with the memory-scoped name, `proseMinion.workshop.memory.helperDrafts`. Renaming it stays free until a Marketplace release ships it, so do the rename with this feature, or before that release. |
+| N3 | **One Workshop-wide helper-drafts setting**, not a second switch for names. | The setting shipped as `proseMinion.workshop.memory.helperDrafts` in v2.13.0 and v2.14.0, so a rename is no longer free: it needs a settings migration that reads the old key, moves its value to the new one, and leaves writers who turned drafts off still off. Do the rename and the migration with this feature. |
 | N4 | **Export drafts too, unless the session is already named.** | A named room's title stays as it is in both sheets. |
 
 **Ships without the helper.** N1 and N2 change the default

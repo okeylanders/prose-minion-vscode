@@ -2,6 +2,7 @@
 
 **Date Identified:** 2026-11-06
 **Status:** Planned; Okey answered the open questions on 2026-11-06 ([below](#okeys-answers-2026-11-06)). Okey: "we need to add the guard and make sure we fit the window on reads." ADR first: the engine's guard changes how every capability-bearing run ends.
+**Shipped so far (2026-11-17):** part 3 (multi-file `resource.read`) and part 1's `resource.read` window fit, in v2.14.0 as Everyday Conveniences item A (PR #263; [ADR 2026-11-14](../../../docs/adr/2026-11-14-everyday-conveniences.md)). Still open: part 1's `memory.read` fit and part 2's engine backstop.
 **Priority:** High. The bookmark recall live pass raised a persona's turn to 15 calls and more reads ([ADR 2026-11-05 D11](../../../docs/adr/2026-11-05-workshop-bookmark-recall.md#d11-a-personas-turn-allows-15-capability-calls-and-more-reads-2026-11-06)). That made this gap reachable.
 **Related:**
 - [ADR 2026-10-05](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md) D9 and D11: how recall fits its reads to the window.
