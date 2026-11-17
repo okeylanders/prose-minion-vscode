@@ -23,7 +23,7 @@ import type { WorkshopCapabilityXmlFieldPolicy } from '@/application/services/wo
 import { countWords } from '@/utils/textUtils';
 
 /** Each family's repeatable fields and attributes; every other field is unique and bare. */
-const FIELD_POLICY: WorkshopCapabilityXmlFieldPolicy = {
+export const WORKSHOP_CAPABILITY_FIELD_POLICY: WorkshopCapabilityXmlFieldPolicy = {
   repeatable: (operation, field) =>
     WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY.repeatable(operation, field) ||
     WORKSHOP_PROJECT_MEMORY_FIELD_POLICY.repeatable(operation, field) ||
@@ -151,7 +151,7 @@ export const createWorkshopCapabilityInstruction = (
 /** Strict single-root decoder for the closed Workshop operation set. */
 export class WorkshopCapabilityXmlCodec {
   inspect(candidate: string): WorkshopCapabilityInspection {
-    const document = parseWorkshopCapabilityXmlDocument(candidate, FIELD_POLICY);
+    const document = parseWorkshopCapabilityXmlDocument(candidate, WORKSHOP_CAPABILITY_FIELD_POLICY);
     if (document.kind !== 'call') return document;
     const { operation, fields } = document;
     switch (operation) {

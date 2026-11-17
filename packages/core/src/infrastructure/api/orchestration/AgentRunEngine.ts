@@ -15,8 +15,10 @@ import {
   ConversationNotFoundError,
   ConversationSystemMessageReplacement
 } from './ConversationManager';
+import { adaptNativeToolCalls } from '@orchestration/AgentNativeToolCalls';
 import {
   AgentCapabilityRejection,
+  AgentNativeToolCall,
   AGENT_FINAL_REPLY_REFUSED,
   AGENT_RUN_INTERRUPTED_FINISH_REASON,
   isAgentRunIncomplete,
@@ -122,6 +124,8 @@ interface TurnResult {
   readonly exactRequest?: unknown;
   /** A protocol-shaped response failed structural or allow-list validation. */
   readonly invalidRequest?: AgentCapabilityRejection;
+  /** The reply carried native tool calls its capability could not translate. */
+  readonly untranslatedNativeCall?: boolean;
   readonly citations?: UrlCitation[];
 }
 
@@ -441,10 +445,13 @@ export class AgentRunEngine {
         totalUsage = this.addUsage(totalUsage, turn.usage);
         runCitations = this.mergeUrlCitations(runCitations, turn.citations);
 
-        // A native tool call is not our XML capability protocol. Never execute
-        // its unadvertised name or arguments; ask for the existing protocol.
+        // A native tool call is not our XML capability protocol. The capability
+        // translates one when it maps (`translateNativeToolCalls`): the turn then
+        // holds the request as text and is not empty. This is the fallback for
+        // one that doesn't map, which is never run: ask for the existing protocol.
         // Only retry an empty turn: streamed prose cannot be retracted.
-        if (!capability || turn.cancelled || turn.finishReason !== 'tool_calls' || turn.content.trim()) return turn;
+        const nativeCall = turn.finishReason === 'tool_calls' || turn.untranslatedNativeCall;
+        if (!capability || turn.cancelled || !nativeCall || turn.content.trim()) return turn;
         if (nativeCorrections >= policy.maxCorrectionTurns) {
           const fallback = 'The assistant could not complete its tool request. Please try again; if the problem continues, try another model.';
           this.outputChannel?.appendLine(`[AgentRunEngine] ${policy.id} exhausted correction turns after an unsupported native tool call.`);
@@ -938,10 +945,12 @@ export class AgentRunEngine {
       try {
         const response = await provider.createChatCompletion(messages, completionOptions);
         this.emitUsage(response.usage);
-        const inspection = capability?.inspectRequest(response.content);
-        this.logCapabilityInspection(capability, inspection, response.content);
+        const native = adaptNativeToolCalls(capability, response.content, response.toolCalls, this.outputChannel);
+        const inspection = capability?.inspectRequest(native.content);
+        this.logCapabilityInspection(capability, inspection, native.content);
         return {
-          content: response.content,
+          ...(native.untranslated ? { untranslatedNativeCall: true } : {}),
+          content: native.content,
           providerResponseId: response.id,
           finishReason: response.finishReason,
           usage: response.usage,
@@ -969,6 +978,7 @@ export class AgentRunEngine {
     let servedModelId: string | undefined;
     let providerResponseId: string | undefined;
     let citations: UrlCitation[] | undefined;
+    let nativeToolCalls: readonly AgentNativeToolCall[] | undefined;
     let cancelled = false;
     let classification: 'undecided' | 'text' | 'candidate' = 'undecided';
     const visibilityGuard = capability ? new ToolCallStreamVisibilityGuard() : undefined;
@@ -983,6 +993,7 @@ export class AgentRunEngine {
           finishReason = chunk.finishReason ?? finishReason;
           observation = chunk.observation ?? observation;
           citations = chunk.citations ?? citations;
+          nativeToolCalls = chunk.toolCalls ?? nativeToolCalls;
           continue;
         }
         if (!chunk.token) continue;
@@ -1028,6 +1039,14 @@ export class AgentRunEngine {
     }
 
     this.emitUsage(usage);
+    // A translated native call joins the reply as the text the model should have written, and passes the
+    // visibility guard as typed text would: the request is withheld, a short narration before it discarded.
+    const native = adaptNativeToolCalls(capability, content, cancelled ? undefined : nativeToolCalls, this.outputChannel);
+    if (native.appended) {
+      content = native.content;
+      const safe = visibilityGuard?.consume(native.appended);
+      if (safe) options.onToken(safe);
+    }
     const inspection = capability?.inspectRequest(content);
     this.logCapabilityInspection(capability, inspection, content);
     const exactRequest = inspection?.kind === 'request' ? inspection.request : undefined;
@@ -1063,7 +1082,8 @@ export class AgentRunEngine {
       citations,
       cancelled,
       exactRequest,
-      invalidRequest
+      invalidRequest,
+      ...(native.untranslated ? { untranslatedNativeCall: true } : {})
     };
   }
 

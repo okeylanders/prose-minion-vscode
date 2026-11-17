@@ -20,3 +20,15 @@ export interface OpenRouterWireMessage {
   role: OpenRouterMessage['role'];
   content: string | OpenRouterTextContentBlock[];
 }
+
+/**
+ * A function call the model returned as structure instead of text
+ * (`message.tool_calls`). `arguments` is the provider's raw JSON text,
+ * unparsed: whoever reads it decides what it may mean. Never retained in a
+ * transcript, which holds `OpenRouterMessage` roles only.
+ */
+export interface OpenRouterToolCall {
+  readonly id?: string;
+  readonly name: string;
+  readonly arguments: string;
+}

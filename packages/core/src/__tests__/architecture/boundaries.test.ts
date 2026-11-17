@@ -2495,6 +2495,44 @@ describe('architectural boundaries', () => {
       .toMatch(/from '@parsers\/ModelJsonRepair'/);
   });
 
+  it('keeps the native tool-call adapter a seam: the engine and the provider name no capability, and only the Workshop translates', () => {
+    const api = path.join(SRC_ROOT, 'infrastructure', 'api');
+    const read = (...segments: string[]): string => fs.readFileSync(path.join(api, ...segments), 'utf8');
+    const operations = /['"`](?:dictionary|analysis|resource|transcript|memory)\.[a-z-]+['"`]/;
+    const translator = 'application/services/workshop/WorkshopNativeToolCallTranslator.ts';
+
+    // The seam's own modules know no feature at all: no Workshop word, no operation name, no application import.
+    for (const segments of [['orchestration', 'AgentNativeToolCalls.ts'], ['providers', 'OpenRouterToolCalls.ts']]) {
+      const source = read(...segments);
+      expect([segments.join('/'), /workshop/i.test(source), operations.test(source)]).toEqual([segments.join('/'), false, false]);
+      expect(moduleImports(segments.join('/'), source).map(({ module }) => module).filter((module) => module.startsWith('@/application')))
+        .toEqual([]);
+      // A call's arguments are never parsed below the capability.
+      expect(source).not.toMatch(/JSON\.parse/);
+    }
+
+    // The engine hands native calls to the seam and never reads one itself: no operation, no translator, no Workshop service.
+    const engine = read('orchestration', 'AgentRunEngine.ts');
+    expect(/adaptNativeToolCalls\(/.test(engine)).toBe(true);
+    expect(operations.test(engine)).toBe(false);
+    expect(/\.translateNativeToolCalls\(|NativeToolCallTranslator|\.arguments\b/.test(engine)).toBe(false);
+    const belowTheCapability = [...collectSourceFiles(path.join(api, 'orchestration')), ...collectSourceFiles(path.join(api, 'providers'))];
+    expect(belowTheCapability.flatMap((file) => moduleImports(file, fs.readFileSync(file, 'utf8'))
+      .filter(({ module }) => module.startsWith('@/application/services/workshop') || module.includes('NativeToolCallTranslator'))
+      .map(({ module }) => `${path.relative(SRC_ROOT, file)} -> ${module}`))).toEqual([]);
+
+    // The translator only writes XML: it imports the closed operation list and nothing that could run a request.
+    const translatorSource = fs.readFileSync(path.join(SRC_ROOT, translator), 'utf8');
+    expect(moduleImports(translator, translatorSource).map(({ module }) => module)).toEqual(['@shared/types/workshopCapabilities']);
+    expect(translatorSource.split('\n').length).toBeLessThanOrEqual(500);
+    // And one owner calls it: the persona capability, whose codec then validates what it wrote.
+    const importers = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => moduleImports(file, fs.readFileSync(file, 'utf8')).some(({ module }) => module.endsWith('WorkshopNativeToolCallTranslator')))
+      .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'));
+    expect(importers).toEqual(['application/services/workshop/WorkshopPersonaCapability.ts']);
+  });
+
   it('keeps the helper agent apart: it imports no Workshop, Lightbox or Draft Edit module, and only the composition root builds it (ADR 2026-11-05 D2, D4)', () => {
     const helper = path.join(SRC_ROOT, 'infrastructure', 'api', 'services', 'helper');
     const files = collectSourceFiles(helper);

@@ -11,7 +11,8 @@ import {
   TokenUsage
 } from '@shared/types';
 import { isHttpUrl, type UrlCitation, type ClaudeCacheTtl } from '@messages';
-import type { OpenRouterMessage } from '@providers/OpenRouterChatContracts';
+import type { OpenRouterMessage, OpenRouterToolCall } from '@providers/OpenRouterChatContracts';
+import { OpenRouterToolCallAssembler, readOpenRouterToolCalls } from '@providers/OpenRouterToolCalls';
 import {
   prepareOpenRouterPromptCacheRequest,
   getOpenRouterPromptCacheTtlSeconds,
@@ -19,7 +20,7 @@ import {
   OpenRouterPreparedMessages
 } from '@providers/OpenRouterPromptCachePolicy';
 
-export type { OpenRouterMessage } from '@providers/OpenRouterChatContracts';
+export type { OpenRouterMessage, OpenRouterToolCall } from '@providers/OpenRouterChatContracts';
 
 const UNSTRUCTURED_ERROR_BODY_CHARACTERS = 1_000;
 
@@ -75,6 +76,8 @@ export interface OpenRouterResponse {
       role: string;
       content: unknown;
       annotations?: unknown;
+      // eslint-disable-next-line @typescript-eslint/naming-convention -- OpenRouter's wire field.
+      tool_calls?: unknown;
     };
     finish_reason: string;
   }>;
@@ -190,6 +193,12 @@ export class OpenRouterClient {
     servedModelId?: string;
     id?: string;
     citations?: UrlCitation[];
+    /**
+     * Function calls the model returned as structure, beside the content and
+     * apart from web-search citations; absent when it made none. A reply
+     * that is only a call has empty `content`.
+     */
+    toolCalls?: OpenRouterToolCall[];
   }> {
     const requestedModel = options?.model ?? this.model;
     const requestedMaxOutputTokens = options?.maxTokens ?? PROMPT_BUDGETS.inferenceContext.defaultOutputTokens;
@@ -221,10 +230,12 @@ export class OpenRouterClient {
     const usage = this.toTokenUsage(data.usage);
     const reasoningTokens = toReasoningTokens(data.usage);
     const servedModelId = reportedModelId(data.model);
+    const toolCalls = readOpenRouterToolCalls(data.choices[0].message.tool_calls);
     return {
       id: data.id,
       ...(servedModelId ? { servedModelId } : {}),
-      content: this.toAssistantContent(data.choices[0].message.content),
+      ...(toolCalls ? { toolCalls } : {}),
+      content: this.toAssistantContent(data.choices[0].message.content, toolCalls?.length ?? 0),
       finishReason: data.choices[0]?.finish_reason,
       usage,
       ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
@@ -247,10 +258,12 @@ export class OpenRouterClient {
    * provider edge here so downstream orchestration can keep an honest string
    * contract and report an empty response instead of crashing during cleanup.
    */
-  private toAssistantContent(content: unknown): string {
+  private toAssistantContent(content: unknown, toolCallCount = 0): string {
     if (typeof content === 'string') return content;
     this.outputChannel?.appendLine(
-      `[OpenRouterClient] Provider returned ${content === null ? 'null' : typeof content} assistant content; treating it as an empty response.`
+      `[OpenRouterClient] Provider returned ${content === null ? 'null' : typeof content} assistant content` +
+      (toolCallCount > 0 ? ` beside ${toolCallCount} native tool call(s)` : '') +
+      '; treating it as an empty response.'
     );
     return '';
   }
@@ -274,6 +287,8 @@ export class OpenRouterClient {
     /** As for `createChatCompletion`: on content and terminal chunks, once a frame named it. */
     servedModelId?: string;
     citations?: UrlCitation[];
+    /** On the terminal chunk only: the stream's function calls, stitched whole. */
+    toolCalls?: OpenRouterToolCall[];
   }> {
     const requestedModel = options?.model ?? this.model;
     const requestedMaxOutputTokens = options?.maxTokens ?? PROMPT_BUDGETS.inferenceContext.defaultOutputTokens;
@@ -313,7 +328,12 @@ export class OpenRouterClient {
       let routerMetadata: unknown;
       let terminalEmitted = false;
       let citations: UrlCitation[] | undefined;
-      const terminal = () => ({
+      const toolCallAssembler = new OpenRouterToolCallAssembler();
+      const terminal = () => {
+        const toolCalls = toolCallAssembler.finish();
+        return { ...terminalFacts(), ...(toolCalls ? { toolCalls } : {}) };
+      };
+      const terminalFacts = () => ({
         token: '',
         done: true,
         id: responseId,
@@ -382,6 +402,7 @@ export class OpenRouterClient {
               delta?.annotations ?? parsed.choices?.[0]?.message?.annotations
             );
             if (chunkCitations?.length) citations = this.mergeUrlCitations(citations, chunkCitations);
+            toolCallAssembler.add(delta?.tool_calls);
 
             if (token) {
               // The model rides with the content too, so a stream the provider
