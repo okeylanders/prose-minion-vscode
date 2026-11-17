@@ -80,6 +80,27 @@ export class WorkshopTurnLedger {
   }
 
   /**
+   * The turns directly before `id`, oldest first: the ledger walks back from
+   * it and keeps each turn while `take` says so, cloning only what it keeps.
+   * `take` sees the stored record and how many newer turns were kept.
+   * Undefined for an unknown turn.
+   */
+  before(
+    id: string,
+    take: (turn: Readonly<WorkshopTurn>, taken: number) => boolean
+  ): { turns: WorkshopTurn[]; remainingBefore: number } | undefined {
+    const position = this.position(id);
+    if (position === undefined) {
+      return undefined;
+    }
+    let start = position;
+    while (start > 0 && take(this.turns[start - 1], position - start)) {
+      start -= 1;
+    }
+    return { turns: this.turns.slice(start, position).map(cloneTurn), remainingBefore: start };
+  }
+
+  /**
    * Apply aggregate-owned semantics to a defensive candidate, then replace
    * the stored record without permitting its stable identity to change.
    */

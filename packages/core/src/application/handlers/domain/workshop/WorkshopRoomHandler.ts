@@ -384,6 +384,7 @@ export class WorkshopRoomHandler {
         fileEditsMode: () => this.conversationSettingsService.getFileEditsMode(),
         runDirected: (target, run) =>
           this.executeMessage(run.message, run.displayText, target, { directedRun: run }),
+        editOfferRoomView: () => this.editOfferRoomView(),
         formatTurnTime: (timestamp) => workshopEditRequestTime(timestamp, this.sessionTime.exportState().timezone),
         findReadInRecord: (identity) => this.assistantToolService.findConversationContextSourceRead(
           this.chatTargetConversation().conversationId,
