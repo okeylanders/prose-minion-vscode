@@ -1712,6 +1712,7 @@ export class WorkshopRoomHandler {
         writerProfile: this.conversationSettingsService.getWriterProfile(),
         webResearch: this.conversationSettingsService.getWebResearch(),
         projectMemory: this.conversationSettingsService.getProjectMemoryMode(),
+        memorySuggestions: this.conversationSettingsService.memorySuggestionLevel(),
         fileEdits: this.conversationSettingsService.getFileEditsMode(),
         persistence: {
           available: availability.available,

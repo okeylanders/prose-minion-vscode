@@ -59,6 +59,7 @@ import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinn
 import { useWorkshopPinnedPills } from '@hooks/domain/workshop/controllers/useWorkshopPinnedPills';
 import { workshopPinnedContextPanelProps } from '@components/workshop/settings/WorkshopPinnedContextSettingsPanel';
 import { workshopMemoryTabInputOf } from '@hooks/domain/workshop/memory/workshopMemoryListingInputs';
+import { useWorkshopMemorySuggestions } from '@hooks/domain/workshop/memory/useWorkshopMemorySuggestions';
 import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
 import { workshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
 import { WorkshopMemorySheet } from '@components/workshop/memory/WorkshopMemorySheet';
@@ -282,6 +283,7 @@ export const WorkshopApp: React.FC = () => {
   const fileEdits = useWorkshopFileEdits({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
   const editOffers = useWorkshopEditOffers({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
   const memoryManager = useWorkshopMemoryManager();
+  const memorySuggestions = useWorkshopMemorySuggestions();
   const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
   const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, room: workshop.roomRevision, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });
   // Whether the Memory tab's explainer shows is this viewer's choice too.
@@ -483,6 +485,7 @@ export const WorkshopApp: React.FC = () => {
     bookmarkBrowser,
     projectMemory,
     memoryManager,
+    memorySuggestions,
     pinnedContext,
     fileEdits,
     editOffers,
@@ -1827,6 +1830,8 @@ export const WorkshopApp: React.FC = () => {
         projectMemoryMode={workshop.projectMemoryMode}
         fileEditsMode={workshop.fileEditsMode}
         memory={workshopMemoryTabInputOf(memoryManager.listing)}
+        memorySuggestions={memorySuggestions.level}
+        onSelectMemorySuggestions={memorySuggestions.setLevel}
         memoryFolder={memoryManager.folder}
         pinnedContext={workshopPinnedContextPanelProps(pinnedContext, workshop)}
         memoryExplainerOpen={memoryExplainer.explainerOpen}

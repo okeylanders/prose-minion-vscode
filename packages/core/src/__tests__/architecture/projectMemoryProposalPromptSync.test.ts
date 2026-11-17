@@ -8,6 +8,9 @@
  *   codec, to the proposal it shows, placed last as the prose says;
  * - the kinds it names are the closed list, and the never-list is there;
  * - it is taught only beside the grammar, while project memory is open.
+ *
+ * There is one whole proposals file per suggestion level (Everyday
+ * Conveniences, Round Two, item B), and every check here runs over each.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -15,169 +18,177 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { PROJECT_MEMORY_KINDS, PROJECT_MEMORY_LIST_ENTRIES, PROJECT_MEMORY_SOURCE_TURN } from '@shared/types/projectMemory';
 import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
 import { WORKSHOP_MEMORY_EDIT_ELEMENTS } from '@/utils/workshopMemoryEditProtocol';
+import { WORKSHOP_MEMORY_SUGGESTION_LEVELS } from '@shared/constants/workshopMemorySuggestions';
 import {
   getWorkshopPersona,
+  WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATHS,
   WORKSHOP_GUEST_BASE_PROMPT_PATH,
   WORKSHOP_HOST_BASE_PROMPT_PATH,
   workshopPersonaSystemPromptPaths
 } from '@shared/constants/workshopPersonas';
 
-const PROMPT = fs.readFileSync(path.resolve(__dirname,
-  '../../../resources/system-prompts/workshop-personas/project-memory-proposals.md'), 'utf8');
 const budgets = PROMPT_BUDGETS.workshopProjectMemory;
 const number = (quoted: string): number => Number(quoted.replace(/,/g, ''));
-const prose = PROMPT.replace(/```[\s\S]*?```/g, '');
 
-describe('project-memory proposal prompt ↔ PROMPT_BUDGETS', () => {
-  const pinned: ReadonlyArray<readonly [RegExp, number[]]> = [
-    [/`<title>`: one line, at most ([\d,]+) characters/, [budgets.titleCharacters]],
-    [/`<summary>`: one line, at most ([\d,]+) characters/, [budgets.summaryCharacters]],
-    [/`<body>`: optional, at most ([\d,]+) characters/, [budgets.bodyCharacters]],
-    [/one per element, at most ([\d,]+)\./, [PROJECT_MEMORY_LIST_ENTRIES.supersedes]],
-    [/One reply suggests at most ([\d,]+) notes\./, [budgets.proposalsPerReply]],
-    [/At most ([\d,]+) find-and-replace pairs in one change/, [budgets.editReplaces]],
-    [/one per `<cites-turn>` element, at most ([\d,]+):/, [budgets.citedTurns]]
-  ];
+// Every suggestion level's file is the whole proposals prompt (Round Two item B), so each is held to the code alike.
+describe.each([...WORKSHOP_MEMORY_SUGGESTION_LEVELS])('the proposals prompt at %s', (level) => {
+  const PROMPT = fs.readFileSync(path.resolve(__dirname, '../../../resources/system-prompts', WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATHS[level]), 'utf8');
+  const prose = PROMPT.replace(/```[\s\S]*?```/g, '');
 
-  it.each(pinned)('quotes %s from its bound', (pattern, expected) => {
-    const match = pattern.exec(prose);
-    expect(match).not.toBeNull();
-    expect(match!.slice(1).map(number)).toEqual(expected);
+  describe('project-memory proposal prompt ↔ PROMPT_BUDGETS', () => {
+    const pinned: ReadonlyArray<readonly [RegExp, number[]]> = [
+      [/`<title>`: one line, at most ([\d,]+) characters/, [budgets.titleCharacters]],
+      [/`<summary>`: one line, at most ([\d,]+) characters/, [budgets.summaryCharacters]],
+      [/`<body>`: optional, at most ([\d,]+) characters/, [budgets.bodyCharacters]],
+      [/one per element, at most ([\d,]+)\./, [PROJECT_MEMORY_LIST_ENTRIES.supersedes]],
+      [/One reply suggests at most ([\d,]+) notes\./, [budgets.proposalsPerReply]],
+      [/At most ([\d,]+) find-and-replace pairs in one change/, [budgets.editReplaces]],
+      [/one per `<cites-turn>` element, at most ([\d,]+):/, [budgets.citedTurns]]
+    ];
+
+    it.each(pinned)('quotes %s from its bound', (pattern, expected) => {
+      const match = pattern.exec(prose);
+      expect(match).not.toBeNull();
+      expect(match!.slice(1).map(number)).toEqual(expected);
+    });
+
+    it('quotes no number it does not pin', () => {
+      const unpinned = [...pinned.map(([pattern]) => pattern), /`[^`\n]*`/]
+        .reduce((text, pattern) => text.replace(new RegExp(pattern.source, 'g'), ''), prose);
+      expect(unpinned.match(/\d[\d,.]*/g)).toBeNull();
+    });
+
+    it('names the closed kinds, and only those', () => {
+      const named = [...prose.matchAll(/`([a-z-]+)` \(/g)].map((match) => match[1]);
+      expect(named).toEqual([...PROJECT_MEMORY_KINDS]);
+    });
+
+    it('teaches the boundaries of theme and idea (Slice 6a)', () => {
+      expect(prose).toContain('Canon is what happens in the story; a theme is what it means.');
+      expect(prose).toContain('An idea is unsettled: never propose one as `canon` or `decision` because it was discussed.');
+      expect(prose).toContain('an idea is a candidate answer or direction');
+      expect(prose).toContain('When the writer chooses an idea, propose the `decision` or `canon` note that records the choice, and name the idea in `<supersedes>`.');
+    });
+
+    it('teaches several suggestions: each alone, and at Sparingly rarely, on request or for distinct things (Slice 6b)', () => {
+      // How often is the level's own paragraph (`memorySuggestionLevelPromptSync.test.ts`); Sparingly's is the brake.
+      if (level === 'sparingly') {
+        expect(prose).toContain('Most replies suggest none.');
+        expect(prose).toContain('Suggest several only when the writer asks for them, or when several distinct things settled in this exchange.');
+      }
+      expect(prose).toContain('it never repeats or overlaps another suggestion in the same reply');
+      expect(prose).toContain('Each trailer is checked on its own');
+      expect(prose).toContain('A note that replaces another always waits for the writer to save it.');
+      expect(prose).not.toContain('at most one note');
+    });
+
+    it('teaches changing a saved note: when to change, replace or suggest new, and how to quote (Slice 6c)', () => {
+      expect(prose).toContain('**Change it** when the same note needs refining');
+      expect(prose).toContain('**Replace it** with a new note that names it in `<supersedes>` when the decision or the fact itself changed');
+      expect(prose).toContain('**Suggest a new note** for anything else.');
+      expect(prose).toContain('Read the note with `memory.read` before you quote it, and quote exactly as written.');
+      expect(prose).toContain('A change you can\'t quote exactly is better written as a rewrite of that field.');
+      expect(prose).toContain('The quote must appear exactly once in the field');
+      expect(prose).toContain('it always waits for the writer to save it');
+      // Every element the edit grammar reads is taught, and nothing else.
+      const taught = [...prose.matchAll(/`<([a-z-]+)>`/g)].map((match) => match[1]);
+      for (const element of WORKSHOP_MEMORY_EDIT_ELEMENTS) {
+        expect(taught).toContain(element);
+      }
+    });
+
+    it('teaches citing bookmarked turns of this conversation only, by turn id (Bookmark Recall D10)', () => {
+      expect(prose).toContain('list those bookmarks first with `transcript.bookmarks` and `<scope>current</scope>`');
+      expect(prose).toContain('Cite a turn by its turn id, exactly as the list shows it, never by its ref or its turn number.');
+      expect(prose).toContain('A bookmark from a saved session can\'t be cited');
+      expect(prose).toContain('A cited turn this conversation doesn\'t hold, or one you couldn\'t see, is dropped');
+      expect(prose).toContain('Write each element at most once in a trailer (except `<supersedes>` and `<cites-turn>`).');
+    });
+
+    it('carries the never-list (D9)', () => {
+      expect(prose).toContain('It never records anything about the writer\'s feelings, health, relationships or private life');
+      expect(prose).toContain('never say a note was saved, and never promise to remember anything');
+    });
   });
 
-  it('quotes no number it does not pin', () => {
-    const unpinned = [...pinned.map(([pattern]) => pattern), /`[^`\n]*`/]
-      .reduce((text, pattern) => text.replace(new RegExp(pattern.source, 'g'), ''), prose);
-    expect(unpinned.match(/\d[\d,.]*/g)).toBeNull();
-  });
+  describe('the trailer example, through the production extractor and codec', () => {
+    const examples = [...PROMPT.matchAll(/```xml\n([\s\S]*?)```/g)].map((match) => match[1].trim());
 
-  it('names the closed kinds, and only those', () => {
-    const named = [...prose.matchAll(/`([a-z-]+)` \(/g)].map((match) => match[1]);
-    expect(named).toEqual([...PROJECT_MEMORY_KINDS]);
-  });
+    it('shows three examples: two new notes, one citing bookmarked turns (D10), then a change to a saved note (Slice 6c)', () => {
+      expect(examples).toHaveLength(3);
+    });
 
-  it('teaches the boundaries of theme and idea (Slice 6a)', () => {
-    expect(prose).toContain('Canon is what happens in the story; a theme is what it means.');
-    expect(prose).toContain('An idea is unsettled: never propose one as `canon` or `decision` because it was discussed.');
-    expect(prose).toContain('an idea is a candidate answer or direction');
-    expect(prose).toContain('When the writer chooses an idea, propose the `decision` or `canon` note that records the choice, and name the idea in `<supersedes>`.');
-  });
+    it('the first example is two trailers, which decode to the two proposals it shows', () => {
+      const reply = `Good. It earns its place.\n\n${examples[0]}\n`;
+      expect(extractWorkshopReplyControls(reply, { memoryOpen: true })).toEqual({
+        rest: 'Good. It earns its place.',
+        redacted: 'Good. It earns its place.\n\n[project memory proposal removed]\n\n[project memory proposal removed]',
+        memory: {
+          kind: 'frames',
+          proposals: [{
+            title: 'The Rabbit\'s watch runs backward',
+            kind: 'canon',
+            summary: 'From chapter 3 on, the White Rabbit\'s watch runs backward; nobody in Wonderland remarks on it.',
+            body: 'We settled this while working the tea-party scene. The watch running backward is the first sign that time in Wonderland is wrong. Nobody comments on it; the reader notices before Alice does.',
+            supersedes: ['mem-1a9e04']
+          }, {
+            title: 'The Hatter might know the Rabbit',
+            kind: 'idea',
+            summary: 'A possibility, not chosen: the Hatter and the White Rabbit knew each other before Alice arrived.',
+            body: '',
+            supersedes: []
+          }],
+          rejections: []
+        },
+        trailers: { memory: true, fileEdits: false }
+      });
+    });
 
-  it('teaches several suggestions: rarely, on request or for distinct things, each alone (Slice 6b)', () => {
-    expect(prose).toContain('Most replies suggest none.');
-    expect(prose).toContain('Suggest several only when the writer asks for them, or when several distinct things settled in this exchange.');
-    expect(prose).toContain('it never repeats or overlaps another suggestion in the same reply');
-    expect(prose).toContain('Each trailer is checked on its own');
-    expect(prose).toContain('A note that replaces another always waits for the writer to save it.');
-    expect(prose).not.toContain('at most one note');
-  });
-
-  it('teaches changing a saved note: when to change, replace or suggest new, and how to quote (Slice 6c)', () => {
-    expect(prose).toContain('**Change it** when the same note needs refining');
-    expect(prose).toContain('**Replace it** with a new note that names it in `<supersedes>` when the decision or the fact itself changed');
-    expect(prose).toContain('**Suggest a new note** for anything else.');
-    expect(prose).toContain('Read the note with `memory.read` before you quote it, and quote exactly as written.');
-    expect(prose).toContain('A change you can\'t quote exactly is better written as a rewrite of that field.');
-    expect(prose).toContain('The quote must appear exactly once in the field');
-    expect(prose).toContain('it always waits for the writer to save it');
-    // Every element the edit grammar reads is taught, and nothing else.
-    const taught = [...prose.matchAll(/`<([a-z-]+)>`/g)].map((match) => match[1]);
-    for (const element of WORKSHOP_MEMORY_EDIT_ELEMENTS) {
-      expect(taught).toContain(element);
-    }
-  });
-
-  it('teaches citing bookmarked turns of this conversation only, by turn id (Bookmark Recall D10)', () => {
-    expect(prose).toContain('list those bookmarks first with `transcript.bookmarks` and `<scope>current</scope>`');
-    expect(prose).toContain('Cite a turn by its turn id, exactly as the list shows it, never by its ref or its turn number.');
-    expect(prose).toContain('A bookmark from a saved session can\'t be cited');
-    expect(prose).toContain('A cited turn this conversation doesn\'t hold, or one you couldn\'t see, is dropped');
-    expect(prose).toContain('Write each element at most once in a trailer (except `<supersedes>` and `<cites-turn>`).');
-  });
-
-  it('carries the never-list (D9)', () => {
-    expect(prose).toContain('It never records anything about the writer\'s feelings, health, relationships or private life');
-    expect(prose).toContain('never say a note was saved, and never promise to remember anything');
-  });
-});
-
-describe('the trailer example, through the production extractor and codec', () => {
-  const examples = [...PROMPT.matchAll(/```xml\n([\s\S]*?)```/g)].map((match) => match[1].trim());
-
-  it('shows three examples: two new notes, one citing bookmarked turns (D10), then a change to a saved note (Slice 6c)', () => {
-    expect(examples).toHaveLength(3);
-  });
-
-  it('the first example is two trailers, which decode to the two proposals it shows', () => {
-    const reply = `Good. It earns its place.\n\n${examples[0]}\n`;
-    expect(extractWorkshopReplyControls(reply, { memoryOpen: true })).toEqual({
-      rest: 'Good. It earns its place.',
-      redacted: 'Good. It earns its place.\n\n[project memory proposal removed]\n\n[project memory proposal removed]',
-      memory: {
+    it('the cited-turns example decodes to the note and the turn ids it cites, each a turn id the host can keep', () => {
+      const reply = `Here is the one you bookmarked.\n\n${examples[1]}\n`;
+      const memory = extractWorkshopReplyControls(reply, { memoryOpen: true }).memory;
+      expect(memory).toEqual({
         kind: 'frames',
         proposals: [{
-          title: 'The Rabbit\'s watch runs backward',
+          title: 'The croquet mallets are flamingos',
           kind: 'canon',
-          summary: 'From chapter 3 on, the White Rabbit\'s watch runs backward; nobody in Wonderland remarks on it.',
-          body: 'We settled this while working the tea-party scene. The watch running backward is the first sign that time in Wonderland is wrong. Nobody comments on it; the reader notices before Alice does.',
-          supersedes: ['mem-1a9e04']
-        }, {
-          title: 'The Hatter might know the Rabbit',
-          kind: 'idea',
-          summary: 'A possibility, not chosen: the Hatter and the White Rabbit knew each other before Alice arrived.',
+          summary: 'At the Queen\'s croquet ground the mallets are live flamingos and the balls are hedgehogs.',
           body: '',
-          supersedes: []
+          supersedes: [],
+          cites: ['turn-12-assistant-1762179725000', 'turn-15-user-1762179801000']
         }],
         rejections: []
-      },
-      trailers: { memory: true, fileEdits: false }
+      });
+      const cited = memory.kind === 'frames' ? (memory.proposals[0] as { cites?: string[] }).cites ?? [] : [];
+      expect(cited.every((id) => PROJECT_MEMORY_SOURCE_TURN.test(id))).toBe(true);
     });
-  });
 
-  it('the cited-turns example decodes to the note and the turn ids it cites, each a turn id the host can keep', () => {
-    const reply = `Here is the one you bookmarked.\n\n${examples[1]}\n`;
-    const memory = extractWorkshopReplyControls(reply, { memoryOpen: true }).memory;
-    expect(memory).toEqual({
-      kind: 'frames',
-      proposals: [{
-        title: 'The croquet mallets are flamingos',
-        kind: 'canon',
-        summary: 'At the Queen\'s croquet ground the mallets are live flamingos and the balls are hedgehogs.',
-        body: '',
-        supersedes: [],
-        cites: ['turn-12-assistant-1762179725000', 'turn-15-user-1762179801000']
-      }],
-      rejections: []
+    it('the second example decodes to the change it shows, in order', () => {
+      const reply = `Good.\n\n${examples[2]}\n`;
+      expect(extractWorkshopReplyControls(reply, { memoryOpen: true }).memory).toEqual({
+        kind: 'frames',
+        proposals: [{
+          proposes: 'edit',
+          target: 'mem-7f3c2a',
+          operations: [
+            { op: 'replace', field: 'body', find: 'the reader notices before Alice does', with: 'Alice notices first, and says nothing' },
+            { op: 'append', text: 'The Hatter\'s watch, by contrast, is always two days slow.' }
+          ]
+        }],
+        rejections: []
+      });
     });
-    const cited = memory.kind === 'frames' ? (memory.proposals[0] as { cites?: string[] }).cites ?? [] : [];
-    expect(cited.every((id) => PROJECT_MEMORY_SOURCE_TURN.test(id))).toBe(true);
-  });
 
-  it('the second example decodes to the change it shows, in order', () => {
-    const reply = `Good.\n\n${examples[2]}\n`;
-    expect(extractWorkshopReplyControls(reply, { memoryOpen: true }).memory).toEqual({
-      kind: 'frames',
-      proposals: [{
-        proposes: 'edit',
-        target: 'mem-7f3c2a',
-        operations: [
-          { op: 'replace', field: 'body', find: 'the reader notices before Alice does', with: 'Alice notices first, and says nothing' },
-          { op: 'append', text: 'The Hatter\'s watch, by contrast, is always two days slow.' }
-        ]
-      }],
-      rejections: []
+    it('the change quotes the first example\'s note exactly once, so it anchors', () => {
+      const body = /<body>([\s\S]*?)<\/body>/.exec(examples[0])![1];
+      expect(body.split('the reader notices before Alice does')).toHaveLength(2);
     });
-  });
 
-  it('the change quotes the first example\'s note exactly once, so it anchors', () => {
-    const body = /<body>([\s\S]*?)<\/body>/.exec(examples[0])![1];
-    expect(body.split('the reader notices before Alice does')).toHaveLength(2);
-  });
-
-  it('is refused anywhere but last, as the prose says', () => {
-    const reply = `${examples[0]}\n\nGood. It earns its place.`;
-    expect(extractWorkshopReplyControls(reply, { memoryOpen: true }).memory)
-      .toEqual({ kind: 'frames', proposals: [], rejections: ['misplaced', 'misplaced'] });
+    it('is refused anywhere but last, as the prose says', () => {
+      const reply = `${examples[0]}\n\nGood. It earns its place.`;
+      expect(extractWorkshopReplyControls(reply, { memoryOpen: true }).memory)
+        .toEqual({ kind: 'frames', proposals: [], rejections: ['misplaced', 'misplaced'] });
+    });
   });
 });
 

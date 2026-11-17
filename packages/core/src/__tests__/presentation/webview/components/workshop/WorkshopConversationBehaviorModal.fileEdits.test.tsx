@@ -33,6 +33,8 @@ function renderModal(overrides: Partial<Props> = {}) {
     onApply: jest.fn(),
     onOpenMemoryManager: jest.fn(),
     onOpenMemoryFolder: jest.fn(),
+    memorySuggestions: 'sparingly',
+    onSelectMemorySuggestions: jest.fn(),
     pinnedContext: pinnedContextPanelPropsStub(),
     memoryExplainerOpen: true,
     onToggleMemoryExplainer: jest.fn(),

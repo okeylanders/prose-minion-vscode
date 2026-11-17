@@ -74,6 +74,10 @@ import {
   neutralizeReservedPersonaPromptDelimiters
 } from '@/utils/workshopPromptFrames';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  DEFAULT_WORKSHOP_MEMORY_SUGGESTION_LEVEL,
+  type WorkshopMemorySuggestionLevel
+} from '@shared/constants/workshopMemorySuggestions';
 import { buildWorkshopWriterProfileFrame } from '@/utils/workshopWriterProfile';
 import { sanitizeWorkshopReplyForRetention } from '@/utils/workshopReplyControls';
 import type { OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
@@ -250,6 +254,8 @@ export class AssistantToolService {
   /** Whether persona prompts teach the file-edit trailer now (ADR 2026-11-05 D9); off until bound. */
   private workshopFileEditsGrammar: () => boolean = () => false;
   private workshopReactionsGrammar: () => boolean = () => false;
+  /** How readily personas suggest notes (`proseMinion.workshop.memory.suggestions`); the default until bound. */
+  private workshopMemorySuggestionLevel: () => WorkshopMemorySuggestionLevel = () => DEFAULT_WORKSHOP_MEMORY_SUGGESTION_LEVEL;
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
@@ -293,6 +299,11 @@ export class AssistantToolService {
   /** Bind the persona-reaction permission check (ADR 2026-11-07 Q8); called once, in `extension.ts`. */
   setWorkshopReactionsGrammar(teachesGrammar: () => boolean): void {
     this.workshopReactionsGrammar = teachesGrammar;
+  }
+
+  /** Bind the memory-suggestion level, read when a persona prompt is built; called once, in `extension.ts`. */
+  setWorkshopMemorySuggestionLevel(level: () => WorkshopMemorySuggestionLevel): void {
+    this.workshopMemorySuggestionLevel = level;
   }
 
   addStatusListener(listener: StatusEmitter): () => void {
@@ -954,6 +965,7 @@ export class AssistantToolService {
         behavior,
         {
           projectMemory: this.workshopProjectMemoryGrammar(),
+          memorySuggestions: this.workshopMemorySuggestionLevel(),
           fileEdits: this.workshopFileEditsGrammar(),
           personaReactions: this.workshopReactionsGrammar()
         }

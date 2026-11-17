@@ -12,6 +12,7 @@ import type {
   WorkshopPersonaId,
   WorkshopRelationalDepth
 } from '@messages';
+import type { WorkshopMemorySuggestionLevel } from '@shared/constants/workshopMemorySuggestions';
 
 export interface WorkshopPersonaDescriptor {
   id: WorkshopPersonaId;
@@ -119,6 +120,26 @@ export const WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATH =
   'workshop-personas/project-memory-proposals.md';
 
 /**
+ * The proposals prompt, one whole file per suggestion level (Everyday
+ * Conveniences, Round Two, item B). `PromptLoader` joins files with a rule,
+ * so a paragraph cannot be swapped inside a section without a rule landing
+ * in the middle of it; each level is therefore the whole file.
+ *
+ * - `sparingly` is the file above, unedited: the default's prompt is byte
+ *   for byte what it was before the setting existed.
+ * - The other two are that file with one paragraph changed.
+ *   `memorySuggestionLevelPromptSync.test.ts` holds the three identical
+ *   outside it.
+ */
+export const WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATHS: Readonly<
+  Record<WorkshopMemorySuggestionLevel, string>
+> = Object.freeze({
+  sparingly: WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATH,
+  readily: 'workshop-personas/memory-suggestions/readily.md',
+  aggressively: 'workshop-personas/memory-suggestions/aggressively.md'
+});
+
+/**
  * The file-edit trailer (ADR 2026-11-05 D2, D9): taught to host and guest
  * only while `proseMinion.workshop.fileEdits` is `ask`, so a persona never
  * proposes an edit while the setting is off. A change of the setting
@@ -193,7 +214,13 @@ export function workshopPersonaSystemPromptPaths(
     WorkshopConversationBehavior,
     'interactionMode' | 'expressionLevel' | 'relationalDepth'
   >,
-  options: { readonly projectMemory?: boolean; readonly fileEdits?: boolean; readonly personaReactions?: boolean } = {}
+  options: {
+    readonly projectMemory?: boolean;
+    /** How readily to suggest notes; read only while `projectMemory` is on. Absent is the default, Sparingly. */
+    readonly memorySuggestions?: WorkshopMemorySuggestionLevel;
+    readonly fileEdits?: boolean;
+    readonly personaReactions?: boolean;
+  } = {}
 ): string[] {
   const participant = basePromptPath === WORKSHOP_HOST_BASE_PROMPT_PATH
     || basePromptPath === WORKSHOP_GUEST_BASE_PROMPT_PATH;
@@ -209,7 +236,10 @@ export function workshopPersonaSystemPromptPaths(
       ? [WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH, WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH]
       : []),
     ...(participant && options.projectMemory
-      ? [WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH, WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATH]
+      ? [
+        WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATHS[options.memorySuggestions ?? 'sparingly']
+      ]
       : []),
     ...(participant && options.fileEdits ? [WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH, WORKSHOP_REPLY_EDIT_OFFERS_PROMPT_PATH] : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,

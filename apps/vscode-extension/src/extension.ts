@@ -416,6 +416,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // The file-edit trailer is taught only while `workshop.fileEdits` is `ask` (ADR 2026-11-05 D9).
   assistantToolService.setWorkshopFileEditsGrammar(() => workshopConversationSettingsService.fileEditsOpen());
   assistantToolService.setWorkshopReactionsGrammar(() => workshopConversationSettingsService.personaReactionsOpen());
+  // How readily personas suggest notes picks the proposals prompt (`workshop.memory.suggestions`), read at each build.
+  assistantToolService.setWorkshopMemorySuggestionLevel(() => workshopConversationSettingsService.memorySuggestionLevel());
   // Its writes (Slice 3) are owed until they settle; deactivation drains them.
   projectMemoryLibraryForShutdown = projectMemoryLibrary;
   // Persona capabilities are minted per turn by this factory, after the
