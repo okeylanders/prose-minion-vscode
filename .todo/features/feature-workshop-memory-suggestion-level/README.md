@@ -98,6 +98,9 @@ section byte-identical across levels.
   (D6: proposals as a reply trailer; D8: the one memory mode)
 - [Workshop Relational Depth](../feature-workshop-relational-depth/README.md):
   the one-resource-per-level pattern.
+- [Show Personas Every Memory's Title](../feature-workshop-memory-title-index/README.md):
+  its partner on the Memory tab. More suggestions fill the start-of-conversation
+  list sooner, and that note is what a persona sees once it overflows.
 
 ## Related Files
 
