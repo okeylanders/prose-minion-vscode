@@ -1,7 +1,7 @@
 # Feature: Collapse the Workshop's Side Pane
 
 **Date Identified:** 2026-11-07
-**Status:** Idea. Small, presentation only: no host change, no ADR.
+**Status:** Shipped in v2.14.0 as Everyday Conveniences item D (PR #261). Archived 2026-11-17. By the epic's defaults, not built: the Lightbox opting in, and a drag-resizable rail.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-07 ("collapsing side pane in Workshop")
 

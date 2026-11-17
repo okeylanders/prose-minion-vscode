@@ -1,7 +1,7 @@
 # Feature: Re-read From File in a New Room That Kept Its Excerpt
 
 **Date Identified:** 2026-11-11
-**Status:** Idea. Small, webview-only: the host already allows it.
+**Status:** Shipped in v2.14.0 as Everyday Conveniences item E (PR #260), with Continue always re-reading a file-backed passage. Archived 2026-11-17.
 **Priority:** Medium. It's a step a writer takes every time they start a new room on a chapter they've been editing.
 **Origin:** Okey, 2026-11-11
 

@@ -1,7 +1,7 @@
 # Feature: Send the Editor Selection With Each Message
 
 **Date Identified:** 2026-11-07
-**Status:** Idea. Needs a short ADR, for a change to the `EditorContext` platform port and a new message-attachment kind.
+**Status:** Shipped in v2.14.0 as Everyday Conveniences item B (PR #264), in Okey's shape: a "Selected Text" pill, added by the new "Add Selection to Workshop Message" command or the composer's "Include selected text" toggle; the old command became "Send to New Workshop Excerpt". Archived 2026-11-17. Not built here: a pointer instead of text for a selection inside the excerpt, now its own note, [A Selection Inside the Excerpt as a Pointer](../../../features/feature-workshop-selection-in-excerpt-pointer/README.md).
 **Priority:** Medium
 **Origin:** Okey, 2026-11-07
 
@@ -126,11 +126,11 @@ A toggle by the composer: **Include selection**.
 
 ## Related
 
-- [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md)
+- [ADR 2026-10-19](../../../../docs/adr/2026-10-19-lightbox-inspiration-board.md)
   D11: staged message attachments and their kinds.
-- [ADR 2026-10-05: Workshop Transcript Export](../../../docs/adr/2026-10-05-workshop-transcript-export.md):
+- [ADR 2026-10-05: Workshop Transcript Export](../../../../docs/adr/2026-10-05-workshop-transcript-export.md):
   what a transcript shows of an attachment.
-- [ADR 2026-09-30: Workshop Rewind and Branch](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md):
+- [ADR 2026-09-30: Workshop Rewind and Branch](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md):
   restaging a cut message's attachments.
 
 ## Related Files

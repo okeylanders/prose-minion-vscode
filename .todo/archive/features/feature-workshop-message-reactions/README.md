@@ -1,7 +1,7 @@
 # Feature: Workshop Message Reactions
 
 **Date Identified:** 2026-11-06
-**Status:** Idea. Needs an ADR: it touches the session codec, delivery and the reply tail.
+**Status:** Shipped in v2.13.0: the Message Reactions epic ([ADR 2026-11-07](../../../../docs/adr/2026-11-07-workshop-message-reactions.md)), reaching `main` in #257. Archived 2026-11-17.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-06
 
@@ -151,16 +151,16 @@ Unicode 14) need checking.
 
 ## Related
 
-- [Workshop Relational Depth](../feature-workshop-relational-depth/README.md):
+- [Workshop Relational Depth](../../../features/feature-workshop-relational-depth/README.md):
   the ceiling a persona reads reactions under.
-- [Workshop Amplified Expression](../feature-workshop-amplified-expression/README.md)
-- [Workshop Participant Identity Colors](../feature-workshop-participant-identity-colors/README.md):
+- [Workshop Amplified Expression](../../../features/feature-workshop-amplified-expression/README.md)
+- [Workshop Participant Identity Colors](../../../features/feature-workshop-participant-identity-colors/README.md):
   how a persona's chip is told apart.
-- [Workshop Thread Bookmarks](../../archive/features/feature-workshop-thread-bookmarks/README.md):
+- [Workshop Thread Bookmarks](../feature-workshop-thread-bookmarks/README.md):
   the per-turn mark this is shaped like.
-- [ADR 2026-11-04: Workshop Project Memory](../../../docs/adr/2026-11-04-workshop-project-memory.md)
+- [ADR 2026-11-04: Workshop Project Memory](../../../../docs/adr/2026-11-04-workshop-project-memory.md)
   D6: the reply trailer and its outcome table.
-- [ADR 2026-07-24: Room Ledger and Delivery Offsets](../../../docs/adr/2026-07-24-workshop-room-ledger-and-delivery-offsets.md)
+- [ADR 2026-07-24: Room Ledger and Delivery Offsets](../../../../docs/adr/2026-07-24-workshop-room-ledger-and-delivery-offsets.md)
 
 ## Related Files
 

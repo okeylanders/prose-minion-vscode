@@ -128,7 +128,7 @@ So `@` is a faster way into what exists. It needs no new host route.
 
 ## Related
 
-- [Send the Editor Selection With Each Message](../feature-workshop-send-selection-with-message/README.md):
+- [Send the Editor Selection With Each Message](../../archive/features/feature-workshop-send-selection-with-message/README.md):
   another new way into message attachments.
 - [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md)
   D11: staged message attachments.

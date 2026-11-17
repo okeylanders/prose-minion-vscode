@@ -1,7 +1,7 @@
 # Feature: The Memory Privacy Fence Holds a Note for Review Instead of Dropping It
 
 **Date Identified:** 2026-11-11
-**Status:** Idea. Small: an amendment to [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md) D9 (and D8's list of holds).
+**Status:** Shipped in v2.13.0: PR #255 (the `personal` hold, ADR 2026-11-04's addendum of 2026-11-11), reaching `main` in #257. Archived 2026-11-17. Not built here: telling the persona what became of its notes, now its own note, [Tell the Persona What Became of Its Notes](../../../features/feature-workshop-memory-proposal-outcomes/README.md).
 **Priority:** High. It silently loses notes in ordinary fiction work.
 **Origin:** Okey, 2026-11-11
 

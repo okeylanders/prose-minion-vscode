@@ -1,7 +1,7 @@
 # Feature: Apply a Reply's Fixes and Rewrites From Its Bubble
 
 **Date Identified:** 2026-11-10
-**Status:** Handed to a design and orchestration thread (2026-11-10), on `epic/workshop-reply-edit-actions`. This note is the idea as filed; the epic's ADR and README carry the design.
+**Status:** Shipped in v2.13.0: the Reply Edit Actions epic ([ADR 2026-11-10](../../../../docs/adr/2026-11-10-workshop-reply-edit-actions.md)), reaching `main` in #257. Archived 2026-11-17.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-10, as Persona File Edits heads to `main`
 
@@ -99,5 +99,5 @@ prose.
 - [Workshop Message Reactions](../feature-workshop-message-reactions/README.md):
   the same bubble and trailer section.
 - [Send the Editor Selection With Each Message](../feature-workshop-send-selection-with-message/README.md)
-  and [`@` in the composer](../feature-workshop-composer-at-mentions/README.md):
+  and [`@` in the composer](../../../features/feature-workshop-composer-at-mentions/README.md):
   other Workshop surfaces getting new controls.

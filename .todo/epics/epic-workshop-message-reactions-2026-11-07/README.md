@@ -9,7 +9,7 @@
 at `9dfa293f`, its sync-main branch, `main` at `859517b6` with Helper Agent
 #243 and Bookmark Recall #240, and Slice 4c with its PR #236 fixes).
 **ADR:** [2026-11-07: Workshop Message Reactions](../../../docs/adr/2026-11-07-workshop-message-reactions.md)
-**Feature note:** [Workshop Message Reactions](../../features/feature-workshop-message-reactions/README.md)
+**Feature note:** [Workshop Message Reactions](../../archive/features/feature-workshop-message-reactions/README.md)
 (from the idea inbox; never edited on this branch, so the inbox's identical
 add merges cleanly. Status lives here.)
 

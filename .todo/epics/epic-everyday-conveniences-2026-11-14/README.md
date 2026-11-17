@@ -15,10 +15,10 @@ Five small-to-medium writer conveniences, built as one epic:
 | Item | What the writer gets | Okey's # | Feature note |
 |---|---|---|---|
 | A | A persona reads several files in one request, and file reads fit the context window | 4 | [Reads That Fit the Window](../../features/feature-workshop-reads-fit-the-window/README.md), parts 1 (`resource.read` only) and 3 |
-| B | "Selected Text" as a pill in the Workshop composer, by command or by an "Include selected text" toggle | 6 | [Send the Selection With Each Message](../../features/feature-workshop-send-selection-with-message/README.md) |
-| C | Search the Dictionary's lookup history | 7 | [Dictionary History Search](../../features/feature-dictionary-history-search/README.md) |
-| D | Collapse the Workshop's side pane to an icon strip | 10 | [Collapsible Rail](../../features/feature-workshop-collapsible-rail/README.md) |
-| E | Re-read from file in a new room that kept its excerpt | 21 | [Re-read in a New Room](../../features/feature-workshop-reread-excerpt-in-new-room/README.md) |
+| B | "Selected Text" as a pill in the Workshop composer, by command or by an "Include selected text" toggle | 6 | [Send the Selection With Each Message](../../archive/features/feature-workshop-send-selection-with-message/README.md) |
+| C | Search the Dictionary's lookup history | 7 | [Dictionary History Search](../../archive/features/feature-dictionary-history-search/README.md) |
+| D | Collapse the Workshop's side pane to an icon strip | 10 | [Collapsible Rail](../../archive/features/feature-workshop-collapsible-rail/README.md) |
+| E | Re-read from file in a new room that kept its excerpt | 21 | [Re-read in a New Room](../../archive/features/feature-workshop-reread-excerpt-in-new-room/README.md) |
 
 The four notes for B–E came from `claude/idea-inbox` in this branch's first
 commit (`4ca74710`), byte-identical, and are **never edited here**, so the

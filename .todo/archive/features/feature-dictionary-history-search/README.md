@@ -1,7 +1,7 @@
 # Feature: Search the Dictionary's Lookup History
 
 **Date Identified:** 2026-11-07
-**Status:** Idea. A named follow-up of [ADR 2026-10-14](../../../docs/adr/2026-10-14-dictionary-lookup-history.md) ("Filtering or searching inside the popup", in its out-of-scope list). Searching words needs no ADR; searching definitions adds a route, so it's an amendment.
+**Status:** Shipped in v2.14.0 as Everyday Conveniences item C (PR #262). Archived 2026-11-17. By the epic's defaults, not built: filter chips and a larger cap (still 500).
 **Priority:** Medium
 **Origin:** Okey, 2026-11-07
 
@@ -84,10 +84,10 @@ A search field at the top of the history popup.
 
 ## Related
 
-- [ADR 2026-10-14: Dictionary Lookup History](../../../docs/adr/2026-10-14-dictionary-lookup-history.md):
+- [ADR 2026-10-14: Dictionary Lookup History](../../../../docs/adr/2026-10-14-dictionary-lookup-history.md):
   D5 summaries and entries, the out-of-scope list.
-- [Epic: Dictionary Lookup History](../../epics/epic-dictionary-lookup-history-2026-10-14/README.md)
-- [Feature: Request History Buttons](../feature-request-history-buttons/README.md):
+- [Epic: Dictionary Lookup History](../../../epics/epic-dictionary-lookup-history-2026-10-14/README.md)
+- [Feature: Request History Buttons](../../../features/feature-request-history-buttons/README.md):
   the parent feature, with Assistant and Category Search history.
 
 ## Related Files

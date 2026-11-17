@@ -109,7 +109,7 @@ and every edit stays an ordinary text edit.
   protected regions, the one door for writes, flags as annotations.
 - [ADR 2026-10-21: VS Code Engine Floor](../../../docs/adr/2026-10-21-vscode-engine-floor.md):
   the Chromium 114 floor.
-- [Send the Editor Selection With Each Message](../feature-workshop-send-selection-with-message/README.md):
+- [Send the Editor Selection With Each Message](../../archive/features/feature-workshop-send-selection-with-message/README.md):
   the same selection port, which this editor must feed.
 
 ## Related Files

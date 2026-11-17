@@ -5,7 +5,7 @@
 **Created:** 2026-11-10
 **Integration branch:** `epic/workshop-reply-edit-actions`, cut at `c0a6e497` ("Merge Workshop Persona File Edits into main (#249)"), which is `main`'s tip on 2026-11-10. The brief named `926190d9`, the tip of `epic/workshop-persona-file-edits`; that epic had already reached `main`, so the branch was fast-forwarded from `926190d9` to `main` before its first commit. Each slice is built on `epic/workshop-reply-edit-actions-slice-<N>-<slug>` and merges into the epic through a reviewed PR.
 **Decision:** [ADR 2026-11-10: A Reply Offers Its Fixes and Rewrites as Edits](../../../../docs/adr/2026-11-10-workshop-reply-edit-actions.md) (Accepted 2026-11-12)
-**Idea as filed:** [feature note](../../../features/feature-workshop-reply-edit-actions/README.md). It is a byte-identical copy of the file on `claude/idea-inbox`, and is never edited here. Status is tracked in this README.
+**Idea as filed:** [feature note](../../features/feature-workshop-reply-edit-actions/README.md). It is a byte-identical copy of the file on `claude/idea-inbox`, and is never edited here. Status is tracked in this README.
 **Upstream of this epic:** Persona File Edits (on `main`). Message Reactions (`epic/workshop-message-reactions`, ADR 2026-11-07) was merged into this epic at its tip `3e2b6b8a` (`e250a6d7`, 2026-11-10, at Okey's request, ahead of its reaching `main`). So this epic carries Reactions: it goes to `main` after Reactions does, or with it, on Okey's word.
 
 ## Goal
