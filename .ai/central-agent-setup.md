@@ -239,6 +239,7 @@ packages/core/src/presentation/webview/
 │           ├── useWorkshopEditOffers.ts    # A reply's edit-offer chips: the press (ids only), its correlated answer, the one announcement (ADR 2026-11-10 U2–U6)
 │           ├── controllers/            # Transient modal/surface state machines
 │           │   ├── useWorkshopRailTabs.ts  # The rail's tabs and unseen-arrival badges; `railHidden` when the rail is collapsed
+│           │   ├── useWorkshopComposerMentions.ts # `@` in the composer: the file list's state, keys and picks; stages through injected callbacks (round two, item G)
 │           │   ├── creativeVariations/useCreativeVariationsAuthoring.ts
 │           │   └── showVsTell/         # useShowVsTellAuthoring, Intake, CommitFlow, InvalidationWatch
 │           └── widgets/                # Named feature transport/correlation hooks
@@ -1303,6 +1304,42 @@ card records:
 - **Logs.** A read naming several files logs counts and groups, never a
   path. A one-path read keeps the line it has always had, which names its
   configured path (`workshopResourceRequestLogSummary`).
+
+### Workshop Composer `@` Mentions
+
+Follow Everyday Conveniences round two, item G
+([the feature note](.todo/features/feature-workshop-composer-at-mentions/README.md),
+decisions A1 and A2) when touching what typing `@` in the composer does:
+
+- **No route of its own.** Opening the list posts
+  `WORKSHOP_REQUEST_CONTEXT_CATALOG`; a pick posts
+  `WORKSHOP_ATTACH_MESSAGE_RESOURCES` with the file's catalog key; Browse
+  project… opens the shared picker in its message mode. The shared picker
+  and its parity tests are untouched.
+- **The pill is the truth (A1).** The token a pick writes is prose in a
+  plain textarea. Nothing reads a token back out of a draft: deleting one
+  leaves its pill, and removing a pill leaves the text. A file already
+  staged takes its token and stages nothing (compared by catalog key).
+- **A file token's first word holds a `.` or a `/` (A2),** so it can never
+  read as a persona token (`@Jill`, later). `workshopMentionTokens` is the
+  one place a token is made: the shortest run of the path's last segments
+  that is unique in the catalog and keeps the rule. A test holds every token
+  the list can insert to it.
+- **Sectioned.** The list renders sections (`Files` today) so People can
+  join without a redesign. Do not add People here.
+- **Where the rules live.**
+  - Pure rules: `utils/workshop/workshopComposerMentions.ts` (trigger
+    detection, folded matching through `foldedTextSearch`, tokens, the
+    draft after a pick). No pattern is built from what the writer typed.
+  - State: the controller `useWorkshopComposerMentions`. It posts nothing.
+  - The list: `components/workshop/WorkshopComposerMentionList`, a listbox
+    the textarea controls (`aria-controls`, `aria-activedescendant`); it
+    never takes focus.
+- **Keys.** While an option is active, Enter and Tab pick it. With no
+  match nothing is active, so Enter sends as it always has. Escape closes
+  the list for that `@` and keeps the draft. Nothing acts during IME
+  composition, the send included.
+- **Nothing is persisted or logged.**
 
 ### Workshop Excerpt Re-read
 

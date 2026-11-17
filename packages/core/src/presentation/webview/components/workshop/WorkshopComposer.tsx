@@ -27,24 +27,44 @@
  * sits beside the attach button, and Tools is `aria-disabled` with a visible
  * reason rather than silently dead — the writer learns why, and a screen reader
  * hears the same sentence. Starters seed the draft through `draftSeed`.
+ *
+ * Everyday Conveniences round two (item G): typing `@` opens a list of
+ * project files above the composer (`WorkshopComposerMentionList`, driven by
+ * `useWorkshopComposerMentions`). A pick stages the same pill the attach menu
+ * stages and writes the file's token into the draft as prose. While the list
+ * has an active option, Enter and Tab pick it; otherwise Enter sends.
  */
 
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
-import { workshopAttachmentSize, workshopAttachmentTitle } from '@components/workshop/workshopAttachmentPills';
+import { WorkshopComposerAttachments } from '@components/workshop/WorkshopComposerAttachments';
 import { WorkshopCacheIndicator } from '@components/workshop/WorkshopCacheIndicator';
+import { WorkshopComposerMentionList, workshopMentionOptionId } from '@components/workshop/WorkshopComposerMentionList';
 import {
-  WorkshopLiveSelectedTextPill,
   WorkshopSelectedTextToggle,
   type WorkshopComposerSelectedText
 } from '@components/workshop/WorkshopSelectedTextControls';
+import { useWorkshopComposerMentions } from '@hooks/domain/workshop/controllers/useWorkshopComposerMentions';
+import type { WorkshopMentionEdit } from '@utils/workshop/workshopComposerMentions';
 import {
+  ConfiguredResourceEntry,
+  ConfiguredResourceRef,
   WORKSHOP_INTERACTION_MODE_LABELS,
   WORKSHOP_RELATIONAL_DEPTH_LABELS,
   WorkshopConversationBehavior,
   WorkshopMessageAttachmentSnapshot,
   WorkshopSessionScope
 } from '@messages';
+
+/** `@` in the composer: the catalog it lists and the message-attach action a pick stages through. */
+export interface WorkshopComposerMentions {
+  /** The configured-resource catalog; null until the host has answered once. */
+  catalog: readonly ConfiguredResourceEntry[] | null;
+  onRequestCatalog: () => void;
+  onAttach: (items: ConfiguredResourceRef[]) => void;
+}
+
+const NO_MENTION_EFFECT = () => undefined;
 
 /** The one sentence the gated tool affordances say, everywhere (§9). */
 export const WORKSHOP_TOOLS_GATED_REASON = 'Add an excerpt to run analysis tools directly.';
@@ -88,6 +108,8 @@ interface WorkshopComposerProps {
   messageAttachments: WorkshopMessageAttachmentSnapshot[];
   /** Selected Text (ADR 2026-11-14 D14): the "Include selected text" toggle and its live pill; absent, neither is drawn. */
   selectedText?: WorkshopComposerSelectedText;
+  /** `@` attaches a project file to this message (item G); absent, `@` is only a character. */
+  mentions?: WorkshopComposerMentions;
   onSend: (text: string) => void;
   onCancel: () => void;
   onOpenContext: () => void;
@@ -146,6 +168,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   writerProfileShared,
   messageAttachments,
   selectedText,
+  mentions,
   onSend,
   onCancel,
   onOpenContext,
@@ -159,6 +182,24 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   const [addMenuOpen, setAddMenuOpen] = React.useState(false);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const addMenuRef = React.useRef<HTMLDivElement>(null);
+  const mentionListId = React.useId();
+  /** Where the caret goes once a picked token is in the draft. */
+  const mentionCaretRef = React.useRef<number | null>(null);
+  const mention = useWorkshopComposerMentions({
+    catalog: mentions?.catalog ?? null,
+    staged: messageAttachments,
+    enabled: mentions !== undefined && sessionReady,
+    onRequestCatalog: mentions?.onRequestCatalog ?? NO_MENTION_EFFECT,
+    onAttach: mentions?.onAttach ?? NO_MENTION_EFFECT,
+    onBrowse: onAttachToMessage
+  });
+  const { syncDraft: syncMentionDraft } = mention;
+  const applyMentionEdit = (edit: WorkshopMentionEdit | undefined) => {
+    if (edit) {
+      mentionCaretRef.current = edit.caret;
+      setDraft(edit.text);
+    }
+  };
 
   const trimmed = draft.trim();
   const canSend = canMessage && trimmed.length > 0;
@@ -177,6 +218,18 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Nothing acts while an IME is composing: its Enter confirms a candidate.
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+    // The open file list takes its keys first; Enter sends only when it did not.
+    const taken = mention.keyDown(event, draft);
+    if (taken.handled) {
+      event.preventDefault();
+      event.stopPropagation();
+      applyMentionEdit(taken.edit);
+      return;
+    }
     // Enter sends; Shift+Enter remains native textarea behavior so writers can
     // compose a deliberate multi-line prompt without fighting the form.
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -192,7 +245,12 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
     }
     textarea.style.height = 'auto';
     textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`;
-  }, [draft]);
+    if (mentionCaretRef.current !== null) {
+      textarea.setSelectionRange(mentionCaretRef.current, mentionCaretRef.current);
+      mentionCaretRef.current = null;
+    }
+    syncMentionDraft(draft, textarea.selectionStart);
+  }, [draft, syncMentionDraft]);
 
   // Close the add menu on any outside click or Escape.
   React.useEffect(() => {
@@ -235,7 +293,6 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
     textareaRef.current?.focus();
   }, [draftSeed]);
 
-  const livePill = selectedText?.livePill ?? null;
   const openWithoutExcerpt = scope === 'open' && !hasExcerpt;
   // The passage path is only reachable from here while nobody has been
   // prompted yet; after that it is a new session, not a button.
@@ -250,36 +307,21 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
 
   return (
     <div className="pm-ws-composer-wrap">
-      {(messageAttachments.length > 0 || livePill) && (
-        <div className="pm-ws-comp-attachments" aria-label="Attachments for this message">
-          {messageAttachments.map((attachment) => (
-            <span
-              key={attachment.id}
-              className={`pm-ws-comp-attachment${attachment.lightboxTile ? ' pm-ws-comp-attachment-lightbox' : ''}${attachment.selectedText ? ' pm-ws-comp-attachment-selected' : ''}`}
-              title={workshopAttachmentTitle(attachment)}
-            >
-              <Icon name={attachment.lightboxTile ? 'pin' : 'doc'} size={11} />
-              <span className="pm-ws-comp-attachment-label">{attachment.label}</span>
-              <span className="pm-ws-comp-attachment-size">{workshopAttachmentSize(attachment, 'composer')}</span>
-              <button
-                type="button"
-                className="pm-ws-comp-attachment-remove"
-                title={`Remove ${attachment.label} from this message`}
-                aria-label={`Remove ${attachment.label} from this message`}
-                onClick={() => onRemoveMessageAttachment(attachment.id)}
-              >
-                <Icon name="x" size={10} />
-              </button>
-            </span>
-          ))}
-          {messageAttachments.length > 0 && <span className="pm-ws-comp-attachment-hint">rides the next message only</span>}
-          {livePill && <WorkshopLiveSelectedTextPill live={livePill} />}
-        </div>
-      )}
+      <WorkshopComposerAttachments
+        attachments={messageAttachments}
+        livePill={selectedText?.livePill ?? null}
+        onRemove={onRemoveMessageAttachment}
+      />
       {/* Sprint 13C: the composer stacks — full-width text entry on top, the
           controls row docked beneath it (approved workshop comp `.wk-crow`).
           Chips beside the textarea were squeezing the writing space. */}
       <form className="pm-ws-composer" onSubmit={submit}>
+        <WorkshopComposerMentionList
+          listId={mentionListId}
+          mentions={mention}
+          onPick={(index) => applyMentionEdit(mention.pickOption(index, draft))}
+          onActivate={mention.setActiveIndex}
+        />
         <textarea
           ref={textareaRef}
           className="pm-ws-comp-input"
@@ -287,6 +329,15 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={handleKeyDown}
+          onSelect={(event) => syncMentionDraft(event.currentTarget.value, event.currentTarget.selectionStart)}
+          onBlur={mention.close}
+          onCompositionStart={() => mention.setComposing(true)}
+          onCompositionEnd={() => mention.setComposing(false)}
+          aria-autocomplete={mentions ? 'list' : undefined}
+          aria-controls={mention.open ? mentionListId : undefined}
+          aria-activedescendant={
+            mention.activeIndex >= 0 ? workshopMentionOptionId(mentionListId, mention.activeIndex) : undefined
+          }
           disabled={!canMessage}
           placeholder={placeholder}
           aria-label={`Message ${recipientLabel}`}
