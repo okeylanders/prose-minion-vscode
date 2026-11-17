@@ -30,7 +30,7 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
 
   const createHandler = () => {
     const generated = candidates();
-    const model = { buildLenses: jest.fn().mockResolvedValue(generated) };
+    const model = { buildLenses: jest.fn().mockResolvedValue({ candidates: generated }) };
     const repository = {
       findForQuery: jest.fn().mockResolvedValue(undefined),
       saveManyForQuery: jest.fn().mockResolvedValue([
@@ -96,6 +96,33 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
       type: MessageType.WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT,
       payload: expect.objectContaining({ token: 'preview-1', ok: true })
     }));
+  });
+
+  it('posts the lenses a build kept with the host\'s note, and no note when all could be used', async () => {
+    const kept = candidates().slice(0, 2);
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const partial = new WorkshopLexicalGravityHandler(
+      {
+        buildLenses: jest.fn().mockResolvedValue({ candidates: kept, note: "1 of 3 lenses couldn't be used." })
+      } as never,
+      { findForQuery: jest.fn().mockResolvedValue(undefined) } as never,
+      postMessage,
+      { appendLine: jest.fn() } as never
+    );
+    await partial.handleBuild(buildMessage);
+    expect(postMessage.mock.calls.at(-1)?.[0].payload).toEqual({
+      token: 'build-1',
+      query: 'falconry',
+      ok: true,
+      candidates: kept,
+      note: "1 of 3 lenses couldn't be used."
+    });
+
+    const whole = createHandler();
+    await whole.handler.handleBuild(buildMessage);
+    expect(whole.postMessage.mock.calls.at(-1)?.[0].payload).toEqual({
+      token: 'build-1', query: 'falconry', ok: true, candidates: whole.generated
+    });
   });
 
   it('resolves selected ids against host-owned candidates and saves one ordered batch', async () => {
@@ -168,7 +195,7 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
       slug: 'legacy-falconry',
       source: 'project' as const
     };
-    const model = { buildLenses: jest.fn().mockResolvedValue(generated) };
+    const model = { buildLenses: jest.fn().mockResolvedValue({ candidates: generated }) };
     const repository = {
       assertIncompatibleResource: jest.fn().mockResolvedValue({
         resourceName: 'legacy-falconry.json',
@@ -221,7 +248,7 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
 
   it('does not let multiple generated takes overwrite one legacy resource', async () => {
     const generated = candidates();
-    const model = { buildLenses: jest.fn().mockResolvedValue(generated) };
+    const model = { buildLenses: jest.fn().mockResolvedValue({ candidates: generated }) };
     const repository = {
       assertIncompatibleResource: jest.fn().mockResolvedValue({
         resourceName: 'legacy-falconry.json',
@@ -266,7 +293,7 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
 
   it('refuses to rebuild a v1 resource whose replacement would be hidden by a built-in', async () => {
     const generated = candidates();
-    const model = { buildLenses: jest.fn().mockResolvedValue(generated) };
+    const model = { buildLenses: jest.fn().mockResolvedValue({ candidates: generated }) };
     const repository = {
       assertIncompatibleResource: jest.fn().mockResolvedValue({
         resourceName: 'photography.json',

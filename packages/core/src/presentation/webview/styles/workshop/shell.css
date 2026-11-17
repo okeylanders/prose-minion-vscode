@@ -1489,7 +1489,7 @@
   margin: 6px 0 0;
 }
 /* Older turns remain in the saved ledger but fall outside the bounded webview
-   projection until pagination is available. */
+   projection; the notice leads the thread, where they would be. */
 [data-pm-surface="workshop"] .pm-ws-thread-hidden {
   align-self: center;
   font-size: 11.5px;

@@ -2495,6 +2495,26 @@ describe('architectural boundaries', () => {
       .toMatch(/from '@parsers\/ModelJsonRepair'/);
   });
 
+  it('reads Lexical Gravity\'s model JSON through the shared parser, with its one repair kept beside the feature (Everyday Conveniences round two, item E)', () => {
+    const widgets = path.join(SRC_ROOT, 'infrastructure', 'api', 'services', 'widgets');
+    const service = fs.readFileSync(path.join(widgets, 'LexicalGravityModelService.ts'), 'utf8');
+    const repair = fs.readFileSync(path.join(widgets, 'LexicalGravityLensReplyJson.ts'), 'utf8');
+    // Neither reader parses a reply itself: the preview reads through the shared parser, the lens build through the feature's reader.
+    expect(service).not.toMatch(/JSON\.parse/);
+    expect(repair).not.toMatch(/JSON\.parse/);
+    expect(service).toMatch(/parseModelJson\(framed\)/);
+    expect(service).toMatch(/parseLexicalGravityLensJson\(framed\)/);
+    // The repair is the feature's, guarded by the shared content guard, and imports nothing but the shared parsers.
+    expect(repair).toMatch(/modelJsonContentMatches\(/);
+    expect(moduleImports('LexicalGravityLensReplyJson.ts', repair).map(({ module }) => module).sort())
+      .toEqual(['@parsers/ModelJsonRepair', '@parsers/ModelJsonTokens']);
+    // And the shared parsers name no lens field.
+    for (const parser of ['ModelJsonRepair.ts', 'ModelJsonTokens.ts']) {
+      expect(fs.readFileSync(path.join(SRC_ROOT, 'infrastructure', 'api', 'parsers', parser), 'utf8'))
+        .not.toMatch(/attention|foregrounds|backgrounds|early-closed/);
+    }
+  });
+
   it('keeps the native tool-call adapter a seam: the engine and the provider name no capability, and only the Workshop translates', () => {
     const api = path.join(SRC_ROOT, 'infrastructure', 'api');
     const read = (...segments: string[]): string => fs.readFileSync(path.join(api, ...segments), 'utf8');

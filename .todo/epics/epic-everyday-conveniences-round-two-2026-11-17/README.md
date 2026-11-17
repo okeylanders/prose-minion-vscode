@@ -1,6 +1,6 @@
 # Epic: Everyday Conveniences, Round Two
 
-**Status:** Open. Slice 0 (this README and the ADR) is written and waits for review. A part 1, E and G need no ADR and start beside it.
+**Status:** Open. Slice 0 (this README and the ADR) was reviewed in PR #269 and revised (see "Review record"); it waits for re-review. A part 1, E and G need no ADR and start beside it.
 **Priority:** Medium
 **Opened:** 2026-11-17
 **Branch:** `epic/everyday-conveniences-round-two`, cut from `main` at `3f99e733`.
@@ -30,7 +30,7 @@ decisions live in this README and the ADR.
 
 | # | Item | Source note | Okey's # | Branch | PR | Status |
 |---|---|---|---|---|---|---|
-| 0 | Spec | (this README and the ADR) | | `epic/everyday-conveniences-round-two-spec` | | Written; waits for review |
+| 0 | Spec | (this README and the ADR) | | `epic/everyday-conveniences-round-two-spec` | #269 | Reviewed; two findings resolved; waits for re-review |
 | A1 | A, part 1 | thread-earlier-turns | 22 | `…-earlier-turns-notice` | #268 | In review |
 | E | E | lexical-gravity-reads-json-without-repair | 13 | `…-lexical-gravity-json` | | Being built |
 | G | G | composer-at-mentions | 14 | `…-at-mentions` | | Being built |
@@ -227,8 +227,13 @@ The second slice to merge takes the other's lines.
 
 ## Defaults taken
 
-Okey's decisions are marked. The rest were taken for him, from his notes'
-leanings or the brief; each is his to overturn.
+Okey's decisions are marked. The rest were taken for him by the
+orchestrator, from his notes' leanings or the brief. **None of those is an
+owner decision,** and each is his to overturn.
+
+**The ADR's open questions Q1–Q7 are among them, and stay open:** Q1 is
+row 30, Q2 row 13, Q3 row 41, Q4 row 42, Q5 row 36, Q6 row 44 and
+Q7 row 38. PR #269's review did not accept any of them on Okey's behalf.
 
 | # | Item | Decision | Default taken | Why |
 |---|---|---|---|---|
@@ -270,14 +275,14 @@ a note.** These are the ones to look at first.
 | 30 | C | The list's entry cap | **It grows with the size:** 40, 100, 200. | `catalogEntries` (40) caps the list beside its tokens. At 40, Larger and Largest could not use their budgets. **Goes past T1 as written** (ADR Q1). |
 | 31 | C | The update note's bound | Stays today's, at every size. | It is a delta, not the list (ADR D9). |
 | 32 | C | The titles tier's elements | `<title-only>` per note; `<unlisted>` for notes in effect that no tier shows; `<more>` for superseded and archived only. | "Worded apart" needs two counts (ADR D8). |
-| 33 | C | The catalog's page | 40 a page at every size; pages 1–50; a page past the end answers in words. | ADR D10 |
-| 34 | D | Where the counts live | A new optional turn field, `trailerOutcomes`. | Drop reasons are only logged today (ADR D13). |
+| 33 | C | The catalog's page | 40 a page at every size. **No page ceiling:** `<page>` is 1 to 999,999,999, more pages than any listing can have; the next call is written exactly when a later page exists; a page past the end answers in words. No cap on how many notes a project holds. | Nothing bounds the library, so a highest page would hide notes or name a call the codec refuses (ADR D10; PR #269 F-02). |
+| 34 | D | Where the counts live | A new optional turn field, `trailerOutcomes`, counting **every** frame once: a card, a refused card, or a drop with a closed reason, whether it was dropped when the reply was read or when it was settled. Settlement returns typed verdicts; nothing reads a log line. | Drop reasons are only logged today, and a settlement drop's reason is only a string inside the line (ADR D13; PR #269 F-01). |
 | 35 | D | A delivery record | **None.** The line is derived from the participant's latest reply. | The reactions' record answers "was it told"; here the latest reply answers it (ADR D15). |
-| 36 | D | A card refused at staging | Counted, apart from drops. No reason given. | It is news for the persona too (ADR D13, Q5). |
+| 36 | D | A card refused at staging | Counted, apart from drops. No reason given. A dropped frame's reason is given. An edit-offer answer's refused cards are counted the same way. | It is news for the persona too; the writer sees a refused card, and nobody sees a drop (ADR D13, Q5). |
 | 37 | D | Prompt changes | None. The frame's `note` explains it. | It keeps B's byte pins whole. |
 | 38 | A | A loaded page going stale | The held range is re-read after each session state in the same room. | The snapshot is posted whole on every change, and the window slides (ADR D5, Q7). |
 | 39 | F | Where lenses are read from | Project lenses through the repository alone; **built-ins through `builtInLexicalGravityLenses()`**; a built-in wins its slug. | Built-ins are not in the repository (ADR D17). |
-| 40 | F | The catalog pages | `lens.catalog` takes `<page>`, 50 a page. | With no search, a capped catalog would hide lenses (ADR D17). |
+| 40 | F | The catalog pages | `lens.catalog` takes `<page>`, 50 a page, through C's parser and with C's rule: no page ceiling. The library's own bound (206) makes it 5 pages at most. | With no search, a capped catalog would hide lenses (ADR D17). |
 | 41 | F | How `lens.read` is fitted | By whole sections, with an optional `<section>` so a limited read has a next call. | A lens cannot be cut by lines (ADR D18, Q3). |
 | 42 | F, H | Who sees a read | Private to the persona that asked. | Publishing needs a context-source kind and Read in (ADR D16, Q4). |
 | 43 | F | ADR 2026-08-01 | Not amended. | It says nothing of who reads a lens; the guard is code. |
@@ -305,11 +310,13 @@ Each slice adds its row.
       from the next turn.
 - [ ] C: every other note in effect is listed by title; `<more>` counts
       only superseded and archived notes; `memory.catalog` pages to the
-      end; the size setting grows both buckets, and the tab's meters agree
-      with the frame.
+      end at any number of notes (2,001 of one kind included), every hint
+      decoding as written; the size setting grows both buckets, and the
+      tab's meters agree with the frame.
 - [ ] D: a persona's next message says what became of its last reply's
-      notes and file edits, in counts and reasons only; earlier messages
-      are unchanged.
+      notes and file edits, in counts and reasons only, with every frame
+      counted once, settlement drops included; earlier messages are
+      unchanged.
 - [ ] E: both readers use the shared parser; the early-closed `attention`
       is repaired under the content guard; valid lenses survive an invalid
       one.
@@ -322,6 +329,28 @@ Each slice adds its row.
       pin a file?" from it.
 - [ ] A live-pass checklist, `AGENTS.md` updated, and a memory-bank entry.
 - [ ] Okey's live pass.
+
+## Review record
+
+**PR #269** (Slice 0, the spec): [the review](../../../docs/pr-reviews/pr-269-everyday-conveniences-round-two-spec-review.md),
+at `dab5760f`. Two P2 findings, both accepted and resolved in the ADR.
+
+| Finding | Resolution | ADR |
+|---|---|---|
+| **F-01.** D13 mapped only the extractor's rejections; a memory edit dropped at settlement left no card and no recorded drop. | `settleWorkshopMemoryEdit`, `settleWorkshopMemoryProposals` and `resolveWorkshopReplyFileEdits` return typed verdicts. `trailerOutcomes` counts every frame once, with ten settlement reasons beside the read-time ones, each with one fixed phrase. Both commit paths write it. Tests: one per reason to the line, an exhaustive mapping, and conservation. | D13, D14, D15, test plan D |
+| **F-02.** D10 capped the catalog at page 50 yet promised every note is reachable; the library has no cap. | No page ceiling. `<page>` is 1 to 999,999,999 (nine digits), which no listing's last page can pass; the next call is written exactly when a later page exists; a page past the end answers in words. `lens.catalog` shares the parser. No storage cap. Tests: the 40/41/80/81/2,001 boundaries and the full walk. | D10, D11, D17, D20, test plan C |
+
+Also settled in that pass:
+
+- The file-edit side had the same gap: `duplicate-identity` and
+  `not-staged` were log literals. They are typed (D13).
+- `help.search` promises no complete list and writes no continuation; every
+  section id decodes, and each section is found by its own heading (D21,
+  D22).
+- The earlier-turns walk drops a restarted walk's answers and evicts turns
+  the host no longer returns (D5), which the review named as an
+  implementation risk.
+- Q1–Q7 stay open, as the orchestrator's defaults ("Defaults taken").
 
 ## Notes
 

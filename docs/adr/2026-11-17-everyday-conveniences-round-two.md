@@ -1,6 +1,6 @@
 # ADR 2026-11-17: Everyday Conveniences, Round Two: Earlier Turns, the Memory Index, Trailer Outcomes, Lenses and Help
 
-**Status:** Proposed (Slice 0). The product defaults are Okey's where the epic README says so, and otherwise taken for him; each is his to overturn.
+**Status:** Proposed (Slice 0). Revised 2026-11-17 after PR #269's review (D5, D10, D13–D15, D17, D20–D22; see "Review record"). The product defaults are Okey's where the epic README says so. Every other default, Q1–Q7 included, was taken by the orchestrator and waits for Okey; none is an owner decision, and each is his to overturn.
 **Date:** 2026-11-17
 **Epic:** [Everyday Conveniences, Round Two](../../.todo/epics/epic-everyday-conveniences-round-two-2026-11-17/README.md)
 (its "Defaults taken" table is binding here)
@@ -66,6 +66,10 @@ decides A's part 2, C, D, F and H.
 - `renderWorkshopProjectMemoryCatalog` shows the first `catalogEntries`
   notes in effect and says "use memory.search to find them" for the rest.
   `memory.catalog` takes only `<kind>`.
+- **Nothing bounds how many notes a project holds.**
+  `readProjectMemoryFolder` (`core/infrastructure/storage/ProjectMemoryFiles.ts`)
+  reads every memory file in the folder, and the catalog renderer filters
+  and orders that whole set. No decision here adds a cap.
 - The Memory tab's meters read `ProjectMemoryFrameEstimate`, which this
   renderer returns.
 
@@ -73,10 +77,36 @@ decides A's part 2, C, D, F and H.
 - A reply's trailers are judged once, in `completeWorkshopRun`
   (`WorkshopRunCompletion.ts`): `extractWorkshopReplyControls`, then
   `settleWorkshopMemoryProposals` and `resolveWorkshopReplyFileEdits`.
-- Each drop has a closed reason (`WorkshopReplyMemoryRejection`,
-  `WorkshopReplyFileEditRejection`), and each goes to the log and nowhere
-  else. The turn keeps only the cards (`memoryProposals`,
-  `fileEditProposals`).
+- A frame the **extractor** drops has a closed reason
+  (`WorkshopReplyMemoryRejection`, `WorkshopReplyFileEditRejection`).
+- A frame that decodes can still end with no card, at **settlement**, and
+  there the reason is only a log string:
+  - **a memory edit** (`settleWorkshopMemoryEdit`,
+    `core/application/services/workshop/memory/WorkshopReplyMemoryEdit.ts`)
+    returns `{ proposal?, log }`. With no proposal the reason is one of
+    `listing-unread`, `unknown-target`, `archived-target`,
+    `superseded-target`, `busy-target`, `pinned-budget`, or a
+    `WorkshopMemoryEditAnchorFault` (`find-missing`, `find-ambiguous`,
+    `replaces-overlap`, `conflicting-operations`, `summary-emptied`,
+    `unchanged`, and the six `WorkshopMemoryFieldFault`s), typed `string`
+    and written into the log line alone. `settleWorkshopMemoryProposals`
+    keeps the line and adds no card;
+  - **a new note** always becomes a card (`settleOne`);
+  - **a file edit** staged to the same document as an earlier one in the
+    reply is dropped in `resolveWorkshopReplyFileEdits` with the literal
+    log line `reason=duplicate-identity`;
+  - **a file-edit context resolved for another reply** makes
+    `completeWorkshopRun` log every frame as `reason=not-staged`.
+- A file edit **refused at staging** is not a drop: it becomes a `refused`
+  card the writer sees (`settle` in `WorkshopReplyFileEditProposals.ts`).
+  An edit-offer answer can refuse two more ways, also as cards
+  (`not-the-offered-file`, `more-than-a-fix`, in
+  `workshopEditOfferAnswerCards`).
+- Every one of these goes to the log and nowhere else. The turn keeps only
+  the cards (`memoryProposals`, `fileEditProposals`).
+- **Two paths commit a reply that can hold trailers:** `completeWorkshopRun`
+  and, for a pressed edit offer's answer, `completeWorkshopEditOfferRun`
+  (`WorkshopEditOfferAnswerCompletion.ts`).
 
 **F, as the code stands:**
 - Project lenses are read by `LexicalGravityLensRepository.list()`
@@ -124,9 +154,12 @@ Checked before deciding; each is settled below.
 5. **The update note reads the frame's budgets**
    (`ProjectMemoryUpdateNote.ts`, `PROJECT_MEMORY_FRAME_BUDGETS`). It keeps
    today's numbers at every size (D9).
-6. **Drop counts are not stored.** The note says the source is "the reply's
-   settled proposals and the log reasons". Log lines are not state. D13
-   adds a turn field.
+6. **Drop counts are not stored, and not every drop is typed.** The note
+   says the source is "the reply's settled proposals and the log reasons".
+   Log lines are not state, and a settlement drop's reason exists only
+   inside one. D13 adds a turn field, and makes each settlement step return
+   a typed verdict that the log line and the field both read (PR #269
+   F-01).
 7. **No delivery record is needed.** The brief names the reactions' records
    as the pattern. The line is about the persona's *latest* reply, so it is
    derived from the ledger with no record of having been told (D15).
@@ -138,7 +171,8 @@ Checked before deciding; each is settled below.
    come from `builtInLexicalGravityLenses()`, and a built-in wins its slug
    (`WorkshopLexicalGravityHandler.handleRequestLenses`). D17 keeps both.
 10. **Without `lens.search`, a catalog must page.** The library holds up to
-    206 lenses. A capped catalog would hide the rest, which is the fault
+    206 lenses (200 project files, `LEXICAL_GRAVITY_LIBRARY_LIMITS.maximumFiles`,
+    and the built-ins). A capped catalog would hide the rest, which is the fault
     item C fixes for memory. `lens.catalog` takes C's `<page>` (D17).
 11. **A published read needs more than an operation.** `memory.read` joined
     `CONTEXT_SOURCE_KINDS`, the manifest, Read in and
@@ -252,7 +286,11 @@ tripartite, with an empty persistence contract.
     the oldest turn it holds, one request in flight at a time;
   - each answer replaces the turns it covers, and fills any gap the sliding
     window left;
-  - a newer session state restarts the walk.
+  - a newer session state restarts the walk, and an answer to a walk that
+    was restarted is dropped (it is no longer the pending request);
+  - a turn the hook holds that the answer covering its place does not
+    return is removed, so a walk never leaves a stale turn inside a range
+    it has re-read.
 - **Why this is safe while a page is stale.** Every action re-checks on the
   host: Rewind and Branch re-evaluate the cut, Apply claims its card, a
   reaction goes through the ledger. A stale page can show an old state for
@@ -381,26 +419,66 @@ every note in effect.
 </prose-minion-tool-call>
 ```
 
-- **`<page>` is optional,** a whole number from 1 to `catalogPages` (50).
-  Absent means 1. Anything else is refused as `invalid-page`, a new
-  `WorkshopCapabilityRejectionReason`.
+**There is no page ceiling.** The library has no note ceiling (see
+Context), so a fixed highest page would either end the walk early or make
+the renderer name a call the codec refuses (PR #269 F-02). The page's
+domain is syntactic, and wide enough that the renderer can never leave it.
+
+- **`<page>` is optional.** Absent means 1. Written, it is a whole number
+  in plain decimal digits with no sign, space, point or leading zero, from
+  1 to 999,999,999: `^[1-9][0-9]{0,8}$`, at most `pageDigits` (9) digits.
+  Anything else (`0`, `01`, `-1`, `1.5`, `two`, ten digits) is refused as
+  `invalid-page`, a new `WorkshopCapabilityRejectionReason`.
+- **One parser,** `workshopCapabilityPage`, in a neutral module beside
+  `WorkshopCapabilityXmlCodec.ts` that imports nothing of `memory/`,
+  `recall/` or `lens/`. `memory.catalog` and `lens.catalog` (D17) both read
+  `<page>` through it. Its bound is
+  `PROMPT_BUDGETS.workshopCapabilityPaging.pageDigits`.
+- **Why nine digits.** The last page of any listing the host can hold is
+  `ceil(count / pageSize)`. A JavaScript array holds at most 2^32 - 1
+  items, and the smallest page size is 40, so the last page is at most
+  107,374,183: nine digits. A test holds that inequality for every page
+  size that uses the field, so a smaller page size added later fails the
+  build instead of producing a hint that does not decode.
 - **The request type** becomes
   `{ capability: 'memory.catalog'; kind?: ProjectMemoryKind; page?: number }`.
   No new operation.
-- **A page** is `catalogEntries` notes in today's order (pinned first, then
-  newest). Its header names the range: "Notes 41–80 of 93 in effect".
-- **The "N more" line names the exact next call,** complete, on one line,
-  keeping `<kind>` when the request had one:
+- **A page** is `catalogEntries` (40) notes in today's order (pinned first,
+  then newest; `compareProjectMemoryCatalogOrder`), of the kind asked. With
+  `count` matching notes, `pages = ceil(count / 40)`, and page `p` holds
+  notes `40(p-1)+1` to `min(40p, count)`. Its header names the range:
+  "Notes 41–80 of 93 in effect".
+- **The continuation line is written exactly when `p < pages`,** and names
+  `p + 1`. It is the exact next call, complete, on one line, keeping
+  `<kind>` when the request had one:
   `<prose-minion-tool-call name="memory.catalog"><kind>decision</kind><page>3</page></prose-minion-tool-call>`
-- **Every hint makes progress and decodes as written.** The hint names a
-  later page than its request. The last page writes none. Following the
-  hints from page 1 reaches every note in effect (test).
-- **A page past the end** is not a refusal. It answers in words ("Page 9 is
-  past the end: 93 notes in effect, 3 pages") with no hint.
-- **The catalog is live.** Notes can move between two calls. The first
-  line already says the catalog can differ from the conversation's list.
+  The last page writes none. Today's "use memory.search to find them" line
+  goes.
+- **Every hint decodes as written and makes progress.** `p + 1` is at most
+  `pages`, which is inside the codec's domain by the bound above, and it is
+  greater than `p`. There is no count of notes at which the renderer names
+  a page the codec refuses.
+- **Complete, for a folder that holds still.** From page 1, following each
+  hint visits pages 1 to `pages` once each, and every matching note in
+  effect appears on exactly one of them (test, including 2,001 notes of one
+  kind).
+- **A page past the end** is not a refusal. It answers in words, with the
+  last valid page and no hint: "Page 9 is past the end: 93 notes in effect,
+  3 pages." With no matching note, page 1 says so as today, and a later
+  page says "Page 2 is past the end: no note in effect."
+- **The catalog is live.** Notes can move between two calls, so a walk
+  across a changing folder can show a note twice or miss one, and a hint
+  can lead past the end; that page then answers in words. The first line
+  already says the catalog can differ from the conversation's list.
+- **`WorkshopProjectMemoryRenderedCatalog`** gains `page` and `pages`
+  beside `shown` and `notShown`, for the card's metadata and the log
+  (counts only).
 - **The native map.** `WORKSHOP_NATIVE_CALL_FIELDS['memory.catalog']` gains
-  `page`. The translator's field-policy test holds it to the codec.
+  `page`. A native call's number or text becomes the same XML text and is
+  read by the same parser. The translator's field-policy test holds it to
+  the codec.
+- **No storage cap is added.** Nothing here limits, refuses or removes a
+  note.
 
 ### D11. The prompt
 
@@ -416,8 +494,9 @@ changes in four places:
 - It names no token number: the size is the writer's setting.
 
 `projectMemoryPromptSync.test.ts` holds the prompt to the renderer: the
-element names, `catalogEntries`, `catalogPages`, and every taught form and
-every hint decoding through `WorkshopProjectMemoryXmlCodec`, as written.
+element names, `catalogEntries`, and every taught form and every hint
+decoding through `WorkshopProjectMemoryXmlCodec`, as written. The prompt
+names no highest page: there is none.
 
 ### D12. The Memory tab
 
@@ -452,34 +531,126 @@ A new optional field on a persona's reply turn:
 
 ```ts
 interface WorkshopTrailerOutcomes {
-  memory?: { cards: number; dropped: WorkshopTrailerDrop[] };
-  fileEdits?: { cards: number; refused: number; dropped: WorkshopTrailerDrop[] };
+  memory?: { cards: number; dropped: WorkshopTrailerDrop<WorkshopMemoryTrailerDropReason>[] };
+  fileEdits?: { cards: number; refused: number; dropped: WorkshopTrailerDrop<WorkshopFileEditTrailerDropReason>[] };
 }
-interface WorkshopTrailerDrop { reason: WorkshopTrailerDropReason; count: number }
-type WorkshopTrailerDropReason =
-  'malformed' | 'misplaced' | 'duplicate' | 'over-cap' | 'oversized' | 'off' | 'not-staged';
+interface WorkshopTrailerDrop<Reason> { reason: Reason; count: number }
+
+/** Dropped when the reply was read (the extractor), either kind. */
+type WorkshopTrailerParseDropReason = 'malformed' | 'misplaced' | 'duplicate' | 'over-cap' | 'off';
+
+/** A memory edit that decoded, dropped when it was settled against the notes. */
+type WorkshopMemoryEditTrailerDropReason =
+  | 'notes-unreadable' | 'target-not-found' | 'target-not-in-effect' | 'target-busy'
+  | 'find-not-found' | 'find-ambiguous' | 'edits-conflict' | 'result-invalid' | 'no-change'
+  | 'pinned-budget';
+
+type WorkshopMemoryTrailerDropReason = WorkshopTrailerParseDropReason | WorkshopMemoryEditTrailerDropReason;
+type WorkshopFileEditTrailerDropReason = WorkshopTrailerParseDropReason | 'oversized' | 'not-staged';
+type WorkshopTrailerDropReason = WorkshopMemoryTrailerDropReason | WorkshopFileEditTrailerDropReason;
 ```
 
-- **Written once, in the reply's own commit,** by `completeWorkshopRun`,
-  from the verdicts it already holds. Never updated after.
+**The rule the record keeps: every frame the persona wrote is counted
+once.** For each kind, `cards` (and `refused`), plus every drop's `count`,
+equals the number of frames of that kind the extractor found in the reply.
+A frame that ends with no card is always a drop with a reason, whichever
+step dropped it (PR #269 F-01).
+
+**Settlement returns typed verdicts.** Today a settlement drop's reason is
+a `string` inside a log line. The slice changes the three places a decoded
+frame can end with no card, so that each returns its reason as a closed
+type, and the log line and the record are both written from that value.
+Nothing parses a log string.
+
+- **`settleWorkshopMemoryEdit`** returns a discriminated verdict in place
+  of `{ proposal?, log }`:
+  ```ts
+  type WorkshopMemoryEditDropReason =
+    | 'listing-unread' | 'unknown-target' | 'archived-target' | 'superseded-target' | 'busy-target'
+    | 'pinned-budget' | WorkshopMemoryEditAnchorFault;
+  type WorkshopSettledMemoryEdit =
+    | { kind: 'card'; proposal: WorkshopMemoryEditProposal; log: string }
+    | { kind: 'dropped'; reason: WorkshopMemoryEditDropReason; log: string };
+  ```
+  Its `dropped` helper takes that type, so a new early return does not
+  compile without a reason. The log line keeps today's words
+  (`Memory edit dropped (target=…; reason=…)`).
+- **`settleWorkshopMemoryProposals`** returns, beside `proposals`, `logs`
+  and `autoSave`, a `drops` list: one entry per frame with no card, either
+  `{ at: 'read'; reason: WorkshopReplyMemoryRejection }` or
+  `{ at: 'settlement'; reason: WorkshopMemoryEditDropReason }`. A new note
+  that decodes always becomes a card (`settleOne`), so it adds none.
+- **`resolveWorkshopReplyFileEdits`** returns `drops` on its context the
+  same way: each `WorkshopReplyFileEditRejection`, and
+  `'duplicate-identity'` for a frame staged to a document an earlier frame
+  of the reply already took. A run aborted before staging reports each
+  decoded frame as `'not-staged'`, where today it reports nothing for them.
+- **`completeWorkshopRun`'s fallback** (a context resolved for another
+  reply) gives every frame the typed `'not-staged'`, as its log does now.
+
+**The mapping is one pure function with a `never` default,** over those
+four verdict types. A new rejection, anchor fault or settlement reason does
+not compile until it is mapped.
+
+| Step | Verdict (code) | Recorded as |
+|---|---|---|
+| Read, either kind | `malformed:*` | `malformed` |
+| Read, either kind | `misplaced` | `misplaced` |
+| Read, either kind | `duplicate` | `duplicate` |
+| Read, either kind | `over-cap` | `over-cap` |
+| Read | `memory-off`, `file-edits-off` | `off` |
+| Read, file edit | `oversized` | `oversized` |
+| Memory edit | `listing-unread` | `notes-unreadable` |
+| Memory edit | `unknown-target` | `target-not-found` |
+| Memory edit | `archived-target`, `superseded-target` | `target-not-in-effect` |
+| Memory edit | `busy-target` | `target-busy` |
+| Memory edit | `find-missing` | `find-not-found` |
+| Memory edit | `find-ambiguous` | `find-ambiguous` |
+| Memory edit | `replaces-overlap`, `conflicting-operations` | `edits-conflict` |
+| Memory edit | `summary-emptied`, and each `WorkshopMemoryFieldFault` (`invalid-kind`, `title-not-one-line`, `summary-not-one-line`, `title-too-long`, `summary-too-long`, `body-too-long`) | `result-invalid` |
+| Memory edit | `unchanged` | `no-change` |
+| Memory edit | `pinned-budget` | `pinned-budget` |
+| File edit, staging | `duplicate-identity` | `duplicate` |
+| File edit, completion | `not-staged` | `not-staged` |
+
+- **`off` also covers a memory context that could not be resolved.**
+  `resolveWorkshopReplyMemory` reads a failed or cancelled port as closed,
+  and the extractor then reports `memory-off`. The line's words for `off`
+  are true of both (D14).
+- **`cards`** counts what reached the writer as a card, in any state it
+  settled to at commit: waiting, held or saving. It equals the length of
+  the turn's `memoryProposals`, or the number of its `fileEditProposals`
+  that are not `refused`.
+- **`refused`** counts the turn's file-edit cards in state `refused`. That
+  covers every refusal that leaves a card: staging's own reasons,
+  `identity-unpersistable`, `rewrite-on-prose`, and an edit-offer answer's
+  `not-the-offered-file` and `more-than-a-fix`. The writer sees each as a
+  card; the persona is told the count and no reason (Q5).
+- **So the file-edit side is complete too.** A file-edit frame ends as a
+  card, a refused card, or one of the drops in the table. There is no
+  fourth way, and the conservation test holds it.
+- **Both commit paths write it, through one builder.** `completeWorkshopRun`
+  and `completeWorkshopEditOfferRun` each call the same pure function,
+  from the verdicts and the cards they hand to `completeRun`. Written once,
+  in the reply's own commit; never updated after.
 - **A side is present only when the reply carried that kind of trailer.**
   A reply with neither has no field.
-- **Counts and closed reasons only.** Never a title, a quote, a path or a
-  model's text.
-- **The mapping is one pure function** over `WorkshopReplyMemoryRejection`
-  and `WorkshopReplyFileEditRejection`: every `malformed:*` is `malformed`;
-  `memory-off` and `file-edits-off` are `off`; `duplicate-identity` is
-  `duplicate`. It is exhaustive, so a new rejection does not compile
-  without a reason.
-- **`cards`** counts what reached the writer as a card, in any state it
-  settled to at commit: waiting, held or saving. `refused` counts file-edit
-  cards refused at staging.
+- **`dropped` is canonical:** at most one entry per reason, in the reason
+  list's order above, each `count` at least 1.
+- **Counts and closed reasons only.** Never a title, a quote, a path, a
+  note's id, a model's text or the word the phrasing fence matched. A
+  memory edit's target id stays in the log line, where it already is, and
+  never enters the record.
 - **It never records the writer's answers.** A save, a dismissal, an Apply
   or a decline changes a card, never this field.
 - **Host-only.** `workshopTurnForWebview` removes it, as it removes
   `reactionDelivery`.
-- **Codec.** Optional and additive, exact inside, refused on any turn but
-  a host or guest reply, each count bounded. Its own module beside
+- **Only a host or guest reply holds it.** `completeRun` keeps proposals
+  only on those turns, and the field follows them.
+- **Codec.** Optional and additive, exact inside: each side's reasons are
+  checked against that side's own list (a `pinned-budget` under `fileEdits`
+  is refused), entries are canonical as above, and each count is bounded.
+  Refused on any turn but a host or guest reply. Its own module beside
   `WorkshopReactionDeliveryRecords.ts`, called from the shape file. No
   `schemaVersion` bump and no normalization (ADR 2026-07-30). Forward
   only: an older build's strict reader rejects a session that holds the
@@ -491,13 +662,39 @@ One host frame in the persona's next user message:
 
 ```xml
 <workshop-trailer-outcomes note="From the host: what became of the trailers in your last reply. Counts only.">
-Your last reply's notes: 2 shown as cards, 1 dropped (malformed).
-Your last reply's file edits: 1 shown as a card, 1 refused before the writer saw it.
+Your last reply's notes: 2 shown as cards, 1 dropped (the note it named is archived or replaced), 1 dropped (malformed).
+Your last reply's file edits: 1 shown as a card, 1 refused before the writer could apply it.
 </workshop-trailer-outcomes>
 ```
 
-- **One renderer,** pure, from a `WorkshopTrailerOutcomes`. Each reason has
-  one phrase in a closed table in `core/shared/constants/`.
+- **One renderer,** pure, from a `WorkshopTrailerOutcomes`.
+- **Each reason has one phrase,** in a closed table in
+  `core/shared/constants/`, typed
+  `Record<WorkshopTrailerDropReason, string>`, so a reason with no phrase
+  does not compile:
+
+  | Reason | Phrase |
+  |---|---|
+  | `malformed` | malformed |
+  | `misplaced` | not at the end of the reply |
+  | `duplicate` | a repeat of another in the same reply |
+  | `over-cap` | past the number one reply may carry |
+  | `off` | not open in this conversation just then |
+  | `oversized` | too long |
+  | `not-staged` | the host could not prepare it |
+  | `notes-unreadable` | the notes could not be read just then |
+  | `target-not-found` | no readable note has the id it named |
+  | `target-not-in-effect` | the note it named is archived or replaced |
+  | `target-busy` | the note it named was being saved |
+  | `find-not-found` | its find text is not in the note |
+  | `find-ambiguous` | its find text is in the note more than once |
+  | `edits-conflict` | its changes overlap or contradict each other |
+  | `result-invalid` | the note it would leave breaks the note format |
+  | `no-change` | it would change nothing |
+  | `pinned-budget` | the note is loaded in full, and the change would pass that budget |
+
+  The slice may tune a phrase. It may not add a reason outside D13's list
+  or put anything but fixed words in one.
 - **A side with nothing to say is left out;** a field with no line to write
   writes no frame.
 - **It names no one by pronoun** but the persona it addresses, and no note,
@@ -523,14 +720,17 @@ Your last reply's file edits: 1 shown as a card, 1 refused before the writer saw
 - **Each participant hears only of its own reply.** A guest's outcomes
   never reach the host, or another guest.
 - **A pressed edit offer's request carries no line.** Its answer is a
-  reply, and may leave outcomes of its own.
+  reply, written by `completeWorkshopEditOfferRun`, and leaves outcomes of
+  its own through D13's builder; the persona hears of them with its next
+  writer message.
 - **Tool sidecars** propose nothing and are told nothing.
 
 ### Item D: out of scope
 
 - The writer's answers to cards. "Saved to project memory: …" covers them.
 - Why a file-edit card was refused at staging. The count is given; the
-  reason is a follow-up.
+  reason is a follow-up (Q5). A *dropped* frame's reason is given, for both
+  kinds.
 - Reaction trailers and edit offers. Their drops stay in the log.
 
 ## The capability grammar: decisions for C, F and H
@@ -596,8 +796,17 @@ again against the code.
   port, never the directive's body.
 - **Files that don't read are counted,** never shown: "2 lens files
   couldn't be read."
-- **`<page>` is C's** (D10): `catalogItems` (50) a page, the range in the
-  header, the exact next call on one line, and no hint on the last page.
+- **`<page>` is C's** (D10), read by the same parser
+  (`workshopCapabilityPage`) with the same domain: no page ceiling, 1 to
+  999,999,999. A page is `catalogItems` (50) lenses, with the range in the
+  header. The exact next call is written on one line exactly when a later
+  page exists, and names it; the last page writes none.
+  - The library holds at most 206 lenses, so at most 5 pages. The field's
+    domain is far wider than this family needs; one shared field with one
+    rule is the point, and every page past the last answers in words with
+    the last valid page, as D10's does.
+  - Nothing depends on the 206: were the library's bound raised, the hint
+    rule and the codec would still agree.
 - **No workspace, or several roots,** answers in host words
   (`LexicalGravityLibraryUnavailableError`'s two reasons) and still lists
   the built-ins.
@@ -658,8 +867,10 @@ New in `PROMPT_BUDGETS`, as `workshopLens`:
 | Key | Value | What |
 |---|---|---|
 | `catalogItems` | 50 | lenses a catalog page lists |
-| `catalogPages` | 10 | the highest page |
 | `readSections` | 7 | sections one read may name (the whole list) |
+
+There is no highest page (D10, D17). `<page>`'s one bound,
+`workshopCapabilityPaging.pageDigits` (9), is shared with `memory.catalog`.
 
 - `lens-capability.md` teaches both calls, the section list, the page and
   both continuation lines, and says when to look: when the writer raises a
@@ -688,6 +899,9 @@ New in `PROMPT_BUDGETS`, as `workshopLens`:
 - **A section is a `##` heading and what follows it.** Its id is the file's
   name and the heading's slug (`workshop#pinned-context`). Ids are unique
   (test) and are what `help.read` names.
+- **Every id decodes.** Each section's id is within `sectionIdCharacters`
+  and is accepted by `help.read`'s codec as written (test over the whole
+  reference). So an id a search result shows is always a valid call.
 - **A section is at most `sectionCharacters`** (test), so one always fits a
   read that fits at all.
 - **It ships with no build change:** `copy-resources.js` copies the tree.
@@ -711,6 +925,14 @@ New in `PROMPT_BUDGETS`, as `workshopLens`:
   term rules `memory.search` uses. It returns up to `searchHits` sections,
   each with its id, heading and a snippet, and the line "Read a section
   whole with help.read and its id."
+  - **It does not page, and promises no complete list.** With more matches
+    than `searchHits`, it says how many are not shown and to narrow the
+    query, as `memory.search` does. It writes no continuation call, so
+    there is no hint that could fail to decode.
+  - **Every section can still be reached.** A section whose heading is the
+    query ranks first. A test searches each section's own heading and
+    expects that section among the hits, so two sections can never hide
+    each other behind one heading.
   - If the rules are shared as code, they move to a neutral module. `help/`
     imports nothing of `memory/` or `recall/`.
 - **Read** names 1 to `readSections` section ids, each once. An unknown id
@@ -719,8 +941,9 @@ New in `PROMPT_BUDGETS`, as `workshopLens`:
   `invalid-section`.
 - **Fitted by the shared rule,** as `lens.read` is (D18): whole sections,
   in the order asked, within half the room left. A limited read gives the
-  exact call for the sections left out. One section that does not fit alone
-  is refused with the room it had.
+  exact call for the sections left out: ids copied from its own request,
+  strictly fewer of them, so the hint decodes and makes progress. One
+  section that does not fit alone is refused with the room it had.
 - **Every result names the version** the reference describes.
 - **One reader,** `WorkshopHelpReference`, built in `extension.ts`. It
   reads and indexes the files once, through the `FileSystem` port, and
@@ -801,7 +1024,7 @@ and the order.
 |---|---|---|
 | A, part 2 | D1–D7 | the shared per-turn projection (D2), with no behavior change |
 | C | D8–D12 | `<page>` and the renderer's continuation (D10) |
-| D | D13–D15 | the field, its codec and the before-fixture (D13) |
+| D | D13–D15 | the typed settlement verdicts, with today's cards and today's log lines byte for byte (D13); then the field, its codec and the before-fixture |
 | F | D16–D20 | the family's lists (D16), compiling, with every call refused as not built |
 | H | D16, D21–D25 | the generated tables and their test (D24) |
 
@@ -829,6 +1052,8 @@ pass, and H's rule).
 - The host refuses a request naming another room, and an unknown turn.
 - A session state in the same room re-reads the run; a turn that slid out
   of the window appears in it; a rolled-back turn leaves it.
+- A second session state lands while a walk is in flight: the first walk's
+  held answer is dropped, and the run ends as the second walk read it.
 - Rewind, Branch, a reaction, Apply and a memory card's save each work on a
   turn outside the window.
 - Nothing loaded is in the hook's `persistedState`.
@@ -843,27 +1068,82 @@ pass, and H's rule).
 - Byte identity: the same folder twice; and today's frame for a folder
   that does not overflow.
 - Each size: the frame and the tab's view agree.
-- Codec: `<page>` 1, 50, 0, 51, `two`, and beside `<kind>`.
-- Following the hints from page 1 reaches every note in effect, with and
-  without `<kind>`; a page past the end.
+- Codec: `<page>` 1, 51 and 999999999 read; 0, 01, -1, 1.5, `two`, an
+  empty field and 1000000000 are `invalid-page`; `<page>` beside `<kind>`;
+  a native call's number and its text read alike.
+- **The page boundary,** each with all notes of one kind:
+  - 0 notes: page 1 says none is in effect, with no hint;
+  - 40 and 80 notes (exactly `catalogEntries` × k): page k is full and
+    writes no hint;
+  - 41 and 81 notes: page k writes a hint to k + 1, which decodes and holds
+    one note; page k + 1 writes none;
+  - **2,001 notes** (PR #269 F-02): page 50 writes a hint to page 51; page
+    51 decodes, holds the one note left and writes no hint.
+- **The walk,** for each of those counts and for a mixed-kind folder with
+  and without `<kind>`: starting at page 1 and following every hint, each
+  hint decodes through `WorkshopProjectMemoryXmlCodec` exactly as written,
+  the pages strictly increase, the walk ends, and the ids seen are every
+  matching note in effect, each once.
+- A page past the end (`pages + 1`, and 999999999) answers in words with
+  the count and the last page, and no hint; the same with no note in
+  effect.
+- The bound: `ceil((2^32 - 1) / pageSize)` has at most `pageDigits` digits
+  for `catalogEntries` and for `workshopLens.catalogItems`.
 - `projectMemoryPromptSync.test.ts` (D11); the translator's policy test.
 - A size change leaves an open conversation's first message byte for byte.
 
 **D**
 - A reply with two cards and a malformed frame: the field, then the line
   in the next message.
-- Every rejection maps to a reason (exhaustive).
+- **One case per reason, end to end:** for each
+  `WorkshopTrailerDropReason`, a reply that produces it, then one drop of
+  that reason in the field, no card for that frame, and that reason's
+  phrase in the next message's line. The settlement cases (PR #269 F-01),
+  each a memory edit that decodes:
+  - the listing unread (`notes-unreadable`);
+  - an id no readable note holds (`target-not-found`);
+  - an archived target, and a superseded one (`target-not-in-effect`);
+  - a busy target (`target-busy`);
+  - a find the note does not hold (`find-not-found`), and one it holds
+    twice (`find-ambiguous`);
+  - overlapping replaces (`edits-conflict`);
+  - a result whose summary is emptied, and one past a field bound
+    (`result-invalid`);
+  - an edit that changes nothing (`no-change`);
+  - a pinned note whose edit passes the pinned budget (`pinned-budget`).
+
+  The file-edit cases: two frames staged to one document (`duplicate`),
+  and a context resolved for another reply (`not-staged`).
+- **Exhaustive, by the compiler and by a table:** the mapper's `never`
+  default; a table test that walks every member of
+  `WorkshopReplyMemoryRejection`, `WorkshopReplyFileEditRejection`,
+  `WorkshopMemoryEditDropReason` and the file-edit settlement drops and
+  expects a recorded reason; the phrase table is a
+  `Record<WorkshopTrailerDropReason, string>` with no empty phrase.
+- **Conservation:** for a reply mixing cards, refused cards and drops of
+  both steps, each side's `cards` (+ `refused`) + every drop's `count`
+  equals the frames of that kind the extractor found; `memory.cards` and
+  `fileEdits.cards + refused` equal the turn's card arrays' lengths.
+- **The verdict is the log's source:** each settlement drop's log line is
+  today's line byte for byte, built from the typed reason.
 - A reply with no trailer: no field, no frame.
-- Memory off, file edits off: `off`.
-- A card refused at staging is counted as refused.
-- The line holds no fixture title, quote or path; a saved or dismissed
-  card does not change it.
+- Memory off, file edits off, and a memory context that failed to resolve:
+  `off`.
+- A card refused at staging is counted as refused, with no reason; so is
+  an edit-offer answer's `not-the-offered-file` card, written by
+  `completeWorkshopEditOfferRun`.
+- A staging run aborted before it staged reports each decoded frame as
+  `not-staged`.
+- The field and the line hold no fixture title, quote, path, find text or
+  note id, in every case above; a saved or dismissed card changes neither.
 - Earlier retained messages are byte for byte after the line goes out.
 - Rewind past the reply: no line. Rewind past the message that carried it:
   the line again.
 - A guest's outcomes reach only the guest.
-- Codec: round trip; the field on a writer turn is refused; an authentic
-  session from before the slice still reads.
+- Codec: round trip with every reason; the field on a writer turn, a
+  memory-only reason under `fileEdits`, a repeated reason, a zero count and
+  an unknown reason are each refused; an authentic session from before the
+  slice still reads.
 - `workshopTurnForWebview` removes the field.
 
 **F and H**
@@ -871,19 +1151,29 @@ pass, and H's rule).
   artifact.
 - A tool sidecar's call to either family is unknown.
 - Codec: each field, each refusal.
-- Catalog paging to the end; a built-in winning its slug; unreadable files
-  counted; no workspace; several roots.
+- Catalog paging to the end, by D10's walk: 50 and 51 lenses, and the
+  full 206 (5 pages); every hint decodes as written; a page past the end
+  answers in words. A built-in winning its slug; unreadable files counted;
+  no workspace; several roots.
 - The fit: a read limited to fewer sections, its hint decoding and making
   progress; one section that does not fit, refused; no window.
 - **The witness (F):** lens text never reaches a system prompt.
 - H: the generated tables, the index, the tabs and the version each fail
-  when stale; every section under `sectionCharacters`; unique ids.
+  when stale; every section under `sectionCharacters`; unique ids; every
+  id decodes through `help.read` as written; each section's own heading as
+  a query returns that section; a query with more than `searchHits`
+  matches says how many are not shown and writes no call.
 - H: a fixture conversation answers "how do I pin a file?" from
   `workshop#pinned-context`, with a mocked model.
 - Logs: a test greps each family's lines for the fixture's query, subject
   and text.
 
 ## Open questions for Okey (work proceeds on the default)
+
+**Q1–Q7 are open.** Each default below was taken by the orchestrator so
+work could proceed. None is Okey's decision, and PR #269's review did not
+accept any of them on his behalf. A slice that builds on one says so in its
+PR, so the default is easy to find if Okey overturns it.
 
 - **Q1. The entry cap at each size** (D9). Default: 40, 100, 200, so Larger
   and Largest can use their tokens. The stricter reading of T1 keeps 40
@@ -897,6 +1187,8 @@ pass, and H's rule).
 - **Q4. Lens and help reads stay private** (D16). Default: yes in v1.
   Publishing one to the room needs a context-source kind and Read in.
 - **Q5. A refused file-edit card's reason** (D13). Default: the count only.
+  A dropped frame's reason is given, for both kinds; this question is only
+  about a card the writer was shown as refused.
 - **Q6. The help index** (D24). Default: every command and setting must be
   owned by a hand-written section, not only listed in a generated table.
 - **Q7. Earlier turns are re-read after each room change of state** (D5).
@@ -911,13 +1203,19 @@ pass, and H's rule).
   causes five page reads after each state change. The pages are read-only
   and bounded; if it proves heavy, a stamp on the snapshot can skip
   unchanged pages. Not built here.
-- **The persona sees every note's title,** and can walk the whole catalog.
+- **The persona sees every note's title,** and can walk the whole catalog,
+  however many notes there are.
   A room's first message grows by up to `titleTokens`; it is prompt-cached
   where the model supports it.
 - **`<more>` changes meaning** for new conversations. Open ones keep their
   frame, and the rebuilt system prompt describes both ("may carry").
 - **A persona stops guessing what became of its notes.** One more frame
   rides some messages. It is short, and absent when there is no news.
+- **Settlement's return types change** (`settleWorkshopMemoryEdit`,
+  `settleWorkshopMemoryProposals`, `resolveWorkshopReplyFileEdits`). No
+  behavior and no log line changes with them, but for an aborted staging
+  run's frames, which gain a log line; slice D's first commit is that
+  change alone.
 - **Three settings and four operations are added.** The persona prompt
   grows by two grammar files for every conversation. Both are short, and
   both are pinned.
@@ -928,3 +1226,27 @@ pass, and H's rule).
   `AGENTS.md` rule and the live pass are what hold the prose.
 - **`AGENTS.md`'s counts change at the epic's close:** one more composed
   route owner, two more families, one more `CoreServices` field.
+
+## Review record
+
+**PR #269** ([the review](../pr-reviews/pr-269-everyday-conveniences-round-two-spec-review.md)),
+reviewed at `dab5760f`. Two P2 findings, both accepted; no other finding.
+
+| Finding | What was wrong | Resolved in |
+|---|---|---|
+| F-01 | D13 mapped only the extractor's rejections. A memory edit that decodes can be dropped at settlement (target unknown, archived, superseded or busy; the listing unread; anchoring refused; the pinned budget), with its reason only in a log string, so the outcome line would have said nothing of it. | **D13:** every settlement step returns a typed verdict; the reason list covers both steps; every frame is counted once. **D14:** a phrase per reason. **D15:** the edit-offer answer's commit path writes the record too. Test plan D. |
+| F-02 | D10 allowed pages 1–50 of 40 notes and promised the walk reaches every note, but nothing bounds the library. At 2,001 notes of one kind, page 51 was either an invalid hint or an unreachable note. | **D10:** no page ceiling; `<page>` is 1 to 999,999,999, a bound no listing can reach; the hint is written exactly when a later page exists. **D17, D20:** `lens.catalog` shares the field and the rule. No storage cap is added. Test plan C. |
+
+Checked in the same pass, at the review's prompting:
+
+- **The file-edit side of F-01.** `duplicate-identity` and `not-staged`
+  were log literals outside `WorkshopReplyFileEditRejection`, though D13
+  named one of them. Both are typed now, and a staging run aborted before
+  it staged reports its frames (D13).
+- **The same class as F-02 in item H.** `help.search` writes no
+  continuation and promises no complete list; every section id decodes;
+  each section is reachable by its own heading (D21, D22).
+- **The review's implementation note on item A.** A restarted walk drops
+  the earlier walk's answers, and a re-read range evicts turns the host no
+  longer returns (D5, test plan A).
+- **Q1–Q7** stay open, marked as the orchestrator's defaults.

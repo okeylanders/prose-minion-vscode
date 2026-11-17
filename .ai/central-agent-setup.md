@@ -1488,6 +1488,25 @@ value means "nothing to report" may be left out.
   config codecs (`*ConfigCodec`) still require it.
 - **A new widget field** joins the tolerance only when its absence and its
   empty value mean the same thing.
+- **Lexical Gravity reads its JSON through the shared parser** (Everyday
+  Conveniences round two, item E). Neither reader calls `JSON.parse`
+  (`boundaries.test.ts`).
+  - **The preview** reads `parseModelJson`; **the lens build** reads
+    `parseLexicalGravityLensJson`
+    (`services/widgets/LexicalGravityLensReplyJson.ts`). Each repair is
+    logged by its kind, never with text.
+  - **One repair is the feature's:** `early-closed-attention`, an
+    `attention` closed after `foregrounds` with `backgrounds` standing just
+    after it. It is read from the text's tokens, never a parsed object, and
+    moves that one brace. The repaired text must pass
+    `modelJsonContentMatches` and then read; otherwise nothing moves. It
+    never joins `@parsers/*`.
+  - **Three lenses is the ask, not a gate.** A lens that fails its
+    validation or repeats a variant is left out and the others are kept,
+    with the host's line (`lexicalGravityLeftOutNote`: "1 of 3 lenses
+    couldn't be used.") on the candidates message's optional `note`. A reply
+    with no usable lens is still rejected. Logs carry counts only.
+  - The lens validator and the saved lens format are unchanged.
 
 ### Workshop Message Reactions
 

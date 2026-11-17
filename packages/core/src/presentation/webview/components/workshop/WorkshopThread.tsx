@@ -26,6 +26,8 @@ import {
 
 interface WorkshopThreadProps {
   turns: readonly WorkshopTurn[];
+  /** Turns older than the snapshot window, kept by the host but not sent. */
+  hiddenTurns?: number;
   toolSidecars: readonly WorkshopToolSidecarSnapshot[];
   todos?: readonly WorkshopTodoItem[];
   currentExcerptVersion: number;
@@ -87,6 +89,7 @@ function slicesByTurn(slices: readonly WorkshopModelSlice[]): ReadonlyMap<string
 
 export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   turns,
+  hiddenTurns = 0,
   toolSidecars,
   todos = [],
   currentExcerptVersion,
@@ -127,6 +130,15 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   );
   return (
     <>
+      {/* The hidden turns are the oldest, so their notice leads the thread.
+          A plain block: it is present at load, so it is not announced. */}
+      {hiddenTurns > 0 && (
+        <div className="pm-ws-thread-hidden">
+          {hiddenTurns.toLocaleString()} earlier {hiddenTurns === 1 ? 'turn isn\'t' : 'turns aren\'t'} shown here.{' '}
+          {hiddenTurns === 1 ? 'It\'s' : 'They\'re'} kept in full: export, bookmarks and the personas still have{' '}
+          {hiddenTurns === 1 ? 'it' : 'them'}.
+        </div>
+      )}
       {turns.map((turn) => {
         const sidecar = turn.toolId
           ? toolSidecars.find((candidate) => candidate.toolId === turn.toolId)

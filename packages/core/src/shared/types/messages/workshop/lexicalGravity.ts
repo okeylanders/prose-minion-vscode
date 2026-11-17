@@ -250,6 +250,8 @@ export interface WorkshopLexicalGravityLensCandidatesPayload {
   /** Existing project lens returned without a model call for repeat lookups. */
   existingLens?: WorkshopLexicalGravityLens;
   candidates?: WorkshopLexicalGravityLensCandidate[];
+  /** The host's line when fewer lenses than asked could be used ("1 of 3 lenses couldn't be used."). */
+  note?: string;
   error?: string;
 }
 

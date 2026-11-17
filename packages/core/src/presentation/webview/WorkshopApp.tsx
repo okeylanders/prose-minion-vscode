@@ -1376,6 +1376,7 @@ export const WorkshopApp: React.FC = () => {
           )}
 
           <WorkshopThread
+            hiddenTurns={workshop.hiddenTurns}
             turns={workshop.turns}
             toolSidecars={workshop.toolSidecars}
             todos={workshop.todos}
@@ -1446,14 +1447,6 @@ export const WorkshopApp: React.FC = () => {
             </div>
           )}
 
-          {workshop.hiddenTurns > 0 && (
-            <div className="pm-ws-thread-hidden">
-              Only the latest {workshop.turns.length.toLocaleString()} turns are visible;{' '}
-              {workshop.hiddenTurns.toLocaleString()} earlier turn
-              {workshop.hiddenTurns === 1 ? ' is' : 's are'} preserved.
-              {' '}Pagination is coming soon. The full session remains preserved.
-            </div>
-          )}
         </div>
       </ErrorBoundary>
 
