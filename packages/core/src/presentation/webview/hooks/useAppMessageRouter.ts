@@ -187,12 +187,11 @@ export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandle
       dictionary.handleClearTransientApiKeyWarning(msg);
       context.handleClearTransientApiKeyWarning(msg);
     },
-    // Copy/save success are structured signals for surfaces that need them
-    // (Workshop toasts). The sidebar already reflects copy through STATUS and
-    // has no save action today. Intentionally received-and-ignored here.
-    [MessageType.COPY_RESULT_SUCCESS]: () => { /* no-op: sidebar copy success needs no webview action */ },
+    // Settings covers the sidebar status line, so its copy acknowledgement is shown in the overlay.
+    [MessageType.COPY_RESULT_SUCCESS]: settings.handleSupportCopySuccess,
     [MessageType.SAVE_RESULT_SUCCESS]: () => { /* no-op: save success needs no webview action */ },
     [MessageType.ERROR]: (msg) => {
+      settings.handleSupportCopyError(msg);
       const { source, message: errorMessage } = msg.payload;
       setError(errorMessage);
 

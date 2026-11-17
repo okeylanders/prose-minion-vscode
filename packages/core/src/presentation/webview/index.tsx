@@ -33,6 +33,7 @@ import {
 } from '@shared/types';
 import { getVSCodeApi } from './hooks/useVSCodeApi';
 import { AppMessagePort } from './ports/AppMessagePort';
+import './styles/settingsSupport.css';
 import './index.css';
 
 const SURFACE_ROOTS: Record<WebviewSurface, React.ComponentType> = {

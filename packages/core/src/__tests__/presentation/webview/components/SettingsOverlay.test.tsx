@@ -22,6 +22,8 @@ describe('SettingsOverlay', () => {
 
     render(
       <SettingsOverlay
+        supportCopyStatus="idle"
+        onCopySupportEmail={jest.fn()}
         visible
         onClose={jest.fn()}
         vscode={{ postMessage: jest.fn(), getState: jest.fn(), setState: jest.fn() }}
