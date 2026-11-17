@@ -292,6 +292,8 @@ const capabilityTruncationNote = (operation: WorkshopCapabilityOperation | undef
       return 'Result was bounded by the session-recall limits';
     case 'memory':
       return 'Result was bounded by the project-memory limits';
+    case 'lens':
+      return 'Result was bounded by the lens-library limits';
     case 'dictionary':
     case 'analysis':
       return 'Result reached its response-token limit';

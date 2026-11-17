@@ -16,6 +16,7 @@ import type { WorkshopTranscriptRecallPort } from '@/application/services/worksh
 import type { SettingsStore } from '@/platform';
 import { projectMemoryBody } from '@shared/types/projectMemory';
 import { libraryHost, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const SENTINELS = ['PRIVATE_MEMORY_TITLE_SENTINEL', 'PRIVATE_MEMORY_SUMMARY_SENTINEL', 'PRIVATE_MEMORY_BODY_SENTINEL'];
 
@@ -43,7 +44,8 @@ describe.each([['off', false], ['on', true]])('a committed memory.read, debug lo
         session,
         sink,
         {} as WorkshopTranscriptRecallPort,
-        host.library
+        host.library,
+        noProjectLenses
       ).create({
         requestId: 'host-request',
         excerptVersion: 0,

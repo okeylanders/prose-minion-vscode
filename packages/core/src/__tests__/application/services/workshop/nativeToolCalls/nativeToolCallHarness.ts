@@ -21,6 +21,7 @@ import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { OpenRouterClient, type OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 /** What web research attaches to a persona's request: the trigger of the native calls. */
 export const WEB_RESEARCH_TOOLS: OpenRouterWebSearchTool[] = [{
@@ -152,7 +153,8 @@ export function createNativeToolCallHarness() {
     session,
     log,
     recall,
-    offProjectMemory
+    offProjectMemory,
+    noProjectLenses
   );
   const originalFetch = global.fetch;
   const sent: SentRequest[] = [];

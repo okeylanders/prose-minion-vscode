@@ -38,7 +38,7 @@ decisions live in this README and the ADR.
 | C | C | memory-title-index | new | `…-memory-title-index` | | Built on B's branch; pushed, no PR yet |
 | D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | | After C |
 | A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | | After Slice 0 |
-| F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | | After C |
+| F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | | Built on C's branch; pushed, no PR yet |
 | H | H | prose-minion-help-reference | 20 | `…-help-reference` | | Last |
 | Close | Closing pass | | | `…-close` | | After H |
 
@@ -296,6 +296,7 @@ a note.** These are the ones to look at first.
 | Baseline (`main` at `3f99e733`) | not run | | |
 | B (`…-memory-suggestion-level`, on the spec branch) | 879 | 12,529 | 59 |
 | C (`…-memory-title-index`, on B's branch) | 884 | 12,681 | 59 |
+| F (`…-persona-reads-lenses`, on C's branch) | 896 | 12,874 | 59 |
 
 Each slice adds its row.
 

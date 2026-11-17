@@ -39,6 +39,8 @@ export function workshopCapabilityFamilyLabel(
       return 'Session Recall';
     case 'memory':
       return 'Project Memory';
+    case 'lens':
+      return 'Lens Library';
     case 'analysis':
       return toolLabel ?? 'Analysis';
   }

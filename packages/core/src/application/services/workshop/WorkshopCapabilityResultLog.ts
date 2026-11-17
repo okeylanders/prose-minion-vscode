@@ -23,6 +23,8 @@ export function workshopCapabilityResultLogSummary(result: WorkshopCapabilityRes
       return recallMetrics(result);
     case 'memory':
       return memoryMetrics(result);
+    case 'lens':
+      return lensMetrics(result);
     case 'dictionary':
       // The dictionary's metadata is its own log's business; the line keeps its old shape.
       return 'resourceMetrics=none';
@@ -101,6 +103,31 @@ function memoryMetrics(result: WorkshopCapabilityResult): string {
       : result.status === 'rejected' ? 'unspecified' : 'none'}`
   ];
   return `memoryMetrics=${values.join(';')}`;
+}
+
+/**
+ * Counts and closed words only: a slug, a subject or lens text never
+ * reaches the log (ADR 2026-11-17 D19). The keys are the ones
+ * WorkshopLensCapability writes.
+ */
+function lensMetrics(result: WorkshopCapabilityResult): string {
+  const metadata = result.metadata;
+  const count = (key: string): number | 'n/a' =>
+    typeof metadata?.[key] === 'number' ? metadata[key] as number : 'n/a';
+  const word = (key: string): string =>
+    typeof metadata?.[key] === 'string' ? metadata[key] as string : 'n/a';
+  const values = [
+    `outcome=${word('outcome')}`,
+    `lenses=${count('lensCount')}`,
+    `page=${count('page')}/${count('pages')}`,
+    `sections=${count('sectionsRead')}/${count('sectionsNamed')}`,
+    `characters=${count('characters')}`,
+    `truncated=${metadata?.truncated === true}`,
+    `rejection=${typeof metadata?.rejectionReason === 'string'
+      ? metadata.rejectionReason
+      : result.status === 'rejected' ? 'unspecified' : 'none'}`
+  ];
+  return `lensMetrics=${values.join(';')}`;
 }
 
 function resourceMetrics(metadata: WorkshopCapabilityResult['metadata']): string {

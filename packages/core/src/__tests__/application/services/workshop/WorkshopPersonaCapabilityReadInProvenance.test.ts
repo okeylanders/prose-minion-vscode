@@ -17,6 +17,7 @@ import type { ContextResourceContent, ContextResourceProviderFactory } from '@/d
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import type { LogSink } from '@/platform';
 import type { WorkshopCapabilityRequest } from '@shared/types/workshopCapabilities';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const unusedRecall: WorkshopTranscriptRecallPort = {
   catalog: () => Promise.reject(new Error('recall is not under test here')),
@@ -107,7 +108,8 @@ describe('persona capability read-in provenance', () => {
       session,
       log,
       unusedRecall,
-      offProjectMemory
+      offProjectMemory,
+      noProjectLenses
     ).create({
       requestId,
       excerptVersion: session.getExcerptVersion(),

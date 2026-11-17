@@ -117,7 +117,7 @@ describe('the <page> field\'s domain (D10)', () => {
   it('holds the digit bound: the last page of the largest listing the host can hold fits the field, for every page size that uses it', () => {
     // Each page size that reads `<page>` joins this list; a smaller one added later must still fit.
     // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the operation's own name.
-    const pageSizes = { 'memory.catalog': PAGE_SIZE };
+    const pageSizes = { 'memory.catalog': PAGE_SIZE, 'lens.catalog': PROMPT_BUDGETS.workshopLens.catalogItems };
     expect(WORKSHOP_CAPABILITY_LARGEST_LISTING).toBe(2 ** 32 - 1);
     for (const [operation, size] of Object.entries(pageSizes)) {
       const lastPage = Math.ceil(WORKSHOP_CAPABILITY_LARGEST_LISTING / size);

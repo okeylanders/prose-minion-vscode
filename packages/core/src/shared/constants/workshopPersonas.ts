@@ -104,6 +104,15 @@ export const WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH =
   'workshop-personas/transcript-recall-capability.md';
 
 /**
+ * The stable `lens.*` grammar (ADR 2026-11-17 D20): the writer's lens
+ * library, read-only. In the system prompt for host and guest alike,
+ * always: the library holds its built-in starters with or without a
+ * project. The file holds the grammar, never a lens.
+ */
+export const WORKSHOP_LENS_CAPABILITY_PROMPT_PATH =
+  'workshop-personas/lens-capability.md';
+
+/**
  * The `memory.*` grammar (ADR 2026-11-04 D1, D8): in the system prompt
  * only while project memory is open (the mode on and the workspace
  * holding), so a mode change, which rebuilds the prompt, adds or drops it.
@@ -242,6 +251,8 @@ export function workshopPersonaSystemPromptPaths(
       ]
       : []),
     ...(participant && options.fileEdits ? [WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH, WORKSHOP_REPLY_EDIT_OFFERS_PROMPT_PATH] : []),
+    // The last capability grammar, for host and guest alike (ADR 2026-11-17 D16).
+    ...(participant ? [WORKSHOP_LENS_CAPABILITY_PROMPT_PATH] : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],
     WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,

@@ -44,6 +44,7 @@ packages/core/src/
 ├── application/        # Application layer (orchestration)
 │   ├── services/       # Cross-domain application services (e.g. StandardsComparisonService)
 │   │   ├── workshop/reads/     # The shared read fit: WorkshopReadWindowFit (half the room left) and WorkshopReadShares (fair shares), for session recall and `resource.read` alike; imports nothing of recall (ADR 2026-11-14 D1)
+│   │   ├── workshop/lens/      # The personas' read-only `lens.*` family: codec, renderer, copy, the per-turn capability and the installed-lens port (ADR 2026-11-17 D16–D20)
 │   │   ├── workshop/selection/ # EditorSelectionSnapshots (the editor's selection by host-minted id, newest 8) and the Selected Text attachment's input (ADR 2026-11-14 D11)
 │   │   └── lightbox/LightboxBoardLibrary.ts # When Lightbox boards save, open as snapshots, restore after a reload, list and delete (Slice 5A); names and spark marks in place through LightboxBoardEdits (Slice 5A.1); every chapter's boards, a picked board file opened, and saves through LightboxBoardSaves: one file per board, named by date, rewritten in place (Slice 5A.2)
 │   └── handlers/       # Message routing and domain handlers
@@ -1360,6 +1361,66 @@ decisions A1 and A2) when touching what typing `@` in the composer does:
   - A new way to stage a message attachment after an await tracks its read
     there.
 - **Nothing is persisted, and nothing of the `@` list is logged.**
+
+### Workshop Lens Reads
+
+Follow [ADR 2026-11-17](docs/adr/2026-11-17-everyday-conveniences-round-two.md)
+D16–D20 (round two, item F) when touching `lens.catalog`, `lens.read`, or
+what a persona may see of the Lexical Gravity library:
+
+- **Two reads, personas only, private.** The `lens` family is
+  `lens.catalog` and `lens.read`. There is no `lens.search` and no write.
+  - It lives in `application/services/workshop/lens/`
+    (`WORKSHOP_LENS_MODULES` in `boundaries.test.ts`), composed inside
+    `WorkshopPersonaCapability` beside resource, recall and memory. A tool
+    sidecar's capability does not know it.
+  - No lens operation joins `PUBLISHABLE_CAPABILITY_OPERATIONS`, and a
+    result adds no manifest row.
+  - The family imports nothing of `recall/` or `memory/`. It shares only
+    `WorkshopCapabilityPaging` and `reads/`.
+- **Where lenses come from.** Project lenses only through
+  `LexicalGravityLensRepository.list()`; built-ins only through
+  `builtInLexicalGravityLenses()`.
+  - `mergeLexicalGravityLibrary` (`LexicalGravityLenses.ts`) is the one
+    merge rule: a built-in wins its slug. The modal's handler and the
+    family both call it.
+  - The repository is built once, in `extension.ts`, and is the factory's
+    last port. The family reads no file and writes nothing.
+  - No workspace, several roots, or a folder that did not read still lists
+    the built-ins, and says why in host words.
+- **The installed lens is known by slug alone** (`WorkshopLensInstalled`),
+  never the directive's frame or the draft.
+- **The catalog pages by the shared rule** (`workshopCapabilityPage`,
+  `workshopCapabilityPageOf`): `catalogItems` (50) a page, no highest page,
+  the next page's whole call written exactly when a later page exists, and
+  a page past the end answered in words. Files that did not read are
+  counted, never named.
+- **A read is fitted by whole sections** (`WORKSHOP_LENS_SECTIONS`, a closed
+  list) to half the room left, through `reads/WorkshopReadWindowFit`.
+  - A section is never cut. A limited read says so at its top and ends with
+    the exact call for the sections left out, which names strictly fewer.
+  - A read whose first section does not fit alone is refused, with the room
+    it had and no call. With no window, the read is everything asked.
+  - A limited read costs more than its sections: it also carries its limit
+    line and its call.
+- **Lens text is evidence, never instructions** (D19).
+  - Every lens string passes `workshopLensText` (one line, reserved frame
+    markers encoded); the persona capability escapes the result again.
+  - It never enters a system prompt:
+    `WorkshopLensSystemPromptWitness.test.ts` holds it, through a settings
+    rebuild. An installed lens reaches the prompt only through its own
+    standing directive.
+  - `LexicalGravityRecommendation.ts` is unchanged: a recommendation names
+    a built-in starter only. A persona names the writer's own lens in prose.
+- **The grammar** is `workshop-personas/lens-capability.md`, in the system
+  prompt of host and guest always. `lensCapabilityPromptSync.test.ts` holds
+  its numbers to `PROMPT_BUDGETS.workshopLens`, its section list to the
+  codec's, and every taught form and written call to the codec.
+- **Session files are forward-only** for `lens_catalog` and `lens_read`,
+  with no `schemaVersion` bump. A card stores its result text, as every
+  capability card does; the transcript shows the request only.
+- **Logs** carry the operation, counts and outcomes, never a slug a persona
+  wrote, a subject or lens text.
 
 ### Workshop Excerpt Re-read
 

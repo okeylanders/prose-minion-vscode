@@ -1545,6 +1545,8 @@ export class WorkshopSessionService {
         case 'memory.catalog': return 'memory_catalog';
         case 'memory.search': return 'memory_search';
         case 'memory.read': return 'memory_read';
+        case 'lens.catalog': return 'lens_catalog';
+        case 'lens.read': return 'lens_read';
         default: return assertNever(input.details.operation);
       }
     })();

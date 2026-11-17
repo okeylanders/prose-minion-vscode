@@ -27,6 +27,7 @@ import type { ContextResourceProviderFactory } from '@/domain/models/ContextGene
 import type { ConversationImportOutcome } from '@orchestration/ConversationManager';
 import { WORKSHOP_TURN_ARTIFACTS } from '@messages';
 import { setupCoordinator } from '@/__tests__/application/services/workshop/session/WorkshopCoordinatorHarness';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const silentEvents = (): WorkshopRunCompletionEvents => ({
   streamCompleted: () => undefined,
@@ -62,7 +63,8 @@ describe('a room that used session recall', () => {
       session,
       log,
       new WorkshopTranscriptRecallService(store, coordinator, log),
-      offProjectMemory
+      offProjectMemory,
+      noProjectLenses
     );
     const capabilityFor = (requestId: string, owner: WorkshopCapabilityPrincipal) => factory.create({
       requestId,

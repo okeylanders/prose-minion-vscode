@@ -21,13 +21,16 @@ import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
 import type { WorkshopPersonaId, WorkshopTurn } from '@messages';
 import { setupCoordinator } from '@/__tests__/application/services/workshop/session/WorkshopCoordinatorHarness';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
+import type { WorkshopLensLibraryPort } from '@/application/services/workshop/lens/WorkshopLensCapability';
 
 export type RecallRound = string | (() => string);
 
 export const recallCall = (operation: string, body: string): string =>
   `<prose-minion-tool-call name="${operation}">${body}</prose-minion-tool-call>`;
 
-export function createRecallRunHarness() {
+/** `lenses`: the project's lens library for `lens.*` calls; none of its own by default. */
+export function createRecallRunHarness(options: { lenses?: WorkshopLensLibraryPort } = {}) {
   const harness = setupCoordinator();
   const { session, manager, coordinator, store, log, time } = harness;
   const client = { createChatCompletion: jest.fn(), createStreamingChatCompletion: jest.fn() };
@@ -43,7 +46,8 @@ export function createRecallRunHarness() {
     session,
     log,
     recall,
-    offProjectMemory
+    offProjectMemory,
+    options.lenses ?? noProjectLenses
   );
   /** Everything every provider request carried, as one string. */
   const sent: string[] = [];

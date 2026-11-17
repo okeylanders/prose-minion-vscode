@@ -36,6 +36,7 @@ import { rewindWorkshopSession } from '@/application/services/workshop/session/W
 import { libraryHost, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import { ScriptedWorkshopRoom } from '@/__tests__/application/services/workshop/session/ScriptedWorkshopRoom';
 import { scriptedCheckpoint, setupCoordinator } from '@/__tests__/application/services/workshop/session/WorkshopCoordinatorHarness';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 type Guest = 'cliff' | 'margot';
 
@@ -57,7 +58,8 @@ function room(host: ReturnType<typeof libraryHost>) {
     session,
     { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
     {} as WorkshopTranscriptRecallPort,
-    host.library
+    host.library,
+    noProjectLenses
   );
   const say = async (text: string, guest?: Guest): Promise<string> => {
     const key = guest ?? 'host';

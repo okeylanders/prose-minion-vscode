@@ -25,7 +25,9 @@ describe('workshopCapabilityFamily', () => {
       ['transcript.bookmarks', 'transcript'],
       ['memory.catalog', 'memory'],
       ['memory.search', 'memory'],
-      ['memory.read', 'memory']
+      ['memory.read', 'memory'],
+      ['lens.catalog', 'lens'],
+      ['lens.read', 'lens']
     ]);
   });
 
@@ -40,6 +42,11 @@ describe('workshopCapabilityFamily', () => {
     // The family was reserved by ADR 2026-10-05 and is listed now (ADR 2026-11-04 D12).
     expect(isWorkshopCapabilityOperation('memory.read')).toBe(true);
     expect(isWorkshopCapabilityOperation('memory.save')).toBe(false);
+    // The lens family is two reads (ADR 2026-11-17 D16): no search, and no write, is listed.
+    expect(isWorkshopCapabilityOperation('lens.catalog')).toBe(true);
+    expect(isWorkshopCapabilityOperation('lens.read')).toBe(true);
+    expect(isWorkshopCapabilityOperation('lens.search')).toBe(false);
+    expect(isWorkshopCapabilityOperation('lens.save')).toBe(false);
     expect(isWorkshopCapabilityOperation('transcript')).toBe(false);
     expect(isWorkshopCapabilityOperation(undefined)).toBe(false);
   });
@@ -51,5 +58,7 @@ describe('workshopCapabilityFamily', () => {
     expect(workshopCapabilityFamilyLabel('resource.read', 'Continuity')).toBe('Project Resources');
     expect(workshopCapabilityFamilyLabel('transcript.read', 'Continuity')).toBe('Session Recall');
     expect(workshopCapabilityFamilyLabel('memory.read', 'Continuity')).toBe('Project Memory');
+    expect(workshopCapabilityFamilyLabel('lens.read', 'Continuity')).toBe('Lens Library');
+    expect(workshopCapabilityFamilyLabel('lens.catalog')).toBe('Lens Library');
   });
 });

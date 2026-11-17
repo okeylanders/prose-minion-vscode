@@ -150,6 +150,16 @@ export interface PromptBudgets {
     pageDigits: number;
   }>;
   /**
+   * The persona's read-only view of the writer's lens library (ADR
+   * 2026-11-17 D20). A `lens.catalog` page lists `catalogItems` lenses; a
+   * `lens.read` names at most `readSections` sections, the whole closed
+   * list. `<page>`'s bound is `workshopCapabilityPaging.pageDigits`.
+   */
+  readonly workshopLens: Readonly<{
+    catalogItems: number;
+    readSections: number;
+  }>;
+  /**
    * Workshop message reactions (ADR 2026-11-07 D9). `perSession` is the
    * codec's bound on stored entries; the ledger refuses an add past it.
    * Delivery (D4, D6): a `<workshop-reactions>` frame lists at most
@@ -726,6 +736,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     }
   },
   workshopCapabilityPaging: { pageDigits: 9 },
+  workshopLens: { catalogItems: 50, readSections: 7 },
   workshopReactions: {
     // Generous: 19 writer reactions on each of a few hundred replies, plus the personas'.
     perSession: 5_000,
