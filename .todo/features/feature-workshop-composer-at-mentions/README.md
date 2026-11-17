@@ -1,7 +1,7 @@
 # Feature: `@` in the Workshop Composer to Attach a Project File
 
 **Date Identified:** 2026-11-09
-**Status:** Idea. Small to medium, mostly presentation: it reuses the existing catalog and attach routes. No ADR; the token-and-pill question is settled (A1).
+**Status:** In the Everyday Conveniences, Round Two epic (item G) since 2026-11-17, on `epic/everyday-conveniences-round-two`. The epic README there records progress and the defaults taken.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-09
 

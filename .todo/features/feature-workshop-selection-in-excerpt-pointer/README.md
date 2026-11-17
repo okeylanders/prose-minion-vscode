@@ -1,7 +1,7 @@
 # Feature: A Selection Inside the Excerpt Goes as a Pointer
 
 **Date Identified:** 2026-11-07 (split out 2026-11-17)
-**Status:** Idea. Small. Split from [Selected Text](../../archive/features/feature-workshop-send-selection-with-message/README.md), which shipped in v2.14.0 sending the selection as text (the epic's default).
+**Status:** Deferred (Okey, 2026-11-17): not in Round Two. Small; split from [Selected Text](../../archive/features/feature-workshop-send-selection-with-message/README.md), which shipped in v2.14.0 sending the selection as text (the epic's default).
 **Priority:** Low
 **Origin:** An open question in the Selected Text note
 

@@ -1,7 +1,7 @@
 # Feature: Tell the Persona What Became of Its Notes
 
 **Date Identified:** 2026-11-11 (split out 2026-11-17)
-**Status:** Idea. Small. Split from [the memory fence fix](../../archive/features/feature-workshop-memory-fence-holds/README.md), which shipped the `personal` hold in v2.13.0 without this.
+**Status:** In the Everyday Conveniences, Round Two epic (item D) since 2026-11-17, on `epic/everyday-conveniences-round-two`. The epic README there records progress and the defaults taken.
 **Priority:** Medium
 **Origin:** Okey's report of 2026-11-11, where Jill apologized for not sending notes she had sent
 

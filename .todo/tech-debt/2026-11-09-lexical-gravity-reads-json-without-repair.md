@@ -1,7 +1,7 @@
 # Lexical Gravity Reads Model JSON Without Repair, and Loses Every Lens to One Fault
 
 **Date:** 2026-11-09
-**Status:** Open. Okey wants all four fixes below (2026-11-09).
+**Status:** In the Everyday Conveniences, Round Two epic (item E) since 2026-11-17, on `epic/everyday-conveniences-round-two`. Fixes 1–3; fix 4 and the helper repair stay here for later. The epic README there records progress and the defaults taken.
 **Priority:** Medium. A failed build wastes a paid call, loses lenses that were fine, and has no recovery path.
 **Found by:** Okey, generating a lens for "unfinished score"
 

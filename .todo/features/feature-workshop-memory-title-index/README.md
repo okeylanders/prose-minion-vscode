@@ -1,7 +1,7 @@
 # Feature: Show Personas Every Memory's Title
 
 **Date Identified:** 2026-11-17
-**Status:** Idea. An amendment to [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md) (D5, the start-of-conversation frame; D1, the catalog), not a new ADR. Pairs with [How Readily Personas Suggest Memories](../feature-workshop-memory-suggestion-level/README.md): both are Memory-tab settings, and more suggestions fill the list sooner.
+**Status:** In the Everyday Conveniences, Round Two epic (item C) since 2026-11-17, on `epic/everyday-conveniences-round-two`. With the size setting (decision T1). The epic README there records progress and the defaults taken.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-17, from the Memory tab (81 memories: 2 load in full, 26 of 79 fit the list, 53 searchable only)
 
@@ -97,15 +97,18 @@ with a third bar for titles.
 - **The layout is fixed and only its size moves,** so there's one knob,
   not modes that combine.
 
+## Decisions (Okey, 2026-11-17)
+
+| # | Decision | Notes |
+|---|---|---|
+| T1 | **The size setting ships with the rest, and each size grows both buckets:** titles and summaries, and titles only. | The table above. It is an amendment to [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md) (D1 the catalog, D5 the frame), not a new ADR. |
+
 ## Open questions
 
 - **Titles tier on by default?** Leaning yes: it only appears once the list
   overflows, and it costs about a quarter of what summaries do.
 - **Order of the titles tier.** Newest first, as the list (leaning), or
   grouped by kind (decisions, canon, themes…), which scans more easily?
-- **Is the setting needed at first?** The titles tier and catalog paging
-  may be enough. The size setting could follow if a larger list proves
-  useful.
 - **When a size change applies.** The block is built once per conversation,
   so a change applies to the next conversation. The tab's footer should say
   so.
@@ -123,9 +126,9 @@ with a third bar for titles.
       line decodes as written, and following it reaches the end (test).
 - [ ] The prompt's description of the block, `<more>` and the catalog's page
       is held to the renderer and `PROMPT_BUDGETS` by a sync test.
-- [ ] If the size setting ships: the tab's meters and the block agree at
-      every size (they read one renderer), and a change applies from the
-      next conversation.
+- [ ] The size setting grows both buckets at each size (T1). The tab's
+      meters and the block agree at every size (they read one renderer), and
+      a change applies from the next conversation.
 
 ## Related
 

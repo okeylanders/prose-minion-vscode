@@ -1,7 +1,7 @@
 # Feature: Personas Can See the Writer's Lexical Gravity Lenses
 
 **Date Identified:** 2026-11-09
-**Status:** Idea. Small to medium: one read-only capability family. A short ADR, or an amendment to [ADR 2026-08-01](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md).
+**Status:** In the Everyday Conveniences, Round Two epic (item F) since 2026-11-17, on `epic/everyday-conveniences-round-two`. The epic README there records progress and the defaults taken.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-09
 

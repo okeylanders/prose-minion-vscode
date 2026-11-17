@@ -1,7 +1,7 @@
 # Feature: A Complete Prose Minion Reference a Model Can Answer From
 
 **Date Identified:** 2026-11-11
-**Status:** Idea. Medium: the writing is the work; the capability is small.
+**Status:** In the Everyday Conveniences, Round Two epic (item H) since 2026-11-17, on `epic/everyday-conveniences-round-two`. The epic README there records progress and the defaults taken.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-11
 

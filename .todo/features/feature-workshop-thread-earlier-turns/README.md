@@ -1,7 +1,7 @@
 # Feature: Show a Long Room's Earlier Turns (Thread Pagination)
 
 **Date Identified:** 2026-11-13
-**Status:** Idea. Two parts: a quick fix to the notice, then pagination.
+**Status:** In the Everyday Conveniences, Round Two epic (item A) since 2026-11-17, on `epic/everyday-conveniences-round-two`. Both parts. The epic README there records progress and the defaults taken.
 **Priority:** High. Long rooms hit it now: Okey's has 273 turns, so 73 are hidden.
 **Origin:** Okey, 2026-11-13 ("We also need to deal with this fix")
 

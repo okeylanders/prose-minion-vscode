@@ -1,7 +1,7 @@
 # Feature: How Readily Personas Suggest Memories
 
 **Date Identified:** 2026-11-07
-**Status:** Idea. Small: one setting, one prompt paragraph per level. An amendment to [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), not a new ADR.
+**Status:** In the Everyday Conveniences, Round Two epic (item B) since 2026-11-17, on `epic/everyday-conveniences-round-two`. The epic README there records progress and the defaults taken.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-07
 
