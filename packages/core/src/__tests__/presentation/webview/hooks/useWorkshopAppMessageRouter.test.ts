@@ -211,6 +211,16 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.projectMemory.handleMemoryDraftsSetting).toHaveBeenCalledWith(setting);
   });
 
+  it('tells the memory manager the list size changed, when the tab has that route (Round Two item C)', () => {
+    const deps = makeDeps();
+    expect(buildWorkshopAppMessageRoutes(deps)[MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING]).toBeUndefined();
+
+    const noteListSizeSetting = jest.fn();
+    const message = { type: MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING, payload: { size: 'larger' } } as never;
+    buildWorkshopAppMessageRoutes({ ...deps, memoryManager: { ...deps.memoryManager, noteListSizeSetting } })[MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING]!(message);
+    expect(noteListSizeSetting).toHaveBeenCalledWith(message);
+  });
+
   it('routes the Bookmarks screen\'s three answers to its transport (Bookmark Recall Slice 2)', () => {
     const deps = makeDeps();
     const routes = buildWorkshopAppMessageRoutes(deps);

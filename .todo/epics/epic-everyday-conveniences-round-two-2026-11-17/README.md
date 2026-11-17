@@ -35,9 +35,9 @@ decisions live in this README and the ADR.
 | E | E | lexical-gravity-reads-json-without-repair | 13 | `…-lexical-gravity-json` | #270 | Merged |
 | G | G | composer-at-mentions | 14 | `…-at-mentions` | #271 | Merged |
 | B | B | memory-suggestion-level | 8 | `…-memory-suggestion-level` | #272 | Merged |
-| C | C | memory-title-index | new | `…-memory-title-index` | | After B |
+| C | C | memory-title-index | new | `…-memory-title-index` | #274 | Reviewed clear |
 | D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | | After C |
-| A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | | Built; waits for review |
+| A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | #273 | Merged |
 | F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | | After C |
 | H | H | prose-minion-help-reference | 20 | `…-help-reference` | | Last |
 | Close | Closing pass | | | `…-close` | | After H |
@@ -296,6 +296,7 @@ a note.** These are the ones to look at first.
 | Baseline (`main` at `3f99e733`) | not run | | |
 | B (`…-memory-suggestion-level`, on the spec branch) | 879 | 12,529 | 59 |
 | A, part 2 (`…-earlier-turns`, on the epic branch at `649b9f24`) | 884 | 12,572 | 59 |
+| C (`…-memory-title-index`, on B's branch) | 884 | 12,681 | 59 |
 
 Each slice adds its row.
 

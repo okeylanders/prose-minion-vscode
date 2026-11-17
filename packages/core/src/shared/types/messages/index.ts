@@ -198,6 +198,7 @@ import {
   WorkshopMemoryDraftHostMessage,
   WorkshopMemoryListMessage,
   WorkshopMemoryListingMessage,
+  WorkshopMemoryListSizeSettingMessage,
   WorkshopMemoryManagerActionMessage,
   WorkshopMemoryManagerResultMessage,
   WorkshopRequestPinnedContextMessage,
@@ -504,6 +505,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopMemoryEstimateResultMessage
   | WorkshopMemoryDraftHostMessage
   | WorkshopMemoryListingMessage
+  | WorkshopMemoryListSizeSettingMessage
   | WorkshopMemoryManagerResultMessage
   | WorkshopPinnedContextMessage
   | WorkshopGesturePlaygroundGenerationProgressMessage

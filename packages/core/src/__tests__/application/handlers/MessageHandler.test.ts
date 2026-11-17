@@ -681,6 +681,25 @@ describe('MessageHandler assembly', () => {
     ).toHaveBeenCalledTimes(1);
   });
 
+  it('tells the webview the memory list size changed, and rebuilds no prompt for it (ADR 2026-11-17 D9)', async () => {
+    const assembly = createTestAssembly();
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const handler = createHandler(assembly, postMessage);
+    postMessage.mockClear();
+
+    handler.handleConfigurationChange(section => section === 'proseMinion.workshop.memory.listSize');
+    await flushQueuedWork();
+
+    expect(postMessage.mock.calls.map(([message]) => message.type)).toContain(MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING);
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING,
+      // The stub settings hold no size, which reads as Standard.
+      payload: { size: 'standard' }
+    }));
+    // The frame is built once per conversation: a size change touches no open conversation's prompts.
+    expect(assembly.services.workshopConversationSettingsService.syncFromSettings).not.toHaveBeenCalled();
+  });
+
   it('posts a transient API-key warning clear after successful key-backed self-heal', async () => {
     const assembly = createTestAssembly();
     (assembly.services.secretsService.getApiKey as jest.Mock).mockResolvedValue('configured-key');

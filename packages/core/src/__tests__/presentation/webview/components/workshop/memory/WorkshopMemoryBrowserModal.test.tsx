@@ -26,7 +26,11 @@ const ESTIMATE = {
   catalogTokens: 702,
   frameTokens: 5_050,
   pinnedLoadedTokens: 4_290,
-  catalogEntries: 2
+  catalogEntries: 2,
+  titleTokens: 0,
+  titleEntries: 0,
+  unlisted: 0,
+  retired: 0
 };
 
 function props(overrides: Partial<WorkshopMemoryBrowserModalProps> = {}): WorkshopMemoryBrowserModalProps {

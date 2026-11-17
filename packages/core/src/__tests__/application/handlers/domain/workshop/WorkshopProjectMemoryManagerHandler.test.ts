@@ -10,6 +10,8 @@ import * as path from 'node:path';
 import { MessageType } from '@messages';
 import { projectMemoryBody } from '@shared/types/projectMemory';
 import { MEMORY, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { WORKSHOP_PROJECT_MEMORY_LIST_SIZES } from '@shared/constants/workshopProjectMemoryListSizes';
+import { workshopMemoryListSizeSettingMessage } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
 import { createWorkshopRouteTestHarness, message, type WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
 
 const BIG = 'word '.repeat(1_500);
@@ -45,6 +47,17 @@ describe('Workshop routes — the memory manager', () => {
       ['mem-0000a1', 'full'], ['mem-0000a2', 'listed']
     ]);
     expect(JSON.stringify(listing)).not.toContain(MEMORY);
+  });
+
+  it('carries the list size and the budgets its estimate was held to; the settings watcher\'s message names the size (ADR 2026-11-17 D9, D12)', async () => {
+    harness.memory.put(writerMemory({ id: 'mem-0000a2', title: 'Tea is at six' }));
+    expect(await list()).toMatchObject({ listSize: 'standard', budgets: WORKSHOP_PROJECT_MEMORY_LIST_SIZES.standard });
+    expect(workshopMemoryListSizeSettingMessage({ get: () => undefined } as never)).toMatchObject({
+      type: MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING, source: 'extension.workshop', payload: { size: 'standard' }
+    });
+    const settings = { get: (section: string, key: string) => (section === 'proseMinion' && key === 'workshop.memory.listSize' ? 'largest' : undefined) };
+    expect(workshopMemoryListSizeSettingMessage(settings as never).payload).toEqual({ size: 'largest' });
+    expect(workshopMemoryListSizeSettingMessage({ get: () => 'enormous' } as never).payload).toEqual({ size: 'standard' });
   });
 
   it('a listing request without its id or query is an error, not an answer', async () => {

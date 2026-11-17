@@ -52,6 +52,38 @@ describe('useWorkshopMemoryManager', () => {
     expect(result.current.persistedState).toEqual({});
   });
 
+  it('saves the list size through the settings route, and reads a visible listing again when the host says it changed (ADR 2026-11-17 D9)', () => {
+    const { result } = renderHook(() => useWorkshopMemoryManager());
+    const sizeChanged = envelope(MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING, { size: 'larger' });
+
+    act(() => result.current.setListSize('larger'));
+    expect(posted(MessageType.UPDATE_SETTING).map((entry) => entry.payload)).toEqual([{ key: 'workshop.memory.listSize', value: 'larger' }]);
+    // The choice alone lists nothing and moves nothing: the size shown is the listing's.
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(0);
+    expect(result.current.listing).toBeUndefined();
+
+    // Nothing shows the listing: the change waits for the next time it is asked for.
+    act(() => result.current.noteListSizeSetting(sizeChanged));
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(0);
+
+    // The settings are open on the Memory tab: the listing is read again, at the new size.
+    act(() => result.current.setSettingsVisible(true));
+    act(() => result.current.noteListSizeSetting(sizeChanged));
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(1);
+    act(() => result.current.handleListing(envelope(MessageType.WORKSHOP_MEMORY_LISTING, {
+      requestId: lastId(MessageType.WORKSHOP_MEMORY_LIST), workspace: { kind: 'available' }, saved: 0, memories: [], unreadable: [], conflicts: [],
+      listSize: 'larger', budgets: { pinnedTokens: 5_000, catalogTokens: 5_000, catalogEntries: 100, titleTokens: 3_000 }
+    })));
+    expect(result.current.listing).toMatchObject({ listSize: 'larger', budgets: { catalogTokens: 5_000, titleTokens: 3_000 } });
+
+    // The manager shows it too.
+    act(() => result.current.setSettingsVisible(false));
+    act(() => result.current.openManager());
+    act(() => result.current.noteListSizeSetting(sizeChanged));
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(3);
+    expect(result.current.persistedState).toEqual({});
+  });
+
   it('the manager asks with its query; the tab, closed manager, asks with none', () => {
     const { result } = renderHook(() => useWorkshopMemoryManager());
     act(() => result.current.openManager());

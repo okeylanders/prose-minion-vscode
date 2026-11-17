@@ -255,7 +255,19 @@ describe('prompt budgets', () => {
   it('pins the Project Memory starting budgets (ADR 2026-11-04 D11)', () => {
     expect(PROMPT_BUDGETS.workshopProjectMemory).toEqual({ titleCharacters: 120, summaryCharacters: 280, bodyCharacters: 8_000,
       catalogEntries: 40, catalogTokens: 2_000, pinnedTokens: 5_000, queryCharacters: 200, memoryIdCharacters: 16, searchHits: 20,
-      snippetCharacters: 280, readMemories: 5, readCharacters: 40_000, readsPerTurn: 5, autoSavesPerRoom: 5, proposalsPerReply: 10, editReplaces: 5, citedTurns: 30 });
+      snippetCharacters: 280, readMemories: 5, readCharacters: 40_000, readsPerTurn: 5, autoSavesPerRoom: 5, proposalsPerReply: 10, editReplaces: 5, citedTurns: 30,
+      // The list sizes (ADR 2026-11-17 D9): Standard is the list as it has always been.
+      listSizes: {
+        standard: { catalogTokens: 2_000, catalogEntries: 40, titleTokens: 2_000 },
+        larger: { catalogTokens: 5_000, catalogEntries: 100, titleTokens: 3_000 },
+        largest: { catalogTokens: 10_000, catalogEntries: 200, titleTokens: 4_000 }
+      } });
+    expect(PROMPT_BUDGETS.workshopProjectMemory.listSizes.standard).toMatchObject({
+      catalogTokens: PROMPT_BUDGETS.workshopProjectMemory.catalogTokens,
+      catalogEntries: PROMPT_BUDGETS.workshopProjectMemory.catalogEntries
+    });
+    // A `<page>` has at most nine digits, and no highest value (ADR 2026-11-17 D10).
+    expect(PROMPT_BUDGETS.workshopCapabilityPaging).toEqual({ pageDigits: 9 });
     // A suggestion's cited turns leave room for its reply and the writer's message in a memory's sources (Bookmark Recall D10).
     expect(PROMPT_BUDGETS.workshopProjectMemory.citedTurns + 2).toBeLessThanOrEqual(PROJECT_MEMORY_LIST_ENTRIES.sourceTurns);
     expect(PROMPT_BUDGETS.workshopProjectMemory.readsPerTurn).toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);

@@ -92,7 +92,8 @@ export interface WorkshopAppMessageRouterDeps {
   /** Project memory's write answers and the sheet's reads (Project Memory Slice 3). */
   projectMemory: Pick<UseWorkshopProjectMemoryReturn, 'handleWriteResult' | 'handleEditData' | 'handleEstimateResult' | 'handleTurnPreview' | 'handleMemoryDraftResult' | 'handleMemoryDraftsSetting'>;
   /** The Memory tab's listing and the manager's answers (Project Memory Slice 4b). */
-  memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData' | 'noteSessionState'>;
+  memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData' | 'noteSessionState'>
+    & Partial<Pick<UseWorkshopMemoryManagerReturn, 'noteListSizeSetting'>>;
   /** How readily personas suggest notes, heard with each session state (Round Two item B); absent reads as none. */
   memorySuggestions?: Pick<UseWorkshopMemorySuggestionsReturn, 'handleSessionState'>;
   /** The Pinned context tab's list (Pinned Context Slice 3). */
@@ -231,6 +232,7 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_MEMORY_ESTIMATE_RESULT]: projectMemory.handleEstimateResult,
     [MessageType.WORKSHOP_MEMORY_DRAFT_RESULT]: projectMemory.handleMemoryDraftResult,
     [MessageType.WORKSHOP_MEMORY_DRAFTS_SETTING]: projectMemory.handleMemoryDraftsSetting,
+    ...(memoryManager.noteListSizeSetting ? { [MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING]: memoryManager.noteListSizeSetting } : {}),
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshopRoom.handleContextSearchResults,
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT]:
       gesturePlayground.handleWidgetMenuResult,

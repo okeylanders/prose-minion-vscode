@@ -26,12 +26,17 @@ import {
   type WorkshopMemoryEditDataMessage,
   type WorkshopMemoryListingMessage,
   type WorkshopMemoryListingPayload,
+  type WorkshopMemoryListSizeSettingMessage,
   type WorkshopMemoryManagerResultMessage,
   type WorkshopMemoryWriteResultMessage,
   type WorkshopSessionStateMessage
 } from '@messages';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import type { WorkshopMemoryLoadInFullRefusal } from '@hooks/domain/workshop/memory/workshopMemoryViewInputs';
+import {
+  WORKSHOP_MEMORY_LIST_SIZE_SETTING,
+  type WorkshopProjectMemoryListSize
+} from '@shared/constants/workshopProjectMemoryListSizes';
 
 export interface WorkshopMemoryManagerState {
   /** The latest listing answered; absent until the host answers. */
@@ -80,6 +85,13 @@ export interface WorkshopMemoryManagerActions {
   noteSessionState: (message: WorkshopSessionStateMessage) => void;
   /** Slice 3's edit data: a rename's read. */
   noteEditData: (message: WorkshopMemoryEditDataMessage) => void;
+  /**
+   * Ask the host to save the list size (ADR 2026-11-17 D9), through the settings route. The size shown is the
+   * listing's own, so it moves when the host says the setting changed and the listing is read again.
+   */
+  setListSize: (size: WorkshopProjectMemoryListSize) => void;
+  /** The list size changed, here or in VS Code Settings: a visible listing is read again at the new size. */
+  noteListSizeSetting: (message: WorkshopMemoryListSizeSettingMessage) => void;
 }
 
 export interface WorkshopMemoryManagerPersistence {
@@ -281,6 +293,19 @@ export function useWorkshopMemoryManager(): UseWorkshopMemoryManagerReturn {
       }
       // An automatic save writes no WORKSHOP_MEMORY_WRITE_RESULT; its receipt in the snapshot is the sign.
       if (landed && (managerOpenRef.current || settingsVisibleRef.current)) {
+        requestListing();
+      }
+    },
+    setListSize: (size) => {
+      vscode.postMessage({
+        type: MessageType.UPDATE_SETTING,
+        source: SOURCE,
+        payload: { key: WORKSHOP_MEMORY_LIST_SIZE_SETTING.key, value: size },
+        timestamp: Date.now()
+      });
+    },
+    noteListSizeSetting: () => {
+      if (managerOpenRef.current || settingsVisibleRef.current) {
         requestListing();
       }
     },

@@ -201,7 +201,7 @@ export type WorkshopMemorySearchStatus = (typeof WORKSHOP_MEMORY_SEARCH_STATUSES
  * listing, never of a path.
  */
 export type WorkshopProjectMemoryRequest =
-  | { capability: 'memory.catalog'; kind?: ProjectMemoryKind }
+  | { capability: 'memory.catalog'; kind?: ProjectMemoryKind; page?: number }
   | { capability: 'memory.search'; query: string; status?: WorkshopMemorySearchStatus }
   | {
       capability: 'memory.read';

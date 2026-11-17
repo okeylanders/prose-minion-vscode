@@ -112,8 +112,10 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
           text: '<project-memory note="n" built="2026-07-23">\n  <entry id="mem-7f3c2a" kind="canon" updated="2026-07-22">Watch: backward</entry>\n</project-memory>',
           pinnedLoaded: [],
           entries: ['mem-7f3c2a'],
+          titles: [],
+          unlisted: 0,
           more: 0,
-          estimate: { memories: 1, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 20, frameTokens: 30, pinnedLoadedTokens: 0, catalogEntries: 1 }
+          estimate: { memories: 1, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 20, frameTokens: 30, pinnedLoadedTokens: 0, catalogEntries: 1, titleTokens: 0, titleEntries: 0, unlisted: 0, retired: 0 }
         },
         snapshot: [{ id: 'mem-7f3c2a', version: '0123456789ab' }]
       })),

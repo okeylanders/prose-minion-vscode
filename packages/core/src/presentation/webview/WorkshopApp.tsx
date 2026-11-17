@@ -1835,6 +1835,7 @@ export const WorkshopApp: React.FC = () => {
         memory={workshopMemoryTabInputOf(memoryManager.listing)}
         memorySuggestions={memorySuggestions.level}
         onSelectMemorySuggestions={memorySuggestions.setLevel}
+        onSelectMemoryListSize={memoryManager.setListSize}
         memoryFolder={memoryManager.folder}
         pinnedContext={workshopPinnedContextPanelProps(pinnedContext, workshop)}
         memoryExplainerOpen={memoryExplainer.explainerOpen}
