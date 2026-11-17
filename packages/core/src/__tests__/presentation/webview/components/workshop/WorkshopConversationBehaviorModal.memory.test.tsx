@@ -35,6 +35,8 @@ function renderModal(overrides: Partial<Props> = {}) {
     onApply: jest.fn(),
     onOpenMemoryManager: jest.fn(),
     onOpenMemoryFolder: jest.fn(),
+    memorySuggestions: 'sparingly',
+    onSelectMemorySuggestions: jest.fn(),
     pinnedContext: pinnedContextPanelPropsStub(),
     memoryExplainerOpen: true,
     onToggleMemoryExplainer: jest.fn(),
@@ -71,6 +73,28 @@ describe('Conversation settings · Memory', () => {
       'auto',
       undefined
     );
+  });
+
+  it('Suggest notes is not a draft: a choice is saved at once, shows the host\'s level, and Apply sends nothing of it', () => {
+    const { props, rerender } = renderModal({ projectMemoryMode: 'ask' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Memory' }));
+    expect(card('Sparingly').getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(card('Readily'));
+    expect(props.onSelectMemorySuggestions).toHaveBeenCalledWith('readily');
+    expect(props.onApply).not.toHaveBeenCalled();
+    // The selected card is the host's level, so it moves when the host answers.
+    expect(card('Sparingly').getAttribute('aria-pressed')).toBe('true');
+    rerender({ memorySuggestions: 'readily' });
+    expect(card('Readily').getAttribute('aria-pressed')).toBe('true');
+    expect(card('Ask first').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('Suggest notes waits while a response is running', () => {
+    const { props } = renderModal({ isRunning: true });
+    fireEvent.click(screen.getByRole('tab', { name: 'Memory' }));
+    expect((card('Aggressively') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(card('Aggressively'));
+    expect(props.onSelectMemorySuggestions).not.toHaveBeenCalled();
   });
 
   it('the apply settles only when the host holds the submitted mode', () => {

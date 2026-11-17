@@ -6,6 +6,13 @@
  * does, and only then is the new state recorded.
  */
 
+import type { SettingsStore } from '@/platform';
+import {
+  coerceWorkshopMemorySuggestionLevel,
+  WORKSHOP_MEMORY_SUGGESTIONS_SETTING,
+  type WorkshopMemorySuggestionLevel
+} from '@shared/constants/workshopMemorySuggestions';
+
 export type WorkshopPromptGrammar = 'projectMemory' | 'fileEdits' | 'personaReactions';
 
 /** A grammar's name, as its log line says it. */
@@ -42,6 +49,58 @@ export class WorkshopPromptedGrammars {
     for (const { grammar, on } of changes) {
       this.prompted.set(grammar, on);
       log(`${LABELS[grammar]} ${on ? 'on' : 'off'}; persona prompts rebuilt`);
+    }
+  }
+}
+
+/** `proseMinion.workshop.memory.suggestions` as the setting holds it now: unset or unknown reads Sparingly. */
+export function readWorkshopMemorySuggestionLevel(settings: Pick<SettingsStore, 'get'>): WorkshopMemorySuggestionLevel {
+  return coerceWorkshopMemorySuggestionLevel(
+    settings.get<unknown>(WORKSHOP_MEMORY_SUGGESTIONS_SETTING.section, WORKSHOP_MEMORY_SUGGESTIONS_SETTING.key)
+  );
+}
+
+/**
+ * A prompt choice that is one of several, not on or off: which level's file
+ * the persona prompts were last built with (the memory-suggestion level,
+ * Everyday Conveniences Round Two, item B). Read live, like a grammar.
+ *
+ * A change rebuilds the prompts only while the level is taught at all
+ * (`taught`: project memory on). While it is not, the prompts hold no such
+ * file, so the new level is recorded and nothing is rebuilt; turning memory
+ * on rebuilds them with the level as it then stands.
+ */
+export interface WorkshopPromptLevelChange<Level extends string> {
+  readonly level: Level;
+  /** Whether the prompts hold the level's file now, so must be rebuilt. */
+  readonly rebuild: boolean;
+}
+
+export class WorkshopPromptedLevel<Level extends string> {
+  private prompted: Level;
+
+  constructor(
+    private readonly label: string,
+    private readonly read: () => Level,
+    private readonly taught: () => boolean
+  ) {
+    this.prompted = read();
+  }
+
+  /** The level, when the setting moved since the prompts were last built. */
+  change(): WorkshopPromptLevelChange<Level> | undefined {
+    const level = this.read();
+    return level === this.prompted ? undefined : { level, rebuild: this.taught() };
+  }
+
+  /** Record the level the prompts now stand at; one log line when they were rebuilt for it. */
+  commit(change: WorkshopPromptLevelChange<Level> | undefined, log: (line: string) => void): void {
+    if (!change) {
+      return;
+    }
+    this.prompted = change.level;
+    if (change.rebuild) {
+      log(`${this.label} ${change.level}; persona prompts rebuilt`);
     }
   }
 }

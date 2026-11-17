@@ -694,6 +694,8 @@ describe('app-shell provider assembly', () => {
     expect(source).toContain('assistantToolService.setWorkshopProjectMemoryGrammar(() => projectMemoryLibrary.teachesGrammar());');
     // Persona reactions' permission rides the prompt only while the setting is on (ADR 2026-11-07 Q8).
     expect(source).toContain('assistantToolService.setWorkshopReactionsGrammar(() => workshopConversationSettingsService.personaReactionsOpen());');
+    // How readily personas suggest notes picks the proposals prompt, read at each build (Round Two item B).
+    expect(source).toContain('assistantToolService.setWorkshopMemorySuggestionLevel(() => workshopConversationSettingsService.memorySuggestionLevel());');
     // The store has one consumer in 2a, the library.
     expect(source.match(/projectMemoryStore\b/g)).toHaveLength(2);
   });

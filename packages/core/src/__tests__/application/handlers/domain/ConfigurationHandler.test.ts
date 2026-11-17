@@ -92,6 +92,36 @@ describe('ConfigurationHandler', () => {
     }
   });
 
+  it.each(['sparingly', 'readily', 'aggressively', 'always', '', true, null])(
+    'saves the Workshop\'s "Suggest notes" level only from its closed list (%s)',
+    async value => {
+      const update = jest.fn().mockResolvedValue(undefined);
+      const postMessage = jest.fn();
+      const built = new ConfigurationHandler({} as never, {} as never, {} as never, {} as never, {} as never, {} as never,
+        { update } as never, {} as never, postMessage, { appendLine: jest.fn() } as never);
+      await built.handleUpdateSetting({ type: MessageType.UPDATE_SETTING, source: 'webview', timestamp: 0,
+        payload: { key: 'workshop.memory.suggestions', value } } as never);
+      if (value === 'sparingly' || value === 'readily' || value === 'aggressively') {
+        expect(update).toHaveBeenCalledWith('proseMinion', 'workshop.memory.suggestions', value);
+        expect(postMessage).not.toHaveBeenCalled();
+      } else {
+        expect(update).not.toHaveBeenCalled();
+        expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: MessageType.ERROR }));
+      }
+    }
+  );
+
+  it('still refuses a Workshop setting it does not own', async () => {
+    const update = jest.fn().mockResolvedValue(undefined);
+    const postMessage = jest.fn();
+    const built = new ConfigurationHandler({} as never, {} as never, {} as never, {} as never, {} as never, {} as never,
+      { update } as never, {} as never, postMessage, { appendLine: jest.fn() } as never);
+    await built.handleUpdateSetting({ type: MessageType.UPDATE_SETTING, source: 'webview', timestamp: 0,
+      payload: { key: 'workshop.projectMemory', value: 'auto' } } as never);
+    expect(update).not.toHaveBeenCalled();
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: MessageType.ERROR }));
+  });
+
   it('projects the stored Claude duration through settings data', async () => {
     const postMessage = jest.fn();
     const built = new ConfigurationHandler({} as never, {} as never, {} as never, {} as never, {} as never, {} as never,

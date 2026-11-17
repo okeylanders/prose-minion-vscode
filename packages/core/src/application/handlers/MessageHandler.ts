@@ -48,6 +48,7 @@ import { ContextHandler } from './domain/ContextHandler';
 import { MetricsHandler } from './domain/MetricsHandler';
 import { SearchHandler } from './domain/SearchHandler';
 import { ConfigurationHandler } from './domain/ConfigurationHandler';
+import { WORKSHOP_MEMORY_SUGGESTIONS_SETTING } from '@shared/constants/workshopMemorySuggestions';
 import { PublishingHandler } from './domain/PublishingHandler';
 import { SourcesHandler } from './domain/SourcesHandler';
 import { UIHandler } from './domain/UIHandler';
@@ -732,8 +733,11 @@ export class MessageHandler {
     const workshopFileEditsKey = `${WORKSHOP_FILE_EDITS_SETTING.section}.${WORKSHOP_FILE_EDITS_SETTING.key}`;
     // Persona reactions (ADR 2026-11-07 Q8): the prompt's permission rides only while they are on.
     const workshopReactionsKey = `${WORKSHOP_PERSONA_REACTIONS_SETTING.section}.${WORKSHOP_PERSONA_REACTIONS_SETTING.key}`;
+    // How readily personas suggest notes picks the proposals prompt, so a change rebuilds the persona prompts.
+    const workshopMemorySuggestionsKey = `${WORKSHOP_MEMORY_SUGGESTIONS_SETTING.section}.${WORKSHOP_MEMORY_SUGGESTIONS_SETTING.key}`;
     if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey) || affects(workshopWebResearchKey)
-      || affects(workshopProjectMemoryKey) || affects(workshopFileEditsKey) || affects(workshopReactionsKey)) {
+      || affects(workshopProjectMemoryKey) || affects(workshopFileEditsKey) || affects(workshopReactionsKey)
+      || affects(workshopMemorySuggestionsKey)) {
       void this.workshopHandler.syncConversationSettingsFromSettings();
     }
     // The helper's memory drafts (ADR 2026-11-05 D5.7): the sheet hears the switch, and off asks for nothing.

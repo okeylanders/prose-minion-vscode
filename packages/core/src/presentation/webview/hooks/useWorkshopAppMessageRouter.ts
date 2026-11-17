@@ -69,6 +69,7 @@ import type {
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 import type { UseWorkshopProjectMemoryReturn } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import type { UseWorkshopMemoryManagerReturn } from '@hooks/domain/workshop/useWorkshopMemoryManager';
+import type { UseWorkshopMemorySuggestionsReturn } from '@hooks/domain/workshop/memory/useWorkshopMemorySuggestions';
 import type { UseWorkshopPinnedContextReturn } from '@hooks/domain/workshop/useWorkshopPinnedContext';
 import type { UseWorkshopFileEditsReturn } from '@hooks/domain/workshop/useWorkshopFileEdits';
 import type { UseWorkshopEditOffersReturn } from '@hooks/domain/workshop/useWorkshopEditOffers';
@@ -91,6 +92,8 @@ export interface WorkshopAppMessageRouterDeps {
   projectMemory: Pick<UseWorkshopProjectMemoryReturn, 'handleWriteResult' | 'handleEditData' | 'handleEstimateResult' | 'handleTurnPreview' | 'handleMemoryDraftResult' | 'handleMemoryDraftsSetting'>;
   /** The Memory tab's listing and the manager's answers (Project Memory Slice 4b). */
   memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData' | 'noteSessionState'>;
+  /** How readily personas suggest notes, heard with each session state (Round Two item B); absent reads as none. */
+  memorySuggestions?: Pick<UseWorkshopMemorySuggestionsReturn, 'handleSessionState'>;
   /** The Pinned context tab's list (Pinned Context Slice 3). */
   pinnedContext: Pick<UseWorkshopPinnedContextReturn, 'handlePinnedContext'>;
   /** A suggested file edit's answers (Persona File Edits Slice 4b); absent reads as none. */
@@ -134,6 +137,7 @@ export function buildWorkshopAppMessageRoutes(
     bookmarkBrowser,
     projectMemory,
     memoryManager,
+    memorySuggestions,
     pinnedContext,
     fileEdits,
     editOffers,
@@ -165,6 +169,7 @@ export function buildWorkshopAppMessageRoutes(
       bookmarkBrowser.handleSessionState(message);
       widgetHost.handleSessionState(message);
       memoryManager.noteSessionState(message);
+      memorySuggestions?.handleSessionState(message);
       editOffers?.noteSessionState();
     },
     [MessageType.WORKSHOP_TURN]: (message) => {

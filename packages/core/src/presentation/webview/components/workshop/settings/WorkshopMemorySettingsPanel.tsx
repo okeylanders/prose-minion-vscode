@@ -10,6 +10,11 @@
  * The mode cards are a draft, applied with the other tabs' drafts; the
  * folder and manager buttons act at once. Unavailable never disables the
  * mode cards (ADR D8): the mode is global.
+ *
+ * "Suggest notes" (how readily personas suggest, Round Two item B) is not a
+ * draft: a choice is saved at once through `onSelectSuggestions`, and
+ * the selected card is the level the host holds. Its words come from
+ * `workshopMemorySuggestionsView`.
  */
 
 import * as React from 'react';
@@ -20,6 +25,8 @@ import {
   type WorkshopMemoryTabInput
 } from '@hooks/domain/workshop/memory/workshopMemoryTabView';
 import type { WorkshopProjectMemoryMode } from '@hooks/domain/workshop/memory/workshopMemoryViewInputs';
+import { workshopMemorySuggestionsView } from '@hooks/domain/workshop/memory/workshopMemorySuggestionsView';
+import type { WorkshopMemorySuggestionLevel } from '@shared/constants/workshopMemorySuggestions';
 import type { WorkshopMemoryFolderStatus } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import { OptionCard, SettingsRule } from './WorkshopConversationSettingsControls';
 
@@ -27,6 +34,12 @@ const MODE_ICONS: Record<WorkshopProjectMemoryMode, IconName> = {
   off: 'circleSlash',
   ask: 'hand',
   auto: 'stamp'
+};
+
+const SUGGESTION_ICONS: Record<WorkshopMemorySuggestionLevel, IconName> = {
+  sparingly: 'bookmark',
+  readily: 'plus',
+  aggressively: 'bolt'
 };
 
 export interface WorkshopMemorySettingsPanelProps extends WorkshopMemoryTabInput {
@@ -38,6 +51,12 @@ export interface WorkshopMemorySettingsPanelProps extends WorkshopMemoryTabInput
   explainerOpen: boolean;
   onToggleExplainer: () => void;
   onSelectMode: (mode: WorkshopProjectMemoryMode) => void;
+  /** How readily personas suggest notes, as the host holds it. */
+  suggestions: WorkshopMemorySuggestionLevel;
+  /** A response is running or an apply is pending: the level can't change now. */
+  suggestionsDisabled: boolean;
+  /** Saves the level at once; the selected card moves when the host answers. */
+  onSelectSuggestions: (level: WorkshopMemorySuggestionLevel) => void;
   onOpenManager: () => void;
   onOpenFolder: () => void;
 }
@@ -49,11 +68,15 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
   explainerOpen,
   onToggleExplainer,
   onSelectMode,
+  suggestions,
+  suggestionsDisabled,
+  onSelectSuggestions,
   onOpenManager,
   onOpenFolder,
   ...input
 }) => {
   const view = workshopMemoryTabView(input);
+  const suggest = workshopMemorySuggestionsView({ level: suggestions, mode: input.mode });
   const noticeId = React.useId();
   const folderErrorId = React.useId();
   const explainerId = React.useId();
@@ -113,6 +136,26 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
         ))}
       </div>
       <p className="pm-ws-behavior-note">This setting applies to all your projects. Each project keeps its own memories, in its own folder.</p>
+
+      <SettingsRule label="Suggest notes" />
+      <div className="pm-ws-behavior-cards" role="group" aria-label="Suggest notes">
+        {suggest.cards.map((card) => (
+          <OptionCard
+            key={card.level}
+            selected={card.selected}
+            disabled={suggestionsDisabled}
+            icon={<Icon name={SUGGESTION_ICONS[card.level]} size={14} />}
+            name={card.name}
+            description={card.description}
+            onClick={() => {
+              if (!card.selected) {
+                onSelectSuggestions(card.level);
+              }
+            }}
+          />
+        ))}
+      </div>
+      {suggest.notes.map((note) => <p key={note} className="pm-ws-behavior-note">{note}</p>)}
 
       <SettingsRule label="At the start of each conversation" />
       <div className="pm-ws-behavior-row pm-ws-memory-load" role="group" aria-label="At the start of each conversation">

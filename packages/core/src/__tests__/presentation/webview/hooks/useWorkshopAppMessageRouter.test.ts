@@ -166,6 +166,15 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.memoryManager.noteSessionState).toHaveBeenCalledWith(message);
   });
 
+  it('gives each session snapshot to the memory-suggestion level too, when the tab has it (Round Two item B)', () => {
+    const memorySuggestions = { handleSessionState: jest.fn() };
+    const message = { type: MessageType.WORKSHOP_SESSION_STATE, payload: { memorySuggestions: 'readily' } } as never;
+
+    buildWorkshopAppMessageRoutes({ ...makeDeps(), memorySuggestions })[MessageType.WORKSHOP_SESSION_STATE]!(message);
+
+    expect(memorySuggestions.handleSessionState).toHaveBeenCalledWith(message);
+  });
+
   it('routes a turn preview to the bookmarks transport, and to the memory sheet a bookmark outside the window opened (Bookmark Recall Slice 3)', () => {
     const deps = makeDeps();
     const message = { type: MessageType.WORKSHOP_TURN_PREVIEW, payload: {} } as never;

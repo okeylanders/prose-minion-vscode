@@ -34,7 +34,7 @@ decisions live in this README and the ADR.
 | A1 | A, part 1 | thread-earlier-turns | 22 | `…-earlier-turns-notice` | #268 | In review |
 | E | E | lexical-gravity-reads-json-without-repair | 13 | `…-lexical-gravity-json` | | Being built |
 | G | G | composer-at-mentions | 14 | `…-at-mentions` | | Being built |
-| B | B | memory-suggestion-level | 8 | `…-memory-suggestion-level` | | After Slice 0 |
+| B | B | memory-suggestion-level | 8 | `…-memory-suggestion-level` | | Built on the spec branch; pushed, no PR yet |
 | C | C | memory-title-index | new | `…-memory-title-index` | | After B |
 | D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | | After C |
 | A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | | After Slice 0 |
@@ -294,6 +294,7 @@ a note.** These are the ones to look at first.
 |---|---|---|---|
 | `main` at v2.14.0's close (the first epic, `epic/everyday-conveniences-close`) | 870 | 12,327 | 59 |
 | Baseline (`main` at `3f99e733`) | not run | | |
+| B (`…-memory-suggestion-level`, on the spec branch) | 879 | 12,529 | 59 |
 
 Each slice adds its row.
 

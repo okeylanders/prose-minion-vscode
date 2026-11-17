@@ -35,7 +35,8 @@ import {
   workshopProjectMemoryModeSetting,
   type WorkshopGlobalModeSetting
 } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
-import { WorkshopPromptedGrammars } from '@/application/services/workshop/WorkshopPromptedGrammars';
+import { readWorkshopMemorySuggestionLevel, WorkshopPromptedGrammars, WorkshopPromptedLevel } from '@/application/services/workshop/WorkshopPromptedGrammars';
+import type { WorkshopMemorySuggestionLevel } from '@shared/constants/workshopMemorySuggestions';
 
 export interface WorkshopConversationSettingsPersistenceErrors {
   behavior?: string;
@@ -84,8 +85,9 @@ export class WorkshopConversationSettingsService {
   private pendingProfilePersistence?: PendingPersistence<WorkshopWriterProfile>;
   private pendingWebResearchPersistence?: PendingPersistence<WorkshopWebResearchSettings>;
   private webResearch: WorkshopWebResearchSettings;
-  /** Which optional grammars the persona prompts were last built with (memory, file edits, persona reactions). */
+  /** Which optional grammars (memory, file edits, persona reactions) and which memory-suggestion level the persona prompts were last built with. */
   private readonly prompted: WorkshopPromptedGrammars;
+  private readonly promptedSuggestions: WorkshopPromptedLevel<WorkshopMemorySuggestionLevel>;
 
   constructor(
     private readonly session: WorkshopSessionService,
@@ -102,6 +104,7 @@ export class WorkshopConversationSettingsService {
       fileEdits: () => this.fileEditsOpen(),
       personaReactions: () => this.personaReactionsOpen()
     });
+    this.promptedSuggestions = new WorkshopPromptedLevel('Memory suggestions', () => this.memorySuggestionLevel(), () => this.projectMemoryOn());
   }
 
   /**
@@ -273,13 +276,12 @@ export class WorkshopConversationSettingsService {
     const behaviorChanged = !workshopConversationBehaviorsEqual(previousBehavior, nextBehavior);
     const profileChanged = !workshopWriterProfilesEqual(previousProfile, nextProfile);
     const grammarChanges = this.prompted.changes();
-    if (!behaviorChanged && !profileChanged && grammarChanges.length === 0) {
-      return {
-        changed: false,
-        deferred: false,
-        behaviorChanged: false,
-        profileChanged: false
-      };
+    const suggestionChange = this.promptedSuggestions.change();
+    const suggestionRebuild = suggestionChange?.rebuild === true;
+    if (!behaviorChanged && !profileChanged && grammarChanges.length === 0 && !suggestionRebuild) {
+      // A level that moved while project memory is off is in no prompt: recorded, nothing rebuilt.
+      this.promptedSuggestions.commit(suggestionChange, () => undefined);
+      return { changed: false, deferred: false, behaviorChanged: false, profileChanged: false };
     }
 
     if (
@@ -288,6 +290,7 @@ export class WorkshopConversationSettingsService {
       || previousBehavior.expressionLevel !== nextBehavior.expressionLevel
       || previousBehavior.relationalDepth !== nextBehavior.relationalDepth
       || grammarChanges.length > 0
+      || suggestionRebuild
     ) {
       await this.assistantToolService.replaceWorkshopConversationSettings(
         this.replacementTargets(),
@@ -299,7 +302,9 @@ export class WorkshopConversationSettingsService {
 
     this.session.setConversationBehavior(nextBehavior);
     this.writerProfileService.commit(nextProfile);
-    this.prompted.commit(grammarChanges, (line) => this.outputChannel.appendLine(`[WorkshopConversationSettingsService] ${line}`));
+    const log = (line: string): void => this.outputChannel.appendLine(`[WorkshopConversationSettingsService] ${line}`);
+    this.prompted.commit(grammarChanges, log);
+    this.promptedSuggestions.commit(suggestionChange, log);
     return { changed: true, deferred: false, behaviorChanged, profileChanged };
   }
 
@@ -347,6 +352,11 @@ export class WorkshopConversationSettingsService {
     return coerceWorkshopPersonaReactions(
       this.settings.get<unknown>(WORKSHOP_PERSONA_REACTIONS_SETTING.section, WORKSHOP_PERSONA_REACTIONS_SETTING.key)
     );
+  }
+
+  /** `proseMinion.workshop.memory.suggestions`, read live: how readily personas suggest notes. Unset or unknown is Sparingly. */
+  memorySuggestionLevel(): WorkshopMemorySuggestionLevel {
+    return readWorkshopMemorySuggestionLevel(this.settings);
   }
 
   private projectMemoryOn(): boolean {
