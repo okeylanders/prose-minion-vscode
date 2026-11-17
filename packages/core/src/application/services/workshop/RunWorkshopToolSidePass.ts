@@ -38,6 +38,7 @@ import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
 import { workshopWriterPreferredAddress } from '@/utils/workshopWriterProfile';
+import { workshopTrailerOutcomeFrames } from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerOutcomesFrame';
 import {
   isApiKeyNotConfiguredWarning,
   TokenUsage,
@@ -233,6 +234,14 @@ export class RunWorkshopToolSidePass {
         todoEvidence,
         writerMessageIsTrustedEnvelope: true,
         hostUpdate: hostUpdateFrame,
+        // The host's last reply's trailers (ADR 2026-11-17 D14, D15; Okey, 2026-11-17): a synthesis request tells
+        // of them too, or the synthesis would become the latest reply and they would never be told. Keyed to the
+        // ledger, so a synthesis that starts the host's conversation carries it as well (PR #276 F-01).
+        threadArtifactFrames: workshopTrailerOutcomeFrames(
+          { kind: 'host' },
+          () => this.session.readRoomLedger(),
+          (line) => this.outputChannel.appendLine(`[RunWorkshopToolSidePass] ${line}`)
+        ),
         ...(hostConversationId ? behaviorFrames : {})
       });
       hostDeliveryAttempted = true;

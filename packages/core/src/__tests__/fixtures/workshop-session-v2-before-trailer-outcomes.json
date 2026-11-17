@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 2,
+  "sessionId": "before-trailer-outcomes",
+  "title": "Scripted room",
+  "createdAt": "2026-09-30T12:00:00.000Z",
+  "updatedAt": "2026-09-30T12:00:00.000Z",
+  "temporal": {
+    "schemaVersion": 1,
+    "startedAt": "2026-09-30T12:00:00.000Z",
+    "timezone": "UTC",
+    "lastActivityAt": "2026-09-30T12:00:00.000Z",
+    "personaNotices": []
+  },
+  "summary": {
+    "hostPersonaId": "jill",
+    "participantPersonaIds": [
+      "jill"
+    ],
+    "turnCount": 7,
+    "excerptWordCount": 0
+  },
+  "workshop": {
+    "excerpt": {
+      "text": "Alice was beginning to get very tired of sitting by her sister on the bank.",
+      "version": 1,
+      "source": {
+        "kind": "manual"
+      },
+      "pinnedAt": 1003
+    },
+    "scope": "excerpt",
+    "contextAttachments": [],
+    "hostContextDelivery": {
+      "revision": 0,
+      "attachments": []
+    },
+    "pendingMessageAttachments": [],
+    "threadArtifacts": [],
+    "revisions": {
+      "excerpt": 1,
+      "replacementCount": 0,
+      "context": 0
+    },
+    "counters": {
+      "attachment": 0,
+      "threadArtifact": 0,
+      "turn": 7,
+      "todo": 0,
+      "widgetConfig": 0,
+      "standingDirective": 0
+    },
+    "widgetConfigs": [],
+    "standingDirectives": [],
+    "writerSources": {
+      "host": [
+        {
+          "kind": "pin",
+          "origin": "writer",
+          "label": "Pasted excerpt",
+          "sizeChars": 75,
+          "isEstimate": true,
+          "excerptVersion": 1,
+          "deliveredAt": 1003
+        }
+      ],
+      "tools": {},
+      "guests": []
+    },
+    "turns": [
+      {
+        "id": "turn-1-system-1001",
+        "role": "system",
+        "kind": "divider",
+        "participant": "session",
+        "artifact": "session_start",
+        "excerptVersion": 0,
+        "content": "Session started.",
+        "timestamp": 1002
+      },
+      {
+        "id": "turn-2-user-1004",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "content": "Is the watch settled?",
+        "timestamp": 1005,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-3-assistant-1006",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "host",
+        "artifact": "persona_message",
+        "personaId": "jill",
+        "personaLabel": "Jill",
+        "content": "It is.",
+        "timestamp": 1007,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        },
+        "memoryProposals": [
+          {
+            "proposes": "new",
+            "title": "The Rabbit's watch runs backward",
+            "kind": "canon",
+            "summary": "From chapter 3 on, the White Rabbit's watch runs backward.",
+            "body": "We settled this while working the tea-party scene.",
+            "state": "pending"
+          }
+        ]
+      },
+      {
+        "id": "turn-4-user-1008",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "content": "Make Alice ten.",
+        "timestamp": 1009,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-5-assistant-1010",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "host",
+        "artifact": "persona_message",
+        "personaId": "jill",
+        "personaLabel": "Jill",
+        "content": "Two changes.",
+        "timestamp": 1011,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        },
+        "fileEditProposals": [
+          {
+            "requested": {
+              "kind": "resource",
+              "group": "characters",
+              "path": "characters/alice.md"
+            },
+            "operations": [
+              {
+                "op": "replace",
+                "find": "Alice is seven",
+                "with": "Alice is ten"
+              }
+            ],
+            "why": "Alice is ten now.",
+            "target": {
+              "kind": "file",
+              "documentUri": "file:///ws/zzq-uri/characters/alice.md",
+              "relativePath": "characters/alice.md"
+            },
+            "class": "notes",
+            "baseline": {
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "length": 42
+            },
+            "state": "pending"
+          },
+          {
+            "requested": {
+              "kind": "excerpt"
+            },
+            "operations": [
+              {
+                "op": "replace",
+                "find": "Alice is seven",
+                "with": "Alice is ten"
+              }
+            ],
+            "why": "Alice is ten now.",
+            "state": "refused",
+            "reason": "excerpt-not-a-file"
+          }
+        ]
+      },
+      {
+        "id": "turn-6-user-1012",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "content": "And the Queen?",
+        "timestamp": 1013,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-7-assistant-1014",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "host",
+        "artifact": "persona_message",
+        "personaId": "jill",
+        "personaLabel": "Jill",
+        "content": "Host reply to \"And the Queen?\".",
+        "timestamp": 1015,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      }
+    ],
+    "participants": {
+      "host": {
+        "personaId": "jill",
+        "conversationKey": "host",
+        "lastSeenRoomTurnId": "turn-1-system-1001"
+      },
+      "toolSidecars": [],
+      "personaGuests": [],
+      "chatTarget": {
+        "kind": "host"
+      }
+    },
+    "todos": [],
+    "retainedHistoryMarks": [
+      {
+        "turnId": "turn-3-assistant-1006",
+        "conversationKey": "host",
+        "messageCount": 2,
+        "contextSourceCount": 0,
+        "writerSourceCount": 1,
+        "lastSeenRoomTurnId": "turn-1-system-1001",
+        "contextRevision": 0,
+        "origin": "commit"
+      },
+      {
+        "turnId": "turn-5-assistant-1010",
+        "conversationKey": "host",
+        "messageCount": 4,
+        "contextSourceCount": 0,
+        "writerSourceCount": 1,
+        "lastSeenRoomTurnId": "turn-1-system-1001",
+        "contextRevision": 0,
+        "origin": "commit"
+      },
+      {
+        "turnId": "turn-7-assistant-1014",
+        "conversationKey": "host",
+        "messageCount": 6,
+        "contextSourceCount": 0,
+        "writerSourceCount": 1,
+        "lastSeenRoomTurnId": "turn-1-system-1001",
+        "contextRevision": 0,
+        "origin": "commit"
+      }
+    ],
+    "lastCommittedPersonaBehavior": {
+      "interactionMode": "balanced",
+      "expressionLevel": "full",
+      "relationalDepth": "attuned"
+    }
+  },
+  "conversations": [
+    {
+      "key": "host",
+      "toolName": "workshop_persona_jill",
+      "messages": [
+        {
+          "role": "user",
+          "content": "[host] Is the watch settled?"
+        },
+        {
+          "role": "assistant",
+          "content": "It is.\n\n<prose-minion-memory-proposal>\n<title>The Rabbit's watch runs backward</title>\n<kind>canon</kind>\n<summary>From chapter 3 on, the White Rabbit's watch runs backward.</summary>\n<body>We settled this while working the tea-party scene.</body>\n</prose-minion-memory-proposal>\n<prose-minion-memory-proposal><title>No kind</title></prose-minion-memory-proposal>"
+        },
+        {
+          "role": "user",
+          "content": "[host] Make Alice ten."
+        },
+        {
+          "role": "assistant",
+          "content": "Two changes.\n\n<prose-minion-file-edit>\n<group>characters</group>\n<path>characters/alice.md</path>\n<why>Alice is ten now.</why>\n<find>Alice is seven</find>\n<replace-with>Alice is ten</replace-with>\n</prose-minion-file-edit>\n<prose-minion-file-edit>\n<group>characters</group>\n<path>characters/alice.md</path>\n<why>Alice is ten now.</why>\n<find>Alice is seven</find>\n<replace-with>Alice is ten</replace-with>\n</prose-minion-file-edit>\n<prose-minion-file-edit>\n<excerpt/>\n<why>Alice is ten now.</why>\n<find>Alice is seven</find>\n<replace-with>Alice is ten</replace-with>\n</prose-minion-file-edit>"
+        },
+        {
+          "role": "user",
+          "content": "[host] And the Queen?"
+        },
+        {
+          "role": "assistant",
+          "content": "Host reply to \"And the Queen?\"."
+        }
+      ],
+      "lastActivity": 1794930987162,
+      "contextSources": [],
+      "nextArtifactNumber": 0
+    }
+  ]
+}

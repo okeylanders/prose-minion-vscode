@@ -68,6 +68,7 @@ import {
 } from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
 import { workshopReactionInviteFor } from '@/application/services/workshop/reactions/WorkshopReactionInvite';
 import { workshopEditOfferReminderFor } from '@/application/services/workshop/fileEdits/WorkshopEditOfferReminder';
+import { workshopTrailerOutcomeFrames } from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerOutcomesFrame';
 import type {
   WorkshopOneShotWidgetRoomArtifact
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
@@ -1234,7 +1235,10 @@ export class WorkshopRoomHandler {
       // A press's directive rides the frames' own slot, last before the message (ADR 2026-11-10 D4).
       ...(directedRun ? [directedRun.frame] : []),
       // The edit-offer reminder rides it too, never with a press and never for a tool (second addendum).
-      ...this.editOfferReminder(roomReader !== undefined, directedRun !== undefined, excerpt)
+      ...this.editOfferReminder(roomReader !== undefined, directedRun !== undefined, excerpt),
+      // What became of the persona's last reply's trailers (ADR 2026-11-17 D14, D15): keyed to the ledger's latest
+      // reply, so a fresh conversation's first message carries it too (PR #276 F-01). Never a press, never a tool.
+      ...workshopTrailerOutcomeFrames(directedRun ? undefined : roomReader, () => this.session.readRoomLedger(), this.logLine)
     ];
     const widgetCommitRef: WorkshopTurnWidgetCommit | undefined = widgetArtifact
       ? {

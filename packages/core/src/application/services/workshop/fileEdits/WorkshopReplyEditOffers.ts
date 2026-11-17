@@ -64,7 +64,7 @@ export async function resolveWorkshopReplyEdits(input: WorkshopReplyFileEditInpu
   if (!editOffers) {
     return fileEdits;
   }
-  return { ...(fileEdits ?? { reply: input.reply, proposals: [], logs: [] }), editOffers };
+  return { ...(fileEdits ?? { reply: input.reply, proposals: [], logs: [], drops: [] }), editOffers };
 }
 
 /** Resolve a reply's kept offers to identities (D2). Undefined when the reply holds no offer frame. */

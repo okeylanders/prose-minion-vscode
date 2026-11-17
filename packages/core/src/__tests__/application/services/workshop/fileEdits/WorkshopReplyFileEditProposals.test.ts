@@ -106,7 +106,7 @@ describe('resolveWorkshopReplyFileEdits', () => {
     expect(context).toEqual({ reply: expect.any(String), proposals: [], logs: [
       'File edit proposal dropped (reason=file-edits-off)',
       'File edit proposal dropped (reason=file-edits-off)'
-    ] });
+    ], drops: [{ at: 'read', reason: 'file-edits-off' }, { at: 'read', reason: 'file-edits-off' }] });
   });
 
   it('a reply with no file-edit tag stages nothing and returns nothing', async () => {

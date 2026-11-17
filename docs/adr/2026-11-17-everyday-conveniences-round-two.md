@@ -725,6 +725,39 @@ Your last reply's file edits: 1 shown as a card, 1 refused before the writer cou
   writer message.
 - **Tool sidecars** propose nothing and are told nothing.
 
+**Addendum, 2026-11-17 (PR #276).** D13–D15 above stand as written; this
+adds to them.
+
+- **A tool run's synthesis request carries the line too (Okey's decision,
+  2026-11-17).** D15 says the frame is added "when a writer message goes to
+  a host or guest". It is also added to the message that asks the host to
+  synthesize a tool run (`RunWorkshopToolSidePass`), when the host's latest
+  reply at that moment holds `trailerOutcomes`. Otherwise a tool run right
+  after such a reply made the synthesis the host's latest reply, and the
+  earlier reply's outcomes were never told. The line is still derived from
+  the ledger with no delivery record: once the synthesis lands it is the
+  latest reply, so the writer's next message does not repeat it. A tool
+  sidecar's own messages are still told nothing, and a pressed edit
+  offer's request still carries no line. A synthesis that itself carries
+  trailers leaves outcomes of its own, told with the writer's next message.
+- **The line is owed by the ledger, not by the provider conversation
+  (review F-01).** When a participant's retained conversation is lost, its
+  last reply and the record are still the room's. The first message of the
+  fresh conversation, a writer's message or a synthesis request, carries
+  the frame. A participant with no reply in the ledger is told nothing, so
+  a first-ever message carries none. A message built with the line that
+  reaches no one (the send that finds the conversation gone) leaves it
+  owed.
+  - *Known limit.* A fresh conversation is not shown the earlier reply, so
+    "Your last reply" there names a reply it cannot see. The words are
+    unchanged in this PR; a different `note` for a fresh conversation is
+    proposed to Okey.
+- **A count is exact (review F-02).** D13's "each count is bounded" means
+  the codec's bound only, which is the longest an array can be (2^32 − 1).
+  Every count is a tally over an array of frames, so none can pass it, and
+  the builder never clips one: 10,001 dropped frames record and read as
+  10,001.
+
 ### Item D: out of scope
 
 - The writer's answers to cards. "Saved to project memory: …" covers them.

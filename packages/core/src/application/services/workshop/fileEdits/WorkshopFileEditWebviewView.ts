@@ -18,7 +18,9 @@
  * view (a test, a caller with no room), offers pass with no status.
  *
  * `reactionDelivery` (ADR 2026-11-07 D6) is host bookkeeping the webview
- * never reads, so it never leaves the host (PR #246 L3).
+ * never reads, so it never leaves the host (PR #246 L3). `trailerOutcomes`
+ * (ADR 2026-11-17 D13) is host-only the same way: it is for the persona's
+ * next message, never the webview.
  */
 
 import {
@@ -48,10 +50,10 @@ export function workshopEditOfferRoomViewOnce(view: WorkshopEditOfferRoomView): 
 }
 
 export function workshopTurnForWebview(turn: WorkshopTurn, room?: WorkshopEditOfferRoomView): WorkshopTurn {
-  if (!turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery) {
+  if (!turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery && !turn.trailerOutcomes) {
     return turn;
   }
-  const { editOffers, reactionDelivery: _hostOnly, ...rest } = turn;
+  const { editOffers, reactionDelivery: _hostOnly, trailerOutcomes: _hostOnlyOutcomes, ...rest } = turn;
   const offers = editOffers && (!room || room.fileEditsOpen) ? editOffers : undefined;
   return {
     ...rest,
