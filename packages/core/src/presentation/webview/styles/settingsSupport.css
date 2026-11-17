@@ -78,20 +78,34 @@
   background: linear-gradient(135deg, var(--pm-surface), var(--pm-inset));
   color: var(--pm-text);
   text-decoration: none;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .pm-community-card:hover {
   border-color: var(--pm-accent);
-  box-shadow: 0 6px 20px -12px var(--pm-accent-ring);
+  box-shadow: 0 14px 30px -20px rgba(0, 0, 0, .8);
 }
 
 .pm-support-email:focus-visible,
+.pm-support-site:focus-visible,
 .pm-support-copy:focus-visible,
 .pm-community-card:focus-visible {
   outline: 2px solid var(--vscode-focusBorder, var(--pm-accent-hi));
   outline-offset: 3px;
 }
+
+.pm-support-site {
+  display: block;
+  width: fit-content;
+  margin: 6px 0 -4px auto;
+  padding: 4px 0;
+  color: var(--pm-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pm-support-site:hover { color: var(--pm-text); }
 
 .pm-community-eyebrow,
 .pm-community-title,
@@ -213,6 +227,15 @@
   color: var(--vscode-textLink-foreground, var(--pm-accent-hi));
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pm-community-card { transition: none; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .pm-community-card {
+    transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  }
+  .pm-community-cta svg { transition: transform 160ms ease; }
+  .pm-community-art { transition: transform 260ms ease; }
+
+  .pm-community-card:hover { transform: translateY(-2px); }
+  .pm-community-card:hover .pm-community-cta svg { transform: translateX(3px); }
+  /* Match the diagonal travel of Frame Minion's film strip, moving the book and pages together. */
+  .pm-community-card:hover .pm-community-art { transform: translate(-4.25px, 4.25px); }
 }
