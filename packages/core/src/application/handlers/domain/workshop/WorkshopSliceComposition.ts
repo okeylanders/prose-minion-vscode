@@ -470,6 +470,16 @@ export class WorkshopSliceComposition {
     return this.projectMemoryHandler.autoSavesInRoom();
   }
 
+  /** True while a file picked for the next message is still being read (PR #271 F-01). */
+  messageAttachmentReadsPending(): boolean {
+    return this.contextHandler.messageAttachmentReadsPending();
+  }
+
+  /** What the reads ahead of a send came to: the send waits for them before it collects its attachments. */
+  settleMessageAttachmentReads(): ReturnType<WorkshopContextHandler['settleMessageAttachmentReads']> {
+    return this.contextHandler.settleMessageAttachmentReads();
+  }
+
   /** A send's Selected Text (ADR 2026-11-14 D14): staged inside the send's own mutation, or the whole send is refused. */
   stageSelectedTextForSend(payload: Parameters<WorkshopSelectedTextHandler['stageForSend']>[0]) {
     return this.selectedTextHandler.stageForSend(payload);
