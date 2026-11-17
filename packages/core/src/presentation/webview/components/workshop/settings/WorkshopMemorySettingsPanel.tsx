@@ -15,6 +15,11 @@
  * draft: a choice is saved at once through `onSelectSuggestions`, and
  * the selected card is the level the host holds. Its words come from
  * `workshopMemorySuggestionsView`.
+ *
+ * "List at the start of each conversation" (the list size, Round Two item
+ * C) saves at once the same way, through `onSelectListSize`. The selected
+ * card is the size the host's listing carries, and its words come from
+ * `workshopMemoryListSizeView`: it applies from the next conversation.
  */
 
 import * as React from 'react';
@@ -27,6 +32,11 @@ import {
 import type { WorkshopProjectMemoryMode } from '@hooks/domain/workshop/memory/workshopMemoryViewInputs';
 import { workshopMemorySuggestionsView } from '@hooks/domain/workshop/memory/workshopMemorySuggestionsView';
 import type { WorkshopMemorySuggestionLevel } from '@shared/constants/workshopMemorySuggestions';
+import { workshopMemoryListSizeView } from '@hooks/domain/workshop/memory/workshopMemoryListSizeView';
+import {
+  DEFAULT_WORKSHOP_PROJECT_MEMORY_LIST_SIZE,
+  type WorkshopProjectMemoryListSize
+} from '@shared/constants/workshopProjectMemoryListSizes';
 import type { WorkshopMemoryFolderStatus } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import { OptionCard, SettingsRule } from './WorkshopConversationSettingsControls';
 
@@ -40,6 +50,12 @@ const SUGGESTION_ICONS: Record<WorkshopMemorySuggestionLevel, IconName> = {
   sparingly: 'bookmark',
   readily: 'plus',
   aggressively: 'bolt'
+};
+
+const LIST_SIZE_ICONS: Record<WorkshopProjectMemoryListSize, IconName> = {
+  standard: 'doc',
+  larger: 'plus',
+  largest: 'bolt'
 };
 
 export interface WorkshopMemorySettingsPanelProps extends WorkshopMemoryTabInput {
@@ -57,6 +73,8 @@ export interface WorkshopMemorySettingsPanelProps extends WorkshopMemoryTabInput
   suggestionsDisabled: boolean;
   /** Saves the level at once; the selected card moves when the host answers. */
   onSelectSuggestions: (level: WorkshopMemorySuggestionLevel) => void;
+  /** Saves the list size at once; the selected card moves when the host's listing says so. Absent draws the row read-only. */
+  onSelectListSize?: (size: WorkshopProjectMemoryListSize) => void;
   onOpenManager: () => void;
   onOpenFolder: () => void;
 }
@@ -71,12 +89,14 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
   suggestions,
   suggestionsDisabled,
   onSelectSuggestions,
+  onSelectListSize,
   onOpenManager,
   onOpenFolder,
   ...input
 }) => {
   const view = workshopMemoryTabView(input);
   const suggest = workshopMemorySuggestionsView({ level: suggestions, mode: input.mode });
+  const listSize = workshopMemoryListSizeView(input.listSize ?? DEFAULT_WORKSHOP_PROJECT_MEMORY_LIST_SIZE);
   const noticeId = React.useId();
   const folderErrorId = React.useId();
   const explainerId = React.useId();
@@ -181,6 +201,26 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
         </div>
       ))}
 
+      <SettingsRule label={listSize.label} />
+      <div className="pm-ws-behavior-cards" role="group" aria-label={listSize.label}>
+        {listSize.cards.map((card) => (
+          <OptionCard
+            key={card.size}
+            selected={card.selected}
+            disabled={suggestionsDisabled || !onSelectListSize}
+            icon={<Icon name={LIST_SIZE_ICONS[card.size]} size={14} />}
+            name={card.name}
+            description={card.description}
+            onClick={() => {
+              if (!card.selected) {
+                onSelectListSize?.(card.size);
+              }
+            }}
+          />
+        ))}
+      </div>
+      {listSize.notes.map((note) => <p key={note} className="pm-ws-behavior-note">{note}</p>)}
+
       <SettingsRule label="Your memories" />
       <div className="pm-ws-behavior-row pm-ws-memory-folder">
         <div className="pm-ws-behavior-row-text">
@@ -247,7 +287,7 @@ const MemoryMeter: React.FC<{ meter: WorkshopMemoryMeterView }> = ({ meter }) =>
     <div
       className="pm-ws-memory-meter"
       role="meter"
-      aria-label={meter.key === 'full' ? 'Loaded in full' : 'Titles and summaries'}
+      aria-label={meter.label}
       aria-valuemin={0}
       aria-valuemax={meter.max}
       aria-valuenow={meter.value}

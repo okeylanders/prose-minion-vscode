@@ -265,7 +265,8 @@ describe('a set past the record\'s bound (PR #198 F-03)', () => {
     const host = libraryHost();
     many(host, 4_096);
     const { say, session } = room(host);
-    expect(await say('Hello.')).toContain('<more count=');
+    // Past the list and the titles, the rest are counted as unlisted (ADR 2026-11-17 D8).
+    expect(await say('Hello.')).toContain('<unlisted count=');
     const atBound = saveAndReopen(session).workshop.turns.flatMap((turn) => turn.projectMemoryDelivery ?? []);
     expect(atBound[0].memories).toHaveLength(4_096);
     expect(atBound[0].digest).toBeUndefined();

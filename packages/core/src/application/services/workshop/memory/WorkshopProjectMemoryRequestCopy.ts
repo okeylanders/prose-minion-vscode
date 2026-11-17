@@ -10,7 +10,7 @@ import type { WorkshopProjectMemoryRequest } from '@shared/types/workshopCapabil
 export function workshopProjectMemoryRequestSummary(request: WorkshopProjectMemoryRequest): string {
   switch (request.capability) {
     case 'memory.catalog':
-      return request.kind ? `${request.kind} notes` : 'project notes';
+      return `${request.kind ? `${request.kind} notes` : 'project notes'}${request.page && request.page > 1 ? `, page ${request.page.toLocaleString('en-US')}` : ''}`;
     case 'memory.search':
       return `“${request.query}”${request.status && request.status !== 'active' ? ` in ${request.status} notes` : ''}`;
     case 'memory.read':
@@ -23,7 +23,7 @@ export function workshopProjectMemoryRequestSummary(request: WorkshopProjectMemo
 export function workshopProjectMemoryRequestLogSummary(request: WorkshopProjectMemoryRequest): string {
   switch (request.capability) {
     case 'memory.catalog':
-      return `kind=${request.kind ?? 'all'}`;
+      return `kind=${request.kind ?? 'all'}; page=${request.page ?? 1}`;
     case 'memory.search':
       return `status=${request.status ?? 'active'}; queryChars=${request.query.length}`;
     case 'memory.read':

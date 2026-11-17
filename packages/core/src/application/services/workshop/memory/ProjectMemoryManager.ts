@@ -12,6 +12,10 @@
  *   unreadable and set-aside files, and each file of a conflict. Open file
  *   resolves a key against a fresh listing; a set-aside copy has none to
  *   open (its row names the standing file beside it).
+ * - **The size the writer chose** (ADR 2026-11-17 D9) comes through the one
+ *   reader the library's frame uses. Every listing carries it and the
+ *   budgets the estimate was held to, so the tab's meters never use a
+ *   constant of their own.
  * - **Search** is the host's (titles, summaries and notes, by recall's term
  *   rules); files needing attention are always shown.
  * - **Logs** carry counts and reasons, never a title, summary, body or path.
@@ -38,6 +42,8 @@ import {
 import { estimateProjectMemoryFrameOf, renderProjectMemoryFrame } from '@/application/services/workshop/memory/ProjectMemoryCatalogFrame';
 import { searchProjectMemories } from '@/application/services/workshop/memory/WorkshopProjectMemorySearch';
 import type { ProjectMemoryPositionsPort } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
+import type { ProjectMemoryListSizeChoice } from '@/application/services/workshop/memory/ProjectMemoryListSize';
+import { DEFAULT_WORKSHOP_PROJECT_MEMORY_LIST_SIZE, WORKSHOP_PROJECT_MEMORY_LIST_SIZES } from '@shared/constants/workshopProjectMemoryListSizes';
 
 /** The store's methods the manager reads; satisfied by ProjectMemoryStore. */
 export type ProjectMemoryManagerStorePort = Pick<ProjectMemoryStore, 'availability' | 'list' | 'ensureFolder'>;
@@ -63,12 +69,19 @@ export class ProjectMemoryManager {
     private readonly workspaceReason: () => ProjectMemoryClosedReason | undefined,
     private readonly recall: ProjectMemoryPositionsPort,
     private readonly now: () => Date,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    /** The list size and its budgets, read live; Standard where no reader is given. */
+    private readonly listSize: () => ProjectMemoryListSizeChoice = () => ({
+      size: DEFAULT_WORKSHOP_PROJECT_MEMORY_LIST_SIZE,
+      budgets: WORKSHOP_PROJECT_MEMORY_LIST_SIZES[DEFAULT_WORKSHOP_PROJECT_MEMORY_LIST_SIZE]
+    })
   ) {}
 
   /** The folder, its estimate and every row the query matches. */
   async listing(query: string): Promise<ProjectMemoryManagerListing> {
-    const empty = { saved: 0, memories: [], unreadable: [], conflicts: [] };
+    // One read of the size for the whole listing: the estimate, the residencies and the budgets sent agree.
+    const { size, budgets } = this.listSize();
+    const empty = { saved: 0, memories: [], unreadable: [], conflicts: [], listSize: size, budgets: { ...budgets } };
     const read = await this.read();
     if (read.kind !== 'read') {
       return { ...empty, workspace: read.workspace };
@@ -77,9 +90,10 @@ export class ProjectMemoryManager {
     const fileOf = new Map(listing.memories.map((entry) => [entry.memory.id, entry.fileName]));
     const builtOn = this.now().toISOString().slice(0, 10);
     const set = { memories: listed, unreadable: listing.unreadable.length, conflicts: listing.conflicts.length };
-    const frame = renderProjectMemoryFrame(set, { builtOn });
+    const frame = renderProjectMemoryFrame(set, { builtOn, budgets });
     const loaded = new Set(frame?.pinnedLoaded ?? []);
     const entries = new Set(frame?.entries ?? []);
+    const titled = new Set(frame?.titles ?? []);
     const matched = query.trim().length === 0
       ? listed
       : searchProjectMemories(listed, query, 'all', { hits: listed.length, snippetCharacters: 1 }).hits.map((hit) => hit.listed);
@@ -91,7 +105,9 @@ export class ProjectMemoryManager {
     }
     const memories = matched.map((item): WorkshopMemoryManagerEntry => {
       const inEffect = isProjectMemoryInEffect(item);
-      const residency: WorkshopMemoryResidency = loaded.has(item.memory.id) ? 'full' : entries.has(item.memory.id) ? 'listed' : 'searchable';
+      const residency: WorkshopMemoryResidency = loaded.has(item.memory.id) ? 'full'
+        : entries.has(item.memory.id) ? 'listed'
+          : titled.has(item.memory.id) ? 'titled' : 'searchable';
       const memory = item.memory;
       return {
         entryKey: projectMemoryEntryKey('memory', path.join(directory, fileOf.get(memory.id) ?? '')),
@@ -117,7 +133,9 @@ export class ProjectMemoryManager {
     return {
       workspace: { kind: 'available' },
       saved: listed.length,
-      estimate: frame?.estimate ?? estimateProjectMemoryFrameOf(set, { builtOn }),
+      listSize: size,
+      budgets: { ...budgets },
+      estimate: frame?.estimate ?? estimateProjectMemoryFrameOf(set, { builtOn, budgets }),
       memories,
       unreadable: listing.unreadable.map((file) => ({
         entryKey: projectMemoryEntryKey(file.reason === 'set-aside' ? 'set-aside' : 'file', path.join(directory, file.fileName)),

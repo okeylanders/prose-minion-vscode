@@ -1187,6 +1187,7 @@ const WORKSHOP_MEMORY_MODULES = [
   'ProjectMemoryDeliveredView.ts',
   'ProjectMemoryLibrary.ts',
   'ProjectMemoryLibraryContracts.ts',
+  'ProjectMemoryListSize.ts',
   'ProjectMemoryManager.ts',
   'ProjectMemoryPinnedBudget.ts',
   'ProjectMemoryUpdateNote.ts',
@@ -1228,6 +1229,8 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopAnalysisSidePass.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityXmlCodec.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityXmlDocument.ts'),
+  // ADR 2026-11-17 D10: the shared `<page>` parser, neutral of every family.
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityPaging.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityResultLog.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopTranscriptRecallXmlCodec.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopPersonaCapability.ts'),

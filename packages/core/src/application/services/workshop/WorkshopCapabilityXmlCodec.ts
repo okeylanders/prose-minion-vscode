@@ -84,7 +84,9 @@ export type WorkshopCapabilityRejectionReason =
   | 'invalid-kind'
   | 'invalid-memory-id'
   | 'too-many-memories'
-  | 'duplicate-memory';
+  | 'duplicate-memory'
+  // A listing's `<page>` (ADR 2026-11-17 D10; WorkshopCapabilityPaging).
+  | 'invalid-page';
 
 export type WorkshopCapabilityInspection =
   | { readonly kind: 'none' }

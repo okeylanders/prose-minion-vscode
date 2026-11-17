@@ -183,6 +183,13 @@ export interface ProjectMemoryFrameEstimate {
   readonly pinnedLoadedTokens: number;
   /** The list entries the frame showed (Slice 4b's "25 of 37 fit"). */
   readonly catalogEntries: number;
+  /** The titles-only tier (ADR 2026-11-17 D8): its tokens, and the notes it showed. */
+  readonly titleTokens: number;
+  readonly titleEntries: number;
+  /** Notes in effect that no tier shows: what `<unlisted>` counts. */
+  readonly unlisted: number;
+  /** Superseded and archived notes: what `<more>` counts. */
+  readonly retired: number;
 }
 
 export type ProjectMemoryFrameEstimateResult =

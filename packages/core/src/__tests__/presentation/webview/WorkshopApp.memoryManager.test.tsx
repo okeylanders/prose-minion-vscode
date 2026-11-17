@@ -87,7 +87,7 @@ const ENTRY = {
   status: 'active', pinned: false, created: '2026-11-01T10:00:00Z', updated: '2026-11-03T10:00:00Z', origin: 'writer',
   source: { kind: 'none' }, superseded: false, supersededBy: [], busy: false, fullLoad: null, residency: 'listed'
 };
-const ESTIMATE = { memories: 1, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 40, frameTokens: 90, pinnedLoadedTokens: 0, catalogEntries: 1 };
+const ESTIMATE = { memories: 1, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 40, frameTokens: 90, pinnedLoadedTokens: 0, catalogEntries: 1, titleTokens: 0, titleEntries: 0, unlisted: 0, retired: 0 };
 
 describe('WorkshopApp · the Memory tab and the manager (Slice 4b)', () => {
   let vscode: ReturnType<typeof createMockVSCode>;

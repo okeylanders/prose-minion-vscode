@@ -200,6 +200,8 @@ export enum MessageType {
   // Workshop Project Memory: the manager (epic Slice 4b)
   WORKSHOP_MEMORY_LIST = 'workshop_memory_list',
   WORKSHOP_MEMORY_LISTING = 'workshop_memory_listing',
+  // The start-of-conversation list size changed (ADR 2026-11-17 D9): the tab asks for its listing again
+  WORKSHOP_MEMORY_LIST_SIZE_SETTING = 'workshop_memory_list_size_setting',
   WORKSHOP_MEMORY_MANAGER_ACTION = 'workshop_memory_manager_action',
   WORKSHOP_MEMORY_MANAGER_RESULT = 'workshop_memory_manager_result',
   // Workshop Pinned Context: the settings tab (epic Slice 3)

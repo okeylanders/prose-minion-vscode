@@ -129,6 +129,25 @@ export interface PromptBudgets {
     editReplaces: number;
     /** Open-room turns one suggestion may cite (Bookmark Recall D10): with its reply and the writer's message, within `sourceTurns`. */
     citedTurns: number;
+    /**
+     * The start-of-conversation list at each size the writer may choose
+     * (ADR 2026-11-17 D9): the titles-and-summaries tier's tokens and entry
+     * cap, and the titles-only tier's tokens. `standard` is `catalogTokens`
+     * and `catalogEntries` above. `pinnedTokens` is the same at every size.
+     */
+    listSizes: Readonly<Record<'standard' | 'larger' | 'largest', Readonly<{
+      catalogTokens: number;
+      catalogEntries: number;
+      titleTokens: number;
+    }>>>;
+  }>;
+  /**
+   * A capability's `<page>` field (ADR 2026-11-17 D10): at most this many
+   * decimal digits. There is no highest page; the bound only keeps the
+   * field syntactic, and no listing the host can hold reaches it.
+   */
+  readonly workshopCapabilityPaging: Readonly<{
+    pageDigits: number;
   }>;
   /**
    * Workshop message reactions (ADR 2026-11-07 D9). `perSession` is the
@@ -614,6 +633,8 @@ export interface PromptBudgets {
 }
 
 const PERSONA_EXCERPT = { words: 25_000, characters: 300_000 };
+// Standard's list is the list as it has always been; `memory.catalog` pages by the same entry count.
+const MEMORY_CATALOG = { catalogEntries: 40, catalogTokens: 2_000 };
 // Raised to 100k for long-form Workshop rooms (Okey 2026-10-03).
 // A configurable ceiling is tracked in the context-attachment-budget-setting debt note.
 const CONTEXT_ATTACHMENTS = { words: 100_000, characters: 840_000, fileBytes: 5 * 1024 * 1024 };
@@ -684,8 +705,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     titleCharacters: 120,
     summaryCharacters: 280,
     bodyCharacters: 8_000,
-    catalogEntries: 40,
-    catalogTokens: 2_000,
+    ...MEMORY_CATALOG,
     pinnedTokens: 5_000,
     queryCharacters: 200,
     memoryIdCharacters: 16,
@@ -697,8 +717,15 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     autoSavesPerRoom: 5,
     proposalsPerReply: 10,
     editReplaces: 5,
-    citedTurns: 30
+    citedTurns: 30,
+    // The entry caps past Standard are the orchestrator's default (ADR 2026-11-17 Q1, open).
+    listSizes: {
+      standard: { ...MEMORY_CATALOG, titleTokens: 2_000 },
+      larger: { catalogTokens: 5_000, catalogEntries: 100, titleTokens: 3_000 },
+      largest: { catalogTokens: 10_000, catalogEntries: 200, titleTokens: 4_000 }
+    }
   },
+  workshopCapabilityPaging: { pageDigits: 9 },
   workshopReactions: {
     // Generous: 19 writer reactions on each of a few hundred replies, plus the personas'.
     perSession: 5_000,

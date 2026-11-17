@@ -24,9 +24,10 @@
 import type { MessageEnvelope, MessageType } from '../base';
 import type { ProjectMemoryKind, ProjectMemoryOrigin, ProjectMemoryStatus } from '@shared/types/projectMemory';
 import type { WorkshopMemoryPinnedEstimate } from './projectMemory';
+import type { WorkshopProjectMemoryListSize } from '@shared/constants/workshopProjectMemoryListSizes';
 
 /** Where the frame builder put a memory in effect: its body whole, a list entry, or neither (PR #199 F-02). */
-export type WorkshopMemoryResidency = 'full' | 'listed' | 'searchable';
+export type WorkshopMemoryResidency = 'full' | 'listed' | 'titled' | 'searchable';
 
 /** Where a memory came from, as the host resolved it now (D3). */
 export type WorkshopMemoryManagerSource =
@@ -84,6 +85,21 @@ export interface WorkshopMemoryManagerEstimate {
   readonly frameTokens: number;
   readonly pinnedLoadedTokens: number;
   readonly catalogEntries: number;
+  /** The titles-only tier (ADR 2026-11-17 D8): its tokens, and the notes it showed. */
+  readonly titleTokens: number;
+  readonly titleEntries: number;
+  /** Notes in effect that no tier shows. */
+  readonly unlisted: number;
+  /** Superseded and archived notes. */
+  readonly retired: number;
+}
+
+/** The budgets an estimate was held to: the chosen list size's row (ADR 2026-11-17 D9, D12). */
+export interface WorkshopMemoryManagerBudgets {
+  readonly pinnedTokens: number;
+  readonly catalogTokens: number;
+  readonly catalogEntries: number;
+  readonly titleTokens: number;
 }
 
 /** Whether this workspace holds memory now, and why not (D8, D10). `unknown`: the folder couldn't be listed. */
@@ -109,6 +125,12 @@ export interface WorkshopMemoryListingPayload {
   saved: number;
   /** The frame's size; absent when the workspace holds no memory. */
   estimate?: WorkshopMemoryManagerEstimate;
+  /**
+   * The list size the writer chose (`proseMinion.workshop.memory.listSize`) and the budgets this
+   * listing's estimate was held to. The host always sends both; absent reads as Standard.
+   */
+  listSize?: WorkshopProjectMemoryListSize;
+  budgets?: WorkshopMemoryManagerBudgets;
   /** The rows the query matched (every row for an empty query). */
   memories: WorkshopMemoryManagerEntry[];
   unreadable: WorkshopMemoryManagerUnreadable[];
@@ -117,6 +139,18 @@ export interface WorkshopMemoryListingPayload {
 
 export interface WorkshopMemoryListingMessage extends MessageEnvelope<WorkshopMemoryListingPayload> {
   type: MessageType.WORKSHOP_MEMORY_LISTING;
+}
+
+/**
+ * The list size changed (in the tab or in VS Code Settings): pushed by the settings watcher, so a visible
+ * tab asks for the listing again. It applies from the next conversation; nothing in the room is rebuilt.
+ */
+export interface WorkshopMemoryListSizeSettingPayload {
+  size: WorkshopProjectMemoryListSize;
+}
+
+export interface WorkshopMemoryListSizeSettingMessage extends MessageEnvelope<WorkshopMemoryListSizeSettingPayload> {
+  type: MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING;
 }
 
 /** The manager's own actions: mutations by `mem-` id, a file by its `entryKey`. */

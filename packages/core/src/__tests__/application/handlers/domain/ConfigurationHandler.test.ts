@@ -111,6 +111,25 @@ describe('ConfigurationHandler', () => {
     }
   );
 
+  it.each(['standard', 'larger', 'largest', 'Largest', 'huge', '', 3, true, null])(
+    'saves the Workshop\'s memory list size only from its closed list (%s)',
+    async value => {
+      const update = jest.fn().mockResolvedValue(undefined);
+      const postMessage = jest.fn();
+      const built = new ConfigurationHandler({} as never, {} as never, {} as never, {} as never, {} as never, {} as never,
+        { update } as never, {} as never, postMessage, { appendLine: jest.fn() } as never);
+      await built.handleUpdateSetting({ type: MessageType.UPDATE_SETTING, source: 'webview', timestamp: 0,
+        payload: { key: 'workshop.memory.listSize', value } } as never);
+      if (value === 'standard' || value === 'larger' || value === 'largest') {
+        expect(update).toHaveBeenCalledWith('proseMinion', 'workshop.memory.listSize', value);
+        expect(postMessage).not.toHaveBeenCalled();
+      } else {
+        expect(update).not.toHaveBeenCalled();
+        expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: MessageType.ERROR }));
+      }
+    }
+  );
+
   it('still refuses a Workshop setting it does not own', async () => {
     const update = jest.fn().mockResolvedValue(undefined);
     const postMessage = jest.fn();

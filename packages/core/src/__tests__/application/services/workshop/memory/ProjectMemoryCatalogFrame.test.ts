@@ -34,9 +34,11 @@ describe('the catalog frame', () => {
     expect(ids(frame.text)).toEqual([
       'pinned:mem-0000aa', 'entry:mem-000002', 'entry:mem-000003', 'entry:mem-000001', 'entry:mem-0000dd'
     ]);
-    // The archived and the superseded memory are counted, never shown.
+    // The archived and the superseded memory are counted, never shown, and said to be out of effect.
     expect(frame.more).toBe(2);
-    expect(frame.text).toContain('<more count="2">');
+    expect(frame.text).toContain('  <more count="2">Superseded or archived notes, not in effect: memory.search with status all.</more>');
+    expect(frame.text).not.toContain('<unlisted');
+    expect(frame.text).not.toContain('<title-only');
     expect(frame.text).toMatch(/^<project-memory note="Saved project notes: [^"]+" built="2026-11-04">\n/);
     expect(frame.text.endsWith('\n</project-memory>')).toBe(true);
     expect(frame.text).toContain('<pinned id="mem-0000aa" kind="preference" updated="2026-11-03" title="Pinned">Structure before line edits.</pinned>');
@@ -62,18 +64,20 @@ describe('the catalog frame', () => {
     expect(frame.text).toContain('title="x&quot; injected=&quot;y"');
   });
 
-  it('stops at catalogEntries and at catalogTokens, and counts what did not fit', () => {
+  it('stops the entries at catalogEntries and at catalogTokens; with no room for titles, the rest are counted as unlisted', () => {
     const many = Array.from({ length: 12 }, (_, index) =>
       writerMemory({ id: `mem-${index.toString(16).padStart(6, '0')}`, updated: `2026-11-${String(index + 1).padStart(2, '0')}T00:00:00Z` }));
-    const byEntries = renderProjectMemoryFrame(set(...many), { ...BUILT, budgets: { pinnedTokens: 5_000, catalogTokens: 2_000, catalogEntries: 5 } })!;
+    const byEntries = renderProjectMemoryFrame(set(...many), { ...BUILT, budgets: { pinnedTokens: 5_000, catalogTokens: 2_000, catalogEntries: 5, titleTokens: 0 } })!;
     expect(byEntries.entries).toHaveLength(5);
     expect(byEntries.entries[0]).toBe('mem-00000b');
-    expect(byEntries.more).toBe(7);
+    expect([byEntries.titles, byEntries.unlisted, byEntries.more]).toEqual([[], 7, 0]);
+    expect(byEntries.text).toContain('  <unlisted count="7">More notes in effect, older: memory.catalog pages through them.</unlisted>');
+    expect(byEntries.text).not.toContain('<more');
 
     const oneLine = estimateTextTokens(`<entry id="mem-00000b" kind="canon" updated="2026-11-12">${many[0].title}: ${many[0].summary}</entry>`);
-    const byTokens = renderProjectMemoryFrame(set(...many), { ...BUILT, budgets: { pinnedTokens: 5_000, catalogTokens: oneLine * 3, catalogEntries: 40 } })!;
+    const byTokens = renderProjectMemoryFrame(set(...many), { ...BUILT, budgets: { pinnedTokens: 5_000, catalogTokens: oneLine * 3, catalogEntries: 40, titleTokens: 0 } })!;
     expect(byTokens.entries).toHaveLength(3);
-    expect(byTokens.more).toBe(9);
+    expect(byTokens.unlisted).toBe(9);
     expect(byTokens.estimate.catalogTokens).toBeLessThanOrEqual(oneLine * 3);
   });
 
@@ -92,11 +96,13 @@ describe('the catalog frame', () => {
   });
 
   it('carries no reserved frame a writer could have quoted: the frame names are reserved for neutralizing', () => {
-    for (const tag of ['<project-memory note="x">', '</project-memory>', '<project-memory-update>', '<pinned id="x">', '<entry>', '<more count="3">', '<gone id="x">', '<prose-minion-memory-proposal>']) {
+    for (const tag of ['<project-memory note="x">', '</project-memory>', '<project-memory-update>', '<pinned id="x">', '<entry>', '<more count="3">', '<gone id="x">', '<prose-minion-memory-proposal>',
+      '<title-only id="x" kind="idea">', '</title-only>', '<unlisted count="3">', '</unlisted>']) {
       expect(neutralizeReservedPersonaPromptDelimiters(`Quoted: ${tag}`)).not.toContain(tag);
     }
     // Neighbouring names stay plain prose.
-    expect(neutralizeReservedPersonaPromptDelimiters('<entryway> and <pinned-note>')).toBe('<entryway> and <pinned-note>');
+    expect(neutralizeReservedPersonaPromptDelimiters('<entryway> and <pinned-note> and <title-onlyish> and <unlistedness>'))
+      .toBe('<entryway> and <pinned-note> and <title-onlyish> and <unlistedness>');
   });
 });
 
@@ -153,7 +159,7 @@ describe('pinned overflow (ADR 2026-11-04 D5, PR #192 F-04)', () => {
   it('estimates an empty folder as nothing', () => {
     expect(estimateProjectMemoryFrameOf(set(), BUILT)).toEqual({
       memories: 0, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 0, frameTokens: 0,
-      pinnedLoadedTokens: 0, catalogEntries: 0
+      pinnedLoadedTokens: 0, catalogEntries: 0, titleTokens: 0, titleEntries: 0, unlisted: 0, retired: 0
     });
   });
 });

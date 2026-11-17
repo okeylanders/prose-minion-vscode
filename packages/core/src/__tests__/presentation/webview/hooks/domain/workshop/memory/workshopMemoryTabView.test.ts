@@ -8,7 +8,8 @@
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { workshopMemoryTabView, type WorkshopMemoryTabInput } from '@hooks/domain/workshop/memory/workshopMemoryTabView';
 import { WORKSHOP_MEMORY_BUDGETS } from '@hooks/domain/workshop/memory/workshopMemoryViewInputs';
-import { FULL_OVER, IN_BUDGET, LIST_OVER } from './workshopMemoryFixtures';
+import { FULL_OVER, IN_BUDGET, LIST_OVER, TITLES_OVER } from './workshopMemoryFixtures';
+import { WORKSHOP_PROJECT_MEMORY_LIST_SIZES } from '@shared/constants/workshopProjectMemoryListSizes';
 
 const AVAILABLE = { kind: 'available' } as const;
 
@@ -36,17 +37,19 @@ describe('workshopMemoryTabView', () => {
   });
 
   it('reads the well’s sizes from the budgets, never literals', () => {
+    // Before the host answers, the views state Standard's row.
     expect(WORKSHOP_MEMORY_BUDGETS).toEqual({
       pinnedTokens: PROMPT_BUDGETS.workshopProjectMemory.pinnedTokens,
       catalogTokens: PROMPT_BUDGETS.workshopProjectMemory.catalogTokens,
+      titleTokens: WORKSHOP_PROJECT_MEMORY_LIST_SIZES.standard.titleTokens,
       contextWords: PROMPT_BUDGETS.contextAttachments.words
     });
     expect(tab().well).toEqual({
-      memorySize: 'Kept small: about 7,000 tokens in all',
+      memorySize: 'Kept small: up to 9,000 tokens in all',
       contextSize: 'Much larger: up to 100,000 words'
     });
-    expect(tab({ budgets: { pinnedTokens: 3_000, catalogTokens: 1_000, contextWords: 50_000 } }).well).toEqual({
-      memorySize: 'Kept small: about 4,000 tokens in all',
+    expect(tab({ budgets: { pinnedTokens: 3_000, catalogTokens: 1_000, titleTokens: 500, contextWords: 50_000 } }).well).toEqual({
+      memorySize: 'Kept small: up to 4,500 tokens in all',
       contextSize: 'Much larger: up to 50,000 words'
     });
   });
@@ -89,16 +92,57 @@ describe('workshopMemoryTabView', () => {
     expect(tab({ mode: 'auto', saved: 0 }).load.description).toBe('Personas save what’s worth keeping as you work. You can also say “remember that…”, or choose Save to memory… on any message.');
   });
 
-  it('the list over its budget: amber and full, and how many more are searchable', () => {
+  it('the list over its budget: amber and full, and the rest shown by title, with a third meter', () => {
     const { load } = tab({ estimate: LIST_OVER, saved: 40 });
     expect(load.name).toBe('Memories loaded in full first, then the most recent');
-    expect(load.description).toBe('Each persona sees the title and summary of the memories that fit, and the 3 set to load in full. Choose Always load in full for the ones every conversation needs.');
+    expect(load.description).toBe('Each persona sees the title and summary of the memories that fit, and the 3 set to load in full, and the title of every other. Choose Always load in full for the ones every conversation needs.');
     expect(load.chips.map((chip) => chip.text)).toEqual(['40 memories', '3 in full', '≈ 4,400 tokens']);
-    expect(load.meters.map((meter) => [meter.left, meter.right, meter.full, meter.percent])).toEqual([
-      ['Loaded in full · 3', 'about 2,400 of 5,000 tokens', false, 48],
-      ['Titles and summaries · 25 of 37 fit', 'about 2,000 of 2,000 tokens', true, 100]
+    expect(load.meters.map((meter) => [meter.key, meter.left, meter.right, meter.full, meter.percent])).toEqual([
+      ['full', 'Loaded in full · 3', 'about 2,400 of 5,000 tokens', false, 48],
+      ['list', 'Titles and summaries · 25 of 37 fit', 'about 2,000 of 2,000 tokens', true, 100],
+      ['titles', 'Titles only · all 12 fit', 'about 310 of 2,000 tokens', false, 16]
     ]);
-    expect(load.more).toEqual(['12 more are searchable. Personas find them with memory search when the conversation needs them.']);
+    expect(load.meters.map((meter) => meter.label)).toEqual(['Loaded in full', 'Titles and summaries', 'Titles only']);
+    expect(load.meters[2]).toMatchObject({ value: 312, max: 2_000, valueText: 'Titles only: all 12 fit, about 310 of 2,000 tokens' });
+    // Every note in effect is shown in some form, so nothing is searchable only.
+    expect(load.more).toEqual([]);
+  });
+
+  it('the titles tier over its budget too: amber, and the "searchable" line counts the notes no tier shows', () => {
+    const { load } = tab({ estimate: TITLES_OVER, saved: 40 });
+    expect(load.description).toBe('Each persona sees the title and summary of the memories that fit, and the 3 set to load in full, and the titles of as many more as fit. Choose Always load in full for the ones every conversation needs.');
+    expect(load.meters[2]).toMatchObject({ key: 'titles', left: 'Titles only · 8 of 12 fit', right: 'about 2,000 of 2,000 tokens', full: true, percent: 100 });
+    expect(load.more).toEqual(['4 more are searchable. Personas find them with memory search when the conversation needs them.']);
+  });
+
+  it('draws no titles meter while the list holds every note', () => {
+    expect(tab().load.meters.map((meter) => meter.key)).toEqual(['full', 'list']);
+    expect(tab({ estimate: FULL_OVER }).load.meters.map((meter) => meter.key)).toEqual(['full', 'list']);
+  });
+
+  it('reads every budget from the listing: the meters state the chosen size\'s row, never a constant of their own', () => {
+    for (const [size, row] of Object.entries(WORKSHOP_PROJECT_MEMORY_LIST_SIZES)) {
+      const { load, well } = tab({ estimate: TITLES_OVER, saved: 40, budgets: { ...row, contextWords: 100_000 } });
+      const number = (value: number) => value.toLocaleString('en-US');
+      expect([size, load.meters.map((meter) => meter.max)]).toEqual([size, [row.pinnedTokens, row.catalogTokens, row.titleTokens]]);
+      expect(load.meters[1].right).toContain(`of ${number(row.catalogTokens)} tokens`);
+      expect(load.meters[2].right).toContain(`of ${number(row.titleTokens)} tokens`);
+      expect(well.memorySize).toBe(`Kept small: up to ${number(row.pinnedTokens + row.catalogTokens + row.titleTokens)} tokens in all`);
+    }
+  });
+
+  it('a memory set to load in full that fits neither whole nor in the list is said to load by its title', () => {
+    const over = { ...FULL_OVER, pinned: 6, catalogEntries: 1, titleEntries: 8, unlisted: 0 };
+    expect(tab({ estimate: over }).load.more[0]).toBe(
+      '3 memories set to load in full don’t fit: 1 loads as a list entry, and 2 load by their titles only. Turn off Always load in full on one in Manage memories… to make room.'
+    );
+    expect(tab({ estimate: { ...over, catalogEntries: 0 } }).load.more[0]).toBe(
+      '3 memories set to load in full don’t fit, and the list is full too, so they load by their titles only. Turn off Always load in full on one in Manage memories… to make room.'
+    );
+    expect(tab({ estimate: { ...over, titleEntries: 1, unlisted: 7 } }).load.more).toEqual([
+      '3 memories set to load in full don’t fit: 1 loads as a list entry, 1 loads by its title only, and 1 is searchable only. Turn off Always load in full on one in Manage memories… to make room.',
+      '6 more are searchable. Personas find them with memory search when the conversation needs them.'
+    ]);
   });
 
   it('set to load in full, over its budget: set apart from loaded, loaded within the budget, the start total the whole frame', () => {
@@ -127,7 +171,7 @@ describe('workshopMemoryTabView', () => {
   });
 
   it('both budgets past: both amber lines, and the description doesn’t claim every memory', () => {
-    const { load } = tab({ estimate: { ...FULL_OVER, catalogEntries: 5 } });
+    const { load } = tab({ estimate: { ...FULL_OVER, catalogEntries: 5, unlisted: 4 } });
     expect(load.description).toBe('Each persona sees the 3 of them that fit in full, and the title and summary of the others that fit.');
     expect(load.more).toHaveLength(2);
     expect(load.more[1]).toBe('4 more are searchable. Personas find them with memory search when the conversation needs them.');
@@ -206,7 +250,7 @@ describe('workshopMemoryTabView', () => {
   });
 
   it('never says pin', () => {
-    const states = [tab(), tab({ estimate: FULL_OVER }), tab({ estimate: LIST_OVER }), tab({ mode: 'off' })];
+    const states = [tab(), tab({ estimate: FULL_OVER }), tab({ estimate: LIST_OVER }), tab({ estimate: TITLES_OVER }), tab({ mode: 'off' })];
     expect(JSON.stringify(states)).not.toMatch(/\bpin/i);
   });
 });

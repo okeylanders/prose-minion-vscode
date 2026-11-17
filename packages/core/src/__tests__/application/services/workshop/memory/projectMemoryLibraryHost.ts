@@ -53,6 +53,8 @@ export interface LibraryHostOptions {
   scope?: WorkshopRecallScope;
   positions?: (sessionId: string, turnIds: readonly string[]) => WorkshopRecallPositions;
   now?: string;
+  /** `proseMinion.workshop.memory.listSize` as the settings hold it; unset by default (Standard). */
+  listSize?: unknown;
   /** Another window's file system, to share its folder (Slice 3's two-window test). */
   fileSystem?: MemoryFileSystem;
 }
@@ -63,6 +65,7 @@ export function libraryHost(options: LibraryHostOptions = {}) {
   const log = { appendLine: (line: string) => { lines.push(line); }, show: jest.fn(), clear: jest.fn() } as unknown as LogSink;
   const state = {
     mode: options.mode === undefined ? 'ask' : options.mode,
+    listSize: options.listSize,
     folders: options.folders ?? [{ path: ROOT, name: 'workspace' }],
     scope: options.scope ?? ({ available: true, liveSessionId: LIVE_SESSION } as WorkshopRecallScope)
   };
@@ -70,7 +73,9 @@ export function libraryHost(options: LibraryHostOptions = {}) {
   const store = new ProjectMemoryStore(fileSystem, workspace, log, { now: () => new Date('2026-11-04T09:30:00Z') });
   const settings: SettingsStore = {
     get: ((section: string, key: string) =>
-      section === 'proseMinion' && key === 'workshop.projectMemory' ? state.mode : undefined) as SettingsStore['get'],
+      section !== 'proseMinion' ? undefined
+        : key === 'workshop.projectMemory' ? state.mode
+          : key === 'workshop.memory.listSize' ? state.listSize : undefined) as SettingsStore['get'],
     update: jest.fn(async () => undefined)
   };
   const positionsOf = jest.fn(async (sessionId: string, turnIds: readonly string[]): Promise<WorkshopRecallPositions> =>
@@ -87,7 +92,9 @@ export function libraryHost(options: LibraryHostOptions = {}) {
   const putText = (fileName: string, text: string): void => {
     fileSystem.files.set(path.join(MEMORY, fileName), new TextEncoder().encode(text));
   };
-  return { fileSystem, store, library, settings, state, lines, log, positionsOf, put, putText };
+  /** Change the list size as an edit in the tab or in VS Code Settings would. */
+  const setListSize = (size: unknown): void => { state.listSize = size; };
+  return { fileSystem, store, library, settings, state, lines, log, positionsOf, put, putText, setListSize };
 }
 
 /** Every log line the host wrote, joined: what a sentinel must never appear in. */

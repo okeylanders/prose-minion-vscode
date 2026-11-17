@@ -43,6 +43,7 @@ import {
   renderProjectMemoryFrame,
   type ProjectMemoryRenderedFrame
 } from '@/application/services/workshop/memory/ProjectMemoryCatalogFrame';
+import { projectMemoryListSizeChoice } from '@/application/services/workshop/memory/ProjectMemoryListSize';
 import {
   listProjectMemories,
   projectMemoryInEffectSuccessors,
@@ -147,7 +148,7 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
   ) {
     this.now = options.now ?? (() => new Date());
     this.writes = new ProjectMemoryWrites(store, () => this.workspaceReason(), () => this.workspaceIdentity(), this.now, outputChannel);
-    this.manager = new ProjectMemoryManager(store, () => this.workspaceReason(), recall, this.now, outputChannel);
+    this.manager = new ProjectMemoryManager(store, () => this.workspaceReason(), recall, this.now, outputChannel, () => projectMemoryListSizeChoice(settings));
   }
 
   /** The manager's own writes (Slice 4b): Always load in full, budget-checked, and Delete. */
@@ -340,13 +341,15 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
       this.log(`frame not sent reason=${set.kind === 'closed' ? set.reason : 'unknown'}`);
       return set;
     }
-    const frame = renderProjectMemoryFrame(set, { builtOn: this.now().toISOString().slice(0, 10) });
+    // The list size is read here, once per conversation: a later change waits for the next one (ADR 2026-11-17 D9).
+    const { size, budgets } = projectMemoryListSizeChoice(this.settings);
+    const frame = renderProjectMemoryFrame(set, { builtOn: this.now().toISOString().slice(0, 10), budgets });
     const snapshot = projectMemorySnapshot(set);
     if (!frame) {
       return { kind: 'empty', snapshot };
     }
-    this.log(`frame pinned=${frame.pinnedLoaded.length} entries=${frame.entries.length} more=${frame.more} ` +
-      `tokens=${frame.estimate.frameTokens} pinnedOver=${frame.estimate.pinnedOver}`);
+    this.log(`frame size=${size} pinned=${frame.pinnedLoaded.length} entries=${frame.entries.length} titles=${frame.titles.length} ` +
+      `unlisted=${frame.unlisted} more=${frame.more} tokens=${frame.estimate.frameTokens} pinnedOver=${frame.estimate.pinnedOver}`);
     return { kind: 'frame', frame, snapshot };
   }
 
@@ -381,7 +384,8 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
     if (set.kind !== 'set') {
       return set;
     }
-    return { kind: 'estimate', ...estimateProjectMemoryFrameOf(set, { builtOn: this.now().toISOString().slice(0, 10) }) };
+    const { budgets } = projectMemoryListSizeChoice(this.settings);
+    return { kind: 'estimate', ...estimateProjectMemoryFrameOf(set, { builtOn: this.now().toISOString().slice(0, 10), budgets }) };
   }
 
   private async provenance(memory: { sourceSession?: string; sourceTurns: readonly string[] }, signal?: AbortSignal): Promise<ProjectMemoryProvenance> {

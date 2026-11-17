@@ -56,6 +56,8 @@ import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
 import { WorkshopRoomHandler } from './domain/workshop/WorkshopRoomHandler';
 import { workshopMemoryDraftsSettingMessage } from './domain/workshop/WorkshopMemoryDraftHandler';
+import { workshopMemoryListSizeSettingMessage } from './domain/workshop/WorkshopProjectMemoryManagerHandler';
+import { WORKSHOP_MEMORY_LIST_SIZE_SETTING } from '@shared/constants/workshopProjectMemoryListSizes';
 import { LightboxHandler } from './domain/LightboxHandler';
 import { workshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
 import { LightboxReadingHandler } from './domain/LightboxReadingHandler';
@@ -743,6 +745,10 @@ export class MessageHandler {
     // The helper's memory drafts (ADR 2026-11-05 D5.7): the sheet hears the switch, and off asks for nothing.
     if (affects(`${WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING.section}.${WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING.key}`)) {
       void this.postMessage(workshopMemoryDraftsSettingMessage(this.platform.settings));
+    }
+    // The start-of-conversation list size (ADR 2026-11-17 D9): the tab hears it; no prompt or frame is rebuilt.
+    if (affects(`${WORKSHOP_MEMORY_LIST_SIZE_SETTING.section}.${WORKSHOP_MEMORY_LIST_SIZE_SETTING.key}`)) {
+      void this.postMessage(workshopMemoryListSizeSettingMessage(this.platform.settings));
     }
 
     // Only refresh service if model configs changed
