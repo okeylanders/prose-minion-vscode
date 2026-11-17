@@ -31,9 +31,9 @@ decisions live in this README and the ADR.
 | # | Item | Source note | Okey's # | Branch | PR | Status |
 |---|---|---|---|---|---|---|
 | 0 | Spec | (this README and the ADR) | | `epic/everyday-conveniences-round-two-spec` | | Written; waits for review |
-| A1 | A, part 1 | thread-earlier-turns | 22 | `…-hidden-turns-notice` | | Being built |
-| E | E | lexical-gravity-reads-json-without-repair | 13 | `…-lexical-gravity-json-repair` | | Being built |
-| G | G | composer-at-mentions | 14 | `…-composer-at-mentions` | | Being built |
+| A1 | A, part 1 | thread-earlier-turns | 22 | `…-earlier-turns-notice` | #268 | In review |
+| E | E | lexical-gravity-reads-json-without-repair | 13 | `…-lexical-gravity-json` | | Being built |
+| G | G | composer-at-mentions | 14 | `…-at-mentions` | | Being built |
 | B | B | memory-suggestion-level | 8 | `…-memory-suggestion-level` | | After Slice 0 |
 | C | C | memory-title-index | new | `…-memory-title-index` | | After B |
 | D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | | After C |
