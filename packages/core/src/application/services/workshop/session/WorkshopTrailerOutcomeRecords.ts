@@ -28,11 +28,13 @@ import {
 import { arrayOf, exactObject, shapeError } from '@/application/services/workshop/persistedValidation';
 
 /**
- * The most one count holds: the codec's own bound, pinned so a saved
- * session stays valid however the per-reply caps are later tuned (ADR
- * 2026-07-30). The builder holds every count it writes within it.
+ * The most one count holds: the longest an array can be. Every count is a
+ * tally over an array of frames, so no reply can count past it, and the
+ * builder never clips: a count is the number of frames, exactly (D13; PR
+ * #276 F-02). The codec's own bound, pinned so a saved session stays valid
+ * however the per-reply caps are later tuned (ADR 2026-07-30).
  */
-export const WORKSHOP_TRAILER_OUTCOME_LIMITS = Object.freeze({ count: 10_000 });
+export const WORKSHOP_TRAILER_OUTCOME_LIMITS = Object.freeze({ count: 2 ** 32 - 1 });
 
 /** Strict structure of a turn's `trailerOutcomes`; refused on any turn but a host or guest reply. */
 export function assertWorkshopTrailerOutcomesShape(

@@ -12,9 +12,10 @@
  *   order.
  * - **Counts and closed reasons only.** The builder is handed no title,
  *   quote, path, find text or note id, so none can reach the record.
- * - Each count is held within the codec's own bound
- *   (`WORKSHOP_TRAILER_OUTCOME_LIMITS`), so no reply can make a session the
- *   codec would refuse.
+ * - **A count is never clipped** (PR #276 F-02). Each is the number of
+ *   frames, exactly: the line states it as exact. The codec's bound
+ *   (`WORKSHOP_TRAILER_OUTCOME_LIMITS`) is the longest an array can be, so
+ *   no tally here can pass it.
  */
 
 import type { WorkshopFileEditProposal } from '@messages';
@@ -27,7 +28,6 @@ import {
 } from '@shared/types/workshopTrailerOutcomes';
 import type { WorkshopMemoryProposalDrop } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import type { WorkshopFileEditProposalDrop } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
-import { WORKSHOP_TRAILER_OUTCOME_LIMITS } from '@/application/services/workshop/session/WorkshopTrailerOutcomeRecords';
 import {
   workshopFileEditTrailerDropReason,
   workshopMemoryTrailerDropReason
@@ -49,12 +49,12 @@ export interface WorkshopTrailerOutcomesInput {
 export function buildWorkshopTrailerOutcomes(input: WorkshopTrailerOutcomesInput): WorkshopTrailerOutcomes | undefined {
   const refused = input.fileEdits.proposals.filter((proposal) => proposal.state === 'refused').length;
   const memory = {
-    cards: bounded(input.memory.cards),
+    cards: input.memory.cards,
     dropped: tally(input.memory.drops.map(workshopMemoryTrailerDropReason), WORKSHOP_MEMORY_TRAILER_DROP_REASONS)
   };
   const fileEdits = {
-    cards: bounded(input.fileEdits.proposals.length - refused),
-    refused: bounded(refused),
+    cards: input.fileEdits.proposals.length - refused,
+    refused,
     dropped: tally(input.fileEdits.drops.map(workshopFileEditTrailerDropReason), WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS)
   };
   const hasMemory = memory.cards > 0 || memory.dropped.length > 0;
@@ -72,10 +72,6 @@ function tally<Reason extends WorkshopTrailerDropReason>(
 ): WorkshopTrailerDrop<Reason>[] {
   return order.flatMap((reason) => {
     const count = occurred.filter((entry) => entry === reason).length;
-    return count > 0 ? [{ reason, count: bounded(count) }] : [];
+    return count > 0 ? [{ reason, count }] : [];
   });
-}
-
-function bounded(count: number): number {
-  return Math.min(count, WORKSHOP_TRAILER_OUTCOME_LIMITS.count);
 }

@@ -26,6 +26,10 @@ import {
   type WorkshopReplyMemoryContext
 } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import { resolveWorkshopReplyEdits, type WorkshopReplyEditsContext } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
+import {
+  assertWorkshopTrailerOutcomesShape,
+  WORKSHOP_TRAILER_OUTCOME_LIMITS
+} from '@/application/services/workshop/session/WorkshopTrailerOutcomeRecords';
 import { workshopTrailerOutcomesFrameFor } from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerOutcomesFrame';
 import { workshopTrailerDropReason } from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerDropReasons';
 import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
@@ -332,6 +336,22 @@ describe('what became of a reply\'s trailers, recorded and told (ADR 2026-11-17 
       '</workshop-trailer-outcomes>'
     ].join('\n'));
     expectCountsOnly(turn);
+  });
+
+  it('a count is never clipped: 10,001 rejected frames record and read as 10,001 (PR #276 F-02)', () => {
+    const frames = 10_001;
+    const content = `So many.\n\n${'<prose-minion-memory-proposal></prose-minion-memory-proposal>\n'.repeat(frames)}`;
+    const found = extractWorkshopReplyControls(content, { memoryOpen: false, fileEditsOpen: false });
+    expect(found.memory.kind === 'frames' ? found.memory.proposals.length + found.memory.rejections.length : 0).toBe(frames);
+
+    const turn = reply(content);
+    expect(turn.trailerOutcomes).toEqual({ memory: { cards: 0, dropped: [{ reason: 'off', count: frames }] } });
+    expect(nextFrame()).toContain('Your last reply\'s notes: 10001 dropped (not open in this conversation just then).');
+    // The codec holds the exact count: the session saves and reads back as it is.
+    const saved = session.exportCommittedState();
+    expect(() => assertWorkshopTrailerOutcomesShape(turn.trailerOutcomes, 'turn.trailerOutcomes', turn)).not.toThrow();
+    expect(saved.turns.find((entry) => entry.id === turn.id)!.trailerOutcomes!.memory!.dropped[0].count).toBe(frames);
+    expect(WORKSHOP_TRAILER_OUTCOME_LIMITS.count).toBe(2 ** 32 - 1);
   });
 
   it('a saved or dismissed card, and an applied or declined edit, change neither the field nor the line', async () => {
