@@ -1,7 +1,7 @@
 # Feature: Translate a Persona's Native Tool Calls Into the XML Request
 
 **Date Identified:** 2026-11-17
-**Status:** Built on `fix/workshop-empty-response-diagnostics`, in review (2026-11-17). The first fix's retry is kept as the fallback for calls that can't be translated. See **What was built** below; the rules live in `AGENTS.md`, **Workshop Native Tool Calls**.
+**Status:** Shipped in PR #267 (2026-11-17), reviewed and live-tested by Okey with web research on. The first fix's retry is kept as the fallback for calls that can't be translated. See **What was built** below; the rules live in `AGENTS.md`, **Workshop Native Tool Calls**. Left open here only for what the live pass has not yet seen.
 **Priority:** High. With web research on, Sonnet and Opus personas fail capability calls often.
 **Origin:** Okey's reproduction, 2026-11-17
 
