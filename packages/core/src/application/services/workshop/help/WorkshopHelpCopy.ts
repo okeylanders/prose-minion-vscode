@@ -4,12 +4,23 @@ import { WORKSHOP_QUERY_TERMS } from '@/application/services/workshop/WorkshopTe
 /**
  * Every help result's first line: the version the reference describes and,
  * when that is not the installed version, a caveat naming the installed one.
+ * The caveat says only that they differ: either may be the newer.
  */
 export function workshopHelpHeader(referenceVersion: string, installedVersion: string): string {
   const header = `Prose Minion reference, version ${referenceVersion}.`;
   return referenceVersion === installedVersion
     ? header
-    : `${header} You are running ${installedVersion}, so newer features may be missing.`;
+    : `${header} The installed version is ${installedVersion}; these versions differ, so features or controls may not match.`;
+}
+
+/**
+ * A refusal raised before or outside a read names the reference's version only
+ * when a load has read it; otherwise it names the installed version as just that.
+ */
+export function workshopHelpRefusalHeader(referenceVersion: string | undefined, installedVersion: string): string {
+  return referenceVersion === undefined
+    ? `Prose Minion version ${installedVersion}.`
+    : workshopHelpHeader(referenceVersion, installedVersion);
 }
 
 /** The ignored words a search names, as recall bounds its own term lists. */

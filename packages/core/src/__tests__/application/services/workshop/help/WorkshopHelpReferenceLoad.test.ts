@@ -1,7 +1,16 @@
 import * as fs from 'fs';
 import { WorkshopHelpCapability } from '@/application/services/workshop/help/WorkshopHelpCapability';
-import { WorkshopHelpReference, WORKSHOP_HELP_AREAS } from '@/application/services/workshop/help/WorkshopHelpReference';
-import { WORKSHOP_QUERY_TERMS } from '@/application/services/workshop/WorkshopTextSearch';
+import {
+  searchWorkshopHelp,
+  WorkshopHelpReference,
+  WORKSHOP_HELP_AREAS,
+  type WorkshopHelpSection
+} from '@/application/services/workshop/help/WorkshopHelpReference';
+import {
+  normalizeWorkshopText,
+  parseWorkshopQuery,
+  WORKSHOP_QUERY_TERMS
+} from '@/application/services/workshop/WorkshopTextSearch';
 import { bundledHelpReference, helpDirectory, helpVersion } from '@/__tests__/application/services/workshop/help/bundledHelpReference';
 import { createRecallRunHarness, recallCall } from '@/__tests__/application/services/workshop/recall/workshopRecallRunHarness';
 
@@ -16,7 +25,7 @@ describe('loading the help reference', () => {
     const installed = '99.0.0';
     const reference = new WorkshopHelpReference({ readFile: realRead }, helpDirectory, installed, log);
     const capability = new WorkshopHelpCapability(reference, log, turn);
-    const header = `Prose Minion reference, version ${helpVersion}. You are running ${installed}, so newer features may be missing.`;
+    const header = `Prose Minion reference, version ${helpVersion}. The installed version is ${installed}; these versions differ, so features or controls may not match.`;
     const search = await capability.fulfill({ capability: 'help.search', query: 'pin a file' });
     const read = await capability.fulfill({ capability: 'help.read', sections: ['workshop#pinned-context'] });
     for (const result of [search, read]) {
@@ -113,6 +122,30 @@ describe('a help search past the query term limit', () => {
     expect(long.content!.split('\n').filter(entry => entry !== line)).toEqual(eight.content!.split('\n'));
     expect(eight.content).not.toContain('Not searched');
     expect(eight.metadata).not.toHaveProperty('ignoredTerms');
+  });
+
+  it('lets no word past the limit move a section: appending a ninth changes neither the order nor the hits', () => {
+    const eight = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta'];
+    const section = (id: string, body: string): WorkshopHelpSection =>
+      ({ id, heading: id, body, searchText: normalizeWorkshopText(id + '\n' + body) });
+    // Equally matched on the eight terms; only the ninth word's phrase would tell them apart.
+    const index = new Map([
+      ['overview#ends-iota', section('overview#ends-iota', [...eight, 'iota'].join(' '))],
+      ['overview#ends-kappa', section('overview#ends-kappa', [...eight, 'kappa'].join(' '))]
+    ]);
+    const order = (query: string) => searchWorkshopHelp(index, query).hits.map(hit => hit.id);
+    const without = searchWorkshopHelp(index, eight.join(' '));
+    const appended = searchWorkshopHelp(index, [...eight, 'kappa'].join(' '));
+    expect(order(eight.join(' '))).toEqual(['overview#ends-iota', 'overview#ends-kappa']);
+    expect(appended.hits).toEqual(without.hits);
+    expect(appended.matched).toBe(without.matched);
+    expect(appended.ignoredTerms).toEqual(['kappa']);
+  });
+
+  it('leaves the shared parser, and so recall, its whole phrase', () => {
+    const query = parseWorkshopQuery('alpha beta gamma delta epsilon zeta eta theta kappa');
+    expect(query.overflowTerms).toEqual(['kappa']);
+    expect(query.phrase.at(-1)).toBe('kappa');
   });
 
   it('keeps every word of the query out of the log through the persona engine', async () => {

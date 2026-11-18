@@ -7,3 +7,11 @@ Reviewed code: `f2745f41cd285fb48c358a7c16caa85f737b7b36`, relative to `3a6054c3
 3. **Minor: use a direction-neutral mismatch caveat.** WorkshopHelpCopy.ts:8–12 uses the same wording in both directions. A newer reference can describe controls absent from an older installation; the persona prompt only teaches the older-reference case. A neutral “these versions differ; features or controls may not match” avoids directional assumptions.
 
 Verification: 8 targeted Jest suites / 77 tests passed (help reader/load/retry, request privacy, persona, XML codec, prompt and reference sync, provider assembly). Directly exercised phrase ranking and reverse-version header. No full-suite rerun or live VS Code session. No product code changed by this review.
+
+## Resolution ledger
+
+| ID | Severity | Finding | Decision | Resolution |
+|---|---|---|---|---|
+| 1 | P2 | A term labeled “Not searched” can change the result order | Fix | Fixed. Help searches a query whose phrase leaves out the overflow terms (`keptTermsQuery` in `WorkshopHelpReference.ts`), so every word the result names as not searched moves nothing. The shared parser is unchanged, so recall keeps its whole phrase. Tests: the iota/kappa fixture, where appending a ninth term changes neither the order nor the hits (it fails without the fix), and one that the shared parser still keeps the ninth word in its phrase. |
+| 2 | P2 | Refusals outside the reader misidentify the reference after a version mismatch | Fix | Fixed. The reference remembers the version a successful load read (`referenceVersion()`, never a read of its own). A refusal outside the reader names that version, with the same caveat a read carries (`workshopHelpRefusalHeader`); before any load it names only “Prose Minion version X.”, never calling it the reference. Tests: with installed 2.15.0 and reference 2.14.0, a read and then a malformed and an over-limit call all name 2.14.0; with nothing loaded, refusals and a cancellation name only the installed version. |
+| 3 | Minor | Use a direction-neutral mismatch caveat | Fix | Fixed. The caveat reads “The installed version is X; these versions differ, so features or controls may not match.” The persona prompt (`help-capability.md`) teaches the neutral case, and its sync test and the load test follow. |

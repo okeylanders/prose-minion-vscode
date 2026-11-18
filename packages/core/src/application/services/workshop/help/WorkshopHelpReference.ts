@@ -6,6 +6,7 @@ import {
   normalizeWorkshopText,
   parseWorkshopQuery,
   WorkshopQueryMatcher,
+  type WorkshopQuery,
   workshopSearchSnippet
 } from '@/application/services/workshop/WorkshopTextSearch';
 
@@ -28,7 +29,7 @@ export interface WorkshopHelpLoaded {
   readonly sections: WorkshopHelpIndex;
 }
 
-export type WorkshopHelpReferencePort = Pick<WorkshopHelpReference, 'load' | 'version'>;
+export type WorkshopHelpReferencePort = Pick<WorkshopHelpReference, 'load' | 'version' | 'referenceVersion'>;
 
 /** A release version, so the line the log repeats is never free text. */
 const REFERENCE_VERSION = /^Reference version: (\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/m;
@@ -38,6 +39,8 @@ export class WorkshopHelpReference {
   private loading?: Promise<WorkshopHelpLoaded | undefined>;
   /** Whether the last load failed, so a run of failures logs once and a success ends the run. */
   private failing = false;
+  /** The version the reference describes, once a load has read it; never the installed version. */
+  private loadedVersion?: string;
 
   constructor(
     private readonly files: Pick<FileSystem, 'readFile'>,
@@ -47,10 +50,16 @@ export class WorkshopHelpReference {
     private readonly log: LogSink
   ) {}
 
+  /** The reference's own version when a load has read it; undefined before then. Never reads. */
+  referenceVersion(): string | undefined {
+    return this.loadedVersion;
+  }
+
   load(): Promise<WorkshopHelpLoaded | undefined> {
     this.loading ??= this.build().then(
       loaded => {
         this.failing = false;
+        this.loadedVersion = loaded.referenceVersion;
         return loaded;
       },
       () => {
@@ -110,9 +119,19 @@ function parseSections(area: string, document: string): WorkshopHelpSection[] {
   });
 }
 
+/**
+ * The query as help searches it: terms past the limit leave the phrase too, so a
+ * word the result calls "Not searched" can never move a section. Recall keeps the
+ * shared parser's whole phrase.
+ */
+function keptTermsQuery(query: WorkshopQuery): WorkshopQuery {
+  const overflow = new Set(query.overflowTerms);
+  return overflow.size === 0 ? query : { ...query, phrase: query.phrase.filter(word => !overflow.has(word)) };
+}
+
 export function searchWorkshopHelp(index: WorkshopHelpIndex, text: string) {
   const { searchHits, snippetCharacters } = PROMPT_BUDGETS.workshopHelp;
-  const query = parseWorkshopQuery(text);
+  const query = keptTermsQuery(parseWorkshopQuery(text));
   const matcher = new WorkshopQueryMatcher(query);
   const heading = text.trim().toLowerCase();
   const ranked = [...index.values()].map(section => ({
