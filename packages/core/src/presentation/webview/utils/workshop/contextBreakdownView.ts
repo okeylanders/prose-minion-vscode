@@ -57,6 +57,12 @@ export interface ContextBreakdownRow {
 
 export interface ContextBreakdownView {
   rows: ContextBreakdownRow[];
+  /**
+   * A provider total describes this history. Without one (after Open, Rewind
+   * or a behavior change, or a reply with no usage) there are no shares, no
+   * bar and no remainder: only the parts the host measured (PR #285 F-01, F-02).
+   */
+  hasTotal: boolean;
   /** The estimates come to more than the measured total (D2). */
   overflow: boolean;
   /** One sentence for a screen reader's summary of the bar. */
@@ -72,13 +78,15 @@ const pieceDetail = (piece: ContextBreakdownPiece): string => {
 const percent = (tokens: number, whole: number): number =>
   whole > 0 ? Math.round((tokens / whole) * 1000) / 10 : 0;
 
-export function contextBreakdownView(breakdown: ContextBreakdown, contextTokens: number): ContextBreakdownView {
+export function contextBreakdownView(breakdown: ContextBreakdown, contextTokens: number | undefined): ContextBreakdownView {
+  const hasTotal = contextTokens !== undefined;
+  const total = contextTokens ?? 0;
   const measured = breakdown.parts.reduce((sum, part) => sum + (part.tokens ?? 0), 0);
-  const overflow = measured > contextTokens;
-  const rest = Math.max(0, contextTokens - measured);
+  const overflow = hasTotal && measured > total;
+  const rest = Math.max(0, total - measured);
   const unmeasured = breakdown.untalliedMessages || breakdown.parts.some((part) => part.tokens === undefined);
-  // The bar is always whole: shares of the total, or of the estimates when they overrun it.
-  const whole = overflow ? measured : contextTokens;
+  // The bar is always whole: shares of the total, or of the estimates when they overrun it. No total, no shares.
+  const whole = !hasTotal ? 0 : overflow ? measured : total;
   const rows: ContextBreakdownRow[] = [
     ...breakdown.parts.map((part): ContextBreakdownRow => ({
       id: part.part,
@@ -89,13 +97,20 @@ export function contextBreakdownView(breakdown: ContextBreakdown, contextTokens:
       how: part.tokens === undefined ? 'not measured' : MEASURE_LABELS[part.measure],
       pieces: part.pieces.map((piece) => ({ name: piece.name, detail: pieceDetail(piece) }))
     })),
-    {
+    hasTotal ? {
       id: 'conversation',
       label: CONTEXT_BREAKDOWN_LABELS.conversation,
       tokens: rest,
       tokensText: formatCompactTokens(rest),
       share: percent(rest, whole),
       how: unmeasured ? 'the rest, with what was not measured' : 'the rest',
+      pieces: []
+    } : {
+      id: 'conversation',
+      label: CONTEXT_BREAKDOWN_LABELS.conversation,
+      tokensText: 'not measured yet',
+      share: 0,
+      how: 'the rest, once the next reply is measured',
       pieces: []
     }
   ];
@@ -105,7 +120,9 @@ export function contextBreakdownView(breakdown: ContextBreakdown, contextTokens:
     .join(', ');
   return {
     rows,
+    hasTotal,
     overflow,
-    accessibleSummary: `Context by part: ${spoken || 'nothing measured yet'}.${overflow ? ' The estimates come to more than the measured total.' : ''}`
+    accessibleSummary: `Context by part: ${spoken || 'nothing measured yet'}.${overflow ? ' The estimates come to more than the measured total.' : ''}` +
+      (hasTotal ? '' : ' No measured total yet: shares and Conversation appear after the next reply.')
   };
 }

@@ -73,6 +73,11 @@
   color: var(--pm-amber, #e2b24a);
 }
 
+.pm-context-breakdown-note-dim {
+  margin-top: 0;
+  color: var(--pm-faint, var(--vscode-descriptionForeground));
+}
+
 .pm-context-breakdown-table {
   width: 100%;
   margin-top: 6px;

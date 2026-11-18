@@ -50,6 +50,8 @@ interface Accumulated {
 const rowTokens = (row: ContextSourceEntry): number =>
   row.promptTokensDelta ?? Math.ceil(row.sizeChars / PROMPT_BUDGETS.inferenceContext.bytesPerToken);
 
+const isMeasuredRow = (row: ContextSourceEntry): boolean => row.promptTokensDelta !== undefined && !row.isEstimate;
+
 const measureOf = ({ provider, estimate }: Accumulated): ContextBreakdownMeasure =>
   provider && !estimate ? 'provider' : provider ? 'mixed' : 'estimate';
 
@@ -88,8 +90,9 @@ export function buildWorkshopContextBreakdown(
   }
 
   for (const [kind, rows] of groupedReadIn(readIn)) {
-    const provider = rows.every((row) => row.promptTokensDelta !== undefined);
-    const anyProvider = rows.some((row) => row.promptTokensDelta !== undefined);
+    // A delta apportioned across a read's files carries `isEstimate`: its number stays, but it is not measured (PR #285 F-03).
+    const provider = rows.every(isMeasuredRow);
+    const anyProvider = rows.some(isMeasuredRow);
     const part: ContextBreakdownPartId = kind === 'memory' ? 'memory' : 'requested';
     const into = parts.get(part)!;
     into.tokens += rows.reduce((sum, row) => sum + rowTokens(row), 0);

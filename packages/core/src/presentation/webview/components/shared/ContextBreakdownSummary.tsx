@@ -13,7 +13,8 @@ import {
  */
 export const ContextBreakdownSummary: React.FC<{
   breakdown: ContextBreakdown;
-  contextTokens: number;
+  /** The provider's total for this history; absent, no shares, bar or remainder are shown (PR #285 F-01). */
+  contextTokens?: number;
 }> = ({ breakdown, contextTokens }) => {
   const view = contextBreakdownView(breakdown, contextTokens);
   const [open, setOpen] = React.useState<ReadonlySet<string>>(new Set());
@@ -25,7 +26,7 @@ export const ContextBreakdownSummary: React.FC<{
   return (
     <div className="pm-context-breakdown">
       <div className="pm-context-breakdown-head">By part</div>
-      <div className="pm-context-breakdown-bar" role="img" aria-label={view.accessibleSummary}>
+      {view.hasTotal ? <div className="pm-context-breakdown-bar" role="img" aria-label={view.accessibleSummary}>
         {view.rows.filter((row) => row.share > 0).map((row) => (
           <span
             key={row.id}
@@ -36,7 +37,11 @@ export const ContextBreakdownSummary: React.FC<{
             {row.share >= 12 ? <span className="pm-context-breakdown-seg-label">{row.label}</span> : null}
           </span>
         ))}
-      </div>
+      </div> : (
+        <p className="pm-context-breakdown-note pm-context-breakdown-note-dim" role="note">
+          No measured total yet. Shares and Conversation appear after the next reply.
+        </p>
+      )}
       {view.overflow ? (
         <p className="pm-context-breakdown-note" role="note">
           The estimates come to more than the measured total, so Conversation shows as 0.
@@ -47,11 +52,14 @@ export const ContextBreakdownSummary: React.FC<{
           Context by part. Estimates are the host&rsquo;s; Conversation is the rest of the measured total.
         </caption>
         <thead>
-          <tr><th scope="col">Part</th><th scope="col">Tokens</th><th scope="col">Share</th><th scope="col">How</th></tr>
+          <tr>
+            <th scope="col">Part</th><th scope="col">Tokens</th>
+            {view.hasTotal ? <th scope="col">Share</th> : null}<th scope="col">How</th>
+          </tr>
         </thead>
         <tbody>
           {view.rows.map((row) => (
-            <BreakdownRow key={row.id} row={row} open={open.has(row.id)} onToggle={() => toggle(row.id)} />
+            <BreakdownRow key={row.id} row={row} withShare={view.hasTotal} open={open.has(row.id)} onToggle={() => toggle(row.id)} />
           ))}
         </tbody>
       </table>
@@ -59,7 +67,12 @@ export const ContextBreakdownSummary: React.FC<{
   );
 };
 
-const BreakdownRow: React.FC<{ row: ContextBreakdownRow; open: boolean; onToggle: () => void }> = ({ row, open, onToggle }) => {
+const BreakdownRow: React.FC<{
+  row: ContextBreakdownRow;
+  withShare: boolean;
+  open: boolean;
+  onToggle: () => void;
+}> = ({ row, withShare, open, onToggle }) => {
   return (
     <>
       <tr className={row.tokens === undefined ? 'pm-context-breakdown-unmeasured' : undefined}>
@@ -77,13 +90,13 @@ const BreakdownRow: React.FC<{ row: ContextBreakdownRow; open: boolean; onToggle
           ) : row.label}
         </th>
         <td>{row.tokensText}</td>
-        <td>{row.tokens === undefined ? '' : `${row.share}%`}</td>
+        {withShare ? <td>{row.tokens === undefined ? '' : `${row.share}%`}</td> : null}
         <td>{row.how}</td>
       </tr>
       {open ? row.pieces.map((piece, index) => (
         <tr key={`${row.id}-${index}`} className="pm-context-breakdown-piece">
           <th scope="row">{piece.name}</th>
-          <td colSpan={3}>{piece.detail}</td>
+          <td colSpan={withShare ? 3 : 2}>{piece.detail}</td>
         </tr>
       )) : null}
     </>

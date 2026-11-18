@@ -532,12 +532,13 @@ export class ConversationManager {
   }
 
   /** Store provider-measured context only after its matching turn commits. */
-  setContextBudget(conversationId: string, snapshot: ContextBudgetSnapshot): void {
+  /** `undefined` clears it: a committed turn with no usage leaves no total for the history it changed. */
+  setContextBudget(conversationId: string, snapshot: ContextBudgetSnapshot | undefined): void {
     const conversation = this.conversations.get(conversationId);
     if (!conversation) {
       throw new ConversationNotFoundError(conversationId);
     }
-    conversation.contextBudget = { ...snapshot };
+    conversation.contextBudget = snapshot ? { ...snapshot } : undefined;
   }
 
   getContextBudget(conversationId: string | undefined): ContextBudgetSnapshot | undefined {

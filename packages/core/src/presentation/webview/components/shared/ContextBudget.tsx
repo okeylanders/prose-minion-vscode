@@ -147,6 +147,22 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
   const accessibleLabel = showsContextSuffix
     ? `${participantLabel} context`
     : participantLabel;
+  if (!snapshot && breakdown) {
+    // No total for this history, but the parts the host measured still open (PR #285 F-01).
+    return (
+      <details className="pm-context-budget pm-context-budget-empty">
+        <summary className="pm-context-budget-row" aria-label={`${accessibleLabel}: total not measured yet; parts measured so far`}>
+          <IdentityDot identity={participantIdentity} />
+          <ParticipantLabel participantLabel={participantLabel} showsContextSuffix={showsContextSuffix} />
+          <span className="pm-context-budget-track" />
+          <span className="pm-context-budget-nums">Total not measured yet — parts so far</span>
+          <Chevron />
+        </summary>
+        <ContextBreakdownSummary breakdown={breakdown} />
+        {sources && sources.length > 0 && <InContextSources sources={sources} requesterLabel={requesterLabel} />}
+      </details>
+    );
+  }
   if (!snapshot) {
     return (
       <div className="pm-context-budget pm-context-budget-empty" role="status" aria-label={`${accessibleLabel}: not measured yet`}>

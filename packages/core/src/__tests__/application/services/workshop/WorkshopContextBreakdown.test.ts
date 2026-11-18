@@ -68,6 +68,24 @@ describe('buildWorkshopContextBreakdown (ADR 2026-11-18)', () => {
     expect(JSON.stringify(breakdown)).not.toContain('999');
   });
 
+  it('an apportioned delta keeps its number but is an estimate, alone or beside an exact row (PR #285 F-03)', () => {
+    const apportioned = (kind: ContextSourceEntry['kind'], label: string) =>
+      row({ kind, label, promptTokensDelta: 49, isEstimate: true });
+    const only = buildWorkshopContextBreakdown(measure(), [apportioned('resource', 'a.md'), apportioned('resource', 'b.md')]);
+    expect(part(only, 'requested')).toMatchObject({ tokens: 98, measure: 'estimate' });
+
+    const beside = buildWorkshopContextBreakdown(measure(), [
+      apportioned('resource', 'a.md'),
+      row({ label: 'c.md', promptTokensDelta: 300, isEstimate: false })
+    ]);
+    expect(part(beside, 'requested')).toMatchObject({ tokens: 349, measure: 'mixed' });
+
+    // One read's split can fall across two parts: a note read (memory) and a file (requested).
+    const split = buildWorkshopContextBreakdown(measure(), [apportioned('memory', 'A note'), apportioned('resource', 'a.md')]);
+    expect(part(split, 'memory').measure).toBe('estimate');
+    expect(part(split, 'requested')).toMatchObject({ tokens: 49, measure: 'estimate' });
+  });
+
   it('shows a held prompt it could not split as one persona piece', () => {
     const breakdown = buildWorkshopContextBreakdown(measure({ sections: undefined }), []);
     expect(part(breakdown, 'persona').pieces).toEqual([{ name: 'System prompt, not split by section', tokens: 3_000 }]);
@@ -162,6 +180,25 @@ describe('the panel projection is display-safe (D8, D9)', () => {
         expect(Object.keys(piece).every((key) => ['name', 'tokens', 'count'].includes(key))).toBe(true);
       }
     }
+  });
+
+  it('a reopened room shows its known parts before any reply: no total, but a breakdown (PR #285 F-01)', () => {
+    const text = JSON.stringify(require('../../../fixtures/workshop-session-v2-before-context-tally.json'));
+    const host = decodeWorkshopPersistedSessionCheckpoint(JSON.parse(text)).session.conversations.find((entry) => entry.key === 'host')!;
+    const reopened = new ConversationManager();
+    const [outcome] = reopened.importConversations([{ entry: host, systemMessage: 'Rebuilt host prompt' }]);
+    const id = (outcome as { conversationId: string }).conversationId;
+    const facade = {
+      getConversationContextBudget: (conversationId: string | undefined) => reopened.getContextBudget(conversationId),
+      getConversationContextSources: (conversationId: string | undefined) => reopened.getContextSources(conversationId),
+      measureWorkshopConversation: (conversationId: string | undefined) =>
+        new WorkshopSystemPromptMeasures().measure(reopened.getContextAccount(conversationId))
+    };
+    const reopenedSession = { ...(session('host') as object), getHostConversationId: () => id } as never;
+    const projected = projectWorkshopContextBudget(reopenedSession, facade as never);
+    expect(projected.snapshot).toBeUndefined();
+    expect(projected.breakdown?.untalliedMessages).toBe(true);
+    expect(part(projected.breakdown!, 'persona').tokens).toBe(estimateTextTokens('Rebuilt host prompt'));
   });
 
   it('shows no breakdown for a tool sidecar', () => {

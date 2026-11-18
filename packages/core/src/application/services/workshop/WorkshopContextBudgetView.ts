@@ -53,7 +53,8 @@ export function workshopChatTargetConversation(
 /**
  * The manifest (writer-declared rows first, then this conversation's
  * agent-fetched deliveries in delivery order) and, for a persona, its
- * context by part. A tool sidecar shows no breakdown (D9).
+ * context by part, with or without a provider total. A tool sidecar shows
+ * no breakdown (D9).
  */
 export function projectWorkshopContextBudget(
   session: ContextBudgetSession,
@@ -64,9 +65,9 @@ export function projectWorkshopContextBudget(
   const readIn = assistant.getConversationContextSources(conversationId);
   const sources = [...session.collectWriterSources(target), ...readIn].map(projectContextSource);
   const snapshot = assistant.getConversationContextBudget(conversationId);
-  const measure = snapshot && target.kind !== 'tool'
-    ? assistant.measureWorkshopConversation(conversationId)
-    : undefined;
+  // Known parts show without a fresh total (after Open, Rewind or a behavior change); the webview
+  // then withholds shares and Conversation's remainder (PR #285 F-01).
+  const measure = target.kind !== 'tool' ? assistant.measureWorkshopConversation(conversationId) : undefined;
   return {
     label,
     snapshot,

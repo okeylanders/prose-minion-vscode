@@ -65,4 +65,18 @@ describe('ContextBreakdownSummary (ADR 2026-11-18 D1)', () => {
     panel();
     expect(screen.queryByRole('table')).toBeNull();
   });
+
+  it('opens the known parts with no total: no bar, no Share column, Conversation not measured yet (PR #285 F-01)', () => {
+    render(<ContextBudget
+      participantIdentity="jill" participantLabel="Jill" modelOptions={[]} cumulativeProcessedTokens={0}
+      breakdown={breakdown(10_000)}
+    />);
+    expect(screen.getByText(/Total not measured yet/)).toBeTruthy();
+    const table = screen.getByRole('table');
+    expect(within(table).queryByText('Share')).toBeNull();
+    expect(within(table).getByText('10K')).toBeTruthy();
+    expect(within(table).getByText('not measured yet')).toBeTruthy();
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.getByText(/Shares and Conversation appear after the next reply/)).toBeTruthy();
+  });
 });

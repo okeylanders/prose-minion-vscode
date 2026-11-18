@@ -184,3 +184,23 @@ A "View system prompt" button stays in the note as a later idea.
 Nothing is added to a turn: the tally lives on the conversation archive,
 which the transcript projection never reads. Export and recall are
 unchanged (omit, by construction).
+
+## Review record
+
+**PR #285, first review (Astra, 2026-11-18): three P2 findings, all fixed.**
+
+- **F-01. A reopened room hid even the known parts.** Open, Rewind and a
+  behavior change leave no provider total, and the projection skipped
+  measuring without one. Now the host measures whenever the participant
+  has a conversation. Without a total, the panel opens to the parts it
+  measured and withholds the bar, the shares and Conversation's remainder
+  ("Total not measured yet — parts so far"). Amends D2.
+- **F-02. A reply without usage mixed two turns.** A committed turn with no
+  provider observation kept the previous turn's total while the tally moved
+  on, so new parts were set against an old total. Now such a commit clears
+  the total (`setContextBudget(id, undefined)`): the panel shows the parts
+  without a total until the next measured reply. Amends D2 and D6.
+- **F-03. An apportioned read was labeled "measured".** A delta the engine
+  splits across a read's files carries `isEstimate: true`. A row counts as
+  provider-measured only with a delta and without that flag; its number is
+  kept either way. Amends D3.

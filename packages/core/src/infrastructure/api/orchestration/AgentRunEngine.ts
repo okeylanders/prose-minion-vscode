@@ -666,6 +666,9 @@ export class AgentRunEngine {
               `model=${snapshot.modelId}, calls=${snapshot.callsThisTurn}, processed=${snapshot.turnProcessedTokens}, ` +
               `compression=${snapshot.contextCompression}`
             );
+          } else {
+            // No usage for this history: the last total names an older one, so it goes (PR #285 F-02).
+            this.conversationManager.setContextBudget(conversationId, undefined);
           }
         };
         if (runOptions.deferRetention) {

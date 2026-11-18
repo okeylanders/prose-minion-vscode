@@ -59,4 +59,16 @@ describe('contextBreakdownView (ADR 2026-11-18)', () => {
     expect(memory.tokens).toBeUndefined();
     expect(view.rows.at(-1)).toMatchObject({ tokens: 26_000, how: 'the rest, with what was not measured' });
   });
+
+  it('without a total: the measured parts, no shares, no overflow and no remainder (PR #285 F-01, F-02)', () => {
+    const view = contextBreakdownView(parts(full), undefined);
+    expect(view.hasTotal).toBe(false);
+    expect(view.overflow).toBe(false);
+    expect(view.rows.every((row) => row.share === 0)).toBe(true);
+    expect(view.rows[0]).toMatchObject({ tokens: 9_000, tokensText: '9K', how: 'estimate' });
+    const conversation = view.rows.at(-1)!;
+    expect(conversation.tokens).toBeUndefined();
+    expect(conversation).toMatchObject({ tokensText: 'not measured yet', how: 'the rest, once the next reply is measured' });
+    expect(view.accessibleSummary).toMatch(/No measured total yet/);
+  });
 });

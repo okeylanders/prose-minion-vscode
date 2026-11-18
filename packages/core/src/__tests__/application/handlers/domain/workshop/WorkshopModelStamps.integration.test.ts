@@ -89,7 +89,8 @@ Add a key.`, conversationId, 'vendor/never');
       }),
       discardConversation: jest.fn(),
       getConversationContextBudget: jest.fn(),
-      getConversationContextSources: jest.fn().mockReturnValue([])
+      getConversationContextSources: jest.fn().mockReturnValue([]),
+      getConversationContextAccount: jest.fn()
     } as unknown as jest.Mocked<AgentRunEngine>;
     const manager = {
       ensureInitialized: jest.fn().mockResolvedValue(undefined),

@@ -77,4 +77,33 @@ describe('AgentRunEngine context tally (ADR 2026-11-18 D6)', () => {
     expect(commits[0]()).toBe(true);
     expect(engine.getConversationContextAccount(id)?.tally).toEqual([{ messageIndex: 2, pieces: { 'room.directive': 30 } }]);
   });
+
+  it('a reply with no usage leaves no total for the history it changed, and the next measured reply sets one (PR #285 F-02)', async () => {
+    const measured = (promptTokens: number) => ({
+      content: 'Reply',
+      usage: { promptTokens, completionTokens: 5, totalTokens: promptTokens + 5 },
+      observation: {
+        modelId: 'model/a', promptTokens, completionTokens: 5, totalTokens: promptTokens + 5,
+        requestedMaxOutputTokens: 10_000, finishReason: 'stop', contextCompression: 'unknown', measuredAt: 1
+      }
+    });
+    client.createChatCompletion.mockResolvedValueOnce(measured(25));
+    const started = await engine.runInitial({
+      toolName: 'workshop_persona_jill', systemMessage: 'System', userMessage: 'Alice asks', policy,
+      options: { contextTally: () => ({}) }
+    });
+    const id = started.conversationId!;
+    expect(engine.getConversationContextBudget(id)?.contextTokens).toBe(30);
+
+    client.createChatCompletion.mockResolvedValueOnce({ content: 'Reply without usage' });
+    await engine.continueConversation({ conversationId: id, userMessage: 'Alice attaches a chapter', policy,
+      options: { contextTally: () => ({ 'context.message-attachments': 1_250 }) } });
+    // The tally moved on, so the old total no longer describes this history.
+    expect(engine.getConversationContextAccount(id)?.tally).toHaveLength(2);
+    expect(engine.getConversationContextBudget(id)).toBeUndefined();
+
+    client.createChatCompletion.mockResolvedValueOnce(measured(1_400));
+    await engine.continueConversation({ conversationId: id, userMessage: 'And now?', policy, options: { contextTally: () => ({}) } });
+    expect(engine.getConversationContextBudget(id)?.contextTokens).toBe(1_405);
+  });
 });
