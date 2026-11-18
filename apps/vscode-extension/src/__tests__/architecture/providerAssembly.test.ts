@@ -668,7 +668,9 @@ describe('app-shell provider assembly', () => {
     expect(source.match(/new LexicalGravityLensRepository\(/g)).toHaveLength(1);
     expect(source.match(/new WorkshopHelpReference\(/g)).toHaveLength(1);
     expect(at('new WorkshopHelpReference(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
-    expect(source).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\bworkshopHelpReference,/);
+    // Only the persona factory reads the reference; the handlers' bundle does not carry it.
+    const bundle = source.slice(at('const coreServices: CoreServices = {'));
+    expect(bundle.slice(0, bundle.indexOf('\n  };'))).not.toMatch(/\bworkshopHelpReference\b/);
     expect(at('new LexicalGravityLensRepository(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
     expect(at('new WorkshopSessionStore(')).toBeLessThan(at('new WorkshopSessionPersistenceCoordinator('));
     expect(at('new WorkshopSessionPersistenceCoordinator(')).toBeLessThan(at('new WorkshopTranscriptRecallService('));

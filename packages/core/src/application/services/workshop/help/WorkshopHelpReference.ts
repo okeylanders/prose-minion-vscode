@@ -1,4 +1,4 @@
-/** The bundled reference is immutable for this extension installation. Index it once, on first use. */
+/** The bundled reference is immutable for this extension installation. Index it once it reads, on first use. */
 import * as path from 'path';
 import type { FileSystem, LogSink } from '@/platform';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -21,32 +21,60 @@ export interface WorkshopHelpSection {
 }
 
 export type WorkshopHelpIndex = ReadonlyMap<string, WorkshopHelpSection>;
+
+/** The indexed reference, and the version its overview says it describes. */
+export interface WorkshopHelpLoaded {
+  readonly referenceVersion: string;
+  readonly sections: WorkshopHelpIndex;
+}
+
 export type WorkshopHelpReferencePort = Pick<WorkshopHelpReference, 'load' | 'version'>;
 
+/** A release version, so the line the log repeats is never free text. */
+const REFERENCE_VERSION = /^Reference version: (\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/m;
+
 export class WorkshopHelpReference {
-  private loaded?: Promise<WorkshopHelpIndex | undefined>;
+  /** The load in flight, or the one that succeeded. A failure is never kept: the next call reads again. */
+  private loading?: Promise<WorkshopHelpLoaded | undefined>;
+  /** Whether the last load failed, so a run of failures logs once and a success ends the run. */
+  private failing = false;
 
   constructor(
     private readonly files: Pick<FileSystem, 'readFile'>,
     private readonly directory: string,
+    /** The installed extension's version; the reference names its own. */
     readonly version: string,
     private readonly log: LogSink
   ) {}
 
-  load(): Promise<WorkshopHelpIndex | undefined> {
-    this.loaded ??= this.build().catch(() => {
-      this.log.appendLine('[WorkshopHelpReference] reference unavailable');
-      return undefined;
-    });
-    return this.loaded;
+  load(): Promise<WorkshopHelpLoaded | undefined> {
+    this.loading ??= this.build().then(
+      loaded => {
+        this.failing = false;
+        return loaded;
+      },
+      () => {
+        this.loading = undefined;
+        if (!this.failing) {
+          this.failing = true;
+          this.log.appendLine('[WorkshopHelpReference] reference unavailable');
+        }
+        return undefined;
+      }
+    );
+    return this.loading;
   }
 
-  private async build(): Promise<WorkshopHelpIndex> {
+  private async build(): Promise<WorkshopHelpLoaded> {
+    let referenceVersion = '';
     const areas = await Promise.all(WORKSHOP_HELP_AREAS.map(async area => {
       const bytes = await this.files.readFile(path.join(this.directory, area + '.md'));
       const document = new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/\r\n/g, '\n');
-      if (area === 'overview' && /^Reference version: (\S+)$/m.exec(document)?.[1] !== this.version) {
-        throw new Error('Reference version mismatch');
+      if (area === 'overview') {
+        referenceVersion = REFERENCE_VERSION.exec(document)?.[1] ?? '';
+        if (!referenceVersion) {
+          throw new Error('Missing reference version');
+        }
       }
       return parseSections(area, document);
     }));
@@ -56,7 +84,11 @@ export class WorkshopHelpReference {
       throw new Error('Duplicate help section');
     }
     this.log.appendLine(`[WorkshopHelpReference] areas=${areas.length} sections=${index.size}`);
-    return index;
+    if (referenceVersion !== this.version) {
+      // A caveat, not a refusal: every result names the version it describes (the sync test is the gate).
+      this.log.appendLine(`[WorkshopHelpReference] version mismatch reference=${referenceVersion} installed=${this.version}`);
+    }
+    return { referenceVersion, sections: index };
   }
 }
 
@@ -101,5 +133,6 @@ export function searchWorkshopHelp(index: WorkshopHelpIndex, text: string) {
     id: section.id, heading: section.heading,
     snippet: workshopSearchSnippet(section.body, matcher, snippetCharacters)
   }));
-  return { hits, matched: matches.length };
+  // Terms past the query limit are never searched; the result names them.
+  return { hits, matched: matches.length, ignoredTerms: query.overflowTerms };
 }
