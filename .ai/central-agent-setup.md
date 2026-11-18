@@ -45,6 +45,9 @@ packages/core/src/
 │   ├── services/       # Cross-domain application services (e.g. StandardsComparisonService)
 │   │   ├── workshop/reads/     # The shared read fit: WorkshopReadWindowFit (half the room left) and WorkshopReadShares (fair shares), for session recall and `resource.read` alike; imports nothing of recall (ADR 2026-11-14 D1)
 │   │   ├── workshop/lens/      # The personas' read-only `lens.*` family: codec, renderer, copy, the per-turn capability and the installed-lens port (ADR 2026-11-17 D16–D20)
+│   │   ├── workshop/help/      # The personas' read-only `help.*` family: `WorkshopHelpReference` (built in `extension.ts`, in `CoreServices`), codec, renderer, copy, the per-turn capability (ADR 2026-11-17 D21–D25)
+│   │   ├── workshop/trailerOutcomes/ # What became of a reply's memory and file-edit trailers: the record's builder, the drop-reason mapping, the `<workshop-trailer-outcomes>` frame (ADR 2026-11-17 D13–D15)
+│   │   ├── workshop/memory/ProjectMemoryCatalogFrame.ts # The `<project-memory>` frame: pinned, entries, `<title-only>`, `<unlisted>`, `<more>`; sized by `ProjectMemoryListSize` (ADR 2026-11-17 D8, D9)
 │   │   ├── workshop/selection/ # EditorSelectionSnapshots (the editor's selection by host-minted id, newest 8) and the Selected Text attachment's input (ADR 2026-11-14 D11)
 │   │   └── lightbox/LightboxBoardLibrary.ts # When Lightbox boards save, open as snapshots, restore after a reload, list and delete (Slice 5A); names and spark marks in place through LightboxBoardEdits (Slice 5A.1); every chapter's boards, a picked board file opened, and saves through LightboxBoardSaves: one file per board, named by date, rewritten in place (Slice 5A.2)
 │   └── handlers/       # Message routing and domain handlers
@@ -73,7 +76,7 @@ packages/core/src/
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
 │           ├── LightboxBoardsHandler.ts   # The saved boards' routes: shelf, open, delete, rename (5A.1), open a board file through the host's picker (5A.2), and each committed save pushed (Slice 5A)
-│           └── workshop/                  # Room owner + 23 composed route owners (`WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES` in `boundaries.test.ts` is the list)
+│           └── workshop/                  # Room owner + 24 composed route owners (`WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES` in `boundaries.test.ts` is the list)
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
 │               ├── WorkshopRouteContracts.ts
@@ -89,6 +92,7 @@ packages/core/src/
 │               ├── WorkshopLightboxTileHandler.ts # A Lightbox tile offered, then staged above the composer (seed kind `lightbox-tile`)
 │               ├── WorkshopSelectedTextHandler.ts # Selected Text: the seed's offer and accept, the toggle's watch, and the send's room check (seed kind `selected-text`; ADR 2026-11-14 D12, D14)
 │               ├── WorkshopPinnedContextHandler.ts # Pinned context: the settings tab's list, pins, unpin, move, Attach missing, Open (ADR 2026-11-04)
+│               ├── WorkshopEarlierTurnsHandler.ts # A long room's earlier turns, a page before a turn, and a bookmark jump's pages (ADR 2026-11-17 D1–D4, D6 amendment)
 │               └── widgets/
 │                   ├── WorkshopWidgetHostHandler.ts
 │                   ├── creativeVariations/WorkshopCreativeVariationsHandler.ts
@@ -239,6 +243,8 @@ packages/core/src/presentation/webview/
 │           ├── useWorkshopLightboxTiles.ts # A Lightbox tile: claim, accept after the grant, answer
 │           ├── useWorkshopSelectedText.ts  # Selected Text: the seed's claim and accept, the "Include selected text" toggle (persisted), the live pill's metadata
 │           ├── useWorkshopEditOffers.ts    # A reply's edit-offer chips: the press (ids only), its correlated answer, the one announcement (ADR 2026-11-10 U2–U6)
+│           ├── useWorkshopEarlierTurns.ts  # A long room's earlier turns: one contiguous run, re-read after each state, and a bookmark's jump (`loadThrough`, `cancelJump`); persists nothing (ADR 2026-11-17 D5, D6 amendment)
+│           ├── earlierTurns/workshopEarlierTurnsRun.ts # The run's pure steps: merge, re-read, jump step and announcements
 │           ├── controllers/            # Transient modal/surface state machines
 │           │   ├── useWorkshopRailTabs.ts  # The rail's tabs and unseen-arrival badges; `railHidden` when the rail is collapsed
 │           │   ├── useWorkshopComposerMentions.ts # `@` in the composer: the file list's state, keys and picks; stages through injected callbacks (round two, item G)
@@ -411,6 +417,7 @@ useMessageRouter({
 | useLightboxPassages | LightboxPassageHandler (+ `LightboxService.passageSource`) | The inspector's passages: a paragraph's text, a counted item's sentences |
 | useWorkshopLightboxTiles | WorkshopLightboxTileHandler | A Lightbox tile staged in the Workshop |
 | useWorkshopSelectedText | WorkshopSelectedTextHandler (+ `EditorSelectionSnapshots`) | The editor's selection as a message's Selected Text pill |
+| useWorkshopEarlierTurns | WorkshopEarlierTurnsHandler (+ `WorkshopSessionService.readEarlierTurns`) | A long room's earlier turns and a bookmark's jump |
 
 **Benefits**:
 - ✅ Same domain boundaries on both sides
@@ -886,14 +893,14 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-11-14 on `epic/everyday-conveniences-close`: the whole Everyday Conveniences epic, items A–E, before it goes to `main`):
-- 870 suites / 12,327 tests / 59 snapshots
+**Test Inventory** (measured 2026-11-18 on `epic/everyday-conveniences-round-two-close`: the whole Everyday Conveniences, Round Two epic, items A–H with H+ and A3, before it goes to `main`):
+- 921 suites / 13,230 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's 23 composed route owners (the list is `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES`)
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's 24 composed route owners (the list is `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES`)
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):
@@ -1023,6 +1030,65 @@ touching retained histories or whole-room operations:
   Branch gives back to the composer goes ahead of anything the writer has
   typed since, a blank line between; it never replaces it (PR #264 P2-1;
   see **Workshop Selected Text**).
+
+### Workshop Earlier Turns
+
+Follow [ADR 2026-11-17](docs/adr/2026-11-17-everyday-conveniences-round-two.md)
+D1–D7 and the D6 amendment of 2026-11-18 (round two, item A; PRs #268,
+#273, #281) when touching what a long room shows outside the snapshot
+window, or how a bookmark reaches a turn there:
+
+- **The window stays the window.** `WORKSHOP_SNAPSHOT_TURN_WINDOW` (200) and
+  `inWindow` are unchanged; the hidden-turns notice and "Show earlier
+  turns" sit above the first bubble.
+- **A page is the turns before a turn.** `WORKSHOP_REQUEST_EARLIER_TURNS`
+  names `beforeTurnId` (the oldest turn held, never a position), a
+  webview-minted `requestId` and `roomRevision`; the answer echoes all
+  three. Refusals are host words (`WORKSHOP_EARLIER_TURNS_REFUSALS`).
+- **One projection.** `workshopThreadTurnParts` (`session/WorkshopThreadTurnParts.ts`)
+  builds the snapshot window's parts and a page's alike: turns, Rewind
+  verdicts, reaction and widget-config summaries. The handler passes each
+  turn through `workshopTurnForWebview` with `postSessionState`'s edit-offer
+  view. An earlier bubble is a full bubble; the webview merges verdicts and
+  derives nothing.
+- **Bounds.** `PROMPT_BUDGETS.workshopThread`: `pageTurns` (100) and
+  `pageBytes` (1 MiB, each turn as sent), whichever comes first; a page
+  always holds at least one turn.
+- **A read, room-bound.** `WorkshopEarlierTurnsHandler` (the 24th composed
+  route owner) registers directly, never behind the mutation gate, writes
+  nothing, waits out queued room replacements, and compares
+  `roomRevision` before it reads the ledger.
+- **One contiguous run, never persisted** (`useWorkshopEarlierTurns`, empty
+  persistence). It ends directly before the window's first turn.
+  - After each session state in the same room, the run is re-read page by
+    page from the window back, one request in flight; a newer state
+    restarts the walk and drops the earlier walk's answer; a held turn an
+    answer covering its place did not return is removed (Q7, open).
+  - A new room (New, Open, Rewind, Branch, restore) drops every held turn
+    and the pending request before anything new is asked.
+  - Only the pending answer is taken.
+- **A bookmark jump** (D6 amendment; Okey's 3-page cap). A bookmark outside
+  the window goes to `loadThrough`, never the preview.
+  - A turn the run holds lands at once. Otherwise the hook walks ordinary
+    page requests naming `targetTurnId`. The host refuses a target the room
+    no longer holds, one not before the turn named, a malformed one, and
+    one more than `jumpPages × pageTurns` (`WORKSHOP_JUMP_TURNS`, 300)
+    back, before reading a page. The webview stops after
+    `PROMPT_BUDGETS.workshopThread.jumpPages` (3) pages, since a
+    byte-bounded page can hold fewer turns.
+  - One outcome: `landed` scrolls to and focuses the bubble; `refused` opens
+    the reader. One announcement, never one per page.
+  - **Any other move to a turn cancels it first** (PR #281 P2):
+    `jumpToTurn` and `jumpAfterClosing` call `cancelEarlierJump` before they
+    scroll; only the jump's own landing uses the unwrapped scroll. A new
+    navigation path goes through the wrapped ones. Escape on the row
+    (`cancelJump`) stops it; pages already shown stay.
+  - A re-read in flight finishes first; a new room abandons the jump with
+    nothing settled.
+  - A to-do's source, a Read in card and "Show where it was read" still open
+    the preview ([follow-up](.todo/features/feature-workshop-jump-to-earlier-turn-everywhere/README.md)).
+- **Logs** carry ids, outcomes and counts (turns, bytes), never a label or
+  a turn's text.
 
 ### Workshop Seed Delivery
 
@@ -1362,28 +1428,154 @@ decisions A1 and A2) when touching what typing `@` in the composer does:
     there.
 - **Nothing is persisted, and nothing of the `@` list is logged.**
 
+### Workshop Memory Index and Suggestion Level
+
+Follow [ADR 2026-11-17](docs/adr/2026-11-17-everyday-conveniences-round-two.md)
+D8–D12 (round two, items B and C) when touching the `<project-memory>`
+frame, `memory.catalog`, or how readily personas suggest notes:
+
+- **One proposals file per level** (item B). `proseMinion.workshop.memory.suggestions`
+  is `WORKSHOP_MEMORY_SUGGESTION_LEVELS` (`sparingly`, default; `readily`;
+  `aggressively`; `shared/constants/workshopMemorySuggestions.ts`).
+  - `workshop-personas/project-memory-proposals.md` **is Sparingly and is
+    never edited**; `memory-suggestions/readily.md` and `aggressively.md`
+    differ from it in the one brake paragraph only. Never split a level
+    into paragraph files: the loader joins files with a rule (`---`), which
+    would change the default prompt's bytes.
+  - `workshopPersonaSystemPromptPaths` picks exactly one, only where it
+    picks the proposals file (memory open). Off adds none at any level.
+  - `memorySuggestionLevelPromptSync.test.ts` holds the files identical
+    outside the paragraph, keeps "One reply suggests at most 10 notes." and
+    "Each one stands alone: …" word for word, and pins Sparingly's text.
+  - A mid-room change goes through the system-message rebuild, from the
+    next turn.
+  - The tab's row saves at once (not a draft); its line reads its number
+    from `PROMPT_BUDGETS.workshopProjectMemory.autoSavesPerRoom`.
+- **Three tiers, then two counts** (item C, `ProjectMemoryCatalogFrame`).
+  Pinned bodies, entries, then every other note in effect as `<title-only>`
+  (id, kind, title; newest first; within `titleTokens`, no entry cap).
+  `<unlisted count>` counts notes in effect no tier shows; `<more count>`
+  counts superseded and archived notes only. Each count is written only
+  above zero, so a list that does not overflow renders as it did before.
+  `title-only` and `unlisted` are in `RESERVED_PERSONA_FRAME`.
+- **The size is one closed table, in tokens.** `proseMinion.workshop.memory.listSize`
+  (`standard`, `larger`, `largest`) indexes
+  `WORKSHOP_PROJECT_MEMORY_LIST_SIZES`, whose numbers live in
+  `PROMPT_BUDGETS.workshopProjectMemory.listSizes`.
+  - `ProjectMemoryListSize` is the one reader. The library's frame, the
+    manager's estimate and the tab's meters all read it; the tab's view
+    reads the budgets the host's estimate carries, never a constant.
+  - Read where a frame is built: a change applies from the next
+    conversation, and nothing is rebuilt mid-room.
+  - `pinnedTokens`, the update note's bound and the catalog page (40) are
+    the same at every size. The entry caps past Standard are Q1, open.
+- **`<page>` has no ceiling** (D10). `workshopCapabilityPage`
+  (`WorkshopCapabilityPaging.ts`, neutral: nothing of `memory/`, `recall/`
+  or `lens/`) is the one parser for `memory.catalog` and `lens.catalog`:
+  `^[1-9][0-9]{0,8}$`, `PROMPT_BUDGETS.workshopCapabilityPaging.pageDigits`.
+  - The next call is written, whole, exactly when a later page exists. A
+    page past the end answers in words, never a refusal.
+  - A new page size must keep the "last page fits in nine digits" test; a
+    storage cap is never the fix.
+- **The prompt names no token number.** `projectMemoryPromptSync.test.ts`
+  holds the element names, `catalogEntries` and every taught form and
+  hint to the codec.
+
+### Workshop Trailer Outcomes
+
+Follow [ADR 2026-11-17](docs/adr/2026-11-17-everyday-conveniences-round-two.md)
+D13–D15 and the D15 addendum (round two, item D; PR #276) when touching
+how a reply's memory-note or file-edit trailers settle, or what a persona
+is told of them:
+
+- **Every frame is counted once.** `trailerOutcomes` on a host or guest
+  reply turn holds, per kind, `cards` (and `refused` for file edits) and
+  canonical `dropped` entries; their sum is the frames the extractor found.
+  A conservation test holds it.
+- **Settlement returns typed verdicts.** `settleWorkshopMemoryEdit`,
+  `settleWorkshopMemoryProposals` and `resolveWorkshopReplyFileEdits` return
+  closed reasons; the log line and the record are written from the same
+  value. Nothing parses a log string.
+  - A new early return, rejection or anchor fault does not compile until
+    `trailerOutcomes/WorkshopTrailerDropReasons.ts` maps it (a `never`
+    default) and `shared/constants/workshopTrailerOutcomeWords.ts` gives it
+    one fixed phrase.
+- **One builder, both commit paths.** `completeWorkshopRun` and
+  `completeWorkshopEditOfferRun` call `WorkshopTrailerOutcomesRecord`'s
+  builder in the reply's own commit; the field is never updated after, and
+  never records the writer's answers. The builder never clips a count.
+- **Derived from the ledger, no delivery record.**
+  `workshopTrailerOutcomeFrames` adds `<workshop-trailer-outcomes>` when
+  the participant's latest reply holds the field.
+  - It rides the writer's next message to that participant **and** the
+    host's tool-run synthesis request (`RunWorkshopToolSidePass`; Okey,
+    2026-11-17). Never a tool sidecar's message or a pressed edit offer's
+    request.
+  - The reader is the participant, not its provider conversation: a fresh
+    conversation's first message carries the line (PR #276 F-01). The
+    words there are default 46, open.
+  - A Rewind needs nothing of its own. Earlier messages stay byte for byte.
+- **Host-only and exact.** `workshopTurnForWebview` strips the field. Its
+  codec (`WorkshopTrailerOutcomeRecords.ts`) checks each side's reasons
+  against that side's list, optional and additive, forward only.
+  `workshop-trailer-outcomes` is in `RESERVED_PERSONA_FRAME`.
+- **Counts and closed reasons only:** never a title, quote, path, note id
+  or model text, in the record, the frame or a log.
+
 ### Workshop help reference
 
-A new feature is complete when its section in `packages/core/resources/help/`
-explains how to use it. Add or update the hand-written section and map its
+Follow [ADR 2026-11-17](docs/adr/2026-11-17-everyday-conveniences-round-two.md)
+D21–D25 (round two, item H; PRs #279, #280) when touching
+`packages/core/resources/help/` or the `help.*` family.
+
+**A new feature is complete when its section in `packages/core/resources/help/`
+explains how to use it.** Add or update the hand-written section and map its
 commands and settings to that section in `help/index.json`. Preserve section
 ids so a persona can read a section it found earlier. When the manifest
 changes, run `node apps/vscode-extension/scripts/generate-help-tables.js`.
 `helpReferenceSync.test.ts` checks the tables, ownership, tabs and version.
 
+- **Two reads, personas only, private.** `help.search` and `help.read` live
+  in `application/services/workshop/help/` (`WORKSHOP_HELP_MODULES`),
+  composed in `WorkshopPersonaCapability` for host and guest. No help
+  operation is publishable. The family imports nothing of `memory/` or
+  `recall/`; it shares `WorkshopTextSearch`'s term rules.
+- **One reader.** `WorkshopHelpReference` is built in `extension.ts`, joins
+  `CoreServices`, and reads through the `FileSystem` port. No handler
+  constructs it.
+- **A section is a `##` heading.** Its id is `file#heading-slug`, unique,
+  within `sectionIdCharacters`, and decodes through the codec as written;
+  a section is at most `sectionCharacters` (`PROMPT_BUDGETS.workshopHelp`).
+- **Search pages nothing and promises no complete list.** Up to
+  `searchHits`, no continuation; a section's own heading finds it.
+- **Terms past the query limit are named and ignored.** A search past
+  `WORKSHOP_QUERY_TERMS` (8) lists the ignored words, bounded and
+  neutralized, and asks for fewer. The phrase help ranks by leaves them
+  out (`keptTermsQuery`), so a word named as not searched moves nothing
+  (PR #280 F-1). The shared parser is unchanged: recall keeps its phrase.
+  Metadata counts them (`ignoredTerms`); logs never carry a word.
+- **A read is fitted by whole sections,** in the order asked, to half the
+  room left. A limited read's call names strictly fewer ids, copied from
+  its own request.
 - **The version is a caveat, not a refusal.** `WorkshopHelpReference` loads
   whatever version `overview.md` names. Every result's first line is
-  `workshopHelpHeader` (`WorkshopHelpCopy`): the reference's version and, on
-  a mismatch, the installed one ("You are running …, so newer features may
-  be missing."). The mismatch is logged once, versions only. The sync test
-  stays the hard gate.
+  `workshopHelpHeader` (`WorkshopHelpCopy`): the reference's version and,
+  on a mismatch, "The installed version is X; these versions differ, so
+  features or controls may not match." (direction-neutral). The mismatch is
+  logged once, versions only. The sync test stays the hard gate.
+  - A refusal outside the reader (malformed, over the limit, cancelled)
+    names the version a load read (`referenceVersion()`, never a read of
+    its own), through `workshopHelpRefusalHeader`; before any load it names
+    only "Prose Minion version X." (PR #280 F-2).
 - **Only success is cached.** A failed load clears itself, so the next call
   reads again; concurrent callers share the load in flight. A run of
-  failures logs once.
-- **Terms past the query limit are named.** A search past
-  `WORKSHOP_QUERY_TERMS` lists the ignored words, bounded and neutralized,
-  and asks for fewer. Its metadata counts them (`ignoredTerms`); logs never
-  carry a word.
+  failures logs once. An unreadable reference answers in host words and
+  tells the persona to say it cannot check.
+- **The grammar** is `workshop-personas/help-capability.md`, in every
+  persona's chain. `helpCapabilityPromptSync.test.ts` holds its numbers,
+  areas and every taught form and hint to the codec.
+- **Logs** carry the operation, counts and the host's section ids, never
+  the query.
 
 ### Workshop Lens Reads
 
