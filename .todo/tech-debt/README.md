@@ -116,6 +116,10 @@ elsewhere.
 | Medium | [Workshop modals don't contain focus](2026-11-03-workshop-modal-focus-containment.md) (Workshop Wayfinding Slice 2, PR #186 F-02/N-03; the text sheet makes the frame behind it `inert`, the rest don't) | Identified |
 | Low | [Rendered Markdown keeps positive `tabindex`](2026-11-04-markdown-positive-tabindex.md) (Workshop Wayfinding Slice 2, PR #186 N-01; the sheet's trap orders stops as the browser does) | Identified |
 | Low | [The Lightbox passage linear-time tests are bounded by a wall clock](2026-11-03-lightbox-passages-wall-clock-test.md) (failed CI on PR #186's report commit under runner load; count the work instead) | Identified |
+| Medium | [Lexical Gravity logs a rejected reply's text](2026-11-18-lexical-gravity-logs-rejected-reply-text.md) (Round Two close; the widget recommendation's rejection line too) | Identified |
+| Medium | [Room context reads stage into whatever room is open when they land](2026-11-18-workshop-room-context-reads-unbound-to-room.md) (Round Two close; message attachments are bound, room context is not) | Identified |
+| Medium | [A send refused by the session gate loses its draft](2026-11-18-workshop-gated-send-loses-draft.md) (Round Two close) | Identified |
+| Low | [Earlier turns are re-read whole after every session state](2026-11-18-workshop-earlier-turns-reread-cost.md) (ADR 2026-11-17 Q7) | Deferred |
 
 ## Review Guidance
 

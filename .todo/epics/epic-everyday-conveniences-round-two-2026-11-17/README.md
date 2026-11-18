@@ -1,6 +1,6 @@
 # Epic: Everyday Conveniences, Round Two
 
-**Status:** Open. Slice 0 (this README and the ADR) was reviewed in PR #269 and revised (see "Review record"); it waits for re-review. A part 1, E and G need no ADR and start beside it.
+**Status:** Built. Every slice is merged into `epic/everyday-conveniences-round-two` (PRs #268–#281); the closing pass is on `epic/everyday-conveniences-round-two-close`. Next: Okey's [live pass](live-pass.md) and the open decisions it lists. Nothing has gone to `main`.
 **Priority:** Medium
 **Opened:** 2026-11-17
 **Branch:** `epic/everyday-conveniences-round-two`, cut from `main` at `3f99e733`.
@@ -41,8 +41,8 @@ decisions live in this README and the ADR.
 | F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | #277 | Merged |
 | H | H | prose-minion-help-reference | 20 | `…-help-reference` | #279 | Merged |
 | H+ | H, follow-ups | prose-minion-help-reference | 20 | `…-help-followups` | #280 | Merged |
-| A3 | A, follow-up: a bookmark outside the window loads its pages and scrolls to it (at most 3 pages; ADR D6 amendment) | thread-earlier-turns | Okey, 2026-11-18 | `…-bookmark-jump` | #281 | In review |
-| Close | Closing pass | | | `…-close` | | After H |
+| A3 | A, follow-up: a bookmark outside the window loads its pages and scrolls to it (at most 3 pages; ADR D6 amendment) | thread-earlier-turns | Okey, 2026-11-18 | `…-bookmark-jump` | #281 | Merged |
+| Close | Closing pass: [live pass](live-pass.md), `AGENTS.md`, memory bank, tech debt | | | `…-close` | #282 | In review |
 
 Slice branches are `epic/everyday-conveniences-round-two-<slug>`. A slice
 already running under another slug keeps its own; this table then records
@@ -223,7 +223,7 @@ The second slice to merge takes the other's lines.
 - Shared components keep their parity tests.
 
 **At the end**
-- A live-pass checklist (`live-pass.md`, as the first epic's).
+- A live-pass checklist ([`live-pass.md`](live-pass.md), as the first epic's).
 - `AGENTS.md` updated where a rule changed.
 - A memory-bank entry.
 
@@ -306,6 +306,8 @@ a note.** These are the ones to look at first.
 | F (`…-persona-reads-lenses`, on C's branch) | 896 | 12,874 | 59 |
 | H (`…-help-reference`, on the epic branch at `5ebe42fe`) | 917 | 13,186 | 59 |
 | H follow-ups (`…-help-followups`, on the epic branch at `3a6054c3`) | 918 | 13,195 | 59 |
+| A3 bookmark jump (`…-bookmark-jump`, as reported in PR #281) | 920 | 13,214 | 59 |
+| Close (`…-close`, the epic at `caff8379`, all slices merged) | 921 | 13,230 | 59 |
 
 Each slice adds its row.
 
@@ -338,7 +340,7 @@ Each slice adds its row.
 - [ ] H: the reference covers every area; its sync tests fail on an
       undocumented command, setting or tab; a persona answers "how do I
       pin a file?" from it.
-- [ ] A live-pass checklist, `AGENTS.md` updated, and a memory-bank entry.
+- [x] A live-pass checklist ([live-pass.md](live-pass.md)), `AGENTS.md` updated, and a memory-bank entry ([2026-11-18](../../../.memory-bank/20261118-2015-everyday-conveniences-round-two-complete.md)).
 - [ ] Okey's live pass.
 
 ## Review record
@@ -375,10 +377,21 @@ them, Okey's decision of 2026-11-17 on a tool run's synthesis request.
 
 ## Notes
 
-- **Follow-ups stay in their notes:** fix 4 and the helper's repair (E);
-  `lens.search` and recommending a project lens (F); `@persona` (G); a
-  guide persona (H); jumping to a bookmark's page (A); the `memory.read`
-  fit ([Reads That Fit the Window](../../features/feature-workshop-reads-fit-the-window/README.md)).
+- **Follow-ups.** Fix 4 and the helper's repair (E) stay in
+  [their note](../../tech-debt/2026-11-09-lexical-gravity-reads-json-without-repair.md);
+  the `memory.read` fit stays in
+  [Reads That Fit the Window](../../features/feature-workshop-reads-fit-the-window/README.md).
+  Jumping to a bookmark's page (A) was built (A3, #281). The closing pass
+  split the rest into their own entries:
+  [every "show me that turn" loads its pages](../../features/feature-workshop-jump-to-earlier-turn-everywhere/README.md) (A),
+  [`lens.search` and recommending a project lens](../../features/feature-workshop-persona-lens-search-and-recommend/README.md) (F),
+  [`@persona`](../../features/feature-workshop-composer-at-persona/README.md) (G) and
+  [a guide persona](../../features/feature-prose-minion-guide-persona/README.md) (H).
+- **Tech debt found at the close:**
+  [Lexical Gravity logs a rejected reply's text](../../tech-debt/2026-11-18-lexical-gravity-logs-rejected-reply-text.md),
+  [room context reads are not bound to their room](../../tech-debt/2026-11-18-workshop-room-context-reads-unbound-to-room.md),
+  [a send refused by the session gate loses its draft](../../tech-debt/2026-11-18-workshop-gated-send-loses-draft.md),
+  and [earlier turns' re-read cost](../../tech-debt/2026-11-18-workshop-earlier-turns-reread-cost.md) (Q7).
 - **Files already over 500 lines** that these slices touch are tracked in
   [tech debt](../../tech-debt/2026-11-14-everyday-conveniences-oversized-files.md).
   A slice adds its own module and only the call into it.
