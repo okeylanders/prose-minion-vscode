@@ -24,7 +24,7 @@ Eight writer features from Okey's idea list, one slice each, plus three follow-u
 | H | H | A Prose Minion reference (`resources/help/`), `help.search` and `help.read` | #279 | `3a6054c3` | Clear |
 | H+ | H | Help loads on a version mismatch, retries a failed load, names ignored terms | #280 | `cdfd8358` | Two P2 (ignored terms still ranked; refusals misnamed the version), one minor (caveat direction), all fixed |
 | A3 | A | A bookmark outside the window loads up to 3 pages and scrolls to it | #281 | `caff8379` | One P2 (a newer move did not cancel a pending jump), fixed |
-| Close | | Live-pass checklist, `AGENTS.md`, this entry, tech debt | pending | pending | pending |
+| Close | | Live-pass checklist, `AGENTS.md`, this entry, tech debt | #282 | pending | Three P2 checklist fixes (A3 cold cases, H7 fresh reader, memory reset after B) and the ranking handoff, all fixed |
 
 ## Decisions Okey made during the epic
 
@@ -60,7 +60,7 @@ On `epic/everyday-conveniences-round-two-close` (the epic at `caff8379` plus doc
 
 ## Follow-ups
 
-- **Okey:** the [live pass](../.todo/epics/epic-everyday-conveniences-round-two-2026-11-17/live-pass.md) and its 14 open decisions (Q1–Q7; B's save-at-once rows; D's defaults 45 and 46; G's duplicate-basename pill labels; `partial` for limited help and lens reads; PR #281's two questions).
+- **Okey:** the [live pass](../.todo/epics/epic-everyday-conveniences-round-two-2026-11-17/live-pass.md) and its 15 open decisions (Q1–Q7; B's save-at-once rows; D's defaults 45 and 46; G's duplicate-basename pill labels; `partial` for limited help and lens reads; PR #281's two questions; help's exact-heading-first ranking, PR #279).
 - Tech debt: [rejected reply text in logs](../.todo/tech-debt/2026-11-18-lexical-gravity-logs-rejected-reply-text.md), [room context reads unbound to their room](../.todo/tech-debt/2026-11-18-workshop-room-context-reads-unbound-to-room.md), [gated send loses its draft](../.todo/tech-debt/2026-11-18-workshop-gated-send-loses-draft.md), [earlier turns' re-read cost](../.todo/tech-debt/2026-11-18-workshop-earlier-turns-reread-cost.md).
 - Features: [jump everywhere](../.todo/features/feature-workshop-jump-to-earlier-turn-everywhere/README.md), [lens search and recommend](../.todo/features/feature-workshop-persona-lens-search-and-recommend/README.md), [`@persona`](../.todo/features/feature-workshop-composer-at-persona/README.md), [guide persona](../.todo/features/feature-prose-minion-guide-persona/README.md); still in their notes: [E's fix 4 and the helper's repair](../.todo/tech-debt/2026-11-09-lexical-gravity-reads-json-without-repair.md), [the `memory.read` fit](../.todo/features/feature-workshop-reads-fit-the-window/README.md).
 - After the live pass: archive the epic and its eight source notes, and release (the reference's `overview.md` version moves with the manifest).

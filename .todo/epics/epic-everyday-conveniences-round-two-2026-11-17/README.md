@@ -42,7 +42,7 @@ decisions live in this README and the ADR.
 | H | H | prose-minion-help-reference | 20 | `…-help-reference` | #279 | Merged |
 | H+ | H, follow-ups | prose-minion-help-reference | 20 | `…-help-followups` | #280 | Merged |
 | A3 | A, follow-up: a bookmark outside the window loads its pages and scrolls to it (at most 3 pages; ADR D6 amendment) | thread-earlier-turns | Okey, 2026-11-18 | `…-bookmark-jump` | #281 | Merged |
-| Close | Closing pass: [live pass](live-pass.md), `AGENTS.md`, memory bank, tech debt | | | `…-close` | this PR | In review |
+| Close | Closing pass: [live pass](live-pass.md), `AGENTS.md`, memory bank, tech debt | | | `…-close` | #282 | In review |
 
 Slice branches are `epic/everyday-conveniences-round-two-<slug>`. A slice
 already running under another slug keeps its own; this table then records

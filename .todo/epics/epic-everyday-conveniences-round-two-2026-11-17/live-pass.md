@@ -23,9 +23,11 @@ no test made a live model call. Every review (`docs/pr-reviews/pr-268` to
 5. Keep **Output → Prose Minion** open. Several steps read it; none of its
    lines should ever carry your text, a note's text, a lens's text, a path
    in a persona's read, or a query.
-6. For A, have a saved session with **more than 500 turns** (Okey's long
-   room is 273; a 500-turn room is easiest made by script, or reuse a
-   large one). Note its turn count: `N`.
+6. For A, have a saved session with **at least 600 turns** (Okey's long
+   room is 273; a 600-turn room is easiest made by script). A3's past-cap
+   case needs a target 400 turns before a 200-turn window, so 600 is the
+   least that works. Note its turn count: `N`. Save it under a name you can
+   reopen (A3 reopens it between cases).
 
 Tick a box when the result matches. Write what you saw beside any that
 does not.
@@ -72,53 +74,77 @@ reader. Bounds: `PROMPT_BUDGETS.workshopThread.pageTurns` (100) and
 ## A3. Bookmark jump (PR #281)
 
 **Not covered by tests:** the real scroll and focus, a real page of mixed
-sizes, a screen reader hearing a refusal. The cap is
-`PROMPT_BUDGETS.workshopThread.jumpPages` (3): the host refuses a target
-more than `jumpPages × pageTurns` (300) turns back, and the webview stops
-after 3 pages.
+sizes, a screen reader hearing a refusal.
 
-Make four bookmarks in the long room: one in the window, one about 50
-turns before the window, one about 250 turns before it, and one about 400
-turns before it.
+**The numbers.** The window is `WORKSHOP_SNAPSHOT_TURN_WINDOW` (200, in
+`WorkshopSessionService.ts`). A page is `PROMPT_BUDGETS.workshopThread.pageTurns`
+(100) turns or `pageBytes` (1 MiB), whichever comes first. A jump loads at
+most `jumpPages` (3) pages: the host refuses a target more than
+`jumpPages × pageTurns` (300, `WORKSHOP_JUMP_TURNS`) turns before the
+**oldest turn the thread holds**, and the webview stops after 3 pages.
 
-1. - [ ] **In window.** Open the Notes rail's bookmark for the turn in the
-   window.
+**Cold, then warm.** The distance is counted from the oldest turn held,
+and a held turn lands with no request. So every case marked **cold**
+starts from a cold thread: Open the saved session again (Sessions → Open),
+which drops every loaded page, and check the top of the thread shows the
+hidden-turns notice with `N − 200` before you begin. Only the case marked
+**warm** keeps pages on purpose.
+
+In the ≥600-turn room, with the window holding the newest 200 turns, make
+five bookmarks: **W** in the window; **B50**, about 50 turns before the
+window's first turn; **B250**, about 250 before it; **B280**, about 280
+before it; **B400**, about 400 before it. Save the session.
+
+1. - [ ] **In window (cold).** Open W from the Notes rail.
    **Expect:** scrolls to and focuses its bubble at once, as before.
-2. - [ ] **Within one page** (≈50 back). Its row is marked "earlier in
-   thread" and named "…: show it in the thread".
+2. - [ ] **Within one page (cold).** Reopen the session. B50's row is
+   marked "earlier in thread" and named "…: show it in the thread". Open
+   it.
    **Expect:** the row reads "loading earlier turns…" (busy, disabled),
-   then the thread scrolls to and focuses the bubble. One announcement:
-   "`n` earlier turns shown. Showing bookmark: `label`."
-3. - [ ] **Within 3 pages** (≈250 back). Same as step 2, with up to 3
-   pages loaded. A second press on the row while it loads does nothing.
-4. - [ ] **Past 3 pages** (≈400 back).
-   **Expect:** the reader (the read-only preview) opens for that turn, as
-   before this slice; the announcement is the reason ("The turn is too far
-   back to load into the thread, so the reader shows it instead."). Does a
-   screen reader hear the reason before the sheet takes focus? (Open
-   question 13.)
-5. - [ ] **Already loaded.** After step 3, open the ≈50-back bookmark.
-   **Expect:** lands at once, no request (nothing new in Output).
-6. - [ ] **Cancel by choosing another bookmark.** Start the ≈250-back jump,
-   and while it loads open the in-window bookmark.
-   **Expect:** focus goes to the in-window bubble and stays there; a late
-   page does not pull it back, and no reader opens. Pages already shown
-   stay.
-7. - [ ] **Escape.** Start a jump, then press Escape on its row.
-   **Expect:** the walk stops; pages already shown stay.
-8. - [ ] **Other moves supersede it.** Start a jump, then use a to-do's
-   source, a Read in card, or an edit offer's link.
+   then the thread scrolls to and focuses B50. One announcement: "`n`
+   earlier turns shown. Showing bookmark: `label`."
+3. - [ ] **Within 3 pages (cold).** Reopen the session. Open B250.
+   **Expect:** up to 3 pages load, then it lands as in step 2. A second
+   press on the row while it loads does nothing.
+4. - [ ] **Already loaded (warm).** Straight after step 3, without
+   reopening, open B50.
+   **Expect:** lands at once, with no "loading" state and no new page read
+   in Output.
+5. - [ ] **Past the cap (cold).** Reopen the session. Open B400.
+   **Expect:** no page loads; the reader (the read-only preview) opens for
+   that turn; the announcement is the reason ("The turn is too far back to
+   load into the thread, so the reader shows it instead."). Does a screen
+   reader hear the reason before the sheet takes focus? (Open question 13.)
+   If any page had been loaded first, B400 might lie within 300 of the
+   oldest held turn and land instead: that is why this case is cold.
+6. - [ ] **Cancel by choosing another bookmark (cold).** Reopen the
+   session. Open B280, and **only while its row still reads "loading
+   earlier turns…"**, open W.
+   **Expect:** focus goes to W and stays there; a late page does not pull
+   it back, and no reader opens. Pages already shown stay. If the row never
+   shows "loading" long enough to press W (pages come back too fast), say
+   so: the case was not exercised. A fixture whose earlier turns are long
+   (near the 1 MiB page bound) slows each page.
+7. - [ ] **Escape (cold).** Reopen the session. Open B280 and, while its
+   row reads "loading earlier turns…", press Escape on it.
+   **Expect:** the walk stops before B280; the pages already shown stay;
+   no scroll, no reader.
+8. - [ ] **Other moves supersede it (cold).** Reopen the session. Open
+   B280 and, while it is loading, use a to-do's source, a Read in card, or
+   an edit offer's link.
    **Expect:** the newer move wins; the jump never takes focus back.
-9. - [ ] **Bookmarks screen.** In Bookmarks, press Show in thread on a row
-   outside the window.
-   **Expect:** the screen closes, then the walk runs and lands (or opens
-   the reader past 3 pages).
-10. - [ ] **New room.** Start a jump, then choose New.
+9. - [ ] **Bookmarks screen (cold).** Reopen the session. In Bookmarks,
+   press Show in thread on B250, then (reopen again) on B400.
+   **Expect:** the screen closes, then the walk runs and lands on B250;
+   for B400 the reader opens.
+10. - [ ] **New room (cold).** Reopen the session. Open B280 and, while it
+    is loading, choose New.
     **Expect:** nothing settles; no scroll, no reader.
-11. - [ ] **Re-read first.** Send a message with pages loaded, and at once
-    open a far bookmark.
+11. - [ ] **Re-read first (warm).** Reopen the session, press "Show earlier
+    turns" once (one page held), then send a message and at once open B250.
     **Expect:** the re-read finishes, then the jump runs from the run it
-    read. (It restarts with a fresh 3-page allowance: open question 14.)
+    read and lands. (It restarts with a fresh 3-page allowance: open
+    question 14.)
 12. - [ ] Output after the steps above: ids, counts and refusal reasons
     only, never a label or a turn's text.
 
@@ -166,8 +192,20 @@ explicitly). Start a **new** conversation for each level.
    held cards.
 6. - [ ] **Off stays off.** Set memory to `off`.
    **Expect:** no suggestions at any level.
+7. - [ ] **Reset for C and D.** B5 and B6 changed settings that persist
+   across conversations and windows. Set `proseMinion.workshop.projectMemory`
+   back to `ask` (the Memory tab's "Ask first" card, applied) and "Suggest
+   notes" back to Sparingly. Then start a **new** conversation for C: a
+   conversation built while memory was off has no memory frame, and the
+   frame is built once per conversation.
+   **Expect:** the Memory tab shows `ask` and Sparingly before you go on.
+   (Or run C and D in a separate VS Code profile whose memory mode was
+   never changed.)
 
 ## C. Every memory's title (PR #274)
+
+**Before you start:** memory is `ask` (B7). Each C and D step that says
+"new conversation" starts one; the rest continue the current one.
 
 **Not covered by tests:** a persona actually using a title to decide to
 read a note; the meters against a real model's tokenizer.
@@ -341,13 +379,29 @@ catch a missing command, setting or tab), and a persona answering from it.
    version 2.13.0. The installed version is 2.14.0; these versions differ,
    so features or controls may not match." Output logs the mismatch once,
    versions only. A malformed or over-limit help call names 2.13.0 too.
-7. - [ ] **Retry.** Rename the staged `apps/vscode-extension/resources/help`
-   folder (the copy the Development Host reads), ask a help question, put
-   it back, ask again in the same window.
-   **Expect:** the first answer says "The Prose Minion reference for
-   version … is unavailable." and the persona says it cannot check; the
-   second reads normally (only a successful load is cached). Output logs
-   "reference unavailable" once.
+7. - [ ] **Retry.** `WorkshopHelpReference` keeps a successful load for
+   the reader's whole life (the Development Host session), so a reader that
+   has already answered a help call never reads the files again; renaming
+   the folder under it changes nothing. This case needs a **fresh reader to
+   fail first**, then the **same reader to recover**:
+   1. **Reset before.** Undo H6: put "Reference version: 2.14.0" back in
+      `packages/core/resources/help/overview.md`, then `npm run build` so
+      the staged copy (`apps/vscode-extension/resources/help`) is the
+      bundled one again. Stop `npm run watch` if it is running: a rebuild
+      re-stages the folder.
+   2. Close the Extension Development Host and start a **new** one (F5).
+      Make no help call yet.
+   3. Rename `apps/vscode-extension/resources/help` (for example to
+      `help.off`). Then, in a Workshop room, ask a "how do I…" question.
+      **Expect:** the help card says "The Prose Minion reference for
+      version 2.14.0 is unavailable. Tell the writer you cannot check
+      it.", the persona says it cannot check, and Output logs
+      "[WorkshopHelpReference] reference unavailable" once.
+   4. **Preserve during.** Rename the folder back to `help`. Do **not**
+      restart or reload the Development Host. Ask again.
+      **Expect:** the same reader reads it now (a failed load is never
+      kept) and answers from a section. Output logs no second
+      "unavailable".
 8. - [ ] A limited help read (small-context model, three sections):
    "This read was limited to the first `k` of 3 sections." and a call for
    the rest. The card reads success (open question 12).
@@ -397,3 +451,8 @@ the rest are in the README's "Defaults taken" or the PRs.
     sheet still says "Outside the loaded window".
 14. **#281: a re-read restarts a waiting jump with a fresh 3-page
     allowance.** Fine, or should the allowance count pages already walked?
+15. **H: `help.search` puts an exact heading match first.** A section
+    whose heading is the query ranks first, so every section is reachable
+    by its own heading (ADR D22; recorded in PR #269). The rule came from
+    the build agent, and PR #279 left it "awaiting Okey's confirmation".
+    Keep, or rank by the term rules alone?
