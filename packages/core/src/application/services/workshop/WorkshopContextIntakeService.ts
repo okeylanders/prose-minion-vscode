@@ -10,6 +10,16 @@ import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { createHash } from 'crypto';
 import { fileURLToPath, pathToFileURL } from 'url';
 import * as path from 'path';
+import {
+  baseName,
+  isAbsolutePath,
+  isPathWithinRoot,
+  workspaceRelativeSegments
+} from '@/application/services/workshop/WorkshopIntakePaths';
+import {
+  WorkshopIntakeCatalogScope,
+  workshopIntakeCatalogScope
+} from '@/application/services/workshop/WorkshopIntakeCatalogScope';
 
 export interface WorkshopConfiguredResourceBounds {
   maxBytes: number;
@@ -80,37 +90,6 @@ export type WorkshopConfiguredResourceLoadResult =
   | { kind: 'too-large'; summary: ContextResourceSummary }
   | { kind: 'empty'; summary: ContextResourceSummary }
   | { kind: 'unreadable'; summary: ContextResourceSummary; details: string };
-
-const isAbsolutePath = (filePath: string): boolean =>
-  filePath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(filePath) || filePath.startsWith('\\\\');
-
-const isPathWithinRoot = (root: string, candidate: string): boolean => {
-  const resolvedRoot = path.resolve(root);
-  const resolvedCandidate = path.resolve(candidate);
-  if (resolvedCandidate === resolvedRoot) {
-    return true;
-  }
-  const relative = path.relative(resolvedRoot, resolvedCandidate);
-  return relative.length > 0 && !relative.startsWith('..') && !path.isAbsolute(relative);
-};
-
-const baseName = (filePath: string): string =>
-  filePath.split(/[\\/]/).filter(Boolean).pop() ?? filePath;
-
-const workspaceRelativeSegments = (displayPath: string): string[] | undefined => {
-  if (
-    displayPath.length === 0
-    || displayPath.startsWith('External file: ')
-    || displayPath.includes('\0')
-    || isAbsolutePath(displayPath)
-  ) {
-    return undefined;
-  }
-  const segments = displayPath.split(/[\\/]/);
-  return segments.some((segment) => segment.length === 0 || segment === '.' || segment === '..')
-    ? undefined
-    : segments;
-};
 
 const formatBytes = (bytes: number): string => {
   if (bytes < 1024) {
@@ -385,9 +364,12 @@ export class WorkshopContextIntakeService {
    * read. An explicit picker may initially admit an external file, but a later
    * webview replay is trusted only when the current host proves the path is in
    * an open workspace or exactly names a fresh configured-catalog resource.
+   * An operation authorizing many files passes its own `scope`, so they share
+   * one catalog; alone, a call opens its own.
    */
   async authorizeExcerptReread(
-    source: Extract<WorkshopExcerptSource, { kind: 'file' }>
+    source: Extract<WorkshopExcerptSource, { kind: 'file' }>,
+    scope: WorkshopIntakeCatalogScope = workshopIntakeCatalogScope(this)
   ): Promise<WorkshopExcerptRereadAuthorization> {
     let fsPath: string;
     try {
@@ -400,7 +382,7 @@ export class WorkshopContextIntakeService {
       };
     }
 
-    const resolution = await this.resolveConfiguredSource(source);
+    const resolution = await this.resolveConfiguredSource(source, scope);
     const workspaceRoot = this.workspace.workspaceFolders()
       .find((folder) => isPathWithinRoot(folder.path, fsPath));
     if (workspaceRoot) {
@@ -429,7 +411,7 @@ export class WorkshopContextIntakeService {
       };
     }
 
-    const workspaceRecovery = await this.recoverWorkspaceExcerptSource(source);
+    const workspaceRecovery = await this.recoverWorkspaceExcerptSource(source, scope);
     if (workspaceRecovery) {
       return workspaceRecovery;
     }
@@ -449,7 +431,8 @@ export class WorkshopContextIntakeService {
    * no-symbolic-link filesystem proof used by an unchanged absolute URI.
    */
   private async recoverWorkspaceExcerptSource(
-    source: Extract<WorkshopExcerptSource, { kind: 'file' }>
+    source: Extract<WorkshopExcerptSource, { kind: 'file' }>,
+    scope: WorkshopIntakeCatalogScope
   ): Promise<WorkshopExcerptRereadAuthorization | undefined> {
     const segments = workspaceRelativeSegments(source.relativePath);
     if (!segments) {
@@ -482,7 +465,7 @@ export class WorkshopContextIntakeService {
       sourceUri: pathToFileURL(candidate).toString(),
       relativePath: source.relativePath
     };
-    const reboundResolution = await this.resolveConfiguredSource(reboundSource);
+    const reboundResolution = await this.resolveConfiguredSource(reboundSource, scope);
     return {
       kind: 'authorized',
       fsPath: candidate,
@@ -495,7 +478,8 @@ export class WorkshopContextIntakeService {
   }
 
   private async resolveConfiguredSource(
-    source: WorkshopExcerptSource
+    source: WorkshopExcerptSource,
+    scope: WorkshopIntakeCatalogScope = workshopIntakeCatalogScope(this)
   ): Promise<WorkshopConfiguredSourceResolution> {
     if (source.kind === 'manual') {
       return { match: { kind: 'manual', source } };
@@ -525,7 +509,7 @@ export class WorkshopContextIntakeService {
     }
     let summaries: ContextResourceSummary[];
     try {
-      summaries = (await this.openCatalog()).entries();
+      summaries = (await scope.catalog()).entries();
     } catch (error) {
       return {
         match: {

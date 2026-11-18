@@ -42,6 +42,10 @@ import {
   type WorkshopPinnedContextPathPlatform
 } from '@shared/types/workshopPinnedContext';
 import { isMissingFileSystemPathError } from '@/infrastructure/storage/fileSystemErrors';
+import {
+  workshopIntakeCatalogScope,
+  type WorkshopIntakeCatalogScope
+} from '@/application/services/workshop/WorkshopIntakeCatalogScope';
 
 /** The intake service's doors the reader uses, and no others. */
 export type WorkshopPinnedContextIntakePort = Pick<
@@ -172,30 +176,33 @@ export class WorkshopPinnedContextFileReader {
    * Read every entry, in order, against one fresh catalog, from under
    * `rootPath` only: the root the caller captured, never the live one
    * (PR #208 F01). A catalog that cannot be opened reads every entry as a
-   * workspace file; the second return value says so, for the log.
+   * workspace file; the second return value says so, for the log. The same
+   * catalog authorizes each workspace file's read: one catalog per read.
    */
   async readAll(
     rootPath: string,
     entries: readonly WorkshopPinnedContextEntry[]
   ): Promise<{ reads: WorkshopPinnedFileRead[]; catalogUnreadable: boolean }> {
-    const catalog = await this.openCatalog();
+    const scope = workshopIntakeCatalogScope(this.intake);
+    const catalog = await this.openCatalog(scope);
     const rows = catalog?.entries() ?? [];
     const reads: WorkshopPinnedFileRead[] = [];
     for (const entry of entries) {
-      reads.push(await this.readResolved(rootPath, entry, catalog, await this.resolveAmong(rootPath, entry, rows)));
+      const resolution = await this.resolveAmong(rootPath, entry, rows);
+      reads.push(await this.readResolved(rootPath, entry, { catalog, scope }, resolution));
     }
     return { reads, catalogUnreadable: catalog === undefined };
   }
 
   /** The source one entry names under `rootPath`, against a fresh catalog: what Open opens (PR #210 F05). */
   async resolve(rootPath: string, entry: WorkshopPinnedContextEntry): Promise<WorkshopPinnedSourceResolution> {
-    const catalog = await this.openCatalog();
+    const catalog = await this.openCatalog(workshopIntakeCatalogScope(this.intake));
     return this.resolveAmong(rootPath, entry, catalog?.entries() ?? []);
   }
 
-  private async openCatalog(): Promise<WorkshopContextIntakeCatalog | undefined> {
+  private async openCatalog(scope: WorkshopIntakeCatalogScope): Promise<WorkshopContextIntakeCatalog | undefined> {
     try {
-      return await this.intake.openCatalog();
+      return await scope.catalog();
     } catch {
       return undefined;
     }
@@ -239,7 +246,7 @@ export class WorkshopPinnedContextFileReader {
   private async readResolved(
     rootPath: string,
     entry: WorkshopPinnedContextEntry,
-    catalog: WorkshopContextIntakeCatalog | undefined,
+    { catalog, scope }: { catalog: WorkshopContextIntakeCatalog | undefined; scope: WorkshopIntakeCatalogScope },
     resolution: WorkshopPinnedSourceResolution
   ): Promise<WorkshopPinnedFileRead> {
     const named = path.join(rootPath, ...entry.path.split('/'));
@@ -266,7 +273,7 @@ export class WorkshopPinnedContextFileReader {
     try {
       return resolution.kind === 'catalog' && catalog
         ? await this.readListed(identity, catalog, resolution.summary)
-        : await this.readWorkspaceFile(rootPath, identity, named);
+        : await this.readWorkspaceFile(scope, identity, named);
     } catch {
       return {
         ...identity,
@@ -324,7 +331,7 @@ export class WorkshopPinnedContextFileReader {
    * any path it hands back other than the one asked for is never read.
    */
   private async readWorkspaceFile(
-    rootPath: string,
+    scope: WorkshopIntakeCatalogScope,
     identity: WorkshopPinnedFileIdentity,
     fsPath: string
   ): Promise<WorkshopPinnedFileRead> {
@@ -340,7 +347,7 @@ export class WorkshopPinnedContextFileReader {
       kind: 'file',
       sourceUri: pathToFileURL(fsPath).toString(),
       relativePath: identity.entry.path
-    });
+    }, scope);
     if (authorization.kind === 'refused') {
       return { ...identity, state: 'unreadable', source, fault: 'refused' };
     }

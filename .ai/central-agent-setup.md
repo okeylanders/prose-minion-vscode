@@ -1668,6 +1668,21 @@ file or Continue on a carried passage:
   room operation,** never two webview messages (PR #260 F-01): ordered
   sends are not ordered completions.
 
+### Workshop Catalog per Operation
+
+Follow [the tech-debt note](.todo/tech-debt/2026-11-18-room-open-indexes-catalog-per-context-file.md)
+when an operation authorizes or reads several files against the project
+catalog:
+
+- **One catalog per operation, never across them.** A loop that calls
+  `authorizeExcerptReread` makes one `workshopIntakeCatalogScope` and passes
+  it to every call: the context scan (`WorkshopContextFileScan`) and the
+  pinned reader's `readAll` do. Never keep a scope after its operation: a
+  catalog kept longer would need file-watching to stay true.
+- **Only the listing is shared.** Containment, the symbolic-link check and
+  `loadFile`'s bounds still run per file.
+- **The scan logs one line,** counts and milliseconds, never a path or a name.
+
 ### Workshop Pinned Context
 
 Follow [ADR 2026-11-04](docs/adr/2026-11-04-workshop-pinned-context.md) when

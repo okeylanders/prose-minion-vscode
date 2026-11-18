@@ -12,6 +12,7 @@ import type {
 import {
   WorkshopContextIntakeService
 } from '@/application/services/workshop/WorkshopContextIntakeService';
+import { scanWorkshopContextFiles } from '@/application/services/workshop/WorkshopContextFileScan';
 import { searchConfiguredResourceContent } from '@/application/services/ConfiguredResourceContentSearch';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
@@ -270,73 +271,13 @@ export class WorkshopContextHandler {
       return;
     }
 
-    let provisionalWords = this.session.contextWordsUsed();
-    const updates: Array<WorkshopContextFileRefreshInput & { label: string }> = [];
-    const failures: string[] = [];
-    const truncated: string[] = [];
-
-    for (const attachment of attachments) {
-      if (!attachment.sourceUri) {
-        failures.push(`${attachment.label} (source unavailable)`);
-        continue;
-      }
-      const source: Extract<WorkshopExcerptSource, { kind: 'file' }> = {
-        kind: 'file',
-        sourceUri: attachment.sourceUri,
-        relativePath: attachment.relativePath ?? attachment.label,
-        ...(attachment.configuredResource
-          ? { configuredResource: { ...attachment.configuredResource } }
-          : {})
-      };
-      const authorization = await this.contextIntakeService.authorizeExcerptReread(source);
-      if (authorization.kind === 'refused') {
-        failures.push(`${attachment.label} (${authorization.message})`);
-        continue;
-      }
-      const loaded = await this.contextIntakeService.loadFile(
-        authorization.fsPath,
-        authorization.source.relativePath,
-        {
-          maxBytes: PROMPT_BUDGETS.contextAttachments.fileBytes,
-          maxWords: PROMPT_BUDGETS.contextAttachments.words
-        },
-        'attach'
-      );
-      if (loaded.kind === 'refused') {
-        failures.push(`${attachment.label} (${loaded.refusal.message})`);
-        continue;
-      }
-
-      // The refreshed attachment takes the old one's slot in the aggregate.
-      // A changed file can therefore grow only into genuinely free capacity.
-      const availableWords = PROMPT_BUDGETS.contextAttachments.words
-        - (provisionalWords - attachment.words);
-      const totalWords = loaded.file.truncation?.totalWords ?? loaded.file.words;
-      const bounded = this.contextIntakeService.boundText(
-        loaded.file.text,
-        availableWords,
-        totalWords
-      );
-      if (bounded.text === attachment.content) {
-        continue;
-      }
-      provisionalWords = provisionalWords - attachment.words + bounded.words;
-      if (bounded.truncation) {
-        truncated.push(
-          `${attachment.label} (${bounded.truncation.keptWords.toLocaleString('en-US')} of ${bounded.truncation.totalWords.toLocaleString('en-US')} words)`
-        );
-      }
-      updates.push({
-        id: attachment.id,
-        label: attachment.label,
-        content: bounded.text,
-        words: bounded.words,
-        truncation: bounded.truncation,
-        sourceUri: authorization.source.sourceUri,
-        relativePath: authorization.source.relativePath,
-        configuredResource: authorization.source.configuredResource
-      });
-    }
+    const { updates, failures, truncated } = await scanWorkshopContextFiles(
+      this.contextIntakeService,
+      this.outputChannel,
+      origin,
+      attachments,
+      this.session.contextWordsUsed()
+    );
 
     const refreshSummary = this.contextRefreshSummary(updates, failures, truncated);
     if (updates.length > 0) {
