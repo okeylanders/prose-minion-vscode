@@ -90,10 +90,12 @@ not into Requested. Requested is every other read-in row.
 `workshopPersonaSystemPromptPaths` stays the one assembly chain. The
 assembly moves out of `AssistantToolService` into
 `infrastructure/api/services/analysis/WorkshopPersonaSystemPrompt.ts`,
-which loads each path, joins exactly as `PromptLoader.loadPrompts` did, adds
-the writer profile, standing directives and the widget instruction, and
-returns the text **and** its sections. A test pins the text to the old
-assembly, byte for byte.
+which writes the text as before (`PromptLoader.loadPrompts`, then the
+writer profile, standing directives and the widget instruction) and
+returns it **with** its sections. To measure, it loads each path again on
+its own and keeps the sections only when, joined as `loadPrompts` joins
+them, they rebuild the chain exactly; otherwise it keeps none. A test pins
+the text to the old assembly, byte for byte.
 
 - A section's part comes from a closed set of tool-use paths
   (`WORKSHOP_TOOL_USE_PROMPT_PATHS`); every other path is Persona and
