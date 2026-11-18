@@ -1090,6 +1090,41 @@ window, or how a bookmark reaches a turn there:
 - **Logs** carry ids, outcomes and counts (turns, bytes), never a label or
   a turn's text.
 
+### Workshop Context Breakdown
+
+Follow [ADR 2026-11-18](docs/adr/2026-11-18-workshop-context-breakdown.md)
+when touching what a participant's Context panel says each part of its
+context holds, or when adding a frame the host writes into a message:
+
+- **The host measures what it writes.** Each persona run gets one
+  `WorkshopContextTallyRecorder` (`services/analysis/WorkshopContextTally.ts`),
+  shared by the room handler's frames (`WorkshopTurnFrameTally`), the fresh
+  host's envelope (`WorkshopPersonaUserMessage`), the guest join and the
+  capability's contract and turn reminder. **A new frame is added to the
+  recorder where it is placed**, under a piece in the closed
+  `WORKSHOP_CONTEXT_TALLY_PIECES` table; otherwise it counts as Conversation.
+  The writer's own words are never tallied. A tool sidecar's run gets none.
+- **The engine has a seam, never a branch.** `AgentRunOptions.contextTally`
+  is asked once, at the turn's commit (held retention included), and
+  `ConversationManager.appendContextTally` stores `{ messageIndex, pieces }`
+  beside the manifest: one entry per message, opaque bounded keys.
+- **Cuts by the mark's `messageCount`,** in `rewindWorkshopSession` only; marks
+  gain no field. `contextTally` on an archive entry is optional and additive
+  (no `schemaVersion` bump); a malformed one is dropped on import, never
+  degrading the conversation. `__tests__/fixtures/workshop-session-v2-before-context-tally.json`
+  must keep reading.
+- **The system prompt is measured per section** from
+  `workshopPersonaSystemPromptPaths`, in `WorkshopPersonaSystemPrompt.ts`, the
+  one assembly. Sections are kept only when they rebuild the prompt exactly,
+  and looked up by the held message's digest (`WorkshopSystemPromptMeasures`).
+  A tool-use section is listed in `WORKSHOP_TOOL_USE_PROMPT_PATHS`; any other
+  is Persona and behavior.
+- **Conversation is the rest,** computed in the webview
+  (`utils/workshop/contextBreakdownView.ts`), never negative. A history from
+  before the tally shows the tallied parts as "not measured", never zero.
+- **Display-safe:** parts, host names, counts and tokens only
+  (`ContextBreakdown`); no prompt text, path or conversation id.
+
 ### Workshop Seed Delivery
 
 Follow [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D11

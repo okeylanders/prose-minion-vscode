@@ -22,6 +22,7 @@ const WORKSHOP_STYLE_IMPORTS = [
   './styles/workshop/tokens.css',
   './styles/workshop/shell.css',
   './styles/workshop/context.css',
+  './styles/workshop/contextBreakdown.css',
   './styles/workshop/session.css',
   './styles/workshop/memory.css',
   './styles/workshop/fileEdits.css',

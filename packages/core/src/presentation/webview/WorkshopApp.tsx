@@ -197,6 +197,7 @@ import {
 import './styles/workshop/tokens.css';
 import './styles/workshop/shell.css';
 import './styles/workshop/context.css';
+import './styles/workshop/contextBreakdown.css';
 import './styles/workshop/session.css';
 import './styles/workshop/memory.css';
 import './styles/workshop/fileEdits.css';
@@ -1554,7 +1555,7 @@ export const WorkshopApp: React.FC = () => {
           snapshot={workshop.contextBudget?.snapshot}
           modelOptions={modelsSettings.modelOptions}
           cumulativeProcessedTokens={tokenTracking.usage.totalTokens}
-          sources={workshop.contextBudget?.sources}
+          sources={workshop.contextBudget?.sources} breakdown={workshop.contextBudget?.breakdown}
           requesterLabel={activePersona.label}
         />
         <WorkshopStandingDirectiveRail

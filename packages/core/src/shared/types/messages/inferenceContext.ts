@@ -1,4 +1,5 @@
 import type { ContextPathGroup } from '../context';
+import type { ContextBreakdown } from './contextBreakdown';
 
 /** Provider-neutral disclosure of whether context compression materially ran. */
 export type ContextCompressionState = 'applied' | 'not-applied' | 'unknown';
@@ -135,4 +136,6 @@ export interface LabeledContextBudgetSnapshot {
    * delivery order.
    */
   sources?: ContextSourceEntry[];
+  /** The participant's context by part (ADR 2026-11-18); absent for a tool sidecar. */
+  breakdown?: ContextBreakdown;
 }

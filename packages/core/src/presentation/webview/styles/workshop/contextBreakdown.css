@@ -1,0 +1,160 @@
+/* ============================================================
+   The Context panel's summary by part (ADR 2026-11-18 D1)
+
+   A bar split into one segment per part, and the table beside it. Plain
+   flex and table layout only: the Chromium 114 floor (webviewCssFloor).
+   ============================================================ */
+
+[data-pm-surface="workshop"] {
+  --pm-part-persona: #a78bfa;
+  --pm-part-tool-use: #5aa2f0;
+  --pm-part-memory: #6fc98a;
+  --pm-part-todos: #e2b24a;
+  --pm-part-room-notes: #4fc3c8;
+  --pm-part-excerpt-context: #ee7d49;
+  --pm-part-requested: #e0589e;
+  --pm-part-conversation: rgba(160, 160, 160, 0.45);
+}
+
+.pm-context-breakdown {
+  border-top: 1px solid var(--pm-border-soft, rgba(128, 128, 128, 0.25));
+  padding: 8px 12px 6px;
+}
+
+.pm-context-breakdown-head {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pm-muted, var(--vscode-descriptionForeground));
+  margin-bottom: 6px;
+}
+
+.pm-context-breakdown-bar {
+  display: flex;
+  height: 16px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--pm-surface-2, rgba(128, 128, 128, 0.15));
+}
+
+.pm-context-breakdown-seg {
+  display: flex;
+  align-items: center;
+  min-width: 2px;
+  overflow: hidden;
+}
+
+.pm-context-breakdown-seg-label {
+  padding: 0 4px;
+  font-size: 9.5px;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #141414;
+}
+
+.pm-context-breakdown-seg-persona { background: var(--pm-part-persona, #a78bfa); }
+.pm-context-breakdown-seg-tool-use { background: var(--pm-part-tool-use, #5aa2f0); }
+.pm-context-breakdown-seg-memory { background: var(--pm-part-memory, #6fc98a); }
+.pm-context-breakdown-seg-todos { background: var(--pm-part-todos, #e2b24a); }
+.pm-context-breakdown-seg-room-notes { background: var(--pm-part-room-notes, #4fc3c8); }
+.pm-context-breakdown-seg-excerpt-context { background: var(--pm-part-excerpt-context, #ee7d49); }
+.pm-context-breakdown-seg-requested { background: var(--pm-part-requested, #e0589e); }
+.pm-context-breakdown-seg-conversation { background: var(--pm-part-conversation, rgba(160, 160, 160, 0.45)); }
+.pm-context-breakdown-seg-conversation .pm-context-breakdown-seg-label {
+  color: var(--pm-text, var(--vscode-foreground));
+}
+
+.pm-context-breakdown-note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--pm-amber, #e2b24a);
+}
+
+.pm-context-breakdown-table {
+  width: 100%;
+  margin-top: 6px;
+  border-collapse: collapse;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.pm-context-breakdown-caption {
+  caption-side: bottom;
+  text-align: left;
+  padding-top: 4px;
+  font-size: 10.5px;
+  color: var(--pm-faint, var(--vscode-descriptionForeground));
+}
+
+.pm-context-breakdown-table thead th {
+  font-weight: 500;
+  font-size: 10px;
+  text-align: left;
+  color: var(--pm-dim, var(--vscode-descriptionForeground));
+  padding: 2px 6px 3px 0;
+}
+
+.pm-context-breakdown-table tbody th,
+.pm-context-breakdown-table td {
+  padding: 2px 6px 2px 0;
+  text-align: left;
+  font-weight: 400;
+  color: var(--pm-text-2, var(--vscode-foreground));
+}
+
+.pm-context-breakdown-table td {
+  font-family: var(--pm-mono, var(--vscode-editor-font-family));
+  white-space: nowrap;
+}
+
+.pm-context-breakdown-table td:last-child {
+  font-family: inherit;
+  white-space: normal;
+  color: var(--pm-dim, var(--vscode-descriptionForeground));
+}
+
+.pm-context-breakdown-key {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 2px;
+  vertical-align: baseline;
+}
+
+.pm-context-breakdown-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.pm-context-breakdown-toggle:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, #5aa2f0);
+  outline-offset: 1px;
+}
+
+.pm-context-breakdown-unmeasured td,
+.pm-context-breakdown-unmeasured th {
+  color: var(--pm-faint, var(--vscode-descriptionForeground));
+  font-style: italic;
+}
+
+.pm-context-breakdown-piece th {
+  padding-left: 28px;
+}
+
+.pm-context-breakdown-piece th,
+.pm-context-breakdown-piece td {
+  padding-left: 0;
+  color: var(--pm-dim, var(--vscode-descriptionForeground));
+  font-family: inherit;
+  white-space: normal;
+}

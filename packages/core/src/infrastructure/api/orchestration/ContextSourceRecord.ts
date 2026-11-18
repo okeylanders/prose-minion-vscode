@@ -11,6 +11,7 @@
  * stored before Slice 3 reads and writes byte for byte as it was.
  */
 
+import { CONTEXT_SOURCE_KINDS, isContextPathGroup } from '@shared/types';
 import type { ContextSourceEntry, ContextSourceLineRange } from '@shared/types';
 
 export interface StoredContextSourceEntry extends ContextSourceEntry {
@@ -105,4 +106,68 @@ export function findContextSourceRead<T extends StoredContextSourceEntry>(
     }
   }
   return undefined;
+}
+
+/**
+ * A manifest row as the log names it. A project note's label is its title,
+ * which no log may carry (ADR 2026-11-04 D9; PR #197 F-03): the manifest the
+ * writer sees keeps it, and the log names the row by its kind alone.
+ */
+function contextSourceLogLabel(entry: { readonly kind: string; readonly label: string }): string {
+  return entry.kind === 'memory' ? '(a project note)' : entry.label;
+}
+
+/** The engine's one line for a committed turn's manifest rows (moved from `AgentRunEngine`). */
+export function contextSourcesCommitLogLine(
+  conversationId: string,
+  sources: readonly StoredContextSourceEntry[]
+): string {
+  return `[AgentRunEngine] Context sources committed for ${conversationId}: ` +
+    sources.map((entry) =>
+      `${entry.kind}:${contextSourceLogLabel(entry)}${entry.promptTokensDelta !== undefined ? ` (+${entry.promptTokensDelta} prompt tokens)` : ' (size estimate)'}`
+    ).join(', ');
+}
+
+/**
+ * Throws naming the first archived manifest row a session file holds that
+ * the manager cannot trust. Moved from `ConversationManager` unchanged.
+ */
+export function assertArchivedContextSources(
+  sources: readonly StoredContextSourceEntry[],
+  key: string
+): void {
+  if (!Array.isArray(sources)) {
+    throw new Error(`Conversation ${key} has invalid context sources`);
+  }
+  const kinds: ReadonlySet<string> = new Set(CONTEXT_SOURCE_KINDS);
+  const origins = new Set(['writer', 'host', 'tool']);
+  sources.forEach((source, index) => {
+    if (
+      !source ||
+      !kinds.has(source.kind) ||
+      !origins.has(source.origin) ||
+      typeof source.label !== 'string' ||
+      !Number.isInteger(source.sizeChars) ||
+      source.sizeChars < 0 ||
+      typeof source.isEstimate !== 'boolean' ||
+      !Number.isInteger(source.deliveredAt) ||
+      source.deliveredAt < 0 ||
+      (source.stale !== undefined && typeof source.stale !== 'boolean') ||
+      (source.artifactId !== undefined && !/^art-[1-9]\d*$/.test(source.artifactId)) ||
+      (source.promptTokensDelta !== undefined &&
+        (!Number.isInteger(source.promptTokensDelta) || source.promptTokensDelta < 0)) ||
+      (source.excerptVersion !== undefined &&
+        (!Number.isInteger(source.excerptVersion) || source.excerptVersion < 0)) ||
+      contextSourceProvenanceFault(source) !== undefined
+    ) {
+      throw new Error(`Conversation ${key} has invalid context source ${index}`);
+    }
+    if (source.configuredResource && (
+      !isContextPathGroup(source.configuredResource.group) ||
+      typeof source.configuredResource.path !== 'string' ||
+      !source.configuredResource.path.trim()
+    )) {
+      throw new Error(`Conversation ${key} has invalid configured resource ${index}`);
+    }
+  });
 }

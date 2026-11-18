@@ -34,6 +34,10 @@ To pin a file, open **Conversation settings → Pinned context** in the Workshop
 
 Each new conversation copies these files once, in order, subject to its context limits. The project list holds up to 50 files in prose-minion/pinned-context.json. To bring newly pinned files into the current room, choose **Attach missing to this conversation** after the current reply finishes. Removing a room attachment leaves the pin in place. Unpinning leaves existing conversations as they were. **New session: full reset, empty context** skips the template.
 
+## What a participant's context holds
+
+The context gauge in the Workshop shows how much of the selected participant's context window its conversation fills, measured by the provider after its last reply. Open it to see **By part**: a bar and a table that split the total into persona and behavior, tool-use instructions, project memory, to-dos, room notes, the excerpt and context, what the persona requested, and the conversation itself. Select a part to see its sections, such as the interaction mode or the memory start block. Prose Minion estimates each part as it writes it. Conversation is the rest of the measured total, so the parts add up. A conversation started before this version shows some parts as not measured. Each host and guest shows its own conversation. A writing tool's private thread shows the total only.
+
 ## Side pane and bookmarks
 
 Use **Side pane** in the Workshop header to fold or reveal the rail. The **Material** tab holds the excerpt, standing context and **Read in** entries for the selected participant. The **Notes** tab holds to-dos and bookmarks. A badge can tell you about additions while a tab is hidden. Attach standing context in the Context panel for the whole conversation, up to its 100,000-word budget. Ask a persona to look up configured project files on demand. One file-read card can cover up to ten files. Large reads may continue across multiple calls as the conversation window allows.

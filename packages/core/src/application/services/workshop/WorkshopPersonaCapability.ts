@@ -1,3 +1,4 @@
+import { WorkshopContextTallyRecorder, workshopTalliedContract } from '@services/analysis/WorkshopContextTally';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { extractWorkshopReplyControls } from '@/utils/workshopReplyControls';
 import type { WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
@@ -153,6 +154,8 @@ export interface WorkshopPersonaCapabilityTurn {
   excerptVersion: number;
   signal: AbortSignal;
   events: WorkshopCapabilityEvents;
+  /** This run's measure of its opening message (ADR 2026-11-18 D6). */
+  contextTally?: WorkshopContextTallyRecorder;
 }
 
 /** Mints one stateful capability adapter per participant user turn (host or persona guest). */
@@ -243,25 +246,21 @@ export class WorkshopPersonaCapability implements AgentCapability<
         `${error instanceof Error ? error.message : String(error)}`
       );
     }
-    // The catalog frame rides only this first message (ADR 2026-11-04 D5).
+    // The catalog frame rides only this first message (ADR 2026-11-04 D5); each frame is tallied (ADR 2026-11-18 D6).
     const memoryFrame = await this.memoryCapability.frame();
-    return [
-      userMessage,
-      this.analysisScopeFrame(),
-      createWorkshopCapabilityInstruction(resourceGroups),
-      ...(memoryFrame ? [memoryFrame] : [])
-    ].join('\n\n');
+    return workshopTalliedContract(this.turn.contextTally, userMessage, [
+      ['tool-use.contract', this.analysisScopeFrame()], ['tool-use.contract', createWorkshopCapabilityInstruction(resourceGroups)],
+      ['memory.start', memoryFrame || undefined]
+    ]);
   }
 
   async appendTurnContract(userMessage: string): Promise<string> {
     // Whatever changed in project memory since this conversation last saw it (ADR 2026-11-04 D14).
     const memoryNote = await this.memoryCapability.updateNote();
-    return [
-      userMessage,
-      this.analysisScopeFrame(),
-      createWorkshopCapabilityTurnReminder(),
-      ...(memoryNote ? [memoryNote] : [])
-    ].join('\n\n');
+    return workshopTalliedContract(this.turn.contextTally, userMessage, [
+      ['tool-use.reminder', this.analysisScopeFrame()], ['tool-use.reminder', createWorkshopCapabilityTurnReminder()],
+      ['memory.update', memoryNote || undefined]
+    ]);
   }
 
   inspectRequest(candidate: string): WorkshopCapabilityInspection {

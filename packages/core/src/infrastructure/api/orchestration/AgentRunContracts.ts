@@ -273,6 +273,13 @@ export interface AgentRunOptions {
    */
   readonly deferRetention?: (commit: () => boolean) => void;
   /**
+   * The owner's measure of this turn's opening message (ADR 2026-11-18 D6):
+   * piece id → estimated tokens, ids the owner's own. Asked once, when the
+   * turn commits, and stored beside its manifest rows; a turn that commits
+   * nothing never asks. The engine stores it and names no piece.
+   */
+  readonly contextTally?: () => Readonly<Record<string, number>> | undefined;
+  /**
    * The model every request of this run goes to, whatever the engine's model
    * is by then (a hot-swap, or a following scope moving): the model a writer
    * approved with its price (Craft Flags, PR #177 F-01). The context

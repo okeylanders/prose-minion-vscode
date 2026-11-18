@@ -1,5 +1,6 @@
 import * as React from 'react';
 import {
+  ContextBreakdown,
   ContextBudgetSnapshot,
   ContextSourceEntry,
   ContextSourceKind,
@@ -13,6 +14,7 @@ import {
 } from '@utils/contextBudget';
 import { partitionContextSources } from '@utils/workshop/contextSources';
 import { modelOptionLabel } from '@utils/modelOptionLabel';
+import { ContextBreakdownSummary } from '@components/shared/ContextBreakdownSummary';
 
 interface ContextBudgetProps {
   /** Canonical persona id or a namespaced non-persona participant key. */
@@ -25,6 +27,8 @@ interface ContextBudgetProps {
   cumulativeProcessedTokens: number;
   /** The active participant's context-source manifest (Sprint 12 Phase 7). */
   sources?: readonly ContextSourceEntry[];
+  /** The participant's context by part (ADR 2026-11-18); absent for a tool sidecar. */
+  breakdown?: ContextBreakdown;
   /** Host persona label for origin attribution ("Requested by Jill"). */
   requesterLabel?: string;
 }
@@ -137,6 +141,7 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
   modelOptions,
   cumulativeProcessedTokens,
   sources,
+  breakdown,
   requesterLabel
 }) => {
   const accessibleLabel = showsContextSuffix
@@ -223,6 +228,7 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
           <dd className={compressionValueClass(snapshot.contextCompression)}>{compressionLabel(snapshot.contextCompression)}</dd>
         </div>
       </dl>
+      {breakdown ? <ContextBreakdownSummary breakdown={breakdown} contextTokens={snapshot.contextTokens} /> : null}
       {sources && sources.length > 0 && (
         <InContextSources sources={sources} requesterLabel={requesterLabel} />
       )}
