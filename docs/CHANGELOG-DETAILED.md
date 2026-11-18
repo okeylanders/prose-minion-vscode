@@ -5,6 +5,13 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.1] - 2026-11-17 — Workshop native tool-call recovery
+
+### Fixed
+
+- [PR #267](https://github.com/okeylanders/prose-minion-vscode/pull/267) preserves whole and streamed native tool calls returned by OpenRouter and translates recognized Workshop requests into the existing XML capability path. This addresses blank persona replies observed with web research enabled. Unknown, malformed, oversized, or unmapped calls are not executed; an unanswered call can enter a bounded correction path, while any accompanying prose remains visible.
+- The provider and Workshop integration tests exercise whole and streamed replies, argument validation, capability boundaries, and retained conversation history. The author reported a live pass for operation names and a string-encoded multi-file path; real-array emission, memory reads, and other provider shapes are not all independently verified live. See the [boundary re-review](pr-reviews/pr-267-native-tool-call-adapter-rereview.md) and [array-as-text follow-up](pr-reviews/pr-267-array-text-rereview.md).
+
 ## [2.14.0] - 2026-11-16 — Everyday Conveniences
 
 ### Overview

@@ -1,0 +1,245 @@
+/* Frame Minion's support-card rhythm, with Prose Minion's writing identity.
+   The skull-book is the existing local asset also used on proseminion.app. */
+.pm-settings-support {
+  container-type: inline-size;
+  font-family: var(--pm-sans);
+}
+
+.pm-support-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin-bottom: 14px;
+  color: var(--pm-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pm-support-contact p { margin: 0; }
+
+.pm-support-email-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pm-support-email {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--pm-link);
+  text-decoration: none;
+}
+
+.pm-support-email:hover { text-decoration: underline; }
+
+.pm-support-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-input);
+  background: transparent;
+  color: var(--pm-muted);
+  cursor: pointer;
+}
+
+.pm-support-copy:hover {
+  color: var(--pm-text);
+  background: var(--pm-surface-2);
+}
+
+.pm-support-copy:disabled { opacity: .6; cursor: wait; }
+
+.pm-support-copy-status {
+  margin: -6px 0 12px;
+  color: var(--pm-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pm-support-copy-status:empty { margin: 0; }
+
+.pm-community-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  column-gap: 8px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 16px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-card);
+  background: linear-gradient(135deg, var(--pm-surface), var(--pm-inset));
+  color: var(--pm-text);
+  text-decoration: none;
+}
+
+.pm-community-card:hover {
+  border-color: var(--pm-accent);
+  box-shadow: 0 14px 30px -20px rgba(0, 0, 0, .8);
+}
+
+.pm-support-email:focus-visible,
+.pm-support-site a:focus-visible,
+.pm-support-copy:focus-visible,
+.pm-community-card:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder, var(--pm-accent-hi));
+  outline-offset: 3px;
+}
+
+.pm-support-site {
+  margin: 6px 0 -4px;
+  text-align: right;
+  color: var(--pm-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pm-support-site a {
+  display: inline-block;
+  padding: 4px 0;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pm-support-site a:hover { color: var(--pm-text); }
+
+.pm-community-eyebrow,
+.pm-community-title,
+.pm-community-description { grid-column: 1 / -1; }
+
+.pm-community-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 9px var(--pm-mono);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+}
+
+.pm-community-eyebrow::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--pm-accent-hi);
+  box-shadow: 0 0 9px var(--pm-accent);
+}
+
+.pm-community-title {
+  margin: 10px 0 0;
+  color: var(--pm-text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.pm-community-title span {
+  display: inline-block;
+  color: var(--pm-accent-hi);
+  font: 500 .86em var(--pm-mono);
+}
+
+.pm-community-description {
+  max-width: 42ch;
+  margin: 8px 0 0;
+  color: var(--pm-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.pm-community-cta {
+  display: inline-flex;
+  align-items: center;
+  align-self: end;
+  gap: 7px;
+  margin-top: 18px;
+  color: var(--pm-accent-hi);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.pm-community-cta svg { flex-shrink: 0; }
+
+.pm-community-art {
+  position: relative;
+  align-self: end;
+  width: 88px;
+  height: 54px;
+  margin: 4px -16px -16px -8px;
+  pointer-events: none;
+}
+
+.pm-community-page {
+  position: absolute;
+  width: 63px;
+  height: 82px;
+  right: 5px;
+  bottom: -30px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: 4px;
+  background: var(--pm-surface-2);
+}
+
+.pm-community-page-back { transform: rotate(23deg); }
+.pm-community-page-front { transform: rotate(8deg); }
+
+.pm-community-book {
+  position: absolute;
+  inset: -4px 0 auto;
+  height: 76px;
+  background: var(--pm-accent-hi);
+  /* Keep the prefix for Chromium 114 (the extension's VS Code 1.82 floor). */
+  /* autoprefixer: ignore next */
+  -webkit-mask: url('../assets/prose-minion-header.svg') center / contain no-repeat;
+  mask: url('../assets/prose-minion-header.svg') center / contain no-repeat;
+  transform: rotate(-12deg);
+}
+
+/* Give the artwork its own column when the panel has room. */
+@container (min-width: 440px) {
+  .pm-community-card { grid-template-columns: minmax(0, 1fr) 130px; }
+  .pm-community-eyebrow,
+  .pm-community-title,
+  .pm-community-description { grid-column: 1; }
+  .pm-community-art {
+    grid-column: 2;
+    grid-row: 1 / 5;
+    width: 146px;
+    height: 110px;
+  }
+  .pm-community-page { width: 100px; height: 130px; bottom: -45px; }
+  .pm-community-book { height: 130px; }
+}
+
+/* The fixed coral brand is too pale for small text on a light editor theme. */
+.app-container[data-pm-theme="follow"] .pm-support-email {
+  color: var(--vscode-textLink-foreground, var(--pm-link));
+}
+
+.app-container[data-pm-theme="follow"] .pm-community-title span,
+.app-container[data-pm-theme="follow"] .pm-community-cta {
+  color: var(--vscode-textLink-foreground, var(--pm-accent-hi));
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .pm-community-card {
+    transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  }
+  .pm-community-cta svg { transition: transform 160ms ease; }
+  .pm-community-art { transition: transform 260ms ease; }
+
+  .pm-community-card:hover { transform: translateY(-2px); }
+  .pm-community-card:hover .pm-community-cta svg { transform: translateX(3px); }
+  /* Match the diagonal travel of Frame Minion's film strip, moving the book and pages together. */
+  .pm-community-card:hover .pm-community-art { transform: translate(-4.25px, 4.25px); }
+}

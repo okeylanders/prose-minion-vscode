@@ -2,6 +2,12 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.14.1] - 2026-11-17
+
+### Fixed
+
+- **Workshop replies with web research.** Fixed cases where a persona returned a blank reply when it tried to use a Workshop tool as a native tool call. Recognized requests now continue through the existing Workshop tool checks; untranslatable requests are not executed and can trigger a bounded retry.
+
 ## [2.14.0] - 2026-11-16
 
 ### Added

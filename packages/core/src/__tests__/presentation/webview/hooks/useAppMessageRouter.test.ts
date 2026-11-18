@@ -75,7 +75,7 @@ const makeDeps = () => {
       handleSearchResult: jest.fn(), handleCategorySearchResult: jest.fn(), handleStatusMessage: jest.fn(),
       setLoading: jest.fn(), setCategorySearchLoading: jest.fn(), setLoadingForSubtool: jest.fn(),
     },
-    settings: { handleSettingsData: jest.fn(), handleApiKeyStatus: jest.fn(), open: jest.fn(), toggle: jest.fn() },
+    settings: { handleSettingsData: jest.fn(), handleApiKeyStatus: jest.fn(), handleSupportCopySuccess: jest.fn(), handleSupportCopyError: jest.fn(), open: jest.fn(), toggle: jest.fn() },
     selection: { handleSelectionUpdated: jest.fn(), handleSelectionData: jest.fn() },
     publishingSettings: { handlePublishingStandardsData: jest.fn() },
     wordSearchSettings: { handleSettingsData: jest.fn() },
