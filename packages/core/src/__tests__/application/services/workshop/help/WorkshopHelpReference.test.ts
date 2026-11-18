@@ -6,6 +6,7 @@ import { WorkshopCapabilityXmlCodec } from '@/application/services/workshop/Work
 import { workshopReadEvidenceTokens } from '@/application/services/workshop/reads/WorkshopReadWindowFit';
 import { WorkshopHelpCapability } from '@/application/services/workshop/help/WorkshopHelpCapability';
 import { renderWorkshopHelpRead, workshopHelpReadCall } from '@/application/services/workshop/help/WorkshopHelpRenderer';
+import { workshopHelpHeader } from '@/application/services/workshop/help/WorkshopHelpCopy';
 import {
   WorkshopHelpReference, WORKSHOP_HELP_AREAS, searchWorkshopHelp
 } from '@/application/services/workshop/help/WorkshopHelpReference';
@@ -29,9 +30,10 @@ async function realReference() {
 describe('the shipped help reference', () => {
   it('shares an index across simultaneous calls and reaches every section through its own heading and id', async () => {
     const { reference, files } = await realReference();
-    const [index, same] = await Promise.all([reference.load(), reference.load()]);
-    expect(index).toBeDefined();
-    expect(same).toBe(index);
+    const [loaded, same] = await Promise.all([reference.load(), reference.load()]);
+    expect(loaded?.referenceVersion).toBe(reference.version);
+    expect(same).toBe(loaded);
+    const index = loaded?.sections;
     expect(files.readFile).toHaveBeenCalledTimes(WORKSHOP_HELP_AREAS.length);
     for (const section of index!.values()) {
       expect(searchWorkshopHelp(index!, section.heading).hits[0].id).toBe(section.id);
@@ -50,20 +52,23 @@ describe('the shipped help reference', () => {
     expect(result.status).toBe('partial');
     expect(result.content).toContain(reference.version);
     expect(result.content).toContain('Unknown section: missing#unknown');
-    const index = await reference.load();
+    const index = (await reference.load())!.sections;
     for (const id of [sections[0], sections[2]]) {
-      expect(result.content).toContain(index!.get(id)!.body);
+      expect(result.content).toContain(index.get(id)!.body);
     }
     expect(result.content!.indexOf(sections[0])).toBeLessThan(result.content!.indexOf(sections[2]));
   });
 
   it('fits whole sections including the cost of the exact call, and refuses a section when no room remains', async () => {
     const { reference, capability } = await realReference();
-    const index = (await reference.load())!;
+    const loaded = (await reference.load())!;
     const sections = ['workshop#pinned-context', 'overview#about-this-reference', 'workshop#conversation-settings'];
     const request = { capability: 'help.read' as const, sections };
-    const half = workshopReadEvidenceTokens(renderWorkshopHelpRead(request, reference.version, index, 1));
+    const header = workshopHelpHeader(loaded.referenceVersion, reference.version);
+    const half = workshopReadEvidenceTokens(renderWorkshopHelpRead(request, header, loaded, 1));
     const result = await capability.fulfill(request, withRoom(half * 2));
+    // A window-limited read of known sections is a success marked truncated, as lens.read reports one.
+    expect(result.status).toBe('success');
     expect(result.metadata).toMatchObject({ sectionsRead: 1, truncated: true });
     expect(workshopReadEvidenceTokens(result)).toBeLessThanOrEqual(half);
     const hint = result.content!.match(/<prose-minion-tool-call.*$/m)![0];

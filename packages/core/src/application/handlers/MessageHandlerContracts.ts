@@ -50,7 +50,6 @@ import type {
 } from '@services/widgets/creativeVariations/CreativeVariationsService';
 import type { ShowVsTellService } from '@services/widgets/showVsTell/ShowVsTellService';
 import type { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
-import type { WorkshopHelpReference } from '@/application/services/workshop/help/WorkshopHelpReference';
 import type { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 import type { DictionaryHistoryStore } from '@/infrastructure/storage/DictionaryHistoryStore';
 import type { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
@@ -167,7 +166,6 @@ export interface CoreServices {
   /** Lexical Gravity's two explicit model seams: preview and lens building. */
   lexicalGravityModelService: LexicalGravityModelService;
   /** Project-owned reusable lexical fields under prose-minion/lenses. */
-  workshopHelpReference: WorkshopHelpReference;
   lexicalGravityLensRepository: LexicalGravityLensRepository;
   /** Serialized standing-frame replacement and session commit coordinator. */
   workshopStandingDirectiveService: WorkshopStandingDirectiveService;

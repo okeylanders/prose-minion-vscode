@@ -2,5 +2,6 @@ import type { WorkshopHelpReferencePort } from '@/application/services/workshop/
 
 export const unavailableHelpReference: WorkshopHelpReferencePort = {
   version: 'test',
-  load: async () => undefined
+  load: async () => undefined,
+  referenceVersion: () => undefined
 };

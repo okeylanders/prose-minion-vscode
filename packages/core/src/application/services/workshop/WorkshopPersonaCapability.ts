@@ -40,6 +40,7 @@ import type { WorkshopHelpReferencePort } from '@/application/services/workshop/
 import {
   WORKSHOP_HELP_EVIDENCE_FRAMING,
   WORKSHOP_HELP_REJECTED_COPY,
+  workshopHelpRefusalHeader,
   workshopHelpRequestLogSummary,
   workshopHelpRequestSummary,
   workshopHelpStatusMessage,
@@ -1042,7 +1043,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
   /** A refusal raised outside the help reader still identifies the reference it was asked to check. */
   private versionedRefusal(operation: WorkshopCapabilityOperation, message: string): string {
     return workshopCapabilityFamily(operation) === 'help'
-      ? `Prose Minion reference, version ${this.help.version}. ${message}`
+      ? `${workshopHelpRefusalHeader(this.help.referenceVersion(), this.help.version)} ${message}`
       : message;
   }
 
