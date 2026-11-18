@@ -492,6 +492,16 @@ successful inference in Prose Minion.
 - **Model:** [GPT-6 Astra on OpenRouter](https://openrouter.ai/openai/gpt-6-astra)
 - **Astra Pro:** `openai/gpt-6-astra-pro` is now available as an opt-in premium choice. OpenRouter lists 1.05M context and mandatory reasoning; prose quality has not been verified in this extension
 
+### OpenAI GPT-6.2 Sol and Astra
+
+- **Sol** is the lower-priced tier for editorial conversations and analysis. Base rates are $2/M input and $10/M output tokens. [Sol](https://openrouter.ai/openai/gpt-6.2-sol) · [Sol Pro](https://openrouter.ai/openai/gpt-6.2-sol-pro)
+- **Astra** is the flagship tier for complex analysis. Base rates are $8/M input and $40/M output tokens. [Astra](https://openrouter.ai/openai/gpt-6.2-astra) · [Astra Pro](https://openrouter.ai/openai/gpt-6.2-astra-pro)
+- All four have 1,050,000 tokens of context, up to 128,000 output tokens, and mandatory reasoning. The Pro variants share their base model's token rates and can use substantially more reasoning tokens. Long prompts, faster routes, and cache reads and writes have separate rates. [November 18 catalog audit](model-audit-2026-11-18.md)
+
+### Ling 3.2 Flash (free)
+
+- The rate-limited free route offers 1,048,576 tokens of context, optional reasoning, tools, and structured outputs. [Ling 3.2 Flash on OpenRouter](https://openrouter.ai/inclusionai/ling-3.2-flash%3Afree)
+
 ### Qwen3.7 Max — Open-Model Powerhouse
 
 - **Best For:** Long-context prose analysis, planning, and structured rewrites

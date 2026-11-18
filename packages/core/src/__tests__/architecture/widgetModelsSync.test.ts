@@ -5,6 +5,11 @@ import * as path from 'path';
 import { RECOMMENDED_MODELS } from '@providers/OpenRouterModels';
 
 const EXPECTED_SHARED_MODEL_IDS = [
+  'openai/gpt-6.2-sol',
+  'openai/gpt-6.2-sol-pro',
+  'openai/gpt-6.2-astra',
+  'openai/gpt-6.2-astra-pro',
+  'inclusionai/ling-3.2-flash:free',
   'google/gemini-4-hydrogen',
   'tencent/hy4-flash',
   'qwen/qwen4-max',
