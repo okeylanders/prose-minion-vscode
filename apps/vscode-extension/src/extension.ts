@@ -671,7 +671,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     showVsTellService,
     lexicalGravityModelService,
     lexicalGravityLensRepository,
-    workshopHelpReference,
     workshopStandingDirectiveService,
     lightboxService,
     lightboxReadingRunner,

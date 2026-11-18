@@ -1371,6 +1371,20 @@ ids so a persona can read a section it found earlier. When the manifest
 changes, run `node apps/vscode-extension/scripts/generate-help-tables.js`.
 `helpReferenceSync.test.ts` checks the tables, ownership, tabs and version.
 
+- **The version is a caveat, not a refusal.** `WorkshopHelpReference` loads
+  whatever version `overview.md` names. Every result's first line is
+  `workshopHelpHeader` (`WorkshopHelpCopy`): the reference's version and, on
+  a mismatch, the installed one ("You are running …, so newer features may
+  be missing."). The mismatch is logged once, versions only. The sync test
+  stays the hard gate.
+- **Only success is cached.** A failed load clears itself, so the next call
+  reads again; concurrent callers share the load in flight. A run of
+  failures logs once.
+- **Terms past the query limit are named.** A search past
+  `WORKSHOP_QUERY_TERMS` lists the ignored words, bounded and neutralized,
+  and asks for fewer. Its metadata counts them (`ignoredTerms`); logs never
+  carry a word.
+
 ### Workshop Lens Reads
 
 Follow [ADR 2026-11-17](docs/adr/2026-11-17-everyday-conveniences-round-two.md)

@@ -41,7 +41,7 @@ describe('bundled product help', () => {
       ...Object.keys(manifest.contributes.configuration.properties)
     ];
     expect(Object.keys(ownership).sort()).toEqual(ids.sort());
-    const index = await bundledHelpReference({ appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() }).load();
+    const index = (await bundledHelpReference({ appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() }).load())?.sections;
     expect(index).toBeDefined();
     for (const owner of Object.values(ownership)) {
       expect(owner).not.toMatch(/^(settings|commands)#/);

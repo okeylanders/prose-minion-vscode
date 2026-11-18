@@ -5,7 +5,7 @@ import {
   fitWorkshopReadToWindow,
   workshopReadEvidenceTokens
 } from '@/application/services/workshop/reads/WorkshopReadWindowFit';
-import { workshopHelpRequestSummary } from '@/application/services/workshop/help/WorkshopHelpCopy';
+import { workshopHelpHeader, workshopHelpRequestSummary } from '@/application/services/workshop/help/WorkshopHelpCopy';
 import {
   renderWorkshopHelpRead,
   renderWorkshopHelpSearch
@@ -25,29 +25,30 @@ export class WorkshopHelpCapability {
 
   async fulfill(request: WorkshopHelpRequest, window?: CapabilityContextWindow): Promise<WorkshopCapabilityResult> {
     this.turn.signal.throwIfAborted();
-    const index = await this.reference.load();
+    const loaded = await this.reference.load();
     this.turn.signal.throwIfAborted();
-    const version = this.reference.version;
-    if (!index) {
+    if (!loaded) {
       return {
         capability: request.capability,
         status: 'failed',
         requestSummary: workshopHelpRequestSummary(request),
-        error: `The Prose Minion reference for version ${version} is unavailable. Tell the writer you cannot check it.`
+        error: `The Prose Minion reference for version ${this.reference.version} is unavailable. ` +
+          'Tell the writer you cannot check it.'
       };
     }
+    const header = workshopHelpHeader(loaded.referenceVersion, this.reference.version);
     let render: (take: number) => WorkshopCapabilityResult;
     let count: number;
     switch (request.capability) {
       case 'help.search': {
-        const matches = searchWorkshopHelp(index, request.query);
+        const matches = searchWorkshopHelp(loaded.sections, request.query);
         count = matches.hits.length;
-        render = take => renderWorkshopHelpSearch(request, version, matches, take);
+        render = take => renderWorkshopHelpSearch(request, header, matches, take);
         break;
       }
       case 'help.read':
         count = request.sections.length;
-        render = take => renderWorkshopHelpRead(request, version, index, take);
+        render = take => renderWorkshopHelpRead(request, header, loaded, take);
         break;
     }
     if (!window) {
@@ -64,7 +65,7 @@ export class WorkshopHelpCapability {
     this.log.appendLine(`[WorkshopHelpCapability] ${request.capability} refused halfWindow=${half}`);
     return {
       capability: request.capability, status: 'rejected', requestSummary: workshopHelpRequestSummary(request),
-      error: `Prose Minion reference, version ${version}. The smallest result does not fit in the ${half} tokens available ` +
+      error: `${header} The smallest result does not fit in the ${half} tokens available ` +
         '(half the room left). Say you could not check this here.',
       metadata: { rejectionReason: 'help-context-window', halfWindowTokens: half }
     };

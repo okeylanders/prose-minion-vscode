@@ -36,10 +36,11 @@ decisions live in this README and the ADR.
 | G | G | composer-at-mentions | 14 | `…-at-mentions` | #271 | Merged |
 | B | B | memory-suggestion-level | 8 | `…-memory-suggestion-level` | #272 | Merged |
 | C | C | memory-title-index | new | `…-memory-title-index` | #274 | Merged |
-| D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | #276 | Review findings resolved; waits for re-review |
+| D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | #276 | Merged |
 | A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | #273 | Merged |
-| F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | | Built; waits for review |
+| F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | #277 | Merged |
 | H | H | prose-minion-help-reference | 20 | `…-help-reference` | #279 | Merged |
+| H+ | H, follow-ups | prose-minion-help-reference | 20 | `…-help-followups` | | Built; waits for review |
 | Close | Closing pass | | | `…-close` | | After H |
 
 Slice branches are `epic/everyday-conveniences-round-two-<slug>`. A slice
@@ -303,6 +304,7 @@ a note.** These are the ones to look at first.
 | D after PR #276's review (on the epic branch with A part 2 and C merged in) | 903 | 13,024 | 59 |
 | F (`…-persona-reads-lenses`, on C's branch) | 896 | 12,874 | 59 |
 | H (`…-help-reference`, on the epic branch at `5ebe42fe`) | 917 | 13,186 | 59 |
+| H follow-ups (`…-help-followups`, on the epic branch at `3a6054c3`) | 918 | 13,195 | 59 |
 
 Each slice adds its row.
 

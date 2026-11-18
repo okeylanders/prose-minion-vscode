@@ -6,7 +6,7 @@ Reference version: 2.14.0
 
 Open Prose Minion in the VS Code activity bar for the Assistant, Search, Metrics and Dictionary. Open Workshop for an ongoing conversation about a draft, or Lightbox for a board of measurements and readings about one chapter. For proofreading and line notes, right-click a Markdown or plain-text editor and open the Prose Minion submenu.
 
-Any Workshop host or guest can look up a product question with help.search and read the matching section with help.read. Ask for the section behind an answer. See [What's New in Prose Minion](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/README.md#whats-new-in-v2140--everyday-conveniences) for release highlights and the [extension changelog](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md).
+Any Workshop host or guest can look up a product question with help.search and read the matching section with help.read. Ask for the section behind an answer. See the [Prose Minion README](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/README.md) for the latest release highlights and the [extension changelog](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md) for every release.
 
 ## Settings and models
 
