@@ -156,7 +156,9 @@ describe('WorkshopPersonaCapability', () => {
     expect(cancelled.evidence).toContain(header);
     const refusals = session.readRoomLedger().filter(turn => turn.capability?.status === 'rejected');
     expect(refusals).toHaveLength(2);
-    for (const card of refusals) expect(card.content).toContain(header);
+    for (const card of refusals) {
+      expect(card.content).toContain(header);
+    }
   });
 
   it('corrects a bundle of calls before executing the model’s single retry', async () => {
