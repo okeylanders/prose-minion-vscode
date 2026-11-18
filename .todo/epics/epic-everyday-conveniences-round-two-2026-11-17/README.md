@@ -39,7 +39,7 @@ decisions live in this README and the ADR.
 | D | D | memory-proposal-outcomes | follow-up | `…-memory-proposal-outcomes` | #276 | Review findings resolved; waits for re-review |
 | A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | #273 | Merged |
 | F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | | Built; waits for review |
-| H | H | prose-minion-help-reference | 20 | `…-help-reference` | | Last |
+| H | H | prose-minion-help-reference | 20 | `…-help-reference` | #279 | Built |
 | Close | Closing pass | | | `…-close` | | After H |
 
 Slice branches are `epic/everyday-conveniences-round-two-<slug>`. A slice

@@ -1283,6 +1283,14 @@ const WORKSHOP_LENS_MODULES = [
   'WorkshopLensRenderer.ts',
   'WorkshopLensXmlCodec.ts'
 ];
+const WORKSHOP_HELP_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'help');
+const WORKSHOP_HELP_MODULES = [
+  'WorkshopHelpCapability.ts',
+  'WorkshopHelpCopy.ts',
+  'WorkshopHelpReference.ts',
+  'WorkshopHelpRenderer.ts',
+  'WorkshopHelpXmlCodec.ts'
+];
 /** All a module under `reads/` may import. */
 const WORKSHOP_READS_ALLOWED_IMPORTS = [
   '@orchestration/RequestContextPreflight',
@@ -1313,7 +1321,9 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   ...collectSourceFiles(WORKSHOP_RECALL_ROOT),
   ...collectSourceFiles(WORKSHOP_MEMORY_ROOT),
   ...collectSourceFiles(WORKSHOP_READS_ROOT),
-  ...collectSourceFiles(WORKSHOP_LENS_ROOT)
+  ...collectSourceFiles(WORKSHOP_LENS_ROOT),
+  ...collectSourceFiles(WORKSHOP_HELP_ROOT),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopTextSearch.ts')
 ];
 const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)|import\s+.*['"](?:vscode|react|@providers\/))/;
 
@@ -1323,7 +1333,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|ProjectMemoryLibrary|ProjectMemoryStore|WorkshopPinnedContextStore|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|WorkshopHelpReference|ProjectMemoryLibrary|ProjectMemoryStore|WorkshopPinnedContextStore|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
 );
 
 /**
@@ -2049,6 +2059,21 @@ describe('architectural boundaries', () => {
     expect(sources).not.toMatch(/\bnew\s+LexicalGravityLensRepository\b/);
     expect(lensFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
       .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
+  });
+
+  it('keeps help modules read-only and independent of the room and its other readers (ADR 2026-11-17 D16)', () => {
+    const files = collectSourceFiles(WORKSHOP_HELP_ROOT);
+    expect(files.map((file) => path.basename(file)).sort()).toEqual(WORKSHOP_HELP_MODULES);
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(files));
+    for (const file of files) {
+      const source = fs.readFileSync(file, 'utf8');
+      expect(source.split('\n').length).toBeLessThanOrEqual(500);
+      for (const { module } of moduleImports(file, source)) {
+        expect(module).not.toMatch(/(?:^|\/)(?:recall|memory|lens|session|pinnedContext)(?:\/|$)/);
+        expect(module).not.toMatch(RECALL_FORBIDDEN_MODULE);
+      }
+      expect(source).not.toMatch(/\.(?:writeFile|delete|createDirectory|rename)\(/);
+    }
   });
 
   it('builds the lens repository only at the composition root, for the widget and the lens family alike (ADR 2026-11-17 D16)', () => {

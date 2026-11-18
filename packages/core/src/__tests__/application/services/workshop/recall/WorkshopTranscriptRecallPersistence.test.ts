@@ -9,6 +9,7 @@
  * store, and opening the saved session imports every conversation.
  */
 
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
@@ -64,7 +65,8 @@ describe('a room that used session recall', () => {
       log,
       new WorkshopTranscriptRecallService(store, coordinator, log),
       offProjectMemory,
-      noProjectLenses
+      noProjectLenses,
+      unavailableHelpReference
     );
     const capabilityFor = (requestId: string, owner: WorkshopCapabilityPrincipal) => factory.create({
       requestId,

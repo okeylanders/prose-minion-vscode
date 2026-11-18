@@ -159,6 +159,15 @@ export interface PromptBudgets {
     catalogItems: number;
     readSections: number;
   }>;
+  /** Bundled Prose Minion reference (ADR 2026-11-17 D25). */
+  readonly workshopHelp: Readonly<{
+    queryCharacters: number;
+    searchHits: number;
+    snippetCharacters: number;
+    readSections: number;
+    sectionIdCharacters: number;
+    sectionCharacters: number;
+  }>;
   /**
    * Workshop message reactions (ADR 2026-11-07 D9). `perSession` is the
    * codec's bound on stored entries; the ledger refuses an add past it.
@@ -747,6 +756,14 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   },
   workshopCapabilityPaging: { pageDigits: 9 },
   workshopLens: { catalogItems: 50, readSections: 7 },
+  workshopHelp: {
+    queryCharacters: 200,
+    searchHits: 8,
+    snippetCharacters: 280,
+    readSections: 3,
+    sectionIdCharacters: 100,
+    sectionCharacters: 6_000
+  },
   workshopReactions: {
     // Generous: 19 writer reactions on each of a few hundred replies, plus the personas'.
     perSession: 5_000,

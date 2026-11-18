@@ -1182,6 +1182,14 @@ export class AgentRunEngine {
       return;
     }
 
+    const privateSummary = capability.privateRejectionLogSummary?.(inspection);
+    if (privateSummary !== undefined) {
+      this.outputChannel?.appendLine(
+        `[AgentRunEngine] Rejected ${capability.catalog} capability request${attribution}: ${privateSummary}`
+      );
+      return;
+    }
+
     const operation = 'operation' in inspection && typeof inspection.operation === 'string'
       ? ` operation=${inspection.operation}`
       : '';

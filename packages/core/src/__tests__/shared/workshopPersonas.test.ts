@@ -13,6 +13,7 @@ import {
   WORKSHOP_REACTIONS_PROMPT_PATH,
   WORKSHOP_REACTION_FREQUENCY_PROMPT_PATHS,
   WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
+  WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
   WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
   workshopPersonaSystemPromptPaths,
   workshopPersonaLabel
@@ -101,6 +102,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         persona.promptPath,
         WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
         WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
@@ -123,6 +125,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         persona.promptPath,
         WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
         WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
@@ -148,6 +151,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         persona.promptPath,
         WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
         WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
@@ -227,7 +231,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
       'holds a bookmark on a turn the whole room could not see.');
     expect(guestBase).toContain('saved-session recall');
     expect(guestBase).toContain('the writer\'s lens library (`lens.*`)');
-    expect(guestBase).toContain('What you read from the lens library stays private too.');
+    expect(guestBase).toContain('What you read from the lens library and the Prose Minion reference stays private too.');
     // The old charter said every result stayed out of the room, which was never true of published evidence.
     expect(guestBase).not.toContain('not to the room');
 
@@ -259,6 +263,8 @@ describe('Workshop persona catalog and packaged prompts', () => {
         // Private in v1, the read too (ADR 2026-11-17 D16).
         case 'lens.catalog':
         case 'lens.read':
+        case 'help.search':
+        case 'help.read':
           return false;
       }
     };
@@ -275,8 +281,8 @@ describe('Workshop persona catalog and packaged prompts', () => {
       if (phrase) {
         expect(sharedList).toContain(phrase);
       } else {
-        // Private discovery, or the lens family, which the charter says stays private whole (ADR 2026-11-17 D16).
-        expect(operation).toMatch(/\.(catalog|search)$|^lens\./);
+        // Private discovery, or a whole read-only family, which the charter says stays private whole (ADR 2026-11-17 D16).
+        expect(operation).toMatch(/\.(catalog|search)$|^(lens|help)\./);
       }
     }
   });

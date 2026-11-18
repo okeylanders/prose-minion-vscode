@@ -44,6 +44,7 @@ import {
   RunWorkshopToolSidePass,
   WorkshopAnalysisSidePass,
   WorkshopPersonaCapabilityFactory,
+  WorkshopHelpReference,
   WorkshopContextIntakeService,
   WorkshopConversationSettingsService,
   WorkshopWriterProfileService,
@@ -427,8 +428,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     platform.workspace,
     outputChannel
   );
-  // Persona capabilities are minted per turn by this factory, after the
-  // store, the coordinator, and the recall and memory services built from them.
+  const workshopHelpReference = new WorkshopHelpReference(
+    platform.fileSystem,
+    path.join(platform.workspace.extensionPath, 'resources', 'help'),
+    extensionInfo.version,
+    outputChannel
+  );
+  // Each participant turn uses the same session, library and reference readers.
   const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
     dictionaryService,
     workshopAnalysisSidePass,
@@ -437,7 +443,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel,
     workshopTranscriptRecallService,
     projectMemoryLibrary,
-    lexicalGravityLensRepository
+    lexicalGravityLensRepository,
+    workshopHelpReference
   );
   const workshopToolSidePass = new RunWorkshopToolSidePass(
     assistantToolService,
@@ -664,6 +671,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     showVsTellService,
     lexicalGravityModelService,
     lexicalGravityLensRepository,
+    workshopHelpReference,
     workshopStandingDirectiveService,
     lightboxService,
     lightboxReadingRunner,

@@ -54,6 +54,15 @@ describe('WorkshopToolContextCapability (Sprint 12 Phase 6)', () => {
     expect(redacted).not.toContain('MEMORY-SENTINEL');
   });
 
+  it.each([
+    ['help.search', '<query>pin a file</query>'],
+    ['help.read', '<section>workshop#pinned-context</section>']
+  ])('rejects the persona-only operation %s', (operation, fields) => {
+    const xml = `<prose-minion-tool-call name="${operation}">${fields}</prose-minion-tool-call>`;
+    expect(build({ includeGuides: true }).inspectRequest(xml))
+      .toMatchObject({ kind: 'invalid', reason: 'invalid-root-attributes' });
+  });
+
   it('catalogs the source first, bounded nearest same-group neighbors next, guides last', async () => {
     const adapter = build({ source: { group: 'chapters', path: 'chapters/ch-04.md' }, includeGuides: true });
 

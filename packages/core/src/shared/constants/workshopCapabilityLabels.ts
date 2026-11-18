@@ -41,6 +41,8 @@ export function workshopCapabilityFamilyLabel(
       return 'Project Memory';
     case 'lens':
       return 'Lens Library';
+    case 'help':
+      return 'Prose Minion Help';
     case 'analysis':
       return toolLabel ?? 'Analysis';
   }

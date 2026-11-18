@@ -11,6 +11,7 @@
  *
  * *Alice*, with made-up names.
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import * as path from 'path';
 import { FileType } from '@/platform';
 import { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
@@ -63,7 +64,8 @@ function wire() {
     log,
     {} as WorkshopTranscriptRecallPort,
     offProjectMemory,
-    repository
+    repository,
+    unavailableHelpReference
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),

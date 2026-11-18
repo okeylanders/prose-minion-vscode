@@ -7,6 +7,7 @@
  * arrives escaped.
  */
 
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
@@ -67,7 +68,8 @@ function wire(room: Pick<SavedRecallRoom, 'store' | 'coordinator' | 'log'>): Wir
     log,
     recall,
     offProjectMemory,
-    noProjectLenses
+    noProjectLenses,
+    unavailableHelpReference
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),

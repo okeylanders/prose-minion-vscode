@@ -12,6 +12,7 @@
  * - A session holding both artifacts saves and reopens (forward-only).
  * - Logs carry no slug a persona wrote, no subject and no lens text.
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
@@ -197,7 +198,8 @@ describe('what the thread and the turn ceiling say of a lens call', () => {
       { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
       {} as WorkshopTranscriptRecallPort,
       offProjectMemory,
-      library
+      library,
+      unavailableHelpReference
     ).create({
       requestId: 'host-request',
       excerptVersion: session.getExcerptVersion(),

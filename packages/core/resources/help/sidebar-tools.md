@@ -29,3 +29,7 @@ Choose a source in Metrics. **Prose Statistics** measures words, sentences, para
 ## Word frequency
 
 In Metrics choose **Word Frequency** to see the most common words. The Word Frequency settings control the top list length, minimum word length, content-word filtering and a separate stopword table. Enable hapax legomena for words used once and set how many to display. Other options add bigrams, trigrams, parts of speech, group inflections by lemma, or adjust the word-length histogram. The counts are computed locally on the source you choose.
+
+## Craft Steering
+
+In the Assistant's Writing Tools picker, open **Craft & Voice → Craft Steering**. The same pass is in the Workshop Tools picker, and you can ask a persona to run it on a passage. Use it when a paragraph sounds wrong aloud or a transition between sentences feels abrupt. The report examines sound, rhythm, narration and how one sentence leads to the next. It identifies what to preserve and offers revisions with their gains and costs. Creative Variations explore different treatments of the passage. Bound Creative Variations isolate particular craft choices for comparison.

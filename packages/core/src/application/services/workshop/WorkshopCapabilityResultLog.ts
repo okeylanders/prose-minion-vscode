@@ -25,6 +25,11 @@ export function workshopCapabilityResultLogSummary(result: WorkshopCapabilityRes
       return memoryMetrics(result);
     case 'lens':
       return lensMetrics(result);
+    case 'help': {
+      const count = (key: string) => typeof result.metadata?.[key] === 'number' ? result.metadata[key] : 'n/a';
+      return `helpMetrics=matches=${count('matchCount')};notShown=${count('notShown')};` +
+        `sections=${count('sectionsRead')}/${count('sectionsNamed')};characters=${count('characters')}`;
+    }
     case 'dictionary':
       // The dictionary's metadata is its own log's business; the line keeps its old shape.
       return 'resourceMetrics=none';

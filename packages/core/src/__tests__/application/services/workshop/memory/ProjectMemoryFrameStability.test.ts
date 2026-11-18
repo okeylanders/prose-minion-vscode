@@ -5,6 +5,8 @@
  * leave byte-identical. Through the real capability and conversation
  * manager. *Alice*, with made-up ids.
  */
+
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -28,7 +30,8 @@ function capabilityOver(host: ReturnType<typeof libraryHost>, session = new Work
     { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
     {} as WorkshopTranscriptRecallPort,
     host.library,
-    noProjectLenses
+    noProjectLenses,
+    unavailableHelpReference
   ).create({
     requestId,
     excerptVersion: 0,

@@ -6,6 +6,7 @@
  * refuse every call; an unreadable or conflicting file never reaches any
  * output. *Alice*, with made-up ids.
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   WorkshopPersonaCapability,
@@ -53,7 +54,8 @@ function wire(host: ReturnType<typeof libraryHost>) {
     log,
     {} as WorkshopTranscriptRecallPort,
     host.library,
-    noProjectLenses
+    noProjectLenses,
+    unavailableHelpReference
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),

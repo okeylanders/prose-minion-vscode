@@ -1,3 +1,4 @@
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import {
   completeWorkshopRun,
   workshopMessageCompletionCopy,
@@ -252,7 +253,8 @@ describe('the persona capability\'s log redaction (ADR 2026-11-04 D9)', () => {
       { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
       {} as WorkshopTranscriptRecallPort,
       offProjectMemory,
-      noProjectLenses
+      noProjectLenses,
+      unavailableHelpReference
     ).create({
       requestId: 'r', excerptVersion: 0, personaId: 'jill', owner: { kind: 'host' },
       signal: new AbortController().signal,

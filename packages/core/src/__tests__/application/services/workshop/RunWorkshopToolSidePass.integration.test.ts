@@ -1,3 +1,4 @@
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { emptyPinnedContextServices } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextTestServices';
 import { unusedBookmarkBrowser, unusedMemoryDrafts, unusedSelectedText } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
 import { fakeFileEditApply, fakeFileEditStaging } from '@/__tests__/application/services/workshop/fileEdits/fileEditFixtures';
@@ -130,7 +131,8 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
       output,
       {} as WorkshopTranscriptRecallPort,
       projectMemory,
-      noProjectLenses
+      noProjectLenses,
+      unavailableHelpReference
     );
     const settings = createFakeSettings();
     const fileSystem = createFakeFileSystem();
