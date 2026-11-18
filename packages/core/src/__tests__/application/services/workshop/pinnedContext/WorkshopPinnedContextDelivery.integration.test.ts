@@ -13,6 +13,7 @@
  *
  * *Alice*, with made-up paths and text. No provider is called.
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { WorkshopRoomHandler } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
 import { emptyPinnedContextServices } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextTestServices';
 import { unusedBookmarkBrowser, unusedMemoryDrafts, unusedSelectedText } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
@@ -104,7 +105,8 @@ async function firstHostRun(seed: (session: WorkshopSessionService) => Promise<v
   const emptyCatalog = { createProvider: jest.fn(async () => ({ listResources: () => [], loadResources: async () => [] })) };
   const capabilities = new WorkshopPersonaCapabilityFactory(
     {} as DictionaryService, analysis, emptyCatalog as never, session, output, {} as WorkshopTranscriptRecallPort, projectMemory,
-    noProjectLenses
+    noProjectLenses,
+    unavailableHelpReference
   );
   const settings = createFakeSettings();
   const profile = new WorkshopWriterProfileService(settings, output);

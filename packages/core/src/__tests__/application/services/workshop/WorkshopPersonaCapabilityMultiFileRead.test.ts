@@ -5,6 +5,7 @@
  * and the context window handed through to the read.
  */
 
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { createHash } from 'crypto';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import {
@@ -68,7 +69,8 @@ describe('a persona\'s read of several files', () => {
       log,
       unusedRecall,
       offProjectMemory,
-      noProjectLenses
+      noProjectLenses,
+      unavailableHelpReference
     ).create({
       requestId: 'host-request',
       excerptVersion: session.getExcerptVersion(),

@@ -1,5 +1,5 @@
 /**
- * The witness (ADR 2026-11-17 D19): lens text a persona reads never reaches
+ * The witness (ADR 2026-11-17 D19, D23): lens and help text a persona reads never reach
  * a system prompt.
  *
  * The real `AssistantToolService` assembles each participant's system
@@ -32,6 +32,7 @@ import type { WorkshopTranscriptRecallPort } from '@/application/services/worksh
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
 import { createFakeFileSystem } from '@/__tests__/mocks/platform';
+import { bundledHelpReference } from '@/__tests__/application/services/workshop/help/bundledHelpReference';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { aliceLens, lensLibrary } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
@@ -59,7 +60,7 @@ const behavior = (expressionLevel: WorkshopConversationBehavior['expressionLevel
 
 interface SentMessage { role: string; content: string }
 
-describe('lens text never reaches a system prompt (D19)', () => {
+describe('lens and help text stay out of the system prompt (D19, D23)', () => {
   it('holds for host and guest: before the read, after it, after a settings rebuild, and on the next turn', async () => {
     const conversations = new ConversationManager();
     const requests: SentMessage[][] = [];
@@ -95,15 +96,22 @@ describe('lens text never reaches a system prompt (D19)', () => {
 
       const session = new WorkshopSessionService(() => Date.parse('2026-11-17T10:00:00.000Z'));
       session.setSessionScope('open');
+      const log = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
+      const help = bundledHelpReference(log);
+      const sectionId = 'workshop#pinned-context';
+      const helpBody = (await help.load())!.get(sectionId)!.body;
+      const helpMarker = helpBody.split(/\s+/).slice(0, 8).join(' ');
+      const readHelp = call('help.read', `<section>${sectionId}</section>`);
       const factory = new WorkshopPersonaCapabilityFactory(
         {} as DictionaryService,
         {} as WorkshopAnalysisSidePass,
         { createProvider: jest.fn(async () => ({ listResources: () => [], loadResources: async () => [] })) } as never,
         session,
-        { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
+        log,
         {} as WorkshopTranscriptRecallPort,
         offProjectMemory,
-        lensLibrary([LENS])
+        lensLibrary([LENS]),
+        help
       );
       const capability = (requestId: string, owner: WorkshopCapabilityPrincipal) => factory.create({
         requestId,
@@ -117,12 +125,12 @@ describe('lens text never reaches a system prompt (D19)', () => {
         conversations.getMessages(conversationId).filter((message) => message.role === 'system').map((message) => message.content);
 
       // The host reads the catalog and the whole lens; the guest reads the lens too.
-      replies.push(call('lens.catalog'), call('lens.read', '<lens>tea-party</lens>'), 'HOST-FINAL: it leans on cups and clocks.');
+      replies.push(call('lens.catalog'), call('lens.read', '<lens>tea-party</lens>'), readHelp, 'HOST-FINAL: it leans on cups and clocks.');
       const host = await service.startWorkshopPersonaConversation(
         { personaId: 'jill', message: 'What does my tea-party lens hold?', behavior: behavior('subtle'), writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE },
         { capability: capability('host-1', { kind: 'host' }) }
       );
-      replies.push(call('lens.read', '<lens>tea-party</lens><section>sample</section><section>metaphor</section>'), 'GUEST-FINAL: the sample pours from an empty pot.');
+      replies.push(call('lens.read', '<lens>tea-party</lens><section>sample</section><section>metaphor</section>'), readHelp, 'GUEST-FINAL: the sample pours from an empty pot.');
       const guest = await service.startWorkshopGuestConversation(
         { personaId: 'cliff', message: 'Join and look at the tea-party lens.', behavior: behavior('subtle'), writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE },
         { capability: capability('guest-1', { kind: 'personaGuest', personaId: 'cliff' }) }
@@ -139,6 +147,12 @@ describe('lens text never reaches a system prompt (D19)', () => {
       expect(carried(guestId, 'user')).toBe(true);
       expect(conversations.getMessages(hostId).find((message) => message.content.includes(MARKER))!.content)
         .toContain('<workshop-capability-result name="lens.catalog" status="success"');
+      for (const conversation of [hostId, guestId]) {
+        expect(conversations.getMessages(conversation).some(message =>
+          message.role === 'user' && message.content.includes('name="help.read"') && message.content.includes(helpMarker)
+        )).toBe(true);
+        expect(systemsOf(conversation)[0]).toContain('## Answering questions about Prose Minion');
+      }
       expect(systemsOf(hostId)).toHaveLength(1);
       expect(systemsOf(guestId)).toHaveLength(1);
       // The system prompt teaches the grammar, and holds no lens.
@@ -165,7 +179,7 @@ describe('lens text never reaches a system prompt (D19)', () => {
       await service.continueConversation(guestId, 'Anything to add?', { capability: capability('guest-2', { kind: 'personaGuest', personaId: 'cliff' }) });
 
       // Every system message of every request, and of both retained conversations, at every point.
-      expect(requests.length).toBe(7);
+      expect(requests.length).toBe(9);
       const systemMessages = [
         ...requests.flatMap((messages) => messages.filter((message) => message.role === 'system').map((message) => message.content)),
         ...beforeRebuild,
@@ -173,6 +187,7 @@ describe('lens text never reaches a system prompt (D19)', () => {
         ...systemsOf(guestId)
       ];
       expect(systemMessages.length).toBeGreaterThanOrEqual(11);
+      expect(systemMessages.filter(content => content.includes(helpMarker))).toEqual([]);
       expect(systemMessages.filter((content) => content.includes(MARKER))).toEqual([]);
       // Nor any other text of the lens: its slug's own words aside, no field of it is in a prompt.
       for (const field of [LENS.logic.premise, LENS.gradient.join(' → '), LENS.cliches[0].fresh]) {

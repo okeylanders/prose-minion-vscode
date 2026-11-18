@@ -13,6 +13,7 @@
  *
  * *Alice*, with made-up ids.
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -60,7 +61,8 @@ function capabilityOver(host: ReturnType<typeof libraryHost>, session: WorkshopS
     host.log,
     {} as WorkshopTranscriptRecallPort,
     host.library,
-    noProjectLenses
+    noProjectLenses,
+    unavailableHelpReference
   ).create({
     requestId,
     excerptVersion: 0,

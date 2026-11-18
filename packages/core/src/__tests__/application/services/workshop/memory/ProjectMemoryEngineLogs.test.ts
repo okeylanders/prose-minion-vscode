@@ -4,6 +4,7 @@
  * `memory.read` keeps its title in the manifest the writer sees, and out of
  * the engine's log, with debug logging off and on. *Alice*, with made-up ids.
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ConversationManager } from '@orchestration/ConversationManager';
@@ -45,7 +46,8 @@ describe.each([['off', false], ['on', true]])('a committed memory.read, debug lo
         sink,
         {} as WorkshopTranscriptRecallPort,
         host.library,
-        noProjectLenses
+        noProjectLenses,
+        unavailableHelpReference
       ).create({
         requestId: 'host-request',
         excerptVersion: 0,

@@ -1362,6 +1362,15 @@ decisions A1 and A2) when touching what typing `@` in the composer does:
     there.
 - **Nothing is persisted, and nothing of the `@` list is logged.**
 
+### Workshop help reference
+
+A new feature is complete when its section in `packages/core/resources/help/`
+explains how to use it. Add or update the hand-written section and map its
+commands and settings to that section in `help/index.json`. Preserve section
+ids so a persona can read a section it found earlier. When the manifest
+changes, run `node apps/vscode-extension/scripts/generate-help-tables.js`.
+`helpReferenceSync.test.ts` checks the tables, ownership, tabs and version.
+
 ### Workshop Lens Reads
 
 Follow [ADR 2026-11-17](docs/adr/2026-11-17-everyday-conveniences-round-two.md)
@@ -1386,8 +1395,8 @@ what a persona may see of the Lexical Gravity library:
   - `mergeLexicalGravityLibrary` (`LexicalGravityLenses.ts`) is the one
     merge rule: a built-in wins its slug. The modal's handler and the
     family both call it.
-  - The repository is built once, in `extension.ts`, and is the factory's
-    last port. The family reads no file and writes nothing.
+  - The repository is built once, in `extension.ts`, and is passed to the factory as a read-only
+    port. The family reads no file and writes nothing.
   - No workspace, several roots, or a folder that did not read still lists
     the built-ins, and says why in host words.
 - **The installed lens is known by slug alone** (`WorkshopLensInstalled`),

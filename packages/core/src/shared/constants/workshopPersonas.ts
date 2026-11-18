@@ -112,6 +112,10 @@ export const WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH =
 export const WORKSHOP_LENS_CAPABILITY_PROMPT_PATH =
   'workshop-personas/lens-capability.md';
 
+/** Product help is available to every Workshop participant (ADR 2026-11-17 D23). */
+export const WORKSHOP_HELP_CAPABILITY_PROMPT_PATH =
+  'workshop-personas/help-capability.md';
+
 /**
  * The `memory.*` grammar (ADR 2026-11-04 D1, D8): in the system prompt
  * only while project memory is open (the mode on and the workspace
@@ -251,8 +255,8 @@ export function workshopPersonaSystemPromptPaths(
       ]
       : []),
     ...(participant && options.fileEdits ? [WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH, WORKSHOP_REPLY_EDIT_OFFERS_PROMPT_PATH] : []),
-    // The last capability grammar, for host and guest alike (ADR 2026-11-17 D16).
-    ...(participant ? [WORKSHOP_LENS_CAPABILITY_PROMPT_PATH] : []),
+    // Unconditional capability grammars for host and guest alike (ADR 2026-11-17 D16).
+    ...(participant ? [WORKSHOP_HELP_CAPABILITY_PROMPT_PATH, WORKSHOP_LENS_CAPABILITY_PROMPT_PATH] : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],
     WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,

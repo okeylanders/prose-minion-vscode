@@ -30,7 +30,9 @@ export const WORKSHOP_CAPABILITY_OPERATIONS = [
   'memory.read',
   // ADR 2026-11-17 D16: the writer's lens library, read-only.
   'lens.catalog',
-  'lens.read'
+  'lens.read',
+  'help.search',
+  'help.read'
 ] as const;
 
 export type WorkshopCapabilityOperation = typeof WORKSHOP_CAPABILITY_OPERATIONS[number];
@@ -45,7 +47,7 @@ export const isWorkshopCapabilityOperation = (value: unknown): value is Workshop
  * family exhaustively, so an operation without one fails to compile instead
  * of borrowing another family's name through an implicit "otherwise".
  */
-export type WorkshopCapabilityFamily = 'dictionary' | 'analysis' | 'resource' | 'transcript' | 'memory' | 'lens';
+export type WorkshopCapabilityFamily = 'dictionary' | 'analysis' | 'resource' | 'transcript' | 'memory' | 'lens' | 'help';
 
 export function workshopCapabilityFamily(
   operation: WorkshopCapabilityOperation
@@ -73,6 +75,9 @@ export function workshopCapabilityFamily(
     case 'lens.catalog':
     case 'lens.read':
       return 'lens';
+    case 'help.search':
+    case 'help.read':
+      return 'help';
     default: {
       const unhandled: never = operation;
       throw new Error(`Unhandled Workshop capability operation: ${String(unhandled)}`);
@@ -192,7 +197,12 @@ export type WorkshopCapabilityRequest =
     }
   | WorkshopTranscriptRecallRequest
   | WorkshopProjectMemoryRequest
-  | WorkshopLensRequest;
+  | WorkshopLensRequest
+  | WorkshopHelpRequest;
+
+export type WorkshopHelpRequest =
+  | { capability: 'help.search'; query: string }
+  | { capability: 'help.read'; sections: readonly string[] };
 
 /**
  * `<section>` on `lens.read` (ADR 2026-11-17 D18): the closed list, in the

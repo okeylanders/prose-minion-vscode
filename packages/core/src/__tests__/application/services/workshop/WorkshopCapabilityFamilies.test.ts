@@ -54,7 +54,9 @@ describe('capability family names', () => {
     ['memory.read', undefined, 'Project Memory'],
     // ADR 2026-11-17 D16: the lens family names itself.
     ['lens.catalog', undefined, 'Lens Library'],
-    ['lens.read', undefined, 'Lens Library']
+    ['lens.read', undefined, 'Lens Library'],
+    ['help.search', undefined, 'Prose Minion Help'],
+    ['help.read', undefined, 'Prose Minion Help']
   ] as const)('names a %s artifact (tool %s) as %s', (operation, toolId, family) => {
     const turn = recordArtifact(operation, toolId);
 

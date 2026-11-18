@@ -27,7 +27,9 @@ describe('workshopCapabilityFamily', () => {
       ['memory.search', 'memory'],
       ['memory.read', 'memory'],
       ['lens.catalog', 'lens'],
-      ['lens.read', 'lens']
+      ['lens.read', 'lens'],
+      ['help.search', 'help'],
+      ['help.read', 'help']
     ]);
   });
 
@@ -47,6 +49,9 @@ describe('workshopCapabilityFamily', () => {
     expect(isWorkshopCapabilityOperation('lens.read')).toBe(true);
     expect(isWorkshopCapabilityOperation('lens.search')).toBe(false);
     expect(isWorkshopCapabilityOperation('lens.save')).toBe(false);
+    expect(isWorkshopCapabilityOperation('help.read')).toBe(true);
+    expect(isWorkshopCapabilityOperation('help.search')).toBe(true);
+    expect(isWorkshopCapabilityOperation('help.catalog')).toBe(false);
     expect(isWorkshopCapabilityOperation('transcript')).toBe(false);
     expect(isWorkshopCapabilityOperation(undefined)).toBe(false);
   });

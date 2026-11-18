@@ -1,3 +1,4 @@
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
@@ -102,7 +103,8 @@ describe('WorkshopPersonaCapability', () => {
     log,
     unusedRecall,
     offProjectMemory,
-    noProjectLenses
+    noProjectLenses,
+    unavailableHelpReference
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),
@@ -130,7 +132,8 @@ describe('WorkshopPersonaCapability', () => {
       log,
       unusedRecall,
       offProjectMemory,
-      noProjectLenses
+      noProjectLenses,
+      unavailableHelpReference
     ).create({
       requestId: 'open-request',
       excerptVersion: openSession.getExcerptVersion(),
@@ -141,6 +144,22 @@ describe('WorkshopPersonaCapability', () => {
       events
     });
   };
+
+  it('names the reference version on help refusals outside the reader', async () => {
+    const adapter = capability();
+    const request = { capability: 'help.search' as const, query: 'pin a file' };
+    adapter.handleInvalidRequest({ kind: 'invalid', operation: request.capability, reason: 'missing-field', field: 'query' });
+    adapter.handleCapabilityLimit(request);
+    controller.abort();
+    const cancelled = await adapter.fulfill(request);
+    const header = `Prose Minion reference, version ${unavailableHelpReference.version}.`;
+    expect(cancelled.evidence).toContain(header);
+    const refusals = session.readRoomLedger().filter(turn => turn.capability?.status === 'rejected');
+    expect(refusals).toHaveLength(2);
+    for (const card of refusals) {
+      expect(card.content).toContain(header);
+    }
+  });
 
   it('corrects a bundle of calls before executing the model’s single retry', async () => {
     const call = '<prose-minion-tool-call name="dictionary.lookup"><word>liminal</word><context>Threshold scene.</context><purpose>Check tone.</purpose></prose-minion-tool-call>';

@@ -24,6 +24,8 @@
  * Pure: the caller supplies an already-decoded session.
  */
 
+import { normalizeWorkshopText as normalizeWorkshopRecallText } from '@/application/services/workshop/WorkshopTextSearch';
+export { normalizeWorkshopText as normalizeWorkshopRecallText, workshopWords as workshopRecallWords, type WorkshopWord as WorkshopRecallWord } from '@/application/services/workshop/WorkshopTextSearch';
 import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks';
 import type {
   WorkshopPersonaId,
@@ -139,13 +141,6 @@ export interface WorkshopRecallDocument {
   readonly characters: number;
 }
 
-/** One word of visible text: where it sits, and the form search compares. */
-export interface WorkshopRecallWord {
-  readonly start: number;
-  readonly end: number;
-  readonly normalized: string;
-}
-
 export function buildWorkshopRecallDocument(
   session: WorkshopPersistedSessionV2
 ): WorkshopRecallDocument {
@@ -238,40 +233,6 @@ export function workshopRecallEntryText(entry: WorkshopTranscriptEntry): string 
 function searchableText(entry: WorkshopTranscriptEntry): string {
   const text = workshopRecallEntryText(entry);
   return entry.kind === 'reply' && entry.participant === 'tool' ? `${entry.speaker}\n${text}` : text;
-}
-
-/**
- * Unicode words: letters, marks, and digits, with inner apostrophes kept
- * inside the word ("don't", "Jill's"). Normalization folds case,
- * diacritics, and compatibility forms, strips a possessive "'s", and drops
- * other apostrophes, so "café" finds "cafe", "dont" finds "don't", and
- * "keeper's" finds "keeper".
- */
-export function workshopRecallWords(text: string): WorkshopRecallWord[] {
-  const words: WorkshopRecallWord[] = [];
-  for (const match of text.matchAll(WORD)) {
-    const normalized = normalizeWord(match[0]);
-    if (normalized) {
-      words.push({ start: match.index, end: match.index + match[0].length, normalized });
-    }
-  }
-  return words;
-}
-
-export function normalizeWorkshopRecallText(text: string): string {
-  return workshopRecallWords(text).map((word) => word.normalized).join(' ');
-}
-
-const WORD = /[\p{L}\p{M}\p{N}]+(?:['’][\p{L}\p{M}\p{N}]+)*/gu;
-
-function normalizeWord(word: string): string {
-  return word
-    .normalize('NFKD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    // A possessive keeps its stem, so "keeper's" finds "keeper" and "keepers".
-    .replace(/['’]s$/u, '')
-    .replace(/['’\s]/g, '');
 }
 
 function buildHeader(session: WorkshopPersistedSessionV2): WorkshopRecallHeader {

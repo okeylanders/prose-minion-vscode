@@ -5,6 +5,7 @@
  * does, and commits its reply, so the record stands as it would in a room.
  * *Alice*, with made-up ids.
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
@@ -42,7 +43,8 @@ function room(host: ReturnType<typeof libraryHost>) {
       { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
       {} as WorkshopTranscriptRecallPort,
       host.library,
-      noProjectLenses
+      noProjectLenses,
+      unavailableHelpReference
     ).create({
       requestId,
       excerptVersion: 0,

@@ -6,6 +6,8 @@
  * decodes and fulfills over real session recall. Nothing reaches a network.
  */
 
+import type { SettingsStore } from '@/platform';
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import {
   scriptedCheckpoint,
@@ -124,10 +126,10 @@ const flatten = (content: unknown): string =>
     ? content
     : (content as Array<{ text?: string }>).map((block) => block.text ?? '').join(''));
 
-export function createNativeToolCallHarness() {
+export function createNativeToolCallHarness(settings?: SettingsStore) {
   const room = setupCoordinator();
   const { session, manager, store, coordinator, log, time } = room;
-  const engine = new AgentRunEngine(new OpenRouterClient('test-key', 'placeholder/model', log), manager, undefined, log);
+  const engine = new AgentRunEngine(new OpenRouterClient('test-key', 'placeholder/model', log), manager, undefined, log, undefined, settings);
   const recall = new WorkshopTranscriptRecallService(store, coordinator, log, {
     liveRoom: new WorkshopLiveRoomBookmarkReader(session, () => time.exportState().timezone)
   });
@@ -154,7 +156,8 @@ export function createNativeToolCallHarness() {
     log,
     recall,
     offProjectMemory,
-    noProjectLenses
+    noProjectLenses,
+    unavailableHelpReference
   );
   const originalFetch = global.fetch;
   const sent: SentRequest[] = [];

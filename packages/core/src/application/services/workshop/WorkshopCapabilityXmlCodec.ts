@@ -22,6 +22,10 @@ import {
   inspectWorkshopLensCall,
   WORKSHOP_LENS_FIELD_POLICY
 } from '@/application/services/workshop/lens/WorkshopLensXmlCodec';
+import {
+  inspectWorkshopHelpCall,
+  WORKSHOP_HELP_FIELD_POLICY
+} from '@/application/services/workshop/help/WorkshopHelpXmlCodec';
 import { workshopResourceInstructionLines } from '@/application/services/workshop/WorkshopResourceInstruction';
 import type { WorkshopCapabilityXmlFieldPolicy } from '@/application/services/workshop/WorkshopCapabilityXmlDocument';
 import { countWords } from '@/utils/textUtils';
@@ -31,6 +35,7 @@ export const WORKSHOP_CAPABILITY_FIELD_POLICY: WorkshopCapabilityXmlFieldPolicy 
   repeatable: (operation, field) =>
     WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY.repeatable(operation, field) ||
     WORKSHOP_PROJECT_MEMORY_FIELD_POLICY.repeatable(operation, field) ||
+    WORKSHOP_HELP_FIELD_POLICY.repeatable(operation, field) ||
     WORKSHOP_LENS_FIELD_POLICY.repeatable(operation, field) ||
     WORKSHOP_RESOURCE_FIELD_POLICY.repeatable(operation, field),
   attributes: (operation, field) => [
@@ -94,7 +99,8 @@ export type WorkshopCapabilityRejectionReason =
   | 'invalid-page'
   // The lens library (ADR 2026-11-17 D18; lens/WorkshopLensXmlCodec).
   | 'invalid-section'
-  | 'duplicate-section';
+  | 'duplicate-section'
+  | 'too-many-sections';
 
 export type WorkshopCapabilityInspection =
   | { readonly kind: 'none' }
@@ -190,6 +196,9 @@ export class WorkshopCapabilityXmlCodec {
       case 'lens.catalog':
       case 'lens.read':
         return inspectWorkshopLensCall(operation, document);
+      case 'help.search':
+      case 'help.read':
+        return inspectWorkshopHelpCall(operation, document);
       default:
         return { kind: 'invalid', reason: 'unknown-capability' };
     }
