@@ -38,7 +38,7 @@ Each new conversation copies these files once, in order, subject to its context 
 
 Use **Side pane** in the Workshop header to fold or reveal the rail. The **Material** tab holds the excerpt, standing context and **Read in** entries for the selected participant. The **Notes** tab holds to-dos and bookmarks. A badge can tell you about additions while a tab is hidden. Attach standing context in the Context panel for the whole conversation, up to its 100,000-word budget. Ask a persona to look up configured project files on demand. One file-read card can cover up to ten files. Large reads may continue across multiple calls as the conversation window allows.
 
-Bookmark a message to find it again. **Sessions → Bookmarks…** includes saved sessions as well as this room. Preview a bookmark, open its session, or use **Remember this** to create a project note. To-dos track actions from the discussion. A persona can read bookmarks visible to it. For an older message, a bookmark can open a preview.
+Bookmark a message to find it again. **Sessions → Bookmarks…** includes saved sessions as well as this room. Preview a bookmark, open its session, or use **Remember this** to create a project note. To-dos track actions from the discussion. A persona can read bookmarks visible to it. Open a bookmark on an older message and the thread loads the earlier turns back to it, then scrolls there; while it loads, press Escape on the bookmark to stop. A bookmark more than three pages of earlier turns back opens in a read-only preview instead.
 
 ## Earlier turns and saved sessions
 

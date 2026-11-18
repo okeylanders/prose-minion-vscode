@@ -275,10 +275,18 @@ export interface PromptBudgets {
    * at `pageTurns` or at `pageBytes` (the UTF-8 size of its turns as sent),
    * whichever comes first counting back from the newest, and always holds at
    * least one turn. The snapshot window stays `WORKSHOP_SNAPSHOT_TURN_WINDOW`.
+   *
+   * `jumpPages` bounds a jump to a turn outside the window (D6, amended
+   * 2026-11-18; Okey's number): the pages one jump may load beyond what the
+   * thread holds. The host refuses a target more than `jumpPages *
+   * pageTurns` turns back, and the webview stops after `jumpPages` pages
+   * (a byte-bounded page can hold fewer turns). Past it the turn opens in
+   * the reader instead.
    */
   readonly workshopThread: Readonly<{
     pageTurns: number;
     pageBytes: number;
+    jumpPages: number;
   }>;
   readonly workshopTodos: Readonly<{
     items: number;
@@ -814,7 +822,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     optionCharacters: 40
   },
   workshopSelectedText: { words: 5_000, characters: 40_000, previewCharacters: 120, snapshots: 8, pushIntervalMs: 150 },
-  workshopThread: { pageTurns: 100, pageBytes: 1024 * 1024 },
+  workshopThread: { pageTurns: 100, pageBytes: 1024 * 1024, jumpPages: 3 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {
     turns: 100,

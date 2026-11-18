@@ -14,8 +14,13 @@
  *   screen (`useWorkshopBookmarkOpenAt`, held by WorkshopApp so a declined
  *   confirmation can drop it).
  * - **Show in thread** (this conversation) closes the screen and jumps
- *   through the thread's one jump path; a turn outside the window opens in
- *   the preview instead, over the screen.
+ *   through the thread's one jump path. A turn the thread has not drawn
+ *   closes the screen and loads the earlier turns back to it
+ *   (`loadEarlierThrough`; ADR 2026-11-17 D6, amended 2026-11-18), which
+ *   scrolls there or opens the reader; without it, the preview opens over
+ *   the screen. Either way it first stops a jump still loading
+ *   (`cancelEarlierJump`, PR #281 P2), so a late page cannot take focus
+ *   back.
  *
  * - **Remember this** (Bookmark Recall D9) closes the screen and opens the
  *   memory sheet from the row's message: a turn of this conversation names
@@ -41,6 +46,10 @@ interface WorkshopBookmarkBrowserMountProps {
   openAtBookmark: (target: WorkshopBookmarkOpenTarget) => void;
   openSavedTurnPreviewSheet: (sessionId: string, turnId: string, label: string, sessionTitle: string) => void;
   openGivenTurnPreviewSheet: (turnId: string, turn: WorkshopTurnPreview, label: string) => void;
+  /** Loads the earlier turns back through a turn the thread has not drawn, then shows it. */
+  loadEarlierThrough?: (turnId: string, label?: string) => void;
+  /** Stops an earlier-turns jump still loading: a newer Show in thread supersedes it (PR #281 P2). */
+  cancelEarlierJump?: () => void;
   rememberRoomBookmark: (bookmark: WorkshopMemoryRoomBookmark) => void;
   rememberSavedBookmark: (bookmark: WorkshopMemorySavedBookmark) => void;
 }
@@ -53,6 +62,8 @@ export const WorkshopBookmarkBrowserMount: React.FC<WorkshopBookmarkBrowserMount
   openAtBookmark,
   openSavedTurnPreviewSheet,
   openGivenTurnPreviewSheet,
+  loadEarlierThrough,
+  cancelEarlierJump,
   rememberRoomBookmark,
   rememberSavedBookmark
 }) => {
@@ -63,9 +74,19 @@ export const WorkshopBookmarkBrowserMount: React.FC<WorkshopBookmarkBrowserMount
       openGivenTurnPreviewSheet(row.turnId, row.message, row.label);
     }
   }, [liveRows, openGivenTurnPreviewSheet]);
+  const { closeBrowser } = browser;
+  const showUndrawn = React.useCallback((turnId: string) => {
+    if (!loadEarlierThrough) {
+      previewLive(turnId);
+      return;
+    }
+    const row = liveRows.find((candidate) => candidate.turnId === turnId);
+    closeBrowser();
+    loadEarlierThrough(turnId, row?.label);
+  }, [closeBrowser, liveRows, loadEarlierThrough, previewLive]);
   const { jumpAfterClosing } = useWorkshopTurnJump({
-    closeOverlay: browser.closeBrowser,
-    onOutsideWindow: previewLive
+    closeOverlay: closeBrowser,
+    onOutsideWindow: showUndrawn
   });
 
   const onPreview = (item: WorkshopBookmarkBrowserItem) => {
@@ -122,7 +143,10 @@ export const WorkshopBookmarkBrowserMount: React.FC<WorkshopBookmarkBrowserMount
       onPreview={onPreview}
       onOpenSession={onOpenSession}
       onOpenAtBookmark={onOpenAtBookmark}
-      onShowInThread={(item) => jumpAfterClosing(item.row.turnId)}
+      onShowInThread={(item) => {
+        cancelEarlierJump?.();
+        jumpAfterClosing(item.row.turnId);
+      }}
       onRemember={onRemember}
     />
   );

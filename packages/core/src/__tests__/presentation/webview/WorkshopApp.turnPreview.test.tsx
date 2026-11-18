@@ -159,10 +159,20 @@ describe('WorkshopApp turn preview', () => {
       timestamp: 6
     });
     const older = mark('bookmark-3-1', 'turn-0', 'Jill · An older reply', false);
+    // A bookmark outside the window loads the earlier turns first (D6, amended
+    // 2026-11-18); the host refusing that jump (too far back) opens the preview.
     const openOlder = () => {
-      const row = within(rail()).getByRole('button', { name: 'Jill · An older reply: open it in the reader' });
+      const row = within(rail()).getByRole('button', { name: 'Jill · An older reply: show it in the thread' });
       row.focus();
       fireEvent.click(row);
+      const jump = (posted(MessageType.WORKSHOP_REQUEST_EARLIER_TURNS) as Array<Record<string, unknown>>).at(-1)!;
+      expect(jump.targetTurnId).toBe('turn-0');
+      deliver({
+        type: MessageType.WORKSHOP_EARLIER_TURNS,
+        source: 'extension.workshop',
+        payload: { ...jump, error: 'The turn is too far back to load into the thread, so the reader shows it instead.' },
+        timestamp: 6
+      });
       return row;
     };
 

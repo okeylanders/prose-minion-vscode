@@ -1032,10 +1032,23 @@ export const WorkshopApp: React.FC = () => {
   // was read" and bookmarks share one scroll-and-focus path (Wayfinding D3,
   // D4); a turn outside the window opens in the read-only preview (D6).
   const readInCardTurnId = textSheet?.mode.kind === 'read-in' ? textSheet.mode.turnId : undefined;
-  const { jumpToTurn, jumpAfterClosing } = useWorkshopTurnJump({
+  const { jumpToTurn: scrollToTurn, jumpAfterClosing: scrollAfterClosing } = useWorkshopTurnJump({
     closeOverlay: closeTextSheet,
     onOutsideWindow: openTurnPreviewSheet
   });
+  // Every way the writer moves to a turn supersedes a bookmark's earlier-turns
+  // jump still loading (PR #281 P2): its late page must not take focus back,
+  // nor its refusal open a reader. The pages already shown stay. Only the
+  // jump's own outcome scrolls through `scrollToTurn` directly.
+  const { cancelJump: cancelEarlierJump } = earlierTurns;
+  const jumpToTurn = React.useCallback((turnId: string, label?: string): boolean => {
+    cancelEarlierJump();
+    return scrollToTurn(turnId, label);
+  }, [cancelEarlierJump, scrollToTurn]);
+  const jumpAfterClosing = React.useCallback((turnId: string) => {
+    cancelEarlierJump();
+    scrollAfterClosing(turnId);
+  }, [cancelEarlierJump, scrollAfterClosing]);
   // A reply's edit offers (ADR 2026-11-10 U1–U5): the chips ask through the hook; an answered chip and the
   // lines' links move focus on the thread's one scroll-and-focus path.
   const editOfferControls = React.useMemo<WorkshopEditOfferControls>(() => ({
@@ -1054,13 +1067,42 @@ export const WorkshopApp: React.FC = () => {
     openStoredSession,
     jumpToTurn
   });
-  const openBookmark = React.useCallback(
-    // The host's `inWindow` decides; the thread is never searched to re-derive it.
-    (bookmark: WorkshopBookmarkSummary) => bookmark.inWindow
-      ? jumpToTurn(bookmark.turnId, bookmark.label)
-      : openTurnPreviewSheet(bookmark.turnId, bookmark.label),
-    [jumpToTurn, openTurnPreviewSheet]
+  // A bookmark outside the window loads the earlier turns back to it, then
+  // scrolls there (ADR 2026-11-17 D6, amended 2026-11-18). The host's
+  // `inWindow` decides; the thread is never searched to re-derive it. A jump
+  // the host refuses (gone, or past `jumpPages`) opens the reader instead.
+  const { loadThrough: loadEarlierThrough, jumpOutcome: earlierJumpOutcome } = earlierTurns;
+  const showInThreadThroughEarlier = React.useCallback(
+    (turnId: string, label?: string) => loadEarlierThrough({ turnId, ...(label !== undefined ? { label } : {}) }),
+    [loadEarlierThrough]
   );
+  const openBookmark = React.useCallback(
+    (bookmark: WorkshopBookmarkSummary) => {
+      if (bookmark.inWindow) {
+        jumpToTurn(bookmark.turnId, bookmark.label);
+        return;
+      }
+      if (earlierTurns.jumpingTo === bookmark.turnId) {
+        return;
+      }
+      showInThreadThroughEarlier(bookmark.turnId, bookmark.label);
+    },
+    [earlierTurns.jumpingTo, jumpToTurn, showInThreadThroughEarlier]
+  );
+  const handledJumpSerial = React.useRef(0);
+  const showEarlierJumpWhenSettled = React.useCallback(() => {
+    if (!earlierJumpOutcome || handledJumpSerial.current === earlierJumpOutcome.serial) {
+      return;
+    }
+    handledJumpSerial.current = earlierJumpOutcome.serial;
+    if (earlierJumpOutcome.kind === 'landed') {
+      // The pages are drawn by now: the one jump path scrolls and focuses.
+      scrollToTurn(earlierJumpOutcome.turnId, earlierJumpOutcome.label);
+    } else {
+      openTurnPreviewSheet(earlierJumpOutcome.turnId, earlierJumpOutcome.label);
+    }
+  }, [earlierJumpOutcome, scrollToTurn, openTurnPreviewSheet]);
+  React.useEffect(showEarlierJumpWhenSettled, [showEarlierJumpWhenSettled]);
 
   const excerptSessionLabel = (() => {
     const sourcePath = workshop.excerpt
@@ -1262,6 +1304,8 @@ export const WorkshopApp: React.FC = () => {
         bookmarks: bookmarks.bookmarks,
         disabled: roomMutationLocked,
         onOpen: openBookmark,
+        ...(earlierTurns.jumpingTo !== undefined ? { loadingTurnId: earlierTurns.jumpingTo } : {}),
+        onCancelLoad: cancelEarlierJump,
         onRename: bookmarks.renameBookmark,
         renameOutcome: bookmarks.renameOutcome,
         onRemove: (turnId) => bookmarks.setTurnBookmark(turnId, false),
@@ -1599,6 +1643,8 @@ export const WorkshopApp: React.FC = () => {
         openAtBookmark={bookmarkOpenAt.openAtBookmark}
         openSavedTurnPreviewSheet={openSavedTurnPreviewSheet}
         openGivenTurnPreviewSheet={openGivenTurnPreviewSheet}
+        loadEarlierThrough={showInThreadThroughEarlier}
+        cancelEarlierJump={cancelEarlierJump}
         rememberRoomBookmark={projectMemory.rememberRoomBookmark}
         rememberSavedBookmark={projectMemory.rememberSavedBookmark}
       />

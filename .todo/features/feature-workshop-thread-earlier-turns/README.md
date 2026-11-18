@@ -77,7 +77,14 @@ is reading a page of them.
 - **Page size, and should the window itself grow?** 200 was set for the
   snapshot's size. Is it still right?
 - **Jump to a bookmark or to-do source** inside the thread, loading its page,
-  instead of opening a preview?
+  instead of opening a preview? **Bookmarks: done 2026-11-18** (Okey asked
+  for it; ADR 2026-11-17 D6 amendment). A Notes row or the Bookmarks
+  screen's Show in thread loads at most 3 pages back to the turn, then
+  scrolls to it; past that, or for a turn the room no longer holds, the
+  reader opens. **Follow-up, not done:** a to-do's "show source", a Read in
+  card and the reader's "Show where it was read" still open the preview for
+  a turn outside the window (`useWorkshopTurnJump`'s `onOutsideWindow`); each
+  could take the same `loadThrough` path.
 
 ## Completion Criteria
 

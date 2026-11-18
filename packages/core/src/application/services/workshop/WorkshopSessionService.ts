@@ -2703,6 +2703,27 @@ export class WorkshopSessionService {
   }
 
   /**
+   * How far a walk of earlier pages from `beforeTurnId` must read to hold
+   * `targetTurnId` (ADR 2026-11-17 D6, amended 2026-11-18): the turns from
+   * the target up to, not including, `beforeTurnId`. Zero or less when the
+   * target is not before it. A read: it changes nothing.
+   */
+  readTurnsBackTo(
+    beforeTurnId: string,
+    targetTurnId: string
+  ): { kind: 'unknown-turn' } | { kind: 'unknown-target' } | { kind: 'turns'; turns: number } {
+    const before = this.turnLedger.position(beforeTurnId);
+    if (before === undefined) {
+      return { kind: 'unknown-turn' };
+    }
+    const target = this.turnLedger.position(targetTurnId);
+    if (target === undefined) {
+      return { kind: 'unknown-target' };
+    }
+    return { kind: 'turns', turns: before - target };
+  }
+
+  /**
    * The turns directly before `beforeTurnId`, within `bounds`, with the same
    * per-turn parts the snapshot gives its window (ADR 2026-11-17 D1–D3).
    * A read: it changes nothing. Undefined when the room holds no such turn.

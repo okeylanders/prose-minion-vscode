@@ -952,6 +952,14 @@ export interface WorkshopRequestEarlierTurnsPayload {
   /** The room on screen (the snapshot's `roomRevision`); the host answers only from it. */
   roomRevision: number;
   beforeTurnId: string;
+  /**
+   * A turn the writer asked to be shown (a bookmark outside the window;
+   * ADR 2026-11-17 D6, amended 2026-11-18). The host refuses the page when
+   * the room no longer holds it, when it is not before `beforeTurnId`, or
+   * when more than `PROMPT_BUDGETS.workshopThread.jumpTurns` turns lie
+   * between them. The webview asks page after page until one holds it.
+   */
+  targetTurnId?: string;
 }
 
 export interface WorkshopRequestEarlierTurnsMessage
@@ -981,6 +989,8 @@ export interface WorkshopEarlierTurnsPayload {
   /** The room the request named, echoed. */
   roomRevision: number;
   beforeTurnId: string;
+  /** The request's `targetTurnId`, echoed. */
+  targetTurnId?: string;
   /** Absent when the host refused; then `error` says why, naming no content. */
   page?: WorkshopEarlierTurnsPage;
   error?: string;

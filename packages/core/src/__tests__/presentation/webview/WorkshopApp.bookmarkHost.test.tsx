@@ -51,13 +51,15 @@ import { WorkshopApp } from '@/presentation/webview/WorkshopApp';
 const TO_HOST = new Set<MessageType>([
   MessageType.WORKSHOP_SET_TURN_BOOKMARK,
   MessageType.WORKSHOP_RENAME_BOOKMARK,
-  MessageType.WORKSHOP_REQUEST_TURN_PREVIEW
+  MessageType.WORKSHOP_REQUEST_TURN_PREVIEW,
+  MessageType.WORKSHOP_REQUEST_EARLIER_TURNS
 ]);
 /** The host messages it carries back. */
 const TO_WEBVIEW = new Set<MessageType>([
   MessageType.WORKSHOP_SESSION_STATE,
   MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT,
   MessageType.WORKSHOP_TURN_PREVIEW,
+  MessageType.WORKSHOP_EARLIER_TURNS,
   MessageType.ERROR
 ]);
 
@@ -294,7 +296,7 @@ describe('WorkshopApp bookmark rename against the real host (PR #189 F-01)', () 
   });
 
   describe('a private exchange out of the window (PR #189 N-01)', () => {
-    it('previews the writer\'s and the instrument\'s turns with the labels their bubbles showed', async () => {
+    it('loads the writer\'s and the instrument\'s turns back into the thread with the labels their bubbles showed (D6, amended 2026-11-18)', async () => {
       const harness = createWorkshopRouteTestHarness();
       await harness.pin();
       await harness.runProse();
@@ -348,13 +350,13 @@ describe('WorkshopApp bookmark rename against the real host (PR #189 F-01)', () 
 
       for (const summary of summaries) {
         fireEvent.click(within(screen.getByLabelText('Session rail'))
-          .getByRole('button', { name: `${summary.label}: open it in the reader` }));
+          .getByRole('button', { name: `${summary.label}: show it in the thread` }));
         await pump();
-        const sheet = screen.getByRole('dialog');
-        expect(within(sheet).queryByText('Loading the message…')).toBeNull();
-        expect(sheet.querySelector('.pm-ws-private-thread-label')?.textContent?.trim()).toBe(inWindow[summary.turnId]);
-        fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
-        await act(async () => { await Promise.resolve(); });
+        await pump();
+        // The earlier turns are loaded back to it, and the thread shows it; no reader opens.
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(bubbleLabel(summary.turnId)).toBe(inWindow[summary.turnId]);
+        expect(document.activeElement?.getAttribute(WORKSHOP_TURN_ID_ATTRIBUTE)).toBe(summary.turnId);
       }
     });
   });
