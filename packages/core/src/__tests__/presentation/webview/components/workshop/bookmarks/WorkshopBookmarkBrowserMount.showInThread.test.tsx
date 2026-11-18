@@ -53,7 +53,7 @@ const browser = (closeBrowser: jest.Mock): UseWorkshopBookmarkBrowserReturn => (
   persistedState: {}
 } as unknown as UseWorkshopBookmarkBrowserReturn);
 
-const mount = (loadEarlierThrough?: jest.Mock) => {
+const mount = (loadEarlierThrough?: jest.Mock, cancelEarlierJump?: jest.Mock) => {
   const closeBrowser = jest.fn();
   const openGivenTurnPreviewSheet = jest.fn();
   render(
@@ -67,6 +67,7 @@ const mount = (loadEarlierThrough?: jest.Mock) => {
         openSavedTurnPreviewSheet={jest.fn()}
         openGivenTurnPreviewSheet={openGivenTurnPreviewSheet}
         {...(loadEarlierThrough ? { loadEarlierThrough } : {})}
+        {...(cancelEarlierJump ? { cancelEarlierJump } : {})}
         rememberRoomBookmark={jest.fn()}
         rememberSavedBookmark={jest.fn()}
       />
@@ -92,6 +93,17 @@ describe('WorkshopBookmarkBrowserMount — Show in thread', () => {
     expect(closeBrowser).toHaveBeenCalledTimes(1);
     expect(loadEarlierThrough).toHaveBeenCalledWith('turn-0', 'Older door');
     expect(openGivenTurnPreviewSheet).not.toHaveBeenCalled();
+  });
+
+  it('stops a jump still loading before it shows a drawn turn (PR #281 P2)', () => {
+    const order: string[] = [];
+    const cancelEarlierJump = jest.fn(() => order.push('cancel'));
+    const { closeBrowser } = mount(jest.fn(), cancelEarlierJump);
+    closeBrowser.mockImplementation(() => order.push('close'));
+
+    showInThread('Drawn door');
+
+    expect(order).toEqual(['cancel', 'close']);
   });
 
   it('closes the screen toward a drawn turn without loading anything', () => {

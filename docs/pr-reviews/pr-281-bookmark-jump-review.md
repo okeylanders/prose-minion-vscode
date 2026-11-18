@@ -2,6 +2,12 @@
 
 Reviewed `a6e42317992aefd7b885dc9efb1b186dc476e2e9`.
 
+## Resolution ledger
+
+| Finding | Severity | Status | Resolution |
+|---|---|---|---|
+| Selecting a visible bookmark must cancel the previous pending jump | P2 | Fixed | `WorkshopApp` wraps the one jump path: `jumpToTurn` and `jumpAfterClosing` call `cancelEarlierJump` before they scroll, so every writer navigation that moves focus (a visible bookmark, a to-do's source, a Read in card, "Show where it was read", an edit offer's link, Open at bookmark) supersedes a jump still loading. Only the jump's own outcome scrolls through the unwrapped path. The Bookmarks screen's Show in thread calls the mount's new `cancelEarlierJump` before `jumpAfterClosing`. Pages already shown stay. Regressions in `WorkshopApp.bookmarkJump.test.tsx` (late page after an earlier page landed, late refusal, and the Bookmarks screen; all three fail before the fix) and `WorkshopBookmarkBrowserMount.showInThread.test.tsx` (cancel before close). |
+
 ## P2: Selecting a visible bookmark must cancel the previous pending jump
 
 `packages/core/src/presentation/webview/WorkshopApp.tsx:1068–1070` directly scrolls to an in-window bookmark without calling `cancelEarlierJump`. The old walk remains live. Its late page response settles `jumpOutcome`, and the effect at lines 1080–1094 scrolls back to the old bookmark (or opens its reader when refused), overriding the writer's newer choice.

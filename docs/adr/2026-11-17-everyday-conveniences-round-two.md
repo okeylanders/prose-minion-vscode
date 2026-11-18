@@ -349,6 +349,11 @@ it." This supersedes the bookmark half of the bullet above and the first
   the walk (`cancelJump`); the pages already shown stay. Another bookmark
   replaces the jump. A re-read in flight finishes first, then the jump
   starts from the run it read.
+- **Any other move to a turn supersedes it** (PR #281 P2): a visible
+  bookmark, the Bookmarks screen's Show in thread, a to-do's source, a Read
+  in card, "Show where it was read" or an edit offer's link stops the jump
+  before it scrolls, so a late page never takes the focus back and a late
+  refusal opens no reader.
 - **A new room abandons it:** nothing settles, and the late answer is
   dropped.
 - **The Bookmarks screen's Show in thread** takes the same path for a row

@@ -18,7 +18,9 @@
  *   closes the screen and loads the earlier turns back to it
  *   (`loadEarlierThrough`; ADR 2026-11-17 D6, amended 2026-11-18), which
  *   scrolls there or opens the reader; without it, the preview opens over
- *   the screen.
+ *   the screen. Either way it first stops a jump still loading
+ *   (`cancelEarlierJump`, PR #281 P2), so a late page cannot take focus
+ *   back.
  *
  * - **Remember this** (Bookmark Recall D9) closes the screen and opens the
  *   memory sheet from the row's message: a turn of this conversation names
@@ -46,6 +48,8 @@ interface WorkshopBookmarkBrowserMountProps {
   openGivenTurnPreviewSheet: (turnId: string, turn: WorkshopTurnPreview, label: string) => void;
   /** Loads the earlier turns back through a turn the thread has not drawn, then shows it. */
   loadEarlierThrough?: (turnId: string, label?: string) => void;
+  /** Stops an earlier-turns jump still loading: a newer Show in thread supersedes it (PR #281 P2). */
+  cancelEarlierJump?: () => void;
   rememberRoomBookmark: (bookmark: WorkshopMemoryRoomBookmark) => void;
   rememberSavedBookmark: (bookmark: WorkshopMemorySavedBookmark) => void;
 }
@@ -59,6 +63,7 @@ export const WorkshopBookmarkBrowserMount: React.FC<WorkshopBookmarkBrowserMount
   openSavedTurnPreviewSheet,
   openGivenTurnPreviewSheet,
   loadEarlierThrough,
+  cancelEarlierJump,
   rememberRoomBookmark,
   rememberSavedBookmark
 }) => {
@@ -138,7 +143,10 @@ export const WorkshopBookmarkBrowserMount: React.FC<WorkshopBookmarkBrowserMount
       onPreview={onPreview}
       onOpenSession={onOpenSession}
       onOpenAtBookmark={onOpenAtBookmark}
-      onShowInThread={(item) => jumpAfterClosing(item.row.turnId)}
+      onShowInThread={(item) => {
+        cancelEarlierJump?.();
+        jumpAfterClosing(item.row.turnId);
+      }}
       onRemember={onRemember}
     />
   );

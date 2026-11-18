@@ -207,6 +207,76 @@ describe('WorkshopApp — a bookmark outside the window', () => {
     expect(announcer().textContent).toBe('The turn is too far back to load into the thread, so the reader shows it instead.');
   });
 
+  describe('a newer choice of a drawn turn supersedes the jump still loading (PR #281 P2)', () => {
+    const visible: WorkshopBookmarkSummary = {
+      id: 'bookmark-6', turnId: 'turn-6', label: 'Jill · Answer six', participant: 'host', personaId: 'jill', inWindow: true
+    };
+    const chooseOlderThenVisible = () => {
+      deliver(session({ bookmarks: [older, visible] }));
+      fireEvent.click(row());
+      fireEvent.click(within(screen.getByLabelText('Session rail'))
+        .getByRole('button', { name: 'Jill · Answer six: show it in the thread' }));
+      expect(document.activeElement).toBe(bubble('turn-6'));
+      expect(row().getAttribute('aria-busy')).toBeNull();
+    };
+
+    it('keeps the focus on the newer bookmark when the late page lands; pages already shown stay', async () => {
+      deliver(session({ bookmarks: [older, visible] }));
+      fireEvent.click(row());
+      answer(asked()[0], { page: page(3, 4) });
+      expect(asked()).toHaveLength(2);
+      fireEvent.click(within(screen.getByLabelText('Session rail'))
+        .getByRole('button', { name: 'Jill · Answer six: show it in the thread' }));
+      expect(document.activeElement).toBe(bubble('turn-6'));
+
+      answer(asked()[1], { page: page(1, 2) });
+      await settle();
+
+      expect(document.activeElement).toBe(bubble('turn-6'));
+      expect(bubbleIds()).toEqual(['turn-3', 'turn-4', 'turn-5', 'turn-6', 'turn-7', 'turn-8']);
+      expect(asked()).toHaveLength(2);
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('opens no reader when the late answer is a refusal', async () => {
+      chooseOlderThenVisible();
+      answer(asked()[0], { error: 'This room no longer holds the turn to show.' });
+      await settle();
+
+      expect(document.activeElement).toBe(bubble('turn-6'));
+      expect(posted(MessageType.WORKSHOP_REQUEST_TURN_PREVIEW)).toEqual([]);
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('does the same for the Bookmarks screen\'s Show in thread', async () => {
+      deliver(session({ bookmarks: [older, visible] }));
+      fireEvent.click(row());
+      fireEvent.click(within(screen.getByLabelText('Session rail')).getByRole('button', { name: 'All bookmarks…' }));
+      const live = posted(MessageType.WORKSHOP_REQUEST_LIVE_BOOKMARKS).at(-1)!.payload;
+      deliver({
+        type: MessageType.WORKSHOP_LIVE_BOOKMARKS,
+        source: 'extension.workshop',
+        payload: {
+          ...live,
+          bookmarks: [{
+            bookmarkId: 'bookmark-6', turnId: 'turn-6', label: 'Jill · Answer six', createdAt: 1, speaker: 'Jill', identity: 'jill',
+            message: { kind: 'reply', speaker: 'Jill', content: 'Answer 6 about the tea table.', timestamp: 6 }
+          }]
+        },
+        timestamp: 2
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Show Jill · Answer six in the thread' }));
+      await settle();
+      expect(document.activeElement).toBe(bubble('turn-6'));
+
+      answer(asked()[0], { page: page(1, 4) });
+      await settle();
+
+      expect(document.activeElement).toBe(bubble('turn-6'));
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+  });
+
   it('is abandoned by a new room: its late answer opens nothing', async () => {
     fireEvent.click(row());
     deliver(session({ roomRevision: 2, bookmarks: [older] }));
