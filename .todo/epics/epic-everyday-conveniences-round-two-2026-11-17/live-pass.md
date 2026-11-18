@@ -1,7 +1,7 @@
 # Everyday Conveniences, Round Two: live pass
 
 **Status:** Ready for Okey. Nothing here has been run.
-**Branch:** `epic/everyday-conveniences-round-two-close` (the whole epic: A1, A2, A3, B, C, D, E, F, G, H, H+)
+**Candidate:** `epic/everyday-conveniences-round-two`, the head of PR #283 into `main` (the whole epic: A1, A2, A3, B, C, D, E, F, G, H, H+, merged with `main` at v2.14.1). Record the SHA you test.
 **Epic:** [README](README.md) · **ADR:** [2026-11-17](../../../docs/adr/2026-11-17-everyday-conveniences-round-two.md)
 
 ## Why this pass exists
@@ -13,7 +13,13 @@ no test made a live model call. Every review (`docs/pr-reviews/pr-268` to
 
 ## Setup
 
-1. `git fetch origin && git checkout epic/everyday-conveniences-round-two-close`
+1. `git fetch origin && git checkout --detach origin/epic/everyday-conveniences-round-two`,
+   then record `git rev-parse HEAD` as the candidate under test (a newer
+   push to PR #283 is a new candidate). Note the installed version:
+   `node -p "require('./apps/vscode-extension/package.json').version"`
+   (called *V* below; 2.14.1 at b4cd3a73). The help reference's
+   "Reference version:" line in `packages/core/resources/help/overview.md`
+   must read *V* on a clean checkout.
 2. `npm install`, then F5 ("Run Extension").
 3. Open a project with a few chapters and notes configured as context
    (the examples say `alice-ch1.md` … `alice-ch3.md`, `white-rabbit.md`, and
@@ -373,10 +379,10 @@ catch a missing command, setting or tab), and a persona answering from it.
    **Expect:** "Not searched, past the 8-term limit: `word`. Ask with fewer
    words." The ignored word changes neither the hits nor their order.
 6. - [ ] **Version caveat.** Edit `packages/core/resources/help/overview.md`'s
-   "Reference version: 2.14.0" to `2.13.0` (revert afterwards; the sync
+   "Reference version: *V*" to `2.13.0` (revert afterwards; the sync
    test fails while it is changed), rebuild, ask a help question.
    **Expect:** it still loads. The first line: "Prose Minion reference,
-   version 2.13.0. The installed version is 2.14.0; these versions differ,
+   version 2.13.0. The installed version is *V*; these versions differ,
    so features or controls may not match." Output logs the mismatch once,
    versions only. A malformed or over-limit help call names 2.13.0 too.
 7. - [ ] **Retry.** `WorkshopHelpReference` keeps a successful load for
@@ -384,8 +390,9 @@ catch a missing command, setting or tab), and a persona answering from it.
    has already answered a help call never reads the files again; renaming
    the folder under it changes nothing. This case needs a **fresh reader to
    fail first**, then the **same reader to recover**:
-   1. **Reset before.** Undo H6: put "Reference version: 2.14.0" back in
-      `packages/core/resources/help/overview.md`, then `npm run build` so
+   1. **Reset before.** Undo H6 from the candidate's own copy:
+      `git checkout -- packages/core/resources/help/overview.md`, and
+      check `git status` shows it clean (its line reads *V*). Then `npm run build` so
       the staged copy (`apps/vscode-extension/resources/help`) is the
       bundled one again. Stop `npm run watch` if it is running: a rebuild
       re-stages the folder.
@@ -394,7 +401,7 @@ catch a missing command, setting or tab), and a persona answering from it.
    3. Rename `apps/vscode-extension/resources/help` (for example to
       `help.off`). Then, in a Workshop room, ask a "how do I…" question.
       **Expect:** the help card says "The Prose Minion reference for
-      version 2.14.0 is unavailable. Tell the writer you cannot check
+      version *V* is unavailable. Tell the writer you cannot check
       it.", the persona says it cannot check, and Output logs
       "[WorkshopHelpReference] reference unavailable" once.
    4. **Preserve during.** Rename the folder back to `help`. Do **not**
