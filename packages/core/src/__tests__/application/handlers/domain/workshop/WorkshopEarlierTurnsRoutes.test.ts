@@ -10,6 +10,7 @@
 import { MessageRouter } from '@handlers/MessageRouter';
 import {
   WORKSHOP_EARLIER_TURNS_REFUSALS,
+  WORKSHOP_JUMP_TURNS,
   WorkshopEarlierTurnsHandler
 } from '@handlers/domain/workshop/WorkshopEarlierTurnsHandler';
 import {
@@ -27,10 +28,10 @@ import {
 
 const FIXTURE_TEXT = 'does the White Rabbit run late';
 
-async function setup() {
+async function setup(pairs = 106) {
   const harness = setupCoordinator();
-  // 213 turns: 13 outside the window.
-  const long = longScriptedRoom(106);
+  // 213 turns by default: 13 outside the window.
+  const long = longScriptedRoom(pairs);
   const other = new ScriptedWorkshopRoom().start();
   other.hostMessage('Where is the cup?');
   await harness.store.saveNamed(scriptedCheckpoint('long-room', long.room));
@@ -210,5 +211,69 @@ describe('the earlier-turns route', () => {
     expect(lines[2]).toContain('reason=unknown-turn');
     expect(lines.join('\n')).not.toContain(FIXTURE_TEXT);
     expect(lines.join('\n')).not.toContain('Question');
+  });
+});
+
+describe('a jump\'s pages (D6, amended 2026-11-18)', () => {
+  it('bounds a jump at jumpPages full pages: 300 turns', () => {
+    expect(WORKSHOP_JUMP_TURNS).toBe(PROMPT_BUDGETS.workshopThread.jumpPages * PROMPT_BUDGETS.workshopThread.pageTurns);
+    expect(WORKSHOP_JUMP_TURNS).toBe(300);
+  });
+
+  it('answers a target exactly jumpTurns back with the ordinary page, echoing the target', async () => {
+    const { request, answers, session, revision, logLines } = await setup(160);
+    const ledger = session.readRoomLedger();
+    const beforeTurnId = ledger.at(-1)!.id;
+    const targetTurnId = ledger[ledger.length - 1 - WORKSHOP_JUMP_TURNS].id;
+
+    await request({ requestId: 'r-1', roomRevision: revision(), beforeTurnId, targetTurnId });
+
+    const [answer] = answers();
+    expect(answer).toMatchObject({ requestId: 'r-1', beforeTurnId, targetTurnId });
+    expect(answer.error).toBeUndefined();
+    expect(answer.page!.turns).toHaveLength(PROMPT_BUDGETS.workshopThread.pageTurns);
+    expect(logLines().join('\n')).toContain(`targetTurnId=${targetTurnId}`);
+    expect(logLines().join('\n')).not.toContain(FIXTURE_TEXT);
+  });
+
+  it('refuses a target one turn further back, before reading a page', async () => {
+    const { request, answers, session, revision } = await setup(160);
+    const ledger = session.readRoomLedger();
+    const beforeTurnId = ledger.at(-1)!.id;
+    const targetTurnId = ledger[ledger.length - 2 - WORKSHOP_JUMP_TURNS].id;
+
+    await request({ requestId: 'r-1', roomRevision: revision(), beforeTurnId, targetTurnId });
+
+    expect(answers()).toEqual([{
+      requestId: 'r-1', roomRevision: revision(), beforeTurnId, targetTurnId, error: WORKSHOP_EARLIER_TURNS_REFUSALS.targetTooFar
+    }]);
+  });
+
+  it('refuses a target the room does not hold, one not before the turn named, and a malformed one', async () => {
+    const { request, answers, session, revision, windowFirst } = await setup();
+    const beforeTurnId = windowFirst();
+    const later = session.readRoomLedger().at(-1)!.id;
+
+    await request({ requestId: 'r-1', roomRevision: revision(), beforeTurnId, targetTurnId: 'turn-gone' });
+    await request({ requestId: 'r-2', roomRevision: revision(), beforeTurnId, targetTurnId: later });
+    await request({ requestId: 'r-3', roomRevision: revision(), beforeTurnId, targetTurnId: beforeTurnId });
+    await request({ requestId: 'r-4', roomRevision: revision(), beforeTurnId, targetTurnId: 42 });
+    await request({ requestId: 'r-5', roomRevision: revision(), beforeTurnId, targetTurnId: '' });
+
+    expect(answers().map((answer) => [answer.requestId, answer.error, answer.page])).toEqual([
+      ['r-1', WORKSHOP_EARLIER_TURNS_REFUSALS.unknownTarget, undefined],
+      ['r-2', WORKSHOP_EARLIER_TURNS_REFUSALS.targetNotEarlier, undefined],
+      ['r-3', WORKSHOP_EARLIER_TURNS_REFUSALS.targetNotEarlier, undefined],
+      ['r-4', WORKSHOP_EARLIER_TURNS_REFUSALS.malformed, undefined],
+      ['r-5', WORKSHOP_EARLIER_TURNS_REFUSALS.malformed, undefined]
+    ]);
+  });
+
+  it('refuses a jump asked in another room before looking for its target', async () => {
+    const { request, answers, revision, windowFirst } = await setup();
+
+    await request({ requestId: 'r-1', roomRevision: revision() + 1, beforeTurnId: windowFirst(), targetTurnId: 'turn-gone' });
+
+    expect(answers()[0].error).toBe(WORKSHOP_EARLIER_TURNS_REFUSALS.roomChanged);
   });
 });

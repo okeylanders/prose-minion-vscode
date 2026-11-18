@@ -209,3 +209,44 @@ export function workshopEarlierTurnsThreadParts(
 export function workshopEarlierTurnsShownAnnouncement(count: number): string {
   return `${count.toLocaleString()} earlier ${count === 1 ? 'turn' : 'turns'} shown.`;
 }
+
+/** Whether the run holds a turn (D6, amended 2026-11-18): a jump to it needs no page. */
+export function workshopEarlierRunHolds(run: WorkshopEarlierTurnsRun, turnId: string): boolean {
+  return run.entries.some((entry) => entry.turn.id === turnId);
+}
+
+/** What one page of a jump means for the walk. */
+export type WorkshopEarlierJumpStep =
+  /** The page holds the target: the walk ends, and the thread shows it. */
+  | { readonly kind: 'landed'; readonly loaded: number }
+  /** Not yet: ask for the page before the page's oldest turn. */
+  | { readonly kind: 'next'; readonly loaded: number; readonly beforeTurnId: string }
+  /** The room's first turn was reached without it (the host checked it was there): the walk ends unshown. */
+  | { readonly kind: 'lost'; readonly loaded: number };
+
+/**
+ * One answer of a jump's walk (D6, amended 2026-11-18). `loadedSoFar`
+ * counts the turns the walk's earlier pages added; the host decides the
+ * target exists and is in reach, the page only says whether it holds it.
+ */
+export function workshopEarlierJumpStep(
+  loadedSoFar: number,
+  page: WorkshopEarlierTurnsPage,
+  targetTurnId: string
+): WorkshopEarlierJumpStep {
+  const loaded = loadedSoFar + page.turns.length;
+  if (page.turns.some((turn) => turn.id === targetTurnId)) {
+    return { kind: 'landed', loaded };
+  }
+  const oldest = page.turns[0]?.id;
+  if (oldest === undefined || page.remainingBefore <= 0) {
+    return { kind: 'lost', loaded };
+  }
+  return { kind: 'next', loaded, beforeTurnId: oldest };
+}
+
+/** "140 earlier turns shown. Showing bookmark: The barn." */
+export function workshopEarlierJumpAnnouncement(loaded: number, label?: string): string {
+  const showing = label ? `Showing bookmark: ${label}.` : 'Showing the bookmarked turn.';
+  return loaded > 0 ? `${workshopEarlierTurnsShownAnnouncement(loaded)} ${showing}` : showing;
+}

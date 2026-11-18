@@ -146,7 +146,8 @@ Checked before deciding; each is settled below.
    D5 makes the held range a read the webview repeats.
 3. **A bookmark already knows whether its bubble is in the window**
    (`WorkshopBookmarkSummary.inWindow`). It stays "in the snapshot window".
-   A bookmark on a loaded page still opens its preview (D6).
+   A bookmark on a loaded page still opens its preview (D6). Superseded
+   2026-11-18: it loads its pages and scrolls (D6 amendment).
 4. **The list is capped by entries as well as tokens.** `catalogEntries`
    (40) stops the list before 5,000 or 10,000 tokens could fill. Each size
    therefore carries its own entry cap (D9). **This goes past T1 as Okey
@@ -311,6 +312,50 @@ tripartite, with an empty persistence contract.
   means the snapshot window, so a bookmark on a loaded page opens its
   preview.
 
+#### D6 amendment, 2026-11-18: a bookmark loads its pages (Okey asked for it)
+
+Okey: "Do the bookmark fix and let the window load the pages and scroll to
+it." This supersedes the bookmark half of the bullet above and the first
+"out of scope" line below; a to-do's source, a Read in card and the reader's
+"Show where it was read" are unchanged and stay a follow-up.
+
+- **`inWindow` still decides first.** A bookmark in the snapshot window
+  jumps as before. One outside it goes to the earlier-turns hook's
+  `loadThrough`, never to the preview, and the row reads "show it in the
+  thread" with the marker "earlier in thread".
+- **A turn the run already holds lands at once,** with no request.
+- **Otherwise the hook walks pages.** Each is an ordinary
+  `WORKSHOP_REQUEST_EARLIER_TURNS` from the oldest turn held, with an
+  optional `targetTurnId`, echoed in the answer. Pages keep D3's bounds, so
+  no message grows; one request is in flight at a time, only the pending
+  answer is taken, and the run stays one contiguous run.
+- **The bound is Okey's: 3 pages** (`PROMPT_BUDGETS.workshopThread.jumpPages`).
+  The host refuses a target more than `jumpPages × pageTurns` (300) turns
+  before the turn named, before reading a page; the distance only shrinks as
+  the walk moves back, so checking every request is checking the first. The
+  webview stops after `jumpPages` pages, since a byte-bounded page can hold
+  fewer turns. A target inside page 3 lands; one needing page 4 does not.
+- **The host stays the authority.** It refuses a target the room no longer
+  holds (`unknown-target`), one not before the turn named
+  (`target-not-earlier`), a malformed one, and one past the bound
+  (`target-too-far`), each in host words.
+- **One outcome.** `landed`: the App calls the one jump path, which scrolls
+  to and focuses the bubble. `refused`: the App opens the read-only preview
+  (the reader) for the turn, as before. Either is announced once by the
+  earlier-turns live region: "140 earlier turns shown. Showing bookmark:
+  …", or the reason. A jump's pages are not announced one by one.
+- **While it loads** the row is `aria-busy` and `aria-disabled`, reads
+  "loading earlier turns…", ignores a second press, and Escape on it stops
+  the walk (`cancelJump`); the pages already shown stay. Another bookmark
+  replaces the jump. A re-read in flight finishes first, then the jump
+  starts from the run it read.
+- **A new room abandons it:** nothing settles, and the late answer is
+  dropped.
+- **The Bookmarks screen's Show in thread** takes the same path for a row
+  the thread has not drawn: the screen closes, then the walk runs.
+- **Nothing is persisted,** and no codec changes. Logs carry ids, counts
+  and the refusal reason, never a label or a turn's text.
+
 ### D7. The control
 
 - **"Show earlier turns"** sits at the top of the thread, with the count
@@ -327,7 +372,8 @@ tripartite, with an empty persistence contract.
 
 ### Item A: out of scope
 
-- Jumping to a bookmark's or a to-do source's page in the thread.
+- Jumping to a to-do source's page in the thread. (A bookmark's: see the
+  D6 amendment of 2026-11-18.)
 - Growing or shrinking the 200-turn window.
 - A byte bound on the snapshot.
 - Search inside the thread.

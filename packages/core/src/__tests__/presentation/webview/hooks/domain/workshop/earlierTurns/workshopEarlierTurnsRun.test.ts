@@ -8,7 +8,10 @@
 import type { WorkshopEarlierTurnsPage, WorkshopTurn } from '@messages';
 import {
   WORKSHOP_NO_EARLIER_TURNS,
+  workshopEarlierJumpAnnouncement,
+  workshopEarlierJumpStep,
   workshopEarlierRereadStep,
+  workshopEarlierRunHolds,
   workshopEarlierRunCarrying,
   workshopEarlierRunRereadSoFar,
   workshopEarlierRunWithOlderPage,
@@ -152,5 +155,32 @@ describe('the announcement', () => {
   it('counts the turns shown, in number', () => {
     expect(workshopEarlierTurnsShownAnnouncement(100)).toBe('100 earlier turns shown.');
     expect(workshopEarlierTurnsShownAnnouncement(1)).toBe('1 earlier turn shown.');
+  });
+});
+
+describe('a jump\'s walk (D6, amended 2026-11-18)', () => {
+  it('lands on the page that holds the target, counting every page\'s turns', () => {
+    expect(workshopEarlierJumpStep(100, page(51, 150), 't60')).toEqual({ kind: 'landed', loaded: 200 });
+  });
+
+  it('asks for the page before the oldest turn of a page that does not hold it', () => {
+    expect(workshopEarlierJumpStep(0, page(101, 200), 't60')).toEqual({ kind: 'next', loaded: 100, beforeTurnId: 't101' });
+  });
+
+  it('ends unshown at the room\'s first turn, or on an empty page', () => {
+    expect(workshopEarlierJumpStep(0, page(1, 40), 't99')).toEqual({ kind: 'lost', loaded: 40 });
+    expect(workshopEarlierJumpStep(7, { ...page(1, 0), remainingBefore: 3 }, 't1')).toEqual({ kind: 'lost', loaded: 7 });
+  });
+
+  it('knows a turn the run already holds', () => {
+    const run = workshopEarlierRunWithOlderPage(WORKSHOP_NO_EARLIER_TURNS, page(5, 9));
+    expect(workshopEarlierRunHolds(run, 't7')).toBe(true);
+    expect(workshopEarlierRunHolds(run, 't4')).toBe(false);
+  });
+
+  it('announces the turns shown and the bookmark, naming no one by pronoun', () => {
+    expect(workshopEarlierJumpAnnouncement(140, 'Jill · The barn')).toBe('140 earlier turns shown. Showing bookmark: Jill · The barn.');
+    expect(workshopEarlierJumpAnnouncement(0, 'Jill · The barn')).toBe('Showing bookmark: Jill · The barn.');
+    expect(workshopEarlierJumpAnnouncement(1)).toBe('1 earlier turn shown. Showing the bookmarked turn.');
   });
 });

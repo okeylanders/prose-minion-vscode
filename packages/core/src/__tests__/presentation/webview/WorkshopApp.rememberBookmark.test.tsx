@@ -231,7 +231,7 @@ describe('WorkshopApp Remember this on a bookmark, against the real host (ADR 20
     const { harness, reply, pump } = await bridged({ outsideWindow: true });
     fireEvent.click(screen.getByRole('tab', { name: /^Notes/ }));
     const rail = within(screen.getByLabelText('Session rail'));
-    expect(rail.getByText('opens in reader')).toBeTruthy();
+    expect(rail.getByText('earlier in thread')).toBeTruthy();
     fireEvent.click(rail.getByRole('button', { name: `Remember this: ${LIVE_LABEL}` }));
     await pump();
     expect((within(memorySheet()).getByRole('textbox', { name: /^Note/ }) as HTMLTextAreaElement).value).toBe(reply.content);

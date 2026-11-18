@@ -29,14 +29,30 @@ export interface WorkshopEarlierTurnsGate {
 const REQUEST_ID_CHARACTERS = 128;
 /** The longest turn id an answer echoes; the ledger mints short ones. */
 const TURN_ID_CHARACTERS = 256;
+/** The most turns one jump may load: `jumpPages` full pages (D6, amended 2026-11-18). */
+export const WORKSHOP_JUMP_TURNS = PROMPT_BUDGETS.workshopThread.jumpPages * PROMPT_BUDGETS.workshopThread.pageTurns;
 
 export const WORKSHOP_EARLIER_TURNS_REFUSALS = {
   malformed: 'Earlier turns could not be asked for.',
   roomChanged: 'The room changed before its earlier turns could be shown.',
-  unknownTurn: 'This room no longer holds the turn the earlier ones were asked from.'
+  unknownTurn: 'This room no longer holds the turn the earlier ones were asked from.',
+  unknownTarget: 'This room no longer holds the turn to show.',
+  targetNotEarlier: 'The turn to show is not among the earlier turns.',
+  targetTooFar: 'The turn is too far back to load into the thread, so the reader shows it instead.'
 } as const;
 
-type Refusal = 'malformed' | 'room-changed' | 'unknown-turn';
+type Refusal = 'malformed' | 'room-changed' | 'unknown-turn' | 'unknown-target' | 'target-not-earlier' | 'target-too-far';
+
+const REFUSAL_WORDS: Record<Refusal, string> = {
+  'malformed': WORKSHOP_EARLIER_TURNS_REFUSALS.malformed,
+  'room-changed': WORKSHOP_EARLIER_TURNS_REFUSALS.roomChanged,
+  'unknown-turn': WORKSHOP_EARLIER_TURNS_REFUSALS.unknownTurn,
+  'unknown-target': WORKSHOP_EARLIER_TURNS_REFUSALS.unknownTarget,
+  'target-not-earlier': WORKSHOP_EARLIER_TURNS_REFUSALS.targetNotEarlier,
+  'target-too-far': WORKSHOP_EARLIER_TURNS_REFUSALS.targetTooFar
+};
+
+type Asked = Pick<WorkshopEarlierTurnsPayload, 'requestId' | 'roomRevision' | 'beforeTurnId' | 'targetTurnId'>;
 
 /**
  * Owns a long room's earlier turns (ADR 2026-11-17 D1–D4): the page of turns
@@ -54,6 +70,12 @@ type Refusal = 'malformed' | 'room-changed' | 'unknown-turn';
  *   view `postSessionState` uses.
  * - **Bounded** by `PROMPT_BUDGETS.workshopThread`, the bytes measured on
  *   each turn as sent.
+ * - **A jump's pages** (D6, amended 2026-11-18). A request naming
+ *   `targetTurnId` is answered with the same page, after the host checks the
+ *   room still holds the target, that it lies before `beforeTurnId`, and that
+ *   at most `jumpPages * pageTurns` turns lie between. The distance only shrinks as the
+ *   webview's walk moves back, so checking every request is checking the
+ *   first.
  *
  * Logs carry ids, outcomes and counts: never a turn's text.
  */
@@ -84,11 +106,15 @@ export class WorkshopEarlierTurnsHandler {
     }
     const roomRevision = Number.isSafeInteger(payload.roomRevision) ? payload.roomRevision : -1;
     const beforeTurnId = boundedId(payload.beforeTurnId, TURN_ID_CHARACTERS);
-    if (beforeTurnId === undefined || roomRevision < 0) {
+    const targetTurnId = payload.targetTurnId === undefined
+      ? undefined
+      : boundedId(payload.targetTurnId, TURN_ID_CHARACTERS);
+    const targetMalformed = payload.targetTurnId !== undefined && targetTurnId === undefined;
+    if (beforeTurnId === undefined || roomRevision < 0 || targetMalformed) {
       this.refuse({ requestId, roomRevision, beforeTurnId: beforeTurnId ?? '' }, 'malformed');
       return;
     }
-    const asked = { requestId, roomRevision, beforeTurnId };
+    const asked: Asked = { requestId, roomRevision, beforeTurnId, ...(targetTurnId !== undefined ? { targetTurnId } : {}) };
     // A room mid-swap is neither the old room nor the new one. Wait out every
     // replacement, including one queued while an earlier one ran.
     while (this.gate.isSessionOperationPending()) {
@@ -98,6 +124,13 @@ export class WorkshopEarlierTurnsHandler {
     if (this.session.readRoomRevision() !== roomRevision) {
       this.refuse(asked, 'room-changed');
       return;
+    }
+    if (targetTurnId !== undefined) {
+      const refusal = this.targetRefusal(beforeTurnId, targetTurnId);
+      if (refusal) {
+        this.refuse(asked, refusal);
+        return;
+      }
     }
     // One room view for the whole page, as one session state reads it once.
     const room = workshopEditOfferRoomViewOnce(this.editOfferRoomView());
@@ -113,22 +146,30 @@ export class WorkshopEarlierTurnsHandler {
     const bytes = turns.reduce((total, turn) => total + workshopTurnBytes(turn), 0);
     this.outputChannel.appendLine(
       `[WorkshopEarlierTurnsHandler] Earlier turns sent (requestId=${requestId}, beforeTurnId=${beforeTurnId}, ` +
-      `turns=${turns.length}, bytes=${bytes}, remainingBefore=${read.remainingBefore})`
+      `${targetTurnId !== undefined ? `targetTurnId=${targetTurnId}, ` : ''}turns=${turns.length}, bytes=${bytes}, remainingBefore=${read.remainingBefore})`
     );
     this.post({ ...asked, page: { ...read, turns } });
   }
 
-  private refuse(asked: Pick<WorkshopEarlierTurnsPayload, 'requestId' | 'roomRevision' | 'beforeTurnId'>, reason: Refusal): void {
+  /** Why a jump's page is refused, before the page is read; undefined when it may be read. */
+  private targetRefusal(beforeTurnId: string, targetTurnId: string): Refusal | undefined {
+    const distance = this.session.readTurnsBackTo(beforeTurnId, targetTurnId);
+    if (distance.kind !== 'turns') {
+      return distance.kind;
+    }
+    if (distance.turns <= 0) {
+      return 'target-not-earlier';
+    }
+    return distance.turns > WORKSHOP_JUMP_TURNS ? 'target-too-far' : undefined;
+  }
+
+  private refuse(asked: Asked, reason: Refusal): void {
     this.outputChannel.appendLine(
       `[WorkshopEarlierTurnsHandler] Earlier turns refused (requestId=${asked.requestId}, ` +
-      `beforeTurnId=${asked.beforeTurnId || 'none'}, reason=${reason})`
+      `beforeTurnId=${asked.beforeTurnId || 'none'}, ` +
+      `${asked.targetTurnId !== undefined ? `targetTurnId=${asked.targetTurnId}, ` : ''}reason=${reason})`
     );
-    const error = reason === 'room-changed'
-      ? WORKSHOP_EARLIER_TURNS_REFUSALS.roomChanged
-      : reason === 'unknown-turn'
-        ? WORKSHOP_EARLIER_TURNS_REFUSALS.unknownTurn
-        : WORKSHOP_EARLIER_TURNS_REFUSALS.malformed;
-    this.post({ ...asked, error });
+    this.post({ ...asked, error: REFUSAL_WORDS[reason] });
   }
 
   private post(payload: WorkshopEarlierTurnsPayload): void {

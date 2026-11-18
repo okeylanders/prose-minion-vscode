@@ -1054,13 +1054,42 @@ export const WorkshopApp: React.FC = () => {
     openStoredSession,
     jumpToTurn
   });
-  const openBookmark = React.useCallback(
-    // The host's `inWindow` decides; the thread is never searched to re-derive it.
-    (bookmark: WorkshopBookmarkSummary) => bookmark.inWindow
-      ? jumpToTurn(bookmark.turnId, bookmark.label)
-      : openTurnPreviewSheet(bookmark.turnId, bookmark.label),
-    [jumpToTurn, openTurnPreviewSheet]
+  // A bookmark outside the window loads the earlier turns back to it, then
+  // scrolls there (ADR 2026-11-17 D6, amended 2026-11-18). The host's
+  // `inWindow` decides; the thread is never searched to re-derive it. A jump
+  // the host refuses (gone, or past `jumpPages`) opens the reader instead.
+  const { loadThrough: loadEarlierThrough, cancelJump: cancelEarlierJump, jumpOutcome: earlierJumpOutcome } = earlierTurns;
+  const showInThreadThroughEarlier = React.useCallback(
+    (turnId: string, label?: string) => loadEarlierThrough({ turnId, ...(label !== undefined ? { label } : {}) }),
+    [loadEarlierThrough]
   );
+  const openBookmark = React.useCallback(
+    (bookmark: WorkshopBookmarkSummary) => {
+      if (bookmark.inWindow) {
+        jumpToTurn(bookmark.turnId, bookmark.label);
+        return;
+      }
+      if (earlierTurns.jumpingTo === bookmark.turnId) {
+        return;
+      }
+      showInThreadThroughEarlier(bookmark.turnId, bookmark.label);
+    },
+    [earlierTurns.jumpingTo, jumpToTurn, showInThreadThroughEarlier]
+  );
+  const handledJumpSerial = React.useRef(0);
+  const showEarlierJumpWhenSettled = React.useCallback(() => {
+    if (!earlierJumpOutcome || handledJumpSerial.current === earlierJumpOutcome.serial) {
+      return;
+    }
+    handledJumpSerial.current = earlierJumpOutcome.serial;
+    if (earlierJumpOutcome.kind === 'landed') {
+      // The pages are drawn by now: the one jump path scrolls and focuses.
+      jumpToTurn(earlierJumpOutcome.turnId, earlierJumpOutcome.label);
+    } else {
+      openTurnPreviewSheet(earlierJumpOutcome.turnId, earlierJumpOutcome.label);
+    }
+  }, [earlierJumpOutcome, jumpToTurn, openTurnPreviewSheet]);
+  React.useEffect(showEarlierJumpWhenSettled, [showEarlierJumpWhenSettled]);
 
   const excerptSessionLabel = (() => {
     const sourcePath = workshop.excerpt
@@ -1262,6 +1291,8 @@ export const WorkshopApp: React.FC = () => {
         bookmarks: bookmarks.bookmarks,
         disabled: roomMutationLocked,
         onOpen: openBookmark,
+        ...(earlierTurns.jumpingTo !== undefined ? { loadingTurnId: earlierTurns.jumpingTo } : {}),
+        onCancelLoad: cancelEarlierJump,
         onRename: bookmarks.renameBookmark,
         renameOutcome: bookmarks.renameOutcome,
         onRemove: (turnId) => bookmarks.setTurnBookmark(turnId, false),
@@ -1599,6 +1630,7 @@ export const WorkshopApp: React.FC = () => {
         openAtBookmark={bookmarkOpenAt.openAtBookmark}
         openSavedTurnPreviewSheet={openSavedTurnPreviewSheet}
         openGivenTurnPreviewSheet={openGivenTurnPreviewSheet}
+        loadEarlierThrough={showInThreadThroughEarlier}
         rememberRoomBookmark={projectMemory.rememberRoomBookmark}
         rememberSavedBookmark={projectMemory.rememberSavedBookmark}
       />

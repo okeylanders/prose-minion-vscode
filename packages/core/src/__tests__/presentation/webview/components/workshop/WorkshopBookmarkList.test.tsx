@@ -2,8 +2,9 @@
 
 /**
  * WorkshopBookmarkList (ADR 2026-11-03 D5, D6): the snapshot's bookmarks in
- * the order given, each row named first by its label, tagged "opens in
- * reader" outside the window; rename saves, cancels and resets to the
+ * the order given, each row named first by its label, tagged "earlier in
+ * thread" outside the window, busy while its earlier turns load (D6,
+ * amended 2026-11-18); rename saves, cancels and resets to the
  * default with the shared label rule, keeping a submitted draft until the
  * host answers it (PR #189 F-01); remove reuses the set route; and the empty
  * state is one muted line.
@@ -48,6 +49,32 @@ const openRename = (label: string) =>
 const field = () => screen.getByRole('textbox', { name: 'Bookmark name' }) as HTMLInputElement;
 
 describe('WorkshopBookmarkList', () => {
+  describe('a row whose earlier turns are loading (D6, amended 2026-11-18)', () => {
+    it('is busy and says so; a second press does nothing, and Escape stops the load', () => {
+      const onCancelLoad = jest.fn();
+      const { onOpen } = renderList(rows, { loadingTurnId: 'turn-b-1', onCancelLoad });
+      const row = screen.getByRole('button', { name: 'Jill · The barn opens on the eggs: show it in the thread' });
+
+      expect(row.getAttribute('aria-busy')).toBe('true');
+      expect(row.getAttribute('aria-disabled')).toBe('true');
+      expect(within(row).getByText('loading earlier turns…')).toBeTruthy();
+      expect(within(row).queryByText('earlier in thread')).toBeNull();
+
+      fireEvent.click(row);
+      expect(onOpen).not.toHaveBeenCalled();
+      fireEvent.keyDown(row, { key: 'Escape' });
+      expect(onCancelLoad).toHaveBeenCalledTimes(1);
+
+      // The other rows open as ever, and Escape on them stops nothing.
+      const other = screen.getByRole('button', { name: 'Dialogue & Beats · report: show it in the thread' });
+      expect(other.getAttribute('aria-busy')).toBeNull();
+      fireEvent.keyDown(other, { key: 'Escape' });
+      fireEvent.click(other);
+      expect(onCancelLoad).toHaveBeenCalledTimes(1);
+      expect(onOpen).toHaveBeenCalledWith(rows[1]);
+    });
+  });
+
   it('shows one muted line when there are none', () => {
     renderList([]);
     expect(screen.getByText('Bookmark a reply to find it here.')).toBeTruthy();
@@ -59,12 +86,12 @@ describe('WorkshopBookmarkList', () => {
     renderList();
     const items = within(screen.getByRole('list')).getAllByRole('listitem');
     expect(items.map((item) => within(item).getAllByRole('button')[0].getAttribute('aria-label'))).toEqual([
-      'Jill · The barn opens on the eggs: open it in the reader',
+      'Jill · The barn opens on the eggs: show it in the thread',
       'Dialogue & Beats · report: show it in the thread',
       'You · What if the lantern never lights?: show it in the thread'
     ]);
-    expect(within(items[0]).getByText('opens in reader')).toBeTruthy();
-    expect(within(items[1]).queryByText('opens in reader')).toBeNull();
+    expect(within(items[0]).getByText('earlier in thread')).toBeTruthy();
+    expect(within(items[1]).queryByText('earlier in thread')).toBeNull();
     expect(screen.getByText('3 · thread order')).toBeTruthy();
   });
 

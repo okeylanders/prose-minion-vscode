@@ -6,8 +6,10 @@
  * `useWorkshopBookmarkRename`.
  *
  * A row whose bubble is outside the snapshot's window (`inWindow`, decided
- * by the host) is tagged "opens in reader": opening it shows the turn in the
- * read-only preview instead of jumping.
+ * by the host) is tagged "earlier in thread": opening it loads the earlier
+ * turns back to it and scrolls there (ADR 2026-11-17 D6, amended
+ * 2026-11-18). While that loads the row is busy (`loadingTurnId`): a second
+ * press does nothing, and Escape on it stops the load (`onCancelLoad`).
  *
  * "Remember this" (Bookmark Recall D9) opens the memory sheet with the
  * bookmark's message: Save to memory… for a turn in the window, the host's
@@ -28,8 +30,12 @@ export interface WorkshopBookmarkListProps {
   bookmarks: readonly WorkshopBookmarkSummary[];
   /** True while the room's mutation lock is held: no rename or remove is sent. */
   disabled?: boolean;
-  /** Opens a bookmark: a jump in the window, the preview outside it. */
+  /** Opens a bookmark: a jump, after loading the earlier turns for one outside the window. */
   onOpen: (bookmark: WorkshopBookmarkSummary) => void;
+  /** The turn whose earlier turns are loading, while they load. */
+  loadingTurnId?: string;
+  /** Stops the load in progress; the turns already shown stay. */
+  onCancelLoad?: () => void;
   /** Sends a rename and returns its request id, which `renameOutcome` answers. */
   onRename: (bookmarkId: string, label: string | null) => string;
   /** The host's answer to the latest rename. */
@@ -69,6 +75,8 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
   bookmarks,
   disabled = false,
   onOpen,
+  loadingTurnId,
+  onCancelLoad,
   onRename,
   renameOutcome = null,
   onRemove,
@@ -118,6 +126,7 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
             const faultId = `${idPrefix}-fault-${index}`;
             const identity = identityOf(bookmark);
             const editing = rename.editingId === bookmark.id;
+            const loading = loadingTurnId === bookmark.turnId;
             return (
               <li className="pm-ws-bookmark" key={bookmark.id}>
                 {editing ? (
@@ -156,9 +165,21 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
                   <button
                     type="button"
                     className="pm-ws-bookmark-open"
-                    aria-label={`${bookmark.label}: ${bookmark.inWindow ? 'show it in the thread' : 'open it in the reader'}`}
+                    aria-label={`${bookmark.label}: show it in the thread`}
                     aria-describedby={metaId}
-                    onClick={() => onOpen(bookmark)}
+                    aria-busy={loading || undefined}
+                    aria-disabled={loading || undefined}
+                    onClick={() => {
+                      if (!loading) {
+                        onOpen(bookmark);
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (loading && event.key === 'Escape' && onCancelLoad) {
+                        event.preventDefault();
+                        onCancelLoad();
+                      }
+                    }}
                   >
                     <span
                       className={`pm-ws-bookmark-icon${identity ? '' : ' pm-ws-bookmark-icon-writer'}`}
@@ -170,8 +191,10 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
                       <span className="pm-ws-bookmark-label">{bookmark.label}</span>
                       <span className="pm-ws-bookmark-meta" id={metaId}>
                         {PARTICIPANT_WORDS[bookmark.participant]}
-                        {bookmark.inWindow ? null : (
-                          <span className="pm-ws-bookmark-outside">opens in reader</span>
+                        {loading ? (
+                          <span className="pm-ws-bookmark-outside">loading earlier turns…</span>
+                        ) : bookmark.inWindow ? null : (
+                          <span className="pm-ws-bookmark-outside">earlier in thread</span>
                         )}
                       </span>
                     </span>

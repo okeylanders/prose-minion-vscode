@@ -114,7 +114,7 @@ describe('a page\'s bounds (D3)', () => {
   });
 
   it('holds the documented defaults: 100 turns, 1 MiB, beside a 200-turn window', () => {
-    expect(PROMPT_BUDGETS.workshopThread).toEqual({ pageTurns: 100, pageBytes: 1024 * 1024 });
+    expect(PROMPT_BUDGETS.workshopThread).toEqual({ pageTurns: 100, pageBytes: 1024 * 1024, jumpPages: 3 });
     expect(WORKSHOP_SNAPSHOT_TURN_WINDOW).toBe(200);
   });
 

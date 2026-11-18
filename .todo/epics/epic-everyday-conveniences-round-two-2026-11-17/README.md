@@ -40,6 +40,7 @@ decisions live in this README and the ADR.
 | A2 | A, part 2 | thread-earlier-turns | 22 | `…-earlier-turns` | #273 | Merged |
 | F | F | persona-reads-lenses | 12 | `…-persona-reads-lenses` | | Built; waits for review |
 | H | H | prose-minion-help-reference | 20 | `…-help-reference` | #279 | Merged |
+| A3 | A, follow-up: a bookmark outside the window loads its pages and scrolls to it (at most 3 pages; ADR D6 amendment) | thread-earlier-turns | Okey, 2026-11-18 | `…-bookmark-jump` | | Built; waits for review |
 | Close | Closing pass | | | `…-close` | | After H |
 
 Slice branches are `epic/everyday-conveniences-round-two-<slug>`. A slice
@@ -240,7 +241,7 @@ Q7 row 38. PR #269's review did not accept any of them on Okey's behalf.
 | 1 | A | Which parts | Both. Part 1 lands first. | **Okey's decision** |
 | 2 | A | Page size, and the window | 100 turns a page, also bounded by 1 MiB. The snapshot window stays 200. | Brief default. The byte bound is new: the snapshot has none (ADR D3). |
 | 3 | A | Read-only, or full bubbles | Full bubbles. A page carries its turns' host verdicts, so Rewind and Branch work there. | The note's leaning |
-| 4 | A | Jump to a bookmark's page | Out of scope. A bookmark outside the window still opens its preview. | Brief default |
+| 4 | A | Jump to a bookmark's page | ~~Out of scope.~~ Superseded 2026-11-18: a bookmark outside the window loads up to 3 pages back to its turn and scrolls there; past that, the reader opens (ADR D6 amendment, slice A3). | **Okey's decision** (2026-11-18) |
 | 5 | B | How many levels | Three: Sparingly (default), Readily, Aggressively. | Brief default |
 | 6 | B | Per room, or every room | One global setting, application scope. | The memory mode is global |
 | 7 | B | Concrete anchors | Allowed in Readily and Aggressively. | The reaction-frequency files do |
