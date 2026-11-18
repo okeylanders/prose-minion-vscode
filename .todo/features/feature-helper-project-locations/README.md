@@ -69,6 +69,7 @@ manuscript, project brief, general).
 |---|---|---|
 | L1 | **Write at the user level for now**, as every setting the app writes does today (`SettingsStore.update`, `ConfigurationTarget.Global`). | Context paths are per project by nature, so applying one novel's layout changes it for every project. A workspace-level write (`.vscode/settings.json`, a target on the settings port, and the overlay saying which level a value comes from) can come later. |
 | L2 | **A persona can set the paths with the writer, in conversation.** "Ask Jill to set the locations": she sees the folders and the current paths, talks them through, revises, and proposes; the writer applies. | The shape is below. |
+| L3 | **No `locations.suggest`.** A persona maps folder names to groups herself; the helper's draft serves only the Settings button. | Ada's lean, taken by Okey. |
 
 ## The persona path (L2)
 
@@ -109,9 +110,8 @@ Jill needs from the other side is facts and checks, which code gives exactly.
    object. Both are checked by the same code against the real resolver, and
    applied through the same write. The helper stays a one-call task; it
    never joins the room.
-5. **Jill can still use the helper if it's worth it.** A later
-   `locations.suggest` could hand her the helper's draft as a starting
-   point. Leaning: not needed, since Jill can map folder names herself.
+5. **Jill doesn't call the helper** (L3). She maps folder names to groups
+   herself, so there's no `locations.suggest`.
 
 **Privacy.** Folder and file names reach the room's model only through
 Jill's own calls, as `resource.catalog` already shows her configured files.
