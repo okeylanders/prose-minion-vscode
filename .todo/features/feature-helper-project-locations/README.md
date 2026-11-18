@@ -1,7 +1,7 @@
-# Feature: The Helper Suggests the Project's Context Paths
+# Feature: Set Up the Project's Context Paths, From Settings or With a Persona
 
 **Date Identified:** 2026-11-05 (decided as D6 of [ADR 2026-11-05](../../../docs/adr/2026-11-05-helper-agent.md)); filed as its own note 2026-11-18
-**Status:** Idea. Designed in outline (the ADR's D6, "not built in v1"); never tracked until now. The helper-agent epic left it "in the ADR for a later epic" when it was archived. An amendment to that ADR, since it settles details D6 leaves open.
+**Status:** Idea. Two ways in, one proposal: the helper drafts from a Settings button (the ADR's D6, "not built in v1", never tracked until now), and a persona works it out with the writer in the room (Okey, 2026-11-18). An amendment to ADR 2026-11-05 for the button; the persona path adds a capability family and a reply trailer, so it needs an ADR section of its own.
 **Priority:** Medium
 **Origin:** Okey, during the helper-agent design (2026-11-05); asked about again 2026-11-18
 
@@ -61,25 +61,61 @@ manuscript, project brief, general).
    - a checkbox.
 
    Apply writes only the ticked groups.
-5. **Where it writes: this workspace, not every project.** The real
-   decision, below.
+5. **Where it writes: the user level, for now** (L1, below).
 
-## The decision this needs from Okey: which settings level
+## Decisions (Okey, 2026-11-18)
 
-- **Today every setting the app writes goes to the user level**
-  (`SettingsStore.update`: "the only target this app writes";
-  `VsCodeSettingsStore` uses `ConfigurationTarget.Global`).
-- **Context paths are per project by nature.** Applying one novel's folder
-  layout at the user level changes it for every other project.
-- **Recommended: write the applied groups to the workspace level**
-  (`.vscode/settings.json`).
-  - It needs a target on the settings port: an `update` that names the
-    workspace, implemented by the VS Code adapter.
-  - A workspace value overrides the user value, so the Settings overlay
-    should say which level each group's value comes from, and offer "Use my
-    default" to clear the workspace's.
-- **Alternatively, keep writing the user level.** Simpler, but wrong for a
-  writer with more than one project.
+| # | Decision | Notes |
+|---|---|---|
+| L1 | **Write at the user level for now**, as every setting the app writes does today (`SettingsStore.update`, `ConfigurationTarget.Global`). | Context paths are per project by nature, so applying one novel's layout changes it for every project. A workspace-level write (`.vscode/settings.json`, a target on the settings port, and the overlay saying which level a value comes from) can come later. |
+| L2 | **A persona can set the paths with the writer, in conversation.** "Ask Jill to set the locations": she sees the folders and the current paths, talks them through, revises, and proposes; the writer applies. | The shape is below. |
+
+## The persona path (L2)
+
+Okey's picture: the writer asks Jill to set the locations; a locations agent
+passes Jill file names and paths, Jill discusses them with the writer, and
+Jill tells the agent any changes.
+
+**Recommended shape: the "agent" Jill talks to is host code, not a second
+model.** Jill is already the model in the loop. A model-to-model relay would
+add a paid call, latency and a game of telephone to each step, and the
+helper has no tools and holds no conversation (ADR 2026-11-05 D1, D2). What
+Jill needs from the other side is facts and checks, which code gives exactly.
+
+1. **A read-only `locations.*` capability family**, for personas (host and
+   guests), like `resource.*`:
+   - **`locations.current`:** each group's patterns, how many files each
+     matches, and a few example files.
+   - **`locations.folders`:** the workspace scan: folders, their `.md` and
+     `.txt` counts and a few sample names. Names only, never contents,
+     bounded and paged, with hints that decode as written.
+   - **`locations.check`:** Jill names proposed patterns for some groups,
+     and code answers what each would match: counts, examples, files two
+     groups would share, and patterns refused as unsafe or matching nothing.
+     This is "Jill tells the agent a change and hears back". It writes
+     nothing.
+2. **A proposal trailer** (`<prose-minion-locations-proposal>`), read in
+   `extractWorkshopReplyControls`' one pass like the file-edit and memory
+   trailers. It becomes a card in the thread:
+   - per group, the current patterns beside the proposed ones, with match
+     counts the host computed;
+   - a checkbox per group, and **Apply**.
+3. **Apply is the writer's, and the host's.** It is a host action keyed by
+   the stored proposal, like Persona File Edits' Apply. Before writing, the
+   host checks each ticked group again; a group whose setting changed since
+   the card was made says so instead of overwriting it.
+4. **One proposal, one checker, one apply, two ways in.** The Settings
+   button's helper draft and Jill's trailer produce the same proposal
+   object. Both are checked by the same code against the real resolver, and
+   applied through the same write. The helper stays a one-call task; it
+   never joins the room.
+5. **Jill can still use the helper if it's worth it.** A later
+   `locations.suggest` could hand her the helper's draft as a starting
+   point. Leaning: not needed, since Jill can map folder names herself.
+
+**Privacy.** Folder and file names reach the room's model only through
+Jill's own calls, as `resource.catalog` already shows her configured files.
+Logs carry counts only.
 
 ## Rules it keeps
 
@@ -106,7 +142,15 @@ manuscript, project brief, general).
       flagged (tests).
 - [ ] The review sheet shows each group's current and proposed patterns
       with real match counts and examples; Apply writes only the ticked
-      groups, at the level Okey chooses.
+      groups, at the user level (L1).
+- [ ] A persona can read the current paths and the folder scan, check a
+      revision, and propose; the card shows host-computed counts, and Apply
+      writes only the ticked groups, refusing one changed since (L2, tests).
+- [ ] The Settings draft and a persona's proposal go through one checker and
+      one write (test).
+- [ ] The `locations.*` family joins `WORKSHOP_CAPABILITY_OPERATIONS`, every
+      family switch and `WORKSHOP_NATIVE_CALL_FIELDS`, with the grammar
+      prompt pinned by its sync test.
 - [ ] Nothing is written without Apply. A failure leaves the settings as
       they were, with one quiet line.
 - [ ] Logs carry counts only.
