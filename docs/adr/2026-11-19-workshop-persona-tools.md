@@ -1,6 +1,6 @@
 # ADR 2026-11-19: Workshop Persona Tools: Closing To-dos, a File's Git History, and the Project's Context Paths
 
-**Status:** Proposed (Slice 0). Revised 2026-11-19 after PR #286's review (D6a, D8a, D13a, D22a), and again after its re-review (D6b, D6c, D8b); see "Amendments after review". T1, G1–G3 and L1–L3 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief was wrong; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
+**Status:** Proposed (Slice 0). Revised 2026-11-19 after PR #286's review (D6a, D8a, D13a, D22a), again after its re-review (D6b, D6c, D8b), and after the second re-review (D6d); see "Amendments after review". T1, G1–G3 and L1–L3 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief was wrong; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
 **Date:** 2026-11-19
 **Epic:** [Workshop Persona Tools](../../.todo/epics/epic-workshop-persona-tools-2026-11-19/README.md)
 (its "Defaults taken" table is binding here)
@@ -401,6 +401,9 @@ and the scope stand.)*
 
 ### D6b. The lock fences a stalled writer by placement (PR #286 re-review, finding 1)
 
+*D6d refines this lock's layout, cleanup and takeover; where they differ,
+D6d holds.*
+
 `StoredFileRewrite` stages outside its claim and checks ownership apart
 from publishing, and `StoredFileClaims` recovers an expired claim. A writer
 paused past the lease keeps its staged file; after another window recovers
@@ -444,13 +447,65 @@ F-01): the staged file lives inside the lock, so a takeover removes it.
   Whether boards and memory share the same stalled-writer hazard is filed
   as tech debt (`.todo/tech-debt/2026-11-19-stored-file-rewrite-stalled-writer-fence.md`);
   this epic does not decide it.
-- **Witness** (`WorkshopNamedSessionLockFence.test.ts`, an injected clock
-  and held promises): writer A takes the lock, stages and claims, then
+- **Witnesses** (`WorkshopNamedSessionLockFence.test.ts`, an injected
+  clock and held promises), with D6d's two added: the retired owner's
+  delayed cleanup, and a reader during recovery. First: writer A takes the lock, stages and claims, then
   pauses before its publish; the lease expires; writer B takes over
   (restoring the file) and deletes the session, successfully; A resumes,
   and its publish fails, its `stillHeld` false and its rename finding no
   source. The session stays deleted: nothing is at its name. A second run
   has B update instead of delete; B's content stands, byte for byte.
+
+### D6d. Every owner step is fenced, and recovery stays visible (PR #286 second re-review)
+
+D6b fenced only the publish: `prior.json` and the lock directory were
+reusable paths, so a retired owner resuming could remove its successor's
+rollback copy or lock. And while a takeover held the lock aside, a reader
+saw neither file nor lock and could call the session missing.
+
+- **One subdirectory per owner.** Everything an owner writes lives under
+  `.<name>.lock/<token>/`: its staged `next.json` and its `prior.json`.
+  `owner.json` stays at the lock's top. A successor's token differs, so a
+  retired owner's paths never alias the successor's.
+- **The claim, publish and cleanup are renames from or into the owner's
+  own subdirectory.** Once a takeover has moved the lock away, each finds
+  no source or no destination directory and fails. The adapters' `rename`
+  never creates a missing parent (VS Code's `workspace.fs.rename` and
+  Node's both fail); a test on `VsCodeFileSystem` pins it.
+- **Destructive steps act only on what the owner first detached.**
+  Cleanup renames `.<name>.lock/<token>/` to a fresh unique name,
+  `.<name>.retired-<uuid>`, then deletes that. Release renames the lock
+  aside, checks `owner.json` is this token's, and deletes it, else puts it
+  back (D6b). A retired owner's detaching rename finds nothing, so it
+  deletes nothing of the successor's.
+- **A takeover is itself the recovery marker.** It renames the abandoned
+  lock, never over anything, to `.<name>.recovering-<uuid>/`, writes
+  `recovery.json` (`{ at }`) into it, restores the retired owner's
+  `prior.json` to the saved name only if that name is empty, then deletes
+  the directory. There is no moment with neither the saved file, the lock
+  nor a marker.
+- **Readers return `busy`, never missing,** while a lock or any
+  `.<name>.recovering-*` directory stands. A session is `missing` only
+  when the saved name, the lock and every recovering directory are all
+  absent. `detachMissingNamedSession` runs only on that.
+- **An abandoned recovery** (its `recovery.json` older than
+  `STORED_FILE_CLAIM_LEASE_MS`, or absent and the directory itself older)
+  is finished by the next reader or writer the same way: restore if the
+  name is empty, then delete.
+- **Witness: a retired owner's delayed work.** A takes the lock and claims
+  (its `prior.json` under its token), then pauses before cleanup; the
+  lease expires; B takes over, restores, takes the lock, claims, and
+  pauses; A resumes its cleanup and release; every rename of A's finds
+  nothing; B's `prior.json` and lock are intact, and B commits.
+- **Witness: a reader during recovery.** A takeover pauses after renaming
+  the lock to `.<name>.recovering-*` and before restoring. A read is
+  `busy`, and the open room is not detached. After the restore, the read
+  returns the file.
+- **The pinned-context lock** was checked: it stages under a fresh random
+  name per write inside its lock, keeps no rollback copy there, and
+  releases by detach-then-verify; its list's claim stays beside the file,
+  so a reader never sees it missing. It has neither gap. Its claim is the
+  shared `StoredFileRewrite`'s, whose exposure is already tech debt.
 
 ### D6c. A refused room keeps its work in its own recovery session (PR #286 re-review, finding 2)
 
@@ -1132,6 +1187,9 @@ B and A run in parallel. C1 follows either; C2 follows both.
   claims; exactly one commits, the other is refused as `busy` in host
   words, the file is the winner's. An abandoned lock is taken over and the
   file restored.
+- **Owner steps fenced** (D6d): a retired owner's delayed cleanup and
+  release leave the successor's `prior.json` and lock intact. A read
+  during a takeover's recovery is `busy`, and the room stays attached.
 - **The fence** (D6b): a writer paused past the lease, a takeover and a
   successful delete, then the writer resumes: its publish fails and the
   session stays deleted. Again with an update in place of the delete.
@@ -1215,6 +1273,14 @@ at `5769e7ca`'s parent): F-03 and F-04 closed; three findings, all accepted.
 | 1 (P1) | The shared claim stages outside it and recovers an expired claim, so a writer paused past the lease could recreate a session another window deleted. | **D6b:** named sessions get their own lock directory; the staged file sits inside it under the owner's token, so a takeover removes it and a stale publish finds no source. The shared `StoredFileRewrite` is unchanged; its own exposure is tech debt. Witness: pause, lease expiry, takeover and delete, resume, publish fails. |
 | 2 (P1) | A refused room's recovery copy was `current.json`, which is the workspace's and another coordinator can replace. | **D6c:** a refused save writes at once to a new named "(local recovery)" session by a non-overwriting create; one per refusal episode. |
 | 3 (P2) | A temporarily unreadable target settled a row as terminal `interrupted`, removing Undo for good. | **D8b:** `unverified` is kept apart from `interrupted`, reconciled again read-only, never replayed. |
+
+**Second re-review** ([report](../pr-reviews/pr-286-workshop-persona-tools-spec-rereview-2.md)):
+D6c and D8b closed; two findings on D6b, both accepted.
+
+| Finding | What was wrong | Resolved in |
+|---|---|---|
+| P1 | `prior.json` and the lock directory were reusable paths, so a retired owner's claim, cleanup or release could remove the successor's rollback copy or lock. | **D6d:** every owner artifact under `.<name>.lock/<token>/`; destructive steps act only on what the owner detached by a unique rename; witness: a retired owner's delayed work leaves the successor intact. |
+| P2 | While a takeover held the lock aside, a reader saw neither file nor lock and could detach an open room. | **D6d:** the takeover renames the lock to a `.<name>.recovering-*` marker directory; readers are `busy` while it stands; witness: a reader during recovery. |
 
 ## Consequences and risks
 

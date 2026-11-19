@@ -1,6 +1,6 @@
 # Epic: Workshop Persona Tools
 
-**Status:** Slice 0 (the spec) in review (PR #286); revised after Astra's review and re-review (ADR D6a–D6c, D8a, D8b, D13a, D22a). Nothing built yet. Nothing has gone to `main`.
+**Status:** Slice 0 (the spec) in review (PR #286); revised after Astra's review and re-review (ADR D6a–D6d, D8a, D8b, D13a, D22a). Nothing built yet. Nothing has gone to `main`.
 **Priority:** Medium
 **Opened:** 2026-11-19
 **Branch:** `epic/workshop-persona-tools`, cut from `main` at `478157d`.
@@ -27,7 +27,7 @@ decisions live in this README and the ADR.
 |---|---|---|---|---|---|
 | 0 | Spec | (this README and the ADR) | `epic/workshop-persona-tools-spec` | #286 | In review |
 | B | B: `history.log`, `history.diff`, the `FileHistory` port and its Git adapter | ADR D11–D17, D13a | `…-file-git-history` | | Waiting on 0 |
-| A | A: the to-do status trailer, the open room's changes, the saved-session write port, the receipt and Undo | ADR D1–D10, D6a–D6c, D8a, D8b | `…-todo-closeout` | | Waiting on 0 |
+| A | A: the to-do status trailer, the open room's changes, the saved-session write port, the receipt and Undo | ADR D1–D10, D6a–D6d, D8a, D8b | `…-todo-closeout` | | Waiting on 0 |
 | C1 | C: the scan, the checker (the resolver's `matchPatterns` seam), the write, `levelOf`, the helper task and the Settings sheet | ADR D18–D25, D22a, D28 | `…-context-paths-settings` | | Waiting on 0 |
 | C2 | C: the persona `locations.*` family, the proposal trailer, its card and its outcome kind | ADR D26–D28 | `…-context-paths-persona` | | Waiting on B, A and C1 |
 | Close | Closing pass: live pass, `AGENTS.md`, memory bank, tech debt | | `…-close` | | |
@@ -144,7 +144,7 @@ and 38 (Q4).
 | 2 | A | Which statuses a persona sets | `completed` or `dismissed`, on an `open` to-do only. Only the writer reopens. | Brief default |
 | 3 | A | Bounds per reply | 20 changes, touching at most 10 saved sessions; `PROMPT_BUDGETS.workshopTodoStatus`, held to the prompt by a sync test. | Brief default |
 | 4 | A | What the persona hears back | A `todos` side in trailer outcomes, on the one `<workshop-trailer-outcomes>` frame. No new channel. | Brief default |
-| 5 | A | A saved session open in another window | **Refined three times.** The compare alone is not atomic (PR #286 F-01), and the shared `StoredFileClaims` path does not fence a writer stalled past its lease (re-review, finding 1). Every named-session writer (Save, autosave, rename, delete, the persona's write and Undo) takes `WorkshopNamedSessionLock`: a lock directory per file, the staged checkpoint inside it under the owner's token, so a takeover removes it and a stale publish finds no source. Of two overlapping writers exactly one commits; the other is refused as `busy`. The shared `StoredFileRewrite` is unchanged. An uncoordinated external sync stays covered only by the compare. | Code: `updateNamed`, `writeJsonAtomically`, `StoredFileRewrite`; precedent `WorkshopPinnedContextLock`, PR #204 F-01 (ADR D6a, D6b) |
+| 5 | A | A saved session open in another window | **Refined three times.** The compare alone is not atomic (PR #286 F-01), and the shared `StoredFileClaims` path does not fence a writer stalled past its lease (re-review, finding 1). Every named-session writer (Save, autosave, rename, delete, the persona's write and Undo) takes `WorkshopNamedSessionLock`: a lock directory per file, the staged checkpoint inside it under the owner's token, so a takeover removes it and a stale publish finds no source; every owner artifact sits under its own token's subdirectory, destructive steps act only on what the owner detached, and a takeover renames the lock to a recovery marker so readers stay `busy` (second re-review). Of two overlapping writers exactly one commits; the other is refused as `busy`. The shared `StoredFileRewrite` is unchanged. An uncoordinated external sync stays covered only by the compare. | Code: `updateNamed`, `writeJsonAtomically`, `StoredFileRewrite`; precedent `WorkshopPinnedContextLock`, PR #204 F-01 (ADR D6a, D6b, D6d) |
 | 6 | A | Refuse sessions another window has open | Not built. | The store has no cross-window registry; row 5's claim covers it |
 | 7 | A | How recall sees the change | The write moves `updatedAt`, as rename does. | **Code:** recall's cache is keyed by `updatedAt` (`WorkshopRecallDocumentCache.get`) |
 | 8 | A | "Lands in the reply's own commit" for a saved session | **Refined.** The open room's change does. A saved session's row commits `saving` and is written just after, then settles `applied` or `refused`. A reply that never commits writes nothing. Across a restart the row is settled read-only from the file: the write stamps an `operationId` into `closedBy`, so the row reads `applied` if the stamp is there, `interrupted` if the file was read without it, and `unverified` (checked again later, never replayed) if it could not be read (PR #286 F-02, re-review finding 3). | File I/O cannot sit in the synchronous commit; the compare copy is memory-only (ADR D8a, D8b) |

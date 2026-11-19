@@ -20,7 +20,7 @@ the claim and deleted the file. Its publish could then recreate the
 deleted file. The module's header names a narrower race; PR #286's
 re-review found it for named Workshop sessions, which the epic answers
 with a lock of their own (ADR 2026-11-19 D6b). The pinned-context list
-already stages inside its lock (PR #204 F-01) and is not affected.
+already stages inside its lock (PR #204 F-01), under a fresh name per write, and releases by detach-then-verify; checked against the second re-review's two gaps (ADR D6d) and found clear of both, apart from this shared claim.
 
 Lightbox boards (`LightboxBoardRewrite`) and project memory
 (`ProjectMemoryStore`) use the shared path without a fencing
