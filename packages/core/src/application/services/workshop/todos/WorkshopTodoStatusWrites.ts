@@ -58,6 +58,9 @@ export type WorkshopTodoStatusUndoOutcome =
   | { readonly ok: false; readonly reason: WorkshopTodoStatusUndoRefusal };
 
 export class WorkshopTodoStatusWrites {
+  /** This window's writes still under way, by operation id: reconciliation leaves their rows alone. */
+  private readonly inFlight = new Set<string>();
+
   constructor(
     private readonly session: WorkshopTodoStatusWritesSession,
     private readonly port: WorkshopSavedSessionTodos,
@@ -84,6 +87,17 @@ export class WorkshopTodoStatusWrites {
   /** Write each saved session's rows, one session after another; resolves once each settles, and never rejects. */
   async write(turnId: string, writes: readonly WorkshopTodoStatusSavedWrite[], openRoom: WorkshopTodoStatusOpenRoom | undefined): Promise<void> {
     const revision = this.session.readRoomRevision();
+    // Every write this reply owes is held from the start, so reconciliation never settles a row still waiting its turn.
+    const held = (this.liveTurn(turnId, revision)?.todoStatusChanges ?? []).map((row) => row.operationId);
+    held.forEach((id) => this.inFlight.add(id));
+    try {
+      await this.writeEach(turnId, writes, openRoom, revision);
+    } finally {
+      held.forEach((id) => this.inFlight.delete(id));
+    }
+  }
+
+  private async writeEach(turnId: string, writes: readonly WorkshopTodoStatusSavedWrite[], openRoom: WorkshopTodoStatusOpenRoom | undefined, revision: number): Promise<void> {
     for (const write of writes) {
       const target = `turnId=${turnId} sessionId=${write.read.sessionId} rows=${write.indexes.length}`;
       try {
@@ -94,7 +108,7 @@ export class WorkshopTodoStatusWrites {
         }
         const changes = write.indexes.flatMap((index) => {
           const row = workshopTodoStatusChangeAt(turn, index);
-          const closedBy = row && workshopTodoClosedBy(turn, { sessionId: row.roomSessionId ?? openRoom?.sessionId ?? WORKSHOP_TODO_STATUS_CURRENT_SESSION, title: openRoom?.title ?? '' }, row.note);
+          const closedBy = row && workshopTodoClosedBy(turn, { sessionId: row.roomSessionId ?? openRoom?.sessionId ?? WORKSHOP_TODO_STATUS_CURRENT_SESSION, title: openRoom?.title ?? '' }, row.note, row.operationId);
           return row ? [{ todoId: row.todoId, status: row.status, ...(closedBy ? { closedBy } : {}) }] : [];
         });
         const result = await this.port.write(write.read, changes);
@@ -114,6 +128,41 @@ export class WorkshopTodoStatusWrites {
     }
   }
 
+  /**
+   * Settle every row still `saving` that no write in this window holds
+   * (D8a): after a restart, an Open or a restore. A to-do whose
+   * `closedBy.operationId` is the row's reads `applied`; anything else reads
+   * `interrupted`, and a session that cannot be read `interrupted` with
+   * `unverified`. It never writes the target and never retries.
+   */
+  async reconcile(): Promise<void> {
+    const revision = this.session.readRoomRevision();
+    const owed = this.session.readRoomLedger().flatMap((turn) => (turn.todoStatusChanges ?? []).flatMap((row, index) =>
+      row.state === 'saving' && !this.inFlight.has(row.operationId) ? [{ turnId: turn.id, index, row }] : []));
+    if (owed.length === 0) {
+      return;
+    }
+    const reads = new Map<string, Promise<WorkshopSavedTodoRead>>();
+    let settled = 0;
+    for (const { turnId, index, row } of owed) {
+      const pending = reads.get(row.session) ?? this.port.read(row.session);
+      reads.set(row.session, pending);
+      const read = await pending.catch((): WorkshopSavedTodoRead => ({ kind: 'refused', reason: 'unreadable-session' }));
+      if (this.session.readRoomRevision() !== revision || this.inFlight.has(row.operationId)) {
+        return;
+      }
+      const landed = read.kind === 'read' && read.todos.some((todo) => todo.id === row.todoId && todo.closedBy?.operationId === row.operationId);
+      this.session.setTodoStatusChangeStates(turnId, landed
+        ? { indexes: [index], state: 'applied' }
+        : read.kind === 'read' ? { indexes: [index], state: 'interrupted' } : { indexes: [index], state: 'interrupted', reason: 'unverified' });
+      this.hooks.log(`To-do row reconciled turnId=${turnId} index=${index} sessionId=${row.session} state=${landed ? 'applied' : 'interrupted'}${read.kind === 'read' ? '' : ' reason=unverified'}`);
+      settled += 1;
+    }
+    if (settled > 0) {
+      this.hooks.settleRoom('persona to-do rows reconciled');
+    }
+  }
+
   /** The writer's Undo of one row, checked as D8 states; the row becomes `undone`. */
   async undo(turnId: string, index: number, roomRevision: number): Promise<WorkshopTodoStatusUndoOutcome> {
     if (roomRevision !== this.session.readRoomRevision()) {
@@ -124,12 +173,18 @@ export class WorkshopTodoStatusWrites {
     if (!turn || !row) {
       return { ok: false, reason: 'no-row' };
     }
+    if (row.state === 'saving' && !this.inFlight.has(row.operationId)) {
+      // Undo is enabled only on a recognized write (D8a).
+      await this.reconcile();
+      const after = workshopTodoStatusChangeAt(this.liveTurn(turnId, roomRevision), index);
+      return after?.state === 'saving' ? { ok: false, reason: 'not-undoable' } : this.undo(turnId, index, roomRevision);
+    }
     if (row.state !== 'applied') {
       return { ok: false, reason: 'not-undoable' };
     }
     if (row.session === WORKSHOP_TODO_STATUS_CURRENT_SESSION) {
       const todo = this.session.findTodo(row.todoId);
-      if (!todo || todo.status !== row.status || todo.closedBy?.turnId !== turnId) {
+      if (!todo || todo.status !== row.status || todo.closedBy?.operationId !== row.operationId) {
         return { ok: false, reason: 'todo-changed' };
       }
       this.session.setTodoStatus(row.todoId, 'open');
@@ -144,7 +199,7 @@ export class WorkshopTodoStatusWrites {
       return { ok: false, reason: undoReadRefusal(read) };
     }
     const todo = read.todos.find((candidate) => candidate.id === row.todoId);
-    if (!todo || todo.status !== row.status || todo.closedBy?.turnId !== turnId || todo.closedBy.sessionId !== row.roomSessionId) {
+    if (!todo || todo.status !== row.status || todo.closedBy?.operationId !== row.operationId) {
       return { ok: false, reason: 'todo-changed' };
     }
     const written = await this.port.write(read, [{ todoId: row.todoId, status: 'open' }]);
@@ -192,11 +247,14 @@ function undoWriteRefusal(written: Extract<WorkshopSavedTodoWrite, { kind: 'refu
       return 'session-changed';
     case 'session-not-found':
       return 'session-not-found';
+    case 'session-busy':
+      return 'session-busy';
     case 'sessions-unavailable':
       return 'sessions-unavailable';
     case 'room-changed':
       return 'elsewhere';
     case 'write-failed':
+    case 'unverified':
       return 'failed';
     default:
       return assertNever(written.reason);

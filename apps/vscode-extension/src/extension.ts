@@ -53,6 +53,7 @@ import {
   WorkshopSessionPersistenceCoordinator,
   WorkshopTranscriptRecallService,
   WorkshopLiveRoomBookmarkReader,
+  WorkshopSavedSessionTodoStore,
   ProjectMemoryStore,
   ProjectMemoryLibrary,
   WorkshopTranscriptExportService,
@@ -395,6 +396,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       )
     }
   );
+  // A persona's to-do changes in saved sessions write through their own port,
+  // never recall: the store's claimed compare-and-swap, on the coordinator's queue (ADR 2026-11-19 D6, D6a).
+  const workshopSavedSessionTodos = new WorkshopSavedSessionTodoStore(workshopSessionStore, workshopSessionPersistenceCoordinator, outputChannel);
   // Project memory (ADR 2026-11-04 D10, D13): one store, then the one
   // library, from the coordinator's accepted workspace and recall's
   // provenance. Slice 2 only reads: the library feeds the persona
@@ -684,7 +688,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
     editorSelectionSnapshots,
     helperAgentService,
-    workshopTranscriptRecallService
+    workshopTranscriptRecallService,
+    workshopSavedSessionTodos
   };
 
   // Migrate API key from settings to SecretStorage if needed

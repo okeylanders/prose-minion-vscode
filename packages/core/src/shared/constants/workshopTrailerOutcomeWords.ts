@@ -54,9 +54,14 @@ export const WORKSHOP_TODO_STATUS_WRITE_REFUSAL_WORDS: Readonly<Record<WorkshopT
   'session-changed': 'the session changed since it was read',
   'room-changed': 'the reply left the room before it was saved',
   'session-not-found': 'the session is gone',
+  'session-busy': 'another window was writing the session',
   'sessions-unavailable': 'saved sessions could not be reached just then',
-  'write-failed': 'the session could not be saved'
+  'write-failed': 'the session could not be saved',
+  unverified: 'the session could not be read to check it'
 });
+
+/** A row left `saving` across a restart, with no stamp in the file (D8a): counted as not written. */
+const INTERRUPTED_WORDS = 'Prose Minion closed before it was saved';
 /* eslint-enable @typescript-eslint/naming-convention */
 
 const shownAsCards = (count: number): string => `${count} shown as ${count === 1 ? 'a card' : 'cards'}`;
@@ -73,11 +78,13 @@ const droppedFor = (drop: { reason: WorkshopTrailerDropReason; count: number }):
  */
 function todoParts(changes: number, rows: readonly Pick<WorkshopTodoStatusChange, 'state' | 'reason'>[]): string[] {
   const saving = rows.filter((row) => row.state === 'saving').length;
-  const refused = new Map<WorkshopTodoStatusWriteRefusal, number>();
+  const refused = new Map<string, number>();
   for (const row of rows) {
-    if (row.state === 'refused') {
-      const reason = row.reason ?? 'write-failed';
-      refused.set(reason, (refused.get(reason) ?? 0) + 1);
+    if (row.state === 'refused' || row.state === 'interrupted') {
+      const words = row.state === 'interrupted' && row.reason !== 'unverified'
+        ? INTERRUPTED_WORDS
+        : WORKSHOP_TODO_STATUS_WRITE_REFUSAL_WORDS[row.reason ?? 'write-failed'];
+      refused.set(words, (refused.get(words) ?? 0) + 1);
     }
   }
   const notWritten = [...refused.values()].reduce((sum, count) => sum + count, 0);
@@ -85,7 +92,7 @@ function todoParts(changes: number, rows: readonly Pick<WorkshopTodoStatusChange
   return [
     ...(made > 0 ? [`${made} made`] : []),
     ...(saving > 0 ? [`${saving} being saved`] : []),
-    ...[...refused.entries()].map(([reason, count]) => `${count} not written (${WORKSHOP_TODO_STATUS_WRITE_REFUSAL_WORDS[reason]})`)
+    ...[...refused.entries()].map(([words, count]) => `${count} not written (${words})`)
   ];
 }
 

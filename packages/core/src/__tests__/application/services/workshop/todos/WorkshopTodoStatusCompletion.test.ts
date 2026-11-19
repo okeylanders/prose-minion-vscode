@@ -58,8 +58,10 @@ describe('the open room (D5)', () => {
     expect(after.map((todo) => todo.status)).toEqual(['completed', 'dismissed', 'completed']);
     expect(after[1].closedBy).toEqual({
       personaId: 'jill', personaLabel: 'Jill', sessionId: 'current', sessionTitle: 'This session',
-      turnId: turn.id, at: turn.timestamp, note: NOTE_SENTINEL
+      turnId: turn.id, at: turn.timestamp, operationId: turn.todoStatusChanges![1].operationId, note: NOTE_SENTINEL
     });
+    // One operation for the open room's changes (D8a).
+    expect(new Set(turn.todoStatusChanges!.map((row) => row.operationId)).size).toBe(1);
     expect(turn.content).toBe('Both handled.');
     expect(turn.todoStatusChanges?.map((row) => [row.session, row.status, row.state])).toEqual([
       ['current', 'completed', 'applied'], ['current', 'dismissed', 'applied'], ['current', 'completed', 'applied']
@@ -172,6 +174,7 @@ describe('a saved session (D5): rows commit saving, then settle', () => {
     await context.settled?.();
     expect(port.writes).toHaveLength(1);
     expect(port.writes[0].changes.map((change) => change.closedBy?.turnId)).toEqual([turn.id, turn.id]);
+    expect(port.writes[0].changes.map((change) => change.closedBy?.operationId)).toEqual(turn.todoStatusChanges!.map((row) => row.operationId));
     expect(port.sessions.get('alice-ch6')!.todos.map((todo) => todo.status)).toEqual(['completed', 'dismissed']);
     const settled = session.readRoomLedger().find((candidate) => candidate.id === turn.id)!;
     expect(settled.todoStatusChanges?.map((row) => row.state)).toEqual(['applied', 'applied']);
@@ -254,5 +257,71 @@ describe('Undo (D8)', () => {
     expect(await writes.undo(turn.id, 0, session.readRoomRevision())).toEqual({ ok: true });
     expect(port.sessions.get('alice-ch6')!.todos[0]).toMatchObject({ status: 'open' });
     expect(port.sessions.get('alice-ch6')!.todos[0].closedBy).toBeUndefined();
+  });
+});
+
+describe('a row left saving across a restart (D8a)', () => {
+  async function savingRow(stamped: boolean) {
+    const { session } = roomWithTodos(0);
+    const port = new FakeSavedSessionTodos();
+    port.addSession('alice-ch6', [['todo-1-1', 'open']]);
+    const content = todoFrame({ session: 'alice-ch6', todo: 'todo-1-1' });
+    const before = writesFor(session, port);
+    const context = (await before.context(content))!;
+    // The window closes after the commit, before (or after) the write lands: no write runs here.
+    const turn = replyWith(session, content, { todoStatus: { ...context, afterCommit: undefined } });
+    const row = turn.todoStatusChanges![0];
+    if (stamped) {
+      const read = await port.read('alice-ch6');
+      await port.write(read as never, [{ todoId: 'todo-1-1', status: 'completed', closedBy: {
+        personaId: 'jill', personaLabel: 'Jill', sessionId: 'room-alice', sessionTitle: 'Polish 6.11', turnId: turn.id, at: 1, operationId: row.operationId
+      } }]);
+    }
+    port.writes.length = 0;
+    return { session, port, turn, writes: writesFor(session, port) };
+  }
+
+  it('with no stamp in the file reads interrupted, and is never retried', async () => {
+    const { session, port, turn, writes } = await savingRow(false);
+    await writes.reconcile();
+    const row = session.readRoomLedger().find((candidate) => candidate.id === turn.id)!.todoStatusChanges![0];
+    expect(row).toMatchObject({ state: 'interrupted' });
+    expect(row.reason).toBeUndefined();
+    expect(port.writes).toEqual([]);
+    expect(port.sessions.get('alice-ch6')!.todos[0].status).toBe('open');
+    expect(workshopTrailerOutcomesFrameFor(session.readRoomLedger(), HOST)).toContain('1 not written (Prose Minion closed before it was saved)');
+    expect(await writes.undo(turn.id, 0, session.readRoomRevision())).toEqual({ ok: false, reason: 'not-undoable' });
+  });
+
+  it('with its stamp reads applied, and Undo works on it', async () => {
+    const { session, port, turn, writes } = await savingRow(true);
+    await writes.reconcile();
+    expect(session.readRoomLedger().find((candidate) => candidate.id === turn.id)!.todoStatusChanges![0].state).toBe('applied');
+    expect(await writes.undo(turn.id, 0, session.readRoomRevision())).toEqual({ ok: true });
+    expect(port.sessions.get('alice-ch6')!.todos[0].status).toBe('open');
+  });
+
+  it('a to-do the writer reopened after the write is left open, and Undo says it changed since', async () => {
+    const { session, port, turn, writes } = await savingRow(true);
+    const stored = port.sessions.get('alice-ch6')!;
+    stored.todos = stored.todos.map(({ closedBy: _gone, ...todo }) => ({ ...todo, status: 'open' }));
+    stored.version += 1;
+    await writes.reconcile();
+    expect(session.readRoomLedger().find((candidate) => candidate.id === turn.id)!.todoStatusChanges![0].state).toBe('interrupted');
+    expect(port.writes).toEqual([]);
+    expect(stored.todos[0].status).toBe('open');
+  });
+
+  it('a session that cannot be read stays interrupted, unverified', async () => {
+    const { session, port, turn, writes } = await savingRow(false);
+    port.refusals.set('alice-ch6', 'store-unavailable');
+    await writes.reconcile();
+    expect(session.readRoomLedger().find((candidate) => candidate.id === turn.id)!.todoStatusChanges![0])
+      .toMatchObject({ state: 'interrupted', reason: 'unverified' });
+  });
+
+  it('Undo on a row still saving reconciles first', async () => {
+    const { session, turn, writes } = await savingRow(true);
+    expect(await writes.undo(turn.id, 0, session.readRoomRevision())).toEqual({ ok: true });
   });
 });

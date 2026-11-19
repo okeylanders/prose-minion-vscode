@@ -11,6 +11,7 @@ import type {
   WorkshopTodoStatusWriteRefusal
 } from '@shared/types/messages/workshop/todoStatus';
 
+/* eslint-disable @typescript-eslint/naming-convention -- keyed by the closed reasons' kebab-case words. */
 /** What Undo did not do, and why. */
 export const WORKSHOP_TODO_STATUS_UNDO_REFUSAL_WORDS: Readonly<Record<WorkshopTodoStatusUndoRefusal, string>> = Object.freeze({
   'invalid-request': 'That Undo could not be read.',
@@ -21,6 +22,7 @@ export const WORKSHOP_TODO_STATUS_UNDO_REFUSAL_WORDS: Readonly<Record<WorkshopTo
   elsewhere: 'Undo is in the room that made this change.',
   'todo-changed': 'This to-do changed since; use its own control.',
   'session-changed': 'The saved session changed on disk; nothing was undone. Open it to change the to-do.',
+  'session-busy': 'This saved session is being written by another window. Try Undo again in a moment.',
   'session-not-found': 'The saved session is gone.',
   'sessions-unavailable': 'Saved sessions could not be reached just then.',
   failed: 'The change could not be undone.'
@@ -33,9 +35,16 @@ export const WORKSHOP_TODO_STATUS_ROW_REFUSAL_WORDS: Readonly<Record<WorkshopTod
   'session-changed': 'Not saved: the session changed since it was read.',
   'room-changed': 'Not saved: the reply left the room first.',
   'session-not-found': 'Not saved: the session is gone.',
+  'session-busy': 'Not saved: another window was writing the session.',
   'sessions-unavailable': 'Not saved: saved sessions could not be reached.',
-  'write-failed': 'Not saved: the session could not be written.'
+  'write-failed': 'Not saved: the session could not be written.',
+  unverified: 'Not confirmed: the saved session could not be read to check this change.'
 });
+
+/* eslint-enable @typescript-eslint/naming-convention */
+
+/** A row left `saving` across a restart, with no stamp in the file (D8a). */
+export const WORKSHOP_TODO_STATUS_INTERRUPTED_WORDS = 'Not written: Prose Minion closed before this was saved.';
 
 /** "Done" or "Dismissed". */
 export function workshopTodoStatusWord(status: WorkshopTodoStatusSettable): string {

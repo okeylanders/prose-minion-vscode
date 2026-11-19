@@ -100,7 +100,8 @@ export async function resolveWorkshopReplyTodoStatus(
 export function settleWorkshopReplyTodoStatus(
   control: WorkshopReplyTodoStatusControl | undefined,
   context: Pick<WorkshopReplyTodoStatusContext, 'openRoom' | 'reads'> | undefined,
-  liveTodo: (todoId: string) => WorkshopTodoItem | undefined
+  liveTodo: (todoId: string) => WorkshopTodoItem | undefined,
+  mintOperationId: () => string = workshopTodoOperationId
 ): WorkshopReplyTodoStatusSettlement {
   if (!control) {
     return { drops: [], writes: [], logs: [] };
@@ -110,8 +111,11 @@ export function settleWorkshopReplyTodoStatus(
   const drops: WorkshopTodoStatusDropCode[] = [...control.rejections];
   const logs = control.rejections.map((code) => `To-do status dropped (reason=${code})`);
   const writes = new Map<string, { read: WorkshopSavedTodoReadOk; indexes: number[] }>();
+  // One operation per write (D8a): the open room's changes, and each saved session's.
+  const operations = new Map<string, string>();
+  const operationOf = (session: string): string => operations.get(session) ?? operations.set(session, mintOperationId()).get(session)!;
   for (const change of control.changes) {
-    const verdict = judgeChange(change, context, room, liveTodo);
+    const verdict = judgeChange(change, context, room, liveTodo, operationOf);
     if (verdict.kind === 'dropped') {
       drops.push(verdict.code);
       logs.push(`To-do status dropped (reason=${verdict.code}; session=${change.session}; todoId=${change.todoId})`);
@@ -140,7 +144,8 @@ function judgeChange(
   change: WorkshopTodoStatusDraft,
   context: Pick<WorkshopReplyTodoStatusContext, 'openRoom' | 'reads'> | undefined,
   room: { readonly sessionId: string; readonly title: string },
-  liveTodo: (todoId: string) => WorkshopTodoItem | undefined
+  liveTodo: (todoId: string) => WorkshopTodoItem | undefined,
+  operationOf: (session: string) => string
 ): WorkshopTodoStatusVerdict {
   if (change.session === WORKSHOP_TODO_STATUS_CURRENT_SESSION) {
     const todo = liveTodo(change.todoId);
@@ -149,7 +154,7 @@ function judgeChange(
     }
     return todo.status !== 'open'
       ? { kind: 'dropped', code: 'not-open' }
-      : { kind: 'row', row: rowOf(change, room.title, todo.text, 'applied') };
+      : { kind: 'row', row: rowOf(change, room.title, todo.text, 'applied', operationOf(change.session)) };
   }
   // A saved session no context read for (a context resolved for another reply) is not available now.
   const read = context?.reads.get(change.session) ?? { kind: 'refused', reason: 'store-unavailable' };
@@ -162,10 +167,10 @@ function judgeChange(
   }
   return todo.status !== 'open'
     ? { kind: 'dropped', code: 'not-open' }
-    : { kind: 'row', row: { ...rowOf(change, read.title, todo.text, 'saving'), roomSessionId: room.sessionId } };
+    : { kind: 'row', row: { ...rowOf(change, read.title, todo.text, 'saving', operationOf(change.session)), roomSessionId: room.sessionId } };
 }
 
-function rowOf(change: WorkshopTodoStatusDraft, sessionTitle: string, text: string, state: 'applied' | 'saving'): WorkshopTodoStatusChange {
+function rowOf(change: WorkshopTodoStatusDraft, sessionTitle: string, text: string, state: 'applied' | 'saving', operationId: string): WorkshopTodoStatusChange {
   return {
     session: change.session,
     sessionTitle,
@@ -174,6 +179,12 @@ function rowOf(change: WorkshopTodoStatusDraft, sessionTitle: string, text: stri
     status: change.status,
     previous: 'open',
     ...(change.note ? { note: change.note } : {}),
-    state
+    state,
+    operationId
   };
+}
+
+/** A host-minted operation id (D8a): unique enough to tell one write from every other. */
+export function workshopTodoOperationId(): string {
+  return `op-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }

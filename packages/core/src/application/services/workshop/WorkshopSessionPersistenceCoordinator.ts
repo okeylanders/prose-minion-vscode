@@ -339,6 +339,11 @@ export class WorkshopSessionPersistenceCoordinator {
     return { sessionId: this.identity.sessionId, title: this.identity.title, ...(this.activeNamedSessionId ? { namedSessionId: this.activeNamedSessionId } : {}) };
   }
 
+  /** A change to a saved session that is not the open room, on the session-operation queue (ADR 2026-11-19 D6). */
+  runSavedSessionOperation<T>(operation: () => Promise<T>): Promise<T> {
+    return this.serializeSessionOperation(operation);
+  }
+
   hasPendingWrite(): boolean {
     return this.dirtyRevision > this.writtenRevision || this.pendingRollingMirror !== undefined;
   }

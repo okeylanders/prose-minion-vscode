@@ -14,6 +14,7 @@ import * as React from 'react';
 import type { WorkshopTodoStatusChange, WorkshopTurn } from '@messages';
 import { Icon } from '@components/shared/Icon';
 import {
+  WORKSHOP_TODO_STATUS_INTERRUPTED_WORDS,
   WORKSHOP_TODO_STATUS_ROW_REFUSAL_WORDS,
   WORKSHOP_TODO_STATUS_UNDO_REFUSAL_WORDS,
   workshopTodoReceiptHeading,
@@ -38,6 +39,8 @@ export function workshopTodoReceiptRowState(row: WorkshopTodoStatusChange): { no
       return { note: 'Saving…', undo: false };
     case 'refused':
       return { note: WORKSHOP_TODO_STATUS_ROW_REFUSAL_WORDS[row.reason ?? 'write-failed'], undo: false };
+    case 'interrupted':
+      return { note: row.reason === 'unverified' ? WORKSHOP_TODO_STATUS_ROW_REFUSAL_WORDS.unverified : WORKSHOP_TODO_STATUS_INTERRUPTED_WORDS, undo: false };
     case 'undone':
       return { note: 'Undone', undo: false };
     default:

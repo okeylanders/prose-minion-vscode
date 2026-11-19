@@ -37,11 +37,13 @@ export interface WorkshopTodoClosedBy {
   sessionTitle: string;
   turnId: string;
   at: number;
+  /** The write that set it (D8a): what reconciliation and Undo recognize. */
+  operationId: string;
   note?: string;
 }
 
 /** A row's state (D5, D8). */
-export const WORKSHOP_TODO_STATUS_CHANGE_STATES = ['applied', 'saving', 'refused', 'undone'] as const;
+export const WORKSHOP_TODO_STATUS_CHANGE_STATES = ['applied', 'saving', 'refused', 'interrupted', 'undone'] as const;
 export type WorkshopTodoStatusChangeState = typeof WORKSHOP_TODO_STATUS_CHANGE_STATES[number];
 
 /**
@@ -55,10 +57,14 @@ export const WORKSHOP_TODO_STATUS_WRITE_REFUSALS = [
   'room-changed',
   /** The session is gone from the store. */
   'session-not-found',
+  /** Another window held the file under its claim just then (D6a). */
+  'session-busy',
   /** The store or the workspace was not available. */
   'sessions-unavailable',
   /** The write failed. */
-  'write-failed'
+  'write-failed',
+  /** With `interrupted` only (D8a): the session could not be read to tell whether the write landed. */
+  'unverified'
 ] as const;
 export type WorkshopTodoStatusWriteRefusal = typeof WORKSHOP_TODO_STATUS_WRITE_REFUSALS[number];
 
@@ -76,7 +82,12 @@ export interface WorkshopTodoStatusChange {
   previous: 'open';
   note?: string;
   state: WorkshopTodoStatusChangeState;
-  /** With `refused` only. */
+  /**
+   * The write that makes this change (D8a): one per saved session's write,
+   * one for the open room's changes; stamped into `closedBy.operationId`.
+   */
+  operationId: string;
+  /** With `refused`, and `unverified` with `interrupted`. */
   reason?: WorkshopTodoStatusWriteRefusal;
   /**
    * The open room's session id when the reply committed: a saved row's Undo
@@ -109,6 +120,7 @@ export const WORKSHOP_TODO_STATUS_UNDO_REFUSALS = [
   'elsewhere',
   'todo-changed',
   'session-changed',
+  'session-busy',
   'session-not-found',
   'sessions-unavailable',
   'failed'

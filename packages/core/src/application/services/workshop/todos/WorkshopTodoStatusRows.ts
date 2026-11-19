@@ -40,7 +40,8 @@ export interface WorkshopTodoStatusChangeSettlement {
 export function workshopTodoClosedBy(
   turn: Pick<WorkshopTurn, 'id' | 'personaId' | 'personaLabel' | 'timestamp'>,
   room: WorkshopTodoStatusRoom,
-  note: string | undefined
+  note: string | undefined,
+  operationId: string
 ): WorkshopTodoClosedBy | undefined {
   if (!turn.personaId) {
     return undefined;
@@ -52,6 +53,7 @@ export function workshopTodoClosedBy(
     sessionTitle: room.title,
     turnId: turn.id,
     at: turn.timestamp,
+    operationId,
     ...(note ? { note } : {})
   };
 }
@@ -68,7 +70,7 @@ export function commitWorkshopReplyTodoStatus(
 ): WorkshopTodoStatusChange[] {
   for (const row of commit.rows) {
     if (row.session === WORKSHOP_TODO_STATUS_CURRENT_SESSION) {
-      setStatus(row.todoId, row.status, workshopTodoClosedBy(turn, commit.room, row.note));
+      setStatus(row.todoId, row.status, workshopTodoClosedBy(turn, commit.room, row.note, row.operationId));
     }
   }
   return commit.rows.map(cloneWorkshopTodoStatusChange);
@@ -85,7 +87,7 @@ export function settleWorkshopTodoStatusChanges(turn: WorkshopTurn, settle: Work
       return row;
     }
     const { reason: _previous, ...rest } = row;
-    return settle.state === 'refused' && settle.reason ? { ...rest, state: settle.state, reason: settle.reason } : { ...rest, state: settle.state };
+    return (settle.state === 'refused' || settle.state === 'interrupted') && settle.reason ? { ...rest, state: settle.state, reason: settle.reason } : { ...rest, state: settle.state };
   });
 }
 

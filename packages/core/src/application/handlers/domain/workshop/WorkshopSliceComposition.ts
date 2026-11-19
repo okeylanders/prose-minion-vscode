@@ -161,7 +161,8 @@ export class WorkshopSliceComposition {
       shell,
       outputChannel,
       {
-        postSessionState: host.postSessionState,
+        // A loaded, opened or restored room settles any persona to-do row left `saving` (ADR 2026-11-19 D8a).
+        postSessionState: () => { host.postSessionState(); void this.todoStatusWrites?.reconcile(); },
         refreshContextFiles: (origin) => this.contextHandler.refreshChangedContextFiles(origin),
         flushDeferredConversationSettings: host.flushDeferredConversationSettings,
         reportError: (message, details) =>

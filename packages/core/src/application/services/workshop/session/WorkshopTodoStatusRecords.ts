@@ -12,8 +12,9 @@
  * - `todoStatusChanges`: on a host or guest reply only, one to
  *   `changesPerReply` rows, each naming its session, its title, the to-do,
  *   its text within the to-do's own bound, a status a persona may set,
- *   `previous: open`, an optional note, its state, and a `reason` exactly
- *   when it is `refused`. `elsewhere` is the webview's and is never stored.
+ *   `previous: open`, an optional note, its state, its write's
+ *   `operationId` (D8a), and a `reason` exactly when it is `refused` (or
+ *   `unverified`, optionally, when it is `interrupted`). `elsewhere` is the webview's and is never stored.
  */
 
 import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
@@ -41,7 +42,7 @@ const ID_CHARACTERS = 200;
 
 /** Strict structure of a stored to-do's `closedBy`. */
 export function assertWorkshopTodoClosedByShape(value: unknown, path: string): void {
-  const closedBy = exactObject(value, path, ['personaId', 'personaLabel', 'sessionId', 'sessionTitle', 'turnId', 'at'], ['note']);
+  const closedBy = exactObject(value, path, ['personaId', 'personaLabel', 'sessionId', 'sessionTitle', 'turnId', 'at', 'operationId'], ['note']);
   if (!isWorkshopPersonaId(closedBy.personaId)) {
     shapeError(`${path}.personaId`, 'known Workshop persona id');
   }
@@ -50,6 +51,7 @@ export function assertWorkshopTodoClosedByShape(value: unknown, path: string): v
   boundedStringAt(closedBy.sessionTitle, `${path}.sessionTitle`, TITLE_CHARACTERS);
   boundedStringAt(closedBy.turnId, `${path}.turnId`, ID_CHARACTERS, false);
   numberAt(closedBy.at, `${path}.at`);
+  boundedStringAt(closedBy.operationId, `${path}.operationId`, ID_CHARACTERS, false);
   optionalBoundedStringAt(closedBy.note, `${path}.note`, PROMPT_BUDGETS.workshopTodoStatus.noteCharacters, false);
 }
 
@@ -70,7 +72,7 @@ function assertRow(value: unknown, path: string): void {
   const row = exactObject(
     value,
     path,
-    ['session', 'sessionTitle', 'todoId', 'todoText', 'status', 'previous', 'state'],
+    ['session', 'sessionTitle', 'todoId', 'todoText', 'status', 'previous', 'state', 'operationId'],
     ['note', 'reason', 'roomSessionId']
   );
   boundedStringAt(row.session, `${path}.session`, ID_CHARACTERS, false);
@@ -81,10 +83,15 @@ function assertRow(value: unknown, path: string): void {
   enumAt(row.previous, `${path}.previous`, ['open']);
   optionalBoundedStringAt(row.note, `${path}.note`, PROMPT_BUDGETS.workshopTodoStatus.noteCharacters, false);
   enumAt(row.state, `${path}.state`, WORKSHOP_TODO_STATUS_CHANGE_STATES);
+  boundedStringAt(row.operationId, `${path}.operationId`, ID_CHARACTERS, false);
   if (row.state === 'refused') {
-    enumAt(row.reason, `${path}.reason`, WORKSHOP_TODO_STATUS_WRITE_REFUSALS);
+    enumAt(row.reason, `${path}.reason`, WORKSHOP_TODO_STATUS_WRITE_REFUSALS.filter((reason) => reason !== 'unverified'));
+  } else if (row.state === 'interrupted') {
+    if (row.reason !== undefined) {
+      enumAt(row.reason, `${path}.reason`, ['unverified']);
+    }
   } else if (row.reason !== undefined) {
-    shapeError(`${path}.reason`, 'a reason on a refused row only');
+    shapeError(`${path}.reason`, 'a reason on a refused or interrupted row only');
   }
   optionalBoundedStringAt(row.roomSessionId, `${path}.roomSessionId`, ID_CHARACTERS, false);
 }
