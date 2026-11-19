@@ -39,7 +39,10 @@ const PUBLISHABLE_CAPABILITY_OPERATIONS: ReadonlySet<WorkshopCapabilityOperation
   'transcript.bookmarks',
   // A memory read is published with the reply that used it (ADR 2026-11-04,
   // question 5); the catalog and search stay private discovery.
-  'memory.read'
+  'memory.read',
+  // A diff is published with the reply that used it, as a file read is
+  // (ADR 2026-11-19 D15); the log stays private discovery.
+  'history.diff'
 ]);
 
 /**

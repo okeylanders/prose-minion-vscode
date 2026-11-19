@@ -34,6 +34,7 @@ import {
   WORKSHOP_HOST_BASE_PROMPT_PATH,
   WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
   WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
+  WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH,
   WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
   WORKSHOP_INTERACTION_MODE_PROMPT_PATHS,
   WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH,
@@ -194,8 +195,10 @@ describe('the default\'s assembled prompt, through the production loader', () =>
     WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
     WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH,
     'workshop-personas/project-memory-proposals.md',
-    // The help and lens grammars joined the chain after the setting (ADR 2026-11-17 D16); it is the same at every level.
+    // The help, history and lens grammars joined the chain after the setting (ADR 2026-11-17 D16,
+    // ADR 2026-11-19 D11); it is the same at every level.
     WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
+    WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH,
     WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,

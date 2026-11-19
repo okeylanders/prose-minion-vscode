@@ -1,4 +1,5 @@
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import {
   completeWorkshopRun,
   workshopMessageCompletionCopy,
@@ -254,7 +255,8 @@ describe('the persona capability\'s log redaction (ADR 2026-11-04 D9)', () => {
       {} as WorkshopTranscriptRecallPort,
       offProjectMemory,
       noProjectLenses,
-      unavailableHelpReference
+      unavailableHelpReference,
+      unavailableFileHistory
     ).create({
       requestId: 'r', excerptVersion: 0, personaId: 'jill', owner: { kind: 'host' },
       signal: new AbortController().signal,

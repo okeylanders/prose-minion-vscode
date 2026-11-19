@@ -26,6 +26,10 @@ import {
   inspectWorkshopHelpCall,
   WORKSHOP_HELP_FIELD_POLICY
 } from '@/application/services/workshop/help/WorkshopHelpXmlCodec';
+import {
+  inspectWorkshopHistoryCall,
+  WORKSHOP_HISTORY_FIELD_POLICY
+} from '@/application/services/workshop/history/WorkshopHistoryXmlCodec';
 import { workshopResourceInstructionLines } from '@/application/services/workshop/WorkshopResourceInstruction';
 import type { WorkshopCapabilityXmlFieldPolicy } from '@/application/services/workshop/WorkshopCapabilityXmlDocument';
 import { countWords } from '@/utils/textUtils';
@@ -37,9 +41,11 @@ export const WORKSHOP_CAPABILITY_FIELD_POLICY: WorkshopCapabilityXmlFieldPolicy 
     WORKSHOP_PROJECT_MEMORY_FIELD_POLICY.repeatable(operation, field) ||
     WORKSHOP_HELP_FIELD_POLICY.repeatable(operation, field) ||
     WORKSHOP_LENS_FIELD_POLICY.repeatable(operation, field) ||
+    WORKSHOP_HISTORY_FIELD_POLICY.repeatable(operation, field) ||
     WORKSHOP_RESOURCE_FIELD_POLICY.repeatable(operation, field),
   attributes: (operation, field) => [
     ...WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY.attributes(operation, field),
+    ...WORKSHOP_HISTORY_FIELD_POLICY.attributes(operation, field),
     ...WORKSHOP_RESOURCE_FIELD_POLICY.attributes(operation, field)
   ]
 };
@@ -100,7 +106,11 @@ export type WorkshopCapabilityRejectionReason =
   // The lens library (ADR 2026-11-17 D18; lens/WorkshopLensXmlCodec).
   | 'invalid-section'
   | 'duplicate-section'
-  | 'too-many-sections';
+  | 'too-many-sections'
+  // A file's git history (ADR 2026-11-19 D13, D14; history/WorkshopHistoryXmlCodec).
+  | 'invalid-commit'
+  | 'invalid-start-change'
+  | 'invalid-current';
 
 export type WorkshopCapabilityInspection =
   | { readonly kind: 'none' }
@@ -199,6 +209,10 @@ export class WorkshopCapabilityXmlCodec {
       case 'help.search':
       case 'help.read':
         return inspectWorkshopHelpCall(operation, document);
+      // By hand, through the family's own codec (ADR 2026-11-19 D11).
+      case 'history.log':
+      case 'history.diff':
+        return inspectWorkshopHistoryCall(operation, document);
       default:
         return { kind: 'invalid', reason: 'unknown-capability' };
     }

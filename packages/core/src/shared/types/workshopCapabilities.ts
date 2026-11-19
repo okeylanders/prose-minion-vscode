@@ -32,7 +32,10 @@ export const WORKSHOP_CAPABILITY_OPERATIONS = [
   'lens.catalog',
   'lens.read',
   'help.search',
-  'help.read'
+  'help.read',
+  // ADR 2026-11-19 D11: a file's git history, read-only.
+  'history.log',
+  'history.diff'
 ] as const;
 
 export type WorkshopCapabilityOperation = typeof WORKSHOP_CAPABILITY_OPERATIONS[number];
@@ -47,7 +50,8 @@ export const isWorkshopCapabilityOperation = (value: unknown): value is Workshop
  * family exhaustively, so an operation without one fails to compile instead
  * of borrowing another family's name through an implicit "otherwise".
  */
-export type WorkshopCapabilityFamily = 'dictionary' | 'analysis' | 'resource' | 'transcript' | 'memory' | 'lens' | 'help';
+export type WorkshopCapabilityFamily =
+  | 'dictionary' | 'analysis' | 'resource' | 'transcript' | 'memory' | 'lens' | 'help' | 'history';
 
 export function workshopCapabilityFamily(
   operation: WorkshopCapabilityOperation
@@ -78,6 +82,9 @@ export function workshopCapabilityFamily(
     case 'help.search':
     case 'help.read':
       return 'help';
+    case 'history.log':
+    case 'history.diff':
+      return 'history';
     default: {
       const unhandled: never = operation;
       throw new Error(`Unhandled Workshop capability operation: ${String(unhandled)}`);
@@ -198,7 +205,40 @@ export type WorkshopCapabilityRequest =
   | WorkshopTranscriptRecallRequest
   | WorkshopProjectMemoryRequest
   | WorkshopLensRequest
-  | WorkshopHelpRequest;
+  | WorkshopHelpRequest
+  | WorkshopHistoryRequest;
+
+/**
+ * The file a `history.*` call names (ADR 2026-11-19 D11): the room's excerpt
+ * file (`<group>excerpt</group>` alone), or a configured file by group and
+ * path, as `resource.read` names one. Never a free path.
+ */
+export type WorkshopHistoryFile =
+  | { kind: 'excerpt' }
+  | { kind: 'configured'; group: ContextPathGroup; path: string };
+
+/** `<to>` on `history.diff`: a commit, or the file as saved on disk. */
+export type WorkshopHistoryDiffTarget =
+  | { kind: 'commit'; commit: string }
+  /** `fingerprint`: the saved text's mark when an earlier part was read (D13). */
+  | { kind: 'current'; fingerprint?: string };
+
+/**
+ * A file's git history, read-only (ADR 2026-11-19 D11–D14), as the codec
+ * validated it: commit ids have the form (7 to 40 hex, lower case), which
+ * is all the codec can know. Whether one is in this file's history is the
+ * host's question, asked of the log before anything reaches git.
+ */
+export type WorkshopHistoryRequest =
+  | { capability: 'history.log'; file: WorkshopHistoryFile; page?: number }
+  | {
+      capability: 'history.diff';
+      file: WorkshopHistoryFile;
+      from: string;
+      to: WorkshopHistoryDiffTarget;
+      /** The first change to show, from 1; absent means 1. */
+      startChange?: number;
+    };
 
 export type WorkshopHelpRequest =
   | { capability: 'help.search'; query: string }

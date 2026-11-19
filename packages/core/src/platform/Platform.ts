@@ -8,6 +8,7 @@
  */
 import { DocumentEditor } from './DocumentEditor';
 import { EditorContext } from './EditorContext';
+import { FileHistory } from './FileHistory';
 import { FileSystem } from './FileSystem';
 import { GlobalStateStore } from './GlobalStateStore';
 import { IssueAnnotator } from './IssueAnnotator';
@@ -32,4 +33,6 @@ export interface Platform {
   readonly annotations: IssueAnnotator;
   /** Craft Flags' own flags (ADR 2026-10-21, Slice 3c), shown apart from Proofread's: neither pass's run replaces the other's. */
   readonly craftAnnotations: IssueAnnotator;
+  /** A file's commits and its text at one, read-only (ADR 2026-11-19 D11): the Workshop's `history.*` calls. */
+  readonly fileHistory: FileHistory;
 }

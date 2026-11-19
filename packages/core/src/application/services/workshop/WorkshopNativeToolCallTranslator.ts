@@ -93,7 +93,9 @@ export const WORKSHOP_NATIVE_CALL_FIELDS: Readonly<Record<
   'help.search': { query: TEXT },
   'help.read': { section: { repeatable: true, plural: 'sections' } },
   'lens.catalog': { page: TEXT },
-  'lens.read': { lens: TEXT, section: { repeatable: true, plural: 'sections' } }
+  'lens.read': { lens: TEXT, section: { repeatable: true, plural: 'sections' } },
+  'history.log': { group: TEXT, path: TEXT, page: TEXT },
+  'history.diff': { group: TEXT, path: TEXT, from: TEXT, to: TEXT, startChange: TEXT, current: TEXT }
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 

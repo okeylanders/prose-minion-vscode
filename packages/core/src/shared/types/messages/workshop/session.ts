@@ -171,6 +171,9 @@ export const WORKSHOP_TURN_ARTIFACTS = [
   'lens_read',
   'help_search',
   'help_read',
+  // ADR 2026-11-19 D15: forward-only, as `lens_read` was.
+  'history_log',
+  'history_diff',
   'excerpt_revision',
   'context_change',
   'standing_directive_change',
