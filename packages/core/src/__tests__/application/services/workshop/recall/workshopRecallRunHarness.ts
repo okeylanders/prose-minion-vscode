@@ -9,6 +9,7 @@
 
 import type { LogSink } from '@/platform';
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
@@ -26,14 +27,19 @@ import { setupCoordinator } from '@/__tests__/application/services/workshop/sess
 import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 import type { WorkshopHelpReferencePort } from '@/application/services/workshop/help/WorkshopHelpReference';
 import type { WorkshopLensLibraryPort } from '@/application/services/workshop/lens/WorkshopLensCapability';
+import type { WorkshopHistoryPorts } from '@/application/services/workshop/history/WorkshopHistoryCapability';
 
 export type RecallRound = string | (() => string);
 
 export const recallCall = (operation: string, body: string): string =>
   `<prose-minion-tool-call name="${operation}">${body}</prose-minion-tool-call>`;
 
-/** `lenses`: the project's lens library for `lens.*` calls; none of its own by default. */
-export function createRecallRunHarness(options: { lenses?: WorkshopLensLibraryPort; help?: (log: LogSink) => WorkshopHelpReferencePort } = {}) {
+/** `lenses`: the project's lens library for `lens.*` calls; none of its own by default. `history`: no git by default. */
+export function createRecallRunHarness(options: {
+  lenses?: WorkshopLensLibraryPort;
+  help?: (log: LogSink) => WorkshopHelpReferencePort;
+  history?: WorkshopHistoryPorts;
+} = {}) {
   const harness = setupCoordinator();
   const { session, manager, coordinator, store, log, time } = harness;
   const client = { createChatCompletion: jest.fn(), createStreamingChatCompletion: jest.fn() };
@@ -51,7 +57,8 @@ export function createRecallRunHarness(options: { lenses?: WorkshopLensLibraryPo
     recall,
     offProjectMemory,
     options.lenses ?? noProjectLenses,
-    options.help?.(log) ?? unavailableHelpReference
+    options.help?.(log) ?? unavailableHelpReference,
+    options.history ?? unavailableFileHistory
   );
   /** Everything every provider request carried, as one string. */
   const sent: string[] = [];

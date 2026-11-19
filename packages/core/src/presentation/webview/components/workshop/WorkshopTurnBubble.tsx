@@ -299,6 +299,8 @@ const capabilityTruncationNote = (operation: WorkshopCapabilityOperation | undef
       return 'Result was bounded by the lens-library limits';
     case 'help':
       return 'Result was bounded by the help-reference limits';
+    case 'history':
+      return 'Result was bounded by the file-history limits';
     case 'dictionary':
     case 'analysis':
       return 'Result reached its response-token limit';

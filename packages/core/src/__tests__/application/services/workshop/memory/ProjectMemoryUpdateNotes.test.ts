@@ -6,6 +6,7 @@
  * *Alice*, with made-up ids.
  */
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
@@ -44,7 +45,8 @@ function room(host: ReturnType<typeof libraryHost>) {
       {} as WorkshopTranscriptRecallPort,
       host.library,
       noProjectLenses,
-      unavailableHelpReference
+      unavailableHelpReference,
+      unavailableFileHistory
     ).create({
       requestId,
       excerptVersion: 0,

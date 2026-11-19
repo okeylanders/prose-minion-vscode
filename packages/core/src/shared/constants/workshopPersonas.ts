@@ -112,6 +112,15 @@ export const WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH =
 export const WORKSHOP_LENS_CAPABILITY_PROMPT_PATH =
   'workshop-personas/lens-capability.md';
 
+/**
+ * The stable `history.*` grammar (ADR 2026-11-19 D11; G1: no setting): a
+ * file's git history, read-only. In the system prompt for host and guest
+ * alike, always: whether the project is a git repository is a per-call fact
+ * each result reports.
+ */
+export const WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH =
+  'workshop-personas/history-capability.md';
+
 /** Product help is available to every Workshop participant (ADR 2026-11-17 D23). */
 export const WORKSHOP_HELP_CAPABILITY_PROMPT_PATH =
   'workshop-personas/help-capability.md';
@@ -262,7 +271,9 @@ export function workshopPersonaSystemPromptPaths(
     // A persona may mark the writer's to-dos, here and in saved sessions (ADR 2026-11-19 D2): host and guest, always.
     ...(participant ? [WORKSHOP_TODO_STATUS_PROMPT_PATH] : []),
     // Unconditional capability grammars for host and guest alike (ADR 2026-11-17 D16).
-    ...(participant ? [WORKSHOP_HELP_CAPABILITY_PROMPT_PATH, WORKSHOP_LENS_CAPABILITY_PROMPT_PATH] : []),
+    ...(participant
+      ? [WORKSHOP_HELP_CAPABILITY_PROMPT_PATH, WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH, WORKSHOP_LENS_CAPABILITY_PROMPT_PATH]
+      : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],
     WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,

@@ -259,6 +259,9 @@ export { FileEditStagingService } from '@/application/services/fileEdits/FileEdi
 export * from '@/domain/models/FileEdit';
 export * from '@/domain/models/FileEditStaging';
 export { workshopExcerptFileEditDocument } from '@/application/services/workshop/WorkshopExcerptFileEditDocument';
+export { workshopHistoryExcerptFile } from '@/application/services/workshop/history/WorkshopHistoryFiles';
+export { WORKSHOP_HISTORY_GIT_READY_MS } from '@/application/services/workshop/history/WorkshopHistoryCapability';
+export { WorkshopHistoryDiffCache } from '@/application/services/workshop/history/WorkshopHistoryDiffCache';
 export { describeDraftEditOutcome, describeQuickFixOutcome, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
 export {
   DRAFT_EDIT_LANGUAGE_IDS,

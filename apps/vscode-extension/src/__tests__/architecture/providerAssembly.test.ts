@@ -664,7 +664,16 @@ describe('app-shell provider assembly', () => {
     );
     expect(source.match(/new WorkshopLiveRoomBookmarkReader\(/g)).toHaveLength(1);
     // Both private read families receive their shared reader from the composition root.
-    expect(factoryArgs).toMatch(/workshopTranscriptRecallService,\s*projectMemoryLibrary,\s*lexicalGravityLensRepository,\s*workshopHelpReference\s*$/);
+    expect(factoryArgs).toMatch(/workshopTranscriptRecallService,\s*projectMemoryLibrary,\s*lexicalGravityLensRepository,\s*workshopHelpReference,\s*workshopHistoryPorts\s*$/);
+    // A file's git history reads through the Platform's port, the saved file and the excerpt's authorization (ADR 2026-11-19 D11, D12).
+    expect(source).toMatch(/fileHistory: new VsCodeFileHistory\(\)/);
+    expect(source.match(/new VsCodeFileHistory\(/g)).toHaveLength(1);
+    // One diff cache for every turn, so a continuation never aligns again (PR #286 F-03).
+    expect(source.match(/new WorkshopHistoryDiffCache\(/g)).toHaveLength(1);
+    expect(at('const workshopHistoryPorts = {')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
+    expect(source.slice(at('const workshopHistoryPorts = {'), at('new WorkshopPersonaCapabilityFactory('))).toMatch(
+      /history: platform\.fileHistory,\s*fileSystem: platform\.fileSystem,\s*excerpt: workshopHistoryExcerptFile\(\s*workshopSessionService,/
+    );
     expect(source.match(/new LexicalGravityLensRepository\(/g)).toHaveLength(1);
     expect(source.match(/new WorkshopHelpReference\(/g)).toHaveLength(1);
     expect(at('new WorkshopHelpReference(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));

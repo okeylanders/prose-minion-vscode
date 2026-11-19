@@ -16,7 +16,8 @@ const READ_IN_KINDS: ReadonlySet<ContextSourceKind> = new Set<ContextSourceKind>
   'tool-evidence',
   'dictionary',
   'transcript',
-  'memory'
+  'memory',
+  'history'
 ]);
 
 /** A row the writer didn't attach: fetched by the host or a tool, of a fetchable kind. */
@@ -66,6 +67,7 @@ export function readInOpenAction(entry: ContextSourceEntry): ReadInOpenAction {
     case 'dictionary':
     case 'transcript':
     case 'memory':
+    case 'history':
       return entry.turnId ? { kind: 'jump', turnId: entry.turnId } : { kind: 'none' };
     case 'pin':
     case 'attachment':

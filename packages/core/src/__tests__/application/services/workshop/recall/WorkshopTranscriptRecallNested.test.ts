@@ -10,6 +10,7 @@
  */
 
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
 import {
@@ -104,7 +105,8 @@ async function saveNestedRooms(): Promise<Nested> {
       new WorkshopTranscriptRecallService(room.store, room.coordinator, room.log),
       offProjectMemory,
       noProjectLenses,
-      unavailableHelpReference
+      unavailableHelpReference,
+      unavailableFileHistory
     ).create({
       requestId: 'b-recall',
       excerptVersion: session.getExcerptVersion(),

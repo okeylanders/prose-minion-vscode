@@ -36,7 +36,8 @@ const READ_IN_NAMES: Readonly<Partial<Record<ContextSourceKind, string>>> = {
   transcript: 'Past sessions',
   dictionary: 'Dictionary entries',
   'tool-evidence': 'Tool reports',
-  memory: 'Notes read'
+  memory: 'Notes read',
+  history: 'File history'
 };
 
 interface Accumulated {

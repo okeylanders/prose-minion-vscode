@@ -60,6 +60,18 @@ import {
   workshopLensStatusTicker
 } from '@/application/services/workshop/lens/WorkshopLensCopy';
 import { workshopInstalledLensOf } from '@/application/services/workshop/lens/WorkshopLensInstalled';
+import {
+  WorkshopHistoryCapability,
+  type WorkshopHistoryPorts
+} from '@/application/services/workshop/history/WorkshopHistoryCapability';
+import {
+  WORKSHOP_HISTORY_EVIDENCE_FRAMING,
+  WORKSHOP_HISTORY_REJECTED_COPY,
+  workshopHistoryRequestLogSummary,
+  workshopHistoryRequestSummary,
+  workshopHistoryStatusMessage,
+  workshopHistoryStatusTicker
+} from '@/application/services/workshop/history/WorkshopHistoryCopy';
 import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
 import {
   workshopResourceRequestLogSummary,
@@ -68,7 +80,7 @@ import {
   workshopResourceStatusTicker
 } from '@/application/services/workshop/WorkshopResourceRequestCopy';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
-import { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import { ContextResourceProviderFactory, type ContextResourceSummary, DEFAULT_CONTEXT_GROUPS } from '@/domain/models/ContextGeneration';
 import { LogSink } from '@/platform';
 import {
   translateWorkshopNativeToolCall,
@@ -169,7 +181,8 @@ export class WorkshopPersonaCapabilityFactory {
     private readonly recall: WorkshopTranscriptRecallPort,
     private readonly memory: WorkshopProjectMemoryPort,
     private readonly lenses: WorkshopLensLibraryPort,
-    private readonly help: WorkshopHelpReferencePort
+    private readonly help: WorkshopHelpReferencePort,
+    private readonly history: WorkshopHistoryPorts
   ) {}
 
   create(turn: WorkshopPersonaCapabilityTurn): WorkshopPersonaCapability {
@@ -183,7 +196,8 @@ export class WorkshopPersonaCapabilityFactory {
       this.recall,
       this.memory,
       this.lenses,
-      this.help
+      this.help,
+      this.history
     );
   }
 
@@ -212,6 +226,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private readonly memoryCapability: WorkshopProjectMemoryCapability;
   private readonly helpCapability: WorkshopHelpCapability;
   private readonly lensCapability: WorkshopLensCapability;
+  private readonly historyCapability: WorkshopHistoryCapability;
 
   constructor(
     private readonly dictionaryService: DictionaryService,
@@ -223,7 +238,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
     recall: WorkshopTranscriptRecallPort,
     memory: WorkshopProjectMemoryPort,
     lenses: WorkshopLensLibraryPort,
-    private readonly help: WorkshopHelpReferencePort
+    private readonly help: WorkshopHelpReferencePort,
+    history: WorkshopHistoryPorts
   ) {
     this.resourceCapability = new WorkshopResourceCapability(
       resourceProviderFactory,
@@ -234,6 +250,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
     this.memoryCapability = new WorkshopProjectMemoryCapability(memory, session, outputChannel, turn);
     this.helpCapability = new WorkshopHelpCapability(help, outputChannel, turn);
     this.lensCapability = new WorkshopLensCapability(lenses, workshopInstalledLensOf(session), outputChannel, turn);
+    // A file's git history names configured files by the catalog `resource.read` uses (ADR 2026-11-19 D11).
+    let catalog: Promise<readonly ContextResourceSummary[]> | undefined;
+    this.historyCapability = new WorkshopHistoryCapability(history, () => {
+      catalog ??= resourceProviderFactory.createProvider(DEFAULT_CONTEXT_GROUPS).then((provider) => provider.listResources());
+      return catalog;
+    }, outputChannel, turn);
   }
 
   async appendContract(userMessage: string): Promise<string> {
@@ -397,6 +419,10 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'help.read':
         // These private results add no manifest row (ADR 2026-11-17 D16).
         return [];
+      case 'history.log':
+      case 'history.diff':
+        // A diff adds a `history` row; a log adds none (ADR 2026-11-19 D15).
+        return [...this.historyCapability.deliveredSources(result)];
       default:
         return this.assertNever(request);
     }
@@ -434,6 +460,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'help.search':
       case 'help.read':
         return workshopHelpStatusMessage(request, persona);
+      case 'history.log':
+      case 'history.diff':
+        return workshopHistoryStatusMessage(request, persona);
       default:
         return this.assertNever(request);
     }
@@ -466,6 +495,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'help.search':
       case 'help.read':
         return workshopHelpStatusTicker(request);
+      case 'history.log':
+      case 'history.diff':
+        return workshopHistoryStatusTicker(request);
       default:
         return this.assertNever(request);
     }
@@ -499,6 +531,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'help.search':
       case 'help.read':
         return workshopHelpRequestLogSummary(request);
+      case 'history.log':
+      case 'history.diff':
+        return workshopHistoryRequestLogSummary(request);
       default:
         return this.assertNever(request);
     }
@@ -644,6 +679,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
         return WORKSHOP_LENS_REJECTED_COPY;
       case 'help':
         return WORKSHOP_HELP_REJECTED_COPY;
+      case 'history':
+        return WORKSHOP_HISTORY_REJECTED_COPY;
       case 'dictionary':
         return undefined;
       default: {
@@ -743,6 +780,10 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'help.search':
       case 'help.read':
         return this.helpCapability.fulfill(request, window);
+      case 'history.log':
+      case 'history.diff':
+        // A diff is fitted, by whole changes, to half the room left (ADR 2026-11-19 D13).
+        return this.historyCapability.fulfill(request, window);
       default:
         return this.assertNever(request);
     }
@@ -953,6 +994,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'help.search':
       case 'help.read':
         return workshopHelpRequestSummary(request);
+      case 'history.log':
+      case 'history.diff':
+        return workshopHistoryRequestSummary(request);
       default:
         return this.assertNever(request);
     }
@@ -1033,6 +1077,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
         return WORKSHOP_LENS_EVIDENCE_FRAMING;
       case 'help':
         return WORKSHOP_HELP_EVIDENCE_FRAMING;
+      case 'history':
+        return WORKSHOP_HISTORY_EVIDENCE_FRAMING;
       case 'dictionary':
       case 'analysis':
         return 'This is separately attributed capability evidence. Use only what it actually contains; do not invent omitted or failed results.';

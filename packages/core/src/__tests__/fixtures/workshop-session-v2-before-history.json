@@ -1,0 +1,1225 @@
+{
+  "schemaVersion": 2,
+  "sessionId": "before-history",
+  "title": "Scripted room",
+  "createdAt": "2026-09-30T12:00:00.000Z",
+  "updatedAt": "2026-09-30T12:00:00.000Z",
+  "temporal": {
+    "schemaVersion": 1,
+    "startedAt": "2026-09-30T12:00:00.000Z",
+    "timezone": "UTC",
+    "lastActivityAt": "2026-09-30T12:00:00.000Z",
+    "personaNotices": []
+  },
+  "summary": {
+    "hostPersonaId": "jill",
+    "participantPersonaIds": [
+      "jill"
+    ],
+    "turnCount": 30,
+    "excerptWordCount": 0
+  },
+  "workshop": {
+    "excerpt": {
+      "text": "The first cup waits on the cold sill.",
+      "version": 2,
+      "source": {
+        "kind": "manual"
+      },
+      "pinnedAt": 1047
+    },
+    "scope": "excerpt",
+    "contextAttachments": [
+      {
+        "kind": "text",
+        "origin": "writer",
+        "label": "Continuity note",
+        "words": 7,
+        "content": "The cup was blue in chapter two.",
+        "id": "ctx-1",
+        "addedAt": 1050
+      }
+    ],
+    "hostContextDelivery": {
+      "revision": 1,
+      "attachments": [
+        {
+          "id": "ctx-1",
+          "fingerprint": "a7a2b02cb08e69b16cffe665f1540fc4f8d16ceb0fe8a6e2d5edcf2c149843d3"
+        }
+      ]
+    },
+    "pendingMessageAttachments": [],
+    "threadArtifacts": [
+      {
+        "id": "ta-2",
+        "kind": "widget:gesture-playground",
+        "name": "Gesture Playground",
+        "content": "Gesture directions I want:\n· Option 1.1",
+        "turnId": "turn-19-user-1042"
+      },
+      {
+        "id": "ta-3",
+        "name": "beat-sheet.md",
+        "content": "Beat one: the cup. Beat two: the sill.",
+        "turnId": "turn-23-user-1053"
+      }
+    ],
+    "revisions": {
+      "excerpt": 2,
+      "replacementCount": 1,
+      "context": 1
+    },
+    "counters": {
+      "attachment": 1,
+      "threadArtifact": 3,
+      "turn": 30,
+      "todo": 0,
+      "widgetConfig": 2,
+      "standingDirective": 1
+    },
+    "widgetConfigs": [
+      {
+        "id": "wc-1",
+        "revision": 1,
+        "createdAt": 1004,
+        "widgetId": "lexical-gravity",
+        "draft": {
+          "lensSlug": "photography",
+          "evidenceMode": "blend",
+          "weight": 60,
+          "reach": 2,
+          "metaphorPull": true,
+          "applicationMode": "interpret",
+          "resolvedLens": {
+            "version": 2,
+            "source": "built-in",
+            "slug": "photography",
+            "name": "Photography",
+            "description": "Interprets perception through selection, exposure, latent traces, and durable records.",
+            "logic": {
+              "premise": "Perception is selective record-making: what is framed and exposed becomes evidence, while what falls outside the frame still shapes truth by its absence.",
+              "attention": {
+                "foregrounds": [
+                  "what an observer selects from a larger field",
+                  "boundaries that include one fact and exclude another",
+                  "changes in visibility, legibility, and exposure",
+                  "traces that can become evidence or memory"
+                ],
+                "backgrounds": [
+                  "the fantasy of a complete and neutral view",
+                  "detail that does not alter selection or interpretation",
+                  "visual decoration without an observer or consequence"
+                ]
+              },
+              "axes": [
+                {
+                  "id": "visibility",
+                  "name": "Visibility",
+                  "poles": [
+                    "concealed",
+                    "exposed"
+                  ]
+                },
+                {
+                  "id": "selection",
+                  "name": "Selection",
+                  "poles": [
+                    "outside the frame",
+                    "inside the frame"
+                  ]
+                },
+                {
+                  "id": "record-state",
+                  "name": "Record state",
+                  "poles": [
+                    "fleeting impression",
+                    "fixed record"
+                  ]
+                }
+              ],
+              "roles": [
+                {
+                  "id": "observer",
+                  "name": "Observer",
+                  "description": "The perceiver whose position and choices determine what can be seen."
+                },
+                {
+                  "id": "subject",
+                  "name": "Subject",
+                  "description": "The person, object, or truth placed under attention and made available to interpretation."
+                },
+                {
+                  "id": "frame",
+                  "name": "Frame",
+                  "description": "The boundary that grants relevance to what it includes and obscures what it excludes."
+                },
+                {
+                  "id": "record",
+                  "name": "Record",
+                  "description": "The durable impression left after a transient perception has been selected and fixed."
+                }
+              ],
+              "dynamics": [
+                {
+                  "id": "focus",
+                  "operation": "Focus",
+                  "movement": "diffuse field -> selected subject",
+                  "entailment": "The selected detail gains explanatory weight while competing details lose immediate authority.",
+                  "narrativeAffordance": "Creates a question about why this detail was selected and what the observer refuses to see."
+                },
+                {
+                  "id": "expose",
+                  "operation": "Expose",
+                  "movement": "latent or protected truth -> visible evidence",
+                  "entailment": "Once a truth is legible, ignorance becomes harder to claim and response becomes more obligatory.",
+                  "narrativeAffordance": "Stores pressure between what is now known and what a character is willing to acknowledge."
+                },
+                {
+                  "id": "crop",
+                  "operation": "Crop",
+                  "movement": "context-rich field -> bounded account",
+                  "entailment": "The account becomes clearer but less complete; excluded context may challenge its fairness.",
+                  "narrativeAffordance": "Creates asymmetry between a persuasive image and the larger truth around it."
+                },
+                {
+                  "id": "fix-record",
+                  "operation": "Fix the record",
+                  "movement": "transient impression -> durable memory",
+                  "entailment": "A passing act becomes part of how the relationship will be interpreted later.",
+                  "narrativeAffordance": "Makes repair answerable to remembered injury instead of allowing the moment to evaporate."
+                }
+              ],
+              "guardrails": [
+                "Do not treat the observer as neutral; framing is always selection.",
+                "Do not invent a camera, photograph, or visual fact absent from the passage.",
+                "Do not equate concealment with guilt or exposure with moral truth.",
+                "Prefer consequences of attention and record-making over decorative light imagery."
+              ]
+            },
+            "degrees": {
+              "1": {
+                "nouns": [
+                  "aperture",
+                  "exposure",
+                  "frame",
+                  "shutter",
+                  "negative"
+                ],
+                "verbs": [
+                  "focus",
+                  "expose",
+                  "frame",
+                  "develop",
+                  "capture"
+                ],
+                "modifiers": [
+                  "overexposed",
+                  "blurred",
+                  "sharp",
+                  "backlit"
+                ]
+              },
+              "2": {
+                "nouns": [
+                  "grain",
+                  "contrast",
+                  "darkroom",
+                  "silhouette",
+                  "light-leak"
+                ],
+                "verbs": [
+                  "crop",
+                  "burn",
+                  "fix",
+                  "enlarge"
+                ],
+                "modifiers": [
+                  "grainy",
+                  "high-contrast",
+                  "sepia",
+                  "unfocused"
+                ]
+              },
+              "3": {
+                "nouns": [
+                  "silver bath",
+                  "ghosting",
+                  "latency",
+                  "contact sheet"
+                ],
+                "verbs": [
+                  "bracket",
+                  "dodge",
+                  "redevelop"
+                ],
+                "modifiers": [
+                  "halated",
+                  "solarized",
+                  "undeveloped"
+                ]
+              }
+            },
+            "gradient": [
+              "glance",
+              "look",
+              "gaze",
+              "study",
+              "frame",
+              "exposure",
+              "contact print"
+            ],
+            "cliches": [
+              {
+                "worn": "picture-perfect",
+                "fresh": "framed too carefully to trust"
+              },
+              {
+                "worn": "a snapshot in time",
+                "fresh": "one frame pulled from the reel"
+              },
+              {
+                "worn": "rose-tinted lenses",
+                "fresh": "printed warmer than it was shot"
+              },
+              {
+                "worn": "the big picture",
+                "fresh": "the whole contact sheet"
+              }
+            ],
+            "substitutions": {
+              "plan": "framing",
+              "conflict": "glare",
+              "agreement": "focus",
+              "turning": "the develop",
+              "ending": "the final print"
+            },
+            "metaphor": "the whole evening a contact sheet he would never print",
+            "sample": "She stood at the window, overexposed in the last light, and he stopped the moment down until it held."
+          }
+        },
+        "committedTurnId": "turn-2-system-1006",
+        "directiveId": "pd-1"
+      },
+      {
+        "id": "wc-2",
+        "revision": 1,
+        "createdAt": 1041,
+        "widgetId": "gesture-playground",
+        "draft": {
+          "targetPhrase": "she smiled",
+          "writerInstructions": "",
+          "contextText": "",
+          "characterNotes": "",
+          "sourceReferences": [],
+          "dictionaryMarkdown": "# Gesture Dictionary\n\nA quiet refusal.",
+          "menu": [
+            {
+              "heading": "Route 1",
+              "options": [
+                "Option 1.1",
+                "Option 1.2",
+                "Option 1.3"
+              ]
+            },
+            {
+              "heading": "Route 2",
+              "options": [
+                "Option 2.1",
+                "Option 2.2",
+                "Option 2.3"
+              ]
+            },
+            {
+              "heading": "Route 3",
+              "options": [
+                "Option 3.1",
+                "Option 3.2",
+                "Option 3.3"
+              ]
+            },
+            {
+              "heading": "Route 4",
+              "options": [
+                "Option 4.1",
+                "Option 4.2",
+                "Option 4.3"
+              ]
+            }
+          ],
+          "selections": [
+            "Option 1.1"
+          ],
+          "note": "",
+          "includeDictionaryInCommit": false
+        },
+        "committedTurnId": "turn-19-user-1042",
+        "artifactId": "ta-2"
+      }
+    ],
+    "standingDirectives": [
+      {
+        "id": "pd-1",
+        "family": "lexical-gravity",
+        "widgetId": "lexical-gravity",
+        "widgetConfigId": "wc-1",
+        "revision": 1,
+        "updatedAt": 1005
+      }
+    ],
+    "writerSources": {
+      "host": [
+        {
+          "kind": "pin",
+          "origin": "writer",
+          "label": "Pasted excerpt",
+          "sizeChars": 32,
+          "isEstimate": true,
+          "excerptVersion": 1,
+          "deliveredAt": 1003,
+          "stale": true
+        },
+        {
+          "kind": "message-attachment",
+          "origin": "writer",
+          "label": "Gesture Playground",
+          "sizeChars": 39,
+          "isEstimate": true,
+          "artifactId": "ta-2",
+          "deliveredAt": 1044
+        },
+        {
+          "kind": "pin",
+          "origin": "writer",
+          "label": "Pasted excerpt",
+          "sizeChars": 37,
+          "isEstimate": true,
+          "excerptVersion": 2,
+          "deliveredAt": 1047
+        },
+        {
+          "kind": "message-attachment",
+          "origin": "writer",
+          "label": "beat-sheet.md",
+          "sizeChars": 38,
+          "isEstimate": true,
+          "artifactId": "ta-3",
+          "deliveredAt": 1057
+        }
+      ],
+      "tools": {},
+      "guests": [
+        {
+          "personaId": "margot",
+          "sources": [
+            {
+              "kind": "pin",
+              "origin": "writer",
+              "label": "Pasted excerpt",
+              "sizeChars": 37,
+              "isEstimate": true,
+              "excerptVersion": 2,
+              "deliveredAt": 1047
+            },
+            {
+              "kind": "attachment",
+              "origin": "writer",
+              "label": "Continuity note",
+              "sizeChars": 32,
+              "isEstimate": true,
+              "deliveredAt": 1050
+            },
+            {
+              "kind": "message-attachment",
+              "origin": "writer",
+              "label": "Gesture Playground",
+              "sizeChars": 39,
+              "isEstimate": true,
+              "artifactId": "ta-2",
+              "deliveredAt": 1062
+            },
+            {
+              "kind": "message-attachment",
+              "origin": "writer",
+              "label": "beat-sheet.md",
+              "sizeChars": 38,
+              "isEstimate": true,
+              "artifactId": "ta-3",
+              "deliveredAt": 1063
+            }
+          ]
+        }
+      ]
+    },
+    "turns": [
+      {
+        "id": "turn-1-system-1001",
+        "role": "system",
+        "kind": "divider",
+        "participant": "session",
+        "artifact": "session_start",
+        "excerptVersion": 0,
+        "content": "Session started.",
+        "timestamp": 1002
+      },
+      {
+        "id": "turn-2-system-1006",
+        "role": "system",
+        "kind": "divider",
+        "participant": "session",
+        "artifact": "standing_directive_change",
+        "excerptVersion": 1,
+        "content": "Lexical Gravity installed — Photography · interpret · blend · 60% · 2° · metaphor",
+        "timestamp": 1007,
+        "widgetCommit": {
+          "widgetId": "lexical-gravity",
+          "widgetConfigId": "wc-1",
+          "rail": "standing",
+          "directiveId": "pd-1",
+          "revision": 1
+        },
+        "standingDirectiveChange": {
+          "action": "installed",
+          "family": "lexical-gravity",
+          "widgetId": "lexical-gravity",
+          "directiveId": "pd-1",
+          "widgetConfigId": "wc-1",
+          "revision": 1
+        }
+      },
+      {
+        "id": "turn-3-user-1008",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "content": "What is this scene doing?",
+        "timestamp": 1009,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-4-assistant-1010",
+        "role": "assistant",
+        "kind": "tool_run",
+        "participant": "tool",
+        "artifact": "tool_report",
+        "toolId": "continuity",
+        "toolLabel": "Continuity",
+        "capability": {
+          "operation": "analysis.run",
+          "status": "success",
+          "requestSummary": "Continuity check 1",
+          "requestedByPersonaId": "jill",
+          "invokedBy": {
+            "kind": "host"
+          },
+          "metadata": {
+            "toolId": "continuity"
+          },
+          "publishedWithTurnId": "turn-6-assistant-1014"
+        },
+        "content": "Continuity check 1: the cup changes hands twice.",
+        "timestamp": 1011,
+        "excerptVersion": 1
+      },
+      {
+        "id": "turn-5-assistant-1012",
+        "role": "assistant",
+        "kind": "tool_run",
+        "participant": "tool",
+        "artifact": "tool_report",
+        "toolId": "continuity",
+        "toolLabel": "Continuity",
+        "capability": {
+          "operation": "analysis.run",
+          "status": "success",
+          "requestSummary": "Continuity check 2",
+          "requestedByPersonaId": "jill",
+          "invokedBy": {
+            "kind": "host"
+          },
+          "metadata": {
+            "toolId": "continuity"
+          },
+          "publishedWithTurnId": "turn-6-assistant-1014"
+        },
+        "content": "Continuity check 2: the cup changes hands twice.",
+        "timestamp": 1013,
+        "excerptVersion": 1
+      },
+      {
+        "id": "turn-6-assistant-1014",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "host",
+        "artifact": "persona_message",
+        "personaId": "jill",
+        "personaLabel": "Jill",
+        "content": "Host reply to \"What is this scene doing?\".",
+        "timestamp": 1015,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-7-user-1016",
+        "role": "user",
+        "kind": "tool_run",
+        "participant": "writer",
+        "artifact": "tool_request",
+        "toolId": "prose",
+        "toolLabel": "Prose",
+        "content": "Run **Prose** on the pinned excerpt.",
+        "timestamp": 1017,
+        "excerptVersion": 1
+      },
+      {
+        "id": "turn-8-assistant-1018",
+        "role": "assistant",
+        "kind": "tool_run",
+        "participant": "tool",
+        "artifact": "tool_report",
+        "toolId": "prose",
+        "toolLabel": "Prose",
+        "reportTurnId": "turn-8-assistant-1018",
+        "content": "prose report.",
+        "timestamp": 1019,
+        "excerptVersion": 1
+      },
+      {
+        "id": "turn-9-assistant-1020",
+        "role": "assistant",
+        "kind": "tool_run",
+        "participant": "host",
+        "artifact": "persona_synthesis",
+        "personaId": "jill",
+        "personaLabel": "Jill",
+        "reportTurnId": "turn-8-assistant-1018",
+        "content": "Host synthesis of prose.",
+        "timestamp": 1021,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-10-user-1022",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "direct_tool_message",
+        "toolId": "prose",
+        "toolLabel": "Prose",
+        "reportTurnId": "turn-8-assistant-1018",
+        "messageAttachments": [
+          {
+            "label": "draft-notes.md",
+            "words": 5,
+            "id": "ta-1"
+          }
+        ],
+        "content": "Which sentence drags?",
+        "timestamp": 1023,
+        "excerptVersion": 1
+      },
+      {
+        "id": "turn-11-assistant-1024",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "tool",
+        "artifact": "direct_tool_response",
+        "toolId": "prose",
+        "toolLabel": "Prose",
+        "reportTurnId": "turn-8-assistant-1018",
+        "content": "prose follow-up to \"Which sentence drags?\".",
+        "timestamp": 1025,
+        "excerptVersion": 1
+      },
+      {
+        "id": "turn-12-user-1027",
+        "role": "user",
+        "kind": "tool_run",
+        "participant": "writer",
+        "artifact": "tool_request",
+        "toolId": "prose",
+        "toolLabel": "Prose",
+        "content": "Run **Prose** on the pinned excerpt.",
+        "timestamp": 1028,
+        "excerptVersion": 1
+      },
+      {
+        "id": "turn-13-assistant-1029",
+        "role": "assistant",
+        "kind": "tool_run",
+        "participant": "tool",
+        "artifact": "tool_report",
+        "toolId": "prose",
+        "toolLabel": "Prose",
+        "reportTurnId": "turn-13-assistant-1029",
+        "content": "prose report.",
+        "timestamp": 1030,
+        "excerptVersion": 1
+      },
+      {
+        "id": "turn-14-assistant-1031",
+        "role": "assistant",
+        "kind": "tool_run",
+        "participant": "host",
+        "artifact": "persona_synthesis",
+        "personaId": "jill",
+        "personaLabel": "Jill",
+        "reportTurnId": "turn-13-assistant-1029",
+        "content": "Host synthesis of prose.",
+        "timestamp": 1032,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-15-user-1033",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "personaId": "margot",
+        "personaLabel": "Margot",
+        "content": "Margot, read this with us.",
+        "timestamp": 1034,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-16-assistant-1035",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "guest",
+        "artifact": "persona_message",
+        "personaId": "margot",
+        "personaLabel": "Margot",
+        "content": "margot joins.",
+        "timestamp": 1036,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-17-user-1037",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "personaId": "margot",
+        "personaLabel": "Margot",
+        "content": "How does the voice sound?",
+        "timestamp": 1038,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-18-assistant-1039",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "guest",
+        "artifact": "persona_message",
+        "personaId": "margot",
+        "personaLabel": "Margot",
+        "content": "margot reply to \"How does the voice sound?\".",
+        "timestamp": 1040,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-19-user-1042",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "widgetCommit": {
+          "widgetId": "gesture-playground",
+          "widgetConfigId": "wc-2",
+          "rail": "thread-artifact",
+          "artifactId": "ta-2",
+          "selectionCount": 1
+        },
+        "content": "Here are the directions I want.",
+        "timestamp": 1043,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-20-assistant-1045",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "host",
+        "artifact": "persona_message",
+        "personaId": "jill",
+        "personaLabel": "Jill",
+        "content": "Host reply to the gesture directions.",
+        "timestamp": 1046,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-21-system-1048",
+        "role": "system",
+        "kind": "divider",
+        "participant": "session",
+        "artifact": "excerpt_revision",
+        "excerptVersion": 2,
+        "content": "Excerpt v2 pinned · Pasted excerpt · retired: Prose",
+        "timestamp": 1049
+      },
+      {
+        "id": "turn-22-system-1051",
+        "role": "system",
+        "kind": "divider",
+        "participant": "session",
+        "artifact": "context_change",
+        "excerptVersion": 2,
+        "content": "Added context: Continuity note · 7 words",
+        "timestamp": 1052
+      },
+      {
+        "id": "turn-23-user-1053",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "messageAttachments": [
+          {
+            "label": "beat-sheet.md",
+            "words": 8,
+            "id": "ta-3"
+          }
+        ],
+        "content": "Does the revision land?",
+        "timestamp": 1054,
+        "excerptVersion": 2,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-24-assistant-1055",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "host",
+        "artifact": "persona_message",
+        "personaId": "jill",
+        "personaLabel": "Jill",
+        "content": "Host reply to \"Does the revision land?\".",
+        "timestamp": 1056,
+        "excerptVersion": 2,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-25-user-1058",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "personaId": "margot",
+        "personaLabel": "Margot",
+        "content": "Margot, back for another look?",
+        "timestamp": 1059,
+        "excerptVersion": 2,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-26-assistant-1060",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "guest",
+        "artifact": "persona_message",
+        "personaId": "margot",
+        "personaLabel": "Margot",
+        "content": "margot joins.",
+        "timestamp": 1061,
+        "excerptVersion": 2,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-27-user-1064",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "content": "Never mind that.",
+        "timestamp": 1065,
+        "excerptVersion": 2,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-28-user-1066",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "content": "Where should the chapter end?",
+        "timestamp": 1067,
+        "excerptVersion": 2,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-29-assistant-1068",
+        "role": "assistant",
+        "kind": "tool_run",
+        "participant": "tool",
+        "artifact": "tool_report",
+        "toolId": "continuity",
+        "toolLabel": "Continuity",
+        "capability": {
+          "operation": "analysis.run",
+          "status": "success",
+          "requestSummary": "Continuity check 1",
+          "requestedByPersonaId": "jill",
+          "invokedBy": {
+            "kind": "host"
+          },
+          "metadata": {
+            "toolId": "continuity"
+          },
+          "publishedWithTurnId": "turn-30-assistant-1070"
+        },
+        "content": "Continuity check 1: the cup changes hands twice.",
+        "timestamp": 1069,
+        "excerptVersion": 2
+      },
+      {
+        "id": "turn-30-assistant-1070",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "host",
+        "artifact": "persona_message",
+        "personaId": "jill",
+        "personaLabel": "Jill",
+        "content": "Host reply to \"Where should the chapter end?\".",
+        "timestamp": 1071,
+        "excerptVersion": 2,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      }
+    ],
+    "participants": {
+      "host": {
+        "personaId": "jill",
+        "conversationKey": "host",
+        "lastSeenRoomTurnId": "turn-26-assistant-1060"
+      },
+      "toolSidecars": [],
+      "personaGuests": [
+        {
+          "personaId": "margot",
+          "conversationKey": "guest:margot",
+          "lastSeenRoomTurnId": "turn-25-user-1058",
+          "liveness": "live"
+        }
+      ],
+      "chatTarget": {
+        "kind": "host"
+      }
+    },
+    "selectedToolId": "prose",
+    "todos": [],
+    "retainedHistoryMarks": [
+      {
+        "turnId": "turn-6-assistant-1014",
+        "conversationKey": "host",
+        "messageCount": 6,
+        "contextSourceCount": 2,
+        "writerSourceCount": 1,
+        "lastSeenRoomTurnId": "turn-2-system-1006",
+        "contextRevision": 0,
+        "origin": "commit"
+      },
+      {
+        "turnId": "turn-9-assistant-1020",
+        "conversationKey": "host",
+        "messageCount": 8,
+        "contextSourceCount": 2,
+        "writerSourceCount": 1,
+        "lastSeenRoomTurnId": "turn-8-assistant-1018",
+        "contextRevision": 0,
+        "origin": "commit"
+      },
+      {
+        "turnId": "turn-14-assistant-1031",
+        "conversationKey": "host",
+        "messageCount": 10,
+        "contextSourceCount": 2,
+        "writerSourceCount": 1,
+        "lastSeenRoomTurnId": "turn-13-assistant-1029",
+        "contextRevision": 0,
+        "origin": "commit"
+      },
+      {
+        "turnId": "turn-20-assistant-1045",
+        "conversationKey": "host",
+        "messageCount": 12,
+        "contextSourceCount": 2,
+        "writerSourceCount": 2,
+        "lastSeenRoomTurnId": "turn-18-assistant-1039",
+        "contextRevision": 0,
+        "origin": "commit"
+      },
+      {
+        "turnId": "turn-24-assistant-1055",
+        "conversationKey": "host",
+        "messageCount": 14,
+        "contextSourceCount": 2,
+        "writerSourceCount": 4,
+        "lastSeenRoomTurnId": "turn-22-system-1051",
+        "contextRevision": 1,
+        "origin": "commit"
+      },
+      {
+        "turnId": "turn-26-assistant-1060",
+        "conversationKey": "guest:margot",
+        "messageCount": 2,
+        "contextSourceCount": 0,
+        "writerSourceCount": 4,
+        "lastSeenRoomTurnId": "turn-25-user-1058",
+        "origin": "commit"
+      },
+      {
+        "turnId": "turn-30-assistant-1070",
+        "conversationKey": "host",
+        "messageCount": 18,
+        "contextSourceCount": 3,
+        "writerSourceCount": 4,
+        "lastSeenRoomTurnId": "turn-26-assistant-1060",
+        "contextRevision": 1,
+        "origin": "commit"
+      }
+    ],
+    "lastCommittedPersonaBehavior": {
+      "interactionMode": "balanced",
+      "expressionLevel": "full",
+      "relationalDepth": "attuned"
+    }
+  },
+  "conversations": [
+    {
+      "key": "host",
+      "toolName": "workshop_persona_jill",
+      "messages": [
+        {
+          "role": "user",
+          "content": "[host] What is this scene doing?"
+        },
+        {
+          "role": "assistant",
+          "content": "<capability-request>Continuity check 1</capability-request>"
+        },
+        {
+          "role": "user",
+          "content": "<agent-evidence id=\"art-1\">Continuity check 1 result</agent-evidence>"
+        },
+        {
+          "role": "assistant",
+          "content": "<capability-request>Continuity check 2</capability-request>"
+        },
+        {
+          "role": "user",
+          "content": "<agent-evidence id=\"art-2\">Continuity check 2 result</agent-evidence>"
+        },
+        {
+          "role": "assistant",
+          "content": "Host reply to \"What is this scene doing?\"."
+        },
+        {
+          "role": "user",
+          "content": "[host] synthesize prose"
+        },
+        {
+          "role": "assistant",
+          "content": "Host synthesis of prose."
+        },
+        {
+          "role": "user",
+          "content": "[host] synthesize prose"
+        },
+        {
+          "role": "assistant",
+          "content": "Host synthesis of prose."
+        },
+        {
+          "role": "user",
+          "content": "[host] gesture directions ta-2"
+        },
+        {
+          "role": "assistant",
+          "content": "Host reply to the gesture directions."
+        },
+        {
+          "role": "user",
+          "content": "[host] Does the revision land?"
+        },
+        {
+          "role": "assistant",
+          "content": "Host reply to \"Does the revision land?\"."
+        },
+        {
+          "role": "user",
+          "content": "[host] Where should the chapter end?"
+        },
+        {
+          "role": "assistant",
+          "content": "<capability-request>Continuity check 1</capability-request>"
+        },
+        {
+          "role": "user",
+          "content": "<agent-evidence id=\"art-3\">Continuity check 1 result</agent-evidence>"
+        },
+        {
+          "role": "assistant",
+          "content": "Host reply to \"Where should the chapter end?\"."
+        }
+      ],
+      "lastActivity": 1795041211329,
+      "contextSources": [
+        {
+          "kind": "resource",
+          "origin": "host",
+          "label": "Characters/margot.md",
+          "sizeChars": 120,
+          "isEstimate": true,
+          "deliveredAt": 1013,
+          "artifactId": "art-1",
+          "stale": true
+        },
+        {
+          "kind": "resource",
+          "origin": "host",
+          "label": "Chapters/ch-02.md",
+          "sizeChars": 120,
+          "isEstimate": true,
+          "deliveredAt": 1013,
+          "artifactId": "art-2"
+        },
+        {
+          "kind": "resource",
+          "origin": "host",
+          "label": "Characters/margot.md",
+          "sizeChars": 120,
+          "isEstimate": true,
+          "deliveredAt": 1069,
+          "artifactId": "art-3"
+        }
+      ],
+      "nextArtifactNumber": 3
+    },
+    {
+      "key": "guest:margot",
+      "toolName": "workshop_guest_margot",
+      "messages": [
+        {
+          "role": "user",
+          "content": "[join margot] 22 room turns; Margot, back for another look?"
+        },
+        {
+          "role": "assistant",
+          "content": "margot joins."
+        }
+      ],
+      "lastActivity": 1795041211326,
+      "contextSources": [],
+      "nextArtifactNumber": 0
+    }
+  ]
+}

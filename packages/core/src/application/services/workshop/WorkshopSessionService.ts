@@ -1560,6 +1560,8 @@ export class WorkshopSessionService {
         case 'lens.read': return 'lens_read';
         case 'help.search': return 'help_search';
         case 'help.read': return 'help_read';
+        case 'history.log': return 'history_log';
+        case 'history.diff': return 'history_diff';
         default: return assertNever(input.details.operation);
       }
     })();

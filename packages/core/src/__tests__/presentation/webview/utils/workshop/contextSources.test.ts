@@ -98,7 +98,8 @@ describe('readInOpenAction', () => {
     'tool-evidence': { kind: 'none' },
     dictionary: { kind: 'none' },
     transcript: { kind: 'none' },
-    memory: { kind: 'none' }
+    memory: { kind: 'none' },
+    history: { kind: 'none' }
   };
 
   it.each(CONTEXT_SOURCE_KINDS.map((kind) => [kind]))('gives %s exactly one action', (kind) => {
@@ -118,7 +119,8 @@ describe('readInOpenAction', () => {
       dictionary: { kind: 'jump', turnId: CARD },
       transcript: { kind: 'jump', turnId: CARD },
       // A Project note opens its card (ADR 2026-11-04 D12).
-      memory: { kind: 'jump', turnId: CARD }
+      memory: { kind: 'jump', turnId: CARD },
+      history: { kind: 'jump', turnId: CARD }
     };
 
     it.each(CONTEXT_SOURCE_KINDS.map((kind) => [kind]))('gives %s exactly one action', (kind) => {

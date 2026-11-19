@@ -6,6 +6,7 @@
  * stays out of the card's metadata and the evidence the persona reads.
  */
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { createHash } from 'crypto';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
@@ -111,7 +112,8 @@ describe('persona capability read-in provenance', () => {
       unusedRecall,
       offProjectMemory,
       noProjectLenses,
-      unavailableHelpReference
+      unavailableHelpReference,
+      unavailableFileHistory
     ).create({
       requestId,
       excerptVersion: session.getExcerptVersion(),

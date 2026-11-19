@@ -159,6 +159,38 @@ export interface PromptBudgets {
     catalogItems: number;
     readSections: number;
   }>;
+  /**
+   * A file's git history for personas (ADR 2026-11-19 D17). `history.log`
+   * lists `logPageCommits` a page and reads at most `logScanCommits` back;
+   * a commit's shown id, subject and author are cut to their characters.
+   * `history.diff` refuses a side past `diffSourceBytes`, shows
+   * `contextParagraphs` unchanged paragraph(s) beside a run of changes, each
+   * cut to `contextCharacters`, and word-diffs a changed paragraph only up
+   * to `wordDiffParagraphCharacters` and `maxEditLength` (the algorithm's
+   * work bound, never its correctness). With no known window a diff is
+   * bounded by `diffBytes`. The paragraph alignment has its own ceiling
+   * (D13a; PR #286 F-03): a side past `alignParagraphs` paragraphs, or an
+   * alignment past `paragraphEditLength`, refuses the diff in words.
+   * `alignCacheEntries` computed change lists are kept per window, so a
+   * continuation never aligns again. `gitReadyMs` is how long a host waits for its git to start.
+   */
+  readonly workshopHistory: Readonly<{
+    logPageCommits: number;
+    logScanCommits: number;
+    shownIdCharacters: number;
+    subjectCharacters: number;
+    authorCharacters: number;
+    diffSourceBytes: number;
+    diffBytes: number;
+    contextParagraphs: number;
+    contextCharacters: number;
+    wordDiffParagraphCharacters: number;
+    maxEditLength: number;
+    alignParagraphs: number;
+    paragraphEditLength: number;
+    alignCacheEntries: number;
+    gitReadyMs: number;
+  }>;
   /** Bundled Prose Minion reference (ADR 2026-11-17 D25). */
   readonly workshopHelp: Readonly<{
     queryCharacters: number;
@@ -804,6 +836,23 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   },
   workshopCapabilityPaging: { pageDigits: 9 },
   workshopLens: { catalogItems: 50, readSections: 7 },
+  workshopHistory: {
+    logPageCommits: 20,
+    logScanCommits: 1_000,
+    shownIdCharacters: 10,
+    subjectCharacters: 200,
+    authorCharacters: 80,
+    diffSourceBytes: 2 * 1024 * 1024,
+    diffBytes: 64 * 1024,
+    contextParagraphs: 1,
+    contextCharacters: 400,
+    wordDiffParagraphCharacters: 20_000,
+    maxEditLength: 10_000,
+    alignParagraphs: 5_000,
+    paragraphEditLength: 1_000,
+    alignCacheEntries: 4,
+    gitReadyMs: 5_000
+  },
   workshopHelp: {
     queryCharacters: 200,
     searchHits: 8,

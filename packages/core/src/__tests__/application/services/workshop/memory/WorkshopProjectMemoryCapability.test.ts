@@ -7,6 +7,7 @@
  * output. *Alice*, with made-up ids.
  */
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   WorkshopPersonaCapability,
@@ -55,7 +56,8 @@ function wire(host: ReturnType<typeof libraryHost>) {
     {} as WorkshopTranscriptRecallPort,
     host.library,
     noProjectLenses,
-    unavailableHelpReference
+    unavailableHelpReference,
+    unavailableFileHistory
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),

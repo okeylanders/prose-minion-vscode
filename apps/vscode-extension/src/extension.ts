@@ -79,6 +79,8 @@ import {
   FileEditStagingService,
   ProjectFileEditGateway,
   workshopExcerptFileEditDocument,
+  workshopHistoryExcerptFile,
+  WorkshopHistoryDiffCache,
   CraftFlagsService,
   HelperAgentService,
   EditorSelectionSnapshots,
@@ -106,6 +108,7 @@ import { VsCodeSettingsStore } from './platform/vscode/VsCodeSettingsStore';
 import { VsCodeFileSystem } from './platform/vscode/VsCodeFileSystem';
 import { VsCodeWorkspace } from './platform/vscode/VsCodeWorkspace';
 import { VsCodeShellService } from './platform/vscode/VsCodeShellService';
+import { VsCodeFileHistory } from './platform/vscode/VsCodeFileHistory';
 import {
   ADD_SELECTION_TO_WORKSHOP_MESSAGE_COMMAND,
   addSelectionToWorkshopMessage
@@ -194,7 +197,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     editor: editorContext,
     documents: documentEditor,
     annotations: issueAnnotator,
-    craftAnnotations: craftAnnotator
+    craftAnnotations: craftAnnotator,
+    // Over the built-in Git extension's API; spawns no process (ADR 2026-11-19 D12).
+    fileHistory: new VsCodeFileHistory()
   };
 
   // SPRINT 01: Initialize infrastructure layer (dependency injection)
@@ -442,6 +447,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     extensionInfo.version,
     outputChannel
   );
+  // A file's git history for personas (ADR 2026-11-19 D11): the host's history port, the saved
+  // file, and the room's excerpt file, authorized as Re-read from file authorizes it.
+  const workshopHistoryPorts = {
+    history: platform.fileHistory,
+    fileSystem: platform.fileSystem,
+    excerpt: workshopHistoryExcerptFile(
+      workshopSessionService,
+      new WorkshopContextIntakeService(contextResourceResolver.countsOnly(), platform.fileSystem, platform.workspace)
+    ),
+    // One cache for every turn: a continuation never aligns the paragraphs again (PR #286 F-03).
+    diffs: new WorkshopHistoryDiffCache()
+  };
   // Each participant turn uses the same session, library and reference readers.
   const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
     dictionaryService,
@@ -452,7 +469,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopTranscriptRecallService,
     projectMemoryLibrary,
     lexicalGravityLensRepository,
-    workshopHelpReference
+    workshopHelpReference,
+    workshopHistoryPorts
   );
   const workshopToolSidePass = new RunWorkshopToolSidePass(
     assistantToolService,
