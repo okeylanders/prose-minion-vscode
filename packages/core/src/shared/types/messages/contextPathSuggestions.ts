@@ -137,7 +137,7 @@ export type ContextPathsSuggestionOutcome =
   | 'no-workspace'
   /** The scan read every folder and found none holding a Markdown or text file. */
   | 'no-folders'
-  /** The scan found no such folder, but some folders could not be read: not "none". */
+  /** The scan found no such folder, but it stopped at a bound or could not read some folders: not "none". */
   | 'scan-incomplete'
   /** No API key: nothing was sent. */
   | 'unconfigured'

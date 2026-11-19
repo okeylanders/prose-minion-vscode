@@ -101,9 +101,10 @@ export class ContextPathSuggestionService {
       return end('no-workspace');
     }
     if (scanned.folders.length === 0) {
-      // An empty scan with unreadable folders is not an empty project (PR #288 P2).
-      return scanned.unreadable > 0
-        ? end('scan-incomplete', `, ${scanned.unreadable} folder(s) unreadable`)
+      // An empty scan that stopped early, or could not read a folder, says nothing about the whole
+      // project (PR #288 P2 and its re-review): only a complete empty scan is "no folders".
+      return scanned.unreadable > 0 || scanned.stopped.length > 0
+        ? end('scan-incomplete', `, ${scanned.unreadable} folder(s) unreadable${scanned.stopped.length > 0 ? `, stopped at ${scanned.stopped.join(', ')}` : ''}`)
         : end('no-folders');
     }
     const input: ProjectLocationsInput = {

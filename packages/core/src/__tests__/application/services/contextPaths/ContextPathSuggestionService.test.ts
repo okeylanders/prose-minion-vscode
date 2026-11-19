@@ -13,6 +13,7 @@ import type { ProjectLocationsProposal } from '@services/helper/tasks/ProjectLoc
 import { ALICE_NAMES } from './aliceProject';
 import { aliceChecker, EMPTY_SETTINGS } from './aliceChecker';
 import type { AliceProjectOptions } from './aliceProject';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 const PROPOSAL: ProjectLocationsProposal = {
   groups: {
@@ -196,6 +197,37 @@ describe('ContextPathSuggestionService', () => {
       expect(helper.run).not.toHaveBeenCalled();
       const bare = serviceFor({ roots: { '/alice': ['picture.png'] } });
       expect((await bare.service.suggest()).outcome).toBe('no-folders');
+    });
+
+    it('answers scan-incomplete when a bound stops an empty scan, with nothing unreadable (PR #288 re-review)', async () => {
+      const host = aliceChecker({ roots: { '/alice': ['a.png', 'b.png', 'c.png', 'Cast/Alice.md'] } });
+      const helper = { run: jest.fn() };
+      const service = new ContextPathSuggestionService(
+        new ProjectFolderScan(host.project.fileSystem, host.project.workspace, host.project.log, { ...PROMPT_BUDGETS.contextPaths, scanEntries: 3 }),
+        helper,
+        host.checker,
+        host.settings,
+        host.project.log
+      );
+      expect((await service.suggest()).outcome).toBe('scan-incomplete');
+      expect(helper.run).not.toHaveBeenCalled();
+      expect(host.project.lines.join('\n')).toContain('0 folder(s) unreadable, stopped at entries');
+    });
+
+    it('marks a non-empty scan a bound stopped as partial, in the view and the helper\'s input', async () => {
+      const host = aliceChecker();
+      const helper = { run: jest.fn(async () => ({ kind: 'drafted' as const, value: PROPOSAL })) };
+      const service = new ContextPathSuggestionService(
+        new ProjectFolderScan(host.project.fileSystem, host.project.workspace, host.project.log, { ...PROMPT_BUDGETS.contextPaths, scanDepth: 1 }),
+        helper,
+        host.checker,
+        host.settings,
+        host.project.log
+      );
+      const answer = await service.suggest();
+      expect(answer.outcome).toBe('proposed');
+      expect(answer.view?.scan).toMatchObject({ stopped: true, unreadable: 0 });
+      expect((helper.run.mock.calls[0] as unknown[])[1]).toMatchObject({ scanStopped: true });
     });
   });
 

@@ -123,7 +123,7 @@ export const ContextPathsSuggestionSheet: React.FC<{ suggestion: UseContextPaths
             </div>
           )}
           {view.scan?.stopped && (
-            <div className="pm-cps-note">The project has more folders than one suggestion reads; the deepest were left out.</div>
+            <div className="pm-cps-note">The folder scan stopped early, so this suggestion was made from part of the project; the deepest folders were left out.</div>
           )}
           {proposedGroups.length === 0 ? (
             <div className="pm-cps-note">Nothing was proposed.</div>
