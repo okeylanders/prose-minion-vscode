@@ -1,0 +1,13 @@
+# PR #286: Workshop Persona Tools spec, third re-review
+
+**Astra 6.2 · Changes requested. Not approved for merge into `epic/workshop-persona-tools`.**
+
+Reviewed `1e024cdbebdbe64c4ae9cc6bff3d5501e61adf09`. The per-owner checkpoint paths stop direct aliasing of a successor's rollback file, and the recovery marker closes the stable midpoint gap. Two ownership boundaries remain:
+
+- [D6d, line 478](https://github.com/okeylanders/prose-minion-vscode/blob/1e024cdbebdbe64c4ae9cc6bff3d5501e61adf09/docs/adr/2026-11-19-workshop-persona-tools.md#L478): **P1 · Release still moves the live lock before proving ownership.** Per-token paths prevent cleanup of the successor’s individual files. But the release step still detaches the canonical directory before checking `owner.json`. A retired owner can therefore move the successor’s entire lock, including its rollback copy. If release stops before restoring it, or another writer acquires the now-vacant name, the rollback copy can be stranded outside the specified recovery path. The witness’s claim that every stale rename finds nothing does not cover this operation. Require release never to move a successor’s lock; verify stale release leaves the successor and its rollback copy discoverable.
+
+- [D6d, line 489](https://github.com/okeylanders/prose-minion-vscode/blob/1e024cdbebdbe64c4ae9cc6bff3d5501e61adf09/docs/adr/2026-11-19-workshop-persona-tools.md#L489): **P2 · A physical recovery marker does not make separate reads consistent.** A reader can combine a file miss from before restoration with lock and marker misses after restoration and cleanup, and wrongly detach the room. Make the absence decision under the same exclusive ownership mechanism, or specify an equivalent consistent retry protocol. Verify reads that straddle the transition, not just reads paused at a stable midpoint.
+
+A simpler first slice is to disable automatic lease takeover: report busy or recovery required, allow only the owner to release during ordinary operation, and recover abandoned state explicitly with all writers stopped. Make a definitive missing decision only after reading under exclusive ownership. This trades unattended recovery for preserving the writer's data.
+
+The previously resolved Undo and separate losing-room checkpoint findings stay closed. This was a spec/source review, not implementation validation. [Exact-head CI #2402](https://github.com/okeylanders/prose-minion-vscode/actions/runs/44511887591) first failed on the existing LightboxPassages wall-clock assertion; the diff is documentation only. A retry was requested; flakiness is unconfirmed at publication.
