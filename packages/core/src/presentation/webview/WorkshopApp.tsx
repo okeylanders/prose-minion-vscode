@@ -53,6 +53,7 @@ import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProj
 import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import { useWorkshopFileEdits } from '@hooks/domain/workshop/useWorkshopFileEdits';
 import { useWorkshopTodoReceiptControls } from '@components/workshop/todos/useWorkshopTodoReceiptControls';
+import { useWorkshopLocationsProposalControls } from '@components/workshop/locations/useWorkshopLocationsProposalControls';
 import { useWorkshopNamedSessionRecovery } from '@hooks/domain/workshop/useWorkshopNamedSessionRecovery';
 import { WorkshopNamedSessionRecoveryMount } from '@components/workshop/WorkshopNamedSessionRecoveryMount';
 import { useWorkshopFileEditControls } from '@components/workshop/fileEdits/useWorkshopFileEditControls';
@@ -626,6 +627,7 @@ export const WorkshopApp: React.FC = () => {
 
   const fileEditControls = useWorkshopFileEditControls({ fileEdits, locked: roomMutationLocked, running: workshop.isRunning });
   const todoReceiptControls = useWorkshopTodoReceiptControls({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}), locked: roomMutationLocked });
+  const locationsProposalControls = useWorkshopLocationsProposalControls({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}), locked: roomMutationLocked });
   const reactionControls = React.useMemo<WorkshopReactionControls>(() => ({
     reactionsOf: (turnId) => reactions.reactionsByTurn.get(turnId) ?? NO_TURN_REACTIONS,
     disabled: roomMutationLocked,
@@ -1455,6 +1457,7 @@ export const WorkshopApp: React.FC = () => {
             memory={memoryControls}
             fileEdits={fileEditControls}
             todoReceipt={todoReceiptControls}
+            locationsProposal={locationsProposalControls}
             reactions={reactionControls}
             editOffers={editOfferControls}
             modelOptions={modelsSettings.modelOptions}

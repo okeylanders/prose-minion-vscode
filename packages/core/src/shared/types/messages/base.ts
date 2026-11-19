@@ -167,6 +167,9 @@ export enum MessageType {
   // A persona's to-do status change undone by the writer, and what it came to (ADR 2026-11-19 D8).
   WORKSHOP_UNDO_TODO_STATUS = 'workshop_undo_todo_status',
   WORKSHOP_TODO_STATUS_UNDO_RESULT = 'workshop_todo_status_undo_result',
+  // A persona's context-paths proposal card applied or declined by the writer (ADR 2026-11-19 D27).
+  WORKSHOP_APPLY_LOCATIONS_PROPOSAL = 'workshop_apply_locations_proposal',
+  WORKSHOP_LOCATIONS_PROPOSAL_RESULT = 'workshop_locations_proposal_result',
   WORKSHOP_RECOVER_NAMED_SESSION = 'workshop_recover_named_session',
   WORKSHOP_NAMED_SESSION_RECOVERY_RESULT = 'workshop_named_session_recovery_result',
   WORKSHOP_SET_TURN_BOOKMARK = 'workshop_set_turn_bookmark',

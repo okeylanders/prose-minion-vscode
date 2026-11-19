@@ -6,6 +6,7 @@
  * persona reads.
  */
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
@@ -105,7 +106,8 @@ describe('persona capability model stamps', () => {
       offProjectMemory,
       noProjectLenses,
       unavailableHelpReference,
-      unavailableFileHistory
+      unavailableFileHistory,
+      unavailableProjectLocations
     ).create({
       requestId: 'host-request',
       excerptVersion: session.getExcerptVersion(),

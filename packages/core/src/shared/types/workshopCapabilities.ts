@@ -35,7 +35,11 @@ export const WORKSHOP_CAPABILITY_OPERATIONS = [
   'help.read',
   // ADR 2026-11-19 D11: a file's git history, read-only.
   'history.log',
-  'history.diff'
+  'history.diff',
+  // ADR 2026-11-19 D26: the project's context paths, read-only.
+  'locations.current',
+  'locations.folders',
+  'locations.check'
 ] as const;
 
 export type WorkshopCapabilityOperation = typeof WORKSHOP_CAPABILITY_OPERATIONS[number];
@@ -51,7 +55,8 @@ export const isWorkshopCapabilityOperation = (value: unknown): value is Workshop
  * of borrowing another family's name through an implicit "otherwise".
  */
 export type WorkshopCapabilityFamily =
-  | 'dictionary' | 'analysis' | 'resource' | 'transcript' | 'memory' | 'lens' | 'help' | 'history';
+  | 'dictionary' | 'analysis' | 'resource' | 'transcript' | 'memory' | 'lens' | 'help' | 'history'
+  | 'locations';
 
 export function workshopCapabilityFamily(
   operation: WorkshopCapabilityOperation
@@ -85,6 +90,10 @@ export function workshopCapabilityFamily(
     case 'history.log':
     case 'history.diff':
       return 'history';
+    case 'locations.current':
+    case 'locations.folders':
+    case 'locations.check':
+      return 'locations';
     default: {
       const unhandled: never = operation;
       throw new Error(`Unhandled Workshop capability operation: ${String(unhandled)}`);
@@ -206,7 +215,24 @@ export type WorkshopCapabilityRequest =
   | WorkshopProjectMemoryRequest
   | WorkshopLensRequest
   | WorkshopHelpRequest
-  | WorkshopHistoryRequest;
+  | WorkshopHistoryRequest
+  | WorkshopLocationsRequest;
+
+/** One `<pattern group="…">` of `locations.check`, as the codec read it. */
+export interface WorkshopLocationsCheckPattern {
+  group: ContextPathGroup;
+  pattern: string;
+}
+
+/**
+ * The project's context paths, read-only (ADR 2026-11-19 D26): each group's
+ * patterns now, the names-only folder scan a page at a time, and what
+ * proposed patterns would match. None writes a setting.
+ */
+export type WorkshopLocationsRequest =
+  | { capability: 'locations.current' }
+  | { capability: 'locations.folders'; page?: number }
+  | { capability: 'locations.check'; patterns: WorkshopLocationsCheckPattern[] };
 
 /**
  * The file a `history.*` call names (ADR 2026-11-19 D11): the room's excerpt

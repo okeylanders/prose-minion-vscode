@@ -46,7 +46,10 @@ export const WORKSHOP_TRAILER_DROP_REASON_WORDS: Readonly<Record<WorkshopTrailer
   'session-unreadable': 'the session it named could not be read, or must be opened first',
   'sessions-unavailable': 'saved sessions could not be reached just then',
   'todo-not-found': 'no to-do in that session has the id it named',
-  'todo-not-open': 'the to-do it named is not open'
+  'todo-not-open': 'the to-do it named is not open',
+  'nothing-kept': 'no pattern it proposed was safe and found a file',
+  'workspace-unavailable': 'the project\'s folders could not be checked just then',
+  'too-large': 'a group\'s current context paths are too long to show on a card'
 });
 
 /** Why a saved session's change was not written (ADR 2026-11-19 D7): the row's reason, after the record. */
@@ -123,6 +126,19 @@ export function workshopTrailerOutcomeLines(
     ];
     if (parts.length > 0) {
       lines.push(`Your last reply's file edits: ${parts.join(', ')}.`);
+    }
+  }
+  if (outcomes.locations) {
+    const { patterns } = outcomes.locations;
+    const parts = [
+      ...(outcomes.locations.cards > 0
+        ? [`shown as a card for the writer to review, with ${patterns.kept} ${patterns.kept === 1 ? 'pattern' : 'patterns'} kept`
+          + `, ${patterns.unmatched} matching no file, ${patterns.incomplete} not checked completely and ${patterns.refused} refused`]
+        : []),
+      ...outcomes.locations.dropped.map(droppedFor)
+    ];
+    if (parts.length > 0) {
+      lines.push(`Your last reply's context-paths proposal: ${parts.join(', ')}.`);
     }
   }
   if (outcomes.todos) {

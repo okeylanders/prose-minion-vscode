@@ -113,7 +113,8 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     // Everyday Conveniences round two, item A added a long room's earlier turns.
     // Workshop Persona Tools item A added the writer's Undo of a persona's to-do change, and Recover… (D6e).
     expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_EARLIER_TURNS)).toBe(true);
-    expect(router.handlerCount).toBe(100);
+    // Workshop Persona Tools item C2 added the writer's Apply on a context-paths card.
+    expect(router.handlerCount).toBe(101);
   });
 
   it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {
