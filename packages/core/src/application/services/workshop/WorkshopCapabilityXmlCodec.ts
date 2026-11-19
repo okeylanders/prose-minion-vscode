@@ -30,6 +30,10 @@ import {
   inspectWorkshopHistoryCall,
   WORKSHOP_HISTORY_FIELD_POLICY
 } from '@/application/services/workshop/history/WorkshopHistoryXmlCodec';
+import {
+  inspectWorkshopLocationsCall,
+  WORKSHOP_LOCATIONS_FIELD_POLICY
+} from '@/application/services/workshop/locations/WorkshopLocationsXmlCodec';
 import { workshopResourceInstructionLines } from '@/application/services/workshop/WorkshopResourceInstruction';
 import type { WorkshopCapabilityXmlFieldPolicy } from '@/application/services/workshop/WorkshopCapabilityXmlDocument';
 import { countWords } from '@/utils/textUtils';
@@ -42,10 +46,12 @@ export const WORKSHOP_CAPABILITY_FIELD_POLICY: WorkshopCapabilityXmlFieldPolicy 
     WORKSHOP_HELP_FIELD_POLICY.repeatable(operation, field) ||
     WORKSHOP_LENS_FIELD_POLICY.repeatable(operation, field) ||
     WORKSHOP_HISTORY_FIELD_POLICY.repeatable(operation, field) ||
+    WORKSHOP_LOCATIONS_FIELD_POLICY.repeatable(operation, field) ||
     WORKSHOP_RESOURCE_FIELD_POLICY.repeatable(operation, field),
   attributes: (operation, field) => [
     ...WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY.attributes(operation, field),
     ...WORKSHOP_HISTORY_FIELD_POLICY.attributes(operation, field),
+    ...WORKSHOP_LOCATIONS_FIELD_POLICY.attributes(operation, field),
     ...WORKSHOP_RESOURCE_FIELD_POLICY.attributes(operation, field)
   ]
 };
@@ -110,7 +116,10 @@ export type WorkshopCapabilityRejectionReason =
   // A file's git history (ADR 2026-11-19 D13, D14; history/WorkshopHistoryXmlCodec).
   | 'invalid-commit'
   | 'invalid-start-change'
-  | 'invalid-current';
+  | 'invalid-current'
+  // The project's context paths (ADR 2026-11-19 D26; locations/WorkshopLocationsXmlCodec).
+  | 'too-many-patterns'
+  | 'missing-pattern-group';
 
 export type WorkshopCapabilityInspection =
   | { readonly kind: 'none' }
@@ -213,6 +222,11 @@ export class WorkshopCapabilityXmlCodec {
       case 'history.log':
       case 'history.diff':
         return inspectWorkshopHistoryCall(operation, document);
+      // By hand, through the family's own codec (ADR 2026-11-19 D26).
+      case 'locations.current':
+      case 'locations.folders':
+      case 'locations.check':
+        return inspectWorkshopLocationsCall(operation, document);
       default:
         return { kind: 'invalid', reason: 'unknown-capability' };
     }
