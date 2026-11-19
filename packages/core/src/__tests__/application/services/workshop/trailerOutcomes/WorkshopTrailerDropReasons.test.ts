@@ -158,7 +158,8 @@ describe('from a verdict to its recorded reason (D13)', () => {
       'nothing-kept': 'nothing-kept',
       'no-workspace': 'workspace-unavailable',
       'check-failed': 'workspace-unavailable',
-      'not-checked': 'workspace-unavailable'
+      'not-checked': 'workspace-unavailable',
+      unrepresentable: 'too-large'
     };
     for (const [code, reason] of Object.entries(LOCATIONS)) {
       expect(workshopTrailerDropReason(code as WorkshopLocationsDropCode)).toBe(reason);

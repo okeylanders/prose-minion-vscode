@@ -23,6 +23,10 @@ import {
   hasWorkshopLocationsProposalText
 } from '@/utils/workshopReplyControls';
 import type { WorkshopReplyLocationsControl, WorkshopReplyLocationsRejection } from '@/utils/workshopReplyLocationsProposal';
+import {
+  WORKSHOP_LOCATIONS_CARD_LIMITS,
+  workshopLocationsCardPath
+} from '@/application/services/workshop/locations/WorkshopLocationsProposalRecords';
 
 /** Every reason a context-paths frame can end with no card for. */
 export type WorkshopLocationsDropCode =
@@ -30,7 +34,9 @@ export type WorkshopLocationsDropCode =
   | 'nothing-kept'
   | 'no-workspace'
   | 'check-failed'
-  | 'not-checked';
+  | 'not-checked'
+  /** A group's current value is past the card's bound, so no card that restores can be made (PR #290 P2). */
+  | 'unrepresentable';
 
 /** What was checked for one reply, before completion. */
 export interface WorkshopReplyLocationsContext {
@@ -120,6 +126,11 @@ export function settleWorkshopReplyLocations(
     drops.push('nothing-kept');
     return { drops, patterns, logs: [log('dropped (reason=nothing-kept)', patterns)] };
   }
+  // The card's own bounds (PR #290 P2): a value past them cannot be compared at Apply once cut, so no card.
+  if (CONTEXT_PATH_GROUPS.some((group) => proposal.baselines[group].length > WORKSHOP_LOCATIONS_CARD_LIMITS.valueCharacters)) {
+    drops.push('unrepresentable');
+    return { drops, patterns, logs: [log('dropped (reason=unrepresentable)', patterns)] };
+  }
   const kept: Partial<Record<ContextPathGroup, string[]>> = {};
   for (const group of CONTEXT_PATH_GROUPS) {
     const patternsKept = proposal.kept[group];
@@ -128,11 +139,24 @@ export function settleWorkshopReplyLocations(
     }
   }
   const card: WorkshopLocationsProposalCard = {
-    view: JSON.parse(JSON.stringify(proposal.view)) as WorkshopLocationsProposalCard['view'],
+    view: boundedView(proposal.view),
     baselines: { ...proposal.baselines },
     kept,
     state: 'pending'
   };
   const offered = proposal.view.groups.filter((group) => group.offer.offered).length;
   return { card, drops, patterns, logs: [log(`shown (offered=${offered})`, patterns)] };
+}
+
+/** The view with every display path clipped to the card's bound: display only, never what Apply writes. */
+function boundedView(view: WorkshopLocationsProposalCard['view']): WorkshopLocationsProposalCard['view'] {
+  const copy = JSON.parse(JSON.stringify(view)) as WorkshopLocationsProposalCard['view'];
+  for (const group of copy.groups) {
+    group.current.examples = group.current.examples.map(workshopLocationsCardPath);
+    if (group.proposed) {
+      group.proposed.examples = group.proposed.examples.map(workshopLocationsCardPath);
+      group.proposed.shared.examples = group.proposed.shared.examples.map((file) => ({ ...file, path: workshopLocationsCardPath(file.path) }));
+    }
+  }
+  return copy;
 }

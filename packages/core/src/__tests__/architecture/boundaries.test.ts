@@ -2144,9 +2144,10 @@ describe('architectural boundaries', () => {
     expect(imports
       .filter(({ module }) => /(?:^|\/)(?:recall|memory|lens|help|history|session|pinnedContext)(?:\/|$)/.test(module) || RECALL_FORBIDDEN_MODULE.test(module))
       .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
-    // C1's scan, checker and writer are known as types only: the family constructs none of them.
+    // C1's scan, checker and writer are known as types only: the family constructs none of them. Only the
+    // pure setting-split rule is shared, so a card's baseline and its patterns agree (PR #290 P1).
     expect(imports
-      .filter(({ module, typeOnly }) => /\/contextPaths\//.test(module) && !typeOnly)
+      .filter(({ module, typeOnly }) => /\/contextPaths\//.test(module) && !typeOnly && !/ContextPathPatternSafety$/.test(module))
       .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
     for (const file of files) {
       const source = fs.readFileSync(file, 'utf8');

@@ -5,8 +5,10 @@
  * - **Ids in, an answer by `requestId` out.** The webview names the room
  *   revision, the reply's turn and the groups ticked, never a pattern. The
  *   host finds the card on its own ledger.
- * - **Behind the room's mutation gate,** so a whole-room operation never
- *   interleaves with it; the room's revision must match.
+ * - **One room operation** (PR #290 P1): behind the room's mutation gate,
+ *   and then the recheck, the settings writes and the card's receipt run
+ *   inside the coordinator's serialized room operation, so no whole-room
+ *   replacement interleaves; the room's revision must match inside it.
  * - **One write, C1's:** `applyContextPathProposal` checks each ticked group
  *   again (the workspace level, the value against the card's baseline, the
  *   kept patterns through the resolver) and writes at the user level (L1).
@@ -29,6 +31,7 @@ import { CONTEXT_PATH_GROUPS, isContextPathGroup, type ContextPathGroup } from '
 import type { ContextPathProposalChecker } from '@/application/services/contextPaths/ContextPathProposalChecker';
 import type { ContextPathSettingsWriter } from '@/application/services/contextPaths/ContextPathSettingsWriter';
 import { applyContextPathProposal } from '@/application/services/contextPaths/ContextPathApply';
+import { workshopLocationsCardMismatch } from '@/application/services/workshop/locations/WorkshopLocationsProposalRecords';
 import type { MessageTransport } from '@handlers/MessageHandlerContracts';
 import type { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopRouteContracts';
 
@@ -42,6 +45,11 @@ export interface WorkshopLocationsProposalSession {
   readRoomRevision(): number;
   readRoomLedger(): readonly WorkshopTurn[];
   answerLocationsProposal(turnId: string, answers: readonly WorkshopLocationsGroupAnswer[]): WorkshopTurn | undefined;
+}
+
+/** The coordinator's serialized room operation (`runContextRefresh`), the one New, Open, Rewind and Branch share. */
+export interface WorkshopLocationsProposalRoom {
+  runContextRefresh(operation: () => Promise<void>): Promise<void>;
 }
 
 export interface WorkshopLocationsProposalEffects {
@@ -59,7 +67,9 @@ export class WorkshopLocationsProposalHandler {
     private readonly ports: WorkshopLocationsProposalPorts | undefined,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
-    private readonly effects: WorkshopLocationsProposalEffects
+    private readonly effects: WorkshopLocationsProposalEffects,
+    /** The coordinator's room-operation path: Apply runs as one, so no room replacement interleaves (PR #290 P1). */
+    private readonly room: WorkshopLocationsProposalRoom
   ) {}
 
   registerRoutes(registerMutation: WorkshopMutationRouteRegistrar): void {
@@ -81,42 +91,56 @@ export class WorkshopLocationsProposalHandler {
     if (!this.ports) {
       return this.answer(payload, 'unavailable', []);
     }
-    if (payload.roomRevision !== this.session.readRoomRevision()) {
-      return this.answer(payload, 'room-changed', []);
-    }
-    const card = this.cardOf(payload.turnId);
-    if (!card) {
-      return this.answer(payload, 'unknown-card', []);
-    }
-    if (card.state !== 'pending') {
-      return this.answer(payload, 'answered', []);
-    }
     if (this.applying.has(payload.turnId)) {
       return this.answer(payload, 'busy', []);
     }
     this.applying.add(payload.turnId);
     try {
-      const offered = CONTEXT_PATH_GROUPS.filter((group) =>
-        card.view.groups.some((view) => view.group === group && view.offer.offered));
-      const ticked = offered.filter((group) => payload.groups.includes(group));
-      const outcomes = ticked.length > 0
-        ? await applyContextPathProposal(card, ticked, {
-          checker: this.ports.checker,
-          settings: this.ports.settings,
-          log: { appendLine: (line) => this.outputChannel.appendLine(`${LOG} ${line}`) }
-        })
-        : [];
-      const answers: WorkshopLocationsGroupAnswer[] = offered.map((group) =>
-        outcomes.find((outcome) => outcome.group === group) ?? { group, outcome: 'declined' });
-      // A room replaced while the settings were written keeps its own cards; the answer still says what landed.
-      if (payload.roomRevision === this.session.readRoomRevision() && this.session.answerLocationsProposal(payload.turnId, answers)) {
-        this.effects.markDirty('context paths proposal answered');
-        this.effects.postSessionState();
-      }
-      this.answer(payload, 'done', answers);
+      // The recheck, the writes and the receipt are one room operation (PR #290 P1): no New, Open, Rewind or
+      // Branch can land between them, so a global write never outlives the card that records it.
+      let settled: { outcome: WorkshopLocationsProposalResultOutcome; groups: WorkshopLocationsGroupAnswer[] } | undefined;
+      await this.room.runContextRefresh(async () => {
+        settled = await this.applyInRoom(payload, this.ports!);
+      });
+      this.answer(payload, settled?.outcome ?? 'room-changed', settled?.groups ?? []);
     } finally {
       this.applying.delete(payload.turnId);
     }
+  }
+
+  private async applyInRoom(
+    payload: WorkshopApplyLocationsProposalPayload,
+    ports: WorkshopLocationsProposalPorts
+  ): Promise<{ outcome: WorkshopLocationsProposalResultOutcome; groups: WorkshopLocationsGroupAnswer[] }> {
+    if (payload.roomRevision !== this.session.readRoomRevision()) {
+      return { outcome: 'room-changed', groups: [] };
+    }
+    const card = this.cardOf(payload.turnId);
+    // A card whose parts disagree draws one proposal and would write another (PR #290 P1): it is never applied.
+    if (!card || workshopLocationsCardMismatch(card)) {
+      return { outcome: 'unknown-card', groups: [] };
+    }
+    if (card.state !== 'pending') {
+      return { outcome: 'answered', groups: [] };
+    }
+    const offered = CONTEXT_PATH_GROUPS.filter((group) =>
+      card.view.groups.some((view) => view.group === group && view.offer.offered));
+    const ticked = offered.filter((group) => payload.groups.includes(group));
+    const outcomes = ticked.length > 0
+      ? await applyContextPathProposal(card, ticked, {
+        checker: ports.checker,
+        settings: ports.settings,
+        log: { appendLine: (line) => this.outputChannel.appendLine(`${LOG} ${line}`) }
+      })
+      : [];
+    const answers: WorkshopLocationsGroupAnswer[] = offered.map((group) =>
+      outcomes.find((outcome) => outcome.group === group) ?? { group, outcome: 'declined' });
+    // Still this room: the operation holds it. The receipt is written before the operation ends.
+    if (this.session.answerLocationsProposal(payload.turnId, answers)) {
+      this.effects.markDirty('context paths proposal answered');
+      this.effects.postSessionState();
+    }
+    return { outcome: 'done', groups: answers };
   }
 
   private cardOf(turnId: string) {

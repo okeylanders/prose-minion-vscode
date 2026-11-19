@@ -80,7 +80,8 @@ export type WorkshopTodoTrailerDropReason = typeof WORKSHOP_TODO_TRAILER_DROP_RE
  * Every reason a context-paths proposal frame can be dropped for (ADR
  * 2026-11-19 D27), in the order a record lists them. `nothing-kept`: every
  * pattern was dropped or refused, so no card. `workspace-unavailable`: the
- * project's folders could not be checked. `off` and `over-cap` never occur:
+ * project's folders could not be checked. `too-large`: a group's current
+ * value is past what a card holds. `off` and `over-cap` never occur:
  * the trailer has no setting, and a second frame is `duplicate`.
  */
 export const WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS = [
@@ -88,7 +89,8 @@ export const WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS = [
   'misplaced',
   'duplicate',
   'nothing-kept',
-  'workspace-unavailable'
+  'workspace-unavailable',
+  'too-large'
 ] as const;
 export type WorkshopLocationsTrailerDropReason = typeof WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS[number];
 

@@ -281,7 +281,7 @@ export class WorkshopSliceComposition {
     this.locationsProposalHandler = new WorkshopLocationsProposalHandler(session, locationsProposals, postMessage, outputChannel, {
       postSessionState: host.postSessionState,
       markDirty
-    });
+    }, sessionPersistence);
     this.bookmarkHandler = new WorkshopBookmarkHandler(
       session,
       outputChannel,

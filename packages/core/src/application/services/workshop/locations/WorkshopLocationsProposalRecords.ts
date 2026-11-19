@@ -6,8 +6,17 @@
  *
  * Every closed word is checked against a `Record` over its union, so a new
  * reason does not compile until this codec reads it. Lengths are bounded by
- * `PROMPT_BUDGETS.contextPaths`, so a card can never hold more than a
- * checked proposal could.
+ * `PROMPT_BUDGETS.contextPaths` and `WORKSHOP_LOCATIONS_CARD_LIMITS`, the
+ * one table the producer (`settleWorkshopReplyLocations`) bounds a card by
+ * too, so a card the room commits always restores (PR #290 P2).
+ *
+ * **What is drawn is what Apply writes** (PR #290 P1). A card's parts must
+ * agree (`workshopLocationsCardMismatch`): every group once, in order; each
+ * baseline the value its group's current patterns were read from; the
+ * patterns Apply writes for a group exactly the kept patterns its row
+ * shows, and present only where the row offers the group; and answers only
+ * for offered groups, each once. A card whose parts disagree is refused on
+ * restore, and Apply refuses one in memory.
  */
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -20,6 +29,7 @@ import {
   type ContextPathSettingLevel
 } from '@shared/types';
 import type { WorkshopLocationsGroupAnswer, WorkshopLocationsProposalCard, WorkshopTurn } from '@messages';
+import { contextPathSettingPatterns } from '@/application/services/contextPaths/ContextPathPatternSafety';
 import {
   arrayOf,
   boundedArrayAt,
@@ -47,11 +57,20 @@ const LEFT = keys<ContextPathLeftReason>({
   'write-failed': true, 'not-reached': true
 });
 
+/**
+ * The card's own bounds, shared by its producer and its reader. Never
+ * taught: a persona never sees a card.
+ */
+export const WORKSHOP_LOCATIONS_CARD_LIMITS = Object.freeze({
+  /** A displayed path (a root's name, folders and a file name): clipped to this by the producer. */
+  pathCharacters: 1_024,
+  /** A group's stored value, its patterns joined: a card is not made past it. */
+  valueCharacters: 16_384
+});
+
 const bounds = PROMPT_BUDGETS.contextPaths;
-/** A displayed path: a root's name, a folder and a file name; generous, never taught. */
-const PATH_CHARACTERS = 1_024;
-/** A group's stored value: its patterns joined. */
-const VALUE_CHARACTERS = 16_384;
+const PATH_CHARACTERS = WORKSHOP_LOCATIONS_CARD_LIMITS.pathCharacters;
+const VALUE_CHARACTERS = WORKSHOP_LOCATIONS_CARD_LIMITS.valueCharacters;
 /** A pattern as the checker may show it, a refused one included: the frame and the call bound it. */
 const PATTERN_CHARACTERS = bounds.patternCharacters;
 const PATTERNS = bounds.checkPatterns;
@@ -171,6 +190,54 @@ export function assertWorkshopLocationsProposalShape(
   } else if (card.answers !== undefined) {
     shapeError(`${path}.answers`, 'no answers on a pending card');
   }
+  const mismatch = workshopLocationsCardMismatch(value as WorkshopLocationsProposalCard);
+  if (mismatch) {
+    shapeError(path, `a card whose parts agree (${mismatch})`);
+  }
+}
+
+const sameList = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((item, index) => item === b[index]);
+
+/**
+ * Why a card's parts disagree, or undefined when what it draws is what
+ * Apply would write. Reads a card already shaped; never throws.
+ */
+export function workshopLocationsCardMismatch(card: WorkshopLocationsProposalCard): string | undefined {
+  const order = card.view.groups.map((group) => group.group);
+  if (!sameList(order, CONTEXT_PATH_GROUPS)) {
+    return 'every group once, in order';
+  }
+  for (const group of card.view.groups) {
+    if (!sameList(contextPathSettingPatterns(card.baselines[group.group]), group.current.patterns)) {
+      return `${group.group}: its baseline is the value its current patterns were read from`;
+    }
+    const kept = card.kept[group.group];
+    if (group.offer.offered) {
+      if (!group.proposed || !kept || !sameList(kept, group.proposed.kept.map((entry) => entry.pattern))) {
+        return `${group.group}: Apply writes exactly the kept patterns its row shows`;
+      }
+    } else if (kept !== undefined) {
+      return `${group.group}: a group not offered has nothing to write`;
+    }
+  }
+  const offered = new Set(card.view.groups.filter((group) => group.offer.offered).map((group) => group.group));
+  const answered = new Set<ContextPathGroup>();
+  for (const answer of card.answers ?? []) {
+    if (!offered.has(answer.group) || answered.has(answer.group)) {
+      return `${answer.group}: answers only for offered groups, each once`;
+    }
+    answered.add(answer.group);
+  }
+  if (card.state === 'answered' && answered.size !== offered.size) {
+    return 'an answered card answers every offered group';
+  }
+  return undefined;
+}
+
+/** A display path within the card's bound: the producer clips, the reader refuses longer. */
+export function workshopLocationsCardPath(value: string): string {
+  return value.length <= PATH_CHARACTERS ? value : `${value.slice(0, PATH_CHARACTERS - 1)}…`;
 }
 
 /** Mark a pending card answered, in place; a card answered already, or none, is left as it is. */

@@ -116,6 +116,8 @@ export function workshopTrailerDropReason(code: DropCode): WorkshopTrailerDropRe
     case 'check-failed':
     case 'not-checked':
       return 'workspace-unavailable';
+    case 'unrepresentable':
+      return 'too-large';
     default:
       return assertNever(code);
   }

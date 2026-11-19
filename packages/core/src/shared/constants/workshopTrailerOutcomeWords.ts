@@ -48,7 +48,8 @@ export const WORKSHOP_TRAILER_DROP_REASON_WORDS: Readonly<Record<WorkshopTrailer
   'todo-not-found': 'no to-do in that session has the id it named',
   'todo-not-open': 'the to-do it named is not open',
   'nothing-kept': 'no pattern it proposed was safe and found a file',
-  'workspace-unavailable': 'the project\'s folders could not be checked just then'
+  'workspace-unavailable': 'the project\'s folders could not be checked just then',
+  'too-large': 'a group\'s current context paths are too long to show on a card'
 });
 
 /** Why a saved session's change was not written (ADR 2026-11-19 D7): the row's reason, after the record. */

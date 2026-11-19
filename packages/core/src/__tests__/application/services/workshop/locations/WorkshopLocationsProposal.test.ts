@@ -21,7 +21,8 @@ import { extractWorkshopReplyControls, stripWorkshopReplyTrailersForRetention } 
 import { WORKSHOP_TRAILER_DROP_REASON_WORDS } from '@shared/constants/workshopTrailerOutcomeWords';
 import { MessageType, type WorkshopLocationsProposalResultMessage, type WorkshopTurn } from '@messages';
 import type { AnalysisResult } from '@/domain/models/AnalysisResult';
-import { aliceChecker } from '@/__tests__/application/services/contextPaths/aliceChecker';
+import { aliceChecker, EMPTY_SETTINGS } from '@/__tests__/application/services/contextPaths/aliceChecker';
+import { WORKSHOP_LOCATIONS_CARD_LIMITS } from '@/application/services/workshop/locations/WorkshopLocationsProposalRecords';
 import { ALICE_NAMES } from '@/__tests__/application/services/contextPaths/aliceProject';
 
 const FIXTURE = JSON.stringify(require('../../../../fixtures/workshop-session-v2-before-locations-proposal.json'));
@@ -33,6 +34,18 @@ const frame = (groups: Record<string, string[]>): string =>
     .join('\n')}\n</prose-minion-locations-proposal>`;
 
 let sent = 0;
+
+/** The coordinator's serialized room operation, as a plain queue. */
+function serialRoom() {
+  let tail: Promise<unknown> = Promise.resolve();
+  return {
+    runContextRefresh(operation: () => Promise<void>): Promise<void> {
+      const run = tail.then(operation);
+      tail = run.catch(() => undefined);
+      return run;
+    }
+  };
+}
 
 function room() {
   let clock = 1_000;
@@ -188,7 +201,17 @@ describe('the session codec (ADR 2026-07-30)', () => {
       (card) => { card.state = 'applied'; },
       (card) => { delete card.answers; },
       (card) => { (card.answers as Array<Record<string, unknown>>)[0].reason = 'because'; },
-      (card) => { (card.baselines as Record<string, unknown>).characters = 7; }
+      (card) => { (card.baselines as Record<string, unknown>).characters = 7; },
+      // PR #290 P1: what is drawn is what Apply writes.
+      (card) => { (card.kept as Record<string, unknown>).characters = ['Wonderland/**/*']; },
+      (card) => { (card.kept as Record<string, unknown>).themes = ['Cast/**/*']; },
+      (card) => { (card.baselines as Record<string, unknown>).characters = 'Dramatis/**/*'; },
+      (card) => {
+        const groups = (card.view as { groups: unknown[] }).groups;
+        groups[1] = groups[0];
+      },
+      (card) => { (card.answers as unknown[]).push({ group: 'characters', outcome: 'declined' }); },
+      (card) => { card.answers = [{ group: 'themes', outcome: 'declined' }]; }
     ];
     for (const breakIt of broken) {
       const copy = JSON.parse(answered);
@@ -211,18 +234,27 @@ describe('the transcript (D27)', () => {
 });
 
 describe('the writer\'s Apply (D24, D27)', () => {
-  async function handlerFor(groups: Record<string, string[]>) {
+  async function handlerFor(groups: Record<string, string[]>, options: { alice?: ReturnType<typeof aliceChecker>; queue?: ReturnType<typeof serialRoom>; ledger?: (turns: readonly WorkshopTurn[]) => WorkshopTurn[] } = {}) {
     const session = room();
-    const { turn, alice } = await replyWith(session, frame(groups));
+    const { turn, alice } = await replyWith(session, frame(groups), options.alice);
+    const queue = options.queue ?? serialRoom();
     const posted: WorkshopLocationsProposalResultMessage[] = [];
     const effects = { postSessionState: jest.fn(), markDirty: jest.fn() };
     const lines: string[] = [];
+    const seen = options.ledger;
     const handler = new WorkshopLocationsProposalHandler(
-      session,
+      seen
+        ? {
+          readRoomRevision: () => session.readRoomRevision(),
+          readRoomLedger: () => seen(session.readRoomLedger()),
+          answerLocationsProposal: (turnId, answers) => session.answerLocationsProposal(turnId, answers)
+        }
+        : session,
       { checker: alice.checker, settings: alice.settings },
       async (message) => { posted.push(message as WorkshopLocationsProposalResultMessage); },
       { appendLine: (line: string) => { lines.push(line); }, show: () => undefined, clear: () => undefined },
-      effects
+      effects,
+      queue
     );
     const apply = (ticked: string[], revision = session.readRoomRevision()) => handler.handleApply({
       type: MessageType.WORKSHOP_APPLY_LOCATIONS_PROPOSAL,
@@ -230,8 +262,59 @@ describe('the writer\'s Apply (D24, D27)', () => {
       timestamp: 0,
       payload: { requestId: `r-${posted.length}`, roomRevision: revision, turnId: turn.id, groups: ticked as never }
     });
-    return { session, turn, alice, posted, effects, apply, lines };
+    return { session, turn, alice, posted, effects, apply, lines, queue };
   }
+
+  it('a room replacement that starts during the recheck waits for the writes and the receipt (PR #290 P1)', async () => {
+    const alice = aliceChecker();
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const recheck = alice.checker.recheck.bind(alice.checker);
+    let rechecking!: () => void;
+    const started = new Promise<void>((resolve) => { rechecking = resolve; });
+    alice.checker.recheck = async (kept) => { rechecking(); await held; return recheck(kept); };
+    const { session, turn, posted, apply, queue } = await handlerFor({ characters: ['Cast/**/*'] }, { alice });
+    const applying = apply(['characters']);
+    await started;
+    // New, Open, Rewind and Branch replace the room through the same room operation.
+    let seenAtReplacement: string | undefined;
+    const replacing = queue.runContextRefresh(async () => {
+      seenAtReplacement = session.readRoomLedger().find((candidate) => candidate.id === turn.id)?.locationsProposal?.state;
+      session.reset();
+    });
+    release();
+    await Promise.all([applying, replacing]);
+    expect(alice.project.settings.writes).toEqual([['contextPaths.characters', 'Cast/**/*']]);
+    // The receipt landed in the card's own room before that room was replaced.
+    expect(seenAtReplacement).toBe('answered');
+    expect(posted.at(-1)?.payload).toMatchObject({ outcome: 'done', groups: [{ group: 'characters', outcome: 'applied' }] });
+  });
+
+  it('an Apply that waits behind a room replacement writes nothing (PR #290 P1)', async () => {
+    const queue = serialRoom();
+    const { session, alice, posted, apply } = await handlerFor({ characters: ['Cast/**/*'] }, { queue });
+    let finish!: () => void;
+    const replacing = queue.runContextRefresh(() => new Promise<void>((resolve) => { finish = () => { session.reset(); resolve(); }; }));
+    const applying = apply(['characters']);
+    while (!finish) {
+      await Promise.resolve();
+    }
+    finish();
+    await Promise.all([replacing, applying]);
+    expect(alice.project.settings.writes).toEqual([]);
+    expect(posted.at(-1)?.payload.outcome).toBe('room-changed');
+  });
+
+  it('never applies a card whose parts disagree (PR #290 P1)', async () => {
+    // A card that draws Cast/**/* and would write Wonderland/**/*.
+    const ledger = (turns: readonly WorkshopTurn[]) => turns.map((candidate) => candidate.locationsProposal
+      ? { ...candidate, locationsProposal: { ...candidate.locationsProposal, kept: { characters: ['Wonderland/**/*'] } } }
+      : candidate);
+    const { alice, posted, apply } = await handlerFor({ characters: ['Cast/**/*'] }, { ledger });
+    await apply(['characters']);
+    expect(alice.project.settings.writes).toEqual([]);
+    expect(posted.at(-1)?.payload.outcome).toBe('unknown-card');
+  });
 
   it('writes only the ticked groups at the user level; an offered group left unticked is declined', async () => {
     const { session, turn, alice, posted, apply, lines } = await handlerFor({ characters: ['Cast/**/*'], locations: ['Wonderland/**/*'] });
@@ -276,10 +359,49 @@ describe('the writer\'s Apply (D24, D27)', () => {
     const posted: WorkshopLocationsProposalResultMessage[] = [];
     const handler = new WorkshopLocationsProposalHandler(session, { checker: alice.checker, settings: alice.settings },
       async (message) => { posted.push(message as WorkshopLocationsProposalResultMessage); },
-      { appendLine: () => undefined, show: () => undefined, clear: () => undefined }, { postSessionState: jest.fn(), markDirty: jest.fn() });
+      { appendLine: () => undefined, show: () => undefined, clear: () => undefined }, { postSessionState: jest.fn(), markDirty: jest.fn() },
+      serialRoom());
     await handler.handleApply({ type: MessageType.WORKSHOP_APPLY_LOCATIONS_PROPOSAL, source: 'webview.workshop.locationsProposal', timestamp: 0,
       payload: { requestId: 'r', roomRevision: session.readRoomRevision(), turnId: turn.id, groups: ['characters'] } });
     expect(alice.project.settings.writes).toEqual([]);
     expect(posted[0].payload).toMatchObject({ outcome: 'done', groups: [] });
+  });
+});
+
+describe('the card\'s bounds, producer and reader alike (PR #290 P2)', () => {
+  const restores = (turn: WorkshopTurn): void => {
+    const base = JSON.parse(FIXTURE);
+    const reply = base.workshop.turns.find((candidate: WorkshopTurn) => candidate.role === 'assistant' && candidate.participant === 'host');
+    reply.trailerOutcomes = turn.trailerOutcomes;
+    if (turn.locationsProposal) {
+      reply.locationsProposal = turn.locationsProposal;
+    }
+    const text = JSON.stringify(base);
+    expect(JSON.stringify(parseWorkshopPersistedSession(JSON.parse(text)))).toBe(text);
+  };
+
+  it('an over-long file path is clipped on the card, and the room restores', async () => {
+    const deep = `Cast/${'Looking-Glass/'.repeat(80)}Alice.md`;
+    const alice = aliceChecker({ roots: { '/alice': [deep] } });
+    const { turn } = await replyWith(room(), frame({ characters: ['Cast/**/*'] }), alice);
+    const examples = turn.locationsProposal!.view.groups.find((group) => group.group === 'characters')!.proposed!.examples;
+    expect(deep.length).toBeGreaterThan(WORKSHOP_LOCATIONS_CARD_LIMITS.pathCharacters);
+    expect(examples[0]).toHaveLength(WORKSHOP_LOCATIONS_CARD_LIMITS.pathCharacters);
+    // The patterns Apply writes are untouched by the display bound.
+    expect(turn.locationsProposal!.kept).toEqual({ characters: ['Cast/**/*'] });
+    restores(turn);
+  });
+
+  it('an over-long setting value makes no card, counted as too-large, and the room restores', async () => {
+    const long = Array.from({ length: 2_000 }, (_, index) => `Shelf-${index}/*`).join(',');
+    expect(long.length).toBeGreaterThan(WORKSHOP_LOCATIONS_CARD_LIMITS.valueCharacters);
+    const alice = aliceChecker({ settings: { ...EMPTY_SETTINGS, 'contextPaths.general': long } });
+    const session = room();
+    const { turn } = await replyWith(session, frame({ characters: ['Cast/**/*'] }), alice);
+    expect(turn.locationsProposal).toBeUndefined();
+    expect(turn.trailerOutcomes?.locations?.dropped).toEqual([{ reason: 'too-large', count: 1 }]);
+    expect(workshopTrailerOutcomesFrameFor(session.readRoomLedger(), HOST))
+      .toContain(`1 dropped (${WORKSHOP_TRAILER_DROP_REASON_WORDS['too-large']})`);
+    restores(turn);
   });
 });
