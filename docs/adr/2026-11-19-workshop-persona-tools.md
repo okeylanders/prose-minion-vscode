@@ -1,6 +1,6 @@
 # ADR 2026-11-19: Workshop Persona Tools: Closing To-dos, a File's Git History, and the Project's Context Paths
 
-**Status:** Proposed (Slice 0). T1, G1–G3 and L1–L3 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief was wrong; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
+**Status:** Proposed (Slice 0). Revised 2026-11-19 after PR #286's review (D6a, D8a, D13a, D22a; see "Amendments after review"). T1, G1–G3 and L1–L3 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief was wrong; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
 **Date:** 2026-11-19
 **Epic:** [Workshop Persona Tools](../../.todo/epics/epic-workshop-persona-tools-2026-11-19/README.md)
 (its "Defaults taken" table is binding here)
@@ -161,12 +161,15 @@ Paths below that start `core/` are under `packages/core/src/`; `app/` is
 
 Checked before deciding; each is settled below.
 
-1. **The saving side already compares the file** (A, default 4). Every
-   named write is `updateNamed` against the room's accepted checkpoint,
-   checked twice, the second time at the commit. So another window's later
-   Save of a session the persona changed is refused, and that window's work
-   goes to its `current.json`, never over the change. Nothing is added to
-   the saving side; D6 writes through the same path and tests the case.
+1. **The saving side compares the file, but not atomically** (A, default
+   4; PR #286 F-01). Every named write is `updateNamed` against the room's
+   accepted checkpoint, checked twice. But the second check is an awaited
+   `beforeCommit` followed by a separate `rename(…, { overwrite: true })`
+   (`WorkshopSessionStore.ts`, `updateNamed` and `writeJsonAtomically`).
+   Two windows can both pass the check before either renames; the later
+   rename wins, with no error and no rolling recovery. A stale save *after*
+   a completed write is refused; overlapping writes are not. D6a makes
+   every named-session writer claim the file first.
 2. **Recall's cache sees a change only when `updatedAt` moves** (A). The
    write moves it, as `renameNamed` does (D6).
 3. **The live room is never a "saved session"** (A). Its own id names the
@@ -341,12 +344,58 @@ interface WorkshopSavedSessionTodos {
   `current.json` and its status line shows the save failed, with the
   store's words. When its webview next loads, `refreshNamedSession`
   promotes the file, persona's change included, and keeps any differing
-  local work as "… (local recovery)". So no path loses the change
-  silently. **No new check is added to the saving side;** slice A adds a
-  test that drives exactly this: two coordinators over one folder, the
-  persona's write in one, an autosave in the other.
+  local work as "… (local recovery)". That holds once D6a closes the
+  overlapping case.
 - **Not built:** refusing sessions another window has open. The store has
-  no cross-window registry, and the compare already covers it.
+  no cross-window registry; D6a's claim and the compare cover it.
+
+### D6a. Every named-session writer claims the file (PR #286 F-01)
+
+The compare alone does not stop two writers that check before either
+renames. The store adopts the per-file claim already shared by the
+Lightbox's boards and project memory: `StoredFileRewrite` over
+`StoredFileClaims` (PR #164). It suits a folder of many files better than
+the pinned list's single directory lock.
+
+- **Who:** every write that replaces or removes an existing named session
+  file goes through it: `updateNamed` (so autosave and Save of a named
+  room, rename of the open room, a Rewind's commit, a file edit's
+  checkpoint), `renameNamed`, `deleteNamed`, and the persona's write and
+  Undo (D6, D8). A new named-session writer joins it; `boundaries.test.ts`
+  holds that only the store renames over a named session file.
+- **How:** the new checkpoint is staged under a hidden private name; the
+  saved file is **claimed** by an atomic rename, never over anything, to
+  `.<name>.claim-<epoch ms>-<writer id>`; the claimed file is decoded and
+  must equal `expected` (`hasSameWorkshopCheckpoint`), else the claim is
+  put back and the write is `WorkshopNamedSessionChangedError`; the claim
+  must still be this write's; the commit renames the staged file to the
+  saved name, never over anything; the claim is dropped. A new named file
+  (`saveNamed`) keeps its non-overwriting rename.
+- **Of two overlapping writers, exactly one claims the file.** The other
+  finds the saved name empty under a live claim and is refused as `busy`
+  ("This saved session is being written by another window. Try again in a
+  moment."). For an autosave that is the same path as a changed file: the
+  room's work goes to `current.json`, and the next autosave tries again,
+  against the compare.
+- **Readers and listings** settle claims by `StoredFileClaims`' rules: a
+  live claim with the name empty is `busy`, never "missing"; an abandoned
+  claim (past `STORED_FILE_CLAIM_LEASE_MS`) is put back; a leftover beside
+  a standing file is removed. The listing skips claim and staging names. A
+  `busy` read never detaches the open room (`detachMissingNamedSession`
+  runs only on a settled `missing`).
+- **`current.json` is unchanged.** It is one window's rolling cache.
+- **Witness** (`WorkshopNamedSessionOverlappingWrites.test.ts`): two stores
+  over one folder, held promises so both writers have read and validated
+  the same checkpoint before either claims; then both proceed. Exactly one
+  commits; the other is refused in host words; the file is the winner's,
+  byte for byte. Run for autosave against the persona's write, and for
+  rename against autosave. A second test: a stale save after a completed
+  write is refused (the compare). A third: an abandoned claim is put back
+  and the next write succeeds.
+- **Out of scope: an uncoordinated external sync** (Git, Dropbox, a copy by
+  hand). It takes no claim. It is covered only by the existing compare and
+  `refreshNamedSession`'s promotion with local recovery, as today. A sync
+  landing inside a writer's claim-to-commit window is not detected.
 
 ### D7. What the persona hears back: a `todos` kind
 
@@ -385,8 +434,9 @@ type WorkshopTodoTrailerDropReason =
   replies: one row per change, in reply order. Each holds the session
   (`current`, or the saved id), its title as read, the to-do's id and text
   as read (cut to `PROMPT_BUDGETS.workshopTodos`' item bound), the status
-  set, the earlier status, the note, and the state (`applied`, `saving`,
-  `refused` with a closed reason, `undone`). The copy a write compares
+  set, the earlier status, the note, the write's `operationId` (D8a), and
+  the state (`applied`, `saving`, `refused` with a closed reason,
+  `interrupted` (D8a), `undone`). The copy a write compares
   against is held in memory only, never stored; Undo reads the file again.
 - **The card** (`components/workshop/todos/WorkshopTodoReceipt`) lists each
   row: the to-do, the session's name, the new status, Undo. It sits under
@@ -406,6 +456,38 @@ type WorkshopTodoTrailerDropReason =
   counts ("Marked 3 to-dos done"), never a to-do's text or a session's
   title. `workshopTurnForWebview` passes the rows (the card needs them).
 
+### D8a. A row left `saving` across a restart (PR #286 F-02)
+
+The compare copy is memory-only, so a row persisted as `saving` must be
+settled from what is on disk, never replayed.
+
+- **Ownership is persisted on both sides.** Each saved session's write gets
+  a host-minted `operationId`; every row of that write stores it, and the
+  write stamps it into each changed to-do's `closedBy.operationId`. The
+  turn id and session id in `closedBy` are not enough: a later write from
+  the same turn's branch, or a retry, could name the same turn.
+- **Reconciliation** runs when a room is hydrated (open, reload, restore)
+  and before the receipt's Undo is enabled, for every row still `saving`:
+  read the target session through the port; a to-do whose
+  `closedBy.operationId` equals the row's reads `applied`; anything else
+  reads **`interrupted`** ("Not written: Prose Minion closed before this
+  was saved"). A target that cannot be read stays `interrupted` with
+  reason `unverified`. Reconciliation never writes the target, and an
+  `interrupted` row is never retried: the writer may have reopened that
+  to-do.
+- **Both crash boundaries.** Before the write landed: no stamp, so
+  `interrupted`. After it landed, before the row settled: the stamp, so
+  `applied`, with Undo.
+- **Undo on a recognized write** goes through the port, and reopens only
+  while the to-do still holds the row's status and `closedBy.operationId`
+  equals the row's. The open room's rows carry an `operationId` too, and
+  Undo checks it the same way. A crash between Undo's write and the row's
+  update leaves the row `applied`; a second Undo then finds the to-do
+  reopened and says "This to-do changed since."
+- **The outcome frame** counts `interrupted` rows as not written.
+- **Codec:** `operationId` on a row and on `closedBy`, and the
+  `interrupted` state, are part of D9's optional fields.
+
 ### D9. `closedBy`, and the session codec
 
 ```ts
@@ -417,6 +499,8 @@ interface WorkshopTodoClosedBy {
   sessionTitle: string;
   turnId: string;
   at: number;
+  /** The write that set it (D8a). */
+  operationId: string;
   note?: string;
 }
 ```
@@ -574,6 +658,30 @@ call checks, and answers `no-git` or `git-disabled`.
 - **Every hint makes progress and decodes as written**
   (`historyCapabilityPromptSync.test.ts` follows every hint to the end).
 
+### D13a. The paragraph alignment has its own ceiling (PR #286 F-03)
+
+The word-level fallback bounds only the inner stage. The paragraph-array
+alignment runs first, and thousands of short changed paragraphs fit in
+`diffSourceBytes`.
+
+- **Two bounds on the outer stage:** each side holds at most
+  `alignParagraphs` paragraphs (checked before aligning), and the array
+  diff runs with its own `paragraphEditLength`, apart from the word
+  stage's `maxEditLength`.
+- **Past either, the diff is refused** in words: "Too much changed between
+  these two versions to compare paragraph by paragraph. Pick two commits
+  closer together." No partial or line-level fallback is shown, so nothing
+  can read as a smaller change than it was.
+- **The alignment runs once per pair.** The computed change list is kept in
+  a small per-window cache (`alignCacheEntries`), keyed by the file, the
+  two full hashes or the `current` fingerprint, and the budgets. A
+  continuation reads its changes from it; a miss recomputes once, under the
+  same ceiling. A refusal is cached too, so a repeated call does not rerun
+  it.
+- **Tests** reach `alignParagraphs` and `paragraphEditLength` separately
+  from `maxEditLength`, and count alignment runs across a continuation
+  (one).
+
 ### D14. Commit ids
 
 - **Accepted only as a `history.log` result gave them.** Form first: 7 to
@@ -627,6 +735,7 @@ call checks, and answers `no-git` or `git-disabled`.
   subjectCharacters: 200, authorCharacters: 80, diffSourceBytes: 2 MiB,
   diffBytes: 64 KiB, contextParagraphs: 1, contextCharacters: 400,
   wordDiffParagraphCharacters: 20_000, maxEditLength: 10_000,
+  alignParagraphs: 5_000, paragraphEditLength: 1_000, alignCacheEntries: 4,
   gitReadyMs: 5_000 }`. The prompt states those a persona needs, pinned by
   the sync test.
 - **Logs** carry the operation, counts (commits listed, changes shown,
@@ -730,6 +839,27 @@ call checks, and answers `no-git` or `git-disabled`.
   another group, and where the current value comes from (D25).
 - Patterns, paths and names are writer data: the view goes to the writer
   and the persona who asked, never to a log.
+
+### D22a. An incomplete check is never zero matches (PR #286 F-04)
+
+`browse-counts` skips a failed search or an unreadable match as if it
+matched nothing. A group checked that way could be cut to a subset the
+writer never approved.
+
+- **`matchPatterns` is counts-only and failure-aware.** It logs as
+  `browse-counts` does (counts only), but reports per pattern `matched`
+  (with its files), `unmatched` (the search completed and found nothing),
+  or `incomplete` (a search failed, or a match's metadata could not be
+  read), as `authoritative` distinguishes them.
+- **A group with any `incomplete` pattern** is shown as "Couldn't be
+  checked completely; left as it is," not offered for Apply, and refused
+  if sent. Only `unmatched` drops a pattern. The same holds for the current
+  patterns' count ("couldn't count") and for `locations.check`.
+- **Apply checks again the same way,** and leaves a group unchanged on any
+  incomplete evaluation, with words.
+- **Tests:** two patterns, one whose search fails and one that matches: the
+  group is left unchanged at review and at Apply; a completed zero-match
+  search drops its pattern.
 
 ### D23. The review
 
@@ -873,9 +1003,9 @@ For each of `history.log`, `history.diff`, `locations.current`,
 | Slice | Decisions | First commit |
 |---|---|---|
 | 0 | this ADR and the README | |
-| B | D11–D17 | the port, its fake, and the family's lists, compiling, with every call answering "not built" |
-| A | D1–D10 | the typed settlement verdicts and the `todos` outcome side, with no trailer read yet |
-| C1 | D18–D25, D28 (checker, write, scan, Settings helper) | the resolver's `matchPatterns` seam, settings path unchanged byte for byte |
+| B | D11–D17, D13a | the port, its fake, and the family's lists, compiling, with every call answering "not built" |
+| A | D1–D10, D6a, D8a | the typed settlement verdicts and the `todos` outcome side, with no trailer read yet |
+| C1 | D18–D25, D22a, D28 (checker, write, scan, Settings helper) | the resolver's `matchPatterns` seam, settings path unchanged byte for byte |
 | C2 | D26–D27 (the persona family and trailer) | the family's lists, after B's grammar and A's trailer work are merged |
 
 B and A run in parallel. C1 follows either; C2 follows both.
@@ -890,10 +1020,18 @@ B and A run in parallel. C1 follows either; C2 follows both.
   closed (recall's cache sees it).
 - One case per drop reason, end to end: frame, record, phrase.
 - **The other window:** two coordinators over one folder hold one named
-  session; the write port changes a to-do in one; the other's autosave is
-  refused with `WorkshopNamedSessionChangedError`, the file keeps the
-  change, the other room's work is in its `current.json`; reloading it
-  promotes the file and preserves its local work as a recovery session.
+  session; the write port changes a to-do in one; the other's later
+  autosave is refused with `WorkshopNamedSessionChangedError`, the file
+  keeps the change, the other room's work is in its `current.json`;
+  reloading it promotes the file and preserves its local work as a
+  recovery session.
+- **Overlapping writes** (D6a): both writers validate before either
+  claims; exactly one commits, the other is refused as `busy` in host
+  words, the file is the winner's. An abandoned claim is put back.
+- **Restart** (D8a): a `saving` row with no stamp in the file reads
+  `interrupted` and is never retried; one whose stamp is there reads
+  `applied`, and Undo works on it; a to-do the writer reopened is left
+  open.
 - A file changed between settlement and write: the row is `refused`
   (`session-changed`), nothing overwritten, and the next message says so.
 - Stop before commit: nothing written anywhere. Rewind before the
@@ -915,6 +1053,9 @@ B and A run in parallel. C1 follows either; C2 follows both.
   a long paragraph shown whole; `maxEditLength` reached; `current`; a
   continuation at a later change; a changed `current` between parts; a
   single change too big to fit; no window.
+- The outer alignment's ceiling (D13a): `alignParagraphs` and
+  `paragraphEditLength` refuse apart from `maxEditLength`; a continuation
+  does not rerun the alignment.
 - Ids: bad form, ambiguous prefix, not in this file's history, each refused
   before the fake port is called; git receives the full hash.
 - Files: excerpt (file, selection, pasted), configured, free path refused.
@@ -929,6 +1070,8 @@ B and A run in parallel. C1 follows either; C2 follows both.
 - Checker: each unsafe form refused before normalization; a comma refused;
   unmatched dropped; overlap flagged on both; a group left out unchanged;
   a group whose patterns all drop keeps its value.
+- An incomplete check (D22a) leaves its group unchanged at review and
+  Apply; a completed zero-match search drops its pattern.
 - `matchPatterns` and the catalog agree for the same patterns; the
   settings path is unchanged.
 - Helper: the worked example decodes; an unknown group is a fault; a
@@ -940,6 +1083,18 @@ B and A run in parallel. C1 follows either; C2 follows both.
 - C2: the family's codec, paging, hints; the trailer, its card and its
   outcome kind; conservation; the before-fixture.
 - Logs hold no folder, file name, path or pattern.
+
+## Amendments after review (PR #286)
+
+Reviewed at `c7c09d4`. Four findings, all accepted. Decisions keep their
+numbers; the changes are new sub-decisions.
+
+| Finding | What was wrong | Resolved in |
+|---|---|---|
+| F-01 (P1) | The named-session compare is an awaited check followed by an overwriting rename, so two windows can both pass it and the later rename wins silently. | **D6a:** every named-session writer claims the file (`StoredFileRewrite`/`StoredFileClaims`); an overlapping-writes witness; external sync out of scope. Context item 1 corrected. |
+| F-02 (P1) | A `saving` row can outlive a restart with no way to settle it, and a blind retry could close a to-do the writer reopened. | **D8a:** an `operationId` on the row and stamped into `closedBy`; reconciliation reads `applied` or `interrupted`, never replays; Undo checks the stamp. |
+| F-03 (P2) | Only the word stage had a work ceiling; the paragraph alignment could run long, and again on each continuation. | **D13a:** `alignParagraphs` and `paragraphEditLength`, a refusal in words, and a per-window cache so a continuation does not realign. |
+| F-04 (P2) | The checker's counts-only mode treats a failed search as zero matches, so Apply could cut a group to a subset. | **D22a:** `matchPatterns` reports `incomplete` apart from `unmatched`; such a group is left unchanged at review and Apply. |
 
 ## Consequences and risks
 
@@ -956,6 +1111,9 @@ B and A run in parallel. C1 follows either; C2 follows both.
 - **Context paths applied at the user level change every project.** The
   review says so; a group the workspace sets is never written.
 - **`SettingsStore` gains a method;** every host implements it.
+- **Named-session writes take a claim** (D6a). Every save, rename and
+  delete of a named session costs two more renames, and a write can be
+  `busy` for a moment while another window writes.
 - **Five operations, two families and two trailers are added;** the
   persona prompt grows by three grammar files. All are pinned.
 - **Older builds cannot open a session** holding the new fields or cards:
