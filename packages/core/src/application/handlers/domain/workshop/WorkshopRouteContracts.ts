@@ -1,3 +1,4 @@
+import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
 import type { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import type { MessageTransport } from '@handlers/MessageHandlerContracts';
 import type { MessageRouter } from '@handlers/MessageRouter';
@@ -193,6 +194,8 @@ export interface WorkshopSliceCompositionDependencies {
   memoryDrafts: WorkshopMemoryDraftPorts;
   /** Selected Text (ADR 2026-11-14 D11): the window's selection snapshots, built in extension.ts. */
   selectedText: WorkshopSelectedTextSnapshotsPort;
+  /** A persona's saved-session to-do changes (ADR 2026-11-19 D6): the write port, built in extension.ts. */
+  savedSessionTodos?: WorkshopSavedSessionTodos;
   outputChannel: LogSink;
 }
 

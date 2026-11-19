@@ -50,6 +50,12 @@ At the top of a long conversation, press **Show earlier turns** to load the prec
 
 **Sessions** lets you save, reopen or start a room. Use **Export…** for Markdown, JSON or styled HTML in prose-minion/exports/. To explore a different response, branch at an earlier point to keep the original session, or rewind to that point in this session. Rewind asks for confirmation before removing later turns. You can edit a previous writer message and send again. Ask a persona about earlier work to let it search saved transcripts and cite the session and turns. Session Recall shows a card for the lookup.
 
+## To-dos a persona closes
+
+A host or guest can mark your to-dos **Done** or **Dismissed** once they are handled, here and in saved sessions. Ask it to gather open to-dos from a chapter's sessions, work through them together, and it marks each one as you finish. It copies each to-do's id from the to-do list it was shown, so it never guesses. One reply can change up to 20 to-dos in up to 10 saved sessions. Only you reopen a to-do.
+
+The change lands at once. A receipt under the reply lists each to-do, its session and its new status, with **Undo** beside each. A saved session's change shows **Saving…** until it is written. If that session changed on disk since the persona read it, nothing is overwritten and the receipt says so. A closed to-do then reads, for example, "Done · by Jill in Polish 6.11". Your own tick or reopen clears that line. Undo works only in the room that made the change, and only while the to-do still has the status it set. If a saved session is open in another window, that window's next save is refused rather than writing the old status back; reopen the session there to load the change.
+
 ## Suggested file edits
 
 Under **Conversation settings → Behavior**, **Suggested file edits** controls whether a persona may propose changes to project files. Each card shows changes against a specific file. Inspect the card and choose **Apply**, **Review in editor…**, or **Decline**. Apply makes an undoable change. Saving the document remains your choice. When a reply describes small fixes or offers a rewrite, select its footer chip to ask that author to turn the offer into edit cards.

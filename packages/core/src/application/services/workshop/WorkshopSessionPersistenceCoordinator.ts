@@ -334,6 +334,11 @@ export class WorkshopSessionPersistenceCoordinator {
       : { available: false, reason: availability.reason };
   }
 
+  /** The open room's ids and title, as a persona's to-do change names it (ADR 2026-11-19 D2, D6). */
+  openRoomIdentity(): { sessionId: string; title: string; namedSessionId?: string } {
+    return { sessionId: this.identity.sessionId, title: this.identity.title, ...(this.activeNamedSessionId ? { namedSessionId: this.activeNamedSessionId } : {}) };
+  }
+
   hasPendingWrite(): boolean {
     return this.dirtyRevision > this.writtenRevision || this.pendingRollingMirror !== undefined;
   }

@@ -111,8 +111,9 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_ACCEPT_SELECTED_TEXT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SELECTED_TEXT_WATCH)).toBe(true);
     // Everyday Conveniences round two, item A added a long room's earlier turns.
+    // Workshop Persona Tools item A added the writer's Undo of a persona's to-do change.
     expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_EARLIER_TURNS)).toBe(true);
-    expect(router.handlerCount).toBe(98);
+    expect(router.handlerCount).toBe(99);
   });
 
   it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {

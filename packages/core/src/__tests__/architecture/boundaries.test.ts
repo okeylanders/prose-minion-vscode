@@ -194,7 +194,7 @@ const WORKSHOP_ROUTE_OWNERS = [
   {
     owner: WORKSHOP_TODO_HANDLER_OWNER,
     registration: 'mutation',
-    messageTypes: ['WORKSHOP_TODO_ACTION']
+    messageTypes: ['WORKSHOP_TODO_ACTION', 'WORKSHOP_UNDO_TODO_STATUS']
   },
   {
     owner: WORKSHOP_BOOKMARK_HANDLER_OWNER,
@@ -2322,9 +2322,10 @@ describe('architectural boundaries', () => {
     // Message Reactions Slice 1 added the writer's reaction change and Hide on a persona's (mutation).
     // Everyday Conveniences Slice B added the selection's offer and watch (direct) and its staging (mutation).
     // Everyday Conveniences round two, item A added a long room's earlier turns (direct).
-    expect(expectedOwnerPairs).toHaveLength(98);
+    // Workshop Persona Tools item A added the writer's Undo of a persona's to-do change (mutation).
+    expect(expectedOwnerPairs).toHaveLength(99);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(52);
+      .toHaveLength(53);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
       .toHaveLength(46);
     expect(duplicateLedgerEntries).toEqual([]);
@@ -3051,6 +3052,7 @@ describe('architectural boundaries', () => {
       'settings.ts',
       'showVsTell.ts',
       'standingDirectives.ts',
+      'todoStatus.ts',
       'widgets.ts'
     ]);
     expect(ownedTests.filter((file) => !fs.existsSync(path.join(testRoot, file)))).toEqual([]);

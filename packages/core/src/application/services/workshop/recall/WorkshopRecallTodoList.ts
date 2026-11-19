@@ -54,6 +54,8 @@ const TODO_FOOTER_CHARACTERS = 1_500;
 const TODO_SESSION_CHARACTERS = 1_000;
 /** One item: its metadata line (near 900 at most) and its text, which yields. */
 const TODO_ITEM_CHARACTERS = 1_500;
+/** Who closed an item (ADR 2026-11-19 D9): within the item's metadata allowance. */
+const CLOSED_BY_CHARACTERS = 300;
 /** "- [" and "] " around the status, plus the newline before the metadata. */
 const ITEM_FRAME_CHARACTERS = 64;
 
@@ -193,7 +195,8 @@ function itemBlock(todo: WorkshopRecallTodo, header: WorkshopRecallHeader): stri
     `from ${recallLabel(todo.source.label)} (${sourceWords(todo.source)})`,
     todo.position !== undefined ? `turn ${todo.position}` : 'source turn not in this session',
     `excerpt v${todo.excerptVersion}${todo.stale ? ` (session ended on v${header.excerptVersion})` : ''}`,
-    `created ${createdOn(clock, todo.createdAt)}`
+    `created ${createdOn(clock, todo.createdAt)}`,
+    ...(todo.closedBy ? [recallLabel(`closed by ${todo.closedBy.personaLabel} in ${recallQuoted(todo.closedBy.sessionTitle)}`, CLOSED_BY_CHARACTERS)] : [])
   ].join(' · ');
   const marks = [todo.status, ...(todo.priority ? [todo.priority] : []), ...(todo.stale ? ['stale'] : [])];
   const textRoom = Math.min(

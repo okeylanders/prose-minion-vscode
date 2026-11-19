@@ -167,6 +167,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       'workshop-personas/quinn.md',
       'workshop-personas/analysis-capability.md',
       'workshop-personas/transcript-recall-capability.md',
+      'workshop-personas/todo-status.md',
       'workshop-personas/help-capability.md',
       'workshop-personas/lens-capability.md',
       'workshop-personas/interaction-contract.md',
@@ -262,6 +263,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       // 13C: guests carry the same capability grammar resources as the host.
       'workshop-personas/analysis-capability.md',
       'workshop-personas/transcript-recall-capability.md',
+      'workshop-personas/todo-status.md',
       'workshop-personas/help-capability.md',
       'workshop-personas/lens-capability.md',
       'workshop-personas/interaction-contract.md',

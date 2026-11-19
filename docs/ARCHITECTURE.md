@@ -320,6 +320,7 @@ workshop/
 ├── seedDelivery.ts          # Handed-over seeds: claim, grant or deny, answer
 ├── lightboxTiles.ts         # A Lightbox tile staged above the composer: item, bounds, offer/accept/staged
 ├── selectedText.ts          # The editor's selection as a one-shot attachment: seed offer/accept/staged, watch and current
+├── todoStatus.ts            # A persona's to-do changes: closedBy, receipt rows, Undo (ADR 2026-11-19 D8, D9)
 └── settings.ts              # Defaults, validators, coercers, equality
 ```
 

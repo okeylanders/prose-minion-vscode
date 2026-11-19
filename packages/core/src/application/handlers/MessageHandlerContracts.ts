@@ -1,3 +1,4 @@
+import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
 import type { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
 import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import type { HelperAgent } from '@services/helper/HelperTaskPolicies';
@@ -204,6 +205,8 @@ export interface CoreServices {
    * `EditorContext` port; no handler constructs it.
    */
   editorSelectionSnapshots: EditorSelectionSnapshots;
+  /** A persona's saved-session to-do changes (ADR 2026-11-19 D6): the write port. No handler constructs it. */
+  workshopSavedSessionTodos?: WorkshopSavedSessionTodos;
   /**
    * Persona file edits (ADR 2026-11-05 D7): the one gateway from a staged
    * proposal to a project file, through Draft Edit's applier. No handler
