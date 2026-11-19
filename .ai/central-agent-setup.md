@@ -2302,7 +2302,9 @@ D11–D17 and D13a (Workshop Persona Tools, item B; PR #287) when touching
 - **The diff is core's, and jsdiff is confined to `WorkshopHistoryDiff`**
   (G2; `boundaries.test.ts`). Paragraphs first (`splitBlankLineParagraphs`,
   then `diffArrays`), then words inside a changed paragraph
-  (`diffWordsWithSpace`). No diff driver or external tool runs.
+  (`diffWordsWithSpace`). The alignment runs no diff driver or external
+  tool; only fetching a blob goes through Git, where a repository's
+  `textconv` may run (above).
 - **The paragraph alignment has its own ceilings** (D13a): at most
   `alignParagraphs` paragraphs a side, checked before aligning, and
   `paragraphEditLength` for the array diff, apart from the word stage's

@@ -3423,6 +3423,8 @@ describe('Workshop named-session storage (ADR 2026-11-19 D6a, D6e)', () => {
     expect(callersOf(/\bthis\.writeJsonAtomically\(/)).toEqual(['writeAtomically', 'writeSearchIndex']);
     expect(callersOf(/\bthis\.writeAtomically\(/)).toEqual(['writeSnapshotWithSearchIndex']);
     // A snapshot written over an existing file is only ever current.json; a named file is created, never overwritten.
+    // This pins the flag at the call site; WorkshopSessionStore.test.ts ("never overwrites a file that took a named
+    // checkpoint's name first") pins that the final rename honors it.
     const snapshotWrites = [...store.matchAll(/\bthis\.writeSnapshotWithSearchIndex\(([\s\S]*?)\);/g)].map((match) => match[1]);
     expect(snapshotWrites.length).toBeGreaterThan(0);
     expect(snapshotWrites.filter((args) => !/paths\.currentPath\b/.test(args) && !/,\s*false\s*$/.test(args.trim()))).toEqual([]);

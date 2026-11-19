@@ -347,6 +347,23 @@ describe('WorkshopSessionStore', () => {
     ]));
   });
 
+  it('never overwrites a file that took a named checkpoint\'s name first: the final rename refuses, the name moves on', async () => {
+    // Another window (or anything else) wrote the first candidate name after this store's identity scan.
+    const store = createStore();
+    const taken = path.join(sessionsDirectory, '20260723-102030-pentecost-auditorium-beat.json');
+    const planted = new TextEncoder().encode('not this store\'s file');
+    await fileSystem.writeFile(taken, planted);
+
+    const saved = await store.saveNamed(session('named-1', 'Pentecost — auditorium beat'));
+
+    expect(saved.fileName).toBe('20260723-102030-pentecost-auditorium-beat-2.json');
+    expect(Buffer.from(await fileSystem.readFile(taken)).toString()).toBe('not this store\'s file');
+    expect(fileSystem.renameCalls.filter(({ toPath }) => toPath === taken)).toEqual([]);
+    expect(fileSystem.renameCalls).toEqual(expect.arrayContaining([
+      expect.objectContaining({ toPath: path.join(sessionsDirectory, saved.fileName), overwrite: false })
+    ]));
+  });
+
   it('lists named files newest first and performs bounded case-insensitive content search', async () => {
     const store = createStore();
     await store.saveNamed(session('older', 'Older', { updatedAt: '2026-07-22T10:00:00.000Z' }));
