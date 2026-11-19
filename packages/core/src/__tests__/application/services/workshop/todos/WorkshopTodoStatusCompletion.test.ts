@@ -312,12 +312,37 @@ describe('a row left saving across a restart (D8a)', () => {
     expect(stored.todos[0].status).toBe('open');
   });
 
-  it('a session that cannot be read stays interrupted, unverified', async () => {
+  it('a session that cannot be read reads unverified, not yet confirmed, and offers no Undo', async () => {
     const { session, port, turn, writes } = await savingRow(false);
     port.refusals.set('alice-ch6', 'store-unavailable');
     await writes.reconcile();
-    expect(session.readRoomLedger().find((candidate) => candidate.id === turn.id)!.todoStatusChanges![0])
-      .toMatchObject({ state: 'interrupted', reason: 'unverified' });
+    expect(session.readRoomLedger().find((candidate) => candidate.id === turn.id)!.todoStatusChanges![0]).toMatchObject({ state: 'unverified' });
+    expect(workshopTrailerOutcomesFrameFor(session.readRoomLedger(), HOST)).toContain('1 not yet confirmed');
+    expect(await writes.undo(turn.id, 0, session.readRoomRevision())).toEqual({ ok: false, reason: 'not-undoable' });
+  });
+
+  it('unverified is not final (D8b): busy, then readable with the stamp, gives applied with Undo, and no second write', async () => {
+    const { session, port, turn, writes } = await savingRow(true);
+    const write = jest.spyOn(port, 'write');
+    port.refusals.set('alice-ch6', 'store-unavailable');
+    await writes.reconcile();
+    const row = () => session.readRoomLedger().find((candidate) => candidate.id === turn.id)!.todoStatusChanges![0];
+    expect(row().state).toBe('unverified');
+    port.refusals.delete('alice-ch6');
+    await writes.reconcile();
+    expect(row().state).toBe('applied');
+    expect(write).not.toHaveBeenCalled();
+    expect(await writes.undo(turn.id, 0, session.readRoomRevision())).toEqual({ ok: true });
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(write.mock.calls[0][1]).toEqual([{ todoId: 'todo-1-1', status: 'open' }]);
+  });
+
+  it('Undo on an unverified row re-checks first, read-only', async () => {
+    const { session, port, turn, writes } = await savingRow(true);
+    port.refusals.set('alice-ch6', 'store-unavailable');
+    await writes.reconcile();
+    port.refusals.delete('alice-ch6');
+    expect(await writes.undo(turn.id, 0, session.readRoomRevision())).toEqual({ ok: true });
   });
 
   it('Undo on a row still saving reconciles first', async () => {

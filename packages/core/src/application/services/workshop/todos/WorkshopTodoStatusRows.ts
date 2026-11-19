@@ -87,7 +87,7 @@ export function settleWorkshopTodoStatusChanges(turn: WorkshopTurn, settle: Work
       return row;
     }
     const { reason: _previous, ...rest } = row;
-    return (settle.state === 'refused' || settle.state === 'interrupted') && settle.reason ? { ...rest, state: settle.state, reason: settle.reason } : { ...rest, state: settle.state };
+    return settle.state === 'refused' && settle.reason ? { ...rest, state: settle.state, reason: settle.reason } : { ...rest, state: settle.state };
   });
 }
 

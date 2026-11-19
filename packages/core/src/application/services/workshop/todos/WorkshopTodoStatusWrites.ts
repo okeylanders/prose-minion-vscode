@@ -129,16 +129,17 @@ export class WorkshopTodoStatusWrites {
   }
 
   /**
-   * Settle every row still `saving` that no write in this window holds
-   * (D8a): after a restart, an Open or a restore. A to-do whose
-   * `closedBy.operationId` is the row's reads `applied`; anything else reads
-   * `interrupted`, and a session that cannot be read `interrupted` with
-   * `unverified`. It never writes the target and never retries.
+   * Settle every row still `saving` or `unverified` that no write in this
+   * window holds (D8a, D8b): at each hydrate, Open or restore, and before
+   * Undo. A to-do whose `closedBy.operationId` is the row's reads `applied`;
+   * a target read without the stamp reads `interrupted` (final); one that
+   * could not be read reads `unverified` (not final, checked again). It
+   * never writes the target and never retries.
    */
   async reconcile(): Promise<void> {
     const revision = this.session.readRoomRevision();
     const owed = this.session.readRoomLedger().flatMap((turn) => (turn.todoStatusChanges ?? []).flatMap((row, index) =>
-      row.state === 'saving' && !this.inFlight.has(row.operationId) ? [{ turnId: turn.id, index, row }] : []));
+      (row.state === 'saving' || row.state === 'unverified') && !this.inFlight.has(row.operationId) ? [{ turnId: turn.id, index, row }] : []));
     if (owed.length === 0) {
       return;
     }
@@ -152,10 +153,12 @@ export class WorkshopTodoStatusWrites {
         return;
       }
       const landed = read.kind === 'read' && read.todos.some((todo) => todo.id === row.todoId && todo.closedBy?.operationId === row.operationId);
-      this.session.setTodoStatusChangeStates(turnId, landed
-        ? { indexes: [index], state: 'applied' }
-        : read.kind === 'read' ? { indexes: [index], state: 'interrupted' } : { indexes: [index], state: 'interrupted', reason: 'unverified' });
-      this.hooks.log(`To-do row reconciled turnId=${turnId} index=${index} sessionId=${row.session} state=${landed ? 'applied' : 'interrupted'}${read.kind === 'read' ? '' : ' reason=unverified'}`);
+      const state = landed ? 'applied' : read.kind === 'read' ? 'interrupted' : 'unverified';
+      if (state === row.state) {
+        continue;
+      }
+      this.session.setTodoStatusChangeStates(turnId, { indexes: [index], state });
+      this.hooks.log(`To-do row reconciled turnId=${turnId} index=${index} sessionId=${row.session} state=${state}`);
       settled += 1;
     }
     if (settled > 0) {
@@ -173,11 +176,12 @@ export class WorkshopTodoStatusWrites {
     if (!turn || !row) {
       return { ok: false, reason: 'no-row' };
     }
-    if (row.state === 'saving' && !this.inFlight.has(row.operationId)) {
+    // D8b: a row still saving or unverified is re-checked, read-only, before Undo; Undo stays off until it reads applied.
+    if ((row.state === 'saving' || row.state === 'unverified') && !this.inFlight.has(row.operationId)) {
       // Undo is enabled only on a recognized write (D8a).
       await this.reconcile();
       const after = workshopTodoStatusChangeAt(this.liveTurn(turnId, roomRevision), index);
-      return after?.state === 'saving' ? { ok: false, reason: 'not-undoable' } : this.undo(turnId, index, roomRevision);
+      return after?.state === 'applied' ? this.undo(turnId, index, roomRevision) : { ok: false, reason: 'not-undoable' };
     }
     if (row.state !== 'applied') {
       return { ok: false, reason: 'not-undoable' };
@@ -254,7 +258,6 @@ function undoWriteRefusal(written: Extract<WorkshopSavedTodoWrite, { kind: 'refu
     case 'room-changed':
       return 'elsewhere';
     case 'write-failed':
-    case 'unverified':
       return 'failed';
     default:
       return assertNever(written.reason);

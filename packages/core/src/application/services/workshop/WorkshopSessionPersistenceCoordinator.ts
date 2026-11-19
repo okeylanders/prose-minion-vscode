@@ -72,6 +72,7 @@ import {
 } from '@/application/services/workshop/fileEdits/WorkshopFileEditCheckpoint';
 import { cleanRollingCheckpoint, isCleanRollingCheckpoint, withoutRollingProvenance } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import { hasSameWorkshopRecoveryContent } from '@/application/services/workshop/WorkshopSessionRecoveryEquality';
+import { isWorkshopNamedSaveRefusal, WorkshopNamedSessionRecoveryCopy } from '@/application/services/workshop/WorkshopNamedSessionRecoveryCopy';
 import type {
   WorkshopImportedRetainedHistory
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
@@ -284,6 +285,8 @@ export class WorkshopSessionPersistenceCoordinator {
   private lastSessionSaveStatus?: WorkshopSessionSaveStatus;
   // These notices describe files already committed, so hydration/rollback must not erase them.
   private savedRecoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][] = [];
+  /** A refused named save's own recovery session, one per refusal episode (ADR 2026-11-19 D6c). */
+  private readonly recoveryCopy = new WorkshopNamedSessionRecoveryCopy(this.store, () => this.idFactory(), () => normalizedIso(this.now()), (notice) => this.savedRecoveryNotices.push(notice), this.outputChannel);
   private acceptedWorkspaceRoot?: string;
   private initialUnavailableReason?: Extract<
     WorkshopSessionStoreAvailability,
@@ -827,6 +830,7 @@ export class WorkshopSessionPersistenceCoordinator {
       this.activeNamedSessionId = persisted.session.sessionId;
       await this.mirrorNamedCheckpoint(persisted.session, options.beforeReplacingCurrent);
       this.acceptedNamedCheckpoint = persisted.session;
+      this.recoveryCopy.end();
       this.localWorkPending = false;
       this.currentCheckpointError = undefined;
       this.pendingRollingMirror = undefined;
@@ -858,7 +862,7 @@ export class WorkshopSessionPersistenceCoordinator {
     incoming: WorkshopPersistedSessionV2,
     accepted?: WorkshopPersistedSessionV2
   ): Promise<void> {
-    if (hasSameWorkshopRecoveryContent(local, incoming) ||
+    if (hasSameWorkshopRecoveryContent(local, incoming) || this.recoveryCopy.holds(local) ||
         (accepted && hasSameWorkshopRecoveryContent(local, accepted))) {
       return undefined;
     }
@@ -1818,12 +1822,17 @@ export class WorkshopSessionPersistenceCoordinator {
     } catch (namedError) {
       // Authority and durability are separate: preserve live work without
       // advancing the named baseline or reporting the named save as complete.
+      // D6c: a refused room keeps its work in its own recovery session, never relying on current.json.
+      const kept = isWorkshopNamedSaveRefusal(namedError) ? await this.recoveryCopy.keep(checkpoint, checkpoint.title).then(() => undefined, (error: unknown) => error) : undefined;
       try {
         await this.store.writeCurrent({ ...checkpoint, ...this.identity });
       } catch (rollingError) {
         throw new Error(
           `${this.errorMessage(namedError)} Local recovery also failed: ${this.errorMessage(rollingError)}`
         );
+      }
+      if (kept) {
+        throw new Error(`${this.errorMessage(namedError)} Its recovery session could not be written: ${this.errorMessage(kept)}`);
       }
       throw namedError;
     }
@@ -1837,6 +1846,7 @@ export class WorkshopSessionPersistenceCoordinator {
     savedRevision: number
   ): Promise<void> {
     this.acceptedNamedCheckpoint = checkpoint;
+    this.recoveryCopy.end();
     this.writtenRevision = Math.max(this.writtenRevision, savedRevision);
     if (this.dirtyRevision <= savedRevision) {
       this.localWorkPending = false;

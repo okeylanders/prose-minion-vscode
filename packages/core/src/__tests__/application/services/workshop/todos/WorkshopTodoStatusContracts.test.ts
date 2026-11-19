@@ -44,7 +44,7 @@ describe('the session codec (D9; ADR 2026-07-30)', () => {
       status: 'completed', previous: 'open', state: 'applied', operationId: 'op-1'
     }, {
       session: 'alice-ch6', sessionTitle: 'Chapter 6', todoId: 'todo-1-1', todoText: 'Name the sister once.',
-      status: 'dismissed', previous: 'open', state: 'interrupted', reason: 'unverified', operationId: 'op-2', roomSessionId: 'room-alice'
+      status: 'dismissed', previous: 'open', state: 'unverified', operationId: 'op-2', roomSessionId: 'room-alice'
     }];
     const text = JSON.stringify(base);
     expect(JSON.stringify(parseWorkshopPersistedSession(JSON.parse(text)))).toBe(text);
@@ -125,7 +125,7 @@ describe('what the webview and the transcript get (D5, D8)', () => {
   });
 });
 
-describe('boundaries (D6, D6a)', () => {
+describe('boundaries (D6, D6a, D6b)', () => {
   const read = (dir: string): Array<[string, string]> => fs.readdirSync(path.join(SRC, dir))
     .filter((name) => name.endsWith('.ts'))
     .map((name) => [name, fs.readFileSync(path.join(SRC, dir, name), 'utf8')]);
@@ -139,16 +139,17 @@ describe('boundaries (D6, D6a)', () => {
     }
   });
 
-  it('the store replaces a named file only through its claim, never by an overwriting rename', () => {
+  it('the store replaces a named file only under its lock, never by an overwriting rename', () => {
     const store = fs.readFileSync(path.join(SRC, 'infrastructure/storage/WorkshopSessionStore.ts'), 'utf8');
     const updateNamed = store.slice(store.indexOf('  async updateNamed('), store.indexOf('  async readNamed('));
     expect(updateNamed).toContain('this.named.replace(');
     expect(updateNamed).not.toMatch(/writeSnapshotWithSearchIndex|overwrite: true/);
     const deleteNamed = store.slice(store.indexOf('  async deleteNamed('), store.indexOf('  async resolveRevealPath('));
     expect(deleteNamed).toContain('this.named.remove(');
-    const claim = fs.readFileSync(path.join(SRC, 'infrastructure/storage/WorkshopNamedSessionClaim.ts'), 'utf8');
-    expect(claim).toContain('rewriteWorkshopNamedSession(');
-    expect(claim).toContain('this.claims.deleteClaimed(');
+    const lock = fs.readFileSync(path.join(SRC, 'infrastructure/storage/WorkshopNamedSessionLock.ts'), 'utf8');
+    // D6b: the publish renames from inside the lock, never over anything.
+    expect(lock).toMatch(/rename\(staged, target\.filePath, \{ overwrite: false \}\)/);
+    expect(lock).not.toMatch(/overwrite: true/);
     // Only current.json is written with an overwriting rename.
     expect([...store.matchAll(/writeSnapshotWithSearchIndex\([\s\S]*?\)/g)].map((match) => match[0]).filter((call) => /,\s*true\b/.test(call)))
       .toEqual([expect.stringContaining('paths.currentPath')]);

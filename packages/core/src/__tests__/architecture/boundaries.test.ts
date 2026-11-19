@@ -3123,12 +3123,7 @@ describe('the shared claimed-file primitive (Workshop Project Memory, Slice 1)',
     const constructions = collectSourceFiles(SRC_ROOT)
       .filter((file) => /\bnew\s+StoredFileClaims\s*\(/.test(fs.readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC_ROOT, file));
-    // Workshop Persona Tools D6a: named Workshop sessions claim through it too.
-    expect(constructions).toEqual([
-      'infrastructure/storage/ProjectMemoryStore.ts',
-      'infrastructure/storage/WorkshopNamedSessionClaims.ts',
-      'infrastructure/storage/WorkshopPinnedContextStore.ts'
-    ]);
+    expect(constructions).toEqual(['infrastructure/storage/ProjectMemoryStore.ts', 'infrastructure/storage/WorkshopPinnedContextStore.ts']);
   });
 });
 

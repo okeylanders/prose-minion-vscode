@@ -17,6 +17,7 @@ import {
   WORKSHOP_TODO_STATUS_INTERRUPTED_WORDS,
   WORKSHOP_TODO_STATUS_ROW_REFUSAL_WORDS,
   WORKSHOP_TODO_STATUS_UNDO_REFUSAL_WORDS,
+  WORKSHOP_TODO_STATUS_UNVERIFIED_WORDS,
   workshopTodoReceiptHeading,
   workshopTodoStatusWord
 } from '@shared/constants/workshopTodoStatusWords';
@@ -40,7 +41,9 @@ export function workshopTodoReceiptRowState(row: WorkshopTodoStatusChange): { no
     case 'refused':
       return { note: WORKSHOP_TODO_STATUS_ROW_REFUSAL_WORDS[row.reason ?? 'write-failed'], undo: false };
     case 'interrupted':
-      return { note: row.reason === 'unverified' ? WORKSHOP_TODO_STATUS_ROW_REFUSAL_WORDS.unverified : WORKSHOP_TODO_STATUS_INTERRUPTED_WORDS, undo: false };
+      return { note: WORKSHOP_TODO_STATUS_INTERRUPTED_WORDS, undo: false };
+    case 'unverified':
+      return { note: WORKSHOP_TODO_STATUS_UNVERIFIED_WORDS, undo: false };
     case 'undone':
       return { note: 'Undone', undo: false };
     default:

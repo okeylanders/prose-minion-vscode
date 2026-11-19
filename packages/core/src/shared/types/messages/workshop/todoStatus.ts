@@ -43,7 +43,8 @@ export interface WorkshopTodoClosedBy {
 }
 
 /** A row's state (D5, D8). */
-export const WORKSHOP_TODO_STATUS_CHANGE_STATES = ['applied', 'saving', 'refused', 'interrupted', 'undone'] as const;
+/** `unverified` (D8b): the target could not be read to tell; not final, re-checked read-only. */
+export const WORKSHOP_TODO_STATUS_CHANGE_STATES = ['applied', 'saving', 'refused', 'interrupted', 'unverified', 'undone'] as const;
 export type WorkshopTodoStatusChangeState = typeof WORKSHOP_TODO_STATUS_CHANGE_STATES[number];
 
 /**
@@ -62,9 +63,7 @@ export const WORKSHOP_TODO_STATUS_WRITE_REFUSALS = [
   /** The store or the workspace was not available. */
   'sessions-unavailable',
   /** The write failed. */
-  'write-failed',
-  /** With `interrupted` only (D8a): the session could not be read to tell whether the write landed. */
-  'unverified'
+  'write-failed'
 ] as const;
 export type WorkshopTodoStatusWriteRefusal = typeof WORKSHOP_TODO_STATUS_WRITE_REFUSALS[number];
 
@@ -87,7 +86,7 @@ export interface WorkshopTodoStatusChange {
    * one for the open room's changes; stamped into `closedBy.operationId`.
    */
   operationId: string;
-  /** With `refused`, and `unverified` with `interrupted`. */
+  /** With `refused` only. */
   reason?: WorkshopTodoStatusWriteRefusal;
   /**
    * The open room's session id when the reply committed: a saved row's Undo

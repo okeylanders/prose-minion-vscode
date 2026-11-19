@@ -13,8 +13,7 @@
  *   `changesPerReply` rows, each naming its session, its title, the to-do,
  *   its text within the to-do's own bound, a status a persona may set,
  *   `previous: open`, an optional note, its state, its write's
- *   `operationId` (D8a), and a `reason` exactly when it is `refused` (or
- *   `unverified`, optionally, when it is `interrupted`). `elsewhere` is the webview's and is never stored.
+ *   `operationId` (D8a), and a `reason` exactly when it is `refused`. `elsewhere` is the webview's and is never stored.
  */
 
 import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
@@ -85,13 +84,9 @@ function assertRow(value: unknown, path: string): void {
   enumAt(row.state, `${path}.state`, WORKSHOP_TODO_STATUS_CHANGE_STATES);
   boundedStringAt(row.operationId, `${path}.operationId`, ID_CHARACTERS, false);
   if (row.state === 'refused') {
-    enumAt(row.reason, `${path}.reason`, WORKSHOP_TODO_STATUS_WRITE_REFUSALS.filter((reason) => reason !== 'unverified'));
-  } else if (row.state === 'interrupted') {
-    if (row.reason !== undefined) {
-      enumAt(row.reason, `${path}.reason`, ['unverified']);
-    }
+    enumAt(row.reason, `${path}.reason`, WORKSHOP_TODO_STATUS_WRITE_REFUSALS);
   } else if (row.reason !== undefined) {
-    shapeError(`${path}.reason`, 'a reason on a refused or interrupted row only');
+    shapeError(`${path}.reason`, 'a reason on a refused row only');
   }
   optionalBoundedStringAt(row.roomSessionId, `${path}.roomSessionId`, ID_CHARACTERS, false);
 }

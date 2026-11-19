@@ -18,7 +18,7 @@ import {
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
-import { formatByteLimit, WorkshopNamedSessionClaim } from '@/infrastructure/storage/WorkshopNamedSessionClaim';
+import { formatByteLimit, WorkshopNamedSessionLock } from '@/infrastructure/storage/WorkshopNamedSessionLock';
 import { isRecord } from '@/application/services/workshop/persistedValidation';
 import {
   assertPersistedJsonNestingDepth
@@ -200,8 +200,8 @@ export class WorkshopSessionStore {
     private readonly pageLimits: WorkshopBookmarkBrowserLimits = WORKSHOP_BOOKMARK_BROWSER_LIMITS
   ) {}
 
-  /** Every replace or remove of a named file claims it first (ADR 2026-11-19 D6a). */
-  private readonly named = new WorkshopNamedSessionClaim(this.fileSystem, this.log, this.now, this.limits.maximumExactFileBytes,
+  /** Every replace or remove of a named file holds its lock (ADR 2026-11-19 D6a, D6b). */
+  private readonly named = new WorkshopNamedSessionLock(this.fileSystem, this.log, this.now, this.limits.maximumExactFileBytes,
     { changed: () => new WorkshopNamedSessionChangedError(), missing: (id) => new WorkshopNamedSessionNotFoundError(id) });
 
   availability(): WorkshopSessionStoreAvailability {

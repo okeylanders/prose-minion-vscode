@@ -37,9 +37,11 @@ export const WORKSHOP_TODO_STATUS_ROW_REFUSAL_WORDS: Readonly<Record<WorkshopTod
   'session-not-found': 'Not saved: the session is gone.',
   'session-busy': 'Not saved: another window was writing the session.',
   'sessions-unavailable': 'Not saved: saved sessions could not be reached.',
-  'write-failed': 'Not saved: the session could not be written.',
-  unverified: 'Not confirmed: the saved session could not be read to check this change.'
+  'write-failed': 'Not saved: the session could not be written.'
 });
+
+/** A row whose target could not be read to tell (D8b): re-checked, never replayed. */
+export const WORKSHOP_TODO_STATUS_UNVERIFIED_WORDS = 'Not yet confirmed: the saved session could not be read to check this change.';
 
 /* eslint-enable @typescript-eslint/naming-convention */
 

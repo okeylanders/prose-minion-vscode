@@ -1,17 +1,17 @@
 /**
- * Every named-session writer claims the file (ADR 2026-11-19 D6a; PR #286
- * F-01): two stores over one folder (two windows), with held promises so
+ * Every named-session writer holds the file's lock (ADR 2026-11-19 D6a,
+ * D6b): two stores over one folder (two windows), with held promises so
  * both writers have read and validated the same checkpoint before either
- * claims. Exactly one commits; the other is refused in host words; the file
+ * takes the lock. Exactly one commits; the other is refused in host words; the file
  * is the winner's, byte for byte. Run for an autosave against the persona's
  * write, and for a rename against an autosave. Also: a stale save after a
- * completed write is refused (the compare), and an abandoned claim is put
+ * completed write is refused (the compare), and an abandoned lock is taken
  * back and the next write succeeds. *Alice*, made-up ids.
  */
 
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import { WorkshopNamedSessionChangedError, WorkshopSessionStore } from '@/infrastructure/storage/WorkshopSessionStore';
-import { WorkshopNamedSessionBusyError, WORKSHOP_NAMED_SESSION_BUSY_WORDS } from '@/infrastructure/storage/WorkshopNamedSessionClaims';
+import { WorkshopNamedSessionBusyError, WORKSHOP_NAMED_SESSION_BUSY_WORDS } from '@/infrastructure/storage/WorkshopNamedSessionLock';
 import { WorkshopSavedSessionTodoStore } from '@/application/services/workshop/todos/WorkshopSavedSessionTodoStore';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
@@ -24,7 +24,7 @@ const now = () => new Date('2026-11-19T12:00:00.000Z');
 const workspace: Workspace = { workspaceFolders: () => [{ name: 'novel', path: root }], extensionPath: '/extension', asRelativePath: (value) => value, findFiles: async () => [] };
 const log = (): LogSink & { appendLine: jest.Mock } => ({ appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() });
 
-/** A folder whose claim renames wait until both writers reach theirs, and whose first commit waits for the test. */
+/** A folder whose lock renames wait until both writers reach theirs, and whose first publish waits for the test. */
 class GatedFileSystem extends MemoryFileSystem {
   private arrived = 0;
   private open!: () => void;
@@ -35,13 +35,13 @@ class GatedFileSystem extends MemoryFileSystem {
   gate = false;
 
   override async rename(fromPath: string, toPath: string, options?: { overwrite?: boolean }): Promise<void> {
-    if (this.gate && toPath.includes('.claim-')) {
+    if (this.gate && fromPath.includes('.lock.staged-') && toPath.endsWith('.json.lock')) {
       this.arrived += 1;
       if (this.arrived === 2) {
         this.open();
       }
       await this.bothClaiming;
-    } else if (this.gate && fromPath.includes('.tmp-') && toPath.endsWith('.json') && !toPath.includes('summary') && !toPath.endsWith('current.json')) {
+    } else if (this.gate && fromPath.includes('/next-')) {
       this.commits += 1;
       if (this.commits === 1) {
         await this.firstCommit;
@@ -115,7 +115,7 @@ describe('overlapping named-session writers (D6a)', () => {
     } else {
       expect([after.workshop.excerpt?.text, after.workshop.todos[0].status]).toEqual(['Alice was beginning to get very tired.', 'completed']);
     }
-    expect([...fs.files.keys()].filter((name) => name.includes('.claim-'))).toEqual([]);
+    expect([...fs.files.keys()].filter((name) => name.includes('.lock'))).toEqual([]);
   });
 
   it('a rename against an autosave: one commits, the other is refused in host words', async () => {
@@ -142,24 +142,31 @@ describe('overlapping named-session writers (D6a)', () => {
     expect(textOf(fs, filePath)).toBe(before);
   });
 
-  it('an abandoned claim is put back, and the next write succeeds', async () => {
+  it('an abandoned lock is taken over: its prior file restored, and the next write succeeds', async () => {
     const { fs, left, saved, filePath } = await setup();
     const expected = (await left.readNamed('alice-polish'))!;
     const bytes = fs.files.get(filePath)!;
     fs.files.delete(filePath);
-    // A writer that died holding the file, long past the lease.
-    fs.files.set(`${directory}/.${saved.fileName}.claim-1000000000000-dead-writer`, bytes);
+    // A writer that died holding the file, long past the lease, mid-write.
+    const lock = `${directory}/.${saved.fileName}.lock`;
+    fs.files.set(`${lock}/owner.json`, new TextEncoder().encode(JSON.stringify({ token: 'dead-writer', at: 1_000_000_000_000 })));
+    fs.files.set(`${lock}/prior.json`, bytes);
+    fs.files.set(`${lock}/next-dead.json`, new TextEncoder().encode('{"stale": true}'));
+    fs.listsFolders = true;
     const fresh = new WorkshopSessionStore(fs, workspace, log(), now);
     await fresh.updateNamed('alice-polish', { ...expected, title: 'Polish, again' }, expected);
     expect((JSON.parse(textOf(fs, filePath)) as WorkshopPersistedSessionV2).title).toBe('Polish, again');
-    expect([...fs.files.keys()].filter((name) => name.includes('.claim-'))).toEqual([]);
+    expect([...fs.files.keys()].filter((name) => name.includes('.lock'))).toEqual([]);
   });
 
-  it('a live claim with the name empty reads busy, never missing', async () => {
+  it('a live lock with the name empty reads busy, never missing', async () => {
     const { fs, left, saved, filePath } = await setup();
     const bytes = fs.files.get(filePath)!;
     fs.files.delete(filePath);
-    fs.files.set(`${directory}/.${saved.fileName}.claim-${now().getTime()}-live-writer`, bytes);
+    const lock = `${directory}/.${saved.fileName}.lock`;
+    fs.files.set(`${lock}/owner.json`, new TextEncoder().encode(JSON.stringify({ token: 'live-writer', at: now().getTime() })));
+    fs.files.set(`${lock}/prior.json`, bytes);
+    fs.listsFolders = true;
     await expect(left.readNamedWithRecovery('alice-polish')).rejects.toBeInstanceOf(WorkshopNamedSessionBusyError);
     expect(await persona(left).read('alice-polish')).toEqual({ kind: 'refused', reason: 'store-unavailable' });
   });

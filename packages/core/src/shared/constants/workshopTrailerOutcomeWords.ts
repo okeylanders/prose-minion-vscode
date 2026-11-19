@@ -56,8 +56,7 @@ export const WORKSHOP_TODO_STATUS_WRITE_REFUSAL_WORDS: Readonly<Record<WorkshopT
   'session-not-found': 'the session is gone',
   'session-busy': 'another window was writing the session',
   'sessions-unavailable': 'saved sessions could not be reached just then',
-  'write-failed': 'the session could not be saved',
-  unverified: 'the session could not be read to check it'
+  'write-failed': 'the session could not be saved'
 });
 
 /** A row left `saving` across a restart, with no stamp in the file (D8a): counted as not written. */
@@ -78,20 +77,21 @@ const droppedFor = (drop: { reason: WorkshopTrailerDropReason; count: number }):
  */
 function todoParts(changes: number, rows: readonly Pick<WorkshopTodoStatusChange, 'state' | 'reason'>[]): string[] {
   const saving = rows.filter((row) => row.state === 'saving').length;
+  // D8b: a row whose target could not be read is not yet confirmed, apart from not written.
+  const unconfirmed = rows.filter((row) => row.state === 'unverified').length;
   const refused = new Map<string, number>();
   for (const row of rows) {
     if (row.state === 'refused' || row.state === 'interrupted') {
-      const words = row.state === 'interrupted' && row.reason !== 'unverified'
-        ? INTERRUPTED_WORDS
-        : WORKSHOP_TODO_STATUS_WRITE_REFUSAL_WORDS[row.reason ?? 'write-failed'];
+      const words = row.state === 'interrupted' ? INTERRUPTED_WORDS : WORKSHOP_TODO_STATUS_WRITE_REFUSAL_WORDS[row.reason ?? 'write-failed'];
       refused.set(words, (refused.get(words) ?? 0) + 1);
     }
   }
   const notWritten = [...refused.values()].reduce((sum, count) => sum + count, 0);
-  const made = Math.max(0, changes - saving - notWritten);
+  const made = Math.max(0, changes - saving - unconfirmed - notWritten);
   return [
     ...(made > 0 ? [`${made} made`] : []),
     ...(saving > 0 ? [`${saving} being saved`] : []),
+    ...(unconfirmed > 0 ? [`${unconfirmed} not yet confirmed (the session could not be read to check)`] : []),
     ...[...refused.entries()].map(([words, count]) => `${count} not written (${words})`)
   ];
 }
