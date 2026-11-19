@@ -2,6 +2,12 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [Unreleased]
+
+### Added
+
+- GPT-6.2 Sol, Sol Pro, Astra, Astra Pro, and Ling 3.2 Flash (free) are selectable in the shared model pickers and Category Search.
+
 ## [2.14.1] - 2026-11-17
 
 ### Fixed

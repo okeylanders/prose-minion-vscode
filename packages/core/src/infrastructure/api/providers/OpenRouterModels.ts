@@ -226,6 +226,30 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Premium 1.05M-context reasoning model for complex category matching'
   },
   {
+    id: 'openai/gpt-6.2-sol',
+    name: 'GPT-6.2 Sol',
+    family: 'GPT-6.2',
+    description: 'Lower-cost GPT-6.2 tier for category matching. 1.05M context and mandatory reasoning.'
+  },
+  {
+    id: 'openai/gpt-6.2-sol-pro',
+    name: 'GPT-6.2 Sol Pro',
+    family: 'GPT-6.2',
+    description: 'Sol served in Pro reasoning mode. May use substantially more output tokens at the same token rates.'
+  },
+  {
+    id: 'openai/gpt-6.2-astra',
+    name: 'GPT-6.2 Astra',
+    family: 'GPT-6.2',
+    description: 'Flagship GPT-6.2 tier for complex category matching. 1.05M context and mandatory reasoning.'
+  },
+  {
+    id: 'openai/gpt-6.2-astra-pro',
+    name: 'GPT-6.2 Astra Pro',
+    family: 'GPT-6.2',
+    description: 'Astra served in Pro reasoning mode. May use substantially more output tokens at the same token rates.'
+  },
+  {
     id: 'openai/gpt-oss-120b:nitro',
     name: 'GPT-OSS 120B Nitro',
     family: 'GPT-OSS',
@@ -356,6 +380,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'Hy4 Flash',
     family: 'Tencent Hy',
     description: 'Low-cost 1M-context model with optional reasoning for category matching; prose quality in Prose Minion is unverified'
+  },
+  {
+    id: 'inclusionai/ling-3.2-flash:free',
+    name: 'Ling 3.2 Flash (free)',
+    family: 'Ling',
+    description: 'Rate-limited free route with 1M context and optional reasoning for category matching.'
   },
   {
     id: 'stepfun/step-3.7-flash',
@@ -738,6 +768,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Low-cost 1M-context text and image model with optional reasoning and structured output. An opt-in choice for editorial work; prose quality in Prose Minion is unverified.'
   },
   {
+    id: 'inclusionai/ling-3.2-flash:free',
+    name: 'Ling 3.2 Flash (free)',
+    family: 'Ling',
+    description: 'Rate-limited free route with 1M context, optional reasoning, tools, and structured outputs.'
+  },
+  {
     id: 'stepfun/step-3.7-flash',
     name: 'Step 3.7 Flash',
     family: 'Step',
@@ -1060,6 +1096,30 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'GPT-6 Astra Pro',
     family: 'GPT-6',
     description: 'Premium 1.05M-context reasoner for difficult structural critique and long editorial workflows.'
+  },
+  {
+    id: 'openai/gpt-6.2-sol',
+    name: 'GPT-6.2 Sol',
+    family: 'GPT-6.2',
+    description: 'Lower-cost GPT-6.2 tier for long-context editorial work. 1.05M context and mandatory reasoning.'
+  },
+  {
+    id: 'openai/gpt-6.2-sol-pro',
+    name: 'GPT-6.2 Sol Pro',
+    family: 'GPT-6.2',
+    description: 'Sol served in Pro reasoning mode. May use substantially more output tokens at the same token rates.'
+  },
+  {
+    id: 'openai/gpt-6.2-astra',
+    name: 'GPT-6.2 Astra',
+    family: 'GPT-6.2',
+    description: 'Flagship GPT-6.2 tier for complex long-context analysis. 1.05M context and mandatory reasoning.'
+  },
+  {
+    id: 'openai/gpt-6.2-astra-pro',
+    name: 'GPT-6.2 Astra Pro',
+    family: 'GPT-6.2',
+    description: 'Astra served in Pro reasoning mode. May use substantially more output tokens at the same token rates.'
   },
   {
     id: 'openai/gpt-chat-latest',

@@ -1,7 +1,7 @@
 # Opening a Room Rebuilds the Project Catalog Once per Context File
 
 **Date:** 2026-11-18
-**Status:** Open
+**Status:** Fixed by the PR from `fix/workshop-open-one-catalog` (steps 1 and 2; steps 3 and 4 measured and skipped, below). Awaiting merge after #283; archive once merged.
 **Priority:** Medium-High. Okey notices the slow opens. The cost grows with attachments × project files, so the rooms that work hardest are the slowest to open.
 **Found by:** Okey, from the output log of opening a 348-turn room
 
@@ -74,16 +74,49 @@ that.
 
 ## Completion Criteria
 
-- [ ] Opening a room with N file-backed attachments builds the catalog
+- [x] Opening a room with N file-backed attachments builds the catalog
       once, not N times. A test counts `createProvider` (or `findFiles`)
       calls through a fake workspace.
-- [ ] The same holds for a pinned-context seed and Attach missing.
-- [ ] Every authorization outcome is unchanged. The existing reread and
+- [x] The same holds for a pinned-context seed and Attach missing.
+- [x] Every authorization outcome is unchanged. The existing reread and
       pinned-context tests pass as they are, refusals included.
-- [ ] The scan logs one line with its counts and duration (attachments
+- [x] The scan logs one line with its counts and duration (attachments
       checked, changed, refused; milliseconds), never a path or a name.
-- [ ] A before-and-after timing on a large project (Okey's: 346 files, 28
+- [x] A before-and-after timing on a large project (Okey's: 346 files, 28
       attachments) is recorded in the PR.
+
+## What the fix found (2026-11-18)
+
+**The shape.** `WorkshopIntakeCatalogScope` opens one catalog on first use and
+hands the same snapshot, or the same failure, to every authorization in the
+operation. `authorizeExcerptReread(source, scope?)` takes it; alone, a call
+makes its own, as before. The scan loop moved to `WorkshopContextFileScan`
+(the handler shrank from 1,065 to 1,006 lines), which logs one line:
+`Context scan (session-open): 28 checked, 6 changed, 2 refused, <n> ms`.
+The pinned reader's `readAll` shares one scope between its catalog and its
+workspace-file authorizations.
+
+**Measured** on a synthetic project of 352 files in 8 groups, 28 attachments
+(26 in the project, one gone, one outside), with 4 ms a search and a timer
+tick a `stat`:
+
+| | Catalog builds | `findFiles` | `stat`s | Scan |
+|---|---|---|---|---|
+| Before | 28 | 224 | 19,793 | 22.9 s |
+| After | 1 | 8 | 785 | 0.9 s |
+
+Pinned context, six pinned files (five through the workspace door): 6 catalog
+builds per seed, full reset or Attach missing before, 1 after.
+
+**Step 3 (paths-only listing): skipped.** After step 1, the one catalog's
+containment and symbolic-link checks are most of the remaining `stat`s, and
+those checks stay; only the final size read would go, for a saving of well
+under one catalog's walk per operation.
+
+**Step 4 (a few files at once): skipped.** The per-file work left is a
+handful of `stat`s and one read each; the 28 checks together cost less than
+the one catalog build. Not worth adding ordering questions to a room
+operation.
 
 ## Related Files
 
