@@ -41,7 +41,7 @@ class GatedFileSystem extends MemoryFileSystem {
         this.open();
       }
       await this.bothClaiming;
-    } else if (this.gate && fromPath.includes('/next-')) {
+    } else if (this.gate && fromPath.endsWith('/next.json')) {
       this.commits += 1;
       if (this.commits === 1) {
         await this.firstCommit;
@@ -115,7 +115,7 @@ describe('overlapping named-session writers (D6a)', () => {
     } else {
       expect([after.workshop.excerpt?.text, after.workshop.todos[0].status]).toEqual(['Alice was beginning to get very tired.', 'completed']);
     }
-    expect([...fs.files.keys()].filter((name) => name.includes('.lock'))).toEqual([]);
+    expect([...fs.files.keys()].filter((name) => /\.(lock|recovering-|retired-)/.test(name))).toEqual([]);
   });
 
   it('a rename against an autosave: one commits, the other is refused in host words', async () => {
@@ -150,13 +150,13 @@ describe('overlapping named-session writers (D6a)', () => {
     // A writer that died holding the file, long past the lease, mid-write.
     const lock = `${directory}/.${saved.fileName}.lock`;
     fs.files.set(`${lock}/owner.json`, new TextEncoder().encode(JSON.stringify({ token: 'dead-writer', at: 1_000_000_000_000 })));
-    fs.files.set(`${lock}/prior.json`, bytes);
-    fs.files.set(`${lock}/next-dead.json`, new TextEncoder().encode('{"stale": true}'));
+    fs.files.set(`${lock}/dead-writer/prior.json`, bytes);
+    fs.files.set(`${lock}/dead-writer/next.json`, new TextEncoder().encode('{"stale": true}'));
     fs.listsFolders = true;
     const fresh = new WorkshopSessionStore(fs, workspace, log(), now);
     await fresh.updateNamed('alice-polish', { ...expected, title: 'Polish, again' }, expected);
     expect((JSON.parse(textOf(fs, filePath)) as WorkshopPersistedSessionV2).title).toBe('Polish, again');
-    expect([...fs.files.keys()].filter((name) => name.includes('.lock'))).toEqual([]);
+    expect([...fs.files.keys()].filter((name) => /\.(lock|recovering-|retired-)/.test(name))).toEqual([]);
   });
 
   it('a live lock with the name empty reads busy, never missing', async () => {
@@ -165,7 +165,7 @@ describe('overlapping named-session writers (D6a)', () => {
     fs.files.delete(filePath);
     const lock = `${directory}/.${saved.fileName}.lock`;
     fs.files.set(`${lock}/owner.json`, new TextEncoder().encode(JSON.stringify({ token: 'live-writer', at: now().getTime() })));
-    fs.files.set(`${lock}/prior.json`, bytes);
+    fs.files.set(`${lock}/live-writer/prior.json`, bytes);
     fs.listsFolders = true;
     await expect(left.readNamedWithRecovery('alice-polish')).rejects.toBeInstanceOf(WorkshopNamedSessionBusyError);
     expect(await persona(left).read('alice-polish')).toEqual({ kind: 'refused', reason: 'store-unavailable' });

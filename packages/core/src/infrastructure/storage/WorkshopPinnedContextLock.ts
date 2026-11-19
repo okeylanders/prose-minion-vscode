@@ -63,29 +63,18 @@ type Owner =
   | { kind: 'io' }
   | { kind: 'owner'; identity: string; token?: string; at?: number };
 
-/**
- * How another store reuses the lock (ADR 2026-11-19 D6b, named sessions):
- * a lock path per target, and a step run on an abandoned lock, moved aside,
- * before it is deleted. Absent, the lock is the pinned list's, as always.
- */
-export interface WorkshopFileLockOptions {
-  readonly lockPathOf?: (target: string) => string;
-  readonly beforeRemovingAbandoned?: (aside: string, target: string) => Promise<void>;
-  readonly logPrefix?: string;
-}
-
 export class WorkshopPinnedContextLock {
   constructor(
     private readonly fileSystem: FileSystem,
     private readonly log: LogSink,
     private readonly now: () => Date,
-    private readonly mintId: () => string,
-    private readonly options: WorkshopFileLockOptions = {}
+    private readonly mintId: () => string
   ) {}
 
   /** The lock of the list at `listPath`, or why it cannot be had now. */
   async acquire(listPath: string): Promise<WorkshopPinnedContextHeldLock | 'busy' | 'io'> {
-    const lockPath = this.options.lockPathOf?.(listPath) ?? path.join(path.dirname(listPath), LOCK_NAME);
+    const folder = path.dirname(listPath);
+    const lockPath = path.join(folder, LOCK_NAME);
     const token = this.mintId();
     const staged = `${lockPath}.staged-${token}`;
     try {
@@ -96,7 +85,7 @@ export class WorkshopPinnedContextLock {
       await this.remove(staged);
       return 'io';
     }
-    const outcome = await this.take(staged, lockPath, listPath);
+    const outcome = await this.take(staged, lockPath);
     if (outcome !== 'held') {
       await this.remove(staged);
       return outcome;
@@ -112,7 +101,7 @@ export class WorkshopPinnedContextLock {
   }
 
   /** Rename the staged lock to the fixed name, taking over an abandoned one on the way. */
-  private async take(staged: string, lockPath: string, target: string): Promise<'held' | 'busy' | 'io'> {
+  private async take(staged: string, lockPath: string): Promise<'held' | 'busy' | 'io'> {
     for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
       try {
         await this.fileSystem.rename(staged, lockPath, { overwrite: false });
@@ -130,12 +119,12 @@ export class WorkshopPinnedContextLock {
       if (judged.at !== undefined && Math.abs(this.now().getTime() - judged.at) < STORED_FILE_CLAIM_LEASE_MS) {
         return 'busy';
       }
-      const removed = await this.removeIf(lockPath, `${lockPath}.stale-${this.mintId()}`, (moved) => moved.kind === 'owner' && moved.identity === judged.identity, target);
+      const removed = await this.removeIf(lockPath, `${lockPath}.stale-${this.mintId()}`, (moved) => moved.kind === 'owner' && moved.identity === judged.identity);
       if (removed === 'kept') {
         return 'busy';
       }
       if (removed === 'removed') {
-        this.log.appendLine(`${this.options.logPrefix ?? LOG} Took over an abandoned lock.`);
+        this.log.appendLine(`${LOG} Took over an abandoned lock.`);
       }
     }
     this.log.appendLine(`${LOG} The lock kept changing hands; this write is busy.`);
@@ -147,16 +136,13 @@ export class WorkshopPinnedContextLock {
    * delete it with all it holds if `matches` its owner; else put it back.
    * `gone` when it was not there to move.
    */
-  private async removeIf(lockPath: string, aside: string, matches: (moved: Owner) => boolean, abandonedOf?: string): Promise<'removed' | 'kept' | 'gone'> {
+  private async removeIf(lockPath: string, aside: string, matches: (moved: Owner) => boolean): Promise<'removed' | 'kept' | 'gone'> {
     try {
       await this.fileSystem.rename(lockPath, aside, { overwrite: false });
     } catch {
       return 'gone';
     }
     if (matches(await this.readOwner(aside))) {
-      if (abandonedOf !== undefined) {
-        await this.options.beforeRemovingAbandoned?.(aside, abandonedOf);
-      }
       await this.remove(aside);
       return 'removed';
     }
@@ -204,15 +190,6 @@ export class WorkshopPinnedContextLock {
       // Not an owner this store wrote.
     }
     return { kind: 'owner', identity: `text:${text}`, at: mtime };
-  }
-
-  /** What holds a target's lock: `live` within the lease, `abandoned` past it, `none`, or `io`. */
-  async state(target: string): Promise<'live' | 'abandoned' | 'none' | 'io'> {
-    const owner = await this.readOwner(this.options.lockPathOf?.(target) ?? path.join(path.dirname(target), LOCK_NAME));
-    if (owner.kind !== 'owner') {
-      return owner.kind;
-    }
-    return owner.at !== undefined && Math.abs(this.now().getTime() - owner.at) < STORED_FILE_CLAIM_LEASE_MS ? 'live' : 'abandoned';
   }
 
   private async exists(target: string): Promise<boolean> {
