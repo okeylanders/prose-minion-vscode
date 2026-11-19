@@ -106,4 +106,40 @@ describe('AgentRunEngine context tally (ADR 2026-11-18 D6)', () => {
     await engine.continueConversation({ conversationId: id, userMessage: 'And now?', policy, options: { contextTally: () => ({}) } });
     expect(engine.getConversationContextBudget(id)?.contextTokens).toBe(1_405);
   });
+
+  it('a measured capability call followed by an unmeasured final reply in one turn leaves no total (PR #285 F-02 re-review)', async () => {
+    const REQUEST = '<prose-minion-tool-call name="dictionary.lookup"><word>liminal</word></prose-minion-tool-call>';
+    const capability = {
+      catalog: 'workshopPersona',
+      appendContract: jest.fn(async (message: string) => message),
+      inspectRequest: jest.fn((candidate: string) => candidate === REQUEST
+        ? { kind: 'request', request: { word: 'liminal' } }
+        : { kind: 'none' }),
+      fulfill: jest.fn(async () => ({ evidence: 'x'.repeat(5_000), deliveredItems: ['dictionary.lookup:success'], artifacts: [] })),
+      stripToolCalls: jest.fn((content: string) => content.includes('<prose-minion-tool-call') ? '' : content.trim()),
+      statusMessage: jest.fn(() => 'Looking up'),
+      requestLogSummary: jest.fn(() => 'lookup'),
+      invalidRequestInstruction: jest.fn(() => 'Invalid.'),
+      limitInstruction: jest.fn(() => 'Answer now.')
+    };
+    client.createChatCompletion
+      .mockResolvedValueOnce({
+        content: REQUEST,
+        usage: { promptTokens: 38, completionTokens: 2, totalTokens: 40 },
+        observation: {
+          modelId: 'model/a', promptTokens: 38, completionTokens: 2, totalTokens: 40,
+          requestedMaxOutputTokens: 10_000, finishReason: 'stop', contextCompression: 'unknown', measuredAt: 1
+        }
+      })
+      .mockResolvedValueOnce({ content: 'Final answer without usage.' });
+
+    const started = await engine.runInitial({
+      toolName: 'workshop_persona_jill', systemMessage: 'System', userMessage: 'Alice asks', policy: AGENT_RUN_POLICIES.workshopHost,
+      capability: capability as never, options: { contextTally: () => ({}) }
+    });
+    expect(capability.fulfill).toHaveBeenCalledTimes(1);
+    expect(engine.getConversationContextAccount(started.conversationId!)?.tally).toHaveLength(1);
+    // The 40-token total predates the evidence the turn committed, so none is kept.
+    expect(engine.getConversationContextBudget(started.conversationId!)).toBeUndefined();
+  });
 });

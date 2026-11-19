@@ -390,6 +390,8 @@ export class AgentRunEngine {
     let totalUsage: TokenUsage | undefined;
     let runCitations: UrlCitation[] | undefined;
     let latestObservation: InferenceRequestObservation | undefined;
+    // Whether the latest call reported usage: only then does a total describe the history this turn commits (PR #285 F-02).
+    let finalCallMeasured = false;
     let peakPromptTokens = 0;
     let correctionTurns = 0;
     let remindCapabilityProtocol = false;
@@ -407,6 +409,7 @@ export class AgentRunEngine {
       }
     };
     const recordObservation = (observation?: InferenceRequestObservation): void => {
+      finalCallMeasured = observation !== undefined;
       if (!observation) {
         // Missing final-call telemetry cannot renew an earlier call's cache.
         if (latestObservation) {
@@ -654,7 +657,7 @@ export class AgentRunEngine {
           // The owner's measure of this turn's opening message, at its index (ADR 2026-11-18 D6).
           const tally = runOptions.contextTally?.();
           if (tally) this.conversationManager.appendContextTally(conversationId, { messageIndex: history.length - 1, pieces: { ...tally } });
-          if (latestObservation && totalUsage) {
+          if (finalCallMeasured && latestObservation && totalUsage) {
             const snapshot = this.toContextBudgetSnapshot(latestObservation, peakPromptTokens, totalUsage);
             this.conversationManager.setContextBudget(conversationId, snapshot);
             // One line per committed reading, so a moving gauge can be diagnosed
@@ -667,7 +670,7 @@ export class AgentRunEngine {
               `compression=${snapshot.contextCompression}`
             );
           } else {
-            // No usage for this history: the last total names an older one, so it goes (PR #285 F-02).
+            // The final call reported no usage: any total names an earlier history, so it goes (PR #285 F-02).
             this.conversationManager.setContextBudget(conversationId, undefined);
           }
         };

@@ -204,3 +204,9 @@ unchanged (omit, by construction).
   splits across a read's files carries `isEstimate: true`. A row counts as
   provider-measured only with a delta and without that flag; its number is
   kept either way. Amends D3.
+
+**Re-review (Astra, 2026-11-18): F-02 was partly fixed.** A measured
+capability request followed by a final reply with no usage, in one turn,
+still kept the request's total. The engine now keeps a total only when the
+turn's final call reported usage (`finalCallMeasured`); the turn's
+aggregate usage is unchanged. F-01 and F-03 were confirmed fixed.
