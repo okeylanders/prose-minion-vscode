@@ -121,6 +121,15 @@ export const WORKSHOP_LENS_CAPABILITY_PROMPT_PATH =
 export const WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH =
   'workshop-personas/history-capability.md';
 
+/**
+ * The stable `locations.*` grammar and the context-paths proposal trailer
+ * (ADR 2026-11-19 D26, D27): read-only calls and a proposal the writer
+ * applies. In the system prompt for host and guest alike, always: whether a
+ * folder is open is a per-call fact each result reports.
+ */
+export const WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH =
+  'workshop-personas/locations-capability.md';
+
 /** Product help is available to every Workshop participant (ADR 2026-11-17 D23). */
 export const WORKSHOP_HELP_CAPABILITY_PROMPT_PATH =
   'workshop-personas/help-capability.md';
@@ -272,7 +281,8 @@ export function workshopPersonaSystemPromptPaths(
     ...(participant ? [WORKSHOP_TODO_STATUS_PROMPT_PATH] : []),
     // Unconditional capability grammars for host and guest alike (ADR 2026-11-17 D16).
     ...(participant
-      ? [WORKSHOP_HELP_CAPABILITY_PROMPT_PATH, WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH, WORKSHOP_LENS_CAPABILITY_PROMPT_PATH]
+      ? [WORKSHOP_HELP_CAPABILITY_PROMPT_PATH, WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH, WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH]
       : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],

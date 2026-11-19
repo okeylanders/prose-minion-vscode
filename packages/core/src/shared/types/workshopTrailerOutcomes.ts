@@ -76,10 +76,27 @@ export const WORKSHOP_TODO_TRAILER_DROP_REASONS = [
 ] as const;
 export type WorkshopTodoTrailerDropReason = typeof WORKSHOP_TODO_TRAILER_DROP_REASONS[number];
 
+/**
+ * Every reason a context-paths proposal frame can be dropped for (ADR
+ * 2026-11-19 D27), in the order a record lists them. `nothing-kept`: every
+ * pattern was dropped or refused, so no card. `workspace-unavailable`: the
+ * project's folders could not be checked. `off` and `over-cap` never occur:
+ * the trailer has no setting, and a second frame is `duplicate`.
+ */
+export const WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS = [
+  'malformed',
+  'misplaced',
+  'duplicate',
+  'nothing-kept',
+  'workspace-unavailable'
+] as const;
+export type WorkshopLocationsTrailerDropReason = typeof WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS[number];
+
 export type WorkshopTrailerDropReason =
   | WorkshopMemoryTrailerDropReason
   | WorkshopFileEditTrailerDropReason
-  | WorkshopTodoTrailerDropReason;
+  | WorkshopTodoTrailerDropReason
+  | WorkshopLocationsTrailerDropReason;
 
 /** How many frames were dropped for one reason; `count` is at least 1. */
 export interface WorkshopTrailerDrop<Reason extends WorkshopTrailerDropReason> {
@@ -116,9 +133,24 @@ export interface WorkshopTodoTrailerOutcomes {
   dropped: WorkshopTrailerDrop<WorkshopTodoTrailerDropReason>[];
 }
 
+/**
+ * The reply's context-paths proposal frames (ADR 2026-11-19 D27): the card
+ * made (at most one), the frames dropped, and the card's patterns as the
+ * checker sorted them. `incomplete` is kept apart from `unmatched`: a check
+ * that did not complete is never zero matches (D22a). The writer's Apply or
+ * decline is never recorded here.
+ */
+export interface WorkshopLocationsTrailerOutcomes {
+  cards: number;
+  /** At most one entry per reason, in `WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS`' order. */
+  dropped: WorkshopTrailerDrop<WorkshopLocationsTrailerDropReason>[];
+  patterns: { kept: number; unmatched: number; incomplete: number; refused: number };
+}
+
 /** A side is present only when the reply carried that kind of trailer; a reply with none has no record. */
 export interface WorkshopTrailerOutcomes {
   memory?: WorkshopMemoryTrailerOutcomes;
   fileEdits?: WorkshopFileEditTrailerOutcomes;
   todos?: WorkshopTodoTrailerOutcomes;
+  locations?: WorkshopLocationsTrailerOutcomes;
 }

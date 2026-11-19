@@ -459,6 +459,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // One cache for every turn: a continuation never aligns the paragraphs again (PR #286 F-03).
     diffs: new WorkshopHistoryDiffCache()
   };
+  // The project's context paths (ADR 2026-11-19 D18): one scan, one checker over the real resolver's
+  // `matchPatterns`, one user-level writer, shared by the Settings helper, a persona's `locations.*`
+  // calls and her proposal card. Only the writer's Apply writes.
+  const contextPathSettings = new ContextPathSettingsWriter(platform.settings);
+  const projectFolderScan = new ProjectFolderScan(platform.fileSystem, platform.workspace, outputChannel);
+  const contextPathChecker = new ContextPathProposalChecker(contextResourceResolver, contextPathSettings);
   // Each participant turn uses the same session, library and reference readers.
   const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
     dictionaryService,
@@ -470,7 +476,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     projectMemoryLibrary,
     lexicalGravityLensRepository,
     workshopHelpReference,
-    workshopHistoryPorts
+    workshopHistoryPorts,
+    { scan: projectFolderScan, checker: contextPathChecker }
   );
   const workshopToolSidePass = new RunWorkshopToolSidePass(
     assistantToolService,
@@ -660,13 +667,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel
   );
 
-  // The project's context paths from Settings (ADR 2026-11-19 D18): one scan, one checker over the
-  // real resolver's `matchPatterns`, one user-level writer; the helper drafts, and only Apply writes.
-  const contextPathSettings = new ContextPathSettingsWriter(platform.settings);
+  // The project's context paths from Settings (ADR 2026-11-19 D18): the scan, checker and writer built
+  // above; the helper drafts, and only Apply writes.
   const contextPathSuggestions = new ContextPathSuggestionService(
-    new ProjectFolderScan(platform.fileSystem, platform.workspace, outputChannel),
+    projectFolderScan,
     helperAgentService,
-    new ContextPathProposalChecker(contextResourceResolver, contextPathSettings),
+    contextPathChecker,
     contextPathSettings,
     outputChannel
   );
@@ -723,7 +729,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     helperAgentService,
     contextPathSuggestions,
     workshopTranscriptRecallService,
-    workshopSavedSessionTodos
+    workshopSavedSessionTodos,
+    contextPathProposals: { checker: contextPathChecker, settings: contextPathSettings }
   };
 
   // Migrate API key from settings to SecretStorage if needed

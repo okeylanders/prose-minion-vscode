@@ -17,6 +17,11 @@
  * in-flight one, reset aborts, and zombie completions are refused + logged.
  */
 
+import type { WorkshopLocationsProposalPorts } from '@handlers/domain/workshop/WorkshopLocationsProposalHandler';
+import {
+  resolveWorkshopReplyLocations,
+  type WorkshopReplyLocationsContext
+} from '@/application/services/workshop/locations/WorkshopReplyLocations';
 import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
@@ -336,7 +341,9 @@ export class WorkshopRoomHandler {
     /** Selected Text's snapshots (ADR 2026-11-14 D11): `EditorSelectionSnapshots`, built in `extension.ts`. */
     selectedText: WorkshopSelectedTextSnapshotsPort,
     /** A persona's saved-session to-do changes (ADR 2026-11-19 D6): the write port, built in `extension.ts`. */
-    savedSessionTodos?: WorkshopSavedSessionTodos
+    savedSessionTodos?: WorkshopSavedSessionTodos,
+    /** A persona's context-paths card (ADR 2026-11-19 D27): C1's checker and settings, built in `extension.ts`. */
+    private readonly locationsProposals?: WorkshopLocationsProposalPorts
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -373,7 +380,7 @@ export class WorkshopRoomHandler {
         bookmarkBrowser,
         fileEditApply,
         memoryDrafts,
-        selectedText, savedSessionTodos,
+        selectedText, savedSessionTodos, locationsProposals,
         outputChannel: this.outputChannel
       },
       {
@@ -505,6 +512,7 @@ export class WorkshopRoomHandler {
       memoryAutoSave: (turn, indexes) => this.sliceComposition.autoSaveMemoryProposals(turn, indexes, controller.signal),
       memoryAutoSavesInRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
       fileEdits: (reply, signal) => this.replyFileEdits(reply, signal), todoStatus: (reply) => this.sliceComposition.replyTodoStatus(reply),
+      locations: (reply, signal) => this.replyLocations(reply, signal),
       reactionsOpen: () => this.conversationSettingsService.personaReactionsOpen(),
       settled: (requestId) => this.settleActiveRun(requestId)
     });
@@ -805,13 +813,17 @@ export class WorkshopRoomHandler {
         });
         const pendingMemory = this.replyMemory(result.content, controller.signal);
         const replyMemory = pendingMemory && await pendingMemory;
-        const [fileEdits, todoStatus] = await Promise.all([this.replyFileEdits(result.content, controller.signal), this.sliceComposition.replyTodoStatus(result.content)]);
+        const [fileEdits, todoStatus, locations] = await Promise.all([
+          this.replyFileEdits(result.content, controller.signal),
+          this.sliceComposition.replyTodoStatus(result.content),
+          this.replyLocations(result.content, controller.signal)
+        ]);
         const memoryAutoSave = this.memoryAutoSaveFor(controller.signal);
         const assistantTurn = completeWorkshopRun({
           memory: replyMemory,
           memoryAutoSave: memoryAutoSave.hand,
           memoryAutoSavesInRoom: memoryAutoSave.inRoom,
-          fileEdits, todoStatus,
+          fileEdits, todoStatus, locations,
           reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
           session: this.session,
           requestId,
@@ -1388,13 +1400,17 @@ export class WorkshopRoomHandler {
 
       const pendingMemory = this.replyMemory(result.content, controller.signal);
       const replyMemory = pendingMemory && await pendingMemory;
-      const [fileEdits, todoStatus] = await Promise.all([this.replyFileEdits(result.content, controller.signal, directedRun?.boundExcerpt), this.sliceComposition.replyTodoStatus(result.content)]);
+      const [fileEdits, todoStatus, locations] = await Promise.all([
+        this.replyFileEdits(result.content, controller.signal, directedRun?.boundExcerpt),
+        this.sliceComposition.replyTodoStatus(result.content),
+        this.replyLocations(result.content, controller.signal)
+      ]);
       const memoryAutoSave = this.memoryAutoSaveFor(controller.signal);
       const assistantTurn = (directedRun?.complete ?? completeWorkshopRun)({
         memory: replyMemory,
         memoryAutoSave: memoryAutoSave.hand,
         memoryAutoSavesInRoom: memoryAutoSave.inRoom,
-        fileEdits, todoStatus,
+        fileEdits, todoStatus, locations,
         reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
         session: this.session,
         requestId,
@@ -1640,6 +1656,11 @@ export class WorkshopRoomHandler {
       ...(boundExcerpt ? { boundExcerpt } : {}),
       signal
     });
+  }
+
+  /** A reply's context-paths proposal, checked before completion (ADR 2026-11-19 D27); no await without the tag. */
+  private replyLocations(reply: string, signal: AbortSignal): Promise<WorkshopReplyLocationsContext | undefined> {
+    return resolveWorkshopReplyLocations(reply, this.locationsProposals?.checker, signal);
   }
 
   private excerptMutationBlockedReason(): string | undefined {
