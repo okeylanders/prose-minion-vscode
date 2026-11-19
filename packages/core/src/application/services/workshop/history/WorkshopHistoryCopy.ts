@@ -48,6 +48,8 @@ export function workshopHistoryUnavailableLine(reason: FileHistoryUnavailableRea
       return 'This file isn\'t in a git repository, so it has no history to read.';
     case 'not-tracked':
       return 'No commit has touched this file: git isn\'t tracking it, or it has never been committed.';
+    case 'unaddressable':
+      return 'This file\'s name can\'t be looked up in git history.';
     case 'failed':
       return 'Git couldn\'t read this file\'s history just now. Try again later.';
     default:

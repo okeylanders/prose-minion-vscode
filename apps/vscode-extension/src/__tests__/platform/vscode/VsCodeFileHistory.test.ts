@@ -20,7 +20,7 @@ jest.mock('@prose-minion/core', () => ({
 
 import * as vscode from 'vscode';
 import { fileHistoryCommitId } from '@prose-minion/core';
-import { gitLiteralPathspec, VsCodeFileHistory } from '@app/platform/vscode/VsCodeFileHistory';
+import { gitAddressable, gitLiteralPathspec, VsCodeFileHistory } from '@app/platform/vscode/VsCodeFileHistory';
 
 const ROOT = '/projects/wonderland';
 const FILE = `${ROOT}/Drafts/6.11.md`;
@@ -177,5 +177,27 @@ describe('the log names the authorized file literally (PR #287)', () => {
     gitDouble({ repository: repo });
     expect(await new VsCodeFileHistory().log('/elsewhere/6.11.md', 5)).toEqual({ kind: 'unavailable', reason: 'not-a-repository' });
     expect(repo.log).not.toHaveBeenCalled();
+  });
+});
+
+describe('the log, the size and the read name one file (PR #287 re-review)', () => {
+  it('refuses a POSIX name with a backslash before log, size or buffer is called', async () => {
+    const repo = repository();
+    gitDouble({ repository: repo });
+    const history = new VsCodeFileHistory();
+    const file = `${ROOT}/Drafts/tea\\party.md`;
+    const id = fileHistoryCommitId(HASH)!;
+    expect(await history.log(file, 5)).toEqual({ kind: 'unavailable', reason: 'unaddressable' });
+    expect(await history.size(file, id)).toEqual({ kind: 'unavailable', reason: 'unaddressable' });
+    expect(await history.show(file, id)).toEqual({ kind: 'unavailable', reason: 'unaddressable' });
+    expect(repo.log).not.toHaveBeenCalled();
+    expect(repo.getObjectDetails).not.toHaveBeenCalled();
+    expect(repo.buffer).not.toHaveBeenCalled();
+  });
+
+  it('allows a backslash only where it is the separator', () => {
+    expect(gitAddressable(ROOT, `${ROOT}/Drafts/tea\\party.md`, '/')).toBe(false);
+    expect(gitAddressable(ROOT, `${ROOT}/Drafts/tea party.md`, '/')).toBe(true);
+    expect(gitAddressable('C:\\wonderland', 'C:\\wonderland\\Drafts\\6.11.md', '\\')).toBe(true);
   });
 });

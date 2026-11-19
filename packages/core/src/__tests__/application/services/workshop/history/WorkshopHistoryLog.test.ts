@@ -137,6 +137,7 @@ describe('a history the host cannot read is said in host words (D11)', () => {
     ['not-ready', 'Git hasn\'t finished starting'],
     ['not-a-repository', 'isn\'t in a git repository'],
     ['not-tracked', 'No commit has touched this file'],
+    ['unaddressable', 'This file\'s name can\'t be looked up in git history.'],
     ['failed', 'Git couldn\'t read this file\'s history just now']
   ];
 

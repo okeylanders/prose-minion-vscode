@@ -45,6 +45,8 @@ export type FileHistoryUnavailableReason =
   | 'not-ready'
   | 'not-a-repository'
   | 'not-tracked'
+  /** The host cannot name this file as one file for every call (a backslash in a POSIX name, in VS Code). */
+  | 'unaddressable'
   | 'failed';
 
 export type FileHistoryLog =

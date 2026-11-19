@@ -20,13 +20,23 @@
  *   every side by one policy; `size` reads the blob's size
  *   (`getObjectDetails`) before anything is fetched. An error naming a
  *   missing path is `absent`; any other is `failed`.
+ * - **One file for every call** (PR #287 re-review): the Git extension's
+ *   `buffer` rewrites every backslash in the repository-relative path to
+ *   `/` (VS Code 1.82.0, `extensions/git/src/repository.ts`, `buffer` and
+ *   `show`), while `log` and `getObjectDetails` pass the path through. On
+ *   a platform where `\` is a filename character, the log and the size
+ *   could name one file and the read another, so such a name is refused
+ *   (`unaddressable`) before any of the three is called. Backslashes are the
+ *   only character that source rewrites.
  * - **The log does not follow renames** (`git log -- path`): the stated limit.
  * - **Workspace trust is the boundary** (D16): the extension declares no
  *   support for untrusted workspaces, so neither it nor the Git extension
- *   runs in Restricted Mode. The Git extension's `show` reads a blob with
+ *   runs in Restricted Mode. The Git extension's `buffer` reads a blob with
  *   `git show --textconv`, so a repository's text conversion can run here,
  *   as it does for VS Code's own file views; diff drivers and external diff
- *   tools never do, since the diff is core's.
+ *   tools never do, since the diff is core's. The size preflight reads the
+ *   raw blob, so it cannot cap peak memory when a text conversion expands
+ *   the output; core's post-read check still refuses the side.
  *
  * Nothing is logged: a failure is returned as a closed reason, never with
  * git's message, which may name the file.
@@ -52,6 +62,15 @@ import { GIT_EXTENSION_ID, type GitApi, type GitExtension, type GitRepository } 
  * not exist in`, `exists on disk, but not in`, and `Path not known by git`.
  */
 const MISSING_PATH = /does not exist in|exists on disk, but not in|path .* does not exist|path not known by git/i;
+
+/**
+ * Whether the Git extension names `fsPath` as one file for every call: a
+ * repository-relative path with a backslash is refused where `\` is not the
+ * separator, since `buffer` would read it as `/` (PR #287 re-review).
+ */
+export function gitAddressable(rootPath: string, fsPath: string, separator: string = path.sep): boolean {
+  return separator === '\\' || !path.relative(rootPath, fsPath).includes('\\');
+}
 
 /**
  * The file as a literal pathspec, relative to the repository's root: git
@@ -155,7 +174,11 @@ export class VsCodeFileHistory implements FileHistory {
       return { unavailable: 'not-ready' };
     }
     const repository = api.getRepository(vscode.Uri.file(fsPath));
-    return repository ? { repository } : { unavailable: 'not-a-repository' };
+    if (!repository) {
+      return { unavailable: 'not-a-repository' };
+    }
+    // Before log, size or buffer is called: each must name the same file.
+    return gitAddressable(repository.rootUri.fsPath, fsPath) ? { repository } : { unavailable: 'unaddressable' };
   }
 
   /** Whether the API is initialized, waiting at most `readyMs` for it. */
