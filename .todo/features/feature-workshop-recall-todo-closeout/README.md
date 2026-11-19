@@ -1,7 +1,7 @@
 # Feature: Personas Close To-dos, Here and in Saved Sessions
 
 **Date Identified:** 2026-10-05; widened to the open room 2026-11-19
-**Status:** Idea. Needs an ADR. Builds on the Session Recall epic's Slice 2B (`transcript.todos`). Okey asked for it again on 2026-11-19, for the to-dos in this conversation too.
+**Status:** Idea. Needs an ADR. Builds on the Session Recall epic's Slice 2B (`transcript.todos`). Okey asked for it again on 2026-11-19, for the to-dos in this conversation too, and chose to apply changes at once with Undo (T1).
 **Priority:** Medium
 **Origin:** Okey, while settling Slice 2B's D5: "A future use-case will be telling the agent just to mark them down." Again on 2026-11-19, below.
 
@@ -69,15 +69,11 @@ or in a saved session, and the room shows what changed.
    from). The to-do then reads "Done · by Jill in *Polish 6.11*". There is
    no `schemaVersion` bump (ADR 2026-07-30).
 
-## The decision this needs from Okey
+## Decisions (Okey, 2026-11-19)
 
-**Apply at once, or wait for the writer?**
-- **Recommended: apply at once, with Undo.** That's what Okey asked for
-  ("let the agent mark them as done"). A status change is small, visible on
-  the receipt, and reversed in one press.
-- **Alternatively: the writer confirms.** The card offers **Apply** first,
-  as file edits do. Safer, but it brings back the manual step this exists
-  to remove.
+| # | Decision | Notes |
+|---|---|---|
+| T1 | **Apply at once, with Undo.** A persona's status changes land in the reply's own commit; the receipt card offers Undo per change. | No confirm step: that would bring back the manual ticking this exists to remove. A status change is small, visible on the receipt, and reversed in one press. |
 
 ## What the ADR still has to settle
 
@@ -98,7 +94,7 @@ or in a saved session, and the room shows what changed.
 
 ## Completion Criteria
 
-- [ ] An ADR covers the decision and the questions above.
+- [ ] An ADR records T1 and settles the questions above.
 - [ ] A persona marks to-dos done or dismissed by id, in the open room
       through `setTodoStatus` inside the mutation gate, and in a saved
       session through a separate write port (tests).
