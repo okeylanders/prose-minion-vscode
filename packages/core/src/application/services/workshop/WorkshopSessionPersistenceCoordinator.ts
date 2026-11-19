@@ -340,6 +340,8 @@ export class WorkshopSessionPersistenceCoordinator {
   /** The open room's ids and title, and a saved session's change on the operation queue (ADR 2026-11-19 D2, D6). */
   openRoomIdentity = () => ({ sessionId: this.identity.sessionId, title: this.identity.title, namedSessionId: this.activeNamedSessionId });
   runSavedSessionOperation = <T>(operation: () => Promise<T>): Promise<T> => this.serializeSessionOperation(operation);
+  /** Explicit recovery of a session left mid-save, on the session-operation queue (D6e). */
+  recoverNamed = (sessionId: string) => this.serializeSessionOperation(() => this.store.recoverNamed(sessionId));
 
   hasPendingWrite(): boolean {
     return this.dirtyRevision > this.writtenRevision || this.pendingRollingMirror !== undefined;
@@ -1621,7 +1623,7 @@ export class WorkshopSessionPersistenceCoordinator {
       scope: persisted.scope,
       excerptLabel: persisted.excerptLabel,
       excerptIdentity: persisted.excerptIdentity,
-      preview: persisted.preview,
+      preview: persisted.preview, ...(persisted.lock ? { lock: persisted.lock } : {}),
       degradedConversationKeys: isCurrent ? this.getDegradedConversationKeys() : undefined
     };
   }

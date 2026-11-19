@@ -1083,6 +1083,8 @@ export interface WorkshopSessionSummary {
    * existed — the browser says "Scope unknown" rather than guessing.
    */
   scope?: WorkshopSessionScope;
+  /** A lock beside the saved file (ADR 2026-11-19 D6e): busy, or left mid-save and needing Recover…. */
+  lock?: 'busy' | 'recovery-required';
 }
 
 export interface WorkshopSessionsDataMessage extends MessageEnvelope<{
@@ -1117,6 +1119,8 @@ export interface WorkshopSessionActionResultMessage extends MessageEnvelope<{
   ok: boolean;
   message: string;
   session?: WorkshopSessionSummary;
+  /** A save or open refused because the session was left mid-save: the notice offers Recover… (D6e). */
+  recoverSessionId?: string;
 }> {
   type: MessageType.WORKSHOP_SESSION_ACTION_RESULT;
 }

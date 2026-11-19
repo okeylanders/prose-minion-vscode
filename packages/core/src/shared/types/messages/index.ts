@@ -179,6 +179,8 @@ import {
   WorkshopTodoActionMessage,
   WorkshopUndoTodoStatusMessage,
   WorkshopTodoStatusUndoResultMessage,
+  WorkshopRecoverNamedSessionMessage,
+  WorkshopNamedSessionRecoveryResultMessage,
   WorkshopSetTurnBookmarkMessage,
   WorkshopSetTurnReactionMessage,
   WorkshopHideTurnReactionMessage,
@@ -377,6 +379,7 @@ export type WebviewToExtensionMessage =
   | WorkshopRunContextWizardMessage
   | WorkshopTodoActionMessage
   | WorkshopUndoTodoStatusMessage
+  | WorkshopRecoverNamedSessionMessage
   | WorkshopSetTurnBookmarkMessage
   | WorkshopSetTurnReactionMessage
   | WorkshopHideTurnReactionMessage
@@ -506,6 +509,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopFileEditExtensionMessage
   | WorkshopEditOfferExtensionMessage
   | WorkshopTodoStatusUndoResultMessage
+  | WorkshopNamedSessionRecoveryResultMessage
   | WorkshopMemoryEditDataMessage
   | WorkshopMemoryEstimateResultMessage
   | WorkshopMemoryDraftHostMessage

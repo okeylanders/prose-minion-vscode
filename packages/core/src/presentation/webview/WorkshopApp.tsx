@@ -53,6 +53,8 @@ import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProj
 import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import { useWorkshopFileEdits } from '@hooks/domain/workshop/useWorkshopFileEdits';
 import { useWorkshopTodoReceiptControls } from '@components/workshop/todos/useWorkshopTodoReceiptControls';
+import { useWorkshopNamedSessionRecovery } from '@hooks/domain/workshop/useWorkshopNamedSessionRecovery';
+import { WorkshopNamedSessionRecoveryMount } from '@components/workshop/WorkshopNamedSessionRecoveryMount';
 import { useWorkshopFileEditControls } from '@components/workshop/fileEdits/useWorkshopFileEditControls';
 import { useWorkshopEditOffers } from '@hooks/domain/workshop/useWorkshopEditOffers';
 import { useWorkshopEarlierTurns } from '@hooks/domain/workshop/useWorkshopEarlierTurns';
@@ -665,16 +667,10 @@ export const WorkshopApp: React.FC = () => {
     !!workshop.excerpt ||
     !!workshop.shelvedExcerpt ||
     workshop.contextAttachments.length > 0;
-  const handleSessionResult = React.useCallback(
-    (result: NonNullable<typeof workshopSessions.sessionActionResult>) => {
-      showToast({
-        message: result.message,
-        icon: result.ok ? (result.action === 'save' ? 'save' : 'check') : 'x',
-        ...(result.ok ? {} : { tone: 'error' })
-      });
-    },
-    [showToast]
-  );
+  const handleSessionResult = React.useCallback((result: NonNullable<typeof workshopSessions.sessionActionResult>) => {
+    showToast({ message: result.message, icon: result.ok ? (result.action === 'save' ? 'save' : 'check') : 'x', ...(result.ok ? {} : { tone: 'error' }) });
+  }, [showToast]);
+  const sessionRecovery = useWorkshopNamedSessionRecovery({ sessionActionResult: workshopSessions.sessionActionResult, onSettled: workshopSessions.requestSessions });
   const sessionSurfaces = useWorkshopSessionSurfaces({
     sessionReady: workshop.sessionReady,
     persistenceAvailable: workshop.persistenceAvailable,
@@ -1998,7 +1994,9 @@ export const WorkshopApp: React.FC = () => {
         onDuplicate={workshopSessions.duplicateSession}
         onReveal={workshopSessions.revealSession}
         onDelete={workshopSessions.deleteSession}
+        onRecover={sessionRecovery.ask}
       />
+      <WorkshopNamedSessionRecoveryMount recovery={sessionRecovery} />
       <WorkshopConfirmDialog
         open={sessionConfirm !== null}
         {...workshopSessionConfirmCopy(sessionConfirm, { shelvedExcerptTitle, pinnedFileCount: pinnedContext.pinnedFileCount })}

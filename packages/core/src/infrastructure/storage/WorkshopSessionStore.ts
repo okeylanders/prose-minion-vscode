@@ -19,6 +19,8 @@ import {
 import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { formatByteLimit, WorkshopNamedSessionLock } from '@/infrastructure/storage/WorkshopNamedSessionLock';
+import { recoverWorkshopNamedSession, type WorkshopNamedSessionRecoveryOutcome } from '@/infrastructure/storage/WorkshopNamedSessionRecovery';
+import { withWorkshopNamedSessionLocks } from '@/infrastructure/storage/WorkshopNamedSessionLockRows';
 import { isRecord } from '@/application/services/workshop/persistedValidation';
 import {
   assertPersistedJsonNestingDepth
@@ -334,7 +336,7 @@ export class WorkshopSessionStore {
     return {
       ...(current.summary ? { current: current.summary }
         : {}),
-      sessions: entries.sessions.sort(compareSummariesNewestFirst),
+      sessions: (await withWorkshopNamedSessionLocks(entries.sessions, await this.named.rowsIn(paths.sessionsDirectory), normalized, this.readLocked)).sort(compareSummariesNewestFirst),
       truncated: entries.truncated,
       searchTruncated: entries.searchTruncated || current.searchTruncated
     };
@@ -413,6 +415,16 @@ export class WorkshopSessionStore {
     return this.saveNamed(duplicate);
   }
 
+  /** Explicit recovery of a session left mid-save (ADR 2026-11-19 D6e); the coordinator runs it on its queue. */
+  async recoverNamed(sessionId: string): Promise<WorkshopNamedSessionRecoveryOutcome> {
+    const paths = this.requireAvailability();
+    const existing = async (id: string) => { const found = await this.findNamedSession(id, paths, { ignoreUnreadable: true }); return found && workshopStoredSessionSummary(found.session, found.fileName); };
+    const ports = { fileSystem: this.fileSystem, lock: this.named, log: this.log, read: this.readLocked, saveNamed: (copy: WorkshopPersistedSessionV2) => this.saveNamed(copy), existing, now: () => this.now().toISOString() };
+    return recoverWorkshopNamedSession(ports, paths.sessionsDirectory, sessionId);
+  }
+
+  private readonly readLocked = async (filePath: string, fileName: string) => (await this.readSessionFileExact(filePath, fileName))?.session;
+
   async deleteNamed(sessionId: string): Promise<void> {
     const paths = this.requireAvailability();
     const found = await this.requireNamedSession(sessionId, paths);
@@ -452,7 +464,7 @@ export class WorkshopSessionStore {
   private async findNamedSession(
     sessionId: string,
     paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
-    options: { ignoreUnreadable?: boolean; claimsSettled?: boolean } = {}
+    options: { ignoreUnreadable?: boolean; underLock?: boolean } = {}
   ): Promise<StoredNamedSession | undefined> {
     if (!sessionId.trim()) {
       return undefined;
@@ -487,8 +499,8 @@ export class WorkshopSessionStore {
         found.filePath
       );
     }
-    if (!found && !options.ignoreUnreadable && !options.claimsSettled && await this.named.settledWhenMissing(paths.sessionsDirectory)) {
-      return this.findNamedSession(sessionId, paths, { ...options, claimsSettled: true }); // D6a: busy throws; put back, read again.
+    if (!found && !options.ignoreUnreadable && !options.underLock) { // D6e: missing only on a read under the lock.
+      return this.named.decideMissing(paths.sessionsDirectory, sessionId, cached?.fileName, () => this.findNamedSession(sessionId, paths, { ...options, underLock: true }));
     }
     if (!found && entries.failures.length > 0 && !options.ignoreUnreadable) {
       // A malformed file may own the requested durable id. Exact operations

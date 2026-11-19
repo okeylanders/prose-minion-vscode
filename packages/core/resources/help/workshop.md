@@ -50,6 +50,8 @@ At the top of a long conversation, press **Show earlier turns** to load the prec
 
 **Sessions** lets you save, reopen or start a room. Use **Export…** for Markdown, JSON or styled HTML in prose-minion/exports/. To explore a different response, branch at an earlier point to keep the original session, or rewind to that point in this session. Rewind asks for confirmation before removing later turns. You can edit a previous writer message and send again. Ask a persona about earlier work to let it search saved transcripts and cite the session and turns. Session Recall shows a card for the lookup.
 
+A saved session left mid-save, usually by a window that closed, reads **Recovery required** in Sessions, and saving or opening it says so. Close any other Prose Minion window on this workspace, then press **Recover…** on that notice or on the session's row and confirm. Recovery puts the saved session back and keeps any unsaved work as a session named "(local recovery)"; an older copy that a finished save already replaced is dropped. A session another window is writing reads busy until that window finishes.
+
 ## To-dos a persona closes
 
 A host or guest can mark your to-dos **Done** or **Dismissed** once they are handled, here and in saved sessions. Ask it to gather open to-dos from a chapter's sessions, work through them together, and it marks each one as you finish. It copies each to-do's id from the to-do list it was shown, so it never guesses. One reply can change up to 20 to-dos in up to 10 saved sessions. Only you reopen a to-do.

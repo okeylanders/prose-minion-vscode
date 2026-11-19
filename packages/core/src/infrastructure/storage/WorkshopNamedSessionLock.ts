@@ -1,32 +1,28 @@
 /**
  * Every write that replaces or removes a named Workshop session holds the
- * session file's lock (ADR 2026-11-19 D6a, D6b, D6d; PR #286 re-reviews).
+ * session file's lock (ADR 2026-11-19 D6a, D6b, D6d, D6e; PR #286 reviews).
  *
- * - **The lock** is `.<name>.lock/` beside the session file, `owner.json`
- *   (`{ token, at }`) at its top. It is taken by renaming a staged
- *   directory to that name, never over anything: of two windows, one takes
- *   it and the other is busy (`WorkshopNamedSessionBusyError`).
- * - **One subdirectory per owner** (D6d): everything an owner writes lives
- *   under `.<name>.lock/<token>/`, its staged `next.json` and its
- *   `prior.json`. A successor's token differs, so a retired owner's paths
- *   never alias the successor's.
- * - **Claim, publish and cleanup are renames from or into the owner's own
- *   subdirectory.** Once a takeover moved the lock away, each finds no
- *   source or no destination directory and fails: a stalled writer cannot
- *   publish, and cannot touch its successor's rollback copy.
- * - **Destructive steps act only on what was first detached:** cleanup
- *   renames the owner's subdirectory to `.<name>.retired-<id>` and deletes
- *   that; release renames the lock aside, checks `owner.json` is this
- *   token's, and deletes it, else puts it back.
- * - **A takeover is itself the recovery marker** (D6d): an abandoned lock
- *   (owner older than the lease, or unreadable) is renamed, never over
- *   anything, to `.<name>.recovering-<id>/`; `recovery.json` (`{ at, token }`)
- *   is written into it; the retired owner's `prior.json` goes back to the
- *   saved name only if that name is empty; then the directory is deleted.
- *   There is no moment with neither the file, the lock nor a marker.
- * - **Readers** return busy while a lock or a recovering directory stands
- *   live, and finish an abandoned one under the same lease rule; a session
- *   is missing only when the file, the lock and every marker are absent.
+ * - **The lock** is `.<name>.lock/` beside the session file. It holds the
+ *   owner file `owner-<token>.json` (`{ token, at }`) and the owner's own
+ *   folder `<token>/`, where its staged `next.json` and its `prior.json`
+ *   live. It is taken by renaming a staged directory to that name, never
+ *   over anything: of two windows, one takes it and the other is refused.
+ * - **No writer moves or deletes another writer's lock** (D6e). A lock
+ *   within its lease is busy (`WorkshopNamedSessionBusyError`); one past it
+ *   (its owner's `at` older than `STORED_FILE_CLAIM_LEASE_MS`, or no owner
+ *   file and the directory older) is recovery-required
+ *   (`WorkshopNamedSessionRecoveryRequiredError`). Nothing is taken over:
+ *   recovery is the writer's, explicit (`WorkshopNamedSessionRecovery`).
+ * - **Claim and publish are renames into and out of the owner's folder,**
+ *   never over anything; renames never create a missing parent (D6d).
+ * - **Release is the owner's alone,** three steps none of which can touch
+ *   another owner's lock: detach `<token>/` to `.<name>.retired-<id>` and
+ *   delete that; delete `owner-<token>.json`; delete the lock directory
+ *   non-recursively, which fails while it holds anything.
+ * - **"Missing" is decided only under the lock** (`decideMissing`): a
+ *   reader that found no file takes the lock of every name its session may
+ *   be under and reads again; a held lock answers busy, a stale one
+ *   recovery-required, never missing.
  * - **Logs** never name a session file: its name carries a title slug.
  */
 
@@ -41,19 +37,36 @@ import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/Works
 const LOG = '[WorkshopNamedSessionLock]';
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
-/** Takeovers and lost races tried before a window answers busy. */
+/** Lost races, and new locks found while deciding missing, tried before a window answers busy. */
 const ATTEMPTS = 3;
-/** A lock or a recovery marker beside a session file. Group 1 is the saved name. */
-const MARKER = /^\.([^/\\]+\.json)\.(?:lock|recovering-[A-Za-z0-9-]+)$/;
+/** A lock beside a session file. Group 1 is the saved name. */
+const LOCK = /^\.([^/\\]+\.json)\.lock$/;
+/** An owner file inside a lock. Group 1 is the token. */
+const OWNER = /^owner-([A-Za-z0-9-]+)\.json$/;
 
 /** The host's words for a write refused because another window holds the file (D6a). */
 export const WORKSHOP_NAMED_SESSION_BUSY_WORDS = 'This saved session is being written by another window. Try again in a moment.';
+/** The host's words for a lock left past its lease (D6e). */
+export const WORKSHOP_NAMED_SESSION_RECOVERY_REQUIRED_WORDS =
+  'This saved session was left mid-save, probably by a window that closed. Recover it to use it again.';
 
 export class WorkshopNamedSessionBusyError extends Error {
   constructor() {
     super(WORKSHOP_NAMED_SESSION_BUSY_WORDS);
     this.name = 'WorkshopNamedSessionBusyError';
   }
+}
+
+export class WorkshopNamedSessionRecoveryRequiredError extends Error {
+  constructor(readonly sessionId: string) {
+    super(WORKSHOP_NAMED_SESSION_RECOVERY_REQUIRED_WORDS);
+    this.name = 'WorkshopNamedSessionRecoveryRequiredError';
+  }
+}
+
+/** The session a recovery-required refusal names, for the notice's Recover… (D6e). */
+export function workshopRecoveryRequiredSessionId(error: unknown): string | undefined {
+  return error instanceof WorkshopNamedSessionRecoveryRequiredError && error.sessionId ? error.sessionId : undefined;
 }
 
 /** The store's errors, handed in so this module never imports the store. */
@@ -65,19 +78,37 @@ export interface WorkshopNamedSessionLockErrors {
 /** Test seams: steps the witnesses pause at. */
 export interface WorkshopNamedSessionLockHooks {
   readonly beforePublish?: () => Promise<void>;
-  readonly beforeCleanup?: () => Promise<void>;
-  readonly beforeRestore?: () => Promise<void>;
+  readonly beforeRelease?: () => Promise<void>;
+}
+
+export type WorkshopNamedSessionLockState = 'busy' | 'recovery-required';
+
+/** A copy an owner left in its folder: its path and, when it reads as JSON within bounds, its session id. */
+export interface WorkshopNamedSessionLockCopy {
+  readonly token: string;
+  readonly kind: 'prior' | 'next';
+  readonly path: string;
+  readonly sessionId?: string;
+}
+
+/** A lock found beside a session file, as it stands. */
+export interface WorkshopNamedSessionLockRow {
+  readonly fileName: string;
+  readonly filePath: string;
+  readonly lock: string;
+  readonly state: WorkshopNamedSessionLockState;
+  readonly tokens: readonly string[];
+  readonly ownerFiles: readonly string[];
+  readonly copies: readonly WorkshopNamedSessionLockCopy[];
 }
 
 /** A lock this write holds. */
 interface Held {
   readonly lock: string;
   readonly token: string;
-  /** The owner's own subdirectory: `.<name>.lock/<token>/`. */
+  /** The owner's own folder: `.<name>.lock/<token>/`. */
   readonly own: string;
 }
-
-type Marker = { kind: 'none' } | { kind: 'io' } | { kind: 'live' } | { kind: 'abandoned'; token?: string; identity: string };
 
 export class WorkshopNamedSessionLock {
   constructor(
@@ -98,7 +129,7 @@ export class WorkshopNamedSessionLock {
     expected: WorkshopPersistedSessionV2;
   }): Promise<void> {
     const written = this.encode(target.session, 'Workshop session');
-    await this.holding(target.filePath, async (held) => {
+    await this.holding(target.filePath, target.sessionId, async (held) => {
       const staged = path.join(held.own, 'next.json');
       await this.fileSystem.writeFile(staged, written);
       const latest = await target.readExact();
@@ -110,7 +141,6 @@ export class WorkshopNamedSessionLock {
       }
       await this.claim(held, target.filePath, target.sessionId);
       await this.hooks.beforePublish?.();
-      // The fence is the placement: a takeover moved the lock, and the staged file with it, away.
       await this.fileSystem.rename(staged, target.filePath, { overwrite: false }).catch(async (error: unknown) => {
         await this.fileSystem.rename(path.join(held.own, 'prior.json'), target.filePath, { overwrite: false }).catch(() => undefined);
         throw error instanceof Error ? error : new Error('The saved Workshop session could not be written.');
@@ -118,31 +148,89 @@ export class WorkshopNamedSessionLock {
     });
   }
 
-  /** Delete the named file under its lock: the file and the lock go together. */
+  /** Delete the named file under its lock: the claimed file goes with the owner's folder at release. */
   async remove(filePath: string, sessionId: string): Promise<void> {
-    await this.holding(filePath, (held) => this.claim(held, filePath, sessionId));
+    await this.holding(filePath, sessionId, (held) => this.claim(held, filePath, sessionId));
   }
 
-  /** A reader found no file: busy (throws) beside a live lock or marker; true when an abandoned one was finished (read again). */
-  async settledWhenMissing(folder: string): Promise<boolean> {
-    const entries = await this.fileSystem.readDirectory(folder).catch((): Array<[string, FileType]> => []);
-    let settled = false;
-    for (const [name, type] of entries) {
-      const saved = type === FileType.Directory ? MARKER.exec(name)?.[1] : undefined;
-      if (!saved) {
+  /**
+   * A reader found no file for `sessionId` (D6e): under the lock of every
+   * name the session may be under (a lock holding its copy, or one whose
+   * copy cannot be read, and the name the reader knew), read again. A held
+   * lock answers busy and a stale one recovery-required, by throwing.
+   * Returns what a read found, or undefined: missing.
+   */
+  async decideMissing<T>(folder: string, sessionId: string, knownFileName: string | undefined, reread: () => Promise<T | undefined>): Promise<T | undefined> {
+    const checked = new Set<string>();
+    for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+      const names = await this.namesOf(folder, sessionId, checked);
+      if (knownFileName && !checked.has(knownFileName)) {
+        names.add(knownFileName);
+      }
+      if (names.size === 0) {
+        // No lock to take: read again, then make sure no lock of this session came meanwhile.
+        const again = await reread();
+        if (again !== undefined || (await this.namesOf(folder, sessionId, checked)).size === 0) {
+          return again;
+        }
         continue;
       }
-      const marker = path.join(folder, name);
-      const state = await this.markerState(marker);
-      if (state.kind === 'live' || state.kind === 'io') {
-        throw new WorkshopNamedSessionBusyError();
-      }
-      if (state.kind === 'abandoned') {
-        await (name.endsWith('.lock') ? this.takeOver(marker, path.join(folder, saved), state.identity) : this.finishRecovery(marker, path.join(folder, saved)));
-        settled = true;
+      for (const name of names) {
+        checked.add(name);
+        const found = await this.holding(path.join(folder, name), sessionId, () => reread());
+        if (found !== undefined) {
+          return found;
+        }
       }
     }
-    return settled;
+    this.log.appendLine(`${LOG} Locks kept appearing while deciding a session was missing; answering busy.`);
+    throw new WorkshopNamedSessionBusyError();
+  }
+
+  /** Every lock in the folder, with its state and the copies its owners left. */
+  async rowsIn(folder: string): Promise<WorkshopNamedSessionLockRow[]> {
+    const entries = await this.fileSystem.readDirectory(folder).catch((): Array<[string, FileType]> => []);
+    const rows: WorkshopNamedSessionLockRow[] = [];
+    for (const [name, type] of entries) {
+      const fileName = type === FileType.Directory ? LOCK.exec(name)?.[1] : undefined;
+      if (fileName) {
+        const row = await this.rowOf(path.join(folder, name), path.join(folder, fileName), fileName);
+        if (row) {
+          rows.push(row);
+        }
+      }
+    }
+    return rows;
+  }
+
+  /**
+   * Remove a stale lock after recovery landed (D6e): each owner folder
+   * detached and deleted, each owner file deleted, then the directory,
+   * non-recursively. Throws on the first step that fails.
+   */
+  async removeRecovered(row: WorkshopNamedSessionLockRow): Promise<void> {
+    for (const token of row.tokens) {
+      const own = path.join(row.lock, token);
+      const retired = this.retiredPath(row.filePath);
+      try {
+        await this.fileSystem.rename(own, retired, { overwrite: false });
+      } catch (error) {
+        if (await this.exists(own)) {
+          throw error;
+        }
+        continue; // Emptied by the restore and gone with it: nothing to detach.
+      }
+      await this.fileSystem.delete(retired, { recursive: true });
+    }
+    for (const owner of row.ownerFiles) {
+      await this.fileSystem.delete(path.join(row.lock, owner));
+    }
+    await this.fileSystem.delete(row.lock, { recursive: false }).catch(async (error: unknown) => {
+      if (await this.exists(row.lock)) {
+        throw error;
+      }
+    });
+    this.log.appendLine(`${LOG} Removed a recovered lock (owners=${row.tokens.length}).`);
   }
 
   /** A persisted value's bytes, refused past the store's bound. */
@@ -159,18 +247,18 @@ export class WorkshopNamedSessionLock {
     return bytes;
   }
 
-  /** Run `work` holding the file's lock; clean up and release however it ends. */
-  private async holding(filePath: string, work: (held: Held) => Promise<void>): Promise<void> {
-    const held = await this.acquire(filePath);
+  /** Run `work` holding the file's lock; release however it ends. */
+  private async holding<T>(filePath: string, sessionId: string, work: (held: Held) => Promise<T>): Promise<T> {
+    const held = await this.acquire(filePath, sessionId);
     try {
-      await work(held);
+      return await work(held);
     } finally {
-      await this.hooks.beforeCleanup?.();
+      await this.hooks.beforeRelease?.();
       await this.release(held, filePath);
     }
   }
 
-  /** Move the saved file into the owner's subdirectory as `prior.json`, never over anything; missing when it is not there. */
+  /** Move the saved file into the owner's folder as `prior.json`, never over anything; missing when it is not there. */
   private async claim(held: Held, filePath: string, sessionId: string): Promise<void> {
     await this.fileSystem.rename(filePath, path.join(held.own, 'prior.json'), { overwrite: false }).catch(() => {
       throw this.errors.missing(sessionId);
@@ -180,17 +268,14 @@ export class WorkshopNamedSessionLock {
     }
   }
 
-  private async acquire(filePath: string): Promise<Held> {
-    const folder = path.dirname(filePath);
+  private async acquire(filePath: string, sessionId: string): Promise<Held> {
     const lock = lockPathOf(filePath);
     for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
-      await this.settleMarkers(filePath);
       const token = randomUUID();
       const staged = `${lock}.staged-${token}`;
       try {
-        // The lock holds only token folders: the owner's record lives in its own (generation-scoped release).
         await this.fileSystem.createDirectory(path.join(staged, token));
-        await this.fileSystem.writeFile(path.join(staged, token, 'owner.json'), encoder.encode(JSON.stringify({ token, at: this.now().getTime() })));
+        await this.fileSystem.writeFile(path.join(staged, `owner-${token}.json`), encoder.encode(JSON.stringify({ token, at: this.now().getTime() })));
       } catch {
         await this.removeQuietly(staged);
         throw new Error('The saved Workshop session could not be locked for writing.');
@@ -201,149 +286,116 @@ export class WorkshopNamedSessionLock {
       } catch {
         await this.removeQuietly(staged);
       }
-      const state = await this.markerState(lock);
-      if (state.kind === 'live' || state.kind === 'io') {
+      const state = await this.stateOf(lock);
+      if (state === 'recovery-required') {
+        throw new WorkshopNamedSessionRecoveryRequiredError(sessionId);
+      }
+      if (state === 'busy') {
         throw new WorkshopNamedSessionBusyError();
       }
-      if (state.kind === 'abandoned') {
-        await this.takeOver(lock, path.join(folder, path.basename(filePath)), state.identity);
-      }
+      // The lock was released between the rename and the look: try again.
     }
     this.log.appendLine(`${LOG} The lock kept changing hands; this write is busy.`);
     throw new WorkshopNamedSessionBusyError();
   }
 
-  /** Finish abandoned locks and markers of this file before taking its lock; busy beside a live one. */
-  private async settleMarkers(filePath: string): Promise<void> {
-    const folder = path.dirname(filePath);
-    const prefix = `.${path.basename(filePath)}.recovering-`;
-    const entries = await this.fileSystem.readDirectory(folder).catch((): Array<[string, FileType]> => []);
-    for (const [name] of entries.filter(([entry, type]) => type === FileType.Directory && entry.startsWith(prefix))) {
-      const marker = path.join(folder, name);
-      const state = await this.markerState(marker);
-      if (state.kind === 'live' || state.kind === 'io') {
-        throw new WorkshopNamedSessionBusyError();
-      }
-      if (state.kind === 'abandoned') {
-        await this.finishRecovery(marker, filePath);
-      }
-    }
-  }
-
-  /** Take over an abandoned lock: it becomes the recovery marker, the retired owner's prior file is restored, then it goes. */
-  private async takeOver(lock: string, filePath: string, identity: string): Promise<void> {
-    const marker = `${path.dirname(lock)}${path.sep}.${path.basename(filePath)}.recovering-${randomUUID()}`;
-    try {
-      await this.fileSystem.rename(lock, marker, { overwrite: false });
-    } catch {
-      return; // Another window took it over first.
-    }
-    const moved = await this.markerState(marker);
-    if (moved.kind !== 'abandoned' || moved.identity !== identity) {
-      // A new, live lock took the name meanwhile: put it back if the name is free.
-      await this.fileSystem.rename(marker, lock, { overwrite: false }).catch(() => undefined);
-      return;
-    }
-    await this.fileSystem.writeFile(path.join(marker, 'recovery.json'), encoder.encode(JSON.stringify({ at: this.now().getTime(), token: moved.token })))
-      .catch(() => undefined);
-    this.log.appendLine(`${LOG} Took over an abandoned lock.`);
-    await this.finishRecovery(marker, filePath, moved.token);
-  }
-
-  /** Restore the retired owner's prior file if the saved name is empty, then delete the marker. */
-  private async finishRecovery(marker: string, filePath: string, known?: string): Promise<void> {
-    await this.hooks.beforeRestore?.();
-    const token = known ?? await this.recoveryToken(marker);
-    if (token) {
-      await this.fileSystem.rename(path.join(marker, token, 'prior.json'), filePath, { overwrite: false }).catch(() => undefined);
-    }
-    await this.removeQuietly(marker);
-  }
-
-  /**
-   * Generation-scoped release: detach this owner's own folder (its owner
-   * record, staged file and prior file) to a fresh name, then delete it; only
-   * then remove the emptied lock, never recursively. A retired owner's detach
-   * finds nothing, since its folder left with the takeover, and it touches
-   * nothing else; a lock a newer generation holds is not empty, and stays.
-   */
+  /** The owner's three steps (D6e); each acts only on paths this owner alone has, so none can touch a successor's lock. */
   private async release(held: Held, filePath: string): Promise<void> {
-    const retired = `${path.dirname(filePath)}${path.sep}.${path.basename(filePath)}.retired-${randomUUID()}`;
-    try {
-      await this.fileSystem.rename(held.own, retired, { overwrite: false });
-    } catch {
-      return; // Taken over: nothing here is this owner's.
+    const retired = this.retiredPath(filePath);
+    if (await this.fileSystem.rename(held.own, retired, { overwrite: false }).then(() => true, () => false)) {
+      await this.removeQuietly(retired);
     }
-    await this.removeQuietly(retired);
+    await this.fileSystem.delete(path.join(held.lock, `owner-${held.token}.json`)).catch(() => undefined);
     await this.fileSystem.delete(held.lock, { recursive: false }).catch(() => undefined);
   }
 
   private async stillHeld(held: Held): Promise<boolean> {
-    return (await this.ownerToken(held.own)) === held.token;
+    const owner = await this.readJson(path.join(held.lock, `owner-${held.token}.json`));
+    return owner.kind === 'json' && (owner.value as { token?: unknown }).token === held.token;
   }
 
-  /**
-   * A lock's or marker's standing, by its recovery file's or its owner's
-   * time (the owner record is in its token folder). A lock with no token
-   * folder is a release in progress: busy, then stale by the folder's own
-   * age under the lease rule (busy when that age cannot be read).
-   */
-  private async markerState(directory: string): Promise<Marker> {
-    const listed = await this.fileSystem.readDirectory(directory).then((entries) => entries, () => undefined);
-    const folderToken = listed?.find(([, type]) => type === FileType.Directory)?.[0];
-    const recovery = await this.readJson(path.join(directory, 'recovery.json'));
-    const owner = folderToken ? await this.readJson(path.join(directory, folderToken, 'owner.json')) : { kind: 'none' as const };
-    if (recovery.kind === 'io' || owner.kind === 'io') {
-      return { kind: 'io' };
-    }
-    const record = recovery.kind === 'json' ? recovery : owner;
-    if (record.kind !== 'json') {
-      if (!listed) {
-        return { kind: 'none' };
-      }
-      const age = await this.fileSystem.stat(directory).then((stat) => stat.mtime, () => undefined);
-      if (age === undefined || Math.abs(this.now().getTime() - age) < STORED_FILE_CLAIM_LEASE_MS) {
-        return { kind: 'live' };
-      }
-      return { kind: 'abandoned', identity: `bare:${folderToken ?? ''}`, ...(folderToken ? { token: folderToken } : {}) };
-    }
-    const { token, at } = record.value as { token?: unknown; at?: unknown };
-    const time = typeof at === 'number' && Number.isFinite(at) ? at : record.mtime;
-    if (Math.abs(this.now().getTime() - time) < STORED_FILE_CLAIM_LEASE_MS) {
-      return { kind: 'live' };
-    }
-    return { kind: 'abandoned', identity: `${String(token)}:${String(at)}`, ...(typeof token === 'string' ? { token } : {}) };
+  /** Lock names, beyond `checked`, whose copies are this session's or cannot be read. */
+  private async namesOf(folder: string, sessionId: string, checked: ReadonlySet<string>): Promise<Set<string>> {
+    const rows = await this.rowsIn(folder);
+    return new Set(rows
+      .filter((row) => !checked.has(row.fileName) && row.copies.some((copy) => copy.sessionId === undefined || copy.sessionId === sessionId))
+      .map((row) => row.fileName));
   }
 
-  private async readJson(filePath: string): Promise<{ kind: 'none' } | { kind: 'io' } | { kind: 'json'; value: unknown; mtime: number }> {
-    let mtime: number;
+  private async rowOf(lock: string, filePath: string, fileName: string): Promise<WorkshopNamedSessionLockRow | undefined> {
+    const listed = await this.fileSystem.readDirectory(lock).catch(() => undefined);
+    if (!listed) {
+      return undefined;
+    }
+    const tokens = listed.filter(([, type]) => type === FileType.Directory).map(([name]) => name);
+    const ownerFiles = listed.filter(([name, type]) => type === FileType.File && OWNER.test(name)).map(([name]) => name);
+    const copies: WorkshopNamedSessionLockCopy[] = [];
+    for (const token of tokens) {
+      for (const kind of ['prior', 'next'] as const) {
+        const copyPath = path.join(lock, token, `${kind}.json`);
+        const read = await this.readJson(copyPath, this.maximumBytes);
+        if (read.kind !== 'none') {
+          const sessionId = read.kind === 'json' ? (read.value as { sessionId?: unknown }).sessionId : undefined;
+          copies.push({ token, kind, path: copyPath, ...(typeof sessionId === 'string' ? { sessionId } : {}) });
+        }
+      }
+    }
+    return { fileName, filePath, lock, state: await this.stateFrom(lock, ownerFiles), tokens, ownerFiles, copies };
+  }
+
+  /** A lock's standing; none when it is not there. */
+  private async stateOf(lock: string): Promise<WorkshopNamedSessionLockState | 'none'> {
+    const listed = await this.fileSystem.readDirectory(lock).catch(() => undefined);
+    if (!listed) {
+      return 'none';
+    }
+    return this.stateFrom(lock, listed.filter(([name, type]) => type === FileType.File && OWNER.test(name)).map(([name]) => name));
+  }
+
+  /** Busy while any owner is within its lease; with no owner file, by the directory's own age (busy when it cannot be read). */
+  private async stateFrom(lock: string, ownerFiles: readonly string[]): Promise<WorkshopNamedSessionLockState> {
+    const now = this.now().getTime();
+    const times: Array<number | undefined> = [];
+    for (const owner of ownerFiles) {
+      const read = await this.readJson(path.join(lock, owner));
+      const at = read.kind === 'json' ? (read.value as { at?: unknown }).at : undefined;
+      times.push(typeof at === 'number' && Number.isFinite(at) ? at : read.kind === 'none' ? undefined : read.mtime);
+    }
+    if (ownerFiles.length === 0) {
+      times.push(await this.fileSystem.stat(lock).then((stat) => stat.mtime, () => undefined));
+    }
+    return times.some((time) => time === undefined || Math.abs(now - time) < STORED_FILE_CLAIM_LEASE_MS) ? 'busy' : 'recovery-required';
+  }
+
+  private async readJson(filePath: string, maximumBytes = 64 * 1024): Promise<
+    { kind: 'none' } | { kind: 'unreadable'; mtime: number } | { kind: 'json'; value: unknown; mtime: number }
+  > {
+    let stat: { mtime: number; size: number };
     try {
-      ({ mtime } = await this.fileSystem.stat(filePath));
+      stat = await this.fileSystem.stat(filePath);
     } catch {
       return { kind: 'none' };
     }
+    if (stat.size > maximumBytes) {
+      return { kind: 'unreadable', mtime: stat.mtime };
+    }
     try {
       const value: unknown = JSON.parse(decoder.decode(await this.fileSystem.readFile(filePath)));
-      return { kind: 'json', value: typeof value === 'object' && value !== null ? value : {}, mtime };
+      return typeof value === 'object' && value !== null ? { kind: 'json', value, mtime: stat.mtime } : { kind: 'unreadable', mtime: stat.mtime };
     } catch {
-      return { kind: 'json', value: {}, mtime };
+      return { kind: 'unreadable', mtime: stat.mtime };
     }
   }
 
-  private async ownerToken(own: string): Promise<string | undefined> {
-    const owner = await this.readJson(path.join(own, 'owner.json'));
-    const token = owner.kind === 'json' ? (owner.value as { token?: unknown }).token : undefined;
-    return typeof token === 'string' ? token : undefined;
+  private async exists(target: string): Promise<boolean> {
+    if (await this.fileSystem.stat(target).then(() => true, () => false)) {
+      return true;
+    }
+    return this.fileSystem.readDirectory(target).then(() => true, () => false);
   }
 
-  private async recoveryToken(marker: string): Promise<string | undefined> {
-    const record = await this.readJson(path.join(marker, 'recovery.json'));
-    const token = record.kind === 'json' ? (record.value as { token?: unknown }).token : undefined;
-    if (typeof token === 'string') {
-      return token;
-    }
-    const listed = await this.fileSystem.readDirectory(marker).catch((): Array<[string, FileType]> => []);
-    return listed.find(([, type]) => type === FileType.Directory)?.[0];
+  private retiredPath(filePath: string): string {
+    return `${path.dirname(filePath)}${path.sep}.${path.basename(filePath)}.retired-${randomUUID()}`;
   }
 
   private async removeQuietly(directory: string): Promise<void> {

@@ -172,6 +172,7 @@ packages/core/src/
                 ├── lightboxTiles.ts
                 ├── selectedText.ts
                 ├── todoStatus.ts
+                ├── sessionRecovery.ts
                 └── settings.ts
 ```
 

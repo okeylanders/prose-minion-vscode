@@ -86,7 +86,7 @@ export class WorkshopSavedSessionTodoStore implements WorkshopSavedSessionTodos 
     } catch (error) {
       // A file another window holds under its claim (D6a) cannot be read just now: not available, never missing.
       const name = error instanceof Error ? error.name : '';
-      return this.readRefused(sessionId, name === 'WorkshopSessionStoreUnavailableError' || name === 'WorkshopNamedSessionBusyError' ? 'store-unavailable' : 'unreadable-session');
+      return this.readRefused(sessionId, name === 'WorkshopSessionStoreUnavailableError' || /^WorkshopNamedSession(Busy|RecoveryRequired)Error$/.test(name) ? 'store-unavailable' : 'unreadable-session');
     }
     if (!found) {
       return this.readRefused(sessionId, 'unknown-session');
@@ -165,6 +165,7 @@ function writeRefusalOf(error: unknown): Extract<WorkshopSavedTodoWrite, { kind:
     case 'WorkshopNamedSessionNotFoundError':
       return 'session-not-found';
     case 'WorkshopNamedSessionBusyError':
+    case 'WorkshopNamedSessionRecoveryRequiredError': // Left mid-save (D6e): not writable until the writer recovers it.
       return 'session-busy';
     case 'WorkshopSessionStoreUnavailableError':
       return 'sessions-unavailable';

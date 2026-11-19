@@ -5,13 +5,13 @@
  * takes the lock. Exactly one commits; the other is refused in host words; the file
  * is the winner's, byte for byte. Run for an autosave against the persona's
  * write, and for a rename against an autosave. Also: a stale save after a
- * completed write is refused (the compare), and an abandoned lock is taken
- * back and the next write succeeds. *Alice*, made-up ids.
+ * completed write is refused (the compare), and a lock past its lease reads
+ * recovery-required, never taken over (D6e). *Alice*, made-up ids.
  */
 
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import { WorkshopNamedSessionChangedError, WorkshopSessionStore } from '@/infrastructure/storage/WorkshopSessionStore';
-import { WorkshopNamedSessionBusyError, WORKSHOP_NAMED_SESSION_BUSY_WORDS } from '@/infrastructure/storage/WorkshopNamedSessionLock';
+import { WorkshopNamedSessionBusyError, WorkshopNamedSessionRecoveryRequiredError, WORKSHOP_NAMED_SESSION_BUSY_WORDS } from '@/infrastructure/storage/WorkshopNamedSessionLock';
 import { WorkshopSavedSessionTodoStore } from '@/application/services/workshop/todos/WorkshopSavedSessionTodoStore';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
@@ -142,21 +142,23 @@ describe('overlapping named-session writers (D6a)', () => {
     expect(textOf(fs, filePath)).toBe(before);
   });
 
-  it('an abandoned lock is taken over: its prior file restored, and the next write succeeds', async () => {
+  it('a lock past its lease reads recovery-required to the next writer and reader, and nothing in it moves (D6e)', async () => {
     const { fs, left, saved, filePath } = await setup();
     const expected = (await left.readNamed('alice-polish'))!;
     const bytes = fs.files.get(filePath)!;
     fs.files.delete(filePath);
     // A writer that died holding the file, long past the lease, mid-write.
     const lock = `${directory}/.${saved.fileName}.lock`;
-    fs.files.set(`${lock}/dead-writer/owner.json`, new TextEncoder().encode(JSON.stringify({ token: 'dead-writer', at: 1_000_000_000_000 })));
+    fs.files.set(`${lock}/owner-dead-writer.json`, new TextEncoder().encode(JSON.stringify({ token: 'dead-writer', at: 1_000_000_000_000 })));
     fs.files.set(`${lock}/dead-writer/prior.json`, bytes);
     fs.files.set(`${lock}/dead-writer/next.json`, new TextEncoder().encode('{"stale": true}'));
     fs.listsFolders = true;
+    const before = new Map([...fs.files].filter(([name]) => name.includes('.lock')));
     const fresh = new WorkshopSessionStore(fs, workspace, log(), now);
-    await fresh.updateNamed('alice-polish', { ...expected, title: 'Polish, again' }, expected);
-    expect((JSON.parse(textOf(fs, filePath)) as WorkshopPersistedSessionV2).title).toBe('Polish, again');
-    expect([...fs.files.keys()].filter((name) => /\.(lock|recovering-|retired-)/.test(name))).toEqual([]);
+    await expect(fresh.updateNamed('alice-polish', { ...expected, title: 'Polish, again' }, expected)).rejects.toBeInstanceOf(WorkshopNamedSessionRecoveryRequiredError);
+    await expect(fresh.readNamedWithRecovery('alice-polish')).rejects.toBeInstanceOf(WorkshopNamedSessionRecoveryRequiredError);
+    expect(new Map([...fs.files].filter(([name]) => name.includes('.lock')))).toEqual(before);
+    expect(fs.files.has(filePath)).toBe(false);
   });
 
   it('a live lock with the name empty reads busy, never missing', async () => {
@@ -164,7 +166,7 @@ describe('overlapping named-session writers (D6a)', () => {
     const bytes = fs.files.get(filePath)!;
     fs.files.delete(filePath);
     const lock = `${directory}/.${saved.fileName}.lock`;
-    fs.files.set(`${lock}/live-writer/owner.json`, new TextEncoder().encode(JSON.stringify({ token: 'live-writer', at: now().getTime() })));
+    fs.files.set(`${lock}/owner-live-writer.json`, new TextEncoder().encode(JSON.stringify({ token: 'live-writer', at: now().getTime() })));
     fs.files.set(`${lock}/live-writer/prior.json`, bytes);
     fs.listsFolders = true;
     await expect(left.readNamedWithRecovery('alice-polish')).rejects.toBeInstanceOf(WorkshopNamedSessionBusyError);

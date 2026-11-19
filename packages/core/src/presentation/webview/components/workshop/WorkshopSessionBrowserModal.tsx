@@ -53,6 +53,8 @@ interface WorkshopSessionBrowserModalProps {
   onDuplicate: (sessionId: string) => void;
   onReveal: (sessionId: string) => void;
   onDelete: (sessionId: string) => void;
+  /** Recover… on a row left mid-save (ADR 2026-11-19 D6e): opens the confirm. */
+  onRecover?: (sessionId: string, title: string) => void;
 }
 
 /**
@@ -131,7 +133,8 @@ export const WorkshopSessionBrowserModal: React.FC<WorkshopSessionBrowserModalPr
   onRename,
   onDuplicate,
   onReveal,
-  onDelete
+  onDelete,
+  onRecover
 }) => {
   const stateChangingDisabled =
     mutationsDisabled || actionPending !== undefined || available !== true;
@@ -230,6 +233,7 @@ export const WorkshopSessionBrowserModal: React.FC<WorkshopSessionBrowserModalPr
           onOpen={onOpen}
           onDuplicate={(next) => onDuplicate(next.sessionId)}
           onReveal={onReveal}
+          onRecover={onRecover}
         />
       )}
       footer={
@@ -266,6 +270,7 @@ interface SessionBrowserRowProps {
   onOpen: (session: WorkshopSessionSummary) => void;
   onDuplicate: (session: WorkshopSessionSummary) => void;
   onReveal: (sessionId: string) => void;
+  onRecover?: (sessionId: string, title: string) => void;
 }
 
 /** A session's row: its host persona's glyph, scope, turns, words, time and excerpt, its preview, and Duplicate and Reveal. */
@@ -278,7 +283,8 @@ const SessionBrowserRow: React.FC<SessionBrowserRowProps> = ({
   controls,
   onOpen,
   onDuplicate,
-  onReveal
+  onReveal,
+  onRecover
 }) => {
   const persona = getWorkshopPersona(session.hostPersonaId);
   const focusIcon = WORKSHOP_PERSONA_FOCUS_ICONS[session.hostPersonaId];
@@ -304,6 +310,8 @@ const SessionBrowserRow: React.FC<SessionBrowserRowProps> = ({
         <>
           {current && <span className="pm-ws-session-badge">Current · autosaved</span>}
           {active && <span className="pm-ws-session-badge">Open in Workshop</span>}
+          {session.lock === 'recovery-required' && <span className="pm-ws-session-badge">Recovery required</span>}
+          {session.lock === 'busy' && <span className="pm-ws-session-badge">Being saved in another window</span>}
         </>
       }
       metaTitle={[
@@ -379,6 +387,10 @@ const SessionBrowserRow: React.FC<SessionBrowserRowProps> = ({
           onClick={() => onReveal('current')}
         >
           <Icon name="doc" size={13} /> Reveal
+        </button>
+      ) : session.lock === 'recovery-required' && onRecover ? (
+        <button className="pm-ws-session-primary" type="button" onClick={() => onRecover(session.sessionId, session.title)}>
+          Recover…
         </button>
       ) : (
         <button

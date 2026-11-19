@@ -30,10 +30,10 @@ export interface WorkshopRecoveryCopyStore {
   updateNamed(sessionId: string, session: WorkshopPersistedSessionV2, expected: WorkshopPersistedSessionV2): Promise<WorkshopStoredSessionSummary>;
 }
 
-/** Whether a named save's refusal starts or continues a refusal episode: changed or busy (D6c). */
+/** Whether a named save's refusal starts or continues a refusal episode: changed, busy or recovery-required (D6c, D6e). */
 export function isWorkshopNamedSaveRefusal(error: unknown): boolean {
   const name = error instanceof Error ? error.name : '';
-  return name === 'WorkshopNamedSessionChangedError' || name === 'WorkshopNamedSessionBusyError';
+  return name === 'WorkshopNamedSessionChangedError' || name === 'WorkshopNamedSessionBusyError' || name === 'WorkshopNamedSessionRecoveryRequiredError';
 }
 
 export class WorkshopNamedSessionRecoveryCopy {

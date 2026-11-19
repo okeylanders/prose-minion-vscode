@@ -197,6 +197,12 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: ['WORKSHOP_TODO_ACTION', 'WORKSHOP_UNDO_TODO_STATUS']
   },
   {
+    // Recover… writes saved sessions on the coordinator's queue, never the room (ADR 2026-11-19 D6e).
+    owner: 'application/handlers/domain/workshop/WorkshopNamedSessionRecoveryRoute.ts',
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_RECOVER_NAMED_SESSION']
+  },
+  {
     owner: WORKSHOP_BOOKMARK_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: ['WORKSHOP_SET_TURN_BOOKMARK', 'WORKSHOP_RENAME_BOOKMARK']
@@ -2322,12 +2328,13 @@ describe('architectural boundaries', () => {
     // Message Reactions Slice 1 added the writer's reaction change and Hide on a persona's (mutation).
     // Everyday Conveniences Slice B added the selection's offer and watch (direct) and its staging (mutation).
     // Everyday Conveniences round two, item A added a long room's earlier turns (direct).
-    // Workshop Persona Tools item A added the writer's Undo of a persona's to-do change (mutation).
-    expect(expectedOwnerPairs).toHaveLength(99);
+    // Workshop Persona Tools item A added the writer's Undo of a persona's to-do change (mutation)
+    // and Recover… for a saved session left mid-save (direct).
+    expect(expectedOwnerPairs).toHaveLength(100);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(53);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(46);
+      .toHaveLength(47);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -3049,6 +3056,7 @@ describe('architectural boundaries', () => {
       'seedDelivery.ts',
       'selectedText.ts',
       'session.ts',
+      'sessionRecovery.ts',
       'settings.ts',
       'showVsTell.ts',
       'standingDirectives.ts',
