@@ -64,6 +64,7 @@ import {
 } from '@/application/services/workshop/persistedValidation';
 import { assertWorkshopProjectMemoryDeliveryShape } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { assertWorkshopReactionDeliveryShape } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
+import { assertWorkshopTrailerOutcomesShape } from '@/application/services/workshop/session/WorkshopTrailerOutcomeRecords';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -617,6 +618,8 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       'projectMemoryDelivery',
       // Reactions' delivery record (ADR 2026-11-07 D6; additive).
       'reactionDelivery',
+      // What became of a reply's trailers (ADR 2026-11-17 D13; additive, host-only).
+      'trailerOutcomes',
       // A reaction-only reply (ADR 2026-11-07 R1; additive), and one whose reaction was dropped (PR #247 M1).
       'reactionOnly',
       'noMessage'
@@ -694,6 +697,9 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   }
   if (turn.reactionDelivery !== undefined) {
     assertWorkshopReactionDeliveryShape(turn.reactionDelivery, `${path}.reactionDelivery`, turn);
+  }
+  if (turn.trailerOutcomes !== undefined) {
+    assertWorkshopTrailerOutcomesShape(turn.trailerOutcomes, `${path}.trailerOutcomes`, turn);
   }
   if (turn.reactionOnly !== undefined) {
     assertWorkshopReactionOnlyShape(turn.reactionOnly, `${path}.reactionOnly`, turn);

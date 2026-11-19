@@ -8,7 +8,11 @@
 import * as React from 'react';
 import { WorkshopMemoryBrowserModal } from './WorkshopMemoryBrowserModal';
 import type { UseWorkshopMemoryManagerReturn } from '@hooks/domain/workshop/useWorkshopMemoryManager';
-import { workshopMemoryLibraryOf, workshopMemoryWorkspaceOf } from '@hooks/domain/workshop/memory/workshopMemoryListingInputs';
+import {
+  workshopMemoryLibraryOf,
+  workshopMemoryListingBudgets,
+  workshopMemoryWorkspaceOf
+} from '@hooks/domain/workshop/memory/workshopMemoryListingInputs';
 import type { WorkshopProjectMemoryMode } from '@messages';
 
 interface WorkshopMemoryManagerMountProps {
@@ -26,6 +30,7 @@ export const WorkshopMemoryManagerMount: React.FC<WorkshopMemoryManagerMountProp
     workspace={workshopMemoryWorkspaceOf(manager.listing)}
     library={workshopMemoryLibraryOf(manager.listing)}
     {...(manager.listing?.estimate ? { estimate: manager.listing.estimate } : {})}
+    budgets={workshopMemoryListingBudgets(manager.listing)}
     {...(manager.refusal ? { refusal: manager.refusal } : {})}
     query={manager.query}
     actionPending={manager.actionPending}

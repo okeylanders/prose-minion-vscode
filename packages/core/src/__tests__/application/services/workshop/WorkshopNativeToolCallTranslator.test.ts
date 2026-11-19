@@ -59,7 +59,14 @@ const EVERY_OPERATION: Record<WorkshopCapabilityOperation, { args: unknown; requ
   },
   'memory.catalog': { args: '', request: {} },
   'memory.search': { args: { query: 'the Duchess', status: 'all' }, request: { query: 'the Duchess', status: 'all' } },
-  'memory.read': { args: { memories: ['mem-0a1b2c', 'mem-3d4e5f'] }, request: { memories: ['mem-0a1b2c', 'mem-3d4e5f'] } }
+  'memory.read': { args: { memories: ['mem-0a1b2c', 'mem-3d4e5f'] }, request: { memories: ['mem-0a1b2c', 'mem-3d4e5f'] } },
+  'help.search': { args: { query: 'pin a file' }, request: { query: 'pin a file' } },
+  'help.read': { args: { sections: ['workshop#pinned-context', 'workshop#sessions'] }, request: { sections: ['workshop#pinned-context', 'workshop#sessions'] } },
+  'lens.catalog': { args: { page: 2 }, request: { page: 2 } },
+  'lens.read': {
+    args: { lens: 'tea-party', sections: ['degrees', 'cliches'] },
+    request: { lens: 'tea-party', sections: ['degrees', 'cliches'] }
+  }
 };
 
 describe('the Workshop\'s native tool-call translator', () => {

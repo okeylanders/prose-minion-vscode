@@ -6,6 +6,8 @@
  * decodes and fulfills over real session recall. Nothing reaches a network.
  */
 
+import type { SettingsStore } from '@/platform';
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import {
   scriptedCheckpoint,
@@ -21,6 +23,7 @@ import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { OpenRouterClient, type OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 /** What web research attaches to a persona's request: the trigger of the native calls. */
 export const WEB_RESEARCH_TOOLS: OpenRouterWebSearchTool[] = [{
@@ -123,10 +126,10 @@ const flatten = (content: unknown): string =>
     ? content
     : (content as Array<{ text?: string }>).map((block) => block.text ?? '').join(''));
 
-export function createNativeToolCallHarness() {
+export function createNativeToolCallHarness(settings?: SettingsStore) {
   const room = setupCoordinator();
   const { session, manager, store, coordinator, log, time } = room;
-  const engine = new AgentRunEngine(new OpenRouterClient('test-key', 'placeholder/model', log), manager, undefined, log);
+  const engine = new AgentRunEngine(new OpenRouterClient('test-key', 'placeholder/model', log), manager, undefined, log, undefined, settings);
   const recall = new WorkshopTranscriptRecallService(store, coordinator, log, {
     liveRoom: new WorkshopLiveRoomBookmarkReader(session, () => time.exportState().timezone)
   });
@@ -152,7 +155,9 @@ export function createNativeToolCallHarness() {
     session,
     log,
     recall,
-    offProjectMemory
+    offProjectMemory,
+    noProjectLenses,
+    unavailableHelpReference
   );
   const originalFetch = global.fetch;
   const sent: SentRequest[] = [];

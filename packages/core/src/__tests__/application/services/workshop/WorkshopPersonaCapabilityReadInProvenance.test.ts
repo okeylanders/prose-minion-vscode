@@ -5,6 +5,7 @@
  * also records the lines it returned and the whole file's fingerprint, which
  * stays out of the card's metadata and the evidence the persona reads.
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { createHash } from 'crypto';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
@@ -17,6 +18,7 @@ import type { ContextResourceContent, ContextResourceProviderFactory } from '@/d
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import type { LogSink } from '@/platform';
 import type { WorkshopCapabilityRequest } from '@shared/types/workshopCapabilities';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const unusedRecall: WorkshopTranscriptRecallPort = {
   catalog: () => Promise.reject(new Error('recall is not under test here')),
@@ -107,7 +109,9 @@ describe('persona capability read-in provenance', () => {
       session,
       log,
       unusedRecall,
-      offProjectMemory
+      offProjectMemory,
+      noProjectLenses,
+      unavailableHelpReference
     ).create({
       requestId,
       excerptVersion: session.getExcerptVersion(),

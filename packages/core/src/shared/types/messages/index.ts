@@ -198,6 +198,7 @@ import {
   WorkshopMemoryDraftHostMessage,
   WorkshopMemoryListMessage,
   WorkshopMemoryListingMessage,
+  WorkshopMemoryListSizeSettingMessage,
   WorkshopMemoryManagerActionMessage,
   WorkshopMemoryManagerResultMessage,
   WorkshopRequestPinnedContextMessage,
@@ -213,6 +214,8 @@ import {
   WorkshopRenameBookmarkResultMessage,
   WorkshopRequestTurnPreviewMessage,
   WorkshopTurnPreviewMessage,
+  WorkshopRequestEarlierTurnsMessage,
+  WorkshopEarlierTurnsMessage,
   WorkshopRequestBookmarkPageMessage,
   WorkshopCancelBookmarkPageMessage,
   WorkshopBookmarkPageMessage,
@@ -396,6 +399,7 @@ export type WebviewToExtensionMessage =
   | WorkshopOpenPinnedContextFileMessage
   | WorkshopRenameBookmarkMessage
   | WorkshopRequestTurnPreviewMessage
+  | WorkshopRequestEarlierTurnsMessage
   | WorkshopRequestBookmarkPageMessage
   | WorkshopCancelBookmarkPageMessage
   | WorkshopRequestLiveBookmarksMessage
@@ -489,6 +493,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextAttachmentContentMessage
   | WorkshopReadInResourceContentMessage
   | WorkshopTurnPreviewMessage
+  | WorkshopEarlierTurnsMessage
   | WorkshopBookmarkPageMessage
   | WorkshopLiveBookmarksMessage
   | WorkshopSavedTurnPreviewMessage
@@ -500,6 +505,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopMemoryEstimateResultMessage
   | WorkshopMemoryDraftHostMessage
   | WorkshopMemoryListingMessage
+  | WorkshopMemoryListSizeSettingMessage
   | WorkshopMemoryManagerResultMessage
   | WorkshopPinnedContextMessage
   | WorkshopGesturePlaygroundGenerationProgressMessage

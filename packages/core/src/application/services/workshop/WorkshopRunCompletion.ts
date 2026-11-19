@@ -45,6 +45,11 @@ import {
   workshopTrailersOnlyReplyLine
 } from '@/utils/workshopReplyControls';
 import { reportWorkshopEditOffers, settleWorkshopReplyEditOffers, type WorkshopReplyEditsContext } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
+import {
+  WORKSHOP_FILE_EDIT_NOT_STAGED,
+  workshopFileEditProposalDropLog,
+  type WorkshopFileEditProposalDrop
+} from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
 import { workshopReplyReactionDropLog } from '@/utils/workshopReplyReaction';
 import {
   settleWorkshopMemoryProposals,
@@ -52,6 +57,7 @@ import {
   type WorkshopReplyMemoryContext
 } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import { countWorkshopRoomAutoSaves } from '@/application/services/workshop/memory/WorkshopMemoryAutoSave';
+import { buildWorkshopTrailerOutcomes } from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerOutcomesRecord';
 import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import {
@@ -147,7 +153,8 @@ export interface WorkshopRunCompletionInput {
    * The reply's file edits, staged before completion (ADR 2026-11-05 D4,
    * D11; `resolveWorkshopReplyFileEdits`), with the setting read when the
    * reply was read. Used only for the reply it was resolved from. Absent, a
-   * frame is still stripped, and dropped and counted (`not-staged`). It
+   * frame is still stripped, and dropped and counted (`not-staged`), which
+   * the reply's `trailerOutcomes` records (ADR 2026-11-17 D13). It
    * carries the reply's edit offers too, resolved (ADR 2026-11-10 D2).
    */
   fileEdits?: WorkshopReplyEditsContext;
@@ -214,13 +221,10 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     webResearchAttached: result.webResearchAttached === true,
     autoSavesInRoom: input.memoryAutoSavesInRoom ?? (() => countWorkshopRoomAutoSaves(session.readRoomLedger()))
   });
-  const fileEdits: Pick<WorkshopReplyEditsContext, 'proposals' | 'logs' | 'editOffers'> = input.fileEdits?.reply === result.content
+  // A context resolved for another reply stages nothing here: every frame is the typed `not-staged`.
+  const fileEdits: Pick<WorkshopReplyEditsContext, 'proposals' | 'logs' | 'drops' | 'editOffers'> = input.fileEdits?.reply === result.content
     ? input.fileEdits
-    : {
-      proposals: [],
-      logs: (controls.fileEdits ? [...controls.fileEdits.proposals, ...controls.fileEdits.rejections] : [])
-        .map(() => 'File edit proposal dropped (reason=not-staged)')
-    };
+    : notStagedFileEdits(controls.fileEdits ? controls.fileEdits.proposals.length + controls.fileEdits.rejections.length : 0);
   for (const line of [...memory.logs, ...fileEdits.logs, ...(controls.reaction?.rejections ?? []).map(workshopReplyReactionDropLog)]) {
     input.log(`${line} (${label})`);
   }
@@ -312,7 +316,12 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     fileEdits.proposals,
     editOffers,
     undefined,
-    reaction
+    reaction,
+    // What became of the reply's notes and file edits, for the persona's next message (ADR 2026-11-17 D13).
+    buildWorkshopTrailerOutcomes({
+      memory: { cards: memory.proposals.length, drops: memory.drops },
+      fileEdits: { proposals: fileEdits.proposals, drops: fileEdits.drops }
+    })
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {
@@ -350,6 +359,11 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     input.memoryAutoSave?.(turn, memory.autoSave);
   }
   return turn;
+}
+
+function notStagedFileEdits(frames: number): Pick<WorkshopReplyEditsContext, 'proposals' | 'logs' | 'drops'> {
+  const drops = Array.from({ length: frames }, (): WorkshopFileEditProposalDrop => ({ at: 'completion', reason: WORKSHOP_FILE_EDIT_NOT_STAGED }));
+  return { proposals: [], logs: drops.map(workshopFileEditProposalDropLog), drops };
 }
 
 function announceCommittedRun(

@@ -48,6 +48,7 @@ import { ContextHandler } from './domain/ContextHandler';
 import { MetricsHandler } from './domain/MetricsHandler';
 import { SearchHandler } from './domain/SearchHandler';
 import { ConfigurationHandler } from './domain/ConfigurationHandler';
+import { WORKSHOP_MEMORY_SUGGESTIONS_SETTING } from '@shared/constants/workshopMemorySuggestions';
 import { PublishingHandler } from './domain/PublishingHandler';
 import { SourcesHandler } from './domain/SourcesHandler';
 import { UIHandler } from './domain/UIHandler';
@@ -55,6 +56,8 @@ import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
 import { WorkshopRoomHandler } from './domain/workshop/WorkshopRoomHandler';
 import { workshopMemoryDraftsSettingMessage } from './domain/workshop/WorkshopMemoryDraftHandler';
+import { workshopMemoryListSizeSettingMessage } from './domain/workshop/WorkshopProjectMemoryManagerHandler';
+import { WORKSHOP_MEMORY_LIST_SIZE_SETTING } from '@shared/constants/workshopProjectMemoryListSizes';
 import { LightboxHandler } from './domain/LightboxHandler';
 import { workshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
 import { LightboxReadingHandler } from './domain/LightboxReadingHandler';
@@ -732,13 +735,20 @@ export class MessageHandler {
     const workshopFileEditsKey = `${WORKSHOP_FILE_EDITS_SETTING.section}.${WORKSHOP_FILE_EDITS_SETTING.key}`;
     // Persona reactions (ADR 2026-11-07 Q8): the prompt's permission rides only while they are on.
     const workshopReactionsKey = `${WORKSHOP_PERSONA_REACTIONS_SETTING.section}.${WORKSHOP_PERSONA_REACTIONS_SETTING.key}`;
+    // How readily personas suggest notes picks the proposals prompt, so a change rebuilds the persona prompts.
+    const workshopMemorySuggestionsKey = `${WORKSHOP_MEMORY_SUGGESTIONS_SETTING.section}.${WORKSHOP_MEMORY_SUGGESTIONS_SETTING.key}`;
     if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey) || affects(workshopWebResearchKey)
-      || affects(workshopProjectMemoryKey) || affects(workshopFileEditsKey) || affects(workshopReactionsKey)) {
+      || affects(workshopProjectMemoryKey) || affects(workshopFileEditsKey) || affects(workshopReactionsKey)
+      || affects(workshopMemorySuggestionsKey)) {
       void this.workshopHandler.syncConversationSettingsFromSettings();
     }
     // The helper's memory drafts (ADR 2026-11-05 D5.7): the sheet hears the switch, and off asks for nothing.
     if (affects(`${WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING.section}.${WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING.key}`)) {
       void this.postMessage(workshopMemoryDraftsSettingMessage(this.platform.settings));
+    }
+    // The start-of-conversation list size (ADR 2026-11-17 D9): the tab hears it; no prompt or frame is rebuilt.
+    if (affects(`${WORKSHOP_MEMORY_LIST_SIZE_SETTING.section}.${WORKSHOP_MEMORY_LIST_SIZE_SETTING.key}`)) {
+      void this.postMessage(workshopMemoryListSizeSettingMessage(this.platform.settings));
     }
 
     // Only refresh service if model configs changed

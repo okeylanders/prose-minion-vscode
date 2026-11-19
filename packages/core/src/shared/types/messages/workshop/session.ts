@@ -10,7 +10,9 @@ import type { LabeledContextBudgetSnapshot } from '../inferenceContext';
 import type { ModelScope } from '../configuration';
 import type { WorkshopBookmarkSummary } from './bookmarks';
 import type { WorkshopReactionDelivery, WorkshopTurnReactionSummary } from './reactions';
+import type { WorkshopTrailerOutcomes } from '../../workshopTrailerOutcomes';
 import type { WorkshopReactionId } from '@shared/constants/workshopReactions';
+import type { WorkshopMemorySuggestionLevel } from '@shared/constants/workshopMemorySuggestions';
 import type {
   WorkshopAnalysisInputProvenance,
   WorkshopCapabilityArtifactDetails,
@@ -164,6 +166,11 @@ export const WORKSHOP_TURN_ARTIFACTS = [
   'memory_catalog',
   'memory_search',
   'memory_read',
+  // ADR 2026-11-17 D16: forward-only, as `transcript_bookmarks` was.
+  'lens_catalog',
+  'lens_read',
+  'help_search',
+  'help_read',
   'excerpt_revision',
   'context_change',
   'standing_directive_change',
@@ -483,6 +490,13 @@ export interface WorkshopTurn {
    * too, and the reactions arrive again.
    */
   reactionDelivery?: WorkshopReactionDelivery[];
+  /**
+   * What became of this persona reply's memory-note and file-edit trailers
+   * (ADR 2026-11-17 D13): counts and closed reasons, written once when the
+   * reply commits. Host-only: the persona is told with its next message, and
+   * the webview never receives it. Host and guest replies only.
+   */
+  trailerOutcomes?: WorkshopTrailerOutcomes;
   /**
    * A persona reply that held only a reaction (ADR 2026-11-07 R1): the id it
    * reacted with, on the writer message the reply answers. Its content is
@@ -926,6 +940,66 @@ export interface WorkshopComposerDraftRestoredMessage extends MessageEnvelope<{
   type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED;
 }
 
+/**
+ * Ask for the turns directly before a turn (ADR 2026-11-17 D1): a long
+ * room's turns outside the snapshot window, a page at a time. The webview
+ * names a turn, never a position: `beforeTurnId` is the oldest turn it holds.
+ * `requestId` is minted by the webview and echoed, so only the answer still
+ * waited for is taken.
+ */
+export interface WorkshopRequestEarlierTurnsPayload {
+  requestId: string;
+  /** The room on screen (the snapshot's `roomRevision`); the host answers only from it. */
+  roomRevision: number;
+  beforeTurnId: string;
+  /**
+   * A turn the writer asked to be shown (a bookmark outside the window;
+   * ADR 2026-11-17 D6, amended 2026-11-18). The host refuses the page when
+   * the room no longer holds it, when it is not before `beforeTurnId`, or
+   * when more than `PROMPT_BUDGETS.workshopThread.jumpTurns` turns lie
+   * between them. The webview asks page after page until one holds it.
+   */
+  targetTurnId?: string;
+}
+
+export interface WorkshopRequestEarlierTurnsMessage
+  extends MessageEnvelope<WorkshopRequestEarlierTurnsPayload> {
+  type: MessageType.WORKSHOP_REQUEST_EARLIER_TURNS;
+}
+
+/**
+ * One page of earlier turns, with what the snapshot carries for its window's
+ * turns (D2): the host's Rewind verdicts, the reaction summaries and the
+ * widget-config summaries. The webview merges them and derives nothing.
+ */
+export interface WorkshopEarlierTurnsPage {
+  /** Oldest first, ending directly before `beforeTurnId`. */
+  turns: WorkshopTurn[];
+  turnRewindability: Record<string, WorkshopTurnRewindability>;
+  reactions: WorkshopTurnReactionSummary[];
+  widgetConfigs: WorkshopWidgetConfigSummary[];
+  /** The model-slice seed for the page's first reply: `modelsBeforeWindow`, for the turns before the page. */
+  modelsBefore?: Partial<Record<ModelScope, string>>;
+  /** Turns older than the page's first; zero at the room's first turn. */
+  remainingBefore: number;
+}
+
+export interface WorkshopEarlierTurnsPayload {
+  requestId: string;
+  /** The room the request named, echoed. */
+  roomRevision: number;
+  beforeTurnId: string;
+  /** The request's `targetTurnId`, echoed. */
+  targetTurnId?: string;
+  /** Absent when the host refused; then `error` says why, naming no content. */
+  page?: WorkshopEarlierTurnsPage;
+  error?: string;
+}
+
+export interface WorkshopEarlierTurnsMessage extends MessageEnvelope<WorkshopEarlierTurnsPayload> {
+  type: MessageType.WORKSHOP_EARLIER_TURNS;
+}
+
 export interface WorkshopSessionStatePayload {
   session: WorkshopSessionSnapshot;
   /** Global writer setting, deliberately outside the serializable session aggregate. */
@@ -938,6 +1012,11 @@ export interface WorkshopSessionStatePayload {
    * webview reads Off (fail closed).
    */
   projectMemory?: WorkshopProjectMemoryMode;
+  /**
+   * How readily personas suggest notes (`proseMinion.workshop.memory.suggestions`), global like the mode. The
+   * host always sends it; absent or unknown reads Sparingly, the default.
+   */
+  memorySuggestions?: WorkshopMemorySuggestionLevel;
   /**
    * The global suggested-file-edits mode (ADR 2026-11-05 D11), outside the
    * session aggregate. The host always sends it; absent reads as the

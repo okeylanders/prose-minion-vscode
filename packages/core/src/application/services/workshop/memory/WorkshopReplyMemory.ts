@@ -27,10 +27,13 @@
  */
 
 import type { WorkshopMemoryProposal, WorkshopProjectMemoryMode } from '@messages';
-import type { WorkshopReplyMemoryControl } from '@/utils/workshopReplyControls';
+import type { WorkshopReplyMemoryControl, WorkshopReplyMemoryRejection } from '@/utils/workshopReplyControls';
 import { isWorkshopMemoryEditDraft } from '@/utils/workshopMemoryEditProtocol';
 import type { ProjectMemoryListed } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
-import { settleWorkshopMemoryEdit } from '@/application/services/workshop/memory/WorkshopReplyMemoryEdit';
+import {
+  settleWorkshopMemoryEdit,
+  type WorkshopMemoryEditDropReason
+} from '@/application/services/workshop/memory/WorkshopReplyMemoryEdit';
 import type { WorkshopMemoryProposalDraft } from '@/utils/workshopMemoryProposalProtocol';
 import { workshopMemoryProposalPhrasingFlag } from '@/application/services/workshop/memory/WorkshopMemoryProposalPhrasing';
 import {
@@ -60,6 +63,16 @@ export interface WorkshopReplyMemoryPort {
   replyMemoryContext(reply: string, signal?: AbortSignal): Promise<WorkshopReplyMemoryContext>;
 }
 
+/**
+ * One memory frame that ended with no card, and the step that dropped it
+ * (ADR 2026-11-17 D13): the extractor as the reply was read, or an edit's
+ * settlement against the notes. A new note that decodes always becomes a
+ * card, so it never adds one.
+ */
+export type WorkshopMemoryProposalDrop =
+  | { readonly at: 'read'; readonly reason: WorkshopReplyMemoryRejection }
+  | { readonly at: 'settlement'; readonly reason: WorkshopMemoryEditDropReason };
+
 export interface WorkshopSettledMemoryProposals {
   /** The cards, in the order written; empty when none survived. */
   readonly proposals: readonly WorkshopMemoryProposal[];
@@ -67,9 +80,11 @@ export interface WorkshopSettledMemoryProposals {
   readonly logs: readonly string[];
   /** Save and tell me: indexes in `proposals` to save at once, in order, once the turn is recorded (Slice 5). */
   readonly autoSave: readonly number[];
+  /** One entry per frame with no card, typed; `proposals` and this together count every frame the reply held. */
+  readonly drops: readonly WorkshopMemoryProposalDrop[];
 }
 
-const NOTHING: WorkshopSettledMemoryProposals = Object.freeze({ proposals: [], logs: [], autoSave: [] });
+const NOTHING: WorkshopSettledMemoryProposals = Object.freeze({ proposals: [], logs: [], autoSave: [], drops: [] });
 
 export function settleWorkshopMemoryProposals(
   control: WorkshopReplyMemoryControl,
@@ -82,14 +97,17 @@ export function settleWorkshopMemoryProposals(
     case 'frames': {
       const proposals: WorkshopMemoryProposal[] = [];
       const autoSave: number[] = [];
+      const drops: WorkshopMemoryProposalDrop[] = control.rejections.map((reason) => ({ at: 'read', reason }));
       const logs = control.rejections.map((reason) => `Memory proposal dropped (reason=${reason})`);
       for (const draft of control.proposals) {
         if (isWorkshopMemoryEditDraft(draft)) {
           // An edit always waits for the writer; under Save and tell me it says why (Slice 6c). The fence's hold, if any, is the edit's own.
           const route = run ? routeWorkshopMemoryProposal(context.mode, run, { supersedes: [], edit: true }) : { kind: 'wait' as const };
           const edit = settleWorkshopMemoryEdit(draft, context.memories, context.writerName, route.kind === 'held' ? route.held : undefined);
-          if (edit.proposal) {
+          if (edit.kind === 'card') {
             proposals.push(edit.proposal);
+          } else {
+            drops.push({ at: 'settlement', reason: edit.reason });
           }
           logs.push(edit.log);
           continue;
@@ -101,7 +119,7 @@ export function settleWorkshopMemoryProposals(
         proposals.push(settled.proposal);
         logs.push(settled.log);
       }
-      return { proposals, logs, autoSave };
+      return { proposals, logs, autoSave, drops };
     }
     default:
       return assertNever(control);

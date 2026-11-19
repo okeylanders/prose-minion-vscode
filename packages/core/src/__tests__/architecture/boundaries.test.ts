@@ -83,6 +83,8 @@ const WORKSHOP_TODO_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopTodoHandler.ts';
 const WORKSHOP_BOOKMARK_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopBookmarkHandler.ts';
+const WORKSHOP_EARLIER_TURNS_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopEarlierTurnsHandler.ts';
 const WORKSHOP_REACTION_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopReactionHandler.ts';
 const WORKSHOP_BOOKMARK_BROWSER_HANDLER_OWNER =
@@ -203,6 +205,12 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_BOOKMARK_HANDLER_OWNER,
     registration: 'direct',
     messageTypes: ['WORKSHOP_REQUEST_TURN_PREVIEW']
+  },
+  {
+    // A read (ADR 2026-11-17 D4): it writes nothing and joins no gate.
+    owner: WORKSHOP_EARLIER_TURNS_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_REQUEST_EARLIER_TURNS']
   },
   {
     owner: WORKSHOP_REACTION_HANDLER_OWNER,
@@ -474,6 +482,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopContextHandler',
   'WorkshopExcerptScopeHandler',
   'WorkshopCreativeVariationsHandler',
+  'WorkshopEarlierTurnsHandler',
   'WorkshopEditOfferHandler',
   'WorkshopFileEditHandler',
   'WorkshopGesturePlaygroundHandler',
@@ -875,6 +884,31 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     allowedToken: /(?:Lexical Gravity|lexical-gravity-seed)/
   },
   {
+    file: 'application/services/workshop/lens/WorkshopLensCapability.ts',
+    reason: 'the personas\' read-only lens family: lists and reads the lens library, and names its types, repository and budget (ADR 2026-11-17 D16)',
+    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:ReadableLenses|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
+  },
+  {
+    file: 'application/services/workshop/lens/WorkshopLensCopy.ts',
+    reason: 'the personas\' read-only lens family: lists and reads the lens library, and names its types, repository and budget (ADR 2026-11-17 D16)',
+    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:ReadableLenses|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
+  },
+  {
+    file: 'application/services/workshop/lens/WorkshopLensInstalled.ts',
+    reason: 'the personas\' read-only lens family: lists and reads the lens library, and names its types, repository and budget (ADR 2026-11-17 D16)',
+    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:ReadableLenses|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
+  },
+  {
+    file: 'application/services/workshop/lens/WorkshopLensRenderer.ts',
+    reason: 'the personas\' read-only lens family: lists and reads the lens library, and names its types, repository and budget (ADR 2026-11-17 D16)',
+    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:ReadableLenses|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
+  },
+  {
+    file: 'application/services/workshop/lens/WorkshopLensXmlCodec.ts',
+    reason: 'the personas\' read-only lens family: lists and reads the lens library, and names its types, repository and budget (ADR 2026-11-17 D16)',
+    allowedToken: /(?:Lexical Gravity|LexicalGravity(?:ReadableLenses|LensRepository|Lenses|LibraryUnavailableError)|WorkshopLexicalGravityLens|builtInLexicalGravityLenses|mergeLexicalGravityLibrary|lexicalLensSlugCharacters|lexical-gravity|lexicalGravity|lensSlug)/
+  },
+  {
     file: 'shared/types/messages/workshop/seedDelivery.ts',
     reason: 'closed seed-kind registry for handoffs from other tabs (PR #150 F-03)',
     allowedToken: /lexical-gravity-build/
@@ -1015,6 +1049,26 @@ const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
   {
     file: 'shared/types/messages/workshop/seedDelivery.ts',
     reason: 'seed kinds are handoffs from other tabs; Prose Controller receives none'
+  },
+  {
+    file: 'application/services/workshop/lens/WorkshopLensCapability.ts',
+    reason: 'the lens family reads Lexical Gravity lenses only; Prose Controller has no lens library'
+  },
+  {
+    file: 'application/services/workshop/lens/WorkshopLensCopy.ts',
+    reason: 'the lens family reads Lexical Gravity lenses only; Prose Controller has no lens library'
+  },
+  {
+    file: 'application/services/workshop/lens/WorkshopLensInstalled.ts',
+    reason: 'the lens family reads Lexical Gravity lenses only; Prose Controller has no lens library'
+  },
+  {
+    file: 'application/services/workshop/lens/WorkshopLensRenderer.ts',
+    reason: 'the lens family reads Lexical Gravity lenses only; Prose Controller has no lens library'
+  },
+  {
+    file: 'application/services/workshop/lens/WorkshopLensXmlCodec.ts',
+    reason: 'the lens family reads Lexical Gravity lenses only; Prose Controller has no lens library'
   }
 ] as const;
 const WORKSHOP_FEATURE_HOOKS = [
@@ -1187,6 +1241,7 @@ const WORKSHOP_MEMORY_MODULES = [
   'ProjectMemoryDeliveredView.ts',
   'ProjectMemoryLibrary.ts',
   'ProjectMemoryLibraryContracts.ts',
+  'ProjectMemoryListSize.ts',
   'ProjectMemoryManager.ts',
   'ProjectMemoryPinnedBudget.ts',
   'ProjectMemoryUpdateNote.ts',
@@ -1215,6 +1270,27 @@ const WORKSHOP_READS_MODULES = [
   'WorkshopReadShares.ts',
   'WorkshopReadWindowFit.ts'
 ];
+/**
+ * The lens library for personas (ADR 2026-11-17 D16): read-only, a per-turn
+ * sub-adapter like recall and memory. It imports nothing of either, shares
+ * only the neutral paging module and `reads/`, and stays under 500 lines.
+ */
+const WORKSHOP_LENS_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'lens');
+const WORKSHOP_LENS_MODULES = [
+  'WorkshopLensCapability.ts',
+  'WorkshopLensCopy.ts',
+  'WorkshopLensInstalled.ts',
+  'WorkshopLensRenderer.ts',
+  'WorkshopLensXmlCodec.ts'
+];
+const WORKSHOP_HELP_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'help');
+const WORKSHOP_HELP_MODULES = [
+  'WorkshopHelpCapability.ts',
+  'WorkshopHelpCopy.ts',
+  'WorkshopHelpReference.ts',
+  'WorkshopHelpRenderer.ts',
+  'WorkshopHelpXmlCodec.ts'
+];
 /** All a module under `reads/` may import. */
 const WORKSHOP_READS_ALLOWED_IMPORTS = [
   '@orchestration/RequestContextPreflight',
@@ -1228,6 +1304,8 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopAnalysisSidePass.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityXmlCodec.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityXmlDocument.ts'),
+  // ADR 2026-11-17 D10: the shared `<page>` parser, neutral of every family.
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityPaging.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityResultLog.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopTranscriptRecallXmlCodec.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopPersonaCapability.ts'),
@@ -1242,7 +1320,10 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceInstruction.ts'),
   ...collectSourceFiles(WORKSHOP_RECALL_ROOT),
   ...collectSourceFiles(WORKSHOP_MEMORY_ROOT),
-  ...collectSourceFiles(WORKSHOP_READS_ROOT)
+  ...collectSourceFiles(WORKSHOP_READS_ROOT),
+  ...collectSourceFiles(WORKSHOP_LENS_ROOT),
+  ...collectSourceFiles(WORKSHOP_HELP_ROOT),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopTextSearch.ts')
 ];
 const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)|import\s+.*['"](?:vscode|react|@providers\/))/;
 
@@ -1252,7 +1333,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|ProjectMemoryLibrary|ProjectMemoryStore|WorkshopPinnedContextStore|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|WorkshopHelpReference|ProjectMemoryLibrary|ProjectMemoryStore|WorkshopPinnedContextStore|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
 );
 
 /**
@@ -1949,6 +2030,70 @@ describe('architectural boundaries', () => {
       .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
   });
 
+  it('keeps the lens family read-only, off recall and memory, and under 500 lines (ADR 2026-11-17 D16)', () => {
+    const lensFiles = collectSourceFiles(WORKSHOP_LENS_ROOT);
+    const imports = lensFiles.flatMap((file) =>
+      moduleImports(file, fs.readFileSync(file, 'utf8'))
+        .map((entry) => ({ file: path.relative(SRC_ROOT, file), ...entry }))
+    );
+    // Every module the family has is listed, so a new one joins on purpose.
+    expect(lensFiles.map((file) => path.basename(file)).sort()).toEqual(WORKSHOP_LENS_MODULES);
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(lensFiles));
+    // It shares the paging module and `reads/` with the other families, never their internals.
+    expect(imports
+      .filter(({ module }) => /\/(?:recall|memory|session|pinnedContext)\//.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    expect(imports
+      .filter(({ module }) => RECALL_FORBIDDEN_MODULE.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // The session and the repository are known as types only; the one value from storage is its refusal's class.
+    expect(imports
+      .filter(({ module, typeOnly }) => /WorkshopSessionService$/.test(module) && !typeOnly)
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    const sources = lensFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
+    // It reads no file itself and writes nothing: no platform file system, and of the repository only the
+    // count-only `listReadable`, never `list`, whose result and log name files (PR #277 F-01).
+    expect(sources).not.toMatch(/\bFileSystem\b|readFile|writeFile|saveManyForQuery|replaceIncompatibleForQuery|findForQuery/);
+    expect(sources).not.toMatch(/\.list\(|\blist\(\)|incompatibleResources|LexicalGravityLensCatalog/);
+    expect(sources).toContain('this.library.listReadable()');
+    expect(sources).not.toMatch(/\bnew\s+LexicalGravityLensRepository\b/);
+    expect(lensFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
+      .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
+  });
+
+  it('keeps help modules read-only and independent of the room and its other readers (ADR 2026-11-17 D16)', () => {
+    const files = collectSourceFiles(WORKSHOP_HELP_ROOT);
+    expect(files.map((file) => path.basename(file)).sort()).toEqual(WORKSHOP_HELP_MODULES);
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(files));
+    for (const file of files) {
+      const source = fs.readFileSync(file, 'utf8');
+      expect(source.split('\n').length).toBeLessThanOrEqual(500);
+      for (const { module } of moduleImports(file, source)) {
+        expect(module).not.toMatch(/(?:^|\/)(?:recall|memory|lens|session|pinnedContext)(?:\/|$)/);
+        expect(module).not.toMatch(RECALL_FORBIDDEN_MODULE);
+      }
+      expect(source).not.toMatch(/\.(?:writeFile|delete|createDirectory|rename)\(/);
+    }
+  });
+
+  it('builds the lens repository only at the composition root, for the widget and the lens family alike (ADR 2026-11-17 D16)', () => {
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /\bnew\s+LexicalGravityLensRepository\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(constructions).toEqual([]);
+    const extension = fs.readFileSync(path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src/extension.ts'), 'utf8');
+    expect(extension.match(/\bnew\s+LexicalGravityLensRepository\s*\(/g)).toHaveLength(1);
+    // One merge rule: the modal's handler and the lens family both call it, and neither folds slugs itself.
+    const handler = fs.readFileSync(path.join(
+      SRC_ROOT, 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
+    ), 'utf8');
+    const capability = fs.readFileSync(path.join(WORKSHOP_LENS_ROOT, 'WorkshopLensCapability.ts'), 'utf8');
+    expect(handler).toContain('mergeLexicalGravityLibrary(');
+    expect(capability).toContain('mergeLexicalGravityLibrary(');
+    expect(handler).not.toMatch(/bySlug/);
+  });
+
   it('keeps project memory on its read-only ports and off the room-frame renderers (ADR 2026-11-04 D10, D12)', () => {
     const memoryFiles = collectSourceFiles(WORKSHOP_MEMORY_ROOT);
     const imports = memoryFiles.flatMap((file) =>
@@ -2176,11 +2321,12 @@ describe('architectural boundaries', () => {
     // Reply Edit Actions Slice 2 added the press on a reply's edit offer (mutation).
     // Message Reactions Slice 1 added the writer's reaction change and Hide on a persona's (mutation).
     // Everyday Conveniences Slice B added the selection's offer and watch (direct) and its staging (mutation).
-    expect(expectedOwnerPairs).toHaveLength(97);
+    // Everyday Conveniences round two, item A added a long room's earlier turns (direct).
+    expect(expectedOwnerPairs).toHaveLength(98);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(52);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(45);
+      .toHaveLength(46);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -2493,6 +2639,26 @@ describe('architectural boundaries', () => {
     // And no Lightbox module keeps a JSON repair of its own: the frame reads its JSON through the shared parser.
     expect(fs.readFileSync(path.join(SRC_ROOT, 'infrastructure', 'lightbox', 'LightboxReadingFrame.ts'), 'utf8'))
       .toMatch(/from '@parsers\/ModelJsonRepair'/);
+  });
+
+  it('reads Lexical Gravity\'s model JSON through the shared parser, with its one repair kept beside the feature (Everyday Conveniences round two, item E)', () => {
+    const widgets = path.join(SRC_ROOT, 'infrastructure', 'api', 'services', 'widgets');
+    const service = fs.readFileSync(path.join(widgets, 'LexicalGravityModelService.ts'), 'utf8');
+    const repair = fs.readFileSync(path.join(widgets, 'LexicalGravityLensReplyJson.ts'), 'utf8');
+    // Neither reader parses a reply itself: the preview reads through the shared parser, the lens build through the feature's reader.
+    expect(service).not.toMatch(/JSON\.parse/);
+    expect(repair).not.toMatch(/JSON\.parse/);
+    expect(service).toMatch(/parseModelJson\(framed\)/);
+    expect(service).toMatch(/parseLexicalGravityLensJson\(framed\)/);
+    // The repair is the feature's, guarded by the shared content guard, and imports nothing but the shared parsers.
+    expect(repair).toMatch(/modelJsonContentMatches\(/);
+    expect(moduleImports('LexicalGravityLensReplyJson.ts', repair).map(({ module }) => module).sort())
+      .toEqual(['@parsers/ModelJsonRepair', '@parsers/ModelJsonTokens']);
+    // And the shared parsers name no lens field.
+    for (const parser of ['ModelJsonRepair.ts', 'ModelJsonTokens.ts']) {
+      expect(fs.readFileSync(path.join(SRC_ROOT, 'infrastructure', 'api', 'parsers', parser), 'utf8'))
+        .not.toMatch(/attention|foregrounds|backgrounds|early-closed/);
+    }
   });
 
   it('keeps the native tool-call adapter a seam: the engine and the provider name no capability, and only the Workshop translates', () => {

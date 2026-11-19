@@ -87,9 +87,13 @@ export const WORKSHOP_NATIVE_CALL_FIELDS: Readonly<Record<
     since: TEXT,
     until: TEXT
   },
-  'memory.catalog': { kind: TEXT },
+  'memory.catalog': { kind: TEXT, page: TEXT },
   'memory.search': { query: TEXT, status: TEXT },
-  'memory.read': { memory: { repeatable: true, plural: 'memories' } }
+  'memory.read': { memory: { repeatable: true, plural: 'memories' } },
+  'help.search': { query: TEXT },
+  'help.read': { section: { repeatable: true, plural: 'sections' } },
+  'lens.catalog': { page: TEXT },
+  'lens.read': { lens: TEXT, section: { repeatable: true, plural: 'sections' } }
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 

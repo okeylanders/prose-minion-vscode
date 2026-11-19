@@ -44,10 +44,14 @@ export const IN_BUDGET: WorkshopMemoryFrameEstimate = {
   catalogTokens: 698,
   frameTokens: 1_812,
   pinnedLoadedTokens: 1_104,
-  catalogEntries: 10
+  catalogEntries: 10,
+  titleTokens: 0,
+  titleEntries: 0,
+  unlisted: 0,
+  retired: 0
 };
 
-/** The list over its budget: 40 memories, 3 in full, 25 of 37 fit. */
+/** The list over its budget: 40 memories, 3 in full, 25 of 37 fit, and the other 12 shown by title. */
 export const LIST_OVER: WorkshopMemoryFrameEstimate = {
   memories: 40,
   pinned: 3,
@@ -57,7 +61,19 @@ export const LIST_OVER: WorkshopMemoryFrameEstimate = {
   catalogTokens: 1_996,
   frameTokens: 4_410,
   pinnedLoadedTokens: 2_390,
-  catalogEntries: 25
+  catalogEntries: 25,
+  titleTokens: 312,
+  titleEntries: 12,
+  unlisted: 0,
+  retired: 0
+};
+
+/** The titles tier over its budget too: of the 12 past the list, 8 shown by title and 4 in no tier. */
+export const TITLES_OVER: WorkshopMemoryFrameEstimate = {
+  ...LIST_OVER,
+  titleTokens: 1_996,
+  titleEntries: 8,
+  unlisted: 4
 };
 
 /** Set to load in full past 5,000: 4 set, 3 loaded, about 5,600 requested. */
@@ -70,7 +86,11 @@ export const FULL_OVER: WorkshopMemoryFrameEstimate = {
   catalogTokens: 798,
   frameTokens: 5_230,
   pinnedLoadedTokens: 4_410,
-  catalogEntries: 9
+  catalogEntries: 9,
+  titleTokens: 0,
+  titleEntries: 0,
+  unlisted: 0,
+  retired: 0
 };
 
 /** The manager's canvas: six active, one superseded, one archived, three files that need attention. */

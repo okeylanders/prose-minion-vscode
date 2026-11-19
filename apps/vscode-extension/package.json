@@ -718,6 +718,38 @@
           "default": "ask",
           "markdownDescription": "Workshop persona file edits. A persona can propose an edit to a project file (a note, a chapter, or the excerpt's document). Nothing in a file changes until you press Apply on its card."
         },
+        "proseMinion.workshop.memory.suggestions": {
+          "type": "string",
+          "scope": "application",
+          "enum": [
+            "sparingly",
+            "readily",
+            "aggressively"
+          ],
+          "enumDescriptions": [
+            "Personas suggest a note only for what will matter later. Most replies suggest none.",
+            "Personas suggest a note whenever something worth keeping comes up, small things included.",
+            "Personas suggest a note for anything a later conversation might want. Expect many."
+          ],
+          "default": "sparingly",
+          "markdownDescription": "How readily Workshop personas suggest project notes. One choice for every project. It changes how often a persona suggests a note, never what a note may hold. It applies while Workshop Project Memory (`#proseMinion.workshop.projectMemory#`) is on; when that saves notes without asking, at most 5 are saved in one conversation and the rest wait as cards."
+        },
+        "proseMinion.workshop.memory.listSize": {
+          "type": "string",
+          "scope": "application",
+          "enum": [
+            "standard",
+            "larger",
+            "largest"
+          ],
+          "enumDescriptions": [
+            "Up to 2,000 tokens of titles and summaries, then up to 2,000 tokens of titles alone.",
+            "Up to 5,000 tokens of titles and summaries, then up to 3,000 tokens of titles alone.",
+            "Up to 10,000 tokens of titles and summaries, then up to 4,000 tokens of titles alone."
+          ],
+          "default": "standard",
+          "markdownDescription": "How much of this project's notes Workshop personas are shown at the start of each conversation: the newest notes by title and summary, then every other note by its title alone, as many as fit. One choice for every project. Notes set to load in full are separate, and keep their own 5,000 tokens at every size. A change applies from the next conversation; an open conversation keeps the list it started with. It applies while Workshop Project Memory (`#proseMinion.workshop.projectMemory#`) is on."
+        },
         "proseMinion.workshop.memory.helperDrafts": {
           "type": "boolean",
           "default": true,

@@ -129,6 +129,44 @@ export interface PromptBudgets {
     editReplaces: number;
     /** Open-room turns one suggestion may cite (Bookmark Recall D10): with its reply and the writer's message, within `sourceTurns`. */
     citedTurns: number;
+    /**
+     * The start-of-conversation list at each size the writer may choose
+     * (ADR 2026-11-17 D9): the titles-and-summaries tier's tokens and entry
+     * cap, and the titles-only tier's tokens. `standard` is `catalogTokens`
+     * and `catalogEntries` above. `pinnedTokens` is the same at every size.
+     */
+    listSizes: Readonly<Record<'standard' | 'larger' | 'largest', Readonly<{
+      catalogTokens: number;
+      catalogEntries: number;
+      titleTokens: number;
+    }>>>;
+  }>;
+  /**
+   * A capability's `<page>` field (ADR 2026-11-17 D10): at most this many
+   * decimal digits. There is no highest page; the bound only keeps the
+   * field syntactic, and no listing the host can hold reaches it.
+   */
+  readonly workshopCapabilityPaging: Readonly<{
+    pageDigits: number;
+  }>;
+  /**
+   * The persona's read-only view of the writer's lens library (ADR
+   * 2026-11-17 D20). A `lens.catalog` page lists `catalogItems` lenses; a
+   * `lens.read` names at most `readSections` sections, the whole closed
+   * list. `<page>`'s bound is `workshopCapabilityPaging.pageDigits`.
+   */
+  readonly workshopLens: Readonly<{
+    catalogItems: number;
+    readSections: number;
+  }>;
+  /** Bundled Prose Minion reference (ADR 2026-11-17 D25). */
+  readonly workshopHelp: Readonly<{
+    queryCharacters: number;
+    searchHits: number;
+    snippetCharacters: number;
+    readSections: number;
+    sectionIdCharacters: number;
+    sectionCharacters: number;
   }>;
   /**
    * Workshop message reactions (ADR 2026-11-07 D9). `perSession` is the
@@ -231,6 +269,24 @@ export interface PromptBudgets {
     previewCharacters: number;
     snapshots: number;
     pushIntervalMs: number;
+  }>;
+  /**
+   * A page of a long room's earlier turns (ADR 2026-11-17 D3). A page stops
+   * at `pageTurns` or at `pageBytes` (the UTF-8 size of its turns as sent),
+   * whichever comes first counting back from the newest, and always holds at
+   * least one turn. The snapshot window stays `WORKSHOP_SNAPSHOT_TURN_WINDOW`.
+   *
+   * `jumpPages` bounds a jump to a turn outside the window (D6, amended
+   * 2026-11-18; Okey's number): the pages one jump may load beyond what the
+   * thread holds. The host refuses a target more than `jumpPages *
+   * pageTurns` turns back, and the webview stops after `jumpPages` pages
+   * (a byte-bounded page can hold fewer turns). Past it the turn opens in
+   * the reader instead.
+   */
+  readonly workshopThread: Readonly<{
+    pageTurns: number;
+    pageBytes: number;
+    jumpPages: number;
   }>;
   readonly workshopTodos: Readonly<{
     items: number;
@@ -614,6 +670,8 @@ export interface PromptBudgets {
 }
 
 const PERSONA_EXCERPT = { words: 25_000, characters: 300_000 };
+// Standard's list is the list as it has always been; `memory.catalog` pages by the same entry count.
+const MEMORY_CATALOG = { catalogEntries: 40, catalogTokens: 2_000 };
 // Raised to 100k for long-form Workshop rooms (Okey 2026-10-03).
 // A configurable ceiling is tracked in the context-attachment-budget-setting debt note.
 const CONTEXT_ATTACHMENTS = { words: 100_000, characters: 840_000, fileBytes: 5 * 1024 * 1024 };
@@ -684,8 +742,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     titleCharacters: 120,
     summaryCharacters: 280,
     bodyCharacters: 8_000,
-    catalogEntries: 40,
-    catalogTokens: 2_000,
+    ...MEMORY_CATALOG,
     pinnedTokens: 5_000,
     queryCharacters: 200,
     memoryIdCharacters: 16,
@@ -697,7 +754,23 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     autoSavesPerRoom: 5,
     proposalsPerReply: 10,
     editReplaces: 5,
-    citedTurns: 30
+    citedTurns: 30,
+    // The entry caps past Standard are the orchestrator's default (ADR 2026-11-17 Q1, open).
+    listSizes: {
+      standard: { ...MEMORY_CATALOG, titleTokens: 2_000 },
+      larger: { catalogTokens: 5_000, catalogEntries: 100, titleTokens: 3_000 },
+      largest: { catalogTokens: 10_000, catalogEntries: 200, titleTokens: 4_000 }
+    }
+  },
+  workshopCapabilityPaging: { pageDigits: 9 },
+  workshopLens: { catalogItems: 50, readSections: 7 },
+  workshopHelp: {
+    queryCharacters: 200,
+    searchHits: 8,
+    snippetCharacters: 280,
+    readSections: 3,
+    sectionIdCharacters: 100,
+    sectionCharacters: 6_000
   },
   workshopReactions: {
     // Generous: 19 writer reactions on each of a few hundred replies, plus the personas'.
@@ -749,6 +822,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     optionCharacters: 40
   },
   workshopSelectedText: { words: 5_000, characters: 40_000, previewCharacters: 120, snapshots: 8, pushIntervalMs: 150 },
+  workshopThread: { pageTurns: 100, pageBytes: 1024 * 1024, jumpPages: 3 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {
     turns: 100,

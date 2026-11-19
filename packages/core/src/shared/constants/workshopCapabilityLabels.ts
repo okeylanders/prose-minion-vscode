@@ -39,6 +39,10 @@ export function workshopCapabilityFamilyLabel(
       return 'Session Recall';
     case 'memory':
       return 'Project Memory';
+    case 'lens':
+      return 'Lens Library';
+    case 'help':
+      return 'Prose Minion Help';
     case 'analysis':
       return toolLabel ?? 'Analysis';
   }

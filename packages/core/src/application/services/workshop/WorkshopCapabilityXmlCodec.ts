@@ -18,6 +18,14 @@ import {
   inspectWorkshopResourceCall,
   WORKSHOP_RESOURCE_FIELD_POLICY
 } from '@/application/services/workshop/WorkshopResourceXmlCodec';
+import {
+  inspectWorkshopLensCall,
+  WORKSHOP_LENS_FIELD_POLICY
+} from '@/application/services/workshop/lens/WorkshopLensXmlCodec';
+import {
+  inspectWorkshopHelpCall,
+  WORKSHOP_HELP_FIELD_POLICY
+} from '@/application/services/workshop/help/WorkshopHelpXmlCodec';
 import { workshopResourceInstructionLines } from '@/application/services/workshop/WorkshopResourceInstruction';
 import type { WorkshopCapabilityXmlFieldPolicy } from '@/application/services/workshop/WorkshopCapabilityXmlDocument';
 import { countWords } from '@/utils/textUtils';
@@ -27,6 +35,8 @@ export const WORKSHOP_CAPABILITY_FIELD_POLICY: WorkshopCapabilityXmlFieldPolicy 
   repeatable: (operation, field) =>
     WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY.repeatable(operation, field) ||
     WORKSHOP_PROJECT_MEMORY_FIELD_POLICY.repeatable(operation, field) ||
+    WORKSHOP_HELP_FIELD_POLICY.repeatable(operation, field) ||
+    WORKSHOP_LENS_FIELD_POLICY.repeatable(operation, field) ||
     WORKSHOP_RESOURCE_FIELD_POLICY.repeatable(operation, field),
   attributes: (operation, field) => [
     ...WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY.attributes(operation, field),
@@ -84,7 +94,13 @@ export type WorkshopCapabilityRejectionReason =
   | 'invalid-kind'
   | 'invalid-memory-id'
   | 'too-many-memories'
-  | 'duplicate-memory';
+  | 'duplicate-memory'
+  // A listing's `<page>` (ADR 2026-11-17 D10; WorkshopCapabilityPaging).
+  | 'invalid-page'
+  // The lens library (ADR 2026-11-17 D18; lens/WorkshopLensXmlCodec).
+  | 'invalid-section'
+  | 'duplicate-section'
+  | 'too-many-sections';
 
 export type WorkshopCapabilityInspection =
   | { readonly kind: 'none' }
@@ -176,6 +192,13 @@ export class WorkshopCapabilityXmlCodec {
       case 'memory.search':
       case 'memory.read':
         return inspectWorkshopProjectMemoryCall(operation, document);
+      // By hand again, through the family's own codec (ADR 2026-11-17 D16).
+      case 'lens.catalog':
+      case 'lens.read':
+        return inspectWorkshopLensCall(operation, document);
+      case 'help.search':
+      case 'help.read':
+        return inspectWorkshopHelpCall(operation, document);
       default:
         return { kind: 'invalid', reason: 'unknown-capability' };
     }

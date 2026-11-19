@@ -663,7 +663,15 @@ describe('app-shell provider assembly', () => {
       /liveRoom: new WorkshopLiveRoomBookmarkReader\(\s*workshopSessionService,\s*\(\) => workshopSessionTimeService\.exportState\(\)\.timezone\s*\)\s*\}\s*$/
     );
     expect(source.match(/new WorkshopLiveRoomBookmarkReader\(/g)).toHaveLength(1);
-    expect(factoryArgs).toMatch(/workshopTranscriptRecallService,\s*projectMemoryLibrary\s*$/);
+    // Both private read families receive their shared reader from the composition root.
+    expect(factoryArgs).toMatch(/workshopTranscriptRecallService,\s*projectMemoryLibrary,\s*lexicalGravityLensRepository,\s*workshopHelpReference\s*$/);
+    expect(source.match(/new LexicalGravityLensRepository\(/g)).toHaveLength(1);
+    expect(source.match(/new WorkshopHelpReference\(/g)).toHaveLength(1);
+    expect(at('new WorkshopHelpReference(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
+    // Only the persona factory reads the reference; the handlers' bundle does not carry it.
+    const bundle = source.slice(at('const coreServices: CoreServices = {'));
+    expect(bundle.slice(0, bundle.indexOf('\n  };'))).not.toMatch(/\bworkshopHelpReference\b/);
+    expect(at('new LexicalGravityLensRepository(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
     expect(at('new WorkshopSessionStore(')).toBeLessThan(at('new WorkshopSessionPersistenceCoordinator('));
     expect(at('new WorkshopSessionPersistenceCoordinator(')).toBeLessThan(at('new WorkshopTranscriptRecallService('));
     expect(at('new WorkshopTranscriptRecallService(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
@@ -694,6 +702,8 @@ describe('app-shell provider assembly', () => {
     expect(source).toContain('assistantToolService.setWorkshopProjectMemoryGrammar(() => projectMemoryLibrary.teachesGrammar());');
     // Persona reactions' permission rides the prompt only while the setting is on (ADR 2026-11-07 Q8).
     expect(source).toContain('assistantToolService.setWorkshopReactionsGrammar(() => workshopConversationSettingsService.personaReactionsOpen());');
+    // How readily personas suggest notes picks the proposals prompt, read at each build (Round Two item B).
+    expect(source).toContain('assistantToolService.setWorkshopMemorySuggestionLevel(() => workshopConversationSettingsService.memorySuggestionLevel());');
     // The store has one consumer in 2a, the library.
     expect(source.match(/projectMemoryStore\b/g)).toHaveLength(2);
   });

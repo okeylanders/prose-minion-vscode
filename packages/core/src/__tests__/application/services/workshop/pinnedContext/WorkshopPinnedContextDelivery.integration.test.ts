@@ -13,6 +13,7 @@
  *
  * *Alice*, with made-up paths and text. No provider is called.
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { WorkshopRoomHandler } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
 import { emptyPinnedContextServices } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextTestServices';
 import { unusedBookmarkBrowser, unusedMemoryDrafts, unusedSelectedText } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
@@ -43,6 +44,7 @@ import { offProjectMemory } from '@/__tests__/application/services/workshop/memo
 import { libraryHost } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import { createFakeFileSystem, createFakeSettings, createFakeShellService, createFakeWorkspace } from '../../../../mocks/platform';
 import { seedHost } from './pinnedContextSeedHost';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const MEMORY_FRAME = '<project-memory note="n" built="2026-11-05">\n  <entry id="mem-7f3c2a" kind="canon" updated="2026-11-04">Watch: backward</entry>\n</project-memory>';
 
@@ -91,8 +93,10 @@ async function firstHostRun(seed: (session: WorkshopSessionService) => Promise<v
         text: MEMORY_FRAME,
         pinnedLoaded: [],
         entries: ['mem-7f3c2a'],
+        titles: [],
+        unlisted: 0,
         more: 0,
-        estimate: { memories: 1, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 20, frameTokens: 30, pinnedLoadedTokens: 0, catalogEntries: 1 }
+        estimate: { memories: 1, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 20, frameTokens: 30, pinnedLoadedTokens: 0, catalogEntries: 1, titleTokens: 0, titleEntries: 0, unlisted: 0, retired: 0 }
       },
       snapshot: [{ id: 'mem-7f3c2a', version: '0123456789ab' }]
     })),
@@ -100,7 +104,9 @@ async function firstHostRun(seed: (session: WorkshopSessionService) => Promise<v
   };
   const emptyCatalog = { createProvider: jest.fn(async () => ({ listResources: () => [], loadResources: async () => [] })) };
   const capabilities = new WorkshopPersonaCapabilityFactory(
-    {} as DictionaryService, analysis, emptyCatalog as never, session, output, {} as WorkshopTranscriptRecallPort, projectMemory
+    {} as DictionaryService, analysis, emptyCatalog as never, session, output, {} as WorkshopTranscriptRecallPort, projectMemory,
+    noProjectLenses,
+    unavailableHelpReference
   );
   const settings = createFakeSettings();
   const profile = new WorkshopWriterProfileService(settings, output);

@@ -44,6 +44,7 @@ import {
   RunWorkshopToolSidePass,
   WorkshopAnalysisSidePass,
   WorkshopPersonaCapabilityFactory,
+  WorkshopHelpReference,
   WorkshopContextIntakeService,
   WorkshopConversationSettingsService,
   WorkshopWriterProfileService,
@@ -416,10 +417,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // The file-edit trailer is taught only while `workshop.fileEdits` is `ask` (ADR 2026-11-05 D9).
   assistantToolService.setWorkshopFileEditsGrammar(() => workshopConversationSettingsService.fileEditsOpen());
   assistantToolService.setWorkshopReactionsGrammar(() => workshopConversationSettingsService.personaReactionsOpen());
+  // How readily personas suggest notes picks the proposals prompt (`workshop.memory.suggestions`), read at each build.
+  assistantToolService.setWorkshopMemorySuggestionLevel(() => workshopConversationSettingsService.memorySuggestionLevel());
   // Its writes (Slice 3) are owed until they settle; deactivation drains them.
   projectMemoryLibraryForShutdown = projectMemoryLibrary;
-  // Persona capabilities are minted per turn by this factory, after the
-  // store, the coordinator, and the recall and memory services built from them.
+  // The project's Lexical Gravity lenses: one repository, for the widget's
+  // routes and for the personas' read-only `lens.*` calls (ADR 2026-11-17 D16).
+  const lexicalGravityLensRepository = new LexicalGravityLensRepository(
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel
+  );
+  const workshopHelpReference = new WorkshopHelpReference(
+    platform.fileSystem,
+    path.join(platform.workspace.extensionPath, 'resources', 'help'),
+    extensionInfo.version,
+    outputChannel
+  );
+  // Each participant turn uses the same session, library and reference readers.
   const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
     dictionaryService,
     workshopAnalysisSidePass,
@@ -427,7 +442,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopSessionService,
     outputChannel,
     workshopTranscriptRecallService,
-    projectMemoryLibrary
+    projectMemoryLibrary,
+    lexicalGravityLensRepository,
+    workshopHelpReference
   );
   const workshopToolSidePass = new RunWorkshopToolSidePass(
     assistantToolService,
@@ -491,11 +508,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     resourceLoader.getPromptLoader(),
     rejectedModelResponseRecovery,
     rejectedModelResponseRecoveryPresenter,
-    outputChannel
-  );
-  const lexicalGravityLensRepository = new LexicalGravityLensRepository(
-    platform.fileSystem,
-    platform.workspace,
     outputChannel
   );
 

@@ -164,6 +164,11 @@ export enum MessageType {
   WORKSHOP_HIDE_TURN_REACTION = 'workshop_hide_turn_reaction',
   WORKSHOP_REQUEST_TURN_PREVIEW = 'workshop_request_turn_preview',
   WORKSHOP_TURN_PREVIEW = 'workshop_turn_preview',
+  // A long room's earlier turns, a page at a time (ADR 2026-11-17 D1).
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours.
+  WORKSHOP_REQUEST_EARLIER_TURNS = 'workshop_request_earlier_turns',
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours.
+  WORKSHOP_EARLIER_TURNS = 'workshop_earlier_turns',
   /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
   WORKSHOP_REQUEST_BOOKMARK_PAGE = 'workshop_request_bookmark_page',
   WORKSHOP_CANCEL_BOOKMARK_PAGE = 'workshop_cancel_bookmark_page',
@@ -200,6 +205,8 @@ export enum MessageType {
   // Workshop Project Memory: the manager (epic Slice 4b)
   WORKSHOP_MEMORY_LIST = 'workshop_memory_list',
   WORKSHOP_MEMORY_LISTING = 'workshop_memory_listing',
+  // The start-of-conversation list size changed (ADR 2026-11-17 D9): the tab asks for its listing again
+  WORKSHOP_MEMORY_LIST_SIZE_SETTING = 'workshop_memory_list_size_setting',
   WORKSHOP_MEMORY_MANAGER_ACTION = 'workshop_memory_manager_action',
   WORKSHOP_MEMORY_MANAGER_RESULT = 'workshop_memory_manager_result',
   // Workshop Pinned Context: the settings tab (epic Slice 3)

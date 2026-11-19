@@ -15,7 +15,8 @@ import { LexicalGravityModelService } from '@services/widgets/LexicalGravityMode
 import {
   builtInLexicalGravityLens,
   builtInLexicalGravityLenses,
-  lexicalGravityLensSlug
+  lexicalGravityLensSlug,
+  mergeLexicalGravityLibrary
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 import {
   validateLexicalGravityDraft
@@ -116,16 +117,12 @@ export class WorkshopLexicalGravityHandler {
     const builtIns = builtInLexicalGravityLenses();
     try {
       const projects = await this.repository.list();
-      const bySlug = new Map(builtIns.map((lens) => [lens.slug, lens]));
-      projects.lenses.forEach((lens) => {
-        if (!bySlug.has(lens.slug)) {bySlug.set(lens.slug, lens);}
-      });
       const message: WorkshopLexicalGravityLensesDataMessage = {
         type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA,
         source: 'extension.workshop.lexical-gravity',
         timestamp: Date.now(),
         payload: {
-          lenses: [...bySlug.values()],
+          lenses: mergeLexicalGravityLibrary(builtIns, projects.lenses),
           incompatibleResources: projects.incompatibleResources,
           storagePath: this.repository.availability().displayPath
         }
@@ -197,7 +194,7 @@ export class WorkshopLexicalGravityHandler {
             'non-built-in canonical name before rebuilding.'
           );
         }
-        const candidates = await this.model.buildLenses(query, { signal: controller.signal });
+        const { candidates, note } = await this.model.buildLenses(query, { signal: controller.signal });
         if (controller.signal.aborted) {return;}
         this.latestBuild = {
           token,
@@ -206,7 +203,7 @@ export class WorkshopLexicalGravityHandler {
           savedCandidateIds: new Set(),
           rebuildResourceName
         };
-        await this.postCandidates({ token, query, ok: true, candidates });
+        await this.postCandidates({ token, query, ok: true, candidates, ...(note ? { note } : {}) });
         return;
       }
       const slug = lexicalGravityLensSlug(query);
@@ -217,10 +214,10 @@ export class WorkshopLexicalGravityHandler {
         await this.postCandidates({ token, query, ok: true, existingLens });
         return;
       }
-      const candidates = await this.model.buildLenses(query, { signal: controller.signal });
+      const { candidates, note } = await this.model.buildLenses(query, { signal: controller.signal });
       if (controller.signal.aborted) {return;}
       this.latestBuild = { token, query, candidates, savedCandidateIds: new Set() };
-      await this.postCandidates({ token, query, ok: true, candidates });
+      await this.postCandidates({ token, query, ok: true, candidates, ...(note ? { note } : {}) });
     } catch (error) {
       if (controller.signal.aborted) {return;}
       await this.postCandidates({ token, query, ok: false, error: this.errorMessage(error) });

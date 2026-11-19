@@ -1,3 +1,4 @@
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import {
   completeWorkshopRun,
   workshopMessageCompletionCopy,
@@ -15,6 +16,7 @@ import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/W
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 /**
  * Run completion owns the reply's tail (ADR 2026-11-04 D6, D8, D9; PR #192
@@ -250,7 +252,9 @@ describe('the persona capability\'s log redaction (ADR 2026-11-04 D9)', () => {
       session,
       { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
       {} as WorkshopTranscriptRecallPort,
-      offProjectMemory
+      offProjectMemory,
+      noProjectLenses,
+      unavailableHelpReference
     ).create({
       requestId: 'r', excerptVersion: 0, personaId: 'jill', owner: { kind: 'host' },
       signal: new AbortController().signal,

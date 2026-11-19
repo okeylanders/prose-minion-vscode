@@ -68,6 +68,7 @@ import {
 } from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
 import { workshopReactionInviteFor } from '@/application/services/workshop/reactions/WorkshopReactionInvite';
 import { workshopEditOfferReminderFor } from '@/application/services/workshop/fileEdits/WorkshopEditOfferReminder';
+import { workshopTrailerOutcomeFrames } from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerOutcomesFrame';
 import type {
   WorkshopOneShotWidgetRoomArtifact
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
@@ -139,6 +140,7 @@ import {
   workshopMessageAttachmentFrameContext,
   workshopMessageAttachmentKind
 } from '@shared/constants/workshopThreadArtifactKinds';
+import { WORKSHOP_SEND_WITHOUT_ATTACHMENT_REFUSALS } from '@handlers/domain/workshop/WorkshopMessageAttachmentReads';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import type {
@@ -383,6 +385,7 @@ export class WorkshopRoomHandler {
         fileEditsMode: () => this.conversationSettingsService.getFileEditsMode(),
         runDirected: (target, run) =>
           this.executeMessage(run.message, run.displayText, target, { directedRun: run }),
+        editOfferRoomView: () => this.editOfferRoomView(),
         formatTurnTime: (timestamp) => workshopEditRequestTime(timestamp, this.sessionTime.exportState().timezone),
         findReadInRecord: (identity) => this.assistantToolService.findConversationContextSourceRead(
           this.chatTargetConversation().conversationId,
@@ -574,6 +577,10 @@ export class WorkshopRoomHandler {
       return;
     }
 
+    if (!(await this.pickedAttachmentsStaged(text))) {
+      return;
+    }
+
     // Selected Text (ADR 2026-11-14 D14): the pill's snapshot is staged here, in the send's own mutation,
     // after its room is checked; otherwise the whole send is refused and the draft goes back to the composer.
     const selection = this.sliceComposition.stageSelectedTextForSend(message.payload);
@@ -600,6 +607,38 @@ export class WorkshopRoomHandler {
       includeMessageAttachments: true,
       restoreDraftOnRollback: true
     });
+  }
+
+  /**
+   * A send waits for the files picked for it (PR #271 F-01). A pick (`@`,
+   * the project picker, the system picker) is read on the host, and its pill
+   * is staged only when the read lands; the send may arrive first. It waits
+   * here, before it stages or collects anything. A file that was not staged,
+   * a read past the deadline, or a room replaced meanwhile refuses the whole
+   * send and gives the draft back: a message never goes without its file
+   * unseen.
+   */
+  private async pickedAttachmentsStaged(text: string): Promise<boolean> {
+    if (!this.sliceComposition.messageAttachmentReadsPending()) {
+      return true;
+    }
+    const room = this.session.readRoomRevision();
+    this.sendStatus('Attaching the picked file before sending…');
+    const reads = await this.sliceComposition.settleMessageAttachmentReads();
+    const fault = room !== this.session.readRoomRevision() || this.sessionPersistence.isSessionOperationPending()
+      ? 'room-changed'
+      : reads.kind === 'staged' ? undefined : reads.kind;
+    if (!fault) {
+      return true;
+    }
+    this.logLine(`Send refused whole: a picked attachment was not staged (${fault})`);
+    this.sendError(
+      'workshop.send_message',
+      WORKSHOP_SEND_WITHOUT_ATTACHMENT_REFUSALS[fault],
+      reads.kind === 'refused' ? reads.reason : undefined
+    );
+    this.postComposerDraftRestored(text);
+    return false;
   }
 
   async handleSelectPersona(message: WorkshopSelectPersonaMessage): Promise<void> {
@@ -1196,7 +1235,10 @@ export class WorkshopRoomHandler {
       // A press's directive rides the frames' own slot, last before the message (ADR 2026-11-10 D4).
       ...(directedRun ? [directedRun.frame] : []),
       // The edit-offer reminder rides it too, never with a press and never for a tool (second addendum).
-      ...this.editOfferReminder(roomReader !== undefined, directedRun !== undefined, excerpt)
+      ...this.editOfferReminder(roomReader !== undefined, directedRun !== undefined, excerpt),
+      // What became of the persona's last reply's trailers (ADR 2026-11-17 D14, D15): keyed to the ledger's latest
+      // reply, so a fresh conversation's first message carries it too (PR #276 F-01). Never a press, never a tool.
+      ...workshopTrailerOutcomeFrames(directedRun ? undefined : roomReader, () => this.session.readRoomLedger(), this.logLine)
     ];
     const widgetCommitRef: WorkshopTurnWidgetCommit | undefined = widgetArtifact
       ? {
@@ -1712,6 +1754,7 @@ export class WorkshopRoomHandler {
         writerProfile: this.conversationSettingsService.getWriterProfile(),
         webResearch: this.conversationSettingsService.getWebResearch(),
         projectMemory: this.conversationSettingsService.getProjectMemoryMode(),
+        memorySuggestions: this.conversationSettingsService.memorySuggestionLevel(),
         fileEdits: this.conversationSettingsService.getFileEditsMode(),
         persistence: {
           available: availability.available,

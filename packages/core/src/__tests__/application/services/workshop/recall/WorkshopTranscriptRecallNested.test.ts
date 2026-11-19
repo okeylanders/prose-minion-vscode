@@ -9,6 +9,7 @@
  * and the persona replies; never A's transcript and never the widget payload.
  */
 
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
 import {
@@ -25,6 +26,7 @@ import type { ContextResourceProviderFactory } from '@/domain/models/ContextGene
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import type { WorkshopGesturePlaygroundDraft } from '@messages';
 import { saveRecallRoom, SavedRecallRoom } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const NOW = Date.parse('2026-10-05T14:30:00.000Z');
 
@@ -100,7 +102,9 @@ async function saveNestedRooms(): Promise<Nested> {
       session,
       room.log,
       new WorkshopTranscriptRecallService(room.store, room.coordinator, room.log),
-      offProjectMemory
+      offProjectMemory,
+      noProjectLenses,
+      unavailableHelpReference
     ).create({
       requestId: 'b-recall',
       excerptVersion: session.getExcerptVersion(),

@@ -5,6 +5,7 @@
  * does, and commits its reply, so the record stands as it would in a room.
  * *Alice*, with made-up ids.
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
@@ -17,6 +18,7 @@ import { parseWorkshopPersistedSession } from '@/application/services/workshop/W
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { projectMemoryDeliveredView } from '@/application/services/workshop/memory/ProjectMemoryDeliveredView';
 import { libraryHost, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 /** A host room over `host`'s folder; `say` runs one writer message to the host and returns what the model received. */
 function room(host: ReturnType<typeof libraryHost>) {
@@ -40,7 +42,9 @@ function room(host: ReturnType<typeof libraryHost>) {
       session,
       { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
       {} as WorkshopTranscriptRecallPort,
-      host.library
+      host.library,
+      noProjectLenses,
+      unavailableHelpReference
     ).create({
       requestId,
       excerptVersion: 0,
@@ -265,7 +269,8 @@ describe('a set past the record\'s bound (PR #198 F-03)', () => {
     const host = libraryHost();
     many(host, 4_096);
     const { say, session } = room(host);
-    expect(await say('Hello.')).toContain('<more count=');
+    // Past the list and the titles, the rest are counted as unlisted (ADR 2026-11-17 D8).
+    expect(await say('Hello.')).toContain('<unlisted count=');
     const atBound = saveAndReopen(session).workshop.turns.flatMap((turn) => turn.projectMemoryDelivery ?? []);
     expect(atBound[0].memories).toHaveLength(4_096);
     expect(atBound[0].digest).toBeUndefined();

@@ -23,10 +23,11 @@
 
 import { MessageRouter } from '@handlers/MessageRouter';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
-import type { LogSink, ShellService } from '@/platform';
+import type { LogSink, SettingsStore, ShellService } from '@/platform';
 import {
   MessageType,
   type WorkshopMemoryListingMessage,
+  type WorkshopMemoryListSizeSettingMessage,
   type WorkshopMemoryListMessage,
   type WorkshopMemoryManagerActionMessage,
   type WorkshopMemoryManagerResultMessage,
@@ -36,6 +37,7 @@ import type { ProjectMemoryLibrary } from '@/application/services/workshop/memor
 import type { ProjectMemoryDeleteRefusalReason } from '@/application/services/workshop/memory/ProjectMemoryWrites';
 import type { ProjectMemoryManagerFile } from '@/application/services/workshop/memory/ProjectMemoryManager';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { readProjectMemoryListSize } from '@/application/services/workshop/memory/ProjectMemoryListSize';
 
 /** The library's manager half; satisfied by ProjectMemoryLibrary. */
 export type WorkshopProjectMemoryManagerPort = Pick<
@@ -74,6 +76,19 @@ const FILE_REFUSALS: Readonly<Record<Extract<ProjectMemoryManagerFile, { kind: '
   unknown: 'The memory folder couldn’t be listed just now. Your memory files weren’t touched.'
 };
 /* eslint-enable @typescript-eslint/naming-convention */
+
+/**
+ * The list size as the settings hold it now (ADR 2026-11-17 D9), for the settings watcher to push: a visible
+ * Memory tab then asks for its listing again. Nothing in the room is rebuilt.
+ */
+export function workshopMemoryListSizeSettingMessage(settings: Pick<SettingsStore, 'get'>): WorkshopMemoryListSizeSettingMessage {
+  return {
+    type: MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING,
+    source: 'extension.workshop',
+    payload: { size: readProjectMemoryListSize(settings) },
+    timestamp: Date.now()
+  };
+}
 
 export class WorkshopProjectMemoryManagerHandler {
   constructor(

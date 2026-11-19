@@ -34,6 +34,7 @@ import {
   WorkshopStandingDirectiveSummary,
   WorkshopToolId,
   WorkshopTodoItem,
+  WorkshopEarlierTurnsPage,
   WorkshopTurn,
   WorkshopTurnModel,
   WorkshopTurnArtifact,
@@ -54,8 +55,10 @@ import {
   WorkshopTurnReaction,
   WorkshopTurnReactionAuthor
 } from '@messages';
+import type { WorkshopTrailerOutcomes } from '@shared/types/workshopTrailerOutcomes';
 import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { cloneWorkshopReactionDelivery } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
+import { cloneWorkshopTrailerOutcomes } from '@/application/services/workshop/session/WorkshopTrailerOutcomeRecords';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
 import {
@@ -173,6 +176,12 @@ import {
   workshopMemoryReceiptContent
 } from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
 import { workshopModelsBeforeWindow } from '@shared/workshop/workshopModelSlices';
+import {
+  workshopEarlierTurnsTake,
+  workshopThreadTurnParts,
+  type WorkshopEarlierTurnsBounds,
+  type WorkshopThreadTurnParts
+} from '@/application/services/workshop/session/WorkshopThreadTurnParts';
 import {
   attachmentSnapshot,
   cloneAnalysisInputs,
@@ -1545,6 +1554,10 @@ export class WorkshopSessionService {
         case 'memory.catalog': return 'memory_catalog';
         case 'memory.search': return 'memory_search';
         case 'memory.read': return 'memory_read';
+        case 'lens.catalog': return 'lens_catalog';
+        case 'lens.read': return 'lens_read';
+        case 'help.search': return 'help_search';
+        case 'help.read': return 'help_read';
         default: return assertNever(input.details.operation);
       }
     })();
@@ -1737,7 +1750,8 @@ export class WorkshopSessionService {
     fileEditProposals: readonly WorkshopFileEditProposal[] = [],
     editOffers: readonly WorkshopEditOffer[] = [],
     editOfferAnswer?: WorkshopEditOfferAnswer,
-    reaction?: WorkshopReplyReactionCommit
+    reaction?: WorkshopReplyReactionCommit,
+    trailerOutcomes?: WorkshopTrailerOutcomes
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1849,6 +1863,10 @@ export class WorkshopSessionService {
     // Reactions too (ADR 2026-11-07 D6): a reply that never commits records nothing, so they arrive again.
     if ((isHost || isGuest) && active.reactionDelivery) {
       turn.reactionDelivery = [cloneWorkshopReactionDelivery(active.reactionDelivery)];
+    }
+    // What became of the reply's trailers rides the reply too (ADR 2026-11-17 D13): host-only, written once.
+    if ((isHost || isGuest) && trailerOutcomes) {
+      turn.trailerOutcomes = cloneWorkshopTrailerOutcomes(trailerOutcomes);
     }
     // The persona's own reaction (ADR 2026-11-07 D5) rides the reply that carried it, written
     // through the ledger in this one commit, so a cut or rollback of the reply takes it too.
@@ -2664,6 +2682,71 @@ export class WorkshopSessionService {
     });
   }
 
+  /**
+   * What a thread bubble needs beside its turn, for the snapshot window and
+   * for a page of earlier turns alike (ADR 2026-11-17 D2). Neither computes
+   * these another way.
+   */
+  private threadTurnParts(
+    turns: WorkshopTurn[],
+    alsoWidgetConfigIds: readonly string[] = []
+  ): WorkshopThreadTurnParts {
+    return workshopThreadTurnParts(turns, {
+      rewindability: (turnIds) => this.rewindPolicy().bubbleRewindability(turnIds),
+      reactions: (threadTurns) => this.reactionLedger.summaries(
+        threadTurns,
+        (turnId) => this.turnLedger.find(turnId),
+        this.participantRoster.snapshot().host.personaId
+      ),
+      widgetConfigs: (configIds) => this.widgetConfigLedger.summariesFor(configIds)
+    }, alsoWidgetConfigIds);
+  }
+
+  /**
+   * How far a walk of earlier pages from `beforeTurnId` must read to hold
+   * `targetTurnId` (ADR 2026-11-17 D6, amended 2026-11-18): the turns from
+   * the target up to, not including, `beforeTurnId`. Zero or less when the
+   * target is not before it. A read: it changes nothing.
+   */
+  readTurnsBackTo(
+    beforeTurnId: string,
+    targetTurnId: string
+  ): { kind: 'unknown-turn' } | { kind: 'unknown-target' } | { kind: 'turns'; turns: number } {
+    const before = this.turnLedger.position(beforeTurnId);
+    if (before === undefined) {
+      return { kind: 'unknown-turn' };
+    }
+    const target = this.turnLedger.position(targetTurnId);
+    if (target === undefined) {
+      return { kind: 'unknown-target' };
+    }
+    return { kind: 'turns', turns: before - target };
+  }
+
+  /**
+   * The turns directly before `beforeTurnId`, within `bounds`, with the same
+   * per-turn parts the snapshot gives its window (ADR 2026-11-17 D1–D3).
+   * A read: it changes nothing. Undefined when the room holds no such turn.
+   */
+  readEarlierTurns(
+    beforeTurnId: string,
+    bounds: WorkshopEarlierTurnsBounds = PROMPT_BUDGETS.workshopThread
+  ): WorkshopEarlierTurnsPage | undefined {
+    const page = this.turnLedger.before(beforeTurnId, workshopEarlierTurnsTake(bounds));
+    if (!page) {
+      return undefined;
+    }
+    const modelsBefore = workshopModelsBeforeWindow(
+      this.turnLedger.project((turn) => turn),
+      page.remainingBefore
+    );
+    return {
+      ...this.threadTurnParts(page.turns),
+      ...(modelsBefore ? { modelsBefore } : {}),
+      remainingBefore: page.remainingBefore
+    };
+  }
+
   getSnapshot(): WorkshopSessionSnapshot {
     const windowed = this.turnLedger.window(WORKSHOP_SNAPSHOT_TURN_WINDOW);
     // The model-slice seed (ADR 2026-11-03 D8): undefined unless the window truncates.
@@ -2672,11 +2755,10 @@ export class WorkshopSessionService {
       this.turnLedger.count() - windowed.length
     );
     const passageState = this.passageScope.exportState();
-    const visibleWidgetConfigIds = new Set(
-      [
-        ...windowed.map((turn) => turn.widgetCommit?.widgetConfigId),
-        ...this.standingDirectiveLedger.list().map((directive) => directive.widgetConfigId)
-      ].filter((id): id is string => id !== undefined)
+    // One projection for the window and for an earlier page (ADR 2026-11-17 D2).
+    const thread = this.threadTurnParts(
+      windowed,
+      this.standingDirectiveLedger.list().map((directive) => directive.widgetConfigId)
     );
     return {
       excerpt: passageState.excerpt ? excerptSnapshot(passageState.excerpt) : undefined,
@@ -2703,17 +2785,11 @@ export class WorkshopSessionService {
         this.turnLedger.project((turn) => turn),
         new Set(windowed.map((turn) => turn.id))
       ),
-      reactions: this.reactionLedger.summaries(
-        windowed,
-        (turnId) => this.turnLedger.find(turnId),
-        this.participantRoster.snapshot().host.personaId
-      ),
-      widgetConfigs: this.widgetConfigLedger.summariesFor(visibleWidgetConfigIds),
+      reactions: thread.reactions,
+      widgetConfigs: thread.widgetConfigs,
       standingDirectives: this.standingDirectiveSummaries(),
-      turns: windowed,
-      turnRewindability: this.rewindPolicy().bubbleRewindability(
-        windowed.map((turn) => turn.id)
-      ),
+      turns: thread.turns,
+      turnRewindability: thread.turnRewindability,
       totalTurns: this.turnLedger.count(),
       truncatedTurns: this.turnLedger.count() - windowed.length,
       ...(modelsBeforeWindow ? { modelsBeforeWindow } : {}),

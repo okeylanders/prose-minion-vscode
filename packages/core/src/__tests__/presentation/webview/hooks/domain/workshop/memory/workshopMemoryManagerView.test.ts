@@ -26,7 +26,11 @@ const IN_BUDGET_MANAGER = {
   catalogTokens: 702,
   frameTokens: 5_050,
   pinnedLoadedTokens: 4_290,
-  catalogEntries: 2
+  catalogEntries: 2,
+  titleTokens: 0,
+  titleEntries: 0,
+  unlisted: 0,
+  retired: 0
 };
 
 function manager(overrides: Partial<WorkshopMemoryManagerInput> = {}) {
@@ -269,5 +273,25 @@ describe('workshopMemoryManagerView', () => {
     const views = [manager(), manager({ library: managerLibrary(true), estimate: FULL_OVER, refusal: { entryKey: 'key-watch', wouldBeTokens: 5_100 } })];
     const words = JSON.stringify(views.map((view) => ({ ...view, active: view.active.map(({ entry: _entry, ...rest }) => rest), past: view.past.map(({ entry: _entry, ...rest }) => rest) })));
     expect(words).not.toMatch(/\bpin/i);
+  });
+
+  it('a memory set to load in full that the list has no room for is said to show by its title (ADR 2026-11-17 D8)', () => {
+    const library = managerLibrary(true);
+    const doesntFit = library.memories.filter((entry) => entry.fullLoad === 'doesnt-fit');
+    expect(doesntFit.length).toBeGreaterThan(0);
+    const titled = { ...library, memories: library.memories.map((entry) => (entry.fullLoad === 'doesnt-fit' ? { ...entry, residency: 'titled' as const } : entry)) };
+    const manager = workshopMemoryManagerView({ mode: 'ask', library: titled, estimate: { ...IN_BUDGET_MANAGER, pinnedOver: true } });
+    expect(manager.overNote).toMatch(/load(?:s)? by (?:its title|their titles) only/);
+    expect(manager.overNote).not.toMatch(/searchable only|list entr/);
+    const rows = manager.active.filter((row) => row.entry.fullLoad === 'doesnt-fit');
+    for (const row of rows) {
+      expect(row.notes).toContain('Doesn’t fit at the start: not in full, and the list is full too, so personas see its title only. Turn off Always load in full on another to make room.');
+    }
+  });
+
+  it('states the list chip against the budgets it is handed, which are the listing\'s', () => {
+    const budgets = { pinnedTokens: 5_000, catalogTokens: 10_000, titleTokens: 4_000, contextWords: 100_000 };
+    const chips = workshopMemoryManagerView({ mode: 'ask', library: managerLibrary(), estimate: IN_BUDGET_MANAGER, budgets }).chips.map((chip) => chip.text);
+    expect(chips.find((text) => text.startsWith('list ·'))).toMatch(/of 10,000 tokens$/);
   });
 });

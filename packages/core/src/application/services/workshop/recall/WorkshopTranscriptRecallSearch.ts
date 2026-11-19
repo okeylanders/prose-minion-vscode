@@ -25,24 +25,26 @@
 import type { WorkshopTranscriptEntry } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import {
   workshopRecallEntryText,
-  workshopRecallWords,
   WorkshopRecallDocument,
   WorkshopRecallEntry,
   WorkshopRecallHeader
 } from '@/application/services/workshop/recall/WorkshopRecallDocument';
 
-export const WORKSHOP_RECALL_QUERY_TERMS = 8;
+import {
+  type WorkshopQuery as WorkshopRecallQuery,
+  type WorkshopMatchMode as WorkshopRecallMatchMode,
+  type WorkshopSearchRank as Rank,
+  WorkshopQueryMatcher as QueryMatcher,
+  normalizeWorkshopText as normalized,
+  workshopSearchSnippet as snippet
+} from '@/application/services/workshop/WorkshopTextSearch';
 
-export type WorkshopRecallMatchMode = 'all-terms' | 'any-term';
-
-export interface WorkshopRecallQuery {
-  /** Distinct normalized terms that search matches, at most eight. */
-  readonly terms: readonly string[];
-  /** Distinct terms past the eight-term limit; disclosed, never searched. */
-  readonly overflowTerms: readonly string[];
-  /** Every normalized query word in order, for the phrase bonus. */
-  readonly phrase: readonly string[];
-}
+export {
+  parseWorkshopQuery as parseWorkshopRecallQuery,
+  WORKSHOP_QUERY_TERMS as WORKSHOP_RECALL_QUERY_TERMS,
+  type WorkshopQuery as WorkshopRecallQuery,
+  type WorkshopMatchMode as WorkshopRecallMatchMode
+} from '@/application/services/workshop/WorkshopTextSearch';
 
 export interface WorkshopRecallSearchLimits {
   readonly hits: number;
@@ -101,18 +103,6 @@ export interface WorkshopRecallSearchOutcome {
   readonly sessionsWithOnlyOmittedHits: number;
   /** Copies of a shown-or-omitted turn folded into "also in". */
   readonly lineageDuplicates: number;
-}
-
-export function parseWorkshopRecallQuery(query: string): WorkshopRecallQuery {
-  const words = workshopRecallWords(query).map((word) => word.normalized);
-  const distinct = [...new Set(words)];
-  const content = distinct.filter((word) => !STOP_WORDS.has(word));
-  const candidates = content.length > 0 ? content : distinct;
-  return {
-    terms: candidates.slice(0, WORKSHOP_RECALL_QUERY_TERMS),
-    overflowTerms: candidates.slice(WORKSHOP_RECALL_QUERY_TERMS),
-    phrase: words
-  };
 }
 
 /** @param documents Newest first: the order is the recency tie-break. */
@@ -229,10 +219,6 @@ export function workshopRecallSnippet(text: string, query: WorkshopRecallQuery, 
   return snippet(text, new QueryMatcher(query), limit);
 }
 
-interface Rank extends WorkshopRecallHitRank {
-  readonly wholeWords: number;
-}
-
 interface Candidate {
   readonly recency: number;
   readonly document: WorkshopRecallDocument;
@@ -240,37 +226,6 @@ interface Candidate {
   readonly turn?: WorkshopRecallEntry;
   readonly rank: Rank;
   alsoIn: WorkshopRecallSharedTurn[];
-}
-
-class QueryMatcher {
-  private readonly phraseText?: string;
-
-  constructor(readonly query: WorkshopRecallQuery) {
-    // Whole words, except the last, which may still be a prefix: "keeper's mo"
-    // finds "keeper's mother".
-    this.phraseText = query.phrase.length > 1 ? ` ${query.phrase.join(' ')}` : undefined;
-  }
-
-  /** Rank one normalized, space-separated text. */
-  rank(searchText: string): Rank {
-    const padded = ` ${searchText} `;
-    let matchedTerms = 0;
-    let wholeWords = 0;
-    for (const term of this.query.terms) {
-      if (padded.includes(` ${term}`)) {
-        matchedTerms += 1;
-        if (padded.includes(` ${term} `)) {
-          wholeWords += 1;
-        }
-      }
-    }
-    const phrase = this.phraseText !== undefined && padded.includes(this.phraseText);
-    return { matchedTerms, phrase, wholeWords };
-  }
-
-  matchesWord(normalizedWord: string): boolean {
-    return this.query.terms.some((term) => normalizedWord.startsWith(term));
-  }
 }
 
 function collectCandidates(
@@ -372,43 +327,6 @@ function toHit(candidate: Candidate, matcher: QueryMatcher, snippetCharacters: n
   };
 }
 
-const ELLIPSIS = '…';
-/** How far a cut may move to land on a word boundary. */
-const BOUNDARY_SLACK = 24;
-
-/**
- * At most `limit` characters around the first matching word, with the match
- * about a third of the way in, cut at word boundaries where one is near.
- */
-function snippet(text: string, matcher: QueryMatcher, limit: number): string {
-  const collapsed = text.replace(/\s+/g, ' ').trim();
-  if (collapsed.length <= limit) {
-    return collapsed;
-  }
-  const first = workshopRecallWords(collapsed).find((word) => matcher.matchesWord(word.normalized));
-  const window = limit - 2 * ELLIPSIS.length;
-  const anchor = first?.start ?? 0;
-  let start = Math.max(0, Math.min(anchor - Math.floor(window / 3), collapsed.length - window));
-  let end = Math.min(collapsed.length, start + window);
-  if (start > 0) {
-    const space = collapsed.indexOf(' ', start);
-    if (space >= 0 && space < Math.min(anchor, start + BOUNDARY_SLACK)) {
-      start = space + 1;
-    }
-  }
-  if (end < collapsed.length) {
-    const space = collapsed.lastIndexOf(' ', end);
-    if (space > Math.max(start, end - BOUNDARY_SLACK)) {
-      end = space;
-    }
-  }
-  return `${start > 0 ? ELLIPSIS : ''}${collapsed.slice(start, end).trim()}${end < collapsed.length ? ELLIPSIS : ''}`;
-}
-
-function normalized(text: string): string {
-  return workshopRecallWords(text).map((word) => word.normalized).join(' ');
-}
-
 function emptyOutcome(): WorkshopRecallSearchOutcome {
   return {
     sessions: [],
@@ -418,21 +336,3 @@ function emptyOutcome(): WorkshopRecallSearchOutcome {
     lineageDuplicates: 0
   };
 }
-
-/** Common English function words, in normalized form (apostrophes dropped). */
-const STOP_WORDS: ReadonlySet<string> = new Set([
-  'a', 'about', 'after', 'again', 'all', 'also', 'am', 'an', 'and', 'any', 'are',
-  'as', 'at', 'be', 'because', 'been', 'before', 'being', 'but', 'by', 'can',
-  'could', 'did', 'didnt', 'do', 'does', 'doesnt', 'doing', 'dont', 'down',
-  'during', 'each', 'few', 'for', 'from', 'further', 'had', 'has', 'have',
-  'having', 'he', 'her', 'here', 'hers', 'herself', 'him', 'himself', 'his',
-  'how', 'i', 'if', 'im', 'in', 'into', 'is', 'isnt', 'it', 'its', 'itself',
-  'ive', 'just', 'me', 'more', 'most', 'my', 'myself', 'no', 'nor', 'not', 'now',
-  'of', 'off', 'on', 'once', 'only', 'or', 'other', 'our', 'ours', 'ourselves',
-  'out', 'over', 'own', 'same', 'she', 'should', 'so', 'some', 'such', 'than',
-  'that', 'thats', 'the', 'their', 'theirs', 'them', 'themselves', 'then',
-  'there', 'these', 'they', 'this', 'those', 'through', 'to', 'too', 'under',
-  'until', 'up', 'very', 'was', 'wasnt', 'we', 'were', 'what', 'when', 'where',
-  'which', 'while', 'who', 'whom', 'why', 'will', 'with', 'would', 'you',
-  'youre', 'your', 'yours', 'yourself', 'yourselves'
-]);

@@ -110,7 +110,9 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_STAGE_SELECTED_TEXT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_ACCEPT_SELECTED_TEXT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SELECTED_TEXT_WATCH)).toBe(true);
-    expect(router.handlerCount).toBe(97);
+    // Everyday Conveniences round two, item A added a long room's earlier turns.
+    expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_EARLIER_TURNS)).toBe(true);
+    expect(router.handlerCount).toBe(98);
   });
 
   it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {

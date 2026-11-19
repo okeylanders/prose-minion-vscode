@@ -54,11 +54,13 @@ import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemo
 import { useWorkshopFileEdits } from '@hooks/domain/workshop/useWorkshopFileEdits';
 import { useWorkshopFileEditControls } from '@components/workshop/fileEdits/useWorkshopFileEditControls';
 import { useWorkshopEditOffers } from '@hooks/domain/workshop/useWorkshopEditOffers';
+import { useWorkshopEarlierTurns } from '@hooks/domain/workshop/useWorkshopEarlierTurns';
 import type { WorkshopEditOfferControls } from '@components/workshop/editOffers/WorkshopEditOfferChip';
 import { useWorkshopPinnedContext } from '@hooks/domain/workshop/useWorkshopPinnedContext';
 import { useWorkshopPinnedPills } from '@hooks/domain/workshop/controllers/useWorkshopPinnedPills';
 import { workshopPinnedContextPanelProps } from '@components/workshop/settings/WorkshopPinnedContextSettingsPanel';
 import { workshopMemoryTabInputOf } from '@hooks/domain/workshop/memory/workshopMemoryListingInputs';
+import { useWorkshopMemorySuggestions } from '@hooks/domain/workshop/memory/useWorkshopMemorySuggestions';
 import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
 import { workshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
 import { WorkshopMemorySheet } from '@components/workshop/memory/WorkshopMemorySheet';
@@ -281,7 +283,10 @@ export const WorkshopApp: React.FC = () => {
   const projectMemory = useWorkshopProjectMemory({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
   const fileEdits = useWorkshopFileEdits({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
   const editOffers = useWorkshopEditOffers({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}) });
+  // A long room's earlier turns (ADR 2026-11-17 D5): `threadTurns` is what the thread draws.
+  const earlierTurns = useWorkshopEarlierTurns({ windowTurns: workshop.turns, hiddenTurns: workshop.hiddenTurns });
   const memoryManager = useWorkshopMemoryManager();
+  const memorySuggestions = useWorkshopMemorySuggestions();
   const pinnedContext = useWorkshopPinnedContext({ attachments: workshop.contextAttachments, running: workshop.isRunning || workshop.wizardRunning });
   const pinnedPills = useWorkshopPinnedPills({ ...(pinnedContext.answer ? { answer: pinnedContext.answer } : {}), attachments: workshop.contextAttachments, room: workshop.roomRevision, pinnableIds: pinnedContext.view.pinAttached.ids, pending: pinnedContext.pending, pinAttachments: pinnedContext.pinAttachments });
   // Whether the Memory tab's explainer shows is this viewer's choice too.
@@ -483,9 +488,11 @@ export const WorkshopApp: React.FC = () => {
     bookmarkBrowser,
     projectMemory,
     memoryManager,
+    memorySuggestions,
     pinnedContext,
     fileEdits,
     editOffers,
+    earlierTurns,
     workshopRoom: workshop,
     workshopSessions,
     widgetHost,
@@ -588,7 +595,7 @@ export const WorkshopApp: React.FC = () => {
   const toolsEnabled = hasExcerpt && !roomMutationLocked && workshop.sessionReady;
   const composerToolsEnabled = !roomMutationLocked && workshop.sessionReady;
   // Project memory in the thread (ADR 2026-11-04 D6, D7); the host's snapshot is the truth.
-  const autoSavedMemories = React.useMemo(() => workshopAutoSavedMemories(workshop.turns), [workshop.turns]);
+  const autoSavedMemories = React.useMemo(() => workshopAutoSavedMemories(earlierTurns.threadTurns), [earlierTurns.threadTurns]);
   const memoryControls = React.useMemo<WorkshopTurnMemoryControls>(() => ({
     disabled: roomMutationLocked,
     autoSaved: autoSavedMemories,
@@ -939,19 +946,19 @@ export const WorkshopApp: React.FC = () => {
     return earlier;
   }, [workshop.turns, workshop.turnRewindability]);
   const requestRewind = React.useCallback((turn: WorkshopTurn) => {
-    const index = workshop.turns.findIndex((candidate) => candidate.id === turn.id);
+    const index = earlierTurns.threadTurns.findIndex((candidate) => candidate.id === turn.id);
     if (index < 0) {
       return;
     }
-    // The window is always the ledger's newest turns, so every removed turn
+    // The thread is always the ledger's newest turns, so every removed turn
     // is on screen: everything after a reply, and a writer message itself.
-    const removedCount = workshop.turns.length - index - (turn.role === 'user' ? 0 : 1);
+    const removedCount = earlierTurns.threadTurns.length - index - (turn.role === 'user' ? 0 : 1);
     sessionSurfaces.requestRewind(
       turn.id,
       removedCount,
       turn.role === 'user' ? (turn.widgetCommit ? 'widget' : 'composer') : undefined
     );
-  }, [sessionSurfaces.requestRewind, workshop.turns]);
+  }, [sessionSurfaces.requestRewind, earlierTurns.threadTurns]);
   const requestBranch = React.useCallback(
     (turn: WorkshopTurn) => sessionSurfaces.requestBranch(turn.id),
     [sessionSurfaces.requestBranch]
@@ -1025,10 +1032,23 @@ export const WorkshopApp: React.FC = () => {
   // was read" and bookmarks share one scroll-and-focus path (Wayfinding D3,
   // D4); a turn outside the window opens in the read-only preview (D6).
   const readInCardTurnId = textSheet?.mode.kind === 'read-in' ? textSheet.mode.turnId : undefined;
-  const { jumpToTurn, jumpAfterClosing } = useWorkshopTurnJump({
+  const { jumpToTurn: scrollToTurn, jumpAfterClosing: scrollAfterClosing } = useWorkshopTurnJump({
     closeOverlay: closeTextSheet,
     onOutsideWindow: openTurnPreviewSheet
   });
+  // Every way the writer moves to a turn supersedes a bookmark's earlier-turns
+  // jump still loading (PR #281 P2): its late page must not take focus back,
+  // nor its refusal open a reader. The pages already shown stay. Only the
+  // jump's own outcome scrolls through `scrollToTurn` directly.
+  const { cancelJump: cancelEarlierJump } = earlierTurns;
+  const jumpToTurn = React.useCallback((turnId: string, label?: string): boolean => {
+    cancelEarlierJump();
+    return scrollToTurn(turnId, label);
+  }, [cancelEarlierJump, scrollToTurn]);
+  const jumpAfterClosing = React.useCallback((turnId: string) => {
+    cancelEarlierJump();
+    scrollAfterClosing(turnId);
+  }, [cancelEarlierJump, scrollAfterClosing]);
   // A reply's edit offers (ADR 2026-11-10 U1–U5): the chips ask through the hook; an answered chip and the
   // lines' links move focus on the thread's one scroll-and-focus path.
   const editOfferControls = React.useMemo<WorkshopEditOfferControls>(() => ({
@@ -1047,13 +1067,42 @@ export const WorkshopApp: React.FC = () => {
     openStoredSession,
     jumpToTurn
   });
-  const openBookmark = React.useCallback(
-    // The host's `inWindow` decides; the thread is never searched to re-derive it.
-    (bookmark: WorkshopBookmarkSummary) => bookmark.inWindow
-      ? jumpToTurn(bookmark.turnId, bookmark.label)
-      : openTurnPreviewSheet(bookmark.turnId, bookmark.label),
-    [jumpToTurn, openTurnPreviewSheet]
+  // A bookmark outside the window loads the earlier turns back to it, then
+  // scrolls there (ADR 2026-11-17 D6, amended 2026-11-18). The host's
+  // `inWindow` decides; the thread is never searched to re-derive it. A jump
+  // the host refuses (gone, or past `jumpPages`) opens the reader instead.
+  const { loadThrough: loadEarlierThrough, jumpOutcome: earlierJumpOutcome } = earlierTurns;
+  const showInThreadThroughEarlier = React.useCallback(
+    (turnId: string, label?: string) => loadEarlierThrough({ turnId, ...(label !== undefined ? { label } : {}) }),
+    [loadEarlierThrough]
   );
+  const openBookmark = React.useCallback(
+    (bookmark: WorkshopBookmarkSummary) => {
+      if (bookmark.inWindow) {
+        jumpToTurn(bookmark.turnId, bookmark.label);
+        return;
+      }
+      if (earlierTurns.jumpingTo === bookmark.turnId) {
+        return;
+      }
+      showInThreadThroughEarlier(bookmark.turnId, bookmark.label);
+    },
+    [earlierTurns.jumpingTo, jumpToTurn, showInThreadThroughEarlier]
+  );
+  const handledJumpSerial = React.useRef(0);
+  const showEarlierJumpWhenSettled = React.useCallback(() => {
+    if (!earlierJumpOutcome || handledJumpSerial.current === earlierJumpOutcome.serial) {
+      return;
+    }
+    handledJumpSerial.current = earlierJumpOutcome.serial;
+    if (earlierJumpOutcome.kind === 'landed') {
+      // The pages are drawn by now: the one jump path scrolls and focuses.
+      scrollToTurn(earlierJumpOutcome.turnId, earlierJumpOutcome.label);
+    } else {
+      openTurnPreviewSheet(earlierJumpOutcome.turnId, earlierJumpOutcome.label);
+    }
+  }, [earlierJumpOutcome, scrollToTurn, openTurnPreviewSheet]);
+  React.useEffect(showEarlierJumpWhenSettled, [showEarlierJumpWhenSettled]);
 
   const excerptSessionLabel = (() => {
     const sourcePath = workshop.excerpt
@@ -1255,6 +1304,8 @@ export const WorkshopApp: React.FC = () => {
         bookmarks: bookmarks.bookmarks,
         disabled: roomMutationLocked,
         onOpen: openBookmark,
+        ...(earlierTurns.jumpingTo !== undefined ? { loadingTurnId: earlierTurns.jumpingTo } : {}),
+        onCancelLoad: cancelEarlierJump,
         onRename: bookmarks.renameBookmark,
         renameOutcome: bookmarks.renameOutcome,
         onRemove: (turnId) => bookmarks.setTurnBookmark(turnId, false),
@@ -1373,7 +1424,9 @@ export const WorkshopApp: React.FC = () => {
           )}
 
           <WorkshopThread
-            turns={workshop.turns}
+            hiddenTurns={workshop.hiddenTurns}
+            earlier={earlierTurns.thread}
+            turns={earlierTurns.threadTurns}
             toolSidecars={workshop.toolSidecars}
             todos={workshop.todos}
             currentExcerptVersion={workshop.excerpt?.version ?? 0}
@@ -1443,14 +1496,6 @@ export const WorkshopApp: React.FC = () => {
             </div>
           )}
 
-          {workshop.hiddenTurns > 0 && (
-            <div className="pm-ws-thread-hidden">
-              Only the latest {workshop.turns.length.toLocaleString()} turns are visible;{' '}
-              {workshop.hiddenTurns.toLocaleString()} earlier turn
-              {workshop.hiddenTurns === 1 ? ' is' : 's are'} preserved.
-              {' '}Pagination is coming soon. The full session remains preserved.
-            </div>
-          )}
         </div>
       </ErrorBoundary>
 
@@ -1545,6 +1590,11 @@ export const WorkshopApp: React.FC = () => {
             onIncludeSelectedTextChange: selectedText.setIncludeSelectedText,
             livePill: selectedText.livePill
           }}
+          mentions={{
+            catalog: workshop.contextCatalog,
+            onRequestCatalog: workshop.requestContextCatalog,
+            onAttach: workshop.attachMessageResources
+          }}
           onSend={(text) => workshop.sendMessage(text, selectedText.sendSelection)}
           onCancel={workshop.cancelRun}
           onOpenContext={openContext}
@@ -1593,6 +1643,8 @@ export const WorkshopApp: React.FC = () => {
         openAtBookmark={bookmarkOpenAt.openAtBookmark}
         openSavedTurnPreviewSheet={openSavedTurnPreviewSheet}
         openGivenTurnPreviewSheet={openGivenTurnPreviewSheet}
+        loadEarlierThrough={showInThreadThroughEarlier}
+        cancelEarlierJump={cancelEarlierJump}
         rememberRoomBookmark={projectMemory.rememberRoomBookmark}
         rememberSavedBookmark={projectMemory.rememberSavedBookmark}
       />
@@ -1827,6 +1879,9 @@ export const WorkshopApp: React.FC = () => {
         projectMemoryMode={workshop.projectMemoryMode}
         fileEditsMode={workshop.fileEditsMode}
         memory={workshopMemoryTabInputOf(memoryManager.listing)}
+        memorySuggestions={memorySuggestions.level}
+        onSelectMemorySuggestions={memorySuggestions.setLevel}
+        onSelectMemoryListSize={memoryManager.setListSize}
         memoryFolder={memoryManager.folder}
         pinnedContext={workshopPinnedContextPanelProps(pinnedContext, workshop)}
         memoryExplainerOpen={memoryExplainer.explainerOpen}

@@ -292,6 +292,23 @@ export function builtInLexicalGravityLens(
   return found ? cloneLexicalGravityLens(found) : undefined;
 }
 
+/**
+ * The library as one list: the built-ins, then each project lens whose slug
+ * no earlier lens holds. A built-in wins its slug, and of two project lenses
+ * with one slug the first read stays. The Lexical Gravity modal and the
+ * persona's `lens.*` reads share this one rule (ADR 2026-11-17 D17).
+ */
+export function mergeLexicalGravityLibrary(
+  builtIns: readonly WorkshopLexicalGravityLens[],
+  projectLenses: readonly WorkshopLexicalGravityLens[]
+): WorkshopLexicalGravityLens[] {
+  const bySlug = new Map(builtIns.map((lens) => [lens.slug, lens]));
+  projectLenses.forEach((lens) => {
+    if (!bySlug.has(lens.slug)) {bySlug.set(lens.slug, lens);}
+  });
+  return [...bySlug.values()];
+}
+
 /** Stable project filename component; empty means the lookup has no usable name. */
 export function lexicalGravityLensSlug(
   value: string,

@@ -28,14 +28,31 @@ import { projectMemoryBody } from '@shared/types/projectMemory';
 import type { ProjectMemoryListed } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
 import { pinnedBudget } from '@/application/services/workshop/memory/ProjectMemoryPinnedBudget';
 import { projectMemoryEditToken } from '@/application/services/workshop/memory/ProjectMemoryVersion';
-import { anchorWorkshopMemoryEdit } from '@/application/services/workshop/memory/WorkshopMemoryEditAnchor';
+import {
+  anchorWorkshopMemoryEdit,
+  type WorkshopMemoryEditAnchorFault
+} from '@/application/services/workshop/memory/WorkshopMemoryEditAnchor';
 import { workshopMemoryProposalPhrasingFlag } from '@/application/services/workshop/memory/WorkshopMemoryProposalPhrasing';
 import type { WorkshopMemoryEditDraft } from '@/utils/workshopMemoryEditProtocol';
 
-export interface WorkshopSettledMemoryEdit {
-  readonly proposal?: WorkshopMemoryEditProposal;
-  readonly log: string;
-}
+/**
+ * Why an edit that decoded ends with no card (ADR 2026-11-17 D13; PR #269
+ * F-01). Closed: the log line and the reply's outcome record are both
+ * written from this value, and nothing reads the line back.
+ */
+export type WorkshopMemoryEditDropReason =
+  | 'listing-unread'
+  | 'unknown-target'
+  | 'archived-target'
+  | 'superseded-target'
+  | 'busy-target'
+  | 'pinned-budget'
+  | WorkshopMemoryEditAnchorFault;
+
+/** An edit settled: its card, or the reason it has none. Either way one log line. */
+export type WorkshopSettledMemoryEdit =
+  | { readonly kind: 'card'; readonly proposal: WorkshopMemoryEditProposal; readonly log: string }
+  | { readonly kind: 'dropped'; readonly reason: WorkshopMemoryEditDropReason; readonly log: string };
 
 export function settleWorkshopMemoryEdit(
   edit: WorkshopMemoryEditDraft,
@@ -43,7 +60,8 @@ export function settleWorkshopMemoryEdit(
   writerName: string | undefined,
   held: WorkshopMemoryHold | undefined
 ): WorkshopSettledMemoryEdit {
-  const dropped = (reason: string): WorkshopSettledMemoryEdit => ({ log: `Memory edit dropped (target=${edit.target}; reason=${reason})` });
+  const dropped = (reason: WorkshopMemoryEditDropReason): WorkshopSettledMemoryEdit =>
+    ({ kind: 'dropped', reason, log: `Memory edit dropped (target=${edit.target}; reason=${reason})` });
   if (!memories) {
     return dropped('listing-unread');
   }
@@ -80,6 +98,7 @@ export function settleWorkshopMemoryEdit(
   const hold: WorkshopMemoryHold | undefined = flag ? 'personal' : held;
   const reason = flag ? flag.fault : held;
   return {
+    kind: 'card',
     proposal: {
       proposes: 'edit',
       ...after,

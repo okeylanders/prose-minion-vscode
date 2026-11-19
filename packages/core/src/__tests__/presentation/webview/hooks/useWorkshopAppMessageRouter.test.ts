@@ -166,6 +166,29 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.memoryManager.noteSessionState).toHaveBeenCalledWith(message);
   });
 
+  it('gives a long room\'s earlier turns their page and each session snapshot, and takes neither without them (ADR 2026-11-17 D5)', () => {
+    const earlierTurns = { handleEarlierTurns: jest.fn(), handleSessionState: jest.fn() };
+    const routes = buildWorkshopAppMessageRoutes({ ...makeDeps(), earlierTurns });
+    const page = { type: MessageType.WORKSHOP_EARLIER_TURNS, payload: {} } as never;
+    const state = { type: MessageType.WORKSHOP_SESSION_STATE, payload: {} } as never;
+
+    routes[MessageType.WORKSHOP_EARLIER_TURNS]!(page);
+    routes[MessageType.WORKSHOP_SESSION_STATE]!(state);
+
+    expect(earlierTurns.handleEarlierTurns).toHaveBeenCalledWith(page);
+    expect(earlierTurns.handleSessionState).toHaveBeenCalledWith(state);
+    expect(buildWorkshopAppMessageRoutes(makeDeps())[MessageType.WORKSHOP_EARLIER_TURNS]).toBeUndefined();
+  });
+
+  it('gives each session snapshot to the memory-suggestion level too, when the tab has it (Round Two item B)', () => {
+    const memorySuggestions = { handleSessionState: jest.fn() };
+    const message = { type: MessageType.WORKSHOP_SESSION_STATE, payload: { memorySuggestions: 'readily' } } as never;
+
+    buildWorkshopAppMessageRoutes({ ...makeDeps(), memorySuggestions })[MessageType.WORKSHOP_SESSION_STATE]!(message);
+
+    expect(memorySuggestions.handleSessionState).toHaveBeenCalledWith(message);
+  });
+
   it('routes a turn preview to the bookmarks transport, and to the memory sheet a bookmark outside the window opened (Bookmark Recall Slice 3)', () => {
     const deps = makeDeps();
     const message = { type: MessageType.WORKSHOP_TURN_PREVIEW, payload: {} } as never;
@@ -186,6 +209,16 @@ describe('buildWorkshopAppMessageRoutes', () => {
     const setting = { type: MessageType.WORKSHOP_MEMORY_DRAFTS_SETTING, payload: { enabled: false } } as never;
     buildWorkshopAppMessageRoutes(deps)[MessageType.WORKSHOP_MEMORY_DRAFTS_SETTING]!(setting);
     expect(deps.projectMemory.handleMemoryDraftsSetting).toHaveBeenCalledWith(setting);
+  });
+
+  it('tells the memory manager the list size changed, when the tab has that route (Round Two item C)', () => {
+    const deps = makeDeps();
+    expect(buildWorkshopAppMessageRoutes(deps)[MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING]).toBeUndefined();
+
+    const noteListSizeSetting = jest.fn();
+    const message = { type: MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING, payload: { size: 'larger' } } as never;
+    buildWorkshopAppMessageRoutes({ ...deps, memoryManager: { ...deps.memoryManager, noteListSizeSetting } })[MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING]!(message);
+    expect(noteListSizeSetting).toHaveBeenCalledWith(message);
   });
 
   it('routes the Bookmarks screen\'s three answers to its transport (Bookmark Recall Slice 2)', () => {

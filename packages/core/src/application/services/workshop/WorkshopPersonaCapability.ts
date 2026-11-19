@@ -35,6 +35,30 @@ import {
   workshopProjectMemoryStatusMessage,
   workshopProjectMemoryStatusTicker
 } from '@/application/services/workshop/memory/WorkshopProjectMemoryRequestCopy';
+import { WorkshopHelpCapability } from '@/application/services/workshop/help/WorkshopHelpCapability';
+import type { WorkshopHelpReferencePort } from '@/application/services/workshop/help/WorkshopHelpReference';
+import {
+  WORKSHOP_HELP_EVIDENCE_FRAMING,
+  WORKSHOP_HELP_REJECTED_COPY,
+  workshopHelpRefusalHeader,
+  workshopHelpRequestLogSummary,
+  workshopHelpRequestSummary,
+  workshopHelpStatusMessage,
+  workshopHelpStatusTicker
+} from '@/application/services/workshop/help/WorkshopHelpCopy';
+import {
+  WorkshopLensCapability,
+  WorkshopLensLibraryPort
+} from '@/application/services/workshop/lens/WorkshopLensCapability';
+import {
+  WORKSHOP_LENS_EVIDENCE_FRAMING,
+  WORKSHOP_LENS_REJECTED_COPY,
+  workshopLensRequestLogSummary,
+  workshopLensRequestSummary,
+  workshopLensStatusMessage,
+  workshopLensStatusTicker
+} from '@/application/services/workshop/lens/WorkshopLensCopy';
+import { workshopInstalledLensOf } from '@/application/services/workshop/lens/WorkshopLensInstalled';
 import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
 import {
   workshopResourceRequestLogSummary,
@@ -140,7 +164,9 @@ export class WorkshopPersonaCapabilityFactory {
     private readonly session: WorkshopSessionService,
     private readonly outputChannel: LogSink,
     private readonly recall: WorkshopTranscriptRecallPort,
-    private readonly memory: WorkshopProjectMemoryPort
+    private readonly memory: WorkshopProjectMemoryPort,
+    private readonly lenses: WorkshopLensLibraryPort,
+    private readonly help: WorkshopHelpReferencePort
   ) {}
 
   create(turn: WorkshopPersonaCapabilityTurn): WorkshopPersonaCapability {
@@ -152,7 +178,9 @@ export class WorkshopPersonaCapabilityFactory {
       this.outputChannel,
       turn,
       this.recall,
-      this.memory
+      this.memory,
+      this.lenses,
+      this.help
     );
   }
 
@@ -179,6 +207,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private readonly resourceCapability: WorkshopResourceCapability;
   private readonly recallCapability: WorkshopTranscriptRecallCapability;
   private readonly memoryCapability: WorkshopProjectMemoryCapability;
+  private readonly helpCapability: WorkshopHelpCapability;
+  private readonly lensCapability: WorkshopLensCapability;
 
   constructor(
     private readonly dictionaryService: DictionaryService,
@@ -188,7 +218,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
     private readonly outputChannel: LogSink,
     private readonly turn: WorkshopPersonaCapabilityTurn,
     recall: WorkshopTranscriptRecallPort,
-    memory: WorkshopProjectMemoryPort
+    memory: WorkshopProjectMemoryPort,
+    lenses: WorkshopLensLibraryPort,
+    private readonly help: WorkshopHelpReferencePort
   ) {
     this.resourceCapability = new WorkshopResourceCapability(
       resourceProviderFactory,
@@ -197,6 +229,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
     );
     this.recallCapability = new WorkshopTranscriptRecallCapability(recall, outputChannel, turn);
     this.memoryCapability = new WorkshopProjectMemoryCapability(memory, session, outputChannel, turn);
+    this.helpCapability = new WorkshopHelpCapability(help, outputChannel, turn);
+    this.lensCapability = new WorkshopLensCapability(lenses, workshopInstalledLensOf(session), outputChannel, turn);
   }
 
   async appendContract(userMessage: string): Promise<string> {
@@ -275,13 +309,14 @@ export class WorkshopPersonaCapability implements AgentCapability<
       result = await this.dispatch(request, window, (runModel) => { model = runModel; });
     } catch (error) {
       const cancelled = this.turn.signal.aborted || this.isAbortError(error);
+      const message = cancelled
+        ? 'The capability was cancelled before it completed.'
+        : error instanceof Error ? error.message : String(error);
       result = {
         capability: request.capability,
         status: cancelled ? 'cancelled' : 'failed',
         requestSummary: this.requestSummary(request),
-        error: cancelled
-          ? 'The capability was cancelled before it completed.'
-          : error instanceof Error ? error.message : String(error)
+        error: this.versionedRefusal(request.capability, message)
       };
     }
 
@@ -357,6 +392,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.search':
       case 'memory.read':
         return [...this.memoryCapability.deliveredSources(result)];
+      case 'lens.catalog':
+      case 'lens.read':
+      case 'help.search':
+      case 'help.read':
+        // These private results add no manifest row (ADR 2026-11-17 D16).
+        return [];
       default:
         return this.assertNever(request);
     }
@@ -388,6 +429,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.search':
       case 'memory.read':
         return workshopProjectMemoryStatusMessage(request, persona);
+      case 'lens.catalog':
+      case 'lens.read':
+        return workshopLensStatusMessage(request, persona);
+      case 'help.search':
+      case 'help.read':
+        return workshopHelpStatusMessage(request, persona);
       default:
         return this.assertNever(request);
     }
@@ -414,6 +461,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.search':
       case 'memory.read':
         return workshopProjectMemoryStatusTicker(request);
+      case 'lens.catalog':
+      case 'lens.read':
+        return workshopLensStatusTicker(request);
+      case 'help.search':
+      case 'help.read':
+        return workshopHelpStatusTicker(request);
       default:
         return this.assertNever(request);
     }
@@ -441,6 +494,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.search':
       case 'memory.read':
         return workshopProjectMemoryRequestLogSummary(request);
+      case 'lens.catalog':
+      case 'lens.read':
+        return workshopLensRequestLogSummary(request);
+      case 'help.search':
+      case 'help.read':
+        return workshopHelpRequestLogSummary(request);
       default:
         return this.assertNever(request);
     }
@@ -453,6 +512,17 @@ export class WorkshopPersonaCapability implements AgentCapability<
    */
   redactPrivateControls(content: string): string {
     return extractWorkshopReplyControls(content, { memoryOpen: false }).redacted;
+  }
+
+  privateRejectionLogSummary(rejection: Extract<WorkshopCapabilityInspection, { kind: 'invalid' }>): string | undefined {
+    // A malformed envelope may hold a help query even when its operation cannot be decoded.
+    if (!isWorkshopCapabilityOperation(rejection.operation)) {
+      return `reason=${rejection.reason} callMarkers=${rejection.callMarkerCount ?? 1}`;
+    }
+    if (workshopCapabilityFamily(rejection.operation) === 'help') {
+      return `operation=${rejection.operation} reason=${rejection.reason}`;
+    }
+    return undefined;
   }
 
   inspectionLogContext(): string {
@@ -511,7 +581,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       capability: operation,
       status: 'rejected',
       requestSummary,
-      error
+      error: this.versionedRefusal(operation, error)
     };
     const artifactInput = {
       requestId: this.turn.requestId,
@@ -571,6 +641,10 @@ export class WorkshopPersonaCapability implements AgentCapability<
         return WORKSHOP_TRANSCRIPT_RECALL_REJECTED_COPY;
       case 'memory':
         return WORKSHOP_PROJECT_MEMORY_REJECTED_COPY;
+      case 'lens':
+        return WORKSHOP_LENS_REJECTED_COPY;
+      case 'help':
+        return WORKSHOP_HELP_REJECTED_COPY;
       case 'dictionary':
         return undefined;
       default: {
@@ -663,6 +737,13 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.search':
       case 'memory.read':
         return this.memoryCapability.fulfill(request);
+      case 'lens.catalog':
+      case 'lens.read':
+        // A read is fitted, by whole sections, to half the room left (ADR 2026-11-17 D18).
+        return this.lensCapability.fulfill(request, window);
+      case 'help.search':
+      case 'help.read':
+        return this.helpCapability.fulfill(request, window);
       default:
         return this.assertNever(request);
     }
@@ -867,6 +948,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
       case 'memory.search':
       case 'memory.read':
         return workshopProjectMemoryRequestSummary(request);
+      case 'lens.catalog':
+      case 'lens.read':
+        return workshopLensRequestSummary(request);
+      case 'help.search':
+      case 'help.read':
+        return workshopHelpRequestSummary(request);
       default:
         return this.assertNever(request);
     }
@@ -943,10 +1030,21 @@ export class WorkshopPersonaCapability implements AgentCapability<
         return WORKSHOP_TRANSCRIPT_RECALL_EVIDENCE_FRAMING;
       case 'memory':
         return WORKSHOP_PROJECT_MEMORY_EVIDENCE_FRAMING;
+      case 'lens':
+        return WORKSHOP_LENS_EVIDENCE_FRAMING;
+      case 'help':
+        return WORKSHOP_HELP_EVIDENCE_FRAMING;
       case 'dictionary':
       case 'analysis':
         return 'This is separately attributed capability evidence. Use only what it actually contains; do not invent omitted or failed results.';
     }
+  }
+
+  /** A refusal raised outside the help reader still identifies the reference it was asked to check. */
+  private versionedRefusal(operation: WorkshopCapabilityOperation, message: string): string {
+    return workshopCapabilityFamily(operation) === 'help'
+      ? `${workshopHelpRefusalHeader(this.help.referenceVersion(), this.help.version)} ${message}`
+      : message;
   }
 
   private escapeXml(value: string): string {

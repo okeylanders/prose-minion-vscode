@@ -10,7 +10,13 @@
  *   prose names;
  * - the kinds and statuses it names are the closed lists;
  * - the provenance hint a read renders decodes, exactly as written, as a
- *   `transcript.read` of the turns it names.
+ *   `transcript.read` of the turns it names;
+ * - the start-of-conversation block it describes is the renderer's: every
+ *   element the frame writes is named, and no other (ADR 2026-11-17 D8,
+ *   D11);
+ * - the catalog's continuation line is the form the prompt teaches, and it
+ *   decodes, exactly as written, as the next page (D10). The prompt names
+ *   no highest page and no token number.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -20,6 +26,12 @@ import { WORKSHOP_MEMORY_SEARCH_STATUSES } from '@shared/types/workshopCapabilit
 import { WorkshopCapabilityXmlCodec, type WorkshopCapabilityInspection } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
 import { projectMemoryProvenanceLine } from '@/application/services/workshop/memory/WorkshopProjectMemoryCopy';
 import { workshopPersonaSystemPromptPaths, WORKSHOP_HOST_BASE_PROMPT_PATH, getWorkshopPersona } from '@shared/constants/workshopPersonas';
+import { projectMemoryBody } from '@shared/types/projectMemory';
+import { listProjectMemories } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
+import { renderProjectMemoryFrame } from '@/application/services/workshop/memory/ProjectMemoryCatalogFrame';
+import { renderWorkshopProjectMemoryCatalog } from '@/application/services/workshop/memory/WorkshopProjectMemoryRenderer';
+import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
+import { writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 
 const PROMPT = fs.readFileSync(path.resolve(__dirname,
   '../../../resources/system-prompts/workshop-personas/project-memory-capability.md'), 'utf8');
@@ -30,6 +42,7 @@ const prose = PROMPT.replace(/```[\s\S]*?```/g, '');
 
 describe('project-memory prompt ↔ PROMPT_BUDGETS', () => {
   const pinned: ReadonlyArray<readonly [RegExp, number[]]> = [
+    [/A catalog shows ([\d,]+) notes a page/, [budgets.catalogEntries]],
     [/`<query>` is required, at most ([\d,]+) characters/, [budgets.queryCharacters]],
     [/One read names at most ([\d,]+) notes, each once/, [budgets.readMemories]],
     [/at most ([\d,]+) `memory\.read` calls in one user turn/, [budgets.readsPerTurn]],
@@ -86,6 +99,8 @@ describe('project-memory prompt examples, through the real codec', () => {
   }));
   const expected: WorkshopCapabilityInspection[] = [
     { kind: 'request', request: { capability: 'memory.catalog', kind: 'decision' } },
+    { kind: 'request', request: { capability: 'memory.catalog', kind: 'decision', page: 2 } },
+    { kind: 'invalid', reason: 'invalid-page', field: 'page', operation: 'memory.catalog' },
     { kind: 'request', request: { capability: 'memory.search', query: 'watch time tea party', status: 'all' } },
     { kind: 'request', request: { capability: 'memory.read', memories: ['mem-7f3c2a', 'mem-1a9e04'] } },
     { kind: 'invalid', reason: 'duplicate-memory', field: 'memory', operation: 'memory.read' }
@@ -104,6 +119,104 @@ describe('project-memory prompt examples, through the real codec', () => {
       expect(named).toBe(inspection.kind === 'invalid' ? inspection.reason : undefined);
     }
   );
+});
+
+describe('the start-of-conversation block, as the prompt describes it (ADR 2026-11-17 D8, D11)', () => {
+  const section = /### What the start of the conversation shows\n([\s\S]*?)\n### /.exec(PROMPT)![1];
+  const big = (index: number) => writerMemory({
+    id: `mem-00a00${index}`,
+    pinned: true,
+    created: `2026-10-0${index}T00:00:00Z`,
+    title: `Pinned ${index}`,
+    body: projectMemoryBody(Array.from({ length: 1_000 }, (_, word) => `word${word}`).join(' '))
+  });
+  // A frame that holds every element: bodies that load and do not, a full list, titles, and both counts.
+  const frame = renderProjectMemoryFrame({
+    memories: listProjectMemories([
+      big(1), big(2), big(3), big(4),
+      ...Array.from({ length: 6 }, (_, index) => writerMemory({ id: `mem-00000${index}`, title: `Alice note ${index}` })),
+      writerMemory({ id: 'mem-0000aa', title: 'Put away', status: 'archived' })
+    ].map((memory) => ({ memory }))),
+    unreadable: 0,
+    conflicts: 0
+  }, { builtOn: '2026-11-17', budgets: { pinnedTokens: 5_000, catalogTokens: 2_000, catalogEntries: 1, titleTokens: 60 } })!;
+
+  it('names every element the frame writes, and no element it does not', () => {
+    const written = [...new Set([...frame.text.matchAll(/^ *<([a-z-]+)[ >]/gm)].map((match) => match[1]))];
+    expect(written).toEqual(['project-memory', 'pinned', 'entry', 'title-only', 'unlisted', 'more']);
+    const named = [...new Set([...section.matchAll(/`<([a-z-]+)>`/g)].map((match) => match[1]))];
+    // `<gone>` and the update block are the update note's; `<status>` is the search field it points to.
+    expect(named.filter((name) => !['project-memory-update', 'gone', 'status'].includes(name))).toEqual(written);
+    for (const name of written) {
+      expect(neutralizeReservedPersonaPromptDelimiters(`<${name} id="x">`)).not.toContain(`<${name}`);
+    }
+  });
+
+  it('describes the marks and the counts the frame writes', () => {
+    expect(frame.text).toMatch(/<entry [^>]*pinned="not-loaded">/);
+    expect(frame.text).toMatch(/<title-only [^>]*pinned="not-loaded">/);
+    expect(section.match(/`pinned="not-loaded"`/g)).toHaveLength(2);
+    expect(section).toContain('A `<title-only>` line carries only a note\'s id, kind and title');
+    expect(frame.text).toMatch(/<title-only id="mem-[0-9a-f]{6}" kind="[a-z-]+"( pinned="not-loaded")?>[^<]*<\/title-only>/);
+    // What each count means, and where the rest are found: the frame's own lines say the same.
+    expect(section).toContain('`<unlisted>` counts notes in effect that the block shows in no form; `memory.catalog` pages through every note in effect.');
+    expect(frame.text).toContain('More notes in effect, older: memory.catalog pages through them.</unlisted>');
+    expect(section).toContain('`<more>` counts superseded and archived notes, which are not in effect; `memory.search` with `<status>all</status>` finds them.');
+    expect(frame.text).toContain('Superseded or archived notes, not in effect: memory.search with status all.</more>');
+    // A conversation from before the tier keeps its frame, where `<more>` counted both (ADR 2026-11-17, consequences).
+    expect(section).toContain('In an older conversation, `<more>` may count both together.');
+  });
+
+  it('says a title is a reason to read, and still says not to look routinely', () => {
+    const when = /### When to look\n([\s\S]*?)\n### /.exec(PROMPT)![1];
+    expect(when).toContain('A title that bears on what the writer raised is a reason to read that note.');
+    expect(when).toContain('Do not look routinely');
+  });
+
+  it('names no token number and no highest page: the size is the writer\'s setting, and there is no last page to name', () => {
+    expect(prose).not.toMatch(/token/i);
+    expect(section).toContain('How much the block lists is the writer\'s setting.');
+    for (const size of Object.values(budgets.listSizes)) {
+      expect(prose).not.toContain(size.catalogTokens.toLocaleString('en-US'));
+    }
+    expect(prose).not.toMatch(/at most [\d,]+ pages|pages? [\d,]+ (?:is|are) the last|highest page/i);
+    expect(prose).toContain('Never guess a page number');
+  });
+});
+
+describe('the catalog\'s continuation, followed as written (ADR 2026-11-17 D10)', () => {
+  const memories = listProjectMemories(Array.from({ length: budgets.catalogEntries * 2 + 1 }, (_, index) => ({
+    memory: writerMemory({ id: `mem-${index.toString(16).padStart(6, '0')}`, kind: 'decision', title: `Alice note ${index}` })
+  })));
+  const hintOf = (content: string) => /The next page: (.*)$/m.exec(content)?.[1];
+
+  it('is written in the words the prompt teaches, as one complete call that keeps its kind', () => {
+    expect(prose).toContain('the result ends its list with "The next page:" and that page\'s whole call');
+    expect(prose).toContain('keeping its `<kind>` when it has one');
+    const first = renderWorkshopProjectMemoryCatalog(memories, 'decision');
+    const hint = hintOf(first.content)!;
+    expect(hint).toBe('<prose-minion-tool-call name="memory.catalog"><kind>decision</kind><page>2</page></prose-minion-tool-call>');
+    // The hint is the taught example, written on one line.
+    const taught = /```xml\n(<prose-minion-tool-call name="memory\.catalog">\s*<kind>decision<\/kind>\s*<page>2<\/page>\s*<\/prose-minion-tool-call>)\n```/.exec(PROMPT)![1];
+    expect(taught.replace(/\s*\n\s*/g, '')).toBe(hint);
+    expect(codec.inspect(hint)).toEqual(codec.inspect(taught));
+  });
+
+  it('decodes at every page, with and without a kind, and the last page and a page past the end write none', () => {
+    for (const kind of [undefined, 'decision'] as const) {
+      const pages = [1, 2].map((page) => renderWorkshopProjectMemoryCatalog(memories, kind, page));
+      expect(pages.map((page) => codec.inspect(hintOf(page.content)!))).toEqual([
+        { kind: 'request', request: { capability: 'memory.catalog', ...(kind ? { kind } : {}), page: 2 } },
+        { kind: 'request', request: { capability: 'memory.catalog', ...(kind ? { kind } : {}), page: 3 } }
+      ]);
+      expect(hintOf(renderWorkshopProjectMemoryCatalog(memories, kind, 3).content)).toBeUndefined();
+      const past = renderWorkshopProjectMemoryCatalog(memories, kind, 4);
+      expect(hintOf(past.content)).toBeUndefined();
+      // As the prompt says: a page past the end says how many notes and pages there are.
+      expect(past.content).toMatch(/Page 4 is past the end: 81 notes in effect(?: of kind decision)?, 3 pages\.$/);
+    }
+    expect(prose).toContain('the last page gives no call, and a page past the end says how many notes and pages there are');
+  });
 });
 
 describe('the provenance hint, followed as written', () => {

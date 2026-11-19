@@ -49,7 +49,14 @@ describe('capability family names', () => {
     ['transcript.search', undefined, 'Session Recall'],
     ['transcript.read', undefined, 'Session Recall'],
     ['transcript.todos', undefined, 'Session Recall'],
-    ['transcript.bookmarks', undefined, 'Session Recall']
+    ['transcript.bookmarks', undefined, 'Session Recall'],
+    ['memory.catalog', undefined, 'Project Memory'],
+    ['memory.read', undefined, 'Project Memory'],
+    // ADR 2026-11-17 D16: the lens family names itself.
+    ['lens.catalog', undefined, 'Lens Library'],
+    ['lens.read', undefined, 'Lens Library'],
+    ['help.search', undefined, 'Prose Minion Help'],
+    ['help.read', undefined, 'Prose Minion Help']
   ] as const)('names a %s artifact (tool %s) as %s', (operation, toolId, family) => {
     const turn = recordArtifact(operation, toolId);
 

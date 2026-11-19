@@ -17,6 +17,7 @@ import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/Workshop
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
 import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookmarkHandler';
+import { WorkshopEarlierTurnsHandler } from '@handlers/domain/workshop/WorkshopEarlierTurnsHandler';
 import { WorkshopReactionHandler } from '@handlers/domain/workshop/WorkshopReactionHandler';
 import { WorkshopBookmarkBrowserHandler } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import { WorkshopProjectMemoryHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
@@ -77,6 +78,7 @@ export class WorkshopSliceComposition {
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
   private readonly todoHandler: WorkshopTodoHandler;
   private readonly bookmarkHandler: WorkshopBookmarkHandler;
+  private readonly earlierTurnsHandler: WorkshopEarlierTurnsHandler;
   private readonly reactionHandler: WorkshopReactionHandler;
   private readonly bookmarkBrowserHandler: WorkshopBookmarkBrowserHandler;
   private readonly projectMemoryHandler: WorkshopProjectMemoryHandler;
@@ -281,6 +283,10 @@ export class WorkshopSliceComposition {
       postMessage,
       sessionPersistence
     );
+    // A long room's earlier turns (ADR 2026-11-17 D4): a read beside the preview, never behind the gate.
+    this.earlierTurnsHandler = new WorkshopEarlierTurnsHandler(
+      session, outputChannel, postMessage, sessionPersistence, host.editOfferRoomView
+    );
     this.reactionHandler = new WorkshopReactionHandler(session, outputChannel, {
       postSessionState: host.postSessionState, markDirty,
       isRoomBusy: () => host.isRoomRunActive() || this.contextHandler.isRunning(),
@@ -430,6 +436,7 @@ export class WorkshopSliceComposition {
       router,
       this.createMutationRegistrar(router, 'WorkshopBookmarkHandler')
     );
+    this.earlierTurnsHandler.registerRoutes(router);
     this.bookmarkBrowserHandler.registerRoutes(router);
     this.reactionHandler.registerRoutes(this.createMutationRegistrar(router, 'WorkshopReactionHandler'));
     this.lightboxTileHandler.registerRoutes(
@@ -468,6 +475,16 @@ export class WorkshopSliceComposition {
   /** The room's automatic saves, landed and in flight, for Save and tell me's cap (PR #201 F-04). */
   memoryAutoSavesInRoom(): number {
     return this.projectMemoryHandler.autoSavesInRoom();
+  }
+
+  /** True while a file picked for the next message is still being read (PR #271 F-01). */
+  messageAttachmentReadsPending(): boolean {
+    return this.contextHandler.messageAttachmentReadsPending();
+  }
+
+  /** What the reads ahead of a send came to: the send waits for them before it collects its attachments. */
+  settleMessageAttachmentReads(): ReturnType<WorkshopContextHandler['settleMessageAttachmentReads']> {
+    return this.contextHandler.settleMessageAttachmentReads();
   }
 
   /** A send's Selected Text (ADR 2026-11-14 D14): staged inside the send's own mutation, or the whole send is refused. */

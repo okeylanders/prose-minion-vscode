@@ -128,6 +128,7 @@ export type {
 export type { RecoverableToolName } from '@messages';
 export { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 export { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
+export { WorkshopHelpReference } from '@/application/services/workshop/help/WorkshopHelpReference';
 export { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 export { DictionaryHistoryStore } from '@/infrastructure/storage/DictionaryHistoryStore';
 export { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';

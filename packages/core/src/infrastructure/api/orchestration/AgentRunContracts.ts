@@ -173,6 +173,8 @@ export interface AgentCapability<
   statusTicker?(request: Request): string | undefined;
   /** A bounded summary suitable for logs; never return full manuscript context. */
   requestLogSummary(request: Request): string;
+  /** When provided for a rejection, log only this summary, even with debug logging enabled. */
+  privateRejectionLogSummary?(rejection: Rejection): string | undefined;
   /** Stable per-turn identifiers added to accept/reject logs when available. */
   inspectionLogContext?(): string;
   /**

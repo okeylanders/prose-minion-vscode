@@ -4,6 +4,7 @@
  * `memory.read` keeps its title in the manifest the writer sees, and out of
  * the engine's log, with debug logging off and on. *Alice*, with made-up ids.
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ConversationManager } from '@orchestration/ConversationManager';
@@ -16,6 +17,7 @@ import type { WorkshopTranscriptRecallPort } from '@/application/services/worksh
 import type { SettingsStore } from '@/platform';
 import { projectMemoryBody } from '@shared/types/projectMemory';
 import { libraryHost, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const SENTINELS = ['PRIVATE_MEMORY_TITLE_SENTINEL', 'PRIVATE_MEMORY_SUMMARY_SENTINEL', 'PRIVATE_MEMORY_BODY_SENTINEL'];
 
@@ -43,7 +45,9 @@ describe.each([['off', false], ['on', true]])('a committed memory.read, debug lo
         session,
         sink,
         {} as WorkshopTranscriptRecallPort,
-        host.library
+        host.library,
+        noProjectLenses,
+        unavailableHelpReference
       ).create({
         requestId: 'host-request',
         excerptVersion: 0,

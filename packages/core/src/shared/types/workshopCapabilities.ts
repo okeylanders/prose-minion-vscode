@@ -27,7 +27,12 @@ export const WORKSHOP_CAPABILITY_OPERATIONS = [
   'transcript.bookmarks',
   'memory.catalog',
   'memory.search',
-  'memory.read'
+  'memory.read',
+  // ADR 2026-11-17 D16: the writer's lens library, read-only.
+  'lens.catalog',
+  'lens.read',
+  'help.search',
+  'help.read'
 ] as const;
 
 export type WorkshopCapabilityOperation = typeof WORKSHOP_CAPABILITY_OPERATIONS[number];
@@ -42,7 +47,7 @@ export const isWorkshopCapabilityOperation = (value: unknown): value is Workshop
  * family exhaustively, so an operation without one fails to compile instead
  * of borrowing another family's name through an implicit "otherwise".
  */
-export type WorkshopCapabilityFamily = 'dictionary' | 'analysis' | 'resource' | 'transcript' | 'memory';
+export type WorkshopCapabilityFamily = 'dictionary' | 'analysis' | 'resource' | 'transcript' | 'memory' | 'lens' | 'help';
 
 export function workshopCapabilityFamily(
   operation: WorkshopCapabilityOperation
@@ -67,6 +72,12 @@ export function workshopCapabilityFamily(
     case 'memory.search':
     case 'memory.read':
       return 'memory';
+    case 'lens.catalog':
+    case 'lens.read':
+      return 'lens';
+    case 'help.search':
+    case 'help.read':
+      return 'help';
     default: {
       const unhandled: never = operation;
       throw new Error(`Unhandled Workshop capability operation: ${String(unhandled)}`);
@@ -185,7 +196,36 @@ export type WorkshopCapabilityRequest =
       endLine?: number;
     }
   | WorkshopTranscriptRecallRequest
-  | WorkshopProjectMemoryRequest;
+  | WorkshopProjectMemoryRequest
+  | WorkshopLensRequest
+  | WorkshopHelpRequest;
+
+export type WorkshopHelpRequest =
+  | { capability: 'help.search'; query: string }
+  | { capability: 'help.read'; sections: readonly string[] };
+
+/**
+ * `<section>` on `lens.read` (ADR 2026-11-17 D18): the closed list, in the
+ * order a whole lens is read. A section is the unit a read is fitted by.
+ */
+export const WORKSHOP_LENS_SECTIONS =
+  ['logic', 'degrees', 'gradient', 'cliches', 'substitutions', 'metaphor', 'sample'] as const;
+export type WorkshopLensSection = (typeof WORKSHOP_LENS_SECTIONS)[number];
+
+/**
+ * The lens library's read-only requests (ADR 2026-11-17 D17,
+ * D18), as the codec validated them. Whether a slug names a lens is the
+ * library's question, asked of its listing, never of a path.
+ */
+export type WorkshopLensRequest =
+  | { capability: 'lens.catalog'; page?: number }
+  | {
+      capability: 'lens.read';
+      /** One slug, lower case, within the lens slug's own bound. */
+      lens: string;
+      /** One to `readSections`, distinct, in the order asked; absent means every section. */
+      sections?: WorkshopLensSection[];
+    };
 
 /**
  * `<status>` on `memory.search` (ADR 2026-11-04 D1): `active` by default;
@@ -201,7 +241,7 @@ export type WorkshopMemorySearchStatus = (typeof WORKSHOP_MEMORY_SEARCH_STATUSES
  * listing, never of a path.
  */
 export type WorkshopProjectMemoryRequest =
-  | { capability: 'memory.catalog'; kind?: ProjectMemoryKind }
+  | { capability: 'memory.catalog'; kind?: ProjectMemoryKind; page?: number }
   | { capability: 'memory.search'; query: string; status?: WorkshopMemorySearchStatus }
   | {
       capability: 'memory.read';

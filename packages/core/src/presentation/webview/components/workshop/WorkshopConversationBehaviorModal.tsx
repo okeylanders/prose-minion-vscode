@@ -33,6 +33,8 @@ import {
 } from './settings/WorkshopPinnedContextSettingsPanel';
 import type { WorkshopMemoryTabInput } from '@hooks/domain/workshop/memory/workshopMemoryTabView';
 import type { WorkshopMemoryFolderStatus } from '@hooks/domain/workshop/useWorkshopMemoryManager';
+import type { WorkshopMemorySuggestionLevel } from '@shared/constants/workshopMemorySuggestions';
+import type { WorkshopProjectMemoryListSize } from '@shared/constants/workshopProjectMemoryListSizes';
 
 interface PendingApply {
   submittedBehavior: WorkshopConversationBehavior;
@@ -56,6 +58,11 @@ interface WorkshopConversationBehaviorModalProps {
   fileEditsMode: WorkshopFileEditsMode;
   /** What the Memory tab draws from the host's listing; the mode is the modal's draft. */
   memory: Omit<WorkshopMemoryTabInput, 'mode'>;
+  /** How readily personas suggest notes, as the host has it: the Memory tab's row, which saves at once (not a draft). */
+  memorySuggestions: WorkshopMemorySuggestionLevel;
+  onSelectMemorySuggestions: (level: WorkshopMemorySuggestionLevel) => void;
+  /** The Memory tab's list-size row, which saves at once too; the size shown is the listing's (`memory.listSize`). */
+  onSelectMemoryListSize?: (size: WorkshopProjectMemoryListSize) => void;
   /** Open memory folder's status, shown in the Memory tab (PR #202 F04). */
   memoryFolder?: WorkshopMemoryFolderStatus;
   /** The Pinned context tab: the host's list and its actions, which save at once (not a draft). */
@@ -89,6 +96,9 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   projectMemoryMode,
   fileEditsMode,
   memory,
+  memorySuggestions,
+  onSelectMemorySuggestions,
+  onSelectMemoryListSize,
   memoryFolder,
   pinnedContext,
   memoryExplainerOpen,
@@ -221,6 +231,10 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         explainerOpen={memoryExplainerOpen}
         onToggleExplainer={onToggleMemoryExplainer}
         onSelectMode={setMemoryPick}
+        suggestions={memorySuggestions}
+        suggestionsDisabled={applyLocked}
+        onSelectSuggestions={onSelectMemorySuggestions}
+        {...(onSelectMemoryListSize ? { onSelectListSize: onSelectMemoryListSize } : {})}
         onOpenManager={onOpenMemoryManager}
         onOpenFolder={onOpenMemoryFolder}
       />

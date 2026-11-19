@@ -7,6 +7,7 @@
  */
 import * as path from 'node:path';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { WORKSHOP_PROJECT_MEMORY_LIST_SIZES } from '@shared/constants/workshopProjectMemoryListSizes';
 import { projectMemoryBody } from '@shared/types/projectMemory';
 import { renderProjectMemoryFrame } from '@/application/services/workshop/memory/ProjectMemoryCatalogFrame';
 import { listProjectMemories } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
@@ -52,17 +53,55 @@ describe('ProjectMemoryManager listing', () => {
     expect(new Set(listing.memories.map((entry) => entry.entryKey)).size).toBe(5);
   });
 
-  it('a list over its budget: residency says which entries are searchable only', async () => {
+  it('a list over its budget: residency says which entries are shown by title only', async () => {
     const host = libraryHost();
     for (let index = 0; index < PROMPT_BUDGETS.workshopProjectMemory.catalogEntries + 3; index += 1) {
       host.put(writerMemory({ id: `mem-${(0x100 + index).toString(16).padStart(6, '0')}`, title: `Alice note ${index}` }));
     }
     const listing = await host.library.managerListing('');
-    const counts = { listed: 0, searchable: 0 };
+    const counts = { listed: 0, titled: 0, searchable: 0 };
     for (const entry of listing.memories) {
-      counts[entry.residency as 'listed' | 'searchable'] += 1;
+      counts[entry.residency as keyof typeof counts] += 1;
     }
-    expect(counts).toEqual({ listed: listing.estimate?.catalogEntries, searchable: 3 });
+    expect(counts).toEqual({ listed: listing.estimate?.catalogEntries, titled: 3, searchable: 0 });
+    expect(listing.estimate).toMatchObject({ titleEntries: 3, unlisted: 0, retired: 0 });
+  });
+
+  it('past the titles tier too, residency says which entries are searchable only, as the estimate counts them', async () => {
+    const host = libraryHost();
+    const title = 'T'.repeat(PROMPT_BUDGETS.workshopProjectMemory.titleCharacters);
+    for (let index = 0; index < 400; index += 1) {
+      host.put(writerMemory({ id: `mem-${(0x100 + index).toString(16).padStart(6, '0')}`, title: `${title.slice(0, -4)}${index}` }));
+    }
+    const listing = await host.library.managerListing('');
+    const counts = { listed: 0, titled: 0, searchable: 0 };
+    for (const entry of listing.memories) {
+      counts[entry.residency as keyof typeof counts] += 1;
+    }
+    expect(counts.searchable).toBeGreaterThan(0);
+    expect(counts).toEqual({
+      listed: listing.estimate?.catalogEntries, titled: listing.estimate?.titleEntries, searchable: listing.estimate?.unlisted
+    });
+  });
+
+  it('every listing carries the list size the writer chose and the budgets its estimate was held to (ADR 2026-11-17 D9, D12)', async () => {
+    const host = libraryHost();
+    for (let index = 0; index < 60; index += 1) {
+      host.put(writerMemory({ id: `mem-${(0x100 + index).toString(16).padStart(6, '0')}`, title: `Alice note ${index}` }));
+    }
+    const standard = await host.library.managerListing('');
+    expect(standard).toMatchObject({ listSize: 'standard', budgets: WORKSHOP_PROJECT_MEMORY_LIST_SIZES.standard });
+    expect(standard.estimate).toMatchObject({ catalogEntries: 40, titleEntries: 20 });
+
+    host.setListSize('larger');
+    const larger = await host.library.managerListing('');
+    expect(larger).toMatchObject({ listSize: 'larger', budgets: WORKSHOP_PROJECT_MEMORY_LIST_SIZES.larger });
+    expect(larger.estimate).toMatchObject({ catalogEntries: 60, titleEntries: 0 });
+    expect(larger.memories.every((entry) => entry.residency === 'listed')).toBe(true);
+
+    // A value the list does not hold reads as Standard, and a workspace without memory still says the size.
+    host.setListSize('enormous');
+    expect(await host.library.managerListing('')).toMatchObject({ listSize: 'standard', budgets: WORKSHOP_PROJECT_MEMORY_LIST_SIZES.standard });
   });
 
   it('narrows the rows by the host\'s search over titles, summaries and notes; files needing attention stay', async () => {

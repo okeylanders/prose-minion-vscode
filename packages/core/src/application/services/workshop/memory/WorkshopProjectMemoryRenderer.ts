@@ -19,6 +19,7 @@ import {
   type ProjectMemoryReadItem
 } from '@/application/services/workshop/memory/ProjectMemoryLibraryContracts';
 import type { ProjectMemorySearchOutcome } from '@/application/services/workshop/memory/WorkshopProjectMemorySearch';
+import { workshopCapabilityPageOf } from '@/application/services/workshop/WorkshopCapabilityPaging';
 import {
   memoryBody,
   projectMemoryDay,
@@ -28,32 +29,68 @@ import {
 export interface WorkshopProjectMemoryRenderedCatalog {
   readonly content: string;
   readonly shown: number;
-  /** In effect and of the kind asked, but past the catalog's entry bound. */
+  /** In effect and of the kind asked, on the pages after this one. */
   readonly notShown: number;
+  /** The page asked, and how many pages the matching notes make (zero for none). */
+  readonly page: number;
+  readonly pages: number;
 }
 
-/** The live catalog (D1): memories in effect, pinned first, then newest; it can differ from the room's frame. */
+/**
+ * The live catalog (D1): memories in effect, pinned first, then newest; it
+ * can differ from the room's frame. One page of `catalogEntries` notes (ADR
+ * 2026-11-17 D10): the continuation line is written exactly when a later
+ * page exists and is that page's complete call, and a page past the end
+ * answers in words, with no call to follow.
+ */
 export function renderWorkshopProjectMemoryCatalog(
   memories: readonly ProjectMemoryListed[],
-  kind?: ProjectMemoryKind
+  kind?: ProjectMemoryKind,
+  page = 1
 ): WorkshopProjectMemoryRenderedCatalog {
   const inEffect = memories.filter(isProjectMemoryInEffect);
   const matching = inEffect.filter((listed) => kind === undefined || listed.memory.kind === kind).sort(compareProjectMemoryCatalogOrder);
-  const shown = matching.slice(0, PROMPT_BUDGETS.workshopProjectMemory.catalogEntries);
+  const paged = workshopCapabilityPageOf(matching.length, PROMPT_BUDGETS.workshopProjectMemory.catalogEntries, page);
+  const shown = matching.slice(paged.start, paged.end);
+  const notShown = matching.length - paged.end;
   const superseded = memories.filter((listed) => listed.memory.status === 'active' && listed.superseded).length;
   const archived = memories.filter((listed) => listed.memory.status === 'archived').length;
+  const ofKind = kind ? ` of kind ${kind}` : '';
   const lines = [
     'This is the live catalog of this project\'s notes; it can differ from the notes listed at the start of this conversation.',
-    shown.length === 0
-      ? kind ? `No note of kind ${kind} is in effect.` : 'No note is in effect.'
-      : `${count(shown.length, 'note')} in effect${kind ? ` of kind ${kind}` : ''}, pinned first, then newest:`,
-    ...shown.map(catalogLine),
-    ...(matching.length > shown.length ? [`${count(matching.length - shown.length, 'more note')} in effect: use memory.search to find them.`] : []),
+    ...(paged.pastEnd
+      ? [matching.length === 0
+        ? `Page ${number(page)} is past the end: no note${ofKind} in effect.`
+        : `Page ${number(page)} is past the end: ${count(matching.length, 'note')} in effect${ofKind}, ${count(paged.pages, 'page')}.`]
+      : [
+        matching.length === 0
+          ? kind ? `No note of kind ${kind} is in effect.` : 'No note is in effect.'
+          : `${catalogRange(paged.start, paged.end, matching.length, paged.pages)} in effect${ofKind}, pinned first, then newest:`,
+        ...shown.map(catalogLine),
+        ...(paged.next !== undefined
+          ? [`${count(notShown, 'more note')} in effect${ofKind}. The next page: ${workshopProjectMemoryCatalogCall(paged.next, kind)}`]
+          : [])
+      ]),
     ...(superseded + archived > 0
       ? [`Not listed: ${count(superseded, 'superseded note')} and ${count(archived, 'archived note')}; memory.search with <status>all</status> finds them.`]
       : [])
   ];
-  return { content: memoryBody(lines), shown: shown.length, notShown: matching.length - shown.length };
+  return { content: memoryBody(lines), shown: shown.length, notShown, page, pages: paged.pages };
+}
+
+/** A catalog page's complete call, on one line, keeping the kind asked: what a continuation names. */
+export function workshopProjectMemoryCatalogCall(page: number, kind?: ProjectMemoryKind): string {
+  return `<prose-minion-tool-call name="memory.catalog">${kind ? `<kind>${kind}</kind>` : ''}<page>${page}</page></prose-minion-tool-call>`;
+}
+
+/** "3 notes" for a catalog of one page, as it has always read; "Notes 41–80 of 93" for one of several. */
+function catalogRange(start: number, end: number, total: number, pages: number): string {
+  if (pages <= 1) {
+    return count(total, 'note');
+  }
+  return end - start === 1
+    ? `Note ${number(end)} of ${number(total)}`
+    : `Notes ${number(start + 1)}–${number(end)} of ${number(total)}`;
 }
 
 export function renderWorkshopProjectMemorySearch(
@@ -177,7 +214,11 @@ function savedBy(origin: string, proposedBy: string | undefined): string {
 }
 
 function count(value: number, singular: string, plural = `${singular}s`): string {
-  return `${value.toLocaleString('en-US')} ${value === 1 ? singular : plural}`;
+  return `${number(value)} ${value === 1 ? singular : plural}`;
+}
+
+function number(value: number): string {
+  return value.toLocaleString('en-US');
 }
 
 function assertNever(value: never): never {

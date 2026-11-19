@@ -175,13 +175,17 @@ export class WorkshopProjectMemoryCapability {
     if (result.kind !== 'catalog') {
       return this.refused(request, result);
     }
-    const rendered = renderWorkshopProjectMemoryCatalog(result.set.memories, result.filter);
+    const rendered = renderWorkshopProjectMemoryCatalog(result.set.memories, result.filter, request.page);
+    this.log(`catalog page=${rendered.page} pages=${rendered.pages} shown=${rendered.shown} notShown=${rendered.notShown}`);
     return this.success(request, rendered.content, {
       outcome: 'catalog',
       memoryCount: rendered.shown,
       ...(request.kind ? { kind: request.kind } : {}),
+      page: rendered.page,
+      pages: rendered.pages,
       notShown: rendered.notShown,
-      truncated: rendered.notShown > 0
+      // More is one call away exactly when a later page exists (ADR 2026-11-17 D10).
+      truncated: rendered.page < rendered.pages
     });
   }
 

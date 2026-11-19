@@ -1489,7 +1489,7 @@
   margin: 6px 0 0;
 }
 /* Older turns remain in the saved ledger but fall outside the bounded webview
-   projection until pagination is available. */
+   projection; the notice leads the thread, where they would be. */
 [data-pm-surface="workshop"] .pm-ws-thread-hidden {
   align-self: center;
   font-size: 11.5px;
@@ -1497,6 +1497,43 @@
   border: 1px dashed var(--pm-border-2);
   border-radius: var(--pm-r-pill);
   padding: 5px 12px;
+}
+/* "Show earlier turns" (ADR 2026-11-17 D7): the notice, with its control. */
+[data-pm-surface="workshop"] .pm-ws-thread-earlier {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  border-radius: 12px;
+  /* The page lands above the writer's place; the thread moves the scroll itself. */
+  overflow-anchor: none;
+}
+[data-pm-surface="workshop"] .pm-ws-thread-earlier-button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--pm-text);
+  background: transparent;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-pill);
+  padding: 3px 10px;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-thread-earlier-button:not([aria-disabled="true"]):hover {
+  border-color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-thread-earlier-button:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-thread-earlier-button[aria-disabled="true"] {
+  cursor: default;
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-thread-earlier-error {
+  flex-basis: 100%;
+  text-align: center;
+  color: var(--pm-amber);
 }
 
 /* Tools modal. The shared modal chrome (backdrop, box, head, close) and the
@@ -2283,6 +2320,93 @@
   color: var(--pm-muted);
   font-size: 10.5px;
   margin-top: 1px;
+}
+/* ── `@` file list (Everyday Conveniences round two, item G): anchored above
+   the composer, as wide as it is. Plain flex and absolute positioning, so it
+   holds on the Chromium 114 floor. ── */
+[data-pm-surface="workshop"] .pm-ws-composer {
+  position: relative;
+}
+[data-pm-surface="workshop"] .pm-ws-mention {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border-2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+[data-pm-surface="workshop"] .pm-ws-mention-heading {
+  padding: 4px 8px 3px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-mention-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: calc(var(--pm-r-tile) - 2px);
+  color: var(--pm-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-mention-option[aria-selected="true"] {
+  background: var(--pm-surface-3);
+  outline: 1px solid var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-mention-name {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-mention-token {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-mention-group {
+  flex: none;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+  border: 1px solid var(--pm-border-2);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+[data-pm-surface="workshop"] .pm-ws-mention-size {
+  flex: none;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-mention-note {
+  padding: 5px 8px;
+  font-size: 11px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-mention-browse {
+  margin-top: 2px;
+  border-top: 1px solid var(--pm-border-2);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 [data-pm-surface="workshop"] .pm-ws-comp-attachments {
   display: flex;

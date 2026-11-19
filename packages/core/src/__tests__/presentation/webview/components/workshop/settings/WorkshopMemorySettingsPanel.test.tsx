@@ -8,13 +8,15 @@
  */
 
 import * as React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   WorkshopMemorySettingsPanel,
   type WorkshopMemorySettingsPanelProps
 } from '@components/workshop/settings/WorkshopMemorySettingsPanel';
 import { WORKSHOP_CONVERSATION_SETTINGS_TABS } from '@components/workshop/settings/workshopConversationSettingsTabs';
-import { FULL_OVER, IN_BUDGET, LIST_OVER } from '../../../hooks/domain/workshop/memory/workshopMemoryFixtures';
+import { FULL_OVER, IN_BUDGET, LIST_OVER, TITLES_OVER } from '../../../hooks/domain/workshop/memory/workshopMemoryFixtures';
+import { WORKSHOP_PROJECT_MEMORY_LIST_SIZES } from '@shared/constants/workshopProjectMemoryListSizes';
 
 function renderPanel(overrides: Partial<WorkshopMemorySettingsPanelProps> = {}) {
   const props: WorkshopMemorySettingsPanelProps = {
@@ -26,6 +28,10 @@ function renderPanel(overrides: Partial<WorkshopMemorySettingsPanelProps> = {}) 
     conflicts: [],
     disabled: false,
     onSelectMode: jest.fn(),
+    suggestions: 'sparingly',
+    suggestionsDisabled: false,
+    onSelectSuggestions: jest.fn(),
+    onSelectListSize: jest.fn(),
     onOpenManager: jest.fn(),
     onOpenFolder: jest.fn(),
     explainerOpen: true,
@@ -63,7 +69,7 @@ describe('WorkshopMemorySettingsPanel', () => {
     renderPanel();
     const well = screen.getByRole('region', { name: 'Memory isn’t context.' });
     expect(within(well).getByText('Every conversation in this project')).not.toBeNull();
-    expect(within(well).getByText('Kept small: about 7,000 tokens in all')).not.toBeNull();
+    expect(within(well).getByText('Kept small: up to 9,000 tokens in all')).not.toBeNull();
     expect(within(well).getByText('Much larger: up to 100,000 words')).not.toBeNull();
 
     expect(card('Ask first').getAttribute('aria-pressed')).toBe('true');
@@ -91,6 +97,44 @@ describe('WorkshopMemorySettingsPanel', () => {
     expect(props.onOpenFolder).toHaveBeenCalledTimes(1);
   });
 
+  it('Suggest notes: three choices beside the mode, the host\'s level selected, and Save and tell me\'s limit under them', () => {
+    renderPanel({ suggestions: 'readily' });
+    const group = screen.getByRole('group', { name: 'Suggest notes' });
+    const choices = within(group).getAllByRole('button');
+    expect(choices.map((choice) => choice.querySelector('.pm-ws-behavior-card-name')?.textContent)).toEqual(['Sparingly', 'Readily', 'Aggressively']);
+    expect(choices.map((choice) => choice.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
+    expect(screen.getByText(`With Save and tell me, at most ${PROMPT_BUDGETS.workshopProjectMemory.autoSavesPerRoom} notes are saved in one conversation; the rest wait as cards.`)).not.toBeNull();
+    expect(screen.getByText('This choice is saved as soon as you make it, for all your projects.')).not.toBeNull();
+    expect(screen.queryByText('Personas suggest no notes while project memory is off.')).toBeNull();
+    // It sits after the mode cards and before the start-of-conversation row.
+    const rules = [...document.querySelectorAll('.pm-ws-tools-modal-rule')].map((rule) => rule.textContent);
+    expect(rules).toEqual(['Project memory', 'Suggest notes', 'At the start of each conversation', 'List at the start of each conversation', 'Your memories']);
+  });
+
+  it('Suggest notes saves at once: a choice calls out with its level, and the mode draft is untouched', () => {
+    const { props } = renderPanel({ suggestions: 'sparingly' });
+    fireEvent.click(card('Aggressively'));
+    expect(props.onSelectSuggestions).toHaveBeenCalledTimes(1);
+    expect(props.onSelectSuggestions).toHaveBeenCalledWith('aggressively');
+    expect(props.onSelectMode).not.toHaveBeenCalled();
+    // The level already held asks for nothing.
+    fireEvent.click(card('Sparingly'));
+    expect(props.onSelectSuggestions).toHaveBeenCalledTimes(1);
+  });
+
+  it('Suggest notes locks while a response runs, without locking the mode cards; memory off is said, never a lock', () => {
+    const { props } = renderPanel({ suggestionsDisabled: true });
+    expect((card('Readily') as HTMLButtonElement).disabled).toBe(true);
+    expect((card('Off') as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(card('Readily'));
+    expect(props.onSelectSuggestions).not.toHaveBeenCalled();
+
+    cleanup();
+    renderPanel({ mode: 'off' });
+    expect(screen.getByText('Personas suggest no notes while project memory is off.')).not.toBeNull();
+    expect((card('Readily') as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('an apply in flight locks the cards, not the buttons', () => {
     renderPanel({ disabled: true });
     expect((card('Off') as HTMLButtonElement).disabled).toBe(true);
@@ -111,11 +155,75 @@ describe('WorkshopMemorySettingsPanel', () => {
     expect(screen.getByText('One Markdown file per memory. The folder is made when the first memory is saved, or when you open it.')).not.toBeNull();
   });
 
-  it('the list over its budget: the amber meter and the searchable line', () => {
+  it('the list over its budget: the amber meter, and a third meter for the notes shown by title', () => {
     renderPanel({ estimate: LIST_OVER, saved: 40 });
-    const list = screen.getAllByRole('meter')[1];
-    expect(list.firstElementChild?.className).toBe('pm-ws-memory-meter-fill pm-ws-memory-meter-full');
-    expect(screen.getByRole('status').textContent).toBe('12 more are searchable. Personas find them with memory search when the conversation needs them.');
+    const meters = screen.getAllByRole('meter');
+    expect(meters.map((meter) => meter.getAttribute('aria-label'))).toEqual(['Loaded in full', 'Titles and summaries', 'Titles only']);
+    expect(meters[1].firstElementChild?.className).toBe('pm-ws-memory-meter-fill pm-ws-memory-meter-full');
+    expect(meters[2].firstElementChild?.className).toBe('pm-ws-memory-meter-fill');
+    expect([meters[2].getAttribute('aria-valuenow'), meters[2].getAttribute('aria-valuemax'), meters[2].getAttribute('aria-valuetext')])
+      .toEqual(['312', '2000', 'Titles only: all 12 fit, about 310 of 2,000 tokens']);
+    expect(screen.getByText('Titles only · all 12 fit')).not.toBeNull();
+    // Every note in effect is shown in some form: no "searchable" line.
+    expect(screen.queryByRole('status')).toBeNull();
+
+    cleanup();
+    renderPanel({ estimate: TITLES_OVER, saved: 40 });
+    expect(screen.getAllByRole('meter')[2].firstElementChild?.className).toBe('pm-ws-memory-meter-fill pm-ws-memory-meter-full');
+    expect(screen.getByRole('status').textContent).toBe('4 more are searchable. Personas find them with memory search when the conversation needs them.');
+  });
+
+  it('List at the start of each conversation: three sizes with their tokens, the host\'s size selected, and when it applies', () => {
+    renderPanel({ listSize: 'larger' });
+    const group = screen.getByRole('group', { name: 'List at the start of each conversation' });
+    const choices = within(group).getAllByRole('button');
+    expect(choices.map((choice) => choice.querySelector('.pm-ws-behavior-card-name')?.textContent)).toEqual(['Standard', 'Larger', 'Largest']);
+    expect(choices.map((choice) => choice.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
+    expect(choices.map((choice) => choice.querySelector('.pm-ws-behavior-card-desc')?.textContent)).toEqual([
+      'Up to 2,000 tokens of titles and summaries, then up to 2,000 of titles alone.',
+      'Up to 5,000 tokens of titles and summaries, then up to 3,000 of titles alone.',
+      'Up to 10,000 tokens of titles and summaries, then up to 4,000 of titles alone.'
+    ]);
+    // The one line under it, directly after the cards.
+    expect(group.nextElementSibling?.textContent).toBe('Applies from the next conversation.');
+    expect(screen.getByText('An open conversation keeps the list it started with. This choice is saved as soon as you make it, for all your projects.')).not.toBeNull();
+  });
+
+  it('the list size reads Standard until the host says otherwise, and the meters state the size\'s own budgets', () => {
+    renderPanel();
+    expect(card('Standard').getAttribute('aria-pressed')).toBe('true');
+
+    cleanup();
+    const largest = WORKSHOP_PROJECT_MEMORY_LIST_SIZES.largest;
+    renderPanel({ estimate: TITLES_OVER, saved: 40, listSize: 'largest', budgets: { ...largest, contextWords: 100_000 } });
+    expect(card('Largest').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getAllByRole('meter').map((meter) => meter.getAttribute('aria-valuemax'))).toEqual(['5000', '10000', '4000']);
+    expect(screen.getByText('Kept small: up to 19,000 tokens in all')).not.toBeNull();
+  });
+
+  it('the list size saves at once: a choice calls out with its size, and neither draft nor level is touched', () => {
+    const { props } = renderPanel({ listSize: 'standard' });
+    fireEvent.click(card('Largest'));
+    expect(props.onSelectListSize).toHaveBeenCalledTimes(1);
+    expect(props.onSelectListSize).toHaveBeenCalledWith('largest');
+    expect(props.onSelectMode).not.toHaveBeenCalled();
+    expect(props.onSelectSuggestions).not.toHaveBeenCalled();
+    // The size already held asks for nothing.
+    fireEvent.click(card('Standard'));
+    expect(props.onSelectListSize).toHaveBeenCalledTimes(1);
+  });
+
+  it('the list size locks while a response runs or an apply is pending, and with memory off it still chooses', () => {
+    const { props } = renderPanel({ suggestionsDisabled: true });
+    expect((card('Larger') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(card('Larger'));
+    expect(props.onSelectListSize).not.toHaveBeenCalled();
+
+    cleanup();
+    const off = renderPanel({ mode: 'off' });
+    expect((card('Larger') as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(card('Larger'));
+    expect(off.props.onSelectListSize).toHaveBeenCalledWith('larger');
   });
 
   it('set to load in full, over its budget: the requested figure apart from the loaded one', () => {

@@ -18,6 +18,7 @@
  *   nothing else is hidden.
  * - The receipt's version is exactly the listing's (2b's ProjectMemoryVersion).
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import { WorkshopRoomDeliveryService, workshopRoomDeliveredThrough } from '@/application/services/workshop/WorkshopRoomDeliveryService';
@@ -36,6 +37,7 @@ import { rewindWorkshopSession } from '@/application/services/workshop/session/W
 import { libraryHost, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import { ScriptedWorkshopRoom } from '@/__tests__/application/services/workshop/session/ScriptedWorkshopRoom';
 import { scriptedCheckpoint, setupCoordinator } from '@/__tests__/application/services/workshop/session/WorkshopCoordinatorHarness';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 type Guest = 'cliff' | 'margot';
 
@@ -57,7 +59,9 @@ function room(host: ReturnType<typeof libraryHost>) {
     session,
     { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
     {} as WorkshopTranscriptRecallPort,
-    host.library
+    host.library,
+    noProjectLenses,
+    unavailableHelpReference
   );
   const say = async (text: string, guest?: Guest): Promise<string> => {
     const key = guest ?? 'host';

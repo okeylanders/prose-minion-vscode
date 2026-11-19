@@ -237,13 +237,13 @@ describe('WorkshopApp bookmarks', () => {
       openNotes();
 
       const list = within(rail()).getByRole('region', { name: 'Bookmarks' });
-      expect(within(list).getAllByRole('button', { name: /: (show it in the thread|open it in the reader)$/ })
+      expect(within(list).getAllByRole('button', { name: /: show it in the thread$/ })
         .map((row) => row.getAttribute('aria-label'))).toEqual([
-        'Jill · An older reply: open it in the reader',
+        'Jill · An older reply: show it in the thread',
         'You · Does the lantern: show it in the thread',
         'Jill · Let the father: show it in the thread'
       ]);
-      expect(within(list).getAllByText('opens in reader')).toHaveLength(1);
+      expect(within(list).getAllByText('earlier in thread')).toHaveLength(1);
     });
 
     it('focuses an in-window bookmark\'s bubble, and the focus holds once everything settles', async () => {

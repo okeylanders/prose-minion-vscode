@@ -5,6 +5,8 @@
  * leave byte-identical. Through the real capability and conversation
  * manager. *Alice*, with made-up ids.
  */
+
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -13,6 +15,7 @@ import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import { libraryHost, memory, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 function capabilityOver(host: ReturnType<typeof libraryHost>, session = new WorkshopSessionService(() => Date.parse('2026-11-04T10:00:00.000Z')), requestId = 'host-request') {
   if (requestId === 'host-request') {
@@ -26,7 +29,9 @@ function capabilityOver(host: ReturnType<typeof libraryHost>, session = new Work
     session,
     { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
     {} as WorkshopTranscriptRecallPort,
-    host.library
+    host.library,
+    noProjectLenses,
+    unavailableHelpReference
   ).create({
     requestId,
     excerptVersion: 0,

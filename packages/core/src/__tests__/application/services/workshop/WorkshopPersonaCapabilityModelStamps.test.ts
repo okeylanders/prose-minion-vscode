@@ -5,6 +5,7 @@
  * stand-in carries none (F-02), and the stamp never reaches the evidence the
  * persona reads.
  */
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
@@ -15,6 +16,7 @@ import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import type { LogSink } from '@/platform';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const unusedRecall: WorkshopTranscriptRecallPort = {
   catalog: () => Promise.reject(new Error('recall is not under test here')),
@@ -99,7 +101,9 @@ describe('persona capability model stamps', () => {
       session,
       log,
       unusedRecall,
-      offProjectMemory
+      offProjectMemory,
+      noProjectLenses,
+      unavailableHelpReference
     ).create({
       requestId: 'host-request',
       excerptVersion: session.getExcerptVersion(),

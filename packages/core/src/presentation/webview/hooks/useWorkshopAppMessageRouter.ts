@@ -69,9 +69,11 @@ import type {
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 import type { UseWorkshopProjectMemoryReturn } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import type { UseWorkshopMemoryManagerReturn } from '@hooks/domain/workshop/useWorkshopMemoryManager';
+import type { UseWorkshopMemorySuggestionsReturn } from '@hooks/domain/workshop/memory/useWorkshopMemorySuggestions';
 import type { UseWorkshopPinnedContextReturn } from '@hooks/domain/workshop/useWorkshopPinnedContext';
 import type { UseWorkshopFileEditsReturn } from '@hooks/domain/workshop/useWorkshopFileEdits';
 import type { UseWorkshopEditOffersReturn } from '@hooks/domain/workshop/useWorkshopEditOffers';
+import type { UseWorkshopEarlierTurnsReturn } from '@hooks/domain/workshop/useWorkshopEarlierTurns';
 
 export interface WorkshopAppMessageRouterDeps {
   workshopRoom: UseWorkshopRoomReturn;
@@ -90,13 +92,18 @@ export interface WorkshopAppMessageRouterDeps {
   /** Project memory's write answers and the sheet's reads (Project Memory Slice 3). */
   projectMemory: Pick<UseWorkshopProjectMemoryReturn, 'handleWriteResult' | 'handleEditData' | 'handleEstimateResult' | 'handleTurnPreview' | 'handleMemoryDraftResult' | 'handleMemoryDraftsSetting'>;
   /** The Memory tab's listing and the manager's answers (Project Memory Slice 4b). */
-  memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData' | 'noteSessionState'>;
+  memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData' | 'noteSessionState'>
+    & Partial<Pick<UseWorkshopMemoryManagerReturn, 'noteListSizeSetting'>>;
+  /** How readily personas suggest notes, heard with each session state (Round Two item B); absent reads as none. */
+  memorySuggestions?: Pick<UseWorkshopMemorySuggestionsReturn, 'handleSessionState'>;
   /** The Pinned context tab's list (Pinned Context Slice 3). */
   pinnedContext: Pick<UseWorkshopPinnedContextReturn, 'handlePinnedContext'>;
   /** A suggested file edit's answers (Persona File Edits Slice 4b); absent reads as none. */
   fileEdits?: Pick<UseWorkshopFileEditsReturn, 'handleResult' | 'handlePreviewResult'>;
   /** A pressed edit offer's answer (Reply Edit Actions Slice 3); absent reads as none. */
   editOffers?: Pick<UseWorkshopEditOffersReturn, 'handleResult' | 'noteSessionState'>;
+  /** A long room's earlier turns (ADR 2026-11-17 D5); absent reads as none. */
+  earlierTurns?: Pick<UseWorkshopEarlierTurnsReturn, 'handleEarlierTurns' | 'handleSessionState'>;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -134,9 +141,11 @@ export function buildWorkshopAppMessageRoutes(
     bookmarkBrowser,
     projectMemory,
     memoryManager,
+    memorySuggestions,
     pinnedContext,
     fileEdits,
     editOffers,
+    earlierTurns,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -165,7 +174,9 @@ export function buildWorkshopAppMessageRoutes(
       bookmarkBrowser.handleSessionState(message);
       widgetHost.handleSessionState(message);
       memoryManager.noteSessionState(message);
+      memorySuggestions?.handleSessionState(message);
       editOffers?.noteSessionState();
+      earlierTurns?.handleSessionState(message);
     },
     [MessageType.WORKSHOP_TURN]: (message) => {
       workshopRoom.handleTurn(message);
@@ -217,9 +228,11 @@ export function buildWorkshopAppMessageRoutes(
       [MessageType.WORKSHOP_FILE_EDIT_PREVIEW_RESULT]: fileEdits.handlePreviewResult
     } : {}),
     ...(editOffers ? { [MessageType.WORKSHOP_EDIT_OFFER_RESULT]: editOffers.handleResult } : {}),
+    ...(earlierTurns ? { [MessageType.WORKSHOP_EARLIER_TURNS]: earlierTurns.handleEarlierTurns } : {}),
     [MessageType.WORKSHOP_MEMORY_ESTIMATE_RESULT]: projectMemory.handleEstimateResult,
     [MessageType.WORKSHOP_MEMORY_DRAFT_RESULT]: projectMemory.handleMemoryDraftResult,
     [MessageType.WORKSHOP_MEMORY_DRAFTS_SETTING]: projectMemory.handleMemoryDraftsSetting,
+    ...(memoryManager.noteListSizeSetting ? { [MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING]: memoryManager.noteListSizeSetting } : {}),
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshopRoom.handleContextSearchResults,
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT]:
       gesturePlayground.handleWidgetMenuResult,

@@ -5,6 +5,7 @@
  * and the context window handed through to the read.
  */
 
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
 import { createHash } from 'crypto';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import {
@@ -25,6 +26,7 @@ import type { AssistantToolService } from '@services/analysis/AssistantToolServi
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { WorkshopCapabilityRequest } from '@shared/types/workshopCapabilities';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 const sha256 = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex');
 const notUnderTest = (): Promise<never> => Promise.reject(new Error('not under test here'));
@@ -66,7 +68,9 @@ describe('a persona\'s read of several files', () => {
       session,
       log,
       unusedRecall,
-      offProjectMemory
+      offProjectMemory,
+      noProjectLenses,
+      unavailableHelpReference
     ).create({
       requestId: 'host-request',
       excerptVersion: session.getExcerptVersion(),

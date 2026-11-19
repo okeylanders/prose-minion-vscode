@@ -201,6 +201,7 @@ function createTestAssembly(): TestAssembly {
       getWriterProfile: jest.fn().mockReturnValue(DEFAULT_WORKSHOP_WRITER_PROFILE),
       getWebResearch: jest.fn().mockReturnValue({ enabled: false }),
       getProjectMemoryMode: jest.fn().mockReturnValue('off'),
+      memorySuggestionLevel: jest.fn().mockReturnValue('sparingly'),
       getFileEditsMode: jest.fn().mockReturnValue('ask')
     },
     workshopSessionTimeService: new WorkshopSessionTimeService({
@@ -663,7 +664,9 @@ describe('MessageHandler assembly', () => {
   it.each([
     'proseMinion.workshop.conversationBehavior',
     'proseMinion.workshop.writerProfile',
-    'proseMinion.workshop.webResearch'
+    'proseMinion.workshop.webResearch',
+    // How readily personas suggest notes (Round Two item B): the proposals prompt is the level's.
+    'proseMinion.workshop.memory.suggestions'
   ])('pulls external Workshop setting %s into the live room', async (changedKey) => {
     const assembly = createTestAssembly();
     const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
@@ -676,6 +679,25 @@ describe('MessageHandler assembly', () => {
     expect(
       assembly.services.workshopConversationSettingsService.syncFromSettings
     ).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells the webview the memory list size changed, and rebuilds no prompt for it (ADR 2026-11-17 D9)', async () => {
+    const assembly = createTestAssembly();
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const handler = createHandler(assembly, postMessage);
+    postMessage.mockClear();
+
+    handler.handleConfigurationChange(section => section === 'proseMinion.workshop.memory.listSize');
+    await flushQueuedWork();
+
+    expect(postMessage.mock.calls.map(([message]) => message.type)).toContain(MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING);
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.WORKSHOP_MEMORY_LIST_SIZE_SETTING,
+      // The stub settings hold no size, which reads as Standard.
+      payload: { size: 'standard' }
+    }));
+    // The frame is built once per conversation: a size change touches no open conversation's prompts.
+    expect(assembly.services.workshopConversationSettingsService.syncFromSettings).not.toHaveBeenCalled();
   });
 
   it('posts a transient API-key warning clear after successful key-backed self-heal', async () => {

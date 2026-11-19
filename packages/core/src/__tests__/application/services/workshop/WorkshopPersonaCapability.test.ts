@@ -1,3 +1,10 @@
+import * as fs from 'fs';
+import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { helpDirectory } from '@/__tests__/application/services/workshop/help/bundledHelpReference';
+import {
+  WorkshopHelpReference,
+  type WorkshopHelpReferencePort
+} from '@/application/services/workshop/help/WorkshopHelpReference';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
@@ -10,6 +17,7 @@ import type { WorkshopTranscriptRecallPort } from '@/application/services/worksh
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
+import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
 
 /** These tests exercise other families; session recall has its own suite. */
 const unusedRecall: WorkshopTranscriptRecallPort = {
@@ -93,14 +101,16 @@ describe('WorkshopPersonaCapability', () => {
     };
   });
 
-  const capability = () => new WorkshopPersonaCapabilityFactory(
+  const capability = (help: WorkshopHelpReferencePort = unavailableHelpReference) => new WorkshopPersonaCapabilityFactory(
     dictionary,
     analysis,
     resourceProviderFactory,
     session,
     log,
     unusedRecall,
-    offProjectMemory
+    offProjectMemory,
+    noProjectLenses,
+    help
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),
@@ -127,7 +137,9 @@ describe('WorkshopPersonaCapability', () => {
       openSession,
       log,
       unusedRecall,
-      offProjectMemory
+      offProjectMemory,
+      noProjectLenses,
+      unavailableHelpReference
     ).create({
       requestId: 'open-request',
       excerptVersion: openSession.getExcerptVersion(),
@@ -138,6 +150,42 @@ describe('WorkshopPersonaCapability', () => {
       events
     });
   };
+
+  const helpRefusals = async (adapter: ReturnType<typeof capability>) => {
+    const request = { capability: 'help.search' as const, query: 'pin a file' };
+    adapter.handleInvalidRequest({ kind: 'invalid', operation: request.capability, reason: 'missing-field', field: 'query' });
+    adapter.handleCapabilityLimit(request);
+    const cards = session.readRoomLedger().filter(turn => turn.capability?.status === 'rejected');
+    expect(cards).toHaveLength(2);
+    return cards.map(card => card.content);
+  };
+
+  it('names only the installed version on help refusals before the reference has been read', async () => {
+    const refusals = await helpRefusals(capability());
+    controller.abort();
+    const cancelled = await capability().fulfill({ capability: 'help.search', query: 'pin a file' });
+    for (const text of [...refusals, cancelled.evidence]) {
+      expect(text).toContain(`Prose Minion version ${unavailableHelpReference.version}.`);
+      expect(text).not.toContain('reference, version');
+    }
+  });
+
+  it('names the version the loaded reference describes, not the installed one, on malformed and over-limit help calls', async () => {
+    const readFile = async (file: string) => file.endsWith('overview.md')
+      ? Buffer.from((await fs.promises.readFile(file)).toString('utf8')
+        .replace(/^Reference version: .*$/m, 'Reference version: 2.14.0'))
+      : fs.promises.readFile(file);
+    const help = new WorkshopHelpReference({ readFile }, helpDirectory, '2.15.0', log);
+    const adapter = capability(help);
+    const header = 'Prose Minion reference, version 2.14.0. The installed version is 2.15.0; ' +
+      'these versions differ, so features or controls may not match.';
+    const read = await adapter.fulfill({ capability: 'help.read', sections: ['workshop#pinned-context'] });
+    expect(read.evidence).toContain(header);
+    for (const text of await helpRefusals(adapter)) {
+      expect(text).toContain(header);
+      expect(text).not.toContain('reference, version 2.15.0');
+    }
+  });
 
   it('corrects a bundle of calls before executing the model’s single retry', async () => {
     const call = '<prose-minion-tool-call name="dictionary.lookup"><word>liminal</word><context>Threshold scene.</context><purpose>Check tone.</purpose></prose-minion-tool-call>';

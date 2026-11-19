@@ -8,7 +8,14 @@
  *   figure is the builder's, never above the budget.
  * - Unavailable is not a mode (decision 3, ADR D8): it never disables the
  *   mode cards, only this workspace's memory and its buttons.
- * - The well's numbers are the budgets' (decision 15), never literals.
+ * - The well's numbers are the budgets' (decision 15), never literals, and
+ *   the budgets are the host's: the list size's row the estimate was held
+ *   to (ADR 2026-11-17 D12). The meters, the "of N" figures and the frame
+ *   therefore agree at every size.
+ * - The titles-only tier, the notes no tier shows (`unlisted`) and where a
+ *   memory set to load in full landed come from the estimate, which the
+ *   frame's own renderer returned. The size row is in
+ *   `workshopMemoryListSizeView`.
  */
 
 import type {
@@ -20,6 +27,7 @@ import type {
   WorkshopProjectMemoryMode
 } from './workshopMemoryViewInputs';
 import { WORKSHOP_MEMORY_BUDGETS } from './workshopMemoryViewInputs';
+import type { WorkshopProjectMemoryListSize } from '@shared/constants/workshopProjectMemoryListSizes';
 import {
   aboutTokens,
   filesWord,
@@ -40,6 +48,8 @@ export interface WorkshopMemoryTabInput {
   readonly unreadable: readonly WorkshopMemoryUnreadableFile[];
   readonly conflicts: readonly WorkshopMemoryConflict[];
   readonly budgets?: WorkshopMemoryBudgets;
+  /** The list size as the host holds it; absent reads as Standard. */
+  readonly listSize?: WorkshopProjectMemoryListSize;
 }
 
 export interface WorkshopMemoryModeCard {
@@ -51,7 +61,9 @@ export interface WorkshopMemoryModeCard {
 }
 
 export interface WorkshopMemoryMeterView {
-  readonly key: 'full' | 'list';
+  readonly key: 'full' | 'list' | 'titles';
+  /** The meter's accessible name. */
+  readonly label: string;
   /** The caption's left and right halves. */
   readonly left: string;
   readonly right: string;
@@ -132,7 +144,7 @@ export function workshopMemoryTabView(input: WorkshopMemoryTabInput): WorkshopMe
       }
       : {}),
     well: {
-      memorySize: `Kept small: about ${memoryCount(budgets.pinnedTokens + budgets.catalogTokens)} tokens in all`,
+      memorySize: `Kept small: up to ${memoryCount(budgets.pinnedTokens + budgets.catalogTokens + budgets.titleTokens)} tokens in all`,
       contextSize: `Much larger: up to ${memoryCount(budgets.contextWords)} words`
     },
     cards: MODE_CARDS.map((card) => ({ ...card, selected: card.mode === input.mode })),
@@ -216,15 +228,20 @@ function estimateLoadView(estimate: WorkshopMemoryFrameEstimate, budgets: Worksh
   const notLoaded = Math.max(0, estimate.pinned - estimate.pinnedLoaded);
   const candidates = Math.max(0, estimate.memories - estimate.pinnedLoaded);
   const listOver = estimate.catalogEntries < candidates;
-  // The bodies that didn't fit lead the list (ADR D5), so the first entries are theirs; the rest of them are
-  // searchable only, and every other memory past the list is "more" (PR #199 F-02).
+  // The bodies that didn't fit lead the list (ADR D5), so the first entries are theirs (PR #199 F-02). Past the
+  // list they lead the titles tier, and only past that are they searchable only (ADR 2026-11-17 D8).
   const pinnedListed = Math.min(notLoaded, estimate.catalogEntries);
-  const pinnedSearchable = notLoaded - pinnedListed;
-  const hidden = Math.max(0, candidates - estimate.catalogEntries - pinnedSearchable);
-  const meters = [fullMeter(estimate, notLoaded, budgets), listMeter(estimate, candidates, listOver, budgets)];
+  const pinnedTitled = Math.min(notLoaded - pinnedListed, estimate.titleEntries);
+  const pinnedSearchable = notLoaded - pinnedListed - pinnedTitled;
+  const hidden = Math.max(0, estimate.unlisted - pinnedSearchable);
+  const meters = [
+    fullMeter(estimate, notLoaded, budgets),
+    listMeter(estimate, candidates, listOver, budgets),
+    ...(listOver ? [titlesMeter(estimate, candidates - estimate.catalogEntries, budgets)] : [])
+  ];
   const more = [
     ...(estimate.pinnedOver && notLoaded > 0
-      ? [`${notFittingLine(notLoaded, pinnedListed, pinnedSearchable)} Turn off Always load in full on one in Manage memories… to make room.`]
+      ? [`${notFittingLine(notLoaded, pinnedListed, pinnedTitled, pinnedSearchable)} Turn off Always load in full on one in Manage memories… to make room.`]
       : []),
     ...(hidden > 0
       ? [`${memoryCount(hidden)} more ${hidden === 1 ? 'is' : 'are'} searchable. Personas find them with memory search when the conversation needs them.`]
@@ -254,7 +271,8 @@ function estimateLoadView(estimate: WorkshopMemoryFrameEstimate, budgets: Worksh
     const full = estimate.pinnedLoaded > 0 ? `, and the ${memoryCount(estimate.pinnedLoaded)} set to load in full` : '';
     return {
       name: 'Memories loaded in full first, then the most recent',
-      description: `Each persona sees the title and summary of the memories that fit${full}. Choose Always load in full for the ones every conversation needs.`,
+      description: `Each persona sees the title and summary of the memories that fit${full}, and ` +
+        `${estimate.unlisted === 0 ? 'the title of every other' : 'the titles of as many more as fit'}. Choose Always load in full for the ones every conversation needs.`,
       chips,
       meters,
       more
@@ -272,9 +290,20 @@ function estimateLoadView(estimate: WorkshopMemoryFrameEstimate, budgets: Worksh
   };
 }
 
-/** What became of the memories set to load in full that didn't fit: listed, searchable only, or both. */
-function notFittingLine(notLoaded: number, listed: number, searchable: number): string {
+/** What became of the memories set to load in full that didn't fit: listed, by title only, searchable only, or a mix. */
+function notFittingLine(notLoaded: number, listed: number, titled: number, searchable: number): string {
   const subject = notLoaded === 1 ? '1 memory set to load in full doesn’t fit' : `${memoryCount(notLoaded)} memories set to load in full don’t fit`;
+  if (titled > 0) {
+    if (titled === notLoaded) {
+      return `${subject}, and the list is full too, so ${notLoaded === 1 ? 'it loads by its title only' : 'they load by their titles only'}.`;
+    }
+    const parts = [
+      ...(listed > 0 ? [listed === 1 ? '1 loads as a list entry' : `${memoryCount(listed)} load as list entries`] : []),
+      titled === 1 ? '1 loads by its title only' : `${memoryCount(titled)} load by their titles only`,
+      ...(searchable > 0 ? [searchable === 1 ? '1 is searchable only' : `${memoryCount(searchable)} are searchable only`] : [])
+    ];
+    return `${subject}: ${parts.length === 2 ? parts.join(', and ') : `${parts.slice(0, -1).join(', ')}, and ${parts.at(-1)}`}.`;
+  }
   if (searchable === 0) {
     return `${subject}, so ${notLoaded === 1 ? 'it loads as a list entry' : 'they load as list entries'}.`;
   }
@@ -294,6 +323,7 @@ function fullMeter(estimate: WorkshopMemoryFrameEstimate, notLoaded: number, bud
     const fits = notLoaded === 1 ? '1 doesn’t fit' : `${memoryCount(notLoaded)} don’t fit`;
     return {
       key: 'full',
+      label: 'Loaded in full',
       left: `Set to load in full · ${memoryCount(estimate.pinned)} · ${fits}`,
       right: `about ${requested} requested · ${loaded} of ${budget} loaded`,
       percent: 100,
@@ -306,6 +336,7 @@ function fullMeter(estimate: WorkshopMemoryFrameEstimate, notLoaded: number, bud
   const about = aboutTokens(loadedTokens);
   return {
     key: 'full',
+    label: 'Loaded in full',
     left: `Loaded in full · ${memoryCount(estimate.pinnedLoaded)}`,
     right: `about ${about} of ${budget} tokens`,
     percent: percentOf(loadedTokens, budgets.pinnedTokens),
@@ -330,6 +361,7 @@ function listMeter(
     : candidates === 0 ? 'none to list' : `all ${memoryCount(candidates)} fit`;
   return {
     key: 'list',
+    label: 'Titles and summaries',
     left: `Titles and summaries · ${fits}`,
     right: `about ${about} of ${budget} tokens`,
     percent: listOver ? 100 : percentOf(tokens, budgets.catalogTokens),
@@ -337,6 +369,28 @@ function listMeter(
     value: tokens,
     max: budgets.catalogTokens,
     valueText: `Titles and summaries: ${fits}, about ${about} of ${budget} tokens`
+  };
+}
+
+/** The titles-only tier: the notes past the list, by title, as many as its tokens hold. Drawn once the list overflows. */
+function titlesMeter(estimate: WorkshopMemoryFrameEstimate, candidates: number, budgets: WorkshopMemoryBudgets): WorkshopMemoryMeterView {
+  const budget = memoryCount(budgets.titleTokens);
+  const tokens = Math.min(estimate.titleTokens, budgets.titleTokens);
+  const about = aboutTokens(tokens);
+  const over = estimate.titleEntries < candidates;
+  const fits = over
+    ? `${memoryCount(estimate.titleEntries)} of ${memoryCount(candidates)} fit`
+    : `all ${memoryCount(candidates)} fit`;
+  return {
+    key: 'titles',
+    label: 'Titles only',
+    left: `Titles only · ${fits}`,
+    right: `about ${about} of ${budget} tokens`,
+    percent: over ? 100 : percentOf(tokens, budgets.titleTokens),
+    full: over,
+    value: tokens,
+    max: budgets.titleTokens,
+    valueText: `Titles only: ${fits}, about ${about} of ${budget} tokens`
   };
 }
 

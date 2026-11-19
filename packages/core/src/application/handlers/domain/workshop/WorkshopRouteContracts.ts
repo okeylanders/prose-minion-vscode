@@ -44,6 +44,7 @@ import type {
 
 /** The one project-memory library as the Workshop's route owners reach it: Slice 3's writes and Slice 4b's manager. */
 export type WorkshopProjectMemoryPort = WorkshopProjectMemoryWritePort & WorkshopProjectMemoryManagerPort;
+import type { WorkshopEditOfferRoomView } from '@/application/services/workshop/fileEdits/WorkshopFileEditWebviewView';
 import type { FileEditApplyPort } from '@/domain/models/FileEdit';
 import type { FileEditIdentity } from '@/domain/models/FileEditStaging';
 import type { AgentFinalReplyCheck } from '@orchestration/AgentRunContracts';
@@ -222,6 +223,8 @@ export interface WorkshopSliceHostEffects {
   fileEditsMode: () => WorkshopFileEditsMode;
   /** A reply edit offer's press (ADR 2026-11-10 D4): a host-directed run to its author's own conversation. */
   runDirected: (target: WorkshopChatTarget, run: WorkshopDirectedRun) => Promise<WorkshopDirectedRunResult>;
+  /** What an edit offer's view is derived from, as `postSessionState` reads it (ADR 2026-11-17 D2). */
+  editOfferRoomView: () => WorkshopEditOfferRoomView;
   /** A turn's time as the room shows it, in the session's timezone. */
   formatTurnTime: (timestamp: number) => string;
   /**
