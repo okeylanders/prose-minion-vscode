@@ -180,7 +180,6 @@ packages/core/src/
                 ├── lightboxTiles.ts
                 ├── selectedText.ts
                 ├── todoStatus.ts
-                ├── locationsProposal.ts
                 ├── sessionRecovery.ts
                 └── settings.ts
 ```
@@ -913,7 +912,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-11-19 on `epic/workshop-persona-tools-close`: the Workshop Persona Tools epic with PR #290 (C2) merged in, before it goes to `main`):
-- 966 suites / 13,690 tests / 59 snapshots
+- 966 suites / 13,691 tests / 59 snapshots (13,690 measured in a full run, plus the closing pass's named-session guard)
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -2194,9 +2193,20 @@ anything that writes a named session file:
 (`infrastructure/storage/`; D6a–D6e). Every write that replaces or removes
 a named session file goes through it: Save, autosave, rename, delete, a
 Rewind's commit, a file edit's checkpoint, the persona's write and Undo,
-and a recovery copy's update. A new named-session writer joins it. (D6a
-planned a `boundaries.test.ts` guard that only the store renames over a
-named session file; none was built, so nothing enforces this yet.)
+and a recovery copy's update. A new named-session writer joins it.
+`boundaries.test.ts` ("Workshop named-session storage") holds it:
+
+- only storage modules, a pinned list, call `fileSystem.rename` or
+  `fileSystem.delete`;
+- only `WorkshopSessionStore` builds the sessions folder's path;
+- of the modules that rename or delete, only the store,
+  `WorkshopNamedSessionLock` and `WorkshopNamedSessionRecovery` reach that
+  folder;
+- inside the store, rename and delete touch only staged temporaries and
+  search indexes, a snapshot overwrites only `current.json`, and a named
+  file is replaced or removed only through `this.named`.
+
+A new module that renames or deletes joins the pinned list on purpose.
 
 - **The lock is `.<name>.lock/`,** taken by renaming a staged directory,
   never over anything. It holds `owner-<token>.json` and the owner's own

@@ -3300,3 +3300,74 @@ describe('Workshop Pinned Context storage (Slice 1; ADR 2026-11-04 D5)', () => {
       .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
   });
 });
+
+describe('Workshop named-session storage (ADR 2026-11-19 D6a, D6e)', () => {
+  it('replaces and removes named session files only under the named-session lock', () => {
+    const STORAGE = 'infrastructure/storage';
+    const STORE = `${STORAGE}/WorkshopSessionStore.ts`;
+    const LOCK = `${STORAGE}/WorkshopNamedSessionLock.ts`;
+    const RECOVERY = `${STORAGE}/WorkshopNamedSessionRecovery.ts`;
+    const coreFiles = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .map((file) => ({ file: path.relative(SRC_ROOT, file).split(path.sep).join('/'), source: fs.readFileSync(file, 'utf8') }));
+    const RENAME_OR_DELETE = /\bfileSystem\??\.(?:rename|delete)\s*\(/;
+
+    // Who may rename or delete through the FileSystem port at all: storage modules only, by name.
+    // A new one is added here on purpose, and is checked below against the sessions folder.
+    expect(coreFiles.filter(({ source }) => RENAME_OR_DELETE.test(source)).map(({ file }) => file).sort()).toEqual([
+      `${STORAGE}/DictionaryHistoryStore.ts`,
+      `${STORAGE}/LexicalGravityLensRepository.ts`,
+      `${STORAGE}/LightboxBoardNewFile.ts`,
+      `${STORAGE}/ProjectMemoryStore.ts`,
+      `${STORAGE}/RejectedModelResponseRecoveryStore.ts`,
+      `${STORAGE}/StoredFileClaims.ts`,
+      `${STORAGE}/StoredFileRewrite.ts`,
+      LOCK,
+      RECOVERY,
+      `${STORAGE}/WorkshopPinnedContextLock.ts`,
+      `${STORAGE}/WorkshopPinnedContextStore.ts`,
+      STORE,
+      `${STORAGE}/writeNumberedFile.ts`
+    ].sort());
+
+    // Only the store builds the sessions folder's path (user-facing sentences that mention it are not paths).
+    const SESSIONS_FOLDER = /['"`]prose-minion['"`]\s*,\s*['"`]sessions['"`]|['"`][^'"`\s]*prose-minion\/sessions\/?['"`]/;
+    expect(coreFiles.filter(({ source }) => SESSIONS_FOLDER.test(source)).map(({ file }) => file)).toEqual([STORE]);
+
+    // Of the modules that rename or delete, only the store and the lock family reach the sessions folder:
+    // by being one, naming the folder, or importing the store or a named-session module.
+    const reachesSessions = ({ file, source }: { file: string; source: string }) =>
+      /(?:^|\/)(?:WorkshopSessionStore|WorkshopNamedSession\w*)\.ts$/.test(file)
+      || SESSIONS_FOLDER.test(source) || moduleImports(file, source).some(({ module }) =>
+        /(?:^|\/)(?:WorkshopSessionStore|WorkshopNamedSession\w*)$/.test(module));
+    expect(coreFiles
+      .filter((entry) => RENAME_OR_DELETE.test(entry.source) && reachesSessions(entry))
+      .map(({ file }) => file).sort()).toEqual([LOCK, RECOVERY, STORE].sort());
+
+    // Inside the store, which method each rename, delete and write call sits in.
+    const store = coreFiles.find(({ file }) => file === STORE)!.source;
+    const MEMBER = /^ {2}(?:(?:private|public|protected|static|readonly)\s+)*(?:async\s+)?([A-Za-z_$][\w$]*)\s*[(<]/;
+    const callersOf = (call: RegExp): string[] => {
+      let member = '';
+      const found = new Set<string>();
+      for (const line of store.split('\n')) {
+        member = MEMBER.exec(line)?.[1] ?? member;
+        if (call.test(line)) {
+          found.add(member);
+        }
+      }
+      return [...found].sort();
+    };
+    // The store renames and deletes only staged temporaries (`writeJsonAtomically`) and derived search indexes;
+    // a named session file is replaced or removed only by the lock.
+    expect(callersOf(RENAME_OR_DELETE)).toEqual(['deleteSearchIndexIfPresent', 'writeJsonAtomically']);
+    expect(callersOf(/\bthis\.writeJsonAtomically\(/)).toEqual(['writeAtomically', 'writeSearchIndex']);
+    expect(callersOf(/\bthis\.writeAtomically\(/)).toEqual(['writeSnapshotWithSearchIndex']);
+    // A snapshot written over an existing file is only ever current.json; a named file is created, never overwritten.
+    const snapshotWrites = [...store.matchAll(/\bthis\.writeSnapshotWithSearchIndex\(([\s\S]*?)\);/g)].map((match) => match[1]);
+    expect(snapshotWrites.length).toBeGreaterThan(0);
+    expect(snapshotWrites.filter((args) => !/paths\.currentPath\b/.test(args) && !/,\s*false\s*$/.test(args.trim()))).toEqual([]);
+    expect(store).toMatch(/\bthis\.named\.replace\(/);
+    expect(store).toMatch(/\bthis\.named\.remove\(/);
+  });
+});
