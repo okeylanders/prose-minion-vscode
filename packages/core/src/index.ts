@@ -228,6 +228,10 @@ export { ProofreadService } from '@services/proofread/ProofreadService';
 export { CraftFlagsService, liveCatalogPrices } from '@services/craftFlags/CraftFlagsService';
 export { HelperAgentService } from '@services/helper/HelperAgentService';
 export { HELPER_TASK_POLICIES } from '@services/helper/HelperTaskPolicies';
+export { ProjectFolderScan } from '@/application/services/contextPaths/ProjectFolderScan';
+export { ContextPathProposalChecker } from '@/application/services/contextPaths/ContextPathProposalChecker';
+export { ContextPathSettingsWriter } from '@/application/services/contextPaths/ContextPathSettingsWriter';
+export { ContextPathSuggestionService } from '@/application/services/contextPaths/ContextPathSuggestionService';
 export { liveCatalogReasoning } from '@orchestration/ReasoningCatalog';
 export {
   CraftFlagsUseCase,

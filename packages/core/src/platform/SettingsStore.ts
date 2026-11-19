@@ -14,9 +14,21 @@
  * vscode's `ConfigurationTarget` enum.
  */
 
+/**
+ * Where a setting's value comes from: the most specific level holding one
+ * (ADR 2026-11-19 D25). Reads only; writes stay at the user level.
+ */
+export type SettingsLevel = 'default' | 'user' | 'workspace' | 'workspace-folder';
+
 export interface SettingsStore {
   get<T>(section: string, key: string): T | undefined;
   get<T>(section: string, key: string, defaultValue: T): T;
   /** Persists at the global/user level (the only target this app writes). */
   update(section: string, key: string, value: unknown): PromiseLike<void>;
+  /**
+   * The most specific level holding a value for `key` (ADR 2026-11-19 D25),
+   * so a caller can tell a user-level write would not change what this
+   * window reads.
+   */
+  levelOf(section: string, key: string): SettingsLevel;
 }

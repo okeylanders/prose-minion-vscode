@@ -76,7 +76,8 @@ export function libraryHost(options: LibraryHostOptions = {}) {
       section !== 'proseMinion' ? undefined
         : key === 'workshop.projectMemory' ? state.mode
           : key === 'workshop.memory.listSize' ? state.listSize : undefined) as SettingsStore['get'],
-    update: jest.fn(async () => undefined)
+    update: jest.fn(async () => undefined),
+    levelOf: () => 'user'
   };
   const positionsOf = jest.fn(async (sessionId: string, turnIds: readonly string[]): Promise<WorkshopRecallPositions> =>
     options.positions?.(sessionId, turnIds) ?? { kind: 'positions', sessionId, title: 'Chapter 3 tea party', positions: [38, 41] });

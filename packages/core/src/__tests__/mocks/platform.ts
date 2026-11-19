@@ -37,6 +37,7 @@ export function createFakeSettings(values: Record<string, unknown> = {}): Settin
   return {
     get: get as SettingsStore['get'],
     update: async () => undefined,
+    levelOf: (section, key) => (key in values || `${section}.${key}` in values ? 'user' : 'default'),
   };
 }
 

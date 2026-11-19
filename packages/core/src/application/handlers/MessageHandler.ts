@@ -290,7 +290,8 @@ export class MessageHandler {
       this.platform.settings,
       this.platform.shell,
       this.postMessage.bind(this),
-      outputChannel
+      outputChannel,
+      this.services.contextPathSuggestions
     );
 
     // Ensure token totals are reset on activation/startup so the webview does not

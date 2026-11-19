@@ -8,7 +8,11 @@
  *   no other number; its kinds are the closed list, with the boundaries
  *   the persona prompt teaches;
  * - its worked example's request is byte-identical to what the engine
- *   sends, and its reply decodes through the production reader and codec.
+ *   sends, and its reply decodes through the production reader and codec;
+ * - the project-locations section (ADR 2026-11-19 D21) quotes only the
+ *   checker's per-group cap, names every group and the refused forms, and
+ *   its worked example is sent byte for byte and decodes, every pattern in
+ *   it one the checker would check.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -18,6 +22,10 @@ import { readHelperReply } from '@services/helper/HelperReply';
 import { HELPER_TASK_POLICIES } from '@services/helper/HelperTaskPolicies';
 import { HELPER_BASE_PROMPT } from '@services/helper/HelperTaskPolicy';
 import { MEMORY_DRAFT_POLICY } from '@services/helper/tasks/MemoryDraftTask';
+import { PROJECT_LOCATIONS_POLICY, type ProjectLocationsInput } from '@services/helper/tasks/ProjectLocationsTask';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { CONTEXT_PATH_GROUPS } from '@shared/types/context';
+import { triageContextPathPatterns } from '@/application/services/contextPaths/ContextPathPatternSafety';
 
 const PROMPTS = path.resolve(__dirname, '../../../resources/system-prompts');
 const read = (file: string) => fs.readFileSync(path.join(PROMPTS, file), 'utf8');
@@ -86,5 +94,39 @@ describe('memory-draft prompt ↔ code', () => {
     const decoded = readHelperReply(MEMORY_DRAFT_POLICY, reply, 'stop');
     expect(decoded).toEqual({ ok: true, value: JSON.parse(reply), repairs: [] });
     expect(sent.passage).toMatch(/Alice/);
+  });
+});
+
+describe('project-locations prompt ↔ code', () => {
+  const prompt = read(PROJECT_LOCATIONS_POLICY.promptSection);
+  const prose = withoutFences(prompt);
+
+  it('quotes the checker\'s per-group cap, and no other number', () => {
+    const cap = /At most ([\d,]+) patterns a group\./.exec(prose);
+    expect(cap).not.toBeNull();
+    expect(number(cap![1])).toBe(PROMPT_BUDGETS.contextPaths.patternsPerGroup);
+    expect(prose.replace(cap![0], '').match(/\d[\d,.]*/g)).toBeNull();
+  });
+
+  it('teaches the refused forms and that a group left out keeps its patterns', () => {
+    expect(prose).toContain('Leave a group out when no folder fits it; it keeps the patterns it has.');
+    expect(prose).toContain('never start with `/`, `~`, a drive or `workspace:`');
+    expect(prose).toContain('No `..`, no backslash and no comma.');
+    expect(prose).toContain('You see names only, never a file\'s contents.');
+  });
+
+  it('shows a request the engine sends byte for byte, and a reply the production codec reads, every pattern one the checker checks', () => {
+    const [request, reply] = fences(prompt);
+    const sent = JSON.parse(request.split('\n\n').slice(1).join('\n\n')) as { task: string; groups: Array<{ name: string }>; folders: ProjectLocationsInput['folders']; scanStopped: boolean };
+    expect(sent.task).toBe('project-locations');
+    expect(sent.groups.map((group) => group.name)).toEqual([...CONTEXT_PATH_GROUPS]);
+    expect(request).toBe(buildHelperUserMessage('project-locations', PROJECT_LOCATIONS_POLICY.buildInput({ folders: sent.folders, scanStopped: sent.scanStopped })));
+
+    const decoded = readHelperReply(PROJECT_LOCATIONS_POLICY, reply, 'stop');
+    expect(decoded).toEqual({ ok: true, value: JSON.parse(reply), repairs: [] });
+    for (const patterns of Object.values((JSON.parse(reply) as { groups: Record<string, string[]> }).groups)) {
+      expect(triageContextPathPatterns(patterns).refused).toEqual([]);
+    }
+    expect(request).toMatch(/Alice/);
   });
 });
