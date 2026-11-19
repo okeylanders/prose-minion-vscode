@@ -8,6 +8,11 @@
  *   hook it calls once the reply is in the ledger, with each saved session's
  *   rows. The run awaits `settled()` as its tail, as it awaits a memory
  *   card's automatic save.
+ * - **The receipt is durable first.** Before any saved session is written,
+ *   the room holding the `saving` rows is checkpointed and read back,
+ *   host and guest replies alike (`checkpointTodoReceipt`). If that fails,
+ *   no saved session is written and the rows read `receipt-not-saved`, so a
+ *   restart can never leave a to-do closed with no receipt to reconcile.
  * - **One write per session,** one after another, each carrying all of that
  *   session's rows. Before each, the room checks the reply is still in its
  *   ledger: a Rewind or a new room that removed it first leaves the rows
@@ -45,6 +50,8 @@ export type WorkshopTodoStatusWritesSession = Pick<
 export interface WorkshopTodoStatusWritesRoom {
   isSessionOperationPending(): boolean;
   waitForSessionOperations(): Promise<void>;
+  /** Persist the room holding the reply's `saving` receipt, and read it back (D5): ok only when it is durable. */
+  checkpointTodoReceipt(generation: number, turnId: string): Promise<{ readonly ok: boolean; readonly reason?: string }>;
 }
 
 export interface WorkshopTodoStatusWritesHooks {
@@ -91,10 +98,27 @@ export class WorkshopTodoStatusWrites {
     const held = (this.liveTurn(turnId, revision)?.todoStatusChanges ?? []).map((row) => row.operationId);
     held.forEach((id) => this.inFlight.add(id));
     try {
-      await this.writeEach(turnId, writes, openRoom, revision);
+      if (await this.receiptDurable(turnId, writes, revision)) {
+        await this.writeEach(turnId, writes, openRoom, revision);
+      }
     } finally {
       held.forEach((id) => this.inFlight.delete(id));
     }
+  }
+
+  /** Checkpoint the receipt; when it cannot be made durable, refuse every row and write nothing. */
+  private async receiptDurable(turnId: string, writes: readonly WorkshopTodoStatusSavedWrite[], revision: number): Promise<boolean> {
+    const checkpoint = await this.room.checkpointTodoReceipt(revision, turnId).catch(() => ({ ok: false, reason: 'checkpoint-failed' }));
+    if (checkpoint.ok) {
+      return true;
+    }
+    const indexes = writes.flatMap((write) => write.indexes);
+    this.hooks.log(`To-do writes not started turnId=${turnId} rows=${indexes.length} reason=receipt-not-saved checkpoint=${checkpoint.reason ?? 'unknown'}`);
+    if (this.liveTurn(turnId, revision)) {
+      this.session.setTodoStatusChangeStates(turnId, { indexes, state: 'refused', reason: 'receipt-not-saved' });
+      this.hooks.settleRoom('persona to-do writes not started');
+    }
+    return false;
   }
 
   private async writeEach(turnId: string, writes: readonly WorkshopTodoStatusSavedWrite[], openRoom: WorkshopTodoStatusOpenRoom | undefined, revision: number): Promise<void> {
@@ -258,6 +282,7 @@ function undoWriteRefusal(written: Extract<WorkshopSavedTodoWrite, { kind: 'refu
     case 'room-changed':
       return 'elsewhere';
     case 'write-failed':
+    case 'receipt-not-saved': // The port never answers it; a room checkpoint does.
       return 'failed';
     default:
       return assertNever(written.reason);

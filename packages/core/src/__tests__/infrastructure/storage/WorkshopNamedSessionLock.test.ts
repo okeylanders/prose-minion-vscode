@@ -12,7 +12,9 @@
  *   busy, so it answers busy; after the publish a read returns the file;
  * - explicit recovery: one test per row of D6e's table, each checking the
  *   saved file, every recovery session created and the lock's removal; a
- *   failing copy leaves the lock and its contents untouched; a retry after
+ *   failing copy leaves the lock and its contents untouched; a publish
+ *   whose rollback also fails keeps the lock and every copy, and Recover…
+ *   restores it; a prior beside an unreadable saved file is kept; a retry after
  *   an interrupted recovery reuses its copy; a lock within its lease is
  *   busy, not recovered.
  *
@@ -284,6 +286,35 @@ describe('explicit recovery follows D6e\'s table', () => {
     expect(lockFiles(fs)).toEqual(before);
     expect(fs.files.has(filePath)).toBe(false);
     await expect(store.readNamedWithRecovery('alice-polish')).rejects.toBeInstanceOf(WorkshopNamedSessionRecoveryRequiredError);
+  });
+
+  it('a publish and its rollback both failing keep the lock and every copy, and Recover… restores the session (PR #289)', async () => {
+    const { fs, original, readExact, lockWith, store } = await setup();
+    fs.failRenameToPath = filePath; // The publish and the put-back both target the saved name.
+    await expect(lockWith().replace({ sessionId: 'alice-polish', filePath, readExact, session: checkpoint('Writer A'), expected: original }))
+      .rejects.toBeInstanceOf(WorkshopNamedSessionRecoveryRequiredError);
+    fs.failRenameToPath = undefined;
+    const kept = [...lockFiles(fs).keys()].map((name) => path.basename(name)).sort();
+    expect(kept).toEqual([expect.stringMatching(/^abandoned-/), 'next.json', 'prior.json']);
+    expect(fs.files.has(filePath)).toBe(false);
+    // Its owner gave the lock up: it reads recovery-required at once, never missing.
+    await expect(store.readNamedWithRecovery('alice-polish')).rejects.toBeInstanceOf(WorkshopNamedSessionRecoveryRequiredError);
+    const outcome = await store.recoverNamed('alice-polish');
+    expect([outcome.restored, outcome.copies.map((copy) => copy.title)]).toEqual([true, ['Writer A (local recovery)']]);
+    expect(titleOf(fs)).toBe('Polish 6.11');
+    expect(leftovers(fs)).toEqual([]);
+  });
+
+  it('a prior beside an unreadable saved file is never dropped: it is kept as a local recovery session (PR #289)', async () => {
+    const { fs, original, store } = await setup();
+    const unreadable = new TextEncoder().encode('{"not": "a session"');
+    fs.files.set(filePath, unreadable);
+    leaveLock(fs, { prior: original });
+    const outcome = await store.recoverNamed('alice-polish');
+    expect([outcome.restored, outcome.copies.length, outcome.dropped]).toEqual([false, 1, 0]);
+    expect(recoveryTitles(fs)).toEqual(['Polish 6.11 (local recovery)']);
+    expect(fs.files.get(filePath)).toEqual(unreadable);
+    expect(leftovers(fs)).toEqual([]);
   });
 
   it('a retry after an interrupted recovery reuses the copy it already saved: no duplicate', async () => {

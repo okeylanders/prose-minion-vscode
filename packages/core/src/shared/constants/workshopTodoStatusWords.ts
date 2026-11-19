@@ -37,7 +37,8 @@ export const WORKSHOP_TODO_STATUS_ROW_REFUSAL_WORDS: Readonly<Record<WorkshopTod
   'session-not-found': 'Not saved: the session is gone.',
   'session-busy': 'Not saved: another window was writing the session.',
   'sessions-unavailable': 'Not saved: saved sessions could not be reached.',
-  'write-failed': 'Not saved: the session could not be written.'
+  'write-failed': 'Not saved: the session could not be written.',
+  'receipt-not-saved': 'Not saved: this conversation could not be saved first, so the session was left as it was.'
 });
 
 /** A row whose target could not be read to tell (D8b): re-checked, never replayed. */

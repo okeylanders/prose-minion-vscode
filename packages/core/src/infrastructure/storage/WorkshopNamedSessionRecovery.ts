@@ -14,6 +14,11 @@
  * | no    | no    | yes  | `next` kept                                         |
  * | other |       |      | every copy differing from the saved file kept       |
  *
+ * **The last readable checkpoint is never discarded** (PR #289): a prior is
+ * superseded only when the saved file decoded. Beside a saved file that is
+ * present but unreadable, the prior is kept as a "(local recovery)" session
+ * and the unreadable file is left where it is, never overwritten.
+ *
  * - **Copies first, then the restore, then the lock.** Every copy is read
  *   and every "(local recovery)" session saved (`saveNamed`, a
  *   non-overwriting create, as D6c) before anything in the lock moves, so a
@@ -163,7 +168,8 @@ export function planRecovery(
       return { keep: differs(n, saved.session) ? [n] : [], unfinishedDelete: false };
     }
     if (saved.present && p && !n) {
-      return { keep: [], unfinishedDelete: false };
+      // Superseded only when the saved file decoded; beside an unreadable one, the prior is the last readable copy (PR #289).
+      return { keep: saved.session ? [] : [p], unfinishedDelete: false };
     }
     if (!saved.present && p && n) {
       return { keep: differs(n, p.session) ? [n] : [], restore: p, unfinishedDelete: false };

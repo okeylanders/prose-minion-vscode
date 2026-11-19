@@ -55,15 +55,19 @@ export function roomWithTodos(count = 3): { session: WorkshopSessionService; tod
 
 let sent = 0;
 
-/** One host reply, completed as the room completes it. */
+/** One host reply, or a guest's joining reply, completed as the room completes it. */
 export function replyWith(
   session: WorkshopSessionService,
   content: string,
-  options: { todoStatus?: WorkshopReplyTodoStatusContext; log?: jest.Mock } = {}
+  options: { todoStatus?: WorkshopReplyTodoStatusContext; log?: jest.Mock; guest?: 'cliff' } = {}
 ): WorkshopTurn {
   sent += 1;
   const requestId = `todo-req-${sent}`;
-  session.beginPersonaMessage(requestId, `Message ${sent}.`);
+  if (options.guest) {
+    session.beginPersonaGuestJoin(options.guest, requestId, `Message ${sent}.`);
+  } else {
+    session.beginPersonaMessage(requestId, `Message ${sent}.`);
+  }
   const turn = completeWorkshopRun({
     session,
     requestId,

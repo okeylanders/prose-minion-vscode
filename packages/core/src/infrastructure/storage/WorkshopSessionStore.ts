@@ -476,9 +476,8 @@ export class WorkshopSessionStore {
       if (decoded?.session.sessionId === sessionId) {
         return { ...cached, ...decoded };
       }
-      // Missing or manually replaced: fall back to a full conflict-aware
-      // resolution instead of writing through a stale path.
-      this.namedSessionPaths.delete(cacheKey);
+      // Replaced by another session: resolve afresh. Missing: keep the name, the lock a missing read takes (D6e).
+      if (decoded) { this.namedSessionPaths.delete(cacheKey); }
     }
     // Exact actions are not browser listing/search: scan all named files so an
     // existing session beyond the browser's safety window cannot be shadowed

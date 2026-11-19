@@ -56,7 +56,8 @@ export const WORKSHOP_TODO_STATUS_WRITE_REFUSAL_WORDS: Readonly<Record<WorkshopT
   'session-not-found': 'the session is gone',
   'session-busy': 'another window was writing the session',
   'sessions-unavailable': 'saved sessions could not be reached just then',
-  'write-failed': 'the session could not be saved'
+  'write-failed': 'the session could not be saved',
+  'receipt-not-saved': 'this conversation could not be saved first, so the session was left as it was'
 });
 
 /** A row left `saving` across a restart, with no stamp in the file (D8a): counted as not written. */

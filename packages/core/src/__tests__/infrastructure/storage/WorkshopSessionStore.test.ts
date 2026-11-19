@@ -6,6 +6,7 @@ import {
   WorkshopSessionStore,
   WorkshopSessionStoreUnavailableError
 } from '@/infrastructure/storage/WorkshopSessionStore';
+import { WorkshopNamedSessionUnconfirmedError } from '@/infrastructure/storage/WorkshopNamedSessionLock';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
   WorkshopPersistedSessionV2
@@ -612,8 +613,9 @@ describe('WorkshopSessionStore', () => {
     const store = createStore();
     await store.writeCurrent(session('only-current', 'Current'));
 
-    await expect(store.readNamed('only-current')).resolves.toBeUndefined();
-    await expect(store.deleteNamed('only-current')).rejects.toBeInstanceOf(WorkshopNamedSessionNotFoundError);
+    // Never named, and no lock to read it under: not found, never decided missing (D6e; PR #289).
+    await expect(store.readNamed('only-current')).rejects.toBeInstanceOf(WorkshopNamedSessionUnconfirmedError);
+    await expect(store.deleteNamed('only-current')).rejects.toBeInstanceOf(WorkshopNamedSessionUnconfirmedError);
     await expect(store.readCurrent()).resolves.toMatchObject({ sessionId: 'only-current' });
   });
 

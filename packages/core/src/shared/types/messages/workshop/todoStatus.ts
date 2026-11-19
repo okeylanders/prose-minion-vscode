@@ -63,7 +63,9 @@ export const WORKSHOP_TODO_STATUS_WRITE_REFUSALS = [
   /** The store or the workspace was not available. */
   'sessions-unavailable',
   /** The write failed. */
-  'write-failed'
+  'write-failed',
+  /** The room holding the receipt could not be saved first, so no saved session was written (D5). */
+  'receipt-not-saved'
 ] as const;
 export type WorkshopTodoStatusWriteRefusal = typeof WORKSHOP_TODO_STATUS_WRITE_REFUSALS[number];
 

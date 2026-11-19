@@ -34,7 +34,7 @@ const HOST = { kind: 'host' } as const;
 const phrase = (reason: WorkshopTodoTrailerDropReason, count = 1): string => `${count} dropped (${WORKSHOP_TRAILER_DROP_REASON_WORDS[reason]})`;
 
 function writesFor(session: ReturnType<typeof roomWithTodos>['session'], port: FakeSavedSessionTodos, log = jest.fn()) {
-  return new WorkshopTodoStatusWrites(session, port, { isSessionOperationPending: () => false, waitForSessionOperations: async () => undefined },
+  return new WorkshopTodoStatusWrites(session, port, { isSessionOperationPending: () => false, waitForSessionOperations: async () => undefined, checkpointTodoReceipt: async () => ({ ok: true }) },
     { settleRoom: jest.fn(), log });
 }
 

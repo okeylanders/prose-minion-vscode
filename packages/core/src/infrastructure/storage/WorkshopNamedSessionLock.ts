@@ -15,6 +15,10 @@
  *   recovery is the writer's, explicit (`WorkshopNamedSessionRecovery`).
  * - **Claim and publish are renames into and out of the owner's folder,**
  *   never over anything; renames never create a missing parent (D6d).
+ * - **A claimed checkpoint is never lost** (PR #289): when a publish fails
+ *   and putting `prior.json` back fails too, the owner keeps its lock and
+ *   every copy, marks its owner file `abandoned-<token>.json` (a rename,
+ *   which never creates), and answers recovery-required; Recover… restores.
  * - **Release is the owner's alone,** three steps none of which can touch
  *   another owner's lock: detach `<token>/` to `.<name>.retired-<id>` and
  *   delete that; delete `owner-<token>.json`; delete the lock directory
@@ -41,8 +45,8 @@ const decoder = new TextDecoder();
 const ATTEMPTS = 3;
 /** A lock beside a session file. Group 1 is the saved name. */
 const LOCK = /^\.([^/\\]+\.json)\.lock$/;
-/** An owner file inside a lock. Group 1 is the token. */
-const OWNER = /^owner-([A-Za-z0-9-]+)\.json$/;
+/** An owner file inside a lock, live or marked abandoned by its owner. Group 1 is the token. */
+const OWNER = /^(?:owner|abandoned)-([A-Za-z0-9-]+)\.json$/;
 
 /** The host's words for a write refused because another window holds the file (D6a). */
 export const WORKSHOP_NAMED_SESSION_BUSY_WORDS = 'This saved session is being written by another window. Try again in a moment.';
@@ -54,6 +58,18 @@ export class WorkshopNamedSessionBusyError extends Error {
   constructor() {
     super(WORKSHOP_NAMED_SESSION_BUSY_WORDS);
     this.name = 'WorkshopNamedSessionBusyError';
+  }
+}
+
+/** The host's words for a session not found where no lock could confirm it is gone (D6e; PR #289). */
+export const WORKSHOP_NAMED_SESSION_UNCONFIRMED_WORDS =
+  'This saved session wasn\'t found. If another window is saving it, try again in a moment.';
+
+/** Not found, and not decided missing: no name was known to lock. Never detaches a room (D6e). */
+export class WorkshopNamedSessionUnconfirmedError extends Error {
+  constructor() {
+    super(WORKSHOP_NAMED_SESSION_UNCONFIRMED_WORDS);
+    this.name = 'WorkshopNamedSessionUnconfirmedError';
   }
 }
 
@@ -108,6 +124,8 @@ interface Held {
   readonly token: string;
   /** The owner's own folder: `.<name>.lock/<token>/`. */
   readonly own: string;
+  /** The claimed checkpoint could not be put back: the lock and every copy stay for Recover… (PR #289). */
+  keep?: boolean;
 }
 
 export class WorkshopNamedSessionLock {
@@ -140,11 +158,13 @@ export class WorkshopNamedSessionLock {
         throw this.errors.changed();
       }
       await this.claim(held, target.filePath, target.sessionId);
-      await this.hooks.beforePublish?.();
-      await this.fileSystem.rename(staged, target.filePath, { overwrite: false }).catch(async (error: unknown) => {
-        await this.fileSystem.rename(path.join(held.own, 'prior.json'), target.filePath, { overwrite: false }).catch(() => undefined);
+      try {
+        await this.hooks.beforePublish?.();
+        await this.fileSystem.rename(staged, target.filePath, { overwrite: false });
+      } catch (error) {
+        await this.putBack(held, target.filePath, target.sessionId);
         throw error instanceof Error ? error : new Error('The saved Workshop session could not be written.');
-      });
+      }
     });
   }
 
@@ -158,7 +178,10 @@ export class WorkshopNamedSessionLock {
    * name the session may be under (a lock holding its copy, or one whose
    * copy cannot be read, and the name the reader knew), read again. A held
    * lock answers busy and a stale one recovery-required, by throwing.
-   * Returns what a read found, or undefined: missing.
+   * Returns what a read found, or undefined: missing, decided only under a
+   * lock. With no name to lock (none known, no lock of this session), a
+   * second read that still finds nothing is never missing: it answers
+   * `WorkshopNamedSessionUnconfirmedError`, "not found, try again" (PR #289).
    */
   async decideMissing<T>(folder: string, sessionId: string, knownFileName: string | undefined, reread: () => Promise<T | undefined>): Promise<T | undefined> {
     const checked = new Set<string>();
@@ -168,12 +191,14 @@ export class WorkshopNamedSessionLock {
         names.add(knownFileName);
       }
       if (names.size === 0) {
-        // No lock to take: read again, then make sure no lock of this session came meanwhile.
+        if (checked.size > 0) {
+          return undefined; // Every name it could be under was read again under its lock.
+        }
         const again = await reread();
-        if (again !== undefined || (await this.namesOf(folder, sessionId, checked)).size === 0) {
+        if (again !== undefined) {
           return again;
         }
-        continue;
+        throw new WorkshopNamedSessionUnconfirmedError();
       }
       for (const name of names) {
         checked.add(name);
@@ -254,8 +279,30 @@ export class WorkshopNamedSessionLock {
       return await work(held);
     } finally {
       await this.hooks.beforeRelease?.();
-      await this.release(held, filePath);
+      if (!held.keep) {
+        await this.release(held, filePath);
+      }
     }
+  }
+
+  /**
+   * Put a claimed checkpoint back at its saved name, never over anything.
+   * When that fails the checkpoint lives only in `prior.json`: the lock and
+   * every copy are kept (no release), the owner file is marked abandoned so
+   * the lock reads recovery-required at once, and Recover… restores it.
+   */
+  private async putBack(held: Held, filePath: string, sessionId: string): Promise<void> {
+    if (await this.fileSystem.rename(path.join(held.own, 'prior.json'), filePath, { overwrite: false }).then(() => true, () => false)) {
+      return;
+    }
+    // Marked by a rename, which never creates: an owner whose lock is already gone marks nothing in another's.
+    const owner = path.join(held.lock, `owner-${held.token}.json`);
+    if (!(await this.fileSystem.rename(owner, path.join(held.lock, `abandoned-${held.token}.json`), { overwrite: false }).then(() => true, () => false))) {
+      return;
+    }
+    held.keep = true;
+    this.log.appendLine(`${LOG} A claimed checkpoint could not be put back; the lock and its copies are kept for recovery.`);
+    throw new WorkshopNamedSessionRecoveryRequiredError(sessionId);
   }
 
   /** Move the saved file into the owner's folder as `prior.json`, never over anything; missing when it is not there. */
@@ -264,6 +311,7 @@ export class WorkshopNamedSessionLock {
       throw this.errors.missing(sessionId);
     });
     if (!(await this.stillHeld(held))) {
+      await this.putBack(held, filePath, sessionId);
       throw new WorkshopNamedSessionBusyError();
     }
   }
@@ -357,6 +405,10 @@ export class WorkshopNamedSessionLock {
     const now = this.now().getTime();
     const times: Array<number | undefined> = [];
     for (const owner of ownerFiles) {
+      if (owner.startsWith('abandoned-')) {
+        times.push(0); // Its owner gave it up: stale at once.
+        continue;
+      }
       const read = await this.readJson(path.join(lock, owner));
       const at = read.kind === 'json' ? (read.value as { at?: unknown }).at : undefined;
       times.push(typeof at === 'number' && Number.isFinite(at) ? at : read.kind === 'none' ? undefined : read.mtime);

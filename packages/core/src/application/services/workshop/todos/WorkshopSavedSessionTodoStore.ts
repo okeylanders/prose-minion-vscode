@@ -85,8 +85,10 @@ export class WorkshopSavedSessionTodoStore implements WorkshopSavedSessionTodos 
       found = await this.store.readNamedWithRecovery(sessionId);
     } catch (error) {
       // A file another window holds under its claim (D6a) cannot be read just now: not available, never missing.
+      // Not found where no lock could confirm it gone (D6e): an unknown session to the persona, which only asked to read.
       const name = error instanceof Error ? error.name : '';
-      return this.readRefused(sessionId, name === 'WorkshopSessionStoreUnavailableError' || /^WorkshopNamedSession(Busy|RecoveryRequired)Error$/.test(name) ? 'store-unavailable' : 'unreadable-session');
+      return this.readRefused(sessionId, name === 'WorkshopNamedSessionUnconfirmedError' ? 'unknown-session'
+        : name === 'WorkshopSessionStoreUnavailableError' || /^WorkshopNamedSession(Busy|RecoveryRequired)Error$/.test(name) ? 'store-unavailable' : 'unreadable-session');
     }
     if (!found) {
       return this.readRefused(sessionId, 'unknown-session');
