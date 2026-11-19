@@ -5,6 +5,7 @@ import {
 } from '@/utils/workshopReplyControls';
 import { resolveWorkshopReplyMemory } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import type { WorkshopReplyEditsContext } from '@/application/services/workshop/fileEdits/WorkshopReplyEditOffers';
+import type { WorkshopReplyTodoStatusContext } from '@/application/services/workshop/todos/WorkshopReplyTodoStatus';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { stageWorkshopReactionRestart } from '@/application/services/workshop/reactions/WorkshopReactionDeliveryStage';
 import {
@@ -79,6 +80,8 @@ export interface WorkshopToolSidePassEvents {
   fileEdits?: (reply: string, signal: AbortSignal) => Promise<WorkshopReplyEditsContext | undefined>;
   /** Whether personas may react (ADR 2026-11-07 Q8); a synthesis answers no writer message, so its trailer is `no-target`. */
   reactionsOpen?: () => boolean;
+  /** The synthesis's to-do status frames, resolved before completion (ADR 2026-11-19 D5); the pass awaits their writes as its tail. */
+  todoStatus?: (reply: string) => Promise<WorkshopReplyTodoStatusContext | undefined>;
   settled: (requestId: string) => void;
 }
 
@@ -297,11 +300,13 @@ export class RunWorkshopToolSidePass {
         )
         : undefined;
       const replyFileEdits = events.fileEdits && await events.fileEdits(synthesis.content, controller.signal);
+      const todoStatus = events.todoStatus && await events.todoStatus(synthesis.content);
       let memorySave: Promise<void> | undefined;
       const synthesisTurn = completeWorkshopRun({
         memory: replyMemory,
         memoryAutoSavesInRoom: events.memoryAutoSavesInRoom,
         fileEdits: replyFileEdits,
+        todoStatus,
         reactionsOpen: events.reactionsOpen?.(),
         memoryAutoSave: events.memoryAutoSave && ((turn, indexes) => {
           memorySave = events.memoryAutoSave!(turn, indexes);
@@ -363,6 +368,7 @@ export class RunWorkshopToolSidePass {
       if (memorySave) {
         await memorySave;
       }
+      await todoStatus?.settled?.();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       if (error instanceof AgentRunUnavailableError && !reportAdopted) {

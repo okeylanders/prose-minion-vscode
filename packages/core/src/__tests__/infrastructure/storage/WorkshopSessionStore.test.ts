@@ -6,6 +6,7 @@ import {
   WorkshopSessionStore,
   WorkshopSessionStoreUnavailableError
 } from '@/infrastructure/storage/WorkshopSessionStore';
+import { WorkshopNamedSessionUnconfirmedError } from '@/infrastructure/storage/WorkshopNamedSessionLock';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
   WorkshopPersistedSessionV2
@@ -529,7 +530,8 @@ describe('WorkshopSessionStore', () => {
     });
     // The live-room path was established by Save; updating it must not parse
     // every other full checkpoint on every autosave.
-    expect(fileSystem.readDirectoryCalls).toBe(1);
+    // One listing more than before: the lock looks for a recovery marker of this file before it is taken (ADR 2026-11-19 D6d).
+    expect(fileSystem.readDirectoryCalls).toBe(2);
     expect([...fileSystem.files.keys()].filter((filePath) =>
       filePath.endsWith('.json') && !filePath.endsWith('.summary.json')
     )).toHaveLength(1);
@@ -572,7 +574,8 @@ describe('WorkshopSessionStore', () => {
     const write = fileSystem.writeFile.bind(fileSystem);
     jest.spyOn(fileSystem, 'writeFile').mockImplementation(async (filePath, data) => {
       await write(filePath, data);
-      if (filePath.startsWith(`${fullPath}.tmp-`)) {
+      // The rewrite stages inside its owner's folder in the file's lock (ADR 2026-11-19 D6b, D6d).
+      if (filePath.startsWith(path.join(sessionsDirectory, `.${saved.fileName}.lock`)) && filePath.endsWith(`${path.sep}next.json`)) {
         fileSystem.setJson(fullPath, incoming);
       }
     });
@@ -610,8 +613,9 @@ describe('WorkshopSessionStore', () => {
     const store = createStore();
     await store.writeCurrent(session('only-current', 'Current'));
 
-    await expect(store.readNamed('only-current')).resolves.toBeUndefined();
-    await expect(store.deleteNamed('only-current')).rejects.toBeInstanceOf(WorkshopNamedSessionNotFoundError);
+    // Never named, and no lock to read it under: not found, never decided missing (D6e; PR #289).
+    await expect(store.readNamed('only-current')).rejects.toBeInstanceOf(WorkshopNamedSessionUnconfirmedError);
+    await expect(store.deleteNamed('only-current')).rejects.toBeInstanceOf(WorkshopNamedSessionUnconfirmedError);
     await expect(store.readCurrent()).resolves.toMatchObject({ sessionId: 'only-current' });
   });
 

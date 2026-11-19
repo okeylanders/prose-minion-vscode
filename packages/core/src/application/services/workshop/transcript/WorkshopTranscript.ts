@@ -52,6 +52,7 @@
  * Pure and deterministic: the caller supplies the turns and the clock.
  */
 
+import { workshopTodoReceiptHeading } from '@shared/constants/workshopTodoStatusWords';
 import {
   citationDisplayLabel,
   type ModelScope,
@@ -187,7 +188,7 @@ export function projectWorkshopTranscript(
       return [];
     }
     const marked = meta.bookmarkedTurnIds?.has(turn.id) ? { ...entry, bookmarked: true as const } : entry;
-    return [...pending.splice(0), withFileEdits(withModel(marked, turn), turn)];
+    return [...pending.splice(0), withFileEdits(withModel(marked, turn), turn), ...todoReceipt(entry, turn)];
   });
   // A slice whose turns all print nothing still closes the transcript.
   entries.push(...pending);
@@ -256,6 +257,13 @@ function withFileEdits(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): Work
       state: proposal.state
     }))
   };
+}
+
+/** A reply's to-do receipt as one event line of counts, never a to-do's text or a session's title (ADR 2026-11-19 D8). */
+function todoReceipt(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): WorkshopTranscriptEventEntry[] {
+  return entry.kind === 'reply' && turn.todoStatusChanges?.length
+    ? [{ kind: 'event', turnId: turn.id, timestamp: turn.timestamp, text: workshopTodoReceiptHeading(turn.todoStatusChanges) }]
+    : [];
 }
 
 /**

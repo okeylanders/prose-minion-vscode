@@ -1105,3 +1105,21 @@
   color: var(--pm-text-2);
   font-size: 12px;
 }
+
+/* Recover…'s notice (ADR 2026-11-19 D6e): a refused save or open left mid-save, and recovery's answer. */
+[data-pm-surface="workshop"] .pm-ws-recovery-notice {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: min(520px, calc(100vw - 48px));
+  padding: 10px 14px;
+  color: var(--pm-text);
+  background: var(--pm-surface-3);
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-card);
+}

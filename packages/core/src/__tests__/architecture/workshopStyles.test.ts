@@ -26,6 +26,7 @@ const WORKSHOP_STYLE_IMPORTS = [
   './styles/workshop/session.css',
   './styles/workshop/memory.css',
   './styles/workshop/fileEdits.css',
+  './styles/workshop/todoReceipt.css',
   './styles/workshop/pinnedContext.css',
   './styles/workshop/reactions.css',
   './styles/workshop/editOffers.css',

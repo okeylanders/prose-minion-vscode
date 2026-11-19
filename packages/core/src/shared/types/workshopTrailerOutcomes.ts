@@ -1,7 +1,7 @@
 /**
- * What became of a persona reply's memory-note and file-edit trailers
- * (ADR 2026-11-17 D13): counts and closed reasons, recorded on the reply
- * turn when it commits, so the persona can be told with its next message.
+ * What became of a persona reply's memory-note, file-edit and to-do status
+ * trailers (ADR 2026-11-17 D13; ADR 2026-11-19 D7): counts and closed
+ * reasons, recorded on the reply turn when it commits, so the persona can be told with its next message.
  *
  * **Every frame the persona wrote is counted once.** For each kind, `cards`
  * (and `refused`) plus every drop's `count` is the number of frames of that
@@ -49,7 +49,37 @@ export const WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS = [
 ] as const;
 export type WorkshopFileEditTrailerDropReason = typeof WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS[number];
 
-export type WorkshopTrailerDropReason = WorkshopMemoryTrailerDropReason | WorkshopFileEditTrailerDropReason;
+/**
+ * A to-do status frame that decoded, dropped when it was settled against the
+ * session it named (ADR 2026-11-19 D3, D7). `session-unreadable` covers a
+ * file that does not decode and one that needs recovery;
+ * `sessions-unavailable` a store or workspace that is not.
+ */
+export const WORKSHOP_TODO_SETTLEMENT_TRAILER_DROP_REASONS = [
+  'session-not-found',
+  'session-unreadable',
+  'sessions-unavailable',
+  'todo-not-found',
+  'todo-not-open'
+] as const;
+
+/**
+ * Every reason a to-do status frame can be dropped for, in the order a
+ * record lists them. `off` never occurs: the trailer has no setting (D2).
+ */
+export const WORKSHOP_TODO_TRAILER_DROP_REASONS = [
+  'malformed',
+  'misplaced',
+  'duplicate',
+  'over-cap',
+  ...WORKSHOP_TODO_SETTLEMENT_TRAILER_DROP_REASONS
+] as const;
+export type WorkshopTodoTrailerDropReason = typeof WORKSHOP_TODO_TRAILER_DROP_REASONS[number];
+
+export type WorkshopTrailerDropReason =
+  | WorkshopMemoryTrailerDropReason
+  | WorkshopFileEditTrailerDropReason
+  | WorkshopTodoTrailerDropReason;
 
 /** How many frames were dropped for one reason; `count` is at least 1. */
 export interface WorkshopTrailerDrop<Reason extends WorkshopTrailerDropReason> {
@@ -75,8 +105,20 @@ export interface WorkshopFileEditTrailerOutcomes {
   dropped: WorkshopTrailerDrop<WorkshopFileEditTrailerDropReason>[];
 }
 
-/** A side is present only when the reply carried that kind of trailer; a reply with neither has no record. */
+/**
+ * The reply's to-do status frames (ADR 2026-11-19 D7): the receipt rows made
+ * at commit, in any state (`applied` or `saving`), and the frames dropped.
+ * A saved row's later state is the row's, never this record's.
+ */
+export interface WorkshopTodoTrailerOutcomes {
+  changes: number;
+  /** At most one entry per reason, in `WORKSHOP_TODO_TRAILER_DROP_REASONS`' order. */
+  dropped: WorkshopTrailerDrop<WorkshopTodoTrailerDropReason>[];
+}
+
+/** A side is present only when the reply carried that kind of trailer; a reply with none has no record. */
 export interface WorkshopTrailerOutcomes {
   memory?: WorkshopMemoryTrailerOutcomes;
   fileEdits?: WorkshopFileEditTrailerOutcomes;
+  todos?: WorkshopTodoTrailerOutcomes;
 }

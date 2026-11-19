@@ -36,7 +36,7 @@ function checkpoint(id: string, text: string): WorkshopPersistedSessionV2 {
   };
 }
 
-function setup(fs = new MemoryFileSystem()) {
+function setup(fs = new MemoryFileSystem(), idPrefix = 'room') {
   const log: LogSink = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
   const store = new WorkshopSessionStore(fs, workspace, log, now);
   const session = new WorkshopSessionService(() => now().getTime());
@@ -50,7 +50,7 @@ function setup(fs = new MemoryFileSystem()) {
   const settings = { getWriterProfile: () => DEFAULT_WORKSHOP_WRITER_PROFILE } as WorkshopConversationSettingsService;
   const coordinator = new WorkshopSessionPersistenceCoordinator(
     session, assistant, settings, new WorkshopSessionTimeService({ now }), store, WORKSHOP_NO_ROOM_SEED, log,
-    { now, idFactory: () => `room-${++nextId}`, ensureAssistantReady: ready }
+    { now, idFactory: () => `${idPrefix}-${++nextId}`, ensureAssistantReady: ready }
   );
   return { fs, store, session, coordinator, log, ready };
 }
@@ -264,7 +264,9 @@ describe('Workshop persistence with the real store', () => {
     // Committed recovery files must be announced even when the load rolls back.
     expect(coordinator.consumeRecoveryNotices()).toHaveLength(dirty ? 1 : 0);
     await coordinator.openNamed('named');
-    expect((await store.list()).sessions.length - afterFailure).toBe(dirty ? 1 : 0);
+    // ADR 2026-11-19 D6c: a refused save keeps its work at once; promotion adds no second copy of it.
+    expect((await store.list()).sessions.length - afterFailure).toBe(0);
+    expect((await store.list()).sessions.some((entry) => entry.title === 'named (local recovery)')).toBe(dirty);
     expect(session.getExcerpt()?.text).toBe('Incoming');
     expect(coordinator.beginInteraction()?.artifact).toBe('session_resume');
   });
@@ -397,10 +399,12 @@ describe('Workshop persistence with the real store', () => {
     coordinator.markDirty('author edit');
     await coordinator.flush();
     expect((await store.readCurrent())?.rollingCleanHash).toBeUndefined();
-    const restarted = setup(fs);
-    await restarted.coordinator.initialize();
+    // ADR 2026-11-19 D6c: the refused save already kept the edit in its own recovery session.
     const recovery = (await store.list()).sessions.find((entry) => entry.sessionId !== 'named')!;
     expect((await store.readNamed(recovery.sessionId))?.workshop.excerpt?.text).toBe('Unsaved local edit');
+    const restarted = setup(fs, 'restart');
+    await restarted.coordinator.initialize();
+    expect((await store.list()).sessions.some((entry) => entry.sessionId === recovery.sessionId)).toBe(true);
     expect(restarted.session.getExcerpt()?.text).toBe('Incoming');
   });
 
@@ -575,8 +579,13 @@ describe('Workshop persistence with the real store', () => {
       expect((await coordinator.initialize()).restored).toBe(false);
       expect(coordinator.isCurrentCheckpointProtected()).toBe(true);
     } else {
-      await expect(coordinator.refreshNamedSession()).rejects.toThrow('Recovery disk full');
-      expect(session.getExcerpt()?.text).toBe('Local work');
+      // ADR 2026-11-19 D6c: the refused flush already kept the local work in its own recovery session,
+      // so the reveal needs no second copy and promotes.
+      const kept = (await store.list()).sessions.find((entry) => entry.sessionId !== 'named')!;
+      expect((await store.readNamed(kept.sessionId))?.workshop.excerpt?.text).toBe('Local work');
+      expect(await coordinator.refreshNamedSession()).toBe(true);
+      expect(session.getExcerpt()?.text).toBe('Incoming');
+      return;
     }
     await coordinator.flush();
     expect(fs.json(currentPath)).toEqual(before);

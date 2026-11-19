@@ -325,6 +325,15 @@ export interface PromptBudgets {
     characters: number;
     headerAllowanceCharacters: number;
   }>;
+  /** A persona's to-do status trailers (ADR 2026-11-19 D3, D10), held to the prompt by `todoStatusPromptSync.test.ts`. */
+  readonly workshopTodoStatus: Readonly<{
+    /** Changes one reply may make; a frame past them is dropped as `over-cap`. */
+    changesPerReply: number;
+    /** Saved sessions one reply may touch; a frame naming one more is `over-cap`. */
+    savedSessionsPerReply: number;
+    /** An optional note's bound: one line. */
+    noteCharacters: number;
+  }>;
   readonly guestJoinSnapshot: Readonly<{
     turns: number;
     characters: number;
@@ -904,6 +913,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   workshopSelectedText: { words: 5_000, characters: 40_000, previewCharacters: 120, snapshots: 8, pushIntervalMs: 150 },
   workshopThread: { pageTurns: 100, pageBytes: 1024 * 1024, jumpPages: 3 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
+  workshopTodoStatus: { changesPerReply: 20, savedSessionsPerReply: 10, noteCharacters: 160 },
   guestJoinSnapshot: {
     turns: 100,
     characters: 100_000,

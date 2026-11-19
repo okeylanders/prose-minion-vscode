@@ -30,6 +30,7 @@ import { WorkshopReactionOnlyLine } from './reactions/WorkshopReactionOnlyLine';
 import { WorkshopWriterMessage } from './reactions/WorkshopWriterMessage';
 import { WorkshopMemoryReceiptLine, WorkshopTurnMemoryCards, workshopSaveToMemoryAction, type WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
 import { WorkshopTurnFileEdits } from './fileEdits/WorkshopTurnFileEdits';
+import { WorkshopTodoReceipt, type WorkshopTodoReceiptControls } from './todos/WorkshopTodoReceipt';
 import { WorkshopTurnFoot } from './editOffers/WorkshopTurnFoot';
 import type { WorkshopEditOfferControls } from './editOffers/WorkshopEditOfferChip';
 import { WorkshopEditOfferAnswerLine, WorkshopEditOfferRequestLine } from './editOffers/WorkshopEditOfferLines';
@@ -110,6 +111,8 @@ interface WorkshopTurnBubbleProps {
   memory?: WorkshopTurnMemoryControls;
   /** A persona's suggested file edits (ADR 2026-11-05 D9). */
   fileEdits?: WorkshopFileEditControls;
+  /** A persona's to-do receipt and its Undo (ADR 2026-11-19 D8). */
+  todoReceipt?: WorkshopTodoReceiptControls;
   /** The reaction corner: its cluster and the "Add reaction" palette (ADR 2026-11-07 D8). */
   reactions?: WorkshopReactionControls;
   /** The footer's edit-offer chips, and the press's and answer's lines (ADR 2026-11-10 U1–U4). */
@@ -395,7 +398,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onToggleBookmark,
   modelLabel = workshopRawModelId,
   memory,
-  fileEdits,
+  fileEdits, todoReceipt,
   reactions,
   editOffers
 }) => {
@@ -789,6 +792,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
         )}
         {memory && <WorkshopTurnMemoryCards turn={turn} controls={memory} />}
         {fileEdits && <WorkshopTurnFileEdits turn={turn} controls={fileEdits} />}
+        {todoReceipt && <WorkshopTodoReceipt turn={turn} controls={todoReceipt} />}
         <div className="pm-ws-turn-actions">
           <button type="button" onClick={() => onCopy(turn.content, turn)}>
             <Icon name="copy" size={13} /> Copy

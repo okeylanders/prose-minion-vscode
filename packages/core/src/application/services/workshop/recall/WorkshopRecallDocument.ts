@@ -122,6 +122,8 @@ export interface WorkshopRecallTodo {
   readonly stale: boolean;
   /** Epoch ms. */
   readonly createdAt: number;
+  /** Who closed it, when a persona did (ADR 2026-11-19 D9): the persona and the room's name, never the note. */
+  readonly closedBy?: { readonly personaLabel: string; readonly sessionTitle: string };
 }
 
 export interface WorkshopRecallDocument {
@@ -180,7 +182,8 @@ function recallTodo(
     ...(position !== undefined ? { position } : {}),
     excerptVersion: todo.source.excerptVersion,
     stale: todo.source.excerptVersion !== finalExcerptVersion,
-    createdAt: todo.createdAt
+    createdAt: todo.createdAt,
+    ...(todo.closedBy ? { closedBy: { personaLabel: todo.closedBy.personaLabel, sessionTitle: todo.closedBy.sessionTitle } } : {})
   };
 }
 

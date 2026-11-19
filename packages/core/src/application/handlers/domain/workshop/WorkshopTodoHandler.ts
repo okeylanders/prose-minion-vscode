@@ -1,7 +1,22 @@
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { LogSink } from '@/platform';
-import { MessageType, WorkshopTodoActionMessage } from '@messages';
+import {
+  MessageType,
+  WorkshopTodoActionMessage,
+  type WorkshopTodoStatusUndoRefusal,
+  type WorkshopTodoStatusUndoResultMessage,
+  type WorkshopUndoTodoStatusMessage,
+  type WorkshopUndoTodoStatusPayload
+} from '@messages';
+import type { MessageTransport } from '@handlers/MessageHandlerContracts';
+import { WorkshopTodoStatusWrites, type WorkshopTodoStatusWritesRoom } from '@/application/services/workshop/todos/WorkshopTodoStatusWrites';
+import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
+import type { WorkshopReplyTodoStatusContext } from '@/application/services/workshop/todos/WorkshopReplyTodoStatus';
+import {
+  WORKSHOP_TODO_STATUS_UNDO_REFUSAL_WORDS,
+  WORKSHOP_TODO_STATUS_UNDONE_WORDS
+} from '@shared/constants/workshopTodoStatusWords';
 import type {
   WorkshopMutationRouteRegistrar,
   WorkshopRoomEffects
@@ -12,19 +27,92 @@ type WorkshopTodoEffects = Pick<
   'postSessionState' | 'markDirty' | 'reportError'
 >;
 
-/** Owns the Workshop task-list mutation route and its action grammar. */
+/**
+ * Owns the Workshop task-list mutation route and its action grammar, and
+ * the writer's Undo of a persona's change (ADR 2026-11-19 D8): ids only in,
+ * an answer by `requestId` out. A persona's saved-session writes are its
+ * `writes`' (`WorkshopTodoStatusWrites`).
+ */
 export class WorkshopTodoHandler {
   constructor(
     private readonly session: WorkshopSessionService,
     private readonly outputChannel: LogSink,
-    private readonly effects: WorkshopTodoEffects
-  ) {}
+    private readonly effects: WorkshopTodoEffects,
+    saved: { port?: WorkshopSavedSessionTodos; room?: WorkshopTodoStatusWritesRoom; postMessage?: MessageTransport } = {}
+  ) {
+    this.postMessage = saved.postMessage;
+    // A persona's saved-session to-do writes and the writer's Undo (ADR 2026-11-19 D5–D8).
+    this.writes = saved.port && saved.room && new WorkshopTodoStatusWrites(session, saved.port, saved.room, {
+      settleRoom: (reason) => { this.effects.markDirty(reason); this.effects.postSessionState(); },
+      log: (line) => this.outputChannel.appendLine(`[WorkshopTodoHandler] ${line}`)
+    });
+  }
+
+  private readonly writes?: WorkshopTodoStatusWrites;
+  private readonly postMessage?: MessageTransport;
+
+  /** A reply's to-do status context, resolved before completion (D5); none for a reply with no frame. */
+  replyTodoStatus(reply: string): Promise<WorkshopReplyTodoStatusContext | undefined> {
+    return this.writes?.context(reply) ?? Promise.resolve(undefined);
+  }
+
+  /** Settle rows left `saving` (D8a); nothing without the port. */
+  reconcileTodoStatus(): Promise<void> {
+    return this.writes?.reconcile() ?? Promise.resolve();
+  }
 
   registerRoutes(
     router: MessageRouter,
     registerMutation: WorkshopMutationRouteRegistrar
   ): void {
     registerMutation(MessageType.WORKSHOP_TODO_ACTION, this.handleTodoAction.bind(this));
+    registerMutation(MessageType.WORKSHOP_UNDO_TODO_STATUS, this.handleUndoTodoStatus.bind(this), undefined,
+      (_reason, message: WorkshopUndoTodoStatusMessage) => {
+        const payload = undoPayloadOf(message.payload);
+        if (payload) {
+          this.answerUndo(payload, { ok: false, reason: 'session-operation' });
+        }
+      });
+  }
+
+  async handleUndoTodoStatus(message: WorkshopUndoTodoStatusMessage): Promise<void> {
+    const payload = undoPayloadOf(message.payload);
+    if (!payload) {
+      this.effects.reportError(WORKSHOP_TODO_STATUS_UNDO_REFUSAL_WORDS['invalid-request']);
+      return;
+    }
+    let outcome: { ok: true } | { ok: false; reason: WorkshopTodoStatusUndoRefusal };
+    try {
+      outcome = this.writes ? await this.writes.undo(payload.turnId, payload.index, payload.roomRevision) : { ok: false, reason: 'failed' };
+    } catch (error) {
+      this.outputChannel.appendLine(`[WorkshopTodoHandler] To-do undo failed (turnId=${payload.turnId}, index=${payload.index}, reason=${error instanceof Error ? error.name : 'unknown'})`);
+      outcome = { ok: false, reason: 'failed' };
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopTodoHandler] To-do undo ${outcome.ok ? 'applied' : `refused reason=${outcome.reason}`} (turnId=${payload.turnId}, index=${payload.index})`
+    );
+    if (outcome.ok) {
+      this.effects.markDirty('persona to-do change undone');
+      this.effects.postSessionState();
+    }
+    this.answerUndo(payload, outcome);
+  }
+
+  private answerUndo(payload: WorkshopUndoTodoStatusPayload, outcome: { ok: true } | { ok: false; reason: WorkshopTodoStatusUndoRefusal }): void {
+    const answer: WorkshopTodoStatusUndoResultMessage = {
+      type: MessageType.WORKSHOP_TODO_STATUS_UNDO_RESULT,
+      source: 'extension.workshop',
+      payload: {
+        requestId: payload.requestId,
+        turnId: payload.turnId,
+        index: payload.index,
+        ok: outcome.ok,
+        ...(outcome.ok ? {} : { reason: outcome.reason }),
+        message: outcome.ok ? WORKSHOP_TODO_STATUS_UNDONE_WORDS : WORKSHOP_TODO_STATUS_UNDO_REFUSAL_WORDS[outcome.reason]
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage?.(answer);
   }
 
   async handleTodoAction(message: WorkshopTodoActionMessage): Promise<void> {
@@ -100,4 +188,17 @@ export class WorkshopTodoHandler {
       );
     }
   }
+}
+
+function undoPayloadOf(value: unknown): WorkshopUndoTodoStatusPayload | undefined {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+  const payload = value as Record<string, unknown>;
+  return typeof payload.requestId === 'string' && payload.requestId.length > 0 && payload.requestId.length <= 200
+    && typeof payload.roomRevision === 'number' && Number.isSafeInteger(payload.roomRevision)
+    && typeof payload.turnId === 'string' && payload.turnId.length > 0 && payload.turnId.length <= 200
+    && typeof payload.index === 'number' && Number.isSafeInteger(payload.index) && payload.index >= 0
+    ? { requestId: payload.requestId, roomRevision: payload.roomRevision, turnId: payload.turnId, index: payload.index }
+    : undefined;
 }

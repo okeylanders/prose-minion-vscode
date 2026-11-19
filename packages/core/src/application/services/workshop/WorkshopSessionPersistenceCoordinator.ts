@@ -72,6 +72,7 @@ import {
 } from '@/application/services/workshop/fileEdits/WorkshopFileEditCheckpoint';
 import { cleanRollingCheckpoint, isCleanRollingCheckpoint, withoutRollingProvenance } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import { hasSameWorkshopRecoveryContent } from '@/application/services/workshop/WorkshopSessionRecoveryEquality';
+import { isWorkshopNamedSaveRefusal, WorkshopNamedSessionRecoveryCopy } from '@/application/services/workshop/WorkshopNamedSessionRecoveryCopy';
 import type {
   WorkshopImportedRetainedHistory
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
@@ -82,7 +83,7 @@ import type {
   WorkshopRoomSeed,
   WorkshopRoomSeedReport
 } from '@/application/services/workshop/pinnedContext/WorkshopRoomSeed';
-import type { WorkshopSessionStart } from '@messages';
+import type { WorkshopSessionStart, WorkshopTurn } from '@messages';
 import {
   WorkshopBranchNotOpenedError,
   WorkshopBranchRefusedError,
@@ -284,6 +285,8 @@ export class WorkshopSessionPersistenceCoordinator {
   private lastSessionSaveStatus?: WorkshopSessionSaveStatus;
   // These notices describe files already committed, so hydration/rollback must not erase them.
   private savedRecoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][] = [];
+  /** A refused named save's own recovery session, one per refusal episode (ADR 2026-11-19 D6c). */
+  private readonly recoveryCopy = new WorkshopNamedSessionRecoveryCopy(this.store, () => this.idFactory(), () => normalizedIso(this.now()), (notice) => this.savedRecoveryNotices.push(notice), this.outputChannel);
   private acceptedWorkspaceRoot?: string;
   private initialUnavailableReason?: Extract<
     WorkshopSessionStoreAvailability,
@@ -333,6 +336,12 @@ export class WorkshopSessionPersistenceCoordinator {
       ? { available: true, liveSessionId: this.identity.sessionId }
       : { available: false, reason: availability.reason };
   }
+
+  /** The open room's ids and title, and a saved session's change on the operation queue (ADR 2026-11-19 D2, D6). */
+  openRoomIdentity = () => ({ sessionId: this.identity.sessionId, title: this.identity.title, namedSessionId: this.activeNamedSessionId });
+  runSavedSessionOperation = <T>(operation: () => Promise<T>): Promise<T> => this.serializeSessionOperation(operation);
+  /** Explicit recovery of a session left mid-save, on the session-operation queue (D6e). */
+  recoverNamed = (sessionId: string) => this.serializeSessionOperation(() => this.store.recoverNamed(sessionId));
 
   hasPendingWrite(): boolean {
     return this.dirtyRevision > this.writtenRevision || this.pendingRollingMirror !== undefined;
@@ -624,15 +633,20 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   /**
-   * The durable `applying` checkpoint for one file-edit card (ADR 2026-11-05
-   * D8): ordered behind autosaves and room operations, it writes every
-   * recoverable checkpoint now (`current.json`; the named file first when
-   * the room is named) and reads each back. `{ ok: true }` only when each
-   * holds that exact card in `applying`; any failed write, unavailable store,
-   * mirror failure, moved generation, active run or read-back that differs
-   * is `{ ok: false }`, and the caller writes nothing to the document.
+   * The durable `applying` checkpoint for one file-edit card (ADR 2026-11-05 D8): behind autosaves and room
+   * operations it writes every recoverable checkpoint (the named file first, then `current.json`) and reads each
+   * back. `{ ok: true }` only when each holds the card in `applying`; otherwise the caller writes nothing.
    */
   checkpointFileEdit(generation: number, turnId: string, index: number): Promise<WorkshopFileEditCheckpointResult> {
+    return this.checkpointHolding(generation, (turns) => workshopCheckpointHoldsApplying(turns, turnId, index), `File edit checkpoint turn=${turnId} index=${index}`);
+  }
+
+  /** The same durable checkpoint for a reply's `saving` to-do receipt, before any saved session is written (ADR 2026-11-19 D5). */
+  checkpointTodoReceipt(generation: number, turnId: string): Promise<WorkshopFileEditCheckpointResult> {
+    return this.checkpointHolding(generation, (turns) => turns?.find((turn) => turn.id === turnId)?.todoStatusChanges?.some((row) => row.state === 'saving') === true, `To-do receipt checkpoint turn=${turnId}`);
+  }
+
+  private checkpointHolding(generation: number, holds: (turns: readonly WorkshopTurn[] | undefined) => boolean, label: string): Promise<WorkshopFileEditCheckpointResult> {
     const live = () => generation === this.session.readRoomRevision();
     const work = Promise.all([this.autosaveQueue, this.initializePromise ?? this.initialize(), this.sessionOperationQueue])
       .then(async (): Promise<WorkshopFileEditCheckpointResult> => {
@@ -642,7 +656,6 @@ export class WorkshopSessionPersistenceCoordinator {
         if (!this.store.availability().available || this.currentCheckpointError || this.workspaceChangedSinceLoad()) {
           return { ok: false, reason: 'store-unavailable' };
         }
-        const holds = (turns: Parameters<typeof workshopCheckpointHoldsApplying>[0]) => workshopCheckpointHoldsApplying(turns, turnId, index);
         if (!holds(this.session.readRoomLedger())) {
           return { ok: false, reason: 'not-applying' };
         }
@@ -686,8 +699,7 @@ export class WorkshopSessionPersistenceCoordinator {
       .catch((): WorkshopFileEditCheckpointResult => ({ ok: false, reason: 'checkpoint-failed' }));
     this.autosaveQueue = work.then(() => undefined);
     return work.then((result) => {
-      this.outputChannel.appendLine(`[WorkshopSessionPersistence] File edit checkpoint turn=${turnId} index=${index} ` +
-        `${result.ok ? 'held' : `refused reason=${result.reason}`}`);
+      this.outputChannel.appendLine(`[WorkshopSessionPersistence] ${label} ${result.ok ? 'held' : `refused reason=${result.reason}`}`);
       return result;
     });
   }
@@ -823,6 +835,7 @@ export class WorkshopSessionPersistenceCoordinator {
       this.activeNamedSessionId = persisted.session.sessionId;
       await this.mirrorNamedCheckpoint(persisted.session, options.beforeReplacingCurrent);
       this.acceptedNamedCheckpoint = persisted.session;
+      this.recoveryCopy.end();
       this.localWorkPending = false;
       this.currentCheckpointError = undefined;
       this.pendingRollingMirror = undefined;
@@ -854,7 +867,7 @@ export class WorkshopSessionPersistenceCoordinator {
     incoming: WorkshopPersistedSessionV2,
     accepted?: WorkshopPersistedSessionV2
   ): Promise<void> {
-    if (hasSameWorkshopRecoveryContent(local, incoming) ||
+    if (hasSameWorkshopRecoveryContent(local, incoming) || this.recoveryCopy.holds(local) ||
         (accepted && hasSameWorkshopRecoveryContent(local, accepted))) {
       return undefined;
     }
@@ -1613,7 +1626,7 @@ export class WorkshopSessionPersistenceCoordinator {
       scope: persisted.scope,
       excerptLabel: persisted.excerptLabel,
       excerptIdentity: persisted.excerptIdentity,
-      preview: persisted.preview,
+      preview: persisted.preview, ...(persisted.lock ? { lock: persisted.lock } : {}),
       degradedConversationKeys: isCurrent ? this.getDegradedConversationKeys() : undefined
     };
   }
@@ -1814,12 +1827,17 @@ export class WorkshopSessionPersistenceCoordinator {
     } catch (namedError) {
       // Authority and durability are separate: preserve live work without
       // advancing the named baseline or reporting the named save as complete.
+      // D6c: a refused room keeps its work in its own recovery session, never relying on current.json.
+      const kept = isWorkshopNamedSaveRefusal(namedError) ? await this.recoveryCopy.keep(checkpoint, checkpoint.title).then(() => undefined, (error: unknown) => error) : undefined;
       try {
         await this.store.writeCurrent({ ...checkpoint, ...this.identity });
       } catch (rollingError) {
         throw new Error(
           `${this.errorMessage(namedError)} Local recovery also failed: ${this.errorMessage(rollingError)}`
         );
+      }
+      if (kept) {
+        throw new Error(`${this.errorMessage(namedError)} Its recovery session could not be written: ${this.errorMessage(kept)}`);
       }
       throw namedError;
     }
@@ -1833,6 +1851,7 @@ export class WorkshopSessionPersistenceCoordinator {
     savedRevision: number
   ): Promise<void> {
     this.acceptedNamedCheckpoint = checkpoint;
+    this.recoveryCopy.end();
     this.writtenRevision = Math.max(this.writtenRevision, savedRevision);
     if (this.dirtyRevision <= savedRevision) {
       this.localWorkPending = false;

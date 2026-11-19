@@ -40,6 +40,8 @@ export interface WorkshopStoredSessionSummary {
   preview?: string;
   /** Storage identity for diagnostic display only; never an absolute path. */
   fileName: string;
+  /** A lock beside the file (ADR 2026-11-19 D6e): the row reads busy or recovery-required. */
+  lock?: 'busy' | 'recovery-required';
 }
 
 export interface WorkshopSessionSearchIndexV1 {

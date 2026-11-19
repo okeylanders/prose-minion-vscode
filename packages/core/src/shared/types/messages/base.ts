@@ -164,6 +164,11 @@ export enum MessageType {
   WORKSHOP_SET_EXCERPT_RESOURCE = 'workshop_set_excerpt_resource',
   WORKSHOP_RUN_CONTEXT_WIZARD = 'workshop_run_context_wizard',
   WORKSHOP_TODO_ACTION = 'workshop_todo_action',
+  // A persona's to-do status change undone by the writer, and what it came to (ADR 2026-11-19 D8).
+  WORKSHOP_UNDO_TODO_STATUS = 'workshop_undo_todo_status',
+  WORKSHOP_TODO_STATUS_UNDO_RESULT = 'workshop_todo_status_undo_result',
+  WORKSHOP_RECOVER_NAMED_SESSION = 'workshop_recover_named_session',
+  WORKSHOP_NAMED_SESSION_RECOVERY_RESULT = 'workshop_named_session_recovery_result',
   WORKSHOP_SET_TURN_BOOKMARK = 'workshop_set_turn_bookmark',
   WORKSHOP_RENAME_BOOKMARK = 'workshop_rename_bookmark',
   WORKSHOP_RENAME_BOOKMARK_RESULT = 'workshop_rename_bookmark_result',
