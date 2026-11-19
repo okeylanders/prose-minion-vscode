@@ -140,6 +140,14 @@ summary.pm-context-budget-row:hover .pm-context-budget-chev {
   color: var(--pm-faint);
 }
 
+/* The open panel scrolls inside itself: it sits in the composer's dock, so a
+   long breakdown and "In context" list never run past the window. */
+.pm-context-budget-body {
+  max-height: min(60vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .pm-context-budget-details {
   display: grid;
   grid-template-columns: 1fr 1fr;
