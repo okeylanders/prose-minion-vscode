@@ -13,6 +13,7 @@
  * - Logs carry no slug a persona wrote, no subject and no lens text.
  */
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -201,7 +202,8 @@ describe('what the thread and the turn ceiling say of a lens call', () => {
       offProjectMemory,
       library,
       unavailableHelpReference,
-      unavailableFileHistory
+      unavailableFileHistory,
+      unavailableProjectLocations
     ).create({
       requestId: 'host-request',
       excerptVersion: session.getExcerptVersion(),

@@ -12,6 +12,7 @@
  * *Alice*, with made-up names.
  */
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import * as path from 'path';
 import { FileType } from '@/platform';
@@ -67,7 +68,8 @@ function wire() {
     offProjectMemory,
     repository,
     unavailableHelpReference,
-    unavailableFileHistory
+    unavailableFileHistory,
+    unavailableProjectLocations
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),

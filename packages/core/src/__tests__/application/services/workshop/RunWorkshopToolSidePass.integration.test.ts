@@ -1,4 +1,5 @@
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { emptyPinnedContextServices } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextTestServices';
 import { unusedBookmarkBrowser, unusedMemoryDrafts, unusedSelectedText } from '@/__tests__/application/handlers/domain/workshop/workshopBookmarkBrowserTestPort';
@@ -135,7 +136,8 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
       projectMemory,
       noProjectLenses,
       unavailableHelpReference,
-      unavailableFileHistory
+      unavailableFileHistory,
+      unavailableProjectLocations
     );
     const settings = createFakeSettings();
     const fileSystem = createFakeFileSystem();

@@ -6,6 +6,7 @@
  */
 
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { createHash } from 'crypto';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
@@ -72,7 +73,8 @@ describe('a persona\'s read of several files', () => {
       offProjectMemory,
       noProjectLenses,
       unavailableHelpReference,
-      unavailableFileHistory
+      unavailableFileHistory,
+      unavailableProjectLocations
     ).create({
       requestId: 'host-request',
       excerptVersion: session.getExcerptVersion(),
