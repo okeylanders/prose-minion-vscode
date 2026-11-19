@@ -913,7 +913,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-11-19 on `epic/workshop-persona-tools-close`: the Workshop Persona Tools epic with PR #290 (C2) merged in, before it goes to `main`):
-- __SUITES__ suites / __TESTS__ tests / 59 snapshots
+- 966 suites / 13,690 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -2194,9 +2194,9 @@ anything that writes a named session file:
 (`infrastructure/storage/`; D6a–D6e). Every write that replaces or removes
 a named session file goes through it: Save, autosave, rename, delete, a
 Rewind's commit, a file edit's checkpoint, the persona's write and Undo,
-and a recovery copy's update. A new named-session writer joins it;
-`boundaries.test.ts` holds that only the store renames over a named
-session file.
+and a recovery copy's update. A new named-session writer joins it. (D6a
+planned a `boundaries.test.ts` guard that only the store renames over a
+named session file; none was built, so nothing enforces this yet.)
 
 - **The lock is `.<name>.lock/`,** taken by renaming a staged directory,
   never over anything. It holds `owner-<token>.json` and the owner's own

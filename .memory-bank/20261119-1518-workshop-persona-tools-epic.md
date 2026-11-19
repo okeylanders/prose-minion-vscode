@@ -42,12 +42,13 @@ Every other default was the orchestrator's and is Okey's to overturn. Q1–Q4 st
 
 - **`AGENTS.md` had none of the epic.** Only two message-tree lines had been added. New sections: Workshop To-do Status (with the named-session lock), Workshop File History, Context Path Suggestions and the `locations.*` Family. The trees, the Platform port list, the domain-mirroring table and the route-owner count (24 → 25, `WorkshopLocationsProposalHandler`) were updated, and the Trailer Outcomes and Helper Agent sections point to the new kinds and task.
 - **The Lightbox passage linear-time test failed CI twice** (#286 at `1e024cdb`, #289 at `5a4b81f5`), both on unrelated heads, passing on re-run. Two Low notes on the same test already existed (2026-11-03, 2026-11-05); a Medium one supersedes them.
+- **One planned guard is missing.** ADR D6a says `boundaries.test.ts` holds that only the store renames over a named session file. No such check exists (the lock has its own tests: `WorkshopNamedSessionLock.test.ts`, `WorkshopNamedSessionOverlappingWrites.test.ts`). `AGENTS.md` says so; adding it is a small follow-up.
 - **"Checked from memory"** items (Git API at the 1.82 floor, the `:(literal)` pathspec through `log`, the "Path not known by git" wording, multi-window and crash behavior, the sheet's look, a real helper call) are each a step in the live pass.
 
 ## Verification
 
 - Full `npx jest --maxWorkers=50%` on the epic at `b9b8d302` (before C2) plus documentation only: **962 suites / 13,643 tests / 59 snapshots**, all passing.
-- __C2_LINE__
+- The same run with PR #290 (C2, head `f299273a`) merged in, as the epic will stand: **966 suites / 13,690 tests / 59 snapshots**, all passing. This is the `AGENTS.md` inventory.
 - Each slice's PR records typecheck clean, lint 0 errors, no `from 'vscode'` in core, no new file over 500 lines.
 - No live model call, no Extension Development Host, no second window: that is the live pass.
 

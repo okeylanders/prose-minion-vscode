@@ -54,7 +54,7 @@ windows; a real crash; the receipt and notices on screen.
    **Expect:** the snapshot frame now carries `Id:` lines; the reply ends
    with a `<prose-minion-todo-status>` trailer that is never shown; a
    receipt card under the reply reads "Marked 1 to-do: 1 done", with the
-   to-do, "current room" and Undo. The to-do reads "Done · by *persona* in
+   to-do, the room's name and Undo. The to-do reads "Done · by *persona* in
    *room title*".
 2. - [ ] Ask her to dismiss a to-do in *Polish 1* (she should call
    `transcript.todos` first and copy its ids).
