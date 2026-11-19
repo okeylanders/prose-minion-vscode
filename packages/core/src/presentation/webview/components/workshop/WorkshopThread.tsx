@@ -2,6 +2,7 @@
 
 import type { WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
 import type { WorkshopFileEditControls } from './fileEdits/WorkshopFileEditCard';
+import type { WorkshopTodoReceiptControls } from './todos/WorkshopTodoReceipt';
 import type { WorkshopReactionControls } from './reactions/WorkshopTurnReactions';
 import type { WorkshopEditOfferControls } from './editOffers/WorkshopEditOfferChip';
 import * as React from 'react';
@@ -78,6 +79,8 @@ interface WorkshopThreadProps {
   memory?: WorkshopTurnMemoryControls;
   /** A persona's suggested file edits (ADR 2026-11-05 D9). */
   fileEdits?: WorkshopFileEditControls;
+  /** A persona's to-do receipt and its Undo (ADR 2026-11-19 D8). */
+  todoReceipt?: WorkshopTodoReceiptControls;
   /** Reaction chips and the palette (ADR 2026-11-07 D8). */
   reactions?: WorkshopReactionControls;
   /** A reply's edit-offer chips and their lines (ADR 2026-11-10 U1–U4). */
@@ -125,6 +128,7 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   modelsBeforeWindow,
   memory,
   fileEdits,
+  todoReceipt,
   reactions,
   editOffers
 }) => {
@@ -214,6 +218,7 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
               modelLabel={modelLabel}
               memory={memory}
               fileEdits={fileEdits}
+              todoReceipt={todoReceipt}
               reactions={threadReactions}
               editOffers={editOffers}
             />

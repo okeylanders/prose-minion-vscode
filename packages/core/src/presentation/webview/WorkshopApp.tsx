@@ -52,6 +52,7 @@ import { NO_TURN_REACTIONS, type WorkshopReactionControls } from '@components/wo
 import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
 import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import { useWorkshopFileEdits } from '@hooks/domain/workshop/useWorkshopFileEdits';
+import { useWorkshopTodoReceiptControls } from '@components/workshop/todos/useWorkshopTodoReceiptControls';
 import { useWorkshopFileEditControls } from '@components/workshop/fileEdits/useWorkshopFileEditControls';
 import { useWorkshopEditOffers } from '@hooks/domain/workshop/useWorkshopEditOffers';
 import { useWorkshopEarlierTurns } from '@hooks/domain/workshop/useWorkshopEarlierTurns';
@@ -201,6 +202,7 @@ import './styles/workshop/contextBreakdown.css';
 import './styles/workshop/session.css';
 import './styles/workshop/memory.css';
 import './styles/workshop/fileEdits.css';
+import './styles/workshop/todoReceipt.css';
 import './styles/workshop/pinnedContext.css';
 import './styles/workshop/reactions.css';
 import './styles/workshop/editOffers.css';
@@ -621,6 +623,7 @@ export const WorkshopApp: React.FC = () => {
   ]);
 
   const fileEditControls = useWorkshopFileEditControls({ fileEdits, locked: roomMutationLocked, running: workshop.isRunning });
+  const todoReceiptControls = useWorkshopTodoReceiptControls({ roomKey, ...(workshop.sessionReady ? { roomRevision: workshop.roomRevision } : {}), locked: roomMutationLocked });
   const reactionControls = React.useMemo<WorkshopReactionControls>(() => ({
     reactionsOf: (turnId) => reactions.reactionsByTurn.get(turnId) ?? NO_TURN_REACTIONS,
     disabled: roomMutationLocked,
@@ -1455,6 +1458,7 @@ export const WorkshopApp: React.FC = () => {
             onToggleBookmark={bookmarks.setTurnBookmark}
             memory={memoryControls}
             fileEdits={fileEditControls}
+            todoReceipt={todoReceiptControls}
             reactions={reactionControls}
             editOffers={editOfferControls}
             modelOptions={modelsSettings.modelOptions}
