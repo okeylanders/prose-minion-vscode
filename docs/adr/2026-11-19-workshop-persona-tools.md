@@ -1,0 +1,975 @@
+# ADR 2026-11-19: Workshop Persona Tools: Closing To-dos, a File's Git History, and the Project's Context Paths
+
+**Status:** Proposed (Slice 0). T1, G1–G3 and L1–L3 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief was wrong; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
+**Date:** 2026-11-19
+**Epic:** [Workshop Persona Tools](../../.todo/epics/epic-workshop-persona-tools-2026-11-19/README.md)
+(its "Defaults taken" table is binding here)
+**Ideas as filed:**
+[Personas Close To-dos, Here and in Saved Sessions](../../.todo/features/feature-workshop-recall-todo-closeout/README.md) (item A, Okey's #30),
+[Personas Read a File's Git History](../../.todo/features/feature-workshop-file-git-history/README.md) (item B, #28),
+[Set Up the Project's Context Paths](../../.todo/features/feature-helper-project-locations/README.md) (item C, #26)
+**Amends:**
+- [ADR 2026-11-05: A Helper Agent for Small Tasks](2026-11-05-helper-agent.md)
+  **D6** (`project-locations`). Item C builds it, with a second way in (a
+  persona), a button instead of an unstated start, a scan that sends
+  folders rather than every name, one checker shared with the persona path,
+  and a write that refuses a group the workspace overrides. Decisions
+  D20–D27 below. That ADR's text is not edited; this ADR is the amendment.
+**Extends:**
+- [ADR 2026-11-17: Everyday Conveniences, Round Two](2026-11-17-everyday-conveniences-round-two.md)
+  D13–D15 (trailer outcomes: two new kinds), D16 (what a new capability
+  operation joins) and D10 (`<page>`, for `locations.folders`).
+- [ADR 2026-11-14: Everyday Conveniences](2026-11-14-everyday-conveniences.md)
+  D1, D2 and D2a: the shared window fit, and "every hint makes progress"
+  (`history.diff`).
+- [ADR 2026-10-05: Session Recall](2026-10-05-workshop-session-transcript-recall.md):
+  recall stays read-only. Item A writes through a port of its own.
+- [ADR 2026-09-30: Rewind and Branch](2026-09-30-workshop-rewind-and-branch.md):
+  the named-session compare-and-swap, which item A writes through.
+- [ADR 2026-11-05: Persona File Edits](2026-11-05-workshop-persona-file-edits.md):
+  a persona proposes and the writer applies (item C's card); Apply is a
+  host action keyed by a stored proposal.
+- [ADR 2026-07-30: Session Codec Evolution](2026-07-30-workshop-session-codec-evolution.md):
+  every session field here is optional and additive, with no
+  `schemaVersion` bump.
+- [ADR 2026-11-18: Workshop Context Breakdown](2026-11-18-workshop-context-breakdown.md):
+  every new frame is tallied where it is placed.
+
+Paths below that start `core/` are under `packages/core/src/`; `app/` is
+`apps/vscode-extension/`.
+
+## Context
+
+**A, as the code stands:**
+- To-dos are `WorkshopTodoItem`s (`core/shared/types/messages/workshop/session.ts`),
+  status `open`, `completed` or `dismissed`. The open room changes one only
+  through `WorkshopSessionService.setTodoStatus` → `WorkshopTodoLedger.setStatus`,
+  from the writer's actions in `WorkshopTodoHandler`.
+- `buildWorkshopTodoEvidence` (`WorkshopPromptBuilder.ts`) writes
+  `<workshop-todo-snapshot>`: the host's open, current-excerpt to-dos, at
+  most `PROMPT_BUDGETS.workshopTodos.items` (12) within 12,000 characters.
+  No block shows an id. The frame ends "only explicit writer UI actions
+  change task state." It is built for the host only; a guest's plan passes
+  `buildTodoEvidence: () => undefined`. It is tallied as `todos.snapshot`.
+- `transcript.todos` lists saved sessions' to-dos, each "id … in session …"
+  (`WorkshopRecallTodoList.ts`). The live room is never in recall's corpus
+  (`WorkshopRecallCorpusSelection.ts`); naming its id is `unknown-session`
+  with `liveSession: true`.
+- **Recall's document cache is keyed by `updatedAt`**
+  (`WorkshopRecallDocumentCache.get(sessionId, updatedAt, source)`). A file
+  rewritten with the same `updatedAt` would be served stale.
+- **Every named-session write already compares and swaps.**
+  `WorkshopSessionStore.updateNamed(sessionId, session, expected)` reads the
+  file, refuses unless it equals `expected` (`hasSameWorkshopCheckpoint`,
+  a deep equality of the decoded checkpoint), stages the new file, and
+  checks again in its own `beforeCommit`, immediately before the rename. A
+  mismatch is `WorkshopNamedSessionChangedError` ("The saved Workshop
+  session changed on disk. Reopen the session to load the saved version
+  before saving again.").
+- **The coordinator's every named save passes its accepted checkpoint as
+  `expected`.** `WorkshopSessionPersistenceCoordinator` holds
+  `acceptedNamedCheckpoint`: what the room last read or wrote. Autosave,
+  Save, rename of the open room, a Rewind's commit and a file edit's
+  checkpoint all reach `updateNamed` with it (`writeNamedWithRollingRecovery`,
+  `requireAcceptedNamedCheckpoint`). On a refusal it writes the room to
+  `current.json` instead, never the named file, and reports the save as an
+  error. When the webview loads, `refreshNamedSession` compares the named
+  file with the accepted checkpoint; if they differ it promotes the file and
+  keeps any differing local work as a new session, "… (local recovery)"
+  (`preserveDisplacedLocalSession`).
+- `WorkshopSessionStore.renameNamed` is the precedent for changing a saved
+  session that is not the open room: read, change, `updateNamed(id,
+  changed, read)`, with `updatedAt` moved to now. It refuses a file that
+  needs recovery (`assertNamedSessionNeedsNoRecoveryBeforeMutation`). The
+  coordinator's `renameNamed` sends the open room's own id to
+  `updateActiveNamedSession` instead.
+- `rewindWorkshopSession` drops to-dos whose source turn is cut. It never
+  changes a kept to-do's status.
+- A memory card saved by "Save and tell me" commits with the reply in
+  state `saving`, and its file write runs after the commit
+  (`memoryAutoSave`, `WorkshopRunCompletion.ts`). It is the precedent for a
+  reply's write that cannot sit inside the room's synchronous commit.
+
+**B, as the code stands:**
+- Nothing touches git. `diff` is not installed, directly or transitively;
+  the only diff code in `node_modules` is Jest's `diff-sequences`, a dev
+  dependency. Core's runtime dependencies are `dompurify`, `marked`,
+  `p-limit`, `react`, `react-dom`, `saxes` and `wink-pos-tagger`
+  (`packages/core/package.json`).
+- `app/package.json` declares no `capabilities` block. VS Code reads a
+  missing `capabilities.untrustedWorkspaces` as `{ supported: false }`: the
+  extension is not activated in Restricted Mode. It declares no
+  `extensionDependencies`. The engine floor is `^1.82.0`.
+- No Git extension typings (`git.d.ts`) are in the repository.
+- The pieces to build on exist: `workshopExcerptFileEditDocument`
+  (the excerpt's file, authorized as Re-read from file authorizes it),
+  `findConfiguredResource` (`WorkshopConfiguredResourceLookup.ts`),
+  `fitWorkshopReadToWindow` and `workshopReadEvidenceTokens`
+  (`reads/WorkshopReadWindowFit.ts`), `splitBlankLineParagraphs`
+  (`core/utils/blankLineParagraphs.ts`), and `CONTEXT_SOURCE_KINDS`
+  (`core/shared/types/messages/inferenceContext.ts`).
+
+**C, as the code stands:**
+- `ContextResourceResolver` (`core/infrastructure/context/`) reads each
+  group's patterns **from settings only** (`getPatternsForGroup`, a
+  comma-split of `proseMinion.contextPaths.<group>`), normalizes each
+  (`normalizePattern`: strips `./`, **every leading `/` and a `workspace:`
+  prefix**, and makes a bare name `**/name`), and runs
+  `Workspace.findFiles` per root and pattern with a fixed exclude
+  (`node_modules`, `.git`, `.svn`, `.hg`, `dist`, `out`). Only `.md` and
+  `.txt` files count; symbolic links and escapes are refused.
+- Its catalog (`collectResources`) keeps a file in its first group only.
+  `listCandidates` does not; it reports every group's matches.
+- Its `browse` mode logs a failed pattern by text. `browse-counts` and
+  `authoritative` log counts only.
+- `SettingsStore` (`core/platform/SettingsStore.ts`) has `get` and
+  `update`; `update` writes `ConfigurationTarget.Global`
+  (`VsCodeSettingsStore`). It cannot say where a value comes from.
+- **The context-path settings declare no `scope`,** so they are `window`
+  scope: a workspace's `.vscode/settings.json` overrides a user-level value.
+- The helper has one task, `memory-draft` (`HELPER_TASK_POLICIES`,
+  `core/infrastructure/api/services/helper/`), with its bounds in
+  `PROMPT_BUDGETS.helper['memory-draft']` and its prompt section in
+  `resources/system-prompts/helper/10-memory-draft.md`.
+- `ConfigurationHandler.ts` (627 lines) and `SettingsOverlay.tsx` (739)
+  are past 500 lines.
+
+**The shared seams:**
+- `extractWorkshopReplyControls` (`core/utils/workshopReplyControls.ts`,
+  381 lines) reads every trailer in one pass (`TRAILER_TAGS`).
+- Trailer outcomes: `WorkshopTrailerOutcomes`
+  (`core/shared/types/workshopTrailerOutcomes.ts`: `memory`, `fileEdits`),
+  `workshopTrailerDropReason` (`trailerOutcomes/WorkshopTrailerDropReasons.ts`,
+  a `never` default), `buildWorkshopTrailerOutcomes`
+  (`WorkshopTrailerOutcomesRecord.ts`), the frame
+  (`WorkshopTrailerOutcomesFrame.ts`) and its words
+  (`core/shared/constants/workshopTrailerOutcomeWords.ts`), tallied as
+  `room.trailer-outcomes`.
+- The grammar: `WORKSHOP_CAPABILITY_OPERATIONS` (18 operations, seven
+  families, `core/shared/types/workshopCapabilities.ts`),
+  `workshopCapabilityFamily`, `WORKSHOP_CAPABILITY_FIELD_POLICY`
+  (`WorkshopCapabilityXmlCodec.ts`), `WORKSHOP_NATIVE_CALL_FIELDS`
+  (`WorkshopNativeToolCallTranslator.ts`), `PUBLISHABLE_CAPABILITY_OPERATIONS`
+  (`WorkshopRoomAudience.ts`), `workshopCapabilityPage`
+  (`WorkshopCapabilityPaging.ts`).
+- `WORKSHOP_TOOL_USE_PROMPT_PATHS` (`WorkshopPersonaSystemPrompt.ts`) and
+  `WORKSHOP_CONTEXT_TALLY_PIECES` (`WorkshopContextTally.ts`). A read's
+  manifest rows are counted under the `requested` part by kind
+  (`READ_IN_NAMES`, `WorkshopContextBreakdown.ts`).
+
+## Where the code differs from the notes and the brief
+
+Checked before deciding; each is settled below.
+
+1. **The saving side already compares the file** (A, default 4). Every
+   named write is `updateNamed` against the room's accepted checkpoint,
+   checked twice, the second time at the commit. So another window's later
+   Save of a session the persona changed is refused, and that window's work
+   goes to its `current.json`, never over the change. Nothing is added to
+   the saving side; D6 writes through the same path and tests the case.
+2. **Recall's cache sees a change only when `updatedAt` moves** (A). The
+   write moves it, as `renameNamed` does (D6).
+3. **The live room is never a "saved session"** (A). Its own id names the
+   open room (D2).
+4. **The snapshot is the host's, open and current-excerpt only, 12 at
+   most** (A). A guest sees no open-room id; an omitted to-do has none
+   shown. Neither changes here (D4).
+5. **A saved session's write cannot sit inside the reply's commit** (A,
+   T1). It is file I/O. The open room's change does land in the commit; a
+   saved session's row commits as `saving` and is written just after, as a
+   memory card's auto-save is (D5).
+6. **The Git extension's typings are not in the repository** (B). D12
+   states exactly what is relied on, and avoids what the 1.82 floor may
+   lack (`LogOptions.skip`). The port therefore takes a count, not a page;
+   core pages (D11).
+7. **"Git's text conversions never run" is too strong** (B). Core computes
+   the diff, so diff drivers and external diff tools never run. But the Git
+   extension's `show` reads a blob through `git show`, which may apply a
+   textconv the repository configures. Workspace trust is the boundary that
+   covers it (D16).
+8. **The resolver cannot check patterns it was not configured with** (C). It
+   needs a seam that takes patterns as an argument (D22).
+9. **The resolver strips a leading `/` and `workspace:` silently** (C). The
+   checker refuses unsafe patterns before any normalization (D22).
+10. **A comma splits the setting** (C). A pattern holding `,` (a brace set
+    such as `{Cast,People}/**`) cannot be stored. The checker refuses it.
+11. **A user-level write does nothing where the workspace sets the group**
+    (C, L1). The settings are window-scoped. Apply would report success and
+    change nothing here, while changing every other project. The port gains
+    a read of where a value comes from, and such a group is shown and not
+    offered (D25).
+12. **The catalog hides a file's second group** (C). Overlap is counted from
+    per-group matches, never the catalog (D22).
+13. **No new context-tally piece is needed.** The to-do ids ride
+    `todos.snapshot`; the two new outcome kinds ride the one
+    `<workshop-trailer-outcomes>` frame, `room.trailer-outcomes`. A history
+    diff's manifest row is counted under `requested` once `READ_IN_NAMES`
+    names its kind (D15).
+14. **Files past 500 lines:** `WorkshopPersonaCapability.ts` (1,078),
+    `WorkshopSessionStateV1Shape.ts` (1,122), `WorkshopSessionService.ts`,
+    `WorkshopSessionPersistenceCoordinator.ts` (1,887),
+    `WorkshopSessionStore.ts` (1,181), `ConfigurationHandler.ts`,
+    `SettingsOverlay.tsx` and `promptBudgets.ts` (1,060). Each feature
+    brings its own modules; those files gain only the call into them.
+    `promptBudgets.ts` is the one table every bound lives in, and its sync
+    tests read it; it takes the new keys, as every epic's have.
+
+## Item A: personas close to-dos
+
+### D1. T1: apply at once, with Undo (Okey's)
+
+A persona's status changes take effect without a confirm step. The writer
+sees a receipt under the reply, with Undo on each change.
+
+### D2. The trailer
+
+```xml
+<prose-minion-todo-status>
+  <session>current</session>
+  <todo>todo-3-1763500000000</todo>
+  <status>completed</status>
+  <note>Fixed in the polish pass.</note>
+</prose-minion-todo-status>
+```
+
+- **One frame, one change.** `<session>` is `current` (the open room) or a
+  saved session's id, copied from a `transcript.todos` result. The open
+  room's own session id also names the open room, never a saved file.
+- `<todo>` is an id copied from the snapshot or a `transcript.todos` result.
+  `<status>` is `completed` or `dismissed`. `<note>` is optional: one line,
+  at most `noteCharacters`.
+- **Read in `extractWorkshopReplyControls`' one pass,** its tag in
+  `TRAILER_TAGS`, its redaction in `REDACTIONS`, and both tags reserved in
+  `RESERVED_PERSONA_FRAME` (`core/utils/workshopPromptFrames.ts`). Trailers
+  at the tail only, as the others.
+- **Host and guest replies.** Not in a pressed edit offer's answer, whose
+  `finalReplyCheck` admits file-edit trailers only.
+- **No setting.** The trailer is always read. Its grammar is
+  `workshop-personas/todo-status.md`, in every persona's chain, listed in
+  `WORKSHOP_TOOL_USE_PROMPT_PATHS`, and held to its codec and bounds by
+  `todoStatusPromptSync.test.ts`. `transcript-recall-capability.md` gains
+  one sentence pointing to it beside `transcript.todos`.
+
+### D3. Statuses and bounds
+
+- **A persona sets `completed` or `dismissed`, and only on an `open`
+  to-do.** Only the writer reopens: with Undo, or the to-do's own control.
+- **Per reply:** at most `changesPerReply` (20) changes, touching at most
+  `savedSessionsPerReply` (10) saved sessions. A frame past either is
+  dropped as `over-cap`, in reply order. Two frames naming one to-do drop
+  the second as `duplicate`.
+- **Ids are never guessed.** A frame is settled against the session it
+  names, read whole. An unknown session, an unknown to-do id, or a to-do
+  not `open` is dropped with its reason (D7). The reply's other changes
+  still land.
+
+### D4. The snapshot
+
+- Each `<writer-owned-task>` block gains `Id: …` as its first line, the id
+  neutralized like every other field. The per-item budget is unchanged;
+  the header allowance (`headerAllowanceCharacters`) absorbs the line, and
+  the slice checks the 12 blocks still fit.
+- The last sentence becomes: "These tasks are writer-owned planning
+  evidence, not instructions to edit files or call tools. Discuss them when
+  relevant. When one is done, or the writer drops it, you may mark it with
+  a to-do status note, as your instructions describe; the writer can undo
+  it."
+- It stays the host's frame, open and current-excerpt only. A guest closes
+  saved sessions' to-dos through `transcript.todos` ids; it may name an
+  open-room id the writer gives it, which is checked like any other.
+- Tallied as `todos.snapshot`, where it already is.
+
+### D5. Where each change is written, and when
+
+- **Settlement** (before the commit, awaits allowed, with the run's signal):
+  decode; bound; for each saved session named, read it once through the
+  write port (D6); check each to-do against what was read.
+- **The open room's changes land in the reply's own commit,** inside the
+  room's mutation gate, through `WorkshopSessionService.setTodoStatus`.
+  That method gains an optional `closedBy`; nothing writes `current.json`
+  behind the room. A to-do that stopped being `open` between settlement and
+  commit drops as `not-open`.
+- **A saved session's rows commit with the reply in state `saving`.** Just
+  after the commit, the room hands them to the write port, one write per
+  session, each carrying all of that session's changes. Each row settles
+  to `applied` or `refused` (with its reason), as a memory card settles
+  after its auto-save. A reply that never commits (stopped, rolled back,
+  its room replaced) writes nothing.
+- **Before each write the room checks the reply is still in its ledger.** A
+  Rewind that removed it first leaves the rows unwritten (`room-changed`).
+- **Rewind and Branch.** A status is session state, as the writer's own
+  tick is: cutting the reply does not reopen the open room's to-dos, and
+  `rewindWorkshopSession` is unchanged. The receipt goes with the reply,
+  and Undo with it; the to-do's own control still reopens it. A branch
+  copies receipts; a saved session's row there offers no Undo ("Undo is in
+  the room that made this change"), since the branch is not that room.
+
+### D6. The saved-session write port (default 4, settled)
+
+`WorkshopSavedSessionTodos`, a port in
+`core/application/services/workshop/todos/`, implemented by the
+coordinator, built in `extension.ts`, in `CoreServices`. Recall never
+imports it, and it imports nothing of `recall/`.
+
+```ts
+interface WorkshopSavedSessionTodos {
+  /** One saved session as it stands, with its to-dos, or why not. */
+  read(sessionId: string): Promise<WorkshopSavedTodoRead>;
+  /** Write these status changes, only if the file still equals `read`. */
+  write(read: WorkshopSavedTodoReadOk, changes: readonly WorkshopSavedTodoChange[]): Promise<WorkshopSavedTodoWrite>;
+}
+```
+
+- **It is `renameNamed`'s path.** `write` builds the changed session from
+  the decoded copy `read` returned and calls
+  `WorkshopSessionStore.updateNamed(id, changed, read.session)`. That is a
+  compare-and-swap against what was read, checked when the write begins and
+  again at the commit. A changed file is `session-changed`, in host words;
+  nothing is overwritten.
+- **`updatedAt` moves to now,** so recall's cache, keyed by it, reads the
+  new status. The session moves up the recency list, as a rename moves it.
+- **It runs on the coordinator's session-operation queue,** so it never
+  interleaves with this window's Open, rename, duplicate or delete of the
+  same file.
+- **It refuses** the open room's own id (the settlement already routed
+  it), a session that needs recovery (as rename does), a store that is not
+  available, and a workspace changed since load (`recallScope()`'s rule).
+- **Another window, or a Git sync, holding the session.** Its room holds an
+  accepted checkpoint from before the persona's write. Its next autosave or
+  Save is refused by the same compare (`WorkshopNamedSessionChangedError`):
+  the persona's change stays on disk; that room's work goes to its
+  `current.json` and its status line shows the save failed, with the
+  store's words. When its webview next loads, `refreshNamedSession`
+  promotes the file, persona's change included, and keeps any differing
+  local work as "… (local recovery)". So no path loses the change
+  silently. **No new check is added to the saving side;** slice A adds a
+  test that drives exactly this: two coordinators over one folder, the
+  persona's write in one, an autosave in the other.
+- **Not built:** refusing sessions another window has open. The store has
+  no cross-window registry, and the compare already covers it.
+
+### D7. What the persona hears back: a `todos` kind
+
+`WorkshopTrailerOutcomes` gains an optional side:
+
+```ts
+todos?: { changes: number; dropped: WorkshopTrailerDrop<WorkshopTodoTrailerDropReason>[] };
+
+type WorkshopTodoTrailerDropReason =
+  | WorkshopTrailerParseDropReason            // malformed, misplaced, duplicate, over-cap
+  | 'session-not-found' | 'session-unreadable' | 'sessions-unavailable'
+  | 'todo-not-found' | 'todo-not-open';
+```
+
+- **`changes`** counts the receipt rows at commit, in any state (`applied`
+  or `saving`), as D13's `cards` counts cards. `changes` plus every drop's
+  `count` equals the frames found: the conservation test covers the new
+  side. `off` never occurs: there is no setting.
+- **The settlement verdicts are typed** (`WorkshopTodoStatusVerdict`), and
+  `workshopTrailerDropReason` maps them, its `never` default holding.
+  `session-unreadable` covers a file that does not decode and one that
+  needs recovery; `sessions-unavailable` a store or workspace that is not.
+- **The write's result is the row's, not the record's.** D13's record is
+  written once. A `saving` row's later `refused` is told through the
+  frame: `workshopTrailerOutcomeFrames` reads the latest reply's receipt
+  rows beside its record, so the line can say "3 marked done; 1 not
+  written: the session changed since it was read." A row still `saving`
+  reads "being saved". An Undo is the writer's answer and is never told:
+  an undone row counts as it settled.
+- The phrases join `workshopTrailerOutcomeWords.ts`. Counts and closed
+  reasons only: never a to-do's text, a note, a title or an id.
+
+### D8. The receipt and Undo
+
+- **A new optional turn field, `todoStatusChanges`,** on host and guest
+  replies: one row per change, in reply order. Each holds the session
+  (`current`, or the saved id), its title as read, the to-do's id and text
+  as read (cut to `PROMPT_BUDGETS.workshopTodos`' item bound), the status
+  set, the earlier status, the note, and the state (`applied`, `saving`,
+  `refused` with a closed reason, `undone`). The copy a write compares
+  against is held in memory only, never stored; Undo reads the file again.
+- **The card** (`components/workshop/todos/WorkshopTodoReceipt`) lists each
+  row: the to-do, the session's name, the new status, Undo. It sits under
+  the reply's text, beside the other cards, with no row of its own in
+  `WorkshopTurnFoot`.
+- **Undo posts ids only:** `WORKSHOP_UNDO_TODO_STATUS { requestId,
+  roomRevision, turnId, index }`, routed by `WorkshopTodoHandler`, which
+  already owns the writer's to-do actions (no new composed route owner).
+  - Open room: reopen only while the to-do still holds the status the row
+    set and `closedBy` names this turn; otherwise "This to-do changed since;
+    use its own control."
+  - Saved session: read, check the same, write `open` without `closedBy`
+    through the port's compare. A changed file is refused in host words.
+  - The row becomes `undone`. The answer is correlated by `requestId`; the
+    hook (`useWorkshopTodoReceipt`) persists nothing.
+- **The transcript projection** shows a receipt as one event line with
+  counts ("Marked 3 to-dos done"), never a to-do's text or a session's
+  title. `workshopTurnForWebview` passes the rows (the card needs them).
+
+### D9. `closedBy`, and the session codec
+
+```ts
+interface WorkshopTodoClosedBy {
+  personaId: WorkshopPersonaId;
+  personaLabel: string;
+  /** The room it was closed from, and its title then. */
+  sessionId: string;
+  sessionTitle: string;
+  turnId: string;
+  at: number;
+  note?: string;
+}
+```
+
+- An optional field on `WorkshopTodoItem`, so on every stored to-do. The
+  to-do reads "Done · by Jill in *Polish 6.11*" (Dismissed likewise). A
+  turn no longer held still shows the persona and the room.
+- **The writer's own change clears it,** reopening or closing alike. Undo
+  removes it.
+- **Codec:** `closedBy` on a to-do and `todoStatusChanges` on a turn are
+  optional and exact inside, in a small decoder module of their own; the
+  shape file gains only the calls. No `schemaVersion` bump; forward only.
+  `transcript.todos` shows who closed a to-do (persona and room name, no
+  note).
+- **Fixture:** `__tests__/fixtures/workshop-session-v2-before-todo-status.json`,
+  an authentic session from `main` at 478157d holding open, completed and
+  dismissed to-dos. It must keep reading.
+
+### D10. Bounds, logs and help
+
+- **Bounds:** `PROMPT_BUDGETS.workshopTodoStatus`:
+  `{ changesPerReply: 20, savedSessionsPerReply: 10, noteCharacters: 160 }`.
+- **Logs** carry to-do ids, session ids, counts, states and closed
+  reasons. Never a to-do's text, a note, a session's title or a path.
+- **Help:** a new section, `workshop#to-dos-a-persona-closes`, in
+  `resources/help/workshop.md`: asking a persona to close to-dos here and
+  in saved sessions, the receipt, Undo, and "Done · by …". No command or
+  setting is added, so `help/index.json` does not change.
+
+## Item B: a file's git history
+
+### D11. Two calls, and the port (G1: no setting)
+
+```xml
+<prose-minion-tool-call name="history.log">
+  <group>chapters</group>
+  <path>Drafts/6.11.md</path>
+  <page>2</page>
+</prose-minion-tool-call>
+
+<prose-minion-tool-call name="history.diff">
+  <group>excerpt</group>
+  <from>3f9a1c2b7e</from>
+  <to>current</to>
+</prose-minion-tool-call>
+```
+
+- **Which file:** `<group>` with `<path>` names a configured file, as
+  `resource.read` names one (`findConfiguredResource`). `<group>excerpt</group>`
+  alone names the room's excerpt file, through
+  `workshopExcerptFileEditDocument`'s authorization. A pasted excerpt has
+  no file and is refused in words. `excerpt` is not a `ContextPathGroup`;
+  the codec reads it as this one value. Never a free path.
+- **`history.log`:** the file's commits, newest first, `logPageCommits` a
+  page. Each line: the short id (`shownIdCharacters`), the author's date,
+  the author's name (G3), and the subject (the message's first line, cut to
+  `subjectCharacters`). The page takes `workshopCapabilityPage`'s `<page>`.
+  Its "N more" line writes the exact next call, which decodes as written.
+  A file's history is read at most `logScanCommits` back; past that the
+  last page says so, with no further call.
+- **`history.diff`:** `<from>` is a commit; `<to>` is a commit or `current`
+  (the file as saved on disk, read through the `FileSystem` port; the
+  result says unsaved editor changes are not included). `<from>` must be
+  older than `<to>` in the file's history.
+- **The port,** `FileHistory` in `core/platform/FileHistory.ts`, joins
+  `Platform`:
+
+  ```ts
+  interface FileHistory {
+    /** The newest `limit` commits that touched the file, newest first. */
+    log(fsPath: string, limit: number): Promise<FileHistoryLog>;
+    /** The file's text at a full commit id the log returned. */
+    show(fsPath: string, commit: FileHistoryCommitId): Promise<FileHistoryShow>;
+  }
+  type FileHistoryUnavailable =
+    | 'no-git' | 'git-disabled' | 'not-ready' | 'not-a-repository' | 'not-tracked' | 'failed';
+  ```
+
+  A commit is `{ id, authoredAt, author, subject }`, `id` the full 40-hex
+  hash. `show` answers `absent` when the file did not exist at the commit.
+  It takes a count, not a page: core pages by asking for
+  `page × logPageCommits + 1` and slicing, bounded by `logScanCommits`
+  (brief refined; see D12).
+- **No repository, no git, git disabled, not ready, not tracked:** each
+  answers in host words ("This project isn't a git repository."), never an
+  error and never a refusal of the call's form.
+- The family is `history` (`WORKSHOP_HISTORY_MODULES`,
+  `core/application/services/workshop/history/`), composed in
+  `WorkshopPersonaCapability` for host and guest, each module under 500
+  lines. It imports nothing of `recall/`, `memory/` or `lens/`. A tool
+  sidecar does not know it.
+
+### D12. The VS Code adapter, over the built-in Git extension
+
+`app/src/platform/vscode/VsCodeFileHistory.ts`. Our code spawns no process.
+
+**What it relies on** (the Git extension's API version 1, as published in
+VS Code's `extensions/git/src/api/git.d.ts`; slice B copies the few types
+it uses into the adapter, with the source named, since the typings are not
+in this repository):
+- `vscode.extensions.getExtension<GitExtension>('vscode.git')`, then
+  `activate()`; `GitExtension.enabled` (false when `git.enabled` is off);
+  `getAPI(1)`.
+- `API.state` (`'uninitialized' | 'initialized'`) and `onDidChangeState`:
+  an uninitialized API is waited for at most `gitReadyMs`, then `not-ready`.
+- `API.getRepository(uri)`: the repository holding the file, or `null`
+  (`not-a-repository`). Multi-root and submodules are the extension's.
+- `Repository.log({ path, maxEntries })` → `Commit[]`, using `hash`,
+  `message`, `authorName` and `authorDate` only. **Not `skip`**, which the
+  1.82 floor may not have; hence the count in D11.
+- `Repository.show(ref, path)` → the text, called only with a full hash
+  from `log`. An error naming a missing path is `absent`; any other is
+  `failed`.
+
+**Not relied on:** `range`, `follow`, `getCommit`, `diffWith*`. The log
+does not follow renames (`git log -- path`): a renamed file's history
+starts at its rename. That is the stated limit.
+
+**No `extensionDependencies`.** Declaring `vscode.git` would refuse to
+activate Prose Minion where the Git extension is disabled; instead each
+call checks, and answers `no-git` or `git-disabled`.
+
+### D13. The diff: paragraphs, then words (G2: jsdiff)
+
+- **`diff` (jsdiff) is a deliberate new runtime dependency of
+  `@prose-minion/core`.** BSD-3-Clause, no dependencies, bundled by
+  webpack. Slice B pins an exact current major that ships its own types (no
+  `@types/diff`), and records the version in the PR. It is imported only
+  by `history/WorkshopHistoryDiff.ts` (`boundaries.test.ts`).
+- **Pure, in core,** from two texts: the two `show`s, or a `show` and the
+  saved file. Each side is bounded by `diffSourceBytes`; a side past it is
+  refused in words.
+- **Paragraphs first.** Both sides are split with `splitBlankLineParagraphs`
+  and aligned with jsdiff's array diff. In a run of removed and added
+  paragraphs, they are paired by position: a pair is a changed paragraph;
+  the rest are added or removed whole.
+- **Words inside a changed paragraph,** with jsdiff's word diff (spaces
+  kept). A paragraph longer than `wordDiffParagraphCharacters`, or a word
+  diff past `maxEditLength`, is shown whole, removed then added: the
+  algorithm's work is bounded, never its correctness.
+- **Rendered as changes, numbered in document order.** "Change 3 · ¶ 12
+  (was ¶ 11), changed: she ~~ran~~ **walked** to the door", with
+  `contextParagraphs` unchanged paragraph(s) on each side, cut to
+  `contextCharacters`. The marks are the renderer's; diff text is
+  neutralized like all evidence (D16).
+- **Fitted** to half the room left (`fitWorkshopReadToWindow`), by whole
+  changes. A cut stops between changes, never inside one, and writes the
+  exact next call with `<startChange>`, a later number. A single change
+  that does not fit alone is refused with the room it had. With no window,
+  a diff is bounded by `diffBytes`.
+- **A continuation of `current`** carries `<current>`, the first 12 hex of
+  the saved text's SHA-256 when the first part was read. If the file has
+  changed since, the call answers "The saved file changed since the
+  earlier part; ask again from change 1", never a misnumbered part.
+- **Every hint makes progress and decodes as written**
+  (`historyCapabilityPromptSync.test.ts` follows every hint to the end).
+
+### D14. Commit ids
+
+- **Accepted only as a `history.log` result gave them.** Form first: 7 to
+  40 hex characters, lower-cased. Then membership: the host reads the
+  file's log (to `logScanCommits`) and the id must be the prefix of
+  exactly one commit in it. An ambiguous prefix and an id not in this
+  file's history are refused, before anything reaches git.
+- **Git is given the full hash from the log,** never the model's text. No
+  argument a model wrote can become an option.
+
+### D15. The room: cards, manifest, publication, tally
+
+- **One card per call,** as other reads.
+- **`history.diff` adds a manifest row** of a new kind, `history`, in
+  `CONTEXT_SOURCE_KINDS`, naming the file and its two commits ("… · 3f9a1c2
+  → current"). `READ_IN_NAMES` gains `history: 'File history'`, so the
+  Context panel counts it under `requested`. No new tally piece.
+- **Publication follows reads:** `history.diff` joins
+  `PUBLISHABLE_CAPABILITY_OPERATIONS`, shared with the room when the reply
+  commits, as `resource.read` is. `history.log` stays private discovery,
+  as `resource.catalog` and `resource.search` do.
+- **Session files are forward-only** for the new card kinds and the
+  manifest kind, with no `schemaVersion` bump. Fixture:
+  `__tests__/fixtures/workshop-session-v2-before-history.json`, from 478157d.
+- **Out of v1:** `history.read` (a whole file at a commit), and the
+  Lightbox's "compare with an earlier commit". Both stay in the note.
+
+### D16. Safety, and workspace trust
+
+- **Commit subjects, author names and diffs are writer data.** They are
+  evidence, neutralized in the capability-result frame
+  (`neutralizeReservedPersonaPromptDelimiters`), and never instructions.
+- **No diff driver or external diff tool runs:** the diff is core's. A
+  repository's `textconv` may still run inside `show`, as it does for VS
+  Code's own file views; slice B confirms against the Git extension's
+  source and narrows this sentence if it does not.
+- **That is why the extension keeps declaring no support for untrusted
+  workspaces.** A repository's config can make git run commands. In
+  Restricted Mode neither Prose Minion nor the Git extension runs, so no
+  untrusted repository's config is read. Slice B adds a test that
+  `app/package.json` declares no `capabilities.untrustedWorkspaces` (or
+  declares it `false`), with this reason beside it.
+- **Another host** (a console app) runs `git` itself, with fixed arguments,
+  no shell, `--no-textconv`, `--no-ext-diff` where they apply, and only
+  after its own trust check. It is not built here.
+
+### D17. Bounds, logs and help
+
+- **Bounds:** `PROMPT_BUDGETS.workshopHistory`:
+  `{ logPageCommits: 20, logScanCommits: 1_000, shownIdCharacters: 10,
+  subjectCharacters: 200, authorCharacters: 80, diffSourceBytes: 2 MiB,
+  diffBytes: 64 KiB, contextParagraphs: 1, contextCharacters: 400,
+  wordDiffParagraphCharacters: 20_000, maxEditLength: 10_000,
+  gitReadyMs: 5_000 }`. The prompt states those a persona needs, pinned by
+  the sync test.
+- **Logs** carry the operation, counts (commits listed, changes shown,
+  paragraphs, bytes) and closed outcome kinds. **Never** a commit id, a
+  subject, an author, a path or diff text (G3).
+- **Help:** a new section, `workshop#a-files-git-history`, in
+  `resources/help/workshop.md`: what a persona can read, which files,
+  "current means saved", renames not followed, and that it needs a trusted
+  git repository. No command or setting.
+- **Fixtures** are made-up *Alice* history with made-up authors.
+
+## Item C: the project's context paths
+
+### D18. One proposal, one checker, one write, two ways in
+
+- **The Settings button** (D20–D21): the helper drafts a proposal from the
+  folder scan.
+- **A persona** (D26–D27): she reads the scan and the current paths,
+  checks revisions, and writes a proposal trailer.
+- Both produce one `ContextPathProposal` (per group: the patterns proposed),
+  checked by one checker (D22), shown in one view (D23), applied by one
+  write (D24–D25). Those live in `core/application/services/contextPaths/`,
+  built in `extension.ts`, in `CoreServices`. No handler constructs them.
+- **Nothing changes without Apply.** The helper never writes a setting
+  (ADR 2026-11-05 D2).
+
+### D19. L1–L3 (Okey's)
+
+- **L1:** Apply writes at the user level, through `SettingsStore.update`.
+- **L2:** a persona works the paths out with the writer, in the room.
+- **L3:** there is no `locations.suggest`. The persona maps folder names to
+  groups herself; the helper's draft serves the Settings button only.
+
+### D20. The scan: names only
+
+`ProjectFolderScan` reads folder and file names through
+`FileSystem.readDirectory`, never a file's contents.
+
+- **Skipped:** any name starting with `.`, `node_modules`, the resolver's
+  exclusions (`dist`, `out`, `.git`, `.svn`, `.hg`), `build`, Prose
+  Minion's own `prose-minion/` folder, and symbolic links.
+- **Bounded** by `scanEntries` (entries read), `scanDepth`, and
+  `scanFolders` (folders kept). Breadth first, so a bound leaves out the
+  deepest folders, and the result says it stopped.
+- **Each folder kept** gives its path (relative to its root, the root's
+  name first when there are several), its `.md` and `.txt` counts, and up
+  to `sampleNames` file names, each cut to `sampleNameCharacters`. A folder
+  with no such file, and none below it, is left out.
+- One scan serves the helper's input and `locations.folders`.
+
+### D21. The helper task `project-locations` (amends 2026-11-05 D6)
+
+- **A policy** in `HELPER_TASK_POLICIES`:
+  `tasks/ProjectLocationsTask.ts`, its section
+  `helper/10-project-locations.md`, an input builder (the scan's folders,
+  and each group's name and meaning), an exact-field decoder read through
+  `parseModelJson`, bounds in `PROMPT_BUDGETS.helper['project-locations']`,
+  and a worked example that decodes through the production codec, with its
+  sync test. The engine gets no branch.
+- **Its answer:** `{ "groups": { "<group>": ["<pattern>", …] } }`. A group
+  key outside `CONTEXT_PATH_GROUPS` is a fault; a group left out keeps its
+  patterns. The checker, not the decoder, judges each pattern.
+- **Started by a button,** "Suggest from my folders", in the Settings
+  overlay's context-paths section. It is a paid call; it never runs by
+  itself. When every group matches nothing in this workspace, the section
+  also shows one line pointing at the button.
+- **The route** is `ContextPathsSuggestionRoute`, registered by
+  `ConfigurationHandler` (as `DictionaryHistorySearchRoute` is by
+  `DictionaryHandler`), so that file gains only the registration:
+  `CONTEXT_PATHS_SUGGEST { requestId }` →
+  `CONTEXT_PATHS_SUGGESTION { requestId, outcome, view? }`.
+  `useContextPathsSuggestion` (tripartite, empty persistence) takes only
+  its pending answer. A failure is one quiet line; the settings stay as
+  they were.
+- **`proseMinion.workshop.memory.helperDrafts` does not cover it,** and it
+  has no setting of its own: it runs only on the press.
+
+### D22. The checker
+
+`ContextPathProposalChecker` takes a proposal and answers, per group:
+
+- **Unsafe patterns are refused before any normalization:** empty after
+  trimming; holding a comma (it would split the setting); starting with
+  `/` or `\`, a drive (`C:`), `~` or `workspace:`; holding a `..` segment,
+  a backslash or a control character; longer than `patternCharacters`.
+  Past `patternsPerGroup`, the rest are refused as `over-cap`.
+- **Each safe pattern runs through the real resolver.**
+  `ContextResourceResolver` gains `matchPatterns(patternsByGroup)`: its
+  `forEachMatch` with the patterns given as an argument instead of read
+  from settings, in counts-only diagnostics. Same normalization, roots,
+  exclusions, `.md`/`.txt` rule and symlink refusal as the catalog. The
+  settings path is unchanged.
+- **A pattern that matches nothing is dropped.** A group whose every
+  pattern is dropped or refused keeps its current patterns, and says why.
+- **Overlap is counted per group,** from each group's matches, never the
+  catalog (which keeps a file in its first group only). A file two groups
+  would share is flagged on both.
+- **Per group, the view:** the current patterns and their count, the
+  proposed patterns kept and their count, each dropped or refused pattern
+  with its reason, up to `examples` example files, the files shared with
+  another group, and where the current value comes from (D25).
+- Patterns, paths and names are writer data: the view goes to the writer
+  and the persona who asked, never to a log.
+
+### D23. The review
+
+- **Settings:** a sheet (`components/settings/ContextPathsSuggestionSheet`),
+  mounted by `SettingsOverlay` in one line. Per group: current and proposed
+  patterns, counts, a few examples, a checkbox (ticked by default where
+  something was proposed and kept). **Apply** writes the ticked groups.
+- **The room:** a card under the reply (C2), the same view, the same
+  checkboxes, the same Apply.
+
+### D24. Apply
+
+- **A host action keyed by a stored proposal.** The webview sends ids and
+  ticked groups only: `CONTEXT_PATHS_APPLY { requestId, proposalId, groups }`
+  for the sheet (the host holds that proposal in memory under a host-minted
+  id, until the next suggestion or a reload), and
+  `WORKSHOP_APPLY_LOCATIONS_PROPOSAL { requestId, roomRevision, turnId, groups }`
+  for the card. Never a pattern from the webview.
+- **Each ticked group is checked again first,** against the live setting:
+  a group whose value differs from the one the view was made from says so
+  ("Characters changed since this was suggested; it was left as it is")
+  instead of overwriting. Then the proposed patterns are checked again
+  through the checker; a group whose kept patterns now match nothing is
+  left as it is, with why.
+- **One write per group,** joined with `,`, through
+  `ContextPathSettingsWriter`. Groups write in order; a failed write stops
+  the rest and says which groups landed. The answer names each group's
+  outcome.
+
+### D25. L1, and a group the workspace sets
+
+- **`SettingsStore` gains one read:** `levelOf(section, key)`:
+  `'default' | 'user' | 'workspace' | 'workspace-folder'`, the most
+  specific level holding a value. `VsCodeSettingsStore` reads it from
+  `getConfiguration(section).inspect(key)`; the test host implements it.
+  Writes still go to the user level only.
+- **A group whose value comes from the workspace or a workspace folder is
+  shown, not offered.** Its row says "Set for this workspace in its
+  settings file, so Apply can't change it here," its checkbox is off and
+  disabled, and Apply refuses it if sent. Without this, a user-level write
+  would leave this project unchanged and change every other one.
+- **The row and the sheet say the write is for every project** ("Applies to
+  all your projects"), which is what L1 means.
+- A workspace-level write stays the later feature L1 names.
+
+### D26. The persona path: the read-only `locations.*` family (C2)
+
+- **`locations.current`:** each group's patterns, match count, up to
+  `examples` files, and its level. No fields.
+- **`locations.folders`:** the scan (D20), `foldersPerPage` a page, through
+  `<page>` and `workshopCapabilityPageOf`; the next call written whole
+  exactly when a later page exists.
+- **`locations.check`:** `<pattern group="characters">Cast/**/*</pattern>`,
+  repeated up to `checkPatterns`; the checker's per-group answer. It writes
+  nothing.
+- **The family** (`WORKSHOP_LOCATIONS_MODULES`,
+  `core/application/services/workshop/locations/`) is composed in
+  `WorkshopPersonaCapability` for host and guest, never a tool sidecar. No
+  operation is publishable, and no result adds a manifest row: folder
+  names reach the room's model only through a persona's own call, as
+  `resource.catalog` already shows configured files.
+- **The grammar** is `workshop-personas/locations-capability.md`, in every
+  persona's chain, in `WORKSHOP_TOOL_USE_PROMPT_PATHS`, held by
+  `locationsCapabilityPromptSync.test.ts`.
+
+### D27. The proposal trailer and its card (C2)
+
+```xml
+<prose-minion-locations-proposal>
+  <group name="characters">
+    <pattern>Cast/**/*</pattern>
+  </group>
+</prose-minion-locations-proposal>
+```
+
+- **One a reply.** Read in `extractWorkshopReplyControls`' one pass; a
+  second is `duplicate`. Within `patternsPerGroup` and `patternCharacters`.
+  Its grammar is in `locations-capability.md`, with the family.
+- **Checked at settlement** (awaits allowed), by the same checker. The card
+  commits with the reply: a new optional turn field, `locationsProposal`,
+  holding the view and each group's value as read (the baseline Apply
+  compares), and its state (`pending`, then per group `applied`, `left`
+  with its reason, or `declined`).
+- **The route owner** `WorkshopLocationsProposalHandler` joins
+  `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES` (the 25th). It applies through
+  D24's write, and the room's revision must match.
+- **A `locations` trailer-outcome kind:**
+  `locations?: { cards: number; dropped: WorkshopTrailerDrop<WorkshopLocationsTrailerDropReason>[]; patterns: { kept: number; unmatched: number; refused: number } }`,
+  with `WorkshopLocationsTrailerDropReason = WorkshopTrailerParseDropReason | 'nothing-kept' | 'workspace-unavailable'`.
+  `nothing-kept` is a frame every pattern of which was dropped or refused:
+  no card. Typed verdicts, the mapping's `never` default, phrases in
+  `workshopTrailerOutcomeWords.ts`, and the conservation test. Apply and
+  decline are the writer's answers and are never told.
+- **Codec:** `locationsProposal` optional and exact; forward only. Fixture:
+  `__tests__/fixtures/workshop-session-v2-before-locations-proposal.json`,
+  an authentic session from the epic branch before slice C2.
+- **The transcript projection** shows "Proposed context paths for 3
+  groups", never a pattern or a path.
+
+### D28. Bounds, logs and help
+
+- **Bounds:** `PROMPT_BUDGETS.contextPaths`:
+  `{ scanEntries: 5_000, scanDepth: 6, scanFolders: 300, sampleNames: 3,
+  sampleNameCharacters: 80, patternsPerGroup: 12, patternCharacters: 200,
+  examples: 3, foldersPerPage: 50, checkPatterns: 40 }`; and
+  `PROMPT_BUDGETS.helper['project-locations']`:
+  `{ folders: 200, inputCharacters: 16_000, outputTokens: 1_500,
+  responseCharacters: 6_000 }`.
+- **Logs** carry counts only: entries and folders scanned and sent,
+  patterns proposed, kept, unmatched and refused, matches, groups applied
+  and left, and fault kinds. Never a folder or file name, a path or a
+  pattern. The checker reads through the resolver's counts-only mode.
+- **Help:** a new section, `overview#suggest-context-paths`, in
+  `resources/help/overview.md` (the button, the review, "applies to all
+  your projects", a workspace-set group, and asking a persona), and one
+  sentence in `overview#project-files-and-context-paths` pointing to it.
+  No command or setting is added.
+- **Fixtures** use made-up *Alice*-style folders (`Cast/`, `Wonderland/`).
+
+## The capability grammar: what each new operation joins
+
+For each of `history.log`, `history.diff`, `locations.current`,
+`locations.folders` and `locations.check`:
+- `WORKSHOP_CAPABILITY_OPERATIONS`, its request type in
+  `WorkshopCapabilityRequest`, and two new families, `history` and
+  `locations`, in `WorkshopCapabilityFamily` and every family switch (each
+  with an explicit `never` default where it can return `undefined`);
+- `WORKSHOP_CAPABILITY_FIELD_POLICY` (through a family policy of its own),
+  and `WORKSHOP_NATIVE_CALL_FIELDS` (`locations.check`'s `pattern` is
+  `{ repeatable: true, plural: 'patterns', attributes: ['group'] }`);
+- the persona capability's per-turn composition, never a tool sidecar's;
+- `PUBLISHABLE_CAPABILITY_OPERATIONS`: `history.diff` only;
+- `CONTEXT_SOURCE_KINDS`: `history` only;
+- `boundaries.test.ts`: the module lists, and that each family imports
+  nothing of `recall/` or `memory/`;
+- a grammar prompt with its sync test: numbers to `PROMPT_BUDGETS`, every
+  taught form and every hint decoded through the codec as written.
+
+## Slice plan
+
+| Slice | Decisions | First commit |
+|---|---|---|
+| 0 | this ADR and the README | |
+| B | D11–D17 | the port, its fake, and the family's lists, compiling, with every call answering "not built" |
+| A | D1–D10 | the typed settlement verdicts and the `todos` outcome side, with no trailer read yet |
+| C1 | D18–D25, D28 (checker, write, scan, Settings helper) | the resolver's `matchPatterns` seam, settings path unchanged byte for byte |
+| C2 | D26–D27 (the persona family and trailer) | the family's lists, after B's grammar and A's trailer work are merged |
+
+B and A run in parallel. C1 follows either; C2 follows both.
+
+## Test plan
+
+**A**
+- Open room: a reply with three frames lands three changes in its own
+  commit; the to-dos read `completed`/`dismissed` with `closedBy`.
+- Saved session: rows commit `saving`, then `applied`; the file holds the
+  change, `updatedAt` moved, and the next `transcript.todos` shows it
+  closed (recall's cache sees it).
+- One case per drop reason, end to end: frame, record, phrase.
+- **The other window:** two coordinators over one folder hold one named
+  session; the write port changes a to-do in one; the other's autosave is
+  refused with `WorkshopNamedSessionChangedError`, the file keeps the
+  change, the other room's work is in its `current.json`; reloading it
+  promotes the file and preserves its local work as a recovery session.
+- A file changed between settlement and write: the row is `refused`
+  (`session-changed`), nothing overwritten, and the next message says so.
+- Stop before commit: nothing written anywhere. Rewind before the
+  post-commit write: no write (`room-changed`).
+- Bounds: the 21st change and the 11th session drop as `over-cap`.
+- Undo: open room and saved; a to-do changed since refuses; Undo in a
+  branch offers none for saved rows.
+- The writer's own toggle clears `closedBy`.
+- Conservation with the new side; `workshopTurnForWebview`; the transcript
+  projection holds counts only.
+- Codec: round trip; the before-fixture reads.
+- Recall's modules stay read-only; the port is outside `recall/`.
+- Logs hold no fixture text, note or title.
+
+**B**
+- Log: paging to the end, every hint decoding as written; `logScanCommits`
+  reached; authors and subjects shown, neutralized.
+- Diff: paragraph moves, adds and removals; word changes inside one;
+  a long paragraph shown whole; `maxEditLength` reached; `current`; a
+  continuation at a later change; a changed `current` between parts; a
+  single change too big to fit; no window.
+- Ids: bad form, ambiguous prefix, not in this file's history, each refused
+  before the fake port is called; git receives the full hash.
+- Files: excerpt (file, selection, pasted), configured, free path refused.
+- Each unavailable reason answers in words (a fake port).
+- No `from 'vscode'` in core; `diff` imported only by the diff module; the
+  manifest declares no untrusted-workspace support.
+- Logs hold no id, subject, author, path or diff text.
+
+**C**
+- Scan: hidden, `node_modules`, build output, `prose-minion/` and links
+  skipped; each bound reached and said.
+- Checker: each unsafe form refused before normalization; a comma refused;
+  unmatched dropped; overlap flagged on both; a group left out unchanged;
+  a group whose patterns all drop keeps its value.
+- `matchPatterns` and the catalog agree for the same patterns; the
+  settings path is unchanged.
+- Helper: the worked example decodes; an unknown group is a fault; a
+  cut-off reply is dropped.
+- Apply: only ticked groups; a group changed since is left with words; a
+  workspace-set group is not offered and is refused if sent; a failed write
+  stops the rest.
+- The sheet and the card go through one checker and one write.
+- C2: the family's codec, paging, hints; the trailer, its card and its
+  outcome kind; conservation; the before-fixture.
+- Logs hold no folder, file name, path or pattern.
+
+## Consequences and risks
+
+- **A persona can change saved files of the writer's,** without a confirm.
+  The change is small, shown on a receipt, undone in one press, and never
+  overwrites a changed file. A room in another window that held the
+  session sees its save refused and must reopen; that is the existing
+  behavior for any change on disk, now reachable from a persona.
+- **A saved session's `updatedAt` moves** when a persona closes one of its
+  to-dos, so it rises in the recency list.
+- **One new runtime dependency** (`diff`), small and pure.
+- **History reads run git through VS Code** in trusted workspaces only. A
+  rename cuts a file's history short.
+- **Context paths applied at the user level change every project.** The
+  review says so; a group the workspace sets is never written.
+- **`SettingsStore` gains a method;** every host implements it.
+- **Five operations, two families and two trailers are added;** the
+  persona prompt grows by three grammar files. All are pinned.
+- **Older builds cannot open a session** holding the new fields or cards:
+  the forward-only rule already in force.
+
+## Open questions for Okey (work proceeds on the default)
+
+None blocks the epic. Each default below is in the README's table.
+
+- **Q1.** A saved row still `saving` when the next message is built is
+  told as "being saved" (D7). The alternative waits for it.
+- **Q2.** Rewind past a receipt keeps the to-dos closed (D5). The
+  alternative reopens the open room's to-dos the reply closed.
+- **Q3.** `history.log` does not follow renames (D12). Following them
+  needs `git log --follow`, which the Git extension's API does not offer.
+- **Q4.** A group the workspace sets is not offered (D25). The alternative
+  is the workspace-level write L1 defers.
