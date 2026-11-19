@@ -114,6 +114,8 @@ export function findContextSourceRead<T extends StoredContextSourceEntry>(
  * writer sees keeps it, and the log names the row by its kind alone.
  */
 function contextSourceLogLabel(entry: { readonly kind: string; readonly label: string }): string {
+  // A history row names its file and commits (ADR 2026-11-19 D17): the log names neither.
+  if (entry.kind === 'history') return '(a file history diff)';
   return entry.kind === 'memory' ? '(a project note)' : entry.label;
 }
 

@@ -8,6 +8,7 @@
  */
 export * from './DocumentEditor';
 export * from './FileEditAuthorityEpoch';
+export * from './FileHistory';
 export * from './EditorContext';
 export * from './FileSystem';
 export * from './GlobalStateStore';

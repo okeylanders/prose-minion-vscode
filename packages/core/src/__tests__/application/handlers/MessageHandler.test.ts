@@ -90,7 +90,12 @@ function createTestAssembly(): TestAssembly {
     editor: createFakeEditorContext(),
     documents: createFakeDocumentEditor(),
     annotations: createFakeIssueAnnotator(),
-    craftAnnotations: createFakeIssueAnnotator()
+    craftAnnotations: createFakeIssueAnnotator(),
+    fileHistory: {
+      log: async () => ({ kind: 'unavailable', reason: 'no-git' }),
+      show: async () => ({ kind: 'unavailable', reason: 'no-git' }),
+      size: async () => ({ kind: 'unavailable', reason: 'no-git' })
+    }
   };
 
   const scheduleRefresh = jest.fn();

@@ -7,6 +7,7 @@
  */
 
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -31,7 +32,8 @@ function capabilityOver(host: ReturnType<typeof libraryHost>, session = new Work
     {} as WorkshopTranscriptRecallPort,
     host.library,
     noProjectLenses,
-    unavailableHelpReference
+    unavailableHelpReference,
+    unavailableFileHistory
   ).create({
     requestId,
     excerptVersion: 0,

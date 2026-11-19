@@ -88,7 +88,7 @@ export type AgentCapabilityInspection<Request, Rejection extends AgentCapability
  * Display-safe only — never an absolute path.
  */
 export interface CapabilityDeliveredSource {
-  readonly kind: Extract<ContextSourceKind, 'resource' | 'tool-evidence' | 'dictionary' | 'transcript' | 'memory'>;
+  readonly kind: Extract<ContextSourceKind, 'resource' | 'tool-evidence' | 'dictionary' | 'transcript' | 'memory' | 'history'>;
   readonly label: string;
   readonly configuredResource?: { readonly group: ContextPathGroup; readonly path: string };
   readonly sizeChars: number;

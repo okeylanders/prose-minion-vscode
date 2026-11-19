@@ -29,7 +29,9 @@ describe('workshopCapabilityFamily', () => {
       ['lens.catalog', 'lens'],
       ['lens.read', 'lens'],
       ['help.search', 'help'],
-      ['help.read', 'help']
+      ['help.read', 'help'],
+      ['history.log', 'history'],
+      ['history.diff', 'history']
     ]);
   });
 
@@ -65,5 +67,6 @@ describe('workshopCapabilityFamily', () => {
     expect(workshopCapabilityFamilyLabel('memory.read', 'Continuity')).toBe('Project Memory');
     expect(workshopCapabilityFamilyLabel('lens.read', 'Continuity')).toBe('Lens Library');
     expect(workshopCapabilityFamilyLabel('lens.catalog')).toBe('Lens Library');
+    expect(workshopCapabilityFamilyLabel('history.diff')).toBe('File History');
   });
 });
