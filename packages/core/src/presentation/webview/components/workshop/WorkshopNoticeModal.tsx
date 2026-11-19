@@ -124,8 +124,199 @@ const COMPOSER_CONTROLS_ALT = 'The Workshop composer control bar';
 
 const PAGES: readonly NoticePage[] = [
   {
-    title: 'New: Selected Text on a message',
+    title: 'New: See what fills a persona’s context',
     tag: 'new',
+    body: (
+      <>
+        Open a persona&rsquo;s <b>context</b> row above the composer and look under{' '}
+        <b>By part</b>. A bar and a table split the total into the persona&rsquo;s instructions,
+        its tool-use instructions, project memory, to-dos, room notes, your excerpt and
+        attachments, what the persona asked to read, and the conversation itself. A part with an
+        underlined name opens to its pieces, so you can see whether a long conversation or one
+        large file is taking the room.
+      </>
+    ),
+    note: (
+      <>
+        Most parts are estimates, and the table says which. <b>Conversation</b> is the rest of
+        the total the provider measured. Before a reply has been measured, after opening or
+        rewinding a conversation for instance, the panel shows the parts it knows and leaves the
+        shares out. Nothing here changes what is sent.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'context-by-part',
+        alt: 'The By part summary of Jill’s context: a bar in eight colored segments, and a table of each part’s tokens, share, and how it was measured, with Excerpt and context opened to three pieces',
+        maxWidthPx: 480,
+        ratio: '1732 / 636',
+        callouts: [
+          { label: '1', leftPercent: 1.6, topPercent: 10.6, widthPercent: 96.8, heightPercent: 7.8 },
+          { label: '2', leftPercent: 1.6, topPercent: 53.6, widthPercent: 60, heightPercent: 24.8 },
+          { label: '3', leftPercent: 1.6, topPercent: 83.6, widthPercent: 60, heightPercent: 6.6 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'The bar', detail: 'one segment per part, sized by its share.' },
+      { label: '2', term: 'A part, opened', detail: 'press an underlined name to see its pieces.' },
+      { label: '3', term: 'Conversation', detail: 'the rest of the measured total.' }
+    ]
+  },
+  {
+    title: 'New: Earlier turns, and bookmarks that jump to them',
+    tag: 'new',
+    body: (
+      <>
+        A long conversation shows its most recent turns. Choose <b>Show earlier turns</b> at the
+        top of the thread to load older messages in place, a page at a time, each with its usual
+        actions. A bookmark marked <b>Earlier in thread</b> now does the walking for you: open it
+        from the <b>Notes</b> tab and the Workshop loads the pages it needs and scrolls to the
+        message.
+      </>
+    ),
+    note: (
+      <>
+        A bookmark more than about 300 turns back opens in the read-only reader instead. Press{' '}
+        <b>Escape</b> to stop a jump; pages already loaded stay. Earlier turns are not kept when
+        the window reloads or the conversation is replaced, and nothing about them changes what
+        the personas remember.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'earlier-turns-control',
+        alt: 'The top of a Workshop thread: a Show earlier turns button reading 212 not shown, over the line They’re kept in full: export, bookmarks and the personas still have them, then the oldest message on screen',
+        maxWidthPx: 440,
+        ratio: '1376 / 294',
+        callouts: [
+          { label: '1', leftPercent: 33, topPercent: 7.4, widthPercent: 34, heightPercent: 26 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'bookmarks-earlier-in-thread',
+        alt: 'The Notes tab’s Bookmarks list: three bookmarks, the first two tagged Earlier in thread, and All bookmarks',
+        maxWidthPx: 300,
+        ratio: '702 / 548',
+        callouts: [
+          { label: '2', leftPercent: 5.4, topPercent: 15.6, widthPercent: 82, heightPercent: 25 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Show earlier turns', detail: 'loads the page before the oldest turn on screen.' },
+      { label: '2', term: 'Earlier in thread', detail: 'a bookmark outside what is shown; opening it loads its way there.' }
+    ]
+  },
+  {
+    title: 'New: Type @ to attach a project file',
+    tag: 'new',
+    body: (
+      <>
+        Type <b>@</b> in the composer and a few letters of a file&rsquo;s name. A list of your
+        configured project files opens above the composer: move with the arrow keys and press{' '}
+        <b>Enter</b> or <b>Tab</b> to pick one, or choose <b>Browse project&hellip;</b> for the
+        full picker. The file is staged as a pill above the composer and goes with your next
+        message only.
+      </>
+    ),
+    note: (
+      <>
+        The pill is what gets sent. The <b>@</b> text a pick leaves in your message is ordinary
+        text: deleting it keeps the pill, and removing the pill keeps the text.{' '}
+        <b>Escape</b> closes the list and keeps what you typed. The list shows files from the
+        resource locations in sidebar settings.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'composer-at-mention',
+        alt: 'The Workshop composer with @chap typed and a Files list above it: four chapter files, the second highlighted, then Browse project',
+        maxWidthPx: 480,
+        ratio: '1716 / 622',
+        callouts: [
+          { label: '1', leftPercent: 1, topPercent: 17.6, widthPercent: 98, heightPercent: 10.8 },
+          { label: '2', leftPercent: 1, topPercent: 45.4, widthPercent: 22, heightPercent: 10.6 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'composer-at-mention-pill',
+        alt: 'The composer after a pick: a pill for 02-the-pool-of-tears.md, 2,134 words, marked rides the next message only, and the file’s @ text in the message',
+        maxWidthPx: 480,
+        ratio: '1716 / 334',
+        callouts: [
+          { label: '3', leftPercent: 0.4, topPercent: 2.4, widthPercent: 30.6, heightPercent: 19.6 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'The file list', detail: 'narrows as you type; Enter or Tab picks the highlighted file.' },
+      { label: '2', term: 'Browse project…', detail: 'opens the project picker for this message.' },
+      { label: '3', term: 'The pill', detail: 'the file that will go with your next message.' }
+    ]
+  },
+  {
+    title: 'New: Memory controls, and answers about Prose Minion',
+    tag: 'new',
+    body: (
+      <>
+        The <b>Memory</b> tab of conversation settings has two new choices.{' '}
+        <b>Suggest notes</b> sets how readily personas offer a memory note:{' '}
+        <b>Sparingly</b>, <b>Readily</b>, or <b>Aggressively</b>.{' '}
+        <b>List at the start of each conversation</b> sets how much of your memory each new
+        conversation starts with: <b>Standard</b>, <b>Larger</b>, or <b>Largest</b>. You can also
+        ask a persona how Prose Minion works. It can search the built-in help for features,
+        commands, and settings, and it can list and read your Lexical Gravity lenses to explain
+        what one does.
+      </>
+    ),
+    note: (
+      <>
+        Both memory choices are saved as soon as you make them. The list size applies from the
+        next conversation. A persona&rsquo;s help answers come from the reference bundled with
+        this version, and a look-up shows as a card in the thread. Personas are also told when a
+        note or edit they proposed did not reach you as a card.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'memory-suggest-notes',
+        alt: 'The Suggest notes row of the Memory tab: Sparingly selected, then Readily and Aggressively',
+        maxWidthPx: 480,
+        ratio: '1848 / 362',
+        callouts: [
+          { label: '1', leftPercent: 0.8, topPercent: 16, widthPercent: 98.4, heightPercent: 50 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'help-read-card',
+        alt: 'A Prose Minion Help card in the thread, requested by Jill, and Jill’s reply explaining where the Suggest notes setting is',
+        maxWidthPx: 440,
+        ratio: '1736 / 916',
+        callouts: [
+          { label: '2', leftPercent: 2.6, topPercent: 10.2, widthPercent: 94.8, heightPercent: 10.2 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Suggest notes', detail: 'how readily personas offer a memory note.' },
+      { label: '2', term: 'Prose Minion Help', detail: 'the section of the built-in help the persona read before answering.' }
+    ]
+  },
+  {
+    title: 'Selected Text on a message',
+    tag: 'primer',
     body: (
       <>
         Ask about a few lines without changing your excerpt. Turn on{' '}
@@ -177,8 +368,8 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: Bigger reads, a folding rail, and Re-read from file',
-    tag: 'new',
+    title: 'Bigger reads, a folding rail, and Re-read from file',
+    tag: 'primer',
     body: (
       <>
         Ask a persona to compare chapters and it can now read up to ten files in one go, shown as
@@ -226,8 +417,8 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: Search your Dictionary history',
-    tag: 'new',
+    title: 'Search your Dictionary history',
+    tag: 'primer',
     body: (
       <>
         In the sidebar&rsquo;s Dictionary, open <b>Lookup history</b> and type in the new search
