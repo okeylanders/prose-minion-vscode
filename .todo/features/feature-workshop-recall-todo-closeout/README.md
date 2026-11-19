@@ -1,7 +1,7 @@
 # Feature: Personas Close To-dos, Here and in Saved Sessions
 
 **Date Identified:** 2026-10-05; widened to the open room 2026-11-19
-**Status:** Idea. Needs an ADR. Builds on the Session Recall epic's Slice 2B (`transcript.todos`). Okey asked for it again on 2026-11-19, for the to-dos in this conversation too, and chose to apply changes at once with Undo (T1).
+**Status:** In the Workshop Persona Tools epic (item A) since 2026-11-19, on `epic/workshop-persona-tools`. T1 decided. The epic README there records progress and the defaults taken.
 **Priority:** Medium
 **Origin:** Okey, while settling Slice 2B's D5: "A future use-case will be telling the agent just to mark them down." Again on 2026-11-19, below.
 

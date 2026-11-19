@@ -1,7 +1,7 @@
 # Feature: Personas Read a File's Git History
 
 **Date Identified:** 2026-11-19
-**Status:** Idea. Medium: a new host port, a two-call capability family, and a prose-aware diff in core. ADR first: it is the extension's first use of git, and it reads writer data from outside the configured files' current text.
+**Status:** In the Workshop Persona Tools epic (item B) since 2026-11-19, on `epic/workshop-persona-tools`. G1–G3 decided. The epic README there records progress and the defaults taken.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-19
 

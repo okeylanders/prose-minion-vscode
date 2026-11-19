@@ -1,7 +1,7 @@
 # Feature: Set Up the Project's Context Paths, From Settings or With a Persona
 
 **Date Identified:** 2026-11-05 (decided as D6 of [ADR 2026-11-05](../../../docs/adr/2026-11-05-helper-agent.md)); filed as its own note 2026-11-18
-**Status:** Idea. Two ways in, one proposal: the helper drafts from a Settings button (the ADR's D6, "not built in v1", never tracked until now), and a persona works it out with the writer in the room (Okey, 2026-11-18). An amendment to ADR 2026-11-05 for the button; the persona path adds a capability family and a reply trailer, so it needs an ADR section of its own.
+**Status:** In the Workshop Persona Tools epic (item C) since 2026-11-19, on `epic/workshop-persona-tools`. L1–L3 decided. The epic README there records progress and the defaults taken.
 **Priority:** Medium
 **Origin:** Okey, during the helper-agent design (2026-11-05); asked about again 2026-11-18
 
