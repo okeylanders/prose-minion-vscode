@@ -149,7 +149,7 @@ describe('overlapping named-session writers (D6a)', () => {
     fs.files.delete(filePath);
     // A writer that died holding the file, long past the lease, mid-write.
     const lock = `${directory}/.${saved.fileName}.lock`;
-    fs.files.set(`${lock}/owner.json`, new TextEncoder().encode(JSON.stringify({ token: 'dead-writer', at: 1_000_000_000_000 })));
+    fs.files.set(`${lock}/dead-writer/owner.json`, new TextEncoder().encode(JSON.stringify({ token: 'dead-writer', at: 1_000_000_000_000 })));
     fs.files.set(`${lock}/dead-writer/prior.json`, bytes);
     fs.files.set(`${lock}/dead-writer/next.json`, new TextEncoder().encode('{"stale": true}'));
     fs.listsFolders = true;
@@ -164,7 +164,7 @@ describe('overlapping named-session writers (D6a)', () => {
     const bytes = fs.files.get(filePath)!;
     fs.files.delete(filePath);
     const lock = `${directory}/.${saved.fileName}.lock`;
-    fs.files.set(`${lock}/owner.json`, new TextEncoder().encode(JSON.stringify({ token: 'live-writer', at: now().getTime() })));
+    fs.files.set(`${lock}/live-writer/owner.json`, new TextEncoder().encode(JSON.stringify({ token: 'live-writer', at: now().getTime() })));
     fs.files.set(`${lock}/live-writer/prior.json`, bytes);
     fs.listsFolders = true;
     await expect(left.readNamedWithRecovery('alice-polish')).rejects.toBeInstanceOf(WorkshopNamedSessionBusyError);

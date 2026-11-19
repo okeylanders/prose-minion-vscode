@@ -7,10 +7,10 @@
  * - A pauses before its publish; the lease expires; B takes over
  *   (restoring the file) and deletes, or updates; A resumes and its publish
  *   finds no source. Nothing is at the name, or B's content stands.
- * - A retired owner's delayed cleanup and release (D6d): A claims, then
- *   pauses before cleanup; B takes over, restores, takes the lock, claims
- *   and pauses; A's renames find nothing; B's prior file and lock are
- *   intact, and B commits.
+ * - A retired owner's late release (generation-scoped): A claims, then
+ *   pauses before release; B takes over, restores, takes the lock, claims
+ *   and pauses; A's one rename (its own token folder) finds nothing, and
+ *   no rename or delete names B's lock or token folder; B commits.
  * - A reader during recovery (D6d): a takeover pauses after the lock became
  *   the recovery marker and before restoring; a read is busy; after the
  *   restore, the read returns the file. *Alice*, made-up ids.
@@ -112,7 +112,7 @@ describe('the named-session lock fences a stalled writer (D6b, D6d)', () => {
     expect(leftovers(fs)).toEqual([]);
   });
 
-  it('a retired owner\'s delayed cleanup and release leave the successor\'s prior file and lock intact (D6d)', async () => {
+  it('a retired owner\'s late release renames nothing of the successor\'s lock or token folder (generation-scoped release)', async () => {
     const { fs, original, readExact, lockWith } = await setup();
     const aStall = gate();
     const bStall = gate();
@@ -128,13 +128,22 @@ describe('the named-session lock fences a stalled writer (D6b, D6d)', () => {
     await bStall.atGate;
     const bLock = [...fs.files.keys()].filter((name) => /\.lock\//.test(name)).sort();
     expect(bLock.some((name) => name.endsWith('/prior.json'))).toBe(true);
-    // A resumes its cleanup and release: its cleanup's detaching rename finds nothing, and its release puts B's lock back.
+    const bLockDir = bLock[0].slice(0, bLock[0].indexOf('.lock/') + '.lock'.length);
+    const bToken = `${bLockDir}/${bLock[0].slice(bLockDir.length + 1).split('/')[0]}`;
+    // A resumes its release: it detaches only its own token folder, which left with the takeover, so it stops.
     const renames = jest.spyOn(fs, 'rename');
+    const deletes = jest.spyOn(fs, 'delete');
     aStall.open();
     expect(await writeA).toBeInstanceOf(Error);
-    expect(renames.mock.calls.filter(([from]) => from.endsWith('.lock') === false && from.includes('.lock/'))).toHaveLength(1);
+    const touchesB = (from: string) => from === bLockDir || from === bToken || from.startsWith(`${bToken}/`);
+    expect(renames.mock.calls.filter(([from]) => touchesB(from))).toEqual([]);
+    expect(deletes.mock.calls.filter(([target]) => touchesB(target))).toEqual([]);
+    expect(renames.mock.calls).toHaveLength(1);
+    expect(renames.mock.calls[0][0].startsWith(`${bLockDir}/`)).toBe(true);
     expect(await renames.mock.results[0].value.then(() => 'moved', () => 'nothing')).toBe('nothing');
     expect([...fs.files.keys()].filter((name) => /\.lock\//.test(name)).sort()).toEqual(bLock);
+    renames.mockRestore();
+    deletes.mockRestore();
     bStall.open();
     await writeB;
     expect(titleAt(fs)).toBe('Writer B');

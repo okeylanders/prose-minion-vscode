@@ -166,8 +166,7 @@ export class WorkshopNamedSessionLock {
       await work(held);
     } finally {
       await this.hooks.beforeCleanup?.();
-      await this.cleanUp(held, filePath);
-      await this.release(held);
+      await this.release(held, filePath);
     }
   }
 
@@ -189,9 +188,9 @@ export class WorkshopNamedSessionLock {
       const token = randomUUID();
       const staged = `${lock}.staged-${token}`;
       try {
+        // The lock holds only token folders: the owner's record lives in its own (generation-scoped release).
         await this.fileSystem.createDirectory(path.join(staged, token));
-        await this.fileSystem.writeFile(path.join(staged, 'owner.json'), encoder.encode(JSON.stringify({ token, at: this.now().getTime() })));
-        await this.fileSystem.writeFile(path.join(staged, token, '.owner'), encoder.encode(token));
+        await this.fileSystem.writeFile(path.join(staged, token, 'owner.json'), encoder.encode(JSON.stringify({ token, at: this.now().getTime() })));
       } catch {
         await this.removeQuietly(staged);
         throw new Error('The saved Workshop session could not be locked for writing.');
@@ -261,47 +260,52 @@ export class WorkshopNamedSessionLock {
     await this.removeQuietly(marker);
   }
 
-  /** The owner's own subdirectory, detached to a fresh name before anything is deleted. */
-  private async cleanUp(held: Held, filePath: string): Promise<void> {
+  /**
+   * Generation-scoped release: detach this owner's own folder (its owner
+   * record, staged file and prior file) to a fresh name, then delete it; only
+   * then remove the emptied lock, never recursively. A retired owner's detach
+   * finds nothing, since its folder left with the takeover, and it touches
+   * nothing else; a lock a newer generation holds is not empty, and stays.
+   */
+  private async release(held: Held, filePath: string): Promise<void> {
     const retired = `${path.dirname(filePath)}${path.sep}.${path.basename(filePath)}.retired-${randomUUID()}`;
     try {
       await this.fileSystem.rename(held.own, retired, { overwrite: false });
     } catch {
-      return; // Taken over: nothing here is this owner's to delete.
+      return; // Taken over: nothing here is this owner's.
     }
     await this.removeQuietly(retired);
-  }
-
-  /** Rename the lock aside, delete it if it is this token's, else put it back. */
-  private async release(held: Held): Promise<void> {
-    const aside = `${held.lock}.released-${randomUUID()}`;
-    try {
-      await this.fileSystem.rename(held.lock, aside, { overwrite: false });
-    } catch {
-      return;
-    }
-    if ((await this.ownerToken(aside)) === held.token) {
-      await this.removeQuietly(aside);
-      return;
-    }
-    await this.fileSystem.rename(aside, held.lock, { overwrite: false }).catch(() => this.removeQuietly(aside));
+    await this.fileSystem.delete(held.lock, { recursive: false }).catch(() => undefined);
   }
 
   private async stillHeld(held: Held): Promise<boolean> {
-    return (await this.ownerToken(held.lock)) === held.token;
+    return (await this.ownerToken(held.own)) === held.token;
   }
 
-  /** A lock's or marker's standing, by its owner or recovery file's time, or its own age when neither reads. */
+  /**
+   * A lock's or marker's standing, by its recovery file's or its owner's
+   * time (the owner record is in its token folder). A lock with no token
+   * folder is a release in progress: busy, then stale by the folder's own
+   * age under the lease rule (busy when that age cannot be read).
+   */
   private async markerState(directory: string): Promise<Marker> {
+    const listed = await this.fileSystem.readDirectory(directory).then((entries) => entries, () => undefined);
+    const folderToken = listed?.find(([, type]) => type === FileType.Directory)?.[0];
     const recovery = await this.readJson(path.join(directory, 'recovery.json'));
-    const owner = await this.readJson(path.join(directory, 'owner.json'));
+    const owner = folderToken ? await this.readJson(path.join(directory, folderToken, 'owner.json')) : { kind: 'none' as const };
     if (recovery.kind === 'io' || owner.kind === 'io') {
       return { kind: 'io' };
     }
     const record = recovery.kind === 'json' ? recovery : owner;
     if (record.kind !== 'json') {
-      const exists = await this.fileSystem.readDirectory(directory).then(() => true, () => false);
-      return exists ? { kind: 'abandoned', identity: 'bare' } : { kind: 'none' };
+      if (!listed) {
+        return { kind: 'none' };
+      }
+      const age = await this.fileSystem.stat(directory).then((stat) => stat.mtime, () => undefined);
+      if (age === undefined || Math.abs(this.now().getTime() - age) < STORED_FILE_CLAIM_LEASE_MS) {
+        return { kind: 'live' };
+      }
+      return { kind: 'abandoned', identity: `bare:${folderToken ?? ''}`, ...(folderToken ? { token: folderToken } : {}) };
     }
     const { token, at } = record.value as { token?: unknown; at?: unknown };
     const time = typeof at === 'number' && Number.isFinite(at) ? at : record.mtime;
@@ -326,21 +330,20 @@ export class WorkshopNamedSessionLock {
     }
   }
 
-  private async ownerToken(lock: string): Promise<string | undefined> {
-    const owner = await this.readJson(path.join(lock, 'owner.json'));
+  private async ownerToken(own: string): Promise<string | undefined> {
+    const owner = await this.readJson(path.join(own, 'owner.json'));
     const token = owner.kind === 'json' ? (owner.value as { token?: unknown }).token : undefined;
     return typeof token === 'string' ? token : undefined;
   }
 
   private async recoveryToken(marker: string): Promise<string | undefined> {
-    for (const file of ['recovery.json', 'owner.json']) {
-      const record = await this.readJson(path.join(marker, file));
-      const token = record.kind === 'json' ? (record.value as { token?: unknown }).token : undefined;
-      if (typeof token === 'string') {
-        return token;
-      }
+    const record = await this.readJson(path.join(marker, 'recovery.json'));
+    const token = record.kind === 'json' ? (record.value as { token?: unknown }).token : undefined;
+    if (typeof token === 'string') {
+      return token;
     }
-    return undefined;
+    const listed = await this.fileSystem.readDirectory(marker).catch((): Array<[string, FileType]> => []);
+    return listed.find(([, type]) => type === FileType.Directory)?.[0];
   }
 
   private async removeQuietly(directory: string): Promise<void> {
