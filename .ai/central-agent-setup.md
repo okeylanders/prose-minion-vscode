@@ -936,6 +936,22 @@ npm run build
 npm run package  # Creates .vsix file
 ```
 
+### Release Preparation
+
+After updating the root and workspace manifests and lockfile for a release,
+regenerate the bundled Workshop help from the VS Code extension manifest.
+Run these commands from the repository root before packaging the VSIX.
+
+```bash
+node apps/vscode-extension/scripts/generate-help-tables.js
+npm test -- --runInBand helpReferenceSync.test.ts
+```
+
+Commit the regenerated help with the version bump. The test checks that
+`Reference version` in `packages/core/resources/help/overview.md` matches
+the extension manifest and that the generated command and settings tables
+match the manifest.
+
 ## Integration Points
 
 ### OpenRouter API
