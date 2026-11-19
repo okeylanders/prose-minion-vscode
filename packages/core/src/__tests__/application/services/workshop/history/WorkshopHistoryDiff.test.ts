@@ -6,6 +6,14 @@ import { diffWorkshopHistoryTexts } from '@/application/services/workshop/histor
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { prose } from './historyFixtures';
 
+/** The change list of an outcome that must be a diff. */
+const changesOf = (outcome: ReturnType<typeof diffWorkshopHistoryTexts>) => {
+  if (outcome.kind !== 'diff') {
+    throw new Error(`refused: ${outcome.reason}`);
+  }
+  return outcome;
+};
+
 const A = 'Alice sat by the river bank.';
 const B = 'The White Rabbit ran past, late again.';
 const C = 'She followed it down the hole.';
@@ -13,12 +21,12 @@ const D = 'The hall was long and low.';
 
 describe('paragraphs first', () => {
   it('finds nothing in equal texts, and nothing when only the space between paragraphs differs', () => {
-    expect(diffWorkshopHistoryTexts(prose(A, B), prose(A, B)).changes).toEqual([]);
-    expect(diffWorkshopHistoryTexts(prose(A, B), `${A}\n\n\n\n${B}\n`).changes).toEqual([]);
+    expect(changesOf(diffWorkshopHistoryTexts(prose(A, B), prose(A, B))).changes).toEqual([]);
+    expect(changesOf(diffWorkshopHistoryTexts(prose(A, B), `${A}\n\n\n\n${B}\n`)).changes).toEqual([]);
   });
 
   it('shows an added paragraph whole, numbered in the newer text, with its unchanged neighbours', () => {
-    const { changes } = diffWorkshopHistoryTexts(prose(A, C), prose(A, B, C));
+    const { changes } = changesOf(diffWorkshopHistoryTexts(prose(A, C), prose(A, B, C)));
     expect(changes).toEqual([{
       kind: 'added',
       newNumber: 2,
@@ -29,7 +37,7 @@ describe('paragraphs first', () => {
   });
 
   it('shows a removed paragraph whole, by its number in the older text', () => {
-    const { changes } = diffWorkshopHistoryTexts(prose(A, B, C), prose(A, C));
+    const { changes } = changesOf(diffWorkshopHistoryTexts(prose(A, B, C), prose(A, C)));
     expect(changes).toEqual([{
       kind: 'removed',
       oldNumber: 2,
@@ -40,14 +48,14 @@ describe('paragraphs first', () => {
   });
 
   it('reads a moved paragraph as one removal and one addition', () => {
-    const { changes } = diffWorkshopHistoryTexts(prose(A, B, C, D), prose(A, C, D, B));
+    const { changes } = changesOf(diffWorkshopHistoryTexts(prose(A, B, C, D), prose(A, C, D, B)));
     expect(changes.map((change) => change.kind)).toEqual(['removed', 'added']);
     expect(changes[0]).toMatchObject({ kind: 'removed', oldNumber: 2, text: B });
     expect(changes[1]).toMatchObject({ kind: 'added', newNumber: 4, text: B, before: [{ number: 3, text: D }] });
   });
 
   it('pairs a run of removed and added paragraphs by position; the rest are whole', () => {
-    const { changes } = diffWorkshopHistoryTexts(prose(A, B, D), prose(A, 'The White Rabbit walked past.', 'A new line.', D));
+    const { changes } = changesOf(diffWorkshopHistoryTexts(prose(A, B, D), prose(A, 'The White Rabbit walked past.', 'A new line.', D)));
     expect(changes.map((change) => change.kind)).toEqual(['changed', 'added']);
     expect(changes[0]).toMatchObject({ kind: 'changed', oldNumber: 2, newNumber: 2, before: [{ number: 1, text: A }] });
     expect(changes[1]).toMatchObject({ kind: 'added', newNumber: 3, text: 'A new line.', after: [{ number: 4, text: D }] });
@@ -57,7 +65,7 @@ describe('paragraphs first', () => {
 
 describe('then words, inside a changed paragraph', () => {
   it('marks the words that changed, keeping the spaces', () => {
-    const { changes } = diffWorkshopHistoryTexts('she ran to the door', 'she walked to the door');
+    const { changes } = changesOf(diffWorkshopHistoryTexts('she ran to the door', 'she walked to the door'));
     expect(changes).toHaveLength(1);
     const change = changes[0];
     expect(change.kind).toBe('changed');
@@ -74,7 +82,7 @@ describe('then words, inside a changed paragraph', () => {
 
   it('shows a paragraph past wordDiffParagraphCharacters whole, before and after', () => {
     const long = 'Alice '.repeat(Math.ceil(PROMPT_BUDGETS.workshopHistory.wordDiffParagraphCharacters / 6) + 1).trim();
-    const { changes } = diffWorkshopHistoryTexts(prose(A, long), prose(A, `${long} again`));
+    const { changes } = changesOf(diffWorkshopHistoryTexts(prose(A, long), prose(A, `${long} again`)));
     expect(changes).toEqual([expect.objectContaining({ kind: 'changed-whole', why: 'long-paragraph', oldText: long, newText: `${long} again` })]);
   });
 });
@@ -92,34 +100,27 @@ describe('bounded work, never bounded correctness', () => {
     });
     return loaded;
   };
-  const byPosition = (result: ReturnType<typeof diffWorkshopHistoryTexts>): string[] =>
-    result.changes.map((change) => change.kind === 'changed' || change.kind === 'changed-whole' ? 'changed' : change.kind);
 
   it('shows a paragraph whose word diff passes maxEditLength whole', () => {
-    const { changes } = withBudgets({ maxEditLength: 2 })('one two three four five', 'six seven eight nine ten');
+    const { changes } = changesOf(withBudgets({ maxEditLength: 2 })('one two three four five', 'six seven eight nine ten'));
     expect(changes).toEqual([expect.objectContaining({ kind: 'changed-whole', why: 'edit-length' })]);
   });
 
-  // PR #286 F-03: the outer alignment has its own ceiling, apart from the word diff's.
-  it('pairs paragraphs by position when the alignment passes alignEditLength, whatever the word limit', () => {
-    const diff = withBudgets({ alignEditLength: 1, maxEditLength: 1_000_000 });
-    const result = diff(prose(A, B, C), prose(D, 'one', 'two', 'three'));
-    expect(result.alignedByPosition).toBe('edit-length');
-    expect(byPosition(result)).toEqual(['changed', 'changed', 'changed', 'added']);
-    expect(result.changes.at(-1)).toMatchObject({ kind: 'added', newNumber: 4, text: 'three' });
-    // Each pair was still compared word by word: the word limit was not what stopped the alignment.
-    expect(result.changes[0].kind).toBe('changed');
+  // D13a (PR #286 F-03): the outer alignment has its own ceilings, apart from the word diff's.
+  it('refuses when the alignment passes paragraphEditLength, whatever the word limit', () => {
+    const diff = withBudgets({ paragraphEditLength: 1, maxEditLength: 1_000_000, alignParagraphs: 1_000_000 });
+    expect(diff(prose(A, B, C), prose(D, 'one', 'two', 'three'))).toEqual({ kind: 'refused', reason: 'paragraph-edit-length' });
+    // One paragraph changed is an edit length of two: within a ceiling of two, it aligns.
+    expect(withBudgets({ paragraphEditLength: 2, maxEditLength: 1_000_000 })(prose(A, B), prose(A, C)).kind).toBe('diff');
   });
 
-  it('never aligns a side past alignParagraphs: many short paragraphs are paired by position', () => {
-    const diff = withBudgets({ alignParagraphs: 3, alignEditLength: 1_000_000 });
-    const result = diff(prose(A, B, C, D), prose(A, B, C, D, 'one'));
-    expect(result.alignedByPosition).toBe('too-many-paragraphs');
-    // By position, the four kept paragraphs pair with themselves and the last is added: still a true account.
-    expect(byPosition(result)).toEqual(['changed', 'changed', 'changed', 'changed', 'added']);
+  it('refuses a side past alignParagraphs before aligning, whatever the edit limits', () => {
+    const diff = withBudgets({ alignParagraphs: 3, paragraphEditLength: 1_000_000, maxEditLength: 1_000_000 });
+    expect(diff(prose(A, B, C), prose(A, B, C, D))).toEqual({ kind: 'refused', reason: 'too-many-paragraphs' });
+    expect(diff(prose(A, B, C), prose(A, B, D)).kind).toBe('diff');
   });
 
   it('aligns as before within both ceilings', () => {
-    expect(diffWorkshopHistoryTexts(prose(A, B), prose(A, C)).alignedByPosition).toBeUndefined();
+    expect(diffWorkshopHistoryTexts(prose(A, B), prose(A, C))).toMatchObject({ kind: 'diff', changes: [{ kind: 'changed' }] });
   });
 });

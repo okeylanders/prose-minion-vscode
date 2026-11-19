@@ -157,6 +157,7 @@ describe('the continuation lines, as the prompt teaches them and the renderers w
   it('describes the refusals the results give', async () => {
     expect(prose).toContain('When even the first change does not fit, the diff is refused and gives no call');
     expect(prose).toContain('is refused before anything is read');
+    expect(prose).toContain('When too much changed between the two versions to compare them paragraph by paragraph, the diff is refused');
     expect(prose).toContain('if the file was saved again since, the result says so and you ask again from the first change');
   });
 });

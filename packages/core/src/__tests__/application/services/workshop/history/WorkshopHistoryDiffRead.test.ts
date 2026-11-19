@@ -215,8 +215,8 @@ describe('logs carry no id, subject, author, path or diff text (G3)', () => {
   });
 });
 
-describe('a continuation never aligns again (PR #286 F-03)', () => {
-  it('keeps the finished diff, shared across turns, keyed by both texts', async () => {
+describe('a continuation never aligns again (D13a; PR #286 F-03)', () => {
+  it('runs the alignment once across a continuation, from a per-window cache keyed by the pair', async () => {
     const compute = jest.fn(diffWorkshopHistoryTexts);
     const diffs = new WorkshopHistoryDiffCache(2, compute);
     const many = (word: string): string => prose(...Array.from({ length: 30 }, (_, index) => `Paragraph ${index + 1}: the Queen ${word}.`));
@@ -232,5 +232,20 @@ describe('a continuation never aligns again (PR #286 F-03)', () => {
     // A file saved again is another key: computed afresh, never served from the old one.
     await run(diff(short(oldest), { kind: 'current' }), many('strode'));
     expect(compute).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('the outer alignment\'s ceiling, refused in words (D13a)', () => {
+  it('refuses a diff past it, keeps the refusal, and shows nothing partial', async () => {
+    const compute = jest.fn(() => ({ kind: 'refused' as const, reason: 'paragraph-edit-length' as const }));
+    const diffs = new WorkshopHistoryDiffCache(4, compute);
+    const run = () => historyCapability({ history: fakeHistory({ commits: [middle, oldest], texts }), diffs })
+      .capability.fulfill(diff(short(oldest), { kind: 'commit', commit: short(middle) }));
+    const refused = await run();
+    expect(refused).toMatchObject({ status: 'rejected', metadata: { rejectionReason: 'paragraph-edit-length' } });
+    expect(refused.error).toBe('Too much changed between these two versions to compare paragraph by paragraph. Pick two commits closer together.');
+    expect(refused.content).toBeUndefined();
+    await run();
+    expect(compute).toHaveBeenCalledTimes(1);
   });
 });

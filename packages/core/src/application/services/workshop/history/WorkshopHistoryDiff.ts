@@ -9,12 +9,12 @@
  * - **Words inside a changed paragraph,** with jsdiff's word diff, spaces
  *   kept. A paragraph longer than `wordDiffParagraphCharacters`, or a word
  *   diff past `maxEditLength`, is shown whole, before and after.
- * - **Bounded work, never bounded correctness.** The paragraph alignment
- *   has its own ceiling, apart from the word diff's (PR #286 F-03): a side
- *   past `alignParagraphs` paragraphs is not aligned at all, and an
- *   alignment past `alignEditLength` gives up. Either falls back to pairing
- *   every paragraph by position, still a true account of the two texts,
- *   only a longer one. Myers' work is O((N + M) · D), so both bounds hold it.
+ * - **The paragraph alignment has its own ceiling** (D13a; PR #286 F-03),
+ *   apart from the word diff's: each side holds at most `alignParagraphs`
+ *   paragraphs, checked before aligning, and the array diff runs with
+ *   `paragraphEditLength`. Past either, the diff is refused: no partial or
+ *   line-level fallback, so nothing can read as a smaller change than it
+ *   was. Myers' work is O((N + M) · D), so the two bounds hold it.
  * - **Context.** The first change of a run carries the unchanged
  *   paragraph(s) just before it, the last the ones just after:
  *   `contextParagraphs` each side, numbered in the newer text.
@@ -64,26 +64,33 @@ export type WorkshopHistoryChange = ChangeContext & (
 );
 
 export interface WorkshopHistoryDiffResult {
+  readonly kind: 'diff';
   readonly changes: readonly WorkshopHistoryChange[];
   readonly oldParagraphs: number;
   readonly newParagraphs: number;
-  /** Why paragraphs were paired by position instead of aligned, when they were. */
-  readonly alignedByPosition?: 'too-many-paragraphs' | 'edit-length';
 }
+
+/** Why the paragraph alignment refused (D13a). */
+export type WorkshopHistoryAlignRefusal = 'too-many-paragraphs' | 'paragraph-edit-length';
+
+export type WorkshopHistoryDiffOutcome =
+  | WorkshopHistoryDiffResult
+  | { readonly kind: 'refused'; readonly reason: WorkshopHistoryAlignRefusal };
 
 type Removed = { readonly index: number; readonly text: string };
 
-/** Compare `older` with `newer`, paragraphs first, then the words of each changed one. */
-export function diffWorkshopHistoryTexts(older: string, newer: string): WorkshopHistoryDiffResult {
+/** Compare `older` with `newer`, paragraphs first, then the words of each changed one; or refuse past the outer ceiling. */
+export function diffWorkshopHistoryTexts(older: string, newer: string): WorkshopHistoryDiffOutcome {
   const budgets = PROMPT_BUDGETS.workshopHistory;
   const oldParagraphs = splitBlankLineParagraphs(older).map((paragraph) => paragraph.text);
   const newParagraphs = splitBlankLineParagraphs(newer).map((paragraph) => paragraph.text);
-  const tooMany = Math.max(oldParagraphs.length, newParagraphs.length) > budgets.alignParagraphs;
-  const aligned = tooMany ? undefined : diffArrays(oldParagraphs, newParagraphs, { maxEditLength: budgets.alignEditLength });
-  const alignment = aligned ?? [
-    ...(oldParagraphs.length > 0 ? [{ value: oldParagraphs, added: false, removed: true, count: oldParagraphs.length }] : []),
-    ...(newParagraphs.length > 0 ? [{ value: newParagraphs, added: true, removed: false, count: newParagraphs.length }] : [])
-  ];
+  if (Math.max(oldParagraphs.length, newParagraphs.length) > budgets.alignParagraphs) {
+    return { kind: 'refused', reason: 'too-many-paragraphs' };
+  }
+  const alignment = diffArrays(oldParagraphs, newParagraphs, { maxEditLength: budgets.paragraphEditLength });
+  if (!alignment) {
+    return { kind: 'refused', reason: 'paragraph-edit-length' };
+  }
 
   const changes: WorkshopHistoryChange[] = [];
   let oldIndex = 0;
@@ -120,12 +127,7 @@ export function diffWorkshopHistoryTexts(older: string, newer: string): Workshop
     }
   }
   closeRun();
-  return {
-    changes,
-    oldParagraphs: oldParagraphs.length,
-    newParagraphs: newParagraphs.length,
-    ...(aligned === undefined ? { alignedByPosition: tooMany ? 'too-many-paragraphs' as const : 'edit-length' as const } : {})
-  };
+  return { kind: 'diff', changes, oldParagraphs: oldParagraphs.length, newParagraphs: newParagraphs.length };
 }
 
 /** A run's changes: pairs by position, then the paragraphs left over, added or removed whole. */

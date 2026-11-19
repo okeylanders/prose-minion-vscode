@@ -124,7 +124,6 @@ export interface WorkshopHistoryDiffInput {
   readonly changes: readonly WorkshopHistoryChange[];
   /** The two texts are equal; with no changes but unequal texts, only the space between paragraphs differs. */
   readonly identical: boolean;
-  readonly alignedByPosition: boolean;
   /** The first change shown, from 1. */
   readonly startChange: number;
   /** How many changes, from `startChange`, this rendering shows. */
@@ -163,10 +162,7 @@ function diffHeader(input: WorkshopHistoryDiffInput): string[] {
       : `${count(total, 'change')}: ${number(kinds.changed)} changed, ${number(kinds.added)} added, ${number(kinds.removed)} removed ` +
         '(paragraphs, numbered ¶ in the newer version; "was ¶" in the older). ' +
         'Inside a changed paragraph, removed words are shown ~~like this~~ and added words **like this**; ' +
-        'a literal \\* or \\~ in the text is shown with a backslash, and a line break inside a paragraph as " / ".',
-    ...(input.alignedByPosition
-      ? ['The two versions differ too widely to match paragraph by paragraph, so paragraphs are compared by position.']
-      : [])
+        'a literal \\* or \\~ in the text is shown with a backslash, and a line break inside a paragraph as " / ".'
   ];
 }
 

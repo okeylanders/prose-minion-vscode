@@ -169,10 +169,10 @@ export interface PromptBudgets {
    * to `wordDiffParagraphCharacters` and `maxEditLength` (the algorithm's
    * work bound, never its correctness). With no known window a diff is
    * bounded by `diffBytes`. The paragraph alignment has its own ceiling
-   * (PR #286 F-03): a side past `alignParagraphs` paragraphs, or an
-   * alignment past `alignEditLength`, pairs paragraphs by position instead.
-   * `diffCacheEntries` finished diffs are kept, so a continuation never
-   * aligns again. `gitReadyMs` is how long a host waits for its git to start.
+   * (D13a; PR #286 F-03): a side past `alignParagraphs` paragraphs, or an
+   * alignment past `paragraphEditLength`, refuses the diff in words.
+   * `alignCacheEntries` computed change lists are kept per window, so a
+   * continuation never aligns again. `gitReadyMs` is how long a host waits for its git to start.
    */
   readonly workshopHistory: Readonly<{
     logPageCommits: number;
@@ -187,8 +187,8 @@ export interface PromptBudgets {
     wordDiffParagraphCharacters: number;
     maxEditLength: number;
     alignParagraphs: number;
-    alignEditLength: number;
-    diffCacheEntries: number;
+    paragraphEditLength: number;
+    alignCacheEntries: number;
     gitReadyMs: number;
   }>;
   /** Bundled Prose Minion reference (ADR 2026-11-17 D25). */
@@ -808,9 +808,9 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     contextCharacters: 400,
     wordDiffParagraphCharacters: 20_000,
     maxEditLength: 10_000,
-    alignParagraphs: 20_000,
-    alignEditLength: 2_000,
-    diffCacheEntries: 8,
+    alignParagraphs: 5_000,
+    paragraphEditLength: 1_000,
+    alignCacheEntries: 4,
     gitReadyMs: 5_000
   },
   workshopHelp: {

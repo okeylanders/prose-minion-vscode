@@ -1,46 +1,61 @@
 /**
- * Finished diffs, kept so a continuation never aligns again (ADR 2026-11-19
- * D13; PR #286 F-03). Built once, in `extension.ts`, and shared by every
- * turn's history capability: a continuation is a later call, often in a
- * later turn.
+ * Computed change lists, kept per window so a continuation never runs the
+ * paragraph alignment again (ADR 2026-11-19 D13a; PR #286 F-03). Built once,
+ * in `extension.ts`, and shared by every turn's history capability: a
+ * continuation is a later call, often in a later turn.
  *
- * Keyed by the SHA-256 of both texts, so a key can only name the diff of
- * exactly those two texts: a file saved again, or another commit, is
- * another key. At most `diffCacheEntries` are kept, the least recently used
- * dropped first. Holds no path, and logs nothing.
+ * Keyed by the file, the two full hashes or the `current` fingerprint, and
+ * the budgets the alignment ran under, so a key names exactly one pair of
+ * versions: a file saved again, another commit or changed budgets is
+ * another key. A refusal is kept too, so a repeated call does not rerun it.
+ * At most `alignCacheEntries` are kept, the least recently used dropped
+ * first. Host-side only: a key never reaches a result or a log.
  */
 
-import { createHash } from 'crypto';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   diffWorkshopHistoryTexts,
-  type WorkshopHistoryDiffResult
+  type WorkshopHistoryDiffOutcome
 } from '@/application/services/workshop/history/WorkshopHistoryDiff';
 
-const digest = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex');
+/** What names one computed diff (D13a). */
+export interface WorkshopHistoryAlignKey {
+  /** HOST-SIDE ONLY. */
+  readonly fsPath: string;
+  readonly from: string;
+  /** A full hash, or `current:<fingerprint>`. */
+  readonly to: string;
+}
+
+/** The budgets an alignment ran under, as part of its key. */
+function budgetsKey(): string {
+  const { alignParagraphs, paragraphEditLength, maxEditLength, wordDiffParagraphCharacters, contextParagraphs } =
+    PROMPT_BUDGETS.workshopHistory;
+  return [alignParagraphs, paragraphEditLength, maxEditLength, wordDiffParagraphCharacters, contextParagraphs].join(',');
+}
 
 export class WorkshopHistoryDiffCache {
-  private readonly entries = new Map<string, WorkshopHistoryDiffResult>();
+  private readonly entries = new Map<string, WorkshopHistoryDiffOutcome>();
 
   constructor(
-    private readonly capacity: number = PROMPT_BUDGETS.workshopHistory.diffCacheEntries,
-    private readonly compute: (older: string, newer: string) => WorkshopHistoryDiffResult = diffWorkshopHistoryTexts
+    private readonly capacity: number = PROMPT_BUDGETS.workshopHistory.alignCacheEntries,
+    private readonly compute: (older: string, newer: string) => WorkshopHistoryDiffOutcome = diffWorkshopHistoryTexts
   ) {}
 
-  /** The diff of `older` and `newer`: kept from an earlier call when there is one, else computed and kept. */
-  diff(older: string, newer: string): { readonly result: WorkshopHistoryDiffResult; readonly cached: boolean } {
-    const key = `${digest(older)}:${digest(newer)}`;
-    const kept = this.entries.get(key);
+  /** The diff of the pair `key` names: kept from an earlier call, else computed once from the texts and kept. */
+  diff(key: WorkshopHistoryAlignKey, older: string, newer: string): { readonly outcome: WorkshopHistoryDiffOutcome; readonly cached: boolean } {
+    const id = [key.fsPath, key.from, key.to, budgetsKey()].join('\u0000');
+    const kept = this.entries.get(id);
     if (kept) {
-      this.entries.delete(key);
-      this.entries.set(key, kept);
-      return { result: kept, cached: true };
+      this.entries.delete(id);
+      this.entries.set(id, kept);
+      return { outcome: kept, cached: true };
     }
-    const result = this.compute(older, newer);
-    this.entries.set(key, result);
+    const outcome = this.compute(older, newer);
+    this.entries.set(id, outcome);
     while (this.entries.size > this.capacity) {
       this.entries.delete(this.entries.keys().next().value as string);
     }
-    return { result, cached: false };
+    return { outcome, cached: false };
   }
 }

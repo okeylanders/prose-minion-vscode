@@ -11,7 +11,10 @@ export type WorkshopHistoryDiffRefusal =
   | 'commit-not-in-history'
   | 'same-commit'
   | 'commit-order'
-  | 'diff-source-too-large';
+  | 'diff-source-too-large'
+  // The paragraph alignment's ceiling (D13a).
+  | 'too-many-paragraphs'
+  | 'paragraph-edit-length';
 
 export function workshopHistoryDiffRefusal(reason: WorkshopHistoryDiffRefusal, field: 'from' | 'to'): string {
   switch (reason) {
@@ -27,6 +30,9 @@ export function workshopHistoryDiffRefusal(reason: WorkshopHistoryDiffRefusal, f
       const mib = PROMPT_BUDGETS.workshopHistory.diffSourceBytes / (1024 * 1024);
       return `The version named in <${field}> is larger than ${mib.toLocaleString('en-US')} MiB, the most a diff compares.`;
     }
+    case 'too-many-paragraphs':
+    case 'paragraph-edit-length':
+      return 'Too much changed between these two versions to compare paragraph by paragraph. Pick two commits closer together.';
     default:
       return assertNever(reason);
   }

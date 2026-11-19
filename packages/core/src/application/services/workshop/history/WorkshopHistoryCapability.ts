@@ -60,7 +60,7 @@ export interface WorkshopHistoryPorts {
   readonly history: FileHistory;
   readonly fileSystem: Pick<FileSystem, 'readFile'>;
   readonly excerpt: WorkshopHistoryExcerptPort;
-  /** Finished diffs, shared across turns, so a continuation never aligns again (PR #286 F-03). */
+  /** Computed change lists, per window, so a continuation never aligns again (D13a). */
   readonly diffs: WorkshopHistoryDiffCache;
 }
 
@@ -193,7 +193,16 @@ export class WorkshopHistoryCapability {
         'differently. Ask again from change 1, without <startChange> or <current>.', { outcome: 'current-changed' });
     }
 
-    const { result: diff, cached } = this.ports.diffs.diff(older.text, newer.text);
+    // The alignment runs once per pair; a continuation reads its changes from the window's cache (D13a).
+    const { outcome: diff, cached } = this.ports.diffs.diff(
+      { fsPath: file.fsPath, from: from.commit.id, to: to ? to.commit.id : `current:${mark}` },
+      older.text,
+      newer.text
+    );
+    this.log(`diff computed cached=${cached} outcome=${diff.kind === 'diff' ? 'diff' : diff.reason}`);
+    if (diff.kind === 'refused') {
+      return this.refused(request, diff.reason, 'to');
+    }
     const input: Omit<WorkshopHistoryDiffInput, 'take' | 'limitedBy'> = {
       file: file.callFile,
       label: file.label,
@@ -204,11 +213,9 @@ export class WorkshopHistoryCapability {
       ...(mark !== undefined ? { currentMark: mark } : {}),
       changes: diff.changes,
       identical: older.text === newer.text,
-      alignedByPosition: diff.alignedByPosition !== undefined,
       startChange: request.startChange ?? 1
     };
     const row = `${file.label} · ${workshopHistoryShownId(from.commit)} → ${to ? workshopHistoryShownId(to.commit) : 'current'}`;
-    this.log(`diff computed cached=${cached} aligned=${diff.alignedByPosition ?? 'paragraphs'}`);
     return this.fittedDiff(request, input, row, window, diff.oldParagraphs, diff.newParagraphs);
   }
 
