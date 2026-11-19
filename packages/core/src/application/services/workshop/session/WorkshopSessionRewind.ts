@@ -14,6 +14,7 @@
  * it installs through the same import and hydration path Open uses.
  */
 
+import { archivedContextTallyWithin } from '@orchestration/ContextTallyRecord';
 import type {
   ContextSourceEntry,
   WorkshopChatTarget,
@@ -242,7 +243,8 @@ export function rewindWorkshopSession(
           messages: entry.messages.slice(0, mark.messageCount),
           contextSources: withContextSourceSupersedeChain(
             entry.contextSources.slice(0, mark.contextSourceCount)
-          )
+          ),
+          ...archivedContextTallyWithin(entry, mark.messageCount)
         }]
       : [];
   });

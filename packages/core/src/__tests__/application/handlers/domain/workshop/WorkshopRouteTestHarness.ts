@@ -199,6 +199,7 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     getConversationContextBudget: jest.fn((conversationId: string | undefined) =>
       conversationId ? contextBudgets.get(conversationId) : undefined
     ),
+    measureWorkshopConversation: jest.fn(() => undefined),
     getConversationContextSources: jest.fn((conversationId: string | undefined) =>
       conversationId ? contextSources.get(conversationId) ?? [] : []
     ),

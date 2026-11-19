@@ -59,7 +59,8 @@ async function firstHostRun(seed: (session: WorkshopSessionService) => Promise<v
     continueConversation: jest.fn(),
     discardConversation: jest.fn(),
     getConversationContextBudget: jest.fn(),
-    getConversationContextSources: jest.fn().mockReturnValue([])
+    getConversationContextSources: jest.fn().mockReturnValue([]),
+    getConversationContextAccount: jest.fn()
   } as unknown as jest.Mocked<AgentRunEngine>;
   const manager = {
     ensureInitialized: jest.fn().mockResolvedValue(undefined),

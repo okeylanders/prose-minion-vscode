@@ -12,6 +12,7 @@ export * from './status';
 export * from './tokenUsage';
 export * from './citations';
 export * from './inferenceContext';
+export * from './contextBreakdown';
 export * from './accountBalance';
 export * from './warnings';
 

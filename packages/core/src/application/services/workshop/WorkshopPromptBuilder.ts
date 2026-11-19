@@ -308,7 +308,7 @@ export function buildWorkshopInteractionTransitionFrame(
   ].join('\n');
 }
 
-function buildGuestExcerptFrame(excerpt: WorkshopExcerpt): string {
+export function buildGuestExcerptFrame(excerpt: WorkshopExcerpt): string {
   const trimmed = trimToWordLimit(excerpt.text, PROMPT_BUDGETS.personaExcerpt.words);
   const sourceFrame = buildWorkshopExcerptSourceFrame(excerpt.source);
   const provenance = [

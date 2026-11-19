@@ -115,6 +115,7 @@ function createTestAssembly(): TestAssembly {
     addStatusListener: jest.fn(() => jest.fn()),
     getConversationContextBudget: jest.fn(),
     getConversationContextSources: jest.fn().mockReturnValue([]),
+    measureWorkshopConversation: jest.fn(),
     refreshConfiguration: jest.fn().mockResolvedValue(undefined)
   } as unknown as AssistantToolService;
   const workshopSessionService = new WorkshopSessionService();

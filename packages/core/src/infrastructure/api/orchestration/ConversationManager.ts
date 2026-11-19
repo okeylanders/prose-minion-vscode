@@ -5,21 +5,19 @@
 
 import { LogSink } from '@/platform';
 import { OpenRouterMessage } from '@providers/OpenRouterClient';
-import {
-  CONTEXT_SOURCE_KINDS,
-  ContextBudgetSnapshot,
-  ContextSourceEntry,
-  isContextPathGroup
-} from '@shared/types';
+import { ContextBudgetSnapshot, ContextSourceEntry } from '@shared/types';
 import { randomUUID } from 'node:crypto';
 import {
+  assertArchivedContextSources,
   cloneStoredContextSource,
   ContextSourceReadIdentity,
-  contextSourceProvenanceFault,
   findContextSourceRead,
   projectContextSource,
   StoredContextSourceEntry
 } from '@orchestration/ContextSourceRecord';
+import {
+  cloneContextTally, ConversationContextAccount, contextTallyFault, importableContextTally, StoredContextTallyEntry
+} from '@orchestration/ContextTallyRecord';
 
 /**
  * Thrown when a caller references a conversation id this manager no longer
@@ -50,6 +48,8 @@ export interface ConversationContext {
    * the host-private fingerprint; `getContextSources` projects it away.
    */
   contextSources?: StoredContextSourceEntry[];
+  /** Each committed turn's opening-message tally (ADR 2026-11-18 D6), same lifecycle. */
+  contextTally?: StoredContextTallyEntry[];
   /**
    * Monotonic mint for agent-fetched artifact ids (`art-N`, ADR 2026-07-18).
    * Never reused within a conversation — cancelled turns may skip numbers,
@@ -87,6 +87,8 @@ export interface ConversationArchiveEntryV1<K extends string = string> {
   /** Host rows, fingerprint included: the archive is host-side storage. */
   contextSources: StoredContextSourceEntry[];
   nextArtifactNumber: number;
+  /** Optional and additive (ADR 2026-11-18 D7): written only when entries exist. */
+  contextTally?: StoredContextTallyEntry[];
 }
 
 /**
@@ -209,7 +211,8 @@ export class ConversationManager {
         })),
         lastActivity: conversation.lastActivity,
         contextSources: cloneContextSources(conversation.contextSources ?? []),
-        nextArtifactNumber: conversation.nextArtifactNumber ?? 0
+        nextArtifactNumber: conversation.nextArtifactNumber ?? 0,
+        ...(conversation.contextTally?.length ? { contextTally: cloneContextTally(conversation.contextTally) } : {})
       };
     });
   }
@@ -249,7 +252,8 @@ export class ConversationManager {
             lastActivity: entry.lastActivity,
             pinned: true,
             contextSources: cloneContextSources(entry.contextSources),
-            nextArtifactNumber: entry.nextArtifactNumber
+            nextArtifactNumber: entry.nextArtifactNumber,
+            contextTally: importableContextTally(entry, this.log)
           }
         });
       } catch (error) {
@@ -356,6 +360,7 @@ export class ConversationManager {
     conversation.messages = conversation.messages.slice(0, 1);
     conversation.contextBudget = undefined;
     conversation.contextSources = undefined;
+    conversation.contextTally = undefined;
     conversation.lastActivity = Date.now();
   }
 
@@ -441,6 +446,34 @@ export class ConversationManager {
   }
 
   /**
+   * Store one committed turn's opening-message tally (ADR 2026-11-18 D6).
+   * Never throws past a committed turn: a tally that does not fit the history
+   * is logged and left out, and the answer says whether it was kept.
+   */
+  appendContextTally(conversationId: string, entry: StoredContextTallyEntry): boolean {
+    const conversation = this.conversations.get(conversationId);
+    const next = [...(conversation?.contextTally ?? []), entry];
+    const fault = conversation ? contextTallyFault(next, conversation.messages.length - 1) : 'no conversation';
+    if (!conversation || fault) {
+      this.log?.appendLine(`[ConversationManager] Context tally for ${conversationId} left out: ${fault}`);
+      return false;
+    }
+    conversation.contextTally = cloneContextTally(next);
+    return true;
+  }
+
+  /** What the owner can account for in a conversation; host-side only (ADR 2026-11-18 D4, D6). */
+  getContextAccount(conversationId: string | undefined): ConversationContextAccount | undefined {
+    const conversation = conversationId ? this.conversations.get(conversationId) : undefined;
+    if (!conversation || conversation.messages[0]?.role !== 'system') return undefined;
+    return {
+      systemMessage: conversation.messages[0].content,
+      messageCount: conversation.messages.length - 1,
+      tally: cloneContextTally(conversation.contextTally ?? [])
+    };
+  }
+
+  /**
    * History lengths an archive of this conversation would carry right now.
    * Every turn commits atomically through addMessages, so held messages are
    * always committed; undefined names a conversation this manager lacks.
@@ -499,12 +532,13 @@ export class ConversationManager {
   }
 
   /** Store provider-measured context only after its matching turn commits. */
-  setContextBudget(conversationId: string, snapshot: ContextBudgetSnapshot): void {
+  /** `undefined` clears it: a committed turn with no usage leaves no total for the history it changed. */
+  setContextBudget(conversationId: string, snapshot: ContextBudgetSnapshot | undefined): void {
     const conversation = this.conversations.get(conversationId);
     if (!conversation) {
       throw new ConversationNotFoundError(conversationId);
     }
-    conversation.contextBudget = { ...snapshot };
+    conversation.contextBudget = snapshot ? { ...snapshot } : undefined;
   }
 
   getContextBudget(conversationId: string | undefined): ContextBudgetSnapshot | undefined {
@@ -592,7 +626,7 @@ export class ConversationManager {
       throw new Error(`Conversation ${entry.key} has an invalid artifact counter`);
     }
     this.assertArchivedMessageShape(entry.messages, `conversation ${entry.key}`);
-    this.validateContextSources(entry.contextSources, entry.key);
+    assertArchivedContextSources(entry.contextSources, entry.key);
     const highestArtifactNumber = Math.max(
       0,
       ...entry.messages.flatMap(({ content }) => artifactNumbers(content)),
@@ -635,46 +669,6 @@ export class ConversationManager {
       }
       if (typeof message.content !== 'string') {
         throw new Error(`${label} has non-string content at message ${index}`);
-      }
-    });
-  }
-
-  private validateContextSources<K extends string>(
-    sources: readonly StoredContextSourceEntry[],
-    key: K
-  ): void {
-    if (!Array.isArray(sources)) {
-      throw new Error(`Conversation ${key} has invalid context sources`);
-    }
-    const kinds: ReadonlySet<string> = new Set(CONTEXT_SOURCE_KINDS);
-    const origins = new Set(['writer', 'host', 'tool']);
-    sources.forEach((source, index) => {
-      if (
-        !source ||
-        !kinds.has(source.kind) ||
-        !origins.has(source.origin) ||
-        typeof source.label !== 'string' ||
-        !Number.isInteger(source.sizeChars) ||
-        source.sizeChars < 0 ||
-        typeof source.isEstimate !== 'boolean' ||
-        !Number.isInteger(source.deliveredAt) ||
-        source.deliveredAt < 0 ||
-        (source.stale !== undefined && typeof source.stale !== 'boolean') ||
-        (source.artifactId !== undefined && !/^art-[1-9]\d*$/.test(source.artifactId)) ||
-        (source.promptTokensDelta !== undefined &&
-          (!Number.isInteger(source.promptTokensDelta) || source.promptTokensDelta < 0)) ||
-        (source.excerptVersion !== undefined &&
-          (!Number.isInteger(source.excerptVersion) || source.excerptVersion < 0)) ||
-        contextSourceProvenanceFault(source) !== undefined
-      ) {
-        throw new Error(`Conversation ${key} has invalid context source ${index}`);
-      }
-      if (source.configuredResource && (
-        !isContextPathGroup(source.configuredResource.group) ||
-        typeof source.configuredResource.path !== 'string' ||
-        !source.configuredResource.path.trim()
-      )) {
-        throw new Error(`Conversation ${key} has invalid configured resource ${index}`);
       }
     });
   }

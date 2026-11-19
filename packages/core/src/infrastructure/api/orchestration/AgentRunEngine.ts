@@ -33,9 +33,11 @@ import {
   RunPolicy
 } from './AgentRunContracts';
 import {
+  contextSourcesCommitLogLine,
   ContextSourceReadIdentity,
   StoredContextSourceEntry
 } from '@orchestration/ContextSourceRecord';
+import type { ConversationContextAccount } from '@orchestration/ContextTallyRecord';
 import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
 import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
 import { coerceClaudeCacheTtl } from '@messages';
@@ -228,15 +230,6 @@ class ToolCallStreamVisibilityGuard {
  * bounded capability/correction rounds, output visibility, token accounting,
  * and atomic history commits. Capability adapters own protocol and I/O.
  */
-/**
- * A manifest row as the log names it. A project note's label is its title,
- * which no log may carry (ADR 2026-11-04 D9; PR #197 F-03): the manifest the
- * writer sees keeps it, and the log names the row by its kind alone.
- */
-function contextSourceLogLabel(entry: { readonly kind: string; readonly label: string }): string {
-  return entry.kind === 'memory' ? '(a project note)' : entry.label;
-}
-
 export class AgentRunEngine {
   private readonly conversationCleanupInterval: NodeJS.Timeout;
   private openRouterClient?: OpenRouterClient;
@@ -397,6 +390,8 @@ export class AgentRunEngine {
     let totalUsage: TokenUsage | undefined;
     let runCitations: UrlCitation[] | undefined;
     let latestObservation: InferenceRequestObservation | undefined;
+    // Whether the latest call reported usage: only then does a total describe the history this turn commits (PR #285 F-02).
+    let finalCallMeasured = false;
     let peakPromptTokens = 0;
     let correctionTurns = 0;
     let remindCapabilityProtocol = false;
@@ -414,6 +409,7 @@ export class AgentRunEngine {
       }
     };
     const recordObservation = (observation?: InferenceRequestObservation): void => {
+      finalCallMeasured = observation !== undefined;
       if (!observation) {
         // Missing final-call telemetry cannot renew an earlier call's cache.
         if (latestObservation) {
@@ -656,14 +652,12 @@ export class AgentRunEngine {
             // Manifest rows commit ONLY beside a committed turn (Phase 7):
             // cancellation and transport failure preserve the prior manifest.
             this.conversationManager.appendContextSources(conversationId, collectedSources);
-            this.outputChannel?.appendLine(
-              `[AgentRunEngine] Context sources committed for ${conversationId}: ` +
-              collectedSources.map((entry) =>
-                `${entry.kind}:${contextSourceLogLabel(entry)}${entry.promptTokensDelta !== undefined ? ` (+${entry.promptTokensDelta} prompt tokens)` : ' (size estimate)'}`
-              ).join(', ')
-            );
+            this.outputChannel?.appendLine(contextSourcesCommitLogLine(conversationId, collectedSources));
           }
-          if (latestObservation && totalUsage) {
+          // The owner's measure of this turn's opening message, at its index (ADR 2026-11-18 D6).
+          const tally = runOptions.contextTally?.();
+          if (tally) this.conversationManager.appendContextTally(conversationId, { messageIndex: history.length - 1, pieces: { ...tally } });
+          if (finalCallMeasured && latestObservation && totalUsage) {
             const snapshot = this.toContextBudgetSnapshot(latestObservation, peakPromptTokens, totalUsage);
             this.conversationManager.setContextBudget(conversationId, snapshot);
             // One line per committed reading, so a moving gauge can be diagnosed
@@ -675,6 +669,9 @@ export class AgentRunEngine {
               `model=${snapshot.modelId}, calls=${snapshot.callsThisTurn}, processed=${snapshot.turnProcessedTokens}, ` +
               `compression=${snapshot.contextCompression}`
             );
+          } else {
+            // The final call reported no usage: any total names an earlier history, so it goes (PR #285 F-02).
+            this.conversationManager.setContextBudget(conversationId, undefined);
           }
         };
         if (runOptions.deferRetention) {
@@ -798,6 +795,11 @@ export class AgentRunEngine {
   }
 
   /** Committed history lengths, measured in archive units, for one retained conversation. */
+  /** Host-side only: the held system message, the history's length and its tally (ADR 2026-11-18). */
+  getConversationContextAccount(conversationId: string | undefined): ConversationContextAccount | undefined {
+    return this.conversationManager.getContextAccount(conversationId);
+  }
+
   getConversationHistoryCounts(conversationId: string): ConversationHistoryCounts | undefined {
     return this.conversationManager.getCommittedHistoryCounts(conversationId);
   }

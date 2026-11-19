@@ -1,5 +1,6 @@
 import * as React from 'react';
 import {
+  ContextBreakdown,
   ContextBudgetSnapshot,
   ContextSourceEntry,
   ContextSourceKind,
@@ -13,6 +14,7 @@ import {
 } from '@utils/contextBudget';
 import { partitionContextSources } from '@utils/workshop/contextSources';
 import { modelOptionLabel } from '@utils/modelOptionLabel';
+import { ContextBreakdownSummary } from '@components/shared/ContextBreakdownSummary';
 
 interface ContextBudgetProps {
   /** Canonical persona id or a namespaced non-persona participant key. */
@@ -25,6 +27,8 @@ interface ContextBudgetProps {
   cumulativeProcessedTokens: number;
   /** The active participant's context-source manifest (Sprint 12 Phase 7). */
   sources?: readonly ContextSourceEntry[];
+  /** The participant's context by part (ADR 2026-11-18); absent for a tool sidecar. */
+  breakdown?: ContextBreakdown;
   /** Host persona label for origin attribution ("Requested by Jill"). */
   requesterLabel?: string;
 }
@@ -137,11 +141,30 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
   modelOptions,
   cumulativeProcessedTokens,
   sources,
+  breakdown,
   requesterLabel
 }) => {
   const accessibleLabel = showsContextSuffix
     ? `${participantLabel} context`
     : participantLabel;
+  if (!snapshot && breakdown) {
+    // No total for this history, but the parts the host measured still open (PR #285 F-01).
+    return (
+      <details className="pm-context-budget pm-context-budget-empty">
+        <summary className="pm-context-budget-row" aria-label={`${accessibleLabel}: total not measured yet; parts measured so far`}>
+          <IdentityDot identity={participantIdentity} />
+          <ParticipantLabel participantLabel={participantLabel} showsContextSuffix={showsContextSuffix} />
+          <span className="pm-context-budget-track" />
+          <span className="pm-context-budget-nums">Total not measured yet — parts so far</span>
+          <Chevron />
+        </summary>
+        <div className="pm-context-budget-body" tabIndex={0} role="region" aria-label="Context details">
+          <ContextBreakdownSummary breakdown={breakdown} />
+          {sources && sources.length > 0 && <InContextSources sources={sources} requesterLabel={requesterLabel} />}
+        </div>
+      </details>
+    );
+  }
   if (!snapshot) {
     return (
       <div className="pm-context-budget pm-context-budget-empty" role="status" aria-label={`${accessibleLabel}: not measured yet`}>
@@ -201,34 +224,37 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
         )}
         <Chevron />
       </summary>
-      <dl className="pm-context-budget-details">
-        <div><dt>Measured model</dt><dd>{modelOptionLabel(modelOptions, snapshot.modelId)}</dd></div>
-        <div>
-          <dt>Model window</dt>
-          <dd>{view.usableInputTokens === undefined ? 'Unavailable' : model?.contextLength?.toLocaleString()}</dd>
+      <div className="pm-context-budget-body" tabIndex={0} role="region" aria-label="Context details">
+        <dl className="pm-context-budget-details">
+          <div><dt>Measured model</dt><dd>{modelOptionLabel(modelOptions, snapshot.modelId)}</dd></div>
+          <div>
+            <dt>Model window</dt>
+            <dd>{view.usableInputTokens === undefined ? 'Unavailable' : model?.contextLength?.toLocaleString()}</dd>
+          </div>
+          <div><dt>Usable input</dt><dd>{view.usableInputTokens?.toLocaleString() ?? 'Unavailable'}</dd></div>
+          <div><dt>Output reserved</dt><dd>{snapshot.requestedMaxOutputTokens.toLocaleString()}</dd></div>
+          <div><dt>Current context</dt><dd>{snapshot.contextTokens.toLocaleString()}</dd></div>
+          <div><dt>Last request prompt</dt><dd>{snapshot.promptTokens.toLocaleString()}</dd></div>
+          <div><dt>Last response</dt><dd>{snapshot.completionTokens.toLocaleString()}</dd></div>
+          <div><dt>Peak this turn</dt><dd>{snapshot.peakPromptTokensThisTurn.toLocaleString()}</dd></div>
+          <div>
+            <dt>This turn</dt>
+            <dd>{snapshot.callsThisTurn} {snapshot.callsThisTurn === 1 ? 'call' : 'calls'} · {snapshot.turnProcessedTokens.toLocaleString()} processed</dd>
+          </div>
+          <div><dt>Cumulative</dt><dd>{cumulativeProcessedTokens.toLocaleString()} processed</dd></div>
+          <div>
+            <dt>Compression</dt>
+            <dd className={compressionValueClass(snapshot.contextCompression)}>{compressionLabel(snapshot.contextCompression)}</dd>
+          </div>
+        </dl>
+        {breakdown ? <ContextBreakdownSummary breakdown={breakdown} contextTokens={snapshot.contextTokens} /> : null}
+        {sources && sources.length > 0 && (
+          <InContextSources sources={sources} requesterLabel={requesterLabel} />
+        )}
+        <div className="pm-context-budget-foot">
+          Context measured on <b>{participantLabel}</b>&rsquo;s last committed reply. Each participant keeps
+          its own conversation; switching targets never resets it.
         </div>
-        <div><dt>Usable input</dt><dd>{view.usableInputTokens?.toLocaleString() ?? 'Unavailable'}</dd></div>
-        <div><dt>Output reserved</dt><dd>{snapshot.requestedMaxOutputTokens.toLocaleString()}</dd></div>
-        <div><dt>Current context</dt><dd>{snapshot.contextTokens.toLocaleString()}</dd></div>
-        <div><dt>Last request prompt</dt><dd>{snapshot.promptTokens.toLocaleString()}</dd></div>
-        <div><dt>Last response</dt><dd>{snapshot.completionTokens.toLocaleString()}</dd></div>
-        <div><dt>Peak this turn</dt><dd>{snapshot.peakPromptTokensThisTurn.toLocaleString()}</dd></div>
-        <div>
-          <dt>This turn</dt>
-          <dd>{snapshot.callsThisTurn} {snapshot.callsThisTurn === 1 ? 'call' : 'calls'} · {snapshot.turnProcessedTokens.toLocaleString()} processed</dd>
-        </div>
-        <div><dt>Cumulative</dt><dd>{cumulativeProcessedTokens.toLocaleString()} processed</dd></div>
-        <div>
-          <dt>Compression</dt>
-          <dd className={compressionValueClass(snapshot.contextCompression)}>{compressionLabel(snapshot.contextCompression)}</dd>
-        </div>
-      </dl>
-      {sources && sources.length > 0 && (
-        <InContextSources sources={sources} requesterLabel={requesterLabel} />
-      )}
-      <div className="pm-context-budget-foot">
-        Context measured on <b>{participantLabel}</b>&rsquo;s last committed reply. Each participant keeps
-        its own conversation; switching targets never resets it.
       </div>
     </details>
   );

@@ -1,7 +1,7 @@
 # Feature: Show What a Participant's Context Holds, Part by Part
 
 **Date Identified:** 2026-11-17
-**Status:** Idea. Small to medium: host-side measuring plus a summary in the Context panel. Probably a short ADR section, since it adds what the manifest records.
+**Status:** Being built on `feature/workshop-context-breakdown` (PR into `main`, stacked on #284 and #283), per [ADR 2026-11-18](../../../docs/adr/2026-11-18-workshop-context-breakdown.md). Archiving is left to Ada once it merges.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-17, from Jill's Context panel (161K of 1M)
 
@@ -98,7 +98,7 @@
   Leaning: two lines that open.
 - **A way to read the system prompt?** A read-only "View" that opens the
   assembled prompt in an editor tab would help debugging. Leaning: later, if
-  wanted.
+  wanted. **Not built in the first PR** (ADR 2026-11-18 D10); still a later idea.
 - **The sidebar.** `ContextBudget` is a shared component. Does anything
   outside the Workshop show a context panel that wants the same summary?
 
