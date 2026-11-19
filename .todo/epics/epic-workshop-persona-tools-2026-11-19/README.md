@@ -1,6 +1,6 @@
 # Epic: Workshop Persona Tools
 
-**Status:** Slice 0 (the spec) in review (PR #286); revised after Astra's review and re-review (ADR D6a–D6e, D8a, D8b, D13a, D22a). Nothing built yet. Nothing has gone to `main`.
+**Status:** Built. Slice 0, B, C1 and A are merged into `epic/workshop-persona-tools` (PRs #286–#289); C2 is PR #290, in review, and merges before the closing pass (`epic/workshop-persona-tools-close`). Next: Okey's [live pass](live-pass.md) and the open decisions it lists, then a PR from the epic to `main`. Nothing has gone to `main`.
 **Priority:** Medium
 **Opened:** 2026-11-19
 **Branch:** `epic/workshop-persona-tools`, cut from `main` at `478157d`.
@@ -25,12 +25,12 @@ decisions live in this README and the ADR.
 
 | # | Item | Decisions | Branch | PR | Status |
 |---|---|---|---|---|---|
-| 0 | Spec | (this README and the ADR) | `epic/workshop-persona-tools-spec` | #286 | In review |
-| B | B: `history.log`, `history.diff`, the `FileHistory` port and its Git adapter | ADR D11–D17, D13a | `…-file-git-history` | | Waiting on 0 |
-| A | A: the to-do status trailer, the open room's changes, the saved-session write port, the receipt and Undo | ADR D1–D10, D6a–D6e, D8a, D8b | `…-todo-closeout` | | Waiting on 0 |
-| C1 | C: the scan, the checker (the resolver's `matchPatterns` seam), the write, `levelOf`, the helper task and the Settings sheet | ADR D18–D25, D22a, D28 | `…-context-paths-settings` | | Waiting on 0 |
-| C2 | C: the persona `locations.*` family, the proposal trailer, its card and its outcome kind | ADR D26–D28 | `…-context-paths-persona` | | Waiting on B, A and C1 |
-| Close | Closing pass: live pass, `AGENTS.md`, memory bank, tech debt | | `…-close` | | |
+| 0 | Spec | (this README and the ADR) | `epic/workshop-persona-tools-spec` | #286 | Merged (`bed0a836`) after four Astra rounds (D6a–D6e, D8a, D8b, D13a, D22a) |
+| B | B: `history.log`, `history.diff`, the `FileHistory` port and its Git adapter | ADR D11–D17, D13a | `…-git-history` | #287 | Merged (`b23719c6`): one P1 (literal pathspec) and two P2 (one decoder; size preflight), then one P1 (backslash names), all fixed |
+| C1 | C: the scan, the checker (the resolver's `matchPatterns` seam), the write, `levelOf`, the helper task and the Settings sheet | ADR D18–D25, D22a, D28 | `…-locations-settings` | #288 | Merged (`0e688c46`): one P1 (re-read before each write) and two P2 (overlap from effective patterns; partial scans), then one P2 (an empty truncated scan), all fixed |
+| A | A: the to-do status trailer, the open room's changes, the saved-session write port, the receipt and Undo | ADR D1–D10, D6a–D6e, D8a, D8b | `…-todo-closeout` | #289 | Merged (`b9b8d302`): three P1 (keep copies on a failed rollback; never drop the last readable prior; receipt durable first), then one P1 (keep copies when the marker move fails), all fixed; integration re-review clear |
+| C2 | C: the persona `locations.*` family, the proposal trailer, its card and its outcome kind | ADR D26–D28 | `…-locations-persona` | #290 | In review; merges before the closing pass |
+| Close | Closing pass: [live pass](live-pass.md), `AGENTS.md`, memory bank, tech debt | | `…-close` | | Open |
 
 Slice branches are `epic/workshop-persona-tools-<slug>`. A slice running
 under another slug keeps its own; this table then records the name it used.
@@ -130,6 +130,14 @@ under another slug keeps its own; this table then records the name it used.
 - `AGENTS.md` updated where a rule changed.
 - A memory-bank entry.
 
+## Tech debt filed by the epic
+
+- [The shared stored-file rewrite may not fence a stalled writer](../../tech-debt/2026-11-19-stored-file-rewrite-stalled-writer-fence.md)
+  (Medium): Lightbox boards and project memory; filed by the spec (row 50).
+- [The Lightbox passage linear-time tests still fail CI by the clock](../../tech-debt/2026-11-19-lightbox-passages-wall-clock-test.md)
+  (Medium): failed `verify` on #286 and #289; supersedes two Low notes on
+  the same test.
+
 ## Defaults taken
 
 Okey's decisions are marked. The rest were taken for him by the
@@ -159,10 +167,10 @@ and 38 (Q4).
 | 17 | B | A setting | None; available whenever the project is a git repository (G1). | **Okey's decision** |
 | 18 | B | The diff library | `diff` (jsdiff), a deliberate new runtime dependency of core (G2). | **Okey's decision.** It is not installed today, even transitively; Jest's `diff-sequences` is dev-only |
 | 19 | B | Authors in the log | Shown to the persona; never logged (G3). | **Okey's decision** |
-| 20 | B | The port's shape | **Refined.** `log(fsPath, limit)` and `show(fsPath, commit)`; core pages. | The Git extension's `LogOptions.skip` may not exist at the 1.82 floor; `maxEntries` and `path` do |
-| 21 | B | The Git typings | Not in the repository; the adapter copies the few types it uses, with their source named. | ADR D12 lists exactly what is relied on |
+| 20 | B | The port's shape | **Refined twice.** `log(fsPath, limit)`, `show(fsPath, commit)` and `size(fsPath, commit)`; core pages. Slice B made `show` return bytes and added `size` (rows 57, 58). | The Git extension's `LogOptions.skip` may not exist at the 1.82 floor; `maxEntries` and `path` do |
+| 21 | B | The Git typings | Not in the repository; the adapter copies the few types it uses, with their source named (`app/src/platform/vscode/gitExtensionApi.ts`). | ADR D12 lists exactly what is relied on |
 | 22 | B | Renames | Not followed; stated as the limit. (Q3) | The API's `log` has no `--follow` |
-| 23 | B | "Text conversions never run" | **Refined:** diff drivers and external tools never run; a repository's `textconv` may run inside `show`. Workspace trust covers it. | `show` reads blobs through `git show`; slice B confirms |
+| 23 | B | "Text conversions never run" | **Refined:** diff drivers and external tools never run; a repository's `textconv` may run when a blob is read. Workspace trust covers it. Slice B kept the caution, since it could not run the host; the adapter's header records that the Git extension's `buffer` reads with `git show --textconv`, as Astra's #286 review saw at the 1.82 floor. | `show` reads blobs through `git show`; live pass B |
 | 24 | B | Untrusted workspaces | Keep declaring no support; a test pins it, with the reason. | `apps/vscode-extension/package.json` has no `capabilities` block, read as `supported: false` |
 | 25 | B | `extensionDependencies` on `vscode.git` | Not declared; each call checks. | Declaring it would block activation where Git is disabled |
 | 26 | B | How the excerpt is named | `<group>excerpt</group>` alone; a configured file by `<group>` and `<path>`. | `resource.read`'s naming, and the capability codec's text fields |
@@ -184,10 +192,29 @@ and 38 (Q4).
 | 42 | C | What the persona hears back | A `locations` side in trailer outcomes, with pattern counts. | Brief default |
 | 43 | C | Do `locations.*` results publish | No. | Folder names reach the room's model only through a persona's own call |
 | 44 | All | New context-tally pieces | None: the snapshot rides `todos.snapshot`, the outcomes ride `room.trailer-outcomes`; `READ_IN_NAMES` names `history`. | **Code:** both frames are tallied where they already are |
-| 45 | All | Help sections | `workshop#to-dos-a-persona-closes`, `workshop#a-files-git-history`, `overview#suggest-context-paths`. `help/index.json` unchanged. | No command or setting is added |
+| 45 | All | Help sections | `workshop#to-dos-a-persona-closes`, `workshop#a-file-s-git-history` (row 60), `overview#suggest-context-paths`, and a paragraph there on asking a persona (C2). `help/index.json` unchanged. | No command or setting is added |
 | 47 | B | A diff whose paragraph alignment would be costly | Refused in words past `alignParagraphs` or `paragraphEditLength`; the change list is cached per window so a continuation never realigns (PR #286 F-03). | The word stage's bound does not cover the outer alignment (ADR D13a) |
 | 48 | C | A pattern whose search fails | Its group is left unchanged at review and Apply; only a completed zero-match search drops a pattern (PR #286 F-04). | **Code:** `browse-counts` skips failures as if they matched nothing (ADR D22a) |
 | 49 | A | Where a refused room's work is kept | At once in a new named session, "<title> (local recovery)", by a non-overwriting create; one per refusal episode. Not `current.json`. | **Code:** `current.json` is the workspace's, not the window's (`WorkshopSessionStore.availability`); PR #286 re-review, finding 2 (ADR D6c) |
 | 50 | A | The shared stored-file rewrite's own exposure | Not changed here; filed as tech debt for boards and memory. | Changing it would move Lightbox and memory behavior outside this epic |
 | 51 | A | A session left locked by a window that died mid-save | No automatic recovery. It reads "Recovery required" until the writer presses **Recover…** (on the save-failed or open-refused notice, or the session browser row) and confirms other windows are closed; recovery restores the pre-image if the name is empty and keeps every differing copy as "(local recovery)". | Unattended recovery traded for the writer's data: each automatic takeover opened a new race (PR #286 third re-review; ADR D6e) |
 | 46 | All | Files past 500 lines | Each gains only the call into a new module; `promptBudgets.ts` takes its keys. | The rule, and every earlier epic's budget table |
+| 52 | A | The write port's shape | **Slice A.** `WorkshopSavedSessionTodos` is implemented by its own class, `WorkshopSavedSessionTodoStore`, over the store and the coordinator (not by the coordinator), with an `openRoom()` the ADR does not list. Reconciliation runs on every session-state post and before Undo, not from a dedicated hydrate hook. | Keeps the coordinator (past 500 lines) to one call; PR #289 deviation 5 |
+| 53 | A | Refusals beyond the ADR's | **Slice A.** `session-busy` joins the write and Undo refusals (another window held the file under its lock, D6a). A read that is busy, recovery-required or unreadable reconciles as `unverified` (D8b), never `interrupted`. | The ADR names busy as an outcome but listed no closed reason for it |
+| 54 | A | The receipt before the target | **Review.** Before any saved session is written, the room holding the `saving` rows is checkpointed and read back (`checkpointTodoReceipt`), host and guest replies alike. If that fails, nothing is written and the rows read `receipt-not-saved`. | PR #289 review P1: a restart must never leave a to-do closed with no receipt to reconcile |
+| 55 | A | A read whose file name is unknown | **Review.** "Missing" is decided only under a lock. A read that knows no file name, finds no lock and still finds nothing gets `WorkshopNamedSessionUnconfirmedError`: "This saved session wasn't found. If another window is saving it, try again in a moment." It never detaches a room. Recall and the persona's read report it as `unknown-session`. | PR #289 deviation 1 and Astra's note; replaced a 3-attempt rescan |
+| 56 | A | Recovery copies and failed rollbacks | **Slice A and review.** A recovery copy's session id is derived from its lock (saved name, owner token, prior or next), so a retried Recover… reuses its copy. A publish whose rollback also fails keeps the lock and both copies, marks its owner file `abandoned-<token>.json`, and reads recovery-required (retention is set before the marker move). A prior is superseded only when the saved file decoded. An unreadable copy stops Recover… at its read step, with no in-app way past it (live pass, open decision 6). The confirm promises to keep unsaved work, not every copy. | Astra's #286 notes; PR #289 review and re-review P1s |
+| 57 | B | How `show` returns a side | **Slice B and review.** As raw bytes (the Git extension's `buffer`). Every side, the saved file's included, is decoded as strict UTF-8 with a byte-order mark stripped; invalid bytes refuse the diff in words. | PR #287 P2: VS Code's `show` decodes with its own detected encoding |
+| 58 | B | Bounds before reading | **Review.** The port gains `size` (the blob's raw size, `getObjectDetails`). Each side is sized before anything is fetched, and a side past `diffSourceBytes` refuses before the other is read; the size is checked again after the read. A text conversion that expands a blob is caught by the post-read check, not capped in memory. | PR #287 P2 |
+| 59 | B | Naming the file to git | **Review.** `log` is given `:(literal)` and the repository-relative path, so a name holding `*`, `?`, `[` or a leading `:` names only itself. A name holding a backslash, where that is a filename character, is refused as `unaddressable` before any call: `buffer` rewrites backslashes, and `log` and `size` do not. | PR #287 P1 and re-review P1 |
+| 60 | B | The help section id | `workshop#a-file-s-git-history`. | The help slug rule turns the apostrophe into a hyphen |
+| 61 | B | The log's "N more" line | "More commits follow. The next page: …", with no count. | The port fetches only one commit past the page |
+| 62 | B | Commit ids in continuations | The full commit id (cut to 40 characters in SHA-256 repositories), not the 10 the log displays. | A continuation must never become ambiguous |
+| 63 | C1 | The "offered by itself" line | **Slice C1.** A small status request and answer (`CONTEXT_PATHS_STATUS_REQUEST` / `CONTEXT_PATHS_STATUS`) tells the section whether every group matches nothing. | The section had no other way to know |
+| 64 | C1 | Apply's checks | **Slice C1 and review.** Stricter than D24: a group is left as `matches-changed` if *any* kept pattern now matches nothing. The value and its level are read again, synchronously, immediately before each group's write, so drift during the re-check or an earlier group's write leaves the group. Overlap is computed from each group's effective patterns: the kept ones for a group Apply can write, the current ones for every other. | Never hand the writer a subset they did not review; PR #288 P1 and P2 |
+| 65 | C1 | A proposal equal to the setting | Not offered (`unchanged`). Each group sent with Apply is checked for safety again. | Nothing to apply |
+| 66 | C1 | A scan that stopped or failed in part | **Review.** A scan that found no eligible folder but stopped at a bound, or could not read some folders, answers `scan-incomplete`, never "no folders"; a partial scan's view says it is partial. | PR #288 P2 and re-review P2 |
+| 67 | C2 | The outcome record's pattern counts | **Slice C2.** An `incomplete` count beside `kept`, `unmatched` and `refused`. A card is still shown when a check was incomplete, with that group left unchanged. | D22a: incomplete is never zero matches |
+| 68 | C2 | Drop reasons | No `off` or `over-cap`: there is no setting, and a second frame is `duplicate`. | A's precedent |
+| 69 | C2 | Where the grammar sits in the chain | Between help and history. | The history and lens sync tests pin those two to the end |
+| 70 | C2 | The before-fixture | A copy of A's `before-todo-status` session, which also predates C2. | An authentic session from before the slice |
