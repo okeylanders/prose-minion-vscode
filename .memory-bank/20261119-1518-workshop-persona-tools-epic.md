@@ -54,6 +54,7 @@ Every other default was the orchestrator's and is Okey's to overturn. Q1–Q4 st
 
 - Full `npx jest --maxWorkers=50%` on the epic at `b9b8d302` (before C2) plus documentation only: **962 suites / 13,643 tests / 59 snapshots**, all passing.
 - The same run with PR #290 (C2, head `f299273a`) merged in, as the epic will stand: **966 suites / 13,690 tests / 59 snapshots**, all passing. The closing pass then added one architecture test (the named-session guard), so `AGENTS.md` records 13,691; `npx jest packages/core/src/__tests__/architecture` passes 41 suites / 536 tests on this branch.
+- Final: the closing branch with the epic merged at `7e63d170` (C2 after its review fixes): **966 suites / 13,696 tests / 59 snapshots**, all passing; typecheck clean; lint 0 errors.
 - Each slice's PR records typecheck clean, lint 0 errors, no `from 'vscode'` in core, no new file over 500 lines.
 - No live model call, no Extension Development Host, no second window: that is the live pass.
 

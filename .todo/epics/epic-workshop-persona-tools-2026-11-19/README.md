@@ -1,6 +1,6 @@
 # Epic: Workshop Persona Tools
 
-**Status:** Built. Slice 0, B, C1 and A are merged into `epic/workshop-persona-tools` (PRs #286–#289); C2 is PR #290, in review, and merges before the closing pass (`epic/workshop-persona-tools-close`). Next: Okey's [live pass](live-pass.md) and the open decisions it lists, then a PR from the epic to `main`. Nothing has gone to `main`.
+**Status:** Built. Every slice is merged into `epic/workshop-persona-tools` (PRs #286–#290); the closing pass is on `epic/workshop-persona-tools-close`. Next: Okey's [live pass](live-pass.md) and the open decisions it lists, then a PR from the epic to `main`. Nothing has gone to `main`.
 **Priority:** Medium
 **Opened:** 2026-11-19
 **Branch:** `epic/workshop-persona-tools`, cut from `main` at `478157d`.
@@ -29,7 +29,7 @@ decisions live in this README and the ADR.
 | B | B: `history.log`, `history.diff`, the `FileHistory` port and its Git adapter | ADR D11–D17, D13a | `…-git-history` | #287 | Merged (`b23719c6`): one P1 (literal pathspec) and two P2 (one decoder; size preflight), then one P1 (backslash names), all fixed |
 | C1 | C: the scan, the checker (the resolver's `matchPatterns` seam), the write, `levelOf`, the helper task and the Settings sheet | ADR D18–D25, D22a, D28 | `…-locations-settings` | #288 | Merged (`0e688c46`): one P1 (re-read before each write) and two P2 (overlap from effective patterns; partial scans), then one P2 (an empty truncated scan), all fixed |
 | A | A: the to-do status trailer, the open room's changes, the saved-session write port, the receipt and Undo | ADR D1–D10, D6a–D6e, D8a, D8b | `…-todo-closeout` | #289 | Merged (`b9b8d302`): three P1 (keep copies on a failed rollback; never drop the last readable prior; receipt durable first), then one P1 (keep copies when the marker move fails), all fixed; integration re-review clear |
-| C2 | C: the persona `locations.*` family, the proposal trailer, its card and its outcome kind | ADR D26–D28 | `…-locations-persona` | #290 | In review; merges before the closing pass |
+| C2 | C: the persona `locations.*` family, the proposal trailer, its card and its outcome kind | ADR D26–D28 | `…-locations-persona` | #290 | Merged (`7e63d170`) |
 | Close | Closing pass: [live pass](live-pass.md), `AGENTS.md`, memory bank, tech debt | | `…-close` | | Open |
 
 Slice branches are `epic/workshop-persona-tools-<slug>`. A slice running
