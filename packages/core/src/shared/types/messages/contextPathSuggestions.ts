@@ -109,6 +109,8 @@ export interface ContextPathScanSummary {
   sent: number;
   /** The scan reached one of its bounds and left the deepest folders out. */
   stopped: boolean;
+  /** Folders whose listing could not be read: the scan, and so the proposal, is partial (PR #288 P2). */
+  unreadable: number;
 }
 
 export interface ContextPathProposalView {
@@ -133,8 +135,10 @@ export type ContextPathsSuggestionOutcome =
   | 'nothing-proposed'
   /** No folder is open. */
   | 'no-workspace'
-  /** The scan found no folder holding a Markdown or text file. */
+  /** The scan read every folder and found none holding a Markdown or text file. */
   | 'no-folders'
+  /** The scan found no such folder, but some folders could not be read: not "none". */
+  | 'scan-incomplete'
   /** No API key: nothing was sent. */
   | 'unconfigured'
   /** A newer suggestion replaced this one. */

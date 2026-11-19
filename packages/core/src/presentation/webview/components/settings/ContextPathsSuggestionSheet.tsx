@@ -117,6 +117,11 @@ export const ContextPathsSuggestionSheet: React.FC<{ suggestion: UseContextPaths
       {(phase === 'review' || phase === 'applying') && view && (
         <section className="pm-cps-sheet" aria-label="Suggested context paths">
           <div className="pm-cps-applies">{CONTEXT_PATH_APPLIES_TO_ALL}</div>
+          {(view.scan?.unreadable ?? 0) > 0 && (
+            <div className="pm-cps-note">
+              {view.scan!.unreadable === 1 ? 'One folder couldn\'t be read' : `${view.scan!.unreadable} folders couldn't be read`}, so this suggestion was made from the rest; files there aren't in it.
+            </div>
+          )}
           {view.scan?.stopped && (
             <div className="pm-cps-note">The project has more folders than one suggestion reads; the deepest were left out.</div>
           )}

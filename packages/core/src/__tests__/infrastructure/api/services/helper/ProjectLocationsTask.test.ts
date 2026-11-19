@@ -65,24 +65,25 @@ describe('project-locations codec', () => {
 
 describe('project-locations input', () => {
   it('sends each group\'s name and meaning, and the folders by name and count only', () => {
-    const data = buildProjectLocationsInput({ folders: [folder('Cast')], scanStopped: false });
+    const data = buildProjectLocationsInput({ folders: [folder('Cast')], scanStopped: false, foldersUnreadable: 0 });
     expect((data.groups as Array<{ name: string }>).map((group) => group.name)).toEqual([...CONTEXT_PATH_GROUPS]);
     expect(data.folders).toEqual([{ path: 'Cast', markdownFiles: 2, textFiles: 0, sampleNames: ['Alice.md', 'Mad Hatter.md'] }]);
     expect(data.foldersLeftOut).toBe(0);
     expect(data.scanStopped).toBe(false);
+    expect(data.foldersUnreadable).toBe(0);
   });
 
   it('sends at most its folders, and says how many were left out', () => {
     const folders = Array.from({ length: BUDGET.folders + 5 }, (_, index): ProjectFolderSummary => ({ path: `F${index}`, markdownFiles: 1, textFiles: 0, sampleNames: [] }));
-    const data = buildProjectLocationsInput({ folders, scanStopped: true });
+    const data = buildProjectLocationsInput({ folders, scanStopped: true, foldersUnreadable: 0 });
     expect((data.folders as unknown[]).length).toBe(BUDGET.folders);
     expect(data.foldersLeftOut).toBe(5);
-    expect(PROJECT_LOCATIONS_POLICY.describeInput({ folders, scanStopped: true })).toEqual({ folders: BUDGET.folders, 'folders left out': 5 });
+    expect(PROJECT_LOCATIONS_POLICY.describeInput({ folders, scanStopped: true, foldersUnreadable: 0 })).toEqual({ folders: BUDGET.folders, 'folders left out': 5 });
   });
 
   it('holds the request within its characters by sending fewer folders', () => {
     const long = (index: number): ProjectFolderSummary => ({ path: `Wonderland/${'Rabbit '.repeat(20)}${index}`, markdownFiles: 1, textFiles: 0, sampleNames: ['A'.repeat(80), 'B'.repeat(80), 'C'.repeat(80)] });
-    const input = { folders: Array.from({ length: 150 }, (_, index) => long(index)), scanStopped: false };
+    const input = { folders: Array.from({ length: 150 }, (_, index) => long(index)), scanStopped: false, foldersUnreadable: 0 };
     const sent = projectLocationsFoldersSent(input);
     expect(sent).toBeLessThan(150);
     expect(sent).toBeGreaterThan(0);

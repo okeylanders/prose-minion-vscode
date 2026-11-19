@@ -68,6 +68,7 @@ export const CONTEXT_PATH_SUGGESTION_WORDS: Readonly<Record<Exclude<ContextPaths
   'nothing-proposed': 'The suggestion proposed nothing; your context paths are as they were.',
   'no-workspace': 'Open a project folder to suggest context paths from it.',
   'no-folders': 'No folder in this project holds a Markdown or text file yet.',
+  'scan-incomplete': 'Some folders couldn\'t be read, and none of the rest holds a Markdown or text file; nothing was suggested. Your context paths are as they were.',
   unconfigured: 'Add your OpenRouter API key to suggest context paths.',
   cancelled: 'The suggestion was stopped.',
   failed: 'The suggestion didn\'t work this time; your context paths are as they were.'

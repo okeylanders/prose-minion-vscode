@@ -16,7 +16,9 @@
  * - **A group left out keeps its patterns,** and so does a group whose
  *   every pattern was dropped or refused.
  * - **Overlap is counted per group,** from each group's own matches after
- *   Apply, never the catalog (which keeps a file in its first group only).
+ *   Apply, never the catalog (which keeps a file in its first group only):
+ *   the kept patterns' files for a group Apply can write, the current
+ *   files for every other.
  * - **A group the workspace sets** is shown and not offered (D25).
  *
  * The view is writer data; this module logs nothing. The resolver's check
@@ -161,12 +163,16 @@ export class ContextPathProposalChecker {
       keptFiles.set(group, filesOf(matches));
     }
 
-    // Each group's files after Apply: its kept patterns' where something checked completely was kept, its current patterns otherwise.
+    // Whether each group would be offered, decided before overlap: only a group Apply can write takes
+    // its kept patterns' files; every other (workspace-set, incomplete, nothing kept, unchanged, not
+    // proposed) keeps its current files, which is what the project will hold (PR #288 P2).
+    const offers = new Map<ContextPathGroup, ContextPathOffer>();
+    for (const group of triage.keys()) {
+      offers.set(group, this.offerFor(current.reads[group], keptFiles.get(group)!.incomplete, kept[group] ?? [], current.patterns[group] ?? []));
+    }
     const after = new Map<ContextPathGroup, ReadonlyMap<string, ContextPatternMatchFile>>();
     for (const group of CONTEXT_PATH_GROUPS) {
-      const proposed = keptFiles.get(group);
-      const usesProposed = proposed && !proposed.incomplete && (kept[group]?.length ?? 0) > 0;
-      after.set(group, usesProposed ? proposed.files : currentFiles.get(group)!.files);
+      after.set(group, offers.get(group)?.offered ? keptFiles.get(group)!.files : currentFiles.get(group)!.files);
     }
 
     const offeredKept: Partial<Record<ContextPathGroup, readonly string[]>> = {};
@@ -216,7 +222,7 @@ export class ContextPathProposalChecker {
         examples: examplesOf(mine.files.values(), this.bounds.examples),
         shared: { count: sharedCount, examples: shared.slice(0, this.bounds.examples) }
       };
-      view.offer = this.offerFor(own, mine.incomplete, kept[group] ?? [], view.current.patterns);
+      view.offer = offers.get(group)!;
       if (view.offer.offered) {
         offeredKept[group] = kept[group];
       }

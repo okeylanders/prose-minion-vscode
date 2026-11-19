@@ -35,6 +35,8 @@ export interface ProjectLocationsInput {
   readonly folders: readonly ProjectFolderSummary[];
   /** The scan reached a bound and left its deepest folders out. */
   readonly scanStopped: boolean;
+  /** Folders whose listing could not be read: what is sent is partial. */
+  readonly foldersUnreadable: number;
 }
 
 export interface ProjectLocationsProposal {
@@ -67,7 +69,8 @@ function projectLocationsData(input: ProjectLocationsInput, sent: number): Reado
     groups: CONTEXT_PATH_GROUPS.map((name) => ({ name, holds: PROJECT_LOCATION_GROUP_MEANINGS[name] })),
     folders: input.folders.slice(0, sent).map(folderData),
     foldersLeftOut: input.folders.length - sent,
-    scanStopped: input.scanStopped
+    scanStopped: input.scanStopped,
+    foldersUnreadable: input.foldersUnreadable
   };
 }
 

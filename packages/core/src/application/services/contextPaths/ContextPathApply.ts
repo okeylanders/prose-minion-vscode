@@ -13,7 +13,10 @@
  *   pattern that no longer matches anything (`matches-changed`). The writer
  *   is never handed a subset they did not see.
  *
- * Then one write per group, at the user level (L1). A failed write stops
+ * Then one write per group, at the user level (L1), each preceded by one
+ * more synchronous read of the value and its level, so drift during the
+ * re-check or an earlier group's write leaves the group (PR #288 P1). A
+ * failed write stops
  * the rest (`write-failed`, then `not-reached`), so the answer says exactly
  * which groups landed. Logs carry counts and reasons only.
  */
@@ -88,6 +91,18 @@ export async function applyContextPathProposal(
     }
     if (stopped) {
       outcomes.set(group, { group, outcome: 'left', reason: 'not-reached' });
+      continue;
+    }
+    // Read again with nothing awaited between this read and the write: the matching awaited above,
+    // and an earlier group's write awaited just before, so the writer may have changed the value, or
+    // the workspace may have begun setting it, meanwhile (PR #288 P1).
+    const now = deps.settings.read(group);
+    if (now.level === 'workspace' || now.level === 'workspace-folder') {
+      outcomes.set(group, { group, outcome: 'left', reason: 'workspace-set' });
+      continue;
+    }
+    if (now.value !== proposal.baselines[group]) {
+      outcomes.set(group, { group, outcome: 'left', reason: 'changed' });
       continue;
     }
     try {

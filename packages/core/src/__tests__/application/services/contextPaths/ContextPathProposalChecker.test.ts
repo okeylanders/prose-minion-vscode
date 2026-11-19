@@ -67,6 +67,36 @@ describe('ContextPathProposalChecker', () => {
     expect(locations.proposed?.shared).toEqual({ count: 1, examples: [{ path: 'Wonderland/Queen of Hearts.md', groups: ['characters'] }] });
   });
 
+  describe('overlap with a group Apply cannot write uses its current files (PR #288 P2)', () => {
+    it('shows no overlap with a workspace-set group\'s proposal, which will never be written', async () => {
+      const { checker } = aliceChecker({ levels: { 'contextPaths.locations': 'workspace' } });
+      const checked = await checker.check({ characters: ['**/Queen of Hearts.md'], locations: ['Wonderland/**/*'] });
+      if (checked.kind !== 'checked') { throw new Error('unchecked'); }
+      expect(groupOf(checked.proposal.view.groups, 'locations').offer).toEqual({ offered: false, reason: 'workspace-set' });
+      expect(groupOf(checked.proposal.view.groups, 'characters').proposed?.shared).toEqual({ count: 0, examples: [] });
+    });
+
+    it('shows the overlap with a workspace-set group\'s current files, which stay', async () => {
+      const { checker } = aliceChecker({
+        settings: { ...EMPTY_SETTINGS, 'contextPaths.locations': 'Wonderland/**/*' },
+        levels: { 'contextPaths.locations': 'workspace' }
+      });
+      const checked = await checker.check({ characters: ['**/Queen of Hearts.md'], locations: ['Book 1/**/*'] });
+      if (checked.kind !== 'checked') { throw new Error('unchecked'); }
+      expect(groupOf(checked.proposal.view.groups, 'characters').proposed?.shared.examples).toEqual([
+        { path: 'Wonderland/Queen of Hearts.md', groups: ['locations'] }
+      ]);
+    });
+
+    it('uses an incomplete group\'s current files too', async () => {
+      const { checker } = aliceChecker({ failingGlobs: ['Places/**/*'], settings: { ...EMPTY_SETTINGS, 'contextPaths.general': 'Notes/**/*' } });
+      const checked = await checker.check({ themes: ['**/lore.md'], general: ['Places/**/*', 'Cast/**/*'] });
+      if (checked.kind !== 'checked') { throw new Error('unchecked'); }
+      expect(groupOf(checked.proposal.view.groups, 'general').offer).toEqual({ offered: false, reason: 'incomplete' });
+      expect(groupOf(checked.proposal.view.groups, 'themes').proposed?.shared.examples).toEqual([{ path: 'Notes/lore.md', groups: ['general'] }]);
+    });
+  });
+
   it('counts overlap with a group\'s current files when it is not proposed', async () => {
     const { checker } = aliceChecker({ settings: { ...EMPTY_SETTINGS, 'contextPaths.general': 'Notes/**/*' } });
     const checked = await checker.check({ themes: ['**/lore.md'] });

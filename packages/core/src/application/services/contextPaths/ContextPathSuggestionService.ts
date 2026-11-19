@@ -101,9 +101,16 @@ export class ContextPathSuggestionService {
       return end('no-workspace');
     }
     if (scanned.folders.length === 0) {
-      return end('no-folders');
+      // An empty scan with unreadable folders is not an empty project (PR #288 P2).
+      return scanned.unreadable > 0
+        ? end('scan-incomplete', `, ${scanned.unreadable} folder(s) unreadable`)
+        : end('no-folders');
     }
-    const input: ProjectLocationsInput = { folders: scanned.folders, scanStopped: scanned.stopped.length > 0 };
+    const input: ProjectLocationsInput = {
+      folders: scanned.folders,
+      scanStopped: scanned.stopped.length > 0,
+      foldersUnreadable: scanned.unreadable
+    };
     const answer = await this.helper.run('project-locations', input, { signal });
     if (signal.aborted) {
       return end('cancelled');
@@ -135,10 +142,15 @@ export class ContextPathSuggestionService {
     const sent = projectLocationsFoldersSent(input);
     const view: ContextPathProposalView = {
       ...checked.proposal.view,
-      scan: { folders: scanned.folders.length, sent, stopped: input.scanStopped || sent < scanned.folders.length }
+      scan: {
+        folders: scanned.folders.length,
+        sent,
+        stopped: input.scanStopped || sent < scanned.folders.length,
+        unreadable: scanned.unreadable
+      }
     };
     this.held = { id, proposal: { ...checked.proposal, view } };
-    this.log.appendLine(`${LOG} Suggestion: proposed${describeView(view, sent)}`);
+    this.log.appendLine(`${LOG} Suggestion: proposed${describeView(view, sent)}${scanned.unreadable > 0 ? `; ${scanned.unreadable} folder(s) unreadable` : ''}`);
     return { outcome: 'proposed', proposalId: id, view };
   }
 

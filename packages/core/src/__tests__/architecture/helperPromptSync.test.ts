@@ -117,10 +117,10 @@ describe('project-locations prompt ↔ code', () => {
 
   it('shows a request the engine sends byte for byte, and a reply the production codec reads, every pattern one the checker checks', () => {
     const [request, reply] = fences(prompt);
-    const sent = JSON.parse(request.split('\n\n').slice(1).join('\n\n')) as { task: string; groups: Array<{ name: string }>; folders: ProjectLocationsInput['folders']; scanStopped: boolean };
+    const sent = JSON.parse(request.split('\n\n').slice(1).join('\n\n')) as { task: string; groups: Array<{ name: string }>; folders: ProjectLocationsInput['folders']; scanStopped: boolean; foldersUnreadable: number };
     expect(sent.task).toBe('project-locations');
     expect(sent.groups.map((group) => group.name)).toEqual([...CONTEXT_PATH_GROUPS]);
-    expect(request).toBe(buildHelperUserMessage('project-locations', PROJECT_LOCATIONS_POLICY.buildInput({ folders: sent.folders, scanStopped: sent.scanStopped })));
+    expect(request).toBe(buildHelperUserMessage('project-locations', PROJECT_LOCATIONS_POLICY.buildInput({ folders: sent.folders, scanStopped: sent.scanStopped, foldersUnreadable: sent.foldersUnreadable })));
 
     const decoded = readHelperReply(PROJECT_LOCATIONS_POLICY, reply, 'stop');
     expect(decoded).toEqual({ ok: true, value: JSON.parse(reply), repairs: [] });

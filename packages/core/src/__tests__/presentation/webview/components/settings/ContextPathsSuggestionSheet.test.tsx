@@ -103,6 +103,11 @@ describe('ContextPathsSuggestionSheet', () => {
     expect(suggestion.apply).toHaveBeenCalled();
   });
 
+  it('says a suggestion made from a partial scan is partial (PR #288 P2)', () => {
+    render(<ContextPathsSuggestionSheet suggestion={hook({ phase: 'review', view: { ...VIEW, scan: { folders: 4, sent: 4, stopped: false, unreadable: 2 } }, ticked: [] })} />);
+    expect(screen.getByText(/2 folders couldn't be read, so this suggestion was made from the rest/)).toBeTruthy();
+  });
+
   it('disables Apply with nothing ticked', () => {
     render(<ContextPathsSuggestionSheet suggestion={hook({ phase: 'review', view: VIEW, ticked: [] })} />);
     expect((screen.getByRole('button', { name: 'Apply' }) as HTMLButtonElement).disabled).toBe(true);

@@ -49,7 +49,7 @@ describe('ContextPathSuggestionService', () => {
     const [task, input] = helper.run.mock.calls[0];
     expect(task).toBe('project-locations');
     expect(input.folders.map((folder: { path: string }) => folder.path)).toEqual(['.', 'Book 1', 'Cast', 'Notes', 'Wonderland', 'Book 1/Chapters']);
-    expect(answer.view?.scan).toEqual({ folders: 6, sent: 6, stopped: false });
+    expect(answer.view?.scan).toEqual({ folders: 6, sent: 6, stopped: false, unreadable: 0 });
     const offered = answer.view!.groups.filter((group) => group.offer.offered).map((group) => group.group);
     expect(offered).toEqual(['characters', 'locations', 'chapters', 'projectBrief']);
   });
@@ -123,6 +123,80 @@ describe('ContextPathSuggestionService', () => {
       { group: 'chapters', outcome: 'applied' }
     ]);
     expect(project.settings.writes.map(([key]) => key)).toEqual(['contextPaths.chapters']);
+  });
+
+  describe('reads each group again immediately before its write (PR #288 P1)', () => {
+    it('leaves a group the writer edits while its files are matched again', async () => {
+      const { service, project } = serviceFor();
+      const { proposalId } = await service.suggest();
+      const searches = project.workspace.findFiles;
+      project.workspace.findFiles = async (folder, glob, exclude) => {
+        if (glob === 'Cast/**/*') {
+          project.settings.values['contextPaths.characters'] = 'Cast/Main/**/*';
+        }
+        return searches(folder, glob, exclude);
+      };
+      const applied = await service.apply(proposalId!, ['characters', 'locations']);
+      expect(applied.groups).toEqual([
+        { group: 'characters', outcome: 'left', reason: 'changed' },
+        { group: 'locations', outcome: 'applied' }
+      ]);
+      expect(project.settings.values['contextPaths.characters']).toBe('Cast/Main/**/*');
+    });
+
+    it('leaves a group edited, or set by the workspace, between two groups\' writes', async () => {
+      const { service, project } = serviceFor();
+      const { proposalId } = await service.suggest();
+      const update = project.settings.update;
+      let level: 'workspace' | undefined;
+      const levelOf = project.settings.levelOf;
+      project.settings.levelOf = (section, key) => (key === 'contextPaths.chapters' && level ? level : levelOf(section, key));
+      project.settings.update = async (section, key, value) => {
+        await update(section, key, value);
+        if (key === 'contextPaths.characters') {
+          project.settings.values['contextPaths.locations'] = 'Places/**/*';
+          level = 'workspace';
+        }
+      };
+      const applied = await service.apply(proposalId!, ['characters', 'locations', 'chapters', 'projectBrief']);
+      expect(applied.groups).toEqual([
+        { group: 'characters', outcome: 'applied' },
+        { group: 'locations', outcome: 'left', reason: 'changed' },
+        { group: 'chapters', outcome: 'left', reason: 'workspace-set' },
+        { group: 'projectBrief', outcome: 'applied' }
+      ]);
+      expect(project.settings.values['contextPaths.locations']).toBe('Places/**/*');
+      expect(project.settings.writes.map(([key]) => key)).toEqual(['contextPaths.characters', 'contextPaths.projectBrief']);
+    });
+  });
+
+  describe('an incomplete scan is never empty or complete (PR #288 P2)', () => {
+    it('says a partial scan is partial, in the view and the helper\'s input', async () => {
+      const { service, project, helper } = serviceFor();
+      const read = project.fileSystem.readDirectory;
+      project.fileSystem.readDirectory = async (directory) => {
+        if (directory.endsWith('Notes')) {
+          throw new Error('denied');
+        }
+        return read(directory);
+      };
+      const answer = await service.suggest();
+      expect(answer.outcome).toBe('proposed');
+      expect(answer.view?.scan).toMatchObject({ unreadable: 1 });
+      expect(helper.run.mock.calls[0][1].foldersUnreadable).toBe(1);
+      expect(project.lines.join('\n')).toContain('1 folder(s) unreadable');
+    });
+
+    it('tells an empty scan with unreadable folders apart from an empty project', async () => {
+      const { service, project, helper } = serviceFor();
+      project.fileSystem.readDirectory = async () => {
+        throw new Error('denied');
+      };
+      expect((await service.suggest()).outcome).toBe('scan-incomplete');
+      expect(helper.run).not.toHaveBeenCalled();
+      const bare = serviceFor({ roots: { '/alice': ['picture.png'] } });
+      expect((await bare.service.suggest()).outcome).toBe('no-folders');
+    });
   });
 
   it('stops at a failed write and says which groups landed', async () => {
