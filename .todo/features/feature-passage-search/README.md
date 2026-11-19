@@ -1,7 +1,7 @@
 # Feature: Passage Search, a Search That Reads
 
 **Date Identified:** 2026-11-19
-**Status:** Idea. Medium: a third Search subtab, a fan-out reader with checked quotes, and a model scope. A short ADR, since it adds a model scope and a paid fan-out.
+**Status:** Idea. Medium to large: a third Search subtab, a fan-out reader with checked quotes, an organizing pass (P1), a model scope, and a persona request the writer approves (P2). An ADR, since it adds a model scope, a paid fan-out and a persona-started run.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-19
 
@@ -105,6 +105,62 @@ the Lightbox follows the Workshop's.
   `AIResourceManager`, the settings watcher and the Settings overlay, as
   AGENTS.md's model-setting path describes.
 
+## Decisions (Okey, 2026-11-19)
+
+| # | Decision | Notes |
+|---|---|---|
+| P1 | **A final pass organizes the results:** it puts them in sequence and writes a headline analysis, such as "What's an idiom Raven says a lot?" or "How do Jasper's gestures evolve across chapters?" | The shape is below. |
+| P2 | **Personas can run it too.** | Through a request the writer approves, since it is a paid fan-out a model would start. The shape is below. |
+
+## The organizing pass (P1)
+
+- **It reads only the checked instances,** never the text again: each
+  instance's number, quote, note, label, file and line, in reading order. So
+  it is one short call, priced in the estimate with the rest.
+- **The host decides the order.** Files go in the scope's reading order,
+  with chapter names sorted naturally (6.9 before 6.10, 6.9.2 between
+  them), then by line. "Across chapters" means what the writer means.
+- **It writes:**
+  - **a headline:** the one-line answer to the question;
+  - **sections,** by chapter or by theme, whichever the question calls for.
+- **Every claim cites instances by number** ("[#4, #12]"). The host keeps
+  only citations to instances that exist, and drops a claim that cites none.
+- **It quotes only what an instance quotes.** Any other quotation in the
+  analysis is withheld, so it cannot slip in a line the text doesn't have.
+- **The host's table is the source of truth for counts.** The pass is given
+  each label's count, and the summary table beside the analysis shows them.
+- **On by default, with a toggle** ("Organize the results"), so a writer who
+  only wants the list skips the extra call.
+- The results then read: headline, analysis, summary table, every instance.
+
+## Personas run it (P2)
+
+A persona asking for a passage search would start a paid fan-out, so it
+asks, and the writer decides.
+
+1. **The persona asks in a reply.** It writes a
+   `<prose-minion-passage-search>` trailer holding the question and a scope,
+   naming files the way `resource.read` does (the excerpt, a group, or files
+   by group and path). It is read in `extractWorkshopReplyControls`' one
+   pass, like the other trailers.
+2. **A card shows the request:** the question, the scope, how many calls,
+   and an estimated price, with **Run** and **Cancel**.
+3. **Run starts the search on the host,** outside the persona's turn. The
+   card shows progress and Stop.
+4. **When it finishes, the persona is started with the results,** as a
+   pressed edit offer starts its run (ADR 2026-11-10): a host directive
+   carrying the headline, the analysis and the instances, fitted to the
+   window (`reads/WorkshopReadWindowFit`), as neutralized evidence. The
+   persona then answers the writer.
+5. **The full report is a click away** on the card. It is the same result
+   the Search tab shows, and it can be saved.
+
+- **The price is never skipped.** Every persona request waits for Run.
+- **The persona's own model doesn't do the reading.** The fan-out runs on
+  the `passageSearch` scope. Only the results reach the room.
+- **A Rewind that removes the request** removes its card. A search already
+  run stays in the reports it was saved to.
+
 ## Pieces it reuses
 
 - the Search tab's subtabs and scope controls (`SearchTab.tsx`,
@@ -124,14 +180,12 @@ New code lives in `services/search/` (a `PassageSearchService`), the
 - **The name.** Recommended: Passage Search.
 - **The word budget per call.** It decides how often a chapter is split.
   The ADR sets it against the scope model's window.
-- **A summary pass?** For "what clichés does Raven use", the grouped labels
-  may be enough. One more call that summarizes the found instances could
-  come later. Leaning: later.
-- **Bring to Workshop?** Send the results to a persona to discuss, as a
-  message attachment. Leaning: later.
-- **A persona capability?** Jill running a passage search is a paid fan-out
-  started by a model, so it would need the writer's confirmation. Leaning:
-  later, if at all.
+- **Bring to Workshop?** Sending a Search-tab result to a persona as a
+  message attachment. P2 covers a persona asking; this would cover the
+  writer starting from the sidebar. Leaning: later.
+- **How a persona names chapters in a scope.** By group, by files, or by a
+  pattern? Leaning: as `resource.read` names files, with a group meaning
+  every file in it.
 
 ## Completion Criteria
 
@@ -149,6 +203,13 @@ New code lives in `services/search/` (a `PassageSearchService`), the
       (tests).
 - [ ] The `passageSearch` model scope follows Category Search's model until
       picked.
+- [ ] The organizing pass reads only checked instances in the host's reading
+      order (chapters sorted naturally), and writes a headline and sections.
+      Citations to missing instances and quotes no instance holds are
+      dropped (tests).
+- [ ] A persona's request shows a card with the calls and price, and runs
+      only on Run. The persona is then started with the results, fitted to
+      the window (tests).
 - [ ] Logs carry counts only, never the question or a quote. Fixtures use
       *Alice*.
 
