@@ -1,0 +1,94 @@
+/* "Suggest from my folders" and its review, in Settings' context-paths
+   section (ADR 2026-11-19 D23). Plain CSS on the sidebar's tokens. */
+.pm-cps {
+  margin-bottom: var(--spacing-md);
+}
+
+.pm-cps-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pm-cps-status,
+.pm-cps-note,
+.pm-cps-count,
+.pm-cps-group-count {
+  color: var(--pm-muted);
+  font-size: 0.9em;
+}
+
+.pm-cps-empty {
+  padding: 6px 8px;
+  border-left: 2px solid var(--pm-primary);
+  background: var(--pm-inset);
+  font-size: 0.9em;
+}
+
+.pm-cps-sheet {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  background: var(--pm-inset);
+}
+
+.pm-cps-applies {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.pm-cps-groups,
+.pm-cps-dropped {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pm-cps-group {
+  padding: 8px 0;
+  border-top: 1px solid var(--pm-border-soft);
+}
+
+.pm-cps-group[data-offered="false"] .pm-cps-group-label {
+  color: var(--pm-muted);
+}
+
+.pm-cps-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.pm-cps-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  margin-top: 4px;
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+.pm-cps-key {
+  min-width: 72px;
+  color: var(--pm-muted);
+}
+
+.pm-cps-dropped li {
+  margin-top: 2px;
+  color: var(--pm-muted);
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+}
+
+.pm-cps-applied {
+  margin-top: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
