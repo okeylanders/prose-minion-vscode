@@ -40,7 +40,8 @@ within a room; this is the writer's own commits, across rooms and months.
 ### Two calls
 
 1. **`history.log`:** a file's commits, newest first, a page at a time. Each
-   commit gives its short id, its date and its subject line. Its "N more"
+   commit gives its short id, its date, its author and its subject line
+   (G3). Its "N more"
    line names the exact next call, which decodes as written.
 2. **`history.diff`:** what changed in a file between two commits, or
    between a commit and the file as it is now (`<to>current</to>`).
@@ -99,7 +100,7 @@ be large.
   workspaces, so it doesn't run in Restricted Mode, and VS Code's Git
   extension doesn't either. A host that runs git itself must check trust:
   a repository's config can make git run commands.
-- **Commit subjects and diffs are writer data.** They are evidence,
+- **Commit subjects, author names and diffs are writer data.** They are evidence,
   neutralized in the capability-result frame, and never instructions.
 
 ### What the room sees
@@ -109,18 +110,18 @@ be large.
 - **Publication** follows reads: shared with the room when the reply
   commits.
 - **Logs** carry the operation, counts and outcome kinds. Never a commit
-  subject, id, path or diff text.
+  subject, id, author, path or diff text.
+
+## Decisions (Okey, 2026-11-19)
+
+| # | Decision | Notes |
+|---|---|---|
+| G1 | **No setting.** The calls are available whenever the project is a git repository. | They read only local files, as `resource.read` does. |
+| G2 | **Use the `diff` package (jsdiff)** for the paragraph and word diff. | A word-level diff of a long chapter needs a bounded algorithm (Myers), which jsdiff has. The ADR records it as a deliberate new dependency. |
+| G3 | **The log shows author names,** beside dates and subjects. | They reach the persona as evidence. Logs still never carry them. |
 
 ## Open questions
 
-- **A setting?** It reads only local files, as `resource.read` does, so
-  leaning: no setting, available whenever the project is a repository.
-- **A diff library, or our own?** A word-level diff over a long chapter
-  needs a bounded algorithm (Myers, not a naive grid). The `diff` package
-  (jsdiff) is small and well known; writing our own keeps dependencies at
-  zero. Leaning: jsdiff, if the ADR agrees the payoff is worth a dependency.
-- **Author names in the log?** It's the writer's own repository, but a
-  shared one names other people. Leaning: dates and subjects only.
 - **`history.read` later?** Add it if personas keep asking for whole old
   versions.
 - **The Lightbox.** "Compare with an earlier commit" on a board would reuse
@@ -128,8 +129,9 @@ be large.
 
 ## Completion Criteria
 
-- [ ] `history.log` lists a file's commits newest first, paged, with
-      continuation hints that decode as written (test).
+- [ ] `history.log` lists a file's commits newest first, with dates,
+      authors and subjects, paged, with continuation hints that decode as
+      written (test).
 - [ ] `history.diff` shows paragraph- and word-level changes between two
       commits, or a commit and the saved file. It is fitted to the window
       and continues at a paragraph (tests).
@@ -144,8 +146,8 @@ be large.
       pinned by its sync test.
 - [ ] No `from 'vscode'` in core: the Git extension is used only in the
       adapter.
-- [ ] Logs carry counts and outcomes only. Fixtures use *Alice*-style
-      made-up history.
+- [ ] Logs carry counts and outcomes only, never an author or subject.
+      Fixtures use *Alice*-style made-up history and authors.
 
 ## Related
 
