@@ -111,6 +111,14 @@ export enum MessageType {
   SEARCH_DICTIONARY_HISTORY = 'search_dictionary_history',
   DICTIONARY_HISTORY_SEARCH_RESULT = 'dictionary_history_search_result',
 
+  // The project's context paths, set up from Settings (ADR 2026-11-19 D21–D25)
+  CONTEXT_PATHS_SUGGEST = 'context_paths_suggest',
+  CONTEXT_PATHS_SUGGESTION = 'context_paths_suggestion',
+  CONTEXT_PATHS_APPLY = 'context_paths_apply',
+  CONTEXT_PATHS_APPLIED = 'context_paths_applied',
+  CONTEXT_PATHS_STATUS_REQUEST = 'context_paths_status_request',
+  CONTEXT_PATHS_STATUS = 'context_paths_status',
+
   // Streaming API responses
   STREAM_STARTED = 'stream_started',
   STREAM_CHUNK = 'stream_chunk',

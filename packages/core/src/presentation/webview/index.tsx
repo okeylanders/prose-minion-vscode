@@ -34,6 +34,7 @@ import {
 import { getVSCodeApi } from './hooks/useVSCodeApi';
 import { AppMessagePort } from './ports/AppMessagePort';
 import './styles/settingsSupport.css';
+import './styles/contextPathsSuggestion.css';
 import './index.css';
 
 const SURFACE_ROOTS: Record<WebviewSurface, React.ComponentType> = {

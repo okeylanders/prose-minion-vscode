@@ -16,6 +16,26 @@ import {
   ContextResourceSummary
 } from '@/domain/models/ContextGeneration';
 
+type MatchMode = 'browse' | 'browse-counts' | 'authoritative' | 'check';
+
+/** Patterns to check, per group, in the order they are written (ADR 2026-11-19 D22). */
+export type ContextPatternsByGroup = Partial<Record<ContextPathGroup, readonly string[]>>;
+
+/** One supported file a pattern matched. `key` identifies it across groups (root and case-folded path). */
+export interface ContextPatternMatchFile {
+  readonly key: string;
+  readonly workspaceFolder: string;
+  readonly relativePath: string;
+  /** The root's name, present only when several roots are open. */
+  readonly rootName?: string;
+}
+
+export type ContextPatternMatch =
+  | { readonly pattern: string; readonly status: 'matched'; readonly files: readonly ContextPatternMatchFile[] }
+  | { readonly pattern: string; readonly status: 'unmatched' | 'incomplete' };
+
+export type ContextPatternMatches = Partial<Record<ContextPathGroup, readonly ContextPatternMatch[]>>;
+
 interface InternalContextResource {
   group: ContextPathGroup;
   path: string;
@@ -148,6 +168,74 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
   }
 
   /**
+   * What the given patterns would match (ADR 2026-11-19 D22, D22a): the
+   * catalog's own walk (normalization, roots, exclusions, the `.md`/`.txt`
+   * rule, containment and the symbolic-link refusal), with the patterns
+   * passed in rather than read from settings. Per group, one outcome per
+   * pattern, in the order given: `matched` with its files, `unmatched` (every
+   * search completed and found no supported file), or `incomplete` (a search
+   * failed, or a match's metadata could not be read). An incomplete pattern
+   * is never read as zero matches. `undefined` when no folder is open.
+   *
+   * Counts-only: it logs a count line, never a pattern, path or host message.
+   * The settings path is untouched.
+   */
+  async matchPatterns(patternsByGroup: ContextPatternsByGroup): Promise<ContextPatternMatches | undefined> {
+    const groups = (Object.keys(patternsByGroup) as ContextPathGroup[])
+      .filter((group) => (patternsByGroup[group]?.length ?? 0) > 0);
+    const tallies = new Map<ContextPathGroup, Map<string, { files: Map<string, ContextPatternMatchFile>; incomplete: boolean }>>();
+    for (const group of groups) {
+      tallies.set(group, new Map((patternsByGroup[group] ?? []).map((pattern) => [pattern, { files: new Map(), incomplete: false }])));
+    }
+    let failed = 0;
+    let excluded = 0;
+    const roots = this.workspace.workspaceFolders().length;
+    const searched = await this.forEachMatch(groups, 'check', (group, folder, match, _sizeBytes, pattern) => {
+      if (!this.isSupportedFile(match)) {
+        return;
+      }
+      const relativePath = path.relative(folder.path, match).replace(/\\/g, '/');
+      const key = `${folder.path}\u0000${this.normalizeKey(relativePath)}`;
+      tallies.get(group)?.get(pattern)?.files.set(key, {
+        key,
+        workspaceFolder: folder.name,
+        relativePath,
+        ...(roots > 1 ? { rootName: folder.name } : {})
+      });
+    }, () => {
+      excluded += 1;
+    }, (group) => patternsByGroup[group] ?? [], (group, pattern) => {
+      failed += 1;
+      const tally = tallies.get(group)?.get(pattern);
+      if (tally) {
+        tally.incomplete = true;
+      }
+    });
+    if (!searched) {
+      return undefined;
+    }
+    const result: ContextPatternMatches = {};
+    let matched = 0;
+    for (const group of groups) {
+      result[group] = (patternsByGroup[group] ?? []).map((pattern): ContextPatternMatch => {
+        const tally = tallies.get(group)?.get(pattern);
+        if (!tally || tally.incomplete) {
+          return { pattern, status: 'incomplete' };
+        }
+        if (tally.files.size === 0) {
+          return { pattern, status: 'unmatched' };
+        }
+        matched += tally.files.size;
+        return { pattern, status: 'matched', files: [...tally.files.values()] };
+      });
+    }
+    this.outputChannel?.appendLine(
+      `[ContextResourceResolver] Pattern check: ${matched} match(es), ${excluded} excluded match(es), ${failed} incomplete read(s).`
+    );
+    return result;
+  }
+
+  /**
    * Every contained, symlink-free match, in group → root → pattern order.
    * `browse` (the catalog) logs and skips a failed search or an unreadable
    * match; `authoritative` (the candidate read) rejects on either, logging
@@ -155,9 +243,11 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
    */
   private async forEachMatch(
     groups: ContextPathGroup[],
-    mode: 'browse' | 'browse-counts' | 'authoritative',
-    visit: (group: ContextPathGroup, folder: { path: string; name: string }, match: string, sizeBytes: number) => void,
-    exclude: () => void = () => undefined
+    mode: MatchMode,
+    visit: (group: ContextPathGroup, folder: { path: string; name: string }, match: string, sizeBytes: number, pattern: string) => void,
+    exclude: () => void = () => undefined,
+    patternsFor: (group: ContextPathGroup) => readonly string[] = (group) => this.getPatternsForGroup(group),
+    incomplete: (group: ContextPathGroup, pattern: string) => void = () => undefined
   ): Promise<boolean> {
     const workspaceFolders = this.workspace.workspaceFolders();
     if (workspaceFolders.length === 0) {
@@ -168,7 +258,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
     }
 
     for (const group of groups) {
-      const patterns = this.getPatternsForGroup(group);
+      const patterns = patternsFor(group);
       if (patterns.length === 0) {
         continue;
       }
@@ -189,6 +279,10 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
             if (mode === 'authoritative') {
               throw new ContextCandidateReadIncomplete('search');
             }
+            if (mode === 'check') {
+              incomplete(group, pattern);
+              continue;
+            }
             if (mode === 'browse-counts') {
               this.outputChannel?.appendLine('[ContextResourceResolver] A configured-resource search failed.');
               continue;
@@ -201,19 +295,23 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
           }
 
           for (const match of matches) {
-            if (mode !== 'authoritative') {
+            if (mode === 'browse' || mode === 'browse-counts') {
               const sizeBytes = await this.safeWorkspaceResourceSize(workspaceFolder.path, match, mode === 'browse');
               if (sizeBytes !== undefined) {
-                visit(group, workspaceFolder, match, sizeBytes);
+                visit(group, workspaceFolder, match, sizeBytes, pattern);
               }
               continue;
             }
             const inspected = await this.inspectWorkspaceResource(workspaceFolder.path, match);
             if (inspected.kind === 'unreadable') {
+              if (mode === 'check') {
+                incomplete(group, pattern);
+                continue;
+              }
               throw new ContextCandidateReadIncomplete('metadata');
             }
             if (inspected.kind === 'ok') {
-              visit(group, workspaceFolder, match, inspected.sizeBytes);
+              visit(group, workspaceFolder, match, inspected.sizeBytes, pattern);
             } else {
               exclude();
             }

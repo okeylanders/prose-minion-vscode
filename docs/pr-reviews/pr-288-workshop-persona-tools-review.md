@@ -1,0 +1,11 @@
+# PR #288: Workshop Persona Tools review
+
+**Astra 6.2 · Changes requested. Not approved for merge into `epic/workshop-persona-tools`.**
+
+Reviewed `3abe301c1cb735df4940989fdf4246035dfde68d`. Static review of scan, proposal/overlap, and global settings Apply. Native Settings UI and real helper calls were not run. [Exact-head CI passed](https://github.com/okeylanders/prose-minion-vscode/actions/runs/44518257213). This is not combined-epic validation.
+
+- [packages/core/src/application/services/contextPaths/ContextPathApply.ts:94](https://github.com/okeylanders/prose-minion-vscode/blob/3abe301c1cb735df4940989fdf4246035dfde68d/packages/core/src/application/services/contextPaths/ContextPathApply.ts#L94): **P1 · Revalidate immediately before writing globally.** The current value and setting level are read before awaiting the filesystem recheck, then reused at the write. The writer’s newer setting can be silently overwritten, or a workspace override that appeared during the scan can be missed. Re-read both immediately before each group’s write and skip on drift. Cover an edit while matching and one between group writes.
+
+- [packages/core/src/application/services/contextPaths/ContextPathProposalChecker.ts:168](https://github.com/okeylanders/prose-minion-vscode/blob/3abe301c1cb735df4940989fdf4246035dfde68d/packages/core/src/application/services/contextPaths/ContextPathProposalChecker.ts#L168): **P2 · Use the effective patterns of groups that cannot be applied when computing overlap.** The overlap map substitutes proposed matches even for a workspace-owned group that is later not offered for Apply. That can hide a real overlap or show one that will never exist. Compute overlap against current matches for ineligible groups.
+
+- [packages/core/src/application/services/contextPaths/ContextPathSuggestionService.ts:105](https://github.com/okeylanders/prose-minion-vscode/blob/3abe301c1cb735df4940989fdf4246035dfde68d/packages/core/src/application/services/contextPaths/ContextPathSuggestionService.ts#L105): **P2 · Do not present an incomplete discovery scan as empty or complete.** `scanned.unreadable` is dropped here, so a failed directory listing can yield ‘no folders’ or a partial suggestion presented as complete. Surface partial results and distinguish an incomplete empty scan from a successful one.

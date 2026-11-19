@@ -11,7 +11,7 @@
  * `ConfigurationTarget.Global` (the only target this app writes).
  */
 import * as vscode from 'vscode';
-import { SettingsStore } from '@prose-minion/core';
+import type { SettingsLevel, SettingsStore } from '@prose-minion/core';
 
 export class VsCodeSettingsStore implements SettingsStore {
   get<T>(section: string, key: string): T | undefined;
@@ -25,5 +25,19 @@ export class VsCodeSettingsStore implements SettingsStore {
     return Promise.resolve(
       vscode.workspace.getConfiguration(section).update(key, value, vscode.ConfigurationTarget.Global)
     );
+  }
+
+  levelOf(section: string, key: string): SettingsLevel {
+    const inspected = vscode.workspace.getConfiguration(section).inspect(key);
+    if (inspected?.workspaceFolderValue !== undefined) {
+      return 'workspace-folder';
+    }
+    if (inspected?.workspaceValue !== undefined) {
+      return 'workspace';
+    }
+    if (inspected?.globalValue !== undefined) {
+      return 'user';
+    }
+    return 'default';
   }
 }

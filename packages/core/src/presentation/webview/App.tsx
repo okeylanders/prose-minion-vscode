@@ -40,6 +40,7 @@ import { useThemeSettings } from './hooks/domain/useThemeSettings';
 import { useTokenTracking } from './hooks/domain/useTokenTracking';
 import { useAccountBalance } from './hooks/domain/useAccountBalance';
 import { useContextPathsSettings } from './hooks/domain/useContextPathsSettings';
+import { useContextPathsSuggestion } from './hooks/domain/useContextPathsSuggestion';
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
 import { AccountBalancePill, AccountBalanceStrip } from './components/balances';
 import { Icon } from './components/shared/Icon';
@@ -63,6 +64,7 @@ export const App: React.FC = () => {
   const tokensSettings = useTokensSettings();
   const tokenTracking = useTokenTracking();
   const contextPathsSettings = useContextPathsSettings();
+  const contextPathsSuggestion = useContextPathsSuggestion();
   const modelsSettings = useModelsSettings();
   const themeSettings = useThemeSettings();
   const accountBalance = useAccountBalance({ apiKeyConfigured: settings.hasSavedKey });
@@ -110,6 +112,7 @@ export const App: React.FC = () => {
     themeSettings,
     tokenTracking,
     contextPathsSettings,
+    contextPathsSuggestion,
     modelsSettings,
     accountBalance,
     setActiveTab,
@@ -246,6 +249,7 @@ export const App: React.FC = () => {
           tokensSettings={tokensSettings}
           tokenTracking={tokenTracking}
           contextPathsSettings={contextPathsSettings}
+          contextPathsSuggestion={contextPathsSuggestion}
           wordFrequencySettings={wordFrequencySettings}
           wordSearchSettings={wordSearchSettings}
           modelOptions={modelsSettings.modelOptions}

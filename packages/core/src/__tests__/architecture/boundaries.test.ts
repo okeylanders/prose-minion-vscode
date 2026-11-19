@@ -2718,7 +2718,8 @@ describe('architectural boundaries', () => {
       '@services/helper/', '@parsers/', '@orchestration/AIResourceManager', '@orchestration/AgentRunPolicies',
       '@orchestration/AgentRunContracts', '@orchestration/ReasoningCatalog', '@orchestration/ReasoningRequest',
       '@/tools/shared/prompts', '@/platform', '@messages',
-      '@shared/constants/promptBudgets', '@shared/types/projectMemory'
+      '@shared/constants/promptBudgets', '@shared/types/projectMemory',
+      '@shared/types/context', '@shared/types/projectFolders'
     ];
     expect(imports.filter(({ module }) => !allowed.some((prefix) => module.startsWith(prefix)))
       .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);

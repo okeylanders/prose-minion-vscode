@@ -41,7 +41,7 @@ type BridgedMessage = { type: MessageType; source: string; payload: unknown; tim
 const OTHER_DOMAINS = {
   analysis: {}, metrics: {}, context: {}, search: {}, publishingSettings: {}, wordSearchSettings: {},
   wordFrequencySettings: {}, tokensSettings: {}, themeSettings: {}, tokenTracking: {},
-  contextPathsSettings: {}, modelsSettings: {}, accountBalance: {}
+  contextPathsSettings: {}, contextPathsSuggestion: {}, modelsSettings: {}, accountBalance: {}
 };
 
 describe('UtilitiesTab cancel during the history save', () => {
