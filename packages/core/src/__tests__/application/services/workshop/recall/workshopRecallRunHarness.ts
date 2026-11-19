@@ -9,6 +9,7 @@
 
 import type { LogSink } from '@/platform';
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
@@ -58,7 +59,8 @@ export function createRecallRunHarness(options: {
     offProjectMemory,
     options.lenses ?? noProjectLenses,
     options.help?.(log) ?? unavailableHelpReference,
-    options.history ?? unavailableFileHistory
+    options.history ?? unavailableFileHistory,
+    unavailableProjectLocations
   );
   /** Everything every provider request carried, as one string. */
   const sent: string[] = [];

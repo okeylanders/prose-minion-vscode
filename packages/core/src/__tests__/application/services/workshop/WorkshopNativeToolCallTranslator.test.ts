@@ -74,6 +74,12 @@ const EVERY_OPERATION: Record<WorkshopCapabilityOperation, { args: unknown; requ
   'history.diff': {
     args: { group: 'excerpt', from: '3F9A1C2B7E', to: 'current', startChange: 3, current: '0123456789ab' },
     request: { file: { kind: 'excerpt' }, from: '3f9a1c2b7e', to: { kind: 'current', fingerprint: '0123456789ab' }, startChange: 3 }
+  },
+  'locations.current': { args: {}, request: {} },
+  'locations.folders': { args: { page: 2 }, request: { page: 2 } },
+  'locations.check': {
+    args: { patterns: [{ group: 'characters', pattern: 'Cast/**/*' }, { group: 'locations', pattern: 'Wonderland/**/*' }] },
+    request: { patterns: [{ group: 'characters', pattern: 'Cast/**/*' }, { group: 'locations', pattern: 'Wonderland/**/*' }] }
   }
 };
 

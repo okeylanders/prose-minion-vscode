@@ -7,6 +7,7 @@
  * output. *Alice*, with made-up ids.
  */
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
@@ -57,7 +58,8 @@ function wire(host: ReturnType<typeof libraryHost>) {
     host.library,
     noProjectLenses,
     unavailableHelpReference,
-    unavailableFileHistory
+    unavailableFileHistory,
+    unavailableProjectLocations
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),

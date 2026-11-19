@@ -12,6 +12,7 @@ import type { WorkshopBookmarkSummary } from './bookmarks';
 import type { WorkshopReactionDelivery, WorkshopTurnReactionSummary } from './reactions';
 import type { WorkshopTrailerOutcomes } from '../../workshopTrailerOutcomes';
 import type { WorkshopTodoClosedBy, WorkshopTodoStatusChange } from './todoStatus';
+import type { WorkshopLocationsProposalCard } from './locationsProposal';
 import type { WorkshopReactionId } from '@shared/constants/workshopReactions';
 import type { WorkshopMemorySuggestionLevel } from '@shared/constants/workshopMemorySuggestions';
 import type {
@@ -177,6 +178,10 @@ export const WORKSHOP_TURN_ARTIFACTS = [
   // ADR 2026-11-19 D15: forward-only, as `lens_read` was.
   'history_log',
   'history_diff',
+  // ADR 2026-11-19 D26: forward-only, as `history_log` was.
+  'locations_current',
+  'locations_folders',
+  'locations_check',
   'excerpt_revision',
   'context_change',
   'standing_directive_change',
@@ -509,6 +514,12 @@ export interface WorkshopTurn {
    * an empty list). Host and guest replies only.
    */
   todoStatusChanges?: WorkshopTodoStatusChange[];
+  /**
+   * A persona's context-paths proposal, checked (ADR 2026-11-19 D27): one
+   * card, committed with the reply (optional, additive). Host and guest
+   * replies only. Apply is the writer's.
+   */
+  locationsProposal?: WorkshopLocationsProposalCard;
   /**
    * A persona reply that held only a reaction (ADR 2026-11-07 R1): the id it
    * reacted with, on the writer message the reply answers. Its content is

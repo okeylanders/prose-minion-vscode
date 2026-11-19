@@ -31,7 +31,10 @@ describe('workshopCapabilityFamily', () => {
       ['help.search', 'help'],
       ['help.read', 'help'],
       ['history.log', 'history'],
-      ['history.diff', 'history']
+      ['history.diff', 'history'],
+      ['locations.current', 'locations'],
+      ['locations.folders', 'locations'],
+      ['locations.check', 'locations']
     ]);
   });
 

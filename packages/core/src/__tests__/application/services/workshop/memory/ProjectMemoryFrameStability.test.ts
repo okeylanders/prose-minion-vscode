@@ -7,6 +7,7 @@
  */
 
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
@@ -33,7 +34,8 @@ function capabilityOver(host: ReturnType<typeof libraryHost>, session = new Work
     host.library,
     noProjectLenses,
     unavailableHelpReference,
-    unavailableFileHistory
+    unavailableFileHistory,
+    unavailableProjectLocations
   ).create({
     requestId,
     excerptVersion: 0,

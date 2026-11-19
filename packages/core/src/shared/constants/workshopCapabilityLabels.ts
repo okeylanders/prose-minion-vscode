@@ -45,6 +45,8 @@ export function workshopCapabilityFamilyLabel(
       return 'Prose Minion Help';
     case 'history':
       return 'File History';
+    case 'locations':
+      return 'Context Paths';
     case 'analysis':
       return toolLabel ?? 'Analysis';
   }

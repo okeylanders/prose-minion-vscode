@@ -60,6 +60,11 @@ import type { WorkshopTrailerOutcomes } from '@shared/types/workshopTrailerOutco
 import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { cloneWorkshopReactionDelivery } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
 import { cloneWorkshopTrailerOutcomes } from '@/application/services/workshop/session/WorkshopTrailerOutcomeRecords';
+import {
+  answerWorkshopLocationsProposalOnTurn,
+  cloneWorkshopLocationsProposal
+} from '@/application/services/workshop/locations/WorkshopLocationsProposalRecords';
+import type { WorkshopLocationsGroupAnswer, WorkshopLocationsProposalCard } from '@messages';
 import * as todoRows from '@/application/services/workshop/todos/WorkshopTodoStatusRows';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
@@ -1562,6 +1567,9 @@ export class WorkshopSessionService {
         case 'help.read': return 'help_read';
         case 'history.log': return 'history_log';
         case 'history.diff': return 'history_diff';
+        case 'locations.current': return 'locations_current';
+        case 'locations.folders': return 'locations_folders';
+        case 'locations.check': return 'locations_check';
         default: return assertNever(input.details.operation);
       }
     })();
@@ -1756,7 +1764,8 @@ export class WorkshopSessionService {
     editOfferAnswer?: WorkshopEditOfferAnswer,
     reaction?: WorkshopReplyReactionCommit,
     trailerOutcomes?: WorkshopTrailerOutcomes,
-    todoStatus?: todoRows.WorkshopReplyTodoStatusCommit
+    todoStatus?: todoRows.WorkshopReplyTodoStatusCommit,
+    locationsProposal?: WorkshopLocationsProposalCard
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1872,6 +1881,10 @@ export class WorkshopSessionService {
     // What became of the reply's trailers rides the reply too (ADR 2026-11-17 D13): host-only, written once.
     if ((isHost || isGuest) && trailerOutcomes) {
       turn.trailerOutcomes = cloneWorkshopTrailerOutcomes(trailerOutcomes);
+    }
+    // A persona's context-paths card commits with the reply (ADR 2026-11-19 D27); Apply is the writer's.
+    if ((isHost || isGuest) && locationsProposal) {
+      turn.locationsProposal = cloneWorkshopLocationsProposal(locationsProposal);
     }
     // A persona's to-do changes land in this one commit; its receipt rides the reply (ADR 2026-11-19 D5, D8).
     todoRows.commitWorkshopReplyTodoStatusOnReply(isHost || isGuest, todoStatus, turn, (id, status, closedBy) => this.setTodoStatus(id, status, closedBy));
@@ -2014,6 +2027,10 @@ export class WorkshopSessionService {
   findTodo = (todoId: string): WorkshopTodoItem | undefined => this.todoLedger.find(todoId, this.getExcerptVersion());
 
   /** Settle receipt rows on a reply (D5, D8): a saved write's outcome, or an Undo. */
+  /** Answer a reply's context-paths card (ADR 2026-11-19 D27): the writer's Apply or decline, once. */
+  answerLocationsProposal = (turnId: string, answers: readonly WorkshopLocationsGroupAnswer[]): WorkshopTurn | undefined =>
+    this.turnLedger.update(turnId, (turn) => answerWorkshopLocationsProposalOnTurn(turn, answers));
+
   setTodoStatusChangeStates = (turnId: string, settle: todoRows.WorkshopTodoStatusChangeSettlement): WorkshopTurn | undefined =>
     this.turnLedger.update(turnId, (turn) => todoRows.settleWorkshopTodoStatusChanges(turn, settle));
 

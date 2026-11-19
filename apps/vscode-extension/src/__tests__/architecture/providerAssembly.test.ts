@@ -664,7 +664,11 @@ describe('app-shell provider assembly', () => {
     );
     expect(source.match(/new WorkshopLiveRoomBookmarkReader\(/g)).toHaveLength(1);
     // Both private read families receive their shared reader from the composition root.
-    expect(factoryArgs).toMatch(/workshopTranscriptRecallService,\s*projectMemoryLibrary,\s*lexicalGravityLensRepository,\s*workshopHelpReference,\s*workshopHistoryPorts\s*$/);
+    expect(factoryArgs).toMatch(/workshopTranscriptRecallService,\s*projectMemoryLibrary,\s*lexicalGravityLensRepository,\s*workshopHelpReference,\s*workshopHistoryPorts,\s*\{ scan: projectFolderScan, checker: contextPathChecker \}\s*$/);
+    // One scan, checker and writer serve Settings, a persona's calls and her card (ADR 2026-11-19 D18, D26, D27).
+    expect(source.match(/new ContextPathProposalChecker\(/g)).toHaveLength(1);
+    expect(source.match(/new ProjectFolderScan\(/g)).toHaveLength(1);
+    expect(source).toMatch(/contextPathProposals: \{ checker: contextPathChecker, settings: contextPathSettings \}/);
     // A file's git history reads through the Platform's port, the saved file and the excerpt's authorization (ADR 2026-11-19 D11, D12).
     expect(source).toMatch(/fileHistory: new VsCodeFileHistory\(\)/);
     expect(source.match(/new VsCodeFileHistory\(/g)).toHaveLength(1);
@@ -689,7 +693,7 @@ describe('app-shell provider assembly', () => {
     // through its one CoreServices field (ADR 2026-11-05 D8). Built once, here.
     expect(source.match(/workshopTranscriptRecallService/g)).toHaveLength(4);
     expect(source.match(/new WorkshopTranscriptRecallService\(/g)).toHaveLength(1);
-    expect(source).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\bworkshopTranscriptRecallService,\n\s*workshopSavedSessionTodos\n\s*\};/);
+    expect(source).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\bworkshopTranscriptRecallService,\n\s*workshopSavedSessionTodos,\n\s*contextPathProposals: \{[^}]*\}\n\s*\};/);
     // A persona's saved-session to-do writes have their own port, over the store and coordinator, never recall (ADR 2026-11-19 D6).
     expect(source).toMatch(/new WorkshopSavedSessionTodoStore\(workshopSessionStore, workshopSessionPersistenceCoordinator, outputChannel\)/);
   });

@@ -13,6 +13,7 @@ import type {
   ContextPathPatternDrop,
   ContextPathsSuggestionOutcome
 } from '@shared/types';
+import type { WorkshopLocationsProposalResultOutcome } from '@shared/types/messages/workshop/locationsProposal';
 
 export const CONTEXT_PATH_GROUP_LABELS: Readonly<Record<ContextPathGroup, string>> = {
   characters: 'Characters',
@@ -79,6 +80,20 @@ export const CONTEXT_PATH_APPLIES_TO_ALL = 'Applies to all your projects.';
 
 /** The section's one line when every group matches nothing in this project. */
 export const CONTEXT_PATH_EVERY_GROUP_EMPTY = 'None of these paths finds a file in this project yet. Suggest from my folders can propose some from your folder names.';
+
+/** What a persona's card says when the writer's Apply did nothing (ADR 2026-11-19 D27); `done` shows the card's answers. */
+export const WORKSHOP_LOCATIONS_RESULT_WORDS: Readonly<Record<Exclude<WorkshopLocationsProposalResultOutcome, 'done'>, string>> = {
+  'room-changed': 'Another conversation is open now, so nothing was applied.',
+  'unknown-card': 'This proposal is no longer in the conversation, so nothing was applied.',
+  answered: 'This proposal was answered already.',
+  busy: 'The room is busy; try again in a moment.',
+  unavailable: 'Context paths can\'t be applied here.'
+};
+
+/** A group offered on a persona's card and left unticked. */
+export function contextPathDeclinedWords(group: ContextPathGroup): string {
+  return `${CONTEXT_PATH_GROUP_LABELS[group]} wasn't ticked, so it was left as it is.`;
+}
 
 export function contextPathLeftWords(group: ContextPathGroup, reason: ContextPathLeftReason): string {
   return CONTEXT_PATH_LEFT_WORDS[reason].replace('{group}', CONTEXT_PATH_GROUP_LABELS[group]);

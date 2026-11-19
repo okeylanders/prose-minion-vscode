@@ -8,6 +8,7 @@
 
 import type { SettingsStore } from '@/platform';
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import {
@@ -159,7 +160,8 @@ export function createNativeToolCallHarness(settings?: SettingsStore) {
     offProjectMemory,
     noProjectLenses,
     unavailableHelpReference,
-    unavailableFileHistory
+    unavailableFileHistory,
+    unavailableProjectLocations
   );
   const originalFetch = global.fetch;
   const sent: SentRequest[] = [];

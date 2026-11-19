@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { helpDirectory } from '@/__tests__/application/services/workshop/help/bundledHelpReference';
 import {
@@ -112,7 +113,8 @@ describe('WorkshopPersonaCapability', () => {
     offProjectMemory,
     noProjectLenses,
     help,
-    unavailableFileHistory
+    unavailableFileHistory,
+    unavailableProjectLocations
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),
@@ -142,7 +144,8 @@ describe('WorkshopPersonaCapability', () => {
       offProjectMemory,
       noProjectLenses,
       unavailableHelpReference,
-      unavailableFileHistory
+      unavailableFileHistory,
+      unavailableProjectLocations
     ).create({
       requestId: 'open-request',
       excerptVersion: openSession.getExcerptVersion(),

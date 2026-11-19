@@ -16,6 +16,7 @@ import { WorkshopSessionMessageHandler } from '@handlers/domain/workshop/Worksho
 import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/WorkshopSessionExportHandler';
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
+import { WorkshopLocationsProposalHandler } from '@handlers/domain/workshop/WorkshopLocationsProposalHandler';
 import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookmarkHandler';
 import { WorkshopEarlierTurnsHandler } from '@handlers/domain/workshop/WorkshopEarlierTurnsHandler';
 import { WorkshopReactionHandler } from '@handlers/domain/workshop/WorkshopReactionHandler';
@@ -77,6 +78,7 @@ export class WorkshopSliceComposition {
   private readonly standingDirectiveHandler: WorkshopStandingDirectiveHandler;
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
   private readonly todoHandler: WorkshopTodoHandler;
+  private readonly locationsProposalHandler: WorkshopLocationsProposalHandler;
   private readonly bookmarkHandler: WorkshopBookmarkHandler;
   private readonly earlierTurnsHandler: WorkshopEarlierTurnsHandler;
   private readonly reactionHandler: WorkshopReactionHandler;
@@ -113,6 +115,7 @@ export class WorkshopSliceComposition {
       memoryDrafts,
       selectedText,
       savedSessionTodos,
+      locationsProposals,
       outputChannel
     } = dependencies;
     const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
@@ -274,6 +277,11 @@ export class WorkshopSliceComposition {
       },
       { port: savedSessionTodos, room: sessionPersistence, postMessage }
     );
+    // A persona's context-paths card and the writer's Apply (ADR 2026-11-19 D27).
+    this.locationsProposalHandler = new WorkshopLocationsProposalHandler(session, locationsProposals, postMessage, outputChannel, {
+      postSessionState: host.postSessionState,
+      markDirty
+    }, sessionPersistence);
     this.bookmarkHandler = new WorkshopBookmarkHandler(
       session,
       outputChannel,
@@ -435,6 +443,7 @@ export class WorkshopSliceComposition {
       router,
       this.createMutationRegistrar(router, 'WorkshopTodoHandler')
     );
+    this.locationsProposalHandler.registerRoutes(this.createMutationRegistrar(router, 'WorkshopLocationsProposalHandler'));
     this.bookmarkHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopBookmarkHandler')

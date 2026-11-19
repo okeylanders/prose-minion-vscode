@@ -197,6 +197,12 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: ['WORKSHOP_TODO_ACTION', 'WORKSHOP_UNDO_TODO_STATUS']
   },
   {
+    // The writer's Apply or Decline on a persona's context-paths card (ADR 2026-11-19 D27).
+    owner: 'application/handlers/domain/workshop/WorkshopLocationsProposalHandler.ts',
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_APPLY_LOCATIONS_PROPOSAL']
+  },
+  {
     // Recover… writes saved sessions on the coordinator's queue, never the room (ADR 2026-11-19 D6e).
     owner: 'application/handlers/domain/workshop/WorkshopNamedSessionRecoveryRoute.ts',
     registration: 'direct',
@@ -494,6 +500,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
+  'WorkshopLocationsProposalHandler',
   'WorkshopMemoryDraftHandler',
   'WorkshopPinnedContextHandler',
   'WorkshopProjectMemoryHandler',
@@ -1316,6 +1323,22 @@ const WORKSHOP_HISTORY_MODULES = [
   'WorkshopHistorySides.ts',
   'WorkshopHistoryXmlCodec.ts'
 ];
+/**
+ * The project's context paths for personas (ADR 2026-11-19 D26, D27):
+ * read-only calls and the proposal's settlement and card codec. It reads
+ * through C1's scan and checker, writes no setting (only the route owner's
+ * Apply, through C1's `applyContextPathProposal`, does), imports nothing of
+ * recall or memory, and stays under 500 lines a module.
+ */
+const WORKSHOP_LOCATIONS_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'locations');
+const WORKSHOP_LOCATIONS_MODULES = [
+  'WorkshopLocationsCapability.ts',
+  'WorkshopLocationsCopy.ts',
+  'WorkshopLocationsProposalRecords.ts',
+  'WorkshopLocationsRenderer.ts',
+  'WorkshopLocationsXmlCodec.ts',
+  'WorkshopReplyLocations.ts'
+];
 /** All a module under `reads/` may import. */
 const WORKSHOP_READS_ALLOWED_IMPORTS = [
   '@orchestration/RequestContextPreflight',
@@ -1349,6 +1372,7 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   ...collectSourceFiles(WORKSHOP_LENS_ROOT),
   ...collectSourceFiles(WORKSHOP_HELP_ROOT),
   ...collectSourceFiles(WORKSHOP_HISTORY_ROOT),
+  ...collectSourceFiles(WORKSHOP_LOCATIONS_ROOT),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopTextSearch.ts')
 ];
 const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)|import\s+.*['"](?:vscode|react|@providers\/))/;
@@ -2110,6 +2134,39 @@ describe('architectural boundaries', () => {
     }
   });
 
+  it('keeps the locations family read-only, off recall and memory, and under 500 lines (ADR 2026-11-19 D26)', () => {
+    const files = collectSourceFiles(WORKSHOP_LOCATIONS_ROOT);
+    expect(files.map((file) => path.basename(file)).sort()).toEqual(WORKSHOP_LOCATIONS_MODULES);
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(files));
+    const imports = files.flatMap((file) =>
+      moduleImports(file, fs.readFileSync(file, 'utf8')).map((entry) => ({ file: path.relative(SRC_ROOT, file), ...entry }))
+    );
+    expect(imports
+      .filter(({ module }) => /(?:^|\/)(?:recall|memory|lens|help|history|session|pinnedContext)(?:\/|$)/.test(module) || RECALL_FORBIDDEN_MODULE.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // C1's scan, checker and writer are known as types only: the family constructs none of them. Only the
+    // pure setting-split rule is shared, so a card's baseline and its patterns agree (PR #290 P1).
+    expect(imports
+      .filter(({ module, typeOnly }) => /\/contextPaths\//.test(module) && !typeOnly && !/ContextPathPatternSafety$/.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    for (const file of files) {
+      const source = fs.readFileSync(file, 'utf8');
+      expect(source.split('\n').length).toBeLessThanOrEqual(500);
+      // It writes nothing: no setting, no file.
+      expect(source).not.toMatch(/\.(?:write|update|writeFile|createDirectory|rename)\(|applyContextPathProposal/);
+    }
+    // Only the route owner applies a card, through C1's one write.
+    const appliers = collectSourceFiles(path.join(SRC_ROOT, 'application'))
+      .filter((file) => /applyContextPathProposal\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file))
+      .sort();
+    expect(appliers).toEqual([
+      'application/handlers/domain/workshop/WorkshopLocationsProposalHandler.ts',
+      'application/services/contextPaths/ContextPathApply.ts',
+      'application/services/contextPaths/ContextPathSuggestionService.ts'
+    ]);
+  });
+
   it('imports the diff package only in the history family\'s diff module (ADR 2026-11-19 D13; G2)', () => {
     const importers = [
       ...collectSourceFiles(SRC_ROOT),
@@ -2402,9 +2459,10 @@ describe('architectural boundaries', () => {
     // Everyday Conveniences round two, item A added a long room's earlier turns (direct).
     // Workshop Persona Tools item A added the writer's Undo of a persona's to-do change (mutation)
     // and Recover… for a saved session left mid-save (direct).
-    expect(expectedOwnerPairs).toHaveLength(100);
+    // Workshop Persona Tools item C2 added the writer's Apply on a context-paths card (mutation).
+    expect(expectedOwnerPairs).toHaveLength(101);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(53);
+      .toHaveLength(54);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
       .toHaveLength(47);
     expect(duplicateLedgerEntries).toEqual([]);
@@ -3120,6 +3178,7 @@ describe('architectural boundaries', () => {
       'index.ts',
       'lexicalGravity.ts',
       'lightboxTiles.ts',
+      'locationsProposal.ts',
       'memoryDraft.ts',
       'participants.ts',
       'pinnedContext.ts',

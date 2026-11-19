@@ -5,6 +5,7 @@
  * the engine's log, with debug logging off and on. *Alice*, with made-up ids.
  */
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
@@ -49,7 +50,8 @@ describe.each([['off', false], ['on', true]])('a committed memory.read, debug lo
         host.library,
         noProjectLenses,
         unavailableHelpReference,
-        unavailableFileHistory
+        unavailableFileHistory,
+        unavailableProjectLocations
       ).create({
         requestId: 'host-request',
         excerptVersion: 0,

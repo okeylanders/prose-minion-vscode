@@ -13,6 +13,7 @@
 
 import type {
   WorkshopFileEditTrailerDropReason,
+  WorkshopLocationsTrailerDropReason,
   WorkshopMemoryTrailerDropReason,
   WorkshopTodoTrailerDropReason,
   WorkshopTrailerDropReason
@@ -20,6 +21,7 @@ import type {
 import type { WorkshopTodoStatusDropCode } from '@/application/services/workshop/todos/WorkshopReplyTodoStatus';
 import type { WorkshopReplyMemoryRejection } from '@/utils/workshopReplyControls';
 import type { WorkshopReplyFileEditRejection } from '@/utils/workshopReplyFileEdits';
+import type { WorkshopLocationsDropCode } from '@/application/services/workshop/locations/WorkshopReplyLocations';
 import type { WorkshopMemoryProposalDrop } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import type { WorkshopMemoryEditDropReason } from '@/application/services/workshop/memory/WorkshopReplyMemoryEdit';
 import type { WorkshopFileEditProposalDrop } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
@@ -30,7 +32,10 @@ export type WorkshopMemoryTrailerDropCode = WorkshopReplyMemoryRejection | Works
 export type WorkshopFileEditTrailerDropCode = WorkshopFileEditProposalDrop['reason'];
 /** Every reason code a to-do status frame can end with no row for (ADR 2026-11-19 D7). */
 export type WorkshopTodoTrailerDropCode = WorkshopTodoStatusDropCode;
-type DropCode = WorkshopMemoryTrailerDropCode | WorkshopFileEditTrailerDropCode | WorkshopTodoTrailerDropCode;
+/** Every reason code a context-paths proposal frame can end with no card for (ADR 2026-11-19 D27). */
+export type WorkshopLocationsTrailerDropCode = WorkshopLocationsDropCode;
+type DropCode = WorkshopMemoryTrailerDropCode | WorkshopFileEditTrailerDropCode | WorkshopTodoTrailerDropCode
+  | WorkshopLocationsTrailerDropCode;
 
 const isMalformed = <Code extends string>(code: Code): code is Extract<Code, `malformed:${string}`> => code.startsWith('malformed:');
 
@@ -38,6 +43,7 @@ const isMalformed = <Code extends string>(code: Code): code is Extract<Code, `ma
 export function workshopTrailerDropReason(code: WorkshopMemoryTrailerDropCode): WorkshopMemoryTrailerDropReason;
 export function workshopTrailerDropReason(code: WorkshopFileEditTrailerDropCode): WorkshopFileEditTrailerDropReason;
 export function workshopTrailerDropReason(code: WorkshopTodoTrailerDropCode): WorkshopTodoTrailerDropReason;
+export function workshopTrailerDropReason(code: WorkshopLocationsTrailerDropCode): WorkshopLocationsTrailerDropReason;
 export function workshopTrailerDropReason(code: DropCode): WorkshopTrailerDropReason {
   if (isMalformed(code)) {
     return 'malformed';
@@ -103,6 +109,15 @@ export function workshopTrailerDropReason(code: DropCode): WorkshopTrailerDropRe
       return 'todo-not-found';
     case 'not-open':
       return 'todo-not-open';
+    // A context-paths proposal, checked at settlement (ADR 2026-11-19 D27).
+    case 'nothing-kept':
+      return 'nothing-kept';
+    case 'no-workspace':
+    case 'check-failed':
+    case 'not-checked':
+      return 'workspace-unavailable';
+    case 'unrepresentable':
+      return 'too-large';
     default:
       return assertNever(code);
   }

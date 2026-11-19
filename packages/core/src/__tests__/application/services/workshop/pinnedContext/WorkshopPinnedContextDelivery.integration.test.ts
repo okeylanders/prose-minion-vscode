@@ -14,6 +14,7 @@
  * *Alice*, with made-up paths and text. No provider is called.
  */
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
 import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { WorkshopRoomHandler } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
 import { emptyPinnedContextServices } from '@/__tests__/application/handlers/domain/workshop/workshopPinnedContextTestServices';
@@ -109,7 +110,8 @@ async function firstHostRun(seed: (session: WorkshopSessionService) => Promise<v
     {} as DictionaryService, analysis, emptyCatalog as never, session, output, {} as WorkshopTranscriptRecallPort, projectMemory,
     noProjectLenses,
     unavailableHelpReference,
-    unavailableFileHistory
+    unavailableFileHistory,
+    unavailableProjectLocations
   );
   const settings = createFakeSettings();
   const profile = new WorkshopWriterProfileService(settings, output);

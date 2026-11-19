@@ -180,6 +180,7 @@ packages/core/src/
                 ├── lightboxTiles.ts
                 ├── selectedText.ts
                 ├── todoStatus.ts
+                ├── locationsProposal.ts
                 ├── sessionRecovery.ts
                 └── settings.ts
 ```
