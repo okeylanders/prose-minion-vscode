@@ -1679,9 +1679,14 @@ catalog:
   it to every call: the context scan (`WorkshopContextFileScan`) and the
   pinned reader's `readAll` do. Never keep a scope after its operation: a
   catalog kept longer would need file-watching to stay true.
+- **A scope is bound to its workspace roots** (PR #284 F-01). When a folder
+  is added or removed mid-operation, its listing is no authority: the next
+  call opens a fresh one.
 - **Only the listing is shared.** Containment, the symbolic-link check and
   `loadFile`'s bounds still run per file.
 - **The scan logs one line,** counts and milliseconds, never a path or a name.
+  The refresh summary, which names files, goes to the writer's status and
+  notice only, never Output (PR #284 F-02).
 
 ### Workshop Pinned Context
 

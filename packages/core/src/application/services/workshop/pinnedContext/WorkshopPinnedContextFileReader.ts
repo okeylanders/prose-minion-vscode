@@ -50,7 +50,7 @@ import {
 /** The intake service's doors the reader uses, and no others. */
 export type WorkshopPinnedContextIntakePort = Pick<
   WorkshopContextIntakeService,
-  'openCatalog' | 'authorizeExcerptReread' | 'loadFile'
+  'openCatalog' | 'workspaceRoots' | 'authorizeExcerptReread' | 'loadFile'
 >;
 
 /** Where a pinned file was read from: the catalog (with its group), or the workspace. */
