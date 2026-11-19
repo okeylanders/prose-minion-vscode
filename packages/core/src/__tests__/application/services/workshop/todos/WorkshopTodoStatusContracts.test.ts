@@ -142,10 +142,13 @@ describe('boundaries (D6, D6a)', () => {
   it('the store replaces a named file only through its claim, never by an overwriting rename', () => {
     const store = fs.readFileSync(path.join(SRC, 'infrastructure/storage/WorkshopSessionStore.ts'), 'utf8');
     const updateNamed = store.slice(store.indexOf('  async updateNamed('), store.indexOf('  async readNamed('));
-    expect(updateNamed).toContain('rewriteWorkshopNamedSession(');
+    expect(updateNamed).toContain('this.named.replace(');
     expect(updateNamed).not.toMatch(/writeSnapshotWithSearchIndex|overwrite: true/);
     const deleteNamed = store.slice(store.indexOf('  async deleteNamed('), store.indexOf('  async resolveRevealPath('));
-    expect(deleteNamed).toContain('this.claims.deleteClaimed(');
+    expect(deleteNamed).toContain('this.named.remove(');
+    const claim = fs.readFileSync(path.join(SRC, 'infrastructure/storage/WorkshopNamedSessionClaim.ts'), 'utf8');
+    expect(claim).toContain('rewriteWorkshopNamedSession(');
+    expect(claim).toContain('this.claims.deleteClaimed(');
     // Only current.json is written with an overwriting rename.
     expect([...store.matchAll(/writeSnapshotWithSearchIndex\([\s\S]*?\)/g)].map((match) => match[0]).filter((call) => /,\s*true\b/.test(call)))
       .toEqual([expect.stringContaining('paths.currentPath')]);

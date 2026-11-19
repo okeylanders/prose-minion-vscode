@@ -60,12 +60,7 @@ import type { WorkshopTrailerOutcomes } from '@shared/types/workshopTrailerOutco
 import { withWorkshopProjectMemoryDelivery } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { cloneWorkshopReactionDelivery } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
 import { cloneWorkshopTrailerOutcomes } from '@/application/services/workshop/session/WorkshopTrailerOutcomeRecords';
-import {
-  commitWorkshopReplyTodoStatus,
-  settleWorkshopTodoStatusChanges,
-  type WorkshopReplyTodoStatusCommit,
-  type WorkshopTodoStatusChangeSettlement
-} from '@/application/services/workshop/todos/WorkshopTodoStatusRows';
+import * as todoRows from '@/application/services/workshop/todos/WorkshopTodoStatusRows';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
 import {
@@ -1759,7 +1754,7 @@ export class WorkshopSessionService {
     editOfferAnswer?: WorkshopEditOfferAnswer,
     reaction?: WorkshopReplyReactionCommit,
     trailerOutcomes?: WorkshopTrailerOutcomes,
-    todoStatus?: WorkshopReplyTodoStatusCommit
+    todoStatus?: todoRows.WorkshopReplyTodoStatusCommit
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1877,9 +1872,7 @@ export class WorkshopSessionService {
       turn.trailerOutcomes = cloneWorkshopTrailerOutcomes(trailerOutcomes);
     }
     // A persona's to-do changes land in this one commit; its receipt rides the reply (ADR 2026-11-19 D5, D8).
-    if ((isHost || isGuest) && todoStatus && todoStatus.rows.length > 0) {
-      turn.todoStatusChanges = commitWorkshopReplyTodoStatus(todoStatus, turn, (id, status, closedBy) => this.setTodoStatus(id, status, closedBy));
-    }
+    todoRows.commitWorkshopReplyTodoStatusOnReply(isHost || isGuest, todoStatus, turn, (id, status, closedBy) => this.setTodoStatus(id, status, closedBy));
     // The persona's own reaction (ADR 2026-11-07 D5) rides the reply that carried it, written
     // through the ledger in this one commit, so a cut or rollback of the reply takes it too.
     if (reaction && (isHost || isGuest)) {
@@ -2016,14 +2009,11 @@ export class WorkshopSessionService {
     return this.todoLedger.setStatus(todoId, status, this.getExcerptVersion(), closedBy);
   }
 
-  findTodo(todoId: string): WorkshopTodoItem | undefined {
-    return this.todoLedger.find(todoId, this.getExcerptVersion());
-  }
+  findTodo = (todoId: string): WorkshopTodoItem | undefined => this.todoLedger.find(todoId, this.getExcerptVersion());
 
-  /** Settle receipt rows on a reply (ADR 2026-11-19 D5, D8): a saved write's outcome, or an Undo. */
-  setTodoStatusChangeStates(turnId: string, settle: WorkshopTodoStatusChangeSettlement): WorkshopTurn | undefined {
-    return this.turnLedger.update(turnId, (turn) => settleWorkshopTodoStatusChanges(turn, settle));
-  }
+  /** Settle receipt rows on a reply (D5, D8): a saved write's outcome, or an Undo. */
+  setTodoStatusChangeStates = (turnId: string, settle: todoRows.WorkshopTodoStatusChangeSettlement): WorkshopTurn | undefined =>
+    this.turnLedger.update(turnId, (turn) => todoRows.settleWorkshopTodoStatusChanges(turn, settle));
 
   reorderTodo(todoId: string, direction: 'up' | 'down'): void {
     this.todoLedger.reorder(todoId, direction);

@@ -16,7 +16,6 @@ import { WorkshopSessionMessageHandler } from '@handlers/domain/workshop/Worksho
 import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/WorkshopSessionExportHandler';
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
-import { WorkshopTodoStatusWrites } from '@/application/services/workshop/todos/WorkshopTodoStatusWrites';
 import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookmarkHandler';
 import { WorkshopEarlierTurnsHandler } from '@handlers/domain/workshop/WorkshopEarlierTurnsHandler';
 import { WorkshopReactionHandler } from '@handlers/domain/workshop/WorkshopReactionHandler';
@@ -78,7 +77,6 @@ export class WorkshopSliceComposition {
   private readonly standingDirectiveHandler: WorkshopStandingDirectiveHandler;
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
   private readonly todoHandler: WorkshopTodoHandler;
-  private readonly todoStatusWrites?: WorkshopTodoStatusWrites;
   private readonly bookmarkHandler: WorkshopBookmarkHandler;
   private readonly earlierTurnsHandler: WorkshopEarlierTurnsHandler;
   private readonly reactionHandler: WorkshopReactionHandler;
@@ -162,7 +160,7 @@ export class WorkshopSliceComposition {
       outputChannel,
       {
         // A loaded, opened or restored room settles any persona to-do row left `saving` (ADR 2026-11-19 D8a).
-        postSessionState: () => { host.postSessionState(); void this.todoStatusWrites?.reconcile(); },
+        postSessionState: () => { host.postSessionState(); void this.todoHandler.reconcileTodoStatus(); },
         refreshContextFiles: (origin) => this.contextHandler.refreshChangedContextFiles(origin),
         flushDeferredConversationSettings: host.flushDeferredConversationSettings,
         reportError: (message, details) =>
@@ -265,11 +263,6 @@ export class WorkshopSliceComposition {
         isRoomRunActive: host.isRoomRunActive
       }
     );
-    // A persona's saved-session to-do writes and the writer's Undo (ADR 2026-11-19 D5–D8).
-    this.todoStatusWrites = savedSessionTodos && new WorkshopTodoStatusWrites(session, savedSessionTodos, sessionPersistence, {
-      settleRoom: (reason) => { markDirty(reason); host.postSessionState(); },
-      log: (line) => outputChannel.appendLine(`[WorkshopTodoHandler] ${line}`)
-    });
     this.todoHandler = new WorkshopTodoHandler(
       session,
       outputChannel,
@@ -279,8 +272,7 @@ export class WorkshopSliceComposition {
         reportError: (message, details) =>
           host.reportRouteError('workshop.todo', message, details, 'WorkshopTodoHandler')
       },
-      this.todoStatusWrites,
-      postMessage
+      { port: savedSessionTodos, room: sessionPersistence, postMessage }
     );
     this.bookmarkHandler = new WorkshopBookmarkHandler(
       session,
@@ -483,10 +475,8 @@ export class WorkshopSliceComposition {
     return this.projectMemoryHandler.autoSaveProposals(turn.id, indexes, signal);
   }
 
-  /** A reply's to-do status context, resolved before completion (ADR 2026-11-19 D5); none for a reply with no frame. */
-  replyTodoStatus(reply: string): ReturnType<WorkshopTodoStatusWrites['context']> {
-    return this.todoStatusWrites?.context(reply) ?? Promise.resolve(undefined);
-  }
+  /** A reply's to-do status context, resolved before completion (ADR 2026-11-19 D5). */
+  replyTodoStatus = (reply: string) => this.todoHandler.replyTodoStatus(reply);
 
   /** The room's automatic saves, landed and in flight, for Save and tell me's cap (PR #201 F-04). */
   memoryAutoSavesInRoom(): number {

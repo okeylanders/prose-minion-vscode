@@ -9,7 +9,6 @@
  */
 
 import * as path from 'path';
-import { randomUUID } from 'node:crypto';
 import { withoutRollingProvenance } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
@@ -19,12 +18,7 @@ import {
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
-import {
-  rewriteWorkshopNamedSession,
-  workshopNamedSessionClaimState,
-  workshopNamedSessionClaims,
-  WorkshopNamedSessionBusyError
-} from '@/infrastructure/storage/WorkshopNamedSessionClaims';
+import { formatByteLimit, WorkshopNamedSessionClaim } from '@/infrastructure/storage/WorkshopNamedSessionClaim';
 import { isRecord } from '@/application/services/workshop/persistedValidation';
 import {
   assertPersistedJsonNestingDepth
@@ -207,7 +201,8 @@ export class WorkshopSessionStore {
   ) {}
 
   /** Every replace or remove of a named file claims it first (ADR 2026-11-19 D6a). */
-  private readonly claims = workshopNamedSessionClaims(this.fileSystem, this.log, this.now, this.limits.maximumExactFileBytes);
+  private readonly named = new WorkshopNamedSessionClaim(this.fileSystem, this.log, this.now, this.limits.maximumExactFileBytes,
+    { changed: () => new WorkshopNamedSessionChangedError(), missing: (id) => new WorkshopNamedSessionNotFoundError(id) });
 
   availability(): WorkshopSessionStoreAvailability {
     const folders = this.workspace.workspaceFolders();
@@ -299,19 +294,7 @@ export class WorkshopSessionStore {
     if (decoded.sessionId !== sessionId) {
       throw new Error('Updated Workshop session identity does not match its target.');
     }
-    // D6a: the bytes compared are the bytes the claim must still hold; the claim refuses an overlapping writer.
-    const read = await this.fileSystem.readFile(found.filePath).catch(() => undefined);
-    const latest = read && this.decodeExactBytes(read, found.fileName);
-    if (!read || !latest || !hasSameWorkshopCheckpoint(latest.session, expected)) {
-      throw new WorkshopNamedSessionChangedError();
-    }
-    const outcome = await rewriteWorkshopNamedSession(this.fileSystem, this.claims, this.log, {
-      filePath: found.filePath, read, written: encodePersistedJson(decoded, this.limits.maximumExactFileBytes, 'Workshop session')
-    });
-    if (outcome !== 'committed') {
-      throw outcome === 'busy' ? new WorkshopNamedSessionBusyError()
-        : outcome === 'missing' ? new WorkshopNamedSessionNotFoundError(sessionId) : new WorkshopNamedSessionChangedError();
-    }
+    await this.named.replace({ sessionId, filePath: found.filePath, readExact: () => this.readSessionFileExact(found.filePath, found.fileName), session: decoded, expected });
     await this.writeSearchIndexAfterCommit(paths, found.fileName, decoded);
     this.rememberNamedSessionPath(
       paths,
@@ -433,12 +416,7 @@ export class WorkshopSessionStore {
   async deleteNamed(sessionId: string): Promise<void> {
     const paths = this.requireAvailability();
     const found = await this.requireNamedSession(sessionId, paths);
-    // D6a: a delete claims the file too, so it never races another window's write.
-    const deleted = await this.claims.deleteClaimed(found.filePath, 'a saved session', randomUUID());
-    if (deleted !== 'deleted') {
-      throw deleted === 'busy' ? new WorkshopNamedSessionBusyError()
-        : deleted === 'missing' ? new WorkshopNamedSessionNotFoundError(sessionId) : new Error('The saved Workshop session could not be deleted.');
-    }
+    await this.named.remove(found.filePath, sessionId);
     await this.deleteSearchIndexIfPresent(paths, found.fileName);
     this.namedSessionPaths.delete(this.namedSessionCacheKey(paths, sessionId));
   }
@@ -509,13 +487,8 @@ export class WorkshopSessionStore {
         found.filePath
       );
     }
-    // D6a: a live claim with the saved name empty is busy, never missing; an abandoned one is put back and read again.
-    const claimed = !found && !options.ignoreUnreadable && !options.claimsSettled ? await workshopNamedSessionClaimState(this.fileSystem, this.claims, paths.sessionsDirectory) : 'none';
-    if (claimed !== 'none') {
-      if (claimed === 'busy') {
-        throw new WorkshopNamedSessionBusyError();
-      }
-      return this.findNamedSession(sessionId, paths, { ...options, claimsSettled: true });
+    if (!found && !options.ignoreUnreadable && !options.claimsSettled && await this.named.settledWhenMissing(paths.sessionsDirectory)) {
+      return this.findNamedSession(sessionId, paths, { ...options, claimsSettled: true }); // D6a: busy throws; put back, read again.
     }
     if (!found && entries.failures.length > 0 && !options.ignoreUnreadable) {
       // A malformed file may own the requested durable id. Exact operations
@@ -789,10 +762,6 @@ export class WorkshopSessionStore {
       }
       throw new WorkshopSessionFileReadError(displayName, errorMessage(error));
     }
-    return this.decodeExactBytes(bytes, displayName);
-  }
-
-  private decodeExactBytes(bytes: Uint8Array, displayName: string): WorkshopPersistedSessionCheckpointDecodeResult {
     try {
       this.assertExactFileSize(bytes.byteLength, displayName);
       const text = decoder.decode(bytes);
@@ -987,7 +956,7 @@ export class WorkshopSessionStore {
     description: string,
     beforeCommit?: () => Promise<void>
   ): Promise<void> {
-    const bytes = encodePersistedJson(value, maximumBytes, description);
+    const bytes = this.named.encode(value, description, maximumBytes);
     const temporaryPath = `${targetPath}.tmp-${this.now().getTime()}-${++this.temporaryWriteCounter}`;
     try {
       await this.fileSystem.writeFile(temporaryPath, bytes);
@@ -1065,13 +1034,6 @@ function compareSummariesNewestFirst(left: WorkshopStoredSessionSummary, right: 
 function normalizedQuery(query: string | undefined): string | undefined {
   const normalized = query?.trim().toLocaleLowerCase();
   return normalized || undefined;
-}
-
-function formatByteLimit(bytes: number): string {
-  const mebibyte = 1024 * 1024;
-  return bytes % mebibyte === 0
-    ? `${bytes / mebibyte} MiB`
-    : `${bytes.toLocaleString('en-US')} bytes`;
 }
 
 function summaryMatches(summary: WorkshopStoredSessionSummary, query: string): boolean {
@@ -1176,19 +1138,6 @@ function titleSlug(title: string): string {
 function formatFilenameTimestamp(date: Date): string {
   const pad = (value: number) => value.toString().padStart(2, '0');
   return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}-${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}`;
-}
-
-function encodePersistedJson(value: unknown, maximumBytes: number, description: string): Uint8Array {
-  const text = JSON.stringify(value, undefined, 2);
-  assertPersistedJsonNestingDepth(text, description);
-  const bytes = encoder.encode(text);
-  if (bytes.byteLength > maximumBytes) {
-    const guidance = description === 'Workshop session'
-      ? ' Start a new Workshop session or remove retained context; the existing checkpoint remains unchanged.'
-      : '';
-    throw new Error(`${description} exceeds the maximum persisted size of ${formatByteLimit(maximumBytes)}.${guidance}`);
-  }
-  return bytes;
 }
 
 function isNamedSessionFileName(name: string): boolean {

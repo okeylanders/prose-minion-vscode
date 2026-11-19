@@ -10,7 +10,9 @@ import {
   type WorkshopUndoTodoStatusPayload
 } from '@messages';
 import type { MessageTransport } from '@handlers/MessageHandlerContracts';
-import type { WorkshopTodoStatusWrites } from '@/application/services/workshop/todos/WorkshopTodoStatusWrites';
+import { WorkshopTodoStatusWrites, type WorkshopTodoStatusWritesRoom } from '@/application/services/workshop/todos/WorkshopTodoStatusWrites';
+import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
+import type { WorkshopReplyTodoStatusContext } from '@/application/services/workshop/todos/WorkshopReplyTodoStatus';
 import {
   WORKSHOP_TODO_STATUS_UNDO_REFUSAL_WORDS,
   WORKSHOP_TODO_STATUS_UNDONE_WORDS
@@ -36,9 +38,28 @@ export class WorkshopTodoHandler {
     private readonly session: WorkshopSessionService,
     private readonly outputChannel: LogSink,
     private readonly effects: WorkshopTodoEffects,
-    private readonly writes?: WorkshopTodoStatusWrites,
-    private readonly postMessage?: MessageTransport
-  ) {}
+    saved: { port?: WorkshopSavedSessionTodos; room?: WorkshopTodoStatusWritesRoom; postMessage?: MessageTransport } = {}
+  ) {
+    this.postMessage = saved.postMessage;
+    // A persona's saved-session to-do writes and the writer's Undo (ADR 2026-11-19 D5–D8).
+    this.writes = saved.port && saved.room && new WorkshopTodoStatusWrites(session, saved.port, saved.room, {
+      settleRoom: (reason) => { this.effects.markDirty(reason); this.effects.postSessionState(); },
+      log: (line) => this.outputChannel.appendLine(`[WorkshopTodoHandler] ${line}`)
+    });
+  }
+
+  private readonly writes?: WorkshopTodoStatusWrites;
+  private readonly postMessage?: MessageTransport;
+
+  /** A reply's to-do status context, resolved before completion (D5); none for a reply with no frame. */
+  replyTodoStatus(reply: string): Promise<WorkshopReplyTodoStatusContext | undefined> {
+    return this.writes?.context(reply) ?? Promise.resolve(undefined);
+  }
+
+  /** Settle rows left `saving` (D8a); nothing without the port. */
+  reconcileTodoStatus(): Promise<void> {
+    return this.writes?.reconcile() ?? Promise.resolve();
+  }
 
   registerRoutes(
     router: MessageRouter,

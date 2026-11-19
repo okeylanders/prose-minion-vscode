@@ -334,15 +334,9 @@ export class WorkshopSessionPersistenceCoordinator {
       : { available: false, reason: availability.reason };
   }
 
-  /** The open room's ids and title, as a persona's to-do change names it (ADR 2026-11-19 D2, D6). */
-  openRoomIdentity(): { sessionId: string; title: string; namedSessionId?: string } {
-    return { sessionId: this.identity.sessionId, title: this.identity.title, ...(this.activeNamedSessionId ? { namedSessionId: this.activeNamedSessionId } : {}) };
-  }
-
-  /** A change to a saved session that is not the open room, on the session-operation queue (ADR 2026-11-19 D6). */
-  runSavedSessionOperation<T>(operation: () => Promise<T>): Promise<T> {
-    return this.serializeSessionOperation(operation);
-  }
+  /** The open room's ids and title, and a saved session's change on the operation queue (ADR 2026-11-19 D2, D6). */
+  openRoomIdentity = () => ({ sessionId: this.identity.sessionId, title: this.identity.title, namedSessionId: this.activeNamedSessionId });
+  runSavedSessionOperation = <T>(operation: () => Promise<T>): Promise<T> => this.serializeSessionOperation(operation);
 
   hasPendingWrite(): boolean {
     return this.dirtyRevision > this.writtenRevision || this.pendingRollingMirror !== undefined;

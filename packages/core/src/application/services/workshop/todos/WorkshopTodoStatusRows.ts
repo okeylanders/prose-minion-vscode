@@ -111,3 +111,15 @@ export function workshopTodoStatusChangesForWebview(rows: readonly WorkshopTodoS
       ? { ...row, elsewhere: true }
       : row);
 }
+
+/** `completeRun`'s one call (D5): on a persona reply with rows, land them and keep the receipt on the turn. */
+export function commitWorkshopReplyTodoStatusOnReply(
+  persona: boolean,
+  commit: WorkshopReplyTodoStatusCommit | undefined,
+  turn: WorkshopTurn,
+  setStatus: (todoId: string, status: WorkshopTodoStatus, closedBy: WorkshopTodoClosedBy | undefined) => void
+): void {
+  if (persona && commit && commit.rows.length > 0) {
+    turn.todoStatusChanges = commitWorkshopReplyTodoStatus(commit, turn, setStatus);
+  }
+}
