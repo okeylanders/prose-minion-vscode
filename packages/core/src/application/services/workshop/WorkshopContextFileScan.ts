@@ -27,7 +27,7 @@ import type { WorkshopExcerptSource } from '@messages';
 
 export type WorkshopContextFileScanIntake = Pick<
   WorkshopContextIntakeService,
-  'openCatalog' | 'authorizeExcerptReread' | 'loadFile' | 'boundText'
+  'openCatalog' | 'workspaceRoots' | 'authorizeExcerptReread' | 'loadFile' | 'boundText'
 >;
 
 export interface WorkshopContextFileScanResult {

@@ -300,9 +300,7 @@ export class WorkshopContextHandler {
         this.effects.markDirty('context files refreshed');
       }
       this.effects.postSessionState();
-      this.outputChannel.appendLine(
-        `[WorkshopContextHandler] ${refreshSummary}`
-      );
+      // The summary names files, so it goes to the writer only; Output has the scan's counts.
       this.effects.sendStatus(refreshSummary);
       return;
     }
@@ -317,7 +315,6 @@ export class WorkshopContextHandler {
       if (eventTurn) {
         this.effects.postTurn(eventTurn);
       }
-      this.outputChannel.appendLine(`[WorkshopContextHandler] ${refreshSummary}`);
       this.effects.sendStatus(refreshSummary);
     } else if (origin === 'manual') {
       this.effects.sendStatus('Context files are unchanged.');

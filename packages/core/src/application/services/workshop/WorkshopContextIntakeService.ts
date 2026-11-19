@@ -215,6 +215,11 @@ export class WorkshopContextIntakeService {
     return new WorkshopContextIntakeCatalog(provider);
   }
 
+  /** The open workspace folders' paths, in order: the roots a catalog is listed under. */
+  workspaceRoots(): string[] {
+    return this.workspace.workspaceFolders().map((folder) => folder.path);
+  }
+
   toDisplayPath(filePath: string): string {
     const relativePath = this.workspace.asRelativePath(filePath);
     if (relativePath === filePath || isAbsolutePath(relativePath)) {
