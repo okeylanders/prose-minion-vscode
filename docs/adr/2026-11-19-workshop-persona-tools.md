@@ -1,6 +1,6 @@
 # ADR 2026-11-19: Workshop Persona Tools: Closing To-dos, a File's Git History, and the Project's Context Paths
 
-**Status:** Proposed (Slice 0). Revised 2026-11-19 after PR #286's review (D6a, D8a, D13a, D22a; see "Amendments after review"). T1, G1–G3 and L1–L3 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief was wrong; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
+**Status:** Proposed (Slice 0). Revised 2026-11-19 after PR #286's review (D6a, D8a, D13a, D22a), and again after its re-review (D6b, D6c, D8b); see "Amendments after review". T1, G1–G3 and L1–L3 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief was wrong; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
 **Date:** 2026-11-19
 **Epic:** [Workshop Persona Tools](../../.todo/epics/epic-workshop-persona-tools-2026-11-19/README.md)
 (its "Defaults taken" table is binding here)
@@ -352,10 +352,11 @@ interface WorkshopSavedSessionTodos {
 ### D6a. Every named-session writer claims the file (PR #286 F-01)
 
 The compare alone does not stop two writers that check before either
-renames. The store adopts the per-file claim already shared by the
-Lightbox's boards and project memory: `StoredFileRewrite` over
-`StoredFileClaims` (PR #164). It suits a folder of many files better than
-the pinned list's single directory lock.
+renames. Every named-session writer takes a per-file lock first. *(The
+first text named the shared `StoredFileRewrite`/`StoredFileClaims` path;
+the re-review showed it does not fence a stalled writer. D6b replaces the
+"How" below with a lock that does; who takes it, the busy outcome, readers
+and the scope stand.)*
 
 - **Who:** every write that replaces or removes an existing named session
   file goes through it: `updateNamed` (so autosave and Save of a named
@@ -363,7 +364,7 @@ the pinned list's single directory lock.
   checkpoint), `renameNamed`, `deleteNamed`, and the persona's write and
   Undo (D6, D8). A new named-session writer joins it; `boundaries.test.ts`
   holds that only the store renames over a named session file.
-- **How:** the new checkpoint is staged under a hidden private name; the
+- **How (superseded by D6b):** the new checkpoint is staged under a hidden private name; the
   saved file is **claimed** by an atomic rename, never over anything, to
   `.<name>.claim-<epoch ms>-<writer id>`; the claimed file is decoded and
   must equal `expected` (`hasSameWorkshopCheckpoint`), else the claim is
@@ -375,15 +376,16 @@ the pinned list's single directory lock.
   finds the saved name empty under a live claim and is refused as `busy`
   ("This saved session is being written by another window. Try again in a
   moment."). For an autosave that is the same path as a changed file: the
-  room's work goes to `current.json`, and the next autosave tries again,
-  against the compare.
+  room's work is kept in its own recovery session (D6c), and the next
+  autosave tries again, against the compare.
 - **Readers and listings** settle claims by `StoredFileClaims`' rules: a
   live claim with the name empty is `busy`, never "missing"; an abandoned
   claim (past `STORED_FILE_CLAIM_LEASE_MS`) is put back; a leftover beside
   a standing file is removed. The listing skips claim and staging names. A
   `busy` read never detaches the open room (`detachMissingNamedSession`
   runs only on a settled `missing`).
-- **`current.json` is unchanged.** It is one window's rolling cache.
+- **`current.json` is unchanged,** but it is the workspace's, not the
+  window's, so a refused room never relies on it (D6c).
 - **Witness** (`WorkshopNamedSessionOverlappingWrites.test.ts`): two stores
   over one folder, held promises so both writers have read and validated
   the same checkpoint before either claims; then both proceed. Exactly one
@@ -396,6 +398,89 @@ the pinned list's single directory lock.
   hand). It takes no claim. It is covered only by the existing compare and
   `refreshNamedSession`'s promotion with local recovery, as today. A sync
   landing inside a writer's claim-to-commit window is not detected.
+
+### D6b. The lock fences a stalled writer by placement (PR #286 re-review, finding 1)
+
+`StoredFileRewrite` stages outside its claim and checks ownership apart
+from publishing, and `StoredFileClaims` recovers an expired claim. A writer
+paused past the lease keeps its staged file; after another window recovers
+the claim and deletes the session, the paused writer's publish can
+recreate it. Named sessions therefore get **their own lock-and-stage
+path**, `WorkshopNamedSessionLock` (`core/infrastructure/storage/`),
+modelled on the pinned list's lock (`WorkshopPinnedContextLock`, PR #204
+F-01): the staged file lives inside the lock, so a takeover removes it.
+
+- **The lock is a directory per session file,** `.<name>.lock/`, holding
+  `owner.json` (`{ token, at }`). It is taken by staging a private
+  directory and renaming it to that name, never over anything. Of two
+  windows, one wins and the other is `busy`.
+- **Staged inside, under the owner's token:** the new checkpoint is
+  written to `.<name>.lock/next-<token>.json`. A successor's lock never
+  holds a file of that name.
+- **The claim, inside too:** holding the lock, the writer reads the saved
+  file, compares it with `expected`, then moves it, never over anything,
+  to `.<name>.lock/prior.json`. A file already deleted cannot be moved, so
+  the write is `gone`.
+- **The publish** renames `.<name>.lock/next-<token>.json` to the saved
+  name, never over anything. A rename resolves its source when it runs: if
+  a takeover has moved the lock aside and deleted it, the source no longer
+  exists and the publish fails. Then `prior.json` is removed and the lock
+  released (renamed aside, checked to be this token's, deleted).
+- **A delete** holds the lock, moves the saved file to `prior.json`, and
+  deletes the lock directory with all it holds. A stalled updater's staged
+  file was in its own lock, which the takeover already removed.
+- **Takeover of an abandoned lock** (`owner.json` older than
+  `STORED_FILE_CLAIM_LEASE_MS`, or unreadable): rename the directory aside
+  to a unique name (only one window's rename finds it), check it is the
+  lock judged abandoned (else put it back), restore `prior.json` to the
+  saved name only if that name is empty, never over anything, then delete
+  the moved-aside directory and every staged file in it.
+- **Checked before the publish** (`stillHeld`): a cheap early withdrawal.
+  The fence is the placement, which no stall gets past.
+- **Readers:** an empty saved name beside a live lock is `busy`; beside an
+  abandoned one, the reader takes over and reads the restored file.
+- **The shared `StoredFileRewrite` is not changed,** so Lightbox boards,
+  project memory and the pinned list keep their behavior and tests.
+  Whether boards and memory share the same stalled-writer hazard is filed
+  as tech debt (`.todo/tech-debt/2026-11-19-stored-file-rewrite-stalled-writer-fence.md`);
+  this epic does not decide it.
+- **Witness** (`WorkshopNamedSessionLockFence.test.ts`, an injected clock
+  and held promises): writer A takes the lock, stages and claims, then
+  pauses before its publish; the lease expires; writer B takes over
+  (restoring the file) and deletes the session, successfully; A resumes,
+  and its publish fails, its `stillHeld` false and its rename finding no
+  source. The session stays deleted: nothing is at its name. A second run
+  has B update instead of delete; B's content stands, byte for byte.
+
+### D6c. A refused room keeps its work in its own recovery session (PR #286 re-review, finding 2)
+
+`current.json` is derived from the workspace (`WorkshopSessionStore.availability`),
+not the window, so another coordinator can replace it before the refused
+room reloads.
+
+- **When a named save is refused as changed or busy,** the coordinator
+  writes the room's checkpoint at once to a new named session of its own:
+  `saveNamed` with a fresh session id and the title "<title> (local
+  recovery)", the store's collision-free, non-overwriting create. It does
+  not depend on `current.json` surviving. `current.json` is still written
+  as the rolling cache.
+- **One recovery session per refusal episode.** Later refused autosaves of
+  the same room update that recovery session through the lock (D6b),
+  against the copy the room last wrote there. The episode ends when the
+  room promotes the file (`refreshNamedSession`) or saves successfully.
+- **The writer is told once,** in the status line and the recovery notices
+  (`local-session-preserved`'s shape): "Couldn't save to <title>: it
+  changed in another window. Your work is kept as '<title> (local
+  recovery)' in Sessions."
+- **No duplicate on reload.** `preserveDisplacedLocalSession` skips a
+  local snapshot equal to the episode's recovery session.
+- **A failed recovery create** reports both errors, as the rolling write's
+  failure does today, and the room keeps its unsaved status.
+- **Witness** (`WorkshopNamedSessionRecoveryCopy.test.ts`): two
+  coordinators over one folder; B's named write wins; A's save is refused
+  and A's recovery session is created; a third write replaces
+  `current.json`; A reloads. The named file holds B's checkpoint, and A's
+  edits are in A's recovery session, byte for byte.
 
 ### D7. What the persona hears back: a `todos` kind
 
@@ -436,7 +521,7 @@ type WorkshopTodoTrailerDropReason =
   as read (cut to `PROMPT_BUDGETS.workshopTodos`' item bound), the status
   set, the earlier status, the note, the write's `operationId` (D8a), and
   the state (`applied`, `saving`, `refused` with a closed reason,
-  `interrupted` (D8a), `undone`). The copy a write compares
+  `interrupted` (D8a), `unverified` (D8b), `undone`). The copy a write compares
   against is held in memory only, never stored; Undo reads the file again.
 - **The card** (`components/workshop/todos/WorkshopTodoReceipt`) lists each
   row: the to-do, the session's name, the new status, Undo. It sits under
@@ -471,8 +556,8 @@ settled from what is on disk, never replayed.
   read the target session through the port; a to-do whose
   `closedBy.operationId` equals the row's reads `applied`; anything else
   reads **`interrupted`** ("Not written: Prose Minion closed before this
-  was saved"). A target that cannot be read stays `interrupted` with
-  reason `unverified`. Reconciliation never writes the target, and an
+  was saved"). A target that cannot be read is **`unverified`** (D8b), not
+  `interrupted`. Reconciliation never writes the target, and an
   `interrupted` row is never retried: the writer may have reopened that
   to-do.
 - **Both crash boundaries.** Before the write landed: no stamp, so
@@ -487,6 +572,24 @@ settled from what is on disk, never replayed.
 - **The outcome frame** counts `interrupted` rows as not written.
 - **Codec:** `operationId` on a row and on `closedBy`, and the
   `interrupted` state, are part of D9's optional fields.
+
+### D8b. Uncertain is not interrupted (PR #286 re-review, finding 3)
+
+- **Three outcomes of a read-only reconciliation:** the stamp is there
+  (`applied`); the target was read and the stamp is not (`interrupted`,
+  terminal); the target could not be read, because it is busy, unreadable,
+  missing under a live lock, or the store is unavailable (`unverified`,
+  not terminal).
+- **An `unverified` row is reconciled again, read-only,** at each hydrate,
+  when the receipt is shown, and when Undo is pressed. It is never
+  replayed. Undo is disabled while a row is `unverified` or `saving`.
+- **The outcome frame** tells `unverified` rows as "not yet confirmed",
+  apart from "not written".
+- **Codec:** `unverified` joins the row's states.
+- **Witness:** on hydration the target is busy, so the row is
+  `unverified`; later the target reads with the matching stamp, so the row
+  becomes `applied` and Undo works; the port's write count stays at the
+  Undo's one, never a replay of the original.
 
 ### D9. `closedBy`, and the session codec
 
@@ -1027,7 +1130,15 @@ B and A run in parallel. C1 follows either; C2 follows both.
   recovery session.
 - **Overlapping writes** (D6a): both writers validate before either
   claims; exactly one commits, the other is refused as `busy` in host
-  words, the file is the winner's. An abandoned claim is put back.
+  words, the file is the winner's. An abandoned lock is taken over and the
+  file restored.
+- **The fence** (D6b): a writer paused past the lease, a takeover and a
+  successful delete, then the writer resumes: its publish fails and the
+  session stays deleted. Again with an update in place of the delete.
+- **The recovery copy** (D6c): a refused room's edits survive in its own
+  recovery session after another write replaces `current.json`.
+- **Unverified** (D8b): busy at hydration, then readable and matching:
+  `applied` and Undo, with no replay.
 - **Restart** (D8a): a `saving` row with no stamp in the file reads
   `interrupted` and is never retried; one whose stamp is there reads
   `applied`, and Undo works on it; a to-do the writer reopened is left
@@ -1096,6 +1207,15 @@ numbers; the changes are new sub-decisions.
 | F-03 (P2) | Only the word stage had a work ceiling; the paragraph alignment could run long, and again on each continuation. | **D13a:** `alignParagraphs` and `paragraphEditLength`, a refusal in words, and a per-window cache so a continuation does not realign. |
 | F-04 (P2) | The checker's counts-only mode treats a failed search as zero matches, so Apply could cut a group to a subset. | **D22a:** `matchPatterns` reports `incomplete` apart from `unmatched`; such a group is left unchanged at review and Apply. |
 
+**Re-review** ([report](../pr-reviews/pr-286-workshop-persona-tools-spec-rereview.md),
+at `5769e7ca`'s parent): F-03 and F-04 closed; three findings, all accepted.
+
+| Finding | What was wrong | Resolved in |
+|---|---|---|
+| 1 (P1) | The shared claim stages outside it and recovers an expired claim, so a writer paused past the lease could recreate a session another window deleted. | **D6b:** named sessions get their own lock directory; the staged file sits inside it under the owner's token, so a takeover removes it and a stale publish finds no source. The shared `StoredFileRewrite` is unchanged; its own exposure is tech debt. Witness: pause, lease expiry, takeover and delete, resume, publish fails. |
+| 2 (P1) | A refused room's recovery copy was `current.json`, which is the workspace's and another coordinator can replace. | **D6c:** a refused save writes at once to a new named "(local recovery)" session by a non-overwriting create; one per refusal episode. |
+| 3 (P2) | A temporarily unreadable target settled a row as terminal `interrupted`, removing Undo for good. | **D8b:** `unverified` is kept apart from `interrupted`, reconciled again read-only, never replayed. |
+
 ## Consequences and risks
 
 - **A persona can change saved files of the writer's,** without a confirm.
@@ -1111,9 +1231,11 @@ numbers; the changes are new sub-decisions.
 - **Context paths applied at the user level change every project.** The
   review says so; a group the workspace sets is never written.
 - **`SettingsStore` gains a method;** every host implements it.
-- **Named-session writes take a claim** (D6a). Every save, rename and
-  delete of a named session costs two more renames, and a write can be
-  `busy` for a moment while another window writes.
+- **Named-session writes take a lock** (D6a, D6b). Every save, rename and
+  delete of a named session costs a few more renames and a small
+  directory, and a write can be `busy` for a moment while another window
+  writes. A refused room creates a recovery session (D6c), so Sessions can
+  gain "(local recovery)" entries.
 - **Five operations, two families and two trailers are added;** the
   persona prompt grows by three grammar files. All are pinned.
 - **Older builds cannot open a session** holding the new fields or cards:
