@@ -158,7 +158,7 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
           <span className="pm-context-budget-nums">Total not measured yet — parts so far</span>
           <Chevron />
         </summary>
-        <div className="pm-context-budget-body">
+        <div className="pm-context-budget-body" tabIndex={0} role="region" aria-label="Context details">
           <ContextBreakdownSummary breakdown={breakdown} />
           {sources && sources.length > 0 && <InContextSources sources={sources} requesterLabel={requesterLabel} />}
         </div>
@@ -224,7 +224,7 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
         )}
         <Chevron />
       </summary>
-      <div className="pm-context-budget-body">
+      <div className="pm-context-budget-body" tabIndex={0} role="region" aria-label="Context details">
         <dl className="pm-context-budget-details">
           <div><dt>Measured model</dt><dd>{modelOptionLabel(modelOptions, snapshot.modelId)}</dd></div>
           <div>

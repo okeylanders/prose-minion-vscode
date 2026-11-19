@@ -174,4 +174,22 @@ describe('ContextBudget', () => {
     expect(labels).toEqual([...writerMaterial, ...readIn].map((entry) => entry.label));
     expect(labels).toEqual(['Series bible', 'Excerpt', 'characters/rabbit.md', 'Continuity report']);
   });
+
+  it('puts the open panel\'s scroll body in the tab order, measured or not (PR #285 delta review)', () => {
+    const breakdown = { parts: [], untalliedMessages: false };
+    const { rerender } = render(<ContextBudget
+      participantIdentity="jill" participantLabel="Jill" snapshot={snapshot}
+      modelOptions={[]} cumulativeProcessedTokens={0} breakdown={breakdown}
+    />);
+    const measured = screen.getByRole('region', { name: 'Context details', hidden: true });
+    expect(measured.getAttribute('tabindex')).toBe('0');
+
+    rerender(<ContextBudget
+      participantIdentity="jill" participantLabel="Jill"
+      modelOptions={[]} cumulativeProcessedTokens={0} breakdown={breakdown}
+    />);
+    const partsOnly = screen.getByRole('region', { name: 'Context details', hidden: true });
+    expect(partsOnly.getAttribute('tabindex')).toBe('0');
+    expect(partsOnly.className).toBe('pm-context-budget-body');
+  });
 });

@@ -148,6 +148,13 @@ summary.pm-context-budget-row:hover .pm-context-budget-chev {
   overscroll-behavior: contain;
 }
 
+/* Focusable (tabIndex 0): Chromium 114, the VS Code 1.82 floor, puts no scroll
+   container in the tab order (PR #285 delta review). */
+.pm-context-budget-body:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, var(--pm-blue, #5aa2f0));
+  outline-offset: -1px;
+}
+
 .pm-context-budget-details {
   display: grid;
   grid-template-columns: 1fr 1fr;
