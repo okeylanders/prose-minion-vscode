@@ -572,7 +572,8 @@ describe('WorkshopSessionStore', () => {
     const write = fileSystem.writeFile.bind(fileSystem);
     jest.spyOn(fileSystem, 'writeFile').mockImplementation(async (filePath, data) => {
       await write(filePath, data);
-      if (filePath.startsWith(`${fullPath}.tmp-`)) {
+      // The rewrite stages under a hidden private name beside the file (ADR 2026-11-19 D6a).
+      if (filePath.startsWith(path.join(sessionsDirectory, `.${saved.fileName}.tmp-`))) {
         fileSystem.setJson(fullPath, incoming);
       }
     });
