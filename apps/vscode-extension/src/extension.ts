@@ -83,6 +83,10 @@ import {
   HelperAgentService,
   EditorSelectionSnapshots,
   HELPER_TASK_POLICIES,
+  ProjectFolderScan,
+  ContextPathProposalChecker,
+  ContextPathSettingsWriter,
+  ContextPathSuggestionService,
   CraftFlagsUseCase,
   liveCatalogPrices,
   liveCatalogReasoning,
@@ -638,6 +642,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel
   );
 
+  // The project's context paths from Settings (ADR 2026-11-19 D18): one scan, one checker over the
+  // real resolver's `matchPatterns`, one user-level writer; the helper drafts, and only Apply writes.
+  const contextPathSettings = new ContextPathSettingsWriter(platform.settings);
+  const contextPathSuggestions = new ContextPathSuggestionService(
+    new ProjectFolderScan(platform.fileSystem, platform.workspace, outputChannel),
+    helperAgentService,
+    new ContextPathProposalChecker(contextResourceResolver, contextPathSettings),
+    contextPathSettings,
+    outputChannel
+  );
+
   // Selected Text (ADR 2026-11-14 D11): the window's one snapshot cache, over the editor port.
   const editorSelectionSnapshots = new EditorSelectionSnapshots(editorContext, outputChannel);
   context.subscriptions.push(editorSelectionSnapshots);
@@ -688,6 +703,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
     editorSelectionSnapshots,
     helperAgentService,
+    contextPathSuggestions,
     workshopTranscriptRecallService,
     workshopSavedSessionTodos
   };

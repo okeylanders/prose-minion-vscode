@@ -651,6 +651,26 @@ export interface PromptBudgets {
     registerCharacters: number;
   }>;
   /**
+   * The project's context paths (ADR 2026-11-19 D20, D22, D28): the
+   * names-only folder scan (`scanEntries` read, `scanDepth` deep,
+   * `scanFolders` kept, `sampleNames` names a folder, each cut to
+   * `sampleNameCharacters`), the checker's bounds (`patternsPerGroup`,
+   * `patternCharacters`, `examples` files shown), and the persona family's
+   * `foldersPerPage` and `checkPatterns` (C2).
+   */
+  readonly contextPaths: Readonly<{
+    scanEntries: number;
+    scanDepth: number;
+    scanFolders: number;
+    sampleNames: number;
+    sampleNameCharacters: number;
+    patternsPerGroup: number;
+    patternCharacters: number;
+    examples: number;
+    foldersPerPage: number;
+    checkPatterns: number;
+  }>;
+  /**
    * The helper agent's tasks (ADR 2026-11-05 D1), one entry per task. A
    * task's answer fields are bounded where the data they fill is (the
    * memory draft's title and summary by `workshopProjectMemory`).
@@ -659,6 +679,17 @@ export interface PromptBudgets {
     // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.
     'memory-draft': Readonly<{
       /** The turn's text sent to the helper is cut to this, as the sheet's body is. */
+      inputCharacters: number;
+      /** Output ceiling; a reply that reaches it is rejected, never salvaged. */
+      outputTokens: number;
+      /** A reply longer than this is refused before it is read. */
+      responseCharacters: number;
+    }>;
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.
+    'project-locations': Readonly<{
+      /** Folders of the scan sent at most; the rest are left out, and the request says so. */
+      folders: number;
+      /** The request's data, as JSON, is held within this by sending fewer folders. */
       inputCharacters: number;
       /** Output ceiling; a reply that reaches it is rejected, never salvaged. */
       outputTokens: number;
@@ -1049,6 +1080,18 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     suggestionCharacters: 200,
     registerCharacters: 160
   },
+  contextPaths: {
+    scanEntries: 5_000,
+    scanDepth: 6,
+    scanFolders: 300,
+    sampleNames: 3,
+    sampleNameCharacters: 80,
+    patternsPerGroup: 12,
+    patternCharacters: 200,
+    examples: 3,
+    foldersPerPage: 50,
+    checkPatterns: 40
+  },
   helper: {
     // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.
     'memory-draft': {
@@ -1060,6 +1103,13 @@ export const PROMPT_BUDGETS: PromptBudgets = {
       // the extra room never makes a draft longer; a cut-off is still refused.
       outputTokens: 1_000,
       responseCharacters: 4_000
+    },
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.
+    'project-locations': {
+      folders: 200,
+      inputCharacters: 16_000,
+      outputTokens: 1_500,
+      responseCharacters: 6_000
     }
   },
   reasoning: {

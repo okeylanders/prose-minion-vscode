@@ -45,6 +45,7 @@ describe('SettingsOverlay', () => {
         tokensSettings={emptySettingsHook as any}
         tokenTracking={{ resetTokens: jest.fn() } as any}
         contextPathsSettings={emptySettingsHook as any}
+        contextPathsSuggestion={{ phase: 'idle', ticked: [], everyGroupEmpty: false, requestStatus: jest.fn(), suggest: jest.fn(), dismiss: jest.fn() } as any}
         wordFrequencySettings={emptySettingsHook as any}
         wordSearchSettings={emptySettingsHook as any}
         modelOptions={[

@@ -53,6 +53,7 @@ const ENTRY_STYLE_IMPORTS = [
   './styles/fulltab/savedItems.css',
   './styles/fulltab/savedBrowser.css',
   './styles/settingsSupport.css',
+  './styles/contextPathsSuggestion.css',
   './index.css'
 ] as const;
 

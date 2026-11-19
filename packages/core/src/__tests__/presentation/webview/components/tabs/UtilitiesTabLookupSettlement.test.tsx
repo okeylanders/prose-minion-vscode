@@ -85,7 +85,7 @@ const historyEntry = (entry: DictionaryHistoryEntry): HostMessage => ({
 const OTHER_DOMAINS = {
   analysis: {}, metrics: {}, context: {}, search: {}, publishingSettings: {}, wordSearchSettings: {},
   wordFrequencySettings: {}, tokensSettings: {}, themeSettings: {}, tokenTracking: {},
-  contextPathsSettings: {}, modelsSettings: {}, accountBalance: {}
+  contextPathsSettings: {}, contextPathsSuggestion: {}, modelsSettings: {}, accountBalance: {}
 };
 
 describe('UtilitiesTab lookup settlement', () => {

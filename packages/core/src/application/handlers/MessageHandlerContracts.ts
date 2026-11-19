@@ -1,4 +1,5 @@
 import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
+import type { ContextPathSuggestions } from '@/application/services/contextPaths/ContextPathSuggestionService';
 import type { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
 import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import type { HelperAgent } from '@services/helper/HelperTaskPolicies';
@@ -225,4 +226,10 @@ export interface CoreServices {
    * constructs it.
    */
   helperAgentService: HelperAgent;
+  /**
+   * The project's context paths, set up from Settings (ADR 2026-11-19 D18):
+   * the folder scan, the helper's draft, the one checker and the held
+   * proposal's Apply. Built in `extension.ts`; no handler constructs it.
+   */
+  contextPathSuggestions: ContextPathSuggestions;
 }

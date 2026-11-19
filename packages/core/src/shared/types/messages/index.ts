@@ -24,6 +24,7 @@ export * from './context';
 export * from './metrics';
 export * from './search';
 export * from './configuration';
+export * from './contextPathSuggestions';
 export * from './publishing';
 export * from './sources';
 export * from './ui';
@@ -90,6 +91,14 @@ import {
   UpdateApiKeyMessage,
   DeleteApiKeyMessage
 } from './configuration';
+import {
+  ContextPathsSuggestMessage,
+  ContextPathsSuggestionMessage,
+  ContextPathsApplyMessage,
+  ContextPathsAppliedMessage,
+  ContextPathsStatusRequestMessage,
+  ContextPathsStatusMessage
+} from './contextPathSuggestions';
 import {
   RequestPublishingStandardsDataMessage,
   PublishingStandardsDataMessage,
@@ -332,6 +341,9 @@ export type WebviewToExtensionMessage =
   | ResetTokenUsageMessage
   | RequestAccountBalanceMessage
   | RequestApiKeyMessage
+  | ContextPathsSuggestMessage
+  | ContextPathsApplyMessage
+  | ContextPathsStatusRequestMessage
   | UpdateApiKeyMessage
   | DeleteApiKeyMessage
   | WebviewErrorMessage
@@ -464,6 +476,9 @@ export type ExtensionToWebviewMessage =
   | SaveResultSuccessMessage
   | SettingsDataMessage
   | OpenSettingsMessage
+  | ContextPathsSuggestionMessage
+  | ContextPathsAppliedMessage
+  | ContextPathsStatusMessage
   | OpenSettingsToggleMessage
   | SelectionDataMessage
   | StartupNoticeDataMessage

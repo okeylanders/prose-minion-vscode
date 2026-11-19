@@ -27,7 +27,7 @@ describe.each([['off', false], ['on', true]])('a committed memory.read, debug lo
     host.put(writerMemory({ id: 'mem-abcdef', title: SENTINELS[0], summary: SENTINELS[1], body: projectMemoryBody(SENTINELS[2]) }));
     const lines: string[] = [];
     const sink = { appendLine: (line: string) => { lines.push(line); }, clear: jest.fn(), show: jest.fn() };
-    const settings = { get: ((_section: string, key: string, fallback?: unknown) => (key === 'debugLogging' ? debugLogging : fallback)) as SettingsStore['get'], update: jest.fn() };
+    const settings = { get: ((_section: string, key: string, fallback?: unknown) => (key === 'debugLogging' ? debugLogging : fallback)) as SettingsStore['get'], update: jest.fn(), levelOf: () => 'user' as const };
     const client = { createChatCompletion: jest.fn(), createStreamingChatCompletion: jest.fn() };
     client.createChatCompletion
       .mockResolvedValueOnce({ content: '<prose-minion-tool-call name="memory.read"><memory>mem-abcdef</memory></prose-minion-tool-call>', finishReason: 'stop' })
