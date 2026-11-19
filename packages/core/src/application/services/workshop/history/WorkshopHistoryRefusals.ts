@@ -12,6 +12,8 @@ export type WorkshopHistoryDiffRefusal =
   | 'same-commit'
   | 'commit-order'
   | 'diff-source-too-large'
+  // Every side is strict UTF-8 (PR #287).
+  | 'not-utf8'
   // The paragraph alignment's ceiling (D13a).
   | 'too-many-paragraphs'
   | 'paragraph-edit-length';
@@ -30,6 +32,8 @@ export function workshopHistoryDiffRefusal(reason: WorkshopHistoryDiffRefusal, f
       const mib = PROMPT_BUDGETS.workshopHistory.diffSourceBytes / (1024 * 1024);
       return `The version named in <${field}> is larger than ${mib.toLocaleString('en-US')} MiB, the most a diff compares.`;
     }
+    case 'not-utf8':
+      return 'This file isn\'t UTF-8 text, so its history can\'t be compared.';
     case 'too-many-paragraphs':
     case 'paragraph-edit-length':
       return 'Too much changed between these two versions to compare paragraph by paragraph. Pick two commits closer together.';

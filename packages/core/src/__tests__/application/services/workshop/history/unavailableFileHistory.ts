@@ -5,9 +5,13 @@ import { WorkshopHistoryDiffCache } from '@/application/services/workshop/histor
 export const unavailableFileHistory: WorkshopHistoryPorts = {
   history: {
     log: async () => ({ kind: 'unavailable', reason: 'no-git' }),
-    show: async () => ({ kind: 'unavailable', reason: 'no-git' })
+    show: async () => ({ kind: 'unavailable', reason: 'no-git' }),
+    size: async () => ({ kind: 'unavailable', reason: 'no-git' })
   },
-  fileSystem: { readFile: async () => new Uint8Array() },
+  fileSystem: {
+    readFile: async () => new Uint8Array(),
+    stat: async () => ({ type: 1, ctime: 0, mtime: 0, size: 0 })
+  },
   excerpt: { excerptFile: async () => ({ kind: 'none' }) },
   diffs: new WorkshopHistoryDiffCache()
 };

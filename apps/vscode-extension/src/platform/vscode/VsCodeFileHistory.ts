@@ -10,9 +10,16 @@
  *   call checks, and answers `no-git` or `git-disabled`.
  * - **An uninitialized API is waited for** at most `gitReadyMs`, then
  *   `not-ready`.
- * - **`show` is given only a full hash,** which core took from this
- *   adapter's own `log` (the branded `FileHistoryCommitId`). An error naming
- *   a missing path is `absent`; any other is `failed`.
+ * - **The log names the file literally** (PR #287): `log({ path })` is a git
+ *   pathspec, so it is given `:(literal)` and the path relative to the
+ *   repository's root. A name holding `*`, `?`, `[` or a leading `:` names
+ *   only itself, never other files.
+ * - **`show` and `size` are given only a full hash,** which core took from
+ *   this adapter's own `log` (the branded `FileHistoryCommitId`), and the
+ *   plain file path. `show` returns raw bytes (`buffer`), so core decodes
+ *   every side by one policy; `size` reads the blob's size
+ *   (`getObjectDetails`) before anything is fetched. An error naming a
+ *   missing path is `absent`; any other is `failed`.
  * - **The log does not follow renames** (`git log -- path`): the stated limit.
  * - **Workspace trust is the boundary** (D16): the extension declares no
  *   support for untrusted workspaces, so neither it nor the Git extension
@@ -25,6 +32,7 @@
  * git's message, which may name the file.
  */
 
+import * as path from 'path';
 import * as vscode from 'vscode';
 import {
   fileHistoryCommitId,
@@ -34,12 +42,29 @@ import {
   type FileHistoryCommitId,
   type FileHistoryLog,
   type FileHistoryShow,
+  type FileHistorySize,
   type FileHistoryUnavailableReason
 } from '@prose-minion/core';
 import { GIT_EXTENSION_ID, type GitApi, type GitExtension, type GitRepository } from '@app/platform/vscode/gitExtensionApi';
 
-/** Git's words when a path is not in a commit: `does not exist in` and `exists on disk, but not in`. */
-const MISSING_PATH = /does not exist in|exists on disk, but not in|path .* does not exist/i;
+/**
+ * Git's and the Git extension's words when a path is not in a commit: `does
+ * not exist in`, `exists on disk, but not in`, and `Path not known by git`.
+ */
+const MISSING_PATH = /does not exist in|exists on disk, but not in|path .* does not exist|path not known by git/i;
+
+/**
+ * The file as a literal pathspec, relative to the repository's root: git
+ * reads none of its characters as a pattern. Undefined for a file outside
+ * the root.
+ */
+export function gitLiteralPathspec(rootPath: string, fsPath: string): string | undefined {
+  const relative = path.relative(rootPath, fsPath);
+  if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    return undefined;
+  }
+  return `:(literal)${relative.split(path.sep).join('/')}`;
+}
 
 type Opened = { readonly repository: GitRepository } | { readonly unavailable: FileHistoryUnavailableReason };
 
@@ -51,8 +76,12 @@ export class VsCodeFileHistory implements FileHistory {
     if ('unavailable' in opened) {
       return { kind: 'unavailable', reason: opened.unavailable };
     }
+    const pathspec = gitLiteralPathspec(opened.repository.rootUri.fsPath, fsPath);
+    if (!pathspec) {
+      return { kind: 'unavailable', reason: 'not-a-repository' };
+    }
     try {
-      const commits = await opened.repository.log({ path: fsPath, maxEntries: limit });
+      const commits = await opened.repository.log({ path: pathspec, maxEntries: limit });
       return { kind: 'log', commits: commits.flatMap((commit) => this.commitOf(commit)) };
     } catch {
       return { kind: 'unavailable', reason: 'failed' };
@@ -65,7 +94,22 @@ export class VsCodeFileHistory implements FileHistory {
       return { kind: 'unavailable', reason: opened.unavailable };
     }
     try {
-      return { kind: 'text', text: await opened.repository.show(commit, fsPath) };
+      return { kind: 'bytes', bytes: new Uint8Array(await opened.repository.buffer(commit, fsPath)) };
+    } catch (error) {
+      return MISSING_PATH.test(gitErrorText(error)) ? { kind: 'absent' } : { kind: 'unavailable', reason: 'failed' };
+    }
+  }
+
+  async size(fsPath: string, commit: FileHistoryCommitId): Promise<FileHistorySize> {
+    const opened = await this.repositoryFor(fsPath);
+    if ('unavailable' in opened) {
+      return { kind: 'unavailable', reason: opened.unavailable };
+    }
+    try {
+      const details = await opened.repository.getObjectDetails(commit, fsPath);
+      return Number.isFinite(details.size) && details.size >= 0
+        ? { kind: 'size', bytes: details.size }
+        : { kind: 'unavailable', reason: 'failed' };
     } catch (error) {
       return MISSING_PATH.test(gitErrorText(error)) ? { kind: 'absent' } : { kind: 'unavailable', reason: 'failed' };
     }

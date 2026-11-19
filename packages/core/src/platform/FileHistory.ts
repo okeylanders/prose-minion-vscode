@@ -11,6 +11,9 @@
  * `FileHistoryCommitId` is a branded type, minted by `fileHistoryCommitId`
  * from a full hash, so a model's text cannot be passed on by accident (D14).
  * The diff is computed in core from two `show`s; no host diff tool runs.
+ * `show` returns raw bytes, so core decodes every side, saved file
+ * included, by one policy (strict UTF-8); `size` lets core refuse a side
+ * past its bound before fetching it (PR #287).
  */
 
 declare const fileHistoryCommitIdBrand: unique symbol;
@@ -49,14 +52,26 @@ export type FileHistoryLog =
   | { readonly kind: 'unavailable'; readonly reason: FileHistoryUnavailableReason };
 
 export type FileHistoryShow =
-  | { readonly kind: 'text'; readonly text: string }
+  | { readonly kind: 'bytes'; readonly bytes: Uint8Array }
+  /** The file did not exist at that commit. */
+  | { readonly kind: 'absent' }
+  | { readonly kind: 'unavailable'; readonly reason: FileHistoryUnavailableReason };
+
+export type FileHistorySize =
+  | { readonly kind: 'size'; readonly bytes: number }
   /** The file did not exist at that commit. */
   | { readonly kind: 'absent' }
   | { readonly kind: 'unavailable'; readonly reason: FileHistoryUnavailableReason };
 
 export interface FileHistory {
-  /** The newest `limit` commits that touched the file, newest first. Renames are not followed. */
+  /**
+   * The newest `limit` commits that touched exactly this file, newest first:
+   * the host names it literally, never as a pattern (PR #287). Renames are
+   * not followed.
+   */
   log(fsPath: string, limit: number): Promise<FileHistoryLog>;
-  /** The file's text at a full commit id the log returned. */
+  /** The file's raw bytes at a full commit id the log returned. */
   show(fsPath: string, commit: FileHistoryCommitId): Promise<FileHistoryShow>;
+  /** The file's blob size at a full commit id the log returned, before fetching it. */
+  size(fsPath: string, commit: FileHistoryCommitId): Promise<FileHistorySize>;
 }

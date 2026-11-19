@@ -20,16 +20,17 @@ jest.mock('@prose-minion/core', () => ({
 
 import * as vscode from 'vscode';
 import { fileHistoryCommitId } from '@prose-minion/core';
-import { VsCodeFileHistory } from '@app/platform/vscode/VsCodeFileHistory';
+import { gitLiteralPathspec, VsCodeFileHistory } from '@app/platform/vscode/VsCodeFileHistory';
 
-const FILE = '/projects/wonderland/Drafts/6.11.md';
+const ROOT = '/projects/wonderland';
+const FILE = `${ROOT}/Drafts/6.11.md`;
 const HASH = 'a'.repeat(40);
 const getExtension = vscode.extensions.getExtension as jest.Mock;
 
 interface Double {
   enabled?: boolean;
   state?: 'uninitialized' | 'initialized';
-  repository?: { log: jest.Mock; show: jest.Mock } | null;
+  repository?: ReturnType<typeof repository> | null;
   getAPI?: jest.Mock;
 }
 
@@ -49,7 +50,7 @@ function gitDouble(options: Double = {}) {
 }
 
 function repository() {
-  return { log: jest.fn(), show: jest.fn() };
+  return { rootUri: { fsPath: ROOT }, log: jest.fn(), buffer: jest.fn(), getObjectDetails: jest.fn() };
 }
 
 beforeEach(() => getExtension.mockReset());
@@ -109,23 +110,39 @@ describe('log and show', () => {
         { id: 'b'.repeat(40), author: '', subject: '' }
       ]
     });
-    expect(repo.log).toHaveBeenCalledWith({ path: FILE, maxEntries: 21 });
+    // A literal pathspec, relative to the repository's root (PR #287).
+    expect(repo.log).toHaveBeenCalledWith({ path: ':(literal)Drafts/6.11.md', maxEntries: 21 });
   });
 
-  it('shows only a full hash, reads a missing path as absent, and any other failure as failed', async () => {
+  it('shows raw bytes for a full hash and the plain path, reads a missing path as absent, and any other failure as failed', async () => {
     const repo = repository();
     gitDouble({ repository: repo });
     const history = new VsCodeFileHistory();
     const id = fileHistoryCommitId(HASH)!;
-    repo.show.mockResolvedValueOnce('Alice sat by the river bank.');
-    expect(await history.show(FILE, id)).toEqual({ kind: 'text', text: 'Alice sat by the river bank.' });
-    expect(repo.show).toHaveBeenCalledWith(HASH, FILE);
-    repo.show.mockRejectedValueOnce(Object.assign(new Error('Git error'), { stderr: "fatal: path 'Drafts/6.11.md' does not exist in 'aaaa'" }));
+    repo.buffer.mockResolvedValueOnce(Buffer.from([0xef, 0xbb, 0xbf, 0x41]));
+    expect(await history.show(FILE, id)).toEqual({ kind: 'bytes', bytes: new Uint8Array([0xef, 0xbb, 0xbf, 0x41]) });
+    expect(repo.buffer).toHaveBeenCalledWith(HASH, FILE);
+    repo.buffer.mockRejectedValueOnce(Object.assign(new Error('Git error'), { stderr: "fatal: path 'Drafts/6.11.md' does not exist in 'aaaa'" }));
     expect(await history.show(FILE, id)).toEqual({ kind: 'absent' });
-    repo.show.mockRejectedValueOnce(Object.assign(new Error('Git error'), { stderr: "fatal: path 'Drafts/6.11.md' exists on disk, but not in 'aaaa'" }));
+    repo.buffer.mockRejectedValueOnce(Object.assign(new Error('Git error'), { stderr: "fatal: path 'Drafts/6.11.md' exists on disk, but not in 'aaaa'" }));
     expect(await history.show(FILE, id)).toEqual({ kind: 'absent' });
-    repo.show.mockRejectedValueOnce(new Error('spawn git ENOENT'));
+    repo.buffer.mockRejectedValueOnce(new Error('spawn git ENOENT'));
     expect(await history.show(FILE, id)).toEqual({ kind: 'unavailable', reason: 'failed' });
+  });
+
+  it('sizes a blob before it is fetched, with the full hash and the plain path', async () => {
+    const repo = repository();
+    gitDouble({ repository: repo });
+    const history = new VsCodeFileHistory();
+    const id = fileHistoryCommitId(HASH)!;
+    repo.getObjectDetails.mockResolvedValueOnce({ mode: '100644', object: 'b'.repeat(40), size: 1234 });
+    expect(await history.size(FILE, id)).toEqual({ kind: 'size', bytes: 1234 });
+    expect(repo.getObjectDetails).toHaveBeenCalledWith(HASH, FILE);
+    expect(repo.buffer).not.toHaveBeenCalled();
+    repo.getObjectDetails.mockRejectedValueOnce(new Error('Path not known by git'));
+    expect(await history.size(FILE, id)).toEqual({ kind: 'absent' });
+    repo.getObjectDetails.mockRejectedValueOnce(new Error('Git error'));
+    expect(await history.size(FILE, id)).toEqual({ kind: 'unavailable', reason: 'failed' });
   });
 
   it('answers failed when the log throws', async () => {
@@ -133,5 +150,32 @@ describe('log and show', () => {
     repo.log.mockRejectedValue(new Error('Git error'));
     gitDouble({ repository: repo });
     expect(await new VsCodeFileHistory().log(FILE, 5)).toEqual({ kind: 'unavailable', reason: 'failed' });
+  });
+});
+
+describe('the log names the authorized file literally (PR #287)', () => {
+  it.each([
+    ['Drafts/chapter*.md', ':(literal)Drafts/chapter*.md'],
+    ['Drafts/who?.md', ':(literal)Drafts/who?.md'],
+    ['Drafts/[draft] 6.11.md', ':(literal)Drafts/[draft] 6.11.md'],
+    [':glob-looking.md', ':(literal):glob-looking.md'],
+    [':(icase)tea.md', ':(literal):(icase)tea.md']
+  ])('passes %s to git as %s, so it names only itself', async (name, pathspec) => {
+    expect(gitLiteralPathspec(ROOT, `${ROOT}/${name}`)).toBe(pathspec);
+    const repo = repository();
+    repo.log.mockResolvedValue([]);
+    gitDouble({ repository: repo });
+    await new VsCodeFileHistory().log(`${ROOT}/${name}`, 5);
+    expect(repo.log).toHaveBeenCalledWith({ path: pathspec, maxEntries: 5 });
+  });
+
+  it('refuses a file outside the repository\'s root rather than naming it', async () => {
+    expect(gitLiteralPathspec(ROOT, '/elsewhere/6.11.md')).toBeUndefined();
+    expect(gitLiteralPathspec(ROOT, ROOT)).toBeUndefined();
+    expect(gitLiteralPathspec(ROOT, `${ROOT}/..hidden.md`)).toBe(':(literal)..hidden.md');
+    const repo = repository();
+    gitDouble({ repository: repo });
+    expect(await new VsCodeFileHistory().log('/elsewhere/6.11.md', 5)).toEqual({ kind: 'unavailable', reason: 'not-a-repository' });
+    expect(repo.log).not.toHaveBeenCalled();
   });
 });

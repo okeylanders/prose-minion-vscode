@@ -1307,6 +1307,7 @@ const WORKSHOP_HISTORY_MODULES = [
   'WorkshopHistoryFiles.ts',
   'WorkshopHistoryRefusals.ts',
   'WorkshopHistoryRenderer.ts',
+  'WorkshopHistorySides.ts',
   'WorkshopHistoryXmlCodec.ts'
 ];
 /** All a module under `reads/` may import. */

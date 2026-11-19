@@ -36,7 +36,10 @@ const NEW = prose('Alice sat by the river bank.', 'The Rabbit DIFF-MARKER walked
 function historyPorts(): WorkshopHistoryPorts {
   return {
     history: fakeHistory({ commits: [newest, oldest], texts: new Map([[oldest.id, OLD], [newest.id, NEW]]) }),
-    fileSystem: { readFile: async () => new TextEncoder().encode(NEW) },
+    fileSystem: {
+      readFile: async () => new TextEncoder().encode(NEW),
+      stat: async () => ({ type: 1, ctime: 0, mtime: 0, size: new TextEncoder().encode(NEW).byteLength })
+    },
     excerpt: { excerptFile: async () => ({ kind: 'file', fsPath: EXCERPT_FS_PATH, relativePath: 'Drafts/PATH-MARKER.md' }) },
     diffs: new WorkshopHistoryDiffCache()
   };

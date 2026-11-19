@@ -93,7 +93,8 @@ function createTestAssembly(): TestAssembly {
     craftAnnotations: createFakeIssueAnnotator(),
     fileHistory: {
       log: async () => ({ kind: 'unavailable', reason: 'no-git' }),
-      show: async () => ({ kind: 'unavailable', reason: 'no-git' })
+      show: async () => ({ kind: 'unavailable', reason: 'no-git' }),
+      size: async () => ({ kind: 'unavailable', reason: 'no-git' })
     }
   };
 

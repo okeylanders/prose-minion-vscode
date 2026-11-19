@@ -22,7 +22,7 @@
  *   commit id, a subject, an author, a path or diff text (G3).
  */
 
-import type { FileHistory, FileHistoryCommit, FileHistoryShow, FileSystem, LogSink } from '@/platform';
+import type { FileHistory, FileSystem, LogSink } from '@/platform';
 import type { WorkshopPersonaId } from '@messages';
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import type { CapabilityContextWindow, CapabilityDeliveredSource } from '@orchestration/AgentRunContracts';
@@ -53,12 +53,13 @@ import {
   workshopHistoryRequestSummary,
   workshopHistoryUnavailableLine
 } from '@/application/services/workshop/history/WorkshopHistoryCopy';
+import { readWorkshopHistorySides } from '@/application/services/workshop/history/WorkshopHistorySides';
 import { workshopHistoryDiffRefusal, type WorkshopHistoryDiffRefusal } from '@/application/services/workshop/history/WorkshopHistoryRefusals';
 
 /** What the family reads through: the host's history, the saved file, and the room's excerpt. Built in `extension.ts`. */
 export interface WorkshopHistoryPorts {
   readonly history: FileHistory;
-  readonly fileSystem: Pick<FileSystem, 'readFile'>;
+  readonly fileSystem: Pick<FileSystem, 'readFile' | 'stat'>;
   readonly excerpt: WorkshopHistoryExcerptPort;
   /** Computed change lists, per window, so a continuation never aligns again (D13a). */
   readonly diffs: WorkshopHistoryDiffCache;
@@ -71,7 +72,6 @@ export interface WorkshopHistoryTurnContext {
 }
 
 type Request<C extends WorkshopHistoryRequest['capability']> = Extract<WorkshopHistoryRequest, { capability: C }>;
-type Text = { readonly text: string; readonly absent?: boolean };
 
 /** How long a host waits for its git to start before a call answers `not-ready` (D12). */
 export const WORKSHOP_HISTORY_GIT_READY_MS: number = PROMPT_BUDGETS.workshopHistory.gitReadyMs;
@@ -171,21 +171,24 @@ export class WorkshopHistoryCapability {
       return this.refused(request, 'commit-order', 'to');
     }
 
-    const older = await this.commitText(file, from.commit);
-    if ('unavailable' in older) {
-      return this.unavailable(request, older.unavailable);
+    // Both sides are sized before either is fetched, and decoded by one policy (PR #287).
+    const sides = await readWorkshopHistorySides(this.ports, file.fsPath, from.commit, to?.commit, () => this.throwIfAborted());
+    switch (sides.kind) {
+      case 'sides':
+        break;
+      case 'unavailable':
+        return this.unavailable(request, sides.reason);
+      case 'too-large':
+        return this.refused(request, 'diff-source-too-large', sides.field);
+      case 'not-utf8':
+        return this.refused(request, 'not-utf8', sides.field);
+      case 'current-unreadable':
+        this.log('diff failed reason=current-unreadable');
+        return this.failed(request, 'The saved file could not be read just now. Try again later.', { outcome: 'current-unreadable' });
+      default:
+        return assertNever(sides);
     }
-    const newer = to ? await this.commitText(file, to.commit) : await this.savedText(file);
-    if ('unavailable' in newer) {
-      return this.unavailable(request, newer.unavailable);
-    }
-    if ('unreadable' in newer) {
-      this.log('diff failed reason=current-unreadable');
-      return this.failed(request, 'The saved file could not be read just now. Try again later.', { outcome: 'current-unreadable' });
-    }
-    if ('tooLarge' in older || 'tooLarge' in newer) {
-      return this.refused(request, 'diff-source-too-large', 'tooLarge' in older ? 'from' : 'to');
-    }
+    const { older, newer } = sides;
     const mark = to ? undefined : workshopHistoryCurrentMark(newer.text);
     if (request.to.kind === 'current' && request.to.fingerprint !== undefined && request.to.fingerprint !== mark) {
       this.log('diff failed reason=current-changed');
@@ -266,46 +269,6 @@ export class WorkshopHistoryCapability {
       `size=${fitted.fit.tokens} ${half !== undefined ? `halfWindow=${half}` : 'window=unknown'} renders=${fitted.renders}`
     );
     return result;
-  }
-
-  /** A side at a commit: its text, or empty where the file did not exist; never past `diffSourceBytes`. */
-  private async commitText(
-    file: WorkshopHistoryResolvedFile,
-    commit: FileHistoryCommit
-  ): Promise<Text | { readonly unavailable: Extract<FileHistoryShow, { kind: 'unavailable' }>['reason'] } | { readonly tooLarge: true }> {
-    this.throwIfAborted();
-    const shown = await this.ports.history.show(file.fsPath, commit.id);
-    this.throwIfAborted();
-    switch (shown.kind) {
-      case 'text':
-        return Buffer.byteLength(shown.text, 'utf8') > PROMPT_BUDGETS.workshopHistory.diffSourceBytes
-          ? { tooLarge: true }
-          : { text: shown.text };
-      case 'absent':
-        return { text: '', absent: true };
-      case 'unavailable':
-        return { unavailable: shown.reason };
-      default:
-        return assertNever(shown);
-    }
-  }
-
-  /** The file as saved on disk, read through the FileSystem port; never the editor's unsaved text. */
-  private async savedText(file: WorkshopHistoryResolvedFile): Promise<Text | { readonly unreadable: true } | { readonly tooLarge: true }> {
-    if ((file.sizeBytes ?? 0) > PROMPT_BUDGETS.workshopHistory.diffSourceBytes) {
-      return { tooLarge: true };
-    }
-    let bytes: Uint8Array;
-    try {
-      bytes = await this.ports.fileSystem.readFile(file.fsPath);
-    } catch {
-      return { unreadable: true };
-    }
-    this.throwIfAborted();
-    if (bytes.byteLength > PROMPT_BUDGETS.workshopHistory.diffSourceBytes) {
-      return { tooLarge: true };
-    }
-    return { text: new TextDecoder('utf-8').decode(bytes) };
   }
 
   private unavailable(request: WorkshopHistoryRequest, reason: Parameters<typeof workshopHistoryUnavailableLine>[0]): WorkshopCapabilityResult {

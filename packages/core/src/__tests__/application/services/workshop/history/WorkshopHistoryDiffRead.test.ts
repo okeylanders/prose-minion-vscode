@@ -249,3 +249,60 @@ describe('the outer alignment\'s ceiling, refused in words (D13a)', () => {
     expect(compute).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('every side is sized before it is fetched (PR #287)', () => {
+  const limit = PROMPT_BUDGETS.workshopHistory.diffSourceBytes;
+
+  it('refuses an older side past the bound before fetching anything, and never reads the other side', async () => {
+    const harness = historyCapability({
+      history: fakeHistory({ commits: [middle, oldest], texts, sizes: new Map([[oldest.id, limit + 1]]) }),
+      saved: NEW
+    });
+    const result = await harness.capability.fulfill(diff(short(oldest), { kind: 'current' }));
+    expect(result).toMatchObject({ status: 'rejected', metadata: { rejectionReason: 'diff-source-too-large', rejectionField: 'from' } });
+    expect(harness.history.sizeCalls.map((call) => call.commit)).toEqual([oldest.id]);
+    expect(harness.history.showCalls).toEqual([]);
+    expect([...harness.stats, ...harness.reads]).toEqual([]);
+  });
+
+  it('refuses a saved file past the bound by its stat, before either side is fetched', async () => {
+    const harness = historyCapability({ history: fakeHistory({ commits: [middle, oldest], texts }), saved: NEW, savedSize: limit + 1 });
+    const result = await harness.capability.fulfill(diff(short(oldest), { kind: 'current' }));
+    expect(result).toMatchObject({ status: 'rejected', metadata: { rejectionReason: 'diff-source-too-large', rejectionField: 'to' } });
+    expect(harness.history.showCalls).toEqual([]);
+    expect(harness.reads).toEqual([]);
+  });
+
+  it('checks again after the read, for a side that grew between sizing and reading', async () => {
+    const big = 'a'.repeat(limit + 1);
+    const harness = historyCapability({
+      history: fakeHistory({ commits: [middle, oldest], texts: new Map([[oldest.id, big], [middle.id, NEW]]), sizes: new Map([[oldest.id, 10]]) })
+    });
+    const result = await harness.capability.fulfill(diff(short(oldest), { kind: 'commit', commit: short(middle) }));
+    expect(result).toMatchObject({ status: 'rejected', metadata: { rejectionReason: 'diff-source-too-large', rejectionField: 'from' } });
+    // The second side is never fetched once the first is refused.
+    expect(harness.history.showCalls.map((call) => call.commit)).toEqual([oldest.id]);
+  });
+});
+
+describe('one decoder for every side: strict UTF-8 (PR #287)', () => {
+  const NOT_UTF8 = new Uint8Array([0x41, 0x6c, 0x69, 0x63, 0x65, 0xe9, 0x0a]);
+
+  it.each([
+    ['a commit', () => fakeHistory({ commits: [middle, oldest], texts: new Map<string, string | Uint8Array>([[oldest.id, NOT_UTF8], [middle.id, NEW]]) }), NEW, 'from'],
+    ['the saved file', () => fakeHistory({ commits: [middle, oldest], texts }), NOT_UTF8, 'to']
+  ] as const)('refuses %s that is not UTF-8 text, in words', async (_, history, saved, field) => {
+    const result = await historyCapability({ history: history(), saved }).capability.fulfill(diff(short(oldest), { kind: 'current' }));
+    expect(result).toMatchObject({ status: 'rejected', metadata: { rejectionReason: 'not-utf8', rejectionField: field } });
+    expect(result.error).toBe('This file isn\'t UTF-8 text, so its history can\'t be compared.');
+  });
+
+  it('strips a byte-order mark on either side alike, so it is no change', async () => {
+    const bom = (text: string): Uint8Array => new Uint8Array([0xef, 0xbb, 0xbf, ...new TextEncoder().encode(text)]);
+    const result = await historyCapability({
+      history: fakeHistory({ commits: [middle, oldest], texts: new Map<string, string | Uint8Array>([[oldest.id, bom(NEW)]]) }),
+      saved: NEW
+    }).capability.fulfill(diff(short(oldest), { kind: 'current' }));
+    expect(result.content).toContain('No changes: the two versions read the same.');
+  });
+});
