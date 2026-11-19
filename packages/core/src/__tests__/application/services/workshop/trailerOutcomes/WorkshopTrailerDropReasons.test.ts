@@ -8,10 +8,13 @@
 
 /* eslint-disable @typescript-eslint/naming-convention -- keyed by the verdicts' own kebab-case codes. */
 
+import type { WorkshopLocationsDropCode } from '@/application/services/workshop/locations/WorkshopReplyLocations';
 import {
   WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS,
   WORKSHOP_MEMORY_TRAILER_DROP_REASONS,
   WORKSHOP_TODO_TRAILER_DROP_REASONS,
+  WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS,
+  type WorkshopLocationsTrailerDropReason,
   type WorkshopFileEditTrailerDropReason,
   type WorkshopMemoryTrailerDropReason,
   type WorkshopTodoTrailerDropReason,
@@ -148,6 +151,22 @@ describe('from a verdict to its recorded reason (D13)', () => {
     expect([...new Set([...Object.values(TODO), 'malformed'])].sort()).toEqual([...WORKSHOP_TODO_TRAILER_DROP_REASONS].sort());
   });
 
+  it('maps every context-paths code, and reaches every locations reason (ADR 2026-11-19 D27)', () => {
+    const LOCATIONS: Record<Exclude<WorkshopLocationsDropCode, `malformed:${string}`>, WorkshopLocationsTrailerDropReason> = {
+      misplaced: 'misplaced',
+      duplicate: 'duplicate',
+      'nothing-kept': 'nothing-kept',
+      'no-workspace': 'workspace-unavailable',
+      'check-failed': 'workspace-unavailable',
+      'not-checked': 'workspace-unavailable'
+    };
+    for (const [code, reason] of Object.entries(LOCATIONS)) {
+      expect(workshopTrailerDropReason(code as WorkshopLocationsDropCode)).toBe(reason);
+    }
+    expect(workshopTrailerDropReason('malformed:unknown-group' as WorkshopLocationsDropCode)).toBe('malformed');
+    expect([...new Set([...Object.values(LOCATIONS), 'malformed'])].sort()).toEqual([...WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS].sort());
+  });
+
   it('a code outside every verdict type is refused, never recorded as something else', () => {
     expect(() => workshopTrailerDropReason('a-new-reason' as never)).toThrow(/Unmapped trailer drop reason/);
   });
@@ -157,7 +176,8 @@ describe('each recorded reason has one phrase (D14)', () => {
   const reasons = [...new Set<WorkshopTrailerDropReason>([
     ...WORKSHOP_MEMORY_TRAILER_DROP_REASONS,
     ...WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS,
-    ...WORKSHOP_TODO_TRAILER_DROP_REASONS
+    ...WORKSHOP_TODO_TRAILER_DROP_REASONS,
+    ...WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS
   ])];
 
   it('the phrase table covers exactly the reasons, with no empty phrase and no two alike', () => {
