@@ -295,13 +295,13 @@ export class WorkshopNamedSessionLock {
     if (await this.fileSystem.rename(path.join(held.own, 'prior.json'), filePath, { overwrite: false }).then(() => true, () => false)) {
       return;
     }
-    // Marked by a rename, which never creates: an owner whose lock is already gone marks nothing in another's.
-    const owner = path.join(held.lock, `owner-${held.token}.json`);
-    if (!(await this.fileSystem.rename(owner, path.join(held.lock, `abandoned-${held.token}.json`), { overwrite: false }).then(() => true, () => false))) {
-      return;
-    }
+    // Kept first, whatever follows: nothing releases a lock once `keep` is set (PR #289 re-review).
     held.keep = true;
-    this.log.appendLine(`${LOG} A claimed checkpoint could not be put back; the lock and its copies are kept for recovery.`);
+    // Marked by a rename, which never creates: an owner whose lock is already gone marks nothing in another's.
+    // If the mark fails, the lock still stands with every copy: busy within its lease, recovery-required after.
+    const owner = path.join(held.lock, `owner-${held.token}.json`);
+    const marked = await this.fileSystem.rename(owner, path.join(held.lock, `abandoned-${held.token}.json`), { overwrite: false }).then(() => true, () => false);
+    this.log.appendLine(`${LOG} A claimed checkpoint could not be put back; the lock and its copies are kept for recovery (marked=${marked}).`);
     throw new WorkshopNamedSessionRecoveryRequiredError(sessionId);
   }
 

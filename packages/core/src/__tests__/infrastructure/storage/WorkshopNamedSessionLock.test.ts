@@ -13,7 +13,8 @@
  * - explicit recovery: one test per row of D6e's table, each checking the
  *   saved file, every recovery session created and the lock's removal; a
  *   failing copy leaves the lock and its contents untouched; a publish
- *   whose rollback also fails keeps the lock and every copy, and Recover…
+ *   whose rollback also fails (and its abandoned mark, too) keeps the lock
+ *   and every copy, and Recover…
  *   restores it; a prior beside an unreadable saved file is kept; a retry after
  *   an interrupted recovery reuses its copy; a lock within its lease is
  *   busy, not recovered.
@@ -118,18 +119,21 @@ describe('the named-session lock takes nothing over (D6e)', () => {
   it('a stale release never moves a lock: A\'s delayed release leaves B\'s lock, owner file and token folder as they were', async () => {
     const { fs, original, readExact, lockWith, store } = await setup();
     const aStall = gate();
-    const writeA = lockWith({ beforePublish: aStall.pause })
+    // A publishes, then stalls before its release, past the lease.
+    const writeA = lockWith({ beforeRelease: aStall.pause })
       .replace({ sessionId: 'alice-polish', filePath, readExact, session: checkpoint('Writer A'), expected: original })
       .then(() => 'published', (error: Error) => error);
     await aStall.atGate;
     clock += STORED_FILE_CLAIM_LEASE_MS + 1;
-    // The writer recovers A's lock: prior restored, A's staged copy kept, the lock removed.
+    // The writer recovers A's lock: the saved file is A's, its prior the superseded pre-image; the lock removed.
     const recovered = await store.recoverNamed('alice-polish');
-    expect(recovered.restored).toBe(true);
+    expect([recovered.restored, recovered.dropped]).toEqual([false, 1]);
     expect(leftovers(fs)).toEqual([]);
+    const afterA = (await readExact())!.session;
+    expect(afterA.title).toBe('Writer A');
     const bStall = gate();
     const writeB = lockWith({ beforePublish: bStall.pause })
-      .replace({ sessionId: 'alice-polish', filePath, readExact, session: checkpoint('Writer B'), expected: original });
+      .replace({ sessionId: 'alice-polish', filePath, readExact, session: checkpoint('Writer B'), expected: afterA });
     await bStall.atGate;
     const bLock = lockFiles(fs);
     const bToken = [...bLock.keys()].find((name) => name.endsWith('/prior.json'))!.split('/').slice(-2, -1)[0];
@@ -138,7 +142,9 @@ describe('the named-session lock takes nothing over (D6e)', () => {
     const renames = jest.spyOn(fs, 'rename');
     const deletes = jest.spyOn(fs, 'delete');
     aStall.open();
-    expect(await writeA).toBeInstanceOf(Error);
+    expect(await writeA).toBe('published');
+    // A's first two steps found nothing of its own (its folder and owner file left with the recovery).
+    expect(renames.mock.calls.filter(([from]) => from === `${lockPath}/${bToken}`)).toEqual([]);
     const touchesB = (target: string) => target === bOwner || target === `${lockPath}/${bToken}` || target.startsWith(`${lockPath}/${bToken}/`);
     expect(renames.mock.calls.filter(([from, to]) => touchesB(from) || touchesB(to) || from === lockPath)).toEqual([]);
     expect(deletes.mock.calls.filter(([target, options]) => touchesB(target) || (target === lockPath && options?.recursive !== false))).toEqual([]);
@@ -298,6 +304,35 @@ describe('explicit recovery follows D6e\'s table', () => {
     expect(kept).toEqual([expect.stringMatching(/^abandoned-/), 'next.json', 'prior.json']);
     expect(fs.files.has(filePath)).toBe(false);
     // Its owner gave the lock up: it reads recovery-required at once, never missing.
+    await expect(store.readNamedWithRecovery('alice-polish')).rejects.toBeInstanceOf(WorkshopNamedSessionRecoveryRequiredError);
+    const outcome = await store.recoverNamed('alice-polish');
+    expect([outcome.restored, outcome.copies.map((copy) => copy.title)]).toEqual([true, ['Writer A (local recovery)']]);
+    expect(titleOf(fs)).toBe('Polish 6.11');
+    expect(leftovers(fs)).toEqual([]);
+  });
+
+  it('publish, rollback and the abandoned mark all failing still keep the lock and every copy, and Recover… restores (PR #289 re-review)', async () => {
+    const { fs, original, readExact, lockWith, store } = await setup();
+    const rename = fs.rename.bind(fs);
+    const renames = jest.spyOn(fs, 'rename').mockImplementation(async (from, to, options) => {
+      if (to === filePath || path.basename(to).startsWith('abandoned-')) {
+        throw new Error(`EIO: ${path.basename(to)}`);
+      }
+      return rename(from, to, options);
+    });
+    const deletes = jest.spyOn(fs, 'delete');
+    await expect(lockWith().replace({ sessionId: 'alice-polish', filePath, readExact, session: checkpoint('Writer A'), expected: original }))
+      .rejects.toBeInstanceOf(WorkshopNamedSessionRecoveryRequiredError);
+    renames.mockRestore();
+    // Nothing was released: no delete reached the lock, and both copies and the owner file stand.
+    expect(deletes.mock.calls.filter(([target]) => target.startsWith(lockPath))).toEqual([]);
+    deletes.mockRestore();
+    const kept = [...lockFiles(fs).keys()].map((name) => path.basename(name)).sort();
+    expect(kept).toEqual(['next.json', expect.stringMatching(/^owner-/), 'prior.json']);
+    expect(fs.files.has(filePath)).toBe(false);
+    // Unmarked, the lock follows D6e's lease: busy within it, recovery-required past it; never missing.
+    await expect(store.readNamedWithRecovery('alice-polish')).rejects.toBeInstanceOf(WorkshopNamedSessionBusyError);
+    clock += STORED_FILE_CLAIM_LEASE_MS + 1;
     await expect(store.readNamedWithRecovery('alice-polish')).rejects.toBeInstanceOf(WorkshopNamedSessionRecoveryRequiredError);
     const outcome = await store.recoverNamed('alice-polish');
     expect([outcome.restored, outcome.copies.map((copy) => copy.title)]).toEqual([true, ['Writer A (local recovery)']]);
