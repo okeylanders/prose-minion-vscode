@@ -55,6 +55,8 @@ import {
   workshopSessionStartOf,
   workshopSessionStartResult
 } from '@handlers/domain/workshop/WorkshopSessionStartResult';
+import { WorkshopNamedSessionRecoveryRoute } from '@handlers/domain/workshop/WorkshopNamedSessionRecoveryRoute';
+import { workshopRecoveryRequiredSessionId } from '@/infrastructure/storage/WorkshopNamedSessionLock';
 
 let sessionRequestCounter = 0;
 const generateSessionRequestId = (): string =>
@@ -99,13 +101,10 @@ export class WorkshopSessionMessageHandler {
     router.register(MessageType.WORKSHOP_LIST_SESSIONS, this.handleListSessions.bind(this));
     registerMutation(MessageType.WORKSHOP_OPEN_SESSION, this.handleOpenSession.bind(this), 'open');
     registerMutation(MessageType.WORKSHOP_RENAME_SESSION, this.handleRenameSession.bind(this), 'rename');
-    registerMutation(
-      MessageType.WORKSHOP_DUPLICATE_SESSION,
-      this.handleDuplicateSession.bind(this),
-      'duplicate'
-    );
+    registerMutation(MessageType.WORKSHOP_DUPLICATE_SESSION, this.handleDuplicateSession.bind(this), 'duplicate');
     router.register(MessageType.WORKSHOP_REVEAL_SESSION, this.handleRevealSession.bind(this));
     registerMutation(MessageType.WORKSHOP_DELETE_SESSION, this.handleDeleteSession.bind(this), 'delete');
+    new WorkshopNamedSessionRecoveryRoute(this.persistence, this.postMessage, this.outputChannel).register(router);
   }
 
   dispose(): void {
@@ -113,11 +112,11 @@ export class WorkshopSessionMessageHandler {
     this.sessionListAbortController = undefined;
   }
 
-  postActionResult(action: WorkshopSessionAction, ok: boolean, message: string): void {
+  postActionResult(action: WorkshopSessionAction, ok: boolean, message: string, recoverSessionId?: string): void {
     const result: WorkshopSessionActionResultMessage = {
       type: MessageType.WORKSHOP_SESSION_ACTION_RESULT,
       source: 'extension.workshop',
-      payload: { action, ok, message },
+      payload: { action, ok, message, ...(recoverSessionId ? { recoverSessionId } : {}) },
       timestamp: Date.now()
     };
     void this.postMessage(result);
@@ -512,7 +511,7 @@ export class WorkshopSessionMessageHandler {
     this.outputChannel.appendLine(
       `[WorkshopSessionMessageHandler] Session ${action} failed: ${details}`
     );
-    this.postActionResult(action, false, details);
+    this.postActionResult(action, false, details, workshopRecoveryRequiredSessionId(error));
   }
 
   private errorMessage(error: unknown): string {

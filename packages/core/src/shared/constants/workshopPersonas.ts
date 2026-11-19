@@ -125,6 +125,10 @@ export const WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH =
 export const WORKSHOP_HELP_CAPABILITY_PROMPT_PATH =
   'workshop-personas/help-capability.md';
 
+/** The to-do status trailer's grammar (ADR 2026-11-19 D2): every persona, host and guest, with no setting. */
+export const WORKSHOP_TODO_STATUS_PROMPT_PATH =
+  'workshop-personas/todo-status.md';
+
 /**
  * The `memory.*` grammar (ADR 2026-11-04 D1, D8): in the system prompt
  * only while project memory is open (the mode on and the workspace
@@ -264,6 +268,8 @@ export function workshopPersonaSystemPromptPaths(
       ]
       : []),
     ...(participant && options.fileEdits ? [WORKSHOP_FILE_EDIT_PROPOSALS_PROMPT_PATH, WORKSHOP_REPLY_EDIT_OFFERS_PROMPT_PATH] : []),
+    // A persona may mark the writer's to-dos, here and in saved sessions (ADR 2026-11-19 D2): host and guest, always.
+    ...(participant ? [WORKSHOP_TODO_STATUS_PROMPT_PATH] : []),
     // Unconditional capability grammars for host and guest alike (ADR 2026-11-17 D16).
     ...(participant
       ? [WORKSHOP_HELP_CAPABILITY_PROMPT_PATH, WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH, WORKSHOP_LENS_CAPABILITY_PROMPT_PATH]

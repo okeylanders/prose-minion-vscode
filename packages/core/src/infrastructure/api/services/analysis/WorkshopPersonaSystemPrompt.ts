@@ -34,6 +34,7 @@ import {
   WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS,
   WORKSHOP_REPLY_EDIT_OFFERS_PROMPT_PATH,
   WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
+  WORKSHOP_TODO_STATUS_PROMPT_PATH,
   WorkshopPersonaDescriptor,
   workshopPersonaSystemPromptPaths
 } from '@shared/constants/workshopPersonas';
@@ -70,7 +71,8 @@ export const WORKSHOP_TOOL_USE_PROMPT_PATHS: ReadonlySet<string> = new Set([
   WORKSHOP_REPLY_EDIT_OFFERS_PROMPT_PATH,
   WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
   WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH,
-  WORKSHOP_LENS_CAPABILITY_PROMPT_PATH
+  WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
+  WORKSHOP_TODO_STATUS_PROMPT_PATH
 ]);
 
 const capitalized = (word: string): string => word.charAt(0).toUpperCase() + word.slice(1);
@@ -93,6 +95,7 @@ const NAMED_PATHS: ReadonlyMap<string, string> = new Map<string, string>([
   [WORKSHOP_HELP_CAPABILITY_PROMPT_PATH, 'Help capability'],
   [WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH, 'File history capability'],
   [WORKSHOP_LENS_CAPABILITY_PROMPT_PATH, 'Lens capability'],
+  [WORKSHOP_TODO_STATUS_PROMPT_PATH, 'To-do status'],
   [WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH, 'Interaction contract'],
   ...keyed(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS, 'Interaction mode'),
   [WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH, 'Relational contract'],

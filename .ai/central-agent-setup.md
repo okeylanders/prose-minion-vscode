@@ -171,6 +171,8 @@ packages/core/src/
                 ├── seedDelivery.ts
                 ├── lightboxTiles.ts
                 ├── selectedText.ts
+                ├── todoStatus.ts
+                ├── sessionRecovery.ts
                 └── settings.ts
 ```
 

@@ -1,9 +1,9 @@
 /**
  * From a settlement verdict to the reason a reply's outcome record keeps
- * (ADR 2026-11-17 D13; PR #269 F-01). One pure function over the four
- * verdict types: the extractor's rejections of either kind, a memory
- * edit's settlement reason, and the file-edit drops staging and completion
- * make. Its `never` default means a new rejection, anchor fault or
+ * (ADR 2026-11-17 D13; PR #269 F-01). One pure function over the
+ * verdict types: the extractor's rejections of each kind, a memory edit's
+ * settlement reason, the file-edit drops staging and completion make, and
+ * a to-do status change's settlement (ADR 2026-11-19 D7). Its `never` default means a new rejection, anchor fault or
  * settlement reason does not compile until it is mapped.
  *
  * The record's reasons are fewer than the code's: a persona is told what it
@@ -14,8 +14,10 @@
 import type {
   WorkshopFileEditTrailerDropReason,
   WorkshopMemoryTrailerDropReason,
+  WorkshopTodoTrailerDropReason,
   WorkshopTrailerDropReason
 } from '@shared/types/workshopTrailerOutcomes';
+import type { WorkshopTodoStatusDropCode } from '@/application/services/workshop/todos/WorkshopReplyTodoStatus';
 import type { WorkshopReplyMemoryRejection } from '@/utils/workshopReplyControls';
 import type { WorkshopReplyFileEditRejection } from '@/utils/workshopReplyFileEdits';
 import type { WorkshopMemoryProposalDrop } from '@/application/services/workshop/memory/WorkshopReplyMemory';
@@ -26,13 +28,16 @@ import type { WorkshopFileEditProposalDrop } from '@/application/services/worksh
 export type WorkshopMemoryTrailerDropCode = WorkshopReplyMemoryRejection | WorkshopMemoryEditDropReason;
 /** Every reason code a file-edit frame can end with no card for. */
 export type WorkshopFileEditTrailerDropCode = WorkshopFileEditProposalDrop['reason'];
-type DropCode = WorkshopMemoryTrailerDropCode | WorkshopFileEditTrailerDropCode;
+/** Every reason code a to-do status frame can end with no row for (ADR 2026-11-19 D7). */
+export type WorkshopTodoTrailerDropCode = WorkshopTodoStatusDropCode;
+type DropCode = WorkshopMemoryTrailerDropCode | WorkshopFileEditTrailerDropCode | WorkshopTodoTrailerDropCode;
 
 const isMalformed = <Code extends string>(code: Code): code is Extract<Code, `malformed:${string}`> => code.startsWith('malformed:');
 
 /** The recorded reason for one verdict's code. */
 export function workshopTrailerDropReason(code: WorkshopMemoryTrailerDropCode): WorkshopMemoryTrailerDropReason;
 export function workshopTrailerDropReason(code: WorkshopFileEditTrailerDropCode): WorkshopFileEditTrailerDropReason;
+export function workshopTrailerDropReason(code: WorkshopTodoTrailerDropCode): WorkshopTodoTrailerDropReason;
 export function workshopTrailerDropReason(code: DropCode): WorkshopTrailerDropReason {
   if (isMalformed(code)) {
     return 'malformed';
@@ -85,6 +90,19 @@ export function workshopTrailerDropReason(code: DropCode): WorkshopTrailerDropRe
       return 'duplicate';
     case 'not-staged':
       return 'not-staged';
+    // A to-do status change, settled against the session it named (ADR 2026-11-19 D7).
+    case 'unknown-session':
+      return 'session-not-found';
+    case 'unreadable-session':
+    case 'session-needs-recovery':
+      return 'session-unreadable';
+    case 'store-unavailable':
+    case 'workspace-changed':
+      return 'sessions-unavailable';
+    case 'unknown-todo':
+      return 'todo-not-found';
+    case 'not-open':
+      return 'todo-not-open';
     default:
       return assertNever(code);
   }

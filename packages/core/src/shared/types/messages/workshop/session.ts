@@ -11,6 +11,7 @@ import type { ModelScope } from '../configuration';
 import type { WorkshopBookmarkSummary } from './bookmarks';
 import type { WorkshopReactionDelivery, WorkshopTurnReactionSummary } from './reactions';
 import type { WorkshopTrailerOutcomes } from '../../workshopTrailerOutcomes';
+import type { WorkshopTodoClosedBy, WorkshopTodoStatusChange } from './todoStatus';
 import type { WorkshopReactionId } from '@shared/constants/workshopReactions';
 import type { WorkshopMemorySuggestionLevel } from '@shared/constants/workshopMemorySuggestions';
 import type {
@@ -128,6 +129,8 @@ export interface WorkshopTodoItem {
   source: WorkshopTodoSource;
   createdAt: number;
   writerEdit?: WorkshopTodoWriterEdit;
+  /** Who closed it, when a persona did (ADR 2026-11-19 D9; optional, additive). The writer's own change clears it. */
+  closedBy?: WorkshopTodoClosedBy;
   /** Derived from source excerpt version; stale tasks never enter host evidence. */
   stale: boolean;
 }
@@ -500,6 +503,12 @@ export interface WorkshopTurn {
    * the webview never receives it. Host and guest replies only.
    */
   trailerOutcomes?: WorkshopTrailerOutcomes;
+  /**
+   * The to-do status changes this persona reply made (ADR 2026-11-19 D8):
+   * one receipt row per change, in reply order (optional, additive; never
+   * an empty list). Host and guest replies only.
+   */
+  todoStatusChanges?: WorkshopTodoStatusChange[];
   /**
    * A persona reply that held only a reaction (ADR 2026-11-07 R1): the id it
    * reacted with, on the writer message the reply answers. Its content is
@@ -1077,6 +1086,8 @@ export interface WorkshopSessionSummary {
    * existed — the browser says "Scope unknown" rather than guessing.
    */
   scope?: WorkshopSessionScope;
+  /** A lock beside the saved file (ADR 2026-11-19 D6e): busy, or left mid-save and needing Recover…. */
+  lock?: 'busy' | 'recovery-required';
 }
 
 export interface WorkshopSessionsDataMessage extends MessageEnvelope<{
@@ -1111,6 +1122,8 @@ export interface WorkshopSessionActionResultMessage extends MessageEnvelope<{
   ok: boolean;
   message: string;
   session?: WorkshopSessionSummary;
+  /** A save or open refused because the session was left mid-save: the notice offers Recover… (D6e). */
+  recoverSessionId?: string;
 }> {
   type: MessageType.WORKSHOP_SESSION_ACTION_RESULT;
 }

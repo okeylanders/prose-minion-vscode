@@ -136,8 +136,9 @@ export class WorkshopRecallDocumentLoader {
       // A read that failed because the call was cancelled is a cancellation.
       throwIfRecallAborted(signal);
       this.log(`Skipped unreadable session ${sessionId}: ${errorMessage(error)}`);
-      // Matched by name: recall knows the store only as a type.
-      return { reason: error instanceof Error && error.name === IDENTITY_CONFLICT ? 'conflict' : 'unreadable' };
+      // Matched by name: recall knows the store only as a type. Not found and not locked (D6e) reads as missing: recall only reads.
+      const name = error instanceof Error ? error.name : '';
+      return { reason: name === IDENTITY_CONFLICT ? 'conflict' : name === UNCONFIRMED ? 'missing' : 'unreadable' };
     }
     throwIfRecallAborted(signal);
     scope.assertHolds();
@@ -153,6 +154,8 @@ export class WorkshopRecallDocumentLoader {
 
 /** The store's refusal when more than one file claims a session id. */
 const IDENTITY_CONFLICT = 'WorkshopNamedSessionIdentityConflictError';
+/** The store's answer for a session not found where no lock could confirm it gone (D6e). */
+const UNCONFIRMED = 'WorkshopNamedSessionUnconfirmedError';
 
 export function throwIfRecallAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) {

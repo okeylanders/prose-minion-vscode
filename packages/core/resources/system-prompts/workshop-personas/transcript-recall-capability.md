@@ -78,7 +78,7 @@ List the to-dos saved in other sessions. Every field is optional:
 </prose-minion-tool-call>
 ```
 
-`<status>` is `open` (the default, which includes stale to-dos, each marked), `completed`, `dismissed`, or `all`. `<recent>` reads the newest N sessions that `<match>` and `<persona>` keep, at most 50; without it, the newest 50. `<session>` reads one session instead, and cannot be combined with `<recent>`. `<source>` keeps to-dos from one tool, by the tool id the list shows, or from one persona. Each to-do shows its id beside its session id, where it came from, and whether the excerpt has changed since.
+`<status>` is `open` (the default, which includes stale to-dos, each marked), `completed`, `dismissed`, or `all`. `<recent>` reads the newest N sessions that `<match>` and `<persona>` keep, at most 50; without it, the newest 50. `<session>` reads one session instead, and cannot be combined with `<recent>`. `<source>` keeps to-dos from one tool, by the tool id the list shows, or from one persona. Each to-do shows its id beside its session id, where it came from, and whether the excerpt has changed since. To mark one done or dismissed once it is handled, copy those two ids into a to-do status trailer, as your to-do instructions describe.
 
 List the writer's bookmarks, from this conversation and from saved sessions. Every field is optional:
 

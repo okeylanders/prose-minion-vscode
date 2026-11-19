@@ -65,6 +65,7 @@ import {
 import { assertWorkshopProjectMemoryDeliveryShape } from '@/application/services/workshop/session/WorkshopProjectMemoryDeliveryRecords';
 import { assertWorkshopReactionDeliveryShape } from '@/application/services/workshop/session/WorkshopReactionDeliveryRecords';
 import { assertWorkshopTrailerOutcomesShape } from '@/application/services/workshop/session/WorkshopTrailerOutcomeRecords';
+import { assertWorkshopTodoClosedByShape, assertWorkshopTodoStatusChangesShape } from '@/application/services/workshop/session/WorkshopTodoStatusRecords';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -620,6 +621,8 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       'reactionDelivery',
       // What became of a reply's trailers (ADR 2026-11-17 D13; additive, host-only).
       'trailerOutcomes',
+      // A persona's to-do receipt (ADR 2026-11-19 D8; additive).
+      'todoStatusChanges',
       // A reaction-only reply (ADR 2026-11-07 R1; additive), and one whose reaction was dropped (PR #247 M1).
       'reactionOnly',
       'noMessage'
@@ -700,6 +703,9 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   }
   if (turn.trailerOutcomes !== undefined) {
     assertWorkshopTrailerOutcomesShape(turn.trailerOutcomes, `${path}.trailerOutcomes`, turn);
+  }
+  if (turn.todoStatusChanges !== undefined) {
+    assertWorkshopTodoStatusChangesShape(turn.todoStatusChanges, `${path}.todoStatusChanges`, turn);
   }
   if (turn.reactionOnly !== undefined) {
     assertWorkshopReactionOnlyShape(turn.reactionOnly, `${path}.reactionOnly`, turn);
@@ -1064,7 +1070,7 @@ function assertStoredTodo(value: unknown, path: string): void {
     value,
     path,
     ['id', 'text', 'status', 'source', 'createdAt'],
-    ['priority', 'writerEdit']
+    ['priority', 'writerEdit', 'closedBy']
   );
   stringAt(todo.id, `${path}.id`);
   stringAt(todo.text, `${path}.text`);
@@ -1082,6 +1088,9 @@ function assertStoredTodo(value: unknown, path: string): void {
     );
     stringAt(writerEdit.originalText, `${path}.writerEdit.originalText`);
     numberAt(writerEdit.editedAt, `${path}.writerEdit.editedAt`);
+  }
+  if (todo.closedBy !== undefined) {
+    assertWorkshopTodoClosedByShape(todo.closedBy, `${path}.closedBy`);
   }
 }
 

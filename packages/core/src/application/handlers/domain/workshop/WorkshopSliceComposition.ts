@@ -112,6 +112,7 @@ export class WorkshopSliceComposition {
       fileEditApply,
       memoryDrafts,
       selectedText,
+      savedSessionTodos,
       outputChannel
     } = dependencies;
     const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
@@ -158,7 +159,8 @@ export class WorkshopSliceComposition {
       shell,
       outputChannel,
       {
-        postSessionState: host.postSessionState,
+        // A loaded, opened or restored room settles any persona to-do row left `saving` (ADR 2026-11-19 D8a).
+        postSessionState: () => { host.postSessionState(); void this.todoHandler.reconcileTodoStatus(); },
         refreshContextFiles: (origin) => this.contextHandler.refreshChangedContextFiles(origin),
         flushDeferredConversationSettings: host.flushDeferredConversationSettings,
         reportError: (message, details) =>
@@ -269,7 +271,8 @@ export class WorkshopSliceComposition {
         markDirty,
         reportError: (message, details) =>
           host.reportRouteError('workshop.todo', message, details, 'WorkshopTodoHandler')
-      }
+      },
+      { port: savedSessionTodos, room: sessionPersistence, postMessage }
     );
     this.bookmarkHandler = new WorkshopBookmarkHandler(
       session,
@@ -471,6 +474,9 @@ export class WorkshopSliceComposition {
   autoSaveMemoryProposals(turn: WorkshopTurn, indexes: readonly number[], signal: AbortSignal): Promise<void> {
     return this.projectMemoryHandler.autoSaveProposals(turn.id, indexes, signal);
   }
+
+  /** A reply's to-do status context, resolved before completion (ADR 2026-11-19 D5). */
+  replyTodoStatus = (reply: string) => this.todoHandler.replyTodoStatus(reply);
 
   /** The room's automatic saves, landed and in flight, for Save and tell me's cap (PR #201 F-04). */
   memoryAutoSavesInRoom(): number {

@@ -22,6 +22,7 @@ import type { WorkshopFileEditProposal } from '@messages';
 import {
   WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS,
   WORKSHOP_MEMORY_TRAILER_DROP_REASONS,
+  WORKSHOP_TODO_TRAILER_DROP_REASONS,
   type WorkshopTrailerDrop,
   type WorkshopTrailerDropReason,
   type WorkshopTrailerOutcomes
@@ -30,8 +31,10 @@ import type { WorkshopMemoryProposalDrop } from '@/application/services/workshop
 import type { WorkshopFileEditProposalDrop } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
 import {
   workshopFileEditTrailerDropReason,
-  workshopMemoryTrailerDropReason
+  workshopMemoryTrailerDropReason,
+  workshopTrailerDropReason
 } from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerDropReasons';
+import type { WorkshopTodoStatusDropCode } from '@/application/services/workshop/todos/WorkshopReplyTodoStatus';
 
 export interface WorkshopTrailerOutcomesInput {
   /** The reply's memory frames: how many became cards, and each one that did not. */
@@ -43,6 +46,11 @@ export interface WorkshopTrailerOutcomesInput {
   readonly fileEdits: {
     readonly proposals: ReadonlyArray<Pick<WorkshopFileEditProposal, 'state'>>;
     readonly drops: readonly WorkshopFileEditProposalDrop[];
+  };
+  /** The reply's to-do status frames: how many became receipt rows, and each one that did not (ADR 2026-11-19 D7). */
+  readonly todos?: {
+    readonly changes: number;
+    readonly drops: readonly WorkshopTodoStatusDropCode[];
   };
 }
 
@@ -57,12 +65,17 @@ export function buildWorkshopTrailerOutcomes(input: WorkshopTrailerOutcomesInput
     refused,
     dropped: tally(input.fileEdits.drops.map(workshopFileEditTrailerDropReason), WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS)
   };
+  const todos = {
+    changes: input.todos?.changes ?? 0,
+    dropped: tally((input.todos?.drops ?? []).map((code) => workshopTrailerDropReason(code)), WORKSHOP_TODO_TRAILER_DROP_REASONS)
+  };
   const hasMemory = memory.cards > 0 || memory.dropped.length > 0;
   const hasFileEdits = fileEdits.cards > 0 || fileEdits.refused > 0 || fileEdits.dropped.length > 0;
-  if (!hasMemory && !hasFileEdits) {
+  const hasTodos = todos.changes > 0 || todos.dropped.length > 0;
+  if (!hasMemory && !hasFileEdits && !hasTodos) {
     return undefined;
   }
-  return { ...(hasMemory ? { memory } : {}), ...(hasFileEdits ? { fileEdits } : {}) };
+  return { ...(hasMemory ? { memory } : {}), ...(hasFileEdits ? { fileEdits } : {}), ...(hasTodos ? { todos } : {}) };
 }
 
 /** One entry per reason that occurred, in the list's order. */

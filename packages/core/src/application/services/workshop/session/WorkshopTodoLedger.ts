@@ -8,6 +8,7 @@
  */
 
 import {
+  WorkshopTodoClosedBy,
   WorkshopTodoItem,
   WorkshopTurn
 } from '@messages';
@@ -28,7 +29,8 @@ const cloneStoredTodo = (
 ): WorkshopStoredTodoItemV1 => ({
   ...todo,
   source: { ...todo.source },
-  writerEdit: todo.writerEdit ? { ...todo.writerEdit } : undefined
+  writerEdit: todo.writerEdit ? { ...todo.writerEdit } : undefined,
+  ...(todo.closedBy ? { closedBy: { ...todo.closedBy } } : {})
 });
 
 const cloneTodo = (
@@ -129,14 +131,30 @@ export class WorkshopTodoLedger {
     return cloneTodo(todo, excerptVersion);
   }
 
+  /**
+   * Set a task's status. A persona's close names who closed it (ADR
+   * 2026-11-19 D9); any other change, the writer's own included, clears it.
+   */
   setStatus(
     todoId: string,
     status: WorkshopTodoItem['status'],
-    excerptVersion: number
+    excerptVersion: number,
+    closedBy?: WorkshopTodoClosedBy
   ): WorkshopTodoItem {
     const todo = this.requireTodo(todoId);
     todo.status = status;
+    if (closedBy) {
+      todo.closedBy = { ...closedBy };
+    } else {
+      delete todo.closedBy;
+    }
     return cloneTodo(todo, excerptVersion);
+  }
+
+  /** One task as it stands, or undefined: what a persona's change is checked against. */
+  find(todoId: string, excerptVersion: number): WorkshopTodoItem | undefined {
+    const todo = this.todos.find((candidate) => candidate.id === todoId);
+    return todo ? cloneTodo(todo, excerptVersion) : undefined;
   }
 
   reorder(todoId: string, direction: 'up' | 'down'): void {

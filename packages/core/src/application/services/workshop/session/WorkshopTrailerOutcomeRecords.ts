@@ -23,6 +23,7 @@
 import {
   WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS,
   WORKSHOP_MEMORY_TRAILER_DROP_REASONS,
+  WORKSHOP_TODO_TRAILER_DROP_REASONS,
   type WorkshopTrailerOutcomes
 } from '@shared/types/workshopTrailerOutcomes';
 import { arrayOf, exactObject, shapeError } from '@/application/services/workshop/persistedValidation';
@@ -45,9 +46,9 @@ export function assertWorkshopTrailerOutcomesShape(
   if (turn.role !== 'assistant' || (turn.participant !== 'host' && turn.participant !== 'guest')) {
     shapeError(path, 'a record on a persona reply');
   }
-  const outcomes = exactObject(value, path, [], ['memory', 'fileEdits']);
-  if (outcomes.memory === undefined && outcomes.fileEdits === undefined) {
-    shapeError(path, 'at least one of memory and fileEdits');
+  const outcomes = exactObject(value, path, [], ['memory', 'fileEdits', 'todos']);
+  if (outcomes.memory === undefined && outcomes.fileEdits === undefined && outcomes.todos === undefined) {
+    shapeError(path, 'at least one of memory, fileEdits and todos');
   }
   if (outcomes.memory !== undefined) {
     const side = exactObject(outcomes.memory, `${path}.memory`, ['cards', 'dropped']);
@@ -64,6 +65,15 @@ export function assertWorkshopTrailerOutcomesShape(
       + droppedAt(side.dropped, `${path}.fileEdits.dropped`, WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS);
     if (frames === 0) {
       shapeError(`${path}.fileEdits`, 'at least one frame counted');
+    }
+  }
+  // To-do status frames (ADR 2026-11-19 D7; additive).
+  if (outcomes.todos !== undefined) {
+    const side = exactObject(outcomes.todos, `${path}.todos`, ['changes', 'dropped']);
+    const frames = countAt(side.changes, `${path}.todos.changes`, 0)
+      + droppedAt(side.dropped, `${path}.todos.dropped`, WORKSHOP_TODO_TRAILER_DROP_REASONS);
+    if (frames === 0) {
+      shapeError(`${path}.todos`, 'at least one frame counted');
     }
   }
 }
@@ -109,6 +119,9 @@ export function cloneWorkshopTrailerOutcomes(outcomes: WorkshopTrailerOutcomes):
           dropped: outcomes.fileEdits.dropped.map((drop) => ({ ...drop }))
         }
       }
+      : {}),
+    ...(outcomes.todos
+      ? { todos: { changes: outcomes.todos.changes, dropped: outcomes.todos.dropped.map((drop) => ({ ...drop })) } }
       : {})
   };
 }

@@ -689,7 +689,9 @@ describe('app-shell provider assembly', () => {
     // through its one CoreServices field (ADR 2026-11-05 D8). Built once, here.
     expect(source.match(/workshopTranscriptRecallService/g)).toHaveLength(4);
     expect(source.match(/new WorkshopTranscriptRecallService\(/g)).toHaveLength(1);
-    expect(source).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\bworkshopTranscriptRecallService\n\s*\};/);
+    expect(source).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\bworkshopTranscriptRecallService,\n\s*workshopSavedSessionTodos\n\s*\};/);
+    // A persona's saved-session to-do writes have their own port, over the store and coordinator, never recall (ADR 2026-11-19 D6).
+    expect(source).toMatch(/new WorkshopSavedSessionTodoStore\(workshopSessionStore, workshopSessionPersistenceCoordinator, outputChannel\)/);
   });
 
   it('builds project memory\'s store, then its library, before the factory and the grammar check that read it (ADR 2026-11-04 D13)', () => {
