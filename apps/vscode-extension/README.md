@@ -82,7 +82,7 @@ Both choices are saved as soon as you make them. The list size applies from the 
 - **Lexical Gravity keeps the lenses it can use** — it recovers from some malformed model replies, keeps the usable lenses from a batch that also holds invalid ones, and tells you when it leaves one out.
 - **Less repeated work** — opening or refreshing a conversation with several attached files, and reading pinned context, do less of it.
 - **Support and community links** — the sidebar's Settings panel has a **Support** section with a copyable email address and links to r/proseminion and the Prose Minion website.
-- **Five more models to try** — GPT-6.2 Sol, Sol Pro, Astra, Astra Pro, and Ling 3.2 Flash (free) join the model pickers and Category Search. Your current selections stay in place.
+- **Six more models to try** — Gemini 4 Neon, GPT-6.2 Sol, Sol Pro, Astra, Astra Pro, and Ling 3.2 Flash (free) join the model pickers and Category Search. Your current selections stay in place.
 
 **If you sync or share Workshop sessions, update Prose Minion everywhere you open them.** v2.15.0 opens your existing sessions. A session saved with the new proposal-outcome records, or with help or lens look-up results, needs v2.15.0 or later.
 

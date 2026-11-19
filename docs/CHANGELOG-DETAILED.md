@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 The range from v2.14.1 (`9b5551a3`) to the release branch base (`478157d0`) contains 114 commits and four direct merges into `main`.
 
 - Everyday Conveniences, Round Two brings earlier turns, bookmark jumps, composer file mentions, memory controls, proposal feedback, and access to lenses and product help. [#283](https://github.com/okeylanders/prose-minion-vscode/pull/283) · [Round Two ADR](adr/2026-11-17-everyday-conveniences-round-two.md) · [Integration re-review](pr-reviews/pr-283-round-two-integration-rereview.md)
-- Workshop context intake reuses its project catalog, and the OpenRouter catalog gains five models. [#284](https://github.com/okeylanders/prose-minion-vscode/pull/284)
+- Workshop context intake reuses its project catalog, and the OpenRouter refresh in the same merge adds five models. The release branch also adds Gemini 4 Neon. [#284](https://github.com/okeylanders/prose-minion-vscode/pull/284) · [November 19 catalog audit](model-audit-2026-11-19.md)
 - The Workshop shows each persona's context by part. [#285](https://github.com/okeylanders/prose-minion-vscode/pull/285)
 - Sidebar Settings gets a Support section. [#275](https://github.com/okeylanders/prose-minion-vscode/pull/275)
 
@@ -45,6 +45,7 @@ The range from v2.14.1 (`9b5551a3`) to the release branch base (`478157d0`) cont
 - `WorkshopIntakeCatalogScope` shares one catalog across a refresh scan or pinned-context read for stable workspace roots. A root change invalidates that catalog for subsequent reads. Output keeps counts and timing while the writer still sees filenames in the refresh status. [#284 re-review](pr-reviews/pr-284-one-catalog-per-operation-7b86a6a-re-review.md)
 - `SettingsSupport` places support email, a community card, and the product website above the API key. Copy feedback uses the existing host clipboard acknowledgment. The bundled artwork follows the sidebar theme and respects reduced motion. [Support feature notes](../.todo/features/feature-settings-support/README.md)
 - GPT-6.2 Sol, Sol Pro, Astra, Astra Pro, and Ling 3.2 Flash (free) join the curated pickers and Category Search. The four GPT-6.2 choices always reason and use the existing automatic cache policy. Ling uses its exact, rate-limited free route. Defaults and saved selections are preserved. Prose quality, paid inference, and cache reuse remain unverified for these additions. [November 18 catalog audit](model-audit-2026-11-18.md)
+- Gemini 4 Neon joins the same pickers as an opt-in model. OpenRouter lists a 1,048,576-token context, mandatory reasoning, tools, and structured outputs. Completion limits and pricing vary by route. Prose Minion sends its regular OpenRouter chat request and leaves cache timing to the provider. [November 19 catalog audit](model-audit-2026-11-19.md)
 
 ### Compatibility and release verification
 

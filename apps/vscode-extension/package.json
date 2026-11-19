@@ -481,6 +481,7 @@
             "google/gemini-4-argon",
             "google/gemini-4-carbon",
             "google/gemini-4-hydrogen",
+            "google/gemini-4-neon",
             "google/gemini-2.5-flash",
             "google/gemini-2.5-pro",
             "deepseek/deepseek-v4-flash",

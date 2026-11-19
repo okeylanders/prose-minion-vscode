@@ -334,6 +334,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: '1M-context multimodal model with mandatory reasoning for category matching; prose quality in Prose Minion is unverified'
   },
   {
+    id: 'google/gemini-4-neon',
+    name: 'Gemini 4 Neon',
+    family: 'Gemini 4',
+    description: '1M-context model with mandatory reasoning and structured output for complex category matching. Prose quality in Prose Minion is unverified.'
+  },
+  {
     id: 'deepseek/deepseek-v4-flash',
     name: 'DeepSeek V4 Flash',
     family: 'DeepSeek V4',
@@ -862,6 +868,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Gemini 4 Hydrogen',
     family: 'Gemini 4',
     description: '1M-context multimodal model with mandatory reasoning and structured output. An opt-in choice for long-document analysis; prose quality in Prose Minion is unverified.'
+  },
+  {
+    id: 'google/gemini-4-neon',
+    name: 'Gemini 4 Neon',
+    family: 'Gemini 4',
+    description: '1M-context multimodal model with mandatory reasoning and structured output. An opt-in choice for long-document analysis and Workshop conversations. Prose quality in Prose Minion is unverified.'
   },
   {
     id: 'z-ai/glm-4.5',

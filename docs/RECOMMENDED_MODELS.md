@@ -176,6 +176,11 @@ successful inference in Prose Minion.
 
 **Best for:** Dictionary definitions, Prose Analysis critiques, finding plot holes, and structural editing
 
+### Gemini 4 Neon — Long-Context Reasoning
+
+- Try it for long-document critique, Workshop conversations, and complex Category Search.
+- It has a 1,048,576-token context, multimodal input, text output, mandatory reasoning, and structured output. On November 19, the base rates were $3/M input and $15/M output. Prose quality in Prose Minion is unverified. [Gemini 4 Neon on OpenRouter](https://openrouter.ai/google/gemini-4-neon)
+
 ### Gemini 4 Hydrogen — Long-Context Workhorse
 
 - **Best For:** Trying long-document analysis and Category Search

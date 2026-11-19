@@ -12,7 +12,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 - **More control over Project Memory.** In conversation settings, use **Suggest notes** to choose **Sparingly**, **Readily**, or **Aggressively**. Use **List at the start of each conversation** to choose **Standard**, **Larger**, or **Largest**. New conversations can see titles for more notes, and personas can page through the full catalog.
 - **Ask your persona about Prose Minion or a Lexical Gravity lens.** Personas can search the bundled product help for questions about features, commands, and settings. They can also list and read built-in and project lenses to explain how a lens works.
 - **Support and community links.** The sidebar’s Settings panel has a **Support** section above the OpenRouter key, with a copyable email address and links to r/proseminion and the Prose Minion website.
-- **More OpenRouter models.** GPT-6.2 Sol, Sol Pro, Astra, Astra Pro, and Ling 3.2 Flash (free) are available in the shared model pickers and Category Search. Your current model selections stay in place.
+- **More OpenRouter models.** Gemini 4 Neon, GPT-6.2 Sol, Sol Pro, Astra, Astra Pro, and Ling 3.2 Flash (free) are available in the shared model pickers and Category Search. Your current model selections stay in place.
 
 ### Changed
 
