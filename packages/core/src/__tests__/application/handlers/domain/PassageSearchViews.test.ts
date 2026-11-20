@@ -105,7 +105,7 @@ describe('the result view', () => {
     expect(written).not.toContain('"f1"');
     expect(written).not.toContain('"start"');
     expect(view.resultId).toBe('result-1');
-    expect(view.files).toEqual({ read: 3, withInstances: 2, leftOut: { unreadable: 0, unsplittable: 0, empty: 0 } });
+    expect(view.files).toEqual({ planned: 3, searched: { full: 3, partial: 0, none: 0 }, withInstances: 2, leftOut: { unreadable: 0, unsplittable: 0, empty: 0 } });
     expect(view.instances.map((instance) => [instance.number, instance.file, instance.line, instance.lines, instance.canOpen])).toEqual([
       [1, 'chapters/alice-ch1.md', 12, 'document', true],
       [2, 'Selected text', 3, 'text', false]
@@ -126,22 +126,14 @@ describe('the result view', () => {
     expect(passageSearchResultView(aliceResult(), 'r', false)).not.toHaveProperty('endedMessage');
   });
 
-  it('sends no cancelled count and no coverage while the engine carries neither', () => {
-    const view = passageSearchResultView(aliceResult(), 'r', false);
-    expect(view.calls).toEqual({ planned: 3, answered: 3, failed: 0, cut: 0, unsent: 0 });
-    expect(view.files).not.toHaveProperty('coverage');
-  });
-
-  it('carries a cancelled count and per-file coverage once the engine has them (PR #293)', () => {
+  it('carries the cancelled count and how many files were searched in full, in part and not at all', () => {
     const result = aliceResult();
-    const marks = ['full', 'partial', 'none'];
-    const withBoth = {
+    const view = passageSearchResultView({
       ...result,
-      calls: { ...result.calls, cancelled: 2 },
-      files: { ...result.files, read: result.files.read.map((file, index) => ({ ...file, coverage: marks[index] })) }
-    };
-    const view = passageSearchResultView(withBoth, 'r', false);
-    expect(view.calls.cancelled).toBe(2);
-    expect(view.files.coverage).toEqual({ full: 1, partial: 1, none: 1 });
+      calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1 },
+      files: { ...result.files, searched: { full: 1, partial: 1, none: 1 } }
+    }, 'r', false);
+    expect(view.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1 });
+    expect(view.files.searched).toEqual({ full: 1, partial: 1, none: 1 });
   });
 });

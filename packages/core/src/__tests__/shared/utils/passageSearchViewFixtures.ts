@@ -78,10 +78,10 @@ export const RESULT: PassageSearchResultView = {
   },
   dropped: { 'quote-not-found': 1, 'quote-ambiguous': 2, malformed: 0, duplicate: 1 },
   overLimit: 0,
-  calls: { planned: 23, answered: 7, failed: 1, cut: 1, unsent: 15 },
-  files: { read: 22, withInstances: 2, leftOut: { unreadable: 1, unsplittable: 0, empty: 0 } },
+  calls: { planned: 23, answered: 7, failed: 1, cut: 1, cancelled: 2, unsent: 13 },
+  files: { planned: 22, searched: { full: 6, partial: 1, none: 15 }, withInstances: 2, leftOut: { unreadable: 1, unsplittable: 0, empty: 0 } },
   ended: 'stopped',
-  endedMessage: 'Stopped before every call was made.',
+  endedMessage: 'Stopped before every call was answered.',
   leftOutMessage: '1 file left out: not readable as text.',
   canOrganize: false
 };

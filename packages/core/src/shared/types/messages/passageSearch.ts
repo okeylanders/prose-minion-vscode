@@ -110,7 +110,7 @@ export type PassageSearchDropReasonView = 'quote-not-found' | 'quote-ambiguous' 
 export type PassageSearchAnalysisMissingView = 'failed' | 'malformed' | 'cut' | 'no-room';
 
 /** Files by how much of each the answered calls covered. */
-export interface PassageSearchCoverageView {
+export interface PassageSearchFilesSearchedView {
   full: number;
   partial: number;
   none: number;
@@ -158,14 +158,15 @@ export interface PassageSearchResultView {
   analysisMissing?: PassageSearchAnalysisMissingView;
   dropped: Record<PassageSearchDropReasonView, number>;
   overLimit: number;
-  /** `cancelled` (sent, then cancelled by Stop) is apart from `unsent`; absent when the engine does not count it. */
-  calls: { planned: number; answered: number; failed: number; cut: number; unsent: number; cancelled?: number };
+  /** `answered`, `failed`, `cancelled` and `unsent` add up to `planned`. A cancelled call was sent and stopped in flight; an unsent one never started. */
+  calls: { planned: number; answered: number; failed: number; cut: number; cancelled: number; unsent: number };
   files: {
-    read: number;
+    /** Every file of the plan, searched or not. */
+    planned: number;
+    /** How many of them were searched in full, in part, and not at all. */
+    searched: PassageSearchFilesSearchedView;
     withInstances: number;
     leftOut: PassageSearchLeftOutView;
-    /** How many files were searched whole, in part, or not at all; absent when the engine does not say. */
-    coverage?: PassageSearchCoverageView;
   };
   ended: PassageSearchEndedView;
   /** How a run that did not read everything ended, in host words. */

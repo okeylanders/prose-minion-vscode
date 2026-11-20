@@ -25,6 +25,10 @@ const cell = (text: string): string => inline(text).replace(/\|/g, '\\|');
 /** A quote as a block quote, its own line breaks kept. */
 const quoted = (text: string): string => text.split(/\r?\n/).map((line) => `> ${line}`.trimEnd()).join('\n');
 
+/** The source text either side of a quote, on one line, with the quote's place marked; undefined when there is none. */
+const contextLine = (before: string, after: string): string | undefined =>
+  before.trim().length + after.trim().length === 0 ? undefined : `_In context:_ …${before.replace(/\s+/g, ' ').trimStart()}[…]${after.replace(/\s+/g, ' ').trimEnd()}…`;
+
 export function formatPassageSearchReport(result: PassageSearchResultView): string {
   const lines: string[] = ['# Passage Search', ''];
   lines.push(`## ${inline(result.analysis?.headline ?? passageSearchSummary(result))}`, '');
@@ -67,6 +71,10 @@ export function formatPassageSearchReport(result: PassageSearchResultView): stri
   for (const instance of result.instances) {
     lines.push(`### #${instance.number} · ${inline(passageSearchLocation(instance))}`, '');
     lines.push(`**${inline(instance.label)}**`, '', quoted(instance.quote), '');
+    const context = contextLine(instance.before, instance.after);
+    if (context) {
+      lines.push(context, '');
+    }
     if (instance.note.trim().length > 0) {
       lines.push(inline(instance.note), '');
     }

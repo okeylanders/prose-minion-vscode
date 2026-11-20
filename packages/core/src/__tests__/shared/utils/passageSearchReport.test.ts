@@ -57,19 +57,22 @@ describe('a result in words', () => {
   it('writes progress, the summary and a location', () => {
     expect(passageSearchProgressLine({ calls: { planned: 23, done: 7 }, found: 5 })).toBe('Reading 7 of 23 · 5 found');
     expect(passageSearchSummary(RESULT)).toBe('3 instances in 2 files');
-    expect(passageSearchSummary({ ...RESULT, instances: [] })).toBe('No instances found in 22 files.');
+    expect(passageSearchSummary({ ...RESULT, instances: [] })).toBe('No instances found in 7 files.');
     expect(passageSearchLocation(RESULT.instances[0])).toBe('chapters/alice-ch1.md · line 12');
     expect(passageSearchLocation(RESULT.instances[2])).toBe('Selected text · line 2 of the searched text');
   });
 
   it('says what the reads covered', () => {
-    expect(passageSearchReadLine(RESULT)).toBe('7 of 23 calls answered, over 22 files.');
-    expect(passageSearchReadLine({ ...RESULT, calls: { planned: 23, answered: 23, failed: 0, cut: 0, unsent: 0 } })).toBe('Read 22 files in 23 calls.');
+    expect(passageSearchReadLine(RESULT)).toBe('7 of 23 calls answered, over 7 of 22 files.');
+    expect(passageSearchReadLine({ ...RESULT, calls: { planned: 23, answered: 23, failed: 0, cut: 0, cancelled: 0, unsent: 0 } })).toBe('Read 22 files in 23 calls.');
   });
 
   it('lists what is missing and why, and nothing when nothing is', () => {
     expect(passageSearchMissingLines(RESULT)).toEqual([
-      '15 calls were not made, so the text they cover was not searched.',
+      '15 of 22 files were not searched.',
+      '1 of 22 files was searched only in part.',
+      '2 calls were stopped in flight, so the text they cover was not searched; they may still have been charged.',
+      '13 calls were not made, so the text they cover was not searched.',
       '1 call failed, so the text it covers was not searched.',
       '1 reply was cut off at the length limit; the instances finished before the cut are kept.',
       '1 quote could not be found in the text as quoted, so it is not listed.',
@@ -81,21 +84,22 @@ describe('a result in words', () => {
     const { analysis: _analysis, leftOutMessage: _leftOut, ...whole } = RESULT;
     expect(passageSearchMissingLines({
       ...whole,
+      files: { ...whole.files, searched: { full: 22, partial: 0, none: 0 } },
       dropped: { 'quote-not-found': 0, 'quote-ambiguous': 0, malformed: 0, duplicate: 0 },
-      calls: { planned: 23, answered: 23, failed: 0, cut: 0, unsent: 0 }
+      calls: { planned: 23, answered: 23, failed: 0, cut: 0, cancelled: 0, unsent: 0 }
     })).toEqual([]);
   });
 
-  it('says how many files were not searched, and calls cancelled by Stop, when the host reports them', () => {
+  it('says how many files were not searched or searched in part, and calls stopped in flight', () => {
     const lines = passageSearchMissingLines({
       ...RESULT,
       calls: { ...RESULT.calls, cancelled: 2 },
-      files: { ...RESULT.files, read: 23, coverage: { full: 19, partial: 1, none: 3 } }
+      files: { ...RESULT.files, planned: 23, searched: { full: 19, partial: 1, none: 3 } }
     });
     expect(lines.slice(0, 3)).toEqual([
       '3 of 23 files were not searched.',
       '1 of 23 files was searched only in part.',
-      '2 calls were cancelled when the search stopped, so the text they cover was not searched.'
+      '2 calls were stopped in flight, so the text they cover was not searched; they may still have been charged.'
     ]);
   });
 
@@ -118,9 +122,9 @@ describe('formatPassageSearchReport', () => {
 
 - **Question:** Find every time the White Rabbit checks his watch.
 - **Found:** 3 instances in 2 files
-- **Read:** 7 of 23 calls answered, over 22 files.
+- **Read:** 7 of 23 calls answered, over 7 of 22 files.
 - **Model:** test/reader
-- **Ended early:** Stopped before every call was made.
+- **Ended early:** Stopped before every call was answered.
 
 ## Analysis
 
@@ -144,6 +148,8 @@ describe('formatPassageSearchReport', () => {
 
 > took a watch out of its waistcoat-pocket
 
+_In context:_ …when the Rabbit actually […], and looked at it…
+
 The Rabbit consults the watch and hurries on.
 
 ### #2 · chapters/alice-ch1.md · line 31
@@ -159,11 +165,16 @@ The Rabbit consults the watch and hurries on.
 
 > looked at it, and then hurried on
 
+_In context:_ …pocket, and […], Alice started…
+
 A second look at the watch.
 
 ## What was left out
 
-- 15 calls were not made, so the text they cover was not searched.
+- 15 of 22 files were not searched.
+- 1 of 22 files was searched only in part.
+- 2 calls were stopped in flight, so the text they cover was not searched; they may still have been charged.
+- 13 calls were not made, so the text they cover was not searched.
 - 1 call failed, so the text it covers was not searched.
 - 1 reply was cut off at the length limit; the instances finished before the cut are kept.
 - 1 quote could not be found in the text as quoted, so it is not listed.
@@ -184,8 +195,8 @@ A second look at the watch.
       analysisMissing: 'failed',
       ended: 'complete',
       dropped: { 'quote-not-found': 0, 'quote-ambiguous': 0, malformed: 0, duplicate: 0 },
-      calls: { planned: 23, answered: 23, failed: 0, cut: 0, unsent: 0 },
-      files: { read: 22, withInstances: 0, leftOut: { unreadable: 0, unsplittable: 0, empty: 0 } }
+      calls: { planned: 23, answered: 23, failed: 0, cut: 0, cancelled: 0, unsent: 0 },
+      files: { planned: 22, searched: { full: 22, partial: 0, none: 0 }, withInstances: 0, leftOut: { unreadable: 0, unsplittable: 0, empty: 0 } }
     });
     expect(report).toContain('## No instances found in 22 files.');
     expect(report).toContain('_The results were not organized: the organizing call failed. The list below is whole._');

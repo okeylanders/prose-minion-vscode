@@ -33,6 +33,7 @@ function createEngine(options: { model?: string | undefined; resolved?: PassageS
     }),
     plan: jest.fn(async () => ({ kind: 'planned' as const, plan: { planKey: 'key' } as never })),
     run: jest.fn(async () => ({ ended: 'complete' }) as never),
+    organizerAvailable: jest.fn(() => false),
     planOrganize: jest.fn(async () => ({ kind: 'unavailable' as const, message: 'none' })),
     organize: jest.fn(async (result: never) => result)
   };
@@ -139,6 +140,7 @@ describe('ProjectPassageSearchEngine run and organize', () => {
     const { engine, service } = createEngine();
     const result = { ended: 'stopped' } as never;
     const organizePlan = { planKey: 'o' } as never;
+    expect(engine.organizerAvailable()).toBe(false);
     await expect(engine.planOrganize(result)).resolves.toEqual({ kind: 'unavailable', message: 'none' });
     await engine.organize(result, organizePlan, {});
     expect(service.planOrganize).toHaveBeenCalledWith(result);

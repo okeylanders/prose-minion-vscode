@@ -216,7 +216,7 @@ export class PassageSearchRoute {
           });
         }
       });
-      await this.finish(requestId, result);
+      this.finish(requestId, result);
     } catch (error) {
       this.outputChannel.appendLine(`${LOG} Run failed (${faultKindOf(error)}).`);
       this.refuseRun(requestId, 'run-failed');
@@ -252,7 +252,7 @@ export class PassageSearchRoute {
       this.refuseOpen(requestId, 'no-instance');
       return;
     }
-    const file = held.result.files.read.find((read) => read.key === instance.file);
+    const file = held.result.files.planned.find((planned) => planned.key === instance.file);
     if (!file?.absolutePath) {
       this.refuseOpen(requestId, 'nothing-to-open');
       return;
@@ -341,7 +341,7 @@ export class PassageSearchRoute {
     this.outputChannel.appendLine(`${LOG} Organizing pass ${priced.organizePlanId} started.`);
     try {
       const organized = await this.deps.engine.organize(held.result, priced.plan, { signal: controller.signal });
-      await this.finish(requestId, organized);
+      this.finish(requestId, organized);
     } catch (error) {
       this.outputChannel.appendLine(`${LOG} Organizing failed (${faultKindOf(error)}).`);
       this.refuseRun(requestId, 'organize-failed');
@@ -351,14 +351,11 @@ export class PassageSearchRoute {
   }
 
   /** Hold the result as the newest, and post it. Nothing is held or posted for a view that is gone. */
-  private async finish(requestId: string, result: PassageSearchResult): Promise<void> {
+  private finish(requestId: string, result: PassageSearchResult): void {
     if (this.disposed) {
       return;
     }
-    const canOrganize = await this.canOrganize(result);
-    if (this.disposed) {
-      return;
-    }
+    const canOrganize = this.canOrganize(result);
     const resultId = this.mint('result');
     this.held = { resultId, result, canOrganize };
     this.outputChannel.appendLine(
@@ -375,19 +372,11 @@ export class PassageSearchRoute {
   /**
    * Whether "Organize these results" may be offered (D12a, D15): the reads
    * were cut short, an instance was found, no analysis exists, and the
-   * engine can price a pass over it. Pricing sends nothing to a model, and
-   * is how an engine with no organizer says so.
+   * engine has an organizer. Nothing is priced or probed to decide it, so a
+   * result whose key changed keeps the action.
    */
-  private async canOrganize(result: PassageSearchResult): Promise<boolean> {
-    if (!passageSearchReadsCutShort(result) || result.instances.length === 0 || result.analysis) {
-      return false;
-    }
-    try {
-      return (await this.deps.engine.planOrganize(result)).kind === 'planned';
-    } catch (error) {
-      this.outputChannel.appendLine(`${LOG} Organize availability check failed (${faultKindOf(error)}).`);
-      return false;
-    }
+  private canOrganize(result: PassageSearchResult): boolean {
+    return passageSearchReadsCutShort(result) && result.instances.length > 0 && !result.analysis && this.deps.engine.organizerAvailable();
   }
 
   private mint(kind: string): string {

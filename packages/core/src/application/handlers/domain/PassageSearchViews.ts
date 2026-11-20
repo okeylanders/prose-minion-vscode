@@ -11,7 +11,6 @@
  */
 
 import type {
-  PassageSearchCoverageView,
   PassageSearchEstimateView,
   PassageSearchOrganizeEstimateView,
   PassageSearchResultView
@@ -106,29 +105,6 @@ export function passageSearchOrganizeEstimateView(plan: PassageSearchOrganizePla
   };
 }
 
-/**
- * Two things the engine is gaining in review (PR #293) and may not carry
- * yet: a `cancelled` call count, apart from `unsent`, and each read file's
- * `coverage`. They are read here, and only here, so the views follow the
- * engine the day it has them; until then neither is sent.
- */
-type FileCoverage = 'full' | 'partial' | 'none';
-const isCoverage = (value: unknown): value is FileCoverage => value === 'full' || value === 'partial' || value === 'none';
-
-function cancelledCallsOf(result: PassageSearchResult): number | undefined {
-  const cancelled = (result.calls as { cancelled?: unknown }).cancelled;
-  return typeof cancelled === 'number' ? cancelled : undefined;
-}
-
-function coverageOf(result: PassageSearchResult): PassageSearchCoverageView | undefined {
-  const marks = result.files.read.map((file) => (file as { coverage?: unknown }).coverage);
-  if (marks.length === 0 || !marks.every(isCoverage)) {
-    return undefined;
-  }
-  const count = (mark: FileCoverage): number => marks.filter((found) => found === mark).length;
-  return { full: count('full'), partial: count('partial'), none: count('none') };
-}
-
 /** Whether a result's reads were cut short, so its organizing pass never started (D12a). */
 export function passageSearchReadsCutShort(result: PassageSearchResult): boolean {
   return result.ended === 'stopped' || result.ended === 'key-changed' || result.ended === 'provider-failed';
@@ -136,12 +112,9 @@ export function passageSearchReadsCutShort(result: PassageSearchResult): boolean
 
 export function passageSearchResultView(result: PassageSearchResult, resultId: string, canOrganize: boolean): PassageSearchResultView {
   const labels = new Map(result.labels.map((label) => [label.key, label.label]));
-  const files = new Map(result.files.read.map((file) => [file.key, file]));
+  const files = new Map(result.files.planned.map((file) => [file.key, file]));
   const endedMessage = describePassageSearchEnding(result.ended);
   const leftOutMessage = describePassageSearchLeftOut(result.files.leftOut);
-  const cancelled = cancelledCallsOf(result);
-  const coverage = coverageOf(result);
-  const { planned, answered, failed, cut, unsent } = result.calls;
   return {
     resultId,
     question: result.question,
@@ -178,12 +151,12 @@ export function passageSearchResultView(result: PassageSearchResult, resultId: s
     ...(result.analysisMissing ? { analysisMissing: result.analysisMissing } : {}),
     dropped: { ...result.dropped },
     overLimit: result.overLimit,
-    calls: { planned, answered, failed, cut, unsent, ...(cancelled !== undefined ? { cancelled } : {}) },
+    calls: { ...result.calls },
     files: {
-      read: result.files.read.length,
-      withInstances: result.files.read.filter((file) => file.instances > 0).length,
-      leftOut: { ...result.files.leftOut },
-      ...(coverage ? { coverage } : {})
+      planned: result.files.planned.length,
+      searched: { ...result.files.searched },
+      withInstances: result.files.planned.filter((file) => file.instances > 0).length,
+      leftOut: { ...result.files.leftOut }
     },
     ended: result.ended,
     ...(endedMessage ? { endedMessage } : {}),

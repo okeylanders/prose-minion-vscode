@@ -115,8 +115,8 @@ describe('PassageSearchRoute', () => {
         ended: 'complete',
         canOrganize: false,
         labels: [{ label: ALICE_LABEL, count: 2, files: 2 }],
-        files: { read: 3, withInstances: 2 },
-        calls: { planned: 3, answered: 3, failed: 0, cut: 0, unsent: 0 }
+        files: { planned: 3, withInstances: 2 },
+        calls: { planned: 3, answered: 3, failed: 0, cut: 0, cancelled: 0, unsent: 0 }
       });
       expect(answer.result.instances[0]).toEqual({
         number: 1,
@@ -141,7 +141,7 @@ describe('PassageSearchRoute', () => {
     });
 
     it('says how a run that was cut short ended, in the engine\'s words', async () => {
-      await finished(aliceResult({ ended: 'key-changed', calls: { planned: 3, answered: 1, failed: 0, cut: 0, unsent: 2 } }));
+      await finished(aliceResult({ ended: 'key-changed', calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2 } }));
       const [answer] = results();
       expect(answer.status === 'finished' && answer.result.endedMessage)
         .toBe('The API key changed during the search, so the remaining calls were not made.');
@@ -215,12 +215,12 @@ describe('PassageSearchRoute', () => {
 
       await send(MessageType.PASSAGE_SEARCH_STOP, { requestId: 'run-1' });
       expect(signal?.aborted).toBe(true);
-      const partial = aliceResult({ ended: 'stopped', calls: { planned: 3, answered: 1, failed: 0, cut: 0, unsent: 2 } });
+      const partial = aliceResult({ ended: 'stopped', calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2 } });
       reads.resolve(partial);
       await run;
 
       const [answer] = results();
-      expect(answer).toMatchObject({ requestId: 'run-1', status: 'finished', result: { ended: 'stopped', endedMessage: 'Stopped before every call was made.' } });
+      expect(answer).toMatchObject({ requestId: 'run-1', status: 'finished', result: { ended: 'stopped', endedMessage: 'Stopped before every call was answered.' } });
       expect(answer.status === 'finished' && answer.result.instances).toHaveLength(2);
       expect(answer.status === 'finished' && answer.result.analysis).toBeUndefined();
       expect(engine.run).toHaveBeenCalledTimes(1);
@@ -334,7 +334,7 @@ describe('PassageSearchRoute', () => {
       const result = aliceResult();
       const resultId = await finished({
         ...result,
-        files: { ...result.files, read: result.files.read.map((file) => (file.key === 'f2' ? { ...file, absolutePath: ALICE_ABSOLUTE } : file)) }
+        files: { ...result.files, planned: result.files.planned.map((file) => (file.key === 'f2' ? { ...file, absolutePath: ALICE_ABSOLUTE } : file)) }
       });
       await send(MessageType.PASSAGE_SEARCH_OPEN_INSTANCE, { requestId: 'open-1', resultId, instance: 2 });
       expect(openFileInEditor).toHaveBeenCalledWith(ALICE_ABSOLUTE, {});
@@ -378,12 +378,12 @@ describe('PassageSearchRoute', () => {
       reads.resolve(aliceResult({ ended: 'stopped' }));
       await run;
       expect(postMessage).not.toHaveBeenCalled();
-      expect(engine.planOrganize).not.toHaveBeenCalled();
     });
   });
 
   describe('logs', () => {
     it('carry ids, counts and fault kinds, never the writer\'s text', async () => {
+      engine.organizerAvailable.mockReturnValue(true);
       engine.planOrganize.mockResolvedValue({ kind: 'planned', plan: ORGANIZE_PLAN });
       engine.run.mockImplementationOnce(async (_plan, options?: PassageSearchRunOptions) => {
         options?.onProgress?.({ calls: { planned: 3, done: 1 }, found: 1 });

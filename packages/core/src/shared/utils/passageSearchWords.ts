@@ -50,10 +50,13 @@ export function passageSearchProgressLine(progress: { calls: { planned: number; 
   return `Reading ${number(progress.calls.done)} of ${number(progress.calls.planned)} · ${number(progress.found)} found`;
 }
 
+/** Files a call answered for, whole or in part. */
+const filesSearched = (files: PassageSearchResultView['files']): number => files.searched.full + files.searched.partial;
+
 /** The host's own headline: "14 instances in 6 files", or that nothing was found. */
 export function passageSearchSummary(result: Pick<PassageSearchResultView, 'instances' | 'files'>): string {
   return result.instances.length === 0
-    ? `No instances found in ${plural(result.files.read, 'file')}.`
+    ? `No instances found in ${plural(filesSearched(result.files), 'file')}.`
     : `${plural(result.instances.length, 'instance')} in ${plural(result.files.withInstances, 'file')}`;
 }
 
@@ -71,8 +74,8 @@ export function passageSearchCites(cites: readonly number[]): string {
 export function passageSearchReadLine(result: Pick<PassageSearchResultView, 'calls' | 'files'>): string {
   const { calls } = result;
   return calls.answered === calls.planned
-    ? `Read ${plural(result.files.read, 'file')} in ${plural(calls.planned, 'call')}.`
-    : `${number(calls.answered)} of ${plural(calls.planned, 'call')} answered, over ${plural(result.files.read, 'file')}.`;
+    ? `Read ${plural(result.files.planned, 'file')} in ${plural(calls.planned, 'call')}.`
+    : `${number(calls.answered)} of ${plural(calls.planned, 'call')} answered, over ${number(filesSearched(result.files))} of ${plural(result.files.planned, 'file')}.`;
 }
 
 /** Why a started organizing pass left no analysis, or how much of the list an analysis read; undefined when neither applies. */
@@ -104,13 +107,10 @@ export function passageSearchMissingLines(result: PassageSearchResultView): stri
       lines.push(line);
     }
   };
-  const coverage = result.files.coverage;
-  if (coverage) {
-    add(coverage.none, `${number(coverage.none)} of ${plural(result.files.read, 'file')} ${coverage.none === 1 ? 'was' : 'were'} not searched.`);
-    add(coverage.partial, `${number(coverage.partial)} of ${plural(result.files.read, 'file')} ${coverage.partial === 1 ? 'was' : 'were'} searched only in part.`);
-  }
-  const cancelled = calls.cancelled ?? 0;
-  add(cancelled, `${plural(cancelled, 'call was', 'calls were')} cancelled when the search stopped, so the text they cover was not searched.`);
+  const { searched, planned } = result.files;
+  add(searched.none, `${number(searched.none)} of ${plural(planned, 'file')} ${searched.none === 1 ? 'was' : 'were'} not searched.`);
+  add(searched.partial, `${number(searched.partial)} of ${plural(planned, 'file')} ${searched.partial === 1 ? 'was' : 'were'} searched only in part.`);
+  add(calls.cancelled, `${plural(calls.cancelled, 'call was', 'calls were')} stopped in flight, so the text they cover was not searched; they may still have been charged.`);
   add(calls.unsent, `${plural(calls.unsent, 'call was', 'calls were')} not made, so the text they cover was not searched.`);
   add(calls.failed, `${plural(calls.failed, 'call')} failed, so the text ${calls.failed === 1 ? 'it covers' : 'they cover'} was not searched.`);
   add(calls.cut, `${plural(calls.cut, 'reply was', 'replies were')} cut off at the length limit; the instances finished before the cut are kept.`);

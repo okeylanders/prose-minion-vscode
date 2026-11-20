@@ -29,16 +29,27 @@ describe('PassageSearchRoute: organize these results', () => {
   const results = () => host.results();
   const finished = (result?: PassageSearchResult) => host.finished(result);
   const organizePlans = () => host.posted<PassageSearchOrganizePlanPayload>(MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN);
-  const stopped = () => aliceResult({ ended: 'stopped', calls: { planned: 3, answered: 1, failed: 0, cut: 0, unsent: 2 } });
-  const withOrganizer = () => engine.planOrganize.mockResolvedValue({ kind: 'planned', plan: ORGANIZE_PLAN });
+  const stopped = () => aliceResult({ ended: 'stopped', calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2 } });
+  const withOrganizer = () => {
+    engine.organizerAvailable.mockReturnValue(true);
+    engine.planOrganize.mockResolvedValue({ kind: 'planned', plan: ORGANIZE_PLAN });
+  };
   const canOrganize = () => {
     const answer = results().find((found) => found.requestId === 'run-1');
     return answer?.status === 'finished' ? answer.result.canOrganize : undefined;
   };
 
-  it('is offered for a stopped result that holds an instance, when the engine can price a pass', async () => {
+  it('is offered for a stopped result that holds an instance, when the engine has an organizer, and prices nothing to decide', async () => {
     withOrganizer();
     await finished(stopped());
+    expect(canOrganize()).toBe(true);
+    expect(engine.planOrganize).not.toHaveBeenCalled();
+  });
+
+  it('keeps the action on a key-changed result even when a pass could not be priced right now', async () => {
+    engine.organizerAvailable.mockReturnValue(true);
+    engine.planOrganize.mockRejectedValue(new Error('no key'));
+    await finished(aliceResult({ ended: 'key-changed' }));
     expect(canOrganize()).toBe(true);
   });
 
@@ -111,7 +122,7 @@ describe('PassageSearchRoute: organize these results', () => {
   });
 
   it('passes on the engine\'s words when a pass cannot be priced after all', async () => {
-    engine.planOrganize.mockResolvedValueOnce({ kind: 'planned', plan: ORGANIZE_PLAN });
+    engine.organizerAvailable.mockReturnValue(true);
     const resultId = await finished(stopped());
     engine.planOrganize.mockResolvedValueOnce({ kind: 'unavailable', message: 'Organizing the results is not available yet.' });
     await send(MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN_REQUEST, { requestId: 'organize-1', resultId });

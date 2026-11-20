@@ -178,7 +178,7 @@ describe('PassageSearchPanel', () => {
     it('announces the outcome, with how the run ended', () => {
       finish();
       expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull();
-      expect(screen.getByRole('status').textContent).toContain('3 instances in 2 files. Stopped before every call was made.');
+      expect(screen.getByRole('status').textContent).toContain('3 instances in 2 files. Stopped before every call was answered.');
     });
 
     it('shows a refused Run in the host\'s words', () => {
@@ -192,7 +192,7 @@ describe('PassageSearchPanel', () => {
     it('shows the headline, the analysis, the label table, every instance and what was left out', () => {
       finish();
       expect(screen.getByRole('heading', { name: 'The Rabbit checks the time whenever Alice is watching' })).toBeTruthy();
-      expect(screen.getByText('Stopped before every call was made.')).toBeTruthy();
+      expect(screen.getByText('Stopped before every call was answered.')).toBeTruthy();
 
       const analysis = screen.getByRole('region', { name: 'Analysis' });
       expect(within(analysis).getByRole('heading', { name: 'The watch as a prop' })).toBeTruthy();
@@ -209,7 +209,9 @@ describe('PassageSearchPanel', () => {
       expect(within(instances[0]).getByText('took a watch out of its waistcoat-pocket').tagName).toBe('MARK');
 
       const missing = within(screen.getByRole('region', { name: 'What was left out' })).getAllByRole('listitem').map((item) => item.textContent);
-      expect(missing).toContain('15 calls were not made, so the text they cover was not searched.');
+      expect(missing).toContain('15 of 22 files were not searched.');
+      expect(missing).toContain('2 calls were stopped in flight, so the text they cover was not searched; they may still have been charged.');
+      expect(missing).toContain('13 calls were not made, so the text they cover was not searched.');
       expect(missing).toContain('2 quotes matched more than one place, so they are not listed.');
     });
 
@@ -257,9 +259,9 @@ describe('PassageSearchPanel', () => {
 
     it('shows no ending line for a complete search, and says when nothing was found', () => {
       const { analysis: _analysis, endedMessage: _ended, ...plain } = RESULT;
-      finish({ ...plain, ended: 'complete', instances: [], labels: [], files: { ...RESULT.files, withInstances: 0 } });
+      finish({ ...plain, ended: 'complete', instances: [], labels: [], files: { ...RESULT.files, searched: { full: 22, partial: 0, none: 0 }, withInstances: 0 } });
       expect(screen.getByRole('heading', { name: 'No instances found in 22 files.' })).toBeTruthy();
-      expect(screen.queryByText('Stopped before every call was made.')).toBeNull();
+      expect(screen.queryByText('Stopped before every call was answered.')).toBeNull();
       expect(screen.queryByRole('region', { name: 'Instances' })).toBeNull();
     });
 

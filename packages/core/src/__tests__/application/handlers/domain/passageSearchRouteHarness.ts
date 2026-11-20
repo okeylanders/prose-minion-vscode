@@ -36,6 +36,7 @@ export function alicePlan(overrides: Partial<PassageSearchPlan['estimate']> = {}
     organize: true,
     systemMessage: 'system',
     chunkWords: 12000,
+    ceilings: { readOutputTokens: 12000, organizeOutputTokens: 4000 },
     files: [],
     chunks: [],
     estimate: {
@@ -52,6 +53,8 @@ export function alicePlan(overrides: Partial<PassageSearchPlan['estimate']> = {}
     }
   };
 }
+
+const WHOLE = { planned: 1, admitted: 1, answered: 1 };
 
 export function aliceResult(overrides: Partial<PassageSearchResult> = {}): PassageSearchResult {
   return {
@@ -88,13 +91,14 @@ export function aliceResult(overrides: Partial<PassageSearchResult> = {}): Passa
     labels: [{ key: 'watch checked', label: ALICE_LABEL, count: 2, files: 2 }],
     dropped: { 'quote-not-found': 1, 'quote-ambiguous': 0, malformed: 0, duplicate: 2 },
     overLimit: 0,
-    calls: { planned: 3, answered: 3, failed: 0, cut: 0, unsent: 0 },
+    calls: { planned: 3, answered: 3, failed: 0, cut: 0, cancelled: 0, unsent: 0 },
     files: {
-      read: [
-        { key: 'f1', displayPath: 'chapters/alice-ch1.md', absolutePath: ALICE_ABSOLUTE, lines: 'document', instances: 1 },
-        { key: 'f2', displayPath: 'Selected text', lines: 'text', instances: 1 },
-        { key: 'f3', displayPath: 'chapters/alice-ch2.md', absolutePath: '/home/dodgson/novel/chapters/alice-ch2.md', lines: 'document', instances: 0 }
+      planned: [
+        { key: 'f1', displayPath: 'chapters/alice-ch1.md', absolutePath: ALICE_ABSOLUTE, lines: 'document', instances: 1, chunks: WHOLE, searched: 'full' },
+        { key: 'f2', displayPath: 'Selected text', lines: 'text', instances: 1, chunks: WHOLE, searched: 'full' },
+        { key: 'f3', displayPath: 'chapters/alice-ch2.md', absolutePath: '/home/dodgson/novel/chapters/alice-ch2.md', lines: 'document', instances: 0, chunks: WHOLE, searched: 'full' }
       ],
+      searched: { full: 3, partial: 0, none: 0 },
       leftOut: { unreadable: 0, unsplittable: 0, empty: 0 }
     },
     ended: 'complete',
@@ -125,6 +129,7 @@ export interface FakePassageSearchEngine extends PassageSearchEngine {
   run: jest.Mock<Promise<PassageSearchResult>, [PassageSearchPlan, PassageSearchRunOptions?]>;
   planOrganize: jest.Mock<Promise<PassageSearchOrganizePlanOutcome>, [PassageSearchResult]>;
   organize: jest.Mock<Promise<PassageSearchResult>, [PassageSearchResult, PassageSearchOrganizePlan, Pick<PassageSearchRunOptions, 'signal'>?]>;
+  organizerAvailable: jest.Mock<boolean, []>;
 }
 
 /** Plans the *Alice* plan, runs to the *Alice* result, and has no organizer unless a test gives it one. */
@@ -133,6 +138,7 @@ export function fakePassageSearchEngine(): FakePassageSearchEngine {
   return {
     plan: jest.fn<Promise<PassageSearchPlanOutcome>, [PassageSearchRequest]>(async () => ({ kind: 'planned', plan: alicePlan() })),
     run: jest.fn<Promise<PassageSearchResult>, [PassageSearchPlan, PassageSearchRunOptions?]>(async () => aliceResult()),
+    organizerAvailable: jest.fn<boolean, []>(() => false),
     planOrganize: jest.fn<Promise<PassageSearchOrganizePlanOutcome>, [PassageSearchResult]>(async () => unavailable),
     organize: jest.fn<Promise<PassageSearchResult>, [PassageSearchResult, PassageSearchOrganizePlan, Pick<PassageSearchRunOptions, 'signal'>?]>(async (result) => result)
   };
