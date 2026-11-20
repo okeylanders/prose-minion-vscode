@@ -1,6 +1,6 @@
 # ADR 2026-11-20: Passage Search, a Search That Reads
 
-**Status:** Proposed (Slice 0). Revised 2026-11-20 after PR #292's review (D2a, D3a, D5a, D9a, D11a, D12a, D19a; see "Amendments after review"). P1–P4 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief needed it; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
+**Status:** Proposed (Slice 0). Revised 2026-11-20 after PR #292's review (D2a, D3a, D5a, D9a, D11a, D12a, D19a) and its re-review (D19a's rollback; see "Amendments after review"). P1–P4 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief needed it; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
 **Date:** 2026-11-20
 **Epic:** [Passage Search](../../.todo/epics/epic-passage-search-2026-11-20/README.md)
 (its "Defaults taken" table is binding here)
@@ -444,7 +444,8 @@ request is bounded** (PR #292 F4, F6).
 - It joins `MODEL_SCOPE_SETTING_KEYS`, `AIResourceManager`'s bundles,
   `MODEL_KEYS`, a row in the Settings overlay with its following copy
   (`MODEL_FOLLOW_COPY`), and `help/index.json`.
-- **The estimate** prices the exact messages the run will send, through a
+- **The estimate** prices the exact messages the read calls will send
+  (the organizing pass is an allowance, D12a), through a
   price port of the engine's own (tests never reach the catalog). Output
   is priced at `typicalOutputTokens` a call, not the ceiling. With no live
   price, the estimate has calls and tokens and no `usd`, and callers say
@@ -522,8 +523,8 @@ registration).
   codec by `passageSearchRequestPromptSync.test.ts`.
 
 **D17. Settled before the reply commits; the card commits with it.**
-- Settlement checks form, then each group and file against one catalog
-  for the operation (`unknown-group`, `unknown-file`, `ambiguous-file`,
+- Settlement checks form, then each group and file against D3a's
+  authoritative listing (`listGroupFiles`), one for the operation (`unknown-group`, `unknown-file`, `ambiguous-file`,
   `no-excerpt`, `catalog-unreadable`). It reads no file and prices nothing.
 - A bad frame is dropped with its typed reason and gives no card.
 - The card is `passageSearchRequest` on the reply turn: the question, the
@@ -583,10 +584,29 @@ turn behind. So the request turn proves nothing.
   after. Status reads only this field.
 - **A delivery that is not adopted removes its request turn** and leaves
   the card `ready`: the result is still held, and **Send** tries again
-  without searching again. The results delivery wraps `completeWorkshopRun`
-  so that every `undefined` it returns (cancelled, no key, no retained
-  conversation, a provider failure) rolls the request turn back, as
-  `rollbackMessageRun` does for a press.
+  without searching again.
+- **The rollback happens where the run is given up, never after** (PR
+  #292 re-review). `completeWorkshopRun` calls `session.abandonRun` on
+  each non-adoption branch before it returns, which clears `activeRun`;
+  `rollbackMessageRun` called afterwards finds no run and removes
+  nothing. So a wrapper around `completeWorkshopRun` cannot do it.
+  - `completeWorkshopRun`'s input gains a feature-neutral
+    `notAdopted?: 'abandon' | 'rollback'`, default `'abandon'`. With
+    `'rollback'`, every branch that today calls `abandonRun` (cancelled, no
+    key, no retained conversation) calls `rollbackMessageRun(requestId)`
+    in its place, while `activeRun` still names the run. Nothing else in
+    the function changes. A results delivery passes `'rollback'`; every
+    other caller passes nothing and behaves as today (their tests hold it).
+  - **A thrown failure** (a provider error, a dispatch that never returns
+    a result) never reaches `completeWorkshopRun`. It takes the room
+    handler's existing failed-directed-run path, which calls
+    `rollbackMessageRun` before the run is cleared, as a press's does. The
+    delivery is a directed run, so it is on that path already; a test
+    holds it for this request kind.
+  - **Neither path touches the held result.** The handler drops a held
+    result only on an adopted delivery's eviction (`heldResults`), on
+    **Discard**, or when its room is replaced.
+  - Edit-offer completion (`completeWorkshopEditOfferRun`) is unchanged.
 - **A request turn with no receipt after it is never read as delivered,**
   whatever left it there (a crash between the two commits). On reopen such
   a card is `pending`.
@@ -594,8 +614,10 @@ turn behind. So the request turn proves nothing.
   the dispatch: the room revision the search began in, the card's turn
   still in the ledger, its author still a participant, and no run active.
   A failed check sends nothing and says why.
-- Tests: a delivery that resolves as failed leaves no request turn and a
-  `ready` card; Send after it delivers without a second search; a session
+- Tests: for each non-adoption branch of `completeWorkshopRun` (Stop, no
+  key, no retained conversation) and for a thrown provider failure, the
+  delivery leaves no request turn, no active run, and a `ready` card with
+  its result; Send after it delivers without a second search; a session
   reopened with an orphan request turn reads `pending`; a participant
   removed before Send.
 
@@ -672,7 +694,8 @@ calls, instances, drops by reason, repairs by kind, tokens, milliseconds).
 mocked transport. Fixtures use *Alice*-style text. The deterministic edges
 each have a test: chunks and overlap, anchoring and each drop reason, the
 merge, natural order, the plan's bounds and refusals, `planKey`, the
-estimate's messages equal to the run's, Stop, a key change, a cut reply's
+estimate's read-call messages equal to the run's (the organizing pass is
+an allowance, D12a), Stop, a key change, a cut reply's
 salvage, the organizing pass's citation and quotation checks, the trailer
 codec and prompt sync, status derivation, the directive's fit and
 neutralization, and `price-changed`.
@@ -693,6 +716,7 @@ all taken:
 | F3 (P1) | a word budget on chunk bodies | D5a: overlap inside the budget, oversized paragraphs split, each rendered request measured |
 | F4 (P1) | the pass could follow Stop; delivery was automatic | D12a, D21: Stop starts nothing; organizing and sending a partial result are explicit presses |
 | F5 (P1) | `delivered` read the request turn | D19a: a receipt on the adopted reply; a failed delivery leaves the card `ready` |
+| F5, re-review (P1) | the rollback wrapped `completeWorkshopRun`, after `abandonRun` had cleared the run | D19a: `notAdopted: 'rollback'` inside the completion, and the directed run's own path for a thrown failure |
 | F6 (P2) | the pass priced at a typical output only | D12a: an allowance, said to be one; the whole request bounded; the persona's turn named as apart |
 | F7 (P2) | the model's quote was shown | D9a: the frozen source slice, everywhere |
 
