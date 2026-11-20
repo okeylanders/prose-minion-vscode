@@ -5,13 +5,15 @@ import {
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
-  assertCreativeVariationsDraftCheckpointShape,
   assertCreativeVariationsDraftIntegrity,
   assertCreativeVariationsDraftShape,
   cloneCreativeVariationsDraft,
-  normalizeCreativeVariationsDraftForHydration,
   summarizeCreativeVariationsDraft
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigCodec';
+import {
+  assertCreativeVariationsDraftCheckpointShape,
+  normalizeCreativeVariationsDraftForHydration
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsCheckpointNormalization';
 import {
   createCreativeVariationsWorkupIdFactory
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsWorkupId';
