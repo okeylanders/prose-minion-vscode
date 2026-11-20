@@ -21,6 +21,7 @@ import { UseDictionaryReturn } from './domain/useDictionary';
 import { UseDictionaryHistoryReturn } from './domain/useDictionaryHistory';
 import { UseContextReturn } from './domain/useContext';
 import { UseSearchReturn } from './domain/useSearch';
+import { UsePassageSearchReturn } from './domain/usePassageSearch';
 import { UseSettingsReturn } from './domain/useSettings';
 import { UseSelectionReturn } from './domain/useSelection';
 import { UsePublishingSettingsReturn } from './domain/usePublishingSettings';
@@ -42,6 +43,7 @@ export interface AppMessageRouterDeps {
   dictionaryHistory: UseDictionaryHistoryReturn;
   context: UseContextReturn;
   search: UseSearchReturn;
+  passageSearch: UsePassageSearchReturn;
   settings: UseSettingsReturn;
   selection: UseSelectionReturn;
   publishingSettings: UsePublishingSettingsReturn;
@@ -65,7 +67,7 @@ export interface AppMessageRouterDeps {
  */
 export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandlerMap => {
   const {
-    analysis, metrics, dictionary, dictionaryHistory, context, search, settings, selection,
+    analysis, metrics, dictionary, dictionaryHistory, context, search, passageSearch, settings, selection,
     publishingSettings, wordSearchSettings, wordFrequencySettings, tokensSettings,
     themeSettings, tokenTracking, contextPathsSettings, contextPathsSuggestion, modelsSettings, accountBalance,
     setActiveTab, setError,
@@ -107,6 +109,11 @@ export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandle
       dictionaryHistory.followRecordedEntry(msg.payload.historyEntryId);
       setError(''); // Clear error on success
     },
+    [MessageType.PASSAGE_SEARCH_PLAN]: passageSearch.handlePlan,
+    [MessageType.PASSAGE_SEARCH_PROGRESS]: passageSearch.handleProgress,
+    [MessageType.PASSAGE_SEARCH_RESULT]: passageSearch.handleResult,
+    [MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN]: passageSearch.handleOrganizePlan,
+    [MessageType.PASSAGE_SEARCH_OPEN_INSTANCE_RESULT]: passageSearch.handleOpenInstanceResult,
     [MessageType.DICTIONARY_HISTORY]: dictionaryHistory.handleHistory,
     [MessageType.DICTIONARY_HISTORY_ENTRY]: dictionaryHistory.handleHistoryEntry,
     [MessageType.DICTIONARY_HISTORY_SEARCH_RESULT]: dictionaryHistory.handleHistorySearchResult,

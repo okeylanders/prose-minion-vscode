@@ -30,6 +30,7 @@ import { useDictionary } from './hooks/domain/useDictionary';
 import { useDictionaryHistory } from './hooks/domain/useDictionaryHistory';
 import { useContext } from './hooks/domain/useContext';
 import { useSearch } from './hooks/domain/useSearch';
+import { usePassageSearch } from './hooks/domain/usePassageSearch';
 import { useSettings } from './hooks/domain/useSettings';
 import { useSelection } from './hooks/domain/useSelection';
 import { usePublishingSettings } from './hooks/domain/usePublishingSettings';
@@ -56,6 +57,7 @@ export const App: React.FC = () => {
   const dictionaryHistory = useDictionaryHistory(dictionary);
   const context = useContext();
   const search = useSearch();
+  const passageSearch = usePassageSearch();
   const settings = useSettings();
   const selection = useSelection();
   const publishingSettings = usePublishingSettings();
@@ -103,6 +105,7 @@ export const App: React.FC = () => {
     dictionaryHistory,
     context,
     search,
+    passageSearch,
     settings,
     selection,
     publishingSettings,
@@ -130,6 +133,7 @@ export const App: React.FC = () => {
     ...dictionaryHistory.persistedState,
     ...context.persistedState,
     ...search.persistedState,
+    ...passageSearch.persistedState,
     ...settings.persistedState,
     ...publishingSettings.persistedState,
     ...wordSearchSettings.persistedState,
@@ -352,6 +356,7 @@ export const App: React.FC = () => {
             <SearchTab
               vscode={vscode}
               search={search}
+              passageSearch={passageSearch}
               metrics={metrics}
               wordSearchSettings={wordSearchSettings}
               modelsSettings={modelsSettings}
