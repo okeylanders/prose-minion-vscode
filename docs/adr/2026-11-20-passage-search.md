@@ -720,6 +720,35 @@ all taken:
 | F6 (P2) | the pass priced at a typical output only | D12a: an allowance, said to be one; the whole request bounded; the persona's turn named as apart |
 | F7 (P2) | the model's quote was shown | D9a: the frozen source slice, everywhere |
 
+## Amendments from Slice 1 (the engine)
+
+What building the engine changed or settled. Each is the orchestrator's
+default, and Okey's to overturn.
+
+| # | Decision | As built | Why |
+|---|---|---|---|
+| S1 | D8 | `salvageModelJson` gains an opt-in `arrayItems`: a cut array keeps its finished items. Default behaviour is unchanged. | It kept only finished root members, so a cut `{"instances":[…` lost every instance. The option is the parser's and names no feature. |
+| S2 | D6 | Two more refusals: `question-too-long`, `too-many-scopes`. | D6 named both bounds and gave neither a reason. |
+| S3 | D7, D11 | `failureStreak` (5) provider errors in a row, with no answered call between, stop the run: queued calls go unsent, `ended` is `provider-failed`, what was found is kept, and no organizing pass starts. An unreadable reply neither adds to the streak nor resets it. | A key out of credits would otherwise make up to 300 failing calls. Calls already in flight when the streak trips still finish. |
+| S4 | D2, D12a | A plan asks for the organizing pass only when an organizer is present (`organizer.available`). With none, `organize: true` plans no call and no allowance. | The estimate must not price a call that cannot run. |
+| S5 | D3 | `active-file` is read by the engine's own strict file reader (size bound, strict UTF-8), its identity from `EditorContext`; the engine does not use `TextSourceResolver`. | One reader, one set of bounds, for every file. |
+| S6 | D3, D3a | The engine does not call `findConfiguredResource`. `PassageSearchScopeFiles` has its own root-aware lookup. The function still moved to its neutral module. | Its exact-match-first rule returns the first root's file and would hide the ambiguity D3a requires. |
+| S7 | D1 | The engine also imports `@/tools/measure/passageProseStats` (`proseSentenceSpans`), `@providers/OpenRouterModels`, `@/utils/textUtils`, `@/utils/tokenUsage`, `ContextPathPatternSafety` and `@/utils/configuredResourcePath`. The boundary test lists them. | D5a needs the sentence rule and D3 the pattern rules; the rest are leaf helpers. |
+| S8 | D14 | The price port is `facts(model)`: `pricing?` and `contextLength?`. | D5a needs the window from the same catalog read. |
+| S9 | D11 | The result also holds the `question`, `leftOut.empty` (files with no words), `overLimit` (instances past the bound) and `analysisMissing` (why a started pass left no analysis). | Each is something the writer must be told. |
+| S10 | D10 | Overlap is judged against the instance that stands. A range clear of the kept one is its own moment, even when a dropped one touched both. | A chain of touching ranges would otherwise swallow distinct moments. |
+| S11 | D10, D11 | `instance-limit` is reported only when something was lost: an unsent call or an instance over the bound. | Reaching exactly the bound on the last call loses nothing. |
+| S12 | D5a | The overlap gives way first: it shrinks to nothing when it leaves no room beside the chunk's first unit. | A chunk must always make progress. |
+| S13 | D3 | A selection and its whole file are separate identities, so naming both can show a moment twice. | The stated limit. |
+| S14 | D7 | Neutralizing the frames rewrites `<` in a `passage-search-` tag. A quote running through such a tag does not anchor. | The stated limit; a manuscript does not hold these tags. |
+| S15 | D14 | The Lightbox call control keeps its own price format (it prints "≈ $0.00" at exactly zero). Craft Flags and the saved-boards view use the shared formatter. | "Output unchanged" came first. |
+| S16 | D24 | `help/index.json` maps the model setting to the Category Search section until Slice 2 writes Passage Search's. | No section exists yet. |
+
+Values chosen where the ADR gave none: `outputTokens` 12,000,
+`typicalOutputTokens` 800, `responseCharacters` 120,000, `safetyMultiple`
+4, and in `organize`: `outputTokens` 4,000, `typicalOutputTokens` 1,200,
+`headlineCharacters` 160, `sections` 8, `claims` 8, `claimCharacters` 300.
+
 ## Consequences
 
 - **A paid fan-out is new.** A manuscript-wide search can be hundreds of
