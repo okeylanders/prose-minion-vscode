@@ -1,7 +1,7 @@
 # Feature: Passage Search, a Search That Reads
 
 **Date Identified:** 2026-11-19
-**Status:** Idea. Medium to large: a third Search subtab, a fan-out reader with checked quotes, an organizing pass (P1), a model scope, and a persona request the writer approves (P2). An ADR, since it adds a model scope, a paid fan-out and a persona-started run.
+**Status:** Being built from 2026-11-20 on `epic/passage-search` (cut from the tip of `epic/workshop-persona-tools`). P1–P4 decided. The epic README there records progress and the defaults taken.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-19
 
@@ -111,6 +111,8 @@ the Lightbox follows the Workshop's.
 |---|---|---|
 | P1 | **A final pass organizes the results:** it puts them in sequence and writes a headline analysis, such as "What's an idiom Raven says a lot?" or "How do Jasper's gestures evolve across chapters?" | The shape is below. |
 | P2 | **Personas can run it too.** | Through a request the writer approves, since it is a paid fan-out a model would start. The shape is below. |
+| P3 | **Build it as an engine a research agent can call later** (2026-11-20). | Passage Search is close to a research agent. The engine takes a question and scopes and returns checked results, and the sidebar, the persona request and a future research agent are all callers. See below. |
+| P4 | **It searches any project locations, several at once** (2026-11-20): characters, locations, chapters and the other context groups, as well as the active file, a selection or a pattern. | See below. |
 
 ## The organizing pass (P1)
 
@@ -160,6 +162,46 @@ asks, and the writer decides.
   the `passageSearch` scope. Only the results reach the room.
 - **A Rewind that removes the request** removes its card. A search already
   run stays in the reports it was saved to.
+
+## One engine, many callers (P3)
+
+- **The engine is a core service** (say `PassageSearchService`), host-free
+  and UI-free. It takes:
+  - a question;
+  - one or more scopes (P4);
+  - options: organize or not, and the model it was priced for.
+
+  It offers `estimate` (calls and price) and `run` (with a stop signal and
+  progress). It returns a typed result: the checked instances, the labels
+  and counts, the organizing pass's analysis, and what was dropped and why.
+- **Callers own the consent.** The engine never asks the writer anything.
+  - The sidebar confirms the price on a press.
+  - A persona's request shows a card with Run (P2).
+  - A future research agent ([Workshop Research
+    Agent](../feature-workshop-research-agent/README.md), "a run policy,
+    not a helper task") would call the same engine under its own consent
+    rule.
+- **Nothing in the engine names the sidebar, the Workshop or a persona.** A
+  boundary test holds that, as `boundaries.test.ts` holds the helper's.
+
+## Scopes: any project locations, several at once (P4)
+
+- **A scope is one of:**
+  - the active file;
+  - a selection;
+  - a context group (characters, locations, themes, things, chapters,
+    manuscript, project brief, general): every file in it;
+  - one file, by catalog key;
+  - a path or pattern (the sidebar's field, writer-typed only).
+- **A search takes several scopes at once**, such as chapters and
+  characters, de-duplicated by file.
+- **Files come from the shared catalog,** one per operation (the
+  Workshop's catalog-per-operation rule), so a group means exactly what
+  the picker shows.
+- **A persona names groups or files by catalog key, never a free path or
+  pattern.**
+- **Bounds:** at most some number of files and calls per search, in
+  `PROMPT_BUDGETS`. The estimate shows the count before anything is sent.
 
 ## Pieces it reuses
 
