@@ -2,7 +2,7 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
-## [2.15.0] - Unreleased
+## [2.15.0] - 2026-11-20
 
 ### Added
 
@@ -18,6 +18,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 - Workshop personas get feedback on whether their proposed memory notes and file edits reached you as cards or were dropped. If a proposal was dropped, the persona gets a brief reason it can use on its next reply.
 - Opening or refreshing a Workshop conversation with several attached files does less repeated work. Pinned context reads share the same improvement.
+- The Workshop startup tour opens again after the update. It begins with the context breakdown, earlier turns and bookmark jumps, `@` file attachments, and the new memory and help features.
 
 ### Fixed
 

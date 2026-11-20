@@ -5,11 +5,11 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.15.0] - Unreleased — Workshop navigation, context breakdown, and persona reference tools
+## [2.15.0] - 2026-11-20 — Workshop navigation, context breakdown, and persona reference tools
 
 ### Overview
 
-The range from v2.14.1 (`9b5551a3`) to the release branch base (`478157d0`) contains 114 commits and four direct merges into `main`.
+The range from v2.14.1 (`9b5551a3`) to the release branch base (`478157d0`) contains 114 commits and four direct merges into `main`. The release branch also incorporates the two follow-up planning notes from `main` through `7ddb876b`.
 
 - Everyday Conveniences, Round Two brings earlier turns, bookmark jumps, composer file mentions, memory controls, proposal feedback, and access to lenses and product help. [#283](https://github.com/okeylanders/prose-minion-vscode/pull/283) · [Round Two ADR](adr/2026-11-17-everyday-conveniences-round-two.md) · [Integration re-review](pr-reviews/pr-283-round-two-integration-rereview.md)
 - Workshop context intake reuses its project catalog, and the OpenRouter refresh in the same merge adds five models. The release branch also adds Gemini 4 Neon. [#284](https://github.com/okeylanders/prose-minion-vscode/pull/284) · [November 19 catalog audit](model-audit-2026-11-19.md)
@@ -49,6 +49,7 @@ The range from v2.14.1 (`9b5551a3`) to the release branch base (`478157d0`) cont
 
 ### Compatibility and release verification
 
+- The README highlights the new Workshop workflows with five screenshots. The Workshop startup notice moves to `v12` and adds four opening pages, with the previous release's introductions kept as primers. [README and tour record](../.memory-bank/20261119-2000-release-v2.15.0-readme-tour-and-artwork.md)
 - The session schema version stays the same and 2.15.0 reads earlier sessions. The v2.14.1 reader rejects turns containing the new `trailerOutcomes` field or the `lens_catalog`, `lens_read`, `help_search`, and `help_read` artifacts. Older readers ignore the separate archive `contextTally` field. Update installations together when sharing sessions that use the new persona features.
 - The [Round Two live-pass checklist](../.todo/epics/epic-everyday-conveniences-round-two-2026-11-17/live-pass.md) records the real Workshop interactions and provider behavior still to be witnessed. Validation of the final release package remains pending.
 
