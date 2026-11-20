@@ -45,6 +45,7 @@ export function aliceResult(instances = 3, overrides: Partial<PassageSearchResul
       label: 'watch'
     })),
     labels: instances > 0 ? [{ key: 'watch', label: `Checks the watch ${LABEL_SENTINEL}`, count: instances, files: 1 }] : [],
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- the engine's kebab-case drop reasons.
     dropped: { 'quote-not-found': 1, 'quote-ambiguous': 0, malformed: 0, duplicate: 2 },
     overLimit: 0,
     calls: { planned: 4, answered: 4, failed: 0, cut: 0, unsent: 0 },
