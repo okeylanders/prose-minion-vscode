@@ -26,7 +26,7 @@ price.
 
 | # | What | Decisions | Branch | PR | Status |
 |---|---|---|---|---|---|
-| 0 | Spec: this README and the ADR | | `epic/passage-search-spec` | | In review |
+| 0 | Spec: this README and the ADR | | `epic/passage-search-spec` | #292 | In review |
 | 1 | The engine: scopes, reading order, chunks, the fan-out, the reply codec, anchoring, the merge, the plan and estimate, the `passageSearch` model scope and run policy, the boundary test. The organizing pass's seam and result field, not the pass. No UI. | D1–D11, D14, D22, D23 | `…-engine` | | Not started |
 | 2 | The sidebar subtab: scope picker, question, plan, Run, progress, Stop, results, open at a line, Copy, Save, the Settings row, help | D15, D24 | `…-sidebar` | | Not started |
 | 3 | The organizing pass: its call, codec, citation and quotation checks, its price | D12, D13 | `…-organize` | | Not started |
