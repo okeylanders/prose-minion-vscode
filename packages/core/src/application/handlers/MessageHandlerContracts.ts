@@ -4,6 +4,7 @@ import type { ContextPathSuggestions } from '@/application/services/contextPaths
 import type { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
 import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import type { HelperAgent } from '@services/helper/HelperTaskPolicies';
+import type { PassageSearchEngine } from '@/application/services/passageSearch/PassageSearchEngine';
 import type {
   AnalysisResultMessage,
   CategorySearchResultMessage,
@@ -235,4 +236,10 @@ export interface CoreServices {
    * proposal's Apply. Built in `extension.ts`; no handler constructs it.
    */
   contextPathSuggestions: ContextPathSuggestions;
+  /**
+   * Passage Search (ADR 2026-11-20 D1): scopes to files, then the reads, on
+   * the `passageSearch` scope. Callers own consent; no handler constructs
+   * it.
+   */
+  passageSearchEngine: PassageSearchEngine;
 }

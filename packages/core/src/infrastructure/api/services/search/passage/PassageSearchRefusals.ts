@@ -1,0 +1,76 @@
+/**
+ * Why a plan is refused, in host words (ADR 2026-11-20 D6). One table, so
+ * the engine's scope checks and the service's call plan word a refusal the
+ * same way. The words name the bound and the count; they never name a path,
+ * a pattern or the question. Pure.
+ */
+
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import type {
+  PassageSearchLeftOut,
+  PassageSearchPlanOutcome,
+  PassageSearchRefusal,
+  PassageSearchRefusalReason
+} from '@services/search/passage/PassageSearchContracts';
+
+const number = (value: number): string => value.toLocaleString('en-US');
+const plural = (count: number, one: string, many = `${one}s`): string => `${number(count)} ${count === 1 ? one : many}`;
+
+/** The refusal for `reason`; `count` is what was found past (or under) the bound it names. */
+export function passageSearchRefusal(reason: PassageSearchRefusalReason, count = 0): PassageSearchRefusal {
+  return { reason, message: wordsFor(reason, count) };
+}
+
+export function refusedPlan(reason: PassageSearchRefusalReason, count = 0): PassageSearchPlanOutcome {
+  return { kind: 'refused', refusal: passageSearchRefusal(reason, count) };
+}
+
+function wordsFor(reason: PassageSearchRefusalReason, count: number): string {
+  const bounds = PROMPT_BUDGETS.passageSearch;
+  switch (reason) {
+    case 'no-key':
+      return 'Passage Search needs an OpenRouter API key. Add one in Settings.';
+    case 'no-question':
+      return 'Ask a question to search for.';
+    case 'question-too-long':
+      return `The question is ${plural(count, 'character')} long; Passage Search takes up to ${number(bounds.questionCharacters)}.`;
+    case 'no-scope':
+      return 'Choose something to search.';
+    case 'too-many-scopes':
+      return `${plural(count, 'place')} were named; Passage Search takes up to ${number(bounds.scopes)} at once.`;
+    case 'no-files':
+      return 'Nothing to search: nothing you chose holds text Passage Search can read.';
+    case 'too-many-files':
+      return `That is ${plural(count, 'file')}; Passage Search reads up to ${number(bounds.files)} at once. Narrow what it searches.`;
+    case 'too-many-calls':
+      return `That would take ${plural(count, 'call')}; Passage Search makes up to ${number(bounds.calls)} in one search. Narrow what it searches.`;
+    case 'file-too-large':
+      return `${plural(count, 'file is', 'files are')} larger than ${number(bounds.fileBytes / (1024 * 1024))} MiB, the most Passage Search reads in one file.`;
+    case 'unknown-group':
+      return 'One of the places named is not a context group.';
+    case 'unknown-file':
+      return 'A file named for the search is not in its context group.';
+    case 'ambiguous-file':
+      return 'A file named for the search is in more than one workspace folder under the same path, so it is not clear which was meant.';
+    case 'unsafe-pattern':
+      return 'That path or pattern cannot be searched. Use a path inside the project, with no "..", drive or leading slash.';
+    case 'no-selection':
+      return 'No text is selected in the editor.';
+    case 'no-active-file':
+      return 'No saved file is open in the editor.';
+    case 'model-too-small':
+      return `The model's context window is too small for Passage Search, which reads at least ${number(bounds.minChunkWords)} words a call. Choose another model.`;
+    case 'catalog-unreadable':
+      return 'The project\'s files could not be listed completely, so nothing was searched. Try again.';
+  }
+}
+
+/** What an estimate says of files left out, before anything is sent (D5a); undefined when none were. */
+export function describePassageSearchLeftOut(leftOut: PassageSearchLeftOut): string | undefined {
+  const parts = [
+    leftOut.unsplittable > 0 ? `${plural(leftOut.unsplittable, 'file')} left out: ${leftOut.unsplittable === 1 ? 'it has' : 'they have'} no place to split` : undefined,
+    leftOut.unreadable > 0 ? `${plural(leftOut.unreadable, 'file')} left out: not readable as text` : undefined,
+    leftOut.empty > 0 ? `${plural(leftOut.empty, 'file')} left out: no text` : undefined
+  ].filter((part): part is string => part !== undefined);
+  return parts.length > 0 ? `${parts.join('. ')}.` : undefined;
+}

@@ -730,6 +730,73 @@ export interface PromptBudgets {
     }>;
   }>;
   /**
+   * Passage Search (ADR 2026-11-20 D5–D12a): a search that reads. One call
+   * per chunk, a few at a time. Lengths and counts a prompt states are asks
+   * (D8); the bounds on a plan (D6) are refusals. Starting values for the
+   * live pass (Q2).
+   */
+  readonly passageSearch: Readonly<{
+    /** Words a call reads, its overlap included (D5a); lowered to fit half a known window. */
+    chunkWords: number;
+    /** Below this the lowered budget refuses the plan (`model-too-small`). */
+    minChunkWords: number;
+    /** The most of the previous chunk's last paragraph a chunk repeats; over it, only its closing sentences. */
+    overlapWords: number;
+    /** Calls in flight at once. */
+    concurrency: number;
+    /** Scopes one request names. */
+    scopes: number;
+    /** Files one plan reads. */
+    files: number;
+    /** Read calls one plan makes. */
+    calls: number;
+    /** A file larger than this refuses the plan before it is read. */
+    fileBytes: number;
+    /** The question's length, in characters. */
+    questionCharacters: number;
+    /** Output ceiling per read call; a reply that reaches it keeps its finished instances (D8). */
+    outputTokens: number;
+    /** The reply the estimate prices per read call: not the ceiling. */
+    typicalOutputTokens: number;
+    /** A reply longer than this is that call's failure. */
+    responseCharacters: number;
+    /** Asked of a quote; over `safetyMultiple` times it, the instance is malformed. */
+    quoteCharacters: number;
+    /** Asked of a note; clipped at `safetyMultiple` times it. */
+    noteCharacters: number;
+    /** Asked of a label; over `safetyMultiple` times it, the instance is malformed. */
+    labelCharacters: number;
+    /** Asked of one reply's instances; never a gate. */
+    instancesPerCall: number;
+    /** Instances one run keeps; past it the run stops starting calls (`instance-limit`). */
+    instances: number;
+    /** Source text shown either side of an instance's quote. */
+    contextCharacters: number;
+    /** A field over this many times its ask is past the safety ceiling. */
+    safetyMultiple: number;
+    /** The organizing pass (D12, D12a, D13; Slice 3 builds it). */
+    organize: Readonly<{
+      /** What the first estimate allows for the pass's input: its instances do not exist yet. */
+      allowanceInputTokens: number;
+      /** The pass's whole rendered request stays within this, or half the window if smaller. */
+      inputTokens: number;
+      /** Output ceiling of the pass. */
+      outputTokens: number;
+      /** The reply the estimate prices for the pass. */
+      typicalOutputTokens: number;
+      /** Labels in the pass's table, most used first; the rest are one counted line. */
+      labels: number;
+      /** Asked of the headline. */
+      headlineCharacters: number;
+      /** Asked of the sections. */
+      sections: number;
+      /** Asked of a section's claims. */
+      claims: number;
+      /** Asked of a claim. */
+      claimCharacters: number;
+    }>;
+  }>;
+  /**
    * The thinking budget each reasoning level names, in tokens, sent on top
    * of a reply's own ceiling (ADR 2026-10-21, reasoning levels). `off` has
    * none; `light` is the smallest budget Anthropic accepts.
@@ -1159,6 +1226,39 @@ export const PROMPT_BUDGETS: PromptBudgets = {
       inputCharacters: 16_000,
       outputTokens: 1_500,
       responseCharacters: 6_000
+    }
+  },
+  passageSearch: {
+    chunkWords: 12_000,
+    minChunkWords: 1_500,
+    overlapWords: 600,
+    concurrency: 4,
+    scopes: 12,
+    files: 200,
+    calls: 300,
+    fileBytes: 2 * 1024 * 1024,
+    questionCharacters: 400,
+    // Room for `instancesPerCall` instances at their asked lengths, with slack.
+    outputTokens: 12_000,
+    typicalOutputTokens: 800,
+    responseCharacters: 120_000,
+    quoteCharacters: 400,
+    noteCharacters: 200,
+    labelCharacters: 40,
+    instancesPerCall: 80,
+    instances: 2_000,
+    contextCharacters: 160,
+    safetyMultiple: 4,
+    organize: {
+      allowanceInputTokens: 6_000,
+      inputTokens: 24_000,
+      outputTokens: 4_000,
+      typicalOutputTokens: 1_200,
+      labels: 60,
+      headlineCharacters: 160,
+      sections: 8,
+      claims: 8,
+      claimCharacters: 300
     }
   },
   reasoning: {
