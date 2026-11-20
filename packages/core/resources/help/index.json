@@ -29,6 +29,7 @@
   "proseMinion.proofread.wordList": "draft-edit#proofread",
   "proseMinion.proofread.reasoning": "draft-edit#proofread",
   "proseMinion.categoryModel": "sidebar-tools#category-search",
+  "proseMinion.passageSearchModel": "sidebar-tools#category-search",
   "proseMinion.includeCraftGuides": "overview#settings-and-models",
   "proseMinion.ui.showTokenWidget": "overview#sidebar-appearance-and-diagnostics",
   "proseMinion.ui.sidebarTheme": "overview#sidebar-appearance-and-diagnostics",

@@ -210,6 +210,7 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
         {renderModelSelect('proofread', 'Proofread Model', 'Runs Proofread from the editor’s right-click menu. Precision matters more than flair, so a fast, inexpensive model is the default.')}
         {renderModelSelect('craft', 'Craft Flags Model', 'Runs Craft Flags from the editor’s right-click menu: line notes on a whole chapter. Left on “Same as Workshop”, it reads with the Assistant Model above; pick a model to give Craft Flags its own.')}
         {renderModelSelect('helper', 'Helper Model', 'Runs the helper’s small automatic tasks, such as drafting a memory’s title and summary. Left on “Same as Proofread”, it uses the Proofread Model above; pick a model to give the helper its own.')}
+        {renderModelSelect('passageSearch', 'Passage Search', 'Reads your files to find passages that answer a question. Left on “Same as Category Search”, it uses the Category Search Model above; pick a model to give Passage Search its own.')}
       </section>
 
       {/* General */}

@@ -10,7 +10,7 @@ import { TokenUsage } from './tokenUsage';
 // Model Configuration Types
 // ============================================================================
 
-export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget' | 'lightbox' | 'proofread' | 'craft' | 'helper';
+export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget' | 'lightbox' | 'proofread' | 'craft' | 'helper' | 'passageSearch';
 
 /** Every model scope, for readers that check a persisted value (Workshop model stamps). */
 const MODEL_SCOPE_MEMBERS = {
@@ -22,7 +22,8 @@ const MODEL_SCOPE_MEMBERS = {
   lightbox: true,
   proofread: true,
   craft: true,
-  helper: true
+  helper: true,
+  passageSearch: true
 } as const satisfies Record<ModelScope, true>;
 
 export const MODEL_SCOPES = Object.freeze(Object.keys(MODEL_SCOPE_MEMBERS)) as readonly ModelScope[];
@@ -37,7 +38,7 @@ export function isModelScope(value: unknown): value is ModelScope {
  * 2026-11-05 D3). Unset, it runs on the model of the scope it follows, and
  * moves when that one does; picked, its model is its own.
  */
-export type FollowingModelScope = 'lightbox' | 'craft' | 'helper';
+export type FollowingModelScope = 'lightbox' | 'craft' | 'helper' | 'passageSearch';
 
 /**
  * The own scope each following scope follows. The Lightbox and Craft Flags
@@ -49,7 +50,8 @@ export type FollowingModelScope = 'lightbox' | 'craft' | 'helper';
 export const MODEL_SCOPE_FOLLOWS: Readonly<Record<FollowingModelScope, Exclude<ModelScope, FollowingModelScope>>> = {
   lightbox: 'assistant',
   craft: 'assistant',
-  helper: 'proofread'
+  helper: 'proofread',
+  passageSearch: 'category'
 };
 
 export function isFollowingModelScope(scope: unknown): scope is FollowingModelScope {
