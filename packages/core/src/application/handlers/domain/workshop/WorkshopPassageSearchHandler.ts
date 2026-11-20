@@ -1,0 +1,552 @@
+/**
+ * Owns a persona's passage-search card (ADR 2026-11-20 D19–D21): the 26th
+ * composed route owner.
+ *
+ * - **Ids in, an answer by `requestId` out.** Every route names the room
+ *   revision and the reply that holds the card; a Run adds the `planKey`
+ *   the writer saw. The host finds the card on its own ledger, and builds
+ *   the engine's request from it: groups, files by catalog key, and the
+ *   excerpt by value. Nothing from the webview becomes a scope.
+ * - **The price is never skipped.** `ESTIMATE` plans and answers the price
+ *   and its key. `RUN` plans again and runs only when the key is the one
+ *   sent; otherwise it answers the new estimate (`price-changed`) and sends
+ *   nothing.
+ * - **One search at a time** in this window's Workshop; a second Run is
+ *   refused in the room's busy words. The search runs on the engine's own
+ *   model: the persona's model never reads the files.
+ * - **A search belongs to the room it began in.** A room replaced while it
+ *   runs (the revision moved, or the card's turn gone) aborts it, and what
+ *   it found goes nowhere. Disposal aborts it too.
+ * - **Held results are this window's:** the newest `heldResults`, by the
+ *   card's turn. One is dropped only by eviction after an adopted delivery,
+ *   by Discard, or when its room is replaced. A failed delivery never
+ *   touches it.
+ * - **Delivery** (D19a, D21) is a results-delivery directed run to the
+ *   card's author. The host starts it only for a search that ended
+ *   `complete` or `instance-limit`, with the room idle; any other waits for
+ *   the writer's Send. Every send checks first, with nothing awaited before
+ *   the dispatch: this room, the card still here and undelivered, its
+ *   author still in the room, no run going.
+ * - **Logs** carry turn ids, counts, closed outcomes and reason kinds:
+ *   never the question, a quote, a note, a label or a path (D22).
+ */
+
+import type { MessageRouter } from '@handlers/MessageRouter';
+import type { MessageTransport } from '@handlers/MessageHandlerContracts';
+import type { LogSink } from '@/platform';
+import {
+  MessageType,
+  type WorkshopChatTarget,
+  type WorkshopExcerpt,
+  type WorkshopPassageSearchAction,
+  type WorkshopPassageSearchActionPayload,
+  type WorkshopPassageSearchEstimateView,
+  type WorkshopPassageSearchProgress,
+  type WorkshopPassageSearchProgressMessage,
+  type WorkshopPassageSearchRefusal,
+  type WorkshopPassageSearchRequest,
+  type WorkshopPassageSearchResultMessage,
+  type WorkshopPassageSearchResultOutcome,
+  type WorkshopPassageSearchRunPayload,
+  type WorkshopPersonaId,
+  type WorkshopTurn
+} from '@messages';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS,
+  workshopPassageSearchCountsWords,
+  workshopPassageSearchFinishedLine
+} from '@shared/constants/workshopPassageSearchWords';
+import { formatPassageSearchReport } from '@shared/utils/passageSearchReport';
+import type { PassageSearchEngine } from '@/application/services/passageSearch/PassageSearchEngine';
+import type { PassageSearchPlan, PassageSearchResult } from '@services/search/passage/PassageSearchContracts';
+import {
+  fitWorkshopPassageSearchDirective,
+  WORKSHOP_PASSAGE_SEARCH_RESULTS_MESSAGE
+} from '@/application/services/workshop/passageSearch/WorkshopPassageSearchDirective';
+import {
+  workshopPassageSearchEngineRequest,
+  workshopPassageSearchEstimateView
+} from '@/application/services/workshop/passageSearch/WorkshopPassageSearchEngineRequest';
+import type { WorkshopPassageSearchReports } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchReportFile';
+import {
+  isWorkshopPassageSearchPartial,
+  workshopPassageSearchCounts,
+  workshopPassageSearchReportOf
+} from '@/application/services/workshop/passageSearch/WorkshopPassageSearchResultView';
+import {
+  workshopPassageSearchStatus,
+  type WorkshopPassageSearchWindowCard
+} from '@/application/services/workshop/passageSearch/WorkshopPassageSearchStatus';
+import type { WorkshopPassageSearchListing } from '@/application/services/workshop/passageSearch/WorkshopReplyPassageSearch';
+import { workshopEditOfferAuthorTarget } from '@handlers/domain/workshop/WorkshopEditOfferHandler';
+import type {
+  WorkshopDirectedRunResult,
+  WorkshopMutationRouteRegistrar,
+  WorkshopResultsDeliveryRun
+} from '@handlers/domain/workshop/WorkshopRouteContracts';
+
+/** The one engine, the authoritative listing a request is settled against, and the report file: built in `extension.ts`. */
+export interface WorkshopPassageSearchPorts {
+  readonly engine: Pick<PassageSearchEngine, 'plan' | 'run'>;
+  readonly listing: WorkshopPassageSearchListing;
+  readonly reports: WorkshopPassageSearchReports;
+}
+
+export interface WorkshopPassageSearchSession {
+  readRoomRevision(): number;
+  readRoomLedger(): readonly WorkshopTurn[];
+  getExcerpt(): Pick<WorkshopExcerpt, 'text'> | undefined;
+  getSelectedPersonaId(): WorkshopPersonaId;
+  isLivePersonaGuest(personaId: WorkshopPersonaId): boolean;
+  cancelPassageSearch(turnId: string): WorkshopTurn | undefined;
+  markPassageSearchResultsTurn(turnId: string, cardTurnId: string): WorkshopTurn | undefined;
+}
+
+/** The room facts a send reads, and the one message path a delivery runs on. */
+export interface WorkshopPassageSearchRoomGate {
+  /** Any run going in the room: a reply, or the context wizard. */
+  activeRunLabel(): string | undefined;
+  runDirected(target: WorkshopChatTarget, run: WorkshopResultsDeliveryRun): Promise<WorkshopDirectedRunResult>;
+}
+
+export interface WorkshopPassageSearchEffects {
+  postSessionState(): void;
+  markDirty(reason: string): void;
+}
+
+interface RunningSearch {
+  readonly turnId: string;
+  readonly requestId: string;
+  readonly roomRevision: number;
+  readonly controller: AbortController;
+  progress?: WorkshopPassageSearchProgress;
+}
+
+type Refused = { readonly reason: WorkshopPassageSearchRefusal; readonly message?: string };
+type Card = { readonly turn: WorkshopTurn; readonly card: WorkshopPassageSearchRequest };
+
+const LOG = '[WorkshopPassageSearchHandler]';
+const ID_CHARACTERS = 256;
+
+export class WorkshopPassageSearchHandler {
+  private search: RunningSearch | undefined;
+  /** By the card's turn, oldest first. */
+  private readonly held = new Map<string, { readonly result: PassageSearchResult; delivered: boolean }>();
+  private heldRevision: number | undefined;
+  private sending: string | undefined;
+
+  constructor(
+    private readonly session: WorkshopPassageSearchSession,
+    private readonly ports: WorkshopPassageSearchPorts | undefined,
+    private readonly room: WorkshopPassageSearchRoomGate,
+    private readonly effects: WorkshopPassageSearchEffects,
+    private readonly postMessage: MessageTransport,
+    private readonly outputChannel: LogSink
+  ) {}
+
+  registerRoutes(router: MessageRouter, registerMutation: WorkshopMutationRouteRegistrar): void {
+    const direct = (type: MessageType, action: WorkshopPassageSearchAction, handle: (payload: WorkshopPassageSearchActionPayload) => Promise<void> | void): void =>
+      router.register(type, async (message) => this.take(action, (message as { payload?: unknown }).payload, handle));
+    const gated = (type: MessageType, action: WorkshopPassageSearchAction, handle: (payload: WorkshopPassageSearchActionPayload) => Promise<void> | void): void =>
+      registerMutation(type, async (message: { payload?: unknown }) => this.take(action, message.payload, handle), undefined,
+        (_reason, message: { payload?: unknown }) => {
+          const payload = payloadOf(message.payload);
+          if (payload) {
+            this.refuse(action, payload, { reason: 'session-operation' });
+          }
+        });
+    // The price is a read, never behind the mutation gate (D20).
+    direct(MessageType.WORKSHOP_PASSAGE_SEARCH_ESTIMATE, 'estimate', (payload) => this.handleEstimate(payload));
+    direct(MessageType.WORKSHOP_PASSAGE_SEARCH_STOP, 'stop', (payload) => this.handleStop(payload));
+    direct(MessageType.WORKSHOP_PASSAGE_SEARCH_DISCARD, 'discard', (payload) => this.handleDiscard(payload));
+    direct(MessageType.WORKSHOP_PASSAGE_SEARCH_OPEN_REPORT, 'open-report', (payload) => this.handleOpenReport(payload));
+    gated(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, 'run', (payload) => this.handleRun(payload));
+    gated(MessageType.WORKSHOP_PASSAGE_SEARCH_CANCEL, 'cancel', (payload) => this.handleCancel(payload));
+    gated(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND, 'send', (payload) => this.handleSend(payload));
+  }
+
+  /** What this window is doing for a card, read each time a turn is sent to the webview (D19). */
+  windowCard(turnId: string): WorkshopPassageSearchWindowCard | undefined {
+    this.syncRoom();
+    const running = this.search?.turnId === turnId ? { ...(this.search.progress ? { progress: this.search.progress } : {}) } : undefined;
+    const held = this.held.get(turnId);
+    return running || held
+      ? {
+        ...(running ? { running } : {}),
+        ...(held ? { held: workshopPassageSearchCounts(held.result) } : {}),
+        ...(this.sending === turnId ? { sending: true } : {})
+      }
+      : undefined;
+  }
+
+  /** The listing a reply's request is settled against (D17). */
+  listing(): WorkshopPassageSearchListing | undefined {
+    return this.ports?.listing;
+  }
+
+  /** The panel is closing: a running search stops, and its results go nowhere. */
+  dispose(): void {
+    this.search?.controller.abort();
+    this.search = undefined;
+    this.held.clear();
+  }
+
+  async handleEstimate(payload: WorkshopPassageSearchActionPayload): Promise<void> {
+    const found = this.pendingCard(payload);
+    if ('reason' in found) {
+      return this.refuse('estimate', payload, found);
+    }
+    const planned = await this.plan(found.card);
+    if (payload.roomRevision !== this.session.readRoomRevision()) {
+      return this.refuse('estimate', payload, { reason: 'room-changed' });
+    }
+    if ('reason' in planned) {
+      return this.refuse('estimate', payload, planned);
+    }
+    this.answer('estimate', payload, 'done', { estimate: workshopPassageSearchEstimateView(planned) });
+  }
+
+  async handleRun(payload: WorkshopPassageSearchActionPayload): Promise<void> {
+    const planKey = (payload as Partial<WorkshopPassageSearchRunPayload>).planKey;
+    if (typeof planKey !== 'string' || planKey.length === 0 || planKey.length > ID_CHARACTERS) {
+      return this.refuse('run', payload, { reason: 'invalid-request' });
+    }
+    const found = this.pendingCard(payload);
+    if ('reason' in found) {
+      return this.refuse('run', payload, found);
+    }
+    if (!workshopEditOfferAuthorTarget(this.session, found.turn)) {
+      return this.refuse('run', payload, { reason: 'author-left' });
+    }
+    // The slot is taken before anything awaits, so a second Run during the plan is refused too.
+    const search: RunningSearch = { turnId: payload.turnId, requestId: payload.requestId, roomRevision: payload.roomRevision, controller: new AbortController() };
+    this.search = search;
+    let result: PassageSearchResult;
+    try {
+      const planned = await this.plan(found.card);
+      if ('reason' in planned) {
+        this.search = undefined;
+        return this.refuse('run', payload, planned);
+      }
+      if (planned.planKey !== planKey) {
+        // The price the writer saw no longer holds: the new one is shown, and nothing is sent (D20).
+        this.search = undefined;
+        this.log(`run price-changed turn=${payload.turnId}`);
+        return this.answer('run', payload, 'price-changed', { estimate: workshopPassageSearchEstimateView(planned) });
+      }
+      if (!this.stillOwns(search) || search.controller.signal.aborted) {
+        this.search = undefined;
+        return this.refuse('run', payload, { reason: this.stillOwns(search) ? 'not-running' : 'room-changed' });
+      }
+      this.log(`run started turn=${payload.turnId} calls=${planned.estimate.calls} files=${planned.estimate.files}`);
+      this.answer('run', payload, 'started');
+      this.effects.postSessionState();
+      result = await this.ports!.engine.run(planned, {
+        signal: search.controller.signal,
+        onProgress: (progress) => this.reportProgress(search, { done: progress.calls.done, planned: progress.calls.planned, found: progress.found })
+      });
+    } catch (error) {
+      this.search = this.search === search ? undefined : this.search;
+      this.log(`run failed turn=${payload.turnId} error=${error instanceof Error ? error.name : 'unknown'}`);
+      this.refuse('run', payload, { reason: 'search-failed' });
+      this.effects.postSessionState();
+      return;
+    }
+    if (this.search === search) {
+      this.search = undefined;
+    }
+    if (!this.stillOwns(search)) {
+      // Another room now: what was found goes nowhere (D20).
+      this.log(`run dropped turn=${payload.turnId} reason=room-changed`);
+      return this.refuse('run', payload, { reason: 'room-changed' });
+    }
+    this.hold(payload.turnId, result);
+    const counts = workshopPassageSearchCounts(result);
+    this.log(`run finished turn=${payload.turnId} ended=${counts.ended} instances=${counts.instances} files=${counts.files} `
+      + `answered=${counts.calls.answered} failed=${counts.calls.failed} cut=${counts.calls.cut} unsent=${counts.calls.unsent} dropped=${counts.dropped}`);
+    // Only a search that read everything is delivered by the host, and only into an idle room (D21).
+    const auto = !isWorkshopPassageSearchPartial(counts.ended) && this.room.activeRunLabel() === undefined;
+    const sent = auto ? await this.deliver(payload.turnId) : undefined;
+    this.effects.postSessionState();
+    const words = workshopPassageSearchCountsWords(counts);
+    this.answer('run', payload, 'finished', {
+      message: sent === undefined ? words
+        : sent === true ? `${words} The results were sent.`
+          : `${words} ${sent.message ?? WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS[sent.reason]}`
+    });
+  }
+
+  handleStop(payload: WorkshopPassageSearchActionPayload): void {
+    if (this.search?.turnId !== payload.turnId || payload.roomRevision !== this.search.roomRevision) {
+      return this.refuse('stop', payload, { reason: 'not-running' });
+    }
+    this.log(`stop turn=${payload.turnId}`);
+    this.search.controller.abort();
+    this.answer('stop', payload, 'done');
+  }
+
+  handleCancel(payload: WorkshopPassageSearchActionPayload): void {
+    const found = this.pendingCard(payload);
+    if ('reason' in found) {
+      return this.refuse('cancel', payload, found);
+    }
+    if (this.session.cancelPassageSearch(payload.turnId)) {
+      this.effects.markDirty('passage search cancelled');
+      this.effects.postSessionState();
+    }
+    this.log(`cancel turn=${payload.turnId}`);
+    this.answer('cancel', payload, 'done');
+  }
+
+  async handleSend(payload: WorkshopPassageSearchActionPayload): Promise<void> {
+    if (payload.roomRevision !== this.session.readRoomRevision()) {
+      return this.refuse('send', payload, { reason: 'room-changed' });
+    }
+    const sent = await this.deliver(payload.turnId);
+    this.effects.postSessionState();
+    if (sent !== true) {
+      return this.refuse('send', payload, sent);
+    }
+    this.answer('send', payload, 'done');
+  }
+
+  handleDiscard(payload: WorkshopPassageSearchActionPayload): void {
+    const status = this.statusOf(payload);
+    if (status !== 'ready' || this.sending === payload.turnId) {
+      return this.refuse('discard', payload, { reason: status === undefined ? 'no-card' : 'not-ready' });
+    }
+    this.held.delete(payload.turnId);
+    this.log(`discard turn=${payload.turnId}`);
+    this.effects.postSessionState();
+    this.answer('discard', payload, 'done');
+  }
+
+  async handleOpenReport(payload: WorkshopPassageSearchActionPayload): Promise<void> {
+    if (this.statusOf(payload) === undefined) {
+      return this.refuse('open-report', payload, { reason: 'no-card' });
+    }
+    const held = this.held.get(payload.turnId);
+    if (!held || !this.ports) {
+      return this.refuse('open-report', payload, { reason: 'not-held' });
+    }
+    const outcome = await this.ports.reports.saveAndOpen(formatPassageSearchReport(workshopPassageSearchReportOf(held.result)));
+    this.log(`open-report turn=${payload.turnId} outcome=${outcome}`);
+    if (outcome === 'failed' || outcome === 'no-workspace') {
+      return this.refuse('open-report', payload, { reason: 'report-failed' });
+    }
+    this.answer('open-report', payload, 'done');
+  }
+
+  /**
+   * Send a held result to its card's author (D19a, D21). Every check runs
+   * first, and nothing is awaited between the last of them and the
+   * dispatch. The held result is never touched here: a delivery that is
+   * not adopted leaves the card `ready`.
+   */
+  private async deliver(turnId: string): Promise<true | Refused> {
+    this.syncRoom();
+    const ledger = this.session.readRoomLedger();
+    const turn = ledger.find((candidate) => candidate.id === turnId);
+    const held = this.held.get(turnId);
+    if (!turn?.passageSearchRequest) {
+      return { reason: 'no-card' };
+    }
+    if (!held || this.sending !== undefined || workshopPassageSearchStatus(ledger, turnId, { running: false, held: true }) !== 'ready') {
+      return { reason: 'not-ready' };
+    }
+    const target = workshopEditOfferAuthorTarget(this.session, turn);
+    if (!target) {
+      return { reason: 'author-left' };
+    }
+    if (this.room.activeRunLabel() !== undefined) {
+      return { reason: 'run-active' };
+    }
+    const report = workshopPassageSearchReportOf(held.result);
+    const counts = workshopPassageSearchCounts(held.result);
+    let shown = 0;
+    this.sending = turnId;
+    this.log(`delivery started turn=${turnId} author=${target.kind} instances=${counts.instances}`);
+    let ran: WorkshopDirectedRunResult;
+    try {
+      ran = await this.room.runDirected(target, {
+        displayText: workshopPassageSearchFinishedLine(counts),
+        message: WORKSHOP_PASSAGE_SEARCH_RESULTS_MESSAGE,
+        resultsDelivery: {
+          frame: (window) => {
+            const directive = fitWorkshopPassageSearchDirective(report, window);
+            shown = directive.shown;
+            this.log(`delivery fitted turn=${turnId} shown=${directive.shown} of=${directive.of} window=${window ? 'known' : 'unknown'}`);
+            return directive.frame;
+          },
+          markRequestTurn: (requestTurnId) => this.session.markPassageSearchResultsTurn(requestTurnId, turnId),
+          // The receipt rides the adopted reply's own commit; any other outcome rolls the request turn back (D19a).
+          completion: () => ({ notAdopted: 'rollback', passageSearchDelivery: { ...counts, calls: { ...counts.calls }, cardTurnId: turnId, shown } })
+        }
+      });
+    } catch {
+      ran = { committed: false };
+    } finally {
+      this.sending = undefined;
+    }
+    if (!ran.committed) {
+      this.log(`delivery not adopted turn=${turnId} reason=${ran.cancelled ? 'stopped' : ran.refusalReason !== undefined ? 'not-sent' : 'failed'}`);
+      return { reason: 'delivery-failed' };
+    }
+    const kept = this.held.get(turnId);
+    if (kept) {
+      kept.delivered = true;
+    }
+    this.evict();
+    this.log(`delivery adopted turn=${turnId} shown=${shown} of=${counts.instances}`);
+    return true;
+  }
+
+  /** A card that may still be priced, run or cancelled: in this room, with no answer, no search and no result. */
+  private pendingCard(payload: WorkshopPassageSearchActionPayload): Card | Refused {
+    if (!this.ports) {
+      return { reason: 'unavailable' };
+    }
+    if (payload.roomRevision !== this.session.readRoomRevision()) {
+      return { reason: 'room-changed' };
+    }
+    const turn = this.session.readRoomLedger().find((candidate) => candidate.id === payload.turnId);
+    if (!turn?.passageSearchRequest) {
+      return { reason: 'no-card' };
+    }
+    if (this.search) {
+      return { reason: 'search-running' };
+    }
+    return this.statusOf(payload) === 'pending' ? { turn, card: turn.passageSearchRequest } : { reason: 'not-pending' };
+  }
+
+  private statusOf(payload: WorkshopPassageSearchActionPayload) {
+    this.syncRoom();
+    if (payload.roomRevision !== this.session.readRoomRevision()) {
+      return undefined;
+    }
+    return workshopPassageSearchStatus(this.session.readRoomLedger(), payload.turnId, {
+      running: this.search?.turnId === payload.turnId,
+      held: this.held.has(payload.turnId)
+    });
+  }
+
+  private async plan(card: WorkshopPassageSearchRequest): Promise<PassageSearchPlan | Refused> {
+    const request = workshopPassageSearchEngineRequest(card, this.session.getExcerpt()?.text);
+    if (request === 'no-excerpt') {
+      return { reason: 'plan-refused', message: 'This room no longer has an excerpt to search.' };
+    }
+    try {
+      const outcome = await this.ports!.engine.plan(request);
+      return outcome.kind === 'planned' ? outcome.plan : { reason: 'plan-refused', message: outcome.refusal.message };
+    } catch {
+      return { reason: 'search-failed' };
+    }
+  }
+
+  private reportProgress(search: RunningSearch, progress: WorkshopPassageSearchProgress): void {
+    if (this.search !== search) {
+      return;
+    }
+    if (!this.stillOwns(search)) {
+      search.controller.abort();
+      return;
+    }
+    search.progress = progress;
+    const message: WorkshopPassageSearchProgressMessage = {
+      type: MessageType.WORKSHOP_PASSAGE_SEARCH_PROGRESS,
+      source: 'extension.workshop.passageSearch',
+      payload: { requestId: search.requestId, turnId: search.turnId, ...progress },
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
+
+  /** Whether the search's room is still the room, and still holds its card. */
+  private stillOwns(search: RunningSearch): boolean {
+    return search.roomRevision === this.session.readRoomRevision()
+      && this.session.readRoomLedger().some((turn) => turn.id === search.turnId && turn.passageSearchRequest !== undefined);
+  }
+
+  /** A replaced room takes its search and its held results with it. */
+  private syncRoom(): void {
+    const revision = this.session.readRoomRevision();
+    if (this.heldRevision !== undefined && this.heldRevision !== revision) {
+      this.held.clear();
+    }
+    this.heldRevision = revision;
+    if (this.search && this.search.roomRevision !== revision) {
+      this.search.controller.abort();
+    }
+  }
+
+  private hold(turnId: string, result: PassageSearchResult): void {
+    this.syncRoom();
+    this.held.delete(turnId);
+    this.held.set(turnId, { result, delivered: false });
+    this.evict();
+  }
+
+  /** Past the bound, the oldest delivered result goes; one not yet delivered is never evicted. */
+  private evict(): void {
+    for (const [turnId, entry] of this.held) {
+      if (this.held.size <= PROMPT_BUDGETS.workshopPassageSearch.heldResults) {
+        return;
+      }
+      if (entry.delivered) {
+        this.held.delete(turnId);
+      }
+    }
+  }
+
+  private async take(action: WorkshopPassageSearchAction, value: unknown, handle: (payload: WorkshopPassageSearchActionPayload) => Promise<void> | void): Promise<void> {
+    const payload = payloadOf(value);
+    if (!payload) {
+      this.log(`${action} refused reason=invalid-request`);
+      return;
+    }
+    await handle(payload);
+  }
+
+  private refuse(action: WorkshopPassageSearchAction, payload: WorkshopPassageSearchActionPayload, refused: Refused): void {
+    this.log(`${action} refused turn=${payload.turnId} reason=${refused.reason}`);
+    this.answer(action, payload, 'refused', { reason: refused.reason, message: refused.message ?? WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS[refused.reason] });
+  }
+
+  private answer(
+    action: WorkshopPassageSearchAction,
+    payload: WorkshopPassageSearchActionPayload,
+    outcome: WorkshopPassageSearchResultOutcome,
+    extra: { reason?: WorkshopPassageSearchRefusal; message?: string; estimate?: WorkshopPassageSearchEstimateView } = {}
+  ): void {
+    const message: WorkshopPassageSearchResultMessage = {
+      type: MessageType.WORKSHOP_PASSAGE_SEARCH_RESULT,
+      source: 'extension.workshop.passageSearch',
+      payload: { requestId: payload.requestId, turnId: payload.turnId, action, outcome, ...extra },
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
+
+  private log(line: string): void {
+    this.outputChannel.appendLine(`${LOG} ${line}`);
+  }
+}
+
+const idAt = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= ID_CHARACTERS;
+
+function payloadOf(value: unknown): WorkshopPassageSearchActionPayload | undefined {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+  const payload = value as Partial<WorkshopPassageSearchRunPayload>;
+  if (!idAt(payload.requestId) || !idAt(payload.turnId) || !Number.isSafeInteger(payload.roomRevision)) {
+    return undefined;
+  }
+  return {
+    requestId: payload.requestId,
+    roomRevision: payload.roomRevision as number,
+    turnId: payload.turnId,
+    ...(typeof payload.planKey === 'string' ? { planKey: payload.planKey } : {})
+  };
+}

@@ -95,6 +95,7 @@ import {
   PassageSearchService,
   PassageSearchScopeFiles,
   ProjectPassageSearchEngine,
+  WorkshopPassageSearchReportFile,
   liveCatalogReasoning,
   LightboxSetSourcePayload,
   CoreServices,
@@ -748,7 +749,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     passageSearchEngine,
     workshopTranscriptRecallService,
     workshopSavedSessionTodos,
-    contextPathProposals: { checker: contextPathChecker, settings: contextPathSettings }
+    contextPathProposals: { checker: contextPathChecker, settings: contextPathSettings },
+    // A persona's passage-search card (ADR 2026-11-20 D20): the same engine, the resolver's authoritative
+    // listing a request is settled against, and the report file under prose-minion/reports/.
+    workshopPassageSearch: {
+      engine: passageSearchEngine,
+      listing: contextResourceResolver,
+      reports: new WorkshopPassageSearchReportFile(platform.fileSystem, platform.workspace, platform.shell)
+    }
   };
 
   // Migrate API key from settings to SecretStorage if needed

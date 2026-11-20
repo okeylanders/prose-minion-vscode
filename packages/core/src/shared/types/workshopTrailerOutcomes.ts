@@ -94,11 +94,33 @@ export const WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS = [
 ] as const;
 export type WorkshopLocationsTrailerDropReason = typeof WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS[number];
 
+/**
+ * Every reason a passage-search request frame can be dropped for (ADR
+ * 2026-11-20 D17), in the order a record lists them. `extra`: a second
+ * frame in one reply. The rest are the host's checks at settlement: a group
+ * that is no context group, a file not in its group, a file two workspace
+ * folders both hold, an `<excerpt/>` in a room with no excerpt, and a
+ * listing that could not be read. `off` and `over-cap` never occur: the
+ * trailer has no setting, and a second frame is `extra`.
+ */
+export const WORKSHOP_PASSAGE_SEARCH_TRAILER_DROP_REASONS = [
+  'malformed',
+  'misplaced',
+  'extra',
+  'unknown-group',
+  'unknown-file',
+  'ambiguous-file',
+  'no-excerpt',
+  'catalog-unreadable'
+] as const;
+export type WorkshopPassageSearchTrailerDropReason = typeof WORKSHOP_PASSAGE_SEARCH_TRAILER_DROP_REASONS[number];
+
 export type WorkshopTrailerDropReason =
   | WorkshopMemoryTrailerDropReason
   | WorkshopFileEditTrailerDropReason
   | WorkshopTodoTrailerDropReason
-  | WorkshopLocationsTrailerDropReason;
+  | WorkshopLocationsTrailerDropReason
+  | WorkshopPassageSearchTrailerDropReason;
 
 /** How many frames were dropped for one reason; `count` is at least 1. */
 export interface WorkshopTrailerDrop<Reason extends WorkshopTrailerDropReason> {
@@ -149,10 +171,22 @@ export interface WorkshopLocationsTrailerOutcomes {
   patterns: { kept: number; unmatched: number; incomplete: number; refused: number };
 }
 
+/**
+ * The reply's passage-search request frames (ADR 2026-11-20 D17): the card
+ * made (at most one) and the frames dropped. Run and Cancel are the
+ * writer's answers and are never recorded here.
+ */
+export interface WorkshopPassageSearchTrailerOutcomes {
+  cards: number;
+  /** At most one entry per reason, in `WORKSHOP_PASSAGE_SEARCH_TRAILER_DROP_REASONS`' order. */
+  dropped: WorkshopTrailerDrop<WorkshopPassageSearchTrailerDropReason>[];
+}
+
 /** A side is present only when the reply carried that kind of trailer; a reply with none has no record. */
 export interface WorkshopTrailerOutcomes {
   memory?: WorkshopMemoryTrailerOutcomes;
   fileEdits?: WorkshopFileEditTrailerOutcomes;
   todos?: WorkshopTodoTrailerOutcomes;
   locations?: WorkshopLocationsTrailerOutcomes;
+  passageSearch?: WorkshopPassageSearchTrailerOutcomes;
 }

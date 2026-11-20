@@ -21,6 +21,11 @@
  * never reads, so it never leaves the host (PR #246 L3). `trailerOutcomes`
  * (ADR 2026-11-17 D13) is host-only the same way: it is for the persona's
  * next message, never the webview.
+ *
+ * A passage-search card (ADR 2026-11-20 D19) carries the host's derived
+ * `view` of its state, worked out the same way: from the full ledger and
+ * from what this window is doing for it. The delivery's receipt
+ * (`passageSearchDelivery`) is read on the host and never leaves it.
  */
 
 import { workshopTodoStatusChangesForWebview } from '@/application/services/workshop/todos/WorkshopTodoStatusRows';
@@ -31,6 +36,10 @@ import {
   type WorkshopTurn
 } from '@messages';
 import { workshopEditOfferStatus } from './WorkshopEditOfferStatus';
+import {
+  workshopPassageSearchRequestForWebview,
+  type WorkshopPassageSearchWindowCard
+} from '@/application/services/workshop/passageSearch/WorkshopPassageSearchStatus';
 
 /** The room facts an offer's view is derived from; read when a turn is posted. */
 export interface WorkshopEditOfferRoomView {
@@ -44,6 +53,8 @@ export interface WorkshopEditOfferRoomView {
   readonly authorPresent: (turn: WorkshopTurn) => boolean;
   /** The open room's session id: a saved to-do row made in another room offers no Undo (ADR 2026-11-19 D5). */
   readonly liveSessionId?: () => string | undefined;
+  /** What this window is doing for a passage-search card (ADR 2026-11-20 D19): searching it, or holding its result. */
+  readonly passageSearch?: (turnId: string) => WorkshopPassageSearchWindowCard | undefined;
 }
 
 /** A view for several turns that reads the ledger at most once. */
@@ -53,13 +64,23 @@ export function workshopEditOfferRoomViewOnce(view: WorkshopEditOfferRoomView): 
 }
 
 export function workshopTurnForWebview(turn: WorkshopTurn, room?: WorkshopEditOfferRoomView): WorkshopTurn {
-  if (!turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery && !turn.trailerOutcomes && !turn.todoStatusChanges) {
+  if (!turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery && !turn.trailerOutcomes && !turn.todoStatusChanges
+    && !turn.passageSearchRequest && !turn.passageSearchDelivery) {
     return turn;
   }
-  const { editOffers, reactionDelivery: _hostOnly, trailerOutcomes: _hostOnlyOutcomes, todoStatusChanges, ...rest } = turn;
+  const {
+    editOffers, reactionDelivery: _hostOnly, trailerOutcomes: _hostOnlyOutcomes, todoStatusChanges,
+    passageSearchRequest: _card, passageSearchDelivery: _receipt, ...rest
+  } = turn;
+  const passageSearchRequest = workshopPassageSearchRequestForWebview(turn, room && {
+    ledger: room.ledger,
+    window: (turnId) => room.passageSearch?.(turnId),
+    authorPresent: room.authorPresent(turn)
+  });
   const offers = editOffers && (!room || room.fileEditsOpen) ? editOffers : undefined;
   return {
     ...rest,
+    ...(passageSearchRequest ? { passageSearchRequest } : {}),
     ...(turn.fileEditProposals ? { fileEditProposals: turn.fileEditProposals.map(workshopFileEditProposalForWebview) } : {}),
     ...(todoStatusChanges ? { todoStatusChanges: workshopTodoStatusChangesForWebview(todoStatusChanges, room?.liveSessionId?.()) } : {}),
     ...(offers

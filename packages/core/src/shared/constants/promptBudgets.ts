@@ -326,6 +326,20 @@ export interface PromptBudgets {
     headerAllowanceCharacters: number;
   }>;
   /** A persona's to-do status trailers (ADR 2026-11-19 D3, D10), held to the prompt by `todoStatusPromptSync.test.ts`. */
+  /**
+   * A persona's passage-search request and the delivery of its results
+   * (ADR 2026-11-20 D16, D21). The search's own bounds are `passageSearch`.
+   */
+  readonly workshopPassageSearch: Readonly<{
+    /** Places one request may name: groups, files and the excerpt together. */
+    scopes: number;
+    /** The question's bound, trimmed. */
+    questionCharacters: number;
+    /** The results directive's bound when the model's window is not known. */
+    resultsTokens: number;
+    /** Full results a window holds for its cards, newest kept. */
+    heldResults: number;
+  }>;
   readonly workshopTodoStatus: Readonly<{
     /** Changes one reply may make; a frame past them is dropped as `over-cap`. */
     changesPerReply: number;
@@ -983,6 +997,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   workshopThread: { pageTurns: 100, pageBytes: 1024 * 1024, jumpPages: 3 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   workshopTodoStatus: { changesPerReply: 20, savedSessionsPerReply: 10, noteCharacters: 160 },
+  workshopPassageSearch: { scopes: 8, questionCharacters: 300, resultsTokens: 6_000, heldResults: 4 },
   guestJoinSnapshot: {
     turns: 100,
     characters: 100_000,

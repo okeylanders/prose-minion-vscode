@@ -1,4 +1,5 @@
 import type { WorkshopLocationsProposalPorts } from '@handlers/domain/workshop/WorkshopLocationsProposalHandler';
+import type { WorkshopPassageSearchPorts } from '@handlers/domain/workshop/WorkshopPassageSearchHandler';
 import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
 import type { ContextPathSuggestions } from '@/application/services/contextPaths/ContextPathSuggestionService';
 import type { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
@@ -212,6 +213,8 @@ export interface CoreServices {
   workshopSavedSessionTodos?: WorkshopSavedSessionTodos;
   /** A persona's context-paths card (ADR 2026-11-19 D27): C1's checker and settings writer. No handler constructs them. */
   contextPathProposals?: WorkshopLocationsProposalPorts;
+  /** A persona's passage-search card (ADR 2026-11-20 D20): the engine, the listing and the report file. No handler constructs them. */
+  workshopPassageSearch?: WorkshopPassageSearchPorts;
   /**
    * Persona file edits (ADR 2026-11-05 D7): the one gateway from a staged
    * proposal to a project file, through Draft Edit's applier. No handler

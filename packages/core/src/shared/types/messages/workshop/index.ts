@@ -38,5 +38,6 @@ export * from './standingDirectives';
 export * from './widgets';
 export * from './todoStatus';
 export * from './locationsProposal';
+export * from './passageSearch';
 export * from './sessionRecovery';
 export * from './session';
