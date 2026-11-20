@@ -203,6 +203,23 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: ['WORKSHOP_APPLY_LOCATIONS_PROPOSAL']
   },
   {
+    // A persona's passage-search card (ADR 2026-11-20 D20): the answers that lead to a room change wait behind the gate.
+    owner: 'application/handlers/domain/workshop/WorkshopPassageSearchHandler.ts',
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_PASSAGE_SEARCH_RUN', 'WORKSHOP_PASSAGE_SEARCH_CANCEL', 'WORKSHOP_PASSAGE_SEARCH_SEND']
+  },
+  {
+    // Its price is a read, and Stop, Discard and Open report touch only this window's search and results.
+    owner: 'application/handlers/domain/workshop/WorkshopPassageSearchHandler.ts',
+    registration: 'direct',
+    messageTypes: [
+      'WORKSHOP_PASSAGE_SEARCH_ESTIMATE',
+      'WORKSHOP_PASSAGE_SEARCH_STOP',
+      'WORKSHOP_PASSAGE_SEARCH_DISCARD',
+      'WORKSHOP_PASSAGE_SEARCH_OPEN_REPORT'
+    ]
+  },
+  {
     // Recover… writes saved sessions on the coordinator's queue, never the room (ADR 2026-11-19 D6e).
     owner: 'application/handlers/domain/workshop/WorkshopNamedSessionRecoveryRoute.ts',
     registration: 'direct',
@@ -502,6 +519,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopLightboxTileHandler',
   'WorkshopLocationsProposalHandler',
   'WorkshopMemoryDraftHandler',
+  'WorkshopPassageSearchHandler',
   'WorkshopPinnedContextHandler',
   'WorkshopProjectMemoryHandler',
   'WorkshopProjectMemoryManagerHandler',
@@ -2460,11 +2478,13 @@ describe('architectural boundaries', () => {
     // Workshop Persona Tools item A added the writer's Undo of a persona's to-do change (mutation)
     // and Recover… for a saved session left mid-save (direct).
     // Workshop Persona Tools item C2 added the writer's Apply on a context-paths card (mutation).
-    expect(expectedOwnerPairs).toHaveLength(101);
+    // Passage Search Slice 4 added a persona's card: Run, Cancel and Send (mutation); its price, Stop,
+    // Discard and Open report (direct).
+    expect(expectedOwnerPairs).toHaveLength(108);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(54);
+      .toHaveLength(57);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(47);
+      .toHaveLength(51);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -3181,6 +3201,7 @@ describe('architectural boundaries', () => {
       'locationsProposal.ts',
       'memoryDraft.ts',
       'participants.ts',
+      'passageSearch.ts',
       'pinnedContext.ts',
       'projectMemory.ts',
       'projectMemoryManager.ts',

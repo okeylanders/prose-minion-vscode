@@ -183,6 +183,7 @@ packages/core/src/
                 ├── selectedText.ts
                 ├── todoStatus.ts
                 ├── locationsProposal.ts
+                ├── passageSearch.ts
                 ├── sessionRecovery.ts
                 └── settings.ts
 ```

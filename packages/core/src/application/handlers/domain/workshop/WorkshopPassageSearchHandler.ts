@@ -132,24 +132,23 @@ export class WorkshopPassageSearchHandler {
   }
 
   registerRoutes(router: MessageRouter, registerMutation: WorkshopMutationRouteRegistrar): void {
-    const direct = (type: MessageType, action: WorkshopPassageSearchAction, handle: (payload: WorkshopPassageSearchActionPayload) => Promise<void> | void): void =>
-      router.register(type, async (message) => this.take(action, (message as { payload?: unknown }).payload, handle));
-    const gated = (type: MessageType, action: WorkshopPassageSearchAction, handle: (payload: WorkshopPassageSearchActionPayload) => Promise<void> | void): void =>
-      registerMutation(type, async (message: { payload?: unknown }) => this.take(action, message.payload, handle), undefined,
-        (_reason, message: { payload?: unknown }) => {
-          const payload = payloadOf(message.payload);
-          if (payload) {
-            this.refuse(action, payload, { reason: 'session-operation' });
-          }
-        });
-    // The price is a read, never behind the mutation gate (D20).
-    direct(MessageType.WORKSHOP_PASSAGE_SEARCH_ESTIMATE, 'estimate', (payload) => this.handleEstimate(payload));
-    direct(MessageType.WORKSHOP_PASSAGE_SEARCH_STOP, 'stop', (payload) => this.handleStop(payload));
-    direct(MessageType.WORKSHOP_PASSAGE_SEARCH_DISCARD, 'discard', (payload) => this.handleDiscard(payload));
-    direct(MessageType.WORKSHOP_PASSAGE_SEARCH_OPEN_REPORT, 'open-report', (payload) => this.handleOpenReport(payload));
-    gated(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, 'run', (payload) => this.handleRun(payload));
-    gated(MessageType.WORKSHOP_PASSAGE_SEARCH_CANCEL, 'cancel', (payload) => this.handleCancel(payload));
-    gated(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND, 'send', (payload) => this.handleSend(payload));
+    type Handle = (payload: WorkshopPassageSearchActionPayload) => Promise<void> | void;
+    const taking = (action: WorkshopPassageSearchAction, handle: Handle) => async (message: { payload?: unknown }): Promise<void> =>
+      this.take(action, message.payload, handle);
+    const blocked = (action: WorkshopPassageSearchAction) => (_reason: string, message: { payload?: unknown }): void => {
+      const payload = payloadOf(message.payload);
+      if (payload) {
+        this.refuse(action, payload, { reason: 'session-operation' });
+      }
+    };
+    // The price is a read, never behind the mutation gate (D20); Stop, Discard and Open report touch only this window.
+    router.register(MessageType.WORKSHOP_PASSAGE_SEARCH_ESTIMATE, taking('estimate', (payload) => this.handleEstimate(payload)));
+    router.register(MessageType.WORKSHOP_PASSAGE_SEARCH_STOP, taking('stop', (payload) => this.handleStop(payload)));
+    router.register(MessageType.WORKSHOP_PASSAGE_SEARCH_DISCARD, taking('discard', (payload) => this.handleDiscard(payload)));
+    router.register(MessageType.WORKSHOP_PASSAGE_SEARCH_OPEN_REPORT, taking('open-report', (payload) => this.handleOpenReport(payload)));
+    registerMutation(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, taking('run', (payload) => this.handleRun(payload)), undefined, blocked('run'));
+    registerMutation(MessageType.WORKSHOP_PASSAGE_SEARCH_CANCEL, taking('cancel', (payload) => this.handleCancel(payload)), undefined, blocked('cancel'));
+    registerMutation(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND, taking('send', (payload) => this.handleSend(payload)), undefined, blocked('send'));
   }
 
   /** What this window is doing for a card, read each time a turn is sent to the webview (D19). */
