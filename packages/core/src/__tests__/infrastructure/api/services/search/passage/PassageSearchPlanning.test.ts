@@ -106,7 +106,22 @@ describe('buildPassageSearchPlan', () => {
 
   it('refuses when nothing is left to read, or the calls pass their bound', () => {
     expect(buildPassageSearchPlan(inputOf({ files: [sourceFile('a.md', ' ')] }))).toEqual({ kind: 'no-files' });
-    expect(buildPassageSearchPlan(inputOf(), { ...bounds, calls: 1 })).toEqual({ kind: 'too-many-calls', calls: 2 });
+    expect(buildPassageSearchPlan(inputOf(), { ...bounds, calls: 1 })).toEqual({ kind: 'too-many-calls', calls: 2, organizing: false });
+  });
+
+  it('bounds the whole plan: a planned organizing call takes one of the places (PR #293 F5)', () => {
+    // Two reads fit a bound of two; with the organizing call they are three.
+    const limits = { ...bounds, calls: 2 };
+    expect(buildPassageSearchPlan(inputOf(), limits).kind).toBe('planned');
+    expect(buildPassageSearchPlan(inputOf({ organize: true }), limits)).toEqual({ kind: 'too-many-calls', calls: 3, organizing: true });
+    const fits = planOf(inputOf({ organize: true }), { ...bounds, calls: 3 });
+    expect(fits.estimate.calls).toBe(3);
+    expect(fits.chunks).toHaveLength(2);
+  });
+
+  it('freezes the output ceilings the calls are sent with', () => {
+    expect(planOf(inputOf()).ceilings).toEqual({ readOutputTokens: bounds.outputTokens });
+    expect(planOf(inputOf({ organize: true })).ceilings).toEqual({ readOutputTokens: bounds.outputTokens, organizeOutputTokens: bounds.organize.outputTokens });
   });
 
   describe('fitting half a known window (D5a)', () => {
@@ -162,6 +177,17 @@ describe('buildPassageSearchPlan', () => {
       expect(key({ files, facts: { pricing: PRICING, contextLength: 6_000 } }, limits)).not.toBe(whole);
       // A window that changes nothing about what is sent is the same plan.
       expect(key({ files, facts: { pricing: PRICING, contextLength: 2_000_000 } }, limits)).toBe(whole);
+    });
+
+    it('moves when an output ceiling changes, the estimate unchanged (PR #293 follow-up)', () => {
+      const base = planOf(inputOf({ organize: true }));
+      const read = planOf(inputOf({ organize: true }), { ...bounds, outputTokens: bounds.outputTokens + 1 });
+      const organize = planOf(inputOf({ organize: true }), { ...bounds, organize: { ...bounds.organize, outputTokens: bounds.organize.outputTokens + 1 } });
+      expect(read.estimate).toEqual(base.estimate);
+      expect(organize.estimate).toEqual(base.estimate);
+      expect(read.planKey).not.toBe(base.planKey);
+      expect(organize.planKey).not.toBe(base.planKey);
+      expect(organize.planKey).not.toBe(read.planKey);
     });
 
     it('moves with a file\'s text, the files named, the files left out, the question, the model, the prompt and the organize option', () => {

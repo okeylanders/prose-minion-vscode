@@ -12,11 +12,13 @@
  *   counted, as is one with no words.
  * - **The estimate has two parts:** the reads, exact input at a typical
  *   reply each, and, when the plan organizes, the pass's allowance.
+ * - **`calls` bounds the whole plan.** A planned organizing call takes one
+ *   of its places, so such a plan reads at most one fewer chunk.
  * - **`planKey` covers what the writer is shown and what decides what is
  *   sent:** the model, the question, the organize option, the system prompt,
  *   each file's identity and hash, the files left out, the budget in force
- *   and every chunk's file and range, the token figures and the pricing
- *   basis. Two plans with one key show the same line and send the same
+ *   and every chunk's file and range, the output ceilings the calls are
+ *   sent with, the token figures and the pricing basis. Two plans with one key show the same line and send the same
  *   requests.
  */
 
@@ -60,7 +62,8 @@ export type PassageSearchPlanned =
   | { readonly kind: 'model-too-small' }
   /** Nothing is left to read. */
   | { readonly kind: 'no-files' }
-  | { readonly kind: 'too-many-calls'; readonly calls: number };
+  /** `calls` is the whole plan's: the reads, and the organizing call when one is planned. */
+  | { readonly kind: 'too-many-calls'; readonly calls: number; readonly organizing: boolean };
 
 interface CallPlan {
   readonly chunkWords: number;
@@ -80,21 +83,28 @@ export function buildPassageSearchPlan(input: PassageSearchPlanInput, bounds: Pa
   if (calls.chunks.length === 0) {
     return { kind: 'no-files' };
   }
-  if (calls.chunks.length > bounds.calls) {
-    return { kind: 'too-many-calls', calls: calls.chunks.length };
+  // The bound is on the whole plan (D6): a planned organizing call takes one of its places.
+  const planned = calls.chunks.length + (input.organize ? 1 : 0);
+  if (planned > bounds.calls) {
+    return { kind: 'too-many-calls', calls: planned, organizing: input.organize };
   }
+  const ceilings = {
+    readOutputTokens: bounds.outputTokens,
+    ...(input.organize ? { organizeOutputTokens: bounds.organize.outputTokens } : {})
+  };
   const files = calls.files.map((file, index): PassageSearchPlanFile => ({ ...file, key: `f${index + 1}`, sha256: sha256(file.text) }));
   const leftOut = [...input.leftOut, ...calls.leftOut];
   const estimate = estimateOf(input, calls, leftOut, bounds);
   return {
     kind: 'planned',
     plan: {
-      planKey: planKeyOf(input, calls, files, leftOut, estimate),
+      planKey: planKeyOf(input, calls, files, leftOut, estimate, ceilings),
       model: input.model,
       question: input.question,
       organize: input.organize,
       systemMessage: input.systemMessage,
       chunkWords: calls.chunkWords,
+      ceilings,
       files,
       chunks: calls.chunks,
       estimate
@@ -176,7 +186,8 @@ function planKeyOf(
   calls: CallPlan,
   files: readonly PassageSearchPlanFile[],
   leftOut: readonly PassageSearchLeftOutFile[],
-  estimate: PassageSearchEstimate
+  estimate: PassageSearchEstimate,
+  ceilings: PassageSearchPlan['ceilings']
 ): string {
   const pricing = input.facts.pricing;
   return sha256(JSON.stringify({
@@ -189,6 +200,7 @@ function planKeyOf(
     leftOut: leftOut.map((file) => [file.identity, file.reason]),
     chunkWords: calls.chunkWords,
     chunks: calls.chunks.map((chunk) => [chunk.file, chunk.start, chunk.bodyStart, chunk.end]),
+    ceilings: [ceilings.readOutputTokens, ceilings.organizeOutputTokens ?? null],
     tokens: [estimate.reads.inputTokens, estimate.reads.outputTokens, estimate.organize?.inputTokens ?? null, estimate.organize?.outputTokens ?? null],
     // The basis, not the product: a price that moved, appeared or went away is a different plan.
     pricing: pricing ? [pricing.promptUsdPerToken, pricing.completionUsdPerToken] : null

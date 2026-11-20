@@ -14,6 +14,8 @@
  * - **One moment shows once.** Within a file, instances whose ranges overlap
  *   are one: the earliest-starting is kept, the rest are `duplicate`. This
  *   covers the overlap between chunks and a model listing a moment twice.
+ *   Two that start together are settled by the plan: the earlier chunk's,
+ *   then the earlier item of one reply, whatever order the replies came in.
  *   Overlap is with the instance that stands, so a range clear of it is its
  *   own moment even when a dropped one touched both.
  * - **Labels are merged by a host key:** case and accents folded,
@@ -41,6 +43,9 @@ export interface PassageSearchFound {
   readonly end: number;
   readonly note: string;
   readonly label: string;
+  /** The plan chunk whose call found it, and its place in that reply: what breaks a tie, never the order replies came back in. */
+  readonly chunk: number;
+  readonly item: number;
 }
 
 export interface PassageSearchAnchored {
@@ -53,20 +58,22 @@ export interface PassageSearchAnchored {
 export function anchorPassageSearchInstances(
   file: Pick<PassageSearchPlanFile, 'text'>,
   chunk: PassageSearchPlanChunk,
-  instances: readonly PassageSearchReplyInstance[]
+  instances: readonly PassageSearchReplyInstance[],
+  /** The chunk's index in the plan. */
+  chunkIndex = 0
 ): PassageSearchAnchored {
   const text = file.text.slice(chunk.start, chunk.end);
   const found: PassageSearchFound[] = [];
   let notFound = 0;
   let ambiguous = 0;
-  for (const instance of instances) {
+  for (const [item, instance] of instances.entries()) {
     const anchor = anchorQuote(text, {
       quote: instance.quote,
       ...(instance.before ? { before: instance.before } : {}),
       ...(instance.after ? { after: instance.after } : {})
     });
     if (anchor.kind === 'anchored') {
-      found.push({ file: chunk.file, start: chunk.start + anchor.start, end: chunk.start + anchor.end, note: instance.note, label: instance.label });
+      found.push({ file: chunk.file, start: chunk.start + anchor.start, end: chunk.start + anchor.end, note: instance.note, label: instance.label, chunk: chunkIndex, item });
     } else if (anchor.kind === 'ambiguous') {
       ambiguous += 1;
     } else {
@@ -79,7 +86,8 @@ export function anchorPassageSearchInstances(
 export interface PassageSearchMerged {
   readonly instances: readonly PassageSearchInstance[];
   readonly labels: readonly PassageSearchLabel[];
-  readonly files: readonly PassageSearchResultFile[];
+  /** Each plan file's instance count; the run adds what it searched of each. */
+  readonly files: ReadonlyArray<Omit<PassageSearchResultFile, 'chunks' | 'searched'>>;
   readonly duplicates: number;
   /** Moments past `limit`, in reading order, not kept. */
   readonly overLimit: number;
@@ -152,8 +160,8 @@ export function passageSearchLabelKey(label: string): string {
 
 /** In reading order, overlaps within a file made one: the earliest-starting stands. */
 function moments(found: readonly PassageSearchFound[]): { kept: PassageSearchFound[]; duplicates: number } {
-  // A stable sort, so of two that start together the one read first stands.
-  const ordered = [...found].sort((a, b) => a.file - b.file || a.start - b.start);
+  // Of two that start together, the earlier chunk's stands, then the earlier item of one reply: the plan's order, not the network's.
+  const ordered = [...found].sort((a, b) => a.file - b.file || a.start - b.start || a.chunk - b.chunk || a.item - b.item);
   const kept: PassageSearchFound[] = [];
   let duplicates = 0;
   for (const next of ordered) {

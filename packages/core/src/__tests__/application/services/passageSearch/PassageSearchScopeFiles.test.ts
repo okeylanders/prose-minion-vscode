@@ -26,6 +26,8 @@ interface HostOptions {
   patternFails?: boolean;
   files?: Record<string, Uint8Array | Error>;
   editor?: ActiveSelectionInfo;
+  /** What the port would remember of an earlier selection: never to be read. */
+  remembered?: ActiveSelectionInfo;
   roots?: Array<{ path: string; name: string }>;
   statSize?: number;
 }
@@ -51,17 +53,19 @@ function createHost(options: HostOptions = {}) {
     return found;
   });
   const stat = jest.fn(async () => ({ type: 1, ctime: 0, mtime: 0, size: options.statSize ?? 10 }));
+  let current = options.editor;
+  const editor = { currentSelection: jest.fn(() => current), getActiveSelection: jest.fn(() => options.remembered ?? current) };
   const scopeFiles = new PassageSearchScopeFiles({
     listing: { listGroupFiles, listPatternFiles },
     fileSystem: { readFile, stat },
     workspace: { workspaceFolders: () => options.roots ?? [{ path: '/book', name: 'book' }] },
-    editor: { getActiveSelection: () => options.editor }
+    editor
   });
-  return { scopeFiles, listGroupFiles, listPatternFiles, readFile, stat };
+  return { scopeFiles, listGroupFiles, listPatternFiles, readFile, stat, editor, setEditor: (next: ActiveSelectionInfo | undefined) => { current = next; } };
 }
 
 async function filesOf(host: ReturnType<typeof createHost>, scopes: PassageSearchScope[]) {
-  const outcome = await host.scopeFiles.resolve(scopes);
+  const outcome = await host.scopeFiles.resolve(scopes, host.scopeFiles.editorNow());
   if (outcome.kind !== 'files') {
     throw new Error(`expected files, got ${outcome.refusal.reason}`);
   }
@@ -69,7 +73,7 @@ async function filesOf(host: ReturnType<typeof createHost>, scopes: PassageSearc
 }
 
 async function refusalOf(host: ReturnType<typeof createHost>, scopes: PassageSearchScope[]) {
-  const outcome = await host.scopeFiles.resolve(scopes);
+  const outcome = await host.scopeFiles.resolve(scopes, host.scopeFiles.editorNow());
   return outcome.kind === 'refused' ? outcome.refusal : undefined;
 }
 
@@ -183,6 +187,33 @@ describe('PassageSearchScopeFiles', () => {
     it('refuses with no editor, or an unsaved document', async () => {
       expect(await refusalOf(createHost(), [{ kind: 'active-file' }])).toMatchObject({ reason: 'no-active-file' });
       expect(await refusalOf(createHost({ editor: editorOn('', { uriString: 'untitled:Untitled-1' }) }), [{ kind: 'active-file' }])).toMatchObject({ reason: 'no-active-file' });
+    });
+
+    it('reads the current editor, never a remembered selection: a formerly selected A with a live B and no selection (PR #293 F1)', async () => {
+      const remembered = editorOn('/book/chapters/a.md', { text: 'The Cat grinned.', isEmpty: false, startLine: 3, endLine: 3 });
+      const host = createHost({ editor: editorOn('/book/chapters/b.md'), remembered });
+      const { files } = await filesOf(host, [{ kind: 'active-file' }]);
+      expect(files.map((file) => file.identity)).toEqual(['/book/chapters/b.md']);
+      expect(await refusalOf(host, [{ kind: 'selection' }])).toMatchObject({ reason: 'no-selection' });
+      expect(host.readFile).not.toHaveBeenCalledWith('/book/chapters/a.md');
+      expect(host.editor.getActiveSelection).not.toHaveBeenCalled();
+    });
+
+    it('refuses both scopes once the editor is closed, whatever was selected in it', async () => {
+      const remembered = editorOn('/book/chapters/a.md', { text: 'The Cat grinned.', isEmpty: false });
+      const host = createHost({ remembered });
+      expect(await refusalOf(host, [{ kind: 'active-file' }])).toMatchObject({ reason: 'no-active-file' });
+      expect(await refusalOf(host, [{ kind: 'selection' }])).toMatchObject({ reason: 'no-selection' });
+      expect(host.readFile).not.toHaveBeenCalled();
+    });
+
+    it('reads one snapshot for both scopes: an editor that changes after it is not seen', async () => {
+      const host = createHost({ editor: editorOn('/book/chapters/a.md', { text: 'Down, down, down.', isEmpty: false, startLine: 2, endLine: 2 }) });
+      const snapshot = host.scopeFiles.editorNow();
+      host.setEditor(editorOn('/book/chapters/b.md'));
+      const outcome = await host.scopeFiles.resolve([{ kind: 'selection' }, { kind: 'active-file' }], snapshot);
+      expect(outcome.kind === 'files' ? outcome.files.map((file) => file.displayPath) : outcome).toEqual(['chapters/a.md', 'chapters/a.md']);
+      expect(host.editor.currentSelection).toHaveBeenCalledTimes(1);
     });
 
     it('reads a selection on the host, with the document\'s lines when the port gives its start', async () => {

@@ -124,8 +124,41 @@ describe('a Passage Search run through the production manager and engine (D7)', 
     expect(complete).toHaveBeenCalledTimes(1);
     expect(requested).toEqual([PASSAGE]);
     expect(result.ended).toBe('key-changed');
-    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, unsent: 2 });
+    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2 });
     expect(result.instances.map((instance) => instance.quote)).toEqual(['took a watch out of its waistcoat-pocket']);
+    manager.dispose();
+  });
+
+  it('ends key-changed when the key changes with the last read already in flight, though no later call is refused (PR #293 F2)', async () => {
+    const manager = managerOf({ passageSearchModel: PASSAGE });
+    const organizer = { available: true, plan: jest.fn(), organize: jest.fn(async () => undefined) };
+    const service = new PassageSearchService(
+      manager,
+      { loadPrompts: jest.fn(async () => 'SYSTEM') } as never,
+      { facts: jest.fn(async () => ({})) },
+      { appendLine: jest.fn() } as never,
+      organizer as never
+    );
+    const planned = await service.plan({ model: PASSAGE, question: QUESTION, organize: true, files: [sourceFile('chapters/1.md', RABBIT_CHAPTER)] });
+    if (planned.kind !== 'planned') {
+      throw new Error('expected a plan');
+    }
+    const complete = jest.spyOn(OpenRouterClient.prototype, 'createChatCompletion').mockImplementation(async () => {
+      await manager.refreshConfiguration();
+      return {
+        content: replyOf({ quote: 'took a watch out of its waistcoat-pocket' }),
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 10, totalTokens: 20, costUsd: 0.001 }
+      };
+    });
+
+    const result = await service.run(planned.plan);
+
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(result.ended).toBe('key-changed');
+    expect(result.calls).toEqual({ planned: 1, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 0 });
+    expect(result.instances).toHaveLength(1);
+    expect(organizer.organize).not.toHaveBeenCalled();
     manager.dispose();
   });
 });

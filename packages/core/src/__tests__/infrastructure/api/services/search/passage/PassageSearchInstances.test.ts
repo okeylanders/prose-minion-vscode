@@ -69,7 +69,7 @@ describe('mergePassageSearchInstances', () => {
     mergePassageSearchInstances(files, found, limit, context);
   const foundAt = (quote: string, extra: Partial<PassageSearchFound> = {}, text = RABBIT_HOLE): PassageSearchFound => {
     const start = text.indexOf(quote);
-    return { file: 0, start, end: start + quote.length, note: 'note', label: 'label', ...extra };
+    return { file: 0, start, end: start + quote.length, note: 'note', label: 'label', chunk: 0, item: 0, ...extra };
   };
 
   it('shows the source\'s text, never the model\'s spelling (D9a): straight marks anchor on curly ones and the curly source is shown, exactly', () => {
@@ -95,7 +95,7 @@ describe('mergePassageSearchInstances', () => {
   it('numbers from 1 in reading order: file by file, then by position, whatever order the calls came back in', () => {
     const second = fileOf('The Queen of Hearts, she made some tarts.', { key: 'f2', displayPath: 'chapters/2.md' });
     const merged = merge([
-      { file: 1, start: 4, end: 9, note: '', label: 'queen' },
+      { file: 1, start: 4, end: 9, note: '', label: 'queen', chunk: 1, item: 0 },
       foundAt('hurried on'),
       foundAt('ran close by her')
     ], [file, second]);
@@ -122,6 +122,29 @@ describe('mergePassageSearchInstances', () => {
     expect(countPassageSearchMoments([foundAt('hurried on'), foundAt('hurried on'), foundAt('ran close by her')])).toBe(2);
   });
 
+  it('settles a tie by the plan, never by the order replies came back in (PR #293 F6)', () => {
+    // Two chunks' calls anchor one range, as an overlap paragraph allows, with different notes and labels.
+    const early = foundAt('hurried on', { chunk: 0, item: 3, note: 'from the first chunk', label: 'first' });
+    const late = foundAt('hurried on', { chunk: 1, item: 0, note: 'from the second chunk', label: 'second' });
+    const sameReply = foundAt('hurried on', { chunk: 0, item: 5, note: 'listed again', label: 'again' });
+    for (const arrived of [[early, late, sameReply], [late, sameReply, early], [sameReply, late, early]]) {
+      const merged = merge(arrived);
+      expect(merged.instances.map((shown) => [shown.note, shown.label])).toEqual([['from the first chunk', 'first']]);
+      expect(merged.duplicates).toBe(2);
+      expect(merged.labels).toEqual([{ key: 'first', label: 'first', count: 1, files: 1 }]);
+    }
+    // The same start with a different end is settled the same way.
+    const longer = foundAt('hurried on. Alice', { chunk: 1, item: 0 });
+    expect(merge([longer, early]).instances.map((shown) => shown.quote)).toEqual(['hurried on']);
+    expect(merge([early, longer]).instances.map((shown) => shown.quote)).toEqual(['hurried on']);
+  });
+
+  it('records the chunk and the reply item each quote came from', () => {
+    const chunk: PassageSearchPlanChunk = { file: 0, start: 0, bodyStart: 0, end: RABBIT_HOLE.length };
+    const anchored = anchorPassageSearchInstances(file, chunk, [instance('nowhere at all'), instance('ran close by her'), instance('gone round the corner')], 7);
+    expect(anchored.found.map((found) => [found.chunk, found.item])).toEqual([[7, 1], [7, 2]]);
+  });
+
   it('never merges the same range in two files', () => {
     const twin = fileOf(RABBIT_HOLE, { key: 'f2' });
     const merged = merge([foundAt('hurried on'), foundAt('hurried on', { file: 1 })], [file, twin]);
@@ -132,7 +155,7 @@ describe('mergePassageSearchInstances', () => {
   it('merges labels by a folded key, showing the first spelling in reading order, with the host\'s counts', () => {
     const second = fileOf('The Queen looked at her watch.', { key: 'f2' });
     const merged = merge([
-      { file: 1, start: 4, end: 9, note: '', label: 'CHECKS   the Wátch' },
+      { file: 1, start: 4, end: 9, note: '', label: 'CHECKS   the Wátch', chunk: 1, item: 0 },
       foundAt('hurried on', { label: 'Checks the watch' }),
       foundAt('ran close by her', { label: 'runs' }),
       foundAt('gone round the corner', { label: 'checks the watch' })

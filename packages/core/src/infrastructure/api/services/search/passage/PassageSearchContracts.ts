@@ -89,6 +89,8 @@ export interface PassageSearchPlan {
   readonly systemMessage: string;
   /** The word budget in force, after any lowering to fit the model's window (D5a). */
   readonly chunkWords: number;
+  /** The output ceilings the calls are sent with: frozen in the plan and its key, so a changed ceiling is a changed plan. */
+  readonly ceilings: { readonly readOutputTokens: number; readonly organizeOutputTokens?: number };
   readonly files: readonly PassageSearchPlanFile[];
   /** In reading order: file by file, then by position. */
   readonly chunks: readonly PassageSearchPlanChunk[];
@@ -168,13 +170,20 @@ export interface PassageSearchLabel {
   readonly files: number;
 }
 
-/** A result's file, as the host holds it. */
+/** How much of a planned file a run searched: every chunk answered, some, or none. */
+export type PassageSearchFileSearched = 'full' | 'partial' | 'none';
+
+/** A planned file in a result, as the host holds it, with what the run did of it. */
 export interface PassageSearchResultFile {
   readonly key: string;
   readonly displayPath: string;
   readonly absolutePath?: string;
   readonly lines: 'document' | 'text';
   readonly instances: number;
+  /** Its read calls: planned, admitted (dispatched to the provider) and answered (a reply read). */
+  readonly chunks: { readonly planned: number; readonly admitted: number; readonly answered: number };
+  /** `full` only when every chunk was answered, hits or none; a file with no hit and `none` was never searched. */
+  readonly searched: PassageSearchFileSearched;
 }
 
 /** The organizing pass's checked output (D12, D13). Slice 3 fills it. */
@@ -205,9 +214,27 @@ export interface PassageSearchResult {
   readonly dropped: Readonly<Record<PassageSearchDropReason, number>>;
   /** Checked instances past the `instances` bound, not kept. */
   readonly overLimit: number;
-  /** Read calls: `answered` holds the cut ones; `failed` and `unsent` do not. */
-  readonly calls: { readonly planned: number; readonly answered: number; readonly failed: number; readonly cut: number; readonly unsent: number };
-  readonly files: { readonly read: readonly PassageSearchResultFile[]; readonly leftOut: PassageSearchLeftOut };
+  /**
+   * Read calls. `answered`, `failed`, `cancelled` and `unsent` add up to
+   * `planned`; `cut` counts answered calls whose reply was cut off.
+   * `cancelled` calls were dispatched and stopped in flight, and may have
+   * been charged; `unsent` calls never started.
+   */
+  readonly calls: {
+    readonly planned: number;
+    readonly answered: number;
+    readonly failed: number;
+    readonly cut: number;
+    readonly cancelled: number;
+    readonly unsent: number;
+  };
+  readonly files: {
+    /** Every file of the plan, in reading order, searched or not. */
+    readonly planned: readonly PassageSearchResultFile[];
+    /** How many of them were searched in full, in part, and not at all. */
+    readonly searched: Readonly<Record<PassageSearchFileSearched, number>>;
+    readonly leftOut: PassageSearchLeftOut;
+  };
   readonly ended: PassageSearchEnded;
   readonly usage?: TokenUsage;
 }
