@@ -24,6 +24,15 @@ function besideColumn(): vscode.ViewColumn {
   return reuseSecondColumn ? vscode.ViewColumn.Two : vscode.ViewColumn.Beside;
 }
 
+/** The 1-based `line` of `document`, whole, clamped to the lines it has; undefined for a line that is no number. */
+function lineRange(document: vscode.TextDocument, line: number): vscode.Range | undefined {
+  if (!Number.isFinite(line) || document.lineCount < 1) {
+    return undefined;
+  }
+  const index = Math.min(Math.max(Math.floor(line), 1), document.lineCount) - 1;
+  return document.lineAt(index).range;
+}
+
 export class VsCodeShellService implements ShellService {
   showInformationMessage(message: string, ...actions: string[]): Promise<string | undefined> {
     return Promise.resolve(vscode.window.showInformationMessage(message, ...actions));
@@ -62,8 +71,19 @@ export class VsCodeShellService implements ShellService {
     return chosen ? { fsPath: chosen.fsPath, uri: chosen.toString() } : undefined;
   }
 
-  async openFileInEditor(filePath: string, options?: { beside?: boolean }): Promise<void> {
+  async openFileInEditor(filePath: string, options?: { beside?: boolean; line?: number }): Promise<void> {
     const uri = vscode.Uri.file(filePath);
+    if (options?.line !== undefined) {
+      // Open at a line (ADR 2026-11-20 D15): reveal it and select it whole.
+      const document = await vscode.workspace.openTextDocument(uri);
+      const selection = lineRange(document, options.line);
+      await vscode.window.showTextDocument(document, {
+        preview: false,
+        ...(options.beside ? { viewColumn: besideColumn() } : {}),
+        ...(selection ? { selection } : {})
+      });
+      return;
+    }
     if (options?.beside) {
       const document = await vscode.workspace.openTextDocument(uri);
       await vscode.window.showTextDocument(document, { preview: false, viewColumn: besideColumn() });
