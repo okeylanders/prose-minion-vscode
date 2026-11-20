@@ -24,56 +24,72 @@
 
 ---
 
-## v2.14.1 — Workshop reply fix
+## What's new in v2.15.0 — a clearer view of long conversations
 
-Fixed cases where a Workshop persona using web research could return a blank reply after trying to use a Workshop tool.
+The Workshop now shows what a persona is carrying, lets you reach the start of a long conversation, and attaches a project file from the keyboard.
 
-## What's new in v2.14.0 — everyday conveniences
+### See what fills a persona's context
 
-Five small things that take friction out of a writing session, and three more models to try.
+**Find out where the room went.** Open a persona's **context** row above the Workshop composer and look under **By part**. A bar and a table split the total into the persona's instructions, its tool-use instructions, project memory, to-dos, room notes, your excerpt and attachments, what the persona asked to read, and the conversation itself. A part opens to its pieces, so you can tell a long conversation from one large attachment before you decide what to trim or when to start fresh.
 
-### Selected Text on a Workshop message
-
-**Ask about a few lines without changing your excerpt.** Turn on **Include selected text** beside the Workshop composer, and whatever you select in the editor shows above it as a **Selected Text** pill, with its file, lines, and word count. It follows your selection until you send, then goes with that one message. Or right-click a selection and choose **Prose Minion → Add Selection to Workshop Message** to attach it by hand. The persona reads those lines as a selection, apart from the excerpt, and the excerpt never changes. A selection over 5,000 words is cut to its first 5,000, and the pill says so before you send.
-
-The command that replaces the excerpt is still there, with a clearer name: **Send Selection to Workshop** is now **Send to New Workshop Excerpt**.
+Most parts are estimates, and the table says which. Before a reply has been measured, the panel shows the parts it knows and leaves the shares out.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-selected-text.png" alt="Top: the Workshop composer with the Include selected text toggle on and a Selected Text pill above it naming a chapter file, lines 14 to 19, and 96 words, which follows the editor's selection. Bottom: a sent message carrying its Selected Text pill, and Jill's reply about those lines. The conversation is demo content" width="100%"/>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-context-breakdown.png" alt="The Workshop's Jill context panel, opened: 38.6K of 990K tokens, the model's figures, then By part, a bar in eight colored segments over a table of each part's tokens, share, and whether it is an estimate, with Excerpt and context opened to three pieces and Conversation as the rest. The conversation is demo content" width="100%"/>
 </p>
 
-### Bigger reads, a folding rail, and a fresh read of your chapter
+### Earlier turns, and bookmarks that jump to them
 
-**One read, several files.** Ask a persona to compare chapters, or a chapter against a character sheet, and it reads up to ten files in one go, shown as one card. Every file read is now fitted to the room left in the model's context window: a long file stops early and the persona can ask for the rest, where before a full window could fail the turn.
+**Scroll back past the recent turns.** A long conversation shows its most recent turns. Choose **Show earlier turns** at the top of the thread to load older messages in place, a page at a time, each with its usual actions: copy, bookmark, save to memory, rewind, branch.
 
-**A side pane that folds away.** Press **Side pane** in the Workshop's header, or the arrow on the rail, and the rail collapses to a strip of icons with its counts, leaving the tab to the conversation. In a narrow window it starts folded and opens over the conversation.
-
-**Re-read from file.** When a new conversation keeps a chapter from the last one, **Re-read from file** picks up the edits you made since, and choosing **Continue** on the carried chapter re-reads it for you.
+**Open an old bookmark and land on it.** A bookmark marked **Earlier in thread** loads the pages it needs and scrolls to its message. One farther back than about 300 turns opens in the read-only reader instead.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-reads-rail-reread.png" alt="Top: a writer asks Jill to compare how chapters one, two, and three open; one Project Resources card reads 3 files, and Jill's reply compares them. Bottom left: the Workshop with its side pane folded to a strip of icons, Material and Notes with their counts. Bottom right: the Excerpt panel of a new conversation that kept its chapter, with Re-read from file. The conversation is demo content" width="100%"/>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-earlier-turns.png" alt="The Workshop with its Notes tab open beside a long thread. The thread begins with a Show earlier turns button reading 212 not shown; the Bookmarks list holds three bookmarks, two tagged Earlier in thread. The conversation is demo content" width="100%"/>
 </p>
 
-### Search your Dictionary history
+### Attach a project file with `@`
 
-**Find the word you looked up last week.** The Dictionary's **Lookup history** popup has a search box that narrows the list as you type, matching each lookup's word, its context, and the file it came from. Tick **Also search definitions** to look inside the saved entries too, and each result shows the line that matched. Search reads your saved history and asks no model.
+**Name the file as you type.** Type `@` in the Workshop composer and a few letters of a file's name, then pick from the list of your configured project files with the arrow keys and **Enter**. The file is staged as a pill above the composer and goes with your next message only. **Browse project…** at the foot of the list opens the full picker.
+
+The pill is what gets sent. The `@` text a pick leaves in your message is ordinary text: deleting it keeps the pill, and removing the pill leaves the file out.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-history-search.png" alt="Left: the Dictionary's Lookup history popup searched for rabbit, with 2 of 8 lookups matching by their context and file name. Right: the same popup searched for sweet with Also search definitions ticked, 3 of 8 matching, and under each result the line of its saved definition that matched. The lookups are demo content" width="100%"/>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-at-mentions.png" alt="Top: the Workshop composer with @chap typed and a Files list above it showing four chapter files, the second highlighted, and Browse project. Bottom: the composer after the pick, with a pill for 02-the-pool-of-tears.md, 2,134 words, marked rides the next message only. The files are demo content" width="100%"/>
 </p>
 
-### Also in v2.14.0
+### More control over Project Memory
 
-- **Three new models to try** — Gemini 4 Hydrogen, Qwen4 Max, and Hy4 Flash join the model pickers as opt-in choices. Defaults and saved selections are unchanged; their prose quality has not been evaluated in Prose Minion.
-- **Fewer rejected widget results** — Show vs. Tell, Creative Variations, and Lexical Gravity no longer reject a model's reply because it left out a field that would have been empty.
-- **Two models are on their way out at OpenRouter** — it lists GLM 5.1 as expiring on November 20, 2026 and GLM 4.5 on December 31, 2026. Both are still selectable; if you use one, pick a replacement before then. Saved settings are not rewritten.
+**Choose how readily personas suggest notes.** On the **Memory** tab of conversation settings, **Suggest notes** is **Sparingly**, **Readily**, or **Aggressively**. **List at the start of each conversation** sets how much of your memory a new conversation starts with: **Standard**, **Larger**, or **Largest**. Past the notes listed with a summary, a new conversation now sees the titles of more, and a persona can page through the whole catalog when it needs to.
 
-**If you sync or share a project's sessions, update Prose Minion everywhere you use them.** A Workshop session that holds a Selected Text attachment cannot be opened by v2.13.0 or earlier.
+Both choices are saved as soon as you make them. The list size applies from the next conversation.
 
-The new features were tested by the author before release and are backed by automated tests. Multi-file reads depend on your model following the read instructions, which wider live use will tell.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-memory-controls.png" alt="The Memory tab of Conversation settings: Suggest notes with Sparingly selected beside Readily and Aggressively; meters for 46 memories, 3 loaded in full, titles and summaries, and titles only; and the list size with Standard selected beside Larger and Largest. The figures are demo content" width="100%"/>
+</p>
+
+### Ask your persona about Prose Minion, or about a lens
+
+**"Where is that setting?" is a fair question now.** A persona can search the help reference bundled with Prose Minion to answer questions about features, commands, and settings from the reference for the version you have installed. It can also list and read your Lexical Gravity lenses, built-in and your own, to explain what a lens does before you install one.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-persona-help.png" alt="Top: a Prose Minion Help card in the Workshop thread, requested by Jill, and Jill's reply saying where the Suggest notes setting is. Bottom: a Lens Library card for the Photography lens, and Jill's reply explaining what the lens attends to. The conversation is demo content" width="100%"/>
+</p>
+
+### Also in v2.15.0
+
+- **Personas hear what became of their proposals** — when a persona suggests memory notes or file edits, it is told whether they reached you as cards or were dropped, with a brief reason it can use in its next reply.
+- **Lexical Gravity keeps the lenses it can use** — it recovers from some malformed model replies, keeps the usable lenses from a batch that also holds invalid ones, and tells you when it leaves one out.
+- **Less repeated work** — opening or refreshing a conversation with several attached files, and reading pinned context, do less of it.
+- **Support and community links** — the sidebar's Settings panel has a **Support** section with a copyable email address and links to r/proseminion and the Prose Minion website.
+- **Six more models to try** — Gemini 4 Neon, GPT-6.2 Sol, Sol Pro, Astra, Astra Pro, and Ling 3.2 Flash (free) join the model pickers and Category Search. Your current selections stay in place.
+
+**If you sync or share Workshop sessions, update Prose Minion everywhere you open them.** v2.15.0 opens your existing sessions. A session saved with the new proposal-outcome records, or with help or lens look-up results, needs v2.15.0 or later.
 
 ### Earlier releases
 
+- **v2.14.1 — Workshop reply fix.** Fixed cases where a persona using web research could return a blank reply after trying to use a Workshop tool.
+- **v2.14.0 — Everyday conveniences.** Selected Text on a Workshop message, multi-file reads, a folding side pane, Re-read from file, and Dictionary history search. [See the Workshop](#the-workshop-a-writers-room-in-an-editor-tab) and [the Dictionary](#a-dictionary-that-writes-fiction).
 - **v2.13.0 — A Workshop that remembers, and edits with you.** Suggested file edits you apply, Project Memory, pinned context, bookmarks across sessions, and reactions. [See the Workshop](#the-workshop-a-writers-room-in-an-editor-tab).
 - **v2.12.0 — Lightbox and Draft Edit.** A chapter on one board, measured by code and then read through AI lenses with checked quotes; and Proofread and Craft Flags from the editor's right-click menu. [See the Lightbox](#the-lightbox-hold-a-chapter-up-to-the-light) and [Draft Edit](#draft-edit-proofread-in-place).
 - **v2.11.0 — Dictionary lookup history.** Step back through up to 500 lookups, reopen one without generating again, and get offered a saved result before you look up a phrase twice. [See the Dictionary](#a-dictionary-that-writes-fiction).
@@ -207,7 +223,23 @@ Each memory is a Markdown file in `prose-minion/memory/`, with a kind: decision,
   <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-bookmarks-reactions.png" alt="Top: the Bookmarks screen, with two bookmarks from this conversation and three from saved sessions, each with Remember this and Preview, and Show in thread or Open session and Open at bookmark. Bottom left: the rail's Material and Notes tabs, with Notes showing the to-do list and two bookmarks. Bottom right: the reaction palette open under a reply, in Warm, Curious, and Negative groups, beside Jill's heart on the corner of the writer's message. The bookmarks are demo content" width="100%"/>
 </p>
 
-**Bring a few lines, or several files.** Attach the editor's selection to one message with **Include selected text**, let a persona read up to ten files in one go, and fold the side pane away when you want the room. [See what's new in v2.14.0](#whats-new-in-v2140--everyday-conveniences).
+**Selected Text on a message.** Ask about a few lines without changing your excerpt. Turn on **Include selected text** beside the composer, and whatever you select in the editor shows above it as a **Selected Text** pill, with its file, lines, and word count. It follows your selection until you send, then goes with that one message. Or right-click a selection and choose **Prose Minion → Add Selection to Workshop Message** to attach it by hand. The persona reads those lines as a selection, apart from the excerpt, and the excerpt never changes. A selection over 5,000 words is cut to its first 5,000, and the pill says so before you send.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-selected-text.png" alt="Top: the Workshop composer with the Include selected text toggle on and a Selected Text pill above it naming a chapter file, lines 14 to 19, and 96 words, which follows the editor's selection. Bottom: a sent message carrying its Selected Text pill, and Jill's reply about those lines. The conversation is demo content" width="100%"/>
+</p>
+
+**One read, several files.** Ask a persona to compare chapters, or a chapter against a character sheet, and it reads up to ten files in one go, shown as one card. Every file read is fitted to the room left in the model's context window: a long file stops early and the persona can ask for the rest.
+
+**A side pane that folds away.** Press **Side pane** in the Workshop's header, or the arrow on the rail, and the rail collapses to a strip of icons with its counts, leaving the tab to the conversation. In a narrow window it starts folded and opens over the conversation.
+
+**Re-read from file.** When a new conversation keeps a chapter from the last one, **Re-read from file** picks up the edits you made since, and choosing **Continue** on the carried chapter re-reads it for you.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-reads-rail-reread.png" alt="Top: a writer asks Jill to compare how chapters one, two, and three open; one Project Resources card reads 3 files, and Jill's reply compares them. Bottom left: the Workshop with its side pane folded to a strip of icons, Material and Notes with their counts. Bottom right: the Excerpt panel of a new conversation that kept its chapter, with Re-read from file. The conversation is demo content" width="100%"/>
+</p>
+
+**See the context, reach the start, attach with `@`.** A persona's context opens to a breakdown by part, **Show earlier turns** loads a long conversation's older messages, and typing `@` in the composer attaches a project file. [See what's new in v2.15.0](#whats-new-in-v2150--a-clearer-view-of-long-conversations).
 
 **Synced or shared projects:** update Prose Minion on every machine together. Sessions saved by a newer version may not open in an older one.
 

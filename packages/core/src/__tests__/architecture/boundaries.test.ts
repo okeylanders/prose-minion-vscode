@@ -766,7 +766,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/components/workshop/WorkshopNoticeModal.tsx',
     reason: 'startup tour names a release\'s features and their screenshots',
-    allowedToken: /(?:Show vs\. Tell|show-vs-tell-(?:continuum|kept-variant))/
+    allowedToken: /(?:Show vs\. Tell|show-vs-tell-(?:continuum|kept-variant)|Lexical Gravity)/
   },
   {
     file: 'presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts',

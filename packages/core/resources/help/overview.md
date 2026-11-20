@@ -2,7 +2,7 @@
 
 ## About this reference
 
-Reference version: 2.14.1
+Reference version: 2.15.0
 
 Open Prose Minion in the VS Code activity bar for the Assistant, Search, Metrics and Dictionary. Open Workshop for an ongoing conversation about a draft, or Lightbox for a board of measurements and readings about one chapter. For proofreading and line notes, right-click a Markdown or plain-text editor and open the Prose Minion submenu.
 

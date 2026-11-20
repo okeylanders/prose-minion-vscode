@@ -2,11 +2,31 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
-## [Unreleased]
+## [2.15.0] - 2026-11-20
 
 ### Added
 
-- GPT-6.2 Sol, Sol Pro, Astra, Astra Pro, and Ling 3.2 Flash (free) are selectable in the shared model pickers and Category Search.
+- **See what fills a persona’s context.** Open **Context** in the Workshop to see how much room the persona’s instructions, project memory, excerpt, attachments, and conversation take up. The panel labels estimates and shows the parts it knows when the provider has yet to report a total.
+- **Load earlier turns in long Workshop conversations.** Choose **Show earlier turns** at the top of the thread to load older messages in place, with their usual actions. Opening an older bookmark can load the pages it needs and scroll to the message. A bookmark farther back opens in the read-only reader.
+- **Attach a project file with `@`.** Type `@` in the Workshop composer and pick a configured project file. Its attachment pill shows what will go with your next message.
+- **More control over Project Memory.** In conversation settings, use **Suggest notes** to choose **Sparingly**, **Readily**, or **Aggressively**. Use **List at the start of each conversation** to choose **Standard**, **Larger**, or **Largest**. New conversations can see titles for more notes, and personas can page through the full catalog.
+- **Ask your persona about Prose Minion or a Lexical Gravity lens.** Personas can search the bundled product help for questions about features, commands, and settings. They can also list and read built-in and project lenses to explain how a lens works.
+- **Support and community links.** The sidebar’s Settings panel has a **Support** section above the OpenRouter key, with a copyable email address and links to r/proseminion and the Prose Minion website.
+- **More OpenRouter models.** Gemini 4 Neon, GPT-6.2 Sol, Sol Pro, Astra, Astra Pro, and Ling 3.2 Flash (free) are available in the shared model pickers and Category Search. Your current model selections stay in place.
+
+### Changed
+
+- Workshop personas get feedback on whether their proposed memory notes and file edits reached you as cards or were dropped. If a proposal was dropped, the persona gets a brief reason it can use on its next reply.
+- Opening or refreshing a Workshop conversation with several attached files does less repeated work. Pinned context reads share the same improvement.
+- The Workshop startup tour opens again after the update. It begins with the context breakdown, earlier turns and bookmark jumps, `@` file attachments, and the new memory and help features.
+
+### Fixed
+
+- Lexical Gravity can recover from some malformed model replies and keep usable lenses from a batch that also contains invalid ones. The widget tells you when it leaves a lens out.
+
+### Upgrade notes
+
+- Prose Minion 2.15.0 can open existing Workshop sessions. A session saved with new proposal-outcome records or with help or lens lookup results requires 2.15.0 or later. Update all installations that open those sessions if you sync or share them.
 
 ## [2.14.1] - 2026-11-17
 

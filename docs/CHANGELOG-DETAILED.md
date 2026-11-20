@@ -5,11 +5,53 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.15.0] - 2026-11-20 — Workshop navigation, context breakdown, and persona reference tools
 
-### OpenRouter catalog
+### Overview
 
-- GPT-6.2 Sol, Sol Pro, Astra, Astra Pro, and Ling 3.2 Flash (free) join the shared curated and Category Search lists. The four GPT-6.2 choices always reason. Ling's free route is rate-limited. [November 18 catalog audit](model-audit-2026-11-18.md)
+The range from v2.14.1 (`9b5551a3`) to the release branch base (`478157d0`) contains 114 commits and four direct merges into `main`. The release branch also incorporates the two follow-up planning notes from `main` through `7ddb876b`.
+
+- Everyday Conveniences, Round Two brings earlier turns, bookmark jumps, composer file mentions, memory controls, proposal feedback, and access to lenses and product help. [#283](https://github.com/okeylanders/prose-minion-vscode/pull/283) · [Round Two ADR](adr/2026-11-17-everyday-conveniences-round-two.md) · [Integration re-review](pr-reviews/pr-283-round-two-integration-rereview.md)
+- Workshop context intake reuses its project catalog, and the OpenRouter refresh in the same merge adds five models. The release branch also adds Gemini 4 Neon. [#284](https://github.com/okeylanders/prose-minion-vscode/pull/284) · [November 19 catalog audit](model-audit-2026-11-19.md)
+- The Workshop shows each persona's context by part. [#285](https://github.com/okeylanders/prose-minion-vscode/pull/285)
+- Sidebar Settings gets a Support section. [#275](https://github.com/okeylanders/prose-minion-vscode/pull/275)
+
+### Workshop context breakdown
+
+- **Context** now lists eight parts per host or guest persona: persona and behavior, tool-use instructions, project memory, to-dos, room notes, excerpt and context, requested material, and conversation. `ContextBreakdownSummary` shows a segmented bar and an accessible table above the existing source list. The open panel scrolls within itself and has a keyboard-focusable **Context details** region.
+- The host estimates the text it writes into the conversation and keeps those estimates alongside the retained history. A read-in delta is provider-measured only when the provider supplied an unapportioned delta. When the final provider call reports a total, conversation is the remainder. If estimates run over the measured total, the panel says so and shows zero as the remainder. Without a current provider total, it shows known parts without the bar or shares.
+- `ConversationArchiveEntryV1.contextTally` is optional. Rewind trims its entries at the existing history boundary, and Branch copies the resulting history. Earlier conversations show the parts that can still be measured. The webview receives names and counts, and the transcript stays as before. [Context breakdown ADR](adr/2026-11-18-workshop-context-breakdown.md) · [Keyboard review](pr-reviews/pr-285-context-panel-keyboard-fix-60ec2916.md)
+
+### Long conversations and composer attachments
+
+- The latest 200 turns still open first. **Show earlier turns** loads up to 100 turns or 1 MiB at a time above the thread, preserving the scroll anchor and the usual bubble actions. The loaded run lives in the current view and is re-read against each session update. The room-bound, read-only route lives in `WorkshopEarlierTurnsHandler`. [#268](https://github.com/okeylanders/prose-minion-vscode/pull/268) · [#273](https://github.com/okeylanders/prose-minion-vscode/pull/273)
+- Jumping from the rail or bookmark browser loads up to three pages before falling back to the reader. A newer jump or move, Escape, or changing rooms supersedes one still loading. [#281](https://github.com/okeylanders/prose-minion-vscode/pull/281)
+- Composer `@` searches configured project files. A pick becomes a next-message attachment through the existing file intake, and the pill shows what is staged. `WorkshopMessageAttachmentReads` makes Send wait for the pick so the request includes the file the writer chose. [#271](https://github.com/okeylanders/prose-minion-vscode/pull/271)
+
+### Project Memory and proposal feedback
+
+- `proseMinion.workshop.memory.suggestions` controls how often personas are encouraged to suggest a note. **Sparingly** retains the previous prompt. Changes apply from the next turn, Project Memory still defaults to off, and **Save and tell me** still auto-saves at most five notes per conversation. [#272](https://github.com/okeylanders/prose-minion-vscode/pull/272)
+- `proseMinion.workshop.memory.listSize` controls the frozen opening memory frame. **Standard**, **Larger**, and **Largest** grow the summary and title-only tiers. The budget for notes marked **Always load in full** stays fixed. The frame counts notes beyond those tiers, and `memory.catalog` pages through the live catalog in batches of 40. [#274](https://github.com/okeylanders/prose-minion-vscode/pull/274)
+- Persona replies can persist an optional `trailerOutcomes` record. It counts memory and file-edit proposals that reached the writer, file-edit refusal cards, and dropped proposals with bounded reasons. The next request to that persona can report those outcomes, including when the next request is a tool-run synthesis. The record contains counts and reasons and covers initial delivery to the writer. [#276](https://github.com/okeylanders/prose-minion-vscode/pull/276)
+
+### Persona help and Lexical Gravity
+
+- `help.search` and `help.read` use the bundled `packages/core/resources/help/` reference for Workshop, sidebar tools, Lightbox, Draft Edit, settings, and commands. `WorkshopHelpReference` retries a failed load and reports the reference version on every result, with a caveat if it differs from the installed version. Its sync test checks the reference against the manifest and the generated help tables. [#279](https://github.com/okeylanders/prose-minion-vscode/pull/279) · [#280](https://github.com/okeylanders/prose-minion-vscode/pull/280)
+- `lens.catalog` and `lens.read` share the widget’s project and built-in lens library. Personas can page the catalog and read a whole lens or named sections. Reads fit whole sections into the remaining window and offer a continuation when more sections are available. Lens diagnostics report unreadable files by count. [#277](https://github.com/okeylanders/prose-minion-vscode/pull/277)
+- Lexical Gravity uses the shared model JSON parser and a content-guarded repair for a prematurely closed `attention` block. Multi-lens replies validate one lens at a time, preserve valid lenses, and report how many were unusable. [#270](https://github.com/okeylanders/prose-minion-vscode/pull/270)
+
+### Context intake, Support, and models
+
+- `WorkshopIntakeCatalogScope` shares one catalog across a refresh scan or pinned-context read for stable workspace roots. A root change invalidates that catalog for subsequent reads. Output keeps counts and timing while the writer still sees filenames in the refresh status. [#284 re-review](pr-reviews/pr-284-one-catalog-per-operation-7b86a6a-re-review.md)
+- `SettingsSupport` places support email, a community card, and the product website above the API key. Copy feedback uses the existing host clipboard acknowledgment. The bundled artwork follows the sidebar theme and respects reduced motion. [Support feature notes](../.todo/features/feature-settings-support/README.md)
+- GPT-6.2 Sol, Sol Pro, Astra, Astra Pro, and Ling 3.2 Flash (free) join the curated pickers and Category Search. The four GPT-6.2 choices always reason and use the existing automatic cache policy. Ling uses its exact, rate-limited free route. Defaults and saved selections are preserved. Prose quality, paid inference, and cache reuse remain unverified for these additions. [November 18 catalog audit](model-audit-2026-11-18.md)
+- Gemini 4 Neon joins the same pickers as an opt-in model. OpenRouter lists a 1,048,576-token context, mandatory reasoning, tools, and structured outputs. Completion limits and pricing vary by route. Prose Minion sends its regular OpenRouter chat request and leaves cache timing to the provider. [November 19 catalog audit](model-audit-2026-11-19.md)
+
+### Compatibility and release verification
+
+- The README highlights the new Workshop workflows with five screenshots. The Workshop startup notice moves to `v12` and adds four opening pages, with the previous release's introductions kept as primers. [README and tour record](../.memory-bank/20261119-2000-release-v2.15.0-readme-tour-and-artwork.md)
+- The session schema version stays the same and 2.15.0 reads earlier sessions. The v2.14.1 reader rejects turns containing the new `trailerOutcomes` field or the `lens_catalog`, `lens_read`, `help_search`, and `help_read` artifacts. Older readers ignore the separate archive `contextTally` field. Update installations together when sharing sessions that use the new persona features.
+- The [Round Two live-pass checklist](../.todo/epics/epic-everyday-conveniences-round-two-2026-11-17/live-pass.md) records the real Workshop interactions and provider behavior still to be witnessed. Validation of the final release package remains pending.
 
 ## [2.14.1] - 2026-11-17 — Workshop native tool-call recovery
 

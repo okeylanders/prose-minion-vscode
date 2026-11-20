@@ -72,7 +72,14 @@ exports[`getWebviewHtml pins the sidebar surface output — the extraction promi
         "selected-text-sent": "https://webview.test/ext/assets/workshop-notices/selected-text-sent.png",
         "multi-file-read-card": "https://webview.test/ext/assets/workshop-notices/multi-file-read-card.png",
         "rail-collapsed": "https://webview.test/ext/assets/workshop-notices/rail-collapsed.png",
-        "dictionary-history-search": "https://webview.test/ext/assets/workshop-notices/dictionary-history-search.png"
+        "dictionary-history-search": "https://webview.test/ext/assets/workshop-notices/dictionary-history-search.png",
+        "context-by-part": "https://webview.test/ext/assets/workshop-notices/context-by-part.png",
+        "earlier-turns-control": "https://webview.test/ext/assets/workshop-notices/earlier-turns-control.png",
+        "bookmarks-earlier-in-thread": "https://webview.test/ext/assets/workshop-notices/bookmarks-earlier-in-thread.png",
+        "composer-at-mention": "https://webview.test/ext/assets/workshop-notices/composer-at-mention.png",
+        "composer-at-mention-pill": "https://webview.test/ext/assets/workshop-notices/composer-at-mention-pill.png",
+        "memory-suggest-notes": "https://webview.test/ext/assets/workshop-notices/memory-suggest-notes.png",
+        "help-read-card": "https://webview.test/ext/assets/workshop-notices/help-read-card.png"
       }
     };
   </script>

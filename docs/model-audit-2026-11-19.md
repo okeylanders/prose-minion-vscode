@@ -1,0 +1,9 @@
+# OpenRouter model audit — November 19, 2026
+
+Among OpenRouter's November 16–19 releases, Gemini 4 Neon was the only new interactive text model missing from Prose Minion's curated lists. The release branch already has GPT-6.2 Sol, Sol Pro, Astra, and Astra Pro, along with Qwen4 Max, Hy4 Flash, and the previously added Ling 3.2 Flash free route. The four GPT-6.2 IDs still had serving endpoints in the November 19 check. [OpenRouter catalog](https://openrouter.ai/api/v1/models) · [November 18 audit](model-audit-2026-11-18.md)
+
+The release adds `google/gemini-4-neon` to the shared writing and Workshop pickers and Category Search. The `:batch` route is for batch jobs. Neon has 1,048,576 tokens of context and mandatory reasoning with `low`, `medium`, `high`, and `xhigh` effort levels. Currently listed endpoints support temperature, tools, and structured output. OpenRouter's endpoint API returned five route records, with completion limits from 65,536 to 943,718 tokens. [Google launch](https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-neon/) · [OpenRouter model](https://openrouter.ai/google/gemini-4-neon) · [Endpoint metadata](https://openrouter.ai/api/v1/models/google/gemini-4-neon/endpoints)
+
+OpenRouter's base rates were $3/M input, $15/M output, and $0.15/M cached reads. Prose Minion sends its regular OpenRouter chat request and leaves cache timing to the provider. Inference, prose quality, and cache reuse were not tested in this pass. [OpenRouter pricing](https://openrouter.ai/google/gemini-4-neon)
+
+OpenRouter's live catalog no longer lists the November 20 expiration previously shown for GLM 5.1. It still lists December 31, 2026 for GLM 4.5. [GLM 5.1](https://openrouter.ai/z-ai/glm-5.1) · [GLM 4.5](https://openrouter.ai/z-ai/glm-4.5)
