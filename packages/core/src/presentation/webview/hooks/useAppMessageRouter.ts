@@ -109,11 +109,11 @@ export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandle
       dictionaryHistory.followRecordedEntry(msg.payload.historyEntryId);
       setError(''); // Clear error on success
     },
-    [MessageType.PASSAGE_SEARCH_PLAN]: passageSearch.handlePlan,
-    [MessageType.PASSAGE_SEARCH_PROGRESS]: passageSearch.handleProgress,
-    [MessageType.PASSAGE_SEARCH_RESULT]: passageSearch.handleResult,
-    [MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN]: passageSearch.handleOrganizePlan,
-    [MessageType.PASSAGE_SEARCH_OPEN_INSTANCE_RESULT]: passageSearch.handleOpenInstanceResult,
+    [MessageType.PASSAGE_SEARCH_PLAN]: (msg) => passageSearch.handlePlan(msg),
+    [MessageType.PASSAGE_SEARCH_PROGRESS]: (msg) => passageSearch.handleProgress(msg),
+    [MessageType.PASSAGE_SEARCH_RESULT]: (msg) => passageSearch.handleResult(msg),
+    [MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN]: (msg) => passageSearch.handleOrganizePlan(msg),
+    [MessageType.PASSAGE_SEARCH_OPEN_INSTANCE_RESULT]: (msg) => passageSearch.handleOpenInstanceResult(msg),
     [MessageType.DICTIONARY_HISTORY]: dictionaryHistory.handleHistory,
     [MessageType.DICTIONARY_HISTORY_ENTRY]: dictionaryHistory.handleHistoryEntry,
     [MessageType.DICTIONARY_HISTORY_SEARCH_RESULT]: dictionaryHistory.handleHistorySearchResult,
