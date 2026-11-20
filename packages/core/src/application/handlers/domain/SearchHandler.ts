@@ -23,15 +23,22 @@ import {
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
+import { PassageSearchRoute, PassageSearchRouteDeps } from './PassageSearchRoute';
 
 export class SearchHandler {
+  /** Passage Search's routes (ADR 2026-11-20 D15); absent where no engine was injected. */
+  private readonly passageSearch?: PassageSearchRoute;
+
   constructor(
     private readonly wordSearchService: WordSearchService,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
     private readonly textSourceResolver: TextSourceResolver,
-    private readonly categorySearchService?: CategorySearchService
-  ) {}
+    private readonly categorySearchService?: CategorySearchService,
+    passageSearch?: PassageSearchRouteDeps
+  ) {
+    this.passageSearch = passageSearch ? new PassageSearchRoute(passageSearch, postMessage, outputChannel) : undefined;
+  }
 
   /**
    * Register message routes for search domain
@@ -40,6 +47,12 @@ export class SearchHandler {
     router.register(MessageType.RUN_WORD_SEARCH, this.handleMeasureWordSearch.bind(this));
     router.register(MessageType.CATEGORY_SEARCH_REQUEST, this.handleCategorySearchRequest.bind(this));
     router.register(MessageType.CANCEL_CATEGORY_SEARCH_REQUEST, this.handleCancelCategorySearch.bind(this));
+    this.passageSearch?.registerRoutes(router);
+  }
+
+  /** The webview is gone: a running passage search is stopped. */
+  dispose(): void {
+    this.passageSearch?.dispose();
   }
 
   // Helper methods (domain owns its message lifecycle)

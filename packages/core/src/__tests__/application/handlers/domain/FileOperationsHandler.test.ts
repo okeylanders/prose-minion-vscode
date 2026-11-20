@@ -240,5 +240,27 @@ describe('FileOperationsHandler', () => {
         })
       }));
     });
+
+    it('saves a Passage Search report under prose-minion/reports with a timestamped name', async () => {
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.SAVE_RESULT,
+        source: 'webview.search.passage',
+        payload: {
+          toolName: 'passage_search',
+          content: '# Passage Search\n\n## 2 instances in 2 files\n'
+        },
+        timestamp: 0
+      });
+
+      expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.SAVE_RESULT_SUCCESS,
+        payload: expect.objectContaining({
+          toolName: 'passage_search',
+          filePath: expect.stringMatching(/^prose-minion\/reports\/passage-search-\d{8}-\d{6}\.md$/)
+        })
+      }));
+    });
   });
 });
