@@ -5,8 +5,8 @@
  * The scope reader and the model work are stand-ins.
  */
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { PASSAGE_SEARCH_REFUSALS, type PassageSearchRefusalReason } from '@services/search/passage/PassageSearchContracts';
-import { describePassageSearchLeftOut, passageSearchRefusal } from '@services/search/passage/PassageSearchRefusals';
+import { PASSAGE_SEARCH_ENDINGS, PASSAGE_SEARCH_REFUSALS, type PassageSearchRefusalReason } from '@services/search/passage/PassageSearchContracts';
+import { describePassageSearchEnding, describePassageSearchLeftOut, passageSearchRefusal } from '@services/search/passage/PassageSearchRefusals';
 import { ProjectPassageSearchEngine } from '@/application/services/passageSearch/PassageSearchEngine';
 import { passageSearchRequestRefusal, type PassageSearchRequest, type PassageSearchScope } from '@/application/services/passageSearch/PassageSearchRequest';
 import type { PassageSearchScopeFilesOutcome } from '@/application/services/passageSearch/PassageSearchScopeFiles';
@@ -157,6 +157,14 @@ describe('the refusals\' words', () => {
     expect(passageSearchRefusal('too-many-scopes', 13).message).toContain(`up to ${bounds.scopes} at once`);
     expect(passageSearchRefusal('file-too-large', 2).message).toContain('2 files are larger than 2 MiB');
     expect(passageSearchRefusal('model-too-small').message).toContain('1,500 words');
+  });
+
+  it('has words for every ending but a complete one', () => {
+    expect(describePassageSearchEnding('complete')).toBeUndefined();
+    for (const ended of PASSAGE_SEARCH_ENDINGS.filter((each) => each !== 'complete')) {
+      expect(describePassageSearchEnding(ended)?.length).toBeGreaterThan(10);
+    }
+    expect(describePassageSearchEnding('provider-failed')).toContain(`refused ${bounds.failureStreak} calls in a row`);
   });
 
   it('says what an estimate left out, before anything is sent', () => {

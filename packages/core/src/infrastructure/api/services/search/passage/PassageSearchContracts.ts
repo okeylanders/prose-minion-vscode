@@ -134,7 +134,9 @@ export const PASSAGE_SEARCH_DROP_REASONS = ['quote-not-found', 'quote-ambiguous'
 export type PassageSearchDropReason = (typeof PASSAGE_SEARCH_DROP_REASONS)[number];
 
 /** How a run's reads ended (D11). */
-export type PassageSearchEnded = 'complete' | 'stopped' | 'key-changed' | 'instance-limit';
+export const PASSAGE_SEARCH_ENDINGS = ['complete', 'stopped', 'key-changed', 'provider-failed', 'instance-limit'] as const;
+
+export type PassageSearchEnded = (typeof PASSAGE_SEARCH_ENDINGS)[number];
 
 /** One checked moment. Its quote and context are slices of the plan's frozen text, never a model's spelling (D9a, D11a). */
 export interface PassageSearchInstance {

@@ -102,6 +102,7 @@ const NONE = reply();
 
 function organizerOf(outcome: Awaited<ReturnType<PassageSearchOrganizer['organize']>> = undefined) {
   return {
+    available: true,
     plan: jest.fn(async () => ({ kind: 'unavailable' as const, message: 'not built' })),
     organize: jest.fn(async (_result: PassageSearchResult) => outcome)
   };
@@ -295,6 +296,45 @@ describe('PassageSearchService.run', () => {
     expect(result).toMatchObject({ ended: 'key-changed', calls: { planned: 3, answered: 0, unsent: 3 }, instances: [] });
   });
 
+  describe('a run of provider failures (D7)', () => {
+    const MANY = [sourceFile('chapters/1.md', RABBIT_CHAPTER), ...Array.from({ length: 8 }, (_unused, index) => sourceFile(`chapters/${index + 2}.md`, QUEEN_CHAPTER))];
+    const refused = (): Error => new AgentRunUnavailableError('insufficient-credits');
+
+    it('stops starting calls after failureStreak failures in a row, keeps what was found, and never organizes', async () => {
+      expect(bounds.failureStreak).toBe(5);
+      const organizer = organizerOf({ kind: 'analysis', analysis: { headline: 'x', sections: [], read: { instances: 1, of: 1 }, dropped: { claims: 0, sections: 0 } } });
+      const { service, runInitial } = createService([TOOK, refused(), refused(), new Error('429'), refused(), refused(), NONE, NONE, NONE], { organizer });
+      const plan = await planOf(service, { organize: true, files: MANY });
+      expect(plan.organize).toBe(true);
+      const result = await service.run(plan);
+      expect(runInitial).toHaveBeenCalledTimes(6);
+      expect(result.ended).toBe('provider-failed');
+      expect(result.calls).toEqual({ planned: 9, answered: 1, failed: 5, cut: 0, unsent: 3 });
+      expect(result.instances.map((instance) => instance.quote)).toEqual(['took a watch out of its waistcoat-pocket']);
+      expect(organizer.organize).not.toHaveBeenCalled();
+      expect(result).not.toHaveProperty('analysis');
+    });
+
+    it('goes on when an answered call stands between the failures', async () => {
+      const { service, runInitial } = createService([refused(), refused(), refused(), refused(), NONE, refused(), refused(), refused(), refused()]);
+      const result = await service.run(await planOf(service, { files: MANY }));
+      expect(runInitial).toHaveBeenCalledTimes(9);
+      expect(result.ended).toBe('complete');
+      expect(result.calls).toEqual({ planned: 9, answered: 1, failed: 8, cut: 0, unsent: 0 });
+    });
+
+    it('counts only the provider\'s failures: an unreadable reply neither adds to the streak nor ends it', async () => {
+      const unreadable = { content: 'I found nothing.' };
+      const all = createService([unreadable, unreadable, unreadable, unreadable, unreadable, unreadable, unreadable, unreadable, unreadable]);
+      expect((await all.service.run(await planOf(all.service, { files: MANY }))).ended).toBe('complete');
+      const mixed = createService([refused(), refused(), refused(), refused(), unreadable, refused(), NONE, NONE, NONE]);
+      const result = await mixed.service.run(await planOf(mixed.service, { files: MANY }));
+      expect(mixed.runInitial).toHaveBeenCalledTimes(6);
+      expect(result.ended).toBe('provider-failed');
+      expect(result.calls).toEqual({ planned: 9, answered: 0, failed: 6, cut: 0, unsent: 3 });
+    });
+  });
+
   it('stops starting calls at the instance limit, and says so', async () => {
     const quotes = ['ran close by her', 'took a watch out of its waistcoat-pocket', 'hurried on'];
     const original = bounds.instances;
@@ -314,6 +354,29 @@ describe('PassageSearchService.run', () => {
 
   describe('the organizing pass\'s seam (D12a)', () => {
     const ANALYSIS = { headline: 'The Rabbit checks its watch twice.', sections: [], read: { instances: 2, of: 2 }, dropped: { claims: 0, sections: 0 } };
+
+    it('plans no organizing call and prices no allowance when there is no organizer', async () => {
+      const { service } = createService();
+      const asked = await planOf(service, { organize: true });
+      const unasked = await planOf(service);
+      expect(asked.organize).toBe(false);
+      expect(asked.estimate.calls).toBe(3);
+      expect(asked.estimate).not.toHaveProperty('organize');
+      expect(asked.estimate).toEqual(unasked.estimate);
+      expect(asked.planKey).toBe(unasked.planKey);
+    });
+
+    it('plans the call and its allowance when an organizer is present', async () => {
+      const { service } = createService([], { organizer: organizerOf() });
+      const asked = await planOf(service, { organize: true });
+      const unasked = await planOf(service);
+      expect(asked.organize).toBe(true);
+      expect(asked.estimate.calls).toBe(4);
+      expect(asked.estimate.organize).toEqual({ inputTokens: bounds.organize.allowanceInputTokens, outputTokens: bounds.organize.typicalOutputTokens });
+      expect(asked.estimate.inputTokens).toBe(unasked.estimate.inputTokens + bounds.organize.allowanceInputTokens);
+      expect(asked.planKey).not.toBe(unasked.planKey);
+      expect(unasked.organize).toBe(false);
+    });
 
     it('leaves analysis absent with no organizer, organize asked or not', async () => {
       const { service } = createService([TOOK, NONE, GLANCED]);
@@ -344,7 +407,7 @@ describe('PassageSearchService.run', () => {
     });
 
     it('leaves the list whole, with the reason, when the pass fails or reports why it has no analysis', async () => {
-      const throwing = { plan: jest.fn(), organize: jest.fn(async () => { throw new Error('boom: “Oh dear!”'); }) };
+      const throwing = { available: true, plan: jest.fn(), organize: jest.fn(async () => { throw new Error('boom: “Oh dear!”'); }) };
       const failed = createService([TOOK, NONE, GLANCED], { organizer: throwing as never });
       const first = await failed.service.run(await planOf(failed.service, { organize: true }));
       expect(first).toMatchObject({ analysisMissing: 'failed', ended: 'complete' });

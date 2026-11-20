@@ -744,6 +744,8 @@ export interface PromptBudgets {
     overlapWords: number;
     /** Calls in flight at once. */
     concurrency: number;
+    /** This many provider failures in a row, no call answered between them, stop a run starting calls (`provider-failed`). */
+    failureStreak: number;
     /** Scopes one request names. */
     scopes: number;
     /** Files one plan reads. */
@@ -1233,6 +1235,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     minChunkWords: 1_500,
     overlapWords: 600,
     concurrency: 4,
+    failureStreak: 5,
     scopes: 12,
     files: 200,
     calls: 300,

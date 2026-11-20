@@ -44,6 +44,11 @@ export type PassageSearchOrganized =
   | { readonly kind: 'missing'; readonly reason: PassageSearchAnalysisMissing; readonly usage?: TokenUsage };
 
 export interface PassageSearchOrganizer {
+  /**
+   * Whether a pass can be made at all. False, a plan asked to organize plans
+   * no organizing call and prices no allowance for one.
+   */
+  readonly available: boolean;
   /** Price a pass over `result`. Sends nothing to a model. */
   plan(result: PassageSearchResult): Promise<PassageSearchOrganizePlanOutcome>;
   /**
@@ -59,6 +64,7 @@ export interface PassageSearchOrganizer {
 
 /** Until the pass is built: nothing is sent, and a result keeps no analysis. */
 export const NO_PASSAGE_SEARCH_ORGANIZER: PassageSearchOrganizer = {
+  available: false,
   plan: async () => ({ kind: 'unavailable', message: 'Organizing the results is not available yet.' }),
   organize: async () => undefined
 };

@@ -7,6 +7,7 @@
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type {
+  PassageSearchEnded,
   PassageSearchLeftOut,
   PassageSearchPlanOutcome,
   PassageSearchRefusal,
@@ -73,4 +74,20 @@ export function describePassageSearchLeftOut(leftOut: PassageSearchLeftOut): str
     leftOut.empty > 0 ? `${plural(leftOut.empty, 'file')} left out: no text` : undefined
   ].filter((part): part is string => part !== undefined);
   return parts.length > 0 ? `${parts.join('. ')}.` : undefined;
+}
+
+/** How a run that did not read everything ended, in host words (D11); undefined for a complete one. */
+export function describePassageSearchEnding(ended: PassageSearchEnded): string | undefined {
+  switch (ended) {
+    case 'complete':
+      return undefined;
+    case 'stopped':
+      return 'Stopped before every call was made.';
+    case 'key-changed':
+      return 'The API key changed during the search, so the remaining calls were not made.';
+    case 'provider-failed':
+      return `The provider refused ${number(PROMPT_BUDGETS.passageSearch.failureStreak)} calls in a row, so the remaining calls were not made. Check the account's credits and limits, then search again.`;
+    case 'instance-limit':
+      return `The search reached ${number(PROMPT_BUDGETS.passageSearch.instances)} instances, the most it keeps, and stopped there.`;
+  }
 }

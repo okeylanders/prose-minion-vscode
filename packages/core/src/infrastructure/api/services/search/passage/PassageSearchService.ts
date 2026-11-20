@@ -18,6 +18,12 @@
  * - **A failed call is that call's outcome,** counted; the run goes on. A
  *   reply cut off at its ceiling keeps its finished instances and is
  *   counted `cut`.
+ * - **A run of provider failures stops the run** (`provider-failed`):
+ *   `failureStreak` calls the provider failed in a row, in the order they
+ *   came back, with no call answered between them. A key out of credits or
+ *   rate-limited would fail every later call too. An unreadable reply is
+ *   that call's failure, but the provider answered, so it neither adds to
+ *   the streak nor ends it.
  * - **The organizing pass is a port** (`PassageSearchOrganizer`). Inside a
  *   run it starts only when the plan organizes, the reads ended `complete`
  *   or `instance-limit` with an instance, and the signal, read again
@@ -96,6 +102,9 @@ interface RunTally {
   moments: number;
   keyChanged: boolean;
   limitReached: boolean;
+  /** Provider failures in a row, in completion order, since the last answered call. */
+  failureStreak: number;
+  providerFailed: boolean;
 }
 
 export class PassageSearchService {
@@ -119,7 +128,8 @@ export class PassageSearchService {
     const planned = buildPassageSearchPlan({
       model: request.model,
       question: request.question,
-      organize: request.organize,
+      // With no organizer there is no pass to make: none is planned and none is priced.
+      organize: request.organize && this.organizer.available,
       systemMessage,
       files: request.files,
       leftOut: request.leftOut ?? [],
@@ -160,14 +170,16 @@ export class PassageSearchService {
       moments: 0,
       // No engine at all: the key was removed between the plan and the run.
       keyChanged: !engine,
-      limitReached: false
+      limitReached: false,
+      failureStreak: 0,
+      providerFailed: false
     };
     let done = 0;
     const limit = pLimit(bounds.concurrency);
 
     await Promise.all(plan.chunks.map((_chunk, index) => limit(async (): Promise<void> => {
       // Asked in the turn the call below starts, so it answers for that call.
-      if (!engine || tally.keyChanged || tally.limitReached || options.signal?.aborted) {
+      if (!engine || tally.keyChanged || tally.providerFailed || tally.limitReached || options.signal?.aborted) {
         tally.unsent += 1;
       } else {
         await this.read(engine, plan, index, tally, options.signal);
@@ -181,7 +193,9 @@ export class PassageSearchService {
       ? 'key-changed'
       : options.signal?.aborted
         ? 'stopped'
-        : tally.limitReached && (tally.unsent > 0 || merged.overLimit > 0) ? 'instance-limit' : 'complete';
+        : tally.providerFailed
+          ? 'provider-failed'
+          : tally.limitReached && (tally.unsent > 0 || merged.overLimit > 0) ? 'instance-limit' : 'complete';
     const usage = sumTokenUsage(tally.usages);
     const reads: PassageSearchResult = {
       question: plan.question,
@@ -213,7 +227,7 @@ export class PassageSearchService {
     return this.withPass(result, () => this.organizer.organize(result, { plan, ...(options.signal ? { signal: options.signal } : {}) }));
   }
 
-  /** The pass inside a run: never after Stop or a key change, and never over nothing (D12a). */
+  /** The pass inside a run: never after Stop, a key change or a run of provider failures, and never over nothing (D12a). */
   private async organizeWithin(reads: PassageSearchResult, signal?: AbortSignal): Promise<PassageSearchResult> {
     if ((reads.ended !== 'complete' && reads.ended !== 'instance-limit') || reads.instances.length === 0) {
       return reads;
@@ -273,6 +287,8 @@ export class PassageSearchService {
         tally.unsent += 1;
       } else {
         this.fail(tally, faultKindOf(error));
+        tally.failureStreak += 1;
+        tally.providerFailed ||= tally.failureStreak >= PROMPT_BUDGETS.passageSearch.failureStreak;
       }
       return;
     }
@@ -285,6 +301,7 @@ export class PassageSearchService {
       const reply = readPassageSearchReply(result.rawContent ?? result.content, result.finishReason === 'length');
       const anchored = anchorPassageSearchInstances(file, chunk, reply.instances);
       tally.answered += 1;
+      tally.failureStreak = 0;
       tally.cut += reply.cut ? 1 : 0;
       tally.dropped.malformed += reply.malformed;
       tally.dropped['quote-not-found'] += anchored.notFound;
