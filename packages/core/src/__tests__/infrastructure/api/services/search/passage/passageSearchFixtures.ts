@@ -2,7 +2,7 @@
  * Shared stand-ins for Passage Search's tests: made-up source files and an
  * *Alice*-style chapter. No provider is reached anywhere they are used.
  */
-import type { PassageSearchSourceFile } from '@services/search/passage/PassageSearchContracts';
+import type { PassageSearchInstance, PassageSearchResult, PassageSearchSourceFile } from '@services/search/passage/PassageSearchContracts';
 
 export const PASSAGE_MODEL = 'placeholder/passage-model';
 export const SYSTEM_MESSAGE = 'SYSTEM passage-search';
@@ -36,4 +36,46 @@ export function fillerParagraph(name: string, words: number): string {
 /** A reply as a model writes one. */
 export function replyOf(...instances: Array<{ quote: string; label?: string; note?: string; before?: string; after?: string }>): string {
   return JSON.stringify({ instances: instances.map((instance) => ({ note: 'A note.', label: 'checks its watch', ...instance })) });
+}
+
+/** A checked instance as a run returns one; its label is its own key. */
+export function instanceOf(number: number, overrides: Partial<PassageSearchInstance> = {}): PassageSearchInstance {
+  return {
+    number,
+    file: 'f1',
+    displayPath: 'chapters/1.md',
+    line: number,
+    start: number * 100,
+    end: number * 100 + 10,
+    quote: 'looked at its watch',
+    before: '',
+    after: '',
+    note: 'It checks its watch.',
+    label: 'checks its watch',
+    ...overrides
+  };
+}
+
+/** A result over `instances`, its label table counted from them as the host counts it. */
+export function resultOf(instances: readonly PassageSearchInstance[], overrides: Partial<PassageSearchResult> = {}): PassageSearchResult {
+  const labels = new Map<string, { count: number; files: Set<string> }>();
+  for (const instance of instances) {
+    const row = labels.get(instance.label) ?? { count: 0, files: new Set<string>() };
+    row.count += 1;
+    row.files.add(instance.file);
+    labels.set(instance.label, row);
+  }
+  return {
+    question: QUESTION,
+    model: PASSAGE_MODEL,
+    instances,
+    labels: [...labels.entries()].map(([key, row]) => ({ key, label: key, count: row.count, files: row.files.size })),
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the closed drop reasons.
+    dropped: { 'quote-not-found': 0, 'quote-ambiguous': 0, malformed: 0, duplicate: 0 },
+    overLimit: 0,
+    calls: { planned: 1, answered: 1, failed: 0, cut: 0, unsent: 0 },
+    files: { read: [], leftOut: { unreadable: 0, unsplittable: 0, empty: 0 } },
+    ended: 'complete',
+    ...overrides
+  };
 }

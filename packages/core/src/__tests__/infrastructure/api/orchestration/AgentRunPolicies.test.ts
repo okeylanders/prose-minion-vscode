@@ -19,7 +19,8 @@ describe('agent-run caller-to-policy matrix', () => {
       'ProofreadService chunks',
       'CraftFlagsService categories',
       'HelperAgentService tasks',
-      'PassageSearchService chunk reads'
+      'PassageSearchService chunk reads',
+      'PassageSearchModelOrganizer organizing pass'
     ]);
     expect(AGENT_RUN_POLICIES.assistant).toMatchObject({ capabilityCatalog: 'guides', retention: 'discard', cleanupOwner: 'engine', onCapabilityLimit: 'forceFinalResponse' });
     expect(AGENT_RUN_POLICIES.workshopTool).toMatchObject({ capabilityCatalog: 'workshopToolContext', retention: 'retain', cleanupOwner: 'workshop-session', onCapabilityLimit: 'forceFinalResponse' });

@@ -236,7 +236,13 @@ export class PassageSearchService {
     if (signal?.aborted) {
       return { ...reads, ended: 'stopped' };
     }
-    return this.withPass(reads, () => this.organizer.organize(reads, signal ? { signal } : {}));
+    const passed = await this.withPass(reads, () => this.organizer.organize(reads, signal ? { signal } : {}));
+    // A stop or a key change that lands during the pass ends the run as one during a read does.
+    if (passed.analysisMissing === 'stopped' || passed.analysisMissing === 'key-changed') {
+      const { analysisMissing, ...rest } = passed;
+      return { ...rest, ended: analysisMissing };
+    }
+    return passed;
   }
 
   /** A failed pass leaves the list whole, with the reason (D13). */

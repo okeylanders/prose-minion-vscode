@@ -177,21 +177,49 @@ export interface PassageSearchResultFile {
   readonly instances: number;
 }
 
-/** The organizing pass's checked output (D12, D13). Slice 3 fills it. */
+/** The organizing pass's checked output (D12, D13): what the host kept of the reply. */
 export interface PassageSearchAnalysis {
+  /** The pass's, or the host's ("14 instances in 6 files") when the pass's quoted words no instance shown holds. */
   readonly headline: string;
   readonly sections: ReadonlyArray<{
     readonly title: string;
-    readonly claims: ReadonlyArray<{ readonly text: string; /** Instance numbers. */ readonly cites: readonly number[] }>;
+    readonly claims: ReadonlyArray<{ readonly text: string; /** Instance numbers, each one the pass was shown. */ readonly cites: readonly number[] }>;
   }>;
-  /** How many instances the pass was shown, of how many the result holds. */
+  /** How many instances the pass was shown, of how many the result holds: "The analysis read 400 of 1,240 instances." */
   readonly read: { readonly instances: number; readonly of: number };
-  /** What the host's checks dropped. */
-  readonly dropped: { readonly claims: number; readonly sections: number };
+  /** What the host's checks dropped, by count. */
+  readonly dropped: {
+    /** Claims not kept, for any of the three reasons below. */
+    readonly claims: number;
+    /** Claims left with no cite of an instance the pass was shown. */
+    readonly uncited: number;
+    /** Claims that put words in quotation marks no instance they cite holds. */
+    readonly misquoted: number;
+    /** Claims with no text, or not written as a claim. */
+    readonly malformed: number;
+    /** Sections left with no claim. */
+    readonly sections: number;
+    /** Cites of an instance the pass was not shown, on kept and dropped claims alike. */
+    readonly cites: number;
+  };
+  /** What the host put in place of the pass's words: the headline, and section titles ("Group 2"). */
+  readonly replaced: { readonly headline: boolean; readonly titles: number };
+  /** Headlines, titles and claims clipped at the safety ceiling. */
+  readonly clipped: number;
 }
 
-/** Why a pass that was started left no analysis (D13); the list is whole either way. */
-export type PassageSearchAnalysisMissing = 'failed' | 'malformed' | 'cut' | 'no-room';
+/**
+ * Why a pass that was started left no analysis (D13); the list is whole
+ * either way. `failed`: the call failed. `malformed`: the reply could not be
+ * read. `cut`: it was cut off at its output ceiling. `no-room`: not one
+ * instance fits the pass's input bound, so no call was made. `nothing-kept`:
+ * the reply was read and no claim passed the host's checks. `stopped` and
+ * `key-changed`: the caller stopped the pass, or the API key changed, before
+ * it answered; inside a run these end the run instead (`ended`).
+ */
+export const PASSAGE_SEARCH_ANALYSIS_MISSING = ['failed', 'malformed', 'cut', 'no-room', 'nothing-kept', 'stopped', 'key-changed'] as const;
+
+export type PassageSearchAnalysisMissing = (typeof PASSAGE_SEARCH_ANALYSIS_MISSING)[number];
 
 /** Typed, and honest about what is missing (D11). Nothing here is a model's count. */
 export interface PassageSearchResult {

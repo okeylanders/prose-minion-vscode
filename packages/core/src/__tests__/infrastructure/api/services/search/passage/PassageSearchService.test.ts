@@ -302,7 +302,7 @@ describe('PassageSearchService.run', () => {
 
     it('stops starting calls after failureStreak failures in a row, keeps what was found, and never organizes', async () => {
       expect(bounds.failureStreak).toBe(5);
-      const organizer = organizerOf({ kind: 'analysis', analysis: { headline: 'x', sections: [], read: { instances: 1, of: 1 }, dropped: { claims: 0, sections: 0 } } });
+      const organizer = organizerOf({ kind: 'analysis', analysis: { headline: 'x', sections: [], read: { instances: 1, of: 1 }, dropped: { claims: 0, uncited: 0, misquoted: 0, malformed: 0, sections: 0, cites: 0 }, replaced: { headline: false, titles: 0 }, clipped: 0 } });
       const { service, runInitial } = createService([TOOK, refused(), refused(), new Error('429'), refused(), refused(), NONE, NONE, NONE], { organizer });
       const plan = await planOf(service, { organize: true, files: MANY });
       expect(plan.organize).toBe(true);
@@ -353,7 +353,7 @@ describe('PassageSearchService.run', () => {
   });
 
   describe('the organizing pass\'s seam (D12a)', () => {
-    const ANALYSIS = { headline: 'The Rabbit checks its watch twice.', sections: [], read: { instances: 2, of: 2 }, dropped: { claims: 0, sections: 0 } };
+    const ANALYSIS = { headline: 'The Rabbit checks its watch twice.', sections: [], read: { instances: 2, of: 2 }, dropped: { claims: 0, uncited: 0, misquoted: 0, malformed: 0, sections: 0, cites: 0 }, replaced: { headline: false, titles: 0 }, clipped: 0 };
 
     it('plans no organizing call and prices no allowance when there is no organizer', async () => {
       const { service } = createService();
@@ -425,7 +425,7 @@ describe('PassageSearchService.run', () => {
       const stopped = await service.run(await planOf(service, { organize: true }));
       expect(stopped.ended).toBe('key-changed');
       await expect(service.planOrganize(stopped)).resolves.toEqual({ kind: 'unavailable', message: 'not built' });
-      const plan = { planKey: 'k', model: PASSAGE_MODEL, estimate: { model: PASSAGE_MODEL, calls: 1, inputTokens: 10, outputTokens: 5 }, instances: { read: 1, of: 1 } };
+      const plan = { planKey: 'k', model: PASSAGE_MODEL, estimate: { model: PASSAGE_MODEL, calls: 1, inputTokens: 10, outputTokens: 5 }, instances: { read: 1, of: 1 }, systemMessage: 'SYSTEM', userMessage: 'USER', shown: [1] };
       const organized = await service.organize(stopped, plan);
       expect(organizer.organize).toHaveBeenCalledWith(stopped, { plan });
       expect(organized.analysis).toEqual(ANALYSIS);

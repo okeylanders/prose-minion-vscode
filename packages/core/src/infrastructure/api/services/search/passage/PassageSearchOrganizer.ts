@@ -1,8 +1,9 @@
 /**
  * The organizing pass's seam (ADR 2026-11-20 D12, D12a, D13). The pass is
- * one call over a run's checked instances, never the text; Slice 3 builds
- * it. This module is only the port the service calls and the "no organizer"
- * it holds until then, which makes no call and leaves `analysis` absent.
+ * one call over a run's checked instances, never the text. This module is
+ * only the port the service calls (`PassageSearchModelOrganizer` implements
+ * it) and the "no organizer" a service built without one holds, which makes
+ * no call and leaves `analysis` absent.
  *
  * The service decides when the pass may start (D12a): inside a run only when
  * the reads ended `complete` or `instance-limit` with an instance and the
@@ -31,6 +32,15 @@ export interface PassageSearchOrganizePlan {
   };
   /** How many instances the pass would be shown, of how many the result holds. */
   readonly instances: { readonly read: number; readonly of: number };
+  /**
+   * Exactly what the pass sends, as priced: a pass made of this plan sends
+   * these messages and renders nothing again. Host-side only; a caller
+   * shows the estimate, never these.
+   */
+  readonly systemMessage: string;
+  readonly userMessage: string;
+  /** The numbers of the instances the request shows, ascending. */
+  readonly shown: readonly number[];
 }
 
 export type PassageSearchOrganizePlanOutcome =
@@ -38,7 +48,7 @@ export type PassageSearchOrganizePlanOutcome =
   /** No pass can be made of this result; `message` is host words. */
   | { readonly kind: 'unavailable'; readonly message: string };
 
-/** What a pass that was started came to. */
+/** What a pass that was started came to. `usage` is present when a call was made. */
 export type PassageSearchOrganized =
   | { readonly kind: 'analysis'; readonly analysis: PassageSearchAnalysis; readonly usage?: TokenUsage }
   | { readonly kind: 'missing'; readonly reason: PassageSearchAnalysisMissing; readonly usage?: TokenUsage };
@@ -62,9 +72,9 @@ export interface PassageSearchOrganizer {
   ): Promise<PassageSearchOrganized | undefined>;
 }
 
-/** Until the pass is built: nothing is sent, and a result keeps no analysis. */
+/** No pass at all: nothing is sent, and a result keeps no analysis. */
 export const NO_PASSAGE_SEARCH_ORGANIZER: PassageSearchOrganizer = {
   available: false,
-  plan: async () => ({ kind: 'unavailable', message: 'Organizing the results is not available yet.' }),
+  plan: async () => ({ kind: 'unavailable', message: 'Organizing the results is not available.' }),
   organize: async () => undefined
 };
