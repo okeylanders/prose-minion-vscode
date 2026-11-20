@@ -81,7 +81,7 @@ packages/core/src/
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
 │           ├── LightboxBoardsHandler.ts   # The saved boards' routes: shelf, open, delete, rename (5A.1), open a board file through the host's picker (5A.2), and each committed save pushed (Slice 5A)
-│           └── workshop/                  # Room owner + 25 composed route owners (`WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES` in `boundaries.test.ts` is the list)
+│           └── workshop/                  # Room owner + 26 composed route owners (`WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES` in `boundaries.test.ts` is the list)
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
 │               ├── WorkshopRouteContracts.ts
@@ -100,6 +100,8 @@ packages/core/src/
 │               ├── WorkshopPinnedContextHandler.ts # Pinned context: the settings tab's list, pins, unpin, move, Attach missing, Open (ADR 2026-11-04)
 │               ├── WorkshopEarlierTurnsHandler.ts # A long room's earlier turns, a page before a turn, and a bookmark jump's pages (ADR 2026-11-17 D1–D4, D6 amendment)
 │               ├── WorkshopLocationsProposalHandler.ts # A persona's context-paths card: Apply and Decline, through C1's write (the 25th; ADR 2026-11-19 D24, D27)
+│               ├── WorkshopPassageSearchHandler.ts # A persona's passage-search card: price, Run, Stop, Cancel, Send, Discard, Open report (the 26th; ADR 2026-11-20 D20)
+│               ├── WorkshopPassageSearchDelivery.ts # The results this window holds for its cards, and their delivery as a directed run (ADR 2026-11-20 D19a, D21)
 │               └── widgets/
 │                   ├── WorkshopWidgetHostHandler.ts
 │                   ├── creativeVariations/WorkshopCreativeVariationsHandler.ts
@@ -437,6 +439,7 @@ useMessageRouter({
 | useWorkshopNamedSessionRecovery | WorkshopNamedSessionRecoveryRoute (+ `WorkshopNamedSessionRecovery`) | Recover… for a saved session left mid-save |
 | useContextPathsSuggestion | ContextPathsSuggestionRoute (in ConfigurationHandler; + `ContextPathSuggestionService`) | Settings' context-path suggestion |
 | useWorkshopLocationsProposal | WorkshopLocationsProposalHandler (+ `applyContextPathProposal`) | A persona's context-paths card |
+| useWorkshopPassageSearch | WorkshopPassageSearchHandler (+ `WorkshopPassageSearchResults`, `PassageSearchEngine`) | A persona's passage-search card |
 
 **Benefits**:
 - ✅ Same domain boundaries on both sides
@@ -919,7 +922,7 @@ npm run test:tier1
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's 25 composed route owners (the list is `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES`)
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's 26 composed route owners (the list is `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES`)
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):
@@ -2400,6 +2403,74 @@ card, or anything that writes `proseMinion.contextPaths.*`:
   `ContextPathGroupRow`.
 - **Logs** carry counts and outcomes only. Never a folder or file name, a
   path or a pattern.
+
+### Workshop Passage Search Requests
+
+Follow [ADR 2026-11-20](docs/adr/2026-11-20-passage-search.md) D16–D21 with
+D19a (Passage Search Slice 4) when touching a persona's passage-search
+request, its card, or how its results reach the persona:
+
+- **A persona asks; the writer runs.** A reply ends with at most one
+  `<prose-minion-passage-search>`: `<question>` once, then 1 to `scopes` of
+  `<group>`, `<path group="…">` and `<excerpt/>`
+  (`PROMPT_BUDGETS.workshopPassageSearch`), held to the prompt by
+  `passageSearchRequestPromptSync.test.ts`. No setting. Nothing is sent to
+  a model until Run.
+  - **The codec has no free path and no pattern.** No Workshop module
+    builds a `pattern` scope (`workshopPassageSearchBoundaries.test.ts`);
+    `WorkshopPassageSearchEngineRequest` is the one place a card becomes
+    the engine's request: groups, files by catalog key, the excerpt by
+    value.
+- **Settled before the reply commits** (`WorkshopReplyPassageSearch`):
+  form, then each group, the excerpt and each file against one
+  `listGroupFiles` listing. It reads no file and prices nothing. A drop is
+  typed, mapped in `WorkshopTrailerDropReasons` and counted on trailer
+  outcomes' `passageSearch` side.
+- **Three optional, exact turn fields** (`WorkshopPassageSearchRecords`; no
+  `schemaVersion` bump; fixture `workshop-session-v2-before-passage-search.json`):
+  `passageSearchRequest` on the reply, `passageSearchResults` on a
+  delivery's writer-role turn, `passageSearchDelivery` on the persona's
+  adopted reply to the results.
+- **Status is derived, never stored** (`workshopPassageSearchStatus`).
+  `delivered` reads only a `passageSearchDelivery` naming the card: a
+  request turn with no receipt after it is never delivered. `running` and
+  `ready` are the window's. The webview gets the host's `view`
+  (`workshopTurnForWebview`); the receipt never leaves the host.
+- **The engine's result is read in one module,**
+  `WorkshopPassageSearchResultView`: counts, partial, and the display-safe
+  value the report and the directive render from. A change to the result
+  is a change there.
+- **The price is never skipped.** `ESTIMATE` is a read. `RUN` plans again
+  and runs only when the `planKey` equals the one sent; otherwise it
+  answers `price-changed` and sends nothing. One search per window; a room
+  whose revision moved (New, Open, Rewind, Branch) aborts it and drops
+  every held result.
+- **Delivery is a directed run that is not an edit offer**
+  (`WorkshopDirectedRun` is a union; `WorkshopResultsDeliveryRun`). It
+  streams, completes through `completeWorkshopRun`, carries no reaction
+  invite or reminder, and its request turn is never a reaction target.
+  - **Not adopted means rolled back, where the run is given up:**
+    `completeWorkshopRun`'s `notAdopted: 'rollback'` calls
+    `rollbackMessageRun` in place of `abandonRun` on each non-adoption
+    branch; a thrown failure takes the room handler's failed-directed-run
+    catch. Neither touches the held result, so the card stays `ready` and
+    Send retries without searching again.
+  - **The host sends only a search that read everything** (`complete`,
+    `instance-limit`) into an idle room. Any other waits for Send.
+  - **Every send checks first,** nothing awaited before the dispatch
+    (`WorkshopPassageSearchResults.deliver`).
+- **The directive** (`WorkshopPassageSearchDirective`) is evidence, never
+  instructions, every model- or writer-written string neutralized, fitted
+  by whole instances to half the room left through
+  `reads/WorkshopReadWindowFit` (`resultsTokens` with no window). The room
+  handler measures the window (`AssistantToolService.measureWorkshopReplyWindow`,
+  `orchestration/ConversationWindowMeasure`) and calls the run's `frame`
+  with it: `AgentRunEngine` names no feature. It is tallied as
+  `room.passage-search`.
+- **Transcript and export** show one event line for the card and one for
+  the results turn, counts only.
+- **Logs** carry turn ids, counts, closed outcomes and reason kinds: never
+  the question, a quote, a note, a label or a path.
 
 ### Lightbox Source Ownership
 

@@ -56,6 +56,7 @@ export function passageSearchReportHeadline(result: Pick<PassageSearchReportResu
     : `${plural(result.instances.length, 'instance')} in ${plural(files, 'file')}.`;
 }
 
+/* eslint-disable @typescript-eslint/naming-convention -- keyed by the result's kebab-case words. */
 const ENDINGS: Readonly<Record<string, string>> = {
   stopped: 'The search was stopped before every call was made.',
   'key-changed': 'The API key changed during the search, so the remaining calls were not made.',
@@ -69,6 +70,7 @@ const DROPS: Readonly<Record<string, (value: number) => string>> = {
   malformed: (value) => `${plural(value, 'entry', 'entries')} could not be read`,
   duplicate: (value) => `${plural(value, 'repeat')} of a moment already listed`
 };
+/* eslint-enable @typescript-eslint/naming-convention */
 
 /** What was read and what is missing, in the host's words: one line each. */
 export function passageSearchReportNotes(result: PassageSearchReportResult): string[] {

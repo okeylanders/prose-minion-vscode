@@ -46,6 +46,7 @@ import {
   WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS,
   WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
   WORKSHOP_TODO_STATUS_PROMPT_PATH,
+  WORKSHOP_PASSAGE_SEARCH_REQUEST_PROMPT_PATH,
   workshopPersonaSystemPromptPaths
 } from '@shared/constants/workshopPersonas';
 
@@ -200,6 +201,7 @@ describe('the default\'s assembled prompt, through the production loader', () =>
     // The to-do status, help, history and lens grammars joined the chain after the setting (ADR 2026-11-17 D16,
     // ADR 2026-11-19 D10, D11); it is the same at every level.
     WORKSHOP_TODO_STATUS_PROMPT_PATH,
+    WORKSHOP_PASSAGE_SEARCH_REQUEST_PROMPT_PATH,
     WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
     WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH,
     WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH,

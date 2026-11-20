@@ -32,6 +32,7 @@ import { WorkshopMemoryReceiptLine, WorkshopTurnMemoryCards, workshopSaveToMemor
 import { WorkshopTurnFileEdits } from './fileEdits/WorkshopTurnFileEdits';
 import { WorkshopTodoReceipt, type WorkshopTodoReceiptControls } from './todos/WorkshopTodoReceipt';
 import { WorkshopLocationsProposalCard, type WorkshopLocationsProposalControls } from './locations/WorkshopLocationsProposalCard';
+import { WorkshopPassageSearchCard, WorkshopPassageSearchResultsLine, type WorkshopPassageSearchControls } from './passageSearch/WorkshopPassageSearchCard';
 import { WorkshopTurnFoot } from './editOffers/WorkshopTurnFoot';
 import type { WorkshopEditOfferControls } from './editOffers/WorkshopEditOfferChip';
 import { WorkshopEditOfferAnswerLine, WorkshopEditOfferRequestLine } from './editOffers/WorkshopEditOfferLines';
@@ -116,6 +117,8 @@ interface WorkshopTurnBubbleProps {
   todoReceipt?: WorkshopTodoReceiptControls;
   /** A persona's context-paths card and its Apply (ADR 2026-11-19 D27). */
   locationsProposal?: WorkshopLocationsProposalControls;
+  /** A persona's passage-search card: its price, Run and results (ADR 2026-11-20 D19). */
+  passageSearch?: WorkshopPassageSearchControls;
   /** The reaction corner: its cluster and the "Add reaction" palette (ADR 2026-11-07 D8). */
   reactions?: WorkshopReactionControls;
   /** The footer's edit-offer chips, and the press's and answer's lines (ADR 2026-11-10 U1–U4). */
@@ -403,7 +406,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onToggleBookmark,
   modelLabel = workshopRawModelId,
   memory,
-  fileEdits, todoReceipt, locationsProposal,
+  fileEdits, todoReceipt, locationsProposal, passageSearch,
   reactions,
   editOffers
 }) => {
@@ -550,6 +553,9 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   if (turn.role === 'user') {
     if (turn.editOfferRequest) {
       return <WorkshopEditOfferRequestLine turn={turn} request={turn.editOfferRequest} identity={turnIdentity} onGoToTurn={editOffers?.onGoToTurn} />;
+    }
+    if (turn.passageSearchResults) {
+      return <WorkshopPassageSearchResultsLine turn={turn} identity={turnIdentity} />;
     }
     if (turn.kind === 'message') {
       const widgetCommit = turn.widgetCommit?.rail === 'thread-artifact'
@@ -799,6 +805,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
         {fileEdits && <WorkshopTurnFileEdits turn={turn} controls={fileEdits} />}
         {todoReceipt && <WorkshopTodoReceipt turn={turn} controls={todoReceipt} />}
         {locationsProposal && turn.locationsProposal && <WorkshopLocationsProposalCard turn={turn} controls={locationsProposal} />}
+        {passageSearch && turn.passageSearchRequest && <WorkshopPassageSearchCard turn={turn} controls={passageSearch} />}
         <div className="pm-ws-turn-actions">
           <button type="button" onClick={() => onCopy(turn.content, turn)}>
             <Icon name="copy" size={13} /> Copy

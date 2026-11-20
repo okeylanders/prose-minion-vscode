@@ -153,6 +153,8 @@ export interface WorkshopRouteTestHarnessOptions {
   fileEditApply?: FileEditApplyPort;
   /** Selected Text's snapshots (ADR 2026-11-14 D11); by default nothing is ever selected. */
   selectedText?: WorkshopSelectedTextSnapshotsPort;
+  /** A persona's passage search (ADR 2026-11-20 D20); absent by default, so a card's routes answer `unavailable`. */
+  passageSearch?: import('@handlers/domain/workshop/WorkshopPassageSearchHandler').WorkshopPassageSearchPorts;
 }
 
 export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarnessOptions = {}): WorkshopRouteTestHarness => {
@@ -200,6 +202,7 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
       conversationId ? contextBudgets.get(conversationId) : undefined
     ),
     measureWorkshopConversation: jest.fn(() => undefined),
+    measureWorkshopReplyWindow: jest.fn(() => undefined),
     getConversationContextSources: jest.fn((conversationId: string | undefined) =>
       conversationId ? contextSources.get(conversationId) ?? [] : []
     ),
@@ -386,7 +389,10 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     options.fileEditStaging ?? fakeFileEditStaging(),
     options.fileEditApply ?? fakeFileEditApply(),
     options.memoryDrafts ?? unusedMemoryDrafts(),
-    options.selectedText ?? unusedSelectedText()
+    options.selectedText ?? unusedSelectedText(),
+    undefined,
+    undefined,
+    options.passageSearch
   );
   const router = new MessageRouter();
   handler.registerRoutes(router);
