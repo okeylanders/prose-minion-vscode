@@ -28,7 +28,7 @@ price.
 |---|---|---|---|---|---|
 | 0 | Spec: this README and the ADR | | `epic/passage-search-spec` | #292 | Merged (`e45d8d1b`) after three Astra rounds (D2a, D3a, D5a, D9a, D11a, D12a, D19a) |
 | 1 | The engine: scopes and the root-aware listing, reading order, chunks, the fan-out, the reply codec, anchoring, the merge, the plan, `planKey` and estimate, the `passageSearch` model scope and run policy, the boundary test. The organizing pass's seam and result field, not the pass. No UI. | D1–D11 with D2a, D3a, D5a, D9a, D11a; D14, D22, D23 | `epic/passage-search-engine` | | In review |
-| 2 | The sidebar subtab: scope picker, question, plan, Run, progress, Stop, results, open at a line, Copy, Save, the Settings row, help | D15, D24 | `…-sidebar` | | Not started |
+| 2 | The sidebar subtab: scope picker, question, plan, Run, progress, Stop, results, open at a line, Copy, Save, the Settings row, help | D15, D24 | `epic/passage-search-sidebar` | | In review |
 | 3 | The organizing pass: its call, codec, citation and quotation checks, its price | D12, D12a, D13 | `…-organize` | | Not started |
 | 4 | The persona request: trailer, settlement, card, outcome kind, the handler, the directed results run, the directive and its fit, help | D16–D21, D19a, D24 | `…-persona` | | Not started |
 | Close | Live-pass checklist, `AGENTS.md`, memory bank | | `…-close` | | Not started |
