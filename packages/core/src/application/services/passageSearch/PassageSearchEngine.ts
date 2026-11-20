@@ -47,7 +47,7 @@ export type PassageSearchModelWork = Pick<PassageSearchService, 'model' | 'plan'
 
 export class ProjectPassageSearchEngine implements PassageSearchEngine {
   constructor(
-    private readonly scopeFiles: Pick<PassageSearchScopeFiles, 'resolve'>,
+    private readonly scopeFiles: Pick<PassageSearchScopeFiles, 'editorNow' | 'resolve'>,
     private readonly service: PassageSearchModelWork,
     private readonly log: LogSink
   ) {}
@@ -57,12 +57,14 @@ export class ProjectPassageSearchEngine implements PassageSearchEngine {
     if (malformed) {
       return this.refused(malformed, request);
     }
+    // Taken now, before anything is awaited: the editor the writer is in at the press, never one they have left.
+    const editor = this.scopeFiles.editorNow();
     // Read once, before any file is listed or read: the plan is priced for this model and runs on it.
     const model = await this.service.model();
     if (!model) {
       return this.refused(passageSearchRefusal('no-key'), request);
     }
-    const resolved = await this.scopeFiles.resolve(request.scopes);
+    const resolved = await this.scopeFiles.resolve(request.scopes, editor);
     if (resolved.kind === 'refused') {
       return this.refused(resolved.refusal, request);
     }
