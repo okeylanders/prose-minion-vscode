@@ -65,7 +65,7 @@ Then choose that provider's models in Prose Minion's Settings as usual, such as 
 
 - `packages/core/resources/help/overview.md` ("Settings and models")
 - `packages/core/resources/help/index.json`
-- `packages/core/src/__tests__/` (`helpReferenceSync.test.ts`)
+- `packages/core/src/__tests__/architecture/helpReferenceSync.test.ts`
 
 ## Sources
 
