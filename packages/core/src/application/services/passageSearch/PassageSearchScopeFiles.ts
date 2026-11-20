@@ -12,9 +12,13 @@
  * - **A `pattern`** takes the same authoritative walk as a context path
  *   (`.md` and `.txt` only, the resolver's fixed excludes, symbolic links
  *   and escapes refused). Its unsafe forms were refused with the request.
- * - **`active-file` and `selection`** are read from the editor port on the
- *   host. A selection's lines are the document's when the port gives its
- *   start line, else counted within the selection.
+ * - **`active-file` and `selection`** are the current editor's
+ *   (`currentSelection`), never a remembered one: a selection cleared, or an
+ *   editor closed, since the writer last selected something must refuse, not
+ *   search another document (PR #293 F1). The caller takes one snapshot
+ *   (`editorNow`), synchronously, before anything is awaited, and both
+ *   scopes read that snapshot. A selection's lines are the document's when
+ *   the port gives its start line, else counted within the selection.
  * - **Reading order is the host's:** scopes as given; inside a `group` or
  *   `pattern`, files in natural order of their paths.
  * - **De-duplicated by the host's file identity,** the first scope to name
@@ -29,7 +33,7 @@
 
 import type { ContextResourceCandidate } from '@/domain/models/ContextGeneration';
 import { hostFileIdentity } from '@/infrastructure/context/ContextGroupFiles';
-import type { EditorContext, FileSystem, Workspace } from '@/platform';
+import type { ActiveSelectionInfo, EditorContext, FileSystem, Workspace } from '@/platform';
 import { compareNaturalPaths } from '@/utils/naturalOrder';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { ContextPathGroup } from '@shared/types/context';
@@ -48,7 +52,12 @@ export interface PassageSearchScopeFilesPorts {
   readonly listing: PassageSearchFileListing;
   readonly fileSystem: Pick<FileSystem, 'readFile' | 'stat'>;
   readonly workspace: Pick<Workspace, 'workspaceFolders'>;
-  readonly editor: Pick<EditorContext, 'getActiveSelection'>;
+  readonly editor: Pick<EditorContext, 'currentSelection'>;
+}
+
+/** The current editor as it stood at one moment: its document and selection, or no editor at all. */
+export interface PassageSearchEditorSnapshot {
+  readonly editor: ActiveSelectionInfo | undefined;
 }
 
 export type PassageSearchScopeFilesOutcome =
@@ -77,9 +86,15 @@ class Refused extends Error {
 export class PassageSearchScopeFiles {
   constructor(private readonly ports: PassageSearchScopeFilesPorts) {}
 
-  async resolve(scopes: readonly PassageSearchScope[]): Promise<PassageSearchScopeFilesOutcome> {
+  /** The current editor, now. Synchronous: a caller takes it before it awaits anything, and hands it to `resolve`. */
+  editorNow(): PassageSearchEditorSnapshot {
+    const editor = this.ports.editor.currentSelection();
+    return { editor: editor ? { ...editor } : undefined };
+  }
+
+  async resolve(scopes: readonly PassageSearchScope[], snapshot: PassageSearchEditorSnapshot): Promise<PassageSearchScopeFilesOutcome> {
     try {
-      const named = await this.name(scopes);
+      const named = await this.name(scopes, snapshot.editor);
       const bounds = PROMPT_BUDGETS.passageSearch;
       if (named.length > bounds.files) {
         throw new Refused(passageSearchRefusal('too-many-files', named.length));
@@ -116,7 +131,7 @@ export class PassageSearchScopeFiles {
   }
 
   /** Every file the scopes name, in reading order, each once. Reads no file. */
-  private async name(scopes: readonly PassageSearchScope[]): Promise<NamedFile[]> {
+  private async name(scopes: readonly PassageSearchScope[], editor: ActiveSelectionInfo | undefined): Promise<NamedFile[]> {
     const groups = [...new Set(scopes.flatMap((scope): ContextPathGroup[] =>
       scope.kind === 'group' ? [scope.group] : scope.kind === 'file' ? [scope.file.group] : []))];
     // One listing for the plan, asked only when a scope needs it.
@@ -130,10 +145,10 @@ export class PassageSearchScopeFiles {
     for (const [index, scope] of scopes.entries()) {
       switch (scope.kind) {
         case 'active-file':
-          add(this.activeFile());
+          add(activeFile(editor));
           break;
         case 'selection':
-          add(this.selection());
+          add(selectedText(editor));
           break;
         case 'group':
           inReadingOrder(listed.filter((file) => file.group === scope.group)).forEach((file) => add(this.listedFile(file)));
@@ -175,38 +190,6 @@ export class PassageSearchScopeFiles {
     };
   }
 
-  private activeFile(): NamedFile {
-    const editor = this.ports.editor.getActiveSelection();
-    // An untitled document has no file to read; its text can be searched as a selection.
-    if (!editor || editor.uriString.startsWith('untitled:') || editor.fsPath.trim().length === 0) {
-      throw new Refused(passageSearchRefusal('no-active-file'));
-    }
-    return {
-      identity: hostFileIdentity(editor.fsPath),
-      displayPath: editor.relativePath,
-      absolutePath: editor.fsPath,
-      lineOffset: 0,
-      lines: 'document'
-    };
-  }
-
-  private selection(): NamedFile {
-    const selection = this.ports.editor.getActiveSelection();
-    if (!selection || selection.isEmpty || selection.text.length === 0) {
-      throw new Refused(passageSearchRefusal('no-selection'));
-    }
-    const saved = selection.fsPath.trim().length > 0 && !selection.uriString.startsWith('untitled:');
-    return {
-      // Apart from its whole file: a selection is its own text, with its own lines.
-      identity: `selection\u0000${selection.uriString}`,
-      displayPath: selection.relativePath,
-      ...(saved ? { absolutePath: selection.fsPath } : {}),
-      text: selection.text,
-      lineOffset: selection.startLine !== undefined ? selection.startLine - 1 : 0,
-      lines: selection.startLine !== undefined ? 'document' : 'text'
-    };
-  }
-
   private async sizeOf(file: NamedFile): Promise<number> {
     if (file.text !== undefined) {
       return Buffer.byteLength(file.text, 'utf8');
@@ -240,6 +223,36 @@ export class PassageSearchScopeFiles {
       return undefined;
     }
   }
+}
+
+function activeFile(editor: ActiveSelectionInfo | undefined): NamedFile {
+  // An untitled document has no file to read; its text can be searched as a selection.
+  if (!editor || editor.uriString.startsWith('untitled:') || editor.fsPath.trim().length === 0) {
+    throw new Refused(passageSearchRefusal('no-active-file'));
+  }
+  return {
+    identity: hostFileIdentity(editor.fsPath),
+    displayPath: editor.relativePath,
+    absolutePath: editor.fsPath,
+    lineOffset: 0,
+    lines: 'document'
+  };
+}
+
+function selectedText(selection: ActiveSelectionInfo | undefined): NamedFile {
+  if (!selection || selection.isEmpty || selection.text.length === 0) {
+    throw new Refused(passageSearchRefusal('no-selection'));
+  }
+  const saved = selection.fsPath.trim().length > 0 && !selection.uriString.startsWith('untitled:');
+  return {
+    // Apart from its whole file: a selection is its own text, with its own lines.
+    identity: `selection\u0000${selection.uriString}`,
+    displayPath: selection.relativePath,
+    ...(saved ? { absolutePath: selection.fsPath } : {}),
+    text: selection.text,
+    lineOffset: selection.startLine !== undefined ? selection.startLine - 1 : 0,
+    lines: selection.startLine !== undefined ? 'document' : 'text'
+  };
 }
 
 /** Natural order of the relative paths; the same path in two roots by root. */

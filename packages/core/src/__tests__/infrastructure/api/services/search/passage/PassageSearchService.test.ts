@@ -66,7 +66,7 @@ function createService(replies: Reply[] = [], options: HostOptions = {}) {
     const reply = typeof next === 'function' ? next() : next;
     return { usedGuides: [], requestedResources: [], artifacts: [], finishReason: 'stop', usage: USAGE, cancelled: false, ...reply };
   });
-  const engine = { runInitial, getModel: jest.fn(() => options.engineModel ?? PASSAGE_MODEL) };
+  const engine = { runInitial, getModel: jest.fn(() => options.engineModel ?? PASSAGE_MODEL), isProviderAvailable: jest.fn(() => true) };
   const manager = {
     ensureInitialized: jest.fn(async () => undefined),
     getEngine: jest.fn(() => (options.engine === false ? undefined : engine))
@@ -139,6 +139,25 @@ describe('PassageSearchService.plan', () => {
     expect(plan.estimate).not.toHaveProperty('usd');
   });
 
+  it('refuses a plan whose reads and organizing call together pass the call bound, in words that say so', async () => {
+    const original = bounds.calls;
+    (PROMPT_BUDGETS.passageSearch as { calls: number }).calls = 3;
+    try {
+      const organizer = { available: true, plan: jest.fn(), organize: jest.fn() };
+      const { service } = createService([], { organizer: organizer as never });
+      await expect(service.plan({ model: PASSAGE_MODEL, question: QUESTION, organize: false, files: FILES })).resolves.toMatchObject({ kind: 'planned' });
+      const refused = await service.plan({ model: PASSAGE_MODEL, question: QUESTION, organize: true, files: FILES });
+      expect(refused).toEqual({
+        kind: 'refused',
+        refusal: { reason: 'too-many-calls', message: 'That would take 4 calls, one of them to organize the results; Passage Search makes up to 3 in one search. Narrow what it searches.' }
+      });
+      // With no organizer no call is reserved, so the same request plans.
+      await expect(createService().service.plan({ model: PASSAGE_MODEL, question: QUESTION, organize: true, files: FILES })).resolves.toMatchObject({ kind: 'planned' });
+    } finally {
+      (PROMPT_BUDGETS.passageSearch as { calls: number }).calls = original;
+    }
+  });
+
   it('refuses in host words when nothing can be read or the model is too small', async () => {
     const { service } = createService([], { facts: { contextLength: 100 } });
     await expect(service.plan({ model: PASSAGE_MODEL, question: QUESTION, organize: false, files: FILES }))
@@ -165,7 +184,7 @@ describe('PassageSearchService.run', () => {
         systemMessage: plan.systemMessage,
         userMessage: buildPassageSearchMessage(QUESTION, plan.files[chunk.file].text.slice(chunk.start, chunk.end)),
         policy: AGENT_RUN_POLICIES.passageSearch,
-        options: { model: PASSAGE_MODEL, temperature: 0, maxTokens: bounds.outputTokens }
+        options: { model: PASSAGE_MODEL, temperature: 0, maxTokens: plan.ceilings.readOutputTokens }
       });
       expect(request.options).not.toHaveProperty('reasoning');
       expect(request).not.toHaveProperty('capability');
@@ -193,11 +212,12 @@ describe('PassageSearchService.run', () => {
       model: PASSAGE_MODEL,
       ended: 'complete',
       overLimit: 0,
-      calls: { planned: 3, answered: 3, failed: 0, cut: 0, unsent: 0 },
+      calls: { planned: 3, answered: 3, failed: 0, cut: 0, cancelled: 0, unsent: 0 },
       dropped: { 'quote-not-found': 0, 'quote-ambiguous': 0, malformed: 0, duplicate: 0 },
       usage: { promptTokens: 300, completionTokens: 60, totalTokens: 360, requestCount: 3 }
     });
-    expect(result.files.read.map((file) => [file.key, file.instances])).toEqual([['f1', 1], ['f2', 0], ['f3', 2]]);
+    expect(result.files.planned.map((file) => [file.key, file.instances, file.searched])).toEqual([['f1', 1, 'full'], ['f2', 0, 'full'], ['f3', 2, 'full']]);
+    expect(result.files.searched).toEqual({ full: 3, partial: 0, none: 0 });
     expect(result).not.toHaveProperty('analysis');
     expect(progress).toEqual([
       { calls: { planned: 3, done: 1 }, found: 1 },
@@ -228,7 +248,9 @@ describe('PassageSearchService.run', () => {
     const { service, runInitial } = createService([new Error('503 from /secret/path'), { content: 'I could not find any.' }, GLANCED]);
     const result = await service.run(await planOf(service));
     expect(runInitial).toHaveBeenCalledTimes(3);
-    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 2, cut: 0, unsent: 0 });
+    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 2, cut: 0, cancelled: 0, unsent: 0 });
+    // A file whose only call failed was not searched, whatever it holds.
+    expect(result.files.planned.map((file) => file.searched)).toEqual(['none', 'none', 'full']);
     expect(result.ended).toBe('complete');
     expect(result.instances.map((instance) => instance.quote)).toEqual(['glanced at its watch again']);
   });
@@ -237,7 +259,7 @@ describe('PassageSearchService.run', () => {
     const cut = `{"instances":[${JSON.stringify({ quote: 'took a watch out of its waistcoat-pocket', note: 'n', label: 'checks' })},{"quote":"glanced at its wa`;
     const { service } = createService([{ content: cut, finishReason: 'length' }, NONE, NONE]);
     const result = await service.run(await planOf(service));
-    expect(result.calls).toEqual({ planned: 3, answered: 3, failed: 0, cut: 1, unsent: 0 });
+    expect(result.calls).toEqual({ planned: 3, answered: 3, failed: 0, cut: 1, cancelled: 0, unsent: 0 });
     expect(result.instances.map((instance) => instance.quote)).toEqual(['took a watch out of its waistcoat-pocket']);
   });
 
@@ -256,7 +278,15 @@ describe('PassageSearchService.run', () => {
     expect(runInitial).toHaveBeenCalledTimes(2);
     expect(runInitial.mock.calls[0][0].options.signal).toBe(stop.signal);
     expect(result.ended).toBe('stopped');
-    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, unsent: 2 });
+    // The call stopped in flight was dispatched: cancelled, with its usage kept; the one never started is unsent.
+    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1 });
+    expect(result.usage).toMatchObject({ totalTokens: 240, requestCount: 2 });
+    expect(result.files.planned.map((file) => [file.chunks, file.searched])).toEqual([
+      [{ planned: 1, admitted: 1, answered: 1 }, 'full'],
+      [{ planned: 1, admitted: 1, answered: 0 }, 'none'],
+      [{ planned: 1, admitted: 0, answered: 0 }, 'none']
+    ]);
+    expect(result.files.searched).toEqual({ full: 1, partial: 0, none: 2 });
     expect(result.instances.map((instance) => instance.quote)).toEqual(['took a watch out of its waistcoat-pocket']);
     expect(organizer.organize).not.toHaveBeenCalled();
     expect(result).not.toHaveProperty('analysis');
@@ -282,7 +312,9 @@ describe('PassageSearchService.run', () => {
     const result = await service.run(await planOf(service, { organize: true }));
     expect(runInitial).toHaveBeenCalledTimes(2);
     expect(result.ended).toBe('key-changed');
-    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, unsent: 2 });
+    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2 });
+    // The call the retired engine refused never reached the provider: not admitted.
+    expect(result.files.planned.map((file) => file.chunks.admitted)).toEqual([1, 0, 0]);
     expect(result.instances).toHaveLength(1);
     expect(organizer.organize).not.toHaveBeenCalled();
   });
@@ -309,7 +341,7 @@ describe('PassageSearchService.run', () => {
       const result = await service.run(plan);
       expect(runInitial).toHaveBeenCalledTimes(6);
       expect(result.ended).toBe('provider-failed');
-      expect(result.calls).toEqual({ planned: 9, answered: 1, failed: 5, cut: 0, unsent: 3 });
+      expect(result.calls).toEqual({ planned: 9, answered: 1, failed: 5, cut: 0, cancelled: 0, unsent: 3 });
       expect(result.instances.map((instance) => instance.quote)).toEqual(['took a watch out of its waistcoat-pocket']);
       expect(organizer.organize).not.toHaveBeenCalled();
       expect(result).not.toHaveProperty('analysis');
@@ -320,7 +352,7 @@ describe('PassageSearchService.run', () => {
       const result = await service.run(await planOf(service, { files: MANY }));
       expect(runInitial).toHaveBeenCalledTimes(9);
       expect(result.ended).toBe('complete');
-      expect(result.calls).toEqual({ planned: 9, answered: 1, failed: 8, cut: 0, unsent: 0 });
+      expect(result.calls).toEqual({ planned: 9, answered: 1, failed: 8, cut: 0, cancelled: 0, unsent: 0 });
     });
 
     it('counts only the provider\'s failures: an unreadable reply neither adds to the streak nor ends it', async () => {
@@ -331,7 +363,7 @@ describe('PassageSearchService.run', () => {
       const result = await mixed.service.run(await planOf(mixed.service, { files: MANY }));
       expect(mixed.runInitial).toHaveBeenCalledTimes(6);
       expect(result.ended).toBe('provider-failed');
-      expect(result.calls).toEqual({ planned: 9, answered: 0, failed: 6, cut: 0, unsent: 3 });
+      expect(result.calls).toEqual({ planned: 9, answered: 0, failed: 6, cut: 0, cancelled: 0, unsent: 3 });
     });
   });
 

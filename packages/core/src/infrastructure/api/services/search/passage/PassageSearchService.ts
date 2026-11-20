@@ -14,7 +14,12 @@
  * - **Stop and a key change start nothing more** (D7, D12a). Once the
  *   caller's signal is aborted, or the retired engine refuses a call as
  *   missing credentials, no queued read starts and no organizing pass is
- *   made. The result keeps what was found.
+ *   made. The result keeps what was found. A key changed after the last
+ *   read was admitted refuses no later call, so the run also asks the
+ *   engine it holds whether its provider was retired: once the reads
+ *   settle, and again immediately before the pass.
+ * - **A call stopped in flight is `cancelled`, not `unsent`:** it was
+ *   dispatched and may have been charged; its usage is kept.
  * - **A failed call is that call's outcome,** counted; the run goes on. A
  *   reply cut off at its ceiling keeps its finished instances and is
  *   counted `cut`.
@@ -51,6 +56,7 @@ import {
   type PassageSearchPlan,
   type PassageSearchPlanOutcome,
   type PassageSearchResult,
+  type PassageSearchResultFile,
   type PassageSearchRunOptions,
   type PassageSearchSourceFile
 } from '@services/search/passage/PassageSearchContracts';
@@ -58,7 +64,8 @@ import {
   anchorPassageSearchInstances,
   countPassageSearchMoments,
   mergePassageSearchInstances,
-  type PassageSearchFound
+  type PassageSearchFound,
+  type PassageSearchMerged
 } from '@services/search/passage/PassageSearchInstances';
 import { PASSAGE_SEARCH_PROMPTS, buildPassageSearchMessage } from '@services/search/passage/PassageSearchMessages';
 import {
@@ -96,7 +103,13 @@ interface RunTally {
   answered: number;
   failed: number;
   cut: number;
+  /** Dispatched, then stopped in flight. */
+  cancelled: number;
+  /** Never started. */
   unsent: number;
+  /** Per plan file: chunks dispatched, and chunks whose reply was read. */
+  readonly admitted: number[];
+  readonly answeredByFile: number[];
   ignoredFields: number;
   notesClipped: number;
   moments: number;
@@ -137,7 +150,7 @@ export class PassageSearchService {
     });
     if (planned.kind !== 'planned') {
       this.log.appendLine(`[PassageSearch] Plan refused (${planned.kind}): ${request.files.length} file(s), ${Date.now() - started} ms.`);
-      return refusedPlan(planned.kind, planned.kind === 'too-many-calls' ? planned.calls : 0);
+      return planned.kind === 'too-many-calls' ? refusedPlan(planned.kind, planned.calls, planned.organizing) : refusedPlan(planned.kind);
     }
     const { estimate } = planned.plan;
     this.log.appendLine(
@@ -164,7 +177,10 @@ export class PassageSearchService {
       answered: 0,
       failed: 0,
       cut: 0,
+      cancelled: 0,
       unsent: 0,
+      admitted: plan.files.map(() => 0),
+      answeredByFile: plan.files.map(() => 0),
       ignoredFields: 0,
       notesClipped: 0,
       moments: 0,
@@ -179,6 +195,7 @@ export class PassageSearchService {
 
     await Promise.all(plan.chunks.map((_chunk, index) => limit(async (): Promise<void> => {
       // Asked in the turn the call below starts, so it answers for that call.
+      tally.keyChanged ||= !engine?.isProviderAvailable();
       if (!engine || tally.keyChanged || tally.providerFailed || tally.limitReached || options.signal?.aborted) {
         tally.unsent += 1;
       } else {
@@ -188,7 +205,12 @@ export class PassageSearchService {
       options.onProgress?.({ calls: { planned: plan.chunks.length, done }, found: tally.moments });
     })));
 
+    // Every read may have been admitted before the key changed, so no later call was there to refuse:
+    // the engine the run holds says whether its credentials were retired (PR #293 F2).
+    const retired = (): boolean => !engine?.isProviderAvailable();
+    tally.keyChanged ||= retired();
     const merged = mergePassageSearchInstances(plan.files, tally.found, bounds.instances, bounds.contextCharacters);
+    const files = this.coverageOf(plan, merged.files, tally);
     const ended: PassageSearchEnded = tally.keyChanged
       ? 'key-changed'
       : options.signal?.aborted
@@ -204,12 +226,27 @@ export class PassageSearchService {
       labels: merged.labels,
       dropped: { ...tally.dropped, duplicate: merged.duplicates },
       overLimit: merged.overLimit,
-      calls: { planned: plan.chunks.length, answered: tally.answered, failed: tally.failed, cut: tally.cut, unsent: tally.unsent },
-      files: { read: merged.files, leftOut: plan.estimate.leftOut },
+      calls: {
+        planned: plan.chunks.length,
+        answered: tally.answered,
+        failed: tally.failed,
+        cut: tally.cut,
+        cancelled: tally.cancelled,
+        unsent: tally.unsent
+      },
+      files: {
+        planned: files,
+        searched: {
+          full: files.filter((file) => file.searched === 'full').length,
+          partial: files.filter((file) => file.searched === 'partial').length,
+          none: files.filter((file) => file.searched === 'none').length
+        },
+        leftOut: plan.estimate.leftOut
+      },
       ended,
       ...(usage ? { usage } : {})
     };
-    const result = plan.organize ? await this.organizeWithin(reads, options.signal) : reads;
+    const result = plan.organize ? await this.organizeWithin(reads, retired, options.signal) : reads;
     this.logRun(result, tally, Date.now() - started);
     return result;
   }
@@ -228,11 +265,14 @@ export class PassageSearchService {
   }
 
   /** The pass inside a run: never after Stop, a key change or a run of provider failures, and never over nothing (D12a). */
-  private async organizeWithin(reads: PassageSearchResult, signal?: AbortSignal): Promise<PassageSearchResult> {
+  private async organizeWithin(reads: PassageSearchResult, retired: () => boolean, signal?: AbortSignal): Promise<PassageSearchResult> {
     if ((reads.ended !== 'complete' && reads.ended !== 'instance-limit') || reads.instances.length === 0) {
       return reads;
     }
-    // Read again immediately before dispatch: nothing is awaited between this and the pass's start.
+    // Both read again immediately before dispatch: nothing is awaited between these and the pass's start.
+    if (retired()) {
+      return { ...reads, ended: 'key-changed' };
+    }
     if (signal?.aborted) {
       return { ...reads, ended: 'stopped' };
     }
@@ -271,6 +311,8 @@ export class PassageSearchService {
     const chunk = plan.chunks[index];
     const file = plan.files[chunk.file];
     let result: ExecutionResult;
+    // Admitted: from here the call may reach the provider, whatever becomes of it.
+    tally.admitted[chunk.file] += 1;
     try {
       result = await engine.runInitial({
         toolName: 'passage-search',
@@ -280,7 +322,7 @@ export class PassageSearchService {
         options: {
           model: plan.model,
           temperature: 0,
-          maxTokens: PROMPT_BUDGETS.passageSearch.outputTokens,
+          maxTokens: plan.ceilings.readOutputTokens,
           ...(signal ? { signal } : {})
         }
       });
@@ -288,9 +330,11 @@ export class PassageSearchService {
       if (error instanceof AgentRunUnavailableError && error.reason === 'missing-credentials') {
         // The key was removed or replaced: the retired engine starts nothing, and neither does this run.
         tally.keyChanged = true;
+        tally.admitted[chunk.file] -= 1;
         tally.unsent += 1;
       } else if (signal?.aborted) {
-        tally.unsent += 1;
+        // Aborted in flight: it was dispatched, so it is not unsent, and it may have been charged.
+        tally.cancelled += 1;
       } else {
         this.fail(tally, faultKindOf(error));
         tally.failureStreak += 1;
@@ -300,13 +344,15 @@ export class PassageSearchService {
     }
     tally.usages.push(result.usage);
     if (result.cancelled) {
-      tally.unsent += 1;
+      // Dispatched, then stopped: its usage is kept, and it is counted apart from calls that never started.
+      tally.cancelled += 1;
       return;
     }
     try {
       const reply = readPassageSearchReply(result.rawContent ?? result.content, result.finishReason === 'length');
-      const anchored = anchorPassageSearchInstances(file, chunk, reply.instances);
+      const anchored = anchorPassageSearchInstances(file, chunk, reply.instances, index);
       tally.answered += 1;
+      tally.answeredByFile[chunk.file] += 1;
       tally.failureStreak = 0;
       tally.cut += reply.cut ? 1 : 0;
       tally.dropped.malformed += reply.malformed;
@@ -326,6 +372,20 @@ export class PassageSearchService {
     }
   }
 
+  /** What the run did of each planned file: a file is searched in full only when every one of its chunks was answered. */
+  private coverageOf(plan: PassageSearchPlan, files: PassageSearchMerged['files'], tally: RunTally): PassageSearchResultFile[] {
+    const planned = plan.files.map(() => 0);
+    plan.chunks.forEach((chunk) => { planned[chunk.file] += 1; });
+    return files.map((file, index): PassageSearchResultFile => {
+      const answered = tally.answeredByFile[index];
+      return {
+        ...file,
+        chunks: { planned: planned[index], admitted: tally.admitted[index], answered },
+        searched: answered >= planned[index] ? 'full' : answered > 0 ? 'partial' : 'none'
+      };
+    });
+  }
+
   private fail(tally: RunTally, fault: string): void {
     tally.failed += 1;
     tally.faults.set(fault, (tally.faults.get(fault) ?? 0) + 1);
@@ -343,8 +403,9 @@ export class PassageSearchService {
   private logRun(result: PassageSearchResult, tally: RunTally, milliseconds: number): void {
     const counted = (counts: Map<string, number>): string => [...counts.entries()].map(([kind, count]) => `${kind} ${count}`).join(', ') || 'none';
     this.log.appendLine(
-      `[PassageSearch] Run ended ${result.ended}: ${result.files.read.length} file(s), `
-      + `${result.calls.answered} of ${result.calls.planned} call(s) answered (${result.calls.failed} failed, ${result.calls.cut} cut, ${result.calls.unsent} unsent), `
+      `[PassageSearch] Run ended ${result.ended}: ${result.files.planned.length} file(s), `
+      + `${result.calls.answered} of ${result.calls.planned} call(s) answered (${result.calls.failed} failed, ${result.calls.cut} cut, ${result.calls.cancelled} cancelled, ${result.calls.unsent} unsent), `
+      + `searched ${result.files.searched.full} in full, ${result.files.searched.partial} in part, ${result.files.searched.none} not at all, `
       + `${result.instances.length} instance(s) under ${result.labels.length} label(s), ${result.overLimit} over the limit, `
       + `dropped ${PASSAGE_SEARCH_DROP_REASONS.map((reason) => `${reason} ${result.dropped[reason]}`).join(', ')}, `
       + `failures ${counted(tally.faults)}, repairs ${counted(tally.repairs)}, `

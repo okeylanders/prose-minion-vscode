@@ -9,7 +9,7 @@ import { PASSAGE_SEARCH_ENDINGS, PASSAGE_SEARCH_REFUSALS, type PassageSearchRefu
 import { describePassageSearchEnding, describePassageSearchLeftOut, passageSearchRefusal } from '@services/search/passage/PassageSearchRefusals';
 import { ProjectPassageSearchEngine } from '@/application/services/passageSearch/PassageSearchEngine';
 import { passageSearchRequestRefusal, type PassageSearchRequest, type PassageSearchScope } from '@/application/services/passageSearch/PassageSearchRequest';
-import type { PassageSearchScopeFilesOutcome } from '@/application/services/passageSearch/PassageSearchScopeFiles';
+import type { PassageSearchEditorSnapshot, PassageSearchScopeFilesOutcome } from '@/application/services/passageSearch/PassageSearchScopeFiles';
 
 const bounds = PROMPT_BUDGETS.passageSearch;
 const QUESTION = 'Find every time the Cat grins.';
@@ -18,9 +18,13 @@ const GROUP: PassageSearchScope = { kind: 'group', group: 'chapters' };
 
 function createEngine(options: { model?: string | undefined; resolved?: PassageSearchScopeFilesOutcome } = {}) {
   const order: string[] = [];
-  const resolve = jest.fn(async (_scopes: readonly PassageSearchScope[]): Promise<PassageSearchScopeFilesOutcome> => {
+  const resolve = jest.fn(async (_scopes: readonly PassageSearchScope[], _editor: PassageSearchEditorSnapshot): Promise<PassageSearchScopeFilesOutcome> => {
     order.push('files');
     return options.resolved ?? { kind: 'files', files: [FILE], leftOut: [{ identity: '/book/x.md', reason: 'unreadable' }] };
+  });
+  const editorNow = jest.fn(() => {
+    order.push('editor');
+    return { editor: undefined };
   });
   const service = {
     model: jest.fn(async () => {
@@ -33,8 +37,8 @@ function createEngine(options: { model?: string | undefined; resolved?: PassageS
     organize: jest.fn(async (result: never) => result)
   };
   const log = { appendLine: jest.fn() };
-  const engine = new ProjectPassageSearchEngine({ resolve }, service, log as never);
-  return { engine, resolve, service, log, order };
+  const engine = new ProjectPassageSearchEngine({ editorNow, resolve }, service, log as never);
+  return { engine, editorNow, resolve, service, log, order };
 }
 
 const request = (overrides: Partial<PassageSearchRequest> = {}): PassageSearchRequest => ({ question: QUESTION, scopes: [GROUP], organize: false, ...overrides });
@@ -45,11 +49,12 @@ async function refusalOf(engine: ProjectPassageSearchEngine, asked: PassageSearc
 }
 
 describe('ProjectPassageSearchEngine.plan', () => {
-  it('reads the model before any file, then hands the files and the trimmed question to the service', async () => {
-    const { engine, service, order } = createEngine();
+  it('snapshots the editor before anything is awaited, reads the model before any file, then hands the files and the trimmed question to the service', async () => {
+    const { engine, service, order, resolve, editorNow } = createEngine();
     const outcome = await engine.plan(request({ question: `  ${QUESTION}\n`, organize: true }));
     expect(outcome).toEqual({ kind: 'planned', plan: { planKey: 'key' } });
-    expect(order).toEqual(['model', 'files']);
+    expect(order).toEqual(['editor', 'model', 'files']);
+    expect(resolve).toHaveBeenCalledWith([GROUP], editorNow.mock.results[0].value);
     expect(service.plan).toHaveBeenCalledWith({
       model: 'placeholder/passage-model',
       question: QUESTION,
@@ -152,6 +157,7 @@ describe('the refusals\' words', () => {
 
   it('names the bound and the count where there is one', () => {
     expect(passageSearchRefusal('too-many-calls', 412).message).toBe(`That would take 412 calls; Passage Search makes up to ${bounds.calls} in one search. Narrow what it searches.`);
+    expect(passageSearchRefusal('too-many-calls', 301, true).message).toBe(`That would take 301 calls, one of them to organize the results; Passage Search makes up to ${bounds.calls} in one search. Narrow what it searches.`);
     expect(passageSearchRefusal('too-many-files', 1_250).message).toContain('1,250 files');
     expect(passageSearchRefusal('question-too-long', 512).message).toContain(`512 characters long; Passage Search takes up to ${bounds.questionCharacters}`);
     expect(passageSearchRefusal('too-many-scopes', 13).message).toContain(`up to ${bounds.scopes} at once`);
