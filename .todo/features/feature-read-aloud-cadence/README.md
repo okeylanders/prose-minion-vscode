@@ -73,10 +73,14 @@ was measured.
 
 ### 2. The model reads the measures, never the raw text alone
 
-What code can't judge is whether the rhythm fits the meaning:
+What code can't judge is whether the rhythm fits the meaning. As the
+persona argued, footfalls, rises and stresses do character work, and the
+question is whether they line up with what's happening:
 - whether a soft middle suits a drifting glance or undercuts a throw;
 - whether a twin cadence is a deliberate echo or an accident;
-- whether a sentence lands on the word that matters.
+- whether a sentence lands on the word that matters;
+- whether a character's rhythm matches who they are in the moment: steady,
+  startled, cornered, at ease.
 
 So the model gets the passage and the host's maps and measures. Every
 claim names its sentence and the measure behind it, and every number comes
@@ -99,11 +103,42 @@ trips. Recommended: both, in this order.
      per sentence, twins and sags highlighted.
    - A **Listen** button adds the model's reading of it, with its price
      shown first.
-3. **Later: a chapter pass that flags only the strongest few spots.**
-   Measuring the whole chapter is free, so host code picks the candidates
-   (twins, sags at peaks, sentences falling away at a paragraph's end,
-   breathless lines) and only those go to a model. It could be a Craft
-   Flags category ("cadence", flags only) or a Lightbox lane.
+3. **Later: a chapter pass where the model chooses what to highlight**
+   (R1, below). Code measures every sentence; the model picks the spots
+   and how many.
+
+## Decisions (Okey, 2026-11-20)
+
+| # | Decision | Notes |
+|---|---|---|
+| R1 | **In the chapter pass, the model chooses what to highlight and how many,** with a warning not to go overboard. Host code doesn't pick the candidates. | Rules can find a twin cadence; only a reading can tell whether the rhythm does the character's work, or fights what's happening. |
+
+## The chapter pass (R1)
+
+- **Code measures the whole chapter.** It's free. Each sentence gets a
+  host-minted id, its syllable count, a compact stress pattern, and its
+  measures (twin of the one before, sag length, falling ending, breath
+  length, consonant pileups).
+- **The model reads the chapter beside that table,** in one call, priced and
+  confirmed first, as Craft Flags runs.
+- **It chooses the spots and how many.** The prompt asks for the few places
+  where rhythm matters most to the moment, says a handful is usual and
+  none is a fine answer, and warns against flagging every irregular line.
+  - The number is an ask, not a gate, in the Lightbox's sense ("asks, not
+    gates"). A safety ceiling well above the ask, never stated in the
+    prompt, drops and counts anything past it.
+- **Each pick says what the rhythm is doing to the moment:**
+  - the sentence ids it covers;
+  - the measure that shows it, by name (the number is the host's);
+  - what is happening there, and in whom;
+  - whether the rhythm **serves** the moment or **works against** it.
+    Showing where cadence already does character work is as useful as
+    showing where it trips.
+- **Host code checks every pick.** Ids must exist, a named measure must be
+  one the table holds, and any quote must be in the text. A pick that
+  fails is dropped and counted.
+- **Where it lives:** a Craft Flags category ("cadence", flags only, on the
+  later sentence) or a Lightbox lane. That is still open.
 
 ## Data and dependencies
 
@@ -129,6 +164,9 @@ trips. Recommended: both, in this order.
   with it? Leaning: the engine and the capability first, then the tool.
 - **Where the chapter pass lives:** Craft Flags or the Lightbox, once the
   microscope has proved itself.
+- **"Serves" picks in the editor.** As Craft Flags squiggles, praise may
+  read oddly. If it lives there, "serves" picks might show only in a
+  summary, not as flags.
 
 ## Completion Criteria
 
@@ -142,6 +180,9 @@ trips. Recommended: both, in this order.
       including this note's example).
 - [ ] The model's reading cites sentences and measures, and states no
       number of its own (test).
+- [ ] The chapter pass sends every sentence's measures, lets the model choose
+      its picks (stance included), and drops and counts picks past the
+      safety ceiling or citing ids and measures the table lacks (tests).
 - [ ] The pronunciation table loads lazily on the host, and the bundle size
       is recorded in the PR.
 - [ ] Logs carry counts only, never the passage.
