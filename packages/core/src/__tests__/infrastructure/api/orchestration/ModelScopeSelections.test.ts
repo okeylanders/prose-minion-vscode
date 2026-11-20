@@ -168,6 +168,10 @@ describe('the following scopes', () => {
     expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP, lightboxModel: LIGHTBOX }))).toEqual(['craft', 'helper', 'passageSearch']);
     expect(followingModelScopes(settingsOf({
       assistantModel: WORKSHOP, lightboxModel: LIGHTBOX, craftModel: 'placeholder/craft-model', helperModel: 'placeholder/helper-model'
+    }))).toEqual(['passageSearch']);
+    expect(followingModelScopes(settingsOf({
+      assistantModel: WORKSHOP, lightboxModel: LIGHTBOX, craftModel: 'placeholder/craft-model', helperModel: 'placeholder/helper-model',
+      passageSearchModel: 'placeholder/passage-model'
     }))).toEqual([]);
     expect(ownFollowingModel(settingsOf({ lightboxModel: 42 }), 'lightbox')).toBeUndefined();
   });
