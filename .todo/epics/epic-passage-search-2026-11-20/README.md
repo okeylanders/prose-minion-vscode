@@ -1,6 +1,6 @@
 # Epic: Passage Search
 
-**Status:** Slice 0 (this README and the ADR) is in review. Nothing is built.
+**Status:** Slice 0 (this README and the ADR) is in review: revised after Astra's first review of PR #292 (seven findings, all taken). Nothing is built.
 **Priority:** Medium
 **Opened:** 2026-11-20
 **Branch:** `epic/passage-search`, cut from the tip of `epic/workshop-persona-tools` at `1b3b9239`, so the epic starts with Persona Tools in it. That epic is built and waits for Okey's live pass and its own PR to `main`.
@@ -26,11 +26,11 @@ price.
 
 | # | What | Decisions | Branch | PR | Status |
 |---|---|---|---|---|---|
-| 0 | Spec: this README and the ADR | | `epic/passage-search-spec` | #292 | In review |
-| 1 | The engine: scopes, reading order, chunks, the fan-out, the reply codec, anchoring, the merge, the plan and estimate, the `passageSearch` model scope and run policy, the boundary test. The organizing pass's seam and result field, not the pass. No UI. | D1–D11, D14, D22, D23 | `…-engine` | | Not started |
+| 0 | Spec: this README and the ADR | | `epic/passage-search-spec` | #292 | In review; revised after Astra's first review |
+| 1 | The engine: scopes and the root-aware listing, reading order, chunks, the fan-out, the reply codec, anchoring, the merge, the plan, `planKey` and estimate, the `passageSearch` model scope and run policy, the boundary test. The organizing pass's seam and result field, not the pass. No UI. | D1–D11 with D2a, D3a, D5a, D9a, D11a; D14, D22, D23 | `…-engine` | | Not started |
 | 2 | The sidebar subtab: scope picker, question, plan, Run, progress, Stop, results, open at a line, Copy, Save, the Settings row, help | D15, D24 | `…-sidebar` | | Not started |
-| 3 | The organizing pass: its call, codec, citation and quotation checks, its price | D12, D13 | `…-organize` | | Not started |
-| 4 | The persona request: trailer, settlement, card, outcome kind, the handler, the directed results run, the directive and its fit, help | D16–D21, D24 | `…-persona` | | Not started |
+| 3 | The organizing pass: its call, codec, citation and quotation checks, its price | D12, D12a, D13 | `…-organize` | | Not started |
+| 4 | The persona request: trailer, settlement, card, outcome kind, the handler, the directed results run, the directive and its fit, help | D16–D21, D19a, D24 | `…-persona` | | Not started |
 | Close | Live-pass checklist, `AGENTS.md`, memory bank | | `…-close` | | Not started |
 
 Slice branches are `epic/passage-search-<slug>`.
@@ -81,6 +81,11 @@ overturn.
 | 25 | **`findConfiguredResource` moves to a neutral module;** `formatApproximateUsd` becomes one shared formatter. | The engine may not import a Workshop path. Three copies of the price format already exist. |
 | 26 | **`ShellService.openFileInEditor` gains an optional `line`.** | Nothing opens a file at a line today. |
 | 27 | **Natural order sets the extension aside and compares path segments.** | Otherwise `6.9.2.md` sorts before `6.9.md`. |
+| 28 | **A group is every file its own patterns match,** across every workspace root, even when the picker shows that file under another group. | The browse catalog keeps a file in its first group only and merges same-named files across roots, so a search of "manuscript" could read nothing (PR #292 F2). This is wider than the note's "exactly what the picker shows". |
+| 29 | **Stop starts no model call.** A stopped search is not organized and not sent to the persona; **Organize these results** (sidebar) and **Send partial results** (card) are separate presses. | PR #292 F4: Stop must not spend. |
+| 30 | **A paragraph over the budget is split at sentence ends;** a file with a sentence over the budget is left out and said so in the estimate. | PR #292 F3. |
+| 31 | **The organizing pass is priced as an allowance** (6,000 tokens in) inside the first estimate, and exactly when run afterwards. | PR #292 F6: its input does not exist when the search is priced. |
+| 32 | **The quote shown is the source's text,** never the model's spelling. | PR #292 F7. |
 
 ## Shared seams
 

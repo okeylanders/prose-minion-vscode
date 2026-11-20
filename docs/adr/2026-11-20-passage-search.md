@@ -1,6 +1,6 @@
 # ADR 2026-11-20: Passage Search, a Search That Reads
 
-**Status:** Proposed (Slice 0). P1–P4 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief needed it; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
+**Status:** Proposed (Slice 0). Revised 2026-11-20 after PR #292's review (D2a, D3a, D5a, D9a, D11a, D12a, D19a; see "Amendments after review"). P1–P4 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief needed it; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
 **Date:** 2026-11-20
 **Epic:** [Passage Search](../../.todo/epics/epic-passage-search-2026-11-20/README.md)
 (its "Defaults taken" table is binding here)
@@ -135,13 +135,29 @@ refusal in host words (D6) or a `PassageSearchPlan`:
   SHA-256;
 - the chunks (D5) and so the number of calls, plus one when `organize`;
 - the estimate: `{ model?, files, calls, inputTokens, outputTokens, usd? }`;
-- a `planKey`: a digest of the model, the question, `organize`, and each
-  file's identity and hash.
+- a `planKey` (D2a).
 
 `run(plan)` searches the texts the plan holds and sends every call to the
 plan's model. It never resolves the model or reads a file again. A caller
 that cannot keep a plan (a card across a reload) plans again and compares
-`planKey` (D20). The estimate is approximate, never a cap.
+`planKey` (D2a, D20). The estimate is approximate, never a cap.
+
+**D2a. `planKey` is everything the writer was shown, and everything that
+decides what is sent** (PR #292 F1). It is a digest of:
+- the model, the question and `organize`;
+- each file's identity and hash, and the files left out;
+- the call plan as computed: the word budget in force (D5a), and each
+  chunk's file and range, so the number of calls;
+- the token figures of the estimate;
+- the pricing basis: the per-token prices read, or that none was
+  available.
+
+Two plans with the same key show the same line and send the same
+requests. Any difference (a live price that moved, a price that appeared
+or went away, a context length that changed the chunks) is a different
+key, and a Run naming the old key gets the new estimate and sends
+nothing. Tests: unchanged files with a changed price, with a price gone
+unavailable, and with a changed chunk budget.
 
 **D3. Scopes (P4).** A request holds 1 to `scopes` (12) of:
 
@@ -154,10 +170,9 @@ that cannot keep a plan (a card across a reload) plans again and compares
 | `pattern` | a writer-typed path or glob | the sidebar only |
 | `text` | a label and a text, by value | any caller (the Workshop's excerpt) |
 
-- **Files come from one catalog per operation.** `PassageSearchScopeFiles`
-  opens `ContextResourceResolver.createProvider` once per `plan` and
-  resolves every `group` and `file` scope against that one listing. It is
-  never kept after the plan.
+- **Files come from one listing per operation** (D3a).
+  `PassageSearchScopeFiles` asks for it once per `plan` and resolves every
+  `group` and `file` scope against it. It is never kept after the plan.
 - **`findConfiguredResource` moves** to a neutral home
   (`core/application/services/ConfiguredResourceLookup.ts`), behavior
   unchanged; the Workshop imports it from there. The engine never imports
@@ -174,8 +189,31 @@ that cannot keep a plan (a card across a reload) plans again and compares
   module constructs a `pattern` scope.
 - **`text`** carries its own text and label. Its instances have a line
   within that text and nothing to open.
-- **De-duplicated by file,** by the host's file identity, the first scope
-  to name a file keeping it.
+- **De-duplicated by file,** by the host's file identity (D3a), the first
+  scope to name a file keeping it.
+
+**D3a. The listing is root-aware, keeps every group a file belongs to, and
+never hides a failed scan** (PR #292 F2). The browse catalog
+(`collectResources`) cannot serve a search: it keys files by relative
+path, so the same relative path in two workspace roots is one entry; it
+keeps a file in the first group that matched it only; and a failed
+`findFiles` is logged and skipped.
+- The engine reads through a new read-only resolver method,
+  `listGroupFiles(groups)`, in `authoritative` mode. The browse catalog
+  and the pickers that read it are unchanged.
+- **Identity is the absolute path,** compared as the platform compares
+  paths. Two roots holding `chapters/1.md` are two files.
+- **A group is every file its own patterns match.** A file matched by both
+  `chapters` and `manuscript` is in both; a search of either reads it, and
+  a search of both reads it once. This is wider than the picker, which
+  shows such a file under one group (default 28).
+- **A `file` scope** is looked up in its named group's own files.
+  One match is the file. A relative path two roots both hold is
+  `ambiguous-file`, never the first root's.
+- **A scan that fails refuses the plan** (`catalog-unreadable`). A plan
+  never reads fewer files than the scope names without saying so.
+- Tests: the same relative path in two roots; one file in two groups,
+  searched by each and by both; one failed scan.
 
 **D4. Reading order is the host's.** Scopes in the order given. Inside a
 `group` or `pattern` scope, files by natural order of their paths: compared
@@ -195,11 +233,33 @@ paragraph of overlap when it doesn't.**
     lowered until a call's request and its output ceiling fit half the
     window. Below `minChunkWords` (1,500) the plan is refused
     (`model-too-small`).
-- `passageChunks(text, maxWords)` (the engine's own module) calls
-  `chunkParagraphs`, then starts each chunk after the first one paragraph
-  earlier. `chunkParagraphs` gains only an exported `paragraphRanges`;
-  Draft Edit's chunks do not change (a test holds its output).
+- `passageChunks(text, budget)` is the engine's own module.
+  `chunkParagraphs` gains only an exported `paragraphRanges`; Draft Edit's
+  chunks do not change (a test holds its output).
 - The text is read raw: nothing is masked.
+
+**D5a. The bound is on the request as rendered, overlap included** (PR
+#292 F3). `chunkParagraphs` keeps a paragraph over the budget whole, and
+adding an overlap paragraph to a full chunk would put it over.
+- **The overlap is inside the budget.** A chunk's body and its overlap
+  together stay within `chunkWords`. The overlap is the previous chunk's
+  last paragraph, or only its closing sentences when that paragraph is
+  longer than `overlapWords` (600).
+- **A paragraph over the budget is split at sentence ends**
+  (`proseSentenceSpans`), into pieces within the budget, each after the
+  first overlapping the one before by a sentence.
+- **A sentence over the budget cannot be split.** Its file is left out,
+  counted as `unsplittable`, and the estimate says so before anything is
+  sent ("1 file left out: it has no place to split"). If no file is left,
+  the plan is refused (`no-files`).
+- **Each chunk's rendered request is then measured**
+  (`estimateRequestTokens` over the exact messages) with its output
+  ceiling. When the context length is known, every request fits half the
+  window, or the budget is lowered and the file chunked again; below
+  `minChunkWords` the plan is refused (`model-too-small`).
+- Tests: a paragraph over the budget; two adjacent chunks each near the
+  limit; an overlap paragraph over `overlapWords`; a sentence over the
+  budget.
 
 **D6. Bounds and refusals.** In `PROMPT_BUDGETS.passageSearch`: `scopes`
 (12), `files` (200), `calls` (300), `fileBytes` (2 MiB),
@@ -225,6 +285,8 @@ cannot be read as UTF-8 text is left out and counted, never a refusal.
 - **A key change stops starting calls** (`key-changed`), as Proofread's
   does. **Stop** (the caller's signal) does the same. Either way the
   result keeps what was found (D11).
+- **After Stop or a key change the engine starts no model work at all**
+  (D12a): no queued read, and no organizing pass.
 - **A failed call is that call's outcome,** counted; the run goes on.
 
 **D8. The reply: asks, not gates.** JSON, read through `parseModelJson`;
@@ -260,6 +322,16 @@ the call is counted `cut`.
 The host computes the line from the range. A model never gives a line, a
 file or a count.
 
+**D9a. What is shown is the source, never the model's spelling** (PR #292
+F7). `anchorQuote` also matches normalized forms (curly and straight
+quotation marks, spaces, an ellipsis) and returns a range. Once anchored,
+the instance's `quote` is `file.text.slice(start, end)` of the plan's
+frozen text, and its context either side is cut from the same text. The
+model's `quote`, `before` and `after` are discarded. The organizing pass
+(D12), the quotation check (D13), the report and the persona's directive
+(D21) all read the source slice. Test: a model quote with straight marks
+anchored on curly ones shows the curly source, exactly.
+
 **D10. The merge.**
 - **One moment shows once.** Within a file, instances whose ranges overlap
   are one: the earliest-starting kept, the rest counted `duplicate`. This
@@ -286,6 +358,9 @@ file or a count.
 - `ended`: `complete`, `stopped`, `key-changed` or `instance-limit`;
 - `usage` and the model.
 
+**D11a.** Every `quote` and context in the result is a slice of the plan's
+frozen text (D9a).
+
 A result with unsent, failed or cut calls says so in host words wherever
 it is shown. Nothing in the result is the model's count.
 
@@ -294,13 +369,46 @@ it is shown. Nothing in the result is the model's count.
 **D12. One call over the checked instances, never the text.**
 - **Input:** the question, the label table with the host's counts, and each
   instance's number, file, line, label, quote and note, in reading order.
-- **It runs only when** `organize` is set, the run ended `complete` or
-  `stopped` with at least one instance, and the key still holds. It is one
-  call on the same model and policy, priced in the estimate at
-  `organize.typicalOutputTokens`.
-- **Over `organize.inputTokens` (24,000),** instances are sampled evenly by
+- **Inside `run`, it starts only when** `organize` is set, the reads ended
+  `complete` or `instance-limit`, and there is at least one instance. It
+  is one call on the same model and policy.
+- **Over its input bound (D12a),** instances are sampled evenly by
   position so the pass still spans the scope, and the result says "The
   analysis read 400 of 1,240 instances." in the host's words.
+
+**D12a. Stop starts nothing; the pass is priced as an allowance; its whole
+request is bounded** (PR #292 F4, F6).
+- **A stopped or key-changed run returns its checked instances and no
+  analysis.** `run` never starts the pass after either, even when the stop
+  lands between the last read and the pass. The signal is read again
+  immediately before the pass is dispatched.
+- **Organizing afterwards is a separate, explicit action.** The engine
+  offers `planOrganize(result)` and `organize(result, organizePlan)`. This
+  plan's input is exact, since the instances exist. The sidebar shows it
+  as **Organize these results** with its own "1 call · ≈ $…" (D15); a
+  caller that never offers it never calls it.
+- **Inside the first estimate the pass is an allowance, and is said to
+  be.** What it will read does not exist yet. The estimate has two parts:
+  - the reads: exact input, `typicalOutputTokens` a call;
+  - the organizing pass: `organize.allowanceInputTokens` (6,000) in and
+    `organize.typicalOutputTokens` out.
+
+  The shown line is their sum, still "≈", and its detail says "includes an
+  allowance for organizing the results". Both parts are in `planKey`.
+- **The whole rendered request is bounded:** prompt, question, label
+  table and instances together fit the smaller of `organize.inputTokens`
+  (24,000) and half the model's window, measured with
+  `estimateRequestTokens`, with the output ceiling reserved.
+  - The label table is bounded first: at most `organize.labels` (60), most
+    used first, then one line counting the rest.
+  - Instances then take what is left, sampled evenly when they do not all
+    fit.
+  - If not one instance fits, the pass is not run, and the result says so.
+- **The estimate covers the search only.** A persona's reply to the
+  results is an ordinary turn on the room's model; the card says so (D20).
+- Tests: Stop while reads are in flight; Stop after the last read and
+  before the pass; a label table over its bound; the allowance in the
+  estimate and in `planKey`.
 - **Output,** through `parseModelJson`:
 
 ```json
@@ -312,8 +420,8 @@ it is shown. Nothing in the result is the model's count.
   shown. A claim left with none is dropped and counted. A section left
   with no claim is dropped.
 - **Quotations.** Any span a claim, title or headline puts in quotation
-  marks must stand, folded, inside the quote of an instance the pass was
-  shown (for a claim, one it cites). A claim that fails is dropped and
+  marks must stand, folded, inside the source quote (D9a) of an instance
+  the pass was shown (for a claim, one it cites). A claim that fails is dropped and
   counted. A headline that fails is replaced by the host's ("14 instances
   in 6 files").
 - **Counts stay the host's.** The label table beside the analysis is the
@@ -365,7 +473,12 @@ registration).
      (`plan-expired`) and nothing is sent.
 - Changing the question, a scope or the toggle drops the shown plan.
 - **Progress** ("Reading 7 of 23 · 5 found") by `requestId`; **Stop**
-  aborts and the result so far lands. Only the pending answer is taken.
+  aborts and the result so far lands, with no analysis and no further
+  call (D12a). Only the pending answer is taken.
+- **Organize these results** shows on a stopped or key-changed result that
+  holds an instance, with the toggle on. It is its own two-step press
+  (`PASSAGE_SEARCH_ORGANIZE_PLAN_REQUEST`, then `…_ORGANIZE_RUN`), by
+  result id and request id.
 - **Text never travels webview → host** but the question, the pattern and
   the scope choices. A selection is read on the host.
 - **"Organize the results"** is a toggle, on by default, a UI preference in
@@ -426,12 +539,14 @@ registration).
 becomes a union on its request: an edit offer's (unchanged: hidden stream,
 `finalReply`, its own `complete`) or a **results delivery**. A results
 delivery:
-- records a writer-role request turn with `passageSearchResults` (D19)
-  and the host's line;
+- records a provisional writer-role request turn with the host's line;
 - places one directive frame, `<prose-minion-passage-search-results>`;
 - streams, expects ordinary prose, completes through `completeWorkshopRun`,
   and so may carry trailers and gets trailer outcomes next turn;
-- rolls its request turn back if the run fails, as a press does.
+- on adoption, stamps the persona's reply turn with
+  `passageSearchDelivery` (D19a), in the reply's own commit;
+- removes its request turn on every outcome that is not an adopted reply
+  (D19a).
 
 `AgentRunEngine` gains no branch and names no feature.
 
@@ -442,20 +557,47 @@ delivery:
 |---|---|---|
 | `pending` | no answer, no results turn | the estimate, **Run**, **Cancel** |
 | `running` | this window's handler is searching it | progress, **Stop** |
-| `ready` | searched; the room was busy at the finish | **Send to <persona>** |
-| `delivered` | a later turn holds `passageSearchResults` naming it | counts, **Open report** |
+| `ready` | this window holds its result, undelivered | counts, **Send to <persona>**, **Open report**, **Discard** |
+| `delivered` | an adopted reply turn holds `passageSearchDelivery` naming it | counts, **Open report** |
 | `cancelled` | `answer: 'cancelled'` | "Cancelled." |
 
 - `running` and `ready` are the window's, never persisted. A reload, a
   closed tab or a replaced room stops the search; the card reads
-  `pending` again and nothing reached the room. Calls already made are
-  spent: the card's confirm says a run cannot be resumed.
-- `passageSearchResults` on the request turn holds ids and counts only:
-  the request's turn id, instances, files, labels, dropped, calls, how it
-  ended, whether it was organized. Optional and exact.
+  `pending` again and nothing reached the room. A held result is lost
+  with the window too. Calls already made are spent: the card's confirm
+  says a run cannot be resumed.
 - A Rewind that removes the request removes its card; one that removes
-  only the results turn makes the card `pending` again. Rewind needs
+  only the persona's reply to the results makes the card `pending` again
+  (`ready`, while this window still holds the result). Rewind needs
   nothing of its own.
+
+**D19a. Delivered means the persona's reply was adopted** (PR #292 F5).
+The request turn is written before dispatch, and ordinary completion can
+abandon a run (Stop, a missing key, a failed retention) and leave that
+turn behind. So the request turn proves nothing.
+- **The receipt is on the reply.** `passageSearchDelivery` on the
+  persona's adopted reply turn holds ids and counts only: the card's turn
+  id, instances, files, labels, dropped, calls, how the search ended,
+  whether it was organized, and how many instances the directive held.
+  Optional and exact. It is written in the reply's own commit, never
+  after. Status reads only this field.
+- **A delivery that is not adopted removes its request turn** and leaves
+  the card `ready`: the result is still held, and **Send** tries again
+  without searching again. The results delivery wraps `completeWorkshopRun`
+  so that every `undefined` it returns (cancelled, no key, no retained
+  conversation, a provider failure) rolls the request turn back, as
+  `rollbackMessageRun` does for a press.
+- **A request turn with no receipt after it is never read as delivered,**
+  whatever left it there (a crash between the two commits). On reopen such
+  a card is `pending`.
+- **Every send checks first,** with nothing awaited between the check and
+  the dispatch: the room revision the search began in, the card's turn
+  still in the ledger, its author still a participant, and no run active.
+  A failed check sends nothing and says why.
+- Tests: a delivery that resolves as failed leaves no request turn and a
+  `ready` card; Send after it delivers without a second search; a session
+  reopened with an orphan request turn reads `pending`; a participant
+  removed before Send.
 
 **D20. The card's price and Run.** `WorkshopPassageSearchHandler` (the
 26th composed route owner) owns the routes, each with a webview-minted
@@ -469,7 +611,9 @@ delivery:
   estimate (`price-changed`) and sends nothing. **The price is never
   skipped.**
 - **`…_STOP`**, **`…_CANCEL`** (stores `answer`, behind the gate),
-  **`…_SEND`** (for `ready`), **`…_OPEN_REPORT`**.
+  **`…_SEND`** and **`…_DISCARD`** (for `ready`), **`…_OPEN_REPORT`**.
+- The card's price line ends "The search only. <Persona>'s reply to the
+  results is an ordinary turn."
 - One search at a time per window's Workshop; a second Run is refused in
   the room's busy words.
 - The search runs on the `passageSearch` scope. The persona's model never
@@ -478,10 +622,15 @@ delivery:
   aborts it. Nothing is delivered to another room.
 
 **D21. Delivery.**
-- **When the search finishes and the room is idle,** the handler starts the
-  results delivery to the reply's author, in that participant's own
-  conversation. If a run is active, the card reads `ready` and waits for
-  **Send**.
+- **When the search ends `complete` (or `instance-limit`) and the room is
+  idle,** the handler starts the results delivery to the reply's author,
+  in that participant's own conversation, after D19a's checks. If a run
+  is active, the card reads `ready` and waits for **Send**.
+- **A stopped or key-changed search is never delivered by the host**
+  (D12a). Its card reads `ready` with what was found ("Stopped: 9
+  instances from 7 of 23 reads") and **Send partial results to
+  <persona>**, **Open report** and **Discard**. The persona's turn starts
+  only on that press. The persona's card has no organize action.
 - **A search with no instance is still delivered,** with what was read and
   what was dropped, so the persona can say so.
 - **The directive** carries, in order: the question; how the search ended
@@ -531,6 +680,21 @@ neutralization, and `price-changed`.
 **D24. Help.** `sidebar-tools.md` gains Passage Search; `workshop.md`
 gains the persona's request; `settings.md` and `help/index.json` gain the
 model setting. Each lands with the slice that builds its surface.
+
+## Amendments after review
+
+PR #292, Astra's design review of `b35e5203` (2026-11-20), seven findings,
+all taken:
+
+| Finding | Was | Now |
+|---|---|---|
+| F1 (P1) | `planKey` covered the model and the text | D2a: it covers the call plan, the token figures and the pricing basis too |
+| F2 (P1) | scopes resolved against the browse catalog | D3a: a root-aware listing, every group a file is in, a failed scan refuses |
+| F3 (P1) | a word budget on chunk bodies | D5a: overlap inside the budget, oversized paragraphs split, each rendered request measured |
+| F4 (P1) | the pass could follow Stop; delivery was automatic | D12a, D21: Stop starts nothing; organizing and sending a partial result are explicit presses |
+| F5 (P1) | `delivered` read the request turn | D19a: a receipt on the adopted reply; a failed delivery leaves the card `ready` |
+| F6 (P2) | the pass priced at a typical output only | D12a: an allowance, said to be one; the whole request bounded; the persona's turn named as apart |
+| F7 (P2) | the model's quote was shown | D9a: the frozen source slice, everywhere |
 
 ## Consequences
 
