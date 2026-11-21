@@ -11,9 +11,9 @@
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { isContextPathGroup } from '@shared/types/context';
+import { findConfiguredResource } from '@/application/services/ConfiguredResourceLookup';
 import {
   configuredResourceFingerprint,
-  findConfiguredResource,
   isSafeConfiguredResourcePath,
   sliceUtf8
 } from './WorkshopConfiguredResourceLookup';

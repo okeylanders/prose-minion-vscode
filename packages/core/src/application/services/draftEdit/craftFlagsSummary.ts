@@ -6,6 +6,7 @@
  */
 
 import type { CraftFlagsOutcome } from '@/domain/models/CraftFlag';
+import { formatApproximateUsd } from '@shared/utils/approximateUsd';
 import type { CraftFlagsRunPlan } from '@/application/services/draftEdit/CraftFlagsUseCase';
 import { costOf, plural, reasoningRequiredMessage, rejectedPart, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
 
@@ -23,7 +24,7 @@ export function describeCraftFlagsPlan(plan: Extract<CraftFlagsRunPlan, { kind: 
       : `Craft Flags reads all ${words} words of ${documentLabel}`;
   const { estimate } = plan;
   const model = estimate.model ? ` to ${modelName(estimate.model)}` : '';
-  const price = estimate.usd === undefined ? 'price unknown: the model catalog has no live price for it' : priceOf(estimate.usd);
+  const price = estimate.usd === undefined ? 'price unknown: the model catalog has no live price for it' : formatApproximateUsd(estimate.usd);
   return `${reads}. That is ${plural(estimate.calls, 'request')}${model} (${price}).`;
 }
 
@@ -87,11 +88,6 @@ export function describeCraftFlagsOutcome(outcome: CraftFlagsOutcome, documentLa
       return unknown;
     }
   }
-}
-
-/** "≈ $0.06", or "< $0.01" for a price that rounds to nothing. */
-function priceOf(usd: number): string {
-  return usd < 0.005 ? '< $0.01' : `≈ $${usd.toFixed(2)}`;
 }
 
 /** A model id without its provider ("anthropic/claude-sonnet-5" reads "claude-sonnet-5"). */

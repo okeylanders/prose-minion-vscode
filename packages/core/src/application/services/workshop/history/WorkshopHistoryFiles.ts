@@ -18,7 +18,7 @@ import type { WorkshopExcerpt } from '@messages';
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import type { WorkshopHistoryFile } from '@shared/types/workshopCapabilities';
 import type { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
-import { findConfiguredResource } from '@/application/services/workshop/WorkshopConfiguredResourceLookup';
+import { findConfiguredResource } from '@/application/services/ConfiguredResourceLookup';
 
 /** The room's excerpt file, as the history family may read it. */
 export type WorkshopHistoryExcerptFile =
