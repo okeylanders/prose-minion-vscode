@@ -18,15 +18,16 @@ const number = (value: number): string => value.toLocaleString('en-US');
 const plural = (count: number, one: string, many = `${one}s`): string => `${number(count)} ${count === 1 ? one : many}`;
 
 /** The refusal for `reason`; `count` is what was found past (or under) the bound it names. */
-export function passageSearchRefusal(reason: PassageSearchRefusalReason, count = 0): PassageSearchRefusal {
-  return { reason, message: wordsFor(reason, count) };
+export function passageSearchRefusal(reason: PassageSearchRefusalReason, count = 0, organizing = false): PassageSearchRefusal {
+  return { reason, message: wordsFor(reason, count, organizing) };
 }
 
-export function refusedPlan(reason: PassageSearchRefusalReason, count = 0): PassageSearchPlanOutcome {
-  return { kind: 'refused', refusal: passageSearchRefusal(reason, count) };
+/** `organizing`: the count of a `too-many-calls` holds the organizing call. */
+export function refusedPlan(reason: PassageSearchRefusalReason, count = 0, organizing = false): PassageSearchPlanOutcome {
+  return { kind: 'refused', refusal: passageSearchRefusal(reason, count, organizing) };
 }
 
-function wordsFor(reason: PassageSearchRefusalReason, count: number): string {
+function wordsFor(reason: PassageSearchRefusalReason, count: number, organizing: boolean): string {
   const bounds = PROMPT_BUDGETS.passageSearch;
   switch (reason) {
     case 'no-key':
@@ -44,7 +45,7 @@ function wordsFor(reason: PassageSearchRefusalReason, count: number): string {
     case 'too-many-files':
       return `That is ${plural(count, 'file')}; Passage Search reads up to ${number(bounds.files)} at once. Narrow what it searches.`;
     case 'too-many-calls':
-      return `That would take ${plural(count, 'call')}; Passage Search makes up to ${number(bounds.calls)} in one search. Narrow what it searches.`;
+      return `That would take ${plural(count, 'call')}${organizing ? ', one of them to organize the results' : ''}; Passage Search makes up to ${number(bounds.calls)} in one search. Narrow what it searches.`;
     case 'file-too-large':
       return `${plural(count, 'file is', 'files are')} larger than ${number(bounds.fileBytes / (1024 * 1024))} MiB, the most Passage Search reads in one file.`;
     case 'unknown-group':
@@ -82,7 +83,7 @@ export function describePassageSearchEnding(ended: PassageSearchEnded): string |
     case 'complete':
       return undefined;
     case 'stopped':
-      return 'Stopped before every call was made.';
+      return 'Stopped before every call was answered.';
     case 'key-changed':
       return 'The API key changed during the search, so the remaining calls were not made.';
     case 'provider-failed':
