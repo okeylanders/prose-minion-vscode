@@ -39,7 +39,7 @@ import { PASSAGE_MODEL, QUESTION, replyOf, sourceFile } from '@/__tests__/infras
 
 const USAGE = { promptTokens: 100, completionTokens: 20, totalTokens: 120, costUsd: 0.001 };
 const bounds = PROMPT_BUDGETS.passageSearch as { -readonly [Key in keyof typeof PROMPT_BUDGETS.passageSearch]: (typeof PROMPT_BUDGETS.passageSearch)[Key] };
-const ANALYSIS = { headline: 'x', sections: [], read: { instances: 1, of: 1 }, dropped: { claims: 0, sections: 0 } };
+const ANALYSIS = { headline: 'x', sections: [], read: { instances: 1, of: 1 }, dropped: { claims: 0, uncited: 0, misquoted: 0, malformed: 0, sections: 0, cites: 0 }, replaced: { headline: false, titles: 0 }, clipped: 0 };
 
 interface Dispatched {
   readonly request: Record<string, any>;

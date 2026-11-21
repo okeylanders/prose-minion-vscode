@@ -41,6 +41,8 @@ export interface PassageSearchOrganizePlan {
   readonly userMessage: string;
   /** The numbers of the instances the request shows, ascending. */
   readonly shown: readonly number[];
+  /** The output ceiling the pass is sent with: frozen in the plan and its key, as a search plan's are. */
+  readonly ceilings: { readonly organizeOutputTokens: number };
 }
 
 export type PassageSearchOrganizePlanOutcome =
@@ -64,11 +66,12 @@ export interface PassageSearchOrganizer {
   /**
    * Make the pass: one call on the result's model. `plan` is present when
    * the caller priced it first; inside a run it is absent, the pass having
-   * been priced as an allowance. Undefined when no pass was made.
+   * been priced as an allowance, and `outputTokens` is the ceiling the
+   * run's own plan froze for it. Undefined when no pass was made.
    */
   organize(
     result: PassageSearchResult,
-    options: { readonly plan?: PassageSearchOrganizePlan; readonly signal?: AbortSignal }
+    options: { readonly plan?: PassageSearchOrganizePlan; readonly outputTokens?: number; readonly signal?: AbortSignal }
   ): Promise<PassageSearchOrganized | undefined>;
 }
 

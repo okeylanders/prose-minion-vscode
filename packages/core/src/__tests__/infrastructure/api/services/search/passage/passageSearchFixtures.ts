@@ -73,8 +73,8 @@ export function resultOf(instances: readonly PassageSearchInstance[], overrides:
     // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the closed drop reasons.
     dropped: { 'quote-not-found': 0, 'quote-ambiguous': 0, malformed: 0, duplicate: 0 },
     overLimit: 0,
-    calls: { planned: 1, answered: 1, failed: 0, cut: 0, unsent: 0 },
-    files: { read: [], leftOut: { unreadable: 0, unsplittable: 0, empty: 0 } },
+    calls: { planned: 1, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 0 },
+    files: { planned: [], searched: { full: 0, partial: 0, none: 0 }, leftOut: { unreadable: 0, unsplittable: 0, empty: 0 } },
     ended: 'complete',
     ...overrides
   };

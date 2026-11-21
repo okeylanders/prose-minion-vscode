@@ -457,7 +457,7 @@ describe('PassageSearchService.run', () => {
       const stopped = await service.run(await planOf(service, { organize: true }));
       expect(stopped.ended).toBe('key-changed');
       await expect(service.planOrganize(stopped)).resolves.toEqual({ kind: 'unavailable', message: 'not built' });
-      const plan = { planKey: 'k', model: PASSAGE_MODEL, estimate: { model: PASSAGE_MODEL, calls: 1, inputTokens: 10, outputTokens: 5 }, instances: { read: 1, of: 1 }, systemMessage: 'SYSTEM', userMessage: 'USER', shown: [1] };
+      const plan = { planKey: 'k', model: PASSAGE_MODEL, estimate: { model: PASSAGE_MODEL, calls: 1, inputTokens: 10, outputTokens: 5 }, instances: { read: 1, of: 1 }, systemMessage: 'SYSTEM', userMessage: 'USER', shown: [1], ceilings: { organizeOutputTokens: 4_000 } };
       const organized = await service.organize(stopped, plan);
       expect(organizer.organize).toHaveBeenCalledWith(stopped, { plan });
       expect(organized.analysis).toEqual(ANALYSIS);

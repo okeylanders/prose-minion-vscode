@@ -57,7 +57,7 @@ describe('PassageSearchModelOrganizer.plan', () => {
     const system = `SYSTEM ${PASSAGE_SEARCH_ORGANIZE_PROMPTS.join(' + ')}`;
     const user = buildPassageSearchOrganizeMessage(RESULT, RESULT.instances, 3);
     const inputTokens = estimateRequestTokens([{ role: 'system', content: system }, { role: 'user', content: user }]);
-    expect(plan).toMatchObject({ model: PASSAGE_MODEL, systemMessage: system, userMessage: user, shown: [1, 2, 3], instances: { read: 3, of: 3 } });
+    expect(plan).toMatchObject({ model: PASSAGE_MODEL, systemMessage: system, userMessage: user, shown: [1, 2, 3], instances: { read: 3, of: 3 }, ceilings: { organizeOutputTokens: organize.outputTokens } });
     expect(plan.estimate).toEqual({
       model: PASSAGE_MODEL,
       calls: 1,
@@ -135,6 +135,9 @@ describe('PassageSearchModelOrganizer.organize', () => {
       policy: AGENT_RUN_POLICIES.passageSearch,
       options: { model: PASSAGE_MODEL, temperature: 0, maxTokens: organize.outputTokens }
     });
+    // The plan's frozen ceiling is the one sent, whatever the budget is by then.
+    await organizer.organize(RESULT, { plan: { ...plan, ceilings: { organizeOutputTokens: 2_222 } } }).catch(() => undefined);
+    expect(runInitial.mock.calls[1][0].options.maxTokens).toBe(2_222);
     // Exactly the plan: nothing is rendered, loaded or priced again.
     expect(promptLoader.loadPrompts).not.toHaveBeenCalled();
     expect(prices.facts).not.toHaveBeenCalled();

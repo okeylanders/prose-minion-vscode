@@ -22,6 +22,7 @@ jest.mock('p-limit', () => ({
 }));
 
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { PassageSearchService } from '@services/search/passage/PassageSearchService';
 import {
   PASSAGE_MODEL,
@@ -65,13 +66,28 @@ describe('The organizing pass through PassageSearchService', () => {
     expect(asked.estimate.organize).toEqual({ inputTokens: organize.allowanceInputTokens, outputTokens: organize.typicalOutputTokens });
     expect(asked.estimate.inputTokens).toBe(unasked.estimate.inputTokens + organize.allowanceInputTokens);
     expect(asked.planKey).not.toBe(unasked.planKey);
+    // The pass's ceiling is frozen in the plan only when the plan organizes.
+    expect(asked.ceilings.organizeOutputTokens).toBe(organize.outputTokens);
+    expect(unasked.ceilings).not.toHaveProperty('organizeOutputTokens');
+  });
+
+  it('counts the organizing call against the plan\'s call bound', async () => {
+    const { service, runInitial } = createHost();
+    const calls = PROMPT_BUDGETS.passageSearch.calls;
+    const files = Array.from({ length: calls }, (_unused, index) => sourceFile(`chapters/${index + 1}.md`, QUEEN_CHAPTER));
+    const plan = (count: number, organizeAsked: boolean) => service.plan({ model: PASSAGE_MODEL, question: QUESTION, organize: organizeAsked, files: files.slice(0, count) });
+    await expect(plan(calls, false)).resolves.toMatchObject({ kind: 'planned' });
+    await expect(plan(calls, true)).resolves.toMatchObject({ kind: 'refused', refusal: { reason: 'too-many-calls' } });
+    const fits = await plan(calls - 1, true);
+    expect(fits.kind === 'planned' && fits.plan.estimate.calls).toBe(calls);
+    expect(runInitial).not.toHaveBeenCalled();
   });
 
   it('organizes a complete run: the reads, then one pass over the checked instances, on the plan\'s model', async () => {
     const { service, runInitial } = createHost([TOOK, NONE, PASS]);
     const result = await service.run(await searchPlan(service));
     expect(runInitial).toHaveBeenCalledTimes(3);
-    expect(runInitial.mock.calls[2][0]).toMatchObject({ toolName: 'passage-search-organize', options: { model: PASSAGE_MODEL, temperature: 0 } });
+    expect(runInitial.mock.calls[2][0]).toMatchObject({ toolName: 'passage-search-organize', options: { model: PASSAGE_MODEL, temperature: 0, maxTokens: organize.outputTokens } });
     expect(runInitial.mock.calls[2][0].userMessage).toContain('[1] chapters/1.md, line 3, label: checks its watch\nquote: took a watch out of its waistcoat-pocket');
     expect(result.ended).toBe('complete');
     expect(result.analysis).toMatchObject({ headline: 'The Rabbit keeps checking the hour.', read: { instances: 1, of: 1 } });
@@ -109,6 +125,24 @@ describe('The organizing pass through PassageSearchService', () => {
     expect(result.instances).toHaveLength(1);
     expect(result).not.toHaveProperty('analysis');
     expect(result).not.toHaveProperty('analysisMissing');
+  });
+
+  it('sends the pass with the ceiling the run\'s plan froze, not the budget of the moment', async () => {
+    const { service, runInitial } = createHost([TOOK, NONE, PASS]);
+    const plan = await searchPlan(service);
+    await service.run({ ...plan, ceilings: { ...plan.ceilings, organizeOutputTokens: 3_210 } });
+    expect(runInitial.mock.calls[2][0].options.maxTokens).toBe(3_210);
+  });
+
+  it('never calls the pass when the engine is retired after the last read', async () => {
+    const host = createHost([TOOK, () => {
+      host.engine.isProviderAvailable.mockReturnValue(false);
+      return NONE;
+    }, PASS]);
+    const result = await host.service.run(await searchPlan(host.service));
+    expect(host.runInitial).toHaveBeenCalledTimes(2);
+    expect(result.ended).toBe('key-changed');
+    expect(result).not.toHaveProperty('analysis');
   });
 
   it('never calls the pass after a key change or a run of provider failures, and ends the run on a key change during it', async () => {

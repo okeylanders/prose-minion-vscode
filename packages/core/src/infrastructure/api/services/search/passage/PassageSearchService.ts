@@ -246,7 +246,7 @@ export class PassageSearchService {
       ended,
       ...(usage ? { usage } : {})
     };
-    const result = plan.organize ? await this.organizeWithin(reads, retired, options.signal) : reads;
+    const result = plan.organize ? await this.organizeWithin(reads, retired, plan.ceilings.organizeOutputTokens, options.signal) : reads;
     this.logRun(result, tally, Date.now() - started);
     return result;
   }
@@ -265,7 +265,7 @@ export class PassageSearchService {
   }
 
   /** The pass inside a run: never after Stop, a key change or a run of provider failures, and never over nothing (D12a). */
-  private async organizeWithin(reads: PassageSearchResult, retired: () => boolean, signal?: AbortSignal): Promise<PassageSearchResult> {
+  private async organizeWithin(reads: PassageSearchResult, retired: () => boolean, outputTokens: number | undefined, signal?: AbortSignal): Promise<PassageSearchResult> {
     if ((reads.ended !== 'complete' && reads.ended !== 'instance-limit') || reads.instances.length === 0) {
       return reads;
     }
@@ -276,7 +276,10 @@ export class PassageSearchService {
     if (signal?.aborted) {
       return { ...reads, ended: 'stopped' };
     }
-    const passed = await this.withPass(reads, () => this.organizer.organize(reads, signal ? { signal } : {}));
+    const passed = await this.withPass(reads, () => this.organizer.organize(reads, {
+      ...(outputTokens !== undefined ? { outputTokens } : {}),
+      ...(signal ? { signal } : {})
+    }));
     // A stop or a key change that lands during the pass ends the run as one during a read does.
     if (passed.analysisMissing === 'stopped' || passed.analysisMissing === 'key-changed') {
       const { analysisMissing, ...rest } = passed;

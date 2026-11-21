@@ -92,6 +92,7 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
       return { kind: 'unavailable', message: NO_ROOM };
     }
     const outputTokens = PROMPT_BUDGETS.passageSearch.organize.typicalOutputTokens;
+    const ceilings = { organizeOutputTokens: PROMPT_BUDGETS.passageSearch.organize.outputTokens };
     const pricing = facts.pricing;
     const plan: PassageSearchOrganizePlan = {
       planKey: sha256(JSON.stringify({
@@ -101,6 +102,7 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
         user: sha256(request.userMessage),
         shown: request.shown,
         tokens: [request.inputTokens, outputTokens],
+        ceilings: [ceilings.organizeOutputTokens],
         // The basis, not the product: a price that moved, appeared or went away is a different plan.
         pricing: pricing ? [pricing.promptUsdPerToken, pricing.completionUsdPerToken] : null
       })),
@@ -115,7 +117,8 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
       instances: { read: request.shown.length, of: result.instances.length },
       systemMessage: request.systemMessage,
       userMessage: request.userMessage,
-      shown: request.shown
+      shown: request.shown,
+      ceilings
     };
     this.log.appendLine(
       `[PassageSearch] Organize plan: ${plan.instances.read} of ${plan.instances.of} instance(s), ${result.labels.length} label(s), `
@@ -126,7 +129,7 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
 
   async organize(
     result: PassageSearchResult,
-    options: { readonly plan?: PassageSearchOrganizePlan; readonly signal?: AbortSignal }
+    options: { readonly plan?: PassageSearchOrganizePlan; readonly outputTokens?: number; readonly signal?: AbortSignal }
   ): Promise<PassageSearchOrganized | undefined> {
     const started = Date.now();
     if (result.instances.length === 0) {
@@ -158,7 +161,8 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
         options: {
           model: request.model,
           temperature: 0,
-          maxTokens: PROMPT_BUDGETS.passageSearch.organize.outputTokens,
+          // The ceiling a plan froze: the pass's own plan, else the run's; the budget only when neither is in hand.
+          maxTokens: options.plan?.ceilings.organizeOutputTokens ?? options.outputTokens ?? PROMPT_BUDGETS.passageSearch.organize.outputTokens,
           ...(options.signal ? { signal: options.signal } : {})
         }
       });

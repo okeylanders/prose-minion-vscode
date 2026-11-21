@@ -36,7 +36,7 @@ export function createHost(replies: Reply[] = [], options: HostOptions = {}) {
     const reply = typeof next === 'function' ? next() : next;
     return { usedGuides: [], requestedResources: [], artifacts: [], finishReason: 'stop', usage: USAGE, cancelled: false, ...reply };
   });
-  const engine = { runInitial, getModel: jest.fn(() => 'another/model-by-now') };
+  const engine = { runInitial, getModel: jest.fn(() => 'another/model-by-now'), isProviderAvailable: jest.fn(() => true) };
   const manager = {
     ensureInitialized: jest.fn(async () => undefined),
     getEngine: jest.fn(() => (state.engine ? engine : undefined))
@@ -54,7 +54,7 @@ export function createHost(replies: Reply[] = [], options: HostOptions = {}) {
   const organizer = new PassageSearchModelOrganizer(manager as never, promptLoader as never, prices, log as never);
   const service = new PassageSearchService(manager as never, promptLoader as never, prices, log as never, organizer);
   const logged = (): string => log.appendLine.mock.calls.map(([line]) => String(line)).join('\n');
-  return { organizer, service, runInitial, manager, promptLoader, prices, log, logged, state };
+  return { organizer, service, runInitial, engine, manager, promptLoader, prices, log, logged, state };
 }
 
 export const RESULT = resultOf([
