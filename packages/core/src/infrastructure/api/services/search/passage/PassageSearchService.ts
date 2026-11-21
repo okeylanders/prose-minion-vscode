@@ -251,6 +251,11 @@ export class PassageSearchService {
     return result;
   }
 
+  /** Whether the organizer port can make a pass at all. */
+  organizerAvailable(): boolean {
+    return this.organizer.available;
+  }
+
   /** Price a pass over a result that has none, as its own explicit action (D12a). Sends nothing to a model. */
   planOrganize(result: PassageSearchResult): Promise<PassageSearchOrganizePlanOutcome> {
     return this.organizer.plan(result);

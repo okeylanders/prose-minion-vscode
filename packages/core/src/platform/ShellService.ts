@@ -38,8 +38,13 @@ export interface ShellService {
    * second editor column (or beside the webview on first open) — preserving
    * UIHandler's guide/docs/resource viewing behavior. Without it, the file opens
    * in the active column (the saved-report behavior).
+   *
+   * With `line` (1-based) the editor reveals and selects that line (Passage
+   * Search's "open at a line", ADR 2026-11-20 D15). A line past the file's
+   * end lands on its last line; a host that cannot reveal a line opens the
+   * file.
    */
-  openFileInEditor(filePath: string, options?: { beside?: boolean }): Promise<void>;
+  openFileInEditor(filePath: string, options?: { beside?: boolean; line?: number }): Promise<void>;
   /**
    * Reveal a user-owned file in the host operating system's file browser.
    * This is intentionally distinct from `openFileInEditor`: Session Browser's

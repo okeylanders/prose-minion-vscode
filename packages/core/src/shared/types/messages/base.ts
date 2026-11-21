@@ -24,6 +24,22 @@ export enum MessageType {
   CATEGORY_SEARCH_REQUEST = 'category_search_request',
   CATEGORY_SEARCH_RESULT = 'category_search_result',
 
+  // Passage Search, the third Search subtab (ADR 2026-11-20 D15)
+  PASSAGE_SEARCH_PLAN_REQUEST = 'passage_search_plan_request',
+  PASSAGE_SEARCH_PLAN = 'passage_search_plan',
+  PASSAGE_SEARCH_RUN = 'passage_search_run',
+  PASSAGE_SEARCH_PROGRESS = 'passage_search_progress',
+  PASSAGE_SEARCH_RESULT = 'passage_search_result',
+  PASSAGE_SEARCH_STOP = 'passage_search_stop',
+  PASSAGE_SEARCH_OPEN_INSTANCE = 'passage_search_open_instance',
+  PASSAGE_SEARCH_OPEN_INSTANCE_RESULT = 'passage_search_open_instance_result',
+  PASSAGE_SEARCH_ORGANIZE_PLAN_REQUEST = 'passage_search_organize_plan_request',
+  PASSAGE_SEARCH_ORGANIZE_PLAN = 'passage_search_organize_plan',
+  PASSAGE_SEARCH_ORGANIZE_RUN = 'passage_search_organize_run',
+  PASSAGE_SEARCH_COPY_REPORT = 'passage_search_copy_report',
+  PASSAGE_SEARCH_SAVE_REPORT = 'passage_search_save_report',
+  PASSAGE_SEARCH_REPORT_RESULT = 'passage_search_report_result',
+
   // Metrics source helpers
   REQUEST_ACTIVE_FILE = 'request_active_file',
   ACTIVE_FILE = 'active_file',
