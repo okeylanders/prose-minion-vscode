@@ -42,8 +42,6 @@ import {
 const BOUNDS = PROMPT_BUDGETS.workshopPassageSearch;
 /** The longest turn id a field names; the ledger mints short ones. */
 const TURN_ID_CHARACTERS = 256;
-/** Past any count a search can make: a guard on the number's form, never a rule about a search. */
-const COUNT_CEILING = 10_000_000;
 /** A line break or any other control character: a question is one line. */
 const NOT_ONE_LINE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u;
 
@@ -55,7 +53,7 @@ export interface WorkshopPassageSearchReplyCommit {
 
 function countAt(value: unknown, path: string): number {
   numberAt(value, path);
-  if (!Number.isSafeInteger(value) || (value as number) < 0 || (value as number) > COUNT_CEILING) {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) {
     shapeError(path, 'a whole number');
   }
   return value as number;
