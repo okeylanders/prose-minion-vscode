@@ -11,11 +11,21 @@
  *   claim that fails is dropped and counted. A headline that fails is
  *   replaced by the host's ("14 instances in 6 files"); a title that fails
  *   by the host's ("Group 2"). Neither loses its claims.
- * - **What a quotation is.** Double quotation marks only: straight (`"…"`)
- *   or curly (`“…”`, which may nest). Single marks are not read as
- *   quotation: they cannot be told from an apostrophe, and the prompt asks
- *   for double marks. A mark left unpaired, or an empty quotation, fails
- *   its text: the check cannot say what was quoted.
+ * - **What a quotation is.** Double quotation marks, straight (`"…"`) or
+ *   curly (`“…”`, which may nest); a double mark left unpaired, or an empty
+ *   quotation, fails its text: the check cannot say what was quoted.
+ * - **Single marks, when they are a pair.** Outside double marks, a single
+ *   mark (`‘` or `'`) that does not follow a letter or digit and is followed
+ *   by text opens a span; the next single mark (`’` or `'`) that follows text
+ *   and is not followed by a letter or digit closes it, and the span is
+ *   checked like any other. A mark between two letters (it’s, Rabbit’s) is
+ *   an apostrophe and neither opens nor closes; a mark after a word with no
+ *   opener before it (the Rabbits’ watch) is ignored; an opener that is
+ *   never closed (’tis written with an opening mark) is read as an
+ *   apostrophe, not a quotation. The stated limits: inside a single-quoted
+ *   span, a plural possessive closes it early, and the shorter span is what
+ *   is checked; and an elision written with a straight or opening mark
+ *   before a later closing candidate reads as a span and fails closed.
  * - **How a span is compared.** Both sides are folded through the shared
  *   fold (case, accents, any whitespace to a space), curly marks made
  *   straight, and runs of spaces collapsed, since the request shows each
@@ -46,34 +56,48 @@ const OPENING = '“';
 const CLOSING = '”';
 const CLOSING_PUNCTUATION = new Set([',', '.', ';', ':', '!', '?', '…']);
 
+const SINGLE_OPENERS = new Set(['‘', '\'']);
+const SINGLE_CLOSERS = new Set(['’', '\'']);
+const WORD_CHARACTER = /[\p{L}\p{N}]/u;
+const isWordCharacter = (character: string | undefined): boolean => character !== undefined && WORD_CHARACTER.test(character);
+const isText = (character: string | undefined): boolean => character !== undefined && character.trim() !== '';
+
 /**
- * The spans `text` puts in double quotation marks, without their marks;
- * undefined when a mark is left unpaired. One pass over the text.
+ * The spans `text` puts in quotation marks, without their marks: every
+ * double-quoted span, and every paired single-quoted one (see the module
+ * comment for what a pair is). Undefined when a double mark is left
+ * unpaired. One pass over the text.
  */
 export function passageSearchQuotedSpans(text: string): string[] | undefined {
   const spans: string[] = [];
   let opened = -1;
   let closer = '';
   let depth = 0;
+  // Where a single-quoted span opened, outside any double-quoted one; -1 when none is open.
+  let single = -1;
   for (let index = 0; index < text.length; index += 1) {
     const mark = text[index];
-    if (opened < 0) {
-      if (mark === CLOSING) {
-        return undefined;
+    if (opened >= 0) {
+      if (closer === CLOSING && mark === OPENING) {
+        depth += 1;
+      } else if (mark === closer) {
+        depth -= 1;
+        if (depth === 0) {
+          spans.push(text.slice(opened, index));
+          opened = -1;
+        }
       }
-      if (mark === STRAIGHT || mark === OPENING) {
-        opened = index + 1;
-        closer = mark === STRAIGHT ? STRAIGHT : CLOSING;
-        depth = 1;
-      }
-    } else if (closer === CLOSING && mark === OPENING) {
-      depth += 1;
-    } else if (mark === closer) {
-      depth -= 1;
-      if (depth === 0) {
-        spans.push(text.slice(opened, index));
-        opened = -1;
-      }
+    } else if (mark === CLOSING) {
+      return undefined;
+    } else if (mark === STRAIGHT || mark === OPENING) {
+      opened = index + 1;
+      closer = mark === STRAIGHT ? STRAIGHT : CLOSING;
+      depth = 1;
+    } else if (single >= 0 && SINGLE_CLOSERS.has(mark) && isText(text[index - 1]) && !isWordCharacter(text[index + 1])) {
+      spans.push(text.slice(single, index));
+      single = -1;
+    } else if (single < 0 && SINGLE_OPENERS.has(mark) && !isWordCharacter(text[index - 1]) && isText(text[index + 1])) {
+      single = index + 1;
     }
   }
   return opened < 0 ? spans : undefined;

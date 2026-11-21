@@ -77,6 +77,7 @@ import {
 } from '@services/search/passage/PassageSearchOrganizer';
 import { buildPassageSearchPlan, type PassageSearchLeftOutFile } from '@services/search/passage/PassageSearchPlanning';
 import type { PassageSearchModelFacts, PassageSearchPriceSource } from '@services/search/passage/PassageSearchPrices';
+import { passageSearchReadUsages, withPassageSearchPass } from '@services/search/passage/PassageSearchPassUsage';
 import { refusedPlan } from '@services/search/passage/PassageSearchRefusals';
 import { PassageSearchReplyError, readPassageSearchReply } from '@services/search/passage/PassageSearchReplyCodec';
 
@@ -246,7 +247,9 @@ export class PassageSearchService {
       ended,
       ...(usage ? { usage } : {})
     };
-    const result = plan.organize ? await this.organizeWithin(reads, retired, plan.ceilings.organizeOutputTokens, options.signal) : reads;
+    const result = plan.organize && engine
+      ? await this.organizeWithin(reads, { engine, usages: tally.usages, outputTokens: plan.ceilings.organizeOutputTokens, signal: options.signal })
+      : reads;
     this.logRun(result, tally, Date.now() - started);
     return result;
   }
@@ -261,52 +264,41 @@ export class PassageSearchService {
     if (result.instances.length === 0 || options.signal?.aborted) {
       return result;
     }
-    return this.withPass(result, () => this.organizer.organize(result, { plan, ...(options.signal ? { signal: options.signal } : {}) }));
+    return withPassageSearchPass(result, passageSearchReadUsages(result), this.log, () =>
+      this.organizer.organize(result, { plan, ...(options.signal ? { signal: options.signal } : {}) }));
   }
 
-  /** The pass inside a run: never after Stop, a key change or a run of provider failures, and never over nothing (D12a). */
-  private async organizeWithin(reads: PassageSearchResult, retired: () => boolean, outputTokens: number | undefined, signal?: AbortSignal): Promise<PassageSearchResult> {
+  /**
+   * The pass inside a run: never after Stop, a key change or a run of
+   * provider failures, never over nothing (D12a), and only ever on the
+   * engine the run holds. A stop or a key change that lands before or
+   * during the pass ends the run as one during a read does.
+   */
+  private async organizeWithin(
+    reads: PassageSearchResult,
+    held: { engine: AgentRunEngine; usages: ReadonlyArray<TokenUsage | undefined>; outputTokens: number | undefined; signal: AbortSignal | undefined }
+  ): Promise<PassageSearchResult> {
     if ((reads.ended !== 'complete' && reads.ended !== 'instance-limit') || reads.instances.length === 0) {
       return reads;
     }
-    // Both read again immediately before dispatch: nothing is awaited between these and the pass's start.
-    if (retired()) {
+    if (!held.engine.isProviderAvailable()) {
       return { ...reads, ended: 'key-changed' };
     }
-    if (signal?.aborted) {
+    if (held.signal?.aborted) {
       return { ...reads, ended: 'stopped' };
     }
-    const passed = await this.withPass(reads, () => this.organizer.organize(reads, {
-      ...(outputTokens !== undefined ? { outputTokens } : {}),
-      ...(signal ? { signal } : {})
+    const passed = await withPassageSearchPass(reads, held.usages, this.log, () => this.organizer.organize(reads, {
+      engine: held.engine,
+      ...(held.outputTokens !== undefined ? { outputTokens: held.outputTokens } : {}),
+      ...(held.signal ? { signal: held.signal } : {})
     }));
-    // A stop or a key change that lands during the pass ends the run as one during a read does.
-    if (passed.analysisMissing === 'stopped' || passed.analysisMissing === 'key-changed') {
-      const { analysisMissing, ...rest } = passed;
-      return { ...rest, ended: analysisMissing };
+    // Retired while the pass ran: whatever the organizer made of it, this run keeps no analysis.
+    const ended = !held.engine.isProviderAvailable() ? 'key-changed' : passed.analysisMissing;
+    if (ended === 'stopped' || ended === 'key-changed') {
+      const { analysis: _analysis, analysisMissing: _missing, ...rest } = passed;
+      return { ...rest, ended };
     }
     return passed;
-  }
-
-  /** A failed pass leaves the list whole, with the reason (D13). */
-  private async withPass(result: PassageSearchResult, pass: () => Promise<PassageSearchOrganized | undefined>): Promise<PassageSearchResult> {
-    let organized: PassageSearchOrganized | undefined;
-    try {
-      organized = await pass();
-    } catch (error) {
-      this.log.appendLine(`[PassageSearch] The organizing pass failed (${faultKindOf(error)}).`);
-      return { ...result, analysisMissing: 'failed' };
-    }
-    if (!organized) {
-      return result;
-    }
-    const usage = sumTokenUsage([result.usage, organized.usage].filter((entry) => entry !== undefined));
-    const { analysis: _analysis, analysisMissing: _missing, ...rest } = result;
-    return {
-      ...rest,
-      ...(organized.kind === 'analysis' ? { analysis: organized.analysis } : { analysisMissing: organized.reason }),
-      ...(usage ? { usage } : {})
-    };
   }
 
   /** One chunk's call, read and placed. Every outcome lands in the tally; nothing is thrown. */

@@ -129,8 +129,22 @@ describe('Quoted spans', () => {
     expect(passageSearchQuotedSpans('It reads “the “late” speech” twice.')).toEqual(['the “late” speech']);
   });
 
-  it('does not read single marks as quotation', () => {
-    expect(passageSearchQuotedSpans('The Rabbit\'s \'late\' speech and its ‘watch’.')).toEqual([]);
+  it('reads a paired single-quoted span, curly or straight, as a quotation', () => {
+    expect(passageSearchQuotedSpans('The Rabbit says ‘I shall be late!’ and runs.')).toEqual(['I shall be late!']);
+    expect(passageSearchQuotedSpans('Its \'late\' speech and its ‘watch’.')).toEqual(['late', 'watch']);
+    expect(passageSearchQuotedSpans('‘Oh dear!’')).toEqual(['Oh dear!']);
+    // An apostrophe inside the span does not close it.
+    expect(passageSearchQuotedSpans('It mutters ‘how late it’s getting!’ twice.')).toEqual(['how late it’s getting!']);
+  });
+
+  it('does not read an apostrophe as a quotation mark: contractions, possessives and an opener never closed', () => {
+    expect(passageSearchQuotedSpans('It’s the Rabbit’s watch, and it isn\'t the Queen\'s.')).toEqual([]);
+    expect(passageSearchQuotedSpans('The Rabbits’ watches and the hedgehogs\' ground.')).toEqual([]);
+    expect(passageSearchQuotedSpans('’Tis late, and ‘tis later still')).toEqual([]);
+  });
+
+  it('leaves single marks inside a double-quoted span as that span\'s own text', () => {
+    expect(passageSearchQuotedSpans('It reads "the Rabbits’ ‘late’ speech" in full.')).toEqual(['the Rabbits’ ‘late’ speech']);
   });
 
   it('reports a mark left unpaired', () => {
@@ -261,6 +275,28 @@ describe('Quotation checks', () => {
     expect(check(replyOf(sections, undefined)).headline).toBe('The Rabbit worries about the hour.');
     expect(check(JSON.stringify({ sections })).headline).toBe('5 instances in 3 files');
     expect(passageSearchHostHeadline([instanceOf(1)])).toBe('1 instance in 1 file');
+  });
+
+  it('checks curly single-quoted words in a claim, a title and the headline as it checks double-quoted ones (PR #295)', () => {
+    const analysis = check(replyOf([
+      {
+        title: 'The ‘frightfully behind’ speeches',
+        claims: [
+          { text: 'It cries ‘I am terribly late!’ twice.', cites: [1] },
+          { text: 'It cries ‘I shall be late!’ once.', cites: [1] },
+          { text: 'It’s the Rabbit’s worry, and the hedgehogs’ too.', cites: [1] }
+        ]
+      },
+      { title: 'The ‘I shall be late!’ speeches', claims: [{ text: 'It worries again.', cites: [3] }] }
+    ], 'The Rabbit is ‘frightfully behind’ all chapter.'));
+    expect(kept(analysis)).toEqual(['It cries ‘I shall be late!’ once.', 'It’s the Rabbit’s worry, and the hedgehogs’ too.', 'It worries again.']);
+    expect(analysis.dropped).toMatchObject({ misquoted: 1, claims: 1 });
+    expect(analysis.sections.map((section) => section.title)).toEqual(['Group 1', 'The ‘I shall be late!’ speeches']);
+    expect(analysis.replaced).toEqual({ headline: true, titles: 1 });
+    expect(analysis.headline).toBe('5 instances in 3 files');
+    // The same words in a headline that stands are kept.
+    const standing = check(replyOf([{ title: 'T', claims: [{ text: 'It worries.', cites: [1] }] }], 'Twice it says ‘I shall be late!’ or near it.'));
+    expect(standing.replaced.headline).toBe(false);
   });
 
   it('replaces a title that quotes words no instance shown holds, and keeps its claims', () => {

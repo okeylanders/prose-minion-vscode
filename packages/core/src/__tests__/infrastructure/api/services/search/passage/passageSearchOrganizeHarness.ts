@@ -15,7 +15,9 @@ export const USAGE = { promptTokens: 100, completionTokens: 20, totalTokens: 120
 export const organize = PROMPT_BUDGETS.passageSearch.organize;
 export const PRICING = { promptUsdPerToken: 0.000001, completionUsdPerToken: 0.000004 };
 
-export type Reply = { content: string; finishReason?: string; cancelled?: boolean } | Error | (() => { content: string; cancelled?: boolean });
+/** A reply as the engine returns one; `usage: undefined` is a call that came back with no usage record. */
+type Answer = { content: string; finishReason?: string; cancelled?: boolean; usage?: undefined };
+export type Reply = Answer | Error | (() => Answer);
 
 export interface HostOptions {
   engine?: boolean;

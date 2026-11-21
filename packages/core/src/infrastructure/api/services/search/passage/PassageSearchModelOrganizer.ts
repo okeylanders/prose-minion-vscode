@@ -11,9 +11,15 @@
  *   (`AgentRunOptions.model`), under `AGENT_RUN_POLICIES.passageSearch`, at
  *   temperature 0. No reasoning setting is sent. Inside a run it has no
  *   plan (the pass was priced as an allowance) and renders its request then.
- * - **Nothing starts after Stop or a key change.** The caller's signal is
- *   read again immediately before dispatch, with nothing awaited between;
- *   a retired engine's refusal is `key-changed`.
+ * - **Nothing starts after Stop or a key change.** The caller's signal and
+ *   the engine's credentials are read again immediately before dispatch,
+ *   with nothing awaited between.
+ * - **Inside a run the pass goes out on the engine the run holds,** the one
+ *   its reads used, or not at all: this module never asks the manager for
+ *   the current engine on a run's behalf, so a key rotated while the pass
+ *   was being prepared cannot send the run's quotes on the replacement.
+ *   Credentials retired while the pass is in flight leave no analysis
+ *   (`key-changed`), and what the pass spent is still reported.
  * - **The reply is checked by host code** (`PassageSearchOrganizeChecks`).
  *   A failed, malformed or cut-off pass, and one whose every claim the
  *   checks dropped, returns why and no analysis; the caller's list of
@@ -54,7 +60,9 @@ import type {
   PassageSearchOrganizePlan,
   PassageSearchOrganizePlanOutcome,
   PassageSearchOrganized,
-  PassageSearchOrganizer
+  PassageSearchOrganizer,
+  PassageSearchPassEngine,
+  PassageSearchPassUsages
 } from '@services/search/passage/PassageSearchOrganizer';
 import type { PassageSearchModelFacts, PassageSearchPriceSource } from '@services/search/passage/PassageSearchPrices';
 import { PASSAGE_SEARCH_MODEL_SCOPE } from '@services/search/passage/PassageSearchService';
@@ -85,14 +93,14 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
     if (result.instances.length === 0) {
       return { kind: 'unavailable', message: NOTHING_TO_ORGANIZE };
     }
+    const ceilings = { organizeOutputTokens: PROMPT_BUDGETS.passageSearch.organize.outputTokens };
     const facts = await this.factsOf(result.model);
-    const request = await this.render(result, facts);
+    const request = await this.render(result, facts, ceilings.organizeOutputTokens);
     if (!request) {
       this.log.appendLine(`[PassageSearch] Organize plan unavailable (no-room): ${result.instances.length} instance(s).`);
       return { kind: 'unavailable', message: NO_ROOM };
     }
     const outputTokens = PROMPT_BUDGETS.passageSearch.organize.typicalOutputTokens;
-    const ceilings = { organizeOutputTokens: PROMPT_BUDGETS.passageSearch.organize.outputTokens };
     const pricing = facts.pricing;
     const plan: PassageSearchOrganizePlan = {
       planKey: sha256(JSON.stringify({
@@ -129,27 +137,34 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
 
   async organize(
     result: PassageSearchResult,
-    options: { readonly plan?: PassageSearchOrganizePlan; readonly outputTokens?: number; readonly signal?: AbortSignal }
+    options: {
+      readonly plan?: PassageSearchOrganizePlan;
+      readonly outputTokens?: number;
+      readonly engine?: PassageSearchPassEngine;
+      readonly signal?: AbortSignal;
+    }
   ): Promise<PassageSearchOrganized | undefined> {
     const started = Date.now();
     if (result.instances.length === 0) {
       return undefined;
     }
-    const request = options.plan ? this.planned(result, options.plan) : await this.render(result, await this.factsOf(result.model));
+    // The ceiling a plan froze: the pass's own plan, else the run's; the budget only when neither is in hand.
+    const maxTokens = options.plan?.ceilings.organizeOutputTokens ?? options.outputTokens ?? PROMPT_BUDGETS.passageSearch.organize.outputTokens;
+    const request = options.plan ? this.planned(result, options.plan) : await this.render(result, await this.factsOf(result.model), maxTokens);
     if (request === 'plan-mismatch') {
-      return this.missing('failed', 'plan-mismatch', started);
+      return this.missing('failed', 'plan-mismatch', started, []);
     }
     if (!request) {
-      return this.missing('no-room', 'no-room', started);
+      return this.missing('no-room', 'no-room', started, []);
     }
-    await this.aiResourceManager.ensureInitialized();
-    const engine = this.aiResourceManager.getEngine(PASSAGE_SEARCH_MODEL_SCOPE);
-    if (!engine) {
-      return this.missing('key-changed', 'no-engine', started);
+    // Inside a run, the engine the run holds and no other: the current engine is asked for only by the caller's own later action.
+    const engine = options.engine ?? await this.currentEngine();
+    // Both read again immediately before dispatch: nothing is awaited between these and the call's start.
+    if (!engine?.isProviderAvailable()) {
+      return this.missing('key-changed', 'engine-retired', started, []);
     }
-    // Read again immediately before dispatch: nothing is awaited between this and the call's start.
     if (options.signal?.aborted) {
-      return this.missing('stopped', 'stopped', started);
+      return this.missing('stopped', 'stopped', started, []);
     }
     let execution: ExecutionResult;
     try {
@@ -161,43 +176,56 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
         options: {
           model: request.model,
           temperature: 0,
-          // The ceiling a plan froze: the pass's own plan, else the run's; the budget only when neither is in hand.
-          maxTokens: options.plan?.ceilings.organizeOutputTokens ?? options.outputTokens ?? PROMPT_BUDGETS.passageSearch.organize.outputTokens,
+          maxTokens,
           ...(options.signal ? { signal: options.signal } : {})
         }
       });
     } catch (error) {
       if (error instanceof AgentRunUnavailableError && error.reason === 'missing-credentials') {
-        return this.missing('key-changed', error.reason, started);
+        // The retired engine refused: nothing was sent.
+        return this.missing('key-changed', error.reason, started, []);
       }
+      // Aborted in flight: it was dispatched and may have been charged, so its usage is recorded as unknown.
+      // A provider failure records none, as a failed read records none.
       return options.signal?.aborted
-        ? this.missing('stopped', 'stopped', started)
-        : this.missing('failed', faultKindOf(error), started);
+        ? this.missing('stopped', 'stopped', started, [undefined])
+        : this.missing('failed', faultKindOf(error), started, []);
     }
-    const usage = execution.usage;
+    const usages = [execution.usage];
+    // The credentials were retired while the pass was in flight: what it spent is kept, and its analysis is not.
+    if (!engine.isProviderAvailable()) {
+      return this.missing('key-changed', 'engine-retired-in-flight', started, usages);
+    }
     if (execution.cancelled) {
-      return this.missing('stopped', 'stopped', started, usage);
+      return this.missing('stopped', 'stopped', started, usages);
     }
     let reply: PassageSearchOrganizeReply;
+    let analysis: PassageSearchAnalysis;
     try {
       reply = readPassageSearchOrganizeReply(execution.rawContent ?? execution.content, execution.finishReason === 'length');
+      analysis = checkPassageSearchOrganizeReply(reply, result.instances, request.shown);
     } catch (error) {
-      if (!(error instanceof PassageSearchOrganizeReplyError)) {
-        throw error;
-      }
-      return this.missing(error.fault === 'cut' ? 'cut' : 'malformed', error.fault, started, usage);
+      // Dispatched and answered: whatever went wrong reading it, what it spent is still reported.
+      return error instanceof PassageSearchOrganizeReplyError
+        ? this.missing(error.fault === 'cut' ? 'cut' : 'malformed', error.fault, started, usages)
+        : this.missing('failed', faultKindOf(error), started, usages);
     }
-    const analysis = checkPassageSearchOrganizeReply(reply, result.instances, request.shown);
-    this.logPass(analysis, reply, usage, Date.now() - started);
+    this.logPass(analysis, reply, execution.usage, Date.now() - started);
     return analysis.sections.length === 0
-      ? { kind: 'missing', reason: 'nothing-kept', ...(usage ? { usage } : {}) }
-      : { kind: 'analysis', analysis, ...(usage ? { usage } : {}) };
+      ? { kind: 'missing', reason: 'nothing-kept', usages }
+      : { kind: 'analysis', analysis, usages };
+  }
+
+  /** The engine current now, for a pass that is the caller's own action. */
+  private async currentEngine(): Promise<PassageSearchPassEngine | undefined> {
+    await this.aiResourceManager.ensureInitialized();
+    return this.aiResourceManager.getEngine(PASSAGE_SEARCH_MODEL_SCOPE);
   }
 
   /** The request over `result`, fitted to its bound; undefined when not one instance fits. */
-  private async render(result: PassageSearchResult, facts: PassageSearchModelFacts): Promise<(PassRequest & { inputTokens: number }) | undefined> {
+  private async render(result: PassageSearchResult, facts: PassageSearchModelFacts, outputTokens: number): Promise<(PassRequest & { inputTokens: number }) | undefined> {
     const systemMessage = await this.promptLoader.loadPrompts([...PASSAGE_SEARCH_ORGANIZE_PROMPTS]);
-    const fitted = fitPassageSearchOrganizeRequest(systemMessage, result, passageSearchOrganizeInputLimit(facts.contextLength));
+    const fitted = fitPassageSearchOrganizeRequest(systemMessage, result, passageSearchOrganizeInputLimit(facts.contextLength, outputTokens));
     return fitted
       ? { model: result.model, systemMessage, userMessage: fitted.messages[1].content, shown: fitted.shown, inputTokens: fitted.inputTokens }
       : undefined;
@@ -214,9 +242,12 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
     return same ? { model: plan.model, systemMessage: plan.systemMessage, userMessage: plan.userMessage, shown: plan.shown } : 'plan-mismatch';
   }
 
-  private missing(reason: PassageSearchAnalysisMissing, fault: string, started: number, usage?: TokenUsage): PassageSearchOrganized {
-    this.log.appendLine(`[PassageSearch] The organizing pass left no analysis (${reason}; ${fault}), ${usage?.totalTokens ?? 0} token(s), ${Date.now() - started} ms.`);
-    return { kind: 'missing', reason, ...(usage ? { usage } : {}) };
+  private missing(reason: PassageSearchAnalysisMissing, fault: string, started: number, usages: PassageSearchPassUsages): PassageSearchOrganized {
+    this.log.appendLine(
+      `[PassageSearch] The organizing pass left no analysis (${reason}; ${fault}), ${usages.length} call(s) dispatched, `
+      + `${usages[0]?.totalTokens ?? 0} token(s), ${Date.now() - started} ms.`
+    );
+    return { kind: 'missing', reason, usages };
   }
 
   private async factsOf(model: string): Promise<PassageSearchModelFacts> {

@@ -25,6 +25,7 @@ const PASSAGE_SEARCH_MODULES = {
     'PassageSearchOrganizeReplyCodec.ts',
     'PassageSearchOrganizeRequest.ts',
     'PassageSearchOrganizer.ts',
+    'PassageSearchPassUsage.ts',
     'PassageSearchPlanning.ts',
     'PassageSearchPrices.ts',
     'PassageSearchRefusals.ts',
@@ -160,6 +161,11 @@ describe('Passage Search engine', () => {
     expect(organizer).toMatch(/model: request\.model,/);
     expect(organizer).toMatch(/policy: AGENT_RUN_POLICIES\.passageSearch/);
     expect(organizer).toMatch(/temperature: 0,/);
+    // Inside a run the pass goes out on the engine the run holds: the organizer asks the manager for an engine in one
+    // place only, for the caller's own later action, and takes the run's engine before it.
+    expect(organizer.match(/getEngine\(/g)).toHaveLength(1);
+    expect(organizer).toMatch(/const engine = options\.engine \?\? await this\.currentEngine\(\);/);
+    expect(read(path.join(SERVICE_DIR, 'PassageSearchService.ts'))).toMatch(/this\.organizer\.organize\(reads, \{\s+engine: held\.engine,/);
     expect(service.filter((file) => /\.runInitial\(/.test(read(file))).map((file) => path.basename(file)).sort())
       .toEqual(['PassageSearchModelOrganizer.ts', 'PassageSearchService.ts']);
   });

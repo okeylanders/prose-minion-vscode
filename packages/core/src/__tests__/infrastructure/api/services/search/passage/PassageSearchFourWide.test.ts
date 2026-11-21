@@ -64,7 +64,7 @@ function createHost() {
   const organizer = {
     available: true,
     plan: jest.fn(async () => ({ kind: 'unavailable' as const, message: 'not used' })),
-    organize: jest.fn(async (_result: PassageSearchResult) => ({ kind: 'analysis' as const, analysis: ANALYSIS }))
+    organize: jest.fn(async (_result: PassageSearchResult) => ({ kind: 'analysis' as const, analysis: ANALYSIS, usages: [] }))
   };
   const service = new PassageSearchService(
     { ensureInitialized: async () => undefined, getEngine: () => engine } as never,

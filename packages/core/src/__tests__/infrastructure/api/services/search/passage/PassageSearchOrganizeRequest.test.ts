@@ -11,10 +11,10 @@ import {
   PASSAGE_SEARCH_INSTANCES_FRAME,
   PASSAGE_SEARCH_LABELS_FRAME,
   buildPassageSearchOrganizeMessage,
-  evenPassageSearchSample,
   fitPassageSearchOrganizeRequest,
   passageSearchOrganizeInputLimit,
-  passageSearchOrganizeLabelTable
+  passageSearchOrganizeLabelTable,
+  passageSearchSpreadOrder
 } from '@services/search/passage/PassageSearchOrganizeRequest';
 import {
   QUESTION,
@@ -90,17 +90,20 @@ describe('The organizing pass\'s message', () => {
   });
 });
 
-describe('Even sampling', () => {
-  it('takes one position from each equal stretch, in order, each once', () => {
-    expect(evenPassageSearchSample(10, 10)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    expect(evenPassageSearchSample(10, 5)).toEqual([1, 3, 5, 7, 9]);
-    expect(evenPassageSearchSample(1240, 4)).toEqual([155, 465, 775, 1085]);
-    expect(evenPassageSearchSample(3, 9)).toEqual([0, 1, 2]);
-    const sample = evenPassageSearchSample(2000, 399);
-    expect(new Set(sample).size).toBe(399);
-    expect(sample).toEqual([...sample].sort((a, b) => a - b));
-    expect(sample[0]).toBeLessThan(6);
-    expect(sample[398]).toBeGreaterThan(1993);
+describe('The spread order', () => {
+  it('lists every position once, each prefix spread through the whole range', () => {
+    expect(passageSearchSpreadOrder(0)).toEqual([]);
+    expect(passageSearchSpreadOrder(1)).toEqual([0]);
+    expect(passageSearchSpreadOrder(8)).toEqual([0, 4, 2, 6, 1, 5, 3, 7]);
+    expect(passageSearchSpreadOrder(10).slice(0, 4)).toEqual([0, 5, 2, 7]);
+    for (const total of [3, 60, 1240, 2000]) {
+      const order = passageSearchSpreadOrder(total);
+      expect([...order].sort((a, b) => a - b)).toEqual(Array.from({ length: total }, (_unused, index) => index));
+    }
+    // Any prefix leaves no gap much wider than an even spacing would.
+    const prefix = passageSearchSpreadOrder(1240).slice(0, 100).sort((a, b) => a - b);
+    const gaps = prefix.map((position, index) => (prefix[index + 1] ?? 1240) - position);
+    expect(Math.max(...gaps)).toBeLessThanOrEqual(2 * Math.ceil(1240 / 100));
   });
 });
 
@@ -116,7 +119,7 @@ describe('Fitting the request to its bound', () => {
     expect(fitted?.inputTokens).toBe(estimateRequestTokens(fitted?.messages ?? []));
   });
 
-  it('samples evenly by position when they do not all fit, within the bound, spanning the scope', () => {
+  it('samples through the whole scope when they do not all fit, within the bound, and fills it', () => {
     const result = resultOf(many(1240));
     const whole = fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, Number.MAX_SAFE_INTEGER);
     const limit = Math.floor((whole?.inputTokens ?? 0) / 3);
@@ -126,14 +129,83 @@ describe('Fitting the request to its bound', () => {
     }
     expect(fitted.inputTokens).toBeLessThanOrEqual(limit);
     expect(estimateRequestTokens(fitted.messages)).toBe(fitted.inputTokens);
-    expect(fitted.shown.length).toBeGreaterThan(300);
-    expect(fitted.shown.length).toBeLessThan(1240);
-    expect(fitted.shown).toEqual(evenPassageSearchSample(1240, fitted.shown.length).map((position) => position + 1));
-    expect(fitted.shown[0]).toBeLessThan(5);
-    expect(fitted.shown[fitted.shown.length - 1]).toBeGreaterThan(1236);
+    expect(fitted.shown).toEqual([...fitted.shown].sort((a, b) => a - b));
+    expect(new Set(fitted.shown).size).toBe(fitted.shown.length);
+    expect(fitted.shown[0]).toBe(1);
+    expect(fitted.shown[fitted.shown.length - 1]).toBeGreaterThan(1230);
     expect(fitted.messages[1].content).toContain(`Below are ${fitted.shown.length} of the 1240 instances found, sampled evenly through the text.`);
-    // One more would not fit: the count is the most the bound holds, near enough to a third.
-    expect(fitted.shown.length).toBeGreaterThan(1240 / 3 - 40);
+    // Filled: with one more instance of the smallest size left out, the request would be over the bound.
+    const shown = new Set(fitted.shown);
+    const smallestLeftOut = result.instances.filter((instance) => !shown.has(instance.number))
+      .reduce((least, instance) => (instance.quote.length < least.quote.length ? instance : least));
+    const oneMore = result.instances.filter((instance) => shown.has(instance.number) || instance === smallestLeftOut);
+    expect(estimateRequestTokens([
+      { role: 'system', content: SYSTEM_MESSAGE },
+      { role: 'user', content: buildPassageSearchOrganizeMessage(result, oneMore, 1240) }
+    ])).toBeGreaterThan(limit);
+  });
+
+  it('takes nested samples: a larger bound never drops an instance a smaller one showed', () => {
+    const result = resultOf(many(600));
+    const whole = fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, Number.MAX_SAFE_INTEGER)?.inputTokens ?? 0;
+    let earlier: readonly number[] = [];
+    for (const share of [0.1, 0.25, 0.4, 0.7]) {
+      const shown = fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, Math.floor(whole * share))?.shown ?? [];
+      expect(shown.length).toBeGreaterThan(earlier.length);
+      expect(earlier.filter((number) => !shown.includes(number))).toEqual([]);
+      earlier = shown;
+    }
+  });
+
+  it('passes over one long instance in the middle rather than read it as no room (PR #295)', () => {
+    // 60 instances under 60 labels; the middle one alone is too long for the bound, and two others fit.
+    const instances = Array.from({ length: 60 }, (_unused, index) => instanceOf(index + 1, {
+      label: `kind ${index + 1}`,
+      quote: index === 30 ? 'The Rabbit looked at its watch and hurried on. '.repeat(280) : `The Rabbit looked at its watch a ${index + 1}th time.`
+    }));
+    const result = resultOf(instances);
+    const tokensOf = (shown: typeof instances): number => estimateRequestTokens([
+      { role: 'system', content: SYSTEM_MESSAGE },
+      { role: 'user', content: buildPassageSearchOrganizeMessage(result, shown, 60) }
+    ]);
+    const middleAlone = tokensOf([instances[30]]);
+    const limit = middleAlone - 200;
+    expect(tokensOf([instances[0], instances[59]])).toBeLessThan(limit);
+    const fitted = fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, limit);
+    if (!fitted) {
+      throw new Error('expected a request: instances other than the long one fit');
+    }
+    expect(fitted.inputTokens).toBeLessThanOrEqual(limit);
+    expect(fitted.shown).not.toContain(31);
+    // Every other instance fits beside the rest, so all 59 are shown.
+    expect(fitted.shown).toHaveLength(59);
+    expect(fitted.messages[1].content).toContain('Below are 59 of the 60 instances found');
+  });
+
+  it('fills the bound when instances differ in length, rather than stop at the first that does not fit (PR #295)', () => {
+    // Every eighth instance is long. A walk that stopped at the first misfit would leave most of the bound unused.
+    const instances = Array.from({ length: 400 }, (_unused, index) => instanceOf(index + 1, {
+      quote: index % 8 === 3 ? 'The Rabbit looked at its watch and hurried on. '.repeat(40) : `It looked at its watch a ${index + 1}th time.`
+    }));
+    const result = resultOf(instances);
+    const whole = fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, Number.MAX_SAFE_INTEGER)?.inputTokens ?? 0;
+    const limit = Math.floor(whole / 4);
+    const fitted = fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, limit);
+    if (!fitted) {
+      throw new Error('expected a sampled request');
+    }
+    expect(fitted.inputTokens).toBeLessThanOrEqual(limit);
+    // No short instance left out would still fit.
+    const shown = new Set(fitted.shown);
+    const short = instances.find((instance) => !shown.has(instance.number) && instance.quote.length < 60);
+    if (short) {
+      const oneMore = instances.filter((instance) => shown.has(instance.number) || instance === short);
+      expect(estimateRequestTokens([
+        { role: 'system', content: SYSTEM_MESSAGE },
+        { role: 'user', content: buildPassageSearchOrganizeMessage(result, oneMore, 400) }
+      ])).toBeGreaterThan(limit);
+    }
+    expect(fitted.inputTokens).toBeGreaterThan(limit * 0.97);
   });
 
   it('makes no request when not one instance fits, or there is none', () => {
@@ -150,5 +222,7 @@ describe('Fitting the request to its bound', () => {
     expect(passageSearchOrganizeInputLimit(1_000_000)).toBe(organize.inputTokens);
     expect(passageSearchOrganizeInputLimit(32_000)).toBe(16_000 - organize.outputTokens);
     expect(passageSearchOrganizeInputLimit(6_000)).toBeLessThan(0);
+    // A plan's frozen ceiling is the one reserved.
+    expect(passageSearchOrganizeInputLimit(32_000, 6_000)).toBe(10_000);
   });
 });

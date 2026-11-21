@@ -334,7 +334,7 @@ describe('PassageSearchService.run', () => {
 
     it('stops starting calls after failureStreak failures in a row, keeps what was found, and never organizes', async () => {
       expect(bounds.failureStreak).toBe(5);
-      const organizer = organizerOf({ kind: 'analysis', analysis: { headline: 'x', sections: [], read: { instances: 1, of: 1 }, dropped: { claims: 0, uncited: 0, misquoted: 0, malformed: 0, sections: 0, cites: 0 }, replaced: { headline: false, titles: 0 }, clipped: 0 } });
+      const organizer = organizerOf({ kind: 'analysis', analysis: { headline: 'x', sections: [], read: { instances: 1, of: 1 }, dropped: { claims: 0, uncited: 0, misquoted: 0, malformed: 0, sections: 0, cites: 0 }, replaced: { headline: false, titles: 0 }, clipped: 0 }, usages: [] });
       const { service, runInitial } = createService([TOOK, refused(), refused(), new Error('429'), refused(), refused(), NONE, NONE, NONE], { organizer });
       const plan = await planOf(service, { organize: true, files: MANY });
       expect(plan.organize).toBe(true);
@@ -419,7 +419,7 @@ describe('PassageSearchService.run', () => {
     });
 
     it('calls the organizer once, after complete reads with an instance, and adds its analysis and usage', async () => {
-      const organizer = organizerOf({ kind: 'analysis', analysis: ANALYSIS, usage: USAGE });
+      const organizer = organizerOf({ kind: 'analysis', analysis: ANALYSIS, usages: [USAGE] });
       const { service } = createService([TOOK, NONE, GLANCED], { organizer });
       const result = await service.run(await planOf(service, { organize: true }));
       expect(organizer.organize).toHaveBeenCalledTimes(1);
@@ -430,7 +430,7 @@ describe('PassageSearchService.run', () => {
     });
 
     it('never calls it when the plan does not organize, or nothing was found', async () => {
-      const organizer = organizerOf({ kind: 'analysis', analysis: ANALYSIS });
+      const organizer = organizerOf({ kind: 'analysis', analysis: ANALYSIS, usages: [] });
       const unasked = createService([TOOK, NONE, GLANCED], { organizer });
       await unasked.service.run(await planOf(unasked.service));
       const empty = createService([NONE, NONE, NONE], { organizer });
@@ -445,14 +445,14 @@ describe('PassageSearchService.run', () => {
       expect(first).toMatchObject({ analysisMissing: 'failed', ended: 'complete' });
       expect(first.instances).toHaveLength(2);
 
-      const cut = createService([TOOK, NONE, GLANCED], { organizer: organizerOf({ kind: 'missing', reason: 'cut' }) });
+      const cut = createService([TOOK, NONE, GLANCED], { organizer: organizerOf({ kind: 'missing', reason: 'cut', usages: [] }) });
       const second = await cut.service.run(await planOf(cut.service, { organize: true }));
       expect(second).toMatchObject({ analysisMissing: 'cut' });
       expect(second.instances).toHaveLength(2);
     });
 
     it('offers the pass afterwards as its own planned action', async () => {
-      const organizer = organizerOf({ kind: 'analysis', analysis: ANALYSIS });
+      const organizer = organizerOf({ kind: 'analysis', analysis: ANALYSIS, usages: [] });
       const { service } = createService([TOOK, new AgentRunUnavailableError('missing-credentials')], { organizer });
       const stopped = await service.run(await planOf(service, { organize: true }));
       expect(stopped.ended).toBe('key-changed');

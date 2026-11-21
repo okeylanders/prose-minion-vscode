@@ -141,7 +141,7 @@ describe('PassageSearchModelOrganizer.organize', () => {
     // Exactly the plan: nothing is rendered, loaded or priced again.
     expect(promptLoader.loadPrompts).not.toHaveBeenCalled();
     expect(prices.facts).not.toHaveBeenCalled();
-    expect(organized).toMatchObject({ kind: 'analysis', usage: USAGE });
+    expect(organized).toMatchObject({ kind: 'analysis', usages: [USAGE] });
     expect(organized?.kind === 'analysis' && organized.analysis).toEqual({
       headline: 'The Rabbit frets aloud once and reaches for its watch twice.',
       sections: [
@@ -180,7 +180,7 @@ describe('PassageSearchModelOrganizer.organize', () => {
 
   it('does not run when not one instance fits, and says so', async () => {
     const { organizer, runInitial } = createHost([ok()], { facts: { contextLength: 2 * organize.outputTokens + 40 } });
-    await expect(organizer.organize(RESULT, {})).resolves.toEqual({ kind: 'missing', reason: 'no-room' });
+    await expect(organizer.organize(RESULT, {})).resolves.toEqual({ kind: 'missing', reason: 'no-room', usages: [] });
     await expect(organizer.organize(resultOf([]), {})).resolves.toBeUndefined();
     expect(runInitial).not.toHaveBeenCalled();
   });
@@ -193,48 +193,49 @@ describe('PassageSearchModelOrganizer.organize', () => {
     manager.ensureInitialized.mockImplementationOnce(async () => {
       stop.abort();
     });
-    await expect(organizer.organize(RESULT, { plan, signal: stop.signal })).resolves.toEqual({ kind: 'missing', reason: 'stopped' });
+    await expect(organizer.organize(RESULT, { plan, signal: stop.signal })).resolves.toEqual({ kind: 'missing', reason: 'stopped', usages: [] });
     expect(runInitial).not.toHaveBeenCalled();
   });
 
   it('reports a pass stopped in flight as stopped, with what it spent', async () => {
     const stop = new AbortController();
     const cancelled = createHost([{ content: '', cancelled: true }]);
-    await expect(cancelled.organizer.organize(RESULT, { signal: stop.signal })).resolves.toEqual({ kind: 'missing', reason: 'stopped', usage: USAGE });
+    await expect(cancelled.organizer.organize(RESULT, { signal: stop.signal })).resolves.toEqual({ kind: 'missing', reason: 'stopped', usages: [USAGE] });
     const thrown = createHost([() => {
       stop.abort();
       throw new Error('aborted');
     }]);
-    await expect(thrown.organizer.organize(RESULT, { signal: stop.signal })).resolves.toEqual({ kind: 'missing', reason: 'stopped' });
+    // Aborted in flight: it was dispatched, so its usage is recorded as unknown, never as nothing sent.
+    await expect(thrown.organizer.organize(RESULT, { signal: stop.signal })).resolves.toEqual({ kind: 'missing', reason: 'stopped', usages: [undefined] });
   });
 
   it('never starts with no engine, and reads a retired engine\'s refusal as a key change', async () => {
     const none = createHost([ok()], { engine: false });
-    await expect(none.organizer.organize(RESULT, {})).resolves.toEqual({ kind: 'missing', reason: 'key-changed' });
+    await expect(none.organizer.organize(RESULT, {})).resolves.toEqual({ kind: 'missing', reason: 'key-changed', usages: [] });
     expect(none.runInitial).not.toHaveBeenCalled();
     const retired = createHost([new AgentRunUnavailableError('missing-credentials')]);
-    await expect(retired.organizer.organize(RESULT, {})).resolves.toEqual({ kind: 'missing', reason: 'key-changed' });
+    await expect(retired.organizer.organize(RESULT, {})).resolves.toEqual({ kind: 'missing', reason: 'key-changed', usages: [] });
   });
 
   it('gives a closed reason for a failed, cut-off or malformed pass, and for one whose every claim the checks dropped', async () => {
     const reason = async (reply: Reply): Promise<unknown> => createHost([reply]).organizer.organize(RESULT, {});
-    await expect(reason(new Error('502 from the provider: “Oh dear!”'))).resolves.toEqual({ kind: 'missing', reason: 'failed' });
-    await expect(reason({ content: ANALYSIS_REPLY.slice(0, 80), finishReason: 'length' })).resolves.toEqual({ kind: 'missing', reason: 'cut', usage: USAGE });
+    await expect(reason(new Error('502 from the provider: “Oh dear!”'))).resolves.toEqual({ kind: 'missing', reason: 'failed', usages: [] });
+    await expect(reason({ content: ANALYSIS_REPLY.slice(0, 80), finishReason: 'length' })).resolves.toEqual({ kind: 'missing', reason: 'cut', usages: [USAGE] });
     // Even a reply that happens to parse is not kept once the provider cut it off.
-    await expect(reason({ content: ANALYSIS_REPLY, finishReason: 'length' })).resolves.toEqual({ kind: 'missing', reason: 'cut', usage: USAGE });
-    await expect(reason(ok('The Rabbit is late, mostly.'))).resolves.toEqual({ kind: 'missing', reason: 'malformed', usage: USAGE });
-    await expect(reason(ok('{"headline":"x"}'))).resolves.toEqual({ kind: 'missing', reason: 'malformed', usage: USAGE });
+    await expect(reason({ content: ANALYSIS_REPLY, finishReason: 'length' })).resolves.toEqual({ kind: 'missing', reason: 'cut', usages: [USAGE] });
+    await expect(reason(ok('The Rabbit is late, mostly.'))).resolves.toEqual({ kind: 'missing', reason: 'malformed', usages: [USAGE] });
+    await expect(reason(ok('{"headline":"x"}'))).resolves.toEqual({ kind: 'missing', reason: 'malformed', usages: [USAGE] });
     await expect(reason(ok(JSON.stringify({ headline: 'x', sections: [{ title: 'T', claims: [{ text: 'It cries "I am terribly late!"', cites: [1] }, { text: 'Uncited.', cites: [77] }] }] }))))
-      .resolves.toEqual({ kind: 'missing', reason: 'nothing-kept', usage: USAGE });
+      .resolves.toEqual({ kind: 'missing', reason: 'nothing-kept', usages: [USAGE] });
   });
 
   it('refuses a plan that is not this result\'s, sending nothing', async () => {
     const { organizer, runInitial } = createHost([ok(), ok(), ok()]);
     const plan = await planOf(organizer);
     const edited = { ...RESULT, instances: RESULT.instances.map((instance) => ({ ...instance, note: 'Another note.' })) };
-    await expect(organizer.organize(edited, { plan })).resolves.toEqual({ kind: 'missing', reason: 'failed' });
-    await expect(organizer.organize({ ...RESULT, model: 'placeholder/other-model' }, { plan })).resolves.toEqual({ kind: 'missing', reason: 'failed' });
-    await expect(organizer.organize({ ...RESULT, instances: RESULT.instances.slice(0, 2) }, { plan })).resolves.toEqual({ kind: 'missing', reason: 'failed' });
+    await expect(organizer.organize(edited, { plan })).resolves.toEqual({ kind: 'missing', reason: 'failed', usages: [] });
+    await expect(organizer.organize({ ...RESULT, model: 'placeholder/other-model' }, { plan })).resolves.toEqual({ kind: 'missing', reason: 'failed', usages: [] });
+    await expect(organizer.organize({ ...RESULT, instances: RESULT.instances.slice(0, 2) }, { plan })).resolves.toEqual({ kind: 'missing', reason: 'failed', usages: [] });
     expect(runInitial).not.toHaveBeenCalled();
   });
 });
