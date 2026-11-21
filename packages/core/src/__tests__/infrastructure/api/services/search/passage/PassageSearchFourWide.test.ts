@@ -170,7 +170,10 @@ describe('a Passage Search run, four calls wide', () => {
     expect(dispatched).toHaveLength(4);
     expect(result.ended).toBe('stopped');
     expect(result.calls).toEqual({ planned: 12, answered: 0, failed: 0, cut: 0, cancelled: 4, unsent: 8 });
-    expect(result.usage).toMatchObject({ totalTokens: 240, requestCount: 2 });
+    // Four requests were made; two reported nothing, so the known tokens stand and no cost or cache total is claimed.
+    expect(result.usage).toMatchObject({ totalTokens: 240, requestCount: 4 });
+    expect(result.usage?.costUsd).toBeUndefined();
+    expect(result.usage?.cachedTokens).toBeUndefined();
     expect(result.files.planned.map((file) => file.chunks.admitted)).toEqual([1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
     expect(result.files.searched).toEqual({ full: 0, partial: 0, none: 12 });
     expect(result.instances).toEqual([]);

@@ -337,7 +337,9 @@ export class PassageSearchService {
         tally.unsent += 1;
       } else if (signal?.aborted) {
         // Aborted in flight: it was dispatched, so it is not unsent, and it may have been charged.
+        // Its usage is unknown, and is recorded as unknown: the run's cost is then no complete total (PR #293 re-review).
         tally.cancelled += 1;
+        tally.usages.push(undefined);
       } else {
         this.fail(tally, faultKindOf(error));
         tally.failureStreak += 1;
