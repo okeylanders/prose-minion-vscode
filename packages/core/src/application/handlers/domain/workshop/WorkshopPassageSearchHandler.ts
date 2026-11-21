@@ -62,12 +62,9 @@ import {
   workshopPassageSearchEstimateView
 } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchEngineRequest';
 import type { WorkshopPassageSearchReports } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchReportFile';
+import { workshopPassageSearchCounts, workshopPassageSearchView } from '@handlers/domain/workshop/WorkshopPassageSearchResultView';
 import {
   isWorkshopPassageSearchPartial,
-  workshopPassageSearchCounts,
-  workshopPassageSearchReportOf
-} from '@/application/services/workshop/passageSearch/WorkshopPassageSearchResultView';
-import {
   workshopPassageSearchStatus,
   type WorkshopPassageSearchWindowCard
 } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchStatus';
@@ -244,7 +241,7 @@ export class WorkshopPassageSearchHandler {
       return this.refuse('run', payload, { reason: 'room-changed' });
     }
     this.results.hold(payload.turnId, result);
-    const counts = workshopPassageSearchCounts(result);
+    const counts = workshopPassageSearchCounts(workshopPassageSearchView(result, payload.turnId));
     this.log(`run finished turn=${payload.turnId} ended=${counts.ended} instances=${counts.instances} files=${counts.files} `
       + `answered=${counts.calls.answered} failed=${counts.calls.failed} cut=${counts.calls.cut} unsent=${counts.calls.unsent} dropped=${counts.dropped}`);
     // Only a search that read everything is delivered by the host, and only into an idle room (D21).
@@ -312,7 +309,7 @@ export class WorkshopPassageSearchHandler {
     if (!held || !this.ports) {
       return this.refuse('open-report', payload, { reason: 'not-held' });
     }
-    const outcome = await this.ports.reports.saveAndOpen(formatPassageSearchReport(workshopPassageSearchReportOf(held)));
+    const outcome = await this.ports.reports.saveAndOpen(formatPassageSearchReport(workshopPassageSearchView(held, payload.turnId)));
     this.log(`open-report turn=${payload.turnId} outcome=${outcome}`);
     if (outcome === 'failed' || outcome === 'no-workspace') {
       return this.refuse('open-report', payload, { reason: 'report-failed' });

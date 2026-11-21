@@ -22,12 +22,12 @@
 import type {
   WorkshopPassageSearchCardView,
   WorkshopPassageSearchCounts,
+  WorkshopPassageSearchEnded,
   WorkshopPassageSearchProgress,
   WorkshopPassageSearchRequest,
   WorkshopPassageSearchStatus,
   WorkshopTurn
 } from '@messages';
-import { isWorkshopPassageSearchPartial } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchResultView';
 
 type Turn = Pick<WorkshopTurn, 'id' | 'passageSearchRequest' | 'passageSearchDelivery'>;
 
@@ -76,6 +76,11 @@ export function workshopPassageSearchReceipt(ledger: readonly Turn[], turnId: st
     }
   }
   return undefined;
+}
+
+/** A search that ended before it read everything: never delivered by the host (D21). */
+export function isWorkshopPassageSearchPartial(ended: WorkshopPassageSearchEnded): boolean {
+  return ended !== 'complete' && ended !== 'instance-limit';
 }
 
 /**

@@ -32,10 +32,7 @@ import {
   fitWorkshopPassageSearchDirective,
   WORKSHOP_PASSAGE_SEARCH_RESULTS_MESSAGE
 } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchDirective';
-import {
-  workshopPassageSearchCounts,
-  workshopPassageSearchReportOf
-} from '@/application/services/workshop/passageSearch/WorkshopPassageSearchResultView';
+import { workshopPassageSearchCounts, workshopPassageSearchView } from '@handlers/domain/workshop/WorkshopPassageSearchResultView';
 import { workshopPassageSearchStatus } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchStatus';
 import { workshopEditOfferAuthorTarget } from '@handlers/domain/workshop/WorkshopEditOfferHandler';
 import type { WorkshopDirectedRunResult, WorkshopResultsDeliveryRun } from '@handlers/domain/workshop/WorkshopRouteContracts';
@@ -92,7 +89,7 @@ export class WorkshopPassageSearchResults {
 
   countsOf(turnId: string): WorkshopPassageSearchCounts | undefined {
     const result = this.resultOf(turnId);
-    return result && workshopPassageSearchCounts(result);
+    return result && workshopPassageSearchCounts(workshopPassageSearchView(result, turnId));
   }
 
   isSending(turnId: string): boolean {
@@ -126,8 +123,8 @@ export class WorkshopPassageSearchResults {
     if (this.room.activeRunLabel() !== undefined) {
       return { reason: 'run-active' };
     }
-    const report = workshopPassageSearchReportOf(held.result);
-    const counts = workshopPassageSearchCounts(held.result);
+    const report = workshopPassageSearchView(held.result, turnId);
+    const counts = workshopPassageSearchCounts(report);
     let shown = 0;
     this.sendingTurnId = turnId;
     this.log(`delivery started turn=${turnId} author=${target.kind} instances=${counts.instances}`);

@@ -18,7 +18,6 @@ const WORKSHOP_PASSAGE_SEARCH_MODULES = [
   'WorkshopPassageSearchEngineRequest.ts',
   'WorkshopPassageSearchRecords.ts',
   'WorkshopPassageSearchReportFile.ts',
-  'WorkshopPassageSearchResultView.ts',
   'WorkshopPassageSearchStatus.ts',
   'WorkshopReplyPassageSearch.ts'
 ];
@@ -27,8 +26,8 @@ const WORKSHOP_PASSAGE_SEARCH_MODULES = [
 const FEATURE_FILES = [
   'application/handlers/domain/workshop/WorkshopPassageSearchHandler.ts',
   'application/handlers/domain/workshop/WorkshopPassageSearchDelivery.ts',
+  'application/handlers/domain/workshop/WorkshopPassageSearchResultView.ts',
   'utils/workshopReplyPassageSearch.ts',
-  'shared/utils/passageSearchReport.ts',
   'shared/constants/workshopPassageSearchWords.ts',
   'shared/types/messages/workshop/passageSearch.ts',
   'infrastructure/api/orchestration/ConversationWindowMeasure.ts',
@@ -92,7 +91,13 @@ describe('Workshop passage search', () => {
       .filter((file) => /\bPassageSearchResult\b/.test(read(file)))
       .filter((file) => /\bresult\.(?:instances|labels|calls|files|ended|analysis|dropped|overLimit)\b/.test(read(file)))
       .map(relative);
-    expect(readers).toEqual(['application/services/workshop/passageSearch/WorkshopPassageSearchResultView.ts']);
+    // None reads a field of it: the one module that takes it hands it to the shared view.
+    expect(readers).toEqual([]);
+    const takers = sourceFiles(path.join(SRC_ROOT, 'application'))
+      .filter((file) => /workshop/i.test(relative(file)))
+      .filter((file) => /passageSearchResultView\(/.test(read(file)))
+      .map(relative);
+    expect(takers).toEqual(['application/handlers/domain/workshop/WorkshopPassageSearchResultView.ts']);
   });
 
   it('adds no Workshop branch to the run engine: it names no passage search and no feature frame', () => {

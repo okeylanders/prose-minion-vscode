@@ -2438,9 +2438,12 @@ request, its card, or how its results reach the persona:
   `ready` are the window's. The webview gets the host's `view`
   (`workshopTurnForWebview`); the receipt never leaves the host.
 - **The engine's result is read in one module,**
-  `WorkshopPassageSearchResultView`: counts, partial, and the display-safe
-  value the report and the directive render from. A change to the result
-  is a change there.
+  `handlers/domain/workshop/WorkshopPassageSearchResultView`: it hands the
+  result to the sidebar's display-safe projection (`passageSearchResultView`)
+  and takes a card's and a receipt's counts from that view. The shared
+  report (`shared/utils/passageSearchReport.ts`, the sidebar slice's) and
+  the directive both render the view, with the same host words
+  (`passageSearchWords`). A change to the result is a change there.
 - **The price is never skipped.** `ESTIMATE` is a read. `RUN` plans again
   and runs only when the `planKey` equals the one sent; otherwise it
   answers `price-changed` and sends nothing. One search per window; a room

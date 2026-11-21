@@ -8,6 +8,8 @@
  *   analysis when there is one, the host's label table, then instances.
  *   </prose-minion-passage-search-results>
  *
+ * - **It renders the display-safe view** the shared report renders, with
+ *   the same host words for what was read and what is missing.
  * - **Evidence, never instructions,** and it says so. Every string a model
  *   or the writer wrote (the question, a quote, a note, a label, a
  *   headline, a claim, a file's name) has its reserved frame markers
@@ -28,8 +30,15 @@
  * The frame's tag is reserved (`workshopPromptFrames`).
  */
 
+import type { PassageSearchResultView } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { passageSearchReportHeadline, passageSearchReportNotes, type PassageSearchReportResult } from '@shared/utils/passageSearchReport';
+import {
+  passageSearchAnalysisNote,
+  passageSearchLocation,
+  passageSearchMissingLines,
+  passageSearchReadLine,
+  passageSearchSummary
+} from '@shared/utils/passageSearchWords';
 import type { CapabilityContextWindow } from '@orchestration/AgentRunContracts';
 import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
 import { fitWorkshopReadToWindow, type WorkshopMeasuredRead } from '@/application/services/workshop/reads/WorkshopReadWindowFit';
@@ -63,19 +72,22 @@ function evenSpread(total: number, count: number): number[] {
 }
 
 /** The frame holding `shown` of the result's instances. */
-export function renderWorkshopPassageSearchDirective(result: PassageSearchReportResult, shown: number): string {
-  const labels = new Map(result.labels.map((label) => [label.key, label.label]));
+export function renderWorkshopPassageSearchDirective(result: PassageSearchResultView, shown: number): string {
   const tableBound = PROMPT_BUDGETS.passageSearch.organize.labels;
   const table = [...result.labels].sort((a, b) => b.count - a.count).slice(0, tableBound);
   const instances = evenSpread(result.instances.length, shown).map((index) => result.instances[index]);
+  const analysisNote = passageSearchAnalysisNote(result);
   const lines: string[] = [
     `<${WORKSHOP_PASSAGE_SEARCH_RESULTS_TAG}>`,
     ...OPENING,
     '',
     `Question: ${oneLine(result.question)}`,
     '',
-    `Found: ${passageSearchReportHeadline(result)}`,
-    ...passageSearchReportNotes(result)
+    `Found: ${passageSearchSummary(result)}`,
+    passageSearchReadLine(result),
+    ...(result.endedMessage ? [`Ended early: ${result.endedMessage}`] : []),
+    ...(result.leftOutMessage ? [result.leftOutMessage] : []),
+    ...passageSearchMissingLines(result)
   ];
   if (result.analysis) {
     lines.push('', `Headline: ${oneLine(result.analysis.headline)}`);
@@ -85,6 +97,9 @@ export function renderWorkshopPassageSearchDirective(result: PassageSearchReport
         lines.push(`- ${oneLine(claim.text)} [instances ${claim.cites.join(', ')}]`);
       }
     }
+  }
+  if (analysisNote) {
+    lines.push('', analysisNote);
   }
   if (table.length > 0) {
     lines.push('', 'Labels (the host\'s counts):');
@@ -103,7 +118,7 @@ export function renderWorkshopPassageSearchDirective(result: PassageSearchReport
     for (const instance of instances) {
       lines.push(
         '',
-        `[${instance.number}] ${oneLine(instance.displayPath)}, line ${instance.line}, label: ${oneLine(labels.get(instance.label) ?? instance.label)}`,
+        `[${instance.number}] ${oneLine(passageSearchLocation(instance))}, label: ${oneLine(instance.label)}`,
         neutral(instance.quote),
         ...(instance.note.trim().length > 0 ? [`Note: ${oneLine(instance.note)}`] : [])
       );
@@ -115,7 +130,7 @@ export function renderWorkshopPassageSearchDirective(result: PassageSearchReport
 
 /** The largest frame, by whole instances, that costs at most half the room left; `resultsTokens` when no window is known. */
 export function fitWorkshopPassageSearchDirective(
-  result: PassageSearchReportResult,
+  result: PassageSearchResultView,
   window: Pick<CapabilityContextWindow, 'freeInputTokens'> | undefined
 ): WorkshopPassageSearchDirective {
   const of = result.instances.length;

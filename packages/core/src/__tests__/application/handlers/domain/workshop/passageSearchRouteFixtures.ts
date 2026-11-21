@@ -48,8 +48,12 @@ export function aliceResult(instances = 3, overrides: Partial<PassageSearchResul
     // eslint-disable-next-line @typescript-eslint/naming-convention -- the engine's kebab-case drop reasons.
     dropped: { 'quote-not-found': 1, 'quote-ambiguous': 0, malformed: 0, duplicate: 2 },
     overLimit: 0,
-    calls: { planned: 4, answered: 4, failed: 0, cut: 0, unsent: 0 },
-    files: { read: [{ key: 'f1', displayPath: CHAPTER, lines: 'document', instances }], leftOut: { unreadable: 0, unsplittable: 0, empty: 0 } },
+    calls: { planned: 4, answered: 4, failed: 0, cut: 0, cancelled: 0, unsent: 0 },
+    files: {
+      planned: [{ key: 'f1', displayPath: CHAPTER, lines: 'document', instances, chunks: { planned: 4, admitted: 4, answered: 4 }, searched: 'full' }],
+      searched: { full: 1, partial: 0, none: 0 },
+      leftOut: { unreadable: 0, unsplittable: 0, empty: 0 }
+    },
     ended: 'complete',
     ...overrides
   };
@@ -63,6 +67,7 @@ export function planOf(planKey: string): PassageSearchPlan {
     organize: true,
     systemMessage: '',
     chunkWords: 12_000,
+    ceilings: { readOutputTokens: 12_000, organizeOutputTokens: 4_000 },
     files: [],
     chunks: [],
     estimate: {
@@ -108,7 +113,12 @@ export function fakePassageSearch(): FakePassageSearch {
         });
       }
       return options?.signal?.aborted
-        ? { ...fake.result, ended: 'stopped' as const, calls: { ...fake.result.calls, answered: 2, unsent: 2 } }
+        ? {
+          ...fake.result,
+          ended: 'stopped' as const,
+          calls: { ...fake.result.calls, answered: 2, cancelled: 1, unsent: 1 },
+          files: { ...fake.result.files, searched: { full: 0, partial: 1, none: 0 } }
+        }
         : fake.result;
     }),
     listGroupFiles: jest.fn(async () => LISTED),

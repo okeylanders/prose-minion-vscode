@@ -176,6 +176,8 @@ describe('Workshop routes — a persona\'s passage search', () => {
     await settle();
 
     expect(answersOf(requestId).at(-1)).toEqual(expect.objectContaining({ outcome: 'finished', message: 'Stopped: 3 instances from 2 of 4 reads.' }));
+    // A call stopped in flight was not answered: the card counts it with the calls not made.
+    expect((await view() as { counts: { calls: unknown } }).counts.calls).toEqual({ planned: 4, answered: 2, failed: 0, cut: 0, unsent: 2 });
     expect(harness.service.continueConversation).not.toHaveBeenCalled();
     expect(requestTurns()).toHaveLength(0);
     expect(await view()).toEqual(expect.objectContaining({ status: 'ready', partial: true }));
@@ -185,7 +187,7 @@ describe('Workshop routes — a persona\'s passage search', () => {
     expect(sent.outcome).toBe('done');
     expect(search.run).toHaveBeenCalledTimes(1);
     expect(ledger().at(-1)!.passageSearchDelivery?.ended).toBe('stopped');
-    expect(lastDelivery()[1]).toContain('The search was stopped before every call was made.');
+    expect(lastDelivery()[1]).toContain('Ended early: Stopped before every call was answered.');
   });
 
   it('a room busy at the finish leaves the card ready, and Send delivers', async () => {
