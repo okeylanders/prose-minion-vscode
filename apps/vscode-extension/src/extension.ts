@@ -91,6 +91,10 @@ import {
   ContextPathSuggestionService,
   CraftFlagsUseCase,
   liveCatalogPrices,
+  liveCatalogFacts,
+  PassageSearchService,
+  PassageSearchScopeFiles,
+  ProjectPassageSearchEngine,
   liveCatalogReasoning,
   LightboxSetSourcePayload,
   CoreServices,
@@ -677,6 +681,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel
   );
 
+  // Passage Search (ADR 2026-11-20 D1): the one engine, on the manager-owned `passageSearch` scope. It reads
+  // scopes through the resolver's authoritative listing and prices a plan from the live catalog; callers own consent.
+  const passageSearchEngine = new ProjectPassageSearchEngine(
+    new PassageSearchScopeFiles({
+      listing: contextResourceResolver,
+      fileSystem: platform.fileSystem,
+      workspace: platform.workspace,
+      editor: editorContext
+    }),
+    new PassageSearchService(aiResourceManager, resourceLoader.getPromptLoader(), liveCatalogFacts(outputChannel), outputChannel),
+    outputChannel
+  );
+
   // Selected Text (ADR 2026-11-14 D11): the window's one snapshot cache, over the editor port.
   const editorSelectionSnapshots = new EditorSelectionSnapshots(editorContext, outputChannel);
   context.subscriptions.push(editorSelectionSnapshots);
@@ -728,6 +745,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     editorSelectionSnapshots,
     helperAgentService,
     contextPathSuggestions,
+    passageSearchEngine,
     workshopTranscriptRecallService,
     workshopSavedSessionTodos,
     contextPathProposals: { checker: contextPathChecker, settings: contextPathSettings }

@@ -246,6 +246,8 @@ export class AIResourceManager {
     const craftModel = selections.craft;
     // The helper agent's own engine (ADR 2026-11-05 D3): it follows Proofread's model until picked.
     const helperModel = selections.helper;
+    // Passage Search's own engine (ADR 2026-11-20 D14): it follows Category Search's model until picked.
+    const passageSearchModel = selections.passageSearch;
 
     // Create AI resources for each scope
     assistantEngine.attachProvider(
@@ -265,6 +267,7 @@ export class AIResourceManager {
     const proofreadResources = this.createResourceBundle(apiKey!, 'proofread', proofreadModel);
     const craftResources = this.createResourceBundle(apiKey!, 'craft', craftModel);
     const helperResources = this.createResourceBundle(apiKey!, 'helper', helperModel);
+    const passageSearchResources = this.createResourceBundle(apiKey!, 'passageSearch', passageSearchModel);
 
     this.aiResources = {
       assistant: assistantResources,
@@ -275,7 +278,8 @@ export class AIResourceManager {
       lightbox: lightboxResources,
       proofread: proofreadResources,
       craft: craftResources,
-      helper: helperResources
+      helper: helperResources,
+      passageSearch: passageSearchResources
     };
 
     // Note: Both statusCallback and tokenUsageCallback are passed in constructor
@@ -291,7 +295,8 @@ export class AIResourceManager {
       lightbox: lightboxModel,
       proofread: proofreadModel,
       craft: craftModel,
-      helper: helperModel
+      helper: helperModel,
+      passageSearch: passageSearchModel
     };
     this.initialized = true;
   }
@@ -303,7 +308,7 @@ export class AIResourceManager {
   /**
    * Get the manager-owned agent-run engine for a specific model scope.
    *
-   * @param scope - The model scope ('assistant', 'dictionary', 'context', 'category', 'widget', 'lightbox', 'proofread', 'craft', 'helper')
+   * @param scope - The model scope ('assistant', 'dictionary', 'context', 'category', 'widget', 'lightbox', 'proofread', 'craft', 'helper', 'passageSearch')
    * @returns AgentRunEngine if available, undefined otherwise
    */
   getEngine(scope: ModelScope): AgentRunEngine | undefined {

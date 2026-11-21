@@ -12,10 +12,8 @@ import type {
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { ContextPathGroup } from '@shared/types';
 import type { WorkshopResourceReadFile } from '@shared/types/workshopCapabilities';
-import {
-  configuredResourceFingerprint,
-  findConfiguredResource
-} from './WorkshopConfiguredResourceLookup';
+import { findConfiguredResource } from '@/application/services/ConfiguredResourceLookup';
+import { configuredResourceFingerprint } from './WorkshopConfiguredResourceLookup';
 
 /** Why a named file was not read at all. `line-too-long` is the packing's, not this module's. */
 export type WorkshopResourceFileFault =

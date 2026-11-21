@@ -278,3 +278,55 @@ describe('where each root member stood (Lightbox Slice 4K)', () => {
     });
   });
 });
+
+describe('salvageModelJson, asked to keep a cut array\'s items (ADR 2026-11-20 D8)', () => {
+  const first = '{"quote":"Down, down, down.","label":"falls"}';
+  const second = '{"quote":"Curiouser and curiouser!","label":"speaks"}';
+
+  it('keeps the items that finished before the cut, and names the array', () => {
+    expect(salvageModelJson(`{"instances":[${first},${second},{"quote":"Oh dear! Oh de`, { arrayItems: true })).toEqual({
+      root: { instances: [JSON.parse(first), JSON.parse(second)] },
+      repairs: ['missing-closing-bracket'],
+      cutKey: 'instances',
+      cutItemsKept: true
+    });
+  });
+
+  it('keeps finished root members before the array, and drops a comma left hanging', () => {
+    expect(salvageModelJson(`{"version":1,"instances":[${first},`, { arrayItems: true })).toEqual({
+      root: { version: 1, instances: [JSON.parse(first)] },
+      repairs: ['missing-closing-bracket'],
+      cutKey: 'instances',
+      cutItemsKept: true
+    });
+  });
+
+  it('drops the member as before when no item finished, or the cut member is not an array', () => {
+    expect(salvageModelJson('{"version":1,"instances":[{"quote":"Oh dear', { arrayItems: true })).toEqual({
+      root: { version: 1 },
+      repairs: ['missing-closing-bracket'],
+      cutKey: 'instances'
+    });
+    expect(salvageModelJson(`{"version":1,"template":{"beats":[${first},{"quote":"Oh`, { arrayItems: true })).toEqual({
+      root: { version: 1 },
+      repairs: ['missing-closing-bracket'],
+      cutKey: 'template'
+    });
+  });
+
+  it('never keeps a finished array\'s items in place of a later cut member', () => {
+    expect(salvageModelJson(`{"instances":[${first}],"note":"cut he`, { arrayItems: true })).toEqual({
+      root: { instances: [JSON.parse(first)] },
+      repairs: ['missing-closing-bracket'],
+      cutKey: 'note'
+    });
+  });
+
+  it('changes nothing unless asked', () => {
+    expect(salvageModelJson(`{"instances":[${first},{"quote":"Oh`)).toEqual({
+      root: {},
+      repairs: ['missing-closing-bracket'],
+      cutKey: 'instances'
+    });
+  });
+});

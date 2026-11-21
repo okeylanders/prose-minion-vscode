@@ -29,6 +29,7 @@
 import type { LightboxBoardShelf, LightboxSavedBoardSource, LightboxSavedBoardSummary, LightboxSnapshotState } from '@messages';
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 import { lightboxBoardSourceLabel } from '@shared/constants/lightboxBoardName';
+import { formatApproximateUsd } from '@shared/utils/approximateUsd';
 import { groupSavedItemsByDate, type SavedItemGroup } from '@utils/savedItemGroups';
 
 export interface LightboxBoardRow {
@@ -339,7 +340,8 @@ function lensesNote(count: number): string {
 }
 
 function costNote(costUsd: number): string {
-  return costUsd < 0.005 ? 'under $0.01' : `≈ $${costUsd.toFixed(2)}`;
+  // Its own words for a cost that rounds to nothing; the amount is the shared formatter's.
+  return costUsd < 0.005 ? 'under $0.01' : formatApproximateUsd(costUsd);
 }
 
 /** How the board's surfaces tell a time: "Oct 23, 2026, 9:08 AM", in `timeZone` (the viewer's own when absent). */

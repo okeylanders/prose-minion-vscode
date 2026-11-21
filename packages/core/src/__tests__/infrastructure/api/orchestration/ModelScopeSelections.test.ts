@@ -76,7 +76,8 @@ describe('resolveModelScopeSelections: the Lightbox model scope (Slice 4L)', () 
       lightbox: defaults.assistant,
       proofread: DEFAULT_PROOFREAD_MODEL,
       craft: defaults.assistant,
-      helper: DEFAULT_PROOFREAD_MODEL
+      helper: DEFAULT_PROOFREAD_MODEL,
+      passageSearch: DEFAULT_CATEGORY_MODEL
     });
   });
 });
@@ -96,7 +97,7 @@ describe('resolveModelScopeSelections: the Craft Flags model scope (Draft Edit S
   it('runs on its own model once picked, apart from the Lightbox\'s, and the assistant model never moves it', () => {
     const values: Record<string, unknown> = { assistantModel: WORKSHOP, craftModel: ` ${CRAFT} ` };
     expect(resolveModelScopeSelections(settingsOf(values))).toMatchObject({ assistant: WORKSHOP, lightbox: WORKSHOP, craft: CRAFT });
-    expect(followingModelScopes(settingsOf(values))).toEqual(['lightbox', 'helper']);
+    expect(followingModelScopes(settingsOf(values))).toEqual(['lightbox', 'helper', 'passageSearch']);
 
     values.assistantModel = 'placeholder/workshop-model-next';
     expect(resolveModelScopeSelections(settingsOf(values)).craft).toBe(CRAFT);
@@ -163,10 +164,14 @@ describe('resolveModelScopeSelections: the helper model scope (ADR 2026-11-05 D3
 
 describe('the following scopes', () => {
   it('reports which scopes have no model of their own', () => {
-    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP }))).toEqual(['lightbox', 'craft', 'helper']);
-    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP, lightboxModel: LIGHTBOX }))).toEqual(['craft', 'helper']);
+    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP }))).toEqual(['lightbox', 'craft', 'helper', 'passageSearch']);
+    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP, lightboxModel: LIGHTBOX }))).toEqual(['craft', 'helper', 'passageSearch']);
     expect(followingModelScopes(settingsOf({
       assistantModel: WORKSHOP, lightboxModel: LIGHTBOX, craftModel: 'placeholder/craft-model', helperModel: 'placeholder/helper-model'
+    }))).toEqual(['passageSearch']);
+    expect(followingModelScopes(settingsOf({
+      assistantModel: WORKSHOP, lightboxModel: LIGHTBOX, craftModel: 'placeholder/craft-model', helperModel: 'placeholder/helper-model',
+      passageSearchModel: 'placeholder/passage-model'
     }))).toEqual([]);
     expect(ownFollowingModel(settingsOf({ lightboxModel: 42 }), 'lightbox')).toBeUndefined();
   });
@@ -181,16 +186,31 @@ describe('the following scopes', () => {
       lightbox: 'lightboxModel',
       proofread: 'proofreadModel',
       craft: 'craftModel',
-      helper: 'helperModel'
+      helper: 'helperModel',
+      passageSearch: 'passageSearchModel'
     });
-    expect(MODEL_SCOPE_FOLLOWS).toEqual({ lightbox: 'assistant', craft: 'assistant', helper: 'proofread' });
-    expect(['lightbox', 'craft', 'helper', 'assistant', 'proofread', 'widget', 'toString', undefined].map(isFollowingModelScope))
-      .toEqual([true, true, true, false, false, false, false, false]);
+    expect(MODEL_SCOPE_FOLLOWS).toEqual({ lightbox: 'assistant', craft: 'assistant', helper: 'proofread', passageSearch: 'category' });
+    expect(['lightbox', 'craft', 'helper', 'passageSearch', 'assistant', 'proofread', 'widget', 'toString', undefined].map(isFollowingModelScope))
+      .toEqual([true, true, true, true, false, false, false, false, false]);
   });
 
   it('never follows a following scope, so one lookup always names an own scope\'s model', () => {
     for (const followed of Object.values(MODEL_SCOPE_FOLLOWS)) {
       expect(isFollowingModelScope(followed)).toBe(false);
     }
+  });
+});
+
+describe('resolveModelScopeSelections: the Passage Search model scope (ADR 2026-11-20 D14)', () => {
+  it('follows Category Search\'s model until picked, and moves when that one does', () => {
+    expect(resolveModelScopeSelections(settingsOf({})).passageSearch).toBe(DEFAULT_CATEGORY_MODEL);
+    expect(resolveModelScopeSelections(settingsOf({ categoryModel: 'placeholder/category-model' })).passageSearch).toBe('placeholder/category-model');
+  });
+
+  it('runs on its own model once picked, and never changes Category Search\'s', () => {
+    const selections = resolveModelScopeSelections(settingsOf({ categoryModel: 'placeholder/category-model', passageSearchModel: ' placeholder/passage-model ' }));
+    expect(selections.passageSearch).toBe('placeholder/passage-model');
+    expect(selections.category).toBe('placeholder/category-model');
+    expect(followingModelScopes(settingsOf({ passageSearchModel: 'placeholder/passage-model' }))).not.toContain('passageSearch');
   });
 });

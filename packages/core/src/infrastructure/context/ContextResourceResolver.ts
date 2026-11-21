@@ -15,6 +15,7 @@ import {
   ContextResourceProvider,
   ContextResourceSummary
 } from '@/domain/models/ContextGeneration';
+import { distinctContextGroupFiles } from '@/infrastructure/context/ContextGroupFiles';
 
 type MatchMode = 'browse' | 'browse-counts' | 'authoritative' | 'check';
 
@@ -145,7 +146,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
    * only, never a pattern, path or host message (N-01). The catalog
    * (`createProvider`) keeps its tolerant, best-effort walk for browsing.
    */
-  async listCandidates(groups: ContextPathGroup[]): Promise<ContextResourceCandidate[]> {
+  async listCandidates(groups: ContextPathGroup[], patternsFor?: (group: ContextPathGroup) => readonly string[]): Promise<ContextResourceCandidate[]> {
     const candidates: ContextResourceCandidate[] = [];
     let excluded = 0;
     await this.forEachMatch(groups, 'authoritative', (group, folder, match, sizeBytes) => {
@@ -160,11 +161,25 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
       }
     }, () => {
       excluded += 1;
-    });
+    }, patternsFor);
     this.outputChannel?.appendLine(
       `[ContextResourceResolver] Candidate read: ${candidates.length} candidate(s), ${excluded} excluded match(es).`
     );
     return candidates;
+  }
+
+  /**
+   * Every file of each group, root-aware, for a search (ADR 2026-11-20 D3a):
+   * the authoritative candidate read, each file once per group it is in. A
+   * failed scan rejects, never returning fewer files.
+   */
+  async listGroupFiles(groups: ContextPathGroup[]): Promise<ContextResourceCandidate[]> {
+    return distinctContextGroupFiles(await this.listCandidates(groups));
+  }
+
+  /** The same authoritative walk over writer-typed patterns (D3): the caller has refused unsafe forms first. */
+  async listPatternFiles(patterns: readonly string[]): Promise<ContextResourceCandidate[]> {
+    return distinctContextGroupFiles(await this.listCandidates(['general'], () => patterns));
   }
 
   /**
