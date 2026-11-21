@@ -4,17 +4,17 @@
  * Estimate shows the calls and the approximate price; Run sends exactly
  * that; Stop keeps what was found.
  *
- * The panel owns no transport of its own but Copy and Save, which post the
- * report as every sidebar tool does. Everything else is `usePassageSearch`.
+ * The panel owns no transport: everything is `usePassageSearch`. Copy and
+ * Save name the result by id, and the host writes the report (PR #294).
+ * The result box says the question it was searched for, since the question
+ * field stays free to edit.
  */
 
 import * as React from 'react';
-import { MessageType } from '@messages';
 import { Icon } from '@components/shared/Icon';
 import { PassageSearchScopeControls } from '@components/search/passage/PassageSearchScopeControls';
 import { PassageSearchResult } from '@components/search/passage/PassageSearchResult';
 import { UsePassageSearchReturn } from '@hooks/domain/usePassageSearch';
-import { formatPassageSearchReport } from '@shared/utils/passageSearchReport';
 import {
   passageSearchEstimateDetails,
   passageSearchEstimateLine,
@@ -22,18 +22,19 @@ import {
   passageSearchOrganizeSample,
   passageSearchProgressLine
 } from '@shared/utils/passageSearchWords';
-import { passageSearchAnnouncement, passageSearchEstimateBlocked, passageSearchRunBlocked } from '@utils/passageSearchPanel';
-import { VSCodeAPI } from '../../types/vscode';
+import {
+  passageSearchAnnouncement,
+  passageSearchEstimateBlocked,
+  passageSearchReportNotice,
+  passageSearchRunBlocked
+} from '@utils/passageSearchPanel';
 
 interface PassageSearchPanelProps {
-  vscode: VSCodeAPI;
   passageSearch: UsePassageSearchReturn;
 }
 
-const SOURCE = 'webview.search.passage';
-
-export const PassageSearchPanel: React.FC<PassageSearchPanelProps> = ({ vscode, passageSearch }) => {
-  const { question, scopes, organize, plan, run, result, runRefusal, organizeOffer, openRefusal } = passageSearch;
+export const PassageSearchPanel: React.FC<PassageSearchPanelProps> = ({ passageSearch }) => {
+  const { question, scopes, organize, plan, run, result, runRefusal, organizeOffer, openRefusal, reportOutcome } = passageSearch;
   const running = run.status === 'running';
   const estimateBlocked = passageSearchEstimateBlocked(passageSearch);
   const runBlocked = passageSearchRunBlocked(passageSearch);
@@ -50,22 +51,6 @@ export const PassageSearchPanel: React.FC<PassageSearchPanelProps> = ({ vscode, 
       passageSearch.runSearch();
     }
   }, [runBlocked, passageSearch.runSearch]);
-
-  const postReport = React.useCallback((type: MessageType.COPY_RESULT | MessageType.SAVE_RESULT) => {
-    if (!result) {
-      return;
-    }
-    vscode.postMessage({
-      type,
-      source: SOURCE,
-      payload: {
-        toolName: 'passage_search',
-        content: formatPassageSearchReport(result),
-        ...(type === MessageType.SAVE_RESULT ? { metadata: { timestamp: Date.now() } } : {})
-      },
-      timestamp: Date.now()
-    });
-  }, [result, vscode]);
 
   return (
     <>
@@ -156,14 +141,20 @@ export const PassageSearchPanel: React.FC<PassageSearchPanelProps> = ({ vscode, 
 
       {result && !running && (
         <div className="result-box">
+          {/* The question this result answers: the field above may have moved on. */}
+          <p className="pm-ps-asked"><span className="pm-ps-asked-label">Results for:</span> {result.question}</p>
           <div className="result-action-bar">
-            <button className="icon-button" onClick={() => postReport(MessageType.COPY_RESULT)} title="Copy passage search report" aria-label="Copy passage search report">
+            <button className="icon-button" onClick={passageSearch.copyReport} title="Copy passage search report" aria-label="Copy passage search report">
               <Icon name="copy" size={14} />
             </button>
-            <button className="icon-button" onClick={() => postReport(MessageType.SAVE_RESULT)} title="Save passage search report" aria-label="Save passage search report">
+            <button className="icon-button" onClick={passageSearch.saveReport} title="Save passage search report" aria-label="Save passage search report">
               <Icon name="save" size={14} />
             </button>
           </div>
+
+          {reportOutcome && (
+            <p className={reportOutcome.status === 'refused' ? 'pm-ps-refusal' : 'pm-ps-meta'} role="status">{passageSearchReportNotice(reportOutcome)}</p>
+          )}
 
           {result.canOrganize && organize && (
             <div className="pm-ps-organize">

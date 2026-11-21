@@ -151,11 +151,21 @@ export const SCOPES = { activeFile: true, selection: false, groups: ['chapters']
 export function passageSearchRouteHost() {
   const postMessage = jest.fn().mockResolvedValue(undefined);
   const openFileInEditor = jest.fn().mockResolvedValue(undefined);
+  const copyToClipboard = jest.fn().mockResolvedValue(undefined);
+  const createDirectory = jest.fn().mockResolvedValue(undefined);
+  const writeFile = jest.fn().mockResolvedValue(undefined);
+  const workspaceFolders = jest.fn(() => [{ path: '/home/dodgson/novel', name: 'novel', uriString: 'file:///home/dodgson/novel' }]);
   const appendLine = jest.fn();
   const log = { appendLine, show: jest.fn(), clear: jest.fn() } as unknown as LogSink;
   const engine = fakePassageSearchEngine();
   const router = new MessageRouter();
-  const route = new PassageSearchRoute({ engine, shell: { openFileInEditor } }, postMessage, log);
+  const route = new PassageSearchRoute({
+    engine,
+    shell: { openFileInEditor, copyToClipboard },
+    fileSystem: { createDirectory, writeFile },
+    workspace: { workspaceFolders },
+    now: () => new Date(2026, 10, 21, 9, 5, 7)
+  }, postMessage, log);
   route.registerRoutes(router);
 
   const send = (type: MessageType, payload: unknown): Promise<void> =>
@@ -193,7 +203,7 @@ export function passageSearchRouteHost() {
     return answer.result.resultId;
   };
 
-  return { router, route, engine, postMessage, openFileInEditor, send, posted, plans, results, logs, planRequest, planned, finished };
+  return { router, route, engine, postMessage, openFileInEditor, copyToClipboard, createDirectory, writeFile, workspaceFolders, send, posted, plans, results, logs, planRequest, planned, finished };
 }
 
 export type PassageSearchRouteHost = ReturnType<typeof passageSearchRouteHost>;

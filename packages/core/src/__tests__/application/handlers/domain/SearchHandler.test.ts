@@ -59,17 +59,19 @@ describe('SearchHandler', () => {
       };
       handler = new SearchHandler(
         {} as any, postMessage as any, outputChannel as any, {} as any, {} as any,
-        { engine: engine as any, shell: { openFileInEditor: jest.fn() } }
+        { engine: engine as any, shell: { openFileInEditor: jest.fn(), copyToClipboard: jest.fn() }, fileSystem: {} as any, workspace: {} as any }
       );
       handler.registerRoutes(router);
-      expect(router.handlerCount).toBe(9);
+      expect(router.handlerCount).toBe(11);
       for (const type of [
         MessageType.PASSAGE_SEARCH_PLAN_REQUEST,
         MessageType.PASSAGE_SEARCH_RUN,
         MessageType.PASSAGE_SEARCH_STOP,
         MessageType.PASSAGE_SEARCH_OPEN_INSTANCE,
         MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN_REQUEST,
-        MessageType.PASSAGE_SEARCH_ORGANIZE_RUN
+        MessageType.PASSAGE_SEARCH_ORGANIZE_RUN,
+        MessageType.PASSAGE_SEARCH_COPY_REPORT,
+        MessageType.PASSAGE_SEARCH_SAVE_REPORT
       ]) {
         expect(router.hasHandler(type)).toBe(true);
       }

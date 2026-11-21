@@ -213,7 +213,7 @@ export class FileOperationsHandler {
       lines.push(context || '(No context provided.)', '', '---', '', content.trim());
 
       fileContent = lines.join('\n');
-    } else if (toolName === 'prose_stats' || toolName === 'style_flags' || toolName === 'word_frequency' || toolName === 'word_search' || toolName === 'category_search' || toolName === 'passage_search') {
+    } else if (toolName === 'prose_stats' || toolName === 'style_flags' || toolName === 'word_frequency' || toolName === 'word_search' || toolName === 'category_search') {
       targetDir = path.join(rootPath, 'prose-minion', 'reports');
       await this.fileSystem.createDirectory(targetDir);
       const now = new Date();

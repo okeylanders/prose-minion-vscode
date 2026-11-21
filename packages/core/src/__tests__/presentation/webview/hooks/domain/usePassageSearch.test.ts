@@ -309,6 +309,59 @@ describe('usePassageSearch', () => {
     });
   });
 
+  describe('copy and save the report (PR #294)', () => {
+    const withResult = () => {
+      const hook = mounted();
+      const runId = running(hook);
+      act(() => hook.result.current.handleResult(resultAnswer({ requestId: runId, status: 'finished', result: RESULT })));
+      return hook;
+    };
+    const reportAnswer = (payload: Record<string, unknown>) => envelope(MessageType.PASSAGE_SEARCH_REPORT_RESULT, payload);
+
+    it('sends the result id only, never the report', () => {
+      const hook = withResult();
+      act(() => hook.result.current.copyReport());
+      act(() => hook.result.current.saveReport());
+      const copy = sent(MessageType.PASSAGE_SEARCH_COPY_REPORT);
+      const save = sent(MessageType.PASSAGE_SEARCH_SAVE_REPORT);
+      expect(copy).toEqual([{ requestId: expect.any(String), resultId: 'result-1' }]);
+      expect(save).toEqual([{ requestId: expect.any(String), resultId: 'result-1' }]);
+      expect(sent(MessageType.COPY_RESULT)).toEqual([]);
+      expect(sent(MessageType.SAVE_RESULT)).toEqual([]);
+    });
+
+    it('takes only the newest request\'s answer', () => {
+      const hook = withResult();
+      act(() => hook.result.current.copyReport());
+      act(() => hook.result.current.saveReport());
+      const copyId = sent(MessageType.PASSAGE_SEARCH_COPY_REPORT)[0].requestId as string;
+      const saveId = sent(MessageType.PASSAGE_SEARCH_SAVE_REPORT)[0].requestId as string;
+      act(() => hook.result.current.handleReportResult(reportAnswer({ requestId: copyId, status: 'copied' })));
+      expect(hook.result.current.reportOutcome).toBeUndefined();
+      act(() => hook.result.current.handleReportResult(reportAnswer({ requestId: saveId, status: 'saved', filePath: 'prose-minion/reports/passage-search-20261121-090507.md', opened: true })));
+      expect(hook.result.current.reportOutcome).toEqual({ status: 'saved', filePath: 'prose-minion/reports/passage-search-20261121-090507.md', opened: true });
+    });
+
+    it('shows a refusal, and forgets an outcome when a new result lands', () => {
+      const hook = withResult();
+      act(() => hook.result.current.copyReport());
+      const copyId = sent(MessageType.PASSAGE_SEARCH_COPY_REPORT)[0].requestId as string;
+      act(() => hook.result.current.handleReportResult(reportAnswer({ requestId: copyId, status: 'refused', message: 'These results are no longer held. Run the search again.' })));
+      expect(hook.result.current.reportOutcome).toEqual({ status: 'refused', message: 'These results are no longer held. Run the search again.' });
+      const nextRun = running(hook);
+      expect(hook.result.current.reportOutcome).toBeUndefined();
+      act(() => hook.result.current.handleResult(resultAnswer({ requestId: nextRun, status: 'finished', result: { ...RESULT, resultId: 'result-2' } })));
+      expect(hook.result.current.reportOutcome).toBeUndefined();
+    });
+
+    it('asks nothing with no result on screen', () => {
+      const hook = mounted();
+      act(() => hook.result.current.copyReport());
+      act(() => hook.result.current.saveReport());
+      expect(vscode.postMessage).not.toHaveBeenCalled();
+    });
+  });
+
   describe('organize these results', () => {
     const organizeEstimate = { model: 'test/reader', calls: 1, inputTokens: 900, outputTokens: 1200, usd: 0.03, instances: { read: 3, of: 3 } };
     const stopped = (canOrganize: boolean) => {

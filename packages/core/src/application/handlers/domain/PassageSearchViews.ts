@@ -17,6 +17,7 @@ import type {
 } from '@messages';
 import { CONTEXT_PATH_GROUPS, type ContextPathGroup } from '@shared/types/context';
 import type { PassageSearchRequest, PassageSearchScope } from '@/application/services/passageSearch/PassageSearchRequest';
+import { passageSearchDisplayLabel } from '@/application/services/passageSearch/PassageSearchScopeFiles';
 import type { PassageSearchEstimate, PassageSearchResult } from '@services/search/passage/PassageSearchContracts';
 import type { PassageSearchOrganizePlan } from '@services/search/passage/PassageSearchOrganizer';
 import { describePassageSearchEnding, describePassageSearchLeftOut } from '@services/search/passage/PassageSearchRefusals';
@@ -123,7 +124,8 @@ export function passageSearchResultView(result: PassageSearchResult, resultId: s
       const file = files.get(instance.file);
       return {
         number: instance.number,
-        file: instance.displayPath,
+        // The engine already keeps a real path out of a display path; this holds it at the boundary too.
+        file: passageSearchDisplayLabel(instance.displayPath, file?.absolutePath),
         line: instance.line,
         lines: file?.lines ?? 'text',
         canOpen: file?.absolutePath !== undefined,

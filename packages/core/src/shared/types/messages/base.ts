@@ -36,6 +36,9 @@ export enum MessageType {
   PASSAGE_SEARCH_ORGANIZE_PLAN_REQUEST = 'passage_search_organize_plan_request',
   PASSAGE_SEARCH_ORGANIZE_PLAN = 'passage_search_organize_plan',
   PASSAGE_SEARCH_ORGANIZE_RUN = 'passage_search_organize_run',
+  PASSAGE_SEARCH_COPY_REPORT = 'passage_search_copy_report',
+  PASSAGE_SEARCH_SAVE_REPORT = 'passage_search_save_report',
+  PASSAGE_SEARCH_REPORT_RESULT = 'passage_search_report_result',
 
   // Metrics source helpers
   REQUEST_ACTIVE_FILE = 'request_active_file',

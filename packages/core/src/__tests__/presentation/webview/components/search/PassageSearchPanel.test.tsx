@@ -13,7 +13,6 @@ import { SearchTab } from '@components/tabs/SearchTab';
 import { PassageSearchState, usePassageSearch, UsePassageSearchReturn } from '@hooks/domain/usePassageSearch';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { MessageType, PassageSearchEstimateView, PassageSearchResultView } from '@messages';
-import { formatPassageSearchReport } from '@shared/utils/passageSearchReport';
 import { passageSearchAnnouncement, passageSearchEstimateBlocked, passageSearchRunBlocked } from '@utils/passageSearchPanel';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 import { ESTIMATE, RESULT } from '@/__tests__/shared/utils/passageSearchViewFixtures';
@@ -33,7 +32,7 @@ describe('PassageSearchPanel', () => {
   // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
   function Harness() {
     hook = usePassageSearch();
-    return <PassageSearchPanel vscode={vscode} passageSearch={hook} />;
+    return <PassageSearchPanel passageSearch={hook} />;
   }
 
   const sent = (type: MessageType): Array<Record<string, any>> =>
@@ -265,13 +264,57 @@ describe('PassageSearchPanel', () => {
       expect(screen.queryByRole('region', { name: 'Instances' })).toBeNull();
     });
 
-    it('copies and saves the shared Markdown report as passage_search', () => {
+    it('copies and saves by the result\'s id, sending no report text, and says how each ended', () => {
       finish();
       fireEvent.click(button('Copy passage search report'));
+      const [copy] = sent(MessageType.PASSAGE_SEARCH_COPY_REPORT);
+      expect(copy).toEqual({ requestId: expect.any(String), resultId: 'result-1' });
+      act(() => hook.handleReportResult(answer(MessageType.PASSAGE_SEARCH_REPORT_RESULT, { requestId: copy.requestId, status: 'copied' })));
+      expect(screen.getByText('Report copied.')).toBeTruthy();
+
       fireEvent.click(button('Save passage search report'));
-      const report = formatPassageSearchReport(RESULT);
-      expect(sent(MessageType.COPY_RESULT)).toEqual([{ toolName: 'passage_search', content: report }]);
-      expect(sent(MessageType.SAVE_RESULT)).toEqual([{ toolName: 'passage_search', content: report, metadata: { timestamp: expect.any(Number) } }]);
+      const [save] = sent(MessageType.PASSAGE_SEARCH_SAVE_REPORT);
+      expect(save).toEqual({ requestId: expect.any(String), resultId: 'result-1' });
+      act(() => hook.handleReportResult(answer(MessageType.PASSAGE_SEARCH_REPORT_RESULT, {
+        requestId: save.requestId, status: 'saved', filePath: 'prose-minion/reports/passage-search-20261121-090507.md', opened: false
+      })));
+      expect(screen.getByText('Report saved to prose-minion/reports/passage-search-20261121-090507.md, but it could not be opened.')).toBeTruthy();
+
+      expect(sent(MessageType.COPY_RESULT)).toEqual([]);
+      expect(sent(MessageType.SAVE_RESULT)).toEqual([]);
+      expect(JSON.stringify(vscode.postMessage.mock.calls.slice(-2))).not.toContain('waistcoat');
+    });
+
+    it('says in the host\'s words when a report could not be written', () => {
+      finish();
+      fireEvent.click(button('Save passage search report'));
+      const requestId = sent(MessageType.PASSAGE_SEARCH_SAVE_REPORT)[0].requestId;
+      act(() => hook.handleReportResult(answer(MessageType.PASSAGE_SEARCH_REPORT_RESULT, { requestId, status: 'refused', message: 'The report could not be saved.' })));
+      expect(screen.getByText('The report could not be saved.')).toBeTruthy();
+    });
+  });
+
+  describe('the question a result answers (PR #294)', () => {
+    const QUESTION_B = 'Where does the Cheshire Cat grin?';
+    const resultsFor = () => screen.getByText('Results for:').parentElement?.textContent;
+
+    it('shows the result\'s own question when the field changed while the search ran', () => {
+      const requestId = run();
+      fireEvent.change(screen.getByLabelText('Question'), { target: { value: QUESTION_B } });
+      act(() => hook.handleResult(answer(MessageType.PASSAGE_SEARCH_RESULT, { requestId, status: 'finished', result: RESULT })));
+
+      expect((screen.getByLabelText('Question') as HTMLTextAreaElement).value).toBe(QUESTION_B);
+      expect(resultsFor()).toBe(`Results for: ${QUESTION}`);
+    });
+
+    it('keeps showing the result\'s own question when the field is edited afterwards, and exports that result', () => {
+      finish();
+      fireEvent.change(screen.getByLabelText('Question'), { target: { value: QUESTION_B } });
+
+      expect(resultsFor()).toBe(`Results for: ${QUESTION}`);
+      expect(screen.getByRole('heading', { name: 'The Rabbit checks the time whenever Alice is watching' })).toBeTruthy();
+      fireEvent.click(button('Copy passage search report'));
+      expect(sent(MessageType.PASSAGE_SEARCH_COPY_REPORT)[0].resultId).toBe('result-1');
     });
   });
 

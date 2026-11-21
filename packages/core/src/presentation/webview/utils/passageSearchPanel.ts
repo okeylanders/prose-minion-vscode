@@ -7,7 +7,7 @@
  */
 
 import type { PassageSearchScopeChoices } from '@messages';
-import type { PassageSearchState } from '@hooks/domain/usePassageSearch';
+import type { PassageSearchReportOutcome, PassageSearchState } from '@hooks/domain/usePassageSearch';
 import { passageSearchProgressLine, passageSearchSummary } from '@shared/utils/passageSearchWords';
 
 type PanelState = Pick<PassageSearchState, 'question' | 'scopes' | 'plan' | 'run' | 'result' | 'runRefusal' | 'organizeOffer'>;
@@ -72,4 +72,16 @@ export function passageSearchAnnouncement(state: PanelState): string {
     return state.result.endedMessage ? `${summary}${summary.endsWith('.') ? '' : '.'} ${state.result.endedMessage}` : summary;
   }
   return '';
+}
+
+/** How a Copy or Save ended, in words; a report saved but not opened says both. */
+export function passageSearchReportNotice(outcome: PassageSearchReportOutcome): string {
+  switch (outcome.status) {
+    case 'copied':
+      return 'Report copied.';
+    case 'saved':
+      return outcome.opened ? `Report saved to ${outcome.filePath}.` : `Report saved to ${outcome.filePath}, but it could not be opened.`;
+    case 'refused':
+      return outcome.message;
+  }
 }

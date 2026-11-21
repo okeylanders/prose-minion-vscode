@@ -281,7 +281,7 @@ export class MessageHandler {
       outputChannel,
       textSourceResolver,
       categorySearchService,
-      { engine: this.services.passageSearchEngine, shell: this.platform.shell }
+      { engine: this.services.passageSearchEngine, shell: this.platform.shell, fileSystem: this.platform.fileSystem, workspace: this.platform.workspace }
     );
 
     this.configurationHandler = new ConfigurationHandler(

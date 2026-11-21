@@ -76,7 +76,7 @@ export const SearchTab = React.memo<SearchTabProps>(({
       )}
 
       {activeSubtool === 'passage' && (
-        <PassageSearchPanel vscode={vscode} passageSearch={passageSearch} />
+        <PassageSearchPanel passageSearch={passageSearch} />
       )}
     </div>
   );

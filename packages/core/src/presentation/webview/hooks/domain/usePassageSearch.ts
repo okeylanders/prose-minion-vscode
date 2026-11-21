@@ -9,7 +9,8 @@
  *   scope or the organize toggle drops the shown plan, and stops waiting for
  *   one still on its way.
  * - **Text never leaves the webview** but the question, the path or pattern
- *   field and the scope choices. An instance is opened by its number.
+ *   field and the scope choices. An instance is opened by its number, and a
+ *   report is copied or saved by the result's id: the host writes it.
  * - **Only UI preferences persist:** the scope choices and the "Organize the
  *   results" toggle. The question, the plan and the result are never put in
  *   `setState`.
@@ -25,6 +26,8 @@ import {
   PassageSearchPlanMessage,
   PassageSearchProgressMessage,
   PassageSearchProgressPayload,
+  PassageSearchReportResultMessage,
+  PassageSearchReportResultPayload,
   PassageSearchResultMessage,
   PassageSearchResultView,
   PassageSearchScopeChoices
@@ -51,6 +54,23 @@ export type PassageSearchOrganizeOffer =
   | { status: 'planned'; organizePlanId: string; estimate: PassageSearchOrganizeEstimateView }
   | { status: 'refused'; message: string };
 
+/** What the host said of the newest Copy or Save. */
+export type PassageSearchReportOutcome =
+  | { status: 'copied' }
+  | { status: 'saved'; filePath: string; opened: boolean }
+  | { status: 'refused'; message: string };
+
+const reportOutcomeOf = (payload: PassageSearchReportResultPayload): PassageSearchReportOutcome => {
+  switch (payload.status) {
+    case 'copied':
+      return { status: 'copied' };
+    case 'saved':
+      return { status: 'saved', filePath: payload.filePath, opened: payload.opened };
+    default:
+      return { status: 'refused', message: payload.message };
+  }
+};
+
 export interface PassageSearchState {
   question: string;
   scopes: PassageSearchScopeChoices;
@@ -66,6 +86,8 @@ export interface PassageSearchState {
   organizeOffer: PassageSearchOrganizeOffer;
   /** Why the last instance could not be opened, in host words. */
   openRefusal?: string;
+  /** How the newest Copy or Save of the report on screen ended. */
+  reportOutcome?: PassageSearchReportOutcome;
 }
 
 export interface PassageSearchActions {
@@ -81,6 +103,11 @@ export interface PassageSearchActions {
   openInstance: (instance: number) => void;
   requestOrganizeEstimate: () => void;
   runOrganize: () => void;
+  /** Ask the host to copy the report of the result on screen. Sends its id, never the report. */
+  copyReport: () => void;
+  /** Ask the host to save the report of the result on screen. Sends its id, never the report. */
+  saveReport: () => void;
+  handleReportResult: (message: PassageSearchReportResultMessage) => void;
   handlePlan: (message: PassageSearchPlanMessage) => void;
   handleProgress: (message: PassageSearchProgressMessage) => void;
   handleResult: (message: PassageSearchResultMessage) => void;
@@ -127,6 +154,7 @@ export const usePassageSearch = (): UsePassageSearchReturn => {
   const [runRefusal, setRunRefusal] = React.useState<string | undefined>(undefined);
   const [organizeOffer, setOrganizeOffer] = React.useState<PassageSearchOrganizeOffer>(NO_OFFER);
   const [openRefusal, setOpenRefusal] = React.useState<string | undefined>(undefined);
+  const [reportOutcome, setReportOutcome] = React.useState<PassageSearchReportOutcome | undefined>(undefined);
 
   // Request ids: this webview's prefix, so a reloaded webview never takes an answer meant for the one before it.
   const idPrefix = React.useRef(`ps-${Math.random().toString(36).slice(2, 10)}`);
@@ -135,6 +163,7 @@ export const usePassageSearch = (): UsePassageSearchReturn => {
   const pendingRun = React.useRef<string | undefined>(undefined);
   const pendingOrganizePlan = React.useRef<string | undefined>(undefined);
   const pendingOpen = React.useRef<string | undefined>(undefined);
+  const pendingReport = React.useRef<string | undefined>(undefined);
 
   const mint = React.useCallback((): string => {
     minted.current += 1;
@@ -208,6 +237,8 @@ export const usePassageSearch = (): UsePassageSearchReturn => {
     setRun({ status: 'running', kind: 'search', stopping: false });
     setRunRefusal(undefined);
     setOpenRefusal(undefined);
+    setReportOutcome(undefined);
+    pendingReport.current = undefined;
     setOrganizeOffer(NO_OFFER);
     post(MessageType.PASSAGE_SEARCH_RUN, { requestId, planId: plan.planId });
   }, [mint, plan, post]);
@@ -239,6 +270,9 @@ export const usePassageSearch = (): UsePassageSearchReturn => {
     setRun(IDLE);
     setOrganizeOffer(NO_OFFER);
     if (payload.status === 'finished') {
+      // A report outcome was the earlier result's; it says nothing of this one.
+      pendingReport.current = undefined;
+      setReportOutcome(undefined);
       setResult(payload.result);
       return;
     }
@@ -302,6 +336,28 @@ export const usePassageSearch = (): UsePassageSearchReturn => {
     post(MessageType.PASSAGE_SEARCH_ORGANIZE_RUN, { requestId, resultId: result.resultId, organizePlanId: organizeOffer.organizePlanId });
   }, [mint, organizeOffer, post, result]);
 
+  const requestReport = React.useCallback((type: MessageType.PASSAGE_SEARCH_COPY_REPORT | MessageType.PASSAGE_SEARCH_SAVE_REPORT) => {
+    if (!result) {
+      return;
+    }
+    const requestId = mint();
+    pendingReport.current = requestId;
+    setReportOutcome(undefined);
+    post(type, { requestId, resultId: result.resultId });
+  }, [mint, post, result]);
+
+  const copyReport = React.useCallback(() => requestReport(MessageType.PASSAGE_SEARCH_COPY_REPORT), [requestReport]);
+  const saveReport = React.useCallback(() => requestReport(MessageType.PASSAGE_SEARCH_SAVE_REPORT), [requestReport]);
+
+  const handleReportResult = React.useCallback((message: PassageSearchReportResultMessage) => {
+    const payload = message.payload;
+    if (!payload || pendingReport.current === undefined || payload.requestId !== pendingReport.current) {
+      return;
+    }
+    pendingReport.current = undefined;
+    setReportOutcome(reportOutcomeOf(payload));
+  }, []);
+
   const persistedState = React.useMemo<PassageSearchPersistence>(
     () => ({ passageSearchScopes: scopes, passageSearchOrganize: organize }),
     [organize, scopes]
@@ -318,6 +374,7 @@ export const usePassageSearch = (): UsePassageSearchReturn => {
     runRefusal,
     organizeOffer,
     openRefusal,
+    reportOutcome,
 
     // Actions
     setQuestion,
@@ -332,6 +389,9 @@ export const usePassageSearch = (): UsePassageSearchReturn => {
     openInstance,
     requestOrganizeEstimate,
     runOrganize,
+    copyReport,
+    saveReport,
+    handleReportResult,
     handlePlan,
     handleProgress,
     handleResult,

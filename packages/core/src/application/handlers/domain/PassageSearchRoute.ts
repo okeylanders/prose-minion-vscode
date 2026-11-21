@@ -15,6 +15,9 @@
  *   instance by number, never a path: the file and line are read here.
  * - **Organize these results** is its own two-step press: price the pass
  *   over the held result, then make exactly that pass.
+ * - **Copy and Save name the held result by id** (PR #294). The report is
+ *   written here from the host's own snapshot (`PassageSearchReportExport`);
+ *   no report text comes from the webview.
  * - **A disposed webview's search is stopped,** and nothing more is posted.
  *
  * Logs carry ids, counts and fault kinds only (D22): never the question, a
@@ -28,16 +31,20 @@ import {
   PassageSearchOpenInstanceMessage,
   PassageSearchOrganizePlanRequestMessage,
   PassageSearchOrganizeRunMessage,
+  PassageSearchCopyReportMessage,
+  PassageSearchSaveReportMessage,
   PassageSearchPlanRequestMessage,
+  PassageSearchResultView,
   PassageSearchRunMessage,
   PassageSearchStopMessage
 } from '@messages';
-import type { LogSink, ShellService } from '@/platform';
+import type { FileSystem, LogSink, ShellService, Workspace } from '@/platform';
 import type { PassageSearchEngine } from '@/application/services/passageSearch/PassageSearchEngine';
 import type { PassageSearchPlan, PassageSearchResult } from '@services/search/passage/PassageSearchContracts';
 import type { PassageSearchOrganizePlan } from '@services/search/passage/PassageSearchOrganizer';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
+import { PassageSearchReportExport, type PassageSearchReportOutcome } from './PassageSearchReportExport';
 import {
   passageSearchEstimateView,
   passageSearchOrganizeEstimateView,
@@ -64,19 +71,28 @@ export const PASSAGE_SEARCH_ROUTE_WORDS = {
   'organize-failed': 'The results could not be organized. They are as they were.',
   'no-instance': 'That instance is not in these results.',
   'nothing-to-open': 'This instance is in text that has no saved file to open.',
-  'open-failed': 'The file could not be opened.'
+  'open-failed': 'The file could not be opened.',
+  'copy-failed': 'The report could not be copied.',
+  'no-workspace': 'Open a workspace folder before saving a report.',
+  'save-failed': 'The report could not be saved.'
 } as const;
 
 type RouteRefusal = keyof typeof PASSAGE_SEARCH_ROUTE_WORDS;
 
 export interface PassageSearchRouteDeps {
   readonly engine: PassageSearchEngine;
-  readonly shell: Pick<ShellService, 'openFileInEditor'>;
+  readonly shell: Pick<ShellService, 'openFileInEditor' | 'copyToClipboard'>;
+  readonly fileSystem: Pick<FileSystem, 'createDirectory' | 'writeFile'>;
+  readonly workspace: Pick<Workspace, 'workspaceFolders'>;
+  /** The clock a saved report is named by; a test fixes it. */
+  readonly now?: () => Date;
 }
 
 interface HeldResult {
   readonly resultId: string;
   readonly result: PassageSearchResult;
+  /** The display-safe snapshot the webview was sent, and the one a report is written from. */
+  readonly view: PassageSearchResultView;
   readonly canOrganize: boolean;
 }
 
@@ -99,12 +115,15 @@ export class PassageSearchRoute {
   private held?: HeldResult;
   private organizePlan?: { readonly organizePlanId: string; readonly resultId: string; readonly plan: PassageSearchOrganizePlan };
   private disposed = false;
+  private readonly reports: PassageSearchReportExport;
 
   constructor(
     private readonly deps: PassageSearchRouteDeps,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink
-  ) {}
+  ) {
+    this.reports = new PassageSearchReportExport(deps, outputChannel);
+  }
 
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.PASSAGE_SEARCH_PLAN_REQUEST, this.handlePlanRequest.bind(this));
@@ -113,6 +132,8 @@ export class PassageSearchRoute {
     router.register(MessageType.PASSAGE_SEARCH_OPEN_INSTANCE, this.handleOpenInstance.bind(this));
     router.register(MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN_REQUEST, this.handleOrganizePlanRequest.bind(this));
     router.register(MessageType.PASSAGE_SEARCH_ORGANIZE_RUN, this.handleOrganizeRun.bind(this));
+    router.register(MessageType.PASSAGE_SEARCH_COPY_REPORT, this.handleCopyReport.bind(this));
+    router.register(MessageType.PASSAGE_SEARCH_SAVE_REPORT, this.handleSaveReport.bind(this));
   }
 
   /** The webview is gone: stop a running search, and hold nothing. */
@@ -350,6 +371,38 @@ export class PassageSearchRoute {
     }
   }
 
+  async handleCopyReport(message: PassageSearchCopyReportMessage): Promise<void> {
+    await this.exportReport(message, (view) => this.reports.copy(view));
+  }
+
+  async handleSaveReport(message: PassageSearchSaveReportMessage): Promise<void> {
+    await this.exportReport(message, (view) => this.reports.save(view));
+  }
+
+  /** A report is written from the held snapshot the id names, or not at all: nothing the webview sends is its text. */
+  private async exportReport(
+    message: { payload?: unknown },
+    write: (view: PassageSearchResultView) => Promise<PassageSearchReportOutcome>
+  ): Promise<void> {
+    const payload = payloadOf(message);
+    const requestId = idOf(payload.requestId);
+    if (!requestId) {
+      this.outputChannel.appendLine(`${LOG} Ignored a report request with no request id.`);
+      return;
+    }
+    const held = this.held;
+    if (!held || held.resultId !== payload.resultId) {
+      this.refuseReport(requestId, 'result-expired');
+      return;
+    }
+    const outcome = await write(held.view);
+    if (outcome.status === 'failed') {
+      this.refuseReport(requestId, outcome.reason);
+      return;
+    }
+    this.send({ type: MessageType.PASSAGE_SEARCH_REPORT_RESULT, payload: { requestId, ...outcome } });
+  }
+
   /** Hold the result as the newest, and post it. Nothing is held or posted for a view that is gone. */
   private finish(requestId: string, result: PassageSearchResult): void {
     if (this.disposed) {
@@ -357,7 +410,8 @@ export class PassageSearchRoute {
     }
     const canOrganize = this.canOrganize(result);
     const resultId = this.mint('result');
-    this.held = { resultId, result, canOrganize };
+    const view = passageSearchResultView(result, resultId, canOrganize);
+    this.held = { resultId, result, view, canOrganize };
     this.outputChannel.appendLine(
       `${LOG} Result ${resultId} held (${result.ended}): ${result.instances.length} instance(s), ` +
       `${result.calls.answered} of ${result.calls.planned} call(s) answered, ${result.calls.unsent} unsent, ` +
@@ -365,7 +419,7 @@ export class PassageSearchRoute {
     );
     this.send({
       type: MessageType.PASSAGE_SEARCH_RESULT,
-      payload: { requestId, status: 'finished', result: passageSearchResultView(result, resultId, canOrganize) }
+      payload: { requestId, status: 'finished', result: view }
     });
   }
 
@@ -397,6 +451,11 @@ export class PassageSearchRoute {
   private refuseOrganizePlan(requestId: string, reason: RouteRefusal): void {
     this.outputChannel.appendLine(`${LOG} Organize plan refused (${reason}).`);
     this.send({ type: MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN, payload: { requestId, status: 'refused', reason, message: PASSAGE_SEARCH_ROUTE_WORDS[reason] } });
+  }
+
+  private refuseReport(requestId: string, reason: RouteRefusal): void {
+    this.outputChannel.appendLine(`${LOG} Report refused (${reason}).`);
+    this.send({ type: MessageType.PASSAGE_SEARCH_REPORT_RESULT, payload: { requestId, status: 'refused', message: PASSAGE_SEARCH_ROUTE_WORDS[reason] } });
   }
 
   private refuseOpen(requestId: string, reason: RouteRefusal): void {

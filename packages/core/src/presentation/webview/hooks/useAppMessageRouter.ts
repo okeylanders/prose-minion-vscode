@@ -113,6 +113,7 @@ export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandle
     [MessageType.PASSAGE_SEARCH_PROGRESS]: (msg) => passageSearch.handleProgress(msg),
     [MessageType.PASSAGE_SEARCH_RESULT]: (msg) => passageSearch.handleResult(msg),
     [MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN]: (msg) => passageSearch.handleOrganizePlan(msg),
+    [MessageType.PASSAGE_SEARCH_REPORT_RESULT]: (msg) => passageSearch.handleReportResult(msg),
     [MessageType.PASSAGE_SEARCH_OPEN_INSTANCE_RESULT]: (msg) => passageSearch.handleOpenInstanceResult(msg),
     [MessageType.DICTIONARY_HISTORY]: dictionaryHistory.handleHistory,
     [MessageType.DICTIONARY_HISTORY_ENTRY]: dictionaryHistory.handleHistoryEntry,

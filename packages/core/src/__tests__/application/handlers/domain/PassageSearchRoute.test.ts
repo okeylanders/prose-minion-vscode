@@ -52,8 +52,8 @@ describe('PassageSearchRoute', () => {
   const planned = (requestId = 'plan-1') => host.planned(requestId);
   const finished = (result?: PassageSearchResult) => host.finished(result);
 
-  it('registers its six routes', () => {
-    expect(router.handlerCount).toBe(6);
+  it('registers its eight routes', () => {
+    expect(router.handlerCount).toBe(8);
   });
 
   describe('the two-step press', () => {

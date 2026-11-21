@@ -7,7 +7,9 @@
  *   carries a webview-minted `requestId` the host echoes, so the panel takes
  *   only the answer it still waits for.
  * - **Text never travels webview → host** but the question, the path or
- *   pattern field and the scope choices. A selection is read on the host.
+ *   pattern field and the scope choices. A selection is read on the host,
+ *   and Copy and Save name the held result by id: the host writes the
+ *   report from its own snapshot (PR #294).
  * - **What comes back is display-safe:** display paths, lines, quotes,
  *   notes, labels, counts and the estimate. Never an absolute path, and
  *   never a host file key that could reveal one. An instance is named by
@@ -247,17 +249,45 @@ export interface PassageSearchOrganizeRunMessage extends MessageEnvelope<Passage
   type: MessageType.PASSAGE_SEARCH_ORGANIZE_RUN;
 }
 
+// Copy and Save the report: the held result by id, never the report's text
+
+export interface PassageSearchReportRequestPayload {
+  requestId: string;
+  resultId: string;
+}
+
+export interface PassageSearchCopyReportMessage extends MessageEnvelope<PassageSearchReportRequestPayload> {
+  type: MessageType.PASSAGE_SEARCH_COPY_REPORT;
+}
+
+export interface PassageSearchSaveReportMessage extends MessageEnvelope<PassageSearchReportRequestPayload> {
+  type: MessageType.PASSAGE_SEARCH_SAVE_REPORT;
+}
+
+export type PassageSearchReportResultPayload =
+  | { requestId: string; status: 'copied' }
+  /** `filePath` is workspace-relative. `opened` is false when the report was saved and could not then be opened. */
+  | { requestId: string; status: 'saved'; filePath: string; opened: boolean }
+  | { requestId: string; status: 'refused'; message: string };
+
+export interface PassageSearchReportResultMessage extends MessageEnvelope<PassageSearchReportResultPayload> {
+  type: MessageType.PASSAGE_SEARCH_REPORT_RESULT;
+}
+
 export type PassageSearchWebviewToExtensionMessage =
   | PassageSearchPlanRequestMessage
   | PassageSearchRunMessage
   | PassageSearchStopMessage
   | PassageSearchOpenInstanceMessage
   | PassageSearchOrganizePlanRequestMessage
-  | PassageSearchOrganizeRunMessage;
+  | PassageSearchOrganizeRunMessage
+  | PassageSearchCopyReportMessage
+  | PassageSearchSaveReportMessage;
 
 export type PassageSearchExtensionToWebviewMessage =
   | PassageSearchPlanMessage
   | PassageSearchProgressMessage
   | PassageSearchResultMessage
   | PassageSearchOpenInstanceResultMessage
-  | PassageSearchOrganizePlanMessage;
+  | PassageSearchOrganizePlanMessage
+  | PassageSearchReportResultMessage;

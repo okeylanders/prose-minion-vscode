@@ -24,6 +24,7 @@ const EXPECTED_ROUTES: MessageType[] = [
   MessageType.PASSAGE_SEARCH_RESULT,
   MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN,
   MessageType.PASSAGE_SEARCH_OPEN_INSTANCE_RESULT,
+  MessageType.PASSAGE_SEARCH_REPORT_RESULT,
   MessageType.DICTIONARY_RESULT,
   MessageType.FAST_GENERATE_DICTIONARY_RESULT,
   MessageType.DICTIONARY_HISTORY,
@@ -85,7 +86,7 @@ const makeDeps = () => {
     },
     passageSearch: {
       handlePlan: jest.fn(), handleProgress: jest.fn(), handleResult: jest.fn(),
-      handleOrganizePlan: jest.fn(), handleOpenInstanceResult: jest.fn(),
+      handleOrganizePlan: jest.fn(), handleOpenInstanceResult: jest.fn(), handleReportResult: jest.fn(),
     },
     settings: { handleSettingsData: jest.fn(), handleApiKeyStatus: jest.fn(), handleSupportCopySuccess: jest.fn(), handleSupportCopyError: jest.fn(), open: jest.fn(), toggle: jest.fn() },
     selection: { handleSelectionUpdated: jest.fn(), handleSelectionData: jest.fn() },
@@ -218,7 +219,8 @@ describe('buildAppMessageRoutes', () => {
     [MessageType.PASSAGE_SEARCH_PROGRESS, 'handleProgress'],
     [MessageType.PASSAGE_SEARCH_RESULT, 'handleResult'],
     [MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN, 'handleOrganizePlan'],
-    [MessageType.PASSAGE_SEARCH_OPEN_INSTANCE_RESULT, 'handleOpenInstanceResult']
+    [MessageType.PASSAGE_SEARCH_OPEN_INSTANCE_RESULT, 'handleOpenInstanceResult'],
+    [MessageType.PASSAGE_SEARCH_REPORT_RESULT, 'handleReportResult']
   ] as const)('%s goes to the Passage Search hook', (type, handler) => {
     const deps = makeDeps();
     const message = { type, payload: { requestId: 'ps-alice:1' } };
