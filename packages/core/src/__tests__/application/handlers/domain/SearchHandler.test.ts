@@ -46,6 +46,51 @@ describe('SearchHandler', () => {
       handler.registerRoutes(router);
       expect(router.handlerCount).toBe(3);
     });
+
+    it('also registers Passage Search\'s routes when given its engine, and stops its search on dispose', async () => {
+      const controller: { signal?: AbortSignal } = {};
+      let finish: (value: unknown) => void = () => undefined;
+      const engine = {
+        plan: jest.fn(async () => ({ kind: 'planned', plan: { estimate: { model: 'test/reader', files: 1, calls: 1, inputTokens: 1, outputTokens: 1, leftOut: { unreadable: 0, unsplittable: 0, empty: 0 } } } })),
+        run: jest.fn((_plan: unknown, options: { signal?: AbortSignal }) => {
+          controller.signal = options.signal;
+          return new Promise((resolve) => { finish = resolve; });
+        })
+      };
+      handler = new SearchHandler(
+        {} as any, postMessage as any, outputChannel as any, {} as any, {} as any,
+        { engine: engine as any, shell: { openFileInEditor: jest.fn(), copyToClipboard: jest.fn() }, fileSystem: {} as any, workspace: {} as any }
+      );
+      handler.registerRoutes(router);
+      expect(router.handlerCount).toBe(11);
+      for (const type of [
+        MessageType.PASSAGE_SEARCH_PLAN_REQUEST,
+        MessageType.PASSAGE_SEARCH_RUN,
+        MessageType.PASSAGE_SEARCH_STOP,
+        MessageType.PASSAGE_SEARCH_OPEN_INSTANCE,
+        MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN_REQUEST,
+        MessageType.PASSAGE_SEARCH_ORGANIZE_RUN,
+        MessageType.PASSAGE_SEARCH_COPY_REPORT,
+        MessageType.PASSAGE_SEARCH_SAVE_REPORT
+      ]) {
+        expect(router.hasHandler(type)).toBe(true);
+      }
+
+      await router.route({
+        type: MessageType.PASSAGE_SEARCH_PLAN_REQUEST,
+        source: 'webview.search.passage',
+        payload: { requestId: 'plan-1', question: 'Where does Alice fall?', scopes: { activeFile: true, selection: false, groups: [], pattern: '' }, organize: false },
+        timestamp: 1
+      } as never);
+      const planId = postMessage.mock.calls[0][0].payload.planId;
+      void router.route({ type: MessageType.PASSAGE_SEARCH_RUN, source: 'webview.search.passage', payload: { requestId: 'run-1', planId }, timestamp: 2 } as never);
+      await Promise.resolve();
+      expect(controller.signal?.aborted).toBe(false);
+
+      handler.dispose();
+      expect(controller.signal?.aborted).toBe(true);
+      finish({});
+    });
   });
 
   describe('Text source errors', () => {

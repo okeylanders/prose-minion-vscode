@@ -225,6 +225,29 @@ export class PassageSearchScopeFiles {
   }
 }
 
+const lastSegment = (value: string): string => value.split(/[\\/]/).filter((segment) => segment.length > 0).pop() ?? '';
+
+/** Whether a label an editor gave could be a real place on disk: absolute, a drive, a home path, or one that climbs out. */
+function isExteriorPath(label: string): boolean {
+  return label.startsWith('/') || label.startsWith('\\') || label.startsWith('~') || /^[A-Za-z]:/.test(label) || /(^|[\\/])\.\.([\\/]|$)/.test(label);
+}
+
+/**
+ * What a result shows for an editor's document (PR #294). A host's
+ * "relative path" for a file outside the workspace, or with no workspace
+ * open, can be the file's real path, which must stay on the host. Such a
+ * label becomes the file's name alone, read for POSIX and Windows forms; a
+ * workspace-relative label is kept as it is. The file is still opened
+ * through the host-held result.
+ */
+export function passageSearchDisplayLabel(label: string, fsPath = ''): string {
+  const given = label.trim();
+  if (given.length > 0 && given !== fsPath.trim() && !isExteriorPath(given)) {
+    return given;
+  }
+  return lastSegment(fsPath) || lastSegment(given) || 'Untitled';
+}
+
 function activeFile(editor: ActiveSelectionInfo | undefined): NamedFile {
   // An untitled document has no file to read; its text can be searched as a selection.
   if (!editor || editor.uriString.startsWith('untitled:') || editor.fsPath.trim().length === 0) {
@@ -232,7 +255,7 @@ function activeFile(editor: ActiveSelectionInfo | undefined): NamedFile {
   }
   return {
     identity: hostFileIdentity(editor.fsPath),
-    displayPath: editor.relativePath,
+    displayPath: passageSearchDisplayLabel(editor.relativePath, editor.fsPath),
     absolutePath: editor.fsPath,
     lineOffset: 0,
     lines: 'document'
@@ -247,7 +270,7 @@ function selectedText(selection: ActiveSelectionInfo | undefined): NamedFile {
   return {
     // Apart from its whole file: a selection is its own text, with its own lines.
     identity: `selection\u0000${selection.uriString}`,
-    displayPath: selection.relativePath,
+    displayPath: passageSearchDisplayLabel(selection.relativePath, selection.fsPath),
     ...(saved ? { absolutePath: selection.fsPath } : {}),
     text: selection.text,
     lineOffset: selection.startLine !== undefined ? selection.startLine - 1 : 0,

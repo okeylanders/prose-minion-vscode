@@ -240,5 +240,18 @@ describe('FileOperationsHandler', () => {
         })
       }));
     });
+
+    it('does not take Passage Search: its report is saved by its own route, from the host\'s held result (PR #294)', async () => {
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.SAVE_RESULT,
+        source: 'webview.search.passage',
+        payload: { toolName: 'passage_search', content: '# Passage Search' },
+        timestamp: 0
+      });
+
+      expect(mockPostMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: MessageType.SAVE_RESULT_SUCCESS }));
+    });
   });
 });

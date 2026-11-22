@@ -1,19 +1,21 @@
 /**
  * SearchTab component - Orchestrator for search subtabs
- * Routes between Word Search and Category Search panels
+ * Routes between the Word Search, Category Search and Passage Search panels
  */
 
 import * as React from 'react';
 import { WordSearchPanel } from '@components/search/WordSearchPanel';
 import { CategorySearchPanel } from '@components/search/CategorySearchPanel';
+import { PassageSearchPanel } from '@components/search/PassageSearchPanel';
 import { TabBar, Tab } from '../shared/TabBar';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseSearchReturn } from '@hooks/domain/useSearch';
 import { UseMetricsReturn } from '@hooks/domain/useMetrics';
 import { UseWordSearchSettingsReturn } from '@hooks/domain/useWordSearchSettings';
 import { UseModelsSettingsReturn } from '@hooks/domain/useModelsSettings';
+import { UsePassageSearchReturn } from '@hooks/domain/usePassageSearch';
 
-type SearchSubtool = 'word' | 'category';
+export type SearchSubtool = 'word' | 'category' | 'passage';
 
 interface SearchTabProps {
   vscode: VSCodeAPI;
@@ -21,6 +23,7 @@ interface SearchTabProps {
   metrics: UseMetricsReturn;
   wordSearchSettings: UseWordSearchSettingsReturn;
   modelsSettings: UseModelsSettingsReturn;
+  passageSearch: UsePassageSearchReturn;
 }
 
 export const SearchTab = React.memo<SearchTabProps>(({
@@ -28,13 +31,15 @@ export const SearchTab = React.memo<SearchTabProps>(({
   search,
   metrics,
   wordSearchSettings,
-  modelsSettings
+  modelsSettings,
+  passageSearch
 }) => {
   const [activeSubtool, setActiveSubtool] = React.useState<SearchSubtool>('word');
 
   const subtabs: Tab<SearchSubtool>[] = [
     { id: 'word', label: 'Word Search' },
-    { id: 'category', label: 'Category Search' }
+    { id: 'category', label: 'Category Search' },
+    { id: 'passage', label: 'Passage Search' }
   ];
 
   return (
@@ -68,6 +73,10 @@ export const SearchTab = React.memo<SearchTabProps>(({
           wordSearchSettings={wordSearchSettings}
           modelsSettings={modelsSettings}
         />
+      )}
+
+      {activeSubtool === 'passage' && (
+        <PassageSearchPanel passageSearch={passageSearch} />
       )}
     </div>
   );

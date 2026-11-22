@@ -23,6 +23,7 @@ export * from './dictionaryHistory';
 export * from './context';
 export * from './metrics';
 export * from './search';
+export * from './passageSearch';
 export * from './configuration';
 export * from './contextPathSuggestions';
 export * from './publishing';
@@ -309,6 +310,7 @@ import {
   WorkshopWidgetActionResultMessage
 } from './workshop';
 import { LightboxExtensionToWebviewMessage, LightboxWebviewToExtensionMessage } from './lightboxBarrel';
+import { PassageSearchExtensionToWebviewMessage, PassageSearchWebviewToExtensionMessage } from './passageSearch';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -466,7 +468,8 @@ export type WebviewToExtensionMessage =
   | WorkshopCommitWidgetMessage
   | WorkshopApplyStandingWidgetMessage
   | WorkshopRemoveStandingWidgetMessage
-  | LightboxWebviewToExtensionMessage;
+  | LightboxWebviewToExtensionMessage
+  | PassageSearchWebviewToExtensionMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -556,4 +559,5 @@ export type ExtensionToWebviewMessage =
   | WorkshopWidgetConfigDataMessage
   | WorkshopWidgetConfigRestoredMessage
   | WorkshopWidgetActionResultMessage
-  | LightboxExtensionToWebviewMessage;
+  | LightboxExtensionToWebviewMessage
+  | PassageSearchExtensionToWebviewMessage;
