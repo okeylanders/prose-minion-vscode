@@ -47,9 +47,21 @@ export const WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS: Readonly<Record<WorkshopPass
 const count = (value: number): string => value.toLocaleString('en-US');
 const plural = (value: number, one: string, many = `${one}s`): string => `${count(value)} ${value === 1 ? one : many}`;
 
-/** "14 instances in 6 files", or "no instances in 6 files": counts only. */
-export function workshopPassageSearchFoundWords(counts: Pick<WorkshopPassageSearchCounts, 'instances' | 'files'>): string {
-  return `${counts.instances === 0 ? 'no instances' : plural(counts.instances, 'instance')} in ${plural(counts.files, 'file')}`;
+/**
+ * "14 instances in 6 files" (the files they are in), or "no instances in 23 files" (the files searched), as the shared
+ * report's summary says them: counts only.
+ */
+export function workshopPassageSearchFoundWords(counts: Pick<WorkshopPassageSearchCounts, 'instances' | 'files' | 'searched'>): string {
+  return counts.instances === 0
+    ? `no instances in ${plural(counts.searched ?? counts.files, 'file')}`
+    : `${plural(counts.instances, 'instance')} in ${plural(counts.files, 'file')}`;
+}
+
+/** " 23 files were searched." beside what was found, when more were searched than hold an instance; empty otherwise. */
+function searchedWords(counts: Pick<WorkshopPassageSearchCounts, 'instances' | 'files' | 'searched'>): string {
+  return counts.instances > 0 && counts.searched !== undefined && counts.searched > counts.files
+    ? ` ${plural(counts.searched, 'file was', 'files were')} searched.`
+    : '';
 }
 
 /** The card's event line in a transcript (D21): how many places, never which. */
@@ -58,7 +70,7 @@ export function workshopPassageSearchCardTranscriptLine(scopes: number): string 
 }
 
 /** The results turn's line, in the thread and a transcript (D21). */
-export function workshopPassageSearchFinishedLine(counts: Pick<WorkshopPassageSearchCounts, 'instances' | 'files'>): string {
+export function workshopPassageSearchFinishedLine(counts: Pick<WorkshopPassageSearchCounts, 'instances' | 'files' | 'searched'>): string {
   return `Passage search finished: ${workshopPassageSearchFoundWords(counts)}.`;
 }
 
@@ -82,7 +94,7 @@ export function workshopPassageSearchCountsWords(counts: WorkshopPassageSearchCo
     return `${workshopPassageSearchPartialWords(counts)}${stoppedInFlightWords(counts)}`;
   }
   const missing = counts.calls.failed + counts.calls.unsent + (counts.calls.cancelled ?? 0);
-  return `Found ${workshopPassageSearchFoundWords(counts)}.`
+  return `Found ${workshopPassageSearchFoundWords(counts)}.${searchedWords(counts)}`
     + (counts.ended === 'instance-limit' ? ' The search reached the most instances it keeps.' : '')
     + (missing > 0 ? ` ${plural(missing, 'read')} did not finish.` : '');
 }

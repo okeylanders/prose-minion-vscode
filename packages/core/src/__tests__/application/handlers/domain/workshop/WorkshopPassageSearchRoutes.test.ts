@@ -148,7 +148,7 @@ describe('Workshop routes — a persona\'s passage search', () => {
     expect(request[0].passageSearchResults).toEqual({ cardTurnId: card.id });
     const reply = ledger().at(-1)!;
     expect(reply.passageSearchDelivery).toEqual({
-      cardTurnId: card.id, instances: 3, files: 1, labels: 1, dropped: 3,
+      cardTurnId: card.id, instances: 3, files: 1, searched: 1, labels: 1, dropped: 3,
       calls: { planned: 4, answered: 4, failed: 0, cut: 0, unsent: 0, cancelled: 0 }, ended: 'complete', organized: false, shown: 3
     });
     expect(await view()).toEqual(expect.objectContaining({ status: 'delivered', shown: 3, reportHeld: true }));

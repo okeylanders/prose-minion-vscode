@@ -96,12 +96,16 @@ export function assertWorkshopPassageSearchShapes(turn: Record<string, unknown>,
     if (!isPersonaReply(turn)) {
       shapeError(at, 'a receipt on a persona reply');
     }
+    // `searched` is additive: a receipt from before files searched were kept apart from files with an instance holds none.
     const delivery = exactObject(turn.passageSearchDelivery, at,
-      ['cardTurnId', 'instances', 'files', 'labels', 'dropped', 'calls', 'ended', 'organized', 'shown']);
+      ['cardTurnId', 'instances', 'files', 'labels', 'dropped', 'calls', 'ended', 'organized', 'shown'], ['searched']);
     turnIdAt(delivery.cardTurnId, `${at}.cardTurnId`);
     const instances = countAt(delivery.instances, `${at}.instances`);
     for (const key of ['files', 'labels', 'dropped'] as const) {
       countAt(delivery[key], `${at}.${key}`);
+    }
+    if (delivery.searched !== undefined) {
+      countAt(delivery.searched, `${at}.searched`);
     }
     // `cancelled` is additive: a receipt from before it was kept apart holds none.
     const calls = exactObject(delivery.calls, `${at}.calls`, ['planned', 'answered', 'failed', 'cut', 'unsent'], ['cancelled']);

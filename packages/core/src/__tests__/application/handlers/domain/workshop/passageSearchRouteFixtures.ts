@@ -59,6 +59,18 @@ export function aliceResult(instances = 3, overrides: Partial<PassageSearchResul
   };
 }
 
+/** `instances` in the first of `files` chapters, every one read whole in a call of its own: a match among many files searched. */
+export function aliceAcrossFiles(instances: number, files: number): PassageSearchResult {
+  const base = aliceResult(instances);
+  const planned = Array.from({ length: files }, (_, index) => ({
+    ...base.files.planned[0], key: `f${index + 1}`, displayPath: `chapters/chapter-${index + 1}.md`, instances: index === 0 ? instances : 0
+  }));
+  return aliceResult(instances, {
+    calls: { planned: files, answered: files, failed: 0, cut: 0, cancelled: 0, unsent: 0 },
+    files: { ...base.files, planned, searched: { full: files, partial: 0, none: 0 } }
+  });
+}
+
 export function planOf(planKey: string): PassageSearchPlan {
   return {
     planKey,

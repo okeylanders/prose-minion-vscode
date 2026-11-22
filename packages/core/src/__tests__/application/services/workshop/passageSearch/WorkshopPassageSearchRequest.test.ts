@@ -295,6 +295,18 @@ describe('the session codec', () => {
     })))).toThrow();
   });
 
+  it('reads a receipt with the files searched kept apart from the files found in, and one from before they were (PR #296)', () => {
+    for (const receipt of [{ ...delivery, files: 1, searched: 20 }, delivery]) {
+      const stored = withTurns((turns) => { reply(turns).passageSearchDelivery = receipt; });
+      expect(JSON.stringify(parseWorkshopPersistedSession(JSON.parse(stored)))).toBe(stored);
+    }
+    for (const searched of [-1, 1.5, '20']) {
+      expect(() => decodeWorkshopPersistedSessionCheckpoint(JSON.parse(withTurns((turns) => {
+        reply(turns).passageSearchDelivery = { ...delivery, searched };
+      })))).toThrow();
+    }
+  });
+
   it.each<[string, (turns: Array<Record<string, unknown>>) => void]>([
     ['a card with the host\'s view', (turns) => { reply(turns).passageSearchRequest = { question: 'Q?', scopes: [{ kind: 'excerpt' }], view: { status: 'pending' } }; }],
     ['a card with a pattern scope', (turns) => { reply(turns).passageSearchRequest = { question: 'Q?', scopes: [{ kind: 'pattern', pattern: '**/*.md' }] }; }],

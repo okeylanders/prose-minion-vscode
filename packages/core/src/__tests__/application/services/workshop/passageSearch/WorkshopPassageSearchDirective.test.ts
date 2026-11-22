@@ -24,9 +24,10 @@ import {
 import {
   workshopPassageSearchCountsWords,
   workshopPassageSearchEstimateLine,
+  workshopPassageSearchFinishedLine,
   workshopPassageSearchPriceScope
 } from '@shared/constants/workshopPassageSearchWords';
-import { aliceResult, planOf, QUESTION } from '@/__tests__/application/handlers/domain/workshop/passageSearchRouteFixtures';
+import { aliceAcrossFiles, aliceResult, planOf, QUESTION } from '@/__tests__/application/handlers/domain/workshop/passageSearchRouteFixtures';
 
 const OPEN = `<${WORKSHOP_PASSAGE_SEARCH_RESULTS_TAG}>`;
 const CLOSE = `</${WORKSHOP_PASSAGE_SEARCH_RESULTS_TAG}>`;
@@ -201,9 +202,30 @@ describe('the results directive', () => {
 describe('the one module that reads the engine\'s result', () => {
   it('counts what a card shows and a receipt keeps, from the shared view', () => {
     expect(counts(aliceResult(3, { analysis }))).toEqual({
-      instances: 3, files: 1, labels: 1, dropped: 3,
+      instances: 3, files: 1, searched: 1, labels: 1, dropped: 3,
       calls: { planned: 4, answered: 4, failed: 0, cut: 0, unsent: 0, cancelled: 0 }, ended: 'complete', organized: true
     });
+  });
+
+  it('keeps the files an instance was found in apart from the files searched: one match across 20 files (PR #296)', () => {
+    const twenty = (instances: number) => aliceAcrossFiles(instances, 20);
+    const one = counts(twenty(1));
+    expect(one).toEqual(expect.objectContaining({ instances: 1, files: 1, searched: 20 }));
+    expect(workshopPassageSearchCountsWords(one)).toBe('Found 1 instance in 1 file. 20 files were searched.');
+    expect(workshopPassageSearchFinishedLine(one)).toBe('Passage search finished: 1 instance in 1 file.');
+    // None found: the files are the ones searched, as the shared report says it.
+    const none = counts(twenty(0));
+    expect(none).toEqual(expect.objectContaining({ instances: 0, files: 0, searched: 20 }));
+    expect(workshopPassageSearchCountsWords(none)).toBe('Found no instances in 20 files.');
+    expect(workshopPassageSearchFinishedLine(none)).toBe('Passage search finished: no instances in 20 files.');
+    // The shared report and the directive keep them apart the same way.
+    const markdown = formatPassageSearchReport(report(twenty(1)));
+    expect(markdown).toContain('- **Found:** 1 instance in 1 file');
+    expect(markdown).toContain('- **Read:** Read 20 files in 20 calls.');
+    expect(formatPassageSearchReport(report(twenty(0)))).toContain('- **Found:** No instances found in 20 files.');
+    const frame = renderWorkshopPassageSearchDirective(report(twenty(1)), 1);
+    expect(frame).toContain('Found: 1 instance in 1 file');
+    expect(frame).toContain('Read 20 files in 20 calls.');
   });
 
   it('keeps a call stopped in flight apart from one never made, and counts a file never searched as not read', () => {
@@ -211,7 +233,7 @@ describe('the one module that reads the engine\'s result', () => {
       ended: 'stopped', calls: { planned: 6, answered: 3, failed: 0, cut: 0, cancelled: 2, unsent: 1 },
       files: { ...aliceResult(1).files, searched: { full: 1, partial: 1, none: 2 } }
     });
-    expect(counts(result)).toEqual(expect.objectContaining({ files: 2, calls: { planned: 6, answered: 3, failed: 0, cut: 0, unsent: 1, cancelled: 2 }, ended: 'stopped' }));
+    expect(counts(result)).toEqual(expect.objectContaining({ files: 1, searched: 2, calls: { planned: 6, answered: 3, failed: 0, cut: 0, unsent: 1, cancelled: 2 }, ended: 'stopped' }));
     expect(workshopPassageSearchCountsWords(counts(result)))
       .toBe('Stopped: 1 instance from 3 of 6 reads. 2 calls were stopped in flight and may still have been charged.');
   });

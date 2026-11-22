@@ -11,7 +11,9 @@
  *   read the same words.
  * - **Counts** for a card and a receipt are taken from that view: numbers
  *   and closed words only. A call stopped in flight is kept apart from one
- *   never made: it may still have been charged.
+ *   never made: it may still have been charged. Files with an instance are
+ *   kept apart from files searched (PR #296), as the shared report keeps
+ *   them.
  * - **A persona's card offers no organize action** (D21): the view never
  *   says one may be offered.
  */
@@ -30,7 +32,8 @@ export function workshopPassageSearchCounts(view: PassageSearchResultView): Work
   const { calls } = view;
   return {
     instances: view.instances.length,
-    files: view.files.searched.full + view.files.searched.partial,
+    files: view.files.withInstances,
+    searched: view.files.searched.full + view.files.searched.partial,
     labels: view.labels.length,
     dropped: Object.values(view.dropped).reduce((sum, count) => sum + count, 0),
     calls: { planned: calls.planned, answered: calls.answered, failed: calls.failed, cut: calls.cut, unsent: calls.unsent, cancelled: calls.cancelled },

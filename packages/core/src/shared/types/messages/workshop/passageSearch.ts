@@ -36,8 +36,13 @@ export type WorkshopPassageSearchEnded = typeof WORKSHOP_PASSAGE_SEARCH_ENDINGS[
 /** A finished search in counts: what a card shows and a receipt keeps. */
 export interface WorkshopPassageSearchCounts {
   instances: number;
-  /** Files read. */
+  /** Files with at least one instance: what "found in" counts. */
   files: number;
+  /**
+   * Files a call answered for, whole or in part: what a search with no instance was read over (PR #296). Absent only on
+   * a receipt written before it was kept apart from `files`.
+   */
+  searched?: number;
   labels: number;
   /** Instances a model listed that the host's checks did not keep. */
   dropped: number;

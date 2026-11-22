@@ -256,7 +256,7 @@ export class WorkshopPassageSearchHandler {
     }
     this.results.hold(payload.turnId, result);
     const counts = workshopPassageSearchCounts(workshopPassageSearchView(result, payload.turnId));
-    this.log(`run finished turn=${payload.turnId} ended=${counts.ended} instances=${counts.instances} files=${counts.files} `
+    this.log(`run finished turn=${payload.turnId} ended=${counts.ended} instances=${counts.instances} files=${counts.files} searched=${counts.searched ?? 0} `
       + `answered=${counts.calls.answered} failed=${counts.calls.failed} cut=${counts.calls.cut} unsent=${counts.calls.unsent} cancelled=${counts.calls.cancelled ?? 0} dropped=${counts.dropped}`);
     // Only a search that read everything is delivered by the host, and only into an idle room (D21).
     const auto = !isWorkshopPassageSearchPartial(counts.ended) && this.room.activeRunLabel() === undefined;
