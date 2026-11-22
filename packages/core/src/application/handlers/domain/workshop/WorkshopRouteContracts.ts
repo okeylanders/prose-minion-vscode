@@ -87,7 +87,8 @@ export type WorkshopDirectedRun = WorkshopEditOfferDirectedRun | WorkshopResults
  * - its reply streams and is ordinary prose, settled by
  *   `completeWorkshopRun`, so it may carry trailers;
  * - `frame` is called once, before dispatch, with the room the message has
- *   left when the model's window is known, and returns the frame to place;
+ *   left when the model's window is known, and returns the frame to place,
+ *   or nothing when nothing fits: the run then records and sends nothing;
  * - `markRequestTurn` marks the provisional writer turn the path recorded,
  *   and returns it as marked;
  * - `completion` is read at completion: what a run that is not adopted does
@@ -95,7 +96,7 @@ export type WorkshopDirectedRun = WorkshopEditOfferDirectedRun | WorkshopResults
  */
 export interface WorkshopResultsDeliveryRun {
   readonly resultsDelivery: {
-    readonly frame: (window: CapabilityContextWindow | undefined) => string;
+    readonly frame: (window: CapabilityContextWindow | undefined) => string | undefined;
     readonly markRequestTurn: (turnId: string) => WorkshopTurn | undefined;
     readonly completion: () => Pick<WorkshopRunCompletionInput, 'notAdopted' | 'passageSearchDelivery'>;
   };

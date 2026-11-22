@@ -21,9 +21,13 @@
  *   that the report has the rest.
  * - **Fitted to half the room left** (`reads/WorkshopReadWindowFit`), the
  *   size being the number of instances. With no window known, the bound is
- *   `resultsTokens`. The frame with no instance is the least it can be, and
- *   is sent even when it alone is over the bound: the engine's own
- *   preflight has the last word.
+ *   `resultsTokens`.
+ * - **Never over its bound** (PR #296 F4). When the frame with no instance
+ *   does not fit either (a long analysis, many labels, or little room), the
+ *   summary goes in its place: what this is, the question, what was found
+ *   and read, how the search ended, and that the writer's report has the
+ *   rest. When not even that fits, there is no frame, and the delivery is
+ *   refused before anything is recorded or sent.
  * - **Counts are the host's.** The label table is the source of truth
  *   beside the analysis.
  *
@@ -62,7 +66,12 @@ export interface WorkshopPassageSearchDirective {
   /** Instances the frame holds, of how many the result holds. */
   readonly shown: number;
   readonly of: number;
+  /** The summary went in place of the whole frame: nothing but the counts fit. */
+  readonly summary?: true;
 }
+
+const SUMMARY_NOTE = 'The rest of these results (what is missing and why, the analysis, the label table and the instances) did not fit '
+  + 'in what is left of this conversation. The writer\'s report has all of it: say so, and claim nothing this frame does not hold.';
 
 const oneLine = (text: string): string => neutral(text.replace(/\s+/g, ' ').trim());
 
@@ -128,18 +137,41 @@ export function renderWorkshopPassageSearchDirective(result: PassageSearchResult
   return lines.join('\n');
 }
 
-/** The largest frame, by whole instances, that costs at most half the room left; `resultsTokens` when no window is known. */
+/** The least a delivery says: what this is, the question, what was found and read, how it ended, and that the report has the rest. */
+export function renderWorkshopPassageSearchSummary(result: PassageSearchResultView): string {
+  return [
+    `<${WORKSHOP_PASSAGE_SEARCH_RESULTS_TAG}>`,
+    ...OPENING,
+    '',
+    `Question: ${oneLine(result.question)}`,
+    '',
+    `Found: ${passageSearchSummary(result)}`,
+    passageSearchReadLine(result),
+    ...(result.endedMessage ? [`Ended early: ${result.endedMessage}`] : []),
+    '',
+    SUMMARY_NOTE,
+    `</${WORKSHOP_PASSAGE_SEARCH_RESULTS_TAG}>`
+  ].join('\n');
+}
+
+/**
+ * The largest frame, by whole instances, that costs at most half the room left (`resultsTokens` when no window is
+ * known); else the summary, when it fits; else none, and nothing may be sent.
+ */
 export function fitWorkshopPassageSearchDirective(
   result: PassageSearchResultView,
   window: Pick<CapabilityContextWindow, 'freeInputTokens'> | undefined
-): WorkshopPassageSearchDirective {
+): WorkshopPassageSearchDirective | undefined {
   const of = result.instances.length;
   const bound = window ? Math.floor(window.freeInputTokens / 2) : PROMPT_BUDGETS.workshopPassageSearch.resultsTokens;
   const render = (size: number): WorkshopMeasuredRead<string> => {
     const frame = renderWorkshopPassageSearchDirective(result, size);
     return { size, outcome: frame, tokens: estimateTextTokens(frame) };
   };
-  const fitted = of === 0 ? undefined : fitWorkshopReadToWindow(render, of, bound, 0);
-  const chosen = fitted?.fit ?? fitted?.minimum ?? render(0);
-  return { frame: chosen.outcome, shown: chosen.size, of };
+  const whole = of === 0 ? render(0) : fitWorkshopReadToWindow(render, of, bound, 0).fit;
+  if (whole && whole.tokens <= bound) {
+    return { frame: whole.outcome, shown: whole.size, of };
+  }
+  const summary = renderWorkshopPassageSearchSummary(result);
+  return estimateTextTokens(summary) <= bound ? { frame: summary, shown: 0, of, summary: true } : undefined;
 }

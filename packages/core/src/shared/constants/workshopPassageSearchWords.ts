@@ -36,7 +36,8 @@ export const WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS: Readonly<Record<WorkshopPass
   'plan-refused': 'This search can’t be run as asked.',
   'report-failed': 'The report could not be saved. Open a workspace folder and try again.',
   'search-failed': 'The search failed before it finished. Nothing was sent. Try again.',
-  'delivery-failed': 'The results could not be sent. They are still here: send them again when ready.'
+  'delivery-failed': 'The results could not be sent. They are still here: send them again when ready.',
+  'results-too-large': 'The results don’t fit in what is left of this conversation, so nothing was sent. They are still here: open the report.'
 });
 /* eslint-enable @typescript-eslint/naming-convention */
 

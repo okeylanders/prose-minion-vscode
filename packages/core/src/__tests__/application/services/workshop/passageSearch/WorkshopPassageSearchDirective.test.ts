@@ -12,6 +12,7 @@ import type { PassageSearchAnalysis, PassageSearchResult } from '@services/searc
 import {
   fitWorkshopPassageSearchDirective,
   renderWorkshopPassageSearchDirective,
+  renderWorkshopPassageSearchSummary,
   WORKSHOP_PASSAGE_SEARCH_RESULTS_TAG
 } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchDirective';
 import { isWorkshopPassageSearchPartial } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchStatus';
@@ -73,14 +74,15 @@ describe('the results directive', () => {
   });
 
   it('is still delivered with no instance, saying what was read', () => {
-    const fitted = fitWorkshopPassageSearchDirective(report(aliceResult(0)), undefined);
+    const fitted = fitWorkshopPassageSearchDirective(report(aliceResult(0)), undefined)!;
     expect(fitted).toEqual(expect.objectContaining({ shown: 0, of: 0 }));
+    expect(fitted.summary).toBeUndefined();
     expect(fitted.frame).toContain('Found: No instances found in 1 file.');
     expect(fitted.frame).not.toContain('Instances');
   });
 
   it('holds every instance when they fit half the room left', () => {
-    const fitted = fitWorkshopPassageSearchDirective(report(aliceResult(40)), { freeInputTokens: 200_000 });
+    const fitted = fitWorkshopPassageSearchDirective(report(aliceResult(40)), { freeInputTokens: 200_000 })!;
     expect(fitted.shown).toBe(40);
     expect(fitted.frame).toContain('Instances, all 40, in reading order:');
   });
@@ -89,7 +91,7 @@ describe('the results directive', () => {
     const result = report(aliceResult(400));
     const whole = estimateTextTokens(renderWorkshopPassageSearchDirective(result, 400));
     const free = Math.floor(whole / 2);
-    const fitted = fitWorkshopPassageSearchDirective(result, { freeInputTokens: free });
+    const fitted = fitWorkshopPassageSearchDirective(result, { freeInputTokens: free })!;
     expect(fitted.of).toBe(400);
     expect(fitted.shown).toBeGreaterThan(0);
     expect(fitted.shown).toBeLessThan(400);
@@ -108,9 +110,74 @@ describe('the results directive', () => {
   });
 
   it('is bounded by resultsTokens when no window is known', () => {
-    const fitted = fitWorkshopPassageSearchDirective(report(aliceResult(2_000)), undefined);
+    const fitted = fitWorkshopPassageSearchDirective(report(aliceResult(2_000)), undefined)!;
     expect(fitted.shown).toBeLessThan(2_000);
     expect(estimateTextTokens(fitted.frame)).toBeLessThanOrEqual(PROMPT_BUDGETS.workshopPassageSearch.resultsTokens);
+  });
+
+  describe('never over its bound (PR #296 F4)', () => {
+    /** An organized result whose analysis and label table alone are most of a small room: Alice's watch, many ways. */
+    const organized = (instances: number) => aliceResult(instances, {
+      analysis: {
+        headline: 'The Rabbit checks his watch whenever he is seen, and the checks grow more frantic.',
+        sections: Array.from({ length: 8 }, (_, section) => ({
+          title: `Where it happens, part ${section + 1}`,
+          claims: Array.from({ length: 8 }, (_, claim) => ({
+            text: `Claim ${claim + 1} of part ${section + 1}: the Rabbit looks at the watch, mutters that he is late, and hurries on down the long passage. `.repeat(2),
+            cites: [1]
+          }))
+        })),
+        read: { instances, of: instances },
+        dropped: { claims: 0, sections: 0 }
+      } as unknown as PassageSearchAnalysis,
+      labels: Array.from({ length: 20 }, (_, index) => ({ key: `l${index}`, label: `Checks the watch, way ${index + 1}`, count: 1, files: 1 }))
+    });
+    const tokens = (text: string) => estimateTextTokens(text);
+
+    it('refuses a zero-hit result whose least frame does not fit a small room, rather than send it over the bound', () => {
+      const view = report(aliceResult(0));
+      // 80 tokens free: a bound of 40, which not even the opening lines fit.
+      expect(tokens(renderWorkshopPassageSearchSummary(view))).toBeGreaterThan(40);
+      expect(fitWorkshopPassageSearchDirective(view, { freeInputTokens: 80 })).toBeUndefined();
+    });
+
+    it('sends the summary when the analysis and table do not fit beside it, and nothing when the summary does not', () => {
+      const view = report(organized(12));
+      const least = tokens(renderWorkshopPassageSearchDirective(view, 0));
+      const summary = tokens(renderWorkshopPassageSearchSummary(view));
+      expect(summary).toBeLessThan(least);
+
+      // Just enough for the frame with no instance: the analysis and table go, and no instance does.
+      const atLeast = fitWorkshopPassageSearchDirective(view, { freeInputTokens: least * 2 })!;
+      expect(atLeast).toEqual(expect.objectContaining({ shown: 0, of: 12 }));
+      expect(atLeast.summary).toBeUndefined();
+      expect(atLeast.frame).toContain('Headline: ');
+      expect(tokens(atLeast.frame)).toBeLessThanOrEqual(least);
+
+      // One token short of it: the summary, which says the report has the rest.
+      const short = fitWorkshopPassageSearchDirective(view, { freeInputTokens: (least - 1) * 2 })!;
+      expect(short).toEqual(expect.objectContaining({ shown: 0, of: 12, summary: true }));
+      expect(tokens(short.frame)).toBeLessThanOrEqual(least - 1);
+      expect(short.frame).toContain('Found: 12 instances in 1 file');
+      expect(short.frame).toContain('The writer\'s report has all of it');
+      expect(short.frame).not.toContain('Headline: ');
+      expect(short.frame).not.toContain('Labels (');
+      expect(short.frame.endsWith(CLOSE)).toBe(true);
+
+      expect(fitWorkshopPassageSearchDirective(view, { freeInputTokens: (summary - 1) * 2 })).toBeUndefined();
+    });
+
+    it('is never over half the room left, whatever the room, for an organized result', () => {
+      const view = report(organized(30));
+      const whole = tokens(renderWorkshopPassageSearchDirective(view, 30));
+      for (let free = 0; free <= whole * 2 + 200; free += 97) {
+        const fitted = fitWorkshopPassageSearchDirective(view, { freeInputTokens: free });
+        if (fitted) {
+          expect(tokens(fitted.frame)).toBeLessThanOrEqual(Math.floor(free / 2));
+        }
+      }
+      expect(fitWorkshopPassageSearchDirective(view, { freeInputTokens: whole * 2 })!.shown).toBe(30);
+    });
   });
 
   it('neutralizes every writer- and model-written string, so nothing closes the frame or forges another', () => {

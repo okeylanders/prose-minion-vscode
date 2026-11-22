@@ -1269,6 +1269,12 @@ export class WorkshopRoomHandler {
     const directedRun = executeOptions?.directedRun;
     // A results delivery (ADR 2026-11-20 D18, D21): its frame is fitted to the room this message has left.
     const delivery = directedRun?.resultsDelivery;
+    const resultsFrame = delivery?.frame(this.assistantToolService.measureWorkshopReplyWindow(conversationId,
+      [roomCatchUp, todoEvidence?.message, hostUpdateFrame, text].filter(Boolean).join('\n\n')));
+    if (delivery && resultsFrame === undefined) {
+      // Not even its summary fits: nothing is recorded or sent, and the results stay with their card (PR #296 F4).
+      return { committed: false, refusalReason: 'results-do-not-fit' };
+    }
     // A persona's run measures what it writes (ADR 2026-11-18 D6); a tool sidecar's does not.
     const contextTally = roomReader ? new WorkshopContextTallyRecorder() : undefined;
     const threadArtifactFrames = tallyWorkshopThreadFrames(contextTally, {
@@ -1277,10 +1283,7 @@ export class WorkshopRoomHandler {
         buildWorkshopThreadArtifactFrame(artifact, workshopMessageAttachmentFrameContext(artifact.id, messageAttachments))),
       // A press's directive rides the frames' own slot, last before the message (ADR 2026-11-10 D4).
       directive: directedRun?.frame !== undefined ? [directedRun.frame] : [],
-      results: delivery
-        ? [delivery.frame(this.assistantToolService.measureWorkshopReplyWindow(conversationId,
-            [roomCatchUp, todoEvidence?.message, hostUpdateFrame, text].filter(Boolean).join('\n\n')))]
-        : [],
+      results: resultsFrame !== undefined ? [resultsFrame] : [],
       // The edit-offer reminder rides it too, never with a press and never for a tool (second addendum).
       reminders: this.editOfferReminder(roomReader !== undefined, directedRun !== undefined, excerpt),
       // What became of the persona's last reply's trailers (ADR 2026-11-17 D14, D15): keyed to the ledger's latest

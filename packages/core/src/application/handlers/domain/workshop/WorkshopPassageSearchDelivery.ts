@@ -182,6 +182,7 @@ export class WorkshopPassageSearchResults {
     const report = workshopPassageSearchView(held.result, turnId);
     const counts = workshopPassageSearchCounts(report);
     let shown = 0;
+    let fits = true;
     this.sendingTurnId = turnId;
     this.log(`delivery started turn=${turnId} author=${target.kind} instances=${counts.instances}`);
     let ran: WorkshopDirectedRunResult;
@@ -192,9 +193,11 @@ export class WorkshopPassageSearchResults {
         resultsDelivery: {
           frame: (window) => {
             const directive = fitWorkshopPassageSearchDirective(report, window);
-            shown = directive.shown;
-            this.log(`delivery fitted turn=${turnId} shown=${directive.shown} of=${directive.of} window=${window ? 'known' : 'unknown'}`);
-            return directive.frame;
+            fits = directive !== undefined;
+            shown = directive?.shown ?? 0;
+            this.log(`delivery fitted turn=${turnId} shown=${directive ? directive.shown : 'none'} of=${counts.instances} `
+              + `summary=${directive?.summary === true} window=${window ? 'known' : 'unknown'}`);
+            return directive?.frame;
           },
           markRequestTurn: (requestTurnId) => this.session.markPassageSearchResultsTurn(requestTurnId, turnId),
           // The receipt rides the adopted reply's own commit; any other outcome rolls the request turn back (D19a).
@@ -205,6 +208,11 @@ export class WorkshopPassageSearchResults {
       ran = { committed: false };
     } finally {
       this.sendingTurnId = undefined;
+    }
+    if (!fits) {
+      // Nothing was recorded or sent; the result stays with its card, and its report can still be opened (D21; PR #296 F4).
+      this.log(`delivery refused turn=${turnId} reason=results-too-large`);
+      return { reason: 'results-too-large' };
     }
     if (!ran.committed) {
       this.log(`delivery not adopted turn=${turnId} reason=${ran.cancelled ? 'stopped' : ran.refusalReason !== undefined ? 'not-sent' : 'failed'}`);
