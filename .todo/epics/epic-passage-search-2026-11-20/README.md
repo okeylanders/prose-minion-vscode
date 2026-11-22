@@ -1,6 +1,6 @@
 # Epic: Passage Search
 
-**Status:** Slice 0 (this README and the ADR) is merged (`e45d8d1b`). Slice 1 (the engine) is in review on `epic/passage-search-engine`. No surface is built yet.
+**Status:** Slice 0 (this README and the ADR) is merged (`e45d8d1b`). Slice 1 (the engine, PR #293) is merged (`773543f0`). Slice 2 (the sidebar subtab, PR #294) is merged (`8b441e55`). Slice 3 (the organizing pass, PR #295) is in review on `epic/passage-search-organize`. The persona request is not started.
 **Priority:** Medium
 **Opened:** 2026-11-20
 **Branch:** `epic/passage-search`, cut from the tip of `epic/workshop-persona-tools` at `1b3b9239`, so the epic starts with Persona Tools in it. That epic is built and waits for Okey's live pass and its own PR to `main`.
@@ -27,9 +27,9 @@ price.
 | # | What | Decisions | Branch | PR | Status |
 |---|---|---|---|---|---|
 | 0 | Spec: this README and the ADR | | `epic/passage-search-spec` | #292 | Merged (`e45d8d1b`) after three Astra rounds (D2a, D3a, D5a, D9a, D11a, D12a, D19a) |
-| 1 | The engine: scopes and the root-aware listing, reading order, chunks, the fan-out, the reply codec, anchoring, the merge, the plan, `planKey` and estimate, the `passageSearch` model scope and run policy, the boundary test. The organizing pass's seam and result field, not the pass. No UI. | D1–D11 with D2a, D3a, D5a, D9a, D11a; D14, D22, D23 | `epic/passage-search-engine` | | In review |
-| 2 | The sidebar subtab: scope picker, question, plan, Run, progress, Stop, results, open at a line, Copy, Save, the Settings row, help | D15, D24 | `epic/passage-search-sidebar` | | In review |
-| 3 | The organizing pass: its call, codec, citation and quotation checks, its price | D12, D12a, D13 | `…-organize` | | Not started |
+| 1 | The engine: scopes and the root-aware listing, reading order, chunks, the fan-out, the reply codec, anchoring, the merge, the plan, `planKey` and estimate, the `passageSearch` model scope and run policy, the boundary test. The organizing pass's seam and result field, not the pass. No UI. | D1–D11 with D2a, D3a, D5a, D9a, D11a; D14, D22, D23 | #293 | Merged (`773543f0`) |
+| 2 | The sidebar subtab: scope picker, question, plan, Run, progress, Stop, results, open at a line, Copy, Save, the Settings row, help | D15, D24 | `epic/passage-search-sidebar` | #294 | Merged (`8b441e55`) |
+| 3 | The organizing pass: its call, codec, citation and quotation checks, its price | D12, D12a, D13 | `epic/passage-search-organize` | #295 | In review |
 | 4 | The persona request: trailer, settlement, card, outcome kind, the handler, the directed results run, the directive and its fit, help | D16–D21, D19a, D24 | `…-persona` | | Not started |
 | Close | Live-pass checklist, `AGENTS.md`, memory bank | | `…-close` | | Not started |
 

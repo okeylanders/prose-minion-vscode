@@ -109,7 +109,13 @@ export interface PassageSearchStopMessage extends MessageEnvelope<PassageSearchS
 
 export type PassageSearchEndedView = 'complete' | 'stopped' | 'key-changed' | 'provider-failed' | 'instance-limit';
 export type PassageSearchDropReasonView = 'quote-not-found' | 'quote-ambiguous' | 'malformed' | 'duplicate';
-export type PassageSearchAnalysisMissingView = 'failed' | 'malformed' | 'cut' | 'no-room';
+/**
+ * Why a started organizing pass left no analysis. `nothing-kept`: the reply
+ * was read and no claim passed the host's checks. `stopped` and
+ * `key-changed`: the pass, made afterwards as its own action, was stopped or
+ * lost its API key before it answered.
+ */
+export type PassageSearchAnalysisMissingView = 'failed' | 'malformed' | 'cut' | 'no-room' | 'nothing-kept' | 'stopped' | 'key-changed';
 
 /** Files by how much of each the answered calls covered. */
 export interface PassageSearchFilesSearchedView {
@@ -145,8 +151,14 @@ export interface PassageSearchLabelView {
 export interface PassageSearchAnalysisView {
   headline: string;
   sections: Array<{ title: string; claims: Array<{ text: string; cites: number[] }> }>;
+  /** How many instances the pass was shown, of how many the result holds. */
   read: { instances: number; of: number };
-  dropped: { claims: number; sections: number };
+  /** What the host's checks left out, by count: `claims` is `uncited`, `misquoted` and `malformed` together. */
+  dropped: { claims: number; uncited: number; misquoted: number; malformed: number; sections: number; cites: number };
+  /** What the host wrote in place of the pass's words: the headline, and section titles. */
+  replaced: { headline: boolean; titles: number };
+  /** Headlines, titles and claims shortened at the safety ceiling. */
+  clipped: number;
 }
 
 export interface PassageSearchResultView {
@@ -160,8 +172,12 @@ export interface PassageSearchResultView {
   analysisMissing?: PassageSearchAnalysisMissingView;
   dropped: Record<PassageSearchDropReasonView, number>;
   overLimit: number;
-  /** `answered`, `failed`, `cancelled` and `unsent` add up to `planned`. A cancelled call was sent and stopped in flight; an unsent one never started. */
-  calls: { planned: number; answered: number; failed: number; cut: number; cancelled: number; unsent: number };
+  /**
+   * `answered`, `failed`, `cancelled`, `unsent` and `tooLarge` add up to `planned`. A cancelled call was sent and
+   * stopped in flight; an unsent one never started; a `tooLarge` one did not fit the model's window and was not
+   * sent. `dispatched` is how many were sent: `answered`, `failed` and `cancelled` together.
+   */
+  calls: { planned: number; answered: number; failed: number; cut: number; cancelled: number; unsent: number; tooLarge: number; dispatched: number };
   files: {
     /** Every file of the plan, searched or not. */
     planned: number;

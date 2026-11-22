@@ -17,10 +17,16 @@ const EXTENSION = path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src/ext
 /** Closed: a new module joins its list on purpose. */
 const PASSAGE_SEARCH_MODULES = {
   service: [
+    'PassageSearchCallFailures.ts',
     'PassageSearchContracts.ts',
     'PassageSearchInstances.ts',
     'PassageSearchMessages.ts',
+    'PassageSearchModelOrganizer.ts',
+    'PassageSearchOrganizeChecks.ts',
+    'PassageSearchOrganizeReplyCodec.ts',
+    'PassageSearchOrganizeRequest.ts',
     'PassageSearchOrganizer.ts',
+    'PassageSearchPassUsage.ts',
     'PassageSearchPlanning.ts',
     'PassageSearchPrices.ts',
     'PassageSearchRefusals.ts',
@@ -128,14 +134,14 @@ describe('Passage Search engine', () => {
   });
 
   it('is built only at the composition root, once, on the manager\'s own passageSearch scope', () => {
-    const builders = /\bnew\s+(PassageSearchService|PassageSearchScopeFiles|ProjectPassageSearchEngine)\s*\(/;
+    const builders = /\bnew\s+(PassageSearchService|PassageSearchModelOrganizer|PassageSearchScopeFiles|ProjectPassageSearchEngine)\s*\(/;
     const inCore = sourceFiles(SRC_ROOT)
       .filter((file) => !path.relative(SRC_ROOT, file).startsWith('__tests__'))
       .filter((file) => builders.test(read(file)))
       .map((file) => path.relative(SRC_ROOT, file));
     expect(inCore).toEqual([]);
     const root = read(EXTENSION);
-    for (const builder of ['ProjectPassageSearchEngine', 'PassageSearchScopeFiles', 'PassageSearchService']) {
+    for (const builder of ['ProjectPassageSearchEngine', 'PassageSearchScopeFiles', 'PassageSearchService', 'PassageSearchModelOrganizer']) {
       expect(root.match(new RegExp(`new ${builder}\\(`, 'g'))).toHaveLength(1);
     }
     expect(root).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\bpassageSearchEngine,/);
@@ -150,6 +156,29 @@ describe('Passage Search engine', () => {
     expect(source).toMatch(/model: plan\.model,/);
     expect(source).toMatch(/policy: AGENT_RUN_POLICIES\.passageSearch/);
     expect(source).toMatch(/temperature: 0,/);
+    // The organizing pass is the other caller of a model: the same policy, the request's model (the plan's or the result's), no reasoning.
+    const organizer = read(path.join(SERVICE_DIR, 'PassageSearchModelOrganizer.ts'));
+    expect(organizer).not.toMatch(/reasoning\s*:/);
+    expect(organizer).toMatch(/model: request\.model,/);
+    expect(organizer).toMatch(/policy: AGENT_RUN_POLICIES\.passageSearch/);
+    expect(organizer).toMatch(/temperature: 0,/);
+    // Inside a run the pass goes out on the engine the run holds: the organizer asks the manager for an engine in one
+    // place only, for the caller's own later action, and takes the run's engine before it.
+    expect(organizer.match(/getEngine\(/g)).toHaveLength(1);
+    expect(organizer).toMatch(/const engine = options\.engine \?\? await this\.currentEngine\(\);/);
+    expect(read(path.join(SERVICE_DIR, 'PassageSearchService.ts'))).toMatch(/this\.organizer\.organize\(reads, \{\s+engine: held\.engine,/);
+    expect(service.filter((file) => /\.runInitial\(/.test(read(file))).map((file) => path.basename(file)).sort())
+      .toEqual(['PassageSearchModelOrganizer.ts', 'PassageSearchService.ts']);
+  });
+
+  it('reads the organizing pass through the shared parser and the shared fold, building no pattern from a reply', () => {
+    const codec = read(path.join(SERVICE_DIR, 'PassageSearchOrganizeReplyCodec.ts'));
+    const checks = read(path.join(SERVICE_DIR, 'PassageSearchOrganizeChecks.ts'));
+    expect(codec).toMatch(/parseModelJson\(content\)/);
+    expect(checks).toMatch(/from '@shared\/utils\/foldedTextSearch'/);
+    for (const source of [codec, checks]) {
+      expect(source).not.toMatch(/JSON\.parse|new RegExp\(/);
+    }
   });
 
   it('logs no message of an error, which may quote a path or the writer\'s text', () => {

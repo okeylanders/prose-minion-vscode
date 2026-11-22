@@ -117,7 +117,9 @@ describe('the result view', () => {
       headline: 'The Rabbit keeps checking the time',
       sections: [{ title: 'Hurry', claims: [{ text: 'He consults the watch.', cites: [1, 2] }] }],
       read: { instances: 2, of: 2 },
-      dropped: { claims: 1, sections: 0 }
+      dropped: { claims: 1, uncited: 0, misquoted: 1, malformed: 0, sections: 0, cites: 2 },
+      replaced: { headline: true, titles: 1 },
+      clipped: 1
     };
     expect(passageSearchResultView(aliceResult({ analysis }), 'r', false).analysis).toEqual(analysis);
     const failed = passageSearchResultView(aliceResult({ analysisMissing: 'cut', ended: 'instance-limit' }), 'r', false);
@@ -130,10 +132,10 @@ describe('the result view', () => {
     const result = aliceResult();
     const view = passageSearchResultView({
       ...result,
-      calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1 },
+      calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1, tooLarge: 0, dispatched: 2 },
       files: { ...result.files, searched: { full: 1, partial: 1, none: 1 } }
     }, 'r', false);
-    expect(view.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1 });
+    expect(view.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1, tooLarge: 0, dispatched: 2 });
     expect(view.files.searched).toEqual({ full: 1, partial: 1, none: 1 });
   });
 });

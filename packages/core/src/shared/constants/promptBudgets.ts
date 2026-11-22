@@ -790,12 +790,16 @@ export interface PromptBudgets {
       labels: number;
       /** Asked of the headline. */
       headlineCharacters: number;
+      /** Asked of a section's title. */
+      titleCharacters: number;
       /** Asked of the sections. */
       sections: number;
       /** Asked of a section's claims. */
       claims: number;
       /** Asked of a claim. */
       claimCharacters: number;
+      /** Characters of source quotes the quotation check may search for one reply; past it a text that quotes anything fails closed. Never in a prompt. */
+      quotationWork: number;
     }>;
   }>;
   /**
@@ -1259,9 +1263,11 @@ export const PROMPT_BUDGETS: PromptBudgets = {
       typicalOutputTokens: 1_200,
       labels: 60,
       headlineCharacters: 160,
+      titleCharacters: 60,
       sections: 8,
       claims: 8,
-      claimCharacters: 300
+      claimCharacters: 300,
+      quotationWork: 20_000_000
     }
   },
   reasoning: {

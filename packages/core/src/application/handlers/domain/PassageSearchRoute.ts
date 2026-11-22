@@ -414,7 +414,7 @@ export class PassageSearchRoute {
     this.held = { resultId, result, view, canOrganize };
     this.outputChannel.appendLine(
       `${LOG} Result ${resultId} held (${result.ended}): ${result.instances.length} instance(s), ` +
-      `${result.calls.answered} of ${result.calls.planned} call(s) answered, ${result.calls.unsent} unsent, ` +
+      `${result.calls.answered} of ${result.calls.planned} call(s) answered, ${result.calls.unsent} unsent, ${result.calls.tooLarge} too large, ${result.requests} request(s), ` +
       `analysis ${result.analysis ? 'present' : 'absent'}.`
     );
     this.send({
