@@ -4,12 +4,16 @@
  * with the fake engine:
  * - a delivery whose results do not fit what is left of the conversation
  *   records and sends nothing, and the card stays ready with its report
- *   (PR #296 F4).
+ *   (PR #296 F4);
+ * - a Run while every held-result place holds a result not yet delivered
+ *   plans and sends nothing, and says how to free one (PR #296 F5).
  * Made-up text: Alice.
  */
 
-import { MessageType } from '@messages';
+import { MessageType, type WorkshopTurn } from '@messages';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS } from '@shared/constants/workshopPassageSearchWords';
+import { aliceResult } from './passageSearchRouteFixtures';
 import { passageSearchRouteDriver, type PassageSearchRouteDriver } from './passageSearchRouteDriver';
 
 describe('a passage search\'s delivery, refused before anything is sent', () => {
@@ -48,5 +52,56 @@ describe('a passage search\'s delivery, refused before anything is sent', () => 
     expect(again.outcome).toBe('done');
     expect(search.run).toHaveBeenCalledTimes(1);
     expect(await driver.view()).toEqual(expect.objectContaining({ status: 'delivered' }));
+  });
+
+  it('five stopped searches in a row: the fifth is refused before anything is planned, until Send or Discard frees a place', async () => {
+    const { harness, search } = driver;
+    const bound = PROMPT_BUDGETS.workshopPassageSearch.heldResults;
+    expect(bound).toBe(4);
+    search.result = aliceResult(2, { ended: 'stopped' });
+    const cards: WorkshopTurn[] = [driver.card];
+    for (let index = 1; index <= bound; index += 1) {
+      cards.push(await driver.askAgain());
+    }
+    const runOn = async (card: WorkshopTurn) => {
+      driver.card = card;
+      return (await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' })).at(-1);
+    };
+    for (const card of cards.slice(0, bound)) {
+      expect((await runOn(card)).outcome).toBe('finished');
+    }
+    expect(search.run).toHaveBeenCalledTimes(bound);
+    for (const card of cards.slice(0, bound)) {
+      expect(await driver.view(card.id)).toEqual(expect.objectContaining({ status: 'ready', partial: true }));
+    }
+
+    const plans = search.plan.mock.calls.length;
+    const refused = await runOn(cards[bound]);
+    expect(refused).toEqual(expect.objectContaining({ outcome: 'refused', reason: 'results-full', message: WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS['results-full'] }));
+    expect(refused.message).toContain('Send or Discard one of them');
+    expect(search.plan.mock.calls.length).toBe(plans);
+    expect(search.run).toHaveBeenCalledTimes(bound);
+    expect(await driver.view(cards[bound].id)).toEqual({ status: 'pending' });
+    // Every result the window holds is still there to send: none was evicted to make room.
+    for (const card of cards.slice(0, bound)) {
+      expect(await driver.view(card.id)).toEqual(expect.objectContaining({ status: 'ready' }));
+    }
+
+    // Discard frees a place.
+    driver.card = cards[0];
+    expect((await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_DISCARD))[0].outcome).toBe('done');
+    expect((await runOn(cards[bound])).outcome).toBe('finished');
+    expect(search.run).toHaveBeenCalledTimes(bound + 1);
+
+    // Full again: Send frees one too. The sent result is the one evicted when the next lands, never an unsent one.
+    driver.card = cards[1];
+    harness.service.continueConversation.mockResolvedValueOnce({ content: 'Two watch moments.', conversationId: 'host-conv', timestamp: new Date(0), toolName: 'workshop' } as never);
+    expect((await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND))[0].outcome).toBe('done');
+    const sixth = await driver.askAgain();
+    expect((await runOn(sixth)).outcome).toBe('finished');
+    expect(await driver.view(cards[1].id)).toEqual(expect.objectContaining({ status: 'delivered', reportHeld: false }));
+    for (const card of [cards[2], cards[3], cards[bound], sixth]) {
+      expect(await driver.view(card.id)).toEqual(expect.objectContaining({ status: 'ready' }));
+    }
   });
 });

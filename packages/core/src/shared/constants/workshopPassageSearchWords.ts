@@ -18,6 +18,7 @@ import type {
   WorkshopPassageSearchRefusal
 } from '@shared/types/messages/workshop/passageSearch';
 import { formatApproximateUsd } from '@shared/utils/approximateUsd';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 /* eslint-disable @typescript-eslint/naming-convention -- keyed by the refusal kinds' kebab-case words, as answered. */
 export const WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS: Readonly<Record<WorkshopPassageSearchRefusal, string>> = Object.freeze({
@@ -37,7 +38,9 @@ export const WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS: Readonly<Record<WorkshopPass
   'report-failed': 'The report could not be saved. Open a workspace folder and try again.',
   'search-failed': 'The search failed before it finished. Nothing was sent. Try again.',
   'delivery-failed': 'The results could not be sent. They are still here: send them again when ready.',
-  'results-too-large': 'The results don’t fit in what is left of this conversation, so nothing was sent. They are still here: open the report.'
+  'results-too-large': 'The results don’t fit in what is left of this conversation, so nothing was sent. They are still here: open the report.',
+  'results-full': `This window already holds ${PROMPT_BUDGETS.workshopPassageSearch.heldResults} search results not yet sent. `
+    + 'Send or Discard one of them, then press Run again. Nothing was searched.'
 });
 /* eslint-enable @typescript-eslint/naming-convention */
 

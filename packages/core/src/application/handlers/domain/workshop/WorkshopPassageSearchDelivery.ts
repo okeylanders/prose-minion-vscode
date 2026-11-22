@@ -3,10 +3,14 @@
  * delivery to the persona who asked (ADR 2026-11-20 D19a, D21). The route
  * owner (`WorkshopPassageSearchHandler`) holds one.
  *
- * - **Held by the card's turn,** oldest first: the newest `heldResults`. A
- *   result is dropped only by eviction after an adopted delivery, by
- *   Discard, or when its room is replaced. One not yet delivered is never
- *   evicted, and a delivery that is not adopted never touches it.
+ * - **Held by the card's turn,** oldest first: at most `heldResults` (D21;
+ *   PR #296 F5). Past it, the oldest delivered result is evicted. One not
+ *   yet delivered is never evicted, and a delivery that is not adopted never
+ *   touches it, so Send can always try again; instead, a new search is
+ *   refused before anything is planned or sent while every place holds a
+ *   result not yet delivered (`full`), until Send or Discard frees one. A
+ *   result is otherwise dropped only by Discard, or when its room is
+ *   replaced.
  * - **A result belongs to one open room** (D19; PR #296 F3). The
  *   coordinator tells each replacement as it lands
  *   (`WorkshopOpenRoomInstance`). Every one but a Rewind opens another room
@@ -148,6 +152,16 @@ export class WorkshopPassageSearchResults {
     return result && workshopPassageSearchCounts(workshopPassageSearchView(result, turnId));
   }
 
+  /** Every place holds a result not yet delivered: a new search would have nowhere to go. */
+  full(): boolean {
+    this.sync();
+    let undelivered = 0;
+    for (const entry of this.held.values()) {
+      undelivered += entry.delivered ? 0 : 1;
+    }
+    return undelivered >= PROMPT_BUDGETS.workshopPassageSearch.heldResults;
+  }
+
   isSending(turnId: string): boolean {
     return this.sendingTurnId === turnId;
   }
@@ -228,7 +242,7 @@ export class WorkshopPassageSearchResults {
     return true;
   }
 
-  /** Past the bound, the oldest delivered result goes; one not yet delivered is never evicted. */
+  /** Past the bound, the oldest delivered result goes; one not yet delivered is never evicted (a Run is refused first: `full`). */
   private evict(): void {
     for (const [turnId, entry] of this.held) {
       if (this.held.size <= PROMPT_BUDGETS.workshopPassageSearch.heldResults) {

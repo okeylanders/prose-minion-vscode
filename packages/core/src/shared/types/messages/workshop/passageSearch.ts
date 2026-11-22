@@ -130,7 +130,8 @@ export const WORKSHOP_PASSAGE_SEARCH_REFUSALS = [
   'report-failed',
   'search-failed',
   'delivery-failed',
-  'results-too-large'
+  'results-too-large',
+  'results-full'
 ] as const;
 export type WorkshopPassageSearchRefusal = typeof WORKSHOP_PASSAGE_SEARCH_REFUSALS[number];
 

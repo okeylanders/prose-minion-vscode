@@ -20,8 +20,10 @@
  *   answers (PR #296 F3); what it found goes nowhere. A card in another room
  *   never reads as running, even under the same turn id. Disposal aborts it
  *   too.
- * - **Held results are this window's:** the newest `heldResults`, by the
- *   card's turn. One is dropped only by eviction after an adopted delivery,
+ * - **Held results are this window's:** at most `heldResults`, by the
+ *   card's turn. A Run is refused before anything is planned or sent while
+ *   every place holds a result not yet delivered (`results-full`): Send or
+ *   Discard frees one. One is dropped only by eviction after an adopted delivery,
  *   by Discard, or when its room is replaced: a Rewind of the same open
  *   room alone keeps the cards it left unchanged (the holder's rule). A
  *   failed delivery never touches it.
@@ -205,6 +207,10 @@ export class WorkshopPassageSearchHandler {
     }
     if (!workshopEditOfferAuthorTarget(this.session, found.turn)) {
       return this.refuse('run', payload, { reason: 'author-left' });
+    }
+    if (this.results.full()) {
+      // A new result would have nowhere to go: nothing is planned or sent until Send or Discard frees a place (D21; PR #296 F5).
+      return this.refuse('run', payload, { reason: 'results-full' });
     }
     // The slot is taken before anything awaits, so a second Run during the plan is refused too.
     const search: RunningSearch = { turnId: payload.turnId, requestId: payload.requestId, roomRevision: payload.roomRevision, controller: new AbortController() };
