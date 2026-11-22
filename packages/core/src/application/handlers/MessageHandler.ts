@@ -281,7 +281,8 @@ export class MessageHandler {
       this.postMessage.bind(this),
       outputChannel,
       textSourceResolver,
-      categorySearchService
+      categorySearchService,
+      { engine: this.services.passageSearchEngine, shell: this.platform.shell, fileSystem: this.platform.fileSystem, workspace: this.platform.workspace }
     );
 
     this.configurationHandler = new ConfigurationHandler(
@@ -1003,6 +1004,7 @@ export class MessageHandler {
       this.disposeDictionaryStatusListener();
       this.dictionaryHandler.dispose();
       this.disposeSearchStatusListener();
+      this.searchHandler.dispose();
       this.analysisHandler.dispose();
       this.workshopHandler.dispose();
       this.lightboxReadingHandler.dispose();

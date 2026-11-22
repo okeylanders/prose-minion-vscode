@@ -36,6 +36,8 @@ export interface PassageSearchEngine {
   plan(request: PassageSearchRequest): Promise<PassageSearchPlanOutcome>;
   /** Run exactly `plan`. Stop is the caller's signal; what was found comes back either way. */
   run(plan: PassageSearchPlan, options?: PassageSearchRunOptions): Promise<PassageSearchResult>;
+  /** Whether an organizing pass can be made at all. Read-only: it prices nothing and needs no key. */
+  organizerAvailable(): boolean;
   /** Price an organizing pass over a result, exactly. Sends nothing to a model. */
   planOrganize(result: PassageSearchResult): Promise<PassageSearchOrganizePlanOutcome>;
   /** Make the pass the caller priced; the result comes back with its analysis, or as it was with why not. */
@@ -43,7 +45,7 @@ export interface PassageSearchEngine {
 }
 
 /** The model work the engine asks for. */
-export type PassageSearchModelWork = Pick<PassageSearchService, 'model' | 'plan' | 'run' | 'planOrganize' | 'organize'>;
+export type PassageSearchModelWork = Pick<PassageSearchService, 'model' | 'plan' | 'run' | 'organizerAvailable' | 'planOrganize' | 'organize'>;
 
 export class ProjectPassageSearchEngine implements PassageSearchEngine {
   constructor(
@@ -82,6 +84,10 @@ export class ProjectPassageSearchEngine implements PassageSearchEngine {
 
   run(plan: PassageSearchPlan, options?: PassageSearchRunOptions): Promise<PassageSearchResult> {
     return this.service.run(plan, options);
+  }
+
+  organizerAvailable(): boolean {
+    return this.service.organizerAvailable();
   }
 
   planOrganize(result: PassageSearchResult): Promise<PassageSearchOrganizePlanOutcome> {

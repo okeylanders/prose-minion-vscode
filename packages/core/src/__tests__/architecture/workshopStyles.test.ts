@@ -54,6 +54,7 @@ const ENTRY_STYLE_IMPORTS = [
   './styles/fulltab/savedBrowser.css',
   './styles/settingsSupport.css',
   './styles/contextPathsSuggestion.css',
+  './styles/passageSearch.css',
   './index.css'
 ] as const;
 
