@@ -1,0 +1,25 @@
+# PR #296: Workshop persona Passage Search review
+
+**Reviewer:** Astra 6.2  
+**Product head:** `935554c314639549ccb16ef03839006edf7cfdfa`  
+**Epic base:** `8b441e55e10c5422ee87d9166f8b0763513d1515` (engine and sidebar)  
+**Verdict:** Request changes. [Exact product-head CI passed](https://github.com/okeylanders/prose-minion-vscode/actions/runs/44977401362).
+
+## Blocking findings
+
+1. **P1: A pending card can get stuck without a price or Run button after restore/Open.** `useWorkshopPassageSearch.ts:136–140,182–198` advances the room in a parent passive effect; the child's estimate effect in `WorkshopPassageSearchCard.tsx:82–89` can run before it. In React/jsdom with head-pinned production card, controls and hook, a loading-to-restored transition posted zero estimates. Opening room 6 from room 5 sent the new card's estimate with revision 5 and then dropped the answer. Both cards stayed on “Working out the price…” with only Cancel. Bind requests to the rendered room generation before descendant effects and retry automatically per generation. Test mounted loading/restore and room-to-room Open.
+2. **P1: Panel disposal can leave a phantom results turn with no adopted reply.** Trace: `WorkshopRoomHandler.ts:420–427` aborts and unconditionally calls `abandonRun`, retaining the provisional writer turn and clearing the active run before completion can roll it back. The aggregate survives the webview (lines 458–464); `WorkshopSliceComposition.ts:556–561` flushes on disposal, and committed-state export omits the provisional turn only while it is active. This violates D19a. Use directed-run rollback before abandon, as in preemption, and assert the ledger after closing/reopening during the reply.
+3. **P1: Room replacement does not authoritatively invalidate old search work.** `WorkshopPassageSearchHandler.ts:362–391` synchronizes from card inspection/progress. In an offline probe, swapping to an empty room left the old provider signal unaborted until old progress arrived. Stale delivery was correctly refused, but the in-flight call had not been stopped. Also reproduced retention of an old held report across a same-ID reload with the same turn/question but a changed scope (`WorkshopPassageSearchDelivery.ts:80–91,109–116`); same ID can arise from normal named-session hydration, not just Rewind. Use an explicit replacement/rewind event; abort independently of card rendering and discard held results on replacement, preserving only genuinely surviving results on Rewind.
+4. **P2: The directive can exceed its own budget when even its minimum does not fit.** `WorkshopPassageSearchDirective.ts:132–144` returns the minimum rather than refusing it. A zero-match result with 80 remaining input tokens returned 132 against a 40-token D21 bound. In the future combined organizer flow the full analysis and table can add to the minimum even with no instances shown. Emit an actually fitting summary or refuse delivery and leave the report ready. Test zero hits and organized results near the limit.
+5. **P2: The four-full-report bound is not enforced.** `WorkshopPassageSearchDelivery.ts:94–103,203–213` evicts only delivered results. Five sequential stopped results all remained held in the offline fixture. Preserve retry for undelivered results and enforce D21, e.g. refuse another Run before provider dispatch when all four slots are occupied by undelivered results and explain how to free a slot.
+
+## Also address
+
+- **P2, static trace:** Auto-Send at `WorkshopPassageSearchHandler.ts:246–249` bypasses the save/replacement guard used by explicit Send (`WorkshopSliceComposition.ts:574–595`); the active-run check covers replies/wizard, not pending persistence. Apply the guard before automatic dispatch and test a result finishing while an Open is pending but before hydration.
+- **P2, static trace:** `WorkshopPassageSearchResultView.ts:29–38` uses searched coverage for a “found in” count rendered by `workshopPassageSearchWords.ts:46–58,75–83`. One match across 20 searched files would say “Found 1 instance in 20 files.” Separate matched from searched files consistently across card, ledger line and shared report.
+
+## Verification and integration
+
+The pinned composition uses the existing engine and authoritative scope resolver; the browser does not supply file scopes. Run replans the stored card and compares the acknowledged price key before dispatch. Normal delivery commits the receipt with the adopted reply, and edit-offer completion paths remain separate. Existing route tests cover Stop, unavailable/retention, thrown failures and retry, not the mounted room transitions or teardown above. Independent synthetic probes used React/jsdom, the actual fitter/estimator and mocked host/transport ports; the disposal, mutation-gate and wording findings are source traces, not live-host tests.
+
+No native VS Code, private manuscript or live model used. #295 is not included in this reviewed base. Reconcile shared epic status, composition, exports and budgets and run combined CI plus a native smoke test after integration. No merge performed.
