@@ -2440,15 +2440,24 @@ request, its card, or how its results reach the persona:
 - **The engine's result is read in one module,**
   `handlers/domain/workshop/WorkshopPassageSearchResultView`: it hands the
   result to the sidebar's display-safe projection (`passageSearchResultView`)
-  and takes a card's and a receipt's counts from that view. The shared
+  and takes a card's and a receipt's counts from that view. A call
+  stopped in flight (`cancelled`) is kept apart from one never made
+  (`unsent`) on the card, in the directive and on the receipt: it may
+  still have been charged. The receipt's `cancelled` is optional. The shared
   report (`shared/utils/passageSearchReport.ts`, the sidebar slice's) and
   the directive both render the view, with the same host words
   (`passageSearchWords`). A change to the result is a change there.
 - **The price is never skipped.** `ESTIMATE` is a read. `RUN` plans again
   and runs only when the `planKey` equals the one sent; otherwise it
   answers `price-changed` and sends nothing. One search per window; a room
-  whose revision moved (New, Open, Rewind, Branch) aborts it and drops
-  every held result.
+  whose revision moved (New, Open, Rewind, Branch) aborts it.
+- **A held result follows its card** (`WorkshopPassageSearchResults.sync`).
+  When the revision moves, another room (another session id: New, Open,
+  Branch) drops every held result. The same room, rewound, keeps each
+  result whose card turn the ledger still holds with the question it was
+  searched for, so a Rewind that cut only the delivery's reply reads
+  `ready` and Send needs no second search (D19). Reopening the same saved
+  session keeps them by the same rule.
 - **Delivery is a directed run that is not an edit offer**
   (`WorkshopDirectedRun` is a union; `WorkshopResultsDeliveryRun`). It
   streams, completes through `completeWorkshopRun`, carries no reaction

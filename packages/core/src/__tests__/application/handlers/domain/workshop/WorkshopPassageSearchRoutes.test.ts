@@ -319,6 +319,74 @@ describe('Workshop routes — a persona\'s passage search', () => {
     expect(requestTurns()).toHaveLength(0);
   });
 
+  describe('a Rewind that keeps the card keeps its result (D19)', () => {
+    /** What a Rewind does to the session: the same room, cut at a turn, under a new revision. */
+    const rewindKeeping = (keep: (turn: WorkshopTurn) => boolean = () => true): void => {
+      const state = harness.session.exportCommittedState();
+      harness.session.hydrateCommittedState(
+        { ...state, turns: state.turns.filter(keep) }, { host: 'host-conv' } as never, harness.session.getConversationBehavior()
+      );
+    };
+
+    it('a result not yet sent is still ready, and Send delivers it without a second search', async () => {
+      search.result = aliceResult(2, { ended: 'stopped' });
+      await done(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
+      const before = harness.session.readRoomRevision();
+      rewindKeeping();
+      expect(harness.session.readRoomRevision()).not.toBe(before);
+      expect(await view()).toEqual(expect.objectContaining({ status: 'ready' }));
+
+      harness.service.continueConversation.mockResolvedValueOnce(analysisResult('Two watch moments, then.') as never);
+      const [sent] = await done(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND);
+      expect(sent.outcome).toBe('done');
+      expect(search.run).toHaveBeenCalledTimes(1);
+      expect(lastDelivery()[1]).toContain(`${QUOTE_SENTINEL} 2`);
+      expect(await view()).toEqual(expect.objectContaining({ status: 'delivered' }));
+    });
+
+    it('a Rewind that cut only the delivery reads ready again, with the result it delivered', async () => {
+      search.result = aliceResult(2, { ended: 'stopped' });
+      await done(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
+      harness.service.continueConversation.mockResolvedValueOnce(analysisResult('Two watch moments, then.') as never);
+      await done(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND);
+      expect(await view()).toEqual(expect.objectContaining({ status: 'delivered' }));
+
+      const delivery = new Set(ledger().filter((turn) => turn.passageSearchResults || turn.passageSearchDelivery).map((turn) => turn.id));
+      expect(delivery.size).toBe(2);
+      rewindKeeping((turn) => !delivery.has(turn.id));
+      expect(requestTurns()).toHaveLength(0);
+      expect(await view()).toEqual(expect.objectContaining({ status: 'ready' }));
+
+      harness.service.continueConversation.mockResolvedValueOnce(analysisResult('Two watch moments, again.') as never);
+      const [sent] = await done(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND);
+      expect(sent.outcome).toBe('done');
+      expect(search.run).toHaveBeenCalledTimes(1);
+      expect(logs()).toContain('room rewound kept=1 dropped=0');
+    });
+
+    it('a Rewind past the card drops its result', async () => {
+      search.result = aliceResult(2, { ended: 'stopped' });
+      await done(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
+      rewindKeeping((turn) => turn.id !== card.id);
+      const [sent] = await done(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND);
+      expect(sent).toEqual(expect.objectContaining({ outcome: 'refused' }));
+      expect(logs()).toContain('room rewound kept=0 dropped=1');
+      expect(harness.service.continueConversation).not.toHaveBeenCalled();
+    });
+
+    it('another room drops it, even one holding a turn of the same id', async () => {
+      search.result = aliceResult(2, { ended: 'stopped' });
+      await done(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
+      // Open or Branch: the same ledger shape under another session id.
+      (harness.persistence.openRoomIdentity as unknown as jest.Mock).mockReturnValue({ sessionId: 'another-room', title: 'Another Room' });
+      rewindKeeping();
+      expect(await view()).toEqual({ status: 'pending' });
+      const [sent] = await done(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND);
+      expect(sent).toEqual(expect.objectContaining({ outcome: 'refused', reason: 'not-ready' }));
+      expect(logs()).not.toContain('room rewound');
+    });
+  });
+
   it('Cancel is stored on the card, and a cancelled card cannot be run', async () => {
     const [cancelled] = await done(MessageType.WORKSHOP_PASSAGE_SEARCH_CANCEL);
     expect(cancelled.outcome).toBe('done');

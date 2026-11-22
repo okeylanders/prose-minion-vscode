@@ -5,8 +5,15 @@
  *
  * - **Held by the card's turn,** oldest first: the newest `heldResults`. A
  *   result is dropped only by eviction after an adopted delivery, by
- *   Discard, or when its room is replaced. One not yet delivered is never
+ *   Discard, or when its card is gone. One not yet delivered is never
  *   evicted, and a delivery that is not adopted never touches it.
+ * - **A Rewind that keeps the card keeps its result** (D19). When the room's
+ *   revision moves, another room (New, Open, Branch: another session id)
+ *   drops every result; the same room keeps each result whose card turn the
+ *   ledger still holds with the question it was searched for. A Rewind that
+ *   cut the delivery's reply leaves the card `ready`, and Send needs no
+ *   second search. Turn ids are never reused in a room, so a kept id is the
+ *   same card.
  * - **Every send checks first,** and nothing is awaited between the last
  *   check and the dispatch: this room, the card still here and
  *   undelivered, its author still in the room, no run going, no other
@@ -49,6 +56,8 @@ export interface WorkshopPassageSearchDeliverySession {
 export interface WorkshopPassageSearchRoomGate {
   /** Any run going in the room: a reply, or the context wizard. */
   activeRunLabel(): string | undefined;
+  /** The open room's session id: unchanged by a Rewind, new on New, Open and Branch. */
+  roomSessionId(): string;
   runDirected(target: WorkshopChatTarget, run: WorkshopResultsDeliveryRun): Promise<WorkshopDirectedRunResult>;
 }
 
@@ -56,8 +65,9 @@ export type WorkshopPassageSearchRefused = { readonly reason: WorkshopPassageSea
 
 export class WorkshopPassageSearchResults {
   /** By the card's turn, oldest first. */
-  private readonly held = new Map<string, { readonly result: PassageSearchResult; delivered: boolean }>();
+  private readonly held = new Map<string, { readonly result: PassageSearchResult; readonly question: string; delivered: boolean }>();
   private revision: number | undefined;
+  private roomSessionId: string | undefined;
   private sendingTurnId: string | undefined;
 
   constructor(
@@ -66,20 +76,46 @@ export class WorkshopPassageSearchResults {
     private readonly log: (line: string) => void
   ) {}
 
-  /** A replaced room takes its held results with it. */
+  /** Another room takes every held result with it; the same room, rewound, keeps those whose card it still holds. */
   sync(): void {
     const revision = this.session.readRoomRevision();
-    if (this.revision !== undefined && this.revision !== revision) {
-      this.held.clear();
+    const roomSessionId = this.room.roomSessionId();
+    if (this.revision !== undefined && this.revision !== revision && this.held.size > 0) {
+      if (roomSessionId !== this.roomSessionId) {
+        this.held.clear();
+      } else {
+        this.keepCardsStillHeld();
+      }
     }
     this.revision = revision;
+    this.roomSessionId = roomSessionId;
   }
 
   hold(turnId: string, result: PassageSearchResult): void {
     this.sync();
+    const question = this.session.readRoomLedger().find((turn) => turn.id === turnId)?.passageSearchRequest?.question;
     this.held.delete(turnId);
-    this.held.set(turnId, { result, delivered: false });
+    if (question === undefined) {
+      return;
+    }
+    this.held.set(turnId, { result, question, delivered: false });
     this.evict();
+  }
+
+  /** After a Rewind: a result stays with its card, and is delivered only while the ledger still holds its receipt. */
+  private keepCardsStillHeld(): void {
+    const ledger = this.session.readRoomLedger();
+    let dropped = 0;
+    for (const [turnId, entry] of this.held) {
+      const request = ledger.find((turn) => turn.id === turnId)?.passageSearchRequest;
+      if (!request || request.answer !== undefined || request.question !== entry.question) {
+        this.held.delete(turnId);
+        dropped += 1;
+        continue;
+      }
+      entry.delivered = ledger.some((turn) => turn.passageSearchDelivery?.cardTurnId === turnId);
+    }
+    this.log(`room rewound kept=${this.held.size} dropped=${dropped}`);
   }
 
   resultOf(turnId: string): PassageSearchResult | undefined {

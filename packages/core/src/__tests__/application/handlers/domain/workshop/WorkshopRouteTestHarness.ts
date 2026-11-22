@@ -295,6 +295,7 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
       return { attachmentLabels: [] };
     }),
     rewindTo: jest.fn(),
+    openRoomIdentity: jest.fn().mockReturnValue({ sessionId: 'current', title: 'Current Room' }),
     branchFrom: jest.fn(),
     saveNamed: jest.fn().mockResolvedValue({ sessionId: 'saved-1', title: 'Saved Room' }),
     list: jest.fn().mockResolvedValue({

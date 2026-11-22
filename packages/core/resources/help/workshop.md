@@ -68,7 +68,7 @@ Press **Run** to start it, or **Cancel** to turn it down. If the files or the pr
 
 When the search has read everything and the room is free, the results go to the persona, who replies as on any turn. If a reply was in progress, the card waits with **Send to** the persona. A stopped search, or one cut short by a changed API key or a provider that refused its calls, is never sent for you: the card shows what was found with **Send partial results to** the persona, **Open report** and **Discard**. If sending fails, the results stay on the card and you can send them again without searching again.
 
-**Open report** saves a Markdown report in prose-minion/reports/ and opens it: what was read, the labels with their counts, and every instance with its file, line and quote. When there are more instances than fit in the persona's message, it is sent an even spread of them and told so; the report has them all. Results are held only while the window stays open on that room. After a reload the card can be run again, and a delivered card says the report is no longer held.
+**Open report** saves a Markdown report in prose-minion/reports/ and opens it: what was read, the labels with their counts, and every instance with its file, line and quote. When there are more instances than fit in the persona's message, it is sent an even spread of them and told so; the report has them all. Results are held only while the window stays open on that room; a rewind that keeps the card keeps its results, so they can be sent again. After a reload the card can be run again, and a delivered card says the report is no longer held.
 
 ## Suggested file edits
 

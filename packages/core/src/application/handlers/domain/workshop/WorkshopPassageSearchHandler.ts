@@ -242,7 +242,7 @@ export class WorkshopPassageSearchHandler {
     this.results.hold(payload.turnId, result);
     const counts = workshopPassageSearchCounts(workshopPassageSearchView(result, payload.turnId));
     this.log(`run finished turn=${payload.turnId} ended=${counts.ended} instances=${counts.instances} files=${counts.files} `
-      + `answered=${counts.calls.answered} failed=${counts.calls.failed} cut=${counts.calls.cut} unsent=${counts.calls.unsent} dropped=${counts.dropped}`);
+      + `answered=${counts.calls.answered} failed=${counts.calls.failed} cut=${counts.calls.cut} unsent=${counts.calls.unsent} cancelled=${counts.calls.cancelled ?? 0} dropped=${counts.dropped}`);
     // Only a search that read everything is delivered by the host, and only into an idle room (D21).
     const auto = !isWorkshopPassageSearchPartial(counts.ended) && this.room.activeRunLabel() === undefined;
     const sent = auto ? await this.results.deliver(payload.turnId) : undefined;
@@ -383,7 +383,7 @@ export class WorkshopPassageSearchHandler {
       && this.session.readRoomLedger().some((turn) => turn.id === search.turnId && turn.passageSearchRequest !== undefined);
   }
 
-  /** A replaced room takes its search and its held results with it. */
+  /** A room whose revision moved takes its running search with it; held results follow their cards (see the holder). */
   private syncRoom(): void {
     this.results.sync();
     if (this.search && this.search.roomRevision !== this.session.readRoomRevision()) {

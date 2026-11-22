@@ -290,7 +290,7 @@ export class WorkshopSliceComposition {
     this.passageSearchHandler = new WorkshopPassageSearchHandler(
       session,
       passageSearch,
-      { activeRunLabel: host.activeRunLabel, runDirected: host.runDirected },
+      { activeRunLabel: host.activeRunLabel, runDirected: host.runDirected, roomSessionId: () => sessionPersistence.openRoomIdentity().sessionId },
       { postSessionState: host.postSessionState, markDirty },
       postMessage,
       outputChannel
