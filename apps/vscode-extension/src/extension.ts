@@ -93,6 +93,7 @@ import {
   liveCatalogPrices,
   liveCatalogFacts,
   PassageSearchService,
+  PassageSearchModelOrganizer,
   PassageSearchScopeFiles,
   ProjectPassageSearchEngine,
   PassageSearchReportExport,
@@ -684,6 +685,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Passage Search (ADR 2026-11-20 D1): the one engine, on the manager-owned `passageSearch` scope. It reads
   // scopes through the resolver's authoritative listing and prices a plan from the live catalog; callers own consent.
+  // The organizing pass (D12) is the service's port: one call over a result's checked instances, on the same scope.
+  const passageSearchFacts = liveCatalogFacts(outputChannel);
   const passageSearchEngine = new ProjectPassageSearchEngine(
     new PassageSearchScopeFiles({
       listing: contextResourceResolver,
@@ -691,7 +694,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       workspace: platform.workspace,
       editor: editorContext
     }),
-    new PassageSearchService(aiResourceManager, resourceLoader.getPromptLoader(), liveCatalogFacts(outputChannel), outputChannel),
+    new PassageSearchService(
+      aiResourceManager,
+      resourceLoader.getPromptLoader(),
+      passageSearchFacts,
+      outputChannel,
+      new PassageSearchModelOrganizer(aiResourceManager, resourceLoader.getPromptLoader(), passageSearchFacts, outputChannel)
+    ),
     outputChannel
   );
 

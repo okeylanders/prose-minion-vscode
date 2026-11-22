@@ -146,7 +146,9 @@ export function passageSearchResultView(result: PassageSearchResult, resultId: s
               claims: section.claims.map((claim) => ({ text: claim.text, cites: [...claim.cites] }))
             })),
             read: { ...result.analysis.read },
-            dropped: { ...result.analysis.dropped }
+            dropped: { ...result.analysis.dropped },
+            replaced: { ...result.analysis.replaced },
+            clipped: result.analysis.clipped
           }
         }
       : {}),

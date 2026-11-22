@@ -93,6 +93,12 @@ export function passageSearchAnalysisNote(result: Pick<PassageSearchResultView, 
       return 'The results were not organized: the organizing reply was cut off. The list below is whole.';
     case 'no-room':
       return 'The results were not organized: the model has no room to read them. The list below is whole.';
+    case 'nothing-kept':
+      return 'The results were not organized: nothing the organizing reply said could be checked against the instances. The list below is whole.';
+    case 'stopped':
+      return 'The results were not organized: organizing was stopped. The list below is whole.';
+    case 'key-changed':
+      return 'The results were not organized: the API key changed before organizing finished. The list below is whole.';
     default:
       return undefined;
   }
@@ -112,6 +118,7 @@ export function passageSearchMissingLines(result: PassageSearchResultView): stri
   add(searched.partial, `${number(searched.partial)} of ${plural(planned, 'file')} ${searched.partial === 1 ? 'was' : 'were'} searched only in part.`);
   add(calls.cancelled, `${plural(calls.cancelled, 'call was', 'calls were')} stopped in flight, so the text they cover was not searched; they may still have been charged.`);
   add(calls.unsent, `${plural(calls.unsent, 'call was', 'calls were')} not made, so the text they cover was not searched.`);
+  add(calls.tooLarge, `${plural(calls.tooLarge, 'call')} did not fit the model's window and ${calls.tooLarge === 1 ? 'was' : 'were'} not sent, so the text ${calls.tooLarge === 1 ? 'it covers' : 'they cover'} was not searched.`);
   add(calls.failed, `${plural(calls.failed, 'call')} failed, so the text ${calls.failed === 1 ? 'it covers' : 'they cover'} was not searched.`);
   add(calls.cut, `${plural(calls.cut, 'reply was', 'replies were')} cut off at the length limit; the instances finished before the cut are kept.`);
   add(result.overLimit, `${plural(result.overLimit, 'instance')} past the most a search keeps ${result.overLimit === 1 ? 'was' : 'were'} not kept.`);
@@ -120,8 +127,19 @@ export function passageSearchMissingLines(result: PassageSearchResultView): stri
   add(dropped.malformed, `${plural(dropped.malformed, 'instance')} in a reply could not be read.`);
   add(dropped.duplicate, `${plural(dropped.duplicate, 'repeat')} of a moment already listed ${dropped.duplicate === 1 ? 'was' : 'were'} merged into it.`);
   if (result.analysis) {
-    add(result.analysis.dropped.claims, `${plural(result.analysis.dropped.claims, 'claim')} in the analysis ${result.analysis.dropped.claims === 1 ? 'was' : 'were'} left out: ${result.analysis.dropped.claims === 1 ? 'it' : 'they'} cited no instance here, or quoted one wrongly.`);
-    add(result.analysis.dropped.sections, `${plural(result.analysis.dropped.sections, 'section')} of the analysis ${result.analysis.dropped.sections === 1 ? 'was' : 'were'} left with no claim, and left out.`);
+    const { dropped, replaced, clipped } = result.analysis;
+    const were = (count: number): string => (count === 1 ? 'was' : 'were');
+    const they = (count: number): string => (count === 1 ? 'it' : 'they');
+    add(dropped.uncited, `${plural(dropped.uncited, 'claim')} in the analysis ${were(dropped.uncited)} left out: ${they(dropped.uncited)} cited no instance the analysis read.`);
+    add(dropped.misquoted, `${plural(dropped.misquoted, 'claim')} in the analysis ${were(dropped.misquoted)} left out: ${they(dropped.misquoted)} quoted words the cited instances do not hold.`);
+    add(dropped.malformed, `${plural(dropped.malformed, 'claim')} in the analysis could not be read, and ${were(dropped.malformed)} left out.`);
+    add(dropped.sections, `${plural(dropped.sections, 'section')} of the analysis ${were(dropped.sections)} left with no claim, and left out.`);
+    add(dropped.cites, `${plural(dropped.cites, 'citation')} in the analysis named no instance it read, and ${were(dropped.cites)} removed.`);
+    if (replaced.headline) {
+      lines.push('The headline is Prose Minion\'s count: the analysis gave none that could be checked.');
+    }
+    add(replaced.titles, `${plural(replaced.titles, 'section title')} in the analysis ${were(replaced.titles)} replaced with a plain one.`);
+    add(clipped, `${plural(clipped, 'part')} of the analysis ${were(clipped)} shortened.`);
   }
   if (result.leftOutMessage) {
     lines.push(result.leftOutMessage);

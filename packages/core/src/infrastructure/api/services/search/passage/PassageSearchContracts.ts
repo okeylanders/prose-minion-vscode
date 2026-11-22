@@ -180,27 +180,55 @@ export interface PassageSearchResultFile {
   readonly absolutePath?: string;
   readonly lines: 'document' | 'text';
   readonly instances: number;
-  /** Its read calls: planned, admitted (dispatched to the provider) and answered (a reply read). */
+  /** Its read calls: planned, admitted (dispatched to the provider; a call refused before dispatch is not) and answered (a reply read). */
   readonly chunks: { readonly planned: number; readonly admitted: number; readonly answered: number };
   /** `full` only when every chunk was answered, hits or none; a file with no hit and `none` was never searched. */
   readonly searched: PassageSearchFileSearched;
 }
 
-/** The organizing pass's checked output (D12, D13). Slice 3 fills it. */
+/** The organizing pass's checked output (D12, D13): what the host kept of the reply. */
 export interface PassageSearchAnalysis {
+  /** The pass's, or the host's ("14 instances in 6 files") when the pass's quoted words no instance shown holds. */
   readonly headline: string;
   readonly sections: ReadonlyArray<{
     readonly title: string;
-    readonly claims: ReadonlyArray<{ readonly text: string; /** Instance numbers. */ readonly cites: readonly number[] }>;
+    readonly claims: ReadonlyArray<{ readonly text: string; /** Instance numbers, each one the pass was shown. */ readonly cites: readonly number[] }>;
   }>;
-  /** How many instances the pass was shown, of how many the result holds. */
+  /** How many instances the pass was shown, of how many the result holds: "The analysis read 400 of 1,240 instances." */
   readonly read: { readonly instances: number; readonly of: number };
-  /** What the host's checks dropped. */
-  readonly dropped: { readonly claims: number; readonly sections: number };
+  /** What the host's checks dropped, by count. */
+  readonly dropped: {
+    /** Claims not kept, for any of the three reasons below. */
+    readonly claims: number;
+    /** Claims left with no cite of an instance the pass was shown. */
+    readonly uncited: number;
+    /** Claims that put words in quotation marks no instance they cite holds. */
+    readonly misquoted: number;
+    /** Claims with no text, or not written as a claim. */
+    readonly malformed: number;
+    /** Sections left with no claim. */
+    readonly sections: number;
+    /** Cites of an instance the pass was not shown, on kept and dropped claims alike. */
+    readonly cites: number;
+  };
+  /** What the host put in place of the pass's words: the headline, and section titles ("Group 2"). */
+  readonly replaced: { readonly headline: boolean; readonly titles: number };
+  /** Headlines, titles and claims clipped at the safety ceiling. */
+  readonly clipped: number;
 }
 
-/** Why a pass that was started left no analysis (D13); the list is whole either way. */
-export type PassageSearchAnalysisMissing = 'failed' | 'malformed' | 'cut' | 'no-room';
+/**
+ * Why a pass that was started left no analysis (D13); the list is whole
+ * either way. `failed`: the call failed. `malformed`: the reply could not be
+ * read. `cut`: it was cut off at its output ceiling. `no-room`: not one
+ * instance fits the pass's input bound, so no call was made. `nothing-kept`:
+ * the reply was read and no claim passed the host's checks. `stopped` and
+ * `key-changed`: the caller stopped the pass, or the API key changed, before
+ * it answered; inside a run these end the run instead (`ended`).
+ */
+export const PASSAGE_SEARCH_ANALYSIS_MISSING = ['failed', 'malformed', 'cut', 'no-room', 'nothing-kept', 'stopped', 'key-changed'] as const;
+
+export type PassageSearchAnalysisMissing = (typeof PASSAGE_SEARCH_ANALYSIS_MISSING)[number];
 
 /** Typed, and honest about what is missing (D11). Nothing here is a model's count. */
 export interface PassageSearchResult {
@@ -215,10 +243,15 @@ export interface PassageSearchResult {
   /** Checked instances past the `instances` bound, not kept. */
   readonly overLimit: number;
   /**
-   * Read calls. `answered`, `failed`, `cancelled` and `unsent` add up to
-   * `planned`; `cut` counts answered calls whose reply was cut off.
-   * `cancelled` calls were dispatched and stopped in flight, and may have
-   * been charged; `unsent` calls never started.
+   * Read calls. `answered`, `failed`, `cancelled`, `unsent` and `tooLarge`
+   * add up to `planned`; `cut` counts answered calls whose reply was cut
+   * off. `cancelled` calls were dispatched and stopped in flight, and may
+   * have been charged. `unsent` calls never started (Stop, a key change, a
+   * run of provider failures, the instance limit). `tooLarge` calls were
+   * refused by the engine's own preflight before dispatch: the request did
+   * not fit the model's window as measured then, so nothing was sent.
+   * `dispatched` is how many went out (`answered`, `failed` and `cancelled`
+   * together): exactly the usage entries the reads recorded, known or not.
    */
   readonly calls: {
     readonly planned: number;
@@ -227,6 +260,8 @@ export interface PassageSearchResult {
     readonly cut: number;
     readonly cancelled: number;
     readonly unsent: number;
+    readonly tooLarge: number;
+    readonly dispatched: number;
   };
   readonly files: {
     /** Every file of the plan, in reading order, searched or not. */
@@ -236,6 +271,14 @@ export interface PassageSearchResult {
     readonly leftOut: PassageSearchLeftOut;
   };
   readonly ended: PassageSearchEnded;
+  /**
+   * Every model call dispatched for this result so far, metered or not: the
+   * reads that went out (`calls.dispatched`) and every organizing pass that
+   * did, inline or explicit, each retry included. Kept apart from `usage`,
+   * which is absent when no call reported any, so a later pass counts them
+   * all (PR #295 re-review of ceb26a9a).
+   */
+  readonly requests: number;
   readonly usage?: TokenUsage;
 }
 

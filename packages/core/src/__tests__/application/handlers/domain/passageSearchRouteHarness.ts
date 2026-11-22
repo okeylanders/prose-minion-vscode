@@ -91,7 +91,7 @@ export function aliceResult(overrides: Partial<PassageSearchResult> = {}): Passa
     labels: [{ key: 'watch checked', label: ALICE_LABEL, count: 2, files: 2 }],
     dropped: { 'quote-not-found': 1, 'quote-ambiguous': 0, malformed: 0, duplicate: 2 },
     overLimit: 0,
-    calls: { planned: 3, answered: 3, failed: 0, cut: 0, cancelled: 0, unsent: 0 },
+    calls: { planned: 3, answered: 3, failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 3 },
     files: {
       planned: [
         { key: 'f1', displayPath: 'chapters/alice-ch1.md', absolutePath: ALICE_ABSOLUTE, lines: 'document', instances: 1, chunks: WHOLE, searched: 'full' },
@@ -102,6 +102,7 @@ export function aliceResult(overrides: Partial<PassageSearchResult> = {}): Passa
       leftOut: { unreadable: 0, unsplittable: 0, empty: 0 }
     },
     ended: 'complete',
+    requests: 3,
     ...overrides
   };
 }
@@ -110,7 +111,11 @@ export const ORGANIZE_PLAN: PassageSearchOrganizePlan = {
   planKey: 'organize-key',
   model: 'test/reader',
   estimate: { model: 'test/reader', calls: 1, inputTokens: 900, outputTokens: 1200, usd: 0.03 },
-  instances: { read: 2, of: 2 }
+  instances: { read: 2, of: 2 },
+  systemMessage: 'SYSTEM',
+  userMessage: 'USER',
+  shown: [1, 2],
+  ceilings: { organizeOutputTokens: 4000 }
 };
 
 /** A promise a test settles by hand, to hold a call open. */

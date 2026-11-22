@@ -212,7 +212,7 @@ describe('PassageSearchService.run', () => {
       model: PASSAGE_MODEL,
       ended: 'complete',
       overLimit: 0,
-      calls: { planned: 3, answered: 3, failed: 0, cut: 0, cancelled: 0, unsent: 0 },
+      calls: { planned: 3, answered: 3, failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 3 },
       dropped: { 'quote-not-found': 0, 'quote-ambiguous': 0, malformed: 0, duplicate: 0 },
       usage: { promptTokens: 300, completionTokens: 60, totalTokens: 360, requestCount: 3 }
     });
@@ -248,7 +248,7 @@ describe('PassageSearchService.run', () => {
     const { service, runInitial } = createService([new Error('503 from /secret/path'), { content: 'I could not find any.' }, GLANCED]);
     const result = await service.run(await planOf(service));
     expect(runInitial).toHaveBeenCalledTimes(3);
-    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 2, cut: 0, cancelled: 0, unsent: 0 });
+    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 2, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 3 });
     // A file whose only call failed was not searched, whatever it holds.
     expect(result.files.planned.map((file) => file.searched)).toEqual(['none', 'none', 'full']);
     expect(result.ended).toBe('complete');
@@ -259,7 +259,7 @@ describe('PassageSearchService.run', () => {
     const cut = `{"instances":[${JSON.stringify({ quote: 'took a watch out of its waistcoat-pocket', note: 'n', label: 'checks' })},{"quote":"glanced at its wa`;
     const { service } = createService([{ content: cut, finishReason: 'length' }, NONE, NONE]);
     const result = await service.run(await planOf(service));
-    expect(result.calls).toEqual({ planned: 3, answered: 3, failed: 0, cut: 1, cancelled: 0, unsent: 0 });
+    expect(result.calls).toEqual({ planned: 3, answered: 3, failed: 0, cut: 1, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 3 });
     expect(result.instances.map((instance) => instance.quote)).toEqual(['took a watch out of its waistcoat-pocket']);
   });
 
@@ -279,7 +279,7 @@ describe('PassageSearchService.run', () => {
     expect(runInitial.mock.calls[0][0].options.signal).toBe(stop.signal);
     expect(result.ended).toBe('stopped');
     // The call stopped in flight was dispatched: cancelled, with its usage kept; the one never started is unsent.
-    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1 });
+    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1, tooLarge: 0, dispatched: 2 });
     expect(result.usage).toMatchObject({ totalTokens: 240, requestCount: 2 });
     expect(result.files.planned.map((file) => [file.chunks, file.searched])).toEqual([
       [{ planned: 1, admitted: 1, answered: 1 }, 'full'],
@@ -312,7 +312,7 @@ describe('PassageSearchService.run', () => {
     const result = await service.run(await planOf(service, { organize: true }));
     expect(runInitial).toHaveBeenCalledTimes(2);
     expect(result.ended).toBe('key-changed');
-    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2 });
+    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2, tooLarge: 0, dispatched: 1 });
     // The call the retired engine refused never reached the provider: not admitted.
     expect(result.files.planned.map((file) => file.chunks.admitted)).toEqual([1, 0, 0]);
     expect(result.instances).toHaveLength(1);
@@ -334,14 +334,14 @@ describe('PassageSearchService.run', () => {
 
     it('stops starting calls after failureStreak failures in a row, keeps what was found, and never organizes', async () => {
       expect(bounds.failureStreak).toBe(5);
-      const organizer = organizerOf({ kind: 'analysis', analysis: { headline: 'x', sections: [], read: { instances: 1, of: 1 }, dropped: { claims: 0, sections: 0 } } });
+      const organizer = organizerOf({ kind: 'analysis', analysis: { headline: 'x', sections: [], read: { instances: 1, of: 1 }, dropped: { claims: 0, uncited: 0, misquoted: 0, malformed: 0, sections: 0, cites: 0 }, replaced: { headline: false, titles: 0 }, clipped: 0 }, usages: [] });
       const { service, runInitial } = createService([TOOK, refused(), refused(), new Error('429'), refused(), refused(), NONE, NONE, NONE], { organizer });
       const plan = await planOf(service, { organize: true, files: MANY });
       expect(plan.organize).toBe(true);
       const result = await service.run(plan);
       expect(runInitial).toHaveBeenCalledTimes(6);
       expect(result.ended).toBe('provider-failed');
-      expect(result.calls).toEqual({ planned: 9, answered: 1, failed: 5, cut: 0, cancelled: 0, unsent: 3 });
+      expect(result.calls).toEqual({ planned: 9, answered: 1, failed: 5, cut: 0, cancelled: 0, unsent: 3, tooLarge: 0, dispatched: 6 });
       expect(result.instances.map((instance) => instance.quote)).toEqual(['took a watch out of its waistcoat-pocket']);
       expect(organizer.organize).not.toHaveBeenCalled();
       expect(result).not.toHaveProperty('analysis');
@@ -352,7 +352,7 @@ describe('PassageSearchService.run', () => {
       const result = await service.run(await planOf(service, { files: MANY }));
       expect(runInitial).toHaveBeenCalledTimes(9);
       expect(result.ended).toBe('complete');
-      expect(result.calls).toEqual({ planned: 9, answered: 1, failed: 8, cut: 0, cancelled: 0, unsent: 0 });
+      expect(result.calls).toEqual({ planned: 9, answered: 1, failed: 8, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 9 });
     });
 
     it('counts only the provider\'s failures: an unreadable reply neither adds to the streak nor ends it', async () => {
@@ -363,7 +363,7 @@ describe('PassageSearchService.run', () => {
       const result = await mixed.service.run(await planOf(mixed.service, { files: MANY }));
       expect(mixed.runInitial).toHaveBeenCalledTimes(6);
       expect(result.ended).toBe('provider-failed');
-      expect(result.calls).toEqual({ planned: 9, answered: 0, failed: 6, cut: 0, cancelled: 0, unsent: 3 });
+      expect(result.calls).toEqual({ planned: 9, answered: 0, failed: 6, cut: 0, cancelled: 0, unsent: 3, tooLarge: 0, dispatched: 6 });
     });
   });
 
@@ -385,7 +385,7 @@ describe('PassageSearchService.run', () => {
   });
 
   describe('the organizing pass\'s seam (D12a)', () => {
-    const ANALYSIS = { headline: 'The Rabbit checks its watch twice.', sections: [], read: { instances: 2, of: 2 }, dropped: { claims: 0, sections: 0 } };
+    const ANALYSIS = { headline: 'The Rabbit checks its watch twice.', sections: [], read: { instances: 2, of: 2 }, dropped: { claims: 0, uncited: 0, misquoted: 0, malformed: 0, sections: 0, cites: 0 }, replaced: { headline: false, titles: 0 }, clipped: 0 };
 
     it('plans no organizing call and prices no allowance when there is no organizer', async () => {
       const { service } = createService();
@@ -419,7 +419,7 @@ describe('PassageSearchService.run', () => {
     });
 
     it('calls the organizer once, after complete reads with an instance, and adds its analysis and usage', async () => {
-      const organizer = organizerOf({ kind: 'analysis', analysis: ANALYSIS, usage: USAGE });
+      const organizer = organizerOf({ kind: 'analysis', analysis: ANALYSIS, usages: [USAGE] });
       const { service } = createService([TOOK, NONE, GLANCED], { organizer });
       const result = await service.run(await planOf(service, { organize: true }));
       expect(organizer.organize).toHaveBeenCalledTimes(1);
@@ -430,7 +430,7 @@ describe('PassageSearchService.run', () => {
     });
 
     it('never calls it when the plan does not organize, or nothing was found', async () => {
-      const organizer = organizerOf({ kind: 'analysis', analysis: ANALYSIS });
+      const organizer = organizerOf({ kind: 'analysis', analysis: ANALYSIS, usages: [] });
       const unasked = createService([TOOK, NONE, GLANCED], { organizer });
       await unasked.service.run(await planOf(unasked.service));
       const empty = createService([NONE, NONE, NONE], { organizer });
@@ -445,19 +445,19 @@ describe('PassageSearchService.run', () => {
       expect(first).toMatchObject({ analysisMissing: 'failed', ended: 'complete' });
       expect(first.instances).toHaveLength(2);
 
-      const cut = createService([TOOK, NONE, GLANCED], { organizer: organizerOf({ kind: 'missing', reason: 'cut' }) });
+      const cut = createService([TOOK, NONE, GLANCED], { organizer: organizerOf({ kind: 'missing', reason: 'cut', usages: [] }) });
       const second = await cut.service.run(await planOf(cut.service, { organize: true }));
       expect(second).toMatchObject({ analysisMissing: 'cut' });
       expect(second.instances).toHaveLength(2);
     });
 
     it('offers the pass afterwards as its own planned action', async () => {
-      const organizer = organizerOf({ kind: 'analysis', analysis: ANALYSIS });
+      const organizer = organizerOf({ kind: 'analysis', analysis: ANALYSIS, usages: [] });
       const { service } = createService([TOOK, new AgentRunUnavailableError('missing-credentials')], { organizer });
       const stopped = await service.run(await planOf(service, { organize: true }));
       expect(stopped.ended).toBe('key-changed');
       await expect(service.planOrganize(stopped)).resolves.toEqual({ kind: 'unavailable', message: 'not built' });
-      const plan = { planKey: 'k', model: PASSAGE_MODEL, estimate: { model: PASSAGE_MODEL, calls: 1, inputTokens: 10, outputTokens: 5 }, instances: { read: 1, of: 1 } };
+      const plan = { planKey: 'k', model: PASSAGE_MODEL, estimate: { model: PASSAGE_MODEL, calls: 1, inputTokens: 10, outputTokens: 5 }, instances: { read: 1, of: 1 }, systemMessage: 'SYSTEM', userMessage: 'USER', shown: [1], ceilings: { organizeOutputTokens: 4_000 } };
       const organized = await service.organize(stopped, plan);
       expect(organizer.organize).toHaveBeenCalledWith(stopped, { plan });
       expect(organized.analysis).toEqual(ANALYSIS);
