@@ -103,9 +103,13 @@ export function assertWorkshopPassageSearchShapes(turn: Record<string, unknown>,
     for (const key of ['files', 'labels', 'dropped'] as const) {
       countAt(delivery[key], `${at}.${key}`);
     }
-    const calls = exactObject(delivery.calls, `${at}.calls`, ['planned', 'answered', 'failed', 'cut', 'unsent']);
+    // `cancelled` is additive: a receipt from before it was kept apart holds none.
+    const calls = exactObject(delivery.calls, `${at}.calls`, ['planned', 'answered', 'failed', 'cut', 'unsent'], ['cancelled']);
     for (const key of ['planned', 'answered', 'failed', 'cut', 'unsent'] as const) {
       countAt(calls[key], `${at}.calls.${key}`);
+    }
+    if (calls.cancelled !== undefined) {
+      countAt(calls.cancelled, `${at}.calls.cancelled`);
     }
     enumAt(delivery.ended, `${at}.ended`, WORKSHOP_PASSAGE_SEARCH_ENDINGS);
     booleanAt(delivery.organized, `${at}.organized`);

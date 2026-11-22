@@ -149,7 +149,7 @@ describe('Workshop routes — a persona\'s passage search', () => {
     const reply = ledger().at(-1)!;
     expect(reply.passageSearchDelivery).toEqual({
       cardTurnId: card.id, instances: 3, files: 1, labels: 1, dropped: 3,
-      calls: { planned: 4, answered: 4, failed: 0, cut: 0, unsent: 0 }, ended: 'complete', organized: false, shown: 3
+      calls: { planned: 4, answered: 4, failed: 0, cut: 0, unsent: 0, cancelled: 0 }, ended: 'complete', organized: false, shown: 3
     });
     expect(await view()).toEqual(expect.objectContaining({ status: 'delivered', shown: 3, reportHeld: true }));
     // The receipt is the host's: the webview's reply does not carry it.
@@ -175,9 +175,11 @@ describe('Workshop routes — a persona\'s passage search', () => {
     await running;
     await settle();
 
-    expect(answersOf(requestId).at(-1)).toEqual(expect.objectContaining({ outcome: 'finished', message: 'Stopped: 3 instances from 2 of 4 reads.' }));
-    // A call stopped in flight was not answered: the card counts it with the calls not made.
-    expect((await view() as { counts: { calls: unknown } }).counts.calls).toEqual({ planned: 4, answered: 2, failed: 0, cut: 0, unsent: 2 });
+    expect(answersOf(requestId).at(-1)).toEqual(expect.objectContaining({
+      outcome: 'finished', message: 'Stopped: 3 instances from 2 of 4 reads. 1 call was stopped in flight and may still have been charged.'
+    }));
+    // A call stopped in flight is kept apart from one never made, on the card and on the receipt.
+    expect((await view() as { counts: { calls: unknown } }).counts.calls).toEqual({ planned: 4, answered: 2, failed: 0, cut: 0, unsent: 1, cancelled: 1 });
     expect(harness.service.continueConversation).not.toHaveBeenCalled();
     expect(requestTurns()).toHaveLength(0);
     expect(await view()).toEqual(expect.objectContaining({ status: 'ready', partial: true }));
@@ -187,6 +189,8 @@ describe('Workshop routes — a persona\'s passage search', () => {
     expect(sent.outcome).toBe('done');
     expect(search.run).toHaveBeenCalledTimes(1);
     expect(ledger().at(-1)!.passageSearchDelivery?.ended).toBe('stopped');
+    expect(ledger().at(-1)!.passageSearchDelivery?.calls).toEqual({ planned: 4, answered: 2, failed: 0, cut: 0, unsent: 1, cancelled: 1 });
+    expect(lastDelivery()[1]).toContain('1 call was stopped in flight, so the text they cover was not searched; they may still have been charged.');
     expect(lastDelivery()[1]).toContain('Ended early: Stopped before every call was answered.');
   });
 

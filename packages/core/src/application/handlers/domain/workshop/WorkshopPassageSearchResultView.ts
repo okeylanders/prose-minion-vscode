@@ -10,8 +10,8 @@
  *   and the results directive both render it, so the persona and the writer
  *   read the same words.
  * - **Counts** for a card and a receipt are taken from that view: numbers
- *   and closed words only. A call stopped in flight was not answered
- *   either, so it is counted with the calls not made.
+ *   and closed words only. A call stopped in flight is kept apart from one
+ *   never made: it may still have been charged.
  * - **A persona's card offers no organize action** (D21): the view never
  *   says one may be offered.
  */
@@ -33,7 +33,7 @@ export function workshopPassageSearchCounts(view: PassageSearchResultView): Work
     files: view.files.searched.full + view.files.searched.partial,
     labels: view.labels.length,
     dropped: Object.values(view.dropped).reduce((sum, count) => sum + count, 0),
-    calls: { planned: calls.planned, answered: calls.answered, failed: calls.failed, cut: calls.cut, unsent: calls.unsent + calls.cancelled },
+    calls: { planned: calls.planned, answered: calls.answered, failed: calls.failed, cut: calls.cut, unsent: calls.unsent, cancelled: calls.cancelled },
     ended: view.ended,
     organized: view.analysis !== undefined
   };

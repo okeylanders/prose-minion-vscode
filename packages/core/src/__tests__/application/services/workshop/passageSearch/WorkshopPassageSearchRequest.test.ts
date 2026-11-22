@@ -285,6 +285,16 @@ describe('the session codec', () => {
     expect(turns.find((turn) => turn.passageSearchResults)?.passageSearchResults).toEqual({ cardTurnId: 't-1' });
   });
 
+  it('reads a receipt with its cancelled calls kept apart, and one from before they were', () => {
+    for (const calls of [{ ...delivery.calls, cancelled: 2 }, delivery.calls]) {
+      const stored = withTurns((turns) => { reply(turns).passageSearchDelivery = { ...delivery, calls }; });
+      expect(JSON.stringify(parseWorkshopPersistedSession(JSON.parse(stored)))).toBe(stored);
+    }
+    expect(() => decodeWorkshopPersistedSessionCheckpoint(JSON.parse(withTurns((turns) => {
+      reply(turns).passageSearchDelivery = { ...delivery, calls: { ...delivery.calls, cancelled: -1 } };
+    })))).toThrow();
+  });
+
   it.each<[string, (turns: Array<Record<string, unknown>>) => void]>([
     ['a card with the host\'s view', (turns) => { reply(turns).passageSearchRequest = { question: 'Q?', scopes: [{ kind: 'excerpt' }], view: { status: 'pending' } }; }],
     ['a card with a pattern scope', (turns) => { reply(turns).passageSearchRequest = { question: 'Q?', scopes: [{ kind: 'pattern', pattern: '**/*.md' }] }; }],

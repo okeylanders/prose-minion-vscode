@@ -66,12 +66,18 @@ export function workshopPassageSearchPartialWords(counts: WorkshopPassageSearchC
   return `${lead}: ${plural(counts.instances, 'instance')} from ${count(counts.calls.answered)} of ${plural(counts.calls.planned, 'read')}.`;
 }
 
+/** "2 calls were stopped in flight and may still have been charged."; empty when none was. */
+function stoppedInFlightWords(counts: WorkshopPassageSearchCounts): string {
+  const cancelled = counts.calls.cancelled ?? 0;
+  return cancelled > 0 ? ` ${plural(cancelled, 'call was', 'calls were')} stopped in flight and may still have been charged.` : '';
+}
+
 /** What a finished search's card says of it, complete or not. */
 export function workshopPassageSearchCountsWords(counts: WorkshopPassageSearchCounts): string {
   if (counts.ended !== 'complete' && counts.ended !== 'instance-limit') {
-    return workshopPassageSearchPartialWords(counts);
+    return `${workshopPassageSearchPartialWords(counts)}${stoppedInFlightWords(counts)}`;
   }
-  const missing = counts.calls.failed + counts.calls.unsent;
+  const missing = counts.calls.failed + counts.calls.unsent + (counts.calls.cancelled ?? 0);
   return `Found ${workshopPassageSearchFoundWords(counts)}.`
     + (counts.ended === 'instance-limit' ? ' The search reached the most instances it keeps.' : '')
     + (missing > 0 ? ` ${plural(missing, 'read')} did not finish.` : '');

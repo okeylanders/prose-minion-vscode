@@ -41,7 +41,12 @@ export interface WorkshopPassageSearchCounts {
   labels: number;
   /** Instances a model listed that the host's checks did not keep. */
   dropped: number;
-  calls: { planned: number; answered: number; failed: number; cut: number; unsent: number };
+  /**
+   * `answered`, `failed`, `cancelled` and `unsent` add up to `planned`. A cancelled call was sent and stopped in
+   * flight, and may still have been charged; an unsent one never started. `cancelled` is absent only on a receipt
+   * written before it was kept apart.
+   */
+  calls: { planned: number; answered: number; failed: number; cut: number; unsent: number; cancelled?: number };
   ended: WorkshopPassageSearchEnded;
   /** Whether the results hold an analysis. */
   organized: boolean;

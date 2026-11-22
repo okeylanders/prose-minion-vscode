@@ -135,16 +135,18 @@ describe('the one module that reads the engine\'s result', () => {
   it('counts what a card shows and a receipt keeps, from the shared view', () => {
     expect(counts(aliceResult(3, { analysis }))).toEqual({
       instances: 3, files: 1, labels: 1, dropped: 3,
-      calls: { planned: 4, answered: 4, failed: 0, cut: 0, unsent: 0 }, ended: 'complete', organized: true
+      calls: { planned: 4, answered: 4, failed: 0, cut: 0, unsent: 0, cancelled: 0 }, ended: 'complete', organized: true
     });
   });
 
-  it('counts a call stopped in flight with the calls not made, and a file never searched as not read', () => {
+  it('keeps a call stopped in flight apart from one never made, and counts a file never searched as not read', () => {
     const result = aliceResult(1, {
       ended: 'stopped', calls: { planned: 6, answered: 3, failed: 0, cut: 0, cancelled: 2, unsent: 1 },
       files: { ...aliceResult(1).files, searched: { full: 1, partial: 1, none: 2 } }
     });
-    expect(counts(result)).toEqual(expect.objectContaining({ files: 2, calls: { planned: 6, answered: 3, failed: 0, cut: 0, unsent: 3 }, ended: 'stopped' }));
+    expect(counts(result)).toEqual(expect.objectContaining({ files: 2, calls: { planned: 6, answered: 3, failed: 0, cut: 0, unsent: 1, cancelled: 2 }, ended: 'stopped' }));
+    expect(workshopPassageSearchCountsWords(counts(result)))
+      .toBe('Stopped: 1 instance from 3 of 6 reads. 2 calls were stopped in flight and may still have been charged.');
   });
 
   it('never calls a stopped, key-changed or provider-failed search complete', () => {
