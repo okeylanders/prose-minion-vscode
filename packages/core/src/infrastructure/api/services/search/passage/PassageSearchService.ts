@@ -338,6 +338,10 @@ export class PassageSearchService {
         tally.cancelled += 1;
         tally.usages.push(undefined);
       } else {
+        // The provider may have been reached before this failed (a reply that would not decode, a 5xx after
+        // the request went out), and nothing here says it was not. Its usage is unknown, and is recorded as
+        // unknown: the call is counted, and the run's cost is then no complete total (PR #295 re-review).
+        tally.usages.push(undefined);
         this.fail(tally, faultKindOf(error));
         tally.failureStreak += 1;
         tally.providerFailed ||= tally.failureStreak >= PROMPT_BUDGETS.passageSearch.failureStreak;

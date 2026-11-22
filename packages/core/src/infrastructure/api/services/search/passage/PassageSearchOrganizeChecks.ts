@@ -16,16 +16,21 @@
  *   quotation, fails its text: the check cannot say what was quoted.
  * - **Single marks, when they are a pair.** Outside double marks, a single
  *   mark (`‘` or `'`) that does not follow a letter or digit and is followed
- *   by text opens a span; the next single mark (`’` or `'`) that follows text
- *   and is not followed by a letter or digit closes it, and the span is
- *   checked like any other. A mark between two letters (it’s, Rabbit’s) is
- *   an apostrophe and neither opens nor closes; a mark after a word with no
- *   opener before it (the Rabbits’ watch) is ignored; an opener that is
- *   never closed (’tis written with an opening mark) is read as an
- *   apostrophe, not a quotation. The stated limits: inside a single-quoted
- *   span, a plural possessive closes it early, and the shorter span is what
- *   is checked; and an elision written with a straight or opening mark
- *   before a later closing candidate reads as a span and fails closed.
+ *   by text opens a span; a single mark (`’` or `'`) that follows text and
+ *   is not followed by a letter or digit can close it. A mark between two
+ *   letters (it’s, Rabbit’s) is an apostrophe and neither opens nor closes;
+ *   a mark after a word with no single-quoted span before it (the Rabbits’
+ *   watch) is ignored; an opener that is never closed (’tis written with an
+ *   opening mark) is read as an apostrophe, not a quotation.
+ * - **An ambiguous closing mark takes the longest span.** A plural
+ *   possessive inside a single-quoted span (‘the sailors’ map was blue’)
+ *   looks like its close. So every later closing candidate, up to the next
+ *   opening single mark, extends the span, and the longest one is what is
+ *   checked: no part of a single-quoted quotation escapes the check. The
+ *   cost, stated: a possessive written after a single-quoted quotation and
+ *   before any other opening single mark is taken into it, and that text
+ *   fails closed. The prompt asks for double marks, which have no such
+ *   ambiguity.
  * - **How a span is compared.** Both sides are folded through the shared
  *   fold (case, accents, any whitespace to a space), curly marks made
  *   straight, and runs of spaces collapsed, since the request shows each
@@ -73,8 +78,10 @@ export function passageSearchQuotedSpans(text: string): string[] | undefined {
   let opened = -1;
   let closer = '';
   let depth = 0;
-  // Where a single-quoted span opened, outside any double-quoted one; -1 when none is open.
+  // Where the latest single-quoted span opened, outside any double-quoted one (-1 when none has),
+  // and that span's place in `spans` once a closing candidate was found for it (-1 until then).
   let single = -1;
+  let singleSpan = -1;
   for (let index = 0; index < text.length; index += 1) {
     const mark = text[index];
     if (opened >= 0) {
@@ -94,10 +101,15 @@ export function passageSearchQuotedSpans(text: string): string[] | undefined {
       closer = mark === STRAIGHT ? STRAIGHT : CLOSING;
       depth = 1;
     } else if (single >= 0 && SINGLE_CLOSERS.has(mark) && isText(text[index - 1]) && !isWordCharacter(text[index + 1])) {
-      spans.push(text.slice(single, index));
-      single = -1;
-    } else if (single < 0 && SINGLE_OPENERS.has(mark) && !isWordCharacter(text[index - 1]) && isText(text[index + 1])) {
+      // A closing candidate. A later one, before another opener, extends this same span: the longest is what is checked.
+      if (singleSpan >= 0) {
+        spans[singleSpan] = text.slice(single, index);
+      } else {
+        singleSpan = spans.push(text.slice(single, index)) - 1;
+      }
+    } else if (SINGLE_OPENERS.has(mark) && !isWordCharacter(text[index - 1]) && isText(text[index + 1]) && (single < 0 || singleSpan >= 0)) {
       single = index + 1;
+      singleSpan = -1;
     }
   }
   return opened < 0 ? spans : undefined;

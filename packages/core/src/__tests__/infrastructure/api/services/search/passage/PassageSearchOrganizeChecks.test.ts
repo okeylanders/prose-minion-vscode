@@ -143,6 +143,15 @@ describe('Quoted spans', () => {
     expect(passageSearchQuotedSpans('’Tis late, and ‘tis later still')).toEqual([]);
   });
 
+  it('takes the longest span when a possessive inside it looks like its close (re-review)', () => {
+    expect(passageSearchQuotedSpans('It reads ‘The sailors’ map was blue’ in full.')).toEqual(['The sailors’ map was blue']);
+    expect(passageSearchQuotedSpans('It reads \'the hedgehogs\' ground was rough\' in full.')).toEqual(['the hedgehogs\' ground was rough']);
+    // A new opening mark starts a new span; a closing candidate before it belongs to the span before.
+    expect(passageSearchQuotedSpans('‘late’ and then ‘the sailors’ map’ again')).toEqual(['late', 'the sailors’ map']);
+    // The stated cost: a possessive after a single-quoted quotation is taken into it.
+    expect(passageSearchQuotedSpans('It says ‘late’ of the Rabbits’ watch.')).toEqual(['late’ of the Rabbits']);
+  });
+
   it('leaves single marks inside a double-quoted span as that span\'s own text', () => {
     expect(passageSearchQuotedSpans('It reads "the Rabbits’ ‘late’ speech" in full.')).toEqual(['the Rabbits’ ‘late’ speech']);
   });
@@ -297,6 +306,34 @@ describe('Quotation checks', () => {
     // The same words in a headline that stands are kept.
     const standing = check(replyOf([{ title: 'T', claims: [{ text: 'It worries.', cites: [1] }] }], 'Twice it says ‘I shall be late!’ or near it.'));
     expect(standing.replaced.headline).toBe(false);
+  });
+
+  it('checks the whole of a single-quoted quotation that holds a possessive, in a claim, a title and the headline (re-review)', () => {
+    const sailors = [
+      instanceOf(1, { quote: 'The sailors watched the water.' }),
+      instanceOf(2, { quote: 'The sailors’ map was blue, and the Queen’s was not.' })
+    ];
+    const read = (content: string) => checkPassageSearchOrganizeReply(readPassageSearchOrganizeReply(content, false), sailors, [1]);
+    // Only instance 1 was shown. "The sailors" stands in it; "The sailors’ map was blue" does not.
+    const fabricated = read(replyOf([
+      { title: 'The ‘The sailors’ map was blue’ line', claims: [{ text: 'It says ‘The sailors’ map was blue’ outright.', cites: [1] }, { text: 'They watch.', cites: [1] }] }
+    ], 'The chapter turns on ‘The sailors’ map was blue’.'));
+    expect(kept(fabricated)).toEqual(['They watch.']);
+    expect(fabricated.dropped).toMatchObject({ misquoted: 1 });
+    expect(fabricated.replaced).toEqual({ headline: true, titles: 1 });
+    // The positive controls: the same words, shown, pass whole; so do a contraction and a possessive outside any quotation.
+    const shown = checkPassageSearchOrganizeReply(readPassageSearchOrganizeReply(replyOf([
+      {
+        title: 'The ‘sailors’ map was blue’ line',
+        claims: [
+          { text: 'It says ‘The sailors’ map was blue’ outright.', cites: [2] },
+          { text: 'It isn’t the Queen’s map, nor the sailors’.', cites: [2] },
+          { text: 'It says "the Queen’s was not", plainly.', cites: [2] }
+        ]
+      }
+    ], 'The chapter turns on ‘The sailors’ map was blue’.'), false), sailors, [1, 2]);
+    expect(kept(shown)).toHaveLength(3);
+    expect(shown.replaced).toEqual({ headline: false, titles: 0 });
   });
 
   it('replaces a title that quotes words no instance shown holds, and keeps its claims', () => {

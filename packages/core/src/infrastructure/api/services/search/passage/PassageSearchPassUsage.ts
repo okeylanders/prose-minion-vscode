@@ -27,16 +27,16 @@ import type { PassageSearchOrganized } from '@services/search/passage/PassageSea
  * afterwards. A result with a usage total gives that total as one entry: it
  * carries its own request count, and a cost it already withholds stays
  * withheld. A result with none, whose reads were dispatched all the same,
- * gives one unknown entry per read that answered or was stopped in flight,
- * so those requests are counted and no cost is shown as complete. (A read
- * whose reply could not be read is not told apart from one the provider
- * failed, so it is not counted here: the stated limit.)
+ * gives one unknown entry per read that was dispatched (answered, failed or
+ * stopped in flight: every planned read that is not `unsent`), exactly the
+ * entries the run itself recorded, so those requests are counted and no
+ * cost is shown as complete.
  */
 export function passageSearchReadUsages(result: Pick<PassageSearchResult, 'usage' | 'calls'>): ReadonlyArray<TokenUsage | undefined> {
   if (result.usage) {
     return [result.usage];
   }
-  return Array.from({ length: result.calls.answered + result.calls.cancelled }, () => undefined);
+  return Array.from({ length: result.calls.answered + result.calls.failed + result.calls.cancelled }, () => undefined);
 }
 
 /**

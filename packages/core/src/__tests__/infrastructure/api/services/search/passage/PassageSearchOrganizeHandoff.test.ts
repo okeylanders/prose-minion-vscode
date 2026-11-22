@@ -226,4 +226,68 @@ describe('One usage total over the reads and the pass (PR #295 P2)', () => {
     const plan = await planOf(createHost().organizer, metered);
     expect((await none.service.organize(metered, plan)).usage).toEqual(metered.usage);
   });
+
+  it('counts a pass whose request went out and whose response could not be read, and shows no complete cost (re-review)', async () => {
+    // The provider answered, and the reply would not decode: the engine throws after dispatch.
+    const reads = { usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120, costUsd: 0.01, cachedTokens: 5, cacheWriteTokens: 3 } };
+    const inline = createHost([{ ...TOOK, ...reads } as never, { ...NONE, ...reads } as never, new Error('response body could not be decoded')]);
+    const result = await inline.service.run(await searchPlan(inline.service));
+    expect(inline.runInitial).toHaveBeenCalledTimes(3);
+    expect(result).toMatchObject({ analysisMissing: 'failed', ended: 'complete' });
+    expect(result.usage).toStrictEqual({ promptTokens: 200, completionTokens: 40, totalTokens: 240, requestCount: 3 });
+
+    // The same pass made afterwards, of a result whose two reads were metered in full.
+    const metered = resultOf(RESULT.instances, { ended: 'stopped', usage: { promptTokens: 200, completionTokens: 40, totalTokens: 240, requestCount: 2, costUsd: 0.02, cachedTokens: 10, cacheWriteTokens: 6 } });
+    const later = createHost([new Error('response body could not be decoded')]);
+    const organized = await later.service.organize(metered, await planOf(later.organizer, metered));
+    expect(later.runInitial).toHaveBeenCalledTimes(1);
+    expect(organized.usage).toStrictEqual({ promptTokens: 200, completionTokens: 40, totalTokens: 240, requestCount: 3 });
+  });
+
+  it('counts a cut-off, too-long or malformed pass reply with the usage it reported, or as unknown when it reported none', async () => {
+    for (const reply of [{ content: '{"headline":"The Rab', finishReason: 'length' }, ok('not json at all'), ok(' '.repeat(120_001))]) {
+      const metered = createHost([TOOK, NONE, reply]);
+      expect((await metered.service.run(await searchPlan(metered.service))).usage)
+        .toStrictEqual({ promptTokens: 300, completionTokens: 60, totalTokens: 360, requestCount: 3, costUsd: 0.003 });
+      const unmetered = createHost([TOOK, NONE, { ...reply, ...UNMETERED }]);
+      expect((await unmetered.service.run(await searchPlan(unmetered.service))).usage)
+        .toStrictEqual({ promptTokens: 200, completionTokens: 40, totalTokens: 240, requestCount: 3 });
+    }
+  });
+
+  it('counts a read whose call failed after dispatch, or whose reply was unreadable, the same way', async () => {
+    // One read fails at the provider: it may have been charged, so the total is not complete.
+    const failed = createHost([TOOK, new Error('502')]);
+    const plan = await failed.service.plan({ model: PASSAGE_MODEL, question: QUESTION, organize: false, files: FILES });
+    if (plan.kind !== 'planned') {
+      throw new Error('expected a plan');
+    }
+    const first = await failed.service.run(plan.plan);
+    expect(first.calls).toMatchObject({ answered: 1, failed: 1 });
+    expect(first.usage).toStrictEqual({ promptTokens: 100, completionTokens: 20, totalTokens: 120, requestCount: 2 });
+    // One read comes back unreadable, with the usage the provider reported: counted, and its cost known.
+    const unreadable = createHost([TOOK, ok('not json at all')]);
+    const second = await unreadable.service.run(plan.plan);
+    expect(second.calls).toMatchObject({ answered: 1, failed: 1 });
+    expect(second.usage).toStrictEqual({ promptTokens: 200, completionTokens: 40, totalTokens: 240, requestCount: 2, costUsd: 0.002 });
+  });
+
+  it('counts the same requests inline and afterwards when no read reported usage (re-review)', async () => {
+    // One valid unmetered read, one malformed unmetered reply, then a metered pass: three requests either way.
+    const host = createHost([{ ...TOOK, ...UNMETERED }, { ...ok('not json at all'), ...UNMETERED }, PASS]);
+    const inline = await host.service.run(await searchPlan(host.service));
+    expect(inline.calls).toMatchObject({ answered: 1, failed: 1, cancelled: 0, unsent: 0 });
+    expect(inline.usage).toStrictEqual({ promptTokens: 100, completionTokens: 20, totalTokens: 120, requestCount: 3 });
+
+    const reads = createHost([{ ...TOOK, ...UNMETERED }, { ...ok('not json at all'), ...UNMETERED }]);
+    const plain = await reads.service.plan({ model: PASSAGE_MODEL, question: QUESTION, organize: false, files: FILES });
+    if (plain.kind !== 'planned') {
+      throw new Error('expected a plan');
+    }
+    const unorganized = await reads.service.run(plain.plan);
+    expect(unorganized).not.toHaveProperty('usage');
+    const later = createHost([PASS]);
+    const explicit = await later.service.organize(unorganized, await planOf(later.organizer, unorganized));
+    expect(explicit.usage).toStrictEqual(inline.usage);
+  });
 });

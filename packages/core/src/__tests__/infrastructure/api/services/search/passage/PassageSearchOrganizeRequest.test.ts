@@ -145,15 +145,76 @@ describe('Fitting the request to its bound', () => {
     ])).toBeGreaterThan(limit);
   });
 
-  it('takes nested samples: a larger bound never drops an instance a smaller one showed', () => {
-    const result = resultOf(many(600));
-    const whole = fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, Number.MAX_SAFE_INTEGER)?.inputTokens ?? 0;
-    let earlier: readonly number[] = [];
-    for (const share of [0.1, 0.25, 0.4, 0.7]) {
-      const shown = fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, Math.floor(whole * share))?.shown ?? [];
-      expect(shown.length).toBeGreaterThan(earlier.length);
-      expect(earlier.filter((number) => !shown.includes(number))).toEqual([]);
-      earlier = shown;
+  it('refuses an instance only when the request rendered with it measures over the bound (re-review)', () => {
+    // Uneven lengths, so the estimator's two measures (bytes and words) each decide somewhere.
+    const instances = Array.from({ length: 64 }, (_unused, index) => instanceOf(index + 1, {
+      label: `kind ${index % 9}`,
+      quote: index % 5 === 2 ? `${'tea '.repeat(30 + index)}at last.` : `Antidisestablishmentarianism-${'x'.repeat(index * 3)} looked on.`,
+      note: index % 4 === 0 ? 'A long note about the moment, with several words in it.' : 'Short.'
+    }));
+    const result = resultOf(instances);
+    const rendered = (positions: readonly number[]): number => estimateRequestTokens([
+      { role: 'system', content: SYSTEM_MESSAGE },
+      { role: 'user', content: buildPassageSearchOrganizeMessage(result, [...positions].sort((a, b) => a - b).map((position) => instances[position]), 64) }
+    ]);
+    const whole = rendered(instances.map((_instance, position) => position));
+    for (const limit of [rendered([0]), rendered([0]) + 1, Math.floor(whole / 5), Math.floor(whole / 3), Math.floor(whole / 2), whole - 1]) {
+      // The same walk, each step decided by rendering the whole request.
+      const expected: number[] = [];
+      for (const position of passageSearchSpreadOrder(64)) {
+        if (rendered([...expected, position]) <= limit) {
+          expected.push(position);
+        }
+      }
+      const fitted = fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, limit);
+      expect(fitted?.shown ?? []).toEqual(expected.sort((a, b) => a - b).map((position) => position + 1));
+      expect(fitted?.inputTokens ?? 0).toBeLessThanOrEqual(limit);
+    }
+  });
+
+  it('returns the one instance that fits at exactly its own measure (re-review)', () => {
+    // Only the first instance is short enough; the bound is exactly the request rendered with it alone.
+    const instances = Array.from({ length: 60 }, (_unused, index) => instanceOf(index + 1, {
+      quote: index === 0 ? 'The Rabbit looked at its watch.' : 'The Rabbit looked at its watch and hurried on. '.repeat(200)
+    }));
+    const result = resultOf(instances);
+    const alone = estimateRequestTokens([
+      { role: 'system', content: SYSTEM_MESSAGE },
+      { role: 'user', content: buildPassageSearchOrganizeMessage(result, [instances[0]], 60) }
+    ]);
+    const fitted = fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, alone);
+    expect(fitted?.shown).toEqual([1]);
+    expect(fitted?.inputTokens).toBe(alone);
+    expect(fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, alone - 1)).toBeUndefined();
+  });
+
+  it('puts position before count: a larger bound may let a long early instance in, and show fewer (the stated tradeoff)', () => {
+    // The spread order's second position holds a long instance; the rest are short.
+    const order = passageSearchSpreadOrder(64);
+    const instances = Array.from({ length: 64 }, (_unused, index) => instanceOf(index + 1, {
+      quote: index === order[1] ? 'The Rabbit looked at its watch and hurried on. '.repeat(12) : `It looked at its watch a ${index + 1}th time.`
+    }));
+    const result = resultOf(instances);
+    const rendered = (positions: readonly number[]): number => estimateRequestTokens([
+      { role: 'system', content: SYSTEM_MESSAGE },
+      { role: 'user', content: buildPassageSearchOrganizeMessage(result, [...positions].sort((a, b) => a - b).map((position) => instances[position]), 64) }
+    ]);
+    const withLong = rendered([order[0], order[1]]);
+    const below = fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, withLong - 1);
+    const at = fitPassageSearchOrganizeRequest(SYSTEM_MESSAGE, result, withLong);
+    // Just under it the long instance is passed over and short ones fill the room; at it, the long one is kept.
+    expect(below?.shown).not.toContain(order[1] + 1);
+    expect(at?.shown).toContain(order[1] + 1);
+    expect(at?.shown.length ?? 0).toBeLessThan(below?.shown.length ?? 0);
+    // What holds at every bound: nothing left out would still fit beside what is shown.
+    for (const fitted of [below, at]) {
+      const shown = new Set((fitted?.shown ?? []).map((number) => number - 1));
+      const limit = fitted === below ? withLong - 1 : withLong;
+      for (let position = 0; position < 64; position += 1) {
+        if (!shown.has(position)) {
+          expect(rendered([...shown, position])).toBeGreaterThan(limit);
+        }
+      }
     }
   });
 

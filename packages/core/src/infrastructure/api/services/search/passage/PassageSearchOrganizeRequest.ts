@@ -11,7 +11,7 @@
  * - **The whole rendered request is measured** (`estimateRequestTokens` over
  *   the exact messages) against the bound the caller gives. When every
  *   instance does not fit, instances are sampled through the whole scope
- *   (a spread order whose samples are nested), so the pass still spans it,
+ *   (in a spread order, each kept when it fits), so the pass still spans it,
  *   and the request says how many it holds of how many. An instance too
  *   long to fit is passed over, never read as "no room". When not one
  *   fits, there is no request.
@@ -111,8 +111,7 @@ export function buildPassageSearchOrganizeMessage(
 /**
  * Every position from 0 to `total - 1`, each once, in an order whose every
  * prefix is spread through the whole range: the start, the middle, the
- * quarters, the eighths, and so on (the bit-reversal order). Samples taken
- * along it are nested: a larger sample holds every smaller one.
+ * quarters, the eighths, and so on (the bit-reversal order).
  */
 export function passageSearchSpreadOrder(total: number): number[] {
   let bits = 0;
@@ -139,15 +138,23 @@ export function passageSearchSpreadOrder(total: number): number[] {
  * The request over as many instances as fit `limitTokens`, all of them when
  * they do; undefined when not one fits.
  *
- * When they do not all fit, instances are taken in the spread order, each
- * kept when the request still fits with it. So the sample spans the scope
- * at every size, a larger bound never drops an instance a smaller one
- * showed, and one long instance is passed over rather than read as "no
- * room": the walk goes on to the instances after it. Each step is sized
- * from the estimator's own parts (bytes and words, which both add up over
- * the entries), so the walk is linear; the request returned is then
- * rendered whole and measured, so what is returned was itself measured
- * within the bound.
+ * When they do not all fit, instances are taken in the spread order, and
+ * each is kept exactly when the request rendered with it measures within
+ * the bound. So the sample spans the scope, and one long instance is passed
+ * over rather than read as "no room": the walk goes on to the instances
+ * after it.
+ *
+ * - **The sizing is exact, and linear.** The estimator reads a message's
+ *   bytes and words, and both add up over the entries; each candidate is
+ *   sized from those sums with the scope line as it would then read, which
+ *   is the measure of the rendered request itself. A test holds the two
+ *   equal. The request returned is still rendered whole and measured.
+ * - **The tradeoff: position before count.** An instance earlier in the
+ *   spread order is kept when it fits, even where leaving it out would let
+ *   several shorter ones in later. So the sample is not the largest
+ *   possible, and a slightly larger bound can show fewer instances when it
+ *   lets a long early one in. What holds is that no instance left out
+ *   would still fit beside the ones shown.
  */
 export function fitPassageSearchOrganizeRequest(
   systemMessage: string,
@@ -175,23 +182,25 @@ export function fitPassageSearchOrganizeRequest(
   const systemTokens = estimateRequestTokens([{ role: 'system', content: systemMessage }]);
   const userTokens = (bytes: number, words: number): number =>
     Math.ceil(Math.max(bytes / budgets.bytesPerToken, words * budgets.tokensPerWord)) + budgets.messageOverheadTokens;
-  // The user message with no entry, its scope line at the widest count it can state.
-  const frame = sizeOf(buildPassageSearchOrganizeMessage(source, [], total).replace(scopeLine(0, total), scopeLine(total - 1, total)));
+  // The user message with no entry and no scope line; the line is sized for each candidate as it would then read.
+  const empty = buildPassageSearchOrganizeMessage(source, [], total);
+  const frame = sizeOf(empty.replace(scopeLine(0, total), ''));
   const names = labelNames(source.labels);
   const kept: number[] = [];
   let bytes = frame.bytes;
   let words = frame.words;
   for (const position of passageSearchSpreadOrder(total)) {
     const entry = sizeOf(entryOf(source.instances[position], names));
+    const scope = sizeOf(scopeLine(kept.length + 1, total));
     // The blank line that parts an entry from the one before it.
     const separator = kept.length === 0 ? 0 : 2;
-    if (systemTokens + userTokens(bytes + entry.bytes + separator, words + entry.words) <= limitTokens) {
+    if (systemTokens + userTokens(bytes + entry.bytes + separator + scope.bytes, words + entry.words + scope.words) <= limitTokens) {
       kept.push(position);
       bytes += entry.bytes + separator;
       words += entry.words;
     }
   }
-  // Rendered whole and measured: the sizing above is the estimator's arithmetic, and this is the check.
+  // Rendered whole and measured. The sizing above is the same arithmetic, so this drops nothing; it is the check that it is.
   while (kept.length > 0) {
     const fitted = render(kept);
     if (fitted.inputTokens <= limitTokens) {

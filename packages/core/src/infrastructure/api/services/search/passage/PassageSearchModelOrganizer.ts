@@ -20,6 +20,12 @@
  *   was being prepared cannot send the run's quotes on the replacement.
  *   Credentials retired while the pass is in flight leave no analysis
  *   (`key-changed`), and what the pass spent is still reported.
+ * - **Every dispatched call leaves a usage entry:** the provider's usage
+ *   when it reported one, else an explicit unknown. That covers a reply cut
+ *   off, too long or malformed, a call stopped in flight, and any failure
+ *   that is not known to have happened before the request went out. Only a
+ *   call never dispatched (no room, a retired engine, Stop before the call,
+ *   the engine's own preflight refusal) leaves none.
  * - **The reply is checked by host code** (`PassageSearchOrganizeChecks`).
  *   A failed, malformed or cut-off pass, and one whose every claim the
  *   checks dropped, returns why and no analysis; the caller's list of
@@ -185,11 +191,13 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
         // The retired engine refused: nothing was sent.
         return this.missing('key-changed', error.reason, started, []);
       }
-      // Aborted in flight: it was dispatched and may have been charged, so its usage is recorded as unknown.
-      // A provider failure records none, as a failed read records none.
-      return options.signal?.aborted
-        ? this.missing('stopped', 'stopped', started, [undefined])
-        : this.missing('failed', faultKindOf(error), started, []);
+      if (error instanceof AgentRunUnavailableError && error.reason === 'context-window-exceeded') {
+        // Refused by the engine's own preflight, before any request: nothing was sent.
+        return this.missing('failed', error.reason, started, []);
+      }
+      // Anything else may have happened after the request went out (aborted in flight, a reply that would not
+      // decode, a provider's refusal or error): it is counted as dispatched, its usage unknown, never as nothing sent.
+      return this.missing(options.signal?.aborted ? 'stopped' : 'failed', options.signal?.aborted ? 'stopped' : faultKindOf(error), started, [undefined]);
     }
     const usages = [execution.usage];
     // The credentials were retired while the pass was in flight: what it spent is kept, and its analysis is not.

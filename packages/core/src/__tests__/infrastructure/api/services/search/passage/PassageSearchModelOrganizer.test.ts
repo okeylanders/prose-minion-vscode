@@ -206,7 +206,7 @@ describe('PassageSearchModelOrganizer.organize', () => {
       throw new Error('aborted');
     }]);
     // Aborted in flight: it was dispatched, so its usage is recorded as unknown, never as nothing sent.
-    await expect(thrown.organizer.organize(RESULT, { signal: stop.signal })).resolves.toEqual({ kind: 'missing', reason: 'stopped', usages: [undefined] });
+    await expect(thrown.organizer.organize(RESULT, { signal: stop.signal })).resolves.toStrictEqual({ kind: 'missing', reason: 'stopped', usages: [undefined] });
   });
 
   it('never starts with no engine, and reads a retired engine\'s refusal as a key change', async () => {
@@ -219,7 +219,12 @@ describe('PassageSearchModelOrganizer.organize', () => {
 
   it('gives a closed reason for a failed, cut-off or malformed pass, and for one whose every claim the checks dropped', async () => {
     const reason = async (reply: Reply): Promise<unknown> => createHost([reply]).organizer.organize(RESULT, {});
-    await expect(reason(new Error('502 from the provider: “Oh dear!”'))).resolves.toEqual({ kind: 'missing', reason: 'failed', usages: [] });
+    // A failure that may have followed dispatch leaves an unknown entry; toStrictEqual, since toEqual reads [undefined] as [].
+    await expect(reason(new Error('502 from the provider: “Oh dear!”'))).resolves.toStrictEqual({ kind: 'missing', reason: 'failed', usages: [undefined] });
+    // So does a provider's own refusal: the request reached it.
+    await expect(reason(new AgentRunUnavailableError('rate-limited'))).resolves.toStrictEqual({ kind: 'missing', reason: 'failed', usages: [undefined] });
+    // The engine's preflight refusal comes before any request: nothing was sent, and no entry is left.
+    await expect(reason(new AgentRunUnavailableError('context-window-exceeded'))).resolves.toStrictEqual({ kind: 'missing', reason: 'failed', usages: [] });
     await expect(reason({ content: ANALYSIS_REPLY.slice(0, 80), finishReason: 'length' })).resolves.toEqual({ kind: 'missing', reason: 'cut', usages: [USAGE] });
     // Even a reply that happens to parse is not kept once the provider cut it off.
     await expect(reason({ content: ANALYSIS_REPLY, finishReason: 'length' })).resolves.toEqual({ kind: 'missing', reason: 'cut', usages: [USAGE] });
