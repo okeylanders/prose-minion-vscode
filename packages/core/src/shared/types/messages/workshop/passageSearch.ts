@@ -43,15 +43,21 @@ export interface WorkshopPassageSearchCounts {
    * a receipt written before it was kept apart from `files`.
    */
   searched?: number;
+  /** Files of the plan, searched or not (#295's coverage). Absent only on a receipt written before it was kept. */
+  filesPlanned?: number;
   labels: number;
   /** Instances a model listed that the host's checks did not keep. */
   dropped: number;
   /**
-   * `answered`, `failed`, `cancelled` and `unsent` add up to `planned`. A cancelled call was sent and stopped in
-   * flight, and may still have been charged; an unsent one never started. `cancelled` is absent only on a receipt
-   * written before it was kept apart.
+   * `answered`, `failed`, `cancelled`, `unsent` and `tooLarge` add up to `planned`. A cancelled call was sent and
+   * stopped in flight, and may still have been charged; an unsent one never started; a `tooLarge` one did not fit the
+   * model's window and was not sent, so it used nothing. `dispatched` is how many were sent: `answered`, `failed` and
+   * `cancelled` together. `cancelled`, `tooLarge` and `dispatched` are absent only on a receipt written before they
+   * were kept.
    */
-  calls: { planned: number; answered: number; failed: number; cut: number; unsent: number; cancelled?: number };
+  calls: { planned: number; answered: number; failed: number; cut: number; unsent: number; cancelled?: number; tooLarge?: number; dispatched?: number };
+  /** Every model call dispatched for the result: its reads that went out and any organizing pass. Absent only on an older receipt. */
+  requests?: number;
   ended: WorkshopPassageSearchEnded;
   /** Whether the results hold an analysis. */
   organized: boolean;

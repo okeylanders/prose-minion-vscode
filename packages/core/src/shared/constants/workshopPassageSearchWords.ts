@@ -19,6 +19,7 @@ import type {
 } from '@shared/types/messages/workshop/passageSearch';
 import { formatApproximateUsd } from '@shared/utils/approximateUsd';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { passageSearchTooLargeLine } from '@shared/utils/passageSearchWords';
 
 /* eslint-disable @typescript-eslint/naming-convention -- keyed by the refusal kinds' kebab-case words, as answered. */
 export const WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS: Readonly<Record<WorkshopPassageSearchRefusal, string>> = Object.freeze({
@@ -57,11 +58,33 @@ export function workshopPassageSearchFoundWords(counts: Pick<WorkshopPassageSear
     : `${plural(counts.instances, 'instance')} in ${plural(counts.files, 'file')}`;
 }
 
-/** " 23 files were searched." beside what was found, when more were searched than hold an instance; empty otherwise. */
-function searchedWords(counts: Pick<WorkshopPassageSearchCounts, 'instances' | 'files' | 'searched'>): string {
+type FileCounts = Pick<WorkshopPassageSearchCounts, 'instances' | 'files' | 'searched' | 'filesPlanned'>;
+
+/** "1 of 2 files": files searched of files planned, when some planned file went unsearched; undefined otherwise. */
+function searchedOfPlanned(counts: FileCounts): string | undefined {
+  return counts.searched !== undefined && counts.filesPlanned !== undefined && counts.searched < counts.filesPlanned
+    ? `${count(counts.searched)} of ${plural(counts.filesPlanned, 'file')}`
+    : undefined;
+}
+
+/**
+ * Beside what was found: " 1 of 2 files was searched." when a planned file went unsearched, else " 23 files were
+ * searched." when more were searched than hold an instance; empty otherwise.
+ */
+function searchedWords(counts: FileCounts): string {
+  const ofPlanned = searchedOfPlanned(counts);
+  if (ofPlanned) {
+    return ` ${ofPlanned} ${counts.searched === 1 ? 'was' : 'were'} searched.`;
+  }
   return counts.instances > 0 && counts.searched !== undefined && counts.searched > counts.files
     ? ` ${plural(counts.searched, 'file was', 'files were')} searched.`
     : '';
+}
+
+/** The shared words for reads the engine's preflight refused before dispatch; empty when none was. */
+function tooLargeWords(counts: WorkshopPassageSearchCounts): string {
+  const tooLarge = counts.calls.tooLarge ?? 0;
+  return tooLarge > 0 ? ` ${passageSearchTooLargeLine(tooLarge)}` : '';
 }
 
 /** The card's event line in a transcript (D21): how many places, never which. */
@@ -69,9 +92,10 @@ export function workshopPassageSearchCardTranscriptLine(scopes: number): string 
   return `Asked for a passage search of ${plural(scopes, 'scope')}.`;
 }
 
-/** The results turn's line, in the thread and a transcript (D21). */
-export function workshopPassageSearchFinishedLine(counts: Pick<WorkshopPassageSearchCounts, 'instances' | 'files' | 'searched'>): string {
-  return `Passage search finished: ${workshopPassageSearchFoundWords(counts)}.`;
+/** The results turn's line, in the thread and a transcript (D21): "…: 1 instance in 1 file; 1 of 2 files searched." when coverage fell short. */
+export function workshopPassageSearchFinishedLine(counts: FileCounts): string {
+  const ofPlanned = searchedOfPlanned(counts);
+  return `Passage search finished: ${workshopPassageSearchFoundWords(counts)}${ofPlanned ? `; ${ofPlanned} searched` : ''}.`;
 }
 
 /** What a search that did not read everything came to: "Stopped: 9 instances from 7 of 23 reads." */
@@ -91,12 +115,13 @@ function stoppedInFlightWords(counts: WorkshopPassageSearchCounts): string {
 /** What a finished search's card says of it, complete or not. */
 export function workshopPassageSearchCountsWords(counts: WorkshopPassageSearchCounts): string {
   if (counts.ended !== 'complete' && counts.ended !== 'instance-limit') {
-    return `${workshopPassageSearchPartialWords(counts)}${stoppedInFlightWords(counts)}`;
+    return `${workshopPassageSearchPartialWords(counts)}${stoppedInFlightWords(counts)}${tooLargeWords(counts)}`;
   }
   const missing = counts.calls.failed + counts.calls.unsent + (counts.calls.cancelled ?? 0);
   return `Found ${workshopPassageSearchFoundWords(counts)}.${searchedWords(counts)}`
     + (counts.ended === 'instance-limit' ? ' The search reached the most instances it keeps.' : '')
     + (missing > 0 ? ` ${plural(missing, 'read')} did not finish, so the text ${missing === 1 ? 'it covers' : 'they cover'} was not searched.` : '')
+    + tooLargeWords(counts)
     + (counts.calls.cut > 0 ? ` ${plural(counts.calls.cut, 'reply was', 'replies were')} cut off, so instances past the cut are missing.` : '');
 }
 

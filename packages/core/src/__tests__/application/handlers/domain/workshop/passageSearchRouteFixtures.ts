@@ -5,7 +5,7 @@
  * settled against. Made-up text.
  */
 
-import type { PassageSearchPlan, PassageSearchProgress, PassageSearchResult } from '@services/search/passage/PassageSearchContracts';
+import type { PassageSearchAnalysis, PassageSearchPlan, PassageSearchProgress, PassageSearchResult } from '@services/search/passage/PassageSearchContracts';
 import type { PassageSearchRequest } from '@/application/services/passageSearch/PassageSearchRequest';
 import type { WorkshopPassageSearchPorts } from '@handlers/domain/workshop/WorkshopPassageSearchHandler';
 
@@ -26,6 +26,32 @@ export const LISTED = [
   { group: 'chapters' as const, relativePath: 'chapters/pool-of-tears.md' },
   { group: 'characters' as const, relativePath: 'characters/alice.md' }
 ];
+
+/**
+ * A result's read calls as the engine counts them (#295): what is not given is none, except `planned`, which is what
+ * was answered unless given, and `dispatched`, which is always the calls that went out: answered, failed, cancelled.
+ */
+export function callsOf(given: Partial<Omit<PassageSearchResult['calls'], 'dispatched'>>): PassageSearchResult['calls'] {
+  const answered = given.answered ?? 0;
+  const failed = given.failed ?? 0;
+  const cancelled = given.cancelled ?? 0;
+  const unsent = given.unsent ?? 0;
+  const tooLarge = given.tooLarge ?? 0;
+  return {
+    planned: given.planned ?? answered + failed + cancelled + unsent + tooLarge,
+    answered, failed, cut: given.cut ?? 0, cancelled, unsent, tooLarge, dispatched: answered + failed + cancelled
+  };
+}
+
+/** An organizing pass's checked output in #295's whole shape: nothing dropped, replaced or clipped unless given. */
+export function analysisOf(overrides: Partial<PassageSearchAnalysis> & Pick<PassageSearchAnalysis, 'headline' | 'sections' | 'read'>): PassageSearchAnalysis {
+  return {
+    dropped: { claims: 0, uncited: 0, misquoted: 0, malformed: 0, sections: 0, cites: 0 },
+    replaced: { headline: false, titles: 0 },
+    clipped: 0,
+    ...overrides
+  };
+}
 
 export function aliceResult(instances = 3, overrides: Partial<PassageSearchResult> = {}): PassageSearchResult {
   return {
@@ -48,13 +74,15 @@ export function aliceResult(instances = 3, overrides: Partial<PassageSearchResul
     // eslint-disable-next-line @typescript-eslint/naming-convention -- the engine's kebab-case drop reasons.
     dropped: { 'quote-not-found': 1, 'quote-ambiguous': 0, malformed: 0, duplicate: 2 },
     overLimit: 0,
-    calls: { planned: 4, answered: 4, failed: 0, cut: 0, cancelled: 0, unsent: 0 },
+    calls: callsOf({ planned: 4, answered: 4 }),
     files: {
       planned: [{ key: 'f1', displayPath: CHAPTER, lines: 'document', instances, chunks: { planned: 4, admitted: 4, answered: 4 }, searched: 'full' }],
       searched: { full: 1, partial: 0, none: 0 },
       leftOut: { unreadable: 0, unsplittable: 0, empty: 0 }
     },
     ended: 'complete',
+    // Every read went out, and no organizing pass did (#295).
+    requests: overrides.calls?.dispatched ?? 4,
     ...overrides
   };
 }
@@ -66,7 +94,7 @@ export function aliceAcrossFiles(instances: number, files: number): PassageSearc
     ...base.files.planned[0], key: `f${index + 1}`, displayPath: `chapters/chapter-${index + 1}.md`, instances: index === 0 ? instances : 0
   }));
   return aliceResult(instances, {
-    calls: { planned: files, answered: files, failed: 0, cut: 0, cancelled: 0, unsent: 0 },
+    calls: callsOf({ answered: files }),
     files: { ...base.files, planned, searched: { full: files, partial: 0, none: 0 } }
   });
 }
@@ -128,7 +156,8 @@ export function fakePassageSearch(): FakePassageSearch {
         ? {
           ...fake.result,
           ended: 'stopped' as const,
-          calls: { ...fake.result.calls, answered: 2, cancelled: 1, unsent: 1 },
+          calls: callsOf({ planned: fake.result.calls.planned, answered: 2, cancelled: 1, unsent: 1 }),
+          requests: 3,
           files: { ...fake.result.files, searched: { full: 0, partial: 1, none: 0 } }
         }
         : fake.result;

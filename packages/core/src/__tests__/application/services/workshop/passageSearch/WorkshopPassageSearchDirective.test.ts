@@ -8,7 +8,7 @@
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
 import { formatPassageSearchReport } from '@shared/utils/passageSearchReport';
-import type { PassageSearchAnalysis, PassageSearchResult } from '@services/search/passage/PassageSearchContracts';
+import type { PassageSearchResult } from '@services/search/passage/PassageSearchContracts';
 import {
   fitWorkshopPassageSearchDirective,
   renderWorkshopPassageSearchDirective,
@@ -26,18 +26,17 @@ import {
   workshopPassageSearchFinishedLine,
   workshopPassageSearchPriceScope
 } from '@shared/constants/workshopPassageSearchWords';
-import { aliceAcrossFiles, aliceResult, planOf, QUESTION } from '@/__tests__/application/handlers/domain/workshop/passageSearchRouteFixtures';
+import { aliceAcrossFiles, aliceResult, analysisOf, callsOf, planOf, QUESTION } from '@/__tests__/application/handlers/domain/workshop/passageSearchRouteFixtures';
 
 const OPEN = `<${WORKSHOP_PASSAGE_SEARCH_RESULTS_TAG}>`;
 const CLOSE = `</${WORKSHOP_PASSAGE_SEARCH_RESULTS_TAG}>`;
-const analysis = {
+const analysis = analysisOf({
   headline: 'The Rabbit checks his watch whenever he is seen.',
   sections: [{ title: 'Where it happens', claims: [{ text: 'It opens the chapter.', cites: [1, 2] }] }],
-  read: { instances: 3, of: 3 },
-  dropped: { claims: 0, sections: 0 }
-} as unknown as PassageSearchAnalysis;
+  read: { instances: 3, of: 3 }
+});
 const report = (result: PassageSearchResult) => workshopPassageSearchView(result, 'r-1');
-const counts = (result: PassageSearchResult) => workshopPassageSearchCounts(report(result));
+const counts = (result: PassageSearchResult) => workshopPassageSearchCounts(report(result), result.requests);
 
 describe('the results directive', () => {
   it('carries, in order: what it is, the question, how the search ended, the analysis, the labels, then the instances', () => {
@@ -55,7 +54,7 @@ describe('the results directive', () => {
 
   it('says how a search that did not read everything ended, and what is missing, in the report\'s own words', () => {
     const stopped = aliceResult(1, {
-      ended: 'stopped', calls: { planned: 23, answered: 7, failed: 1, cut: 2, cancelled: 3, unsent: 12 },
+      ended: 'stopped', calls: callsOf({ planned: 23, answered: 7, failed: 1, cut: 2, cancelled: 3, unsent: 12 }),
       files: { ...aliceResult(1).files, searched: { full: 0, partial: 1, none: 0 }, leftOut: { unreadable: 1, unsplittable: 0, empty: 0 } }
     });
     const frame = renderWorkshopPassageSearchDirective(report(stopped), 1);
@@ -118,7 +117,7 @@ describe('the results directive', () => {
   describe('never over its bound (PR #296 F4)', () => {
     /** An organized result whose analysis and label table alone are most of a small room: Alice's watch, many ways. */
     const organized = (instances: number) => aliceResult(instances, {
-      analysis: {
+      analysis: analysisOf({
         headline: 'The Rabbit checks his watch whenever he is seen, and the checks grow more frantic.',
         sections: Array.from({ length: 8 }, (_, section) => ({
           title: `Where it happens, part ${section + 1}`,
@@ -127,9 +126,8 @@ describe('the results directive', () => {
             cites: [1]
           }))
         })),
-        read: { instances, of: instances },
-        dropped: { claims: 0, sections: 0 }
-      } as unknown as PassageSearchAnalysis,
+        read: { instances, of: instances }
+      }),
       labels: Array.from({ length: 20 }, (_, index) => ({ key: `l${index}`, label: `Checks the watch, way ${index + 1}`, count: 1, files: 1 }))
     });
     const tokens = (text: string) => estimateTextTokens(text);
@@ -188,7 +186,7 @@ describe('the results directive', () => {
       question: `${QUESTION} ${hostile}`,
       instances: [{ ...result.instances[0], quote: `a watch ${hostile}`, note: hostile, displayPath: `chapters/${CLOSE}.md` }],
       labels: [{ key: 'watch', label: `Watch ${hostile}`, count: 1, files: 1 }],
-      analysis: { ...analysis, headline: hostile, sections: [{ title: hostile, claims: [{ text: hostile, cites: [1] }] }] } as unknown as PassageSearchAnalysis
+      analysis: { ...analysis, headline: hostile, sections: [{ title: hostile, claims: [{ text: hostile, cites: [1] }] }] }
     }), 1);
     expect(frame.split(CLOSE)).toHaveLength(2);
     expect(frame.indexOf(CLOSE)).toBe(frame.length - CLOSE.length);
@@ -201,9 +199,35 @@ describe('the results directive', () => {
 describe('the one module that reads the engine\'s result', () => {
   it('counts what a card shows and a receipt keeps, from the shared view', () => {
     expect(counts(aliceResult(3, { analysis }))).toEqual({
-      instances: 3, files: 1, searched: 1, labels: 1, dropped: 3,
-      calls: { planned: 4, answered: 4, failed: 0, cut: 0, unsent: 0, cancelled: 0 }, ended: 'complete', organized: true
+      instances: 3, files: 1, searched: 1, filesPlanned: 1, labels: 1, dropped: 3,
+      calls: { planned: 4, answered: 4, failed: 0, cut: 0, unsent: 0, cancelled: 0, tooLarge: 0, dispatched: 4 }, requests: 4,
+      ended: 'complete', organized: true
     });
+  });
+
+  it('carries a read the engine\'s preflight refused (#295): counts, the card, the results line and the directive say it', () => {
+    // Two chapters: the first read found one instance; the second was refused before dispatch, so nothing was sent for it.
+    const base = aliceAcrossFiles(1, 2);
+    const result = aliceResult(1, {
+      calls: callsOf({ planned: 2, answered: 1, tooLarge: 1 }),
+      requests: 1,
+      files: { ...base.files, planned: base.files.planned.map((file, index) => (index === 1 ? { ...file, chunks: { planned: 1, admitted: 0, answered: 0 }, searched: 'none' as const } : file)), searched: { full: 1, partial: 0, none: 1 } }
+    });
+    const one = counts(result);
+    expect(one).toEqual(expect.objectContaining({
+      instances: 1, files: 1, searched: 1, filesPlanned: 2, requests: 1,
+      calls: { planned: 2, answered: 1, failed: 0, cut: 0, unsent: 0, cancelled: 0, tooLarge: 1, dispatched: 1 }
+    }));
+    const tooLarge = 'did not fit the model\'s window and was not sent, so the text it covers was not searched.';
+    expect(workshopPassageSearchCountsWords(one)).toBe(`Found 1 instance in 1 file. 1 of 2 files was searched. 1 call ${tooLarge}`);
+    expect(workshopPassageSearchFinishedLine(one)).toBe('Passage search finished: 1 instance in 1 file; 1 of 2 files searched.');
+    const frame = renderWorkshopPassageSearchDirective(report(result), 1);
+    expect(frame).toContain('1 of 2 files was not searched.');
+    expect(frame).toContain(`1 call ${tooLarge}`);
+    expect(frame).toContain('1 of 2 calls answered, over 1 of 2 files.');
+    // An older receipt holds none of the new counts: its words are as they were.
+    const { filesPlanned: _planned, requests: _requests, ...older } = one;
+    expect(workshopPassageSearchFinishedLine(older)).toBe('Passage search finished: 1 instance in 1 file.');
   });
 
   it('keeps the files an instance was found in apart from the files searched: one match across 20 files (PR #296)', () => {
@@ -229,10 +253,12 @@ describe('the one module that reads the engine\'s result', () => {
 
   it('keeps a call stopped in flight apart from one never made, and counts a file never searched as not read', () => {
     const result = aliceResult(1, {
-      ended: 'stopped', calls: { planned: 6, answered: 3, failed: 0, cut: 0, cancelled: 2, unsent: 1 },
+      ended: 'stopped', calls: callsOf({ planned: 6, answered: 3, cancelled: 2, unsent: 1 }),
       files: { ...aliceResult(1).files, searched: { full: 1, partial: 1, none: 2 } }
     });
-    expect(counts(result)).toEqual(expect.objectContaining({ files: 1, searched: 2, calls: { planned: 6, answered: 3, failed: 0, cut: 0, unsent: 1, cancelled: 2 }, ended: 'stopped' }));
+    expect(counts(result)).toEqual(expect.objectContaining({
+      files: 1, searched: 2, calls: { planned: 6, answered: 3, failed: 0, cut: 0, unsent: 1, cancelled: 2, tooLarge: 0, dispatched: 5 }, ended: 'stopped'
+    }));
     expect(workshopPassageSearchCountsWords(counts(result)))
       .toBe('Stopped: 1 instance from 3 of 6 reads. 2 calls were stopped in flight and may still have been charged.');
   });

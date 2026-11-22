@@ -163,7 +163,7 @@ export class WorkshopPassageSearchResults {
       return undefined;
     }
     const view = workshopPassageSearchView(result, turnId);
-    return { counts: workshopPassageSearchCounts(view), partial: !isWorkshopPassageSearchFullyRead(workshopPassageSearchCoverage(view)) };
+    return { counts: workshopPassageSearchCounts(view, result.requests), partial: !isWorkshopPassageSearchFullyRead(workshopPassageSearchCoverage(view)) };
   }
 
   /** Every place holds a result not yet delivered: a new search would have nowhere to go. */
@@ -218,7 +218,7 @@ export class WorkshopPassageSearchResults {
       return { reason: 'run-active' };
     }
     const report = workshopPassageSearchView(held.result, turnId);
-    const counts = workshopPassageSearchCounts(report);
+    const counts = workshopPassageSearchCounts(report, held.result.requests);
     let shown = 0;
     let fits = true;
     this.sendingTurnId = turnId;

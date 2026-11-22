@@ -16,7 +16,7 @@
 import { MessageType, type WorkshopTurn } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS } from '@shared/constants/workshopPassageSearchWords';
-import { aliceResult } from './passageSearchRouteFixtures';
+import { aliceResult, callsOf } from './passageSearchRouteFixtures';
 import { passageSearchRouteDriver, type PassageSearchRouteDriver } from './passageSearchRouteDriver';
 
 describe('a passage search\'s delivery, refused before anything is sent', () => {
@@ -109,9 +109,9 @@ describe('a passage search\'s delivery, refused before anything is sent', () => 
   });
 
   it.each([
-    ['a failed read', { calls: { planned: 4, answered: 3, failed: 1, cut: 0, cancelled: 0, unsent: 0 } },
+    ['a failed read', { calls: callsOf({ planned: 4, answered: 3, failed: 1 }) },
       '1 read did not finish, so the text it covers was not searched.', '1 call failed, so the text it covers was not searched.'],
-    ['a reply cut off', { calls: { planned: 4, answered: 4, failed: 0, cut: 1, cancelled: 0, unsent: 0 } },
+    ['a reply cut off', { calls: callsOf({ planned: 4, answered: 4, cut: 1 }) },
       '1 reply was cut off, so instances past the cut are missing.', '1 reply was cut off at the length limit']
   ])('a complete search with %s waits for Send partial results, saying what was not searched', async (_name, change, cardWords, directiveWords) => {
     const { harness, search } = driver;

@@ -98,22 +98,27 @@ export function assertWorkshopPassageSearchShapes(turn: Record<string, unknown>,
     }
     // `searched` is additive: a receipt from before files searched were kept apart from files with an instance holds none.
     const delivery = exactObject(turn.passageSearchDelivery, at,
-      ['cardTurnId', 'instances', 'files', 'labels', 'dropped', 'calls', 'ended', 'organized', 'shown'], ['searched']);
+      ['cardTurnId', 'instances', 'files', 'labels', 'dropped', 'calls', 'ended', 'organized', 'shown'], ['searched', 'filesPlanned', 'requests']);
     turnIdAt(delivery.cardTurnId, `${at}.cardTurnId`);
     const instances = countAt(delivery.instances, `${at}.instances`);
     for (const key of ['files', 'labels', 'dropped'] as const) {
       countAt(delivery[key], `${at}.${key}`);
     }
-    if (delivery.searched !== undefined) {
-      countAt(delivery.searched, `${at}.searched`);
+    // `filesPlanned` and `requests` are additive too (#295's coverage and request count).
+    for (const key of ['searched', 'filesPlanned', 'requests'] as const) {
+      if (delivery[key] !== undefined) {
+        countAt(delivery[key], `${at}.${key}`);
+      }
     }
-    // `cancelled` is additive: a receipt from before it was kept apart holds none.
-    const calls = exactObject(delivery.calls, `${at}.calls`, ['planned', 'answered', 'failed', 'cut', 'unsent'], ['cancelled']);
+    // `cancelled`, `tooLarge` and `dispatched` are additive: a receipt from before they were kept holds none.
+    const calls = exactObject(delivery.calls, `${at}.calls`, ['planned', 'answered', 'failed', 'cut', 'unsent'], ['cancelled', 'tooLarge', 'dispatched']);
     for (const key of ['planned', 'answered', 'failed', 'cut', 'unsent'] as const) {
       countAt(calls[key], `${at}.calls.${key}`);
     }
-    if (calls.cancelled !== undefined) {
-      countAt(calls.cancelled, `${at}.calls.cancelled`);
+    for (const key of ['cancelled', 'tooLarge', 'dispatched'] as const) {
+      if (calls[key] !== undefined) {
+        countAt(calls[key], `${at}.calls.${key}`);
+      }
     }
     enumAt(delivery.ended, `${at}.ended`, WORKSHOP_PASSAGE_SEARCH_ENDINGS);
     booleanAt(delivery.organized, `${at}.organized`);

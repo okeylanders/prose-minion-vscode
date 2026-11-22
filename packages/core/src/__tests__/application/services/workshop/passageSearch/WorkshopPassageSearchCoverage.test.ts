@@ -17,14 +17,14 @@ import { aliceAcrossFiles, aliceResult } from '@/__tests__/application/handlers/
 
 const whole: WorkshopPassageSearchCoverage = {
   ended: 'complete',
-  calls: { failed: 0, cut: 0, cancelled: 0, unsent: 0 },
+  calls: { failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0 },
   files: { planned: 6, searchedInFull: 6 }
 };
 
 describe('a passage search\'s coverage', () => {
   it('reads it from the shared view the card and the directive render', () => {
     expect(workshopPassageSearchCoverage(workshopPassageSearchView(aliceAcrossFiles(1, 20), 'r-1'))).toEqual({
-      ended: 'complete', calls: { failed: 0, cut: 0, cancelled: 0, unsent: 0 }, files: { planned: 20, searchedInFull: 20 }
+      ended: 'complete', calls: { failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0 }, files: { planned: 20, searchedInFull: 20 }
     });
   });
 
@@ -42,6 +42,8 @@ describe('a passage search\'s coverage', () => {
     ['a reply cut off at its length limit', { calls: { ...whole.calls, cut: 1 } }],
     ['a read stopped in flight', { calls: { ...whole.calls, cancelled: 1 } }],
     ['a read never sent, the instance bound reached', { ended: 'instance-limit', calls: { ...whole.calls, unsent: 2 } }],
+    ['a read the engine\'s preflight refused before dispatch (#295)', { calls: { ...whole.calls, tooLarge: 1 }, files: { planned: 6, searchedInFull: 5 } }],
+    ['a read refused as too large, whatever the file counts say', { calls: { ...whole.calls, tooLarge: 1 } }],
     ['a planned file searched only in part', { files: { planned: 6, searchedInFull: 5 } }]
   ])('is not whole for %s, which waits on the card for Send', (_name, change) => {
     expect(isWorkshopPassageSearchFullyRead({ ...whole, ...change })).toBe(false);

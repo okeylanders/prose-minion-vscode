@@ -295,6 +295,19 @@ describe('the session codec', () => {
     })))).toThrow();
   });
 
+  it('reads a receipt with #295\'s counts (files planned, requests, calls too large and dispatched), and one from before them', () => {
+    const counted = { ...delivery, searched: 1, filesPlanned: 2, requests: 1, calls: { ...delivery.calls, answered: 1, cancelled: 0, tooLarge: 1, dispatched: 1 } };
+    for (const receipt of [counted, delivery]) {
+      const stored = withTurns((turns) => { reply(turns).passageSearchDelivery = receipt; });
+      expect(JSON.stringify(parseWorkshopPersistedSession(JSON.parse(stored)))).toBe(stored);
+    }
+    for (const bad of [{ ...counted, filesPlanned: -1 }, { ...counted, requests: 0.5 }, { ...counted, calls: { ...counted.calls, tooLarge: '1' } }, { ...counted, calls: { ...counted.calls, sent: 1 } }]) {
+      expect(() => decodeWorkshopPersistedSessionCheckpoint(JSON.parse(withTurns((turns) => {
+        reply(turns).passageSearchDelivery = bad;
+      })))).toThrow();
+    }
+  });
+
   it('reads a receipt with the files searched kept apart from the files found in, and one from before they were (PR #296)', () => {
     for (const receipt of [{ ...delivery, files: 1, searched: 20 }, delivery]) {
       const stored = withTurns((turns) => { reply(turns).passageSearchDelivery = receipt; });
