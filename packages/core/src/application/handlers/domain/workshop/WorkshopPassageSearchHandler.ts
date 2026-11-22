@@ -14,12 +14,14 @@
  * - **One search at a time** in this window's Workshop; a second Run is
  *   refused in the room's busy words. The search runs on the engine's own
  *   model: the persona's model never reads the files.
- * - **A search belongs to the room it began in.** The coordinator tells
- *   each replacement as it lands, a Rewind's too, and the running search's
- *   calls are aborted then, whether or not anything is drawn or a call
- *   answers (PR #296 F3); what it found goes nowhere. A card in another room
- *   never reads as running, even under the same turn id. Disposal aborts it
- *   too.
+ * - **A search belongs to the room it began in** (`WorkshopPassageSearchRunSlot`).
+ *   The coordinator tells each replacement as it lands, a Rewind's too: the
+ *   running search's calls are aborted and its slot is freed then, whether
+ *   or not anything is drawn or a call answers (PR #296 F3 and re-review),
+ *   so the new room's cards can be priced, run and cancelled at once. What
+ *   it found goes nowhere. A card in another room never reads as running,
+ *   even under the same turn id, and an old Run's late exit releases only
+ *   its own operation, never a newer search. Disposal ends it too.
  * - **Held results are this window's:** at most `heldResults`, by the
  *   card's turn. A Run is refused before anything is planned or sent while
  *   every place holds a result not yet delivered (`results-full`): Send or
@@ -78,6 +80,7 @@ import type { WorkshopPassageSearchListing } from '@/application/services/worksh
 import { workshopEditOfferAuthorTarget } from '@handlers/domain/workshop/WorkshopEditOfferHandler';
 import type { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import type { WorkshopRoomReplacement } from '@/application/services/workshop/WorkshopOpenRoomInstance';
+import { WorkshopPassageSearchRunSlot, type WorkshopPassageSearchOperation as RunningSearch } from '@handlers/domain/workshop/WorkshopPassageSearchRunSlot';
 import {
   WorkshopPassageSearchResults,
   type WorkshopPassageSearchRefused as Refused,
@@ -106,21 +109,14 @@ export interface WorkshopPassageSearchEffects {
   markDirty(reason: string): void;
 }
 
-interface RunningSearch {
-  readonly turnId: string;
-  readonly requestId: string;
-  readonly roomRevision: number;
-  readonly controller: AbortController;
-  progress?: WorkshopPassageSearchProgress;
-}
-
 type Card = { readonly turn: WorkshopTurn; readonly card: WorkshopPassageSearchRequest };
 
 const LOG = '[WorkshopPassageSearchHandler]';
 const ID_CHARACTERS = 256;
 
 export class WorkshopPassageSearchHandler {
-  private search: RunningSearch | undefined;
+  /** The one search this window runs, by operation. */
+  private readonly slot: WorkshopPassageSearchRunSlot;
   /** What this window holds for its cards, and their delivery. */
   private readonly results: WorkshopPassageSearchResults;
   private readonly stopListening: () => void;
@@ -134,6 +130,7 @@ export class WorkshopPassageSearchHandler {
     private readonly outputChannel: LogSink
   ) {
     this.results = new WorkshopPassageSearchResults(session, room, (line) => this.log(line));
+    this.slot = new WorkshopPassageSearchRunSlot({ readRoomRevision: () => session.readRoomRevision(), openRoomInstance: () => room.openRoomInstance() });
     this.stopListening = room.onRoomReplaced((replacement) => this.roomReplaced(replacement));
   }
 
@@ -176,8 +173,7 @@ export class WorkshopPassageSearchHandler {
   /** The panel is closing: a running search stops, and its results go nowhere. */
   dispose(): void {
     this.stopListening();
-    this.search?.controller.abort();
-    this.search = undefined;
+    this.slot.close();
     this.results.clear();
   }
 
@@ -214,24 +210,31 @@ export class WorkshopPassageSearchHandler {
       return this.refuse('run', payload, { reason: 'results-full' });
     }
     // The slot is taken before anything awaits, so a second Run during the plan is refused too.
-    const search: RunningSearch = { turnId: payload.turnId, requestId: payload.requestId, roomRevision: payload.roomRevision, controller: new AbortController() };
-    this.search = search;
+    const search = this.slot.take(payload.turnId, payload.requestId);
+    if (!search) {
+      return;
+    }
     let result: PassageSearchResult;
     try {
       const planned = await this.plan(found.card);
+      if (!this.stillOwns(search)) {
+        // Another room took the slot's place while the plan was made: this Run is over, and frees only its own slot.
+        this.slot.release(search);
+        return this.overtaken(payload);
+      }
       if ('reason' in planned) {
-        this.search = undefined;
+        this.slot.release(search);
         return this.refuse('run', payload, planned);
       }
       if (planned.planKey !== planKey) {
         // The price the writer saw no longer holds: the new one is shown, and nothing is sent (D20).
-        this.search = undefined;
+        this.slot.release(search);
         this.log(`run price-changed turn=${payload.turnId}`);
         return this.answer('run', payload, 'price-changed', { estimate: workshopPassageSearchEstimateView(planned) });
       }
-      if (!this.stillOwns(search) || search.controller.signal.aborted) {
-        this.search = undefined;
-        return this.refuse('run', payload, { reason: this.stillOwns(search) ? 'not-running' : 'room-changed' });
+      if (search.controller.signal.aborted) {
+        this.slot.release(search);
+        return this.refuse('run', payload, { reason: 'not-running' });
       }
       this.log(`run started turn=${payload.turnId} calls=${planned.estimate.calls} files=${planned.estimate.files}`);
       this.answer('run', payload, 'started');
@@ -241,19 +244,22 @@ export class WorkshopPassageSearchHandler {
         onProgress: (progress) => this.reportProgress(search, { done: progress.calls.done, planned: progress.calls.planned, found: progress.found })
       });
     } catch (error) {
-      this.search = this.search === search ? undefined : this.search;
+      const owned = this.stillOwns(search);
+      this.slot.release(search);
       this.log(`run failed turn=${payload.turnId} error=${error instanceof Error ? error.name : 'unknown'}`);
+      if (!owned) {
+        return this.overtaken(payload);
+      }
       this.refuse('run', payload, { reason: 'search-failed' });
       this.effects.postSessionState();
       return;
     }
-    if (this.search === search) {
-      this.search = undefined;
-    }
-    if (!this.stillOwns(search)) {
+    const owned = this.stillOwns(search);
+    this.slot.release(search);
+    if (!owned) {
       // Another room now: what was found goes nowhere (D20).
       this.log(`run dropped turn=${payload.turnId} reason=room-changed`);
-      return this.refuse('run', payload, { reason: 'room-changed' });
+      return this.overtaken(payload);
     }
     this.results.hold(payload.turnId, result);
     const counts = workshopPassageSearchCounts(workshopPassageSearchView(result, payload.turnId));
@@ -272,11 +278,12 @@ export class WorkshopPassageSearchHandler {
   }
 
   handleStop(payload: WorkshopPassageSearchActionPayload): void {
-    if (this.search?.turnId !== payload.turnId || payload.roomRevision !== this.search.roomRevision) {
+    const search = this.runningOn(payload.turnId);
+    if (!search || payload.roomRevision !== search.roomRevision) {
       return this.refuse('stop', payload, { reason: 'not-running' });
     }
     this.log(`stop turn=${payload.turnId}`);
-    this.search.controller.abort();
+    search.controller.abort();
     this.answer('stop', payload, 'done');
   }
 
@@ -345,7 +352,9 @@ export class WorkshopPassageSearchHandler {
     if (!turn?.passageSearchRequest) {
       return { reason: 'no-card' };
     }
-    if (this.search && !(besideASearch && this.search.turnId !== payload.turnId)) {
+    // Only a search in this room is busy: one begun in a replaced room let go of the slot when the room went.
+    const running = this.slot.live();
+    if (running && !(besideASearch && running.turnId !== payload.turnId)) {
       return { reason: 'search-running' };
     }
     return this.statusOf(payload) === 'pending' ? { turn, card: turn.passageSearchRequest } : { reason: 'not-pending' };
@@ -376,9 +385,6 @@ export class WorkshopPassageSearchHandler {
   }
 
   private reportProgress(search: RunningSearch, progress: WorkshopPassageSearchProgress): void {
-    if (this.search !== search) {
-      return;
-    }
     if (!this.stillOwns(search)) {
       search.controller.abort();
       return;
@@ -393,32 +399,36 @@ export class WorkshopPassageSearchHandler {
     void this.postMessage(message);
   }
 
-  /** Whether the search's room is still the room, and still holds its card. */
+  /** Whether the operation still holds the slot in the room it began in, and that room still holds its card. */
   private stillOwns(search: RunningSearch): boolean {
-    return search.roomRevision === this.session.readRoomRevision()
+    return this.slot.owns(search)
       && this.session.readRoomLedger().some((turn) => turn.id === search.turnId && turn.passageSearchRequest !== undefined);
+  }
+
+  /** A Run whose room went while it awaited: it says so to the room it came from, and touches nothing else. */
+  private overtaken(payload: WorkshopPassageSearchActionPayload): void {
+    this.refuse('run', payload, { reason: 'room-changed' });
   }
 
   /** The search on this card in this room: one begun in a room since replaced is another room's, whatever its turn id. */
   private runningOn(turnId: string): RunningSearch | undefined {
-    return this.search?.turnId === turnId && this.search.roomRevision === this.session.readRoomRevision() ? this.search : undefined;
+    const running = this.slot.live();
+    return running?.turnId === turnId ? running : undefined;
   }
 
-  /** The coordinator's word, as the replacement lands: the running search stops now, and the holder applies its rule. */
+  /** The coordinator's word, as the replacement lands: the running search stops and frees the slot now, and the holder applies its rule. */
   private roomReplaced(replacement: WorkshopRoomReplacement): void {
-    if (this.search && !this.search.controller.signal.aborted) {
-      this.log(`room replaced turn=${this.search.turnId} search=stopped rewound=${replacement.rewound}`);
-      this.search.controller.abort();
+    const stopped = this.slot.replaced();
+    if (stopped) {
+      this.log(`room replaced turn=${stopped.turnId} search=stopped rewound=${replacement.rewound}`);
     }
     this.results.roomReplaced(replacement);
   }
 
-  /** A fallback for a replacement nobody told: a room whose revision moved takes its running search with it. */
+  /** A fallback for a replacement nobody told: a search whose room moved is stopped and let go. */
   private syncRoom(): void {
     this.results.sync();
-    if (this.search && this.search.roomRevision !== this.session.readRoomRevision()) {
-      this.search.controller.abort();
-    }
+    this.slot.live();
   }
 
   private async take(action: WorkshopPassageSearchAction, value: unknown, handle: (payload: WorkshopPassageSearchActionPayload) => Promise<void> | void): Promise<void> {
