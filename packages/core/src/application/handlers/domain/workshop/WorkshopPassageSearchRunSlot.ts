@@ -14,6 +14,11 @@
  *   settles, so the new room's cards can be priced, run and cancelled at
  *   once. A search whose room moved with no announcement is treated the
  *   same when it is next looked at.
+ * - **A Stop belongs to its operation** (PR #296 combined re-review).
+ *   `stop` aborts the search and records that the writer's Stop was
+ *   acknowledged for that operation alone. The handler never delivers a
+ *   stopped operation's result on its own, whatever the result says; it
+ *   waits for the writer's Send. Another operation's Stop never counts.
  * - **Closing the window ends every operation.** After `close`, no
  *   operation owns anything, and none can take the slot.
  *
@@ -43,6 +48,8 @@ export class WorkshopPassageSearchRunSlot {
   private current: WorkshopPassageSearchOperation | undefined;
   private minted = 0;
   private closed = false;
+  /** The operations whose Stop was acknowledged, by identity; nothing else is ever added. */
+  private readonly stopped = new WeakSet<WorkshopPassageSearchOperation>();
 
   constructor(private readonly room: WorkshopPassageSearchRunRoom) {}
 
@@ -83,6 +90,17 @@ export class WorkshopPassageSearchRunSlot {
     if (this.current === operation) {
       this.current = undefined;
     }
+  }
+
+  /** The writer's Stop, acknowledged for `operation` alone: its search is aborted, and its result is never sent by the host. */
+  stop(operation: WorkshopPassageSearchOperation): void {
+    this.stopped.add(operation);
+    operation.controller.abort();
+  }
+
+  /** Whether the writer's Stop was acknowledged for this very operation; a replacement or a close is not a Stop. */
+  stopAcknowledged(operation: WorkshopPassageSearchOperation): boolean {
+    return this.stopped.has(operation);
   }
 
   /** The room was replaced: the search running stops and its slot is free now. Returns what was stopped. */

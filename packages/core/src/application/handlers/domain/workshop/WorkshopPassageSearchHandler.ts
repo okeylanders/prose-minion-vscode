@@ -27,12 +27,12 @@
  *   every place holds a result not yet delivered (`results-full`).
  * - **Delivery** (D19a, D21) is a results-delivery directed run to the
  *   card's author. The host starts it only for a search that read
- *   everything it planned (`isWorkshopPassageSearchFullyRead`), with the
- *   room idle and no session save or replacement pending; any other waits
- *   for the writer's Send. Every
- *   send checks first, with nothing awaited before the dispatch: no session
- *   operation pending, this room, the card still here and undelivered, its
- *   author still in the room, no run going, and a frame that fits.
+ *   everything it planned (`isWorkshopPassageSearchFullyRead`) and was
+ *   not stopped, with the room idle and no session save or replacement
+ *   pending; any other waits for the writer's Send. Every send checks
+ *   first, with nothing awaited before the dispatch: no session operation
+ *   pending, this room, the card still here and undelivered, its author
+ *   still in the room, no run going, and a frame that fits.
  * - **Logs** carry turn ids, counts, closed outcomes and reason kinds:
  *   never the question, a quote, a note, a label or a path (D22).
  */
@@ -260,8 +260,10 @@ export class WorkshopPassageSearchHandler {
     const counts = workshopPassageSearchCounts(view, result.requests);
     this.log(`run finished turn=${payload.turnId} ended=${counts.ended} instances=${counts.instances} files=${counts.files} searched=${counts.searched ?? 0} `
       + `answered=${counts.calls.answered} failed=${counts.calls.failed} cut=${counts.calls.cut} unsent=${counts.calls.unsent} cancelled=${counts.calls.cancelled ?? 0} dropped=${counts.dropped}`);
-    // Only a search that read everything it planned is delivered by the host, and only into an idle room (D21).
-    const auto = isWorkshopPassageSearchFullyRead(workshopPassageSearchCoverage(view)) && this.room.activeRunLabel() === undefined;
+    // Only a search that read everything it planned is delivered by the host, only into an idle room (D21), and never
+    // one whose Stop was acknowledged, whatever its result says: that waits for Send (PR #296 combined re-review).
+    const auto = !this.slot.stopAcknowledged(search)
+      && isWorkshopPassageSearchFullyRead(workshopPassageSearchCoverage(view)) && this.room.activeRunLabel() === undefined;
     const sent = auto ? await this.results.deliver(payload.turnId) : undefined;
     this.postState();
     const words = workshopPassageSearchCountsWords(counts);
@@ -278,7 +280,7 @@ export class WorkshopPassageSearchHandler {
       return this.refuse('stop', payload, { reason: 'not-running' });
     }
     this.log(`stop turn=${payload.turnId}`);
-    search.controller.abort();
+    this.slot.stop(search);
     this.answer('stop', payload, 'done');
   }
 

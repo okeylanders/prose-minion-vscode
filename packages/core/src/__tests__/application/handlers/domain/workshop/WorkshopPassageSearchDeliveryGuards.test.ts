@@ -11,7 +11,10 @@
  *   is never sent by the host: it waits for Send partial results, and the
  *   card and the directive say what was not searched, the compact summary
  *   included; where not even the summary with that caveat fits, nothing is
- *   sent and the card keeps its report (PR #296 re-review P3).
+ *   sent and the card keeps its report (PR #296 re-review P3);
+ * - a search whose Stop was acknowledged is never sent by the host, even
+ *   when the engine's result says it read everything: it waits for Send.
+ *   The Stop is that operation's alone (PR #296 combined re-review).
  * Made-up text: Alice.
  */
 
@@ -135,6 +138,61 @@ describe('a passage search\'s delivery, refused before anything is sent', () => 
     const [, message] = harness.service.continueConversation.mock.calls.at(-1) as unknown as [string, string];
     expect(message).toContain(directiveWords);
     expect(search.run).toHaveBeenCalledTimes(1);
+  });
+
+  describe('a Stop acknowledged for the search (PR #296 combined re-review)', () => {
+    it('is never followed by the host\'s send, even when the engine reports everything read: the result waits for Send', async () => {
+      const { harness, search } = driver;
+      // An engine that ignores its signal and reports a search that read everything it planned.
+      let finish!: () => void;
+      search.run.mockImplementationOnce(async () => {
+        await new Promise<void>((resolve) => { finish = resolve; });
+        return aliceResult();
+      });
+      const { requestId, running } = await driver.act(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
+      await driver.settle();
+      const [stopped] = await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_STOP);
+      expect(stopped.outcome).toBe('done');
+      finish();
+      await running;
+      await driver.settle();
+
+      expect(driver.answersOf(requestId).at(-1)).toEqual(expect.objectContaining({ outcome: 'finished' }));
+      expect(driver.answersOf(requestId).at(-1).message).not.toContain('The results were sent.');
+      expect(harness.service.continueConversation).not.toHaveBeenCalled();
+      expect(driver.requestTurns()).toHaveLength(0);
+      expect(harness.session.getSnapshot().activeRequestId).toBeUndefined();
+      // Held whole, as the engine reported it: only the acknowledged Stop kept the host from sending it.
+      expect(await driver.view()).toEqual(expect.objectContaining({ status: 'ready', partial: false, counts: expect.objectContaining({ ended: 'complete' }) }));
+
+      // Send is the writer's press: the held result goes, with no second search.
+      const [sent] = await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND);
+      expect(sent.outcome).toBe('done');
+      expect(search.run).toHaveBeenCalledTimes(1);
+      expect(harness.service.continueConversation).toHaveBeenCalledTimes(1);
+      expect(await driver.view()).toEqual(expect.objectContaining({ status: 'delivered' }));
+    });
+
+    it('belongs to that search alone: the next card\'s search, read in full, is sent by the host', async () => {
+      const { harness, search } = driver;
+      search.hold = true;
+      const { running } = await driver.act(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
+      await driver.settle();
+      expect((await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_STOP))[0].outcome).toBe('done');
+      await running;
+      await driver.settle();
+      const stoppedCard = driver.card;
+      expect(await driver.view(stoppedCard.id)).toEqual(expect.objectContaining({ status: 'ready', partial: true }));
+
+      search.hold = false;
+      driver.card = await driver.askAgain();
+      harness.service.continueConversation.mockClear();
+      const answers = await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
+      expect(answers.at(-1).message).toContain('The results were sent.');
+      expect(harness.service.continueConversation).toHaveBeenCalledTimes(1);
+      expect(await driver.view()).toEqual(expect.objectContaining({ status: 'delivered' }));
+      expect(await driver.view(stoppedCard.id)).toEqual(expect.objectContaining({ status: 'ready', partial: true }));
+    });
   });
 
   describe('a partial result in a nearly full conversation (PR #296 re-review P3)', () => {

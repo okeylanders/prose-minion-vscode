@@ -53,6 +53,26 @@ describe('the passage-search run slot', () => {
     expect(old.controller.signal.aborted).toBe(true);
   });
 
+  it('records a Stop for its own operation alone, past its release; a replacement or a close is no Stop (combined re-review)', () => {
+    const runs = slot();
+    const stopped = runs.take('turn-2', 'ps-1')!;
+    runs.stop(stopped);
+    expect(stopped.controller.signal.aborted).toBe(true);
+    runs.release(stopped);
+    expect(runs.stopAcknowledged(stopped)).toBe(true);
+    // The next search on the same card is a new operation: the earlier Stop is not its own.
+    const next = runs.take('turn-2', 'ps-2')!;
+    expect(runs.stopAcknowledged(next)).toBe(false);
+    room.revision = 6;
+    runs.replaced();
+    expect(next.controller.signal.aborted).toBe(true);
+    expect(runs.stopAcknowledged(next)).toBe(false);
+    room.revision = 5;
+    const closing = runs.take('turn-4', 'ps-3')!;
+    runs.close();
+    expect(runs.stopAcknowledged(closing)).toBe(false);
+  });
+
   it('closing the window ends the search, and no operation owns or takes anything after', () => {
     const runs = slot();
     const running = runs.take('turn-2', 'ps-1')!;
