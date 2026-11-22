@@ -32,8 +32,11 @@ export interface PassageSearchRouteDriver {
   logs(): string;
 }
 
-/** `cardTurnId` names a card the shared session already holds (a scripted room a real coordinator opened); otherwise the host is asked for one. */
-export async function passageSearchRouteDriver(options: WorkshopRouteTestHarnessOptions = {}, cardTurnId?: string): Promise<PassageSearchRouteDriver> {
+/**
+ * `cardTurnId` names a card the shared session already holds (a scripted room a real coordinator opened); otherwise
+ * the host is asked for one, with `frame` as its trailer (the fixtures' scopes by default).
+ */
+export async function passageSearchRouteDriver(options: WorkshopRouteTestHarnessOptions = {}, cardTurnId?: string, frame = searchFrame()): Promise<PassageSearchRouteDriver> {
   const search = fakePassageSearch();
   const harness = createWorkshopRouteTestHarness({ passageSearch: search.ports, ...options });
   let asked = 0;
@@ -47,7 +50,7 @@ export async function passageSearchRouteDriver(options: WorkshopRouteTestHarness
   const answersOf = (requestId: string) => harness.posted(MessageType.WORKSHOP_PASSAGE_SEARCH_RESULT)
     .map((entry) => entry.payload).filter((payload) => payload.requestId === requestId);
   const askAgain = async (): Promise<WorkshopTurn> => {
-    const reply = analysisResult(`${ASKED}\n\n${searchFrame()}`, { conversationId: 'host-conv' }) as never;
+    const reply = analysisResult(`${ASKED}\n\n${frame}`, { conversationId: 'host-conv' }) as never;
     if (harness.session.hasHostConversation()) {
       harness.service.continueConversation.mockResolvedValueOnce(reply);
     } else {

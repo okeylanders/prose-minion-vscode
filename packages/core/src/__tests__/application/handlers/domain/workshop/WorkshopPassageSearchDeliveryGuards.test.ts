@@ -146,7 +146,9 @@ describe('a passage search\'s delivery, refused before anything is sent', () => 
       search.result = aliceResult(3, { calls: callsOf({ planned: 4, answered: 4, cut: 1 }) });
       await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
       const view = workshopPassageSearchView(search.result, driver.card.id);
-      harness.service.measureWorkshopReplyWindow.mockReturnValue(roomOf((estimateTextTokens(renderWorkshopPassageSearchDirective(view, 0)) - 1) * 2) as never);
+      // One token short of the smallest frame by whole instances: only the summary fits.
+      const least = Math.min(...[0, 1, 2, 3].map((shown) => estimateTextTokens(renderWorkshopPassageSearchDirective(view, shown))));
+      harness.service.measureWorkshopReplyWindow.mockReturnValue(roomOf((least - 1) * 2) as never);
 
       const [sent] = await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND);
       expect(sent.outcome).toBe('done');
