@@ -16,9 +16,9 @@
  */
 
 import type { TokenUsage } from '@messages';
-import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 import type { LogSink } from '@/platform';
 import { sumTokenUsage } from '@/utils/tokenUsage';
+import { passageSearchFaultKind } from '@services/search/passage/PassageSearchCallFailures';
 import type { PassageSearchResult } from '@services/search/passage/PassageSearchContracts';
 import type { PassageSearchOrganized } from '@services/search/passage/PassageSearchOrganizer';
 
@@ -27,16 +27,17 @@ import type { PassageSearchOrganized } from '@services/search/passage/PassageSea
  * afterwards. A result with a usage total gives that total as one entry: it
  * carries its own request count, and a cost it already withholds stays
  * withheld. A result with none, whose reads were dispatched all the same,
- * gives one unknown entry per read that was dispatched (answered, failed or
- * stopped in flight: every planned read that is not `unsent`), exactly the
- * entries the run itself recorded, so those requests are counted and no
- * cost is shown as complete.
+ * gives one unknown entry per dispatched read (`calls.dispatched`, the
+ * count of entries the run itself recorded), so those requests are counted
+ * and no cost is shown as complete. A read that was never sent (`unsent`,
+ * or `tooLarge`: refused by the engine's own preflight) is no request, and
+ * gives none: nothing here infers a dispatch from a failure.
  */
 export function passageSearchReadUsages(result: Pick<PassageSearchResult, 'usage' | 'calls'>): ReadonlyArray<TokenUsage | undefined> {
   if (result.usage) {
     return [result.usage];
   }
-  return Array.from({ length: result.calls.answered + result.calls.failed + result.calls.cancelled }, () => undefined);
+  return Array.from({ length: result.calls.dispatched }, () => undefined);
 }
 
 /**
@@ -53,8 +54,7 @@ export async function withPassageSearchPass(
   try {
     organized = await pass();
   } catch (error) {
-    const kind = error instanceof AgentRunUnavailableError ? error.reason : error instanceof Error ? error.name : 'unknown';
-    log.appendLine(`[PassageSearch] The organizing pass failed (${kind}).`);
+    log.appendLine(`[PassageSearch] The organizing pass failed (${passageSearchFaultKind(error)}).`);
     return { ...result, analysisMissing: 'failed' };
   }
   if (!organized) {

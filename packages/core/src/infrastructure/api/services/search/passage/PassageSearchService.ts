@@ -20,6 +20,13 @@
  *   settle, and again immediately before the pass.
  * - **A call stopped in flight is `cancelled`, not `unsent`:** it was
  *   dispatched and may have been charged; its usage is kept.
+ * - **A call refused before dispatch is `tooLarge`** (the engine's own
+ *   preflight: the request does not fit the model's window as measured
+ *   then, which a plan priced on an unknown window can meet). Nothing was
+ *   sent, so it leaves no usage entry, is no request, and is no provider
+ *   failure. Every call that was dispatched leaves exactly one usage entry,
+ *   known or not, and `calls.dispatched` counts them
+ *   (`PassageSearchCallFailures` is the one rule for which is which).
  * - **A failed call is that call's outcome,** counted; the run goes on. A
  *   reply cut off at its ceiling keeps its finished instances and is
  *   counted `cut`.
@@ -45,10 +52,11 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
-import { AgentRunUnavailableError, type AgentRunEngine } from '@orchestration/AgentRunEngine';
+import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { PromptLoader } from '@/tools/shared/prompts';
 import type { LogSink } from '@/platform';
 import { sumTokenUsage } from '@/utils/tokenUsage';
+import { classifyPassageSearchCallFailure, passageSearchFaultKind } from '@services/search/passage/PassageSearchCallFailures';
 import {
   PASSAGE_SEARCH_DROP_REASONS,
   type PassageSearchDropReason,
@@ -108,6 +116,8 @@ interface RunTally {
   cancelled: number;
   /** Never started. */
   unsent: number;
+  /** Refused by the engine's own preflight before dispatch: nothing was sent. */
+  tooLarge: number;
   /** Per plan file: chunks dispatched, and chunks whose reply was read. */
   readonly admitted: number[];
   readonly answeredByFile: number[];
@@ -180,6 +190,7 @@ export class PassageSearchService {
       cut: 0,
       cancelled: 0,
       unsent: 0,
+      tooLarge: 0,
       admitted: plan.files.map(() => 0),
       answeredByFile: plan.files.map(() => 0),
       ignoredFields: 0,
@@ -233,7 +244,10 @@ export class PassageSearchService {
         failed: tally.failed,
         cut: tally.cut,
         cancelled: tally.cancelled,
-        unsent: tally.unsent
+        unsent: tally.unsent,
+        tooLarge: tally.tooLarge,
+        // Every dispatched read pushed exactly one entry, known or not; no other read pushed one.
+        dispatched: tally.usages.length
       },
       files: {
         planned: files,
@@ -327,26 +341,40 @@ export class PassageSearchService {
         }
       });
     } catch (error) {
-      if (error instanceof AgentRunUnavailableError && error.reason === 'missing-credentials') {
-        // The key was removed or replaced: the retired engine starts nothing, and neither does this run.
-        tally.keyChanged = true;
-        tally.admitted[chunk.file] -= 1;
-        tally.unsent += 1;
-      } else if (signal?.aborted) {
-        // Aborted in flight: it was dispatched, so it is not unsent, and it may have been charged.
-        // Its usage is unknown, and is recorded as unknown: the run's cost is then no complete total (PR #293 re-review).
-        tally.cancelled += 1;
-        tally.usages.push(undefined);
-      } else {
-        // The provider may have been reached before this failed (a reply that would not decode, a 5xx after
-        // the request went out), and nothing here says it was not. Its usage is unknown, and is recorded as
-        // unknown: the call is counted, and the run's cost is then no complete total (PR #295 re-review).
-        tally.usages.push(undefined);
-        this.fail(tally, faultKindOf(error));
-        tally.failureStreak += 1;
-        tally.providerFailed ||= tally.failureStreak >= PROMPT_BUDGETS.passageSearch.failureStreak;
+      // One rule with the organizing pass for what a thrown call came to, and whether it reached the provider.
+      const failure = classifyPassageSearchCallFailure(error, signal?.aborted === true);
+      switch (failure) {
+        case 'key-changed':
+          // Nothing was sent: the retired engine starts nothing, and neither does this run.
+          tally.keyChanged = true;
+          tally.admitted[chunk.file] -= 1;
+          tally.unsent += 1;
+          return;
+        case 'too-large':
+          // Nothing was sent: the engine's own preflight refused it. No usage entry, no request, and no
+          // provider failure, so it neither adds to the streak nor ends it (PR #295 re-review).
+          tally.admitted[chunk.file] -= 1;
+          tally.tooLarge += 1;
+          return;
+        case 'stopped-in-flight':
+          // Dispatched, then stopped: it may have been charged. Its usage is unknown, and is recorded as
+          // unknown, so the call is counted and the run's cost is then no complete total (PR #293 re-review).
+          tally.usages.push(undefined);
+          tally.cancelled += 1;
+          return;
+        case 'provider-failed':
+          // The provider may have been reached (a reply that would not decode, a 5xx after the request went
+          // out), and nothing here says it was not: counted, its usage unknown (PR #295 re-review).
+          tally.usages.push(undefined);
+          this.fail(tally, passageSearchFaultKind(error));
+          tally.failureStreak += 1;
+          tally.providerFailed ||= tally.failureStreak >= PROMPT_BUDGETS.passageSearch.failureStreak;
+          return;
+        default: {
+          const unreachable: never = failure;
+          throw new Error(`Unclassified call failure: ${String(unreachable)}`);
+        }
       }
-      return;
     }
     tally.usages.push(result.usage);
     if (result.cancelled) {
@@ -401,7 +429,7 @@ export class PassageSearchService {
     try {
       return await this.prices.facts(model);
     } catch (error) {
-      this.log.appendLine(`[PassageSearch] The model catalog could not be read for the estimate (${faultKindOf(error)}).`);
+      this.log.appendLine(`[PassageSearch] The model catalog could not be read for the estimate (${passageSearchFaultKind(error)}).`);
       return {};
     }
   }
@@ -410,7 +438,7 @@ export class PassageSearchService {
     const counted = (counts: Map<string, number>): string => [...counts.entries()].map(([kind, count]) => `${kind} ${count}`).join(', ') || 'none';
     this.log.appendLine(
       `[PassageSearch] Run ended ${result.ended}: ${result.files.planned.length} file(s), `
-      + `${result.calls.answered} of ${result.calls.planned} call(s) answered (${result.calls.failed} failed, ${result.calls.cut} cut, ${result.calls.cancelled} cancelled, ${result.calls.unsent} unsent), `
+      + `${result.calls.answered} of ${result.calls.planned} call(s) answered (${result.calls.failed} failed, ${result.calls.cut} cut, ${result.calls.cancelled} cancelled, ${result.calls.unsent} unsent, ${result.calls.tooLarge} too large; ${result.calls.dispatched} dispatched), `
       + `searched ${result.files.searched.full} in full, ${result.files.searched.partial} in part, ${result.files.searched.none} not at all, `
       + `${result.instances.length} instance(s) under ${result.labels.length} label(s), ${result.overLimit} over the limit, `
       + `dropped ${PASSAGE_SEARCH_DROP_REASONS.map((reason) => `${reason} ${result.dropped[reason]}`).join(', ')}, `
@@ -420,12 +448,4 @@ export class PassageSearchService {
       + `${result.usage?.totalTokens ?? 0} token(s), ${milliseconds} ms.`
     );
   }
-}
-
-/** A failure's kind for a log: a closed reason or a class name, never a message, which may quote a path or the writer's text. */
-function faultKindOf(error: unknown): string {
-  if (error instanceof AgentRunUnavailableError) {
-    return error.reason;
-  }
-  return error instanceof Error ? error.name : 'unknown';
 }

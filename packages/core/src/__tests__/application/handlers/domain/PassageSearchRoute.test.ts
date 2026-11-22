@@ -116,7 +116,7 @@ describe('PassageSearchRoute', () => {
         canOrganize: false,
         labels: [{ label: ALICE_LABEL, count: 2, files: 2 }],
         files: { planned: 3, withInstances: 2 },
-        calls: { planned: 3, answered: 3, failed: 0, cut: 0, cancelled: 0, unsent: 0 }
+        calls: { planned: 3, answered: 3, failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 3 }
       });
       expect(answer.result.instances[0]).toEqual({
         number: 1,
@@ -141,7 +141,7 @@ describe('PassageSearchRoute', () => {
     });
 
     it('says how a run that was cut short ended, in the engine\'s words', async () => {
-      await finished(aliceResult({ ended: 'key-changed', calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2 } }));
+      await finished(aliceResult({ ended: 'key-changed', calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2, tooLarge: 0, dispatched: 1 } }));
       const [answer] = results();
       expect(answer.status === 'finished' && answer.result.endedMessage)
         .toBe('The API key changed during the search, so the remaining calls were not made.');
@@ -215,7 +215,7 @@ describe('PassageSearchRoute', () => {
 
       await send(MessageType.PASSAGE_SEARCH_STOP, { requestId: 'run-1' });
       expect(signal?.aborted).toBe(true);
-      const partial = aliceResult({ ended: 'stopped', calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2 } });
+      const partial = aliceResult({ ended: 'stopped', calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2, tooLarge: 0, dispatched: 1 } });
       reads.resolve(partial);
       await run;
 

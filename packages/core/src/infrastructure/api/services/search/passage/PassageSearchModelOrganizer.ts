@@ -42,9 +42,13 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
-import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 import { PromptLoader } from '@/tools/shared/prompts';
 import type { LogSink } from '@/platform';
+import {
+  classifyPassageSearchCallFailure,
+  passageSearchCallWasDispatched,
+  passageSearchFaultKind
+} from '@services/search/passage/PassageSearchCallFailures';
 import type {
   PassageSearchAnalysis,
   PassageSearchAnalysisMissing,
@@ -187,17 +191,12 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
         }
       });
     } catch (error) {
-      if (error instanceof AgentRunUnavailableError && error.reason === 'missing-credentials') {
-        // The retired engine refused: nothing was sent.
-        return this.missing('key-changed', error.reason, started, []);
-      }
-      if (error instanceof AgentRunUnavailableError && error.reason === 'context-window-exceeded') {
-        // Refused by the engine's own preflight, before any request: nothing was sent.
-        return this.missing('failed', error.reason, started, []);
-      }
-      // Anything else may have happened after the request went out (aborted in flight, a reply that would not
-      // decode, a provider's refusal or error): it is counted as dispatched, its usage unknown, never as nothing sent.
-      return this.missing(options.signal?.aborted ? 'stopped' : 'failed', options.signal?.aborted ? 'stopped' : faultKindOf(error), started, [undefined]);
+      // One rule with the read calls for what a thrown call came to, and whether it reached the provider.
+      const failure = classifyPassageSearchCallFailure(error, options.signal?.aborted === true);
+      const reason = failure === 'key-changed' ? 'key-changed' : failure === 'stopped-in-flight' ? 'stopped' : 'failed';
+      // Dispatched, its usage unknown: one entry, never "nothing sent". Not dispatched (a retired engine, or the
+      // engine's own preflight refusing a request too large for the model's window): none, and no request.
+      return this.missing(reason, failure === 'stopped-in-flight' ? 'stopped' : passageSearchFaultKind(error), started, passageSearchCallWasDispatched(failure) ? [undefined] : []);
     }
     const usages = [execution.usage];
     // The credentials were retired while the pass was in flight: what it spent is kept, and its analysis is not.
@@ -216,7 +215,7 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
       // Dispatched and answered: whatever went wrong reading it, what it spent is still reported.
       return error instanceof PassageSearchOrganizeReplyError
         ? this.missing(error.fault === 'cut' ? 'cut' : 'malformed', error.fault, started, usages)
-        : this.missing('failed', faultKindOf(error), started, usages);
+        : this.missing('failed', passageSearchFaultKind(error), started, usages);
     }
     this.logPass(analysis, reply, execution.usage, Date.now() - started);
     return analysis.sections.length === 0
@@ -262,7 +261,7 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
     try {
       return await this.prices.facts(model);
     } catch (error) {
-      this.log.appendLine(`[PassageSearch] The model catalog could not be read for the organizing pass (${faultKindOf(error)}).`);
+      this.log.appendLine(`[PassageSearch] The model catalog could not be read for the organizing pass (${passageSearchFaultKind(error)}).`);
       return {};
     }
   }
@@ -280,14 +279,6 @@ export class PassageSearchModelOrganizer implements PassageSearchOrganizer {
       + `${usage?.totalTokens ?? 0} token(s), ${milliseconds} ms.`
     );
   }
-}
-
-/** A failure's kind for a log: a closed reason or a class name, never a message, which may quote the writer's text. */
-function faultKindOf(error: unknown): string {
-  if (error instanceof AgentRunUnavailableError) {
-    return error.reason;
-  }
-  return error instanceof Error ? error.name : 'unknown';
 }
 
 function sha256(text: string): string {

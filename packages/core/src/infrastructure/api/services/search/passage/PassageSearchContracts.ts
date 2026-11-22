@@ -180,7 +180,7 @@ export interface PassageSearchResultFile {
   readonly absolutePath?: string;
   readonly lines: 'document' | 'text';
   readonly instances: number;
-  /** Its read calls: planned, admitted (dispatched to the provider) and answered (a reply read). */
+  /** Its read calls: planned, admitted (dispatched to the provider; a call refused before dispatch is not) and answered (a reply read). */
   readonly chunks: { readonly planned: number; readonly admitted: number; readonly answered: number };
   /** `full` only when every chunk was answered, hits or none; a file with no hit and `none` was never searched. */
   readonly searched: PassageSearchFileSearched;
@@ -243,10 +243,15 @@ export interface PassageSearchResult {
   /** Checked instances past the `instances` bound, not kept. */
   readonly overLimit: number;
   /**
-   * Read calls. `answered`, `failed`, `cancelled` and `unsent` add up to
-   * `planned`; `cut` counts answered calls whose reply was cut off.
-   * `cancelled` calls were dispatched and stopped in flight, and may have
-   * been charged; `unsent` calls never started.
+   * Read calls. `answered`, `failed`, `cancelled`, `unsent` and `tooLarge`
+   * add up to `planned`; `cut` counts answered calls whose reply was cut
+   * off. `cancelled` calls were dispatched and stopped in flight, and may
+   * have been charged. `unsent` calls never started (Stop, a key change, a
+   * run of provider failures, the instance limit). `tooLarge` calls were
+   * refused by the engine's own preflight before dispatch: the request did
+   * not fit the model's window as measured then, so nothing was sent.
+   * `dispatched` is how many went out (`answered`, `failed` and `cancelled`
+   * together): exactly the usage entries the reads recorded, known or not.
    */
   readonly calls: {
     readonly planned: number;
@@ -255,6 +260,8 @@ export interface PassageSearchResult {
     readonly cut: number;
     readonly cancelled: number;
     readonly unsent: number;
+    readonly tooLarge: number;
+    readonly dispatched: number;
   };
   readonly files: {
     /** Every file of the plan, in reading order, searched or not. */

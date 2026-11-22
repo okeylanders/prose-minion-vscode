@@ -29,7 +29,7 @@ describe('PassageSearchRoute: organize these results', () => {
   const results = () => host.results();
   const finished = (result?: PassageSearchResult) => host.finished(result);
   const organizePlans = () => host.posted<PassageSearchOrganizePlanPayload>(MessageType.PASSAGE_SEARCH_ORGANIZE_PLAN);
-  const stopped = () => aliceResult({ ended: 'stopped', calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2 } });
+  const stopped = () => aliceResult({ ended: 'stopped', calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2, tooLarge: 0, dispatched: 1 } });
   const withOrganizer = () => {
     engine.organizerAvailable.mockReturnValue(true);
     engine.planOrganize.mockResolvedValue({ kind: 'planned', plan: ORGANIZE_PLAN });

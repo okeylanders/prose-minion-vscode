@@ -172,8 +172,12 @@ export interface PassageSearchResultView {
   analysisMissing?: PassageSearchAnalysisMissingView;
   dropped: Record<PassageSearchDropReasonView, number>;
   overLimit: number;
-  /** `answered`, `failed`, `cancelled` and `unsent` add up to `planned`. A cancelled call was sent and stopped in flight; an unsent one never started. */
-  calls: { planned: number; answered: number; failed: number; cut: number; cancelled: number; unsent: number };
+  /**
+   * `answered`, `failed`, `cancelled`, `unsent` and `tooLarge` add up to `planned`. A cancelled call was sent and
+   * stopped in flight; an unsent one never started; a `tooLarge` one did not fit the model's window and was not
+   * sent. `dispatched` is how many were sent: `answered`, `failed` and `cancelled` together.
+   */
+  calls: { planned: number; answered: number; failed: number; cut: number; cancelled: number; unsent: number; tooLarge: number; dispatched: number };
   files: {
     /** Every file of the plan, searched or not. */
     planned: number;

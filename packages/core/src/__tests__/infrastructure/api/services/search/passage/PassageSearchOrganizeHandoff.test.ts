@@ -22,6 +22,7 @@ jest.mock('p-limit', () => ({
 }));
 
 import type { PassageSearchPlan } from '@services/search/passage/PassageSearchContracts';
+import { passageSearchReadUsages } from '@services/search/passage/PassageSearchPassUsage';
 import type { PassageSearchService } from '@services/search/passage/PassageSearchService';
 import {
   PASSAGE_MODEL,
@@ -217,10 +218,13 @@ describe('One usage total over the reads and the pass (PR #295 P2)', () => {
     expect((await unmeteredPass.service.organize(metered, await planOf(unmeteredPass.organizer, metered))).usage)
       .toEqual({ promptTokens: 200, completionTokens: 40, totalTokens: 240, requestCount: 3 });
     // Reads that were dispatched and reported nothing: counted from the result's own calls, the cost withheld.
-    const unmeteredReads = resultOf(RESULT.instances, { ended: 'stopped', calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1 } });
+    const unmeteredReads = resultOf(RESULT.instances, { ended: 'stopped', calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1, tooLarge: 0, dispatched: 2 } });
     const host = createHost([ok()]);
     expect((await host.service.organize(unmeteredReads, await planOf(host.organizer, unmeteredReads))).usage)
       .toEqual({ promptTokens: 100, completionTokens: 20, totalTokens: 120, requestCount: 3 });
+    // Reads never sent are no requests: neither those not made nor those the engine's preflight refused (PR #295 re-review).
+    expect(passageSearchReadUsages({ calls: { planned: 5, answered: 1, failed: 1, cut: 0, cancelled: 0, unsent: 1, tooLarge: 2, dispatched: 2 } }))
+      .toStrictEqual([undefined, undefined]);
     // A pass that sent nothing leaves a result's usage exactly as it was.
     const none = createHost([ok()], { engine: false });
     const plan = await planOf(createHost().organizer, metered);

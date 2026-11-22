@@ -118,6 +118,7 @@ export function passageSearchMissingLines(result: PassageSearchResultView): stri
   add(searched.partial, `${number(searched.partial)} of ${plural(planned, 'file')} ${searched.partial === 1 ? 'was' : 'were'} searched only in part.`);
   add(calls.cancelled, `${plural(calls.cancelled, 'call was', 'calls were')} stopped in flight, so the text they cover was not searched; they may still have been charged.`);
   add(calls.unsent, `${plural(calls.unsent, 'call was', 'calls were')} not made, so the text they cover was not searched.`);
+  add(calls.tooLarge, `${plural(calls.tooLarge, 'call')} did not fit the model's window and ${calls.tooLarge === 1 ? 'was' : 'were'} not sent, so the text ${calls.tooLarge === 1 ? 'it covers' : 'they cover'} was not searched.`);
   add(calls.failed, `${plural(calls.failed, 'call')} failed, so the text ${calls.failed === 1 ? 'it covers' : 'they cover'} was not searched.`);
   add(calls.cut, `${plural(calls.cut, 'reply was', 'replies were')} cut off at the length limit; the instances finished before the cut are kept.`);
   add(result.overLimit, `${plural(result.overLimit, 'instance')} past the most a search keeps ${result.overLimit === 1 ? 'was' : 'were'} not kept.`);

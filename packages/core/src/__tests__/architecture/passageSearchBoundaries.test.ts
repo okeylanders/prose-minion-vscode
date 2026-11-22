@@ -17,6 +17,7 @@ const EXTENSION = path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src/ext
 /** Closed: a new module joins its list on purpose. */
 const PASSAGE_SEARCH_MODULES = {
   service: [
+    'PassageSearchCallFailures.ts',
     'PassageSearchContracts.ts',
     'PassageSearchInstances.ts',
     'PassageSearchMessages.ts',

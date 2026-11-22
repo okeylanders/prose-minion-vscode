@@ -132,10 +132,10 @@ describe('the result view', () => {
     const result = aliceResult();
     const view = passageSearchResultView({
       ...result,
-      calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1 },
+      calls: { planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1, tooLarge: 0, dispatched: 2 },
       files: { ...result.files, searched: { full: 1, partial: 1, none: 1 } }
     }, 'r', false);
-    expect(view.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1 });
+    expect(view.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 1, unsent: 1, tooLarge: 0, dispatched: 2 });
     expect(view.files.searched).toEqual({ full: 1, partial: 1, none: 1 });
   });
 });

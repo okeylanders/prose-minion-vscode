@@ -124,7 +124,7 @@ describe('a Passage Search run through the production manager and engine (D7)', 
     expect(complete).toHaveBeenCalledTimes(1);
     expect(requested).toEqual([PASSAGE]);
     expect(result.ended).toBe('key-changed');
-    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2 });
+    expect(result.calls).toEqual({ planned: 3, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 2, tooLarge: 0, dispatched: 1 });
     expect(result.instances.map((instance) => instance.quote)).toEqual(['took a watch out of its waistcoat-pocket']);
     manager.dispose();
   });
@@ -156,7 +156,7 @@ describe('a Passage Search run through the production manager and engine (D7)', 
 
     expect(complete).toHaveBeenCalledTimes(1);
     expect(result.ended).toBe('key-changed');
-    expect(result.calls).toEqual({ planned: 1, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 0 });
+    expect(result.calls).toEqual({ planned: 1, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 1 });
     expect(result.instances).toHaveLength(1);
     expect(organizer.organize).not.toHaveBeenCalled();
     manager.dispose();

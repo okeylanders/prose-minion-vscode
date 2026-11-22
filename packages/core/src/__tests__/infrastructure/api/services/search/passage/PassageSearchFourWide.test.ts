@@ -125,7 +125,7 @@ describe('a Passage Search run, four calls wide', () => {
 
     expect(dispatched).toHaveLength(8);
     expect(result.ended).toBe('provider-failed');
-    expect(result.calls).toEqual({ planned: 12, answered: 3, failed: 5, cut: 0, cancelled: 0, unsent: 4 });
+    expect(result.calls).toEqual({ planned: 12, answered: 3, failed: 5, cut: 0, cancelled: 0, unsent: 4, tooLarge: 0, dispatched: 8 });
     expect(result.instances.map((instance) => instance.quote)).toEqual([6, 7, 8].map((index) => `looked at watch number ${index}`));
     expect(result.files.searched).toEqual({ full: 3, partial: 0, none: 9 });
     expect(result.files.planned.map((file) => file.chunks.admitted)).toEqual([1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]);
@@ -150,7 +150,7 @@ describe('a Passage Search run, four calls wide', () => {
     failing(8);
     const result = await run;
     expect(result.ended).toBe('complete');
-    expect(result.calls).toEqual({ planned: 9, answered: 2, failed: 7, cut: 0, cancelled: 0, unsent: 0 });
+    expect(result.calls).toEqual({ planned: 9, answered: 2, failed: 7, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 9 });
   });
 
   it('on Stop counts the four calls in flight as cancelled, with their usage, and only the queued ones as unsent', async () => {
@@ -169,7 +169,7 @@ describe('a Passage Search run, four calls wide', () => {
 
     expect(dispatched).toHaveLength(4);
     expect(result.ended).toBe('stopped');
-    expect(result.calls).toEqual({ planned: 12, answered: 0, failed: 0, cut: 0, cancelled: 4, unsent: 8 });
+    expect(result.calls).toEqual({ planned: 12, answered: 0, failed: 0, cut: 0, cancelled: 4, unsent: 8, tooLarge: 0, dispatched: 4 });
     // Four requests were made; two reported nothing, so the known tokens stand and no cost or cache total is claimed.
     expect(result.usage).toMatchObject({ totalTokens: 240, requestCount: 4 });
     expect(result.usage?.costUsd).toBeUndefined();
@@ -191,7 +191,7 @@ describe('a Passage Search run, four calls wide', () => {
     stop.abort();
     dispatched.slice(1).forEach((call) => call.answer('', { cancelled: true }));
     const result = await run;
-    expect(result.calls).toEqual({ planned: 6, answered: 1, failed: 0, cut: 0, cancelled: 4, unsent: 1 });
+    expect(result.calls).toEqual({ planned: 6, answered: 1, failed: 0, cut: 0, cancelled: 4, unsent: 1, tooLarge: 0, dispatched: 5 });
     expect(result.instances.map((instance) => instance.quote)).toEqual(['looked at watch number 1']);
     expect(result.ended).toBe('stopped');
   });
@@ -208,7 +208,7 @@ describe('a Passage Search run, four calls wide', () => {
       const result = await run;
 
       expect(result.ended).toBe('key-changed');
-      expect(result.calls).toEqual({ planned: 4, answered: 4, failed: 0, cut: 0, cancelled: 0, unsent: 0 });
+      expect(result.calls).toEqual({ planned: 4, answered: 4, failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 4 });
       expect(result.instances).toHaveLength(4);
       expect(result.files.searched).toEqual({ full: 4, partial: 0, none: 0 });
       expect(organizer.organize).not.toHaveBeenCalled();
@@ -238,7 +238,7 @@ describe('a Passage Search run, four calls wide', () => {
       const result = await run;
       expect(dispatched).toHaveLength(4);
       expect(result.ended).toBe('key-changed');
-      expect(result.calls).toEqual({ planned: 6, answered: 4, failed: 0, cut: 0, cancelled: 0, unsent: 2 });
+      expect(result.calls).toEqual({ planned: 6, answered: 4, failed: 0, cut: 0, cancelled: 0, unsent: 2, tooLarge: 0, dispatched: 4 });
       expect(organizer.organize).not.toHaveBeenCalled();
     });
   });

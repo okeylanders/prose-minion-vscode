@@ -65,7 +65,7 @@ describe('a result in words', () => {
 
   it('says what the reads covered', () => {
     expect(passageSearchReadLine(RESULT)).toBe('7 of 23 calls answered, over 7 of 22 files.');
-    expect(passageSearchReadLine({ ...RESULT, calls: { planned: 23, answered: 23, failed: 0, cut: 0, cancelled: 0, unsent: 0 } })).toBe('Read 22 files in 23 calls.');
+    expect(passageSearchReadLine({ ...RESULT, calls: { planned: 23, answered: 23, failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 23 } })).toBe('Read 22 files in 23 calls.');
   });
 
   it('lists what is missing and why, and nothing when nothing is', () => {
@@ -87,8 +87,18 @@ describe('a result in words', () => {
       ...whole,
       files: { ...whole.files, searched: { full: 22, partial: 0, none: 0 } },
       dropped: { 'quote-not-found': 0, 'quote-ambiguous': 0, malformed: 0, duplicate: 0 },
-      calls: { planned: 23, answered: 23, failed: 0, cut: 0, cancelled: 0, unsent: 0 }
+      calls: { planned: 23, answered: 23, failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 23 }
     })).toEqual([]);
+  });
+
+  it('says apart from calls not made that a call did not fit the model\'s window and was not sent (PR #295 re-review)', () => {
+    const one = passageSearchMissingLines({ ...RESULT, calls: { ...RESULT.calls, unsent: 12, tooLarge: 1 } });
+    expect(one).toContain('12 calls were not made, so the text they cover was not searched.');
+    expect(one).toContain('1 call did not fit the model\'s window and was not sent, so the text it covers was not searched.');
+    const two = passageSearchMissingLines({ ...RESULT, calls: { ...RESULT.calls, unsent: 11, tooLarge: 2 } });
+    expect(two).toContain('2 calls did not fit the model\'s window and were not sent, so the text they cover was not searched.');
+    // Neither is a failure: the failed line counts only calls that were sent.
+    expect(two).toContain('1 call failed, so the text it covers was not searched.');
   });
 
   it('says how many files were not searched or searched in part, and calls stopped in flight', () => {
@@ -196,7 +206,7 @@ A second look at the watch.
       analysisMissing: 'failed',
       ended: 'complete',
       dropped: { 'quote-not-found': 0, 'quote-ambiguous': 0, malformed: 0, duplicate: 0 },
-      calls: { planned: 23, answered: 23, failed: 0, cut: 0, cancelled: 0, unsent: 0 },
+      calls: { planned: 23, answered: 23, failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 23 },
       files: { planned: 22, searched: { full: 22, partial: 0, none: 0 }, withInstances: 0, leftOut: { unreadable: 0, unsplittable: 0, empty: 0 } }
     });
     expect(report).toContain('## No instances found in 22 files.');
