@@ -420,6 +420,7 @@ useMessageRouter({
 | useDictionary | DictionaryHandler | Word lookups |
 | useDictionaryHistory | DictionaryHandler (+ `DictionaryHistoryStore`) | Dictionary lookup history |
 | useDictionaryHistorySearch | DictionaryHistorySearchRoute (in DictionaryHandler; + `DictionaryHistoryStore.searchDefinitions`) | The history's definitions search |
+| usePassageSearch | PassageSearchRoute (in SearchHandler; + `PassageSearchEngine` and `PassageSearchReportExport`) | Passage Search: a search that reads |
 | useContext | ContextHandler | Context generation |
 | useSearch | SearchHandler | Word search |
 | useSettings | ConfigurationHandler | Settings, models, API keys |
@@ -960,7 +961,7 @@ npm run package  # Creates .vsix file
 ### OpenRouter API
 
 - **API key stored in VSCode SecretStorage** - OS-level encryption via platform keychains (macOS Keychain, Windows Credential Manager, Linux libsecret); automatic migration from legacy settings-based storage
-- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `widgetModel`, `proofreadModel`, `lightboxModel`, `craftModel` and `helperModel`. The Lightbox's and Craft Flags' are empty by default and each follows `assistantModel` (the Workshop's) until the writer picks one; the helper agent's follows `proofreadModel`; none ever writes another ([ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D6 addendum, 2026-10-24; [ADR 2026-10-21](docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md), Slice 3c; [ADR 2026-11-05](docs/adr/2026-11-05-helper-agent.md) D3)
+- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `widgetModel`, `proofreadModel`, `lightboxModel`, `craftModel`, `helperModel` and `passageSearchModel`. The Lightbox's and Craft Flags' are empty by default and each follows `assistantModel` (the Workshop's) until the writer picks one; the helper agent's follows `proofreadModel`; Passage Search's follows `categoryModel` ([ADR 2026-11-20](docs/adr/2026-11-20-passage-search.md) D14); none ever writes another ([ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D6 addendum, 2026-10-24; [ADR 2026-10-21](docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md), Slice 3c; [ADR 2026-11-05](docs/adr/2026-11-05-helper-agent.md) D3)
 - Unified `maxTokens` across tools (default 10000) with truncation notices when responses hit the cap
 - Cost tracking available through OpenRouter dashboard
 - Managed via Settings overlay UI (gear icon) with Save/Clear buttons
@@ -3272,6 +3273,90 @@ popup's search:
 - **Nothing is persisted:** the query and the toggle are the open popup's
   state.
 - **Logs carry counts only,** never the query, a word, a path or a snippet.
+
+### Passage Search
+
+Follow [ADR 2026-11-20](docs/adr/2026-11-20-passage-search.md) (with its
+amendments S1–S41) when touching the Search tab's Passage Search, the
+engine behind it, or anything that reads, prices or organizes its results.
+A persona's request for a search is **Workshop Passage Search Requests**.
+
+- **One engine, callers own consent (P3).** `PassageSearchEngine`
+  (`application/services/passageSearch/`) resolves scopes;
+  `PassageSearchService` (`infrastructure/api/services/search/passage/`)
+  does the model work. It is built once in `extension.ts`, in
+  `CoreServices`. It asks the writer nothing.
+  `passageSearchBoundaries.test.ts` holds that neither directory names the
+  sidebar, the Workshop or a persona, and that their module lists are
+  closed.
+- **`plan`, then `run(plan)`.** A plan holds the model, the files as read,
+  the chunks, the ceilings and the estimate. `run` reads nothing again and
+  sends every call to the plan's model.
+  - `planKey` covers everything that decides what is sent and what the
+    writer was shown, the pricing basis included (D2a). A caller that
+    cannot keep a plan plans again and runs only on the same key.
+  - The price is approximate, never a cap ("≈ $…", `formatApproximateUsd`).
+- **Scopes (P4, D3a):** active file, selection, context group, file by
+  catalog key, writer-typed pattern (the sidebar only), and `text` by
+  value.
+  - Files come from one root-aware listing per plan
+    (`ContextResourceResolver.listGroupFiles`), never the browse catalog.
+    Identity is the absolute path; a group is every file its own patterns
+    match; a failed scan refuses.
+  - Active file and selection read the *current* editor once, at the top
+    of `plan`. An exterior file shows its name only
+    (`passageSearchDisplayLabel`).
+- **Quotes, not offsets.** Each call returns quoted instances.
+  - `anchorQuote` places each in its own chunk. Unanchored and ambiguous
+    quotes are dropped and counted.
+  - What is shown is the slice of the plan's frozen text, never the
+    model's spelling (D9a).
+  - Overlapping ranges in one file are one moment, chosen by file, start,
+    chunk index and reply item, never by completion order.
+- **Chunks** (`passageChunks`): a whole file per call within
+  `PROMPT_BUDGETS.passageSearch.chunkWords`; else paragraph chunks with the
+  overlap inside the budget, split at sentences when a paragraph is over
+  it. Each rendered request is measured against half a known window.
+- **Stopping.** Stop, a key change (the held engine's
+  `isProviderAvailable()`, read at each admission, when the reads settle
+  and before the pass), and `failureStreak` provider errors in a row all
+  stop starting calls and keep what was found. None of them starts the
+  organizing pass.
+- **What a failed call was** is one classifier, `PassageSearchCallFailures`,
+  for reads and the pass alike.
+  - Not dispatched: a retired engine's refusal, or the engine's own
+    preflight (`tooLarge`). These leave no usage entry and no request.
+  - Dispatched: everything else, with one unknown usage entry, so no cost
+    or cache total is claimed over it.
+  - `answered + failed + cancelled + unsent + tooLarge = planned`.
+    `requests` counts every dispatched call, reads and passes, retries
+    included.
+  - A new engine reason must be placed: the classifier's test has a
+    `Record` over the reasons.
+- **The organizing pass (P1)** reads only checked instances.
+  - It goes out on the run's own engine, fitted to its bound by an exact
+    walk.
+  - Citations to instances it was not shown are dropped.
+  - **Quotation grounding is closed by construction** (S32): marks take
+    roles from their neighbours and pair like brackets, and every
+    outermost quotation is checked whole. Anything ambiguous, unbalanced
+    or unread fails closed. Never check a sub-span, and never add a rule
+    that chooses among readings.
+  - The label table's counts are the host's.
+- **The sidebar** (`PassageSearchRoute`, registered by `SearchHandler`;
+  `usePassageSearch`, tripartite) follows the correlated-request rule.
+  - Webview-minted request ids; the newest plan only (`plan-expired`).
+  - The webview never sends a path, a file or report text: open-at-a-line,
+    Copy and Save name the held result by id, and the host builds the
+    report (`PassageSearchReportExport`).
+  - It persists only the scope choices and the organize toggle.
+- **One report, one set of words.** `shared/utils/passageSearchReport.ts`
+  and `passageSearchWords.ts` say every count, gap and drop for the
+  sidebar, the Workshop card and the persona's directive alike. Never
+  write those words a second time.
+- **Logs** carry counts, ids and fault kinds only: never the question, a
+  quote, a note, a label, a headline, a claim, a path, a pattern or a file
+  name.
 
 ### Editor Menus and Command Titles
 
