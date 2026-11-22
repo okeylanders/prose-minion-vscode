@@ -1,6 +1,6 @@
 # ADR 2026-11-20: Passage Search, a Search That Reads
 
-**Status:** Proposed (Slice 0). Revised 2026-11-20 after PR #292's review (D2a, D3a, D5a, D9a, D11a, D12a, D19a) and its re-review (D19a's rollback; see "Amendments after review"). P1–P4 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief needed it; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
+**Status:** Proposed (Slice 0). Revised 2026-11-20 after PR #292's review (D2a, D3a, D5a, D9a, D11a, D12a, D19a) and its re-review (D19a's rollback; see "Amendments after review"). Amended while building: S1–S23 (the engine and its review), S24–S41 (the review rounds of Slices 2–4). P1–P4 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief needed it; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
 **Date:** 2026-11-20
 **Epic:** [Passage Search](../../.todo/epics/epic-passage-search-2026-11-20/README.md)
 (its "Defaults taken" table is binding here)
@@ -761,6 +761,44 @@ Values chosen where the ADR gave none: `outputTokens` 12,000,
 `typicalOutputTokens` 800, `responseCharacters` 120,000, `safetyMultiple`
 4, and in `organize`: `outputTokens` 4,000, `typicalOutputTokens` 1,200,
 `headlineCharacters` 160, `sections` 8, `claims` 8, `claimCharacters` 300.
+
+## Amendments from Slices 2–4 (review rounds)
+
+What Astra's reviews of PRs #294, #295 and #296 changed or settled. Each
+is the orchestrator's default, and Okey's to overturn.
+
+### The sidebar (PR #294)
+
+| # | Decision | Now | Why |
+|---|---|---|---|
+| S24 | D3, D15 | A file outside the workspace is shown by its name only (`passageSearchDisplayLabel`, in the engine's scope module, applied again at the view boundary). Opening still uses the host-held result. | An exterior editor path reached the panel and the report. |
+| S25 | D15 | A result is headed "Results for: …" with the question it was searched for, never the field's current text. | The question shown could differ from the one searched. |
+| S26 | D15 | Copy and Save send only `{ requestId, resultId }`. The host builds the report from the view it holds (`PassageSearchReportExport`), copies it through its own clipboard, and logs status and fault kind only. `SAVE_RESULT` no longer takes `passage_search`. | Report text crossed webview → host. |
+| S27 | D12a, D15 | The engine says whether an organizer is present (`organizerAvailable()`), and the sidebar offers **Organize these results** from it, never from a trial plan. | A trial plan failed after a key change and hid the action. |
+
+### The organizing pass (PR #295)
+
+| # | Decision | Now | Why |
+|---|---|---|---|
+| S28 | D12a | A run hands its own engine to the organizer, which uses only that engine inside a run. Credentials and the stop signal are read again just before dispatch, and credentials again when the call returns. | A key change during preparation could send the pass on the replacement engine. |
+| S29 | D7, D11 | One classifier (`PassageSearchCallFailures`) decides, for reads and the pass, whether a failed call was dispatched. A retired engine's refusal and the engine's own preflight (`context-window-exceeded`) were not: no usage entry, no request, no effect on the failure streak. Every other failure was, and leaves one unknown usage entry, so no cost or cache total is claimed over it. | A dispatched unreadable reply looked metered; a local refusal looked like a provider call. |
+| S30 | D11 | `calls` gains `tooLarge` (refused before dispatch) and `dispatched` (`answered + failed + cancelled`); `answered + failed + cancelled + unsent + tooLarge = planned`. The result gains `requests`: every call dispatched for it, reads and each organizing pass, retries included, apart from whether its usage was known. | S29; and a retry could drop out of the request count. |
+| S31 | D12a | The pass fits its instances by walking a spread order and keeping each that still fits, sized exactly as rendered; an early long instance that fits is kept. Nothing left out would still fit. | The earlier sampler refused rows that fit. |
+| S32 | D13 | **Quotation grounding is closed by construction.** Text is normalised first. Each mark takes a role from its neighbours; marks pair like brackets; every outermost quotation is checked whole, nested marks and all. A mark that fits both roles or neither, an unbalanced mark, or a mark the check does not read («», corner marks and others) fails the text: a claim is dropped, a title or headline replaced. Single marks allow one quotation per text, none crossing a double mark. | The span parser leaked four times. The cost: a leading elision, an apostrophe inside a single-quoted quotation, two single-quoted quotations, and a quote holding unread marks all fail closed. The prompt asks for straight double marks. |
+
+### The persona request (PR #296)
+
+| # | Decision | Now | Why |
+|---|---|---|---|
+| S33 | D21 | The results directive's window is measured by the room handler (`ConversationWindowMeasure`, feature-neutral), which then calls the delivery's frame with it. `AgentRunEngine` names no feature. | The choice D21 left to Slice 4. |
+| S34 | D20 | A card's price request belongs to the room rendered when it is sent; a new room drops pending answers before any card can ask, and a pending card asks again there, once. | A restored or reopened room's card stuck without a price or Run. |
+| S35 | D19a | A results delivery's run is marked provisional; closing the panel rolls it back while it is still active. Every other run is abandoned on close as before. | Closing mid-delivery left a results turn with no reply. |
+| S36 | D19, D20 | The persistence coordinator announces every room replacement (`WorkshopOpenRoomInstance`). Activation, Open, a reopen or reload of the same session, Branch, New and rollback start a new open-room instance; only a Rewind keeps it. The announcement aborts a running search and frees its slot. **A held result survives only a Rewind in the same instance**, and only for an unchanged, unanswered card. | Replacement did not stop old work, and a same-id reload kept an old report. This amends D19's "Rewind needs nothing of its own". |
+| S37 | D20 | A Run is an operation with its own id and room; every exit releases only its own operation, and every effect after an await requires it still to own the slot, in its room, with the window open. Closing the panel closes the slot and the holder. | An old room's search blocked the new room; a late result published after close. |
+| S38 | D21 | **The host sends results itself only when it read everything it planned**: the search ended `complete` or `instance-limit`, no read failed, was cut, cancelled, unsent or too large, and every planned file was searched in full. Otherwise the card waits with "Send partial results to …" and says what was not searched. Every send, the host's own included, waits out a pending session operation. | Okey's to overturn: a partial result is the writer's to send. |
+| S39 | D21 | The directive is the whole frame by instances; else a summary that fits and always carries the coverage caveat; else nothing, and the delivery is refused (`results-too-large`) with the card left `ready`. | The directive could exceed its bound, and the summary could drop the caveat. |
+| S40 | D21 | A window holds at most four undelivered results; with four, Run is refused before anything is planned (`results-full`) and the card says to Send or Discard one. An undelivered result is never evicted. | "The newest 4" was not enforced. |
+| S41 | D19, D21 | Counts keep files with an instance apart from files searched ("Found 1 instance in 1 file. 20 files were searched."). The receipt gains optional `searched`, `filesPlanned`, `requests`, `calls.tooLarge`, `calls.dispatched` and `calls.cancelled`; no `schemaVersion` bump. | The card counted files searched as files matched. |
 
 ## Consequences
 
