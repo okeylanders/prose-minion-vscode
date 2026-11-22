@@ -2477,7 +2477,7 @@ request, its card, or how its results reach the persona:
   - **The host sends only a search that read everything it planned**
     (`isWorkshopPassageSearchFullyRead`, `WorkshopPassageSearchCoverage`:
     `complete` or `instance-limit`, every planned file searched in full, no
-    read failed, cut, stopped in flight or unsent) into an idle room with no
+    read failed, cut, stopped in flight, unsent or too large to send) into an idle room with no
     session save or replacement pending (the mutation routes' own guard; PR
     #296). Any other waits on the card for **Send partial results**, and the
     card's `partial` reads the same predicate. A new way for a read to go
@@ -2506,10 +2506,18 @@ request, its card, or how its results reach the persona:
   - **Never over its bound** (PR #296 F4): the whole frame by instances,
     else a summary that fits, else no frame. With none, the room handler
     records and sends nothing, and the card stays `ready`
-    (`results-too-large`).
-- **"Found in" counts files with an instance;** files searched are kept
-  apart (`searched`, optional on the receipt), as the shared report keeps
-  them (PR #296).
+    (`results-too-large`). The summary always carries the shared coverage
+    lines (`passageSearchCoverageLines`) and is sized with them in; it is
+    never sent without them (re-review P3).
+  - **The analysis is read through the shared view and words only**
+    (`passageSearchAnalysisNote`, `passageSearchMissingLines`): the
+    directive writes no analysis count of its own.
+- **"Found in" counts files with an instance;** files searched and files
+  planned are kept apart (`searched`, `filesPlanned`), as the shared report
+  keeps them (PR #296). The counts and the receipt also carry #295's
+  `calls.tooLarge`, `calls.dispatched` and `requests`, each optional on the
+  receipt; the card says a too-large read in the shared words
+  (`passageSearchTooLargeLine`).
 - **Transcript and export** show one event line for the card and one for
   the results turn, counts only.
 - **Logs** carry turn ids, counts, closed outcomes and reason kinds: never
