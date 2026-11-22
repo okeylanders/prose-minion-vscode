@@ -9,9 +9,16 @@
  *   `requestId`, the room revision and the card's turn id. A Run adds the
  *   `planKey` of the estimate on screen, so the host can refuse a price
  *   the writer did not see.
- * - **The price is asked once per card,** when it is first drawn pending.
- *   A Run the host answers `price-changed` shows the new price and waits
- *   for another press.
+ * - **The price is asked once per card in each room generation,** when it
+ *   is first drawn pending. A Run the host answers `price-changed` shows the
+ *   new price and waits for another press.
+ * - **Bound to the room the render drew** (PR #296 F1). A card asks its
+ *   price in its own effect, and a child's effects run before its parent's,
+ *   so nothing here waits for an effect to learn the room: every action is
+ *   posted under the generation of the render it came from, and a new room
+ *   empties every map during that render, before anything under it draws or
+ *   asks. The actions are new callbacks in each generation, so a card drawn
+ *   pending asks again there, once.
  * - **Correlated.** Only an answer still waited for, for the room on
  *   screen, is taken: a late, duplicate or other room's answer changes
  *   nothing. A Run stays waited for until the search it began has ended.
@@ -116,6 +123,16 @@ export function useWorkshopPassageSearch({ roomKey, roomRevision }: UseWorkshopP
   const [busy, setBusy] = React.useState<ReadonlyMap<string, WorkshopPassageSearchAction>>(new Map());
   const [progress, setProgress] = React.useState<ReadonlyMap<string, WorkshopPassageSearchProgress>>(new Map());
   const [feedback, setFeedback] = React.useState<ReadonlyMap<string, string>>(new Map());
+  // The room these maps describe. A new one empties them in this render, so nothing under it draws or asks from the last room's.
+  const [mapsRoom, setMapsRoom] = React.useState(roomKey);
+  if (mapsRoom !== roomKey) {
+    setMapsRoom(roomKey);
+    setEstimates(new Map());
+    setBusy(new Map());
+    setProgress(new Map());
+    setFeedback(new Map());
+  }
+  /** The room on screen, for answers that arrive later; set before any effect below can post. */
   const room = React.useRef({ key: roomKey, revision: roomRevision });
   const pending = React.useRef(new Map<string, { turnId: string; action: WorkshopPassageSearchAction; roomKey: string }>());
   const estimatesRef = React.useRef(estimates);
@@ -132,16 +149,18 @@ export function useWorkshopPassageSearch({ roomKey, roomRevision }: UseWorkshopP
     setBusy(new Map(busyRef.current));
   }, []);
 
-  /** Post one action by ids. An estimate and a Stop ride beside whatever the card waits on; any other is one at a time. */
+  /**
+   * Post one action by ids, under the room this render drew. An estimate and a Stop ride beside whatever the card
+   * waits on; any other is one at a time.
+   */
   const post = React.useCallback((action: WorkshopPassageSearchAction, turnId: string, planKey?: string): boolean => {
-    const { key, revision } = room.current;
     const beside = action === 'estimate' || action === 'stop';
-    if (revision === undefined || (!beside && busyRef.current.has(turnId))) {
+    if (roomRevision === undefined || (!beside && busyRef.current.has(turnId))) {
       return false;
     }
     ids.current.count += 1;
     const requestId = `${ids.current.prefix}-${ids.current.count}`;
-    pending.current.set(requestId, { turnId, action, roomKey: key });
+    pending.current.set(requestId, { turnId, action, roomKey });
     if (!beside) {
       setCardBusy(turnId, action);
       setFeedback((current) => withEntry(current, turnId, undefined));
@@ -149,11 +168,11 @@ export function useWorkshopPassageSearch({ roomKey, roomRevision }: UseWorkshopP
     vscode.postMessage({
       type: ROUTES[action],
       source: SOURCE,
-      payload: { requestId, roomRevision: revision, turnId, ...(planKey !== undefined ? { planKey } : {}) },
+      payload: { requestId, roomRevision, turnId, ...(planKey !== undefined ? { planKey } : {}) },
       timestamp: Date.now()
     });
     return true;
-  }, [setCardBusy, vscode]);
+  }, [roomKey, roomRevision, setCardBusy, vscode]);
 
   const requestEstimate = React.useCallback((turnId: string, again = false) => {
     const held = estimatesRef.current.get(turnId);
@@ -179,23 +198,19 @@ export function useWorkshopPassageSearch({ roomKey, roomRevision }: UseWorkshopP
   const discard = React.useCallback((turnId: string) => void post('discard', turnId), [post]);
   const openReport = React.useCallback((turnId: string) => void post('open-report', turnId), [post]);
 
-  const clearWhenRoomChanges = React.useCallback((key: string, revision: number | undefined) => {
+  /** A new room drops every request still waited for; the maps were emptied in the render that drew it. */
+  const clearPendingWhenRoomChanges = React.useCallback((key: string, revision: number | undefined) => {
     const changed = room.current.key !== key;
     room.current = { key, revision };
-    if (!changed) {
-      return;
+    if (changed) {
+      pending.current.clear();
+      busyRef.current.clear();
     }
-    pending.current.clear();
-    busyRef.current.clear();
-    estimatesRef.current = new Map();
-    setEstimates((current) => (current.size === 0 ? current : new Map()));
-    setBusy((current) => (current.size === 0 ? current : new Map()));
-    setProgress((current) => (current.size === 0 ? current : new Map()));
-    setFeedback((current) => (current.size === 0 ? current : new Map()));
   }, []);
-  React.useEffect(() => {
-    clearWhenRoomChanges(roomKey, roomRevision);
-  }, [clearWhenRoomChanges, roomKey, roomRevision]);
+  // A layout effect: it runs in the commit, before any passive effect, so a card's first ask in the new room is never dropped.
+  React.useLayoutEffect(() => {
+    clearPendingWhenRoomChanges(roomKey, roomRevision);
+  }, [clearPendingWhenRoomChanges, roomKey, roomRevision]);
 
   const handleResult = React.useCallback((message: WorkshopPassageSearchResultMessage) => {
     const { requestId, outcome, estimate, message: words } = message.payload;
