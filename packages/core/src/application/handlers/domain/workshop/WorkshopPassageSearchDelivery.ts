@@ -86,6 +86,8 @@ export class WorkshopPassageSearchResults {
   /** The open room the held results belong to, and its revision as last told or seen. */
   private heldIn: { readonly instance: number; readonly revision: number } | undefined;
   private sendingTurnId: string | undefined;
+  /** The window closed: nothing is held or sent again. */
+  private closed = false;
 
   constructor(
     private readonly session: WorkshopPassageSearchDeliverySession,
@@ -113,6 +115,9 @@ export class WorkshopPassageSearchResults {
   }
 
   hold(turnId: string, result: PassageSearchResult): void {
+    if (this.closed) {
+      return;
+    }
     this.sync();
     const card = this.session.readRoomLedger().find((turn) => turn.id === turnId)?.passageSearchRequest;
     this.held.delete(turnId);
@@ -174,12 +179,18 @@ export class WorkshopPassageSearchResults {
     this.held.delete(turnId);
   }
 
-  clear(): void {
+  /** The window is closing: every result goes, and none is held or sent again. */
+  close(): void {
+    this.closed = true;
     this.held.clear();
   }
 
   /** Send a held result to its card's author: `true` once the persona's reply was adopted, else why not. */
   async deliver(turnId: string): Promise<true | WorkshopPassageSearchRefused> {
+    if (this.closed) {
+      // The panel closed: the directed-run port is never reached.
+      return { reason: 'unavailable' };
+    }
     if (this.room.sessionOperationPending()) {
       // The room may be about to be replaced: nothing is recorded in it until the operation settles.
       return { reason: 'session-operation' };

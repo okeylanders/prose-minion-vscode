@@ -14,21 +14,17 @@
  * - **One search at a time** in this window's Workshop; a second Run is
  *   refused in the room's busy words. The search runs on the engine's own
  *   model: the persona's model never reads the files.
- * - **A search belongs to the room it began in** (`WorkshopPassageSearchRunSlot`).
- *   The coordinator tells each replacement as it lands, a Rewind's too: the
- *   running search's calls are aborted and its slot is freed then, whether
- *   or not anything is drawn or a call answers (PR #296 F3 and re-review),
- *   so the new room's cards can be priced, run and cancelled at once. What
- *   it found goes nowhere. A card in another room never reads as running,
- *   even under the same turn id, and an old Run's late exit releases only
- *   its own operation, never a newer search. Disposal ends it too.
- * - **Held results are this window's:** at most `heldResults`, by the
- *   card's turn. A Run is refused before anything is planned or sent while
- *   every place holds a result not yet delivered (`results-full`): Send or
- *   Discard frees one. One is dropped only by eviction after an adopted
- *   delivery, by Discard, or when its room is replaced: a Rewind of the same
- *   open room alone keeps the cards it left unchanged (the holder's rule).
- *   A failed delivery never touches it.
+ * - **A search belongs to the room it began in** (`WorkshopPassageSearchRunSlot`,
+ *   PR #296 F3 and re-review). A replacement, a Rewind's too, aborts it and
+ *   frees the slot as it lands, so the new room's cards can be priced, run
+ *   and cancelled at once; what it found goes nowhere, and an old Run's late
+ *   exit releases only its own operation.
+ * - **Closing the panel ends everything this window was doing.** Whatever
+ *   an await brings back afterwards is held nowhere, sent to no one and
+ *   posted nowhere. A Stop with the panel open still keeps what was found.
+ * - **Held results are this window's** (`WorkshopPassageSearchResults`): at
+ *   most `heldResults`, so a Run is refused before anything is planned while
+ *   every place holds a result not yet delivered (`results-full`).
  * - **Delivery** (D19a, D21) is a results-delivery directed run to the
  *   card's author. The host starts it only for a search that ended
  *   `complete` or `instance-limit`, with the room idle and no session save
@@ -174,7 +170,7 @@ export class WorkshopPassageSearchHandler {
   dispose(): void {
     this.stopListening();
     this.slot.close();
-    this.results.clear();
+    this.results.close();
   }
 
   async handleEstimate(payload: WorkshopPassageSearchActionPayload): Promise<void> {
@@ -238,7 +234,7 @@ export class WorkshopPassageSearchHandler {
       }
       this.log(`run started turn=${payload.turnId} calls=${planned.estimate.calls} files=${planned.estimate.files}`);
       this.answer('run', payload, 'started');
-      this.effects.postSessionState();
+      this.postState();
       result = await this.ports!.engine.run(planned, {
         signal: search.controller.signal,
         onProgress: (progress) => this.reportProgress(search, { done: progress.calls.done, planned: progress.calls.planned, found: progress.found })
@@ -251,7 +247,7 @@ export class WorkshopPassageSearchHandler {
         return this.overtaken(payload);
       }
       this.refuse('run', payload, { reason: 'search-failed' });
-      this.effects.postSessionState();
+      this.postState();
       return;
     }
     const owned = this.stillOwns(search);
@@ -268,7 +264,7 @@ export class WorkshopPassageSearchHandler {
     // Only a search that read everything is delivered by the host, and only into an idle room (D21).
     const auto = !isWorkshopPassageSearchPartial(counts.ended) && this.room.activeRunLabel() === undefined;
     const sent = auto ? await this.results.deliver(payload.turnId) : undefined;
-    this.effects.postSessionState();
+    this.postState();
     const words = workshopPassageSearchCountsWords(counts);
     this.answer('run', payload, 'finished', {
       message: sent === undefined ? words
@@ -294,7 +290,7 @@ export class WorkshopPassageSearchHandler {
     }
     if (this.session.cancelPassageSearch(payload.turnId)) {
       this.effects.markDirty('passage search cancelled');
-      this.effects.postSessionState();
+      this.postState();
     }
     this.log(`cancel turn=${payload.turnId}`);
     this.answer('cancel', payload, 'done');
@@ -305,7 +301,7 @@ export class WorkshopPassageSearchHandler {
       return this.refuse('send', payload, { reason: 'room-changed' });
     }
     const sent = await this.results.deliver(payload.turnId);
-    this.effects.postSessionState();
+    this.postState();
     if (sent !== true) {
       return this.refuse('send', payload, sent);
     }
@@ -319,7 +315,7 @@ export class WorkshopPassageSearchHandler {
     }
     this.results.discard(payload.turnId);
     this.log(`discard turn=${payload.turnId}`);
-    this.effects.postSessionState();
+    this.postState();
     this.answer('discard', payload, 'done');
   }
 
@@ -405,9 +401,20 @@ export class WorkshopPassageSearchHandler {
       && this.session.readRoomLedger().some((turn) => turn.id === search.turnId && turn.passageSearchRequest !== undefined);
   }
 
-  /** A Run whose room went while it awaited: it says so to the room it came from, and touches nothing else. */
+  /** A Run whose room or window went while it awaited: it touches nothing; an open window hears that the room changed. */
   private overtaken(payload: WorkshopPassageSearchActionPayload): void {
+    if (this.slot.isClosed()) {
+      this.log(`run ended turn=${payload.turnId} reason=window-closed`);
+      return;
+    }
     this.refuse('run', payload, { reason: 'room-changed' });
+  }
+
+  /** The room's state, posted only while the window is open: nothing that settles after closing posts anything. */
+  private postState(): void {
+    if (!this.slot.isClosed()) {
+      this.effects.postSessionState();
+    }
   }
 
   /** The search on this card in this room: one begun in a room since replaced is another room's, whatever its turn id. */
@@ -451,6 +458,9 @@ export class WorkshopPassageSearchHandler {
     outcome: WorkshopPassageSearchResultOutcome,
     extra: { reason?: WorkshopPassageSearchRefusal; message?: string; estimate?: WorkshopPassageSearchEstimateView } = {}
   ): void {
+    if (this.slot.isClosed()) {
+      return;
+    }
     const message: WorkshopPassageSearchResultMessage = {
       type: MessageType.WORKSHOP_PASSAGE_SEARCH_RESULT,
       source: 'extension.workshop.passageSearch',

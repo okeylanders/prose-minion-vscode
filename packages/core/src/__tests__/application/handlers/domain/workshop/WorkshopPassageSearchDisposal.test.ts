@@ -4,7 +4,12 @@
  * webview and the composition flushes it on disposal, so the provisional
  * request turn must leave in the disposal itself, while it is still the
  * active run, as preemption takes it: no outcome but an adopted reply may
- * leave a results turn with no reply. Made-up text: Alice.
+ * leave a results turn with no reply.
+ *
+ * Closing earlier, while the search itself runs (PR #296 re-review), ends
+ * the search's operation: the late result the abort-aware engine returns is
+ * held nowhere, and nothing is posted on the closed panel's transport.
+ * Made-up text: Alice.
  */
 
 import { MessageType } from '@messages';
@@ -68,5 +73,42 @@ describe('closing the panel while a passage search is delivered', () => {
     harness.handler.dispose();
     expect(driver.ledger().at(-1)!.id).toBe(asked.id);
     expect(harness.session.getSnapshot().activeRequestId).toBeUndefined();
+  });
+
+  it('closing while the search runs: the late stopped result fills nothing, sends nothing and posts nothing', async () => {
+    const { harness, search } = driver;
+    search.hold = true;
+    const { running } = await driver.act(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
+    await driver.settle();
+    const posts = () => (harness.postMessage as jest.Mock).mock.calls
+      .map(([entry]) => entry.type as MessageType)
+      .filter((type) => [MessageType.WORKSHOP_PASSAGE_SEARCH_RESULT, MessageType.WORKSHOP_PASSAGE_SEARCH_PROGRESS, MessageType.WORKSHOP_SESSION_STATE].includes(type));
+    const before = posts().length;
+
+    harness.handler.dispose();
+    // The abort-aware engine settles on the abort with what it found: a late, stopped result.
+    search.progress({ calls: { planned: 4, done: 3 }, found: 2 });
+    await running;
+    await driver.settle();
+
+    expect(posts()).toHaveLength(before);
+    expect(harness.service.continueConversation).not.toHaveBeenCalled();
+    expect(driver.requestTurns()).toHaveLength(0);
+    expect(driver.logs()).not.toContain('run finished');
+    expect(driver.logs()).toContain(`run ended turn=${driver.card.id} reason=window-closed`);
+    // The closed window's holder was not filled: the card reads pending, as after any closed window.
+    expect(await driver.view()).toEqual({ status: 'pending' });
+  });
+
+  it('a Stop with the panel open keeps what was found, ready to send', async () => {
+    const { search } = driver;
+    search.hold = true;
+    const { running } = await driver.act(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
+    await driver.settle();
+    expect((await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_STOP))[0].outcome).toBe('done');
+    await running;
+    await driver.settle();
+    expect(await driver.view()).toEqual(expect.objectContaining({ status: 'ready', partial: true }));
+    expect(driver.harness.service.continueConversation).not.toHaveBeenCalled();
   });
 });
