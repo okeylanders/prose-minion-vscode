@@ -2475,9 +2475,18 @@ request, its card, or how its results reach the persona:
     catch. Neither touches the held result, so the card stays `ready` and
     Send retries without searching again.
   - **The host sends only a search that read everything** (`complete`,
-    `instance-limit`) into an idle room. Any other waits for Send.
+    `instance-limit`) into an idle room with no session save or replacement
+    pending (the mutation routes' own guard; PR #296). Any other waits for
+    Send.
   - **Every send checks first,** nothing awaited before the dispatch
     (`WorkshopPassageSearchResults.deliver`).
+  - **At most `heldResults` (4) results a window.** One not yet delivered
+    is never evicted; a Run is refused before anything is planned while
+    every place holds one (`results-full`), until Send or Discard frees a
+    place (PR #296 F5).
+  - **A delivery's provisional request turn leaves with the panel too:**
+    disposal rolls it back while it is still the active run, as preemption
+    does (PR #296 F2).
 - **The directive** (`WorkshopPassageSearchDirective`) is evidence, never
   instructions, every model- or writer-written string neutralized, fitted
   by whole instances to half the room left through
@@ -2486,6 +2495,13 @@ request, its card, or how its results reach the persona:
   `orchestration/ConversationWindowMeasure`) and calls the run's `frame`
   with it: `AgentRunEngine` names no feature. It is tallied as
   `room.passage-search`.
+  - **Never over its bound** (PR #296 F4): the whole frame by instances,
+    else a summary that fits, else no frame. With none, the room handler
+    records and sends nothing, and the card stays `ready`
+    (`results-too-large`).
+- **"Found in" counts files with an instance;** files searched are kept
+  apart (`searched`, optional on the receipt), as the shared report keeps
+  them (PR #296).
 - **Transcript and export** show one event line for the card and one for
   the results turn, counts only.
 - **Logs** carry turn ids, counts, closed outcomes and reason kinds: never
