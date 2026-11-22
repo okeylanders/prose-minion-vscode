@@ -276,6 +276,8 @@ export class WorkshopRoomHandler {
     controller: AbortController;
     /** A host-directed run: its writer turn leaves with it when it is preempted (ADR 2026-11-10 D3). */
     directed?: boolean;
+    /** Its writer turn leaves with every outcome that is not an adopted reply, disposal too (ADR 2026-11-20 D19a). */
+    provisional?: boolean;
   };
 
   private readonly disposeStatusListener: () => void;
@@ -423,7 +425,10 @@ export class WorkshopRoomHandler {
               `[WorkshopRoomHandler] Aborting in-flight run on dispose: ${this.activeRun.requestId}`
             );
             this.activeRun.controller.abort();
-            this.session.abandonRun(this.activeRun.requestId);
+            // Rolled back while it is still the run, as preemption does: the flush that follows must not keep its turn.
+            if (!this.activeRun.provisional || !this.session.rollbackMessageRun(this.activeRun.requestId)) {
+              this.session.abandonRun(this.activeRun.requestId);
+            }
             this.activeRun = undefined;
           }
         }
@@ -1331,7 +1336,7 @@ export class WorkshopRoomHandler {
     if (roomReader && reactionPlan) {
       stageWorkshopReactionDelivery(this.session, requestId, roomReader, reactionPlan, this.logLine);
     }
-    this.activeRun = { requestId, label, toolId, guestPersonaId, controller, ...(directedRun ? { directed: true } : {}) };
+    this.activeRun = { requestId, label, toolId, guestPersonaId, controller, ...(directedRun ? { directed: true } : {}), ...(delivery ? { provisional: true } : {}) };
     // Sprint 13C: capabilities are participant-owned. Host and persona-guest
     // turns each mint one adapter with their own principal; direct-tool
     // sidecars stay capability-free instruments. Decide "which participant is
