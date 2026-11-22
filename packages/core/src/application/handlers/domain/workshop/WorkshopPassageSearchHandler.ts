@@ -54,14 +54,13 @@ import {
   WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS,
   workshopPassageSearchCountsWords
 } from '@shared/constants/workshopPassageSearchWords';
-import { formatPassageSearchReport } from '@shared/utils/passageSearchReport';
 import type { PassageSearchEngine } from '@/application/services/passageSearch/PassageSearchEngine';
 import type { PassageSearchPlan, PassageSearchResult } from '@services/search/passage/PassageSearchContracts';
 import {
   workshopPassageSearchEngineRequest,
   workshopPassageSearchEstimateView
 } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchEngineRequest';
-import type { WorkshopPassageSearchReports } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchReportFile';
+import type { PassageSearchReportExport } from '@handlers/domain/PassageSearchReportExport';
 import { workshopPassageSearchCounts, workshopPassageSearchView } from '@handlers/domain/workshop/WorkshopPassageSearchResultView';
 import {
   isWorkshopPassageSearchPartial,
@@ -77,11 +76,11 @@ import {
   type WorkshopPassageSearchRoomGate
 } from '@handlers/domain/workshop/WorkshopPassageSearchDelivery';
 
-/** The one engine, the authoritative listing a request is settled against, and the report file: built in `extension.ts`. */
+/** The one engine, the authoritative listing a request is settled against, and the shared report export: built in `extension.ts`. */
 export interface WorkshopPassageSearchPorts {
   readonly engine: Pick<PassageSearchEngine, 'plan' | 'run'>;
   readonly listing: WorkshopPassageSearchListing;
-  readonly reports: WorkshopPassageSearchReports;
+  readonly reports: Pick<PassageSearchReportExport, 'save'>;
 }
 
 export interface WorkshopPassageSearchSession {
@@ -309,9 +308,10 @@ export class WorkshopPassageSearchHandler {
     if (!held || !this.ports) {
       return this.refuse('open-report', payload, { reason: 'not-held' });
     }
-    const outcome = await this.ports.reports.saveAndOpen(formatPassageSearchReport(workshopPassageSearchView(held, payload.turnId)));
-    this.log(`open-report turn=${payload.turnId} outcome=${outcome}`);
-    if (outcome === 'failed' || outcome === 'no-workspace') {
+    // One writer for every surface: the report is written from the shared view, which shows no exterior path.
+    const outcome = await this.ports.reports.save(workshopPassageSearchView(held, payload.turnId));
+    this.log(`open-report turn=${payload.turnId} outcome=${outcome.status}`);
+    if (outcome.status !== 'saved') {
       return this.refuse('open-report', payload, { reason: 'report-failed' });
     }
     this.answer('open-report', payload, 'done');

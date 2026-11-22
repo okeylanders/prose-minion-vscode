@@ -95,7 +95,7 @@ import {
   PassageSearchService,
   PassageSearchScopeFiles,
   ProjectPassageSearchEngine,
-  WorkshopPassageSearchReportFile,
+  PassageSearchReportExport,
   liveCatalogReasoning,
   LightboxSetSourcePayload,
   CoreServices,
@@ -699,6 +699,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const editorSelectionSnapshots = new EditorSelectionSnapshots(editorContext, outputChannel);
   context.subscriptions.push(editorSelectionSnapshots);
 
+  // The Workshop card's Open report (ADR 2026-11-20 D21): the shared export, so one module writes every Passage Search report.
+  const workshopPassageSearchReports = new PassageSearchReportExport(
+    { shell: platform.shell, fileSystem: platform.fileSystem, workspace: platform.workspace },
+    outputChannel
+  );
   const coreServices: CoreServices = {
     assistantToolService,
     dictionaryService,
@@ -751,11 +756,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopSavedSessionTodos,
     contextPathProposals: { checker: contextPathChecker, settings: contextPathSettings },
     // A persona's passage-search card (ADR 2026-11-20 D20): the same engine, the resolver's authoritative
-    // listing a request is settled against, and the report file under prose-minion/reports/.
+    // listing a request is settled against, and the shared report export the sidebar's Save uses.
     workshopPassageSearch: {
       engine: passageSearchEngine,
       listing: contextResourceResolver,
-      reports: new WorkshopPassageSearchReportFile(platform.fileSystem, platform.workspace, platform.shell)
+      reports: workshopPassageSearchReports
     }
   };
 

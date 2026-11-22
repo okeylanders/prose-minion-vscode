@@ -84,7 +84,7 @@ export interface FakePassageSearch {
   readonly plan: jest.Mock;
   readonly run: jest.Mock;
   readonly listGroupFiles: jest.Mock;
-  readonly saveAndOpen: jest.Mock;
+  readonly save: jest.Mock;
   /** The key the next plan carries. */
   planKey: string;
   /** What the next run returns once it is finished. */
@@ -122,7 +122,7 @@ export function fakePassageSearch(): FakePassageSearch {
         : fake.result;
     }),
     listGroupFiles: jest.fn(async () => LISTED),
-    saveAndOpen: jest.fn(async () => 'opened' as const),
+    save: jest.fn(async () => ({ status: 'saved' as const, filePath: 'prose-minion/reports/passage-search-20261120-120000.md', opened: true })),
     finish: () => release?.(),
     progress: (progress) => report?.(progress),
     requests: () => fake.plan.mock.calls.map(([request]) => request as PassageSearchRequest),
@@ -131,7 +131,7 @@ export function fakePassageSearch(): FakePassageSearch {
   (fake as { ports: WorkshopPassageSearchPorts }).ports = {
     engine: { plan: fake.plan, run: fake.run },
     listing: { listGroupFiles: fake.listGroupFiles },
-    reports: { saveAndOpen: fake.saveAndOpen }
+    reports: { save: fake.save }
   };
   return fake;
 }

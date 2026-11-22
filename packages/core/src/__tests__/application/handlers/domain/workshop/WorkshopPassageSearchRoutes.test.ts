@@ -330,9 +330,11 @@ describe('Workshop routes — a persona\'s passage search', () => {
     await done(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
     const [opened] = await done(MessageType.WORKSHOP_PASSAGE_SEARCH_OPEN_REPORT);
     expect(opened.outcome).toBe('done');
-    const markdown = search.saveAndOpen.mock.calls[0][0] as string;
-    expect(markdown).toContain('# Passage Search');
-    expect(markdown).toContain(`${QUOTE_SENTINEL} 2`);
+    // The shared export writes it, from the display-safe view: never the engine's result, never a host path.
+    const saved = search.save.mock.calls[0][0] as { instances: Array<{ quote: string }>; canOrganize: boolean };
+    expect(saved.instances.map((instance) => instance.quote).join('\n')).toContain(`${QUOTE_SENTINEL} 2`);
+    expect(saved.canOrganize).toBe(false);
+    expect(JSON.stringify(saved)).not.toContain('absolutePath');
 
     const [discarded] = await done(MessageType.WORKSHOP_PASSAGE_SEARCH_DISCARD);
     expect(discarded.outcome).toBe('done');

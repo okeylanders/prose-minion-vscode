@@ -17,7 +17,6 @@ const WORKSHOP_PASSAGE_SEARCH_MODULES = [
   'WorkshopPassageSearchDirective.ts',
   'WorkshopPassageSearchEngineRequest.ts',
   'WorkshopPassageSearchRecords.ts',
-  'WorkshopPassageSearchReportFile.ts',
   'WorkshopPassageSearchStatus.ts',
   'WorkshopReplyPassageSearch.ts'
 ];
@@ -107,11 +106,13 @@ describe('Workshop passage search', () => {
     expect(measure).not.toMatch(/workshop|passage|persona/i);
   });
 
-  it('constructs the handler only in the slice composition, and the report file only at the composition root', () => {
+  it('constructs the handler only in the slice composition, and writes its report through the one shared export', () => {
     const all = [...sourceFiles(SRC_ROOT), ...sourceFiles(path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src'))];
     const constructing = (pattern: RegExp): string[] => all.filter((file) => pattern.test(read(file))).map((file) => path.basename(file)).sort();
     expect(constructing(/new\s+WorkshopPassageSearchHandler\s*\(/)).toEqual(['WorkshopSliceComposition.ts']);
-    expect(constructing(/new\s+WorkshopPassageSearchReportFile\s*\(/)).toEqual(['extension.ts']);
+    // The sidebar's route builds its own; the Workshop's is built at the composition root. No Workshop module writes a report.
+    expect(constructing(/new\s+PassageSearchReportExport\s*\(/)).toEqual(['PassageSearchRoute.ts', 'extension.ts']);
+    expect(sourceFiles(SRC_ROOT).filter((file) => /workshop/i.test(relative(file)) && /formatPassageSearchReport\(/.test(read(file))).map(relative)).toEqual([]);
     expect(constructing(/new\s+WorkshopPassageSearchResults\s*\(/)).toEqual(['WorkshopPassageSearchHandler.ts']);
   });
 
