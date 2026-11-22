@@ -2482,6 +2482,13 @@ request, its card, or how its results reach the persona:
     #296). Any other waits on the card for **Send partial results**, and the
     card's `partial` reads the same predicate. A new way for a read to go
     unsearched joins that predicate only.
+  - **An acknowledged Stop is never followed by the host's send** (PR #296
+    combined re-review). The engine ends a run `stopped` whenever its signal
+    was aborted by the end of the organizing pass, whatever the pass's
+    preparation came to (a key change still takes precedence). The handler
+    also records the Stop against its operation (`WorkshopPassageSearchRunSlot.stop`,
+    `stopAcknowledged`), and never sends that operation's result itself,
+    whatever the result says.
   - **Every send checks first,** nothing awaited before the dispatch
     (`WorkshopPassageSearchResults.deliver`).
   - **At most `heldResults` (4) results a window.** One not yet delivered
