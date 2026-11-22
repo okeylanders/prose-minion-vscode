@@ -11,30 +11,51 @@
  *   claim that fails is dropped and counted. A headline that fails is
  *   replaced by the host's ("14 instances in 6 files"); a title that fails
  *   by the host's ("Group 2"). Neither loses its claims.
- * - **What a quotation is.** Double quotation marks, straight (`"…"`) or
- *   curly (`“…”`, which may nest); a double mark left unpaired, or an empty
- *   quotation, fails its text: the check cannot say what was quoted.
- * - **Single marks, when they are a pair.** Outside double marks, a single
- *   mark (`‘` or `'`) that does not follow a letter or digit and is followed
- *   by text opens a span; a single mark (`’` or `'`) that follows text and
- *   is not followed by a letter or digit can close it. A mark between two
- *   letters (it’s, Rabbit’s) is an apostrophe and neither opens nor closes;
- *   a mark after a word with no single-quoted span before it (the Rabbits’
- *   watch) is ignored; an opener that is never closed (’tis written with an
- *   opening mark) is read as an apostrophe, not a quotation.
- * - **An ambiguous closing mark takes the longest span.** A plural
- *   possessive inside a single-quoted span (‘the sailors’ map was blue’)
- *   looks like its close. So every later closing candidate, up to the next
- *   opening single mark, extends the span, and the longest one is what is
- *   checked: no part of a single-quoted quotation escapes the check. The
- *   cost, stated: a possessive written after a single-quoted quotation and
- *   before any other opening single mark is taken into it, and that text
- *   fails closed. The prompt asks for double marks, which have no such
- *   ambiguity.
+ *
+ * **The invariant** (PR #295 re-review): a text passes only when every
+ * quotation it shows is checked whole. Every word from an opening mark to
+ * the end of its quotation stands inside one checked span, and that span
+ * stands in a source quote. A sub-span is never checked in place of a
+ * quotation, and no rule chooses among readings: where the marks allow
+ * more than one, or none, the text fails closed (a claim is dropped; a
+ * title or the headline is replaced by the host's).
+ *
+ * - **Whitespace first.** Before any mark is read the text is put in NFC,
+ *   and every whitespace character (each Unicode space separator, a tab, a
+ *   line break) becomes one space, runs collapsed. Every structure decision
+ *   and every comparison below sees that text.
+ * - **Double marks.** Straight (`"…"`) or curly (`“…”`, which may nest).
+ *   Everything between a pair is its span, single marks included. A double
+ *   mark left unpaired fails the text.
+ * - **Single marks** (`'`, `‘`, `’`), outside double marks:
+ *   - An opening mark is `‘` wherever it stands, or `'` or `’` with no
+ *     letter or digit before it. Any other single mark, one after a letter
+ *     or digit, is an apostrophe (it’s, the Queen’s, the sailors’) while no
+ *     quotation is open.
+ *   - Once a mark opens a quotation, the very next single mark must close
+ *     it: `'` or `’`, with no space before it and no letter or digit after
+ *     it. The whole span between the two is checked.
+ *   - Anything else is ambiguous, and fails the text: no close at all; a
+ *     next single mark that cannot close (an apostrophe or an opening mark
+ *     inside the span, a space before it, a letter or digit after it); a
+ *     double mark inside the span; and, once the quotation is closed, any
+ *     later single mark that is not an apostrophe between two letters or
+ *     digits, since it could be the same quotation's real close (a second
+ *     closing candidate, a second quotation, a bare possessive or an
+ *     elision after it).
+ *   - So a text holds at most one single-quoted quotation, and none with a
+ *     single mark inside it. Stated costs, each failing closed: an elision
+ *     at a word's start (’tis, 'em, the ’90s), an apostrophe inside a
+ *     single-quoted quotation, a bare possessive or an elision after one,
+ *     and two single-quoted quotations in one text. The prompt asks for
+ *     double marks, which have none of these.
+ * - **Marks the check does not read** (« », ‹ ›, „, ‚, ‛, ‟, the fullwidth
+ *   marks, a grave or acute accent standing alone, any other Unicode
+ *   quotation punctuation) fail the text outside double marks; inside them
+ *   they are that span's own text.
  * - **How a span is compared.** Both sides are folded through the shared
- *   fold (case, accents, any whitespace to a space), curly marks made
- *   straight, and runs of spaces collapsed, since the request shows each
- *   quote on one line. A span may also stand without its closing
+ *   fold (case, accents), curly marks made straight, since the request
+ *   shows each quote on one line. A span may also stand without its closing
  *   punctuation (a comma or full stop written inside the marks). Matching
  *   is plain substring search: no pattern is built from the reply.
  * - **Bounded work.** Each search is charged the length of the text it
@@ -61,63 +82,89 @@ const OPENING = '“';
 const CLOSING = '”';
 const CLOSING_PUNCTUATION = new Set([',', '.', ';', ':', '!', '?', '…']);
 
-const SINGLE_OPENERS = new Set(['‘', '\'']);
-const SINGLE_CLOSERS = new Set(['’', '\'']);
+const SINGLE_OPENING = '‘';
+const SINGLE_MARKS = new Set(['\'', SINGLE_OPENING, '’']);
+/** Every other quotation mark: Unicode's initial and final quotation punctuation, the low-9 and fullwidth marks, a lone grave or acute accent. */
+const UNREAD_MARK = /[\p{Pi}\p{Pf}„‚＂＇`´]/u;
+/** Each Unicode space separator, a tab, a line break: JavaScript's whitespace, and the next-line control it leaves out. */
+const WHITESPACE = /[\s\p{Zs}\u0085]+/gu;
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 const isWordCharacter = (character: string | undefined): boolean => character !== undefined && WORD_CHARACTER.test(character);
-const isText = (character: string | undefined): boolean => character !== undefined && character.trim() !== '';
+
+/** The text every quotation decision reads: NFC, every run of whitespace one space. */
+export function passageSearchQuotationText(text: string): string {
+  return text.normalize('NFC').replace(WHITESPACE, ' ');
+}
 
 /**
  * The spans `text` puts in quotation marks, without their marks: every
- * double-quoted span, and every paired single-quoted one (see the module
- * comment for what a pair is). Undefined when a double mark is left
- * unpaired. One pass over the text.
+ * double-quoted span, and the one single-quoted span a text may hold (see
+ * the module comment). Undefined when the marks cannot be read as exactly
+ * that, so the text fails. One pass over the text, by code point.
  */
 export function passageSearchQuotedSpans(text: string): string[] | undefined {
+  const characters = Array.from(passageSearchQuotationText(text));
   const spans: string[] = [];
-  let opened = -1;
+  let double = -1;
   let closer = '';
   let depth = 0;
-  // Where the latest single-quoted span opened, outside any double-quoted one (-1 when none has),
-  // and that span's place in `spans` once a closing candidate was found for it (-1 until then).
+  // Before any single-quoted quotation, inside one (opened at `single`), or after the one a text may hold.
+  let quotation: 'none' | 'open' | 'closed' = 'none';
   let single = -1;
-  let singleSpan = -1;
-  for (let index = 0; index < text.length; index += 1) {
-    const mark = text[index];
-    if (opened >= 0) {
+  for (let index = 0; index < characters.length; index += 1) {
+    const mark = characters[index];
+    if (double >= 0) {
       if (closer === CLOSING && mark === OPENING) {
         depth += 1;
       } else if (mark === closer) {
         depth -= 1;
         if (depth === 0) {
-          spans.push(text.slice(opened, index));
-          opened = -1;
+          spans.push(characters.slice(double, index).join(''));
+          double = -1;
         }
       }
-    } else if (mark === CLOSING) {
-      return undefined;
-    } else if (mark === STRAIGHT || mark === OPENING) {
-      opened = index + 1;
+      continue;
+    }
+    if (mark === STRAIGHT || mark === OPENING || mark === CLOSING) {
+      if (mark === CLOSING || quotation === 'open') {
+        return undefined;
+      }
+      double = index + 1;
       closer = mark === STRAIGHT ? STRAIGHT : CLOSING;
       depth = 1;
-    } else if (single >= 0 && SINGLE_CLOSERS.has(mark) && isText(text[index - 1]) && !isWordCharacter(text[index + 1])) {
-      // A closing candidate. A later one, before another opener, extends this same span: the longest is what is checked.
-      if (singleSpan >= 0) {
-        spans[singleSpan] = text.slice(single, index);
-      } else {
-        singleSpan = spans.push(text.slice(single, index)) - 1;
+      continue;
+    }
+    if (SINGLE_MARKS.has(mark)) {
+      const before = characters[index - 1];
+      const after = characters[index + 1];
+      if (quotation === 'none') {
+        if (mark === SINGLE_OPENING || !isWordCharacter(before)) {
+          quotation = 'open';
+          single = index + 1;
+        }
+      } else if (quotation === 'open') {
+        // The very next single mark closes the quotation, unambiguously, or the text fails.
+        if (mark === SINGLE_OPENING || before === ' ' || isWordCharacter(after)) {
+          return undefined;
+        }
+        spans.push(characters.slice(single, index).join(''));
+        quotation = 'closed';
+      } else if (mark === SINGLE_OPENING || !isWordCharacter(before) || !isWordCharacter(after)) {
+        // After the close, only an apostrophe inside a word: anything else could be this quotation's real close.
+        return undefined;
       }
-    } else if (SINGLE_OPENERS.has(mark) && !isWordCharacter(text[index - 1]) && isText(text[index + 1]) && (single < 0 || singleSpan >= 0)) {
-      single = index + 1;
-      singleSpan = -1;
+      continue;
+    }
+    if (UNREAD_MARK.test(mark)) {
+      return undefined;
     }
   }
-  return opened < 0 ? spans : undefined;
+  return double < 0 && quotation !== 'open' ? spans : undefined;
 }
 
-/** Text as the check compares it: folded, marks straightened, spaces collapsed. */
+/** Text as the check compares it: whitespace as quotations read it, folded, marks straightened, trimmed. */
 export function passageSearchComparableText(text: string): string {
-  return foldSearchText(text).replace(/[‘’]/g, '\'').replace(/[“”]/g, STRAIGHT).replace(/ +/g, ' ').trim();
+  return foldSearchText(passageSearchQuotationText(text)).replace(/[‘’]/g, '\'').replace(/[“”]/g, STRAIGHT).replace(/ +/g, ' ').trim();
 }
 
 function withoutClosingPunctuation(span: string): string {

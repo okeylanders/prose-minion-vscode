@@ -129,27 +129,40 @@ describe('Quoted spans', () => {
     expect(passageSearchQuotedSpans('It reads “the “late” speech” twice.')).toEqual(['the “late” speech']);
   });
 
-  it('reads a paired single-quoted span, curly or straight, as a quotation', () => {
+  it('reads one single-quoted span, curly or straight, closed by the very next single mark, as a quotation', () => {
     expect(passageSearchQuotedSpans('The Rabbit says ‘I shall be late!’ and runs.')).toEqual(['I shall be late!']);
-    expect(passageSearchQuotedSpans('Its \'late\' speech and its ‘watch’.')).toEqual(['late', 'watch']);
+    expect(passageSearchQuotedSpans('Its \'late\' speech.')).toEqual(['late']);
     expect(passageSearchQuotedSpans('‘Oh dear!’')).toEqual(['Oh dear!']);
-    // An apostrophe inside the span does not close it.
-    expect(passageSearchQuotedSpans('It mutters ‘how late it’s getting!’ twice.')).toEqual(['how late it’s getting!']);
+    // A contraction or a possessive inside a word, before or after it, is no mark of the quotation.
+    expect(passageSearchQuotedSpans('The Rabbit’s ‘late!’ and it’s true.')).toEqual(['late!']);
   });
 
-  it('does not read an apostrophe as a quotation mark: contractions, possessives and an opener never closed', () => {
+  it('does not read an apostrophe after a letter or digit as a quotation mark: contractions and bare possessives', () => {
     expect(passageSearchQuotedSpans('It’s the Rabbit’s watch, and it isn\'t the Queen\'s.')).toEqual([]);
-    expect(passageSearchQuotedSpans('The Rabbits’ watches and the hedgehogs\' ground.')).toEqual([]);
-    expect(passageSearchQuotedSpans('’Tis late, and ‘tis later still')).toEqual([]);
+    expect(passageSearchQuotedSpans('The Rabbits’ watches and the hedgehogs\' ground, in the 1860\'s.')).toEqual([]);
   });
 
-  it('takes the longest span when a possessive inside it looks like its close (re-review)', () => {
-    expect(passageSearchQuotedSpans('It reads ‘The sailors’ map was blue’ in full.')).toEqual(['The sailors’ map was blue']);
-    expect(passageSearchQuotedSpans('It reads \'the hedgehogs\' ground was rough\' in full.')).toEqual(['the hedgehogs\' ground was rough']);
-    // A new opening mark starts a new span; a closing candidate before it belongs to the span before.
-    expect(passageSearchQuotedSpans('‘late’ and then ‘the sailors’ map’ again')).toEqual(['late', 'the sailors’ map']);
-    // The stated cost: a possessive after a single-quoted quotation is taken into it.
-    expect(passageSearchQuotedSpans('It says ‘late’ of the Rabbits’ watch.')).toEqual(['late’ of the Rabbits']);
+  it('fails closed where single marks allow more than one reading, or none (re-review)', () => {
+    for (const text of [
+      // A possessive or contraction inside the quotation looks like its close.
+      'It reads ‘The sailors’ map was blue’ in full.',
+      'It reads \'the hedgehogs\' ground was rough\' in full.',
+      'It mutters ‘how late it’s getting!’ twice.',
+      // A second quotation, or a possessive after the first, could be the first one's real close.
+      'Its \'late\' speech and its ‘watch’.',
+      '‘late’ and then ‘the sailors’ map’ again',
+      'It says ‘late’ of the Rabbits’ watch.',
+      // An elision at a word's start opens a quotation that never closes: the stated cost.
+      '’Tis late, and ‘tis later still',
+      'It\'s \'tis late.',
+      // A space before the would-be close, a letter after it, a double mark inside, no close at all.
+      'It cries ‘I shall be late! ’ and runs.',
+      'It cries ‘I shall be late’s and runs.',
+      'It cries ‘I shall "be" late’ and runs.',
+      'It cries ‘I shall be late! and runs.'
+    ]) {
+      expect([text, passageSearchQuotedSpans(text)]).toEqual([text, undefined]);
+    }
   });
 
   it('leaves single marks inside a double-quoted span as that span\'s own text', () => {
@@ -308,32 +321,37 @@ describe('Quotation checks', () => {
     expect(standing.replaced.headline).toBe(false);
   });
 
-  it('checks the whole of a single-quoted quotation that holds a possessive, in a claim, a title and the headline (re-review)', () => {
+  it('never checks part of a single-quoted quotation that holds a possessive, in a claim, a title or the headline (re-review)', () => {
     const sailors = [
       instanceOf(1, { quote: 'The sailors watched the water.' }),
       instanceOf(2, { quote: 'The sailors’ map was blue, and the Queen’s was not.' })
     ];
-    const read = (content: string) => checkPassageSearchOrganizeReply(readPassageSearchOrganizeReply(content, false), sailors, [1]);
-    // Only instance 1 was shown. "The sailors" stands in it; "The sailors’ map was blue" does not.
-    const fabricated = read(replyOf([
-      { title: 'The ‘The sailors’ map was blue’ line', claims: [{ text: 'It says ‘The sailors’ map was blue’ outright.', cites: [1] }, { text: 'They watch.', cites: [1] }] }
-    ], 'The chapter turns on ‘The sailors’ map was blue’.'));
-    expect(kept(fabricated)).toEqual(['They watch.']);
-    expect(fabricated.dropped).toMatchObject({ misquoted: 1 });
-    expect(fabricated.replaced).toEqual({ headline: true, titles: 1 });
-    // The positive controls: the same words, shown, pass whole; so do a contraction and a possessive outside any quotation.
-    const shown = checkPassageSearchOrganizeReply(readPassageSearchOrganizeReply(replyOf([
+    const read = (content: string, shown: number[]) => checkPassageSearchOrganizeReply(readPassageSearchOrganizeReply(content, false), sailors, shown);
+    const ambiguous = replyOf([
+      { title: 'The ‘The sailors’ map was blue’ line', claims: [{ text: 'It says ‘The sailors’ map was blue’ outright.', cites: [1, 2] }, { text: 'They watch.', cites: [1] }] }
+    ], 'The chapter turns on ‘The sailors’ map was blue’.');
+    // "The sailors" stands in instance 1. The quotation cannot be read one way only, so it fails, shown or not.
+    for (const shown of [[1], [1, 2]]) {
+      const analysis = read(ambiguous, shown);
+      expect(kept(analysis)).toEqual(['They watch.']);
+      expect(analysis.dropped).toMatchObject({ misquoted: 1 });
+      expect(analysis.replaced).toEqual({ headline: true, titles: 1 });
+    }
+    // The positive controls: the same words in double marks pass whole; so do a contraction and a possessive outside any quotation.
+    const doubled = read(replyOf([
       {
-        title: 'The ‘sailors’ map was blue’ line',
+        title: 'The "sailors’ map was blue" line',
         claims: [
-          { text: 'It says ‘The sailors’ map was blue’ outright.', cites: [2] },
+          { text: 'It says "The sailors’ map was blue" outright.', cites: [2] },
           { text: 'It isn’t the Queen’s map, nor the sailors’.', cites: [2] },
           { text: 'It says "the Queen’s was not", plainly.', cites: [2] }
         ]
       }
-    ], 'The chapter turns on ‘The sailors’ map was blue’.'), false), sailors, [1, 2]);
-    expect(kept(shown)).toHaveLength(3);
-    expect(shown.replaced).toEqual({ headline: false, titles: 0 });
+    ], 'The chapter turns on "The sailors’ map was blue".'), [1, 2]);
+    expect(kept(doubled)).toHaveLength(3);
+    expect(doubled.replaced).toEqual({ headline: false, titles: 0 });
+    // Shown only instance 1, the double-quoted words are checked whole and fail.
+    expect(kept(read(replyOf([{ title: 'T', claims: [{ text: 'It says "The sailors’ map was blue" outright.', cites: [1] }] }]), [1]))).toEqual([]);
   });
 
   it('replaces a title that quotes words no instance shown holds, and keeps its claims', () => {
