@@ -116,7 +116,7 @@ describe('the results directive', () => {
 
   describe('never over its bound (PR #296 F4)', () => {
     /** An organized result whose analysis and label table alone are most of a small room: Alice's watch, many ways. */
-    const organized = (instances: number) => aliceResult(instances, {
+    const organized = (instances: number, overrides: Partial<PassageSearchResult> = {}) => aliceResult(instances, {
       analysis: analysisOf({
         headline: 'The Rabbit checks his watch whenever he is seen, and the checks grow more frantic.',
         sections: Array.from({ length: 8 }, (_, section) => ({
@@ -128,7 +128,8 @@ describe('the results directive', () => {
         })),
         read: { instances, of: instances }
       }),
-      labels: Array.from({ length: 20 }, (_, index) => ({ key: `l${index}`, label: `Checks the watch, way ${index + 1}`, count: 1, files: 1 }))
+      labels: Array.from({ length: 20 }, (_, index) => ({ key: `l${index}`, label: `Checks the watch, way ${index + 1}`, count: 1, files: 1 })),
+      ...overrides
     });
     const tokens = (text: string) => estimateTextTokens(text);
 
@@ -163,6 +164,45 @@ describe('the results directive', () => {
       expect(short.frame.endsWith(CLOSE)).toBe(true);
 
       expect(fitWorkshopPassageSearchDirective(view, { freeInputTokens: (summary - 1) * 2 })).toBeUndefined();
+    });
+
+    describe('the summary keeps what went unsearched (PR #296 re-review P3)', () => {
+      const cut = () => report(organized(12, { calls: callsOf({ planned: 4, answered: 4, cut: 1 }) }));
+      const tooLarge = () => report(organized(12, {
+        calls: callsOf({ planned: 4, answered: 3, tooLarge: 1 }),
+        files: { ...aliceResult(12).files, searched: { full: 0, partial: 1, none: 0 } }
+      }));
+      /** A room where the summary is the only frame that fits: one token short of the frame with no instance. */
+      const summaryOnly = (view: ReturnType<typeof report>) => ({ freeInputTokens: (tokens(renderWorkshopPassageSearchDirective(view, 0)) - 1) * 2 });
+
+      it.each([
+        ['a reply cut off', cut, ['1 reply was cut off at the length limit; the instances finished before the cut are kept.']],
+        ['a read too large to send', tooLarge, [
+          '1 of 1 file was searched only in part.',
+          '1 call did not fit the model\'s window and was not sent, so the text it covers was not searched.'
+        ]]
+      ] as const)('%s: the only fitting frame is the summary, and it says what went unsearched', (_name, partial, caveats) => {
+        const view = partial();
+        const fitted = fitWorkshopPassageSearchDirective(view, summaryOnly(view))!;
+        expect(fitted.summary).toBe(true);
+        for (const caveat of caveats) {
+          expect(fitted.frame).toContain(caveat);
+        }
+        // It differs from the same result read whole: the persona can tell the coverage fell short.
+        const whole = report(organized(12));
+        expect(renderWorkshopPassageSearchSummary(view)).not.toBe(renderWorkshopPassageSearchSummary(whole));
+        expect(tokens(fitted.frame)).toBeLessThanOrEqual(Math.floor(summaryOnly(view).freeInputTokens / 2));
+      });
+
+      it('is sized with the caveat in: where only the summary without it would fit, nothing is sent', () => {
+        const view = tooLarge();
+        const withCaveat = tokens(renderWorkshopPassageSearchSummary(view));
+        const withoutCaveat = tokens(renderWorkshopPassageSearchSummary({ ...view, calls: { ...view.calls, tooLarge: 0 }, files: { ...view.files, searched: { full: 1, partial: 0, none: 0 } } }));
+        expect(withoutCaveat).toBeLessThan(withCaveat);
+        // Room for the summary without its caveat, not with it: refused, never sent without it.
+        expect(fitWorkshopPassageSearchDirective(view, { freeInputTokens: withoutCaveat * 2 })).toBeUndefined();
+        expect(fitWorkshopPassageSearchDirective(view, { freeInputTokens: withCaveat * 2 })).toEqual(expect.objectContaining({ summary: true }));
+      });
     });
 
     it('is never over half the room left, whatever the room, for an organized result', () => {

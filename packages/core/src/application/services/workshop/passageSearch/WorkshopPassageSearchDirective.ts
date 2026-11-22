@@ -25,9 +25,12 @@
  * - **Never over its bound** (PR #296 F4). When the frame with no instance
  *   does not fit either (a long analysis, many labels, or little room), the
  *   summary goes in its place: what this is, the question, what was found
- *   and read, how the search ended, and that the writer's report has the
- *   rest. When not even that fits, there is no frame, and the delivery is
- *   refused before anything is recorded or sent.
+ *   and read, how the search ended, what the reads left unsearched (the
+ *   shared coverage lines, a read too large to send included: PR #296
+ *   re-review P3), and that the writer's report has the rest. It is sized
+ *   with all of that in; when it does not fit, there is no frame, and the
+ *   delivery is refused before anything is recorded or sent. The caveat is
+ *   never dropped to make it fit.
  * - **Counts are the host's.** The label table is the source of truth
  *   beside the analysis.
  *
@@ -38,6 +41,7 @@ import type { PassageSearchResultView } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   passageSearchAnalysisNote,
+  passageSearchCoverageLines,
   passageSearchLocation,
   passageSearchMissingLines,
   passageSearchReadLine,
@@ -70,7 +74,7 @@ export interface WorkshopPassageSearchDirective {
   readonly summary?: true;
 }
 
-const SUMMARY_NOTE = 'The rest of these results (what is missing and why, the analysis, the label table and the instances) did not fit '
+const SUMMARY_NOTE = 'The rest of these results (the instances, the analysis, the label table, and what else was left out and why) did not fit '
   + 'in what is left of this conversation. The writer\'s report has all of it: say so, and claim nothing this frame does not hold.';
 
 const oneLine = (text: string): string => neutral(text.replace(/\s+/g, ' ').trim());
@@ -137,7 +141,7 @@ export function renderWorkshopPassageSearchDirective(result: PassageSearchResult
   return lines.join('\n');
 }
 
-/** The least a delivery says: what this is, the question, what was found and read, how it ended, and that the report has the rest. */
+/** The least a delivery says: what this is, the question, what was found and read, how it ended, what went unsearched, and that the report has the rest. */
 export function renderWorkshopPassageSearchSummary(result: PassageSearchResultView): string {
   return [
     `<${WORKSHOP_PASSAGE_SEARCH_RESULTS_TAG}>`,
@@ -148,6 +152,7 @@ export function renderWorkshopPassageSearchSummary(result: PassageSearchResultVi
     `Found: ${passageSearchSummary(result)}`,
     passageSearchReadLine(result),
     ...(result.endedMessage ? [`Ended early: ${result.endedMessage}`] : []),
+    ...passageSearchCoverageLines(result),
     '',
     SUMMARY_NOTE,
     `</${WORKSHOP_PASSAGE_SEARCH_RESULTS_TAG}>`
