@@ -29,8 +29,8 @@
  *   failed delivery never touches it.
  * - **Delivery** (D19a, D21) is a results-delivery directed run to the
  *   card's author. The host starts it only for a search that ended
- *   `complete` or `instance-limit`, with the room idle; any other waits for
- *   the writer's Send. Every send checks first, with nothing awaited before
+ *   `complete` or `instance-limit`, with the room idle and no session save
+ *   or replacement pending; any other waits for the writer's Send. Every send checks first, with nothing awaited before
  *   the dispatch: this room, the card still here and undelivered, its
  *   author still in the room, no run going.
  * - **Logs** carry turn ids, counts, closed outcomes and reason kinds:

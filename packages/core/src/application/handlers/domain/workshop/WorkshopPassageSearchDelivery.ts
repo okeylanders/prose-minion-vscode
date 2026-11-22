@@ -25,9 +25,11 @@
  *   no word) drops every result: a result survives only a Rewind the
  *   coordinator announced.
  * - **Every send checks first,** and nothing is awaited between the last
- *   check and the dispatch: this room, the card still here and
- *   undelivered, its author still in the room, no run going, no other
- *   delivery in flight.
+ *   check and the dispatch: no session save or room replacement pending
+ *   (the guard an explicit Send passes at its route, applied to the host's
+ *   own send too: PR #296), this room, the card still here and undelivered,
+ *   its author still in the room, no run going, no other delivery in
+ *   flight.
  * - **A delivery is a directed run** on the room's one message path. Its
  *   frame is fitted when the path asks for it, with the room the message
  *   has left; the receipt rides the adopted reply's own commit, and any
@@ -67,6 +69,8 @@ export interface WorkshopPassageSearchDeliverySession {
 export interface WorkshopPassageSearchRoomGate extends WorkshopOpenRoomInstancePort {
   /** Any run going in the room: a reply, or the context wizard. */
   activeRunLabel(): string | undefined;
+  /** A session save or room replacement is pending: the mutation routes' own guard. */
+  sessionOperationPending(): boolean;
   runDirected(target: WorkshopChatTarget, run: WorkshopResultsDeliveryRun): Promise<WorkshopDirectedRunResult>;
 }
 
@@ -176,6 +180,10 @@ export class WorkshopPassageSearchResults {
 
   /** Send a held result to its card's author: `true` once the persona's reply was adopted, else why not. */
   async deliver(turnId: string): Promise<true | WorkshopPassageSearchRefused> {
+    if (this.room.sessionOperationPending()) {
+      // The room may be about to be replaced: nothing is recorded in it until the operation settles.
+      return { reason: 'session-operation' };
+    }
     this.sync();
     const ledger = this.session.readRoomLedger();
     const turn = ledger.find((candidate) => candidate.id === turnId);

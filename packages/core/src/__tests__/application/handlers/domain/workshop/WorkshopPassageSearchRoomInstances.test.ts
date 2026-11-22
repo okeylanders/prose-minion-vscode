@@ -12,6 +12,9 @@
  *   session, whose id, turn ids and card are the same, drops it; so does a
  *   reload of it from disk with the card's scope changed, so the old report is
  *   never shown for the new card.
+ * - A search that ends while an Open is pending, before it hydrates, is not
+ *   sent by the host: the guard an explicit Send passes holds for the host's
+ *   own send too (PR #296).
  * Made-up text: Alice.
  */
 
@@ -19,6 +22,7 @@ import { MessageType, type WorkshopPassageSearchRequest, type WorkshopTurn } fro
 import type { WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { ScriptedWorkshopRoom } from '@/__tests__/application/services/workshop/session/ScriptedWorkshopRoom';
 import { scriptedCheckpoint, setupCoordinator } from '@/__tests__/application/services/workshop/session/WorkshopCoordinatorHarness';
+import { WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS } from '@shared/constants/workshopPassageSearchWords';
 import { aliceResult, QUESTION } from './passageSearchRouteFixtures';
 import { passageSearchRouteDriver } from './passageSearchRouteDriver';
 
@@ -48,7 +52,11 @@ async function roomWithAHeldResult() {
 
   const driver = await passageSearchRouteDriver({
     session: real.session,
-    persistence: { openRoomInstance: real.coordinator.openRoomInstance, onRoomReplaced: real.coordinator.onRoomReplaced }
+    persistence: {
+      openRoomInstance: real.coordinator.openRoomInstance,
+      onRoomReplaced: real.coordinator.onRoomReplaced,
+      isSessionOperationPending: () => real.coordinator.isSessionOperationPending()
+    }
   }, cardReply.id);
   return { real, driver, writerTurns, cardReply };
 }
@@ -143,5 +151,63 @@ describe('a passage search across real room replacements', () => {
     expect(sent).toEqual(expect.objectContaining({ outcome: 'refused', reason: 'not-ready' }));
     expect(driver.search.save).not.toHaveBeenCalled();
     expect(driver.harness.service.continueConversation).not.toHaveBeenCalled();
+  });
+
+  describe('a search that ends while an Open is pending, before it hydrates', () => {
+    /** Open `sessionId`, held at its read of the session file until `release`. */
+    const heldOpen = (real: ReturnType<typeof setupCoordinator>, sessionId: string) => {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => { release = resolve; });
+      const read = real.store.readNamedWithRecovery.bind(real.store);
+      jest.spyOn(real.store, 'readNamedWithRecovery').mockImplementationOnce(async (id) => {
+        await gate;
+        return read(id);
+      });
+      const opening = real.coordinator.openNamed(sessionId).then(() => 'opened', () => 'refused');
+      return { release, opening };
+    };
+
+    const endDuringOpen = async (sessionId: string) => {
+      const built = await roomWithAHeldResult();
+      const { real, driver } = built;
+      driver.search.hold = true;
+      const { requestId, running } = await driver.act(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
+      await driver.settle();
+      const open = heldOpen(real, sessionId);
+      await driver.settle();
+      expect(real.coordinator.isSessionOperationPending()).toBe(true);
+      // The search read everything into an idle room: the host would send it, but the room may be about to go.
+      driver.search.finish();
+      await running;
+      await driver.settle();
+      expect(driver.answersOf(requestId).at(-1)).toEqual(expect.objectContaining({ outcome: 'finished' }));
+      expect(driver.answersOf(requestId).at(-1).message).toContain(WORKSHOP_PASSAGE_SEARCH_REFUSAL_WORDS['session-operation']);
+      expect(driver.harness.service.continueConversation).not.toHaveBeenCalled();
+      expect(driver.harness.service.startWorkshopPersonaConversation).not.toHaveBeenCalled();
+      expect(driver.requestTurns()).toHaveLength(0);
+      expect(driver.harness.session.getSnapshot().activeRequestId).toBeUndefined();
+      return { ...built, open };
+    };
+
+    it('the Open lands: the result goes with the old room, and nothing reached the new one', async () => {
+      const { driver, open } = await endDuringOpen('elsewhere');
+      open.release();
+      expect(await open.opening).toBe('opened');
+      await driver.settle();
+      expect(driver.ledger().some((turn) => turn.passageSearchRequest || turn.passageSearchResults || turn.passageSearchDelivery)).toBe(false);
+      expect(driver.harness.service.continueConversation).not.toHaveBeenCalled();
+      expect(driver.logs()).toContain('room replaced dropped=1');
+    });
+
+    it('the Open is refused: the room is unchanged, the card is ready, and Send delivers with no second search', async () => {
+      const { driver, open } = await endDuringOpen('no-such-session');
+      open.release();
+      expect(await open.opening).toBe('refused');
+      expect(await driver.view()).toEqual(expect.objectContaining({ status: 'ready', partial: false }));
+      const [sent] = await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND);
+      expect(sent.outcome).toBe('done');
+      expect(driver.search.run).toHaveBeenCalledTimes(1);
+      expect(await driver.view()).toEqual(expect.objectContaining({ status: 'delivered' }));
+    });
   });
 });
