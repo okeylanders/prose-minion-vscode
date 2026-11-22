@@ -12,47 +12,60 @@
  *   replaced by the host's ("14 instances in 6 files"); a title that fails
  *   by the host's ("Group 2"). Neither loses its claims.
  *
- * **The invariant** (PR #295 re-review): a text passes only when every
- * quotation it shows is checked whole. Every word from an opening mark to
- * the end of its quotation stands inside one checked span, and that span
- * stands in a source quote. A sub-span is never checked in place of a
- * quotation, and no rule chooses among readings: where the marks allow
- * more than one, or none, the text fails closed (a claim is dropped; a
- * title or the headline is replaced by the host's).
+ * **The invariant** (PR #295 re-reviews): a text passes only when every
+ * outermost quotation it shows is checked whole, from its opening mark to
+ * its matching closing mark, nested marks and all. Every word inside any
+ * outermost quotation stands inside one checked span, and that span stands
+ * in a source quote. A sub-span is never checked in place of a quotation,
+ * and no rule chooses among readings: where the marks allow more than one,
+ * or none, the text fails closed (a claim is dropped; a title or the
+ * headline is replaced by the host's).
  *
  * - **Whitespace first.** Before any mark is read the text is put in NFC,
  *   and every whitespace character (each Unicode space separator, a tab, a
  *   line break) becomes one space, runs collapsed. Every structure decision
  *   and every comparison below sees that text.
- * - **Double marks.** Straight (`"…"`) or curly (`“…”`, which may nest).
- *   Everything between a pair is its span, single marks included. A double
- *   mark left unpaired fails the text.
- * - **Single marks** (`'`, `‘`, `’`), outside double marks:
+ * - **Double marks take a role, then pair on a stack.** A curly mark's
+ *   shape is its role: `“` opens, `”` closes. A straight mark's role comes
+ *   from its neighbours: it opens when the start, a space, opening
+ *   punctuation, a dash or an opening mark stands before it and something
+ *   not a space after it; it closes when something not a space stands
+ *   before it and the end, a space or punctuation after it. A straight mark
+ *   that fits both roles, or neither, fails the text. Openers are pushed;
+ *   a closer must match the kind on top (straight with straight, `”` with
+ *   `“`), and a closer with nothing to match, or an opener left open, fails
+ *   the text. When the stack empties, the whole outermost quotation is one
+ *   span. So `"She said "meet me" before leaving"` is checked as one span,
+ *   and `"a" and "b"` as two.
+ * - **Single marks** (`'`, `‘`, `’`), read across the whole text:
  *   - An opening mark is `‘` wherever it stands, or `'` or `’` with no
  *     letter or digit before it. Any other single mark, one after a letter
  *     or digit, is an apostrophe (it’s, the Queen’s, the sailors’) while no
  *     quotation is open.
  *   - Once a mark opens a quotation, the very next single mark must close
  *     it: `'` or `’`, with no space before it and no letter or digit after
- *     it. The whole span between the two is checked.
+ *     it. A single-quoted quotation outside double marks is one span,
+ *     checked whole; one inside double marks is part of theirs.
  *   - Anything else is ambiguous, and fails the text: no close at all; a
  *     next single mark that cannot close (an apostrophe or an opening mark
  *     inside the span, a space before it, a letter or digit after it); a
  *     double mark inside the span; and, once the quotation is closed, any
- *     later single mark that is not an apostrophe between two letters or
- *     digits, since it could be the same quotation's real close (a second
- *     closing candidate, a second quotation, a bare possessive or an
- *     elision after it).
- *   - So a text holds at most one single-quoted quotation, and none with a
- *     single mark inside it. Stated costs, each failing closed: an elision
- *     at a word's start (’tis, 'em, the ’90s), an apostrophe inside a
- *     single-quoted quotation, a bare possessive or an elision after one,
- *     and two single-quoted quotations in one text. The prompt asks for
- *     double marks, which have none of these.
- * - **Marks the check does not read** (« », ‹ ›, „, ‚, ‛, ‟, the fullwidth
- *   marks, a grave or acute accent standing alone, any other Unicode
- *   quotation punctuation) fail the text outside double marks; inside them
- *   they are that span's own text.
+ *     later single mark anywhere that is not an apostrophe between two
+ *     letters or digits, since it could be the same quotation's real close.
+ *   - One exception, inside double marks only: a single opening mark that
+ *     the double quotation holding it closes before any single mark does
+ *     (an elision such as ’tis in dialogue) ends there. It was checked as
+ *     part of that span, and only apostrophes inside words may follow it.
+ *   - So a text holds at most one single-quoted quotation. Stated costs,
+ *     each failing closed: an elision at a word's start outside double
+ *     marks (’tis, 'em, the ’90s), an apostrophe inside a single-quoted
+ *     quotation, a bare possessive or an elision after one, and two
+ *     single-quoted quotations in one text, inside double marks or not.
+ *     The prompt asks for double marks, which have none of these.
+ * - **Marks the check does not read** (« », ‹ ›, „, ‚, ‛, ‟, the corner
+ *   marks 「」『』, the fullwidth marks, a grave or acute accent standing
+ *   alone, any other Unicode quotation punctuation) fail the text wherever
+ *   they stand: no reading of them can be checked.
  * - **How a span is compared.** Both sides are folded through the shared
  *   fold (case, accents), curly marks made straight, since the request
  *   shows each quote on one line. A span may also stand without its closing
@@ -84,8 +97,11 @@ const CLOSING_PUNCTUATION = new Set([',', '.', ';', ':', '!', '?', '…']);
 
 const SINGLE_OPENING = '‘';
 const SINGLE_MARKS = new Set(['\'', SINGLE_OPENING, '’']);
-/** Every other quotation mark: Unicode's initial and final quotation punctuation, the low-9 and fullwidth marks, a lone grave or acute accent. */
-const UNREAD_MARK = /[\p{Pi}\p{Pf}„‚＂＇`´]/u;
+/** Every other quotation mark: Unicode's initial and final quotation punctuation, the low-9, corner and fullwidth marks, a lone grave or acute accent. */
+const UNREAD_MARK = /[\p{Pi}\p{Pf}„‚「」『』〝〞〟＂＇`´]/u;
+/** What may stand before an opening straight mark, beside the start, a space and an opening mark: opening punctuation, an opening quotation mark, a dash. */
+const OPENING_CONTEXT = /[\p{Ps}\p{Pi}\p{Pd}]/u;
+const PUNCTUATION = /\p{P}/u;
 /** Each Unicode space separator, a tab, a line break: JavaScript's whitespace, and the next-line control it leaves out. */
 const WHITESPACE = /[\s\p{Zs}\u0085]+/gu;
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
@@ -97,60 +113,91 @@ export function passageSearchQuotationText(text: string): string {
 }
 
 /**
+ * A straight double mark's role from its neighbours; undefined when it fits
+ * both roles or neither. `afterOpener`: the mark before it was read as an
+ * opening mark.
+ */
+function straightRole(before: string | undefined, after: string | undefined, afterOpener: boolean): 'open' | 'close' | undefined {
+  const opens = (before === undefined || before === ' ' || afterOpener || OPENING_CONTEXT.test(before)) && after !== undefined && after !== ' ';
+  const closes = before !== undefined && before !== ' ' && (after === undefined || after === ' ' || PUNCTUATION.test(after));
+  return opens === closes ? undefined : opens ? 'open' : 'close';
+}
+
+/**
  * The spans `text` puts in quotation marks, without their marks: every
- * double-quoted span, and the one single-quoted span a text may hold (see
- * the module comment). Undefined when the marks cannot be read as exactly
- * that, so the text fails. One pass over the text, by code point.
+ * outermost double-quoted span, whole, and the one single-quoted span a
+ * text may hold outside double marks (see the module comment). Undefined
+ * when the marks cannot be read as exactly that, so the text fails. One
+ * pass over the text, by code point.
  */
 export function passageSearchQuotedSpans(text: string): string[] | undefined {
   const characters = Array.from(passageSearchQuotationText(text));
   const spans: string[] = [];
-  let double = -1;
-  let closer = '';
-  let depth = 0;
-  // Before any single-quoted quotation, inside one (opened at `single`), or after the one a text may hold.
+  // The double marks open now, innermost last, each as the mark that closes it; and where the outermost one opened.
+  const doubles: string[] = [];
+  let outermost = -1;
+  // Before the one single-quoted quotation a text may hold, inside it (opened at `single`, `singleDepth` doubles deep), or after it.
   let quotation: 'none' | 'open' | 'closed' = 'none';
   let single = -1;
+  let singleDepth = 0;
+  let lastOpener = -1;
   for (let index = 0; index < characters.length; index += 1) {
     const mark = characters[index];
-    if (double >= 0) {
-      if (closer === CLOSING && mark === OPENING) {
-        depth += 1;
-      } else if (mark === closer) {
-        depth -= 1;
-        if (depth === 0) {
-          spans.push(characters.slice(double, index).join(''));
-          double = -1;
-        }
-      }
-      continue;
-    }
+    const before = characters[index - 1];
+    const after = characters[index + 1];
     if (mark === STRAIGHT || mark === OPENING || mark === CLOSING) {
-      if (mark === CLOSING || quotation === 'open') {
+      const role = mark === OPENING ? 'open' : mark === CLOSING ? 'close' : straightRole(before, after, lastOpener === index - 1);
+      if (role === undefined) {
         return undefined;
       }
-      double = index + 1;
-      closer = mark === STRAIGHT ? STRAIGHT : CLOSING;
-      depth = 1;
+      if (role === 'open') {
+        if (quotation === 'open') {
+          // A double mark inside a single-quoted quotation.
+          return undefined;
+        }
+        if (doubles.length === 0) {
+          outermost = index + 1;
+        }
+        doubles.push(mark === OPENING ? CLOSING : STRAIGHT);
+        lastOpener = index;
+        continue;
+      }
+      if (doubles[doubles.length - 1] !== mark) {
+        // A closer with no opener of its kind to match.
+        return undefined;
+      }
+      if (quotation === 'open') {
+        // Opened inside this very quotation and never closed (an elision such as ’tis): it ends with it, or the text fails.
+        if (singleDepth !== doubles.length) {
+          return undefined;
+        }
+        quotation = 'closed';
+      }
+      doubles.pop();
+      if (doubles.length === 0) {
+        spans.push(characters.slice(outermost, index).join(''));
+      }
       continue;
     }
     if (SINGLE_MARKS.has(mark)) {
-      const before = characters[index - 1];
-      const after = characters[index + 1];
-      if (quotation === 'none') {
-        if (mark === SINGLE_OPENING || !isWordCharacter(before)) {
-          quotation = 'open';
-          single = index + 1;
-        }
-      } else if (quotation === 'open') {
+      if (quotation === 'open') {
         // The very next single mark closes the quotation, unambiguously, or the text fails.
         if (mark === SINGLE_OPENING || before === ' ' || isWordCharacter(after)) {
           return undefined;
         }
-        spans.push(characters.slice(single, index).join(''));
+        if (singleDepth === 0) {
+          spans.push(characters.slice(single, index).join(''));
+        }
         quotation = 'closed';
-      } else if (mark === SINGLE_OPENING || !isWordCharacter(before) || !isWordCharacter(after)) {
-        // After the close, only an apostrophe inside a word: anything else could be this quotation's real close.
+      } else if (mark !== SINGLE_OPENING && isWordCharacter(before) && (quotation === 'none' || isWordCharacter(after))) {
+        // An apostrophe: inside a word, or after one while no quotation has opened (the sailors’).
+      } else if (quotation === 'none') {
+        quotation = 'open';
+        single = index + 1;
+        singleDepth = doubles.length;
+        lastOpener = index;
+      } else {
+        // After the close, anything but an apostrophe inside a word could be this quotation's real close.
         return undefined;
       }
       continue;
@@ -159,7 +206,7 @@ export function passageSearchQuotedSpans(text: string): string[] | undefined {
       return undefined;
     }
   }
-  return double < 0 && quotation !== 'open' ? spans : undefined;
+  return doubles.length === 0 && quotation !== 'open' ? spans : undefined;
 }
 
 /** Text as the check compares it: whitespace as quotations read it, folded, marks straightened, trimmed. */

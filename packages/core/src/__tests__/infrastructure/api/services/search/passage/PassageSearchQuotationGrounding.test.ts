@@ -1,12 +1,13 @@
 /**
  * Quotation grounding is closed by construction (ADR 2026-11-20 D13; PR
- * #295 re-review, finding 2): a claim, title or headline passes only when
- * every word from an opening mark to the end of its quotation stands in
- * one checked span, found in a source quote; where the marks allow more
- * than one reading, or none, it fails closed. The report's reproductions,
- * the mirror cases on the opening side, the positive controls, and a
- * property over generated texts with an oracle of its own. Texts adapt
- * *Alice* and a made-up sailors' chapter.
+ * #295 re-reviews): a claim, title or headline passes only when every word
+ * inside any outermost quotation stands in one checked span, found in a
+ * source quote; where the marks allow more than one reading, or none, it
+ * fails closed. The reports' reproductions (single marks, then double marks
+ * nested in double marks), the mirror cases on the opening side, the
+ * positive controls, and a property over generated texts, raw single and
+ * double marks among them, with an oracle of its own. Texts adapt *Alice*
+ * and made-up sailors' and midnight chapters.
  */
 import type { PassageSearchAnalysis } from '@services/search/passage/PassageSearchContracts';
 import {
@@ -81,8 +82,55 @@ describe('The report\'s reproductions (PR #295 re-review)', () => {
       expect([text, passageSearchQuotedSpans(text)]).toEqual([text, undefined]);
       failsEverywhere(text);
     }
-    // Inside double marks they are the span's own text, checked with it.
-    expect(passageSearchQuotedSpans('It reads "the «late» speech" in full.')).toEqual(['the «late» speech']);
+    // Inside double marks too: no reading of them can be checked (re-review of ceb26a9a).
+    for (const text of ['It reads "the «late» speech" in full.', 'It reads "She said «meet me" before leaving».']) {
+      expect([text, passageSearchQuotedSpans(text)]).toEqual([text, undefined]);
+    }
+  });
+});
+
+describe('Double marks nested inside double marks (PR #295 re-review of ceb26a9a)', () => {
+  const GOODBYE = 'She said goodbye before leaving.';
+  const MIDNIGHT = 'She said "meet me at midnight" before leaving.';
+
+  it('checks the outermost quotation whole, nested marks and all: invented dialogue fails in a claim, title and headline', () => {
+    failsEverywhere('It reads "She said "meet me at midnight" before leaving".', GOODBYE);
+    expect(passageSearchQuotedSpans('It reads "She said "meet me at midnight" before leaving".')).toEqual(['She said "meet me at midnight" before leaving']);
+    failsEverywhere('It reads “She said "meet me at midnight" before leaving”.', GOODBYE);
+    failsEverywhere('It reads "She said “meet me at midnight” before leaving".', GOODBYE);
+  });
+
+  it('passes the same nesting when the source holds the whole outer quotation', () => {
+    standsEverywhere('It reads "She said "meet me at midnight" before leaving".', MIDNIGHT);
+    standsEverywhere('It reads “She said "meet me at midnight" before leaving”.', MIDNIGHT);
+  });
+
+  it('checks separate quotations each on its own', () => {
+    expect(passageSearchQuotedSpans('It reads "She said" and "before leaving".')).toEqual(['She said', 'before leaving']);
+    standsEverywhere('It reads "She said" and "before leaving".', GOODBYE);
+    failsEverywhere('It reads "She said" and "after leaving".', GOODBYE);
+  });
+
+  it('fails a double mark that fits both roles or neither, a closer with no opener, an opener left open, or crossed kinds', () => {
+    for (const text of [
+      'It reads She"said goodbye.',
+      'It reads " She said goodbye.',
+      'It reads She said goodbye" before leaving.',
+      'It reads "She said goodbye before leaving.',
+      'It reads "She said "goodbye" before leaving.',
+      'It reads "She said “goodbye" before leaving”.',
+      'It reads “She said goodbye.',
+      'It reads She said goodbye”.'
+    ]) {
+      expect([text, passageSearchQuotedSpans(text)]).toEqual([text, undefined]);
+      failsEverywhere(text, GOODBYE);
+    }
+  });
+
+  it('fails corner quotation marks, which the check does not read', () => {
+    for (const text of ['It reads 「invented words」.', 'It reads 『invented words』.']) {
+      expect([text, passageSearchQuotedSpans(text)]).toEqual([text, undefined]);
+    }
   });
 });
 
@@ -127,16 +175,18 @@ function random(seed: number): () => number {
   };
 }
 
-const SOURCE = 'Oh dear! I shall be late! The sailors watched the water, and the map was blue; the Queen kept the watch.';
+const SOURCE = 'She said "meet me at midnight" before leaving. Oh dear! I shall be late! The sailors watched the water, and the map was blue; the Queen kept the watch.';
 const TOKENS = [
   'the', 'sailors', 'map', 'was', 'blue', 'late', 'watch', 'water', 'invented', 'Queen', 'Rabbit',
+  'She', 'said', 'meet', 'me', 'at', 'midnight', 'before', 'leaving', 'goodbye',
   'Rabbit’s', 'Rabbit\'s', 'sailors’', 'sailors\'', 'it’s', 'isn\'t', '’tis', '\'tis', '‘tis', '’em', '\'90s',
   '‘', '’', '\'', '‘', '’', '\'',
+  '"', '"', '"', '“', '”', '“', '”',
   '‘late’', '\'late\'', '‘the sailors’', '‘map was blue’', '‘invented words’', '\'invented\'', '‘late ’', '‘ late’', '‘late!’',
-  '!', ',', '.', ';',
-  '"late"', '“the sailors”'
+  '"late"', '“the sailors”', '"meet me at midnight"', '"She said "meet me at midnight" before leaving"', '"She said "meet me" before leaving"',
+  '!', ',', '.', ';', '(', ')', '—'
 ];
-const SPACES = [' ', ' ', ' ', ' ', ' ', '\t', '\n', ' ', '　', '\u0085', ' ', '  '];
+const SPACES = [' ', ' ', ' ', ' ', '\u00a0', '\t', '\n', '\u2009', '\u3000', '\u0085', '\u2028', '  '];
 
 function generated(next: () => number): string {
   const pick = <T>(items: readonly T[]): T => items[Math.floor(next() * items.length)];
@@ -149,43 +199,88 @@ function generated(next: () => number): string {
 }
 
 /**
- * The oracle, written apart from the parser: the stretch of text a reader
- * could take as single-quoted. It starts at the first opening mark (‘
- * anywhere, or ' or ’ with no letter or digit before it) and runs to the
- * last single mark after it that is not an apostrophe between two letters
- * or digits, or on to the text's end when that last mark could not close
- * a quotation (an opening shape, a space before it, a letter or digit
- * after it) or there is none. Every double-quoted span (the generator
- * writes them only whole) is a stretch of its own. Each stretch must be
+ * The oracle, written apart from the parser, of where quotations stand.
+ * Double marks: a curly mark's shape is its role; a straight mark opens
+ * after the start, a space, opening punctuation, a dash or an opening mark
+ * when something not a space follows, and closes after something not a
+ * space when the end, a space or punctuation follows. One that fits both
+ * or neither, a closer that matches no opener of its kind, or an opener
+ * left open, and the text must fail; otherwise every outermost double
+ * quotation is a stretch. Single marks: from the first opening mark (‘
+ * anywhere, or ' or ’ with no letter or digit before it) a reader could
+ * take everything up to the last single mark that is not an apostrophe
+ * inside a word as quoted, or on to the end when that mark could not close.
+ * Inside an outermost double quotation that stretch is that quotation's,
+ * unless it reaches outside it, when the text must fail; outside, it is a
+ * stretch of its own, and must hold no double mark. Every stretch must be
  * one of the parser's checked spans, whole, and stand in the source.
  */
 function unchecked(text: string): string[] {
   const letter = (character: string | undefined): boolean => character !== undefined && /[\p{L}\p{N}]/u.test(character);
   const spaced = Array.from(text.normalize('NFC')).map((character) => (/\s/u.test(character) || character === '\u0085' ? ' ' : character)).join('');
   const characters = Array.from(spaced.replace(/ {2,}/g, ' '));
-  const inDouble = characters.map(() => false);
-  const stretches: string[] = [];
-  let opened = -1;
-  characters.forEach((character, index) => {
-    if (opened >= 0) {
-      inDouble[index] = true;
-      if (character === (characters[opened] === '"' ? '"' : '”')) {
-        stretches.push(characters.slice(opened + 1, index).join(''));
-        opened = -1;
-      }
-    } else if (character === '"' || character === '“') {
-      inDouble[index] = true;
-      opened = index;
+  const mustFail = ['the marks cannot be read one way'];
+  const singleOpening = (index: number): boolean => characters[index] === '‘' || ('\'’'.includes(characters[index]) && !letter(characters[index - 1]));
+
+  const regions: Array<[number, number]> = [];
+  const open: Array<{ kind: string; at: number }> = [];
+  for (let index = 0; index < characters.length; index += 1) {
+    const character = characters[index];
+    if (!'"“”'.includes(character)) {
+      continue;
     }
-  });
-  const singles = characters.flatMap((character, index) => (!inDouble[index] && '\'‘’'.includes(character) ? [index] : []));
-  const first = singles.find((index) => characters[index] === '‘' || !letter(characters[index - 1]));
-  if (first !== undefined) {
-    const ends = singles.filter((index) => index > first && (characters[index] === '‘' || !(letter(characters[index - 1]) && letter(characters[index + 1]))));
-    const last = ends[ends.length - 1];
-    const closes = last !== undefined && characters[last] !== '‘' && characters[last - 1] !== ' ' && !letter(characters[last + 1]);
-    stretches.push(characters.slice(first + 1, closes ? last : characters.length).join(''));
+    const before = characters[index - 1];
+    const after = characters[index + 1];
+    let role: 'open' | 'close';
+    if (character === '"') {
+      const afterOpening = (before === '"' && open.length > 0 && open[open.length - 1].at === index - 1) || (before !== undefined && singleOpening(index - 1));
+      const opens = (before === undefined || before === ' ' || afterOpening || /[\p{Ps}\p{Pi}\p{Pd}]/u.test(before)) && after !== undefined && after !== ' ';
+      const closes = before !== undefined && before !== ' ' && (after === undefined || after === ' ' || /\p{P}/u.test(after));
+      if (opens === closes) {
+        return mustFail;
+      }
+      role = opens ? 'open' : 'close';
+    } else {
+      role = character === '“' ? 'open' : 'close';
+    }
+    if (role === 'open') {
+      open.push({ kind: character === '“' ? '”' : '"', at: index });
+    } else {
+      const top = open.pop();
+      if (!top || top.kind !== character) {
+        return mustFail;
+      }
+      if (open.length === 0) {
+        regions.push([top.at + 1, index]);
+      }
+    }
   }
+  if (open.length > 0) {
+    return mustFail;
+  }
+  const stretches = regions.map(([start, end]) => characters.slice(start, end).join(''));
+
+  const singles = characters.flatMap((character, index) =>
+    (character === '‘' || ('\'’'.includes(character) && !(letter(characters[index - 1]) && letter(characters[index + 1]))) ? [index] : []));
+  const first = singles.find(singleOpening);
+  if (first !== undefined) {
+    const ends = singles.filter((index) => index > first);
+    const enclosing = regions.find(([start, end]) => start <= first && first < end);
+    if (enclosing) {
+      if (ends.some((index) => index >= enclosing[1])) {
+        return mustFail;
+      }
+    } else {
+      const last = ends[ends.length - 1];
+      const closes = last !== undefined && characters[last] !== '‘' && characters[last - 1] !== ' ' && !letter(characters[last + 1]);
+      const end = closes ? last : characters.length;
+      if (characters.slice(first + 1, end).some((character) => '"“”'.includes(character))) {
+        return mustFail;
+      }
+      stretches.push(characters.slice(first + 1, end).join(''));
+    }
+  }
+
   const checked = (passageSearchQuotedSpans(text) ?? []).map(passageSearchComparableText);
   const source = passageSearchComparableText(SOURCE);
   const bare = (span: string): string => span.replace(/[,.;:!?… ]+$/u, '');
@@ -197,17 +292,18 @@ function unchecked(text: string): string[] {
 }
 
 describe('The invariant, over generated texts', () => {
-  it('either fails a text, or every word from each opening mark to the end of its quotation is checked whole and found', () => {
+  it('either fails a text, or every word inside any outermost quotation is in one checked span, found in the source', () => {
     const next = random(0x295);
     const violations: Array<{ text: string; unchecked: string[] }> = [];
     let passedQuoting = 0;
+    let passedNesting = 0;
     let failedQuoting = 0;
-    for (let round = 0; round < 6_000; round += 1) {
+    for (let round = 0; round < 8_000; round += 1) {
       const text = generated(next);
       const outcome = judged(text, SOURCE);
       // One rule for all three.
       expect([text, outcome.title, outcome.headline]).toEqual([text, outcome.claim, outcome.claim]);
-      const quotes = /[‘’'"“]/u.test(text);
+      const quotes = /[‘’'"“”]/u.test(text);
       if (!outcome.claim) {
         failedQuoting += quotes ? 1 : 0;
         continue;
@@ -216,11 +312,14 @@ describe('The invariant, over generated texts', () => {
       if (left.length > 0) {
         violations.push({ text, unchecked: left });
       }
-      passedQuoting += (passageSearchQuotedSpans(text) ?? []).length > 0 ? 1 : 0;
+      const spans = passageSearchQuotedSpans(text) ?? [];
+      passedQuoting += spans.length > 0 ? 1 : 0;
+      passedNesting += spans.some((span) => span.includes('"')) ? 1 : 0;
     }
     expect(violations.slice(0, 5)).toEqual([]);
-    // Not vacuous: texts with quotations both pass and fail.
+    // Not vacuous: texts with quotations, nested ones among them, both pass and fail.
     expect(passedQuoting).toBeGreaterThan(200);
+    expect(passedNesting).toBeGreaterThan(20);
     expect(failedQuoting).toBeGreaterThan(200);
   });
 });
