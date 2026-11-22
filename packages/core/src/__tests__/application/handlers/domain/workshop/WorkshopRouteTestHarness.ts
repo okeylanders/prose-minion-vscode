@@ -26,6 +26,7 @@ import {
   WorkshopSessionPersistenceCoordinator
 } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { WorkshopOpenRoomInstance } from '@/application/services/workshop/WorkshopOpenRoomInstance';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import {
@@ -119,6 +120,8 @@ export interface WorkshopRouteTestHarness {
   }>;
   resourceProviderFactory: { createProvider: jest.Mock; };
   persistence: jest.Mocked<WorkshopSessionPersistenceCoordinator>;
+  /** The open-room instance behind the mock coordinator: `resetSession` replaces it; a test may tell a Rewind or a replacement itself. */
+  roomInstance: WorkshopOpenRoomInstance;
   /** The transcript export's disk seam; projection and rendering are real. */
   transcriptFiles: {
     writeNew: jest.Mock<
@@ -155,6 +158,8 @@ export interface WorkshopRouteTestHarnessOptions {
   selectedText?: WorkshopSelectedTextSnapshotsPort;
   /** A persona's passage search (ADR 2026-11-20 D20); absent by default, so a card's routes answer `unavailable`. */
   passageSearch?: import('@handlers/domain/workshop/WorkshopPassageSearchHandler').WorkshopPassageSearchPorts;
+  /** Members of a real coordinator to use in place of the mock's, when a test shares the aggregate with one. */
+  persistence?: Partial<Pick<WorkshopSessionPersistenceCoordinator, 'openRoomInstance' | 'onRoomReplaced' | 'isSessionOperationPending'>>;
 }
 
 export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarnessOptions = {}): WorkshopRouteTestHarness => {
@@ -263,6 +268,7 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
   };
   const analysisSidePass = new WorkshopAnalysisSidePass(service, session, log);
   const writerProfileService = new WorkshopWriterProfileService(settings, log);
+  const roomInstance = new WorkshopOpenRoomInstance((line) => log.appendLine(line));
   const persistence = {
     recallScope: jest.fn().mockReturnValue({ available: true, liveSessionId: 'live-room-0001' }),
     availability: jest.fn().mockReturnValue({
@@ -292,8 +298,11 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     }),
     resetSession: jest.fn(async () => {
       session.reset().forEach((conversationId) => service.discardConversation(conversationId));
+      roomInstance.replaced();
       return { attachmentLabels: [] };
     }),
+    openRoomInstance: jest.fn(() => roomInstance.current()),
+    onRoomReplaced: jest.fn((listener: Parameters<WorkshopOpenRoomInstance['subscribe']>[0]) => roomInstance.subscribe(listener)),
     rewindTo: jest.fn(),
     openRoomIdentity: jest.fn().mockReturnValue({ sessionId: 'current', title: 'Current Room' }),
     branchFrom: jest.fn(),
@@ -327,7 +336,8 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
       '/workspace/prose-minion/sessions/saved-1.json'
     ),
     deleteNamed: jest.fn().mockResolvedValue(undefined),
-    checkpointFileEdit: jest.fn().mockResolvedValue({ ok: true })
+    checkpointFileEdit: jest.fn().mockResolvedValue({ ok: true }),
+    ...options.persistence
   } as unknown as jest.Mocked<WorkshopSessionPersistenceCoordinator>;
   const roomDelivery = new WorkshopRoomDeliveryService(session);
   // Real projection + renderers over the live session; only the disk is fake.
@@ -446,6 +456,7 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     resourceFiles,
     resourceProviderFactory,
     persistence,
+    roomInstance,
     transcriptFiles,
     disposeStatusListener,
     disposeSessionSaveStatusListener,

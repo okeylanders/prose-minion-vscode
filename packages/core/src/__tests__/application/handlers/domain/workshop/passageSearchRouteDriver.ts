@@ -32,7 +32,8 @@ export interface PassageSearchRouteDriver {
   logs(): string;
 }
 
-export async function passageSearchRouteDriver(options: WorkshopRouteTestHarnessOptions = {}): Promise<PassageSearchRouteDriver> {
+/** `cardTurnId` names a card the shared session already holds (a scripted room a real coordinator opened); otherwise the host is asked for one. */
+export async function passageSearchRouteDriver(options: WorkshopRouteTestHarnessOptions = {}, cardTurnId?: string): Promise<PassageSearchRouteDriver> {
   const search = fakePassageSearch();
   const harness = createWorkshopRouteTestHarness({ passageSearch: search.ports, ...options });
   let asked = 0;
@@ -85,6 +86,10 @@ export async function passageSearchRouteDriver(options: WorkshopRouteTestHarness
     settle,
     logs: () => (harness.log.appendLine as jest.Mock).mock.calls.map(([line]) => String(line)).join('\n')
   };
+  if (cardTurnId !== undefined) {
+    driver.card = ledger().find((turn) => turn.id === cardTurnId)!;
+    return driver;
+  }
   if (!options.session) {
     await harness.pin();
   }

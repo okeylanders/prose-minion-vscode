@@ -5,15 +5,21 @@
  *
  * - **Held by the card's turn,** oldest first: the newest `heldResults`. A
  *   result is dropped only by eviction after an adopted delivery, by
- *   Discard, or when its card is gone. One not yet delivered is never
+ *   Discard, or when its room is replaced. One not yet delivered is never
  *   evicted, and a delivery that is not adopted never touches it.
- * - **A Rewind that keeps the card keeps its result** (D19). When the room's
- *   revision moves, another room (New, Open, Branch: another session id)
- *   drops every result; the same room keeps each result whose card turn the
- *   ledger still holds with the question it was searched for. A Rewind that
- *   cut the delivery's reply leaves the card `ready`, and Send needs no
- *   second search. Turn ids are never reused in a room, so a kept id is the
- *   same card.
+ * - **A result belongs to one open room** (D19; PR #296 F3). The
+ *   coordinator tells each replacement as it lands
+ *   (`WorkshopOpenRoomInstance`). Every one but a Rewind opens another room
+ *   (New, Open, Branch, a reload of the same named session, a rollback) and
+ *   drops every result. A Rewind of the same open room keeps each result
+ *   whose card turn the ledger still holds exactly as it was searched,
+ *   question and scopes, unanswered: a Rewind that cut only the delivery's
+ *   reply leaves the card `ready`, and Send needs no second search. Turn ids
+ *   are never reused in a room, so a kept id is the same card. A session id
+ *   cannot do this: reopening a named session keeps it.
+ * - **A replacement nobody told** (the revision or the instance moved with
+ *   no word) drops every result: a result survives only a Rewind the
+ *   coordinator announced.
  * - **Every send checks first,** and nothing is awaited between the last
  *   check and the dispatch: this room, the card still here and
  *   undelivered, its author still in the room, no run going, no other
@@ -43,6 +49,7 @@ import { workshopPassageSearchCounts, workshopPassageSearchView } from '@handler
 import { workshopPassageSearchStatus } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchStatus';
 import { workshopEditOfferAuthorTarget } from '@handlers/domain/workshop/WorkshopEditOfferHandler';
 import type { WorkshopDirectedRunResult, WorkshopResultsDeliveryRun } from '@handlers/domain/workshop/WorkshopRouteContracts';
+import type { WorkshopOpenRoomInstancePort, WorkshopRoomReplacement } from '@/application/services/workshop/WorkshopOpenRoomInstance';
 
 export interface WorkshopPassageSearchDeliverySession {
   readRoomRevision(): number;
@@ -52,22 +59,24 @@ export interface WorkshopPassageSearchDeliverySession {
   markPassageSearchResultsTurn(turnId: string, cardTurnId: string): WorkshopTurn | undefined;
 }
 
-/** The room facts a send reads, and the one message path a delivery runs on. */
-export interface WorkshopPassageSearchRoomGate {
+/** The room facts a send reads, which open room this is and each replacement as it lands, and the one message path a delivery runs on. */
+export interface WorkshopPassageSearchRoomGate extends WorkshopOpenRoomInstancePort {
   /** Any run going in the room: a reply, or the context wizard. */
   activeRunLabel(): string | undefined;
-  /** The open room's session id: unchanged by a Rewind, new on New, Open and Branch. */
-  roomSessionId(): string;
   runDirected(target: WorkshopChatTarget, run: WorkshopResultsDeliveryRun): Promise<WorkshopDirectedRunResult>;
 }
+
+/** A card as it was searched: what a Rewind must leave unchanged for its result to stay. */
+const cardKey = (card: { readonly question: string; readonly scopes: readonly object[] }): string =>
+  JSON.stringify({ question: card.question, scopes: card.scopes });
 
 export type WorkshopPassageSearchRefused = { readonly reason: WorkshopPassageSearchRefusal; readonly message?: string };
 
 export class WorkshopPassageSearchResults {
   /** By the card's turn, oldest first. */
-  private readonly held = new Map<string, { readonly result: PassageSearchResult; readonly question: string; delivered: boolean }>();
-  private revision: number | undefined;
-  private roomSessionId: string | undefined;
+  private readonly held = new Map<string, { readonly result: PassageSearchResult; readonly card: string; delivered: boolean }>();
+  /** The open room the held results belong to, and its revision as last told or seen. */
+  private heldIn: { readonly instance: number; readonly revision: number } | undefined;
   private sendingTurnId: string | undefined;
 
   constructor(
@@ -76,39 +85,43 @@ export class WorkshopPassageSearchResults {
     private readonly log: (line: string) => void
   ) {}
 
-  /** Another room takes every held result with it; the same room, rewound, keeps those whose card it still holds. */
-  sync(): void {
-    const revision = this.session.readRoomRevision();
-    const roomSessionId = this.room.roomSessionId();
-    if (this.revision !== undefined && this.revision !== revision && this.held.size > 0) {
-      if (roomSessionId !== this.roomSessionId) {
-        this.held.clear();
-      } else {
-        this.keepCardsStillHeld();
-      }
+  /** The coordinator's word that the room was replaced: another room takes every result; a Rewind of this one keeps the cards it left unchanged. */
+  roomReplaced(replacement: WorkshopRoomReplacement): void {
+    if (replacement.rewound && this.heldIn?.instance === replacement.instance) {
+      this.keepCardsStillHeld();
+    } else {
+      this.dropAll('room replaced');
     }
-    this.revision = revision;
-    this.roomSessionId = roomSessionId;
+    this.heldIn = { instance: replacement.instance, revision: this.session.readRoomRevision() };
+  }
+
+  /** Before any read: a revision or an instance that moved with no word from the coordinator drops everything. */
+  sync(): void {
+    const now = { instance: this.room.openRoomInstance(), revision: this.session.readRoomRevision() };
+    if (this.heldIn && (this.heldIn.instance !== now.instance || this.heldIn.revision !== now.revision)) {
+      this.dropAll('room replaced unannounced');
+    }
+    this.heldIn = now;
   }
 
   hold(turnId: string, result: PassageSearchResult): void {
     this.sync();
-    const question = this.session.readRoomLedger().find((turn) => turn.id === turnId)?.passageSearchRequest?.question;
+    const card = this.session.readRoomLedger().find((turn) => turn.id === turnId)?.passageSearchRequest;
     this.held.delete(turnId);
-    if (question === undefined) {
+    if (card === undefined) {
       return;
     }
-    this.held.set(turnId, { result, question, delivered: false });
+    this.held.set(turnId, { result, card: cardKey(card), delivered: false });
     this.evict();
   }
 
-  /** After a Rewind: a result stays with its card, and is delivered only while the ledger still holds its receipt. */
+  /** After a Rewind of this room: a result stays with its card, unchanged and unanswered, and reads delivered only while the ledger still holds its receipt. */
   private keepCardsStillHeld(): void {
     const ledger = this.session.readRoomLedger();
     let dropped = 0;
     for (const [turnId, entry] of this.held) {
       const request = ledger.find((turn) => turn.id === turnId)?.passageSearchRequest;
-      if (!request || request.answer !== undefined || request.question !== entry.question) {
+      if (!request || request.answer !== undefined || cardKey(request) !== entry.card) {
         this.held.delete(turnId);
         dropped += 1;
         continue;
@@ -116,6 +129,13 @@ export class WorkshopPassageSearchResults {
       entry.delivered = ledger.some((turn) => turn.passageSearchDelivery?.cardTurnId === turnId);
     }
     this.log(`room rewound kept=${this.held.size} dropped=${dropped}`);
+  }
+
+  private dropAll(why: 'room replaced' | 'room replaced unannounced'): void {
+    if (this.held.size > 0) {
+      this.log(`${why} dropped=${this.held.size}`);
+      this.held.clear();
+    }
   }
 
   resultOf(turnId: string): PassageSearchResult | undefined {

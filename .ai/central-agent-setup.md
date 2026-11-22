@@ -2449,15 +2449,21 @@ request, its card, or how its results reach the persona:
   (`passageSearchWords`). A change to the result is a change there.
 - **The price is never skipped.** `ESTIMATE` is a read. `RUN` plans again
   and runs only when the `planKey` equals the one sent; otherwise it
-  answers `price-changed` and sends nothing. One search per window; a room
-  whose revision moved (New, Open, Rewind, Branch) aborts it.
-- **A held result follows its card** (`WorkshopPassageSearchResults.sync`).
-  When the revision moves, another room (another session id: New, Open,
-  Branch) drops every held result. The same room, rewound, keeps each
-  result whose card turn the ledger still holds with the question it was
-  searched for, so a Rewind that cut only the delivery's reply reads
-  `ready` and Send needs no second search (D19). Reopening the same saved
-  session keeps them by the same rule.
+  answers `price-changed` and sends nothing. One search per window.
+- **A search and its held result belong to one open room** (PR #296 F3).
+  The coordinator announces every room replacement in the step that swaps
+  the aggregate (`WorkshopOpenRoomInstance`, `onRoomReplaced`).
+  - The running search's calls are aborted then (New, Open, Rewind,
+    Branch, a reload), whether or not anything is drawn or a call answers.
+  - Every replacement but a Rewind opens another instance (New, Open,
+    Branch, a reopen or reload of the same named session, activation, a
+    rollback) and drops every held result. A session id cannot tell these
+    apart: reopening a named session keeps it.
+  - A Rewind keeps the instance, and keeps each result whose card the cut
+    left exactly as it was searched (question and scopes, unanswered), so a
+    Rewind that cut only the delivery's reply reads `ready` and Send needs
+    no second search (D19). A revision or instance that moved with no word
+    drops everything (`WorkshopPassageSearchResults.sync`).
 - **Delivery is a directed run that is not an edit offer**
   (`WorkshopDirectedRun` is a union; `WorkshopResultsDeliveryRun`). It
   streams, completes through `completeWorkshopRun`, carries no reaction

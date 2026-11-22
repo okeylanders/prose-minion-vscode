@@ -300,15 +300,13 @@ describe('Workshop routes — a persona\'s passage search', () => {
     expect(await view()).toEqual(expect.objectContaining({ status: 'ready', authorLeft: true }));
   });
 
-  it('a room replaced mid-search aborts it, and nothing reaches the new room', async () => {
+  it('a room replaced mid-search aborts it as the replacement lands, and nothing reaches the new room', async () => {
     search.hold = true;
     const { requestId, running } = await act(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
     await settle();
     const signal = (search.run.mock.calls[0][1] as { signal: AbortSignal }).signal;
-    harness.session.reset();
-    // The next thing that reads the window's state for a turn notices the room moved.
-    await route(MessageType.WORKSHOP_REQUEST_SESSION, {});
-    search.progress({ calls: { planned: 4, done: 1 }, found: 1 });
+    // New: the coordinator tells the replacement in the step that swaps the room. Nothing is drawn, and no call answers.
+    await harness.persistence.resetSession({ start: 'carry' });
     expect(signal.aborted).toBe(true);
     await running;
     await settle();
@@ -319,14 +317,18 @@ describe('Workshop routes — a persona\'s passage search', () => {
     expect(requestTurns()).toHaveLength(0);
   });
 
-  describe('a Rewind that keeps the card keeps its result (D19)', () => {
-    /** What a Rewind does to the session: the same room, cut at a turn, under a new revision. */
-    const rewindKeeping = (keep: (turn: WorkshopTurn) => boolean = () => true): void => {
+  describe('a Rewind of the same open room keeps a card\'s result (D19); the real coordinator\'s path is WorkshopPassageSearchRoomInstances', () => {
+    /** The session cut at a turn under a new revision, and the coordinator's word for it: a Rewind, or another room. */
+    const replaceKeeping = (keep: (turn: WorkshopTurn) => boolean = () => true, said: 'rewound' | 'replaced' | 'nothing' = 'rewound'): void => {
       const state = harness.session.exportCommittedState();
       harness.session.hydrateCommittedState(
         { ...state, turns: state.turns.filter(keep) }, { host: 'host-conv' } as never, harness.session.getConversationBehavior()
       );
+      if (said !== 'nothing') {
+        harness.roomInstance[said]();
+      }
     };
+    const rewindKeeping = (keep?: (turn: WorkshopTurn) => boolean): void => replaceKeeping(keep, 'rewound');
 
     it('a result not yet sent is still ready, and Send delivers it without a second search', async () => {
       search.result = aliceResult(2, { ended: 'stopped' });
@@ -374,16 +376,37 @@ describe('Workshop routes — a persona\'s passage search', () => {
       expect(harness.service.continueConversation).not.toHaveBeenCalled();
     });
 
-    it('another room drops it, even one holding a turn of the same id', async () => {
+    it.each([['another open room', 'replaced'], ['a revision moved with no word', 'nothing']] as const)(
+      '%s drops it, even one holding the same card under the same turn id', async (_name, said) => {
+        search.result = aliceResult(2, { ended: 'stopped' });
+        await done(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
+        // Open, a reload of the same named session, Branch: the same ledger, and the same session id too.
+        replaceKeeping(() => true, said);
+        expect(await view()).toEqual({ status: 'pending' });
+        const [sent] = await done(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND);
+        expect(sent).toEqual(expect.objectContaining({ outcome: 'refused', reason: 'not-ready' }));
+        const [report] = await done(MessageType.WORKSHOP_PASSAGE_SEARCH_OPEN_REPORT);
+        expect(report).toEqual(expect.objectContaining({ outcome: 'refused', reason: 'not-held' }));
+        expect(search.save).not.toHaveBeenCalled();
+        expect(logs()).not.toContain('room rewound');
+        expect(logs()).toContain(said === 'replaced' ? 'room replaced dropped=1' : 'room replaced unannounced dropped=1');
+      });
+
+    it('a Rewind that changed the card under the same turn id and question drops it', async () => {
       search.result = aliceResult(2, { ended: 'stopped' });
       await done(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
-      // Open or Branch: the same ledger shape under another session id.
-      (harness.persistence.openRoomIdentity as unknown as jest.Mock).mockReturnValue({ sessionId: 'another-room', title: 'Another Room' });
-      rewindKeeping();
+      const state = harness.session.exportCommittedState();
+      harness.session.hydrateCommittedState({
+        ...state,
+        turns: state.turns.map((turn) => turn.id === card.id
+          ? { ...turn, passageSearchRequest: { ...turn.passageSearchRequest!, scopes: [{ kind: 'group' as const, group: 'characters' as const }] } }
+          : turn)
+      }, { host: 'host-conv' } as never, harness.session.getConversationBehavior());
+      harness.roomInstance.rewound();
       expect(await view()).toEqual({ status: 'pending' });
-      const [sent] = await done(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND);
-      expect(sent).toEqual(expect.objectContaining({ outcome: 'refused', reason: 'not-ready' }));
-      expect(logs()).not.toContain('room rewound');
+      const [report] = await done(MessageType.WORKSHOP_PASSAGE_SEARCH_OPEN_REPORT);
+      expect(report).toEqual(expect.objectContaining({ outcome: 'refused', reason: 'not-held' }));
+      expect(logs()).toContain('room rewound kept=0 dropped=1');
     });
   });
 

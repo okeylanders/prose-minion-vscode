@@ -14,13 +14,17 @@
  * - **One search at a time** in this window's Workshop; a second Run is
  *   refused in the room's busy words. The search runs on the engine's own
  *   model: the persona's model never reads the files.
- * - **A search belongs to the room it began in.** A room replaced while it
- *   runs (the revision moved, or the card's turn gone) aborts it, and what
- *   it found goes nowhere. Disposal aborts it too.
+ * - **A search belongs to the room it began in.** The coordinator tells
+ *   each replacement as it lands, a Rewind's too, and the running search's
+ *   calls are aborted then, whether or not anything is drawn or a call
+ *   answers (PR #296 F3); what it found goes nowhere. A card in another room
+ *   never reads as running, even under the same turn id. Disposal aborts it
+ *   too.
  * - **Held results are this window's:** the newest `heldResults`, by the
  *   card's turn. One is dropped only by eviction after an adopted delivery,
- *   by Discard, or when its room is replaced. A failed delivery never
- *   touches it.
+ *   by Discard, or when its room is replaced: a Rewind of the same open
+ *   room alone keeps the cards it left unchanged (the holder's rule). A
+ *   failed delivery never touches it.
  * - **Delivery** (D19a, D21) is a results-delivery directed run to the
  *   card's author. The host starts it only for a search that ended
  *   `complete` or `instance-limit`, with the room idle; any other waits for
@@ -70,6 +74,7 @@ import {
 import type { WorkshopPassageSearchListing } from '@/application/services/workshop/passageSearch/WorkshopReplyPassageSearch';
 import { workshopEditOfferAuthorTarget } from '@handlers/domain/workshop/WorkshopEditOfferHandler';
 import type { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopRouteContracts';
+import type { WorkshopRoomReplacement } from '@/application/services/workshop/WorkshopOpenRoomInstance';
 import {
   WorkshopPassageSearchResults,
   type WorkshopPassageSearchRefused as Refused,
@@ -115,6 +120,7 @@ export class WorkshopPassageSearchHandler {
   private search: RunningSearch | undefined;
   /** What this window holds for its cards, and their delivery. */
   private readonly results: WorkshopPassageSearchResults;
+  private readonly stopListening: () => void;
 
   constructor(
     private readonly session: WorkshopPassageSearchSession,
@@ -125,6 +131,7 @@ export class WorkshopPassageSearchHandler {
     private readonly outputChannel: LogSink
   ) {
     this.results = new WorkshopPassageSearchResults(session, room, (line) => this.log(line));
+    this.stopListening = room.onRoomReplaced((replacement) => this.roomReplaced(replacement));
   }
 
   registerRoutes(router: MessageRouter, registerMutation: WorkshopMutationRouteRegistrar): void {
@@ -150,7 +157,8 @@ export class WorkshopPassageSearchHandler {
   /** What this window is doing for a card, read each time a turn is sent to the webview (D19). */
   windowCard(turnId: string): WorkshopPassageSearchWindowCard | undefined {
     this.syncRoom();
-    const running = this.search?.turnId === turnId ? { ...(this.search.progress ? { progress: this.search.progress } : {}) } : undefined;
+    const search = this.runningOn(turnId);
+    const running = search ? { ...(search.progress ? { progress: search.progress } : {}) } : undefined;
     const held = this.results.countsOf(turnId);
     return running || held
       ? { ...(running ? { running } : {}), ...(held ? { held } : {}), ...(this.results.isSending(turnId) ? { sending: true } : {}) }
@@ -164,6 +172,7 @@ export class WorkshopPassageSearchHandler {
 
   /** The panel is closing: a running search stops, and its results go nowhere. */
   dispose(): void {
+    this.stopListening();
     this.search?.controller.abort();
     this.search = undefined;
     this.results.clear();
@@ -341,7 +350,7 @@ export class WorkshopPassageSearchHandler {
       return undefined;
     }
     return workshopPassageSearchStatus(this.session.readRoomLedger(), payload.turnId, {
-      running: this.search?.turnId === payload.turnId,
+      running: this.runningOn(payload.turnId) !== undefined,
       held: this.results.resultOf(payload.turnId) !== undefined
     });
   }
@@ -383,7 +392,21 @@ export class WorkshopPassageSearchHandler {
       && this.session.readRoomLedger().some((turn) => turn.id === search.turnId && turn.passageSearchRequest !== undefined);
   }
 
-  /** A room whose revision moved takes its running search with it; held results follow their cards (see the holder). */
+  /** The search on this card in this room: one begun in a room since replaced is another room's, whatever its turn id. */
+  private runningOn(turnId: string): RunningSearch | undefined {
+    return this.search?.turnId === turnId && this.search.roomRevision === this.session.readRoomRevision() ? this.search : undefined;
+  }
+
+  /** The coordinator's word, as the replacement lands: the running search stops now, and the holder applies its rule. */
+  private roomReplaced(replacement: WorkshopRoomReplacement): void {
+    if (this.search && !this.search.controller.signal.aborted) {
+      this.log(`room replaced turn=${this.search.turnId} search=stopped rewound=${replacement.rewound}`);
+      this.search.controller.abort();
+    }
+    this.results.roomReplaced(replacement);
+  }
+
+  /** A fallback for a replacement nobody told: a room whose revision moved takes its running search with it. */
   private syncRoom(): void {
     this.results.sync();
     if (this.search && this.search.roomRevision !== this.session.readRoomRevision()) {
