@@ -85,7 +85,7 @@ import {
 } from '@services/search/passage/PassageSearchOrganizer';
 import { buildPassageSearchPlan, type PassageSearchLeftOutFile } from '@services/search/passage/PassageSearchPlanning';
 import type { PassageSearchModelFacts, PassageSearchPriceSource } from '@services/search/passage/PassageSearchPrices';
-import { passageSearchReadUsages, withPassageSearchPass } from '@services/search/passage/PassageSearchPassUsage';
+import { passageSearchPriorUsages, withPassageSearchPass } from '@services/search/passage/PassageSearchPassUsage';
 import { refusedPlan } from '@services/search/passage/PassageSearchRefusals';
 import { PassageSearchReplyError, readPassageSearchReply } from '@services/search/passage/PassageSearchReplyCodec';
 
@@ -259,6 +259,8 @@ export class PassageSearchService {
         leftOut: plan.estimate.leftOut
       },
       ended,
+      // Every read that went out, metered or not; a pass adds its own (PR #295 re-review of ceb26a9a).
+      requests: tally.usages.length,
       ...(usage ? { usage } : {})
     };
     const result = plan.organize && engine
@@ -283,7 +285,7 @@ export class PassageSearchService {
     if (result.instances.length === 0 || options.signal?.aborted) {
       return result;
     }
-    return withPassageSearchPass(result, passageSearchReadUsages(result), this.log, () =>
+    return withPassageSearchPass(result, passageSearchPriorUsages(result), this.log, () =>
       this.organizer.organize(result, { plan, ...(options.signal ? { signal: options.signal } : {}) }));
   }
 

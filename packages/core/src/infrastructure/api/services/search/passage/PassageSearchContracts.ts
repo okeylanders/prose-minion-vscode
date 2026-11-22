@@ -271,6 +271,14 @@ export interface PassageSearchResult {
     readonly leftOut: PassageSearchLeftOut;
   };
   readonly ended: PassageSearchEnded;
+  /**
+   * Every model call dispatched for this result so far, metered or not: the
+   * reads that went out (`calls.dispatched`) and every organizing pass that
+   * did, inline or explicit, each retry included. Kept apart from `usage`,
+   * which is absent when no call reported any, so a later pass counts them
+   * all (PR #295 re-review of ceb26a9a).
+   */
+  readonly requests: number;
   readonly usage?: TokenUsage;
 }
 

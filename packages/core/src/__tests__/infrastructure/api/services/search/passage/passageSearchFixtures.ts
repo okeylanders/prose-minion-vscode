@@ -56,7 +56,7 @@ export function instanceOf(number: number, overrides: Partial<PassageSearchInsta
   };
 }
 
-/** A result over `instances`, its label table counted from them as the host counts it. */
+/** A result over `instances`, its label table counted from them as the host counts it, and as many requests as reads dispatched. */
 export function resultOf(instances: readonly PassageSearchInstance[], overrides: Partial<PassageSearchResult> = {}): PassageSearchResult {
   const labels = new Map<string, { count: number; files: Set<string> }>();
   for (const instance of instances) {
@@ -65,6 +65,7 @@ export function resultOf(instances: readonly PassageSearchInstance[], overrides:
     row.files.add(instance.file);
     labels.set(instance.label, row);
   }
+  const calls = overrides.calls ?? { planned: 1, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 1 };
   return {
     question: QUESTION,
     model: PASSAGE_MODEL,
@@ -73,9 +74,11 @@ export function resultOf(instances: readonly PassageSearchInstance[], overrides:
     // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the closed drop reasons.
     dropped: { 'quote-not-found': 0, 'quote-ambiguous': 0, malformed: 0, duplicate: 0 },
     overLimit: 0,
-    calls: { planned: 1, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 0, dispatched: 1 },
+    calls,
     files: { planned: [], searched: { full: 0, partial: 0, none: 0 }, leftOut: { unreadable: 0, unsplittable: 0, empty: 0 } },
     ended: 'complete',
+    // Its reads, unless the test says otherwise.
+    requests: calls.dispatched,
     ...overrides
   };
 }

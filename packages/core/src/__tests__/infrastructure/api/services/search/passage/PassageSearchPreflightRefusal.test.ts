@@ -119,6 +119,7 @@ describe('A plan priced on an unknown window, run once the catalog knows a 16,38
     expect(host.provider).toHaveBeenCalledTimes(2);
     expect(result.calls).toEqual({ planned: 2, answered: 1, failed: 0, cut: 0, cancelled: 0, unsent: 0, tooLarge: 1, dispatched: 1 });
     expect(result.ended).toBe('complete');
+    expect(result.requests).toBe(2);
     expect(result.analysis?.headline).toBe('The Rabbit keeps checking the hour.');
     expect(result.usage).toStrictEqual({ promptTokens: 16, completionTokens: 8, totalTokens: 24, requestCount: 2, costUsd: 0.02, cachedTokens: 10, cacheWriteTokens: 6 });
     expect(result.files.planned.map((file) => [file.displayPath, file.chunks.admitted, file.searched])).toEqual([['chapters/long.md', 0, 'none'], ['chapters/1.md', 1, 'full']]);
@@ -144,6 +145,7 @@ describe('A plan priced on an unknown window, run once the catalog knows a 16,38
 
     expect(host.provider).toHaveBeenCalledTimes(2);
     expect(organized.analysis?.headline).toBe('The Rabbit keeps checking the hour.');
+    expect([reads.requests, organized.requests]).toEqual([1, 2]);
     expect(organized.usage).toStrictEqual({ promptTokens: 16, completionTokens: 8, totalTokens: 24, requestCount: 2, costUsd: 0.02, cachedTokens: 10, cacheWriteTokens: 6 });
   });
 
@@ -162,6 +164,7 @@ describe('A plan priced on an unknown window, run once the catalog knows a 16,38
     const organized = await host.service.organize(reads, priced.plan);
     // One read and the pass: two requests. The read's usage is unknown, so no cost or cache total is claimed.
     expect(organized.usage).toStrictEqual({ promptTokens: 8, completionTokens: 4, totalTokens: 12, requestCount: 2 });
+    expect(organized.requests).toBe(2);
   });
 });
 

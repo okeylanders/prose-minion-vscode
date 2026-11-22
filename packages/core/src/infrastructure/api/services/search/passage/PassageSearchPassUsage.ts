@@ -11,6 +11,9 @@
  * - **A pass that sent nothing adds no entry** (`usages` is empty): it is
  *   told apart from a pass that was dispatched and reported no usage, whose
  *   entry is `undefined`.
+ * - **Requests are counted apart from usage** (`result.requests`): every
+ *   call dispatched for the result, each pass and retry included, whether
+ *   or not any reported usage. A pass adds the calls it dispatched.
  *
  * Logs carry fault kinds only.
  */
@@ -23,30 +26,31 @@ import type { PassageSearchResult } from '@services/search/passage/PassageSearch
 import type { PassageSearchOrganized } from '@services/search/passage/PassageSearchOrganizer';
 
 /**
- * A finished result's read calls as usage entries, for a pass made of it
- * afterwards. A result with a usage total gives that total as one entry: it
- * carries its own request count, and a cost it already withholds stays
- * withheld. A result with none, whose reads were dispatched all the same,
- * gives one unknown entry per dispatched read (`calls.dispatched`, the
- * count of entries the run itself recorded), so those requests are counted
- * and no cost is shown as complete. A read that was never sent (`unsent`,
- * or `tooLarge`: refused by the engine's own preflight) is no request, and
- * gives none: nothing here infers a dispatch from a failure.
+ * Every call a finished result already made, as usage entries, for a pass
+ * made of it afterwards. A result with a usage total gives that total as
+ * one entry: it carries its own request count, and a cost it already
+ * withholds stays withheld. A result with none, whose calls were dispatched
+ * all the same, gives one unknown entry per call it counts (`requests`: its
+ * reads and every earlier pass), so those requests are counted however many
+ * passes were tried, and no cost is shown as complete. A call that was never
+ * sent is no request, and gives none: nothing here infers a dispatch from a
+ * failure.
  */
-export function passageSearchReadUsages(result: Pick<PassageSearchResult, 'usage' | 'calls'>): ReadonlyArray<TokenUsage | undefined> {
+export function passageSearchPriorUsages(result: Pick<PassageSearchResult, 'usage' | 'requests'>): ReadonlyArray<TokenUsage | undefined> {
   if (result.usage) {
     return [result.usage];
   }
-  return Array.from({ length: result.calls.dispatched }, () => undefined);
+  return Array.from({ length: result.requests }, () => undefined);
 }
 
 /**
- * `result` with what `pass` came to: its analysis, or why it has none, and
- * the usage of both stages. `readUsages` are the read calls' own entries.
+ * `result` with what `pass` came to: its analysis, or why it has none, the
+ * usage of both stages, and its requests with the pass's own. `priorUsages`
+ * are the entries of every call `result` already made.
  */
 export async function withPassageSearchPass(
   result: PassageSearchResult,
-  readUsages: ReadonlyArray<TokenUsage | undefined>,
+  priorUsages: ReadonlyArray<TokenUsage | undefined>,
   log: LogSink,
   pass: () => Promise<PassageSearchOrganized | undefined>
 ): Promise<PassageSearchResult> {
@@ -60,10 +64,12 @@ export async function withPassageSearchPass(
   if (!organized) {
     return result;
   }
-  const usage = sumTokenUsage([...readUsages, ...organized.usages]);
+  const usage = sumTokenUsage([...priorUsages, ...organized.usages]);
   const { analysis: _analysis, analysisMissing: _missing, usage: _usage, ...rest } = result;
   return {
     ...rest,
+    // One per call the pass dispatched, metered or not: an attempt is never lost to a missing usage record.
+    requests: result.requests + organized.usages.length,
     ...(organized.kind === 'analysis' ? { analysis: organized.analysis } : { analysisMissing: organized.reason }),
     ...(usage ? { usage } : {})
   };

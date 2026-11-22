@@ -22,7 +22,7 @@ jest.mock('p-limit', () => ({
 }));
 
 import type { PassageSearchPlan } from '@services/search/passage/PassageSearchContracts';
-import { passageSearchReadUsages } from '@services/search/passage/PassageSearchPassUsage';
+import { passageSearchPriorUsages } from '@services/search/passage/PassageSearchPassUsage';
 import type { PassageSearchService } from '@services/search/passage/PassageSearchService';
 import {
   PASSAGE_MODEL,
@@ -222,9 +222,10 @@ describe('One usage total over the reads and the pass (PR #295 P2)', () => {
     const host = createHost([ok()]);
     expect((await host.service.organize(unmeteredReads, await planOf(host.organizer, unmeteredReads))).usage)
       .toEqual({ promptTokens: 100, completionTokens: 20, totalTokens: 120, requestCount: 3 });
-    // Reads never sent are no requests: neither those not made nor those the engine's preflight refused (PR #295 re-review).
-    expect(passageSearchReadUsages({ calls: { planned: 5, answered: 1, failed: 1, cut: 0, cancelled: 0, unsent: 1, tooLarge: 2, dispatched: 2 } }))
-      .toStrictEqual([undefined, undefined]);
+    // Calls never sent are no requests: a result with no usage gives one unknown entry per request it counts, and no more.
+    expect(passageSearchPriorUsages({ requests: 2 })).toStrictEqual([undefined, undefined]);
+    expect(passageSearchPriorUsages({ requests: 0 })).toStrictEqual([]);
+    expect(passageSearchPriorUsages({ requests: 4, usage: metered.usage })).toStrictEqual([metered.usage]);
     // A pass that sent nothing leaves a result's usage exactly as it was.
     const none = createHost([ok()], { engine: false });
     const plan = await planOf(createHost().organizer, metered);
@@ -293,5 +294,29 @@ describe('One usage total over the reads and the pass (PR #295 P2)', () => {
     const later = createHost([PASS]);
     const explicit = await later.service.organize(unorganized, await planOf(later.organizer, unorganized));
     expect(explicit.usage).toStrictEqual(inline.usage);
+  });
+
+  it('keeps every attempt in the request count however many explicit retries there are, metered or not (re-review of ceb26a9a)', async () => {
+    // One unmetered hit, five unmetered read failures (the streak ends the reads), one unmetered failed explicit
+    // pass, then one metered pass that succeeds: eight requests, and no cost or cache total, since six never reported one.
+    const host = createHost([{ ...TOOK, ...UNMETERED }, ...Array.from({ length: 5 }, () => new Error('503')), new Error('503'), PASS]);
+    const files = Array.from({ length: 6 }, (_unused, index) => sourceFile(`chapters/${index + 1}.md`, RABBIT_CHAPTER, { identity: `/book/${index + 1}` }));
+    const plan = await host.service.plan({ model: PASSAGE_MODEL, question: QUESTION, organize: false, files });
+    if (plan.kind !== 'planned') {
+      throw new Error('expected a plan');
+    }
+    const reads = await host.service.run(plan.plan);
+    expect(reads).toMatchObject({ ended: 'provider-failed', requests: 6, calls: { answered: 1, failed: 5, dispatched: 6 } });
+    expect(reads).not.toHaveProperty('usage');
+
+    const failed = await host.service.organize(reads, await planOf(host.organizer, reads));
+    expect(failed).toMatchObject({ analysisMissing: 'failed', requests: 7 });
+    expect(failed).not.toHaveProperty('usage');
+
+    const organized = await host.service.organize(failed, await planOf(host.organizer, failed));
+    expect(host.runInitial).toHaveBeenCalledTimes(8);
+    expect(organized.analysis?.headline).toBe('The Rabbit keeps checking the hour.');
+    expect(organized.requests).toBe(8);
+    expect(organized.usage).toStrictEqual({ promptTokens: 100, completionTokens: 20, totalTokens: 120, requestCount: 8 });
   });
 });

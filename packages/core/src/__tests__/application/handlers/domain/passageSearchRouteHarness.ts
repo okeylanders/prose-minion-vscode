@@ -102,6 +102,7 @@ export function aliceResult(overrides: Partial<PassageSearchResult> = {}): Passa
       leftOut: { unreadable: 0, unsplittable: 0, empty: 0 }
     },
     ended: 'complete',
+    requests: 3,
     ...overrides
   };
 }
