@@ -133,7 +133,7 @@ export function useWorkshopPassageSearch({ roomKey, roomRevision }: UseWorkshopP
     setFeedback(new Map());
   }
   /** The room on screen, for answers that arrive later; set before any effect below can post. */
-  const room = React.useRef({ key: roomKey, revision: roomRevision });
+  const shownRoom = React.useRef(roomKey);
   const pending = React.useRef(new Map<string, { turnId: string; action: WorkshopPassageSearchAction; roomKey: string }>());
   const estimatesRef = React.useRef(estimates);
   estimatesRef.current = estimates;
@@ -199,9 +199,9 @@ export function useWorkshopPassageSearch({ roomKey, roomRevision }: UseWorkshopP
   const openReport = React.useCallback((turnId: string) => void post('open-report', turnId), [post]);
 
   /** A new room drops every request still waited for; the maps were emptied in the render that drew it. */
-  const clearPendingWhenRoomChanges = React.useCallback((key: string, revision: number | undefined) => {
-    const changed = room.current.key !== key;
-    room.current = { key, revision };
+  const clearPendingWhenRoomChanges = React.useCallback((key: string) => {
+    const changed = shownRoom.current !== key;
+    shownRoom.current = key;
     if (changed) {
       pending.current.clear();
       busyRef.current.clear();
@@ -209,8 +209,8 @@ export function useWorkshopPassageSearch({ roomKey, roomRevision }: UseWorkshopP
   }, []);
   // A layout effect: it runs in the commit, before any passive effect, so a card's first ask in the new room is never dropped.
   React.useLayoutEffect(() => {
-    clearPendingWhenRoomChanges(roomKey, roomRevision);
-  }, [clearPendingWhenRoomChanges, roomKey, roomRevision]);
+    clearPendingWhenRoomChanges(roomKey);
+  }, [clearPendingWhenRoomChanges, roomKey]);
 
   const handleResult = React.useCallback((message: WorkshopPassageSearchResultMessage) => {
     const { requestId, outcome, estimate, message: words } = message.payload;
@@ -222,7 +222,7 @@ export function useWorkshopPassageSearch({ roomKey, roomRevision }: UseWorkshopP
     if (!(owner.action === 'run' && outcome === 'started')) {
       pending.current.delete(requestId);
     }
-    if (owner.roomKey !== room.current.key) {
+    if (owner.roomKey !== shownRoom.current) {
       return;
     }
     const { turnId, action } = owner;
@@ -260,7 +260,7 @@ export function useWorkshopPassageSearch({ roomKey, roomRevision }: UseWorkshopP
   const handleProgress = React.useCallback((message: WorkshopPassageSearchProgressMessage) => {
     const { requestId, done, planned, found } = message.payload;
     const owner = pending.current.get(requestId);
-    if (!owner || owner.action !== 'run' || owner.roomKey !== room.current.key) {
+    if (!owner || owner.action !== 'run' || owner.roomKey !== shownRoom.current) {
       return;
     }
     setProgress((current) => withEntry(current, owner.turnId, { done, planned, found }));

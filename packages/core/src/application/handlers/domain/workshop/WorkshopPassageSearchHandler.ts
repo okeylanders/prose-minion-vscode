@@ -23,16 +23,17 @@
  * - **Held results are this window's:** at most `heldResults`, by the
  *   card's turn. A Run is refused before anything is planned or sent while
  *   every place holds a result not yet delivered (`results-full`): Send or
- *   Discard frees one. One is dropped only by eviction after an adopted delivery,
- *   by Discard, or when its room is replaced: a Rewind of the same open
- *   room alone keeps the cards it left unchanged (the holder's rule). A
- *   failed delivery never touches it.
+ *   Discard frees one. One is dropped only by eviction after an adopted
+ *   delivery, by Discard, or when its room is replaced: a Rewind of the same
+ *   open room alone keeps the cards it left unchanged (the holder's rule).
+ *   A failed delivery never touches it.
  * - **Delivery** (D19a, D21) is a results-delivery directed run to the
  *   card's author. The host starts it only for a search that ended
  *   `complete` or `instance-limit`, with the room idle and no session save
- *   or replacement pending; any other waits for the writer's Send. Every send checks first, with nothing awaited before
- *   the dispatch: this room, the card still here and undelivered, its
- *   author still in the room, no run going.
+ *   or replacement pending; any other waits for the writer's Send. Every
+ *   send checks first, with nothing awaited before the dispatch: no session
+ *   operation pending, this room, the card still here and undelivered, its
+ *   author still in the room, no run going, and a frame that fits.
  * - **Logs** carry turn ids, counts, closed outcomes and reason kinds:
  *   never the question, a quote, a note, a label or a path (D22).
  */
