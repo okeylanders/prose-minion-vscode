@@ -22,7 +22,6 @@
 import type {
   WorkshopPassageSearchCardView,
   WorkshopPassageSearchCounts,
-  WorkshopPassageSearchEnded,
   WorkshopPassageSearchProgress,
   WorkshopPassageSearchRequest,
   WorkshopPassageSearchStatus,
@@ -41,7 +40,8 @@ export interface WorkshopPassageSearchWindowFacts {
 /** The same, with what a card draws from it. */
 export interface WorkshopPassageSearchWindowCard {
   readonly running?: { readonly progress?: WorkshopPassageSearchProgress };
-  readonly held?: WorkshopPassageSearchCounts;
+  /** The result this window holds: its counts, and whether it read less than it planned (`WorkshopPassageSearchCoverage`). */
+  readonly held?: { readonly counts: WorkshopPassageSearchCounts; readonly partial: boolean };
   /** Its results are on their way to the persona now. */
   readonly sending?: boolean;
 }
@@ -76,11 +76,6 @@ export function workshopPassageSearchReceipt(ledger: readonly Turn[], turnId: st
     }
   }
   return undefined;
-}
-
-/** A search that ended before it read everything: never delivered by the host (D21). */
-export function isWorkshopPassageSearchPartial(ended: WorkshopPassageSearchEnded): boolean {
-  return ended !== 'complete' && ended !== 'instance-limit';
 }
 
 /**
@@ -118,7 +113,7 @@ export function workshopPassageSearchRequestForWebview(
   } else if (status === 'running') {
     view = { status, ...(window?.running?.progress ? { progress: { ...window.running.progress } } : {}) };
   } else if (status === 'ready' && window?.held) {
-    view = { status, counts: window.held, partial: isWorkshopPassageSearchPartial(window.held.ended), ...(window.sending ? { sending: true as const } : {}) };
+    view = { status, counts: window.held.counts, partial: window.held.partial, ...(window.sending ? { sending: true as const } : {}) };
   } else {
     view = { status: status === 'cancelled' ? 'cancelled' : 'pending' };
   }

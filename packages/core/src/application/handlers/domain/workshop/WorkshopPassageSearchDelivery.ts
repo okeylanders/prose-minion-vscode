@@ -39,7 +39,6 @@
 
 import type {
   WorkshopChatTarget,
-  WorkshopPassageSearchCounts,
   WorkshopPassageSearchRefusal,
   WorkshopPersonaId,
   WorkshopTurn
@@ -52,7 +51,8 @@ import {
   WORKSHOP_PASSAGE_SEARCH_RESULTS_MESSAGE
 } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchDirective';
 import { workshopPassageSearchCounts, workshopPassageSearchView } from '@handlers/domain/workshop/WorkshopPassageSearchResultView';
-import { workshopPassageSearchStatus } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchStatus';
+import { workshopPassageSearchStatus, type WorkshopPassageSearchWindowCard } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchStatus';
+import { isWorkshopPassageSearchFullyRead, workshopPassageSearchCoverage } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchCoverage';
 import { workshopEditOfferAuthorTarget } from '@handlers/domain/workshop/WorkshopEditOfferHandler';
 import type { WorkshopDirectedRunResult, WorkshopResultsDeliveryRun } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import type { WorkshopOpenRoomInstancePort, WorkshopRoomReplacement } from '@/application/services/workshop/WorkshopOpenRoomInstance';
@@ -156,9 +156,14 @@ export class WorkshopPassageSearchResults {
     return this.held.get(turnId)?.result;
   }
 
-  countsOf(turnId: string): WorkshopPassageSearchCounts | undefined {
+  /** What a card shows of the result held for it: its counts, and whether it read less than it planned. */
+  heldOf(turnId: string): WorkshopPassageSearchWindowCard['held'] {
     const result = this.resultOf(turnId);
-    return result && workshopPassageSearchCounts(workshopPassageSearchView(result, turnId));
+    if (!result) {
+      return undefined;
+    }
+    const view = workshopPassageSearchView(result, turnId);
+    return { counts: workshopPassageSearchCounts(view), partial: !isWorkshopPassageSearchFullyRead(workshopPassageSearchCoverage(view)) };
   }
 
   /** Every place holds a result not yet delivered: a new search would have nowhere to go. */

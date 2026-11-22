@@ -26,9 +26,10 @@
  *   most `heldResults`, so a Run is refused before anything is planned while
  *   every place holds a result not yet delivered (`results-full`).
  * - **Delivery** (D19a, D21) is a results-delivery directed run to the
- *   card's author. The host starts it only for a search that ended
- *   `complete` or `instance-limit`, with the room idle and no session save
- *   or replacement pending; any other waits for the writer's Send. Every
+ *   card's author. The host starts it only for a search that read
+ *   everything it planned (`isWorkshopPassageSearchFullyRead`), with the
+ *   room idle and no session save or replacement pending; any other waits
+ *   for the writer's Send. Every
  *   send checks first, with nothing awaited before the dispatch: no session
  *   operation pending, this room, the card still here and undelivered, its
  *   author still in the room, no run going, and a frame that fits.
@@ -67,11 +68,8 @@ import {
 } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchEngineRequest';
 import type { PassageSearchReportExport } from '@handlers/domain/PassageSearchReportExport';
 import { workshopPassageSearchCounts, workshopPassageSearchView } from '@handlers/domain/workshop/WorkshopPassageSearchResultView';
-import {
-  isWorkshopPassageSearchPartial,
-  workshopPassageSearchStatus,
-  type WorkshopPassageSearchWindowCard
-} from '@/application/services/workshop/passageSearch/WorkshopPassageSearchStatus';
+import { workshopPassageSearchStatus, type WorkshopPassageSearchWindowCard } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchStatus';
+import { isWorkshopPassageSearchFullyRead, workshopPassageSearchCoverage } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchCoverage';
 import type { WorkshopPassageSearchListing } from '@/application/services/workshop/passageSearch/WorkshopReplyPassageSearch';
 import { workshopEditOfferAuthorTarget } from '@handlers/domain/workshop/WorkshopEditOfferHandler';
 import type { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopRouteContracts';
@@ -155,7 +153,7 @@ export class WorkshopPassageSearchHandler {
     this.syncRoom();
     const search = this.runningOn(turnId);
     const running = search ? { ...(search.progress ? { progress: search.progress } : {}) } : undefined;
-    const held = this.results.countsOf(turnId);
+    const held = this.results.heldOf(turnId);
     return running || held
       ? { ...(running ? { running } : {}), ...(held ? { held } : {}), ...(this.results.isSending(turnId) ? { sending: true } : {}) }
       : undefined;
@@ -258,11 +256,12 @@ export class WorkshopPassageSearchHandler {
       return this.overtaken(payload);
     }
     this.results.hold(payload.turnId, result);
-    const counts = workshopPassageSearchCounts(workshopPassageSearchView(result, payload.turnId));
+    const view = workshopPassageSearchView(result, payload.turnId);
+    const counts = workshopPassageSearchCounts(view);
     this.log(`run finished turn=${payload.turnId} ended=${counts.ended} instances=${counts.instances} files=${counts.files} searched=${counts.searched ?? 0} `
       + `answered=${counts.calls.answered} failed=${counts.calls.failed} cut=${counts.calls.cut} unsent=${counts.calls.unsent} cancelled=${counts.calls.cancelled ?? 0} dropped=${counts.dropped}`);
-    // Only a search that read everything is delivered by the host, and only into an idle room (D21).
-    const auto = !isWorkshopPassageSearchPartial(counts.ended) && this.room.activeRunLabel() === undefined;
+    // Only a search that read everything it planned is delivered by the host, and only into an idle room (D21).
+    const auto = isWorkshopPassageSearchFullyRead(workshopPassageSearchCoverage(view)) && this.room.activeRunLabel() === undefined;
     const sent = auto ? await this.results.deliver(payload.turnId) : undefined;
     this.postState();
     const words = workshopPassageSearchCountsWords(counts);

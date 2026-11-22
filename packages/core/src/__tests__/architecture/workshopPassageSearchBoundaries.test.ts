@@ -14,6 +14,7 @@ const FAMILY_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', '
 
 /** Closed: a new module joins on purpose. */
 const WORKSHOP_PASSAGE_SEARCH_MODULES = [
+  'WorkshopPassageSearchCoverage.ts',
   'WorkshopPassageSearchDirective.ts',
   'WorkshopPassageSearchEngineRequest.ts',
   'WorkshopPassageSearchRecords.ts',
@@ -26,6 +27,7 @@ const FEATURE_FILES = [
   'application/handlers/domain/workshop/WorkshopPassageSearchHandler.ts',
   'application/handlers/domain/workshop/WorkshopPassageSearchDelivery.ts',
   'application/handlers/domain/workshop/WorkshopPassageSearchResultView.ts',
+  'application/handlers/domain/workshop/WorkshopPassageSearchRunSlot.ts',
   'utils/workshopReplyPassageSearch.ts',
   'shared/constants/workshopPassageSearchWords.ts',
   'shared/types/messages/workshop/passageSearch.ts',

@@ -96,7 +96,8 @@ export function workshopPassageSearchCountsWords(counts: WorkshopPassageSearchCo
   const missing = counts.calls.failed + counts.calls.unsent + (counts.calls.cancelled ?? 0);
   return `Found ${workshopPassageSearchFoundWords(counts)}.${searchedWords(counts)}`
     + (counts.ended === 'instance-limit' ? ' The search reached the most instances it keeps.' : '')
-    + (missing > 0 ? ` ${plural(missing, 'read')} did not finish.` : '');
+    + (missing > 0 ? ` ${plural(missing, 'read')} did not finish, so the text ${missing === 1 ? 'it covers' : 'they cover'} was not searched.` : '')
+    + (counts.calls.cut > 0 ? ` ${plural(counts.calls.cut, 'reply was', 'replies were')} cut off, so instances past the cut are missing.` : '');
 }
 
 /** "23 calls · ≈ $0.42 · model": the count first, then the price, then the model. */

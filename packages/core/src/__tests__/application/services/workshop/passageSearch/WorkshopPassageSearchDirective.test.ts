@@ -15,7 +15,6 @@ import {
   renderWorkshopPassageSearchSummary,
   WORKSHOP_PASSAGE_SEARCH_RESULTS_TAG
 } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchDirective';
-import { isWorkshopPassageSearchPartial } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchStatus';
 import { workshopPassageSearchCounts, workshopPassageSearchView } from '@handlers/domain/workshop/WorkshopPassageSearchResultView';
 import {
   workshopPassageSearchEngineRequest,
@@ -236,11 +235,6 @@ describe('the one module that reads the engine\'s result', () => {
     expect(counts(result)).toEqual(expect.objectContaining({ files: 1, searched: 2, calls: { planned: 6, answered: 3, failed: 0, cut: 0, unsent: 1, cancelled: 2 }, ended: 'stopped' }));
     expect(workshopPassageSearchCountsWords(counts(result)))
       .toBe('Stopped: 1 instance from 3 of 6 reads. 2 calls were stopped in flight and may still have been charged.');
-  });
-
-  it('never calls a stopped, key-changed or provider-failed search complete', () => {
-    expect((['complete', 'instance-limit', 'stopped', 'key-changed', 'provider-failed'] as const).map(isWorkshopPassageSearchPartial))
-      .toEqual([false, false, true, true, true]);
   });
 
   it('is display-safe, and offers no organize action', () => {

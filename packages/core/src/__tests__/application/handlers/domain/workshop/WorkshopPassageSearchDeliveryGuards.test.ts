@@ -6,7 +6,10 @@
  *   records and sends nothing, and the card stays ready with its report
  *   (PR #296 F4);
  * - a Run while every held-result place holds a result not yet delivered
- *   plans and sends nothing, and says how to free one (PR #296 F5).
+ *   plans and sends nothing, and says how to free one (PR #296 F5);
+ * - a search that ended `complete` but did not read everything it planned
+ *   is never sent by the host: it waits for Send partial results, and the
+ *   card and the directive say what was not searched.
  * Made-up text: Alice.
  */
 
@@ -103,5 +106,26 @@ describe('a passage search\'s delivery, refused before anything is sent', () => 
     for (const card of [cards[2], cards[3], cards[bound], sixth]) {
       expect(await driver.view(card.id)).toEqual(expect.objectContaining({ status: 'ready' }));
     }
+  });
+
+  it.each([
+    ['a failed read', { calls: { planned: 4, answered: 3, failed: 1, cut: 0, cancelled: 0, unsent: 0 } },
+      '1 read did not finish, so the text it covers was not searched.', '1 call failed, so the text it covers was not searched.'],
+    ['a reply cut off', { calls: { planned: 4, answered: 4, failed: 0, cut: 1, cancelled: 0, unsent: 0 } },
+      '1 reply was cut off, so instances past the cut are missing.', '1 reply was cut off at the length limit']
+  ])('a complete search with %s waits for Send partial results, saying what was not searched', async (_name, change, cardWords, directiveWords) => {
+    const { harness, search } = driver;
+    search.result = aliceResult(3, change);
+    const answers = await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN, { planKey: 'key-1' });
+    expect(answers.at(-1).message).toContain(cardWords);
+    expect(harness.service.continueConversation).not.toHaveBeenCalled();
+    expect(driver.requestTurns()).toHaveLength(0);
+    expect(await driver.view()).toEqual(expect.objectContaining({ status: 'ready', partial: true }));
+
+    const [sent] = await driver.done(MessageType.WORKSHOP_PASSAGE_SEARCH_SEND);
+    expect(sent.outcome).toBe('done');
+    const [, message] = harness.service.continueConversation.mock.calls.at(-1) as unknown as [string, string];
+    expect(message).toContain(directiveWords);
+    expect(search.run).toHaveBeenCalledTimes(1);
   });
 });

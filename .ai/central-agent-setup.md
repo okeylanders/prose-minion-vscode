@@ -2474,10 +2474,14 @@ request, its card, or how its results reach the persona:
     branch; a thrown failure takes the room handler's failed-directed-run
     catch. Neither touches the held result, so the card stays `ready` and
     Send retries without searching again.
-  - **The host sends only a search that read everything** (`complete`,
-    `instance-limit`) into an idle room with no session save or replacement
-    pending (the mutation routes' own guard; PR #296). Any other waits for
-    Send.
+  - **The host sends only a search that read everything it planned**
+    (`isWorkshopPassageSearchFullyRead`, `WorkshopPassageSearchCoverage`:
+    `complete` or `instance-limit`, every planned file searched in full, no
+    read failed, cut, stopped in flight or unsent) into an idle room with no
+    session save or replacement pending (the mutation routes' own guard; PR
+    #296). Any other waits on the card for **Send partial results**, and the
+    card's `partial` reads the same predicate. A new way for a read to go
+    unsearched joins that predicate only.
   - **Every send checks first,** nothing awaited before the dispatch
     (`WorkshopPassageSearchResults.deliver`).
   - **At most `heldResults` (4) results a window.** One not yet delivered
@@ -2487,6 +2491,10 @@ request, its card, or how its results reach the persona:
   - **A delivery's provisional request turn leaves with the panel too:**
     disposal rolls it back while it is still the active run, as preemption
     does (PR #296 F2).
+  - **One search a window, by operation** (`WorkshopPassageSearchRunSlot`;
+    PR #296 re-review). A replacement frees the slot as it lands; every
+    exit releases only its own operation. Closing the panel closes the slot
+    and the holder: after any await, nothing is held, sent or posted.
 - **The directive** (`WorkshopPassageSearchDirective`) is evidence, never
   instructions, every model- or writer-written string neutralized, fitted
   by whole instances to half the room left through
