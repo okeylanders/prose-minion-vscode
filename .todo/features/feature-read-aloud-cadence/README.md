@@ -93,7 +93,7 @@ The persona asked whether this should be a microscope for a highlighted
 passage, or a chapter pass that flags only the 5–8 spots where the mouth
 trips. Recommended: both, in this order.
 
-1. **A persona capability,** say `cadence.scan`. It is free and instant,
+1. **A persona capability,** `measure.cadence`, in the [persona measures](../feature-workshop-persona-measures/README.md) family (it was `cadence.scan` before that family was filed). It is free and instant,
    with no model call: it returns the host's maps and measures for a
    passage, bounded by sentences. A persona discussing a line works from
    real stress data instead of guessing it. It is the smallest piece, and
@@ -191,6 +191,8 @@ trips. Recommended: both, in this order.
 
 - [Passage Search](../feature-passage-search/README.md): another tool that
   reads with a model and checks with code.
+- [Personas Run the Deterministic Measures](../feature-workshop-persona-measures/README.md):
+  the family this capability joins as `measure.cadence`.
 - Craft Flags (ADR 2026-10-21, Slice 3c) and the Lightbox's group D: where
   a chapter pass could live.
 
