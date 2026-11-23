@@ -30,6 +30,8 @@ const FEATURE_FILES = [
   'application/handlers/domain/workshop/WorkshopPassageSearchRunSlot.ts',
   'utils/workshopReplyPassageSearch.ts',
   'shared/constants/workshopPassageSearchWords.ts',
+  // ADR 2026-11-20 S45: where a card looks, a narrowed group with its patterns, for the card and the directive.
+  'shared/utils/workshopPassageSearchPlaces.ts',
   'shared/types/messages/workshop/passageSearch.ts',
   'infrastructure/api/orchestration/ConversationWindowMeasure.ts',
   'presentation/webview/hooks/domain/workshop/useWorkshopPassageSearch.ts',

@@ -167,7 +167,11 @@ async function checkRequest(
       scopes.push({ kind: 'excerpt' });
     } else if (scope.kind === 'group') {
       const group = scope.group as ContextPathGroup;
-      if (scope.match && walk) {
+      if (scope.match) {
+        // Never widened: a narrowing with no walk behind it is not checked.
+        if (!walk) {
+          return 'listing-not-read';
+        }
         const narrowed = narrowContextGroup(listed, { group, patterns: scope.match }, walk);
         if (narrowed.kind === 'incomplete') {
           return 'catalog-unreadable';

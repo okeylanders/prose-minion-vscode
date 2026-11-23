@@ -306,10 +306,11 @@ function groupFiles(
   scope: Extract<PassageSearchScope, { kind: 'group' }>,
   walk: ContextGroupPatternWalk | undefined
 ): readonly ContextResourceCandidate[] {
-  if (scope.match === undefined || walk === undefined) {
+  if (scope.match === undefined) {
     return listed.filter((file) => file.group === scope.group);
   }
-  const narrowed = narrowContextGroup(listed, { group: scope.group, patterns: scope.match }, walk);
+  // Never widened: a narrowing with no walk behind it reads nothing.
+  const narrowed = walk ? narrowContextGroup(listed, { group: scope.group, patterns: scope.match }, walk) : { kind: 'incomplete' as const };
   if (narrowed.kind === 'incomplete') {
     throw new Refused(passageSearchRefusal('catalog-unreadable'));
   }
