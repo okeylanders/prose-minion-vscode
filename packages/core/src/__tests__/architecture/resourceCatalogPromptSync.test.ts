@@ -13,6 +13,8 @@
  * The real resolver walks a made-up *Alice* project.
  */
 /* eslint-disable @typescript-eslint/naming-convention -- made-up roots and setting keys, keyed by their paths and names. */
+import * as fs from 'fs';
+import * as path from 'path';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { LogSink } from '@/platform';
 import type { WorkshopCapabilityRequest } from '@shared/types/workshopCapabilities';
@@ -89,5 +91,15 @@ describe('the catalog\'s page form, taught and written', () => {
     expect(longest.every((pattern) => pattern.length === patternCharacters)).toBe(true);
     const call = workshopResourceCatalogCall({ group: 'chapters', match: longest, page: 9 });
     expect(decoded(call)).toEqual({ capability: 'resource.catalog', group: 'chapters', match: longest, page: 9 });
+  });
+});
+
+describe('the help reference (S48)', () => {
+  const help = fs.readFileSync(path.resolve(__dirname, '../../../resources/help/workshop.md'), 'utf8');
+  const section = help.split('\n## ').find((part) => part.startsWith('A passage search a persona asks for'))!;
+
+  it('states a narrowing\'s pattern count and the inventory\'s page size from their bounds', () => {
+    expect(/narrow a group with up to (\d+) patterns/.exec(section)?.[1]).toBe(String(PROMPT_BUDGETS.contextPaths.matchPatterns));
+    expect(/(\d+) to a page/.exec(section)?.[1]).toBe(String(pageSize));
   });
 });
