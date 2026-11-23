@@ -4,8 +4,9 @@
  * attachment's content and open-file routes.
  *
  * Both are reads: they resolve the webview's `{ group, path }` only through
- * the configured catalog (`readWorkshopReadInResource`), refuse anything
- * else, and never log file content or the writer's text.
+ * the configured catalog (`readWorkshopReadInResource`), with the group's
+ * authoritative listing for a pair the catalog misses (ADR 2026-11-20 S50),
+ * refuse anything else, and never log file content or the writer's text.
  *
  * A content request may also name the row it opened by `deliveredAt`. The
  * host then looks that row up in the chat target's manifest and answers with
@@ -89,7 +90,9 @@ export class WorkshopReadInRoutes {
     let payload: WorkshopReadInResourceContentPayload;
     try {
       const catalog = await this.contextIntakeService.openCatalog();
-      const read = await readWorkshopReadInResource(catalog, message.payload?.group, message.payload?.path);
+      const read = await readWorkshopReadInResource(
+        catalog, this.contextIntakeService.configuredGroupFiles, message.payload?.group, message.payload?.path
+      );
       if (read.kind === 'refused') {
         this.outputChannel.appendLine(`${LOG} Read-in content refused (${read.reason})`);
         payload = { ...ref, error: workshopReadInRefusalMessage(read.reason), canOpenInEditor: false };
@@ -156,8 +159,9 @@ export class WorkshopReadInRoutes {
     let resolution: WorkshopReadInResolution;
     try {
       const catalog = await this.contextIntakeService.openCatalog();
-      resolution = resolveWorkshopReadInResource(
+      resolution = await resolveWorkshopReadInResource(
         catalog.entries(),
+        this.contextIntakeService.configuredGroupFiles,
         message.payload?.group,
         message.payload?.path
       );

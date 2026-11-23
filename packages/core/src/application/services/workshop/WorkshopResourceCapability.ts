@@ -69,6 +69,7 @@ export class WorkshopResourceCapability {
   ) {
     this.readOperation = new WorkshopResourceReadOperation({
       resources: () => this.resources(),
+      groupFiles: this.providerFactory,
       load: async (resourcePath) => (await this.provider()).loadResources([resourcePath]),
       throwIfAborted: () => this.throwIfAborted(),
       rejected: (request, error, metadata) => this.rejected(request, error, metadata),

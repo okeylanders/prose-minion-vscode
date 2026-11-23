@@ -8,7 +8,9 @@
  *   selection excerpt names its document the same way. A pasted excerpt
  *   has no file, and is refused in words.
  * - **A configured file,** named by group and path through
- *   `findConfiguredResource`, the rule `resource.read` uses.
+ *   `resolveConfiguredResource`, the rule `resource.read` uses: the browse
+ *   listing, then, on a miss, the group's authoritative listing (ADR
+ *   2026-11-20 S50).
  *
  * The host path a file resolves to is host-side only: it reaches the
  * platform's ports, never a result, a card or a log.
@@ -18,7 +20,7 @@ import type { WorkshopExcerpt } from '@messages';
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import type { WorkshopHistoryFile } from '@shared/types/workshopCapabilities';
 import type { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
-import { findConfiguredResource } from '@/application/services/ConfiguredResourceLookup';
+import { resolveConfiguredResource, type ConfiguredResourceGroupFiles } from '@/application/services/ConfiguredResourceLookup';
 
 /** The room's excerpt file, as the history family may read it. */
 export type WorkshopHistoryExcerptFile =
@@ -87,7 +89,8 @@ export type WorkshopHistoryFileResolution =
 export async function resolveWorkshopHistoryFile(
   file: WorkshopHistoryFile,
   excerpt: WorkshopHistoryExcerptPort,
-  resources: () => Promise<readonly ContextResourceSummary[]>
+  resources: () => Promise<readonly ContextResourceSummary[]>,
+  groupFiles: ConfiguredResourceGroupFiles
 ): Promise<WorkshopHistoryFileResolution> {
   if (file.kind === 'excerpt') {
     const found = await excerpt.excerptFile();
@@ -104,7 +107,7 @@ export async function resolveWorkshopHistoryFile(
         return assertNever(found);
     }
   }
-  const lookup = findConfiguredResource(await resources(), file.group, file.path);
+  const lookup = await resolveConfiguredResource(await resources(), file.group, file.path, groupFiles);
   switch (lookup.kind) {
     case 'found':
       return {

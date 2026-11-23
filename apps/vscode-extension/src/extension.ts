@@ -342,10 +342,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopSessionService,
     workshopConversationSettingsService
   );
+  // The Read in reader looks a card's missed pair up in its group's authoritative listing (ADR 2026-11-20 S50).
   const workshopContextIntakeService = new WorkshopContextIntakeService(
     contextResourceResolver,
     platform.fileSystem,
-    platform.workspace
+    platform.workspace,
+    contextResourceResolver
   );
   const workshopSessionTimeService = new WorkshopSessionTimeService();
   // Pinned context (ADR 2026-11-04 D5, D9): one store, then the one library

@@ -8,6 +8,7 @@ import { FileSystem, FileType, Workspace } from '@/platform';
 import { ConfiguredResourceRef, WorkshopExcerptSource } from '@messages';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { createHash } from 'crypto';
+import { NO_CONFIGURED_GROUP_FILES, type ConfiguredResourceGroupFiles } from '@/application/services/ConfiguredResourceLookup';
 import { fileURLToPath, pathToFileURL } from 'url';
 import * as path from 'path';
 import {
@@ -207,7 +208,9 @@ export class WorkshopContextIntakeService {
   constructor(
     private readonly providerFactory: ContextResourceProviderFactory,
     private readonly fileSystem: FileSystem,
-    private readonly workspace: Workspace
+    private readonly workspace: Workspace,
+    /** The authoritative listing the Read in reader's missed pairs are looked up in (ADR 2026-11-20 S50). */
+    readonly configuredGroupFiles: ConfiguredResourceGroupFiles = NO_CONFIGURED_GROUP_FILES
   ) {}
 
   async openCatalog(): Promise<WorkshopContextIntakeCatalog> {

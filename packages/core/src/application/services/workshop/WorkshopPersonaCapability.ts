@@ -266,12 +266,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
     this.memoryCapability = new WorkshopProjectMemoryCapability(memory, session, outputChannel, turn);
     this.helpCapability = new WorkshopHelpCapability(help, outputChannel, turn);
     this.lensCapability = new WorkshopLensCapability(lenses, workshopInstalledLensOf(session), outputChannel, turn);
-    // A file's git history names configured files by the catalog `resource.read` uses (ADR 2026-11-19 D11).
+    // A file's git history names configured files by the rule `resource.read` uses (ADR 2026-11-19 D11; 2026-11-20 S50).
     let catalog: Promise<readonly ContextResourceSummary[]> | undefined;
     this.historyCapability = new WorkshopHistoryCapability(history, () => {
       catalog ??= resourceProviderFactory.createProvider(DEFAULT_CONTEXT_GROUPS).then((provider) => provider.listResources());
       return catalog;
-    }, outputChannel, turn);
+    }, outputChannel, turn, resourceProviderFactory);
     // The project's context paths, read-only: C1's scan and checker (ADR 2026-11-19 D26).
     this.locationsCapability = new WorkshopLocationsCapability(locations, outputChannel, turn);
   }

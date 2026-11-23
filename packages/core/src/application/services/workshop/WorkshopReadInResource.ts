@@ -3,15 +3,18 @@
  *
  * A manifest row names a file a persona read by `{ group, path }`. The webview
  * sends that pair back; this module decides whether it names a configured
- * project resource, exactly as `resource.read` would, and reads its current
- * text under `resource.read`'s ceilings. Anything else is refused by reason,
- * and a refusal never carries file content.
+ * project resource, exactly as `resource.read` would (`resolveConfiguredResource`:
+ * the browse listing, then, on a miss, the group's authoritative listing;
+ * ADR 2026-11-20 S50), and reads its current text under `resource.read`'s
+ * ceilings. So a card's recorded pair always opens, whichever group it
+ * names. Anything else is refused by reason, and a refusal never carries
+ * file content.
  */
 
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { isContextPathGroup } from '@shared/types/context';
-import { findConfiguredResource } from '@/application/services/ConfiguredResourceLookup';
+import { resolveConfiguredResource, type ConfiguredResourceGroupFiles } from '@/application/services/ConfiguredResourceLookup';
 import {
   configuredResourceFingerprint,
   isSafeConfiguredResourcePath,
@@ -81,11 +84,12 @@ export type WorkshopReadInRead =
   | { kind: 'refused'; reason: WorkshopReadInRefusalReason };
 
 /** Resolves a webview's `{ group, path }` against the configured catalog, or refuses it. */
-export function resolveWorkshopReadInResource(
+export async function resolveWorkshopReadInResource(
   entries: readonly ContextResourceSummary[],
+  groupFiles: ConfiguredResourceGroupFiles,
   group: unknown,
   resourcePath: unknown
-): WorkshopReadInResolution {
+): Promise<WorkshopReadInResolution> {
   if (typeof group !== 'string' || !isContextPathGroup(group)) {
     return { kind: 'refused', reason: 'unknown-group' };
   }
@@ -96,7 +100,7 @@ export function resolveWorkshopReadInResource(
   ) {
     return { kind: 'refused', reason: 'unsafe-path' };
   }
-  const lookup = findConfiguredResource(entries, group, resourcePath);
+  const lookup = await resolveConfiguredResource(entries, group, resourcePath, groupFiles);
   switch (lookup.kind) {
     case 'found':
       return { kind: 'resolved', resource: lookup.resource };
@@ -114,10 +118,11 @@ export function resolveWorkshopReadInResource(
  */
 export async function readWorkshopReadInResource(
   catalog: WorkshopReadInCatalog,
+  groupFiles: ConfiguredResourceGroupFiles,
   group: unknown,
   resourcePath: unknown
 ): Promise<WorkshopReadInRead> {
-  const resolution = resolveWorkshopReadInResource(catalog.entries(), group, resourcePath);
+  const resolution = await resolveWorkshopReadInResource(catalog.entries(), groupFiles, group, resourcePath);
   if (resolution.kind === 'refused') {
     return resolution;
   }

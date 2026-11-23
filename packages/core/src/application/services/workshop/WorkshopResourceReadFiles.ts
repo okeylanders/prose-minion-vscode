@@ -12,7 +12,11 @@ import type {
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { ContextPathGroup } from '@shared/types';
 import type { WorkshopResourceReadFile } from '@shared/types/workshopCapabilities';
-import { findConfiguredResource } from '@/application/services/ConfiguredResourceLookup';
+import {
+  configuredGroupFilesOnce,
+  resolveConfiguredResource,
+  type ConfiguredResourceGroupFiles
+} from '@/application/services/ConfiguredResourceLookup';
 import { configuredResourceFingerprint } from './WorkshopConfiguredResourceLookup';
 
 /** Why a named file was not read at all. `line-too-long` is the packing's, not this module's. */
@@ -62,6 +66,8 @@ export type WorkshopResourcePreparedFile = WorkshopResourceReadyFile | WorkshopR
 
 export interface WorkshopResourceFileSource {
   resources(): Promise<ContextResourceSummary[]>;
+  /** The authoritative listing a pair the browse listing misses is looked up in (ADR 2026-11-20 S50). */
+  readonly groupFiles: ConfiguredResourceGroupFiles;
   load(resourcePath: string): Promise<ContextResourceContent[]>;
   throwIfAborted(): void;
 }
@@ -73,9 +79,11 @@ export async function prepareWorkshopResourceFiles(
   lines: { readonly startLine?: number; readonly endLine?: number }
 ): Promise<WorkshopResourcePreparedFile[]> {
   const resources = await source.resources();
+  // One authoritative listing per group for this read, asked only for a pair the browse listing misses.
+  const groupFiles = configuredGroupFilesOnce(source.groupFiles);
   const prepared: WorkshopResourcePreparedFile[] = [];
   for (const file of files) {
-    prepared.push(await prepareFile(source, resources, file, lines));
+    prepared.push(await prepareFile(source, resources, groupFiles, file, lines));
     source.throwIfAborted();
   }
   return prepared;
@@ -84,11 +92,13 @@ export async function prepareWorkshopResourceFiles(
 async function prepareFile(
   source: WorkshopResourceFileSource,
   resources: readonly ContextResourceSummary[],
+  groupFiles: ConfiguredResourceGroupFiles,
   file: WorkshopResourceReadFile,
   lines: { readonly startLine?: number; readonly endLine?: number }
 ): Promise<WorkshopResourcePreparedFile> {
   const budgets = PROMPT_BUDGETS.workshopResource;
-  const lookup = findConfiguredResource(resources, file.group, file.path);
+  const lookup = await resolveConfiguredResource(resources, file.group, file.path, groupFiles);
+  source.throwIfAborted();
   if (lookup.kind === 'ambiguous') {
     return fault(file, 'ambiguous',
       'The requested path matches more than one configured resource when letter case is ignored.', {});

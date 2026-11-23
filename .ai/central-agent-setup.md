@@ -1447,6 +1447,26 @@ card records:
     allows, so it always decodes.
   - A listing or walk that did not complete is a failed result, never a
     shorter catalog.
+- **A pair the inventory lists always resolves** (S50). Every reader of
+  `{ group, path }` (`resource.read`, `history.*`, the Read in reader)
+  resolves through `resolveConfiguredResource`
+  (`application/services/ConfiguredResourceLookup.ts`): the browse listing
+  first, unchanged, and **only on a miss** the group's authoritative
+  listing (exact path, then one unique case-folded match; two are
+  `ambiguous`), mapped back to the browse entry for the same file by host
+  identity. A path in no configured group misses both. A new reader of a
+  pair resolves through it, never `findConfiguredResource` alone.
+  - A read asks each group's listing at most once
+    (`configuredGroupFilesOnce`), and never on a browse hit.
+  - A result names the file by its browse entry, so a card records the
+    group the browse listing keeps it in.
+  - The reader's listing is the intake service's
+    (`configuredGroupFiles`; `extension.ts` passes the resolver). A host
+    that gives none resolves by the browse listing alone
+    (`NO_CONFIGURED_GROUP_FILES`).
+  - Stated limits (S52): the instruction's per-group counts and a
+    group-scoped `resource.search` still read the browse listing, so a file
+    in two groups counts once there.
 - **Logs.** A read naming several files logs counts and groups, never a
   path. A one-path read keeps the line it has always had, which names its
   configured path (`workshopResourceRequestLogSummary`). A catalog logs its
@@ -2293,7 +2313,7 @@ D11–D17 and D13a (Workshop Persona Tools, item B; PR #287) when touching
   ("File history"); `history.log` is private discovery. No setting (G1).
 - **Which file:** `<group>excerpt</group>` (the excerpt's file, authorized
   as Re-read from file authorizes it) or a configured file by group and
-  path (`findConfiguredResource`). Never a free path; a host path never
+  path (`resolveConfiguredResource`, S50). Never a free path; a host path never
   reaches a result, card or log.
 - **No process is spawned.** `Platform.fileHistory` (`log`, `show`,
   `size`) is implemented by `VsCodeFileHistory` over the built-in Git
