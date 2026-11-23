@@ -313,8 +313,11 @@ export class PassageSearchService {
       ...(held.outputTokens !== undefined ? { outputTokens: held.outputTokens } : {}),
       ...(held.signal ? { signal: held.signal } : {})
     }));
-    // Retired while the pass ran: whatever the organizer made of it, this run keeps no analysis.
-    const ended = !held.engine.isProviderAvailable() ? 'key-changed' : passed.analysisMissing;
+    // Retired while the pass ran: whatever the organizer made of it, this run keeps no analysis. Stopped while it
+    // was prepared or ran, the same, whatever its preparation came to (no room, a prompt that would not load) or
+    // its call returned: a Stop the caller acknowledged always ends the run stopped (PR #296 combined re-review).
+    // The key change is asked first, so it keeps its precedence; the reads and every usage entry stay either way.
+    const ended = !held.engine.isProviderAvailable() ? 'key-changed' : held.signal?.aborted ? 'stopped' : passed.analysisMissing;
     if (ended === 'stopped' || ended === 'key-changed') {
       const { analysis: _analysis, analysisMissing: _missing, ...rest } = passed;
       return { ...rest, ended };

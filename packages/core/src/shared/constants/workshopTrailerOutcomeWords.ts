@@ -49,7 +49,13 @@ export const WORKSHOP_TRAILER_DROP_REASON_WORDS: Readonly<Record<WorkshopTrailer
   'todo-not-open': 'the to-do it named is not open',
   'nothing-kept': 'no pattern it proposed was safe and found a file',
   'workspace-unavailable': 'the project\'s folders could not be checked just then',
-  'too-large': 'a group\'s current context paths are too long to show on a card'
+  'too-large': 'a group\'s current context paths are too long to show on a card',
+  extra: 'one reply may ask for one search',
+  'unknown-group': 'a group it named is not a context group',
+  'unknown-file': 'a file it named is not in the group it named',
+  'ambiguous-file': 'a file it named is in more than one workspace folder under the same path',
+  'no-excerpt': 'it named the excerpt, and this room has none',
+  'catalog-unreadable': 'the project\'s files could not be listed just then'
 });
 
 /** Why a saved session's change was not written (ADR 2026-11-19 D7): the row's reason, after the record. */
@@ -139,6 +145,15 @@ export function workshopTrailerOutcomeLines(
     ];
     if (parts.length > 0) {
       lines.push(`Your last reply's context-paths proposal: ${parts.join(', ')}.`);
+    }
+  }
+  if (outcomes.passageSearch) {
+    const parts = [
+      ...(outcomes.passageSearch.cards > 0 ? ['shown as a card for the writer to price and run; its results arrive later'] : []),
+      ...outcomes.passageSearch.dropped.map(droppedFor)
+    ];
+    if (parts.length > 0) {
+      lines.push(`Your last reply's passage-search request: ${parts.join(', ')}.`);
     }
   }
   if (outcomes.todos) {

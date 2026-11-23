@@ -23,6 +23,7 @@ import {
   WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS,
   WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS,
   WORKSHOP_MEMORY_TRAILER_DROP_REASONS,
+  WORKSHOP_PASSAGE_SEARCH_TRAILER_DROP_REASONS,
   WORKSHOP_TODO_TRAILER_DROP_REASONS,
   type WorkshopTrailerDrop,
   type WorkshopTrailerDropReason,
@@ -36,6 +37,7 @@ import {
   workshopTrailerDropReason
 } from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerDropReasons';
 import type { WorkshopTodoStatusDropCode } from '@/application/services/workshop/todos/WorkshopReplyTodoStatus';
+import type { WorkshopPassageSearchDropCode } from '@/application/services/workshop/passageSearch/WorkshopReplyPassageSearch';
 import type { WorkshopLocationsDropCode } from '@/application/services/workshop/locations/WorkshopReplyLocations';
 
 export interface WorkshopTrailerOutcomesInput {
@@ -60,6 +62,8 @@ export interface WorkshopTrailerOutcomesInput {
     readonly drops: readonly WorkshopLocationsDropCode[];
     readonly patterns: { readonly kept: number; readonly unmatched: number; readonly incomplete: number; readonly refused: number };
   };
+  /** The reply's passage-search request frames: the card made, and each frame that became none (ADR 2026-11-20 D17). */
+  readonly passageSearch?: { readonly cards: number; readonly drops: readonly WorkshopPassageSearchDropCode[] };
 }
 
 export function buildWorkshopTrailerOutcomes(input: WorkshopTrailerOutcomesInput): WorkshopTrailerOutcomes | undefined {
@@ -86,14 +90,20 @@ export function buildWorkshopTrailerOutcomes(input: WorkshopTrailerOutcomesInput
     patterns: { ...(input.locations?.patterns ?? { kept: 0, unmatched: 0, incomplete: 0, refused: 0 }) }
   };
   const hasLocations = locations.cards > 0 || locations.dropped.length > 0;
-  if (!hasMemory && !hasFileEdits && !hasTodos && !hasLocations) {
+  const passageSearch = {
+    cards: input.passageSearch?.cards ?? 0,
+    dropped: tally((input.passageSearch?.drops ?? []).map((code) => workshopTrailerDropReason(code)), WORKSHOP_PASSAGE_SEARCH_TRAILER_DROP_REASONS)
+  };
+  const hasPassageSearch = passageSearch.cards > 0 || passageSearch.dropped.length > 0;
+  if (!hasMemory && !hasFileEdits && !hasTodos && !hasLocations && !hasPassageSearch) {
     return undefined;
   }
   return {
     ...(hasMemory ? { memory } : {}),
     ...(hasFileEdits ? { fileEdits } : {}),
     ...(hasTodos ? { todos } : {}),
-    ...(hasLocations ? { locations } : {})
+    ...(hasLocations ? { locations } : {}),
+    ...(hasPassageSearch ? { passageSearch } : {})
   };
 }
 

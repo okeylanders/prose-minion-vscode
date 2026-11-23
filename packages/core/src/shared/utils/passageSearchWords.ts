@@ -104,23 +104,35 @@ export function passageSearchAnalysisNote(result: Pick<PassageSearchResultView, 
   }
 }
 
+/** "1 call did not fit the model's window and was not sent, so the text it covers was not searched." */
+export function passageSearchTooLargeLine(tooLarge: number): string {
+  return `${plural(tooLarge, 'call')} did not fit the model's window and ${tooLarge === 1 ? 'was' : 'were'} not sent, so the text ${tooLarge === 1 ? 'it covers' : 'they cover'} was not searched.`;
+}
+
+/** What the reads left unsearched, one line each, in the order the missing lines give them; empty when the coverage is whole. */
+export function passageSearchCoverageLines(result: Pick<PassageSearchResultView, 'calls' | 'files'>): string[] {
+  const { calls } = result;
+  const { searched, planned } = result.files;
+  return ([
+    [searched.none, `${number(searched.none)} of ${plural(planned, 'file')} ${searched.none === 1 ? 'was' : 'were'} not searched.`],
+    [searched.partial, `${number(searched.partial)} of ${plural(planned, 'file')} ${searched.partial === 1 ? 'was' : 'were'} searched only in part.`],
+    [calls.cancelled, `${plural(calls.cancelled, 'call was', 'calls were')} stopped in flight, so the text they cover was not searched; they may still have been charged.`],
+    [calls.unsent, `${plural(calls.unsent, 'call was', 'calls were')} not made, so the text they cover was not searched.`],
+    [calls.tooLarge, passageSearchTooLargeLine(calls.tooLarge)],
+    [calls.failed, `${plural(calls.failed, 'call')} failed, so the text ${calls.failed === 1 ? 'it covers' : 'they cover'} was not searched.`],
+    [calls.cut, `${plural(calls.cut, 'reply was', 'replies were')} cut off at the length limit; the instances finished before the cut are kept.`]
+  ] as const).flatMap(([count, line]) => (count > 0 ? [line] : []));
+}
+
 /** What is missing from the result and why, one line each; empty when nothing is. */
 export function passageSearchMissingLines(result: PassageSearchResultView): string[] {
-  const { calls, dropped } = result;
-  const lines: string[] = [];
+  const { dropped } = result;
+  const lines: string[] = passageSearchCoverageLines(result);
   const add = (count: number, line: string) => {
     if (count > 0) {
       lines.push(line);
     }
   };
-  const { searched, planned } = result.files;
-  add(searched.none, `${number(searched.none)} of ${plural(planned, 'file')} ${searched.none === 1 ? 'was' : 'were'} not searched.`);
-  add(searched.partial, `${number(searched.partial)} of ${plural(planned, 'file')} ${searched.partial === 1 ? 'was' : 'were'} searched only in part.`);
-  add(calls.cancelled, `${plural(calls.cancelled, 'call was', 'calls were')} stopped in flight, so the text they cover was not searched; they may still have been charged.`);
-  add(calls.unsent, `${plural(calls.unsent, 'call was', 'calls were')} not made, so the text they cover was not searched.`);
-  add(calls.tooLarge, `${plural(calls.tooLarge, 'call')} did not fit the model's window and ${calls.tooLarge === 1 ? 'was' : 'were'} not sent, so the text ${calls.tooLarge === 1 ? 'it covers' : 'they cover'} was not searched.`);
-  add(calls.failed, `${plural(calls.failed, 'call')} failed, so the text ${calls.failed === 1 ? 'it covers' : 'they cover'} was not searched.`);
-  add(calls.cut, `${plural(calls.cut, 'reply was', 'replies were')} cut off at the length limit; the instances finished before the cut are kept.`);
   add(result.overLimit, `${plural(result.overLimit, 'instance')} past the most a search keeps ${result.overLimit === 1 ? 'was' : 'were'} not kept.`);
   add(dropped['quote-not-found'], `${plural(dropped['quote-not-found'], 'quote')} could not be found in the text as quoted, so ${dropped['quote-not-found'] === 1 ? 'it is' : 'they are'} not listed.`);
   add(dropped['quote-ambiguous'], `${plural(dropped['quote-ambiguous'], 'quote')} matched more than one place, so ${dropped['quote-ambiguous'] === 1 ? 'it is' : 'they are'} not listed.`);

@@ -13,6 +13,7 @@ import type { WorkshopReactionDelivery, WorkshopTurnReactionSummary } from './re
 import type { WorkshopTrailerOutcomes } from '../../workshopTrailerOutcomes';
 import type { WorkshopTodoClosedBy, WorkshopTodoStatusChange } from './todoStatus';
 import type { WorkshopLocationsProposalCard } from './locationsProposal';
+import type { WorkshopPassageSearchDelivery, WorkshopPassageSearchRequest, WorkshopPassageSearchResultsRequest } from './passageSearch';
 import type { WorkshopReactionId } from '@shared/constants/workshopReactions';
 import type { WorkshopMemorySuggestionLevel } from '@shared/constants/workshopMemorySuggestions';
 import type {
@@ -520,6 +521,20 @@ export interface WorkshopTurn {
    * replies only. Apply is the writer's.
    */
   locationsProposal?: WorkshopLocationsProposalCard;
+  /**
+   * A persona's passage-search request, settled (ADR 2026-11-20 D17): one
+   * card, committed with the reply (optional, additive). Host and guest
+   * replies only. Its status is derived, never stored (D19).
+   */
+  passageSearchRequest?: WorkshopPassageSearchRequest;
+  /** On the writer-role turn a results delivery records (ADR 2026-11-20 D18): the card it delivers. Its content is the host's line. */
+  passageSearchResults?: WorkshopPassageSearchResultsRequest;
+  /**
+   * On a persona's adopted reply to a search's results (ADR 2026-11-20
+   * D19a): the receipt, ids and counts only, written in the reply's own
+   * commit. A card reads as delivered only from this.
+   */
+  passageSearchDelivery?: WorkshopPassageSearchDelivery;
   /**
    * A persona reply that held only a reaction (ADR 2026-11-07 R1): the id it
    * reacted with, on the writer message the reply answers. Its content is

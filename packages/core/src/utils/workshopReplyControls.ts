@@ -59,6 +59,11 @@
  *   from `rest`, redacted as `[context paths proposal removed]`, and judged
  *   by `workshopReplyLocationsProposal` into `locations`, absent when the
  *   reply held none. One a reply; a later frame is `duplicate`.
+ * - **A passage-search request** (ADR 2026-11-20 D16):
+ *   `<prose-minion-passage-search>` frames join the same pass, removed from
+ *   `rest`, redacted as `[passage search request removed]`, and judged by
+ *   `workshopReplyPassageSearch` into `passageSearch`, absent when the reply
+ *   held none. One a reply; a later frame is `extra`.
  */
 
 import {
@@ -110,6 +115,13 @@ import {
   WORKSHOP_LOCATIONS_PROPOSAL_TAG,
   type WorkshopReplyLocationsControl
 } from '@/utils/workshopReplyLocationsProposal';
+import {
+  judgeWorkshopReplyPassageSearch,
+  WORKSHOP_PASSAGE_SEARCH_ONLY_REPLY_LINE,
+  WORKSHOP_PASSAGE_SEARCH_REDACTION,
+  WORKSHOP_PASSAGE_SEARCH_TAG,
+  type WorkshopReplyPassageSearchControl
+} from '@/utils/workshopReplyPassageSearch';
 import { workshopReaction, type WorkshopReactionId } from '@shared/constants/workshopReactions';
 import { sanitizeWorkshopWidgetRecommendationForRetention } from '@/utils/workshopWidgetRecommendationProtocol';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -148,6 +160,8 @@ export interface WorkshopTrailerKinds {
   readonly todos?: boolean;
   /** Whether it held a context-paths proposal frame (ADR 2026-11-19 D27). */
   readonly locations?: boolean;
+  /** Whether it held a passage-search request frame (ADR 2026-11-20 D16). */
+  readonly passageSearch?: boolean;
 }
 
 /** The same, for a reply that was only a context-paths proposal (ADR 2026-11-19 D27). */
@@ -163,6 +177,12 @@ const REACTION_OBJECT = "the writer's message";
  * nothing to name, it is `WORKSHOP_NO_MESSAGE_REPLY_LINE`.
  */
 export function workshopTrailersOnlyReplyLine(kinds: WorkshopTrailerKinds): string {
+  if (kinds.passageSearch) {
+    const others = workshopTrailersOnlyReplyLine({ ...kinds, passageSearch: false });
+    return others === WORKSHOP_NO_MESSAGE_REPLY_LINE
+      ? WORKSHOP_PASSAGE_SEARCH_ONLY_REPLY_LINE
+      : `${others.slice(0, -1)}, and asked for a passage search.`;
+  }
   if (kinds.locations) {
     const others = workshopTrailersOnlyReplyLine({ ...kinds, locations: false });
     return others === WORKSHOP_NO_MESSAGE_REPLY_LINE
@@ -226,6 +246,8 @@ export interface WorkshopReplyControls {
   readonly todoStatus?: WorkshopReplyTodoStatusControl;
   /** The reply's context-paths proposal frames, judged (ADR 2026-11-19 D27); absent when it held none. */
   readonly locations?: WorkshopReplyLocationsControl;
+  /** The reply's passage-search request frames, judged (ADR 2026-11-20 D16); absent when it held none. */
+  readonly passageSearch?: WorkshopReplyPassageSearchControl;
   /** The trailer kinds it held, for the host's line (R1). */
   readonly trailers: WorkshopTrailerKinds;
 }
@@ -249,7 +271,8 @@ const TRAILER_TAGS = [
   WORKSHOP_NO_FILE_EDIT_TAG,
   WORKSHOP_REACTION_TAG,
   WORKSHOP_TODO_STATUS_TAG,
-  WORKSHOP_LOCATIONS_PROPOSAL_TAG
+  WORKSHOP_LOCATIONS_PROPOSAL_TAG,
+  WORKSHOP_PASSAGE_SEARCH_TAG
 ] as const;
 
 const NO_TRAILERS: WorkshopTrailerKinds = { memory: false, fileEdits: false };
@@ -261,7 +284,8 @@ const REDACTIONS: Readonly<Record<string, string>> = {
   [WORKSHOP_NO_FILE_EDIT_TAG]: WORKSHOP_NO_FILE_EDIT_REDACTION,
   [WORKSHOP_REACTION_TAG]: WORKSHOP_REACTION_REDACTION,
   [WORKSHOP_TODO_STATUS_TAG]: WORKSHOP_TODO_STATUS_REDACTION,
-  [WORKSHOP_LOCATIONS_PROPOSAL_TAG]: WORKSHOP_LOCATIONS_PROPOSAL_REDACTION
+  [WORKSHOP_LOCATIONS_PROPOSAL_TAG]: WORKSHOP_LOCATIONS_PROPOSAL_REDACTION,
+  [WORKSHOP_PASSAGE_SEARCH_TAG]: WORKSHOP_PASSAGE_SEARCH_REDACTION
 };
 
 type Frame = WorkshopReplyTrailerFrame;
@@ -284,6 +308,7 @@ export function extractWorkshopReplyControls(
   const reactionFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_REACTION_TAG);
   const todoStatusFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_TODO_STATUS_TAG);
   const locationsFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_LOCATIONS_PROPOSAL_TAG);
+  const passageSearchFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_PASSAGE_SEARCH_TAG);
   // The first well-formed known id: the one the judge keeps whenever it keeps one, read from the text alone.
   const named = reactionFrames
     .map(({ frame, atTail: tail }) => workshopReplyTrailerStructureRejection(frame, tail) || frame.inner === undefined
@@ -312,14 +337,21 @@ export function extractWorkshopReplyControls(
       : {}),
     ...(todoStatusFrames.length > 0 ? { todoStatus: judgeWorkshopReplyTodoStatus(todoStatusFrames, options.todoStatus) } : {}),
     ...(locationsFrames.length > 0 ? { locations: judgeWorkshopReplyLocations(locationsFrames) } : {}),
+    ...(passageSearchFrames.length > 0 ? { passageSearch: judgeWorkshopReplyPassageSearch(passageSearchFrames) } : {}),
     trailers: {
       memory: memoryFrames.length > 0,
       fileEdits: fileEditFrames.length > 0,
       ...(reactionFrames.length > 0 ? { reaction: named ?? true } : {}),
       ...(todoStatusFrames.length > 0 ? { todos: true } : {}),
-      ...(locationsFrames.length > 0 ? { locations: true } : {})
+      ...(locationsFrames.length > 0 ? { locations: true } : {}),
+      ...(passageSearchFrames.length > 0 ? { passageSearch: true } : {})
     }
   };
+}
+
+/** Whether a reply holds a passage-search request tag (a cheap check before the project's files are listed; ADR 2026-11-20 D17). */
+export function hasWorkshopPassageSearchText(reply: string): boolean {
+  return reply.toLowerCase().includes(WORKSHOP_PASSAGE_SEARCH_TAG);
 }
 
 /** Whether a reply holds a context-paths proposal tag (a cheap check before the checker runs; ADR 2026-11-19 D27). */
@@ -360,7 +392,7 @@ function retainedWithoutTrailers(reply: string): { readonly text: string; readon
   const { trailers } = controls;
   // An offer-only reply names nothing, so its line is "Replied without a message." (ADR 2026-11-10 addendum).
   if ((trailers.memory || trailers.fileEdits || trailers.reaction !== undefined || controls.editOffers !== undefined || trailers.todos
-    || trailers.locations)
+    || trailers.locations || trailers.passageSearch)
     && controls.rest.trim().length === 0) {
     return { text: workshopTrailersOnlyReplyLine(trailers), hostLine: true };
   }

@@ -15,6 +15,7 @@ import type {
   WorkshopFileEditTrailerDropReason,
   WorkshopLocationsTrailerDropReason,
   WorkshopMemoryTrailerDropReason,
+  WorkshopPassageSearchTrailerDropReason,
   WorkshopTodoTrailerDropReason,
   WorkshopTrailerDropReason
 } from '@shared/types/workshopTrailerOutcomes';
@@ -22,6 +23,7 @@ import type { WorkshopTodoStatusDropCode } from '@/application/services/workshop
 import type { WorkshopReplyMemoryRejection } from '@/utils/workshopReplyControls';
 import type { WorkshopReplyFileEditRejection } from '@/utils/workshopReplyFileEdits';
 import type { WorkshopLocationsDropCode } from '@/application/services/workshop/locations/WorkshopReplyLocations';
+import type { WorkshopPassageSearchDropCode } from '@/application/services/workshop/passageSearch/WorkshopReplyPassageSearch';
 import type { WorkshopMemoryProposalDrop } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import type { WorkshopMemoryEditDropReason } from '@/application/services/workshop/memory/WorkshopReplyMemoryEdit';
 import type { WorkshopFileEditProposalDrop } from '@/application/services/workshop/fileEdits/WorkshopReplyFileEditProposals';
@@ -34,8 +36,10 @@ export type WorkshopFileEditTrailerDropCode = WorkshopFileEditProposalDrop['reas
 export type WorkshopTodoTrailerDropCode = WorkshopTodoStatusDropCode;
 /** Every reason code a context-paths proposal frame can end with no card for (ADR 2026-11-19 D27). */
 export type WorkshopLocationsTrailerDropCode = WorkshopLocationsDropCode;
+/** Every reason code a passage-search request frame can end with no card for (ADR 2026-11-20 D17). */
+export type WorkshopPassageSearchTrailerDropCode = WorkshopPassageSearchDropCode;
 type DropCode = WorkshopMemoryTrailerDropCode | WorkshopFileEditTrailerDropCode | WorkshopTodoTrailerDropCode
-  | WorkshopLocationsTrailerDropCode;
+  | WorkshopLocationsTrailerDropCode | WorkshopPassageSearchTrailerDropCode;
 
 const isMalformed = <Code extends string>(code: Code): code is Extract<Code, `malformed:${string}`> => code.startsWith('malformed:');
 
@@ -44,6 +48,7 @@ export function workshopTrailerDropReason(code: WorkshopMemoryTrailerDropCode): 
 export function workshopTrailerDropReason(code: WorkshopFileEditTrailerDropCode): WorkshopFileEditTrailerDropReason;
 export function workshopTrailerDropReason(code: WorkshopTodoTrailerDropCode): WorkshopTodoTrailerDropReason;
 export function workshopTrailerDropReason(code: WorkshopLocationsTrailerDropCode): WorkshopLocationsTrailerDropReason;
+export function workshopTrailerDropReason(code: WorkshopPassageSearchTrailerDropCode): WorkshopPassageSearchTrailerDropReason;
 export function workshopTrailerDropReason(code: DropCode): WorkshopTrailerDropReason {
   if (isMalformed(code)) {
     return 'malformed';
@@ -118,6 +123,20 @@ export function workshopTrailerDropReason(code: DropCode): WorkshopTrailerDropRe
       return 'workspace-unavailable';
     case 'unrepresentable':
       return 'too-large';
+    // A passage-search request, checked at settlement (ADR 2026-11-20 D17).
+    case 'extra':
+      return 'extra';
+    case 'unknown-group':
+      return 'unknown-group';
+    case 'unknown-file':
+      return 'unknown-file';
+    case 'ambiguous-file':
+      return 'ambiguous-file';
+    case 'no-excerpt':
+      return 'no-excerpt';
+    case 'catalog-unreadable':
+    case 'listing-not-read':
+      return 'catalog-unreadable';
     default:
       return assertNever(code);
   }

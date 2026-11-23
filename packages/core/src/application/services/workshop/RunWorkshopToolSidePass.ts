@@ -1,6 +1,7 @@
 /** Focused Sprint 06B use case: isolated tool report, then host synthesis. */
 
 import type { WorkshopReplyLocationsContext } from '@/application/services/workshop/locations/WorkshopReplyLocations';
+import type { WorkshopReplyPassageSearchContext } from '@/application/services/workshop/passageSearch/WorkshopReplyPassageSearch';
 import {
   hasWorkshopMemoryProposalText
 } from '@/utils/workshopReplyControls';
@@ -85,6 +86,8 @@ export interface WorkshopToolSidePassEvents {
   todoStatus?: (reply: string) => Promise<WorkshopReplyTodoStatusContext | undefined>;
   /** The synthesis's context-paths proposal, checked before completion (ADR 2026-11-19 D27). */
   locations?: (reply: string, signal: AbortSignal) => Promise<WorkshopReplyLocationsContext | undefined>;
+  /** The synthesis's passage-search request, checked before completion (ADR 2026-11-20 D17). */
+  passageSearch?: (reply: string, signal: AbortSignal) => Promise<WorkshopReplyPassageSearchContext | undefined>;
   settled: (requestId: string) => void;
 }
 
@@ -305,6 +308,7 @@ export class RunWorkshopToolSidePass {
       const replyFileEdits = events.fileEdits && await events.fileEdits(synthesis.content, controller.signal);
       const todoStatus = events.todoStatus && await events.todoStatus(synthesis.content);
       const locations = events.locations && await events.locations(synthesis.content, controller.signal);
+      const passageSearch = events.passageSearch && await events.passageSearch(synthesis.content, controller.signal);
       let memorySave: Promise<void> | undefined;
       const synthesisTurn = completeWorkshopRun({
         memory: replyMemory,
@@ -312,6 +316,7 @@ export class RunWorkshopToolSidePass {
         fileEdits: replyFileEdits,
         todoStatus,
         locations,
+        passageSearch,
         reactionsOpen: events.reactionsOpen?.(),
         memoryAutoSave: events.memoryAutoSave && ((turn, indexes) => {
           memorySave = events.memoryAutoSave!(turn, indexes);

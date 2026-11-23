@@ -127,6 +127,91 @@ describe('The organizing pass through PassageSearchService', () => {
     expect(result).not.toHaveProperty('analysisMissing');
   });
 
+  describe('a Stop acknowledged while the pass is prepared or runs ends the run stopped, whatever the pass came to (PR #296 combined re-review)', () => {
+    // The two reads' own usage: each metered at USAGE.
+    const READS_USAGE = { promptTokens: 200, completionTokens: 40, totalTokens: 240, requestCount: 2, costUsd: 0.002 };
+
+    function expectStoppedWithReads(result: Awaited<ReturnType<PassageSearchService['run']>>): void {
+      expect(result.ended).toBe('stopped');
+      expect(result.instances.map((instance) => instance.quote)).toEqual(['took a watch out of its waistcoat-pocket']);
+      expect(result.calls).toMatchObject({ planned: 2, answered: 2, dispatched: 2 });
+      expect(result).not.toHaveProperty('analysis');
+      expect(result).not.toHaveProperty('analysisMissing');
+    }
+
+    it('when its preparation then finds no room for one instance: nothing is dispatched, the reads and their usage stay', async () => {
+      const stop = new AbortController();
+      // A window too small for the pass, priced only once the reads are in: the plan itself was made without it.
+      const host = createHost([TOOK, NONE, PASS], { facts: { contextLength: 8_040 } });
+      host.promptLoader.loadPrompts.mockImplementationOnce(async () => {
+        stop.abort();
+        return 'SYSTEM';
+      });
+      const result = await host.service.run(await searchPlan(createHost().service), { signal: stop.signal });
+      expect(host.runInitial).toHaveBeenCalledTimes(2);
+      expectStoppedWithReads(result);
+      expect(result.requests).toBe(2);
+      expect(result.usage).toEqual(READS_USAGE);
+    });
+
+    it('when its prompt then fails to load: nothing is dispatched, the reads and their usage stay', async () => {
+      const stop = new AbortController();
+      const host = createHost([TOOK, NONE, PASS]);
+      const plan = await searchPlan(host.service);
+      host.promptLoader.loadPrompts.mockImplementationOnce(async () => {
+        stop.abort();
+        throw new Error('ENOENT: no such prompt');
+      });
+      const result = await host.service.run(plan, { signal: stop.signal });
+      expect(host.runInitial).toHaveBeenCalledTimes(2);
+      expectStoppedWithReads(result);
+      expect(result.requests).toBe(2);
+      expect(result.usage).toEqual(READS_USAGE);
+    });
+
+    it('control: when it lands on the dispatched call, the call is counted and its usage kept', async () => {
+      const stop = new AbortController();
+      const host = createHost([TOOK, NONE, () => {
+        stop.abort();
+        return { ...PASS, cancelled: true };
+      }]);
+      const result = await host.service.run(await searchPlan(host.service), { signal: stop.signal });
+      expect(host.runInitial).toHaveBeenCalledTimes(3);
+      expectStoppedWithReads(result);
+      expect(result.requests).toBe(3);
+      expect(result.usage).toEqual({ promptTokens: 300, completionTokens: 60, totalTokens: 360, requestCount: 3, costUsd: 0.003 });
+    });
+
+    it('when the dispatched call still answers after it: the analysis is discarded, the call counted and its usage kept', async () => {
+      const stop = new AbortController();
+      const host = createHost([TOOK, NONE, () => {
+        stop.abort();
+        return PASS;
+      }]);
+      const result = await host.service.run(await searchPlan(host.service), { signal: stop.signal });
+      expect(host.runInitial).toHaveBeenCalledTimes(3);
+      expectStoppedWithReads(result);
+      expect(result.requests).toBe(3);
+      expect(result.usage).toEqual({ promptTokens: 300, completionTokens: 60, totalTokens: 360, requestCount: 3, costUsd: 0.003 });
+    });
+
+    it('a key change in the same pass keeps its precedence over the Stop', async () => {
+      const stop = new AbortController();
+      const host = createHost([TOOK, NONE, PASS]);
+      const plan = await searchPlan(host.service);
+      host.promptLoader.loadPrompts.mockImplementationOnce(async () => {
+        stop.abort();
+        host.engine.isProviderAvailable.mockReturnValue(false);
+        throw new Error('ENOENT: no such prompt');
+      });
+      const result = await host.service.run(plan, { signal: stop.signal });
+      expect(host.runInitial).toHaveBeenCalledTimes(2);
+      expect(result.ended).toBe('key-changed');
+      expect(result).not.toHaveProperty('analysisMissing');
+      expect(result.usage).toEqual(READS_USAGE);
+    });
+  });
+
   it('sends the pass with the ceiling the run\'s plan froze, not the budget of the moment', async () => {
     const { service, runInitial } = createHost([TOOK, NONE, PASS]);
     const plan = await searchPlan(service);

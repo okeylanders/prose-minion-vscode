@@ -84,6 +84,7 @@ import type {
   WorkshopRoomSeedReport
 } from '@/application/services/workshop/pinnedContext/WorkshopRoomSeed';
 import type { WorkshopSessionStart, WorkshopTurn } from '@messages';
+import { WorkshopOpenRoomInstance, type WorkshopOpenRoomInstancePort } from '@/application/services/workshop/WorkshopOpenRoomInstance';
 import {
   WorkshopBranchNotOpenedError,
   WorkshopBranchRefusedError,
@@ -287,6 +288,8 @@ export class WorkshopSessionPersistenceCoordinator {
   private savedRecoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][] = [];
   /** A refused named save's own recovery session, one per refusal episode (ADR 2026-11-19 D6c). */
   private readonly recoveryCopy = new WorkshopNamedSessionRecoveryCopy(this.store, () => this.idFactory(), () => normalizedIso(this.now()), (notice) => this.savedRecoveryNotices.push(notice), this.outputChannel);
+  /** Which open room this is, told at each swap of the aggregate; only a Rewind keeps it (PR #296 F3). */
+  private readonly roomInstance = new WorkshopOpenRoomInstance((line) => this.outputChannel.appendLine(line));
   private acceptedWorkspaceRoot?: string;
   private initialUnavailableReason?: Extract<
     WorkshopSessionStoreAvailability,
@@ -339,6 +342,8 @@ export class WorkshopSessionPersistenceCoordinator {
 
   /** The open room's ids and title, and a saved session's change on the operation queue (ADR 2026-11-19 D2, D6). */
   openRoomIdentity = () => ({ sessionId: this.identity.sessionId, title: this.identity.title, namedSessionId: this.activeNamedSessionId });
+  openRoomInstance: WorkshopOpenRoomInstancePort['openRoomInstance'] = () => this.roomInstance.current();
+  onRoomReplaced: WorkshopOpenRoomInstancePort['onRoomReplaced'] = (listener) => this.roomInstance.subscribe(listener);
   runSavedSessionOperation = <T>(operation: () => Promise<T>): Promise<T> => this.serializeSessionOperation(operation);
   /** Explicit recovery of a session left mid-save, on the session-operation queue (D6e). */
   recoverNamed = (sessionId: string) => this.serializeSessionOperation(() => this.store.recoverNamed(sessionId));
@@ -997,6 +1002,7 @@ export class WorkshopSessionPersistenceCoordinator {
           ? this.describeClearedWorkingSet()
           : { attachmentLabels: [] };
         const discardedConversationIds = this.session.reset({ clearWorkingSet });
+        this.roomInstance.replaced();
         const seed = plan ? this.roomSeed.install(plan, this.session) : undefined;
         this.time.reset();
         const createdAt = normalizedIso(this.now());
@@ -1067,7 +1073,7 @@ export class WorkshopSessionPersistenceCoordinator {
       const { installed, rewound, before } = await this.replaceLiveRoom(async () => {
         const live = await this.exportLiveRoom();
         const cutRoom = rewindWorkshopSession({ ...live, cut });
-        const room = await this.installRoom(cutRoom.workshop, cutRoom.conversations);
+        const room = await this.installRoom(cutRoom.workshop, cutRoom.conversations, undefined, 'rewound');
         // A persona left without a conversation, dropped by the cut or lost to
         // a degraded import, starts its next one fresh, time frame included.
         // Inside the transaction, so rollback restores the notices. (Open and
@@ -1417,7 +1423,9 @@ export class WorkshopSessionPersistenceCoordinator {
     checkpointRecovery?: Pick<
       WorkshopPersistedSessionCheckpointDecodeResult,
       'migrations' | 'normalizations'
-    >
+    >,
+    /** A Rewind installs the same open room, cut; everything else installs another. */
+    replacement: 'rewound' | 'replaced' = 'replaced'
   ): Promise<WorkshopRoomInstallation> {
     // Structural preflight happens before ConversationManager can mint ids.
     const workshop = parseWorkshopSessionStateV1(workshopValue);
@@ -1485,6 +1493,7 @@ export class WorkshopSessionPersistenceCoordinator {
       );
       throw error;
     }
+    this.roomInstance[replacement]();
 
     const importedKeys = new Set(
       outcomes.flatMap((outcome) => outcome.status === 'imported' ? [outcome.key] : [])
@@ -1713,6 +1722,7 @@ export class WorkshopSessionPersistenceCoordinator {
       rollback.bindings,
       this.session.getConversationBehavior()
     );
+    this.roomInstance.replaced();
     this.logCheckpointNormalizations(restored.normalizations);
     const protectedConversationIds = new Set(
       Object.values(rollback.bindings).filter(

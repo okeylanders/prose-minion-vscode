@@ -20,6 +20,8 @@ export interface WorkshopTurnThreadFrames {
   readonly attachments: readonly string[];
   /** A pressed edit offer's directive. */
   readonly directive: readonly string[];
+  /** A passage search's results, delivered (ADR 2026-11-20 D21): in the directive's place, under its own piece. */
+  readonly results?: readonly string[];
   /** The edit-offer reminder. */
   readonly reminders: readonly string[];
   /** The `<workshop-trailer-outcomes>` line (ADR 2026-11-17 D14). */
@@ -33,9 +35,10 @@ export function tallyWorkshopThreadFrames(
 ): string[] {
   tally?.add('context.message-attachments', ...frames.attachments);
   tally?.add('room.directive', ...frames.directive);
+  tally?.add('room.passage-search', ...(frames.results ?? []));
   tally?.add('room.reminders', ...frames.reminders);
   tally?.add('room.trailer-outcomes', ...frames.trailerOutcomes);
-  return [...frames.attachments, ...frames.directive, ...frames.reminders, ...frames.trailerOutcomes];
+  return [...frames.attachments, ...frames.directive, ...(frames.results ?? []), ...frames.reminders, ...frames.trailerOutcomes];
 }
 
 /** The rest of a turn's host-written frames, each as the message carries it. */

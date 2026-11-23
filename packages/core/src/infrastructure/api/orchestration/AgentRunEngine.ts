@@ -38,6 +38,8 @@ import {
   StoredContextSourceEntry
 } from '@orchestration/ContextSourceRecord';
 import type { ConversationContextAccount } from '@orchestration/ContextTallyRecord';
+import { measureConversationWindow } from '@orchestration/ConversationWindowMeasure';
+import type { CapabilityContextWindow } from '@orchestration/AgentRunContracts';
 import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
 import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
 import { coerceClaudeCacheTtl } from '@messages';
@@ -798,6 +800,13 @@ export class AgentRunEngine {
   /** Host-side only: the held system message, the history's length and its tally (ADR 2026-11-18). */
   getConversationContextAccount(conversationId: string | undefined): ConversationContextAccount | undefined {
     return this.conversationManager.getContextAccount(conversationId);
+  }
+
+  /** The room a held conversation's next request would have with `userMessage` added, by the preflight's rule; undefined when unknown. */
+  measureConversationWindow(conversationId: string, userMessage: string, options: Pick<AgentRunOptions, 'maxTokens' | 'tools' | 'model'> = {}): CapabilityContextWindow | undefined {
+    return measureConversationWindow(() => this.conversationManager.getMessages(conversationId), {
+      model: options.model ?? this.openRouterClient?.getModel?.() ?? this.model, userMessage, maxTokens: options.maxTokens, tools: options.tools
+    });
   }
 
   getConversationHistoryCounts(conversationId: string): ConversationHistoryCounts | undefined {
