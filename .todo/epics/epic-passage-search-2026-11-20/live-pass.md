@@ -160,17 +160,11 @@ Reset the scopes (Setup 7) before each step, then tick only what it names.
 
 ---
 
-## D. The combined case Astra asked for (conditional)
+## D. The combined case Astra asked for (record only)
 
-**Exact accounting is the deterministic test's** (`WorkshopPassageSearchCombinedAcceptance.test.tsx`), not this pass's (PR #297 F2). A live run cannot force a refusal: when the model's window is known at Estimate, planning already cuts the chunks to fit it, so nothing is refused. A refusal comes only when the window was unknown when the search was priced and is known by the time a call goes out, as in A3.4. The live check of manual Send is C4 and C5, on a stopped search.
+**Its verification is the deterministic test's** (`WorkshopPassageSearchCombinedAcceptance.test.tsx`), which prices with no window known and then dispatches with one (PR #297). The live pass does not try to reproduce it, and **spends nothing to force it**. A live refusal needs the card's own plan, at Estimate and again at Run (Run plans again, D20), to see no window, and the window to be known when the read goes out. Nothing in this pass sets that up, and an earlier refusal elsewhere (A3.4) does not carry over to a new card. The live check of manual Send is C4 and C5, on a stopped search.
 
-1. - [ ] *(Only if A3.4 produced a refusal; otherwise skip and write "not reproduced".)* With the same model, have a persona ask for a search over the chapter that was refused and one normal chapter. Estimate on the card while the window is still unknown, then Run.
-   **Expect:**
-   - one read refused before it was sent, with no charge for it ("1 call did not fit the model's window and was not sent…");
-   - **two** provider calls for the search: the normal chapter's read and the organizing pass. The persona's reply after Send is a third call, an ordinary turn;
-   - "Found … in 1 file. 1 of 2 files was searched.", with coverage incomplete;
-   - the card is **not** sent for you: it offers "Send partial results";
-   - the report, the card after a reload, and the persona's message after Send all agree.
+1. - [ ] Record "not reproduced", unless a persona's card hit it on its own during the pass. If one did, note what that card showed: the refusal line ("1 call did not fit the model's window and was not sent…", with no charge for it), "1 of 2 files was searched." or the like, coverage incomplete, and "Send partial results" offered rather than sent. Note too whether the report, the card after a reload, and the persona's message after Send agree. Call counts are that run's own, not a fixed expectation.
 
 ---
 
