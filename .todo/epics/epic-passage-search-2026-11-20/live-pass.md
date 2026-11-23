@@ -158,6 +158,22 @@ Reset the scopes (Setup 7) before each step, then tick only what it names.
 7. - [ ] Leave four stopped searches unsent, then Run a fifth.
    **Expect:** refused before anything is sent, telling you to Send or Discard one first.
 
+### C3. Narrowing a group and the group inventory (Slice 5)
+
+**Not covered by tests:** a real model choosing patterns; the card on screen.
+
+1. - [ ] Ask a persona: "List every file in my chapters group."
+   **Expect:** it reads `resource.catalog` for `chapters` and lists them. With more than 100 files, it reads the next page by itself, and says how many there are.
+2. - [ ] Ask: "Search only Book 1's chapters for every time Jasper adjusts his glasses."
+   **Expect:**
+   - the persona may check its patterns with `resource.catalog` and `<match>` first;
+   - the card names "chapters, matching …" with the patterns, and the estimate counts only the matching files;
+   - Run reads only those files.
+3. - [ ] Ask for a narrowing with a pattern that matches nothing in the group (ask it to include a made-up folder).
+   **Expect:** no card, and the persona's next message says the request was dropped because a pattern found nothing.
+4. - [ ] Check Output while doing so.
+   **Expect:** no line carries a pattern, a path or a file name.
+
 ---
 
 ## D. The combined case Astra asked for (record only)

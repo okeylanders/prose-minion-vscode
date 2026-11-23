@@ -13,7 +13,8 @@ import { WorkshopAnalysisSidePass } from '@/application/services/workshop/Worksh
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { LogSink } from '@/platform';
-import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
+import { groupListingOver, withAbsolutePaths } from '@/__tests__/application/services/workshop/resource/groupListingFixtures';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
@@ -47,7 +48,7 @@ describe('WorkshopPersonaCapability', () => {
   let log: LogSink;
   let listResources: jest.Mock;
   let loadResources: jest.Mock;
-  let resourceProviderFactory: ContextResourceProviderFactory;
+  let resourceProviderFactory: WorkshopResourceSources;
 
   beforeEach(() => {
     session = new WorkshopSessionService(() => 7);
@@ -99,7 +100,9 @@ describe('WorkshopPersonaCapability', () => {
     listResources = jest.fn().mockReturnValue([]);
     loadResources = jest.fn().mockResolvedValue([]);
     resourceProviderFactory = {
-      createProvider: jest.fn().mockResolvedValue({ listResources, loadResources })
+      // A host's summaries carry their absolute paths, which a pair's file is matched by (S50).
+      createProvider: jest.fn().mockResolvedValue({ listResources: () => withAbsolutePaths(listResources()), loadResources }),
+      ...groupListingOver(() => withAbsolutePaths(listResources()))
     };
   });
 

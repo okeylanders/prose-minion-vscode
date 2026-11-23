@@ -8,6 +8,7 @@
  * <prose-minion-passage-search>
  * <question>Find every time Jasper adjusts his glasses.</question>
  * <group>chapters</group>
+ * <group match="Drafts/chapter-4.*.md, Drafts/chapter-1*.md">manuscript</group>
  * <path group="characters">jasper.md</path>
  * <excerpt/>
  * </prose-minion-passage-search>
@@ -20,15 +21,26 @@
  *   each once: `<group>` (every file of a context group), `<path group="…">`
  *   (one configured file, written as `resource.read` writes a path) and
  *   `<excerpt/>` (the room's excerpt). Anything else is `malformed:<fault>`.
- * - **No free path and no pattern.** The format has no such element, so a
- *   request can only name what the project's context paths already hold.
- * - Whether a group exists, a file is in its group, and the room has an
- *   excerpt is the host's, at settlement (`WorkshopReplyPassageSearch`).
- *   Nothing here logs what a field held.
+ * - **A group may be narrowed** (ADR 2026-11-20 S42): `<group match="…">`,
+ *   its character references decoded first, as a capability call's text is
+ *   (`&amp;` is `&`; S53), then a comma-separated list read as a
+ *   context-path setting is
+ *   (`readContextGroupMatchList`: 1 to `matchPatterns`, the attribute at
+ *   most `matchCharacters`). Only `<group>` takes it. A group named twice,
+ *   narrowed or not, is a repeat.
+ * - **No free path and no free pattern.** A pattern narrows a context group
+ *   and can only take files away from it, so a request can only name what
+ *   the project's context paths already hold.
+ * - Whether a group exists, a file is in its group, a pattern is safe and
+ *   finds a file of its group, and the room has an excerpt is the host's,
+ *   at settlement (`WorkshopReplyPassageSearch`). Nothing here logs what a
+ *   field held.
  */
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { isSafeConfiguredResourcePath } from '@/utils/configuredResourcePath';
+import { readContextGroupMatchList, type ContextGroupMatchFormFault } from '@/utils/contextGroupMatchList';
+import { decodeXmlCharacterReferences } from '@/utils/xmlCharacterReferences';
 import {
   workshopReplyTrailerStructureRejection,
   type WorkshopReplyTrailerFrame,
@@ -42,7 +54,7 @@ export const WORKSHOP_PASSAGE_SEARCH_REDACTION = '[passage search request remove
 /** What retained history and the bubble hold when a reply was only a request. */
 export const WORKSHOP_PASSAGE_SEARCH_ONLY_REPLY_LINE = 'Asked for a passage search.';
 
-/** Every element the frame reads; `excerpt` alone may close itself, and `path` alone takes an attribute. */
+/** Every element the frame reads; `excerpt` alone may close itself, `path` alone takes `group`, and `group` alone takes `match`. */
 export const WORKSHOP_PASSAGE_SEARCH_ELEMENTS = ['question', 'group', 'path', 'excerpt'] as const;
 
 export const WORKSHOP_PASSAGE_SEARCH_FAULTS = [
@@ -63,13 +75,18 @@ export const WORKSHOP_PASSAGE_SEARCH_FAULTS = [
   'missing-path',
   'path-too-long',
   'invalid-path',
-  'excerpt-not-empty'
+  'excerpt-not-empty',
+  // A group's narrowing (S42): its list's form; whether each pattern is safe is settlement's.
+  'empty-match',
+  'match-too-long',
+  'too-many-match-patterns'
 ] as const;
 export type WorkshopPassageSearchFault = typeof WORKSHOP_PASSAGE_SEARCH_FAULTS[number];
 
-/** One place a request names, as the frame wrote it. A group's name is checked by the host. */
+/** One place a request names, as the frame wrote it. A group's name, and its narrowing's patterns, are checked by the host. */
 export type WorkshopPassageSearchScopeDraft =
-  | { readonly kind: 'group'; readonly group: string }
+  /** `match`: the narrowing's patterns as split, in order; absent for the whole group. */
+  | { readonly kind: 'group'; readonly group: string; readonly match?: readonly string[] }
   | { readonly kind: 'file'; readonly group: string; readonly path: string }
   | { readonly kind: 'excerpt' };
 
@@ -98,7 +115,36 @@ export type WorkshopPassageSearchDecode =
 const GROUP_NAME_CHARACTERS = 40;
 
 const OPENING = /<([a-z][a-z0-9-]*)((?:\s+[a-z][a-z0-9-]*\s*=\s*"[^"]*")*)\s*(\/?)>/iy;
-const GROUP_ATTRIBUTE = /^\s+group\s*=\s*"([^"]*)"$/i;
+const ATTRIBUTE = /\s+([a-z][a-z0-9-]*)\s*=\s*"([^"]*)"/giy;
+/** The one attribute each element may carry. */
+const ELEMENT_ATTRIBUTE: Readonly<Record<string, string>> = { path: 'group', group: 'match' };
+
+/* eslint-disable @typescript-eslint/naming-convention -- keyed by the list's kebab-case fault words. */
+const MATCH_FAULTS: Readonly<Record<ContextGroupMatchFormFault, WorkshopPassageSearchFault>> = {
+  empty: 'empty-match',
+  'too-long': 'match-too-long',
+  'too-many': 'too-many-match-patterns'
+};
+/* eslint-enable @typescript-eslint/naming-convention */
+
+/**
+ * The element's one allowed attribute, its character references decoded as
+ * the capability codec decodes text (S53); `undefined` when absent; `null`
+ * when anything else is written.
+ */
+function attributeOf(name: string, written: string): string | undefined | null {
+  if (!written) {
+    return undefined;
+  }
+  const allowed = ELEMENT_ATTRIBUTE[name];
+  ATTRIBUTE.lastIndex = 0;
+  const found = ATTRIBUTE.exec(written);
+  // One attribute, the element's own, and nothing after it.
+  if (!allowed || !found || found[1].toLowerCase() !== allowed || ATTRIBUTE.lastIndex !== written.length) {
+    return null;
+  }
+  return decodeXmlCharacterReferences(found[2]);
+}
 
 /** How two scopes are compared: a repeat differs by more than letter case. */
 function scopeKey(scope: WorkshopPassageSearchScopeDraft): string {
@@ -135,8 +181,8 @@ export function decodeWorkshopPassageSearch(inner: string): WorkshopPassageSearc
     if (!(WORKSHOP_PASSAGE_SEARCH_ELEMENTS as readonly string[]).includes(name)) {
       return reject('unknown-element');
     }
-    const attribute = opening[2] ? GROUP_ATTRIBUTE.exec(opening[2]) : undefined;
-    if (opening[2] && (name !== 'path' || !attribute)) {
+    const attribute = attributeOf(name, opening[2]);
+    if (attribute === null) {
       return reject('unknown-attribute');
     }
     let content = '';
@@ -167,7 +213,7 @@ export function decodeWorkshopPassageSearch(inner: string): WorkshopPassageSearc
       }
       continue;
     }
-    const scope = scopeOf(name, content.trim(), attribute?.[1].trim());
+    const scope = scopeOf(name, content.trim(), attribute);
     if (typeof scope === 'string') {
       return reject(scope);
     }
@@ -187,11 +233,12 @@ export function decodeWorkshopPassageSearch(inner: string): WorkshopPassageSearc
   return scopes.length === 0 ? reject('no-scope') : { kind: 'request', request: { question, scopes } };
 }
 
-function scopeOf(name: string, content: string, group: string | undefined): WorkshopPassageSearchScopeDraft | WorkshopPassageSearchFault {
+/** One place from its element: `attribute` is the element's own, as written (`group` on a path, `match` on a group). */
+function scopeOf(name: string, content: string, attribute: string | undefined): WorkshopPassageSearchScopeDraft | WorkshopPassageSearchFault {
   if (name === 'excerpt') {
     return content.length > 0 ? 'excerpt-not-empty' : { kind: 'excerpt' };
   }
-  const named = name === 'group' ? content : group;
+  const named = name === 'group' ? content : attribute?.trim();
   if (named === undefined) {
     return 'missing-group';
   }
@@ -202,7 +249,11 @@ function scopeOf(name: string, content: string, group: string | undefined): Work
     return 'group-too-long';
   }
   if (name === 'group') {
-    return { kind: 'group', group: named };
+    if (attribute === undefined) {
+      return { kind: 'group', group: named };
+    }
+    const match = readContextGroupMatchList([attribute]);
+    return match.kind === 'refused' ? MATCH_FAULTS[match.fault] : { kind: 'group', group: named, match: match.patterns };
   }
   if (content.length === 0) {
     return 'missing-path';

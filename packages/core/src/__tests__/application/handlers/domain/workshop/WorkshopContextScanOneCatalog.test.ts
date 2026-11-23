@@ -52,7 +52,7 @@ function project(roots: string[] = [ROOT]) {
   const log: LogSink = { appendLine: (line: string) => { lines.push(line); }, show: jest.fn(), clear: jest.fn() };
   const resolver = new ContextResourceResolver(settings, fileSystem, workspace, log);
   const createProvider = jest.spyOn(resolver, 'createProvider');
-  const intake = new WorkshopContextIntakeService(resolver, fileSystem, workspace);
+  const intake = new WorkshopContextIntakeService(resolver, fileSystem, workspace, resolver);
   const session = new WorkshopSessionService(() => 1);
   const effects = {
     postSessionState: jest.fn(),

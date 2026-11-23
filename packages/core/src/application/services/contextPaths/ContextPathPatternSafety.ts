@@ -15,6 +15,7 @@
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { ContextPathPatternRefusal } from '@messages';
+import { splitContextPathList } from '@/utils/contextGroupMatchList';
 
 // A C0 or C1 control, DEL, or a line or paragraph separator.
 // eslint-disable-next-line no-control-regex -- the rule is about control characters.
@@ -92,7 +93,7 @@ export function triageContextPathPatterns(
   return { safe, refused };
 }
 
-/** A setting's value as the resolver reads it: split on commas, trimmed, empties dropped. */
+/** A setting's value as the resolver reads it: split on commas, trimmed, empties dropped (the rule a narrowing's list is read by too). */
 export function contextPathSettingPatterns(value: string | undefined): string[] {
-  return (value ?? '').split(',').map((pattern) => pattern.trim()).filter((pattern) => pattern.length > 0);
+  return splitContextPathList(value ?? '');
 }

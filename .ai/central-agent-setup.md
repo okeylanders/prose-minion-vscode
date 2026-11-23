@@ -917,8 +917,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-11-22 on `epic/passage-search-persona` at `cc83e9e4`, the code merged into `epic/passage-search` at `5b747f6b`: Workshop Persona Tools and Passage Search, before either goes to `main`):
-- 1,017 suites / 14,399 tests / 60 snapshots (full `npx jest --maxWorkers=25%`)
+**Test Inventory** (measured 2026-11-23 on `epic/passage-search-group-match` at `4346d0ef`, Passage Search Slice 5: Workshop Persona Tools and Passage Search, before either goes to `main`):
+- 1,025 suites / 14,529 tests / 60 snapshots (full `npx jest --maxWorkers=25%`)
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1405,7 +1405,7 @@ card records:
   - `startLine` / `endLine` only beside exactly one `<path>`
     (`ambiguous-lines`);
   - duplicates are refused (`duplicate-path`), by group and case-folded
-    path. This is deliberately stricter than `findConfiguredResource`,
+    path. This is deliberately stricter than `resolveConfiguredResource`,
     which prefers an exact match: a case-distinct configured pair is read
     in two calls.
 - **One call, one card, a row per file.** A read is one call against the
@@ -1428,9 +1428,67 @@ card records:
   `WorkshopResource*.ts` module; a new one joins the list and the
   capability boundary, imports nothing of recall or memory, and stays under
   500 lines.
+- **`resource.catalog` is the group inventory** (ADR 2026-11-20 S46,
+  `WorkshopResourceCatalog`). It lists from the authoritative listing a
+  passage search reads (`listGroupFiles`), never the browse catalog, which
+  keeps a file in its first group only: a named group's files in natural
+  order, or each group in turn with a file under every group it is in.
+  Search, read and the instruction's group counts stay on the browse
+  catalog.
+  - **Paged by the shared rule** (`workshopCapabilityPage`,
+    `workshopCapabilityPageOf`), `catalogItems` a page; the next page's
+    whole call is written exactly when a later page exists, and every
+    continuation decodes as written (`resourceCatalogPromptSync.test.ts`).
+  - **`<match>`, only beside `<group>`** (`match-needs-group`), repeats and
+    joins, read by `ContextGroupNarrowing` (`unsafe-match`,
+    `too-many-patterns`): it lists exactly the files that narrowed search
+    reads, with each pattern's count. A continuation writes the patterns
+    in one `<match>`; `matchCharacters` holds the longest list the rule
+    allows, so it always decodes.
+  - A listing or walk that did not complete is a failed result, never a
+    shorter catalog. A page past the end, an empty listing's too, is
+    answered in words.
+  - A file's workspace folder is named whenever several folders are open
+    (the resolver's `openWorkspaceFolders`, the workspace's own names),
+    whatever the page found.
+- **A pair resolves to the file the inventory lists for it** (S50, as
+  amended after PR #298). Every reader of `{ group, path }`
+  (`resource.read`, `history.*`, the Read in reader) resolves through
+  `resolveConfiguredResource` (`application/services/ConfiguredResourceLookup.ts`):
+  1. **the group's authoritative listing first:** the one exact path, else
+     the one case-folded match; several exact matches (two workspace
+     folders) or several case-folded ones are `ambiguous`, never the first;
+  2. **then that file's browse entry by host identity,** which loads as
+     before; no such entry (the browse listing merged or dropped it) is
+     `ambiguous`, never another file.
+
+  **A listing that cannot be read is `unverified`** (re-review of PR #298):
+  the pair is refused, with no text and no browse lookup, because the
+  browse listing alone can name a different file. Each reader says it in
+  its own words: `resource.read`'s `unverified` file outcome (failed, "Try
+  again."), history's `file-list-unreadable`, the Read in reader's
+  `unverified` refusal. A path in no configured group is in no listing. A
+  new reader of a pair resolves through it and handles `unverified`.
+  - **The listing port is required everywhere**
+    (`ConfiguredResourceGroupFiles`): every reader and the intake service's
+    `configuredGroupFiles` take one, with no default, so a host that
+    forgets it fails to compile. `extension.ts` passes the resolver to
+    every construction; tests pass `__tests__/mocks/configuredGroupFiles`'
+    listings or the real resolver.
+  - A read lists each group it names once (`configuredGroupFilesOnce`).
+  - A result names the file by its browse entry, so a card records the
+    group the browse listing keeps it in.
+- **One file is read once per read** (S53). A later pair resolving to a
+  file an earlier pair named is its own `same-file` outcome, decided before
+  anything of it loads: no text, no manifest row, no line range, no
+  fingerprint, no share, so no continuation names it.
+  - Stated limits (S52): the instruction's per-group counts and a
+    group-scoped `resource.search` still read the browse listing, so a file
+    in two groups counts once there.
 - **Logs.** A read naming several files logs counts and groups, never a
   path. A one-path read keeps the line it has always had, which names its
-  configured path (`workshopResourceRequestLogSummary`).
+  configured path (`workshopResourceRequestLogSummary`). A catalog logs its
+  group, page and pattern and file counts, never a pattern.
 
 ### Workshop Composer `@` Mentions
 
@@ -2125,6 +2183,11 @@ native call may become:
 - **Retained history holds the XML,** never a tool call. No request carries
   a tool call or a tool result, so nothing about Rewind marks, archives or
   the session codec changes.
+- **A list supplied empty is never the field left out** (ADR 2026-11-20
+  S53): `[]`, or the text `"[]"`, for any repeating field, is the
+  translator's `empty-list` fault, which takes the correction path below.
+  Read as omitted, `resource.catalog`'s `matches: []` listed the whole
+  group.
 - **What can't be translated is never run.** An unknown name, an unmapped
   argument or unparseable argument JSON takes the engine's bounded
   correction path (ask for the XML, within `maxCorrectionTurns`, then a
@@ -2273,7 +2336,7 @@ D11–D17 and D13a (Workshop Persona Tools, item B; PR #287) when touching
   ("File history"); `history.log` is private discovery. No setting (G1).
 - **Which file:** `<group>excerpt</group>` (the excerpt's file, authorized
   as Re-read from file authorizes it) or a configured file by group and
-  path (`findConfiguredResource`). Never a free path; a host path never
+  path (`resolveConfiguredResource`, S50). Never a free path; a host path never
   reaches a result, card or log.
 - **No process is spawned.** `Platform.fileHistory` (`log`, `show`,
   `size`) is implemented by `VsCodeFileHistory` over the built-in Git
@@ -2418,21 +2481,55 @@ request, its card, or how its results reach the persona:
   (`PROMPT_BUDGETS.workshopPassageSearch`), held to the prompt by
   `passageSearchRequestPromptSync.test.ts`. No setting. Nothing is sent to
   a model until Run.
-  - **The codec has no free path and no pattern.** No Workshop module
+  - **The codec has no free path and no free pattern.** No Workshop module
     builds a `pattern` scope (`workshopPassageSearchBoundaries.test.ts`);
     `WorkshopPassageSearchEngineRequest` is the one place a card becomes
-    the engine's request: groups, files by catalog key, the excerpt by
-    value.
+    the engine's request: groups (narrowed or not), files by catalog key,
+    the excerpt by value.
+- **A group may be narrowed** (S42–S45): `<group match="a, b">chapters</group>`,
+  its character references decoded first (`utils/xmlCharacterReferences`,
+  as the capability codec's parser decodes text, so `&amp;` and
+  `&#0000000065;` read the same in a trailer and in `resource.catalog`'s
+  `<match>`; leading zeros are bounded by the value, never refused, and a
+  reference's text by 64 digits; S53; a path's `group` attribute too), then a comma-separated list read as a context-path
+  setting is read, 1 to
+  `PROMPT_BUDGETS.contextPaths.matchPatterns`, the attribute at most
+  `matchCharacters`. Only `<group>` takes `match`; a group named twice,
+  narrowed or not, is a repeat.
+  - **One rule reads every narrowing:** `application/services/ContextGroupNarrowing`
+    (the list's form is `utils/contextGroupMatchList`, so the trailer codec
+    in `utils/` imports nothing of `application/`). Settlement, the engine
+    and `resource.catalog` all read through it; never split, check or
+    intersect a narrowing anywhere else.
+  - **A narrowed group never reaches a file outside its group:** the
+    group's own `listGroupFiles` listing intersected with what the patterns
+    find (`matchPatterns`), by host file identity (`ContextPatternMatchFile.identity`).
+    An incomplete walk is never zero files.
+  - The engine refuses an unsafe narrowing itself (`unsafe-pattern`),
+    whoever sends one, and applies settlement's rule at every plan: a
+    pattern that now finds no file of its group refuses the plan
+    (`match-found-nothing`, S53), so a card's Estimate and Run never search
+    a quietly narrower set.
 - **Settled before the reply commits** (`WorkshopReplyPassageSearch`):
-  form, then each group, the excerpt and each file against one
-  `listGroupFiles` listing. It reads no file and prices nothing. A drop is
-  typed, mapped in `WorkshopTrailerDropReasons` and counted on trailer
-  outcomes' `passageSearch` side.
+  form, then each group, each narrowing's safety (`unsafe-match`, before
+  anything is listed), the excerpt, and each file against one
+  `listGroupFiles` listing and one `matchPatterns` walk for every
+  narrowing: an incomplete walk is `catalog-unreadable`, and a pattern that
+  finds no file of its group is `match-found-nothing`. It reads no file and
+  prices nothing. A drop is typed, mapped in `WorkshopTrailerDropReasons`
+  and counted on trailer outcomes' `passageSearch` side.
 - **Three optional, exact turn fields** (`WorkshopPassageSearchRecords`; no
   `schemaVersion` bump; fixture `workshop-session-v2-before-passage-search.json`):
   `passageSearchRequest` on the reply, `passageSearchResults` on a
   delivery's writer-role turn, `passageSearchDelivery` on the persona's
-  adopted reply to the results.
+  adopted reply to the results. A card's group scope holds an optional,
+  exact `match` (the patterns as split, each trimmed and safe); a card from
+  before Slice 5 holds none and keeps reading
+  (`workshop-session-v2-before-group-match.json`).
+- **The card and the directive name a narrowed group with its patterns**
+  (`shared/utils/workshopPassageSearchPlaces`): the card's "Where:" line
+  and the directive's "Searched:" line, neutralized there. Transcript,
+  export and logs stay counts only.
 - **Status is derived, never stored** (`workshopPassageSearchStatus`).
   `delivered` reads only a `passageSearchDelivery` naming the card: a
   request turn with no receipt after it is never delivered. `running` and
@@ -3425,9 +3522,14 @@ A persona's request for a search is **Workshop Passage Search Requests**.
     writer was shown, the pricing basis included (D2a). A caller that
     cannot keep a plan plans again and runs only on the same key.
   - The price is approximate, never a cap ("≈ $…", `formatApproximateUsd`).
-- **Scopes (P4, D3a):** active file, selection, context group, file by
-  catalog key, writer-typed pattern (the sidebar only), and `text` by
-  value.
+- **Scopes (P4, D3a):** active file, selection, context group (optionally
+  narrowed by `match`, S43), file by catalog key, writer-typed pattern (the
+  sidebar only), and `text` by value.
+  - A narrowed group is its own listing's files that a pattern finds, by
+    host identity (`ContextGroupNarrowing`), walked once per plan; the
+    engine refuses an unsafe narrowing (`unsafe-pattern`), an incomplete
+    walk (`catalog-unreadable`) and a pattern that finds no file of its
+    group (`match-found-nothing`).
   - Files come from one root-aware listing per plan
     (`ContextResourceResolver.listGroupFiles`), never the browse catalog.
     Identity is the absolute path; a group is every file its own patterns

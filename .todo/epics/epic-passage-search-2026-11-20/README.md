@@ -1,6 +1,6 @@
 # Epic: Passage Search
 
-**Status:** Built. Every slice is merged into `epic/passage-search` (PRs #292–#296, last at `5b747f6b`); the closing pass is on `epic/passage-search-close`. Next: Okey's [live pass](live-pass.md) and the decisions it ends with, then a PR from the epic to `main` once Workshop Persona Tools has landed there. Nothing has gone to `main`.
+**Status:** Built and in Okey's [live pass](live-pass.md). Slices 0–4 and the closing pass are merged into `epic/passage-search` (PRs #292–#297, last at `e54cc784`). Slice 5, the live pass's first change (narrowing a group, the group inventory), is PR #298. Then the decisions the pass ends with, and a PR from the epic to `main` once Workshop Persona Tools has landed there. Nothing has gone to `main`.
 **Priority:** Medium
 **Opened:** 2026-11-20
 **Branch:** `epic/passage-search`, cut from the tip of `epic/workshop-persona-tools` at `1b3b9239`, so the epic starts with Persona Tools in it. That epic is built and waits for Okey's live pass and its own PR to `main`.
@@ -31,7 +31,8 @@ price.
 | 2 | The sidebar subtab: scope picker, question, plan, Run, progress, Stop, results, open at a line, Copy, Save, the Settings row, help | D15, D24 | `epic/passage-search-sidebar` | #294 | Merged (`8b441e55`) |
 | 3 | The organizing pass: its call, codec, citation and quotation checks, its price | D12, D12a, D13 | `epic/passage-search-organize` | #295 | Merged (`f5949b97`) |
 | 4 | The persona request: trailer, settlement, card, outcome kind, the handler, the directed results run, the directive and its fit, help | D16–D21, D19a, D24 | `epic/passage-search-persona` | #296 | Merged (`5b747f6b`) |
-| Close | Live-pass checklist, ADR amendments S24–S41, `AGENTS.md`, memory bank | | `epic/passage-search-close` | | In review |
+| Close | Live-pass checklist, ADR amendments S24–S41, `AGENTS.md`, memory bank | | `epic/passage-search-close` | #297 | Merged (`e54cc784`) after three Astra rounds |
+| 5 | From the live pass (Okey, 2026-11-23): a persona narrows a group with patterns (`<group match="…">`), and `resource.catalog` becomes the group inventory (authoritative listing, paged, `<match>`) | S42–S53 | `epic/passage-search-group-match` | #298 | Approved after three Astra rounds; merging |
 
 Slice branches are `epic/passage-search-<slug>`.
 
@@ -86,6 +87,10 @@ overturn.
 | 30 | **A paragraph over the budget is split at sentence ends;** a file with a sentence over the budget is left out and said so in the estimate. | PR #292 F3. |
 | 31 | **The organizing pass is priced as an allowance** (6,000 tokens in) inside the first estimate, and exactly when run afterwards. | PR #292 F6: its input does not exist when the search is priced. |
 | 32 | **The quote shown is the source's text,** never the model's spelling. | PR #292 F7. |
+| 33 | **A narrowing's patterns are a comma-separated list, read as a context-path setting is read;** a trailing comma is harmless. | Okey's example, and the writer's own convention in Settings. |
+| 34 | **Every pattern must find a file of its group,** or the request is dropped (`match-found-nothing`). | A typo'd pattern must never silently narrow a search; the persona can check with `resource.catalog` first. |
+| 35 | **`resource.catalog` lists a group from the search's own listing, and pages.** | Its 100-file cap had no continuation, and the browse list keeps a file in its first group only. |
+| 36 | **`<match>` may repeat in `resource.catalog`;** the prompt teaches one element. | A native call's array then maps through the adapter's existing rule. |
 
 ## Shared seams
 

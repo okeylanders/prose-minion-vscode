@@ -1,4 +1,9 @@
-/** Bounded, allowlisted project-resource operations for one Workshop host turn. */
+/**
+ * Bounded, allowlisted project-resource operations for one Workshop host
+ * turn. Search and read go through the browse catalog; the catalog is the
+ * group inventory, from the authoritative listing a passage search reads
+ * (`WorkshopResourceCatalog`; ADR 2026-11-20 S46).
+ */
 
 import {
   ContextResourceContent,
@@ -20,6 +25,10 @@ import { sliceUtf8 } from './WorkshopConfiguredResourceLookup';
 import { WorkshopResourceReadOperation } from './WorkshopResourceRead';
 import { neutralizeWorkshopResourceFence } from './WorkshopResourceReadRenderer';
 import { workshopResourceRequestSummary } from './WorkshopResourceRequestCopy';
+import { runWorkshopResourceCatalog, type WorkshopResourceGroupListing } from './WorkshopResourceCatalog';
+
+/** What the family reads: the browse catalog (search, read, availability) and the authoritative listing (the catalog). */
+export type WorkshopResourceSources = ContextResourceProviderFactory & WorkshopResourceGroupListing;
 
 type ResourceRequest = Extract<WorkshopCapabilityRequest, {
   capability: 'resource.catalog' | 'resource.search' | 'resource.read';
@@ -54,12 +63,13 @@ export class WorkshopResourceCapability {
   private readonly sources = new WeakMap<WorkshopCapabilityResult, readonly CapabilityDeliveredSource[]>();
 
   constructor(
-    private readonly providerFactory: ContextResourceProviderFactory,
+    private readonly providerFactory: WorkshopResourceSources,
     private readonly outputChannel: LogSink,
     private readonly turn: WorkshopResourceTurnContext
   ) {
     this.readOperation = new WorkshopResourceReadOperation({
       resources: () => this.resources(),
+      groupFiles: this.providerFactory,
       load: async (resourcePath) => (await this.provider()).loadResources([resourcePath]),
       throwIfAborted: () => this.throwIfAborted(),
       rejected: (request, error, metadata) => this.rejected(request, error, metadata),
@@ -121,35 +131,9 @@ export class WorkshopResourceCapability {
   private async catalog(
     request: Extract<ResourceRequest, { capability: 'resource.catalog' }>
   ): Promise<WorkshopCapabilityResult> {
-    const budgets = PROMPT_BUDGETS.workshopResource;
-    const resources = (await this.resources())
-      .filter(resource => !request.group || resource.group === request.group);
-    const displayed = resources.slice(0, budgets.catalogItems);
-    const truncated = displayed.length < resources.length;
-    const groupLabel = request.group ?? 'all configured groups';
-    const content = displayed.length === 0
-      ? `No configured project resources are available for ${groupLabel}.`
-      : [
-          `## Project resource catalog · ${groupLabel}`,
-          '',
-          ...displayed.map(resource => this.formatCatalogEntry(resource)),
-          ...(truncated
-            ? ['', `Catalog limited to ${budgets.catalogItems} of ${resources.length} matching files.`]
-            : [])
-        ].join('\n');
-
-    return {
-      capability: request.capability,
-      status: 'success',
-      requestSummary: request.group ? `${request.group} catalog` : 'configured resource catalog',
-      content,
-      metadata: {
-        group: request.group ?? 'all',
-        fileCount: displayed.length,
-        matchingFiles: resources.length,
-        truncated
-      }
-    };
+    const { result, log } = await runWorkshopResourceCatalog(this.providerFactory, request, () => this.throwIfAborted());
+    this.outputChannel.appendLine(`[WorkshopResourceCapability] request=${this.turn.requestId} persona=${this.turn.personaId} ${log}`);
+    return result;
   }
 
   private async search(
@@ -275,11 +259,6 @@ export class WorkshopResourceCapability {
     const resources = (await this.provider()).listResources();
     this.throwIfAborted();
     return resources;
-  }
-
-  private formatCatalogEntry(resource: ContextResourceSummary): string {
-    const workspace = resource.workspaceFolder ? ` · workspace: ${resource.workspaceFolder}` : '';
-    return `- [${resource.group}] \`${resource.path}\` — ${resource.label}${workspace}`;
   }
 
   private catalogSearchTerms(query: string): string[] {

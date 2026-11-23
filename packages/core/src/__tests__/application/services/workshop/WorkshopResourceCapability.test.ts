@@ -1,6 +1,7 @@
 import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
+import { groupListingOver, withAbsolutePaths } from '@/__tests__/application/services/workshop/resource/groupListingFixtures';
 import type { LogSink } from '@/platform';
 
 describe('WorkshopResourceCapability', () => {
@@ -13,7 +14,7 @@ describe('WorkshopResourceCapability', () => {
   };
   let listResources: jest.Mock;
   let loadResources: jest.Mock;
-  let factory: ContextResourceProviderFactory;
+  let factory: WorkshopResourceSources;
   let controller: AbortController;
   let capability: WorkshopResourceCapability;
 
@@ -21,7 +22,9 @@ describe('WorkshopResourceCapability', () => {
     listResources = jest.fn().mockReturnValue([summary]);
     loadResources = jest.fn().mockResolvedValue([{ ...summary, content: 'Raven waits.' }]);
     factory = {
-      createProvider: jest.fn().mockResolvedValue({ listResources, loadResources })
+      // A host's summaries carry their absolute paths, which a pair's file is matched by (S50).
+      createProvider: jest.fn().mockResolvedValue({ listResources: () => withAbsolutePaths(listResources()), loadResources }),
+      ...groupListingOver(() => withAbsolutePaths(listResources()))
     };
     controller = new AbortController();
     capability = new WorkshopResourceCapability(
@@ -43,9 +46,10 @@ describe('WorkshopResourceCapability', () => {
       { group: 'chapters', fileCount: 1 }
     ]);
     const catalog = await capability.fulfill({ capability: 'resource.catalog', group: 'characters' });
-    expect(catalog.content).toContain('[characters] `characters/raven.md` — Raven · workspace: novel');
-    expect(catalog.content).toContain('[characters] `characters/mara.md` — Mara');
-    expect(catalog.metadata).toMatchObject({ fileCount: 2, group: 'characters', truncated: false });
+    // The search's own listing, in reading order (ADR 2026-11-20 S46): one workspace folder, so none is named.
+    expect(catalog.content).toContain('2 files:\n- [characters] `characters/mara.md`\n- [characters] `characters/raven.md`');
+    expect(catalog.content).not.toContain('workspace:');
+    expect(catalog.metadata).toMatchObject({ fileCount: 2, group: 'characters', page: 1, pages: 1, truncated: false });
   });
 
   it('caps literal search matches and reads returned paths', async () => {

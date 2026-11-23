@@ -2,10 +2,12 @@
  * From a stored card to the engine's request, and from the engine's plan to
  * what the card shows (ADR 2026-11-20 D20). Pure.
  *
- * - **Only three kinds of scope leave the Workshop:** a context group, a
- *   configured file by catalog key, and the room's excerpt by value. A path
- *   or pattern the writer never typed is never built here: a persona's
- *   words can only name what the project's context paths already hold.
+ * - **Only three kinds of scope leave the Workshop:** a context group
+ *   (narrowed by the card's patterns when it has them: S43), a configured
+ *   file by catalog key, and the room's excerpt by value. A path or a free
+ *   pattern the writer never typed is never built here: a persona's words
+ *   can only name, or narrow, what the project's context paths already
+ *   hold.
  * - **The excerpt is read when the plan is made,** so the plan prices the
  *   passage the room holds now.
  * - **The search organizes its results** when the engine can: the price the
@@ -28,7 +30,8 @@ export function workshopPassageSearchEngineRequest(
   const scopes: PassageSearchScope[] = [];
   for (const scope of card.scopes) {
     if (scope.kind === 'group') {
-      scopes.push({ kind: 'group', group: scope.group });
+      // A narrowed group stays a group (S43): the engine reads only its files the patterns find.
+      scopes.push({ kind: 'group', group: scope.group, ...(scope.match ? { match: [...scope.match] } : {}) });
     } else if (scope.kind === 'file') {
       scopes.push({ kind: 'file', file: { group: scope.group, path: scope.path } });
     } else if (excerptText !== undefined && excerptText.trim().length > 0) {

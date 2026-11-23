@@ -17,6 +17,7 @@ import type { WorkshopSessionRecallScope } from '@/application/services/workshop
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import type { ContextPathGroup } from '@shared/types/context';
 import type { WorkshopPinnedContextPathPlatform } from '@shared/types/workshopPinnedContext';
+import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
 export const ROOT = '/workspace/novel';
 export const LIST_FILE = path.join(ROOT, 'prose-minion', 'pinned-context.json');
@@ -87,7 +88,7 @@ export function seedHost(options: SeedHostOptions = {}) {
       };
     })
   };
-  const intake = new WorkshopContextIntakeService(providerFactory as never, fileSystem, workspace);
+  const intake = new WorkshopContextIntakeService(providerFactory as never, fileSystem, workspace, UNLISTED_GROUP_FILES);
   const store = new WorkshopPinnedContextStore(fileSystem, workspace, log, { platform });
   const scope = { current: options.scope ?? ((): WorkshopSessionRecallScope => ({ available: true, liveSessionId: 'room-1' })) };
   const library = new WorkshopPinnedContextLibrary(store, intake, fileSystem, () => scope.current(), log, { platform });

@@ -19,6 +19,13 @@
  *   (`editorNow`), synchronously, before anything is awaited, and both
  *   scopes read that snapshot. A selection's lines are the document's when
  *   the port gives its start line, else counted within the selection.
+ * - **A narrowed `group`** (S43) is the files of its own listing that at
+ *   least one of its patterns finds by the context-path walk, by host file
+ *   identity (`ContextGroupNarrowing`): never a file outside its group. All
+ *   of a plan's narrowings are walked once; a walk that did not complete is
+ *   `catalog-unreadable`, never fewer files, and a pattern that finds no
+ *   file of its group is `match-found-nothing` (S53), so a plan never reads
+ *   less than every pattern it was asked for.
  * - **Reading order is the host's:** scopes as given; inside a `group` or
  *   `pattern`, files in natural order of their paths.
  * - **De-duplicated by the host's file identity,** the first scope to name
@@ -41,9 +48,20 @@ import type { PassageSearchRefusal, PassageSearchSourceFile } from '@services/se
 import type { PassageSearchLeftOutFile } from '@services/search/passage/PassageSearchPlanning';
 import { passageSearchRefusal } from '@services/search/passage/PassageSearchRefusals';
 import type { PassageSearchScope } from '@/application/services/passageSearch/PassageSearchRequest';
+import {
+  narrowContextGroup,
+  walkContextGroupPatterns,
+  type ContextGroupMatchRequest,
+  type ContextGroupPatternMatcher,
+  type ContextGroupPatternWalk
+} from '@/application/services/ContextGroupNarrowing';
 
-/** The resolver's authoritative reads, as a port: each rejects when a scan fails. */
-export interface PassageSearchFileListing {
+/**
+ * The resolver's authoritative reads, as a port: each listing rejects when a
+ * scan fails; the pattern walk a narrowed group is checked by reports an
+ * incomplete walk per pattern (S43).
+ */
+export interface PassageSearchFileListing extends ContextGroupPatternMatcher {
   listGroupFiles(groups: ContextPathGroup[]): Promise<ContextResourceCandidate[]>;
   listPatternFiles(patterns: readonly string[]): Promise<ContextResourceCandidate[]>;
 }
@@ -136,6 +154,12 @@ export class PassageSearchScopeFiles {
       scope.kind === 'group' ? [scope.group] : scope.kind === 'file' ? [scope.file.group] : []))];
     // One listing for the plan, asked only when a scope needs it.
     const listed = groups.length > 0 ? await this.listed(() => this.ports.listing.listGroupFiles(groups)) : [];
+    // One walk for every narrowed group (S43), asked only when a scope is narrowed.
+    const narrowings = scopes.flatMap((scope): ContextGroupMatchRequest[] =>
+      scope.kind === 'group' && scope.match !== undefined ? [{ group: scope.group, patterns: scope.match }] : []);
+    const walk: ContextGroupPatternWalk | undefined = narrowings.length > 0
+      ? await walkContextGroupPatterns(this.ports.listing, narrowings)
+      : undefined;
     const named = new Map<string, NamedFile>();
     const add = (file: NamedFile): void => {
       if (!named.has(file.identity)) {
@@ -151,7 +175,7 @@ export class PassageSearchScopeFiles {
           add(selectedText(editor));
           break;
         case 'group':
-          inReadingOrder(listed.filter((file) => file.group === scope.group)).forEach((file) => add(this.listedFile(file)));
+          inReadingOrder(groupFiles(listed, scope, walk)).forEach((file) => add(this.listedFile(file)));
           break;
         case 'file':
           add(this.listedFile(configuredFile(listed, scope.file.group, scope.file.path)));
@@ -276,6 +300,27 @@ function selectedText(selection: ActiveSelectionInfo | undefined): NamedFile {
     lineOffset: selection.startLine !== undefined ? selection.startLine - 1 : 0,
     lines: selection.startLine !== undefined ? 'document' : 'text'
   };
+}
+
+/** A group's files, narrowed by its patterns when it has them; a walk that did not complete refuses the plan, never reading fewer files. */
+function groupFiles(
+  listed: readonly ContextResourceCandidate[],
+  scope: Extract<PassageSearchScope, { kind: 'group' }>,
+  walk: ContextGroupPatternWalk | undefined
+): readonly ContextResourceCandidate[] {
+  if (scope.match === undefined) {
+    return listed.filter((file) => file.group === scope.group);
+  }
+  // Never widened: a narrowing with no walk behind it reads nothing.
+  const narrowed = walk ? narrowContextGroup(listed, { group: scope.group, patterns: scope.match }, walk) : { kind: 'incomplete' as const };
+  if (narrowed.kind === 'incomplete') {
+    throw new Refused(passageSearchRefusal('catalog-unreadable'));
+  }
+  // Settlement's rule, again at every plan: a pattern that now finds nothing never quietly narrows the search (S53).
+  if (narrowed.patterns.some((pattern) => pattern.files === 0)) {
+    throw new Refused(passageSearchRefusal('match-found-nothing'));
+  }
+  return narrowed.files;
 }
 
 /** Natural order of the relative paths; the same path in two roots by root. */

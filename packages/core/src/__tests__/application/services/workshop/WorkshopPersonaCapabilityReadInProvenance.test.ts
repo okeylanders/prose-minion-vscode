@@ -16,7 +16,9 @@ import { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 import type { AnalysisResult } from '@/domain/models/AnalysisResult';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
-import type { ContextResourceContent, ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { ContextResourceContent } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
+import { groupListingOver } from '@/__tests__/application/services/workshop/resource/groupListingFixtures';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import type { LogSink } from '@/platform';
 import type { WorkshopCapabilityRequest } from '@shared/types/workshopCapabilities';
@@ -98,11 +100,12 @@ describe('persona capability read-in provenance', () => {
       })
     } as unknown as DictionaryService;
     const { content: _content, ...summary } = RABBIT_FILE;
-    const resourceProviderFactory: ContextResourceProviderFactory = {
+    const resourceProviderFactory: WorkshopResourceSources = {
       createProvider: jest.fn().mockResolvedValue({
         listResources: () => [summary],
         loadResources: jest.fn().mockResolvedValue([RABBIT_FILE])
-      })
+      }),
+      ...groupListingOver(() => [summary])
     };
     return new WorkshopPersonaCapabilityFactory(
       dictionary,

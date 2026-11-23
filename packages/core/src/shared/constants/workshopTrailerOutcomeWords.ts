@@ -55,6 +55,8 @@ export const WORKSHOP_TRAILER_DROP_REASON_WORDS: Readonly<Record<WorkshopTrailer
   'unknown-file': 'a file it named is not in the group it named',
   'ambiguous-file': 'a file it named is in more than one workspace folder under the same path',
   'no-excerpt': 'it named the excerpt, and this room has none',
+  'unsafe-match': 'a pattern narrowing a group is not a safe context path',
+  'match-found-nothing': 'a pattern narrowing a group finds no file of that group',
   'catalog-unreadable': 'the project\'s files could not be listed just then'
 });
 

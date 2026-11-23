@@ -56,7 +56,7 @@ function createHost(options: HostOptions = {}) {
   let current = options.editor;
   const editor = { currentSelection: jest.fn(() => current), getActiveSelection: jest.fn(() => options.remembered ?? current) };
   const scopeFiles = new PassageSearchScopeFiles({
-    listing: { listGroupFiles, listPatternFiles },
+    listing: { listGroupFiles, listPatternFiles, matchPatterns: jest.fn(async () => undefined) },
     fileSystem: { readFile, stat },
     workspace: { workspaceFolders: () => options.roots ?? [{ path: '/book', name: 'book' }] },
     editor

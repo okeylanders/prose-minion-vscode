@@ -28,7 +28,7 @@ import { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 import { WorkshopCapabilityXmlCodec } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
 import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
-import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import { readProjectMemoryListSize, projectMemoryListSizeChoice } from '@/application/services/workshop/memory/ProjectMemoryListSize';
 import { workshopMemoryTabView } from '@hooks/domain/workshop/memory/workshopMemoryTabView';
@@ -58,7 +58,7 @@ function capabilityOver(host: ReturnType<typeof libraryHost>, session: WorkshopS
   return new WorkshopPersonaCapabilityFactory(
     {} as DictionaryService,
     {} as WorkshopAnalysisSidePass,
-    { createProvider: jest.fn() } as unknown as ContextResourceProviderFactory,
+    { createProvider: jest.fn() } as unknown as WorkshopResourceSources,
     session,
     host.log,
     {} as WorkshopTranscriptRecallPort,

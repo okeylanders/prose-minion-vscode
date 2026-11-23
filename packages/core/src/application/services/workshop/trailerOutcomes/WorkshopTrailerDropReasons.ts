@@ -134,6 +134,10 @@ export function workshopTrailerDropReason(code: DropCode): WorkshopTrailerDropRe
       return 'ambiguous-file';
     case 'no-excerpt':
       return 'no-excerpt';
+    case 'unsafe-match':
+      return 'unsafe-match';
+    case 'match-found-nothing':
+      return 'match-found-nothing';
     case 'catalog-unreadable':
     case 'listing-not-read':
       return 'catalog-unreadable';

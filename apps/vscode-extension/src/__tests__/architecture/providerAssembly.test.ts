@@ -188,7 +188,7 @@ describe('app-shell provider assembly', () => {
   it('authorizes the file-edit excerpt through a counts-only catalog, so the write path logs no path (ADR 2026-11-05 D13; PR #229 N-01)', () => {
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
     expect(extensionSource).toMatch(
-      /workshopExcerptFileEditDocument\(\s*workshopSessionService,\s*new WorkshopContextIntakeService\(contextResourceResolver\.countsOnly\(\),/
+      /workshopExcerptFileEditDocument\(\s*workshopSessionService,\s*new WorkshopContextIntakeService\(\s*contextResourceResolver\.countsOnly\(\),/
     );
   });
 

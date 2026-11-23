@@ -26,7 +26,7 @@ import type {
   WorkshopPassageSearchScope,
   WorkshopTurn
 } from '@messages';
-import { CONTEXT_PATH_GROUP_LABELS } from '@shared/constants/contextPathSuggestionWords';
+import { workshopPassageSearchPlaceWords } from '@shared/utils/workshopPassageSearchPlaces';
 import {
   WORKSHOP_PASSAGE_SEARCH_CANCELLED,
   WORKSHOP_PASSAGE_SEARCH_ORGANIZE_NOTE,
@@ -62,11 +62,9 @@ export const WorkshopPassageSearchResultsLine: React.FC<{ turn: WorkshopTurn; id
   </div>
 );
 
-/** "Chapters; Characters: jasper.md; the excerpt": where a search would look, as the card names it. */
+/** "Chapters, matching Drafts/chapter-4.*.md; Characters: jasper.md; the excerpt": where a search would look, as the card names it (S45). */
 export function workshopPassageSearchScopeWords(scopes: readonly WorkshopPassageSearchScope[]): string {
-  return scopes.map((scope) => scope.kind === 'excerpt'
-    ? 'the excerpt'
-    : scope.kind === 'group' ? CONTEXT_PATH_GROUP_LABELS[scope.group] : `${CONTEXT_PATH_GROUP_LABELS[scope.group]}: ${scope.path}`).join('; ');
+  return workshopPassageSearchPlaceWords(scopes);
 }
 
 /** "Reading 7 of 23 · 5 found". */

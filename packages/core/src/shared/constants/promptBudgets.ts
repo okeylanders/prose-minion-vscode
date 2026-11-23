@@ -702,7 +702,11 @@ export interface PromptBudgets {
    * `scanFolders` kept, `sampleNames` names a folder, each cut to
    * `sampleNameCharacters`), the checker's bounds (`patternsPerGroup`,
    * `patternCharacters`, `examples` files shown), and the persona family's
-   * `foldersPerPage` and `checkPatterns` (C2).
+   * `foldersPerPage` and `checkPatterns` (C2). A group narrowed by patterns
+   * (ADR 2026-11-20 S42, S46: a passage search's `<group match="…">`,
+   * `resource.catalog`'s `<match>`) names 1 to `matchPatterns`, each held
+   * to `patternCharacters`, and a list as written is at most
+   * `matchCharacters` before it is split.
    */
   readonly contextPaths: Readonly<{
     scanEntries: number;
@@ -715,6 +719,8 @@ export interface PromptBudgets {
     examples: number;
     foldersPerPage: number;
     checkPatterns: number;
+    matchPatterns: number;
+    matchCharacters: number;
   }>;
   /**
    * The helper agent's tasks (ADR 2026-11-05 D1), one entry per task. A
@@ -1227,7 +1233,10 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     patternCharacters: 200,
     examples: 3,
     foldersPerPage: 50,
-    checkPatterns: 40
+    checkPatterns: 40,
+    matchPatterns: 8,
+    // At least `matchPatterns` × `patternCharacters` plus ", " between them, so a continuation's one `<match>` always decodes.
+    matchCharacters: 2_000
   },
   helper: {
     // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.

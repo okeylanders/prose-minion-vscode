@@ -12,7 +12,7 @@ import { WorkshopSessionService } from '@/application/services/workshop/Workshop
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
-import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import { libraryHost, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
@@ -29,7 +29,7 @@ function room(host: ReturnType<typeof libraryHost>) {
     const capability = new WorkshopPersonaCapabilityFactory(
       {} as DictionaryService,
       {} as WorkshopAnalysisSidePass,
-      { createProvider: jest.fn() } as unknown as ContextResourceProviderFactory,
+      { createProvider: jest.fn() } as unknown as WorkshopResourceSources,
       session,
       { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
       {} as WorkshopTranscriptRecallPort,

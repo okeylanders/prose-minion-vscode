@@ -14,7 +14,7 @@ import { WorkshopSessionService } from '@/application/services/workshop/Workshop
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
-import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import type { SettingsStore } from '@/platform';
 import { projectMemoryBody } from '@shared/types/projectMemory';
@@ -43,7 +43,7 @@ describe.each([['off', false], ['on', true]])('a committed memory.read, debug lo
       const capability = new WorkshopPersonaCapabilityFactory(
         {} as DictionaryService,
         {} as WorkshopAnalysisSidePass,
-        { createProvider: jest.fn() } as unknown as ContextResourceProviderFactory,
+        { createProvider: jest.fn() } as unknown as WorkshopResourceSources,
         session,
         sink,
         {} as WorkshopTranscriptRecallPort,

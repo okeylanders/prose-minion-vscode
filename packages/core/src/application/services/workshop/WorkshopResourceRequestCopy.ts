@@ -5,7 +5,9 @@
  * the ticker (ADR 2026-11-14 D7).
  *
  * The log line of a read naming several files carries counts and groups,
- * never a path. A one-path read keeps the line it has always had.
+ * never a path. A one-path read keeps the line it has always had. A
+ * catalog's carries its group, page and how many patterns narrow it, never
+ * a pattern (ADR 2026-11-20 S49).
  */
 
 import type { WorkshopCapabilityRequest } from '@shared/types/workshopCapabilities';
@@ -28,8 +30,12 @@ export function workshopResourceReadSummary(paths: readonly string[]): string {
 
 export function workshopResourceRequestSummary(request: ResourceRequest): string {
   switch (request.capability) {
-    case 'resource.catalog':
-      return request.group ? `${request.group} catalog` : 'configured resource catalog';
+    case 'resource.catalog': {
+      // The group, how many patterns narrow it and the page: never a pattern (ADR 2026-11-20 S49).
+      const base = request.group ? `${request.group} catalog` : 'configured resource catalog';
+      const narrowed = request.match ? `, narrowed by ${request.match.length} ${request.match.length === 1 ? 'pattern' : 'patterns'}` : '';
+      return `${base}${narrowed}${request.page !== undefined && request.page > 1 ? `, page ${request.page}` : ''}`;
+    }
     case 'resource.search':
       return request.group ? `“${request.query}” in ${request.group}` : `“${request.query}”`;
     case 'resource.read':
@@ -42,7 +48,8 @@ export function workshopResourceRequestSummary(request: ResourceRequest): string
 export function workshopResourceRequestLogSummary(request: ResourceRequest): string {
   switch (request.capability) {
     case 'resource.catalog':
-      return `group=${request.group ?? 'all'}`;
+      // Counts only: a narrowing's patterns never reach the log (S49).
+      return `group=${request.group ?? 'all'}; page=${request.page ?? 1}; patterns=${request.match?.length ?? 0}`;
     case 'resource.search':
       return `group=${request.group ?? 'all'}; query=${JSON.stringify(request.query)}`;
     case 'resource.read': {

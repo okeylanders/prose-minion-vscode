@@ -1383,6 +1383,7 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceReadRenderer.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceRequestCopy.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceCapability.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceCatalog.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopResourceInstruction.ts'),
   ...collectSourceFiles(WORKSHOP_RECALL_ROOT),
   ...collectSourceFiles(WORKSHOP_MEMORY_ROOT),
@@ -2081,6 +2082,8 @@ describe('architectural boundaries', () => {
     // Every module the family has is listed, so a new one joins on purpose.
     expect(resourceFiles.map((file) => path.basename(file)).sort()).toEqual([
       'WorkshopResourceCapability.ts',
+      // ADR 2026-11-20 S46: the group inventory, from the listing a passage search reads.
+      'WorkshopResourceCatalog.ts',
       'WorkshopResourceInstruction.ts',
       'WorkshopResourceRead.ts',
       'WorkshopResourceReadFiles.ts',

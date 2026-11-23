@@ -6,7 +6,9 @@
 
 import { WorkshopCapabilityXmlCodec } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
 import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
-import type { ContextResourceContent, ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { ContextResourceContent } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
+import { groupListingOver } from '@/__tests__/application/services/workshop/resource/groupListingFixtures';
 import type { LogSink } from '@/platform';
 import type { CapabilityContextWindow } from '@orchestration/AgentRunContracts';
 import type { ContextPathGroup } from '@shared/types';
@@ -54,14 +56,13 @@ export function aliceResources(files: readonly AliceFile[]) {
   });
   const loadResources = jest.fn(async (paths: string[]) =>
     files.filter((file) => paths.includes(file.path) && !file.unreadable).map(toContent));
-  const factory: ContextResourceProviderFactory = {
-    createProvider: jest.fn().mockResolvedValue({
-      listResources: () => files.map((file) => {
-        const { content: _content, ...summary } = toContent(file);
-        return summary;
-      }),
-      loadResources
-    })
+  const summaries = () => files.map((file) => {
+    const { content: _content, ...summary } = toContent(file);
+    return summary;
+  });
+  const factory: WorkshopResourceSources = {
+    createProvider: jest.fn().mockResolvedValue({ listResources: summaries, loadResources }),
+    ...groupListingOver(summaries)
   };
   return { factory, loadResources };
 }

@@ -197,6 +197,10 @@ export type WorkshopCapabilityRequest =
   | {
       capability: 'resource.catalog';
       group?: ContextPathGroup;
+      /** From 1; absent means the first (ADR 2026-11-20 S46). */
+      page?: number;
+      /** Only beside `group`: the narrowing's patterns as split, every `<match>` joined (S46). */
+      match?: string[];
     }
   | {
       capability: 'resource.search';

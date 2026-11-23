@@ -4,9 +4,10 @@
  * 2026-11-20 D16–D21).
  *
  * - **`passageSearchRequest`** is optional and additive on a host or guest
- *   reply: the question, the places named (groups, configured files by
- *   catalog key, the room's excerpt), and `answer` once the writer
- *   cancelled. A scope is never a free path or a pattern.
+ *   reply: the question, the places named (groups, optionally narrowed by
+ *   patterns; configured files by catalog key; the room's excerpt), and
+ *   `answer` once the writer cancelled. A scope is never a free path, and a
+ *   pattern only ever narrows a context group.
  * - **`passageSearchResults`** marks the provisional writer-role turn a
  *   delivery records before it is dispatched. It proves nothing (D19a).
  * - **`passageSearchDelivery`** is the receipt, on the persona's adopted
@@ -24,7 +25,11 @@ import type { ContextPathGroup } from '../../context';
 
 /** One place a card names, as the host accepted it at settlement. */
 export type WorkshopPassageSearchScope =
-  | { kind: 'group'; group: ContextPathGroup }
+  /**
+   * A context group; with `match` (ADR 2026-11-20 S45), only its files at least one pattern finds: the patterns as
+   * split, each of which found a file of the group when the request was settled. Optional and exact.
+   */
+  | { kind: 'group'; group: ContextPathGroup; match?: string[] }
   /** One configured file, by catalog key: its group and its path as listed. */
   | { kind: 'file'; group: ContextPathGroup; path: string }
   | { kind: 'excerpt' };

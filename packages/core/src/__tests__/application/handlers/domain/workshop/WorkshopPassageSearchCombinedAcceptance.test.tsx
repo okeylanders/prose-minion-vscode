@@ -120,7 +120,7 @@ function productionEngine(texts: Record<string, string> = LONG_AND_SHORT, replie
   const listed: ContextResourceCandidate[] = Object.entries(texts).map(([absolutePath, text]) => ({
     group: 'chapters', relativePath: absolutePath.replace('/book/', ''), workspaceFolderPath: '/book', absolutePath, sizeBytes: text.length
   }));
-  const listing = { listGroupFiles: jest.fn(async () => listed), listPatternFiles: jest.fn(async () => []) };
+  const listing = { listGroupFiles: jest.fn(async () => listed), listPatternFiles: jest.fn(async () => []), matchPatterns: jest.fn(async () => undefined) };
   const scopeFiles = new PassageSearchScopeFiles({
     listing,
     fileSystem: {

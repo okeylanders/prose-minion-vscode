@@ -6,7 +6,10 @@
  *
  * - **`passageSearchRequest`** on a host or guest reply: the question, 1 to
  *   `scopes` places and, once the writer cancelled, `answer`. The host's
- *   derived `view` is never stored, so a saved one is refused.
+ *   derived `view` is never stored, so a saved one is refused. A group's
+ *   `match` (S45) is optional and exact: 1 to `matchPatterns` patterns, each
+ *   trimmed and held to the context-path rules; a card saved before Slice 5
+ *   holds none and reads as it always did.
  * - **`passageSearchResults`** on the writer-role turn a delivery records.
  * - **`passageSearchDelivery`** on a host or guest reply: the receipt, ids
  *   and counts only.
@@ -26,9 +29,11 @@ import {
   WORKSHOP_PASSAGE_SEARCH_ENDINGS,
   type WorkshopPassageSearchDelivery,
   type WorkshopPassageSearchRequest,
+  type WorkshopPassageSearchScope,
   type WorkshopTurn
 } from '@messages';
 import { isSafeConfiguredResourcePath } from '@/utils/configuredResourcePath';
+import { contextGroupMatchRefused } from '@/application/services/ContextGroupNarrowing';
 import {
   boundedArrayAt,
   boundedStringAt,
@@ -135,8 +140,13 @@ function assertScope(value: unknown, path: string): void {
     exactObject(value, path, ['kind']);
     return;
   }
-  const scope = exactObject(value, path, kind === 'file' ? ['kind', 'group', 'path'] : ['kind', 'group']);
+  const scope = kind === 'file'
+    ? exactObject(value, path, ['kind', 'group', 'path'])
+    : exactObject(value, path, ['kind', 'group'], ['match']);
   enumAt(scope.group, `${path}.group`, CONTEXT_PATH_GROUPS);
+  if (scope.match !== undefined) {
+    assertMatch(scope.match, `${path}.match`);
+  }
   if (kind === 'file') {
     boundedStringAt(scope.path, `${path}.path`, PROMPT_BUDGETS.workshopResource.pathCharacters, false);
     // A catalog key, never a free path: the rule a persona's own `<path>` is read by.
@@ -146,11 +156,27 @@ function assertScope(value: unknown, path: string): void {
   }
 }
 
+/** A group's narrowing, as settlement stores it: the patterns as split, each trimmed and safe. */
+function assertMatch(value: unknown, path: string): void {
+  boundedArrayAt(value, path, 1, PROMPT_BUDGETS.contextPaths.matchPatterns, 'patterns');
+  value.forEach((pattern, index) => {
+    boundedStringAt(pattern, `${path}[${index}]`, PROMPT_BUDGETS.contextPaths.patternCharacters, false);
+    if ((pattern as string).trim() !== pattern || contextGroupMatchRefused([pattern as string])) {
+      shapeError(`${path}[${index}]`, 'a safe context-path pattern');
+    }
+  });
+}
+
+/** One place, copied: a narrowing's patterns are its own list. */
+export function cloneWorkshopPassageSearchScope(scope: WorkshopPassageSearchScope): WorkshopPassageSearchScope {
+  return scope.kind === 'group' && scope.match ? { ...scope, match: [...scope.match] } : { ...scope };
+}
+
 export function cloneWorkshopPassageSearchRequest(request: WorkshopPassageSearchRequest): WorkshopPassageSearchRequest {
   // The host's view is derived each time a turn is sent; it never enters the ledger.
   return {
     question: request.question,
-    scopes: request.scopes.map((scope) => ({ ...scope })),
+    scopes: request.scopes.map(cloneWorkshopPassageSearchScope),
     ...(request.answer ? { answer: request.answer } : {})
   };
 }

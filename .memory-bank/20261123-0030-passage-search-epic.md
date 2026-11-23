@@ -2,8 +2,8 @@
 
 **Date:** 2026-11-23
 **Epic:** [README](../.todo/epics/epic-passage-search-2026-11-20/README.md) (active; not archived)
-**Decision:** [ADR 2026-11-20](../docs/adr/2026-11-20-passage-search.md): D1–D24, the spec-review amendments D2a, D3a, D5a, D9a, D11a, D12a, D19a, and the build amendments S1–S41.
-**Branch:** `epic/passage-search`, cut from the tip of `epic/workshop-persona-tools` at `1b3b9239`. Every slice is merged; the tip is `5b747f6b`. The closing pass is `epic/passage-search-close`. Nothing has gone to `main`.
+**Decision:** [ADR 2026-11-20](../docs/adr/2026-11-20-passage-search.md): D1–D24, the spec-review amendments D2a, D3a, D5a, D9a, D11a, D12a, D19a, the build amendments S1–S41, and Slice 5's S42–S53.
+**Branch:** `epic/passage-search`, cut from the tip of `epic/workshop-persona-tools` at `1b3b9239`. Slices 0–4 and the closing pass are merged (tip `e54cc784`); Slice 5, from the live pass, is PR #298. Nothing has gone to `main`.
 **Next step:** Okey's [live pass](../.todo/epics/epic-passage-search-2026-11-20/live-pass.md), which ends with the open decisions. Then a PR from the epic to `main`, after Workshop Persona Tools has landed there.
 
 ## What shipped
@@ -17,7 +17,8 @@ A search that reads. The writer, or a persona, asks a question ("Find every time
 | 2 | The sidebar subtab | #294 | `8b441e55` | Two rounds: exterior paths shown by name; the result's own question; a host-held report export |
 | 3 | The organizing pass | #295 | `f5949b97` | Five rounds: the pass on the run's own engine; one failed-call classifier (`tooLarge`, `dispatched`, `requests`); an exact fit; quotation grounding **closed by construction** after four leaks |
 | 4 | A persona asks for a search: trailer, card, Run, delivery | #296 | `5b747f6b` | Five rounds: room-bound pricing; rollback on panel close; open-room instances; directive bounds; at most four held; manual Send for partial results; run-slot identity; Stop never followed by the host's send |
-| Close | Live pass, ADR S24–S41, `AGENTS.md`, this entry | #297 | pending | Two rounds: reset the scopes before each search; thrown calls apart from returned ones; the combined refusal case left to the deterministic test, recorded live only if it happens on its own |
+| Close | Live pass, ADR S24–S41, `AGENTS.md`, this entry | #297 | `e54cc784` | Two rounds: reset the scopes before each search; thrown calls apart from returned ones; the combined refusal case left to the deterministic test, recorded live only if it happens on its own |
+| 5 | From the live pass: a persona narrows a group with patterns; `resource.catalog` is the group inventory; a pair names exactly the file the inventory lists | #298 | (this merge) | Three rounds: a pair resolved by the authoritative listing first, then refused as `unverified` when that listing can't be read; empty native lists; escaped and padded references; the replan refusal; same-file aliases |
 
 ## Decisions
 
@@ -35,7 +36,7 @@ A search that reads. The writer, or a persona, asks a question ("Find every time
 
 ## Verification
 
-- **Last full run** (`npx jest --maxWorkers=25%`, at `cc83e9e4`, the code merged as `5b747f6b`): 1,017 suites / 14,399 tests / 60 snapshots, all passing. Typecheck clean; lint 0 errors, 1,427 warnings. CI passed on every merged head.
+- **Last full run** (`npx jest --maxWorkers=25%`, at `4346d0ef`, Slice 5): 1,025 suites / 14,529 tests / 60 snapshots, all passing. Before Slice 5 (`cc83e9e4`, merged as `5b747f6b`): 1,017 / 14,399. Typecheck clean; lint 0 errors, 1,427 warnings. CI passed on every merged head.
 - **The epic added** 51 suites and about 700 tests over Workshop Persona Tools' 966 / 13,696.
 - **Astra's combined acceptance case passes** through the production engine and the real Workshop routes. Two files: one matched, one refused by the engine's preflight. The counts, coverage, charge, manual Send and saved receipt all agree.
 

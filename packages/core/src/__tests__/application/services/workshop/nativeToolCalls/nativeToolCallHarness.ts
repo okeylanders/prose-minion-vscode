@@ -20,12 +20,13 @@ import { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 import { WorkshopLiveRoomBookmarkReader } from '@/application/services/workshop/WorkshopLiveRoomBookmarkReader';
 import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
 import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
-import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { OpenRouterClient, type OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
+import { groupListingOver } from '@/__tests__/application/services/workshop/resource/groupListingFixtures';
 
 /** What web research attaches to a persona's request: the trigger of the native calls. */
 export const WEB_RESEARCH_TOOLS: OpenRouterWebSearchTool[] = [{
@@ -153,7 +154,10 @@ export function createNativeToolCallHarness(settings?: SettingsStore) {
   const factory = new WorkshopPersonaCapabilityFactory(
     dictionary as unknown as DictionaryService,
     analysis as unknown as WorkshopAnalysisSidePass,
-    { createProvider: jest.fn().mockResolvedValue({ listResources, loadResources: jest.fn().mockResolvedValue([]) }) } as unknown as ContextResourceProviderFactory,
+    {
+      createProvider: jest.fn().mockResolvedValue({ listResources, loadResources: jest.fn().mockResolvedValue([]) }),
+      ...groupListingOver(() => listResources())
+    } as WorkshopResourceSources,
     session,
     log,
     recall,

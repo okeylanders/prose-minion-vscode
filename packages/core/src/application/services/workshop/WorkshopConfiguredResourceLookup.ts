@@ -2,7 +2,7 @@
  * What `resource.read` (a persona's capability) and the Read in reader (ADR
  * 2026-11-03 D4) share beside the lookup itself: the path rule, the
  * fingerprint and the byte cut. The lookup by `{ group, path }` is
- * `findConfiguredResource`, in `@/application/services/ConfiguredResourceLookup`
+ * `resolveConfiguredResource`, in `@/application/services/ConfiguredResourceLookup`
  * (ADR 2026-11-20 D3), which both resolve a pair through, so the reader can
  * never open a file a persona could not have read.
  */

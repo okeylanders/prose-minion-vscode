@@ -4,9 +4,15 @@
  *
  * - **Resolve (awaits allowed):** a reply holding the tag has its one
  *   request checked before the reply commits: form first (the codec's),
- *   then each group named, the excerpt, and each file against one
- *   authoritative, root-aware listing of the groups named, read once for
- *   the operation. A reply without the tag costs no await.
+ *   then each group named, each narrowing's patterns, the excerpt, and each
+ *   file against one authoritative, root-aware listing of the groups named,
+ *   read once for the operation. A reply without the tag costs no await.
+ * - **A narrowed group** (ADR 2026-11-20 S44) is read by the shared rule
+ *   (`ContextGroupNarrowing`): an unsafe pattern is `unsafe-match`; every
+ *   narrowing is walked once (`matchPatterns`), and a walk that did not
+ *   complete is `catalog-unreadable`, never zero files; a pattern that finds
+ *   no file of its group is `match-found-nothing`, so a mistyped pattern
+ *   never silently narrows a search. The card stores the patterns as split.
  * - **It reads no file and prices nothing.** The price is the card's own
  *   request, when the writer sees it.
  * - **Settle (synchronous, in the reply's commit):** typed verdicts. A
@@ -17,11 +23,20 @@
  *   listing spells it. A path two workspace folders both hold names no one
  *   file (`ambiguous-file`), never the first folder's.
  * - **Logs carry counts and reasons only,** never the question, a group's
- *   files or a path (D22).
+ *   files, a path or a pattern (D22, S49).
  */
 
 import type { WorkshopPassageSearchRequest, WorkshopPassageSearchScope } from '@messages';
 import { isContextPathGroup, type ContextPathGroup } from '@shared/types';
+import {
+  contextGroupMatchRefused,
+  narrowContextGroup,
+  walkContextGroupPatterns,
+  type ContextGroupMatchRequest,
+  type ContextGroupPatternMatcher,
+  type ContextGroupPatternWalk
+} from '@/application/services/ContextGroupNarrowing';
+import { cloneWorkshopPassageSearchScope } from '@/application/services/workshop/passageSearch/WorkshopPassageSearchRecords';
 import { extractWorkshopReplyControls, hasWorkshopPassageSearchText } from '@/utils/workshopReplyControls';
 import type {
   WorkshopPassageSearchDraft,
@@ -36,18 +51,27 @@ export type WorkshopPassageSearchDropCode =
   | 'unknown-file'
   | 'ambiguous-file'
   | 'no-excerpt'
+  /** A narrowing's pattern the context-path rules refuse (S44). */
+  | 'unsafe-match'
+  /** A narrowing's pattern that finds no file of its group (S44). */
+  | 'match-found-nothing'
   | 'catalog-unreadable'
   /** The request was never checked against a listing: no listing here, a stopped run, or a check made for another reply. */
   | 'listing-not-read';
 
-/** One listed file, as the settlement reads it: never its absolute path. */
+/** One listed file, as the settlement reads it. Its absolute path only intersects a narrowing: never stored, shown or logged. */
 export interface WorkshopPassageSearchListedFile {
   readonly group: ContextPathGroup;
   readonly relativePath: string;
+  readonly absolutePath: string;
 }
 
-/** The context resolver's authoritative listing (ADR 2026-11-20 D3a): it rejects when a scan fails. */
-export interface WorkshopPassageSearchListing {
+/**
+ * The context resolver's authoritative listing (ADR 2026-11-20 D3a), which
+ * rejects when a scan fails, and its pattern walk (S44), which reports an
+ * incomplete walk per pattern.
+ */
+export interface WorkshopPassageSearchListing extends ContextGroupPatternMatcher {
   listGroupFiles(groups: ContextPathGroup[]): Promise<readonly WorkshopPassageSearchListedFile[]>;
 }
 
@@ -95,6 +119,7 @@ async function checkRequest(
   room: WorkshopReplyPassageSearchRoom
 ): Promise<WorkshopPassageSearchRequest | WorkshopPassageSearchDropCode> {
   const groups: ContextPathGroup[] = [];
+  const narrowings: ContextGroupMatchRequest[] = [];
   for (const scope of request.scopes) {
     if (scope.kind === 'excerpt') {
       if (!room.hasExcerpt) {
@@ -108,8 +133,16 @@ async function checkRequest(
     if (!groups.includes(scope.group)) {
       groups.push(scope.group);
     }
+    if (scope.kind === 'group' && scope.match) {
+      // Refused before anything is walked, as a context path is (ADR 2026-11-19 D22).
+      if (contextGroupMatchRefused(scope.match)) {
+        return 'unsafe-match';
+      }
+      narrowings.push({ group: scope.group, patterns: scope.match });
+    }
   }
   let listed: readonly WorkshopPassageSearchListedFile[] = [];
+  let walk: ContextGroupPatternWalk | undefined;
   if (groups.length > 0) {
     if (!room.listing || room.signal.aborted) {
       return 'listing-not-read';
@@ -120,13 +153,36 @@ async function checkRequest(
     } catch {
       return 'catalog-unreadable';
     }
+    // One walk for every narrowing the request names (S44).
+    if (narrowings.length > 0) {
+      if (room.signal.aborted) {
+        return 'listing-not-read';
+      }
+      walk = await walkContextGroupPatterns(room.listing, narrowings);
+    }
   }
   const scopes: WorkshopPassageSearchScope[] = [];
   for (const scope of request.scopes) {
     if (scope.kind === 'excerpt') {
       scopes.push({ kind: 'excerpt' });
     } else if (scope.kind === 'group') {
-      scopes.push({ kind: 'group', group: scope.group as ContextPathGroup });
+      const group = scope.group as ContextPathGroup;
+      if (scope.match) {
+        // Never widened: a narrowing with no walk behind it is not checked.
+        if (!walk) {
+          return 'listing-not-read';
+        }
+        const narrowed = narrowContextGroup(listed, { group, patterns: scope.match }, walk);
+        if (narrowed.kind === 'incomplete') {
+          return 'catalog-unreadable';
+        }
+        if (narrowed.patterns.some((pattern) => pattern.files === 0)) {
+          return 'match-found-nothing';
+        }
+        scopes.push({ kind: 'group', group, match: [...scope.match] });
+      } else {
+        scopes.push({ kind: 'group', group });
+      }
     } else {
       const file = configuredFile(listed, scope.group as ContextPathGroup, scope.path);
       if (typeof file === 'string') {
@@ -173,6 +229,8 @@ export function settleWorkshopReplyPassageSearch(
     drops.push(code);
     return { drops, logs: [log(`dropped (reason=${code})`)] };
   }
-  const card: WorkshopPassageSearchRequest = { question: check.card.question, scopes: check.card.scopes.map((scope) => ({ ...scope })) };
-  return { card, drops, logs: [log(`shown (scopes=${card.scopes.length})`)] };
+  const card: WorkshopPassageSearchRequest = { question: check.card.question, scopes: check.card.scopes.map(cloneWorkshopPassageSearchScope) };
+  // Counts only: how many patterns narrow the card's groups, never one of them (S49).
+  const patterns = card.scopes.reduce((sum, scope) => sum + (scope.kind === 'group' ? scope.match?.length ?? 0 : 0), 0);
+  return { card, drops, logs: [log(`shown (scopes=${card.scopes.length}${patterns > 0 ? `, patterns=${patterns}` : ''})`)] };
 }

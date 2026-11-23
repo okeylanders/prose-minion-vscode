@@ -3,15 +3,18 @@
  *
  * A manifest row names a file a persona read by `{ group, path }`. The webview
  * sends that pair back; this module decides whether it names a configured
- * project resource, exactly as `resource.read` would, and reads its current
- * text under `resource.read`'s ceilings. Anything else is refused by reason,
- * and a refusal never carries file content.
+ * project resource, exactly as `resource.read` would (`resolveConfiguredResource`:
+ * the file the group's authoritative listing names, through its browse
+ * entry; ADR 2026-11-20 S50), and reads its current text under `resource.read`'s
+ * ceilings. So a card's recorded pair always opens, whichever group it
+ * names. Anything else is refused by reason, and a refusal never carries
+ * file content.
  */
 
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { isContextPathGroup } from '@shared/types/context';
-import { findConfiguredResource } from '@/application/services/ConfiguredResourceLookup';
+import { resolveConfiguredResource, type ConfiguredResourceGroupFiles } from '@/application/services/ConfiguredResourceLookup';
 import {
   configuredResourceFingerprint,
   isSafeConfiguredResourcePath,
@@ -29,6 +32,8 @@ export type WorkshopReadInRefusalReason =
   | 'unsafe-path'
   | 'not-configured'
   | 'ambiguous'
+  /** The group's file list could not be read, so the pair named no confirmed file (ADR 2026-11-20 S50). */
+  | 'unverified'
   | 'too-large'
   | 'unreadable';
 
@@ -36,6 +41,10 @@ const MIB = 1024 * 1024;
 
 const unhandledRefusal = (reason: never): never => {
   throw new Error(`Unhandled Read in refusal: ${String(reason)}`);
+};
+
+const unhandledLookup = (lookup: never): never => {
+  throw new Error(`Unhandled configured-resource lookup: ${JSON.stringify(lookup)}`);
 };
 
 /** Host words for each refusal. None names the file or its content. */
@@ -49,6 +58,8 @@ export function workshopReadInRefusalMessage(reason: WorkshopReadInRefusalReason
       return 'That file is not one of the configured project resources in its group.';
     case 'ambiguous':
       return 'That path matches more than one configured resource when letter case is ignored.';
+    case 'unverified':
+      return "The project's file list could not be read, so this file could not be confirmed. Try again.";
     case 'too-large':
       return `That file is larger than the ${PROMPT_BUDGETS.workshopResource.readSourceBytes / MIB} MiB read ceiling.`;
     case 'unreadable':
@@ -81,11 +92,12 @@ export type WorkshopReadInRead =
   | { kind: 'refused'; reason: WorkshopReadInRefusalReason };
 
 /** Resolves a webview's `{ group, path }` against the configured catalog, or refuses it. */
-export function resolveWorkshopReadInResource(
+export async function resolveWorkshopReadInResource(
   entries: readonly ContextResourceSummary[],
+  groupFiles: ConfiguredResourceGroupFiles,
   group: unknown,
   resourcePath: unknown
-): WorkshopReadInResolution {
+): Promise<WorkshopReadInResolution> {
   if (typeof group !== 'string' || !isContextPathGroup(group)) {
     return { kind: 'refused', reason: 'unknown-group' };
   }
@@ -96,7 +108,7 @@ export function resolveWorkshopReadInResource(
   ) {
     return { kind: 'refused', reason: 'unsafe-path' };
   }
-  const lookup = findConfiguredResource(entries, group, resourcePath);
+  const lookup = await resolveConfiguredResource(entries, group, resourcePath, groupFiles);
   switch (lookup.kind) {
     case 'found':
       return { kind: 'resolved', resource: lookup.resource };
@@ -104,6 +116,10 @@ export function resolveWorkshopReadInResource(
       return { kind: 'refused', reason: 'ambiguous' };
     case 'missing':
       return { kind: 'refused', reason: 'not-configured' };
+    case 'unverified':
+      return { kind: 'refused', reason: 'unverified' };
+    default:
+      return unhandledLookup(lookup);
   }
 }
 
@@ -114,10 +130,11 @@ export function resolveWorkshopReadInResource(
  */
 export async function readWorkshopReadInResource(
   catalog: WorkshopReadInCatalog,
+  groupFiles: ConfiguredResourceGroupFiles,
   group: unknown,
   resourcePath: unknown
 ): Promise<WorkshopReadInRead> {
-  const resolution = resolveWorkshopReadInResource(catalog.entries(), group, resourcePath);
+  const resolution = await resolveWorkshopReadInResource(catalog.entries(), groupFiles, group, resourcePath);
   if (resolution.kind === 'refused') {
     return resolution;
   }

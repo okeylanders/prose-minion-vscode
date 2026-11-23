@@ -5,6 +5,7 @@ import {
 import { FileType } from '@/platform';
 import { createFakeFileSystem, createFakeWorkspace } from '../../../mocks/platform';
 import { createHash } from 'crypto';
+import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
 describe('WorkshopContextIntakeService', () => {
   const summary = {
@@ -32,7 +33,7 @@ describe('WorkshopContextIntakeService', () => {
     providerFactory: { createProvider: jest.Mock },
     fileSystem = createFakeFileSystem(),
     workspace = createFakeWorkspace()
-  ) => new WorkshopContextIntakeService(providerFactory as never, fileSystem, workspace);
+  ) => new WorkshopContextIntakeService(providerFactory as never, fileSystem, workspace, UNLISTED_GROUP_FILES);
 
   it('opens a fresh catalog for each interaction instead of retaining workspace metadata', async () => {
     const { providerFactory } = factory('First version.');

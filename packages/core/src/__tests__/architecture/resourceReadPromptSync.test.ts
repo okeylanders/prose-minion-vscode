@@ -65,8 +65,12 @@ function taughtCalls(): string[] {
 describe('resource instruction ↔ PROMPT_BUDGETS', () => {
   const pinned: ReadonlyArray<readonly [RegExp, number[]]> = [
     [/One read may name up to (\d+) files\./, [budgets.readPaths]],
-    [/Resource ceilings are (\d+) catalog entries, (\d+) search matches, and (\d+) read bytes for a read of one file\. A read naming more shares (\d+) read bytes fairly between its files\./,
-      [budgets.catalogItems, budgets.searchMatches, budgets.readBytes, budgets.readBytesMulti]],
+    // The group inventory (ADR 2026-11-20 S46, S48): its page, and a narrowing's bounds, the shared reader's.
+    [/A catalog page lists up to (\d+) files\./, [budgets.catalogItems]],
+    [/add <match> beside <group>: up to (\d+) patterns separated by commas/, [PROMPT_BUDGETS.contextPaths.matchPatterns]],
+    [/and at most (\d+) characters long:/, [PROMPT_BUDGETS.contextPaths.patternCharacters]],
+    [/Resource ceilings are (\d+) search matches and (\d+) read bytes for a read of one file\. A read naming more shares (\d+) read bytes fairly between its files\./,
+      [budgets.searchMatches, budgets.readBytes, budgets.readBytesMulti]],
     [/Search scans at most (\d+) files, (\d+) source bytes per file, and (\d+) source bytes total;/,
       [budgets.searchFiles, budgets.searchFileBytes, budgets.searchTotalBytes]],
     [/Reads refuse source files larger than (\d+) bytes before loading them\./, [budgets.readSourceBytes]],
@@ -107,6 +111,8 @@ describe('resource instruction ↔ PROMPT_BUDGETS', () => {
 describe('resource instruction forms, through the real codec', () => {
   const expected: WorkshopCapabilityInspection[] = [
     { kind: 'request', request: { capability: 'resource.catalog', group: 'characters' } },
+    { kind: 'request', request: { capability: 'resource.catalog', group: 'chapters', page: 2 } },
+    { kind: 'request', request: { capability: 'resource.catalog', group: 'chapters', match: ['Drafts/chapter-4.*.md', 'Drafts/chapter-1*.md'] } },
     { kind: 'request', request: { capability: 'resource.search', query: 'Raven', group: 'characters' } },
     {
       kind: 'request',
@@ -141,7 +147,7 @@ describe('resource instruction forms, through the real codec', () => {
   );
 
   it('shows the default window it states', () => {
-    expect(taughtCalls()[2]).toContain(`<endLine>${budgets.readDefaultLines}</endLine>`);
+    expect(taughtCalls().find((call) => call.includes('<startLine>1</startLine>'))).toContain(`<endLine>${budgets.readDefaultLines}</endLine>`);
   });
 
   it('names the refusals the codec gives', () => {
@@ -152,7 +158,19 @@ describe('resource instruction forms, through the real codec', () => {
     };
     const named = [...prose.matchAll(/refused as ([a-z-]+)/g)].map(([, name]) => name);
 
-    expect(named).toEqual(['duplicate-path', 'ambiguous-lines']);
+    expect(named).toEqual(['match-needs-group', 'unsafe-match', 'duplicate-path', 'ambiguous-lines']);
+    // "A <match> without a <group>"; "a pattern that is not a safe context path" (S46).
+    const catalog = (body: string): string => `<prose-minion-tool-call name="resource.catalog">${body}</prose-minion-tool-call>`;
+    expect(reason(catalog('<match>Drafts/*.md</match>'))).toBe('match-needs-group');
+    expect(reason(catalog('<group>chapters</group><match>Drafts/*.md, ../secrets/*.md</match>'))).toBe('unsafe-match');
+    expect(reason(catalog('<group>chapters</group><match>/Drafts/*.md</match>'))).toBe('unsafe-match');
+    // "up to N patterns", joined across repeated elements.
+    const patterns = (count: number): string => Array.from({ length: count }, (_, index) => `Drafts/ch-${index}.md`).join(', ');
+    expect(reason(catalog(`<group>chapters</group><match>${patterns(PROMPT_BUDGETS.contextPaths.matchPatterns)}</match>`))).toBeUndefined();
+    expect(reason(catalog(`<group>chapters</group><match>${patterns(PROMPT_BUDGETS.contextPaths.matchPatterns)}</match><match>Drafts/one-more.md</match>`)))
+      .toBe('too-many-patterns');
+    // "at most N characters long"
+    expect(reason(catalog(`<group>chapters</group><match>Drafts/${'a'.repeat(PROMPT_BUDGETS.contextPaths.patternCharacters)}.md</match>`))).toBe('unsafe-match');
     // "the same file twice, even in different letter case"
     expect(reason(read('<path>chapters/chapter-01.md</path><path>chapters/chapter-01.md</path>'))).toBe('duplicate-path');
     expect(reason(read('<path>chapters/Chapter-01.md</path><path>chapters/chapter-01.md</path>'))).toBe('duplicate-path');
@@ -183,7 +201,9 @@ describe('resource instruction forms, through the real codec', () => {
       '  <startLine>1</startLine>',
       '  <endLine>400</endLine>',
       '</prose-minion-tool-call>'
-    ].join('\n'))).toEqual(expected[2]);
+    ].join('\n'))).toEqual(expected[4]);
+    // And the earlier catalog form: a group alone, no page, no narrowing.
+    expect(codec.inspect('<prose-minion-tool-call name="resource.catalog"><group>characters</group></prose-minion-tool-call>')).toEqual(expected[0]);
   });
 });
 

@@ -23,7 +23,7 @@ import { builtInLexicalGravityLenses } from '@/application/services/workshop/wid
 import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
-import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
 import { createFakeFileSystem, createFakeWorkspace } from '@/__tests__/mocks/platform';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { aliceLens } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
@@ -61,7 +61,7 @@ function wire() {
   const capability = new WorkshopPersonaCapabilityFactory(
     {} as DictionaryService,
     {} as WorkshopAnalysisSidePass,
-    { createProvider: jest.fn() } as unknown as ContextResourceProviderFactory,
+    { createProvider: jest.fn() } as unknown as WorkshopResourceSources,
     session,
     log,
     {} as WorkshopTranscriptRecallPort,

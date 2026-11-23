@@ -25,7 +25,7 @@ import {
 } from '@/application/services/workshop/recall/WorkshopRecallCopy';
 import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
-import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
 import type { CapabilityContextWindow } from '@orchestration/AgentRunContracts';
 import type { WorkshopCapabilityRequest } from '@shared/types/workshopCapabilities';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -65,7 +65,7 @@ function wire(room: Pick<SavedRecallRoom, 'store' | 'coordinator' | 'log'>): Wir
   const capability = new WorkshopPersonaCapabilityFactory(
     {} as DictionaryService,
     {} as WorkshopAnalysisSidePass,
-    { createProvider: jest.fn() } as unknown as ContextResourceProviderFactory,
+    { createProvider: jest.fn() } as unknown as WorkshopResourceSources,
     session,
     log,
     recall,
