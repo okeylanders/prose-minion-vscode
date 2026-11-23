@@ -1,7 +1,7 @@
 # Feature: Personas Run the Deterministic Measures
 
 **Date Identified:** 2026-11-23
-**Status:** Idea. Medium: one read-only capability family over services that already exist. ADR first (a new family), or a section in Passage Search's ADR, since the two should share one scope grammar.
+**Status:** Idea. Medium: one read-only capability family over services that already exist. A short ADR (a new family); the scope grammar is reused from Passage Search, already built.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-23
 
@@ -56,15 +56,27 @@
   `cadence.scan`; it becomes `measure.cadence`, so the scansion report is
   one more measure, not a family of its own.
 
-### One scope grammar, shared with Passage Search
+### One scope grammar: reuse Passage Search's
 
-- **A call names what to measure the way Passage Search does (its P4):**
-  the room's excerpt, the Selected Text a message carried, a context group
-  (characters, chapters…), or one file by catalog key, several at once.
-  Never a free path or pattern.
-- **Define the scope type once,** for both families, so Passage Search, the
-  measures and a future research agent all speak it. Files come from the
-  shared catalog, one per operation.
+Passage Search already built it (ADR 2026-11-20 D2, D3, and Slice 5's
+narrowing, PR #298): `PassageSearchScope`
+(`application/services/passageSearch/PassageSearchRequest.ts`).
+- **The kinds:**
+  - `group`, optionally narrowed by patterns that can only take files away
+    from the group;
+  - `file`, by catalog key;
+  - `text`, by value: the room's excerpt or a message's Selected Text;
+  - for a writer-typed caller only: `active-file`, `selection` and
+    `pattern`.
+- **The caller rule is built in.** A caller whose scopes come from a model
+  sends only `group`, `file` and `text`. A `pattern` is marked
+  `writerTyped`, so a model can't build one.
+- **The resolver** (`PassageSearchScopeFiles`) turns scopes into files
+  through the shared catalog, one per operation.
+- **When `measure.*` lands, lift both to a neutral home** (say
+  `application/services/projectScopes/`) so neither family owns them. That
+  is the moment a second family uses them. Until then they stay where they
+  are, and nothing changes for Passage Search.
 
 ### Category Search joins Passage Search's consent door
 
@@ -94,8 +106,8 @@ persona asks for through the same card.
   reads are, so a guest sees the same numbers.
 - **Which publishing standard** `measure.stats` compares against: the one
   set in Settings, or one the persona names? Leaning: the Settings one.
-- **One ADR or two?** Leaning: a section in Passage Search's ADR for the
-  shared scope type, then a short ADR for `measure.*`.
+- **The ADR.** The scope grammar is already decided in Passage Search's
+  ADR, so `measure.*` needs a short ADR of its own that cites it.
 
 ## Completion Criteria
 
@@ -106,7 +118,8 @@ persona asks for through the same card.
       same text (test).
 - [ ] Results are bounded, fitted to the window, and continuations decode as
       written (tests).
-- [ ] The scope type is shared with Passage Search (one definition).
+- [ ] The measures use Passage Search's scope type and resolver, lifted to a
+      neutral module with Passage Search moved onto it (one definition).
 - [ ] The family's grammar, native-call fields, help section and context
       tally are in place, held by their sync tests.
 - [ ] Logs carry counts only.

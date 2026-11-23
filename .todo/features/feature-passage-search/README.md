@@ -1,7 +1,7 @@
 # Feature: Passage Search, a Search That Reads
 
 **Date Identified:** 2026-11-19
-**Status:** Being built from 2026-11-20 on `epic/passage-search` (cut from the tip of `epic/workshop-persona-tools`). P1–P4 decided. The epic README there records progress and the defaults taken.
+**Status:** Built on `epic/passage-search` (PRs #292–#297, closing pass included), cut from `epic/workshop-persona-tools`. Slice 5 (PR #298: narrowing a group by patterns, with `resource.catalog` as the group inventory) is in review. Next: Okey's live pass, then a PR to `main` once Persona Tools has landed. P1–P4 decided; the epic README there records the defaults taken.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-19
 
