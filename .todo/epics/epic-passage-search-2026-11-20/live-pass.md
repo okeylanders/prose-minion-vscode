@@ -18,10 +18,11 @@
 
 1. `git fetch origin && git checkout --detach origin/epic/passage-search`, then record `git rev-parse HEAD`. The version is 2.14.1. The branch also carries all of Workshop Persona Tools, which it was cut from.
 2. `npm install`, then F5.
-3. **A project to search.** A dozen chapters or more in a `chapters` (or `manuscript`) context group, named so natural order matters: `6.9.md`, `6.9.2.md`, `6.10.md`. Add a `characters` group with one character note. Pick a character with a habit you can check by hand, such as a gesture written several ways or a phrase they repeat. The examples call them *Jasper*.
+3. **A project to search: a disposable one.** Every run sends its text to the provider, so use made-up chapters or a copy you would be content to share, never the working manuscript. A dozen chapters or more in a `chapters` (or `manuscript`) context group, named so natural order matters: `6.9.md`, `6.9.2.md`, `6.10.md`. Add a `characters` group with one character note. Pick a character with a habit you can check by hand, such as a gesture written several ways or a phrase they repeat. The examples call them *Jasper*.
 4. **One long chapter, over 12,000 words** (paste a chapter twice if need be), so a file is split.
 5. **An inexpensive model** in Settings → **Passage Search** for the first runs. Note what the estimate says, then compare with the OpenRouter dashboard afterwards.
 6. **Keep Output → Prose Minion open.** No line may carry the question, a quote, a note, a label, a headline, a claim, a path, a pattern or a file name. Counts, ids and fault kinds only.
+7. **Reset the scopes before every search** (PR #297 F1). The sidebar keeps its scope choices between searches, and **Active file** starts ticked. Each search reads every scope ticked, so a leftover tick reads an unrelated open file, or refuses the search when no editor is focused. Before each search below: untick Active file and Selection, untick every group, clear the pattern, then tick only what the step names and set **Organize the results** as it says (on, unless it says otherwise). Before you press Run, check that the line under the estimate ("N files to read") counts only the files you meant.
 
 Tick a box when the result matches. Write what you saw beside any that does not.
 
@@ -33,8 +34,11 @@ Tick a box when the result matches. Write what you saw beside any that does not.
 
 ### A1. Estimate and Run
 
-1. - [ ] **Search → Passage Search.** Ask "Find every time Jasper adjusts his glasses", tick `chapters`, and press **Estimate**.
-   **Expect:** "N calls · ≈ $… · *model*". The call count is one per chapter, plus one for the long chapter's extra pieces, plus one if **Organize the results** is on. If any file was left out, the line says so.
+1. - [ ] **Search → Passage Search.** Reset the scopes (Setup 7), tick only `chapters`, leave **Organize the results** on, ask "Find every time Jasper adjusts his glasses", and press **Estimate**.
+   **Expect:**
+   - "N files to read" under the estimate, N being the number of `chapters` files, with no active file added;
+   - "N calls · ≈ $… · *model*". The call count is one per chapter, plus one for the long chapter's extra piece, plus one for organizing. A model with a small window splits long chapters further, so count pieces only on a large-window model;
+   - if any file was left out, the lines say so.
 2. - [ ] Change one word of the question.
    **Expect:** the estimate clears, and Run is unavailable until you estimate again.
 3. - [ ] Estimate again and press **Run**.
@@ -54,6 +58,8 @@ Tick a box when the result matches. Write what you saw beside any that does not.
    **Expect:** `6.9` before `6.9.2` before `6.10`.
 
 ### A2. Scopes
+
+Reset the scopes (Setup 7) before each step, then tick only what it names.
 
 1. - [ ] **Active file** alone, then **Selection** alone (select one scene first).
    **Expect:** each searches only that. With no editor focused, Active file is refused in words; with nothing selected, Selection is.
@@ -96,8 +102,11 @@ Tick a box when the result matches. Write what you saw beside any that does not.
    **Expect:** sections that follow the chapters, each claim citing instance numbers.
 2. - [ ] Read every claim that puts words in quotation marks.
    **Expect:** each quoted phrase is in a cited instance's quote. Count any that are not; that would be a bug.
-3. - [ ] Look at the "left out" lines under the analysis.
-   **Expect:** a count of claims dropped (uncited, misquoted, malformed). **Note the numbers.** If many claims are dropped for quoting, the prompt or the single-quote rule needs tuning; the rule fails closed on purpose.
+3. - [ ] Look at the "left out" lines under the analysis, and at the Output line that starts "[PassageSearch] Organizing pass".
+   **Expect:**
+   - under the analysis, a count of claims dropped (uncited, misquoted, malformed);
+   - if **every** claim was dropped, no analysis, and the one line "The results were not organized: nothing the organizing reply said could be checked against the instances." The counts are then in the Output line only ("kept nothing … dropped N claim(s) (uncited …, misquoted …, malformed …)");
+   - **note the numbers.** If many claims are dropped for quoting, the prompt or the single-quote rule needs tuning; the rule fails closed on purpose.
 4. - [ ] On a search with many instances (a common word-level habit, or a broad question):
    **Expect:** "The analysis read 400 of 1,240 instances." The list and table still hold them all.
 5. - [ ] Turn **Organize the results** off and estimate.
@@ -151,13 +160,16 @@ Tick a box when the result matches. Write what you saw beside any that does not.
 
 ---
 
-## D. The combined case Astra asked for
+## D. The combined case Astra asked for (conditional)
 
-1. - [ ] Pick a model with a smaller window, make one chapter too large for it, and ask a persona for a search over that chapter and a normal one.
+**Exact accounting is the deterministic test's** (`WorkshopPassageSearchCombinedAcceptance.test.tsx`), not this pass's (PR #297 F2). A live run cannot force a refusal: when the model's window is known at Estimate, planning already cuts the chunks to fit it, so nothing is refused. A refusal comes only when the window was unknown when the search was priced and is known by the time a call goes out, as in A3.4. The live check of manual Send is C4 and C5, on a stopped search.
+
+1. - [ ] *(Only if A3.4 produced a refusal; otherwise skip and write "not reproduced".)* With the same model, have a persona ask for a search over the chapter that was refused and one normal chapter. Estimate on the card while the window is still unknown, then Run.
    **Expect:**
-   - one provider call and one refusal, with no charge for the refusal;
-   - "Found … in 1 file. 1 of 2 files was searched." with coverage incomplete;
-   - the card is **not** sent for you: "Send partial results";
+   - one read refused before it was sent, with no charge for it ("1 call did not fit the model's window and was not sent…");
+   - **two** provider calls for the search: the normal chapter's read and the organizing pass. The persona's reply after Send is a third call, an ordinary turn;
+   - "Found … in 1 file. 1 of 2 files was searched.", with coverage incomplete;
+   - the card is **not** sent for you: it offers "Send partial results";
    - the report, the card after a reload, and the persona's message after Send all agree.
 
 ---

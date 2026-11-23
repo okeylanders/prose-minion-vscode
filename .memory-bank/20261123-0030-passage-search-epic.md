@@ -17,7 +17,7 @@ A search that reads. The writer, or a persona, asks a question ("Find every time
 | 2 | The sidebar subtab | #294 | `8b441e55` | Two rounds: exterior paths shown by name; the result's own question; a host-held report export |
 | 3 | The organizing pass | #295 | `f5949b97` | Five rounds: the pass on the run's own engine; one failed-call classifier (`tooLarge`, `dispatched`, `requests`); an exact fit; quotation grounding **closed by construction** after four leaks |
 | 4 | A persona asks for a search: trailer, card, Run, delivery | #296 | `5b747f6b` | Five rounds: room-bound pricing; rollback on panel close; open-room instances; directive bounds; at most four held; manual Send for partial results; run-slot identity; Stop never followed by the host's send |
-| Close | Live pass, ADR S24–S41, `AGENTS.md`, this entry | | pending | |
+| Close | Live pass, ADR S24–S41, `AGENTS.md`, this entry | #297 | pending | One round: reset the scopes before each search; the refusal case made conditional, with the organizing call counted; thrown calls apart from returned ones |
 
 ## Decisions
 

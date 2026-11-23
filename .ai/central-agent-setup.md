@@ -3455,8 +3455,12 @@ A persona's request for a search is **Workshop Passage Search Requests**.
   for reads and the pass alike.
   - Not dispatched: a retired engine's refusal, or the engine's own
     preflight (`tooLarge`). These leave no usage entry and no request.
-  - Dispatched: everything else, with one unknown usage entry, so no cost
-    or cache total is claimed over it.
+  - Dispatched: every other thrown call, with one unknown usage entry, so
+    no cost or cache total is claimed over it.
+  - A call that returned keeps the usage the provider reported, even when
+    its reply is unusable: unreadable, cut off, stopped in flight, or (for
+    the pass) nothing kept. Never record known usage as unknown (PR #297).
+  - The classifier reads thrown calls only.
   - `answered + failed + cancelled + unsent + tooLarge = planned`.
     `requests` counts every dispatched call, reads and passes, retries
     included.
