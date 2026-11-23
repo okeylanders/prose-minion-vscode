@@ -29,7 +29,7 @@ function closedPanelRig() {
       // A contract double: it ignores the abort, and returns whatever the test hands it, whenever.
       run: jest.fn(() => new Promise<PassageSearchResult>((resolve) => { late.run = resolve; }))
     },
-    listing: { listGroupFiles: jest.fn(async () => []) },
+    listing: { listGroupFiles: jest.fn(async () => []), matchPatterns: jest.fn(async () => undefined) },
     reports: { save: jest.fn(async () => ({ status: 'saved' as const, filePath: 'prose-minion/reports/r.md', opened: true })) }
   };
   const room = new WorkshopOpenRoomInstance(() => undefined);

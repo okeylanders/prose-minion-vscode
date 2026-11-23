@@ -45,6 +45,7 @@ import type {
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { workshopPassageSearchFinishedLine } from '@shared/constants/workshopPassageSearchWords';
+import { workshopPassageSearchPlaceWords } from '@shared/utils/workshopPassageSearchPlaces';
 import type { PassageSearchResult } from '@services/search/passage/PassageSearchContracts';
 import {
   fitWorkshopPassageSearchDirective,
@@ -219,6 +220,8 @@ export class WorkshopPassageSearchResults {
     }
     const report = workshopPassageSearchView(held.result, turnId);
     const counts = workshopPassageSearchCounts(report, held.result.requests);
+    // Where the card looked, a narrowed group with its patterns, as the card says it (S45).
+    const place = workshopPassageSearchPlaceWords(turn.passageSearchRequest.scopes);
     let shown = 0;
     let fits = true;
     this.sendingTurnId = turnId;
@@ -230,7 +233,7 @@ export class WorkshopPassageSearchResults {
         message: WORKSHOP_PASSAGE_SEARCH_RESULTS_MESSAGE,
         resultsDelivery: {
           frame: (window) => {
-            const directive = fitWorkshopPassageSearchDirective(report, window);
+            const directive = fitWorkshopPassageSearchDirective(report, window, place);
             fits = directive !== undefined;
             shown = directive?.shown ?? 0;
             this.log(`delivery fitted turn=${turnId} shown=${directive ? directive.shown : 'none'} of=${counts.instances} `

@@ -36,12 +36,16 @@ const frame = (inner: string): string => `<prose-minion-passage-search>\n${inner
 const ask = (scopes: string): string => frame(`<question>${QUESTION}</question>\n${scopes}`);
 
 const LISTED = [
-  { group: 'chapters' as const, relativePath: 'chapters/Rabbit-Hole.md' },
-  { group: 'chapters' as const, relativePath: 'chapters/twin.md' },
-  { group: 'chapters' as const, relativePath: 'chapters/twin.md' },
-  { group: 'characters' as const, relativePath: 'cast/alice.md' }
+  { group: 'chapters' as const, relativePath: 'chapters/Rabbit-Hole.md', absolutePath: '/one/chapters/Rabbit-Hole.md' },
+  { group: 'chapters' as const, relativePath: 'chapters/twin.md', absolutePath: '/one/chapters/twin.md' },
+  { group: 'chapters' as const, relativePath: 'chapters/twin.md', absolutePath: '/two/chapters/twin.md' },
+  { group: 'characters' as const, relativePath: 'cast/alice.md', absolutePath: '/one/cast/alice.md' }
 ];
-const listing = (files = LISTED): WorkshopPassageSearchListing & { listGroupFiles: jest.Mock } => ({ listGroupFiles: jest.fn(async () => files) });
+const listing = (files = LISTED): WorkshopPassageSearchListing & { listGroupFiles: jest.Mock } => ({
+  listGroupFiles: jest.fn(async () => files),
+  // A narrowed group is settled against the real resolver (WorkshopPassageSearchGroupMatch.test.ts).
+  matchPatterns: jest.fn(async () => undefined)
+});
 
 let sent = 0;
 
@@ -139,7 +143,7 @@ describe('settling a reply\'s passage-search request', () => {
     // No listing is read for a request that names no group.
     expect(noExcerpt.files.listGroupFiles).not.toHaveBeenCalled();
 
-    const failing = { listGroupFiles: jest.fn(async () => { throw new Error('scan failed'); }) };
+    const failing = { listGroupFiles: jest.fn(async () => { throw new Error('scan failed'); }), matchPatterns: jest.fn(async () => undefined) };
     const unreadable = await replyWith(room(), `Looking.\n\n${ask('<group>chapters</group>')}`, failing);
     expect(unreadable.turn.passageSearchRequest).toBeUndefined();
     expect(unreadable.turn.trailerOutcomes?.passageSearch).toEqual({ cards: 0, dropped: [{ reason: 'catalog-unreadable', count: 1 }] });

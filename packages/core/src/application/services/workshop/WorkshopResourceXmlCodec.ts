@@ -15,7 +15,15 @@
  *   match, and a read naming a file twice is refused, never merged. That
  *   is stricter than the lookup, which prefers an exact match, on purpose;
  * - `startLine` and `endLine` are accepted only beside exactly one
- *   `<path>`; beside more, which file they mean is ambiguous.
+ *   `<path>`; beside more, which file they mean is ambiguous;
+ * - a catalog (ADR 2026-11-20 S46) takes an optional `<group>`, an optional
+ *   `<page>` read by the shared `workshopCapabilityPage`, and, only beside
+ *   `<group>` (`match-needs-group`), one or more `<match>` lists, joined and
+ *   read by the shared narrowing rule (`readContextGroupMatch`): 1 to
+ *   `matchPatterns` patterns (`too-many-patterns`), each list at most
+ *   `matchCharacters` (`oversized-input`), each pattern held to the
+ *   context-path rules (`unsafe-match`). The prompt teaches one `<match>`;
+ *   a native call's array maps to several.
  *
  * Every rejection names its operation, so the persona capability leaves a
  * visible artifact for it, as the transcript and memory families do.
@@ -31,6 +39,8 @@ import type {
 } from '@/application/services/workshop/WorkshopCapabilityXmlDocument';
 import type { WorkshopCapabilityRejectionReason } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
 import { isSafeConfiguredResourcePath } from '@/application/services/workshop/WorkshopConfiguredResourceLookup';
+import { workshopCapabilityPage } from '@/application/services/workshop/WorkshopCapabilityPaging';
+import { readContextGroupMatch, type ContextGroupMatchFault } from '@/application/services/ContextGroupNarrowing';
 
 export type WorkshopResourceRequest = Extract<WorkshopCapabilityRequest, {
   capability: 'resource.catalog' | 'resource.search' | 'resource.read';
@@ -49,9 +59,9 @@ export type WorkshopResourceInspection =
   | { readonly kind: 'request'; readonly request: WorkshopResourceRequest }
   | WorkshopResourceRejection;
 
-/** `resource.read` alone repeats a field, `<path>`, and each may carry its own `group`. */
+/** `resource.read` repeats `<path>`, and each may carry its own `group`; `resource.catalog` repeats `<match>`. */
 export const WORKSHOP_RESOURCE_FIELD_POLICY: WorkshopCapabilityXmlFieldPolicy = {
-  repeatable: (operation, field) => operation === 'resource.read' && field === 'path',
+  repeatable: (operation, field) => (operation === 'resource.read' && field === 'path') || (operation === 'resource.catalog' && field === 'match'),
   attributes: (operation, field) => (operation === 'resource.read' && field === 'path' ? ['group'] : [])
 };
 
@@ -61,7 +71,7 @@ export function inspectWorkshopResourceCall(
 ): WorkshopResourceInspection {
   switch (operation) {
     case 'resource.catalog':
-      return catalogRequest(call.fields);
+      return catalogRequest(call);
     case 'resource.search':
       return searchRequest(call.fields);
     case 'resource.read':
@@ -71,9 +81,18 @@ export function inspectWorkshopResourceCall(
   }
 }
 
-function catalogRequest(fields: ReadonlyMap<string, string>): WorkshopResourceInspection {
+/** Why a narrowing as written is refused, as the codec names it. */
+const MATCH_REJECTIONS: Readonly<Record<ContextGroupMatchFault, WorkshopCapabilityRejectionReason>> = {
+  empty: 'empty-field',
+  'too-long': 'oversized-input',
+  'too-many': 'too-many-patterns',
+  unsafe: 'unsafe-match'
+};
+
+function catalogRequest(call: Pick<WorkshopCapabilityXmlCall, 'fields' | 'elements'>): WorkshopResourceInspection {
   const operation = 'resource.catalog';
-  const fieldError = validateFields(operation, fields, [], ['group']);
+  const { fields } = call;
+  const fieldError = validateFields(operation, fields, [], ['group', 'page', 'match']);
   if (fieldError) {
     return fieldError;
   }
@@ -81,7 +100,32 @@ function catalogRequest(fields: ReadonlyMap<string, string>): WorkshopResourceIn
   if (group !== undefined && !isContextPathGroup(group)) {
     return reject(operation, 'unknown-resource-group', 'group');
   }
-  return { kind: 'request', request: { capability: operation, group: group as ContextPathGroup | undefined } };
+  const written = fields.get('page');
+  const page = written === undefined ? undefined : workshopCapabilityPage(written);
+  if (page?.kind === 'invalid') {
+    return reject(operation, 'invalid-page', 'page');
+  }
+  const lists = call.elements.filter((element) => element.name === 'match').map((element) => element.value);
+  let match: readonly string[] | undefined;
+  if (lists.length > 0) {
+    if (group === undefined) {
+      return reject(operation, 'match-needs-group', 'match');
+    }
+    const read = readContextGroupMatch(lists);
+    if (read.kind === 'refused') {
+      return reject(operation, MATCH_REJECTIONS[read.fault], 'match');
+    }
+    match = read.patterns;
+  }
+  return {
+    kind: 'request',
+    request: {
+      capability: operation,
+      group: group as ContextPathGroup | undefined,
+      ...(page ? { page: page.page } : {}),
+      ...(match ? { match: [...match] } : {})
+    }
+  };
 }
 
 function searchRequest(fields: ReadonlyMap<string, string>): WorkshopResourceInspection {

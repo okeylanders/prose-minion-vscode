@@ -22,9 +22,9 @@ export const searchFrame = (inner = `<question>${QUESTION}</question>\n<group>ch
   `<prose-minion-passage-search>\n${inner}\n</prose-minion-passage-search>`;
 
 export const LISTED = [
-  { group: 'chapters' as const, relativePath: CHAPTER },
-  { group: 'chapters' as const, relativePath: 'chapters/pool-of-tears.md' },
-  { group: 'characters' as const, relativePath: 'characters/alice.md' }
+  { group: 'chapters' as const, relativePath: CHAPTER, absolutePath: `/wonderland/${CHAPTER}` },
+  { group: 'chapters' as const, relativePath: 'chapters/pool-of-tears.md', absolutePath: '/wonderland/chapters/pool-of-tears.md' },
+  { group: 'characters' as const, relativePath: 'characters/alice.md', absolutePath: '/wonderland/characters/alice.md' }
 ];
 
 /**
@@ -124,6 +124,7 @@ export interface FakePassageSearch {
   readonly plan: jest.Mock;
   readonly run: jest.Mock;
   readonly listGroupFiles: jest.Mock;
+  readonly matchPatterns: jest.Mock;
   readonly save: jest.Mock;
   /** The key the next plan carries. */
   planKey: string;
@@ -163,6 +164,8 @@ export function fakePassageSearch(): FakePassageSearch {
         : fake.result;
     }),
     listGroupFiles: jest.fn(async () => LISTED),
+    // No narrowing here: a narrowed group is settled against the real resolver (WorkshopPassageSearchGroupMatch.test.ts).
+    matchPatterns: jest.fn(async () => undefined),
     save: jest.fn(async () => ({ status: 'saved' as const, filePath: 'prose-minion/reports/passage-search-20261120-120000.md', opened: true })),
     finish: () => release?.(),
     progress: (progress) => report?.(progress),
@@ -171,7 +174,7 @@ export function fakePassageSearch(): FakePassageSearch {
   };
   (fake as { ports: WorkshopPassageSearchPorts }).ports = {
     engine: { plan: fake.plan, run: fake.run },
-    listing: { listGroupFiles: fake.listGroupFiles },
+    listing: { listGroupFiles: fake.listGroupFiles, matchPatterns: fake.matchPatterns },
     reports: { save: fake.save }
   };
   return fake;

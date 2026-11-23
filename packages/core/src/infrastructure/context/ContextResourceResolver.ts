@@ -15,7 +15,7 @@ import {
   ContextResourceProvider,
   ContextResourceSummary
 } from '@/domain/models/ContextGeneration';
-import { distinctContextGroupFiles } from '@/infrastructure/context/ContextGroupFiles';
+import { distinctContextGroupFiles, hostFileIdentity } from '@/infrastructure/context/ContextGroupFiles';
 
 type MatchMode = 'browse' | 'browse-counts' | 'authoritative' | 'check';
 
@@ -25,6 +25,12 @@ export type ContextPatternsByGroup = Partial<Record<ContextPathGroup, readonly s
 /** One supported file a pattern matched. `key` identifies it across groups (root and case-folded path). */
 export interface ContextPatternMatchFile {
   readonly key: string;
+  /**
+   * The file's host identity (`hostFileIdentity`), the same one a group's
+   * listing gives (ADR 2026-11-20 S43): what a narrowed group is intersected
+   * by. Host-side only, never shown or logged.
+   */
+  readonly identity: string;
   readonly workspaceFolder: string;
   readonly relativePath: string;
   /** The root's name, present only when several roots are open. */
@@ -213,6 +219,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
       const key = `${folder.path}\u0000${this.normalizeKey(relativePath)}`;
       tallies.get(group)?.get(pattern)?.files.set(key, {
         key,
+        identity: hostFileIdentity(match),
         workspaceFolder: folder.name,
         relativePath,
         ...(roots > 1 ? { rootName: folder.name } : {})

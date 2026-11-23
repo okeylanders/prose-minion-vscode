@@ -84,7 +84,7 @@ import {
   workshopLocationsStatusMessage,
   workshopLocationsStatusTicker
 } from '@/application/services/workshop/locations/WorkshopLocationsCopy';
-import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
+import { WorkshopResourceCapability, type WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
 import {
   workshopResourceRequestLogSummary,
   workshopResourceRequestSummary,
@@ -92,7 +92,7 @@ import {
   workshopResourceStatusTicker
 } from '@/application/services/workshop/WorkshopResourceRequestCopy';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
-import { ContextResourceProviderFactory, type ContextResourceSummary, DEFAULT_CONTEXT_GROUPS } from '@/domain/models/ContextGeneration';
+import { type ContextResourceSummary, DEFAULT_CONTEXT_GROUPS } from '@/domain/models/ContextGeneration';
 import { LogSink } from '@/platform';
 import {
   translateWorkshopNativeToolCall,
@@ -187,7 +187,7 @@ export class WorkshopPersonaCapabilityFactory {
   constructor(
     private readonly dictionaryService: DictionaryService,
     private readonly analysisSidePass: WorkshopAnalysisSidePass,
-    private readonly resourceProviderFactory: ContextResourceProviderFactory,
+    private readonly resourceProviderFactory: WorkshopResourceSources,
     private readonly session: WorkshopSessionService,
     private readonly outputChannel: LogSink,
     private readonly recall: WorkshopTranscriptRecallPort,
@@ -246,7 +246,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
   constructor(
     private readonly dictionaryService: DictionaryService,
     private readonly analysisSidePass: WorkshopAnalysisSidePass,
-    resourceProviderFactory: ContextResourceProviderFactory,
+    resourceProviderFactory: WorkshopResourceSources,
     private readonly session: WorkshopSessionService,
     private readonly outputChannel: LogSink,
     private readonly turn: WorkshopPersonaCapabilityTurn,

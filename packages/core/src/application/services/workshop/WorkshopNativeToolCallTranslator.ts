@@ -58,7 +58,8 @@ export const WORKSHOP_NATIVE_CALL_FIELDS: Readonly<Record<
   'dictionary.lookup': DICTIONARY_FIELDS,
   'dictionary.full-entry': DICTIONARY_FIELDS,
   'analysis.run': { toolId: TEXT, excerptMode: TEXT, excerptText: TEXT, contextMode: TEXT, contextText: TEXT },
-  'resource.catalog': { group: TEXT },
+  // A narrowing's `<match>` repeats (ADR 2026-11-20 S47): a native array maps to one element per list.
+  'resource.catalog': { group: TEXT, page: TEXT, match: { repeatable: true, plural: 'matches' } },
   'resource.search': { query: TEXT, group: TEXT },
   'resource.read': {
     group: TEXT,

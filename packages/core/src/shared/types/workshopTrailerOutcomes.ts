@@ -99,7 +99,9 @@ export type WorkshopLocationsTrailerDropReason = typeof WORKSHOP_LOCATIONS_TRAIL
  * 2026-11-20 D17), in the order a record lists them. `extra`: a second
  * frame in one reply. The rest are the host's checks at settlement: a group
  * that is no context group, a file not in its group, a file two workspace
- * folders both hold, an `<excerpt/>` in a room with no excerpt, and a
+ * folders both hold, an `<excerpt/>` in a room with no excerpt, a group
+ * narrowed by a pattern the context-path rules refuse (`unsafe-match`) or by
+ * one that finds no file of the group (`match-found-nothing`; S44), and a
  * listing that could not be read. `off` and `over-cap` never occur: the
  * trailer has no setting, and a second frame is `extra`.
  */
@@ -111,6 +113,8 @@ export const WORKSHOP_PASSAGE_SEARCH_TRAILER_DROP_REASONS = [
   'unknown-file',
   'ambiguous-file',
   'no-excerpt',
+  'unsafe-match',
+  'match-found-nothing',
   'catalog-unreadable'
 ] as const;
 export type WorkshopPassageSearchTrailerDropReason = typeof WORKSHOP_PASSAGE_SEARCH_TRAILER_DROP_REASONS[number];

@@ -33,6 +33,10 @@
  *   never dropped to make it fit.
  * - **Counts are the host's.** The label table is the source of truth
  *   beside the analysis.
+ * - **It names where the search looked** (S45), in the card's words
+ *   (`workshopPassageSearchPlaceWords`): a narrowed group with its
+ *   patterns, neutralized like every other string, in the frame and in the
+ *   summary alike.
  *
  * The frame's tag is reserved (`workshopPromptFrames`).
  */
@@ -84,8 +88,11 @@ function evenSpread(total: number, count: number): number[] {
   return Array.from({ length: Math.min(count, total) }, (_, index) => Math.floor((index * total) / Math.min(count, total)));
 }
 
-/** The frame holding `shown` of the result's instances. */
-export function renderWorkshopPassageSearchDirective(result: PassageSearchResultView, shown: number): string {
+/** The card's places, as the frame says them: `Searched: …`, one line, neutralized. */
+const placeLines = (place: string | undefined): string[] => (place !== undefined && place.trim().length > 0 ? [`Searched: ${oneLine(place)}`] : []);
+
+/** The frame holding `shown` of the result's instances; `place` is where the card looked, in the card's words. */
+export function renderWorkshopPassageSearchDirective(result: PassageSearchResultView, shown: number, place?: string): string {
   const tableBound = PROMPT_BUDGETS.passageSearch.organize.labels;
   const table = [...result.labels].sort((a, b) => b.count - a.count).slice(0, tableBound);
   const instances = evenSpread(result.instances.length, shown).map((index) => result.instances[index]);
@@ -95,6 +102,7 @@ export function renderWorkshopPassageSearchDirective(result: PassageSearchResult
     ...OPENING,
     '',
     `Question: ${oneLine(result.question)}`,
+    ...placeLines(place),
     '',
     `Found: ${passageSearchSummary(result)}`,
     passageSearchReadLine(result),
@@ -142,12 +150,13 @@ export function renderWorkshopPassageSearchDirective(result: PassageSearchResult
 }
 
 /** The least a delivery says: what this is, the question, what was found and read, how it ended, what went unsearched, and that the report has the rest. */
-export function renderWorkshopPassageSearchSummary(result: PassageSearchResultView): string {
+export function renderWorkshopPassageSearchSummary(result: PassageSearchResultView, place?: string): string {
   return [
     `<${WORKSHOP_PASSAGE_SEARCH_RESULTS_TAG}>`,
     ...OPENING,
     '',
     `Question: ${oneLine(result.question)}`,
+    ...placeLines(place),
     '',
     `Found: ${passageSearchSummary(result)}`,
     passageSearchReadLine(result),
@@ -165,18 +174,19 @@ export function renderWorkshopPassageSearchSummary(result: PassageSearchResultVi
  */
 export function fitWorkshopPassageSearchDirective(
   result: PassageSearchResultView,
-  window: Pick<CapabilityContextWindow, 'freeInputTokens'> | undefined
+  window: Pick<CapabilityContextWindow, 'freeInputTokens'> | undefined,
+  place?: string
 ): WorkshopPassageSearchDirective | undefined {
   const of = result.instances.length;
   const bound = window ? Math.floor(window.freeInputTokens / 2) : PROMPT_BUDGETS.workshopPassageSearch.resultsTokens;
   const render = (size: number): WorkshopMeasuredRead<string> => {
-    const frame = renderWorkshopPassageSearchDirective(result, size);
+    const frame = renderWorkshopPassageSearchDirective(result, size, place);
     return { size, outcome: frame, tokens: estimateTextTokens(frame) };
   };
   const whole = of === 0 ? render(0) : fitWorkshopReadToWindow(render, of, bound, 0).fit;
   if (whole && whole.tokens <= bound) {
     return { frame: whole.outcome, shown: whole.size, of };
   }
-  const summary = renderWorkshopPassageSearchSummary(result);
+  const summary = renderWorkshopPassageSearchSummary(result, place);
   return estimateTextTokens(summary) <= bound ? { frame: summary, shown: 0, of, summary: true } : undefined;
 }

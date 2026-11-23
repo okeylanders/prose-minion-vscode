@@ -26,7 +26,7 @@ import { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 import { WorkshopRoomDeliveryService, workshopRoomDeliveredThrough } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
-import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import type { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
 import type { WorkshopMemoryDraft, WorkshopTurn } from '@messages';
@@ -57,7 +57,7 @@ function room(host: ReturnType<typeof libraryHost>) {
   const factory = new WorkshopPersonaCapabilityFactory(
     {} as DictionaryService,
     {} as WorkshopAnalysisSidePass,
-    { createProvider: jest.fn() } as unknown as ContextResourceProviderFactory,
+    { createProvider: jest.fn() } as unknown as WorkshopResourceSources,
     session,
     { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() },
     {} as WorkshopTranscriptRecallPort,

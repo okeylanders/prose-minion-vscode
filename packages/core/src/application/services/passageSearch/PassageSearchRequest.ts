@@ -7,13 +7,16 @@
  * `active-file`, `selection` and `pattern` are for a caller the writer is
  * typing into; any caller sends `group`, `file` and `text`. A `pattern` is
  * marked `writerTyped`, so a caller whose scopes come from a model cannot
- * build one by accident.
+ * build one by accident. A `group` may be narrowed by patterns (S43): the
+ * narrowing only ever takes files away from its group, and it is held to
+ * the context-path rules here, whoever sends it.
  */
 
 import type { ConfiguredResourceRef } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { isContextPathGroup, type ContextPathGroup } from '@shared/types/context';
 import { contextPathPatternRefusal } from '@/application/services/contextPaths/ContextPathPatternSafety';
+import { contextGroupMatchRefused } from '@/application/services/ContextGroupNarrowing';
 import { isSafeConfiguredResourcePath } from '@/utils/configuredResourcePath';
 import type { PassageSearchRefusal } from '@services/search/passage/PassageSearchContracts';
 import { passageSearchRefusal } from '@services/search/passage/PassageSearchRefusals';
@@ -23,8 +26,12 @@ export type PassageSearchScope =
   | { readonly kind: 'active-file' }
   /** The editor's selection. */
   | { readonly kind: 'selection' }
-  /** Every file in a context group. */
-  | { readonly kind: 'group'; readonly group: ContextPathGroup }
+  /**
+   * Every file in a context group; with `match` (the patterns, already
+   * split), only the group's files at least one pattern finds (S43). It can
+   * never reach a file outside the group.
+   */
+  | { readonly kind: 'group'; readonly group: ContextPathGroup; readonly match?: readonly string[] }
   /** One configured file, by catalog key. */
   | { readonly kind: 'file'; readonly file: ConfiguredResourceRef }
   /** A path or glob the writer typed. Never built from a model's words. */
@@ -60,6 +67,10 @@ export function passageSearchRequestRefusal(request: PassageSearchRequest): Pass
       case 'group':
         if (!isContextPathGroup(scope.group)) {
           return passageSearchRefusal('unknown-group');
+        }
+        // A narrowing is held to the context-path rules whoever sends it (S43).
+        if (scope.match !== undefined && contextGroupMatchRefused(scope.match)) {
+          return passageSearchRefusal('unsafe-pattern');
         }
         break;
       case 'file':

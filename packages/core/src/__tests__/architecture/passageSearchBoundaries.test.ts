@@ -61,11 +61,15 @@ const SERVICE_ALLOWED_IMPORTS = [
   'crypto'
 ];
 
-/** What the engine may import beside the model work: the context resolver's listing, the pattern safety rule, the ports, natural order and shared types. */
+/**
+ * What the engine may import beside the model work: the context resolver's listing, the pattern safety rule, the
+ * shared narrowing of a group by patterns (S43), the ports, natural order and shared types.
+ */
 const ENGINE_ALLOWED_IMPORTS = [
   '@services/search/passage/',
   '@/application/services/passageSearch/',
   '@/application/services/contextPaths/ContextPathPatternSafety',
+  '@/application/services/ContextGroupNarrowing',
   '@/domain/models/ContextGeneration',
   '@/infrastructure/context/',
   '@/utils/configuredResourcePath',

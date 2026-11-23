@@ -15,7 +15,8 @@ import { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 import type { AnalysisResult } from '@/domain/models/AnalysisResult';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
-import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
+import { groupListingOver } from '@/__tests__/application/services/workshop/resource/groupListingFixtures';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import type { LogSink } from '@/platform';
 import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
@@ -93,8 +94,9 @@ describe('persona capability model stamps', () => {
       analyzeWritingTools,
       discardConversation: jest.fn()
     } as unknown as AssistantToolService;
-    const resourceProviderFactory: ContextResourceProviderFactory = {
-      createProvider: jest.fn().mockResolvedValue({ listResources, loadResources: jest.fn().mockResolvedValue([]) })
+    const resourceProviderFactory: WorkshopResourceSources = {
+      createProvider: jest.fn().mockResolvedValue({ listResources, loadResources: jest.fn().mockResolvedValue([]) }),
+      ...groupListingOver(() => listResources())
     };
     return new WorkshopPersonaCapabilityFactory(
       dictionary,
