@@ -18,6 +18,7 @@
  */
 
 import type { WorkshopLocationsProposalPorts } from '@handlers/domain/workshop/WorkshopLocationsProposalHandler';
+import type { WorkshopPassageSearchPorts } from '@handlers/domain/workshop/WorkshopPassageSearchHandler';
 import {
   resolveWorkshopReplyLocations,
   type WorkshopReplyLocationsContext
@@ -214,6 +215,8 @@ interface WorkshopTargetTurnInput {
   attachmentRefs: readonly WorkshopMessageAttachmentSnapshot[];
   widgetCommitRef?: WorkshopTurnWidgetCommit;
   editOfferRequest?: WorkshopDirectedRun['editOfferRequest'];
+  /** A host-directed run: it carries no reaction invite (ADR 2026-11-10 addendum; ADR 2026-11-20 D18). */
+  directed?: boolean;
   roomCatchUp?: string;
   hasConversationalCatchUp: boolean;
   todoEvidence?: WorkshopTodoEvidenceFrame;
@@ -273,6 +276,8 @@ export class WorkshopRoomHandler {
     controller: AbortController;
     /** A host-directed run: its writer turn leaves with it when it is preempted (ADR 2026-11-10 D3). */
     directed?: boolean;
+    /** Its writer turn leaves with every outcome that is not an adopted reply, disposal too (ADR 2026-11-20 D19a). */
+    provisional?: boolean;
   };
 
   private readonly disposeStatusListener: () => void;
@@ -343,7 +348,9 @@ export class WorkshopRoomHandler {
     /** A persona's saved-session to-do changes (ADR 2026-11-19 D6): the write port, built in `extension.ts`. */
     savedSessionTodos?: WorkshopSavedSessionTodos,
     /** A persona's context-paths card (ADR 2026-11-19 D27): C1's checker and settings, built in `extension.ts`. */
-    private readonly locationsProposals?: WorkshopLocationsProposalPorts
+    private readonly locationsProposals?: WorkshopLocationsProposalPorts,
+    /** A persona's passage search (ADR 2026-11-20 D20): the engine, the listing and the report file, built in `extension.ts`. */
+    passageSearch?: WorkshopPassageSearchPorts
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -380,7 +387,7 @@ export class WorkshopRoomHandler {
         bookmarkBrowser,
         fileEditApply,
         memoryDrafts,
-        selectedText, savedSessionTodos, locationsProposals,
+        selectedText, savedSessionTodos, locationsProposals, passageSearch,
         outputChannel: this.outputChannel
       },
       {
@@ -401,6 +408,7 @@ export class WorkshopRoomHandler {
         fileEditsMode: () => this.conversationSettingsService.getFileEditsMode(),
         runDirected: (target, run) =>
           this.executeMessage(run.message, run.displayText, target, { directedRun: run }),
+        hasExcerpt: () => (this.session.getExcerpt()?.text.trim().length ?? 0) > 0,
         editOfferRoomView: () => this.editOfferRoomView(),
         formatTurnTime: (timestamp) => workshopEditRequestTime(timestamp, this.sessionTime.exportState().timezone),
         findReadInRecord: (identity) => this.assistantToolService.findConversationContextSourceRead(
@@ -417,7 +425,10 @@ export class WorkshopRoomHandler {
               `[WorkshopRoomHandler] Aborting in-flight run on dispose: ${this.activeRun.requestId}`
             );
             this.activeRun.controller.abort();
-            this.session.abandonRun(this.activeRun.requestId);
+            // Rolled back while it is still the run, as preemption does: the flush that follows must not keep its turn.
+            if (!this.activeRun.provisional || !this.session.rollbackMessageRun(this.activeRun.requestId)) {
+              this.session.abandonRun(this.activeRun.requestId);
+            }
             this.activeRun = undefined;
           }
         }
@@ -513,6 +524,7 @@ export class WorkshopRoomHandler {
       memoryAutoSavesInRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
       fileEdits: (reply, signal) => this.replyFileEdits(reply, signal), todoStatus: (reply) => this.sliceComposition.replyTodoStatus(reply),
       locations: (reply, signal) => this.replyLocations(reply, signal),
+      passageSearch: (reply, signal) => this.sliceComposition.replyPassageSearch(reply, signal),
       reactionsOpen: () => this.conversationSettingsService.personaReactionsOpen(),
       settled: (requestId) => this.settleActiveRun(requestId)
     });
@@ -824,6 +836,7 @@ export class WorkshopRoomHandler {
           memoryAutoSave: memoryAutoSave.hand,
           memoryAutoSavesInRoom: memoryAutoSave.inRoom,
           fileEdits, todoStatus, locations,
+          passageSearch: await this.sliceComposition.replyPassageSearch(result.content, controller.signal),
           reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
           session: this.session,
           requestId,
@@ -1023,7 +1036,7 @@ export class WorkshopRoomHandler {
                 hostUpdate: input.hostUpdateFrame,
                 threadArtifactFrames: input.threadArtifactFrames,
                 reactionsFrame: input.reactionsFrame,
-                reactionInviteFrame: input.editOfferRequest ? undefined : this.reactionInvite(input.requestId, input.contextTally),
+                reactionInviteFrame: input.directed ? undefined : this.reactionInvite(input.requestId, input.contextTally),
                 ...(conversationId ? personaBehaviorFrames : {})
               }),
               statusMessage: input.hasConversationalCatchUp
@@ -1105,7 +1118,7 @@ export class WorkshopRoomHandler {
                 input.threadArtifactFrames,
                 personaBehaviorFrames,
                 input.reactionsFrame,
-                input.editOfferRequest ? undefined : this.reactionInvite(input.requestId, input.contextTally)
+                input.directed ? undefined : this.reactionInvite(input.requestId, input.contextTally)
               ),
               statusMessage: input.hasConversationalCatchUp
                 ? `Catching ${workshopPersonaLabel(target.personaId)} up on the room…`
@@ -1254,6 +1267,14 @@ export class WorkshopRoomHandler {
       );
     }
     const directedRun = executeOptions?.directedRun;
+    // A results delivery (ADR 2026-11-20 D18, D21): its frame is fitted to the room this message has left.
+    const delivery = directedRun?.resultsDelivery;
+    const resultsFrame = delivery?.frame(this.assistantToolService.measureWorkshopReplyWindow(conversationId,
+      [roomCatchUp, todoEvidence?.message, hostUpdateFrame, text].filter(Boolean).join('\n\n')));
+    if (delivery && resultsFrame === undefined) {
+      // Not even its summary fits: nothing is recorded or sent, and the results stay with their card (PR #296 F4).
+      return { committed: false, refusalReason: 'results-do-not-fit' };
+    }
     // A persona's run measures what it writes (ADR 2026-11-18 D6); a tool sidecar's does not.
     const contextTally = roomReader ? new WorkshopContextTallyRecorder() : undefined;
     const threadArtifactFrames = tallyWorkshopThreadFrames(contextTally, {
@@ -1261,12 +1282,13 @@ export class WorkshopRoomHandler {
       attachments: roomThreadArtifacts.map((artifact) =>
         buildWorkshopThreadArtifactFrame(artifact, workshopMessageAttachmentFrameContext(artifact.id, messageAttachments))),
       // A press's directive rides the frames' own slot, last before the message (ADR 2026-11-10 D4).
-      directive: directedRun ? [directedRun.frame] : [],
+      directive: directedRun?.frame !== undefined ? [directedRun.frame] : [],
+      results: resultsFrame !== undefined ? [resultsFrame] : [],
       // The edit-offer reminder rides it too, never with a press and never for a tool (second addendum).
       reminders: this.editOfferReminder(roomReader !== undefined, directedRun !== undefined, excerpt),
       // What became of the persona's last reply's trailers (ADR 2026-11-17 D14, D15): keyed to the ledger's latest
       // reply, so a fresh conversation's first message carries it too (PR #276 F-01). Never a press, never a tool.
-      trailerOutcomes: workshopTrailerOutcomeFrames(directedRun ? undefined : roomReader, () => this.session.readRoomLedger(), this.logLine)
+      trailerOutcomes: workshopTrailerOutcomeFrames(directedRun && !delivery ? undefined : roomReader, () => this.session.readRoomLedger(), this.logLine)
     });
     const widgetCommitRef: WorkshopTurnWidgetCommit | undefined = widgetArtifact
       ? {
@@ -1290,7 +1312,7 @@ export class WorkshopRoomHandler {
     this.beginSessionInteraction();
     const {
       modelMessage,
-      userTurn,
+      userTurn: preparedTurn,
       statusMessage,
       personaBehaviorFrames
     } = targetPlan.prepareTurn({
@@ -1300,6 +1322,7 @@ export class WorkshopRoomHandler {
       attachmentRefs,
       widgetCommitRef,
       editOfferRequest: directedRun?.editOfferRequest,
+      directed: directedRun !== undefined,
       roomCatchUp,
       hasConversationalCatchUp,
       todoEvidence,
@@ -1309,13 +1332,14 @@ export class WorkshopRoomHandler {
       reactionsFrame: reactionPlan?.frame,
       contextTally
     });
+    const userTurn = delivery?.markRequestTurn(preparedTurn.id) ?? preparedTurn;
     // A fresh host's envelope tallies its own behavior frames; every other persona message carries them here.
     tallyWorkshopTurnFrames(contextTally, { roomCatchUp, todoSnapshot: todoEvidence?.message, hostUpdate: hostUpdateFrame,
       reactions: reactionPlan?.frame, behavior: conversationId ? personaBehaviorFrames : undefined });
     if (roomReader && reactionPlan) {
       stageWorkshopReactionDelivery(this.session, requestId, roomReader, reactionPlan, this.logLine);
     }
-    this.activeRun = { requestId, label, toolId, guestPersonaId, controller, ...(directedRun ? { directed: true } : {}) };
+    this.activeRun = { requestId, label, toolId, guestPersonaId, controller, ...(directedRun ? { directed: true } : {}), ...(delivery ? { provisional: true } : {}) };
     // Sprint 13C: capabilities are participant-owned. Host and persona-guest
     // turns each mint one adapter with their own principal; direct-tool
     // sidecars stay capability-free instruments. Decide "which participant is
@@ -1363,7 +1387,7 @@ export class WorkshopRoomHandler {
     this.sendStatus(statusMessage);
 
     // A directed run's reply is never shown (ADR 2026-11-10 D5): its tokens go nowhere.
-    const onToken = directedRun ? () => undefined : (token: string) => this.sendStreamChunk(requestId, token);
+    const onToken = directedRun && !delivery ? () => undefined : (token: string) => this.sendStreamChunk(requestId, token);
     try {
       const result = conversationId
         ? await this.assistantToolService.continueConversation(conversationId, modelMessage, {
@@ -1411,6 +1435,8 @@ export class WorkshopRoomHandler {
         memoryAutoSave: memoryAutoSave.hand,
         memoryAutoSavesInRoom: memoryAutoSave.inRoom,
         fileEdits, todoStatus, locations,
+        passageSearch: await this.sliceComposition.replyPassageSearch(result.content, controller.signal),
+        ...delivery?.completion(),
         reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
         session: this.session,
         requestId,
@@ -1770,7 +1796,8 @@ export class WorkshopRoomHandler {
       runActive: this.activeRun !== undefined,
       ledger: () => this.session.readRoomLedger(),
       authorPresent: (turn) => workshopEditOfferAuthorTarget(this.session, turn) !== undefined,
-      liveSessionId: () => this.sessionPersistence.openRoomIdentity().sessionId
+      liveSessionId: () => this.sessionPersistence.openRoomIdentity().sessionId,
+      passageSearch: (turnId) => this.sliceComposition.passageSearchWindowCard(turnId)
     };
   }
 

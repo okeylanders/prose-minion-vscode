@@ -49,7 +49,8 @@ export type WorkshopProjectMemoryPort = WorkshopProjectMemoryWritePort & Worksho
 import type { WorkshopEditOfferRoomView } from '@/application/services/workshop/fileEdits/WorkshopFileEditWebviewView';
 import type { FileEditApplyPort } from '@/domain/models/FileEdit';
 import type { FileEditIdentity } from '@/domain/models/FileEditStaging';
-import type { AgentFinalReplyCheck } from '@orchestration/AgentRunContracts';
+import type { AgentFinalReplyCheck, CapabilityContextWindow } from '@orchestration/AgentRunContracts';
+import type { WorkshopPassageSearchPorts } from '@handlers/domain/workshop/WorkshopPassageSearchHandler';
 import type { WorkshopRunCompletionInput } from '@/application/services/workshop/WorkshopRunCompletion';
 import type {
   ErrorSource,
@@ -73,8 +74,43 @@ import type {
  * - `boundExcerpt` says which document `<excerpt/>` names in the reply;
  * - `complete` settles the result in place of `completeWorkshopRun`;
  * - a run that fails or is stopped rolls its writer turn back.
+ *
+ * A directed run is one of two (ADR 2026-11-20 D18): this, an edit offer's
+ * press, or a `WorkshopResultsDeliveryRun`.
  */
-export interface WorkshopDirectedRun {
+export type WorkshopDirectedRun = WorkshopEditOfferDirectedRun | WorkshopResultsDeliveryRun;
+
+/**
+ * A host-directed run that delivers results the host holds to the persona
+ * who asked for them (ADR 2026-11-20 D18, D19a, D21). It rides the same
+ * message path, and differs from a press:
+ * - its reply streams and is ordinary prose, settled by
+ *   `completeWorkshopRun`, so it may carry trailers;
+ * - `frame` is called once, before dispatch, with the room the message has
+ *   left when the model's window is known, and returns the frame to place,
+ *   or nothing when nothing fits: the run then records and sends nothing;
+ * - `markRequestTurn` marks the provisional writer turn the path recorded,
+ *   and returns it as marked;
+ * - `completion` is read at completion: what a run that is not adopted does
+ *   with that turn, and the receipt an adopted reply carries.
+ */
+export interface WorkshopResultsDeliveryRun {
+  readonly resultsDelivery: {
+    readonly frame: (window: CapabilityContextWindow | undefined) => string | undefined;
+    readonly markRequestTurn: (turnId: string) => WorkshopTurn | undefined;
+    readonly completion: () => Pick<WorkshopRunCompletionInput, 'notAdopted' | 'passageSearchDelivery'>;
+  };
+  readonly displayText: string;
+  readonly message: string;
+  readonly editOfferRequest?: undefined;
+  readonly frame?: undefined;
+  readonly finalReply?: undefined;
+  readonly boundExcerpt?: undefined;
+  readonly complete?: undefined;
+}
+
+export interface WorkshopEditOfferDirectedRun {
+  readonly resultsDelivery?: undefined;
   readonly editOfferRequest: WorkshopEditOfferRequest;
   readonly displayText: string;
   readonly message: string;
@@ -121,6 +157,7 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopStandingDirectiveHandler'
   | 'WorkshopTodoHandler'
   | 'WorkshopLocationsProposalHandler'
+  | 'WorkshopPassageSearchHandler'
   | 'WorkshopBookmarkHandler'
   | 'WorkshopReactionHandler'
   | 'WorkshopBookmarkBrowserHandler'
@@ -200,6 +237,8 @@ export interface WorkshopSliceCompositionDependencies {
   savedSessionTodos?: WorkshopSavedSessionTodos;
   /** A persona's context-paths card (ADR 2026-11-19 D27): C1's checker and settings, built in extension.ts. */
   locationsProposals?: WorkshopLocationsProposalPorts;
+  /** A persona's passage search (ADR 2026-11-20 D20): the one engine, the listing and the report file, built in extension.ts. */
+  passageSearch?: WorkshopPassageSearchPorts;
   outputChannel: LogSink;
 }
 
@@ -230,6 +269,8 @@ export interface WorkshopSliceHostEffects {
   fileEditsMode: () => WorkshopFileEditsMode;
   /** A reply edit offer's press (ADR 2026-11-10 D4): a host-directed run to its author's own conversation. */
   runDirected: (target: WorkshopChatTarget, run: WorkshopDirectedRun) => Promise<WorkshopDirectedRunResult>;
+  /** Whether the room has an excerpt with text now: a passage-search request naming it is checked against this (ADR 2026-11-20 D17). */
+  hasExcerpt: () => boolean;
   /** What an edit offer's view is derived from, as `postSessionState` reads it (ADR 2026-11-17 D2). */
   editOfferRoomView: () => WorkshopEditOfferRoomView;
   /** A turn's time as the room shows it, in the session's timezone. */

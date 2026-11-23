@@ -234,6 +234,7 @@ export { PassageSearchModelOrganizer } from '@services/search/passage/PassageSea
 export { liveCatalogFacts } from '@services/search/passage/PassageSearchPrices';
 export { PassageSearchScopeFiles } from '@/application/services/passageSearch/PassageSearchScopeFiles';
 export { ProjectPassageSearchEngine, type PassageSearchEngine } from '@/application/services/passageSearch/PassageSearchEngine';
+export { PassageSearchReportExport } from '@handlers/domain/PassageSearchReportExport';
 export { HELPER_TASK_POLICIES } from '@services/helper/HelperTaskPolicies';
 export { ProjectFolderScan } from '@/application/services/contextPaths/ProjectFolderScan';
 export { ContextPathProposalChecker } from '@/application/services/contextPaths/ContextPathProposalChecker';

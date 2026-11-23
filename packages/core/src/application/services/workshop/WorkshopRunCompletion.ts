@@ -19,6 +19,7 @@ import {
 import {
   isApiKeyNotConfiguredWarning,
   TokenUsage,
+  type WorkshopPassageSearchDelivery,
   WorkshopTurn,
   WorkshopWidgetRecommendation,
   WorkshopWidgetSourceReference
@@ -62,10 +63,8 @@ import {
   settleWorkshopReplyTodoStatus,
   type WorkshopReplyTodoStatusContext
 } from '@/application/services/workshop/todos/WorkshopReplyTodoStatus';
-import {
-  settleWorkshopReplyLocations,
-  type WorkshopReplyLocationsContext
-} from '@/application/services/workshop/locations/WorkshopReplyLocations';
+import { settleWorkshopReplyLocations, type WorkshopReplyLocationsContext } from '@/application/services/workshop/locations/WorkshopReplyLocations';
+import { settleWorkshopReplyPassageSearch, type WorkshopReplyPassageSearchContext } from '@/application/services/workshop/passageSearch/WorkshopReplyPassageSearch';
 import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import {
@@ -185,6 +184,15 @@ export interface WorkshopRunCompletionInput {
    * a frame is still stripped, and dropped as not checked.
    */
   locations?: WorkshopReplyLocationsContext;
+  /** The reply's passage-search request, checked before completion (ADR 2026-11-20 D17), for that reply only. Absent, a frame is dropped as not listed. */
+  passageSearch?: WorkshopReplyPassageSearchContext;
+  /**
+   * What a run that is not adopted does with its writer turn (ADR 2026-11-20 D19a): `abandon` (the default) keeps
+   * it; `rollback` removes it, where the run is given up and while it is still the active run. Names no feature.
+   */
+  notAdopted?: 'abandon' | 'rollback';
+  /** The receipt this reply carries when it answers a delivery of search results (D19a): stamped in the reply's own commit. */
+  passageSearchDelivery?: WorkshopPassageSearchDelivery;
   log: (line: string) => void;
   events: WorkshopRunCompletionEvents;
 }
@@ -196,10 +204,12 @@ export interface WorkshopRunCompletionInput {
 export function completeWorkshopRun(input: WorkshopRunCompletionInput): WorkshopTurn | undefined {
   const { session, requestId, label, result, copy, events } = input;
   const truncated = isAgentRunIncomplete(result.finishReason);
+  // Given up here, never after: `abandonRun` clears the active run, and a rollback then finds nothing (D19a).
+  const giveUp = (): void => { if (input.notAdopted !== 'rollback' || !session.rollbackMessageRun(requestId)) { session.abandonRun(requestId); } };
 
   if (input.aborted) {
     input.log(`Run cancelled: ${requestId} (${label}, ${result.content.length} chars discarded)`);
-    session.abandonRun(requestId);
+    giveUp();
     if (input.createsRetainedConversation && result.conversationId) {
       input.discardConversation(result.conversationId);
     }
@@ -209,14 +219,14 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   }
 
   if (isApiKeyNotConfiguredWarning(result.content)) {
-    session.abandonRun(requestId);
+    giveUp();
     events.streamCompleted(requestId, '', true);
     events.error(copy.apiKeyMissingError, result.content);
     return undefined;
   }
 
   if (input.createsRetainedConversation && !result.conversationId) {
-    session.abandonRun(requestId);
+    giveUp();
     events.streamCompleted(requestId, '', true);
     events.error(
       copy.retentionFailedError,
@@ -251,8 +261,9 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // Settled in the same synchronous step as the commit below, so an open to-do stays open until it lands.
   const todos = settleWorkshopReplyTodoStatus(controls.todoStatus, todoContext, (id) => session.findTodo(id));
   const locations = settleWorkshopReplyLocations(controls.locations, input.locations?.reply === result.content ? input.locations : undefined);
+  const passageSearch = settleWorkshopReplyPassageSearch(controls.passageSearch, input.passageSearch?.reply === result.content ? input.passageSearch : undefined);
   for (const line of [...memory.logs, ...fileEdits.logs, ...(controls.reaction?.rejections ?? []).map(workshopReplyReactionDropLog), ...todos.logs,
-    ...locations.logs]) {
+    ...locations.logs, ...passageSearch.logs]) {
     input.log(`${line} (${label})`);
   }
   const reply = controls.rest;
@@ -305,17 +316,16 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // A reply of edit offers alone names nothing: it reads "Replied without a message." (ADR 2026-11-10 addendum).
   const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || trailers.memory || trailers.fileEdits
     || trailers.reaction !== undefined || controls.editOffers !== undefined || trailers.todos === true
-    || trailers.locations === true) && strippedDisplayContent.trim().length === 0;
+    || trailers.locations === true || trailers.passageSearch === true) && strippedDisplayContent.trim().length === 0;
+  const kinds = { memory: trailers.memory, fileEdits: trailers.fileEdits, todos: trailers.todos, locations: trailers.locations, passageSearch: trailers.passageSearch };
   // R1: a reply that was only its reaction is drawn as a slim line; with cards or a widget it is a reply.
   // The ledger's line names only a reaction that lands (PR #247 M1); retention keeps the reply's intent.
   const kept = controls.reaction?.reaction;
   const hostLine = hostWritesDisplay && widgetRecommendation.outcome === 'absent';
   const reaction = controls.reaction && {
     reaction: kept,
-    only: hostLine && !trailers.memory && !trailers.fileEdits && !trailers.todos && !trailers.locations,
-    ...(hostLine
-      ? { unlandedContent: workshopTrailersOnlyReplyLine({ memory: trailers.memory, fileEdits: trailers.fileEdits, todos: trailers.todos, locations: trailers.locations }) }
-      : {}),
+    only: hostLine && !trailers.memory && !trailers.fileEdits && !trailers.todos && !trailers.locations && !trailers.passageSearch,
+    ...(hostLine ? { unlandedContent: workshopTrailersOnlyReplyLine(kinds) } : {}),
     outcome: (outcome: WorkshopPersonaReactionOutcome) => input.log(outcome === 'added'
       ? `Persona reaction kept (reaction=${kept}; ${label})`
       : `Persona reaction dropped (reason=${outcome}; reaction=${kept}; ${label})`)
@@ -323,9 +333,7 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   const displayContent = !hostWritesDisplay
     ? strippedDisplayContent
     : widgetRecommendation.outcome === 'absent'
-      ? workshopTrailersOnlyReplyLine({
-        memory: trailers.memory, fileEdits: trailers.fileEdits, todos: trailers.todos, locations: trailers.locations, ...(kept ? { reaction: kept } : {})
-      })
+      ? workshopTrailersOnlyReplyLine({ ...kinds, ...(kept ? { reaction: kept } : {}) })
       : recommendationRejected
         ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
         : `${label} returned a widget setup without an accompanying note.`;
@@ -354,10 +362,12 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       memory: { cards: memory.proposals.length, drops: memory.drops },
       fileEdits: { proposals: fileEdits.proposals, drops: fileEdits.drops },
       todos: { changes: todos.commit?.rows.length ?? 0, drops: todos.drops },
-      locations: { cards: locations.card ? 1 : 0, drops: locations.drops, patterns: locations.patterns }
+      locations: { cards: locations.card ? 1 : 0, drops: locations.drops, patterns: locations.patterns },
+      passageSearch: { cards: passageSearch.card ? 1 : 0, drops: passageSearch.drops }
     }),
     todos.commit,
-    locations.card
+    locations.card,
+    { request: passageSearch.card, delivery: input.passageSearchDelivery }
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {

@@ -226,6 +226,8 @@ function createTestAssembly(): TestAssembly {
       isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
       getCurrentCheckpointError: jest.fn().mockReturnValue(undefined),
       isSessionOperationPending: jest.fn().mockReturnValue(false),
+      openRoomInstance: jest.fn(() => 1),
+      onRoomReplaced: jest.fn(() => () => undefined),
       addSessionSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
       waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
     refreshNamedSession: jest.fn(async (afterLoad?: (changed: boolean) => Promise<void>) => { await afterLoad?.(false); return false; }),

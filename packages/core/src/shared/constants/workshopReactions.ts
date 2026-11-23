@@ -68,7 +68,7 @@ export const workshopReaction = (id: WorkshopReactionId): WorkshopReactionDefini
 
 /** The turn facts the rule reads; the bubble, the ledger and the codec pass the same turn. */
 export type WorkshopReactableTurnFacts = Pick<WorkshopTurn, 'role' | 'kind' | 'participant' | 'artifact'>
-  & Partial<Pick<WorkshopTurn, 'capability' | 'reactionOnly' | 'noMessage'>>;
+  & Partial<Pick<WorkshopTurn, 'capability' | 'reactionOnly' | 'noMessage' | 'passageSearchResults'>>;
 
 /**
  * A persona reply in the room the writer may react to: a host or guest
@@ -85,12 +85,17 @@ const isPersonaReply = (turn: WorkshopReactableTurnFacts): boolean =>
   && turn.reactionOnly === undefined
   && turn.noMessage === undefined;
 
-/** The writer's own message to the room's personas (never a direct tool message). */
+/**
+ * The writer's own message to the room's personas (never a direct tool
+ * message, and never the host's line a results delivery records in the
+ * writer's place: ADR 2026-11-20 D18).
+ */
 const isWriterRoomMessage = (turn: WorkshopReactableTurnFacts): boolean =>
   turn.role === 'user'
   && turn.kind === 'message'
   && turn.participant === 'writer'
-  && turn.artifact === 'persona_message';
+  && turn.artifact === 'persona_message'
+  && turn.passageSearchResults === undefined;
 
 /**
  * What `author` may react to (ADR 2026-11-07 D2, Q4, Q10): one rule, read by

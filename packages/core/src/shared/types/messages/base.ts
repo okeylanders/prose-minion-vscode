@@ -186,6 +186,16 @@ export enum MessageType {
   // A persona's context-paths proposal card applied or declined by the writer (ADR 2026-11-19 D27).
   WORKSHOP_APPLY_LOCATIONS_PROPOSAL = 'workshop_apply_locations_proposal',
   WORKSHOP_LOCATIONS_PROPOSAL_RESULT = 'workshop_locations_proposal_result',
+  // A persona's passage-search card: its price, Run, Stop, Cancel, Send, Discard and Open report (ADR 2026-11-20 D20).
+  WORKSHOP_PASSAGE_SEARCH_ESTIMATE = 'workshop_passage_search_estimate',
+  WORKSHOP_PASSAGE_SEARCH_RUN = 'workshop_passage_search_run',
+  WORKSHOP_PASSAGE_SEARCH_STOP = 'workshop_passage_search_stop',
+  WORKSHOP_PASSAGE_SEARCH_CANCEL = 'workshop_passage_search_cancel',
+  WORKSHOP_PASSAGE_SEARCH_SEND = 'workshop_passage_search_send',
+  WORKSHOP_PASSAGE_SEARCH_DISCARD = 'workshop_passage_search_discard',
+  WORKSHOP_PASSAGE_SEARCH_OPEN_REPORT = 'workshop_passage_search_open_report',
+  WORKSHOP_PASSAGE_SEARCH_RESULT = 'workshop_passage_search_result',
+  WORKSHOP_PASSAGE_SEARCH_PROGRESS = 'workshop_passage_search_progress',
   WORKSHOP_RECOVER_NAMED_SESSION = 'workshop_recover_named_session',
   WORKSHOP_NAMED_SESSION_RECOVERY_RESULT = 'workshop_named_session_recovery_result',
   WORKSHOP_SET_TURN_BOOKMARK = 'workshop_set_turn_bookmark',

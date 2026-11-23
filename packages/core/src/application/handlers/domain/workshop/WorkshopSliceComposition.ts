@@ -17,6 +17,8 @@ import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/Workshop
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
 import { WorkshopLocationsProposalHandler } from '@handlers/domain/workshop/WorkshopLocationsProposalHandler';
+import { WorkshopPassageSearchHandler } from '@handlers/domain/workshop/WorkshopPassageSearchHandler';
+import { resolveWorkshopReplyPassageSearch } from '@/application/services/workshop/passageSearch/WorkshopReplyPassageSearch';
 import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookmarkHandler';
 import { WorkshopEarlierTurnsHandler } from '@handlers/domain/workshop/WorkshopEarlierTurnsHandler';
 import { WorkshopReactionHandler } from '@handlers/domain/workshop/WorkshopReactionHandler';
@@ -79,6 +81,7 @@ export class WorkshopSliceComposition {
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
   private readonly todoHandler: WorkshopTodoHandler;
   private readonly locationsProposalHandler: WorkshopLocationsProposalHandler;
+  private readonly passageSearchHandler: WorkshopPassageSearchHandler;
   private readonly bookmarkHandler: WorkshopBookmarkHandler;
   private readonly earlierTurnsHandler: WorkshopEarlierTurnsHandler;
   private readonly reactionHandler: WorkshopReactionHandler;
@@ -116,6 +119,7 @@ export class WorkshopSliceComposition {
       selectedText,
       savedSessionTodos,
       locationsProposals,
+      passageSearch,
       outputChannel
     } = dependencies;
     const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
@@ -282,6 +286,15 @@ export class WorkshopSliceComposition {
       postSessionState: host.postSessionState,
       markDirty
     }, sessionPersistence);
+    // A persona's passage-search card: its price, Run, Stop, Cancel, Send, Discard and Open report (ADR 2026-11-20 D20).
+    this.passageSearchHandler = new WorkshopPassageSearchHandler(
+      session,
+      passageSearch,
+      { activeRunLabel: host.activeRunLabel, sessionOperationPending: () => sessionPersistence.isSessionOperationPending(), runDirected: host.runDirected, openRoomInstance: sessionPersistence.openRoomInstance, onRoomReplaced: sessionPersistence.onRoomReplaced },
+      { postSessionState: host.postSessionState, markDirty },
+      postMessage,
+      outputChannel
+    );
     this.bookmarkHandler = new WorkshopBookmarkHandler(
       session,
       outputChannel,
@@ -444,6 +457,7 @@ export class WorkshopSliceComposition {
       this.createMutationRegistrar(router, 'WorkshopTodoHandler')
     );
     this.locationsProposalHandler.registerRoutes(this.createMutationRegistrar(router, 'WorkshopLocationsProposalHandler'));
+    this.passageSearchHandler.registerRoutes(router, this.createMutationRegistrar(router, 'WorkshopPassageSearchHandler'));
     this.bookmarkHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopBookmarkHandler')
@@ -486,6 +500,14 @@ export class WorkshopSliceComposition {
 
   /** A reply's to-do status context, resolved before completion (ADR 2026-11-19 D5). */
   replyTodoStatus = (reply: string) => this.todoHandler.replyTodoStatus(reply);
+
+  /** A reply's passage-search request, checked before completion (ADR 2026-11-20 D17); no await without the tag. */
+  replyPassageSearch = (reply: string, signal: AbortSignal) => resolveWorkshopReplyPassageSearch(reply, {
+    hasExcerpt: this.host.hasExcerpt(), listing: this.passageSearchHandler.listing(), signal
+  });
+
+  /** What this window is doing for a passage-search card (ADR 2026-11-20 D19): read when a turn is sent to the webview. */
+  passageSearchWindowCard = (turnId: string) => this.passageSearchHandler.windowCard(turnId);
 
   /** The room's automatic saves, landed and in flight, for Save and tell me's cap (PR #201 F-04). */
   memoryAutoSavesInRoom(): number {
@@ -531,6 +553,7 @@ export class WorkshopSliceComposition {
     this.selectedTextHandler.dispose();
     this.bookmarkBrowserHandler.dispose();
     this.memoryDraftHandler.dispose();
+    this.passageSearchHandler.dispose();
     this.host.disposeRoomSubscriptions();
     this.sessionMessageHandler.dispose();
     this.host.disposeActiveRoomRun();

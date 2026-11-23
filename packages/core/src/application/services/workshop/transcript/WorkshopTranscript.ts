@@ -44,6 +44,14 @@
  *     reply's cards are shown. The keys themselves are not carried.
  * - A persona reply's context-paths card (ADR 2026-11-19 D27) is included
  *   as one event line counting its groups, never a pattern or a path.
+ * - A persona's passage search (ADR 2026-11-20 D21):
+ *   - its card (`passageSearchRequest`) is included as one event line that
+ *     counts its scopes, never the question, a group or a path;
+ *   - the results turn (`passageSearchResults`) is included as an event
+ *     holding the host's line of counts: the writer wrote nothing, so it is
+ *     never a writer entry;
+ *   - the receipt (`passageSearchDelivery`) is omitted, by decision: host
+ *     bookkeeping. No entry carries an instance, a label or the analysis.
  * - A persona reply's `trailerOutcomes` (ADR 2026-11-17 D13) are omitted, by
  *   decision: host bookkeeping for the persona's next message, never thread
  *   content. No entry carries the record, a count or a reason; a test pins it.
@@ -55,6 +63,7 @@
  */
 
 import { workshopTodoReceiptHeading } from '@shared/constants/workshopTodoStatusWords';
+import { workshopPassageSearchCardTranscriptLine } from '@shared/constants/workshopPassageSearchWords';
 import {
   citationDisplayLabel,
   type ModelScope,
@@ -190,7 +199,8 @@ export function projectWorkshopTranscript(
       return [];
     }
     const marked = meta.bookmarkedTurnIds?.has(turn.id) ? { ...entry, bookmarked: true as const } : entry;
-    return [...pending.splice(0), withFileEdits(withModel(marked, turn), turn), ...todoReceipt(entry, turn), ...locationsCard(entry, turn)];
+    return [...pending.splice(0), withFileEdits(withModel(marked, turn), turn), ...todoReceipt(entry, turn), ...locationsCard(entry, turn),
+      ...passageSearchCard(entry, turn)];
   });
   // A slice whose turns all print nothing still closes the transcript.
   entries.push(...pending);
@@ -279,6 +289,13 @@ function locationsCard(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): Work
     : [];
 }
 
+/** A reply's passage-search card as one event line that counts its scopes (ADR 2026-11-20 D21): never the question or a path. */
+function passageSearchCard(entry: WorkshopTranscriptEntry, turn: WorkshopTurn): WorkshopTranscriptEventEntry[] {
+  return entry.kind === 'reply' && turn.passageSearchRequest
+    ? [{ kind: 'event', turnId: turn.id, timestamp: turn.timestamp, text: workshopPassageSearchCardTranscriptLine(turn.passageSearchRequest.scopes.length) }]
+    : [];
+}
+
 /** "Proposed context paths for 3 groups." */
 export function workshopLocationsTranscriptLine(groups: number): string {
   return `Proposed context paths for ${groups} ${groups === 1 ? 'group' : 'groups'}.`;
@@ -305,8 +322,9 @@ export function projectWorkshopTranscriptTurn(
   ) {
     return event(turn, turn.content);
   }
-  if (turn.editOfferRequest) {
-    // A press: the writer wrote nothing, so the host's sentence is an event (ADR 2026-11-10 D8).
+  if (turn.editOfferRequest || turn.passageSearchResults) {
+    // A press, or a search's results delivered: the writer wrote nothing, so the host's sentence is an
+    // event (ADR 2026-11-10 D8; ADR 2026-11-20 D21).
     return event(turn, turn.content);
   }
   if (turn.role === 'user') {

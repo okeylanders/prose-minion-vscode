@@ -24,6 +24,7 @@ import {
   WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS,
   WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS,
   WORKSHOP_MEMORY_TRAILER_DROP_REASONS,
+  WORKSHOP_PASSAGE_SEARCH_TRAILER_DROP_REASONS,
   WORKSHOP_TODO_TRAILER_DROP_REASONS,
   type WorkshopTrailerOutcomes
 } from '@shared/types/workshopTrailerOutcomes';
@@ -47,10 +48,10 @@ export function assertWorkshopTrailerOutcomesShape(
   if (turn.role !== 'assistant' || (turn.participant !== 'host' && turn.participant !== 'guest')) {
     shapeError(path, 'a record on a persona reply');
   }
-  const outcomes = exactObject(value, path, [], ['memory', 'fileEdits', 'todos', 'locations']);
+  const outcomes = exactObject(value, path, [], ['memory', 'fileEdits', 'todos', 'locations', 'passageSearch']);
   if (outcomes.memory === undefined && outcomes.fileEdits === undefined && outcomes.todos === undefined
-    && outcomes.locations === undefined) {
-    shapeError(path, 'at least one of memory, fileEdits, todos and locations');
+    && outcomes.locations === undefined && outcomes.passageSearch === undefined) {
+    shapeError(path, 'at least one of memory, fileEdits, todos, locations and passageSearch');
   }
   if (outcomes.memory !== undefined) {
     const side = exactObject(outcomes.memory, `${path}.memory`, ['cards', 'dropped']);
@@ -80,6 +81,17 @@ export function assertWorkshopTrailerOutcomesShape(
   }
   if (outcomes.locations !== undefined) {
     assertLocationsSide(outcomes.locations, `${path}.locations`);
+  }
+  if (outcomes.passageSearch !== undefined) {
+    // Passage-search request frames (ADR 2026-11-20 D17; additive): at most one card.
+    const side = exactObject(outcomes.passageSearch, `${path}.passageSearch`, ['cards', 'dropped']);
+    const cards = countAt(side.cards, `${path}.passageSearch.cards`, 0);
+    if (cards > 1) {
+      shapeError(`${path}.passageSearch.cards`, 'at most one card');
+    }
+    if (cards + droppedAt(side.dropped, `${path}.passageSearch.dropped`, WORKSHOP_PASSAGE_SEARCH_TRAILER_DROP_REASONS) === 0) {
+      shapeError(`${path}.passageSearch`, 'at least one frame counted');
+    }
   }
 }
 
@@ -153,6 +165,9 @@ export function cloneWorkshopTrailerOutcomes(outcomes: WorkshopTrailerOutcomes):
           patterns: { ...outcomes.locations.patterns }
         }
       }
+      : {}),
+    ...(outcomes.passageSearch
+      ? { passageSearch: { cards: outcomes.passageSearch.cards, dropped: outcomes.passageSearch.dropped.map((drop) => ({ ...drop })) } }
       : {})
   };
 }

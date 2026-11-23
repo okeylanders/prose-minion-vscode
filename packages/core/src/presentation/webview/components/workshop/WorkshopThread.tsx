@@ -4,6 +4,7 @@ import type { WorkshopTurnMemoryControls } from './memory/WorkshopTurnMemory';
 import type { WorkshopFileEditControls } from './fileEdits/WorkshopFileEditCard';
 import type { WorkshopTodoReceiptControls } from './todos/WorkshopTodoReceipt';
 import type { WorkshopLocationsProposalControls } from './locations/WorkshopLocationsProposalCard';
+import type { WorkshopPassageSearchControls } from './passageSearch/WorkshopPassageSearchCard';
 import type { WorkshopReactionControls } from './reactions/WorkshopTurnReactions';
 import type { WorkshopEditOfferControls } from './editOffers/WorkshopEditOfferChip';
 import * as React from 'react';
@@ -84,6 +85,8 @@ interface WorkshopThreadProps {
   todoReceipt?: WorkshopTodoReceiptControls;
   /** A persona's context-paths card and its Apply (ADR 2026-11-19 D27). */
   locationsProposal?: WorkshopLocationsProposalControls;
+  /** A persona's passage-search card (ADR 2026-11-20 D19). */
+  passageSearch?: WorkshopPassageSearchControls;
   /** Reaction chips and the palette (ADR 2026-11-07 D8). */
   reactions?: WorkshopReactionControls;
   /** A reply's edit-offer chips and their lines (ADR 2026-11-10 U1–U4). */
@@ -133,6 +136,7 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   fileEdits,
   todoReceipt,
   locationsProposal,
+  passageSearch,
   reactions,
   editOffers
 }) => {
@@ -224,6 +228,7 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
               fileEdits={fileEdits}
               todoReceipt={todoReceipt}
               locationsProposal={locationsProposal}
+              passageSearch={passageSearch}
               reactions={threadReactions}
               editOffers={editOffers}
             />

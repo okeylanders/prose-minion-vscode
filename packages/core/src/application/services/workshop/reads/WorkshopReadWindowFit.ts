@@ -28,17 +28,22 @@ export const WORKSHOP_READ_FIT_RENDERS = 6;
  */
 const FIT_TOLERANCE = 0.02;
 
-/** One rendering of a read under a size limit (characters or bytes), and what it costs as evidence. */
-export interface WorkshopMeasuredRead {
+/**
+ * One rendering of a read under a size limit (characters, bytes or whole
+ * items), and what it costs as evidence. `Outcome` is what was rendered: a
+ * capability's result, or a host frame fitted the same way (ADR 2026-11-20
+ * D21).
+ */
+export interface WorkshopMeasuredRead<Outcome = WorkshopCapabilityResult> {
   readonly size: number;
-  readonly outcome: WorkshopCapabilityResult;
+  readonly outcome: Outcome;
   readonly tokens: number;
 }
 
 /** The largest read that fit, if any, and the minimum read when the search measured it. */
-export interface WorkshopReadWindowFit {
-  readonly fit?: WorkshopMeasuredRead;
-  readonly minimum?: WorkshopMeasuredRead;
+export interface WorkshopReadWindowFit<Outcome = WorkshopCapabilityResult> {
+  readonly fit?: WorkshopMeasuredRead<Outcome>;
+  readonly minimum?: WorkshopMeasuredRead<Outcome>;
   readonly renders: number;
 }
 
@@ -47,15 +52,15 @@ export interface WorkshopReadWindowFit {
  * measured cost is at most `half` tokens, rendering at most
  * WORKSHOP_READ_FIT_RENDERS times.
  */
-export function fitWorkshopReadToWindow(
-  render: (size: number) => WorkshopMeasuredRead,
+export function fitWorkshopReadToWindow<Outcome = WorkshopCapabilityResult>(
+  render: (size: number) => WorkshopMeasuredRead<Outcome>,
   first: number,
   half: number,
   minimum: number
-): WorkshopReadWindowFit {
-  let fit: WorkshopMeasuredRead | undefined;
-  let miss: WorkshopMeasuredRead | undefined;
-  let measuredMinimum: WorkshopMeasuredRead | undefined;
+): WorkshopReadWindowFit<Outcome> {
+  let fit: WorkshopMeasuredRead<Outcome> | undefined;
+  let miss: WorkshopMeasuredRead<Outcome> | undefined;
+  let measuredMinimum: WorkshopMeasuredRead<Outcome> | undefined;
   let next: number | undefined = first;
   let renders = 0;
   while (next !== undefined && renders < WORKSHOP_READ_FIT_RENDERS) {
@@ -86,8 +91,8 @@ export function workshopReadEvidenceTokens(result: WorkshopCapabilityResult): nu
  * minimum itself did not fit.
  */
 function nextCandidate(
-  fit: WorkshopMeasuredRead | undefined,
-  miss: WorkshopMeasuredRead | undefined,
+  fit: Pick<WorkshopMeasuredRead, 'size' | 'tokens'> | undefined,
+  miss: Pick<WorkshopMeasuredRead, 'size' | 'tokens'> | undefined,
   half: number,
   minimum: number,
   renders: number,
