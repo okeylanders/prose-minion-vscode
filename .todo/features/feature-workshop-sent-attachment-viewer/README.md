@@ -67,12 +67,14 @@
    - The read-only turn reader (a bookmark from a saved session) keeps
      labels only.
 
+## Decisions (Okey, 2026-11-23)
+
+| # | Decision | Notes |
+|---|---|---|
+| V1 | **Show the writer's text with neutralized frame markers decoded,** and say so in the sheet's header. | The stored body may hold markers encoded before it went to the persona. "The text that was sent" means the writer's own words, so the sheet undoes the encoding for display. The header says, for example, "As sent with your message; protective markers shown as you wrote them." |
+
 ## Open questions
 
-- **"As sent" or "as the persona read it"?** The stored body may hold
-  neutralized frame markers. Leaning: show the writer's text with those
-  markers decoded, since that's what they mean by "the text that was sent",
-  and note it in the sheet's header.
 - **Saved sessions' bubbles.** Opening a saved session puts its turns back
   in the live room, so this works there too. Only the bookmark reader for
   a session that isn't open would lack it, and that is fine for now.
@@ -84,6 +86,8 @@
       the read-only sheet (test).
 - [ ] The sheet shows the stored body, its source (file and lines, path,
       or tile) and any cut, never the current file or selection (test).
+- [ ] Neutralized frame markers are decoded for display, through the same
+      rule that encoded them, and the header says so (V1, test).
 - [ ] The route carries ids only, compares `roomRevision`, refuses a
       widget artifact and a rewound turn in host words, and only the
       pending answer is taken (tests).
