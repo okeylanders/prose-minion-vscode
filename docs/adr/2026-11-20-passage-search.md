@@ -1,6 +1,6 @@
 # ADR 2026-11-20: Passage Search, a Search That Reads
 
-**Status:** Proposed (Slice 0). Revised 2026-11-20 after PR #292's review (D2a, D3a, D5a, D9a, D11a, D12a, D19a) and its re-review (D19a's rollback; see "Amendments after review"). Amended while building: S1–S23 (the engine and its review), S24–S41 (the review rounds of Slices 2–4). P1–P4 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief needed it; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
+**Status:** Accepted and built (PRs #292–#296, merged into `epic/passage-search` at `5b747f6b`); awaiting Okey's live pass. Revised 2026-11-20 after PR #292's review (D2a, D3a, D5a, D9a, D11a, D12a, D19a) and its re-review (D19a's rollback; see "Amendments after review"). Amended while building: S1–S23 (the engine and its review), S24–S41 (the review rounds of Slices 2–4). P1–P4 are Okey's. Every other default was taken by the orchestrator from the brief, or refined where the code showed the brief needed it; the epic README's "Defaults taken" table lists each, with why. None of those is an owner decision, and each is Okey's to overturn.
 **Date:** 2026-11-20
 **Epic:** [Passage Search](../../.todo/epics/epic-passage-search-2026-11-20/README.md)
 (its "Defaults taken" table is binding here)

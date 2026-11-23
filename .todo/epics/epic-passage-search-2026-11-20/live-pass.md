@@ -1,8 +1,7 @@
 # Passage Search: live pass
 
 **Status:** Ready for Okey. Nothing here has been run.
-**Candidate:** `epic/passage-search` once PR #296 (the persona request) is merged. Record the SHA you test.
-**You can start sections A, B and E now** on `epic/passage-search` at or after `f5949b97`: it holds the engine, the sidebar and the organizing pass. Sections C and D need #296.
+**Candidate:** `epic/passage-search` at or after `5b747f6b`: every slice is in. Record the SHA you test.
 **Epic:** [README](README.md) · **ADR:** [2026-11-20](../../../docs/adr/2026-11-20-passage-search.md)
 
 ## Why this pass exists
