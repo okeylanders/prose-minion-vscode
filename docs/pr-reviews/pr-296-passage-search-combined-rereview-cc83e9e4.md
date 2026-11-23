@@ -1,0 +1,9 @@
+# PR #296: Combined Passage Search Stop re-review
+
+Astra 6.2 reviewed `cc83e9e47e7afcd4c887fc44184f26a449d40699` against `epic/passage-search` at `f5949b97329366746a29a3c7400646a0463a1b51`. **Previous P2 resolved. No remaining blocker in the scoped combined re-review.**
+
+- **Service finalization:** After organizer preparation settles, an acknowledged Stop now persists even if the organizer found no fitting request or its prompt load rejected. Both paths preserve the successful read and its one dispatched request, without publishing analysis. A late organizer success after abort retains already-incurred requests and metered usage but drops the analysis. Unmetered work continues to suppress unknown monetary totals. Provider retirement retains precedence over Stop. An uncancelled control still keeps its analysis. See `PassageSearchService.ts:311–325`.
+- **Workshop delivery guard:** The stopped operation cannot auto-send even if a result is incorrectly marked complete. Results remain available for a single explicit Send without repeating the search. The next uncancelled search can auto-send as before, and a locally refused read still leaves a partial result waiting for Send. See `WorkshopPassageSearchHandler.ts:251–268,277–305` and `RunSlot.ts:95–103`.
+- **Evidence:** Independent differential offline harnesses using pinned production method bodies and synthetic organizer and delivery doubles confirmed the old failure and the new behavior. The checked-in combined route tests were inspected for no-fit, prompt rejection, in-flight read, retained results and explicit Send; existing mixed-coverage, report, receipt and summary assertions remain in place.
+
+[Exact-head CI passed](https://github.com/okeylanders/prose-minion-vscode/actions/runs/45085539093). No local full Jest suite, native VS Code host, or live provider run. No merge performed.
