@@ -32,6 +32,8 @@ export type WorkshopReadInRefusalReason =
   | 'unsafe-path'
   | 'not-configured'
   | 'ambiguous'
+  /** The group's file list could not be read, so the pair named no confirmed file (ADR 2026-11-20 S50). */
+  | 'unverified'
   | 'too-large'
   | 'unreadable';
 
@@ -39,6 +41,10 @@ const MIB = 1024 * 1024;
 
 const unhandledRefusal = (reason: never): never => {
   throw new Error(`Unhandled Read in refusal: ${String(reason)}`);
+};
+
+const unhandledLookup = (lookup: never): never => {
+  throw new Error(`Unhandled configured-resource lookup: ${JSON.stringify(lookup)}`);
 };
 
 /** Host words for each refusal. None names the file or its content. */
@@ -52,6 +58,8 @@ export function workshopReadInRefusalMessage(reason: WorkshopReadInRefusalReason
       return 'That file is not one of the configured project resources in its group.';
     case 'ambiguous':
       return 'That path matches more than one configured resource when letter case is ignored.';
+    case 'unverified':
+      return "The project's file list could not be read, so this file could not be confirmed. Try again.";
     case 'too-large':
       return `That file is larger than the ${PROMPT_BUDGETS.workshopResource.readSourceBytes / MIB} MiB read ceiling.`;
     case 'unreadable':
@@ -108,6 +116,10 @@ export async function resolveWorkshopReadInResource(
       return { kind: 'refused', reason: 'ambiguous' };
     case 'missing':
       return { kind: 'refused', reason: 'not-configured' };
+    case 'unverified':
+      return { kind: 'refused', reason: 'unverified' };
+    default:
+      return unhandledLookup(lookup);
   }
 }
 

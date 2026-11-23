@@ -38,7 +38,7 @@ function setup(failing: boolean) {
   const resolver = new ContextResourceResolver(createFakeSettings(Object.fromEntries([['contextPaths.general', 'PrivateSentinel/*.md']])), fileSystem, workspace, log);
   const excerpt = workshopExcerptFileEditDocument(
     { getExcerpt: () => ({ text: 'Alice.', version: 1, pinnedAt: 0, source: SOURCE }) },
-    new WorkshopContextIntakeService(resolver.countsOnly(), fileSystem, workspace)
+    new WorkshopContextIntakeService(resolver.countsOnly(), fileSystem, workspace, resolver)
   );
   const documents = new FakeDocuments('Alice.', URI);
   const shared = { candidates: resolver, excerpt, documents, fileSystem, workspace, log };

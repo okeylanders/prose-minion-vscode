@@ -30,6 +30,8 @@ import { configuredResourceFingerprint } from './WorkshopConfiguredResourceLooku
 export type WorkshopResourceFileFault =
   | 'missing'
   | 'ambiguous'
+  /** The group's file list could not be read, so the pair named no confirmed file (S50). */
+  | 'unverified'
   | 'too-large'
   | 'unreadable'
   | 'start-past-end'
@@ -118,6 +120,10 @@ async function prepareFile(
   if (lookup.kind === 'missing') {
     return fault(file, 'missing',
       'The requested path is not one of the configured project resources in that group.', {});
+  }
+  if (lookup.kind === 'unverified') {
+    return fault(file, 'unverified',
+      "The project's file list could not be read, so this file could not be confirmed. Try again.", {});
   }
   const resource = lookup.resource;
   const identity = hostFileIdentity(resource.absolutePath);

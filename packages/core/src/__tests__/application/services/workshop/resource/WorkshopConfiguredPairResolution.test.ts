@@ -7,10 +7,11 @@
  * of `{ group, path }` (`resource.read`, `history.*` and the Read in
  * reader) names the file from the group's authoritative listing first, then
  * finds its browse entry by host identity; two files there, or a file the
- * browse listing merged away, are ambiguous, never another file. Only a
- * listing that cannot be read falls back to the browse listing alone. A
- * path in no group still misses. Two pairs naming one file in a read are
- * read once (S53). The real resolver walks a made-up *Alice* project.
+ * browse listing merged away, are ambiguous, never another file. A listing
+ * that cannot be read refuses the pair (`unverified`), with no browse
+ * lookup, in each reader's own words. A path in no group still misses. Two
+ * pairs naming one file in a read are read once (S53). The real resolver
+ * walks a made-up *Alice* project.
  */
 /* eslint-disable @typescript-eslint/naming-convention -- made-up roots, setting keys and files, keyed by their paths and names. */
 import type { LogSink } from '@/platform';
@@ -18,7 +19,11 @@ import { DEFAULT_CONTEXT_GROUPS } from '@/domain/models/ContextGeneration';
 import { ContextResourceResolver } from '@/infrastructure/context/ContextResourceResolver';
 import { resolveConfiguredResource } from '@/application/services/ConfiguredResourceLookup';
 import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
-import { readWorkshopReadInResource, resolveWorkshopReadInResource } from '@/application/services/workshop/WorkshopReadInResource';
+import {
+  readWorkshopReadInResource,
+  resolveWorkshopReadInResource,
+  workshopReadInRefusalMessage
+} from '@/application/services/workshop/WorkshopReadInResource';
 import { aliceProject, type AliceProjectOptions } from '../../contextPaths/aliceProject';
 import { aliceCommits, fakeHistory, historyCapability } from '../history/historyFixtures';
 
@@ -108,13 +113,85 @@ describe('resolving a pair: the group\'s own listing names the file, the browse 
     // No exact match and two folded ones: ambiguous.
     expect(await resolveConfiguredResource(await browse(), 'chapters', 'drafts/CH1.md', resolver)).toEqual({ kind: 'ambiguous' });
   });
+});
 
-  it('a listing that cannot be read falls back to the browse listing alone, as before Slice 5', async () => {
-    const { resolver, browse } = project();
-    jest.spyOn(resolver, 'listGroupFiles').mockRejectedValue(new Error('scan failed'));
-    // A pair the browse listing holds still reads; one it does not hold misses, as it did.
-    expect(await resolveConfiguredResource(await browse(), 'chapters', SHARED, resolver)).toMatchObject({ kind: 'found', resource: { group: 'chapters' } });
-    expect(await resolveConfiguredResource(await browse(), 'manuscript', SHARED, resolver)).toEqual({ kind: 'missing' });
+describe('a group listing that cannot be read refuses the pair: unverified, with no browse lookup', () => {
+  // `Notes/**` fails to walk, so the chapters listing rejects, while the browse listing, which tolerates a
+  // failed walk, still holds every Drafts file under chapters. Manuscript's own walk still reads.
+  const UNREADABLE: Partial<AliceProjectOptions> = {
+    settings: { ...SETTINGS, 'contextPaths.chapters': 'Drafts/**,Notes/**' },
+    failingGlobs: ['Notes/**']
+  };
+  const UNVERIFIED_READ = "The project's file list could not be read, so this file could not be confirmed. Try again.";
+
+  it('refuses a pair the browse listing holds uniquely', async () => {
+    const { resolver, browse } = project(UNREADABLE);
+    expect((await browse()).filter((entry) => entry.group === 'chapters' && entry.path === 'Drafts/outline.md')).toHaveLength(1);
+    await expect(resolver.listGroupFiles(['chapters'])).rejects.toThrow();
+    expect(await resolveConfiguredResource(await browse(), 'chapters', 'Drafts/outline.md', resolver)).toEqual({ kind: 'unverified' });
+  });
+
+  it('refuses a colliding pair: the same path in two folders, or a case sibling the browse listing merged', async () => {
+    const twoRoots = project({ ...UNREADABLE, roots: { '/alice': BOOK, '/looking-glass': [SHARED] } });
+    // The browse listing holds one entry for the two files; it is never read in their place.
+    expect((await twoRoots.browse()).filter((entry) => entry.path === SHARED)).toHaveLength(1);
+    expect(await resolveConfiguredResource(await twoRoots.browse(), 'chapters', SHARED, twoRoots.resolver)).toEqual({ kind: 'unverified' });
+
+    const siblings = project({ ...UNREADABLE, roots: { '/alice': ['Drafts/Ch1.md', 'Drafts/ch1.md'] } });
+    // The browse listing folded `Drafts/ch1.md` into `Drafts/Ch1.md`, the other file.
+    expect((await siblings.browse()).map((entry) => entry.path)).toEqual(['Drafts/Ch1.md']);
+    expect(await resolveConfiguredResource(await siblings.browse(), 'chapters', 'Drafts/ch1.md', siblings.resolver)).toEqual({ kind: 'unverified' });
+    expect(await resolveConfiguredResource(await siblings.browse(), 'chapters', 'Drafts/Ch1.md', siblings.resolver)).toEqual({ kind: 'unverified' });
+  });
+
+  it('a group whose own listing reads still resolves', async () => {
+    const { resolver, browse } = project(UNREADABLE);
+    expect(await resolveConfiguredResource(await browse(), 'manuscript', SHARED, resolver))
+      .toMatchObject({ kind: 'found', resource: { path: SHARED, absolutePath: `/alice/${SHARED}` } });
+  });
+
+  it('resource.read fails the file in host words, with no text, no manifest row and no line range', async () => {
+    const { resolver } = project(UNREADABLE);
+    const { capability, lines } = resourceCapability(resolver);
+    const one = await capability.fulfill({ capability: 'resource.read', files: [{ group: 'chapters', path: 'Drafts/outline.md' }] });
+    expect(one.status).toBe('failed');
+    expect(one.error).toBe(UNVERIFIED_READ);
+    expect(one.content ?? '').not.toContain(TEXT);
+    expect(capability.deliveredSources(one)).toEqual([]);
+    expect(one.metadata).toMatchObject({ files: [{ group: 'chapters', path: 'Drafts/outline.md', outcome: 'unverified' }], filesRead: 0 });
+
+    // Beside a file whose group's listing reads, the unverified file is its own outcome.
+    const both = await capability.fulfill({
+      capability: 'resource.read',
+      files: [{ group: 'manuscript', path: SHARED }, { group: 'chapters', path: 'Drafts/outline.md' }]
+    });
+    expect(both.status).toBe('partial');
+    expect(both.content).toContain(`Not read: ${UNVERIFIED_READ}`);
+    expect(both.content!.split(TEXT)).toHaveLength(2);
+    expect(capability.deliveredSources(both).map((row) => row.configuredResource)).toEqual([{ group: 'chapters', path: SHARED }]);
+    expect((both.metadata!.files as Array<Record<string, unknown>>)[1]).toEqual({ group: 'chapters', path: 'Drafts/outline.md', outcome: 'unverified' });
+    expect(lines.join('\n')).not.toMatch(/outline|Notes\//);
+  });
+
+  it('history.log refuses it in its own words and reads no history', async () => {
+    const { resolver, browse } = project(UNREADABLE);
+    const harness = historyCapability({ history: fakeHistory({ commits: aliceCommits(2) }), resources: await browse(), groupFiles: resolver });
+    const result = await harness.capability.fulfill({ capability: 'history.log', file: { kind: 'configured', group: 'chapters', path: 'Drafts/outline.md' } });
+    expect(result.status).toBe('failed');
+    expect(result.error).toBe("The project's file list could not be read, so this file could not be confirmed and its history was not read. Try again.");
+    expect(result.metadata).toMatchObject({ outcome: 'file-fault', fault: 'file-list-unreadable' });
+    expect(harness.history.logCalls).toEqual([]);
+    expect(harness.lines.join('\n')).not.toMatch(/Drafts|outline/);
+  });
+
+  it('the Read in reader refuses it in its own words and reads no text', async () => {
+    const { resolver } = project(UNREADABLE);
+    const catalog = await readerCatalog(resolver);
+    const readText = jest.fn(catalog.readText);
+    const read = await readWorkshopReadInResource({ ...catalog, readText }, resolver, 'chapters', 'Drafts/outline.md');
+    expect(read).toEqual({ kind: 'refused', reason: 'unverified' });
+    expect(readText).not.toHaveBeenCalled();
+    expect(workshopReadInRefusalMessage('unverified')).toBe(UNVERIFIED_READ);
   });
 });
 

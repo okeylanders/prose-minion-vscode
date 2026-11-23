@@ -80,7 +80,9 @@ export type WorkshopHistoryFileFault =
   | 'pasted-excerpt'
   | 'excerpt-unreadable'
   | 'not-configured'
-  | 'ambiguous-path';
+  | 'ambiguous-path'
+  /** The group's file list could not be read, so the path named no confirmed file (ADR 2026-11-20 S50). */
+  | 'file-list-unreadable';
 
 export type WorkshopHistoryFileResolution =
   | WorkshopHistoryResolvedFile
@@ -121,6 +123,8 @@ export async function resolveWorkshopHistoryFile(
       return { kind: 'fault', fault: 'not-configured' };
     case 'ambiguous':
       return { kind: 'fault', fault: 'ambiguous-path' };
+    case 'unverified':
+      return { kind: 'fault', fault: 'file-list-unreadable' };
     default:
       return assertNever(lookup);
   }
@@ -139,6 +143,8 @@ export function workshopHistoryFileFaultLine(fault: WorkshopHistoryFileFault): s
       return 'The path is not one of the configured project files in that group. Take paths from resource.catalog, exactly as it lists them.';
     case 'ambiguous-path':
       return 'The path matches more than one configured file when letter case is ignored. Write it exactly as resource.catalog lists it.';
+    case 'file-list-unreadable':
+      return 'The project\'s file list could not be read, so this file could not be confirmed and its history was not read. Try again.';
     default:
       return assertNever(fault);
   }

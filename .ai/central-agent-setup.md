@@ -1405,7 +1405,7 @@ card records:
   - `startLine` / `endLine` only beside exactly one `<path>`
     (`ambiguous-lines`);
   - duplicates are refused (`duplicate-path`), by group and case-folded
-    path. This is deliberately stricter than `findConfiguredResource`,
+    path. This is deliberately stricter than `resolveConfiguredResource`,
     which prefers an exact match: a case-distinct configured pair is read
     in two calls.
 - **One call, one card, a row per file.** A read is one call against the
@@ -1460,19 +1460,24 @@ card records:
      folders) or several case-folded ones are `ambiguous`, never the first;
   2. **then that file's browse entry by host identity,** which loads as
      before; no such entry (the browse listing merged or dropped it) is
-     `ambiguous`, never another file;
-  3. **only when the listing cannot be read,** the browse listing alone
-     (`findConfiguredResource`), as before Slice 5.
+     `ambiguous`, never another file.
 
-  A path in no configured group is in no listing. A new reader of a pair
-  resolves through it, never `findConfiguredResource` alone.
+  **A listing that cannot be read is `unverified`** (re-review of PR #298):
+  the pair is refused, with no text and no browse lookup, because the
+  browse listing alone can name a different file. Each reader says it in
+  its own words: `resource.read`'s `unverified` file outcome (failed, "Try
+  again."), history's `file-list-unreadable`, the Read in reader's
+  `unverified` refusal. A path in no configured group is in no listing. A
+  new reader of a pair resolves through it and handles `unverified`.
+  - **The listing port is required everywhere**
+    (`ConfiguredResourceGroupFiles`): every reader and the intake service's
+    `configuredGroupFiles` take one, with no default, so a host that
+    forgets it fails to compile. `extension.ts` passes the resolver to
+    every construction; tests pass `__tests__/mocks/configuredGroupFiles`'
+    listings or the real resolver.
   - A read lists each group it names once (`configuredGroupFilesOnce`).
   - A result names the file by its browse entry, so a card records the
     group the browse listing keeps it in.
-  - The reader's listing is the intake service's
-    (`configuredGroupFiles`; `extension.ts` passes the resolver). A host
-    that gives none (`NO_CONFIGURED_GROUP_FILES`, whose listing cannot be
-    read) resolves by the browse listing alone.
 - **One file is read once per read** (S53). A later pair resolving to a
   file an earlier pair named is its own `same-file` outcome, decided before
   anything of it loads: no text, no manifest row, no line range, no
@@ -2483,9 +2488,10 @@ request, its card, or how its results reach the persona:
     the excerpt by value.
 - **A group may be narrowed** (S42–S45): `<group match="a, b">chapters</group>`,
   its character references decoded first (`utils/xmlCharacterReferences`,
-  as the capability codec's parser decodes text, so `&amp;` reads the same
-  in a trailer and in `resource.catalog`'s `<match>`; S53; a path's `group`
-  attribute too), then a comma-separated list read as a context-path
+  as the capability codec's parser decodes text, so `&amp;` and
+  `&#0000000065;` read the same in a trailer and in `resource.catalog`'s
+  `<match>`; leading zeros are bounded by the value, never refused, and a
+  reference's text by 64 digits; S53; a path's `group` attribute too), then a comma-separated list read as a context-path
   setting is read, 1 to
   `PROMPT_BUDGETS.contextPaths.matchPatterns`, the attribute at most
   `matchCharacters`. Only `<group>` takes `match`; a group named twice,

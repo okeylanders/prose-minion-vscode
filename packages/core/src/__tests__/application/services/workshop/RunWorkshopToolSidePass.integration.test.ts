@@ -45,6 +45,7 @@ import {
   createFakeWorkspace
 } from '../../../mocks/platform';
 import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
+import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
 describe('RunWorkshopToolSidePass — handler to agent engine', () => {
   it('uses isolated retained tool and host policies without crossing conversation identities', async () => {
@@ -170,7 +171,8 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
           }))
         } as never,
         fileSystem,
-        workspace
+        workspace,
+        UNLISTED_GROUP_FILES
       ),
       new WorkshopConversationSettingsService(
         session,

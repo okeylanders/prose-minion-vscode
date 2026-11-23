@@ -140,11 +140,8 @@ function openTab() {
     createFakeEditorContext(),
     log
   );
-  const catalog = new WorkshopContextIntakeService(
-    new ContextResourceResolver(platform.settings, platform.fileSystem, platform.workspace, log),
-    platform.fileSystem,
-    platform.workspace
-  );
+  const resolver = new ContextResourceResolver(platform.settings, platform.fileSystem, platform.workspace, log);
+  const catalog = new WorkshopContextIntakeService(resolver, platform.fileSystem, platform.workspace, resolver);
   const projectFilePorts = { catalog, workspace: platform.workspace };
   const service = new LightboxService(
     new ProseStatsService(platform.fileSystem, platform.workspace),

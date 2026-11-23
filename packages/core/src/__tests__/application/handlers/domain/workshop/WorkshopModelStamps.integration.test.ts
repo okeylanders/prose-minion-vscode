@@ -37,6 +37,7 @@ import {
   createFakeShellService,
   createFakeWorkspace
 } from '../../../../mocks/platform';
+import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
 /**
  * Workshop Wayfinding Slice 6 (ADR 2026-11-03 D7): every committed assistant
@@ -157,7 +158,8 @@ Add a key.`, conversationId, 'vendor/never');
           }))
         } as never,
         fileSystem,
-        workspace
+        workspace,
+        UNLISTED_GROUP_FILES
       ),
       new WorkshopConversationSettingsService(
         session,

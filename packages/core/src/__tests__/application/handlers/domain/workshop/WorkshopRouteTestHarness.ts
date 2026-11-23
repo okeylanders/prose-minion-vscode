@@ -41,6 +41,7 @@ import {
   createFakeShellService,
   createFakeWorkspace
 } from '../../../../mocks/platform';
+import { groupFilesOver } from '@/__tests__/mocks/configuredGroupFiles';
 
 export const analysisResult = (content: string, extra: Record<string, unknown> = {}) => ({
   toolName: 'workshop-test',
@@ -373,7 +374,8 @@ export const createWorkshopRouteTestHarness = (options: WorkshopRouteTestHarness
     new WorkshopContextIntakeService(
       resourceProviderFactory as never,
       fileSystem,
-      workspace
+      workspace,
+      groupFilesOver(() => resourceFiles)
     ),
     new WorkshopConversationSettingsService(
       session,

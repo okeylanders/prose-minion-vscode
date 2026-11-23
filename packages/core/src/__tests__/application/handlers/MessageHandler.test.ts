@@ -32,6 +32,7 @@ import {
   createFakeShellService,
   createFakeWorkspace
 } from '../../mocks/platform';
+import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
 type TokenUsageCallback = (usage: TokenUsageTotals) => void;
 const flushQueuedWork = (): Promise<void> =>
@@ -198,7 +199,8 @@ function createTestAssembly(): TestAssembly {
         })
       } as never,
       platform.fileSystem,
-      platform.workspace
+      platform.workspace,
+      UNLISTED_GROUP_FILES
     ),
     workshopConversationSettingsService: {
       applyFromWebview: jest.fn().mockResolvedValue({ changed: false, deferred: false }),

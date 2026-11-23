@@ -462,7 +462,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     fileSystem: platform.fileSystem,
     excerpt: workshopHistoryExcerptFile(
       workshopSessionService,
-      new WorkshopContextIntakeService(contextResourceResolver.countsOnly(), platform.fileSystem, platform.workspace)
+      new WorkshopContextIntakeService(
+        contextResourceResolver.countsOnly(),
+        platform.fileSystem,
+        platform.workspace,
+        contextResourceResolver
+      )
     ),
     // One cache for every turn: a continuation never aligns the paragraphs again (PR #286 F-03).
     diffs: new WorkshopHistoryDiffCache()
@@ -629,7 +634,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // The excerpt's authorization on the write path reads a counts-only catalog: no pattern or path in the log (PR #229 N-01).
   const fileEditExcerpt = workshopExcerptFileEditDocument(
     workshopSessionService,
-    new WorkshopContextIntakeService(contextResourceResolver.countsOnly(), platform.fileSystem, platform.workspace)
+    new WorkshopContextIntakeService(
+      contextResourceResolver.countsOnly(),
+      platform.fileSystem,
+      platform.workspace,
+      contextResourceResolver
+    )
   );
   const fileEditStaging = new FileEditStagingService({
     candidates: contextResourceResolver,

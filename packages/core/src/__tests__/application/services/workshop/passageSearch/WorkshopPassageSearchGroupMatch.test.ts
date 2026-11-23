@@ -277,4 +277,39 @@ describe('an escaped name reads the same in the trailer and in resource.catalog 
     expect(decodeWorkshopPassageSearch(`<question>${QUESTION}</question><group match="Drafts/&#10;*.md">chapters</group>`))
       .toMatchObject({ kind: 'request', request: { scopes: [{ match: ['Drafts/\n*.md'] }] } });
   });
+
+  it.each([
+    ['padded decimal', 'Drafts/A&#0000000065;*.md', 'Drafts/AA*.md'],
+    ['padded hex', 'Drafts/A&#x0000000041;*.md', 'Drafts/AA*.md'],
+    ['a padded hex ampersand', 'Drafts/&#x0000000000000000000026;*.md', 'Drafts/&*.md'],
+    ['the highest code point, padded', 'Drafts/&#x00010FFFF;*.md', 'Drafts/\u{10FFFF}*.md']
+  ])('reads a reference with leading zeros as the capability codec does: %s', (_case, written, decoded) => {
+    const fromTrailer = decodeWorkshopPassageSearch(`<question>${QUESTION}</question><group match="${written}">chapters</group>`);
+    const fromCall = new WorkshopCapabilityXmlCodec().inspect(
+      `<prose-minion-tool-call name="resource.catalog"><group>chapters</group><match>${written}</match></prose-minion-tool-call>`
+    );
+    expect(fromTrailer).toMatchObject({ kind: 'request', request: { scopes: [{ kind: 'group', group: 'chapters', match: [decoded] }] } });
+    expect(fromCall).toEqual({ kind: 'request', request: { capability: 'resource.catalog', group: 'chapters', match: [decoded] } });
+  });
+
+  it.each([
+    ['past U+10FFFF', 'Drafts/&#x0000110000;*.md'],
+    ['a control character XML refuses', 'Drafts/&#00000001;*.md'],
+    ['a surrogate', 'Drafts/&#x000D800;*.md']
+  ])('bounds a padded reference by its value, never its zeros: %s stays as written, and the parser refuses it', (_case, written) => {
+    expect(decodeWorkshopPassageSearch(`<question>${QUESTION}</question><group match="${written}">chapters</group>`))
+      .toMatchObject({ kind: 'request', request: { scopes: [{ match: [written] }] } });
+    expect(new WorkshopCapabilityXmlCodec().inspect(
+      `<prose-minion-tool-call name="resource.catalog"><group>chapters</group><match>${written}</match></prose-minion-tool-call>`
+    ).kind).not.toBe('request');
+  });
+
+  it('keeps a reference written with more digits than any reader needs as written, so its text stays bounded', () => {
+    const written = `Drafts/&#${'0'.repeat(64)}65;*.md`;
+    expect(decodeWorkshopPassageSearch(`<question>${QUESTION}</question><group match="${written}">chapters</group>`))
+      .toMatchObject({ kind: 'request', request: { scopes: [{ match: [written] }] } });
+    // Sixty-four digits, zeros included, still read.
+    expect(decodeWorkshopPassageSearch(`<question>${QUESTION}</question><group match="Drafts/&#${'0'.repeat(62)}65;*.md">chapters</group>`))
+      .toMatchObject({ kind: 'request', request: { scopes: [{ match: ['Drafts/A*.md'] }] } });
+  });
 });
