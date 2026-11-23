@@ -1,6 +1,6 @@
 # Epic: Passage Search
 
-**Status:** Built and in Okey's [live pass](live-pass.md). Slices 0–4 and the closing pass are merged into `epic/passage-search` (PRs #292–#297, last at `e54cc784`). Slice 5, the live pass's first change (narrowing a group, the group inventory), is in progress. Then the decisions the pass ends with, and a PR from the epic to `main` once Workshop Persona Tools has landed there. Nothing has gone to `main`.
+**Status:** Built and in Okey's [live pass](live-pass.md). Slices 0–4 and the closing pass are merged into `epic/passage-search` (PRs #292–#297, last at `e54cc784`). Slice 5, the live pass's first change (narrowing a group, the group inventory), is PR #298. Then the decisions the pass ends with, and a PR from the epic to `main` once Workshop Persona Tools has landed there. Nothing has gone to `main`.
 **Priority:** Medium
 **Opened:** 2026-11-20
 **Branch:** `epic/passage-search`, cut from the tip of `epic/workshop-persona-tools` at `1b3b9239`, so the epic starts with Persona Tools in it. That epic is built and waits for Okey's live pass and its own PR to `main`.
@@ -32,7 +32,7 @@ price.
 | 3 | The organizing pass: its call, codec, citation and quotation checks, its price | D12, D12a, D13 | `epic/passage-search-organize` | #295 | Merged (`f5949b97`) |
 | 4 | The persona request: trailer, settlement, card, outcome kind, the handler, the directed results run, the directive and its fit, help | D16–D21, D19a, D24 | `epic/passage-search-persona` | #296 | Merged (`5b747f6b`) |
 | Close | Live-pass checklist, ADR amendments S24–S41, `AGENTS.md`, memory bank | | `epic/passage-search-close` | #297 | Merged (`e54cc784`) after three Astra rounds |
-| 5 | From the live pass (Okey, 2026-11-23): a persona narrows a group with patterns (`<group match="…">`), and `resource.catalog` becomes the group inventory (authoritative listing, paged, `<match>`) | S42–S52 | `epic/passage-search-group-match` | #298 | In review |
+| 5 | From the live pass (Okey, 2026-11-23): a persona narrows a group with patterns (`<group match="…">`), and `resource.catalog` becomes the group inventory (authoritative listing, paged, `<match>`) | S42–S53 | `epic/passage-search-group-match` | #298 | Approved after three Astra rounds; merging |
 
 Slice branches are `epic/passage-search-<slug>`.
 

@@ -917,8 +917,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-11-22 on `epic/passage-search-persona` at `cc83e9e4`, the code merged into `epic/passage-search` at `5b747f6b`: Workshop Persona Tools and Passage Search, before either goes to `main`):
-- 1,017 suites / 14,399 tests / 60 snapshots (full `npx jest --maxWorkers=25%`)
+**Test Inventory** (measured 2026-11-23 on `epic/passage-search-group-match` at `4346d0ef`, Passage Search Slice 5: Workshop Persona Tools and Passage Search, before either goes to `main`):
+- 1,025 suites / 14,529 tests / 60 snapshots (full `npx jest --maxWorkers=25%`)
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
