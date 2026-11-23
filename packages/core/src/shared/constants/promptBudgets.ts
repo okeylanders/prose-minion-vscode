@@ -1235,7 +1235,8 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     foldersPerPage: 50,
     checkPatterns: 40,
     matchPatterns: 8,
-    matchCharacters: 1_000
+    // At least `matchPatterns` × `patternCharacters` plus ", " between them, so a continuation's one `<match>` always decodes.
+    matchCharacters: 2_000
   },
   helper: {
     // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.

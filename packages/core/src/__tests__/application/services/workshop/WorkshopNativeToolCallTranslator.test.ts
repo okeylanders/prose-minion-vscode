@@ -40,7 +40,11 @@ const EVERY_OPERATION: Record<WorkshopCapabilityOperation, { args: unknown; requ
     args: { toolId: 'continuity', excerptMode: 'inherit', contextMode: 'omit', excerptText: null },
     request: { toolId: 'continuity', excerpt: { mode: 'inherit' }, context: { mode: 'omit' } }
   },
-  'resource.catalog': { args: {}, request: {} },
+  // A narrowing's lists as a native array (ADR 2026-11-20 S47): one <match> each, joined by the codec.
+  'resource.catalog': {
+    args: { group: 'chapters', page: 2, matches: ['Drafts/chapter-4.*.md', 'Drafts/chapter-1*.md, Drafts/chapter-2*.md'] },
+    request: { group: 'chapters', page: 2, match: ['Drafts/chapter-4.*.md', 'Drafts/chapter-1*.md', 'Drafts/chapter-2*.md'] }
+  },
   'resource.search': { args: { query: 'white rabbit' }, request: { query: 'white rabbit' } },
   'resource.read': {
     args: { group: 'chapters', paths: ['chapters/one.md', { path: 'notes/hatter.md', group: 'characters' }] },
