@@ -34,6 +34,10 @@ import type { WorkshopPassageSearchScope } from '@messages';
 import type { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { aliceProject, type AliceProjectOptions } from '../../contextPaths/aliceProject';
 import { aliceResult } from '@/__tests__/application/handlers/domain/workshop/passageSearchRouteFixtures';
+import { WorkshopCapabilityXmlCodec } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
+import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
+import { PassageSearchScopeFiles } from '@/application/services/passageSearch/PassageSearchScopeFiles';
+import type { LogSink } from '@/platform';
 
 const FIXTURE = JSON.stringify(require('../../../../fixtures/workshop-session-v2-before-group-match.json'));
 const HOST = { kind: 'host' } as const;
@@ -221,5 +225,56 @@ describe('what the narrowing reaches', () => {
     const events = transcript.entries.filter((entry) => entry.kind === 'event').map((entry) => (entry as { text: string }).text);
     expect(events).toContain('Asked for a passage search of 1 scope.');
     expect(JSON.stringify(transcript)).not.toMatch(/chapter-4|chapter-1\*/);
+  });
+});
+
+describe('an escaped name reads the same in the trailer and in resource.catalog (S53)', () => {
+  const CRAFTS = ['Arts & Crafts/quilting.md', 'Arts & Crafts/weaving.md', 'Drafts/chapter-1.md'];
+  const ESCAPED = 'Arts &amp; Crafts/*.md';
+
+  it('decodes the attribute as the capability codec decodes text, so both give one pattern and select the same files', async () => {
+    const alice = aliceProject({ roots: { '/alice': CRAFTS }, settings: { 'contextPaths.chapters': '**/*.md' } });
+    const resolver = new ContextResourceResolver(alice.settings, alice.fileSystem, alice.workspace, alice.log);
+    const { turn } = await replyWith(ask(`<group match="${ESCAPED}">chapters</group>`), resolver);
+    const fromTrailer = turn.passageSearchRequest!.scopes[0];
+    expect(fromTrailer).toEqual({ kind: 'group', group: 'chapters', match: ['Arts & Crafts/*.md'] });
+
+    const call = `<prose-minion-tool-call name="resource.catalog"><group>chapters</group><match>${ESCAPED}</match></prose-minion-tool-call>`;
+    const fromCall = new WorkshopCapabilityXmlCodec().inspect(call);
+    expect(fromCall).toEqual({ kind: 'request', request: { capability: 'resource.catalog', group: 'chapters', match: ['Arts & Crafts/*.md'] } });
+
+    // The inventory and the search read the same files.
+    const capability = new WorkshopResourceCapability(resolver, { appendLine: jest.fn() } as unknown as LogSink,
+      { requestId: 'host-1', personaId: 'jill', signal: new AbortController().signal });
+    const inventory = await capability.fulfill(fromCall.kind === 'request' ? fromCall.request as never : (undefined as never));
+    const listed = (inventory.content ?? '').split('\n').filter((line) => line.startsWith('- [')).map((line) => /`([^`]+)`/.exec(line)![1]);
+    const scopeFiles = new PassageSearchScopeFiles({
+      listing: resolver,
+      fileSystem: { readFile: async () => new TextEncoder().encode('Alice sewed a quilt.'), stat: alice.fileSystem.stat },
+      workspace: alice.workspace,
+      editor: { currentSelection: () => undefined }
+    });
+    const searched = await scopeFiles.resolve([fromTrailer as { kind: 'group'; group: 'chapters'; match: string[] }], { editor: undefined });
+    expect(listed).toEqual(['Arts & Crafts/quilting.md', 'Arts & Crafts/weaving.md']);
+    expect(searched.kind === 'files' && searched.files.map((file) => file.displayPath)).toEqual(listed);
+  });
+
+  it('decodes a path\'s group attribute too, and leaves anything that is not a reference as written', () => {
+    const decoded = decodeWorkshopPassageSearch(
+      `<question>${QUESTION}</question><path group="&#99;hapters">Drafts/chapter-1.md</path><group match="Tea &amp Cakes/*.md, Arts & Crafts/*.md, A&nbsp;B/*.md, &#x26;*.md">manuscript</group>`
+    );
+    expect(decoded).toEqual({
+      kind: 'request',
+      request: {
+        question: QUESTION,
+        scopes: [
+          { kind: 'file', group: 'chapters', path: 'Drafts/chapter-1.md' },
+          { kind: 'group', group: 'manuscript', match: ['Tea &amp Cakes/*.md', 'Arts & Crafts/*.md', 'A&nbsp;B/*.md', '&*.md'] }
+        ]
+      }
+    });
+    // A decoded line break is a control character, which settlement refuses as unsafe.
+    expect(decodeWorkshopPassageSearch(`<question>${QUESTION}</question><group match="Drafts/&#10;*.md">chapters</group>`))
+      .toMatchObject({ kind: 'request', request: { scopes: [{ match: ['Drafts/\n*.md'] }] } });
   });
 });

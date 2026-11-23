@@ -209,7 +209,7 @@ export class WorkshopContextIntakeService {
     private readonly providerFactory: ContextResourceProviderFactory,
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
-    /** The authoritative listing the Read in reader's missed pairs are looked up in (ADR 2026-11-20 S50). */
+    /** The authoritative listing the Read in reader names a pair's file from (ADR 2026-11-20 S50). */
     readonly configuredGroupFiles: ConfiguredResourceGroupFiles = NO_CONFIGURED_GROUP_FILES
   ) {}
 

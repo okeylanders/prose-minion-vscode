@@ -1,7 +1,7 @@
 import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
-import { groupListingOver } from '@/__tests__/application/services/workshop/resource/groupListingFixtures';
+import { groupListingOver, withAbsolutePaths } from '@/__tests__/application/services/workshop/resource/groupListingFixtures';
 import type { LogSink } from '@/platform';
 
 describe('WorkshopResourceCapability', () => {
@@ -22,8 +22,9 @@ describe('WorkshopResourceCapability', () => {
     listResources = jest.fn().mockReturnValue([summary]);
     loadResources = jest.fn().mockResolvedValue([{ ...summary, content: 'Raven waits.' }]);
     factory = {
-      createProvider: jest.fn().mockResolvedValue({ listResources, loadResources }),
-      ...groupListingOver(() => listResources())
+      // A host's summaries carry their absolute paths, which a pair's file is matched by (S50).
+      createProvider: jest.fn().mockResolvedValue({ listResources: () => withAbsolutePaths(listResources()), loadResources }),
+      ...groupListingOver(() => withAbsolutePaths(listResources()))
     };
     controller = new AbortController();
     capability = new WorkshopResourceCapability(

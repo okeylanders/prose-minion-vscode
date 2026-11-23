@@ -23,7 +23,9 @@
  *   least one of its patterns finds by the context-path walk, by host file
  *   identity (`ContextGroupNarrowing`): never a file outside its group. All
  *   of a plan's narrowings are walked once; a walk that did not complete is
- *   `catalog-unreadable`, never fewer files.
+ *   `catalog-unreadable`, never fewer files, and a pattern that finds no
+ *   file of its group is `match-found-nothing` (S53), so a plan never reads
+ *   less than every pattern it was asked for.
  * - **Reading order is the host's:** scopes as given; inside a `group` or
  *   `pattern`, files in natural order of their paths.
  * - **De-duplicated by the host's file identity,** the first scope to name
@@ -313,6 +315,10 @@ function groupFiles(
   const narrowed = walk ? narrowContextGroup(listed, { group: scope.group, patterns: scope.match }, walk) : { kind: 'incomplete' as const };
   if (narrowed.kind === 'incomplete') {
     throw new Refused(passageSearchRefusal('catalog-unreadable'));
+  }
+  // Settlement's rule, again at every plan: a pattern that now finds nothing never quietly narrows the search (S53).
+  if (narrowed.patterns.some((pattern) => pattern.files === 0)) {
+    throw new Refused(passageSearchRefusal('match-found-nothing'));
   }
   return narrowed.files;
 }

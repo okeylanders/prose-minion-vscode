@@ -82,12 +82,14 @@ export function inspectWorkshopResourceCall(
 }
 
 /** Why a narrowing as written is refused, as the codec names it. */
+/* eslint-disable @typescript-eslint/naming-convention -- keyed by the narrowing's kebab-case fault words. */
 const MATCH_REJECTIONS: Readonly<Record<ContextGroupMatchFault, WorkshopCapabilityRejectionReason>> = {
   empty: 'empty-field',
   'too-long': 'oversized-input',
   'too-many': 'too-many-patterns',
   unsafe: 'unsafe-match'
 };
+/* eslint-enable @typescript-eslint/naming-convention */
 
 function catalogRequest(call: Pick<WorkshopCapabilityXmlCall, 'fields' | 'elements'>): WorkshopResourceInspection {
   const operation = 'resource.catalog';

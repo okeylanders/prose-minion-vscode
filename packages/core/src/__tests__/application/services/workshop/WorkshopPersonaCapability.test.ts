@@ -14,7 +14,7 @@ import { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { LogSink } from '@/platform';
 import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
-import { groupListingOver } from '@/__tests__/application/services/workshop/resource/groupListingFixtures';
+import { groupListingOver, withAbsolutePaths } from '@/__tests__/application/services/workshop/resource/groupListingFixtures';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
@@ -100,8 +100,9 @@ describe('WorkshopPersonaCapability', () => {
     listResources = jest.fn().mockReturnValue([]);
     loadResources = jest.fn().mockResolvedValue([]);
     resourceProviderFactory = {
-      createProvider: jest.fn().mockResolvedValue({ listResources, loadResources }),
-      ...groupListingOver(() => listResources())
+      // A host's summaries carry their absolute paths, which a pair's file is matched by (S50).
+      createProvider: jest.fn().mockResolvedValue({ listResources: () => withAbsolutePaths(listResources()), loadResources }),
+      ...groupListingOver(() => withAbsolutePaths(listResources()))
     };
   });
 

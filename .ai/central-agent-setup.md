@@ -1446,24 +1446,37 @@ card records:
     in one `<match>`; `matchCharacters` holds the longest list the rule
     allows, so it always decodes.
   - A listing or walk that did not complete is a failed result, never a
-    shorter catalog.
-- **A pair the inventory lists always resolves** (S50). Every reader of
-  `{ group, path }` (`resource.read`, `history.*`, the Read in reader)
-  resolves through `resolveConfiguredResource`
-  (`application/services/ConfiguredResourceLookup.ts`): the browse listing
-  first, unchanged, and **only on a miss** the group's authoritative
-  listing (exact path, then one unique case-folded match; two are
-  `ambiguous`), mapped back to the browse entry for the same file by host
-  identity. A path in no configured group misses both. A new reader of a
-  pair resolves through it, never `findConfiguredResource` alone.
-  - A read asks each group's listing at most once
-    (`configuredGroupFilesOnce`), and never on a browse hit.
+    shorter catalog. A page past the end, an empty listing's too, is
+    answered in words.
+  - A file's workspace folder is named whenever several folders are open
+    (the resolver's `openWorkspaceFolders`, the workspace's own names),
+    whatever the page found.
+- **A pair resolves to the file the inventory lists for it** (S50, as
+  amended after PR #298). Every reader of `{ group, path }`
+  (`resource.read`, `history.*`, the Read in reader) resolves through
+  `resolveConfiguredResource` (`application/services/ConfiguredResourceLookup.ts`):
+  1. **the group's authoritative listing first:** the one exact path, else
+     the one case-folded match; several exact matches (two workspace
+     folders) or several case-folded ones are `ambiguous`, never the first;
+  2. **then that file's browse entry by host identity,** which loads as
+     before; no such entry (the browse listing merged or dropped it) is
+     `ambiguous`, never another file;
+  3. **only when the listing cannot be read,** the browse listing alone
+     (`findConfiguredResource`), as before Slice 5.
+
+  A path in no configured group is in no listing. A new reader of a pair
+  resolves through it, never `findConfiguredResource` alone.
+  - A read lists each group it names once (`configuredGroupFilesOnce`).
   - A result names the file by its browse entry, so a card records the
     group the browse listing keeps it in.
   - The reader's listing is the intake service's
     (`configuredGroupFiles`; `extension.ts` passes the resolver). A host
-    that gives none resolves by the browse listing alone
-    (`NO_CONFIGURED_GROUP_FILES`).
+    that gives none (`NO_CONFIGURED_GROUP_FILES`, whose listing cannot be
+    read) resolves by the browse listing alone.
+- **One file is read once per read** (S53). A later pair resolving to a
+  file an earlier pair named is its own `same-file` outcome, decided before
+  anything of it loads: no text, no manifest row, no line range, no
+  fingerprint, no share, so no continuation names it.
   - Stated limits (S52): the instruction's per-group counts and a
     group-scoped `resource.search` still read the browse listing, so a file
     in two groups counts once there.
@@ -2165,6 +2178,11 @@ native call may become:
 - **Retained history holds the XML,** never a tool call. No request carries
   a tool call or a tool result, so nothing about Rewind marks, archives or
   the session codec changes.
+- **A list supplied empty is never the field left out** (ADR 2026-11-20
+  S53): `[]`, or the text `"[]"`, for any repeating field, is the
+  translator's `empty-list` fault, which takes the correction path below.
+  Read as omitted, `resource.catalog`'s `matches: []` listed the whole
+  group.
 - **What can't be translated is never run.** An unknown name, an unmapped
   argument or unparseable argument JSON takes the engine's bounded
   correction path (ask for the XML, within `maxCorrectionTurns`, then a
@@ -2464,7 +2482,11 @@ request, its card, or how its results reach the persona:
     the engine's request: groups (narrowed or not), files by catalog key,
     the excerpt by value.
 - **A group may be narrowed** (S42–S45): `<group match="a, b">chapters</group>`,
-  a comma-separated list read as a context-path setting is read, 1 to
+  its character references decoded first (`utils/xmlCharacterReferences`,
+  as the capability codec's parser decodes text, so `&amp;` reads the same
+  in a trailer and in `resource.catalog`'s `<match>`; S53; a path's `group`
+  attribute too), then a comma-separated list read as a context-path
+  setting is read, 1 to
   `PROMPT_BUDGETS.contextPaths.matchPatterns`, the attribute at most
   `matchCharacters`. Only `<group>` takes `match`; a group named twice,
   narrowed or not, is a repeat.
@@ -2478,7 +2500,10 @@ request, its card, or how its results reach the persona:
     find (`matchPatterns`), by host file identity (`ContextPatternMatchFile.identity`).
     An incomplete walk is never zero files.
   - The engine refuses an unsafe narrowing itself (`unsafe-pattern`),
-    whoever sends one.
+    whoever sends one, and applies settlement's rule at every plan: a
+    pattern that now finds no file of its group refuses the plan
+    (`match-found-nothing`, S53), so a card's Estimate and Run never search
+    a quietly narrower set.
 - **Settled before the reply commits** (`WorkshopReplyPassageSearch`):
   form, then each group, each narrowing's safety (`unsafe-match`, before
   anything is listed), the excerpt, and each file against one
@@ -3496,8 +3521,9 @@ A persona's request for a search is **Workshop Passage Search Requests**.
   sidebar only), and `text` by value.
   - A narrowed group is its own listing's files that a pattern finds, by
     host identity (`ContextGroupNarrowing`), walked once per plan; the
-    engine refuses an unsafe narrowing (`unsafe-pattern`) and an incomplete
-    walk (`catalog-unreadable`).
+    engine refuses an unsafe narrowing (`unsafe-pattern`), an incomplete
+    walk (`catalog-unreadable`) and a pattern that finds no file of its
+    group (`match-found-nothing`).
   - Files come from one root-aware listing per plan
     (`ContextResourceResolver.listGroupFiles`), never the browse catalog.
     Identity is the absolute path; a group is every file its own patterns

@@ -90,7 +90,7 @@ export class WorkshopHistoryCapability {
     private readonly resources: () => Promise<readonly ContextResourceSummary[]>,
     private readonly outputChannel: LogSink,
     private readonly turn: WorkshopHistoryTurnContext,
-    /** The authoritative listing a pair the browse listing misses is looked up in (ADR 2026-11-20 S50). */
+    /** The authoritative listing a pair's file is named from (ADR 2026-11-20 S50). */
     private readonly groupFiles: ConfiguredResourceGroupFiles
   ) {}
 

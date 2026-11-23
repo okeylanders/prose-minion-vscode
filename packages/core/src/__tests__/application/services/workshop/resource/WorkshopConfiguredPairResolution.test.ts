@@ -1,12 +1,16 @@
 /**
- * A pair the group inventory lists always resolves (ADR 2026-11-20 S50).
- * With overlapping groups, the browse listing keeps a shared file under the
- * first group only, while `resource.catalog` lists it under each. Every
- * reader of `{ group, path }` (`resource.read`, `history.*` and the Read in
- * reader) tries the browse listing first and, only on a miss, the group's
- * authoritative listing, resolving to the browse entry for the same file.
- * A path in no group still misses. The real resolver walks a made-up
- * *Alice* project.
+ * A pair resolves to the file the group inventory lists for it (ADR
+ * 2026-11-20 S50, as amended after PR #298). With overlapping groups the
+ * browse listing keeps a shared file under the first group only, and it
+ * merges files whose paths differ only by case or by workspace folder,
+ * while `resource.catalog` lists every file of a group apart. Every reader
+ * of `{ group, path }` (`resource.read`, `history.*` and the Read in
+ * reader) names the file from the group's authoritative listing first, then
+ * finds its browse entry by host identity; two files there, or a file the
+ * browse listing merged away, are ambiguous, never another file. Only a
+ * listing that cannot be read falls back to the browse listing alone. A
+ * path in no group still misses. Two pairs naming one file in a read are
+ * read once (S53). The real resolver walks a made-up *Alice* project.
  */
 /* eslint-disable @typescript-eslint/naming-convention -- made-up roots, setting keys and files, keyed by their paths and names. */
 import type { LogSink } from '@/platform';
@@ -58,12 +62,12 @@ describe('the browse listing and the inventory disagree on a shared file', () =>
   });
 });
 
-describe('resolving a pair: the browse listing first, the group\'s own listing only on a miss', () => {
-  it('a browse hit never consults the authoritative listing', async () => {
+describe('resolving a pair: the group\'s own listing names the file, the browse listing loads it', () => {
+  it('a pair the browse listing also holds is named from the group\'s listing first', async () => {
     const { resolver, listGroupFiles, browse } = project();
     const lookup = await resolveConfiguredResource(await browse(), 'chapters', SHARED, resolver);
     expect(lookup).toMatchObject({ kind: 'found', resource: { group: 'chapters', path: SHARED } });
-    expect(listGroupFiles).not.toHaveBeenCalled();
+    expect(listGroupFiles).toHaveBeenCalledWith(['chapters']);
   });
 
   it('a miss the second group\'s listing holds resolves to the browse entry for the same file, by host identity', async () => {
@@ -83,14 +87,33 @@ describe('resolving a pair: the browse listing first, the group\'s own listing o
     expect(await resolveConfiguredResource(await browse(), 'manuscript', '../outside.md', resolver)).toEqual({ kind: 'missing' });
   });
 
-  it('the same path in two workspace folders is ambiguous, never the first folder\'s', async () => {
+  it('the same path in two workspace folders is ambiguous, never the first folder\'s, even where the browse listing holds one', async () => {
     const { resolver, browse } = project({ roots: { '/alice': BOOK, '/looking-glass': [SHARED] } });
+    // The browse listing merged the two into one entry, under the first group.
+    expect((await browse()).filter((entry) => entry.path === SHARED)).toHaveLength(1);
+    expect(await resolveConfiguredResource(await browse(), 'chapters', SHARED, resolver)).toEqual({ kind: 'ambiguous' });
     expect(await resolveConfiguredResource(await browse(), 'manuscript', SHARED, resolver)).toEqual({ kind: 'ambiguous' });
   });
 
-  it('a listing that cannot be read misses, as the pair did before', async () => {
+  it('case-distinct files in one group: each exact path is its own file, never its sibling, and a folded path names neither', async () => {
+    const { resolver, browse } = project({ roots: { '/alice': ['Drafts/Ch1.md', 'Drafts/ch1.md'] } });
+    // The browse listing case-folds, so it keeps only the first of the two.
+    const entries = (await browse()).filter((entry) => entry.path.toLowerCase() === 'drafts/ch1.md');
+    expect(entries.map((entry) => entry.path)).toEqual(['Drafts/Ch1.md']);
+    // A unique exact match beside a case sibling resolves to itself.
+    expect(await resolveConfiguredResource(await browse(), 'chapters', 'Drafts/Ch1.md', resolver))
+      .toMatchObject({ kind: 'found', resource: { path: 'Drafts/Ch1.md', absolutePath: '/alice/Drafts/Ch1.md' } });
+    // The sibling the browse listing merged away is never read as the other file.
+    expect(await resolveConfiguredResource(await browse(), 'chapters', 'Drafts/ch1.md', resolver)).toEqual({ kind: 'ambiguous' });
+    // No exact match and two folded ones: ambiguous.
+    expect(await resolveConfiguredResource(await browse(), 'chapters', 'drafts/CH1.md', resolver)).toEqual({ kind: 'ambiguous' });
+  });
+
+  it('a listing that cannot be read falls back to the browse listing alone, as before Slice 5', async () => {
     const { resolver, browse } = project();
-    jest.spyOn(resolver, 'listGroupFiles').mockRejectedValueOnce(new Error('scan failed'));
+    jest.spyOn(resolver, 'listGroupFiles').mockRejectedValue(new Error('scan failed'));
+    // A pair the browse listing holds still reads; one it does not hold misses, as it did.
+    expect(await resolveConfiguredResource(await browse(), 'chapters', SHARED, resolver)).toMatchObject({ kind: 'found', resource: { group: 'chapters' } });
     expect(await resolveConfiguredResource(await browse(), 'manuscript', SHARED, resolver)).toEqual({ kind: 'missing' });
   });
 });
@@ -121,7 +144,7 @@ describe('every reader resolves the second group\'s pair', () => {
     expect(await resolveWorkshopReadInResource(catalog.entries(), resolver, 'manuscript', 'Notes/lore.md')).toEqual({ kind: 'refused', reason: 'not-configured' });
   });
 
-  it('a read of several files lists each group once, and a browse hit not at all', async () => {
+  it('a read of several files lists each group it names once', async () => {
     const { resolver, listGroupFiles } = project();
     const { capability } = resourceCapability(resolver);
     const read = await capability.fulfill({
@@ -129,7 +152,17 @@ describe('every reader resolves the second group\'s pair', () => {
       files: [{ group: 'manuscript', path: SHARED }, { group: 'manuscript', path: 'Drafts/chapter-2.md' }, { group: 'chapters', path: 'Drafts/outline.md' }]
     });
     expect(read.status).toBe('success');
-    expect(listGroupFiles.mock.calls).toEqual([[['manuscript']]]);
+    expect(listGroupFiles.mock.calls).toEqual([[['manuscript']], [['chapters']]]);
+  });
+
+  it('resource.read of a case sibling reads that file\'s own text, or refuses, never the other\'s', async () => {
+    const { resolver } = project({ roots: { '/alice': ['Drafts/Ch1.md', 'Drafts/ch1.md'] } });
+    const { capability } = resourceCapability(resolver);
+    const exact = await capability.fulfill({ capability: 'resource.read', files: [{ group: 'chapters', path: 'Drafts/Ch1.md' }] });
+    expect(exact.content).toContain('(Ch1.md)');
+    const sibling = await capability.fulfill({ capability: 'resource.read', files: [{ group: 'chapters', path: 'Drafts/ch1.md' }] });
+    expect(sibling.status).toBe('rejected');
+    expect(sibling.content ?? '').not.toContain('(Ch1.md)');
   });
 
   it('history.log reads the second group\'s pair', async () => {
@@ -148,5 +181,27 @@ describe('every reader resolves the second group\'s pair', () => {
     const { resolver, alice, browse } = project();
     await resolveConfiguredResource(await browse(), 'manuscript', SHARED, resolver);
     expect(alice.lines.join('\n')).not.toMatch(/Drafts|Notes|chapter/);
+  });
+});
+
+describe('two pairs naming one file in a read (S53)', () => {
+  it('the later pair is its own same-file outcome: no text, no manifest row, no share, and no continuation names it', async () => {
+    const { resolver } = project();
+    const { capability } = resourceCapability(resolver);
+    const read = await capability.fulfill({
+      capability: 'resource.read',
+      files: [{ group: 'chapters', path: SHARED }, { group: 'manuscript', path: SHARED }]
+    });
+    expect(read.status).toBe('partial');
+    // One section of text, one manifest row.
+    expect(read.content!.split(TEXT)).toHaveLength(2);
+    expect(read.content).toContain('Not read: The requested path names the same file as an earlier path in this read, so it is read once, there.');
+    const rows = capability.deliveredSources(read);
+    expect(rows.map((row) => row.configuredResource)).toEqual([{ group: 'chapters', path: SHARED }]);
+    const files = read.metadata!.files as Array<Record<string, unknown>>;
+    expect(files[1]).toEqual({ group: 'manuscript', path: SHARED, outcome: 'same-file' });
+    expect(files[1]).not.toHaveProperty('startLine');
+    expect(read.metadata).toMatchObject({ filesNamed: 2, filesRead: 1 });
+    expect(read.content).not.toMatch(/<group>manuscript<\/group>/);
   });
 });

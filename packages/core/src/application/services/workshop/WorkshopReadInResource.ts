@@ -4,8 +4,8 @@
  * A manifest row names a file a persona read by `{ group, path }`. The webview
  * sends that pair back; this module decides whether it names a configured
  * project resource, exactly as `resource.read` would (`resolveConfiguredResource`:
- * the browse listing, then, on a miss, the group's authoritative listing;
- * ADR 2026-11-20 S50), and reads its current text under `resource.read`'s
+ * the file the group's authoritative listing names, through its browse
+ * entry; ADR 2026-11-20 S50), and reads its current text under `resource.read`'s
  * ceilings. So a card's recorded pair always opens, whichever group it
  * names. Anything else is refused by reason, and a refusal never carries
  * file content.

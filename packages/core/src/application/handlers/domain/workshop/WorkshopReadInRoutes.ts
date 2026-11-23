@@ -4,8 +4,8 @@
  * attachment's content and open-file routes.
  *
  * Both are reads: they resolve the webview's `{ group, path }` only through
- * the configured catalog (`readWorkshopReadInResource`), with the group's
- * authoritative listing for a pair the catalog misses (ADR 2026-11-20 S50),
+ * the configured catalog (`readWorkshopReadInResource`), naming the file
+ * from the group's authoritative listing (ADR 2026-11-20 S50),
  * refuse anything else, and never log file content or the writer's text.
  *
  * A content request may also name the row it opened by `deliveredAt`. The

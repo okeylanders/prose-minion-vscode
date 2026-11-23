@@ -95,9 +95,19 @@ describe('the group inventory', () => {
     expect(entries(past.content)).toEqual([]);
   });
 
-  it('answers an empty project in words', async () => {
+  it('answers an empty project in words, and a page past its end as past the end', async () => {
     const result = await catalogOver([]).catalog();
     expect(result.content).toBe('No configured project resources are available for all configured groups.');
+    const past = await catalogOver([]).catalog({ page: 2 });
+    expect(past.content).toContain('Page 2 is past the end: no file is listed.');
+    expect(past.content).not.toContain('No configured project resources');
+  });
+
+  it('names folders whenever several are open, though every file listed is in one of them', async () => {
+    const { catalog } = catalogOver(BOOK, { roots: { '/alice': BOOK, '/looking-glass': ['Other/notes.txt'] } });
+    const listed = entries((await catalog({ group: 'chapters' })).content);
+    expect(listed.length).toBeGreaterThan(0);
+    expect(listed.every((line) => line.endsWith(' · workspace: alice'))).toBe(true);
   });
 
   it('a listing that could not be read lists nothing, never fewer files', async () => {

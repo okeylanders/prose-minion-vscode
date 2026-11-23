@@ -8,8 +8,8 @@
  *   selection excerpt names its document the same way. A pasted excerpt
  *   has no file, and is refused in words.
  * - **A configured file,** named by group and path through
- *   `resolveConfiguredResource`, the rule `resource.read` uses: the browse
- *   listing, then, on a miss, the group's authoritative listing (ADR
+ *   `resolveConfiguredResource`, the rule `resource.read` uses: the file
+ *   the group's authoritative listing names, through its browse entry (ADR
  *   2026-11-20 S50).
  *
  * The host path a file resolves to is host-side only: it reaches the

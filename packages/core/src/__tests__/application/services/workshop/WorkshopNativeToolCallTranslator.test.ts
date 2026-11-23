@@ -147,9 +147,22 @@ describe('the Workshop\'s native tool-call translator', () => {
     ['a nested list', 'memory.read', { memory: [['mem-0a1b2c']] }, 'unmappable-value'],
     ['an object with no text', 'resource.read', { group: 'chapters', path: { group: 'chapters' } }, 'unmappable-value'],
     ['an object with an unknown key', 'resource.read', { group: 'chapters', path: { path: 'a.md', lines: '1-2' } }, 'unmapped-argument'],
-    ['a field and its plural together', 'memory.read', { memory: 'mem-0a1b2c', memories: ['mem-3d4e5f'] }, 'duplicate-argument']
+    ['a field and its plural together', 'memory.read', { memory: 'mem-0a1b2c', memories: ['mem-3d4e5f'] }, 'duplicate-argument'],
+    // A list supplied empty is never the field left out: that would widen the catalog to the whole group (S53).
+    ['an empty list of matches', 'resource.catalog', { group: 'chapters', matches: [] }, 'empty-list'],
+    ['an empty list of matches written as text', 'resource.catalog', { group: 'chapters', matches: '[]' }, 'empty-list'],
+    ['an empty list under the field\'s own name', 'resource.catalog', { match: [] }, 'empty-list'],
+    ['an empty list of paths', 'resource.read', { group: 'chapters', paths: [] }, 'empty-list'],
+    ['an empty list of sections', 'help.read', { sections: ' [ ] ' }, 'empty-list']
   ])('has no XML form for %s', (_label, name, args, fault) => {
     expect(translate(name, args)).toEqual({ kind: 'untranslatable', fault });
+  });
+
+  it('keeps an omitted repeating field, and a non-empty list, as they were', () => {
+    expect(decode('resource.catalog', { group: 'chapters' })).toEqual({ kind: 'request', request: { capability: 'resource.catalog', group: 'chapters' } });
+    expect(decode('resource.catalog', { group: 'chapters', matches: null })).toEqual({ kind: 'request', request: { capability: 'resource.catalog', group: 'chapters' } });
+    expect(decode('resource.catalog', { group: 'chapters', matches: ['Drafts/*.md'] }))
+      .toEqual({ kind: 'request', request: { capability: 'resource.catalog', group: 'chapters', match: ['Drafts/*.md'] } });
   });
 
   describe('a repeating field\'s list written as text (seen live, 2026-11-17)', () => {
@@ -174,7 +187,8 @@ describe('the Workshop\'s native tool-call translator', () => {
       if (hostile.kind !== 'translated') throw new Error('expected a translation');
       expect(hostile.envelope.match(/<path>/g)).toHaveLength(1);
       expect(translate('resource.read', { group: 'chapters', path: '[["a.md"]]' })).toEqual({ kind: 'untranslatable', fault: 'unmappable-value' });
-      expect(decode('resource.read', { group: 'chapters', path: '[]' })).toMatchObject({ kind: 'invalid', reason: 'missing-field' });
+      // An empty list written as text is the translator's own fault, never a call with the field left out (S53).
+      expect(translate('resource.read', { group: 'chapters', path: '[]' })).toEqual({ kind: 'untranslatable', fault: 'empty-list' });
     });
 
     it('stays one value when it is not a whole JSON array, or the field does not repeat', () => {

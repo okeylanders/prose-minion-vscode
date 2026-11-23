@@ -9,14 +9,15 @@
  * provider's own listing holds it, and that listing admits only files inside
  * the configured groups.
  *
- * **A pair the group inventory lists always resolves** (ADR 2026-11-20
- * S50). The browse listing keeps a file in the first group that matched it;
- * `resource.catalog` lists a file under every group it belongs to. So
- * `resolveConfiguredResource` tries the browse listing first, unchanged, and
- * only on a miss looks the pair up in that group's authoritative listing
- * (`listGroupFiles`). A file found there resolves to the browse entry for
- * the same file, by host identity, which loads as it always has. A path in
- * no configured group misses both, so containment is unchanged.
+ * **A pair resolves to the file the group inventory lists for it** (ADR
+ * 2026-11-20 S50). The browse listing keeps a file in the first group that
+ * matched it, and merges files whose relative paths differ only by letter
+ * case or by workspace folder; `resource.catalog` lists every file of a
+ * group apart. So `resolveConfiguredResource` names the file from that
+ * group's authoritative listing (`listGroupFiles`) first, and only then
+ * finds its browse entry, by host identity, which loads as it always has. A
+ * path in no configured group is in no listing, so containment is
+ * unchanged.
  */
 
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
@@ -65,12 +66,17 @@ export interface ConfiguredResourceGroupFiles {
   listGroupFiles(groups: ContextPathGroup[]): Promise<readonly ConfiguredGroupFile[]>;
 }
 
-/** A host that gives no authoritative listing: a pair resolves by the browse listing alone, as before S50. */
+/**
+ * A host that gives no authoritative listing. Its listing cannot be read, so
+ * every pair resolves by the browse listing alone, as before S50.
+ */
 export const NO_CONFIGURED_GROUP_FILES: ConfiguredResourceGroupFiles = Object.freeze({
-  listGroupFiles: async () => []
+  listGroupFiles: async () => {
+    throw new Error('No authoritative listing in this host.');
+  }
 });
 
-/** One listing per group for one operation: a read naming several missed files of a group lists it once. */
+/** One listing per group for one operation: a read naming several files of a group lists it once. */
 export function configuredGroupFilesOnce(groupFiles: ConfiguredResourceGroupFiles): ConfiguredResourceGroupFiles {
   const listed = new Map<ContextPathGroup, Promise<readonly ConfiguredGroupFile[]>>();
   return {
@@ -90,13 +96,24 @@ export function configuredGroupFilesOnce(groupFiles: ConfiguredResourceGroupFile
 }
 
 /**
- * Finds `{ group, path }` as `findConfiguredResource` does; only when that
- * misses, in the group's authoritative listing: the exact path, else the one
- * path equal to it ignoring letter case. Two files there (the same path in
- * two workspace folders, or two that differ only by case) are `ambiguous`,
- * never the first. The file found resolves to its browse entry by host
- * identity; a listing that cannot be read, or a file the browse listing
- * does not hold, misses, as it did before. It logs nothing.
+ * The one file `{ group, path }` names (S50, as amended after PR #298):
+ *
+ * 1. **In the group's authoritative listing first:** the one exact relative
+ *    path, else the one path equal to it ignoring letter case. Several exact
+ *    matches (the same path in two workspace folders), or several
+ *    case-folded matches with no exact one, are `ambiguous`, never the
+ *    first; none is `missing`. That listing holds every file the browse
+ *    listing holds for the group.
+ * 2. **Then its browse entry, by host identity,** which loads as it always
+ *    has. When the browse listing holds no entry for that file (it merged
+ *    it with a same-named file, or dropped it), the pair is `ambiguous`:
+ *    never another file's entry.
+ * 3. **Only when the authoritative listing cannot be read** (a scan failed,
+ *    or a host gives none), the pair resolves by the browse listing alone
+ *    (`findConfiguredResource`), as it did before Slice 5, so a failed walk
+ *    never blocks every read.
+ *
+ * It logs nothing.
  */
 export async function resolveConfiguredResource(
   resources: readonly ContextResourceSummary[],
@@ -104,15 +121,11 @@ export async function resolveConfiguredResource(
   resourcePath: string,
   groupFiles: ConfiguredResourceGroupFiles
 ): Promise<ConfiguredResourceLookup> {
-  const browse = findConfiguredResource(resources, group, resourcePath);
-  if (browse.kind !== 'missing') {
-    return browse;
-  }
   let listed: readonly ConfiguredGroupFile[];
   try {
     listed = await groupFiles.listGroupFiles([group]);
   } catch {
-    return { kind: 'missing' };
+    return findConfiguredResource(resources, group, resourcePath);
   }
   const inGroup = listed.filter((file) => file.group === group);
   const exact = inGroup.filter((file) => file.relativePath === resourcePath);
@@ -126,5 +139,5 @@ export async function resolveConfiguredResource(
   }
   const identity = hostFileIdentity(matches[0].absolutePath);
   const entry = resources.find((resource) => hostFileIdentity(resource.absolutePath) === identity);
-  return entry ? { kind: 'found', resource: entry } : { kind: 'missing' };
+  return entry ? { kind: 'found', resource: entry } : { kind: 'ambiguous' };
 }

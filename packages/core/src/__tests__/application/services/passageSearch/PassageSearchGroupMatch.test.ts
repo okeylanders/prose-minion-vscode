@@ -89,8 +89,12 @@ describe('a narrowed group, planned by the engine', () => {
     expect(setup.readFile.mock.calls.map(([filePath]) => filePath)).not.toContain('/alice/Notes/chapter-4-notes.md');
   });
 
-  it('a narrowing that leaves no file is no files, never the whole group', async () => {
-    expect(await refusalOf(engineOver(), [narrowed('Notes/*.md')])).toBe('no-files');
+  it('a pattern that finds no file of its group refuses the plan, never the whole group or a quietly narrower search (S53)', async () => {
+    expect(await refusalOf(engineOver(), [narrowed('Notes/*.md')])).toBe('match-found-nothing');
+    // One of two patterns finding nothing is refused too: the plan never reads less than every pattern asked for.
+    const setup = engineOver();
+    expect(await refusalOf(setup, [narrowed('Drafts/chapter-4.*.md', 'Notes/*.md')])).toBe('match-found-nothing');
+    expect(setup.readFile).not.toHaveBeenCalled();
   });
 
   it('refuses an incomplete walk as catalog-unreadable, never fewer files', async () => {

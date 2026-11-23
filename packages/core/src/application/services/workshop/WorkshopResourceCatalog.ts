@@ -20,6 +20,9 @@
  *   Every call written here decodes as written through the codec
  *   (`resourceCatalogPromptSync.test.ts`).
  * - **A failed listing is a failed result,** never a shorter catalog.
+ * - **A file's workspace folder is named when several folders are open**
+ *   (the workspace's own folder names), whatever this page found.
+ * - **A page past the end** is answered in words, an empty listing's too.
  *
  * The result shows paths and the persona's own patterns; its log line holds
  * the group, counts and the outcome only (S49).
@@ -42,9 +45,10 @@ import {
 
 type CatalogRequest = Extract<WorkshopCapabilityRequest, { capability: 'resource.catalog' }>;
 
-/** The resolver's authoritative listing, which rejects when a scan fails, and its pattern walk. */
+/** The resolver's authoritative listing, which rejects when a scan fails, its pattern walk, and the folders it walks. */
 export interface WorkshopResourceGroupListing extends ContextGroupPatternMatcher {
   listGroupFiles(groups: ContextPathGroup[]): Promise<readonly ContextResourceCandidate[]>;
+  openWorkspaceFolders(): readonly { readonly path: string; readonly name: string }[];
 }
 
 export interface WorkshopResourceCatalogOutcome {
@@ -57,7 +61,6 @@ const number = (value: number): string => value.toLocaleString('en-US');
 const count = (value: number, singular: string, plural = `${singular}s`): string =>
   `${number(value)} ${value === 1 ? singular : plural}`;
 const escapeXml = (value: string): string => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const rootName = (folderPath: string): string => folderPath.split(/[\\/]/).filter((segment) => segment.length > 0).pop() ?? folderPath;
 
 /**
  * A catalog page's complete call, on one line: what a continuation names.
@@ -107,12 +110,14 @@ export async function runWorkshopResourceCatalog(
   }
   const paged = workshopCapabilityPageOf(files.length, PROMPT_BUDGETS.workshopResource.catalogItems, page);
   const shown = files.slice(paged.start, paged.end);
-  const roots = new Set(listed.map((file) => file.workspaceFolderPath)).size;
+  // A file's folder is named when several folders are open, whatever this listing found (its name, as the workspace gives it).
+  const folders = listing.openWorkspaceFolders();
+  const folderNames = folders.length > 1 ? new Map(folders.map((folder) => [folder.path, folder.name])) : undefined;
   const hint = paged.next !== undefined
     ? workshopResourceCatalogCall({ group: request.group, match: request.match, page: paged.next })
     : undefined;
   const place = placeOf(request);
-  const content = files.length === 0 && counts.length === 0
+  const content = files.length === 0 && counts.length === 0 && !paged.pastEnd
     ? `No configured project resources are available for ${request.group ?? 'all configured groups'}.`
     : [
       `## Project resource catalog · ${place}`,
@@ -121,10 +126,12 @@ export async function runWorkshopResourceCatalog(
       ...counts.map((each) => countLine(each, request.group!)),
       ...(counts.length > 0 ? [''] : []),
       ...(paged.pastEnd
-        ? [`Page ${number(page)} is past the end: ${count(files.length, 'file')}, ${count(paged.pages, 'page')}.`]
+        ? [files.length === 0
+          ? `Page ${number(page)} is past the end: no file is listed.`
+          : `Page ${number(page)} is past the end: ${count(files.length, 'file')}, ${count(paged.pages, 'page')}.`]
         : [
           ...(files.length === 0 ? ['No file is listed.'] : [rangeLine(paged.start, paged.end, files.length, paged.pages)]),
-          ...shown.map((file) => entry(file, roots > 1))
+          ...shown.map((file) => entry(file, folderNames))
         ]),
       ...(hint ? ['', `${count(files.length - paged.end, 'more file')}. The next page: ${hint}`] : [])
     ].join('\n');
@@ -174,9 +181,12 @@ function rangeLine(start: number, end: number, total: number, pages: number): st
   return pages <= 1 ? `${count(total, 'file')}:` : `Files ${number(start + 1)}–${number(end)} of ${number(total)}:`;
 }
 
-function entry(file: ContextResourceCandidate, severalRoots: boolean): string {
-  return `- [${file.group}] \`${file.relativePath}\`${severalRoots ? ` · workspace: ${rootName(file.workspaceFolderPath)}` : ''}`;
+function entry(file: ContextResourceCandidate, folderNames: ReadonlyMap<string, string> | undefined): string {
+  const folder = folderNames ? folderNames.get(file.workspaceFolderPath) ?? lastSegment(file.workspaceFolderPath) : undefined;
+  return `- [${file.group}] \`${file.relativePath}\`${folder ? ` · workspace: ${folder}` : ''}`;
 }
+
+const lastSegment = (folderPath: string): string => folderPath.split(/[\\/]/).filter((segment) => segment.length > 0).pop() ?? folderPath;
 
 /** Natural order of the relative paths; the same path in two roots by root: as a search reads them. */
 function inReadingOrder(files: readonly ContextResourceCandidate[]): ContextResourceCandidate[] {

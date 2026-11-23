@@ -64,6 +64,8 @@ function wordsFor(reason: PassageSearchRefusalReason, count: number, organizing:
       return `The model's context window is too small for Passage Search, which reads at least ${number(bounds.minChunkWords)} words a call. Choose another model.`;
     case 'catalog-unreadable':
       return 'The project\'s files could not be listed completely, so nothing was searched. Try again.';
+    case 'match-found-nothing':
+      return 'A pattern narrowing a group no longer finds any file of that group, so nothing was searched. Ask for the search again with patterns that find files.';
   }
 }
 

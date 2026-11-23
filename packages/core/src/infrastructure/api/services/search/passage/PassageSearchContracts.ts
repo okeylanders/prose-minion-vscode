@@ -114,6 +114,8 @@ export const PASSAGE_SEARCH_REFUSALS = [
   'no-active-file',
   'model-too-small',
   'catalog-unreadable',
+  // A narrowed group with a pattern that finds no file of it now (ADR 2026-11-20 S53).
+  'match-found-nothing',
   'question-too-long',
   'too-many-scopes'
 ] as const;

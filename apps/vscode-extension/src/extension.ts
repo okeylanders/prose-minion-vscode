@@ -342,7 +342,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopSessionService,
     workshopConversationSettingsService
   );
-  // The Read in reader looks a card's missed pair up in its group's authoritative listing (ADR 2026-11-20 S50).
+  // The Read in reader names a card's file from its group's authoritative listing (ADR 2026-11-20 S50).
   const workshopContextIntakeService = new WorkshopContextIntakeService(
     contextResourceResolver,
     platform.fileSystem,

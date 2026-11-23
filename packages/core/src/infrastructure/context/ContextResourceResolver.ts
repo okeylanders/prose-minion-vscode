@@ -194,6 +194,11 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
     return distinctContextGroupFiles(await this.listCandidates(['general'], () => patterns));
   }
 
+  /** The workspace folders open now, the roots every listing here walks: a listing names a file's folder only when several are. */
+  openWorkspaceFolders(): readonly { readonly path: string; readonly name: string }[] {
+    return this.workspace.workspaceFolders();
+  }
+
   /**
    * What the given patterns would match (ADR 2026-11-19 D22, D22a): the
    * catalog's own walk (normalization, roots, exclusions, the `.md`/`.txt`

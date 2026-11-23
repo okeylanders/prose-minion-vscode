@@ -22,7 +22,9 @@
  *   (one configured file, written as `resource.read` writes a path) and
  *   `<excerpt/>` (the room's excerpt). Anything else is `malformed:<fault>`.
  * - **A group may be narrowed** (ADR 2026-11-20 S42): `<group match="…">`,
- *   a comma-separated list read as a context-path setting is
+ *   its character references decoded first, as a capability call's text is
+ *   (`&amp;` is `&`; S53), then a comma-separated list read as a
+ *   context-path setting is
  *   (`readContextGroupMatchList`: 1 to `matchPatterns`, the attribute at
  *   most `matchCharacters`). Only `<group>` takes it. A group named twice,
  *   narrowed or not, is a repeat.
@@ -38,6 +40,7 @@
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { isSafeConfiguredResourcePath } from '@/utils/configuredResourcePath';
 import { readContextGroupMatchList, type ContextGroupMatchFormFault } from '@/utils/contextGroupMatchList';
+import { decodeXmlCharacterReferences } from '@/utils/xmlCharacterReferences';
 import {
   workshopReplyTrailerStructureRejection,
   type WorkshopReplyTrailerFrame,
@@ -116,13 +119,19 @@ const ATTRIBUTE = /\s+([a-z][a-z0-9-]*)\s*=\s*"([^"]*)"/giy;
 /** The one attribute each element may carry. */
 const ELEMENT_ATTRIBUTE: Readonly<Record<string, string>> = { path: 'group', group: 'match' };
 
+/* eslint-disable @typescript-eslint/naming-convention -- keyed by the list's kebab-case fault words. */
 const MATCH_FAULTS: Readonly<Record<ContextGroupMatchFormFault, WorkshopPassageSearchFault>> = {
   empty: 'empty-match',
   'too-long': 'match-too-long',
   'too-many': 'too-many-match-patterns'
 };
+/* eslint-enable @typescript-eslint/naming-convention */
 
-/** The element's one allowed attribute, as written; `undefined` when absent; `null` when anything else is written. */
+/**
+ * The element's one allowed attribute, its character references decoded as
+ * the capability codec decodes text (S53); `undefined` when absent; `null`
+ * when anything else is written.
+ */
 function attributeOf(name: string, written: string): string | undefined | null {
   if (!written) {
     return undefined;
@@ -134,7 +143,7 @@ function attributeOf(name: string, written: string): string | undefined | null {
   if (!allowed || !found || found[1].toLowerCase() !== allowed || ATTRIBUTE.lastIndex !== written.length) {
     return null;
   }
-  return found[2];
+  return decodeXmlCharacterReferences(found[2]);
 }
 
 /** How two scopes are compared: a repeat differs by more than letter case. */

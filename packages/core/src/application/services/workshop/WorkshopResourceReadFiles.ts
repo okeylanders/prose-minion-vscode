@@ -3,6 +3,12 @@
  * either ready to read, with its lines and the window the request selects,
  * or carries its own outcome, in the words a one-path read has always used.
  * One bad path never fails the others.
+ *
+ * **One file, read once** (ADR 2026-11-20 S53). Two pairs can name one file
+ * (one file in two groups). A later pair resolving to a file an earlier one
+ * already named is its own outcome, `same-file`, before anything of it is
+ * loaded: no text, no manifest row, no line range, no fingerprint and no
+ * share of the read, so no continuation can name it.
  */
 
 import type {
@@ -11,6 +17,7 @@ import type {
 } from '@/domain/models/ContextGeneration';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { ContextPathGroup } from '@shared/types';
+import { hostFileIdentity } from '@/infrastructure/context/ContextGroupFiles';
 import type { WorkshopResourceReadFile } from '@shared/types/workshopCapabilities';
 import {
   configuredGroupFilesOnce,
@@ -25,7 +32,9 @@ export type WorkshopResourceFileFault =
   | 'ambiguous'
   | 'too-large'
   | 'unreadable'
-  | 'start-past-end';
+  | 'start-past-end'
+  /** The pair names a file an earlier pair of the same read named (S53). */
+  | 'same-file';
 
 export interface WorkshopResourceReadyFile {
   readonly kind: 'ready';
@@ -66,7 +75,7 @@ export type WorkshopResourcePreparedFile = WorkshopResourceReadyFile | WorkshopR
 
 export interface WorkshopResourceFileSource {
   resources(): Promise<ContextResourceSummary[]>;
-  /** The authoritative listing a pair the browse listing misses is looked up in (ADR 2026-11-20 S50). */
+  /** The authoritative listing a pair's file is named from (ADR 2026-11-20 S50). */
   readonly groupFiles: ConfiguredResourceGroupFiles;
   load(resourcePath: string): Promise<ContextResourceContent[]>;
   throwIfAborted(): void;
@@ -79,11 +88,13 @@ export async function prepareWorkshopResourceFiles(
   lines: { readonly startLine?: number; readonly endLine?: number }
 ): Promise<WorkshopResourcePreparedFile[]> {
   const resources = await source.resources();
-  // One authoritative listing per group for this read, asked only for a pair the browse listing misses.
+  // One authoritative listing per group for this read.
   const groupFiles = configuredGroupFilesOnce(source.groupFiles);
+  // Host identities of the files already named in this read.
+  const named = new Set<string>();
   const prepared: WorkshopResourcePreparedFile[] = [];
   for (const file of files) {
-    prepared.push(await prepareFile(source, resources, groupFiles, file, lines));
+    prepared.push(await prepareFile(source, resources, groupFiles, named, file, lines));
     source.throwIfAborted();
   }
   return prepared;
@@ -93,6 +104,7 @@ async function prepareFile(
   source: WorkshopResourceFileSource,
   resources: readonly ContextResourceSummary[],
   groupFiles: ConfiguredResourceGroupFiles,
+  named: Set<string>,
   file: WorkshopResourceReadFile,
   lines: { readonly startLine?: number; readonly endLine?: number }
 ): Promise<WorkshopResourcePreparedFile> {
@@ -108,6 +120,12 @@ async function prepareFile(
       'The requested path is not one of the configured project resources in that group.', {});
   }
   const resource = lookup.resource;
+  const identity = hostFileIdentity(resource.absolutePath);
+  if (named.has(identity)) {
+    return fault(file, 'same-file',
+      'The requested path names the same file as an earlier path in this read, so it is read once, there.', {});
+  }
+  named.add(identity);
   if (resource.sizeBytes > budgets.readSourceBytes) {
     return fault(resource, 'too-large',
       `The configured project resource exceeds the ${budgets.readSourceBytes}-byte source-read ceiling.`,
