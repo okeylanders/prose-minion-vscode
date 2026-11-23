@@ -1,6 +1,6 @@
 # Sprint 02: Long-Paste Composer Flow
 
-**Status:** Planned
+**Status:** Split out 2026-11-23 to [A Long Paste Becomes a "Pasted Text" Pill](../../../features/feature-workshop-long-paste-pill/README.md), which builds it on the message-attachment kinds Selected Text added, without Sprint 01's schema v3. This sprint's plan is its design source.
 
 **Proposed branch:** `sprint/workshop-multimodal-composer-02-long-paste`
 
