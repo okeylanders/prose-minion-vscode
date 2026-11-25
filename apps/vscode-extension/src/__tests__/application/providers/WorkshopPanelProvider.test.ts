@@ -5,7 +5,7 @@ import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelP
 import { MessageHandler, MessageType, Platform } from '@prose-minion/core';
 
 jest.mock('@prose-minion/core', () => ({
-  MessageType: { WORKSHOP_REQUEST_SESSION: 'workshop_request_session', WORKSHOP_SESSION_STATE: 'workshop_session_state' },
+  MessageType: { WORKSHOP_REQUEST_SESSION: 'workshop_request_session', WORKSHOP_SESSION_STATE: 'workshop_session_state', WORKSHOP_SESSION_ACTION_RESULT: 'workshop_session_action_result' },
   workshopExcerptTitle: jest.requireActual('@messages').workshopExcerptTitle,
   SURFACE_WORKSHOP: 'workshop',
   // The provider's own seed delivery is real; nothing here offers a seed. (The
@@ -106,6 +106,11 @@ describe('WorkshopPanelProvider retained session loading', () => {
     post(1)({ type: MessageType.WORKSHOP_SESSION_STATE, payload: { session } });
     expect(legacy.title).toBe('Workshop · chapter-3');
     expect(original.title).toBe(`Workshop · chapter-3 (${other.slice(0, 8)})`);
+    const otherServices = acquire.mock.results[1].value.services;
+    jest.spyOn(otherServices.workshopSessionPersistenceCoordinator, 'openRoomIdentity')
+      .mockReturnValue({ sessionId: 'saved', namedSessionId: 'saved', title: 'Chapter notes' });
+    post(1)({ type: MessageType.WORKSHOP_SESSION_ACTION_RESULT, payload: { action: 'save', ok: true } });
+    expect(original.title).toBe('Workshop · Chapter notes');
     original.dispose();
     expect(release).toHaveBeenCalledWith(other);
     rooms.listRoomCheckpoints = async () => ids.map(roomId => ({ roomId, title: roomId, updatedAt: 'today' }));

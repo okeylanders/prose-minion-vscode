@@ -32,6 +32,7 @@ export class WorkshopPanelTab {
   /** Opaque UI navigation handle for this attachment; never a disk slot or mutation destination. */
   readonly trayToken = randomUUID();
   title: string;
+  private excerptTitle?: string;
   readonly ready: Promise<void>;
   private closed = false;
   private readonly tileReceipts = new Map<string, () => void>();
@@ -137,10 +138,14 @@ export class WorkshopPanelTab {
           this.tileReceipts.get(message.payload.deliveryId)?.();
         }
         if (message.type === MessageType.WORKSHOP_SESSION_STATE) {
-          const identity = this.coreServices.workshopSessionPersistenceCoordinator.openRoomIdentity();
           const source = message.payload.session.excerpt?.source;
-          const label = identity.namedSessionId ? identity.title
-            : source && source.kind !== 'manual' ? workshopExcerptTitle(source) : undefined;
+          this.excerptTitle = source && source.kind !== 'manual' ? workshopExcerptTitle(source) : undefined;
+        }
+        if (message.type === MessageType.WORKSHOP_SESSION_STATE ||
+            (message.type === MessageType.WORKSHOP_SESSION_ACTION_RESULT && message.payload.ok)) {
+          // Save and Rename acknowledge through the action route without broadcasting a fresh session.
+          const identity = this.coreServices.workshopSessionPersistenceCoordinator.openRoomIdentity();
+          const label = identity.namedSessionId ? identity.title : this.excerptTitle;
           const title = label ? `Workshop · ${label}` : this.scratchTitle;
           if (title !== this.title) {
             this.title = title;
