@@ -857,8 +857,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       openAssistantSettings: () => {
         void vscode.commands.executeCommand('prose-minion.openSettingsOverlay');
       },
-      // The tray's "Open Workshop →" (Slice 4): reveal it; nothing is sent.
-      openWorkshop: () => workshopPanelProvider?.openOrReveal()
+      // A focus change after the tray rendered cannot redirect this click into another room.
+      openWorkshop: trayToken => workshopPanelProvider?.openTray(trayToken)
     }
   );
   context.subscriptions.push(
