@@ -912,6 +912,53 @@ describe('independent durable Workshop slots in one window', () => {
     expect(fs.files.get(currentPath)).toEqual(winner);
   });
 
+  it.each(['changed', 'removed'] as const)('recovers a pending mirror when its named source is %s before retry', async change => {
+    const { fs, a } = rooms();
+    await a.coordinator.initialize();
+    await a.coordinator.flushForClose();
+    const rollingBefore = fs.files.get(currentPath);
+    expect(rollingBefore).toBeDefined();
+    fs.failRenameToPath = currentPath;
+    a.session.setExcerpt({ text: 'My latest manuscript', source: { kind: 'manual' } });
+    a.coordinator.markDirty('edit');
+    const named = await a.coordinator.saveNamed('My draft');
+    await expect(a.coordinator.flushForClose()).rejects.toThrow(/EIO/);
+    fs.failRenameToPath = undefined;
+
+    const other = setup(fs).store;
+    const baseline = await other.readNamed(named.sessionId);
+    if (!baseline) { throw new Error('Expected the committed named session'); }
+    if (change === 'changed') {
+      await other.updateNamed(named.sessionId, checkpoint(named.sessionId, 'Other writer'), baseline);
+    } else {
+      await other.deleteNamed(named.sessionId);
+    }
+    const namedPath = `${directory}/${named.fileName}`;
+    const winningBytes = fs.files.get(namedPath);
+    const readNamed = a.store.readNamedWithRecovery.bind(a.store);
+    const reads = jest.spyOn(a.store, 'readNamedWithRecovery').mockRejectedValueOnce(new Error('Source unavailable'));
+    await expect(a.coordinator.flushForClose()).rejects.toThrow('Source unavailable');
+    jest.spyOn(a.store, 'saveNamed').mockRejectedValueOnce(new Error('Recovery write failed'));
+    await expect(a.coordinator.flushForClose()).rejects.toThrow('Recovery write failed');
+    reads.mockImplementation(async id => {
+      if (id !== named.sessionId) { throw new Error('Recovery read-back failed'); }
+      return readNamed(id);
+    });
+    await expect(a.coordinator.flushForClose()).rejects.toThrow('Recovery read-back failed');
+    reads.mockRestore();
+
+    const destination = await a.coordinator.flushForClose();
+    if (!destination) { throw new Error('Expected a verified recovery destination'); }
+    expect(destination.sessionId).not.toBe(named.sessionId);
+    expect(destination.kind).toBe('preserved-session');
+    expect((await other.list()).sessions.filter(row => row.sessionId !== named.sessionId)).toHaveLength(1);
+    const fresh = setup(fs, 'fresh', { roomId: second, store: setup(fs).store });
+    await fresh.coordinator.openNamed(destination.sessionId);
+    expect(fresh.session.getExcerpt()?.text).toBe('My latest manuscript');
+    expect(fs.files.get(namedPath)).toEqual(winningBytes);
+    expect(fs.files.get(currentPath)).toEqual(rollingBefore);
+  });
+
   it('keeps a refused first-ever scratch write recoverable in the live slot until retry creates the file', async () => {
     const { fs, store, b } = rooms();
     const target = await b.store.resolveRevealPath('current');

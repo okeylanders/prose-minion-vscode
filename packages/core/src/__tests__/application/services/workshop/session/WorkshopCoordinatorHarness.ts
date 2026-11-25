@@ -65,12 +65,13 @@ export function setupCoordinator(
     workspace?: 'single' | 'none';
     roomSeed?: WorkshopRoomSeed;
     fileSystem?: MemoryFileSystem;
+    log?: LogSink;
     /** The aggregate the coordinator owns, when a test shares it with a handler; a fresh one by default. */
     session?: WorkshopSessionService;
   } = {}
 ) {
   const fs = options.fileSystem ?? new MemoryFileSystem();
-  const log: LogSink = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
+  const log: LogSink = options.log ?? { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
   const workspace = workspaceWith(
     options.workspace === 'none' ? [] : [{ name: 'novel', path: HARNESS_ROOT }]
   );

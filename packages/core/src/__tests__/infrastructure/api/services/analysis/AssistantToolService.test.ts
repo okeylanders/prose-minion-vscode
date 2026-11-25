@@ -8,12 +8,16 @@ import type { ResourceLoaderService } from '@orchestration/ResourceLoaderService
 import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 import {
   API_KEY_NOT_CONFIGURED_HEADING,
+  DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   DEFAULT_WORKSHOP_WRITER_PROFILE,
   MessageType,
   WebviewToExtensionMessage
 } from '@messages';
 import { AnalysisHandler } from '@handlers/domain/AnalysisHandler';
 import { MessageRouter } from '@handlers/MessageRouter';
+import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
 import { createFakeFileSystem, createFakeSettings } from '@/__tests__/mocks/platform';
@@ -68,6 +72,54 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     createGuideCapability: jest.fn().mockReturnValue({ catalog: 'guides' }),
     createWorkshopToolContextCapability: jest.fn().mockReturnValue({ catalog: 'workshopToolContext' }),
     setStatusCallback: jest.fn()
+  });
+
+  it('removes a disabled global bio from each retained host and guest, retrying the busy room after settlement', async () => {
+    const behavior = DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR;
+    const enabled = { enabled: true, preferredAddress: '', bio: 'I write about Alice.' };
+    const values: Record<string, unknown> = { 'workshop.writerProfile': enabled };
+    const settings = createFakeSettings(values);
+    settings.update = async (_section, key, value) => { values[key] = value; };
+    const log = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
+    const profile = new WorkshopWriterProfileService(settings, log);
+    const engine = makeEngine('shared');
+    const conversations = new ConversationManager();
+    engine.replaceSystemMessagesBetweenRuns.mockImplementation(batch => conversations.replaceSystemMessages(batch));
+    const assistant = build(managerFor(() => engine));
+    const createRoom = () => {
+      const session = new WorkshopSessionService(Date.now, behavior);
+      session.setExcerpt({ text: 'Alice opened the door.', source: { kind: 'manual' } });
+      const roomAssistant = assistant.forWorkshopRoom();
+      const coordinator = new WorkshopConversationSettingsService(session, roomAssistant, settings, log, profile);
+      const host = conversations.startConversation('host', 'Initial prompt');
+      session.beginPersonaMessage('first', 'Read this.');
+      session.completeRun('first', 'Ready.', undefined, false, host);
+      return { session, coordinator, host };
+    };
+    const a = createRoom();
+    const b = createRoom();
+    const guest = conversations.startConversation('guest', 'Initial prompt');
+    b.session.adoptPersonaGuest('margot', guest, []);
+    for (const room of [a, b]) {
+      await room.coordinator.replaceStandingDirectiveFrames([]);
+    }
+    const prompt = (id: string) => conversations.getMessages(id)[0].content;
+    for (const id of [a.host, b.host, guest]) expect(prompt(id)).toContain(enabled.bio);
+
+    b.session.beginPersonaMessage('ongoing', 'Another question.');
+    await a.coordinator.applyFromWebview(behavior, { ...enabled, enabled: false });
+    expect(prompt(a.host)).not.toContain(enabled.bio);
+    expect(profile.getProfile().enabled).toBe(false);
+    await expect(b.coordinator.syncFromSettings()).resolves.toMatchObject({ deferred: true });
+    expect(prompt(b.host)).toContain(enabled.bio);
+
+    b.session.abandonRun('ongoing');
+    engine.replaceSystemMessagesBetweenRuns.mockImplementationOnce(() => { throw new Error('engine unavailable'); });
+    await expect(b.coordinator.flushDeferredSettingsSync()).rejects.toThrow('engine unavailable');
+    expect(prompt(b.host)).toContain(enabled.bio);
+    await expect(b.coordinator.flushDeferredSettingsSync()).resolves.toMatchObject({ changed: true });
+    for (const id of [a.host, b.host, guest]) expect(prompt(id)).not.toContain(enabled.bio);
+    await expect(b.coordinator.syncFromSettings()).resolves.toMatchObject({ changed: false });
   });
 
   it('binds capability progress to its room while sharing the assistant engine', async () => {

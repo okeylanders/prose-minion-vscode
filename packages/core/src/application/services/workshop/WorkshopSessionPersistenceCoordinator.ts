@@ -608,10 +608,12 @@ export class WorkshopSessionPersistenceCoordinator {
         }
       }
     } catch (error) {
-      if (error instanceof WorkshopRollingCheckpointConflictError) {
+      // Either the target rolling slot was disputed or the named source no longer
+      // holds this revision. On close, verify the named checkpoint and fork it if displaced.
+      if (error instanceof WorkshopRollingCheckpointConflictError || error instanceof WorkshopNamedSessionChangedError) {
         this.rememberCloseAlternative(checkpoint, this.writtenRevision);
       }
-      const detail = `The named session is available, but ${this.rollingFileLabel()} could not be updated. ${this.errorMessage(error)}`;
+      const detail = `Saving is incomplete because ${this.rollingFileLabel()} could not be updated. ${this.errorMessage(error)}`;
       this.outputChannel.appendLine(`[WorkshopSessionPersistence] Rolling mirror pending: ${detail}`);
       this.emitSessionSaveStatus({ sessionId: checkpoint.sessionId, status: 'error', error: detail });
     }
@@ -758,7 +760,7 @@ export class WorkshopSessionPersistenceCoordinator {
     let disk = await this.readNamedCheckpoint(checkpoint.sessionId);
     if (!disk || !hasSameWorkshopCheckpoint(disk.session, checkpoint)) {
       // The last verified destination can itself be edited or removed before the panel closes.
-      checkpoint = await this.withNamedOwnership(() => this.recoveryCopy.keep(alt.checkpoint, this.identity.title, 'rolling'));
+      checkpoint = await this.withNamedOwnership(() => this.recoveryCopy.keep(alt.checkpoint, this.identity.title));
       this.rememberCloseAlternative(checkpoint, alt.revision);
       disk = await this.readNamedCheckpoint(checkpoint.sessionId);
     }

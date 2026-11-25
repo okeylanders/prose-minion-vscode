@@ -1,8 +1,9 @@
 /**
  * VsCodeFileSystem - VS Code adapter for the `FileSystem` port.
  *
- * Backed by `vscode.workspace.fs` (NOT Node `fs`) so it can reach virtual/remote
- * FS providers at all — Node `fs` only ever sees the local disk. Pure
+ * File operations go through `vscode.workspace.fs` for virtual/remote
+ * providers. Local rolling claims can release their own token when VS Code closes
+ * the RPC channel during window reload. The other methods are
  * pass-throughs of the prior inline calls, on plain string paths.
  *
  * CAVEAT (string-path port boundary): each call reconstructs a URI via
@@ -23,11 +24,50 @@
  * explicitly so a future shape-drift is caught by the compiler instead of
  * suppressed.
  */
+import * as fs from 'node:fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { FileStat, FileSystem, FileType } from '@prose-minion/core';
+import type { FileStat, FileSystem, FileType } from '@prose-minion/core';
 
 export class VsCodeFileSystem implements FileSystem {
+  prepareRollingClaimRelease(filePath: string, token: string): (() => boolean) | undefined {
+    const folders = vscode.workspace.workspaceFolders;
+    if (vscode.env?.remoteName || folders?.length !== 1 || !/^[a-f0-9-]{36}$/.test(token)) {
+      return undefined;
+    }
+    const root = folders[0].uri;
+    if (root.scheme !== 'file' || root.authority || path.dirname(filePath) !== path.join(root.fsPath, 'prose-minion', 'sessions') ||
+        !/^current(?:-[a-f0-9-]{36})?\.json$/.test(path.basename(filePath))) {
+      return undefined;
+    }
+    // The local renderer can close its filesystem RPC while deactivate is still awaiting this
+    // writer. Verify the exact token exists on this host before choosing a native release.
+    const lock = path.join(path.dirname(filePath), `.${path.basename(filePath)}.lock`);
+    const own = path.join(lock, token);
+    const marker = path.join(lock, `owner-${token}.json`);
+    const ownsToken = () => fs.lstatSync(lock, { throwIfNoEntry: false })?.isDirectory() &&
+      fs.lstatSync(marker, { throwIfNoEntry: false })?.isFile();
+    try {
+      if (!ownsToken()) { return undefined; }
+    } catch {
+      return undefined;
+    }
+    return () => {
+      try {
+        if (!ownsToken()) {
+          return true; // Our token is gone. Leave any successor alone.
+        }
+        // Rolling claims have an empty private folder. No recursive removals, even on a damaged lock.
+        if (fs.lstatSync(own, { throwIfNoEntry: false })) { fs.rmdirSync(own); }
+        fs.unlinkSync(marker);
+        fs.rmdirSync(lock);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+  }
+
   readFile(filePath: string): Promise<Uint8Array> {
     return Promise.resolve(vscode.workspace.fs.readFile(vscode.Uri.file(filePath)));
   }

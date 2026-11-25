@@ -81,6 +81,8 @@ export class WorkshopConversationSettingsService {
   private readonly fileEditsMode: WorkshopGlobalModeSetting<WorkshopFileEditsMode>;
   private queue: Promise<void> = Promise.resolve();
   private externalSyncPending = false;
+  /** Profile last committed to this room’s retained persona prompts. */
+  private appliedWriterProfile: WorkshopWriterProfile;
   private pendingBehaviorPersistence?: PendingPersistence<WorkshopConversationBehavior>;
   private pendingProfilePersistence?: PendingPersistence<WorkshopWriterProfile>;
   private pendingWebResearchPersistence?: PendingPersistence<WorkshopWebResearchSettings>;
@@ -96,6 +98,7 @@ export class WorkshopConversationSettingsService {
     private readonly outputChannel: LogSink,
     private readonly writerProfileService: WorkshopWriterProfileService
   ) {
+    this.appliedWriterProfile = writerProfileService.getProfile();
     this.projectMemoryMode = workshopProjectMemoryModeSetting(settings, outputChannel);
     this.fileEditsMode = workshopFileEditsModeSetting(settings, outputChannel);
     this.webResearch = this.readWebResearchSetting();
@@ -272,13 +275,14 @@ export class WorkshopConversationSettingsService {
     nextProfile: WorkshopWriterProfile
   ): Promise<WorkshopConversationSettingsApplyResult> {
     const previousBehavior = this.session.getConversationBehavior();
-    const previousProfile = this.writerProfileService.getProfile();
+    const previousProfile = this.appliedWriterProfile;
     const behaviorChanged = !workshopConversationBehaviorsEqual(previousBehavior, nextBehavior);
-    const profileChanged = !workshopWriterProfilesEqual(previousProfile, nextProfile);
+    const profileChanged = !workshopWriterProfilesEqual(this.writerProfileService.getProfile(), nextProfile);
+    const roomProfileChanged = !workshopWriterProfilesEqual(previousProfile, nextProfile);
     const grammarChanges = this.prompted.changes();
     const suggestionChange = this.promptedSuggestions.change();
     const suggestionRebuild = suggestionChange?.rebuild === true;
-    if (!behaviorChanged && !profileChanged && grammarChanges.length === 0 && !suggestionRebuild) {
+    if (!behaviorChanged && !profileChanged && !roomProfileChanged && grammarChanges.length === 0 && !suggestionRebuild) {
       // A level that moved while project memory is off is in no prompt: recorded, nothing rebuilt.
       this.promptedSuggestions.commit(suggestionChange, () => undefined);
       return { changed: false, deferred: false, behaviorChanged: false, profileChanged: false };
@@ -301,7 +305,8 @@ export class WorkshopConversationSettingsService {
     }
 
     this.session.setConversationBehavior(nextBehavior);
-    this.writerProfileService.commit(nextProfile);
+    this.appliedWriterProfile = { ...nextProfile };
+    if (profileChanged) this.writerProfileService.commit(nextProfile);
     const log = (line: string): void => this.outputChannel.appendLine(`[WorkshopConversationSettingsService] ${line}`);
     this.prompted.commit(grammarChanges, log);
     this.promptedSuggestions.commit(suggestionChange, log);
@@ -319,12 +324,14 @@ export class WorkshopConversationSettingsService {
   replaceStandingDirectiveFrames(frames: readonly string[]): Promise<void> {
     return this.serialize(async () => {
       this.assertBetweenRuns();
+      const profile = this.writerProfileService.getProfile();
       await this.assistantToolService.replaceWorkshopConversationSettings(
         this.replacementTargets(),
         this.session.getConversationBehavior(),
-        this.writerProfileService.getProfile(),
+        profile,
         frames
       );
+      this.appliedWriterProfile = profile;
     });
   }
 
