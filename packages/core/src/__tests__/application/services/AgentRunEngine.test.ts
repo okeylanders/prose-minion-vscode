@@ -120,6 +120,8 @@ describe('AgentRunEngine', () => {
   };
 
   it.each([false, true])('refuses an oversized initial retained request before provider I/O (streaming=%s)', async streaming => {
+    const onRequestUsage = jest.fn();
+    engine.setTokenUsageCallback(onRequestUsage);
     jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
     await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System',
       userMessage: 'word '.repeat(40_000), policy: AGENT_RUN_POLICIES.workshopToolWithoutResources,
@@ -131,6 +133,18 @@ describe('AgentRunEngine', () => {
     });
     expect(client.createChatCompletion).not.toHaveBeenCalled();
     expect(client.createStreamingChatCompletion).not.toHaveBeenCalled();
+    expect(onRequestUsage).not.toHaveBeenCalled();
+  });
+
+  it('reports a completed non-streaming request even when its price and usage are unknown', async () => {
+    const onRequestUsage = jest.fn();
+    engine.setTokenUsageCallback(onRequestUsage);
+    client.createChatCompletion.mockResolvedValueOnce({ content: 'Reply' });
+    const result = await engine.runInitial({
+      toolName: 'assistant', systemMessage: 'System', userMessage: 'Hello', policy: AGENT_RUN_POLICIES.dictionary
+    });
+    expect(result.usage).toBeUndefined();
+    expect(onRequestUsage.mock.calls).toEqual([[undefined]]);
   });
 
   it('sends a run naming its model to that model, and measures the preflight against it (PR #177 F-01)', async () => {

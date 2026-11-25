@@ -174,6 +174,21 @@ describe('WorkshopContextHandler', () => {
     expect(effects.postSessionState).toHaveBeenCalled();
   });
 
+  it.each(['manual', 'session-open'] as const)('skips a queued %s scan when its originating handler was disposed', async origin => {
+    contextFiles['/workspace/voice-guide.md'] = 'Revised guide.';
+    session.addContextAttachment({
+      kind: 'file', origin: 'writer', label: 'voice-guide.md', words: 2,
+      content: 'Old copy.', sourceUri: 'file:///workspace/voice-guide.md', relativePath: 'voice-guide.md'
+    });
+    const read = jest.spyOn(intake, 'loadFile');
+    handler.dispose();
+    await handler.refreshChangedContextFiles(origin);
+    expect(read).not.toHaveBeenCalled();
+    expect(effects.markDirty).not.toHaveBeenCalled();
+    expect(effects.postTurn).not.toHaveBeenCalled();
+    expect(effects.sendStatus).not.toHaveBeenCalled();
+  });
+
   it('a refresh that finishes after close cannot update a room or start another save', async () => {
     const path = '/workspace/voice-guide.md';
     contextFiles[path] = 'Changed voice guide.';

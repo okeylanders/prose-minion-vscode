@@ -222,7 +222,7 @@ export class MessageHandler {
     // Each surface receives the same window snapshot, including views opened after a run.
     this.disposeTokenUsageListener = aiResourceManager.addTokenUsageListener(usage => {
       this.postWindowTokenUsage();
-      if (usage.totalTokens > 0) {
+      if (usage && usage.totalTokens > 0) {
         this.services.accountBalanceService.scheduleRefresh();
       }
     });

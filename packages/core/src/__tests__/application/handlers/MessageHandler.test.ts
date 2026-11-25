@@ -35,7 +35,7 @@ import {
 } from '../../mocks/platform';
 import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
-type TokenUsageCallback = (usage: TokenUsageTotals) => void;
+type TokenUsageCallback = (usage: TokenUsageTotals | undefined) => void;
 const flushQueuedWork = (): Promise<void> =>
   new Promise(resolve => setImmediate(resolve));
 

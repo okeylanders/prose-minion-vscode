@@ -269,6 +269,10 @@ export class WorkshopContextHandler {
    * avoids a separate persisted fingerprint schema.
    */
   async refreshChangedContextFiles(origin: 'manual' | 'session-open'): Promise<void> {
+    // The persistence queue can outlive the panel that requested this scan.
+    if (this.disposed) {
+      return;
+    }
     const attachments = this.session.getContextAttachments()
       .filter((attachment) => attachment.kind === 'file');
     if (attachments.length === 0) {
@@ -287,7 +291,7 @@ export class WorkshopContextHandler {
       this.session.contextWordsUsed()
     );
 
-    if (room !== this.session.readRoomRevision()) {
+    if (this.disposed || room !== this.session.readRoomRevision()) {
       return;
     }
     const refreshSummary = this.contextRefreshSummary(updates, failures, truncated);

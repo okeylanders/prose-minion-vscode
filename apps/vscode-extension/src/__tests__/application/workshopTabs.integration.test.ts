@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { activate, deactivate } from '@app/extension';
 import { WorkshopPanelTab } from '@app/application/providers/WorkshopPanelTab';
-import { AIResourceManager, MessageHandler, MessageType, WorkshopSessionStore, type ExtensionToWebviewMessage, type WebviewToExtensionMessage } from '@prose-minion/core';
+import { AIResourceManager, MessageHandler, MessageType, WorkshopSessionPersistenceCoordinator, WorkshopSessionService, WorkshopSessionStore, type ExtensionToWebviewMessage, type WebviewToExtensionMessage } from '@prose-minion/core';
 /* eslint-disable no-restricted-imports -- real provider transport and reusable test fixtures live outside the host barrel. */
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import { deferred } from '@/__tests__/application/handlers/domain/lightboxHandlerHarness';
@@ -391,6 +391,10 @@ describe.each([
         await finishB.promise;
         yield { token: 'A slow watch.', done: false };
         yield { token: '', done: true, usage: usageB };
+      })
+      .mockImplementationOnce(async function* () {
+        yield { token: 'The watch stopped.', done: false };
+        yield { token: '', done: true };
       });
     const windowUsage = (panel: ReturnType<typeof editorPanel>) =>
       panel.posted.filter(msg => msg.type === MessageType.TOKEN_USAGE_UPDATE).at(-1)?.payload;
@@ -423,6 +427,18 @@ describe.each([
           totals: { promptTokens: 27, completionTokens: 8, totalTokens: 35, costUsd: 0.75 },
           lastRequestCostUsd: usageA.costUsd
         });
+      }
+
+      await b.send(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'What happens next?' });
+      expect(b.snapshot().turns.find(turn => turn.content === 'The watch stopped.')).toBeDefined();
+      expect(turnReceipts(b)).toMatchObject([{ content: 'A slow watch.', usage: usageB }]);
+      const afterUnmeasured = await open('newWorkshopTab', 'One more scene.');
+      await afterUnmeasured.send(MessageType.REQUEST_TOKEN_USAGE);
+      for (const panel of [a, b, late, afterUnmeasured]) {
+        expect(windowUsage(panel)?.totals).toMatchObject({
+          promptTokens: 27, completionTokens: 8, totalTokens: 35, costUsd: 0.75
+        });
+        expect(windowUsage(panel)?.lastRequestCostUsd).toBeUndefined();
       }
     } finally {
       finishA.resolve();
@@ -469,6 +485,55 @@ describe.each([
     expect(b.snapshot().excerpt?.text).toBe('A room about cards.');
     expect(b.snapshot().contextAttachments).toEqual([]);
   });
+  it('drops a queued manual refresh when its panel closes during autosave', async () => {
+    const file = '/Book/refresh-guide.md';
+    const panel = await open('newWorkshopTab', 'The tide was falling.');
+    await mockFiles.writeFile(file, new TextEncoder().encode('Original guide.'));
+    Object.assign(vscode.window, { showOpenDialog: async () => [vscode.Uri.file(file)] });
+    await panel.send(MessageType.WORKSHOP_ADD_CONTEXT_FILE);
+    expect(panel.snapshot().contextAttachments).toHaveLength(1);
+    await mockFiles.writeFile(file, new TextEncoder().encode('Revised guide.'));
+
+    const writing = deferred<void>();
+    const release = deferred<void>();
+    const queued = deferred<void>();
+    const write = WorkshopSessionStore.prototype.writeCurrent;
+    const save = jest.spyOn(WorkshopSessionStore.prototype, 'writeCurrent').mockImplementationOnce(async function (this: WorkshopSessionStore, ...args) {
+      writing.resolve();
+      await release.promise;
+      return write.apply(this, args);
+    });
+    const runRefresh = WorkshopSessionPersistenceCoordinator.prototype.runContextRefresh;
+    const schedule = jest.spyOn(WorkshopSessionPersistenceCoordinator.prototype, 'runContextRefresh').mockImplementationOnce(function (this: WorkshopSessionPersistenceCoordinator, scan) {
+      const completion = runRefresh.call(this, scan);
+      queued.resolve();
+      return completion;
+    });
+    const mutate = jest.spyOn(WorkshopSessionService.prototype, 'refreshContextFileAttachments');
+    const markDirty = jest.spyOn(WorkshopSessionPersistenceCoordinator.prototype, 'markDirty');
+    try {
+      await panel.send(MessageType.WORKSHOP_SET_EXCERPT, { text: 'The tide had turned.', source: { kind: 'manual' } });
+      await writing.promise;
+      const refresh = panel.send(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES);
+      await queued.promise;
+      const reads = mockFiles.readFileCalls.filter(path => path === file).length;
+      panel.dispose();
+      const posted = panel.posted.length;
+      release.resolve();
+      await refresh;
+      expect(mockFiles.readFileCalls.filter(path => path === file)).toHaveLength(reads);
+      expect(mutate).not.toHaveBeenCalled();
+      expect(markDirty).not.toHaveBeenCalledWith('context files refreshed');
+      expect(panel.posted).toHaveLength(posted);
+    } finally {
+      release.resolve();
+      markDirty.mockRestore();
+      mutate.mockRestore();
+      schedule.mockRestore();
+      save.mockRestore();
+    }
+  });
+
   it('attaches a shared project pin to the room that requested it while another tab is focused', async () => {
     const a = await open('newWorkshopTab', 'The Dormouse told a story.');
     const b = await open('newWorkshopTab', 'The Hare poured the tea.');

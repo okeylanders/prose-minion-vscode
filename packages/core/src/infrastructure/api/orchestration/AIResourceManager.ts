@@ -62,7 +62,7 @@ export class AIResourceManager {
   /** The fingerprint of the key the current resources were built with, never the key (PR #171 F-01). */
   private adoptedKey?: string;
   private statusCallback?: StatusCallback;
-  private readonly tokenUsageListeners: ListenerSet<[TokenUsage]>;
+  private readonly tokenUsageListeners: ListenerSet<[TokenUsage | undefined]>;
   private readonly tokenUsageResetListeners: ListenerSet<[]>;
 
   private windowUsage = { ...EMPTY_WINDOW_USAGE };
@@ -70,13 +70,13 @@ export class AIResourceManager {
 
   /** Every engine in this window reports here once per completed provider request. */
   readonly recordTokenUsage: TokenUsageCallback = usage => {
-    this.windowUsage.promptTokens += usage.promptTokens;
-    this.windowUsage.completionTokens += usage.completionTokens;
-    this.windowUsage.totalTokens += usage.totalTokens;
-    this.windowUsage.costUsd += usage.costUsd ?? 0;
-    if (usage.totalTokens > 0) {
-      this.lastRequestCostUsd = usage.costUsd;
+    if (usage) {
+      this.windowUsage.promptTokens += usage.promptTokens;
+      this.windowUsage.completionTokens += usage.completionTokens;
+      this.windowUsage.totalTokens += usage.totalTokens;
+      this.windowUsage.costUsd += usage.costUsd ?? 0;
     }
+    this.lastRequestCostUsd = usage?.costUsd;
     this.tokenUsageListeners.emit(usage);
   };
 
