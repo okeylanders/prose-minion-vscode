@@ -47,6 +47,7 @@ export interface WorkshopSavedTodoSessionStore {
 export interface WorkshopSavedTodoSessionRoom {
   recallScope(): WorkshopSessionRecallScope;
   openRoomIdentity(): { sessionId: string; title: string; namedSessionId?: string };
+  isNamedSessionOwnedElsewhere?(sessionId: string): boolean;
   runSavedSessionOperation<T>(operation: () => Promise<T>): Promise<T>;
 }
 
@@ -80,6 +81,9 @@ export class WorkshopSavedSessionTodoStore implements WorkshopSavedSessionTodos 
       // The open room is never a saved session: settlement routes its ids to `current`.
       return this.readRefused(sessionId, 'unknown-session');
     }
+    if (this.room.isNamedSessionOwnedElsewhere?.(sessionId)) {
+      return this.readRefused(sessionId, 'store-unavailable');
+    }
     let found: WorkshopPersistedSessionCheckpointDecodeResult | undefined;
     try {
       found = await this.store.readNamedWithRecovery(sessionId);
@@ -110,6 +114,9 @@ export class WorkshopSavedSessionTodoStore implements WorkshopSavedSessionTodos 
     return this.room.runSavedSessionOperation(async (): Promise<WorkshopSavedTodoWrite> => {
       if (this.openRoom()?.ids.includes(read.sessionId)) {
         return this.writeRefused(target, 'room-changed');
+      }
+      if (this.room.isNamedSessionOwnedElsewhere?.(read.sessionId)) {
+        return this.writeRefused(target, 'session-busy');
       }
       const changed = withTodoChanges(read.session, changes, this.now().toISOString());
       if (!changed) {

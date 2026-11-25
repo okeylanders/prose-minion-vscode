@@ -1,5 +1,8 @@
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import { WORKSHOP_NO_ROOM_SEED } from '@/application/services/workshop/pinnedContext/WorkshopRoomSeed';
+import { WorkshopNamedSessionOwners, WorkshopSessionOwnedError } from '@/application/services/workshop/WorkshopNamedSessionOwners';
+import { WorkshopSavedSessionTodoStore } from '@/application/services/workshop/todos/WorkshopSavedSessionTodoStore';
+import { PRIMARY_WORKSHOP_ROOM_ID } from '@/application/services/workshop/WorkshopRoomSlot';
 import { WorkshopSessionStore } from '@/infrastructure/storage/WorkshopSessionStore';
 import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
@@ -36,9 +39,10 @@ function checkpoint(id: string, text: string): WorkshopPersistedSessionV2 {
   };
 }
 
-function setup(fs = new MemoryFileSystem(), idPrefix = 'room') {
+function setup(fs = new MemoryFileSystem(), idPrefix = 'room',
+  slot?: { roomId: string; namedOwners: WorkshopNamedSessionOwners; store: WorkshopSessionStore }) {
   const log: LogSink = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
-  const store = new WorkshopSessionStore(fs, workspace, log, now);
+  const store = slot?.store.forRoom(slot.roomId) ?? new WorkshopSessionStore(fs, workspace, log, now);
   const session = new WorkshopSessionService(() => now().getTime());
   let nextId = 0;
   const ready = jest.fn(async () => undefined);
@@ -50,7 +54,7 @@ function setup(fs = new MemoryFileSystem(), idPrefix = 'room') {
   const settings = { getWriterProfile: () => DEFAULT_WORKSHOP_WRITER_PROFILE } as WorkshopConversationSettingsService;
   const coordinator = new WorkshopSessionPersistenceCoordinator(
     session, assistant, settings, new WorkshopSessionTimeService({ now }), store, WORKSHOP_NO_ROOM_SEED, log,
-    { now, idFactory: () => `${idPrefix}-${++nextId}`, ensureAssistantReady: ready }
+    { now, idFactory: () => `${idPrefix}-${++nextId}`, ensureAssistantReady: ready, roomId: slot?.roomId, namedOwners: slot?.namedOwners }
   );
   return { fs, store, session, coordinator, log, ready };
 }
@@ -734,5 +738,99 @@ describe('Workshop persistence with the real store', () => {
     await Promise.all([first, second]);
     expect(secondScan).toHaveBeenCalledTimes(1);
     expect(coordinator.isSessionOperationPending()).toBe(false);
+  });
+});
+
+describe('independent durable Workshop slots in one window', () => {
+  const second = 'a501d3bb-6b16-48ea-88f9-fe6264ffcc38';
+
+  function rooms() {
+    const { fs, store } = setup();
+    const namedOwners = new WorkshopNamedSessionOwners();
+    const mount = (roomId: string) => setup(fs, roomId, { roomId, namedOwners, store });
+    return { fs, store, mount, a: mount(PRIMARY_WORKSHOP_ROOM_ID), b: mount(second) };
+  }
+
+  it('hydrates the released legacy fixture unchanged beside a recoverable second scratch', async () => {
+    const { fs, store, a, b, mount } = rooms();
+    const legacy = require('@/__tests__/fixtures/workshop-session-v1-released.json');
+    const original = new TextEncoder().encode(JSON.stringify(legacy));
+    fs.files.set(currentPath, original);
+    await Promise.all([a.coordinator.initialize(), b.coordinator.initialize()]);
+    b.session.setExcerpt({ text: 'Different chapter', source: { kind: 'manual' } });
+    b.coordinator.markDirty('second chapter');
+    await b.coordinator.flushForClose();
+    b.coordinator.releaseNamedOwnership();
+    expect(a.coordinator.openRoomIdentity().sessionId).toBe(legacy.sessionId);
+    expect(fs.files.get(currentPath)).toEqual(original);
+    expect((await store.listRoomCheckpoints()).map(row => row.roomId).sort())
+      .toEqual([PRIMARY_WORKSHOP_ROOM_ID, second].sort());
+    const reopened = mount(second);
+    await reopened.coordinator.initialize();
+    expect(reopened.session.getExcerpt()?.text).toBe('Different chapter');
+    expect((await store.list()).sessions).toEqual([]);
+    expect(await store.listPage({ limit: 10 })).toEqual({ entries: [], remaining: 0 });
+    expect(await store.readPagedSession(`current-${second}.json`, reopened.coordinator.openRoomIdentity().sessionId)).toBeUndefined();
+    await expect(store.readNamed(reopened.coordinator.openRoomIdentity().sessionId)).rejects.toMatchObject({ name: 'WorkshopNamedSessionUnconfirmedError' });
+    expect(() => store.forRoom('../foreign')).toThrow(/invalid/i);
+  });
+
+  it('grants one of two simultaneous Opens, refuses foreign mutations, then transfers on close', async () => {
+    const { store, a, b } = rooms();
+    const saved = await store.saveNamed(checkpoint('named', 'Original'));
+    await Promise.all([a.coordinator.initialize(), b.coordinator.initialize()]);
+    const todos = new WorkshopSavedSessionTodoStore(b.store, b.coordinator, b.log);
+    const read = await todos.read(saved.sessionId);
+    if (read.kind !== 'read') { throw new Error(read.reason); }
+    const both = await Promise.allSettled([a.coordinator.openNamed(saved.sessionId), b.coordinator.openNamed(saved.sessionId)]);
+    expect(both[0].status).toBe('fulfilled');
+    expect(both[1]).toMatchObject({ status: 'rejected', reason: { roomId: PRIMARY_WORKSHOP_ROOM_ID } });
+    await expect(b.coordinator.renameNamed(saved.sessionId, 'Unexpected rename')).rejects.toThrow(WorkshopSessionOwnedError);
+    await expect(b.coordinator.deleteNamed(saved.sessionId)).rejects.toThrow(WorkshopSessionOwnedError);
+    expect(await todos.write(read, [])).toEqual({ kind: 'refused', reason: 'session-busy' });
+    expect((await store.readNamed(saved.sessionId))?.title).toBe('named');
+    await a.coordinator.flushForClose();
+    a.coordinator.releaseNamedOwnership();
+    await expect(b.coordinator.openNamed(saved.sessionId)).resolves.toMatchObject({ restored: true });
+  });
+
+  it('retains the old claim on a failed Open and releases the unsuccessful destination', async () => {
+    const { fs, store, a, b } = rooms();
+    await Promise.all([a.coordinator.initialize(), b.coordinator.initialize()]);
+    const prior = await a.coordinator.saveNamed('Prior');
+    const target = await store.saveNamed(checkpoint('target', 'Target'));
+    fs.failRenameToPath = currentPath;
+    await expect(a.coordinator.openNamed(target.sessionId)).rejects.toThrow();
+    expect(a.coordinator.openRoomIdentity().namedSessionId).toBe(prior.sessionId);
+    await expect(b.coordinator.openNamed(prior.sessionId)).rejects.toThrow(WorkshopSessionOwnedError);
+    await expect(b.coordinator.openNamed(target.sessionId)).resolves.toMatchObject({ restored: true });
+  });
+
+  it('keeps the second rolling copy as an independent scratch if two slots restore the same named session', async () => {
+    const { store, a, b } = rooms();
+    const named = checkpoint('named', 'Saved words');
+    await store.saveNamed(named);
+    await a.store.writeCurrent(named);
+    await b.store.writeCurrent(checkpoint('named', 'Local unsaved words'));
+    await Promise.all([a.coordinator.initialize(), b.coordinator.initialize()]);
+    expect(a.coordinator.openRoomIdentity().namedSessionId).toBe(named.sessionId);
+    expect(b.coordinator.openRoomIdentity().namedSessionId).toBeUndefined();
+    expect((await b.store.readCurrent())?.sessionId).not.toBe(named.sessionId);
+    expect((await b.store.readCurrent())?.workshop.excerpt?.text).toBe('Local unsaved words');
+    expect((await store.readNamed(named.sessionId))?.workshop.excerpt?.text).toBe('Saved words');
+  });
+
+  it('surfaces an unsuccessful close and retries the original scratch when storage recovers', async () => {
+    const { fs, b } = rooms();
+    await b.coordinator.initialize();
+    await b.coordinator.flushForClose();
+    const target = await b.store.resolveRevealPath('current');
+    fs.failRenameToPath = target;
+    b.session.setExcerpt({ text: 'Waiting for disk', source: { kind: 'manual' } });
+    b.coordinator.markDirty('changed excerpt');
+    await expect(b.coordinator.flushForClose()).rejects.toThrow(/EIO/);
+    fs.failRenameToPath = undefined;
+    await b.coordinator.flushForClose();
+    expect((await b.store.readCurrent())?.workshop.excerpt?.text).toBe('Waiting for disk');
   });
 });

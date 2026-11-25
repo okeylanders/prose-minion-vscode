@@ -30,6 +30,7 @@
  * - **Logs** never name a session file: its name carries a title slug.
  */
 
+import { isNamedSessionFileName } from '@/application/services/workshop/WorkshopRoomSlot';
 import * as path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { FileType, type FileSystem, type LogSink } from '@/platform';
@@ -218,7 +219,7 @@ export class WorkshopNamedSessionLock {
     const rows: WorkshopNamedSessionLockRow[] = [];
     for (const [name, type] of entries) {
       const fileName = type === FileType.Directory ? LOCK.exec(name)?.[1] : undefined;
-      if (fileName) {
+      if (fileName && isNamedSessionFileName(fileName)) {
         const row = await this.rowOf(path.join(folder, name), path.join(folder, fileName), fileName);
         if (row) {
           rows.push(row);

@@ -45,13 +45,15 @@ export class WorkshopNamedSessionRecoveryCopy {
     private readonly mintSessionId: () => string,
     private readonly now: () => string,
     private readonly notify: (notice: WorkshopSessionRecoveryNoticeMessage['payload']) => void,
-    private readonly log: LogSink
+    private readonly log: LogSink,
+    private readonly canUpdate: (sessionId: string) => boolean = () => true
   ) {}
 
   /** Keep the refused room's checkpoint in the episode's recovery session: created once, then updated. */
   async keep(room: WorkshopPersistedSessionV2, namedTitle: string): Promise<void> {
     const at = this.now();
-    if (this.episode) {
+    // A writer may have opened the prior recovery in a sibling tab since the last refusal.
+    if (this.episode && this.canUpdate(this.episode.sessionId)) {
       const next = { ...this.episode.written, workshop: room.workshop, temporal: room.temporal, conversations: room.conversations, summary: room.summary, updatedAt: at, savedAt: at };
       await this.store.updateNamed(this.episode.sessionId, next, this.episode.written);
       this.episode = { sessionId: this.episode.sessionId, written: next, room };

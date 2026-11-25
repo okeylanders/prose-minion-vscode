@@ -9,6 +9,8 @@
  */
 
 import * as path from 'path';
+import { randomUUID } from 'crypto';
+import { PRIMARY_WORKSHOP_ROOM_ID, isNamedSessionFileName, roomIdFromWorkshopFile, workshopRoomFileName } from '@/application/services/workshop/WorkshopRoomSlot';
 import { withoutRollingProvenance } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
@@ -183,15 +185,7 @@ interface CachedNamedSessionPath {
  * filename generation out of UI code.
  */
 export class WorkshopSessionStore {
-  private temporaryWriteCounter = 0;
-  private readonly ensuredStorageDirectories = new Set<string>();
-  /**
-   * A named file's path is immutable after allocation. Cache only paths this
-   * store has created or resolved authoritatively so live-room autosave does
-   * not reparse every saved transcript after each committed mutation.
-   */
-  private readonly namedSessionPaths = new Map<string, CachedNamedSessionPath>();
-
+  private readonly currentFileName: string;
   constructor(
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
@@ -199,8 +193,45 @@ export class WorkshopSessionStore {
     private readonly now: () => Date = () => new Date(),
     private readonly limits: WorkshopSessionStoreLimits = WORKSHOP_SESSION_STORE_LIMITS,
     /** The Bookmarks screen's page bounds (ADR 2026-11-05 D8). */
-    private readonly pageLimits: WorkshopBookmarkBrowserLimits = WORKSHOP_BOOKMARK_BROWSER_LIMITS
-  ) {}
+    private readonly pageLimits: WorkshopBookmarkBrowserLimits = WORKSHOP_BOOKMARK_BROWSER_LIMITS,
+    roomId = PRIMARY_WORKSHOP_ROOM_ID,
+    /** Room views share immutable named paths resolved by this store. */
+    private readonly namedSessionPaths = new Map<string, CachedNamedSessionPath>(),
+    private readonly ensuredStorageDirectories = new Set<string>()
+  ) {
+    this.currentFileName = workshopRoomFileName(roomId);
+  }
+
+  /** Room views share the named catalog and retain their own rolling path. */
+  forRoom(roomId: string): WorkshopSessionStore {
+    return new WorkshopSessionStore(this.fileSystem, this.workspace, this.log, this.now, this.limits,
+      this.pageLimits, roomId, this.namedSessionPaths, this.ensuredStorageDirectories);
+  }
+
+  /** Only rolling files can select a restore slot. A damaged or large file remains available for recovery. */
+  async listRoomCheckpoints(): Promise<Array<{ roomId: string; title: string; updatedAt: string }>> {
+    const paths = this.availability();
+    if (!paths.available) { return []; }
+    let entries: Array<[string, FileType]>;
+    try {
+      entries = await this.fileSystem.readDirectory(paths.sessionsDirectory);
+    } catch (error) {
+      if (isMissingFileError(error)) { return []; }
+      throw error;
+    }
+    const rooms: Array<{ roomId: string; title: string; updatedAt: string }> = [];
+    for (const [name, type] of entries) {
+      const roomId = roomIdFromWorkshopFile(name);
+      if (type !== FileType.File || !roomId) { continue; }
+      const currentPath = path.join(paths.sessionsDirectory, name);
+      // Keep every file reopenable while limiting how many previews one picker can parse.
+      const summary = rooms.length < this.limits.maximumFiles
+        ? (await this.readCurrentForBrowser({ ...paths, currentPath }, undefined)).summary
+        : undefined;
+      rooms.push({ roomId, title: summary?.title ?? name, updatedAt: summary?.updatedAt ?? '' });
+    }
+    return rooms.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.roomId.localeCompare(b.roomId));
+  }
 
   /** Every replace or remove of a named file holds its lock (ADR 2026-11-19 D6a, D6b). */
   private readonly named = new WorkshopNamedSessionLock(this.fileSystem, this.log, this.now, this.limits.maximumExactFileBytes,
@@ -220,7 +251,7 @@ export class WorkshopSessionStore {
       available: true,
       rootPath,
       sessionsDirectory,
-      currentPath: path.join(sessionsDirectory, 'current.json')
+      currentPath: path.join(sessionsDirectory, this.currentFileName)
     };
   }
 
@@ -232,7 +263,7 @@ export class WorkshopSessionStore {
     WorkshopPersistedSessionCheckpointDecodeResult | undefined
   > {
     const paths = this.requireAvailability();
-    return this.readSessionFileExact(paths.currentPath, 'current.json');
+    return this.readSessionFileExact(paths.currentPath, this.currentFileName);
   }
 
   /**
@@ -249,7 +280,7 @@ export class WorkshopSessionStore {
     await this.writeSnapshotWithSearchIndex(
       paths,
       paths.currentPath,
-      'current.json',
+      this.currentFileName,
       decoded,
       true,
       options.beforeCommit
@@ -689,7 +720,7 @@ export class WorkshopSessionStore {
       // An orphan current searchIndex must never invent a live session.
       return { searchTruncated: false };
     }
-    const fileName = 'current.json';
+    const fileName = path.basename(fullPath);
     const searchIndex = await this.readSearchIndexForBrowser(
       this.namedPath(paths, workshopSessionSearchIndexFileName(fileName)),
       workshopSessionSearchIndexFileName(fileName),
@@ -968,7 +999,7 @@ export class WorkshopSessionStore {
     beforeCommit?: () => Promise<void>
   ): Promise<void> {
     const bytes = this.named.encode(value, description, maximumBytes);
-    const temporaryPath = `${targetPath}.tmp-${this.now().getTime()}-${++this.temporaryWriteCounter}`;
+    const temporaryPath = `${targetPath}.tmp-${randomUUID()}`;
     try {
       await this.fileSystem.writeFile(temporaryPath, bytes);
       await beforeCommit?.();
@@ -1149,12 +1180,6 @@ function titleSlug(title: string): string {
 function formatFilenameTimestamp(date: Date): string {
   const pad = (value: number) => value.toString().padStart(2, '0');
   return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}-${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}`;
-}
-
-function isNamedSessionFileName(name: string): boolean {
-  return name.endsWith('.json') &&
-    name !== 'current.json' &&
-    !name.endsWith('.summary.json');
 }
 
 function isMissingFileError(error: unknown): boolean {
