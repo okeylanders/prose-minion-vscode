@@ -45,6 +45,13 @@ export interface FileStat {
 }
 
 export interface FileSystem {
+  /**
+   * Optional host-local cleanup for an acquired rolling checkpoint claim. Prepare only for the
+   * token the calling writer owns. The returned release runs after publication settles and can
+   * survive the editor's filesystem RPC shutting down. False requests ordinary port cleanup.
+   */
+  prepareRollingClaimRelease?(filePath: string, token: string): (() => boolean) | undefined;
+
   /** Read a file's bytes. Throws if missing (mirrors workspace.fs). */
   readFile(path: string): Promise<Uint8Array>;
   /** Write bytes, creating parent directories as needed (workspace.fs semantics). */

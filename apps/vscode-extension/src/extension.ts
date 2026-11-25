@@ -52,7 +52,6 @@ import {
   WorkshopSessionTimeService,
   WorkshopSessionStore,
   WorkshopNamedSessionOwners,
-  PRIMARY_WORKSHOP_ROOM_ID,
   WorkshopSessionPersistenceCoordinator,
   WorkshopTranscriptRecallService,
   WorkshopLiveRoomBookmarkReader,
@@ -103,6 +102,7 @@ import {
   liveCatalogReasoning,
   LightboxSetSourcePayload,
   CoreServices,
+  WindowServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
   coerceWorkshopConversationBehavior,
@@ -127,7 +127,7 @@ import { VsCodeDocumentEditor } from './platform/vscode/VsCodeDocumentEditor';
 import { VsCodeFileEditAuthorityEpoch } from './platform/vscode/VsCodeFileEditAuthorityEpoch';
 import { CRAFT_FLAGS, VsCodeIssueAnnotator } from './platform/vscode/VsCodeIssueAnnotator';
 import { OpenFileInLightboxHost, openFileInLightbox } from './application/commands/openFileInLightbox';
-import { shutDownExtension, type ExtensionShutdownParts } from './application/extensionShutdown';
+import { shutDownExtension, workshopPersistenceLog, type ExtensionShutdownParts } from './application/extensionShutdown';
 import {
   PROOFREAD_CLEAR_COMMAND,
   PROOFREAD_DISMISS_COMMAND,
@@ -329,10 +329,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   // Its writes (Slice 3) are owed until they settle; deactivation drains them.
   workshopPinnedContextStoreForShutdown = workshopPinnedContextStore;
+  const sessionLog = workshopPersistenceLog(outputChannel);
   const sessionStore = new WorkshopSessionStore(
     platform.fileSystem,
     platform.workspace,
-    outputChannel
+    sessionLog
   );
   const projectMemoryStore = new ProjectMemoryStore(
     platform.fileSystem,
@@ -541,8 +542,34 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   // Session-derived callbacks capture exactly one room. The stores, provider, and
   // project resources above remain window-owned (ADR 2026-11-25 D1–D4).
+  const windowServices: WindowServices = {
+    assistantToolService,
+    dictionaryService,
+    dictionaryHistoryStore,
+    contextAssistantService,
+    proseStatsService,
+    styleFlagsService,
+    wordFrequencyService,
+    wordSearchService,
+    standardsService,
+    aiResourceManager,
+    aiResourceRefresh,
+    secretsService,
+    textSourceResolver,
+    categorySearchService,
+    accountBalanceService,
+    workshopContextIntakeService,
+    lightboxService,
+    lightboxReadingRunner,
+    lightboxContextShelf,
+    lightboxBoardLibrary: boardLibrary,
+    lightboxBoardStore,
+    contextPathSuggestions,
+    passageSearchEngine
+  };
   const namedOwners = new WorkshopNamedSessionOwners();
-  const createRoomServices = (roomId: string, assistantToolService: AssistantToolService): CoreServices => {
+  const createRoomServices = (roomId: string): CoreServices => {
+    const assistantToolService = windowServices.assistantToolService.forWorkshopRoom();
     const workshopSessionStore = sessionStore.forRoom(roomId);
     const workshopSessionService = new WorkshopSessionService(
       Date.now,
@@ -593,7 +620,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       workshopSessionTimeService,
       workshopSessionStore,
       workshopPinnedContextRoomSeed,
-      outputChannel,
+      sessionLog,
       {
         roomId,
         namedOwners,
@@ -716,28 +743,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       log: outputChannel
     });
     const coreServices: CoreServices = {
+      ...windowServices,
       assistantToolService,
-      dictionaryService,
-      dictionaryHistoryStore,
-      contextAssistantService,
-      proseStatsService,
-      styleFlagsService,
-      wordFrequencyService,
-      wordSearchService,
-      standardsService,
-      aiResourceManager,
-      aiResourceRefresh,
-      secretsService,
-      textSourceResolver,
-      categorySearchService,
-      accountBalanceService,
       workshopSessionService,
       projectFileEditGateway,
       fileEditStaging,
       workshopRoomDeliveryService,
       workshopPersonaCapabilityFactory,
       workshopToolSidePass,
-      workshopContextIntakeService,
       workshopConversationSettingsService,
       workshopWriterProfileService,
       workshopSessionTimeService,
@@ -749,11 +762,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       lexicalGravityModelService,
       lexicalGravityLensRepository,
       workshopStandingDirectiveService,
-      lightboxService,
-      lightboxReadingRunner,
-      lightboxContextShelf,
-      lightboxBoardStore,
-      lightboxBoardLibrary: boardLibrary,
       projectMemory: projectMemoryLibrary,
       workshopPinnedContext: {
         library: workshopPinnedContextLibrary,
@@ -761,8 +769,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       },
       editorSelectionSnapshots,
       helperAgentService,
-      contextPathSuggestions,
-      passageSearchEngine,
       workshopTranscriptRecallService,
       workshopSavedSessionTodos,
       contextPathProposals: { checker: contextPathChecker, settings: contextPathSettings },
@@ -776,18 +782,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     };
     return coreServices;
   };
-  // Non-Workshop surfaces consume only the shared parts of the baseline bundle.
-  // The first primary panel takes its room parts and starts hydration on acquire.
-  const coreServices = createRoomServices(PRIMARY_WORKSHOP_ROOM_ID, assistantToolService);
-  let initialPrimary: CoreServices | undefined = coreServices;
-  const workshopRooms = new WorkshopRoomRegistry(roomId => {
-    if (roomId === PRIMARY_WORKSHOP_ROOM_ID && initialPrimary) {
-      const first = initialPrimary;
-      initialPrimary = undefined;
-      return first;
-    }
-    return createRoomServices(roomId, assistantToolService.forWorkshopRoom());
-  }, sessionStore);
+  // Binding the slot here captures the folders at attachment, including for the first legacy panel.
+  const workshopRooms = new WorkshopRoomRegistry(createRoomServices, sessionStore);
   workshopRoomsForShutdown = workshopRooms;
 
   // Migrate API key from settings to SecretStorage if needed
@@ -796,7 +792,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Initialize application layer
   proseToolsViewProvider = new ProseToolsViewProvider(
     context.extensionUri,
-    coreServices,
+    windowServices,
     outputChannel,
     platform,
     {
@@ -843,11 +839,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     )
   );
 
-  // Lightbox editor-tab surface (ADR 2026-10-19 D1): the same CoreServices
+  // Lightbox editor-tab surface (ADR 2026-10-19 D1): the same window-level
   // bundle again, and its own serializer so a reload restores the tab.
   lightboxPanelProvider = new LightboxPanelProvider(
     context.extensionUri,
-    coreServices,
+    windowServices,
     outputChannel,
     platform,
     {

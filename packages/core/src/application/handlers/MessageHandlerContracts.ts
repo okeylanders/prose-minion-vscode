@@ -254,3 +254,30 @@ export interface CoreServices {
    */
   passageSearchEngine: PassageSearchEngine;
 }
+
+/** Services the sidebar and Lightbox can use without attaching a Workshop room. */
+export type WindowServices = Pick<CoreServices,
+  | 'assistantToolService'
+  | 'dictionaryService'
+  | 'dictionaryHistoryStore'
+  | 'contextAssistantService'
+  | 'proseStatsService'
+  | 'styleFlagsService'
+  | 'wordFrequencyService'
+  | 'wordSearchService'
+  | 'standardsService'
+  | 'aiResourceManager'
+  | 'aiResourceRefresh'
+  | 'secretsService'
+  | 'textSourceResolver'
+  | 'categorySearchService'
+  | 'accountBalanceService'
+  | 'workshopContextIntakeService'
+  | 'lightboxService'
+  | 'lightboxReadingRunner'
+  | 'lightboxContextShelf'
+  | 'lightboxBoardLibrary'
+  | 'lightboxBoardStore'
+  | 'contextPathSuggestions'
+  | 'passageSearchEngine'
+>;

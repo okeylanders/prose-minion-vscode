@@ -275,7 +275,7 @@ export class WorkshopNamedSessionLock {
 
   /** Rolling files use the same no-overwrite claim directory. Their saved name always stays in place. */
   withRollingLock<T>(filePath: string, sessionId: string, work: () => Promise<T>): Promise<T> {
-    return this.holding(filePath, sessionId, work);
+    return this.holding(filePath, sessionId, work, true);
   }
 
   /** An expired rolling claim remains its writer's. A token authorizes only a copy into a different slot. */
@@ -297,13 +297,17 @@ export class WorkshopNamedSessionLock {
   }
 
   /** Run `work` holding the file's lock; release however it ends. */
-  private async holding<T>(filePath: string, sessionId: string, work: (held: Held) => Promise<T>): Promise<T> {
+  private async holding<T>(filePath: string, sessionId: string, work: (held: Held) => Promise<T>, rolling = false): Promise<T> {
     const held = await this.acquire(filePath, sessionId);
+    let releaseLocally: (() => boolean) | undefined;
     try {
+      if (rolling) {
+        releaseLocally = this.fileSystem.prepareRollingClaimRelease?.(filePath, held.token);
+      }
       return await work(held);
     } finally {
       await this.hooks.beforeRelease?.();
-      if (!held.keep) {
+      if (!held.keep && !releaseLocally?.()) {
         await this.release(held, filePath);
       }
     }

@@ -21,7 +21,8 @@ jest.mock('p-limit', () => ({
 }));
 
 import * as path from 'node:path';
-import { shutDownExtension, type ExtensionShutdownParts } from '@app/application/extensionShutdown';
+import { shutDownExtension, workshopPersistenceLog, type ExtensionShutdownParts } from '@app/application/extensionShutdown';
+import { setupCoordinator } from '@/__tests__/application/services/workshop/session/WorkshopCoordinatorHarness';
 import { MessageType, type LightboxBoard, type LightboxReadingGroupId } from '@/shared/types/messages';
 import { decodeLightboxBoardFile, lightboxBoardOfFile } from '@/infrastructure/storage/LightboxBoardCodec';
 import type { ExecutionResult, InitialRunRequest } from '@orchestration/AgentRunContracts';
@@ -201,6 +202,20 @@ describe('deactivation and a source still being read (PR #183 F-03 re-review)', 
 });
 
 describe('shutDownExtension\'s order', () => {
+  it('retries dirty Workshop work after the native output channel has closed', async () => {
+    const channel = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    const { coordinator, session, store } = setupCoordinator({ log: workshopPersistenceLog(channel) });
+    await coordinator.initialize();
+    await coordinator.flush();
+    const write = jest.spyOn(store, 'writeCurrent').mockRejectedValueOnce(new Error('Interrupted write'));
+    session.setExcerpt({ text: 'The final paragraph.', source: { kind: 'manual' } });
+    coordinator.markDirty('excerpt replaced');
+    channel.appendLine.mockImplementation(() => { throw new Error('Channel has been closed'); });
+    await coordinator.flushForClose();
+    expect(write).toHaveBeenCalledTimes(2);
+    expect((await store.readCurrent())?.workshop.excerpt?.text).toBe('The final paragraph.');
+  });
+
   it('stops both tabs before it waits, and waits for the Lightbox even when the Workshop\'s flush fails', async () => {
     const calls: string[] = [];
     const drained = deferred<void>();

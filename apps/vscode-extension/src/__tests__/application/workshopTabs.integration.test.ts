@@ -73,12 +73,14 @@ function editorPanel(activatePanel: () => void) {
 describe.each([
   { shape: 'single folder', folders: ['Book'] },
   { shape: 'no folders', folders: [] },
-  { shape: 'two roots', folders: ['First', 'Second'] }
-])('activated Workshop rooms with $shape', ({ folders }) => {
+  { shape: 'two roots', folders: ['First', 'Second'] },
+  { shape: 'two roots before first attachment', folders: ['Book', 'Other'] }
+])('activated Workshop rooms with $shape', ({ folders, shape }) => {
   const panels: ReturnType<typeof editorPanel>[] = [];
   const commands = new Map<string, () => unknown>();
   const subscriptions: vscode.Disposable[] = [];
   const engines = new Set<AIResourceManager>();
+  let shutdownAfterWorkspaceChange = false;
   beforeAll(async () => {
     mockFiles.files.clear();
     jest.clearAllMocks();
@@ -135,7 +137,11 @@ describe.each([
   });
   afterAll(async () => {
     try {
-      await deactivate();
+      if (shutdownAfterWorkspaceChange) {
+        await expect(deactivate()).rejects.toThrow('The Workshop workspace changed after this session was loaded');
+      } else {
+        await deactivate();
+      }
     } finally {
       engines.forEach(manager => manager.dispose());
       subscriptions.reverse().forEach(part => part.dispose());
@@ -160,6 +166,41 @@ describe.each([
     expect(panel.snapshot().excerpt?.text).toBe(excerpt);
     return panel;
   };
+
+  if (shape === 'two roots before first attachment') {
+    it('binds the first ordinary Workshop to the workspace at attachment, then protects that binding', async () => {
+      const current = '/Book/prose-minion/sessions/current.json';
+      const fixture = await readFile(path.join(__dirname,
+        '../../../../../packages/core/src/__tests__/fixtures/workshop-session-v2-before-memory.json'));
+      await mockFiles.writeFile(current, fixture);
+      const saved = JSON.parse(fixture.toString()) as { sessionId: string; workshop: { excerpt: { text: string } } };
+      const book = { name: 'Book', uri: vscode.Uri.file('/Book') };
+      Object.assign(vscode.workspace, { workspaceFolders: [book] });
+      await commands.get('prose-minion.openWorkshop')!();
+      const panel = panels.at(-1)!;
+      await panel.send(MessageType.WORKSHOP_REQUEST_SESSION);
+      expect(panel.snapshot().excerpt?.text).toBe(saved.workshop.excerpt.text);
+
+      const revised = 'The jar held a silver thimble.';
+      await panel.send(MessageType.WORKSHOP_SET_EXCERPT, { text: revised, source: { kind: 'manual' } });
+      await panel.send(MessageType.WORKSHOP_LIST_SESSIONS, { requestId: 'after-edit' });
+      expect(mockFiles.json(current)).toMatchObject({ sessionId: saved.sessionId, workshop: { excerpt: { text: revised } } });
+
+      // An already attached slot keeps its original project when the sole folder changes again.
+      Object.assign(vscode.workspace, { workspaceFolders: [{ name: 'Other', uri: vscode.Uri.file('/Other') }] });
+      try {
+        await panel.send(MessageType.WORKSHOP_SET_EXCERPT, { text: 'Different manuscript.', source: { kind: 'manual' } });
+        await panel.send(MessageType.WORKSHOP_LIST_SESSIONS, { requestId: 'after-root-change' });
+        expect(mockFiles.json(current)).toMatchObject({ workshop: { excerpt: { text: revised } } });
+        expect(mockFiles.files.has('/Other/prose-minion/sessions/current.json')).toBe(false);
+        // The close drain must report that protected edit even after the former workspace returns.
+        shutdownAfterWorkspaceChange = true;
+      } finally {
+        Object.assign(vscode.workspace, { workspaceFolders: [book] });
+      }
+    });
+    return;
+  }
 
   if (folders.length !== 1) {
     it('recovers each closed in-memory room from the native picker without a project file', async () => {

@@ -37,6 +37,7 @@ export type { WorkshopNoticeShot } from '@shared/constants/workshopNotices';
 export { MessageHandler } from '@/application/handlers/MessageHandler';
 export type {
   CoreServices,
+  WindowServices,
   MessageTransport,
   ResultCache,
   SecretsPort,

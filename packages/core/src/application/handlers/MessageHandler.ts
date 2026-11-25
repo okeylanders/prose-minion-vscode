@@ -32,6 +32,7 @@ import {
 } from '@messages';
 import {
   CoreServices,
+  WindowServices,
   MessageTransport,
   ResultCache,
   WorkshopUiActions
@@ -163,7 +164,7 @@ export class MessageHandler {
   ] as const;
 
   constructor(
-    private readonly services: CoreServices,
+    private readonly services: CoreServices | WindowServices,
     // Raw webview transport (the shell binds it to `webview.postMessage`); keeps
     // MessageHandler vscode-free. NOTE: domain handlers must receive the wrapped
     // `this.postMessage` (logging + result cache), NOT this raw `transport` — the
@@ -188,36 +189,13 @@ export class MessageHandler {
       textSourceResolver,
       categorySearchService,
       accountBalanceService,
-      workshopSessionService,
-      workshopRoomDeliveryService,
-      workshopPersonaCapabilityFactory,
-      workshopToolSidePass,
       workshopContextIntakeService,
-      workshopConversationSettingsService,
-      workshopSessionTimeService,
-      workshopSessionPersistenceCoordinator,
-      workshopTranscriptExportService,
-      gesturePlaygroundService,
-      creativeVariationsService,
-      showVsTellService,
-      lexicalGravityModelService,
-      lexicalGravityLensRepository,
-      workshopStandingDirectiveService,
       lightboxService,
       lightboxReadingRunner,
       lightboxContextShelf,
-      lightboxBoardLibrary,
-      projectMemory,
-      workshopPinnedContext,
-      workshopTranscriptRecallService,
-      fileEditStaging,
-      projectFileEditGateway,
-      helperAgentService,
-      editorSelectionSnapshots,
-      workshopSavedSessionTodos,
-      contextPathProposals,
-      workshopPassageSearch
+      lightboxBoardLibrary
     } = services;
+    const room = 'workshopSessionService' in services ? services : undefined;
 
     // Each surface receives the same window snapshot, including views opened after a run.
     this.disposeTokenUsageListener = aiResourceManager.addTokenUsageListener(usage => {
@@ -333,7 +311,33 @@ export class MessageHandler {
     // like the other 11: injected services + platform ports, nothing
     // constructed here beyond the handler itself. Shell owns host pickers and
     // session file actions; the intake service owns file/workspace mechanics.
-    if (!this.uiActions.surface || this.uiActions.surface === 'workshop') {
+    if (room && (!this.uiActions.surface || this.uiActions.surface === 'workshop')) {
+      const {
+        workshopSessionService,
+        workshopRoomDeliveryService,
+        workshopPersonaCapabilityFactory,
+        workshopToolSidePass,
+        workshopConversationSettingsService,
+        workshopSessionTimeService,
+        workshopSessionPersistenceCoordinator,
+        workshopTranscriptExportService,
+        gesturePlaygroundService,
+        creativeVariationsService,
+        showVsTellService,
+        lexicalGravityModelService,
+        lexicalGravityLensRepository,
+        workshopStandingDirectiveService,
+        projectMemory,
+        workshopPinnedContext,
+        workshopTranscriptRecallService,
+        fileEditStaging,
+        projectFileEditGateway,
+        helperAgentService,
+        editorSelectionSnapshots,
+        workshopSavedSessionTodos,
+        contextPathProposals,
+        workshopPassageSearch
+      } = room;
       this.workshopHandler = new WorkshopRoomHandler(
         assistantToolService,
         contextAssistantService,
@@ -384,7 +388,7 @@ export class MessageHandler {
       outputChannel,
       this.uiActions.handOffToWorkshop,
       {
-        tray: this.uiActions.workshopTray ?? workshopLightboxTray(workshopSessionService),
+        tray: this.uiActions.workshopTray ?? (room && workshopLightboxTray(room.workshopSessionService)),
         openWorkshop: this.uiActions.openWorkshop,
         captureWorkshopHandoff: this.uiActions.captureWorkshopHandoff
       }

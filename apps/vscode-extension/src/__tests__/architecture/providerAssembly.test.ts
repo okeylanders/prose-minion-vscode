@@ -177,9 +177,9 @@ describe('app-shell provider assembly', () => {
     );
   });
 
-  it('LightboxPanelProvider is wired from the composition root with the CoreServices bundle (ADR 2026-10-19 D1)', () => {
+  it('LightboxPanelProvider is wired from the composition root with window services (ADR 2026-10-19 D1)', () => {
     const providerSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'LightboxPanelProvider.ts'), 'utf8');
-    expect(providerSource).toMatch(/coreServices:\s*CoreServices/);
+    expect(providerSource).toMatch(/coreServices:\s*WindowServices/);
     expect(providerSource).toMatch(
       /new MessageHandler\(\s*this\.coreServices,[\s\S]*?this\.outputChannel,\s*this\.uiActions\s*\)/
     );
@@ -188,17 +188,17 @@ describe('app-shell provider assembly', () => {
     const start = extensionSource.indexOf('new LightboxPanelProvider(');
     expect(start).toBeGreaterThan(-1);
     const end = extensionSource.indexOf(');', start);
-    expect(extensionSource.slice(start, end)).toContain('coreServices');
+    expect(extensionSource.slice(start, end)).toContain('windowServices');
     // The board service is built here, once, and carried in the bundle.
     expect(extensionSource.match(/new LightboxService\(/g)).toHaveLength(1);
-    expect(extensionSource).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\blightboxService\b[\s\S]*?\};/);
+    expect(extensionSource).toMatch(/const windowServices: WindowServices = \{[\s\S]*?\blightboxService\b[\s\S]*?\};/);
   });
 
   it('builds the Lightbox\'s own model engine only here, through the one AI resource manager (Slice 4L)', () => {
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
     // One manager builds every scope's engine and client, the Lightbox's included, and rides in the bundle.
     expect(extensionSource.match(/\bnew\s+AIResourceManager\s*\(/g)).toHaveLength(1);
-    expect(extensionSource).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\baiResourceManager,[\s\S]*?\};/);
+    expect(extensionSource).toMatch(/const windowServices: WindowServices = \{[\s\S]*?\baiResourceManager,[\s\S]*?\};/);
     // The Lightbox's runner reads its engine from that manager.
     const start = extensionSource.indexOf('new LightboxReadingRunner(');
     expect(start).toBeGreaterThan(-1);
