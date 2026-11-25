@@ -250,6 +250,7 @@ export class AssistantToolService {
   private writingToolsAssistant?: WritingToolsAssistant;
   /** The stable assistant engine; provider availability may change beneath it. */
   private assistantEngine?: AgentRunEngine;
+  private syncWorkshopWriterProfile?: (conversationId: string) => Promise<void> | undefined;
   private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
   /**
    * Whether persona prompts teach the `memory.*` grammar now (ADR 2026-11-04
@@ -298,6 +299,11 @@ export class AssistantToolService {
       this.aiResourceManager, this.resourceLoader, this.toolOptions,
       this.workshopWidgetRecommendationInstruction, this.outputChannel, 'room'
     );
+  }
+
+  /** Room-owned guard before a retained persona prompt goes back to the provider. */
+  setWorkshopWriterProfileSync(sync: (conversationId: string) => Promise<void> | undefined): void {
+    this.syncWorkshopWriterProfile = sync;
   }
 
   /** Bind the project-memory grammar check; called once, in `extension.ts`. */
@@ -788,6 +794,10 @@ export class AssistantToolService {
       );
     }
 
+    const profileSync = this.syncWorkshopWriterProfile?.(conversationId);
+    if (profileSync) {
+      await profileSync;
+    }
     const options = this.toolOptions.getOptions();
     this.outputChannel?.appendLine(
       `[AssistantToolService] Continuing conversation ${conversationId} | Streaming: ${!!streamingOptions?.onToken}`

@@ -8,7 +8,8 @@ import {
 
 interface RoomEntry {
   readonly services: CoreServices;
-  readonly ready: Promise<void>;
+  readonly hydrated: Promise<void>;
+  ready: Promise<void>;
   attached: boolean;
   readonly ephemeral: boolean;
   closing?: Promise<WorkshopRoomCloseDestination | void>;
@@ -73,18 +74,26 @@ export class WorkshopRoomRegistry {
       const services = this.build(roomId);
       const sessions = services.workshopSessionPersistenceCoordinator;
       const ephemeral = !sessions.availability().available;
-      const ready = sessions.initialize().then(() => undefined, error => {
+      const hydrated = sessions.initialize().then(() => undefined, error => {
         // A failed hydration never saw a panel route. A fresh acquire may retry from disk.
         sessions.releaseNamedOwnership();
         this.rooms.delete(roomId);
         throw error;
       });
-      room = { services, ready, attached: true, ephemeral };
+      room = { services, hydrated, ready: hydrated, attached: false, ephemeral };
       this.rooms.set(roomId, room);
     }
+    if (!room.attached) {
+      const attaching = room;
+      const start = room.closing?.then(() => undefined, () => attaching.hydrated) ?? room.hydrated;
+      room.ready = start.then(() => {
+        if (attaching.attached) {
+          return attaching.services.workshopConversationSettingsService.syncWriterProfile();
+        }
+      });
+    }
     room.attached = true;
-    const ready = room.ready;
-    return { services: room.services, ready: room.closing?.then(() => undefined, () => ready) ?? ready };
+    return { services: room.services, ready: room.ready };
   }
 
   /** Follow only the destination of external commands; never redirect an in-flight room operation. */
@@ -122,7 +131,11 @@ export class WorkshopRoomRegistry {
   }
 
   private async finishClose(roomId: string, room: RoomEntry): Promise<WorkshopRoomCloseDestination | void> {
-    await room.ready;
+    // Capture this attachment before a reopen can queue behind our close. An unavailable
+    // prompt engine blocks model delivery, but cannot take away the room's checkpoint.
+    const attachment = room.ready;
+    await room.hydrated;
+    await attachment.catch(() => undefined);
     const { workshopSessionPersistenceCoordinator: sessions, projectMemory, workshopSessionService, assistantToolService } = room.services;
     // Await both owners even on failure; keep the full room and its named claim for retry.
     const [checkpoint, memories] = await Promise.allSettled([sessions.flushForClose(), projectMemory.shutDown()]);

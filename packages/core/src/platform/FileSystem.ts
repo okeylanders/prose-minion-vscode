@@ -44,13 +44,20 @@ export interface FileStat {
   size: number;
 }
 
+/** Native operations for a rolling file whose publisher has already acquired its filesystem token. */
+export interface LocalRollingClaim {
+  /** Atomically replace the existing file with its staged sibling, after the store checks its observed revision. */
+  replace(stagedPath: string): Promise<void>;
+  /** False requests ordinary port cleanup. */
+  release(): boolean;
+}
+
 export interface FileSystem {
   /**
-   * Optional host-local cleanup for an acquired rolling checkpoint claim. Prepare only for the
-   * token the calling writer owns. The returned release runs after publication settles and can
-   * survive the editor's filesystem RPC shutting down. False requests ordinary port cleanup.
+   * Optional operations bound to the exact local rolling file and acquired writer token.
+   * Keep remote/provider operations on the regular port. Release after publication settles.
    */
-  prepareRollingClaimRelease?(filePath: string, token: string): (() => boolean) | undefined;
+  prepareRollingClaim?(filePath: string, token: string): LocalRollingClaim | undefined;
 
   /** Read a file's bytes. Throws if missing (mirrors workspace.fs). */
   readFile(path: string): Promise<Uint8Array>;

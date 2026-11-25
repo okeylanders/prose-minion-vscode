@@ -595,6 +595,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       outputChannel,
       workshopWriterProfileService
     );
+    assistantToolService.setWorkshopWriterProfileSync(id => workshopConversationSettingsService.syncWriterProfile(id));
     const workshopStandingDirectiveService = new WorkshopStandingDirectiveService(
       workshopSessionService,
       workshopConversationSettingsService

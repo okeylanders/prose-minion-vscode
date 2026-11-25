@@ -27,12 +27,14 @@
 import * as fs from 'node:fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import type { FileStat, FileSystem, FileType } from '@prose-minion/core';
+import type { FileStat, FileSystem, FileType, LocalRollingClaim } from '@prose-minion/core';
+
+const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 
 export class VsCodeFileSystem implements FileSystem {
-  prepareRollingClaimRelease(filePath: string, token: string): (() => boolean) | undefined {
+  prepareRollingClaim(filePath: string, token: string): LocalRollingClaim | undefined {
     const folders = vscode.workspace.workspaceFolders;
-    if (vscode.env?.remoteName || folders?.length !== 1 || !/^[a-f0-9-]{36}$/.test(token)) {
+    if (vscode.env?.remoteName || folders?.length !== 1 || !uuid.test(token)) {
       return undefined;
     }
     const root = folders[0].uri;
@@ -52,18 +54,29 @@ export class VsCodeFileSystem implements FileSystem {
     } catch {
       return undefined;
     }
-    return () => {
-      try {
-        if (!ownsToken()) {
-          return true; // Our token is gone. Leave any successor alone.
+    return {
+      replace: async staged => {
+        // workspace.fs.rename(overwrite: true) deletes the destination before moving the source.
+        // Both files are on this local volume. Replace in one OS operation under the acquired token.
+        const prefix = `${filePath}.tmp-`;
+        if (!staged.startsWith(prefix) || !uuid.test(staged.slice(prefix.length)) || !ownsToken()) {
+          throw new Error('The Workshop rolling publication no longer owns its staging path or token.');
         }
-        // Rolling claims have an empty private folder. No recursive removals, even on a damaged lock.
-        if (fs.lstatSync(own, { throwIfNoEntry: false })) { fs.rmdirSync(own); }
-        fs.unlinkSync(marker);
-        fs.rmdirSync(lock);
-        return true;
-      } catch {
-        return false;
+        await fs.promises.rename(staged, filePath);
+      },
+      release: () => {
+        try {
+          if (!ownsToken()) {
+            return true; // Our token is gone. Leave any successor alone.
+          }
+          // Rolling claims have an empty private folder. No recursive removals, even on a damaged lock.
+          if (fs.lstatSync(own, { throwIfNoEntry: false })) { fs.rmdirSync(own); }
+          fs.unlinkSync(marker);
+          fs.rmdirSync(lock);
+          return true;
+        } catch {
+          return false;
+        }
       }
     };
   }

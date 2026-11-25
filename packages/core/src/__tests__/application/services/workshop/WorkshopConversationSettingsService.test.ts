@@ -259,6 +259,31 @@ describe('WorkshopConversationSettingsService', () => {
     expect(assistant.replaceWorkshopConversationSettings).not.toHaveBeenCalled();
   });
 
+  it('refreshes a reopened room from the live global profile after its settings write failed', async () => {
+    configuredProfile = { enabled: true, preferredAddress: '', bio: 'My biography' };
+    const profile = new WorkshopWriterProfileService(settings, log);
+    const editing = new WorkshopConversationSettingsService(session, assistant, settings, log, profile);
+    const sibling = new WorkshopSessionService(Date.now, conversational);
+    sibling.setExcerpt({ text: 'Alice opens the door.', source: { kind: 'manual' } });
+    sibling.beginPersonaMessage('first', 'Read this.');
+    sibling.completeRun('first', 'Ready.', undefined, false, 'sibling-host');
+    const reopening = new WorkshopConversationSettingsService(sibling, assistant, settings, log, profile);
+    settings.update.mockRejectedValueOnce(new Error('read-only'));
+    const disabled = { ...configuredProfile, enabled: false };
+    await expect(editing.applyFromWebview(balanced, disabled)).resolves.toMatchObject({
+      persistenceErrors: { writerProfile: 'read-only' }
+    });
+
+    assistant.replaceWorkshopConversationSettings.mockClear();
+    await reopening.syncWriterProfile();
+    expect(assistant.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
+      [{ conversationId: 'sibling-host', personaId: 'jill', role: 'host' }], conversational, disabled, []
+    );
+    expect(sibling.getConversationBehavior()).toEqual(conversational);
+    expect(profile.getProfile()).toEqual(disabled);
+    expect(settings.update).toHaveBeenCalledTimes(1);
+  });
+
   it('reports both persistence failures while retaining both live values', async () => {
     const profile = {
       enabled: true,

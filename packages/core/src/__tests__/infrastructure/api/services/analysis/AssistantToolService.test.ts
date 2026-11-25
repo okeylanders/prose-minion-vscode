@@ -9,6 +9,7 @@ import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 import {
   API_KEY_NOT_CONFIGURED_HEADING,
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  WORKSHOP_WRITER_PROFILE_SETTING,
   DEFAULT_WORKSHOP_WRITER_PROFILE,
   MessageType,
   WebviewToExtensionMessage
@@ -77,7 +78,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
   it('removes a disabled global bio from each retained host and guest, retrying the busy room after settlement', async () => {
     const behavior = DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR;
     const enabled = { enabled: true, preferredAddress: '', bio: 'I write about Alice.' };
-    const values: Record<string, unknown> = { 'workshop.writerProfile': enabled };
+    const values: Record<string, unknown> = { [WORKSHOP_WRITER_PROFILE_SETTING.key]: enabled };
     const settings = createFakeSettings(values);
     settings.update = async (_section, key, value) => { values[key] = value; };
     const log = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
@@ -91,10 +92,11 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       session.setExcerpt({ text: 'Alice opened the door.', source: { kind: 'manual' } });
       const roomAssistant = assistant.forWorkshopRoom();
       const coordinator = new WorkshopConversationSettingsService(session, roomAssistant, settings, log, profile);
+      roomAssistant.setWorkshopWriterProfileSync(id => coordinator.syncWriterProfile(id));
       const host = conversations.startConversation('host', 'Initial prompt');
       session.beginPersonaMessage('first', 'Read this.');
       session.completeRun('first', 'Ready.', undefined, false, host);
-      return { session, coordinator, host };
+      return { session, coordinator, roomAssistant, host };
     };
     const a = createRoom();
     const b = createRoom();
@@ -104,7 +106,9 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       await room.coordinator.replaceStandingDirectiveFrames([]);
     }
     const prompt = (id: string) => conversations.getMessages(id)[0].content;
-    for (const id of [a.host, b.host, guest]) expect(prompt(id)).toContain(enabled.bio);
+    for (const id of [a.host, b.host, guest]) {
+      expect(prompt(id)).toContain(enabled.bio);
+    }
 
     b.session.beginPersonaMessage('ongoing', 'Another question.');
     await a.coordinator.applyFromWebview(behavior, { ...enabled, enabled: false });
@@ -117,8 +121,19 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     engine.replaceSystemMessagesBetweenRuns.mockImplementationOnce(() => { throw new Error('engine unavailable'); });
     await expect(b.coordinator.flushDeferredSettingsSync()).rejects.toThrow('engine unavailable');
     expect(prompt(b.host)).toContain(enabled.bio);
-    await expect(b.coordinator.flushDeferredSettingsSync()).resolves.toMatchObject({ changed: true });
-    for (const id of [a.host, b.host, guest]) expect(prompt(id)).not.toContain(enabled.bio);
+    engine.replaceSystemMessagesBetweenRuns.mockImplementationOnce(() => { throw new Error('engine unavailable'); });
+    await expect(b.roomAssistant.continueConversation(guest, 'Read the next paragraph.')).rejects.toThrow('engine unavailable');
+    expect(engine.continueConversation).not.toHaveBeenCalled();
+    const continueRun = engine.continueConversation.getMockImplementation()!;
+    engine.continueConversation.mockImplementationOnce(request => {
+      expect(prompt(request.conversationId)).not.toContain(enabled.bio);
+      return continueRun(request);
+    });
+    await b.roomAssistant.continueConversation(guest, 'Read the next paragraph.');
+    expect(engine.continueConversation).toHaveBeenCalledTimes(1);
+    for (const id of [a.host, b.host, guest]) {
+      expect(prompt(id)).not.toContain(enabled.bio);
+    }
     await expect(b.coordinator.syncFromSettings()).resolves.toMatchObject({ changed: false });
   });
 
