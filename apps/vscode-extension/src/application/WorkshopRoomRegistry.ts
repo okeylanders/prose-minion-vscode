@@ -8,6 +8,7 @@ interface RoomEntry {
   readonly services: CoreServices;
   readonly ready: Promise<void>;
   attached: boolean;
+  readonly ephemeral: boolean;
   closing?: Promise<void>;
   closedAt?: string;
 }
@@ -24,6 +25,7 @@ export class WorkshopRoomRegistry {
   private readonly trayListeners = new Set<() => void>();
   private trayUnsubscribe?: () => void;
   private focusedRoom?: string;
+  private shuttingDown = false;
   private traySnapshot: ReturnType<WorkshopLightboxTray['read']> = [];
 
   constructor(
@@ -32,14 +34,24 @@ export class WorkshopRoomRegistry {
   ) {}
 
   async listRoomCheckpoints(): Promise<RoomCheckpoint[]> {
-    const checkpoints = new Map((await this.readCheckpoints()).map(entry => [entry.roomId, entry]));
+    const recovering = new Map<string, RoomCheckpoint>();
     for (const [roomId, room] of this.rooms) {
       if (!room.attached && room.closedAt) {
         // A failed first write, or a window without a workspace, can leave the only copy in memory.
         const { title } = room.services.workshopSessionPersistenceCoordinator.openRoomIdentity();
-        checkpoints.set(roomId, { roomId, title, updatedAt: room.closedAt });
+        recovering.set(roomId, { roomId, title, updatedAt: room.closedAt });
       }
     }
+    let stored: RoomCheckpoint[];
+    try {
+      stored = await this.readCheckpoints();
+    } catch (error) {
+      // A file-system outage must not hide the only route back to unsaved, retained work.
+      if (recovering.size === 0) throw error;
+      stored = [];
+    }
+    const checkpoints = new Map(stored.map(entry => [entry.roomId, entry]));
+    recovering.forEach((entry, id) => checkpoints.set(id, entry));
     return [...checkpoints.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }
 
@@ -56,13 +68,14 @@ export class WorkshopRoomRegistry {
     if (!room) {
       const services = this.build(roomId);
       const sessions = services.workshopSessionPersistenceCoordinator;
+      const ephemeral = !sessions.availability().available;
       const ready = sessions.initialize().then(() => undefined, error => {
         // A failed hydration never saw a panel route. A fresh acquire may retry from disk.
         sessions.releaseNamedOwnership();
         this.rooms.delete(roomId);
         throw error;
       });
-      room = { services, ready, attached: true };
+      room = { services, ready, attached: true, ephemeral };
       this.rooms.set(roomId, room);
     }
     room.attached = true;
@@ -113,7 +126,10 @@ export class WorkshopRoomRegistry {
       if (result.status === 'rejected') throw result.reason;
     }
     // A panel reopened the slot during its final write. The same objects resume after this promise.
-    if (room.attached || !sessions.availability().available) return;
+    if (room.attached) return;
+    // No writer-selected project exists for a folderless or multi-root room. Only host shutdown
+    // releases its retained conversations; closing the tab can always reopen this memory-only slot.
+    if (room.ephemeral && !this.shuttingDown) return;
     sessions.releaseNamedOwnership();
     for (const id of workshopSessionService.clearAllConversations()) {
       assistantToolService.discardConversation(id);
@@ -123,6 +139,7 @@ export class WorkshopRoomRegistry {
   }
 
   async flush(): Promise<void> {
+    this.shuttingDown = true;
     const settled = await Promise.allSettled(Array.from(this.rooms.keys(), id => this.release(id)));
     for (const result of settled) {
       if (result.status === 'rejected') throw result.reason;

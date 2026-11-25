@@ -13,7 +13,7 @@ function held() {
   return { promise, release, refuse };
 }
 
-function room(id: string) {
+function room(id: string, unavailable?: 'no-workspace' | 'multi-root') {
   const initialize = jest.fn(async () => {});
   const flushForClose = jest.fn(async () => {});
   const releaseNamedOwnership = jest.fn();
@@ -24,7 +24,7 @@ function room(id: string) {
   const services = {
     workshopSessionPersistenceCoordinator: {
       initialize, flushForClose, releaseNamedOwnership,
-      availability: () => ({ available: true }),
+      availability: () => unavailable ? { available: false, reason: unavailable } : { available: true },
       openRoomIdentity: () => ({ title: id })
     },
     workshopSessionService: {
@@ -108,6 +108,21 @@ describe('Workshop room registry', () => {
     expect(first.releaseNamedOwnership).toHaveBeenCalledTimes(1);
     expect(second.releaseNamedOwnership).not.toHaveBeenCalled();
     expect(reopened.services).toBe(second.services);
+  });
+
+  it.each(['no-workspace', 'multi-root'] as const)('keeps a closed %s room in memory until host shutdown', async reason => {
+    const scratch = room('Ephemeral', reason);
+    const build = jest.fn(() => scratch.services);
+    const rooms = new WorkshopRoomRegistry(build, async () => []);
+    await rooms.acquire('A').ready;
+    await rooms.release('A');
+    expect(scratch.discardConversation).not.toHaveBeenCalled();
+    expect(await rooms.listRoomCheckpoints()).toEqual([{ roomId: 'A', title: 'Ephemeral', updatedAt: expect.any(String) }]);
+    expect(rooms.acquire('A').services).toBe(scratch.services);
+    expect(build).toHaveBeenCalledTimes(1);
+    await rooms.flush();
+    expect(scratch.discardConversation).toHaveBeenCalledWith('Ephemeral');
+    expect(await rooms.listRoomCheckpoints()).toEqual([]);
   });
 
   it('switches Lightbox tray subscriptions on focus and empties the tray after the final close', async () => {
