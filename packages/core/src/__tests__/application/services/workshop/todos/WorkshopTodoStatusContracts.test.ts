@@ -156,7 +156,7 @@ describe('boundaries (D6, D6a, D6b)', () => {
       .map(match => match[1].replace(/\s+/g, ' ').trim());
     expect(writes.sort()).toEqual([
       'paths, filePath, fileName, decoded, false',
-      "paths, paths.currentPath, this.currentFileName, decoded, expected !== 'absent', verify"
+      "paths, paths.currentPath, this.currentFileName, decoded, expected !== 'absent', verify, replace"
     ]);
     const rolling = store.slice(store.indexOf('  async writeCurrent('), store.indexOf('  private async readRollingRevision('));
     expect(rolling).toMatch(/withRollingLock\(paths\.currentPath[\s\S]+readRollingRevision\(paths\.currentPath\)[\s\S]+latest !== expected[\s\S]+throw new WorkshopRollingCheckpointConflictError[\s\S]+this\.writeSnapshotWithSearchIndex/);

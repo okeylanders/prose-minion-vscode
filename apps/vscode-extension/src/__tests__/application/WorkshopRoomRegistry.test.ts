@@ -21,7 +21,9 @@ function room(id: string, unavailable?: 'no-workspace' | 'multi-root') {
   const discardConversation = jest.fn();
   const memoryDrain = jest.fn(async () => {});
   const unsubscribe = jest.fn();
+  const syncWriterProfile = jest.fn(async () => {});
   const services = {
+    workshopConversationSettingsService: { syncWriterProfile },
     workshopSessionPersistenceCoordinator: {
       initialize, flushForClose, releaseNamedOwnership,
       availability: () => unavailable ? { available: false, reason: unavailable } : { available: true },
@@ -36,7 +38,7 @@ function room(id: string, unavailable?: 'no-workspace' | 'multi-root') {
     assistantToolService: { discardConversation },
     projectMemory: { shutDown: memoryDrain }
   } as unknown as CoreServices;
-  return { services, initialize, flushForClose, releaseNamedOwnership, invalidatePendingRoomReads, discardConversation, memoryDrain, unsubscribe };
+  return { services, syncWriterProfile, initialize, flushForClose, releaseNamedOwnership, invalidatePendingRoomReads, discardConversation, memoryDrain, unsubscribe };
 }
 
 function checkpointStore() {
@@ -72,6 +74,26 @@ describe('Workshop room registry', () => {
     await rooms.release('A');
     expect(first.discardConversation).toHaveBeenCalledWith('A');
     expect(first.releaseNamedOwnership).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for the current writer profile on first open and before resuming a retained closed room', async () => {
+    const a = room('A', 'no-workspace');
+    const rooms = new WorkshopRoomRegistry(() => a.services, checkpointStore());
+    await rooms.acquire('A').ready;
+    expect(a.syncWriterProfile).toHaveBeenCalledTimes(1);
+    await rooms.release('A');
+
+    const replacing = held();
+    const started = held();
+    a.syncWriterProfile.mockImplementationOnce(() => { started.release(); return replacing.promise; });
+    const resumed = jest.fn();
+    const reopened = rooms.acquire('A').ready.then(resumed);
+    await started.promise;
+    expect(resumed).not.toHaveBeenCalled();
+    replacing.release();
+    await reopened;
+    expect(resumed).toHaveBeenCalledTimes(1);
+    expect(a.initialize).toHaveBeenCalledTimes(1);
   });
 
   it('drains every room even when one fails, and makes the failed first write recoverable', async () => {

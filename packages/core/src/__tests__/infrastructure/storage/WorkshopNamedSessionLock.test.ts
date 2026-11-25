@@ -379,18 +379,18 @@ describe('explicit recovery follows D6e\'s table', () => {
 });
 
 it('prepares host-local release only for an acquired rolling token; a refused contender cannot clean it up', async () => {
-  const prepareRollingClaimRelease = jest.fn(() => () => false);
-  const fs = Object.assign(new MemoryFileSystem(), { prepareRollingClaimRelease });
+  const prepareRollingClaim = jest.fn(() => ({ release: () => false, replace: jest.fn() }));
+  const fs = Object.assign(new MemoryFileSystem(), { prepareRollingClaim });
   const lock = new WorkshopNamedSessionLock(fs, log(), now, 1 << 24, errors);
   const scratch = path.join(folder, 'current.json');
   await lock.withRollingLock(scratch, 'room-a', async () => {
     await expect(lock.withRollingLock(scratch, 'room-b', async () => undefined))
       .rejects.toMatchObject({ name: 'WorkshopNamedSessionBusyError' });
-    expect(prepareRollingClaimRelease).toHaveBeenCalledTimes(1);
-    expect(prepareRollingClaimRelease).toHaveBeenCalledWith(scratch, expect.stringMatching(/^[a-f0-9-]{36}$/));
+    expect(prepareRollingClaim).toHaveBeenCalledTimes(1);
+    expect(prepareRollingClaim).toHaveBeenCalledWith(scratch, expect.stringMatching(/^[a-f0-9-]{36}$/));
   });
   expect(await lock.rollingClaim(scratch)).toEqual({ state: 'none' });
   await fs.writeFile(filePath, encode(checkpoint('Original')));
   await lock.remove(filePath, 'alice-polish');
-  expect(prepareRollingClaimRelease).toHaveBeenCalledTimes(1);
+  expect(prepareRollingClaim).toHaveBeenCalledTimes(1);
 });
