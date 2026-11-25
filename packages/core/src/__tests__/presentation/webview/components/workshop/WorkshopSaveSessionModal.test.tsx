@@ -54,6 +54,7 @@ describe('WorkshopSaveSessionModal', () => {
   it('shows the complete snapshot manifest and stable timestamped storage identity', () => {
     renderModal();
 
+    expect(screen.getByText(/this tab’s checkpoint. Save to create a named session/)).not.toBeNull();
     expect(screen.getByRole('heading', { name: 'Save session' })).not.toBeNull();
     expect(screen.getByText('v2 · 1,751 words')).not.toBeNull();
     expect(screen.getByText('4 turns · complete')).not.toBeNull();

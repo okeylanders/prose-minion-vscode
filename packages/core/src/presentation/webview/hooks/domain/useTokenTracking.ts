@@ -93,9 +93,18 @@ export const useTokenTracking = (): UseTokenTrackingReturn => {
     ...(persistedSeed ?? {}),
   });
 
-  // Last-request cost is transient runtime state (not persisted): on reload it
-  // stays blank until the next request, which is honest about what we know.
+  // The host supplies its window snapshot, including the latest reported request cost.
   const [lastRequestCostUsd, setLastRequestCostUsd] = React.useState<number | undefined>(undefined);
+
+  // An eager initial post can occur before React listens, especially on a restored tab.
+  React.useEffect(() => {
+    vscode.postMessage({
+      type: MessageType.REQUEST_TOKEN_USAGE,
+      source: 'webview.hooks.useTokenTracking',
+      payload: {},
+      timestamp: Date.now()
+    });
+  }, [vscode]);
 
   // Handle TOKEN_USAGE_UPDATE messages
   const handleTokenUsageUpdate = React.useCallback((message: TokenUsageUpdateMessage) => {

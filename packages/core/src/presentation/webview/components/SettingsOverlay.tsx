@@ -289,14 +289,14 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
             onChange={(e) => tokensSettings.updateSetting('showTokenWidget', e.target.checked)}
           /> Show Token Usage Widget
           <div className="settings-description">
-            Displays running token totals in the header. Resets manually or on reload.
+            Shows token use across all Prose Minion tools and tabs in this VS Code window. Resets manually or on reload.
           </div>
         </label>
 
         <div style={{ marginTop: 8 }}>
           <button
             onClick={tokenTracking.resetTokens}
-            title="Reset session token totals"
+            title="Reset token totals for this VS Code window"
             className="settings-button"
           >
             Reset Token Usage

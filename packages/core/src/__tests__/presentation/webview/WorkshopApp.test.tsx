@@ -212,7 +212,7 @@ describe('WorkshopApp', () => {
     });
 
     const alert = screen.getByRole('alert');
-    expect(alert.textContent).toContain('current.json could not be restored');
+    expect(alert.textContent).toContain('this tab’s checkpoint could not be restored');
     expect(alert.textContent).toContain('turn counter must be a non-negative safe integer');
   });
 

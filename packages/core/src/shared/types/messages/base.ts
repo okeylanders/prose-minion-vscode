@@ -88,6 +88,7 @@ export enum MessageType {
   SET_PUBLISHING_TRIM_SIZE = 'set_publishing_trim_size',
 
   // Token usage/cost updates
+  REQUEST_TOKEN_USAGE = 'request_token_usage',
   TOKEN_USAGE_UPDATE = 'token_usage_update',
 
   // OpenRouter account balance (credits + key limit)

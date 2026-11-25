@@ -189,13 +189,13 @@ export const WorkshopSaveSessionModal: React.FC<WorkshopSaveSessionModalProps> =
       </div>
 
       <footer className="pm-ws-session-sheet-foot">
-        <span>
-          {updating ? (
-            <>Autosaves to <strong>current.json</strong> and this named session.</>
-          ) : (
-            <>Autosaves to <strong>current.json</strong>; this creates a named session.</>
-          )}
-        </span>
+        {available && (
+          <span>
+            {updating
+              ? 'This room autosaves to this tab’s checkpoint and its named session.'
+              : 'This room autosaves to this tab’s checkpoint. Save to create a named session.'}
+          </span>
+        )}
         <button
           className="pm-ws-session-secondary"
           type="button"

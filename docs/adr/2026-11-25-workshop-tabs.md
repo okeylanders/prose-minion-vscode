@@ -1,6 +1,6 @@
 # ADR 2026-11-25 — Independent Workshop tabs
 
-**Status** Proposed for the Workshop tabs epic. T1, multiple unsaved rooms, is the writer's decision. The remaining choices below are implementation defaults for review. Revised after [PR 301’s design review](../pr-reviews/pr-301-workshop-tabs-design-review-6b8d0e76.md).
+**Status** Accepted for the Workshop tabs epic in [PR #301](https://github.com/okeylanders/prose-minion-vscode/pull/301). T1 requires multiple unsaved rooms. Revised after [PR 301’s design review](../pr-reviews/pr-301-workshop-tabs-design-review-6b8d0e76.md).
 
 **Scope** Each VS Code Workshop tab can hold its own room, run and recoverable manuscript discussion. The Lightbox continues to hand material to Workshop through its existing commands. [Epic and sprint gates](../../.todo/epics/epic-workshop-tabs-2026-11-25/README.md) · [Feature 9 and T1](../../.todo/features/feature-multiple-workshop-and-lightbox-tabs/README.md)
 

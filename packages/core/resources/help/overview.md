@@ -4,7 +4,7 @@
 
 Reference version: 2.16.0
 
-Open Prose Minion in the VS Code activity bar for the Assistant, Search, Metrics and Dictionary. Open Workshop for an ongoing conversation about a draft, or Lightbox for a board of measurements and readings about one chapter. For proofreading and line notes, right-click a Markdown or plain-text editor and open the Prose Minion submenu.
+Open Prose Minion in the VS Code activity bar for the Assistant, Search, Metrics and Dictionary. Open Workshop for an ongoing conversation about a draft. Use **New Workshop Tab** to keep a second room open beside it. Open Lightbox for a board of measurements and readings about one chapter. For proofreading and line notes, right-click a Markdown or plain-text editor and open the Prose Minion submenu.
 
 Any Workshop host or guest can look up a product question with help.search and read the matching section with help.read. Ask for the section behind an answer. See the [Prose Minion README](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/README.md) for the latest release highlights and the [extension changelog](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md) for every release.
 
@@ -26,7 +26,7 @@ Temperature controls variation in generation. Max tokens limits response length.
 
 ## Sidebar appearance and diagnostics
 
-Use the sidebar header to switch its palette, or set Sidebar Theme to follow VS Code. Show Token Widget controls the header's session usage and optional cost display. Show Debug Output in the sidebar title bar opens the extension's Output channel. The Debug Logging setting may include rejected model replies containing manuscript text in that channel.
+Use the sidebar header to switch its palette, or set Sidebar Theme to follow VS Code. Show Token Widget controls the header’s usage display. Its cumulative token count and last-request cost cover all Prose Minion activity in the current VS Code window. Show Debug Output in the sidebar title bar opens the extension's Output channel. The Debug Logging setting may include rejected model replies containing manuscript text in that channel.
 
 ## Project files and context paths
 

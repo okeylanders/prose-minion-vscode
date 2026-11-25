@@ -70,6 +70,7 @@ describe('WorkshopSessionBrowserModal', () => {
   it('renders the full browser with an always-visible named-session Open action', () => {
     renderModal();
 
+    expect(screen.getByText(/use Reopen Closed Workshop Room…/i)).not.toBeNull();
     expect(screen.getByRole('heading', { name: 'Open a prior session' })).not.toBeNull();
     expect(screen.getByRole('searchbox', {
       name: 'Search session names and content'
@@ -81,7 +82,7 @@ describe('WorkshopSessionBrowserModal', () => {
   it('badges the named session that is the live Workshop room', () => {
     renderModal({ activeSessionId: 'named-id' });
 
-    expect(screen.getByText('Open in Workshop')).not.toBeNull();
+    expect(screen.getByText('Open in this tab')).not.toBeNull();
     expect(screen.getByText('Current · autosaved')).not.toBeNull();
   });
 

@@ -57,7 +57,8 @@ import {
 } from '@shared/types';
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
-export type TokenUsageCallback = (usage: TokenUsage) => void;
+/** A completed provider request may omit its usage measurements. */
+export type TokenUsageCallback = (usage: TokenUsage | undefined) => void;
 
 export type AgentRunUnavailableReason =
   | 'missing-credentials'
@@ -956,7 +957,7 @@ export class AgentRunEngine {
     if (!options.onToken) {
       try {
         const response = await provider.createChatCompletion(messages, completionOptions);
-        this.emitUsage(response.usage);
+        this.tokenUsageCallback?.(response.usage);
         const native = adaptNativeToolCalls(capability, response.content, response.toolCalls, this.outputChannel);
         const inspection = capability?.inspectRequest(native.content);
         this.logCapabilityInspection(capability, inspection, native.content);
@@ -1050,7 +1051,9 @@ export class AgentRunEngine {
       }
     }
 
-    this.emitUsage(usage);
+    if (usage || (!cancelled && finishReason !== AGENT_RUN_INTERRUPTED_FINISH_REASON)) {
+      this.tokenUsageCallback?.(usage);
+    }
     // A translated native call joins the reply as the text the model should have written, and passes the
     // visibility guard as typed text would: the request is withheld, a short narration before it discarded.
     const native = adaptNativeToolCalls(capability, content, cancelled ? undefined : nativeToolCalls, this.outputChannel);
@@ -1269,10 +1272,6 @@ export class AgentRunEngine {
       }
     }
     return merged.length > 0 ? merged : undefined;
-  }
-
-  private emitUsage(usage?: TokenUsage): void {
-    if (usage) this.tokenUsageCallback?.(usage);
   }
 
   private toContextBudgetSnapshot(

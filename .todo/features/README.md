@@ -55,9 +55,9 @@ Several of these notes still carry their build-time status line (for example
 
 ## 🔨 In flight
 
-| # | Idea | Status |
-|---|---|---|
-| 9 | Several Workshop tabs, including unsaved rooms | In design on `epic/workshop-tabs`. [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [Feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
+| # | Idea | Who and where | Note |
+|---|---|---|---|
+| 9 | Several Workshop tabs, including unsaved rooms | Implemented on `epic/workshop-tabs` | [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [Feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
 
 ## ⏳ Not started
 
@@ -80,6 +80,7 @@ Several of these notes still carry their build-time status line (for example
 | 34 | Click a sent pill to see what was sent | Medium | Small; V1 decided. | [sent attachment viewer](feature-workshop-sent-attachment-viewer/README.md) |
 | 35 | Personas run the deterministic measures | Medium | Medium; short ADR. Reuses Passage Search's scopes. | [persona measures](feature-workshop-persona-measures/README.md) |
 | 36 | A long paste becomes a "Pasted text" pill | Medium | Small to medium; P1 (500 characters) and P2 decided. | [long paste pill](feature-workshop-long-paste-pill/README.md) |
+| 37 | A session keeps its OpenRouter cache key across a reload | Medium | Small; K1 and K2 decided. After #9 merges. | [session cache key](feature-workshop-session-cache-key/README.md) |
 
 ### Follow-ups split from shipped work (Low)
 
@@ -96,7 +97,6 @@ Several of these notes still carry their build-time status line (for example
 |---|---|---|
 | The Lightbox passage tests fail CI on timing, including unrelated PRs | Medium | [wall-clock test](../tech-debt/2026-11-19-lightbox-passages-wall-clock-test.md) |
 | A send refused while the room is busy loses its draft | Medium | [gated send loses draft](../tech-debt/2026-11-18-workshop-gated-send-loses-draft.md) |
-| Context reads land in whichever room is open when they finish | Medium | [room context reads unbound](../tech-debt/2026-11-18-workshop-room-context-reads-unbound-to-room.md) |
 | Lexical Gravity logs a rejected reply's text | Medium | [LG logs reply text](../tech-debt/2026-11-18-lexical-gravity-logs-rejected-reply-text.md) |
 | The stored-file rewrite may not fence a stalled writer | Medium | [stalled writer fence](../tech-debt/2026-11-19-stored-file-rewrite-stalled-writer-fence.md) |
 | Earlier turns re-read cost | Low | [re-read cost](../tech-debt/2026-11-18-workshop-earlier-turns-reread-cost.md) |
@@ -114,7 +114,7 @@ side.
      attachment code, and 34 is how a writer sees a sent paste.
    - **The draft-loss tech debt.** It's the same composer.
    - **33 (default models) and 32 (BYOK help).** Small, and worth shipping.
-   - **The Lexical Gravity log leak and the context-reads room binding.**
+   - **The Lexical Gravity log leak.** Room-bound context reads are part of the Workshop tabs epic.
 2. **Measures, then Read Aloud: 35, then 31.**
    - 35 reuses Passage Search's scope type, lifted to a neutral module.
    - 31 then lands as `measure.cadence`, with the CMUdict dependency.

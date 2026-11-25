@@ -238,10 +238,12 @@ export const WorkshopSessionBrowserModal: React.FC<WorkshopSessionBrowserModalPr
       )}
       footer={
         <>
-          <span>
-            Your working room autosaves to <strong>current.json</strong> and restores
-            automatically when you reopen Workshop.
-          </span>
+          {available && (
+            <span>
+              This tab keeps its own autosave checkpoint. Use Reopen Closed Workshop Room…
+              in the Command Palette to return to a room after closing its tab.
+            </span>
+          )}
           <button
             className="pm-ws-session-secondary"
             type="button"
@@ -309,7 +311,7 @@ const SessionBrowserRow: React.FC<SessionBrowserRowProps> = ({
       badges={
         <>
           {current && <span className="pm-ws-session-badge">Current · autosaved</span>}
-          {active && <span className="pm-ws-session-badge">Open in Workshop</span>}
+          {active && <span className="pm-ws-session-badge">Open in this tab</span>}
           {session.lock === 'recovery-required' && <span className="pm-ws-session-badge">Recovery required</span>}
           {session.lock === 'busy' && <span className="pm-ws-session-badge">Being saved in another window</span>}
         </>

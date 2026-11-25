@@ -1,7 +1,7 @@
 # Feature: Several Workshop and Lightbox Tabs at Once
 
 **Date Identified:** 2026-11-07
-**Status:** Workshop tabs are in design on `epic/workshop-tabs`. The [Workshop ADR](../../../docs/adr/2026-11-25-workshop-tabs.md) and [epic plan](../../epics/epic-workshop-tabs-2026-11-25/README.md) govern that half. Multiple Lightbox tabs remain queued. The combined sketch below records the original proposal.
+**Status:** Workshop tabs are implemented on `epic/workshop-tabs`. The [Workshop ADR](../../../docs/adr/2026-11-25-workshop-tabs.md) and [epic plan](../../epics/epic-workshop-tabs-2026-11-25/README.md) govern that half. Multiple Lightbox tabs remain queued. The combined sketch below records the original proposal.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-07
 

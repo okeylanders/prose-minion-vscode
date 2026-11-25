@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { WORKSHOP_RAIL_TABS } from '@hooks/domain/workshop/controllers/useWorkshopRailTabs';
 import { WORKSHOP_CONVERSATION_SETTINGS_TABS } from '@components/workshop/settings/workshopConversationSettingsTabs';
+import { searchWorkshopHelp } from '@/application/services/workshop/help/WorkshopHelpReference';
 import { bundledHelpReference, helpDirectory } from '@/__tests__/application/services/workshop/help/bundledHelpReference';
 
 const appDirectory = path.resolve(helpDirectory, '../../../../apps/vscode-extension');
@@ -46,6 +47,16 @@ describe('bundled product help', () => {
     for (const owner of Object.values(ownership)) {
       expect(owner).not.toMatch(/^(settings|commands)#/);
       expect(index?.get(owner)?.id).toBe(owner);
+    }
+  });
+
+  it('finds the Workshop tab commands and closed-room recovery in the bundled help', async () => {
+    const reference = await bundledHelpReference({ appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() }).load();
+    if (!reference) throw new Error('Bundled Workshop help could not be loaded');
+
+    for (const query of ['multiple Workshop tabs', 'new Workshop tab', 'reopen closed Workshop room']) {
+      const { hits } = searchWorkshopHelp(reference.sections, query);
+      expect(hits.map(hit => hit.id)).toContain('workshop#multiple-workshop-tabs');
     }
   });
 

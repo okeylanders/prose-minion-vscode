@@ -1042,6 +1042,18 @@ while Workshop features are under active development. Follow [ADR
   they do not need independent schema versions unless they become separately
   stored or decoded outside a Workshop session.
 
+### Workshop tab ownership
+
+Follow [ADR 2026-11-25](docs/adr/2026-11-25-workshop-tabs.md) for a change that reads a room, starts work in it, or writes a checkpoint.
+
+- The extension binds each panel's message handler, reply target, session services and cancellation to its room. Resolve the destination of an editor or Lightbox command before the first asynchronous step. Later focus changes apply to future gestures.
+- Capture the initiating room revision for a mutation that awaits a file picker, catalog read or network operation. A session replacement within the same tab can displace an earlier result.
+- A rolling checkpoint belongs to a durable room slot. The legacy slot uses `current.json`. The named session id keeps its identity across tabs, renames and restore. A named open reveals the tab that owns it.
+- Disk writes to any rolling slot, legacy or UUID, check the expected bytes or absence under a slot-specific on-disk claim. A conflict forks the latest losing edit to a separate named recovery. The registry keeps dirty rooms discoverable when a close fails and retains folderless/multi-root rooms for same-host reopen.
+- The Lightbox tray and its Open action follow the selected Workshop owner. Reconcile a lost acknowledgement only through the destination captured before the source reread and its original room generation or delivery receipt.
+- The window token counter and last completed request price are global. The reply’s own usage comes through its run completion callback.
+- On shutdown, stop every room's producers and await every outstanding flush. Closing or cancelling one room must leave the other rooms running.
+
 ### Workshop Rewind and Branch
 
 Follow [ADR 2026-09-30](docs/adr/2026-09-30-workshop-rewind-and-branch.md) when
@@ -1065,7 +1077,7 @@ touching retained histories or whole-room operations:
 - **Branch.** Branch never writes its source session file. It refuses an
   unnamed room, a named room with unsaved work, and a room whose file on
   disk no longer matches it. It checks the file again at the commit that
-  replaces `current.json`, through the store's `beforeCommit` seam.
+  replaces the room slot's rolling checkpoint, through the store's `beforeCommit` seam.
 - **The composer's restore keeps newer typing.** The message a Rewind or
   Branch gives back to the composer goes ahead of anything the writer has
   typed since, a blank line between; it never replaces it (PR #264 P2-1;
@@ -2288,7 +2300,7 @@ and a recovery copy's update. A new named-session writer joins it.
   `WorkshopNamedSessionLock` and `WorkshopNamedSessionRecovery` reach that
   folder;
 - inside the store, rename and delete touch only staged temporaries and
-  search indexes, a snapshot overwrites only `current.json`, and a named
+  search indexes, a snapshot overwrites only the room slot's rolling checkpoint, and a named
   file is replaced or removed only through `this.named`.
 
 A new module that renames or deletes joins the pinned list on purpose.
@@ -2549,7 +2561,7 @@ request, its card, or how its results reach the persona:
 - **Status is derived, never stored** (`workshopPassageSearchStatus`).
   `delivered` reads only a `passageSearchDelivery` naming the card: a
   request turn with no receipt after it is never delivered. `running` and
-  `ready` are the window's. The webview gets the host's `view`
+  `ready` belong to the initiating room's handler. The webview gets the host's `view`
   (`workshopTurnForWebview`); the receipt never leaves the host.
 - **The engine's result is read in one module,**
   `handlers/domain/workshop/WorkshopPassageSearchResultView`: it hands the
@@ -2563,7 +2575,7 @@ request, its card, or how its results reach the persona:
   (`passageSearchWords`). A change to the result is a change there.
 - **The price is never skipped.** `ESTIMATE` is a read. `RUN` plans again
   and runs only when the `planKey` equals the one sent; otherwise it
-  answers `price-changed` and sends nothing. One search per window.
+  answers `price-changed` and sends nothing. One Workshop search per room. The room's handler owns its run slot and holds up to four unsent results.
 - **A search and its held result belong to one open room** (PR #296 F3).
   The coordinator announces every room replacement in the step that swaps
   the aggregate (`WorkshopOpenRoomInstance`, `onRoomReplaced`).

@@ -86,6 +86,7 @@ import {
   UpdateSettingMessage,
   SettingsDataMessage,
   TokenUsageUpdateMessage,
+  RequestTokenUsageMessage,
   ResetTokenUsageMessage,
   RequestApiKeyMessage,
   ApiKeyStatusMessage,
@@ -344,6 +345,7 @@ export type WebviewToExtensionMessage =
   | RequestActiveFileMessage
   | RequestManuscriptGlobsMessage
   | RequestChapterGlobsMessage
+  | RequestTokenUsageMessage
   | ResetTokenUsageMessage
   | RequestAccountBalanceMessage
   | RequestApiKeyMessage

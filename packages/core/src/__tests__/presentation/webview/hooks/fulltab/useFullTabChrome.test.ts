@@ -42,9 +42,10 @@ describe('useFullTabChrome', () => {
 
   const posted = () => mockVSCode.postMessage.mock.calls.map(([message]) => message);
 
-  it('asks for model data and API-key status on mount, under the caller source', () => {
+  it('asks the host for models, window usage and API-key status on mount', () => {
     renderHook(() => useFullTabChrome({ source: 'webview.lightbox' }));
 
+    expect(posted()).toContainEqual(expect.objectContaining({ type: MessageType.REQUEST_TOKEN_USAGE }));
     const keyRequest = posted().find((message) => message.type === MessageType.REQUEST_API_KEY);
     expect(keyRequest).toEqual(expect.objectContaining({ source: 'webview.lightbox', payload: {} }));
     expect(posted().some((message) => message.type === MessageType.REQUEST_MODEL_DATA)).toBe(true);

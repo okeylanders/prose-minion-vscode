@@ -104,6 +104,10 @@ export interface RequestSettingsDataMessage extends MessageEnvelope<Record<strin
   type: MessageType.REQUEST_SETTINGS_DATA;
 }
 
+export interface RequestTokenUsageMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.REQUEST_TOKEN_USAGE;
+}
+
 export interface ResetTokenUsageMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.RESET_TOKEN_USAGE;
 }
@@ -181,9 +185,10 @@ export interface SettingsDataMessage extends MessageEnvelope<SettingsDataPayload
 export type TokenUsageTotals = TokenUsage;
 
 export interface TokenUsageUpdatePayload {
+  /** Cumulative usage across every Prose Minion surface in this extension window. */
   totals: TokenUsageTotals;
   /**
-   * Cost of the single most-recent AI request in USD, surfaced beneath the
+   * Cost of this window’s most recently completed AI request in USD, surfaced beneath the
    * account balance ("Last request $0.014"). `undefined` when no request has
    * completed this session, after a reset, or when the provider returned no
    * cost for the last call. Distinct from `totals.costUsd` (cumulative).
