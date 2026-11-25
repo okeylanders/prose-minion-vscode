@@ -19,6 +19,7 @@ import {
   createFakeShellService,
   createFakeWorkspace
 } from '../../../../mocks/platform';
+import { groupFilesOver } from '@/__tests__/mocks/configuredGroupFiles';
 
 const RABBIT_NOTES = 'The White Rabbit checks his watch.\nHe is late for the Duchess.';
 
@@ -52,6 +53,7 @@ describe('Read in reader routes', () => {
   let findReadInRecord: jest.Mock;
   let resources: ContextResourceContent[];
   let loadResources: jest.Mock;
+  let groupFiles: ReturnType<typeof groupFilesOver>;
 
   const contentReplies = () => postMessage.mock.calls
     .map(([entry]) => entry)
@@ -86,6 +88,7 @@ describe('Read in reader routes', () => {
     loadResources = jest.fn(async (paths: string[]) =>
       resources.filter((entry) => paths.includes(entry.path))
     );
+    groupFiles = groupFilesOver(() => resources);
     const intake = new WorkshopContextIntakeService(
       {
         createProvider: jest.fn(async () => ({
@@ -94,7 +97,8 @@ describe('Read in reader routes', () => {
         }))
       },
       createFakeFileSystem(),
-      createFakeWorkspace()
+      createFakeWorkspace(),
+      groupFiles
     );
     const handler = new WorkshopContextHandler(
       {} as never,
@@ -188,6 +192,22 @@ describe('Read in reader routes', () => {
     await requestContent({ group: 'characters', path: 'characters/rabbit.md' });
 
     expect(contentReplies()[0]).toMatchObject({ error: 'That file could not be read.', canOpenInEditor: false });
+  });
+
+  it('refuses a pair whose group listing cannot be read, reading nothing and opening nothing (ADR 2026-11-20 S50)', async () => {
+    groupFiles.listGroupFiles.mockRejectedValue(new Error('A configured-resource search failed.'));
+
+    await requestContent({ group: 'characters', path: 'characters/rabbit.md' });
+    await openBeside({ group: 'characters', path: 'characters/rabbit.md' });
+
+    const words = "The project's file list could not be read, so this file could not be confirmed. Try again.";
+    expect(contentReplies()[0]).toMatchObject({ error: words, canOpenInEditor: false });
+    expect(contentReplies()[0]).not.toHaveProperty('content');
+    expect(loadResources).not.toHaveBeenCalled();
+    expect(shell.openFileInEditor).not.toHaveBeenCalled();
+    expect(effects.reportError).toHaveBeenCalledWith(words);
+    expect(logged()).toContain('refused (unverified)');
+    expect(logged()).not.toContain('rabbit');
   });
 
   it('flags truncation at resource.read\'s byte ceiling instead of hiding it', async () => {

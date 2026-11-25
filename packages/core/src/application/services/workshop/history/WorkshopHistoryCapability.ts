@@ -25,6 +25,7 @@
 import type { FileHistory, FileSystem, LogSink } from '@/platform';
 import type { WorkshopPersonaId } from '@messages';
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
+import type { ConfiguredResourceGroupFiles } from '@/application/services/ConfiguredResourceLookup';
 import type { CapabilityContextWindow, CapabilityDeliveredSource } from '@orchestration/AgentRunContracts';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { WorkshopCapabilityResult, WorkshopHistoryRequest } from '@shared/types/workshopCapabilities';
@@ -88,7 +89,9 @@ export class WorkshopHistoryCapability {
     private readonly ports: WorkshopHistoryPorts,
     private readonly resources: () => Promise<readonly ContextResourceSummary[]>,
     private readonly outputChannel: LogSink,
-    private readonly turn: WorkshopHistoryTurnContext
+    private readonly turn: WorkshopHistoryTurnContext,
+    /** The authoritative listing a pair's file is named from (ADR 2026-11-20 S50). */
+    private readonly groupFiles: ConfiguredResourceGroupFiles
   ) {}
 
   /** A diff's manifest row (D15); a log, or anything that failed, has none. */
@@ -98,7 +101,7 @@ export class WorkshopHistoryCapability {
 
   async fulfill(request: WorkshopHistoryRequest, window?: CapabilityContextWindow): Promise<WorkshopCapabilityResult> {
     this.throwIfAborted();
-    const file = await resolveWorkshopHistoryFile(request.file, this.ports.excerpt, this.resources);
+    const file = await resolveWorkshopHistoryFile(request.file, this.ports.excerpt, this.resources, this.groupFiles);
     this.throwIfAborted();
     if (file.kind === 'fault') {
       this.log(`${request.capability} failed reason=${file.fault} file=${request.file.kind}`);

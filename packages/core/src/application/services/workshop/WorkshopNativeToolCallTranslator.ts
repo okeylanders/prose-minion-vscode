@@ -20,7 +20,9 @@
  *   field with attributes also takes an object of its text and attributes;
  * - a repeating field's list may arrive as text holding a JSON array, which
  *   is how a live model sent several paths (2026-11-17). It is read as that
- *   list, and each item is still the codec's to check.
+ *   list, and each item is still the codec's to check;
+ * - a list supplied empty, either way, is `empty-list`: it is never read as
+ *   the field left out (ADR 2026-11-20 S53).
  * Anything else is untranslatable, by a fault kind that carries no model
  * text. So is a call the provider boundary marked with a `fault`. The envelope is built by escaping every value, never by joining raw
  * model text, so no argument can add a field, close the call or open another.
@@ -58,7 +60,8 @@ export const WORKSHOP_NATIVE_CALL_FIELDS: Readonly<Record<
   'dictionary.lookup': DICTIONARY_FIELDS,
   'dictionary.full-entry': DICTIONARY_FIELDS,
   'analysis.run': { toolId: TEXT, excerptMode: TEXT, excerptText: TEXT, contextMode: TEXT, contextText: TEXT },
-  'resource.catalog': { group: TEXT },
+  // A narrowing's `<match>` repeats (ADR 2026-11-20 S47): a native array maps to one element per list.
+  'resource.catalog': { group: TEXT, page: TEXT, match: { repeatable: true, plural: 'matches' } },
   'resource.search': { query: TEXT, group: TEXT },
   'resource.read': {
     group: TEXT,
@@ -111,7 +114,12 @@ export type WorkshopNativeToolCallFault =
   | 'arguments-not-object'
   | 'unmapped-argument'
   | 'duplicate-argument'
-  | 'unmappable-value';
+  | 'unmappable-value'
+  /**
+   * A repeating field supplied as an empty list (`[]`, or the text `"[]"`): never read as the field left out, which
+   * could widen what a call reaches (`resource.catalog`'s `matches`; ADR 2026-11-20 S53).
+   */
+  | 'empty-list';
 
 export type WorkshopNativeToolCallTranslation =
   | { readonly kind: 'translated'; readonly operation: WorkshopCapabilityOperation; readonly envelope: string }
@@ -228,6 +236,9 @@ function elementsOf(
       throw new Untranslatable('unmappable-value');
     }
     const list = Array.isArray(value) ? value : rule.repeatable ? listWrittenAsText(value) : undefined;
+    if (list && list.length === 0) {
+      throw new Untranslatable('empty-list');
+    }
     if (list) {
       elements.push(...list.map((item) => element(name, rule, item)));
     } else {

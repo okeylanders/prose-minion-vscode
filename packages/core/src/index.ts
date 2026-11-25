@@ -228,6 +228,13 @@ export {
 export { ProofreadService } from '@services/proofread/ProofreadService';
 export { CraftFlagsService, liveCatalogPrices } from '@services/craftFlags/CraftFlagsService';
 export { HelperAgentService } from '@services/helper/HelperAgentService';
+// Passage Search (ADR 2026-11-20 D1): the engine callers hold, built once at the composition root.
+export { PassageSearchService } from '@services/search/passage/PassageSearchService';
+export { PassageSearchModelOrganizer } from '@services/search/passage/PassageSearchModelOrganizer';
+export { liveCatalogFacts } from '@services/search/passage/PassageSearchPrices';
+export { PassageSearchScopeFiles } from '@/application/services/passageSearch/PassageSearchScopeFiles';
+export { ProjectPassageSearchEngine, type PassageSearchEngine } from '@/application/services/passageSearch/PassageSearchEngine';
+export { PassageSearchReportExport } from '@handlers/domain/PassageSearchReportExport';
 export { HELPER_TASK_POLICIES } from '@services/helper/HelperTaskPolicies';
 export { ProjectFolderScan } from '@/application/services/contextPaths/ProjectFolderScan';
 export { ContextPathProposalChecker } from '@/application/services/contextPaths/ContextPathProposalChecker';

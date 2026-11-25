@@ -47,6 +47,7 @@ import { libraryHost } from '@/__tests__/application/services/workshop/memory/pr
 import { createFakeFileSystem, createFakeSettings, createFakeShellService, createFakeWorkspace } from '../../../../mocks/platform';
 import { seedHost } from './pinnedContextSeedHost';
 import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
+import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
 const MEMORY_FRAME = '<project-memory note="n" built="2026-11-05">\n  <entry id="mem-7f3c2a" kind="canon" updated="2026-11-04">Watch: backward</entry>\n</project-memory>';
 
@@ -125,7 +126,7 @@ async function firstHostRun(seed: (session: WorkshopSessionService) => Promise<v
     capabilities,
     jest.fn().mockResolvedValue(undefined),
     createFakeShellService(),
-    new WorkshopContextIntakeService(emptyCatalog as never, createFakeFileSystem(), createFakeWorkspace()),
+    new WorkshopContextIntakeService(emptyCatalog as never, createFakeFileSystem(), createFakeWorkspace(), UNLISTED_GROUP_FILES),
     new WorkshopConversationSettingsService(session, assistant, settings, output, profile),
     new WorkshopSessionTimeService({ now: () => new Date('2026-11-05T10:00:00.000Z'), timezone: 'America/Chicago' }),
     {
@@ -135,6 +136,8 @@ async function firstHostRun(seed: (session: WorkshopSessionService) => Promise<v
       isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
       getCurrentCheckpointError: jest.fn().mockReturnValue(undefined),
       isSessionOperationPending: jest.fn().mockReturnValue(false),
+      openRoomInstance: jest.fn(() => 1),
+      onRoomReplaced: jest.fn(() => () => undefined),
       addSessionSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
       waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
       beginInteraction: jest.fn(),

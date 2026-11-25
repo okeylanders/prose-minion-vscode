@@ -81,7 +81,7 @@ packages/core/src/
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
 │           ├── LightboxBoardsHandler.ts   # The saved boards' routes: shelf, open, delete, rename (5A.1), open a board file through the host's picker (5A.2), and each committed save pushed (Slice 5A)
-│           └── workshop/                  # Room owner + 25 composed route owners (`WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES` in `boundaries.test.ts` is the list)
+│           └── workshop/                  # Room owner + 26 composed route owners (`WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES` in `boundaries.test.ts` is the list)
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
 │               ├── WorkshopRouteContracts.ts
@@ -100,6 +100,8 @@ packages/core/src/
 │               ├── WorkshopPinnedContextHandler.ts # Pinned context: the settings tab's list, pins, unpin, move, Attach missing, Open (ADR 2026-11-04)
 │               ├── WorkshopEarlierTurnsHandler.ts # A long room's earlier turns, a page before a turn, and a bookmark jump's pages (ADR 2026-11-17 D1–D4, D6 amendment)
 │               ├── WorkshopLocationsProposalHandler.ts # A persona's context-paths card: Apply and Decline, through C1's write (the 25th; ADR 2026-11-19 D24, D27)
+│               ├── WorkshopPassageSearchHandler.ts # A persona's passage-search card: price, Run, Stop, Cancel, Send, Discard, Open report (the 26th; ADR 2026-11-20 D20)
+│               ├── WorkshopPassageSearchDelivery.ts # The results this window holds for its cards, and their delivery as a directed run (ADR 2026-11-20 D19a, D21)
 │               └── widgets/
 │                   ├── WorkshopWidgetHostHandler.ts
 │                   ├── creativeVariations/WorkshopCreativeVariationsHandler.ts
@@ -181,6 +183,7 @@ packages/core/src/
                 ├── selectedText.ts
                 ├── todoStatus.ts
                 ├── locationsProposal.ts
+                ├── passageSearch.ts
                 ├── sessionRecovery.ts
                 └── settings.ts
 ```
@@ -420,6 +423,7 @@ useMessageRouter({
 | useDictionary | DictionaryHandler | Word lookups |
 | useDictionaryHistory | DictionaryHandler (+ `DictionaryHistoryStore`) | Dictionary lookup history |
 | useDictionaryHistorySearch | DictionaryHistorySearchRoute (in DictionaryHandler; + `DictionaryHistoryStore.searchDefinitions`) | The history's definitions search |
+| usePassageSearch | PassageSearchRoute (in SearchHandler; + `PassageSearchEngine` and `PassageSearchReportExport`) | Passage Search: a search that reads |
 | useContext | ContextHandler | Context generation |
 | useSearch | SearchHandler | Word search |
 | useSettings | ConfigurationHandler | Settings, models, API keys |
@@ -437,6 +441,7 @@ useMessageRouter({
 | useWorkshopNamedSessionRecovery | WorkshopNamedSessionRecoveryRoute (+ `WorkshopNamedSessionRecovery`) | Recover… for a saved session left mid-save |
 | useContextPathsSuggestion | ContextPathsSuggestionRoute (in ConfigurationHandler; + `ContextPathSuggestionService`) | Settings' context-path suggestion |
 | useWorkshopLocationsProposal | WorkshopLocationsProposalHandler (+ `applyContextPathProposal`) | A persona's context-paths card |
+| useWorkshopPassageSearch | WorkshopPassageSearchHandler (+ `WorkshopPassageSearchResults`, `PassageSearchEngine`) | A persona's passage-search card |
 
 **Benefits**:
 - ✅ Same domain boundaries on both sides
@@ -912,14 +917,14 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-11-19 on `epic/workshop-persona-tools-close`: the Workshop Persona Tools epic with PR #290 (C2) merged in, before it goes to `main`):
-- 966 suites / 13,696 tests / 59 snapshots (full `npx jest --maxWorkers=50%` on the closing branch after merging the epic at `7e63d170`, all slices in)
+**Test Inventory** (measured 2026-11-23 on `epic/passage-search-group-match` at `4346d0ef`, Passage Search Slice 5: Workshop Persona Tools and Passage Search, before either goes to `main`):
+- 1,025 suites / 14,529 tests / 60 snapshots (full `npx jest --maxWorkers=25%`)
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's 25 composed route owners (the list is `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES`)
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's 26 composed route owners (the list is `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES`)
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):
@@ -976,7 +981,7 @@ match the manifest.
 ### OpenRouter API
 
 - **API key stored in VSCode SecretStorage** - OS-level encryption via platform keychains (macOS Keychain, Windows Credential Manager, Linux libsecret); automatic migration from legacy settings-based storage
-- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `widgetModel`, `proofreadModel`, `lightboxModel`, `craftModel` and `helperModel`. The Lightbox's and Craft Flags' are empty by default and each follows `assistantModel` (the Workshop's) until the writer picks one; the helper agent's follows `proofreadModel`; none ever writes another ([ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D6 addendum, 2026-10-24; [ADR 2026-10-21](docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md), Slice 3c; [ADR 2026-11-05](docs/adr/2026-11-05-helper-agent.md) D3)
+- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `widgetModel`, `proofreadModel`, `lightboxModel`, `craftModel`, `helperModel` and `passageSearchModel`. The Lightbox's and Craft Flags' are empty by default and each follows `assistantModel` (the Workshop's) until the writer picks one; the helper agent's follows `proofreadModel`; Passage Search's follows `categoryModel` ([ADR 2026-11-20](docs/adr/2026-11-20-passage-search.md) D14); none ever writes another ([ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D6 addendum, 2026-10-24; [ADR 2026-10-21](docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md), Slice 3c; [ADR 2026-11-05](docs/adr/2026-11-05-helper-agent.md) D3)
 - Unified `maxTokens` across tools (default 10000) with truncation notices when responses hit the cap
 - Cost tracking available through OpenRouter dashboard
 - Managed via Settings overlay UI (gear icon) with Save/Clear buttons
@@ -1416,7 +1421,7 @@ card records:
   - `startLine` / `endLine` only beside exactly one `<path>`
     (`ambiguous-lines`);
   - duplicates are refused (`duplicate-path`), by group and case-folded
-    path. This is deliberately stricter than `findConfiguredResource`,
+    path. This is deliberately stricter than `resolveConfiguredResource`,
     which prefers an exact match: a case-distinct configured pair is read
     in two calls.
 - **One call, one card, a row per file.** A read is one call against the
@@ -1439,9 +1444,67 @@ card records:
   `WorkshopResource*.ts` module; a new one joins the list and the
   capability boundary, imports nothing of recall or memory, and stays under
   500 lines.
+- **`resource.catalog` is the group inventory** (ADR 2026-11-20 S46,
+  `WorkshopResourceCatalog`). It lists from the authoritative listing a
+  passage search reads (`listGroupFiles`), never the browse catalog, which
+  keeps a file in its first group only: a named group's files in natural
+  order, or each group in turn with a file under every group it is in.
+  Search, read and the instruction's group counts stay on the browse
+  catalog.
+  - **Paged by the shared rule** (`workshopCapabilityPage`,
+    `workshopCapabilityPageOf`), `catalogItems` a page; the next page's
+    whole call is written exactly when a later page exists, and every
+    continuation decodes as written (`resourceCatalogPromptSync.test.ts`).
+  - **`<match>`, only beside `<group>`** (`match-needs-group`), repeats and
+    joins, read by `ContextGroupNarrowing` (`unsafe-match`,
+    `too-many-patterns`): it lists exactly the files that narrowed search
+    reads, with each pattern's count. A continuation writes the patterns
+    in one `<match>`; `matchCharacters` holds the longest list the rule
+    allows, so it always decodes.
+  - A listing or walk that did not complete is a failed result, never a
+    shorter catalog. A page past the end, an empty listing's too, is
+    answered in words.
+  - A file's workspace folder is named whenever several folders are open
+    (the resolver's `openWorkspaceFolders`, the workspace's own names),
+    whatever the page found.
+- **A pair resolves to the file the inventory lists for it** (S50, as
+  amended after PR #298). Every reader of `{ group, path }`
+  (`resource.read`, `history.*`, the Read in reader) resolves through
+  `resolveConfiguredResource` (`application/services/ConfiguredResourceLookup.ts`):
+  1. **the group's authoritative listing first:** the one exact path, else
+     the one case-folded match; several exact matches (two workspace
+     folders) or several case-folded ones are `ambiguous`, never the first;
+  2. **then that file's browse entry by host identity,** which loads as
+     before; no such entry (the browse listing merged or dropped it) is
+     `ambiguous`, never another file.
+
+  **A listing that cannot be read is `unverified`** (re-review of PR #298):
+  the pair is refused, with no text and no browse lookup, because the
+  browse listing alone can name a different file. Each reader says it in
+  its own words: `resource.read`'s `unverified` file outcome (failed, "Try
+  again."), history's `file-list-unreadable`, the Read in reader's
+  `unverified` refusal. A path in no configured group is in no listing. A
+  new reader of a pair resolves through it and handles `unverified`.
+  - **The listing port is required everywhere**
+    (`ConfiguredResourceGroupFiles`): every reader and the intake service's
+    `configuredGroupFiles` take one, with no default, so a host that
+    forgets it fails to compile. `extension.ts` passes the resolver to
+    every construction; tests pass `__tests__/mocks/configuredGroupFiles`'
+    listings or the real resolver.
+  - A read lists each group it names once (`configuredGroupFilesOnce`).
+  - A result names the file by its browse entry, so a card records the
+    group the browse listing keeps it in.
+- **One file is read once per read** (S53). A later pair resolving to a
+  file an earlier pair named is its own `same-file` outcome, decided before
+  anything of it loads: no text, no manifest row, no line range, no
+  fingerprint, no share, so no continuation names it.
+  - Stated limits (S52): the instruction's per-group counts and a
+    group-scoped `resource.search` still read the browse listing, so a file
+    in two groups counts once there.
 - **Logs.** A read naming several files logs counts and groups, never a
   path. A one-path read keeps the line it has always had, which names its
-  configured path (`workshopResourceRequestLogSummary`).
+  configured path (`workshopResourceRequestLogSummary`). A catalog logs its
+  group, page and pattern and file counts, never a pattern.
 
 ### Workshop Composer `@` Mentions
 
@@ -2136,6 +2199,11 @@ native call may become:
 - **Retained history holds the XML,** never a tool call. No request carries
   a tool call or a tool result, so nothing about Rewind marks, archives or
   the session codec changes.
+- **A list supplied empty is never the field left out** (ADR 2026-11-20
+  S53): `[]`, or the text `"[]"`, for any repeating field, is the
+  translator's `empty-list` fault, which takes the correction path below.
+  Read as omitted, `resource.catalog`'s `matches: []` listed the whole
+  group.
 - **What can't be translated is never run.** An unknown name, an unmapped
   argument or unparseable argument JSON takes the engine's bounded
   correction path (ask for the XML, within `maxCorrectionTurns`, then a
@@ -2284,7 +2352,7 @@ D11–D17 and D13a (Workshop Persona Tools, item B; PR #287) when touching
   ("File history"); `history.log` is private discovery. No setting (G1).
 - **Which file:** `<group>excerpt</group>` (the excerpt's file, authorized
   as Re-read from file authorizes it) or a configured file by group and
-  path (`findConfiguredResource`). Never a free path; a host path never
+  path (`resolveConfiguredResource`, S50). Never a free path; a host path never
   reaches a result, card or log.
 - **No process is spawned.** `Platform.fileHistory` (`log`, `show`,
   `size`) is implemented by `VsCodeFileHistory` over the built-in Git
@@ -2416,6 +2484,165 @@ card, or anything that writes `proseMinion.contextPaths.*`:
   `ContextPathGroupRow`.
 - **Logs** carry counts and outcomes only. Never a folder or file name, a
   path or a pattern.
+
+### Workshop Passage Search Requests
+
+Follow [ADR 2026-11-20](docs/adr/2026-11-20-passage-search.md) D16–D21 with
+D19a (Passage Search Slice 4) when touching a persona's passage-search
+request, its card, or how its results reach the persona:
+
+- **A persona asks; the writer runs.** A reply ends with at most one
+  `<prose-minion-passage-search>`: `<question>` once, then 1 to `scopes` of
+  `<group>`, `<path group="…">` and `<excerpt/>`
+  (`PROMPT_BUDGETS.workshopPassageSearch`), held to the prompt by
+  `passageSearchRequestPromptSync.test.ts`. No setting. Nothing is sent to
+  a model until Run.
+  - **The codec has no free path and no free pattern.** No Workshop module
+    builds a `pattern` scope (`workshopPassageSearchBoundaries.test.ts`);
+    `WorkshopPassageSearchEngineRequest` is the one place a card becomes
+    the engine's request: groups (narrowed or not), files by catalog key,
+    the excerpt by value.
+- **A group may be narrowed** (S42–S45): `<group match="a, b">chapters</group>`,
+  its character references decoded first (`utils/xmlCharacterReferences`,
+  as the capability codec's parser decodes text, so `&amp;` and
+  `&#0000000065;` read the same in a trailer and in `resource.catalog`'s
+  `<match>`; leading zeros are bounded by the value, never refused, and a
+  reference's text by 64 digits; S53; a path's `group` attribute too), then a comma-separated list read as a context-path
+  setting is read, 1 to
+  `PROMPT_BUDGETS.contextPaths.matchPatterns`, the attribute at most
+  `matchCharacters`. Only `<group>` takes `match`; a group named twice,
+  narrowed or not, is a repeat.
+  - **One rule reads every narrowing:** `application/services/ContextGroupNarrowing`
+    (the list's form is `utils/contextGroupMatchList`, so the trailer codec
+    in `utils/` imports nothing of `application/`). Settlement, the engine
+    and `resource.catalog` all read through it; never split, check or
+    intersect a narrowing anywhere else.
+  - **A narrowed group never reaches a file outside its group:** the
+    group's own `listGroupFiles` listing intersected with what the patterns
+    find (`matchPatterns`), by host file identity (`ContextPatternMatchFile.identity`).
+    An incomplete walk is never zero files.
+  - The engine refuses an unsafe narrowing itself (`unsafe-pattern`),
+    whoever sends one, and applies settlement's rule at every plan: a
+    pattern that now finds no file of its group refuses the plan
+    (`match-found-nothing`, S53), so a card's Estimate and Run never search
+    a quietly narrower set.
+- **Settled before the reply commits** (`WorkshopReplyPassageSearch`):
+  form, then each group, each narrowing's safety (`unsafe-match`, before
+  anything is listed), the excerpt, and each file against one
+  `listGroupFiles` listing and one `matchPatterns` walk for every
+  narrowing: an incomplete walk is `catalog-unreadable`, and a pattern that
+  finds no file of its group is `match-found-nothing`. It reads no file and
+  prices nothing. A drop is typed, mapped in `WorkshopTrailerDropReasons`
+  and counted on trailer outcomes' `passageSearch` side.
+- **Three optional, exact turn fields** (`WorkshopPassageSearchRecords`; no
+  `schemaVersion` bump; fixture `workshop-session-v2-before-passage-search.json`):
+  `passageSearchRequest` on the reply, `passageSearchResults` on a
+  delivery's writer-role turn, `passageSearchDelivery` on the persona's
+  adopted reply to the results. A card's group scope holds an optional,
+  exact `match` (the patterns as split, each trimmed and safe); a card from
+  before Slice 5 holds none and keeps reading
+  (`workshop-session-v2-before-group-match.json`).
+- **The card and the directive name a narrowed group with its patterns**
+  (`shared/utils/workshopPassageSearchPlaces`): the card's "Where:" line
+  and the directive's "Searched:" line, neutralized there. Transcript,
+  export and logs stay counts only.
+- **Status is derived, never stored** (`workshopPassageSearchStatus`).
+  `delivered` reads only a `passageSearchDelivery` naming the card: a
+  request turn with no receipt after it is never delivered. `running` and
+  `ready` are the window's. The webview gets the host's `view`
+  (`workshopTurnForWebview`); the receipt never leaves the host.
+- **The engine's result is read in one module,**
+  `handlers/domain/workshop/WorkshopPassageSearchResultView`: it hands the
+  result to the sidebar's display-safe projection (`passageSearchResultView`)
+  and takes a card's and a receipt's counts from that view. A call
+  stopped in flight (`cancelled`) is kept apart from one never made
+  (`unsent`) on the card, in the directive and on the receipt: it may
+  still have been charged. The receipt's `cancelled` is optional. The shared
+  report (`shared/utils/passageSearchReport.ts`, the sidebar slice's) and
+  the directive both render the view, with the same host words
+  (`passageSearchWords`). A change to the result is a change there.
+- **The price is never skipped.** `ESTIMATE` is a read. `RUN` plans again
+  and runs only when the `planKey` equals the one sent; otherwise it
+  answers `price-changed` and sends nothing. One search per window.
+- **A search and its held result belong to one open room** (PR #296 F3).
+  The coordinator announces every room replacement in the step that swaps
+  the aggregate (`WorkshopOpenRoomInstance`, `onRoomReplaced`).
+  - The running search's calls are aborted then (New, Open, Rewind,
+    Branch, a reload), whether or not anything is drawn or a call answers.
+  - Every replacement but a Rewind opens another instance (New, Open,
+    Branch, a reopen or reload of the same named session, activation, a
+    rollback) and drops every held result. A session id cannot tell these
+    apart: reopening a named session keeps it.
+  - A Rewind keeps the instance, and keeps each result whose card the cut
+    left exactly as it was searched (question and scopes, unanswered), so a
+    Rewind that cut only the delivery's reply reads `ready` and Send needs
+    no second search (D19). A revision or instance that moved with no word
+    drops everything (`WorkshopPassageSearchResults.sync`).
+- **Delivery is a directed run that is not an edit offer**
+  (`WorkshopDirectedRun` is a union; `WorkshopResultsDeliveryRun`). It
+  streams, completes through `completeWorkshopRun`, carries no reaction
+  invite or reminder, and its request turn is never a reaction target.
+  - **Not adopted means rolled back, where the run is given up:**
+    `completeWorkshopRun`'s `notAdopted: 'rollback'` calls
+    `rollbackMessageRun` in place of `abandonRun` on each non-adoption
+    branch; a thrown failure takes the room handler's failed-directed-run
+    catch. Neither touches the held result, so the card stays `ready` and
+    Send retries without searching again.
+  - **The host sends only a search that read everything it planned**
+    (`isWorkshopPassageSearchFullyRead`, `WorkshopPassageSearchCoverage`:
+    `complete` or `instance-limit`, every planned file searched in full, no
+    read failed, cut, stopped in flight, unsent or too large to send) into an idle room with no
+    session save or replacement pending (the mutation routes' own guard; PR
+    #296). Any other waits on the card for **Send partial results**, and the
+    card's `partial` reads the same predicate. A new way for a read to go
+    unsearched joins that predicate only.
+  - **An acknowledged Stop is never followed by the host's send** (PR #296
+    combined re-review). The engine ends a run `stopped` whenever its signal
+    was aborted by the end of the organizing pass, whatever the pass's
+    preparation came to (a key change still takes precedence). The handler
+    also records the Stop against its operation (`WorkshopPassageSearchRunSlot.stop`,
+    `stopAcknowledged`), and never sends that operation's result itself,
+    whatever the result says.
+  - **Every send checks first,** nothing awaited before the dispatch
+    (`WorkshopPassageSearchResults.deliver`).
+  - **At most `heldResults` (4) results a window.** One not yet delivered
+    is never evicted; a Run is refused before anything is planned while
+    every place holds one (`results-full`), until Send or Discard frees a
+    place (PR #296 F5).
+  - **A delivery's provisional request turn leaves with the panel too:**
+    disposal rolls it back while it is still the active run, as preemption
+    does (PR #296 F2).
+  - **One search a window, by operation** (`WorkshopPassageSearchRunSlot`;
+    PR #296 re-review). A replacement frees the slot as it lands; every
+    exit releases only its own operation. Closing the panel closes the slot
+    and the holder: after any await, nothing is held, sent or posted.
+- **The directive** (`WorkshopPassageSearchDirective`) is evidence, never
+  instructions, every model- or writer-written string neutralized, fitted
+  by whole instances to half the room left through
+  `reads/WorkshopReadWindowFit` (`resultsTokens` with no window). The room
+  handler measures the window (`AssistantToolService.measureWorkshopReplyWindow`,
+  `orchestration/ConversationWindowMeasure`) and calls the run's `frame`
+  with it: `AgentRunEngine` names no feature. It is tallied as
+  `room.passage-search`.
+  - **Never over its bound** (PR #296 F4): the whole frame by instances,
+    else a summary that fits, else no frame. With none, the room handler
+    records and sends nothing, and the card stays `ready`
+    (`results-too-large`). The summary always carries the shared coverage
+    lines (`passageSearchCoverageLines`) and is sized with them in; it is
+    never sent without them (re-review P3).
+  - **The analysis is read through the shared view and words only**
+    (`passageSearchAnalysisNote`, `passageSearchMissingLines`): the
+    directive writes no analysis count of its own.
+- **"Found in" counts files with an instance;** files searched and files
+  planned are kept apart (`searched`, `filesPlanned`), as the shared report
+  keeps them (PR #296). The counts and the receipt also carry #295's
+  `calls.tooLarge`, `calls.dispatched` and `requests`, each optional on the
+  receipt; the card says a too-large read in the shared words
+  (`passageSearchTooLargeLine`).
+- **Transcript and export** show one event line for the card and one for
+  the results turn, counts only.
+- **Logs** carry turn ids, counts, closed outcomes and reason kinds: never
+  the question, a quote, a note, a label or a path.
 
 ### Lightbox Source Ownership
 
@@ -3288,6 +3515,99 @@ popup's search:
 - **Nothing is persisted:** the query and the toggle are the open popup's
   state.
 - **Logs carry counts only,** never the query, a word, a path or a snippet.
+
+### Passage Search
+
+Follow [ADR 2026-11-20](docs/adr/2026-11-20-passage-search.md) (with its
+amendments S1–S41) when touching the Search tab's Passage Search, the
+engine behind it, or anything that reads, prices or organizes its results.
+A persona's request for a search is **Workshop Passage Search Requests**.
+
+- **One engine, callers own consent (P3).** `PassageSearchEngine`
+  (`application/services/passageSearch/`) resolves scopes;
+  `PassageSearchService` (`infrastructure/api/services/search/passage/`)
+  does the model work. It is built once in `extension.ts`, in
+  `CoreServices`. It asks the writer nothing.
+  `passageSearchBoundaries.test.ts` holds that neither directory names the
+  sidebar, the Workshop or a persona, and that their module lists are
+  closed.
+- **`plan`, then `run(plan)`.** A plan holds the model, the files as read,
+  the chunks, the ceilings and the estimate. `run` reads nothing again and
+  sends every call to the plan's model.
+  - `planKey` covers everything that decides what is sent and what the
+    writer was shown, the pricing basis included (D2a). A caller that
+    cannot keep a plan plans again and runs only on the same key.
+  - The price is approximate, never a cap ("≈ $…", `formatApproximateUsd`).
+- **Scopes (P4, D3a):** active file, selection, context group (optionally
+  narrowed by `match`, S43), file by catalog key, writer-typed pattern (the
+  sidebar only), and `text` by value.
+  - A narrowed group is its own listing's files that a pattern finds, by
+    host identity (`ContextGroupNarrowing`), walked once per plan; the
+    engine refuses an unsafe narrowing (`unsafe-pattern`), an incomplete
+    walk (`catalog-unreadable`) and a pattern that finds no file of its
+    group (`match-found-nothing`).
+  - Files come from one root-aware listing per plan
+    (`ContextResourceResolver.listGroupFiles`), never the browse catalog.
+    Identity is the absolute path; a group is every file its own patterns
+    match; a failed scan refuses.
+  - Active file and selection read the *current* editor once, at the top
+    of `plan`. An exterior file shows its name only
+    (`passageSearchDisplayLabel`).
+- **Quotes, not offsets.** Each call returns quoted instances.
+  - `anchorQuote` places each in its own chunk. Unanchored and ambiguous
+    quotes are dropped and counted.
+  - What is shown is the slice of the plan's frozen text, never the
+    model's spelling (D9a).
+  - Overlapping ranges in one file are one moment, chosen by file, start,
+    chunk index and reply item, never by completion order.
+- **Chunks** (`passageChunks`): a whole file per call within
+  `PROMPT_BUDGETS.passageSearch.chunkWords`; else paragraph chunks with the
+  overlap inside the budget, split at sentences when a paragraph is over
+  it. Each rendered request is measured against half a known window.
+- **Stopping.** Stop, a key change (the held engine's
+  `isProviderAvailable()`, read at each admission, when the reads settle
+  and before the pass), and `failureStreak` provider errors in a row all
+  stop starting calls and keep what was found. None of them starts the
+  organizing pass.
+- **What a failed call was** is one classifier, `PassageSearchCallFailures`,
+  for reads and the pass alike.
+  - Not dispatched: a retired engine's refusal, or the engine's own
+    preflight (`tooLarge`). These leave no usage entry and no request.
+  - Dispatched: every other thrown call, with one unknown usage entry, so
+    no cost or cache total is claimed over it.
+  - A call that returned keeps the usage the provider reported, even when
+    its reply is unusable: unreadable, cut off, stopped in flight, or (for
+    the pass) nothing kept. Never record known usage as unknown (PR #297).
+  - The classifier reads thrown calls only.
+  - `answered + failed + cancelled + unsent + tooLarge = planned`.
+    `requests` counts every dispatched call, reads and passes, retries
+    included.
+  - A new engine reason must be placed: the classifier's test has a
+    `Record` over the reasons.
+- **The organizing pass (P1)** reads only checked instances.
+  - It goes out on the run's own engine, fitted to its bound by an exact
+    walk.
+  - Citations to instances it was not shown are dropped.
+  - **Quotation grounding is closed by construction** (S32): marks take
+    roles from their neighbours and pair like brackets, and every
+    outermost quotation is checked whole. Anything ambiguous, unbalanced
+    or unread fails closed. Never check a sub-span, and never add a rule
+    that chooses among readings.
+  - The label table's counts are the host's.
+- **The sidebar** (`PassageSearchRoute`, registered by `SearchHandler`;
+  `usePassageSearch`, tripartite) follows the correlated-request rule.
+  - Webview-minted request ids; the newest plan only (`plan-expired`).
+  - The webview never sends a path, a file or report text: open-at-a-line,
+    Copy and Save name the held result by id, and the host builds the
+    report (`PassageSearchReportExport`).
+  - It persists only the scope choices and the organize toggle.
+- **One report, one set of words.** `shared/utils/passageSearchReport.ts`
+  and `passageSearchWords.ts` say every count, gap and drop for the
+  sidebar, the Workshop card and the persona's directive alike. Never
+  write those words a second time.
+- **Logs** carry counts, ids and fault kinds only: never the question, a
+  quote, a note, a label, a headline, a claim, a path, a pattern or a file
+  name.
 
 ### Editor Menus and Command Titles
 

@@ -326,6 +326,20 @@ export interface PromptBudgets {
     headerAllowanceCharacters: number;
   }>;
   /** A persona's to-do status trailers (ADR 2026-11-19 D3, D10), held to the prompt by `todoStatusPromptSync.test.ts`. */
+  /**
+   * A persona's passage-search request and the delivery of its results
+   * (ADR 2026-11-20 D16, D21). The search's own bounds are `passageSearch`.
+   */
+  readonly workshopPassageSearch: Readonly<{
+    /** Places one request may name: groups, files and the excerpt together. */
+    scopes: number;
+    /** The question's bound, trimmed. */
+    questionCharacters: number;
+    /** The results directive's bound when the model's window is not known. */
+    resultsTokens: number;
+    /** Full results a window holds for its cards, newest kept. */
+    heldResults: number;
+  }>;
   readonly workshopTodoStatus: Readonly<{
     /** Changes one reply may make; a frame past them is dropped as `over-cap`. */
     changesPerReply: number;
@@ -688,7 +702,11 @@ export interface PromptBudgets {
    * `scanFolders` kept, `sampleNames` names a folder, each cut to
    * `sampleNameCharacters`), the checker's bounds (`patternsPerGroup`,
    * `patternCharacters`, `examples` files shown), and the persona family's
-   * `foldersPerPage` and `checkPatterns` (C2).
+   * `foldersPerPage` and `checkPatterns` (C2). A group narrowed by patterns
+   * (ADR 2026-11-20 S42, S46: a passage search's `<group match="…">`,
+   * `resource.catalog`'s `<match>`) names 1 to `matchPatterns`, each held
+   * to `patternCharacters`, and a list as written is at most
+   * `matchCharacters` before it is split.
    */
   readonly contextPaths: Readonly<{
     scanEntries: number;
@@ -701,6 +719,8 @@ export interface PromptBudgets {
     examples: number;
     foldersPerPage: number;
     checkPatterns: number;
+    matchPatterns: number;
+    matchCharacters: number;
   }>;
   /**
    * The helper agent's tasks (ADR 2026-11-05 D1), one entry per task. A
@@ -727,6 +747,79 @@ export interface PromptBudgets {
       outputTokens: number;
       /** A reply longer than this is refused before it is read. */
       responseCharacters: number;
+    }>;
+  }>;
+  /**
+   * Passage Search (ADR 2026-11-20 D5–D12a): a search that reads. One call
+   * per chunk, a few at a time. Lengths and counts a prompt states are asks
+   * (D8); the bounds on a plan (D6) are refusals. Starting values for the
+   * live pass (Q2).
+   */
+  readonly passageSearch: Readonly<{
+    /** Words a call reads, its overlap included (D5a); lowered to fit half a known window. */
+    chunkWords: number;
+    /** Below this the lowered budget refuses the plan (`model-too-small`). */
+    minChunkWords: number;
+    /** The most of the previous chunk's last paragraph a chunk repeats; over it, only its closing sentences. */
+    overlapWords: number;
+    /** Calls in flight at once. */
+    concurrency: number;
+    /** This many provider failures in a row, no call answered between them, stop a run starting calls (`provider-failed`). */
+    failureStreak: number;
+    /** Scopes one request names. */
+    scopes: number;
+    /** Files one plan reads. */
+    files: number;
+    /** Read calls one plan makes. */
+    calls: number;
+    /** A file larger than this refuses the plan before it is read. */
+    fileBytes: number;
+    /** The question's length, in characters. */
+    questionCharacters: number;
+    /** Output ceiling per read call; a reply that reaches it keeps its finished instances (D8). */
+    outputTokens: number;
+    /** The reply the estimate prices per read call: not the ceiling. */
+    typicalOutputTokens: number;
+    /** A reply longer than this is that call's failure. */
+    responseCharacters: number;
+    /** Asked of a quote; over `safetyMultiple` times it, the instance is malformed. */
+    quoteCharacters: number;
+    /** Asked of a note; clipped at `safetyMultiple` times it. */
+    noteCharacters: number;
+    /** Asked of a label; over `safetyMultiple` times it, the instance is malformed. */
+    labelCharacters: number;
+    /** Asked of one reply's instances; never a gate. */
+    instancesPerCall: number;
+    /** Instances one run keeps; past it the run stops starting calls (`instance-limit`). */
+    instances: number;
+    /** Source text shown either side of an instance's quote. */
+    contextCharacters: number;
+    /** A field over this many times its ask is past the safety ceiling. */
+    safetyMultiple: number;
+    /** The organizing pass (D12, D12a, D13; Slice 3 builds it). */
+    organize: Readonly<{
+      /** What the first estimate allows for the pass's input: its instances do not exist yet. */
+      allowanceInputTokens: number;
+      /** The pass's whole rendered request stays within this, or half the window if smaller. */
+      inputTokens: number;
+      /** Output ceiling of the pass. */
+      outputTokens: number;
+      /** The reply the estimate prices for the pass. */
+      typicalOutputTokens: number;
+      /** Labels in the pass's table, most used first; the rest are one counted line. */
+      labels: number;
+      /** Asked of the headline. */
+      headlineCharacters: number;
+      /** Asked of a section's title. */
+      titleCharacters: number;
+      /** Asked of the sections. */
+      sections: number;
+      /** Asked of a section's claims. */
+      claims: number;
+      /** Asked of a claim. */
+      claimCharacters: number;
+      /** Characters of source quotes the quotation check may search for one reply; past it a text that quotes anything fails closed. Never in a prompt. */
+      quotationWork: number;
     }>;
   }>;
   /**
@@ -914,6 +1007,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   workshopThread: { pageTurns: 100, pageBytes: 1024 * 1024, jumpPages: 3 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   workshopTodoStatus: { changesPerReply: 20, savedSessionsPerReply: 10, noteCharacters: 160 },
+  workshopPassageSearch: { scopes: 8, questionCharacters: 300, resultsTokens: 6_000, heldResults: 4 },
   guestJoinSnapshot: {
     turns: 100,
     characters: 100_000,
@@ -1139,7 +1233,10 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     patternCharacters: 200,
     examples: 3,
     foldersPerPage: 50,
-    checkPatterns: 40
+    checkPatterns: 40,
+    matchPatterns: 8,
+    // At least `matchPatterns` × `patternCharacters` plus ", " between them, so a continuation's one `<match>` always decodes.
+    matchCharacters: 2_000
   },
   helper: {
     // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.
@@ -1159,6 +1256,42 @@ export const PROMPT_BUDGETS: PromptBudgets = {
       inputCharacters: 16_000,
       outputTokens: 1_500,
       responseCharacters: 6_000
+    }
+  },
+  passageSearch: {
+    chunkWords: 12_000,
+    minChunkWords: 1_500,
+    overlapWords: 600,
+    concurrency: 4,
+    failureStreak: 5,
+    scopes: 12,
+    files: 200,
+    calls: 300,
+    fileBytes: 2 * 1024 * 1024,
+    questionCharacters: 400,
+    // Room for `instancesPerCall` instances at their asked lengths, with slack.
+    outputTokens: 12_000,
+    typicalOutputTokens: 800,
+    responseCharacters: 120_000,
+    quoteCharacters: 400,
+    noteCharacters: 200,
+    labelCharacters: 40,
+    instancesPerCall: 80,
+    instances: 2_000,
+    contextCharacters: 160,
+    safetyMultiple: 4,
+    organize: {
+      allowanceInputTokens: 6_000,
+      inputTokens: 24_000,
+      outputTokens: 4_000,
+      typicalOutputTokens: 1_200,
+      labels: 60,
+      headlineCharacters: 160,
+      titleCharacters: 60,
+      sections: 8,
+      claims: 8,
+      claimCharacters: 300,
+      quotationWork: 20_000_000
     }
   },
   reasoning: {

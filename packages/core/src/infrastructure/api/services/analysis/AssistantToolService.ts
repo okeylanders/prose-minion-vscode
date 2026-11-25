@@ -42,6 +42,7 @@ import {
 } from '@orchestration/AgentRunEngine';
 import {
   AgentFinalReplyCheck,
+  CapabilityContextWindow,
   AnyAgentCapability,
   ExecutionResult,
   StreamingTokenCallback
@@ -1050,6 +1051,15 @@ export class AssistantToolService {
   /** What a participant's context holds, by part, for the panel; display-safe (ADR 2026-11-18). */
   measureWorkshopConversation(conversationId: string | undefined): WorkshopConversationMeasure | undefined {
     return this.systemPromptMeasures.measure(this.currentAssistantEngine()?.getConversationContextAccount(conversationId));
+  }
+
+  /**
+   * The room a retained Workshop conversation has for its next message, were `userMessage` in it: the context
+   * preflight's own measure. Undefined for a conversation not yet started, or a model whose window is not known.
+   */
+  measureWorkshopReplyWindow(conversationId: string | undefined, userMessage: string): CapabilityContextWindow | undefined {
+    return conversationId === undefined ? undefined : this.currentAssistantEngine()?.measureConversationWindow(
+      conversationId, userMessage, { maxTokens: this.toolOptions.getOptions().maxTokens });
   }
 
   readWorkshopRetainedHistory(conversationId: string): ConversationHistoryCounts | undefined {

@@ -32,6 +32,7 @@ import type { ContextPathGroup } from '@/shared/types/context';
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import { createFakeFileSystem, createFakeWorkspace } from '@/__tests__/mocks/platform';
+import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
 export const WORKSPACE = '/workspace';
 
@@ -134,7 +135,8 @@ export function createLightboxHost(options: { enrich?: jest.Mock } = {}) {
   const catalog = new WorkshopContextIntakeService(
     { createProvider: openProvider },
     createFakeFileSystem(),
-    createFakeWorkspace()
+    createFakeWorkspace(),
+    UNLISTED_GROUP_FILES
   );
   const workspaceFolders = jest.fn(() => [{ path: WORKSPACE, name: 'workspace' }]);
 

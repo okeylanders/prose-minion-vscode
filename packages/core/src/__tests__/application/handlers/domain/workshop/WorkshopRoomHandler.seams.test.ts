@@ -114,7 +114,9 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     // Workshop Persona Tools item A added the writer's Undo of a persona's to-do change, and Recover… (D6e).
     expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_EARLIER_TURNS)).toBe(true);
     // Workshop Persona Tools item C2 added the writer's Apply on a context-paths card.
-    expect(router.handlerCount).toBe(101);
+    // Passage Search Slice 4 added a persona's card: seven routes (ADR 2026-11-20 D20).
+    expect(router.hasHandler(MessageType.WORKSHOP_PASSAGE_SEARCH_RUN)).toBe(true);
+    expect(router.handlerCount).toBe(108);
   });
 
   it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {

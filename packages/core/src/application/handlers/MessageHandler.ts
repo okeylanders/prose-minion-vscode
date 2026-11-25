@@ -158,7 +158,8 @@ export class MessageHandler {
     'proseMinion.lightboxModel',
     'proseMinion.proofreadModel',
     'proseMinion.craftModel',
-    'proseMinion.helperModel'
+    'proseMinion.helperModel',
+    'proseMinion.passageSearchModel'
   ] as const;
 
   private readonly UI_KEYS = [
@@ -224,7 +225,8 @@ export class MessageHandler {
       helperAgentService,
       editorSelectionSnapshots,
       workshopSavedSessionTodos,
-      contextPathProposals
+      contextPathProposals,
+      workshopPassageSearch
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -279,7 +281,8 @@ export class MessageHandler {
       this.postMessage.bind(this),
       outputChannel,
       textSourceResolver,
-      categorySearchService
+      categorySearchService,
+      { engine: this.services.passageSearchEngine, shell: this.platform.shell, fileSystem: this.platform.fileSystem, workspace: this.platform.workspace }
     );
 
     this.configurationHandler = new ConfigurationHandler(
@@ -379,7 +382,8 @@ export class MessageHandler {
       { helper: helperAgentService, settings: this.platform.settings },
       editorSelectionSnapshots,
       workshopSavedSessionTodos,
-      contextPathProposals
+      contextPathProposals,
+      workshopPassageSearch
     );
     // Lightbox editor tab (ADR 2026-10-19 D10) — the 13th domain, composed
     // like the others. The shell owns the file picker; the service owns boards.
@@ -1000,6 +1004,7 @@ export class MessageHandler {
       this.disposeDictionaryStatusListener();
       this.dictionaryHandler.dispose();
       this.disposeSearchStatusListener();
+      this.searchHandler.dispose();
       this.analysisHandler.dispose();
       this.workshopHandler.dispose();
       this.lightboxReadingHandler.dispose();

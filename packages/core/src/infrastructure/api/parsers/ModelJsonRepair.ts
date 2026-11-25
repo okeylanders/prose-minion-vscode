@@ -28,7 +28,10 @@
  * it keeps the root object's members that finished, drops the one it was
  * cut inside (never trusted, however much of it arrived), and closes the
  * root, naming that member's key when it had arrived whole, or saying it
- * was cut inside that key (`cutInsideKey`), whose text is never kept.
+ * was cut inside that key (`cutInsideKey`), whose text is never kept. Asked
+ * with `arrayItems: true`, a cut inside a root member that is an array keeps
+ * that array's finished items instead (`cutItemsKept`): a list of findings
+ * loses only the one it was cut inside.
  *
  * **Where each root member stood** (Lightbox Slice 4K). Asked with
  * `rootKeys: true`, either reports the root object's member keys in the
@@ -93,6 +96,8 @@ export interface ModelJsonSalvaged {
   cutKey?: string;
   /** The reply was cut inside the key of the root member after the kept ones, so that member's key is not known. */
   cutInsideKey?: true;
+  /** Asked with `arrayItems: true`: `cutKey` names an array, kept with the items that finished before the cut. */
+  cutItemsKept?: true;
   /** Asked with `rootKeys: true`: the kept members' keys in the order the text gives them, as `ModelJsonParsed.rootKeys`. */
   rootKeys?: string[];
 }
@@ -100,6 +105,8 @@ export interface ModelJsonSalvaged {
 export interface ModelJsonReadOptions {
   /** Report where each root member stood (`rootKeys`). */
   rootKeys?: boolean;
+  /** A salvage only: keep the finished items of a root array the reply was cut inside. */
+  arrayItems?: boolean;
 }
 
 export interface ModelJsonRefusal {
@@ -216,7 +223,7 @@ export function salvageModelJson(jsonText: string, options: ModelJsonReadOptions
   try {
     const fence = unfenceModelJson(jsonText);
     const tokens = tokenizeModelJson(fence.text, { partialEnd: true });
-    const walk = walkTokens(tokens, { closeOpen: false, salvage: true });
+    const walk = walkTokens(tokens, { closeOpen: false, salvage: true, arrayItems: options.arrayItems === true });
     const repaired = rebuild(fence.text, tokens, walk.drops, walk.keepUntil, walk.closers);
     const value = parseOrRefuse(repaired);
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -231,6 +238,7 @@ export function salvageModelJson(jsonText: string, options: ModelJsonReadOptions
       repairs: [...(fence.fenced ? ['code-fence' as const] : []), ...walk.repairs],
       ...(walk.cutKey !== undefined ? { cutKey: walk.cutKey } : {}),
       ...(walk.cutInsideKey ? { cutInsideKey: true as const } : {}),
+      ...(walk.cutItemsKept ? { cutItemsKept: true as const } : {}),
       ...rootKeysAsked(options, () => repairedTokens)
     };
   } catch (error) {
@@ -297,9 +305,10 @@ interface Walk {
   closers: string;
   cutKey?: string;
   cutInsideKey?: boolean;
+  cutItemsKept?: boolean;
 }
 
-function walkTokens(tokens: readonly ModelJsonToken[], options: { closeOpen: boolean; salvage: boolean }): Walk {
+function walkTokens(tokens: readonly ModelJsonToken[], options: { closeOpen: boolean; salvage: boolean; arrayItems?: boolean }): Walk {
   const drops = new Set<number>();
   const repairs = new Set<ModelJsonRepairKind>();
   const stack: Container[] = [];
@@ -309,6 +318,8 @@ function walkTokens(tokens: readonly ModelJsonToken[], options: { closeOpen: boo
   let memberKey: string | undefined;
   // A salvage: cut inside the root's next key, so which member it began is not known.
   let cutInsideKey = false;
+  // A salvage: where the last finished item ends in the array that is the root member now open.
+  let lastItem = -1;
   const top = (): Container | undefined => stack[stack.length - 1];
   const valueDone = (end: number) => {
     const container = top();
@@ -321,6 +332,9 @@ function walkTokens(tokens: readonly ModelJsonToken[], options: { closeOpen: boo
     if (stack.length === 1) {
       lastFinished = end;
       memberKey = undefined;
+      lastItem = -1;
+    } else if (stack.length === 2 && container.kind === 'array') {
+      lastItem = end;
     }
   };
 
@@ -409,13 +423,15 @@ function walkTokens(tokens: readonly ModelJsonToken[], options: { closeOpen: boo
     // Keep the root's finished members, close the root, drop the member it was cut inside.
     repairs.add('missing-closing-bracket');
     const opening = tokens.find((token) => token.kind === 'punct' && token.value === '{');
+    const itemsKept = options.arrayItems === true && lastItem >= 0 && stack[1]?.kind === 'array';
     return {
       drops,
       repairs: [...repairs],
-      keepUntil: lastFinished >= 0 ? lastFinished : (opening?.end ?? 0),
-      closers: '}',
+      keepUntil: itemsKept ? lastItem : lastFinished >= 0 ? lastFinished : (opening?.end ?? 0),
+      closers: itemsKept ? ']}' : '}',
       ...(memberKey !== undefined ? { cutKey: memberKey } : {}),
-      cutInsideKey
+      cutInsideKey,
+      cutItemsKept: itemsKept
     };
   }
   const innermost = top();

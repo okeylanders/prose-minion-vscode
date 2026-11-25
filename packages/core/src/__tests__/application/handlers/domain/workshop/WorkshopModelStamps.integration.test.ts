@@ -37,6 +37,7 @@ import {
   createFakeShellService,
   createFakeWorkspace
 } from '../../../../mocks/platform';
+import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
 /**
  * Workshop Wayfinding Slice 6 (ADR 2026-11-03 D7): every committed assistant
@@ -157,7 +158,8 @@ Add a key.`, conversationId, 'vendor/never');
           }))
         } as never,
         fileSystem,
-        workspace
+        workspace,
+        UNLISTED_GROUP_FILES
       ),
       new WorkshopConversationSettingsService(
         session,
@@ -182,6 +184,8 @@ Add a key.`, conversationId, 'vendor/never');
         isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
         getCurrentCheckpointError: jest.fn().mockReturnValue(undefined),
         isSessionOperationPending: jest.fn().mockReturnValue(false),
+        openRoomInstance: jest.fn(() => 1),
+        onRoomReplaced: jest.fn(() => () => undefined),
         addSessionSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
         waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
         beginInteraction: jest.fn(),

@@ -188,7 +188,7 @@ describe('app-shell provider assembly', () => {
   it('authorizes the file-edit excerpt through a counts-only catalog, so the write path logs no path (ADR 2026-11-05 D13; PR #229 N-01)', () => {
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
     expect(extensionSource).toMatch(
-      /workshopExcerptFileEditDocument\(\s*workshopSessionService,\s*new WorkshopContextIntakeService\(contextResourceResolver\.countsOnly\(\),/
+      /workshopExcerptFileEditDocument\(\s*workshopSessionService,\s*new WorkshopContextIntakeService\(\s*contextResourceResolver\.countsOnly\(\),/
     );
   });
 
@@ -693,7 +693,10 @@ describe('app-shell provider assembly', () => {
     // through its one CoreServices field (ADR 2026-11-05 D8). Built once, here.
     expect(source.match(/workshopTranscriptRecallService/g)).toHaveLength(4);
     expect(source.match(/new WorkshopTranscriptRecallService\(/g)).toHaveLength(1);
-    expect(source).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\bworkshopTranscriptRecallService,\n\s*workshopSavedSessionTodos,\n\s*contextPathProposals: \{[^}]*\}\n\s*\};/);
+    expect(source).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\bworkshopTranscriptRecallService,\n\s*workshopSavedSessionTodos,\n\s*contextPathProposals: \{[^}]*\},[\s\S]*?\bworkshopPassageSearch: \{[^}]*\}\n\s*\};/);
+    // A persona's passage search takes the one engine, the resolver's listing and the report file (ADR 2026-11-20 D20).
+    expect(source).toMatch(/workshopPassageSearch: \{\s*engine: passageSearchEngine,\s*listing: contextResourceResolver,/);
+    expect(source.match(/new PassageSearchReportExport\(/g)).toHaveLength(1);
     // A persona's saved-session to-do writes have their own port, over the store and coordinator, never recall (ADR 2026-11-19 D6).
     expect(source).toMatch(/new WorkshopSavedSessionTodoStore\(workshopSessionStore, workshopSessionPersistenceCoordinator, outputChannel\)/);
   });

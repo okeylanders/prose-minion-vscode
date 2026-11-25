@@ -46,6 +46,7 @@ import { LIGHTBOX_LENSES, LIGHTBOX_READING_GROUPS } from '@shared/constants/ligh
 import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import type { ContextPathGroup } from '@/shared/types/context';
+import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
 export const examples = Object.fromEntries(
   LIGHTBOX_READING_GROUPS.map((group) => [group, readWorkedExample(group)])
@@ -201,7 +202,8 @@ export async function createLightboxReadingHost(options: LightboxReadingHostOpti
       }
     },
     createFakeFileSystem(),
-    createFakeWorkspace()
+    createFakeWorkspace(),
+    UNLISTED_GROUP_FILES
   );
   /** List a project file (text, or a read failure); `absolutePath` places it elsewhere. Returns its absolute path. */
   const addProjectFile = (

@@ -65,6 +65,7 @@ import {
   cloneWorkshopLocationsProposal
 } from '@/application/services/workshop/locations/WorkshopLocationsProposalRecords';
 import type { WorkshopLocationsGroupAnswer, WorkshopLocationsProposalCard } from '@messages';
+import * as passageSearchRecords from '@/application/services/workshop/passageSearch/WorkshopPassageSearchRecords';
 import * as todoRows from '@/application/services/workshop/todos/WorkshopTodoStatusRows';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
@@ -1765,7 +1766,8 @@ export class WorkshopSessionService {
     reaction?: WorkshopReplyReactionCommit,
     trailerOutcomes?: WorkshopTrailerOutcomes,
     todoStatus?: todoRows.WorkshopReplyTodoStatusCommit,
-    locationsProposal?: WorkshopLocationsProposalCard
+    locationsProposal?: WorkshopLocationsProposalCard,
+    passageSearch?: passageSearchRecords.WorkshopPassageSearchReplyCommit
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1886,6 +1888,8 @@ export class WorkshopSessionService {
     if ((isHost || isGuest) && locationsProposal) {
       turn.locationsProposal = cloneWorkshopLocationsProposal(locationsProposal);
     }
+    // A passage-search card, and a delivery's receipt, ride the reply's own commit (ADR 2026-11-20 D17, D19a).
+    passageSearchRecords.stampWorkshopPassageSearchOnReply(turn, isHost || isGuest, passageSearch);
     // A persona's to-do changes land in this one commit; its receipt rides the reply (ADR 2026-11-19 D5, D8).
     todoRows.commitWorkshopReplyTodoStatusOnReply(isHost || isGuest, todoStatus, turn, (id, status, closedBy) => this.setTodoStatus(id, status, closedBy));
     // The persona's own reaction (ADR 2026-11-07 D5) rides the reply that carried it, written
@@ -2030,6 +2034,12 @@ export class WorkshopSessionService {
   /** Answer a reply's context-paths card (ADR 2026-11-19 D27): the writer's Apply or decline, once. */
   answerLocationsProposal = (turnId: string, answers: readonly WorkshopLocationsGroupAnswer[]): WorkshopTurn | undefined =>
     this.turnLedger.update(turnId, (turn) => answerWorkshopLocationsProposalOnTurn(turn, answers));
+
+  /** A passage search (ADR 2026-11-20 D18, D20): the writer's Cancel on its card, and the mark on a delivery's request turn. */
+  cancelPassageSearch = (turnId: string): WorkshopTurn | undefined =>
+    this.turnLedger.update(turnId, passageSearchRecords.cancelWorkshopPassageSearchOnTurn);
+  markPassageSearchResultsTurn = (turnId: string, cardTurnId: string): WorkshopTurn | undefined =>
+    this.turnLedger.update(turnId, (turn) => passageSearchRecords.markWorkshopPassageSearchResultsTurn(turn, cardTurnId));
 
   setTodoStatusChangeStates = (turnId: string, settle: todoRows.WorkshopTodoStatusChangeSettlement): WorkshopTurn | undefined =>
     this.turnLedger.update(turnId, (turn) => todoRows.settleWorkshopTodoStatusChanges(turn, settle));

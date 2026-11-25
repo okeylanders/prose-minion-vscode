@@ -22,7 +22,7 @@ import { WorkshopTranscriptRecallService } from '@/application/services/workshop
 import type { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import type { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
-import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import type { WorkshopResourceSources } from '@/application/services/workshop/WorkshopResourceCapability';
 import type { WorkshopPersonaId, WorkshopTurn } from '@messages';
 import { setupCoordinator } from '@/__tests__/application/services/workshop/session/WorkshopCoordinatorHarness';
 import { noProjectLenses } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
@@ -52,7 +52,7 @@ export function createRecallRunHarness(options: {
   const factory = new WorkshopPersonaCapabilityFactory(
     {} as DictionaryService,
     {} as WorkshopAnalysisSidePass,
-    { createProvider: jest.fn() } as unknown as ContextResourceProviderFactory,
+    { createProvider: jest.fn() } as unknown as WorkshopResourceSources,
     session,
     log,
     recall,

@@ -63,6 +63,12 @@ export const AGENT_RUN_POLICIES = {
     id: 'helper', capabilityCatalog: 'none', retention: 'discard',
     maxCapabilityRounds: 0, maxCorrectionTurns: 0,
     onCapabilityLimit: 'returnLastResponse', visibleArtifact: 'final-response', cleanupOwner: 'engine'
+  }),
+  /** Passage Search's reads and its organizing pass (ADR 2026-11-20 D7, D12): one capability-free call each, nothing retained. */
+  passageSearch: policy({
+    id: 'passage-search', capabilityCatalog: 'none', retention: 'discard',
+    maxCapabilityRounds: 0, maxCorrectionTurns: 0,
+    onCapabilityLimit: 'returnLastResponse', visibleArtifact: 'final-response', cleanupOwner: 'engine'
   })
 } as const;
 
@@ -96,5 +102,7 @@ export const AGENT_RUN_ROUTE_MATRIX = [
   { caller: 'ContextAssistantService', policy: AGENT_RUN_POLICIES.context },
   { caller: 'ProofreadService chunks', policy: AGENT_RUN_POLICIES.proofread },
   { caller: 'CraftFlagsService categories', policy: AGENT_RUN_POLICIES.craftFlags },
-  { caller: 'HelperAgentService tasks', policy: AGENT_RUN_POLICIES.helper }
+  { caller: 'HelperAgentService tasks', policy: AGENT_RUN_POLICIES.helper },
+  { caller: 'PassageSearchService chunk reads', policy: AGENT_RUN_POLICIES.passageSearch },
+  { caller: 'PassageSearchModelOrganizer organizing pass', policy: AGENT_RUN_POLICIES.passageSearch }
 ] as const;

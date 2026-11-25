@@ -53,7 +53,7 @@ export function chunkParagraphs(text: string, maxWords: number): TextChunk[] {
 }
 
 /** Each paragraph's span: the text between blank lines, trimmed of the breaks themselves. */
-function paragraphRanges(text: string): TextRange[] {
+export function paragraphRanges(text: string): TextRange[] {
   const ranges: TextRange[] = [];
   let start = 0;
   for (const match of text.matchAll(PARAGRAPH_BREAK)) {

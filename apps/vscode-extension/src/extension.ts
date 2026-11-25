@@ -91,6 +91,12 @@ import {
   ContextPathSuggestionService,
   CraftFlagsUseCase,
   liveCatalogPrices,
+  liveCatalogFacts,
+  PassageSearchService,
+  PassageSearchModelOrganizer,
+  PassageSearchScopeFiles,
+  ProjectPassageSearchEngine,
+  PassageSearchReportExport,
   liveCatalogReasoning,
   LightboxSetSourcePayload,
   CoreServices,
@@ -336,10 +342,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopSessionService,
     workshopConversationSettingsService
   );
+  // The Read in reader names a card's file from its group's authoritative listing (ADR 2026-11-20 S50).
   const workshopContextIntakeService = new WorkshopContextIntakeService(
     contextResourceResolver,
     platform.fileSystem,
-    platform.workspace
+    platform.workspace,
+    contextResourceResolver
   );
   const workshopSessionTimeService = new WorkshopSessionTimeService();
   // Pinned context (ADR 2026-11-04 D5, D9): one store, then the one library
@@ -454,7 +462,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     fileSystem: platform.fileSystem,
     excerpt: workshopHistoryExcerptFile(
       workshopSessionService,
-      new WorkshopContextIntakeService(contextResourceResolver.countsOnly(), platform.fileSystem, platform.workspace)
+      new WorkshopContextIntakeService(
+        contextResourceResolver.countsOnly(),
+        platform.fileSystem,
+        platform.workspace,
+        contextResourceResolver
+      )
     ),
     // One cache for every turn: a continuation never aligns the paragraphs again (PR #286 F-03).
     diffs: new WorkshopHistoryDiffCache()
@@ -621,7 +634,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // The excerpt's authorization on the write path reads a counts-only catalog: no pattern or path in the log (PR #229 N-01).
   const fileEditExcerpt = workshopExcerptFileEditDocument(
     workshopSessionService,
-    new WorkshopContextIntakeService(contextResourceResolver.countsOnly(), platform.fileSystem, platform.workspace)
+    new WorkshopContextIntakeService(
+      contextResourceResolver.countsOnly(),
+      platform.fileSystem,
+      platform.workspace,
+      contextResourceResolver
+    )
   );
   const fileEditStaging = new FileEditStagingService({
     candidates: contextResourceResolver,
@@ -677,10 +695,36 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel
   );
 
+  // Passage Search (ADR 2026-11-20 D1): the one engine, on the manager-owned `passageSearch` scope. It reads
+  // scopes through the resolver's authoritative listing and prices a plan from the live catalog; callers own consent.
+  // The organizing pass (D12) is the service's port: one call over a result's checked instances, on the same scope.
+  const passageSearchFacts = liveCatalogFacts(outputChannel);
+  const passageSearchEngine = new ProjectPassageSearchEngine(
+    new PassageSearchScopeFiles({
+      listing: contextResourceResolver,
+      fileSystem: platform.fileSystem,
+      workspace: platform.workspace,
+      editor: editorContext
+    }),
+    new PassageSearchService(
+      aiResourceManager,
+      resourceLoader.getPromptLoader(),
+      passageSearchFacts,
+      outputChannel,
+      new PassageSearchModelOrganizer(aiResourceManager, resourceLoader.getPromptLoader(), passageSearchFacts, outputChannel)
+    ),
+    outputChannel
+  );
+
   // Selected Text (ADR 2026-11-14 D11): the window's one snapshot cache, over the editor port.
   const editorSelectionSnapshots = new EditorSelectionSnapshots(editorContext, outputChannel);
   context.subscriptions.push(editorSelectionSnapshots);
 
+  // The Workshop card's Open report (ADR 2026-11-20 D21): the shared export, so one module writes every Passage Search report.
+  const workshopPassageSearchReports = new PassageSearchReportExport(
+    { shell: platform.shell, fileSystem: platform.fileSystem, workspace: platform.workspace },
+    outputChannel
+  );
   const coreServices: CoreServices = {
     assistantToolService,
     dictionaryService,
@@ -728,9 +772,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     editorSelectionSnapshots,
     helperAgentService,
     contextPathSuggestions,
+    passageSearchEngine,
     workshopTranscriptRecallService,
     workshopSavedSessionTodos,
-    contextPathProposals: { checker: contextPathChecker, settings: contextPathSettings }
+    contextPathProposals: { checker: contextPathChecker, settings: contextPathSettings },
+    // A persona's passage-search card (ADR 2026-11-20 D20): the same engine, the resolver's authoritative
+    // listing a request is settled against, and the shared report export the sidebar's Save uses.
+    workshopPassageSearch: {
+      engine: passageSearchEngine,
+      listing: contextResourceResolver,
+      reports: workshopPassageSearchReports
+    }
   };
 
   // Migrate API key from settings to SecretStorage if needed

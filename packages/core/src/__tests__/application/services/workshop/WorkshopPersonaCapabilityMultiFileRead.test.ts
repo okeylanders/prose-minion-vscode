@@ -168,7 +168,7 @@ describe('a persona\'s read of several files', () => {
 
     const changed: Record<string, boolean> = {};
     for (const row of fulfillment.deliveredSources!) {
-      const read = await readWorkshopReadInResource(catalog, row.configuredResource!.group, row.configuredResource!.path);
+      const read = await readWorkshopReadInResource(catalog, factory, row.configuredResource!.group, row.configuredResource!.path);
       expect(read).toMatchObject({ kind: 'content', resource: { path: row.label } });
       if (read.kind === 'content') {
         changed[row.label] = read.fingerprint !== row.sourceFingerprint;

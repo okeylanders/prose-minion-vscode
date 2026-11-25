@@ -38,6 +38,7 @@ export const WORKSHOP_CONTEXT_TALLY_PIECES = Object.freeze({
   'room.reminders': { part: 'room-notes', name: 'Reminders and invites' },
   'room.trailer-outcomes': { part: 'room-notes', name: 'What became of notes and edits' },
   'room.directive': { part: 'room-notes', name: 'Edit-offer requests' },
+  'room.passage-search': { part: 'room-notes', name: 'Passage search results' },
   'context.excerpt': { part: 'excerpt-context', name: 'Excerpt or room subject' },
   'context.updates': { part: 'excerpt-context', name: 'Excerpt and context updates' },
   'context.attachments': { part: 'excerpt-context', name: 'Standing context' },

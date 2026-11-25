@@ -15,6 +15,13 @@ import {
   ContextResourceProvider,
   ContextResourceSummary
 } from '@/domain/models/ContextGeneration';
+import { distinctContextGroupFiles, hostFileIdentity } from '@/infrastructure/context/ContextGroupFiles';
+import {
+  contextResourceKey,
+  contextResourceLabel,
+  isContextResourceFile,
+  normalizeContextPattern
+} from '@/infrastructure/context/ContextResourcePaths';
 
 type MatchMode = 'browse' | 'browse-counts' | 'authoritative' | 'check';
 
@@ -24,6 +31,12 @@ export type ContextPatternsByGroup = Partial<Record<ContextPathGroup, readonly s
 /** One supported file a pattern matched. `key` identifies it across groups (root and case-folded path). */
 export interface ContextPatternMatchFile {
   readonly key: string;
+  /**
+   * The file's host identity (`hostFileIdentity`), the same one a group's
+   * listing gives (ADR 2026-11-20 S43): what a narrowed group is intersected
+   * by. Host-side only, never shown or logged.
+   */
+  readonly identity: string;
   readonly workspaceFolder: string;
   readonly relativePath: string;
   /** The root's name, present only when several roots are open. */
@@ -84,7 +97,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
     const resourceMap = new Map<string, InternalContextResource>();
 
     for (const resource of resources) {
-      const key = this.normalizeKey(resource.path);
+      const key = contextResourceKey(resource.path);
       if (!resourceMap.has(key)) {
         resourceMap.set(key, resource);
       }
@@ -96,7 +109,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
         const contents: ContextResourceContent[] = [];
 
         for (const requestedPath of paths) {
-          const normalizedKey = this.normalizeKey(requestedPath);
+          const normalizedKey = contextResourceKey(requestedPath);
           const resource = resourceMap.get(normalizedKey);
 
           if (!resource) {
@@ -145,11 +158,11 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
    * only, never a pattern, path or host message (N-01). The catalog
    * (`createProvider`) keeps its tolerant, best-effort walk for browsing.
    */
-  async listCandidates(groups: ContextPathGroup[]): Promise<ContextResourceCandidate[]> {
+  async listCandidates(groups: ContextPathGroup[], patternsFor?: (group: ContextPathGroup) => readonly string[]): Promise<ContextResourceCandidate[]> {
     const candidates: ContextResourceCandidate[] = [];
     let excluded = 0;
     await this.forEachMatch(groups, 'authoritative', (group, folder, match, sizeBytes) => {
-      if (this.isSupportedFile(match)) {
+      if (isContextResourceFile(match)) {
         candidates.push({
           group,
           relativePath: path.relative(folder.path, match).replace(/\\/g, '/'),
@@ -160,11 +173,30 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
       }
     }, () => {
       excluded += 1;
-    });
+    }, patternsFor);
     this.outputChannel?.appendLine(
       `[ContextResourceResolver] Candidate read: ${candidates.length} candidate(s), ${excluded} excluded match(es).`
     );
     return candidates;
+  }
+
+  /**
+   * Every file of each group, root-aware, for a search (ADR 2026-11-20 D3a):
+   * the authoritative candidate read, each file once per group it is in. A
+   * failed scan rejects, never returning fewer files.
+   */
+  async listGroupFiles(groups: ContextPathGroup[]): Promise<ContextResourceCandidate[]> {
+    return distinctContextGroupFiles(await this.listCandidates(groups));
+  }
+
+  /** The same authoritative walk over writer-typed patterns (D3): the caller has refused unsafe forms first. */
+  async listPatternFiles(patterns: readonly string[]): Promise<ContextResourceCandidate[]> {
+    return distinctContextGroupFiles(await this.listCandidates(['general'], () => patterns));
+  }
+
+  /** The workspace folders open now, the roots every listing here walks: a listing names a file's folder only when several are. */
+  openWorkspaceFolders(): readonly { readonly path: string; readonly name: string }[] {
+    return this.workspace.workspaceFolders();
   }
 
   /**
@@ -191,13 +223,14 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
     let excluded = 0;
     const roots = this.workspace.workspaceFolders().length;
     const searched = await this.forEachMatch(groups, 'check', (group, folder, match, _sizeBytes, pattern) => {
-      if (!this.isSupportedFile(match)) {
+      if (!isContextResourceFile(match)) {
         return;
       }
       const relativePath = path.relative(folder.path, match).replace(/\\/g, '/');
-      const key = `${folder.path}\u0000${this.normalizeKey(relativePath)}`;
+      const key = `${folder.path}\u0000${contextResourceKey(relativePath)}`;
       tallies.get(group)?.get(pattern)?.files.set(key, {
         key,
+        identity: hostFileIdentity(match),
         workspaceFolder: folder.name,
         relativePath,
         ...(roots > 1 ? { rootName: folder.name } : {})
@@ -265,7 +298,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
 
       for (const workspaceFolder of workspaceFolders) {
         for (const pattern of patterns) {
-          const normalizedPattern = this.normalizePattern(pattern);
+          const normalizedPattern = normalizeContextPattern(pattern);
           if (!normalizedPattern) {
             continue;
           }
@@ -328,13 +361,13 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
 
     const searched = await this.forEachMatch(groups, diagnostics === 'counts' ? 'browse-counts' : 'browse', (group, workspaceFolder, match, sizeBytes) => {
       const relativePath = path.relative(workspaceFolder.path, match).replace(/\\/g, '/');
-      const normalizedKey = this.normalizeKey(relativePath);
+      const normalizedKey = contextResourceKey(relativePath);
 
       if (seenPaths.has(normalizedKey)) {
         return;
       }
 
-      if (!this.isSupportedFile(match)) {
+      if (!isContextResourceFile(match)) {
         return;
       }
 
@@ -343,7 +376,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
       resources.push({
         group,
         path: relativePath,
-        label: this.deriveLabel(match),
+        label: contextResourceLabel(match),
         sizeBytes,
         workspaceFolder: workspaceFolder.name,
         absolutePath: match
@@ -386,36 +419,6 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
       .split(',')
       .map(pattern => pattern.trim())
       .filter(pattern => pattern.length > 0);
-  }
-
-  private normalizePattern(pattern: string): string {
-    let normalized = pattern.trim();
-    if (!normalized) {
-      return '';
-    }
-
-    if (normalized.startsWith('./')) {
-      normalized = normalized.slice(2);
-    }
-
-    normalized = normalized.replace(/^\/+/, '');
-    normalized = normalized.replace(/^workspace:/i, '');
-
-    // If the pattern doesn't contain a wildcard or directory separator, treat it as a filename
-    if (!/[\*\?\[]/.test(normalized) && !normalized.includes('/')) {
-      return `**/${normalized}`;
-    }
-
-    return normalized;
-  }
-
-  private normalizeKey(pathValue: string): string {
-    return pathValue.trim().replace(/\\/g, '/').replace(/^\/+/, '').toLowerCase();
-  }
-
-  private isSupportedFile(filePath: string): boolean {
-    const extension = path.extname(filePath).toLowerCase();
-    return extension === '.md' || extension === '.txt';
   }
 
   /**
@@ -470,14 +473,5 @@ export class ContextResourceResolver implements ContextResourceProviderFactory, 
       }
     }
     return { kind: 'ok', sizeBytes };
-  }
-
-  private deriveLabel(filePath: string): string {
-    const basename = path.basename(filePath, path.extname(filePath));
-    return basename
-      .replace(/[-_]+/g, ' ')
-      .split(' ')
-      .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
-      .join(' ');
   }
 }

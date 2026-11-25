@@ -13,6 +13,7 @@ import {
   createFakeShellService,
   createFakeWorkspace
 } from '../../../../mocks/platform';
+import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
 const MUTATION_ROUTES = [
   MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
@@ -117,7 +118,8 @@ describe('WorkshopContextHandler', () => {
       createFakeWorkspace({
         workspaceFolders: () => [{ path: '/workspace', name: 'workspace' }],
         asRelativePath: (filePath) => filePath.replace('/workspace/', '')
-      })
+      }),
+      UNLISTED_GROUP_FILES
     );
     handler = new WorkshopContextHandler(
       contextAssistant as never,

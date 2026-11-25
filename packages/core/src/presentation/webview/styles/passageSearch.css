@@ -1,0 +1,255 @@
+/* Passage Search, the Search tab's third subtab (ADR 2026-11-20 D15).
+   Plain CSS on the sidebar's tokens; nothing above the Chromium 114 floor. */
+.pm-ps-scopes {
+  min-width: 0;
+}
+
+.pm-ps-scopes legend {
+  padding: 0 4px;
+}
+
+.pm-ps-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.pm-ps-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.pm-ps-group-title {
+  margin: 10px 0 4px;
+}
+
+.pm-ps-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* A control that cannot act stays focusable and says why beside it. */
+.pm-ps-actions .btn[aria-disabled="true"],
+.pm-ps-organize .btn[aria-disabled="true"],
+.pm-ps-cite[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pm-ps-reason,
+.pm-ps-meta {
+  margin: 6px 0 0;
+  color: var(--pm-muted);
+  font-size: 0.9em;
+}
+
+.pm-ps-estimate {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--pm-primary);
+  background: var(--pm-inset);
+}
+
+.pm-ps-estimate-line {
+  margin: 0;
+  font-family: var(--pm-mono);
+  font-size: 0.95em;
+}
+
+.pm-ps-refusal,
+.pm-ps-ended {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--pm-amber);
+  background: var(--pm-inset);
+  font-size: 0.9em;
+}
+
+.pm-ps-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pm-ps-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  font-family: var(--pm-mono);
+  font-size: 0.95em;
+}
+
+.pm-ps-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--pm-border-2);
+  border-top-color: var(--pm-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.pm-ps-organize {
+  margin-bottom: 12px;
+}
+
+.pm-ps-headline {
+  margin: 0 0 4px;
+  font-size: 1.05em;
+}
+
+.pm-ps-result h4 {
+  margin: 14px 0 6px;
+  font-size: 0.95em;
+}
+
+.pm-ps-section ul,
+.pm-ps-missing ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.pm-ps-section li,
+.pm-ps-missing li {
+  margin-bottom: 4px;
+  font-size: 0.92em;
+  line-height: 1.5;
+}
+
+.pm-ps-cite,
+.pm-ps-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pm-link);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pm-ps-cite {
+  margin-right: 4px;
+  font-family: var(--pm-mono);
+  font-size: 0.9em;
+}
+
+.pm-ps-cite:hover,
+.pm-ps-link:hover {
+  color: var(--pm-link-hover);
+  text-decoration: underline;
+}
+
+.pm-ps-cite:focus-visible,
+.pm-ps-link:focus-visible,
+.pm-ps-instance:focus-visible {
+  outline: 2px solid var(--pm-accent);
+  outline-offset: 2px;
+}
+
+.pm-ps-labels {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.pm-ps-labels caption {
+  padding-bottom: 4px;
+  color: var(--pm-muted);
+  text-align: left;
+}
+
+.pm-ps-labels th,
+.pm-ps-labels td {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--pm-border-soft);
+  text-align: left;
+  font-weight: normal;
+}
+
+.pm-ps-labels thead th {
+  color: var(--pm-muted);
+}
+
+.pm-ps-labels td {
+  text-align: right;
+  font-family: var(--pm-mono);
+}
+
+.pm-ps-instances {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pm-ps-instance {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--pm-border-soft);
+}
+
+.pm-ps-instance-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font-size: 0.9em;
+}
+
+.pm-ps-number {
+  font-family: var(--pm-mono);
+  color: var(--pm-muted);
+}
+
+.pm-ps-label {
+  padding: 0 6px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+  color: var(--pm-text-2);
+  font-size: 0.9em;
+}
+
+.pm-ps-quote {
+  margin: 6px 0 4px;
+  padding-left: 10px;
+  border-left: 2px solid var(--pm-border-2);
+  font-size: 0.92em;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pm-ps-quote mark {
+  background: var(--pm-accent-soft);
+  color: var(--pm-text);
+}
+
+.pm-ps-context {
+  color: var(--pm-muted);
+}
+
+.pm-ps-note {
+  margin: 0;
+  color: var(--pm-text-2);
+  font-size: 0.9em;
+}
+
+.pm-ps-asked {
+  margin: 0 0 8px;
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+}
+
+.pm-ps-asked-label {
+  color: var(--pm-muted);
+}

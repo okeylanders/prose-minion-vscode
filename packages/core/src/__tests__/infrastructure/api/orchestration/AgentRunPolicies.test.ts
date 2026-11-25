@@ -18,7 +18,9 @@ describe('agent-run caller-to-policy matrix', () => {
       'ContextAssistantService',
       'ProofreadService chunks',
       'CraftFlagsService categories',
-      'HelperAgentService tasks'
+      'HelperAgentService tasks',
+      'PassageSearchService chunk reads',
+      'PassageSearchModelOrganizer organizing pass'
     ]);
     expect(AGENT_RUN_POLICIES.assistant).toMatchObject({ capabilityCatalog: 'guides', retention: 'discard', cleanupOwner: 'engine', onCapabilityLimit: 'forceFinalResponse' });
     expect(AGENT_RUN_POLICIES.workshopTool).toMatchObject({ capabilityCatalog: 'workshopToolContext', retention: 'retain', cleanupOwner: 'workshop-session', onCapabilityLimit: 'forceFinalResponse' });
@@ -35,6 +37,7 @@ describe('agent-run caller-to-policy matrix', () => {
     expect(AGENT_RUN_POLICIES.context).toMatchObject({ capabilityCatalog: 'projectContext', retention: 'discard', onCapabilityLimit: 'forceFinalResponse' });
     expect(AGENT_RUN_POLICIES.proofread).toMatchObject({ capabilityCatalog: 'none', retention: 'discard', maxCapabilityRounds: 0, cleanupOwner: 'engine' });
     expect(AGENT_RUN_POLICIES.craftFlags).toMatchObject({ capabilityCatalog: 'none', retention: 'discard', maxCapabilityRounds: 0, cleanupOwner: 'engine' });
+    expect(AGENT_RUN_POLICIES.passageSearch).toMatchObject({ capabilityCatalog: 'none', retention: 'discard', maxCapabilityRounds: 0, maxCorrectionTurns: 0, cleanupOwner: 'engine' });
     for (const route of AGENT_RUN_ROUTE_MATRIX) {
       expect(route.policy.visibleArtifact).toBe('final-response');
     }

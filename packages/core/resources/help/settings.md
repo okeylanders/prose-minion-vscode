@@ -48,6 +48,12 @@
 | --- | --- | --- | --- |
 | proseMinion.helperModel | string | "" | AI model for the helper agent's small automatic tasks, such as drafting a memory's title and summary when you save a Workshop reply to memory. Leave empty to use the same model as Proofread (`#proseMinion.proofreadModel#`), following it when it changes. Choosing a model here gives the helper its own, and never changes Proofread's. Enter any OpenRouter model ID. |
 
+## Setting passage search model
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| proseMinion.passageSearchModel | string | "" | AI model for Passage Search, which reads your files to find the passages that answer a question. Leave empty to use the same model as Category Search (`#proseMinion.categoryModel#`), following it when it changes. Choosing a model here gives Passage Search its own, and never changes Category Search's. Enter any OpenRouter model ID. |
+
 ## Setting craft flags categories
 
 | Key | Type | Default | Description |

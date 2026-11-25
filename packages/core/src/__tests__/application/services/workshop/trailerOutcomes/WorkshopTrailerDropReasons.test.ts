@@ -14,6 +14,7 @@ import {
   WORKSHOP_MEMORY_TRAILER_DROP_REASONS,
   WORKSHOP_TODO_TRAILER_DROP_REASONS,
   WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS,
+  WORKSHOP_PASSAGE_SEARCH_TRAILER_DROP_REASONS,
   type WorkshopLocationsTrailerDropReason,
   type WorkshopFileEditTrailerDropReason,
   type WorkshopMemoryTrailerDropReason,
@@ -178,7 +179,8 @@ describe('each recorded reason has one phrase (D14)', () => {
     ...WORKSHOP_MEMORY_TRAILER_DROP_REASONS,
     ...WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS,
     ...WORKSHOP_TODO_TRAILER_DROP_REASONS,
-    ...WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS
+    ...WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS,
+    ...WORKSHOP_PASSAGE_SEARCH_TRAILER_DROP_REASONS
   ])];
 
   it('the phrase table covers exactly the reasons, with no empty phrase and no two alike', () => {

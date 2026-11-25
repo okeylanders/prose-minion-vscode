@@ -32,6 +32,7 @@ import {
   createFakeShellService,
   createFakeWorkspace
 } from '../../mocks/platform';
+import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
 type TokenUsageCallback = (usage: TokenUsageTotals) => void;
 const flushQueuedWork = (): Promise<void> =>
@@ -198,7 +199,8 @@ function createTestAssembly(): TestAssembly {
         })
       } as never,
       platform.fileSystem,
-      platform.workspace
+      platform.workspace,
+      UNLISTED_GROUP_FILES
     ),
     workshopConversationSettingsService: {
       applyFromWebview: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
@@ -226,6 +228,8 @@ function createTestAssembly(): TestAssembly {
       isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
       getCurrentCheckpointError: jest.fn().mockReturnValue(undefined),
       isSessionOperationPending: jest.fn().mockReturnValue(false),
+      openRoomInstance: jest.fn(() => 1),
+      onRoomReplaced: jest.fn(() => () => undefined),
       addSessionSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
       waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
     refreshNamedSession: jest.fn(async (afterLoad?: (changed: boolean) => Promise<void>) => { await afterLoad?.(false); return false; }),

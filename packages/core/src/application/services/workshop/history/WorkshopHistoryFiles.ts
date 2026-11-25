@@ -8,7 +8,9 @@
  *   selection excerpt names its document the same way. A pasted excerpt
  *   has no file, and is refused in words.
  * - **A configured file,** named by group and path through
- *   `findConfiguredResource`, the rule `resource.read` uses.
+ *   `resolveConfiguredResource`, the rule `resource.read` uses: the file
+ *   the group's authoritative listing names, through its browse entry (ADR
+ *   2026-11-20 S50).
  *
  * The host path a file resolves to is host-side only: it reaches the
  * platform's ports, never a result, a card or a log.
@@ -18,7 +20,7 @@ import type { WorkshopExcerpt } from '@messages';
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import type { WorkshopHistoryFile } from '@shared/types/workshopCapabilities';
 import type { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
-import { findConfiguredResource } from '@/application/services/workshop/WorkshopConfiguredResourceLookup';
+import { resolveConfiguredResource, type ConfiguredResourceGroupFiles } from '@/application/services/ConfiguredResourceLookup';
 
 /** The room's excerpt file, as the history family may read it. */
 export type WorkshopHistoryExcerptFile =
@@ -78,7 +80,9 @@ export type WorkshopHistoryFileFault =
   | 'pasted-excerpt'
   | 'excerpt-unreadable'
   | 'not-configured'
-  | 'ambiguous-path';
+  | 'ambiguous-path'
+  /** The group's file list could not be read, so the path named no confirmed file (ADR 2026-11-20 S50). */
+  | 'file-list-unreadable';
 
 export type WorkshopHistoryFileResolution =
   | WorkshopHistoryResolvedFile
@@ -87,7 +91,8 @@ export type WorkshopHistoryFileResolution =
 export async function resolveWorkshopHistoryFile(
   file: WorkshopHistoryFile,
   excerpt: WorkshopHistoryExcerptPort,
-  resources: () => Promise<readonly ContextResourceSummary[]>
+  resources: () => Promise<readonly ContextResourceSummary[]>,
+  groupFiles: ConfiguredResourceGroupFiles
 ): Promise<WorkshopHistoryFileResolution> {
   if (file.kind === 'excerpt') {
     const found = await excerpt.excerptFile();
@@ -104,7 +109,7 @@ export async function resolveWorkshopHistoryFile(
         return assertNever(found);
     }
   }
-  const lookup = findConfiguredResource(await resources(), file.group, file.path);
+  const lookup = await resolveConfiguredResource(await resources(), file.group, file.path, groupFiles);
   switch (lookup.kind) {
     case 'found':
       return {
@@ -118,6 +123,8 @@ export async function resolveWorkshopHistoryFile(
       return { kind: 'fault', fault: 'not-configured' };
     case 'ambiguous':
       return { kind: 'fault', fault: 'ambiguous-path' };
+    case 'unverified':
+      return { kind: 'fault', fault: 'file-list-unreadable' };
     default:
       return assertNever(lookup);
   }
@@ -136,6 +143,8 @@ export function workshopHistoryFileFaultLine(fault: WorkshopHistoryFileFault): s
       return 'The path is not one of the configured project files in that group. Take paths from resource.catalog, exactly as it lists them.';
     case 'ambiguous-path':
       return 'The path matches more than one configured file when letter case is ignored. Write it exactly as resource.catalog lists it.';
+    case 'file-list-unreadable':
+      return 'The project\'s file list could not be read, so this file could not be confirmed and its history was not read. Try again.';
     default:
       return assertNever(fault);
   }

@@ -119,7 +119,10 @@ export type WorkshopCapabilityRejectionReason =
   | 'invalid-current'
   // The project's context paths (ADR 2026-11-19 D26; locations/WorkshopLocationsXmlCodec).
   | 'too-many-patterns'
-  | 'missing-pattern-group';
+  | 'missing-pattern-group'
+  // The group inventory's narrowing (ADR 2026-11-20 S46; WorkshopResourceXmlCodec).
+  | 'match-needs-group'
+  | 'unsafe-match';
 
 export type WorkshopCapabilityInspection =
   | { readonly kind: 'none' }

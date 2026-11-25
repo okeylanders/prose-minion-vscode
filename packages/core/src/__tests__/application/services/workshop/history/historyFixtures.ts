@@ -19,6 +19,8 @@ import {
 } from '@/application/services/workshop/history/WorkshopHistoryCapability';
 import type { WorkshopHistoryExcerptFile } from '@/application/services/workshop/history/WorkshopHistoryFiles';
 import { WorkshopHistoryDiffCache } from '@/application/services/workshop/history/WorkshopHistoryDiffCache';
+import type { ConfiguredResourceGroupFiles } from '@/application/services/ConfiguredResourceLookup';
+import { groupFilesOver } from '@/__tests__/mocks/configuredGroupFiles';
 
 export const ALICE_PATH = 'Drafts/6.11.md';
 export const ALICE_FS_PATH = '/projects/wonderland/Drafts/6.11.md';
@@ -107,6 +109,8 @@ export interface HistoryHarnessOptions {
   readonly resources?: readonly ContextResourceSummary[];
   /** Shared across harnesses to stand for one host's cache; a fresh one by default. */
   readonly diffs?: WorkshopHistoryDiffCache;
+  /** The authoritative listing a missed pair is looked up in (ADR 2026-11-20 S50); none by default. */
+  readonly groupFiles?: ConfiguredResourceGroupFiles;
 }
 
 /** The history sub-adapter over fakes, with its log lines and the turn's abort switch. */
@@ -137,11 +141,14 @@ export function historyCapability(options: HistoryHarnessOptions = {}) {
     excerpt: { excerptFile: async () => options.excerpt ?? { kind: 'none' } },
     diffs: options.diffs ?? new WorkshopHistoryDiffCache()
   };
+  const resources = options.resources ?? [aliceResource];
   const capability = new WorkshopHistoryCapability(
     ports,
-    async () => options.resources ?? [aliceResource],
+    async () => resources,
     { appendLine: (line: string) => { lines.push(line); }, clear: () => undefined, show: () => undefined },
-    { requestId: 'host-request', personaId: 'jill', signal: controller.signal }
+    { requestId: 'host-request', personaId: 'jill', signal: controller.signal },
+    // The group's listing holds the same files, by the same absolute paths (ADR 2026-11-20 S50).
+    options.groupFiles ?? groupFilesOver(() => resources)
   );
   return { capability, lines, controller, history, reads, stats };
 }

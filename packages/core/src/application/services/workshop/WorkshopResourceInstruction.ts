@@ -8,6 +8,7 @@
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { WorkshopResourceGroupAvailability } from './WorkshopCapabilityXmlCodec';
 import { workshopResourceContinuationCall } from './WorkshopResourceReadRenderer';
+import { workshopResourceCatalogCall } from './WorkshopResourceCatalog';
 
 /**
  * The continuation form the instruction shows: the renderer's own call, so
@@ -15,6 +16,9 @@ import { workshopResourceContinuationCall } from './WorkshopResourceReadRenderer
  */
 export const WORKSHOP_RESOURCE_CONTINUATION_EXAMPLE =
   workshopResourceContinuationCall({ group: 'chapters', path: 'chapters/chapter-02.md' }, 212);
+
+/** The catalog's continuation form the instruction shows: the catalog's own call (ADR 2026-11-20 S46). */
+export const WORKSHOP_RESOURCE_CATALOG_PAGE_EXAMPLE = workshopResourceCatalogCall({ group: 'chapters', page: 2 });
 
 /**
  * The lines `createWorkshopCapabilityInstruction` appends for the
@@ -26,6 +30,7 @@ export function workshopResourceInstructionLines(
   resourceGroups: readonly WorkshopResourceGroupAvailability[]
 ): string[] {
   const resourceBudgets = PROMPT_BUDGETS.workshopResource;
+  const contextPathBudgets = PROMPT_BUDGETS.contextPaths;
   if (resourceGroups.length === 0) {
     return [
       '',
@@ -44,10 +49,20 @@ export function workshopResourceInstructionLines(
     'For scene or continuity questions, locate and inspect the relevant current and neighboring chapter or manuscript resources. For project-bible facts, search the projectBrief, general, characters, locations, themes, and things groups that are available.',
     'When the writer names one or more characters, locations, chapters, or files, search directly. You do not need a path or a prior catalog.',
     'Search checks configured paths and labels before file contents, so a named lookup can disclose an exact readable path without loading the full group.',
-    'Do not request the catalog first for a named lookup. List the bounded catalog only when the writer wants an inventory or you lack a useful search term:',
+    'Do not request the catalog first for a named lookup. List the catalog only when the writer wants an inventory or you lack a useful search term:',
     '<prose-minion-tool-call name="resource.catalog">',
     '  <group>characters</group>',
     '</prose-minion-tool-call>',
+    'The catalog of a group lists every file a passage search of that group reads; without <group>, it lists each group in turn, and a file in two groups under each.',
+    `A catalog page lists up to ${resourceBudgets.catalogItems} files. When there are more, the page ends with the complete call for the next page, in this form:`,
+    WORKSHOP_RESOURCE_CATALOG_PAGE_EXAMPLE,
+    'Send that call alone, exactly as written, to see the next page.',
+    `To list only part of a group, add <match> beside <group>: up to ${contextPathBudgets.matchPatterns} patterns separated by commas, each written as a context path is in Settings, relative to the project, with no leading slash, drive, ~ or .., and at most ${contextPathBudgets.patternCharacters} characters long:`,
+    '<prose-minion-tool-call name="resource.catalog">',
+    '  <group>chapters</group>',
+    '  <match>Drafts/chapter-4.*.md, Drafts/chapter-1*.md</match>',
+    '</prose-minion-tool-call>',
+    'It lists exactly the files a passage search of that group narrowed by the same patterns reads, and says how many files of the group each pattern finds. A <match> without a <group> is refused as match-needs-group; a pattern that is not a safe context path is refused as unsafe-match.',
     '',
     'Search configured files by a literal term or phrase:',
     '<prose-minion-tool-call name="resource.search">',
@@ -73,7 +88,7 @@ export function workshopResourceInstructionLines(
     'A read of several files is one capability call with one result: each file under its own header, in the order named. A file that is missing or cannot be read is reported in its own section, and the others are still read.',
     'Name each file once. A read naming the same file twice, even in different letter case, is refused as duplicate-path. startLine and endLine are accepted only beside exactly one <path>; beside more they are refused as ambiguous-lines.',
     '',
-    `Resource ceilings are ${resourceBudgets.catalogItems} catalog entries, ${resourceBudgets.searchMatches} search matches, and ${resourceBudgets.readBytes} read bytes for a read of one file. A read naming more shares ${resourceBudgets.readBytesMulti} read bytes fairly between its files.`,
+    `Resource ceilings are ${resourceBudgets.searchMatches} search matches and ${resourceBudgets.readBytes} read bytes for a read of one file. A read naming more shares ${resourceBudgets.readBytesMulti} read bytes fairly between its files.`,
     `Search scans at most ${resourceBudgets.searchFiles} files, ${resourceBudgets.searchFileBytes} source bytes per file, and ${resourceBudgets.searchTotalBytes} source bytes total; larger or omitted inputs are reported as bounded. Reads refuse source files larger than ${resourceBudgets.readSourceBytes} bytes before loading them.`,
     `Reads use a ${resourceBudgets.readDefaultLines}-line default window from line 1 of each file. Optional inclusive startLine/endLine fields may select another window of one file, but the ${resourceBudgets.readBytes}-byte hard ceiling cannot be overridden; request another window when needed.`,
     `Every read is also fitted to your context window: it delivers at most half the room left, and says so at its top when that limited it. A read is refused, with the room it had, when that holds less than ${resourceBudgets.readMinimumBytes} bytes for each file; name fewer files, or answer from what you have. When the size of your context window is unknown, the file reads of one user turn share ${resourceBudgets.readBytesMulti} bytes instead.`,
