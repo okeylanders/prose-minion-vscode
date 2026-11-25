@@ -116,7 +116,7 @@ export interface OpenSettingsToggleMessage extends MessageEnvelope<Record<string
   type: MessageType.OPEN_SETTINGS_TOGGLE;
 }
 
-export interface OpenWorkshopMessage extends MessageEnvelope<Record<string, never>> {
+export interface OpenWorkshopMessage extends MessageEnvelope<{ newTab?: boolean }> {
   type: MessageType.OPEN_WORKSHOP;
 }
 

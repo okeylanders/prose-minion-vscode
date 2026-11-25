@@ -171,11 +171,11 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
     });
   };
 
-  const handleOpenWorkshop = () => {
+  const handleOpenWorkshop = (newTab = false) => {
     vscode.postMessage({
       type: MessageType.OPEN_WORKSHOP,
       source: 'webview.analysis.tab',
-      payload: {},
+      payload: newTab ? { newTab: true } : {},
       timestamp: Date.now()
     });
   };
@@ -311,13 +311,25 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
       <div className="assistant-title-row">
         <h2 className="text-lg font-semibold mb-4">Prose Excerpt Assistant</h2>
         <div className="surface-launch-buttons">
-          <button
-            className="btn btn-secondary surface-launch-button"
-            onClick={handleOpenWorkshop}
-            title="Open the Workshop editor tab"
-          >
-            <Icon name="panelRight" size={14} /> Workshop
-          </button>
+          <div className="workshop-launch-split" role="group" aria-label="Workshop tabs">
+            <button
+              type="button"
+              className="btn btn-secondary surface-launch-button"
+              onClick={() => handleOpenWorkshop()}
+              title="Open the Workshop editor tab"
+            >
+              <Icon name="panelRight" size={14} /> Workshop
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary surface-launch-button"
+              onClick={() => handleOpenWorkshop(true)}
+              aria-label="New Workshop tab"
+              title="New Workshop tab"
+            >
+              <Icon name="plus" size={14} />
+            </button>
+          </div>
           <button
             className="btn btn-secondary surface-launch-button"
             onClick={handleOpenLightbox}

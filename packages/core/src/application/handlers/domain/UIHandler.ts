@@ -15,6 +15,7 @@ import {
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import {
   OpenGuideFileMessage,
+  OpenWorkshopMessage,
   OpenDocsFileMessage,
   OpenResourceMessage,
   RequestSelectionMessage,
@@ -305,12 +306,15 @@ export class UIHandler {
     }
   }
 
-  async handleOpenWorkshop(): Promise<void> {
-    if (!this.workshopUiActions.openWorkshop) {
+  async handleOpenWorkshop(message: OpenWorkshopMessage): Promise<void> {
+    const open = message.payload?.newTab === true
+      ? this.workshopUiActions.newWorkshopTab
+      : this.workshopUiActions.openWorkshop;
+    if (!open) {
       this.sendError('ui.workshop', 'Workshop is not available from this surface.');
       return;
     }
-    this.workshopUiActions.openWorkshop();
+    open();
   }
 
   async handleOpenLightbox(): Promise<void> {

@@ -307,8 +307,9 @@ describe('UIHandler', () => {
   });
 
   describe('open_workshop', () => {
-    it('delegates to the injected Workshop UI action', async () => {
+    it('routes reveal and new-tab requests to their respective host actions', async () => {
       const openWorkshop = jest.fn();
+      const newWorkshopTab = jest.fn();
       handler = new UIHandler(
         postMessage as any,
         { appendLine } as any,
@@ -317,7 +318,7 @@ describe('UIHandler', () => {
         createFakeShellService(),
         createFakeEditorContext(),
         createFakeGlobalState(),
-        { openWorkshop }
+        { openWorkshop, newWorkshopTab }
       );
       handler.registerRoutes(router);
 
@@ -328,7 +329,15 @@ describe('UIHandler', () => {
         timestamp: 0,
       } as any);
 
+      await router.route({
+        type: MessageType.OPEN_WORKSHOP,
+        source: 'webview.analysis',
+        payload: { newTab: true },
+        timestamp: 1,
+      });
+
       expect(openWorkshop).toHaveBeenCalledTimes(1);
+      expect(newWorkshopTab).toHaveBeenCalledTimes(1);
       expect(postMessage).not.toHaveBeenCalled();
     });
 
