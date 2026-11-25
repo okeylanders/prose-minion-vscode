@@ -678,6 +678,20 @@ describe('AgentRunEngine', () => {
     expect(client.createChatCompletion).toHaveBeenCalledTimes(5);
   });
 
+  it('delivers a room capability status only to the initiating run', async () => {
+    const roomStatus = jest.fn();
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'Finished.' });
+    await engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Look this up.',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability(),
+      options: { onCapabilityStatus: roomStatus }
+    });
+    expect(roomStatus).toHaveBeenCalledWith('Jill is checking the dictionary…', 'Dictionary · liminal');
+    expect(statusCallback).not.toHaveBeenCalled();
+  });
+
   it('buffers an exact XML request, then progressively streams the final answer', async () => {
     const guides = capability();
     client.createStreamingChatCompletion

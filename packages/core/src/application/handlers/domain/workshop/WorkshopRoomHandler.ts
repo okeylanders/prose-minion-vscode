@@ -280,6 +280,7 @@ export class WorkshopRoomHandler {
     provisional?: boolean;
   };
 
+  private disposed = false;
   private readonly disposeStatusListener: () => void;
   private readonly disposeSessionSaveStatusListener: () => void;
   private readonly sliceComposition: WorkshopSliceComposition;
@@ -466,6 +467,7 @@ export class WorkshopRoomHandler {
    * the session aggregate and retained conversation survive this webview.
    */
   dispose(): void {
+    this.disposed = true;
     this.sliceComposition.dispose();
   }
 
@@ -606,7 +608,7 @@ export class WorkshopRoomHandler {
       return;
     }
 
-    if (!(await this.pickedAttachmentsStaged(text))) {
+    if (!(await this.pickedAttachmentsStaged(text)) || this.disposed) {
       return;
     }
 
@@ -648,12 +650,15 @@ export class WorkshopRoomHandler {
    * unseen.
    */
   private async pickedAttachmentsStaged(text: string): Promise<boolean> {
-    if (!this.sliceComposition.messageAttachmentReadsPending()) {
+    const room = this.session.readRoomRevision();
+    if (!this.sliceComposition.messageAttachmentReadsPending(room)) {
       return true;
     }
-    const room = this.session.readRoomRevision();
     this.sendStatus('Attaching the picked file before sending…');
-    const reads = await this.sliceComposition.settleMessageAttachmentReads();
+    const reads = await this.sliceComposition.settleMessageAttachmentReads(room);
+    if (this.disposed) {
+      return false;
+    }
     const fault = room !== this.session.readRoomRevision() || this.sessionPersistence.isSessionOperationPending()
       ? 'room-changed'
       : reads.kind === 'staged' ? undefined : reads.kind;

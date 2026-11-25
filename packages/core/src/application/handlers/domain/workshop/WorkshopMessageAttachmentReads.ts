@@ -37,28 +37,35 @@ export type WorkshopMessageAttachmentReadsOutcome =
   | { kind: 'still-reading' };
 
 export class WorkshopMessageAttachmentReads {
-  private readonly inFlight = new Set<Promise<string | undefined>>();
+  private readonly byRoom = new Map<number, Set<Promise<string | undefined>>>();
 
   /**
    * Hold `read` until it settles. It resolves to nothing when every file it
    * named is staged, or to the reason the first one was not. A read that
    * throws counts as refused.
    */
-  track(read: Promise<string | undefined>): Promise<string | undefined> {
+  track(room: number, read: Promise<string | undefined>): Promise<string | undefined> {
+    const reads = this.byRoom.get(room) ?? new Set<Promise<string | undefined>>();
+    this.byRoom.set(room, reads);
     const tracked = read
       .catch((error: unknown) => (error instanceof Error ? error.message : String(error)))
-      .finally(() => this.inFlight.delete(tracked));
-    this.inFlight.add(tracked);
+      .finally(() => {
+        reads.delete(tracked);
+        if (reads.size === 0) {
+          this.byRoom.delete(room);
+        }
+      });
+    reads.add(tracked);
     return tracked;
   }
 
-  pending(): boolean {
-    return this.inFlight.size > 0;
+  pending(room: number): boolean {
+    return this.byRoom.has(room);
   }
 
-  /** Wait for the reads in flight now (never one started later), at most `waitMs`. */
-  async settle(waitMs = WORKSHOP_MESSAGE_ATTACHMENT_READ_WAIT_MS): Promise<WorkshopMessageAttachmentReadsOutcome> {
-    const reads = [...this.inFlight];
+  /** A send takes only its room's reads at entry, even if a replaced room still has work pending. */
+  async settle(room: number, waitMs = WORKSHOP_MESSAGE_ATTACHMENT_READ_WAIT_MS): Promise<WorkshopMessageAttachmentReadsOutcome> {
+    const reads = [...(this.byRoom.get(room) ?? [])];
     let timer: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<'still-reading'>((resolve) => {
       timer = setTimeout(() => resolve('still-reading'), waitMs);
