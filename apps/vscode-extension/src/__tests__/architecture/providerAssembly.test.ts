@@ -110,29 +110,17 @@ describe('app-shell provider assembly', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('WorkshopPanelProvider is wired from the composition root with the CoreServices bundle (ADR 2026-07-03)', () => {
-    const providerSource = fs.readFileSync(
-      path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
-      'utf8'
-    );
-    // The provider receives the bundle; it does not build its own services.
-    expect(providerSource).toMatch(/coreServices:\s*CoreServices/);
-
-    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
-    const start = extensionSource.indexOf('new WorkshopPanelProvider(');
-    expect(start).toBeGreaterThan(-1);
-    // Scan exactly the constructor call — bounded at its closing `);` — so
-    // the witness can't be satisfied by a `coreServices` mention in unrelated
-    // trailing code (PR #66 review, Cal).
-    const end = extensionSource.indexOf(');', start);
-    expect(end).toBeGreaterThan(start);
-    const constructionArgs = extensionSource.slice(start, end);
-    expect(constructionArgs).toContain('coreServices');
+  it('binds the Workshop handler to services acquired for its attached room', () => {
+    const source = fs.readFileSync(path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'), 'utf8');
+    expect(source).toMatch(/const \{ services, ready \} = this\.rooms\.acquire\(roomId\)/);
+    expect(source).toMatch(/new WorkshopPanelTab\(\s*roomId, panel, this\.extensionUri, services, ready/);
+    const extension = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    expect(extension).toMatch(/new WorkshopPanelProvider\(\s*context\.extensionUri,\s*workshopRooms,/);
   });
 
   it('WorkshopPanelProvider seeds excerpts through the webview workshop source convention', () => {
     const providerSource = fs.readFileSync(
-      path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
+      path.join(PROVIDERS_ROOT, 'WorkshopPanelTab.ts'),
       'utf8'
     );
 
@@ -142,7 +130,7 @@ describe('app-shell provider assembly', () => {
 
   it('routes the Workshop API-key CTA through the existing settings-overlay command', () => {
     const providerSource = fs.readFileSync(
-      path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
+      path.join(PROVIDERS_ROOT, 'WorkshopPanelTab.ts'),
       'utf8'
     );
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
@@ -163,12 +151,9 @@ describe('app-shell provider assembly', () => {
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
 
     expect(providerSource).toContain('implements vscode.Disposable, vscode.WebviewPanelSerializer');
-    expect(providerSource).toMatch(/deserializeWebviewPanel\([\s\S]*?this\.attachPanel\(panel,\s*'restored'\)/);
-    expect(providerSource).toMatch(/openOrReveal\(\)[\s\S]*?this\.attachPanel\(panel,\s*'opened'\)/);
-    // Serializer state is intentionally not a second Workshop session store.
-    expect(providerSource).toContain('_state: unknown');
-    expect(providerSource).not.toMatch(/_state\.\w+/);
-
+    expect(providerSource).toContain('return this.attachPanel(panel, roomId, panel.active).ready');
+    expect(providerSource).toContain('return this.attachPanel(panel, roomId, true)');
+    // Behavioral serializer tests cover old UI-only state, invalid slots and collisions.
     // Two full editor tabs restore through serializers: the Workshop and the
     // Lightbox (ADR 2026-10-19 D1). A third needs a deliberate change here.
     const registrations = extensionSource.match(/registerWebviewPanelSerializer\(/g) ?? [];
@@ -267,30 +252,14 @@ describe('app-shell provider assembly', () => {
   });
 
   it('carries a Lightbox handoff into the Workshop only through the Workshop panel\'s own handler (ADR 2026-10-19 D11)', () => {
-    const providerSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'), 'utf8');
-    const seed = providerSource.slice(
-      providerSource.indexOf('public seedLexicalGravityBuild('),
-      providerSource.indexOf('public dispose(): void')
-    );
-    expect(seed).toMatch(/this\.openOrReveal\(\);[\s\S]*?type: MessageType\.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD/);
-    expect(seed).toMatch(/\.offer\(panel, \(deliveryId\) => \{[\s\S]*?this\.messageHandler\?\.handleMessage\(message\)/);
-    // Delivery is gated on the accepting panel, its readiness and its visibility, and a
-    // seed opens only on a granted claim (PR #150 F-03).
-    // A seed waits for the panel's receiver to announce itself, so it is listening (F-08).
-    expect(providerSource).toMatch(/isReady: \(panel\) => this\.panel === panel && this\.seedReceiver !== undefined && panel\.visible/);
-    expect(providerSource).toMatch(
-      /MessageType\.WORKSHOP_SEED_CLAIM\s*\|\| shape\?\.type === MessageType\.WORKSHOP_SEED_ANSWER\s*\|\| shape\?\.type === MessageType\.WORKSHOP_SEED_RECEIVER/
-    );
-    // A Lightbox tile (Slice 4) takes the same path: offered, then routed through the panel's own handler.
-    expect(seed).toMatch(/public stageLightboxTile\([\s\S]*?this\.openOrReveal\(\);[\s\S]*?\['lightbox-tile'\]\.offer\(panel, \(deliveryId\) => \{[\s\S]*?type: MessageType\.WORKSHOP_STAGE_LIGHTBOX_TILE[\s\S]*?this\.messageHandler\?\.handleMessage\(message\)/);
-    // The seed is not written into the Workshop session from outside.
-    expect(seed).not.toMatch(/workshopSessionService|coreServices\./);
-
-    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
-    const start = extensionSource.indexOf('new LightboxPanelProvider(');
-    const lightboxArgs = extensionSource.slice(start, extensionSource.indexOf('\n  );', start));
-    expect(lightboxArgs).toMatch(/handOffToWorkshop: \(handoff\) => \{[\s\S]*?workshopPanelProvider\?\.seedLexicalGravityBuild\(handoff\.seed\)/);
-    expect(lightboxArgs).toMatch(/case 'tile':\s*return workshopPanelProvider\?\.stageLightboxTile\(handoff\.tile\)/);
+    const providerSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'WorkshopPanelTab.ts'), 'utf8');
+    for (const type of ['WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD', 'WORKSHOP_STAGE_LIGHTBOX_TILE']) {
+      expect(providerSource).toContain(`type: MessageType.${type}`);
+    }
+    const extension = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    expect(extension).toContain('captureWorkshopHandoff: () => workshopPanelProvider?.captureLightboxTarget()');
+    // The routed seed, its per-panel grant, receiver and focus races have behavior witnesses in
+    // WorkshopPanelProviderBuildSeed and the three browser-side seed delivery integrations.
     // The Lightbox's own provider never names a Workshop route.
     const lightboxProvider = fs.readFileSync(path.join(PROVIDERS_ROOT, 'LightboxPanelProvider.ts'), 'utf8');
     expect(lightboxProvider).not.toMatch(/WORKSHOP_|seedLexicalGravityBuild/);
@@ -582,12 +551,9 @@ describe('app-shell provider assembly', () => {
     );
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
 
-    const providerDispose = providerSource.slice(
-      providerSource.indexOf('public dispose(): void'),
-      providerSource.indexOf('\n  }\n}', providerSource.indexOf('public dispose(): void'))
-    );
-    expect(providerDispose.indexOf('this.messageHandler?.dispose()'))
-      .toBeLessThan(providerDispose.indexOf('panel?.dispose()'));
+    expect(providerSource).toMatch(/this\.detach\(tab\);\s*tab\.panel\.dispose\(\)/);
+    expect(providerSource).toMatch(/tab\.dispose\(\);[\s\S]*?this\.rooms\.release\(tab\.roomId\)/);
+    expect(fs.readFileSync(path.join(PROVIDERS_ROOT, 'WorkshopPanelTab.ts'), 'utf8')).toContain('this.messageHandler?.dispose()');
 
     const deactivate = extensionSource.slice(
       extensionSource.indexOf('export async function deactivate()'),
@@ -614,7 +580,7 @@ describe('app-shell provider assembly', () => {
       .toBeLessThan(lightboxDispose.indexOf('panel?.dispose()'));
   });
 
-  it('every MessageHandler in a provider is built over the ONE injected coreServices bundle (PR #66 review #12)', () => {
+  it('every MessageHandler in an attached webview is built over its injected coreServices bundle (PR #66 review #12)', () => {
     // The risk is not two panels — it is two independently-assembled service
     // bundles (e.g. a second polling AccountBalanceService) hiding behind
     // retainContextWhenHidden. Every `new MessageHandler(` in every provider
@@ -640,7 +606,7 @@ describe('app-shell provider assembly', () => {
 
     // And the Workshop and Lightbox providers actually HAVE their per-webview
     // seams — the witness above must be guarding something real.
-    for (const provider of ['WorkshopPanelProvider.ts', 'LightboxPanelProvider.ts']) {
+    for (const provider of ['WorkshopPanelTab.ts', 'LightboxPanelProvider.ts']) {
       expect(fs.readFileSync(path.join(PROVIDERS_ROOT, provider), 'utf8')).toContain('new MessageHandler(');
     }
   });

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
+import { workshopPanelRooms } from './workshopPanelRooms';
 import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelProvider';
-import { CoreServices, MessageHandler, MessageType, Platform, WORKSHOP_SEED_TIMEOUT_MS } from '@prose-minion/core';
+import { MessageHandler, MessageType, Platform, WORKSHOP_SEED_TIMEOUT_MS } from '@prose-minion/core';
 
 /* eslint-disable @typescript-eslint/naming-convention -- the mocked barrel's export and enum member names. */
 jest.mock('@prose-minion/core', () => {
@@ -11,6 +12,7 @@ jest.mock('@prose-minion/core', () => {
     MessageType: jest.requireActual('@messages').MessageType,
     SURFACE_WORKSHOP: 'workshop',
     WORKSHOP_SEED_TIMEOUT_MS: delivery.WORKSHOP_SEED_TIMEOUT_MS,
+    ...jest.requireActual('@/application/services/workshop/WorkshopRoomSlot'),
     WorkshopSeedDelivery: delivery.WorkshopSeedDelivery,
     MessageHandler: jest.fn(() => ({
       handleMessage: jest.fn().mockResolvedValue(undefined),
@@ -38,6 +40,8 @@ interface MockHandler {
 /** One mocked Workshop tab: its callbacks stay callable after it closes, as a late VS Code event would be. */
 interface MockPanel {
   visible: boolean;
+  active: boolean;
+  reveal: jest.Mock;
   handler: MockHandler;
   receive: (message: unknown) => void;
   viewStateChanged: () => void;
@@ -111,8 +115,9 @@ describe('WorkshopPanelProvider Build lens seed', () => {
 
   function mockPanel(): MockPanel {
     const disposable = { dispose: jest.fn() };
-    const record = { visible: true, dispose: jest.fn(), postMessage: jest.fn() } as unknown as MockPanel;
+    const record = { visible: true, active: true, reveal: jest.fn(), dispose: jest.fn(), postMessage: jest.fn() } as unknown as MockPanel;
     const panel = {
+      get active() { return record.active; },
       get visible() {
         return record.visible;
       },
@@ -133,7 +138,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
         record.disposed = callback;
         return disposable;
       }),
-      reveal: jest.fn(),
+      reveal: record.reveal,
       dispose: record.dispose
     };
     panels.push(record);
@@ -144,7 +149,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
   const provider = () => {
     const workshop = new WorkshopPanelProvider(
       vscode.Uri.file('/extension'),
-      {} as CoreServices,
+      workshopPanelRooms(),
       { appendLine: jest.fn() } as unknown as vscode.OutputChannel,
       {} as Platform
     );
@@ -158,13 +163,15 @@ describe('WorkshopPanelProvider Build lens seed', () => {
       record.handler = handlers[index];
     });
   };
-  const open = (workshop: WorkshopPanelProvider) => {
+  const open = async (workshop: WorkshopPanelProvider) => {
     workshop.openOrReveal();
+    await Promise.resolve();
     bindHandlers();
     return panels.at(-1)!;
   };
-  const seedInto = (workshop: WorkshopPanelProvider) => {
+  const seedInto = async (workshop: WorkshopPanelProvider) => {
     const outcome = workshop.seedLexicalGravityBuild(seed);
+    await Promise.resolve();
     bindHandlers();
     return { outcome, panel: panels.at(-1)! };
   };
@@ -181,7 +188,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
 
   it('holds the seed until its webview is listening, routes it through the panel\'s own handler, and opens it only on a granted claim', async () => {
     const workshop = provider();
-    const { outcome, panel } = seedInto(workshop);
+    const { outcome, panel } = await seedInto(workshop);
     expect(panels).toHaveLength(1);
     expect(panel.handler.handleMessage).not.toHaveBeenCalled();
 
@@ -211,9 +218,9 @@ describe('WorkshopPanelProvider Build lens seed', () => {
 
   it('routes a seed at once to a Workshop already listening and visible, without a second panel', async () => {
     const workshop = provider();
-    const panel = open(workshop);
+    const panel = await open(workshop);
     mount(panel);
-    const { outcome } = seedInto(workshop);
+    const { outcome } = await seedInto(workshop);
     expect(panels).toHaveLength(1);
     expect(seedsIn(panel)).toHaveLength(1);
 
@@ -221,12 +228,12 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     await expect(outcome).resolves.toEqual({ opened: false, reason: 'busy' });
   });
 
-  it('holds a seed for a ready but hidden Workshop tab until it is shown, then delivers it once', () => {
+  it('holds a seed for a ready but hidden Workshop tab until it is shown, then delivers it once', async () => {
     const workshop = provider();
-    const panel = open(workshop);
+    const panel = await open(workshop);
     mount(panel);
     panel.visible = false;
-    seedInto(workshop);
+    await seedInto(workshop);
     panel.viewStateChanged();
     expect(seedsIn(panel)).toHaveLength(0);
 
@@ -237,9 +244,9 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     expect(seedsIn(panel)).toHaveLength(1);
   });
 
-  it('boot, hide, first message, reveal: a webview that starts listening while hidden gets the seed only once shown', () => {
+  it('boot, hide, first message, reveal: a webview that starts listening while hidden gets the seed only once shown', async () => {
     const workshop = provider();
-    const { panel } = seedInto(workshop);
+    const { panel } = await seedInto(workshop);
     panel.visible = false;
     panel.viewStateChanged();
 
@@ -256,11 +263,11 @@ describe('WorkshopPanelProvider Build lens seed', () => {
 
   it('boot, close, reopen: closing the booting tab cancels its seed, and the fresh Workshop never receives it', async () => {
     const workshop = provider();
-    const { outcome, panel: first } = seedInto(workshop);
+    const { outcome, panel: first } = await seedInto(workshop);
     first.disposed();
     await expect(outcome).resolves.toEqual({ opened: false, reason: 'closed' });
 
-    const second = open(workshop);
+    const second = await open(workshop);
     expect(second).not.toBe(first);
     mount(second);
     second.viewStateChanged();
@@ -269,16 +276,17 @@ describe('WorkshopPanelProvider Build lens seed', () => {
 
   it('ignores late callbacks from an older panel: they neither deliver, claim, answer, nor cancel the current panel\'s seed', async () => {
     const workshop = provider();
-    const { outcome: abandoned, panel: older } = seedInto(workshop);
-    // VS Code restores a second Workshop tab; the older one is replaced and its seed with it.
+    const { outcome: abandoned, panel: older } = await seedInto(workshop);
+    // The old tab closes. A late callback must never affect the new attachment.
+    older.disposed();
     const current = mockPanel();
     await workshop.deserializeWebviewPanel(current as unknown as vscode.WebviewPanel, undefined);
     bindHandlers();
     const currentPanel = panels.at(-1)!;
-    expect(older.dispose).toHaveBeenCalled();
+
     await expect(abandoned).resolves.toEqual({ opened: false, reason: 'closed' });
 
-    const { outcome } = seedInto(workshop);
+    const { outcome } = await seedInto(workshop);
     expect(panels).toHaveLength(2);
 
     // The older panel's events arrive late.
@@ -303,10 +311,47 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     await expect(outcome).resolves.toEqual({ opened: true });
   });
 
+  it('keeps two offers bound through focus changes, a hidden restore and closing the other tab', async () => {
+    const workshop = provider();
+    const { panel: first, outcome: firstOutcome } = await seedInto(workshop);
+    const captured = workshop.captureLightboxTarget();
+    workshop.newWorkshopTab();
+    await Promise.resolve();
+    bindHandlers();
+    const second = panels[1];
+    first.active = false;
+    first.viewStateChanged(); // still visible in a split
+    const secondOutcome = workshop.seedLexicalGravityBuild(seed);
+    const restored = mockPanel();
+    panels[2].active = false;
+    await workshop.deserializeWebviewPanel(restored as unknown as vscode.WebviewPanel, undefined);
+    bindHandlers();
+    workshop.openOrReveal();
+    expect(second.reveal).toHaveBeenCalled();
+    expect(panels[2].reveal).not.toHaveBeenCalled();
+    mount(second);
+    expect(seedsIn(first)).toHaveLength(0);
+    claimAndAnswer(second, true);
+    await expect(secondOutcome).resolves.toEqual({ opened: true });
+    mount(first);
+    claimAndAnswer(first, true);
+    await expect(firstOutcome).resolves.toEqual({ opened: true });
+
+    // The Lightbox's file check finished after tab 2 gained focus.
+    const delivered = captured.send({ kind: 'lexical-gravity-seed', seed });
+    expect(seedsIn(first)).toHaveLength(2);
+    expect(seedsIn(second)).toHaveLength(1);
+    first.disposed();
+    await expect(delivered).resolves.toMatchObject({ opened: false, reason: 'closed' });
+    await expect(captured.send({ kind: 'lexical-gravity-seed', seed })).resolves.toMatchObject({ reason: 'closed' });
+    workshop.openOrReveal();
+    expect(second.reveal).toHaveBeenCalledTimes(3);
+  });
+
   it('a newer seed replaces an unsent one, and the replaced seed is never sent', async () => {
     const workshop = provider();
-    const { outcome: first, panel } = seedInto(workshop);
-    const { outcome: second } = seedInto(workshop);
+    const { outcome: first, panel } = await seedInto(workshop);
+    const { outcome: second } = await seedInto(workshop);
     await expect(first).resolves.toEqual({ opened: false, reason: 'replaced' });
 
     mount(panel);
@@ -317,10 +362,10 @@ describe('WorkshopPanelProvider Build lens seed', () => {
 
   it('a newer seed replaces a sent but unclaimed one, whose late claim is denied', async () => {
     const workshop = provider();
-    const panel = open(workshop);
+    const panel = await open(workshop);
     mount(panel);
-    const { outcome: first } = seedInto(workshop);
-    const { outcome: second } = seedInto(workshop);
+    const { outcome: first } = await seedInto(workshop);
+    const { outcome: second } = await seedInto(workshop);
     await expect(first).resolves.toEqual({ opened: false, reason: 'replaced' });
     const [sentA, sentB] = seedsIn(panel);
 
@@ -336,9 +381,9 @@ describe('WorkshopPanelProvider Build lens seed', () => {
   it('times out an unclaimed seed, never sends it afterwards, and denies a late claim of a sent one', async () => {
     jest.useFakeTimers();
     const workshop = provider();
-    const panel = open(workshop);
+    const panel = await open(workshop);
     mount(panel);
-    const { outcome: sent } = seedInto(workshop);
+    const { outcome: sent } = await seedInto(workshop);
     jest.advanceTimersByTime(WORKSHOP_SEED_TIMEOUT_MS);
     await expect(sent).resolves.toEqual({ opened: false, reason: 'timeout' });
     const [delivered] = seedsIn(panel);
@@ -346,7 +391,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     expect(claimResultsIn(panel).at(-1)).toMatchObject({ granted: false, reason: 'timeout' });
 
     panel.visible = false;
-    const { outcome: hidden } = seedInto(workshop);
+    const { outcome: hidden } = await seedInto(workshop);
     jest.advanceTimersByTime(WORKSHOP_SEED_TIMEOUT_MS - 1);
     expect(await peek(hidden)).toBe(unsettled);
     jest.advanceTimersByTime(1);
@@ -358,20 +403,20 @@ describe('WorkshopPanelProvider Build lens seed', () => {
 
   it('settles a pending seed as closed when the provider is disposed', async () => {
     const workshop = provider();
-    const { outcome } = seedInto(workshop);
+    const { outcome } = await seedInto(workshop);
     workshop.dispose();
     await expect(outcome).resolves.toEqual({ opened: false, reason: 'closed' });
   });
 
   it('a reloaded webview (F-08): releases the old grant as reset, ignores the old receiver, and sends the next seed to the new one', async () => {
     const workshop = provider();
-    const panel = open(workshop);
+    const panel = await open(workshop);
     mount(panel, 'receiver-old');
-    const { outcome: first } = seedInto(workshop);
+    const { outcome: first } = await seedInto(workshop);
     const [sentA] = seedsIn(panel);
     panel.receive(claim(sentA.payload.deliveryId, 'receiver-old'));
     expect(claimResultsIn(panel)).toEqual([expect.objectContaining({ granted: true })]);
-    const { outcome: second } = seedInto(workshop);
+    const { outcome: second } = await seedInto(workshop);
     // B waits behind A's grant.
     expect(seedsIn(panel)).toHaveLength(1);
 

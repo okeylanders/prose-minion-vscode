@@ -1,4 +1,5 @@
 import type { WorkshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
+import type { LightboxWorkshopPorts } from '@handlers/domain/LightboxHandoffRoute';
 import type { WorkshopLocationsProposalPorts } from '@handlers/domain/workshop/WorkshopLocationsProposalHandler';
 import type { WorkshopPassageSearchPorts } from '@handlers/domain/workshop/WorkshopPassageSearchHandler';
 import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
@@ -104,6 +105,7 @@ export interface WorkshopUiActions {
    * panel's own MessageHandler. Settles with the Workshop's answer: opened by
    * a visible Workshop, or why not (PR #150 F-03).
    */
+  captureWorkshopHandoff?: LightboxWorkshopPorts['captureWorkshopHandoff'];
   handOffToWorkshop?: (handoff: LightboxWorkshopHandoff) => Promise<LightboxWorkshopHandoffOutcome>;
   openAssistantSettings?: () => void;
 }

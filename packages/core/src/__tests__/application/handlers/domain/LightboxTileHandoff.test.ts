@@ -26,7 +26,7 @@ import {
 import { setLightboxSparkDismissed } from '@/infrastructure/lightbox/LightboxSparkLane';
 import { readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 import { readGroup } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxReadingBoardFixtures';
-import { createLightboxHost, settle } from './lightboxHandlerHarness';
+import { createLightboxHost, deferred, settle } from './lightboxHandlerHarness';
 
 const answering = (outcome: LightboxWorkshopHandoffOutcome = { opened: true }) =>
   jest.fn((_handoff: LightboxWorkshopHandoff) => Promise.resolve(outcome));
@@ -52,13 +52,13 @@ function fakeTray() {
 }
 
 async function boardOf(group: LightboxReadingGroupId, options: {
-  handOff?: jest.Mock; tray?: ReturnType<typeof fakeTray>; openWorkshop?: jest.Mock;
+  capture?: jest.Mock; handOff?: jest.Mock; tray?: ReturnType<typeof fakeTray>; openWorkshop?: jest.Mock;
 } = {}) {
   const host = createLightboxHost();
   host.addFile('Drafts/alice-1.md', readWorkedExample(group).paragraphs.join('\n\n'));
   const panel = host.openPanel({
     handOff: options.handOff,
-    workshop: { tray: options.tray?.port, openWorkshop: options.openWorkshop }
+    workshop: { captureWorkshopHandoff: options.capture, tray: options.tray?.port, openWorkshop: options.openWorkshop }
   });
   await panel.route(MessageType.LIGHTBOX_SET_SOURCE, host.fileSource('Drafts/alice-1.md'));
   await settle();
@@ -196,6 +196,29 @@ describe('Bring to Workshop: a reading tile (D11)', () => {
     tray.set([{ boardId: fixture.board.boardId, tileId: fixture.tileId('subtext'), label: 'x' }]);
     await fixture.bring(fixture.tileId('subtext'));
     expect(fixture.results().at(-1)).toMatchObject({ ok: false });
+  });
+
+  it.each(['closed', 'reset'] as const)('binds dispatch and %s checks before a delayed file read, even when another tray holds the tile', async reason => {
+    const first = { send: answering({ opened: false, reason }), trayHolds: jest.fn(() => false) };
+    const second = { send: answering(), trayHolds: jest.fn(() => true) };
+    let focus = first;
+    const capture = jest.fn(() => focus);
+    const tray = fakeTray();
+    const fixture = await boardOf('B', { capture, tray });
+    const id = fixture.tileId('subtext');
+    const read = deferred<string>();
+    fixture.host.addFile('Drafts/alice-1.md', read);
+    const pending = fixture.bring(id);
+    await settle();
+    expect(capture).toHaveBeenCalledTimes(1);
+    focus = second;
+    tray.set([{ boardId: fixture.board.boardId, tileId: id, label: 'Tile held in the other room' }]);
+    read.resolve(readWorkedExample('B').paragraphs.join('\n\n'));
+    await pending;
+    expect(first.send).toHaveBeenCalledTimes(1);
+    expect(second.send).not.toHaveBeenCalled();
+    expect(first.trayHolds).toHaveBeenCalled();
+    expect(fixture.results().at(-1)).toMatchObject({ ok: false, message: LIGHTBOX_TILE_WORKSHOP_REFUSALS[reason] });
   });
 
   it('posts the tray on mount and on every change, opens the Workshop on request, and stops when the tab closes', async () => {

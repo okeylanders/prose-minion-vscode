@@ -141,6 +141,7 @@ export class LightboxHandler {
       postMessage,
       outputChannel,
       handOffToWorkshop,
+      captureWorkshopHandoff: workshop.captureWorkshopHandoff,
       tray: workshop.tray,
       openWorkshop: workshop.openWorkshop
     });

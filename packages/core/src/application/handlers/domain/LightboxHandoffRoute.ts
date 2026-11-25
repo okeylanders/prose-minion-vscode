@@ -74,6 +74,11 @@ export interface LightboxWorkshopTrayPort {
 /** The Workshop ports a Lightbox tab may use beyond the handoff itself. */
 export interface LightboxWorkshopPorts {
   tray?: LightboxWorkshopTrayPort;
+  /** Choose once, before the file re-read. Both dispatch and a lost-answer check use this recipient. */
+  captureWorkshopHandoff?: () => {
+    send: LightboxWorkshopHandoffPort;
+    trayHolds(tile: { boardId: string; tileId: string }): boolean;
+  } | undefined;
   openWorkshop?: () => void;
 }
 
@@ -204,6 +209,7 @@ export class LightboxHandoffRoute {
       refuse(LIGHTBOX_HANDOFF_REFUSALS.fileUnreadable);
       return;
     }
+    const destination = this.deps.captureWorkshopHandoff?.();
     if (target) {
       let current: string;
       try {
@@ -240,18 +246,20 @@ export class LightboxHandoffRoute {
       refuse(prepared.reason);
       return;
     }
-    if (!this.deps.handOffToWorkshop) {
+    const send = destination?.send ?? this.deps.handOffToWorkshop;
+    if (!send) {
       refuse(LIGHTBOX_HANDOFF_REFUSALS.noWorkshop);
       return;
     }
     // "Sent" means a visible Workshop claimed and opened (or staged) it: wait for its answer, bounded by the provider.
-    const outcome = await this.deps.handOffToWorkshop(prepared.handoff);
+    const outcome = await send(prepared.handoff);
     if (this.disposed) {
       outputChannel.appendLine('[LightboxHandler] Handoff answered after the Lightbox closed; nothing posted');
       return;
     }
     if (!outcome.opened) {
-      if (prepared.handoff.kind === 'tile' && LOST_ANSWERS.has(outcome.reason) && this.trayHolds(prepared.handoff.tile)) {
+      if (prepared.handoff.kind === 'tile' && LOST_ANSWERS.has(outcome.reason)
+          && (destination ? destination.trayHolds(prepared.handoff.tile) : this.trayHolds(prepared.handoff.tile))) {
         // The Workshop staged it, but its answer was lost: its webview reloaded or its panel
         // closed in between. The session it staged into is its own record, so it counts.
         outputChannel.appendLine(`[LightboxHandler] The Workshop staged a tile; its answer was lost (${outcome.reason}), the session holds it`);

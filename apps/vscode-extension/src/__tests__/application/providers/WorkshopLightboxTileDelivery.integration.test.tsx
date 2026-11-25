@@ -22,6 +22,7 @@
 import * as React from 'react';
 import * as vscode from 'vscode';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { workshopPanelRooms } from './workshopPanelRooms';
 import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelProvider';
 import { CoreServices, Platform, WORKSHOP_SEED_TIMEOUT_MS, WorkshopSeedOutcome } from '@prose-minion/core';
 import {
@@ -53,6 +54,7 @@ jest.mock('@prose-minion/core', () => {
     coerceWebviewErrorText: messages.coerceWebviewErrorText,
     SURFACE_WORKSHOP: 'workshop',
     WORKSHOP_SEED_TIMEOUT_MS: delivery.WORKSHOP_SEED_TIMEOUT_MS,
+    ...jest.requireActual('@/application/services/workshop/WorkshopRoomSlot'),
     WorkshopSeedDelivery: delivery.WorkshopSeedDelivery,
     // The panel's MessageHandler: the tile's two routes reach the real tile handler; nothing else is routed.
     MessageHandler: jest.fn((_services: unknown, postMessage: (message: unknown) => Promise<void>) => {
@@ -216,7 +218,7 @@ describe('a Lightbox tile from the Workshop panel provider to the Workshop compo
     });
     workshop = new WorkshopPanelProvider(
       vscode.Uri.file('/extension'),
-      {} as CoreServices,
+      workshopPanelRooms(),
       { appendLine: jest.fn() } as unknown as vscode.OutputChannel,
       {} as Platform
     );
@@ -244,6 +246,7 @@ describe('a Lightbox tile from the Workshop panel provider to the Workshop compo
   };
   const openWorkshop = async () => {
     workshop.openOrReveal();
+    await Promise.resolve();
     const panel = panels.at(-1)!;
     (useVSCodeApi as jest.Mock).mockReturnValue({
       postMessage: jest.fn((message: unknown) => {

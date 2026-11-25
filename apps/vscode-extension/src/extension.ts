@@ -1071,6 +1071,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('prose-minion.openWorkshop', () => {
       workshopPanelProvider?.openOrReveal();
     }),
+    vscode.commands.registerCommand('prose-minion.newWorkshopTab', () => workshopPanelProvider?.newWorkshopTab()),
+    vscode.commands.registerCommand('prose-minion.reopenWorkshopRoom', () => workshopPanelProvider?.reopenClosedRoom()),
     vscode.commands.registerCommand('prose-minion.workshopSelection', handleWorkshopSelection),
     vscode.commands.registerCommand(ADD_SELECTION_TO_WORKSHOP_MESSAGE_COMMAND, handleAddSelectionToWorkshopMessage),
     vscode.commands.registerCommand('prose-minion.openLightbox', () => {
