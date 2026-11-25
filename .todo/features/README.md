@@ -80,6 +80,7 @@ Several of these notes still carry their build-time status line (for example
 | 35 | Personas run the deterministic measures | Medium | Medium; short ADR. Reuses Passage Search's scopes. | [persona measures](feature-workshop-persona-measures/README.md) |
 | 36 | A long paste becomes a "Pasted text" pill | Medium | Small to medium; P1 (500 characters) and P2 decided. | [long paste pill](feature-workshop-long-paste-pill/README.md) |
 | 37 | A session keeps its OpenRouter cache key across a reload | Medium | Small; K1 and K2 decided. After #9 merges. | [session cache key](feature-workshop-session-cache-key/README.md) |
+| 38 | Branch or Rewind into a new Workshop tab | Medium | Small to medium; B1 and B2 open, with leans. After #9 merges. | [branch in new tab](feature-workshop-branch-in-new-tab/README.md) |
 
 ### Follow-ups split from shipped work (Low)
 
