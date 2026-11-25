@@ -39,11 +39,13 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   ) {}
 
   public openOrReveal(): void {
-    this.destination();
+    if (!this.revealRoom(PRIMARY_WORKSHOP_ROOM_ID)) {
+      this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);
+    }
   }
 
   public newWorkshopTab(): void {
-    this.createPanel(randomUUID());
+    this.createPanel(this.tabs.size === 0 ? PRIMARY_WORKSHOP_ROOM_ID : randomUUID());
   }
 
   public revealRoom(roomId: string): boolean {
@@ -101,7 +103,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   /** Native navigation for the tray the writer actually saw, even after another room has gained focus. */
   public openTray(token?: string): void {
     if (token === undefined) {
-      this.openOrReveal();
+      this.destination();
       return;
     }
     const tab = [...this.tabs.values()].find(candidate => candidate.trayToken === token);

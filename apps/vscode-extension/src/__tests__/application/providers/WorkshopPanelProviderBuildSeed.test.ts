@@ -311,6 +311,36 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     await expect(outcome).resolves.toEqual({ opened: true });
   });
 
+  it.each(['openOrReveal', 'newWorkshopTab'] as const)('opens the primary room first via %s and returns to it from secondary tabs', firstOpen => {
+    const rooms = workshopPanelRooms();
+    const acquire = jest.spyOn(rooms, 'acquire');
+    const workshop = provider(rooms);
+    workshop[firstOpen]();
+    workshop.newWorkshopTab();
+    const [primary, secondary] = panels;
+    const [firstSlot, secondSlot] = acquire.mock.calls.map(([id]) => id);
+    expect(firstSlot).toBe('legacy');
+    expect(secondSlot).not.toBe(firstSlot);
+
+    workshop.openOrReveal();
+    expect(primary.reveal).toHaveBeenCalledTimes(1);
+    expect(secondary.reveal).not.toHaveBeenCalled();
+    expect(panels).toHaveLength(2);
+
+    primary.disposed();
+    workshop.newWorkshopTab();
+    const thirdSlot = acquire.mock.calls[2][0];
+    expect([firstSlot, secondSlot]).not.toContain(thirdSlot);
+    workshop.openOrReveal();
+    expect(acquire.mock.calls[3][0]).toBe('legacy');
+
+    for (const panel of panels.slice(1)) {
+      panel.disposed();
+    }
+    workshop.newWorkshopTab();
+    expect(acquire.mock.calls[4][0]).toBe('legacy');
+  });
+
   it('keeps two offers bound through focus changes, a hidden restore and closing the other tab', async () => {
     const workshop = provider();
     const { panel: first, outcome: firstOutcome } = await seedInto(workshop);
@@ -330,7 +360,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     panels[2].active = false;
     await workshop.deserializeWebviewPanel(restored as unknown as vscode.WebviewPanel, undefined);
     bindHandlers();
-    workshop.openOrReveal();
+    workshop.openTray();
     expect(second.reveal).toHaveBeenCalled();
     expect(panels[2].reveal).not.toHaveBeenCalled();
     mount(second);
@@ -348,7 +378,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     first.disposed();
     await expect(delivered).resolves.toMatchObject({ opened: false, reason: 'closed' });
     await expect(captured.send({ kind: 'lexical-gravity-seed', seed })).resolves.toMatchObject({ reason: 'closed' });
-    workshop.openOrReveal();
+    workshop.openTray();
     expect(second.reveal).toHaveBeenCalledTimes(3);
   });
 

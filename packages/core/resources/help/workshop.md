@@ -6,7 +6,7 @@ Run **Open Workshop** from the Command Palette. Choose a host, such as Jill, to 
 
 ## Multiple Workshop tabs
 
-To discuss two chapters side by side, click **+** beside **Workshop** in the sidebar, or run **New Workshop Tab** from the Command Palette. Each tab has its own room, excerpt, conversation history and reply in progress. You can send a message or stop a reply in one room while the other keeps working. **Open Workshop** brings the most recently focused open Workshop tab to the front.
+Click **Workshop** in the sidebar or run **Open Workshop** to open your primary room or bring its tab to the front. **+** and **New Workshop Tab** also open the primary room if no Workshop tabs are open. Once any Workshop tab is open, **+** opens a fresh room so you can discuss two chapters side by side. Each tab has its own excerpt, conversation history and reply in progress. You can send a message or stop a reply in one room while the other keeps working.
 
 Before using **Add Selection to Workshop Message**, **Send to New Workshop Excerpt**, or a Lightbox action that sends material to Workshop, focus the tab you want to receive it. You can then return to the editor or Lightbox to send. If you have no Workshop tab open, the command opens one.
 

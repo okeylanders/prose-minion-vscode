@@ -161,7 +161,7 @@ describe.each([
       throw new Error('Workshop command missing: ' + command);
     }
     await create();
-    const panel = panels.at(-1)!;
+    const panel = panels.find(candidate => candidate.active)!;
     await panel.send(MessageType.WORKSHOP_SET_EXCERPT, { text: excerpt, source: { kind: 'manual' } });
     expect(panel.snapshot().excerpt?.text).toBe(excerpt);
     return panel;
@@ -176,7 +176,7 @@ describe.each([
       const saved = JSON.parse(fixture.toString()) as { sessionId: string; workshop: { excerpt: { text: string } } };
       const book = { name: 'Book', uri: vscode.Uri.file('/Book') };
       Object.assign(vscode.workspace, { workspaceFolders: [book] });
-      await commands.get('prose-minion.openWorkshop')!();
+      await commands.get('prose-minion.newWorkshopTab')!();
       const panel = panels.at(-1)!;
       await panel.send(MessageType.WORKSHOP_REQUEST_SESSION);
       expect(panel.snapshot().excerpt?.text).toBe(saved.workshop.excerpt.text);
@@ -259,6 +259,7 @@ describe.each([
     });
 
     try {
+      await commands.get('prose-minion.openWorkshop')!();
       const panel = await open('newWorkshopTab', 'First take.');
       const file = await firstWrite.promise;
       const manuscript = 'Second take.\nThe tea was cold; the cup was warm.';
@@ -303,6 +304,7 @@ describe.each([
     const priorInfo = vscode.window.showInformationMessage;
     Object.assign(vscode.window, { showInformationMessage: notice });
     try {
+      await commands.get('prose-minion.openWorkshop')!();
       const panel = await open('newWorkshopTab', initial);
       // The Sessions route flushes edits before listing the writer's current checkpoint.
       await panel.send(MessageType.WORKSHOP_LIST_SESSIONS, { requestId: 'list-before-competing-edit' });
