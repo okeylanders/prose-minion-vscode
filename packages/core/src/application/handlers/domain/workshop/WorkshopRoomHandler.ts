@@ -351,7 +351,8 @@ export class WorkshopRoomHandler {
     /** A persona's context-paths card (ADR 2026-11-19 D27): C1's checker and settings, built in `extension.ts`. */
     private readonly locationsProposals?: WorkshopLocationsProposalPorts,
     /** A persona's passage search (ADR 2026-11-20 D20): the engine, the listing and the report file, built in `extension.ts`. */
-    passageSearch?: WorkshopPassageSearchPorts
+    passageSearch?: WorkshopPassageSearchPorts,
+    revealWorkshopRoom?: (roomId: string) => boolean
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -388,7 +389,7 @@ export class WorkshopRoomHandler {
         bookmarkBrowser,
         fileEditApply,
         memoryDrafts,
-        selectedText, savedSessionTodos, locationsProposals, passageSearch,
+        selectedText, savedSessionTodos, locationsProposals, passageSearch, revealWorkshopRoom,
         outputChannel: this.outputChannel
       },
       {

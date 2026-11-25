@@ -61,6 +61,7 @@ export function addSelectionNotice(outcome: WorkshopSeedOutcome): string | undef
     case 'replaced':
       // The writer added a newer selection before this one was taken: that one answers for itself.
       return undefined;
+    case 'room-changed':
     case 'unavailable':
     case 'closed':
     case 'timeout':

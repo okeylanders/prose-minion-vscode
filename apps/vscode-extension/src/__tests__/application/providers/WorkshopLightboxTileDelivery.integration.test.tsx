@@ -22,6 +22,7 @@
 import * as React from 'react';
 import * as vscode from 'vscode';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { workshopPanelRooms } from './workshopPanelRooms';
 import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelProvider';
 import { CoreServices, Platform, WORKSHOP_SEED_TIMEOUT_MS, WorkshopSeedOutcome } from '@prose-minion/core';
 import {
@@ -53,6 +54,7 @@ jest.mock('@prose-minion/core', () => {
     coerceWebviewErrorText: messages.coerceWebviewErrorText,
     SURFACE_WORKSHOP: 'workshop',
     WORKSHOP_SEED_TIMEOUT_MS: delivery.WORKSHOP_SEED_TIMEOUT_MS,
+    ...jest.requireActual('@/application/services/workshop/WorkshopRoomSlot'),
     WorkshopSeedDelivery: delivery.WorkshopSeedDelivery,
     // The panel's MessageHandler: the tile's two routes reach the real tile handler; nothing else is routed.
     MessageHandler: jest.fn((_services: unknown, postMessage: (message: unknown) => Promise<void>) => {
@@ -216,7 +218,7 @@ describe('a Lightbox tile from the Workshop panel provider to the Workshop compo
     });
     workshop = new WorkshopPanelProvider(
       vscode.Uri.file('/extension'),
-      {} as CoreServices,
+      workshopPanelRooms(),
       { appendLine: jest.fn() } as unknown as vscode.OutputChannel,
       {} as Platform
     );
@@ -244,6 +246,7 @@ describe('a Lightbox tile from the Workshop panel provider to the Workshop compo
   };
   const openWorkshop = async () => {
     workshop.openOrReveal();
+    await Promise.resolve();
     const panel = panels.at(-1)!;
     (useVSCodeApi as jest.Mock).mockReturnValue({
       postMessage: jest.fn((message: unknown) => {
@@ -422,14 +425,19 @@ describe('a Lightbox tile from the Workshop panel provider to the Workshop compo
 
     it('reload after the grant was acted on: the session holds the tile, the lost answer settles as reset, and the queue moves on', async () => {
       const panel = await openWorkshop();
-      const first = await offer(JAR);
+      const destination = workshop.captureLightboxTarget();
+      const first = destination.send({ kind: 'tile', tile: JAR });
+      await flush();
+      expect(destination.wasStaged(JAR)).toBe(false);
       // Offer, then grant: the webview accepts and the host stages it; its "staged" word is held.
       await release(panel);
       await release(panel);
       expect(staged()).toEqual(['Lightbox Open door: The empty jar']);
       expect(heldTypes(panel)).toContain(MessageType.WORKSHOP_LIGHTBOX_TILE_STAGED);
       await reloadWebview();
-      expect(first()).toEqual({ opened: false, reason: 'reset' });
+      await expect(first).resolves.toEqual({ opened: false, reason: 'reset' });
+      expect(destination.wasStaged(JAR)).toBe(true);
+      expect(destination.wasStaged(LATE)).toBe(false);
       // The old realm's word reaches the fresh webview, which holds no grant for it.
       await drain(panel);
       expect(answers()).toEqual([]);

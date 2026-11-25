@@ -521,7 +521,9 @@ export const WorkshopApp: React.FC = () => {
     handleSaveResultSuccess
   });
 
+  const panelState = usePersistedState<{ workshopRoomId?: string }>();
   usePersistence({
+    workshopRoomId: panelState?.workshopRoomId,
     ...workshop.persistedState,
     ...pinnedContext.persistedState,
     ...workshopSessions.persistedState,

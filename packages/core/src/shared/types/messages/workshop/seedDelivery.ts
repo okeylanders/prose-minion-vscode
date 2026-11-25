@@ -50,7 +50,7 @@ export type WorkshopSeedRefusal = 'busy' | 'full' | 'duplicate';
  * it, its panel closed, its receiver was replaced (`reset`), or the provider
  * does not know the delivery.
  */
-export type WorkshopSeedClaimDenial = 'timeout' | 'replaced' | 'closed' | 'reset' | 'unknown';
+export type WorkshopSeedClaimDenial = 'timeout' | 'replaced' | 'room-changed' | 'closed' | 'reset' | 'unknown';
 
 /**
  * Why a seed did not open, as the sender learns it:
@@ -58,11 +58,12 @@ export type WorkshopSeedClaimDenial = 'timeout' | 'replaced' | 'closed' | 'reset
  * - `busy`, `full`, `duplicate`: the Workshop refused it (`WorkshopSeedRefusal`);
  * - `closed`: the panel closed before it opened the seed;
  * - `replaced`: a newer seed replaced it before it was claimed;
+ * - `room-changed`: the initiating Workshop room was replaced;
  * - `timeout`: the Workshop did not claim it in time;
  * - `reset`: the Workshop's webview was replaced (reloaded) after it was
  *   granted, before it answered (PR #150 F-08).
  */
-export type WorkshopSeedFailure = 'unavailable' | WorkshopSeedRefusal | 'closed' | 'replaced' | 'timeout' | 'reset';
+export type WorkshopSeedFailure = 'unavailable' | WorkshopSeedRefusal | 'closed' | 'replaced' | 'room-changed' | 'timeout' | 'reset';
 
 /** What the sender learns: a visible Workshop opened the seed, or why not. */
 export type WorkshopSeedOutcome =

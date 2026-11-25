@@ -11,7 +11,7 @@ import * as vscode from 'vscode';
 // All core symbols via the public barrel (ADR 2026-06-16 monorepo boundary).
 import {
   MessageHandler,
-  CoreServices,
+  WindowServices,
   Platform,
   WorkshopUiActions,
   MessageType,
@@ -29,7 +29,7 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly coreServices: CoreServices,
+    private readonly coreServices: WindowServices,
     private readonly outputChannel: vscode.OutputChannel,
     private readonly platform: Platform,
     private readonly uiActions: WorkshopUiActions = {}

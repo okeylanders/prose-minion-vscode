@@ -18,7 +18,7 @@ import {
   WorkshopPersistedSessionV2,
   parseWorkshopPersistedSession
 } from '@/application/services/workshop/WorkshopPersistedSession';
-import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
+import { FileSystem, FileType, type LocalRollingClaim, LogSink, Workspace } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { formatByteLimit, WorkshopNamedSessionBusyError, WorkshopNamedSessionLock, WorkshopNamedSessionRecoveryRequiredError } from '@/infrastructure/storage/WorkshopNamedSessionLock';
 import { recoverWorkshopNamedSession, type WorkshopNamedSessionRecoveryOutcome } from '@/infrastructure/storage/WorkshopNamedSessionRecovery';
@@ -353,14 +353,14 @@ export class WorkshopSessionStore {
     const decoded = this.validateSessionForWrite(session);
     const expected = this.rollingRevisions.get(paths.currentPath) ?? 'absent';
     try {
-      await this.named.withRollingLock(paths.currentPath, session.sessionId, async () => {
+      await this.named.withRollingLock(paths.currentPath, session.sessionId, async replace => {
         const verify = async () => {
           await options.beforeCommit?.();
           const latest = await this.readRollingRevision(paths.currentPath);
           if (latest !== expected) { throw new WorkshopRollingCheckpointConflictError(); }
         };
         const written = await this.writeSnapshotWithSearchIndex(
-          paths, paths.currentPath, this.currentFileName, decoded, expected !== 'absent', verify
+          paths, paths.currentPath, this.currentFileName, decoded, expected !== 'absent', verify, replace
         );
         this.rollingRevisions.set(paths.currentPath, rollingRevision(written));
       });
@@ -1042,10 +1042,11 @@ export class WorkshopSessionStore {
     fileName: string,
     session: WorkshopPersistedSessionV2,
     overwrite: boolean,
-    beforeCommit?: () => Promise<void>
+    beforeCommit?: () => Promise<void>,
+    replace?: LocalRollingClaim['replace']
   ): Promise<Uint8Array> {
     await this.ensureStorageDirectory(paths);
-    const bytes = await this.writeAtomically(targetPath, session, overwrite, beforeCommit);
+    const bytes = await this.writeAtomically(targetPath, session, overwrite, beforeCommit, replace);
     await this.writeSearchIndexAfterCommit(paths, fileName, session);
     return bytes;
   }
@@ -1093,7 +1094,8 @@ export class WorkshopSessionStore {
     targetPath: string,
     session: WorkshopPersistedSessionV2,
     overwrite: boolean,
-    beforeCommit?: () => Promise<void>
+    beforeCommit?: () => Promise<void>,
+    replace?: LocalRollingClaim['replace']
   ): Promise<Uint8Array> {
     return this.writeJsonAtomically(
       targetPath,
@@ -1101,7 +1103,8 @@ export class WorkshopSessionStore {
       overwrite,
       this.limits.maximumExactFileBytes,
       'Workshop session',
-      beforeCommit
+      beforeCommit,
+      replace
     );
   }
 
@@ -1111,14 +1114,19 @@ export class WorkshopSessionStore {
     overwrite: boolean,
     maximumBytes: number,
     description: string,
-    beforeCommit?: () => Promise<void>
+    beforeCommit?: () => Promise<void>,
+    replace?: LocalRollingClaim['replace']
   ): Promise<Uint8Array> {
     const bytes = this.named.encode(value, description, maximumBytes);
     const temporaryPath = `${targetPath}.tmp-${randomUUID()}`;
     try {
       await this.fileSystem.writeFile(temporaryPath, bytes);
       await beforeCommit?.();
-      await this.fileSystem.rename(temporaryPath, targetPath, { overwrite });
+      if (overwrite && replace) {
+        await replace(temporaryPath);
+      } else {
+        await this.fileSystem.rename(temporaryPath, targetPath, { overwrite });
+      }
     } catch (error) {
       try {
         await this.fileSystem.delete(temporaryPath);

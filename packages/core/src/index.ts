@@ -37,11 +37,14 @@ export type { WorkshopNoticeShot } from '@shared/constants/workshopNotices';
 export { MessageHandler } from '@/application/handlers/MessageHandler';
 export type {
   CoreServices,
+  WindowServices,
   MessageTransport,
   ResultCache,
   SecretsPort,
   WorkshopUiActions
 } from '@/application/handlers/MessageHandlerContracts';
+
+export { workshopLightboxTray, type WorkshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
 
 // --- Application: Workshop session aggregate (ADR 2026-07-03) ---
 export {

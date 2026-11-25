@@ -33,6 +33,7 @@ import {
 } from '@messages';
 import {
   CoreServices,
+  WindowServices,
   MessageTransport,
   ResultCache,
   WorkshopUiActions
@@ -91,7 +92,7 @@ export class MessageHandler {
   private readonly uiHandler: UIHandler;
   private readonly fileOperationsHandler: FileOperationsHandler;
   private readonly accountBalanceHandler: AccountBalanceHandler;
-  private readonly workshopHandler: WorkshopRoomHandler;
+  private readonly workshopHandler?: WorkshopRoomHandler;
   private readonly lightboxHandler: LightboxHandler;
   private readonly lightboxReadingHandler: LightboxReadingHandler;
   private readonly lightboxPassageHandler: LightboxPassageHandler;
@@ -173,7 +174,7 @@ export class MessageHandler {
   ] as const;
 
   constructor(
-    private readonly services: CoreServices,
+    private readonly services: CoreServices | WindowServices,
     // Raw webview transport (the shell binds it to `webview.postMessage`); keeps
     // MessageHandler vscode-free. NOTE: domain handlers must receive the wrapped
     // `this.postMessage` (logging + result cache), NOT this raw `transport` — the
@@ -198,36 +199,13 @@ export class MessageHandler {
       textSourceResolver,
       categorySearchService,
       accountBalanceService,
-      workshopSessionService,
-      workshopRoomDeliveryService,
-      workshopPersonaCapabilityFactory,
-      workshopToolSidePass,
       workshopContextIntakeService,
-      workshopConversationSettingsService,
-      workshopSessionTimeService,
-      workshopSessionPersistenceCoordinator,
-      workshopTranscriptExportService,
-      gesturePlaygroundService,
-      creativeVariationsService,
-      showVsTellService,
-      lexicalGravityModelService,
-      lexicalGravityLensRepository,
-      workshopStandingDirectiveService,
       lightboxService,
       lightboxReadingRunner,
       lightboxContextShelf,
-      lightboxBoardLibrary,
-      projectMemory,
-      workshopPinnedContext,
-      workshopTranscriptRecallService,
-      fileEditStaging,
-      projectFileEditGateway,
-      helperAgentService,
-      editorSelectionSnapshots,
-      workshopSavedSessionTodos,
-      contextPathProposals,
-      workshopPassageSearch
+      lightboxBoardLibrary
     } = services;
+    const room = 'workshopSessionService' in services ? services : undefined;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
     // every live webview (sidebar + Workshop) tracks usage from ANY surface's
@@ -349,42 +327,71 @@ export class MessageHandler {
     // like the other 11: injected services + platform ports, nothing
     // constructed here beyond the handler itself. Shell owns host pickers and
     // session file actions; the intake service owns file/workspace mechanics.
-    this.workshopHandler = new WorkshopRoomHandler(
-      assistantToolService,
-      contextAssistantService,
-      workshopSessionService,
-      workshopRoomDeliveryService,
-      workshopToolSidePass,
-      workshopPersonaCapabilityFactory,
-      this.postMessage.bind(this),
-      this.platform.shell,
-      workshopContextIntakeService,
-      workshopConversationSettingsService,
-      workshopSessionTimeService,
-      workshopSessionPersistenceCoordinator,
-      workshopTranscriptExportService,
-      {
-        gesturePlayground: gesturePlaygroundService,
-        creativeVariations: creativeVariationsService,
-        showVsTell: showVsTellService,
-        standingDirectives: workshopStandingDirectiveService,
-        lexicalGravity: {
-          model: lexicalGravityModelService,
-          repository: lexicalGravityLensRepository
-        }
-      },
-      outputChannel,
-      projectMemory,
-      workshopPinnedContext,
-      workshopTranscriptRecallService,
-      fileEditStaging,
-      projectFileEditGateway,
-      { helper: helperAgentService, settings: this.platform.settings },
-      editorSelectionSnapshots,
-      workshopSavedSessionTodos,
-      contextPathProposals,
-      workshopPassageSearch
-    );
+    if (room && (!this.uiActions.surface || this.uiActions.surface === 'workshop')) {
+      const {
+        workshopSessionService,
+        workshopRoomDeliveryService,
+        workshopPersonaCapabilityFactory,
+        workshopToolSidePass,
+        workshopConversationSettingsService,
+        workshopSessionTimeService,
+        workshopSessionPersistenceCoordinator,
+        workshopTranscriptExportService,
+        gesturePlaygroundService,
+        creativeVariationsService,
+        showVsTellService,
+        lexicalGravityModelService,
+        lexicalGravityLensRepository,
+        workshopStandingDirectiveService,
+        projectMemory,
+        workshopPinnedContext,
+        workshopTranscriptRecallService,
+        fileEditStaging,
+        projectFileEditGateway,
+        helperAgentService,
+        editorSelectionSnapshots,
+        workshopSavedSessionTodos,
+        contextPathProposals,
+        workshopPassageSearch
+      } = room;
+      this.workshopHandler = new WorkshopRoomHandler(
+        assistantToolService,
+        contextAssistantService,
+        workshopSessionService,
+        workshopRoomDeliveryService,
+        workshopToolSidePass,
+        workshopPersonaCapabilityFactory,
+        this.postMessage.bind(this),
+        this.platform.shell,
+        workshopContextIntakeService,
+        workshopConversationSettingsService,
+        workshopSessionTimeService,
+        workshopSessionPersistenceCoordinator,
+        workshopTranscriptExportService,
+        {
+          gesturePlayground: gesturePlaygroundService,
+          creativeVariations: creativeVariationsService,
+          showVsTell: showVsTellService,
+          standingDirectives: workshopStandingDirectiveService,
+          lexicalGravity: {
+            model: lexicalGravityModelService,
+            repository: lexicalGravityLensRepository
+          }
+        },
+        outputChannel,
+        projectMemory,
+        workshopPinnedContext,
+        workshopTranscriptRecallService,
+        fileEditStaging,
+        projectFileEditGateway,
+        { helper: helperAgentService, settings: this.platform.settings },
+        editorSelectionSnapshots,
+        workshopSavedSessionTodos,
+        contextPathProposals,
+        workshopPassageSearch,
+        this.uiActions.revealWorkshopRoom
+      );
+    }
     // Lightbox editor tab (ADR 2026-10-19 D10) — the 13th domain, composed
     // like the others. The shell owns the file picker; the service owns boards.
     this.lightboxHandler = new LightboxHandler(
@@ -396,8 +403,11 @@ export class MessageHandler {
       this.postMessage.bind(this),
       outputChannel,
       this.uiActions.handOffToWorkshop,
-      // Slice 4: the tiles the Workshop holds, read from the shared session, and the way there.
-      { tray: workshopLightboxTray(workshopSessionService), openWorkshop: this.uiActions.openWorkshop }
+      {
+        tray: this.uiActions.workshopTray ?? (room && workshopLightboxTray(room.workshopSessionService)),
+        openWorkshop: this.uiActions.openWorkshop,
+        captureWorkshopHandoff: this.uiActions.captureWorkshopHandoff
+      }
     );
     // Its readings (Slice 2B) beside it: lenses, estimate, runs, context files.
     this.lightboxReadingHandler = new LightboxReadingHandler(
@@ -447,7 +457,7 @@ export class MessageHandler {
     this.uiHandler.registerRoutes(this.router);
     this.fileOperationsHandler.registerRoutes(this.router);
     this.accountBalanceHandler.registerRoutes(this.router);
-    this.workshopHandler.registerRoutes(this.router);
+    this.workshopHandler?.registerRoutes(this.router);
     this.lightboxHandler.registerRoutes(this.router);
     this.lightboxReadingHandler.registerRoutes(this.router);
     this.lightboxPassageHandler.registerRoutes(this.router);
@@ -482,7 +492,7 @@ export class MessageHandler {
    * selection only to a visible tab (ADR 2026-11-14 D14).
    */
   setWorkshopSurfaceVisible(visible: boolean): void {
-    this.workshopHandler.setSurfaceVisible(visible);
+    this.workshopHandler?.setSurfaceVisible(visible);
   }
 
   /**
@@ -749,7 +759,7 @@ export class MessageHandler {
     if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey) || affects(workshopWebResearchKey)
       || affects(workshopProjectMemoryKey) || affects(workshopFileEditsKey) || affects(workshopReactionsKey)
       || affects(workshopMemorySuggestionsKey)) {
-      void this.workshopHandler.syncConversationSettingsFromSettings();
+      void this.workshopHandler?.syncConversationSettingsFromSettings();
     }
     // The helper's memory drafts (ADR 2026-11-05 D5.7): the sheet hears the switch, and off asks for nothing.
     if (affects(`${WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING.section}.${WORKSHOP_MEMORY_HELPER_DRAFTS_SETTING.key}`)) {
@@ -1006,7 +1016,7 @@ export class MessageHandler {
       this.disposeSearchStatusListener();
       this.searchHandler.dispose();
       this.analysisHandler.dispose();
-      this.workshopHandler.dispose();
+      this.workshopHandler?.dispose();
       this.lightboxReadingHandler.dispose();
     } catch {
       // noop

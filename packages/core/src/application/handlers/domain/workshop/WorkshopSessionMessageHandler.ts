@@ -6,6 +6,7 @@
  * response envelopes, and cancellation of superseded browser searches.
  */
 
+import { WorkshopSessionOwnedError } from '@/application/services/workshop/WorkshopNamedSessionOwners';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import {
@@ -63,6 +64,7 @@ const generateSessionRequestId = (): string =>
   `workshop_sessions-${Date.now()}-${++sessionRequestCounter}`;
 
 export interface WorkshopSessionMessageHandlerOptions {
+  revealWorkshopRoom?: (roomId: string) => boolean;
   postSessionState: () => void;
   /** Re-read file-backed context with explicit or automatic persistence semantics. */
   refreshContextFiles: (origin: 'manual' | 'session-open') => Promise<void>;
@@ -361,11 +363,17 @@ export class WorkshopSessionMessageHandler {
   }
 
   async handleOpenSession(message: WorkshopOpenSessionMessage): Promise<void> {
+    const sessionId = message.payload?.sessionId ?? '';
+    // Revealing a tab is safe while this room is running. The coordinator checks ownership
+    // again inside the transaction for simultaneous opens that race this lookup.
+    if (this.options.revealWorkshopRoom && this.revealOwner(this.persistence.otherNamedSessionOwner(sessionId))) {
+      return;
+    }
     if (this.rejectWhileRunning('open another session', 'open')) {
       return;
     }
     try {
-      const result = await this.persistence.openNamed(message.payload?.sessionId ?? '', async () => {
+      const result = await this.persistence.openNamed(sessionId, async () => {
         await this.scanContextFiles();
         this.initialContextRefreshCompleted = true;
       });
@@ -381,6 +389,9 @@ export class WorkshopSessionMessageHandler {
           : 'Session opened with conversation memory restored.'
       );
     } catch (error) {
+      if (error instanceof WorkshopSessionOwnedError && this.revealOwner(error.roomId)) {
+        return;
+      }
       // A failed Open restores the room it left, under a new revision: the
       // webview must hear that room, as New, Rewind and Branch's failures
       // already make it (PR #189 F-04).
@@ -389,6 +400,14 @@ export class WorkshopSessionMessageHandler {
     } finally {
       this.postRecoveryNotices();
     }
+  }
+
+  private revealOwner(roomId: string | undefined): boolean {
+    if (!roomId || !this.options.revealWorkshopRoom?.(roomId)) {
+      return false;
+    }
+    this.postActionResult('open', true, 'Revealed the Workshop tab that already has this session open.');
+    return true;
   }
 
   async handleRefreshContextFiles(_message: WorkshopRefreshContextFilesMessage): Promise<void> {

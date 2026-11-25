@@ -1,3 +1,5 @@
+import type { WorkshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
+import type { LightboxWorkshopPorts } from '@handlers/domain/LightboxHandoffRoute';
 import type { WorkshopLocationsProposalPorts } from '@handlers/domain/workshop/WorkshopLocationsProposalHandler';
 import type { WorkshopPassageSearchPorts } from '@handlers/domain/workshop/WorkshopPassageSearchHandler';
 import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
@@ -89,7 +91,12 @@ export type MessageTransport = (
  * growing anonymous callback bags at each boundary.
  */
 export interface WorkshopUiActions {
-  openWorkshop?: () => void;
+  /** Only the Workshop panel attaches its mutation routes and projected settings. */
+  surface?: 'sidebar' | 'lightbox' | 'workshop';
+  /** The window's MRU Workshop tray, read-only from the Lightbox. */
+  workshopTray?: WorkshopLightboxTray;
+  revealWorkshopRoom?: (roomId: string) => boolean;
+  openWorkshop?: (trayToken?: string) => void;
   /** Opens or reveals the Lightbox tab (ADR 2026-10-19 D1); the sidebar's OPEN_LIGHTBOX calls it. */
   openLightbox?: () => void;
   /**
@@ -98,6 +105,7 @@ export interface WorkshopUiActions {
    * panel's own MessageHandler. Settles with the Workshop's answer: opened by
    * a visible Workshop, or why not (PR #150 F-03).
    */
+  captureWorkshopHandoff?: LightboxWorkshopPorts['captureWorkshopHandoff'];
   handOffToWorkshop?: (handoff: LightboxWorkshopHandoff) => Promise<LightboxWorkshopHandoffOutcome>;
   openAssistantSettings?: () => void;
 }
@@ -246,3 +254,30 @@ export interface CoreServices {
    */
   passageSearchEngine: PassageSearchEngine;
 }
+
+/** Services the sidebar and Lightbox can use without attaching a Workshop room. */
+export type WindowServices = Pick<CoreServices,
+  | 'assistantToolService'
+  | 'dictionaryService'
+  | 'dictionaryHistoryStore'
+  | 'contextAssistantService'
+  | 'proseStatsService'
+  | 'styleFlagsService'
+  | 'wordFrequencyService'
+  | 'wordSearchService'
+  | 'standardsService'
+  | 'aiResourceManager'
+  | 'aiResourceRefresh'
+  | 'secretsService'
+  | 'textSourceResolver'
+  | 'categorySearchService'
+  | 'accountBalanceService'
+  | 'workshopContextIntakeService'
+  | 'lightboxService'
+  | 'lightboxReadingRunner'
+  | 'lightboxContextShelf'
+  | 'lightboxBoardLibrary'
+  | 'lightboxBoardStore'
+  | 'contextPathSuggestions'
+  | 'passageSearchEngine'
+>;

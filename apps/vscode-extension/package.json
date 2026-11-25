@@ -103,6 +103,8 @@
     "onCommand:prose-minion.showOutputChannel",
     "onCommand:prose-minion.openSettingsOverlay",
     "onCommand:prose-minion.openWorkshop",
+    "onCommand:prose-minion.newWorkshopTab",
+    "onCommand:prose-minion.reopenWorkshopRoom",
     "onCommand:prose-minion.workshopSelection",
     "onCommand:prose-minion.addSelectionToWorkshopMessage",
     "onCommand:prose-minion.openLightbox",
@@ -160,6 +162,16 @@
       {
         "command": "prose-minion.openWorkshop",
         "title": "Open Workshop",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.newWorkshopTab",
+        "title": "New Workshop Tab",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.reopenWorkshopRoom",
+        "title": "Reopen Closed Workshop Room…",
         "category": "Prose Minion"
       },
       {

@@ -40,7 +40,7 @@ import { projectMemoryEditToken, projectMemoryVersion } from '@/application/serv
 import { askedProjectMemoryWorkspace, type ProjectMemoryWorkspaceIdentity } from '@/application/services/workshop/memory/ProjectMemoryWorkspaceIdentity';
 
 /** The store's methods the writes use; satisfied by ProjectMemoryStore. */
-export type ProjectMemoryWriteStorePort = Pick<ProjectMemoryStore, 'list' | 'read' | 'create' | 'replace' | 'delete' | 'shutDown'>;
+export type ProjectMemoryWriteStorePort = Pick<ProjectMemoryStore, 'runWriteTransaction' | 'list' | 'read' | 'create' | 'replace' | 'delete' | 'shutDown'>;
 
 /** Who a new memory came from; the host fills it, never a model (D6). */
 export interface ProjectMemorySaveProvenance {
@@ -117,8 +117,6 @@ interface BoundWorkspace {
 
 export class ProjectMemoryWrites {
   private readonly owed = new Set<Promise<unknown>>();
-  /** The last write's settlement: each write's list, check and commit wait for it (PR #200 F-04). */
-  private queue: Promise<unknown> = Promise.resolve();
 
   constructor(
     private readonly store: ProjectMemoryWriteStorePort,
@@ -461,11 +459,10 @@ export class ProjectMemoryWrites {
       }
       return write({ asked, still, reason, commit: () => this.workspaceReason() === undefined && still() });
     };
-    const running = this.queue.then(turn).catch((error: unknown) => {
+    const running = this.store.runWriteTransaction(turn).catch((error: unknown) => {
       this.log(`${action} failed (${error instanceof Error ? error.name : 'error'})`);
       return { kind: 'refused', reason: 'failed' } as unknown as T;
     });
-    this.queue = running;
     this.owed.add(running);
     void running.finally(() => this.owed.delete(running));
     return running;

@@ -227,13 +227,13 @@ export class WorkshopSeedDelivery<TRecipient> {
   }
 
   /** The panel closed or was replaced, or the host is shutting down: nothing held here can open any more. */
-  close(): void {
-    this.settleWaiting('closed');
+  close(reason: 'closed' | 'room-changed' = 'closed'): void {
+    this.settleWaiting(reason);
     const opening = this.opening;
     if (opening) {
       this.opening = undefined;
-      this.remember(opening.deliveryId, 'closed');
-      opening.settle({ opened: false, reason: 'closed' });
+      this.remember(opening.deliveryId, reason);
+      opening.settle({ opened: false, reason });
     }
   }
 
@@ -243,7 +243,7 @@ export class WorkshopSeedDelivery<TRecipient> {
   }
 
   /** Settle the waiting seed (the one named, when `deliveryId` is given) and remember why. */
-  private settleWaiting(reason: 'replaced' | 'timeout' | 'closed', deliveryId?: string): void {
+  private settleWaiting(reason: 'replaced' | 'room-changed' | 'timeout' | 'closed', deliveryId?: string): void {
     const waiting = this.waiting;
     if (!waiting || (deliveryId !== undefined && waiting.deliveryId !== deliveryId)) {
       return;

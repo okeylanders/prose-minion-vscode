@@ -33,7 +33,7 @@
 import { isNamedSessionFileName } from '@/application/services/workshop/WorkshopRoomSlot';
 import * as path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { FileType, type FileSystem, type LogSink } from '@/platform';
+import { FileType, type FileSystem, type LocalRollingClaim, type LogSink } from '@/platform';
 import { STORED_FILE_CLAIM_LEASE_MS } from '@/infrastructure/storage/StoredFileClaims';
 import { assertPersistedJsonNestingDepth } from '@/application/services/workshop/persistedJson';
 import type { WorkshopPersistedSessionCheckpointDecodeResult, WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
@@ -274,8 +274,8 @@ export class WorkshopNamedSessionLock {
   }
 
   /** Rolling files use the same no-overwrite claim directory. Their saved name always stays in place. */
-  withRollingLock<T>(filePath: string, sessionId: string, work: () => Promise<T>): Promise<T> {
-    return this.holding(filePath, sessionId, work);
+  withRollingLock<T>(filePath: string, sessionId: string, work: (replace?: LocalRollingClaim['replace']) => Promise<T>): Promise<T> {
+    return this.holding(filePath, sessionId, (_held, local) => work(local?.replace), true);
   }
 
   /** An expired rolling claim remains its writer's. A token authorizes only a copy into a different slot. */
@@ -297,13 +297,17 @@ export class WorkshopNamedSessionLock {
   }
 
   /** Run `work` holding the file's lock; release however it ends. */
-  private async holding<T>(filePath: string, sessionId: string, work: (held: Held) => Promise<T>): Promise<T> {
+  private async holding<T>(filePath: string, sessionId: string, work: (held: Held, local?: LocalRollingClaim) => Promise<T>, rolling = false): Promise<T> {
     const held = await this.acquire(filePath, sessionId);
+    let local: LocalRollingClaim | undefined;
     try {
-      return await work(held);
+      if (rolling) {
+        local = this.fileSystem.prepareRollingClaim?.(filePath, held.token);
+      }
+      return await work(held, local);
     } finally {
       await this.hooks.beforeRelease?.();
-      if (!held.keep) {
+      if (!held.keep && !local?.release()) {
         await this.release(held, filePath);
       }
     }

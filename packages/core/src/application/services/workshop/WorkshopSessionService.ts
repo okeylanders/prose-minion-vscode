@@ -1347,6 +1347,11 @@ export class WorkshopSessionService {
     return this.turnLedger.all();
   }
 
+  /** The panel closed: even a reader returning before the final flush must drop its result. */
+  invalidatePendingRoomReads(): void {
+    this.roomRevision = mintRoomRevision();
+  }
+
   /** This room generation's identity, as the snapshot's `roomRevision` gives it. */
   readRoomRevision(): number {
     return this.roomRevision;

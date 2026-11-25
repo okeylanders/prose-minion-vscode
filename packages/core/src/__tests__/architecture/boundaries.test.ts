@@ -2327,7 +2327,7 @@ describe('architectural boundaries', () => {
     const extension = fs.readFileSync(path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src/extension.ts'), 'utf8');
     // Slice 2b passes the pinned-context seed; the no-op is no longer the extension's.
     expect(extension).not.toMatch(/\bWORKSHOP_NO_ROOM_SEED\b/);
-    expect(extension).toMatch(/workshopSessionStore,\s*workshopPinnedContextRoomSeed,\s*outputChannel/);
+    expect(extension).toMatch(/workshopSessionStore,\s*workshopPinnedContextRoomSeed,\s*sessionLog/);
   });
 
   it('tells a value import of a module from a type-only one', () => {

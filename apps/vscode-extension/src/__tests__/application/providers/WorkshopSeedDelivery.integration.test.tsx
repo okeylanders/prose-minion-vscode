@@ -18,6 +18,7 @@
 import * as React from 'react';
 import * as vscode from 'vscode';
 import { act, render, screen } from '@testing-library/react';
+import { workshopPanelRooms } from './workshopPanelRooms';
 import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelProvider';
 import { CoreServices, Platform, WORKSHOP_SEED_TIMEOUT_MS, WorkshopSeedOutcome } from '@prose-minion/core';
 import {
@@ -41,6 +42,7 @@ jest.mock('@prose-minion/core', () => {
     coerceWebviewErrorText: messages.coerceWebviewErrorText,
     SURFACE_WORKSHOP: 'workshop',
     WORKSHOP_SEED_TIMEOUT_MS: delivery.WORKSHOP_SEED_TIMEOUT_MS,
+    ...jest.requireActual('@/application/services/workshop/WorkshopRoomSlot'),
     WorkshopSeedDelivery: delivery.WorkshopSeedDelivery,
     // The panel's MessageHandler: the seed's route reaches the real Lexical Gravity handler; nothing else is routed.
     MessageHandler: jest.fn((_services: unknown, postMessage: (message: unknown) => Promise<void>) => {
@@ -181,7 +183,7 @@ describe('seed delivery from the Workshop panel provider to the Workshop webview
     });
     workshop = new WorkshopPanelProvider(
       vscode.Uri.file('/extension'),
-      {} as CoreServices,
+      workshopPanelRooms(),
       { appendLine: jest.fn() } as unknown as vscode.OutputChannel,
       {} as Platform
     );
@@ -205,6 +207,7 @@ describe('seed delivery from the Workshop panel provider to the Workshop webview
   /** Open the Workshop and its webview; the webview's first message makes the panel ready. */
   const openWorkshop = async () => {
     workshop.openOrReveal();
+    await Promise.resolve();
     const panel = panels.at(-1)!;
     (useVSCodeApi as jest.Mock).mockReturnValue({
       postMessage: jest.fn((message: unknown) => {
@@ -348,6 +351,7 @@ describe('seed delivery from the Workshop panel provider to the Workshop webview
     expect(answers()).toEqual([]);
 
     workshop.openOrReveal();
+    await Promise.resolve();
     const reopened = panels.at(-1)!;
     expect(reopened).not.toBe(panel);
     reopened.receive({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', payload: {}, timestamp: 1 });
@@ -368,6 +372,7 @@ describe('seed delivery from the Workshop panel provider to the Workshop webview
     await release(panel);
     expect(outcome()).toEqual({ opened: false, reason: 'closed' });
     workshop.openOrReveal();
+    await Promise.resolve();
     const reopened = panels.at(-1)!;
     reopened.receive({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', payload: {}, timestamp: 1 });
     await flush();

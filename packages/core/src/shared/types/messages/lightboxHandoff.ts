@@ -97,6 +97,8 @@ export interface LightboxWorkshopTrayTile {
  * replaced; closing the Workshop tab keeps them, since they are session state.
  */
 export interface LightboxWorkshopTrayPayload {
+  /** Opaque navigation handle for this tray's live Workshop attachment. */
+  trayToken?: string;
   tiles: LightboxWorkshopTrayTile[];
 }
 
@@ -104,7 +106,7 @@ export interface LightboxWorkshopTrayMessage extends MessageEnvelope<LightboxWor
   type: MessageType.LIGHTBOX_WORKSHOP_TRAY;
 }
 
-/** The tray's "Open Workshop →". Zero payload. */
-export interface LightboxOpenWorkshopMessage extends MessageEnvelope<Record<string, never>> {
+/** Reveal the Workshop represented by the tray on screen. */
+export interface LightboxOpenWorkshopMessage extends MessageEnvelope<{ trayToken?: string }> {
   type: MessageType.LIGHTBOX_OPEN_WORKSHOP;
 }

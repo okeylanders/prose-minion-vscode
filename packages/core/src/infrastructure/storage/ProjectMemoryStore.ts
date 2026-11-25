@@ -93,6 +93,7 @@ type Found =
 
 export class ProjectMemoryStore {
   private queue: Promise<unknown> = Promise.resolve();
+  private writeTransactions: Promise<unknown> = Promise.resolve();
   private readonly owed = new Set<Promise<unknown>>();
   private readonly now: () => Date;
   private readonly mintStagingId: () => string;
@@ -366,6 +367,14 @@ export class ProjectMemoryStore {
       const now = this.availability();
       return now.available && now.directory === target && (options.beforeCommit?.() ?? true);
     };
+  }
+
+  /** A room's list, budget check and commit share one turn with every other room in this window. */
+  runWriteTransaction<T>(operation: () => Promise<T>): Promise<T> {
+    // Transactions call list/create/replace, which acquire the separate filesystem queue.
+    const write = this.writeTransactions.then(operation);
+    this.writeTransactions = write.catch(() => undefined);
+    return this.owe(write);
   }
 
   /** Settle every write owed, and any started while it waits (deactivation, PR #183 F-03). */
