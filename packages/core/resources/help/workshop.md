@@ -4,6 +4,20 @@
 
 Run **Open Workshop** from the Command Palette. Choose a host, such as Jill, to discuss a passage or start an open chat. Invite a specialist guest for a different perspective and choose the participant you want to address. The thread identifies the speaker and the model that wrote each reply. Tools run a focused writing pass in the room. The host can synthesize its findings and you can keep actions as to-dos.
 
+## Multiple Workshop tabs
+
+To discuss two chapters side by side, run **New Workshop Tab** from the Command Palette. Each tab has its own room, excerpt, conversation history and reply in progress. You can send a message or stop a reply in one room while the other keeps working. **Open Workshop** brings the most recently focused open Workshop tab to the front.
+
+Before using **Add Selection to Workshop Message**, **Send to New Workshop Excerpt**, or a Lightbox action that sends material to Workshop, focus the tab you want to receive it. You can then return to the editor or Lightbox to send. If you have no Workshop tab open, the command opens one.
+
+You can leave both rooms unnamed. With a single project folder open in VS Code, each room keeps its own checkpoint. Reloading VS Code restores each open tab from its checkpoint. To recover an unnamed room after closing its tab, run **Reopen Closed Workshop Room…** and choose the room. With no folder or with several workspace folders, closed rooms stay available in that picker while the extension is running. Reloading or closing that window ends those in-memory rooms. Opening a named session already open elsewhere in the same window takes you to its tab. **Branch** opens the branch in the tab where you made it.
+
+If two VS Code windows write to the same room checkpoint, the first successful save stays in place. Workshop preserves the other window’s edits in a separate local recovery session. If the recovery write also fails, keep the window open and reopen the room to retry. When you close that tab, choose **Open saved recovery** to continue in a fresh tab. You can also open the preserved session by name from Workshop Sessions.
+
+If an interrupted write left a closed room locked, run **Reopen Closed Workshop Room…**. When the picker offers **Open a recovery copy**, choose it to continue from the last saved checkpoint in a separate room.
+
+Each reply’s footer shows how many tokens its own turn processed. The header’s cumulative usage and last-request cost cover activity across the whole extension window, including other Workshop tabs.
+
 ## Hosts and guests
 
 Choose a host when opening the room. Use **Invite guest** beside the participants to bring in a second perspective. Select a participant under **Talking to** to address your next message to them. Use the close button on a guest's chip to dismiss them once a reply finishes.
@@ -68,13 +82,13 @@ Ask a persona to list a group's files, such as every chapter. It lists exactly t
 
 Nothing runs when it asks. A card under the reply shows the question, where it would look (a narrowed group with its patterns), and a line such as "23 calls · ≈ $0.42 · model": the number of calls, an estimated price, and the model. The price is an estimate, and it covers the search only; the persona's reply to the results is an ordinary turn. The search runs on the **Passage Search** model from Settings, which follows the Category Search model until you pick one. The persona's own model never reads the files.
 
-Press **Run** to start it, or **Cancel** to turn it down. If the files or the price changed since the card was shown, Run shows the new price and waits for another press. While it runs the card shows progress and **Stop**. One search runs at a time in a Workshop window, and a search that is stopped, or cut short by closing the window or replacing the room, cannot be resumed: calls already made are spent.
+Press **Run** to start it, or **Cancel** to turn it down. If the files or the price changed since the card was shown, Run shows the new price and waits for another press. While it runs the card shows progress and **Stop**. A Workshop room runs one passage search at a time. Closing its tab, replacing its session or pressing **Stop** ends the search. Calls already made may still be billed.
 
 When the search has read every file it planned, in full, and the room is free, the results go to the persona, who replies as on any turn. If a reply was in progress, or a session is being saved or opened, the card waits with **Send to** the persona. A search that did not read everything is never sent for you: one you stopped, one cut short by a changed API key or a provider that refused its calls, or one where a read failed, a reply was cut off, or a read did not fit the model's window and was not sent. The card shows what was found and what was not searched, with **Send partial results to** the persona, **Open report** and **Discard**. If sending fails, the results stay on the card and you can send them again without searching again.
 
 **Open report** saves a Markdown report in prose-minion/reports/ and opens it: what was read, the labels with their counts, and every instance with its file, line and quote. When there are more instances than fit in the persona's message, it is sent an even spread of them and told so; the report has them all. If not even a summary of the results fits in what is left of the persona's conversation, nothing is sent and the card says so; open the report instead.
 
-A window holds up to four results that have not been sent. With four waiting, **Run** on another card says so and searches nothing: send or discard one first. Results are held only while the window stays open on that room. A rewind that keeps the card unchanged keeps its results, so they can be sent again; opening a session, even the same one again, starting a new room or branching drops them. After a reload the card can be run again, and a delivered card says the report is no longer held.
+Each Workshop room can hold up to four results that have not been sent. With four waiting, **Run** on another card says so and searches nothing: send or discard one first. The results stay with their room while its tab is open, even when you switch tabs. A rewind that keeps the card unchanged keeps its results, so they can be sent again; opening a session, even the same one again, starting a new room or branching drops them. After a reload the card can be run again, and a delivered card says the report is no longer held.
 
 ## Suggested file edits
 

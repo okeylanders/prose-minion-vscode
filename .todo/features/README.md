@@ -57,7 +57,7 @@ Several of these notes still carry their build-time status line (for example
 
 | # | Idea | Status |
 |---|---|---|
-| 9 | Several Workshop tabs, including unsaved rooms | In design on `epic/workshop-tabs`. [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [Feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
+| 9 | Several Workshop tabs, including unsaved rooms | Implemented for review on `epic/workshop-tabs`. [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [Feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
 
 ## ⏳ Not started
 
@@ -96,7 +96,6 @@ Several of these notes still carry their build-time status line (for example
 |---|---|---|
 | The Lightbox passage tests fail CI on timing, including unrelated PRs | Medium | [wall-clock test](../tech-debt/2026-11-19-lightbox-passages-wall-clock-test.md) |
 | A send refused while the room is busy loses its draft | Medium | [gated send loses draft](../tech-debt/2026-11-18-workshop-gated-send-loses-draft.md) |
-| Context reads land in whichever room is open when they finish | Medium | [room context reads unbound](../tech-debt/2026-11-18-workshop-room-context-reads-unbound-to-room.md) |
 | Lexical Gravity logs a rejected reply's text | Medium | [LG logs reply text](../tech-debt/2026-11-18-lexical-gravity-logs-rejected-reply-text.md) |
 | The stored-file rewrite may not fence a stalled writer | Medium | [stalled writer fence](../tech-debt/2026-11-19-stored-file-rewrite-stalled-writer-fence.md) |
 | Earlier turns re-read cost | Low | [re-read cost](../tech-debt/2026-11-18-workshop-earlier-turns-reread-cost.md) |
@@ -114,7 +113,7 @@ side.
      attachment code, and 34 is how a writer sees a sent paste.
    - **The draft-loss tech debt.** It's the same composer.
    - **33 (default models) and 32 (BYOK help).** Small, and worth shipping.
-   - **The Lexical Gravity log leak and the context-reads room binding.**
+   - **The Lexical Gravity log leak.** Room-bound context reads are part of the Workshop tabs epic.
 2. **Measures, then Read Aloud: 35, then 31.**
    - 35 reuses Passage Search's scope type, lifted to a neutral module.
    - 31 then lands as `measure.cadence`, with the CMUdict dependency.

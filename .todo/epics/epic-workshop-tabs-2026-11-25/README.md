@@ -1,12 +1,12 @@
 # Epic — Independent Workshop tabs
 
-**Status** In design on `epic/workshop-tabs`, branched from `main` at `0830be3c` (v2.16.0).
+**Status** Workshop implementation complete for epic integration on `epic/workshop-tabs`, branched from `main` at `0830be3c` (v2.16.0).
 **Priority** Medium, selected for implementation.
 **Goal** Keep several live Workshop rooms in one VS Code window, including two unnamed rooms that both restore after a reload. [Feature 9](../../features/feature-multiple-workshop-and-lightbox-tabs/README.md) · [Architecture and acceptance witnesses](../../../docs/adr/2026-11-25-workshop-tabs.md)
 
 ## Sprint plan
 
-Each sprint starts from the integrated epic branch. A checked sprint targets the epic and gets a smoke run before integration. Inspect Dot's review when present, reply on its thread and verify any resulting change. Record concrete commands and outcomes in the sprint PR. A PR to main is a separate release decision.
+Sprint PRs target the epic and get a smoke run before integration. Dependent work can start on stacked branches while earlier sprints are under review. Inspect Dot's review when present, reply on its thread and verify any resulting change. Record concrete commands and outcomes in the sprint PR. A PR to main is a separate release decision.
 
 | Sprint | Deliverable | Smoke gate |
 |---|---|---|
@@ -25,3 +25,17 @@ The sprint numbers describe review boundaries. Coordinate the room factory, slot
 - In a single-folder workspace, reload and close/reopen recover the correct slots, including existing `current.json` data. In folderless and multi-root windows, closed rooms remain available in the same host. Shutdown drains every room and shared store.
 - The writer can find New Workshop Tab and closed unsaved rooms. Help describes targeting and recovery.
 - The index records the Workshop half separately from the queued Lightbox half. Smoke outcomes and any remaining live acceptance are visible in the relevant PRs.
+
+
+## Verification
+
+| Exercise | Result |
+|---|---|
+| Two independent rooms | Two VS Code Workshop editors kept different excerpts. A window reload restored each slot, its rendered text and its own rolling file. |
+| Named sessions | Opening the same named session in a second tab revealed its owner. The second tab kept its previous excerpt. Save and Rename updated the native tab title. |
+| Upgrade and closed rooms | A pre-tabs native editor and existing writer checkpoint reopened as the legacy slot, with the same excerpt and turn IDs. The native picker reopened a closed UUID room. |
+| Two windows on one project | Separate VS Code processes edited the same legacy slot. The committed checkpoint retained the first edit. A separate recovery file held the second edit. |
+| Memory-only rooms | Two roots in a real VS Code window kept two rooms separate. Reopening a closed room displayed the original excerpt and wrote no checkpoint to either root. Automated activation tests also cover a window with no folder. |
+| Concurrent model work | The extension activation tests use a controlled provider transport and real retained conversation state. They cover overlapping turns, cancellation, rewind and transcript export. |
+
+Sprint PRs record review responses and CI. [Design](https://github.com/okeylanders/prose-minion-vscode/pull/301) · [Room operations](https://github.com/okeylanders/prose-minion-vscode/pull/302) · [Durability](https://github.com/okeylanders/prose-minion-vscode/pull/303) · [Native panels](https://github.com/okeylanders/prose-minion-vscode/pull/304)

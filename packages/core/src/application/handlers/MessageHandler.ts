@@ -20,7 +20,6 @@ import {
   StatusMessage,
   ExtensionToWebviewMessage,
   TokenUsageUpdateMessage,
-  TokenUsageTotals,
   WorkshopSessionStateMessage,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WORKSHOP_WRITER_PROFILE_SETTING,
@@ -66,15 +65,6 @@ import { LightboxBoardsHandler } from './domain/LightboxBoardsHandler';
 
 export class MessageHandler {
   private readonly resultCache: ResultCache = {};
-
-  // Shared token-tracking bag. Mutated in place + passed by reference to
-  // ConfigurationHandler (which zeroes it on RESET_TOKEN_USAGE). `costUsd` is
-  // cumulative; `lastRequestCostUsd` is the single most-recent request's cost.
-  private tokenTotals: TokenUsageTotals & { lastRequestCostUsd?: number } = {
-    promptTokens: 0,
-    completionTokens: 0,
-    totalTokens: 0
-  };
 
   // Message router (Strategy pattern)
   private readonly router: MessageRouter;
@@ -229,14 +219,15 @@ export class MessageHandler {
       workshopPassageSearch
     } = services;
 
-    // Token tracking: centralized in AgentRunEngine. Listener-based so
-    // every live webview (sidebar + Workshop) tracks usage from ANY surface's
-    // requests; each MessageHandler keeps its own totals bag + replay cache.
-    this.disposeTokenUsageListener = aiResourceManager.addTokenUsageListener((usage) => {
-      this.applyTokenUsage(usage);
+    // Each surface receives the same window snapshot, including views opened after a run.
+    this.disposeTokenUsageListener = aiResourceManager.addTokenUsageListener(usage => {
+      this.postWindowTokenUsage();
+      if (usage.totalTokens > 0) {
+        this.services.accountBalanceService.scheduleRefresh();
+      }
     });
     this.disposeProcessedUsageResetListener = aiResourceManager.addTokenUsageResetListener(
-      () => this.resetTokenUsageTotals()
+      () => this.postWindowTokenUsage()
     );
 
     this.analysisHandler = new AnalysisHandler(
@@ -299,14 +290,7 @@ export class MessageHandler {
       this.services.contextPathSuggestions
     );
 
-    // Ensure token totals are reset on activation/startup so the webview does not
-    // display stale persisted values from prior sessions.
-    this.applyTokenUsage({
-      promptTokens: 0,
-      completionTokens: 0,
-      totalTokens: 0,
-      costUsd: 0
-    });
+    this.postWindowTokenUsage();
 
     this.publishingHandler = new PublishingHandler(
       standardsService,
@@ -424,7 +408,7 @@ export class MessageHandler {
     // Saved boards (Slice 5A): the rail's shelf, open, delete and (5A.1) rename, over the composition root's library.
     // 5A.2: the Boards menu and browser across chapters, and "Open a board file…" through the shell's picker.
     this.lightboxBoardsHandler = new LightboxBoardsHandler(lightboxBoardLibrary, this.platform.shell, this.postMessage.bind(this), outputChannel);
-    // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
+    // Post-AI-request refresh: the debounced fetch (scheduled by the window usage listener)
     // broadcasts fresh balances to the webview through the same handler.
     this.disposeBalanceListener = accountBalanceService.addRefreshListener(
       (payload) => this.accountBalanceHandler.post(payload)
@@ -448,6 +432,7 @@ export class MessageHandler {
     this.metricsHandler.registerRoutes(this.router);
     this.searchHandler.registerRoutes(this.router);
     this.configurationHandler.registerRoutes(this.router);
+    this.router.register(MessageType.REQUEST_TOKEN_USAGE, async () => this.postWindowTokenUsage());
     this.publishingHandler.registerRoutes(this.router);
     this.sourcesHandler.registerRoutes(this.router);
     this.uiHandler.registerRoutes(this.router);
@@ -542,68 +527,13 @@ export class MessageHandler {
     this.outputChannel.appendLine(`[MessageHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
-  private applyTokenUsage(usage: TokenUsageTotals): void {
-    try {
-      this.tokenTotals.promptTokens += usage.promptTokens || 0;
-      this.tokenTotals.completionTokens += usage.completionTokens || 0;
-      this.tokenTotals.totalTokens += usage.totalTokens || 0;
-      if (typeof usage.costUsd === 'number') {
-        this.tokenTotals.costUsd = (this.tokenTotals.costUsd || 0) + usage.costUsd;
-      }
-
-      // A real completed request reports tokens; the activation/reset calls pass
-      // all-zeros and must not overwrite the last-request cost or trigger a
-      // billing refresh. `lastRequestCostUsd` may be undefined when the provider
-      // returned no cost — surfaced honestly as "—" rather than $0.000.
-      const isRealRequest = (usage.totalTokens || 0) > 0;
-      if (isRealRequest) {
-        this.tokenTotals.lastRequestCostUsd = usage.costUsd;
-      }
-
-      const { lastRequestCostUsd, ...totals } = this.tokenTotals;
-      const message: TokenUsageUpdateMessage = {
-        type: MessageType.TOKEN_USAGE_UPDATE,
-        source: 'extension.handler',
-        payload: {
-          totals: { ...totals },
-          lastRequestCostUsd
-        },
-        timestamp: Date.now()
-      };
-      this.resultCache.tokenUsage = { ...message };
-      void this.postMessage(message);
-
-      // Spend just happened → re-fetch the balance (debounced, since OpenRouter
-      // billing is eventually consistent). The service coalesces bursts.
-      if (isRealRequest) {
-        this.services.accountBalanceService.scheduleRefresh();
-      }
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.outputChannel.appendLine(`[MessageHandler] Failed to apply token usage update: ${msg}`);
-    }
-  }
-
-  private resetTokenUsageTotals(): void {
-    this.tokenTotals.promptTokens = 0;
-    this.tokenTotals.completionTokens = 0;
-    this.tokenTotals.totalTokens = 0;
-    this.tokenTotals.costUsd = 0;
-    this.tokenTotals.lastRequestCostUsd = undefined;
+  private postWindowTokenUsage(): void {
     const message: TokenUsageUpdateMessage = {
       type: MessageType.TOKEN_USAGE_UPDATE,
       source: 'extension.handler',
-      payload: {
-        totals: {
-          promptTokens: 0,
-          completionTokens: 0,
-          totalTokens: 0,
-          costUsd: 0
-        }
-      },
+      payload: this.services.aiResourceManager.windowTokenUsage(),
       timestamp: Date.now()
     };
-    this.resultCache.tokenUsage = { ...message };
     void this.postMessage(message);
   }
 

@@ -57,7 +57,7 @@ export function fullTabBalanceTitle(
     parts.push(`Credits remaining: $${remaining.toFixed(2)}`);
   }
   if (typeof lastRequestCostUsd === 'number') {
-    parts.push(`Last request: $${lastRequestCostUsd.toFixed(4)}`);
+    parts.push(`Last request in this window: $${lastRequestCostUsd.toFixed(4)}`);
   }
   if (openrouter.creditsStatus !== 'ok') {
     parts.push('Account balance unavailable');
@@ -100,9 +100,9 @@ export const FullTabHeaderStatus: React.FC<FullTabHeaderStatusProps> = ({
       {/* Cumulative processed traffic is cost/activity, not context size. */}
       <div
         className="pm-ws-balance"
-        title={`Cumulative processed traffic — prompt ${tokens.usage.promptTokens.toLocaleString()} · completion ${tokens.usage.completionTokens.toLocaleString()}. Retained history may be processed again across calls.`}
+        title={`Processed in this VS Code window — prompt ${tokens.usage.promptTokens.toLocaleString()} · completion ${tokens.usage.completionTokens.toLocaleString()}. Retained history may be processed again across calls.`}
       >
-        <span className="pm-ws-balance-label">Processed</span>
+        <span className="pm-ws-balance-label">Window tokens</span>
         <span className="pm-ws-balance-val">
           {tokens.usage.totalTokens.toLocaleString()}
         </span>

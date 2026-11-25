@@ -64,8 +64,8 @@ describe('FullTabHeaderStatus', () => {
   it('shows processed traffic as cost and activity, not context size', () => {
     render(<FullTabHeaderStatus {...makeProps()} />);
 
-    expect(screen.getByText('Processed').parentElement?.getAttribute('title')).toBe(
-      'Cumulative processed traffic — prompt 1,200 · completion 345. ' +
+    expect(screen.getByText('Window tokens').parentElement?.getAttribute('title')).toBe(
+      'Processed in this VS Code window — prompt 1,200 · completion 345. ' +
       'Retained history may be processed again across calls.'
     );
   });
@@ -192,7 +192,7 @@ describe('fullTabBalanceTitle', () => {
 
   it('lists the credits left and the last request cost', () => {
     expect(fullTabBalanceTitle(okBalance, 0.0123))
-      .toBe('Credits remaining: $12.00 · Last request: $0.0123');
+      .toBe('Credits remaining: $12.00 · Last request in this window: $0.0123');
   });
 
   it('admits an unavailable account balance', () => {

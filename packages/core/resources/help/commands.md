@@ -11,6 +11,8 @@ In the Command Palette, search for Prose Minion and the title. The prose-minion.
 | prose-minion.openSettingsOverlay | Settings | Command Palette, view/title |
 | prose-minion.showOutputChannel | Show Debug Output | Command Palette, view/title |
 | prose-minion.openWorkshop | Open Workshop | Command Palette |
+| prose-minion.newWorkshopTab | New Workshop Tab | Command Palette |
+| prose-minion.reopenWorkshopRoom | Reopen Closed Workshop Room… | Command Palette |
 | prose-minion.workshopSelection | Send to New Workshop Excerpt | Command Palette, prose-minion.editorContext |
 | prose-minion.addSelectionToWorkshopMessage | Add Selection to Workshop Message | Command Palette, prose-minion.editorContext |
 | prose-minion.openLightbox | Open Lightbox | Command Palette |

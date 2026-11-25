@@ -99,7 +99,6 @@ type WorkshopContextEffects = Pick<
 export class WorkshopContextHandler {
   private wizardRun?: {
     requestId: string;
-    excerptVersion: number;
     controller: AbortController;
   };
 
@@ -279,6 +278,7 @@ export class WorkshopContextHandler {
       return;
     }
 
+    const room = this.session.readRoomRevision();
     const { updates, failures, truncated } = await scanWorkshopContextFiles(
       this.contextIntakeService,
       this.outputChannel,
@@ -287,6 +287,9 @@ export class WorkshopContextHandler {
       this.session.contextWordsUsed()
     );
 
+    if (room !== this.session.readRoomRevision()) {
+      return;
+    }
     const refreshSummary = this.contextRefreshSummary(updates, failures, truncated);
     if (updates.length > 0) {
       const result = this.session.refreshContextFileAttachments(
@@ -734,7 +737,10 @@ export class WorkshopContextHandler {
 
     const requestId = generateRequestId();
     const controller = new AbortController();
-    this.wizardRun = { requestId, excerptVersion: excerpt.version, controller };
+    this.wizardRun = { requestId, controller };
+    const room = this.session.readRoomRevision();
+    const current = () => !controller.signal.aborted && this.wizardRun?.requestId === requestId &&
+      this.session.readRoomRevision() === room && this.session.getExcerpt()?.version === excerpt.version;
     const started: StreamStartedMessage = {
       type: MessageType.STREAM_STARTED,
       source: 'extension.workshop',
@@ -760,12 +766,9 @@ export class WorkshopContextHandler {
         { signal: controller.signal }
       );
       cancelled = controller.signal.aborted;
-      if (
-        !cancelled &&
-        this.wizardRun?.requestId === requestId &&
-        this.wizardRun.excerptVersion === this.session.getExcerpt()?.version
-      ) {
-        await this.adoptWizardResult(result.content, result.requestedResources ?? []);
+      if (current()) {
+        await this.adoptWizardResult(result.content, result.requestedResources ?? [], current);
+        cancelled = controller.signal.aborted;
       } else if (!cancelled) {
         this.outputChannel.appendLine(
           `[WorkshopContextHandler] Context wizard ${requestId} discarded because excerpt v${excerpt.version} is no longer current`
@@ -794,29 +797,22 @@ export class WorkshopContextHandler {
     }
   }
 
-  private async adoptWizardResult(brief: string, requestedResources: string[]): Promise<void> {
-    let attached = 0;
+  private async adoptWizardResult(brief: string, requestedResources: string[], current: () => boolean): Promise<void> {
+    // Stage the brief and files together; a close or replacement during a read must not leave a partial batch.
+    const staged: WorkshopContextAttachmentInput[] = [];
     let skipped = 0;
     let failed = 0;
 
     const briefText = brief.trim();
     if (briefText.length > 0 && !briefText.startsWith(API_KEY_NOT_CONFIGURED_HEADING)) {
       const words = countWords(briefText);
-      const result = this.session.addContextAttachment({
+      staged.push({
         kind: 'text',
         origin: 'wizard',
         label: 'Wizard brief…',
         content: briefText,
         words
       });
-      if (result.ok) {
-        attached += 1;
-        if (result.eventTurn) {
-          this.effects.postTurn(result.eventTurn);
-        }
-      } else {
-        skipped += 1;
-      }
     }
 
     if (requestedResources.length > 0) {
@@ -824,6 +820,7 @@ export class WorkshopContextHandler {
       try {
         catalog = await this.contextIntakeService.openCatalog();
       } catch (error) {
+        if (!current()) {return;}
         this.outputChannel.appendLine(
           `[WorkshopContextHandler] Context wizard could not read the configured resource catalog: ${
             error instanceof Error ? error.message : String(error)
@@ -831,6 +828,7 @@ export class WorkshopContextHandler {
         );
         failed += requestedResources.length;
       }
+      if (!current()) {return;}
       if (catalog) {
         for (const resourcePath of requestedResources) {
           const summary = catalog
@@ -847,6 +845,7 @@ export class WorkshopContextHandler {
               maxWords: PROMPT_BUDGETS.contextAttachments.words
             }
           );
+          if (!current()) {return;}
           if (loaded.kind === 'unreadable') {
             this.outputChannel.appendLine(
               `[WorkshopContextHandler] Context wizard could not read ${summary.path}: ${loaded.details}`
@@ -864,7 +863,7 @@ export class WorkshopContextHandler {
             continue;
           }
           const { resource } = loaded;
-          const result = this.session.addContextAttachment({
+          staged.push({
             kind: 'file',
             origin: 'wizard',
             label: baseName(summary.path),
@@ -875,18 +874,20 @@ export class WorkshopContextHandler {
             configuredResource: { group: summary.group, path: summary.path },
             truncation: resource.truncation
           });
-          if (result.ok) {
-            attached += 1;
-            if (result.eventTurn) {
-              this.effects.postTurn(result.eventTurn);
-            }
-          } else {
-            skipped += 1;
-          }
         }
       }
     }
 
+    let attached = 0;
+    for (const attachment of staged) {
+      const result = this.session.addContextAttachment(attachment);
+      if (result.ok) {
+        attached += 1;
+        if (result.eventTurn) {this.effects.postTurn(result.eventTurn);}
+      } else {
+        skipped += 1;
+      }
+    }
     this.outputChannel.appendLine(
       `[WorkshopContextHandler] Wizard finished (${attached} attached, ${skipped} skipped, ${failed} failed)`
     );
