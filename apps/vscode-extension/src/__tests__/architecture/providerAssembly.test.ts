@@ -143,31 +143,21 @@ describe('app-shell provider assembly', () => {
     );
   });
 
-  it('registers one Workshop panel serializer that reuses the normal attachment path', () => {
-    const providerSource = fs.readFileSync(
-      path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
-      'utf8'
-    );
-    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
-
+  it('restores the historical and current Workshop editor types through the normal attachment path', () => {
+    const providerSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'), 'utf8');
     expect(providerSource).toContain('implements vscode.Disposable, vscode.WebviewPanelSerializer');
     expect(providerSource).toContain('return this.attachPanel(panel, roomId, panel.active).ready');
     expect(providerSource).toContain('return this.attachPanel(panel, roomId, true)');
-    // Behavioral serializer tests cover old UI-only state, invalid slots and collisions.
-    // Two full editor tabs restore through serializers: the Workshop and the
-    // Lightbox (ADR 2026-10-19 D1). A third needs a deliberate change here.
-    const registrations = extensionSource.match(/registerWebviewPanelSerializer\(/g) ?? [];
-    expect(registrations).toHaveLength(2);
-    expect(extensionSource).toMatch(
-      /registerWebviewPanelSerializer\(\s*WorkshopPanelProvider\.viewType,\s*workshopPanelProvider\s*\)/
-    );
 
-    const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
-      activationEvents?: string[];
-    };
-    expect(manifest.activationEvents).toContain(
-      'onWebviewPanel:prose-minion.workshop'
-    );
+    // VS Code may activate the extension from any of these saved editor types.
+    // The activation integration test checks which provider actually receives each registration.
+    const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as { activationEvents: string[] };
+    expect(manifest.activationEvents.filter(event => event.startsWith('onWebviewPanel:')).sort()).toEqual([
+      'onWebviewPanel:prose-minion.lightbox',
+      'onWebviewPanel:prose-minion.workshop',
+      'onWebviewPanel:prose-minion.workshop.primary',
+      'onWebviewPanel:prose-minion.workshop.tab'
+    ]);
   });
 
   it('authorizes the file-edit excerpt through a counts-only catalog, so the write path logs no path (ADR 2026-11-05 D13; PR #229 N-01)', () => {

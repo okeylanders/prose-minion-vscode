@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { activate, deactivate } from '@app/extension';
+import { LightboxPanelProvider } from '@app/application/providers/LightboxPanelProvider';
+import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelProvider';
 import { WorkshopPanelTab } from '@app/application/providers/WorkshopPanelTab';
 import { AIResourceManager, MessageHandler, MessageType, WorkshopSessionPersistenceCoordinator, WorkshopSessionService, WorkshopSessionStore, type ExtensionToWebviewMessage, type WebviewToExtensionMessage } from '@prose-minion/core';
 /* eslint-disable no-restricted-imports -- real provider transport and reusable test fixtures live outside the host barrel. */
@@ -77,6 +79,7 @@ describe.each([
   { shape: 'two roots before first attachment', folders: ['Book', 'Other'] }
 ])('activated Workshop rooms with $shape', ({ folders, shape }) => {
   const panels: ReturnType<typeof editorPanel>[] = [];
+  const serializers = jest.fn((_type: string, _provider: vscode.WebviewPanelSerializer) => unsub());
   const commands = new Map<string, () => unknown>();
   const subscriptions: vscode.Disposable[] = [];
   const engines = new Set<AIResourceManager>();
@@ -98,7 +101,7 @@ describe.each([
     Object.assign(vscode.window, {
       showTextDocument: async () => undefined,
       onDidChangeTextEditorSelection: unsub, onDidChangeActiveTextEditor: unsub,
-      registerWebviewPanelSerializer: unsub, registerWebviewViewProvider: unsub,
+      registerWebviewPanelSerializer: serializers, registerWebviewViewProvider: unsub,
       createWebviewPanel: () => {
         const panel = editorPanel(() => {
           panels.forEach(other => { other.active = other === panel; });
@@ -148,6 +151,18 @@ describe.each([
       jest.restoreAllMocks();
     }
   });
+
+  if (shape === 'single folder') {
+    it('registers every Workshop restore type to the same provider and Lightbox to its own provider', () => {
+      const registrations = new Map(serializers.mock.calls);
+      expect(serializers).toHaveBeenCalledTimes(4);
+      const workshop = registrations.get('prose-minion.workshop');
+      expect(workshop).toBeInstanceOf(WorkshopPanelProvider);
+      expect(registrations.get('prose-minion.workshop.primary')).toBe(workshop);
+      expect(registrations.get('prose-minion.workshop.tab')).toBe(workshop);
+      expect(registrations.get('prose-minion.lightbox')).toBeInstanceOf(LightboxPanelProvider);
+    });
+  }
 
   // A failed send reports through IPC; surface that error when it never reaches the held transport.
   const waitForModel = (started: Promise<AbortSignal>, sending: Promise<void>, panel: ReturnType<typeof editorPanel>) =>

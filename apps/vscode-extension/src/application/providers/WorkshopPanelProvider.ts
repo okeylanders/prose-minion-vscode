@@ -13,6 +13,7 @@ import {
   WorkshopUiActions
 } from '@prose-minion/core';
 import { WorkshopPanelTab } from './WorkshopPanelTab';
+import { nativeWorkshopEditors, revealNativeWorkshopEditor, waitForWorkshopEditor, WORKSHOP_EDITOR, type NativeWorkshopEditor } from './WorkshopNativeEditors';
 
 export interface WorkshopPanelRooms {
   acquire(roomId: string): { services: CoreServices; ready: Promise<void> };
@@ -23,7 +24,8 @@ export interface WorkshopPanelRooms {
 }
 
 export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewPanelSerializer {
-  public static readonly viewType = 'prose-minion.workshop';
+  public static readonly viewTypes = Object.values(WORKSHOP_EDITOR);
+  private openingPrimary?: Promise<void>;
   private readonly tabs = new Map<string, WorkshopPanelTab>();
   private focusOrder: WorkshopPanelTab[] = [];
   private nextNumber = 1;
@@ -38,14 +40,53 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     private readonly uiActions: WorkshopUiActions = {}
   ) {}
 
-  public openOrReveal(): void {
-    if (!this.revealRoom(PRIMARY_WORKSHOP_ROOM_ID)) {
+  public openOrReveal(): void | Promise<void> {
+    if (this.revealRoom(PRIMARY_WORKSHOP_ROOM_ID)) { return; }
+    if (this.openingPrimary) { return this.openingPrimary; }
+    const candidates = this.unresolvedPrimaryEditors();
+    if (!candidates.length) {
       this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);
+      return;
     }
+    this.openingPrimary = this.restorePrimary(candidates).finally(() => { this.openingPrimary = undefined; });
+    return this.openingPrimary;
   }
 
   public newWorkshopTab(): void {
-    this.createPanel(this.tabs.size === 0 ? PRIMARY_WORKSHOP_ROOM_ID : randomUUID());
+    const first = this.tabs.size === 0 && nativeWorkshopEditors().length === 0;
+    this.createPanel(first ? PRIMARY_WORKSHOP_ROOM_ID : randomUUID());
+  }
+
+  private unresolvedPrimaryEditors(): NativeWorkshopEditor[] {
+    const native = nativeWorkshopEditors();
+    const candidates: NativeWorkshopEditor[] = [];
+    // A duplicated primary may have been assigned its own UUID on a prior restore. Even an
+    // explicitly primary native type can be ruled out when every editor of that type has attached.
+    // Historical tab titles can change or coincide, so never decide this from a title.
+    for (const type of [WORKSHOP_EDITOR.primary, WORKSHOP_EDITOR.historical]) {
+      const editors = native.filter(editor => editor.type === type);
+      const attached = [...this.tabs.values()].filter(tab => tab.panel.viewType === type);
+      if (editors.length > attached.length) { candidates.push(...editors); }
+    }
+    return candidates;
+  }
+
+  private async restorePrimary(candidates: NativeWorkshopEditor[]): Promise<void> {
+    for (const { tab } of candidates) {
+      if (this.disposed || this.revealRoom(PRIMARY_WORKSHOP_ROOM_ID)) { return; }
+      if (!this.unresolvedPrimaryEditors().length) { break; }
+      await revealNativeWorkshopEditor(tab);
+    }
+    // VS Code may still be constructing a selected webview. It is safe to create only when every
+    // native editor that could own the primary has closed or supplied its real slot to the serializer.
+    const resolved = await waitForWorkshopEditor(() =>
+      this.disposed || this.tabs.has(PRIMARY_WORKSHOP_ROOM_ID) || this.unresolvedPrimaryEditors().length === 0);
+    if (this.disposed || this.revealRoom(PRIMARY_WORKSHOP_ROOM_ID)) { return; }
+    if (resolved && !this.unresolvedPrimaryEditors().length) {
+      this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);
+    } else {
+      void vscode.window.showInformationMessage('Workshop is still restoring its editors. Open Workshop again when restoration finishes.');
+    }
   }
 
   public revealRoom(roomId: string): boolean {
@@ -170,7 +211,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
 
   private createPanel(roomId: string): WorkshopPanelTab {
     const panel = vscode.window.createWebviewPanel(
-      WorkshopPanelProvider.viewType, 'Workshop', vscode.ViewColumn.Active,
+      roomId === PRIMARY_WORKSHOP_ROOM_ID ? WORKSHOP_EDITOR.primary : WORKSHOP_EDITOR.secondary, 'Workshop', vscode.ViewColumn.Active,
       { enableScripts: true, localResourceRoots: [this.extensionUri], retainContextWhenHidden: true }
     );
     return this.attachPanel(panel, roomId, true);
@@ -184,7 +225,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     // Pre-feature panels may have no state or an object with UI preferences and no slot.
     const oldState = state === undefined || state === null ||
       (typeof state === 'object' && !Array.isArray(state) && !Object.prototype.hasOwnProperty.call(state, 'workshopRoomId'));
-    const requested = oldState ? PRIMARY_WORKSHOP_ROOM_ID : (state as { workshopRoomId?: unknown }).workshopRoomId;
+    const saved = (state as { workshopRoomId?: unknown } | null)?.workshopRoomId;
+    let requested = oldState ? PRIMARY_WORKSHOP_ROOM_ID : saved;
+    if (panel.viewType === WORKSHOP_EDITOR.secondary && requested === PRIMARY_WORKSHOP_ROOM_ID) { requested = undefined; }
     const roomId = isWorkshopRoomId(requested) && !this.tabs.has(requested) ? requested : randomUUID();
     return this.attachPanel(panel, roomId, panel.active).ready;
   }

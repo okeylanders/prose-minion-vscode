@@ -314,7 +314,7 @@ export class UIHandler {
       this.sendError('ui.workshop', 'Workshop is not available from this surface.');
       return;
     }
-    open();
+    await open();
   }
 
   async handleOpenLightbox(): Promise<void> {

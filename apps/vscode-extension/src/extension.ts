@@ -835,10 +835,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   context.subscriptions.push(
     workshopPanelProvider,
-    vscode.window.registerWebviewPanelSerializer(
-      WorkshopPanelProvider.viewType,
-      workshopPanelProvider
-    )
+    ...WorkshopPanelProvider.viewTypes.map(viewType =>
+      vscode.window.registerWebviewPanelSerializer(viewType, workshopPanelProvider!))
   );
 
   // Lightbox editor-tab surface (ADR 2026-10-19 D1): the same window-level
@@ -1066,9 +1064,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       focusToolsView();
       proseToolsViewProvider?.openSettings();
     }),
-    vscode.commands.registerCommand('prose-minion.openWorkshop', () => {
-      workshopPanelProvider?.openOrReveal();
-    }),
+    vscode.commands.registerCommand('prose-minion.openWorkshop', () => workshopPanelProvider?.openOrReveal()),
     vscode.commands.registerCommand('prose-minion.newWorkshopTab', () => workshopPanelProvider?.newWorkshopTab()),
     vscode.commands.registerCommand('prose-minion.reopenWorkshopRoom', () => workshopPanelProvider?.reopenClosedRoom()),
     vscode.commands.registerCommand('prose-minion.workshopSelection', handleWorkshopSelection),
