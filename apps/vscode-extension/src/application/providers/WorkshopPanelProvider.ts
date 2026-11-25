@@ -57,6 +57,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   }
 
   public async reopenClosedRoom(): Promise<void> {
+    const atOpen = workspaceIdentity();
     let checkpoints: Awaited<ReturnType<WorkshopPanelRooms['listRoomCheckpoints']>>;
     try {
       checkpoints = await this.rooms.listRoomCheckpoints();
@@ -78,12 +79,19 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       return;
     }
     const picked = await vscode.window.showQuickPick(choices, { placeHolder: 'Reopen a closed Workshop room' });
-    if (!picked || this.disposed || this.revealRoom(picked.roomId)) return;
+    if (!picked || this.disposed) return;
+    if (atOpen !== workspaceIdentity()) {
+      void vscode.window.showInformationMessage('The workspace changed. Reopen the closed-room picker.');
+      return;
+    }
+    if (this.revealRoom(picked.roomId)) return;
     try {
       const roomId = picked.recoveryToken
         ? await this.rooms.recoverRollingRoom(picked.roomId, picked.recoveryToken)
         : picked.roomId;
-      if (!this.disposed && !this.revealRoom(roomId)) this.createPanel(roomId);
+      if (!this.disposed && atOpen === workspaceIdentity() && !this.revealRoom(roomId)) {
+        this.createPanel(roomId);
+      }
     } catch (error) {
       this.outputChannel.appendLine(`[Workshop] Could not reopen the checkpoint: ${String(error)}`);
       if (!this.disposed) void vscode.window.showErrorMessage('This checkpoint could not be reopened. Reopen the picker to see its current status.');
@@ -268,4 +276,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       tab.panel.dispose();
     }
   }
+}
+
+/** A picker can stay open while the host changes folders. Compare only within this extension window. */
+function workspaceIdentity(): string {
+  return JSON.stringify(vscode.workspace.workspaceFolders?.map(folder => folder.uri.toString()) ?? []);
 }

@@ -126,6 +126,21 @@ describe('WorkshopPanelProvider retained session loading', () => {
     expect(picker.mock.calls.at(-1)![0][0]).toMatchObject({ label: 'Open a recovery copy of “Stale room”' });
     expect(rooms.recoverRollingRoom).toHaveBeenCalledWith(blocked, 'claim');
     expect(acquire.mock.calls.at(-1)).toEqual([copied]);
+    const beforeWorkspaceChange = acquire.mock.calls.length;
+    const folders = vscode.workspace.workspaceFolders;
+    const info = jest.fn();
+    Object.assign(vscode.window, { showInformationMessage: info, showQuickPick: async (choices: unknown[]) => {
+      Object.assign(vscode.workspace, { workspaceFolders: [{ uri: vscode.Uri.file('/another-book') }] });
+      return choices[0];
+    } });
+    try {
+      await workshop.reopenClosedRoom();
+      expect(info).toHaveBeenCalledWith(expect.stringContaining('workspace changed'));
+      expect(rooms.recoverRollingRoom).toHaveBeenCalledTimes(1);
+      expect(acquire).toHaveBeenCalledTimes(beforeWorkspaceChange);
+    } finally {
+      Object.assign(vscode.workspace, { workspaceFolders: folders });
+    }
     workshop.dispose();
   });
 });
