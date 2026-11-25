@@ -50,6 +50,10 @@ Create:
 The feature README should include status, motivation, scope, open questions,
 acceptance criteria, and related files.
 
+**Status index:** [features/README.md](features/README.md) lists every feature
+idea as Done, In flight or Not started, with links. Keep it current when an
+item starts or ships.
+
 ### Tech Debt
 
 Use `.todo/tech-debt/` for concrete maintenance concerns with a specific failure
