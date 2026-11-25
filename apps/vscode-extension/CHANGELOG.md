@@ -2,6 +2,25 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.16.0] - Unreleased
+
+### Added
+
+- **Find moments across a manuscript with Passage Search.** In **Search → Passage Search**, ask a question like “Where does Jasper adjust his glasses?” Search the active file, a selection, configured context groups, or project paths and patterns. Estimate the calls and cost before running. Results show source-checked quotes with file and line links, labels, and counts. Optionally organize them into an analysis with citations, or copy or save the report.
+- **Run a Passage Search from the Workshop.** A persona can propose a search of the room’s excerpt, configured files, or a context group narrowed by patterns. The card shows the scope, model, and estimated cost before you choose **Run**. Complete results can go straight back to the persona. You decide whether to send partial results after a stop or an incomplete search.
+- **Close Workshop to-dos with a persona.** Ask a host or guest to mark to-dos **Done** or **Dismissed** in the current conversation or in saved sessions. A receipt shows each change and offers **Undo** while it still applies.
+- **Ask a Workshop persona what changed in a draft.** In a trusted Git workspace, personas can list commits for the excerpt’s file or a configured project file. Compare two revisions or a revision and the file as saved on disk. The diff aligns paragraphs and highlights changed words.
+- **Set up context paths from your project folders.** In **Settings → Context Resource Paths**, choose **Suggest from my folders**, or work through the patterns with a persona in the Workshop. Review the matches and examples, choose the groups you want, and press **Apply** to write those groups to your user settings.
+
+### Changed
+
+- Workshop protects named sessions from overlapping saves. If a window leaves a save unfinished, use **Recover…** on the session’s row in **Sessions**. Available unsaved work is kept in a separate local recovery session.
+
+### Upgrade notes
+
+- Existing Workshop sessions remain readable. A session saved with a persona’s to-do changes, Git lookups, context-path proposal, or Passage Search card or receipt may require 2.16.0 or later. Update all installations that open those sessions if you sync or share them.
+- Passage Search makes model requests and uses the Category Search model until you choose a separate Passage Search model. **Organize the results** adds a model call. **Suggest from my folders** uses one helper-model request based on file and folder names.
+
 ## [2.15.0] - 2026-11-20
 
 ### Added
