@@ -55,7 +55,8 @@ describe('LightboxApp: Bring to Workshop (Slice 4)', () => {
   let vscode: ReturnType<typeof createMockVSCode>;
   const posted = (type: MessageType) => vscode.postMessage.mock.calls.map(([message]) => message).filter((message) => message.type === type);
   const inspector = () => screen.getByLabelText('Inspector');
-  const tray = (tiles: LightboxWorkshopTrayTile[]) => fromHost(MessageType.LIGHTBOX_WORKSHOP_TRAY, { tiles });
+  const tray = (tiles: LightboxWorkshopTrayTile[], trayToken?: string) =>
+    fromHost(MessageType.LIGHTBOX_WORKSHOP_TRAY, { tiles, trayToken });
 
   beforeEach(() => {
     vscode = createMockVSCode();
@@ -84,7 +85,7 @@ describe('LightboxApp: Bring to Workshop (Slice 4)', () => {
     expect(posted(MessageType.LIGHTBOX_HAND_OFF)).toHaveLength(1);
 
     // The Workshop staged it: its tray says so, then the answer lands.
-    tray([{ boardId: BOARD.boardId, tileId: rabbit.id, label: 'Lightbox Said / meant: Late' }]);
+    tray([{ boardId: BOARD.boardId, tileId: rabbit.id, label: 'Lightbox Said / meant: Late' }], 'room-A-attachment');
     fromHost(MessageType.LIGHTBOX_HAND_OFF_RESULT, {
       kind: 'tile', boardId: BOARD.boardId, tileId: rabbit.id, ok: true, message: 'Staged “Late” above the Workshop composer.'
     });
@@ -96,7 +97,9 @@ describe('LightboxApp: Bring to Workshop (Slice 4)', () => {
 
     fireEvent.click(within(inspector()).getByRole('button', { name: 'Open Workshop →' }));
     fireEvent.click(within(header).getByRole('button', { name: 'Open Workshop →' }));
-    expect(posted(MessageType.LIGHTBOX_OPEN_WORKSHOP)).toHaveLength(2);
+    expect(posted(MessageType.LIGHTBOX_OPEN_WORKSHOP).map(message => message.payload)).toEqual([
+      { trayToken: 'room-A-attachment' }, { trayToken: 'room-A-attachment' }
+    ]);
 
     // The writer sent or removed it in the Workshop: the tray empties, and the tile can come again.
     tray([]);

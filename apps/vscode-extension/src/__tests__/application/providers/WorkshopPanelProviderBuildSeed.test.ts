@@ -146,10 +146,10 @@ describe('WorkshopPanelProvider Build lens seed', () => {
   }
 
   const providers: WorkshopPanelProvider[] = [];
-  const provider = () => {
+  const provider = (rooms = workshopPanelRooms()) => {
     const workshop = new WorkshopPanelProvider(
       vscode.Uri.file('/extension'),
-      workshopPanelRooms(),
+      rooms,
       { appendLine: jest.fn() } as unknown as vscode.OutputChannel,
       {} as Platform
     );
@@ -322,6 +322,10 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     first.active = false;
     first.viewStateChanged(); // still visible in a split
     const secondOutcome = workshop.seedLexicalGravityBuild(seed);
+    workshop.openTray(captured.trayToken);
+    expect(first.reveal).toHaveBeenCalled();
+    second.active = true;
+    second.viewStateChanged();
     const restored = mockPanel();
     panels[2].active = false;
     await workshop.deserializeWebviewPanel(restored as unknown as vscode.WebviewPanel, undefined);
@@ -346,6 +350,31 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     await expect(captured.send({ kind: 'lexical-gravity-seed', seed })).resolves.toMatchObject({ reason: 'closed' });
     workshop.openOrReveal();
     expect(second.reveal).toHaveBeenCalledTimes(3);
+  });
+
+  it('refuses a held source read and a granted seed when the selected tab replaces its room', async () => {
+    const rooms = workshopPanelRooms();
+    const lease = rooms.acquire('legacy');
+    let revision = 1;
+    let replace!: () => void;
+    lease.services.workshopSessionService.readRoomRevision = () => revision;
+    lease.services.workshopSessionPersistenceCoordinator.onRoomReplaced = listener => {
+      replace = () => listener({ rewound: false, instance: ++revision });
+      return () => {};
+    };
+    rooms.acquire = () => lease;
+    const workshop = provider(rooms);
+    const panel = await open(workshop);
+    mount(panel);
+    const before = workshop.captureLightboxTarget();
+    const granted = before.send({ kind: 'lexical-gravity-seed', seed });
+    const id = seedsIn(panel)[0].payload.deliveryId;
+    panel.receive(claim(id));
+    replace();
+    await expect(granted).resolves.toEqual({ opened: false, reason: 'room-changed' });
+    await expect(before.send({ kind: 'lexical-gravity-seed', seed })).resolves.toEqual({ opened: false, reason: 'room-changed' });
+    panel.receive(answer(id, true));
+    expect(seedsIn(panel)).toHaveLength(1);
   });
 
   it('a newer seed replaces an unsent one, and the replaced seed is never sent', async () => {

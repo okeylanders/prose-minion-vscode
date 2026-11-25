@@ -72,7 +72,7 @@ const NO_PERSISTENCE: LightboxHandoffPersistence = {};
 export function useLightboxHandoff({ boardId }: UseLightboxHandoffOptions): UseLightboxHandoffReturn {
   const vscode = useVSCodeApi();
   const [handoff, setHandoff] = React.useState<LightboxHandOffState | null>(null);
-  const [tray, setTray] = React.useState<LightboxWorkshopTrayTile[]>([]);
+  const [workshopTray, setWorkshopTray] = React.useState<LightboxWorkshopTrayMessage['payload']>({ tiles: [] });
 
   const handleHandOffResult = React.useCallback((message: LightboxHandOffResultMessage) => {
     const result = message.payload;
@@ -84,7 +84,7 @@ export function useLightboxHandoff({ boardId }: UseLightboxHandoffOptions): UseL
 
   const handleWorkshopTray = React.useCallback((message: LightboxWorkshopTrayMessage) => {
     const tiles = message.payload?.tiles;
-    setTray(Array.isArray(tiles) ? tiles : []);
+    setWorkshopTray(Array.isArray(tiles) ? message.payload : { tiles: [] });
   }, []);
 
   const send = React.useCallback((request: LightboxHandOffPayload) => {
@@ -113,12 +113,13 @@ export function useLightboxHandoff({ boardId }: UseLightboxHandoffOptions): UseL
   }, [boardId, send]);
 
   const openWorkshop = React.useCallback(() => {
-    vscode.postMessage({ type: MessageType.LIGHTBOX_OPEN_WORKSHOP, source: SOURCE, payload: {}, timestamp: Date.now() });
-  }, [vscode]);
+    const payload = workshopTray.trayToken ? { trayToken: workshopTray.trayToken } : {};
+    vscode.postMessage({ type: MessageType.LIGHTBOX_OPEN_WORKSHOP, source: SOURCE, payload, timestamp: Date.now() });
+  }, [vscode, workshopTray.trayToken]);
 
   return {
     handoff,
-    tray,
+    tray: workshopTray.tiles,
     handleHandOffResult,
     handleWorkshopTray,
     buildLens,

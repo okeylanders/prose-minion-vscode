@@ -76,10 +76,11 @@ export interface LightboxWorkshopPorts {
   tray?: LightboxWorkshopTrayPort;
   /** Choose once, before the file re-read. Both dispatch and a lost-answer check use this recipient. */
   captureWorkshopHandoff?: () => {
+    trayToken?: string;
     send: LightboxWorkshopHandoffPort;
-    trayHolds(tile: { boardId: string; tileId: string }): boolean;
+    wasStaged(tile: { boardId: string; tileId: string }): boolean;
   } | undefined;
-  openWorkshop?: () => void;
+  openWorkshop?: (trayToken?: string) => void;
 }
 
 export interface LightboxHandoffRouteDependencies extends LightboxWorkshopPorts {
@@ -111,7 +112,7 @@ const WORDS = {
 type LightboxHandoffWords = (typeof WORDS)[keyof typeof WORDS];
 
 /** Outcomes after which a granted tile may have been staged though its answer never arrived (F-08). */
-const LOST_ANSWERS: ReadonlySet<LightboxWorkshopHandoffRefusal> = new Set<LightboxWorkshopHandoffRefusal>(['reset', 'closed']);
+const LOST_ANSWERS: ReadonlySet<LightboxWorkshopHandoffRefusal> = new Set<LightboxWorkshopHandoffRefusal>(['reset', 'closed', 'room-changed']);
 
 export class LightboxHandoffRoute {
   /** True while a handoff is being checked or awaited; a second press is refused, not queued. */
@@ -142,19 +143,20 @@ export class LightboxHandoffRoute {
     if (this.disposed || !tray) {
       return;
     }
+    const trayToken = this.deps.captureWorkshopHandoff?.()?.trayToken;
     const message: LightboxWorkshopTrayMessage = {
       type: MessageType.LIGHTBOX_WORKSHOP_TRAY,
       source: SOURCE,
-      payload: { tiles: tray.read() },
+      payload: { tiles: tray.read(), ...(trayToken && { trayToken }) },
       timestamp: Date.now()
     };
     void this.deps.postMessage(message);
   }
 
   /** The tray's "Open Workshop →". */
-  openWorkshop(): void {
+  openWorkshop(trayToken?: string): void {
     if (!this.disposed) {
-      this.deps.openWorkshop?.();
+      this.deps.openWorkshop?.(trayToken);
     }
   }
 
@@ -259,7 +261,7 @@ export class LightboxHandoffRoute {
     }
     if (!outcome.opened) {
       if (prepared.handoff.kind === 'tile' && LOST_ANSWERS.has(outcome.reason)
-          && (destination ? destination.trayHolds(prepared.handoff.tile) : this.trayHolds(prepared.handoff.tile))) {
+          && (destination ? destination.wasStaged(prepared.handoff.tile) : this.trayHolds(prepared.handoff.tile))) {
         // The Workshop staged it, but its answer was lost: its webview reloaded or its panel
         // closed in between. The session it staged into is its own record, so it counts.
         outputChannel.appendLine(`[LightboxHandler] The Workshop staged a tile; its answer was lost (${outcome.reason}), the session holds it`);

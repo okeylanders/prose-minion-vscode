@@ -96,7 +96,7 @@ export interface WorkshopUiActions {
   /** The window's MRU Workshop tray, read-only from the Lightbox. */
   workshopTray?: WorkshopLightboxTray;
   revealWorkshopRoom?: (roomId: string) => boolean;
-  openWorkshop?: () => void;
+  openWorkshop?: (trayToken?: string) => void;
   /** Opens or reveals the Lightbox tab (ADR 2026-10-19 D1); the sidebar's OPEN_LIGHTBOX calls it. */
   openLightbox?: () => void;
   /**

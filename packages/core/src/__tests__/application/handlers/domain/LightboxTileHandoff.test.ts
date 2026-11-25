@@ -199,8 +199,8 @@ describe('Bring to Workshop: a reading tile (D11)', () => {
   });
 
   it.each(['closed', 'reset'] as const)('binds dispatch and %s checks before a delayed file read, even when another tray holds the tile', async reason => {
-    const first = { send: answering({ opened: false, reason }), trayHolds: jest.fn(() => false) };
-    const second = { send: answering(), trayHolds: jest.fn(() => true) };
+    const first = { send: answering({ opened: false, reason }), wasStaged: jest.fn(() => false) };
+    const second = { send: answering(), wasStaged: jest.fn(() => true) };
     let focus = first;
     const capture = jest.fn(() => focus);
     const tray = fakeTray();
@@ -208,6 +208,7 @@ describe('Bring to Workshop: a reading tile (D11)', () => {
     const id = fixture.tileId('subtext');
     const read = deferred<string>();
     fixture.host.addFile('Drafts/alice-1.md', read);
+    capture.mockClear();
     const pending = fixture.bring(id);
     await settle();
     expect(capture).toHaveBeenCalledTimes(1);
@@ -217,7 +218,7 @@ describe('Bring to Workshop: a reading tile (D11)', () => {
     await pending;
     expect(first.send).toHaveBeenCalledTimes(1);
     expect(second.send).not.toHaveBeenCalled();
-    expect(first.trayHolds).toHaveBeenCalled();
+    expect(first.wasStaged).toHaveBeenCalled();
     expect(fixture.results().at(-1)).toMatchObject({ ok: false, message: LIGHTBOX_TILE_WORKSHOP_REFUSALS[reason] });
   });
 

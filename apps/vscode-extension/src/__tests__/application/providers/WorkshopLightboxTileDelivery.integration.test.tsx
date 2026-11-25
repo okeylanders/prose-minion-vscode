@@ -425,14 +425,19 @@ describe('a Lightbox tile from the Workshop panel provider to the Workshop compo
 
     it('reload after the grant was acted on: the session holds the tile, the lost answer settles as reset, and the queue moves on', async () => {
       const panel = await openWorkshop();
-      const first = await offer(JAR);
+      const destination = workshop.captureLightboxTarget();
+      const first = destination.send({ kind: 'tile', tile: JAR });
+      await flush();
+      expect(destination.wasStaged(JAR)).toBe(false);
       // Offer, then grant: the webview accepts and the host stages it; its "staged" word is held.
       await release(panel);
       await release(panel);
       expect(staged()).toEqual(['Lightbox Open door: The empty jar']);
       expect(heldTypes(panel)).toContain(MessageType.WORKSHOP_LIGHTBOX_TILE_STAGED);
       await reloadWebview();
-      expect(first()).toEqual({ opened: false, reason: 'reset' });
+      await expect(first).resolves.toEqual({ opened: false, reason: 'reset' });
+      expect(destination.wasStaged(JAR)).toBe(true);
+      expect(destination.wasStaged(LATE)).toBe(false);
       // The old realm's word reaches the fresh webview, which holds no grant for it.
       await drain(panel);
       expect(answers()).toEqual([]);

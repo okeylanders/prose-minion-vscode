@@ -5,8 +5,9 @@ import type { WorkshopPanelRooms } from '@app/application/providers/WorkshopPane
 export function workshopPanelRooms(): WorkshopPanelRooms {
   return {
     acquire: () => ({ services: {
-      workshopSessionPersistenceCoordinator: { openRoomIdentity: () => ({ title: 'Room' }) }
-    } as CoreServices, ready: Promise.resolve() }),
+      workshopSessionPersistenceCoordinator: { openRoomIdentity: () => ({ title: 'Room' }), onRoomReplaced: () => () => {} },
+      workshopSessionService: { readRoomRevision: () => 1 }
+    } as unknown as CoreServices, ready: Promise.resolve() }),
     release: async () => {},
     listRoomCheckpoints: async () => []
   };

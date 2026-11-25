@@ -21,6 +21,7 @@ import {
   WorkshopStageSelectedTextMessage,
   WorkshopUiActions,
   WorkshopSetExcerptMessage,
+  workshopExcerptTitle,
   coerceWebviewErrorText,
 } from '@prose-minion/core';
 import { getWebviewHtml } from './webviewHtml';
@@ -28,8 +29,12 @@ import { getWebviewHtml } from './webviewHtml';
 const MAX_RECEIVER = 80;
 
 export class WorkshopPanelTab {
+  /** Opaque UI navigation handle for this attachment; never a disk slot or mutation destination. */
+  readonly trayToken = randomUUID();
+  title: string;
   readonly ready: Promise<void>;
   private closed = false;
+  private readonly tileReceipts = new Map<string, () => void>();
   private messageHandler?: MessageHandler;
   private readonly subscriptions: vscode.Disposable[] = [];
   /**
@@ -67,13 +72,19 @@ export class WorkshopPanelTab {
     private readonly uiActions: WorkshopUiActions,
     onFocus: () => void,
     onClose: () => void,
+    private readonly onTitleChange: () => void,
     readonly scratchTitle: string
   ) {
+    this.title = scratchTitle;
     panel.title = scratchTitle;
     this.subscriptions.push(panel.onDidDispose(onClose));
     this.subscriptions.push(panel.onDidChangeViewState(() => {
-      if (this.closed) {return;}
-      if (panel.active) {onFocus();}
+      if (this.closed) {
+        return;
+      }
+      if (panel.active) {
+        onFocus();
+      }
       this.messageHandler?.setWorkshopSurfaceVisible?.(panel.visible);
       if (panel.visible && this.messageHandler) {
         this.messageHandler.flushCachedResults();
@@ -89,9 +100,13 @@ export class WorkshopPanelTab {
     // Stamp the serialized slot as soon as the shell can run, including when disk hydration is slow.
     // Buffer early routes behind the same barrier as external excerpts; close abandons them all.
     this.ready = roomReady.then(() => {
-      if (!this.closed) {this.mountHandler();}
+      if (!this.closed) {
+        this.mountHandler();
+      }
     }).catch(error => {
-      if (this.closed) {return;}
+      if (this.closed) {
+        return;
+      }
       this.outputChannel.appendLine(`[Workshop] Room could not open: ${String(error)}`);
       void vscode.window.showErrorMessage('This Workshop room could not open. Its checkpoint remains available to reopen.');
       onClose();
@@ -100,8 +115,11 @@ export class WorkshopPanelTab {
     panel.webview.options = { enableScripts: true, localResourceRoots: [this.extensionUri] };
     panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'assets', 'prose-minion-book.svg');
     this.subscriptions.push(panel.webview.onDidReceiveMessage(message => {
-      if (this.messageHandler) {this.receive(message);}
-      else {void this.ready.then(() => { if (!this.closed) {this.receive(message);} });}
+      if (this.messageHandler) {
+        this.receive(message);
+      } else {
+        void this.ready.then(() => this.receive(message));
+      }
     }));
     panel.webview.html = getWebviewHtml(panel.webview, this.extensionUri, SURFACE_WORKSHOP, this.roomId);
   }
@@ -111,10 +129,23 @@ export class WorkshopPanelTab {
     this.messageHandler = new MessageHandler(
       this.coreServices,
       message => {
-        if (this.closed) {return Promise.resolve(false);}
+        if (this.closed) {
+          return Promise.resolve(false);
+        }
+        if (message.type === MessageType.WORKSHOP_LIGHTBOX_TILE_STAGED && message.payload.staged) {
+          // The host committed *this* delivery. Keep its receipt even if the webview never answers.
+          this.tileReceipts.get(message.payload.deliveryId)?.();
+        }
         if (message.type === MessageType.WORKSHOP_SESSION_STATE) {
           const identity = this.coreServices.workshopSessionPersistenceCoordinator.openRoomIdentity();
-          panel.title = identity.namedSessionId ? `${this.scratchTitle} · ${identity.title}` : this.scratchTitle;
+          const source = message.payload.session.excerpt?.source;
+          const label = identity.namedSessionId ? identity.title
+            : source && source.kind !== 'manual' ? workshopExcerptTitle(source) : undefined;
+          const title = label ? `Workshop · ${label}` : this.scratchTitle;
+          if (title !== this.title) {
+            this.title = title;
+            this.onTitleChange();
+          }
         }
         return panel.webview.postMessage(message);
       },
@@ -122,6 +153,10 @@ export class WorkshopPanelTab {
       this.outputChannel,
       this.uiActions
     );
+    const unsubscribe = this.coreServices.workshopSessionPersistenceCoordinator.onRoomReplaced(() => {
+      Object.values(this.seedDeliveries).forEach(delivery => delivery.close('room-changed'));
+    });
+    this.subscriptions.push({ dispose: unsubscribe });
     this.messageHandler.setWorkshopSurfaceVisible?.(panel.visible);
     this.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
       this.messageHandler?.handleConfigurationChange(section => event.affectsConfiguration(section));
@@ -129,13 +164,17 @@ export class WorkshopPanelTab {
   }
 
   private receive(message: unknown): void {
-    if (this.closed) {return;}
+    if (this.closed) {
+      return;
+    }
     const panel = this.panel;
     // Bootstrap errors precede the normal envelope. React boundary errors still reach UIHandler with details.
     const shape = message as { type?: unknown; payload?: unknown } | null;
     if (shape?.type === MessageType.WEBVIEW_ERROR && shape.payload === undefined) {
       const text = coerceWebviewErrorText(message);
-      if (text !== undefined) {this.outputChannel.appendLine(`[WEBVIEW ERROR] (workshop) ${text}`);}
+      if (text !== undefined) {
+        this.outputChannel.appendLine(`[WEBVIEW ERROR] (workshop) ${text}`);
+      }
       return;
     }
     // A handed-over seed's claim and answer are the provider's to take: they
@@ -220,9 +259,14 @@ export class WorkshopPanelTab {
    * is sent until the writer sends. The promise settles with the webview's
    * answer (staged, or busy, full or duplicate), or why the tile did not arrive.
    */
-  public stageLightboxTile(tile: WorkshopLightboxTile): Promise<WorkshopSeedOutcome> {
+  public stageLightboxTile(tile: WorkshopLightboxTile, onStaged?: () => void): Promise<WorkshopSeedOutcome> {
     const panel = this.panel;
-    return this.seedDeliveries['lightbox-tile'].offer(panel, (deliveryId) => {
+    let sentId: string | undefined;
+    const outcome = this.seedDeliveries['lightbox-tile'].offer(panel, (deliveryId) => {
+      if (onStaged) {
+        sentId = deliveryId;
+        this.tileReceipts.set(deliveryId, onStaged);
+      }
       const message: WorkshopStageLightboxTileMessage = {
         type: MessageType.WORKSHOP_STAGE_LIGHTBOX_TILE,
         source: 'extension.lightbox',
@@ -230,6 +274,11 @@ export class WorkshopPanelTab {
         timestamp: Date.now()
       };
       void this.messageHandler?.handleMessage(message);
+    });
+    return outcome.finally(() => {
+      if (sentId !== undefined) {
+        this.tileReceipts.delete(sentId);
+      }
     });
   }
 
@@ -341,14 +390,14 @@ export class WorkshopPanelTab {
       && this.seedDeliveries[kind].isGranted(panel, shape.deliveryId, shape.receiver);
   }
 
-  /** A lost answer counts only if this same room actually staged the tile. */
-  trayHolds(tile: { boardId: string; tileId: string }): boolean {
-    return this.coreServices.workshopSessionService.collectMessageAttachments().some(({ lightboxTile }) =>
-      lightboxTile?.boardId === tile.boardId && lightboxTile.tileId === tile.tileId);
+  roomRevision(): number | undefined {
+    return this.messageHandler ? this.coreServices.workshopSessionService.readRoomRevision() : undefined;
   }
 
   dispose(): void {
-    if (this.closed) {return;}
+    if (this.closed) {
+      return;
+    }
     this.closed = true;
     this.closeSeeds();
     this.subscriptions.forEach(subscription => subscription?.dispose());

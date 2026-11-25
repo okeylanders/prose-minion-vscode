@@ -44,7 +44,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
 
   public revealRoom(roomId: string): boolean {
     const tab = this.tabs.get(roomId);
-    if (!tab) {return false;}
+    if (!tab) {
+      return false;
+    }
     this.focus(tab);
     tab.panel.reveal();
     return true;
@@ -69,7 +71,21 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       return;
     }
     const picked = await vscode.window.showQuickPick(choices, { placeHolder: 'Reopen a closed Workshop room' });
-    if (picked && !this.revealRoom(picked.roomId)) {this.createPanel(picked.roomId);}
+    if (picked && !this.revealRoom(picked.roomId)) {
+      this.createPanel(picked.roomId);
+    }
+  }
+
+  /** Native navigation for the tray the writer actually saw, even after another room has gained focus. */
+  public openTray(token?: string): void {
+    if (token === undefined) {
+      this.openOrReveal();
+      return;
+    }
+    const tab = [...this.tabs.values()].find(candidate => candidate.trayToken === token);
+    if (tab) {
+      this.revealRoom(tab.roomId);
+    }
   }
 
   public seedExcerpt(payload: { text: string; source?: WorkshopExcerptSource }): void {
@@ -82,17 +98,26 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
 
   /** Capture the recipient before the Lightbox checks its file. A rejected handoff opens no Workshop. */
   public captureLightboxTarget() {
-    let target: WorkshopPanelTab | undefined = this.focusOrder[0];
+    const captured = this.focusOrder[0];
+    const revision = captured?.roomRevision();
+    let staged: { boardId: string; tileId: string } | undefined;
     return {
+      trayToken: captured?.trayToken,
       send: (handoff: LightboxWorkshopHandoff): Promise<WorkshopSeedOutcome> => {
-        if (!target) {target = this.tabs.get(PRIMARY_WORKSHOP_ROOM_ID) ?? this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);}
-        if (this.tabs.get(target.roomId) !== target) {return Promise.resolve({ opened: false, reason: 'closed' });}
+        const target = captured ?? this.tabs.get(PRIMARY_WORKSHOP_ROOM_ID) ?? this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);
+        if (this.tabs.get(target.roomId) !== target) {
+          return Promise.resolve({ opened: false, reason: 'closed' });
+        }
+        if (revision !== undefined && target.roomRevision() !== revision) {
+          return Promise.resolve({ opened: false, reason: 'room-changed' });
+        }
         this.revealRoom(target.roomId);
         return handoff.kind === 'tile'
-          ? target.stageLightboxTile(handoff.tile)
+          ? target.stageLightboxTile(handoff.tile, () => { staged = handoff.tile; })
           : target.seedLexicalGravityBuild(handoff.seed);
       },
-      trayHolds: (tile: { boardId: string; tileId: string }) => target?.trayHolds(tile) ?? false
+      wasStaged: (tile: { boardId: string; tileId: string }) =>
+        staged?.boardId === tile.boardId && staged.tileId === tile.tileId
     };
   }
 
@@ -107,7 +132,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
 
   private destination(): WorkshopPanelTab {
     const tab = this.focusOrder[0];
-    if (!tab) {return this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);}
+    if (!tab) {
+      return this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);
+    }
     this.revealRoom(tab.roomId);
     return tab;
   }
@@ -122,7 +149,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
 
   public deserializeWebviewPanel(panel: vscode.WebviewPanel, state: unknown): Promise<void> {
     const existing = [...this.tabs.values()].find(tab => tab.panel === panel);
-    if (existing) {return existing.ready;}
+    if (existing) {
+      return existing.ready;
+    }
     // Pre-feature panels may have no state or an object with UI preferences and no slot.
     const oldState = state === undefined || state === null ||
       (typeof state === 'object' && !Array.isArray(state) && !Object.prototype.hasOwnProperty.call(state, 'workshopRoomId'));
@@ -136,27 +165,50 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     const number = this.nextNumber++;
     const tab = new WorkshopPanelTab(
       roomId, panel, this.extensionUri, services, ready, this.outputChannel, this.platform, this.uiActions,
-      () => this.focus(tab), () => this.detach(tab), number === 1 ? 'Workshop' : `Workshop · Room ${number}`
+      () => this.focus(tab), () => this.detach(tab), () => this.refreshTitles(),
+      roomId === PRIMARY_WORKSHOP_ROOM_ID ? 'Workshop' : `Workshop · Room ${number}`
     );
     this.tabs.set(roomId, tab);
-    if (focused || !this.focusOrder.length) {this.focus(tab);}
-    else {this.focusOrder.push(tab);}
+    if (focused || !this.focusOrder.length) {
+      this.focus(tab);
+    } else {
+      this.focusOrder.push(tab);
+    }
     return tab;
   }
 
+  private refreshTitles(): void {
+    const counts = new Map<string, number>();
+    for (const tab of this.tabs.values()) {
+      counts.set(tab.title, (counts.get(tab.title) ?? 0) + 1);
+    }
+    for (const tab of this.tabs.values()) {
+      tab.panel.title = counts.get(tab.title)! > 1 && tab.roomId !== PRIMARY_WORKSHOP_ROOM_ID
+        ? `${tab.title} (${tab.roomId.slice(0, 8)})`
+        : tab.title;
+    }
+  }
+
   private focus(tab: WorkshopPanelTab): void {
-    if (this.tabs.get(tab.roomId) !== tab || this.focusOrder[0] === tab) {return;}
+    if (this.tabs.get(tab.roomId) !== tab || this.focusOrder[0] === tab) {
+      return;
+    }
     this.focusOrder = [tab, ...this.focusOrder.filter(other => other !== tab)];
     this.rooms.focus?.(tab.roomId);
   }
 
   private detach(tab: WorkshopPanelTab): void {
-    if (this.tabs.get(tab.roomId) !== tab) {return;}
+    if (this.tabs.get(tab.roomId) !== tab) {
+      return;
+    }
     const wasFocused = this.focusOrder[0] === tab;
     this.tabs.delete(tab.roomId);
+    this.refreshTitles();
     this.focusOrder = this.focusOrder.filter(other => other !== tab);
     tab.dispose();
-    if (wasFocused) {this.rooms.focus?.(this.focusOrder[0]?.roomId);}
+    if (wasFocused) {
+      this.rooms.focus?.(this.focusOrder[0]?.roomId);
+    }
     void this.rooms.release(tab.roomId).catch(error => {
       this.outputChannel.appendLine(`[Workshop] Room close could not finish: ${String(error)}`);
       void vscode.window.showErrorMessage('The Workshop room could not finish saving. Reopen the room to retry.');
