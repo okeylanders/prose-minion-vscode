@@ -55,9 +55,9 @@ Several of these notes still carry their build-time status line (for example
 
 ## 🔨 In flight
 
-| # | Idea | Status |
-|---|---|---|
-| 9 | Several Workshop tabs, including unsaved rooms | Implemented on `epic/workshop-tabs`. [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [Feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
+| # | Idea | Who and where | Note |
+|---|---|---|---|
+| 9 | Several Workshop tabs, including unsaved rooms | Implemented on `epic/workshop-tabs` | [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [Feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
 
 ## ⏳ Not started
 
@@ -80,6 +80,7 @@ Several of these notes still carry their build-time status line (for example
 | 34 | Click a sent pill to see what was sent | Medium | Small; V1 decided. | [sent attachment viewer](feature-workshop-sent-attachment-viewer/README.md) |
 | 35 | Personas run the deterministic measures | Medium | Medium; short ADR. Reuses Passage Search's scopes. | [persona measures](feature-workshop-persona-measures/README.md) |
 | 36 | A long paste becomes a "Pasted text" pill | Medium | Small to medium; P1 (500 characters) and P2 decided. | [long paste pill](feature-workshop-long-paste-pill/README.md) |
+| 37 | A session keeps its OpenRouter cache key across a reload | Medium | Small; K1 and K2 decided. After #9 merges. | [session cache key](feature-workshop-session-cache-key/README.md) |
 
 ### Follow-ups split from shipped work (Low)
 
