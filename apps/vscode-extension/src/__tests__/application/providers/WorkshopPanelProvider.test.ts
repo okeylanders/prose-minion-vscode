@@ -118,6 +118,14 @@ describe('WorkshopPanelProvider retained session loading', () => {
     expect(picker.mock.calls[0][0]).toHaveLength(1);
     expect(create).toHaveBeenCalledTimes(1);
     expect(acquire.mock.calls.at(-1)).toEqual([other]);
+    const blocked = randomUUID();
+    const copied = randomUUID();
+    rooms.listRoomCheckpoints = async () => [{ roomId: blocked, title: 'Stale room', updatedAt: 'today', recoveryToken: 'claim' }];
+    rooms.recoverRollingRoom = jest.fn(async () => copied);
+    await workshop.reopenClosedRoom();
+    expect(picker.mock.calls.at(-1)![0][0]).toMatchObject({ label: 'Open a recovery copy of “Stale room”' });
+    expect(rooms.recoverRollingRoom).toHaveBeenCalledWith(blocked, 'claim');
+    expect(acquire.mock.calls.at(-1)).toEqual([copied]);
     workshop.dispose();
   });
 });

@@ -205,6 +205,15 @@ export class WorkshopPanelTab {
     void this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);
   }
 
+  /** Follow the Sessions browser's normal named-open transaction in this new, hydrated slot. */
+  async openNamedSession(sessionId: string): Promise<void> {
+    await this.ready;
+    if (this.closed) return;
+    await this.messageHandler?.handleMessage({
+      type: MessageType.WORKSHOP_OPEN_SESSION, source: 'webview.workshop', payload: { sessionId }, timestamp: Date.now()
+    });
+  }
+
   /**
    * Seed the pinned excerpt from outside the webview (the editor context-menu
    * command, Sprint 3). Opens/reveals the panel, then routes a synthetic

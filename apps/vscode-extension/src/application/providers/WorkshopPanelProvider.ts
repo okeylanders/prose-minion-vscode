@@ -9,14 +9,16 @@ import {
   PRIMARY_WORKSHOP_ROOM_ID,
   WorkshopExcerptSource,
   WorkshopSeedOutcome,
+  type WorkshopRoomCloseDestination,
   WorkshopUiActions
 } from '@prose-minion/core';
 import { WorkshopPanelTab } from './WorkshopPanelTab';
 
 export interface WorkshopPanelRooms {
   acquire(roomId: string): { services: CoreServices; ready: Promise<void> };
-  release(roomId: string): Promise<void>;
-  listRoomCheckpoints(): Promise<Array<{ roomId: string; title: string; updatedAt: string }>>;
+  release(roomId: string): Promise<void | WorkshopRoomCloseDestination>;
+  recoverRollingRoom(roomId: string, recoveryToken: string): Promise<string>;
+  listRoomCheckpoints(): Promise<Array<{ roomId: string; title: string; updatedAt: string; recoveryToken?: string }>>;
   focus?(roomId: string | undefined): void;
 }
 
@@ -25,6 +27,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   private readonly tabs = new Map<string, WorkshopPanelTab>();
   private focusOrder: WorkshopPanelTab[] = [];
   private nextNumber = 1;
+  private disposed = false;
   private legacyAttachment = 0;
 
   constructor(
@@ -62,8 +65,11 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       void vscode.window.showErrorMessage('Closed Workshop rooms could not be read. Try reopening the picker.');
       return;
     }
+    if (this.disposed) return;
     const choices = checkpoints.filter(room => !this.tabs.has(room.roomId)).map(room => ({
-      label: room.title,
+      label: room.recoveryToken ? `Open a recovery copy of “${room.title}”` : room.title,
+      detail: room.recoveryToken ? 'Copy the last saved checkpoint into a new room. The original write claim stays in place.' : undefined,
+      recoveryToken: room.recoveryToken,
       description: room.updatedAt,
       roomId: room.roomId
     }));
@@ -72,8 +78,15 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       return;
     }
     const picked = await vscode.window.showQuickPick(choices, { placeHolder: 'Reopen a closed Workshop room' });
-    if (picked && !this.revealRoom(picked.roomId)) {
-      this.createPanel(picked.roomId);
+    if (!picked || this.disposed || this.revealRoom(picked.roomId)) return;
+    try {
+      const roomId = picked.recoveryToken
+        ? await this.rooms.recoverRollingRoom(picked.roomId, picked.recoveryToken)
+        : picked.roomId;
+      if (!this.disposed && !this.revealRoom(roomId)) this.createPanel(roomId);
+    } catch (error) {
+      this.outputChannel.appendLine(`[Workshop] Could not reopen the checkpoint: ${String(error)}`);
+      if (!this.disposed) void vscode.window.showErrorMessage('This checkpoint could not be reopened. Reopen the picker to see its current status.');
     }
   }
 
@@ -219,13 +232,37 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     if (wasFocused) {
       this.rooms.focus?.(this.focusOrder[0]?.roomId);
     }
-    void this.rooms.release(tab.roomId).catch(error => {
+    const folders = vscode.workspace.workspaceFolders;
+    const root = folders?.length === 1 ? folders[0].uri.toString() : undefined;
+    void this.rooms.release(tab.roomId).then(destination => {
+      if (destination && !this.disposed) void this.offerPreservedSession(destination, root);
+    }, error => {
       this.outputChannel.appendLine(`[Workshop] Room close could not finish: ${String(error)}`);
       void vscode.window.showErrorMessage('The Workshop room could not finish saving. Reopen the room to retry.');
     });
   }
 
+  private async offerPreservedSession(destination: WorkshopRoomCloseDestination, root: string | undefined): Promise<void> {
+    const open = 'Open saved recovery';
+    const answer = await vscode.window.showInformationMessage(
+      `The room’s latest work was preserved in “${destination.title}”. You can also find it in Workshop Sessions.`, open
+    );
+    if (answer !== open || this.disposed) return;
+    const folders = vscode.workspace.workspaceFolders;
+    if (folders?.length !== 1 || folders[0].uri.toString() !== root) {
+      void vscode.window.showInformationMessage('Open the original workspace to find this saved Workshop session.');
+      return;
+    }
+    try {
+      await this.createPanel(randomUUID()).openNamedSession(destination.sessionId);
+    } catch (error) {
+      this.outputChannel.appendLine(`[Workshop] Could not open the preserved session: ${String(error)}`);
+      if (!this.disposed) void vscode.window.showErrorMessage('Open the preserved room from Workshop Sessions.');
+    }
+  }
+
   public dispose(): void {
+    this.disposed = true;
     for (const tab of this.tabs.values()) {
       this.detach(tab);
       tab.panel.dispose();
