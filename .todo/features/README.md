@@ -55,7 +55,9 @@ Several of these notes still carry their build-time status line (for example
 
 ## 🔨 In flight
 
-Nothing is being built right now.
+| # | Idea | Status |
+|---|---|---|
+| 9 | Several Workshop tabs, including unsaved rooms | In design on `epic/workshop-tabs`. [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [Feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
 
 ## ⏳ Not started
 
@@ -66,7 +68,7 @@ Nothing is being built right now.
 | 4+ | Reads, the rest: `memory.read` fit and the engine backstop | High | Medium; ADR first. | [reads fit the window](feature-workshop-reads-fit-the-window/README.md) |
 | 5 | Anthropic, OpenAI and local providers | High | Epic; ADR first. | [model providers](feature-model-providers/README.md) |
 | 6a | Selection inside the excerpt sent as a pointer | Low | Small; deferred by Okey. | [selection in excerpt pointer](feature-workshop-selection-in-excerpt-pointer/README.md) |
-| 9 | Several Workshop and Lightbox tabs | Medium | Epic; ADR first; T1 decided. | [multiple tabs](feature-multiple-workshop-and-lightbox-tabs/README.md) |
+| 9 (Lightbox) | Several Lightbox tabs | Medium | Follow-up to the Workshop tabs epic. | [multiple tabs](feature-multiple-workshop-and-lightbox-tabs/README.md) |
 | 11 | Basic WYSIWYG Markdown editor | Medium | Large; ADR first. | [markdown writing editor](feature-markdown-writing-editor/README.md) |
 | 13+ | Lexical Gravity fix 4 and the helper's repair | — | Deferred: only if the problem comes back. | [tech debt](../tech-debt/2026-11-09-lexical-gravity-reads-json-without-repair.md) |
 | 17 | Compaction that keeps the whole history | High | Epic. | [compaction keeps history](feature-workshop-compaction-keeps-history/README.md) |
