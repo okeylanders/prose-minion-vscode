@@ -391,6 +391,38 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     expect(seedsIn(panel)).toHaveLength(1);
   });
 
+  it('binds a handoff captured during hydration to the room that first mounted', async () => {
+    const rooms = workshopPanelRooms();
+    const lease = rooms.acquire('legacy');
+    let finishHydration!: () => void;
+    const ready = new Promise<void>(resolve => { finishHydration = resolve; });
+    let revision = 1;
+    let reset!: () => void;
+    lease.services.workshopSessionService.readRoomRevision = () => revision;
+    lease.services.workshopSessionPersistenceCoordinator.onRoomReplaced = listener => {
+      reset = () => listener({ rewound: false, instance: ++revision });
+      return () => {};
+    };
+    rooms.acquire = () => ({ services: lease.services, ready });
+    const workshop = provider(rooms);
+    workshop.openOrReveal();
+    const forFirstRoom = workshop.captureLightboxTarget();
+    const heldAcrossReset = workshop.captureLightboxTarget();
+    ++revision; // Restoring the original checkpoint is part of opening this tab.
+    finishHydration();
+    await ready;
+    bindHandlers();
+    const panel = panels[0];
+    mount(panel);
+    const unchanged = forFirstRoom.send({ kind: 'lexical-gravity-seed', seed });
+    claimAndAnswer(panel, true);
+    await expect(unchanged).resolves.toEqual({ opened: true });
+    reset();
+    const stale = heldAcrossReset.send({ kind: 'lexical-gravity-seed', seed });
+    expect(seedsIn(panel)).toHaveLength(1);
+    await expect(stale).resolves.toEqual({ opened: false, reason: 'room-changed' });
+  });
+
   it('a newer seed replaces an unsent one, and the replaced seed is never sent', async () => {
     const workshop = provider();
     const { outcome: first, panel } = await seedInto(workshop);

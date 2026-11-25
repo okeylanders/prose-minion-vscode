@@ -135,7 +135,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
         if (this.tabs.get(target.roomId) !== target) {
           return Promise.resolve({ opened: false, reason: 'closed' });
         }
-        if (revision !== undefined && target.roomRevision() !== revision) {
+        if (!target.stillShowsRoom(revision)) {
           return Promise.resolve({ opened: false, reason: 'room-changed' });
         }
         this.revealRoom(target.roomId);

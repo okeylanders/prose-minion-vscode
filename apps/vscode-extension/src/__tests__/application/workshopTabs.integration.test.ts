@@ -369,6 +369,68 @@ describe.each([
     model.mockRestore();
   });
 
+  it('attributes out-of-order provider usage to each room’s own turn and bills the window once', async () => {
+    const a = await open('newWorkshopTab', 'The door was painted blue.');
+    const b = await open('newWorkshopTab', 'The watch ran backwards.');
+    await a.send(MessageType.RESET_TOKEN_USAGE);
+    const usageA = { promptTokens: 20, completionTokens: 5, totalTokens: 25, costUsd: 0.25 };
+    const usageB = { promptTokens: 7, completionTokens: 3, totalTokens: 10, costUsd: 0.50 };
+    const startedA = deferred<AbortSignal>();
+    const startedB = deferred<AbortSignal>();
+    const finishA = deferred<void>();
+    const finishB = deferred<void>();
+    const transport = jest.spyOn(OpenRouterClient.prototype, 'createStreamingChatCompletion')
+      .mockImplementationOnce(async function* (_messages, options) {
+        startedA.resolve(options!.signal!);
+        await finishA.promise;
+        yield { token: 'A blue door.', done: false };
+        yield { token: '', done: true, usage: usageA };
+      })
+      .mockImplementationOnce(async function* (_messages, options) {
+        startedB.resolve(options!.signal!);
+        await finishB.promise;
+        yield { token: 'A slow watch.', done: false };
+        yield { token: '', done: true, usage: usageB };
+      });
+    const windowUsage = (panel: ReturnType<typeof editorPanel>) =>
+      panel.posted.filter(msg => msg.type === MessageType.TOKEN_USAGE_UPDATE).at(-1)?.payload;
+    const turnReceipts = (panel: ReturnType<typeof editorPanel>) =>
+      panel.snapshot().turns.filter(turn => turn.usage).map(turn => ({ content: turn.content, usage: turn.usage }));
+
+    try {
+      const sendingA = a.send(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Read the door.' });
+      await waitForModel(startedA.promise, sendingA, a);
+      const sendingB = b.send(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Read the watch.' });
+      await waitForModel(startedB.promise, sendingB, b);
+
+      finishB.resolve();
+      await sendingB;
+      expect(turnReceipts(a)).toEqual([]);
+      expect(turnReceipts(b)).toMatchObject([{ content: 'A slow watch.', usage: usageB }]);
+      for (const panel of [a, b]) {
+        expect(windowUsage(panel)).toMatchObject({ totals: usageB, lastRequestCostUsd: usageB.costUsd });
+      }
+
+      finishA.resolve();
+      await sendingA;
+      expect(turnReceipts(a)).toMatchObject([{ content: 'A blue door.', usage: usageA }]);
+      expect(turnReceipts(b)).toMatchObject([{ content: 'A slow watch.', usage: usageB }]);
+      const late = await open('newWorkshopTab', 'A new scene.');
+      await late.send(MessageType.REQUEST_TOKEN_USAGE);
+      expect(turnReceipts(late)).toEqual([]);
+      for (const panel of [a, b, late]) {
+        expect(windowUsage(panel)).toMatchObject({
+          totals: { promptTokens: 27, completionTokens: 8, totalTokens: 35, costUsd: 0.75 },
+          lastRequestCostUsd: usageA.costUsd
+        });
+      }
+    } finally {
+      finishA.resolve();
+      finishB.resolve();
+      transport.mockRestore();
+    }
+  });
+
   it('reveals the owner when a different room opens a named session', async () => {
     const a = await open('newWorkshopTab', 'The Cheshire Cat vanished.');
     await a.send(MessageType.WORKSHOP_SAVE_SESSION, { title: 'Cheshire' });
