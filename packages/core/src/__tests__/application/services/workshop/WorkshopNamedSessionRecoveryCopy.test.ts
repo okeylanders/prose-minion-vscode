@@ -108,4 +108,27 @@ describe('a refused room keeps its work in its own recovery session (D6c)', () =
     expect(await recoveries()).toHaveLength(1);
     expect((await a.store.readNamed((await recoveries())[0].sessionId))!.workshop).toEqual(kept.workshop);
   });
+  it('preserves the newest refused named edit after a different window changes its recovery and rolling files', async () => {
+    const fs = new MemoryFileSystem();
+    const a = window(fs, 'a');
+    const b = window(fs, 'b');
+    const original = await a.store.saveNamed(polish());
+    await a.coordinator.openNamed(original.sessionId);
+    await b.coordinator.openNamed(original.sessionId);
+    await edit(b, 'Winning named and rolling content');
+    await edit(a, 'Local version one');
+    const first = (await b.store.list()).sessions.find(row => row.sessionId !== original.sessionId)!;
+    await b.store.renameNamed(first.sessionId, 'Externally renamed recovery');
+    await edit(a, 'Local version two');
+    const kept = await a.coordinator.flushForClose();
+    expect(kept).toMatchObject({ kind: 'preserved-session' });
+    if (!kept) { throw new Error('Expected the newest local recovery'); }
+    expect(kept.sessionId).not.toBe(first.sessionId);
+    const fresh = window(fs, 'fresh').store;
+    expect((await fresh.readNamed(original.sessionId))?.workshop.excerpt?.text).toBe('Winning named and rolling content');
+    expect((await fresh.readCurrent())?.workshop.excerpt?.text).toBe('Winning named and rolling content');
+    expect((await fresh.readNamed(first.sessionId))?.workshop.excerpt?.text).toBe('Local version one');
+    expect((await fresh.readNamed(kept.sessionId))?.workshop.excerpt?.text).toBe('Local version two');
+  });
+
 });

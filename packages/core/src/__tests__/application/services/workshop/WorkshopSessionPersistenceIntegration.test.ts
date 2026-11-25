@@ -847,8 +847,8 @@ describe('independent durable Workshop slots in one window', () => {
       room.session.setExcerpt({ text, source: { kind: 'manual' } });
       room.coordinator.markDirty('edit');
     }
-    const closed = await Promise.allSettled([first.coordinator.flushForClose(), secondWindow.coordinator.flushForClose()]);
-    expect(closed.map(result => result.status).sort()).toEqual(['fulfilled', 'rejected']);
+    const closed = await Promise.all([first.coordinator.flushForClose(), secondWindow.coordinator.flushForClose()]);
+    expect(closed.filter(Boolean)).toHaveLength(1);
     const path = await seeded.resolveRevealPath('current');
     const winner = await seeded.readCurrent();
     const index = fs.json(path.replace(/\.json$/, '.summary.json')) as { summary: { excerptIdentity: string } };
@@ -858,21 +858,105 @@ describe('independent durable Workshop slots in one window', () => {
     const copy = await store.readNamed(recovered[0].sessionId);
     expect([winner?.workshop.excerpt?.text, copy?.workshop.excerpt?.text].sort()).toEqual(['First manuscript', 'Second manuscript']);
 
-    const refused = closed[0].status === 'rejected' ? first : secondWindow;
+    const refused = closed[0] ? first : secondWindow;
+    expect(closed.find(Boolean)).toEqual({ kind: 'preserved-session', sessionId: recovered[0].sessionId, title: recovered[0].title });
     refused.session.setExcerpt({ text: 'Updated after conflict', source: { kind: 'manual' } });
     refused.coordinator.markDirty('edit after conflict');
-    await expect(refused.coordinator.flushForClose()).rejects.toThrow(/existing file/i);
-    expect((await store.readNamed(recovered[0].sessionId))?.workshop.excerpt?.text).toBe('Updated after conflict');
+    const destination = await refused.coordinator.flushForClose();
+    if (!destination) { throw new Error('Expected a reopenable recovery session'); }
+    const notice = refused.coordinator.consumeRecoveryNotices().find(row => 'recoveryFileName' in row);
+    expect(notice).toMatchObject({ sessionId: destination.sessionId, recoveryFileName: recovered[0].fileName });
+    const reopened = setup(fs, 'reopened', { roomId: '313890db-d778-42ce-80e8-f3662463a160', namedOwners: new WorkshopNamedSessionOwners(), store: setup(fs).store });
+    await reopened.coordinator.openNamed(destination.sessionId);
+    expect(reopened.session.getExcerpt()?.text).toBe('Updated after conflict');
+    const winningRoom = closed[0] ? secondWindow : first;
+    expect(winningRoom.session.getExcerpt()?.text).toBe(winner?.workshop.excerpt?.text);
 
     // A writer in a third window can already be editing that recovery copy.
     await store.renameNamed(recovered[0].sessionId, 'Edited recovery');
     refused.session.setExcerpt({ text: 'Another local change', source: { kind: 'manual' } });
     refused.coordinator.markDirty('later edit');
-    await expect(refused.coordinator.flushForClose()).rejects.toThrow(/existing file/i);
+    expect(await refused.coordinator.flushForClose()).toMatchObject({ kind: 'preserved-session' });
     expect((await store.readNamed(recovered[0].sessionId))?.title).toBe('Edited recovery');
     const next = (await store.list()).sessions.find(row => row.sessionId !== recovered[0].sessionId)!;
     expect((await store.readNamed(next.sessionId))?.workshop.excerpt?.text).toBe('Another local change');
     expect(await seeded.readCurrent()).toEqual(winner);
+  });
+
+  it.each([false, true])('closes to a verified destination after Save as New lost its rolling mirror (named changed again: %s)', async changedAgain => {
+    const { fs, store, a } = rooms();
+    await a.coordinator.initialize();
+    await a.coordinator.flushForClose();
+    const other = setup(fs).store;
+    await other.readCurrent();
+    await other.writeCurrent(checkpoint('winner', 'Other window'));
+    const winner = fs.files.get(currentPath);
+    a.session.setExcerpt({ text: 'Saved as a named session', source: { kind: 'manual' } });
+    const named = await a.coordinator.saveNamed('My draft');
+    if (changedAgain) {
+      await other.renameNamed(named.sessionId, 'Next writer');
+    }
+    const destination = await a.coordinator.flushForClose();
+    if (!destination) { throw new Error('Expected a verified close destination'); }
+    expect(destination.kind).toBe('preserved-session');
+    if (changedAgain) {
+      expect(destination.sessionId).not.toBe(named.sessionId);
+      expect((await store.readNamed(named.sessionId))?.title).toBe('Next writer');
+    } else {
+      expect(destination.sessionId).toBe(named.sessionId);
+      expect(destination.title).toBe(named.title);
+    }
+    const fresh = setup(fs, 'new-room', { roomId: second, namedOwners: new WorkshopNamedSessionOwners(), store });
+    await fresh.coordinator.openNamed(destination.sessionId);
+    expect(fresh.session.getExcerpt()?.text).toBe('Saved as a named session');
+    expect(fs.files.get(currentPath)).toEqual(winner);
+  });
+
+  it('keeps a refused first-ever scratch write recoverable in the live slot until retry creates the file', async () => {
+    const { fs, store, b } = rooms();
+    const target = await b.store.resolveRevealPath('current');
+    fs.failRenameToPath = target;
+    await b.coordinator.initialize();
+    b.session.setExcerpt({ text: 'Only copy so far', source: { kind: 'manual' } });
+    b.coordinator.markDirty('first draft');
+    await expect(b.coordinator.flushForClose()).rejects.toThrow(/EIO/);
+    expect(fs.files.has(target)).toBe(false);
+    expect(await store.listRoomCheckpoints()).toEqual([]);
+    expect(b.session.getExcerpt()?.text).toBe('Only copy so far');
+    fs.failRenameToPath = undefined;
+    await b.coordinator.flushForClose();
+    expect((await b.store.readCurrent())?.workshop.excerpt?.text).toBe('Only copy so far');
+  });
+
+  it('refuses a save queued behind another room when the workspace changes while it waits', async () => {
+    const fs = new MemoryFileSystem();
+    let folder = root;
+    const shared = new WorkshopSessionStore(fs, { ...workspace, workspaceFolders: () => [{ name: 'novel', path: folder }] }, setup(fs).log, now);
+    const owners = new WorkshopNamedSessionOwners();
+    const a = setup(fs, 'a', { roomId: PRIMARY_WORKSHOP_ROOM_ID, namedOwners: owners, store: shared });
+    const b = setup(fs, 'b', { roomId: second, namedOwners: owners, store: shared });
+    await Promise.all([a.coordinator.initialize(), b.coordinator.initialize()]);
+    await Promise.all([a.coordinator.flushForClose(), b.coordinator.flushForClose()]);
+    const prior = await a.coordinator.saveNamed('Existing owner');
+    const before = new Map(fs.files);
+    let start!: () => void;
+    let release!: () => void;
+    const started = new Promise<void>(resolve => { start = resolve; });
+    const barrier = new Promise<void>(resolve => { release = resolve; });
+    const hold = b.coordinator.runSavedSessionOperation(async () => { start(); await barrier; });
+    await started;
+    const gate = jest.spyOn(owners, 'run');
+    const save = a.coordinator.saveNamed('Wrong workspace');
+    await new Promise(resolve => setImmediate(resolve));
+    expect(gate).toHaveBeenCalled();
+    folder = '/workspace/replacement';
+    release();
+    await hold;
+    await expect(save).rejects.toThrow(/workspace changed/);
+    await expect(a.store.saveNamed(checkpoint('late', 'After a later await'))).rejects.toThrow(/workspace changed/);
+    expect(owners.owner(root, prior.sessionId)).toBe(PRIMARY_WORKSHOP_ROOM_ID);
+    expect(owners.owner(folder, prior.sessionId)).toBeUndefined();
+    expect(fs.files).toEqual(before);
   });
 
   it('waits for a held operation on close, retains the original file through a persistent failure and retries the latest edit', async () => {

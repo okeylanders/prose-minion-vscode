@@ -206,7 +206,8 @@ export class WorkshopSessionStore {
     roomId = PRIMARY_WORKSHOP_ROOM_ID,
     /** Room views share immutable named paths resolved by this store. */
     private readonly namedSessionPaths = new Map<string, CachedNamedSessionPath>(),
-    private readonly ensuredStorageDirectories = new Set<string>()
+    private readonly ensuredStorageDirectories = new Set<string>(),
+    private readonly roomWorkspace?: WorkshopSessionStoreAvailability
   ) {
     this.currentFileName = workshopRoomFileName(roomId);
   }
@@ -214,7 +215,7 @@ export class WorkshopSessionStore {
   /** Room views share the named catalog and retain their own rolling path. */
   forRoom(roomId: string): WorkshopSessionStore {
     return new WorkshopSessionStore(this.fileSystem, this.workspace, this.log, this.now, this.limits,
-      this.pageLimits, roomId, this.namedSessionPaths, this.ensuredStorageDirectories);
+      this.pageLimits, roomId, this.namedSessionPaths, this.ensuredStorageDirectories, this.roomWorkspace ?? this.availability());
   }
 
   /** Only rolling files can select a restore slot. A damaged or large file remains available for recovery. */
@@ -513,6 +514,12 @@ export class WorkshopSessionStore {
 
   private requireAvailability(): Extract<WorkshopSessionStoreAvailability, { available: true }> {
     const availability = this.availability();
+    const bound = this.roomWorkspace;
+    if (bound && (bound.available
+      ? !availability.available || bound.rootPath !== availability.rootPath
+      : availability.available || bound.reason !== availability.reason)) {
+      throw new Error('The Workshop workspace changed after this room was attached.');
+    }
     if (!availability.available) {
       throw new WorkshopSessionStoreUnavailableError(availability.reason);
     }

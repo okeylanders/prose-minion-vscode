@@ -78,6 +78,7 @@ export {
   WorkshopSessionPersistenceCoordinator
 } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 export type {
+  WorkshopRoomCloseDestination,
   WorkshopSessionHydrateResult,
   WorkshopSessionListData
 } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
