@@ -1,4 +1,6 @@
 import { FileType } from '@/platform';
+import { deferred } from '../lightboxHandlerHarness';
+import { WORKSHOP_MESSAGE_ATTACHMENT_ROOM_CHANGED } from '@handlers/domain/workshop/WorkshopMessageAttachmentReads';
 import {
   MessageType
 } from '@messages';
@@ -142,6 +144,77 @@ describe('Workshop composed routing — context owner', () => {
 
       expect(session.getContextAttachments()).toEqual([]);
       expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/no longer in the configured catalog/i);
+    });
+  });
+
+  describe('files requested in a room that is replaced', () => {
+    const file = { fsPath: '/ws/Characters/raven.md', uri: 'file:///ws/Characters/raven.md' };
+
+    function expectWithdrawn() {
+      expect(session.getContextAttachments()).toEqual([]);
+      expect(session.getSnapshot().pendingMessageAttachments).toEqual([]);
+      expect(posted(MessageType.ERROR).map(({ payload }) => payload.message))
+        .toEqual([WORKSHOP_MESSAGE_ATTACHMENT_ROOM_CHANGED]);
+      const lines = (log.appendLine as jest.Mock).mock.calls.map(([line]) => line as string);
+      expect(lines.filter(line => line.includes('attachment dropped'))).toHaveLength(1);
+      expect(lines.join(' ')).not.toMatch(/raven|marked token/i);
+    }
+
+    it.each([
+      MessageType.WORKSHOP_ADD_CONTEXT_FILE,
+      MessageType.WORKSHOP_ATTACH_MESSAGE_FILE
+    ])('%s keeps the room that opened the system picker', async (type) => {
+      const picked = deferred<typeof file>();
+      shell.pickFile = jest.fn(() => picked.promise);
+      const read = jest.spyOn(fileSystem, 'stat');
+      const attaching = router.route(message(type, {}) as never);
+      expect(shell.pickFile).toHaveBeenCalled();
+      session.reset();
+      picked.resolve(file);
+      await attaching;
+      expect(read).not.toHaveBeenCalled();
+      expectWithdrawn();
+    });
+
+    it.each(['success', 'failure'])('drops a context file read after room replacement (%s)', async (outcome) => {
+      const reading = deferred<void>();
+      const bytes = deferred<Uint8Array>();
+      shell.pickFile = jest.fn().mockResolvedValue(file);
+      fileSystem.stat = jest.fn().mockResolvedValue({ type: FileType.File, size: 100 });
+      fileSystem.readFile = jest.fn(() => { reading.resolve(); return bytes.promise; });
+      const attaching = router.route(message(MessageType.WORKSHOP_ADD_CONTEXT_FILE, {}) as never);
+      await reading.promise;
+      session.reset();
+      if (outcome === 'success') {
+        bytes.resolve(new TextEncoder().encode('Raven keeps the marked token.'));
+      } else {
+        bytes.reject(new Error('raven read failed'));
+      }
+      await attaching;
+      expectWithdrawn();
+    });
+
+    it('drops the in-flight configured file and stops the batch when the room changes', async () => {
+      const reading = deferred<void>();
+      const release = deferred<void>();
+      const load = jest.fn(async (paths: string[]) => {
+        reading.resolve();
+        await release.promise;
+        return resourceFiles.filter(file => paths.includes(file.path));
+      });
+      resourceProviderFactory.createProvider.mockResolvedValue({
+        listResources: () => resourceFiles,
+        loadResources: load
+      });
+      const attaching = router.route(message(MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES, {
+        items: resourceFiles.map(({ group, path }) => ({ group, path }))
+      }) as never);
+      await reading.promise;
+      session.reset();
+      release.resolve();
+      await attaching;
+      expect(load).toHaveBeenCalledTimes(1);
+      expectWithdrawn();
     });
   });
 

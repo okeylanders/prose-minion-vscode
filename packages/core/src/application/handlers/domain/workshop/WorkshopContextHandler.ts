@@ -10,7 +10,8 @@ import type {
   WorkshopMessageAttachmentInput
 } from '@/application/services/workshop/WorkshopSessionRecords';
 import {
-  WorkshopContextIntakeService
+  WorkshopContextIntakeService,
+  type WorkshopFileLoadResult
 } from '@/application/services/workshop/WorkshopContextIntakeService';
 import { scanWorkshopContextFiles } from '@/application/services/workshop/WorkshopContextFileScan';
 import { searchConfiguredResourceContent } from '@/application/services/ConfiguredResourceContentSearch';
@@ -232,15 +233,20 @@ export class WorkshopContextHandler {
   }
 
   async handleAddContextFile(_message: WorkshopAddContextFileMessage): Promise<void> {
+    const room = this.session.readRoomRevision();
     const picked = await this.shell.pickFile({
       title: 'Add context from file',
       filters: { 'Text files': ['md', 'markdown', 'txt'], 'All files': ['*'] }
     });
-    if (!picked) {
+    if (!picked || this.contextReadWasReplaced(room)) {
       return;
     }
     const displayPath = this.contextIntakeService.toDisplayPath(picked.fsPath);
-    const loaded = await this.loadContextFileFromDisk(picked.fsPath, displayPath);
+    const result = await this.loadContextFileFromDisk(picked.fsPath, displayPath);
+    if (this.contextReadWasReplaced(room)) {
+      return;
+    }
+    const loaded = this.acceptPickedFile(result, displayPath);
     if (!loaded) {
       return;
     }
@@ -506,12 +512,19 @@ export class WorkshopContextHandler {
       return;
     }
 
+    const room = this.session.readRoomRevision();
     let catalog;
     try {
       catalog = await this.contextIntakeService.openCatalog();
     } catch (error) {
+      if (this.contextReadWasReplaced(room)) {
+        return;
+      }
       const details = error instanceof Error ? error.message : String(error);
       this.effects.reportError('Could not read the configured resource catalog.', details);
+      return;
+    }
+    if (this.contextReadWasReplaced(room)) {
       return;
     }
     for (const item of validated) {
@@ -519,6 +532,9 @@ export class WorkshopContextHandler {
         maxBytes: PROMPT_BUDGETS.contextAttachments.fileBytes,
         maxWords: PROMPT_BUDGETS.contextAttachments.words
       });
+      if (this.contextReadWasReplaced(room)) {
+        return;
+      }
       if (!this.contextIntakeService.reportConfiguredResourceLoadFailure(
         loaded,
         'attach',
@@ -615,6 +631,7 @@ export class WorkshopContextHandler {
   }
 
   async handleAttachMessageFile(_message: WorkshopAttachMessageFileMessage): Promise<void> {
+    const room = this.session.readRoomRevision();
     const picked = await this.shell.pickFile({
       title: 'Attach file to this message',
       filters: { 'Text files': ['md', 'markdown', 'txt'], 'All files': ['*'] }
@@ -622,9 +639,13 @@ export class WorkshopContextHandler {
     if (!picked) {
       return;
     }
+    if (this.session.readRoomRevision() !== room) {
+      this.effects.reportError(this.messageAttachmentRoomChanged());
+      return;
+    }
     // The read after the pick is tracked like a catalog pick's (PR #271 F-01).
     await this.messageAttachmentReads.track(
-      this.readAndStagePickedMessageFile(picked, this.session.readRoomRevision())
+      this.readAndStagePickedMessageFile(picked, room)
     );
   }
 
@@ -638,10 +659,11 @@ export class WorkshopContextHandler {
       this.effects.reportError(reason, details);
     };
     const displayPath = this.contextIntakeService.toDisplayPath(picked.fsPath);
-    const loaded = await this.loadContextFileFromDisk(picked.fsPath, displayPath);
+    const result = await this.loadContextFileFromDisk(picked.fsPath, displayPath);
     if (this.session.readRoomRevision() !== room) {
       return this.messageAttachmentRoomChanged();
     }
+    const loaded = this.acceptPickedFile(result, displayPath);
     if (!loaded) {
       return WORKSHOP_MESSAGE_ATTACHMENT_UNREADABLE;
     }
@@ -656,6 +678,15 @@ export class WorkshopContextHandler {
       truncation: bounded.truncation
     }, report);
     return refusal;
+  }
+
+  private contextReadWasReplaced(room: number): boolean {
+    if (this.session.readRoomRevision() === room) {
+      return false;
+    }
+    this.outputChannel.appendLine('[WorkshopContextHandler] Context attachment dropped: the room was replaced during its read');
+    this.effects.reportError(WORKSHOP_MESSAGE_ATTACHMENT_ROOM_CHANGED);
+    return true;
   }
 
   /** A read that began in another room stages nothing: its file was picked for a message that room no longer has. */
@@ -930,18 +961,8 @@ export class WorkshopContextHandler {
     );
   }
 
-  private async loadContextFileFromDisk(
-    fsPath: string,
-    displayPath: string
-  ): Promise<
-    | {
-        text: string;
-        words: number;
-        truncation?: { keptWords: number; totalWords: number };
-      }
-    | undefined
-  > {
-    const result = await this.contextIntakeService.loadFile(
+  private loadContextFileFromDisk(fsPath: string, displayPath: string): Promise<WorkshopFileLoadResult> {
+    return this.contextIntakeService.loadFile(
       fsPath,
       displayPath,
       {
@@ -950,6 +971,9 @@ export class WorkshopContextHandler {
       },
       'attach'
     );
+  }
+
+  private acceptPickedFile(result: WorkshopFileLoadResult, displayPath: string) {
     if (result.kind === 'refused') {
       this.effects.reportError(result.refusal.message, result.refusal.details);
       return undefined;
@@ -959,11 +983,7 @@ export class WorkshopContextHandler {
         `[WorkshopContextHandler] Context file head-sliced: ${result.file.truncation.keptWords} of ${result.file.truncation.totalWords} words (${displayPath})`
       );
     }
-    return {
-      text: result.file.text,
-      words: result.file.words,
-      truncation: result.file.truncation
-    };
+    return result.file;
   }
 
   private validConfiguredResources(items: unknown): ConfiguredResourceRef[] {
