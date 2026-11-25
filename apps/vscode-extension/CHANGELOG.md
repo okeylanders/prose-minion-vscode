@@ -14,6 +14,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ### Changed
 
+- The Workshop startup tour opens again after this update. Its first five pages cover Passage Search in the sidebar and Workshop, closing to-dos, comparing a draft with Git, and setting up context paths.
 - Workshop protects named sessions from overlapping saves. If a window leaves a save unfinished, use **Recover…** on the session’s row in **Sessions**. Available unsaved work is kept in a separate local recovery session.
 
 ### Upgrade notes

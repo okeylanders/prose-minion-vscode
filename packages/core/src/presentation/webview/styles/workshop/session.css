@@ -719,7 +719,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: none;
+  max-width: 100%;
+  margin-left: auto;
 }
 @media (max-width: 820px) {
   [data-pm-surface="workshop"] .pm-ws-notice-body {
@@ -727,6 +728,7 @@
   }
 }
 [data-pm-surface="workshop"] .pm-ws-notice-arrow {
+  flex: none;
   width: 32px;
   height: 32px;
   border-radius: 8px;
@@ -753,6 +755,8 @@
 }
 [data-pm-surface="workshop"] .pm-ws-notice-dots {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 7px;
 }
 [data-pm-surface="workshop"] .pm-ws-notice-dot {
@@ -774,6 +778,7 @@
   bottom: 0;
   z-index: 2;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 14px;

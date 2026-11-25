@@ -124,8 +124,216 @@ const COMPOSER_CONTROLS_ALT = 'The Workshop composer control bar';
 
 const PAGES: readonly NoticePage[] = [
   {
-    title: 'New: See what fills a persona’s context',
+    title: 'New: Find a recurring moment with Passage Search',
     tag: 'new',
+    body: (
+      <>
+        In the sidebar, open <b>Search → Passage Search</b> and ask a question such as
+        “Where does the White Rabbit worry about being late?” Choose the active file, a selection,
+        a configured group, or a project path or pattern. Press <b>Estimate</b> to see the
+        number of calls, approximate cost, and model. <b>Run</b> starts the search.
+      </>
+    ),
+    note: (
+      <>
+        Each match quotes your manuscript. Select its file and line to read it in place.
+        Turn on <b>Organize the results</b> before estimating to include one more call for
+        an analysis. Its numbered citations jump to the passages behind each claim. Copy
+        the report or save it as Markdown.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'passage-search-estimate',
+        alt: 'A question about the White Rabbit, Organize the results checked, Estimate and Run, and a five-call estimate for four files',
+        maxWidthPx: 440,
+        ratio: '1074 / 584',
+        callouts: [
+          { label: '1', leftPercent: 3.9, topPercent: 46.8, widthPercent: 16.2, heightPercent: 14.9 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'passage-search-results',
+        alt: 'Two passages where the White Rabbit fears being late, each with its quoted line and a link to the chapter',
+        maxWidthPx: 440,
+        ratio: '1014 / 330',
+        callouts: [
+          { label: '2', leftPercent: 6.1, topPercent: 10.6, widthPercent: 60.4, heightPercent: 10.6 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Estimate', detail: 'check the planned calls and price before running.' },
+      { label: '2', term: 'File and line', detail: 'open the manuscript at the quoted passage.' }
+    ]
+  },
+  {
+    title: 'New: Run a Passage Search from the Workshop',
+    tag: 'new',
+    body: (
+      <>
+        Ask a persona to trace a gesture or motif across drafts. Its card names the question
+        and where it would look. It can search the room’s excerpt, a configured file, or a
+        group narrowed by a pattern. Review the model, calls, and estimated cost, then choose{' '}
+        <b>Run</b> or <b>Cancel</b>. If the plan changes, you get a fresh estimate to approve.
+      </>
+    ),
+    note: (
+      <>
+        When every planned read finishes and the room is free, the results go back to the
+        persona for a reply. If you stop early or a read is incomplete, choose whether to{' '}
+        <b>send partial results</b>, inspect them with <b>Open report</b>, or discard them.
+        The persona’s reply is a separate model request.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'workshop-passage-search-proposal',
+        alt: 'Jill’s proposed Passage Search, narrowed to the opening chapters, with its five-call estimate, Run, and Cancel',
+        maxWidthPx: 480,
+        ratio: '1344 / 424',
+        callouts: [
+          { label: '1', leftPercent: 2.2, topPercent: 77.5, widthPercent: 6.9, heightPercent: 15.8 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'workshop-passage-search-partial',
+        alt: 'A stopped search with two matches from two of four reads, and the choices Send partial results to Jill, Open report, and Discard',
+        maxWidthPx: 480,
+        ratio: '1344 / 292',
+        callouts: [
+          { label: '2', leftPercent: 2.2, topPercent: 67, widthPercent: 25.7, heightPercent: 22.9 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Run', detail: 'approve the search described on this card.' },
+      { label: '2', term: 'Send partial results', detail: 'let the persona work with the passages found so far.' }
+    ]
+  },
+  {
+    title: 'New: Close to-dos across Workshop sessions',
+    tag: 'new',
+    body: (
+      <>
+        After revising a chapter, ask your host or a guest to go through its open to-dos.
+        A persona can mark them <b>Done</b> or <b>Dismissed</b> in the current conversation
+        and in saved sessions. The receipt under the reply names each to-do, its session,
+        and what changed. <b>Undo</b> reopens an item from that receipt while the change
+        still applies.
+      </>
+    ),
+    note: (
+      <>
+        If a window leaves a named session mid-save, close any other window using that
+        workspace. Open <b>Sessions</b>, choose <b>Recover…</b> on the affected session,
+        and confirm. Recovery keeps available unsaved work in a separate local recovery session.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'todo-status-receipt',
+        alt: 'Jill’s receipt marks the key reminder Done in this session and the Rabbit’s second entrance Dismissed in Hall of Doors, with an Undo button for each',
+        maxWidthPx: 480,
+        ratio: '1440 / 644',
+        callouts: [
+          { label: '1', leftPercent: 4.4, topPercent: 41.5, widthPercent: 65.5, heightPercent: 22.8 },
+          { label: '2', leftPercent: 86.5, topPercent: 57.3, widthPercent: 8.2, heightPercent: 6.9 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Receipt', detail: 'see the new status and which session holds the to-do.' },
+      { label: '2', term: 'Undo', detail: 'reopen this item in the room where the persona closed it.' }
+    ]
+  },
+  {
+    title: 'New: Ask what changed in a draft',
+    tag: 'new',
+    body: (
+      <>
+        Ask “How has this ending changed since the last commit?” In a trusted Git workspace,
+        a host or guest can look up commits for the excerpt’s file or a configured project file.
+        It can compare two commits, or a commit with the draft saved on disk. Save your
+        editor changes first if you want them included.
+      </>
+    ),
+    note: (
+      <>
+        The comparison lines up paragraphs and marks the words you added or cut. After the
+        persona replies, select the file history entry under <b>Material → Read in</b> to
+        jump to its comparison card.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'history-compare',
+        alt: 'An expanded File History card comparing a commit with the saved draft, with “waited” struck out beside “knelt” and “cold” replaced by “warm”',
+        maxWidthPx: 480,
+        ratio: '1440 / 840',
+        callouts: [
+          { label: '1', leftPercent: 4.2, topPercent: 14.9, widthPercent: 66, heightPercent: 7.2 },
+          { label: '2', leftPercent: 4.2, topPercent: 67.7, widthPercent: 90, heightPercent: 11.4 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'File History', detail: 'the file and revisions the persona compared.' },
+      { label: '2', term: 'Changed words', detail: 'read an edit in its surrounding paragraph.' }
+    ]
+  },
+  {
+    title: 'New: Set up context paths from your folders',
+    tag: 'new',
+    body: (
+      <>
+        Open <b>Settings → Context Resource Paths</b> and choose <b>Suggest from my folders</b>.
+        One helper-model request uses your folder and file names to suggest patterns for
+        chapters, characters, and other project material. You can also ask a Workshop
+        persona to check patterns with you and propose them on a card.
+      </>
+    ),
+    note: (
+      <>
+        Review the match counts and example files. Tick the groups you want and press{' '}
+        <b>Apply</b> to write those groups to your user settings, which apply across projects.
+        Groups with workspace overrides show up with their checkboxes disabled.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'context-paths-review',
+        alt: 'The folder suggestion review with Characters checked, Locations & Settings unchecked, example files, and Apply',
+        maxWidthPx: 460,
+        ratio: '1152 / 918',
+        callouts: [
+          { label: '1', leftPercent: 2.7, topPercent: 10.7, widthPercent: 30.1, heightPercent: 9.3 },
+          { label: '2', leftPercent: 2.5, topPercent: 37.1, widthPercent: 93, heightPercent: 23.6 },
+          { label: '3', leftPercent: 3, topPercent: 88.6, widthPercent: 10.1, heightPercent: 8 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Suggest from my folders', detail: 'ask for patterns based on file and folder names.' },
+      { label: '2', term: 'Characters', detail: 'check the new pattern against the example files.' },
+      { label: '3', term: 'Apply', detail: 'write the patterns for just the groups you ticked.' }
+    ]
+  },
+  {
+    title: 'See what fills a persona’s context',
+    tag: 'primer',
     body: (
       <>
         Open a persona&rsquo;s <b>context</b> row above the composer and look under{' '}
@@ -166,8 +374,8 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: Earlier turns, and bookmarks that jump to them',
-    tag: 'new',
+    title: 'Earlier turns, and bookmarks that jump to them',
+    tag: 'primer',
     body: (
       <>
         A long conversation shows its most recent turns. Choose <b>Show earlier turns</b> at the
@@ -214,8 +422,8 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: Type @ to attach a project file',
-    tag: 'new',
+    title: 'Type @ to attach a project file',
+    tag: 'primer',
     body: (
       <>
         Type <b>@</b> in the composer and a few letters of a file&rsquo;s name. A list of your
@@ -264,11 +472,11 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: Memory controls, and answers about Prose Minion',
-    tag: 'new',
+    title: 'Memory controls, and answers about Prose Minion',
+    tag: 'primer',
     body: (
       <>
-        The <b>Memory</b> tab of conversation settings has two new choices.{' '}
+        The <b>Memory</b> tab of conversation settings has two choices.{' '}
         <b>Suggest notes</b> sets how readily personas offer a memory note:{' '}
         <b>Sparingly</b>, <b>Readily</b>, or <b>Aggressively</b>.{' '}
         <b>List at the start of each conversation</b> sets how much of your memory each new
@@ -1276,7 +1484,7 @@ const PAGES: readonly NoticePage[] = [
     ],
     legend: [
       { label: '1', term: 'File → Open Folder…', detail: 'point VS Code at the project root before anything else.' },
-      { label: '2', term: 'Settings gear', detail: 'top-right of the Prose Minion sidebar; opens Project Resource Locations.' }
+      { label: '2', term: 'Settings gear', detail: 'open Settings and scroll to Context Resource Paths.' }
     ],
     guideLink: {
       lead: 'Then follow',
@@ -1444,7 +1652,7 @@ const PAGES: readonly NoticePage[] = [
     ],
     guideLink: {
       lead: 'Project-file reading depends on the paths set in',
-      label: 'Project Resource Locations',
+      label: 'Context Resource Paths',
       trail: '.'
     }
   }

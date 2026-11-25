@@ -36,7 +36,7 @@ Each new conversation copies these files once, in order, subject to its context 
 
 ## What a participant's context holds
 
-The context gauge in the Workshop shows how much of the selected participant's context window its conversation fills, measured by the provider after its last reply. Open it to see **By part**: a bar and a table that split the total into persona and behavior, tool-use instructions, project memory, to-dos, room notes, the excerpt and context, what the persona requested, and the conversation itself. Select a part to see its sections, such as the interaction mode or the memory start block. Prose Minion estimates each part as it writes it. Conversation is the rest of the measured total, so the parts add up. A conversation started before this version shows some parts as not measured. Each host and guest shows its own conversation. A writing tool's private thread shows the total only.
+The context gauge in the Workshop shows how much of the selected participant's context window its conversation fills, measured by the provider after its last reply. Open it to see **By part**: a bar and a table that split the total into persona and behavior, tool-use instructions, project memory, to-dos, room notes, the excerpt and context, what the persona requested, and the conversation itself. Select a part to see its sections, such as the interaction mode or the memory start block. Prose Minion estimates each part as it writes it. Conversation is the rest of the measured total, so the parts add up. In conversations started before 2.15.0, some parts can appear as unmeasured. Each host and guest shows its own conversation. A writing tool's private thread shows the total only.
 
 ## Side pane and bookmarks
 
@@ -49,6 +49,8 @@ Bookmark a message to find it again. **Sessions → Bookmarks…** includes save
 At the top of a long conversation, press **Show earlier turns** to load the preceding page. The count tells you how many turns remain hidden. Repeat to reach the start of the thread. Earlier turns stay in the saved conversation and are available to export and recall while off screen.
 
 **Sessions** lets you save, reopen or start a room. Use **Export…** for Markdown, JSON or styled HTML in prose-minion/exports/. To explore a different response, branch at an earlier point to keep the original session, or rewind to that point in this session. Rewind asks for confirmation before removing later turns. You can edit a previous writer message and send again. Ask a persona about earlier work to let it search saved transcripts and cite the session and turns. Session Recall shows a card for the lookup.
+
+Prose Minion 2.16.0 opens sessions from earlier versions. If you sync or share sessions, update each installation that opens them. A session that records a persona’s to-do changes, Git lookups, context-path proposal, or Passage Search request or delivery can require 2.16.0 or later.
 
 A saved session left mid-save, usually by a window that closed, reads **Recovery required** in Sessions, and saving or opening it says so. Close any other Prose Minion window on this workspace, then press **Recover…** on that notice or on the session's row and confirm. Recovery puts the saved session back and keeps any unsaved work as a session named "(local recovery)"; an older copy that a finished save already replaced is dropped. A session another window is writing reads busy until that window finishes.
 
@@ -78,7 +80,7 @@ A window holds up to four results that have not been sent. With four waiting, **
 
 Under **Conversation settings → Behavior**, **Suggested file edits** controls whether a persona may propose changes to project files. Each card shows changes against a specific file. Inspect the card and choose **Apply**, **Review in editor…**, or **Decline**. Apply makes an undoable change. Saving the document remains your choice. When a reply describes small fixes or offers a rewrite, select its footer chip to ask that author to turn the offer into edit cards.
 
-When a persona submits notes or file edits, the host records what appeared as cards, what was refused and what was dropped. A counts-only trailer-outcomes line accompanies the next relevant request to that participant, including a tool-result synthesis. This lets the persona distinguish a suggestion that reached the writer from one that could not become a card.
+When a persona proposes a memory note, file edit, context-path change or Passage Search, the Workshop tells that persona on its next relevant turn how many proposals reached you and why any were dropped. For to-do changes it can also report how many were made, are still being saved, or could not be written. For a Passage Search, the first feedback tells the persona whether you received the request card. The search findings arrive in a later turn.
 
 ## Conversation widgets
 

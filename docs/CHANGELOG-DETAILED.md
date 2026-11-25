@@ -34,6 +34,11 @@ The range from v2.15.0 (`e03a0a1c`) to the release base (`f28e4178`) contains 20
 - **Suggest from my folders** scans project file and folder names and calls the helper’s `project-locations` task once. The Workshop also exposes `locations.current`, `locations.folders`, and `locations.check`, with proposals rendered by `WorkshopLocationsProposalHandler`. Both entry points share the pattern checker and Apply path. Apply writes selected groups at user level, respects workspace overrides, and rechecks for changed settings or matches before writing. [Settings #288](https://github.com/okeylanders/prose-minion-vscode/pull/288) · [Workshop #290](https://github.com/okeylanders/prose-minion-vscode/pull/290)
 - Trailer-outcome feedback now covers persona-proposed to-do changes, context paths, and Passage Searches. The next relevant request can tell the persona what reached the writer, along with bounded reasons for dropped items.
 
+### Release tour and bundled help
+
+- The Marketplace README and the first five pages of the Workshop tour illustrate Passage Search in the sidebar and Workshop, to-do receipts, Git comparisons and context-path review. The tour revision advances from `v12` to `v13` so a writer who dismissed the previous edition can see the new pages. The four 2.15.0 introductions follow as primers.
+- The 2.16.0 persona reference includes a searchable release overview, the search and helper model defaults, partial-result controls, and guidance for reopening shared sessions. [Release artwork and verification](../.memory-bank/20261125-1100-release-v2.16.0-readme-tour-and-help.md)
+
 ### Session compatibility
 
 - The persisted session schema stays at version 2. New optional fields cover to-do receipts and close attribution, context-path proposals, and Passage Search requests and deliveries. Git history adds capability records and a diff artifact. Existing saved sessions remain readable. The strict v2.15.0 reader rejects new record kinds and fields, so update every installation that shares affected sessions before saving changes with 2.16.0. [Session Codec Evolution ADR](adr/2026-07-30-workshop-session-codec-evolution.md)

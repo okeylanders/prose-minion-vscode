@@ -79,7 +79,14 @@ exports[`getWebviewHtml pins the sidebar surface output — the extraction promi
         "composer-at-mention": "https://webview.test/ext/assets/workshop-notices/composer-at-mention.png",
         "composer-at-mention-pill": "https://webview.test/ext/assets/workshop-notices/composer-at-mention-pill.png",
         "memory-suggest-notes": "https://webview.test/ext/assets/workshop-notices/memory-suggest-notes.png",
-        "help-read-card": "https://webview.test/ext/assets/workshop-notices/help-read-card.png"
+        "help-read-card": "https://webview.test/ext/assets/workshop-notices/help-read-card.png",
+        "passage-search-estimate": "https://webview.test/ext/assets/workshop-notices/passage-search-estimate.png",
+        "passage-search-results": "https://webview.test/ext/assets/workshop-notices/passage-search-results.png",
+        "workshop-passage-search-proposal": "https://webview.test/ext/assets/workshop-notices/workshop-passage-search-proposal.png",
+        "workshop-passage-search-partial": "https://webview.test/ext/assets/workshop-notices/workshop-passage-search-partial.png",
+        "todo-status-receipt": "https://webview.test/ext/assets/workshop-notices/todo-status-receipt.png",
+        "history-compare": "https://webview.test/ext/assets/workshop-notices/history-compare.png",
+        "context-paths-review": "https://webview.test/ext/assets/workshop-notices/context-paths-review.png"
       }
     };
   </script>
