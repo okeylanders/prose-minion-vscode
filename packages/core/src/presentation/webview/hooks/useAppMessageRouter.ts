@@ -30,6 +30,7 @@ import { UseTokensSettingsReturn } from './domain/useTokensSettings';
 import { UseThemeSettingsReturn } from './domain/useThemeSettings';
 import { UseTokenTrackingReturn } from './domain/useTokenTracking';
 import { UseContextPathsSettingsReturn } from './domain/useContextPathsSettings';
+import { UseContextPathsSuggestionReturn } from './domain/useContextPathsSuggestion';
 import { UseModelsSettingsReturn } from './domain/useModelsSettings';
 import { UseAccountBalanceReturn } from './domain/useAccountBalance';
 
@@ -50,6 +51,7 @@ export interface AppMessageRouterDeps {
   themeSettings: UseThemeSettingsReturn;
   tokenTracking: UseTokenTrackingReturn;
   contextPathsSettings: UseContextPathsSettingsReturn;
+  contextPathsSuggestion: UseContextPathsSuggestionReturn;
   modelsSettings: UseModelsSettingsReturn;
   accountBalance: UseAccountBalanceReturn;
   setActiveTab: React.Dispatch<React.SetStateAction<TabId>>;
@@ -65,7 +67,7 @@ export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandle
   const {
     analysis, metrics, dictionary, dictionaryHistory, context, search, settings, selection,
     publishingSettings, wordSearchSettings, wordFrequencySettings, tokensSettings,
-    themeSettings, tokenTracking, contextPathsSettings, modelsSettings, accountBalance,
+    themeSettings, tokenTracking, contextPathsSettings, contextPathsSuggestion, modelsSettings, accountBalance,
     setActiveTab, setError,
   } = deps;
 
@@ -108,6 +110,9 @@ export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandle
     [MessageType.DICTIONARY_HISTORY]: dictionaryHistory.handleHistory,
     [MessageType.DICTIONARY_HISTORY_ENTRY]: dictionaryHistory.handleHistoryEntry,
     [MessageType.DICTIONARY_HISTORY_SEARCH_RESULT]: dictionaryHistory.handleHistorySearchResult,
+    [MessageType.CONTEXT_PATHS_SUGGESTION]: contextPathsSuggestion.handleSuggestion,
+    [MessageType.CONTEXT_PATHS_APPLIED]: contextPathsSuggestion.handleApplied,
+    [MessageType.CONTEXT_PATHS_STATUS]: contextPathsSuggestion.handleStatus,
     [MessageType.STREAM_STARTED]: (msg) => {
       const domain = msg.payload.domain;
       if (domain === 'dictionary') {

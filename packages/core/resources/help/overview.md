@@ -22,6 +22,18 @@ Use the sidebar header to switch its palette, or set Sidebar Theme to follow VS 
 
 ## Project files and context paths
 
-Put character sheets, locations, themes, objects, chapter drafts, manuscript files, the project brief and general reference material in the project's folders. In Settings, the context path for each group takes comma-separated glob patterns. The catalog uses matching Markdown and plain-text files. Change the appropriate patterns if a project file is missing in a picker. One chapter per file also makes chapter-level comparisons easier.
+Put character sheets, locations, themes, objects, chapter drafts, manuscript files, the project brief and general reference material in the project's folders. In Settings, the context path for each group takes comma-separated glob patterns. The catalog uses matching Markdown and plain-text files. Change the appropriate patterns if a project file is missing in a picker, or let Prose Minion suggest them from your folder names (see Suggest context paths). One chapter per file also makes chapter-level comparisons easier.
 
 The Workshop can keep files as standing context, attach them to one message, or read configured files on demand. Pins supply the starting files for new conversations. Project Memory stores decisions and other durable notes separately. The extension keeps sessions, pinned-context lists, memories, Lightbox boards and Dictionary history under the project's prose-minion folder.
+
+## Suggest context paths
+
+In Settings, the Context Resource Paths section has a **Suggest from my folders** button. When none of the groups finds a file in the open project, a line above it points to it. Pressing it reads the project's folder and file names, never their contents. It skips hidden folders, `node_modules`, build output and the prose-minion folder. The helper model then proposes patterns for each group. This is one paid model call, made only when you press the button.
+
+Before you see anything, Prose Minion checks each proposed pattern against your files with the same rules the pickers use. A pattern that starts at the top of the disk, names a drive, climbs out of the project with `..`, or holds a comma or a backslash is refused. A pattern that matches no file is dropped. When a search can't be completed, the group is left as it is rather than counted as empty.
+
+The review lists each proposed group with its current patterns, the patterns kept, how many files each finds, a few example files, and any files another group would also find. Each group has a checkbox, ticked where something was kept. Groups the suggestion left out keep their patterns. Nothing changes until you press **Apply**, which writes only the ticked groups.
+
+Apply writes to your user settings, so the new patterns apply to all your projects. A group your workspace's own settings file sets is shown but can't be ticked, because a user-level change wouldn't change it in this project; edit the workspace's settings file instead. If a group's patterns changed after the suggestion, or its files no longer match, Apply leaves it as it is and says why. Suggest again to see the current picture.
+
+You can also ask a Workshop persona to work the paths out with you. She can read the current paths, look through the folder names and check patterns, but she can't change a setting. When you agree, she proposes the patterns, and they appear as a card under her reply: the same review, checkboxes and **Apply**, with **Decline** beside it. Applying the card changes your user settings, as the button's review does.

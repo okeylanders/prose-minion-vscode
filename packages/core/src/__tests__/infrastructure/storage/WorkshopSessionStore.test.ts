@@ -6,6 +6,7 @@ import {
   WorkshopSessionStore,
   WorkshopSessionStoreUnavailableError
 } from '@/infrastructure/storage/WorkshopSessionStore';
+import { WorkshopNamedSessionUnconfirmedError } from '@/infrastructure/storage/WorkshopNamedSessionLock';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
   WorkshopPersistedSessionV2
@@ -346,6 +347,23 @@ describe('WorkshopSessionStore', () => {
     ]));
   });
 
+  it('never overwrites a file that took a named checkpoint\'s name first: the final rename refuses, the name moves on', async () => {
+    // Another window (or anything else) wrote the first candidate name after this store's identity scan.
+    const store = createStore();
+    const taken = path.join(sessionsDirectory, '20260723-102030-pentecost-auditorium-beat.json');
+    const planted = new TextEncoder().encode('not this store\'s file');
+    await fileSystem.writeFile(taken, planted);
+
+    const saved = await store.saveNamed(session('named-1', 'Pentecost — auditorium beat'));
+
+    expect(saved.fileName).toBe('20260723-102030-pentecost-auditorium-beat-2.json');
+    expect(Buffer.from(await fileSystem.readFile(taken)).toString()).toBe('not this store\'s file');
+    expect(fileSystem.renameCalls.filter(({ toPath }) => toPath === taken)).toEqual([]);
+    expect(fileSystem.renameCalls).toEqual(expect.arrayContaining([
+      expect.objectContaining({ toPath: path.join(sessionsDirectory, saved.fileName), overwrite: false })
+    ]));
+  });
+
   it('lists named files newest first and performs bounded case-insensitive content search', async () => {
     const store = createStore();
     await store.saveNamed(session('older', 'Older', { updatedAt: '2026-07-22T10:00:00.000Z' }));
@@ -529,7 +547,8 @@ describe('WorkshopSessionStore', () => {
     });
     // The live-room path was established by Save; updating it must not parse
     // every other full checkpoint on every autosave.
-    expect(fileSystem.readDirectoryCalls).toBe(1);
+    // One listing more than before: the lock looks for a recovery marker of this file before it is taken (ADR 2026-11-19 D6d).
+    expect(fileSystem.readDirectoryCalls).toBe(2);
     expect([...fileSystem.files.keys()].filter((filePath) =>
       filePath.endsWith('.json') && !filePath.endsWith('.summary.json')
     )).toHaveLength(1);
@@ -572,7 +591,8 @@ describe('WorkshopSessionStore', () => {
     const write = fileSystem.writeFile.bind(fileSystem);
     jest.spyOn(fileSystem, 'writeFile').mockImplementation(async (filePath, data) => {
       await write(filePath, data);
-      if (filePath.startsWith(`${fullPath}.tmp-`)) {
+      // The rewrite stages inside its owner's folder in the file's lock (ADR 2026-11-19 D6b, D6d).
+      if (filePath.startsWith(path.join(sessionsDirectory, `.${saved.fileName}.lock`)) && filePath.endsWith(`${path.sep}next.json`)) {
         fileSystem.setJson(fullPath, incoming);
       }
     });
@@ -610,8 +630,9 @@ describe('WorkshopSessionStore', () => {
     const store = createStore();
     await store.writeCurrent(session('only-current', 'Current'));
 
-    await expect(store.readNamed('only-current')).resolves.toBeUndefined();
-    await expect(store.deleteNamed('only-current')).rejects.toBeInstanceOf(WorkshopNamedSessionNotFoundError);
+    // Never named, and no lock to read it under: not found, never decided missing (D6e; PR #289).
+    await expect(store.readNamed('only-current')).rejects.toBeInstanceOf(WorkshopNamedSessionUnconfirmedError);
+    await expect(store.deleteNamed('only-current')).rejects.toBeInstanceOf(WorkshopNamedSessionUnconfirmedError);
     await expect(store.readCurrent()).resolves.toMatchObject({ sessionId: 'only-current' });
   });
 

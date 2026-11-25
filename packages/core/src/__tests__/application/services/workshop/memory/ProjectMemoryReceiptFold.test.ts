@@ -19,6 +19,8 @@
  * - The receipt's version is exactly the listing's (2b's ProjectMemoryVersion).
  */
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
+import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import { WorkshopRoomDeliveryService, workshopRoomDeliveredThrough } from '@/application/services/workshop/WorkshopRoomDeliveryService';
@@ -61,7 +63,9 @@ function room(host: ReturnType<typeof libraryHost>) {
     {} as WorkshopTranscriptRecallPort,
     host.library,
     noProjectLenses,
-    unavailableHelpReference
+    unavailableHelpReference,
+    unavailableFileHistory,
+    unavailableProjectLocations
   );
   const say = async (text: string, guest?: Guest): Promise<string> => {
     const key = guest ?? 'host';

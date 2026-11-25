@@ -42,6 +42,8 @@ import {
   SecretsPort
 } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
+import { ContextPathsSuggestionRoute } from './ContextPathsSuggestionRoute';
+import type { ContextPathSuggestions } from '@/application/services/contextPaths/ContextPathSuggestionService';
 import {
   CATEGORY_MODELS,
   CuratedOpenRouterModel,
@@ -74,7 +76,9 @@ export class ConfigurationHandler {
     private readonly settings: SettingsStore,
     private readonly shell: ShellService,
     private readonly postMessage: MessageTransport,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    /** "Suggest from my folders" (ADR 2026-11-19 D21): its route is registered here when given. */
+    private readonly contextPathSuggestions?: ContextPathSuggestions
   ) {}
 
   /**
@@ -89,6 +93,9 @@ export class ConfigurationHandler {
     router.register(MessageType.REQUEST_API_KEY, this.handleRequestApiKey.bind(this));
     router.register(MessageType.UPDATE_API_KEY, this.handleUpdateApiKey.bind(this));
     router.register(MessageType.DELETE_API_KEY, this.handleDeleteApiKey.bind(this));
+    if (this.contextPathSuggestions) {
+      new ContextPathsSuggestionRoute(this.contextPathSuggestions, this.postMessage, this.outputChannel).registerRoutes(router);
+    }
   }
 
   // Helper methods (domain owns its message lifecycle)

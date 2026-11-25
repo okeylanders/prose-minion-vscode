@@ -7,6 +7,8 @@ import { UseModelsSettingsReturn } from '../hooks/domain/useModelsSettings';
 import { UseTokensSettingsReturn } from '../hooks/domain/useTokensSettings';
 import { UseTokenTrackingReturn } from '../hooks/domain/useTokenTracking';
 import { UseContextPathsSettingsReturn } from '../hooks/domain/useContextPathsSettings';
+import type { UseContextPathsSuggestionReturn } from '@hooks/domain/useContextPathsSuggestion';
+import { ContextPathsSuggestionSheet } from '@components/settings/ContextPathsSuggestionSheet';
 import { UseWordFrequencySettingsReturn } from '../hooks/domain/useWordFrequencySettings';
 import { UseWordSearchSettingsReturn } from '../hooks/domain/useWordSearchSettings';
 import { RECOMMENDED_MODELS, CATEGORY_MODELS } from '@providers/OpenRouterModels';
@@ -23,6 +25,8 @@ type SettingsOverlayProps = {
   tokensSettings: UseTokensSettingsReturn;
   tokenTracking: UseTokenTrackingReturn;
   contextPathsSettings: UseContextPathsSettingsReturn;
+  /** "Suggest from my folders" and its review (ADR 2026-11-19 D23). */
+  contextPathsSuggestion: UseContextPathsSuggestionReturn;
   wordFrequencySettings: UseWordFrequencySettingsReturn;
   wordSearchSettings: UseWordSearchSettingsReturn;
   // Keep model selections (from modelsSettings)
@@ -59,6 +63,7 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
   tokensSettings,
   tokenTracking,
   contextPathsSettings,
+  contextPathsSuggestion,
   wordFrequencySettings,
   wordSearchSettings,
   modelOptions,
@@ -562,6 +567,7 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
       {/* Context Resource Paths (moved to bottom) */}
       <section className="settings-section">
         <h3 className="settings-section-title">Context Resource Paths</h3>
+        <ContextPathsSuggestionSheet suggestion={contextPathsSuggestion} />
         
         <div className="settings-description" style={{ marginBottom: 12 }}>
           Comma-separated glob patterns that tell the Context Assistant where to look for project files. 

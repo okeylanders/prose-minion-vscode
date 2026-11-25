@@ -14,7 +14,10 @@ import {
   WORKSHOP_REACTION_FREQUENCY_PROMPT_PATHS,
   WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
   WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
+  WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH,
+  WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH,
   WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
+  WORKSHOP_TODO_STATUS_PROMPT_PATH,
   workshopPersonaSystemPromptPaths,
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
@@ -102,7 +105,10 @@ describe('Workshop persona catalog and packaged prompts', () => {
         persona.promptPath,
         WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_TODO_STATUS_PROMPT_PATH,
         WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH,
         WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
@@ -125,7 +131,10 @@ describe('Workshop persona catalog and packaged prompts', () => {
         persona.promptPath,
         WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_TODO_STATUS_PROMPT_PATH,
         WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH,
         WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
@@ -151,7 +160,10 @@ describe('Workshop persona catalog and packaged prompts', () => {
         persona.promptPath,
         WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_TODO_STATUS_PROMPT_PATH,
         WORKSHOP_HELP_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_LOCATIONS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_HISTORY_CAPABILITY_PROMPT_PATH,
         WORKSHOP_LENS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
@@ -231,7 +243,10 @@ describe('Workshop persona catalog and packaged prompts', () => {
       'holds a bookmark on a turn the whole room could not see.');
     expect(guestBase).toContain('saved-session recall');
     expect(guestBase).toContain('the writer\'s lens library (`lens.*`)');
-    expect(guestBase).toContain('What you read from the lens library and the Prose Minion reference stays private too.');
+    expect(guestBase).toContain('What you read from the lens library and the Prose Minion reference stays private too, ' +
+      'and so does a file\'s list of commits, and so does what you read of the project\'s context paths.');
+    expect(guestBase).toContain('the project\'s context paths (`locations.*`)');
+    expect(guestBase).toContain('a file\'s git history (`history.*`)');
     // The old charter said every result stayed out of the room, which was never true of published evidence.
     expect(guestBase).not.toContain('not to the room');
 
@@ -254,6 +269,9 @@ describe('Workshop persona catalog and packaged prompts', () => {
           return 'bookmark lists';
         case 'memory.read':
           return 'project-note reads';
+        // A diff is published as a file read is; the log is private discovery (ADR 2026-11-19 D15).
+        case 'history.diff':
+          return 'file-history diffs';
         case 'resource.catalog':
         case 'resource.search':
         case 'transcript.catalog':
@@ -265,6 +283,11 @@ describe('Workshop persona catalog and packaged prompts', () => {
         case 'lens.read':
         case 'help.search':
         case 'help.read':
+        case 'history.log':
+        // The project's context paths are private discovery, whole (ADR 2026-11-19 D26).
+        case 'locations.current':
+        case 'locations.folders':
+        case 'locations.check':
           return false;
       }
     };
@@ -282,7 +305,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         expect(sharedList).toContain(phrase);
       } else {
         // Private discovery, or a whole read-only family, which the charter says stays private whole (ADR 2026-11-17 D16).
-        expect(operation).toMatch(/\.(catalog|search)$|^(lens|help)\./);
+        expect(operation).toMatch(/\.(catalog|search)$|^(lens|help)\.|^history\.log$|^locations\./);
       }
     }
   });

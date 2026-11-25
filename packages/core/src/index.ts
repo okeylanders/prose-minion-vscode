@@ -108,6 +108,7 @@ export {
   WorkshopTranscriptRecallService
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
 export { WorkshopLiveRoomBookmarkReader } from '@/application/services/workshop/WorkshopLiveRoomBookmarkReader';
+export { WorkshopSavedSessionTodoStore } from '@/application/services/workshop/todos/WorkshopSavedSessionTodoStore';
 export { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
 export { ProjectMemoryStore } from '@/infrastructure/storage/ProjectMemoryStore';
 export { WorkshopPinnedContextStore } from '@/infrastructure/storage/WorkshopPinnedContextStore';
@@ -228,6 +229,10 @@ export { ProofreadService } from '@services/proofread/ProofreadService';
 export { CraftFlagsService, liveCatalogPrices } from '@services/craftFlags/CraftFlagsService';
 export { HelperAgentService } from '@services/helper/HelperAgentService';
 export { HELPER_TASK_POLICIES } from '@services/helper/HelperTaskPolicies';
+export { ProjectFolderScan } from '@/application/services/contextPaths/ProjectFolderScan';
+export { ContextPathProposalChecker } from '@/application/services/contextPaths/ContextPathProposalChecker';
+export { ContextPathSettingsWriter } from '@/application/services/contextPaths/ContextPathSettingsWriter';
+export { ContextPathSuggestionService } from '@/application/services/contextPaths/ContextPathSuggestionService';
 export { liveCatalogReasoning } from '@orchestration/ReasoningCatalog';
 export {
   CraftFlagsUseCase,
@@ -254,6 +259,9 @@ export { FileEditStagingService } from '@/application/services/fileEdits/FileEdi
 export * from '@/domain/models/FileEdit';
 export * from '@/domain/models/FileEditStaging';
 export { workshopExcerptFileEditDocument } from '@/application/services/workshop/WorkshopExcerptFileEditDocument';
+export { workshopHistoryExcerptFile } from '@/application/services/workshop/history/WorkshopHistoryFiles';
+export { WORKSHOP_HISTORY_GIT_READY_MS } from '@/application/services/workshop/history/WorkshopHistoryCapability';
+export { WorkshopHistoryDiffCache } from '@/application/services/workshop/history/WorkshopHistoryDiffCache';
 export { describeDraftEditOutcome, describeQuickFixOutcome, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
 export {
   DRAFT_EDIT_LANGUAGE_IDS,

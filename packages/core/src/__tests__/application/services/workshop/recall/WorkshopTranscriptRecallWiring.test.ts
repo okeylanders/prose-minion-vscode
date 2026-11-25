@@ -8,6 +8,8 @@
  */
 
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
+import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
@@ -69,7 +71,9 @@ function wire(room: Pick<SavedRecallRoom, 'store' | 'coordinator' | 'log'>): Wir
     recall,
     offProjectMemory,
     noProjectLenses,
-    unavailableHelpReference
+    unavailableHelpReference,
+    unavailableFileHistory,
+    unavailableProjectLocations
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),

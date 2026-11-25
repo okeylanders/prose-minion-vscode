@@ -22,7 +22,9 @@
 
 import {
   WORKSHOP_FILE_EDIT_TRAILER_DROP_REASONS,
+  WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS,
   WORKSHOP_MEMORY_TRAILER_DROP_REASONS,
+  WORKSHOP_TODO_TRAILER_DROP_REASONS,
   type WorkshopTrailerOutcomes
 } from '@shared/types/workshopTrailerOutcomes';
 import { arrayOf, exactObject, shapeError } from '@/application/services/workshop/persistedValidation';
@@ -45,9 +47,10 @@ export function assertWorkshopTrailerOutcomesShape(
   if (turn.role !== 'assistant' || (turn.participant !== 'host' && turn.participant !== 'guest')) {
     shapeError(path, 'a record on a persona reply');
   }
-  const outcomes = exactObject(value, path, [], ['memory', 'fileEdits']);
-  if (outcomes.memory === undefined && outcomes.fileEdits === undefined) {
-    shapeError(path, 'at least one of memory and fileEdits');
+  const outcomes = exactObject(value, path, [], ['memory', 'fileEdits', 'todos', 'locations']);
+  if (outcomes.memory === undefined && outcomes.fileEdits === undefined && outcomes.todos === undefined
+    && outcomes.locations === undefined) {
+    shapeError(path, 'at least one of memory, fileEdits, todos and locations');
   }
   if (outcomes.memory !== undefined) {
     const side = exactObject(outcomes.memory, `${path}.memory`, ['cards', 'dropped']);
@@ -65,6 +68,35 @@ export function assertWorkshopTrailerOutcomesShape(
     if (frames === 0) {
       shapeError(`${path}.fileEdits`, 'at least one frame counted');
     }
+  }
+  // To-do status frames (ADR 2026-11-19 D7; additive).
+  if (outcomes.todos !== undefined) {
+    const side = exactObject(outcomes.todos, `${path}.todos`, ['changes', 'dropped']);
+    const frames = countAt(side.changes, `${path}.todos.changes`, 0)
+      + droppedAt(side.dropped, `${path}.todos.dropped`, WORKSHOP_TODO_TRAILER_DROP_REASONS);
+    if (frames === 0) {
+      shapeError(`${path}.todos`, 'at least one frame counted');
+    }
+  }
+  if (outcomes.locations !== undefined) {
+    assertLocationsSide(outcomes.locations, `${path}.locations`);
+  }
+}
+
+/** Context-paths proposal frames (ADR 2026-11-19 D27; additive): at most one card. */
+function assertLocationsSide(value: unknown, path: string): void {
+  const side = exactObject(value, path, ['cards', 'dropped', 'patterns']);
+  const cards = countAt(side.cards, `${path}.cards`, 0);
+  if (cards > 1) {
+    shapeError(`${path}.cards`, 'at most one card');
+  }
+  const frames = cards + droppedAt(side.dropped, `${path}.dropped`, WORKSHOP_LOCATIONS_TRAILER_DROP_REASONS);
+  if (frames === 0) {
+    shapeError(path, 'at least one frame counted');
+  }
+  const patterns = exactObject(side.patterns, `${path}.patterns`, ['kept', 'unmatched', 'incomplete', 'refused']);
+  for (const key of ['kept', 'unmatched', 'incomplete', 'refused'] as const) {
+    countAt(patterns[key], `${path}.patterns.${key}`, 0);
   }
 }
 
@@ -107,6 +139,18 @@ export function cloneWorkshopTrailerOutcomes(outcomes: WorkshopTrailerOutcomes):
           cards: outcomes.fileEdits.cards,
           refused: outcomes.fileEdits.refused,
           dropped: outcomes.fileEdits.dropped.map((drop) => ({ ...drop }))
+        }
+      }
+      : {}),
+    ...(outcomes.todos
+      ? { todos: { changes: outcomes.todos.changes, dropped: outcomes.todos.dropped.map((drop) => ({ ...drop })) } }
+      : {}),
+    ...(outcomes.locations
+      ? {
+        locations: {
+          cards: outcomes.locations.cards,
+          dropped: outcomes.locations.dropped.map((drop) => ({ ...drop })),
+          patterns: { ...outcomes.locations.patterns }
         }
       }
       : {})

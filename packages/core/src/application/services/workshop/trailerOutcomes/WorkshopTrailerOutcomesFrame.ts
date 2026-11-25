@@ -38,8 +38,11 @@ export type WorkshopTrailerOutcomesReader =
   | { readonly kind: 'personaGuest'; readonly personaId: WorkshopPersonaId };
 
 /** The frame for one record; undefined when it has no line to write. */
-export function renderWorkshopTrailerOutcomesFrame(outcomes: WorkshopTrailerOutcomes): string | undefined {
-  const lines = workshopTrailerOutcomeLines(outcomes);
+export function renderWorkshopTrailerOutcomesFrame(
+  outcomes: WorkshopTrailerOutcomes,
+  todoRows: WorkshopTurn['todoStatusChanges'] = []
+): string | undefined {
+  const lines = workshopTrailerOutcomeLines(outcomes, todoRows);
   if (lines.length === 0) {
     return undefined;
   }
@@ -75,8 +78,9 @@ export function workshopTrailerOutcomesFrameFor(
   ledger: readonly WorkshopTurn[],
   reader: WorkshopTrailerOutcomesReader
 ): string | undefined {
-  const outcomes = workshopLatestReplyOf(ledger, reader)?.trailerOutcomes;
-  return outcomes ? renderWorkshopTrailerOutcomesFrame(outcomes) : undefined;
+  const latest = workshopLatestReplyOf(ledger, reader);
+  // A saved row's later state is read from the receipt beside the record (ADR 2026-11-19 D7).
+  return latest?.trailerOutcomes ? renderWorkshopTrailerOutcomesFrame(latest.trailerOutcomes, latest.todoStatusChanges) : undefined;
 }
 
 /**

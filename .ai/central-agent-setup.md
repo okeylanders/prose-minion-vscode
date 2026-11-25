@@ -25,7 +25,7 @@ prose-minion-vscode/
 ```
 
 **The two rules that define this architecture:**
-- **`packages/core` never imports `vscode`.** It depends only on the `Platform` ports (`packages/core/src/platform/`: `LogSink`, `SecretStore`, `SettingsStore`, `FileSystem`, `Workspace`, `ShellService`, `EditorContext`, `DocumentEditor`, `IssueAnnotator`). `EditorContext` also reports the current selection, empty included (`currentSelection`, `onDidChangeSelection`), beside the remembered one `getActiveSelection` serves ([ADR 2026-11-14](docs/adr/2026-11-14-everyday-conveniences.md) D10). A non-VS-Code host (e.g. a console app) can reuse core by implementing these ports. **Verify before adding host-coupled code: no `from 'vscode'` in `packages/core/src`.**
+- **`packages/core` never imports `vscode`.** It depends only on the `Platform` ports (`packages/core/src/platform/`: `LogSink`, `SecretStore`, `SettingsStore`, `FileSystem`, `Workspace`, `ShellService`, `EditorContext`, `DocumentEditor`, `IssueAnnotator`, `FileHistory`). `SettingsStore.levelOf` says which level holds a setting's value, and `FileHistory` reads a file's git log, blob sizes and blobs ([ADR 2026-11-19](docs/adr/2026-11-19-workshop-persona-tools.md) D11, D25). `EditorContext` also reports the current selection, empty included (`currentSelection`, `onDidChangeSelection`), beside the remembered one `getActiveSelection` serves ([ADR 2026-11-14](docs/adr/2026-11-14-everyday-conveniences.md) D10). A non-VS-Code host (e.g. a console app) can reuse core by implementing these ports. **Verify before adding host-coupled code: no `from 'vscode'` in `packages/core/src`.**
 - **`apps/vscode-extension` is the only composition root.** `extension.ts` constructs concrete services + the VS Code Platform implementations and threads them inward. The app imports core *only* through the `@prose-minion/core` barrel (enforced via `eslint no-restricted-imports`); core never imports the app.
 
 `extension.ts` builds a typed `CoreServices` bundle alongside `Platform`.
@@ -49,6 +49,10 @@ packages/core/src/
 │   │   ├── workshop/trailerOutcomes/ # What became of a reply's memory and file-edit trailers: the record's builder, the drop-reason mapping, the `<workshop-trailer-outcomes>` frame (ADR 2026-11-17 D13–D15)
 │   │   ├── workshop/memory/ProjectMemoryCatalogFrame.ts # The `<project-memory>` frame: pinned, entries, `<title-only>`, `<unlisted>`, `<more>`; sized by `ProjectMemoryListSize` (ADR 2026-11-17 D8, D9)
 │   │   ├── workshop/selection/ # EditorSelectionSnapshots (the editor's selection by host-minted id, newest 8) and the Selected Text attachment's input (ADR 2026-11-14 D11)
+│   │   ├── workshop/todos/     # A persona's to-do status trailer settled, the saved-session write port (`WorkshopSavedSessionTodos`, implemented by `WorkshopSavedSessionTodoStore`), receipt rows, the post-commit writes and Undo (ADR 2026-11-19 D1–D10)
+│   │   ├── workshop/history/   # The personas' read-only `history.*` family: codec, files, commits, sides, the prose-aware diff (`WorkshopHistoryDiff`, the only importer of `diff`), its per-window cache, renderer, copy (ADR 2026-11-19 D11–D17)
+│   │   ├── workshop/locations/ # The personas' read-only `locations.*` family and the proposal trailer's settlement and records (ADR 2026-11-19 D26–D27)
+│   │   ├── contextPaths/       # Context-path suggestions: the names-only scan, pattern safety, the checker, Apply, the settings writer, the Settings suggester (ADR 2026-11-19 D18–D25)
 │   │   └── lightbox/LightboxBoardLibrary.ts # When Lightbox boards save, open as snapshots, restore after a reload, list and delete (Slice 5A); names and spark marks in place through LightboxBoardEdits (Slice 5A.1); every chapter's boards, a picked board file opened, and saves through LightboxBoardSaves: one file per board, named by date, rewritten in place (Slice 5A.2)
 │   └── handlers/       # Message routing and domain handlers
 │       ├── MessageHandler.ts    # Main dispatcher (routes messages)
@@ -62,6 +66,7 @@ packages/core/src/
 │           ├── MetricsHandler.ts
 │           ├── SearchHandler.ts
 │           ├── ConfigurationHandler.ts
+│           ├── ContextPathsSuggestionRoute.ts # Settings' "Suggest from my folders": suggest, status and Apply, by request id (registered by ConfigurationHandler)
 │           ├── PublishingHandler.ts
 │           ├── SourcesHandler.ts
 │           ├── UIHandler.ts
@@ -76,7 +81,7 @@ packages/core/src/
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
 │           ├── LightboxBoardsHandler.ts   # The saved boards' routes: shelf, open, delete, rename (5A.1), open a board file through the host's picker (5A.2), and each committed save pushed (Slice 5A)
-│           └── workshop/                  # Room owner + 24 composed route owners (`WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES` in `boundaries.test.ts` is the list)
+│           └── workshop/                  # Room owner + 25 composed route owners (`WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES` in `boundaries.test.ts` is the list)
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
 │               ├── WorkshopRouteContracts.ts
@@ -87,12 +92,14 @@ packages/core/src/
 │               ├── WorkshopSessionMessageHandler.ts
 │               ├── WorkshopSessionExportHandler.ts   # Read-only transcript export
 │               ├── WorkshopStandingDirectiveHandler.ts
-│               ├── WorkshopTodoHandler.ts
+│               ├── WorkshopTodoHandler.ts # The writer's to-do actions, and a persona's status changes: the saved-session writes and Undo (ADR 2026-11-19 D5, D8)
+│               ├── WorkshopNamedSessionRecoveryRoute.ts # Recover… for a saved session left mid-save, on the coordinator's session-operation queue (registered by WorkshopSessionMessageHandler; ADR 2026-11-19 D6e)
 │               ├── WorkshopReactionHandler.ts # Message reactions: the writer's add/remove, Hide on a persona's (ADR 2026-11-07)
 │               ├── WorkshopLightboxTileHandler.ts # A Lightbox tile offered, then staged above the composer (seed kind `lightbox-tile`)
 │               ├── WorkshopSelectedTextHandler.ts # Selected Text: the seed's offer and accept, the toggle's watch, and the send's room check (seed kind `selected-text`; ADR 2026-11-14 D12, D14)
 │               ├── WorkshopPinnedContextHandler.ts # Pinned context: the settings tab's list, pins, unpin, move, Attach missing, Open (ADR 2026-11-04)
 │               ├── WorkshopEarlierTurnsHandler.ts # A long room's earlier turns, a page before a turn, and a bookmark jump's pages (ADR 2026-11-17 D1–D4, D6 amendment)
+│               ├── WorkshopLocationsProposalHandler.ts # A persona's context-paths card: Apply and Decline, through C1's write (the 25th; ADR 2026-11-19 D24, D27)
 │               └── widgets/
 │                   ├── WorkshopWidgetHostHandler.ts
 │                   ├── creativeVariations/WorkshopCreativeVariationsHandler.ts
@@ -124,6 +131,7 @@ packages/core/src/
             ├── configuration.ts  # Settings, models, tokens
             ├── publishing.ts     # Publishing standards
             ├── accountBalance.ts # OpenRouter account balance
+            ├── contextPathSuggestions.ts # Settings' context-path suggestion, status and Apply, and the proposal view both ways in share
             ├── configuredResources.ts # The configured-resource catalog shapes the shared project picker browses (Workshop and Lightbox)
             ├── lightboxBarrel.ts # The Lightbox domain's own barrel (every lightbox*.ts below) and its parts of the routing unions; index.ts re-exports it (Slice 5A.1)
             ├── lightbox.ts       # Lightbox board, source, refusal, tile kinds
@@ -171,6 +179,9 @@ packages/core/src/
                 ├── seedDelivery.ts
                 ├── lightboxTiles.ts
                 ├── selectedText.ts
+                ├── todoStatus.ts
+                ├── locationsProposal.ts
+                ├── sessionRecovery.ts
                 └── settings.ts
 ```
 
@@ -196,6 +207,7 @@ packages/core/src/presentation/webview/
 │       ├── useAnalysis.ts              # Analysis results, guides, status ticker
 │       ├── useContext.ts               # Context text, requested resources, loading/status
 │       ├── useContextPathsSettings.ts  # Context paths configuration
+│       ├── useContextPathsSuggestion.ts # "Suggest from my folders": the pending suggestion, status and Apply by request id; persists nothing
 │       ├── useDictionary.ts            # Word/context state and tool name
 │       ├── useDictionaryHistory.ts     # Lookup history: host summaries, ‹ › cursor, draft slot (ADR 2026-10-14)
 │       ├── useDictionaryHistorySearch.ts # "Also search definitions": one debounced request by id, only the pending answer taken; persists nothing
@@ -245,6 +257,9 @@ packages/core/src/presentation/webview/
 │           ├── useWorkshopEditOffers.ts    # A reply's edit-offer chips: the press (ids only), its correlated answer, the one announcement (ADR 2026-11-10 U2–U6)
 │           ├── useWorkshopEarlierTurns.ts  # A long room's earlier turns: one contiguous run, re-read after each state, and a bookmark's jump (`loadThrough`, `cancelJump`); persists nothing (ADR 2026-11-17 D5, D6 amendment)
 │           ├── earlierTurns/workshopEarlierTurnsRun.ts # The run's pure steps: merge, re-read, jump step and announcements
+│           ├── useWorkshopTodoReceipt.ts   # A to-do receipt's Undo: ids only, the answer by request id; persists nothing (ADR 2026-11-19 D8)
+│           ├── useWorkshopNamedSessionRecovery.ts # Recover…: confirm, request by id, the outcome (ADR 2026-11-19 D6e)
+│           ├── useWorkshopLocationsProposal.ts # A context-paths card's Apply and Decline by request id; persists nothing (ADR 2026-11-19 D27)
 │           ├── controllers/            # Transient modal/surface state machines
 │           │   ├── useWorkshopRailTabs.ts  # The rail's tabs and unseen-arrival badges; `railHidden` when the rail is collapsed
 │           │   ├── useWorkshopComposerMentions.ts # `@` in the composer: the file list's state, keys and picks; stages through injected callbacks (round two, item G)
@@ -418,6 +433,10 @@ useMessageRouter({
 | useWorkshopLightboxTiles | WorkshopLightboxTileHandler | A Lightbox tile staged in the Workshop |
 | useWorkshopSelectedText | WorkshopSelectedTextHandler (+ `EditorSelectionSnapshots`) | The editor's selection as a message's Selected Text pill |
 | useWorkshopEarlierTurns | WorkshopEarlierTurnsHandler (+ `WorkshopSessionService.readEarlierTurns`) | A long room's earlier turns and a bookmark's jump |
+| useWorkshopTodoReceipt | WorkshopTodoHandler (+ `WorkshopSavedSessionTodos`) | A persona's to-do receipt and its Undo |
+| useWorkshopNamedSessionRecovery | WorkshopNamedSessionRecoveryRoute (+ `WorkshopNamedSessionRecovery`) | Recover… for a saved session left mid-save |
+| useContextPathsSuggestion | ContextPathsSuggestionRoute (in ConfigurationHandler; + `ContextPathSuggestionService`) | Settings' context-path suggestion |
+| useWorkshopLocationsProposal | WorkshopLocationsProposalHandler (+ `applyContextPathProposal`) | A persona's context-paths card |
 
 **Benefits**:
 - ✅ Same domain boundaries on both sides
@@ -893,14 +912,14 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-11-18 on `epic/everyday-conveniences-round-two-close`: the whole Everyday Conveniences, Round Two epic, items A–H with H+ and A3, before it goes to `main`):
-- 921 suites / 13,230 tests / 59 snapshots
+**Test Inventory** (measured 2026-11-19 on `epic/workshop-persona-tools-close`: the Workshop Persona Tools epic with PR #290 (C2) merged in, before it goes to `main`):
+- 966 suites / 13,696 tests / 59 snapshots (full `npx jest --maxWorkers=50%` on the closing branch after merging the epic at `7e63d170`, all slices in)
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's 24 composed route owners (the list is `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES`)
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's 25 composed route owners (the list is `WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES`)
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):
@@ -1543,6 +1562,11 @@ is told of them:
   reply turn holds, per kind, `cards` (and `refused` for file edits) and
   canonical `dropped` entries; their sum is the frames the extractor found.
   A conservation test holds it.
+  - Workshop Persona Tools adds two kinds
+    ([ADR 2026-11-19](docs/adr/2026-11-19-workshop-persona-tools.md) D7,
+    D27): `todos` (`changes`) and `locations` (`cards`, and patterns kept,
+    unmatched, incomplete and refused). See **Workshop To-do Status** and
+    **Context Path Suggestions and the `locations.*` Family**.
 - **Settlement returns typed verdicts.** `settleWorkshopMemoryEdit`,
   `settleWorkshopMemoryProposals` and `resolveWorkshopReplyFileEdits` return
   closed reasons; the log line and the record are written from the same
@@ -2120,6 +2144,278 @@ native call may become:
 - **Logs** carry the closed operation, counts and fault kinds
   (`WorkshopNativeToolCallFault`), never an argument or the name a model
   wrote.
+
+### Workshop To-do Status
+
+Follow [ADR 2026-11-19](docs/adr/2026-11-19-workshop-persona-tools.md)
+D1–D10 with D6a–D6e, D8a and D8b (Workshop Persona Tools, item A; PR #289)
+when touching how a persona marks to-dos, the receipt and its Undo, or
+anything that writes a named session file:
+
+- **A persona proposes nothing here: the change lands at once, with Undo**
+  (T1, Okey's). A reply ends with up to `changesPerReply` (20)
+  `<prose-minion-todo-status>` trailers, one change each, touching at most
+  `savedSessionsPerReply` (10) saved sessions
+  (`PROMPT_BUDGETS.workshopTodoStatus`), held to the prompt by
+  `todoStatusPromptSync.test.ts`.
+  - Read in `extractWorkshopReplyControls`' one pass; host and guest
+    replies, never a pressed edit offer's answer. No setting.
+  - `completed` or `dismissed`, on an `open` to-do only. Only the writer
+    reopens.
+  - **Ids are copied, never guessed:** from the snapshot's `Id:` line or a
+    `transcript.todos` result. An unknown session or to-do, or one not
+    `open`, is dropped with its typed reason; the reply's other changes
+    still land.
+  - A reply of nothing else reads "Updated to-dos."
+- **Recall stays read-only.** A saved session's to-dos change only through
+  the write port `WorkshopSavedSessionTodos` (`todos/`), implemented by
+  `WorkshopSavedSessionTodoStore`, built in `extension.ts`, in
+  `CoreServices`. Recall never imports it, and it imports nothing of
+  `recall/`.
+  - Its `write` is a compare-and-swap against what `read` returned
+    (`updateNamed`), on the coordinator's session-operation queue. A
+    changed file is `session-changed`, a held one `session-busy`; nothing
+    is overwritten. `updatedAt` moves, so recall's cache reads the change.
+- **The open room's rows land in the reply's own commit;** a saved
+  session's commit `saving` and are written just after.
+- **The receipt is durable first** (PR #289 P1). Before any saved session
+  is written, the room holding the `saving` rows is checkpointed and read
+  back (`checkpointTodoReceipt`), host and guest alike. If that fails,
+  nothing is written and the rows read `receipt-not-saved`. A new
+  cross-session write keeps this order: a restart must never leave a
+  to-do closed with no receipt to reconcile.
+- **A `saving` row across a restart is settled from disk, never replayed**
+  (D8a, D8b). Each write's `operationId` is on its rows and stamped into
+  each to-do's `closedBy`. Reconciliation (each session-state post, and
+  before Undo) reads:
+  - the stamp there: `applied`, with Undo;
+  - the target read and no stamp: `interrupted`, terminal, never retried;
+  - the target unreadable, busy or recovery-required: `unverified`, checked
+    again read-only; Undo is disabled.
+- **Undo posts ids only** (`WORKSHOP_UNDO_TODO_STATUS`, owned by
+  `WorkshopTodoHandler`) and reopens only while the to-do still holds the
+  row's status and `closedBy.operationId`. A saved row's Undo belongs to
+  the room that made it; a branch's copy offers none.
+- **Session codec.** `closedBy` on a to-do and `todoStatusChanges` on a
+  turn are optional and exact, in their own decoder
+  (`WorkshopTodoStatusRecords`); no `schemaVersion` bump.
+  `__tests__/fixtures/workshop-session-v2-before-todo-status.json` must
+  keep reading. The writer's own change clears `closedBy`.
+- **The persona hears back** through trailer outcomes' `todos` side (D7).
+  A row's later write result is told from the receipt rows ("being saved",
+  "not written", "not yet confirmed"), never by updating the record. An
+  Undo is never told.
+
+**Named session files are written only under `WorkshopNamedSessionLock`**
+(`infrastructure/storage/`; D6a–D6e). Every write that replaces or removes
+a named session file goes through it: Save, autosave, rename, delete, a
+Rewind's commit, a file edit's checkpoint, the persona's write and Undo,
+and a recovery copy's update. A new named-session writer joins it.
+`boundaries.test.ts` ("Workshop named-session storage") holds it:
+
+- only storage modules, a pinned list, call `fileSystem.rename` or
+  `fileSystem.delete`;
+- only `WorkshopSessionStore` builds the sessions folder's path;
+- of the modules that rename or delete, only the store,
+  `WorkshopNamedSessionLock` and `WorkshopNamedSessionRecovery` reach that
+  folder;
+- inside the store, rename and delete touch only staged temporaries and
+  search indexes, a snapshot overwrites only `current.json`, and a named
+  file is replaced or removed only through `this.named`.
+
+A new module that renames or deletes joins the pinned list on purpose.
+
+- **The lock is `.<name>.lock/`,** taken by renaming a staged directory,
+  never over anything. It holds `owner-<token>.json` and the owner's own
+  `<token>/` folder, where its staged `next.json` and its `prior.json`
+  live. Claim and publish are renames into and out of that folder, never
+  over anything, and renames never create a missing parent.
+- **No automatic takeover** (D6e). A lock within its lease
+  (`STORED_FILE_CLAIM_LEASE_MS`) is busy; one past it is
+  `recovery-required`, in host words. Nothing in it is touched. Never add
+  a takeover: each one opened a new race in review.
+- **Release is the owner's alone,** three steps none of which can touch
+  another owner's lock: detach `<token>/` to `.<name>.retired-<id>` and
+  delete that; delete `owner-<token>.json`; delete the lock directory
+  **non-recursively**.
+- **"Missing" is decided only under the lock** (`decideMissing`): a reader
+  that found no file takes the lock and reads again. A held lock answers
+  busy, a stale one recovery-required, never missing.
+  `detachMissingNamedSession` runs only on that `missing`. A read that
+  knows no file name and finds no lock answers
+  `WorkshopNamedSessionUnconfirmedError` ("not found, try again"), never
+  missing. Listings show a locked row as busy or recovery-required, never
+  omit it.
+- **Recovery is explicit:** **Recover…** on the save-failed or
+  open-refused notice and on the session browser row, behind a confirm
+  ("Close any other Prose Minion window on this workspace first…").
+  `WorkshopNamedSessionRecovery` follows D6e's table: copies first, then
+  the restore, then the lock. A failure names its step and leaves the lock
+  and everything in it. A prior is superseded only when the saved file
+  decoded. A copy's session id is derived from its lock, so a retry reuses
+  it.
+- **A failed rollback keeps the lock and every copy** (PR #289 P1s). When a
+  publish fails and putting `prior.json` back fails too, the owner sets
+  retention **before** anything else, marks its owner file
+  `abandoned-<token>.json` (a rename), and answers recovery-required. A
+  marker move that fails still keeps both copies.
+- **A refused room keeps its work in its own recovery session** (D6c), a
+  non-overwriting "<title> (local recovery)" create, one per refusal
+  episode (`WorkshopNamedSessionRecoveryCopy`). Never rely on
+  `current.json`: it is the workspace's, not the window's.
+- **The shared `StoredFileRewrite` and the pinned-context lock are
+  unchanged.** Whether boards and memory share the stalled-writer hazard is
+  [tech debt](.todo/tech-debt/2026-11-19-stored-file-rewrite-stalled-writer-fence.md).
+- **Logs** carry to-do ids, session ids, counts, states and reasons. Never
+  a to-do's text, a note, a session title, or a session file's name (it
+  carries a title slug).
+
+### Workshop File History
+
+Follow [ADR 2026-11-19](docs/adr/2026-11-19-workshop-persona-tools.md)
+D11–D17 and D13a (Workshop Persona Tools, item B; PR #287) when touching
+`history.log`, `history.diff`, the `FileHistory` port or its Git adapter:
+
+- **Two read-only calls, personas only.** The `history` family
+  (`application/services/workshop/history/`, `WORKSHOP_HISTORY_MODULES`)
+  is composed in `WorkshopPersonaCapability` for host and guest, never a
+  tool sidecar. It imports nothing of `recall/`, `memory/` or `lens/`.
+  `history.diff` is publishable and adds a manifest row of kind `history`
+  ("File history"); `history.log` is private discovery. No setting (G1).
+- **Which file:** `<group>excerpt</group>` (the excerpt's file, authorized
+  as Re-read from file authorizes it) or a configured file by group and
+  path (`findConfiguredResource`). Never a free path; a host path never
+  reaches a result, card or log.
+- **No process is spawned.** `Platform.fileHistory` (`log`, `show`,
+  `size`) is implemented by `VsCodeFileHistory` over the built-in Git
+  extension's API (`vscode.git`, `getAPI(1)`), with its few types copied
+  into `gitExtensionApi.ts`. No `extensionDependencies`: each call checks,
+  and no repository, no Git, Git disabled, not ready or not tracked is
+  said in host words. Another host runs git itself, with fixed arguments
+  and no shell, after its own trust check.
+- **The log names the file literally** (PR #287 P1): `:(literal)` and the
+  repository-relative path, so a name holding `*`, `?`, `[` or a leading
+  `:` names only itself.
+- **A backslash name is refused on POSIX** (PR #287 re-review P1). The Git
+  extension's `buffer` rewrites `\` to `/` while `log` and
+  `getObjectDetails` do not, so such a name is `unaddressable` before any
+  of the three is called. Every call names the same file, or none runs.
+- **Commit ids come only from the file's own log** (D14). The codec checks
+  form (7–40 hex); the host then requires the id to prefix exactly one
+  commit of this file's log (to `logScanCommits`). Git is given the full
+  hash from the log (the branded `FileHistoryCommitId`), never a model's
+  text. Continuations carry the full id.
+- **Raw bytes, strict UTF-8** (PR #287 P2). `show` returns bytes; every
+  side, the saved file's included, is decoded as strict UTF-8 with a
+  byte-order mark stripped. Invalid bytes refuse the diff in words; never
+  mix in VS Code's encoding detection.
+- **Sized before fetched** (PR #287 P2). Each side's raw size is asked
+  first (`size` for a blob, `stat` for the saved file); a side past
+  `diffSourceBytes` refuses before the other is read, and the size is
+  checked again after the read. The preflight cannot cap memory if a
+  repository's `textconv` expands a blob; the post-read check still
+  refuses it.
+- **The diff is core's, and jsdiff is confined to `WorkshopHistoryDiff`**
+  (G2; `boundaries.test.ts`). Paragraphs first (`splitBlankLineParagraphs`,
+  then `diffArrays`), then words inside a changed paragraph
+  (`diffWordsWithSpace`). The alignment runs no diff driver or external
+  tool; only fetching a blob goes through Git, where a repository's
+  `textconv` may run (above).
+- **The paragraph alignment has its own ceilings** (D13a): at most
+  `alignParagraphs` paragraphs a side, checked before aligning, and
+  `paragraphEditLength` for the array diff, apart from the word stage's
+  `maxEditLength`. Past either, the diff is **refused** in words, with no
+  partial or line-level fallback. The change list (and a refusal) is
+  cached per window (`WorkshopHistoryDiffCache`, built in `extension.ts`),
+  so a continuation never realigns.
+- **Fitted by whole changes** to half the room left
+  (`reads/WorkshopReadWindowFit`), else `diffBytes`. A change is never cut.
+  A continuation names a later `<startChange>`, and `<current>` (the saved
+  text's fingerprint) when `<to>` is `current`; a changed file answers
+  "ask again from change 1", never a misnumbered part.
+- **Hints decode as written.** `historyCapabilityPromptSync.test.ts`
+  follows every log and diff hint through the codec.
+- **Workspace trust is the boundary** (D16). The extension declares no
+  support for untrusted workspaces, and a test pins it, with the reason.
+- **Renames are not followed:** the stated limit (Q3).
+- **Logs** carry the operation, counts and closed outcomes. Never a commit
+  id, a subject, an author, a path or diff text (G3); the adapter logs
+  nothing and never returns git's message.
+
+### Context Path Suggestions and the `locations.*` Family
+
+Follow [ADR 2026-11-19](docs/adr/2026-11-19-workshop-persona-tools.md)
+D18–D28 with D22a (Workshop Persona Tools, item C; PRs #288, #290; amends
+[ADR 2026-11-05](docs/adr/2026-11-05-helper-agent.md) D6) when touching
+"Suggest from my folders", the persona's `locations.*` calls, the proposal
+card, or anything that writes `proseMinion.contextPaths.*`:
+
+- **One proposal, one checker, one write, two ways in.** Settings' button
+  (the helper drafts) and a persona (her proposal trailer) both produce a
+  `ContextPathProposal`, checked by `ContextPathProposalChecker` and
+  applied by `applyContextPathProposal`, all in
+  `application/services/contextPaths/`, built once in `extension.ts`, in
+  `CoreServices`. No handler constructs them.
+- **Nothing changes without the writer's Apply.** The helper's
+  `project-locations` task proposes and never writes (ADR 2026-11-05 D2);
+  the `locations.*` calls write nothing; `ContextPathSettingsWriter` is the
+  feature's only code that writes a setting, and only Apply calls it.
+- **The scan reads names only** (`ProjectFolderScan`, through
+  `FileSystem.readDirectory`): never a file's contents. It skips hidden
+  names, `node_modules`, `dist`, `out`, `build`, VCS folders,
+  `prose-minion/` and links, and is bounded by `scanEntries`, `scanDepth`
+  and `scanFolders`.
+- **A partial scan is said honestly** (PR #288 P2s). A scan that found no
+  eligible folder but stopped at a bound or could not read a folder is
+  `scan-incomplete`, never "no folders"; a partial scan's view says it is
+  partial.
+- **Patterns are judged by the real resolver,** through
+  `ContextResourceResolver.matchPatterns`: the catalog's normalization,
+  roots, exclusions, `.md`/`.txt` rule and symlink refusal, counts-only in
+  its log. Unsafe forms (a comma, a leading `/` or `\`, a drive, `~`,
+  `workspace:`, `..`, a backslash, a control character, over
+  `patternCharacters`) are refused **before** anything normalizes them.
+- **`incomplete` is never `unmatched`** (D22a). Only a completed
+  zero-match search drops a pattern. A group with any `incomplete` pattern
+  is shown as not checked completely, not offered, refused if sent, and
+  left unchanged at Apply. The same holds for the current patterns' count
+  and for `locations.check`.
+- **Overlap comes from effective patterns** (PR #288 P2): the kept
+  patterns' files for a group Apply can write, the current files for every
+  other. Never the catalog, which keeps a file in its first group only.
+- **Apply re-reads before each write** (PR #288 P1). Per ticked group, in
+  order: offered, not set by the workspace, value unchanged since the
+  view, and its kept patterns checked again (`incomplete`,
+  `matches-changed` if any kept pattern now matches nothing). Then one
+  more synchronous read of the value **and** its level immediately before
+  that group's write; drift leaves the group. A failed write stops the
+  rest and says which landed. Writes go to the user level only (L1).
+- **`SettingsStore.levelOf`** says which level holds a value. A group set
+  for the workspace or a workspace folder is shown, not offered (D25);
+  every host implements `levelOf`.
+- **The webview sends ids and ticked groups, never a pattern**
+  (`CONTEXT_PATHS_APPLY`, `WORKSHOP_APPLY_LOCATIONS_PROPOSAL`), each with a
+  webview-minted `requestId`.
+- **The persona path** (C2). `locations.current`, `locations.folders`
+  (paged by `workshopCapabilityPage`, one scan per turn) and
+  `locations.check` live in `application/services/workshop/locations/`
+  (`WORKSHOP_LOCATIONS_MODULES`), composed for host and guest, never a tool
+  sidecar. None is publishable; none adds a manifest row. There is no
+  `locations.suggest` (L3). Grammar: `locations-capability.md`, held by
+  `locationsCapabilityPromptSync.test.ts`.
+- **The proposal trailer** (`<prose-minion-locations-proposal>`, one a
+  reply) is checked before the reply commits; its card commits with the
+  reply (`locationsProposal`, optional and exact; fixture
+  `workshop-session-v2-before-locations-proposal.json`). A frame with
+  nothing kept gives no card. Apply and Decline go through
+  `WorkshopLocationsProposalHandler`, behind the room's mutation gate with
+  the room revision checked; both are the writer's answers and are never
+  told. Trailer outcomes' `locations` side counts patterns kept,
+  unmatched, incomplete and refused.
+- **One row component.** The Settings sheet and the card draw groups with
+  `ContextPathGroupRow`.
+- **Logs** carry counts and outcomes only. Never a folder or file name, a
+  path or a pattern.
 
 ### Lightbox Source Ownership
 
@@ -2957,6 +3253,12 @@ small model job, or touching the memory sheet's automatic draft:
     host answers a stray request `off` with no call.
   - **A capability card's sheet asks for nothing** (`withheld`, PR #231
     F-01).
+- **The `project-locations` task** ([ADR 2026-11-19](docs/adr/2026-11-19-workshop-persona-tools.md)
+  D21, amending this ADR's D6) runs only on Settings' "Suggest from my
+  folders" press, from the names-only folder scan, and is not covered by
+  `helperDrafts`. Its answer goes through the shared checker and waits for
+  the writer's Apply. See **Context Path Suggestions and the `locations.*`
+  Family**.
 - **Logs** carry the task, model, outcome and counts, never the text.
 
 ### Dictionary History Search

@@ -5,6 +5,8 @@
  * the engine's log, with debug logging off and on. *Alice*, with made-up ids.
  */
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
+import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ConversationManager } from '@orchestration/ConversationManager';
@@ -27,7 +29,7 @@ describe.each([['off', false], ['on', true]])('a committed memory.read, debug lo
     host.put(writerMemory({ id: 'mem-abcdef', title: SENTINELS[0], summary: SENTINELS[1], body: projectMemoryBody(SENTINELS[2]) }));
     const lines: string[] = [];
     const sink = { appendLine: (line: string) => { lines.push(line); }, clear: jest.fn(), show: jest.fn() };
-    const settings = { get: ((_section: string, key: string, fallback?: unknown) => (key === 'debugLogging' ? debugLogging : fallback)) as SettingsStore['get'], update: jest.fn() };
+    const settings = { get: ((_section: string, key: string, fallback?: unknown) => (key === 'debugLogging' ? debugLogging : fallback)) as SettingsStore['get'], update: jest.fn(), levelOf: () => 'user' as const };
     const client = { createChatCompletion: jest.fn(), createStreamingChatCompletion: jest.fn() };
     client.createChatCompletion
       .mockResolvedValueOnce({ content: '<prose-minion-tool-call name="memory.read"><memory>mem-abcdef</memory></prose-minion-tool-call>', finishReason: 'stop' })
@@ -47,7 +49,9 @@ describe.each([['off', false], ['on', true]])('a committed memory.read, debug lo
         {} as WorkshopTranscriptRecallPort,
         host.library,
         noProjectLenses,
-        unavailableHelpReference
+        unavailableHelpReference,
+        unavailableFileHistory,
+        unavailableProjectLocations
       ).create({
         requestId: 'host-request',
         excerptVersion: 0,

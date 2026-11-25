@@ -26,6 +26,7 @@ const WORKSHOP_STYLE_IMPORTS = [
   './styles/workshop/session.css',
   './styles/workshop/memory.css',
   './styles/workshop/fileEdits.css',
+  './styles/workshop/todoReceipt.css',
   './styles/workshop/pinnedContext.css',
   './styles/workshop/reactions.css',
   './styles/workshop/editOffers.css',
@@ -52,6 +53,7 @@ const ENTRY_STYLE_IMPORTS = [
   './styles/fulltab/savedItems.css',
   './styles/fulltab/savedBrowser.css',
   './styles/settingsSupport.css',
+  './styles/contextPathsSuggestion.css',
   './index.css'
 ] as const;
 

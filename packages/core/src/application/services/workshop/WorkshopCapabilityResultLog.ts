@@ -30,6 +30,10 @@ export function workshopCapabilityResultLogSummary(result: WorkshopCapabilityRes
       return `helpMetrics=matches=${count('matchCount')};notShown=${count('notShown')};` +
         `sections=${count('sectionsRead')}/${count('sectionsNamed')};characters=${count('characters')}`;
     }
+    case 'history':
+      return historyMetrics(result);
+    case 'locations':
+      return locationsMetrics(result);
     case 'dictionary':
       // The dictionary's metadata is its own log's business; the line keeps its old shape.
       return 'resourceMetrics=none';
@@ -133,6 +137,39 @@ function lensMetrics(result: WorkshopCapabilityResult): string {
       : result.status === 'rejected' ? 'unspecified' : 'none'}`
   ];
   return `lensMetrics=${values.join(';')}`;
+}
+
+/**
+ * Counts and closed words only: never a commit id, a subject, an author, a
+ * path or diff text (ADR 2026-11-19 D17, G3). The keys are the ones
+ * WorkshopHistoryCapability writes.
+ */
+function historyMetrics(result: WorkshopCapabilityResult): string {
+  const metadata = result.metadata;
+  const count = (key: string): number | 'n/a' =>
+    typeof metadata?.[key] === 'number' ? metadata[key] as number : 'n/a';
+  const word = (key: string): string =>
+    typeof metadata?.[key] === 'string' ? metadata[key] as string : 'n/a';
+  const values = [
+    `outcome=${word('outcome')}`,
+    `commits=${count('commitsShown')}`,
+    `changes=${count('changesShown')}/${count('changes')}`,
+    `characters=${count('characters')}`,
+    `truncated=${metadata?.truncated === true}`,
+    `rejection=${typeof metadata?.rejectionReason === 'string'
+      ? metadata.rejectionReason
+      : result.status === 'rejected' ? 'unspecified' : 'none'}`
+  ];
+  return `historyMetrics=${values.join(';')}`;
+}
+
+/** Counts and closed words only: never a folder, file name, path or pattern (ADR 2026-11-19 D28). */
+function locationsMetrics(result: WorkshopCapabilityResult): string {
+  const metadata = result.metadata;
+  const value = (key: string): string | number =>
+    typeof metadata?.[key] === 'number' || typeof metadata?.[key] === 'string' ? metadata[key] as string | number : 'n/a';
+  const keys = ['outcome', 'groups', 'page', 'pages', 'foldersShown', 'patterns', 'kept', 'unmatched', 'incomplete', 'refused'];
+  return `locationsMetrics=${keys.map((key) => `${key}=${value(key)}`).join(';')}`;
 }
 
 function resourceMetrics(metadata: WorkshopCapabilityResult['metadata']): string {

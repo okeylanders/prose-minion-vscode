@@ -24,6 +24,7 @@ export * from './context';
 export * from './metrics';
 export * from './search';
 export * from './configuration';
+export * from './contextPathSuggestions';
 export * from './publishing';
 export * from './sources';
 export * from './ui';
@@ -90,6 +91,14 @@ import {
   UpdateApiKeyMessage,
   DeleteApiKeyMessage
 } from './configuration';
+import {
+  ContextPathsSuggestMessage,
+  ContextPathsSuggestionMessage,
+  ContextPathsApplyMessage,
+  ContextPathsAppliedMessage,
+  ContextPathsStatusRequestMessage,
+  ContextPathsStatusMessage
+} from './contextPathSuggestions';
 import {
   RequestPublishingStandardsDataMessage,
   PublishingStandardsDataMessage,
@@ -177,6 +186,12 @@ import {
   WorkshopSetExcerptResourceMessage,
   WorkshopRunContextWizardMessage,
   WorkshopTodoActionMessage,
+  WorkshopUndoTodoStatusMessage,
+  WorkshopTodoStatusUndoResultMessage,
+  WorkshopApplyLocationsProposalMessage,
+  WorkshopLocationsProposalResultMessage,
+  WorkshopRecoverNamedSessionMessage,
+  WorkshopNamedSessionRecoveryResultMessage,
   WorkshopSetTurnBookmarkMessage,
   WorkshopSetTurnReactionMessage,
   WorkshopHideTurnReactionMessage,
@@ -328,6 +343,9 @@ export type WebviewToExtensionMessage =
   | ResetTokenUsageMessage
   | RequestAccountBalanceMessage
   | RequestApiKeyMessage
+  | ContextPathsSuggestMessage
+  | ContextPathsApplyMessage
+  | ContextPathsStatusRequestMessage
   | UpdateApiKeyMessage
   | DeleteApiKeyMessage
   | WebviewErrorMessage
@@ -374,6 +392,9 @@ export type WebviewToExtensionMessage =
   | WorkshopSetExcerptResourceMessage
   | WorkshopRunContextWizardMessage
   | WorkshopTodoActionMessage
+  | WorkshopUndoTodoStatusMessage
+  | WorkshopApplyLocationsProposalMessage
+  | WorkshopRecoverNamedSessionMessage
   | WorkshopSetTurnBookmarkMessage
   | WorkshopSetTurnReactionMessage
   | WorkshopHideTurnReactionMessage
@@ -458,6 +479,9 @@ export type ExtensionToWebviewMessage =
   | SaveResultSuccessMessage
   | SettingsDataMessage
   | OpenSettingsMessage
+  | ContextPathsSuggestionMessage
+  | ContextPathsAppliedMessage
+  | ContextPathsStatusMessage
   | OpenSettingsToggleMessage
   | SelectionDataMessage
   | StartupNoticeDataMessage
@@ -502,6 +526,9 @@ export type ExtensionToWebviewMessage =
   | WorkshopMemoryWriteResultMessage
   | WorkshopFileEditExtensionMessage
   | WorkshopEditOfferExtensionMessage
+  | WorkshopTodoStatusUndoResultMessage
+  | WorkshopLocationsProposalResultMessage
+  | WorkshopNamedSessionRecoveryResultMessage
   | WorkshopMemoryEditDataMessage
   | WorkshopMemoryEstimateResultMessage
   | WorkshopMemoryDraftHostMessage

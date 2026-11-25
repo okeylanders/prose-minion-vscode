@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 import { WorkshopTodoAction, WorkshopTodoItem } from '@messages';
+import { workshopTodoClosedByLine } from '@shared/constants/workshopTodoStatusWords';
 
 interface WorkshopTodoListProps {
   todos: readonly WorkshopTodoItem[];
@@ -94,6 +95,11 @@ export const WorkshopTodoList: React.FC<WorkshopTodoListProps> = ({
                         </span>
                       )}
                       {todo.text}
+                    </span>
+                  )}
+                  {todo.closedBy && todo.status !== 'open' && (
+                    <span className="pm-ws-todo-closed-by">
+                      {workshopTodoClosedByLine(todo.status, todo.closedBy.personaLabel, todo.closedBy.sessionTitle)}
                     </span>
                   )}
                   <button

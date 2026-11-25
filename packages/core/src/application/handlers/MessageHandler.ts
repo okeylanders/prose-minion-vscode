@@ -222,7 +222,9 @@ export class MessageHandler {
       fileEditStaging,
       projectFileEditGateway,
       helperAgentService,
-      editorSelectionSnapshots
+      editorSelectionSnapshots,
+      workshopSavedSessionTodos,
+      contextPathProposals
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -290,7 +292,8 @@ export class MessageHandler {
       this.platform.settings,
       this.platform.shell,
       this.postMessage.bind(this),
-      outputChannel
+      outputChannel,
+      this.services.contextPathSuggestions
     );
 
     // Ensure token totals are reset on activation/startup so the webview does not
@@ -374,7 +377,9 @@ export class MessageHandler {
       fileEditStaging,
       projectFileEditGateway,
       { helper: helperAgentService, settings: this.platform.settings },
-      editorSelectionSnapshots
+      editorSelectionSnapshots,
+      workshopSavedSessionTodos,
+      contextPathProposals
     );
     // Lightbox editor tab (ADR 2026-10-19 D10) — the 13th domain, composed
     // like the others. The shell owns the file picker; the service owns boards.

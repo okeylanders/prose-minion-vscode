@@ -53,6 +53,7 @@ import {
   WorkshopSessionPersistenceCoordinator,
   WorkshopTranscriptRecallService,
   WorkshopLiveRoomBookmarkReader,
+  WorkshopSavedSessionTodoStore,
   ProjectMemoryStore,
   ProjectMemoryLibrary,
   WorkshopTranscriptExportService,
@@ -78,10 +79,16 @@ import {
   FileEditStagingService,
   ProjectFileEditGateway,
   workshopExcerptFileEditDocument,
+  workshopHistoryExcerptFile,
+  WorkshopHistoryDiffCache,
   CraftFlagsService,
   HelperAgentService,
   EditorSelectionSnapshots,
   HELPER_TASK_POLICIES,
+  ProjectFolderScan,
+  ContextPathProposalChecker,
+  ContextPathSettingsWriter,
+  ContextPathSuggestionService,
   CraftFlagsUseCase,
   liveCatalogPrices,
   liveCatalogReasoning,
@@ -101,6 +108,7 @@ import { VsCodeSettingsStore } from './platform/vscode/VsCodeSettingsStore';
 import { VsCodeFileSystem } from './platform/vscode/VsCodeFileSystem';
 import { VsCodeWorkspace } from './platform/vscode/VsCodeWorkspace';
 import { VsCodeShellService } from './platform/vscode/VsCodeShellService';
+import { VsCodeFileHistory } from './platform/vscode/VsCodeFileHistory';
 import {
   ADD_SELECTION_TO_WORKSHOP_MESSAGE_COMMAND,
   addSelectionToWorkshopMessage
@@ -189,7 +197,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     editor: editorContext,
     documents: documentEditor,
     annotations: issueAnnotator,
-    craftAnnotations: craftAnnotator
+    craftAnnotations: craftAnnotator,
+    // Over the built-in Git extension's API; spawns no process (ADR 2026-11-19 D12).
+    fileHistory: new VsCodeFileHistory()
   };
 
   // SPRINT 01: Initialize infrastructure layer (dependency injection)
@@ -395,6 +405,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       )
     }
   );
+  // A persona's to-do changes in saved sessions write through their own port,
+  // never recall: the store's claimed compare-and-swap, on the coordinator's queue (ADR 2026-11-19 D6, D6a).
+  const workshopSavedSessionTodos = new WorkshopSavedSessionTodoStore(workshopSessionStore, workshopSessionPersistenceCoordinator, outputChannel);
   // Project memory (ADR 2026-11-04 D10, D13): one store, then the one
   // library, from the coordinator's accepted workspace and recall's
   // provenance. Slice 2 only reads: the library feeds the persona
@@ -434,6 +447,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     extensionInfo.version,
     outputChannel
   );
+  // A file's git history for personas (ADR 2026-11-19 D11): the host's history port, the saved
+  // file, and the room's excerpt file, authorized as Re-read from file authorizes it.
+  const workshopHistoryPorts = {
+    history: platform.fileHistory,
+    fileSystem: platform.fileSystem,
+    excerpt: workshopHistoryExcerptFile(
+      workshopSessionService,
+      new WorkshopContextIntakeService(contextResourceResolver.countsOnly(), platform.fileSystem, platform.workspace)
+    ),
+    // One cache for every turn: a continuation never aligns the paragraphs again (PR #286 F-03).
+    diffs: new WorkshopHistoryDiffCache()
+  };
+  // The project's context paths (ADR 2026-11-19 D18): one scan, one checker over the real resolver's
+  // `matchPatterns`, one user-level writer, shared by the Settings helper, a persona's `locations.*`
+  // calls and her proposal card. Only the writer's Apply writes.
+  const contextPathSettings = new ContextPathSettingsWriter(platform.settings);
+  const projectFolderScan = new ProjectFolderScan(platform.fileSystem, platform.workspace, outputChannel);
+  const contextPathChecker = new ContextPathProposalChecker(contextResourceResolver, contextPathSettings);
   // Each participant turn uses the same session, library and reference readers.
   const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
     dictionaryService,
@@ -444,7 +475,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopTranscriptRecallService,
     projectMemoryLibrary,
     lexicalGravityLensRepository,
-    workshopHelpReference
+    workshopHelpReference,
+    workshopHistoryPorts,
+    { scan: projectFolderScan, checker: contextPathChecker }
   );
   const workshopToolSidePass = new RunWorkshopToolSidePass(
     assistantToolService,
@@ -634,6 +667,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel
   );
 
+  // The project's context paths from Settings (ADR 2026-11-19 D18): the scan, checker and writer built
+  // above; the helper drafts, and only Apply writes.
+  const contextPathSuggestions = new ContextPathSuggestionService(
+    projectFolderScan,
+    helperAgentService,
+    contextPathChecker,
+    contextPathSettings,
+    outputChannel
+  );
+
   // Selected Text (ADR 2026-11-14 D11): the window's one snapshot cache, over the editor port.
   const editorSelectionSnapshots = new EditorSelectionSnapshots(editorContext, outputChannel);
   context.subscriptions.push(editorSelectionSnapshots);
@@ -684,7 +727,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
     editorSelectionSnapshots,
     helperAgentService,
-    workshopTranscriptRecallService
+    contextPathSuggestions,
+    workshopTranscriptRecallService,
+    workshopSavedSessionTodos,
+    contextPathProposals: { checker: contextPathChecker, settings: contextPathSettings }
   };
 
   // Migrate API key from settings to SecretStorage if needed

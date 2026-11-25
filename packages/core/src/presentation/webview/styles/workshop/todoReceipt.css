@@ -1,0 +1,88 @@
+/*
+ * Workshop to-do receipts: the card under a reply whose persona marked
+ * to-dos (ADR 2026-11-19 D8), and a closed to-do's "Done · by" line, on the
+ * full tabs' tokens; no new color. Plain CSS on the Chromium 114 floor
+ * (webviewCssFloor.test.ts). Scoped to the Workshop.
+ */
+
+[data-pm-surface="workshop"] .pm-ws-todo-receipt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-inset);
+}
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pm-dim);
+  font: 600 10px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--pm-text);
+  font-size: 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-status {
+  color: var(--pm-muted);
+  font: 600 9.5px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-undone .pm-ws-todo-receipt-text {
+  color: var(--pm-dim);
+  text-decoration: line-through;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-session,
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-note,
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-state,
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-feedback {
+  color: var(--pm-dim);
+  font-size: 11px;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-refused .pm-ws-todo-receipt-state {
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-undo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-pill);
+  background: transparent;
+  color: var(--pm-muted);
+  font: 600 10px var(--pm-mono);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-receipt-undo:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-closed-by {
+  display: block;
+  color: var(--pm-dim);
+  font-size: 11px;
+}

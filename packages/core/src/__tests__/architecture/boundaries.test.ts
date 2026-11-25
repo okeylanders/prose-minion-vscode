@@ -194,7 +194,19 @@ const WORKSHOP_ROUTE_OWNERS = [
   {
     owner: WORKSHOP_TODO_HANDLER_OWNER,
     registration: 'mutation',
-    messageTypes: ['WORKSHOP_TODO_ACTION']
+    messageTypes: ['WORKSHOP_TODO_ACTION', 'WORKSHOP_UNDO_TODO_STATUS']
+  },
+  {
+    // The writer's Apply or Decline on a persona's context-paths card (ADR 2026-11-19 D27).
+    owner: 'application/handlers/domain/workshop/WorkshopLocationsProposalHandler.ts',
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_APPLY_LOCATIONS_PROPOSAL']
+  },
+  {
+    // Recover… writes saved sessions on the coordinator's queue, never the room (ADR 2026-11-19 D6e).
+    owner: 'application/handlers/domain/workshop/WorkshopNamedSessionRecoveryRoute.ts',
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_RECOVER_NAMED_SESSION']
   },
   {
     owner: WORKSHOP_BOOKMARK_HANDLER_OWNER,
@@ -488,6 +500,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
+  'WorkshopLocationsProposalHandler',
   'WorkshopMemoryDraftHandler',
   'WorkshopPinnedContextHandler',
   'WorkshopProjectMemoryHandler',
@@ -1291,6 +1304,41 @@ const WORKSHOP_HELP_MODULES = [
   'WorkshopHelpRenderer.ts',
   'WorkshopHelpXmlCodec.ts'
 ];
+/**
+ * A file's git history for personas (ADR 2026-11-19 D11): read-only, a
+ * per-turn sub-adapter like the lens family. It imports nothing of recall,
+ * memory or lens, reads git only through the `FileHistory` port, and stays
+ * under 500 lines a module. `WorkshopHistoryDiff` alone imports `diff`.
+ */
+const WORKSHOP_HISTORY_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'history');
+const WORKSHOP_HISTORY_MODULES = [
+  'WorkshopHistoryCapability.ts',
+  'WorkshopHistoryCommits.ts',
+  'WorkshopHistoryCopy.ts',
+  'WorkshopHistoryDiff.ts',
+  'WorkshopHistoryDiffCache.ts',
+  'WorkshopHistoryFiles.ts',
+  'WorkshopHistoryRefusals.ts',
+  'WorkshopHistoryRenderer.ts',
+  'WorkshopHistorySides.ts',
+  'WorkshopHistoryXmlCodec.ts'
+];
+/**
+ * The project's context paths for personas (ADR 2026-11-19 D26, D27):
+ * read-only calls and the proposal's settlement and card codec. It reads
+ * through C1's scan and checker, writes no setting (only the route owner's
+ * Apply, through C1's `applyContextPathProposal`, does), imports nothing of
+ * recall or memory, and stays under 500 lines a module.
+ */
+const WORKSHOP_LOCATIONS_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'locations');
+const WORKSHOP_LOCATIONS_MODULES = [
+  'WorkshopLocationsCapability.ts',
+  'WorkshopLocationsCopy.ts',
+  'WorkshopLocationsProposalRecords.ts',
+  'WorkshopLocationsRenderer.ts',
+  'WorkshopLocationsXmlCodec.ts',
+  'WorkshopReplyLocations.ts'
+];
 /** All a module under `reads/` may import. */
 const WORKSHOP_READS_ALLOWED_IMPORTS = [
   '@orchestration/RequestContextPreflight',
@@ -1323,6 +1371,8 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   ...collectSourceFiles(WORKSHOP_READS_ROOT),
   ...collectSourceFiles(WORKSHOP_LENS_ROOT),
   ...collectSourceFiles(WORKSHOP_HELP_ROOT),
+  ...collectSourceFiles(WORKSHOP_HISTORY_ROOT),
+  ...collectSourceFiles(WORKSHOP_LOCATIONS_ROOT),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopTextSearch.ts')
 ];
 const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)|import\s+.*['"](?:vscode|react|@providers\/))/;
@@ -2061,6 +2111,91 @@ describe('architectural boundaries', () => {
       .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
   });
 
+  it('keeps the history family read-only, off recall, memory and lens, and under 500 lines (ADR 2026-11-19 D11)', () => {
+    const files = collectSourceFiles(WORKSHOP_HISTORY_ROOT);
+    // Every module the family has is listed, so a new one joins on purpose.
+    expect(files.map((file) => path.basename(file)).sort()).toEqual(WORKSHOP_HISTORY_MODULES);
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(files));
+    const imports = files.flatMap((file) =>
+      moduleImports(file, fs.readFileSync(file, 'utf8')).map((entry) => ({ file: path.relative(SRC_ROOT, file), ...entry }))
+    );
+    expect(imports
+      .filter(({ module }) => /(?:^|\/)(?:recall|memory|lens|help|session|pinnedContext)(?:\/|$)/.test(module) || RECALL_FORBIDDEN_MODULE.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // The excerpt's authorization and the session are known as types only.
+    expect(imports
+      .filter(({ module, typeOnly }) => /(?:WorkshopContextIntakeService|WorkshopSessionService)$/.test(module) && !typeOnly)
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    for (const file of files) {
+      const source = fs.readFileSync(file, 'utf8');
+      expect(source.split('\n').length).toBeLessThanOrEqual(500);
+      // It writes nothing and spawns nothing: git only through the port.
+      expect(source).not.toMatch(/\.(?:writeFile|createDirectory|rename)\(|fileSystem\.delete\(|child_process|\bspawn\(|\bexec(?:File)?\(/);
+    }
+  });
+
+  it('keeps the locations family read-only, off recall and memory, and under 500 lines (ADR 2026-11-19 D26)', () => {
+    const files = collectSourceFiles(WORKSHOP_LOCATIONS_ROOT);
+    expect(files.map((file) => path.basename(file)).sort()).toEqual(WORKSHOP_LOCATIONS_MODULES);
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(files));
+    const imports = files.flatMap((file) =>
+      moduleImports(file, fs.readFileSync(file, 'utf8')).map((entry) => ({ file: path.relative(SRC_ROOT, file), ...entry }))
+    );
+    expect(imports
+      .filter(({ module }) => /(?:^|\/)(?:recall|memory|lens|help|history|session|pinnedContext)(?:\/|$)/.test(module) || RECALL_FORBIDDEN_MODULE.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // C1's scan, checker and writer are known as types only: the family constructs none of them. Only the
+    // pure setting-split rule is shared, so a card's baseline and its patterns agree (PR #290 P1).
+    expect(imports
+      .filter(({ module, typeOnly }) => /\/contextPaths\//.test(module) && !typeOnly && !/ContextPathPatternSafety$/.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    for (const file of files) {
+      const source = fs.readFileSync(file, 'utf8');
+      expect(source.split('\n').length).toBeLessThanOrEqual(500);
+      // It writes nothing: no setting, no file.
+      expect(source).not.toMatch(/\.(?:write|update|writeFile|createDirectory|rename)\(|applyContextPathProposal/);
+    }
+    // Only the route owner applies a card, through C1's one write.
+    const appliers = collectSourceFiles(path.join(SRC_ROOT, 'application'))
+      .filter((file) => /applyContextPathProposal\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file))
+      .sort();
+    expect(appliers).toEqual([
+      'application/handlers/domain/workshop/WorkshopLocationsProposalHandler.ts',
+      'application/services/contextPaths/ContextPathApply.ts',
+      'application/services/contextPaths/ContextPathSuggestionService.ts'
+    ]);
+  });
+
+  it('imports the diff package only in the history family\'s diff module (ADR 2026-11-19 D13; G2)', () => {
+    const importers = [
+      ...collectSourceFiles(SRC_ROOT),
+      ...collectSourceFiles(path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src'))
+    ]
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => moduleImports(file, fs.readFileSync(file, 'utf8')).some(({ module }) => module === 'diff' || module.startsWith('diff/')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(importers).toEqual(['application/services/workshop/history/WorkshopHistoryDiff.ts']);
+    const manifest = JSON.parse(fs.readFileSync(path.resolve(SRC_ROOT, '../package.json'), 'utf8')) as { dependencies: Record<string, string> };
+    // A deliberate runtime dependency, pinned to an exact version (G2).
+    expect(manifest.dependencies.diff).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it('reads git only through the FileHistory port, whose VS Code adapter alone names the Git extension (ADR 2026-11-19 D12)', () => {
+    const coreNaming = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /vscode\.git|getAPI\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(coreNaming).toEqual([]);
+    const appRoot = path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src');
+    const appNaming = collectSourceFiles(appRoot)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /getAPI\(|GIT_EXTENSION_ID/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(appRoot, file).split(path.sep).join('/'))
+      .sort();
+    expect(appNaming).toEqual(['platform/vscode/VsCodeFileHistory.ts', 'platform/vscode/gitExtensionApi.ts']);
+  });
+
   it('keeps help modules read-only and independent of the room and its other readers (ADR 2026-11-17 D16)', () => {
     const files = collectSourceFiles(WORKSHOP_HELP_ROOT);
     expect(files.map((file) => path.basename(file)).sort()).toEqual(WORKSHOP_HELP_MODULES);
@@ -2322,11 +2457,14 @@ describe('architectural boundaries', () => {
     // Message Reactions Slice 1 added the writer's reaction change and Hide on a persona's (mutation).
     // Everyday Conveniences Slice B added the selection's offer and watch (direct) and its staging (mutation).
     // Everyday Conveniences round two, item A added a long room's earlier turns (direct).
-    expect(expectedOwnerPairs).toHaveLength(98);
+    // Workshop Persona Tools item A added the writer's Undo of a persona's to-do change (mutation)
+    // and Recover… for a saved session left mid-save (direct).
+    // Workshop Persona Tools item C2 added the writer's Apply on a context-paths card (mutation).
+    expect(expectedOwnerPairs).toHaveLength(101);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(52);
+      .toHaveLength(54);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(46);
+      .toHaveLength(47);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -2718,7 +2856,8 @@ describe('architectural boundaries', () => {
       '@services/helper/', '@parsers/', '@orchestration/AIResourceManager', '@orchestration/AgentRunPolicies',
       '@orchestration/AgentRunContracts', '@orchestration/ReasoningCatalog', '@orchestration/ReasoningRequest',
       '@/tools/shared/prompts', '@/platform', '@messages',
-      '@shared/constants/promptBudgets', '@shared/types/projectMemory'
+      '@shared/constants/promptBudgets', '@shared/types/projectMemory',
+      '@shared/types/context', '@shared/types/projectFolders'
     ];
     expect(imports.filter(({ module }) => !allowed.some((prefix) => module.startsWith(prefix)))
       .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
@@ -3039,6 +3178,7 @@ describe('architectural boundaries', () => {
       'index.ts',
       'lexicalGravity.ts',
       'lightboxTiles.ts',
+      'locationsProposal.ts',
       'memoryDraft.ts',
       'participants.ts',
       'pinnedContext.ts',
@@ -3048,9 +3188,11 @@ describe('architectural boundaries', () => {
       'seedDelivery.ts',
       'selectedText.ts',
       'session.ts',
+      'sessionRecovery.ts',
       'settings.ts',
       'showVsTell.ts',
       'standingDirectives.ts',
+      'todoStatus.ts',
       'widgets.ts'
     ]);
     expect(ownedTests.filter((file) => !fs.existsSync(path.join(testRoot, file)))).toEqual([]);
@@ -3215,5 +3357,78 @@ describe('Workshop Pinned Context storage (Slice 1; ADR 2026-11-04 D5)', () => {
     expect(collectSourceFiles(folder)
       .filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
       .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
+  });
+});
+
+describe('Workshop named-session storage (ADR 2026-11-19 D6a, D6e)', () => {
+  it('replaces and removes named session files only under the named-session lock', () => {
+    const STORAGE = 'infrastructure/storage';
+    const STORE = `${STORAGE}/WorkshopSessionStore.ts`;
+    const LOCK = `${STORAGE}/WorkshopNamedSessionLock.ts`;
+    const RECOVERY = `${STORAGE}/WorkshopNamedSessionRecovery.ts`;
+    const coreFiles = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .map((file) => ({ file: path.relative(SRC_ROOT, file).split(path.sep).join('/'), source: fs.readFileSync(file, 'utf8') }));
+    const RENAME_OR_DELETE = /\bfileSystem\??\.(?:rename|delete)\s*\(/;
+
+    // Who may rename or delete through the FileSystem port at all: storage modules only, by name.
+    // A new one is added here on purpose, and is checked below against the sessions folder.
+    expect(coreFiles.filter(({ source }) => RENAME_OR_DELETE.test(source)).map(({ file }) => file).sort()).toEqual([
+      `${STORAGE}/DictionaryHistoryStore.ts`,
+      `${STORAGE}/LexicalGravityLensRepository.ts`,
+      `${STORAGE}/LightboxBoardNewFile.ts`,
+      `${STORAGE}/ProjectMemoryStore.ts`,
+      `${STORAGE}/RejectedModelResponseRecoveryStore.ts`,
+      `${STORAGE}/StoredFileClaims.ts`,
+      `${STORAGE}/StoredFileRewrite.ts`,
+      LOCK,
+      RECOVERY,
+      `${STORAGE}/WorkshopPinnedContextLock.ts`,
+      `${STORAGE}/WorkshopPinnedContextStore.ts`,
+      STORE,
+      `${STORAGE}/writeNumberedFile.ts`
+    ].sort());
+
+    // Only the store builds the sessions folder's path (user-facing sentences that mention it are not paths).
+    const SESSIONS_FOLDER = /['"`]prose-minion['"`]\s*,\s*['"`]sessions['"`]|['"`][^'"`\s]*prose-minion\/sessions\/?['"`]/;
+    expect(coreFiles.filter(({ source }) => SESSIONS_FOLDER.test(source)).map(({ file }) => file)).toEqual([STORE]);
+
+    // Of the modules that rename or delete, only the store and the lock family reach the sessions folder:
+    // by being one, naming the folder, or importing the store or a named-session module.
+    const reachesSessions = ({ file, source }: { file: string; source: string }) =>
+      /(?:^|\/)(?:WorkshopSessionStore|WorkshopNamedSession\w*)\.ts$/.test(file)
+      || SESSIONS_FOLDER.test(source) || moduleImports(file, source).some(({ module }) =>
+        /(?:^|\/)(?:WorkshopSessionStore|WorkshopNamedSession\w*)$/.test(module));
+    expect(coreFiles
+      .filter((entry) => RENAME_OR_DELETE.test(entry.source) && reachesSessions(entry))
+      .map(({ file }) => file).sort()).toEqual([LOCK, RECOVERY, STORE].sort());
+
+    // Inside the store, which method each rename, delete and write call sits in.
+    const store = coreFiles.find(({ file }) => file === STORE)!.source;
+    const MEMBER = /^ {2}(?:(?:private|public|protected|static|readonly)\s+)*(?:async\s+)?([A-Za-z_$][\w$]*)\s*[(<]/;
+    const callersOf = (call: RegExp): string[] => {
+      let member = '';
+      const found = new Set<string>();
+      for (const line of store.split('\n')) {
+        member = MEMBER.exec(line)?.[1] ?? member;
+        if (call.test(line)) {
+          found.add(member);
+        }
+      }
+      return [...found].sort();
+    };
+    // The store renames and deletes only staged temporaries (`writeJsonAtomically`) and derived search indexes;
+    // a named session file is replaced or removed only by the lock.
+    expect(callersOf(RENAME_OR_DELETE)).toEqual(['deleteSearchIndexIfPresent', 'writeJsonAtomically']);
+    expect(callersOf(/\bthis\.writeJsonAtomically\(/)).toEqual(['writeAtomically', 'writeSearchIndex']);
+    expect(callersOf(/\bthis\.writeAtomically\(/)).toEqual(['writeSnapshotWithSearchIndex']);
+    // A snapshot written over an existing file is only ever current.json; a named file is created, never overwritten.
+    // This pins the flag at the call site; WorkshopSessionStore.test.ts ("never overwrites a file that took a named
+    // checkpoint's name first") pins that the final rename honors it.
+    const snapshotWrites = [...store.matchAll(/\bthis\.writeSnapshotWithSearchIndex\(([\s\S]*?)\);/g)].map((match) => match[1]);
+    expect(snapshotWrites.length).toBeGreaterThan(0);
+    expect(snapshotWrites.filter((args) => !/paths\.currentPath\b/.test(args) && !/,\s*false\s*$/.test(args.trim()))).toEqual([]);
+    expect(store).toMatch(/\bthis\.named\.replace\(/);
+    expect(store).toMatch(/\bthis\.named\.remove\(/);
   });
 });

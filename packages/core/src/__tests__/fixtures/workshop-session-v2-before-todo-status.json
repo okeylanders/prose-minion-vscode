@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 2,
+  "sessionId": "alice-2",
+  "title": "Polish 6.11",
+  "createdAt": "2026-10-03T19:00:00.000Z",
+  "updatedAt": "2026-10-03T19:02:00.000Z",
+  "savedAt": "2026-10-03T19:02:00.000Z",
+  "temporal": {
+    "schemaVersion": 1,
+    "startedAt": "2026-10-03T19:00:00.000Z",
+    "timezone": "America/Chicago",
+    "lastActivityAt": "2026-10-03T19:00:00.000Z",
+    "personaNotices": []
+  },
+  "summary": {
+    "hostPersonaId": "jill",
+    "participantPersonaIds": [
+      "jill"
+    ],
+    "turnCount": 3,
+    "excerptWordCount": 15,
+    "scope": "excerpt",
+    "excerptLabel": "Pasted excerpt",
+    "excerptIdentity": "5f06b523e4836a15835e98230c62718de0a27bd4be9dc2945ea569d6e5f20768",
+    "preview": "Here is my read."
+  },
+  "workshop": {
+    "excerpt": {
+      "text": "Alice was beginning to get very tired of sitting by her sister on the bank.",
+      "version": 1,
+      "source": {
+        "kind": "manual"
+      },
+      "pinnedAt": 1791054000000
+    },
+    "scope": "excerpt",
+    "contextAttachments": [],
+    "pendingMessageAttachments": [],
+    "threadArtifacts": [],
+    "revisions": {
+      "excerpt": 1,
+      "replacementCount": 0,
+      "context": 0
+    },
+    "counters": {
+      "attachment": 0,
+      "threadArtifact": 0,
+      "turn": 3,
+      "todo": 3,
+      "widgetConfig": 0,
+      "standingDirective": 0
+    },
+    "widgetConfigs": [],
+    "standingDirectives": [],
+    "writerSources": {
+      "host": [
+        {
+          "kind": "pin",
+          "origin": "writer",
+          "label": "Pasted excerpt",
+          "sizeChars": 75,
+          "isEstimate": true,
+          "excerptVersion": 1,
+          "deliveredAt": 1791054000000
+        }
+      ],
+      "tools": {},
+      "guests": []
+    },
+    "turns": [
+      {
+        "id": "turn-1-system-1791054000000",
+        "role": "system",
+        "kind": "divider",
+        "participant": "session",
+        "artifact": "session_start",
+        "excerptVersion": 0,
+        "content": "Session started Saturday, October 3, 2026 at 2:00:00 PM CDT (America/Chicago).",
+        "timestamp": 1791054000000
+      },
+      {
+        "id": "turn-2-user-1791054060000",
+        "role": "user",
+        "kind": "message",
+        "participant": "writer",
+        "artifact": "persona_message",
+        "content": "What should I fix?",
+        "timestamp": 1791054060000,
+        "excerptVersion": 1,
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      },
+      {
+        "id": "turn-3-assistant-1791054060000",
+        "role": "assistant",
+        "kind": "message",
+        "participant": "host",
+        "artifact": "persona_message",
+        "personaId": "jill",
+        "personaLabel": "Jill",
+        "content": "Here is my read.",
+        "timestamp": 1791054060000,
+        "excerptVersion": 1,
+        "actionableFindings": [
+          {
+            "key": "finding-1",
+            "text": "Cut the second \"very\".",
+            "ordinal": 1,
+            "priority": "low"
+          },
+          {
+            "key": "finding-2",
+            "text": "Let the White Rabbit enter sooner.",
+            "ordinal": 2,
+            "priority": "high"
+          },
+          {
+            "key": "finding-3",
+            "text": "Name the sister once.",
+            "ordinal": 3
+          }
+        ],
+        "behavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        }
+      }
+    ],
+    "participants": {
+      "host": {
+        "personaId": "jill",
+        "conversationKey": "host"
+      },
+      "toolSidecars": [],
+      "personaGuests": [],
+      "chatTarget": {
+        "kind": "host"
+      }
+    },
+    "todos": [
+      {
+        "id": "todo-1-1791054060000",
+        "text": "Cut the second \"very\".",
+        "status": "open",
+        "priority": "low",
+        "source": {
+          "kind": "host_turn",
+          "turnId": "turn-3-assistant-1791054060000",
+          "participantLabel": "Jill",
+          "personaId": "jill",
+          "findingKey": "finding-1",
+          "findingText": "Cut the second \"very\".",
+          "excerptVersion": 1
+        },
+        "createdAt": 1791054060000
+      },
+      {
+        "id": "todo-2-1791054060000",
+        "text": "Let the White Rabbit enter sooner.",
+        "status": "completed",
+        "priority": "high",
+        "source": {
+          "kind": "host_turn",
+          "turnId": "turn-3-assistant-1791054060000",
+          "participantLabel": "Jill",
+          "personaId": "jill",
+          "findingKey": "finding-2",
+          "findingText": "Let the White Rabbit enter sooner.",
+          "excerptVersion": 1
+        },
+        "createdAt": 1791054060000
+      },
+      {
+        "id": "todo-3-1791054060000",
+        "text": "Name the sister once.",
+        "status": "dismissed",
+        "source": {
+          "kind": "host_turn",
+          "turnId": "turn-3-assistant-1791054060000",
+          "participantLabel": "Jill",
+          "personaId": "jill",
+          "findingKey": "finding-3",
+          "findingText": "Name the sister once.",
+          "excerptVersion": 1
+        },
+        "createdAt": 1791054060000
+      }
+    ],
+    "retainedHistoryMarks": [],
+    "lastCommittedPersonaBehavior": {
+      "interactionMode": "balanced",
+      "expressionLevel": "full",
+      "relationalDepth": "attuned"
+    }
+  },
+  "conversations": [
+    {
+      "key": "host",
+      "toolName": "workshop-persona",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Context: SENTINEL-CONVERSATION-ARCHIVE"
+        },
+        {
+          "role": "assistant",
+          "content": "Noted SENTINEL-CONVERSATION-ARCHIVE."
+        }
+      ],
+      "lastActivity": 1791054120000,
+      "contextSources": [],
+      "nextArtifactNumber": 1
+    }
+  ]
+}

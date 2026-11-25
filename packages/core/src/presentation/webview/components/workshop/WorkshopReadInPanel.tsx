@@ -37,7 +37,8 @@ const KIND_ICONS: Record<ContextSourceKind, IconName> = {
   'tool-evidence': 'clipboard',
   dictionary: 'book',
   transcript: 'history',
-  memory: 'stamp'
+  memory: 'stamp',
+  history: 'history'
 };
 
 const KIND_LABELS: Record<ContextSourceKind, string> = {
@@ -50,7 +51,8 @@ const KIND_LABELS: Record<ContextSourceKind, string> = {
   'tool-evidence': 'tool report',
   dictionary: 'dictionary entry',
   transcript: 'saved session',
-  memory: 'project note'
+  memory: 'project note',
+  history: 'file history'
 };
 
 const rowKey = (entry: ContextSourceEntry, index: number): string =>

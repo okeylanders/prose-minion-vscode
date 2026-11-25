@@ -1,6 +1,6 @@
 /**
- * The host's words for what became of a reply's memory-note and file-edit
- * trailers (ADR 2026-11-17 D14): one fixed phrase per recorded reason, and
+ * The host's words for what became of a reply's memory-note, file-edit and
+ * to-do status trailers (ADR 2026-11-17 D14; ADR 2026-11-19 D7): one fixed phrase per recorded reason, and
  * the one renderer that turns a turn's `trailerOutcomes` into the lines a
  * persona reads with its next message.
  *
@@ -15,6 +15,7 @@
  */
 
 import type { WorkshopTrailerDropReason, WorkshopTrailerOutcomes } from '@shared/types/workshopTrailerOutcomes';
+import type { WorkshopTodoStatusChange, WorkshopTodoStatusWriteRefusal } from '@shared/types/messages/workshop/todoStatus';
 
 /** The frame's tag: reserved, so quoted text cannot forge one (`workshopPromptFrames`). */
 export const WORKSHOP_TRAILER_OUTCOMES_FRAME_TAG = 'workshop-trailer-outcomes';
@@ -40,8 +41,30 @@ export const WORKSHOP_TRAILER_DROP_REASON_WORDS: Readonly<Record<WorkshopTrailer
   'edits-conflict': 'its changes overlap or contradict each other',
   'result-invalid': 'the note it would leave breaks the note format',
   'no-change': 'it would change nothing',
-  'pinned-budget': 'the note is loaded in full, and the change would pass that budget'
+  'pinned-budget': 'the note is loaded in full, and the change would pass that budget',
+  'session-not-found': 'no saved session has the id it named',
+  'session-unreadable': 'the session it named could not be read, or must be opened first',
+  'sessions-unavailable': 'saved sessions could not be reached just then',
+  'todo-not-found': 'no to-do in that session has the id it named',
+  'todo-not-open': 'the to-do it named is not open',
+  'nothing-kept': 'no pattern it proposed was safe and found a file',
+  'workspace-unavailable': 'the project\'s folders could not be checked just then',
+  'too-large': 'a group\'s current context paths are too long to show on a card'
 });
+
+/** Why a saved session's change was not written (ADR 2026-11-19 D7): the row's reason, after the record. */
+export const WORKSHOP_TODO_STATUS_WRITE_REFUSAL_WORDS: Readonly<Record<WorkshopTodoStatusWriteRefusal, string>> = Object.freeze({
+  'session-changed': 'the session changed since it was read',
+  'room-changed': 'the reply left the room before it was saved',
+  'session-not-found': 'the session is gone',
+  'session-busy': 'another window was writing the session',
+  'sessions-unavailable': 'saved sessions could not be reached just then',
+  'write-failed': 'the session could not be saved',
+  'receipt-not-saved': 'this conversation could not be saved first, so the session was left as it was'
+});
+
+/** A row left `saving` across a restart, with no stamp in the file (D8a): counted as not written. */
+const INTERRUPTED_WORDS = 'Prose Minion closed before it was saved';
 /* eslint-enable @typescript-eslint/naming-convention */
 
 const shownAsCards = (count: number): string => `${count} shown as ${count === 1 ? 'a card' : 'cards'}`;
@@ -50,10 +73,41 @@ const droppedFor = (drop: { reason: WorkshopTrailerDropReason; count: number }):
   `${drop.count} dropped (${WORKSHOP_TRAILER_DROP_REASON_WORDS[drop.reason]})`;
 
 /**
+ * A to-do side's parts (ADR 2026-11-19 D7): what the record counted at
+ * commit, with each saved row's later state read from the receipt beside
+ * it. A row still `saving` is "being saved"; one `refused` is "not written",
+ * by its reason. An Undo is the writer's answer and is never told: an undone
+ * row counts as it settled.
+ */
+function todoParts(changes: number, rows: readonly Pick<WorkshopTodoStatusChange, 'state' | 'reason'>[]): string[] {
+  const saving = rows.filter((row) => row.state === 'saving').length;
+  // D8b: a row whose target could not be read is not yet confirmed, apart from not written.
+  const unconfirmed = rows.filter((row) => row.state === 'unverified').length;
+  const refused = new Map<string, number>();
+  for (const row of rows) {
+    if (row.state === 'refused' || row.state === 'interrupted') {
+      const words = row.state === 'interrupted' ? INTERRUPTED_WORDS : WORKSHOP_TODO_STATUS_WRITE_REFUSAL_WORDS[row.reason ?? 'write-failed'];
+      refused.set(words, (refused.get(words) ?? 0) + 1);
+    }
+  }
+  const notWritten = [...refused.values()].reduce((sum, count) => sum + count, 0);
+  const made = Math.max(0, changes - saving - unconfirmed - notWritten);
+  return [
+    ...(made > 0 ? [`${made} made`] : []),
+    ...(saving > 0 ? [`${saving} being saved`] : []),
+    ...(unconfirmed > 0 ? [`${unconfirmed} not yet confirmed (the session could not be read to check)`] : []),
+    ...[...refused.entries()].map(([words, count]) => `${count} not written (${words})`)
+  ];
+}
+
+/**
  * The lines for one reply's outcomes: one per side that has something to
  * say, notes first. Empty when there is nothing to write.
  */
-export function workshopTrailerOutcomeLines(outcomes: WorkshopTrailerOutcomes): string[] {
+export function workshopTrailerOutcomeLines(
+  outcomes: WorkshopTrailerOutcomes,
+  todoRows: readonly Pick<WorkshopTodoStatusChange, 'state' | 'reason'>[] = []
+): string[] {
   const lines: string[] = [];
   if (outcomes.memory) {
     const parts = [
@@ -72,6 +126,25 @@ export function workshopTrailerOutcomeLines(outcomes: WorkshopTrailerOutcomes): 
     ];
     if (parts.length > 0) {
       lines.push(`Your last reply's file edits: ${parts.join(', ')}.`);
+    }
+  }
+  if (outcomes.locations) {
+    const { patterns } = outcomes.locations;
+    const parts = [
+      ...(outcomes.locations.cards > 0
+        ? [`shown as a card for the writer to review, with ${patterns.kept} ${patterns.kept === 1 ? 'pattern' : 'patterns'} kept`
+          + `, ${patterns.unmatched} matching no file, ${patterns.incomplete} not checked completely and ${patterns.refused} refused`]
+        : []),
+      ...outcomes.locations.dropped.map(droppedFor)
+    ];
+    if (parts.length > 0) {
+      lines.push(`Your last reply's context-paths proposal: ${parts.join(', ')}.`);
+    }
+  }
+  if (outcomes.todos) {
+    const parts = [...todoParts(outcomes.todos.changes, todoRows), ...outcomes.todos.dropped.map(droppedFor)];
+    if (parts.length > 0) {
+      lines.push(`Your last reply's to-do changes: ${parts.join(', ')}.`);
     }
   }
   return lines;

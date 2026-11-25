@@ -23,6 +23,7 @@
  * next message, never the webview.
  */
 
+import { workshopTodoStatusChangesForWebview } from '@/application/services/workshop/todos/WorkshopTodoStatusRows';
 import {
   workshopEditOfferForWebview,
   workshopFileEditProposalForWebview,
@@ -41,6 +42,8 @@ export interface WorkshopEditOfferRoomView {
   readonly ledger: () => readonly WorkshopTurn[];
   /** Whether the persona who wrote this reply is still in the room, as host or guest. */
   readonly authorPresent: (turn: WorkshopTurn) => boolean;
+  /** The open room's session id: a saved to-do row made in another room offers no Undo (ADR 2026-11-19 D5). */
+  readonly liveSessionId?: () => string | undefined;
 }
 
 /** A view for several turns that reads the ledger at most once. */
@@ -50,14 +53,15 @@ export function workshopEditOfferRoomViewOnce(view: WorkshopEditOfferRoomView): 
 }
 
 export function workshopTurnForWebview(turn: WorkshopTurn, room?: WorkshopEditOfferRoomView): WorkshopTurn {
-  if (!turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery && !turn.trailerOutcomes) {
+  if (!turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery && !turn.trailerOutcomes && !turn.todoStatusChanges) {
     return turn;
   }
-  const { editOffers, reactionDelivery: _hostOnly, trailerOutcomes: _hostOnlyOutcomes, ...rest } = turn;
+  const { editOffers, reactionDelivery: _hostOnly, trailerOutcomes: _hostOnlyOutcomes, todoStatusChanges, ...rest } = turn;
   const offers = editOffers && (!room || room.fileEditsOpen) ? editOffers : undefined;
   return {
     ...rest,
     ...(turn.fileEditProposals ? { fileEditProposals: turn.fileEditProposals.map(workshopFileEditProposalForWebview) } : {}),
+    ...(todoStatusChanges ? { todoStatusChanges: workshopTodoStatusChangesForWebview(todoStatusChanges, room?.liveSessionId?.()) } : {}),
     ...(offers
       ? { editOffers: offers.map((offer) => workshopEditOfferForWebview(offer, room && ((option) => statusOf(turn, offer.kind, option, room)))) }
       : {})

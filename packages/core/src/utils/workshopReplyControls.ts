@@ -50,6 +50,15 @@
  *   the same pass, removed from `rest`, redacted as `[reaction removed]`, and
  *   judged by `workshopReplyReaction` into `reaction`, absent when the reply
  *   held none. A reply of trailers alone keeps the host's line (R1).
+ * - **To-do status** (ADR 2026-11-19 D2): `<prose-minion-todo-status>`
+ *   frames join the same pass, removed from `rest`, redacted as
+ *   `[to-do status removed]`, and judged by `workshopReplyTodoStatus` into
+ *   `todoStatus`, absent when the reply held none.
+ * - **A context-paths proposal** (ADR 2026-11-19 D27):
+ *   `<prose-minion-locations-proposal>` frames join the same pass, removed
+ *   from `rest`, redacted as `[context paths proposal removed]`, and judged
+ *   by `workshopReplyLocationsProposal` into `locations`, absent when the
+ *   reply held none. One a reply; a later frame is `duplicate`.
  */
 
 import {
@@ -88,6 +97,19 @@ import {
   type WorkshopReplyReactionControl,
   type WorkshopReplyReactionOptions
 } from '@/utils/workshopReplyReaction';
+import {
+  judgeWorkshopReplyTodoStatus,
+  WORKSHOP_TODO_STATUS_REDACTION,
+  WORKSHOP_TODO_STATUS_TAG,
+  type WorkshopReplyTodoStatusControl,
+  type WorkshopReplyTodoStatusOptions
+} from '@/utils/workshopReplyTodoStatus';
+import {
+  judgeWorkshopReplyLocations,
+  WORKSHOP_LOCATIONS_PROPOSAL_REDACTION,
+  WORKSHOP_LOCATIONS_PROPOSAL_TAG,
+  type WorkshopReplyLocationsControl
+} from '@/utils/workshopReplyLocationsProposal';
 import { workshopReaction, type WorkshopReactionId } from '@shared/constants/workshopReactions';
 import { sanitizeWorkshopWidgetRecommendationForRetention } from '@/utils/workshopWidgetRecommendationProtocol';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -102,6 +124,8 @@ export const WORKSHOP_MEMORY_ONLY_REPLY_LINE = 'Proposed a project memory.';
 export const WORKSHOP_FILE_EDIT_ONLY_REPLY_LINE = 'Proposed an edit to a project file.';
 /** The same, for a reply that was only trailers of both kinds. */
 export const WORKSHOP_TRAILERS_ONLY_REPLY_LINE = 'Proposed a project memory and an edit to a project file.';
+/** The same, for a reply that was only to-do status changes (ADR 2026-11-19 D2). */
+export const WORKSHOP_TODO_STATUS_ONLY_REPLY_LINE = 'Updated to-dos.';
 
 /**
  * The ledger's line for a reply whose only trailer was a reaction that was
@@ -120,7 +144,14 @@ export interface WorkshopTrailerKinds {
   readonly memory: boolean;
   readonly fileEdits: boolean;
   readonly reaction?: WorkshopReactionId | true;
+  /** Whether it held to-do status frames (ADR 2026-11-19 D2). */
+  readonly todos?: boolean;
+  /** Whether it held a context-paths proposal frame (ADR 2026-11-19 D27). */
+  readonly locations?: boolean;
 }
+
+/** The same, for a reply that was only a context-paths proposal (ADR 2026-11-19 D27). */
+export const WORKSHOP_LOCATIONS_ONLY_REPLY_LINE = 'Proposed context paths.';
 
 /** The reaction's object, named so a reader of the room's catch-up knows what it was on (PR #247 L4). */
 const REACTION_OBJECT = "the writer's message";
@@ -132,11 +163,20 @@ const REACTION_OBJECT = "the writer's message";
  * nothing to name, it is `WORKSHOP_NO_MESSAGE_REPLY_LINE`.
  */
 export function workshopTrailersOnlyReplyLine(kinds: WorkshopTrailerKinds): string {
-  const proposals = kinds.memory || kinds.fileEdits
+  if (kinds.locations) {
+    const others = workshopTrailersOnlyReplyLine({ ...kinds, locations: false });
+    return others === WORKSHOP_NO_MESSAGE_REPLY_LINE
+      ? WORKSHOP_LOCATIONS_ONLY_REPLY_LINE
+      : `${others.slice(0, -1)}, and proposed context paths.`;
+  }
+  const proposed = kinds.memory || kinds.fileEdits
     ? kinds.memory && kinds.fileEdits
       ? WORKSHOP_TRAILERS_ONLY_REPLY_LINE
       : kinds.fileEdits ? WORKSHOP_FILE_EDIT_ONLY_REPLY_LINE : WORKSHOP_MEMORY_ONLY_REPLY_LINE
     : undefined;
+  const proposals = kinds.todos
+    ? proposed ? `${proposed.slice(0, -1)}${kinds.memory && kinds.fileEdits ? ', and' : ' and'} updated to-dos.` : WORKSHOP_TODO_STATUS_ONLY_REPLY_LINE
+    : proposed;
   if (kinds.reaction === undefined) {
     return proposals ?? WORKSHOP_NO_MESSAGE_REPLY_LINE;
   }
@@ -146,7 +186,7 @@ export function workshopTrailersOnlyReplyLine(kinds: WorkshopTrailerKinds): stri
   if (!proposals) {
     return `R${reacted.slice(1)}.`;
   }
-  const joiner = kinds.memory && kinds.fileEdits ? ', and ' : ' and ';
+  const joiner = (kinds.memory && kinds.fileEdits) || (kinds.todos && proposed) ? ', and ' : ' and ';
   return `${proposals.slice(0, -1)}${joiner}${reacted}.`;
 }
 
@@ -182,6 +222,10 @@ export interface WorkshopReplyControls {
   readonly noFileEdit?: WorkshopReplyNoFileEditControl;
   /** The reply's reaction frames, judged (ADR 2026-11-07 D5); absent when it held none. */
   readonly reaction?: WorkshopReplyReactionControl;
+  /** The reply's to-do status frames, judged (ADR 2026-11-19 D2); absent when it held none. */
+  readonly todoStatus?: WorkshopReplyTodoStatusControl;
+  /** The reply's context-paths proposal frames, judged (ADR 2026-11-19 D27); absent when it held none. */
+  readonly locations?: WorkshopReplyLocationsControl;
   /** The trailer kinds it held, for the host's line (R1). */
   readonly trailers: WorkshopTrailerKinds;
 }
@@ -193,10 +237,20 @@ export interface WorkshopReplyControlsOptions {
   readonly fileEditsOpen?: boolean;
   /** Whether personas may react now, and whether this reply answers a writer message (Q8, D5). Absent reads as off. */
   readonly reactions?: WorkshopReplyReactionOptions;
+  /** Which ids name the open room, so a to-do status frame naming one reads as `current` (ADR 2026-11-19 D2). */
+  readonly todoStatus?: WorkshopReplyTodoStatusOptions;
 }
 
 /** Every trailer kind the tail holds, found in one pass. */
-const TRAILER_TAGS = [WORKSHOP_MEMORY_PROPOSAL_TAG, WORKSHOP_FILE_EDIT_TAG, WORKSHOP_EDIT_OFFER_TAG, WORKSHOP_NO_FILE_EDIT_TAG, WORKSHOP_REACTION_TAG] as const;
+const TRAILER_TAGS = [
+  WORKSHOP_MEMORY_PROPOSAL_TAG,
+  WORKSHOP_FILE_EDIT_TAG,
+  WORKSHOP_EDIT_OFFER_TAG,
+  WORKSHOP_NO_FILE_EDIT_TAG,
+  WORKSHOP_REACTION_TAG,
+  WORKSHOP_TODO_STATUS_TAG,
+  WORKSHOP_LOCATIONS_PROPOSAL_TAG
+] as const;
 
 const NO_TRAILERS: WorkshopTrailerKinds = { memory: false, fileEdits: false };
 
@@ -205,7 +259,9 @@ const REDACTIONS: Readonly<Record<string, string>> = {
   [WORKSHOP_FILE_EDIT_TAG]: WORKSHOP_FILE_EDIT_REDACTION,
   [WORKSHOP_EDIT_OFFER_TAG]: WORKSHOP_EDIT_OFFER_REDACTION,
   [WORKSHOP_NO_FILE_EDIT_TAG]: WORKSHOP_NO_FILE_EDIT_REDACTION,
-  [WORKSHOP_REACTION_TAG]: WORKSHOP_REACTION_REDACTION
+  [WORKSHOP_REACTION_TAG]: WORKSHOP_REACTION_REDACTION,
+  [WORKSHOP_TODO_STATUS_TAG]: WORKSHOP_TODO_STATUS_REDACTION,
+  [WORKSHOP_LOCATIONS_PROPOSAL_TAG]: WORKSHOP_LOCATIONS_PROPOSAL_REDACTION
 };
 
 type Frame = WorkshopReplyTrailerFrame;
@@ -226,6 +282,8 @@ export function extractWorkshopReplyControls(
   const editOfferFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_EDIT_OFFER_TAG);
   const noFileEditFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_NO_FILE_EDIT_TAG);
   const reactionFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_REACTION_TAG);
+  const todoStatusFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_TODO_STATUS_TAG);
+  const locationsFrames = placed.filter(({ frame }) => frame.tag === WORKSHOP_LOCATIONS_PROPOSAL_TAG);
   // The first well-formed known id: the one the judge keeps whenever it keeps one, read from the text alone.
   const named = reactionFrames
     .map(({ frame, atTail: tail }) => workshopReplyTrailerStructureRejection(frame, tail) || frame.inner === undefined
@@ -252,12 +310,21 @@ export function extractWorkshopReplyControls(
     ...(reactionFrames.length > 0
       ? { reaction: judgeWorkshopReplyReactions(reactionFrames, options.reactions ?? { open: false, hasTarget: false }) }
       : {}),
+    ...(todoStatusFrames.length > 0 ? { todoStatus: judgeWorkshopReplyTodoStatus(todoStatusFrames, options.todoStatus) } : {}),
+    ...(locationsFrames.length > 0 ? { locations: judgeWorkshopReplyLocations(locationsFrames) } : {}),
     trailers: {
       memory: memoryFrames.length > 0,
       fileEdits: fileEditFrames.length > 0,
-      ...(reactionFrames.length > 0 ? { reaction: named ?? true } : {})
+      ...(reactionFrames.length > 0 ? { reaction: named ?? true } : {}),
+      ...(todoStatusFrames.length > 0 ? { todos: true } : {}),
+      ...(locationsFrames.length > 0 ? { locations: true } : {})
     }
   };
+}
+
+/** Whether a reply holds a context-paths proposal tag (a cheap check before the checker runs; ADR 2026-11-19 D27). */
+export function hasWorkshopLocationsProposalText(reply: string): boolean {
+  return reply.toLowerCase().includes(WORKSHOP_LOCATIONS_PROPOSAL_TAG);
 }
 
 /** Whether a reply holds a file-edit tag (a cheap check before anything is staged; ADR 2026-11-05 D4). */
@@ -268,6 +335,11 @@ export function hasWorkshopFileEditText(reply: string): boolean {
 /** Whether a reply holds an edit-offer tag (a cheap check before a file is resolved; ADR 2026-11-10 D2). */
 export function hasWorkshopEditOfferText(reply: string): boolean {
   return reply.toLowerCase().includes(WORKSHOP_EDIT_OFFER_TAG);
+}
+
+/** Whether a reply holds a to-do status tag (a cheap check before a saved session is read; ADR 2026-11-19 D5). */
+export function hasWorkshopTodoStatusText(reply: string): boolean {
+  return reply.toLowerCase().includes(WORKSHOP_TODO_STATUS_TAG);
 }
 
 /** Whether a reply holds anything the extractor would remove (a cheap check before a listing is read). */
@@ -287,7 +359,8 @@ function retainedWithoutTrailers(reply: string): { readonly text: string; readon
   const controls = extractWorkshopReplyControls(reply, { memoryOpen: false });
   const { trailers } = controls;
   // An offer-only reply names nothing, so its line is "Replied without a message." (ADR 2026-11-10 addendum).
-  if ((trailers.memory || trailers.fileEdits || trailers.reaction !== undefined || controls.editOffers !== undefined)
+  if ((trailers.memory || trailers.fileEdits || trailers.reaction !== undefined || controls.editOffers !== undefined || trailers.todos
+    || trailers.locations)
     && controls.rest.trim().length === 0) {
     return { text: workshopTrailersOnlyReplyLine(trailers), hostLine: true };
   }

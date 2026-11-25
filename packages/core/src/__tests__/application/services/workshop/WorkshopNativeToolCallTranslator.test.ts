@@ -66,6 +66,20 @@ const EVERY_OPERATION: Record<WorkshopCapabilityOperation, { args: unknown; requ
   'lens.read': {
     args: { lens: 'tea-party', sections: ['degrees', 'cliches'] },
     request: { lens: 'tea-party', sections: ['degrees', 'cliches'] }
+  },
+  'history.log': {
+    args: { group: 'chapters', path: 'Drafts/6.11.md', page: 2 },
+    request: { file: { kind: 'configured', group: 'chapters', path: 'Drafts/6.11.md' }, page: 2 }
+  },
+  'history.diff': {
+    args: { group: 'excerpt', from: '3F9A1C2B7E', to: 'current', startChange: 3, current: '0123456789ab' },
+    request: { file: { kind: 'excerpt' }, from: '3f9a1c2b7e', to: { kind: 'current', fingerprint: '0123456789ab' }, startChange: 3 }
+  },
+  'locations.current': { args: {}, request: {} },
+  'locations.folders': { args: { page: 2 }, request: { page: 2 } },
+  'locations.check': {
+    args: { patterns: [{ group: 'characters', pattern: 'Cast/**/*' }, { group: 'locations', pattern: 'Wonderland/**/*' }] },
+    request: { patterns: [{ group: 'characters', pattern: 'Cast/**/*' }, { group: 'locations', pattern: 'Wonderland/**/*' }] }
   }
 };
 

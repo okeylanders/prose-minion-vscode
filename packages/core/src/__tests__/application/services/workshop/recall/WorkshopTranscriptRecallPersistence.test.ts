@@ -10,6 +10,8 @@
  */
 
 import { unavailableHelpReference } from '@/__tests__/application/services/workshop/help/unavailableHelpReference';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
+import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
@@ -66,7 +68,9 @@ describe('a room that used session recall', () => {
       new WorkshopTranscriptRecallService(store, coordinator, log),
       offProjectMemory,
       noProjectLenses,
-      unavailableHelpReference
+      unavailableHelpReference,
+      unavailableFileHistory,
+      unavailableProjectLocations
     );
     const capabilityFor = (requestId: string, owner: WorkshopCapabilityPrincipal) => factory.create({
       requestId,

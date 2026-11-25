@@ -58,6 +58,14 @@ import {
 } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import { countWorkshopRoomAutoSaves } from '@/application/services/workshop/memory/WorkshopMemoryAutoSave';
 import { buildWorkshopTrailerOutcomes } from '@/application/services/workshop/trailerOutcomes/WorkshopTrailerOutcomesRecord';
+import {
+  settleWorkshopReplyTodoStatus,
+  type WorkshopReplyTodoStatusContext
+} from '@/application/services/workshop/todos/WorkshopReplyTodoStatus';
+import {
+  settleWorkshopReplyLocations,
+  type WorkshopReplyLocationsContext
+} from '@/application/services/workshop/locations/WorkshopReplyLocations';
 import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import {
@@ -164,6 +172,19 @@ export interface WorkshopRunCompletionInput {
    * is still stripped, and dropped as `reactions-off`.
    */
   reactionsOpen?: boolean;
+  /**
+   * The reply's to-do status frames, resolved before completion (ADR
+   * 2026-11-19 D5): the open room's ids and each saved session named, read.
+   * Used only for the reply it was resolved from. Absent, the open room's
+   * changes still land, and a saved session's drop as not available.
+   */
+  todoStatus?: WorkshopReplyTodoStatusContext;
+  /**
+   * The reply's context-paths proposal, checked before completion (ADR
+   * 2026-11-19 D27). Used only for the reply it was resolved from. Absent,
+   * a frame is still stripped, and dropped as not checked.
+   */
+  locations?: WorkshopReplyLocationsContext;
   log: (line: string) => void;
   events: WorkshopRunCompletionEvents;
 }
@@ -213,9 +234,11 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // project-memory frame is split off first, and every other reader takes
   // the rest; every log takes the redacted copy, never the memory's text.
   const memoryContext = input.memory ?? WORKSHOP_REPLY_MEMORY_CLOSED;
+  const todoContext = input.todoStatus?.reply === result.content ? input.todoStatus : undefined;
   const controls = extractWorkshopReplyControls(result.content, {
     memoryOpen: memoryContext.open,
-    reactions: { open: input.reactionsOpen === true, hasTarget: session.personaReplyReactionTarget(requestId) !== undefined }
+    reactions: { open: input.reactionsOpen === true, hasTarget: session.personaReplyReactionTarget(requestId) !== undefined },
+    todoStatus: { openRoomIds: todoContext?.openRoom?.ids ?? [] }
   });
   const memory = settleWorkshopMemoryProposals(controls.memory, memoryContext, input.memoryAutoSave && {
     webResearchAttached: result.webResearchAttached === true,
@@ -225,7 +248,11 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   const fileEdits: Pick<WorkshopReplyEditsContext, 'proposals' | 'logs' | 'drops' | 'editOffers'> = input.fileEdits?.reply === result.content
     ? input.fileEdits
     : notStagedFileEdits(controls.fileEdits ? controls.fileEdits.proposals.length + controls.fileEdits.rejections.length : 0);
-  for (const line of [...memory.logs, ...fileEdits.logs, ...(controls.reaction?.rejections ?? []).map(workshopReplyReactionDropLog)]) {
+  // Settled in the same synchronous step as the commit below, so an open to-do stays open until it lands.
+  const todos = settleWorkshopReplyTodoStatus(controls.todoStatus, todoContext, (id) => session.findTodo(id));
+  const locations = settleWorkshopReplyLocations(controls.locations, input.locations?.reply === result.content ? input.locations : undefined);
+  for (const line of [...memory.logs, ...fileEdits.logs, ...(controls.reaction?.rejections ?? []).map(workshopReplyReactionDropLog), ...todos.logs,
+    ...locations.logs]) {
     input.log(`${line} (${label})`);
   }
   const reply = controls.rest;
@@ -277,15 +304,18 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   const { trailers } = controls;
   // A reply of edit offers alone names nothing: it reads "Replied without a message." (ADR 2026-11-10 addendum).
   const hostWritesDisplay = (widgetRecommendation.outcome !== 'absent' || trailers.memory || trailers.fileEdits
-    || trailers.reaction !== undefined || controls.editOffers !== undefined) && strippedDisplayContent.trim().length === 0;
+    || trailers.reaction !== undefined || controls.editOffers !== undefined || trailers.todos === true
+    || trailers.locations === true) && strippedDisplayContent.trim().length === 0;
   // R1: a reply that was only its reaction is drawn as a slim line; with cards or a widget it is a reply.
   // The ledger's line names only a reaction that lands (PR #247 M1); retention keeps the reply's intent.
   const kept = controls.reaction?.reaction;
   const hostLine = hostWritesDisplay && widgetRecommendation.outcome === 'absent';
   const reaction = controls.reaction && {
     reaction: kept,
-    only: hostLine && !trailers.memory && !trailers.fileEdits,
-    ...(hostLine ? { unlandedContent: workshopTrailersOnlyReplyLine({ memory: trailers.memory, fileEdits: trailers.fileEdits }) } : {}),
+    only: hostLine && !trailers.memory && !trailers.fileEdits && !trailers.todos && !trailers.locations,
+    ...(hostLine
+      ? { unlandedContent: workshopTrailersOnlyReplyLine({ memory: trailers.memory, fileEdits: trailers.fileEdits, todos: trailers.todos, locations: trailers.locations }) }
+      : {}),
     outcome: (outcome: WorkshopPersonaReactionOutcome) => input.log(outcome === 'added'
       ? `Persona reaction kept (reaction=${kept}; ${label})`
       : `Persona reaction dropped (reason=${outcome}; reaction=${kept}; ${label})`)
@@ -293,7 +323,9 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   const displayContent = !hostWritesDisplay
     ? strippedDisplayContent
     : widgetRecommendation.outcome === 'absent'
-      ? workshopTrailersOnlyReplyLine({ memory: trailers.memory, fileEdits: trailers.fileEdits, ...(kept ? { reaction: kept } : {}) })
+      ? workshopTrailersOnlyReplyLine({
+        memory: trailers.memory, fileEdits: trailers.fileEdits, todos: trailers.todos, locations: trailers.locations, ...(kept ? { reaction: kept } : {})
+      })
       : recommendationRejected
         ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
         : `${label} returned a widget setup without an accompanying note.`;
@@ -320,8 +352,12 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     // What became of the reply's notes and file edits, for the persona's next message (ADR 2026-11-17 D13).
     buildWorkshopTrailerOutcomes({
       memory: { cards: memory.proposals.length, drops: memory.drops },
-      fileEdits: { proposals: fileEdits.proposals, drops: fileEdits.drops }
-    })
+      fileEdits: { proposals: fileEdits.proposals, drops: fileEdits.drops },
+      todos: { changes: todos.commit?.rows.length ?? 0, drops: todos.drops },
+      locations: { cards: locations.card ? 1 : 0, drops: locations.drops, patterns: locations.patterns }
+    }),
+    todos.commit,
+    locations.card
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {
@@ -357,6 +393,10 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   }
   if (memory.autoSave.length > 0 && turn.memoryProposals) {
     input.memoryAutoSave?.(turn, memory.autoSave);
+  }
+  // A saved session's rows committed `saving`: their writes run just after the commit (ADR 2026-11-19 D5).
+  if (todos.writes.length > 0) {
+    todoContext?.afterCommit?.(turn.id, todos.writes);
   }
   return turn;
 }

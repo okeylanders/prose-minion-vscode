@@ -159,6 +159,38 @@ export interface PromptBudgets {
     catalogItems: number;
     readSections: number;
   }>;
+  /**
+   * A file's git history for personas (ADR 2026-11-19 D17). `history.log`
+   * lists `logPageCommits` a page and reads at most `logScanCommits` back;
+   * a commit's shown id, subject and author are cut to their characters.
+   * `history.diff` refuses a side past `diffSourceBytes`, shows
+   * `contextParagraphs` unchanged paragraph(s) beside a run of changes, each
+   * cut to `contextCharacters`, and word-diffs a changed paragraph only up
+   * to `wordDiffParagraphCharacters` and `maxEditLength` (the algorithm's
+   * work bound, never its correctness). With no known window a diff is
+   * bounded by `diffBytes`. The paragraph alignment has its own ceiling
+   * (D13a; PR #286 F-03): a side past `alignParagraphs` paragraphs, or an
+   * alignment past `paragraphEditLength`, refuses the diff in words.
+   * `alignCacheEntries` computed change lists are kept per window, so a
+   * continuation never aligns again. `gitReadyMs` is how long a host waits for its git to start.
+   */
+  readonly workshopHistory: Readonly<{
+    logPageCommits: number;
+    logScanCommits: number;
+    shownIdCharacters: number;
+    subjectCharacters: number;
+    authorCharacters: number;
+    diffSourceBytes: number;
+    diffBytes: number;
+    contextParagraphs: number;
+    contextCharacters: number;
+    wordDiffParagraphCharacters: number;
+    maxEditLength: number;
+    alignParagraphs: number;
+    paragraphEditLength: number;
+    alignCacheEntries: number;
+    gitReadyMs: number;
+  }>;
   /** Bundled Prose Minion reference (ADR 2026-11-17 D25). */
   readonly workshopHelp: Readonly<{
     queryCharacters: number;
@@ -292,6 +324,15 @@ export interface PromptBudgets {
     items: number;
     characters: number;
     headerAllowanceCharacters: number;
+  }>;
+  /** A persona's to-do status trailers (ADR 2026-11-19 D3, D10), held to the prompt by `todoStatusPromptSync.test.ts`. */
+  readonly workshopTodoStatus: Readonly<{
+    /** Changes one reply may make; a frame past them is dropped as `over-cap`. */
+    changesPerReply: number;
+    /** Saved sessions one reply may touch; a frame naming one more is `over-cap`. */
+    savedSessionsPerReply: number;
+    /** An optional note's bound: one line. */
+    noteCharacters: number;
   }>;
   readonly guestJoinSnapshot: Readonly<{
     turns: number;
@@ -642,6 +683,26 @@ export interface PromptBudgets {
     registerCharacters: number;
   }>;
   /**
+   * The project's context paths (ADR 2026-11-19 D20, D22, D28): the
+   * names-only folder scan (`scanEntries` read, `scanDepth` deep,
+   * `scanFolders` kept, `sampleNames` names a folder, each cut to
+   * `sampleNameCharacters`), the checker's bounds (`patternsPerGroup`,
+   * `patternCharacters`, `examples` files shown), and the persona family's
+   * `foldersPerPage` and `checkPatterns` (C2).
+   */
+  readonly contextPaths: Readonly<{
+    scanEntries: number;
+    scanDepth: number;
+    scanFolders: number;
+    sampleNames: number;
+    sampleNameCharacters: number;
+    patternsPerGroup: number;
+    patternCharacters: number;
+    examples: number;
+    foldersPerPage: number;
+    checkPatterns: number;
+  }>;
+  /**
    * The helper agent's tasks (ADR 2026-11-05 D1), one entry per task. A
    * task's answer fields are bounded where the data they fill is (the
    * memory draft's title and summary by `workshopProjectMemory`).
@@ -650,6 +711,17 @@ export interface PromptBudgets {
     // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.
     'memory-draft': Readonly<{
       /** The turn's text sent to the helper is cut to this, as the sheet's body is. */
+      inputCharacters: number;
+      /** Output ceiling; a reply that reaches it is rejected, never salvaged. */
+      outputTokens: number;
+      /** A reply longer than this is refused before it is read. */
+      responseCharacters: number;
+    }>;
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.
+    'project-locations': Readonly<{
+      /** Folders of the scan sent at most; the rest are left out, and the request says so. */
+      folders: number;
+      /** The request's data, as JSON, is held within this by sending fewer folders. */
       inputCharacters: number;
       /** Output ceiling; a reply that reaches it is rejected, never salvaged. */
       outputTokens: number;
@@ -764,6 +836,23 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   },
   workshopCapabilityPaging: { pageDigits: 9 },
   workshopLens: { catalogItems: 50, readSections: 7 },
+  workshopHistory: {
+    logPageCommits: 20,
+    logScanCommits: 1_000,
+    shownIdCharacters: 10,
+    subjectCharacters: 200,
+    authorCharacters: 80,
+    diffSourceBytes: 2 * 1024 * 1024,
+    diffBytes: 64 * 1024,
+    contextParagraphs: 1,
+    contextCharacters: 400,
+    wordDiffParagraphCharacters: 20_000,
+    maxEditLength: 10_000,
+    alignParagraphs: 5_000,
+    paragraphEditLength: 1_000,
+    alignCacheEntries: 4,
+    gitReadyMs: 5_000
+  },
   workshopHelp: {
     queryCharacters: 200,
     searchHits: 8,
@@ -824,6 +913,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   workshopSelectedText: { words: 5_000, characters: 40_000, previewCharacters: 120, snapshots: 8, pushIntervalMs: 150 },
   workshopThread: { pageTurns: 100, pageBytes: 1024 * 1024, jumpPages: 3 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
+  workshopTodoStatus: { changesPerReply: 20, savedSessionsPerReply: 10, noteCharacters: 160 },
   guestJoinSnapshot: {
     turns: 100,
     characters: 100_000,
@@ -1039,6 +1129,18 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     suggestionCharacters: 200,
     registerCharacters: 160
   },
+  contextPaths: {
+    scanEntries: 5_000,
+    scanDepth: 6,
+    scanFolders: 300,
+    sampleNames: 3,
+    sampleNameCharacters: 80,
+    patternsPerGroup: 12,
+    patternCharacters: 200,
+    examples: 3,
+    foldersPerPage: 50,
+    checkPatterns: 40
+  },
   helper: {
     // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.
     'memory-draft': {
@@ -1050,6 +1152,13 @@ export const PROMPT_BUDGETS: PromptBudgets = {
       // the extra room never makes a draft longer; a cut-off is still refused.
       outputTokens: 1_000,
       responseCharacters: 4_000
+    },
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the helper task's kebab-case name.
+    'project-locations': {
+      folders: 200,
+      inputCharacters: 16_000,
+      outputTokens: 1_500,
+      responseCharacters: 6_000
     }
   },
   reasoning: {

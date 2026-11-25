@@ -35,6 +35,8 @@ import { createFakeFileSystem } from '@/__tests__/mocks/platform';
 import { bundledHelpReference } from '@/__tests__/application/services/workshop/help/bundledHelpReference';
 import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { aliceLens, lensLibrary } from '@/__tests__/application/services/workshop/lens/lensLibraryFixtures';
+import { unavailableProjectLocations } from '@/__tests__/application/services/workshop/locations/unavailableProjectLocations';
+import { unavailableFileHistory } from '@/__tests__/application/services/workshop/history/unavailableFileHistory';
 
 // __dirname = packages/core/src/__tests__/application/services/workshop/lens -> packages/core
 const CORE_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..', '..');
@@ -111,7 +113,9 @@ describe('lens and help text stay out of the system prompt (D19, D23)', () => {
         {} as WorkshopTranscriptRecallPort,
         offProjectMemory,
         lensLibrary([LENS]),
-        help
+        help,
+        unavailableFileHistory,
+        unavailableProjectLocations
       );
       const capability = (requestId: string, owner: WorkshopCapabilityPrincipal) => factory.create({
         requestId,

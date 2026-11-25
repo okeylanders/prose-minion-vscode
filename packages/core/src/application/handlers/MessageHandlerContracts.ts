@@ -1,3 +1,6 @@
+import type { WorkshopLocationsProposalPorts } from '@handlers/domain/workshop/WorkshopLocationsProposalHandler';
+import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
+import type { ContextPathSuggestions } from '@/application/services/contextPaths/ContextPathSuggestionService';
 import type { ProjectFileEditGateway } from '@/application/services/fileEdits/ProjectFileEditGateway';
 import type { FileEditStaging } from '@/domain/models/FileEditStaging';
 import type { HelperAgent } from '@services/helper/HelperTaskPolicies';
@@ -204,6 +207,10 @@ export interface CoreServices {
    * `EditorContext` port; no handler constructs it.
    */
   editorSelectionSnapshots: EditorSelectionSnapshots;
+  /** A persona's saved-session to-do changes (ADR 2026-11-19 D6): the write port. No handler constructs it. */
+  workshopSavedSessionTodos?: WorkshopSavedSessionTodos;
+  /** A persona's context-paths card (ADR 2026-11-19 D27): C1's checker and settings writer. No handler constructs them. */
+  contextPathProposals?: WorkshopLocationsProposalPorts;
   /**
    * Persona file edits (ADR 2026-11-05 D7): the one gateway from a staged
    * proposal to a project file, through Draft Edit's applier. No handler
@@ -222,4 +229,10 @@ export interface CoreServices {
    * constructs it.
    */
   helperAgentService: HelperAgent;
+  /**
+   * The project's context paths, set up from Settings (ADR 2026-11-19 D18):
+   * the folder scan, the helper's draft, the one checker and the held
+   * proposal's Apply. Built in `extension.ts`; no handler constructs it.
+   */
+  contextPathSuggestions: ContextPathSuggestions;
 }

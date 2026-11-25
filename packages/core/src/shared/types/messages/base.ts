@@ -111,6 +111,14 @@ export enum MessageType {
   SEARCH_DICTIONARY_HISTORY = 'search_dictionary_history',
   DICTIONARY_HISTORY_SEARCH_RESULT = 'dictionary_history_search_result',
 
+  // The project's context paths, set up from Settings (ADR 2026-11-19 D21–D25)
+  CONTEXT_PATHS_SUGGEST = 'context_paths_suggest',
+  CONTEXT_PATHS_SUGGESTION = 'context_paths_suggestion',
+  CONTEXT_PATHS_APPLY = 'context_paths_apply',
+  CONTEXT_PATHS_APPLIED = 'context_paths_applied',
+  CONTEXT_PATHS_STATUS_REQUEST = 'context_paths_status_request',
+  CONTEXT_PATHS_STATUS = 'context_paths_status',
+
   // Streaming API responses
   STREAM_STARTED = 'stream_started',
   STREAM_CHUNK = 'stream_chunk',
@@ -156,6 +164,14 @@ export enum MessageType {
   WORKSHOP_SET_EXCERPT_RESOURCE = 'workshop_set_excerpt_resource',
   WORKSHOP_RUN_CONTEXT_WIZARD = 'workshop_run_context_wizard',
   WORKSHOP_TODO_ACTION = 'workshop_todo_action',
+  // A persona's to-do status change undone by the writer, and what it came to (ADR 2026-11-19 D8).
+  WORKSHOP_UNDO_TODO_STATUS = 'workshop_undo_todo_status',
+  WORKSHOP_TODO_STATUS_UNDO_RESULT = 'workshop_todo_status_undo_result',
+  // A persona's context-paths proposal card applied or declined by the writer (ADR 2026-11-19 D27).
+  WORKSHOP_APPLY_LOCATIONS_PROPOSAL = 'workshop_apply_locations_proposal',
+  WORKSHOP_LOCATIONS_PROPOSAL_RESULT = 'workshop_locations_proposal_result',
+  WORKSHOP_RECOVER_NAMED_SESSION = 'workshop_recover_named_session',
+  WORKSHOP_NAMED_SESSION_RECOVERY_RESULT = 'workshop_named_session_recovery_result',
   WORKSHOP_SET_TURN_BOOKMARK = 'workshop_set_turn_bookmark',
   WORKSHOP_RENAME_BOOKMARK = 'workshop_rename_bookmark',
   WORKSHOP_RENAME_BOOKMARK_RESULT = 'workshop_rename_bookmark_result',
