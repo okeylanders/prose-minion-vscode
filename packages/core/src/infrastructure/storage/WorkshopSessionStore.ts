@@ -9,7 +9,7 @@
  */
 
 import * as path from 'path';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { PRIMARY_WORKSHOP_ROOM_ID, isNamedSessionFileName, roomIdFromWorkshopFile, workshopRoomFileName } from '@/application/services/workshop/WorkshopRoomSlot';
 import { withoutRollingProvenance } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import {
@@ -130,6 +130,13 @@ export class WorkshopNamedSessionChangedError extends Error {
   }
 }
 
+export class WorkshopRollingCheckpointConflictError extends Error {
+  constructor() {
+    super("Another window holds or changed this tab’s rolling checkpoint. The existing file was kept.");
+    this.name = 'WorkshopRollingCheckpointConflictError';
+  }
+}
+
 export class WorkshopSessionFileReadError extends Error {
   constructor(
     readonly fileName: string,
@@ -186,6 +193,8 @@ interface CachedNamedSessionPath {
  */
 export class WorkshopSessionStore {
   private readonly currentFileName: string;
+  /** Exact revisions accepted by this view. Browser previews and read-back checks never advance them. */
+  private readonly rollingRevisions = new Map<string, string>();
   constructor(
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
@@ -263,7 +272,11 @@ export class WorkshopSessionStore {
     WorkshopPersistedSessionCheckpointDecodeResult | undefined
   > {
     const paths = this.requireAvailability();
-    return this.readSessionFileExact(paths.currentPath, this.currentFileName);
+    return this.readSessionFileExact(paths.currentPath, this.currentFileName, bytes => {
+      if (!this.rollingRevisions.has(paths.currentPath)) {
+        this.rollingRevisions.set(paths.currentPath, rollingRevision(bytes));
+      }
+    });
   }
 
   /**
@@ -277,14 +290,39 @@ export class WorkshopSessionStore {
   ): Promise<void> {
     const paths = this.requireAvailability();
     const decoded = this.validateSessionForWrite(session);
-    await this.writeSnapshotWithSearchIndex(
-      paths,
-      paths.currentPath,
-      this.currentFileName,
-      decoded,
-      true,
-      options.beforeCommit
-    );
+    const expected = this.rollingRevisions.get(paths.currentPath) ?? 'absent';
+    try {
+      await this.named.withRollingLock(paths.currentPath, session.sessionId, async () => {
+        const verify = async () => {
+          await options.beforeCommit?.();
+          const latest = await this.readRollingRevision(paths.currentPath);
+          if (latest !== expected) { throw new WorkshopRollingCheckpointConflictError(); }
+        };
+        const written = await this.writeSnapshotWithSearchIndex(
+          paths, paths.currentPath, this.currentFileName, decoded, expected !== 'absent', verify
+        );
+        this.rollingRevisions.set(paths.currentPath, rollingRevision(written));
+      });
+    } catch (error) {
+      if (error instanceof Error && (error.name === 'WorkshopNamedSessionBusyError' ||
+          error.name === 'WorkshopNamedSessionRecoveryRequiredError' || isDestinationExistsError(error))) {
+        throw new WorkshopRollingCheckpointConflictError();
+      }
+      throw error;
+    }
+  }
+
+  private async readRollingRevision(filePath: string): Promise<string> {
+    try {
+      const stat = await this.fileSystem.stat(filePath);
+      if (stat.size > this.limits.maximumExactFileBytes) { throw new WorkshopRollingCheckpointConflictError(); }
+      const bytes = await this.fileSystem.readFile(filePath);
+      if (bytes.length > this.limits.maximumExactFileBytes) { throw new WorkshopRollingCheckpointConflictError(); }
+      return rollingRevision(bytes);
+    } catch (error) {
+      if (isMissingFileError(error)) { return 'absent'; }
+      throw error;
+    }
   }
 
   /** Allocate a named file with immutable identity/path. The caller supplies a fresh id. */
@@ -781,13 +819,15 @@ export class WorkshopSessionStore {
    */
   private async readSessionFileExact(
     filePath: string,
-    displayName: string
+    displayName: string,
+    observed?: (bytes: Uint8Array | undefined) => void
   ): Promise<WorkshopPersistedSessionCheckpointDecodeResult | undefined> {
     try {
       const stat = await this.fileSystem.stat(filePath);
       this.assertExactFileSize(stat.size, displayName);
     } catch (error) {
       if (isMissingFileError(error)) {
+        observed?.(undefined);
         return undefined;
       }
       if (error instanceof WorkshopSessionFileReadError) {
@@ -800,12 +840,14 @@ export class WorkshopSessionStore {
       bytes = await this.fileSystem.readFile(filePath);
     } catch (error) {
       if (isMissingFileError(error)) {
+        observed?.(undefined);
         return undefined;
       }
       throw new WorkshopSessionFileReadError(displayName, errorMessage(error));
     }
     try {
       this.assertExactFileSize(bytes.byteLength, displayName);
+      observed?.(bytes);
       const text = decoder.decode(bytes);
       assertPersistedJsonNestingDepth(text, `Workshop session ${displayName}`);
       return decodeWorkshopPersistedSessionCheckpoint(JSON.parse(text));
@@ -929,10 +971,11 @@ export class WorkshopSessionStore {
     session: WorkshopPersistedSessionV2,
     overwrite: boolean,
     beforeCommit?: () => Promise<void>
-  ): Promise<void> {
+  ): Promise<Uint8Array> {
     await this.ensureStorageDirectory(paths);
-    await this.writeAtomically(targetPath, session, overwrite, beforeCommit);
+    const bytes = await this.writeAtomically(targetPath, session, overwrite, beforeCommit);
     await this.writeSearchIndexAfterCommit(paths, fileName, session);
+    return bytes;
   }
 
   private async writeSearchIndexAfterCommit(
@@ -979,8 +1022,8 @@ export class WorkshopSessionStore {
     session: WorkshopPersistedSessionV2,
     overwrite: boolean,
     beforeCommit?: () => Promise<void>
-  ): Promise<void> {
-    await this.writeJsonAtomically(
+  ): Promise<Uint8Array> {
+    return this.writeJsonAtomically(
       targetPath,
       session,
       overwrite,
@@ -997,7 +1040,7 @@ export class WorkshopSessionStore {
     maximumBytes: number,
     description: string,
     beforeCommit?: () => Promise<void>
-  ): Promise<void> {
+  ): Promise<Uint8Array> {
     const bytes = this.named.encode(value, description, maximumBytes);
     const temporaryPath = `${targetPath}.tmp-${randomUUID()}`;
     try {
@@ -1012,6 +1055,7 @@ export class WorkshopSessionStore {
       }
       throw error;
     }
+    return bytes;
   }
 
   private namedPath(
@@ -1200,4 +1244,8 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function rollingRevision(bytes: Uint8Array | undefined): string {
+  return bytes ? createHash('sha256').update(bytes).digest('hex') : 'absent';
 }

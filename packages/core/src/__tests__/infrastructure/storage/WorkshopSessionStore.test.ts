@@ -99,7 +99,7 @@ describe('WorkshopSessionStore', () => {
       .rejects.toEqual(expect.objectContaining<Partial<WorkshopSessionStoreUnavailableError>>({ reason: 'no-workspace' }));
   });
 
-  it('writes and reads current through a temporary file and native overwrite rename', async () => {
+  it('creates current through a temporary file without replacing an unseen checkpoint', async () => {
     const store = createStore();
     const current = session('current-1', 'Current room');
 
@@ -108,7 +108,7 @@ describe('WorkshopSessionStore', () => {
     expect(fileSystem.renameCalls).toEqual(expect.arrayContaining([
       expect.objectContaining({
         toPath: path.join(sessionsDirectory, 'current.json'),
-        overwrite: true
+        overwrite: false
       }),
       expect.objectContaining({
         toPath: path.join(sessionsDirectory, 'current.summary.json'),

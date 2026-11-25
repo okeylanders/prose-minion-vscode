@@ -273,6 +273,11 @@ export class WorkshopNamedSessionLock {
     return bytes;
   }
 
+  /** Rolling files use the same no-overwrite claim directory. Their saved name always stays in place. */
+  withRollingLock<T>(filePath: string, sessionId: string, work: () => Promise<T>): Promise<T> {
+    return this.holding(filePath, sessionId, work);
+  }
+
   /** Run `work` holding the file's lock; release however it ends. */
   private async holding<T>(filePath: string, sessionId: string, work: (held: Held) => Promise<T>): Promise<T> {
     const held = await this.acquire(filePath, sessionId);
@@ -329,13 +334,18 @@ export class WorkshopNamedSessionLock {
         await this.removeQuietly(staged);
         throw new Error('The saved Workshop session could not be locked for writing.');
       }
+      let renameError: unknown;
       try {
         await this.fileSystem.rename(staged, lock, { overwrite: false });
         return { lock, token, own: path.join(lock, token) };
-      } catch {
+      } catch (error) {
+        renameError = error;
         await this.removeQuietly(staged);
       }
       const state = await this.stateOf(lock);
+      if (state === 'none' && !/EEXIST|FileExists|already exists|destination exists/i.test(String(renameError))) {
+        throw renameError;
+      }
       if (state === 'recovery-required') {
         throw new WorkshopNamedSessionRecoveryRequiredError(sessionId);
       }

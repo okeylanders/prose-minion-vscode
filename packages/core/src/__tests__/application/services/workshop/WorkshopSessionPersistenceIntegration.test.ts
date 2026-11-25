@@ -820,6 +820,92 @@ describe('independent durable Workshop slots in one window', () => {
     expect((await store.readNamed(named.sessionId))?.workshop.excerpt?.text).toBe('Saved words');
   });
 
+  it('publishes a previously absent slot once when two window stores both observed its absence', async () => {
+    const { fs } = rooms();
+    const left = setup(fs).store.forRoom(second);
+    const right = setup(fs).store.forRoom(second);
+    expect(await Promise.all([left.readCurrent(), right.readCurrent()])).toEqual([undefined, undefined]);
+    const writes = await Promise.allSettled([left.writeCurrent(checkpoint('a', 'First')), right.writeCurrent(checkpoint('b', 'Second'))]);
+    expect(writes.map(result => result.status).sort()).toEqual(['fulfilled', 'rejected']);
+    const winner = writes[0].status === 'fulfilled' ? 'a' : 'b';
+    expect((await right.readCurrent())?.sessionId).toBe(winner);
+    expect((await right.list()).current?.sessionId).toBe(winner);
+  });
+
+  it.each([PRIMARY_WORKSHOP_ROOM_ID, second])('protects %s and its index when two windows restore and edit the same slot', async roomId => {
+    const { fs, store } = rooms();
+    const seeded = store.forRoom(roomId);
+    await seeded.writeCurrent(checkpoint('original', 'Both windows saw this'));
+    const load = (prefix: string) => setup(fs, prefix, {
+      roomId, namedOwners: new WorkshopNamedSessionOwners(), store: setup(fs).store
+    });
+    const first = load('first');
+    const secondWindow = load('second');
+    await Promise.all([first.coordinator.initialize(), secondWindow.coordinator.initialize()]);
+    for (const [room, text] of [[first, 'First manuscript'], [secondWindow, 'Second manuscript']] as const) {
+      expect(room.session.getExcerpt()?.text).toBe('Both windows saw this');
+      room.session.setExcerpt({ text, source: { kind: 'manual' } });
+      room.coordinator.markDirty('edit');
+    }
+    const closed = await Promise.allSettled([first.coordinator.flushForClose(), secondWindow.coordinator.flushForClose()]);
+    expect(closed.map(result => result.status).sort()).toEqual(['fulfilled', 'rejected']);
+    const path = await seeded.resolveRevealPath('current');
+    const winner = await seeded.readCurrent();
+    const index = fs.json(path.replace(/\.json$/, '.summary.json')) as { summary: { excerptIdentity: string } };
+    expect(index.summary.excerptIdentity).toBe(winner?.summary.excerptIdentity);
+    const recovered = (await store.list()).sessions.filter(row => row.title.endsWith('(local recovery)'));
+    expect(recovered).toHaveLength(1);
+    const copy = await store.readNamed(recovered[0].sessionId);
+    expect([winner?.workshop.excerpt?.text, copy?.workshop.excerpt?.text].sort()).toEqual(['First manuscript', 'Second manuscript']);
+
+    const refused = closed[0].status === 'rejected' ? first : secondWindow;
+    refused.session.setExcerpt({ text: 'Updated after conflict', source: { kind: 'manual' } });
+    refused.coordinator.markDirty('edit after conflict');
+    await expect(refused.coordinator.flushForClose()).rejects.toThrow(/existing file/i);
+    expect((await store.readNamed(recovered[0].sessionId))?.workshop.excerpt?.text).toBe('Updated after conflict');
+
+    // A writer in a third window can already be editing that recovery copy.
+    await store.renameNamed(recovered[0].sessionId, 'Edited recovery');
+    refused.session.setExcerpt({ text: 'Another local change', source: { kind: 'manual' } });
+    refused.coordinator.markDirty('later edit');
+    await expect(refused.coordinator.flushForClose()).rejects.toThrow(/existing file/i);
+    expect((await store.readNamed(recovered[0].sessionId))?.title).toBe('Edited recovery');
+    const next = (await store.list()).sessions.find(row => row.sessionId !== recovered[0].sessionId)!;
+    expect((await store.readNamed(next.sessionId))?.workshop.excerpt?.text).toBe('Another local change');
+    expect(await seeded.readCurrent()).toEqual(winner);
+  });
+
+  it('waits for a held operation on close, retains the original file through a persistent failure and retries the latest edit', async () => {
+    const { fs, a, b } = rooms();
+    await Promise.all([a.coordinator.initialize(), b.coordinator.initialize()]);
+    await Promise.all([a.coordinator.flushForClose(), b.coordinator.flushForClose()]);
+    const file = await b.store.resolveRevealPath('current');
+    const original = fs.files.get(file);
+    let finish!: () => void;
+    const held = new Promise<void>(resolve => { finish = resolve; });
+    const operation = b.coordinator.runContextRefresh(async () => {
+      await held;
+      b.session.setExcerpt({ text: 'From the held operation', source: { kind: 'manual' } });
+      b.coordinator.markDirty('late operation');
+    });
+    const close = b.coordinator.flushForClose();
+    let closed = false;
+    void close.then(() => { closed = true; }, () => { closed = true; });
+    a.session.setExcerpt({ text: 'Other room finishes', source: { kind: 'manual' } });
+    a.coordinator.markDirty('sibling edit');
+    await a.coordinator.flushForClose();
+    expect((await a.store.readCurrent())?.workshop.excerpt?.text).toBe('Other room finishes');
+    expect(closed).toBe(false);
+    fs.failRenameToPath = file;
+    finish();
+    await operation;
+    await expect(close).rejects.toThrow(/EIO/);
+    expect(fs.files.get(file)).toEqual(original);
+    fs.failRenameToPath = undefined;
+    await b.coordinator.flushForClose();
+    expect((await b.store.readCurrent())?.workshop.excerpt?.text).toBe('From the held operation');
+  });
+
   it('surfaces an unsuccessful close and retries the original scratch when storage recovers', async () => {
     const { fs, b } = rooms();
     await b.coordinator.initialize();

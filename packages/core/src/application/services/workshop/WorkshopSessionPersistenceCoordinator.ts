@@ -49,6 +49,7 @@ import {
 import {
   WorkshopNamedSessionChangedError,
   WorkshopNamedSessionNotFoundError,
+  WorkshopRollingCheckpointConflictError,
   WorkshopSessionStore,
   WorkshopSessionStoreAvailability,
   WorkshopSessionStoreUnavailableError,
@@ -362,16 +363,16 @@ export class WorkshopSessionPersistenceCoordinator {
 
   /** Check inside the shared operation gate immediately before a cross-session write. */
   isNamedSessionOwnedElsewhere(sessionId: string): boolean {
-    return this.otherOwner(sessionId) !== undefined;
+    return this.otherNamedSessionOwner(sessionId) !== undefined;
   }
 
-  private otherOwner(sessionId: string): string | undefined {
+  otherNamedSessionOwner(sessionId: string): string | undefined {
     const owner = this.acceptedWorkspaceRoot && this.namedOwners?.owner(this.acceptedWorkspaceRoot, sessionId);
     return owner && owner !== this.roomId ? owner : undefined;
   }
 
   private requireWritableSession(sessionId: string): void {
-    const owner = this.otherOwner(sessionId);
+    const owner = this.otherNamedSessionOwner(sessionId);
     if (owner) { throw new WorkshopSessionOwnedError(owner); }
   }
 
@@ -653,7 +654,15 @@ export class WorkshopSessionPersistenceCoordinator {
           const checkpoint = { ...snapshot, savedAt: normalizedIso(this.now()) };
           await this.withNamedOwnership(() => this.writeNamedWithRollingRecovery(namedSessionId, checkpoint, revision));
         } else {
-          await this.store.writeCurrent(snapshot);
+          try {
+            await this.store.writeCurrent(snapshot);
+          } catch (error) {
+            if (error instanceof WorkshopRollingCheckpointConflictError) {
+              await this.withNamedOwnership(() => this.recoveryCopy.keep(snapshot, snapshot.title, 'rolling'));
+              throw new Error(`${error.message} Your changes are in Sessions under "${snapshot.title} (local recovery)".`);
+            }
+            throw error;
+          }
         }
         this.writtenRevision = Math.max(this.writtenRevision, revision);
         if (revision >= this.dirtyRevision && !this.pendingRollingMirror) {
@@ -709,6 +718,7 @@ export class WorkshopSessionPersistenceCoordinator {
     await this.initialize();
     await this.sessionOperationQueue;
     await this.flush();
+    if (this.initialUnavailableReason && !this.workspaceChangedSinceLoad()) { return; }
     if (this.hasPendingWrite() || (this.currentCheckpointError && this.localWorkPending)) {
       throw new Error(this.lastSessionSaveStatus?.error ?? this.currentCheckpointError ??
         'The Workshop room still has unsaved changes.');

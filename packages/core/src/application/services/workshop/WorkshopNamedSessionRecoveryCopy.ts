@@ -50,15 +50,23 @@ export class WorkshopNamedSessionRecoveryCopy {
   ) {}
 
   /** Keep the refused room's checkpoint in the episode's recovery session: created once, then updated. */
-  async keep(room: WorkshopPersistedSessionV2, namedTitle: string): Promise<void> {
+  async keep(room: WorkshopPersistedSessionV2, namedTitle: string, source: 'named' | 'rolling' = 'named'): Promise<void> {
     const at = this.now();
     // A writer may have opened the prior recovery in a sibling tab since the last refusal.
     if (this.episode && this.canUpdate(this.episode.sessionId)) {
       const next = { ...this.episode.written, workshop: room.workshop, temporal: room.temporal, conversations: room.conversations, summary: room.summary, updatedAt: at, savedAt: at };
-      await this.store.updateNamed(this.episode.sessionId, next, this.episode.written);
-      this.episode = { sessionId: this.episode.sessionId, written: next, room };
-      this.log.appendLine(`[WorkshopSessionPersistence] Refused save kept in its recovery session (id=${this.episode.sessionId})`);
-      return;
+      try {
+        await this.store.updateNamed(this.episode.sessionId, next, this.episode.written);
+        this.episode = { sessionId: this.episode.sessionId, written: next, room };
+        this.log.appendLine(`[WorkshopSessionPersistence] Refused save kept in its recovery session (id=${this.episode.sessionId})`);
+        return;
+      } catch (error) {
+        // The recovery itself may now be another window's working file. Preserve that version too.
+        if (source !== 'rolling' || !(isWorkshopNamedSaveRefusal(error) ||
+          (error instanceof Error && error.name === 'WorkshopNamedSessionNotFoundError'))) {
+          throw error;
+        }
+      }
     }
     const copy: WorkshopPersistedSessionV2 = {
       ...withoutRollingProvenance(room),
@@ -74,7 +82,9 @@ export class WorkshopNamedSessionRecoveryCopy {
       code: 'local-session-preserved',
       sessionId: saved.sessionId,
       recoveryFileName: saved.fileName,
-      message: `Couldn't save to ${namedTitle}: it changed in another window. Your work is kept as "${copy.title}" in Sessions.`
+      message: source === 'rolling'
+        ? `This tab’s rolling checkpoint is in use or changed in another window. Your work is kept as "${copy.title}" in Sessions.`
+        : `Couldn't save to ${namedTitle}: it changed in another window. Your work is kept as "${copy.title}" in Sessions.`
     });
   }
 
