@@ -119,6 +119,7 @@ export class WorkshopContextHandler {
 
   private readonly readIn: WorkshopReadInRoutes;
   private readonly messageAttachmentReads = new WorkshopMessageAttachmentReads();
+  private disposed = false;
 
   registerRoutes(
     router: MessageRouter,
@@ -206,6 +207,7 @@ export class WorkshopContextHandler {
 
   /** Webview teardown may release the slot immediately after aborting it. */
   dispose(): void {
+    this.disposed = true;
     if (!this.wizardRun) {
       return;
     }
@@ -238,12 +240,12 @@ export class WorkshopContextHandler {
       title: 'Add context from file',
       filters: { 'Text files': ['md', 'markdown', 'txt'], 'All files': ['*'] }
     });
-    if (!picked || this.contextReadWasReplaced(room)) {
+    if (!picked || this.attachmentReadExpired(room, 'Context')) {
       return;
     }
     const displayPath = this.contextIntakeService.toDisplayPath(picked.fsPath);
     const result = await this.loadContextFileFromDisk(picked.fsPath, displayPath);
-    if (this.contextReadWasReplaced(room)) {
+    if (this.attachmentReadExpired(room, 'Context')) {
       return;
     }
     const loaded = this.acceptPickedFile(result, displayPath);
@@ -517,14 +519,14 @@ export class WorkshopContextHandler {
     try {
       catalog = await this.contextIntakeService.openCatalog();
     } catch (error) {
-      if (this.contextReadWasReplaced(room)) {
+      if (this.attachmentReadExpired(room, 'Context')) {
         return;
       }
       const details = error instanceof Error ? error.message : String(error);
       this.effects.reportError('Could not read the configured resource catalog.', details);
       return;
     }
-    if (this.contextReadWasReplaced(room)) {
+    if (this.attachmentReadExpired(room, 'Context')) {
       return;
     }
     for (const item of validated) {
@@ -532,7 +534,7 @@ export class WorkshopContextHandler {
         maxBytes: PROMPT_BUDGETS.contextAttachments.fileBytes,
         maxWords: PROMPT_BUDGETS.contextAttachments.words
       });
-      if (this.contextReadWasReplaced(room)) {
+      if (this.attachmentReadExpired(room, 'Context')) {
         return;
       }
       if (!this.contextIntakeService.reportConfiguredResourceLoadFailure(
@@ -559,13 +561,13 @@ export class WorkshopContextHandler {
   }
 
   /** True while a file picked for the next message is still being read (PR #271 F-01). */
-  messageAttachmentReadsPending(): boolean {
-    return this.messageAttachmentReads.pending();
+  messageAttachmentReadsPending(room: number): boolean {
+    return this.messageAttachmentReads.pending(room);
   }
 
   /** What the reads ahead of a send came to; the send waits here before it collects its attachments. */
-  settleMessageAttachmentReads(): Promise<WorkshopMessageAttachmentReadsOutcome> {
-    return this.messageAttachmentReads.settle();
+  settleMessageAttachmentReads(room: number): Promise<WorkshopMessageAttachmentReadsOutcome> {
+    return this.messageAttachmentReads.settle(room);
   }
 
   async handleAttachMessageResources(
@@ -577,9 +579,8 @@ export class WorkshopContextHandler {
       return;
     }
     // Tracked before anything awaits, so a send that arrives during the read waits for it.
-    await this.messageAttachmentReads.track(
-      this.readAndStageMessageResources(validated, this.session.readRoomRevision())
-    );
+    const room = this.session.readRoomRevision();
+    await this.messageAttachmentReads.track(room, this.readAndStageMessageResources(validated, room));
   }
 
   /** Resolves to nothing when every file is staged, else to the first refusal as the writer was told it. */
@@ -596,17 +597,23 @@ export class WorkshopContextHandler {
     try {
       catalog = await this.contextIntakeService.openCatalog();
     } catch (error) {
+      if (this.attachmentReadExpired(room, 'Message')) {
+        return WORKSHOP_MESSAGE_ATTACHMENT_ROOM_CHANGED;
+      }
       const details = error instanceof Error ? error.message : String(error);
       report('Could not read the configured resource catalog.', details);
       return refusal;
+    }
+    if (this.attachmentReadExpired(room, 'Message')) {
+      return WORKSHOP_MESSAGE_ATTACHMENT_ROOM_CHANGED;
     }
     for (const item of items) {
       const loaded = await catalog.load(item, {
         maxBytes: PROMPT_BUDGETS.contextAttachments.fileBytes,
         maxWords: PROMPT_BUDGETS.workshopThreadArtifacts.words
       });
-      if (this.session.readRoomRevision() !== room) {
-        return this.messageAttachmentRoomChanged();
+      if (this.attachmentReadExpired(room, 'Message')) {
+        return WORKSHOP_MESSAGE_ATTACHMENT_ROOM_CHANGED;
       }
       if (!this.contextIntakeService.reportConfiguredResourceLoadFailure(
         loaded,
@@ -639,14 +646,11 @@ export class WorkshopContextHandler {
     if (!picked) {
       return;
     }
-    if (this.session.readRoomRevision() !== room) {
-      this.effects.reportError(this.messageAttachmentRoomChanged());
+    if (this.attachmentReadExpired(room, 'Message', true)) {
       return;
     }
     // The read after the pick is tracked like a catalog pick's (PR #271 F-01).
-    await this.messageAttachmentReads.track(
-      this.readAndStagePickedMessageFile(picked, room)
-    );
+    await this.messageAttachmentReads.track(room, this.readAndStagePickedMessageFile(picked, room));
   }
 
   private async readAndStagePickedMessageFile(
@@ -660,8 +664,8 @@ export class WorkshopContextHandler {
     };
     const displayPath = this.contextIntakeService.toDisplayPath(picked.fsPath);
     const result = await this.loadContextFileFromDisk(picked.fsPath, displayPath);
-    if (this.session.readRoomRevision() !== room) {
-      return this.messageAttachmentRoomChanged();
+    if (this.attachmentReadExpired(room, 'Message')) {
+      return WORKSHOP_MESSAGE_ATTACHMENT_ROOM_CHANGED;
     }
     const loaded = this.acceptPickedFile(result, displayPath);
     if (!loaded) {
@@ -680,21 +684,19 @@ export class WorkshopContextHandler {
     return refusal;
   }
 
-  private contextReadWasReplaced(room: number): boolean {
+  /** Closing withdraws work silently. A replaced room reports the original pick's outcome to its caller. */
+  private attachmentReadExpired(room: number, kind: 'Context' | 'Message', notifyWriter = kind === 'Context'): boolean {
+    if (this.disposed) {
+      return true;
+    }
     if (this.session.readRoomRevision() === room) {
       return false;
     }
-    this.outputChannel.appendLine('[WorkshopContextHandler] Context attachment dropped: the room was replaced during its read');
-    this.effects.reportError(WORKSHOP_MESSAGE_ATTACHMENT_ROOM_CHANGED);
+    this.outputChannel.appendLine(`[WorkshopContextHandler] ${kind} attachment dropped: the room was replaced during its read`);
+    if (notifyWriter) {
+      this.effects.reportError(WORKSHOP_MESSAGE_ATTACHMENT_ROOM_CHANGED);
+    }
     return true;
-  }
-
-  /** A read that began in another room stages nothing: its file was picked for a message that room no longer has. */
-  private messageAttachmentRoomChanged(): string {
-    this.outputChannel.appendLine(
-      '[WorkshopContextHandler] Message attachment dropped: the room was replaced during its read'
-    );
-    return WORKSHOP_MESSAGE_ATTACHMENT_ROOM_CHANGED;
   }
 
   async handleRemoveMessageAttachment(
