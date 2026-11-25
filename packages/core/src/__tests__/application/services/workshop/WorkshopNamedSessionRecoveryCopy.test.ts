@@ -91,14 +91,20 @@ describe('a refused room keeps its work in its own recovery session (D6c)', () =
     const kept = (await a.store.readNamed((await recoveries())[0].sessionId))!;
     expect(kept.workshop.excerpt?.text).toBe('Alice, as this window edited her again.');
 
-    // A third write replaces current.json: nothing A kept depended on it.
-    await a.store.writeCurrent({ ...polish(), sessionId: 'someone-else', title: 'Elsewhere' });
+    // A third writer observes and replaces the rolling file. A's stale view cannot overwrite it.
+    const third = window(fs, 'third');
+    await third.store.readCurrent();
+    await third.store.writeCurrent({ ...polish(), sessionId: 'someone-else', title: 'Elsewhere' });
+    await expect(a.coordinator.refreshNamedSession()).rejects.toMatchObject({ name: 'WorkshopRollingCheckpointConflictError' });
+    expect((await third.store.readCurrent())?.title).toBe('Elsewhere');
 
-    expect(await a.coordinator.refreshNamedSession()).toBe(true);
+    const reloaded = window(fs, 'reloaded');
+    await reloaded.coordinator.initialize();
+    expect((await reloaded.coordinator.openNamed(saved.sessionId)).restored).toBe(true);
     const named = (await a.store.readNamed(saved.sessionId))!;
     expect(named.workshop.excerpt?.text).toBe('Alice, as the other window saved her.');
-    expect(a.session.getExcerpt()?.text).toBe('Alice, as the other window saved her.');
-    // No duplicate on reload: the episode's copy is the displaced work.
+    expect(reloaded.session.getExcerpt()?.text).toBe('Alice, as the other window saved her.');
+    // No duplicate on reload: the episode's copy remains in the library.
     expect(await recoveries()).toHaveLength(1);
     expect((await a.store.readNamed((await recoveries())[0].sessionId))!.workshop).toEqual(kept.workshop);
   });
