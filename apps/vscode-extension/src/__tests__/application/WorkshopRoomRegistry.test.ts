@@ -1,5 +1,5 @@
 /** The registry coordinates asynchronous panel lifetimes independently of VS Code. */
-import type { CoreServices } from '@prose-minion/core';
+import type { CoreServices, WorkshopRoomCloseDestination } from '@prose-minion/core';
 import { WorkshopRoomRegistry } from '../../application/WorkshopRoomRegistry';
 
 jest.mock('@prose-minion/core', () => ({
@@ -15,7 +15,7 @@ function held() {
 
 function room(id: string, unavailable?: 'no-workspace' | 'multi-root') {
   const initialize = jest.fn(async () => {});
-  const flushForClose = jest.fn(async () => {});
+  const flushForClose = jest.fn(async (): Promise<WorkshopRoomCloseDestination | void> => {});
   const releaseNamedOwnership = jest.fn();
   const invalidatePendingRoomReads = jest.fn();
   const discardConversation = jest.fn();
@@ -39,6 +39,13 @@ function room(id: string, unavailable?: 'no-workspace' | 'multi-root') {
   return { services, initialize, flushForClose, releaseNamedOwnership, invalidatePendingRoomReads, discardConversation, memoryDrain, unsubscribe };
 }
 
+function checkpointStore() {
+  return {
+    listRoomCheckpoints: jest.fn(async (): Promise<Array<{ roomId: string; title: string; updatedAt: string; recoveryToken?: string }>> => []),
+    recoverRollingRoom: jest.fn(async () => 'new-copy')
+  };
+}
+
 describe('Workshop room registry', () => {
   it('quiesces immediately on close, waits for hydration, and reuses its graph if reopened during the flush', async () => {
     const first = room('A');
@@ -48,7 +55,7 @@ describe('Workshop room registry', () => {
     first.initialize.mockReturnValue(hydration.promise);
     first.flushForClose.mockImplementationOnce(() => { started.release(); return writing.promise; });
     const build = jest.fn(() => first.services);
-    const rooms = new WorkshopRoomRegistry(build, async () => []);
+    const rooms = new WorkshopRoomRegistry(build, checkpointStore());
     const original = rooms.acquire('A');
     const closing = rooms.release('A');
     expect(first.invalidatePendingRoomReads).toHaveBeenCalledTimes(1);
@@ -73,7 +80,7 @@ describe('Workshop room registry', () => {
     a.flushForClose.mockRejectedValueOnce(new Error('disk unavailable'));
     const writing = held();
     b.flushForClose.mockReturnValue(writing.promise);
-    const rooms = new WorkshopRoomRegistry(id => id === 'A' ? a.services : b.services, async () => []);
+    const rooms = new WorkshopRoomRegistry(id => id === 'A' ? a.services : b.services, checkpointStore());
     await Promise.all([rooms.acquire('A').ready, rooms.acquire('B').ready]);
     const completed = jest.fn();
     const shutdown = rooms.flush().catch(completed);
@@ -91,13 +98,48 @@ describe('Workshop room registry', () => {
     expect(a.releaseNamedOwnership).toHaveBeenCalledTimes(1);
   });
 
+  it('returns the verified alternate named session after releasing the disputed slot, and suppresses the offer during shutdown', async () => {
+    const a = room('A');
+    const destination = { kind: 'preserved-session', sessionId: 'local-copy-id', title: 'Local copy' } as const;
+    a.flushForClose.mockResolvedValue(destination);
+    const rooms = new WorkshopRoomRegistry(() => a.services, checkpointStore());
+    await rooms.acquire('A').ready;
+    await expect(rooms.release('A')).resolves.toEqual(destination);
+    expect(a.releaseNamedOwnership).toHaveBeenCalledTimes(1);
+    expect(await rooms.listRoomCheckpoints()).toEqual([]);
+
+    await rooms.acquire('A').ready;
+    const closing = rooms.release('A');
+    await rooms.flush();
+    await expect(closing).resolves.toBeUndefined();
+    expect(a.releaseNamedOwnership).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves the stale-claim token for disk recovery and prefers a retained room with newer work', async () => {
+    const a = room('newer local manuscript');
+    const store = checkpointStore();
+    const stale = { roomId: 'A', title: 'older disk copy', updatedAt: 'yesterday', recoveryToken: 'observed-claim' };
+    store.listRoomCheckpoints.mockResolvedValue([stale]);
+    const rooms = new WorkshopRoomRegistry(() => a.services, store);
+    expect(await rooms.listRoomCheckpoints()).toEqual([stale]);
+    await expect(rooms.recoverRollingRoom('A', 'observed-claim')).resolves.toBe('new-copy');
+    expect(store.recoverRollingRoom).toHaveBeenCalledWith('A', 'observed-claim');
+
+    await rooms.acquire('A').ready;
+    a.flushForClose.mockRejectedValueOnce(new Error('disk unavailable'));
+    await expect(rooms.release('A')).rejects.toThrow('disk unavailable');
+    expect(await rooms.listRoomCheckpoints()).toEqual([{ roomId: 'A', title: 'newer local manuscript', updatedAt: expect.any(String) }]);
+    await expect(rooms.recoverRollingRoom('A', 'observed-claim')).resolves.toBe('A');
+    expect(store.recoverRollingRoom).toHaveBeenCalledTimes(1);
+  });
+
   it('can retry a failed hydration and keeps a later room out of the failed release', async () => {
     const first = room('A1');
     const second = room('A2');
     const hydration = held();
     first.initialize.mockReturnValue(hydration.promise);
     const build = jest.fn().mockReturnValueOnce(first.services).mockReturnValueOnce(second.services);
-    const rooms = new WorkshopRoomRegistry(build, async () => []);
+    const rooms = new WorkshopRoomRegistry(build, checkpointStore());
     const failed = rooms.acquire('A');
     const closing = rooms.release('A');
     hydration.refuse(new Error('restore failed'));
@@ -114,7 +156,7 @@ describe('Workshop room registry', () => {
     const a = room('Chapter', reason);
     const b = room('Series bible', reason);
     const build = jest.fn((id: string) => id === 'A' ? a.services : b.services);
-    const rooms = new WorkshopRoomRegistry(build, async () => []);
+    const rooms = new WorkshopRoomRegistry(build, checkpointStore());
     await Promise.all([rooms.acquire('A').ready, rooms.acquire('B').ready]);
     await Promise.all([rooms.release('A'), rooms.release('B')]);
     expect(a.discardConversation).not.toHaveBeenCalled();
@@ -137,7 +179,7 @@ describe('Workshop room registry', () => {
   it('switches Lightbox tray subscriptions on focus and empties the tray after the final close', async () => {
     const a = room('A');
     const b = room('B');
-    const rooms = new WorkshopRoomRegistry(id => id === 'A' ? a.services : b.services, async () => []);
+    const rooms = new WorkshopRoomRegistry(id => id === 'A' ? a.services : b.services, checkpointStore());
     await Promise.all([rooms.acquire('A').ready, rooms.acquire('B').ready]);
     const changes = jest.fn();
     rooms.tray.subscribe(changes);

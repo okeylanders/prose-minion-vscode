@@ -1,6 +1,8 @@
 import {
   CoreServices,
   type WorkshopLightboxTray,
+  type WorkshopRoomCloseDestination,
+  type WorkshopSessionStore,
   workshopLightboxTray
 } from '@prose-minion/core';
 
@@ -9,15 +11,12 @@ interface RoomEntry {
   readonly ready: Promise<void>;
   attached: boolean;
   readonly ephemeral: boolean;
-  closing?: Promise<void>;
+  closing?: Promise<WorkshopRoomCloseDestination | void>;
   closedAt?: string;
 }
 
-interface RoomCheckpoint {
-  roomId: string;
-  title: string;
-  updatedAt: string;
-}
+type RoomCheckpointStore = Pick<WorkshopSessionStore, 'listRoomCheckpoints' | 'recoverRollingRoom'>;
+type RoomCheckpoint = Awaited<ReturnType<RoomCheckpointStore['listRoomCheckpoints']>>[number];
 
 /** Window ownership of live rooms and of writes still owed by a closed panel. */
 export class WorkshopRoomRegistry {
@@ -30,7 +29,7 @@ export class WorkshopRoomRegistry {
 
   constructor(
     private readonly build: (roomId: string) => CoreServices,
-    private readonly readCheckpoints: () => Promise<RoomCheckpoint[]>
+    private readonly store: RoomCheckpointStore
   ) {}
 
   async listRoomCheckpoints(): Promise<RoomCheckpoint[]> {
@@ -44,7 +43,7 @@ export class WorkshopRoomRegistry {
     }
     let stored: RoomCheckpoint[];
     try {
-      stored = await this.readCheckpoints();
+      stored = await this.store.listRoomCheckpoints();
     } catch (error) {
       // A file-system outage must not hide the only route back to unsaved, retained work.
       if (recovering.size === 0) {throw error;}
@@ -53,6 +52,11 @@ export class WorkshopRoomRegistry {
     const checkpoints = new Map(stored.map(entry => [entry.roomId, entry]));
     recovering.forEach((entry, id) => checkpoints.set(id, entry));
     return [...checkpoints.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  recoverRollingRoom(roomId: string, recoveryToken: string): Promise<string> {
+    // A newer in-memory room that appeared while the picker was open takes precedence over its file.
+    return this.rooms.has(roomId) ? Promise.resolve(roomId) : this.store.recoverRollingRoom(roomId, recoveryToken);
   }
 
   readonly tray: WorkshopLightboxTray = {
@@ -80,7 +84,7 @@ export class WorkshopRoomRegistry {
     }
     room.attached = true;
     const ready = room.ready;
-    return { services: room.services, ready: room.closing?.catch(() => ready) ?? ready };
+    return { services: room.services, ready: room.closing?.then(() => undefined, () => ready) ?? ready };
   }
 
   /** Follow only the destination of external commands; never redirect an in-flight room operation. */
@@ -105,7 +109,7 @@ export class WorkshopRoomRegistry {
     void room.ready.then(() => { if (this.focusedRoom === roomId) {refresh();} }, () => {});
   }
 
-  release(roomId: string): Promise<void> {
+  release(roomId: string): Promise<WorkshopRoomCloseDestination | void> {
     const room = this.rooms.get(roomId);
     if (!room) {return Promise.resolve();}
     room.attached = false;
@@ -117,16 +121,24 @@ export class WorkshopRoomRegistry {
     return room.closing;
   }
 
-  private async finishClose(roomId: string, room: RoomEntry): Promise<void> {
+  private async finishClose(roomId: string, room: RoomEntry): Promise<WorkshopRoomCloseDestination | void> {
     await room.ready;
     const { workshopSessionPersistenceCoordinator: sessions, projectMemory, workshopSessionService, assistantToolService } = room.services;
     // Await both owners even on failure; keep the full room and its named claim for retry.
-    const settled = await Promise.allSettled([sessions.flushForClose(), projectMemory.shutDown()]);
-    for (const result of settled) {
-      if (result.status === 'rejected') {throw result.reason;}
+    const [checkpoint, memories] = await Promise.allSettled([sessions.flushForClose(), projectMemory.shutDown()]);
+    if (checkpoint.status === 'rejected') {
+      throw checkpoint.reason;
     }
+    if (memories.status === 'rejected') {
+      throw memories.reason;
+    }
+    // A closing tab may have preserved the latest manuscript under a different named identity.
+    // Only an interactive close can invite the writer to open the verified destination.
+    const destination = this.shuttingDown ? undefined : checkpoint.value;
     // A panel reopened the slot during its final write. The same objects resume after this promise.
-    if (room.attached) {return;}
+    if (room.attached) {
+      return destination;
+    }
     // No writer-selected project exists for a folderless or multi-root room. Only host shutdown
     // releases its retained conversations; closing the tab can always reopen this memory-only slot.
     if (room.ephemeral && !this.shuttingDown) {return;}
@@ -136,6 +148,7 @@ export class WorkshopRoomRegistry {
     }
     if (this.focusedRoom === roomId) {this.focus(undefined);}
     this.rooms.delete(roomId);
+    return destination;
   }
 
   async flush(): Promise<void> {

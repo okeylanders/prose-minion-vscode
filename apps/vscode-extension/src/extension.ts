@@ -787,7 +787,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return first;
     }
     return createRoomServices(roomId, assistantToolService.forWorkshopRoom());
-  }, () => sessionStore.listRoomCheckpoints());
+  }, sessionStore);
   workshopRoomsForShutdown = workshopRooms;
 
   // Migrate API key from settings to SecretStorage if needed
