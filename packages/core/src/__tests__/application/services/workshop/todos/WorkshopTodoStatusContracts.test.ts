@@ -150,8 +150,15 @@ describe('boundaries (D6, D6a, D6b)', () => {
     // D6b: the publish renames from inside the lock, never over anything.
     expect(lock).toMatch(/rename\(staged, target\.filePath, \{ overwrite: false \}\)/);
     expect(lock).not.toMatch(/overwrite: true/);
-    // Only current.json is written with an overwriting rename.
-    expect([...store.matchAll(/writeSnapshotWithSearchIndex\([\s\S]*?\)/g)].map((match) => match[0]).filter((call) => /,\s*true\b/.test(call)))
-      .toEqual([expect.stringContaining('paths.currentPath')]);
+    // Named creation may only allocate a new path. Rolling replacement additionally requires
+    // a slot lock and exact observed revision, and initially absent files must be created exclusively.
+    const writes = [...store.matchAll(/this\.writeSnapshotWithSearchIndex\(\s*([\s\S]*?)\s*\);/g)]
+      .map(match => match[1].replace(/\s+/g, ' ').trim());
+    expect(writes.sort()).toEqual([
+      'paths, filePath, fileName, decoded, false',
+      "paths, paths.currentPath, this.currentFileName, decoded, expected !== 'absent', verify"
+    ]);
+    const rolling = store.slice(store.indexOf('  async writeCurrent('), store.indexOf('  private async readRollingRevision('));
+    expect(rolling).toMatch(/withRollingLock\(paths\.currentPath[\s\S]+readRollingRevision\(paths\.currentPath\)[\s\S]+latest !== expected[\s\S]+throw new WorkshopRollingCheckpointConflictError[\s\S]+this\.writeSnapshotWithSearchIndex/);
   });
 });

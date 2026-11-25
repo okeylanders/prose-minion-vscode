@@ -114,13 +114,13 @@ describe('WorkshopSessionStore', () => {
       readDirectory: async folder => (await fs.readdir(folder, { withFileTypes: true })).map(entry => [entry.name, typeOf(entry)]),
       stat: async file => { const stat = await fs.stat(file); return { type: typeOf(stat), size: stat.size, ctime: stat.ctimeMs, mtime: stat.mtimeMs }; },
       rename: async (from, to, options) => {
-        if (!options?.overwrite && await fs.lstat(to).then(() => true, () => false)) throw new Error('EEXIST');
+        if (!options?.overwrite && await fs.lstat(to).then(() => true, () => false)) {throw new Error('EEXIST');}
         await fs.rename(from, to);
       },
       delete: async (file, options) => {
-        if (options?.recursive) await fs.rm(file, { recursive: true });
-        else if ((await fs.stat(file)).isDirectory()) await fs.rmdir(file);
-        else await fs.unlink(file);
+        if (options?.recursive) {await fs.rm(file, { recursive: true });}
+        else if ((await fs.stat(file)).isDirectory()) {await fs.rmdir(file);}
+        else {await fs.unlink(file);}
       }
     };
     const freshHost = () => new WorkshopSessionStore(disk, workspace([directory]),
