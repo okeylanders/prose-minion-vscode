@@ -1,8 +1,13 @@
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import * as path from 'path';
+import * as fs from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { STORED_FILE_CLAIM_LEASE_MS } from '@/infrastructure/storage/StoredFileClaims';
 import {
   WorkshopNamedSessionNotFoundError,
   WorkshopSessionFileReadError,
+  WorkshopRollingCheckpointBusyError,
+  WorkshopRollingCheckpointRecoveryRequiredError,
   WorkshopSessionStore,
   WorkshopSessionStoreUnavailableError
 } from '@/infrastructure/storage/WorkshopSessionStore';
@@ -14,7 +19,7 @@ import {
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { builtInLexicalGravityLens } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
-import { LogSink, Workspace } from '@/platform';
+import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
 
 
 const workspace = (folders: string[]): Workspace => ({
@@ -97,6 +102,76 @@ describe('WorkshopSessionStore', () => {
 
     await expect(createStore([]).writeCurrent(session('current-1', 'Current')))
       .rejects.toEqual(expect.objectContaining<Partial<WorkshopSessionStoreUnavailableError>>({ reason: 'no-workspace' }));
+  });
+
+  it('recovers an expired rolling claim into a writable independent file without taking over even a paused live writer', async () => {
+    const directory = await fs.mkdtemp(path.join(tmpdir(), 'workshop-rolling-'));
+    const typeOf = (entry: { isDirectory(): boolean }) => entry.isDirectory() ? FileType.Directory : FileType.File;
+    const disk: FileSystem = {
+      readFile: file => fs.readFile(file),
+      writeFile: async (file, data) => { await fs.mkdir(path.dirname(file), { recursive: true }); await fs.writeFile(file, data); },
+      createDirectory: async folder => { await fs.mkdir(folder, { recursive: true }); },
+      readDirectory: async folder => (await fs.readdir(folder, { withFileTypes: true })).map(entry => [entry.name, typeOf(entry)]),
+      stat: async file => { const stat = await fs.stat(file); return { type: typeOf(stat), size: stat.size, ctime: stat.ctimeMs, mtime: stat.mtimeMs }; },
+      rename: async (from, to, options) => {
+        if (!options?.overwrite && await fs.lstat(to).then(() => true, () => false)) throw new Error('EEXIST');
+        await fs.rename(from, to);
+      },
+      delete: async (file, options) => {
+        if (options?.recursive) await fs.rm(file, { recursive: true });
+        else if ((await fs.stat(file)).isDirectory()) await fs.rmdir(file);
+        else await fs.unlink(file);
+      }
+    };
+    const freshHost = () => new WorkshopSessionStore(disk, workspace([directory]),
+      { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() }, () => clock);
+    const current = path.join(directory, 'prose-minion', 'sessions', 'current.json');
+    const index = current.replace('.json', '.summary.json');
+    let pause!: () => void;
+    let resume!: () => void;
+    const locked = new Promise<void>(resolve => { pause = resolve; });
+    const unblock = new Promise<void>(resolve => { resume = resolve; });
+    const original = freshHost();
+    let pending: Promise<void> | undefined;
+    try {
+      await original.writeCurrent(session('original', 'Original checkpoint'));
+      const prior = await fs.readFile(current);
+      const priorIndex = await fs.readFile(index);
+      pending = original.writeCurrent(session('original', 'Owner finished'), { beforeCommit: async () => { pause(); await unblock; } });
+      await locked;
+      const claimPath = path.join(path.dirname(current), '.current.json.lock');
+      const claimFiles = await fs.readdir(claimPath);
+      const fresh = freshHost();
+      const seen = await fresh.readCurrent();
+      expect(seen?.title).toBe('Original checkpoint');
+      await expect(fresh.writeCurrent(session('original', 'Racing edit'))).rejects.toBeInstanceOf(WorkshopRollingCheckpointBusyError);
+      expect((await fresh.listRoomCheckpoints())[0].recoveryToken).toBeUndefined();
+      await expect(fresh.recoverRollingRoom('legacy', 'forged')).rejects.toBeInstanceOf(WorkshopRollingCheckpointBusyError);
+
+      // A fresh host sees exactly what a crashed writer leaves. Expiry permits copying only.
+      clock = new Date(clock.getTime() + STORED_FILE_CLAIM_LEASE_MS + 1);
+      await expect(fresh.writeCurrent(session('original', 'New edit'))).rejects.toBeInstanceOf(WorkshopRollingCheckpointRecoveryRequiredError);
+      const [blocked] = await fresh.listRoomCheckpoints();
+      await expect(fresh.recoverRollingRoom('legacy', 'old-claim')).rejects.toThrow(/changed/);
+      const copiedId = await fresh.recoverRollingRoom('legacy', blocked.recoveryToken!);
+      const recovered = freshHost().forRoom(copiedId);
+      const copied = await recovered.readCurrent();
+      expect(copied?.sessionId).not.toBe(seen?.sessionId);
+      expect(copied?.workshop).toEqual(seen?.workshop);
+      expect(copied?.conversations).toEqual(seen?.conversations);
+      await recovered.writeCurrent({ ...copied!, title: 'Continued in the recovered room' });
+      expect((await freshHost().forRoom(copiedId).readCurrent())?.title).toBe('Continued in the recovered room');
+      expect(await fs.readFile(current)).toEqual(prior);
+      expect(await fs.readFile(index)).toEqual(priorIndex);
+      expect(await fs.readdir(claimPath)).toEqual(claimFiles);
+      resume();
+      await pending;
+      expect((await freshHost().readCurrent())?.title).toBe('Owner finished');
+    } finally {
+      resume();
+      await pending?.catch(() => {});
+      await fs.rm(directory, { recursive: true, force: true });
+    }
   });
 
   it('creates current through a temporary file without replacing an unseen checkpoint', async () => {

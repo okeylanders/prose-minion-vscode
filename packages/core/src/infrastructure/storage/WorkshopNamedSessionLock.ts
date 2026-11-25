@@ -32,7 +32,7 @@
 
 import { isNamedSessionFileName } from '@/application/services/workshop/WorkshopRoomSlot';
 import * as path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { FileType, type FileSystem, type LogSink } from '@/platform';
 import { STORED_FILE_CLAIM_LEASE_MS } from '@/infrastructure/storage/StoredFileClaims';
 import { assertPersistedJsonNestingDepth } from '@/application/services/workshop/persistedJson';
@@ -276,6 +276,24 @@ export class WorkshopNamedSessionLock {
   /** Rolling files use the same no-overwrite claim directory. Their saved name always stays in place. */
   withRollingLock<T>(filePath: string, sessionId: string, work: () => Promise<T>): Promise<T> {
     return this.holding(filePath, sessionId, work);
+  }
+
+  /** An expired rolling claim remains its writer's. A token authorizes only a copy into a different slot. */
+  async rollingClaim(filePath: string): Promise<{ state: 'none' | 'busy' } | { state: 'recovery-required'; token: string }> {
+    const lock = lockPathOf(filePath);
+    const listed = await this.fileSystem.readDirectory(lock).catch(() => undefined);
+    if (!listed) {
+      return { state: 'none' };
+    }
+    const owners = listed.filter(([name, type]) => type === FileType.File && OWNER.test(name)).map(([name]) => name);
+    const state = await this.stateFrom(lock, owners);
+    if (state === 'busy') {
+      return { state };
+    }
+    // Bind a picker result to this workspace, slot and observed claim. A writer that resumes
+    // owns exactly the same lock; the recovery operation never moves or removes it.
+    const token = createHash('sha256').update(JSON.stringify([filePath, ...listed.map(([name]) => name).sort()])).digest('hex');
+    return { state, token };
   }
 
   /** Run `work` holding the file's lock; release however it ends. */

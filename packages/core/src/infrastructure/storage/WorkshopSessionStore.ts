@@ -20,7 +20,7 @@ import {
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
-import { formatByteLimit, WorkshopNamedSessionLock } from '@/infrastructure/storage/WorkshopNamedSessionLock';
+import { formatByteLimit, WorkshopNamedSessionBusyError, WorkshopNamedSessionLock, WorkshopNamedSessionRecoveryRequiredError } from '@/infrastructure/storage/WorkshopNamedSessionLock';
 import { recoverWorkshopNamedSession, type WorkshopNamedSessionRecoveryOutcome } from '@/infrastructure/storage/WorkshopNamedSessionRecovery';
 import { withWorkshopNamedSessionLocks } from '@/infrastructure/storage/WorkshopNamedSessionLockRows';
 import { isRecord } from '@/application/services/workshop/persistedValidation';
@@ -131,10 +131,31 @@ export class WorkshopNamedSessionChangedError extends Error {
 }
 
 export class WorkshopRollingCheckpointConflictError extends Error {
-  constructor() {
-    super("Another window holds or changed this tab’s rolling checkpoint. The existing file was kept.");
+  constructor(message = 'Another window changed this tab’s rolling checkpoint. The existing file was kept.') {
+    super(message);
     this.name = 'WorkshopRollingCheckpointConflictError';
   }
+}
+
+export class WorkshopRollingCheckpointBusyError extends WorkshopRollingCheckpointConflictError {
+  constructor() {
+    super('Another window is writing this rolling checkpoint. The existing file was kept. Try again in a moment.');
+    this.name = 'WorkshopRollingCheckpointBusyError';
+  }
+}
+
+export class WorkshopRollingCheckpointRecoveryRequiredError extends WorkshopRollingCheckpointConflictError {
+  constructor() {
+    super('The rolling checkpoint has an expired write claim. The existing file was kept. Use Reopen Closed Workshop Room… to open a recovery copy.');
+    this.name = 'WorkshopRollingCheckpointRecoveryRequiredError';
+  }
+}
+
+interface WorkshopRoomCheckpointRow {
+  roomId: string;
+  title: string;
+  updatedAt: string;
+  recoveryToken?: string;
 }
 
 export class WorkshopSessionFileReadError extends Error {
@@ -219,7 +240,7 @@ export class WorkshopSessionStore {
   }
 
   /** Only rolling files can select a restore slot. A damaged or large file remains available for recovery. */
-  async listRoomCheckpoints(): Promise<Array<{ roomId: string; title: string; updatedAt: string }>> {
+  async listRoomCheckpoints(): Promise<WorkshopRoomCheckpointRow[]> {
     const paths = this.availability();
     if (!paths.available) { return []; }
     let entries: Array<[string, FileType]>;
@@ -229,7 +250,8 @@ export class WorkshopSessionStore {
       if (isMissingFileError(error)) { return []; }
       throw error;
     }
-    const rooms: Array<{ roomId: string; title: string; updatedAt: string }> = [];
+    const directories = new Set(entries.filter(([, type]) => type === FileType.Directory).map(([name]) => name));
+    const rooms: WorkshopRoomCheckpointRow[] = [];
     for (const [name, type] of entries) {
       const roomId = roomIdFromWorkshopFile(name);
       if (type !== FileType.File || !roomId) { continue; }
@@ -238,9 +260,47 @@ export class WorkshopSessionStore {
       const summary = rooms.length < this.limits.maximumFiles
         ? (await this.readCurrentForBrowser({ ...paths, currentPath }, undefined)).summary
         : undefined;
-      rooms.push({ roomId, title: summary?.title ?? name, updatedAt: summary?.updatedAt ?? '' });
+      const claim = directories.has(`.${name}.lock`) ? await this.named.rollingClaim(currentPath) : undefined;
+      rooms.push({
+        roomId, title: summary?.title ?? name, updatedAt: summary?.updatedAt ?? '',
+        ...(claim?.state === 'recovery-required' && { recoveryToken: claim.token })
+      });
     }
     return rooms.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.roomId.localeCompare(b.roomId));
+  }
+
+  /** The writer chose to recover this expired claim into a new independent room. The source is read-only. */
+  async recoverRollingRoom(roomId: string, recoveryToken: string): Promise<string> {
+    const source = this.forRoom(roomId);
+    const paths = source.requireAvailability();
+    const checkClaim = async () => {
+      const claim = await this.named.rollingClaim(paths.currentPath);
+      if (claim.state === 'busy') {
+        throw new WorkshopRollingCheckpointBusyError();
+      }
+      if (claim.state !== 'recovery-required' || claim.token !== recoveryToken || this.requireAvailability().rootPath !== paths.rootPath) {
+        throw new Error('The Workshop checkpoint or workspace changed. Reopen the closed-room picker.');
+      }
+    };
+    await checkClaim();
+    let baseline: string | undefined;
+    const decoded = await this.readSessionFileExact(paths.currentPath, source.currentFileName, bytes => { baseline = rollingRevision(bytes); });
+    if (!decoded) {
+      throw new Error('The rolling checkpoint is no longer available to copy.');
+    }
+    const newRoomId = randomUUID();
+    const replacement = this.forRoom(newRoomId);
+    const snapshot = { ...withoutRollingProvenance(decoded.session), sessionId: randomUUID() };
+    await checkClaim();
+    await replacement.writeCurrent(snapshot, {
+      beforeCommit: async () => {
+        await checkClaim();
+        if (await this.readRollingRevision(paths.currentPath) !== baseline) {
+          throw new Error('The Workshop checkpoint changed during recovery. Reopen the closed-room picker.');
+        }
+      }
+    });
+    return newRoomId;
   }
 
   /** Every replace or remove of a named file holds its lock (ADR 2026-11-19 D6a, D6b). */
@@ -305,8 +365,13 @@ export class WorkshopSessionStore {
         this.rollingRevisions.set(paths.currentPath, rollingRevision(written));
       });
     } catch (error) {
-      if (error instanceof Error && (error.name === 'WorkshopNamedSessionBusyError' ||
-          error.name === 'WorkshopNamedSessionRecoveryRequiredError' || isDestinationExistsError(error))) {
+      if (error instanceof WorkshopNamedSessionBusyError) {
+        throw new WorkshopRollingCheckpointBusyError();
+      }
+      if (error instanceof WorkshopNamedSessionRecoveryRequiredError) {
+        throw new WorkshopRollingCheckpointRecoveryRequiredError();
+      }
+      if (isDestinationExistsError(error)) {
         throw new WorkshopRollingCheckpointConflictError();
       }
       throw error;
