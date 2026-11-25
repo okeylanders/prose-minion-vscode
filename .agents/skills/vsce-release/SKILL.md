@@ -1,6 +1,6 @@
 ---
 name: vsce-release
-description: Prepare, smoke-test, publish, pause, or resume a Prose Minion VS Code extension release. Use for an existing release branch or a handoff of an already tested VSIX to GitHub Releases and the VS Code Marketplace.
+description: Prepare, smoke-test, publish, pause, or resume a Prose Minion VS Code extension release. Use to start a release branch, hand off work after the changelogs, or deliver an already tested VSIX to GitHub Releases and the VS Code Marketplace.
 ---
 
 # Release Prose Minion for VS Code
@@ -11,15 +11,27 @@ Use the same VSIX for the installed smoke test, GitHub release asset and Marketp
 
 ## Prepare the release branch
 
-1. Compare the branch with the previous published tag. Review merged PRs, commits and memory-bank records. Identify the user-facing changes, compatibility implications and appropriate version bump. Keep release edits on the release branch for review.
-2. Update the version in the root, core and VS Code extension manifests and the corresponding `package-lock.json` entries. Update `apps/vscode-extension/CHANGELOG.md` for writers and `docs/CHANGELOG-DETAILED.md` for maintainers. Finish packaged changelog edits before packaging.
-3. Use those changelogs and the previous release's design as the brief for `apps/vscode-extension/README.md`. Illustrate the headline workflows using the actual release UI with demo manuscripts. Check legibility, callout placement, links and images on the rendered branch README. Pin remote artwork links to a pushed artwork commit so they also resolve before the merge.
-4. Update the Workshop What's New modal and its screenshot registry. Advance the notice revision, put new pages first and retain earlier primers. Check navigation, dismissal and image loading at narrow and wide editor widths. Update the searchable persona help under `packages/core/resources/help/`, including upgrade guidance where relevant. Regenerate its version and manifest-derived tables with `node apps/vscode-extension/scripts/generate-help-tables.js` and check `helpReferenceSync.test.ts`.
-5. From the monorepo root, install from the lockfile and run typechecks, lint, full Jest coverage and the production build (`npm ci`, `npm run typecheck`, `npm run lint`, `npm run test:coverage`, `npm run build`). Review the release diff and changed behavior. Run `npm audit` and `npm audit --omit=dev`, compare findings with the previous release, and record relevant fixes, accepted findings and untested paths. Commit and push the reviewed candidate.
+1. Fetch `origin`. Compare the proposed release with the previous published tag, using merged PRs, commits and memory-bank records to identify the version bump and compatibility implications. For a new release, create `release/vX.Y.Z` from the fetched `origin/main` and switch to it before editing. If the branch already exists, check it out and resume its work.
+2. Update the version in the root, core and VS Code extension manifests and the corresponding `package-lock.json` entries. Update `apps/vscode-extension/CHANGELOG.md` for writers and `docs/CHANGELOG-DETAILED.md` for maintainers. Commit and push the preparation changes to the release branch. Verify its remote commit SHA so another agent can pick up both changelogs.
+
+## Choose who continues after the changelogs
+
+Show the pushed branch, commit and links to both changelogs. Before starting the illustrated README, Workshop tour or persona help, ask **“Should I continue with the release updates here, or give you a starter prompt for a new agent?”** Wait for the choice unless the user has already made it for this release.
+
+- **Continue here.** Proceed to the release materials below on the same branch.
+- **New agent.** Fill in the starter prompt below with this release’s actual values, give it to the user and pause. Include completed checks, pending work and the scope the user authorized so the next agent can resume without repeating preparation.
+
+> Use the repo’s `vsce-release` skill to continue VERSION in OWNER/REPO on BRANCH. The preparation commit is SHA. Read the writer changelog at WRITER_CHANGELOG_URL and the detailed changelog at DETAILED_CHANGELOG_URL, both pinned to that commit. The headline changes are HIGHLIGHTS. Start at “Update the release materials.” Use the previous release as the design reference for the illustrated README and Workshop tour, and update the versioned persona help. Completed checks: CHECKS. Remaining work and authorized scope: SCOPE. Keep changes on BRANCH for review and report the resulting commit and verification results.
+
+## Update the release materials
+
+1. Use those changelogs and the previous release's design as the brief for `apps/vscode-extension/README.md`. Illustrate the headline workflows using the actual release UI with demo manuscripts. Check legibility, callout placement, links and images on the rendered branch README. Pin remote artwork links to a pushed artwork commit so they also resolve before the merge.
+2. Update the Workshop What's New modal and its screenshot registry. Advance the notice revision, put new pages first and retain earlier primers. Check navigation, dismissal and image loading at narrow and wide editor widths. Update the searchable persona help under `packages/core/resources/help/`, including upgrade guidance where relevant. Regenerate its version and manifest-derived tables with `node apps/vscode-extension/scripts/generate-help-tables.js` and check `helpReferenceSync.test.ts`.
+3. From the monorepo root, install from the lockfile and run typechecks, lint, full Jest coverage and the production build (`npm ci`, `npm run typecheck`, `npm run lint`, `npm run test:coverage`, `npm run build`). Review the release diff and changed behavior. Run `npm audit` and `npm audit --omit=dev`, compare findings with the previous release, and record relevant fixes, accepted findings and untested paths. Commit and push the reviewed candidate.
 
 ## Install and exercise the candidate
 
-1. Run `npm run package` at the root. Preserve `apps/vscode-extension/prose-minion-X.Y.Z.vsix` outside the build tree. Record the source commit, filename, byte count and SHA-256. Check ZIP integrity, publisher/name/version in both manifests, and the packaged bundles, resources, help and tour images against the build tree.
+1. Finish any packaged changelog edits, then run `npm run package` at the root. Preserve `apps/vscode-extension/prose-minion-X.Y.Z.vsix` outside the build tree. Record the source commit, filename, byte count and SHA-256. Check ZIP integrity, publisher/name/version in both manifests, and the packaged bundles, resources, help and tour images against the build tree.
 2. Start with the previous public VSIX in a disposable native VS Code profile and extensions directory. Save representative user state and dismiss the old tour. Install the **candidate file** into that same profile, open the running extension and exercise it through the editor and webviews. Verify activation, upgrade compatibility, the new tour appearing, its opt-out surviving reopen, and the old session reopening intact.
 3. Choose fixtures from the changed features and their live-pass checklists. Exercise the normal journey and important cancellation, partial-result, persistence and recovery paths. For v2.16.0 these included sidebar and Workshop Passage Search, linked quotes and saved reports, per-item to-do Undo, Git comparison, reviewed context-path Apply, persona help and interrupted-session recovery. Use these as examples for the next release's test selection.
 4. If the release calls for authorized live inference, use the owner's configured OpenRouter BYOK model routes (OpenAI or Anthropic here), including helper and organizer calls. Enter the key through the extension's Settings in the isolated profile and clear it afterward. Record actual models, observed results, limitations and a representative screenshot. Distinguish installed observations from fixture renders and automated tests.
