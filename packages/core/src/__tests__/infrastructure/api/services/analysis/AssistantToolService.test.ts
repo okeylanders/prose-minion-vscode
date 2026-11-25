@@ -70,6 +70,29 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     setStatusCallback: jest.fn()
   });
 
+  it('binds capability progress to its room while sharing the assistant engine', async () => {
+    const engine = makeEngine('shared');
+    const manager = managerFor(() => engine);
+    const main = build(manager);
+    const other = main.forWorkshopRoom();
+    const mainStatus = jest.fn();
+    const otherStatus = jest.fn();
+    main.addStatusListener(mainStatus);
+    other.addStatusListener(otherStatus);
+    await flush();
+    await main.continueConversation('conversation-a', 'Count these.');
+    await other.continueConversation('conversation-b', 'Look this up.');
+
+    const [first, second] = engine.continueConversation.mock.calls;
+    second[0].options?.onCapabilityStatus?.('Reading for B', 'B');
+    expect(mainStatus).not.toHaveBeenCalled();
+    expect(otherStatus).toHaveBeenCalledWith('Reading for B', undefined, 'B');
+    first[0].options?.onCapabilityStatus?.('Reading for A');
+    expect(mainStatus).toHaveBeenCalledWith('Reading for A', undefined, undefined);
+    expect(otherStatus).toHaveBeenCalledTimes(1);
+    expect(manager.setStatusCallback).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps retained continuation on the captured generation while unrelated initialization is idempotent', async () => {
     const generation1 = makeEngine('gen-1');
     const generation2 = makeEngine('gen-2');

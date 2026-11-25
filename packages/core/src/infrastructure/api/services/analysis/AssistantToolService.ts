@@ -270,30 +270,36 @@ export class AssistantToolService {
     private readonly resourceLoader: ResourceLoaderService,
     private readonly toolOptions: ToolOptionsProvider,
     private readonly workshopWidgetRecommendationInstruction: string,
-    private readonly outputChannel?: LogSink
+    private readonly outputChannel?: LogSink,
+    scope: 'window' | 'room' = 'window'
   ) {
     this.statusListeners = new ListenerSet(
       '[AssistantToolService] Status listener',
       outputChannel
     );
-    // Bridge the manager's guide/resource-loading status into this service's
-    // listener set once, permanently. The manager slot is process-wide; the
-    // listeners are per-webview, added and removed as MessageHandlers come
-    // and go (sidebar + Workshop share this service, ADR 2026-07-03).
-    this.aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {
-      this.statusListeners.emit(message, undefined, tickerMessage);
-    });
+    // Other model scopes retain the window's existing progress destination.
+    // A Workshop facade reports its capability progress on the owning run.
+    if (scope === 'window') {
+      this.aiResourceManager.setStatusCallback(this.reportCapabilityStatus);
+    }
     // Assistants will be initialized when AI resources are available
     this.initializeAssistants().catch(error => {
       this.outputChannel?.appendLine(`[AssistantToolService] Startup initialization failed; retried on next use: ${error instanceof Error ? error.message : String(error)}`);
     });
   }
 
-  /**
-   * Subscribe to guide-loading status. Returns an unsubscribe function —
-   * handlers own their registration and MUST release it on dispose, so one
-   * webview's teardown can never blind another's.
-   */
+  private readonly reportCapabilityStatus = (message: string, tickerMessage?: string): void => {
+    this.statusListeners.emit(message, undefined, tickerMessage);
+  };
+
+  /** Reuse provider resources while binding prompt settings and progress to a single room. */
+  forWorkshopRoom(): AssistantToolService {
+    return new AssistantToolService(
+      this.aiResourceManager, this.resourceLoader, this.toolOptions,
+      this.workshopWidgetRecommendationInstruction, this.outputChannel, 'room'
+    );
+  }
+
   /** Bind the project-memory grammar check; called once, in `extension.ts`. */
   setWorkshopProjectMemoryGrammar(teachesGrammar: () => boolean): void {
     this.workshopProjectMemoryGrammar = teachesGrammar;
@@ -428,6 +434,7 @@ export class AssistantToolService {
           // AssistantFocus reach the dialogue prompt registry.
           focus: focus ?? 'both',
           signal: streamingOptions?.signal,
+          onCapabilityStatus: this.reportCapabilityStatus,
           onToken: streamingOptions?.onToken,
           retainConversation: streamingOptions?.retainConversation,
           workshopCapability: this.createWorkshopToolCapability(
@@ -506,6 +513,7 @@ export class AssistantToolService {
           temperature: options.temperature,
           maxTokens: options.maxTokens,
           signal: streamingOptions?.signal,
+          onCapabilityStatus: this.reportCapabilityStatus,
           onToken: streamingOptions?.onToken,
           retainConversation: streamingOptions?.retainConversation,
           workshopCapability: this.createWorkshopToolCapability(
@@ -580,6 +588,7 @@ export class AssistantToolService {
         {
           ...options,
           signal: streamingOptions?.signal,
+          onCapabilityStatus: this.reportCapabilityStatus,
           onToken: streamingOptions?.onToken,
           retainConversation: streamingOptions?.retainConversation,
           workshopCapability: this.createWorkshopToolCapability(
@@ -660,6 +669,7 @@ export class AssistantToolService {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
         signal: streamingOptions?.signal,
+        onCapabilityStatus: this.reportCapabilityStatus,
         onToken: streamingOptions?.onToken,
         tools: webTools,
         retainedAssistantContentSanitizer: streamingOptions.finalReply?.retained ?? sanitizeWorkshopReplyForRetention,
@@ -732,6 +742,7 @@ export class AssistantToolService {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
         signal: streamingOptions.signal,
+        onCapabilityStatus: this.reportCapabilityStatus,
         onToken: streamingOptions.onToken,
         tools: webTools,
         retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention,
@@ -793,6 +804,7 @@ export class AssistantToolService {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
         signal: streamingOptions?.signal,
+        onCapabilityStatus: this.reportCapabilityStatus,
         onToken: streamingOptions?.onToken,
         tools: webTools,
         retainedAssistantContentSanitizer: streamingOptions?.finalReply?.retained ?? sanitizeWorkshopReplyForRetention,
