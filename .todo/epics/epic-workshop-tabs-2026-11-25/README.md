@@ -39,3 +39,12 @@ The sprint numbers describe review boundaries. Coordinate the room factory, slot
 | Concurrent model work | The extension activation tests use a controlled provider transport and real retained conversation state. They cover overlapping turns, cancellation, rewind and transcript export. When two replies completed out of order, each retained its own token usage and cost, and a newly opened tab showed the correct window totals. |
 
 Sprint PRs record review responses and CI. [Design](https://github.com/okeylanders/prose-minion-vscode/pull/301) · [Room operations](https://github.com/okeylanders/prose-minion-vscode/pull/302) · [Durability](https://github.com/okeylanders/prose-minion-vscode/pull/303) · [Native panels](https://github.com/okeylanders/prose-minion-vscode/pull/304) · [Integration](https://github.com/okeylanders/prose-minion-vscode/pull/305)
+
+## Open discussion from sidebar testing
+
+These are proposals to revisit after testing the split launcher.
+
+1. **First tab.** When no Workshop tabs are open, either **Workshop** or **+** should open the primary room backed by `current.json`.
+2. **Workshop as a home button.** When the primary tab is already open, **Workshop** should bring it to the front, even if a different Workshop was used more recently. **+** should open another tab. One case to decide is what **Workshop** does when only secondary tabs are open.
+3. **Reuse closed scratch rooms?** For each additional **+** click, consider reopening the oldest eligible `current-<uuid>.json` in a new tab. Skip rooms already open and rooms attached to named sessions. Decide whether “oldest” means first created or least recently used.
+4. **Manage old sessions explicitly?** An alternative is to keep **+** opening a fresh room and give the writer a list of old sessions in Settings and a command to clean them up. Which sessions qualify for cleanup is still open.
