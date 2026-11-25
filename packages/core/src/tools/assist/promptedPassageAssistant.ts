@@ -2,6 +2,7 @@ import { LogSink } from '@/platform';
 import { PromptLoader } from '../shared/prompts';
 import {
   AgentCapabilityFactory,
+  AgentRunOptions,
   AnyAgentCapability,
   ExecutionResult,
   StreamingTokenCallback
@@ -22,6 +23,7 @@ export interface PassageAssistantOptions<Focus extends string> {
   readonly maxTokens?: number;
   readonly signal?: AbortSignal;
   readonly onToken?: StreamingTokenCallback;
+  readonly onCapabilityStatus?: AgentRunOptions['onCapabilityStatus'];
   readonly retainConversation?: boolean;
   /**
    * Retained Workshop tool runs ONLY: the pre-minted composite
@@ -106,6 +108,7 @@ export class PromptedPassageAssistant {
         temperature: options.temperature ?? 0.7,
         maxTokens: options.maxTokens ?? 10000,
         signal: options.signal,
+        onCapabilityStatus: options.onCapabilityStatus,
         onToken: options.onToken
       }
     });

@@ -515,7 +515,8 @@ export class AgentRunEngine {
         while (!last.cancelled && capability && last.exactRequest && rounds < policy.maxCapabilityRounds) {
           const request = last.exactRequest;
           rounds += 1;
-          this.statusCallback?.(
+          const reportStatus = options.onCapabilityStatus ?? this.statusCallback;
+          reportStatus?.(
             capability.statusMessage(request),
             capability.statusTicker?.(request)
           );

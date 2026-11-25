@@ -98,6 +98,7 @@ describe('the saved-session write port, with the real store (D6)', () => {
     const right = window(fs, 'right');
     const saved = await left.store.saveNamed(polishSession());
     await left.coordinator.initialize();
+    await left.coordinator.flushForClose();
     await right.coordinator.initialize();
     await right.coordinator.openNamed(saved.sessionId);
 
