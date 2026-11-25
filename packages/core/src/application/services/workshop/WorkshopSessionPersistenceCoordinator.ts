@@ -8,6 +8,8 @@
 
 import { randomUUID, createHash } from 'crypto';
 import * as path from 'path';
+import { WorkshopNamedSessionOwners, WorkshopSessionOwnedError } from '@/application/services/workshop/WorkshopNamedSessionOwners';
+import { PRIMARY_WORKSHOP_ROOM_ID } from '@/application/services/workshop/WorkshopRoomSlot';
 import { LogSink } from '@/platform';
 import {
   WorkshopSessionActiveRunPersistenceError,
@@ -47,6 +49,7 @@ import {
 import {
   WorkshopNamedSessionChangedError,
   WorkshopNamedSessionNotFoundError,
+  WorkshopRollingCheckpointConflictError,
   WorkshopSessionStore,
   WorkshopSessionStoreAvailability,
   WorkshopSessionStoreUnavailableError,
@@ -191,6 +194,13 @@ export interface WorkshopSessionHydrateResult {
   degradedConversations?: WorkshopConversationDegradation[];
 }
 
+/** A close whose latest work is durable under a different, explicitly reopenable identity. */
+export interface WorkshopRoomCloseDestination {
+  kind: 'preserved-session';
+  sessionId: string;
+  title: string;
+}
+
 export interface WorkshopSessionListData {
   availability: WorkshopSessionStoreAvailability;
   current?: WorkshopSessionSummary;
@@ -225,6 +235,8 @@ export interface WorkshopResetSummary {
 }
 
 export interface WorkshopSessionPersistenceCoordinatorOptions {
+  roomId?: string;
+  namedOwners?: WorkshopNamedSessionOwners;
   now?: () => Date;
   idFactory?: () => string;
   ensureAssistantReady?: () => PromiseLike<unknown>;
@@ -263,6 +275,8 @@ export class WorkshopSessionPersistenceCoordinator {
   private readonly now: () => Date;
   private readonly idFactory: () => string;
   private readonly ensureAssistantReady?: () => PromiseLike<unknown>;
+  private readonly roomId: string;
+  private readonly namedOwners?: WorkshopNamedSessionOwners;
   private identity: LiveSessionIdentity;
   private activeNamedSessionId?: string;
   private acceptedNamedCheckpoint?: WorkshopPersistedSessionV2;
@@ -283,11 +297,13 @@ export class WorkshopSessionPersistenceCoordinator {
   private pendingRecoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][] = [];
   private currentCheckpointError?: string;
   private pendingRollingMirror?: WorkshopPersistedSessionV2;
+  private closeAlternative?: { checkpoint: WorkshopPersistedSessionV2; sourceId: string; revision: number };
   private lastSessionSaveStatus?: WorkshopSessionSaveStatus;
   // These notices describe files already committed, so hydration/rollback must not erase them.
   private savedRecoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][] = [];
   /** A refused named save's own recovery session, one per refusal episode (ADR 2026-11-19 D6c). */
-  private readonly recoveryCopy = new WorkshopNamedSessionRecoveryCopy(this.store, () => this.idFactory(), () => normalizedIso(this.now()), (notice) => this.savedRecoveryNotices.push(notice), this.outputChannel);
+  private readonly recoveryCopy = new WorkshopNamedSessionRecoveryCopy(this.store, () => this.idFactory(), () => normalizedIso(this.now()), (notice) => this.savedRecoveryNotices.push(notice), this.outputChannel,
+    (sessionId) => !this.isNamedSessionOwnedElsewhere(sessionId));
   /** Which open room this is, told at each swap of the aggregate; only a Rewind keeps it (PR #296 F3). */
   private readonly roomInstance = new WorkshopOpenRoomInstance((line) => this.outputChannel.appendLine(line));
   private acceptedWorkspaceRoot?: string;
@@ -306,6 +322,8 @@ export class WorkshopSessionPersistenceCoordinator {
     private readonly outputChannel: LogSink,
     options: WorkshopSessionPersistenceCoordinatorOptions = {}
   ) {
+    this.roomId = options.roomId ?? PRIMARY_WORKSHOP_ROOM_ID;
+    this.namedOwners = options.namedOwners;
     this.now = options.now ?? (() => new Date());
     this.idFactory = options.idFactory ?? randomUUID;
     this.ensureAssistantReady = options.ensureAssistantReady;
@@ -340,13 +358,59 @@ export class WorkshopSessionPersistenceCoordinator {
       : { available: false, reason: availability.reason };
   }
 
+  private rollingFileLabel(): string {
+    const availability = this.store.availability();
+    return availability.available ? path.basename(availability.currentPath) : 'the rolling checkpoint';
+  }
+
   /** The open room's ids and title, and a saved session's change on the operation queue (ADR 2026-11-19 D2, D6). */
   openRoomIdentity = () => ({ sessionId: this.identity.sessionId, title: this.identity.title, namedSessionId: this.activeNamedSessionId });
   openRoomInstance: WorkshopOpenRoomInstancePort['openRoomInstance'] = () => this.roomInstance.current();
   onRoomReplaced: WorkshopOpenRoomInstancePort['onRoomReplaced'] = (listener) => this.roomInstance.subscribe(listener);
-  runSavedSessionOperation = <T>(operation: () => Promise<T>): Promise<T> => this.serializeSessionOperation(operation);
+  runSavedSessionOperation = <T>(operation: () => Promise<T>): Promise<T> => this.serializeNamedOperation(operation);
+
+  /** Check inside the shared operation gate immediately before a cross-session write. */
+  isNamedSessionOwnedElsewhere(sessionId: string): boolean {
+    return this.otherNamedSessionOwner(sessionId) !== undefined;
+  }
+
+  otherNamedSessionOwner(sessionId: string): string | undefined {
+    const owner = this.acceptedWorkspaceRoot && this.namedOwners?.owner(this.acceptedWorkspaceRoot, sessionId);
+    return owner && owner !== this.roomId ? owner : undefined;
+  }
+
+  private requireWritableSession(sessionId: string): void {
+    const owner = this.otherNamedSessionOwner(sessionId);
+    if (owner) { throw new WorkshopSessionOwnedError(owner); }
+  }
+
+  /** The registry calls this only after stopping producers and draining this slot. */
+  releaseNamedOwnership(): void {
+    this.namedOwners?.update(this.roomId, undefined, undefined);
+  }
+
+  private withNamedOwnership<T>(operation: () => Promise<T>): Promise<T> {
+    const owners = this.namedOwners;
+    if (!owners) { return operation(); }
+    return owners.run(async () => {
+      this.assertAcceptedWorkspace();
+      try {
+        return await operation();
+      } finally {
+        // Rollback has restored the prior identity if a replacement failed.
+        owners.update(this.roomId, this.acceptedWorkspaceRoot, this.activeNamedSessionId);
+      }
+    });
+  }
+
+  private serializeNamedOperation<T>(operation: () => Promise<T>): Promise<T> {
+    return this.serializeSessionOperation(() => this.withNamedOwnership(operation));
+  }
   /** Explicit recovery of a session left mid-save, on the session-operation queue (D6e). */
-  recoverNamed = (sessionId: string) => this.serializeSessionOperation(() => this.store.recoverNamed(sessionId));
+  recoverNamed = (sessionId: string) => this.serializeNamedOperation(() => {
+    this.requireWritableSession(sessionId);
+    return this.store.recoverNamed(sessionId);
+  });
 
   hasPendingWrite(): boolean {
     return this.dirtyRevision > this.writtenRevision || this.pendingRollingMirror !== undefined;
@@ -403,17 +467,17 @@ export class WorkshopSessionPersistenceCoordinator {
     if (this.initializePromise) {
       return this.initializePromise;
     }
-    this.initializePromise = this.initializeOnce();
-    return this.initializePromise;
-  }
-
-  private async initializeOnce(): Promise<WorkshopSessionHydrateResult> {
     const availability = this.store.availability();
     if (availability.available) {
       this.acceptedWorkspaceRoot = availability.rootPath;
     } else {
       this.initialUnavailableReason = availability.reason;
     }
+    this.initializePromise = this.withNamedOwnership(() => this.initializeOnce(availability));
+    return this.initializePromise;
+  }
+
+  private async initializeOnce(availability: WorkshopSessionStoreAvailability): Promise<WorkshopSessionHydrateResult> {
     let result: WorkshopSessionHydrateResult = {
       restored: false,
       degradedConversationKeys: [],
@@ -432,6 +496,19 @@ export class WorkshopSessionPersistenceCoordinator {
             this.outputChannel.appendLine(
               `[WorkshopSessionPersistence] Named association unconfirmed; restoring current.json only: ${this.errorMessage(error)}`
             );
+          }
+          // A closed tab may still point to a session since opened by another tab.
+          // Keep this slot's exact local work and give it an independent identity.
+          if (this.isNamedSessionOwnedElsewhere(current.session.sessionId)) {
+            const recovered = {
+              ...withoutRollingProvenance(current.session),
+              sessionId: this.idFactory(),
+              title: `${current.session.title} (recovered room)`
+            };
+            result = await this.hydrate(recovered, true, current);
+            await this.store.writeCurrent(recovered);
+            this.initialized = true;
+            return result;
           }
           const authoritative = named ?? current;
           const cleanRolling = isCleanRollingCheckpoint(current.session);
@@ -531,7 +608,12 @@ export class WorkshopSessionPersistenceCoordinator {
         }
       }
     } catch (error) {
-      const detail = `The named session is available, but current.json could not be updated. ${this.errorMessage(error)}`;
+      // Either the target rolling slot was disputed or the named source no longer
+      // holds this revision. On close, verify the named checkpoint and fork it if displaced.
+      if (error instanceof WorkshopRollingCheckpointConflictError || error instanceof WorkshopNamedSessionChangedError) {
+        this.rememberCloseAlternative(checkpoint, this.writtenRevision);
+      }
+      const detail = `Saving is incomplete because ${this.rollingFileLabel()} could not be updated. ${this.errorMessage(error)}`;
       this.outputChannel.appendLine(`[WorkshopSessionPersistence] Rolling mirror pending: ${detail}`);
       this.emitSessionSaveStatus({ sessionId: checkpoint.sessionId, status: 'error', error: detail });
     }
@@ -539,6 +621,7 @@ export class WorkshopSessionPersistenceCoordinator {
 
   /** Mark one fully committed mutation for ordered rolling autosave. */
   markDirty(reason: string): void {
+    this.closeAlternative = undefined;
     this.localWorkPending = true;
     // New author work supersedes any older cache-only retry.
     this.pendingRollingMirror = undefined;
@@ -584,9 +667,18 @@ export class WorkshopSessionPersistenceCoordinator {
         const snapshot = await this.capture(this.identity);
         if (namedSessionId) {
           const checkpoint = { ...snapshot, savedAt: normalizedIso(this.now()) };
-          await this.writeNamedWithRollingRecovery(namedSessionId, checkpoint, revision);
+          await this.withNamedOwnership(() => this.writeNamedWithRollingRecovery(namedSessionId, checkpoint, revision));
         } else {
-          await this.store.writeCurrent(snapshot);
+          try {
+            await this.store.writeCurrent(snapshot);
+          } catch (error) {
+            if (error instanceof WorkshopRollingCheckpointConflictError) {
+              const kept = await this.withNamedOwnership(() => this.recoveryCopy.keep(snapshot, snapshot.title, 'rolling'));
+              this.rememberCloseAlternative(kept, revision);
+              throw new Error(`${error.message} Your changes are in Sessions under "${snapshot.title} (local recovery)".`);
+            }
+            throw error;
+          }
         }
         this.writtenRevision = Math.max(this.writtenRevision, revision);
         if (revision >= this.dirtyRevision && !this.pendingRollingMirror) {
@@ -635,6 +727,46 @@ export class WorkshopSessionPersistenceCoordinator {
     } else if (this.pendingRollingMirror) {
       await this.serializeSessionOperation(() => this.retryRollingMirror());
     }
+  }
+
+  /** Closing drops the live room: surface a failed final write so the registry can keep it for retry. */
+  async flushForClose(): Promise<void | WorkshopRoomCloseDestination> {
+    await this.initialize();
+    await this.sessionOperationQueue;
+    await this.autosaveQueue;
+    if (this.initialUnavailableReason && !this.workspaceChangedSinceLoad()) { return; }
+    const preserved = await this.verifiedCloseAlternative();
+    if (preserved) { return preserved; }
+    await this.flush();
+    if (this.hasPendingWrite() || (this.currentCheckpointError && this.localWorkPending)) {
+      const retried = await this.verifiedCloseAlternative();
+      if (retried) { return retried; }
+      throw new Error(this.lastSessionSaveStatus?.error ?? this.currentCheckpointError ??
+        'The Workshop room still has unsaved changes.');
+    }
+  }
+
+  private rememberCloseAlternative(checkpoint: WorkshopPersistedSessionV2, revision: number): void {
+    this.closeAlternative = { checkpoint, revision, sourceId: this.identity.sessionId };
+  }
+
+  private async verifiedCloseAlternative(): Promise<WorkshopRoomCloseDestination | undefined> {
+    const alt = this.closeAlternative;
+    if (!alt || !this.hasPendingWrite() || alt.revision !== this.dirtyRevision || alt.sourceId !== this.identity.sessionId) {
+      return undefined;
+    }
+    this.assertAcceptedWorkspace();
+    let checkpoint = alt.checkpoint;
+    let disk = await this.readNamedCheckpoint(checkpoint.sessionId);
+    if (!disk || !hasSameWorkshopCheckpoint(disk.session, checkpoint)) {
+      // The last verified destination can itself be edited or removed before the panel closes.
+      checkpoint = await this.withNamedOwnership(() => this.recoveryCopy.keep(alt.checkpoint, this.identity.title));
+      this.rememberCloseAlternative(checkpoint, alt.revision);
+      disk = await this.readNamedCheckpoint(checkpoint.sessionId);
+    }
+    return disk && hasSameWorkshopCheckpoint(disk.session, checkpoint)
+      ? { kind: 'preserved-session', sessionId: checkpoint.sessionId, title: checkpoint.title }
+      : undefined;
   }
 
   /**
@@ -713,7 +845,7 @@ export class WorkshopSessionPersistenceCoordinator {
     title: string,
     targetSessionId?: string
   ): Promise<WorkshopStoredSessionSummary> {
-    return this.serializeSessionOperation(async () => {
+    return this.serializeNamedOperation(async () => {
       const normalizedTitle = requireWorkshopSessionTitle(title);
       const now = normalizedIso(this.now());
       if (targetSessionId !== undefined) {
@@ -730,6 +862,7 @@ export class WorkshopSessionPersistenceCoordinator {
         savedAt: now,
         updatedAt: now
       };
+      this.requireWritableSession(checkpointIdentity.sessionId);
       const summary = await this.store.saveNamed(checkpoint);
       // A failed named write never changes the live identity. After success,
       // the live room follows the checkpoint so later Save updates by id.
@@ -777,7 +910,7 @@ export class WorkshopSessionPersistenceCoordinator {
   async refreshNamedSession(
     afterLoad?: (changed: boolean) => Promise<void>
   ): Promise<boolean> {
-    return this.serializeSessionOperation(async () => {
+    return this.serializeNamedOperation(async () => {
       const changed = await this.refreshAssociatedNamedSession();
       await afterLoad?.(changed);
       return changed;
@@ -808,7 +941,8 @@ export class WorkshopSessionPersistenceCoordinator {
     sessionId: string,
     afterLoad?: () => Promise<void>
   ): Promise<WorkshopSessionHydrateResult> {
-    return this.serializeSessionOperation(async () => {
+    return this.serializeNamedOperation(async () => {
+      this.requireWritableSession(sessionId);
       const persisted = await this.readNamedCheckpoint(sessionId);
       if (!persisted) {
         throw new WorkshopNamedSessionNotFoundError(sessionId);
@@ -897,7 +1031,8 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   async renameNamed(sessionId: string, title: string): Promise<WorkshopStoredSessionSummary> {
-    return this.serializeSessionOperation(async () => {
+    return this.serializeNamedOperation(async () => {
+      this.requireWritableSession(sessionId);
       if (this.activeNamedSessionId === sessionId) {
         return this.updateActiveNamedSession(
           sessionId,
@@ -913,7 +1048,7 @@ export class WorkshopSessionPersistenceCoordinator {
     sourceSessionId: string,
     requestedTitle?: string
   ): Promise<WorkshopStoredSessionSummary> {
-    return this.serializeSessionOperation(async () => {
+    return this.serializeNamedOperation(async () => {
       const source = await this.store.readNamedWithRecovery(sourceSessionId);
       if (!source) {
         throw new Error(`Named Workshop session ${sourceSessionId} was not found.`);
@@ -937,7 +1072,8 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   async deleteNamed(sessionId: string): Promise<void> {
-    return this.serializeSessionOperation(async () => {
+    return this.serializeNamedOperation(async () => {
+      this.requireWritableSession(sessionId);
       try {
         await this.store.deleteNamed(sessionId);
       } catch (error) {
@@ -965,7 +1101,7 @@ export class WorkshopSessionPersistenceCoordinator {
     this.pendingRecoveryNotices.push({
       code: 'named-session-missing',
       sessionId: this.identity.sessionId,
-      message: 'The saved file is no longer on disk. Your room is preserved in current.json; use Save as new to create a named session.'
+      message: `The saved file is no longer on disk. Your room is preserved in ${this.rollingFileLabel()}; use Save as new to create a named session.`
     });
   }
 
@@ -987,7 +1123,7 @@ export class WorkshopSessionPersistenceCoordinator {
    */
   async resetSession(options: { start: WorkshopSessionStart }): Promise<WorkshopResetSummary> {
     const clearWorkingSet = options.start !== 'carry';
-    return this.serializeSessionOperation(async () => {
+    return this.serializeNamedOperation(async () => {
       const plan = options.start === 'empty'
         ? undefined
         : await this.roomSeed.prepare(options.start === 'carry' ? 'new' : 'full-reset');
@@ -1124,7 +1260,7 @@ export class WorkshopSessionPersistenceCoordinator {
     if (this.isSessionOperationPending()) {
       throw new WorkshopRewindRefusedError('busy');
     }
-    return this.serializeSessionOperation(async () => {
+    return this.serializeNamedOperation(async () => {
       const availability = this.store.availability();
       if (!availability.available) {
         throw new WorkshopSessionStoreUnavailableError(availability.reason);
@@ -1790,6 +1926,7 @@ export class WorkshopSessionPersistenceCoordinator {
     title: string,
     savedAt: string
   ): Promise<WorkshopStoredSessionSummary> {
+    this.requireWritableSession(sessionId);
     if (
       sessionId !== this.identity.sessionId ||
       sessionId !== this.activeNamedSessionId
@@ -1838,16 +1975,32 @@ export class WorkshopSessionPersistenceCoordinator {
       // Authority and durability are separate: preserve live work without
       // advancing the named baseline or reporting the named save as complete.
       // D6c: a refused room keeps its work in its own recovery session, never relying on current.json.
-      const kept = isWorkshopNamedSaveRefusal(namedError) ? await this.recoveryCopy.keep(checkpoint, checkpoint.title).then(() => undefined, (error: unknown) => error) : undefined;
+      let recoveryError: unknown;
+      let preserved: WorkshopPersistedSessionV2 | undefined;
+      if (isWorkshopNamedSaveRefusal(namedError)) {
+        try {
+          preserved = await this.recoveryCopy.keep(checkpoint, checkpoint.title);
+          this.rememberCloseAlternative(preserved, savedRevision);
+        } catch (error) {
+          recoveryError = error;
+        }
+      }
       try {
         await this.store.writeCurrent({ ...checkpoint, ...this.identity });
       } catch (rollingError) {
+        if (!preserved && !recoveryError && rollingError instanceof WorkshopRollingCheckpointConflictError) {
+          preserved = await this.recoveryCopy.keep(checkpoint, checkpoint.title, 'rolling');
+          this.rememberCloseAlternative(preserved, savedRevision);
+        }
+        if (preserved) {
+          throw new Error(`${this.errorMessage(namedError)} Rolling checkpoint: ${this.errorMessage(rollingError)} Your changes are in Sessions under "${preserved.title}".`);
+        }
         throw new Error(
           `${this.errorMessage(namedError)} Local recovery also failed: ${this.errorMessage(rollingError)}`
         );
       }
-      if (kept) {
-        throw new Error(`${this.errorMessage(namedError)} Its recovery session could not be written: ${this.errorMessage(kept)}`);
+      if (recoveryError) {
+        throw new Error(`${this.errorMessage(namedError)} Its recovery session could not be written: ${this.errorMessage(recoveryError)}`);
       }
       throw namedError;
     }

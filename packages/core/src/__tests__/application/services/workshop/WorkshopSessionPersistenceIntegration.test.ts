@@ -1,5 +1,8 @@
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import { WORKSHOP_NO_ROOM_SEED } from '@/application/services/workshop/pinnedContext/WorkshopRoomSeed';
+import { WorkshopNamedSessionOwners, WorkshopSessionOwnedError } from '@/application/services/workshop/WorkshopNamedSessionOwners';
+import { WorkshopSavedSessionTodoStore } from '@/application/services/workshop/todos/WorkshopSavedSessionTodoStore';
+import { PRIMARY_WORKSHOP_ROOM_ID } from '@/application/services/workshop/WorkshopRoomSlot';
 import { WorkshopSessionStore } from '@/infrastructure/storage/WorkshopSessionStore';
 import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
@@ -36,12 +39,13 @@ function checkpoint(id: string, text: string): WorkshopPersistedSessionV2 {
   };
 }
 
-function setup(fs = new MemoryFileSystem(), idPrefix = 'room') {
+function setup(fs = new MemoryFileSystem(), idPrefix = 'room',
+  slot?: { roomId: string; namedOwners?: WorkshopNamedSessionOwners; store: WorkshopSessionStore }) {
   const log: LogSink = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
-  const store = new WorkshopSessionStore(fs, workspace, log, now);
+  const store = slot?.store.forRoom(slot.roomId) ?? new WorkshopSessionStore(fs, workspace, log, now);
   const session = new WorkshopSessionService(() => now().getTime());
   let nextId = 0;
-  const ready = jest.fn(async () => undefined);
+  const ready = jest.fn(async (): Promise<void> => undefined);
   const assistant = {
     exportWorkshopConversationArchive: jest.fn(() => []),
     importWorkshopConversationArchive: jest.fn(async () => []),
@@ -50,7 +54,7 @@ function setup(fs = new MemoryFileSystem(), idPrefix = 'room') {
   const settings = { getWriterProfile: () => DEFAULT_WORKSHOP_WRITER_PROFILE } as WorkshopConversationSettingsService;
   const coordinator = new WorkshopSessionPersistenceCoordinator(
     session, assistant, settings, new WorkshopSessionTimeService({ now }), store, WORKSHOP_NO_ROOM_SEED, log,
-    { now, idFactory: () => `${idPrefix}-${++nextId}`, ensureAssistantReady: ready }
+    { now, idFactory: () => `${idPrefix}-${++nextId}`, ensureAssistantReady: ready, roomId: slot?.roomId, namedOwners: slot?.namedOwners }
   );
   return { fs, store, session, coordinator, log, ready };
 }
@@ -734,5 +738,334 @@ describe('Workshop persistence with the real store', () => {
     await Promise.all([first, second]);
     expect(secondScan).toHaveBeenCalledTimes(1);
     expect(coordinator.isSessionOperationPending()).toBe(false);
+  });
+});
+
+describe('independent durable Workshop slots in one window', () => {
+  const second = 'a501d3bb-6b16-48ea-88f9-fe6264ffcc38';
+
+  function rooms() {
+    const { fs, store } = setup();
+    const namedOwners = new WorkshopNamedSessionOwners();
+    const mount = (roomId: string) => setup(fs, roomId, { roomId, namedOwners, store });
+    return { fs, store, mount, a: mount(PRIMARY_WORKSHOP_ROOM_ID), b: mount(second) };
+  }
+
+  it('hydrates the released legacy fixture unchanged beside a recoverable second scratch', async () => {
+    const { fs, store, a, b, mount } = rooms();
+    const legacy = require('@/__tests__/fixtures/workshop-session-v1-released.json');
+    const original = new TextEncoder().encode(JSON.stringify(legacy));
+    fs.files.set(currentPath, original);
+    await Promise.all([a.coordinator.initialize(), b.coordinator.initialize()]);
+    b.session.setExcerpt({ text: 'Different chapter', source: { kind: 'manual' } });
+    b.coordinator.markDirty('second chapter');
+    await b.coordinator.flushForClose();
+    b.coordinator.releaseNamedOwnership();
+    expect(a.coordinator.openRoomIdentity().sessionId).toBe(legacy.sessionId);
+    expect(fs.files.get(currentPath)).toEqual(original);
+    expect((await store.listRoomCheckpoints()).map(row => row.roomId).sort())
+      .toEqual([PRIMARY_WORKSHOP_ROOM_ID, second].sort());
+    const reopened = mount(second);
+    await reopened.coordinator.initialize();
+    expect(reopened.session.getExcerpt()?.text).toBe('Different chapter');
+    expect((await store.list()).sessions).toEqual([]);
+    expect(await store.listPage({ limit: 10 })).toEqual({ entries: [], remaining: 0 });
+    expect(await store.readPagedSession(`current-${second}.json`, reopened.coordinator.openRoomIdentity().sessionId)).toBeUndefined();
+    await expect(store.readNamed(reopened.coordinator.openRoomIdentity().sessionId)).rejects.toMatchObject({ name: 'WorkshopNamedSessionUnconfirmedError' });
+    expect(() => store.forRoom('../foreign')).toThrow(/invalid/i);
+  });
+
+  it('grants one of two simultaneous Opens, refuses foreign mutations, then transfers on close', async () => {
+    const { store, a, b } = rooms();
+    const saved = await store.saveNamed(checkpoint('named', 'Original'));
+    await Promise.all([a.coordinator.initialize(), b.coordinator.initialize()]);
+    const todos = new WorkshopSavedSessionTodoStore(b.store, b.coordinator, b.log);
+    const read = await todos.read(saved.sessionId);
+    if (read.kind !== 'read') { throw new Error(read.reason); }
+    const both = await Promise.allSettled([a.coordinator.openNamed(saved.sessionId), b.coordinator.openNamed(saved.sessionId)]);
+    expect(both[0].status).toBe('fulfilled');
+    expect(both[1]).toMatchObject({ status: 'rejected', reason: { roomId: PRIMARY_WORKSHOP_ROOM_ID } });
+    await expect(b.coordinator.renameNamed(saved.sessionId, 'Unexpected rename')).rejects.toThrow(WorkshopSessionOwnedError);
+    await expect(b.coordinator.deleteNamed(saved.sessionId)).rejects.toThrow(WorkshopSessionOwnedError);
+    expect(await todos.write(read, [])).toEqual({ kind: 'refused', reason: 'session-busy' });
+    expect((await store.readNamed(saved.sessionId))?.title).toBe('named');
+    await a.coordinator.flushForClose();
+    a.coordinator.releaseNamedOwnership();
+    await expect(b.coordinator.openNamed(saved.sessionId)).resolves.toMatchObject({ restored: true });
+  });
+
+  it('retains the old claim on a failed Open and releases the unsuccessful destination', async () => {
+    const { fs, store, a, b } = rooms();
+    await Promise.all([a.coordinator.initialize(), b.coordinator.initialize()]);
+    const prior = await a.coordinator.saveNamed('Prior');
+    const target = await store.saveNamed(checkpoint('target', 'Target'));
+    fs.failRenameToPath = currentPath;
+    await expect(a.coordinator.openNamed(target.sessionId)).rejects.toThrow();
+    expect(a.coordinator.openRoomIdentity().namedSessionId).toBe(prior.sessionId);
+    await expect(b.coordinator.openNamed(prior.sessionId)).rejects.toThrow(WorkshopSessionOwnedError);
+    await expect(b.coordinator.openNamed(target.sessionId)).resolves.toMatchObject({ restored: true });
+  });
+
+  it('keeps the second rolling copy as an independent scratch if two slots restore the same named session', async () => {
+    const { store, a, b } = rooms();
+    const named = checkpoint('named', 'Saved words');
+    await store.saveNamed(named);
+    await a.store.writeCurrent(named);
+    await b.store.writeCurrent(checkpoint('named', 'Local unsaved words'));
+    await Promise.all([a.coordinator.initialize(), b.coordinator.initialize()]);
+    expect(a.coordinator.openRoomIdentity().namedSessionId).toBe(named.sessionId);
+    expect(b.coordinator.openRoomIdentity().namedSessionId).toBeUndefined();
+    expect((await b.store.readCurrent())?.sessionId).not.toBe(named.sessionId);
+    expect((await b.store.readCurrent())?.workshop.excerpt?.text).toBe('Local unsaved words');
+    expect((await store.readNamed(named.sessionId))?.workshop.excerpt?.text).toBe('Saved words');
+  });
+
+  it('publishes a previously absent slot once when two window stores both observed its absence', async () => {
+    const { fs } = rooms();
+    const left = setup(fs).store.forRoom(second);
+    const right = setup(fs).store.forRoom(second);
+    expect(await Promise.all([left.readCurrent(), right.readCurrent()])).toEqual([undefined, undefined]);
+    const writes = await Promise.allSettled([left.writeCurrent(checkpoint('a', 'First')), right.writeCurrent(checkpoint('b', 'Second'))]);
+    expect(writes.map(result => result.status).sort()).toEqual(['fulfilled', 'rejected']);
+    const winner = writes[0].status === 'fulfilled' ? 'a' : 'b';
+    expect((await right.readCurrent())?.sessionId).toBe(winner);
+    expect((await right.list()).current?.sessionId).toBe(winner);
+  });
+
+  it.each([PRIMARY_WORKSHOP_ROOM_ID, second])('protects %s and its index when two windows restore and edit the same slot', async roomId => {
+    const { fs, store } = rooms();
+    const seeded = store.forRoom(roomId);
+    await seeded.writeCurrent(checkpoint('original', 'Both windows saw this'));
+    const load = (prefix: string) => setup(fs, prefix, {
+      roomId, namedOwners: new WorkshopNamedSessionOwners(), store: setup(fs).store
+    });
+    const first = load('first');
+    const secondWindow = load('second');
+    await Promise.all([first.coordinator.initialize(), secondWindow.coordinator.initialize()]);
+    for (const [room, text] of [[first, 'First manuscript'], [secondWindow, 'Second manuscript']] as const) {
+      expect(room.session.getExcerpt()?.text).toBe('Both windows saw this');
+      room.session.setExcerpt({ text, source: { kind: 'manual' } });
+      room.coordinator.markDirty('edit');
+    }
+    const closed = await Promise.all([first.coordinator.flushForClose(), secondWindow.coordinator.flushForClose()]);
+    expect(closed.filter(Boolean)).toHaveLength(1);
+    const path = await seeded.resolveRevealPath('current');
+    const winner = await seeded.readCurrent();
+    const index = fs.json(path.replace(/\.json$/, '.summary.json')) as { summary: { excerptIdentity: string } };
+    expect(index.summary.excerptIdentity).toBe(winner?.summary.excerptIdentity);
+    const recovered = (await store.list()).sessions.filter(row => row.title.endsWith('(local recovery)'));
+    expect(recovered).toHaveLength(1);
+    const copy = await store.readNamed(recovered[0].sessionId);
+    expect([winner?.workshop.excerpt?.text, copy?.workshop.excerpt?.text].sort()).toEqual(['First manuscript', 'Second manuscript']);
+
+    const refused = closed[0] ? first : secondWindow;
+    expect(closed.find(Boolean)).toEqual({ kind: 'preserved-session', sessionId: recovered[0].sessionId, title: recovered[0].title });
+    refused.session.setExcerpt({ text: 'Updated after conflict', source: { kind: 'manual' } });
+    refused.coordinator.markDirty('edit after conflict');
+    const destination = await refused.coordinator.flushForClose();
+    if (!destination) { throw new Error('Expected a reopenable recovery session'); }
+    const notice = refused.coordinator.consumeRecoveryNotices().find(row => 'recoveryFileName' in row);
+    expect(notice).toMatchObject({ sessionId: destination.sessionId, recoveryFileName: recovered[0].fileName });
+    const reopened = setup(fs, 'reopened', { roomId: '313890db-d778-42ce-80e8-f3662463a160', namedOwners: new WorkshopNamedSessionOwners(), store: setup(fs).store });
+    await reopened.coordinator.openNamed(destination.sessionId);
+    expect(reopened.session.getExcerpt()?.text).toBe('Updated after conflict');
+    const winningRoom = closed[0] ? secondWindow : first;
+    expect(winningRoom.session.getExcerpt()?.text).toBe(winner?.workshop.excerpt?.text);
+
+    // A writer in a third window can already be editing that recovery copy.
+    await store.renameNamed(recovered[0].sessionId, 'Edited recovery');
+    refused.session.setExcerpt({ text: 'Another local change', source: { kind: 'manual' } });
+    refused.coordinator.markDirty('later edit');
+    expect(await refused.coordinator.flushForClose()).toMatchObject({ kind: 'preserved-session' });
+    expect((await store.readNamed(recovered[0].sessionId))?.title).toBe('Edited recovery');
+    const next = (await store.list()).sessions.find(row => row.sessionId !== recovered[0].sessionId)!;
+    expect((await store.readNamed(next.sessionId))?.workshop.excerpt?.text).toBe('Another local change');
+    expect(await seeded.readCurrent()).toEqual(winner);
+  });
+
+  it.each([false, true])('closes to a verified destination after Save as New lost its rolling mirror (named changed again: %s)', async changedAgain => {
+    const { fs, store, a } = rooms();
+    await a.coordinator.initialize();
+    await a.coordinator.flushForClose();
+    const other = setup(fs).store;
+    await other.readCurrent();
+    await other.writeCurrent(checkpoint('winner', 'Other window'));
+    const winner = fs.files.get(currentPath);
+    a.session.setExcerpt({ text: 'Saved as a named session', source: { kind: 'manual' } });
+    const named = await a.coordinator.saveNamed('My draft');
+    if (changedAgain) {
+      await other.renameNamed(named.sessionId, 'Next writer');
+    }
+    const destination = await a.coordinator.flushForClose();
+    if (!destination) { throw new Error('Expected a verified close destination'); }
+    expect(destination.kind).toBe('preserved-session');
+    if (changedAgain) {
+      expect(destination.sessionId).not.toBe(named.sessionId);
+      expect((await store.readNamed(named.sessionId))?.title).toBe('Next writer');
+    } else {
+      expect(destination.sessionId).toBe(named.sessionId);
+      expect(destination.title).toBe(named.title);
+    }
+    const fresh = setup(fs, 'new-room', { roomId: second, namedOwners: new WorkshopNamedSessionOwners(), store });
+    await fresh.coordinator.openNamed(destination.sessionId);
+    expect(fresh.session.getExcerpt()?.text).toBe('Saved as a named session');
+    expect(fs.files.get(currentPath)).toEqual(winner);
+  });
+
+  it.each(['changed', 'removed'] as const)('recovers a pending mirror when its named source is %s before retry', async change => {
+    const { fs, a } = rooms();
+    await a.coordinator.initialize();
+    await a.coordinator.flushForClose();
+    const rollingBefore = fs.files.get(currentPath);
+    expect(rollingBefore).toBeDefined();
+    fs.failRenameToPath = currentPath;
+    a.session.setExcerpt({ text: 'My latest manuscript', source: { kind: 'manual' } });
+    a.coordinator.markDirty('edit');
+    const named = await a.coordinator.saveNamed('My draft');
+    await expect(a.coordinator.flushForClose()).rejects.toThrow(/EIO/);
+    fs.failRenameToPath = undefined;
+
+    const other = setup(fs).store;
+    const baseline = await other.readNamed(named.sessionId);
+    if (!baseline) { throw new Error('Expected the committed named session'); }
+    if (change === 'changed') {
+      await other.updateNamed(named.sessionId, checkpoint(named.sessionId, 'Other writer'), baseline);
+    } else {
+      await other.deleteNamed(named.sessionId);
+    }
+    const namedPath = `${directory}/${named.fileName}`;
+    const winningBytes = fs.files.get(namedPath);
+    const readNamed = a.store.readNamedWithRecovery.bind(a.store);
+    const reads = jest.spyOn(a.store, 'readNamedWithRecovery').mockRejectedValueOnce(new Error('Source unavailable'));
+    await expect(a.coordinator.flushForClose()).rejects.toThrow('Source unavailable');
+    jest.spyOn(a.store, 'saveNamed').mockRejectedValueOnce(new Error('Recovery write failed'));
+    await expect(a.coordinator.flushForClose()).rejects.toThrow('Recovery write failed');
+    reads.mockImplementation(async id => {
+      if (id !== named.sessionId) { throw new Error('Recovery read-back failed'); }
+      return readNamed(id);
+    });
+    await expect(a.coordinator.flushForClose()).rejects.toThrow('Recovery read-back failed');
+    reads.mockRestore();
+
+    const destination = await a.coordinator.flushForClose();
+    if (!destination) { throw new Error('Expected a verified recovery destination'); }
+    expect(destination.sessionId).not.toBe(named.sessionId);
+    expect(destination.kind).toBe('preserved-session');
+    expect((await other.list()).sessions.filter(row => row.sessionId !== named.sessionId)).toHaveLength(1);
+    const fresh = setup(fs, 'fresh', { roomId: second, store: setup(fs).store });
+    await fresh.coordinator.openNamed(destination.sessionId);
+    expect(fresh.session.getExcerpt()?.text).toBe('My latest manuscript');
+    expect(fs.files.get(namedPath)).toEqual(winningBytes);
+    expect(fs.files.get(currentPath)).toEqual(rollingBefore);
+  });
+
+  it('keeps a refused first-ever scratch write recoverable in the live slot until retry creates the file', async () => {
+    const { fs, store, b } = rooms();
+    const target = await b.store.resolveRevealPath('current');
+    fs.failRenameToPath = target;
+    await b.coordinator.initialize();
+    b.session.setExcerpt({ text: 'Only copy so far', source: { kind: 'manual' } });
+    b.coordinator.markDirty('first draft');
+    await expect(b.coordinator.flushForClose()).rejects.toThrow(/EIO/);
+    expect(fs.files.has(target)).toBe(false);
+    expect(await store.listRoomCheckpoints()).toEqual([]);
+    expect(b.session.getExcerpt()?.text).toBe('Only copy so far');
+    fs.failRenameToPath = undefined;
+    await b.coordinator.flushForClose();
+    expect((await b.store.readCurrent())?.workshop.excerpt?.text).toBe('Only copy so far');
+  });
+
+  it('keeps a primary room save out of a replacement workspace during asynchronous snapshot capture', async () => {
+    const fs = new MemoryFileSystem();
+    let folder = root;
+    const store = new WorkshopSessionStore(fs, {
+      ...workspace, workspaceFolders: () => [{ name: 'novel', path: folder }]
+    }, setup(fs).log, now);
+    const { coordinator, session, ready } = setup(fs, 'primary', { roomId: PRIMARY_WORKSHOP_ROOM_ID, store });
+    await coordinator.initialize();
+    session.setExcerpt({ text: 'From the original workspace', source: { kind: 'manual' } });
+    await coordinator.flush();
+    const before = new Map(fs.files);
+    ready.mockImplementationOnce(async () => { folder = '/workspace/replacement'; });
+
+    await expect(coordinator.saveNamed('Original workspace draft')).rejects.toThrow(/workspace changed/);
+    expect(fs.files).toEqual(before);
+    expect(session.getExcerpt()?.text).toBe('From the original workspace');
+  });
+
+  it('refuses a save queued behind another room when the workspace changes while it waits', async () => {
+    const fs = new MemoryFileSystem();
+    let folder = root;
+    const shared = new WorkshopSessionStore(fs, { ...workspace, workspaceFolders: () => [{ name: 'novel', path: folder }] }, setup(fs).log, now);
+    const owners = new WorkshopNamedSessionOwners();
+    const a = setup(fs, 'a', { roomId: PRIMARY_WORKSHOP_ROOM_ID, namedOwners: owners, store: shared });
+    const b = setup(fs, 'b', { roomId: second, namedOwners: owners, store: shared });
+    await Promise.all([a.coordinator.initialize(), b.coordinator.initialize()]);
+    await Promise.all([a.coordinator.flushForClose(), b.coordinator.flushForClose()]);
+    const prior = await a.coordinator.saveNamed('Existing owner');
+    const before = new Map(fs.files);
+    let start!: () => void;
+    let release!: () => void;
+    const started = new Promise<void>(resolve => { start = resolve; });
+    const barrier = new Promise<void>(resolve => { release = resolve; });
+    const hold = b.coordinator.runSavedSessionOperation(async () => { start(); await barrier; });
+    await started;
+    const gate = jest.spyOn(owners, 'run');
+    const save = a.coordinator.saveNamed('Wrong workspace');
+    await new Promise(resolve => setImmediate(resolve));
+    expect(gate).toHaveBeenCalled();
+    folder = '/workspace/replacement';
+    release();
+    await hold;
+    await expect(save).rejects.toThrow(/workspace changed/);
+    await expect(a.store.saveNamed(checkpoint('late', 'After a later await'))).rejects.toThrow(/workspace changed/);
+    expect(owners.owner(root, prior.sessionId)).toBe(PRIMARY_WORKSHOP_ROOM_ID);
+    expect(owners.owner(folder, prior.sessionId)).toBeUndefined();
+    expect(fs.files).toEqual(before);
+  });
+
+  it('waits for a held operation on close, retains the original file through a persistent failure and retries the latest edit', async () => {
+    const { fs, a, b } = rooms();
+    await Promise.all([a.coordinator.initialize(), b.coordinator.initialize()]);
+    await Promise.all([a.coordinator.flushForClose(), b.coordinator.flushForClose()]);
+    const file = await b.store.resolveRevealPath('current');
+    const original = fs.files.get(file);
+    let finish!: () => void;
+    const held = new Promise<void>(resolve => { finish = resolve; });
+    const operation = b.coordinator.runContextRefresh(async () => {
+      await held;
+      b.session.setExcerpt({ text: 'From the held operation', source: { kind: 'manual' } });
+      b.coordinator.markDirty('late operation');
+    });
+    const close = b.coordinator.flushForClose();
+    let closed = false;
+    void close.then(() => { closed = true; }, () => { closed = true; });
+    a.session.setExcerpt({ text: 'Other room finishes', source: { kind: 'manual' } });
+    a.coordinator.markDirty('sibling edit');
+    await a.coordinator.flushForClose();
+    expect((await a.store.readCurrent())?.workshop.excerpt?.text).toBe('Other room finishes');
+    expect(closed).toBe(false);
+    fs.failRenameToPath = file;
+    finish();
+    await operation;
+    await expect(close).rejects.toThrow(/EIO/);
+    expect(fs.files.get(file)).toEqual(original);
+    fs.failRenameToPath = undefined;
+    await b.coordinator.flushForClose();
+    expect((await b.store.readCurrent())?.workshop.excerpt?.text).toBe('From the held operation');
+  });
+
+  it('surfaces an unsuccessful close and retries the original scratch when storage recovers', async () => {
+    const { fs, b } = rooms();
+    await b.coordinator.initialize();
+    await b.coordinator.flushForClose();
+    const target = await b.store.resolveRevealPath('current');
+    fs.failRenameToPath = target;
+    b.session.setExcerpt({ text: 'Waiting for disk', source: { kind: 'manual' } });
+    b.coordinator.markDirty('changed excerpt');
+    await expect(b.coordinator.flushForClose()).rejects.toThrow(/EIO/);
+    fs.failRenameToPath = undefined;
+    await b.coordinator.flushForClose();
+    expect((await b.store.readCurrent())?.workshop.excerpt?.text).toBe('Waiting for disk');
   });
 });

@@ -72,10 +72,13 @@ export type {
   WorkshopSessionTimeRuntimeState,
   WorkshopTimeNoticeReason
 } from '@/application/services/workshop/WorkshopSessionTimeService';
+export { PRIMARY_WORKSHOP_ROOM_ID, isWorkshopRoomId } from '@/application/services/workshop/WorkshopRoomSlot';
+export { WorkshopNamedSessionOwners, WorkshopSessionOwnedError } from '@/application/services/workshop/WorkshopNamedSessionOwners';
 export {
   WorkshopSessionPersistenceCoordinator
 } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 export type {
+  WorkshopRoomCloseDestination,
   WorkshopSessionHydrateResult,
   WorkshopSessionListData
 } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';

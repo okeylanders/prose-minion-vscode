@@ -9,6 +9,8 @@
  */
 
 import * as path from 'path';
+import { createHash, randomUUID } from 'crypto';
+import { PRIMARY_WORKSHOP_ROOM_ID, isNamedSessionFileName, roomIdFromWorkshopFile, workshopRoomFileName } from '@/application/services/workshop/WorkshopRoomSlot';
 import { withoutRollingProvenance } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
@@ -18,7 +20,7 @@ import {
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
-import { formatByteLimit, WorkshopNamedSessionLock } from '@/infrastructure/storage/WorkshopNamedSessionLock';
+import { formatByteLimit, WorkshopNamedSessionBusyError, WorkshopNamedSessionLock, WorkshopNamedSessionRecoveryRequiredError } from '@/infrastructure/storage/WorkshopNamedSessionLock';
 import { recoverWorkshopNamedSession, type WorkshopNamedSessionRecoveryOutcome } from '@/infrastructure/storage/WorkshopNamedSessionRecovery';
 import { withWorkshopNamedSessionLocks } from '@/infrastructure/storage/WorkshopNamedSessionLockRows';
 import { isRecord } from '@/application/services/workshop/persistedValidation';
@@ -128,6 +130,34 @@ export class WorkshopNamedSessionChangedError extends Error {
   }
 }
 
+export class WorkshopRollingCheckpointConflictError extends Error {
+  constructor(message = 'Another window changed this tab’s rolling checkpoint. The existing file was kept.') {
+    super(message);
+    this.name = 'WorkshopRollingCheckpointConflictError';
+  }
+}
+
+export class WorkshopRollingCheckpointBusyError extends WorkshopRollingCheckpointConflictError {
+  constructor() {
+    super('Another window is writing this rolling checkpoint. The existing file was kept. Try again in a moment.');
+    this.name = 'WorkshopRollingCheckpointBusyError';
+  }
+}
+
+export class WorkshopRollingCheckpointRecoveryRequiredError extends WorkshopRollingCheckpointConflictError {
+  constructor() {
+    super('The rolling checkpoint has an expired write claim. The existing file was kept. Use Reopen Closed Workshop Room… to open a recovery copy.');
+    this.name = 'WorkshopRollingCheckpointRecoveryRequiredError';
+  }
+}
+
+interface WorkshopRoomCheckpointRow {
+  roomId: string;
+  title: string;
+  updatedAt: string;
+  recoveryToken?: string;
+}
+
 export class WorkshopSessionFileReadError extends Error {
   constructor(
     readonly fileName: string,
@@ -183,15 +213,9 @@ interface CachedNamedSessionPath {
  * filename generation out of UI code.
  */
 export class WorkshopSessionStore {
-  private temporaryWriteCounter = 0;
-  private readonly ensuredStorageDirectories = new Set<string>();
-  /**
-   * A named file's path is immutable after allocation. Cache only paths this
-   * store has created or resolved authoritatively so live-room autosave does
-   * not reparse every saved transcript after each committed mutation.
-   */
-  private readonly namedSessionPaths = new Map<string, CachedNamedSessionPath>();
-
+  private readonly currentFileName: string;
+  /** Exact revisions accepted by this view. Browser previews and read-back checks never advance them. */
+  private readonly rollingRevisions = new Map<string, string>();
   constructor(
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
@@ -199,8 +223,85 @@ export class WorkshopSessionStore {
     private readonly now: () => Date = () => new Date(),
     private readonly limits: WorkshopSessionStoreLimits = WORKSHOP_SESSION_STORE_LIMITS,
     /** The Bookmarks screen's page bounds (ADR 2026-11-05 D8). */
-    private readonly pageLimits: WorkshopBookmarkBrowserLimits = WORKSHOP_BOOKMARK_BROWSER_LIMITS
-  ) {}
+    private readonly pageLimits: WorkshopBookmarkBrowserLimits = WORKSHOP_BOOKMARK_BROWSER_LIMITS,
+    roomId = PRIMARY_WORKSHOP_ROOM_ID,
+    /** Room views share immutable named paths resolved by this store. */
+    private readonly namedSessionPaths = new Map<string, CachedNamedSessionPath>(),
+    private readonly ensuredStorageDirectories = new Set<string>(),
+    private readonly roomWorkspace?: WorkshopSessionStoreAvailability
+  ) {
+    this.currentFileName = workshopRoomFileName(roomId);
+  }
+
+  /** Room views share the named catalog and retain their own rolling path. */
+  forRoom(roomId: string): WorkshopSessionStore {
+    return new WorkshopSessionStore(this.fileSystem, this.workspace, this.log, this.now, this.limits,
+      this.pageLimits, roomId, this.namedSessionPaths, this.ensuredStorageDirectories, this.roomWorkspace ?? this.availability());
+  }
+
+  /** Only rolling files can select a restore slot. A damaged or large file remains available for recovery. */
+  async listRoomCheckpoints(): Promise<WorkshopRoomCheckpointRow[]> {
+    const paths = this.availability();
+    if (!paths.available) { return []; }
+    let entries: Array<[string, FileType]>;
+    try {
+      entries = await this.fileSystem.readDirectory(paths.sessionsDirectory);
+    } catch (error) {
+      if (isMissingFileError(error)) { return []; }
+      throw error;
+    }
+    const directories = new Set(entries.filter(([, type]) => type === FileType.Directory).map(([name]) => name));
+    const rooms: WorkshopRoomCheckpointRow[] = [];
+    for (const [name, type] of entries) {
+      const roomId = roomIdFromWorkshopFile(name);
+      if (type !== FileType.File || !roomId) { continue; }
+      const currentPath = path.join(paths.sessionsDirectory, name);
+      // Keep every file reopenable while limiting how many previews one picker can parse.
+      const summary = rooms.length < this.limits.maximumFiles
+        ? (await this.readCurrentForBrowser({ ...paths, currentPath }, undefined)).summary
+        : undefined;
+      const claim = directories.has(`.${name}.lock`) ? await this.named.rollingClaim(currentPath) : undefined;
+      rooms.push({
+        roomId, title: summary?.title ?? name, updatedAt: summary?.updatedAt ?? '',
+        ...(claim?.state === 'recovery-required' && { recoveryToken: claim.token })
+      });
+    }
+    return rooms.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.roomId.localeCompare(b.roomId));
+  }
+
+  /** The writer chose to recover this expired claim into a new independent room. The source is read-only. */
+  async recoverRollingRoom(roomId: string, recoveryToken: string): Promise<string> {
+    const source = this.forRoom(roomId);
+    const paths = source.requireAvailability();
+    const checkClaim = async () => {
+      const claim = await this.named.rollingClaim(paths.currentPath);
+      if (claim.state === 'busy') {
+        throw new WorkshopRollingCheckpointBusyError();
+      }
+      if (claim.state !== 'recovery-required' || claim.token !== recoveryToken || this.requireAvailability().rootPath !== paths.rootPath) {
+        throw new Error('The Workshop checkpoint or workspace changed. Reopen the closed-room picker.');
+      }
+    };
+    await checkClaim();
+    let baseline: string | undefined;
+    const decoded = await this.readSessionFileExact(paths.currentPath, source.currentFileName, bytes => { baseline = rollingRevision(bytes); });
+    if (!decoded) {
+      throw new Error('The rolling checkpoint is no longer available to copy.');
+    }
+    const newRoomId = randomUUID();
+    const replacement = this.forRoom(newRoomId);
+    const snapshot = { ...withoutRollingProvenance(decoded.session), sessionId: randomUUID() };
+    await checkClaim();
+    await replacement.writeCurrent(snapshot, {
+      beforeCommit: async () => {
+        await checkClaim();
+        if (await this.readRollingRevision(paths.currentPath) !== baseline) {
+          throw new Error('The Workshop checkpoint changed during recovery. Reopen the closed-room picker.');
+        }
+      }
+    });
+    return newRoomId;
+  }
 
   /** Every replace or remove of a named file holds its lock (ADR 2026-11-19 D6a, D6b). */
   private readonly named = new WorkshopNamedSessionLock(this.fileSystem, this.log, this.now, this.limits.maximumExactFileBytes,
@@ -220,7 +321,7 @@ export class WorkshopSessionStore {
       available: true,
       rootPath,
       sessionsDirectory,
-      currentPath: path.join(sessionsDirectory, 'current.json')
+      currentPath: path.join(sessionsDirectory, this.currentFileName)
     };
   }
 
@@ -232,7 +333,11 @@ export class WorkshopSessionStore {
     WorkshopPersistedSessionCheckpointDecodeResult | undefined
   > {
     const paths = this.requireAvailability();
-    return this.readSessionFileExact(paths.currentPath, 'current.json');
+    return this.readSessionFileExact(paths.currentPath, this.currentFileName, bytes => {
+      if (!this.rollingRevisions.has(paths.currentPath)) {
+        this.rollingRevisions.set(paths.currentPath, rollingRevision(bytes));
+      }
+    });
   }
 
   /**
@@ -246,14 +351,44 @@ export class WorkshopSessionStore {
   ): Promise<void> {
     const paths = this.requireAvailability();
     const decoded = this.validateSessionForWrite(session);
-    await this.writeSnapshotWithSearchIndex(
-      paths,
-      paths.currentPath,
-      'current.json',
-      decoded,
-      true,
-      options.beforeCommit
-    );
+    const expected = this.rollingRevisions.get(paths.currentPath) ?? 'absent';
+    try {
+      await this.named.withRollingLock(paths.currentPath, session.sessionId, async () => {
+        const verify = async () => {
+          await options.beforeCommit?.();
+          const latest = await this.readRollingRevision(paths.currentPath);
+          if (latest !== expected) { throw new WorkshopRollingCheckpointConflictError(); }
+        };
+        const written = await this.writeSnapshotWithSearchIndex(
+          paths, paths.currentPath, this.currentFileName, decoded, expected !== 'absent', verify
+        );
+        this.rollingRevisions.set(paths.currentPath, rollingRevision(written));
+      });
+    } catch (error) {
+      if (error instanceof WorkshopNamedSessionBusyError) {
+        throw new WorkshopRollingCheckpointBusyError();
+      }
+      if (error instanceof WorkshopNamedSessionRecoveryRequiredError) {
+        throw new WorkshopRollingCheckpointRecoveryRequiredError();
+      }
+      if (isDestinationExistsError(error)) {
+        throw new WorkshopRollingCheckpointConflictError();
+      }
+      throw error;
+    }
+  }
+
+  private async readRollingRevision(filePath: string): Promise<string> {
+    try {
+      const stat = await this.fileSystem.stat(filePath);
+      if (stat.size > this.limits.maximumExactFileBytes) { throw new WorkshopRollingCheckpointConflictError(); }
+      const bytes = await this.fileSystem.readFile(filePath);
+      if (bytes.length > this.limits.maximumExactFileBytes) { throw new WorkshopRollingCheckpointConflictError(); }
+      return rollingRevision(bytes);
+    } catch (error) {
+      if (isMissingFileError(error)) { return 'absent'; }
+      throw error;
+    }
   }
 
   /** Allocate a named file with immutable identity/path. The caller supplies a fresh id. */
@@ -444,6 +579,12 @@ export class WorkshopSessionStore {
 
   private requireAvailability(): Extract<WorkshopSessionStoreAvailability, { available: true }> {
     const availability = this.availability();
+    const bound = this.roomWorkspace;
+    if (bound && (bound.available
+      ? !availability.available || bound.rootPath !== availability.rootPath
+      : availability.available || bound.reason !== availability.reason)) {
+      throw new Error('The Workshop workspace changed after this room was attached.');
+    }
     if (!availability.available) {
       throw new WorkshopSessionStoreUnavailableError(availability.reason);
     }
@@ -689,7 +830,7 @@ export class WorkshopSessionStore {
       // An orphan current searchIndex must never invent a live session.
       return { searchTruncated: false };
     }
-    const fileName = 'current.json';
+    const fileName = path.basename(fullPath);
     const searchIndex = await this.readSearchIndexForBrowser(
       this.namedPath(paths, workshopSessionSearchIndexFileName(fileName)),
       workshopSessionSearchIndexFileName(fileName),
@@ -750,13 +891,15 @@ export class WorkshopSessionStore {
    */
   private async readSessionFileExact(
     filePath: string,
-    displayName: string
+    displayName: string,
+    observed?: (bytes: Uint8Array | undefined) => void
   ): Promise<WorkshopPersistedSessionCheckpointDecodeResult | undefined> {
     try {
       const stat = await this.fileSystem.stat(filePath);
       this.assertExactFileSize(stat.size, displayName);
     } catch (error) {
       if (isMissingFileError(error)) {
+        observed?.(undefined);
         return undefined;
       }
       if (error instanceof WorkshopSessionFileReadError) {
@@ -769,12 +912,14 @@ export class WorkshopSessionStore {
       bytes = await this.fileSystem.readFile(filePath);
     } catch (error) {
       if (isMissingFileError(error)) {
+        observed?.(undefined);
         return undefined;
       }
       throw new WorkshopSessionFileReadError(displayName, errorMessage(error));
     }
     try {
       this.assertExactFileSize(bytes.byteLength, displayName);
+      observed?.(bytes);
       const text = decoder.decode(bytes);
       assertPersistedJsonNestingDepth(text, `Workshop session ${displayName}`);
       return decodeWorkshopPersistedSessionCheckpoint(JSON.parse(text));
@@ -898,10 +1043,11 @@ export class WorkshopSessionStore {
     session: WorkshopPersistedSessionV2,
     overwrite: boolean,
     beforeCommit?: () => Promise<void>
-  ): Promise<void> {
+  ): Promise<Uint8Array> {
     await this.ensureStorageDirectory(paths);
-    await this.writeAtomically(targetPath, session, overwrite, beforeCommit);
+    const bytes = await this.writeAtomically(targetPath, session, overwrite, beforeCommit);
     await this.writeSearchIndexAfterCommit(paths, fileName, session);
+    return bytes;
   }
 
   private async writeSearchIndexAfterCommit(
@@ -948,8 +1094,8 @@ export class WorkshopSessionStore {
     session: WorkshopPersistedSessionV2,
     overwrite: boolean,
     beforeCommit?: () => Promise<void>
-  ): Promise<void> {
-    await this.writeJsonAtomically(
+  ): Promise<Uint8Array> {
+    return this.writeJsonAtomically(
       targetPath,
       session,
       overwrite,
@@ -966,9 +1112,9 @@ export class WorkshopSessionStore {
     maximumBytes: number,
     description: string,
     beforeCommit?: () => Promise<void>
-  ): Promise<void> {
+  ): Promise<Uint8Array> {
     const bytes = this.named.encode(value, description, maximumBytes);
-    const temporaryPath = `${targetPath}.tmp-${this.now().getTime()}-${++this.temporaryWriteCounter}`;
+    const temporaryPath = `${targetPath}.tmp-${randomUUID()}`;
     try {
       await this.fileSystem.writeFile(temporaryPath, bytes);
       await beforeCommit?.();
@@ -981,6 +1127,7 @@ export class WorkshopSessionStore {
       }
       throw error;
     }
+    return bytes;
   }
 
   private namedPath(
@@ -1151,12 +1298,6 @@ function formatFilenameTimestamp(date: Date): string {
   return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}-${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}`;
 }
 
-function isNamedSessionFileName(name: string): boolean {
-  return name.endsWith('.json') &&
-    name !== 'current.json' &&
-    !name.endsWith('.summary.json');
-}
-
 function isMissingFileError(error: unknown): boolean {
   return isMissingFileSystemPathError(error);
 }
@@ -1175,4 +1316,8 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function rollingRevision(bytes: Uint8Array | undefined): string {
+  return bytes ? createHash('sha256').update(bytes).digest('hex') : 'absent';
 }

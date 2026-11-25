@@ -50,6 +50,7 @@ import {
   WorkshopWriterProfileService,
   WorkshopSessionTimeService,
   WorkshopSessionStore,
+  PRIMARY_WORKSHOP_ROOM_ID,
   WorkshopSessionPersistenceCoordinator,
   WorkshopTranscriptRecallService,
   WorkshopLiveRoomBookmarkReader,
@@ -380,7 +381,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     platform.fileSystem,
     platform.workspace,
     outputChannel
-  );
+  ).forRoom(PRIMARY_WORKSHOP_ROOM_ID);
   workshopSessionPersistenceCoordinator = new WorkshopSessionPersistenceCoordinator(
     workshopSessionService,
     assistantToolService,
