@@ -1,7 +1,7 @@
 # Feature: A Workshop Session Keeps Its Cache Key Across a Reload
 
 **Date Identified:** 2026-11-25
-**Status:** Idea. Small: one optional field on the engine's conversation archive, kept on restore. No ADR needed; a short note in the PR is enough.
+**Status:** Idea, ready to build. Small: one optional field on the engine's conversation archive, kept on restore. K1 and K2 decided. No ADR needed; a short note in the PR is enough.
 **Priority:** Medium. Okey loses the cache on every rebuild and relaunch while testing, and so does any writer who reloads the window mid-session.
 **Origin:** Okey, 2026-11-25, while Astra was building multiple Workshop tabs
 
@@ -60,7 +60,7 @@
    or a log. It's random, and carries nothing of the writer's text or
    paths.
 
-## What keeps the key (K1, Ada's lean)
+## What keeps the key (K1)
 
 The key follows the retained history: a copy of the history keeps it, and a
 new conversation mints one.
@@ -86,12 +86,12 @@ new conversation mints one.
 - **Sticky routing never applies with a manual `provider.order`,** and only
   where cache reads are cheaper than ordinary input.
 
-## Decisions to make
+## Decisions (Okey, 2026-11-25)
 
-| # | Question | Ada's lean |
+| # | Decision | Notes |
 |---|---|---|
-| K1 | Which operations keep the key? | The table above: Branch keeps it. |
-| K2 | Restore the cache clock as well? | Yes. It is two numbers in the archive, and the clock reads true again. Whether to restore the whole last context reading (the meter too) is a separate, larger question; leave it. |
+| K1 | **The key follows the retained history.** Reload, reopen, Rewind and Branch keep it; New, a full reset and a fresh conversation mint one. | The table above. Branch keeps it because the cached prefix is the same. |
+| K2 | **The cache clock is restored too.** | Two numbers in the archive. Restoring the whole last context reading (the meter too) is a separate, larger question, left out. |
 
 ## Completion Criteria
 
