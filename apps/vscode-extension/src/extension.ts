@@ -927,7 +927,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (!payload) {
       return;
     }
-    workshopPanelProvider?.seedExcerpt({
+    return workshopPanelProvider?.seedExcerpt({
       text: payload.text,
       source: {
         kind: 'editor-selection',

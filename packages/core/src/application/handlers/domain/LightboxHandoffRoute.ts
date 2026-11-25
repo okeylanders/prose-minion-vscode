@@ -80,7 +80,7 @@ export interface LightboxWorkshopPorts {
     send: LightboxWorkshopHandoffPort;
     wasStaged(tile: { boardId: string; tileId: string }): boolean;
   } | undefined;
-  openWorkshop?: (trayToken?: string) => void;
+  openWorkshop?: (trayToken?: string) => void | Promise<void>;
 }
 
 export interface LightboxHandoffRouteDependencies extends LightboxWorkshopPorts {
@@ -154,9 +154,9 @@ export class LightboxHandoffRoute {
   }
 
   /** The tray's "Open Workshop →". */
-  openWorkshop(trayToken?: string): void {
+  openWorkshop(trayToken?: string): void | Promise<void> {
     if (!this.disposed) {
-      this.deps.openWorkshop?.(trayToken);
+      return this.deps.openWorkshop?.(trayToken);
     }
   }
 

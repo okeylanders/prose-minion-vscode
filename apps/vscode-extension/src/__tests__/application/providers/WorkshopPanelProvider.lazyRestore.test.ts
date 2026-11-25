@@ -1,7 +1,8 @@
 /** VS Code can show a restored tab in tabGroups before supplying its WebviewPanel to the serializer. */
 import * as vscode from 'vscode';
-import type { Platform } from '@prose-minion/core';
+import { MessageHandler, type Platform } from '@prose-minion/core';
 import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelProvider';
+import { WorkshopPanelTab } from '@app/application/providers/WorkshopPanelTab';
 import { workshopPanelRooms } from './workshopPanelRooms';
 
 /* eslint-disable @typescript-eslint/naming-convention -- mocks match VS Code and core export names. */
@@ -18,7 +19,7 @@ jest.mock('@prose-minion/core', () => ({
   WorkshopSeedDelivery: jest.requireActual('@/application/services/workshop/WorkshopSeedDelivery').WorkshopSeedDelivery,
   workshopExcerptTitle: jest.requireActual('@messages').workshopExcerptTitle,
   MessageHandler: jest.fn(() => ({ dispose: jest.fn(), handleMessage: jest.fn(), flushCachedResults: jest.fn() })),
-  MessageType: { WORKSHOP_REQUEST_SESSION: 'workshop_request_session' },
+  MessageType: { WORKSHOP_REQUEST_SESSION: 'workshop_request_session', WORKSHOP_SET_EXCERPT: 'workshop_set_excerpt' },
   SURFACE_WORKSHOP: 'workshop'
 }));
 /* eslint-enable @typescript-eslint/naming-convention */
@@ -27,9 +28,12 @@ jest.mock('@app/application/providers/webviewHtml', () => ({ getWebviewHtml: () 
 const originalType = 'prose-minion.workshop';
 const secondary = 'b38c89b6-8417-40dc-b7bc-a756bd73dac0';
 const disposable = { dispose() {} };
+const buildOffer = { kind: 'lexical-gravity-seed' as const, seed: {
+  origin: 'lightbox' as const, field: 'Clockwork', metaphor: 'The hour hand hesitates.', terms: [], sourceLabel: 'Chapter 2'
+} };
 
 function nativeHost() {
-  const rooms = workshopPanelRooms();
+  const rooms = { ...workshopPanelRooms(), focus: jest.fn() };
   const acquire = jest.spyOn(rooms, 'acquire');
   const provider = new WorkshopPanelProvider(vscode.Uri.file('/extension'), rooms,
     { appendLine: jest.fn() } as unknown as vscode.OutputChannel, {} as Platform);
@@ -107,7 +111,26 @@ function nativeHost() {
     }
     throw new Error(`Unexpected native editor command: ${command}`);
   });
-  return { provider, acquire, hidden, serialized, close, create, commands, groups, active: () => activeGroup.activeTab };
+  const holdSerializer = (tab: Tab) => {
+    const resume = tab.attach!;
+    const selected = new Promise<void>(resolve => {
+      tab.attach = async () => { tab.attach = undefined; resolve(); };
+    });
+    // Let the native selection command finish independently of extension-host deserialization.
+    return { selected: selected.then(() => new Promise<void>(resolve => setImmediate(resolve))), resume };
+  };
+  const excerpts = () => {
+    const handlers = MessageHandler as unknown as jest.Mock;
+    return acquire.mock.results.flatMap(({ value: { services } }, index) => {
+      const instance = handlers.mock.calls.findIndex(([owner]) => owner === services);
+      const handler = handlers.mock.results[instance]?.value;
+      return (handler?.handleMessage.mock.calls ?? [])
+        .filter(([msg]: [{ type: string }]) => msg.type === 'workshop_set_excerpt')
+        .map(([msg]: [{ payload: { text: string } }]) => ({ roomId: acquire.mock.calls[index][0], text: msg.payload.text }));
+    });
+  };
+  return { provider, acquire, focus: rooms.focus, hidden, serialized, holdSerializer, excerpts, close, create, commands, groups,
+    active: () => activeGroup.activeTab };
 }
 
 describe('Workshop launchers with lazy native editors', () => {
@@ -142,6 +165,121 @@ describe('Workshop launchers with lazy native editors', () => {
     expect(host.acquire.mock.calls).toEqual([['legacy']]);
     expect(host.active()).toBe(original);
     expect(host.create).not.toHaveBeenCalled();
+  });
+
+  it('sends an excerpt to the original dormant primary without creating a replacement native editor', async () => {
+    const host = nativeHost();
+    const original = host.hidden('legacy', originalType + '.primary');
+    const excerpt = { text: 'A candle in the fourth-floor window.' };
+    await host.provider.seedExcerpt(excerpt);
+    // The native editor can also deserialize later through a manual tab selection.
+    await original.attach?.();
+    expect(host.acquire.mock.calls).toEqual([['legacy']]);
+    expect(host.create).not.toHaveBeenCalled();
+    expect(host.excerpts()).toEqual([{ roomId: 'legacy', text: excerpt.text }]);
+  });
+
+  it('captures a dormant Lightbox recipient without navigation and sends to the existing primary', async () => {
+    const host = nativeHost();
+    const original = host.hidden('legacy', originalType + '.primary');
+    const offer = host.provider.captureLightboxTarget();
+    expect(host.commands).not.toHaveBeenCalled();
+    expect(host.acquire).not.toHaveBeenCalled();
+    const receive = jest.spyOn(WorkshopPanelTab.prototype, 'seedLexicalGravityBuild').mockResolvedValue({ opened: true });
+    try {
+      await expect(offer.send(buildOffer)).resolves.toEqual({ opened: true });
+      await original.attach?.();
+      expect(host.create).not.toHaveBeenCalled();
+      expect(host.acquire.mock.calls).toEqual([['legacy']]);
+      expect(receive.mock.contexts.map(tab => tab.roomId)).toEqual(['legacy']);
+    } finally {
+      receive.mockRestore();
+    }
+  });
+
+  it('declines Selected Text when only a dormant secondary exists and no recipient was selected', async () => {
+    const host = nativeHost();
+    host.hidden(secondary, originalType + '.tab');
+    const receive = jest.spyOn(WorkshopPanelTab.prototype, 'stageSelectedText').mockResolvedValue({ opened: true });
+    try {
+      await expect(host.provider.stageSelectedText('captured-selection')).resolves.toMatchObject({ opened: false });
+      expect(host.create).not.toHaveBeenCalled();
+      expect(host.acquire).not.toHaveBeenCalled();
+      expect(receive).not.toHaveBeenCalled();
+    } finally {
+      receive.mockRestore();
+    }
+  });
+
+  it('joins a restoring Home for an excerpt and keeps its recipient through a subsequent +', async () => {
+    const host = nativeHost();
+    const original = host.hidden('legacy', originalType + '.primary');
+    const held = host.holdSerializer(original);
+    const home = host.provider.openOrReveal();
+    await held.selected;
+    const excerpt = { text: 'The watchman had already left.' };
+    const delivery = host.provider.seedExcerpt(excerpt);
+    host.provider.newWorkshopTab();
+    await held.resume();
+    await Promise.all([home, delivery]);
+    expect(host.create.mock.calls.map(([type]) => type)).toEqual([originalType + '.tab']);
+    expect(host.acquire.mock.calls).toEqual([[expect.stringMatching(/^[a-f0-9-]{36}$/)], ['legacy']]);
+    expect(host.excerpts()).toEqual([{ roomId: 'legacy', text: excerpt.text }]);
+  });
+
+  it('keeps the newer + active and routes the next Lightbox handoff there after delayed Home', async () => {
+    const host = nativeHost();
+    const original = host.hidden('legacy', originalType + '.primary');
+    const held = host.holdSerializer(original);
+    const home = host.provider.openOrReveal();
+    await held.selected;
+    host.provider.newWorkshopTab();
+    const fresh = host.active();
+    const freshId = host.acquire.mock.calls[0][0];
+    const ticket = host.provider.captureLightboxTarget().trayToken;
+    expect(ticket).toEqual(expect.any(String));
+    await held.resume();
+    await home;
+    expect(host.active()).toBe(fresh);
+    expect(host.focus).toHaveBeenLastCalledWith(freshId);
+    const next = host.provider.captureLightboxTarget();
+    expect(next.trayToken).toBe(ticket);
+    const receive = jest.spyOn(WorkshopPanelTab.prototype, 'seedLexicalGravityBuild').mockResolvedValue({ opened: true });
+    try {
+      await expect(next.send(buildOffer)).resolves.toEqual({ opened: true });
+      expect(receive.mock.contexts.map(tab => tab.roomId)).toEqual([freshId]);
+      expect(host.active()).toBe(fresh);
+    } finally {
+      receive.mockRestore();
+    }
+  });
+
+  it('stops navigating historical editors when + supersedes Home during group selection', async () => {
+    const host = nativeHost();
+    const original = host.hidden('legacy');
+    const execute = host.commands.getMockImplementation()!;
+    let releaseFocus!: () => void;
+    const paused = new Promise<void>(resolve => { releaseFocus = resolve; });
+    const focused = new Promise<void>(resolve => {
+      host.commands.mockImplementation(async (command, ...args) => {
+        await execute(command, ...args);
+        if (command === 'workbench.action.focusNextGroup') {
+          resolve();
+          await paused;
+        }
+      });
+    });
+    const home = host.provider.openOrReveal();
+    await focused;
+    host.provider.newWorkshopTab();
+    const latest = host.active();
+    const invoked = host.commands.mock.calls.length;
+    releaseFocus();
+    await original.attach?.(); // A dormant native editor may also deserialize in the background.
+    await home;
+    expect(host.commands.mock.calls.slice(invoked)).toEqual([]);
+    expect(host.active()).toBe(latest);
+    expect(host.focus).toHaveBeenLastCalledWith(host.acquire.mock.calls[0][0]);
   });
 
   it('keeps the UUID assigned to a colliding native primary after a new host starts', async () => {

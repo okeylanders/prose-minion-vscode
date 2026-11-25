@@ -40,21 +40,21 @@ export async function waitForWorkshopEditor(observed: () => boolean): Promise<bo
 }
 
 /** TabGroups exposes no reveal method. Activate this exact editor in its existing group and current position. */
-export async function revealNativeWorkshopEditor(tab: vscode.Tab): Promise<boolean> {
+export async function revealNativeWorkshopEditor(tab: vscode.Tab, current: () => boolean): Promise<boolean> {
   const groups = vscode.window.tabGroups;
   const seen = new Set<vscode.TabGroup>();
   const groupOfTab = () => groups.all.find(group => group.tabs.includes(tab));
   let target = groupOfTab();
-  while (target && groups.activeTabGroup !== target) {
+  while (current() && target && groups.activeTabGroup !== target) {
     const prior = groups.activeTabGroup;
     if (seen.has(prior)) { return false; }
     seen.add(prior);
     await vscode.commands.executeCommand('workbench.action.focusNextGroup');
-    if (!await waitForWorkshopEditor(() => !groupOfTab() || groups.activeTabGroup !== prior)) { return false; }
+    if (!await waitForWorkshopEditor(() => !current() || !groupOfTab() || groups.activeTabGroup !== prior)) { return false; }
     target = groupOfTab();
   }
-  if (!target) { return false; }
+  if (!current() || !target) { return false; }
   // The zero-based command also covers the tenth and later editors in a group.
   await vscode.commands.executeCommand('workbench.action.openEditorAtIndex', target.tabs.indexOf(tab));
-  return waitForWorkshopEditor(() => !groupOfTab() || groups.activeTabGroup.activeTab === tab);
+  return waitForWorkshopEditor(() => !current() || !groupOfTab() || groups.activeTabGroup.activeTab === tab);
 }
