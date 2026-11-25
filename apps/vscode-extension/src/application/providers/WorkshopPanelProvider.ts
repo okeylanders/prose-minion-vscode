@@ -178,6 +178,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       roomId === PRIMARY_WORKSHOP_ROOM_ID ? 'Workshop' : `Workshop · Room ${number}`
     );
     this.tabs.set(roomId, tab);
+    this.refreshTitles();
     if (focused || !this.focusOrder.length) {
       this.focus(tab);
     } else {

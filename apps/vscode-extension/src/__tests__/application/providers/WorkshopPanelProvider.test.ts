@@ -5,7 +5,8 @@ import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelP
 import { MessageHandler, MessageType, Platform } from '@prose-minion/core';
 
 jest.mock('@prose-minion/core', () => ({
-  MessageType: { WORKSHOP_REQUEST_SESSION: 'workshop_request_session' },
+  MessageType: { WORKSHOP_REQUEST_SESSION: 'workshop_request_session', WORKSHOP_SESSION_STATE: 'workshop_session_state' },
+  workshopExcerptTitle: jest.requireActual('@messages').workshopExcerptTitle,
   SURFACE_WORKSHOP: 'workshop',
   // The provider's own seed delivery is real; nothing here offers a seed. (The
   // whole barrel cannot load under jest, so its module is required directly.)
@@ -98,6 +99,13 @@ describe('WorkshopPanelProvider retained session loading', () => {
     expect(ids.slice(0, 2)).toEqual(['legacy', other]);
     expect(ids.slice(2)).toEqual(Array(3).fill(expect.stringMatching(/^[a-f0-9-]{36}$/)));
     expect(new Set(ids).size).toBe(5);
+    // Both sessions name the same source. Only its basename is shown, and titles stay distinguishable.
+    const post = (index: number) => (MessageHandler as jest.Mock).mock.calls.slice(-5)[index][1];
+    const session = { excerpt: { source: { kind: 'file', relativePath: 'Drafts/chapter-3.md' } } };
+    post(0)({ type: MessageType.WORKSHOP_SESSION_STATE, payload: { session } });
+    post(1)({ type: MessageType.WORKSHOP_SESSION_STATE, payload: { session } });
+    expect(legacy.title).toBe('Workshop · chapter-3');
+    expect(original.title).toBe(`Workshop · chapter-3 (${other.slice(0, 8)})`);
     original.dispose();
     expect(release).toHaveBeenCalledWith(other);
     rooms.listRoomCheckpoints = async () => ids.map(roomId => ({ roomId, title: roomId, updatedAt: 'today' }));
