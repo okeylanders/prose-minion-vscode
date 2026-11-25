@@ -1,6 +1,6 @@
 # Epic — Independent Workshop tabs
 
-**Status** Workshop implementation complete for epic integration on `epic/workshop-tabs`, branched from `main` at `0830be3c` (v2.16.0).
+**Status** Workshop tabs implemented on `epic/workshop-tabs`, branched from `main` at `0830be3c` (v2.16.0).
 **Priority** Medium, selected for implementation.
 **Goal** Keep several live Workshop rooms in one VS Code window, including two unnamed rooms that both restore after a reload. [Feature 9](../../features/feature-multiple-workshop-and-lightbox-tabs/README.md) · [Architecture and acceptance witnesses](../../../docs/adr/2026-11-25-workshop-tabs.md)
 
@@ -35,7 +35,7 @@ The sprint numbers describe review boundaries. Coordinate the room factory, slot
 | Named sessions | Opening the same named session in a second tab revealed its owner. The second tab kept its previous excerpt. Save and Rename updated the native tab title. |
 | Upgrade and closed rooms | A pre-tabs native editor and existing writer checkpoint reopened as the legacy slot, with the same excerpt and turn IDs. The native picker reopened a closed UUID room. |
 | Two windows on one project | Separate VS Code processes edited the same legacy slot. The committed checkpoint retained the first edit. A separate recovery file held the second edit. |
-| Memory-only rooms | Two roots in a real VS Code window kept two rooms separate. Reopening a closed room displayed the original excerpt and wrote no checkpoint to either root. Automated activation tests also cover a window with no folder. |
-| Concurrent model work | The extension activation tests use a controlled provider transport and real retained conversation state. They cover overlapping turns, cancellation, rewind and transcript export. |
+| Memory-only rooms | Two roots in a real VS Code window kept two rooms separate. Reopening a closed room displayed the original excerpt and wrote no checkpoint to either root. A folderless VS Code window also recovered both closed rooms with their original slot IDs and excerpts. |
+| Concurrent model work | The extension activation tests use a controlled provider transport and real retained conversation state. They cover overlapping turns, cancellation, rewind and transcript export. When two replies completed out of order, each retained its own token usage and cost, and a newly opened tab showed the correct window totals. |
 
-Sprint PRs record review responses and CI. [Design](https://github.com/okeylanders/prose-minion-vscode/pull/301) · [Room operations](https://github.com/okeylanders/prose-minion-vscode/pull/302) · [Durability](https://github.com/okeylanders/prose-minion-vscode/pull/303) · [Native panels](https://github.com/okeylanders/prose-minion-vscode/pull/304)
+Sprint PRs record review responses and CI. [Design](https://github.com/okeylanders/prose-minion-vscode/pull/301) · [Room operations](https://github.com/okeylanders/prose-minion-vscode/pull/302) · [Durability](https://github.com/okeylanders/prose-minion-vscode/pull/303) · [Native panels](https://github.com/okeylanders/prose-minion-vscode/pull/304) · [Integration](https://github.com/okeylanders/prose-minion-vscode/pull/305)

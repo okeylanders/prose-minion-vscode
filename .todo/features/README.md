@@ -57,7 +57,7 @@ Several of these notes still carry their build-time status line (for example
 
 | # | Idea | Status |
 |---|---|---|
-| 9 | Several Workshop tabs, including unsaved rooms | Implemented for review on `epic/workshop-tabs`. [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [Feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
+| 9 | Several Workshop tabs, including unsaved rooms | Implemented on `epic/workshop-tabs`. [Epic](../epics/epic-workshop-tabs-2026-11-25/README.md) · [Feature note](feature-multiple-workshop-and-lightbox-tabs/README.md) |
 
 ## ⏳ Not started
 
