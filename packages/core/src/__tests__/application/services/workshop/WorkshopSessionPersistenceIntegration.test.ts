@@ -40,12 +40,12 @@ function checkpoint(id: string, text: string): WorkshopPersistedSessionV2 {
 }
 
 function setup(fs = new MemoryFileSystem(), idPrefix = 'room',
-  slot?: { roomId: string; namedOwners: WorkshopNamedSessionOwners; store: WorkshopSessionStore }) {
+  slot?: { roomId: string; namedOwners?: WorkshopNamedSessionOwners; store: WorkshopSessionStore }) {
   const log: LogSink = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
   const store = slot?.store.forRoom(slot.roomId) ?? new WorkshopSessionStore(fs, workspace, log, now);
   const session = new WorkshopSessionService(() => now().getTime());
   let nextId = 0;
-  const ready = jest.fn(async () => undefined);
+  const ready = jest.fn(async (): Promise<void> => undefined);
   const assistant = {
     exportWorkshopConversationArchive: jest.fn(() => []),
     importWorkshopConversationArchive: jest.fn(async () => []),
@@ -926,6 +926,24 @@ describe('independent durable Workshop slots in one window', () => {
     fs.failRenameToPath = undefined;
     await b.coordinator.flushForClose();
     expect((await b.store.readCurrent())?.workshop.excerpt?.text).toBe('Only copy so far');
+  });
+
+  it('keeps a primary room save out of a replacement workspace during asynchronous snapshot capture', async () => {
+    const fs = new MemoryFileSystem();
+    let folder = root;
+    const store = new WorkshopSessionStore(fs, {
+      ...workspace, workspaceFolders: () => [{ name: 'novel', path: folder }]
+    }, setup(fs).log, now);
+    const { coordinator, session, ready } = setup(fs, 'primary', { roomId: PRIMARY_WORKSHOP_ROOM_ID, store });
+    await coordinator.initialize();
+    session.setExcerpt({ text: 'From the original workspace', source: { kind: 'manual' } });
+    await coordinator.flush();
+    const before = new Map(fs.files);
+    ready.mockImplementationOnce(async () => { folder = '/workspace/replacement'; });
+
+    await expect(coordinator.saveNamed('Original workspace draft')).rejects.toThrow(/workspace changed/);
+    expect(fs.files).toEqual(before);
+    expect(session.getExcerpt()?.text).toBe('From the original workspace');
   });
 
   it('refuses a save queued behind another room when the workspace changes while it waits', async () => {

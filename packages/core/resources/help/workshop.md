@@ -4,6 +4,18 @@
 
 Run **Open Workshop** from the Command Palette. Choose a host, such as Jill, to discuss a passage or start an open chat. Invite a specialist guest for a different perspective and choose the participant you want to address. The thread identifies the speaker and the model that wrote each reply. Tools run a focused writing pass in the room. The host can synthesize its findings and you can keep actions as to-dos.
 
+## Multiple Workshop tabs
+
+To discuss two chapters side by side, run **New Workshop Tab** from the Command Palette. Each tab has its own room, excerpt, conversation history and reply in progress. You can send a message or stop a reply in one room while the other keeps working. **Open Workshop** brings the most recently focused open Workshop tab to the front.
+
+Before using **Add Selection to Workshop Message**, **Send to New Workshop Excerpt**, or a Lightbox action that sends material to Workshop, focus the tab you want to receive it. You can then return to the editor or Lightbox to send. If you have no Workshop tab open, the command opens one.
+
+You can leave both rooms unnamed. With a single project folder open in VS Code, each room keeps its own checkpoint. Reloading VS Code restores each open tab from its checkpoint. To recover an unnamed room after closing its tab, run **Reopen Closed Workshop Room…** and choose the room. With no folder or with several workspace folders, closed rooms stay available in that picker while the extension is running. Reloading or closing that window ends those in-memory rooms. Opening a named session already open elsewhere in the same window takes you to its tab. **Branch** opens the branch in the tab where you made it.
+
+If two VS Code windows write to the same room checkpoint, the first successful save stays in place. Workshop preserves the other window’s edits in a separate local recovery session. If the recovery write also fails, keep the window open and reopen the room to retry. When you close that tab, choose **Open saved recovery** to continue in a fresh tab. You can also open the preserved session by name from Workshop Sessions.
+
+If an interrupted write left a closed room locked, run **Reopen Closed Workshop Room…**. When the picker offers **Open a recovery copy**, choose it to continue from the last saved checkpoint in a separate room.
+
 ## Hosts and guests
 
 Choose a host when opening the room. Use **Invite guest** beside the participants to bring in a second perspective. Select a participant under **Talking to** to address your next message to them. Use the close button on a guest's chip to dismiss them once a reply finishes.
