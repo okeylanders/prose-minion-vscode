@@ -97,6 +97,7 @@ export interface WorkshopUiActions {
   workshopTray?: WorkshopLightboxTray;
   revealWorkshopRoom?: (roomId: string) => boolean;
   openWorkshop?: (trayToken?: string) => void;
+  newWorkshopTab?: () => void;
   /** Opens or reveals the Lightbox tab (ADR 2026-10-19 D1); the sidebar's OPEN_LIGHTBOX calls it. */
   openLightbox?: () => void;
   /**

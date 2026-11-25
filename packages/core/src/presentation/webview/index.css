@@ -808,7 +808,9 @@ body {
 /* The editor-tab launchers (Workshop, Lightbox) beside the Assistant title. */
 .surface-launch-buttons {
   display: flex;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
   gap: 6px;
   margin-left: auto;
 }
@@ -816,6 +818,30 @@ body {
   flex-shrink: 0;
   padding: 7px 11px;
   font-size: 12px;
+}
+/* Joined edges stay aligned while either half is hovered or focused. */
+.workshop-launch-split {
+  display: inline-grid;
+  grid-template-columns: 3fr 1fr;
+}
+.workshop-launch-split > :first-child {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+  border-inline-end: 0;
+}
+.workshop-launch-split > :last-child {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  padding-inline: 0;
+  border-inline-start: 1px solid var(--pm-border-2);
+  box-shadow: inset 1px 0 color-mix(in srgb, var(--pm-btn-text) 15%, transparent);
+}
+.workshop-launch-split > .btn:hover:not(:disabled) {
+  transform: none;
+}
+.workshop-launch-split > .btn:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder, var(--pm-primary));
+  outline-offset: -3px;
 }
 .tab-content > h3 {
   font-size: 14px;

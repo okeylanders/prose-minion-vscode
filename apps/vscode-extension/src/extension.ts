@@ -799,6 +799,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     {
       surface: 'sidebar',
       openWorkshop: () => workshopPanelProvider?.openOrReveal(),
+      newWorkshopTab: () => workshopPanelProvider?.newWorkshopTab(),
       openLightbox: () => lightboxPanelProvider?.openOrReveal()
     }
   );
