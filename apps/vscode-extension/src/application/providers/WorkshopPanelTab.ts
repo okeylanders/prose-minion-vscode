@@ -37,6 +37,7 @@ export class WorkshopPanelTab {
   private closed = false;
   private readonly tileReceipts = new Map<string, () => void>();
   private messageHandler?: MessageHandler;
+  private initialRoomRevision?: number;
   private readonly subscriptions: vscode.Disposable[] = [];
   /**
    * The current panel's seed receiver: the webview realm that announced
@@ -127,6 +128,7 @@ export class WorkshopPanelTab {
 
   private mountHandler(): void {
     const panel = this.panel;
+    this.initialRoomRevision = this.coreServices.workshopSessionService.readRoomRevision();
     this.messageHandler = new MessageHandler(
       this.coreServices,
       message => {
@@ -406,6 +408,11 @@ export class WorkshopPanelTab {
 
   roomRevision(): number | undefined {
     return this.messageHandler ? this.coreServices.workshopSessionService.readRoomRevision() : undefined;
+  }
+
+  /** Before hydration completes, a handoff belongs to the first room this tab displays. */
+  stillShowsRoom(revisionAtGesture: number | undefined): boolean {
+    return this.roomRevision() === (revisionAtGesture ?? this.initialRoomRevision);
   }
 
   dispose(): void {
