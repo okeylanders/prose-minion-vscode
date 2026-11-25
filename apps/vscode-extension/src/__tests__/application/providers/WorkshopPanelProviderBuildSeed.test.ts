@@ -352,6 +352,20 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     expect(second.reveal).toHaveBeenCalledTimes(3);
   });
 
+  it('leaves a newly occupied legacy slot alone if the handoff began before any Workshop opened', async () => {
+    const workshop = provider();
+    const reserved = workshop.captureLightboxTarget();
+    expect(panels).toHaveLength(0);
+    const newer = await open(workshop);
+    mount(newer);
+    for (const receiver of ['open', 'closed']) {
+      if (receiver === 'closed') newer.disposed();
+      await expect(reserved.send({ kind: 'lexical-gravity-seed', seed })).resolves.toEqual({ opened: false, reason: 'room-changed' });
+    }
+    expect(seedsIn(newer)).toHaveLength(0);
+    expect(panels).toHaveLength(1);
+  });
+
   it('refuses a held source read and a granted seed when the selected tab replaces its room', async () => {
     const rooms = workshopPanelRooms();
     const lease = rooms.acquire('legacy');

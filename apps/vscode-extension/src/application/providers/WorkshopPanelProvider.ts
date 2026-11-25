@@ -25,6 +25,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   private readonly tabs = new Map<string, WorkshopPanelTab>();
   private focusOrder: WorkshopPanelTab[] = [];
   private nextNumber = 1;
+  private legacyAttachment = 0;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -100,11 +101,16 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   public captureLightboxTarget() {
     const captured = this.focusOrder[0];
     const revision = captured?.roomRevision();
+    const reservedLegacy = this.legacyAttachment;
     let staged: { boardId: string; tileId: string } | undefined;
     return {
       trayToken: captured?.trayToken,
       send: (handoff: LightboxWorkshopHandoff): Promise<WorkshopSeedOutcome> => {
-        const target = captured ?? this.tabs.get(PRIMARY_WORKSHOP_ROOM_ID) ?? this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);
+        if (!captured && this.legacyAttachment !== reservedLegacy) {
+          // Someone opened (and may already have closed) the reserved slot during the file check.
+          return Promise.resolve({ opened: false, reason: 'room-changed' });
+        }
+        const target = captured ?? this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);
         if (this.tabs.get(target.roomId) !== target) {
           return Promise.resolve({ opened: false, reason: 'closed' });
         }
@@ -163,6 +169,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   private attachPanel(panel: vscode.WebviewPanel, roomId: string, focused: boolean): WorkshopPanelTab {
     const { services, ready } = this.rooms.acquire(roomId);
     const number = this.nextNumber++;
+    if (roomId === PRIMARY_WORKSHOP_ROOM_ID) {
+      ++this.legacyAttachment;
+    }
     const tab = new WorkshopPanelTab(
       roomId, panel, this.extensionUri, services, ready, this.outputChannel, this.platform, this.uiActions,
       () => this.focus(tab), () => this.detach(tab), () => this.refreshTitles(),
