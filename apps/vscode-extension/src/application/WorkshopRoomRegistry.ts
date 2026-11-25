@@ -47,7 +47,7 @@ export class WorkshopRoomRegistry {
       stored = await this.readCheckpoints();
     } catch (error) {
       // A file-system outage must not hide the only route back to unsaved, retained work.
-      if (recovering.size === 0) throw error;
+      if (recovering.size === 0) {throw error;}
       stored = [];
     }
     const checkpoints = new Map(stored.map(entry => [entry.roomId, entry]));
@@ -102,12 +102,12 @@ export class WorkshopRoomRegistry {
     this.trayUnsubscribe = tray.subscribe(refresh);
     refresh();
     // A newly attached room publishes its persisted tiles once hydration settles.
-    void room.ready.then(() => { if (this.focusedRoom === roomId) refresh(); }, () => {});
+    void room.ready.then(() => { if (this.focusedRoom === roomId) {refresh();} }, () => {});
   }
 
   release(roomId: string): Promise<void> {
     const room = this.rooms.get(roomId);
-    if (!room) return Promise.resolve();
+    if (!room) {return Promise.resolve();}
     room.attached = false;
     room.closedAt = new Date().toISOString();
     room.services.workshopSessionService.invalidatePendingRoomReads();
@@ -123,18 +123,18 @@ export class WorkshopRoomRegistry {
     // Await both owners even on failure; keep the full room and its named claim for retry.
     const settled = await Promise.allSettled([sessions.flushForClose(), projectMemory.shutDown()]);
     for (const result of settled) {
-      if (result.status === 'rejected') throw result.reason;
+      if (result.status === 'rejected') {throw result.reason;}
     }
     // A panel reopened the slot during its final write. The same objects resume after this promise.
-    if (room.attached) return;
+    if (room.attached) {return;}
     // No writer-selected project exists for a folderless or multi-root room. Only host shutdown
     // releases its retained conversations; closing the tab can always reopen this memory-only slot.
-    if (room.ephemeral && !this.shuttingDown) return;
+    if (room.ephemeral && !this.shuttingDown) {return;}
     sessions.releaseNamedOwnership();
     for (const id of workshopSessionService.clearAllConversations()) {
       assistantToolService.discardConversation(id);
     }
-    if (this.focusedRoom === roomId) this.focus(undefined);
+    if (this.focusedRoom === roomId) {this.focus(undefined);}
     this.rooms.delete(roomId);
   }
 
@@ -142,7 +142,7 @@ export class WorkshopRoomRegistry {
     this.shuttingDown = true;
     const settled = await Promise.allSettled(Array.from(this.rooms.keys(), id => this.release(id)));
     for (const result of settled) {
-      if (result.status === 'rejected') throw result.reason;
+      if (result.status === 'rejected') {throw result.reason;}
     }
   }
 }
