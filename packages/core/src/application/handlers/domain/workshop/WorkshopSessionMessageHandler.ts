@@ -6,6 +6,7 @@
  * response envelopes, and cancellation of superseded browser searches.
  */
 
+import { WorkshopSessionOwnedError } from '@/application/services/workshop/WorkshopNamedSessionOwners';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import {
@@ -63,6 +64,7 @@ const generateSessionRequestId = (): string =>
   `workshop_sessions-${Date.now()}-${++sessionRequestCounter}`;
 
 export interface WorkshopSessionMessageHandlerOptions {
+  revealWorkshopRoom?: (roomId: string) => boolean;
   postSessionState: () => void;
   /** Re-read file-backed context with explicit or automatic persistence semantics. */
   refreshContextFiles: (origin: 'manual' | 'session-open') => Promise<void>;
@@ -381,6 +383,10 @@ export class WorkshopSessionMessageHandler {
           : 'Session opened with conversation memory restored.'
       );
     } catch (error) {
+      if (error instanceof WorkshopSessionOwnedError && this.options.revealWorkshopRoom?.(error.roomId)) {
+        this.postActionResult('open', true, 'Revealed the Workshop tab that already has this session open.');
+        return;
+      }
       // A failed Open restores the room it left, under a new revision: the
       // webview must hear that room, as New, Rewind and Branch's failures
       // already make it (PR #189 F-04).

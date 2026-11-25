@@ -498,7 +498,8 @@ describe('app-shell provider assembly', () => {
     );
     expect(extensionSource).toMatch(/craftAnnotations: craftAnnotator/);
     // Its run is built with no applier.
-    const built = extensionSource.slice(extensionSource.indexOf('new CraftFlagsUseCase('), extensionSource.indexOf('const coreServices'));
+    const start = extensionSource.indexOf('new CraftFlagsUseCase(');
+    const built = extensionSource.slice(start, extensionSource.indexOf('\n  );', start));
     expect(built).not.toMatch(/Applier/);
   });
 
@@ -596,7 +597,7 @@ describe('app-shell provider assembly', () => {
     for (const part of [
       'workshopPanel: workshopPanelProvider',
       'lightboxPanel: lightboxPanelProvider',
-      'workshopSessions: workshopSessionPersistenceCoordinator',
+      'workshopSessions: workshopRoomsForShutdown',
       'lightboxBoards: lightboxBoardLibrary'
     ]) {
       expect(deactivate).toContain(part);
@@ -714,7 +715,8 @@ describe('app-shell provider assembly', () => {
     expect(libraryArgs).toMatch(
       /\(\s*projectMemoryStore,\s*workshopSessionPersistenceCoordinator,\s*workshopTranscriptRecallService,\s*platform\.settings,\s*outputChannel\s*$/
     );
-    expect(at('new WorkshopTranscriptRecallService(')).toBeLessThan(at('new ProjectMemoryStore('));
+    expect(at('new ProjectMemoryStore(')).toBeLessThan(at('const createRoomServices ='));
+    expect(at('new WorkshopTranscriptRecallService(')).toBeLessThan(at('new ProjectMemoryLibrary('));
     expect(at('new ProjectMemoryStore(')).toBeLessThan(at('new ProjectMemoryLibrary('));
     expect(at('new ProjectMemoryLibrary(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
     expect(source).toContain('assistantToolService.setWorkshopProjectMemoryGrammar(() => projectMemoryLibrary.teachesGrammar());');

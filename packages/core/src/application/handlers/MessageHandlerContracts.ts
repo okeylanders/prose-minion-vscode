@@ -1,3 +1,4 @@
+import type { WorkshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
 import type { WorkshopLocationsProposalPorts } from '@handlers/domain/workshop/WorkshopLocationsProposalHandler';
 import type { WorkshopPassageSearchPorts } from '@handlers/domain/workshop/WorkshopPassageSearchHandler';
 import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
@@ -89,6 +90,11 @@ export type MessageTransport = (
  * growing anonymous callback bags at each boundary.
  */
 export interface WorkshopUiActions {
+  /** Only the Workshop panel attaches its mutation routes and projected settings. */
+  surface?: 'sidebar' | 'lightbox' | 'workshop';
+  /** The window's MRU Workshop tray, read-only from the Lightbox. */
+  workshopTray?: WorkshopLightboxTray;
+  revealWorkshopRoom?: (roomId: string) => boolean;
   openWorkshop?: () => void;
   /** Opens or reveals the Lightbox tab (ADR 2026-10-19 D1); the sidebar's OPEN_LIGHTBOX calls it. */
   openLightbox?: () => void;

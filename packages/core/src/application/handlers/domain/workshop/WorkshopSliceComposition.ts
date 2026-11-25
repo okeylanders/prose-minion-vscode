@@ -172,6 +172,7 @@ export class WorkshopSliceComposition {
         flushDeferredConversationSettings: host.flushDeferredConversationSettings,
         reportError: (message, details) =>
           host.reportRouteError('workshop', message, details, 'WorkshopSessionMessageHandler'),
+        revealWorkshopRoom: dependencies.revealWorkshopRoom,
         activeRunLabel: host.activeRunLabel,
         rewindCutForBubble: (turnId) => session.rewindCutForBubble(turnId)
       }

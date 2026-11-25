@@ -43,6 +43,8 @@ export type {
   WorkshopUiActions
 } from '@/application/handlers/MessageHandlerContracts';
 
+export { workshopLightboxTray, type WorkshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
+
 // --- Application: Workshop session aggregate (ADR 2026-07-03) ---
 export {
   WorkshopSessionService,
