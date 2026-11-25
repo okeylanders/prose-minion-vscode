@@ -111,17 +111,26 @@ describe('Workshop room registry', () => {
   });
 
   it.each(['no-workspace', 'multi-root'] as const)('keeps a closed %s room in memory until host shutdown', async reason => {
-    const scratch = room('Ephemeral', reason);
-    const build = jest.fn(() => scratch.services);
+    const a = room('Chapter', reason);
+    const b = room('Series bible', reason);
+    const build = jest.fn((id: string) => id === 'A' ? a.services : b.services);
     const rooms = new WorkshopRoomRegistry(build, async () => []);
-    await rooms.acquire('A').ready;
-    await rooms.release('A');
-    expect(scratch.discardConversation).not.toHaveBeenCalled();
-    expect(await rooms.listRoomCheckpoints()).toEqual([{ roomId: 'A', title: 'Ephemeral', updatedAt: expect.any(String) }]);
-    expect(rooms.acquire('A').services).toBe(scratch.services);
-    expect(build).toHaveBeenCalledTimes(1);
+    await Promise.all([rooms.acquire('A').ready, rooms.acquire('B').ready]);
+    await Promise.all([rooms.release('A'), rooms.release('B')]);
+    expect(a.discardConversation).not.toHaveBeenCalled();
+    expect(b.discardConversation).not.toHaveBeenCalled();
+    const choices = await rooms.listRoomCheckpoints();
+    expect(choices).toHaveLength(2);
+    expect(choices).toEqual(expect.arrayContaining([
+      { roomId: 'A', title: 'Chapter', updatedAt: expect.any(String) },
+      { roomId: 'B', title: 'Series bible', updatedAt: expect.any(String) }
+    ]));
+    expect(rooms.acquire('B').services).toBe(b.services);
+    expect(rooms.acquire('A').services).toBe(a.services);
+    expect(build).toHaveBeenCalledTimes(2);
     await rooms.flush();
-    expect(scratch.discardConversation).toHaveBeenCalledWith('Ephemeral');
+    expect(a.discardConversation).toHaveBeenCalledWith('Chapter');
+    expect(b.discardConversation).toHaveBeenCalledWith('Series bible');
     expect(await rooms.listRoomCheckpoints()).toEqual([]);
   });
 
