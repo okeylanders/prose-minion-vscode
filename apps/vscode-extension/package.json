@@ -96,6 +96,8 @@
   "activationEvents": [
     "onView:prose-minion.toolsView",
     "onWebviewPanel:prose-minion.workshop",
+    "onWebviewPanel:prose-minion.workshop.primary",
+    "onWebviewPanel:prose-minion.workshop.tab",
     "onWebviewPanel:prose-minion.lightbox",
     "onCommand:prose-minion.assistantSelection",
     "onCommand:prose-minion.wordLookupSelection",

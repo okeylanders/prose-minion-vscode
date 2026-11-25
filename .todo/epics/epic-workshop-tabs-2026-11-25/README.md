@@ -42,9 +42,9 @@ Sprint PRs record review responses and CI. [Design](https://github.com/okeylande
 
 ## Open discussion from sidebar testing
 
-These are proposals to revisit after testing the split launcher.
+The split launcher now opens the primary room (backed by `current.json` in a single-folder workspace) on the first click of either **Workshop** or **+**. **Workshop** always reveals that room or reopens it if its tab was closed. **+** opens a fresh tab whenever any Workshop tab is already open.
 
-1. **First tab.** When no Workshop tabs are open, either **Workshop** or **+** should open the primary room backed by `current.json`.
-2. **Workshop as a home button.** When the primary tab is already open, **Workshop** should bring it to the front, even if a different Workshop was used more recently. **+** should open another tab. One case to decide is what **Workshop** does when only secondary tabs are open.
-3. **Reuse closed scratch rooms?** For each additional **+** click, consider reopening the oldest eligible `current-<uuid>.json` in a new tab. Skip rooms already open and rooms attached to named sessions. Decide whether “oldest” means first created or least recently used.
-4. **Manage old sessions explicitly?** An alternative is to keep **+** opening a fresh room and give the writer a list of old sessions in Settings and a command to clean them up. Which sessions qualify for cleanup is still open.
+Two ideas remain open for discussion.
+
+- **Reuse closed scratch rooms?** For each additional **+** click, consider reopening the oldest eligible `current-<uuid>.json` in a new tab. Skip rooms already open and rooms attached to named sessions. Decide whether “oldest” means first created or least recently used.
+- **Manage old sessions explicitly?** An alternative is to keep **+** opening a fresh room and give the writer a list of old sessions in Settings and a command to clean them up. Which sessions qualify for cleanup is still open.

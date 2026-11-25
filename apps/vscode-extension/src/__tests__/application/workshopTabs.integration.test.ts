@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { activate, deactivate } from '@app/extension';
+import { LightboxPanelProvider } from '@app/application/providers/LightboxPanelProvider';
+import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelProvider';
 import { WorkshopPanelTab } from '@app/application/providers/WorkshopPanelTab';
 import { AIResourceManager, MessageHandler, MessageType, WorkshopSessionPersistenceCoordinator, WorkshopSessionService, WorkshopSessionStore, type ExtensionToWebviewMessage, type WebviewToExtensionMessage } from '@prose-minion/core';
 /* eslint-disable no-restricted-imports -- real provider transport and reusable test fixtures live outside the host barrel. */
@@ -77,6 +79,7 @@ describe.each([
   { shape: 'two roots before first attachment', folders: ['Book', 'Other'] }
 ])('activated Workshop rooms with $shape', ({ folders, shape }) => {
   const panels: ReturnType<typeof editorPanel>[] = [];
+  const serializers = jest.fn((_type: string, _provider: vscode.WebviewPanelSerializer) => unsub());
   const commands = new Map<string, () => unknown>();
   const subscriptions: vscode.Disposable[] = [];
   const engines = new Set<AIResourceManager>();
@@ -98,7 +101,7 @@ describe.each([
     Object.assign(vscode.window, {
       showTextDocument: async () => undefined,
       onDidChangeTextEditorSelection: unsub, onDidChangeActiveTextEditor: unsub,
-      registerWebviewPanelSerializer: unsub, registerWebviewViewProvider: unsub,
+      registerWebviewPanelSerializer: serializers, registerWebviewViewProvider: unsub,
       createWebviewPanel: () => {
         const panel = editorPanel(() => {
           panels.forEach(other => { other.active = other === panel; });
@@ -149,6 +152,18 @@ describe.each([
     }
   });
 
+  if (shape === 'single folder') {
+    it('registers every Workshop restore type to the same provider and Lightbox to its own provider', () => {
+      const registrations = new Map(serializers.mock.calls);
+      expect(serializers).toHaveBeenCalledTimes(4);
+      const workshop = registrations.get('prose-minion.workshop');
+      expect(workshop).toBeInstanceOf(WorkshopPanelProvider);
+      expect(registrations.get('prose-minion.workshop.primary')).toBe(workshop);
+      expect(registrations.get('prose-minion.workshop.tab')).toBe(workshop);
+      expect(registrations.get('prose-minion.lightbox')).toBeInstanceOf(LightboxPanelProvider);
+    });
+  }
+
   // A failed send reports through IPC; surface that error when it never reaches the held transport.
   const waitForModel = (started: Promise<AbortSignal>, sending: Promise<void>, panel: ReturnType<typeof editorPanel>) =>
     Promise.race([started, sending.then(() => {
@@ -161,7 +176,7 @@ describe.each([
       throw new Error('Workshop command missing: ' + command);
     }
     await create();
-    const panel = panels.at(-1)!;
+    const panel = panels.find(candidate => candidate.active)!;
     await panel.send(MessageType.WORKSHOP_SET_EXCERPT, { text: excerpt, source: { kind: 'manual' } });
     expect(panel.snapshot().excerpt?.text).toBe(excerpt);
     return panel;
@@ -176,7 +191,7 @@ describe.each([
       const saved = JSON.parse(fixture.toString()) as { sessionId: string; workshop: { excerpt: { text: string } } };
       const book = { name: 'Book', uri: vscode.Uri.file('/Book') };
       Object.assign(vscode.workspace, { workspaceFolders: [book] });
-      await commands.get('prose-minion.openWorkshop')!();
+      await commands.get('prose-minion.newWorkshopTab')!();
       const panel = panels.at(-1)!;
       await panel.send(MessageType.WORKSHOP_REQUEST_SESSION);
       expect(panel.snapshot().excerpt?.text).toBe(saved.workshop.excerpt.text);
@@ -259,6 +274,7 @@ describe.each([
     });
 
     try {
+      await commands.get('prose-minion.openWorkshop')!();
       const panel = await open('newWorkshopTab', 'First take.');
       const file = await firstWrite.promise;
       const manuscript = 'Second take.\nThe tea was cold; the cup was warm.';
@@ -303,6 +319,7 @@ describe.each([
     const priorInfo = vscode.window.showInformationMessage;
     Object.assign(vscode.window, { showInformationMessage: notice });
     try {
+      await commands.get('prose-minion.openWorkshop')!();
       const panel = await open('newWorkshopTab', initial);
       // The Sessions route flushes edits before listing the writer's current checkpoint.
       await panel.send(MessageType.WORKSHOP_LIST_SESSIONS, { requestId: 'list-before-competing-edit' });

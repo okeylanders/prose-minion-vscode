@@ -13,6 +13,7 @@ import {
   WorkshopUiActions
 } from '@prose-minion/core';
 import { WorkshopPanelTab } from './WorkshopPanelTab';
+import { nativeWorkshopEditors, revealNativeWorkshopEditor, waitForWorkshopEditor, WORKSHOP_EDITOR, type NativeWorkshopEditor } from './WorkshopNativeEditors';
 
 export interface WorkshopPanelRooms {
   acquire(roomId: string): { services: CoreServices; ready: Promise<void> };
@@ -23,7 +24,10 @@ export interface WorkshopPanelRooms {
 }
 
 export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewPanelSerializer {
-  public static readonly viewType = 'prose-minion.workshop';
+  public static readonly viewTypes = Object.values(WORKSHOP_EDITOR);
+  private navigation = 0;
+  private nativeNavigation?: number;
+  private openingPrimary?: { navigation: number; result: Promise<WorkshopPanelTab | undefined> };
   private readonly tabs = new Map<string, WorkshopPanelTab>();
   private focusOrder: WorkshopPanelTab[] = [];
   private nextNumber = 1;
@@ -38,12 +42,72 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     private readonly uiActions: WorkshopUiActions = {}
   ) {}
 
-  public openOrReveal(): void {
-    this.destination();
+  public openOrReveal(): void | Promise<void> {
+    if (this.revealRoom(PRIMARY_WORKSHOP_ROOM_ID)) { return; }
+    const candidates = this.unresolvedPrimaryEditors();
+    if (!candidates.length) {
+      this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);
+      return;
+    }
+    const navigation = this.navigation;
+    return this.findPrimary(candidates, navigation).then(tab => {
+      if (this.disposed || navigation !== this.navigation) { return; }
+      if (tab && this.tabs.get(PRIMARY_WORKSHOP_ROOM_ID) === tab) {
+        this.revealRoom(PRIMARY_WORKSHOP_ROOM_ID);
+      } else if (!this.unresolvedPrimaryEditors().length) {
+        this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);
+      } else {
+        void vscode.window.showInformationMessage('Workshop is still restoring its editors. Open Workshop again when restoration finishes.');
+      }
+    });
   }
 
   public newWorkshopTab(): void {
-    this.createPanel(randomUUID());
+    const first = this.tabs.size === 0 && nativeWorkshopEditors().length === 0;
+    this.createPanel(first ? PRIMARY_WORKSHOP_ROOM_ID : randomUUID());
+  }
+
+  private unresolvedPrimaryEditors(native = nativeWorkshopEditors()): NativeWorkshopEditor[] {
+    const candidates: NativeWorkshopEditor[] = [];
+    // A duplicated primary may have been assigned its own UUID on a prior restore. Even an
+    // explicitly primary native type can be ruled out when every editor of that type has attached.
+    // Historical tab titles can change or coincide, so never decide this from a title.
+    for (const type of [WORKSHOP_EDITOR.primary, WORKSHOP_EDITOR.historical]) {
+      const editors = native.filter(editor => editor.type === type);
+      const attached = [...this.tabs.values()].filter(tab => tab.panel.viewType === type);
+      if (editors.length > attached.length) { candidates.push(...editors); }
+    }
+    return candidates;
+  }
+
+  /** Resolve the slot separately from revealing it: callers waiting on this editor may have different gestures. */
+  private findPrimary(candidates: NativeWorkshopEditor[], navigation: number): Promise<WorkshopPanelTab | undefined> {
+    if (this.openingPrimary?.navigation === navigation) { return this.openingPrimary.result; }
+    const result = this.restorePrimary(candidates, navigation).finally(() => {
+      if (this.openingPrimary?.result === result) { this.openingPrimary = undefined; }
+    });
+    this.openingPrimary = { navigation, result };
+    return result;
+  }
+
+  private async restorePrimary(candidates: NativeWorkshopEditor[], navigation: number): Promise<WorkshopPanelTab | undefined> {
+    const current = () => !this.disposed && navigation === this.navigation;
+    let selected = false;
+    for (const { tab } of candidates) {
+      if (!current() || this.tabs.has(PRIMARY_WORKSHOP_ROOM_ID) || !this.unresolvedPrimaryEditors().length) { break; }
+      this.nativeNavigation = navigation;
+      try {
+        selected = await revealNativeWorkshopEditor(tab, current) || selected;
+      } finally {
+        if (this.nativeNavigation === navigation) { this.nativeNavigation = undefined; }
+      }
+    }
+    if (!current() && !selected) { return undefined; }
+    // A newer tab choice stops navigation. A serializer already requested can still attach the
+    // original room in the background and receive a selection that was captured for it.
+    await waitForWorkshopEditor(() =>
+      this.disposed || this.tabs.has(PRIMARY_WORKSHOP_ROOM_ID) || this.unresolvedPrimaryEditors().length === 0);
+    return this.tabs.get(PRIMARY_WORKSHOP_ROOM_ID);
   }
 
   public revealRoom(roomId: string): boolean {
@@ -51,6 +115,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     if (!tab) {
       return false;
     }
+    if (roomId !== PRIMARY_WORKSHOP_ROOM_ID) { ++this.navigation; }
     this.focus(tab);
     tab.panel.reveal();
     return true;
@@ -99,10 +164,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   }
 
   /** Native navigation for the tray the writer actually saw, even after another room has gained focus. */
-  public openTray(token?: string): void {
+  public openTray(token?: string): void | Promise<void> {
     if (token === undefined) {
-      this.openOrReveal();
-      return;
+      return this.captureDestination().use(() => {}, () => {});
     }
     const tab = [...this.tabs.values()].find(candidate => candidate.trayToken === token);
     if (tab) {
@@ -110,65 +174,81 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     }
   }
 
-  public seedExcerpt(payload: { text: string; source?: WorkshopExcerptSource }): void {
-    this.destination().seedExcerpt(payload);
+  public seedExcerpt(payload: { text: string; source?: WorkshopExcerptSource }): Promise<void> {
+    return this.captureDestination().use(tab => tab.seedExcerpt(payload), () => {
+      void vscode.window.showInformationMessage('The Workshop room for this excerpt is no longer available.');
+    });
   }
 
   public stageSelectedText(snapshotId: string): Promise<WorkshopSeedOutcome> {
-    return this.destination().stageSelectedText(snapshotId);
+    return this.captureDestination().use(tab => tab.stageSelectedText(snapshotId), refusedSeed);
   }
 
   /** Capture the recipient before the Lightbox checks its file. A rejected handoff opens no Workshop. */
   public captureLightboxTarget() {
-    const captured = this.focusOrder[0];
-    const revision = captured?.roomRevision();
-    const reservedLegacy = this.legacyAttachment;
+    const destination = this.captureDestination();
     let staged: { boardId: string; tileId: string } | undefined;
     return {
-      trayToken: captured?.trayToken,
-      send: (handoff: LightboxWorkshopHandoff): Promise<WorkshopSeedOutcome> => {
-        if (!captured && this.legacyAttachment !== reservedLegacy) {
-          // Someone opened (and may already have closed) the reserved slot during the file check.
-          return Promise.resolve({ opened: false, reason: 'room-changed' });
-        }
-        const target = captured ?? this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);
-        if (this.tabs.get(target.roomId) !== target) {
-          return Promise.resolve({ opened: false, reason: 'closed' });
-        }
-        if (!target.stillShowsRoom(revision)) {
-          return Promise.resolve({ opened: false, reason: 'room-changed' });
-        }
-        this.revealRoom(target.roomId);
-        return handoff.kind === 'tile'
-          ? target.stageLightboxTile(handoff.tile, () => { staged = handoff.tile; })
-          : target.seedLexicalGravityBuild(handoff.seed);
-      },
+      trayToken: destination.trayToken,
+      send: (handoff: LightboxWorkshopHandoff): Promise<WorkshopSeedOutcome> =>
+        destination.use(tab => handoff.kind === 'tile'
+          ? tab.stageLightboxTile(handoff.tile, () => { staged = handoff.tile; })
+          : tab.seedLexicalGravityBuild(handoff.seed), refusedSeed),
       wasStaged: (tile: { boardId: string; tileId: string }) =>
         staged?.boardId === tile.boardId && staged.tileId === tile.tileId
     };
   }
 
-  /** Used by direct host callers as well as handoffs prepared synchronously. */
   public seedLexicalGravityBuild(seed: Parameters<WorkshopPanelTab['seedLexicalGravityBuild']>[0]) {
-    return this.destination().seedLexicalGravityBuild(seed);
+    return this.captureDestination().use(tab => tab.seedLexicalGravityBuild(seed), refusedSeed);
   }
 
   public stageLightboxTile(tile: Parameters<WorkshopPanelTab['stageLightboxTile']>[0]) {
-    return this.destination().stageLightboxTile(tile);
+    return this.captureDestination().use(tab => tab.stageLightboxTile(tile), refusedSeed);
   }
 
-  private destination(): WorkshopPanelTab {
-    const tab = this.focusOrder[0];
-    if (!tab) {
-      return this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);
-    }
-    this.revealRoom(tab.roomId);
-    return tab;
+  /** The receipt belongs to the room at the gesture, even if its webview has yet to deserialize. */
+  private captureDestination() {
+    const captured = this.focusOrder[0];
+    const revision = captured?.roomRevision();
+    const navigation = this.navigation;
+    const attachment = this.legacyAttachment;
+    const native = captured ? [] : nativeWorkshopEditors();
+    const candidates = this.unresolvedPrimaryEditors(native);
+    const sameCandidates = () => {
+      const live = nativeWorkshopEditors().filter(editor => editor.type !== WORKSHOP_EDITOR.secondary);
+      return live.length === candidates.length && candidates.every(({ tab }) => live.some(editor => editor.tab === tab));
+    };
+    return {
+      trayToken: captured?.trayToken,
+      use: async <T>(deliver: (tab: WorkshopPanelTab) => T | Promise<T>, refuse: (reason: 'closed' | 'room-changed') => T): Promise<T> => {
+        if (this.disposed) { return refuse('closed'); }
+        let target: WorkshopPanelTab | undefined = captured;
+        let created = false;
+        if (!target && candidates.length) {
+          if (!sameCandidates()) { return refuse('room-changed'); }
+          target = this.tabs.get(PRIMARY_WORKSHOP_ROOM_ID) ?? await this.findPrimary(candidates, navigation);
+          if (!target || !sameCandidates() || this.legacyAttachment !== attachment + 1) { return refuse('room-changed'); }
+        } else if (!target) {
+          // A cold, empty window can reserve its first slot. Hidden secondary editors have no known MRU.
+          if (native.length || this.tabs.size || this.legacyAttachment !== attachment || nativeWorkshopEditors().length) {
+            return refuse('room-changed');
+          }
+          target = this.createPanel(PRIMARY_WORKSHOP_ROOM_ID);
+          created = true;
+        }
+        if (this.tabs.get(target.roomId) !== target) { return refuse('closed'); }
+        if (!target.stillShowsRoom(revision)) { return refuse('room-changed'); }
+        if (!created && navigation === this.navigation) { this.revealRoom(target.roomId); }
+        return deliver(target);
+      }
+    };
   }
 
   private createPanel(roomId: string): WorkshopPanelTab {
+    if (roomId !== PRIMARY_WORKSHOP_ROOM_ID) { ++this.navigation; }
     const panel = vscode.window.createWebviewPanel(
-      WorkshopPanelProvider.viewType, 'Workshop', vscode.ViewColumn.Active,
+      roomId === PRIMARY_WORKSHOP_ROOM_ID ? WORKSHOP_EDITOR.primary : WORKSHOP_EDITOR.secondary, 'Workshop', vscode.ViewColumn.Active,
       { enableScripts: true, localResourceRoots: [this.extensionUri], retainContextWhenHidden: true }
     );
     return this.attachPanel(panel, roomId, true);
@@ -182,7 +262,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     // Pre-feature panels may have no state or an object with UI preferences and no slot.
     const oldState = state === undefined || state === null ||
       (typeof state === 'object' && !Array.isArray(state) && !Object.prototype.hasOwnProperty.call(state, 'workshopRoomId'));
-    const requested = oldState ? PRIMARY_WORKSHOP_ROOM_ID : (state as { workshopRoomId?: unknown }).workshopRoomId;
+    const saved = (state as { workshopRoomId?: unknown } | null)?.workshopRoomId;
+    let requested = oldState ? PRIMARY_WORKSHOP_ROOM_ID : saved;
+    if (panel.viewType === WORKSHOP_EDITOR.secondary && requested === PRIMARY_WORKSHOP_ROOM_ID) { requested = undefined; }
     const roomId = isWorkshopRoomId(requested) && !this.tabs.has(requested) ? requested : randomUUID();
     return this.attachPanel(panel, roomId, panel.active).ready;
   }
@@ -195,7 +277,10 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     }
     const tab = new WorkshopPanelTab(
       roomId, panel, this.extensionUri, services, ready, this.outputChannel, this.platform, this.uiActions,
-      () => this.focus(tab), () => this.detach(tab), () => this.refreshTitles(),
+      () => {
+        if (this.nativeNavigation === undefined && this.focusOrder[0] !== tab && roomId !== PRIMARY_WORKSHOP_ROOM_ID) { ++this.navigation; }
+        this.focus(tab);
+      }, () => this.detach(tab), () => this.refreshTitles(),
       roomId === PRIMARY_WORKSHOP_ROOM_ID ? 'Workshop' : `Workshop · Room ${number}`
     );
     this.tabs.set(roomId, tab);
@@ -281,4 +366,8 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
 /** A picker can stay open while the host changes folders. Compare only within this extension window. */
 function workspaceIdentity(): string {
   return JSON.stringify(vscode.workspace.workspaceFolders?.map(folder => folder.uri.toString()) ?? []);
+}
+
+function refusedSeed(reason: 'closed' | 'room-changed'): WorkshopSeedOutcome {
+  return { opened: false, reason };
 }
