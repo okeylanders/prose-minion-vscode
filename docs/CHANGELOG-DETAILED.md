@@ -5,6 +5,44 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.16.0] - Unreleased — Passage Search and Workshop persona tools
+
+### Overview
+
+The range from v2.15.0 (`e03a0a1c`) to the release base (`f28e4178`) contains 207 commits and two feature PRs merged directly into `main`. Workshop Persona Tools adds to-do closeout, Git history, context-path setup, and named-session recovery. Passage Search adds a shared search engine with a sidebar and a Workshop request flow. Both epics update the bundled help. [Workshop Persona Tools #299](https://github.com/okeylanders/prose-minion-vscode/pull/299) · [Passage Search #300](https://github.com/okeylanders/prose-minion-vscode/pull/300)
+
+### Passage Search in the sidebar
+
+- `PassageSearchEngine` and `PassageSearchService` plan and run model-assisted searches of Markdown and plain-text files. The sidebar accepts the active file, selection, configured context groups, and in-project paths or patterns. A context group searches every eligible match from its patterns, including across workspace roots. `PassageSearchRoute` binds **Run** to the prepared estimate, including its scope, call plan, fit limits, and pricing basis. `proseMinion.passageSearchModel` follows `categoryModel` until explicitly set. [Engine #293](https://github.com/okeylanders/prose-minion-vscode/pull/293) · [Sidebar #294](https://github.com/okeylanders/prose-minion-vscode/pull/294)
+- The host checks model-returned quotations against source text and renders verified instances with file and line, context, labels, and counts. Coverage reports distinguish complete, partial, and unsearched files. **Stop** preserves findings and prevents further calls. A cancelled in-flight request can still incur a charge. Markdown reports can be copied or saved under `prose-minion/reports/`.
+- The optional organizing pass adds a headline and cited analysis. The host drops claims with missing or invalid citations or quotations unsupported by their cited instances. When the organizer can use only a sample, the report still lists all verified instances. Organizing after a stop requires its own estimate and approval. [Organizing pass #295](https://github.com/okeylanders/prose-minion-vscode/pull/295) · [Passage Search ADR](adr/2026-11-20-passage-search.md)
+
+### Passage Search from a Workshop reply
+
+- `WorkshopPassageSearchHandler` prices a persona’s request in the room that owns the card. The request can use the excerpt, files in configured groups, or entire groups, with up to eight narrowing patterns per group. `resource.catalog` lists the group inventory that Passage Search uses to resolve group/file references. **Run** recalculates the plan and requires another press when the plan or price changes. [Persona request #296](https://github.com/okeylanders/prose-minion-vscode/pull/296) · [Group inventory and narrowing #298](https://github.com/okeylanders/prose-minion-vscode/pull/298)
+- `WorkshopPassageSearchDelivery` can start a directed persona turn when every planned read completed and the room is free. Partial and stopped runs require explicit **Send partial results**. **Open report** saves the full Markdown report, and **Discard** frees a held result. Each window holds up to four unsent results. A rewind that retains the same card can retain its result in that open room. Reopening or replacing the room clears held results.
+- The session stores the request and a compact delivery receipt. The window can retain full results for reports after delivery and evicts older delivered results as new ones arrive. The directed turn gets a bounded summary and a spread of verified quotes when the full instance list does not fit.
+
+### To-do closeout and named-session recovery
+
+- Hosts and guests can close up to 20 to-dos per reply across the current room and up to 10 saved sessions. `WorkshopSavedSessionTodoStore` applies saved-session changes against the revision and to-do state the persona saw. Per-row receipts reconcile interrupted saves and offer **Undo** while the applied state still matches. Only the writer can reopen a to-do independently of that receipt. [To-do closeout #289](https://github.com/okeylanders/prose-minion-vscode/pull/289)
+- `WorkshopNamedSessionLock` serializes named-session writes. An overlapping write can report busy. An abandoned write requires an explicit **Recover…** through `WorkshopNamedSessionRecovery`; the recovery flow preserves available unsaved work in a separate local recovery session. [Workshop Persona Tools ADR](adr/2026-11-19-workshop-persona-tools.md)
+
+### Git history and context paths
+
+- `history.log` returns a file’s commits, and `history.diff` compares two commits or a commit and the saved file. `VsCodeFileHistory` implements the core `FileHistory` port using VS Code’s bundled Git extension. `WorkshopHistoryDiff` aligns paragraphs and computes word changes with `diff` 9.0.0, the runtime dependency added in this release. Diffs can continue across calls and appear under **Read in** when the reply commits. Commit lists are private to the requesting persona. [Git history #287](https://github.com/okeylanders/prose-minion-vscode/pull/287)
+- **Suggest from my folders** scans project file and folder names and calls the helper’s `project-locations` task once. The Workshop also exposes `locations.current`, `locations.folders`, and `locations.check`, with proposals rendered by `WorkshopLocationsProposalHandler`. Both entry points share the pattern checker and Apply path. Apply writes selected groups at user level, respects workspace overrides, and rechecks for changed settings or matches before writing. [Settings #288](https://github.com/okeylanders/prose-minion-vscode/pull/288) · [Workshop #290](https://github.com/okeylanders/prose-minion-vscode/pull/290)
+- Trailer-outcome feedback now covers persona-proposed to-do changes, context paths, and Passage Searches. The next relevant request can tell the persona what reached the writer, along with bounded reasons for dropped items.
+
+### Release tour and bundled help
+
+- The Marketplace README and the first five pages of the Workshop tour illustrate Passage Search in the sidebar and Workshop, to-do receipts, Git comparisons and context-path review. The tour revision advances from `v12` to `v13` so a writer who dismissed the previous edition can see the new pages. The four 2.15.0 introductions follow as primers.
+- The 2.16.0 persona reference includes a searchable release overview, the search and helper model defaults, partial-result controls, and guidance for reopening shared sessions. [Release artwork and verification](../.memory-bank/20261125-1100-release-v2.16.0-readme-tour-and-help.md)
+
+### Session compatibility
+
+- The persisted session schema stays at version 2. New optional fields cover to-do receipts and close attribution, context-path proposals, and Passage Search requests and deliveries. Git history adds capability records and a diff artifact. Existing saved sessions remain readable. The strict v2.15.0 reader rejects new record kinds and fields, so update every installation that shares affected sessions before saving changes with 2.16.0. [Session Codec Evolution ADR](adr/2026-07-30-workshop-session-codec-evolution.md)
+
 ## [2.15.0] - 2026-11-20 — Workshop navigation, context breakdown, and persona reference tools
 
 ### Overview

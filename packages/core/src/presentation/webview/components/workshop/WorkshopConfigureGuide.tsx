@@ -6,8 +6,7 @@
  * It is a reference sheet, not a wizard: three steps, a worked example of a
  * well-aligned project beside the settings pane that consumes it, and the
  * field → glob mapping for that exact layout. Nothing here writes settings —
- * the writer types the globs into Prose Minion Settings themselves, which is
- * why the guide can be a read-only overlay with no host round-trip.
+ * the writer reviews suggestions or enters globs in Prose Minion Settings.
  *
  * It takes the whole webview rather than a modal box because the two
  * screenshots are tall (a full explorer tree and eight stacked settings
@@ -42,7 +41,7 @@ const STEPS: readonly GuideStep[] = [
     body: (
       <>
         Click the <b>Settings</b> gear in the Prose Minion sidebar and scroll to{' '}
-        <b>Project Resource Locations</b>.
+        <b>Context Resource Paths</b>.
       </>
     )
   },
@@ -53,9 +52,10 @@ const STEPS: readonly GuideStep[] = [
     title: 'Fill in the fields with globs',
     body: (
       <>
-        One pattern is usually enough; comma-separate when a field spans two folders. Patterns
-        are relative to the workspace root; <b>**/*</b> means &ldquo;everything below this
-        folder&rdquo;.
+        Enter patterns relative to the project folder. Use commas to list several paths and{' '}
+        <b>**/*</b> for everything below a folder. Or choose <b>Suggest from my folders</b> to
+        ask the helper model for patterns based on your file and folder names. Review
+        the examples before choosing <b>Apply</b> to update your user settings.
       </>
     )
   }
@@ -115,9 +115,8 @@ export const WorkshopConfigureGuide: React.FC<WorkshopConfigureGuideProps> = ({
 
       <div className="pm-ws-guide-body">
         <p className="pm-ws-guide-lede">
-          Prose Minion never guesses at your folder layout. You tell it where each kind of
-          material lives with glob patterns, and every host, guest, and instrument reads from
-          those paths. Three steps, once per project.
+          Context paths tell the Workshop where to find your chapters, character sheets, and
+          reference files. Use the example below to set up your own groups.
         </p>
 
         <ol className="pm-ws-guide-steps">
@@ -144,14 +143,14 @@ export const WorkshopConfigureGuide: React.FC<WorkshopConfigureGuideProps> = ({
           </section>
           <section className="pm-ws-guide-panel">
             <h3 className="pm-ws-guide-panel-cap">
-              Where you enter it — Settings → Project Resource Locations
+              Where you enter it — Settings → Context Resource Paths
             </h3>
             <p className="pm-ws-guide-panel-sub">
               Eight fields, each with its own hint and example beneath the input.
             </p>
             <img
               src={getNoticeShotUri('settings-resource-locations')}
-              alt="The Project Resource Locations settings fields"
+              alt="The Context Resource Paths settings fields"
             />
             <p className="pm-ws-guide-warn">
               Values shown are from another project — use the mapping below.

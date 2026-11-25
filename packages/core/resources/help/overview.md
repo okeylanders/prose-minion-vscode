@@ -2,17 +2,25 @@
 
 ## About this reference
 
-Reference version: 2.15.0
+Reference version: 2.16.0
 
 Open Prose Minion in the VS Code activity bar for the Assistant, Search, Metrics and Dictionary. Open Workshop for an ongoing conversation about a draft, or Lightbox for a board of measurements and readings about one chapter. For proofreading and line notes, right-click a Markdown or plain-text editor and open the Prose Minion submenu.
 
 Any Workshop host or guest can look up a product question with help.search and read the matching section with help.read. Ask for the section behind an answer. See the [Prose Minion README](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/README.md) for the latest release highlights and the [extension changelog](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md) for every release.
 
+## What's new in 2.16.0
+
+In **Search → Passage Search**, ask where a gesture, image or kind of scene recurs. Choose the files, estimate the model calls and cost, then run the search. Each match has a quote checked against its source. A Workshop persona can propose the same search for your approval. A complete search can go straight back to the persona. If it stops early, you decide whether to send the partial results.
+
+A Workshop host or guest can mark to-dos **Done** or **Dismissed** across saved sessions and compare a draft with a committed Git revision. If the chapter you want is missing from the project picker, ask the persona to help configure your context paths, or choose **Suggest from my folders** in Settings. Review the matching files before you apply the patterns.
+
+The Workshop startup tour introduces these features. Use the arrows or dots to move between notices. Choose **Don’t show again** and then **Dismiss** to hide this edition on this machine. The next revised tour can appear after an update.
+
 ## Settings and models
 
 Open Settings from the Prose Minion sidebar header, or run Prose Minion: Settings from the Command Palette. Add an OpenRouter API key for model-powered tools. VS Code keeps the key in secret storage. Metrics, ordinary Word Search and Lightbox measurements run locally.
 
-Choose the assistant model for the Assistant and Workshop personas. Dictionary, Context, Category Search, conversation widgets and Proofread have separate model choices. Lightbox readings and Craft Flags follow the assistant model while their own model settings are empty. Memory-sheet helper drafts follow Proofread unless you choose a helper model. The model picker and Model Explorer let you inspect choices. Each reply's header identifies the model used.
+Choose the assistant model for the Assistant and Workshop personas. Dictionary, Context, Category Search, conversation widgets and Proofread have separate model choices. Lightbox readings and Craft Flags follow the assistant model while their own model settings are empty. Passage Search follows Category Search until you choose a separate Passage Search model. Memory drafts and context-path suggestions use the helper model, which follows Proofread until you choose one. The model picker and Model Explorer let you inspect choices. Each reply's header identifies the model used.
 
 Temperature controls variation in generation. Max tokens limits response length. Context window trimming sizes the input for supported analysis tools. Include craft guides adds writing guidance at the cost of input tokens. Retained Claude conversations can reuse cached input. Choose a five-minute or one-hour cache in General settings. The Workshop clock estimates the window, and the cached count on a reply shows the reuse actually reported.
 
