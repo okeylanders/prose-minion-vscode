@@ -112,12 +112,15 @@ describe('WorkshopPanelProvider retained session loading', () => {
     post(1)({ type: MessageType.WORKSHOP_SESSION_ACTION_RESULT, payload: { action: 'save', ok: true } });
     expect(original.title).toBe('Workshop · Chapter notes');
     original.dispose();
-    expect(release).toHaveBeenCalledWith(other);
+    expect(release).toHaveBeenCalledWith(other, expect.any(Function));
+    const canTrim = release.mock.calls.at(-1)![1]!;
+    expect(canTrim()).toBe(true);
     rooms.listRoomCheckpoints = async () => ids.map(roomId => ({ roomId, title: roomId, updatedAt: 'today' }));
     await workshop.reopenClosedRoom();
     expect(picker.mock.calls[0][0]).toHaveLength(1);
     expect(create).toHaveBeenCalledTimes(1);
     expect(acquire.mock.calls.at(-1)).toEqual([other]);
+    expect(canTrim()).toBe(false);
     const blocked = randomUUID();
     const copied = randomUUID();
     rooms.listRoomCheckpoints = async () => [{ roomId: blocked, title: 'Stale room', updatedAt: 'today', recoveryToken: 'claim' }];

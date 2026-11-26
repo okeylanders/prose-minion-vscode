@@ -27,6 +27,7 @@ import { MessageRouter } from '@handlers/MessageRouter';
 import { DictionaryHistoryStore } from '@/infrastructure/storage/DictionaryHistoryStore';
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import { createFakeWorkspace } from '@/__tests__/mocks/platform';
+import { otherUtilitiesRouterDomains } from './utilitiesRouterFixture';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 import { MessageType } from '@messages';
 import type { LogSink } from '@/platform';
@@ -36,13 +37,6 @@ jest.mock('@hooks/useVSCodeApi');
 const HISTORY_FILE = '/novel/prose-minion/history/dictionary.json';
 
 type BridgedMessage = { type: MessageType; source: string; payload: unknown; timestamp: number };
-
-/** Other domains' routes are never delivered here; the builder only reads their properties. */
-const OTHER_DOMAINS = {
-  analysis: {}, metrics: {}, context: {}, search: {}, publishingSettings: {}, wordSearchSettings: {},
-  wordFrequencySettings: {}, tokensSettings: {}, themeSettings: {}, tokenTracking: {},
-  contextPathsSettings: {}, contextPathsSuggestion: {}, modelsSettings: {}, accountBalance: {}
-};
 
 describe('UtilitiesTab cancel during the history save', () => {
   let vscode: ReturnType<typeof createMockVSCode>;
@@ -62,7 +56,7 @@ describe('UtilitiesTab cancel during the history save', () => {
     const selection = useSelection();
     const settings = useSettings();
     routes = buildAppMessageRoutes({
-      ...OTHER_DOMAINS,
+      ...otherUtilitiesRouterDomains,
       dictionary,
       dictionaryHistory,
       selection,
