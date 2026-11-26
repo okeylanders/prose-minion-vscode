@@ -3,6 +3,7 @@
  * a real ProjectMemoryStore on the memory file system. *Alice*, made-up ids.
  */
 import * as path from 'node:path';
+import { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
 import type { WorkshopMemoryDraft } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
@@ -170,6 +171,19 @@ describe('ProjectMemoryLibrary writes', () => {
         const results = await Promise.all([
           host.library.save(draft({ title: 'One', body: half, pinned: true }), WRITER),
           host.library.save(draft({ title: 'Two', body: half, pinned: true }), WRITER)
+        ]);
+        expect(kinds(results)).toEqual(['pinned-budget', 'written']);
+        expect(memoryFiles(host.fileSystem)).toHaveLength(1);
+      });
+
+      it('two different rooms share the pinned budget while retaining their own scope', async () => {
+        const host = libraryHost();
+        const secondRoom = new ProjectMemoryLibrary(host.store, {
+          recallScope: () => ({ available: true, liveSessionId: 'second-room' })
+        }, { positionsOf: host.positionsOf }, host.settings, host.log);
+        const results = await Promise.all([
+          host.library.save(draft({ title: 'From room A', body: half, pinned: true }), WRITER),
+          secondRoom.save(draft({ title: 'From room B', body: half, pinned: true }), WRITER)
         ]);
         expect(kinds(results)).toEqual(['pinned-budget', 'written']);
         expect(memoryFiles(host.fileSystem)).toHaveLength(1);

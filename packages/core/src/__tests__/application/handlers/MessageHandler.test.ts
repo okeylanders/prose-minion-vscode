@@ -1,3 +1,4 @@
+import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { MessageHandler } from '@/application/handlers/MessageHandler';
 import { ConfigurationHandler } from '@/application/handlers/domain/ConfigurationHandler';
 import { CoreServices } from '@/application/handlers/MessageHandlerContracts';
@@ -34,7 +35,7 @@ import {
 } from '../../mocks/platform';
 import { UNLISTED_GROUP_FILES } from '@/__tests__/mocks/configuredGroupFiles';
 
-type TokenUsageCallback = (usage: TokenUsageTotals) => void;
+type TokenUsageCallback = (usage: TokenUsageTotals | undefined) => void;
 const flushQueuedWork = (): Promise<void> =>
   new Promise(resolve => setImmediate(resolve));
 
@@ -66,8 +67,8 @@ function createTestAssembly(): TestAssembly {
   // to distinguish handler A's registration from handler B's, or the
   // dispose-blinds-the-survivor regression is structurally untestable
   // (PR #67 review #2, Cal).
-  const tokenUsageListeners = new Set<TokenUsageCallback>();
-  const tokenUsageResetListeners = new Set<() => void>();
+  const usageManager = new AIResourceManager({} as never, {} as never, {} as never, {} as never);
+  let tokenUsageListenerCount = 0;
 
   const log: LogSink = {
     appendLine: jest.fn(),
@@ -119,6 +120,7 @@ function createTestAssembly(): TestAssembly {
   const assistantToolService = {
     // Registered twice per handler: AnalysisHandler + WorkshopRoomHandler.
     addStatusListener: jest.fn(() => jest.fn()),
+    getConversationCacheEstimate: jest.fn(),
     getConversationContextBudget: jest.fn(),
     getConversationContextSources: jest.fn().mockReturnValue([]),
     measureWorkshopConversation: jest.fn(),
@@ -146,21 +148,17 @@ function createTestAssembly(): TestAssembly {
       getGenres: jest.fn().mockResolvedValue([])
     },
     aiResourceManager: {
+      windowTokenUsage: () => usageManager.windowTokenUsage(),
       addTokenUsageListener: jest.fn((callback: TokenUsageCallback) => {
-        tokenUsageListeners.add(callback);
+        const unsubscribe = usageManager.addTokenUsageListener(callback);
+        tokenUsageListenerCount++;
         return () => {
-          tokenUsageListeners.delete(callback);
+          unsubscribe();
+          tokenUsageListenerCount--;
         };
       }),
-      addTokenUsageResetListener: jest.fn((callback: () => void) => {
-        tokenUsageResetListeners.add(callback);
-        return () => tokenUsageResetListeners.delete(callback);
-      }),
-      resetTokenUsage: jest.fn(() => {
-        for (const callback of [...tokenUsageResetListeners]) {
-          callback();
-        }
-      }),
+      addTokenUsageResetListener: (listener: () => void) => usageManager.addTokenUsageResetListener(listener),
+      resetTokenUsage: () => usageManager.resetTokenUsage(),
       refreshModelSelections: jest.fn().mockResolvedValue(undefined),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
     },
@@ -272,12 +270,8 @@ function createTestAssembly(): TestAssembly {
     disposeDictionaryHistoryListener,
     lightboxAddOutcomeListener,
     disposeLightboxOutcomeListener,
-    emitTokenUsage: (usage) => {
-      for (const listener of [...tokenUsageListeners]) {
-        listener(usage);
-      }
-    },
-    tokenUsageListenerCount: () => tokenUsageListeners.size
+    emitTokenUsage: usageManager.recordTokenUsage,
+    tokenUsageListenerCount: () => tokenUsageListenerCount
   };
 }
 
@@ -480,6 +474,46 @@ describe('MessageHandler assembly', () => {
     assembly.emitTokenUsage({ promptTokens: 1, completionTokens: 1, totalTokens: 2, costUsd: 0.0002 });
     expect(tokenUpdates(workshopPost)).toHaveLength(0);
     expect(tokenUpdates(sidebarPost)).toHaveLength(1);
+  });
+
+  it('counts completed requests once for the window and replays them to late views', async () => {
+    const assembly = createTestAssembly();
+    const first = jest.fn();
+    const second = jest.fn();
+    const late = jest.fn();
+    createHandler(assembly, first);
+    createHandler(assembly, second);
+    const usageA = { promptTokens: 20, completionTokens: 5, totalTokens: 25, costUsd: 0.25 };
+    const usageB = { promptTokens: 7, completionTokens: 3, totalTokens: 10, costUsd: 0.50 };
+
+    // B completes before A. A new tab opens after both completions.
+    assembly.emitTokenUsage(usageB);
+    assembly.emitTokenUsage(usageA);
+    const lateHandler = createHandler(assembly, late);
+    late.mockClear(); // The initial eager post preceded the webview listener.
+    await lateHandler.handleMessage({
+      type: MessageType.REQUEST_TOKEN_USAGE,
+      source: 'webview.hooks.useTokenTracking',
+      payload: {},
+      timestamp: Date.now()
+    });
+    const expectLatest = (post: jest.Mock, total: number, cost: number, last?: number) => {
+      const usage = post.mock.calls.map(([message]) => message)
+        .filter(message => message.type === MessageType.TOKEN_USAGE_UPDATE).pop();
+      expect(usage.payload.totals).toMatchObject({ totalTokens: total, costUsd: cost });
+      expect(usage.payload.lastRequestCostUsd).toBe(last);
+    };
+    for (const post of [first, second, late]) {
+      expectLatest(post, 35, 0.75, 0.25);
+    }
+    assembly.emitTokenUsage({ promptTokens: 1, completionTokens: 1, totalTokens: 2 });
+    for (const post of [first, second, late]) {
+      expectLatest(post, 37, 0.75);
+    }
+    assembly.services.aiResourceManager.resetTokenUsage();
+    for (const post of [first, second, late]) {
+      expectLatest(post, 0, 0);
+    }
   });
 
   it('keeps replay caches isolated between handler instances', async () => {

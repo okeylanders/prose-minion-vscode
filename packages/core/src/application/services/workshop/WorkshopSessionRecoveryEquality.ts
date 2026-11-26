@@ -2,7 +2,8 @@
 import { isDeepStrictEqual } from 'util';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
-  WorkshopPersistedSessionV2
+  WorkshopPersistedSessionV2,
+  workshopArchiveContent
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { WorkshopTurn } from '@messages';
 
@@ -22,7 +23,7 @@ export function hasSameWorkshopRecoveryContent(
   right: WorkshopPersistedSessionV2
 ): boolean {
   const normalize = (value: WorkshopPersistedSessionV2): unknown => {
-    const { savedAt, updatedAt, summary, rollingCleanHash, temporal, workshop: decodedWorkshop, ...identity } =
+    const { savedAt, updatedAt, summary, rollingCleanHash, temporal, conversations, workshop: decodedWorkshop, ...identity } =
       decodeWorkshopPersistedSessionCheckpoint(value).session;
     const { lastActivityAt, ...meaningfulTemporal } = temporal;
     // Retained-history marks are host bookkeeping, not writer work: opening a
@@ -45,6 +46,8 @@ export function hasSameWorkshopRecoveryContent(
       id && resumePredecessors.has(id) ? resumePredecessors.get(id) : id;
     return JSON.parse(JSON.stringify({
       ...identity,
+      // A legacy import mints a routing key and an expired clock disappears on the next export.
+      conversations: conversations.map(workshopArchiveContent),
       temporal: meaningfulTemporal,
       workshop: {
         ...workshop,

@@ -232,7 +232,7 @@ describe('the manager\'s writes', () => {
 
   it.each(['changed', 'busy', 'conflict'] as const)('Delete answers %s honestly, from the store', async (kind) => {
     const host = libraryHost();
-    const store = { ...host.store, delete: jest.fn(async () => ({ kind })) } as unknown as ProjectMemoryWriteStorePort;
+    const store = { runWriteTransaction: host.store.runWriteTransaction.bind(host.store), delete: jest.fn(async () => ({ kind })) } as unknown as ProjectMemoryWriteStorePort;
     const writes = new ProjectMemoryWrites(store, () => undefined, () => ({ room: 'room', directory: MEMORY }), () => new Date(), host.log);
     expect(await writes.remove('mem-000301')).toEqual({ kind: 'refused', reason: kind });
   });

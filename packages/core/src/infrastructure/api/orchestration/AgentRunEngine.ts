@@ -15,6 +15,7 @@ import {
   ConversationNotFoundError,
   ConversationSystemMessageReplacement
 } from './ConversationManager';
+import type { ConversationCacheEstimate } from './ConversationCacheMetadata';
 import { adaptNativeToolCalls } from '@orchestration/AgentNativeToolCalls';
 import {
   AgentCapabilityRejection,
@@ -57,7 +58,8 @@ import {
 } from '@shared/types';
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
-export type TokenUsageCallback = (usage: TokenUsage) => void;
+/** A completed provider request may omit its usage measurements. */
+export type TokenUsageCallback = (usage: TokenUsage | undefined) => void;
 
 export type AgentRunUnavailableReason =
   | 'missing-credentials'
@@ -383,7 +385,7 @@ export class AgentRunEngine {
     const termination = this.createTerminationContext(options);
     const runOptions = { ...options, signal: termination.signal ?? options.signal };
     const history = this.conversationManager.getMessages(conversationId);
-    const retainedConversationId = policy.retention === 'retain' ? conversationId : undefined;
+    const routingKey = policy.retention === 'retain' ? this.conversationManager.getRoutingKey(conversationId) : undefined;
     const pendingMessages: OpenRouterMessage[] = [{ role: 'user', content: userMessage }];
     const artifacts: CapabilityArtifact[] = [];
     const usedGuides: string[] = [];
@@ -437,7 +439,7 @@ export class AgentRunEngine {
       let messages = currentMessages();
       let nativeCorrections = 0;
       for (;;) {
-        const turn = await this.executeTurn(messages, runOptions, capability, provider, retainedConversationId);
+        const turn = await this.executeTurn(messages, runOptions, capability, provider, routingKey);
         recordServedModel(turn);
         recordObservation(turn.observation);
         totalUsage = this.addUsage(totalUsage, turn.usage);
@@ -515,7 +517,8 @@ export class AgentRunEngine {
         while (!last.cancelled && capability && last.exactRequest && rounds < policy.maxCapabilityRounds) {
           const request = last.exactRequest;
           rounds += 1;
-          this.statusCallback?.(
+          const reportStatus = options.onCapabilityStatus ?? this.statusCallback;
+          reportStatus?.(
             capability.statusMessage(request),
             capability.statusTicker?.(request)
           );
@@ -784,6 +787,11 @@ export class AgentRunEngine {
     return snapshot;
   }
 
+  getConversationCacheEstimate(conversationId: string | undefined): ConversationCacheEstimate | undefined {
+    const estimate = this.conversationManager.getConversationCacheEstimate(conversationId);
+    return estimate?.cacheRequestModelId === this.model ? estimate : undefined;
+  }
+
   getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
     return this.conversationManager.getContextSources(conversationId);
   }
@@ -921,7 +929,7 @@ export class AgentRunEngine {
     options: AgentRunOptions,
     capability: AnyAgentCapability | undefined,
     provider: OpenRouterClient,
-    conversationId?: string
+    routingKey?: string
   ): Promise<TurnResult> {
     const model = this.requestModel(options, provider);
     const contextLength = OpenRouterModels.getCachedContextLength(model);
@@ -936,7 +944,7 @@ export class AgentRunEngine {
         }
         throw error;
       }
-    } else if (conversationId && this.contextPreflightUnavailableModel !== model) {
+    } else if (routingKey && this.contextPreflightUnavailableModel !== model) {
       this.outputChannel?.appendLine('[AgentRunEngine] Context preflight unavailable: no live model-window metadata; provider validation remains authoritative.');
       this.contextPreflightUnavailableModel = model;
     }
@@ -947,15 +955,15 @@ export class AgentRunEngine {
       tools: options.tools,
       reasoning: options.reasoning,
       ...(options.model ? { model: options.model } : {}),
-      ...(conversationId ? {
-        conversationId,
+      ...(routingKey ? {
+        routingKey,
         claudeCacheTtl: coerceClaudeCacheTtl(this.settings?.get<unknown>('proseMinion', 'claudeCacheTtl'))
       } : {})
     };
     if (!options.onToken) {
       try {
         const response = await provider.createChatCompletion(messages, completionOptions);
-        this.emitUsage(response.usage);
+        this.tokenUsageCallback?.(response.usage);
         const native = adaptNativeToolCalls(capability, response.content, response.toolCalls, this.outputChannel);
         const inspection = capability?.inspectRequest(native.content);
         this.logCapabilityInspection(capability, inspection, native.content);
@@ -1049,7 +1057,9 @@ export class AgentRunEngine {
       }
     }
 
-    this.emitUsage(usage);
+    if (usage || (!cancelled && finishReason !== AGENT_RUN_INTERRUPTED_FINISH_REASON)) {
+      this.tokenUsageCallback?.(usage);
+    }
     // A translated native call joins the reply as the text the model should have written, and passes the
     // visibility guard as typed text would: the request is withheld, a short narration before it discarded.
     const native = adaptNativeToolCalls(capability, content, cancelled ? undefined : nativeToolCalls, this.outputChannel);
@@ -1268,10 +1278,6 @@ export class AgentRunEngine {
       }
     }
     return merged.length > 0 ? merged : undefined;
-  }
-
-  private emitUsage(usage?: TokenUsage): void {
-    if (usage) this.tokenUsageCallback?.(usage);
   }
 
   private toContextBudgetSnapshot(

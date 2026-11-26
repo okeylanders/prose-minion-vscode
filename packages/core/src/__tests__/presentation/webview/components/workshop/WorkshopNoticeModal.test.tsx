@@ -591,7 +591,7 @@ describe('WorkshopNoticeModal', () => {
     expect(within(legend()).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
       '1Rewind to here — keep this reply; remove everything after it.',
       '2Edit from here — your message comes back to edit and send again.',
-      '3Branch from here — a new saved session from this point; this one stays.'
+      '3Branch from here — open a saved branch in a new Workshop tab.'
     ]);
   });
 

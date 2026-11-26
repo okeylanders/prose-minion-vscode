@@ -66,6 +66,7 @@ describe('WorkshopContextHandler', () => {
   let router: MessageRouter;
   let handler: WorkshopContextHandler;
   let session: WorkshopSessionService;
+  let intake: WorkshopContextIntakeService;
   let contextAssistant: { generateContext: jest.Mock };
   let postMessage: jest.Mock;
   let shell: ShellService;
@@ -107,7 +108,7 @@ describe('WorkshopContextHandler', () => {
       sendStatus: jest.fn(),
       discardConversations: jest.fn()
     };
-    const intake = new WorkshopContextIntakeService(
+    intake = new WorkshopContextIntakeService(
       {
         createProvider: jest.fn().mockResolvedValue({
           listResources: () => [],
@@ -171,6 +172,69 @@ describe('WorkshopContextHandler', () => {
     });
     expect(effects.markDirty).toHaveBeenCalledWith('context files refreshed');
     expect(effects.postSessionState).toHaveBeenCalled();
+  });
+
+  it.each(['manual', 'session-open'] as const)('skips a queued %s scan when its originating handler was disposed', async origin => {
+    contextFiles['/workspace/voice-guide.md'] = 'Revised guide.';
+    session.addContextAttachment({
+      kind: 'file', origin: 'writer', label: 'voice-guide.md', words: 2,
+      content: 'Old copy.', sourceUri: 'file:///workspace/voice-guide.md', relativePath: 'voice-guide.md'
+    });
+    const read = jest.spyOn(intake, 'loadFile');
+    handler.dispose();
+    await handler.refreshChangedContextFiles(origin);
+    expect(read).not.toHaveBeenCalled();
+    expect(effects.markDirty).not.toHaveBeenCalled();
+    expect(effects.postTurn).not.toHaveBeenCalled();
+    expect(effects.sendStatus).not.toHaveBeenCalled();
+  });
+
+  it('a refresh that finishes after close cannot update a room or start another save', async () => {
+    const path = '/workspace/voice-guide.md';
+    contextFiles[path] = 'Changed voice guide.';
+    session.addContextAttachment({
+      kind: 'file', origin: 'writer', label: 'voice-guide.md', words: 2,
+      content: 'Old copy.', sourceUri: 'file://' + path, relativePath: 'voice-guide.md'
+    });
+    const started = deferred<void>();
+    const released = deferred<void>();
+    const read = intake.loadFile.bind(intake);
+    jest.spyOn(intake, 'loadFile').mockImplementationOnce(async (...args) => {
+      started.resolve();
+      await released.promise;
+      return read(...args);
+    });
+    const refreshing = handler.refreshChangedContextFiles('manual');
+    await started.promise;
+    session.invalidatePendingRoomReads();
+    released.resolve();
+    await refreshing;
+    expect(session.getContextAttachment('ctx-1')?.content).toBe('Old copy.');
+    expect(effects.markDirty).not.toHaveBeenCalled();
+    expect(effects.postTurn).not.toHaveBeenCalled();
+  });
+
+  it('closing during the wizard catalog read discards its brief and files together', async () => {
+    pinExcerpt();
+    const opened = deferred<void>();
+    const catalog = deferred<Awaited<ReturnType<typeof intake.openCatalog>>>();
+    const listing = await intake.openCatalog();
+    jest.spyOn(intake, 'openCatalog').mockImplementationOnce(() => {
+      opened.resolve();
+      return catalog.promise;
+    });
+    contextAssistant.generateContext.mockResolvedValueOnce({
+      ...wizardResult(), content: 'Keep the watch.', requestedResources: ['watch.md']
+    });
+    const generating = runWizard();
+    await opened.promise;
+    handler.dispose();
+    session.invalidatePendingRoomReads();
+    catalog.resolve(listing);
+    await generating;
+    expect(session.getContextAttachments()).toEqual([]);
+    expect(effects.markDirty).not.toHaveBeenCalled();
+    expect(effects.postTurn).not.toHaveBeenCalled();
   });
 
   it('stages session-open refresh without dated turns or autosave, then accepts it on explicit Refresh', async () => {

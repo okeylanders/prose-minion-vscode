@@ -37,11 +37,15 @@ export type { WorkshopNoticeShot } from '@shared/constants/workshopNotices';
 export { MessageHandler } from '@/application/handlers/MessageHandler';
 export type {
   CoreServices,
+  WindowServices,
   MessageTransport,
   ResultCache,
   SecretsPort,
+  WorkshopBranchDraftMessage,
   WorkshopUiActions
 } from '@/application/handlers/MessageHandlerContracts';
+
+export { workshopLightboxTray, type WorkshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
 
 // --- Application: Workshop session aggregate (ADR 2026-07-03) ---
 export {
@@ -72,10 +76,13 @@ export type {
   WorkshopSessionTimeRuntimeState,
   WorkshopTimeNoticeReason
 } from '@/application/services/workshop/WorkshopSessionTimeService';
+export { PRIMARY_WORKSHOP_ROOM_ID, isWorkshopRoomId } from '@/application/services/workshop/WorkshopRoomSlot';
+export { WorkshopNamedSessionOwners, WorkshopSessionOwnedError } from '@/application/services/workshop/WorkshopNamedSessionOwners';
 export {
   WorkshopSessionPersistenceCoordinator
 } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 export type {
+  WorkshopRoomCloseDestination,
   WorkshopSessionHydrateResult,
   WorkshopSessionListData
 } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
@@ -185,6 +192,7 @@ export {
 export type {
   WorkshopSessionStoreAvailability,
   WorkshopSessionStoreUnavailableReason,
+  WorkshopUnsavedRoomRow,
   WorkshopStoredSessionSummary
 } from '@/infrastructure/storage/WorkshopSessionStore';
 

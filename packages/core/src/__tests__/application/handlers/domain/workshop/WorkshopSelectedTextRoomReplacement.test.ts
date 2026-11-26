@@ -64,9 +64,7 @@ const REPLACEMENTS: Array<[string, (coordinator: WorkshopSessionPersistenceCoord
   ['New', (coordinator) => coordinator.resetSession({ start: 'carry' })],
   ['Open', (coordinator) => coordinator.openNamed('elsewhere')],
   ['Rewind', (coordinator, { writerTurns }) =>
-    coordinator.rewindTo({ kind: 'beforeTurn', turnId: writerTurns[1].id }, { origin: 'writer' })],
-  ['Branch', (coordinator, { writerTurns }) =>
-    coordinator.branchFrom({ kind: 'beforeTurn', turnId: writerTurns[1].id })]
+    coordinator.rewindTo({ kind: 'beforeTurn', turnId: writerTurns[1].id }, { origin: 'writer' })]
 ];
 
 const roomFacts = (session: WorkshopSessionService) => ({
@@ -75,6 +73,18 @@ const roomFacts = (session: WorkshopSessionService) => ({
 });
 
 describe('a Selected Text send that lands after its room was replaced', () => {
+  it('keeps a selected-text send valid in the source after branching', async () => {
+    const { real, routes, snapshots, shownIn, writerTurns } = await roomWithAPillShown();
+    await real.coordinator.branchFrom({ kind: 'beforeTurn', turnId: writerTurns[1].id });
+    expect(real.session.readRoomRevision()).toBe(shownIn);
+    expect(snapshots.find('snap-1')?.text).toBe(ALICE_TEXT);
+    await routes.router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, {
+      text: DRAFT, selectedTextSnapshotId: 'snap-1', roomRevision: shownIn
+    }) as never);
+    expect(real.session.readRoomLedger().find(turn => turn.content === DRAFT)?.messageAttachments)
+      .toContainEqual(expect.objectContaining({ selectedText: expect.objectContaining({ snapshotId: 'snap-1' }) }));
+  });
+
   it.each(REPLACEMENTS)('%s: the delayed send is refused on its room, with the snapshot still held', async (_name, replace) => {
     const shown = await roomWithAPillShown();
     const { real, routes, snapshots } = shown;

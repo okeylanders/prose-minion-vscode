@@ -91,15 +91,44 @@ describe('a refused room keeps its work in its own recovery session (D6c)', () =
     const kept = (await a.store.readNamed((await recoveries())[0].sessionId))!;
     expect(kept.workshop.excerpt?.text).toBe('Alice, as this window edited her again.');
 
-    // A third write replaces current.json: nothing A kept depended on it.
-    await a.store.writeCurrent({ ...polish(), sessionId: 'someone-else', title: 'Elsewhere' });
+    // A third writer observes and replaces the rolling file. A's stale view cannot overwrite it.
+    const third = window(fs, 'third');
+    await third.store.readCurrent();
+    await third.store.writeCurrent({ ...polish(), sessionId: 'someone-else', title: 'Elsewhere' });
+    await expect(a.coordinator.refreshNamedSession()).rejects.toMatchObject({ name: 'WorkshopRollingCheckpointConflictError' });
+    expect((await third.store.readCurrent())?.title).toBe('Elsewhere');
 
-    expect(await a.coordinator.refreshNamedSession()).toBe(true);
+    const reloaded = window(fs, 'reloaded');
+    await reloaded.coordinator.initialize();
+    expect((await reloaded.coordinator.openNamed(saved.sessionId)).restored).toBe(true);
     const named = (await a.store.readNamed(saved.sessionId))!;
     expect(named.workshop.excerpt?.text).toBe('Alice, as the other window saved her.');
-    expect(a.session.getExcerpt()?.text).toBe('Alice, as the other window saved her.');
-    // No duplicate on reload: the episode's copy is the displaced work.
+    expect(reloaded.session.getExcerpt()?.text).toBe('Alice, as the other window saved her.');
+    // No duplicate on reload: the episode's copy remains in the library.
     expect(await recoveries()).toHaveLength(1);
     expect((await a.store.readNamed((await recoveries())[0].sessionId))!.workshop).toEqual(kept.workshop);
   });
+  it('preserves the newest refused named edit after a different window changes its recovery and rolling files', async () => {
+    const fs = new MemoryFileSystem();
+    const a = window(fs, 'a');
+    const b = window(fs, 'b');
+    const original = await a.store.saveNamed(polish());
+    await a.coordinator.openNamed(original.sessionId);
+    await b.coordinator.openNamed(original.sessionId);
+    await edit(b, 'Winning named and rolling content');
+    await edit(a, 'Local version one');
+    const first = (await b.store.list()).sessions.find(row => row.sessionId !== original.sessionId)!;
+    await b.store.renameNamed(first.sessionId, 'Externally renamed recovery');
+    await edit(a, 'Local version two');
+    const kept = await a.coordinator.flushForClose();
+    expect(kept).toMatchObject({ kind: 'preserved-session' });
+    if (!kept) { throw new Error('Expected the newest local recovery'); }
+    expect(kept.sessionId).not.toBe(first.sessionId);
+    const fresh = window(fs, 'fresh').store;
+    expect((await fresh.readNamed(original.sessionId))?.workshop.excerpt?.text).toBe('Winning named and rolling content');
+    expect((await fresh.readCurrent())?.workshop.excerpt?.text).toBe('Winning named and rolling content');
+    expect((await fresh.readNamed(first.sessionId))?.workshop.excerpt?.text).toBe('Local version one');
+    expect((await fresh.readNamed(kept.sessionId))?.workshop.excerpt?.text).toBe('Local version two');
+  });
+
 });

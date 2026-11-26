@@ -89,6 +89,7 @@ Add a key.`, conversationId, 'vendor/never');
         return engineReply(`Reply on ${conversationId}.`, conversationId, `vendor/${conversationId}`);
       }),
       discardConversation: jest.fn(),
+      getConversationCacheEstimate: jest.fn(),
       getConversationContextBudget: jest.fn(),
       getConversationContextSources: jest.fn().mockReturnValue([]),
       getConversationContextAccount: jest.fn()

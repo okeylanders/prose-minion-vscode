@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { ModelScope, ModelOption, MessageType, FollowingModelScope, MODEL_SCOPE_FOLLOWS, isFollowingModelScope } from '@shared/types';
 import { modelFollowLabel } from '@components/shared/modelFollowing';
+import { UnsavedWorkshopSessionsSettings } from './settings/UnsavedWorkshopSessionsSettings';
+import type { UnsavedWorkshopSessions } from '../hooks/domain/useWorkshopSessions';
 import { SettingsSupport } from '@components/SettingsSupport';
 import type { SupportCopyStatus } from '@hooks/domain/useSettings';
 import { UseModelsSettingsReturn } from '../hooks/domain/useModelsSettings';
@@ -18,6 +20,8 @@ type SettingsOverlayProps = {
   supportCopyStatus: SupportCopyStatus;
   onCopySupportEmail: (email: string) => void;
   visible: boolean;
+  unsavedSessions: UnsavedWorkshopSessions;
+  focusUnsavedSessions: boolean;
   onClose: () => void;
   vscode: VSCodeAPI;
   // Specialized hook objects (replaces generic settings + onUpdate)
@@ -57,6 +61,8 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
   supportCopyStatus,
   onCopySupportEmail,
   visible,
+  unsavedSessions,
+  focusUnsavedSessions,
   onClose,
   vscode,
   modelsSettings,
@@ -289,14 +295,14 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
             onChange={(e) => tokensSettings.updateSetting('showTokenWidget', e.target.checked)}
           /> Show Token Usage Widget
           <div className="settings-description">
-            Displays running token totals in the header. Resets manually or on reload.
+            Shows token use across all Prose Minion tools and tabs in this VS Code window. Resets manually or on reload.
           </div>
         </label>
 
         <div style={{ marginTop: 8 }}>
           <button
             onClick={tokenTracking.resetTokens}
-            title="Reset session token totals"
+            title="Reset token totals for this VS Code window"
             className="settings-button"
           >
             Reset Token Usage
@@ -738,6 +744,7 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
         </label>
       </section>
 
+      <UnsavedWorkshopSessionsSettings sessions={unsavedSessions} focusOnOpen={focusUnsavedSessions} />
       <div className="settings-footer-note">Settings save automatically.</div>
     </div>
   );

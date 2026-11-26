@@ -47,6 +47,8 @@ export interface AIResourceBundle {
   engine: AgentRunEngine;
 }
 
+const EMPTY_WINDOW_USAGE = { promptTokens: 0, completionTokens: 0, totalTokens: 0, costUsd: 0 };
+
 export class AIResourceManager {
   private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};
   /** Assistant conversations and their engine survive provider/key outages. */
@@ -60,19 +62,27 @@ export class AIResourceManager {
   /** The fingerprint of the key the current resources were built with, never the key (PR #171 F-01). */
   private adoptedKey?: string;
   private statusCallback?: StatusCallback;
-  private readonly tokenUsageListeners: ListenerSet<[TokenUsage]>;
+  private readonly tokenUsageListeners: ListenerSet<[TokenUsage | undefined]>;
   private readonly tokenUsageResetListeners: ListenerSet<[]>;
 
-  /**
-   * Single stable closure handed to every orchestrator: fans token usage out
-   * to all registered listeners — one per live webview MessageHandler, now
-   * that the sidebar and the Workshop panel share this manager (ADR
-   * 2026-07-03). Stable identity means re-initialized orchestrators can never
-   * hold a stale generation of listeners.
-   */
-  private readonly tokenUsageFanout: TokenUsageCallback = (usage) => {
+  private windowUsage = { ...EMPTY_WINDOW_USAGE };
+  private lastRequestCostUsd?: number;
+
+  /** Every engine in this window reports here once per completed provider request. */
+  readonly recordTokenUsage: TokenUsageCallback = usage => {
+    if (usage) {
+      this.windowUsage.promptTokens += usage.promptTokens;
+      this.windowUsage.completionTokens += usage.completionTokens;
+      this.windowUsage.totalTokens += usage.totalTokens;
+      this.windowUsage.costUsd += usage.costUsd ?? 0;
+    }
+    this.lastRequestCostUsd = usage?.costUsd;
     this.tokenUsageListeners.emit(usage);
   };
+
+  windowTokenUsage() {
+    return { totals: { ...this.windowUsage }, lastRequestCostUsd: this.lastRequestCostUsd };
+  }
 
   constructor(
     private readonly resourceLoader: ResourceLoaderService,
@@ -403,6 +413,8 @@ export class AIResourceManager {
 
   /** Reset every live webview's cumulative processed-usage meter together. */
   resetTokenUsage(): void {
+    this.windowUsage = { ...EMPTY_WINDOW_USAGE };
+    this.lastRequestCostUsd = undefined;
     this.tokenUsageResetListeners.emit();
   }
 
@@ -459,7 +471,7 @@ export class AIResourceManager {
         conversationManager,
         this.statusCallback,
         this.outputChannel,
-        this.tokenUsageFanout,
+        this.recordTokenUsage,
         this.settings
       );
 
@@ -488,7 +500,7 @@ export class AIResourceManager {
         new ConversationManager(this.outputChannel),
         this.statusCallback,
         this.outputChannel,
-        this.tokenUsageFanout,
+        this.recordTokenUsage,
         this.settings,
         model
       );

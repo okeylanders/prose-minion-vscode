@@ -1,7 +1,7 @@
 # Room context reads stage into whatever room is open when they land
 
 **Date Identified**: 2026-11-18
-**Status**: Identified
+**Status**: Fixed in the Workshop tabs epic. [Room-bound reads and panel disposal](https://github.com/okeylanders/prose-minion-vscode/pull/302).
 **Priority**: Medium
 **Estimated Effort**: Small (two handlers, one test each)
 **Source**: [Everyday Conveniences, Round Two](../epics/epic-everyday-conveniences-round-two-2026-11-17/README.md), closing pass; the rule is PR #271 F-01's

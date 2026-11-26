@@ -64,6 +64,13 @@ export enum MessageType {
   TAB_CHANGED = 'tab_changed',
   SELECTION_UPDATED = 'selection_updated',
   OPEN_WORKSHOP = 'open_workshop',
+  LIST_RECENT_WORKSHOP_SESSIONS = 'list_recent_workshop_sessions',
+  OPEN_RECENT_WORKSHOP_SESSION = 'open_recent_workshop_session',
+  RECENT_WORKSHOP_SESSIONS_RESULT = 'recent_workshop_sessions_result',
+  LIST_UNSAVED_WORKSHOP_SESSIONS = 'list_unsaved_workshop_sessions',
+  OPEN_UNSAVED_WORKSHOP_SESSION = 'open_unsaved_workshop_session',
+  DELETE_UNSAVED_WORKSHOP_SESSION = 'delete_unsaved_workshop_session',
+  UNSAVED_WORKSHOP_SESSIONS_RESULT = 'unsaved_workshop_sessions_result',
   // eslint-disable-next-line @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum.
   OPEN_LIGHTBOX = 'open_lightbox',
   OPEN_ASSISTANT_SETTINGS = 'open_assistant_settings',
@@ -88,6 +95,7 @@ export enum MessageType {
   SET_PUBLISHING_TRIM_SIZE = 'set_publishing_trim_size',
 
   // Token usage/cost updates
+  REQUEST_TOKEN_USAGE = 'request_token_usage',
   TOKEN_USAGE_UPDATE = 'token_usage_update',
 
   // OpenRouter account balance (credits + key limit)

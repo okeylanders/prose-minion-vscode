@@ -24,6 +24,24 @@
  * This module never imports `vscode`.
  */
 
+import type { LogSink } from '@prose-minion/core';
+
+/** The output channel may close while Workshop is still flushing checkpoints. */
+export function workshopPersistenceLog(channel: LogSink): LogSink {
+  return {
+    appendLine(line) {
+      try {
+        channel.appendLine(line);
+      } catch {
+        // During teardown VS Code closes this channel before deactivate's writes settle.
+        // A diagnostic must not reject the queue that retries the actual storage failure.
+      }
+    },
+    show: preserveFocus => channel.show(preserveFocus),
+    clear: () => channel.clear()
+  };
+}
+
 export interface ExtensionShutdownParts {
   readonly workshopPanel: { dispose(): void } | undefined;
   readonly lightboxPanel: { dispose(): void } | undefined;

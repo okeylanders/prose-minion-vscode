@@ -212,7 +212,7 @@ describe('WorkshopApp', () => {
     });
 
     const alert = screen.getByRole('alert');
-    expect(alert.textContent).toContain('current.json could not be restored');
+    expect(alert.textContent).toContain('this tab’s checkpoint could not be restored');
     expect(alert.textContent).toContain('turn counter must be a non-negative safe integer');
   });
 
@@ -531,7 +531,7 @@ describe('WorkshopApp', () => {
         expect(branchPosts()).toEqual([]);
       });
 
-      it('branches a saved room at once, then follows the branch as the active session', () => {
+      it('keeps the source conversation, composer and selected-text pill after branching from a writer message', () => {
         render(<WorkshopApp />);
         act(() => {
           window.dispatchEvent(new MessageEvent('message', {
@@ -539,6 +539,18 @@ describe('WorkshopApp', () => {
           }));
         });
         answerSessionsAsNamed();
+
+        const composer = screen.getByRole('textbox') as HTMLTextAreaElement;
+        fireEvent.change(composer, { target: { value: 'Unsent source draft.' } });
+        fireEvent.click(screen.getByRole('switch', { name: /Include selected text/i }));
+        act(() => {
+          window.dispatchEvent(new MessageEvent('message', { data: {
+            type: MessageType.WORKSHOP_SELECTED_TEXT_CURRENT,
+            payload: { selection: { snapshotId: 'snap-1', displayName: 'source.md', startLine: 1, endLine: 2,
+              words: 4, preview: 'A selection from source.' } }
+          } }));
+        });
+        const selection = screen.getByTitle(/A selection from source/);
 
         // From the writer's message: the branch is an edit there.
         fireEvent.click(screen.getAllByRole('button', { name: /Branch from here/ })[0]);
@@ -554,15 +566,6 @@ describe('WorkshopApp', () => {
 
         const listsBefore = listPosts().length;
         act(() => {
-          window.dispatchEvent(new MessageEvent('message', { data: roomWith([existingTurn]) }));
-          window.dispatchEvent(new MessageEvent('message', {
-            data: {
-              type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
-              source: 'extension.workshop',
-              payload: { text: question.content },
-              timestamp: 4
-            }
-          }));
           window.dispatchEvent(new MessageEvent('message', {
             data: {
               type: MessageType.WORKSHOP_SESSION_ACTION_RESULT,
@@ -570,17 +573,19 @@ describe('WorkshopApp', () => {
               payload: {
                 action: 'branch',
                 ok: true,
-                message: 'Branched “Chapter 3 — Felix” into “Chapter 3 — Felix — branch”.'
+                message: 'Branched “Chapter 3 — Felix” into “Chapter 3 — Felix — branch” in a new Workshop tab.'
               },
               timestamp: 5
             }
           }));
         });
 
-        expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe(question.content);
-        expect(screen.getByText('Branched “Chapter 3 — Felix” into “Chapter 3 — Felix — branch”.'))
+        expect(composer.value).toBe('Unsent source draft.');
+        expect(screen.getByTitle(/A selection from source/)).toBe(selection);
+        expect(screen.getByText(latest.content)).toBeTruthy();
+        expect(screen.getByText('Branched “Chapter 3 — Felix” into “Chapter 3 — Felix — branch” in a new Workshop tab.'))
           .not.toBeNull();
-        // The Sessions list is re-read whole, so the branch becomes the active session.
+        // The Sessions list is re-read whole, so the new saved session appears there.
         expect(listPosts().length).toBeGreaterThan(listsBefore);
         expect(listPosts().at(-1)!.payload.query).toBeUndefined();
       });

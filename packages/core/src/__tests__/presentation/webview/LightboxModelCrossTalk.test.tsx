@@ -126,19 +126,10 @@ function warmWorkshopSession(cacheModel: string): WorkshopSessionStateMessage {
         conversationBehavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR },
         contextBudget: {
           label: 'Host',
-          snapshot: {
+          // A restored history carries its countdown before it has a new token reading.
+          cacheEstimate: {
             estimatedCacheExpiresAt: measuredAt + 4 * 60_000,
-            cacheRequestModelId: cacheModel,
-            modelId: cacheModel,
-            contextTokens: 12_000,
-            promptTokens: 12_000,
-            completionTokens: 400,
-            peakPromptTokensThisTurn: 12_000,
-            requestedMaxOutputTokens: 4_000,
-            callsThisTurn: 1,
-            turnProcessedTokens: 12_400,
-            contextCompression: 'not-applied',
-            measuredAt
+            cacheRequestModelId: cacheModel
           },
           sources: []
         }

@@ -68,8 +68,8 @@ export class WorkshopBranchRefusedError extends Error {
 }
 
 /**
- * The branch was saved as a named session but could not be opened. The prior
- * room was restored, and the branch stays on disk, openable from Sessions.
+ * The branch was saved as a named session but could not be opened. The source
+ * room stays open, and the branch stays on disk, openable from Sessions.
  */
 export class WorkshopBranchNotOpenedError extends Error {
   constructor(

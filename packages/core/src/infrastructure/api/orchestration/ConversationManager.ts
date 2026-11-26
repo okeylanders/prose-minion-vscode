@@ -6,6 +6,7 @@
 import { LogSink } from '@/platform';
 import { OpenRouterMessage } from '@providers/OpenRouterClient';
 import { ContextBudgetSnapshot, ContextSourceEntry } from '@shared/types';
+import { conversationCacheEstimate, conversationRoutingKey, type ConversationCacheEstimate } from './ConversationCacheMetadata';
 import { randomUUID } from 'node:crypto';
 import {
   assertArchivedContextSources,
@@ -34,6 +35,10 @@ export class ConversationNotFoundError extends Error {
 }
 
 export interface ConversationContext {
+  /** Provider affinity for this retained history, independent of the runtime lookup id. */
+  routingKey: string;
+  /** Available before the restored participant has its first new token measurement. */
+  restoredCacheEstimate?: ConversationCacheEstimate;
   toolName: string;
   messages: OpenRouterMessage[];
   lastActivity: number;
@@ -81,6 +86,10 @@ export interface ArchivedConversationMessage {
  */
 export interface ConversationArchiveEntryV1<K extends string = string> {
   key: K;
+  /** Optional host-private V1 metadata. Older archives have none. */
+  routingKey?: string;
+  estimatedCacheExpiresAt?: number;
+  cacheRequestModelId?: string;
   toolName: string;
   messages: ArchivedConversationMessage[];
   lastActivity: number;
@@ -160,6 +169,7 @@ export class ConversationManager {
     const conversationId = this.createConversationId(toolName);
 
     this.conversations.set(conversationId, {
+      routingKey: randomUUID(),
       toolName,
       messages: [
         {
@@ -202,8 +212,11 @@ export class ConversationManager {
       }
       this.assertCommittedMessageShape(conversation.messages, `conversation ${conversationId}`);
 
+      const cache = conversation.contextBudget ?? conversation.restoredCacheEstimate;
       return {
         key,
+        routingKey: conversation.routingKey,
+        ...conversationCacheEstimate(cache?.estimatedCacheExpiresAt, cache?.cacheRequestModelId),
         toolName: conversation.toolName,
         messages: conversation.messages.slice(1).map((message) => ({
           role: message.role as ArchivedConversationMessage['role'],
@@ -240,10 +253,14 @@ export class ConversationManager {
         }
         this.validateArchiveEntry(entry, systemMessage);
         const conversationId = this.createConversationId(entry.toolName);
+        const key = conversationRoutingKey(entry.routingKey);
+        const cache = key ? conversationCacheEstimate(entry.estimatedCacheExpiresAt, entry.cacheRequestModelId) : undefined;
         candidates.push({
           key: entry.key,
           conversationId,
           context: {
+            routingKey: key ?? randomUUID(),
+            restoredCacheEstimate: cache && cache.estimatedCacheExpiresAt > Date.now() ? cache : undefined,
             toolName: entry.toolName,
             messages: [
               { role: 'system', content: systemMessage },
@@ -357,6 +374,8 @@ export class ConversationManager {
     }
 
     // Keep only the system message (first message)
+    conversation.routingKey = randomUUID();
+    conversation.restoredCacheEstimate = undefined;
     conversation.messages = conversation.messages.slice(0, 1);
     conversation.contextBudget = undefined;
     conversation.contextSources = undefined;
@@ -414,6 +433,7 @@ export class ConversationManager {
         ...conversation.messages.slice(1)
       ];
       conversation.contextBudget = undefined;
+      conversation.restoredCacheEstimate = undefined;
       conversation.lastActivity = Date.now();
     }
   }
@@ -538,6 +558,7 @@ export class ConversationManager {
     if (!conversation) {
       throw new ConversationNotFoundError(conversationId);
     }
+    conversation.restoredCacheEstimate = undefined;
     conversation.contextBudget = snapshot ? { ...snapshot } : undefined;
   }
 
@@ -545,6 +566,19 @@ export class ConversationManager {
     if (!conversationId) return undefined;
     const snapshot = this.conversations.get(conversationId)?.contextBudget;
     return snapshot ? { ...snapshot } : undefined;
+  }
+
+  getRoutingKey(conversationId: string): string {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) { throw new ConversationNotFoundError(conversationId); }
+    return conversation.routingKey;
+  }
+
+  getConversationCacheEstimate(conversationId: string | undefined): ConversationCacheEstimate | undefined {
+    const conversation = conversationId ? this.conversations.get(conversationId) : undefined;
+    const cache = conversation?.contextBudget ?? conversation?.restoredCacheEstimate;
+    const estimate = conversationCacheEstimate(cache?.estimatedCacheExpiresAt, cache?.cacheRequestModelId);
+    return estimate && estimate.estimatedCacheExpiresAt > Date.now() ? estimate : undefined;
   }
 
   /**

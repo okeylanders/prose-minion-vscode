@@ -81,8 +81,9 @@ export class WorkshopConversationSettingsService {
   private readonly fileEditsMode: WorkshopGlobalModeSetting<WorkshopFileEditsMode>;
   private queue: Promise<void> = Promise.resolve();
   private externalSyncPending = false;
+  /** Profile last committed to this room’s retained persona prompts. */
+  private appliedWriterProfile: WorkshopWriterProfile;
   private pendingBehaviorPersistence?: PendingPersistence<WorkshopConversationBehavior>;
-  private pendingProfilePersistence?: PendingPersistence<WorkshopWriterProfile>;
   private pendingWebResearchPersistence?: PendingPersistence<WorkshopWebResearchSettings>;
   private webResearch: WorkshopWebResearchSettings;
   /** Which optional grammars (memory, file edits, persona reactions) and which memory-suggestion level the persona prompts were last built with. */
@@ -96,6 +97,7 @@ export class WorkshopConversationSettingsService {
     private readonly outputChannel: LogSink,
     private readonly writerProfileService: WorkshopWriterProfileService
   ) {
+    this.appliedWriterProfile = writerProfileService.getProfile();
     this.projectMemoryMode = workshopProjectMemoryModeSetting(settings, outputChannel);
     this.fileEditsMode = workshopFileEditsModeSetting(settings, outputChannel);
     this.webResearch = this.readWebResearchSetting();
@@ -132,14 +134,11 @@ export class WorkshopConversationSettingsService {
         .catch((error: unknown) => undoWorkshopGlobalModeWrites(modes, writes, error));
       this.externalSyncPending = false;
       const pendingBehavior = this.pendingBehaviorPersistence;
-      const pendingProfile = this.pendingProfilePersistence;
       const pendingWebResearch = this.pendingWebResearchPersistence;
       const persistBehavior = result.behaviorChanged
         || (pendingBehavior !== undefined
           && workshopConversationBehaviorsEqual(pendingBehavior.appliedValue, nextBehavior));
-      const persistProfile = result.profileChanged
-        || (pendingProfile !== undefined
-          && workshopWriterProfilesEqual(pendingProfile.appliedValue, nextProfile));
+      const persistProfile = result.profileChanged || this.writerProfileService.needsPersistence(nextProfile);
       const webResearchChanged = !workshopWebResearchSettingsEqual(this.webResearch, nextWebResearch);
       const persistWebResearch = webResearchChanged
         || (pendingWebResearch !== undefined
@@ -171,13 +170,8 @@ export class WorkshopConversationSettingsService {
       if (persistProfile) {
         try {
           await this.writerProfileService.persist(nextProfile);
-          this.pendingProfilePersistence = undefined;
         } catch (error) {
           persistenceErrors.writerProfile = this.errorMessage(error);
-          this.pendingProfilePersistence = {
-            storedValue: this.writerProfileService.readSetting(),
-            appliedValue: { ...nextProfile }
-          };
         }
       }
       if (persistWebResearch) {
@@ -221,7 +215,7 @@ export class WorkshopConversationSettingsService {
       const previousWebResearch = this.webResearch;
       const result = await this.apply(
         this.resolveBehaviorSetting(this.readBehaviorSetting()),
-        this.resolveProfileSetting(this.writerProfileService.readSetting())
+        this.writerProfileService.effectiveSetting()
       );
       this.webResearch = this.resolveWebResearchSetting(this.readWebResearchSetting());
       this.externalSyncPending = false;
@@ -238,6 +232,22 @@ export class WorkshopConversationSettingsService {
     });
   }
 
+  /** Refresh retained persona prompts after a missed or refused replacement, preserving the room’s saved behavior. */
+  syncWriterProfile(conversationId?: string): Promise<void> | undefined {
+    const effective = this.writerProfileService.effectiveSetting();
+    if (workshopWriterProfilesEqual(effective, this.appliedWriterProfile)
+      && workshopWriterProfilesEqual(effective, this.writerProfileService.getProfile())) {
+      return;
+    }
+    // A tool's retained system prompt does not contain the writer bio.
+    if (conversationId && !this.replacementTargets().some(target => target.conversationId === conversationId)) {
+      return;
+    }
+    return this.serialize(async () => {
+      await this.apply(this.session.getConversationBehavior(), this.writerProfileService.effectiveSetting());
+    });
+  }
+
   /** Apply the latest deferred external value after a Workshop run settles. */
   flushDeferredSettingsSync(): Promise<WorkshopConversationSettingsUpdate> {
     return this.serialize(async () => {
@@ -250,7 +260,7 @@ export class WorkshopConversationSettingsService {
       const previousWebResearch = this.webResearch;
       const result = await this.apply(
         this.resolveBehaviorSetting(this.readBehaviorSetting()),
-        this.resolveProfileSetting(this.writerProfileService.readSetting())
+        this.writerProfileService.effectiveSetting()
       );
       this.webResearch = this.resolveWebResearchSetting(this.readWebResearchSetting());
       this.externalSyncPending = false;
@@ -272,13 +282,14 @@ export class WorkshopConversationSettingsService {
     nextProfile: WorkshopWriterProfile
   ): Promise<WorkshopConversationSettingsApplyResult> {
     const previousBehavior = this.session.getConversationBehavior();
-    const previousProfile = this.writerProfileService.getProfile();
+    const previousProfile = this.appliedWriterProfile;
     const behaviorChanged = !workshopConversationBehaviorsEqual(previousBehavior, nextBehavior);
-    const profileChanged = !workshopWriterProfilesEqual(previousProfile, nextProfile);
+    const profileChanged = !workshopWriterProfilesEqual(this.writerProfileService.getProfile(), nextProfile);
+    const roomProfileChanged = !workshopWriterProfilesEqual(previousProfile, nextProfile);
     const grammarChanges = this.prompted.changes();
     const suggestionChange = this.promptedSuggestions.change();
     const suggestionRebuild = suggestionChange?.rebuild === true;
-    if (!behaviorChanged && !profileChanged && grammarChanges.length === 0 && !suggestionRebuild) {
+    if (!behaviorChanged && !profileChanged && !roomProfileChanged && grammarChanges.length === 0 && !suggestionRebuild) {
       // A level that moved while project memory is off is in no prompt: recorded, nothing rebuilt.
       this.promptedSuggestions.commit(suggestionChange, () => undefined);
       return { changed: false, deferred: false, behaviorChanged: false, profileChanged: false };
@@ -301,7 +312,10 @@ export class WorkshopConversationSettingsService {
     }
 
     this.session.setConversationBehavior(nextBehavior);
-    this.writerProfileService.commit(nextProfile);
+    this.appliedWriterProfile = { ...nextProfile };
+    if (profileChanged) {
+      this.writerProfileService.commit(nextProfile);
+    }
     const log = (line: string): void => this.outputChannel.appendLine(`[WorkshopConversationSettingsService] ${line}`);
     this.prompted.commit(grammarChanges, log);
     this.promptedSuggestions.commit(suggestionChange, log);
@@ -319,12 +333,14 @@ export class WorkshopConversationSettingsService {
   replaceStandingDirectiveFrames(frames: readonly string[]): Promise<void> {
     return this.serialize(async () => {
       this.assertBetweenRuns();
+      const profile = this.writerProfileService.getProfile();
       await this.assistantToolService.replaceWorkshopConversationSettings(
         this.replacementTargets(),
         this.session.getConversationBehavior(),
-        this.writerProfileService.getProfile(),
+        profile,
         frames
       );
+      this.appliedWriterProfile = profile;
     });
   }
 
@@ -423,18 +439,6 @@ export class WorkshopConversationSettingsService {
       return { ...pending.appliedValue };
     }
     this.pendingBehaviorPersistence = undefined;
-    return storedValue;
-  }
-
-  private resolveProfileSetting(storedValue: WorkshopWriterProfile): WorkshopWriterProfile {
-    const pending = this.pendingProfilePersistence;
-    if (!pending) {
-      return storedValue;
-    }
-    if (workshopWriterProfilesEqual(storedValue, pending.storedValue)) {
-      return { ...pending.appliedValue };
-    }
-    this.pendingProfilePersistence = undefined;
     return storedValue;
   }
 

@@ -141,6 +141,7 @@ export class LightboxHandler {
       postMessage,
       outputChannel,
       handOffToWorkshop,
+      captureWorkshopHandoff: workshop.captureWorkshopHandoff,
       tray: workshop.tray,
       openWorkshop: workshop.openWorkshop
     });
@@ -334,9 +335,9 @@ export class LightboxHandler {
   }
 
   /** The tray's "Open Workshop →". */
-  async handleOpenWorkshop(_message: LightboxOpenWorkshopMessage): Promise<void> {
+  async handleOpenWorkshop(message: LightboxOpenWorkshopMessage): Promise<void> {
     this.subscribe();
-    this.handoffs.openWorkshop();
+    await this.handoffs.openWorkshop(message.payload?.trayToken);
   }
 
   /** Subscribe once, on this webview's first Lightbox message. */

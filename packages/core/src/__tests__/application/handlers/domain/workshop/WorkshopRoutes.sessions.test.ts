@@ -67,6 +67,21 @@ describe('Workshop composed routing — session owner', () => {
     expect(persistence.beginInteraction).toHaveBeenCalledTimes(1);
   });
 
+  it('reveals an already-owned session during a run without replacing the requesting room', async () => {
+    const revealWorkshopRoom = jest.fn(() => true);
+    const lookup = jest.fn(() => 'room-b');
+    const handler = new WorkshopSessionMessageHandler(Object.assign(persistence, { otherNamedSessionOwner: lookup }), postMessage, shell, log, {
+      revealWorkshopRoom, refreshContextFiles: jest.fn(), postSessionState: jest.fn(),
+      flushDeferredConversationSettings: jest.fn(), reportError: jest.fn(), activeRunLabel: () => 'response',
+      rewindCutForBubble: () => undefined
+    });
+    await handler.handleOpenSession(message(MessageType.WORKSHOP_OPEN_SESSION, { sessionId: 'session-b' }) as never);
+    expect(lookup).toHaveBeenCalledWith('session-b');
+    expect(revealWorkshopRoom).toHaveBeenCalledWith('room-b');
+    expect(persistence.openNamed).not.toHaveBeenCalled();
+    expect(posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT).at(-1).payload.ok).toBe(true);
+  });
+
   it.each(['restore', 'open'] as const)('announces a pending context scan during %s and clears it on completion', async (action) => {
     let finishScan!: () => void;
     let started!: () => void;

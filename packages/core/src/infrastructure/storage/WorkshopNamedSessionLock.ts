@@ -30,9 +30,10 @@
  * - **Logs** never name a session file: its name carries a title slug.
  */
 
+import { isNamedSessionFileName } from '@/application/services/workshop/WorkshopRoomSlot';
 import * as path from 'node:path';
-import { randomUUID } from 'node:crypto';
-import { FileType, type FileSystem, type LogSink } from '@/platform';
+import { createHash, randomUUID } from 'node:crypto';
+import { FileType, type FileSystem, type LocalRollingClaim, type LogSink } from '@/platform';
 import { STORED_FILE_CLAIM_LEASE_MS } from '@/infrastructure/storage/StoredFileClaims';
 import { assertPersistedJsonNestingDepth } from '@/application/services/workshop/persistedJson';
 import type { WorkshopPersistedSessionCheckpointDecodeResult, WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
@@ -218,7 +219,7 @@ export class WorkshopNamedSessionLock {
     const rows: WorkshopNamedSessionLockRow[] = [];
     for (const [name, type] of entries) {
       const fileName = type === FileType.Directory ? LOCK.exec(name)?.[1] : undefined;
-      if (fileName) {
+      if (fileName && isNamedSessionFileName(fileName)) {
         const row = await this.rowOf(path.join(folder, name), path.join(folder, fileName), fileName);
         if (row) {
           rows.push(row);
@@ -272,14 +273,46 @@ export class WorkshopNamedSessionLock {
     return bytes;
   }
 
+  /** Rolling files use the same no-overwrite claim directory. Their saved name always stays in place. */
+  /** Keep a verified named copy recoverable for the duration of redundant rolling-file removal. */
+  withCheckpointLock<T>(filePath: string, sessionId: string, work: () => Promise<T>): Promise<T> {
+    return this.holding(filePath, sessionId, work);
+  }
+
+  withRollingLock<T>(filePath: string, sessionId: string, work: (replace?: LocalRollingClaim['replace']) => Promise<T>): Promise<T> {
+    return this.holding(filePath, sessionId, (_held, local) => work(local?.replace), true);
+  }
+
+  /** An expired rolling claim remains its writer's. A token authorizes only a copy into a different slot. */
+  async rollingClaim(filePath: string): Promise<{ state: 'none' | 'busy' } | { state: 'recovery-required'; token: string }> {
+    const lock = lockPathOf(filePath);
+    const listed = await this.fileSystem.readDirectory(lock).catch(() => undefined);
+    if (!listed) {
+      return { state: 'none' };
+    }
+    const owners = listed.filter(([name, type]) => type === FileType.File && OWNER.test(name)).map(([name]) => name);
+    const state = await this.stateFrom(lock, owners);
+    if (state === 'busy') {
+      return { state };
+    }
+    // Bind a picker result to this workspace, slot and observed claim. A writer that resumes
+    // owns exactly the same lock; the recovery operation never moves or removes it.
+    const token = createHash('sha256').update(JSON.stringify([filePath, ...listed.map(([name]) => name).sort()])).digest('hex');
+    return { state, token };
+  }
+
   /** Run `work` holding the file's lock; release however it ends. */
-  private async holding<T>(filePath: string, sessionId: string, work: (held: Held) => Promise<T>): Promise<T> {
+  private async holding<T>(filePath: string, sessionId: string, work: (held: Held, local?: LocalRollingClaim) => Promise<T>, rolling = false): Promise<T> {
     const held = await this.acquire(filePath, sessionId);
+    let local: LocalRollingClaim | undefined;
     try {
-      return await work(held);
+      if (rolling) {
+        local = this.fileSystem.prepareRollingClaim?.(filePath, held.token);
+      }
+      return await work(held, local);
     } finally {
       await this.hooks.beforeRelease?.();
-      if (!held.keep) {
+      if (!held.keep && !local?.release()) {
         await this.release(held, filePath);
       }
     }
@@ -328,13 +361,18 @@ export class WorkshopNamedSessionLock {
         await this.removeQuietly(staged);
         throw new Error('The saved Workshop session could not be locked for writing.');
       }
+      let renameError: unknown;
       try {
         await this.fileSystem.rename(staged, lock, { overwrite: false });
         return { lock, token, own: path.join(lock, token) };
-      } catch {
+      } catch (error) {
+        renameError = error;
         await this.removeQuietly(staged);
       }
       const state = await this.stateOf(lock);
+      if (state === 'none' && !/EEXIST|FileExists|already exists|destination exists/i.test(String(renameError))) {
+        throw renameError;
+      }
       if (state === 'recovery-required') {
         throw new WorkshopNamedSessionRecoveryRequiredError(sessionId);
       }

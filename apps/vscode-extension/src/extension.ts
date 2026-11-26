@@ -14,7 +14,10 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
 import { ProseToolsViewProvider } from './application/providers/ProseToolsViewProvider';
+import { WorkshopRoomPresence } from './application/WorkshopRoomPresence';
+import { WorkshopRoomRegistry } from './application/WorkshopRoomRegistry';
 import { WorkshopPanelProvider } from './application/providers/WorkshopPanelProvider';
+import { WorkshopRecentSessions } from './application/providers/WorkshopRecentSessions';
 import { LightboxPanelProvider } from './application/providers/LightboxPanelProvider';
 // Core services + the Platform port type — imported via the public barrel only
 // (ADR 2026-06-16 monorepo boundary; enforced by eslint no-restricted-imports).
@@ -50,6 +53,7 @@ import {
   WorkshopWriterProfileService,
   WorkshopSessionTimeService,
   WorkshopSessionStore,
+  WorkshopNamedSessionOwners,
   WorkshopSessionPersistenceCoordinator,
   WorkshopTranscriptRecallService,
   WorkshopLiveRoomBookmarkReader,
@@ -100,6 +104,7 @@ import {
   liveCatalogReasoning,
   LightboxSetSourcePayload,
   CoreServices,
+  WindowServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
   coerceWorkshopConversationBehavior,
@@ -124,7 +129,7 @@ import { VsCodeDocumentEditor } from './platform/vscode/VsCodeDocumentEditor';
 import { VsCodeFileEditAuthorityEpoch } from './platform/vscode/VsCodeFileEditAuthorityEpoch';
 import { CRAFT_FLAGS, VsCodeIssueAnnotator } from './platform/vscode/VsCodeIssueAnnotator';
 import { OpenFileInLightboxHost, openFileInLightbox } from './application/commands/openFileInLightbox';
-import { shutDownExtension, type ExtensionShutdownParts } from './application/extensionShutdown';
+import { shutDownExtension, workshopPersistenceLog, type ExtensionShutdownParts } from './application/extensionShutdown';
 import {
   PROOFREAD_CLEAR_COMMAND,
   PROOFREAD_DISMISS_COMMAND,
@@ -154,9 +159,8 @@ import {
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 let workshopPanelProvider: WorkshopPanelProvider | undefined;
 let lightboxPanelProvider: LightboxPanelProvider | undefined;
-let workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator | undefined;
+let workshopRoomsForShutdown: WorkshopRoomRegistry | undefined;
 let lightboxBoardLibrary: LightboxBoardLibrary | undefined;
-let projectMemoryLibraryForShutdown: ProjectMemoryLibrary | undefined;
 let workshopPinnedContextStoreForShutdown: WorkshopPinnedContextStore | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -307,40 +311,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // strip the surviving surface's refresh listeners).
   context.subscriptions.push({ dispose: () => accountBalanceService.dispose() });
 
-  // Workshop session aggregate (ADR 2026-07-03): one instance, owned by the
-  // composition root, so the thread survives panel close/reopen and webview
-  // reloads — reload-safety lives HERE, not in React state.
-  const workshopSessionService = new WorkshopSessionService(
-    Date.now,
-    coerceWorkshopConversationBehavior(
-      platform.settings.get<unknown>(
-        WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.section,
-        WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.key
-      )
-    )
-  );
-  const workshopRoomDeliveryService = new WorkshopRoomDeliveryService(
-    workshopSessionService
-  );
-  const workshopAnalysisSidePass = new WorkshopAnalysisSidePass(
-    assistantToolService,
-    workshopSessionService,
-    outputChannel
-  );
   const workshopWriterProfileService = new WorkshopWriterProfileService(
     platform.settings,
     outputChannel
-  );
-  const workshopConversationSettingsService = new WorkshopConversationSettingsService(
-    workshopSessionService,
-    assistantToolService,
-    platform.settings,
-    outputChannel,
-    workshopWriterProfileService
-  );
-  const workshopStandingDirectiveService = new WorkshopStandingDirectiveService(
-    workshopSessionService,
-    workshopConversationSettingsService
   );
   // The Read in reader names a card's file from its group's authoritative listing (ADR 2026-11-20 S50).
   const workshopContextIntakeService = new WorkshopContextIntakeService(
@@ -349,11 +322,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     platform.workspace,
     contextResourceResolver
   );
-  const workshopSessionTimeService = new WorkshopSessionTimeService();
-  // Pinned context (ADR 2026-11-04 D5, D9): one store, then the one library
-  // over it and the intake service's doors, then the seed the coordinator
-  // calls at room starts. The library reads the coordinator's accepted
-  // workspace live, so it asks for it only once the coordinator exists.
   const pinnedContextPlatform = workshopPinnedContextPlatformOf(process.platform);
   const workshopPinnedContextStore = new WorkshopPinnedContextStore(
     platform.fileSystem,
@@ -363,85 +331,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   // Its writes (Slice 3) are owed until they settle; deactivation drains them.
   workshopPinnedContextStoreForShutdown = workshopPinnedContextStore;
-  const workshopPinnedContextLibrary = new WorkshopPinnedContextLibrary(
-    workshopPinnedContextStore,
-    workshopContextIntakeService,
-    platform.fileSystem,
-    () => workshopSessionPersistenceCoordinator?.recallScope() ?? { available: false, reason: 'not-ready' },
-    outputChannel,
-    { platform: pinnedContextPlatform }
-  );
-  const workshopPinnedContextRoomSeed = new WorkshopPinnedContextRoomSeed(
-    workshopPinnedContextLibrary,
-    outputChannel,
-    pinnedContextPlatform
-  );
-  const workshopSessionStore = new WorkshopSessionStore(
+  const sessionLog = workshopPersistenceLog(outputChannel);
+  const sessionStore = new WorkshopSessionStore(
     platform.fileSystem,
     platform.workspace,
-    outputChannel
+    sessionLog
   );
-  workshopSessionPersistenceCoordinator = new WorkshopSessionPersistenceCoordinator(
-    workshopSessionService,
-    assistantToolService,
-    workshopConversationSettingsService,
-    workshopSessionTimeService,
-    workshopSessionStore,
-    workshopPinnedContextRoomSeed,
-    outputChannel,
-    {
-      ensureAssistantReady: () => aiResourceManager.ensureInitialized()
-    }
-  );
-  // Session recall reads the writer's other saved sessions through the
-  // store's read-only methods; the coordinator tells it which room is live
-  // and whether the workspace still holds (ADR 2026-10-05 §2, §9). Three
-  // consumers: the persona capability factory, project memory's provenance,
-  // and, through its CoreServices field, the Bookmarks screen's read-only
-  // routes (ADR 2026-11-05 D8); no handler constructs it. Its bookmarks
-  // operation alone also reads the open room's bookmarks, through a
-  // read-only port over the session's full ledger, in the room's own
-  // timezone (ADR 2026-11-05 D1).
-  const workshopTranscriptRecallService = new WorkshopTranscriptRecallService(
-    workshopSessionStore,
-    workshopSessionPersistenceCoordinator,
-    outputChannel,
-    {
-      liveRoom: new WorkshopLiveRoomBookmarkReader(
-        workshopSessionService,
-        () => workshopSessionTimeService.exportState().timezone
-      )
-    }
-  );
-  // A persona's to-do changes in saved sessions write through their own port,
-  // never recall: the store's claimed compare-and-swap, on the coordinator's queue (ADR 2026-11-19 D6, D6a).
-  const workshopSavedSessionTodos = new WorkshopSavedSessionTodoStore(workshopSessionStore, workshopSessionPersistenceCoordinator, outputChannel);
-  // Project memory (ADR 2026-11-04 D10, D13): one store, then the one
-  // library, from the coordinator's accepted workspace and recall's
-  // provenance. Slice 2 only reads: the library feeds the persona
-  // capabilities (the catalog frame and `memory.*`) and the persona prompts'
-  // grammar check; Slice 3 gives the Workshop's memory handler its writes,
-  // through CoreServices.
   const projectMemoryStore = new ProjectMemoryStore(
     platform.fileSystem,
     platform.workspace,
     outputChannel
   );
-  const projectMemoryLibrary = new ProjectMemoryLibrary(
-    projectMemoryStore,
-    workshopSessionPersistenceCoordinator,
-    workshopTranscriptRecallService,
-    platform.settings,
-    outputChannel
-  );
-  assistantToolService.setWorkshopProjectMemoryGrammar(() => projectMemoryLibrary.teachesGrammar());
-  // The file-edit trailer is taught only while `workshop.fileEdits` is `ask` (ADR 2026-11-05 D9).
-  assistantToolService.setWorkshopFileEditsGrammar(() => workshopConversationSettingsService.fileEditsOpen());
-  assistantToolService.setWorkshopReactionsGrammar(() => workshopConversationSettingsService.personaReactionsOpen());
-  // How readily personas suggest notes picks the proposals prompt (`workshop.memory.suggestions`), read at each build.
-  assistantToolService.setWorkshopMemorySuggestionLevel(() => workshopConversationSettingsService.memorySuggestionLevel());
-  // Its writes (Slice 3) are owed until they settle; deactivation drains them.
-  projectMemoryLibraryForShutdown = projectMemoryLibrary;
   // The project's Lexical Gravity lenses: one repository, for the widget's
   // routes and for the personas' read-only `lens.*` calls (ADR 2026-11-17 D16).
   const lexicalGravityLensRepository = new LexicalGravityLensRepository(
@@ -455,67 +355,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     extensionInfo.version,
     outputChannel
   );
-  // A file's git history for personas (ADR 2026-11-19 D11): the host's history port, the saved
-  // file, and the room's excerpt file, authorized as Re-read from file authorizes it.
-  const workshopHistoryPorts = {
-    history: platform.fileHistory,
-    fileSystem: platform.fileSystem,
-    excerpt: workshopHistoryExcerptFile(
-      workshopSessionService,
-      new WorkshopContextIntakeService(
-        contextResourceResolver.countsOnly(),
-        platform.fileSystem,
-        platform.workspace,
-        contextResourceResolver
-      )
-    ),
-    // One cache for every turn: a continuation never aligns the paragraphs again (PR #286 F-03).
-    diffs: new WorkshopHistoryDiffCache()
-  };
   // The project's context paths (ADR 2026-11-19 D18): one scan, one checker over the real resolver's
   // `matchPatterns`, one user-level writer, shared by the Settings helper, a persona's `locations.*`
   // calls and her proposal card. Only the writer's Apply writes.
   const contextPathSettings = new ContextPathSettingsWriter(platform.settings);
   const projectFolderScan = new ProjectFolderScan(platform.fileSystem, platform.workspace, outputChannel);
   const contextPathChecker = new ContextPathProposalChecker(contextResourceResolver, contextPathSettings);
-  // Each participant turn uses the same session, library and reference readers.
-  const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
-    dictionaryService,
-    workshopAnalysisSidePass,
-    contextResourceResolver,
-    workshopSessionService,
-    outputChannel,
-    workshopTranscriptRecallService,
-    projectMemoryLibrary,
-    lexicalGravityLensRepository,
-    workshopHelpReference,
-    workshopHistoryPorts,
-    { scan: projectFolderScan, checker: contextPathChecker }
-  );
-  const workshopToolSidePass = new RunWorkshopToolSidePass(
-    assistantToolService,
-    workshopAnalysisSidePass,
-    workshopSessionService,
-    workshopRoomDeliveryService,
-    workshopPersonaCapabilityFactory,
-    outputChannel,
-    workshopWriterProfileService,
-    () => workshopConversationSettingsService.getWebResearch().enabled
-  );
-  // Workshop handlers must not observe or mutate the fresh in-memory aggregate
-  // until rolling recovery has either completed or deliberately fallen back.
-  // Otherwise a fast webview message can race hydration and lose committed work.
-  await workshopSessionPersistenceCoordinator.initialize();
-  // Transcript export reads the live room's full ledger and writes write-once
-  // documents under prose-minion/exports.
-  const workshopTranscriptExportService = new WorkshopTranscriptExportService(
-    workshopSessionService,
-    new WorkshopTranscriptExportStore(platform.fileSystem, platform.workspace),
-    Date.now,
-    // Model slices name models from the host's catalog (ADR 2026-11-03 D8).
-    (modelId) => OpenRouterModels.getDisplayName(modelId)
-  );
-
   // Conversation Widgets (ADR 2026-07-22): Gesture Playground's one
   // quality-first model call, routed through the manager-owned `widget` scope.
   const rejectedModelResponseRecovery = new RejectedModelResponseRecoveryStore(
@@ -631,34 +476,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // the resolver's every-candidate read and the room's excerpt.
   const fileEditAuthorityEpoch = new VsCodeFileEditAuthorityEpoch();
   context.subscriptions.push(fileEditAuthorityEpoch);
-  // The excerpt's authorization on the write path reads a counts-only catalog: no pattern or path in the log (PR #229 N-01).
-  const fileEditExcerpt = workshopExcerptFileEditDocument(
-    workshopSessionService,
-    new WorkshopContextIntakeService(
-      contextResourceResolver.countsOnly(),
-      platform.fileSystem,
-      platform.workspace,
-      contextResourceResolver
-    )
-  );
-  const fileEditStaging = new FileEditStagingService({
-    candidates: contextResourceResolver,
-    excerpt: fileEditExcerpt,
-    workspace: platform.workspace,
-    fileSystem: platform.fileSystem,
-    documents: platform.documents,
-    log: outputChannel
-  });
-  const projectFileEditGateway = new ProjectFileEditGateway({
-    candidates: contextResourceResolver,
-    excerpt: fileEditExcerpt,
-    workspace: platform.workspace,
-    fileSystem: platform.fileSystem,
-    documents: platform.documents,
-    applier: draftEditApplier,
-    epoch: fileEditAuthorityEpoch,
-    log: outputChannel
-  });
   // Craft Flags (Slice 3c): one call per category on the manager-owned `craft` scope, priced from the live
   // catalog before a run; its run takes no applier, so it only ever flags.
   const craftFlags = new CraftFlagsUseCase(
@@ -725,7 +542,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     { shell: platform.shell, fileSystem: platform.fileSystem, workspace: platform.workspace },
     outputChannel
   );
-  const coreServices: CoreServices = {
+  // Session-derived callbacks capture exactly one room. The stores, provider, and
+  // project resources above remain window-owned (ADR 2026-11-25 D1–D4).
+  const windowServices: WindowServices = {
     assistantToolService,
     dictionaryService,
     dictionaryHistoryStore,
@@ -741,61 +560,256 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     textSourceResolver,
     categorySearchService,
     accountBalanceService,
-    workshopSessionService,
-    projectFileEditGateway,
-    fileEditStaging,
-    workshopRoomDeliveryService,
-    workshopPersonaCapabilityFactory,
-    workshopToolSidePass,
     workshopContextIntakeService,
-    workshopConversationSettingsService,
-    workshopWriterProfileService,
-    workshopSessionTimeService,
-    workshopSessionPersistenceCoordinator,
-    workshopTranscriptExportService,
-    gesturePlaygroundService,
-    creativeVariationsService,
-    showVsTellService,
-    lexicalGravityModelService,
-    lexicalGravityLensRepository,
-    workshopStandingDirectiveService,
     lightboxService,
     lightboxReadingRunner,
     lightboxContextShelf,
+    lightboxBoardLibrary: boardLibrary,
     lightboxBoardStore,
-    lightboxBoardLibrary,
-    projectMemory: projectMemoryLibrary,
-    workshopPinnedContext: {
-      library: workshopPinnedContextLibrary,
-      takeFirstRoomReport: () => workshopPinnedContextRoomSeed.takeFirstRoomReport()
-    },
-    editorSelectionSnapshots,
-    helperAgentService,
     contextPathSuggestions,
-    passageSearchEngine,
-    workshopTranscriptRecallService,
-    workshopSavedSessionTodos,
-    contextPathProposals: { checker: contextPathChecker, settings: contextPathSettings },
-    // A persona's passage-search card (ADR 2026-11-20 D20): the same engine, the resolver's authoritative
-    // listing a request is settled against, and the shared report export the sidebar's Save uses.
-    workshopPassageSearch: {
-      engine: passageSearchEngine,
-      listing: contextResourceResolver,
-      reports: workshopPassageSearchReports
-    }
+    passageSearchEngine
   };
+  const namedOwners = new WorkshopNamedSessionOwners();
+  const createRoomServices = (roomId: string): CoreServices => {
+    const assistantToolService = windowServices.assistantToolService.forWorkshopRoom();
+    const workshopSessionStore = sessionStore.forRoom(roomId);
+    const workshopSessionService = new WorkshopSessionService(
+      Date.now,
+      coerceWorkshopConversationBehavior(
+        platform.settings.get<unknown>(
+          WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.section,
+          WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.key
+        )
+      )
+    );
+    const workshopRoomDeliveryService = new WorkshopRoomDeliveryService(
+      workshopSessionService
+    );
+    const workshopAnalysisSidePass = new WorkshopAnalysisSidePass(
+      assistantToolService,
+      workshopSessionService,
+      outputChannel
+    );
+    const workshopConversationSettingsService = new WorkshopConversationSettingsService(
+      workshopSessionService,
+      assistantToolService,
+      platform.settings,
+      outputChannel,
+      workshopWriterProfileService
+    );
+    assistantToolService.setWorkshopWriterProfileSync(id => workshopConversationSettingsService.syncWriterProfile(id));
+    const workshopStandingDirectiveService = new WorkshopStandingDirectiveService(
+      workshopSessionService,
+      workshopConversationSettingsService
+    );
+    const workshopSessionTimeService = new WorkshopSessionTimeService();
+    const workshopPinnedContextLibrary = new WorkshopPinnedContextLibrary(
+      workshopPinnedContextStore,
+      workshopContextIntakeService,
+      platform.fileSystem,
+      () => workshopSessionPersistenceCoordinator.recallScope(),
+      outputChannel,
+      { platform: pinnedContextPlatform }
+    );
+    const workshopPinnedContextRoomSeed = new WorkshopPinnedContextRoomSeed(
+      workshopPinnedContextLibrary,
+      outputChannel,
+      pinnedContextPlatform
+    );
+    const workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator = new WorkshopSessionPersistenceCoordinator(
+      workshopSessionService,
+      assistantToolService,
+      workshopConversationSettingsService,
+      workshopSessionTimeService,
+      workshopSessionStore,
+      workshopPinnedContextRoomSeed,
+      sessionLog,
+      {
+        roomId,
+        namedOwners,
+        ensureAssistantReady: () => aiResourceManager.ensureInitialized()
+      }
+    );
+    // Session recall reads the writer's other saved sessions through the
+    // store's read-only methods; the coordinator tells it which room is live
+    // and whether the workspace still holds (ADR 2026-10-05 §2, §9). Three
+    // consumers: the persona capability factory, project memory's provenance,
+    // and, through its CoreServices field, the Bookmarks screen's read-only
+    // routes (ADR 2026-11-05 D8); no handler constructs it. Its bookmarks
+    // operation alone also reads the open room's bookmarks, through a
+    // read-only port over the session's full ledger, in the room's own
+    // timezone (ADR 2026-11-05 D1).
+    const workshopTranscriptRecallService = new WorkshopTranscriptRecallService(
+      workshopSessionStore,
+      workshopSessionPersistenceCoordinator,
+      outputChannel,
+      {
+        liveRoom: new WorkshopLiveRoomBookmarkReader(
+          workshopSessionService,
+          () => workshopSessionTimeService.exportState().timezone
+        )
+      }
+    );
+    // A persona's to-do changes in saved sessions write through their own port,
+    // never recall: the store's claimed compare-and-swap, on the coordinator's queue (ADR 2026-11-19 D6, D6a).
+    const workshopSavedSessionTodos = new WorkshopSavedSessionTodoStore(workshopSessionStore, workshopSessionPersistenceCoordinator, outputChannel);
+    const projectMemoryLibrary = new ProjectMemoryLibrary(
+      projectMemoryStore,
+      workshopSessionPersistenceCoordinator,
+      workshopTranscriptRecallService,
+      platform.settings,
+      outputChannel
+    );
+    assistantToolService.setWorkshopProjectMemoryGrammar(() => projectMemoryLibrary.teachesGrammar());
+    // The file-edit trailer is taught only while `workshop.fileEdits` is `ask` (ADR 2026-11-05 D9).
+    assistantToolService.setWorkshopFileEditsGrammar(() => workshopConversationSettingsService.fileEditsOpen());
+    assistantToolService.setWorkshopReactionsGrammar(() => workshopConversationSettingsService.personaReactionsOpen());
+    // How readily personas suggest notes picks the proposals prompt (`workshop.memory.suggestions`), read at each build.
+    assistantToolService.setWorkshopMemorySuggestionLevel(() => workshopConversationSettingsService.memorySuggestionLevel());
+    // A file's git history for personas (ADR 2026-11-19 D11): the host's history port, the saved
+    // file, and the room's excerpt file, authorized as Re-read from file authorizes it.
+    const workshopHistoryPorts = {
+      history: platform.fileHistory,
+      fileSystem: platform.fileSystem,
+      excerpt: workshopHistoryExcerptFile(
+        workshopSessionService,
+        new WorkshopContextIntakeService(
+          contextResourceResolver.countsOnly(),
+          platform.fileSystem,
+          platform.workspace,
+          contextResourceResolver
+        )
+      ),
+      // One cache for every turn: a continuation never aligns the paragraphs again (PR #286 F-03).
+      diffs: new WorkshopHistoryDiffCache()
+    };
+    // Each participant turn uses the same session, library and reference readers.
+    const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
+      dictionaryService,
+      workshopAnalysisSidePass,
+      contextResourceResolver,
+      workshopSessionService,
+      outputChannel,
+      workshopTranscriptRecallService,
+      projectMemoryLibrary,
+      lexicalGravityLensRepository,
+      workshopHelpReference,
+      workshopHistoryPorts,
+      { scan: projectFolderScan, checker: contextPathChecker }
+    );
+    const workshopToolSidePass = new RunWorkshopToolSidePass(
+      assistantToolService,
+      workshopAnalysisSidePass,
+      workshopSessionService,
+      workshopRoomDeliveryService,
+      workshopPersonaCapabilityFactory,
+      outputChannel,
+      workshopWriterProfileService,
+      () => workshopConversationSettingsService.getWebResearch().enabled
+    );
+    // Transcript export reads the live room's full ledger and writes write-once
+    // documents under prose-minion/exports.
+    const workshopTranscriptExportService = new WorkshopTranscriptExportService(
+      workshopSessionService,
+      new WorkshopTranscriptExportStore(platform.fileSystem, platform.workspace),
+      Date.now,
+      // Model slices name models from the host's catalog (ADR 2026-11-03 D8).
+      (modelId) => OpenRouterModels.getDisplayName(modelId)
+    );
+
+    // The excerpt's authorization on the write path reads a counts-only catalog: no pattern or path in the log (PR #229 N-01).
+    const fileEditExcerpt = workshopExcerptFileEditDocument(
+      workshopSessionService,
+      new WorkshopContextIntakeService(
+        contextResourceResolver.countsOnly(),
+        platform.fileSystem,
+        platform.workspace,
+        contextResourceResolver
+      )
+    );
+    const fileEditStaging = new FileEditStagingService({
+      candidates: contextResourceResolver,
+      excerpt: fileEditExcerpt,
+      workspace: platform.workspace,
+      fileSystem: platform.fileSystem,
+      documents: platform.documents,
+      log: outputChannel
+    });
+    const projectFileEditGateway = new ProjectFileEditGateway({
+      candidates: contextResourceResolver,
+      excerpt: fileEditExcerpt,
+      workspace: platform.workspace,
+      fileSystem: platform.fileSystem,
+      documents: platform.documents,
+      applier: draftEditApplier,
+      epoch: fileEditAuthorityEpoch,
+      log: outputChannel
+    });
+    const coreServices: CoreServices = {
+      ...windowServices,
+      assistantToolService,
+      workshopSessionService,
+      projectFileEditGateway,
+      fileEditStaging,
+      workshopRoomDeliveryService,
+      workshopPersonaCapabilityFactory,
+      workshopToolSidePass,
+      workshopConversationSettingsService,
+      workshopWriterProfileService,
+      workshopSessionTimeService,
+      workshopSessionPersistenceCoordinator,
+      workshopTranscriptExportService,
+      gesturePlaygroundService,
+      creativeVariationsService,
+      showVsTellService,
+      lexicalGravityModelService,
+      lexicalGravityLensRepository,
+      workshopStandingDirectiveService,
+      projectMemory: projectMemoryLibrary,
+      workshopPinnedContext: {
+        library: workshopPinnedContextLibrary,
+        takeFirstRoomReport: () => workshopPinnedContextRoomSeed.takeFirstRoomReport()
+      },
+      editorSelectionSnapshots,
+      helperAgentService,
+      workshopTranscriptRecallService,
+      workshopSavedSessionTodos,
+      contextPathProposals: { checker: contextPathChecker, settings: contextPathSettings },
+      // A persona's passage-search card (ADR 2026-11-20 D20): the same engine, the resolver's authoritative
+      // listing a request is settled against, and the shared report export the sidebar's Save uses.
+      workshopPassageSearch: {
+        engine: passageSearchEngine,
+        listing: contextResourceResolver,
+        reports: workshopPassageSearchReports
+      }
+    };
+    return coreServices;
+  };
+  // Binding the slot here captures the folders at attachment, including for the first legacy panel.
+  const workshopRooms = new WorkshopRoomRegistry(createRoomServices, sessionStore, new WorkshopRoomPresence(), outputChannel);
+  workshopRoomsForShutdown = workshopRooms;
 
   // Migrate API key from settings to SecretStorage if needed
   void migrateApiKeyToSecrets(secretsService, outputChannel);
 
+  const recentSessions = new WorkshopRecentSessions(sessionStore, async (id, currentWorkspace) => {
+    if (!workshopPanelProvider) { return 'Workshop is unavailable.'; }
+    return workshopPanelProvider.openRecentSession(id, currentWorkspace);
+  });
+
   // Initialize application layer
   proseToolsViewProvider = new ProseToolsViewProvider(
     context.extensionUri,
-    coreServices,
+    windowServices,
     outputChannel,
     platform,
     {
+      surface: 'sidebar',
+      recentWorkshopSessions: request => recentSessions.handle(request),
+      unsavedWorkshopSessions: request => workshopPanelProvider?.unsavedSessions.handle(request)
+        ?? Promise.resolve({ rows: [], error: 'Workshop is unavailable.' }),
       openWorkshop: () => workshopPanelProvider?.openOrReveal(),
+      newWorkshopTab: () => workshopPanelProvider?.newWorkshopTab(),
       openLightbox: () => lightboxPanelProvider?.openOrReveal()
     }
   );
@@ -816,13 +830,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   console.log('Webview provider registered successfully');
 
   // Workshop editor-tab surface (ADR 2026-07-03, Sprint 1: shell only).
-  // Same CoreServices bundle as the sidebar — the provider constructs nothing.
+  // The registry binds each panel to its room before installing the handler.
   workshopPanelProvider = new WorkshopPanelProvider(
     context.extensionUri,
-    coreServices,
+    workshopRooms,
     outputChannel,
     platform,
     {
+      revealWorkshopRoom: (roomId) => workshopPanelProvider?.revealRoom(roomId) ?? false,
       openAssistantSettings: () => {
         void vscode.commands.executeCommand('prose-minion.openSettingsOverlay');
       }
@@ -830,37 +845,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   context.subscriptions.push(
     workshopPanelProvider,
-    vscode.window.registerWebviewPanelSerializer(
-      WorkshopPanelProvider.viewType,
-      workshopPanelProvider
-    )
+    ...WorkshopPanelProvider.viewTypes.map(viewType =>
+      vscode.window.registerWebviewPanelSerializer(viewType, workshopPanelProvider!))
   );
 
-  // Lightbox editor-tab surface (ADR 2026-10-19 D1): the same CoreServices
+  // Lightbox editor-tab surface (ADR 2026-10-19 D1): the same window-level
   // bundle again, and its own serializer so a reload restores the tab.
   lightboxPanelProvider = new LightboxPanelProvider(
     context.extensionUri,
-    coreServices,
+    windowServices,
     outputChannel,
     platform,
     {
+      surface: 'lightbox',
+      workshopTray: workshopRooms.tray,
+      captureWorkshopHandoff: () => workshopPanelProvider?.captureLightboxTarget(),
       openAssistantSettings: () => {
         void vscode.commands.executeCommand('prose-minion.openSettingsOverlay');
       },
-      // ADR 2026-10-19 D11: a handoff enters the Workshop only through the
-      // Workshop panel's own message path; the Workshop decides what arrives.
-      handOffToWorkshop: (handoff) => {
-        switch (handoff.kind) {
-          case 'lexical-gravity-seed':
-            return workshopPanelProvider?.seedLexicalGravityBuild(handoff.seed)
-              ?? Promise.resolve({ opened: false, reason: 'unavailable' });
-          case 'tile':
-            return workshopPanelProvider?.stageLightboxTile(handoff.tile)
-              ?? Promise.resolve({ opened: false, reason: 'unavailable' });
-        }
-      },
-      // The tray's "Open Workshop →" (Slice 4): reveal it; nothing is sent.
-      openWorkshop: () => workshopPanelProvider?.openOrReveal()
+      // A focus change after the tray rendered cannot redirect this click into another room.
+      openWorkshop: trayToken => workshopPanelProvider?.openTray(trayToken)
     }
   );
   context.subscriptions.push(
@@ -933,7 +937,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (!payload) {
       return;
     }
-    workshopPanelProvider?.seedExcerpt({
+    return workshopPanelProvider?.seedExcerpt({
       text: payload.text,
       source: {
         kind: 'editor-selection',
@@ -1070,9 +1074,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       focusToolsView();
       proseToolsViewProvider?.openSettings();
     }),
-    vscode.commands.registerCommand('prose-minion.openWorkshop', () => {
-      workshopPanelProvider?.openOrReveal();
-    }),
+    vscode.commands.registerCommand('prose-minion.openWorkshop', () => workshopPanelProvider?.openOrReveal()),
+    vscode.commands.registerCommand('prose-minion.newWorkshopTab', () => workshopPanelProvider?.newWorkshopTab()),
+    vscode.commands.registerCommand('prose-minion.reopenWorkshopRoom', () => workshopPanelProvider?.reopenClosedRoom()),
     vscode.commands.registerCommand('prose-minion.workshopSelection', handleWorkshopSelection),
     vscode.commands.registerCommand(ADD_SELECTION_TO_WORKSHOP_MESSAGE_COMMAND, handleAddSelectionToWorkshopMessage),
     vscode.commands.registerCommand('prose-minion.openLightbox', () => {
@@ -1099,16 +1103,15 @@ export async function deactivate(): Promise<void> {
   const parts: ExtensionShutdownParts = {
     workshopPanel: workshopPanelProvider,
     lightboxPanel: lightboxPanelProvider,
-    workshopSessions: workshopSessionPersistenceCoordinator,
+    workshopSessions: workshopRoomsForShutdown,
     lightboxBoards: lightboxBoardLibrary,
-    projectMemory: projectMemoryLibraryForShutdown,
+    projectMemory: undefined, // Each room drains its pending memory writes together with its checkpoint.
     pinnedContext: workshopPinnedContextStoreForShutdown
   };
   workshopPanelProvider = undefined;
   lightboxPanelProvider = undefined;
-  workshopSessionPersistenceCoordinator = undefined;
+  workshopRoomsForShutdown = undefined;
   lightboxBoardLibrary = undefined;
-  projectMemoryLibraryForShutdown = undefined;
   workshopPinnedContextStoreForShutdown = undefined;
   await shutDownExtension(parts);
   console.log('Prose Minion extension is now deactivated');
