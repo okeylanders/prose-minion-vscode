@@ -1336,10 +1336,8 @@ export class WorkshopSessionPersistenceCoordinator {
     let latest: WorkshopPersistedSessionCheckpointDecodeResult | undefined;
     try {
       latest = await this.readNamedCheckpoint(sessionId);
-    } catch (error) {
-      this.outputChannel.appendLine(
-        `[WorkshopSessionPersistence] Branch source unreadable (id=${sessionId}): ${this.errorMessage(error)}`
-      );
+    } catch {
+      this.outputChannel.appendLine(`[WorkshopSessionPersistence] Branch source unreadable (id=${sessionId})`);
       throw new WorkshopBranchRefusedError('source-changed');
     }
     if (!latest || accepted?.sessionId !== sessionId || !hasSameWorkshopCheckpoint(latest.session, accepted)) {
