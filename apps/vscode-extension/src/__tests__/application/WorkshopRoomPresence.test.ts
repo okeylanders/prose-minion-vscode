@@ -35,6 +35,16 @@ describe('Workshop room presence across extension hosts', () => {
     expect(presence.isOpen(root, 'a')).toBe(false);
   });
 
+  it('refuses a destructive action when this host cannot inspect ownership', () => {
+    const unavailable = path.join(temporary, 'not-a-directory');
+    fs.writeFileSync(unavailable, 'occupied');
+    const guard = new WorkshopRoomPresence(unavailable);
+    expect(guard.isOpen(root, 'a')).toBe(true);
+    expect(() => guard.beginDelete(root, 'a')).toThrow('Check access to the local temporary folder');
+    expect(fs.readFileSync(unavailable, 'utf8')).toBe('occupied');
+    expect(fs.readdirSync(root)).toEqual([]);
+  });
+
   it('canonicalizes an existing workspace and accepts a provider-only root', () => {
     const alias = path.join(temporary, 'Alias');
     fs.symlinkSync(root, alias, 'junction');
