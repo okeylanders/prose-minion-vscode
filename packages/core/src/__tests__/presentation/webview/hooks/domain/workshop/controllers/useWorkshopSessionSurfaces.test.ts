@@ -181,9 +181,8 @@ describe('useWorkshopSessionSurfaces', () => {
     props.sessionActionResult = { action: 'branch', ok, message: 'Branch result.' };
     rerender();
 
-    // A branch makes a new active session, or, if it could not open it,
-    // still adds one to the browser.
-    expect(props.requestSessions).toHaveBeenLastCalledWith('');
+    // The branch can be saved even if its tab fails to open. Preserve the source browser's query.
+    expect(props.requestSessions).toHaveBeenLastCalledWith();
     expect(props.onResult).toHaveBeenCalledWith(props.sessionActionResult);
   });
 

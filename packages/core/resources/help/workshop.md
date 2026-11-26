@@ -14,7 +14,7 @@ To return to a closed room, open **Unsaved Sessions** with the arrow beside **+*
 
 A closed secondary room stays available if it contains work you haven’t saved elsewhere. Blank rooms and rooms fully saved to a named session drop out of the list. Edits made after a named save stay available until they are saved too. You can open a named session from Workshop Sessions. If that session is already open elsewhere in the window, Workshop takes you to its tab.
 
-In a single-folder workspace, checkpoints survive a window reload. With no folder or with several workspace folders, closed rooms stay available while the extension is running. Reloading or closing that window ends those in-memory rooms. You can also run **Reopen Closed Workshop Room…** from the Command Palette. **Branch** opens the branch in the tab where you made it.
+In a single-folder workspace, checkpoints survive a window reload. With no folder or with several workspace folders, closed rooms stay available while the extension is running. Reloading or closing that window ends those in-memory rooms. You can also run **Reopen Closed Workshop Room…** from the Command Palette.
 
 If two VS Code windows write to the same room checkpoint, the first successful save stays in place. Workshop preserves the other window’s edits in a separate local recovery session. If the recovery write also fails, keep the window open and reopen the room to retry. When you close that tab, choose **Open saved recovery** to continue in a fresh tab. You can also open the preserved session by name from Workshop Sessions.
 
@@ -66,7 +66,7 @@ Bookmark a message to find it again. **Sessions → Bookmarks…** includes save
 
 At the top of a long conversation, press **Show earlier turns** to load the preceding page. The count tells you how many turns remain hidden. Repeat to reach the start of the thread. Earlier turns stay in the saved conversation and are available to export and recall while off screen.
 
-**Sessions** lets you save, reopen or start a room. Use **Export…** for Markdown, JSON or styled HTML in prose-minion/exports/. To explore a different response, branch at an earlier point to keep the original session, or rewind to that point in this session. Rewind asks for confirmation before removing later turns. You can edit a previous writer message and send again. Ask a persona about earlier work to let it search saved transcripts and cite the session and turns. Session Recall shows a card for the lookup.
+**Sessions** lets you save, reopen or start a room. Use **Export…** for Markdown, JSON or styled HTML in prose-minion/exports/. To explore another direction, save your session and choose **Branch from here** under a turn. Workshop opens a new tab with a saved copy through that point. Branching from a writer message puts that message in the new composer for editing, or reopens its widget there. Your original tab keeps its conversation and draft. To remove later turns from the current session, choose **Rewind to here**. Rewind asks for confirmation before removing later turns. You can edit a previous writer message and send again. Ask a persona about earlier work to let it search saved transcripts and cite the session and turns. Session Recall shows a card for the lookup.
 
 Prose Minion 2.16.0 opens sessions from earlier versions. If you sync or share sessions, update each installation that opens them. A session that records a persona’s to-do changes, Git lookups, context-path proposal, or Passage Search request or delivery can require 2.16.0 or later.
 
@@ -92,7 +92,7 @@ When the search has read every file it planned, in full, and the room is free, t
 
 **Open report** saves a Markdown report in prose-minion/reports/ and opens it: what was read, the labels with their counts, and every instance with its file, line and quote. When there are more instances than fit in the persona's message, it is sent an even spread of them and told so; the report has them all. If not even a summary of the results fits in what is left of the persona's conversation, nothing is sent and the card says so; open the report instead.
 
-Each Workshop room can hold up to four results that have not been sent. With four waiting, **Run** on another card says so and searches nothing: send or discard one first. The results stay with their room while its tab is open, even when you switch tabs. A rewind that keeps the card unchanged keeps its results, so they can be sent again; opening a session, even the same one again, starting a new room or branching drops them. After a reload the card can be run again, and a delivered card says the report is no longer held.
+Each Workshop room can hold up to four results that have not been sent. With four waiting, **Run** on another card says so and searches nothing: send or discard one first. The results stay with their room while its tab is open, even when you switch tabs. A rewind that keeps the card unchanged keeps its results, so they can be sent again; opening a session, even the same one again, or starting a new room drops them. A branch opens its own tab. Unsent results stay in the original tab. After a reload the card can be run again, and a delivered card says the report is no longer held.
 
 ## Suggested file edits
 

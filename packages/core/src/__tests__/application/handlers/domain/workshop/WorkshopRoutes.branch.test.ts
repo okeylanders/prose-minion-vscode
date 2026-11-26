@@ -10,8 +10,8 @@ import { createWorkshopRouteTestHarness, message } from './WorkshopRouteTestHarn
 /**
  * The Branch route (ADR 2026-09-30 §7): the bubble maps to its cut, the
  * coordinator refuses an unsaved source, re-checks the cut, saves the branch
- * and opens it, and the webview hears the room, the result naming both
- * sessions, and, for a writer message, the edit.
+ * and hands the new session to its own panel. This room receives its result;
+ * the new panel receives any restored draft or widget.
  */
 describe('Workshop Branch route', () => {
   const outcome = (overrides: Partial<WorkshopBranchOutcome> = {}): WorkshopBranchOutcome => ({
@@ -28,8 +28,6 @@ describe('Workshop Branch route', () => {
       removedTodoCount: 0,
       releasedWidgetConfigIds: []
     },
-    degradedConversationKeys: [],
-    degradedConversations: [],
     ...overrides
   });
 
@@ -71,10 +69,11 @@ describe('Workshop Branch route', () => {
     );
     expect(harness.posted(MessageType.WORKSHOP_SESSION_STATE).length).toBeGreaterThan(0);
     expect(harness.posted(MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED)).toEqual([]);
+    expect(harness.openWorkshopBranch).toHaveBeenCalledWith('branch-1', []);
     expect(lastResult(harness)).toEqual({
       action: 'branch',
       ok: true,
-      message: 'Branched “Chapter 3 — Felix” into “Chapter 3 — Felix — branch”. ' +
+      message: 'Branched “Chapter 3 — Felix” into “Chapter 3 — Felix — branch” in a new Workshop tab. ' +
         '2 later turns stay in “Chapter 3 — Felix”.'
     });
   });
@@ -114,10 +113,12 @@ describe('Workshop Branch route', () => {
       { kind: 'beforeTurn', turnId: harness.writerTurn.id },
       {}
     );
-    expect(harness.posted(MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED).map((entry) => entry.payload))
-      .toEqual([{ text: 'Open the room.' }]);
+    expect(harness.posted(MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED)).toEqual([]);
+    expect(harness.openWorkshopBranch).toHaveBeenCalledWith('branch-1', [expect.objectContaining({
+      type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED, payload: { text: 'Open the room.' }
+    })]);
     expect(lastResult(harness)?.message).toBe(
-      'Branched “Chapter 3 — Felix” into “Chapter 3 — Felix — branch”. ' +
+      'Branched “Chapter 3 — Felix” into “Chapter 3 — Felix — branch” in a new Workshop tab. ' +
       '1 later turn stays in “Chapter 3 — Felix”. The host starts fresh from here. ' +
       'Re-attach draft-notes.md before you send it again.'
     );
@@ -131,8 +132,10 @@ describe('Workshop Branch route', () => {
 
     await branch(harness, harness.writerTurn);
 
-    expect(harness.posted(MessageType.WORKSHOP_WIDGET_CONFIG_RESTORED).map((entry) => entry.payload))
-      .toEqual([{ widgetConfigId: 'wc-1' }]);
+    expect(harness.posted(MessageType.WORKSHOP_WIDGET_CONFIG_RESTORED)).toEqual([]);
+    expect(harness.openWorkshopBranch).toHaveBeenCalledWith('branch-1', [expect.objectContaining({
+      type: MessageType.WORKSHOP_WIDGET_CONFIG_RESTORED, payload: { widgetConfigId: 'wc-1' }
+    })]);
   });
 
   it.each([
@@ -165,10 +168,8 @@ describe('Workshop Branch route', () => {
 
   it('says honestly when the branch was saved but could not be opened', async () => {
     const harness = await sentRoom();
-    harness.persistence.branchFrom.mockRejectedValue(new WorkshopBranchNotOpenedError(
-      outcome().branch,
-      'current.json could not be written'
-    ));
+    harness.persistence.branchFrom.mockResolvedValue(outcome());
+    harness.openWorkshopBranch.mockRejectedValue(new Error('current.json could not be written'));
 
     await branch(harness, harness.reply);
 
@@ -192,14 +193,12 @@ describe('Workshop Branch route', () => {
 
     await branch(harness, harness.reply);
 
-    // Opening the branch now would replace this room's only complete copy.
     expect(lastResult(harness)).toEqual({
       action: 'branch',
       ok: false,
       message: 'Saved the branch as “Chapter 3 — Felix — branch”, but didn\'t open it: ' +
         "this session's saved file went missing or changed on disk while branching. " +
-        'Your room is unchanged. Reopen it from Sessions, or use Save as new to keep this room, ' +
-        'before you open the branch.'
+        'Your room is unchanged. Open the saved branch from Sessions.'
     });
   });
 

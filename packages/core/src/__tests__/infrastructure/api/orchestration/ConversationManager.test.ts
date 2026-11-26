@@ -393,6 +393,71 @@ describe('ConversationManager', () => {
       return id;
     };
 
+    it('keeps affinity across imports while independent runtime histories and full resets get separate ownership', () => {
+      const id = completeConversation(manager);
+      const [entry] = manager.exportConversations([{ key: 'host', conversationId: id }]);
+      const originalKey = manager.getRoutingKey(id);
+      expect(entry.routingKey).toBe(originalKey);
+      expect(originalKey).not.toBe(id);
+
+      const [copy] = manager.importConversations([{ entry, systemMessage: 'Current system' }]);
+      if (copy.status !== 'imported') { throw new Error(copy.reason); }
+      expect(copy.conversationId).not.toBe(id);
+      expect(manager.getRoutingKey(copy.conversationId)).toBe(originalKey);
+      manager.resetConversation(copy.conversationId);
+      expect(manager.getRoutingKey(copy.conversationId)).not.toBe(originalKey);
+      expect(manager.getRoutingKey(completeConversation(manager))).not.toBe(originalKey);
+      expect(manager.getMessages(id)).toHaveLength(3);
+    });
+
+    it.each([undefined, '', 'untrusted author text', 'faceface-face-1234-8000-facefaceface'])(
+      'mints independent routing hints for legacy or malformed optional keys without dropping history (%s)', (routingKey) => {
+        const id = completeConversation(manager);
+        const [archive] = manager.exportConversations([{ key: 'host', conversationId: id }]);
+        const entry = { ...archive, routingKey, estimatedCacheExpiresAt: Date.now() + 60_000, cacheRequestModelId: 'anthropic/claude-sonnet-5' };
+        const restoredKey = () => {
+          const [copy] = manager.importConversations([{ entry, systemMessage: 'Current system' }]);
+          if (copy.status !== 'imported') { throw new Error(copy.reason); }
+          expect(manager.getMessages(copy.conversationId).slice(1)).toEqual(entry.messages);
+          expect(manager.getConversationCacheEstimate(copy.conversationId)).toBeUndefined();
+          return manager.getRoutingKey(copy.conversationId);
+        };
+        const first = restoredKey();
+        expect(first).not.toBe(routingKey);
+        expect(first).not.toBe(restoredKey());
+      }
+    );
+
+    it('restores only the future clock, re-exports it unchanged, and clears it with a replacement or unmeasured turn', () => {
+      const id = completeConversation(manager);
+      const [archive] = manager.exportConversations([{ key: 'host', conversationId: id }]);
+      const expiry = Date.now() + 60_000;
+      const clock = { estimatedCacheExpiresAt: expiry, cacheRequestModelId: 'anthropic/claude-sonnet-5' };
+      const restore = (estimatedCacheExpiresAt: number) => {
+        const [copy] = manager.importConversations([{
+          entry: { ...archive, ...clock, estimatedCacheExpiresAt }, systemMessage: 'New system'
+        }]);
+        if (copy.status !== 'imported') { throw new Error(copy.reason); }
+        return copy.conversationId;
+      };
+      const first = restore(expiry);
+      expect(manager.getConversationCacheEstimate(first)).toEqual(clock);
+      expect(manager.getContextBudget(first)).toBeUndefined();
+      expect(manager.exportConversations([{ key: 'host', conversationId: first }])[0]).toMatchObject(clock);
+      manager.replaceSystemMessages([{ conversationId: first, systemMessage: 'Revised system' }]);
+      expect(manager.getConversationCacheEstimate(first)).toBeUndefined();
+      expect(manager.getRoutingKey(first)).toBe(archive.routingKey);
+
+      const second = restore(expiry);
+      manager.setContextBudget(second, undefined);
+      expect(manager.getConversationCacheEstimate(second)).toBeUndefined();
+      const elapsed = restore(Date.now() - 1);
+      expect(manager.getConversationCacheEstimate(elapsed)).toBeUndefined();
+      const [savedAgain] = manager.exportConversations([{ key: 'host', conversationId: elapsed }]);
+      expect(savedAgain).not.toHaveProperty('estimatedCacheExpiresAt');
+      expect(savedAgain).not.toHaveProperty('cacheRequestModelId');
+    });
+
     it('exports committed non-system history with defensive source copies', () => {
       const id = completeConversation(manager);
       manager.appendContextSources(id, [{

@@ -26,6 +26,7 @@ import {
   parseWorkshopSessionTemporalStateV1,
   WorkshopSessionTemporalStateV1
 } from '@/application/services/workshop/WorkshopSessionTimeService';
+import { conversationCacheEstimate, conversationRoutingKey } from '@orchestration/ConversationCacheMetadata';
 import { ConversationArchiveEntryV1 } from '@orchestration/ConversationManager';
 import { WorkshopPersonaId, WorkshopSessionScope, isWorkshopSessionScope } from '@messages';
 import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
@@ -240,7 +241,8 @@ function assertCurrentWorkshopPersistedSessionEnvelope(
 
 function decodeWorkshopPersistedSessionEnvelope(
   value: Record<string, unknown>,
-  workshop: WorkshopSessionStateV1
+  workshop: WorkshopSessionStateV1,
+  strict = false
 ): WorkshopPersistedSessionV2 {
   return {
     schemaVersion: CURRENT_WORKSHOP_PERSISTED_SESSION_SCHEMA_VERSION,
@@ -255,9 +257,35 @@ function decodeWorkshopPersistedSessionEnvelope(
     temporal: parseWorkshopSessionTemporalStateV1(value.temporal),
     summary: parseSummary(value.summary),
     workshop,
-    conversations: clonePersistedJson(value.conversations, 'conversations') as
-      ConversationArchiveEntryV1<WorkshopConversationLogicalKey>[]
+    conversations: clonePersistedJson(value.conversations as unknown[], 'conversations')
+      .map(entry => archiveCacheMetadata(entry, strict)) as ConversationArchiveEntryV1<WorkshopConversationLogicalKey>[]
   };
+}
+
+/** The archive also contains opaque provider routing and cache timing, neither of which is writer content. */
+export function workshopArchiveContent(entry: unknown): unknown {
+  if (!isRecord(entry)) { return entry; }
+  const { routingKey, estimatedCacheExpiresAt, cacheRequestModelId, ...content } = entry;
+  return content;
+}
+
+function archiveCacheMetadata(entry: unknown, strict: boolean): unknown {
+  if (!isRecord(entry)) { return entry; } // Participant history is validated independently at import.
+  const key = entry.routingKey;
+  const clockPresent = entry.estimatedCacheExpiresAt !== undefined || entry.cacheRequestModelId !== undefined;
+  const validKey = conversationRoutingKey(key);
+  const invalidKey = key !== undefined && !validKey;
+  const invalidClock = clockPresent && (!validKey || !conversationCacheEstimate(entry.estimatedCacheExpiresAt, entry.cacheRequestModelId));
+  if (!invalidKey && !invalidClock) { return entry; }
+  if (strict) { throw new Error('Invalid conversation cache metadata in Workshop checkpoint.'); }
+  // A malformed hint in a writer-owned file cannot invalidate an otherwise usable history.
+  // This object belongs to the defensive clone. A new routing identity cannot inherit an earlier identity’s clock.
+  if (invalidKey) { delete entry.routingKey; }
+  if (invalidClock) {
+    delete entry.estimatedCacheExpiresAt;
+    delete entry.cacheRequestModelId;
+  }
+  return entry;
 }
 
 /** Strict current-state parser used by writes and already-canonical callers. */
@@ -267,7 +295,7 @@ export function parseWorkshopPersistedSession(value: unknown): WorkshopPersisted
   assertCurrentWorkshopSessionStateV1(workshop);
   assertWorkshopPersistedSessionStateV2(workshop);
   validateWorkshopSessionStateV1(workshop);
-  return decodeWorkshopPersistedSessionEnvelope(value, workshop);
+  return decodeWorkshopPersistedSessionEnvelope(value, workshop, true);
 }
 
 function assertWorkshopPersistedSessionStateV2(

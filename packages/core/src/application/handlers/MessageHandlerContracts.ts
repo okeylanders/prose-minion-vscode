@@ -23,6 +23,8 @@ import type {
   TokenUsageUpdateMessage,
   UnsavedWorkshopSessionsRequest,
   UnsavedWorkshopSessionsResultPayload,
+  WorkshopComposerDraftRestoredMessage,
+  WorkshopWidgetConfigRestoredMessage,
   WorkshopSessionStateMessage
 } from '@messages';
 import type { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
@@ -87,6 +89,8 @@ export type MessageTransport = (
   message: ExtensionToWebviewMessage
 ) => PromiseLike<unknown>;
 
+export type WorkshopBranchDraftMessage = WorkshopComposerDraftRestoredMessage | WorkshopWidgetConfigRestoredMessage;
+
 /**
  * UI capabilities owned by the host shell and exposed to core message handlers.
  * Kept named so new cross-surface actions extend one contract instead of
@@ -100,6 +104,7 @@ export interface WorkshopUiActions {
   surface?: 'sidebar' | 'lightbox' | 'workshop';
   /** The window's MRU Workshop tray, read-only from the Lightbox. */
   workshopTray?: WorkshopLightboxTray;
+  openWorkshopBranch?: (sessionId: string, drafts: readonly WorkshopBranchDraftMessage[]) => Promise<void>;
   revealWorkshopRoom?: (roomId: string) => boolean;
   openWorkshop?: (trayToken?: string) => void | Promise<void>;
   newWorkshopTab?: () => void;

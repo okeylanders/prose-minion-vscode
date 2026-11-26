@@ -120,6 +120,7 @@ function createTestAssembly(): TestAssembly {
   const assistantToolService = {
     // Registered twice per handler: AnalysisHandler + WorkshopRoomHandler.
     addStatusListener: jest.fn(() => jest.fn()),
+    getConversationCacheEstimate: jest.fn(),
     getConversationContextBudget: jest.fn(),
     getConversationContextSources: jest.fn().mockReturnValue([]),
     measureWorkshopConversation: jest.fn(),

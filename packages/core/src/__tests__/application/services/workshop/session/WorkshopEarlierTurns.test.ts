@@ -226,10 +226,12 @@ describe('a room longer than the window', () => {
     const sourcePath = await store.resolveRevealPath('long-room');
     const sourceBefore = new TextDecoder().decode(await fs.readFile(sourcePath));
 
+    const sourceTurnIds = ids(session.readRoomLedger());
     const outcome = await coordinator.branchFrom(session.rewindCutForBubble(target.id)!);
 
     expect(outcome.branch.sessionId).not.toBe('long-room');
-    expect(session.readRoomLedger().at(-1)?.id).toBe(target.id);
+    expect((await store.readNamed(outcome.branch.sessionId))?.workshop.turns.at(-1)?.id).toBe(target.id);
+    expect(ids(session.readRoomLedger())).toEqual(sourceTurnIds);
     expect(new TextDecoder().decode(await fs.readFile(sourcePath))).toBe(sourceBefore);
   });
 });

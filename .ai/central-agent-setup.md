@@ -1071,13 +1071,14 @@ touching retained histories or whole-room operations:
   `WORKSHOP_REWIND_SESSION` and `WORKSHOP_BRANCH_SESSION` routes. Handlers map
   a bubble to its cut and reach the cut vocabulary only through the
   coordinator, never through session collaborators.
-- **Room replacement.** New, Open, Rewind and Branch share the coordinator's
+- **Room replacement.** New, Open and Rewind share the coordinator's
   room-replacement transaction. A new whole-room operation joins it rather
   than hand-rolling rollback.
 - **Branch.** Branch never writes its source session file. It refuses an
   unnamed room, a named room with unsaved work, and a room whose file on
-  disk no longer matches it. It checks the file again at the commit that
-  replaces the room slot's rolling checkpoint, through the store's `beforeCommit` seam.
+  disk no longer matches it. The source checks its saved checkpoint before
+  and after creating the named branch. A fresh Workshop tab opens the
+  branch and receives its restored writer draft or widget.
 - **The composer's restore keeps newer typing.** The message a Rewind or
   Branch gives back to the composer goes ahead of anything the writer has
   typed since, a blank line between; it never replaces it (PR #264 P2-1;
@@ -1116,7 +1117,7 @@ window, or how a bookmark reaches a turn there:
     page from the window back, one request in flight; a newer state
     restarts the walk and drops the earlier walk's answer; a held turn an
     answer covering its place did not return is removed (Q7, open).
-  - A new room (New, Open, Rewind, Branch, restore) drops every held turn
+  - A new room (New, Open, Rewind, restore) drops every held turn
     and the pending request before anything new is asked.
   - Only the pending answer is taken.
 - **A bookmark jump** (D6 amendment; Okey's 3-page cap). A bookmark outside
@@ -1248,7 +1249,7 @@ toggle, or how the editor's selection reaches a message:
   `roomRevision`, and `WorkshopSelectedTextHandler.stageForSend` compares it
   with the live room's inside the send's own mutation, before it looks the
   snapshot up (PR #259).
-  - Another room (New, Open, Rewind or Branch landed in between), an
+  - Another room (New, Open or Rewind landed in between), an
     unknown id, or a message already full refuses the **whole** send, and
     the draft goes back to the composer (`postComposerDraftRestored`).
   - The live selection is never sent unseen. Never send the message without
@@ -2580,11 +2581,12 @@ request, its card, or how its results reach the persona:
   The coordinator announces every room replacement in the step that swaps
   the aggregate (`WorkshopOpenRoomInstance`, `onRoomReplaced`).
   - The running search's calls are aborted then (New, Open, Rewind,
-    Branch, a reload), whether or not anything is drawn or a call answers.
+    a reload), whether or not anything is drawn or a call answers.
   - Every replacement but a Rewind opens another instance (New, Open,
-    Branch, a reopen or reload of the same named session, activation, a
+    a reopen or reload of the same named session, activation, a
     rollback) and drops every held result. A session id cannot tell these
-    apart: reopening a named session keeps it.
+    apart: reopening a named session keeps it. Branch opens a separate tab,
+    so the source keeps its searches and held results.
   - A Rewind keeps the instance, and keeps each result whose card the cut
     left exactly as it was searched (question and scopes, unanswered), so a
     Rewind that cut only the delivery's reply reads `ready` and Send needs

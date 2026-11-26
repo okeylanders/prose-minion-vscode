@@ -146,8 +146,7 @@ export function useWorkshopSessionSurfaces({
     if (
       sessionActionResult.ok && (
         sessionActionResult.action === 'open' ||
-        sessionActionResult.action === 'new' ||
-        sessionActionResult.action === 'branch'
+        sessionActionResult.action === 'new'
       )
     ) {
       setSessionBrowserOpen(false);
@@ -160,13 +159,11 @@ export function useWorkshopSessionSurfaces({
     const activeRoomIdentityChanged = sessionActionResult.ok && (
       sessionActionResult.action === 'save' ||
       sessionActionResult.action === 'open' ||
-      sessionActionResult.action === 'new' ||
-      sessionActionResult.action === 'branch'
+      sessionActionResult.action === 'new'
     );
-    // A branch that was saved but not opened still added a session.
-    if (activeRoomIdentityChanged || sessionActionResult.action === 'branch') {
+    if (activeRoomIdentityChanged) {
       requestSessions('');
-    } else if (sessionBrowserOpen || sessionsMenuOpen || sessionIndexChanged) {
+    } else if (sessionBrowserOpen || sessionsMenuOpen || sessionIndexChanged || sessionActionResult.action === 'branch') {
       requestSessions();
     }
     consumeSessionActionResult();

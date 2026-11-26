@@ -51,13 +51,12 @@ describe('the open room instance', () => {
     expect(real.coordinator.openRoomInstance()).not.toBe(instance);
   });
 
-  it('Branch opens another instance', async () => {
+  it('Branch leaves the source instance active', async () => {
     const { real, told, writerTurns } = await openedRoom();
     const instance = real.coordinator.openRoomInstance();
     await real.coordinator.branchFrom({ kind: 'beforeTurn', turnId: writerTurns[1].id });
-    expect(told.length).toBeGreaterThan(0);
-    expect(told.every(({ rewound }) => !rewound)).toBe(true);
-    expect(real.coordinator.openRoomInstance()).not.toBe(instance);
+    expect(told).toEqual([]);
+    expect(real.coordinator.openRoomInstance()).toBe(instance);
   });
 
   it('a Rewind whose write fails is rolled back, and the restored room is another instance', async () => {

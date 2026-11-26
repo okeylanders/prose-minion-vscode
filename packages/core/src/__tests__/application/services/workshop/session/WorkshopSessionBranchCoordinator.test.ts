@@ -1,8 +1,7 @@
 /**
  * The coordinator's Branch operation (ADR 2026-09-30 §7) over real
  * collaborators: the saved room is cut by the pure transform, saved as a new
- * named session, and opened through the named-session promotion. The source
- * session's file is never written.
+ * named session, and opened by a separate room's named-session promotion.
  *
  * The key proof branches the canonical scripted room at every rest point and
  * holds the branch file to the room the Rewind equivalence oracle expects
@@ -35,6 +34,7 @@ const restPoint = (room: ScriptedWorkshopRoom, label: string): ScriptedRestPoint
 
 const SESSIONS_DIRECTORY = `${HARNESS_ROOT}/prose-minion/sessions`;
 const NOW = harnessNow().toISOString();
+const BRANCH_SLOT = 'd64789b9-8bd4-4a2a-8096-14bceef444be';
 /** The source was saved on an earlier day, so every fresh branch field shows. */
 const SOURCE_TIME = '2026-09-01T09:00:00.000Z';
 const SOURCE_TIMEZONE = 'America/Chicago';
@@ -117,6 +117,7 @@ describe('the Branch key proof over the canonical scripted room (ADR 2026-09-30 
     async (_label, point) => {
       const harness = await openCanonicalSession(room);
       const sourceBefore = await textOf(harness.fs, harness.sourcePath);
+      const sourceRoom = clonePersistedJson(harness.session.exportCommittedState());
       const expected = expectedRewoundRoom(point, final);
 
       const outcome = await harness.coordinator.branchFrom(after(point.headTurnId));
@@ -157,9 +158,8 @@ describe('the Branch key proof over the canonical scripted room (ADR 2026-09-30 
       });
       // The source session's file is untouched, byte for byte.
       expect(await textOf(harness.fs, harness.sourcePath)).toBe(sourceBefore);
-      // The branch is the live room and the active named session.
-      expect(clonePersistedJson(harness.session.exportCommittedState())).toEqual(expected.workshop);
-      expect((await harness.coordinator.list()).current?.sessionId).toBe(outcome.branch.sessionId);
+      expect(clonePersistedJson(harness.session.exportCommittedState())).toEqual(sourceRoom);
+      expect(harness.coordinator.openRoomIdentity().namedSessionId).toBe('scripted');
     }
   );
 });
@@ -175,7 +175,6 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
     expect(outcome.branch).toMatchObject({ title: 'Scripted room — branch' });
     expect(outcome.composerRestore).toBeUndefined();
     expect(outcome.widgetRestore).toBeUndefined();
-    expect(outcome.degradedConversationKeys).toEqual([]);
     const listed = await coordinator.list();
     expect(listed.sessions.map((session) => session.title).sort())
       .toEqual(['Scripted room', 'Scripted room — branch']);
@@ -186,25 +185,31 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
     expect(branched[0]).toContain(`keptThrough=${point.headTurnId}`);
     expect(branched[0]).toMatch(/host \d+→\d+/);
     expect(lines.join('\n')).not.toContain('Where should the chapter end?');
+    expect(branched[0]).not.toContain(outcome.branch.fileName);
   });
 
   it('opens the branch as Open would: a resume frame for retained personas, then a resume marker', async () => {
-    const { coordinator, time, room } = await openCanonicalSession();
+    const { coordinator, time, room, fs } = await openCanonicalSession();
     // The source room already handed its host a frame and spent its marker.
     expect(coordinator.beginInteraction()).toBeDefined();
     time.commitNotice(time.prepareNotice('host')!);
 
-    await coordinator.branchFrom(after(restPoint(room, 'prose report').headTurnId));
+    const outcome = await coordinator.branchFrom(after(restPoint(room, 'prose report').headTurnId));
+    const destination = setupCoordinator({ fileSystem: fs, roomId: BRANCH_SLOT });
+    await destination.coordinator.initialize();
+    await destination.coordinator.openNamed(outcome.branch.sessionId);
+    expect(coordinator.openRoomIdentity().namedSessionId).toBe('scripted');
+    expect(coordinator.beginInteraction()).toBeUndefined();
 
-    expect(time.exportState()).toEqual({
+    expect(destination.time.exportState()).toEqual({
       schemaVersion: 1,
       startedAt: NOW,
       timezone: SOURCE_TIMEZONE,
       lastActivityAt: NOW,
       personaNotices: []
     });
-    expect(time.prepareNotice('host')).toMatchObject({ reason: 'session_resume' });
-    expect(coordinator.beginInteraction()?.content).toMatch(/^Session resumed /);
+    expect(destination.time.prepareNotice('host')).toMatchObject({ reason: 'session_resume' });
+    expect(destination.coordinator.beginInteraction()?.content).toMatch(/^Session resumed /);
   });
 
   it('describes the cut room in the browser and its search, never the source', async () => {
@@ -257,6 +262,7 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
       expect(outcome.branch.title).toBe(title);
       expect((await store.readNamed(outcome.branch.sessionId))?.title).toBe(title);
       expect(await textOf(fs, sourcePath)).toBe(sourceBefore);
+      await coordinator.openNamed(outcome.branch.sessionId);
       sourceId = outcome.branch.sessionId;
       sourceTitle = title;
     }
@@ -283,9 +289,8 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
       expect(branch.workshop.pendingMessageAttachments).toEqual([
         expect.objectContaining({ id: restagedId, label: 'beat-sheet.md' })
       ]);
-      expect(session.collectMessageAttachments()).toEqual([
-        expect.objectContaining({ id: restagedId, content: 'Beat one: the cup. Beat two: the sill.' })
-      ]);
+      expect(branch.workshop.pendingMessageAttachments?.[0].content).toBe('Beat one: the cup. Beat two: the sill.');
+      expect(session.collectMessageAttachments().map(item => item.id)).not.toContain(restagedId);
       // The source still holds the message as it was sent.
       expect((await store.readNamed('scripted'))!.workshop.turns.some((turn) => turn.id === message.id))
         .toBe(true);
@@ -318,7 +323,7 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
       expect(outcome.widgetRestore).toEqual({ widgetConfigId: message.widgetCommit!.widgetConfigId });
       // Margot is still in the branch; a recommit from the reopened sheet goes to the host.
       expect(session.getPersonaGuestConversationId('margot')).toBeDefined();
-      expect(session.getChatTarget()).toEqual({ kind: 'host' });
+      expect(session.getChatTarget()).toEqual({ kind: 'personaGuest', personaId: 'margot' });
       expect((await store.readNamed(outcome.branch.sessionId))!.workshop.participants.chatTarget)
         .toEqual({ kind: 'host' });
     });
@@ -361,7 +366,7 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
       const listed = await coordinator.list();
       expect(listed.sessions.map((session) => session.title).sort())
         .toEqual(['Chapter 3 — Felix', 'Chapter 3 — Felix — branch']);
-      expect(listed.current?.sessionId).toBe(outcome.branch.sessionId);
+      expect(listed.current?.sessionId).toBe(saved.sessionId);
     });
   });
 
@@ -464,61 +469,36 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
       expect((await coordinator.list()).sessions).toHaveLength(2);
     });
 
-    it.each<[string, (harness: Awaited<ReturnType<typeof openCanonicalSession>>) => void]>([
-      ['the import', ({ assistant }) => {
-        assistant.importWorkshopConversationArchive.mockRejectedValueOnce(new Error('import failed'));
-      }],
-      ['the hydration', ({ session }) => {
-        jest.spyOn(session, 'hydrateCommittedState').mockImplementationOnce(() => {
-          throw new Error('hydrate failed');
-        });
-      }],
-      ['the current.json mirror', ({ store }) => {
-        jest.spyOn(store, 'writeCurrent').mockRejectedValueOnce(new Error('mirror failed'));
-      }]
-    ])('restores the prior room when opening the branch fails at %s, and keeps the branch openable', async (_stage, inject) => {
-      const harness = await openCanonicalSession();
-      const { coordinator, session, manager, store, fs, room, sourcePath } = harness;
-      const point = restPoint(room, 'host reply: gesture directions');
-      const roomBefore = session.exportCommittedState();
-      const bindings = {
-        host: session.getHostConversationId(),
-        guest: session.getPersonaGuestConversationId('margot')
-      };
-      const hostHistory = manager.getMessages(bindings.host!);
-      const conversationCount = manager.getActiveConversationCount();
-      const sourceBefore = await textOf(fs, sourcePath);
-      const currentBefore = await textOf(fs, `${SESSIONS_DIRECTORY}/current.json`);
-      inject(harness);
-
-      const failure = await refusalOf(coordinator.branchFrom(after(point.headTurnId)));
-
-      // Reported honestly: the branch exists, the room did not change.
-      expect(failure).toBeInstanceOf(WorkshopBranchNotOpenedError);
-      const { branch } = failure as WorkshopBranchNotOpenedError;
-      expect(branch.title).toBe('Scripted room — branch');
-      expect(session.exportCommittedState()).toEqual(roomBefore);
-      expect({
-        host: session.getHostConversationId(),
-        guest: session.getPersonaGuestConversationId('margot')
-      }).toEqual(bindings);
-      expect(manager.getMessages(bindings.host!)).toEqual(hostHistory);
-      expect(manager.getActiveConversationCount()).toBe(conversationCount);
-      expect(await textOf(fs, sourcePath)).toBe(sourceBefore);
-      expect(await textOf(fs, `${SESSIONS_DIRECTORY}/current.json`)).toBe(currentBefore);
-      expect((await coordinator.list()).current?.sessionId).toBe('scripted');
-
-      // The branch is an ordinary named session the writer can open.
-      await coordinator.openNamed(branch.sessionId);
-      const expected = rewindModule.rewindWorkshopSession({
-        workshop: harness.checkpoint.workshop,
-        conversations: harness.checkpoint.conversations,
-        cut: after(point.headTurnId)
-      });
-      expect(clonePersistedJson(session.exportCommittedState())).toEqual(expected.workshop);
-      expect((await store.readNamed(branch.sessionId))?.conversations).toEqual(expected.conversations);
-      expect(await textOf(fs, sourcePath)).toBe(sourceBefore);
-    });
+    it.each(['import', 'hydrate', 'mirror'] as const)(
+      'a destination %s failure keeps the source live and the saved branch openable',
+      async stage => {
+        const { coordinator, session, store, fs, room, sourcePath } = await openCanonicalSession();
+        const before = session.exportCommittedState();
+        const sourceBytes = await textOf(fs, sourcePath);
+        const rollingBytes = await textOf(fs, `${SESSIONS_DIRECTORY}/current.json`);
+        const outcome = await coordinator.branchFrom(after(restPoint(room, 'prose report').headTurnId));
+        const target = setupCoordinator({ fileSystem: fs, roomId: BRANCH_SLOT });
+        await target.coordinator.initialize();
+        await target.coordinator.flush();
+        const error = new Error('destination failed');
+        if (stage === 'import') {
+          target.assistant.importWorkshopConversationArchive.mockRejectedValueOnce(error);
+        } else if (stage === 'hydrate') {
+          jest.spyOn(target.session, 'hydrateCommittedState').mockImplementationOnce(() => { throw error; });
+        } else {
+          jest.spyOn(target.store, 'writeCurrent').mockRejectedValueOnce(error);
+        }
+        await expect(target.coordinator.openNamed(outcome.branch.sessionId)).rejects.toThrow();
+        expect(coordinator.openRoomIdentity().namedSessionId).toBe('scripted');
+        expect(session.exportCommittedState()).toEqual(before);
+        expect(await textOf(fs, sourcePath)).toBe(sourceBytes);
+        expect(await textOf(fs, `${SESSIONS_DIRECTORY}/current.json`)).toBe(rollingBytes);
+        const branch = await store.readNamed(outcome.branch.sessionId);
+        await target.coordinator.openNamed(outcome.branch.sessionId);
+        expect(clonePersistedJson(target.session.exportCommittedState())).toEqual(branch?.workshop);
+        expect((await coordinator.list()).sessions.map(entry => entry.sessionId).sort()).toEqual([outcome.branch.sessionId, 'scripted'].sort());
+      }
+    );
   });
 
   describe('a source file changed on disk (PR #120 review F-01)', () => {
@@ -575,50 +555,16 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
       expect(outcome.summary.removedTurnCount).toBeGreaterThan(0);
     });
 
-    it.each<[string, (harness: OpenSession, change: () => Promise<void>) => void]>([
-      ['the branch save', ({ store }, change) => {
-        const save = store.saveNamed.bind(store);
-        jest.spyOn(store, 'saveNamed').mockImplementationOnce(async (checkpoint) => {
-          const saved = await save(checkpoint);
-          await change();
-          return saved;
-        });
-      }],
-      ['the branch import', ({ assistant }, change) => {
-        const importArchive = assistant.importWorkshopConversationArchive.getMockImplementation()!;
-        assistant.importWorkshopConversationArchive.mockImplementationOnce(async (targets) => {
-          await change();
-          return importArchive(targets);
-        });
-      }],
-      // The re-review's late seams (PR #120 review F-01): the rolling mirror
-      // re-reads the branch, then writes a temporary file and renames it.
-      ['the mirror\'s branch read', ({ store }, change) => {
-        const read = store.readNamedWithRecovery.bind(store);
-        let branchReads = 0;
-        jest.spyOn(store, 'readNamedWithRecovery').mockImplementation(async (sessionId) => {
-          const result = await read(sessionId);
-          // The first branch read opens it; the second is the mirror's.
-          if (sessionId !== 'scripted' && ++branchReads === 2) {
-            await change();
-          }
-          return result;
-        });
-      }],
-      ['the rolling write, before its rename', ({ fs }, change) => {
-        const write = fs.writeFile.bind(fs);
-        jest.spyOn(fs, 'writeFile').mockImplementation(async (filePath, data) => {
-          await write(filePath, data);
-          if (filePath.startsWith(`${SESSIONS_DIRECTORY}/current.json.tmp-`)) {
-            await change();
-          }
-        });
-      }]
-    ])('keeps the room when the source is deleted during %s, and reports the saved branch', async (_stage, inject) => {
+    it('keeps the room when the source is deleted during the save, and reports the saved branch', async () => {
       const harness = await openCanonicalSession();
-      const { coordinator, fs, room, sourcePath } = harness;
+      const { coordinator, store, fs, room, sourcePath } = harness;
       const before = await roomState(harness);
-      inject(harness, () => fs.delete(sourcePath));
+      const save = store.saveNamed.bind(store);
+      jest.spyOn(store, 'saveNamed').mockImplementationOnce(async checkpoint => {
+        const saved = await save(checkpoint);
+        await fs.delete(sourcePath);
+        return saved;
+      });
 
       const failure = await refusalOf(coordinator.branchFrom(after(restPoint(room, 'prose report').headTurnId)));
 

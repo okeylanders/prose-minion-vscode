@@ -18,7 +18,8 @@ import {
   decodeWorkshopPersistedSessionCheckpoint,
   WorkshopPersistedSessionCheckpointDecodeResult,
   WorkshopPersistedSessionV2,
-  parseWorkshopPersistedSession
+  parseWorkshopPersistedSession,
+  workshopArchiveContent
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { FileSystem, FileType, type LocalRollingClaim, LogSink, Workspace } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
@@ -1368,7 +1369,7 @@ function fullSessionMatches(
   // the bounded amount of text the browser is allowed to inspect instead of
   // serializing the full unbounded session and slicing afterward.
   const bounded = boundedSearchText(
-    [session.workshop, session.conversations],
+    [session.workshop, session.conversations.map(workshopArchiveContent)],
     maximumCharacters
   );
   return {

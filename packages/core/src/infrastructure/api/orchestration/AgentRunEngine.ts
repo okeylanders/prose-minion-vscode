@@ -15,6 +15,7 @@ import {
   ConversationNotFoundError,
   ConversationSystemMessageReplacement
 } from './ConversationManager';
+import type { ConversationCacheEstimate } from './ConversationCacheMetadata';
 import { adaptNativeToolCalls } from '@orchestration/AgentNativeToolCalls';
 import {
   AgentCapabilityRejection,
@@ -384,7 +385,7 @@ export class AgentRunEngine {
     const termination = this.createTerminationContext(options);
     const runOptions = { ...options, signal: termination.signal ?? options.signal };
     const history = this.conversationManager.getMessages(conversationId);
-    const retainedConversationId = policy.retention === 'retain' ? conversationId : undefined;
+    const routingKey = policy.retention === 'retain' ? this.conversationManager.getRoutingKey(conversationId) : undefined;
     const pendingMessages: OpenRouterMessage[] = [{ role: 'user', content: userMessage }];
     const artifacts: CapabilityArtifact[] = [];
     const usedGuides: string[] = [];
@@ -438,7 +439,7 @@ export class AgentRunEngine {
       let messages = currentMessages();
       let nativeCorrections = 0;
       for (;;) {
-        const turn = await this.executeTurn(messages, runOptions, capability, provider, retainedConversationId);
+        const turn = await this.executeTurn(messages, runOptions, capability, provider, routingKey);
         recordServedModel(turn);
         recordObservation(turn.observation);
         totalUsage = this.addUsage(totalUsage, turn.usage);
@@ -786,6 +787,11 @@ export class AgentRunEngine {
     return snapshot;
   }
 
+  getConversationCacheEstimate(conversationId: string | undefined): ConversationCacheEstimate | undefined {
+    const estimate = this.conversationManager.getConversationCacheEstimate(conversationId);
+    return estimate?.cacheRequestModelId === this.model ? estimate : undefined;
+  }
+
   getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
     return this.conversationManager.getContextSources(conversationId);
   }
@@ -923,7 +929,7 @@ export class AgentRunEngine {
     options: AgentRunOptions,
     capability: AnyAgentCapability | undefined,
     provider: OpenRouterClient,
-    conversationId?: string
+    routingKey?: string
   ): Promise<TurnResult> {
     const model = this.requestModel(options, provider);
     const contextLength = OpenRouterModels.getCachedContextLength(model);
@@ -938,7 +944,7 @@ export class AgentRunEngine {
         }
         throw error;
       }
-    } else if (conversationId && this.contextPreflightUnavailableModel !== model) {
+    } else if (routingKey && this.contextPreflightUnavailableModel !== model) {
       this.outputChannel?.appendLine('[AgentRunEngine] Context preflight unavailable: no live model-window metadata; provider validation remains authoritative.');
       this.contextPreflightUnavailableModel = model;
     }
@@ -949,8 +955,8 @@ export class AgentRunEngine {
       tools: options.tools,
       reasoning: options.reasoning,
       ...(options.model ? { model: options.model } : {}),
-      ...(conversationId ? {
-        conversationId,
+      ...(routingKey ? {
+        routingKey,
         claudeCacheTtl: coerceClaudeCacheTtl(this.settings?.get<unknown>('proseMinion', 'claudeCacheTtl'))
       } : {})
     };

@@ -132,6 +132,8 @@ export interface ContextBudgetSnapshot {
 export interface LabeledContextBudgetSnapshot {
   label: string;
   snapshot?: ContextBudgetSnapshot;
+  /** The retained participant’s cache countdown can survive a reload independently of the context meter. */
+  cacheEstimate?: { estimatedCacheExpiresAt: number; cacheRequestModelId: string };
   /**
    * The active participant's context-source manifest (Sprint 12 Phase 7):
    * writer-declared entries first, then agent-fetched deliveries in

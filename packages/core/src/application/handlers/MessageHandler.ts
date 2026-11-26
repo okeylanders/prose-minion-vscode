@@ -373,7 +373,8 @@ export class MessageHandler {
         workshopSavedSessionTodos,
         contextPathProposals,
         workshopPassageSearch,
-        this.uiActions.revealWorkshopRoom
+        this.uiActions.revealWorkshopRoom,
+        this.uiActions.openWorkshopBranch
       );
     }
     // Lightbox editor tab (ADR 2026-10-19 D10) — the 13th domain, composed

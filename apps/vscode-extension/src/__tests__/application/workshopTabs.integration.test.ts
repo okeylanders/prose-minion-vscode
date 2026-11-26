@@ -1,4 +1,5 @@
 /** Drive registered commands and native panel IPC through the actual activation graph. */
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
@@ -21,7 +22,7 @@ jest.mock('vscode', () => {
     languages: { createDiagnosticCollection: noop, registerCodeActionsProvider: noop },
     CodeActionKind: { QuickFix: 'quickfix' }, RelativePattern: class {}, ViewColumn: { Active: -1 },
     Uri: { file: uri, joinPath: (base: {path: string}, ...parts: string[]) => uri([base.path, ...parts].join('/')) },
-    window: { createOutputChannel: () => ({ appendLine: jest.fn(), dispose() {} }), showErrorMessage: jest.fn() },
+    window: { createOutputChannel: () => ({ appendLine: mockOutputLine, dispose() {} }), showErrorMessage: jest.fn() },
     workspace: {}, commands: {}
   };
 }, { virtual: true });
@@ -32,6 +33,7 @@ jest.mock('@app/platform/vscode/VsCodeFileSystem', () => ({ VsCodeFileSystem: je
 /* eslint-enable @typescript-eslint/naming-convention */
 
 const mockFiles = new MemoryFileSystem();
+const mockOutputLine = jest.fn();
 const unsub = () => ({ dispose() {} });
 const deliveries = new WeakMap<object, ReturnType<typeof deferred<void>>>();
 function editorPanel(activatePanel: () => void) {
@@ -501,6 +503,175 @@ describe.each([
     } finally {
       finishA.resolve();
       finishB.resolve();
+      transport.mockRestore();
+    }
+  });
+
+  it('restores the private OpenRouter routing hint and cache clock through saved Workshop rooms and cuts', async () => {
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- OpenRouter request JSON.
+    type WireRequest = { model: string; session_id: string; messages: unknown[] };
+    const requests: WireRequest[] = [];
+    const fetch = jest.mocked(globalThis.fetch);
+    const offlineFetch = fetch.getMockImplementation()!;
+    const settings = vscode.workspace.getConfiguration;
+    const ttl = jest.spyOn(vscode.workspace, 'getConfiguration').mockImplementation((section, scope) => {
+      const config = settings(section, scope);
+      return { ...config, get: (key: string, fallback?: unknown) =>
+        section === 'proseMinion' && key === 'claudeCacheTtl' ? '1h' : config.get(key, fallback) } as vscode.WorkspaceConfiguration;
+    });
+    const logStart = mockOutputLine.mock.calls.length;
+    try {
+      fetch.mockImplementation(async (url, init) => {
+        if (!String(url).endsWith('/chat/completions')) { return offlineFetch(url, init); }
+        const request = JSON.parse(String(init?.body)) as WireRequest;
+        requests.push(request);
+        /* eslint-disable @typescript-eslint/naming-convention -- OpenRouter SSE wire fields. */
+        const event = { model: request.model, choices: [{ delta: { content: 'Wire reply ' + requests.length }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 100, completion_tokens: 5, total_tokens: 105, prompt_tokens_details: { cached_tokens: 50 } } };
+        /* eslint-enable @typescript-eslint/naming-convention */
+        return new Response('data: ' + JSON.stringify(event) + '\n\ndata: [DONE]\n\n');
+      });
+      const source = await open('newWorkshopTab', 'A bird circled the orchard.');
+      const before = Date.now();
+      await source.send(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Read the opening.' });
+      const after = Date.now();
+      expect(requests).toHaveLength(1);
+      await source.send(MessageType.WORKSHOP_SAVE_SESSION, { title: 'Cache orchard' });
+      const file = [...mockFiles.files.keys()].find(file => file.endsWith('.json') && !file.includes('current') &&
+        (mockFiles.json(file) as {title?: string}).title === 'Cache orchard')!;
+      const archive = mockFiles.json(file) as { sessionId: string; conversations: Array<{
+        key: string; routingKey: string; estimatedCacheExpiresAt: number; cacheRequestModelId: string
+      }> };
+      const host = archive.conversations.find(entry => entry.key === 'host')!;
+      const wireId = 'prose-minion:' + createHash('sha256').update(host.routingKey).digest('hex');
+      expect(requests[0].session_id).toBe(wireId);
+      expect(host.cacheRequestModelId).toBe(requests[0].model);
+      expect(host.estimatedCacheExpiresAt).toBeGreaterThanOrEqual(before + 3_600_000);
+      expect(host.estimatedCacheExpiresAt).toBeLessThanOrEqual(after + 3_600_000);
+      await source.send(MessageType.WORKSHOP_RESET_SESSION, { start: 'full-reset' });
+      await source.send(MessageType.WORKSHOP_OPEN_SESSION, { sessionId: archive.sessionId });
+      expect(source.snapshot().contextBudget?.cacheEstimate).toEqual({
+        estimatedCacheExpiresAt: host.estimatedCacheExpiresAt, cacheRequestModelId: requests[0].model
+      });
+      expect(source.snapshot().contextBudget?.snapshot).toBeUndefined();
+      const expired = jest.spyOn(Date, 'now').mockReturnValue(host.estimatedCacheExpiresAt + 1);
+      try {
+        await source.send(MessageType.WORKSHOP_REQUEST_SESSION);
+        expect(source.snapshot().contextBudget?.cacheEstimate).toBeUndefined();
+      } finally {
+        expired.mockRestore();
+      }
+      const firstReply = source.snapshot().turns.find(turn => turn.content === 'Wire reply 1')!;
+      await source.send(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Read the next line.' });
+      expect(requests).toHaveLength(2);
+      expect(requests[1].session_id).toBe(wireId);
+      await source.send(MessageType.WORKSHOP_REWIND_SESSION, { turnId: firstReply.id });
+      await source.send(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Read again from the first reply.' });
+      expect(requests).toHaveLength(3);
+      expect(requests[2].session_id).toBe(wireId);
+      expect(JSON.stringify(requests[2].messages)).not.toContain('Read the next line.');
+      await source.send(MessageType.WORKSHOP_BRANCH_SESSION, { turnId: firstReply.id, title: 'Orchard branch' });
+      const branch = panels.find(panel => panel.active)!;
+      await branch.send(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Continue the branch.' });
+      expect(requests).toHaveLength(4);
+      expect(requests[3].session_id).toBe(wireId);
+      expect(JSON.stringify(requests[3].messages)).not.toContain('Read again from the first reply.');
+      await branch.send(MessageType.WORKSHOP_INVITE_GUEST, { personaId: 'agnes', openingMessage: 'Read as a fresh guest.' });
+      expect(requests).toHaveLength(5);
+      expect(requests[4].session_id).toMatch(/^prose-minion:[a-f0-9]{64}$/);
+      expect(requests[4].session_id).not.toBe(wireId);
+      const surfaces = [];
+      for (const [format, extension] of [['markdown', 'md'], ['json', 'json'], ['html', 'html']]) {
+        await branch.send(MessageType.WORKSHOP_EXPORT_SESSION, { format, title: 'orchard-privacy' });
+        const exported = new TextDecoder().decode(await mockFiles.readFile('/Book/prose-minion/exports/orchard-privacy.' + extension));
+        expect(exported).toContain('Continue the branch.');
+        surfaces.push(exported);
+      }
+      await branch.send(MessageType.WORKSHOP_RESET_SESSION, { start: 'full-reset' });
+      await branch.send(MessageType.WORKSHOP_SET_EXCERPT, { text: 'A kite crossed the orchard.', source: { kind: 'manual' } });
+      await branch.send(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Read after a full reset.' });
+      expect(requests).toHaveLength(6);
+      const fresh = await open('newWorkshopTab', 'A fox crossed the orchard.');
+      await fresh.send(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Read in a new room.' });
+      expect(requests).toHaveLength(7);
+      const independent = [wireId, ...requests.slice(4).map(request => request.session_id)];
+      expect(independent.every(key => /^prose-minion:[a-f0-9]{64}$/.test(key))).toBe(true);
+      expect(new Set(independent).size).toBe(4);
+      surfaces.push(JSON.stringify([...source.posted, ...branch.posted, ...fresh.posted]),
+        JSON.stringify(mockOutputLine.mock.calls.slice(logStart)));
+      for (const surface of surfaces) {
+        expect(surface).not.toContain(host.routingKey);
+        expect(surface).not.toContain('routingKey');
+        for (const key of independent) { expect(surface).not.toContain(key); }
+      }
+      expect(JSON.stringify(requests)).not.toContain(host.routingKey);
+    } finally {
+      ttl.mockRestore();
+      fetch.mockImplementation(offlineFetch);
+    }
+  });
+
+  it('branches a writer bubble into a new saved tab and delivers its edit only to that tab', async () => {
+    const source = await open('newWorkshopTab', 'The lantern waited under the eaves.');
+    const transport = jest.spyOn(OpenRouterClient.prototype, 'createStreamingChatCompletion')
+      .mockImplementation(async function* () {
+        yield { token: 'The lantern waited for the boat.', done: false };
+        yield { token: '', done: true };
+      });
+    const panelCount = panels.length;
+    const draftText = 'Why does the lantern stay lit?';
+    try {
+      await source.send(MessageType.WORKSHOP_SEND_MESSAGE, { text: draftText });
+      const writer = source.snapshot().turns.find(turn => turn.content === draftText)!;
+      await source.send(MessageType.WORKSHOP_BRANCH_SESSION, { turnId: writer.id });
+      expect(source.posted).toContainEqual(expect.objectContaining({
+        type: MessageType.WORKSHOP_SESSION_ACTION_RESULT,
+        payload: expect.objectContaining({ action: 'branch', ok: false, message: expect.stringContaining('Save') })
+      }));
+      expect(panels).toHaveLength(panelCount);
+
+      await source.send(MessageType.WORKSHOP_SAVE_SESSION, { title: 'Lantern source' });
+      const namedFiles = () => [...mockFiles.files.keys()].filter(file =>
+        file.endsWith('.json') && !file.endsWith('.summary.json') && !path.basename(file).startsWith('current')
+      );
+      const namedFile = (title: string) => namedFiles().find(file => (mockFiles.json(file) as { title?: string }).title === title)!;
+      const original = namedFile('Lantern source');
+      const sourceBytes = await mockFiles.readFile(original);
+      const sourceRecord = mockFiles.json(original) as { sessionId: string };
+      const turnIds = source.snapshot().turns.map(turn => turn.id);
+      const revision = source.snapshot().roomRevision;
+      // The writer initiated Branch from the second editor group.
+      Object.assign(source, { viewColumn: 2 });
+      const create = jest.spyOn(vscode.window, 'createWebviewPanel');
+      try {
+        await source.send(MessageType.WORKSHOP_BRANCH_SESSION, { turnId: writer.id, title: 'Lantern branch' });
+        expect(panels).toHaveLength(panelCount + 1);
+        expect(create.mock.calls[0][2]).toBe(2);
+        const destination = panels.at(-1)!;
+        const drafts = (panel: ReturnType<typeof editorPanel>) => panel.posted
+          .filter(msg => msg.type === MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED).map(msg => msg.payload.text);
+        // Native focus refreshes can precede the React listener. The actual mount requests the edit once.
+        destination.reveal();
+        expect(drafts(destination)).toEqual([]);
+        await destination.send(MessageType.WORKSHOP_REQUEST_SESSION);
+        await destination.send(MessageType.WORKSHOP_REQUEST_SESSION);
+        expect(destination.active).toBe(true);
+        expect(source.snapshot().turns.map(turn => turn.id)).toEqual(turnIds);
+        expect(source.snapshot().roomRevision).toBe(revision);
+        expect(await mockFiles.readFile(original)).toEqual(sourceBytes);
+        const branch = mockFiles.json(namedFile('Lantern branch')) as { sessionId: string };
+        expect(branch.sessionId).not.toBe(sourceRecord.sessionId);
+        const cut = turnIds.indexOf(writer.id);
+        expect(destination.snapshot().turns.map(turn => turn.id)).toEqual(turnIds.slice(0, cut));
+        expect(drafts(source)).toEqual([]);
+        expect(drafts(destination)).toEqual([draftText]);
+        expect(source.posted).toContainEqual(expect.objectContaining({
+          type: MessageType.WORKSHOP_SESSION_ACTION_RESULT, payload: expect.objectContaining({ action: 'branch', ok: true })
+        }));
+      } finally {
+        create.mockRestore();
+      }
+    } finally {
       transport.mockRestore();
     }
   });

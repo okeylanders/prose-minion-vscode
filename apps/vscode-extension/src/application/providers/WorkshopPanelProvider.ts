@@ -12,7 +12,7 @@ import {
   type WorkshopRoomCloseDestination,
   WorkshopUiActions
 } from '@prose-minion/core';
-import { WorkshopPanelTab } from './WorkshopPanelTab';
+import { WorkshopPanelTab, type WorkshopBranchOpening } from './WorkshopPanelTab';
 import { WorkshopUnsavedSessions, type WorkshopUnsavedRoomStore } from './WorkshopUnsavedSessions';
 import { nativeWorkshopEditors, revealNativeWorkshopEditor, waitForWorkshopEditor, WORKSHOP_EDITOR, type NativeWorkshopEditor } from './WorkshopNativeEditors';
 
@@ -260,14 +260,14 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     };
   }
 
-  private createPanel(roomId: string): WorkshopPanelTab {
+  private createPanel(roomId: string, branch?: WorkshopBranchOpening, column = vscode.ViewColumn.Active): WorkshopPanelTab {
     if (roomId !== PRIMARY_WORKSHOP_ROOM_ID) { ++this.navigation; }
     const panel = vscode.window.createWebviewPanel(
-      roomId === PRIMARY_WORKSHOP_ROOM_ID ? WORKSHOP_EDITOR.primary : WORKSHOP_EDITOR.secondary, 'Workshop', vscode.ViewColumn.Active,
+      roomId === PRIMARY_WORKSHOP_ROOM_ID ? WORKSHOP_EDITOR.primary : WORKSHOP_EDITOR.secondary, 'Workshop', column,
       { enableScripts: true, localResourceRoots: [this.extensionUri], retainContextWhenHidden: true }
     );
     try {
-      return this.attachPanel(panel, roomId, true);
+      return this.attachPanel(panel, roomId, true, branch);
     } catch (error) {
       // A concurrent deletion claim can refuse attachment after VS Code creates the shell.
       panel.dispose();
@@ -290,20 +290,32 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     return this.attachPanel(panel, roomId, panel.active).ready;
   }
 
-  private attachPanel(panel: vscode.WebviewPanel, roomId: string, focused: boolean): WorkshopPanelTab {
+  private attachPanel(panel: vscode.WebviewPanel, roomId: string, focused: boolean, branch?: WorkshopBranchOpening): WorkshopPanelTab {
     this.unsavedSessions.invalidate(roomId);
     const { services, ready } = this.rooms.acquire(roomId);
     const number = this.nextNumber++;
     if (roomId === PRIMARY_WORKSHOP_ROOM_ID) {
       ++this.legacyAttachment;
     }
-    const tab = new WorkshopPanelTab(
-      roomId, panel, this.extensionUri, services, ready, this.outputChannel, this.platform, this.uiActions,
+    const tab: WorkshopPanelTab = new WorkshopPanelTab(
+      roomId, panel, this.extensionUri, services, ready, this.outputChannel, this.platform, {
+        ...this.uiActions,
+        openWorkshopBranch: async (sessionId, drafts) => {
+          if (this.tabs.get(roomId) !== tab || !services.workshopSessionPersistenceCoordinator.recallScope().available) {
+            throw new Error('The source room closed or its workspace changed.');
+          }
+          const target = this.createPanel(randomUUID(), { sessionId, drafts }, tab.panel.viewColumn);
+          await target.ready;
+          if (this.tabs.get(target.roomId) !== target) {
+            throw new Error('The new Workshop tab could not open the branch.');
+          }
+        }
+      },
       () => {
         if (this.nativeNavigation === undefined && this.focusOrder[0] !== tab && roomId !== PRIMARY_WORKSHOP_ROOM_ID) { ++this.navigation; }
         this.focus(tab);
       }, () => this.detach(tab), () => this.refreshTitles(),
-      roomId === PRIMARY_WORKSHOP_ROOM_ID ? 'Workshop' : `Workshop · Room ${number}`
+      roomId === PRIMARY_WORKSHOP_ROOM_ID ? 'Workshop' : `Workshop · Room ${number}`, branch
     );
     this.tabs.set(roomId, tab);
     this.refreshTitles();
