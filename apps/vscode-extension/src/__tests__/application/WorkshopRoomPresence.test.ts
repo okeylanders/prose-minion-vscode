@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { WorkshopRoomPresence, WorkshopRoomPresenceBusyError } from '@app/application/WorkshopRoomPresence';
+import { WorkshopRoomPresence, WorkshopRoomPresenceBusyError, WorkshopRoomPresenceUnavailableError } from '@app/application/WorkshopRoomPresence';
 
 describe('Workshop room presence across extension hosts', () => {
   let temporary: string;
@@ -39,7 +39,7 @@ describe('Workshop room presence across extension hosts', () => {
     const unavailable = path.join(temporary, 'not-a-directory');
     fs.writeFileSync(unavailable, 'occupied');
     const guard = new WorkshopRoomPresence(unavailable);
-    expect(guard.isOpen(root, 'a')).toBe(true);
+    expect(() => guard.isOpen(root, 'a')).toThrow(WorkshopRoomPresenceUnavailableError);
     expect(() => guard.beginDelete(root, 'a')).toThrow('Check access to the local temporary folder');
     expect(fs.readFileSync(unavailable, 'utf8')).toBe('occupied');
     expect(fs.readdirSync(root)).toEqual([]);

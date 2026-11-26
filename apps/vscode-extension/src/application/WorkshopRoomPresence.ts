@@ -13,6 +13,13 @@ export class WorkshopRoomPresenceBusyError extends Error {
   }
 }
 
+export class WorkshopRoomPresenceUnavailableError extends Error {
+  constructor() {
+    super('Could not verify Workshop room ownership. Check access to the local temporary folder and try again.');
+    this.name = 'WorkshopRoomPresenceUnavailableError';
+  }
+}
+
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const codeOf = (error: unknown) => (error as NodeJS.ErrnoException | undefined)?.code;
 
@@ -69,7 +76,7 @@ export class WorkshopRoomPresence {
       this.verifyDirectory();
       return this.occupied(this.key(root, roomId), 'delete');
     } catch {
-      return true;
+      throw new WorkshopRoomPresenceUnavailableError();
     }
   }
 
@@ -92,7 +99,7 @@ export class WorkshopRoomPresence {
     } catch (error) {
       if (marker) { removeMarker(marker); }
       if (error instanceof WorkshopRoomPresenceBusyError) { throw error; }
-      throw new Error('Could not verify Workshop room ownership. Check access to the local temporary folder and try again.');
+      throw new WorkshopRoomPresenceUnavailableError();
     }
   }
 
