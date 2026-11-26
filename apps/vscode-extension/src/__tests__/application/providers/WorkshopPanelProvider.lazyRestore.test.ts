@@ -1,6 +1,6 @@
 /** VS Code can show a restored tab in tabGroups before supplying its WebviewPanel to the serializer. */
 import * as vscode from 'vscode';
-import { MessageHandler, type Platform } from '@prose-minion/core';
+import { MessageHandler, MessageType, type Platform, type UnsavedWorkshopSessionsRequest } from '@prose-minion/core';
 import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelProvider';
 import { WorkshopPanelTab } from '@app/application/providers/WorkshopPanelTab';
 import { workshopPanelRooms } from './workshopPanelRooms';
@@ -19,7 +19,7 @@ jest.mock('@prose-minion/core', () => ({
   WorkshopSeedDelivery: jest.requireActual('@/application/services/workshop/WorkshopSeedDelivery').WorkshopSeedDelivery,
   workshopExcerptTitle: jest.requireActual('@messages').workshopExcerptTitle,
   MessageHandler: jest.fn(() => ({ dispose: jest.fn(), handleMessage: jest.fn(), flushCachedResults: jest.fn() })),
-  MessageType: { WORKSHOP_REQUEST_SESSION: 'workshop_request_session', WORKSHOP_SET_EXCERPT: 'workshop_set_excerpt' },
+  MessageType: jest.requireActual('@messages').MessageType,
   SURFACE_WORKSHOP: 'workshop'
 }));
 /* eslint-enable @typescript-eslint/naming-convention */
@@ -129,7 +129,7 @@ function nativeHost() {
         .map(([msg]: [{ payload: { text: string } }]) => ({ roomId: acquire.mock.calls[index][0], text: msg.payload.text }));
     });
   };
-  return { provider, acquire, focus: rooms.focus, hidden, serialized, holdSerializer, excerpts, close, create, commands, groups,
+  return { provider, rooms, acquire, focus: rooms.focus, hidden, serialized, holdSerializer, excerpts, close, create, commands, groups,
     active: () => activeGroup.activeTab };
 }
 
@@ -350,5 +350,87 @@ describe('Workshop launchers with lazy native editors', () => {
     await host.provider.openOrReveal();
     expect(host.create).toHaveBeenCalledTimes(1);
     expect(host.acquire.mock.calls).toEqual([[secondary], ['legacy']]);
+  });
+});
+
+
+describe('the sidebar unsaved Workshop session actions', () => {
+  function setup() {
+    const host = nativeHost();
+    const row = { roomId: secondary, title: 'Marsh', preview: 'The moon was low.', updatedAt: '2026-11-25T10:00:00Z', observation: 'revision-a', canDelete: true };
+    const list = jest.spyOn(host.rooms, 'listUnsavedRooms').mockResolvedValue([row, { ...row, roomId: 'legacy' }]);
+    const open = jest.spyOn(host.rooms, 'openUnsavedRoom').mockResolvedValue(secondary);
+    const remove = jest.spyOn(host.rooms, 'deleteUnsavedRoom').mockResolvedValue();
+    const request = (type: UnsavedWorkshopSessionsRequest['type'], token = '') =>
+      host.provider.unsavedSessions.handle({ type, source: 'webview.ui', timestamp: 1, payload: { requestId: 'r', token } } as UnsavedWorkshopSessionsRequest);
+    return { ...host, row, list, open, remove, request };
+  }
+
+  it('exposes only display data, keeps tokens stable for unchanged work and attaches the selected slot once', async () => {
+    const host = setup();
+    const { rows } = await host.request(MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS);
+    expect(rows).toEqual([{ token: expect.any(String), title: host.row.title, preview: host.row.preview, updatedAt: host.row.updatedAt, canDelete: true }]);
+    expect(rows[0].token).not.toBe(secondary);
+    expect((await host.request(MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS)).rows).toEqual(rows);
+    const opened = await host.request(MessageType.OPEN_UNSAVED_WORKSHOP_SESSION, rows[0].token);
+    expect(opened).toEqual({ rows: [] });
+    expect(host.acquire.mock.calls).toEqual([[secondary]]);
+    await host.request(MessageType.DELETE_UNSAVED_WORKSHOP_SESSION, rows[0].token);
+    expect(host.remove).not.toHaveBeenCalled();
+  });
+
+  it('rejects forged, changed and wrong-workspace observations, then returns a fresh list', async () => {
+    const host = setup();
+    const original = (await host.request(MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS)).rows[0];
+    host.list.mockResolvedValue([{ ...host.row, observation: 'revision-b' }]);
+    const refreshed = await host.request(MessageType.DELETE_UNSAVED_WORKSHOP_SESSION, secondary);
+    expect(refreshed.error).toMatch(/changed/);
+    const current = refreshed.rows[0];
+    expect(current.token).not.toBe(original.token);
+    await host.request(MessageType.DELETE_UNSAVED_WORKSHOP_SESSION, original.token);
+    const before = vscode.workspace.workspaceFolders;
+    try {
+      Object.assign(vscode.workspace, { workspaceFolders: [{ uri: { toString: () => 'file:///another-project' } }] });
+      const other = await host.request(MessageType.DELETE_UNSAVED_WORKSHOP_SESSION, current.token);
+      expect(other.error).toMatch(/changed/);
+    } finally {
+      Object.assign(vscode.workspace, { workspaceFolders: before });
+    }
+    expect(host.remove).not.toHaveBeenCalled();
+  });
+
+  it('refuses deletion when a dormant native Workshop appears during the storage check', async () => {
+    const host = setup();
+    const { token } = (await host.request(MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS)).rows[0];
+    let deleted = false;
+    host.remove.mockImplementation(async (_id, _observation, stillClosed) => {
+      host.hidden(secondary, originalType + '.tab');
+      deleted = stillClosed();
+      if (!deleted) { throw new Error('Room became live'); }
+    });
+    const result = await host.request(MessageType.DELETE_UNSAVED_WORKSHOP_SESSION, token);
+    expect(result.rows).toEqual([]);
+    expect(result.error).toMatch(/restoring/);
+    expect(deleted).toBe(false);
+    expect(host.commands).not.toHaveBeenCalled();
+    expect(host.serialized).not.toHaveBeenCalled();
+    await host.request(MessageType.OPEN_UNSAVED_WORKSHOP_SESSION, token);
+    expect(host.open).not.toHaveBeenCalled();
+  });
+
+  it('removes only a deletable observation and returns the remaining sessions', async () => {
+    const host = setup();
+    host.list.mockResolvedValueOnce([{ ...host.row, canDelete: false }]);
+    const blocked = (await host.request(MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS)).rows[0];
+    const refused = await host.request(MessageType.DELETE_UNSAVED_WORKSHOP_SESSION, blocked.token);
+    expect(refused.error).toMatch(/cannot be deleted/);
+    expect(host.remove).not.toHaveBeenCalled();
+    host.remove.mockImplementation(async (_slot, _observation, stillClosed) => {
+      expect(stillClosed()).toBe(true);
+      host.list.mockResolvedValue([]);
+    });
+    const result = await host.request(MessageType.DELETE_UNSAVED_WORKSHOP_SESSION, refused.rows[0].token);
+    expect(result).toEqual({ rows: [] });
+    expect(host.remove).toHaveBeenCalledWith(secondary, host.row.observation, expect.any(Function));
   });
 });

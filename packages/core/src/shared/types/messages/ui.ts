@@ -214,3 +214,37 @@ export interface DismissStartupNoticeMessage
   extends MessageEnvelope<DismissStartupNoticePayload> {
   type: MessageType.DISMISS_STARTUP_NOTICE;
 }
+
+/** Sidebar actions carry a host-issued observation, never a path or a durable slot id. */
+export interface UnsavedWorkshopSessionRow {
+  token: string;
+  title: string;
+  preview: string;
+  updatedAt: string;
+  canDelete: boolean;
+}
+
+export interface ListUnsavedWorkshopSessionsMessage extends MessageEnvelope<{ requestId: string }> {
+  type: MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS;
+}
+
+export interface OpenUnsavedWorkshopSessionMessage extends MessageEnvelope<{ requestId: string; token: string }> {
+  type: MessageType.OPEN_UNSAVED_WORKSHOP_SESSION;
+}
+
+export interface DeleteUnsavedWorkshopSessionMessage extends MessageEnvelope<{ requestId: string; token: string }> {
+  type: MessageType.DELETE_UNSAVED_WORKSHOP_SESSION;
+}
+
+export type UnsavedWorkshopSessionsRequest = ListUnsavedWorkshopSessionsMessage
+  | OpenUnsavedWorkshopSessionMessage | DeleteUnsavedWorkshopSessionMessage;
+
+export interface UnsavedWorkshopSessionsResultPayload {
+  requestId: string;
+  rows: UnsavedWorkshopSessionRow[];
+  error?: string;
+}
+
+export interface UnsavedWorkshopSessionsResultMessage extends MessageEnvelope<UnsavedWorkshopSessionsResultPayload> {
+  type: MessageType.UNSAVED_WORKSHOP_SESSIONS_RESULT;
+}

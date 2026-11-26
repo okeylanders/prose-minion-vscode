@@ -13,11 +13,12 @@ import {
   WorkshopUiActions
 } from '@prose-minion/core';
 import { WorkshopPanelTab } from './WorkshopPanelTab';
+import { WorkshopUnsavedSessions, type WorkshopUnsavedRoomStore } from './WorkshopUnsavedSessions';
 import { nativeWorkshopEditors, revealNativeWorkshopEditor, waitForWorkshopEditor, WORKSHOP_EDITOR, type NativeWorkshopEditor } from './WorkshopNativeEditors';
 
-export interface WorkshopPanelRooms {
+export interface WorkshopPanelRooms extends WorkshopUnsavedRoomStore {
   acquire(roomId: string): { services: CoreServices; ready: Promise<void> };
-  release(roomId: string): Promise<void | WorkshopRoomCloseDestination>;
+  release(roomId: string, canTrim?: () => boolean): Promise<void | WorkshopRoomCloseDestination>;
   recoverRollingRoom(roomId: string, recoveryToken: string): Promise<string>;
   listRoomCheckpoints(): Promise<Array<{ roomId: string; title: string; updatedAt: string; recoveryToken?: string }>>;
   focus?(roomId: string | undefined): void;
@@ -25,6 +26,7 @@ export interface WorkshopPanelRooms {
 
 export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewPanelSerializer {
   public static readonly viewTypes = Object.values(WORKSHOP_EDITOR);
+  readonly unsavedSessions: WorkshopUnsavedSessions;
   private navigation = 0;
   private nativeNavigation?: number;
   private openingPrimary?: { navigation: number; result: Promise<WorkshopPanelTab | undefined> };
@@ -40,7 +42,16 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     private readonly outputChannel: vscode.OutputChannel,
     private readonly platform: Platform,
     private readonly uiActions: WorkshopUiActions = {}
-  ) {}
+  ) {
+    this.unsavedSessions = new WorkshopUnsavedSessions(rooms, workspaceIdentity,
+      () => !this.disposed && this.unresolvedNativeEditors().length === 0,
+      roomId => !this.disposed && !this.tabs.has(roomId),
+      async roomId => {
+        const panel = this.createPanel(roomId);
+        await panel.ready;
+        if (this.tabs.get(roomId) !== panel) { throw new Error('The room closed while opening.'); }
+      });
+  }
 
   public openOrReveal(): void | Promise<void> {
     if (this.revealRoom(PRIMARY_WORKSHOP_ROOM_ID)) { return; }
@@ -68,11 +79,15 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   }
 
   private unresolvedPrimaryEditors(native = nativeWorkshopEditors()): NativeWorkshopEditor[] {
+    return this.unresolvedNativeEditors(native).filter(editor => editor.type !== WORKSHOP_EDITOR.secondary);
+  }
+
+  private unresolvedNativeEditors(native = nativeWorkshopEditors()): NativeWorkshopEditor[] {
     const candidates: NativeWorkshopEditor[] = [];
     // A duplicated primary may have been assigned its own UUID on a prior restore. Even an
     // explicitly primary native type can be ruled out when every editor of that type has attached.
     // Historical tab titles can change or coincide, so never decide this from a title.
-    for (const type of [WORKSHOP_EDITOR.primary, WORKSHOP_EDITOR.historical]) {
+    for (const type of [WORKSHOP_EDITOR.primary, WORKSHOP_EDITOR.historical, WORKSHOP_EDITOR.secondary]) {
       const editors = native.filter(editor => editor.type === type);
       const attached = [...this.tabs.values()].filter(tab => tab.panel.viewType === type);
       if (editors.length > attached.length) { candidates.push(...editors); }
@@ -251,7 +266,13 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       roomId === PRIMARY_WORKSHOP_ROOM_ID ? WORKSHOP_EDITOR.primary : WORKSHOP_EDITOR.secondary, 'Workshop', vscode.ViewColumn.Active,
       { enableScripts: true, localResourceRoots: [this.extensionUri], retainContextWhenHidden: true }
     );
-    return this.attachPanel(panel, roomId, true);
+    try {
+      return this.attachPanel(panel, roomId, true);
+    } catch (error) {
+      // A concurrent deletion claim can refuse attachment after VS Code creates the shell.
+      panel.dispose();
+      throw error;
+    }
   }
 
   public deserializeWebviewPanel(panel: vscode.WebviewPanel, state: unknown): Promise<void> {
@@ -270,6 +291,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   }
 
   private attachPanel(panel: vscode.WebviewPanel, roomId: string, focused: boolean): WorkshopPanelTab {
+    this.unsavedSessions.invalidate(roomId);
     const { services, ready } = this.rooms.acquire(roomId);
     const number = this.nextNumber++;
     if (roomId === PRIMARY_WORKSHOP_ROOM_ID) {
@@ -327,7 +349,8 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     }
     const folders = vscode.workspace.workspaceFolders;
     const root = folders?.length === 1 ? folders[0].uri.toString() : undefined;
-    void this.rooms.release(tab.roomId).then(destination => {
+    const canTrim = () => !this.disposed && !this.tabs.has(tab.roomId) && this.unresolvedNativeEditors().length === 0;
+    void this.rooms.release(tab.roomId, canTrim).then(destination => {
       if (destination && !this.disposed) void this.offerPreservedSession(destination, root);
     }, error => {
       this.outputChannel.appendLine(`[Workshop] Room close could not finish: ${String(error)}`);

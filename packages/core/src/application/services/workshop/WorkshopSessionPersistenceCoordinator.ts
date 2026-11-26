@@ -68,6 +68,7 @@ import {
 } from '@messages';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { countWords } from '@/utils/textUtils';
+import { hasWorkshopRoomWork, workshopUnsavedRoomPreview, type WorkshopUnsavedRoomStatus } from './WorkshopUnsavedRoom';
 import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/WorkshopSessionCheckpointEquality';
 import {
   workshopCheckpointHoldsApplying,
@@ -364,6 +365,16 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   /** The open room's ids and title, and a saved session's change on the operation queue (ADR 2026-11-19 D2, D6). */
+  async unsavedRoomStatus(): Promise<WorkshopUnsavedRoomStatus> {
+    const session = await this.capture(this.identity);
+    if (!this.acceptedWorkspaceRoot) { return hasWorkshopRoomWork(session) ? 'unsaved' : 'empty'; }
+    return this.store.classifyRoomContents(session);
+  }
+
+  unsavedRoomPreview(): string {
+    return workshopUnsavedRoomPreview(this.session.getSnapshot());
+  }
+
   openRoomIdentity = () => ({ sessionId: this.identity.sessionId, title: this.identity.title, namedSessionId: this.activeNamedSessionId });
   openRoomInstance: WorkshopOpenRoomInstancePort['openRoomInstance'] = () => this.roomInstance.current();
   onRoomReplaced: WorkshopOpenRoomInstancePort['onRoomReplaced'] = (listener) => this.roomInstance.subscribe(listener);

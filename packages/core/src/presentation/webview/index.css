@@ -819,29 +819,137 @@ body {
   padding: 7px 11px;
   font-size: 12px;
 }
-/* Joined edges stay aligned while either half is hovered or focused. */
+.workshop-launch-anchor {
+  position: relative;
+  max-width: 100%;
+}
 .workshop-launch-split {
   display: inline-grid;
-  grid-template-columns: 3fr 1fr;
+  grid-template-columns: auto 29px 26px;
 }
-.workshop-launch-split > :first-child {
+.workshop-launch-split > .btn:not(:last-child) {
   border-start-end-radius: 0;
   border-end-end-radius: 0;
   border-inline-end: 0;
 }
-.workshop-launch-split > :last-child {
+.workshop-launch-split > .btn:not(:first-child) {
   border-start-start-radius: 0;
   border-end-start-radius: 0;
   padding-inline: 0;
   border-inline-start: 1px solid var(--pm-border-2);
   box-shadow: inset 1px 0 color-mix(in srgb, var(--pm-btn-text) 15%, transparent);
 }
-.workshop-launch-split > .btn:hover:not(:disabled) {
-  transform: none;
-}
-.workshop-launch-split > .btn:focus-visible {
+.workshop-launch-split > .btn:hover:not(:disabled) { transform: none; }
+.workshop-launch-split > .btn[aria-expanded="true"] { background: var(--pm-surface-2); }
+.workshop-launch-split > .btn:focus-visible,
+.unsaved-sessions-menu button:focus-visible,
+.unsaved-sessions-well button:focus-visible {
   outline: 2px solid var(--vscode-focusBorder, var(--pm-primary));
   outline-offset: -3px;
+}
+.unsaved-sessions-menu {
+  box-sizing: border-box;
+  position: absolute;
+  top: calc(100% + 5px);
+  z-index: 20;
+  width: min(18rem, calc(100vw - 16px));
+  display: flex;
+  flex-direction: column;
+  max-height: min(24rem, 55vh, var(--unsaved-menu-space, 55vh));
+  overflow: hidden;
+  overscroll-behavior: contain;
+  padding: 4px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-input);
+  background: var(--pm-surface);
+  color: var(--pm-text);
+  box-shadow: 0 8px 24px var(--vscode-widget-shadow, rgba(0, 0, 0, .26));
+}
+.unsaved-sessions-menu[data-placement="above"] { top: auto; bottom: calc(100% + 5px); }
+.unsaved-sessions-menu-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.unsaved-sessions-menu > .unsaved-sessions-manage { flex: none; }
+.unsaved-sessions-caption {
+  padding: 7px 8px 5px;
+  font: 600 11px var(--pm-sans);
+  color: var(--pm-muted);
+}
+.unsaved-session-choice, .unsaved-sessions-manage {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--pm-text);
+  padding: 7px 8px;
+  text-align: start;
+  cursor: pointer;
+}
+.unsaved-session-choice:hover, .unsaved-sessions-manage:hover,
+.unsaved-session-choice:focus-visible, .unsaved-sessions-manage:focus-visible {
+  background: var(--pm-surface-2);
+}
+.unsaved-sessions-manage {
+  gap: 7px;
+  border-top: 1px solid var(--pm-border-soft);
+  border-radius: 0;
+  font-weight: 600;
+}
+.unsaved-session-details {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  line-height: 1.4;
+}
+.unsaved-session-details strong, .unsaved-session-preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.unsaved-session-details strong { font-size: 12px; }
+.unsaved-session-preview { font-size: 12px; color: var(--pm-text-2); }
+.unsaved-session-details time { font-size: 11px; color: var(--pm-muted); }
+.unsaved-sessions-message { margin: 0; padding: 7px 8px; color: var(--pm-muted); }
+.unsaved-sessions-message[role="alert"] { color: var(--pm-red); }
+.unsaved-sessions-well {
+  max-height: 18rem;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  background: var(--pm-inset);
+}
+.unsaved-sessions-well li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 8px;
+}
+.unsaved-sessions-well li + li { border-top: 1px solid var(--pm-border-soft); }
+.unsaved-sessions-well .unsaved-session-details { flex: 1 1 11rem; }
+.unsaved-session-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.unsaved-session-actions .settings-button { padding: 4px 8px; }
+.unsaved-session-actions .unsaved-session-delete {
+  background: var(--pm-surface);
+  color: var(--vscode-errorForeground, var(--pm-red));
+  border: 1px solid color-mix(in srgb, currentColor 55%, var(--pm-border));
+}
+.unsaved-session-actions .unsaved-session-delete:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--vscode-errorForeground, var(--pm-red)) 12%, var(--pm-surface));
+  border-color: currentColor;
+}
+.unsaved-session-actions .unsaved-session-delete:disabled {
+  color: var(--pm-dim);
+  border-color: var(--pm-border);
+}
+.unsaved-session-confirm { flex: 1 1 100%; }
+.unsaved-session-confirm p { margin: 0 0 4px; color: var(--pm-text); }
+.unsaved-sessions-settings .settings-section-title:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, var(--pm-primary));
 }
 .tab-content > h3 {
   font-size: 14px;

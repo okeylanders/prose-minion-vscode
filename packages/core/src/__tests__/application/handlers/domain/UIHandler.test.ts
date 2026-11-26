@@ -306,6 +306,25 @@ describe('UIHandler', () => {
     });
   });
 
+  describe('unsaved Workshop sessions', () => {
+    it('lists, opens and deletes only on a surface with the sidebar capability, echoing each request id', async () => {
+      const request = { type: MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS as const,
+        source: 'webview.ui' as const, timestamp: 0, payload: { requestId: 'list-1' } };
+      await expect(router.route(request)).rejects.toThrow(/No handler registered/);
+      const row = { title: 'Marsh', preview: 'The moon was low.', updatedAt: '2026-11-25T09:00:00Z', token: 'ticket', canDelete: true };
+      const unsavedWorkshopSessions = jest.fn().mockResolvedValue({ rows: [row] });
+      handler = new UIHandler(postMessage, { appendLine } as any, createFakeFileSystem(), createFakeWorkspace(),
+        createFakeShellService(), createFakeEditorContext(), createFakeGlobalState(), { surface: 'sidebar', unsavedWorkshopSessions });
+      handler.registerRoutes(router);
+      await router.route(request);
+      await router.route({ ...request, type: MessageType.OPEN_UNSAVED_WORKSHOP_SESSION, payload: { requestId: 'open-2', token: row.token } });
+      await router.route({ ...request, type: MessageType.DELETE_UNSAVED_WORKSHOP_SESSION, payload: { requestId: 'delete-3', token: row.token } });
+      expect(unsavedWorkshopSessions).toHaveBeenCalledTimes(3);
+      expect(postMessage.mock.calls.map(([message]) => [message.type, message.payload])).toEqual(
+        ['list-1', 'open-2', 'delete-3'].map(requestId => [MessageType.UNSAVED_WORKSHOP_SESSIONS_RESULT, { requestId, rows: [row] }]));
+    });
+  });
+
   describe('open_workshop', () => {
     it('routes reveal and new-tab requests to their respective host actions', async () => {
       const openWorkshop = jest.fn();

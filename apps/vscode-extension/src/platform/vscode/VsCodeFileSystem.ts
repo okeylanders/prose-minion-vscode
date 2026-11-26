@@ -98,10 +98,11 @@ export class VsCodeFileSystem implements FileSystem {
     );
   }
 
-  delete(filePath: string, options?: { recursive?: boolean }): Promise<void> {
+  delete(filePath: string, options?: { recursive?: boolean; useTrash?: boolean }): Promise<void> {
     return Promise.resolve(
       vscode.workspace.fs.delete(vscode.Uri.file(filePath), {
         recursive: options?.recursive ?? false,
+        ...(options?.useTrash && { useTrash: true })
       })
     );
   }

@@ -11,6 +11,8 @@
 import * as path from 'path';
 import { createHash, randomUUID } from 'crypto';
 import { PRIMARY_WORKSHOP_ROOM_ID, isNamedSessionFileName, roomIdFromWorkshopFile, workshopRoomFileName } from '@/application/services/workshop/WorkshopRoomSlot';
+import { hasSameWorkshopRecoveryContent } from '@/application/services/workshop/WorkshopSessionRecoveryEquality';
+import { hasWorkshopRoomWork, workshopUnsavedRoomPreview, type WorkshopUnsavedRoomStatus } from '@/application/services/workshop/WorkshopUnsavedRoom';
 import { withoutRollingProvenance } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
@@ -158,6 +160,12 @@ interface WorkshopRoomCheckpointRow {
   recoveryToken?: string;
 }
 
+/** A revision is bound to one slot and workspace. Unreadable/claimed files have no deletion authority. */
+export interface WorkshopUnsavedRoomRow extends WorkshopRoomCheckpointRow {
+  revision: string;
+  preview: string;
+}
+
 export class WorkshopSessionFileReadError extends Error {
   constructor(
     readonly fileName: string,
@@ -269,8 +277,137 @@ export class WorkshopSessionStore {
     return rooms.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.roomId.localeCompare(b.roomId));
   }
 
+  /** Enumerate rolling files directly, including index-less files from previous versions. */
+  async listUnsavedRooms(): Promise<WorkshopUnsavedRoomRow[]> {
+    if (!this.availability().available) { return []; }
+    const paths = this.requireAvailability();
+    let entries: Array<[string, FileType]>;
+    try {
+      entries = await this.fileSystem.readDirectory(paths.sessionsDirectory);
+    } catch (error) {
+      if (isMissingFileError(error)) { return []; }
+      throw error;
+    }
+    const rolling = entries.filter(([name, type]) => {
+      const roomId = roomIdFromWorkshopFile(name);
+      return type === FileType.File && roomId && roomId !== PRIMARY_WORKSHOP_ROOM_ID;
+    });
+    if (!rolling.length) { return []; }
+    // A bounded sidecar can locate a named candidate, but only the complete named contents prove a match.
+    // Index once per listing so a library of unsaved sessions does not rescan every named file per row.
+    const named = new Map<string, string | null>();
+    for (const [name, type] of entries) {
+      if (type !== FileType.File || !isNamedSessionFileName(name)) { continue; }
+      const indexName = workshopSessionSearchIndexFileName(name);
+      const index = await this.readSearchIndexForBrowser(path.join(paths.sessionsDirectory, indexName), indexName, name);
+      let id = index?.sessionId;
+      if (!id) {
+        try { id = (await this.readSessionFileExact(path.join(paths.sessionsDirectory, name), name))?.session.sessionId; }
+        catch (error) { this.skip(name, errorMessage(error)); }
+      }
+      if (id) { named.set(id, named.has(id) ? null : name); }
+    }
+    const locks = new Set(entries.filter(([, type]) => type === FileType.Directory).map(([name]) => name));
+    const rows: WorkshopUnsavedRoomRow[] = [];
+    for (const [name] of rolling) {
+      const roomId = roomIdFromWorkshopFile(name)!;
+      const filePath = path.join(paths.sessionsDirectory, name);
+      const claim = locks.has(`.${name}.lock`) ? await this.named.rollingClaim(filePath) : undefined;
+      let row: WorkshopUnsavedRoomRow = { roomId, title: name, updatedAt: '', preview: '', revision: '' };
+      try {
+        const observed = await this.observeRolling(filePath, name);
+        if (!observed) { continue; }
+        const { decoded, revision } = observed;
+        const session = decoded.session;
+        const protectedFile = (claim && claim.state !== 'none') || needsCheckpointRecovery(decoded);
+        row = { roomId, title: session.title, updatedAt: session.updatedAt, preview: workshopUnsavedRoomPreview(session.workshop),
+          revision: protectedFile ? '' : revision };
+        if (!protectedFile) {
+          if (!hasWorkshopRoomWork(session)) { continue; }
+          const candidate = named.get(session.sessionId);
+          if (candidate && !locks.has(`.${candidate}.lock`)) {
+            const saved = await this.readSessionFileExact(path.join(paths.sessionsDirectory, candidate), candidate);
+            if (saved && !needsCheckpointRecovery(saved) && hasSameWorkshopRecoveryContent(session, saved.session)) { continue; }
+          }
+        }
+      } catch (error) {
+        this.skip(name, errorMessage(error));
+      }
+      if (claim?.state === 'recovery-required') { row.recoveryToken = claim.token; }
+      rows.push(row);
+    }
+    return rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.roomId.localeCompare(b.roomId));
+  }
+
+  /** The same content test for a retained in-memory room and a closed disk checkpoint. */
+  async classifyRoomContents(session: WorkshopPersistedSessionV2): Promise<WorkshopUnsavedRoomStatus> {
+    if (!hasWorkshopRoomWork(session)) { return 'empty'; }
+    if (!this.availability().available) { return 'unsaved'; }
+    try {
+      const named = await this.findNamedSession(session.sessionId, this.requireAvailability(), { ignoreUnreadable: true });
+      if (named && !needsCheckpointRecovery(named) && hasSameWorkshopRecoveryContent(session, named.session)) {
+        const claim = await this.named.rollingClaim(named.filePath);
+        if (claim.state === 'none') { return 'saved'; }
+      }
+    } catch (error) { this.skip(session.title, errorMessage(error)); }
+    return 'unsaved';
+  }
+
+  async roomCheckpointStatus(roomId: string): Promise<{ status: WorkshopUnsavedRoomStatus; revision: string } | undefined> {
+    const slot = this.forRoom(roomId);
+    const paths = slot.requireAvailability();
+    if ((await this.named.rollingClaim(paths.currentPath)).state !== 'none') {
+      throw new WorkshopRollingCheckpointConflictError();
+    }
+    const observed = await this.observeRolling(paths.currentPath, slot.currentFileName);
+    if (!observed) { return undefined; }
+    if (needsCheckpointRecovery(observed.decoded)) { throw new Error('The checkpoint requires recovery.'); }
+    return { status: await slot.classifyRoomContents(observed.decoded.session), revision: observed.revision };
+  }
+
+  private async observeRolling(filePath: string, fileName: string) {
+    let revision = '';
+    const decoded = await this.readSessionFileExact(filePath, fileName, bytes => {
+      if (bytes) { revision = createHash('sha256').update(filePath).update('\0').update(bytes).digest('hex'); }
+    });
+    return decoded && { decoded, revision };
+  }
+
+  /** Final mutation checks belong inside the rolling write claim, including the live-room generation guard. */
+  async deleteUnsavedRoom(roomId: string, revision: string, stillClosed: () => boolean,
+    expectedStatus?: 'empty' | 'saved'): Promise<void> {
+    if (roomId === PRIMARY_WORKSHOP_ROOM_ID || !revision) { throw new Error('This Workshop checkpoint is protected.'); }
+    const slot = this.forRoom(roomId);
+    const paths = slot.requireAvailability();
+    const changed = () => new Error('The Workshop checkpoint changed. Refresh the unsaved sessions list.');
+    await this.named.withRollingLock(paths.currentPath, roomId, async () => {
+      const observed = await this.observeRolling(paths.currentPath, slot.currentFileName);
+      if (!observed || observed.revision !== revision || needsCheckpointRecovery(observed.decoded)) { throw changed(); }
+      const session = observed.decoded.session;
+      const remove = async () => {
+        const final = await this.observeRolling(paths.currentPath, slot.currentFileName);
+        slot.requireAvailability();
+        if (final?.revision !== revision || !stillClosed()) { throw changed(); }
+        await this.fileSystem.delete(paths.currentPath, { useTrash: expectedStatus === undefined });
+        await this.deleteSearchIndexIfPresent(paths, slot.currentFileName);
+      };
+      if (expectedStatus === 'saved') {
+        const found = await this.requireNamedSession(session.sessionId, paths);
+        await this.named.withCheckpointLock(found.filePath, session.sessionId, async () => {
+          const latest = await this.readSessionFileExact(found.filePath, found.fileName);
+          if (!latest || needsCheckpointRecovery(latest) || !hasSameWorkshopRecoveryContent(session, latest.session)) { throw changed(); }
+          await remove();
+        });
+      } else {
+        const status = await slot.classifyRoomContents(session);
+        if (status !== (expectedStatus ?? 'unsaved')) { throw changed(); }
+        await remove();
+      }
+    });
+  }
+
   /** The writer chose to recover this expired claim into a new independent room. The source is read-only. */
-  async recoverRollingRoom(roomId: string, recoveryToken: string): Promise<string> {
+  async recoverRollingRoom(roomId: string, recoveryToken: string, stillClosed: () => boolean = () => true): Promise<string> {
     const source = this.forRoom(roomId);
     const paths = source.requireAvailability();
     const checkClaim = async () => {
@@ -295,7 +432,7 @@ export class WorkshopSessionStore {
     await replacement.writeCurrent(snapshot, {
       beforeCommit: async () => {
         await checkClaim();
-        if (await this.readRollingRevision(paths.currentPath) !== baseline) {
+        if (await this.readRollingRevision(paths.currentPath) !== baseline || !stillClosed()) {
           throw new Error('The Workshop checkpoint changed during recovery. Reopen the closed-room picker.');
         }
       }
@@ -1324,6 +1461,14 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function needsCheckpointRecovery(decoded: WorkshopPersistedSessionCheckpointDecodeResult): boolean {
+  // Routine legacy defaults, migrated room offsets and unverified history marks do not drop
+  // writer content. Never prune a checkpoint whose widget, bookmark, or reaction had to be discarded.
+  return decoded.recoveryNotices.length > 0 || decoded.normalizations.some(change =>
+    change === 'dropped-dangling-bookmarks' || change === 'dropped-dangling-reactions' ||
+    change === 'discarded-nonpersona-widget-recommendation' || change === 'dropped-duplicate-pending-lightbox-tiles');
 }
 
 function rollingRevision(bytes: Uint8Array | undefined): string {

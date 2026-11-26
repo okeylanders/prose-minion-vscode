@@ -96,6 +96,92 @@ describe('WorkshopSessionStore', () => {
     clock = new Date('2026-07-23T10:20:30.000Z');
   });
 
+  const roomId = '13345678-1234-4123-8123-123456789abc';
+  const roomIdB = '23345678-1234-4123-8123-123456789abc';
+  const rollingPath = (id: string) => path.join(sessionsDirectory, `current-${id}.json`);
+
+  it('finds contentful index-less and legacy rooms, ignores startup metadata and never trusts a stale summary', async () => {
+    const store = createStore();
+    const room = new WorkshopSessionService();
+    room.recordSessionMarker('start', 'Session started yesterday');
+    const blank = session('untouched', 'Untitled session', { workshop: room.exportCommittedState() });
+    fileSystem.setJson(rollingPath(roomId), blank);
+    fileSystem.setJson(path.join(sessionsDirectory, 'current.json'), { ...blank, schemaVersion: 1 });
+    const draft = session('draft', 'My room');
+    fileSystem.setJson(rollingPath(roomIdB), { ...draft, savedAt: draft.updatedAt, schemaVersion: 1 });
+    const rows = await store.listUnsavedRooms();
+    expect(rows).toEqual([{ roomId: roomIdB, title: draft.title, updatedAt: draft.updatedAt,
+      revision: expect.stringMatching(/^[a-f0-9]{64}$/), preview: draft.workshop.excerpt!.text }]);
+    expect(await store.roomCheckpointStatus(roomId)).toMatchObject({ status: 'empty' });
+    expect(fileSystem.files.has(rollingPath(roomId))).toBe(true);
+  });
+
+  it('compares named and rolling contents including later edits and checks the named copy again before pruning', async () => {
+    const store = createStore();
+    const draft = session('named-id', 'My named room');
+    const named = await store.saveNamed({ ...draft, savedAt: draft.updatedAt });
+    const namedFile = path.join(sessionsDirectory, named.fileName);
+    await store.forRoom(roomId).writeCurrent(draft);
+    const original = fileSystem.json(namedFile);
+    const match = await store.roomCheckpointStatus(roomId);
+    expect(match).toMatchObject({ status: 'saved' });
+    expect(await store.listUnsavedRooms()).toEqual([]);
+
+    const changed: WorkshopPersistedSessionV2 = JSON.parse(JSON.stringify(draft));
+    changed.workshop.excerpt!.text += ' Another manuscript paragraph.';
+    fileSystem.setJson(namedFile, changed);
+    expect((await store.listUnsavedRooms()).map(row => row.roomId)).toEqual([roomId]);
+    await expect(store.deleteUnsavedRoom(roomId, match!.revision, () => true, 'saved')).rejects.toThrow(/changed/);
+    expect(fileSystem.json(rollingPath(roomId))).toMatchObject({ sessionId: 'named-id' });
+
+    fileSystem.setJson(namedFile, original);
+    await store.deleteUnsavedRoom(roomId, match!.revision, () => true, 'saved');
+    expect(fileSystem.files.has(rollingPath(roomId))).toBe(false);
+    expect(fileSystem.files.has(rollingPath(roomId).replace('.json', '.summary.json'))).toBe(false);
+    expect(fileSystem.json(namedFile)).toEqual(original);
+  });
+
+  it('refuses stale confirmation after a same-identity and timestamp edit, a reattachment, or another slot or workspace', async () => {
+    const firstHost = createStore();
+    const draft = session('draft', 'Manuscript');
+    const writer = firstHost.forRoom(roomId);
+    await writer.writeCurrent(draft);
+    const otherHost = createStore();
+    const [first] = await otherHost.listUnsavedRooms();
+    const changed: WorkshopPersistedSessionV2 = JSON.parse(JSON.stringify(draft));
+    changed.workshop.excerpt!.text = 'A different manuscript with the same timestamp.';
+    await writer.writeCurrent(changed);
+    await expect(otherHost.deleteUnsavedRoom(roomId, first.revision, () => true)).rejects.toThrow(/changed/);
+    const [current] = await otherHost.listUnsavedRooms();
+    await expect(otherHost.deleteUnsavedRoom(roomId, current.revision, () => false)).rejects.toThrow(/changed/);
+    await firstHost.forRoom(roomIdB).writeCurrent(changed);
+    const elsewhere = createStore(['/somewhere/else']);
+    await elsewhere.forRoom(roomId).writeCurrent(changed);
+    for (const [store, slot] of [[firstHost, roomIdB], [elsewhere, roomId]] as const) {
+      await expect(store.deleteUnsavedRoom(slot, current.revision, () => true)).rejects.toThrow(/changed/);
+    }
+    await expect(otherHost.deleteUnsavedRoom('legacy', current.revision, () => true)).rejects.toThrow(/protected/);
+    await expect(otherHost.deleteUnsavedRoom('../shared', current.revision, () => true)).rejects.toThrow();
+    await expect(otherHost.deleteUnsavedRoom(roomId, current.revision, () => true, 'empty')).rejects.toThrow(/changed/);
+    expect(await writer.readCurrent()).toMatchObject({ workshop: { excerpt: { text: changed.workshop.excerpt!.text } } });
+    const remove = jest.spyOn(fileSystem, 'delete');
+    await otherHost.deleteUnsavedRoom(roomId, current.revision, () => true);
+    expect(remove).toHaveBeenCalledWith(rollingPath(roomId), { useTrash: true });
+    expect((await otherHost.listUnsavedRooms()).map(row => row.roomId)).toEqual([roomIdB]);
+  });
+
+  it('protects an unreadable checkpoint without hiding other content', async () => {
+    const store = createStore();
+    fileSystem.setJson(rollingPath(roomId), { schemaVersion: 77, manuscript: 'Unrecognized format' });
+    await store.forRoom(roomIdB).writeCurrent(session('draft', 'Recognized second room'));
+    const rows = await store.listUnsavedRooms();
+    expect(rows).toHaveLength(2);
+    expect(rows.find(row => row.roomId === roomId)?.revision).toBe('');
+    await expect(store.roomCheckpointStatus(roomId)).rejects.toThrow();
+    await expect(store.deleteUnsavedRoom(roomId, '', () => true)).rejects.toThrow(/protected/);
+    expect(fileSystem.json(rollingPath(roomId))).toMatchObject({ manuscript: 'Unrecognized format' });
+  });
+
   it('makes persistence unavailable rather than guessing a workspace root', async () => {
     expect(createStore([]).availability()).toEqual({ available: false, reason: 'no-workspace' });
     expect(createStore(['/one', '/two']).availability()).toEqual({ available: false, reason: 'multi-root' });

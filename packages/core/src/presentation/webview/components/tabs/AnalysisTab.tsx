@@ -11,6 +11,8 @@ import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { WordCounter } from '../shared/WordCounter';
 import { StreamingContent } from '../shared/StreamingContent';
 import { Icon } from '../shared/Icon';
+import { WorkshopLauncher } from './WorkshopLauncher';
+import type { UnsavedWorkshopSessions } from '../../hooks/domain/useUnsavedWorkshopSessions';
 import { AllToolsModal } from './AllToolsModal';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
@@ -28,6 +30,8 @@ interface AnalysisTabProps {
   selection: UseSelectionReturn;
   modelsSettings: UseModelsSettingsReturn;
   settings: UseSettingsReturn;
+  unsavedSessions: UnsavedWorkshopSessions;
+  onManageUnsavedSessions: () => void;
 }
 
 export const AnalysisTab = React.memo<AnalysisTabProps>(({
@@ -36,7 +40,9 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
   context,
   selection,
   modelsSettings,
-  settings
+  settings,
+  unsavedSessions,
+  onManageUnsavedSessions
 }) => {
   const [text, setText] = React.useState(selection.selectedText);
   const [showContextPreview, setShowContextPreview] = React.useState(false);
@@ -311,25 +317,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
       <div className="assistant-title-row">
         <h2 className="text-lg font-semibold mb-4">Prose Excerpt Assistant</h2>
         <div className="surface-launch-buttons">
-          <div className="workshop-launch-split" role="group" aria-label="Workshop tabs">
-            <button
-              type="button"
-              className="btn btn-secondary surface-launch-button"
-              onClick={() => handleOpenWorkshop()}
-              title="Open the Workshop editor tab"
-            >
-              <Icon name="panelRight" size={14} /> Workshop
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary surface-launch-button"
-              onClick={() => handleOpenWorkshop(true)}
-              aria-label="New Workshop tab"
-              title="New Workshop tab"
-            >
-              <Icon name="plus" size={14} />
-            </button>
-          </div>
+          <WorkshopLauncher sessions={unsavedSessions} launch={handleOpenWorkshop} manage={onManageUnsavedSessions} />
           <button
             className="btn btn-secondary surface-launch-button"
             onClick={handleOpenLightbox}

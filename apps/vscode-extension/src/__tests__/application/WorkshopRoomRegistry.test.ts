@@ -3,6 +3,7 @@ import type { CoreServices, WorkshopRoomCloseDestination } from '@prose-minion/c
 import { WorkshopRoomRegistry } from '../../application/WorkshopRoomRegistry';
 
 jest.mock('@prose-minion/core', () => ({
+  ...jest.requireActual('@/application/services/workshop/WorkshopRoomSlot'),
   workshopLightboxTray: jest.requireActual('@/application/services/workshop/WorkshopLightboxTray').workshopLightboxTray
 }));
 
@@ -22,11 +23,13 @@ function room(id: string, unavailable?: 'no-workspace' | 'multi-root') {
   const memoryDrain = jest.fn(async () => {});
   const unsubscribe = jest.fn();
   const syncWriterProfile = jest.fn(async () => {});
+  const unsavedRoomStatus = jest.fn(async (): Promise<'unsaved' | 'empty' | 'saved'> => 'unsaved');
+  const unsavedRoomPreview = jest.fn(() => 'The rabbit glanced at his watch.');
   const services = {
     workshopConversationSettingsService: { syncWriterProfile },
     workshopSessionPersistenceCoordinator: {
-      initialize, flushForClose, releaseNamedOwnership,
-      availability: () => unavailable ? { available: false, reason: unavailable } : { available: true },
+      initialize, flushForClose, releaseNamedOwnership, unsavedRoomStatus, unsavedRoomPreview,
+      availability: () => unavailable ? { available: false, reason: unavailable } : { available: true, rootPath: '/Book' },
       openRoomIdentity: () => ({ title: id })
     },
     workshopSessionService: {
@@ -38,17 +41,32 @@ function room(id: string, unavailable?: 'no-workspace' | 'multi-root') {
     assistantToolService: { discardConversation },
     projectMemory: { shutDown: memoryDrain }
   } as unknown as CoreServices;
-  return { services, syncWriterProfile, initialize, flushForClose, releaseNamedOwnership, invalidatePendingRoomReads, discardConversation, memoryDrain, unsubscribe };
+  return { services, unsavedRoomStatus, syncWriterProfile, initialize, flushForClose, releaseNamedOwnership, invalidatePendingRoomReads, discardConversation, memoryDrain, unsubscribe };
 }
 
 function checkpointStore() {
   return {
     listRoomCheckpoints: jest.fn(async (): Promise<Array<{ roomId: string; title: string; updatedAt: string; recoveryToken?: string }>> => []),
-    recoverRollingRoom: jest.fn(async () => 'new-copy')
+    recoverRollingRoom: jest.fn(async () => 'new-copy'),
+    availability: jest.fn(() => ({ available: true as const, rootPath: '/Book', sessionsDirectory: '/Book/sessions', currentPath: '/Book/current.json' })),
+    listUnsavedRooms: jest.fn(async (): Promise<Array<{ roomId: string; title: string; updatedAt: string; preview: string; revision: string; recoveryToken?: string }>> => []),
+    roomCheckpointStatus: jest.fn(async (): Promise<{status: 'empty' | 'saved' | 'unsaved'; revision: string} | undefined> => undefined),
+    deleteUnsavedRoom: jest.fn(async (_id: string, _revision: string, _stillClosed: () => boolean, _expectedStatus?: 'empty' | 'saved') => {})
+
   };
 }
 
+const presence = {
+  enter: jest.fn(() => ({ dispose() {} })),
+  beginDelete: jest.fn(() => ({ dispose() {} })),
+  isOpen: jest.fn(() => false)
+};
+const log = { appendLine: jest.fn() };
+const registry = (build: (id: string) => CoreServices, store: ReturnType<typeof checkpointStore>) =>
+  new WorkshopRoomRegistry(build, store, presence, log);
+
 describe('Workshop room registry', () => {
+  beforeEach(() => { jest.clearAllMocks(); });
   it('quiesces immediately on close, waits for hydration, and reuses its graph if reopened during the flush', async () => {
     const first = room('A');
     const hydration = held();
@@ -57,7 +75,7 @@ describe('Workshop room registry', () => {
     first.initialize.mockReturnValue(hydration.promise);
     first.flushForClose.mockImplementationOnce(() => { started.release(); return writing.promise; });
     const build = jest.fn(() => first.services);
-    const rooms = new WorkshopRoomRegistry(build, checkpointStore());
+    const rooms = registry(build, checkpointStore());
     const original = rooms.acquire('A');
     const closing = rooms.release('A');
     expect(first.invalidatePendingRoomReads).toHaveBeenCalledTimes(1);
@@ -78,7 +96,7 @@ describe('Workshop room registry', () => {
 
   it('waits for the current writer profile on first open and before resuming a retained closed room', async () => {
     const a = room('A', 'no-workspace');
-    const rooms = new WorkshopRoomRegistry(() => a.services, checkpointStore());
+    const rooms = registry(() => a.services, checkpointStore());
     await rooms.acquire('A').ready;
     expect(a.syncWriterProfile).toHaveBeenCalledTimes(1);
     await rooms.release('A');
@@ -102,7 +120,7 @@ describe('Workshop room registry', () => {
     a.flushForClose.mockRejectedValueOnce(new Error('disk unavailable'));
     const writing = held();
     b.flushForClose.mockReturnValue(writing.promise);
-    const rooms = new WorkshopRoomRegistry(id => id === 'A' ? a.services : b.services, checkpointStore());
+    const rooms = registry(id => id === 'A' ? a.services : b.services, checkpointStore());
     await Promise.all([rooms.acquire('A').ready, rooms.acquire('B').ready]);
     const completed = jest.fn();
     const shutdown = rooms.flush().catch(completed);
@@ -124,7 +142,7 @@ describe('Workshop room registry', () => {
     const a = room('A');
     const destination = { kind: 'preserved-session', sessionId: 'local-copy-id', title: 'Local copy' } as const;
     a.flushForClose.mockResolvedValue(destination);
-    const rooms = new WorkshopRoomRegistry(() => a.services, checkpointStore());
+    const rooms = registry(() => a.services, checkpointStore());
     await rooms.acquire('A').ready;
     await expect(rooms.release('A')).resolves.toEqual(destination);
     expect(a.releaseNamedOwnership).toHaveBeenCalledTimes(1);
@@ -142,7 +160,7 @@ describe('Workshop room registry', () => {
     const store = checkpointStore();
     const stale = { roomId: 'A', title: 'older disk copy', updatedAt: 'yesterday', recoveryToken: 'observed-claim' };
     store.listRoomCheckpoints.mockResolvedValue([stale]);
-    const rooms = new WorkshopRoomRegistry(() => a.services, store);
+    const rooms = registry(() => a.services, store);
     expect(await rooms.listRoomCheckpoints()).toEqual([stale]);
     await expect(rooms.recoverRollingRoom('A', 'observed-claim')).resolves.toBe('new-copy');
     expect(store.recoverRollingRoom).toHaveBeenCalledWith('A', 'observed-claim');
@@ -161,7 +179,7 @@ describe('Workshop room registry', () => {
     const hydration = held();
     first.initialize.mockReturnValue(hydration.promise);
     const build = jest.fn().mockReturnValueOnce(first.services).mockReturnValueOnce(second.services);
-    const rooms = new WorkshopRoomRegistry(build, checkpointStore());
+    const rooms = registry(build, checkpointStore());
     const failed = rooms.acquire('A');
     const closing = rooms.release('A');
     hydration.refuse(new Error('restore failed'));
@@ -178,7 +196,7 @@ describe('Workshop room registry', () => {
     const a = room('Chapter', reason);
     const b = room('Series bible', reason);
     const build = jest.fn((id: string) => id === 'A' ? a.services : b.services);
-    const rooms = new WorkshopRoomRegistry(build, checkpointStore());
+    const rooms = registry(build, checkpointStore());
     await Promise.all([rooms.acquire('A').ready, rooms.acquire('B').ready]);
     await Promise.all([rooms.release('A'), rooms.release('B')]);
     expect(a.discardConversation).not.toHaveBeenCalled();
@@ -198,10 +216,135 @@ describe('Workshop room registry', () => {
     expect(await rooms.listRoomCheckpoints()).toEqual([]);
   });
 
+  describe('Unsaved Sessions', () => {
+    const id = '2b990e12-cd10-437c-b7f9-1acc761ef290';
+    const disk = { roomId: id, title: 'The door', updatedAt: '2026-11-26', preview: 'A sharp knock.', revision: 'exact-checkpoint' };
+
+    it.each(['empty', 'saved'] as const)('prunes only a verified %s secondary on normal close', async status => {
+      const a = room('The door');
+      const store = checkpointStore();
+      a.unsavedRoomStatus.mockResolvedValue(status);
+      store.roomCheckpointStatus.mockResolvedValue({ status, revision: disk.revision });
+      const rooms = registry(() => a.services, store);
+      await rooms.acquire(id).ready;
+      await rooms.release(id);
+      expect(store.deleteUnsavedRoom).toHaveBeenCalledWith(id, disk.revision, expect.any(Function), status);
+      await rooms.acquire('legacy').ready;
+      await rooms.release('legacy');
+      expect(store.deleteUnsavedRoom).toHaveBeenCalledTimes(1);
+      await rooms.acquire(id).ready;
+      await rooms.flush();
+      expect(store.deleteUnsavedRoom).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops an empty memory-only secondary and deletes a meaningful one without touching a project file', async () => {
+      const a = room('The door', 'no-workspace');
+      const store = checkpointStore();
+      const rooms = registry(() => a.services, store);
+      a.unsavedRoomStatus.mockResolvedValueOnce('empty');
+      await rooms.acquire(id).ready;
+      await rooms.release(id);
+      expect(await rooms.listUnsavedRooms()).toEqual([]);
+      await rooms.acquire(id).ready;
+      await rooms.release(id);
+      const [row] = await rooms.listUnsavedRooms();
+      expect(row).toMatchObject({roomId: id, title: 'The door', preview: 'The rabbit glanced at his watch.', canDelete: true});
+      await rooms.deleteUnsavedRoom(id, row.observation);
+      expect(await rooms.listUnsavedRooms()).toEqual([]);
+      expect(store.deleteUnsavedRoom).not.toHaveBeenCalled();
+      await expect(rooms.openUnsavedRoom(id, row.observation)).rejects.toThrow();
+    });
+
+    it('rechecks closed/open state at deletion and rejects a prior observation after a room opens and closes again', async () => {
+      const a = room('The door');
+      const store = checkpointStore();
+      store.listUnsavedRooms.mockResolvedValue([disk]);
+      const rooms = registry(() => a.services, store);
+      const [row] = await rooms.listUnsavedRooms();
+      const gate = held();
+      store.deleteUnsavedRoom.mockImplementation(async (_id, _revision, closed) => {
+        await gate.promise;
+        if (!closed()) { throw new Error('Room reopened'); }
+      });
+      const deleting = rooms.deleteUnsavedRoom(id, row.observation);
+      await rooms.acquire(id).ready;
+      expect(await rooms.listUnsavedRooms()).toEqual([]);
+      gate.release();
+      await expect(deleting).rejects.toThrow();
+      await rooms.release(id);
+      await expect(rooms.openUnsavedRoom(id, row.observation)).rejects.toThrow();
+      const [fresh] = await rooms.listUnsavedRooms();
+      expect(fresh.observation).not.toBe(row.observation);
+      store.listUnsavedRooms.mockResolvedValue([{ ...disk, revision: 'newer-bytes' }]);
+      await expect(rooms.openUnsavedRoom(id, fresh.observation)).rejects.toThrow();
+      await expect(rooms.deleteUnsavedRoom('legacy', fresh.observation)).rejects.toThrow();
+    });
+
+    it('orders by a room’s recent close without creating or rewriting a checkpoint', async () => {
+      const other = '86277e56-f92e-48ef-9ab7-8778933b3848';
+      const a = room('The door');
+      const store = checkpointStore();
+      store.listUnsavedRooms.mockResolvedValue([
+        { ...disk, updatedAt: '2000-01-01T12:00:00Z' },
+        { ...disk, roomId: other, updatedAt: '2010-01-01T12:00:00Z' }
+      ]);
+      const rooms = registry(() => a.services, store);
+      expect((await rooms.listUnsavedRooms()).map(row => row.roomId)).toEqual([other, id]);
+      await rooms.acquire(id).ready;
+      await rooms.release(id);
+      const [latest] = await rooms.listUnsavedRooms();
+      expect(latest.roomId).toBe(id);
+      expect(latest.updatedAt > '2010-01-01').toBe(true);
+      expect(store.deleteUnsavedRoom).not.toHaveBeenCalled();
+    });
+
+    it('preserves a verified redundant file while an unresolved native editor or another host may own it', async () => {
+      const a = room('The door');
+      const store = checkpointStore();
+      a.unsavedRoomStatus.mockResolvedValue('saved');
+      store.roomCheckpointStatus.mockResolvedValue({ status: 'saved', revision: disk.revision });
+      const rooms = registry(() => a.services, store);
+      await rooms.acquire(id).ready;
+      await rooms.release(id, () => false);
+      expect(store.deleteUnsavedRoom).not.toHaveBeenCalled();
+      store.listUnsavedRooms.mockResolvedValue([disk]);
+      presence.isOpen.mockReturnValueOnce(true);
+      expect(await rooms.listUnsavedRooms()).toEqual([]);
+    });
+
+    it('holds failed-close memory ahead of an older checkpoint and refuses to erase it', async () => {
+      const a = room('Local work');
+      const store = checkpointStore();
+      store.listUnsavedRooms.mockResolvedValue([disk]);
+      const rooms = registry(() => a.services, store);
+      await rooms.acquire(id).ready;
+      a.flushForClose.mockRejectedValueOnce(new Error('disk full'));
+      await expect(rooms.release(id)).rejects.toThrow('disk full');
+      const [row] = await rooms.listUnsavedRooms();
+      expect(row).toMatchObject({ title: 'Local work', canDelete: false });
+      await expect(rooms.deleteUnsavedRoom(id, row.observation)).rejects.toThrow();
+      expect(await rooms.openUnsavedRoom(id, row.observation)).toBe(id);
+      expect(store.deleteUnsavedRoom).not.toHaveBeenCalled();
+    });
+
+    it('offers stale-claim recovery without deletion authority and leaves unreadable checkpoints in the recovery picker', async () => {
+      const store = checkpointStore();
+      store.listUnsavedRooms.mockResolvedValue([{ ...disk, recoveryToken: 'stale-claim' }]);
+      const rooms = registry(() => room('A').services, store);
+      const [recovery] = await rooms.listUnsavedRooms();
+      expect(recovery.canDelete).toBe(false);
+      await expect(rooms.deleteUnsavedRoom(id, recovery.observation)).rejects.toThrow();
+      expect(await rooms.openUnsavedRoom(id, recovery.observation)).toBe('new-copy');
+      store.listUnsavedRooms.mockResolvedValue([{ ...disk, revision: '' }]);
+      expect(await rooms.listUnsavedRooms()).toEqual([]);
+      await expect(rooms.openUnsavedRoom(id, recovery.observation)).rejects.toThrow();
+    });
+  });
+
   it('switches Lightbox tray subscriptions on focus and empties the tray after the final close', async () => {
     const a = room('A');
     const b = room('B');
-    const rooms = new WorkshopRoomRegistry(id => id === 'A' ? a.services : b.services, checkpointStore());
+    const rooms = registry(id => id === 'A' ? a.services : b.services, checkpointStore());
     await Promise.all([rooms.acquire('A').ready, rooms.acquire('B').ready]);
     const changes = jest.fn();
     rooms.tray.subscribe(changes);

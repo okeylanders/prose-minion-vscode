@@ -73,7 +73,7 @@ export interface FileSystem {
    * Delete a path. `recursive` defaults to false so deleting a directory tree
    * is always deliberate.
    */
-  delete(path: string, options?: { recursive?: boolean }): Promise<void>;
+  delete(path: string, options?: { recursive?: boolean; useTrash?: boolean }): Promise<void>;
   /** List a directory as [name, type] tuples. */
   readDirectory(path: string): Promise<Array<[string, FileType]>>;
   /** Stat a path. Throws if missing (callers catch for existence checks). */

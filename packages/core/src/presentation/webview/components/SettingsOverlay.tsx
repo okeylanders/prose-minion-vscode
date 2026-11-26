@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { ModelScope, ModelOption, MessageType, FollowingModelScope, MODEL_SCOPE_FOLLOWS, isFollowingModelScope } from '@shared/types';
 import { modelFollowLabel } from '@components/shared/modelFollowing';
+import { UnsavedWorkshopSessionsSettings } from './settings/UnsavedWorkshopSessionsSettings';
+import type { UnsavedWorkshopSessions } from '../hooks/domain/useUnsavedWorkshopSessions';
 import { SettingsSupport } from '@components/SettingsSupport';
 import type { SupportCopyStatus } from '@hooks/domain/useSettings';
 import { UseModelsSettingsReturn } from '../hooks/domain/useModelsSettings';
@@ -18,6 +20,8 @@ type SettingsOverlayProps = {
   supportCopyStatus: SupportCopyStatus;
   onCopySupportEmail: (email: string) => void;
   visible: boolean;
+  unsavedSessions: UnsavedWorkshopSessions;
+  focusUnsavedSessions: boolean;
   onClose: () => void;
   vscode: VSCodeAPI;
   // Specialized hook objects (replaces generic settings + onUpdate)
@@ -57,6 +61,8 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
   supportCopyStatus,
   onCopySupportEmail,
   visible,
+  unsavedSessions,
+  focusUnsavedSessions,
   onClose,
   vscode,
   modelsSettings,
@@ -738,6 +744,7 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
         </label>
       </section>
 
+      <UnsavedWorkshopSessionsSettings sessions={unsavedSessions} focusOnOpen={focusUnsavedSessions} />
       <div className="settings-footer-note">Settings save automatically.</div>
     </div>
   );

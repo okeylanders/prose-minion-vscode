@@ -64,6 +64,10 @@ export enum MessageType {
   TAB_CHANGED = 'tab_changed',
   SELECTION_UPDATED = 'selection_updated',
   OPEN_WORKSHOP = 'open_workshop',
+  LIST_UNSAVED_WORKSHOP_SESSIONS = 'list_unsaved_workshop_sessions',
+  OPEN_UNSAVED_WORKSHOP_SESSION = 'open_unsaved_workshop_session',
+  DELETE_UNSAVED_WORKSHOP_SESSION = 'delete_unsaved_workshop_session',
+  UNSAVED_WORKSHOP_SESSIONS_RESULT = 'unsaved_workshop_sessions_result',
   // eslint-disable-next-line @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum.
   OPEN_LIGHTBOX = 'open_lightbox',
   OPEN_ASSISTANT_SETTINGS = 'open_assistant_settings',
