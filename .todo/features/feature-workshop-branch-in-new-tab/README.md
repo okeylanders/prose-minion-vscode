@@ -1,4 +1,4 @@
-# Feature: Branch or Rewind Into a New Workshop Tab
+# Feature: Open a Saved Workshop Branch in a New Tab
 
 **Date Identified:** 2026-11-25
 **Status:** Idea. Small to medium, on top of [Workshop tabs](../feature-multiple-workshop-and-lightbox-tabs/README.md) (#9, Astra, `epic/workshop-tabs`). An addendum to the tabs ADR and to ADR 2026-09-30's D2, not a new ADR.
@@ -20,84 +20,19 @@
   command's destination behavior. A separate Branch into New Tab command can
   be considered after ordinary independent tabs work."
 
-## The insight: these are one operation
+## Agreed behavior
 
-"Rewind in a new tab" means "show me this room from that turn, and keep the
-original." That is what branching is. So there is one new operation:
+The existing **Branch from here** action saves a uniquely named branch at the selected turn, using the existing naming rules. Open that saved session in a new Workshop tab in the same editor group and give it focus. The source stays open with its full history and current draft. This applies to both pointer and keyboard activation of the existing button.
 
-**Branch in new tab.** The source tab stays exactly as it is. A new tab
-opens holding the room cut at that turn, by the same transform Rewind and
-Branch use (`rewindWorkshopSession`).
+Branch still requires a saved source and retains the existing checks for an active run or a changed source file. An unnamed room keeps the existing instruction to save before branching. Rewind continues to cut the current room in place.
 
-## Why tabs make it better than Branch
+## Completion criteria
 
-- **It works from an unsaved room.** With tabs, every unsaved room has its
-  own rolling checkpoint slot (tabs ADR D3), so nothing is overwritten. D2's
-  refusal doesn't apply to this destination.
-- **An unsaved room is durable now.** It survives a reload, and a closed
-  tab's room is listed in **Reopen Closed Workshop Room…** (D3, D3a).
-- **Side by side.** The writer can compare the two directions, or ask the
-  same question differently in each.
-- **A warm cache.** With [#37](../feature-workshop-session-cache-key/README.md)'s
-  K1, a branch keeps the routing key, so the new tab's first reply can read
-  the source's cached prefix from the same provider.
-
-## Idea
-
-1. **What the new tab holds** (B1, Ada's lean): **an unsaved room, from any
-   source, saved or not.**
-   - It works the same everywhere, and a quick try leaves no "— branch 3"
-     file behind.
-   - Save makes it a named session when it's worth keeping.
-   - Its tab title says where it came from ("Alice's tea party — branch,
-     unsaved"), as the tabs ADR asks titles to tell rooms apart.
-   - Because it copies the live room and writes no named file, Branch's
-     saved-source checks (saved, file on disk unchanged) don't apply. The
-     writer gets the room they see.
-2. **Default action (B2).** Clicking **Branch from here**, or activating
-   the same button with the keyboard, opens the branch in a new Workshop tab.
-   The source stays open at its current turn and keeps its draft. Rewind
-   continues to cut the current room in place. A link from Rewind's confirm
-   to the Branch action is a separate UI suggestion.
-3. **What the writer sees.** The new tab opens in the same editor group and
-   takes focus.
-   - A writer-bubble cut puts the message text back in the **new** tab's
-     composer, through the shared restore (`WORKSHOP_COMPOSER_DRAFT_RESTORED`).
-   - The source tab's composer and draft are untouched.
-   - Seeds and handoffs follow the most recently focused tab, so they go to
-     the new tab next (tabs ADR D5).
-4. **The rules it keeps.**
-   - It is refused while the source has a run active, through the same
-     rewindability check (`busy`).
-   - The source is never written and keeps its ownership claims.
-   - A to-do receipt's Undo stays with the room that made it; the copy
-     offers none, as Branch's copies don't today.
-   - Held passage-search results stay with the source room's instance.
-   - With no workspace folder or several roots, the new room lives in
-     memory, like any other tab (D3b). Branch is disabled there today; this
-     could work.
-
-## Decisions to make
-
-| # | Question | Ada's lean |
-|---|---|---|
-| B1 | Is the new tab's room unsaved, or a saved "— branch" session as Branch makes? | Unsaved, from any source; Save when it's worth keeping. Alternative: a saved branch from a saved source and an unsaved one from an unsaved source, which keeps Branch's meaning but gives two behaviors. |
-| B2 | What does **Branch from here** do by default? | Decided: open and focus a new Workshop tab on ordinary pointer or keyboard activation. |
-
-## Completion Criteria
-
-- [ ] Branch in new tab from a saved room and from an unsaved one opens a
-      new tab holding the cut room, and the source room, its file and its
-      claims are unchanged (tests).
-- [ ] A writer-bubble cut restores the message to the new tab's composer
-      only (test).
-- [ ] Refused while the source is running, with the existing reason (test).
-- [ ] The new tab's room survives a reload and a close and reopen (test,
-      through the tabs epic's slot rules).
-- [ ] Pointer and keyboard activation of **Branch from here** both open the branch in a new tab (tests).
-- [ ] The tabs ADR and ADR 2026-09-30 D2 are amended. The help section on
-      Rewind and Branch explains it.
-- [ ] Logs carry ids and outcomes, never a title or a message.
+- [ ] Branch from a saved session opens the newly named branch in its own tab, with history cut at the selected turn. The source and branch can continue independently.
+- [ ] A writer-bubble cut restores the composer draft in the branch. The source draft survives the action.
+- [ ] An unsaved source or active run gets the existing refusal before any file or tab is created.
+- [ ] Reloading restores both sessions in their respective tabs. With feature 37, retained conversations keep their routing keys across the cut.
+- [ ] Help and the Workshop tabs and Rewind/Branch ADRs describe the new destination.
 
 ## Related
 
