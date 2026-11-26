@@ -54,16 +54,11 @@ Branch use (`rewindWorkshopSession`).
    - Because it copies the live room and writes no named file, Branch's
      saved-source checks (saved, file on disk unchanged) don't apply. The
      writer gets the room they see.
-2. **Where it is offered** (B2, Ada's lean). No new button in the row: the
-   [row-thinning note](../feature-workshop-bubble-action-row-thinning/README.md)
-   says it is already busy.
-   - **"Branch from here" gains a chevron** with two items: "Branch here
-     (saved session)", today's behavior; and "Branch in new tab".
-   - **Ctrl/Cmd-click on Branch** is the shortcut, as a browser opens a
-     link in a new tab. It is never the only way in.
-   - **Rewind's confirm gains "Branch in new tab instead".** That is
-     exactly "rewind, but keep this one", offered at the moment the writer
-     asks to rewind. It replaces the copy that points to Branch today.
+2. **Default action (B2).** Clicking **Branch from here**, or activating
+   the same button with the keyboard, opens the branch in a new Workshop tab.
+   The source stays open at its current turn and keeps its draft. Rewind
+   continues to cut the current room in place. A link from Rewind's confirm
+   to the Branch action is a separate UI suggestion.
 3. **What the writer sees.** The new tab opens in the same editor group and
    takes focus.
    - A writer-bubble cut puts the message text back in the **new** tab's
@@ -87,7 +82,7 @@ Branch use (`rewindWorkshopSession`).
 | # | Question | Ada's lean |
 |---|---|---|
 | B1 | Is the new tab's room unsaved, or a saved "— branch" session as Branch makes? | Unsaved, from any source; Save when it's worth keeping. Alternative: a saved branch from a saved source and an unsaved one from an unsaved source, which keeps Branch's meaning but gives two behaviors. |
-| B2 | Where is it offered? | A chevron on Branch, Ctrl/Cmd-click as the shortcut, and "Branch in new tab instead" in Rewind's confirm. |
+| B2 | What does **Branch from here** do by default? | Decided: open and focus a new Workshop tab on ordinary pointer or keyboard activation. |
 
 ## Completion Criteria
 
@@ -99,9 +94,7 @@ Branch use (`rewindWorkshopSession`).
 - [ ] Refused while the source is running, with the existing reason (test).
 - [ ] The new tab's room survives a reload and a close and reopen (test,
       through the tabs epic's slot rules).
-- [ ] Rewind's confirm offers "Branch in new tab instead"; the chevron and
-      Ctrl/Cmd-click reach the same operation by keyboard and pointer
-      (tests).
+- [ ] Pointer and keyboard activation of **Branch from here** both open the branch in a new tab (tests).
 - [ ] The tabs ADR and ADR 2026-09-30 D2 are amended. The help section on
       Rewind and Branch explains it.
 - [ ] Logs carry ids and outcomes, never a title or a message.
