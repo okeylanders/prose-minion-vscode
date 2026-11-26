@@ -134,6 +134,31 @@ function nativeHost() {
 }
 
 describe('Workshop launchers with lazy native editors', () => {
+  it('materializes a dormant named owner by slot and reveals its editor without loading over the focused room', async () => {
+    const host = nativeHost();
+    const freshRoom = workshopPanelRooms().acquire;
+    const openNamed = jest.fn();
+    host.acquire.mockImplementation(id => {
+      const room = freshRoom(id);
+      Object.assign(room.services.workshopSessionPersistenceCoordinator, {
+        openRoomIdentity: () => ({ title: 'Same title', sessionId: id, namedSessionId: id === secondary ? 'saved-fox' : undefined }),
+        recallScope: () => ({ available: true, liveSessionId: id }),
+        openNamed
+      });
+      return room;
+    });
+    const dormant = host.hidden(secondary, originalType + '.tab', true);
+    host.provider.newWorkshopTab();
+    expect(host.active()).not.toBe(dormant);
+    await expect(host.provider.openRecentSession('saved-fox', () => true)).resolves.toBeUndefined();
+    expect(host.active()).toBe(dormant);
+    expect(host.serialized).toHaveBeenCalledWith(secondary);
+    expect(host.create).toHaveBeenCalledTimes(1);
+    expect(openNamed).not.toHaveBeenCalled();
+    await host.provider.openRecentSession('saved-fox', () => true);
+    expect(host.create).toHaveBeenCalledTimes(1);
+  });
+
   it.each([originalType, `${originalType}.primary`, `${originalType}.tab`])(
     '+ opens a new UUID slot when a %s tab exists but no panel has attached', async viewType => {
       const host = nativeHost();

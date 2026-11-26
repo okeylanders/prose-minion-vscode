@@ -1,6 +1,6 @@
 import * as React from 'react';
-import type { UnsavedWorkshopSessions } from '../../hooks/domain/useUnsavedWorkshopSessions';
-import { UnsavedWorkshopSessionDetails } from '../shared/UnsavedWorkshopSessionDetails';
+import type { UnsavedWorkshopSessions } from '../../hooks/domain/useWorkshopSessions';
+import { WorkshopSessionDetails } from '../shared/WorkshopSessionDetails';
 
 export const UnsavedWorkshopSessionsSettings = ({ sessions, focusOnOpen }: {
   sessions: UnsavedWorkshopSessions;
@@ -36,7 +36,7 @@ export const UnsavedWorkshopSessionsSettings = ({ sessions, focusOnOpen }: {
       {!!sessions.rows.length && <ul className="unsaved-sessions-well" aria-label="Unsaved sessions" aria-busy={sessions.busy}>
         {sessions.rows.map((row, index) => (
           <li key={row.token}>
-            <UnsavedWorkshopSessionDetails row={row} />
+            <WorkshopSessionDetails row={row} />
             {confirmToken === row.token && row.canDelete ? (
               <div className="unsaved-session-confirm" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); cancel(); } }}>
                 <p>Delete this unsaved session?</p>

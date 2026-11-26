@@ -29,7 +29,7 @@ import { getWebviewHtml } from './webviewHtml';
 
 const MAX_RECEIVER = 80;
 
-export interface WorkshopBranchOpening {
+export interface WorkshopNamedOpening {
   sessionId: string;
   drafts: readonly WorkshopBranchDraftMessage[];
 }
@@ -82,7 +82,7 @@ export class WorkshopPanelTab {
     onClose: () => void,
     private readonly onTitleChange: () => void,
     readonly scratchTitle: string,
-    private branch?: WorkshopBranchOpening
+    private namedOpening?: WorkshopNamedOpening
   ) {
     this.title = scratchTitle;
     panel.title = scratchTitle;
@@ -109,8 +109,8 @@ export class WorkshopPanelTab {
     // Stamp the serialized slot as soon as the shell can run, including when disk hydration is slow.
     // Buffer early routes behind the same barrier as external excerpts; close abandons them all.
     this.ready = roomReady.then(async () => {
-      if (!this.closed && this.branch) {
-        await this.coreServices.workshopSessionPersistenceCoordinator.openNamed(this.branch.sessionId);
+      if (!this.closed && this.namedOpening) {
+        await this.coreServices.workshopSessionPersistenceCoordinator.openNamed(this.namedOpening.sessionId);
       }
       if (!this.closed) {
         this.mountHandler();
@@ -171,7 +171,7 @@ export class WorkshopPanelTab {
       this.uiActions
     );
     const unsubscribe = this.coreServices.workshopSessionPersistenceCoordinator.onRoomReplaced(() => {
-      this.branch = undefined;
+      this.namedOpening = undefined;
       Object.values(this.seedDeliveries).forEach(delivery => delivery.close('room-changed'));
     });
     this.subscriptions.push({ dispose: unsubscribe });
@@ -218,14 +218,19 @@ export class WorkshopPanelTab {
     const handled = this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);
     // The mount request comes from a listening webview. Synthetic focus refreshes
     // never consume a branch draft, and replacing the room cancels a pending one.
-    const branch = this.branch;
+    const branch = this.namedOpening;
     if (branch && shape?.type === MessageType.WORKSHOP_REQUEST_SESSION && handled) {
       void handled.then(() => {
-        if (this.closed || this.branch !== branch) { return; }
-        this.branch = undefined;
+        if (this.closed || this.namedOpening !== branch) { return; }
+        this.namedOpening = undefined;
         for (const draft of branch.drafts) { void panel.webview.postMessage(draft); }
       });
     }
+  }
+
+  ownsNamedSession(sessionId: string): boolean {
+    const sessions = this.coreServices.workshopSessionPersistenceCoordinator;
+    return !this.closed && sessions.openRoomIdentity().namedSessionId === sessionId && sessions.recallScope().available;
   }
 
   /** Follow the Sessions browser's normal named-open transaction in this new, hydrated slot. */

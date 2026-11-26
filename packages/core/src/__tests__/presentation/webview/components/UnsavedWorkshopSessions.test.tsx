@@ -4,7 +4,7 @@ import * as React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { App } from '@/presentation/webview/App';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
-import { MessageType, type UnsavedWorkshopSessionRow } from '@messages';
+import { MessageType, type RecentWorkshopSessionRow, type UnsavedWorkshopSessionRow } from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 jest.mock('@hooks/useVSCodeApi');
@@ -17,7 +17,13 @@ const rows: UnsavedWorkshopSessionRow[] = Array.from({ length: 7 }, (_, index) =
   canDelete: index !== 0
 }));
 
-describe('Unsaved Sessions in the sidebar', () => {
+const recentRows: RecentWorkshopSessionRow[] = Array.from({ length: 4 }, (_, index) => ({
+  token: 'saved-token-' + index,
+  title: 'Saved project ' + index,
+  updatedAt: '2026-11-12T09:10:00Z'
+}));
+
+describe('Workshop sessions in the sidebar', () => {
   let vscode: ReturnType<typeof createMockVSCode>;
   beforeEach(() => {
     vscode = createMockVSCode();
@@ -30,9 +36,14 @@ describe('Unsaved Sessions in the sidebar', () => {
     fireEvent(window, new MessageEvent('message', { data: {
       type: MessageType.UNSAVED_WORKSHOP_SESSIONS_RESULT, payload: { requestId, rows: available, error }
     } }));
-  const chevron = () => screen.getByRole('button', { name: 'Unsaved Sessions' });
-  const openMenu = () => {
+  const recentResult = (requestId: string, available: RecentWorkshopSessionRow[], error?: string) =>
+    fireEvent(window, new MessageEvent('message', { data: {
+      type: MessageType.RECENT_WORKSHOP_SESSIONS_RESULT, payload: { requestId, rows: available, error }
+    } }));
+  const chevron = () => screen.getByRole('button', { name: 'Workshop sessions' });
+  const openMenu = (recent: RecentWorkshopSessionRow[] = []) => {
     fireEvent.click(chevron());
+    recentResult(request(MessageType.LIST_RECENT_WORKSHOP_SESSIONS).requestId, recent);
     return request(MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS).requestId as string;
   };
 
@@ -45,7 +56,7 @@ describe('Unsaved Sessions in the sidebar', () => {
     result(old, []);
     expect(screen.getByRole('status').textContent).toMatch(/Loading sessions/);
     result(current, rows);
-    const menu = screen.getByRole('menu', { name: 'Unsaved Sessions' });
+    const menu = screen.getByRole('menu', { name: 'Workshop sessions' });
     const choices = within(menu).getAllByRole('menuitem');
     expect(choices).toHaveLength(8);
     expect(choices[0].textContent).toContain('Excerpt 0');
@@ -71,6 +82,64 @@ describe('Unsaved Sessions in the sidebar', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: /Scene 1/ }));
     result(request(MessageType.OPEN_UNSAVED_WORKSHOP_SESSION).requestId, []);
     expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('orders the three recent saved choices above all unsaved rooms and opens the selected saved session', () => {
+    render(<App />);
+    result(openMenu(recentRows), rows);
+    const menu = screen.getByRole('menu');
+    const groups = within(menu).getAllByRole('group');
+    expect(groups).toEqual([
+      within(menu).getByRole('group', { name: 'Recent Saved Sessions' }),
+      within(menu).getByRole('group', { name: 'Unsaved Sessions' })
+    ]);
+    const saved = within(groups[0]).getAllByRole('menuitem');
+    const unsaved = within(groups[1]).getAllByRole('menuitem');
+    expect(saved.map(choice => choice.querySelector('strong')?.textContent)).toEqual(recentRows.slice(0, 3).map(row => row.title));
+    expect(saved[0].querySelector('time')?.dateTime).toBe(recentRows[0].updatedAt);
+    expect(unsaved).toHaveLength(rows.length);
+    expect(document.activeElement).toBe(saved[0]);
+    fireEvent.keyDown(saved[0], { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(within(menu).getByRole('menuitem', { name: 'Manage…' }));
+    fireEvent.keyDown(menu, { key: 'Home' });
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(unsaved[0]);
+    fireEvent.keyDown(menu, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(saved[2]);
+    fireEvent.click(saved[2]);
+    const opening = request(MessageType.OPEN_RECENT_WORKSHOP_SESSION);
+    expect(opening.token).toBe(recentRows[2].token);
+    expect(request(MessageType.OPEN_UNSAVED_WORKSHOP_SESSION)).toBeUndefined();
+    recentResult(opening.requestId, []);
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('correlates each section independently, and keeps unsaved rooms available when recents fail', () => {
+    render(<App />);
+    fireEvent.click(chevron());
+    const old = request(MessageType.LIST_RECENT_WORKSHOP_SESSIONS);
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+    fireEvent.click(chevron());
+    const current = request(MessageType.LIST_RECENT_WORKSHOP_SESSIONS);
+    const unsaved = request(MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS);
+    result(unsaved.requestId, [rows[2]]);
+    recentResult(old.requestId, [recentRows[0]]);
+    recentResult(unsaved.requestId, [recentRows[0]]);
+    const savedGroup = within(screen.getByRole('group', { name: 'Recent Saved Sessions' }));
+    expect(savedGroup.getByRole('status')).toBeTruthy();
+    expect(savedGroup.queryByRole('menuitem')).toBeNull();
+    recentResult(current.requestId, [recentRows[1]]);
+    fireEvent.click(savedGroup.getByRole('menuitem', { name: /Saved project 1/ }));
+    const opening = request(MessageType.OPEN_RECENT_WORKSHOP_SESSION);
+    recentResult(opening.requestId, [], 'Saved session is unavailable');
+    expect(savedGroup.getByRole('alert').textContent).toBe('Saved session is unavailable');
+    expect(screen.getByRole('menuitem', { name: /Scene 2/ })).toBeTruthy();
+    fireEvent.click(savedGroup.getByRole('menuitem', { name: 'Retry' }));
+    recentResult(request(MessageType.LIST_RECENT_WORKSHOP_SESSIONS).requestId, []);
+    expect(savedGroup.getByText('No recent saved sessions.')).toBeTruthy();
+    expect(request(MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS)).toEqual(unsaved);
   });
 
   it('fits the popup and its Manage footer inside the sidebar scrollbars', () => {
@@ -101,9 +170,9 @@ describe('Unsaved Sessions in the sidebar', () => {
     }
   });
 
-  it('takes Manage to the Settings section and requires confirmation before removing one room', () => {
+  it('takes Manage to the unsaved-only Settings section and requires confirmation before removing one room', () => {
     render(<App />);
-    result(openMenu(), rows);
+    result(openMenu(recentRows), rows);
     fireEvent.click(screen.getByRole('menuitem', { name: 'Manage…' }));
     const section = screen.getByRole('region', { name: 'Unsaved Sessions' });
     expect(document.activeElement).toBe(within(section).getByRole('heading'));
@@ -111,6 +180,7 @@ describe('Unsaved Sessions in the sidebar', () => {
     result(reply.requestId, rows);
     const actions = within(section);
     expect(actions.getAllByRole('listitem')).toHaveLength(7);
+    expect(actions.queryByText(recentRows[0].title)).toBeNull();
     expect((actions.getByRole('button', { name: 'Delete Scene 0' }) as HTMLButtonElement).disabled).toBe(true);
     const remove = () => actions.getByRole('button', { name: 'Delete Scene 1' });
     fireEvent.click(remove());

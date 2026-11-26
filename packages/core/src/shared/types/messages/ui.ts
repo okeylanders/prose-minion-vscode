@@ -248,3 +248,30 @@ export interface UnsavedWorkshopSessionsResultPayload {
 export interface UnsavedWorkshopSessionsResultMessage extends MessageEnvelope<UnsavedWorkshopSessionsResultPayload> {
   type: MessageType.UNSAVED_WORKSHOP_SESSIONS_RESULT;
 }
+
+/** The launcher opens a listed named session by its workspace-scoped ticket. */
+export interface RecentWorkshopSessionRow {
+  token: string;
+  title: string;
+  updatedAt: string;
+}
+
+export interface ListRecentWorkshopSessionsMessage extends MessageEnvelope<{ requestId: string }> {
+  type: MessageType.LIST_RECENT_WORKSHOP_SESSIONS;
+}
+
+export interface OpenRecentWorkshopSessionMessage extends MessageEnvelope<{ requestId: string; token: string }> {
+  type: MessageType.OPEN_RECENT_WORKSHOP_SESSION;
+}
+
+export type RecentWorkshopSessionsRequest = ListRecentWorkshopSessionsMessage | OpenRecentWorkshopSessionMessage;
+
+export interface RecentWorkshopSessionsResultPayload {
+  requestId: string;
+  rows: RecentWorkshopSessionRow[];
+  error?: string;
+}
+
+export interface RecentWorkshopSessionsResultMessage extends MessageEnvelope<RecentWorkshopSessionsResultPayload> {
+  type: MessageType.RECENT_WORKSHOP_SESSIONS_RESULT;
+}

@@ -1,29 +1,64 @@
 import * as React from 'react';
 import { Icon } from '../shared/Icon';
-import { UnsavedWorkshopSessionDetails } from '../shared/UnsavedWorkshopSessionDetails';
-import type { UnsavedWorkshopSessions } from '../../hooks/domain/useUnsavedWorkshopSessions';
+import { WorkshopSessionDetails } from '../shared/WorkshopSessionDetails';
+import type { RecentWorkshopSessions, UnsavedWorkshopSessions } from '../../hooks/domain/useWorkshopSessions';
 
 type Props = {
-  sessions: UnsavedWorkshopSessions;
+  recentSessions: RecentWorkshopSessions;
+  unsavedSessions: UnsavedWorkshopSessions;
   launch: (newTab?: boolean) => void;
   manage: () => void;
 };
 
-export const WorkshopLauncher = ({ sessions, launch, manage }: Props) => {
+type SessionMenuSectionProps = {
+  heading: string;
+  empty: string;
+  sessions: RecentWorkshopSessions | UnsavedWorkshopSessions;
+  limit?: number;
+  opening: boolean;
+  disabled: boolean;
+  onOpen: (token: string) => void;
+  onRetry: () => void;
+};
+
+const SessionMenuSection = ({ heading, empty, sessions, limit, opening, disabled, onOpen, onRetry }: SessionMenuSectionProps) => {
+  const headingId = React.useId();
+  const rows = limit === undefined ? sessions.rows : sessions.rows.slice(0, limit);
+  return (
+    <div role="group" aria-labelledby={headingId} className="workshop-session-menu-group">
+      <div id={headingId} className="unsaved-sessions-caption">{heading}</div>
+      {sessions.error && <>
+        <p role="alert" className="unsaved-sessions-message">{sessions.error}</p>
+        <button type="button" role="menuitem" tabIndex={-1} className="unsaved-session-choice" disabled={disabled} onClick={onRetry}>Retry</button>
+      </>}
+      {sessions.busy && <p role="status" className="unsaved-sessions-message">{opening ? 'Opening session…' : 'Loading sessions…'}</p>}
+      {!sessions.busy && !sessions.error && !rows.length && <p className="unsaved-sessions-message">{empty}</p>}
+      {!sessions.busy && rows.map(row => (
+        <button type="button" role="menuitem" tabIndex={-1} key={row.token} className="unsaved-session-choice" disabled={disabled} onClick={() => onOpen(row.token)}>
+          <WorkshopSessionDetails row={row} />
+        </button>
+      ))}
+    </div>
+  );
+};
+
+export const WorkshopLauncher = ({ recentSessions, unsavedSessions, launch, manage }: Props) => {
   const [expanded, setExpanded] = React.useState(false);
-  const [opening, setOpening] = React.useState(false);
+  const [opening, setOpening] = React.useState<'recent' | 'unsaved'>();
+  const openingList = opening === 'recent' ? recentSessions : unsavedSessions;
   const anchor = React.useRef<HTMLDivElement>(null);
   const chevron = React.useRef<HTMLButtonElement>(null);
   const menu = React.useRef<HTMLDivElement>(null);
   const menuId = React.useId();
   React.useEffect(() => {
-    if (expanded && !opening && !sessions.busy && document.activeElement === menu.current) {
+    if (expanded && !opening && !recentSessions.busy && !unsavedSessions.busy && document.activeElement === menu.current) {
       menu.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus();
     }
-  }, [expanded, opening, sessions.busy]);
+  }, [expanded, opening, recentSessions.busy, unsavedSessions.busy]);
   const show = () => {
-    setOpening(false);
-    sessions.refresh();
+    setOpening(undefined);
+    recentSessions.refresh();
+    unsavedSessions.refresh();
     setExpanded(true);
   };
   const close = () => {
@@ -76,11 +111,21 @@ export const WorkshopLauncher = ({ sessions, launch, manage }: Props) => {
   }, [expanded]);
 
   React.useEffect(() => {
-    if (opening && !sessions.busy) {
-      if (!sessions.error) { setExpanded(false); }
-      setOpening(false);
+    if (opening && !openingList.busy) {
+      if (!openingList.error) { setExpanded(false); }
+      setOpening(undefined);
     }
-  }, [opening, sessions.busy, sessions.error]);
+  }, [opening, openingList.busy, openingList.error]);
+
+  const openSession = (section: 'recent' | 'unsaved', token: string) => {
+    menu.current?.focus();
+    setOpening(section);
+    (section === 'recent' ? recentSessions : unsavedSessions).open(token);
+  };
+  const retry = (sessions: RecentWorkshopSessions | UnsavedWorkshopSessions) => {
+    menu.current?.focus();
+    sessions.refresh();
+  };
 
   const navigate = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') { event.preventDefault(); close(); return; }
@@ -108,30 +153,18 @@ export const WorkshopLauncher = ({ sessions, launch, manage }: Props) => {
         </button>
         <button type="button" className="btn btn-secondary surface-launch-button" onClick={() => launch(true)}
           aria-label="New Workshop tab" title="New Workshop tab"><Icon name="plus" size={14} /></button>
-        <button ref={chevron} id="workshop-unsaved-sessions-toggle" type="button" className="btn btn-secondary surface-launch-button" aria-label="Unsaved Sessions"
-          title="Unsaved Sessions" aria-haspopup="menu" aria-expanded={expanded} aria-controls={expanded ? menuId : undefined}
+        <button ref={chevron} id="workshop-unsaved-sessions-toggle" type="button" className="btn btn-secondary surface-launch-button" aria-label="Workshop sessions"
+          title="Workshop sessions" aria-haspopup="menu" aria-expanded={expanded} aria-controls={expanded ? menuId : undefined}
           onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); show(); } }}
           onClick={() => expanded ? close() : show()}><Icon name="chevDown" size={14} /></button>
       </div>
       {expanded && (
-        <div ref={menu} id={menuId} className="unsaved-sessions-menu" role="menu" aria-label="Unsaved Sessions" tabIndex={-1} onKeyDown={navigate}>
-          <div className="unsaved-sessions-caption">Unsaved Sessions</div>
-          <div className="unsaved-sessions-menu-list" role="group" aria-label="Closed sessions">
-            {sessions.error && <>
-              <p role="alert" className="unsaved-sessions-message">{sessions.error}</p>
-              <button type="button" role="menuitem" tabIndex={-1} className="unsaved-session-choice" onClick={() => { menu.current?.focus(); sessions.refresh(); }}>Retry</button>
-            </>}
-            {sessions.busy && <p role="status" className="unsaved-sessions-message">{opening ? 'Opening session…' : 'Loading sessions…'}</p>}
-            {!sessions.busy && !sessions.error && !sessions.rows.length && <p className="unsaved-sessions-message">No unsaved sessions.</p>}
-            {!sessions.busy && sessions.rows.map(row => (
-              <button type="button" role="menuitem" tabIndex={-1} key={row.token} className="unsaved-session-choice" onClick={() => {
-                menu.current?.focus();
-                setOpening(true);
-                sessions.open(row.token);
-              }}>
-                <UnsavedWorkshopSessionDetails row={row} />
-              </button>
-            ))}
+        <div ref={menu} id={menuId} className="unsaved-sessions-menu" role="menu" aria-label="Workshop sessions" tabIndex={-1} onKeyDown={navigate}>
+          <div className="unsaved-sessions-menu-list">
+            <SessionMenuSection heading="Recent Saved Sessions" empty="No recent saved sessions." sessions={recentSessions}
+              limit={3} opening={opening === 'recent'} disabled={!!opening} onOpen={token => openSession('recent', token)} onRetry={() => retry(recentSessions)} />
+            <SessionMenuSection heading="Unsaved Sessions" empty="No unsaved sessions." sessions={unsavedSessions}
+              opening={opening === 'unsaved'} disabled={!!opening} onOpen={token => openSession('unsaved', token)} onRetry={() => retry(unsavedSessions)} />
           </div>
           <button type="button" role="menuitem" tabIndex={-1} className="unsaved-sessions-manage" onClick={() => { setExpanded(false); manage(); }}>
             <Icon name="gear" size={14} /> Manage…

@@ -55,9 +55,9 @@ function editorPanel(activatePanel: () => void) {
       focus();
     }),
     dispose() { closed?.(); },
-    async send(type: MessageType, payload = {}) {
+    async send(type: MessageType, payload = {}, source = 'webview.workshop') {
       await ready.promise;
-      const msg = { type, source: 'webview.workshop', payload, timestamp: Date.now() };
+      const msg = { type, source, payload, timestamp: Date.now() };
       const completed = deferred<void>();
       deliveries.set(msg, completed);
       receive(msg);
@@ -81,6 +81,7 @@ describe.each([
   { shape: 'two roots before first attachment', folders: ['Book', 'Other'] }
 ])('activated Workshop rooms with $shape', ({ folders, shape }) => {
   const panels: ReturnType<typeof editorPanel>[] = [];
+  const views = jest.fn((_type: string, _provider: vscode.WebviewViewProvider) => unsub());
   const serializers = jest.fn((_type: string, _provider: vscode.WebviewPanelSerializer) => unsub());
   const commands = new Map<string, () => unknown>();
   const subscriptions: vscode.Disposable[] = [];
@@ -103,7 +104,7 @@ describe.each([
     Object.assign(vscode.window, {
       showTextDocument: async () => undefined,
       onDidChangeTextEditorSelection: unsub, onDidChangeActiveTextEditor: unsub,
-      registerWebviewPanelSerializer: serializers, registerWebviewViewProvider: unsub,
+      registerWebviewPanelSerializer: serializers, registerWebviewViewProvider: views,
       createWebviewPanel: () => {
         const panel = editorPanel(() => {
           panels.forEach(other => { other.active = other === panel; });
@@ -673,6 +674,53 @@ describe.each([
       }
     } finally {
       transport.mockRestore();
+    }
+  });
+
+  it('opens a closed saved sidebar row in its own room and reveals it on the next open', async () => {
+    const original = await open('newWorkshopTab', 'The wind raised the last page.');
+    await original.send(MessageType.WORKSHOP_SAVE_SESSION, { title: 'Open from recents' });
+    const scratch = await open('newWorkshopTab', 'Keep this writer’s draft.');
+    original.dispose();
+    const scratchRevision = scratch.snapshot().roomRevision;
+    const prior = panels.length;
+
+    const sidebar = Object.assign(editorPanel(() => {}), { onDidChangeVisibility: unsub });
+    const [, view] = views.mock.calls[0];
+    await view.resolveWebviewView(sidebar as unknown as vscode.WebviewView,
+      {} as vscode.WebviewViewResolveContext, {} as vscode.CancellationToken);
+    try {
+      await sidebar.send(MessageType.LIST_RECENT_WORKSHOP_SESSIONS, { requestId: 'list' }, 'webview.ui');
+      const listing = sidebar.posted.find(msg => msg.type === MessageType.RECENT_WORKSHOP_SESSIONS_RESULT);
+      if (listing?.type !== MessageType.RECENT_WORKSHOP_SESSIONS_RESULT) { throw new Error('Missing sidebar result'); }
+      expect(listing.payload.requestId).toBe('list');
+      const row = listing.payload.rows.find(entry => entry.title === 'Open from recents')!;
+      expect(Object.keys(row).sort()).toEqual(['title', 'token', 'updatedAt']);
+      await sidebar.send(MessageType.OPEN_RECENT_WORKSHOP_SESSION, { requestId: 'open', token: row.token }, 'webview.ui');
+      expect(sidebar.posted.at(-1)?.payload).toEqual({ requestId: 'open', rows: [] });
+      expect(panels).toHaveLength(prior + 1);
+      const named = panels.at(-1)!;
+      await named.send(MessageType.WORKSHOP_REQUEST_SESSION);
+      expect(named.snapshot().excerpt?.text).toBe('The wind raised the last page.');
+      expect(scratch.snapshot().roomRevision).toBe(scratchRevision);
+      expect(scratch.snapshot().excerpt?.text).toBe('Keep this writer’s draft.');
+
+      scratch.reveal();
+      await sidebar.send(MessageType.OPEN_RECENT_WORKSHOP_SESSION, { requestId: 'again', token: row.token }, 'webview.ui');
+      expect(panels).toHaveLength(prior + 1);
+      expect(named.active).toBe(true);
+
+      const originalFolders = vscode.workspace.workspaceFolders;
+      try {
+        Object.assign(vscode.workspace, { workspaceFolders: [{ name: 'Other', uri: vscode.Uri.file('/Other') }] });
+        await sidebar.send(MessageType.OPEN_RECENT_WORKSHOP_SESSION, { requestId: 'stale', token: row.token }, 'webview.ui');
+        expect(sidebar.posted.at(-1)?.payload).toMatchObject({ requestId: 'stale', rows: [], error: expect.stringMatching(/changed/) });
+        expect(panels).toHaveLength(prior + 1);
+      } finally {
+        Object.assign(vscode.workspace, { workspaceFolders: originalFolders });
+      }
+    } finally {
+      sidebar.dispose();
     }
   });
 

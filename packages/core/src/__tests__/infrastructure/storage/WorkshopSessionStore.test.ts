@@ -832,6 +832,72 @@ describe('WorkshopSessionStore', () => {
     await expect(store.readCurrent()).resolves.toMatchObject({ sessionId: 'only-current' });
   });
 
+  it('finds recent updates beyond 200 filenames without reading indexed histories or rolling checkpoints', async () => {
+    const store = createStore();
+    const template = session('template', 'Template');
+    const day = '2026-07-23';
+    // Real old named files keep their original names when the writer edits them.
+    for (let index = 0; index < 205; index++) {
+      const id = `session-${String(index).padStart(3, '0')}`;
+      const updatedAt = index === 0 ? '2026-07-26T10:00:00.000Z' : day + 'T10:00:00.000Z';
+      const fileName = `${id}.json`;
+      const savedAt = index === 204 ? '2026-07-30T10:00:00.000Z' : updatedAt;
+      fileSystem.setJson(path.join(sessionsDirectory, fileName), { ...template, sessionId: id, title: id, updatedAt, savedAt });
+      fileSystem.setJson(path.join(sessionsDirectory, fileName.replace('.json', '.summary.json')), {
+        schemaVersion: 1, fileName, sessionId: id, title: id, updatedAt, savedAt, createdAt: template.createdAt,
+        startedAt: template.temporal.startedAt, timezone: template.temporal.timezone, summary: template.summary
+      });
+    }
+    // Include one valid old checkpoint with no sidecar and one with a damaged sidecar.
+    const damagedIndexName = '2002-old-room.json';
+    fileSystem.setJson(path.join(sessionsDirectory, damagedIndexName), {
+      ...template, sessionId: 'legacy-b', updatedAt: '2026-07-25T10:00:00.000Z'
+    });
+    fileSystem.setJson(path.join(sessionsDirectory, damagedIndexName.replace('.json', '.summary.json')), {});
+    const legacyName = '2001-old-room.json';
+    fileSystem.setJson(path.join(sessionsDirectory, legacyName), {
+      ...template, schemaVersion: 1, sessionId: 'legacy-a', updatedAt: '2026-07-25T10:00:00.000Z'
+    });
+    await store.writeCurrent({ ...template, updatedAt: '2026-07-31T10:00:00.000Z' });
+    await store.forRoom(roomId).writeCurrent({ ...template, updatedAt: '2026-07-31T10:00:00.000Z' });
+    fileSystem.readFileCalls.length = 0;
+
+    const recent = await store.listRecentNamed();
+    expect(recent.map(({ sessionId, updatedAt }) => [sessionId, updatedAt])).toEqual([
+      ['session-000', '2026-07-26T10:00:00.000Z'],
+      ['legacy-a', '2026-07-25T10:00:00.000Z'],
+      ['legacy-b', '2026-07-25T10:00:00.000Z']
+    ]);
+    expect(fileSystem.readFileCalls.filter(name => !name.endsWith('.summary.json')).sort())
+      .toEqual([legacyName, damagedIndexName].map(name => path.join(sessionsDirectory, name)));
+  });
+
+  it('uses browser byte limits for unindexed recents, omits orphan indexes, and stops on cancellation', async () => {
+    const store = createStore([root], { maximumFiles: 1, maximumFileBytes: 10,
+      maximumExactFileBytes: 100_000, maximumSearchCharacters: 100, maximumNameCollisions: 10 });
+    const saved = await store.saveNamed(session('indexed', 'Indexed'));
+    fileSystem.setJson(path.join(sessionsDirectory, 'too-large.json'), session('legacy', 'Large legacy'));
+    fileSystem.setJson(path.join(sessionsDirectory, 'orphan.summary.json'), {});
+    fileSystem.readFileCalls.length = 0;
+    await expect(store.listRecentNamed()).resolves.toEqual([saved]);
+    expect(fileSystem.readFileCalls.every(name => name.endsWith('.summary.json'))).toBe(true);
+    const aborted = new AbortController();
+    aborted.abort();
+    await expect(store.listRecentNamed(aborted.signal)).rejects.toHaveProperty('name', 'AbortError');
+    await expect(createStore([]).listRecentNamed()).resolves.toEqual([]);
+    await expect(createStore([root, '/second']).listRecentNamed()).resolves.toEqual([]);
+  });
+
+  it('does not give a recent row authority to open an ambiguous saved identity', async () => {
+    const store = createStore();
+    fileSystem.setJson(path.join(sessionsDirectory, 'first.json'), session('same-id', 'Older copy'));
+    fileSystem.setJson(path.join(sessionsDirectory, 'second.json'), session('same-id', 'Later copy', {
+      updatedAt: '2026-07-25T10:00:00.000Z'
+    }));
+    expect((await store.listRecentNamed()).map(row => row.title)).toEqual(['Later copy']);
+    await expect(store.readNamed('same-id')).rejects.toHaveProperty('name', 'WorkshopNamedSessionIdentityConflictError');
+  });
+
   it('reports browser truncation at the configured file bound without scanning past it', async () => {
     const store = createStore([root], {
       maximumFiles: 1,

@@ -31,7 +31,7 @@ import { useDictionaryHistory } from './hooks/domain/useDictionaryHistory';
 import { useContext } from './hooks/domain/useContext';
 import { useSearch } from './hooks/domain/useSearch';
 import { usePassageSearch } from './hooks/domain/usePassageSearch';
-import { useUnsavedWorkshopSessions } from './hooks/domain/useUnsavedWorkshopSessions';
+import { useRecentWorkshopSessions, useUnsavedWorkshopSessions } from './hooks/domain/useWorkshopSessions';
 import { useSettings } from './hooks/domain/useSettings';
 import { useSelection } from './hooks/domain/useSelection';
 import { usePublishingSettings } from './hooks/domain/usePublishingSettings';
@@ -60,6 +60,7 @@ export const App: React.FC = () => {
   const search = useSearch();
   const passageSearch = usePassageSearch();
   const settings = useSettings();
+  const recentSessions = useRecentWorkshopSessions();
   const unsavedSessions = useUnsavedWorkshopSessions();
   const [focusUnsavedSessions, setFocusUnsavedSessions] = React.useState(false);
   React.useEffect(() => {
@@ -115,6 +116,7 @@ export const App: React.FC = () => {
     context,
     search,
     passageSearch,
+    recentSessions,
     unsavedSessions,
     settings,
     selection,
@@ -310,6 +312,7 @@ export const App: React.FC = () => {
           >
             <AnalysisTab
               vscode={vscode}
+              recentSessions={recentSessions}
               unsavedSessions={unsavedSessions}
               onManageUnsavedSessions={() => { setFocusUnsavedSessions(true); settings.open(); }}
               analysis={analysis}

@@ -17,6 +17,7 @@ import { ProseToolsViewProvider } from './application/providers/ProseToolsViewPr
 import { WorkshopRoomPresence } from './application/WorkshopRoomPresence';
 import { WorkshopRoomRegistry } from './application/WorkshopRoomRegistry';
 import { WorkshopPanelProvider } from './application/providers/WorkshopPanelProvider';
+import { WorkshopRecentSessions } from './application/providers/WorkshopRecentSessions';
 import { LightboxPanelProvider } from './application/providers/LightboxPanelProvider';
 // Core services + the Platform port type — imported via the public barrel only
 // (ADR 2026-06-16 monorepo boundary; enforced by eslint no-restricted-imports).
@@ -791,6 +792,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Migrate API key from settings to SecretStorage if needed
   void migrateApiKeyToSecrets(secretsService, outputChannel);
 
+  const recentSessions = new WorkshopRecentSessions(sessionStore, async (id, currentWorkspace) => {
+    if (!workshopPanelProvider) { return 'Workshop is unavailable.'; }
+    return workshopPanelProvider.openRecentSession(id, currentWorkspace);
+  });
+
   // Initialize application layer
   proseToolsViewProvider = new ProseToolsViewProvider(
     context.extensionUri,
@@ -799,6 +805,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     platform,
     {
       surface: 'sidebar',
+      recentWorkshopSessions: request => recentSessions.handle(request),
       unsavedWorkshopSessions: request => workshopPanelProvider?.unsavedSessions.handle(request)
         ?? Promise.resolve({ rows: [], error: 'Workshop is unavailable.' }),
       openWorkshop: () => workshopPanelProvider?.openOrReveal(),

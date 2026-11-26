@@ -15,7 +15,7 @@ import * as React from 'react';
 import { MessageType, TabId } from '@shared/types';
 import { useMessageRouter, MessageHandlerMap } from './useMessageRouter';
 
-import type { UnsavedWorkshopSessions } from './domain/useUnsavedWorkshopSessions';
+import type { RecentWorkshopSessions, UnsavedWorkshopSessions } from './domain/useWorkshopSessions';
 import { UseAnalysisReturn } from './domain/useAnalysis';
 import { UseMetricsReturn } from './domain/useMetrics';
 import { UseDictionaryReturn } from './domain/useDictionary';
@@ -39,6 +39,7 @@ import { UseAccountBalanceReturn } from './domain/useAccountBalance';
 /** Everything the route map closes over: the domain hooks + the two UI setters. */
 export interface AppMessageRouterDeps {
   analysis: UseAnalysisReturn;
+  recentSessions: RecentWorkshopSessions;
   unsavedSessions: UnsavedWorkshopSessions;
   metrics: UseMetricsReturn;
   dictionary: UseDictionaryReturn;
@@ -76,6 +77,7 @@ export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandle
   } = deps;
 
   return {
+    [MessageType.RECENT_WORKSHOP_SESSIONS_RESULT]: deps.recentSessions.receive,
     [MessageType.UNSAVED_WORKSHOP_SESSIONS_RESULT]: deps.unsavedSessions.receive,
     [MessageType.SELECTION_UPDATED]: (msg) => selection.handleSelectionUpdated(msg, setActiveTab),
     [MessageType.SELECTION_DATA]: (msg) => selection.handleSelectionData(msg, setActiveTab, context.setContextText),

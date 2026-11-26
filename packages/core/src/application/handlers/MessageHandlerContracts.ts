@@ -21,6 +21,8 @@ import type {
   SearchResultMessage,
   StatusMessage,
   TokenUsageUpdateMessage,
+  RecentWorkshopSessionsRequest,
+  RecentWorkshopSessionsResultPayload,
   UnsavedWorkshopSessionsRequest,
   UnsavedWorkshopSessionsResultPayload,
   WorkshopComposerDraftRestoredMessage,
@@ -97,6 +99,8 @@ export type WorkshopBranchDraftMessage = WorkshopComposerDraftRestoredMessage | 
  * growing anonymous callback bags at each boundary.
  */
 export interface WorkshopUiActions {
+  recentWorkshopSessions?: (request: RecentWorkshopSessionsRequest) =>
+    Promise<Omit<RecentWorkshopSessionsResultPayload, 'requestId'>>;
   /** Present only for the sidebar's launcher and Settings page. */
   unsavedWorkshopSessions?: (request: UnsavedWorkshopSessionsRequest) =>
     Promise<Omit<UnsavedWorkshopSessionsResultPayload, 'requestId'>>;

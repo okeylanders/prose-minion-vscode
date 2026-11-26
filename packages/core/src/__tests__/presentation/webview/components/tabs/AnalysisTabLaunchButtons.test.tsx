@@ -11,7 +11,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { AnalysisTab } from '@components/tabs/AnalysisTab';
 import { useAnalysis } from '@hooks/domain/useAnalysis';
 import { useContext } from '@hooks/domain/useContext';
-import { useUnsavedWorkshopSessions } from '@hooks/domain/useUnsavedWorkshopSessions';
+import { useRecentWorkshopSessions, useUnsavedWorkshopSessions } from '@hooks/domain/useWorkshopSessions';
 import { useModelsSettings } from '@hooks/domain/useModelsSettings';
 import { useSelection } from '@hooks/domain/useSelection';
 import { useSettings } from '@hooks/domain/useSettings';
@@ -31,6 +31,7 @@ describe('AnalysisTab launch buttons', () => {
     const selection = useSelection();
     const modelsSettings = useModelsSettings();
     const settings = useSettings();
+    const recentSessions = useRecentWorkshopSessions();
     const unsavedSessions = useUnsavedWorkshopSessions();
     return (
       <AnalysisTab
@@ -40,6 +41,7 @@ describe('AnalysisTab launch buttons', () => {
         selection={selection}
         modelsSettings={modelsSettings}
         settings={settings}
+        recentSessions={recentSessions}
         unsavedSessions={unsavedSessions}
         onManageUnsavedSessions={settings.open}
       />
@@ -66,7 +68,7 @@ describe('AnalysisTab launch buttons', () => {
     const workshop = within(row.getByRole('group', { name: 'Workshop tabs' }));
     const add = workshop.getByRole('button', { name: 'New Workshop tab' });
     expect(row.getAllByRole('button')).toEqual([
-      workshop.getByRole('button', { name: 'Workshop' }), add, workshop.getByRole('button', { name: 'Unsaved Sessions' }),
+      workshop.getByRole('button', { name: 'Workshop' }), add, workshop.getByRole('button', { name: 'Workshop sessions' }),
       row.getByRole('button', { name: 'Lightbox' })
     ]);
     vscode.postMessage.mockClear();
