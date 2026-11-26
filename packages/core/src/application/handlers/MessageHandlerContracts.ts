@@ -21,6 +21,8 @@ import type {
   SearchResultMessage,
   StatusMessage,
   TokenUsageUpdateMessage,
+  UnsavedWorkshopSessionsRequest,
+  UnsavedWorkshopSessionsResultPayload,
   WorkshopSessionStateMessage
 } from '@messages';
 import type { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
@@ -91,6 +93,9 @@ export type MessageTransport = (
  * growing anonymous callback bags at each boundary.
  */
 export interface WorkshopUiActions {
+  /** Present only for the sidebar's launcher and Settings page. */
+  unsavedWorkshopSessions?: (request: UnsavedWorkshopSessionsRequest) =>
+    Promise<Omit<UnsavedWorkshopSessionsResultPayload, 'requestId'>>;
   /** Only the Workshop panel attaches its mutation routes and projected settings. */
   surface?: 'sidebar' | 'lightbox' | 'workshop';
   /** The window's MRU Workshop tray, read-only from the Lightbox. */

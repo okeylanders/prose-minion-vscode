@@ -3441,9 +3441,10 @@ describe('Workshop named-session storage (ADR 2026-11-19 D6a, D6e)', () => {
       }
       return [...found].sort();
     };
-    // The store renames and deletes only staged temporaries (`writeJsonAtomically`) and derived search indexes;
-    // a named session file is replaced or removed only by the lock.
-    expect(callersOf(RENAME_OR_DELETE)).toEqual(['deleteSearchIndexIfPresent', 'writeJsonAtomically']);
+    // The store can also remove a closed secondary's rolling checkpoint under its write claim.
+    // Named session files are still replaced or removed only by the named-session lock.
+    expect(callersOf(RENAME_OR_DELETE)).toEqual(['deleteSearchIndexIfPresent', 'deleteUnsavedRoom', 'writeJsonAtomically']);
+    expect(callersOf(/this\.fileSystem\.delete\(paths\.currentPath\b/)).toEqual(['deleteUnsavedRoom']);
     expect(callersOf(/\bthis\.writeJsonAtomically\(/)).toEqual(['writeAtomically', 'writeSearchIndex']);
     expect(callersOf(/\bthis\.writeAtomically\(/)).toEqual(['writeSnapshotWithSearchIndex']);
     // A snapshot written over an existing file is only ever current.json; a named file is created, never overwritten.

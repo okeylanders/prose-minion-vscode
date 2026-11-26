@@ -191,6 +191,7 @@ export {
 export type {
   WorkshopSessionStoreAvailability,
   WorkshopSessionStoreUnavailableReason,
+  WorkshopUnsavedRoomRow,
   WorkshopStoredSessionSummary
 } from '@/infrastructure/storage/WorkshopSessionStore';
 

@@ -40,11 +40,8 @@ The sprint numbers describe review boundaries. Coordinate the room factory, slot
 
 Sprint PRs record review responses and CI. [Design](https://github.com/okeylanders/prose-minion-vscode/pull/301) · [Room operations](https://github.com/okeylanders/prose-minion-vscode/pull/302) · [Durability](https://github.com/okeylanders/prose-minion-vscode/pull/303) · [Native panels](https://github.com/okeylanders/prose-minion-vscode/pull/304) · [Integration](https://github.com/okeylanders/prose-minion-vscode/pull/305)
 
-## Open discussion from sidebar testing
+## Sidebar launcher and recovery
 
-The split launcher now opens the primary room (backed by `current.json` in a single-folder workspace) on the first click of either **Workshop** or **+**. **Workshop** always reveals that room or reopens it if its tab was closed. **+** opens a fresh tab whenever any Workshop tab is already open.
+**Workshop** opens or reveals the primary room. **+** opens that room if it is the first Workshop tab, and opens a fresh room when any Workshop tab already exists.
 
-Two ideas remain open for discussion.
-
-- **Reuse closed scratch rooms?** For each additional **+** click, consider reopening the oldest eligible `current-<uuid>.json` in a new tab. Skip rooms already open and rooms attached to named sessions. Decide whether “oldest” means first created or least recently used.
-- **Manage old sessions explicitly?** An alternative is to keep **+** opening a fresh room and give the writer a list of old sessions in Settings and a command to clean them up. Which sessions qualify for cleanup is still open.
+**Unsaved Sessions** lists closed secondary rooms with recoverable work, most recent first. **Manage…** leads to the scrollable list at the bottom of Settings with Open and Delete actions per room. Closing a blank room or a room whose work is fully recoverable from its named session can release its scratch checkpoint. Later edits remain recoverable. The primary room keeps its own checkpoint.

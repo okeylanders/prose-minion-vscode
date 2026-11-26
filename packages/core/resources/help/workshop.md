@@ -10,7 +10,11 @@ Click **Workshop** in the sidebar or run **Open Workshop** to open your primary 
 
 Before using **Add Selection to Workshop Message**, **Send to New Workshop Excerpt**, or a Lightbox action that sends material to Workshop, focus the tab you want to receive it. You can then return to the editor or Lightbox to send. If you have no Workshop tab open, the command opens one.
 
-You can leave both rooms unnamed. With a single project folder open in VS Code, each room keeps its own checkpoint. Reloading VS Code restores each open tab from its checkpoint. To recover an unnamed room after closing its tab, run **Reopen Closed Workshop Room…** and choose the room. With no folder or with several workspace folders, closed rooms stay available in that picker while the extension is running. Reloading or closing that window ends those in-memory rooms. Opening a named session already open elsewhere in the same window takes you to its tab. **Branch** opens the branch in the tab where you made it.
+To return to a closed room, open **Unsaved Sessions** with the arrow beside **+**. Choose a room by its preview and last-used time. The most recent room appears first. **Manage…** opens the session list at the bottom of Settings, where you can **Open** or **Delete** individual rooms. Use **Workshop** to return to the primary room.
+
+A closed secondary room stays available if it contains work you haven’t saved elsewhere. Blank rooms and rooms fully saved to a named session drop out of the list. Edits made after a named save stay available until they are saved too. You can open a named session from Workshop Sessions. If that session is already open elsewhere in the window, Workshop takes you to its tab.
+
+In a single-folder workspace, checkpoints survive a window reload. With no folder or with several workspace folders, closed rooms stay available while the extension is running. Reloading or closing that window ends those in-memory rooms. You can also run **Reopen Closed Workshop Room…** from the Command Palette. **Branch** opens the branch in the tab where you made it.
 
 If two VS Code windows write to the same room checkpoint, the first successful save stays in place. Workshop preserves the other window’s edits in a separate local recovery session. If the recovery write also fails, keep the window open and reopen the room to retry. When you close that tab, choose **Open saved recovery** to continue in a fresh tab. You can also open the preserved session by name from Workshop Sessions.
 

@@ -274,6 +274,11 @@ export class WorkshopNamedSessionLock {
   }
 
   /** Rolling files use the same no-overwrite claim directory. Their saved name always stays in place. */
+  /** Keep a verified named copy recoverable for the duration of redundant rolling-file removal. */
+  withCheckpointLock<T>(filePath: string, sessionId: string, work: () => Promise<T>): Promise<T> {
+    return this.holding(filePath, sessionId, work);
+  }
+
   withRollingLock<T>(filePath: string, sessionId: string, work: (replace?: LocalRollingClaim['replace']) => Promise<T>): Promise<T> {
     return this.holding(filePath, sessionId, (_held, local) => work(local?.replace), true);
   }

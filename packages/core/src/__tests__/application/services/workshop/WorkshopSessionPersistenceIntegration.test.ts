@@ -120,6 +120,24 @@ describe('Workshop persistence with the real store', () => {
     expect(coordinator.isSessionOperationPending()).toBe(false);
   });
 
+  it('reports a real fresh, edited, saved and edited-again room using recoverable contents', async () => {
+    const { coordinator, session, store } = setup();
+    await coordinator.initialize();
+    await coordinator.flushForClose();
+    expect(await coordinator.unsavedRoomStatus()).toBe('empty');
+    expect(await store.listUnsavedRooms()).toEqual([]);
+    session.setExcerpt({ text: 'The lamps went out.', source: { kind: 'manual' } });
+    coordinator.markDirty('writer excerpt');
+    await coordinator.flushForClose();
+    expect(await coordinator.unsavedRoomStatus()).toBe('unsaved');
+    expect(coordinator.unsavedRoomPreview()).toBe('The lamps went out.');
+    await coordinator.saveNamed('Under the bridge');
+    expect(await coordinator.unsavedRoomStatus()).toBe('saved');
+    expect(await store.listUnsavedRooms()).toEqual([]);
+    session.setExcerpt({ text: 'The lamps flickered once more.', source: { kind: 'manual' } });
+    expect(await coordinator.unsavedRoomStatus()).toBe('unsaved');
+  });
+
   it('releases manual refresh ownership after failure so another session can open', async () => {
     const { store, session, coordinator } = setup();
     const saved = await store.saveNamed(checkpoint('named', 'Saved'));

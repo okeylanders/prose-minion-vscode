@@ -71,9 +71,9 @@ export interface FileSystem {
   rename(fromPath: string, toPath: string, options?: { overwrite?: boolean }): Promise<void>;
   /**
    * Delete a path. `recursive` defaults to false so deleting a directory tree
-   * is always deliberate.
+   * is always deliberate. Explicit writer deletions may request the host trash.
    */
-  delete(path: string, options?: { recursive?: boolean }): Promise<void>;
+  delete(path: string, options?: { recursive?: boolean; useTrash?: boolean }): Promise<void>;
   /** List a directory as [name, type] tuples. */
   readDirectory(path: string): Promise<Array<[string, FileType]>>;
   /** Stat a path. Throws if missing (callers catch for existence checks). */

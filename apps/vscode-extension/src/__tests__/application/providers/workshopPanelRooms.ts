@@ -9,6 +9,9 @@ export function workshopPanelRooms(): WorkshopPanelRooms {
       workshopSessionService: { readRoomRevision: () => 1 }
     } as unknown as CoreServices, ready: Promise.resolve() }),
     release: async () => {},
+    listUnsavedRooms: async () => [],
+    openUnsavedRoom: async () => { throw new Error('No unsaved room in fixture'); },
+    deleteUnsavedRoom: async () => { throw new Error('No unsaved room in fixture'); },
     recoverRollingRoom: async () => { throw new Error('No blocked recovery fixture'); },
     listRoomCheckpoints: async () => []
   };

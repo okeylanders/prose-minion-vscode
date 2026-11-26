@@ -14,6 +14,7 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
 import { ProseToolsViewProvider } from './application/providers/ProseToolsViewProvider';
+import { WorkshopRoomPresence } from './application/WorkshopRoomPresence';
 import { WorkshopRoomRegistry } from './application/WorkshopRoomRegistry';
 import { WorkshopPanelProvider } from './application/providers/WorkshopPanelProvider';
 import { LightboxPanelProvider } from './application/providers/LightboxPanelProvider';
@@ -784,7 +785,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return coreServices;
   };
   // Binding the slot here captures the folders at attachment, including for the first legacy panel.
-  const workshopRooms = new WorkshopRoomRegistry(createRoomServices, sessionStore);
+  const workshopRooms = new WorkshopRoomRegistry(createRoomServices, sessionStore, new WorkshopRoomPresence(), outputChannel);
   workshopRoomsForShutdown = workshopRooms;
 
   // Migrate API key from settings to SecretStorage if needed
@@ -798,6 +799,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     platform,
     {
       surface: 'sidebar',
+      unsavedWorkshopSessions: request => workshopPanelProvider?.unsavedSessions.handle(request)
+        ?? Promise.resolve({ rows: [], error: 'Workshop is unavailable.' }),
       openWorkshop: () => workshopPanelProvider?.openOrReveal(),
       newWorkshopTab: () => workshopPanelProvider?.newWorkshopTab(),
       openLightbox: () => lightboxPanelProvider?.openOrReveal()
