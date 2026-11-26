@@ -74,6 +74,7 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
         finishReason: 'stop', conversationId: 'engine-host-conv'
       }),
       discardConversation: jest.fn(),
+      getConversationCacheEstimate: jest.fn(),
       getConversationContextBudget: jest.fn(),
       getConversationContextSources: jest.fn().mockReturnValue([]),
       getConversationContextAccount: jest.fn()

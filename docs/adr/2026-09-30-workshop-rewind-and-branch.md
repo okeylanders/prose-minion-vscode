@@ -6,6 +6,10 @@
 **Answers:** [ADR 2026-07-25 — Workshop Scope Immutability](2026-07-25-workshop-scope-immutability.md), rejected alternative "Fork or branch the conversation into the new session"
 **Epic:** [Workshop Rewind and Branch](../../.todo/archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
 
+## Multi-tab amendment
+
+With independent Workshop editors, **Branch from here** still requires a saved source and writes an automatically named branch from the selected turn. After that write succeeds, a new tab opens the saved branch. The destination owns its rolling checkpoint and any draft restored by the cut. The source keeps its named file, history, and draft. Rewind continues to act in the current room. This supersedes the single-tab promotion described below. [Workshop tab ownership](2026-11-25-workshop-tabs.md)
+
 ## Context
 
 Writers want two per-bubble actions in the Workshop thread:

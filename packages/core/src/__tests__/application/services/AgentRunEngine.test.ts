@@ -317,6 +317,31 @@ describe('AgentRunEngine', () => {
     expect(client.createChatCompletion.mock.calls[2][1]).not.toHaveProperty('claudeCacheTtl');
   });
 
+  it('shows a restored cache estimate only for the selected requested model and only until its saved deadline', () => {
+    const time = jest.spyOn(Date, 'now').mockReturnValue(100_000);
+    try {
+      const restoredEngine = new AgentRunEngine(undefined, conversations);
+      const clock = { estimatedCacheExpiresAt: 150_000, cacheRequestModelId: 'anthropic/claude-sonnet-5' };
+      const [copy] = conversations.importConversations([{
+        entry: { key: 'host', toolName: 'host', routingKey: 'b98257d1-1eb9-4ba5-9c73-a6ed737b4cf8',
+          messages: [{ role: 'user', content: 'Hello' }, { role: 'assistant', content: 'Hi' }],
+          contextSources: [], nextArtifactNumber: 0, lastActivity: 99_000, ...clock },
+        systemMessage: 'Restored system'
+      }]);
+      if (copy.status !== 'imported') { throw new Error(copy.reason); }
+      restoredEngine.setModel(clock.cacheRequestModelId);
+      expect(restoredEngine.getConversationCacheEstimate(copy.conversationId)).toEqual(clock);
+      expect(restoredEngine.getConversationContextBudget(copy.conversationId)).toBeUndefined();
+      restoredEngine.setModel('openai/gpt-5.4');
+      expect(restoredEngine.getConversationCacheEstimate(copy.conversationId)).toBeUndefined();
+      restoredEngine.setModel(clock.cacheRequestModelId);
+      time.mockReturnValue(clock.estimatedCacheExpiresAt);
+      expect(restoredEngine.getConversationCacheEstimate(copy.conversationId)).toBeUndefined();
+    } finally {
+      time.mockRestore();
+    }
+  });
+
   it.each(['hit', 'miss', 'unreported'])('uses only the final request cache window (%s)', async final => {
     const observation = { modelId: 'anthropic/claude-sonnet-5', promptTokens: 4096, completionTokens: 10,
       totalTokens: 4106, requestedMaxOutputTokens: 1000, contextCompression: 'unknown', measuredAt: 0 };
@@ -362,11 +387,13 @@ describe('AgentRunEngine', () => {
     const calls = (streaming ? client.createStreamingChatCompletion : client.createChatCompletion).mock.calls;
     expect(calls).toHaveLength(6);
     for (const [_messages, providerOptions] of calls.slice(0, 4)) {
-      expect(providerOptions.conversationId).toBe(initial.conversationId);
+      expect(providerOptions.routingKey).toBe(conversations.getRoutingKey(initial.conversationId!));
+      expect(providerOptions.routingKey).not.toBe(initial.conversationId);
     }
-    expect(calls[4][1].conversationId).toBe(guest.conversationId);
+    expect(calls[4][1].routingKey).toBe(conversations.getRoutingKey(guest.conversationId!));
+    expect(calls[4][1].routingKey).not.toBe(calls[0][1].routingKey);
     expect(guest.conversationId).not.toBe(initial.conversationId);
-    expect(calls[5][1]).not.toHaveProperty('conversationId');
+    expect(calls[5][1]).not.toHaveProperty('routingKey');
     expect(conversations.getMessages(initial.conversationId!)).toEqual(
       expect.arrayContaining([{ role: 'system', content: 'Stable instructions' }])
     );

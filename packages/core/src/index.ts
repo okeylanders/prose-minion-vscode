@@ -41,6 +41,7 @@ export type {
   MessageTransport,
   ResultCache,
   SecretsPort,
+  WorkshopBranchDraftMessage,
   WorkshopUiActions
 } from '@/application/handlers/MessageHandlerContracts';
 

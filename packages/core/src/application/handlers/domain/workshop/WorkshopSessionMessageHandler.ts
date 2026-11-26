@@ -8,7 +8,7 @@
 
 import { WorkshopSessionOwnedError } from '@/application/services/workshop/WorkshopNamedSessionOwners';
 import { MessageRouter } from '@handlers/MessageRouter';
-import { MessageTransport } from '@handlers/MessageHandlerContracts';
+import type { MessageTransport, WorkshopBranchDraftMessage, WorkshopUiActions } from '@handlers/MessageHandlerContracts';
 import {
   WorkshopBranchNotOpenedError,
   WorkshopBranchOutcome,
@@ -64,6 +64,7 @@ const generateSessionRequestId = (): string =>
   `workshop_sessions-${Date.now()}-${++sessionRequestCounter}`;
 
 export interface WorkshopSessionMessageHandlerOptions {
+  openWorkshopBranch?: WorkshopUiActions['openWorkshopBranch'];
   revealWorkshopRoom?: (roomId: string) => boolean;
   postSessionState: () => void;
   /** Re-read file-backed context with explicit or automatic persistence semantics. */
@@ -150,7 +151,7 @@ export class WorkshopSessionMessageHandler {
    * Rewind to one bubble (ADR 2026-09-30 §6). The bubble maps to its cut
    * here; the coordinator re-checks the cut, cuts, installs and writes the
    * room, or restores the prior one. A writer-message rewind is an edit (see
-   * `postEditRestores`).
+   * `editRestoreMessages`).
    */
   async handleRewindSession(message: WorkshopRewindSessionMessage): Promise<void> {
     if (this.rejectWhileRunning('rewind the conversation', 'rewind')) {
@@ -166,7 +167,7 @@ export class WorkshopSessionMessageHandler {
       const outcome = await this.persistence.rewindTo(cut, { origin: 'writer' });
       await this.options.flushDeferredConversationSettings();
       this.options.postSessionState();
-      this.postEditRestores(outcome);
+      this.editRestoreMessages(outcome).forEach(message => { void this.postMessage(message); });
       this.postActionResult('rewind', true, describeRewindOutcome(outcome));
     } catch (error) {
       this.options.postSessionState();
@@ -186,8 +187,8 @@ export class WorkshopSessionMessageHandler {
   /**
    * Branch from one bubble (ADR 2026-09-30 §7). The bubble maps to its cut
    * here, as for Rewind; the coordinator refuses an unsaved source, re-checks
-   * the cut, saves the cut room as a new named session and opens it. A
-   * writer-message branch is an edit in the branch (see `postEditRestores`).
+   * the cut and saves a new named session. Only the new editor receives the
+   * composer text or reopened widget for a writer-message cut.
    */
   async handleBranchSession(message: WorkshopBranchSessionMessage): Promise<void> {
     if (this.rejectWhileRunning('branch the conversation', 'branch')) {
@@ -202,9 +203,15 @@ export class WorkshopSessionMessageHandler {
     }
     try {
       const outcome = await this.persistence.branchFrom(cut, title === undefined ? {} : { title });
-      await this.options.flushDeferredConversationSettings();
+      try {
+        if (!this.options.openWorkshopBranch) {
+          throw new Error('Opening a new Workshop tab is unavailable.');
+        }
+        await this.options.openWorkshopBranch(outcome.branch.sessionId, this.editRestoreMessages(outcome));
+      } catch (error) {
+        throw new WorkshopBranchNotOpenedError(outcome.branch, this.errorMessage(error));
+      }
       this.options.postSessionState();
-      this.postEditRestores(outcome);
       this.postActionResult('branch', true, describeBranchOutcome(outcome));
     } catch (error) {
       this.options.postSessionState();
@@ -219,7 +226,7 @@ export class WorkshopSessionMessageHandler {
         );
         this.postActionResult('branch', false, `${workshopRewindUnavailableReason(error.reason, 'branch')}.`);
       } else if (error instanceof WorkshopBranchNotOpenedError) {
-        // The branch is saved; only opening it failed, and the room was restored.
+        // The existing named branch can be reopened from Sessions.
         this.postActionResult('branch', false, describeBranchNotOpened(error));
       } else {
         this.postActionFailure('branch', error);
@@ -234,9 +241,10 @@ export class WorkshopSessionMessageHandler {
    * writer made it. Message text goes back to the composer (its attachments
    * come back through session state); a widget message reopens its widget.
    */
-  private postEditRestores(
+  private editRestoreMessages(
     outcome: Pick<WorkshopRewindOutcome | WorkshopBranchOutcome, 'composerRestore' | 'widgetRestore'>
-  ): void {
+  ): WorkshopBranchDraftMessage[] {
+    const messages: WorkshopBranchDraftMessage[] = [];
     if (outcome.composerRestore) {
       const restored: WorkshopComposerDraftRestoredMessage = {
         type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
@@ -244,7 +252,7 @@ export class WorkshopSessionMessageHandler {
         payload: { text: outcome.composerRestore.text },
         timestamp: Date.now()
       };
-      void this.postMessage(restored);
+      messages.push(restored);
     }
     if (outcome.widgetRestore) {
       const reopened: WorkshopWidgetConfigRestoredMessage = {
@@ -253,8 +261,9 @@ export class WorkshopSessionMessageHandler {
         payload: { widgetConfigId: outcome.widgetRestore.widgetConfigId },
         timestamp: Date.now()
       };
-      void this.postMessage(reopened);
+      messages.push(reopened);
     }
+    return messages;
   }
 
   async handleRequestSession(_message: WorkshopRequestSessionMessage): Promise<void> {
@@ -560,17 +569,11 @@ function asSentence(text: string): string {
   return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
 }
 
-/**
- * A saved branch that did not open; the room was restored. When the source's
- * file changed meanwhile, opening the branch would replace the only complete
- * copy of this room, so the writer keeps the room first.
- */
 function describeBranchNotOpened(error: WorkshopBranchNotOpenedError): string {
   const saved = `Saved the branch as “${error.branch.title}”, but`;
   if (error.refusal === 'source-changed') {
     return `${saved} didn't open it: this session's saved file went missing or changed on disk ` +
-      'while branching. Your room is unchanged. Reopen it from Sessions, or use Save as new to ' +
-      'keep this room, before you open the branch.';
+      'while branching. Your room is unchanged. Open the saved branch from Sessions.';
   }
   return `${saved} couldn't open it: ${asSentence(error.detail)} ` +
     'Your room is unchanged. Open the branch from Sessions to continue there.';
@@ -583,7 +586,7 @@ function describeBranchNotOpened(error: WorkshopBranchNotOpenedError): string {
 function describeBranchOutcome(outcome: WorkshopBranchOutcome): string {
   const left = outcome.summary.removedTurnCount;
   const sentences = [
-    `Branched “${outcome.source.title}” into “${outcome.branch.title}”.`,
+    `Branched “${outcome.source.title}” into “${outcome.branch.title}” in a new Workshop tab.`,
     ...(left > 0
       ? [`${left} later ${left === 1 ? 'turn stays' : 'turns stay'} in “${outcome.source.title}”.`]
       : []),

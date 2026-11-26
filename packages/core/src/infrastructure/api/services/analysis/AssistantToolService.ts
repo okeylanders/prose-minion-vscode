@@ -14,6 +14,7 @@
  * - Maintains consistent abstraction level across the codebase
  */
 
+import type { ConversationCacheEstimate } from '@orchestration/ConversationCacheMetadata';
 import { LogSink } from '@/platform';
 import { ListenerSet } from '@/utils/ListenerSet';
 import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssistant';
@@ -1051,6 +1052,10 @@ export class AssistantToolService {
   }
 
   /** Agent-fetched manifest rows for a retained conversation (Phase 7). */
+  getConversationCacheEstimate(conversationId: string | undefined): ConversationCacheEstimate | undefined {
+    return this.currentAssistantEngine()?.getConversationCacheEstimate(conversationId);
+  }
+
   getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
     return this.currentAssistantEngine()?.getConversationContextSources(conversationId) ?? [];
   }

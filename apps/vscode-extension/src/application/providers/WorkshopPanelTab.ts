@@ -8,6 +8,7 @@ import {
   MessageType,
   Platform,
   SURFACE_WORKSHOP,
+  type WorkshopBranchDraftMessage,
   WorkshopExcerptSource,
   WorkshopLexicalGravityBuildSeed,
   WorkshopLightboxTile,
@@ -27,6 +28,11 @@ import {
 import { getWebviewHtml } from './webviewHtml';
 
 const MAX_RECEIVER = 80;
+
+export interface WorkshopBranchOpening {
+  sessionId: string;
+  drafts: readonly WorkshopBranchDraftMessage[];
+}
 
 export class WorkshopPanelTab {
   /** Opaque UI navigation handle for this attachment; never a disk slot or mutation destination. */
@@ -75,7 +81,8 @@ export class WorkshopPanelTab {
     onFocus: () => void,
     onClose: () => void,
     private readonly onTitleChange: () => void,
-    readonly scratchTitle: string
+    readonly scratchTitle: string,
+    private branch?: WorkshopBranchOpening
   ) {
     this.title = scratchTitle;
     panel.title = scratchTitle;
@@ -101,7 +108,10 @@ export class WorkshopPanelTab {
     }));
     // Stamp the serialized slot as soon as the shell can run, including when disk hydration is slow.
     // Buffer early routes behind the same barrier as external excerpts; close abandons them all.
-    this.ready = roomReady.then(() => {
+    this.ready = roomReady.then(async () => {
+      if (!this.closed && this.branch) {
+        await this.coreServices.workshopSessionPersistenceCoordinator.openNamed(this.branch.sessionId);
+      }
       if (!this.closed) {
         this.mountHandler();
       }
@@ -161,6 +171,7 @@ export class WorkshopPanelTab {
       this.uiActions
     );
     const unsubscribe = this.coreServices.workshopSessionPersistenceCoordinator.onRoomReplaced(() => {
+      this.branch = undefined;
       Object.values(this.seedDeliveries).forEach(delivery => delivery.close('room-changed'));
     });
     this.subscriptions.push({ dispose: unsubscribe });
@@ -204,7 +215,17 @@ export class WorkshopPanelTab {
       this.outputChannel.appendLine('[Workshop] A selection accept was dropped: its delivery is not granted to this webview');
       return;
     }
-    void this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);
+    const handled = this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);
+    // The mount request comes from a listening webview. Synthetic focus refreshes
+    // never consume a branch draft, and replacing the room cancels a pending one.
+    const branch = this.branch;
+    if (branch && shape?.type === MessageType.WORKSHOP_REQUEST_SESSION && handled) {
+      void handled.then(() => {
+        if (this.closed || this.branch !== branch) { return; }
+        this.branch = undefined;
+        for (const draft of branch.drafts) { void panel.webview.postMessage(draft); }
+      });
+    }
   }
 
   /** Follow the Sessions browser's normal named-open transaction in this new, hydrated slot. */

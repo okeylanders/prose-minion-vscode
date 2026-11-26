@@ -152,7 +152,7 @@ import {
   workshopMessageAttachmentKind
 } from '@shared/constants/workshopThreadArtifactKinds';
 import { WORKSHOP_SEND_WITHOUT_ATTACHMENT_REFUSALS } from '@handlers/domain/workshop/WorkshopMessageAttachmentReads';
-import { MessageTransport } from '@handlers/MessageHandlerContracts';
+import type { MessageTransport, WorkshopUiActions } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import type {
   WorkshopDirectedRun,
@@ -352,7 +352,8 @@ export class WorkshopRoomHandler {
     private readonly locationsProposals?: WorkshopLocationsProposalPorts,
     /** A persona's passage search (ADR 2026-11-20 D20): the engine, the listing and the report file, built in `extension.ts`. */
     passageSearch?: WorkshopPassageSearchPorts,
-    revealWorkshopRoom?: (roomId: string) => boolean
+    revealWorkshopRoom?: (roomId: string) => boolean,
+    openWorkshopBranch?: WorkshopUiActions['openWorkshopBranch']
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -389,7 +390,7 @@ export class WorkshopRoomHandler {
         bookmarkBrowser,
         fileEditApply,
         memoryDrafts,
-        selectedText, savedSessionTodos, locationsProposals, passageSearch, revealWorkshopRoom,
+        selectedText, savedSessionTodos, locationsProposals, passageSearch, revealWorkshopRoom, openWorkshopBranch,
         outputChannel: this.outputChannel
       },
       {

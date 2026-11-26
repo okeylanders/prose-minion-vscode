@@ -173,6 +173,7 @@ export class WorkshopSliceComposition {
         reportError: (message, details) =>
           host.reportRouteError('workshop', message, details, 'WorkshopSessionMessageHandler'),
         revealWorkshopRoom: dependencies.revealWorkshopRoom,
+        openWorkshopBranch: dependencies.openWorkshopBranch,
         activeRunLabel: host.activeRunLabel,
         rewindCutForBubble: (turnId) => session.rewindCutForBubble(turnId)
       }

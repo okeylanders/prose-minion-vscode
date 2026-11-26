@@ -38,8 +38,8 @@ export interface OpenRouterCompletionOptions {
   signal?: AbortSignal;
   tools?: OpenRouterWebSearchTool[];
   reasoning?: OpenRouterReasoningOptions;
-  /** Retained history identity: enables conversation affinity and caching policy. */
-  conversationId?: string;
+  /** Opaque routing hint for retained history. Never include the raw value in logs or wire payloads. */
+  routingKey?: string;
   claudeCacheTtl?: ClaudeCacheTtl;
   /**
    * The model this one request goes to, whatever the client's model is by
@@ -205,7 +205,7 @@ export class OpenRouterClient {
     const requestStartedAt = Date.now();
     const response = await this.fetchCompletion({
       model: requestedModel,
-      ...prepareOpenRouterPromptCacheRequest(requestedModel, messages, options?.conversationId, options?.claudeCacheTtl),
+      ...prepareOpenRouterPromptCacheRequest(requestedModel, messages, options?.routingKey, options?.claudeCacheTtl),
       temperature: options?.temperature ?? 0.7,
       max_tokens: requestedMaxOutputTokens,
       usage: { include: true },
@@ -295,7 +295,7 @@ export class OpenRouterClient {
     const requestStartedAt = Date.now();
     const response = await this.fetchCompletion({
       model: requestedModel,
-      ...prepareOpenRouterPromptCacheRequest(requestedModel, messages, options?.conversationId, options?.claudeCacheTtl),
+      ...prepareOpenRouterPromptCacheRequest(requestedModel, messages, options?.routingKey, options?.claudeCacheTtl),
       stream: true,
       temperature: options?.temperature ?? 0.7,
       max_tokens: requestedMaxOutputTokens,
@@ -605,7 +605,7 @@ export class OpenRouterClient {
     usage: TokenUsage,
     requestStartedAt: number
   ): number | undefined {
-    if (!options?.conversationId || !shouldStartOpenRouterPromptCacheEstimate(requestedModel, usage)) {
+    if (!options?.routingKey || !shouldStartOpenRouterPromptCacheEstimate(requestedModel, usage)) {
       return undefined;
     }
     const ttl = getOpenRouterPromptCacheTtlSeconds(requestedModel, options.claudeCacheTtl);
