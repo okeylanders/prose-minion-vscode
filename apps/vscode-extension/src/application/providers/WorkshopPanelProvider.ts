@@ -18,6 +18,7 @@ import { nativeWorkshopEditors, revealNativeWorkshopEditor, waitForWorkshopEdito
 
 export interface WorkshopPanelRooms extends WorkshopUnsavedRoomStore {
   acquire(roomId: string): { services: CoreServices; ready: Promise<void> };
+  retainedNamedRoom(sessionId: string): string | undefined;
   release(roomId: string, canTrim?: () => boolean): Promise<void | WorkshopRoomCloseDestination>;
   recoverRollingRoom(roomId: string, recoveryToken: string): Promise<string>;
   listRoomCheckpoints(): Promise<Array<{ roomId: string; title: string; updatedAt: string; recoveryToken?: string }>>;
@@ -168,6 +169,20 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       return 'VS Code is still restoring Workshop tabs. Choose the saved session again when they finish.';
     }
 
+    // Acquire the retained services synchronously with finding their named claim. The
+    // close may still be draining, or its write may have failed with newer work in memory.
+    const retainedId = this.rooms.retainedNamedRoom(sessionId);
+    if (retainedId) {
+      const retained = this.createPanel(retainedId, undefined, column);
+      const selected = this.navigation;
+      await retained.ready;
+      if (retained.ownsNamedSession(sessionId)) { return; }
+      if (!currentWorkspace() || this.navigation !== selected || this.tabs.get(retainedId) !== retained) {
+        return 'The retained Workshop room could not be reopened. Review the current tabs before trying again.';
+      }
+      // If close preserved the work under a different identity, leave it in its room
+      // and open the named session the writer actually selected in a separate tab.
+    }
     const target = this.createPanel(randomUUID(), { sessionId, drafts: [] }, column);
     const targetNavigation = this.navigation;
     await target.ready;

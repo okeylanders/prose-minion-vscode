@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { activate, deactivate } from '@app/extension';
 import { LightboxPanelProvider } from '@app/application/providers/LightboxPanelProvider';
 import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelProvider';
+import { WorkshopRoomRegistry } from '@app/application/WorkshopRoomRegistry';
 import { WorkshopPanelTab } from '@app/application/providers/WorkshopPanelTab';
 import { AIResourceManager, MessageHandler, MessageType, WorkshopSessionPersistenceCoordinator, WorkshopSessionService, WorkshopSessionStore, type ExtensionToWebviewMessage, type WebviewToExtensionMessage } from '@prose-minion/core';
 /* eslint-disable no-restricted-imports -- real provider transport and reusable test fixtures live outside the host barrel. */
@@ -721,6 +722,69 @@ describe.each([
       }
     } finally {
       sidebar.dispose();
+    }
+  });
+
+  it.each(['draining', 'failed'] as const)('reopens the retained named room with its unsaved text after a %s close', async stage => {
+    const title = `Retained after ${stage} close`;
+    const panel = await open('newWorkshopTab', 'The first page was saved.');
+    await panel.send(MessageType.WORKSHOP_SAVE_SESSION, { title });
+    const file = [...mockFiles.files.keys()].find(file => file.endsWith('.json') && !path.basename(file).startsWith('current')
+      && !file.endsWith('.summary.json') && (mockFiles.json(file) as { title?: string }).title === title)!;
+    const { sessionId } = mockFiles.json(file) as { sessionId: string };
+    const sourceBytes = await mockFiles.readFile(file);
+    const dirtyText = 'The unwritten ending exists only in this room.';
+    const writes = jest.spyOn(WorkshopSessionStore.prototype, 'updateNamed').mockRejectedValue(new Error('disk unavailable'));
+    const release = jest.spyOn(WorkshopRoomRegistry.prototype, 'release');
+    const finish = deferred<void>();
+    const started = deferred<void>();
+    const normalClose = WorkshopSessionPersistenceCoordinator.prototype.flushForClose;
+    const gate = jest.spyOn(WorkshopSessionPersistenceCoordinator.prototype, 'flushForClose')
+      .mockImplementationOnce(async function (this: WorkshopSessionPersistenceCoordinator) {
+        started.resolve();
+        await finish.promise;
+        return normalClose.call(this);
+      });
+    const openNamed = jest.spyOn(WorkshopSessionPersistenceCoordinator.prototype, 'openNamed');
+    try {
+      await panel.send(MessageType.WORKSHOP_SET_EXCERPT, { text: dirtyText, source: { kind: 'manual' } });
+      panel.dispose();
+      const closing = release.mock.results.at(-1)!.value;
+      await started.promise;
+      if (stage === 'failed') {
+        finish.resolve();
+        await expect(closing).rejects.toThrow();
+      }
+      const provider = new Map(serializers.mock.calls).get('prose-minion.workshop') as WorkshopPanelProvider;
+      const originalRoomId = release.mock.calls.at(-1)![0];
+      const acquire = jest.spyOn(WorkshopRoomRegistry.prototype, 'acquire');
+      const created = deferred<void>();
+      const next = vscode.window.createWebviewPanel;
+      const create = jest.spyOn(vscode.window, 'createWebviewPanel').mockImplementationOnce((...args) => {
+        created.resolve();
+        return next(...args);
+      });
+      try {
+        const opening = provider.openRecentSession(sessionId, () => true);
+        await created.promise;
+        expect(acquire).toHaveBeenCalledWith(originalRoomId);
+        finish.resolve();
+        await expect(opening).resolves.toBeUndefined();
+        const reopened = panels.at(-1)!;
+        await reopened.send(MessageType.WORKSHOP_REQUEST_SESSION);
+        expect(reopened.snapshot().excerpt?.text).toBe(dirtyText);
+        expect(openNamed).not.toHaveBeenCalled();
+        expect(await mockFiles.readFile(file)).toEqual(sourceBytes);
+      } finally {
+        acquire.mockRestore();
+        create.mockRestore();
+      }
+    } finally {
+      finish.resolve();
+      gate.mockRestore();
+      release.mockRestore();
+      writes.mockRestore();
+      openNamed.mockRestore();
     }
   });
 
