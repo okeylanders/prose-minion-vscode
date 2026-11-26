@@ -13,6 +13,7 @@ import { MessageType } from '@shared/types';
 // The exact routes App wires. Update this list ONLY when intentionally adding
 // or removing a route — an accidental drop should fail the first test.
 const EXPECTED_ROUTES: MessageType[] = [
+  MessageType.RECENT_WORKSHOP_SESSIONS_RESULT,
   MessageType.UNSAVED_WORKSHOP_SESSIONS_RESULT,
   MessageType.SELECTION_UPDATED,
   MessageType.SELECTION_DATA,
@@ -98,7 +99,7 @@ const makeDeps = () => {
     themeSettings: { handleSettingsData: jest.fn() },
     tokenTracking: { handleTokenUsageUpdate: jest.fn() },
     contextPathsSettings: { handleSettingsData: jest.fn() },
-    unsavedSessions: { receive: jest.fn() },
+    recentSessions: { receive: jest.fn() }, unsavedSessions: { receive: jest.fn() },
     contextPathsSuggestion: { handleSuggestion: jest.fn(), handleApplied: jest.fn(), handleStatus: jest.fn() },
     modelsSettings: { handleSettingsData: jest.fn(), handleModelData: jest.fn() },
     accountBalance: { handleAccountBalanceData: jest.fn() },

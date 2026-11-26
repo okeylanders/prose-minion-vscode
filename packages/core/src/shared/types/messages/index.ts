@@ -126,6 +126,8 @@ import {
   OpenSettingsMessage,
   OpenSettingsToggleMessage,
   OpenWorkshopMessage,
+  RecentWorkshopSessionsRequest,
+  RecentWorkshopSessionsResultMessage,
   UnsavedWorkshopSessionsRequest,
   UnsavedWorkshopSessionsResultMessage,
   OpenLightboxMessage,
@@ -358,6 +360,7 @@ export type WebviewToExtensionMessage =
   | DeleteApiKeyMessage
   | WebviewErrorMessage
   | OpenWorkshopMessage
+  | RecentWorkshopSessionsRequest
   | UnsavedWorkshopSessionsRequest
   | OpenLightboxMessage
   | OpenAssistantSettingsMessage
@@ -495,6 +498,7 @@ export type ExtensionToWebviewMessage =
   | ContextPathsStatusMessage
   | OpenSettingsToggleMessage
   | SelectionDataMessage
+  | RecentWorkshopSessionsResultMessage
   | UnsavedWorkshopSessionsResultMessage
   | StartupNoticeDataMessage
   | ErrorMessage

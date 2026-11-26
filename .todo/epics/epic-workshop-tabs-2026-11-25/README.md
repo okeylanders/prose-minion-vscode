@@ -36,6 +36,8 @@ The sprint numbers describe review boundaries. Coordinate the room factory, slot
 | Upgrade and closed rooms | A pre-tabs native editor and existing writer checkpoint reopened as the legacy slot, with the same excerpt and turn IDs. The native picker reopened a closed UUID room. |
 | Two windows on one project | Separate VS Code processes edited the same legacy slot. The committed checkpoint retained the first edit. A separate recovery file held the second edit. |
 | Memory-only rooms | Two roots in a real VS Code window kept two rooms separate. Reopening a closed room displayed the original excerpt and wrote no checkpoint to either root. A folderless VS Code window also recovered both closed rooms with their original slot IDs and excerpts. |
+| Recent saved sessions | VS Code showed the three most recently updated of five saved sessions above the unsaved rooms. Selecting an open session revealed the same native tab and kept both composer drafts. After a window reload, selecting the dormant session restored its original tab. |
+| Saved-session cache | The writer confirmed a live provider cache hit after reloading a saved Workshop session. |
 | Concurrent model work | The extension activation tests use a controlled provider transport and real retained conversation state. They cover overlapping turns, cancellation, rewind and transcript export. When two replies completed out of order, each retained its own token usage and cost, and a newly opened tab showed the correct window totals. |
 
 Sprint PRs record review responses and CI. [Design](https://github.com/okeylanders/prose-minion-vscode/pull/301) · [Room operations](https://github.com/okeylanders/prose-minion-vscode/pull/302) · [Durability](https://github.com/okeylanders/prose-minion-vscode/pull/303) · [Native panels](https://github.com/okeylanders/prose-minion-vscode/pull/304) · [Integration](https://github.com/okeylanders/prose-minion-vscode/pull/305)
@@ -43,5 +45,7 @@ Sprint PRs record review responses and CI. [Design](https://github.com/okeylande
 ## Sidebar launcher and recovery
 
 **Workshop** opens or reveals the primary room. **+** opens that room if it is the first Workshop tab, and opens a fresh room when any Workshop tab already exists.
+
+The dropdown shows the three most recently updated named sessions first. Choosing one reveals its open tab or opens it in a separate Workshop tab.
 
 **Unsaved Sessions** lists closed secondary rooms with recoverable work, most recent first. **Manage…** leads to the scrollable list at the bottom of Settings with Open and Delete actions per room. Closing a blank room or a room whose work is fully recoverable from its named session can release its scratch checkpoint. Later edits remain recoverable. The primary room keeps its own checkpoint.

@@ -147,7 +147,7 @@ describe('app-shell provider assembly', () => {
     const providerSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'), 'utf8');
     expect(providerSource).toContain('implements vscode.Disposable, vscode.WebviewPanelSerializer');
     expect(providerSource).toContain('return this.attachPanel(panel, roomId, panel.active).ready');
-    expect(providerSource).toContain('return this.attachPanel(panel, roomId, true, branch)');
+    expect(providerSource).toContain('return this.attachPanel(panel, roomId, true, namedOpening)');
 
     // VS Code may activate the extension from any of these saved editor types.
     // The activation integration test checks which provider actually receives each registration.

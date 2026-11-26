@@ -12,7 +12,7 @@ import { WordCounter } from '../shared/WordCounter';
 import { StreamingContent } from '../shared/StreamingContent';
 import { Icon } from '../shared/Icon';
 import { WorkshopLauncher } from './WorkshopLauncher';
-import type { UnsavedWorkshopSessions } from '../../hooks/domain/useUnsavedWorkshopSessions';
+import type { RecentWorkshopSessions, UnsavedWorkshopSessions } from '../../hooks/domain/useWorkshopSessions';
 import { AllToolsModal } from './AllToolsModal';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
@@ -30,6 +30,7 @@ interface AnalysisTabProps {
   selection: UseSelectionReturn;
   modelsSettings: UseModelsSettingsReturn;
   settings: UseSettingsReturn;
+  recentSessions: RecentWorkshopSessions;
   unsavedSessions: UnsavedWorkshopSessions;
   onManageUnsavedSessions: () => void;
 }
@@ -41,6 +42,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
   selection,
   modelsSettings,
   settings,
+  recentSessions,
   unsavedSessions,
   onManageUnsavedSessions
 }) => {
@@ -317,7 +319,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
       <div className="assistant-title-row">
         <h2 className="text-lg font-semibold mb-4">Prose Excerpt Assistant</h2>
         <div className="surface-launch-buttons">
-          <WorkshopLauncher sessions={unsavedSessions} launch={handleOpenWorkshop} manage={onManageUnsavedSessions} />
+          <WorkshopLauncher recentSessions={recentSessions} unsavedSessions={unsavedSessions} launch={handleOpenWorkshop} manage={onManageUnsavedSessions} />
           <button
             className="btn btn-secondary surface-launch-button"
             onClick={handleOpenLightbox}

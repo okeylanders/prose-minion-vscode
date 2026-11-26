@@ -867,6 +867,10 @@ body {
 }
 .unsaved-sessions-menu[data-placement="above"] { top: auto; bottom: calc(100% + 5px); }
 .unsaved-sessions-menu-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.workshop-session-menu-group + .workshop-session-menu-group {
+  border-top: 1px solid var(--pm-border-soft);
+  margin-top: 3px;
+}
 .unsaved-sessions-menu > .unsaved-sessions-manage { flex: none; }
 .unsaved-sessions-caption {
   padding: 7px 8px 5px;

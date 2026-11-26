@@ -621,6 +621,40 @@ export class WorkshopSessionStore {
     };
   }
 
+  /** Saved filenames retain their creation date, so the three most recently updated rooms can be anywhere in the directory. */
+  async listRecentNamed(signal?: AbortSignal): Promise<WorkshopStoredSessionSummary[]> {
+    if (!this.availability().available) { return []; }
+    const paths = this.requireAvailability();
+    throwIfAborted(signal);
+    let entries: Array<[string, FileType]>;
+    try {
+      entries = await this.fileSystem.readDirectory(paths.sessionsDirectory);
+    } catch (error) {
+      if (isMissingFileError(error)) { return []; }
+      throw error;
+    }
+    const recent: WorkshopStoredSessionSummary[] = [];
+    for (const [name, type] of entries) {
+      if (type !== FileType.File || !isNamedSessionFileName(name)) { continue; }
+      throwIfAborted(signal);
+      // This reader prefers a bounded index, supports legacy files, and never sets the authoritative path for an id.
+      const entry = await this.readPageEntry(paths, name, signal);
+      if (entry.kind !== 'read' || !entry.summary) { continue; }
+      const candidate = entry.summary;
+      const previous = recent.findIndex(row => row.sessionId === candidate.sessionId);
+      if (previous >= 0) {
+        if (compareSummariesNewestFirst(candidate, recent[previous]) >= 0) { continue; }
+        recent.splice(previous, 1);
+      }
+      recent.push(candidate);
+      recent.sort(compareSummariesNewestFirst);
+      if (recent.length > 3) { recent.pop(); }
+    }
+    throwIfAborted(signal);
+    const current = this.availability();
+    return current.available && current.rootPath === paths.rootPath ? recent : [];
+  }
+
   /**
    * One page of every named session file, read-only and uncapped by the
    * browser's 200 (ADR 2026-11-05 D8): the walk is WorkshopSessionStorePage's.

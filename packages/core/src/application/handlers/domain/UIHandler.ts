@@ -16,6 +16,7 @@ import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import {
   OpenGuideFileMessage,
   OpenWorkshopMessage,
+  type RecentWorkshopSessionsRequest,
   type UnsavedWorkshopSessionsRequest,
   OpenDocsFileMessage,
   OpenResourceMessage,
@@ -60,6 +61,11 @@ export class UIHandler {
     router.register(MessageType.REQUEST_SELECTION, this.handleSelectionRequest.bind(this));
     router.register(MessageType.WEBVIEW_ERROR, this.handleWebviewError.bind(this));
     router.register(MessageType.OPEN_WORKSHOP, this.handleOpenWorkshop.bind(this));
+    if (this.workshopUiActions.surface === 'sidebar' && this.workshopUiActions.recentWorkshopSessions) {
+      const handle = this.handleRecentWorkshopSessions.bind(this);
+      router.register(MessageType.LIST_RECENT_WORKSHOP_SESSIONS, handle);
+      router.register(MessageType.OPEN_RECENT_WORKSHOP_SESSION, handle);
+    }
     if (this.workshopUiActions.surface === 'sidebar' && this.workshopUiActions.unsavedWorkshopSessions) {
       const handle = this.handleUnsavedWorkshopSessions.bind(this);
       router.register(MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS, handle);
@@ -311,6 +317,17 @@ export class UIHandler {
         errorMsg
       );
     }
+  }
+
+  private async handleRecentWorkshopSessions(request: RecentWorkshopSessionsRequest): Promise<void> {
+    const requestId = request.payload?.requestId;
+    const act = this.workshopUiActions.recentWorkshopSessions;
+    if (typeof requestId !== 'string' || !requestId || !act) { return; }
+    const result = await act(request);
+    await this.postMessage({
+      type: MessageType.RECENT_WORKSHOP_SESSIONS_RESULT, source: 'extension.ui', timestamp: Date.now(),
+      payload: { requestId, ...result }
+    });
   }
 
   private async handleUnsavedWorkshopSessions(request: UnsavedWorkshopSessionsRequest): Promise<void> {

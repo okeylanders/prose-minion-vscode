@@ -9,6 +9,7 @@ export function workshopPanelRooms(): WorkshopPanelRooms {
       workshopSessionService: { readRoomRevision: () => 1 }
     } as unknown as CoreServices, ready: Promise.resolve() }),
     release: async () => {},
+    retainedNamedRoom: () => undefined,
     listUnsavedRooms: async () => [],
     openUnsavedRoom: async () => { throw new Error('No unsaved room in fixture'); },
     deleteUnsavedRoom: async () => { throw new Error('No unsaved room in fixture'); },

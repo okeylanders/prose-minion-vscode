@@ -12,12 +12,13 @@ import {
   type WorkshopRoomCloseDestination,
   WorkshopUiActions
 } from '@prose-minion/core';
-import { WorkshopPanelTab, type WorkshopBranchOpening } from './WorkshopPanelTab';
+import { WorkshopPanelTab, type WorkshopNamedOpening } from './WorkshopPanelTab';
 import { WorkshopUnsavedSessions, type WorkshopUnsavedRoomStore } from './WorkshopUnsavedSessions';
 import { nativeWorkshopEditors, revealNativeWorkshopEditor, waitForWorkshopEditor, WORKSHOP_EDITOR, type NativeWorkshopEditor } from './WorkshopNativeEditors';
 
 export interface WorkshopPanelRooms extends WorkshopUnsavedRoomStore {
   acquire(roomId: string): { services: CoreServices; ready: Promise<void> };
+  retainedNamedRoom(sessionId: string): string | undefined;
   release(roomId: string, canTrim?: () => boolean): Promise<void | WorkshopRoomCloseDestination>;
   recoverRollingRoom(roomId: string, recoveryToken: string): Promise<string>;
   listRoomCheckpoints(): Promise<Array<{ roomId: string; title: string; updatedAt: string; recoveryToken?: string }>>;
@@ -28,7 +29,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   public static readonly viewTypes = Object.values(WORKSHOP_EDITOR);
   readonly unsavedSessions: WorkshopUnsavedSessions;
   private navigation = 0;
-  private nativeNavigation?: number;
+  // Home supersedes foreground navigation while continuing to share an in-flight primary restore.
+  private homeGesture = 0;
+  private nativeProbe?: () => boolean;
   private openingPrimary?: { navigation: number; result: Promise<WorkshopPanelTab | undefined> };
   private readonly tabs = new Map<string, WorkshopPanelTab>();
   private focusOrder: WorkshopPanelTab[] = [];
@@ -54,6 +57,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   }
 
   public openOrReveal(): void | Promise<void> {
+    ++this.homeGesture;
     if (this.revealRoom(PRIMARY_WORKSHOP_ROOM_ID)) { return; }
     const candidates = this.unresolvedPrimaryEditors();
     if (!candidates.length) {
@@ -110,12 +114,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     let selected = false;
     for (const { tab } of candidates) {
       if (!current() || this.tabs.has(PRIMARY_WORKSHOP_ROOM_ID) || !this.unresolvedPrimaryEditors().length) { break; }
-      this.nativeNavigation = navigation;
-      try {
-        selected = await revealNativeWorkshopEditor(tab, current) || selected;
-      } finally {
-        if (this.nativeNavigation === navigation) { this.nativeNavigation = undefined; }
-      }
+      selected = await this.probeNativeEditor(tab, current) || selected;
     }
     if (!current() && !selected) { return undefined; }
     // A newer tab choice stops navigation. A serializer already requested can still attach the
@@ -123,6 +122,15 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     await waitForWorkshopEditor(() =>
       this.disposed || this.tabs.has(PRIMARY_WORKSHOP_ROOM_ID) || this.unresolvedPrimaryEditors().length === 0);
     return this.tabs.get(PRIMARY_WORKSHOP_ROOM_ID);
+  }
+
+  private async probeNativeEditor(tab: vscode.Tab, current: () => boolean): Promise<boolean> {
+    this.nativeProbe = current;
+    try {
+      return await revealNativeWorkshopEditor(tab, current);
+    } finally {
+      if (this.nativeProbe === current) { this.nativeProbe = undefined; }
+    }
   }
 
   public revealRoom(roomId: string): boolean {
@@ -134,6 +142,63 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     this.focus(tab);
     tab.panel.reveal();
     return true;
+  }
+
+  /** Reveal the actual owner, including a restored editor whose webview has not attached yet. */
+  public async openRecentSession(sessionId: string, currentWorkspace: () => boolean): Promise<string | undefined> {
+    const navigation = ++this.navigation;
+    const home = this.homeGesture;
+    const current = (expected = navigation) =>
+      !this.disposed && currentWorkspace() && this.homeGesture === home && this.navigation === expected;
+    const superseded = 'The workspace or selected tab changed. Choose the saved session again.';
+    const column = vscode.window.tabGroups?.activeTabGroup.viewColumn;
+    const owner = () => [...this.tabs.values()].find(tab => tab.ownsNamedSession(sessionId));
+    const ready = () => Promise.all([...this.tabs.values()].map(tab => tab.ready));
+    const attached = owner();
+    if (current() && attached && this.revealRoom(attached.roomId)) { return; }
+    await ready();
+    if (current() && !owner()) {
+      const candidates = this.unresolvedNativeEditors();
+      for (const { tab } of candidates) {
+        if (!current() || owner() || !this.unresolvedNativeEditors().length) { break; }
+        await this.probeNativeEditor(tab, current);
+      }
+      if (candidates.length) {
+        await waitForWorkshopEditor(() => !current() || !!owner() || !this.unresolvedNativeEditors().length);
+        await ready();
+      }
+    }
+    if (!current()) { return superseded; }
+    const existing = owner();
+    if (existing && this.revealRoom(existing.roomId)) { return; }
+    if (this.unresolvedNativeEditors().length) {
+      return 'VS Code is still restoring Workshop tabs. Choose the saved session again when they finish.';
+    }
+
+    // Acquire the retained services synchronously with finding their named claim. The
+    // close may still be draining, or its write may have failed with newer work in memory.
+    const retainedId = this.rooms.retainedNamedRoom(sessionId);
+    if (retainedId) {
+      const retained = this.createPanel(retainedId, undefined, column);
+      const selected = this.navigation;
+      await retained.ready;
+      if (!current(selected)) { return superseded; }
+      if (retained.ownsNamedSession(sessionId)) { return; }
+      if (this.tabs.get(retainedId) !== retained) {
+        return 'The retained Workshop room could not be reopened. Review the current tabs before trying again.';
+      }
+      // If close preserved the work under a different identity, leave it in its room
+      // and open the named session the writer actually selected in a separate tab.
+    }
+    const target = this.createPanel(randomUUID(), { sessionId, drafts: [] }, column);
+    const targetNavigation = this.navigation;
+    await target.ready;
+    if (!current(targetNavigation)) { return superseded; }
+    if (target.ownsNamedSession(sessionId)) { return; }
+    // A concurrent Sessions Open may have acquired ownership while the fresh room hydrated.
+    const claimed = owner();
+    if (claimed && this.revealRoom(claimed.roomId)) { return; }
+    return 'The saved session could not be opened. Refresh to try again.';
   }
 
   public async reopenClosedRoom(): Promise<void> {
@@ -227,6 +292,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     const captured = this.focusOrder[0];
     const revision = captured?.roomRevision();
     const navigation = this.navigation;
+    const home = this.homeGesture;
     const attachment = this.legacyAttachment;
     const native = captured ? [] : nativeWorkshopEditors();
     const candidates = this.unresolvedPrimaryEditors(native);
@@ -254,20 +320,20 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
         }
         if (this.tabs.get(target.roomId) !== target) { return refuse('closed'); }
         if (!target.stillShowsRoom(revision)) { return refuse('room-changed'); }
-        if (!created && navigation === this.navigation) { this.revealRoom(target.roomId); }
+        if (!created && navigation === this.navigation && home === this.homeGesture) { this.revealRoom(target.roomId); }
         return deliver(target);
       }
     };
   }
 
-  private createPanel(roomId: string, branch?: WorkshopBranchOpening, column = vscode.ViewColumn.Active): WorkshopPanelTab {
+  private createPanel(roomId: string, namedOpening?: WorkshopNamedOpening, column = vscode.ViewColumn.Active): WorkshopPanelTab {
     if (roomId !== PRIMARY_WORKSHOP_ROOM_ID) { ++this.navigation; }
     const panel = vscode.window.createWebviewPanel(
       roomId === PRIMARY_WORKSHOP_ROOM_ID ? WORKSHOP_EDITOR.primary : WORKSHOP_EDITOR.secondary, 'Workshop', column,
       { enableScripts: true, localResourceRoots: [this.extensionUri], retainContextWhenHidden: true }
     );
     try {
-      return this.attachPanel(panel, roomId, true, branch);
+      return this.attachPanel(panel, roomId, true, namedOpening);
     } catch (error) {
       // A concurrent deletion claim can refuse attachment after VS Code creates the shell.
       panel.dispose();
@@ -290,7 +356,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     return this.attachPanel(panel, roomId, panel.active).ready;
   }
 
-  private attachPanel(panel: vscode.WebviewPanel, roomId: string, focused: boolean, branch?: WorkshopBranchOpening): WorkshopPanelTab {
+  private attachPanel(panel: vscode.WebviewPanel, roomId: string, focused: boolean, namedOpening?: WorkshopNamedOpening): WorkshopPanelTab {
     this.unsavedSessions.invalidate(roomId);
     const { services, ready } = this.rooms.acquire(roomId);
     const number = this.nextNumber++;
@@ -312,10 +378,10 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
         }
       },
       () => {
-        if (this.nativeNavigation === undefined && this.focusOrder[0] !== tab && roomId !== PRIMARY_WORKSHOP_ROOM_ID) { ++this.navigation; }
+        if (this.nativeProbe === undefined && this.focusOrder[0] !== tab && roomId !== PRIMARY_WORKSHOP_ROOM_ID) { ++this.navigation; }
         this.focus(tab);
       }, () => this.detach(tab), () => this.refreshTitles(),
-      roomId === PRIMARY_WORKSHOP_ROOM_ID ? 'Workshop' : `Workshop · Room ${number}`, branch
+      roomId === PRIMARY_WORKSHOP_ROOM_ID ? 'Workshop' : `Workshop · Room ${number}`, namedOpening
     );
     this.tabs.set(roomId, tab);
     this.refreshTitles();

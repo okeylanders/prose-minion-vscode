@@ -10,7 +10,7 @@ Click **Workshop** in the sidebar or run **Open Workshop** to open your primary 
 
 Before using **Add Selection to Workshop Message**, **Send to New Workshop Excerpt**, or a Lightbox action that sends material to Workshop, focus the tab you want to receive it. You can then return to the editor or Lightbox to send. If you have no Workshop tab open, the command opens one.
 
-To return to a closed room, open **Unsaved Sessions** with the arrow beside **+**. Choose a room by its preview and last-used time. The most recent room appears first. **Manage…** opens the session list at the bottom of Settings, where you can **Open** or **Delete** individual rooms. Use **Workshop** to return to the primary room.
+The arrow beside **+** opens the Workshop sessions menu. **Recent Saved Sessions** lists up to three named sessions, most recently updated first. Choose one to open it in a Workshop tab or return to its existing tab. **Unsaved Sessions** lists closed rooms with recoverable work, newest first. Choose a room by its preview and last-used time, or use **Manage…** to open or delete an unsaved room in Settings.
 
 A closed secondary room stays available if it contains work you haven’t saved elsewhere. Blank rooms and rooms fully saved to a named session drop out of the list. Edits made after a named save stay available until they are saved too. You can open a named session from Workshop Sessions. If that session is already open elsewhere in the window, Workshop takes you to its tab.
 

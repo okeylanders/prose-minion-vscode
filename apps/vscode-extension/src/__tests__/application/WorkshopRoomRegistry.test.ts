@@ -30,6 +30,7 @@ function room(id: string, unavailable?: 'no-workspace' | 'multi-root') {
     workshopSessionPersistenceCoordinator: {
       initialize, flushForClose, releaseNamedOwnership, unsavedRoomStatus, unsavedRoomPreview,
       availability: () => unavailable ? { available: false, reason: unavailable } : { available: true, rootPath: '/Book' },
+      recallScope: () => unavailable ? { available: false, reason: unavailable } : { available: true, liveSessionId: id },
       openRoomIdentity: () => ({ title: id })
     },
     workshopSessionService: {
@@ -112,6 +113,33 @@ describe('Workshop room registry', () => {
     await reopened;
     expect(resumed).toHaveBeenCalledTimes(1);
     expect(a.initialize).toHaveBeenCalledTimes(1);
+  });
+
+  it('finds a detached named owner during a close and after a failed write, only in its accepted workspace', async () => {
+    const original = room('legacy');
+    const sessions = original.services.workshopSessionPersistenceCoordinator;
+    const namedId = 'fox-scene';
+    jest.spyOn(sessions, 'openRoomIdentity').mockReturnValue({ ...sessions.openRoomIdentity(), namedSessionId: namedId });
+    const write = held();
+    original.flushForClose.mockReturnValueOnce(write.promise);
+    const rooms = registry(() => original.services, checkpointStore());
+    await rooms.acquire('legacy').ready;
+    expect(rooms.retainedNamedRoom(namedId)).toBeUndefined();
+    const closing = rooms.release('legacy');
+    expect(rooms.retainedNamedRoom(namedId)).toBe('legacy');
+    write.refuse(new Error('disk full'));
+    await expect(closing).rejects.toThrow('disk full');
+    expect(rooms.retainedNamedRoom('another-session')).toBeUndefined();
+    jest.spyOn(sessions, 'recallScope').mockReturnValueOnce({ available: false, reason: 'workspace-changed' });
+    expect(rooms.retainedNamedRoom(namedId)).toBeUndefined();
+    const owner = rooms.retainedNamedRoom(namedId);
+    expect(owner).toBe('legacy');
+    const resumed = rooms.acquire(owner!);
+    await resumed.ready;
+    expect(resumed.services).toBe(original.services);
+    expect(rooms.retainedNamedRoom(namedId)).toBeUndefined();
+    await rooms.release('legacy');
+    expect(rooms.retainedNamedRoom(namedId)).toBeUndefined();
   });
 
   it('drains every room even when one fails, and makes the failed first write recoverable', async () => {

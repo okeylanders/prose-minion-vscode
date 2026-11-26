@@ -72,6 +72,18 @@ export class WorkshopRoomRegistry {
     private readonly log: { appendLine(message: string): void }
   ) {}
 
+  /** A closing room can still own the latest named manuscript. Reattach it before opening a copy from disk. */
+  retainedNamedRoom(sessionId: string): string | undefined {
+    if (this.shuttingDown) { return undefined; }
+    for (const [roomId, room] of this.rooms) {
+      const sessions = room.services.workshopSessionPersistenceCoordinator;
+      if (!room.attached && sessions.openRoomIdentity().namedSessionId === sessionId && sessions.recallScope().available) {
+        return roomId;
+      }
+    }
+    return undefined;
+  }
+
   async listRoomCheckpoints(): Promise<RoomCheckpoint[]> {
     const recovering = new Map<string, RoomCheckpoint>();
     for (const [roomId, room] of this.rooms) {

@@ -1,11 +1,11 @@
 import * as React from 'react';
-import type { UnsavedWorkshopSessionRow } from '@messages';
+import type { RecentWorkshopSessionRow } from '@messages';
 
 const dateFormat = new Intl.DateTimeFormat(undefined, {
   year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
 });
 
-export const UnsavedWorkshopSessionDetails = ({ row }: { row: UnsavedWorkshopSessionRow }) => {
+export const WorkshopSessionDetails = ({ row }: { row: RecentWorkshopSessionRow & { preview?: string } }) => {
   const timestamp = Date.parse(row.updatedAt);
   return (
     <span className="unsaved-session-details">

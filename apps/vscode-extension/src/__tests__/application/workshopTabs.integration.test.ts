@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { activate, deactivate } from '@app/extension';
 import { LightboxPanelProvider } from '@app/application/providers/LightboxPanelProvider';
 import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelProvider';
+import { WorkshopRoomRegistry } from '@app/application/WorkshopRoomRegistry';
 import { WorkshopPanelTab } from '@app/application/providers/WorkshopPanelTab';
 import { AIResourceManager, MessageHandler, MessageType, WorkshopSessionPersistenceCoordinator, WorkshopSessionService, WorkshopSessionStore, type ExtensionToWebviewMessage, type WebviewToExtensionMessage } from '@prose-minion/core';
 /* eslint-disable no-restricted-imports -- real provider transport and reusable test fixtures live outside the host barrel. */
@@ -55,9 +56,9 @@ function editorPanel(activatePanel: () => void) {
       focus();
     }),
     dispose() { closed?.(); },
-    async send(type: MessageType, payload = {}) {
+    async send(type: MessageType, payload = {}, source = 'webview.workshop') {
       await ready.promise;
-      const msg = { type, source: 'webview.workshop', payload, timestamp: Date.now() };
+      const msg = { type, source, payload, timestamp: Date.now() };
       const completed = deferred<void>();
       deliveries.set(msg, completed);
       receive(msg);
@@ -81,6 +82,7 @@ describe.each([
   { shape: 'two roots before first attachment', folders: ['Book', 'Other'] }
 ])('activated Workshop rooms with $shape', ({ folders, shape }) => {
   const panels: ReturnType<typeof editorPanel>[] = [];
+  const views = jest.fn((_type: string, _provider: vscode.WebviewViewProvider) => unsub());
   const serializers = jest.fn((_type: string, _provider: vscode.WebviewPanelSerializer) => unsub());
   const commands = new Map<string, () => unknown>();
   const subscriptions: vscode.Disposable[] = [];
@@ -103,7 +105,7 @@ describe.each([
     Object.assign(vscode.window, {
       showTextDocument: async () => undefined,
       onDidChangeTextEditorSelection: unsub, onDidChangeActiveTextEditor: unsub,
-      registerWebviewPanelSerializer: serializers, registerWebviewViewProvider: unsub,
+      registerWebviewPanelSerializer: serializers, registerWebviewViewProvider: views,
       createWebviewPanel: () => {
         const panel = editorPanel(() => {
           panels.forEach(other => { other.active = other === panel; });
@@ -673,6 +675,116 @@ describe.each([
       }
     } finally {
       transport.mockRestore();
+    }
+  });
+
+  it('opens a closed saved sidebar row in its own room and reveals it on the next open', async () => {
+    const original = await open('newWorkshopTab', 'The wind raised the last page.');
+    await original.send(MessageType.WORKSHOP_SAVE_SESSION, { title: 'Open from recents' });
+    const scratch = await open('newWorkshopTab', 'Keep this writer’s draft.');
+    original.dispose();
+    const scratchRevision = scratch.snapshot().roomRevision;
+    const prior = panels.length;
+
+    const sidebar = Object.assign(editorPanel(() => {}), { onDidChangeVisibility: unsub });
+    const [, view] = views.mock.calls[0];
+    await view.resolveWebviewView(sidebar as unknown as vscode.WebviewView,
+      {} as vscode.WebviewViewResolveContext, {} as vscode.CancellationToken);
+    try {
+      await sidebar.send(MessageType.LIST_RECENT_WORKSHOP_SESSIONS, { requestId: 'list' }, 'webview.ui');
+      const listing = sidebar.posted.find(msg => msg.type === MessageType.RECENT_WORKSHOP_SESSIONS_RESULT);
+      if (listing?.type !== MessageType.RECENT_WORKSHOP_SESSIONS_RESULT) { throw new Error('Missing sidebar result'); }
+      expect(listing.payload.requestId).toBe('list');
+      const row = listing.payload.rows.find(entry => entry.title === 'Open from recents')!;
+      expect(Object.keys(row).sort()).toEqual(['title', 'token', 'updatedAt']);
+      await sidebar.send(MessageType.OPEN_RECENT_WORKSHOP_SESSION, { requestId: 'open', token: row.token }, 'webview.ui');
+      expect(sidebar.posted.at(-1)?.payload).toEqual({ requestId: 'open', rows: [] });
+      expect(panels).toHaveLength(prior + 1);
+      const named = panels.at(-1)!;
+      await named.send(MessageType.WORKSHOP_REQUEST_SESSION);
+      expect(named.snapshot().excerpt?.text).toBe('The wind raised the last page.');
+      expect(scratch.snapshot().roomRevision).toBe(scratchRevision);
+      expect(scratch.snapshot().excerpt?.text).toBe('Keep this writer’s draft.');
+
+      scratch.reveal();
+      await sidebar.send(MessageType.OPEN_RECENT_WORKSHOP_SESSION, { requestId: 'again', token: row.token }, 'webview.ui');
+      expect(panels).toHaveLength(prior + 1);
+      expect(named.active).toBe(true);
+
+      const originalFolders = vscode.workspace.workspaceFolders;
+      try {
+        Object.assign(vscode.workspace, { workspaceFolders: [{ name: 'Other', uri: vscode.Uri.file('/Other') }] });
+        await sidebar.send(MessageType.OPEN_RECENT_WORKSHOP_SESSION, { requestId: 'stale', token: row.token }, 'webview.ui');
+        expect(sidebar.posted.at(-1)?.payload).toMatchObject({ requestId: 'stale', rows: [], error: expect.stringMatching(/changed/) });
+        expect(panels).toHaveLength(prior + 1);
+      } finally {
+        Object.assign(vscode.workspace, { workspaceFolders: originalFolders });
+      }
+    } finally {
+      sidebar.dispose();
+    }
+  });
+
+  it.each(['draining', 'failed'] as const)('reopens the retained named room with its unsaved text after a %s close', async stage => {
+    const title = `Retained after ${stage} close`;
+    const panel = await open('newWorkshopTab', 'The first page was saved.');
+    await panel.send(MessageType.WORKSHOP_SAVE_SESSION, { title });
+    const file = [...mockFiles.files.keys()].find(file => file.endsWith('.json') && !path.basename(file).startsWith('current')
+      && !file.endsWith('.summary.json') && (mockFiles.json(file) as { title?: string }).title === title)!;
+    const { sessionId } = mockFiles.json(file) as { sessionId: string };
+    const sourceBytes = await mockFiles.readFile(file);
+    const dirtyText = 'The unwritten ending exists only in this room.';
+    const writes = jest.spyOn(WorkshopSessionStore.prototype, 'updateNamed').mockRejectedValue(new Error('disk unavailable'));
+    const release = jest.spyOn(WorkshopRoomRegistry.prototype, 'release');
+    const finish = deferred<void>();
+    const started = deferred<void>();
+    const normalClose = WorkshopSessionPersistenceCoordinator.prototype.flushForClose;
+    const gate = jest.spyOn(WorkshopSessionPersistenceCoordinator.prototype, 'flushForClose')
+      .mockImplementationOnce(async function (this: WorkshopSessionPersistenceCoordinator) {
+        started.resolve();
+        await finish.promise;
+        return normalClose.call(this);
+      });
+    const openNamed = jest.spyOn(WorkshopSessionPersistenceCoordinator.prototype, 'openNamed');
+    try {
+      await panel.send(MessageType.WORKSHOP_SET_EXCERPT, { text: dirtyText, source: { kind: 'manual' } });
+      panel.dispose();
+      const closing = release.mock.results.at(-1)!.value;
+      await started.promise;
+      if (stage === 'failed') {
+        finish.resolve();
+        await expect(closing).rejects.toThrow();
+      }
+      const provider = new Map(serializers.mock.calls).get('prose-minion.workshop') as WorkshopPanelProvider;
+      const originalRoomId = release.mock.calls.at(-1)![0];
+      const acquire = jest.spyOn(WorkshopRoomRegistry.prototype, 'acquire');
+      const created = deferred<void>();
+      const next = vscode.window.createWebviewPanel;
+      const create = jest.spyOn(vscode.window, 'createWebviewPanel').mockImplementationOnce((...args) => {
+        created.resolve();
+        return next(...args);
+      });
+      try {
+        const opening = provider.openRecentSession(sessionId, () => true);
+        await created.promise;
+        expect(acquire).toHaveBeenCalledWith(originalRoomId);
+        finish.resolve();
+        await expect(opening).resolves.toBeUndefined();
+        const reopened = panels.at(-1)!;
+        await reopened.send(MessageType.WORKSHOP_REQUEST_SESSION);
+        expect(reopened.snapshot().excerpt?.text).toBe(dirtyText);
+        expect(openNamed).not.toHaveBeenCalled();
+        expect(await mockFiles.readFile(file)).toEqual(sourceBytes);
+      } finally {
+        acquire.mockRestore();
+        create.mockRestore();
+      }
+    } finally {
+      finish.resolve();
+      gate.mockRestore();
+      release.mockRestore();
+      writes.mockRestore();
+      openNamed.mockRestore();
     }
   });
 
