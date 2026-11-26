@@ -73,6 +73,34 @@ describe('Unsaved Sessions in the sidebar', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
+  it('fits the popup and its Manage footer inside the sidebar scrollbars', () => {
+    render(<App />);
+    const pane = screen.getByRole('main');
+    const anchor = chevron().closest('.workshop-launch-anchor') as HTMLElement;
+    const bounds = (left: number, top: number, width: number, height: number) =>
+      ({ left, top, width, height, right: left + width, bottom: top + height }) as DOMRect;
+    Object.defineProperties(pane, { clientWidth: { value: 266 }, clientHeight: { value: 512 } });
+    jest.spyOn(pane, 'getBoundingClientRect').mockReturnValue(bounds(8, 260, 281, 527));
+    const location = jest.spyOn(anchor, 'getBoundingClientRect').mockReturnValue(bounds(86, 401, 172, 44));
+    const width = jest.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('unsaved-sessions-menu') ? parseInt(this.style.maxWidth, 10) : 0;
+    });
+    try {
+      result(openMenu(), rows);
+      const popup = screen.getByRole('menu');
+      expect(popup.style.maxWidth).toBe('258px');
+      expect(popup.style.left).toBe('-74px');
+      expect(popup.style.getPropertyValue('--unsaved-menu-space')).toBe((Math.min(window.innerHeight, 772) - 445 - 9) + 'px');
+      expect(popup.dataset.placement).toBe('below');
+      location.mockReturnValue(bounds(86, 680, 172, 44));
+      fireEvent.scroll(pane);
+      expect(popup.dataset.placement).toBe('above');
+      expect(popup.style.getPropertyValue('--unsaved-menu-space')).toBe('411px');
+    } finally {
+      width.mockRestore();
+    }
+  });
+
   it('takes Manage to the Settings section and requires confirmation before removing one room', () => {
     render(<App />);
     result(openMenu(), rows);

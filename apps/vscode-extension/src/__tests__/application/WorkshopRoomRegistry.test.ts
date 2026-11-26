@@ -280,6 +280,46 @@ describe('Workshop room registry', () => {
       await expect(rooms.deleteUnsavedRoom('legacy', fresh.observation)).rejects.toThrow();
     });
 
+    it('refuses to reuse observations after the window moves to another workspace with the same room id', async () => {
+      const store = checkpointStore();
+      store.listUnsavedRooms.mockResolvedValue([disk]);
+      const rooms = registry(() => room('A').services, store);
+      const [previous] = await rooms.listUnsavedRooms();
+      const oldRoot = store.availability();
+      store.availability.mockReturnValue({ ...oldRoot, rootPath: '/Second' });
+      await expect(rooms.openUnsavedRoom(id, previous.observation)).rejects.toThrow();
+      await expect(rooms.deleteUnsavedRoom(id, previous.observation)).rejects.toThrow();
+      const [here] = await rooms.listUnsavedRooms();
+      expect(here.observation).not.toBe(previous.observation);
+      expect(store.deleteUnsavedRoom).not.toHaveBeenCalled();
+    });
+
+    it('returns the original room when it reopens during automatic cleanup and leaves its checkpoint intact', async () => {
+      const a = room('A');
+      a.unsavedRoomStatus.mockResolvedValue('empty');
+      const store = checkpointStore();
+      store.roomCheckpointStatus.mockResolvedValue({ status: 'empty', revision: 'observed' });
+      const inDelete = held();
+      const finish = held();
+      let deleted = false;
+      store.deleteUnsavedRoom.mockImplementation(async (_id, _revision, stillClosed) => {
+        inDelete.release();
+        await finish.promise;
+        if (stillClosed()) { deleted = true; }
+      });
+      const rooms = registry(() => a.services, store);
+      await rooms.acquire(id).ready;
+      const close = rooms.release(id);
+      await inDelete.promise;
+      const reopen = rooms.acquire(id);
+      finish.release();
+      await Promise.all([close, reopen.ready]);
+      expect(deleted).toBe(false);
+      expect(reopen.services).toBe(a.services);
+      expect(a.discardConversation).not.toHaveBeenCalled();
+      expect(presence.enter).toHaveBeenCalledTimes(2);
+    });
+
     it('orders by a room’s recent close without creating or rewriting a checkpoint', async () => {
       const other = '86277e56-f92e-48ef-9ab7-8778933b3848';
       const a = room('The door');

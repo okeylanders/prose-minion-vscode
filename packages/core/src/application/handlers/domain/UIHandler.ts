@@ -60,7 +60,7 @@ export class UIHandler {
     router.register(MessageType.REQUEST_SELECTION, this.handleSelectionRequest.bind(this));
     router.register(MessageType.WEBVIEW_ERROR, this.handleWebviewError.bind(this));
     router.register(MessageType.OPEN_WORKSHOP, this.handleOpenWorkshop.bind(this));
-    if (this.workshopUiActions.unsavedWorkshopSessions) {
+    if (this.workshopUiActions.surface === 'sidebar' && this.workshopUiActions.unsavedWorkshopSessions) {
       const handle = this.handleUnsavedWorkshopSessions.bind(this);
       router.register(MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS, handle);
       router.register(MessageType.OPEN_UNSAVED_WORKSHOP_SESSION, handle);

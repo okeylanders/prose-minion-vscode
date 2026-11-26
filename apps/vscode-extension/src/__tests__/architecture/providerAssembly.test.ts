@@ -542,7 +542,7 @@ describe('app-shell provider assembly', () => {
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
 
     expect(providerSource).toMatch(/this\.detach\(tab\);\s*tab\.panel\.dispose\(\)/);
-    expect(providerSource).toMatch(/tab\.dispose\(\);[\s\S]*?this\.rooms\.release\(tab\.roomId\)/);
+    expect(providerSource).toMatch(/tab\.dispose\(\);[\s\S]*?this\.rooms\.release\(tab\.roomId, canTrim\)/);
     expect(fs.readFileSync(path.join(PROVIDERS_ROOT, 'WorkshopPanelTab.ts'), 'utf8')).toContain('this.messageHandler?.dispose()');
 
     const deactivate = extensionSource.slice(

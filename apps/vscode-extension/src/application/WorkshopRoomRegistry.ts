@@ -43,12 +43,15 @@ export interface WorkshopUnsavedSessionEntry {
 
 interface ClosedRoomObservation {
   readonly row: WorkshopUnsavedSessionEntry;
+  readonly workspaceKey: string;
   readonly memory?: RoomEntry;
   readonly diskRevision?: string;
   readonly workspaceRoot?: string;
 }
 
 const secondaryRoom = (id: string) => id !== PRIMARY_WORKSHOP_ROOM_ID && isWorkshopRoomId(id);
+const workspaceKey = (location: ReturnType<RoomCheckpointStore['availability']>) =>
+  location.available ? 'folder:' + location.rootPath : location.reason;
 const staleRoom = () => new Error('This Workshop room changed or reopened. Refresh Unsaved Sessions.');
 
 /** Window ownership of live rooms and of writes still owed by a closed panel. */
@@ -95,6 +98,7 @@ export class WorkshopRoomRegistry {
   async listUnsavedRooms(): Promise<WorkshopUnsavedSessionEntry[]> {
     const location = this.store.availability();
     const root = location.available ? location.rootPath : undefined;
+    const scope = workspaceKey(location);
     const memory: WorkshopUnsavedSessionEntry[] = [];
     for (const [roomId, room] of this.rooms) {
       if (!secondaryRoom(roomId) || room.attached || room.closing || !room.closedAt) { continue; }
@@ -106,10 +110,10 @@ export class WorkshopRoomRegistry {
       const prior = this.observations.get(roomId);
       const row = {
         roomId, title, updatedAt: room.closedAt, preview: sessions.unsavedRoomPreview(),
-        observation: prior?.memory === room ? prior.row.observation : randomUUID(),
+        observation: prior?.memory === room && prior.workspaceKey === scope ? prior.row.observation : randomUUID(),
         canDelete: room.ephemeral && !room.closeFailed && !namedSessionId
       };
-      this.observations.set(roomId, { row, memory: room, workspaceRoot: root });
+      this.observations.set(roomId, { row, memory: room, workspaceRoot: root, workspaceKey: scope });
       memory.push(row);
     }
     let stored: Awaited<ReturnType<RoomCheckpointStore['listUnsavedRooms']>>;
@@ -120,13 +124,13 @@ export class WorkshopRoomRegistry {
       stored = [];
     }
     const afterRead = this.store.availability();
-    if (root !== (afterRead.available ? afterRead.rootPath : undefined)) { throw staleRoom(); }
+    if (scope !== workspaceKey(afterRead)) { throw staleRoom(); }
     const rows = memory.filter(row => this.isCurrentObservation(row.roomId, row.observation));
     for (const entry of stored) {
       if ((!entry.revision && !entry.recoveryToken) || !root || !secondaryRoom(entry.roomId)
         || this.rooms.has(entry.roomId) || this.presence.isOpen(root, entry.roomId)) { continue; }
       const prior = this.observations.get(entry.roomId);
-      const observation = prior?.diskRevision === entry.revision && prior.row.recoveryToken === entry.recoveryToken
+      const observation = prior?.workspaceKey === scope && prior.diskRevision === entry.revision && prior.row.recoveryToken === entry.recoveryToken
         ? prior.row.observation : randomUUID();
       const recent = this.recentlyClosed.get(entry.roomId);
       const updatedAt = recent?.workspaceRoot === root && recent.at > entry.updatedAt ? recent.at : entry.updatedAt;
@@ -134,7 +138,7 @@ export class WorkshopRoomRegistry {
         roomId: entry.roomId, title: entry.title, updatedAt, preview: entry.preview,
         recoveryToken: entry.recoveryToken, observation, canDelete: !!entry.revision && !entry.recoveryToken
       };
-      this.observations.set(entry.roomId, { row, diskRevision: entry.revision, workspaceRoot: root });
+      this.observations.set(entry.roomId, { row, diskRevision: entry.revision, workspaceRoot: root, workspaceKey: scope });
       rows.push(row);
     }
     return rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.roomId.localeCompare(b.roomId));
@@ -177,7 +181,7 @@ export class WorkshopRoomRegistry {
     const seen = this.observations.get(roomId);
     const room = this.rooms.get(roomId);
     const current = this.store.availability();
-    return (!seen?.workspaceRoot || (current.available && current.rootPath === seen.workspaceRoot))
+    return seen?.workspaceKey === workspaceKey(current)
       && secondaryRoom(roomId) && !!seen && seen.row.observation === observation && seen.memory === room
       && !room?.attached && !room?.closing && !this.shuttingDown;
   }

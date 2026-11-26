@@ -3,6 +3,7 @@ import {
   MessageType, PRIMARY_WORKSHOP_ROOM_ID, type UnsavedWorkshopSessionRow,
   type UnsavedWorkshopSessionsRequest, type UnsavedWorkshopSessionsResultPayload
 } from '@prose-minion/core';
+import { WorkshopRoomPresenceBusyError, WorkshopRoomPresenceUnavailableError } from '../WorkshopRoomPresence';
 
 export interface WorkshopUnsavedRoomStore {
   listUnsavedRooms(): Promise<{
@@ -71,10 +72,14 @@ export class WorkshopUnsavedSessions {
           } else {
             error = 'This session cannot be deleted.';
           }
-        } catch {
-          error = request.type === MessageType.DELETE_UNSAVED_WORKSHOP_SESSION
-            ? 'The session could not be deleted. Review the refreshed list before trying again.'
-            : 'The session could not be opened. Review the refreshed list before trying again.';
+        } catch (cause) {
+          if (cause instanceof WorkshopRoomPresenceBusyError || cause instanceof WorkshopRoomPresenceUnavailableError) {
+            error = cause.message;
+          } else {
+            error = request.type === MessageType.DELETE_UNSAVED_WORKSHOP_SESSION
+              ? 'The session could not be deleted. Review the refreshed list before trying again.'
+              : 'The session could not be opened. Review the refreshed list before trying again.';
+          }
         }
       }
     }
@@ -102,9 +107,11 @@ export class WorkshopUnsavedSessions {
           return { rows, ...(error ? { error } : {}) };
         }
       }
-      error = this.workspace() === workspace ? RESTORING : CHANGED;
-    } catch {
-      error ??= 'Unsaved sessions could not be listed. Refresh to try again.';
+      const reason = this.workspace() === workspace ? RESTORING : CHANGED;
+      error = error && error !== reason ? `${error} ${reason}` : reason;
+    } catch (cause) {
+      error = cause instanceof WorkshopRoomPresenceUnavailableError
+        ? cause.message : error ?? 'Unsaved sessions could not be listed. Refresh to try again.';
     }
     this.tickets.clear();
     return { rows: [], error };

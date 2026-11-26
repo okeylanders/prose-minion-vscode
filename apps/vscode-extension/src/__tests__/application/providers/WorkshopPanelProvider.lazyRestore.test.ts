@@ -379,6 +379,15 @@ describe('the sidebar unsaved Workshop session actions', () => {
     expect(host.remove).not.toHaveBeenCalled();
   });
 
+  it('disposes a newly created editor if acquisition loses to another host’s deletion claim', async () => {
+    const host = setup();
+    const { token } = (await host.request(MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS)).rows[0];
+    host.acquire.mockImplementationOnce(() => { throw new Error('Deletion in progress'); });
+    const result = await host.request(MessageType.OPEN_UNSAVED_WORKSHOP_SESSION, token);
+    expect(result.error).toMatch(/could not be opened/);
+    expect(host.create.mock.results[0].value.dispose).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects forged, changed and wrong-workspace observations, then returns a fresh list', async () => {
     const host = setup();
     const original = (await host.request(MessageType.LIST_UNSAVED_WORKSHOP_SESSIONS)).rows[0];

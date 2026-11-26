@@ -389,7 +389,12 @@ export class WorkshopSessionStore {
         slot.requireAvailability();
         if (final?.revision !== revision || !stillClosed()) { throw changed(); }
         await this.fileSystem.delete(paths.currentPath, { useTrash: expectedStatus === undefined });
-        await this.deleteSearchIndexIfPresent(paths, slot.currentFileName);
+        try {
+          await this.deleteSearchIndexIfPresent(paths, slot.currentFileName);
+        } catch (error) {
+          // Only the authoritative snapshot owns the row. An orphaned search index cannot reopen it.
+          this.skip(slot.currentFileName, `checkpoint removed; could not remove search index: ${errorMessage(error)}`);
+        }
       };
       if (expectedStatus === 'saved') {
         const found = await this.requireNamedSession(session.sessionId, paths);
@@ -430,6 +435,7 @@ export class WorkshopSessionStore {
     const snapshot = { ...withoutRollingProvenance(decoded.session), sessionId: randomUUID() };
     await checkClaim();
     await replacement.writeCurrent(snapshot, {
+      canCommit: stillClosed,
       beforeCommit: async () => {
         await checkClaim();
         if (await this.readRollingRevision(paths.currentPath) !== baseline || !stillClosed()) {
@@ -484,7 +490,7 @@ export class WorkshopSessionStore {
    */
   async writeCurrent(
     session: WorkshopPersistedSessionV2,
-    options: { beforeCommit?: () => Promise<void> } = {}
+    options: { beforeCommit?: () => Promise<void>; canCommit?: () => boolean } = {}
   ): Promise<void> {
     const paths = this.requireAvailability();
     const decoded = this.validateSessionForWrite(session);
@@ -494,7 +500,7 @@ export class WorkshopSessionStore {
         const verify = async () => {
           await options.beforeCommit?.();
           const latest = await this.readRollingRevision(paths.currentPath);
-          if (latest !== expected) { throw new WorkshopRollingCheckpointConflictError(); }
+          if (latest !== expected || options.canCommit?.() === false) { throw new WorkshopRollingCheckpointConflictError(); }
         };
         const written = await this.writeSnapshotWithSearchIndex(
           paths, paths.currentPath, this.currentFileName, decoded, expected !== 'absent', verify, replace

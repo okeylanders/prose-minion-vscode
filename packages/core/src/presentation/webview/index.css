@@ -933,13 +933,17 @@ body {
 .unsaved-sessions-well .unsaved-session-details { flex: 1 1 11rem; }
 .unsaved-session-actions { display: flex; flex-wrap: wrap; gap: 5px; }
 .unsaved-session-actions .settings-button { padding: 4px 8px; }
+.unsaved-sessions-settings { --unsaved-session-danger: var(--pm-red); }
+.app-container[data-pm-theme="follow"] .unsaved-sessions-settings {
+  --unsaved-session-danger: var(--vscode-errorForeground, var(--pm-red));
+}
 .unsaved-session-actions .unsaved-session-delete {
   background: var(--pm-surface);
-  color: var(--vscode-errorForeground, var(--pm-red));
+  color: var(--unsaved-session-danger);
   border: 1px solid color-mix(in srgb, currentColor 55%, var(--pm-border));
 }
 .unsaved-session-actions .unsaved-session-delete:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--vscode-errorForeground, var(--pm-red)) 12%, var(--pm-surface));
+  background: color-mix(in srgb, var(--unsaved-session-danger) 12%, var(--pm-surface));
   border-color: currentColor;
 }
 .unsaved-session-actions .unsaved-session-delete:disabled {
