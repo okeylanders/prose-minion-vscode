@@ -3,16 +3,64 @@
 **Date Identified**: 2026-11-26
 **Reviewed**: 2026-11-26
 **Status**: Identified
-**Priority**: Medium (item 1), Low (the rest)
-**Estimated Effort**: Item 1 is about a day. Each of the rest is a small patch with a test.
+**Priority**: High (item 0), Medium (items 0b and 1), Low (the rest)
+**Estimated Effort**: Items 0 and 1 are each about a day. Each of the rest is a small patch with a test.
 
 ## Context
 
 These came from the epic-level review of
 [PR #312](https://github.com/okeylanders/prose-minion-vscode/pull/312) (`epic/workshop-tabs` into `main`).
-None loses writer data or breaks the close and flush guarantees in
+Items 0 and 0b come from the integration review. Items 1–7 lose no writer data and keep the close and flush guarantees in
 [ADR 2026-11-25](../../docs/adr/2026-11-25-workshop-tabs.md) D3a, so none
-blocked the merge. Item 1 is a regression from `main` and should be fixed first.
+blocked the merge. Fix item 0 first, then item 1, which is a regression from `main`.
+
+## 0. An import can keep sending the writer bio after About you is off (High)
+
+From the [integration review](../../docs/pr-reviews/pr-312-workshop-tabs-integration-90b60837.md)
+P1, confirmed by reading the code. Okey accepted it as a follow-up rather than
+a merge blocker (2026-11-26). The window is narrow, and the provider already
+received the bio, with consent, on the conversation's earlier turns. What the
+bug breaks is the opt-out going forward.
+
+**Evidence.** The failure takes four steps:
+
+1. `importWorkshopConversationArchive` captures `getWriterProfile()` and then
+   awaits prompt construction (`WorkshopSessionPersistenceCoordinator.ts`,
+   about line 1564).
+2. If About you turns off during that await, `apply()` rebuilds only
+   `replacementTargets()`, which are still the old bindings. It then sets
+   `appliedWriterProfile` to the new profile
+   (`WorkshopConversationSettingsService.ts`).
+3. The import installs bindings whose system prompts still hold the bio.
+4. `syncWriterProfile` sees the effective profile equal to the applied one and
+   returns early.
+
+From then on, every send in those conversations carries the bio, usually as a
+cache hit. Prompt caching does not stop the text from being sent: every
+request carries the full prompt. Rewind and checkpoint hydration go through the
+same install step.
+
+**Fix.** Do one of the following:
+
+- Record the profile the import built prompts with against the conversations
+  it installs, or against their generation.
+- After the install, compare that profile with the effective setting, and
+  rebuild if they differ.
+
+Either way, if the rebuild fails, refuse the send.
+
+**Test.** With a controlled local transport, toggle About you off during an
+import. The first send after the import must carry no bio. Cover Rewind's
+shared install step too.
+
+## 0b. A Branch retry loses its editable starting text (Medium)
+
+From the integration review's P2. When opening the destination tab fails, the
+saved branch reopens from Sessions with its cut history, but the composer or
+widget seed it carried is lost. That seed is returned only to the first
+destination. Persist a seed scoped to the destination, and clear it only after
+the destination consumes it. Do this without creating a duplicate room or
+touching the source's draft.
 
 ## 1. A stale rolling lock leaves the primary room stuck in recovery (Medium)
 
@@ -94,6 +142,7 @@ corrupted data.
 
 ## Completion criteria
 
+- Item 0: the post-import send test above passes, Rewind included.
 - Item 1: a witness test crashes mid-write (the lock stays), reloads, and
   recovers the primary room through the explicit path.
-- Items 2–7: each fixed with a regression test, or recorded here as accepted.
+- Items 0b and 2–7: each fixed with a regression test, or recorded here as accepted.
