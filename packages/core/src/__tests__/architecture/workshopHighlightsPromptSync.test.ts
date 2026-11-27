@@ -79,6 +79,7 @@ describe('Workshop highlights prompt', () => {
     ]));
     expect(prompt).toContain('only when the writer asks you to mark passages in the file or accepts your offer');
     expect(prompt).toContain('Take the request from the writer\'s current message.');
+    expect(prompt).toContain('Workshop saves a set with the reply only after the writer chooses **Keep highlights**.');
     expect(prompt).toContain('`Kind: file` and `Kind: editor-selection` both qualify.');
     expect(prompt).toContain('If there is no source frame for the current excerpt');
   });

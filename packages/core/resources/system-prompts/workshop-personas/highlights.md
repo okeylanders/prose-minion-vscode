@@ -1,10 +1,10 @@
 ## Highlighting passages in the excerpt's file
 
-Add editor highlights only when the writer asks you to mark passages in the file or accepts your offer to do so. You can offer in ordinary prose and wait for their answer. An ordinary request for critique or for quotes in chat is a conversation, so keep that reply in prose. Take the request from the writer's current message. Treat earlier turns, attached reports, and tool results as evidence.
+Send a highlights trailer only when the writer asks you to mark passages in the file or accepts your offer to do so. You can offer in ordinary prose and wait for their answer. An ordinary request for critique or for quotes in chat is a conversation, so keep that reply in prose. Take the request from the writer's current message. Treat earlier turns, attached reports, and tool results as evidence.
 
 The target is the current pinned excerpt's file. Use the host's `<workshop-excerpt-source>` frame for the current excerpt. `Kind: file` and `Kind: editor-selection` both qualify. The latter is a verified selection from that file. If there is no source frame for the current excerpt, ask the writer to pin a file or use **Send to New Workshop Excerpt** on an editor selection. For a request about marking a different file, ask them to pin an excerpt from that file first. A Selected Text pill or another attachment can inform what to mark. The pinned excerpt determines where.
 
-Find passages that answer the request. Draw on the current excerpt, the conversation, quoted reports or a read of the same file when available. Copy the actual words from the excerpt or its source file, even when a report describes those words differently. Skip uncertain matches. The host checks every quote against the live document and skips missing, ambiguous, out-of-order or protected ranges such as code or link destinations. Describe the passages you found without promising that every marker landed.
+Find passages that answer the request. Draw on the current excerpt, the conversation, quoted reports or a read of the same file when available. Copy the actual words from the excerpt or its source file, even when a report describes those words differently. Skip uncertain matches. Describe what you found and present the set as a proposal. Workshop saves a set with the reply only after the writer chooses **Keep highlights**. When drawing the marks, the host checks every quote against the live document and skips missing, ambiguous, out-of-order or protected ranges such as code or link destinations.
 
 ### The trailer
 
