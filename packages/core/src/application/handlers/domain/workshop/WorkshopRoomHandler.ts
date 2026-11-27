@@ -23,11 +23,11 @@ import {
   resolveWorkshopReplyLocations,
   type WorkshopReplyLocationsContext
 } from '@/application/services/workshop/locations/WorkshopReplyLocations';
+import { authorizeWorkshopReplyHighlights } from '@/application/services/workshop/highlights/WorkshopReplyHighlights';
 import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/todos/WorkshopSavedSessionTodos';
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import type { WorkshopSelectedTextSnapshotsPort } from '@handlers/domain/workshop/WorkshopSelectedTextHandler';
-import { authorizeWorkshopReplyHighlights } from '@/application/services/workshop/highlights/WorkshopReplyHighlights';
 import type { WorkshopHighlightEditor } from '@/application/services/workshop/highlights/WorkshopHighlightEditor';
 import type { WorkshopProjectMemoryPort } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import type { WorkshopPinnedContextServices } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
