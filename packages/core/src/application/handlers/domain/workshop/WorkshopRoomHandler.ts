@@ -27,6 +27,7 @@ import type { WorkshopSavedSessionTodos } from '@/application/services/workshop/
 import type { WorkshopBookmarkBrowserPort } from '@handlers/domain/workshop/WorkshopBookmarkBrowserHandler';
 import type { WorkshopMemoryDraftPorts } from '@handlers/domain/workshop/WorkshopMemoryDraftHandler';
 import type { WorkshopSelectedTextSnapshotsPort } from '@handlers/domain/workshop/WorkshopSelectedTextHandler';
+import { authorizeWorkshopReplyHighlights } from '@/application/services/workshop/highlights/WorkshopReplyHighlights';
 import type { WorkshopHighlightEditor } from '@/application/services/workshop/highlights/WorkshopHighlightEditor';
 import type { WorkshopProjectMemoryPort } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import type { WorkshopPinnedContextServices } from '@/application/services/workshop/pinnedContext/WorkshopPinnedContextPorts';
@@ -640,6 +641,7 @@ export class WorkshopRoomHandler {
     }
 
     await this.executeMessage(text, text, undefined, {
+      writerComposed: true,
       includeMessageAttachments: true,
       restoreDraftOnRollback: true
     });
@@ -748,6 +750,7 @@ export class WorkshopRoomHandler {
         requestId,
         openingMessage
       );
+      const joinRoomRevision = this.session.readRoomRevision();
       const joinRoomTurns = this.roomDelivery.prepareJoinSnapshot({
         kind: 'personaGuest',
         personaId
@@ -847,6 +850,8 @@ export class WorkshopRoomHandler {
           memoryAutoSavesInRoom: memoryAutoSave.inRoom,
           fileEdits, todoStatus, locations,
           passageSearch: await this.sliceComposition.replyPassageSearch(result.content, controller.signal),
+          highlights: await authorizeWorkshopReplyHighlights(result.content, requestId, joinRoomRevision, joinStart.excerpt,
+            this.contextIntakeService, this.workshopHighlights, controller.signal),
           reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
           session: this.session,
           requestId,
@@ -1150,6 +1155,8 @@ export class WorkshopRoomHandler {
        * deterministic quick actions never consume them (Phase 6B).
        */
       includeMessageAttachments?: boolean;
+      /** A writer-authored message can ask a persona to highlight its own excerpt. */
+      writerComposed?: true;
       /** Restore writer-owned composer text if transient rollback removes its turn. */
       restoreDraftOnRollback?: boolean;
       /**
@@ -1183,6 +1190,7 @@ export class WorkshopRoomHandler {
     // whether an excerpt happens to be present. An open conversation is a real
     // room; direct tool sidecars still require the passage they read.
     const excerpt = this.session.getExcerpt();
+    const messageRoomRevision = this.session.readRoomRevision();
     const hasExcerpt = !!excerpt && excerpt.text.trim().length > 0;
     const subjectStatus = this.session.getParticipantSubjectStatus();
     // Scope first, and independently of excerpt presence: a new session
@@ -1446,6 +1454,10 @@ export class WorkshopRoomHandler {
         memoryAutoSavesInRoom: memoryAutoSave.inRoom,
         fileEdits, todoStatus, locations,
         passageSearch: await this.sliceComposition.replyPassageSearch(result.content, controller.signal),
+        highlights: roomReader && executeOptions?.writerComposed && !directedRun && !widgetArtifact
+          ? await authorizeWorkshopReplyHighlights(result.content, requestId, messageRoomRevision, excerpt,
+            this.contextIntakeService, this.workshopHighlights, controller.signal)
+          : undefined,
         ...delivery?.completion(),
         reactionsOpen: this.conversationSettingsService.personaReactionsOpen(),
         session: this.session,

@@ -18,7 +18,7 @@ describe('Workshop highlights trailer', () => {
     expect(controls.highlights).toEqual({ set, rejections: ['extra'] });
     expect(controls.rest.trim()).toBe('Here they are.');
     expect(controls.redacted).not.toMatch(/Signature lines|A private/);
-    expect(stripWorkshopReplyTrailersForRetention(trailer)).toBe('Replied without a message.');
+    expect(stripWorkshopReplyTrailersForRetention(trailer)).toBe('Requested highlights.');
   });
 
   it('redacts malformed and incomplete frames as well as frames outside the tail', () => {

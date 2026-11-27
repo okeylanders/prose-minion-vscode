@@ -64,12 +64,12 @@ export function workshopEditOfferRoomViewOnce(view: WorkshopEditOfferRoomView): 
 }
 
 export function workshopTurnForWebview(turn: WorkshopTurn, room?: WorkshopEditOfferRoomView): WorkshopTurn {
-  if (!turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery && !turn.trailerOutcomes && !turn.todoStatusChanges
+  if (!turn.highlights && !turn.fileEditProposals && !turn.editOffers && !turn.reactionDelivery && !turn.trailerOutcomes && !turn.todoStatusChanges
     && !turn.passageSearchRequest && !turn.passageSearchDelivery) {
     return turn;
   }
   const {
-    editOffers, reactionDelivery: _hostOnly, trailerOutcomes: _hostOnlyOutcomes, todoStatusChanges,
+    highlights, editOffers, reactionDelivery: _hostOnly, trailerOutcomes: _hostOnlyOutcomes, todoStatusChanges,
     passageSearchRequest: _card, passageSearchDelivery: _receipt, ...rest
   } = turn;
   const passageSearchRequest = workshopPassageSearchRequestForWebview(turn, room && {
@@ -80,6 +80,7 @@ export function workshopTurnForWebview(turn: WorkshopTurn, room?: WorkshopEditOf
   const offers = editOffers && (!room || room.fileEditsOpen) ? editOffers : undefined;
   return {
     ...rest,
+    ...(highlights ? { highlightSummary: { title: highlights.set.title, count: highlights.set.places.length } } : {}),
     ...(passageSearchRequest ? { passageSearchRequest } : {}),
     ...(turn.fileEditProposals ? { fileEditProposals: turn.fileEditProposals.map(workshopFileEditProposalForWebview) } : {}),
     ...(todoStatusChanges ? { todoStatusChanges: workshopTodoStatusChangesForWebview(todoStatusChanges, room?.liveSessionId?.()) } : {}),
