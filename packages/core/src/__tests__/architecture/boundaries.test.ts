@@ -2500,11 +2500,12 @@ describe('architectural boundaries', () => {
     // Passage Search Slice 4 added a persona's card: Run, Cancel and Send (mutation); its price, Stop,
     // Discard and Open report (direct).
     // Reading a sent attachment and opening its current file are both direct.
-    expect(expectedOwnerPairs).toHaveLength(113);
+    // Highlight questions can be answered while the originating Workshop run is waiting.
+    expect(expectedOwnerPairs).toHaveLength(114);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(58);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(55);
+      .toHaveLength(56);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
