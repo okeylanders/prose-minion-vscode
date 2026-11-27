@@ -7,7 +7,9 @@ export type WorkshopHighlightAction = (action: 'show' | 'clear', turnId: string)
 export function useWorkshopHighlightAction(roomRevision: number | undefined): WorkshopHighlightAction {
   const vscode = useVSCodeApi();
   return React.useCallback((action, turnId) => {
-    if (roomRevision === undefined) return;
+    if (roomRevision === undefined) {
+      return;
+    }
     vscode.postMessage({
       type: action === 'show' ? MessageType.WORKSHOP_SHOW_HIGHLIGHTS : MessageType.WORKSHOP_CLEAR_HIGHLIGHTS,
       source: 'webview.workshop',

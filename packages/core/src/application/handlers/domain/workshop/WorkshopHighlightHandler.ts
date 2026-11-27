@@ -47,7 +47,9 @@ export class WorkshopHighlightHandler {
 
   private async show(identity: WorkshopHighlightIdentity): Promise<void> {
     const turn = this.lookup(identity);
-    if (!turn?.highlights) return;
+    if (!turn?.highlights) {
+      return;
+    }
     const editor = this.editor;
     if (!editor) {
       this.status('Workshop highlights are unavailable in this editor.');
@@ -62,13 +64,17 @@ export class WorkshopHighlightHandler {
       && !!this.lookup(identity)?.highlights;
     try {
       const authorization = await this.intake.authorizeExcerptReread({ kind: 'file', ...source });
-      if (!current()) return;
+      if (!current()) {
+        return;
+      }
       if (authorization.kind !== 'authorized') {
         this.status('The excerpt file is no longer available for highlights.');
         return;
       }
       const result = await editor.show(turn.id, authorization.fsPath, turn.personaLabel ?? 'Persona', set, current);
-      if (!current()) return;
+      if (!current()) {
+        return;
+      }
       if (result) {
         const skipped = set.places.length - result.placed;
         const noun = result.placed === 1 ? 'highlight' : 'highlights';
@@ -77,9 +83,13 @@ export class WorkshopHighlightHandler {
         this.status('The excerpt file could not be opened for highlights.');
       }
     } catch {
-      if (current()) this.status('The excerpt file could not be opened for highlights.');
+      if (current()) {
+        this.status('The excerpt file could not be opened for highlights.');
+      }
     } finally {
-      if (this.pending.get(turn.id) === token) this.pending.delete(turn.id);
+      if (this.pending.get(turn.id) === token) {
+        this.pending.delete(turn.id);
+      }
     }
   }
 

@@ -438,10 +438,10 @@ describe('reply highlights in the footer', () => {
   it('shows the projected title and count and sends IDs only, even after reloading a room', () => {
     const postMessage = jest.fn();
     (useVSCodeApi as jest.Mock).mockReturnValue({ postMessage });
-    const Footer = ({ revision, count }: { revision: number; count: number }) => {
+    function Footer({ revision, count }: { revision: number; count: number }) {
       const onHighlightAction = useWorkshopHighlightAction(revision);
       return bubble({ turn: reply({ highlightSummary: { title: 'Signature lines', count } }), onHighlightAction });
-    };
+    }
     const view = render(<Footer revision={9} count={2} />);
     const chip = () => within(screen.getByRole('group', { name: 'Highlights · Signature lines' }));
     expect(chip().getByText('Signature lines · 2 highlights')).toBeTruthy();

@@ -41,7 +41,11 @@ function rig() {
     router.route({ type, source: 'webview.workshop', payload, timestamp: 1 });
   const replace = (rewound: boolean) => {
     revision += 1;
-    if (rewound) room.rewound(); else room.replaced();
+    if (rewound) {
+      room.rewound();
+    } else {
+      room.replaced();
+    }
   };
   return { editor, authorizeExcerptReread, handler, turns, status, send, replace };
 }
