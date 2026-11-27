@@ -1,7 +1,7 @@
 # Feature: Click a Sent Attachment Pill to See What Was Sent
 
 **Date Identified:** 2026-11-23
-**Status:** Implemented on `sprint/highlights-sent-pills`. A sent pill in the live room or its earlier pages opens a read-only text sheet.
+**Status:** Implemented with the paste pill on `sprint/highlights-attachment-conveniences`. A sent pill in the live room or its earlier pages opens a read-only text sheet.
 **Priority:** Medium
 **Origin:** Okey, 2026-11-23
 
