@@ -27,7 +27,8 @@ import { CoreServices, Platform, WorkshopSeedOutcome } from '@prose-minion/core'
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   DEFAULT_WORKSHOP_WRITER_PROFILE,
-  MessageType
+  MessageType,
+  type WorkshopSendMessageMessage
 } from '@messages';
 import { __resetOverlayFocusStateForTests } from '@hooks/useOverlayDismiss';
 
@@ -56,7 +57,7 @@ jest.mock('@prose-minion/core', () => {
     WORKSHOP_SEED_TIMEOUT_MS: delivery.WORKSHOP_SEED_TIMEOUT_MS,
     ...jest.requireActual('@/application/services/workshop/WorkshopRoomSlot'),
     WorkshopSeedDelivery: delivery.WorkshopSeedDelivery,
-    // The panel's MessageHandler: Selected Text's three routes reach the real handler; nothing else is routed.
+    // Selected Text's three routes reach the real handler. The send shim acknowledges its staging result.
     MessageHandler: jest.fn((_services: unknown, postMessage: (message: unknown) => Promise<void>) => {
       const session = shared.session!;
       const handler = new WorkshopSelectedTextHandler(shared.snapshots!, session, postMessage, { appendLine: jest.fn() }, {
@@ -80,7 +81,18 @@ jest.mock('@prose-minion/core', () => {
           }
           // The send's own mutation begins with the real room check and staging, as the room handler calls it.
           if (message.type === messages.MessageType.WORKSHOP_SEND_MESSAGE) {
-            shared.sends.push(handler.stageForSend(message.payload));
+            const { payload } = message as WorkshopSendMessageMessage;
+            const result = handler.stageForSend(payload);
+            shared.sends.push(result);
+            const { submissionId, roomRevision } = payload;
+            if (typeof submissionId === 'string' && typeof roomRevision === 'number') {
+              await postMessage({
+                type: messages.MessageType.WORKSHOP_SEND_ACKNOWLEDGED,
+                source: 'extension.workshop',
+                timestamp: Date.now(),
+                payload: { submissionId, roomRevision, accepted: result.ok }
+              });
+            }
           }
         },
         setWorkshopSurfaceVisible: (visible: boolean) => handler.setVisible(visible),
@@ -394,7 +406,9 @@ describe('Selected Text from the Workshop panel provider to the Workshop compose
       expect(sent(MessageType.WORKSHOP_SELECTED_TEXT_WATCH)).toEqual([]);
       expect(livePill()).toBeNull();
       typeAndSend('No selection with this.');
-      expect(sent(MessageType.WORKSHOP_SEND_MESSAGE)).toEqual([{ text: 'No selection with this.' }]);
+      expect(sent(MessageType.WORKSHOP_SEND_MESSAGE)).toStrictEqual([
+        { text: 'No selection with this.', roomRevision: shared.session!.readRoomRevision(), submissionId: expect.any(String) }
+      ]);
     });
 
     it('shows the selection live as a pill, and the send names the snapshot it showed and the room', async () => {
@@ -414,8 +428,13 @@ describe('Selected Text from the Workshop panel provider to the Workshop compose
       act(() => { jest.advanceTimersByTime(1_000); });
       editor.change(aliceSelection({ text: 'Who are YOU?', startLine: 50, endLine: 50 }));
       typeAndSend('Is the silence doing enough here?');
-      expect(sent(MessageType.WORKSHOP_SEND_MESSAGE)).toEqual([
-        { text: 'Is the silence doing enough here?', selectedTextSnapshotId: 'snap-1', roomRevision: shared.session!.readRoomRevision() }
+      expect(sent(MessageType.WORKSHOP_SEND_MESSAGE)).toStrictEqual([
+        {
+          text: 'Is the silence doing enough here?',
+          selectedTextSnapshotId: 'snap-1',
+          roomRevision: shared.session!.readRoomRevision(),
+          submissionId: expect.any(String)
+        }
       ]);
       expect(shared.sends).toEqual([{ ok: true, kind: 'staged' }]);
       // The host still holds what the pill showed.
@@ -452,8 +471,13 @@ describe('Selected Text from the Workshop panel provider to the Workshop compose
         expect(shared.session!.readRoomRevision()).not.toBe(roomA);
         // The new room's state has not reached the webview: the pill is still on screen, drawn in room A.
         typeAndSend('Is the silence doing enough here?');
-        expect(sent(MessageType.WORKSHOP_SEND_MESSAGE)).toEqual([
-          { text: 'Is the silence doing enough here?', selectedTextSnapshotId: 'snap-1', roomRevision: roomA }
+        expect(sent(MessageType.WORKSHOP_SEND_MESSAGE)).toStrictEqual([
+          {
+            text: 'Is the silence doing enough here?',
+            selectedTextSnapshotId: 'snap-1',
+            roomRevision: roomA,
+            submissionId: expect.any(String)
+          }
         ]);
         expect(shared.sends).toEqual([expect.objectContaining({ ok: false, reason: 'room-changed' })]);
         expect(staged()).toEqual([]);
@@ -473,7 +497,9 @@ describe('Selected Text from the Workshop panel provider to the Workshop compose
         // The selection still stands in the editor and its snapshot is still held, but no pill is on screen:
         // the send names no selection, so the old pill is never stamped with the new room.
         typeAndSend('Sent with no pill on screen.');
-        expect(sent(MessageType.WORKSHOP_SEND_MESSAGE)).toEqual([{ text: 'Sent with no pill on screen.' }]);
+        expect(sent(MessageType.WORKSHOP_SEND_MESSAGE)).toStrictEqual([
+          { text: 'Sent with no pill on screen.', roomRevision: roomB, submissionId: expect.any(String) }
+        ]);
         expect(shared.sends).toEqual([{ ok: true, kind: 'none' }]);
         expect(shared.snapshots!.find('snap-1')).toBeDefined();
 
@@ -481,8 +507,13 @@ describe('Selected Text from the Workshop panel provider to the Workshop compose
         await drain(panel);
         expect(livePill()?.textContent).toContain('lines 40–44');
         typeAndSend('Now with the pill I can see.');
-        expect(sent(MessageType.WORKSHOP_SEND_MESSAGE).at(-1)).toEqual(
-          { text: 'Now with the pill I can see.', selectedTextSnapshotId: 'snap-1', roomRevision: roomB }
+        expect(sent(MessageType.WORKSHOP_SEND_MESSAGE).at(-1)).toStrictEqual(
+          {
+            text: 'Now with the pill I can see.',
+            selectedTextSnapshotId: 'snap-1',
+            roomRevision: roomB,
+            submissionId: expect.any(String)
+          }
         );
         expect(roomB).not.toBe(roomA);
         expect(shared.sends.at(-1)).toEqual({ ok: true, kind: 'staged' });
