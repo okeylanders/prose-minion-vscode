@@ -351,8 +351,8 @@ describe('AgentRunEngine', () => {
 
   it('shows a restored cache estimate only for the selected requested model and only until its saved deadline', () => {
     const time = jest.spyOn(Date, 'now').mockReturnValue(100_000);
+    const restoredEngine = new AgentRunEngine(undefined, conversations);
     try {
-      const restoredEngine = new AgentRunEngine(undefined, conversations);
       const clock = { estimatedCacheExpiresAt: 150_000, cacheRequestModelId: 'anthropic/claude-sonnet-5' };
       const [copy] = conversations.importConversations([{
         entry: { key: 'host', toolName: 'host', routingKey: 'b98257d1-1eb9-4ba5-9c73-a6ed737b4cf8',
@@ -370,7 +370,7 @@ describe('AgentRunEngine', () => {
       time.mockReturnValue(clock.estimatedCacheExpiresAt);
       expect(restoredEngine.getConversationCacheEstimate(copy.conversationId)).toBeUndefined();
     } finally {
-      time.mockRestore();
+      restoredEngine.dispose(); time.mockRestore();
     }
   });
 
