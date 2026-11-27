@@ -6,6 +6,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ### Added
 
+- **Discuss a file’s Problems in Workshop.** Ask a host or guest about the marks on the excerpt or a configured project file. A persona can read the live Problems in this VS Code window, including another Workshop session’s highlights and their notes.
 - **Workshop message attachments.** Paste 500 or more characters to stage an editable Pasted text pill. You can insert it at the cursor or send the attachment on its own. Click a sent attachment in the conversation to read the text that went with that message.
 - **Find moments across a manuscript with Passage Search.** In **Search → Passage Search**, ask a question like “Where does Jasper adjust his glasses?” Search the active file, a selection, configured context groups, or project paths and patterns. Estimate the calls and cost before running. Results show source-checked quotes with file and line links, labels, and counts. Optionally organize them into an analysis with citations, or copy or save the report.
 - **Run a Passage Search from the Workshop.** A persona can propose a search of the room’s excerpt, configured files, or a context group narrowed by patterns. The card shows the scope, model, and estimated cost before you choose **Run**. Complete results can go straight back to the persona. You decide whether to send partial results after a stop or an incomplete search.

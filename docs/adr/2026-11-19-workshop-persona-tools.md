@@ -1404,3 +1404,14 @@ None blocks the epic. Each default below is in the README's table.
   needs `git log --follow`, which the Git extension's API does not offer.
 - **Q4.** A group the workspace sets is not offered (D25). The alternative
   is the workspace-level write L1 defers.
+
+
+## Addendum, 2026-11-27 · Read a file’s Problems
+
+A Workshop host or guest can ask for `problems.read` when discussing highlights or other diagnostics. The file selector follows D11. `excerpt` resolves the file or selection captured for the requesting turn through the existing excerpt authorization. A configured group and path resolve one catalog entry. This makes the same file available to different Workshop sessions with independent conversations.
+
+The extension queries the current VS Code window for diagnostics published on that one URI. A result identifies the diagnostic’s source, severity, location and message, with a bounded quote when the corresponding text buffer is available. Workshop’s own message already includes the persona, set title and note. Each request samples the current editor state. Results can change after edits, clears or diagnostic updates between pages. A read opens no editors and triggers no analysis.
+
+The application treats diagnostic messages, sources and quoted passages as external data. It fits whole entries in the available evidence budget, discloses omissions and gives a continuation when more can be read. A successful read of a file with zero published Problems is distinguishable from an unauthorized target or an unavailable provider. Only the invoking persona receives the tool evidence through the existing private conversation mechanism. The persisted tool card and transcript summarize the operation. The change introduces no cross-session lookup of saved conversations or new diagnostic store.
+
+The [design and verification cases](../../.todo/epics/epic-workshop-persona-highlights/file-problems-runway.md) cover a two-room read, a second diagnostic provider, authorized file selection and a fresh read after clearing a set.
