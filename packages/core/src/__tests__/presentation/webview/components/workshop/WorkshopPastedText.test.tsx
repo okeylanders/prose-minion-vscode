@@ -164,9 +164,12 @@ describe('pasted text in the Workshop composer', () => {
     expect(send().disabled).toBe(true);
     r.refuse('Please try again.');
     expect(screen.getByRole('group', { name: 'Attachment 1: Pasted text' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Remove Pasted text from this message' }));
+    const remove = screen.getByRole('button', { name: 'Remove Pasted text from this message' });
+    remove.focus();
+    fireEvent.click(remove);
     r.state([], 2);
     r.ok();
+    expect(document.activeElement).toBe(input());
     expect(send().disabled).toBe(true);
   });
 });

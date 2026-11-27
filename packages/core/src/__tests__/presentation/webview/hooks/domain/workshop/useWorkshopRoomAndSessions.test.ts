@@ -1273,4 +1273,16 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
     });
   });
 
+  it('binds messages carrying a staged paste to their room without adding words to an attachment-only send', () => {
+    const { result } = renderHook(() => useWorkshop());
+    act(() => {
+      result.current.sendMessage('', undefined, 7);
+      result.current.sendMessage('Read this.', undefined, 8);
+    });
+    expect(posted(MessageType.WORKSHOP_SEND_MESSAGE).map((message) => message.payload)).toEqual([
+      { text: '', roomRevision: 7 },
+      { text: 'Read this.', roomRevision: 8 }
+    ]);
+  });
+
 });

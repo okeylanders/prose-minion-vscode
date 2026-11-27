@@ -22,12 +22,13 @@ interface WorkshopComposerAttachmentsProps {
   pastedText?: WorkshopComposerPastedText;
   locked?: boolean;
   onInsert?: (id: string) => void;
+  focusDraft?: () => void;
 }
 
 export const WorkshopComposerAttachments: React.FC<WorkshopComposerAttachmentsProps> = ({
   attachments,
   livePill,
-  onRemove, pastedText, locked, onInsert
+  onRemove, pastedText, locked, onInsert, focusDraft
 }) => {
   if (attachments.length === 0 && !livePill && !pastedText?.pendingStages.length && !pastedText?.error) {
     return null;
@@ -65,7 +66,18 @@ export const WorkshopComposerAttachments: React.FC<WorkshopComposerAttachmentsPr
             className="pm-ws-comp-attachment-remove"
             title={`Remove ${attachment.label} from this message`}
             aria-label={`Remove ${attachment.label} from this message`}
-            onClick={() => attachment.pastedText && pastedText ? pastedText.remove(attachment.id) : onRemove(attachment.id)}
+            onClick={(event) => {
+              if (!attachment.pastedText || !pastedText) {
+                onRemove(attachment.id);
+                return;
+              }
+              const button = event.currentTarget;
+              pastedText.remove(attachment.id, () => {
+                if (document.activeElement === button || document.activeElement === document.body) {
+                  focusDraft?.();
+                }
+              });
+            }}
           >
             <Icon name="x" size={10} />
           </button>

@@ -116,9 +116,13 @@ export function useWorkshopPastedText() {
     composer: {
       error, pendingStages: [...pending.current.entries()].filter(([, entry]) => entry.action === 'stage').map(([id]) => id),
       isBusy, mutating, inserting, stage: (text: string) => request({ action: 'stage', text }), inspect,
-      remove: (attachmentId: string) => {
+      remove: (attachmentId: string, removed: () => void) => {
         if (!isBusy(attachmentId)) {
-          request({ action: 'remove', attachmentId });
+          request({ action: 'remove', attachmentId }, (result) => {
+            if (result.ok) {
+              removed();
+            }
+          });
         }
       },
       take: (attachmentId: string, insert: (text: string) => void) => {

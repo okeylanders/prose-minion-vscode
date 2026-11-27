@@ -299,6 +299,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
         pastedText={pastedText}
         locked={!canMessage || !sessionReady}
         onInsert={insertPaste}
+        focusDraft={() => textareaRef.current?.focus()}
         livePill={selectedText?.livePill ?? null}
         onRemove={onRemoveMessageAttachment}
       />
